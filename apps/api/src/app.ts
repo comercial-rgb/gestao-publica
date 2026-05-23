@@ -27,6 +27,7 @@ import { redisPlugin } from './plugins/redis.js'
 import { csrfPlugin } from './plugins/csrf.js'
 import { swaggerPlugin } from './plugins/swagger.js'
 import { modulesPlugin } from './plugins/modules.js'
+import { tenantContribuintesRoute } from './routes/tenant/contribuintes.js'
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -165,7 +166,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(tenantUsersRoute,   { prefix: '/tenant/users' })
   await app.register(tenantPessoasRoute, { prefix: '/tenant/pessoas' })
   await app.register(tenantFiscalRoute,  { prefix: '/tenant/fiscal' })
-  await app.register(tenantReceitasRoute, { prefix: '/tenant/receitas' })
+  await app.register(tenantReceitasRoute,      { prefix: '/tenant/receitas' })
+  await app.register(tenantContribuintesRoute, { prefix: '/tenant/contribuintes' })
 
   return app
 }

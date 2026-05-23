@@ -13,6 +13,11 @@ export function formatData(iso: string | Date): string {
   return d.toLocaleDateString('pt-BR')
 }
 
+export function formatDataHora(iso: string | Date): string {
+  const d = typeof iso === 'string' ? new Date(iso) : iso
+  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
 export function formatCpfCnpj(doc: string | null): string {
   if (!doc) return '—'
   const clean = doc.replace(/\D/g, '')
