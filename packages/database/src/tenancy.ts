@@ -523,7 +523,14 @@ export async function reseedTenantBaseline(
           ('orcamento:gerir_programas','Gerir programas e ações do PPA',             'orcamento'),
           ('orcamento:importar_xml',   'Importar LOA via XML',                       'orcamento'),
           ('orcamento:aprovar_credito','Aprovar e aplicar créditos orçamentários',   'orcamento'),
-          ('orcamento:relatorios',     'Gerar relatórios de execução orçamentária',  'orcamento')
+          ('orcamento:relatorios',     'Gerar relatórios de execução orçamentária',  'orcamento'),
+          ('despesas:read',                'Visualizar despesas',                          'despesas'),
+          ('despesas:empenhar',            'Criar empenhos e gerenciar agrupadores',       'despesas'),
+          ('despesas:liquidar',            'Registrar liquidações',                        'despesas'),
+          ('despesas:autorizar_pagamento', 'Criar e aprovar ordens de pagamento',          'despesas'),
+          ('despesas:pagar',               'Executar pagamentos de OPs aprovadas',         'despesas'),
+          ('despesas:anular',              'Anular empenhos, liquidações e pagamentos',    'despesas'),
+          ('despesas:relatorios',          'Gerar relatórios de execução de despesa',      'despesas')
         ON CONFLICT (slug) DO NOTHING RETURNING slug
       `)
       counters.permissionsAdded = permResult.length
@@ -544,7 +551,8 @@ export async function reseedTenantBaseline(
           AND p.slug IN (
             'cadastros:read','dashboard:read','fiscal:read','fiscal:fechar_mes',
             'receitas:read','receitas:write','receitas:arrecadar','receitas:relatorios',
-            'orcamento:read','orcamento:write','orcamento:relatorios'
+            'orcamento:read','orcamento:write','orcamento:relatorios',
+            'despesas:read','despesas:empenhar','despesas:liquidar','despesas:autorizar_pagamento','despesas:relatorios'
           )
         ON CONFLICT DO NOTHING RETURNING role_id
       `)
@@ -557,7 +565,8 @@ export async function reseedTenantBaseline(
           AND p.slug IN (
             'cadastros:read','dashboard:read','audit:read','fiscal:read',
             'receitas:read','receitas:arrecadar','receitas:relatorios',
-            'orcamento:read','orcamento:relatorios'
+            'orcamento:read','orcamento:relatorios',
+            'despesas:read','despesas:liquidar','despesas:relatorios'
           )
         ON CONFLICT DO NOTHING RETURNING role_id
       `)
@@ -575,7 +584,7 @@ export async function reseedTenantBaseline(
         INSERT INTO role_permissions (role_id, permission_id)
         SELECT r.id, p.id FROM roles r CROSS JOIN permissions p
         WHERE r.slug = 'operador'
-          AND p.slug IN ('cadastros:read','cadastros:write','dashboard:read','fiscal:read','receitas:read','receitas:arrecadar')
+          AND p.slug IN ('cadastros:read','cadastros:write','dashboard:read','fiscal:read','receitas:read','receitas:arrecadar','despesas:read')
         ON CONFLICT DO NOTHING RETURNING role_id
       `)
       counters.rolePermissionsAdded += rp5.length

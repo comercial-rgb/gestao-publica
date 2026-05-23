@@ -938,6 +938,295 @@ export const dotacoesHistoricoValorRelations = relations(dotacoesHistoricoValor,
 }))
 
 // ─────────────────────────────────────────────────────────────
+// MODULO DESPESAS
+// ─────────────────────────────────────────────────────────────
+
+export const empenhoStatusEnum = pgEnum('empenho_status', ['vigente', 'restos_processados', 'restos_nao_processados', 'cancelado', 'cancelado_lrf', 'pago_total'])
+export const empenhoTipoEnum = pgEnum('empenho_tipo', ['ordinario', 'global', 'estimativo'])
+export const liquidacaoStatusEnum = pgEnum('liquidacao_status', ['vigente', 'cancelada'])
+export const ordemPagamentoStatusEnum = pgEnum('ordem_pagamento_status', ['aguardando_aprovacao', 'aprovada', 'rejeitada', 'paga_parcial', 'paga_total', 'cancelada'])
+export const pagamentoStatusEnum = pgEnum('pagamento_status', ['vigente', 'estornado'])
+export const pagamentoMeioEnum = pgEnum('pagamento_meio', ['pix', 'transferencia', 'cheque', 'boleto', 'debito_automatico', 'ordem_bancaria', 'compensacao', 'outros'])
+
+export const empenhosAgrupadores = pgTable(
+  'empenhos_agrupadores',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    descricao: varchar('descricao', { length: 300 }).notNull(),
+    numeroExterno: varchar('numero_externo', { length: 50 }),
+    observacoes: text('observacoes'),
+    ativo: boolean('ativo').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
+  },
+  (t) => ({
+    descricaoIdx: index('emp_agr_descricao_idx').on(t.descricao),
+    ativoIdx: index('emp_agr_ativo_idx').on(t.ativo),
+  }),
+)
+
+export const empenhos = pgTable(
+  'empenhos',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    numero: varchar('numero', { length: 50 }).notNull(),
+    tipo: empenhoTipoEnum('tipo').notNull().default('ordinario'),
+    status: empenhoStatusEnum('status').notNull().default('vigente'),
+    exercicioId: uuid('exercicio_id').notNull().references(() => exercicios.id, { onDelete: 'restrict' }),
+    mesFiscalId: uuid('mes_fiscal_id').notNull().references(() => mesesFiscais.id, { onDelete: 'restrict' }),
+    dotacaoId: uuid('dotacao_id').notNull().references(() => dotacoes.id, { onDelete: 'restrict' }),
+    exercicioOriginalId: uuid('exercicio_original_id').references(() => exercicios.id, { onDelete: 'restrict' }),
+    agrupadorId: uuid('agrupador_id').references(() => empenhosAgrupadores.id, { onDelete: 'set null' }),
+    fornecedorPessoaId: uuid('fornecedor_pessoa_id').notNull().references((): AnyPgColumn => pessoas.id, { onDelete: 'restrict' }),
+    dataEmpenho: date('data_empenho').notNull(),
+    valor: numeric('valor', { precision: 18, scale: 2 }).notNull(),
+    valorLiquidado: numeric('valor_liquidado', { precision: 18, scale: 2 }).notNull().default('0'),
+    valorPago: numeric('valor_pago', { precision: 18, scale: 2 }).notNull().default('0'),
+    valorAnulado: numeric('valor_anulado', { precision: 18, scale: 2 }).notNull().default('0'),
+    objeto: text('objeto').notNull(),
+    contratoReferencia: jsonb('contrato_referencia').$type<Record<string, unknown>>(),
+    identificadorMsc: varchar('identificador_msc', { length: 50 }),
+    informacaoComplementar: jsonb('informacao_complementar').$type<Record<string, unknown>>(),
+    observacoes: text('observacoes'),
+    canceladoEm: timestamp('cancelado_em', { withTimezone: true }),
+    canceladoPorUserId: uuid('cancelado_por_user_id').references((): AnyPgColumn => users.id, { onDelete: 'set null' }),
+    motivoCancelamento: text('motivo_cancelamento'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
+  },
+  (t) => ({
+    numeroUnique: uniqueIndex('empenhos_numero_idx').on(t.numero),
+    exercicioIdx: index('empenhos_exercicio_idx').on(t.exercicioId),
+    dotacaoIdx: index('empenhos_dotacao_idx').on(t.dotacaoId),
+    fornecedorIdx: index('empenhos_fornecedor_idx').on(t.fornecedorPessoaId),
+    agrupadorIdx: index('empenhos_agrupador_idx').on(t.agrupadorId),
+    statusIdx: index('empenhos_status_idx').on(t.status, t.exercicioId),
+    mesIdx: index('empenhos_mes_idx').on(t.mesFiscalId),
+    dataIdx: index('empenhos_data_idx').on(t.dataEmpenho),
+  }),
+)
+
+export const empenhosEventos = pgTable(
+  'empenhos_eventos',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    empenhoId: uuid('empenho_id').notNull().references(() => empenhos.id, { onDelete: 'cascade' }),
+    statusAnterior: empenhoStatusEnum('status_anterior'),
+    statusNovo: empenhoStatusEnum('status_novo').notNull(),
+    motivo: varchar('motivo', { length: 500 }).notNull(),
+    userId: uuid('user_id').references((): AnyPgColumn => users.id, { onDelete: 'set null' }),
+    registradoEm: timestamp('registrado_em', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    empenhoIdx: index('emp_eventos_empenho_idx').on(t.empenhoId, t.registradoEm),
+  }),
+)
+
+export const empenhosAnulacoes = pgTable(
+  'empenhos_anulacoes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    empenhoId: uuid('empenho_id').notNull().references(() => empenhos.id, { onDelete: 'restrict' }),
+    mesFiscalId: uuid('mes_fiscal_id').notNull().references(() => mesesFiscais.id, { onDelete: 'restrict' }),
+    dataAnulacao: date('data_anulacao').notNull(),
+    valor: numeric('valor', { precision: 18, scale: 2 }).notNull(),
+    motivo: text('motivo').notNull(),
+    documentoAutorizacao: varchar('documento_autorizacao', { length: 100 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
+  },
+  (t) => ({
+    empenhoIdx: index('emp_anul_empenho_idx').on(t.empenhoId),
+    mesIdx: index('emp_anul_mes_idx').on(t.mesFiscalId),
+    dataIdx: index('emp_anul_data_idx').on(t.dataAnulacao),
+  }),
+)
+
+export const liquidacoes = pgTable(
+  'liquidacoes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    numero: varchar('numero', { length: 50 }).notNull(),
+    status: liquidacaoStatusEnum('status').notNull().default('vigente'),
+    empenhoId: uuid('empenho_id').notNull().references(() => empenhos.id, { onDelete: 'restrict' }),
+    mesFiscalId: uuid('mes_fiscal_id').notNull().references(() => mesesFiscais.id, { onDelete: 'restrict' }),
+    dataLiquidacao: date('data_liquidacao').notNull(),
+    valor: numeric('valor', { precision: 18, scale: 2 }).notNull(),
+    valorPago: numeric('valor_pago', { precision: 18, scale: 2 }).notNull().default('0'),
+    documentoComprovante: varchar('documento_comprovante', { length: 100 }),
+    dataDocumento: date('data_documento'),
+    observacoes: text('observacoes'),
+    identificadorMsc: varchar('identificador_msc', { length: 50 }),
+    canceladaEm: timestamp('cancelada_em', { withTimezone: true }),
+    canceladaPorUserId: uuid('cancelada_por_user_id').references((): AnyPgColumn => users.id, { onDelete: 'set null' }),
+    motivoCancelamento: text('motivo_cancelamento'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
+  },
+  (t) => ({
+    numeroUnique: uniqueIndex('liquidacoes_numero_idx').on(t.numero),
+    empenhoIdx: index('liquidacoes_empenho_idx').on(t.empenhoId),
+    mesIdx: index('liquidacoes_mes_idx').on(t.mesFiscalId),
+    dataIdx: index('liquidacoes_data_idx').on(t.dataLiquidacao),
+    statusIdx: index('liquidacoes_status_idx').on(t.status),
+  }),
+)
+
+export const liquidacoesAnulacoes = pgTable(
+  'liquidacoes_anulacoes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    liquidacaoId: uuid('liquidacao_id').notNull().references(() => liquidacoes.id, { onDelete: 'restrict' }),
+    mesFiscalId: uuid('mes_fiscal_id').notNull().references(() => mesesFiscais.id, { onDelete: 'restrict' }),
+    dataAnulacao: date('data_anulacao').notNull(),
+    valor: numeric('valor', { precision: 18, scale: 2 }).notNull(),
+    motivo: text('motivo').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
+  },
+  (t) => ({
+    liquidacaoIdx: index('liq_anul_liquidacao_idx').on(t.liquidacaoId),
+    mesIdx: index('liq_anul_mes_idx').on(t.mesFiscalId),
+  }),
+)
+
+export const ordensPagamento = pgTable(
+  'ordens_pagamento',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    numero: varchar('numero', { length: 50 }).notNull(),
+    status: ordemPagamentoStatusEnum('status').notNull().default('aguardando_aprovacao'),
+    liquidacaoId: uuid('liquidacao_id').notNull().references(() => liquidacoes.id, { onDelete: 'restrict' }),
+    mesFiscalId: uuid('mes_fiscal_id').notNull().references(() => mesesFiscais.id, { onDelete: 'restrict' }),
+    valor: numeric('valor', { precision: 18, scale: 2 }).notNull(),
+    valorPago: numeric('valor_pago', { precision: 18, scale: 2 }).notNull().default('0'),
+    dataEmissao: date('data_emissao').notNull(),
+    dataAprovacao: date('data_aprovacao'),
+    observacoes: text('observacoes'),
+    aprovadaPorUserId: uuid('aprovada_por_user_id').references((): AnyPgColumn => users.id, { onDelete: 'set null' }),
+    aprovadaEm: timestamp('aprovada_em', { withTimezone: true }),
+    rejeitadaPorUserId: uuid('rejeitada_por_user_id').references((): AnyPgColumn => users.id, { onDelete: 'set null' }),
+    rejeitadaEm: timestamp('rejeitada_em', { withTimezone: true }),
+    motivoRejeicao: text('motivo_rejeicao'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
+  },
+  (t) => ({
+    numeroUnique: uniqueIndex('op_numero_idx').on(t.numero),
+    liquidacaoIdx: index('op_liquidacao_idx').on(t.liquidacaoId),
+    statusIdx: index('op_status_idx').on(t.status),
+    mesIdx: index('op_mes_idx').on(t.mesFiscalId),
+  }),
+)
+
+export const pagamentos = pgTable(
+  'pagamentos',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    numero: varchar('numero', { length: 50 }).notNull(),
+    status: pagamentoStatusEnum('status').notNull().default('vigente'),
+    ordemPagamentoId: uuid('ordem_pagamento_id').notNull().references(() => ordensPagamento.id, { onDelete: 'restrict' }),
+    mesFiscalId: uuid('mes_fiscal_id').notNull().references(() => mesesFiscais.id, { onDelete: 'restrict' }),
+    dataPagamento: date('data_pagamento').notNull(),
+    valor: numeric('valor', { precision: 18, scale: 2 }).notNull(),
+    meio: pagamentoMeioEnum('meio').notNull(),
+    numeroDocumento: varchar('numero_documento', { length: 100 }),
+    contaBancariaId: uuid('conta_bancaria_id'),
+    observacoes: text('observacoes'),
+    identificadorMsc: varchar('identificador_msc', { length: 50 }),
+    estornadoEm: timestamp('estornado_em', { withTimezone: true }),
+    estornadoPorUserId: uuid('estornado_por_user_id').references((): AnyPgColumn => users.id, { onDelete: 'set null' }),
+    motivoEstorno: text('motivo_estorno'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
+  },
+  (t) => ({
+    numeroUnique: uniqueIndex('pag_numero_idx').on(t.numero),
+    opIdx: index('pag_op_idx').on(t.ordemPagamentoId),
+    mesIdx: index('pag_mes_idx').on(t.mesFiscalId),
+    dataIdx: index('pag_data_idx').on(t.dataPagamento),
+    statusIdx: index('pag_status_idx').on(t.status),
+  }),
+)
+
+export const pagamentosAnulacoes = pgTable(
+  'pagamentos_anulacoes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    pagamentoId: uuid('pagamento_id').notNull().references(() => pagamentos.id, { onDelete: 'restrict' }),
+    mesFiscalId: uuid('mes_fiscal_id').notNull().references(() => mesesFiscais.id, { onDelete: 'restrict' }),
+    dataEstorno: date('data_estorno').notNull(),
+    valor: numeric('valor', { precision: 18, scale: 2 }).notNull(),
+    motivo: text('motivo').notNull(),
+    documentoBancario: varchar('documento_bancario', { length: 100 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
+  },
+  (t) => ({
+    pagamentoIdx: index('pag_anul_pagamento_idx').on(t.pagamentoId),
+    mesIdx: index('pag_anul_mes_idx').on(t.mesFiscalId),
+  }),
+)
+
+// Despesas relations
+export const empenhosAgrupadoresRelations = relations(empenhosAgrupadores, ({ many }) => ({ empenhos: many(empenhos) }))
+
+export const empenhosRelations = relations(empenhos, ({ one, many }) => ({
+  exercicio: one(exercicios, { fields: [empenhos.exercicioId], references: [exercicios.id] }),
+  exercicioOriginal: one(exercicios, { fields: [empenhos.exercicioOriginalId], references: [exercicios.id], relationName: 'empenho_exercicio_original' }),
+  mesFiscal: one(mesesFiscais, { fields: [empenhos.mesFiscalId], references: [mesesFiscais.id] }),
+  dotacao: one(dotacoes, { fields: [empenhos.dotacaoId], references: [dotacoes.id] }),
+  agrupador: one(empenhosAgrupadores, { fields: [empenhos.agrupadorId], references: [empenhosAgrupadores.id] }),
+  fornecedor: one(pessoas, { fields: [empenhos.fornecedorPessoaId], references: [pessoas.id] }),
+  eventos: many(empenhosEventos), anulacoes: many(empenhosAnulacoes), liquidacoes: many(liquidacoes),
+}))
+
+export const empenhosEventosRelations = relations(empenhosEventos, ({ one }) => ({
+  empenho: one(empenhos, { fields: [empenhosEventos.empenhoId], references: [empenhos.id] }),
+  user: one(users, { fields: [empenhosEventos.userId], references: [users.id] }),
+}))
+
+export const empenhosAnulacoesRelations = relations(empenhosAnulacoes, ({ one }) => ({
+  empenho: one(empenhos, { fields: [empenhosAnulacoes.empenhoId], references: [empenhos.id] }),
+  mesFiscal: one(mesesFiscais, { fields: [empenhosAnulacoes.mesFiscalId], references: [mesesFiscais.id] }),
+}))
+
+export const liquidacoesRelations = relations(liquidacoes, ({ one, many }) => ({
+  empenho: one(empenhos, { fields: [liquidacoes.empenhoId], references: [empenhos.id] }),
+  mesFiscal: one(mesesFiscais, { fields: [liquidacoes.mesFiscalId], references: [mesesFiscais.id] }),
+  anulacoes: many(liquidacoesAnulacoes), ordensPagamento: many(ordensPagamento),
+}))
+
+export const liquidacoesAnulacoesRelations = relations(liquidacoesAnulacoes, ({ one }) => ({
+  liquidacao: one(liquidacoes, { fields: [liquidacoesAnulacoes.liquidacaoId], references: [liquidacoes.id] }),
+  mesFiscal: one(mesesFiscais, { fields: [liquidacoesAnulacoes.mesFiscalId], references: [mesesFiscais.id] }),
+}))
+
+export const ordensPagamentoRelations = relations(ordensPagamento, ({ one, many }) => ({
+  liquidacao: one(liquidacoes, { fields: [ordensPagamento.liquidacaoId], references: [liquidacoes.id] }),
+  mesFiscal: one(mesesFiscais, { fields: [ordensPagamento.mesFiscalId], references: [mesesFiscais.id] }),
+  aprovadaPor: one(users, { fields: [ordensPagamento.aprovadaPorUserId], references: [users.id], relationName: 'op_aprovador' }),
+  rejeitadaPor: one(users, { fields: [ordensPagamento.rejeitadaPorUserId], references: [users.id], relationName: 'op_rejeitador' }),
+  pagamentos: many(pagamentos),
+}))
+
+export const pagamentosRelations = relations(pagamentos, ({ one, many }) => ({
+  ordemPagamento: one(ordensPagamento, { fields: [pagamentos.ordemPagamentoId], references: [ordensPagamento.id] }),
+  mesFiscal: one(mesesFiscais, { fields: [pagamentos.mesFiscalId], references: [mesesFiscais.id] }),
+  anulacoes: many(pagamentosAnulacoes),
+}))
+
+export const pagamentosAnulacoesRelations = relations(pagamentosAnulacoes, ({ one }) => ({
+  pagamento: one(pagamentos, { fields: [pagamentosAnulacoes.pagamentoId], references: [pagamentos.id] }),
+  mesFiscal: one(mesesFiscais, { fields: [pagamentosAnulacoes.mesFiscalId], references: [mesesFiscais.id] }),
+}))
+
+// ─────────────────────────────────────────────────────────────
 // TIPOS
 // ─────────────────────────────────────────────────────────────
 
@@ -973,3 +1262,16 @@ export type NewDotacao = typeof dotacoes.$inferInsert
 export type CreditoOrcamentario = typeof creditosOrcamentarios.$inferSelect
 export type CreditoDotacao = typeof creditosDotacoes.$inferSelect
 export type DotacaoHistoricoValor = typeof dotacoesHistoricoValor.$inferSelect
+export type EmpenhoAgrupador = typeof empenhosAgrupadores.$inferSelect
+export type Empenho = typeof empenhos.$inferSelect
+export type NewEmpenho = typeof empenhos.$inferInsert
+export type EmpenhoEvento = typeof empenhosEventos.$inferSelect
+export type EmpenhoAnulacao = typeof empenhosAnulacoes.$inferSelect
+export type Liquidacao = typeof liquidacoes.$inferSelect
+export type NewLiquidacao = typeof liquidacoes.$inferInsert
+export type LiquidacaoAnulacao = typeof liquidacoesAnulacoes.$inferSelect
+export type OrdemPagamento = typeof ordensPagamento.$inferSelect
+export type NewOrdemPagamento = typeof ordensPagamento.$inferInsert
+export type Pagamento = typeof pagamentos.$inferSelect
+export type NewPagamento = typeof pagamentos.$inferInsert
+export type PagamentoAnulacao = typeof pagamentosAnulacoes.$inferSelect
