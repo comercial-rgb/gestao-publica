@@ -1,0 +1,35 @@
+{
+  "name": "saas-municipal",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SaaS Municipal multi-tenant – Pregão 90023/2026 Santa Izabel do Oeste/PR",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=9.15.0"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "db:generate": "pnpm --filter @saas-municipal/database db:generate",
+    "db:generate:tenant": "pnpm --filter @saas-municipal/database db:generate:tenant",
+    "db:migrate": "pnpm --filter @saas-municipal/database db:migrate",
+    "db:studio": "pnpm --filter @saas-municipal/database db:studio",
+    "db:seed": "pnpm --filter @saas-municipal/database db:seed",
+    "db:seed:fiscal": "pnpm --filter @saas-municipal/database db:seed:fiscal",
+    "db:seed:pcasp-pr": "pnpm --filter @saas-municipal/database db:seed:pcasp-pr",
+    "db:migrate:tenants": "pnpm --filter @saas-municipal/database db:migrate:tenants",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:reset": "docker compose down -v && docker compose up -d"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "tsx": "^4.19.2",
+    "@types/node": "^22.10.2"
+  }
+}

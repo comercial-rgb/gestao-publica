@@ -1,0 +1,37 @@
+{
+  "name": "@saas-municipal/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema/public": "./src/schema/public.ts",
+    "./schema/tenant": "./src/schema/tenant.ts",
+    "./tenancy": "./src/tenancy.ts",
+    "./client": "./src/client.ts"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
+    "db:generate:tenant": "drizzle-kit generate --config=drizzle.tenant.config.ts",
+    "db:migrate": "tsx src/migrate.ts",
+    "db:studio": "drizzle-kit studio --config=drizzle.config.ts",
+    "db:seed": "tsx src/seed.ts",
+    "db:migrate:tenants": "tsx src/migrate-tenants.ts",
+    "db:seed:fiscal": "tsx src/seed-fiscal-existing.ts",
+    "db:seed:pcasp-pr": "tsx src/seed-pcasp-pr.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@node-rs/argon2": "^2.0.2",
+    "drizzle-orm": "^0.38.3",
+    "postgres": "^3.4.5"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.30.1",
+    "dotenv": "^16.4.7",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
