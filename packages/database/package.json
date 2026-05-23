@@ -21,9 +21,13 @@
     "db:migrate:tenants": "tsx src/migrate-tenants.ts",
     "db:seed:fiscal": "tsx src/seed-fiscal-existing.ts",
     "db:seed:pcasp-pr": "tsx src/seed-pcasp-pr.ts",
+    "db:reseed:permissions": "tsx src/reseed-tenants.ts",
+    "db:seed:orcamento-stn": "tsx src/seed-orcamento-stn.ts",
+    "db:bootstrap:test": "tsx src/bootstrap-test-db.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@saas-municipal/auth": "workspace:*",
     "@node-rs/argon2": "^2.0.2",
     "drizzle-orm": "^0.38.3",
     "postgres": "^3.4.5"

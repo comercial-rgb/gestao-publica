@@ -17,14 +17,14 @@ config({ path: resolve(__dirname, '../../../.env') })
 
 const DATABASE_URL = process.env.DATABASE_URL
 if (!DATABASE_URL) {
-  console.error('❌ DATABASE_URL não definida no .env')
+  console.error('[ERRO] DATABASE_URL nao definida no .env')
   process.exit(1)
 }
 
 const MIGRATIONS_DIR = resolve(__dirname, '../drizzle/public')
 
 async function main() {
-  console.log('🔄 Aplicando migrations no schema public...')
+  console.log('[migrate] Aplicando migrations no schema public...')
   console.log(`   Migrations: ${MIGRATIONS_DIR}`)
 
   const client = postgres(DATABASE_URL!, { max: 1 })
@@ -32,9 +32,9 @@ async function main() {
 
   try {
     await migrate(db, { migrationsFolder: MIGRATIONS_DIR })
-    console.log('✅ Migrations aplicadas com sucesso.')
+    console.log('[OK] Migrations aplicadas com sucesso.')
   } catch (err) {
-    console.error('❌ Falha ao aplicar migrations:', err)
+    console.error('[ERRO] Falha ao aplicar migrations:', err)
     process.exit(1)
   } finally {
     await client.end()

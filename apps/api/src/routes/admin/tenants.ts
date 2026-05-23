@@ -12,12 +12,15 @@ import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 import {
   createMasterDatabase,
+  createTenantDatabase,
   publicSchema,
+  tenantSchema as tSchema,
   buildSchemaName,
   provisionTenant,
   dropTenantSchema,
   applyTenantMigrationsIncremental,
   listPendingMigrations,
+  reseedTenantBaseline,
   eq,
   isNull,
   and,
@@ -25,6 +28,7 @@ import {
   lt,
   sql,
 } from '@saas-municipal/database'
+import { hashPassword, generateTemporaryPassword } from '@saas-municipal/auth'
 import { env } from '../../env.js'
 import { paginationQuery, decodeCursor, paginatedResponse } from '../../lib/pagination.js'
 import { publishInvalidation } from '../../lib/tenant-modules-cache.js'
@@ -770,6 +774,136 @@ export const adminTenantsRoute: FastifyPluginAsyncZod = async (app) => {
     async (req, reply) => {
       await publishInvalidation(app, req.params.id)
       return reply.status(204).send(null)
+    },
+  )
+
+  // ─── POST /admin/tenants/:id/reset-admin ──────────────
+  app.post(
+    '/:id/reset-admin',
+    {
+      preHandler: async (req) => req.requireMasterRole('admin'),
+      schema: {
+        tags: ['admin-tenants'],
+        security: [{ bearerAuth: [] }, { cookieAuth: [], csrfToken: [] }],
+        params: z.object({ id: z.string().uuid() }),
+        body: z.object({
+          email: z.string().email().toLowerCase().trim(),
+          name: z.string().min(3).max(200),
+          cpf: z.string().regex(/^\d{11}$/).optional(),
+          reason: z.string().min(10).max(500),
+        }),
+        response: {
+          200: z.object({
+            userId: z.string().uuid(),
+            email: z.string(),
+            temporaryPassword: z.string(),
+            action: z.enum(['created', 'reset']),
+            rolesAssigned: z.array(z.string()),
+          }),
+        },
+      },
+    },
+    async (req) => {
+      const tenant = await db.query.tenants.findFirst({
+        where: (t, { eq, and, isNull }) => and(eq(t.id, req.params.id), isNull(t.deletedAt)),
+      })
+      if (!tenant) throw app.httpErrors.notFound('Tenant não encontrado')
+
+      const tenantDb = createTenantDatabase(env.DATABASE_URL, tenant.schemaName)
+      const tempPassword = generateTemporaryPassword(16)
+      const passwordHash = await hashPassword(tempPassword)
+
+      const adminRole = await tenantDb.query.roles.findFirst({
+        where: (r, { eq }) => eq(r.slug, 'admin_municipal'),
+      })
+      if (!adminRole) {
+        throw app.httpErrors.conflict('Role admin_municipal não existe. Rode pnpm db:reseed:permissions primeiro.')
+      }
+
+      const existing = await tenantDb.query.users.findFirst({
+        where: (u, { eq, isNull, and: a }) => a(eq(u.email, req.body.email), isNull(u.deletedAt)),
+      })
+
+      let userId: string
+      let action: 'created' | 'reset'
+
+      if (existing) {
+        await tenantDb.update(tSchema.users).set({
+          passwordHash, status: 'active', twoFactorEnabled: false, twoFactorSecret: null, updatedAt: new Date(),
+        }).where(eq(tSchema.users.id, existing.id))
+        userId = existing.id
+        action = 'reset'
+      } else {
+        const [created] = await tenantDb.insert(tSchema.users).values({
+          email: req.body.email, name: req.body.name, cpf: req.body.cpf ?? null, passwordHash, status: 'active',
+        }).returning()
+        if (!created) throw app.httpErrors.internalServerError('Falha ao criar usuário')
+        userId = created.id
+        action = 'created'
+      }
+
+      await tenantDb.insert(tSchema.userRoles).values({ userId, roleId: adminRole.id }).onConflictDoNothing()
+
+      if (action === 'reset') {
+        await db.update(publicSchema.refreshTokens).set({ revokedAt: new Date() })
+          .where(and(eq(publicSchema.refreshTokens.userId, userId), isNull(publicSchema.refreshTokens.revokedAt)))
+      }
+
+      await db.insert(publicSchema.auditLog).values({
+        actorType: 'master', actorId: req.master!.sub, tenantId: tenant.id,
+        action: action === 'created' ? 'tenant.admin.create' : 'tenant.admin.reset',
+        resource: 'user', resourceId: userId,
+        metadata: { email: req.body.email, reason: req.body.reason },
+        ipAddress: req.ip,
+      })
+
+      await tenantDb.insert(tSchema.tenantAuditLog).values({
+        userId: null,
+        action: action === 'created' ? 'master.admin.create' : 'master.admin.reset',
+        resource: 'user', resourceId: userId,
+        after: { email: req.body.email, masterActor: req.master!.email, reason: req.body.reason },
+        ipAddress: req.ip,
+      })
+
+      return { userId, email: req.body.email, temporaryPassword: tempPassword, action, rolesAssigned: ['admin_municipal'] }
+    },
+  )
+
+  // ─── POST /admin/tenants/:id/reseed-baseline ──────────
+  app.post(
+    '/:id/reseed-baseline',
+    {
+      preHandler: async (req) => req.requireMasterRole('admin'),
+      schema: {
+        tags: ['admin-tenants'],
+        security: [{ bearerAuth: [] }, { cookieAuth: [], csrfToken: [] }],
+        params: z.object({ id: z.string().uuid() }),
+        response: {
+          200: z.object({
+            rolesAdded: z.number(),
+            permissionsAdded: z.number(),
+            rolePermissionsAdded: z.number(),
+          }),
+        },
+      },
+    },
+    async (req) => {
+      const tenant = await db.query.tenants.findFirst({
+        where: (t, { eq, and, isNull }) => and(eq(t.id, req.params.id), isNull(t.deletedAt)),
+      })
+      if (!tenant) throw app.httpErrors.notFound('Tenant não encontrado')
+
+      const result = await reseedTenantBaseline(env.DATABASE_URL, tenant.schemaName)
+
+      await db.insert(publicSchema.auditLog).values({
+        actorType: 'master', actorId: req.master!.sub, tenantId: tenant.id,
+        action: 'tenant.reseed',
+        resource: 'tenant', resourceId: tenant.id,
+        metadata: result,
+        ipAddress: req.ip,
+      })
+
+      return result
     },
   )
 }

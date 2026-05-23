@@ -17,7 +17,7 @@ config({ path: resolve(__dirname, '../../../.env') })
 
 const DATABASE_URL = process.env.DATABASE_URL
 if (!DATABASE_URL) {
-  console.error('❌ DATABASE_URL ausente')
+  console.error('[ERRO] DATABASE_URL ausente')
   process.exit(1)
 }
 
@@ -26,7 +26,7 @@ const dryRun = args.includes('--dry-run')
 const tenantArg = args.find((a) => a.startsWith('--tenant='))?.split('=')[1]
 
 async function main() {
-  console.log(`🔄 Aplicando migrations pendentes ${dryRun ? '(DRY RUN)' : ''}...`)
+  console.log(`[migrate] Aplicando migrations pendentes ${dryRun ? '(DRY RUN)' : ''}...`)
   const db = createMasterDatabase(DATABASE_URL!)
 
   const tenants = await db.query.tenants.findMany({
@@ -39,7 +39,7 @@ async function main() {
   })
 
   if (tenants.length === 0) {
-    console.log('⚠️  Nenhum tenant encontrado')
+    console.log('[AVISO] Nenhum tenant encontrado')
     return
   }
 

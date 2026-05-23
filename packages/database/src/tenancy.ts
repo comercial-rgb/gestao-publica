@@ -123,7 +123,8 @@ export async function provisionTenant(
     })
 
     // 4. Seed inicial (fora da transação principal — pode ser re-rodado idempotentemente)
-    const seedApplied = await seedTenantBaseline(connectionString, schemaName)
+    const seedResult = await reseedTenantBaseline(connectionString, schemaName)
+    const seedApplied = seedResult.rolesAdded > 0 || seedResult.permissionsAdded > 0
 
     return { migrationsApplied, seedApplied }
   } finally {
@@ -289,6 +290,34 @@ export async function applyTenantMigrationsIncremental(
       FROM ${client(`${schemaName}.tenant_migrations_applied`)}
     `
 
+    // ─── BOOTSTRAP RETROATIVO ─────────────────────────
+    // Se tracker vazio E schema já tem tabelas funcionais → tenant pré-B12.
+    // Registrar todas as migrations existentes como já aplicadas sem reexecutá-las.
+    if (appliedRows.length === 0) {
+      const tablesResult = await client<{ count: string }[]>`
+        SELECT COUNT(*)::text AS count
+        FROM information_schema.tables
+        WHERE table_schema = ${schemaName}
+          AND table_name NOT IN ('tenant_migrations_applied')
+      `
+      const tableCount = Number(tablesResult[0]?.count ?? '0')
+
+      if (tableCount > 0) {
+        console.log(`[${schemaName}] bootstrap retroativo: ${tableCount} tabelas detectadas, registrando ${sqlFiles.length} migrations como já aplicadas`)
+        for (const { name, sql } of sqlFiles) {
+          const checksum = createHash('sha256').update(sql).digest('hex')
+          await client.unsafe(`
+            INSERT INTO "${schemaName}".tenant_migrations_applied
+              (migration_name, checksum, applied_by)
+            VALUES ($1, $2, 'bootstrap-retroativo')
+            ON CONFLICT (migration_name) DO NOTHING
+          `, [name, checksum])
+          result.skipped.push(name)
+        }
+        return result
+      }
+    }
+
     const appliedMap = new Map(appliedRows.map((r) => [r.migration_name, r.checksum]))
 
     for (const { name, sql } of sqlFiles) {
@@ -432,58 +461,135 @@ function rewriteSchemaReferences(sql: string, targetSchema: string): string {
 }
 
 /**
- * Seed inicial do tenant: roles padrão + permissões.
- * Idempotente via ON CONFLICT DO NOTHING.
+ * Re-aplica seed baseline em um schema tenant existente.
+ * Idempotente: ON CONFLICT DO NOTHING em tudo.
+ * Chamado por provisionTenant (tenant novo), CLI (reseed), e API (endpoint admin).
  */
-async function seedTenantBaseline(
+export async function reseedTenantBaseline(
   connectionString: string,
   schemaName: string,
-): Promise<boolean> {
+): Promise<{ rolesAdded: number; permissionsAdded: number; rolePermissionsAdded: number }> {
+  if (!validateSchemaName(schemaName)) {
+    throw new Error(`Nome de schema inválido: ${schemaName}`)
+  }
+
   const client = postgres(connectionString, { max: 1 })
+  const counters = { rolesAdded: 0, permissionsAdded: 0, rolePermissionsAdded: 0 }
 
   try {
     await client.begin(async (tx) => {
       await tx.unsafe(`SET LOCAL search_path TO "${schemaName}", public`)
 
-      // Roles padrão
-      await tx.unsafe(`
+      // ─── Roles ──────────────────────────────────────
+      const rolesResult = await tx.unsafe(`
         INSERT INTO roles (slug, name, description, is_system) VALUES
-          ('admin_municipal', 'Administrador Municipal', 'Acesso total ao tenant', true),
-          ('gestor_financeiro', 'Gestor Financeiro', 'Receitas, despesas, folha, relatórios', true),
-          ('contabilista', 'Contabilista', 'Operações contábeis e relatórios fiscais', true),
-          ('rh', 'Recursos Humanos', 'Folha de pagamento e cadastro de servidores', true),
-          ('auditoria', 'Auditoria/Controladoria', 'Apenas leitura, com acesso a logs', true),
-          ('operador', 'Operador', 'Lançamentos básicos sem aprovação', true)
-        ON CONFLICT (slug) DO NOTHING;
+          ('admin_municipal',     'Administrador Municipal',  'Acesso total ao tenant', true),
+          ('gestor_financeiro',   'Gestor Financeiro',        'Receitas, despesas, folha, relatórios', true),
+          ('contabilista',        'Contabilista',             'Operações contábeis e relatórios fiscais', true),
+          ('rh',                  'Recursos Humanos',         'Folha de pagamento e cadastro de servidores', true),
+          ('auditoria',           'Auditoria/Controladoria',  'Apenas leitura, com acesso a logs', true),
+          ('operador',            'Operador',                 'Lançamentos básicos sem aprovação', true)
+        ON CONFLICT (slug) DO NOTHING RETURNING slug
       `)
+      counters.rolesAdded = rolesResult.length
 
-      // Permissões mínimas (módulos serão expandidos depois)
-      await tx.unsafe(`
+      // ─── Permissions (todas, consolidadas) ──────────
+      const permResult = await tx.unsafe(`
         INSERT INTO permissions (slug, description, module) VALUES
-          ('cadastros:read',       'Visualizar cadastros base',         'cadastros'),
-          ('cadastros:write',      'Criar e editar cadastros base',     'cadastros'),
-          ('cadastros:delete',     'Excluir cadastros base',            'cadastros'),
-          ('textos_juridicos:read','Visualizar textos jurídicos',       'textos_juridicos'),
-          ('textos_juridicos:write','Criar e editar textos jurídicos',  'textos_juridicos'),
-          ('users:read',           'Visualizar usuários',               'users'),
-          ('users:write',          'Criar e editar usuários',           'users'),
-          ('users:assign_role',    'Atribuir papéis a usuários',        'users'),
-          ('audit:read',           'Visualizar logs de auditoria',      'audit'),
-          ('dashboard:read',       'Visualizar dashboard',              'dashboard')
-        ON CONFLICT (slug) DO NOTHING;
+          ('cadastros:read',          'Visualizar cadastros base',           'cadastros'),
+          ('cadastros:write',         'Criar e editar cadastros base',       'cadastros'),
+          ('cadastros:delete',        'Excluir cadastros base',              'cadastros'),
+          ('textos_juridicos:read',   'Visualizar textos jurídicos',         'textos_juridicos'),
+          ('textos_juridicos:write',  'Criar e editar textos jurídicos',     'textos_juridicos'),
+          ('users:read',              'Visualizar usuários',                 'users'),
+          ('users:write',             'Criar e editar usuários',             'users'),
+          ('users:assign_role',       'Atribuir papéis a usuários',          'users'),
+          ('audit:read',              'Visualizar logs de auditoria',        'audit'),
+          ('dashboard:read',          'Visualizar dashboard',                'dashboard'),
+          ('fiscal:read',             'Visualizar calendário fiscal',        'fiscal'),
+          ('fiscal:abrir_exercicio',  'Abrir novo exercício',                'fiscal'),
+          ('fiscal:encerrar_exercicio','Encerrar exercício',                 'fiscal'),
+          ('fiscal:fechar_mes',       'Fechar mês fiscal',                   'fiscal'),
+          ('fiscal:reabrir_mes',      'Reabrir mês fiscal',                  'fiscal'),
+          ('fiscal:bloquear_mes',     'Bloquear mês',                        'fiscal'),
+          ('receitas:read',           'Visualizar receitas',                 'receitas'),
+          ('receitas:write',          'Criar/editar lançamentos de receita', 'receitas'),
+          ('receitas:arrecadar',      'Registrar arrecadação',               'receitas'),
+          ('receitas:anular',         'Anular arrecadação (estorno)',        'receitas'),
+          ('receitas:gerir_naturezas','Gerir tipos e naturezas de receita',  'receitas'),
+          ('receitas:relatorios',     'Gerar relatórios de receita',         'receitas'),
+          ('orcamento:read',           'Visualizar orçamento',                       'orcamento'),
+          ('orcamento:write',          'Criar/editar leis e dotações',               'orcamento'),
+          ('orcamento:gerir_programas','Gerir programas e ações do PPA',             'orcamento'),
+          ('orcamento:importar_xml',   'Importar LOA via XML',                       'orcamento'),
+          ('orcamento:aprovar_credito','Aprovar e aplicar créditos orçamentários',   'orcamento'),
+          ('orcamento:relatorios',     'Gerar relatórios de execução orçamentária',  'orcamento')
+        ON CONFLICT (slug) DO NOTHING RETURNING slug
       `)
+      counters.permissionsAdded = permResult.length
 
-      // admin_municipal recebe TODAS as permissões existentes
-      await tx.unsafe(`
+      // ─── Role ↔ Permission mappings ─────────────────
+      const rp1 = await tx.unsafe(`
         INSERT INTO role_permissions (role_id, permission_id)
-        SELECT r.id, p.id
-        FROM roles r
-        CROSS JOIN permissions p
+        SELECT r.id, p.id FROM roles r CROSS JOIN permissions p
         WHERE r.slug = 'admin_municipal'
-        ON CONFLICT DO NOTHING;
+        ON CONFLICT DO NOTHING RETURNING role_id
       `)
+      counters.rolePermissionsAdded += rp1.length
 
-      // Exercício fiscal corrente + 12 meses
+      const rp2 = await tx.unsafe(`
+        INSERT INTO role_permissions (role_id, permission_id)
+        SELECT r.id, p.id FROM roles r CROSS JOIN permissions p
+        WHERE r.slug = 'gestor_financeiro'
+          AND p.slug IN (
+            'cadastros:read','dashboard:read','fiscal:read','fiscal:fechar_mes',
+            'receitas:read','receitas:write','receitas:arrecadar','receitas:relatorios',
+            'orcamento:read','orcamento:write','orcamento:relatorios'
+          )
+        ON CONFLICT DO NOTHING RETURNING role_id
+      `)
+      counters.rolePermissionsAdded += rp2.length
+
+      const rp3 = await tx.unsafe(`
+        INSERT INTO role_permissions (role_id, permission_id)
+        SELECT r.id, p.id FROM roles r CROSS JOIN permissions p
+        WHERE r.slug = 'contabilista'
+          AND p.slug IN (
+            'cadastros:read','dashboard:read','audit:read','fiscal:read',
+            'receitas:read','receitas:arrecadar','receitas:relatorios',
+            'orcamento:read','orcamento:relatorios'
+          )
+        ON CONFLICT DO NOTHING RETURNING role_id
+      `)
+      counters.rolePermissionsAdded += rp3.length
+
+      const rp4 = await tx.unsafe(`
+        INSERT INTO role_permissions (role_id, permission_id)
+        SELECT r.id, p.id FROM roles r CROSS JOIN permissions p
+        WHERE r.slug = 'auditoria' AND p.slug LIKE '%:read'
+        ON CONFLICT DO NOTHING RETURNING role_id
+      `)
+      counters.rolePermissionsAdded += rp4.length
+
+      const rp5 = await tx.unsafe(`
+        INSERT INTO role_permissions (role_id, permission_id)
+        SELECT r.id, p.id FROM roles r CROSS JOIN permissions p
+        WHERE r.slug = 'operador'
+          AND p.slug IN ('cadastros:read','cadastros:write','dashboard:read','fiscal:read','receitas:read','receitas:arrecadar')
+        ON CONFLICT DO NOTHING RETURNING role_id
+      `)
+      counters.rolePermissionsAdded += rp5.length
+
+      const rp6 = await tx.unsafe(`
+        INSERT INTO role_permissions (role_id, permission_id)
+        SELECT r.id, p.id FROM roles r CROSS JOIN permissions p
+        WHERE r.slug = 'rh'
+          AND p.slug IN ('cadastros:read','cadastros:write','dashboard:read','fiscal:read')
+        ON CONFLICT DO NOTHING RETURNING role_id
+      `)
+      counters.rolePermissionsAdded += rp6.length
+
+      // ─── Calendário fiscal corrente ─────────────────
       const anoAtual = new Date().getFullYear()
       await tx.unsafe(`
         INSERT INTO exercicios (ano, data_inicio, data_fim, status)
@@ -502,68 +608,10 @@ async function seedTenantBaseline(
         WHERE e.ano = $1
         ON CONFLICT DO NOTHING
       `, [anoAtual])
-
-      // Permissions fiscais
-      await tx.unsafe(`
-        INSERT INTO permissions (slug, description, module) VALUES
-          ('fiscal:read',              'Visualizar calendário fiscal',    'fiscal'),
-          ('fiscal:abrir_exercicio',   'Abrir novo exercício',            'fiscal'),
-          ('fiscal:encerrar_exercicio','Encerrar exercício',              'fiscal'),
-          ('fiscal:fechar_mes',        'Fechar mês fiscal',               'fiscal'),
-          ('fiscal:reabrir_mes',       'Reabrir mês fiscal fechado',      'fiscal'),
-          ('fiscal:bloquear_mes',      'Bloquear mês (controladoria)',    'fiscal')
-        ON CONFLICT (slug) DO NOTHING;
-      `)
-
-      // Gestor financeiro pode fechar mês
-      await tx.unsafe(`
-        INSERT INTO role_permissions (role_id, permission_id)
-        SELECT r.id, p.id FROM roles r CROSS JOIN permissions p
-        WHERE r.slug = 'gestor_financeiro'
-          AND p.slug IN ('fiscal:read','fiscal:fechar_mes')
-        ON CONFLICT DO NOTHING;
-      `)
-
-      // Permissions do módulo Receitas
-      await tx.unsafe(`
-        INSERT INTO permissions (slug, description, module) VALUES
-          ('receitas:read',            'Visualizar receitas',                    'receitas'),
-          ('receitas:write',           'Criar/editar lançamentos de receita',    'receitas'),
-          ('receitas:arrecadar',       'Registrar arrecadação',                  'receitas'),
-          ('receitas:anular',          'Anular arrecadação (estorno)',           'receitas'),
-          ('receitas:gerir_naturezas', 'Gerir tipos e naturezas de receita',    'receitas'),
-          ('receitas:relatorios',      'Gerar relatórios de receita',            'receitas')
-        ON CONFLICT (slug) DO NOTHING;
-      `)
-
-      await tx.unsafe(`
-        INSERT INTO role_permissions (role_id, permission_id)
-        SELECT r.id, p.id FROM roles r CROSS JOIN permissions p
-        WHERE r.slug = 'gestor_financeiro'
-          AND p.slug IN ('receitas:read','receitas:write','receitas:arrecadar','receitas:relatorios')
-        ON CONFLICT DO NOTHING;
-      `)
-
-      await tx.unsafe(`
-        INSERT INTO role_permissions (role_id, permission_id)
-        SELECT r.id, p.id FROM roles r CROSS JOIN permissions p
-        WHERE r.slug = 'contabilista'
-          AND p.slug IN ('receitas:read','receitas:arrecadar','receitas:relatorios')
-        ON CONFLICT DO NOTHING;
-      `)
-
-      await tx.unsafe(`
-        INSERT INTO role_permissions (role_id, permission_id)
-        SELECT r.id, p.id FROM roles r CROSS JOIN permissions p
-        WHERE r.slug = 'auditoria' AND p.slug = 'receitas:read'
-        ON CONFLICT DO NOTHING;
-      `)
     })
-    return true
-  } catch (err) {
-    console.error(`[seed:${schemaName}]`, err)
-    return false
   } finally {
     await client.end()
   }
+
+  return counters
 }
