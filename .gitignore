@@ -34,6 +34,5 @@ Thumbs.db
 coverage/
 .cache/
 
-# drizzle
-packages/database/drizzle/
-!packages/database/drizzle/.gitkeep
+# Drizzle migrations: commitadas para compliance fiscal (auditabilidade)
+# Nao adicionar regra ignorando packages/database/drizzle/

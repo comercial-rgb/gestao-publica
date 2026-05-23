@@ -1,229 +1,248 @@
 # SaaS Municipal
 
-> Plataforma multi-tenant de gestão financeira pública conforme **Lei 14.133/2021** e **LC 101/2000** (LRF).
-> Base técnica para o **Pregão Eletrônico nº 90023/2026 — Município de Santa Izabel do Oeste/PR**.
+Sistema fiscal multi-tenant para gestao publica municipal brasileira, em conformidade com **Lei 4.320/64**, **LRF (LC 101/2000)**, **Lei 14.133/2021** e padroes **STN/SICONFI/TCE-PR**.
+
+> **Status**: em desenvolvimento ativo. Camadas Fundacao + Receitas + Orcamento completas. Proxima entrega: Despesas (empenho -> liquidacao -> pagamento).
+
+## Visao geral
+
+Cada municipio contratante e um **tenant** isolado em schema proprio no PostgreSQL. Master administra catalogo de modulos contrataveis e provisiona tenants; tenants operam suas proprias receitas, orcamento, despesas e folha.
+
+```
++----------------------------------------------------------+
+|  Master  (operacao SaaS)                                  |
+|    +- catalogo de planos e modulos                        |
+|    +- provisionamento de tenants                          |
+|    +- auditoria global                                    |
++----------------------------------------------------------+
+|  Tenant santa-izabel-oeste   (Prefeitura)                 |
+|    +- schema: tenant_santa_izabel_oeste                   |
+|    +- modulos ativos: cadastros, fiscal, receitas, ...    |
+|    +- usuarios: admin_municipal, gestor_financeiro, ...   |
++----------------------------------------------------------+
+|  Tenant outra-prefeitura                                  |
+|    +- schema: tenant_outra_prefeitura                     |
+|    +- ...                                                 |
++----------------------------------------------------------+
+```
+
+Detalhes tecnicos em [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
 
 ## Stack
 
 | Camada | Tecnologia |
 |---|---|
 | Runtime | Node.js 20.11+ |
-| Package manager | pnpm 9.15 |
-| Monorepo | Turborepo |
-| API | Fastify 5 + Zod + TypeScript |
-| Banco | PostgreSQL 16 — **schema-per-tenant** |
-| ORM | Drizzle 0.38 |
-| Auth | Argon2id + JWT (jose) + refresh token rotation |
+| Package manager | pnpm 9.15 + Turborepo |
+| API | Fastify 5 + Zod + fastify-type-provider-zod |
+| Database | PostgreSQL 16 (schema-per-tenant) |
+| ORM | Drizzle ORM 0.38 |
+| Cache / pub-sub | Redis 7 |
 | Web | Next.js 15 (App Router) + Tailwind 3 |
-| Infra dev | Docker Compose (Postgres + Redis + Mailpit) |
+| Auth | Argon2id + JWT (jose) + cookies httpOnly + CSRF |
+| Testes | Vitest 2 (integration via fastify.inject) |
+| Dev infra | Docker Compose (Postgres + Redis + Mailpit) |
 
-## Arquitetura
+## Conformidade fiscal
 
-```
-SaaS Municipal
-├── apps/
-│   ├── api/                 → Fastify (porta 3333)
-│   └── web/                 → Next.js (porta 3000)
-└── packages/
-    ├── auth/                → Argon2 + JWT + RBAC
-    └── database/            → Drizzle schemas + tenancy
-        ├── schema/public.ts → metadados SaaS (tenants, plans, modules, master_users)
-        └── schema/tenant.ts → template do schema de cada prefeitura
-```
-
-### Multi-tenancy
-
-Cada prefeitura recebe um **schema PostgreSQL próprio** (`tenant_santa_izabel_oeste`, etc).
-Isso garante:
-
-- **Isolamento físico** dos dados — query cross-tenant impossível por design
-- **Backup granular** — `pg_dump --schema=tenant_xxx`
-- **Compliance** — LGPD facilita: exclusão = `DROP SCHEMA`
-- **Performance** — índices menores, planos de execução mais eficientes
-
-### Auth (master + tenant + RBAC)
-
-- **Master users**: equipe interna do SaaS, gerencia tenants
-- **Tenant users**: servidores da prefeitura, com roles e permissions
-- **JWT** com claims tipadas (`typ: 'master' | 'tenant'`, `rol`, `prm`)
-- **Refresh tokens** opacos, hash SHA-256 no banco, com **rotation** a cada uso
-- **RBAC granular**: permission slug `modulo:acao` (ex: `receitas:write`) com wildcards
-
-## Setup
-
-### 1. Pré-requisitos
-
-```bash
-node -v   # >= 20.11
-pnpm -v   # >= 9.15
-docker -v
-```
-
-### 2. Clone e instale
-
-```bash
-pnpm install
-cp .env.example .env
-
-# Gere o AUTH_SECRET
-echo "AUTH_SECRET=\"$(openssl rand -base64 32)\"" >> .env
-
-# (opcional) defina seu primeiro super admin
-echo "SEED_ADMIN_EMAIL=\"[email protected]\"" >> .env
-echo "SEED_ADMIN_PASSWORD=\"TrocaIsso123!\"" >> .env
-```
-
-### 3. Suba a infra
-
-```bash
-pnpm docker:up
-```
-
-| Serviço | URL/porta |
+| Norma | Como o sistema atende |
 |---|---|
-| Postgres | localhost:5432 |
-| Redis | localhost:6379 |
-| Mailpit SMTP | localhost:1025 |
-| Mailpit UI | http://localhost:8025 |
+| Lei 4.320/64 (orcamento publico) | PPA, LOA, dotacoes com classificacao STN completa, creditos suplementares |
+| LRF (LC 101/2000) | Calendario fiscal com encerramento de meses, historico de alteracoes |
+| Lei 14.133/2021 (licitacoes) | Vinculo de despesas a contratos (proxima camada) |
+| MCASP 9a edicao | PCASP-PR seedado, modalidades de aplicacao STN, fontes de recurso oficiais |
+| SICONFI / MSC | Campos `identificador_msc` em receitas e dotacoes desde o schema |
+| TCE-PR | Importador de LOA via JSON (preparacao para XML) |
 
-### 4. Gere e aplique as migrations
+## Quickstart
 
-```bash
-# Schema MASTER (public)
-pnpm db:generate
-pnpm db:migrate
+### Pre-requisitos
 
-# Schema TENANT (template) — NECESSÁRIO antes de criar a 1ª prefeitura
-pnpm db:generate:tenant
+- Node.js 20.11 ou superior
+- pnpm 9.15 (`npm install -g pnpm`)
+- Docker + Docker Compose
 
-# Seed master (planos, módulos, super admin)
-pnpm db:seed
-```
-
-> ⚠️ O `db:generate:tenant` produz o SQL que será **automaticamente aplicado** em cada novo schema criado via API. Sem isso, a criação de tenant falha.
-
-### 5. Suba API e Web
+### Setup inicial
 
 ```bash
+# 1. Clone
+git clone [email protected]:comercial-rgb/saas-municipal.git
+cd saas-municipal
+
+# 2. Instalar dependencias
+pnpm install
+
+# 3. Configurar variaveis de ambiente
+cp .env.example .env
+cp .env.test.example .env.test
+# Edite .env conforme necessario (AUTH_SECRET unico, etc)
+
+# 4. Subir infraestrutura local
+docker compose up -d
+# Postgres dev: localhost:5434
+# Postgres test: localhost:5435
+# Redis: localhost:6380
+# Mailpit (SMTP dev): localhost:8025 (UI) / 1025 (SMTP)
+
+# 5. Bootstrap dos bancos
+pnpm db:migrate              # schema master (public)
+pnpm db:seed                 # planos, modulos, master admin
+pnpm db:bootstrap:test       # banco de testes (porta 5435)
+
+# 6. Subir aplicacao
 pnpm dev
+# API: http://localhost:3333 (Swagger em /docs)
+# Web: http://localhost:3000
+
+# 7. Validar
+pnpm typecheck && pnpm test
+# Esperado: 4/4 typecheck, 3/3 tests
 ```
 
-- API: http://localhost:3333/health
-- Web: http://localhost:3000
-- Admin: http://localhost:3000/admin/login
+### Credenciais iniciais (dev)
 
-## Criando a primeira prefeitura
+| Tipo | URL | Email | Senha |
+|---|---|---|---|
+| Master admin | http://localhost:3000/admin/login | `admin@saas.local` | `TrocaIsso@2026!` |
+| Tenant (apos criar) | http://localhost:3000/login | gerado | gerado |
 
-### Via UI
+**Trocar essas senhas e obrigatorio antes de qualquer ambiente que nao seja dev local.**
 
-1. Acesse http://localhost:3000/admin/login com `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`
-2. Clique em **+ Nova Prefeitura**
-3. Preencha (exemplo Santa Izabel do Oeste/PR):
-   - Slug: `santa-izabel-oeste`
-   - Razão social: `Município de Santa Izabel do Oeste`
-   - CNPJ: `76205665000101`
-   - UF: `PR` · Cidade: `Santa Izabel do Oeste` · IBGE: `4124053`
-   - Plano: Prata
-
-O sistema executa em uma única transação:
-1. `CREATE SCHEMA tenant_santa_izabel_oeste`
-2. Aplica todas as migrations do schema template
-3. Roda o seed baseline (6 roles + 10 permissions iniciais)
-4. Vincula os módulos do plano contratado
-5. Marca status `active`
-
-### Via API
+### Provisionar primeiro tenant
 
 ```bash
-# 1. Login master
-TOKEN=$(curl -sX POST http://localhost:3333/admin/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"[email protected]","password":"TrocaIsso123!"}' | jq -r .accessToken)
-
-# 2. Criar prefeitura
-curl -X POST http://localhost:3333/admin/tenants \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "slug": "santa-izabel-oeste",
-    "name": "Município de Santa Izabel do Oeste",
-    "cnpj": "76205665000101",
-    "state": "PR",
-    "city": "Santa Izabel do Oeste",
-    "ibgeCode": "4124053",
-    "planSlug": "prata"
-  }'
+# Via UI:
+# 1. Login como master em /admin/login
+# 2. /admin/tenants -> "+ Nova prefeitura"
+# 3. Preencher: slug, nome, CNPJ, plano
+# 4. Confirmar -- senha do admin do tenant e exibida UMA VEZ
 ```
 
-## Endpoints
+## Estrutura do monorepo
 
-### Master Admin
-- `POST /admin/auth/login`
-- `POST /admin/auth/refresh`
-- `POST /admin/auth/logout`
-- `GET /admin/auth/me`
-- `GET /admin/tenants`
-- `POST /admin/tenants` *(provisiona schema automaticamente)*
-- `GET /admin/tenants/:id`
-- `PATCH /admin/tenants/:id`
-- `DELETE /admin/tenants/:id` *(soft delete)*
-- `POST /admin/tenants/:id/archive` *(drop schema, exige `super_admin` + confirmação de CNPJ)*
+```
+saas-municipal/
+├── apps/
+│   ├── api/                   # Fastify backend
+│   │   ├── src/
+│   │   │   ├── routes/        # admin/* e tenant/*
+│   │   │   ├── plugins/       # auth, csrf, modules, redis, swagger
+│   │   │   └── lib/           # fiscal, pagination, cookies, etc
+│   │   └── test/              # vitest integration
+│   └── web/                   # Next.js frontend
+│       └── app/
+│           ├── admin/         # rotas master
+│           └── tenant/        # rotas do tenant logado
+├── packages/
+│   ├── database/              # schemas Drizzle + migrations + seeds
+│   │   ├── src/schema/        # public.ts (master), tenant.ts (template)
+│   │   └── drizzle/           # SQL migrations versionadas
+│   └── auth/                  # password hashing + JWT + RBAC
+└── docs/                      # documentacao
+```
 
-### Tenant
-> Todas as rotas exigem header `X-Tenant-Slug: <slug-da-prefeitura>` em rotas públicas
-> ou token JWT com tenant id (em rotas autenticadas).
+## Comandos uteis
 
-- `POST /tenant/auth/login`
-- `POST /tenant/auth/refresh`
-- `POST /tenant/auth/logout`
-- `GET /tenant/auth/me`
-- `POST /tenant/auth/change-password`
-- `GET|POST /tenant/users`, `GET|PATCH|DELETE /tenant/users/:id`
-- `POST|DELETE /tenant/users/:id/roles`
-- `GET|POST /tenant/pessoas`, `GET|PATCH|DELETE /tenant/pessoas/:id`
-
-## Próximos passos (Roadmap)
-
-### ✅ Camada 1 — Fundação (concluída)
-- [x] Tenants, Plans, Modules
-- [x] Cadastros base (Pessoas PF/PJ, Entidades, Estruturas, Textos Jurídicos, Anexos)
-- [x] Auth master + tenant + RBAC
-- [x] Provisioning automático de schema
-
-### 🔄 Camada 2 — Registro (próximo)
-- [ ] **Receitas** (tributos, lançamentos, recebimentos)
-- [ ] **Despesas** (Empenho → Liquidação → Pagamento)
-- [ ] **Folha de Pagamento** (servidores, eventos, cálculo, geração de empenhos)
-
-### Camada 3 — Inteligência
-- [ ] Dashboards gerenciais
-- [ ] RREO / RGF (LRF)
-- [ ] Índices constitucionais (Saúde 15%, Educação 25%, Pessoal 54%)
-- [ ] Portal de Transparência + Audiência Pública
-
-## Compliance
-
-- **LGPD**: schemas isolados + soft delete + audit logs
-- **Lei 14.133/2021**: anexos S3 imutáveis + logs com hash
-- **LC 101/2000 (LRF)**: bases para os relatórios fiscais na Camada 3
-- **TCE/PR (SIM-AM)**: estrutura de entidades e códigos contábeis prevista
-
-## Comandos úteis
+### Desenvolvimento
 
 ```bash
-pnpm docker:up         # sobe infra
-pnpm docker:down       # derruba
-pnpm docker:reset      # apaga volumes (CUIDADO!)
-pnpm db:generate       # gera migrations do master
-pnpm db:generate:tenant# gera migrations do template do tenant
-pnpm db:migrate        # aplica migrations no master
-pnpm db:seed           # popula planos/módulos/admin
-pnpm db:studio         # abre Drizzle Studio em http://local.drizzle.studio
-pnpm dev               # API + Web em modo dev
-pnpm build             # build de produção
-pnpm typecheck         # check de tipos em todo o monorepo
+pnpm dev                       # API + Web em paralelo
+pnpm typecheck                 # tsc em todos os pacotes
+pnpm test                      # vitest (suite integration)
+pnpm test:watch                # vitest em watch
+pnpm build                     # build de producao
 ```
 
-## Licença
+### Banco de dados
 
-Proprietário — uso restrito ao contratante.
+```bash
+pnpm db:generate               # gerar migration do master (apos mudar public.ts)
+pnpm db:generate:tenant        # gerar migration do tenant template
+pnpm db:migrate                # aplicar migrations no master
+pnpm db:migrate:tenants        # aplicar em todos os tenants
+pnpm db:migrate:tenants --dry-run
+
+pnpm db:seed                   # planos, modulos, master admin
+pnpm db:seed:pcasp-pr          # plano de contas PR em todos tenants
+pnpm db:seed:orcamento-stn     # modalidades e fontes STN
+pnpm db:seed:fiscal            # backfill de exercicio/meses
+pnpm db:reseed:permissions     # re-aplicar baseline em tenants existentes
+```
+
+### Operacao
+
+```bash
+# Resetar admin de tenant orfao
+curl -X POST http://localhost:3000/api/proxy/admin/tenants/<ID>/reset-admin \
+  --cookie "sm_admin_access=$TOKEN" \
+  -H "X-CSRF-Token: $CSRF" \
+  -d '{"email":"...", "name":"...", "reason":"..."}'
+
+# Importar LOA em massa via JSON
+# /tenant/orcamento/importar (UI) -> drag-drop -> preview -> commit
+```
+
+## Modulos disponiveis
+
+| Slug | Categoria | Status | Descricao |
+|---|---|---|---|
+| `cadastros` | fundacao | Pronto | Pessoas (PF/PJ), entidades, estruturas |
+| `textos_juridicos` | fundacao | Pronto | Leis, decretos, portarias |
+| `usuarios` | fundacao | Pronto | Gestao de usuarios do tenant |
+| `fiscal` | fundacao | Pronto | Calendario (exercicios + meses) |
+| `receitas` | registro | Pronto | PCASP, arrecadacao, contribuintes |
+| `orcamento` | registro | Pronto | PPA, LOA, dotacoes, creditos |
+| `despesas` | registro | Pendente | Empenho -> liquidacao -> pagamento |
+| `folha` | registro | Pendente | Servidores + calculos |
+| `relatorios_fiscais` | inteligencia | Pendente | RREO, RGF, indices LRF |
+
+Catalogo completo: ver `packages/database/src/seed.ts`.
+
+## Decisoes arquiteturais
+
+As decisoes importantes estao documentadas em [`docs/DECISOES.md`](./docs/DECISOES.md). Resumo:
+
+- **Schema-per-tenant** para isolamento fisico (LGPD + compliance)
+- **PCASP por estado** (PR como primeiro, outros via novo seed)
+- **Saldos armazenados** em colunas, atualizados em transacao (nao calculados em runtime)
+- **Status fiscal de contribuinte** calculado em runtime (heuristica baseada em arrecadacoes/anulacoes)
+- **Migrations commitadas no git** (auditabilidade para compliance fiscal)
+
+## Documentacao
+
+- [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) -- visao sistemica
+- [`docs/DECISOES.md`](./docs/DECISOES.md) -- log de decisoes arquiteturais
+- [`docs/MODULOS/orcamento.md`](./docs/MODULOS/orcamento.md) -- modulo Orcamento em detalhe
+
+API docs (Swagger): rodando `pnpm dev`, acesse http://localhost:3333/docs
+
+## Testes
+
+```bash
+pnpm test
+# Suite atual: 3 testes integration cobrindo aplicacao de creditos orcamentarios
+# Runtime: ~860ms
+```
+
+Estrategia de testes:
+- **Integration first**: cada teste sobe `buildApp()` real + banco de teste isolado
+- **Tenant descartavel**: cada suite cria seu proprio schema, drop ao final
+- **JWT direto**: `signTestTenantToken()` evita fluxo de login em todo teste
+
+Detalhes em `apps/api/test/`.
+
+## Contribuindo
+
+Este e um projeto privado. Padroes internos:
+
+- Conventional commits (`feat:`, `fix:`, `chore:`, `test:`, `docs:`)
+- `pnpm typecheck` obrigatorio antes de commit
+- `pnpm test` obrigatorio quando mexer em rotas com cobertura
+- Sem `any` em codigo novo
+- Sem `console.log` em commit (use o logger do Fastify)
+- Soft delete por padrao (nao DELETE fisico, exceto LGPD compliance)
+- Migrations Drizzle sao imutaveis apos commit/apply. Use `pnpm db:generate` para criar novas; nunca edite `.sql` em `packages/database/drizzle/`
+
+## Licenca
+
+Proprietario. Todos os direitos reservados.

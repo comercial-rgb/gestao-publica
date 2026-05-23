@@ -1,0 +1,2 @@
+CREATE INDEX "tenant_modules_tenant_id_idx" ON "tenant_modules" USING btree ("tenant_id");--> statement-breakpoint
+CREATE INDEX "tenant_modules_active_idx" ON "tenant_modules" USING btree ("tenant_id","deactivated_at");
