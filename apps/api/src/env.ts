@@ -10,7 +10,8 @@ import { fileURLToPath } from 'node:url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 // env.ts está em apps/api/src/, então ../../../ chega na raiz do monorepo.
-config({ path: resolve(__dirname, '../../../.env') })
+const envFile = process.env.NODE_ENV === 'test' ? '.env.test' : '.env'
+config({ path: resolve(__dirname, '../../../', envFile) })
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -37,7 +38,7 @@ const envSchema = z.object({
 const parsed = envSchema.safeParse(process.env)
 
 if (!parsed.success) {
-  console.error('❌ Variáveis de ambiente inválidas:')
+  console.error('[ERRO] Variaveis de ambiente invalidas:')
   console.error(parsed.error.flatten().fieldErrors)
   process.exit(1)
 }

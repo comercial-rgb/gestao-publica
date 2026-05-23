@@ -10,7 +10,7 @@ async function main() {
 
   try {
     await app.listen({ host: env.API_HOST, port: env.API_PORT })
-    app.log.info(`🚀 API on http://${env.API_HOST}:${env.API_PORT}`)
+    app.log.info(`API on http://${env.API_HOST}:${env.API_PORT}`)
   } catch (err) {
     app.log.fatal({ err }, 'falha ao subir o servidor')
     process.exit(1)
