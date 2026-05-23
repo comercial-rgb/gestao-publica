@@ -670,6 +670,274 @@ export const receitasAnulacoesRelations = relations(receitasAnulacoes, ({ one })
 }))
 
 // ─────────────────────────────────────────────────────────────
+// MODULO ORCAMENTO
+// ─────────────────────────────────────────────────────────────
+
+export const leiTipoEnum = pgEnum('lei_orcamentaria_tipo', ['ppa', 'loa'])
+
+export const leiStatusEnum = pgEnum('lei_orcamentaria_status', [
+  'em_elaboracao', 'em_tramitacao', 'sancionada', 'em_execucao', 'encerrada',
+])
+
+export const modalidadeTipoEnum = pgEnum('modalidade_tipo', ['stn', 'local'])
+export const fonteTipoEnum = pgEnum('fonte_tipo', ['stn', 'local'])
+
+export const creditoTipoEnum = pgEnum('credito_tipo', [
+  'suplementar', 'especial', 'extraordinario',
+])
+
+export const creditoOrigemEnum = pgEnum('credito_origem', [
+  'superavit_financeiro', 'excesso_arrecadacao', 'anulacao_dotacao', 'operacao_credito', 'reserva_contingencia',
+])
+
+export const creditoStatusEnum = pgEnum('credito_status', [
+  'em_elaboracao', 'aprovado', 'aplicado', 'cancelado',
+])
+
+export const leisOrcamentarias = pgTable(
+  'leis_orcamentarias',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tipo: leiTipoEnum('tipo').notNull(),
+    numero: varchar('numero', { length: 50 }).notNull(),
+    descricao: varchar('descricao', { length: 300 }).notNull(),
+    anoInicio: integer('ano_inicio').notNull(),
+    anoFim: integer('ano_fim').notNull(),
+    dataSancao: date('data_sancao'),
+    dataPublicacao: date('data_publicacao'),
+    valorTotal: numeric('valor_total', { precision: 18, scale: 2 }),
+    status: leiStatusEnum('status').notNull().default('em_elaboracao'),
+    observacoes: text('observacoes'),
+    textoJuridicoId: uuid('texto_juridico_id').references(() => textosJuridicos.id, { onDelete: 'set null' }),
+    ppaVigenteId: uuid('ppa_vigente_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
+  },
+  (t) => ({
+    tipoAnoIdx: index('leis_orc_tipo_ano_idx').on(t.tipo, t.anoInicio),
+    statusIdx: index('leis_orc_status_idx').on(t.status),
+  }),
+)
+
+export const programas = pgTable(
+  'programas',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ppaId: uuid('ppa_id').notNull().references(() => leisOrcamentarias.id, { onDelete: 'restrict' }),
+    codigo: varchar('codigo', { length: 10 }).notNull(),
+    nome: varchar('nome', { length: 300 }).notNull(),
+    objetivo: text('objetivo'),
+    publicoAlvo: varchar('publico_alvo', { length: 300 }),
+    horizonteTemporal: varchar('horizonte_temporal', { length: 50 }),
+    ativo: boolean('ativo').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    ppaCodigoUnique: uniqueIndex('programas_ppa_codigo_idx').on(t.ppaId, t.codigo),
+  }),
+)
+
+export const acoes = pgTable(
+  'acoes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    programaId: uuid('programa_id').notNull().references(() => programas.id, { onDelete: 'restrict' }),
+    codigo: varchar('codigo', { length: 10 }).notNull(),
+    nome: varchar('nome', { length: 300 }).notNull(),
+    tipo: integer('tipo').notNull(),
+    descricao: text('descricao'),
+    unidadeMedida: varchar('unidade_medida', { length: 50 }),
+    produto: varchar('produto', { length: 200 }),
+    ativo: boolean('ativo').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    programaCodigoUnique: uniqueIndex('acoes_prog_codigo_idx').on(t.programaId, t.codigo),
+  }),
+)
+
+export const modalidadesAplicacao = pgTable(
+  'modalidades_aplicacao',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    codigo: varchar('codigo', { length: 2 }).notNull().unique(),
+    descricao: varchar('descricao', { length: 200 }).notNull(),
+    tipo: modalidadeTipoEnum('tipo').notNull().default('stn'),
+    ativo: boolean('ativo').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+)
+
+export const fontesRecurso = pgTable(
+  'fontes_recurso',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    codigo: varchar('codigo', { length: 20 }).notNull().unique(),
+    descricao: varchar('descricao', { length: 300 }).notNull(),
+    grupo: varchar('grupo', { length: 5 }),
+    categoria: varchar('categoria', { length: 50 }),
+    tipo: fonteTipoEnum('tipo').notNull().default('stn'),
+    ativo: boolean('ativo').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+)
+
+export const dotacoes = pgTable(
+  'dotacoes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    leiOrcamentariaId: uuid('lei_orcamentaria_id').notNull().references(() => leisOrcamentarias.id, { onDelete: 'restrict' }),
+    exercicioId: uuid('exercicio_id').notNull().references(() => exercicios.id, { onDelete: 'restrict' }),
+    classificacaoCompleta: varchar('classificacao_completa', { length: 50 }).notNull(),
+    entidadeId: uuid('entidade_id').notNull().references((): AnyPgColumn => entidades.id, { onDelete: 'restrict' }),
+    orgaoCodigo: varchar('orgao_codigo', { length: 2 }).notNull(),
+    unidadeCodigo: varchar('unidade_codigo', { length: 2 }).notNull(),
+    funcaoCodigo: varchar('funcao_codigo', { length: 2 }).notNull(),
+    subfuncaoCodigo: varchar('subfuncao_codigo', { length: 3 }).notNull(),
+    programaId: uuid('programa_id').notNull().references(() => programas.id, { onDelete: 'restrict' }),
+    acaoId: uuid('acao_id').notNull().references(() => acoes.id, { onDelete: 'restrict' }),
+    naturezaCategoria: varchar('natureza_categoria', { length: 1 }).notNull(),
+    naturezaGrupo: varchar('natureza_grupo', { length: 1 }).notNull(),
+    modalidadeAplicacaoId: uuid('modalidade_aplicacao_id').notNull().references(() => modalidadesAplicacao.id, { onDelete: 'restrict' }),
+    naturezaElemento: varchar('natureza_elemento', { length: 2 }).notNull(),
+    naturezaSubelemento: varchar('natureza_subelemento', { length: 2 }),
+    fonteRecursoId: uuid('fonte_recurso_id').notNull().references(() => fontesRecurso.id, { onDelete: 'restrict' }),
+    indicadorResultadoPrimario: varchar('indicador_resultado_primario', { length: 1 }),
+    valorInicial: numeric('valor_inicial', { precision: 18, scale: 2 }).notNull(),
+    valorAtualizado: numeric('valor_atualizado', { precision: 18, scale: 2 }).notNull(),
+    valorReservado: numeric('valor_reservado', { precision: 18, scale: 2 }).notNull().default('0'),
+    valorEmpenhado: numeric('valor_empenhado', { precision: 18, scale: 2 }).notNull().default('0'),
+    valorLiquidado: numeric('valor_liquidado', { precision: 18, scale: 2 }).notNull().default('0'),
+    valorPago: numeric('valor_pago', { precision: 18, scale: 2 }).notNull().default('0'),
+    identificadorMsc: varchar('identificador_msc', { length: 50 }),
+    informacaoComplementar: jsonb('informacao_complementar').$type<Record<string, unknown>>(),
+    ativo: boolean('ativo').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
+  },
+  (t) => ({
+    leiClassUnique: uniqueIndex('dotacoes_lei_class_idx').on(t.leiOrcamentariaId, t.classificacaoCompleta),
+    exercicioIdx: index('dotacoes_exercicio_idx').on(t.exercicioId),
+    entidadeIdx: index('dotacoes_entidade_idx').on(t.entidadeId),
+    programaIdx: index('dotacoes_programa_idx').on(t.programaId),
+    acaoIdx: index('dotacoes_acao_idx').on(t.acaoId),
+    funcaoIdx: index('dotacoes_funcao_idx').on(t.funcaoCodigo, t.subfuncaoCodigo),
+    fonteIdx: index('dotacoes_fonte_idx').on(t.fonteRecursoId),
+  }),
+)
+
+export const creditosOrcamentarios = pgTable(
+  'creditos_orcamentarios',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    exercicioId: uuid('exercicio_id').notNull().references(() => exercicios.id, { onDelete: 'restrict' }),
+    leiOrcamentariaId: uuid('lei_orcamentaria_id').notNull().references(() => leisOrcamentarias.id, { onDelete: 'restrict' }),
+    numero: varchar('numero', { length: 50 }).notNull(),
+    tipo: creditoTipoEnum('tipo').notNull(),
+    origem: creditoOrigemEnum('origem').notNull(),
+    valor: numeric('valor', { precision: 18, scale: 2 }).notNull(),
+    dataDecreto: date('data_decreto').notNull(),
+    dataPublicacao: date('data_publicacao'),
+    justificativa: text('justificativa').notNull(),
+    textoJuridicoId: uuid('texto_juridico_id').references(() => textosJuridicos.id, { onDelete: 'set null' }),
+    status: creditoStatusEnum('status').notNull().default('em_elaboracao'),
+    aplicadoEm: timestamp('aplicado_em', { withTimezone: true }),
+    aplicadoPorUserId: uuid('aplicado_por_user_id').references((): AnyPgColumn => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
+  },
+  (t) => ({
+    exercicioStatusIdx: index('creditos_exerc_status_idx').on(t.exercicioId, t.status),
+    numeroIdx: index('creditos_numero_idx').on(t.numero),
+  }),
+)
+
+export const creditosDotacoes = pgTable(
+  'creditos_dotacoes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    creditoId: uuid('credito_id').notNull().references(() => creditosOrcamentarios.id, { onDelete: 'cascade' }),
+    dotacaoId: uuid('dotacao_id').notNull().references(() => dotacoes.id, { onDelete: 'restrict' }),
+    sinal: integer('sinal').notNull(),
+    valor: numeric('valor', { precision: 18, scale: 2 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    creditoIdx: index('creditos_dot_credito_idx').on(t.creditoId),
+    dotacaoIdx: index('creditos_dot_dotacao_idx').on(t.dotacaoId),
+  }),
+)
+
+export const dotacoesHistoricoValor = pgTable(
+  'dotacoes_historico_valor',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    dotacaoId: uuid('dotacao_id').notNull().references(() => dotacoes.id, { onDelete: 'cascade' }),
+    creditoId: uuid('credito_id').references(() => creditosOrcamentarios.id, { onDelete: 'set null' }),
+    valorAnterior: numeric('valor_anterior', { precision: 18, scale: 2 }).notNull(),
+    valorNovo: numeric('valor_novo', { precision: 18, scale: 2 }).notNull(),
+    delta: numeric('delta', { precision: 18, scale: 2 }).notNull(),
+    motivo: varchar('motivo', { length: 300 }).notNull(),
+    registradoEm: timestamp('registrado_em', { withTimezone: true }).notNull().defaultNow(),
+    registradoPorUserId: uuid('registrado_por_user_id').references((): AnyPgColumn => users.id),
+  },
+  (t) => ({
+    dotacaoIdx: index('dot_hist_dotacao_idx').on(t.dotacaoId, t.registradoEm),
+    creditoIdx: index('dot_hist_credito_idx').on(t.creditoId),
+  }),
+)
+
+// Orcamento relations
+export const leisOrcamentariasRelations = relations(leisOrcamentarias, ({ one, many }) => ({
+  programas: many(programas),
+  dotacoes: many(dotacoes),
+  creditos: many(creditosOrcamentarios),
+  ppaVigente: one(leisOrcamentarias, { fields: [leisOrcamentarias.ppaVigenteId], references: [leisOrcamentarias.id], relationName: 'loa_ppa' }),
+}))
+
+export const programasRelations = relations(programas, ({ one, many }) => ({
+  ppa: one(leisOrcamentarias, { fields: [programas.ppaId], references: [leisOrcamentarias.id] }),
+  acoes: many(acoes),
+}))
+
+export const acoesRelations = relations(acoes, ({ one }) => ({
+  programa: one(programas, { fields: [acoes.programaId], references: [programas.id] }),
+}))
+
+export const dotacoesRelations = relations(dotacoes, ({ one, many }) => ({
+  lei: one(leisOrcamentarias, { fields: [dotacoes.leiOrcamentariaId], references: [leisOrcamentarias.id] }),
+  exercicio: one(exercicios, { fields: [dotacoes.exercicioId], references: [exercicios.id] }),
+  entidade: one(entidades, { fields: [dotacoes.entidadeId], references: [entidades.id] }),
+  programa: one(programas, { fields: [dotacoes.programaId], references: [programas.id] }),
+  acao: one(acoes, { fields: [dotacoes.acaoId], references: [acoes.id] }),
+  modalidade: one(modalidadesAplicacao, { fields: [dotacoes.modalidadeAplicacaoId], references: [modalidadesAplicacao.id] }),
+  fonte: one(fontesRecurso, { fields: [dotacoes.fonteRecursoId], references: [fontesRecurso.id] }),
+  creditos: many(creditosDotacoes),
+  historico: many(dotacoesHistoricoValor),
+}))
+
+export const creditosOrcamentariosRelations = relations(creditosOrcamentarios, ({ one, many }) => ({
+  exercicio: one(exercicios, { fields: [creditosOrcamentarios.exercicioId], references: [exercicios.id] }),
+  lei: one(leisOrcamentarias, { fields: [creditosOrcamentarios.leiOrcamentariaId], references: [leisOrcamentarias.id] }),
+  dotacoes: many(creditosDotacoes),
+}))
+
+export const creditosDotacoesRelations = relations(creditosDotacoes, ({ one }) => ({
+  credito: one(creditosOrcamentarios, { fields: [creditosDotacoes.creditoId], references: [creditosOrcamentarios.id] }),
+  dotacao: one(dotacoes, { fields: [creditosDotacoes.dotacaoId], references: [dotacoes.id] }),
+}))
+
+export const dotacoesHistoricoValorRelations = relations(dotacoesHistoricoValor, ({ one }) => ({
+  dotacao: one(dotacoes, { fields: [dotacoesHistoricoValor.dotacaoId], references: [dotacoes.id] }),
+  credito: one(creditosOrcamentarios, { fields: [dotacoesHistoricoValor.creditoId], references: [creditosOrcamentarios.id] }),
+}))
+
+// ─────────────────────────────────────────────────────────────
 // TIPOS
 // ─────────────────────────────────────────────────────────────
 
@@ -694,3 +962,14 @@ export type ReceitaTipo = typeof receitasTipos.$inferSelect
 export type ReceitaLancamento = typeof receitasLancamentos.$inferSelect
 export type ReceitaArrecadacao = typeof receitasArrecadacoes.$inferSelect
 export type ReceitaAnulacao = typeof receitasAnulacoes.$inferSelect
+export type LeiOrcamentaria = typeof leisOrcamentarias.$inferSelect
+export type NewLeiOrcamentaria = typeof leisOrcamentarias.$inferInsert
+export type Programa = typeof programas.$inferSelect
+export type Acao = typeof acoes.$inferSelect
+export type ModalidadeAplicacao = typeof modalidadesAplicacao.$inferSelect
+export type FonteRecurso = typeof fontesRecurso.$inferSelect
+export type Dotacao = typeof dotacoes.$inferSelect
+export type NewDotacao = typeof dotacoes.$inferInsert
+export type CreditoOrcamentario = typeof creditosOrcamentarios.$inferSelect
+export type CreditoDotacao = typeof creditosDotacoes.$inferSelect
+export type DotacaoHistoricoValor = typeof dotacoesHistoricoValor.$inferSelect

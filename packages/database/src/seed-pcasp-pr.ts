@@ -210,7 +210,7 @@ async function seedTenant(connectionString: string, schemaName: string): Promise
 
 async function main() {
   const DATABASE_URL = process.env.DATABASE_URL
-  if (!DATABASE_URL) { console.error('❌ DATABASE_URL ausente'); process.exit(1) }
+  if (!DATABASE_URL) { console.error('[ERRO] DATABASE_URL ausente'); process.exit(1) }
 
   const tenantFilter = process.argv.slice(2).find(a => a.startsWith('--tenant='))?.split('=')[1]
 
@@ -224,7 +224,7 @@ async function main() {
       ),
   })
 
-  console.log(`🌱 Seeding PCASP-PR 2026 em ${tenants.length} tenant(s)...`)
+  console.log(`[seed] PCASP-PR 2026 em ${tenants.length} tenant(s)...`)
 
   for (const tenant of tenants) {
     process.stdout.write(`  → ${tenant.slug}: `)

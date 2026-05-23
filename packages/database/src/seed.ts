@@ -20,7 +20,7 @@ config({ path: resolve(__dirname, '../../../.env'), override: true })
 
 const DATABASE_URL = process.env.DATABASE_URL
 if (!DATABASE_URL) {
-  console.error('❌ DATABASE_URL não definida no .env')
+  console.error('[ERRO] DATABASE_URL nao definida no .env')
   process.exit(1)
 }
 
@@ -37,6 +37,7 @@ const MODULES = [
   { slug: 'usuarios',          name: 'Usuários e Permissões',    category: 'fundacao' },
   // Camada 2 — Registro
   { slug: 'receitas',          name: 'Receitas',                 category: 'registro' },
+  { slug: 'orcamento',         name: 'Orcamento',                category: 'registro' },
   { slug: 'despesas',          name: 'Despesas',                 category: 'registro' },
   { slug: 'folha',             name: 'Folha de Pagamento',       category: 'registro' },
   // Camada 3 — Inteligência
@@ -48,7 +49,7 @@ const MODULES = [
 ]
 
 async function main() {
-  console.log('🌱 Seed master iniciando...')
+  console.log('[seed] Seed master iniciando...')
 
   const client = postgres(DATABASE_URL!, { max: 1 })
   const db = drizzle(client, { schema, casing: 'snake_case' })
@@ -113,12 +114,12 @@ async function main() {
         .onConflictDoNothing()
       console.log(`   ✓ super_admin: ${adminEmail}`)
     } else {
-      console.log(`   ⚠️  super_admin não criado (defina SEED_ADMIN_EMAIL e SEED_ADMIN_PASSWORD)`)
+      console.log(`   [AVISO] super_admin nao criado (defina SEED_ADMIN_EMAIL e SEED_ADMIN_PASSWORD)`)
     }
 
-    console.log('✅ Seed master concluído.')
+    console.log('[OK] Seed master concluido.')
   } catch (err) {
-    console.error('❌ Falha no seed:', err)
+    console.error('[ERRO] Falha no seed:', err)
     process.exit(1)
   } finally {
     await client.end()
