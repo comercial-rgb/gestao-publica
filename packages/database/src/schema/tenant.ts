@@ -1292,6 +1292,7 @@ export const feriasTipoEnum = pgEnum('ferias_tipo', ['gozo', 'gozo_com_abono', '
 export const rescisaoMotivoEnum = pgEnum('rescisao_motivo', ['exoneracao_pedido', 'exoneracao_oficio', 'demissao_justa_causa', 'aposentadoria_voluntaria', 'aposentadoria_compulsoria', 'aposentadoria_invalidez', 'falecimento', 'fim_mandato', 'fim_contrato_temporario', 'transferencia'])
 export const lancamentoOrigemEnum = pgEnum('lancamento_origem', ['automatico', 'manual', 'importado', 'judicial'])
 export const jobStatusEnum = pgEnum('job_status', ['pendente', 'processando', 'concluido', 'falhou', 'cancelado'])
+export const estrategiaProporcionalidadeEnum = pgEnum('estrategia_proporcionalidade', ['INTEGRAL', 'DIAS_REGISTRADOS', 'DIAS_EFETIVOS_TRABALHADOS', 'DIAS_NOTURNOS_DECLARADOS', 'CUSTOMIZADA_SCRIPT'])
 
 export const cargos = pgTable('cargos', {
   id: uuid('id').primaryKey().defaultRandom(), codigo: varchar('codigo', { length: 20 }).notNull(), nome: varchar('nome', { length: 200 }).notNull(), descricao: text('descricao'),
@@ -1336,7 +1337,12 @@ export const rubricas = pgTable('rubricas', {
   incideInss: boolean('incide_inss').notNull().default(false), incideIrrf: boolean('incide_irrf').notNull().default(false), incideFgts: boolean('incide_fgts').notNull().default(false),
   incideDecimoTerceiro: boolean('incide_decimo_terceiro').notNull().default(false), incideFerias: boolean('incide_ferias').notNull().default(false), incideRpps: boolean('incide_rpps').notNull().default(false),
   folhaMensal: boolean('folha_mensal').notNull().default(true), folhaDecimoTerceiro: boolean('folha_decimo_terceiro').notNull().default(false), folhaFerias: boolean('folha_ferias').notNull().default(false), folhaRescisao: boolean('folha_rescisao').notNull().default(false),
-  classificacaoContabil: varchar('classificacao_contabil', { length: 30 }), ativo: boolean('ativo').notNull().default(true), deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  classificacaoContabil: varchar('classificacao_contabil', { length: 30 }),
+  // B35.1: proporcionalidade, eSocial, retroativo
+  estrategiaProporcionalidade: estrategiaProporcionalidadeEnum('estrategia_proporcionalidade').notNull().default('DIAS_REGISTRADOS'),
+  codigoEsocial: text('codigo_esocial'), rubricaEsocialDescricao: text('rubrica_esocial_descricao'),
+  permiteRetroativo: boolean('permite_retroativo').notNull().default(false),
+  ativo: boolean('ativo').notNull().default(true), deletedAt: timestamp('deleted_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(), createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
 }, (t) => ({ codigoUnique: uniqueIndex('rubricas_codigo_idx').on(t.codigo), tipoIdx: index('rubricas_tipo_idx').on(t.tipo), ativoIdx: index('rubricas_ativo_idx').on(t.ativo, t.calculo) }))
 

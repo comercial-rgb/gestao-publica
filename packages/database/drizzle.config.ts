@@ -10,7 +10,7 @@ if (!process.env.DATABASE_URL) {
 }
 
 export default defineConfig({
-  schema: './src/schema/public.ts',
+  schema: ['./src/schema/public.ts', './src/schema/folha-publico.ts'],
   out: './drizzle/public',
   dialect: 'postgresql',
   schemaFilter: ['public'],

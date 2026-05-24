@@ -1,6 +1,8 @@
-// Barrel export — ponto único de import para outros pacotes
+// Barrel export — ponto unico de import para outros pacotes
 export * as publicSchema from './schema/public.js'
 export * as tenantSchema from './schema/tenant.js'
+export * as folhaPublicSchema from './schema/folha-publico.js'
+export * as folhaCalculoSchema from './schema/folha-calculo.js'
 export * from './client.js'
 export * from './tenancy.js'
 
