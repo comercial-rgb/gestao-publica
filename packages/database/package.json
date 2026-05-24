@@ -11,6 +11,8 @@
     "./schema/tenant": "./src/schema/tenant.ts",
     "./tenancy": "./src/tenancy.ts",
     "./client": "./src/client.ts",
+    "./schema/folha-publico": "./src/schema/folha-publico.ts",
+    "./schema/folha-calculo": "./src/schema/folha-calculo.ts",
     "./seeds/folha-publico": "./src/seeds/folha-publico.ts",
     "./utils/hash-snapshot": "./src/utils/hash-snapshot.ts"
   },

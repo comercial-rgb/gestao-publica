@@ -37,7 +37,7 @@ import {
 import { sql } from 'drizzle-orm'
 
 // Referencias (B33/B34 + Camada 2)
-import { pessoas, vinculosFuncionais, rubricas, folhas, users, dotacoes, estrategiaProporcionalidadeEnum } from './tenant'
+import { pessoas, vinculosFuncionais, rubricas, folhas, users, dotacoes, estrategiaProporcionalidadeEnum, regimePrevidenciarioEnum } from './tenant'
 
 // ============================================================
 // ENUMS
@@ -558,6 +558,7 @@ export const folhaProgresso = pgTable(
 // Types exportados
 // ============================================================
 
+export type RegimePrevidenciario = (typeof regimePrevidenciarioEnum.enumValues)[number]
 export type TipoEventoFuncional = (typeof tipoEventoFuncionalEnum.enumValues)[number]
 export type EstrategiaProporcionalidade = (typeof estrategiaProporcionalidadeEnum.enumValues)[number]
 export type TipoConsignacao = (typeof tipoConsignacaoEnum.enumValues)[number]

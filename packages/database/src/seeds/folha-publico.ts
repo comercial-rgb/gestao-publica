@@ -17,7 +17,8 @@ import { INSS_HISTORICO } from './dados/inss-historico.js'
 import { IRRF_HISTORICO } from './dados/irrf-historico.js'
 import { SALARIO_FAMILIA_HISTORICO } from './dados/salario-familia-historico.js'
 
-type Db = PostgresJsDatabase<Record<string, never>>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Db = PostgresJsDatabase<any>
 
 export async function seedFolhaPublico(db: Db): Promise<{
   inssCriadas: number
