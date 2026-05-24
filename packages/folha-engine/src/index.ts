@@ -31,3 +31,6 @@ export * from './calculadoras/index.js'
 
 // Engine orquestrador
 export * from './engine/index.js'
+
+// eSocial
+export * as esocial from './esocial/index.js'

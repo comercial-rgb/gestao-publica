@@ -17,7 +17,10 @@ import { calcularFatorProporcionalidade } from '../calculadoras/proporcionalidad
 import { calcularInss, type ContribuicaoVinculo } from '../calculadoras/inss.js'
 import { calcularIrrf } from '../calculadoras/irrf.js'
 import { calcularSalarioFamilia } from '../calculadoras/salario-familia.js'
-import { montarSnapshot } from './snapshot.js'
+import {
+  montarSnapshotFiscal,
+  montarSnapshotComMetadata,
+} from './snapshot.js'
 import type {
   ContextoCalculo,
   HoleriteCalculado,
@@ -220,16 +223,19 @@ export function calcularHolerite(params: CalcularHoleriteParams): HoleriteCalcul
     workerId,
   }
 
-  // Monta snapshot canonicalizado
-  const snapshot = {
-    ...montarSnapshot(holeriteBase),
-    regimePrevidenciario: contexto.regimePrevidenciario,
-  }
-  const hash = hashSnapshotSha256(snapshot)
+  // Monta snapshot FISCAL (deterministico) pro hash
+  const snapshotFiscal = montarSnapshotFiscal(holeriteBase, contexto.regimePrevidenciario)
+  const hash = hashSnapshotSha256(snapshotFiscal)
+
+  // Monta snapshot COMPLETO (com metadata) pro DB
+  const snapshotComMetadata = montarSnapshotComMetadata(
+    holeriteBase,
+    contexto.regimePrevidenciario,
+  )
 
   return {
     ...holeriteBase,
-    snapshot: snapshot as unknown as Record<string, unknown>,
+    snapshot: snapshotComMetadata as unknown as Record<string, unknown>,
     hashSha256: hash,
   }
 }

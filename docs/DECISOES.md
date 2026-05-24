@@ -413,3 +413,100 @@ ADR-012 antecipou para contribuintes. Mesma necessidade vai aparecer em saldos p
 ### Internacionalizacao (i18n)
 
 Hoje sistema e pt-BR hardcoded. Avaliar `next-intl` quando aparecer projeto internacional.
+
+---
+
+## ADR-016 -- Arquitetura do Motor de Calculo de Folha (B35.2)
+
+**Data:** 2026-05-24
+**Status:** Aceito
+**Decisores:** Winner (Gerente Geral)
+
+### Contexto
+
+Modulo Folha (B33-B39) precisa de motor de calculo capaz de processar
+ate 15.000 servidores/mes com regimes mistos (RGPS + RPPS + estagiarios),
+compliance fiscal completo (INSS, IRRF Reforma Lei 15.270/2025, salario-familia,
+13o) e auditoria TCE (snapshot imutavel + hash SHA-256).
+
+### Decisoes aplicadas
+
+#### 1. Tabelas em 3 camadas (decisao B34.5 n. 1)
+- **Camada 1**: snapshot no holerite (imutavel)
+- **Camada 2**: override municipal (`inss_tabelas_custom`, `irrf_tabelas_custom`)
+- **Camada 3**: federal oficial (`public.inss_tabelas`, `public.irrf_tabelas`, `public.salario_familia_tabelas`)
+- Resolver tenta C2 -> C3 com `vigencia_inicio <= competencia`
+
+#### 2. Regime previdenciario no vinculo (B34.5 n. 2)
+- Enum `regime_previdenciario` no `vinculos_funcionais`: `rgps`, `rpps`, `rgps_facultativo`, `isento`
+- Tabela `rpps_aliquotas` (tenant) com vigencia + aliquotas linear municipal
+- Teto agregado entre vinculos RGPS da mesma pessoa (CF art. 37 XVI c)
+
+#### 3. Proporcionalidade por estrategia (B34.5 n. 3)
+- 5 estrategias: `INTEGRAL`, `DIAS_REGISTRADOS`, `DIAS_EFETIVOS_TRABALHADOS`,
+  `DIAS_NOTURNOS_DECLARADOS`, `CUSTOMIZADA_SCRIPT`
+- Tabela `folha_eventos_funcional` registra admissoes, demissoes, faltas, afastamentos
+- `AFASTAMENTO_INSS > 15 dias` limita a 15 (regra fiscal -- apos isso INSS paga)
+
+#### 4. Margem consignavel snapshot (B34.5 n. 4)
+- Calculada no fechamento (35% liquido por padrao)
+- Snapshot completo no `folha_processamento_log.snapshot`
+- Endpoint publico com autorizacao do servidor (B35.4)
+
+#### 5. Salario-familia federal + override RPPS (B34.5 n. 5)
+- Tabela federal seedada (2020-2026)
+- Campos opcionais em `rpps_aliquotas.salario_familia_valor` / `salario_familia_renda_maxima`
+- Engine prefere override RPPS quando regime = `rpps` e campos preenchidos
+
+#### 6. BullMQ desde ja (B34.5 n. 6)
+- Simular holerite individual: **sincrono** (preview UX)
+- Fechar folha mensal: **assincrono** (BullMQ, concorrencia 1 por tenant)
+- 4 jobs definidos: `processarFolhaMensal`, `recalcularHolerite`,
+  `gerarEmpenhosFolha`, `enviarEsocialS1200`
+- WebSocket de progresso (a implementar em B35.3)
+
+#### 7. eSocial Fase 1 + 2 (B34.5 bonus B2)
+- **Fase 1 (B35.1)**: campo `codigo_esocial` em `rubricas` + estrutura preparada
+- **Fase 2 (B35.2D)**: gerador de XML S-1200 (RGPS) e S-1202 (RPPS) -- gera arquivo
+- **Fase 3 (B40)**: tabelas S-1000, S-1005, S-1010, S-2200 com envio webservice
+- **Fase 4 (B41-B42)**: certificado A1, assinatura XMLDSig, retornos assincronos
+
+#### 8. IRRF -- 3 cenarios paralelos da Reforma Lei 15.270/2025 (B34.5 bonus B4)
+- Cenario A: progressivo + deducoes legais (INSS, dependentes, pensao)
+- Cenario B: A + redutor `max(0, 978.62 - 0.133145 x renda_bruta)` -- so 2026+
+- Cenario C: desconto simplificado -- so fev/2024+
+- Engine escolhe **menor** (regra Receita Federal -- beneficio do contribuinte)
+- Aplicabilidade resolvida via `temDescontoSimplificadoAplicavel` / `temRedutorReforma`
+  baseado em `vigenciaInicio` da tabela
+
+#### 9. Snapshot fiscal vs metadata (B35.2D)
+- `montarSnapshotFiscal` -- apenas conteudo deterministico, entra no hash
+- `montarSnapshotComMetadata` -- fiscal + execution data (gravado no DB)
+- Hash idempotente: mesmo input -> mesmo hash (workerId/duracao nao afetam)
+
+### Consequencias
+
+**Positivas:**
+- Auditoria TCE completa via snapshot imutavel + hash SHA-256
+- Recalculo retroativo correto (resolver por competencia)
+- Performance previsivel (engine puro + BullMQ paralelizavel)
+- eSocial-ready desde B35 (sem refactor futuro)
+- Compliance Reforma do IR 2025 ja no MVP
+
+**Negativas / dividas:**
+- Tabelas IRRF pre-2024 usam placeholder em `desconto_simplificado` por
+  CHECK constraint (workaround) -- resolver com migration 0004 (B35.3 ou follow-up)
+- Engine ainda nao trata teto agregado dentro do `calcularHolerite` --
+  cabe ao orquestrador externo (B35.3) chamar `aplicarTetoAgregadoInss`
+  apos calcular cada vinculo da mesma pessoa
+- Codigos eSocial padronizados sao heuristica -- cliente final pode precisar
+  customizar (interface de cadastro vem em B38)
+
+### Alternativas consideradas
+
+- **Tabelas como JSONB unico**: rejeitado -- perde queryability e CHECK constraints
+- **Engine sincrono inline (sem BullMQ)**: rejeitado -- folha 15k servidores travaria HTTP
+- **eSocial so na Fase 3**: rejeitado -- adicionar `codigo_esocial` depois forca
+  refactor de rubricas existentes
+- **Decimal.js para precisao**: rejeitado -- overhead desnecessario, `number` cobre
+  ate 15 digitos significativos (suficiente pra folha municipal)

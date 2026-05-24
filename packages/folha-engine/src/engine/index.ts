@@ -11,6 +11,10 @@ export {
 
 export {
   montarSnapshot,
-  type HoleriteSnapshot,
+  montarSnapshotFiscal,
+  montarSnapshotComMetadata,
   ENGINE_VERSAO,
+  type SnapshotFiscal,
+  type SnapshotComMetadata,
+  type HoleriteSnapshot,
 } from './snapshot.js'
