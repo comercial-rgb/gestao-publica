@@ -27,6 +27,7 @@ import { redisPlugin } from './plugins/redis.js'
 import { csrfPlugin } from './plugins/csrf.js'
 import { swaggerPlugin } from './plugins/swagger.js'
 import { modulesPlugin } from './plugins/modules.js'
+import { websocketPlugin } from './plugins/websocket.js'
 import { tenantContribuintesRoute } from './routes/tenant/contribuintes.js'
 import { tenantOrcamentoRoute } from './routes/tenant/orcamento/index.js'
 import { tenantDespesasRoute } from './routes/tenant/despesas/index.js'
@@ -109,6 +110,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(modulesPlugin)         // requireActiveModule() + cache de módulos
   await app.register(csrfPlugin)            // valida CSRF em mutations com cookie
   await app.register(tenantResolverPlugin)  // resolve tenant pelo header / token
+  await app.register(websocketPlugin)       // WS folha:progresso (pub/sub Redis)
 
   // ── Error handler global ───────────────────────────────────
   app.setErrorHandler((error, req, reply) => {

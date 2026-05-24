@@ -57,6 +57,13 @@
       "when": 1779592565637,
       "tag": "0007_keen_wallow",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1779638074677,
+      "tag": "0008_vinculo_rubricas_esocial_pendentes",
+      "breakpoints": true
     }
   ]
 }

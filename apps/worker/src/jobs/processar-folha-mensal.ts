@@ -46,6 +46,7 @@ import { tenantPool } from '../utils/tenant-pool.js'
 import { logger } from '../utils/logger.js'
 import { publicDb, redisConnection } from '../connection.js'
 import { ProgressoTracker } from '../progresso/tracker.js'
+import { resolverRubricasParaVinculos } from '../utils/resolver-rubricas-vinculo.js'
 import { config } from '../config.js'
 
 // ============================================================
@@ -275,7 +276,14 @@ async function processarBatch(p: {
   // ============================================================
   // Pre-carregamento em lote: 4 queries pra todo o batch
   // ============================================================
-  const [eventosTodos, dependentesTodos, consignacoesTodas, rubricasVinculoTodas] = await Promise.all([
+  // Resolve rubricas com hierarquia (base + override)
+  const rubricasPorVinculo = await resolverRubricasParaVinculos({
+    tenantDb,
+    vinculoIds,
+    competencia,
+  })
+
+  const [eventosTodos, dependentesTodos, consignacoesTodas] = await Promise.all([
     tenantDb
       .select()
       .from(folhaEventosFuncional)
@@ -308,18 +316,6 @@ async function processarBatch(p: {
         ),
       ),
 
-    // Rubricas atribuidas aos vinculos do batch
-    tenantDb.execute(sqlOp`
-      SELECT rv.vinculo_id, rv.rubrica_id, rv.valor, rv.percentual, rv.quantidade,
-             r.codigo, r.nome, r.tipo, r.incide_inss, r.incide_irrf, r.incide_fgts,
-             r.estrategia_proporcionalidade, r.codigo_esocial
-      FROM rubricas_vinculos rv
-      JOIN rubricas r ON r.id = rv.rubrica_id AND r.ativo = true AND r.deleted_at IS NULL AND r.folha_mensal = true
-      WHERE rv.vinculo_id = ANY(${vinculoIds}::uuid[])
-        AND rv.ativo = true
-        AND rv.vigencia_inicio <= ${competenciaIso}
-        AND (rv.vigencia_fim IS NULL OR rv.vigencia_fim >= ${competenciaIso})
-    `),
   ])
 
   // ============================================================
@@ -346,14 +342,6 @@ async function processarBatch(p: {
     consignacoesPorVinculo.set(c.vinculoId, lista)
   }
 
-  const rubricasPorVinculo = new Map<string, any[]>()
-  for (const rv of rubricasVinculoTodas as unknown as Array<Record<string, unknown>>) {
-    const vid = String(rv.vinculo_id)
-    const lista = rubricasPorVinculo.get(vid) ?? []
-    lista.push(rv)
-    rubricasPorVinculo.set(vid, lista)
-  }
-
   // ============================================================
   // Calculo paralelo (Promise.all -- nao para no primeiro erro)
   // ============================================================
@@ -376,22 +364,8 @@ async function processarBatch(p: {
           workerId: config.WORKER_ID,
         }
 
-        // Monta rubricas do vinculo
-        const rubricasRaw = rubricasPorVinculo.get(vinculo.vinculo_id) ?? []
-        const rubricasParaCalcular: RubricaParaCalcular[] = rubricasRaw.map((rv: Record<string, unknown>, idx: number) => ({
-          rubricaId: String(rv.rubrica_id),
-          codigo: String(rv.codigo),
-          descricao: String(rv.nome),
-          tipo: mapTipoRubrica(String(rv.tipo)),
-          ordem: idx + 1,
-          estrategiaProporcionalidade: String(rv.estrategia_proporcionalidade) as RubricaParaCalcular['estrategiaProporcionalidade'],
-          valorBase: Number(rv.valor ?? 0),
-          incideInss: Boolean(rv.incide_inss),
-          incideIrrf: Boolean(rv.incide_irrf),
-          incideFgts: Boolean(rv.incide_fgts),
-          fundamentacao: `Rubrica ${rv.codigo}`,
-          codigoEsocial: rv.codigo_esocial ? String(rv.codigo_esocial) : null,
-        }))
+        // Rubricas resolvidas pelo resolver (hierarquia base + override)
+        const rubricasParaCalcular: RubricaParaCalcular[] = rubricasPorVinculo.get(vinculo.vinculo_id) ?? []
 
         const holerite = calcularHolerite({
           contexto,

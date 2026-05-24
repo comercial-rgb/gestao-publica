@@ -14,6 +14,9 @@ import { Worker } from 'bullmq'
 import { redisConnection, closeConnections } from './connection.js'
 import { FOLHA_QUEUE_NAME, type FolhaJobPayload } from './queues/folha.js'
 import { processarFolhaMensal } from './jobs/processar-folha-mensal.js'
+import { recalcularHolerite } from './jobs/recalcular-holerite.js'
+import { gerarEmpenhosFolha } from './jobs/gerar-empenhos-folha.js'
+import { enviarEsocialS1200 } from './jobs/enviar-esocial-s1200.js'
 import { tenantPool } from './utils/tenant-pool.js'
 import { logger } from './utils/logger.js'
 import { config } from './config.js'
@@ -39,11 +42,14 @@ const worker = new Worker<FolhaJobPayload>(
       case 'PROCESSAR_FOLHA_MENSAL':
         return await processarFolhaMensal(job as any)
 
-      // B35.3B
       case 'RECALCULAR_HOLERITE':
+        return await recalcularHolerite(job as any)
+
       case 'GERAR_EMPENHOS_FOLHA':
+        return await gerarEmpenhosFolha(job as any)
+
       case 'ENVIAR_ESOCIAL_S1200':
-        throw new Error(`Job ${job.data.tipo} ainda nao implementado (B35.3B)`)
+        return await enviarEsocialS1200(job as any)
 
       default: {
         const _exhaustive: never = job.data

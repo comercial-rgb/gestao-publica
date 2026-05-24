@@ -33,8 +33,9 @@ import {
   primaryKey,
   uniqueIndex,
   index,
+  check,
 } from 'drizzle-orm/pg-core'
-import { relations } from 'drizzle-orm'
+import { relations, sql } from 'drizzle-orm'
 
 // ─────────────────────────────────────────────────────────────
 // ENUMs
@@ -1417,6 +1418,74 @@ export const folhaJobs = pgTable('folha_jobs', {
   payload: jsonb('payload').$type<Record<string, unknown>>(), createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(), createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
 }, (t) => ({ folhaIdx: index('jobs_folha_idx').on(t.folhaId), statusIdx: index('jobs_status_idx').on(t.status), bullIdx: index('jobs_bull_idx').on(t.bullJobId) }))
 
+// ============================================================
+// Vinculo Rubricas (override por servidor -- B35.3B)
+// ============================================================
+
+export const vinculoRubricas = pgTable(
+  'vinculo_rubricas',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    vinculoId: uuid('vinculo_id').notNull().references(() => vinculosFuncionais.id),
+    rubricaId: uuid('rubrica_id').notNull().references(() => rubricas.id),
+    valorBase: numeric('valor_base', { precision: 15, scale: 2 }),
+    parametros: jsonb('parametros'),
+    ordemCalculo: integer('ordem_calculo').notNull().default(100),
+    ativa: boolean('ativa').notNull().default(true),
+    vigenciaInicio: date('vigencia_inicio').notNull(),
+    vigenciaFim: date('vigencia_fim'),
+    origem: text('origem').notNull().default('VINCULO_OVERRIDE'),
+    observacao: text('observacao'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    createdBy: uuid('created_by').references(() => users.id),
+  },
+  (t) => ({
+    idxVinculoAtiva: index('idx_vr_vinculo_ativa').on(t.vinculoId, t.ativa).where(sql`${t.deletedAt} IS NULL`),
+    idxRubrica: index('idx_vr_rubrica').on(t.rubricaId).where(sql`${t.deletedAt} IS NULL`),
+    uqVinculoRubricaVigencia: uniqueIndex('uq_vr_vinculo_rubrica_vigencia').on(t.vinculoId, t.rubricaId, t.vigenciaInicio).where(sql`${t.deletedAt} IS NULL`),
+    chkValorBase: check('chk_vr_valor_base', sql`${t.valorBase} IS NULL OR ${t.valorBase} >= 0`),
+    chkVigencia: check('chk_vr_vigencia', sql`${t.vigenciaFim} IS NULL OR ${t.vigenciaFim} > ${t.vigenciaInicio}`),
+    chkOrigem: check('chk_vr_origem', sql`${t.origem} IN ('CARGO_DEFAULT', 'VINCULO_OVERRIDE', 'ACORDO_JUDICIAL')`),
+  }),
+)
+
+// ============================================================
+// eSocial -- Eventos pendentes de envio (B35.3B)
+// ============================================================
+
+export const esocialEventosPendentes = pgTable(
+  'esocial_eventos_pendentes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tipoEvento: text('tipo_evento').notNull(),
+    idEvento: text('id_evento').notNull(),
+    folhaId: uuid('folha_id').references(() => folhas.id),
+    vinculoId: uuid('vinculo_id').references(() => vinculosFuncionais.id),
+    competencia: date('competencia'),
+    xml: text('xml').notNull(),
+    hashSha256: varchar('hash_sha256', { length: 64 }).notNull(),
+    status: text('status').notNull().default('TO_SEND'),
+    ambiente: text('ambiente').notNull().default('TESTE'),
+    numeroRecibo: text('numero_recibo'),
+    mensagemErro: text('mensagem_erro'),
+    tentativas: integer('tentativas').notNull().default(0),
+    geradoEm: timestamp('gerado_em', { withTimezone: true }).notNull().defaultNow(),
+    enviadoEm: timestamp('enviado_em', { withTimezone: true }),
+    workerId: text('worker_id'),
+  },
+  (t) => ({
+    uqIdEvento: uniqueIndex('uq_eep_id_evento').on(t.idEvento),
+    idxStatus: index('idx_eep_status').on(t.status, t.geradoEm),
+    idxFolhaVinculo: index('idx_eep_folha_vinculo').on(t.folhaId, t.vinculoId),
+    idxCompetencia: index('idx_eep_competencia').on(t.competencia),
+    chkStatus: check('chk_eep_status', sql`${t.status} IN ('TO_SEND', 'SENDING', 'SENT_OK', 'SENT_ERROR', 'RETIFICAR', 'CANCELADO')`),
+    chkTipoEvento: check('chk_eep_tipo_evento', sql`${t.tipoEvento} IN ('S-1200', 'S-1202', 'S-1210', 'S-1295', 'S-1299')`),
+    chkTentativas: check('chk_eep_tentativas', sql`${t.tentativas} >= 0`),
+  }),
+)
+
 // Folha relations
 export const cargosRelations = relations(cargos, ({ many }) => ({ niveisReferencias: many(cargosNiveisReferencias), vinculos: many(vinculosFuncionais) }))
 export const cargosNiveisReferenciasRelations = relations(cargosNiveisReferencias, ({ one }) => ({ cargo: one(cargos, { fields: [cargosNiveisReferencias.cargoId], references: [cargos.id] }) }))
@@ -1463,3 +1532,5 @@ export type FolhaFerias = typeof folhasFerias.$inferSelect
 export type FolhaRescisao = typeof folhasRescisoes.$inferSelect
 export type FolhaEmpenho = typeof folhasEmpenhos.$inferSelect
 export type FolhaJob = typeof folhaJobs.$inferSelect
+export type VinculoRubrica = typeof vinculoRubricas.$inferSelect
+export type EsocialEventoPendente = typeof esocialEventosPendentes.$inferSelect

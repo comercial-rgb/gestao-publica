@@ -21,6 +21,7 @@
     "@fastify/sensible": "^6.0.2",
     "@fastify/swagger": "^9.7.0",
     "@fastify/swagger-ui": "^5.2.6",
+    "@fastify/websocket": "^11.2.0",
     "@saas-municipal/auth": "workspace:*",
     "@saas-municipal/database": "workspace:*",
     "dotenv": "^16.4.7",
@@ -35,9 +36,11 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "@types/ws": "^8.5.14",
     "@vitest/coverage-v8": "^2.1.9",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.9"
+    "vitest": "^2.1.9",
+    "ws": "^8.21.0"
   }
 }
