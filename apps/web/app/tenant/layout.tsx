@@ -14,7 +14,7 @@ const NAV_BASE = [
   { href: '/tenant/receitas',       label: 'Receitas',       icon: '▲', module: 'receitas' },
   { href: '/tenant/contribuintes', label: 'Contribuintes', icon: '◉', module: 'receitas' },
   { href: '/tenant/orcamento',     label: 'Orcamento',     icon: '◧', module: 'orcamento' },
-  { href: '/tenant/despesas',      label: 'Despesas',      icon: '▼', module: 'despesas' },
+  { href: '/tenant/despesas',      label: 'Despesas',      icon: '◨', module: 'despesas' },
   { href: '/tenant/folha',     label: 'Folha',     icon: '◆', module: 'folha' },
 ] as const
 
