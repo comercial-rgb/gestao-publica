@@ -29,6 +29,7 @@ import { swaggerPlugin } from './plugins/swagger.js'
 import { modulesPlugin } from './plugins/modules.js'
 import { tenantContribuintesRoute } from './routes/tenant/contribuintes.js'
 import { tenantOrcamentoRoute } from './routes/tenant/orcamento/index.js'
+import { tenantDespesasRoute } from './routes/tenant/despesas/index.js'
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -170,6 +171,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(tenantReceitasRoute,      { prefix: '/tenant/receitas' })
   await app.register(tenantContribuintesRoute, { prefix: '/tenant/contribuintes' })
   await app.register(tenantOrcamentoRoute,    { prefix: '/tenant/orcamento' })
+  await app.register(tenantDespesasRoute,    { prefix: '/tenant/despesas' })
 
   return app
 }
