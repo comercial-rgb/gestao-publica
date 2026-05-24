@@ -50,6 +50,13 @@
       "when": 1779587423804,
       "tag": "0006_amused_tombstone",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779592565637,
+      "tag": "0007_keen_wallow",
+      "breakpoints": true
     }
   ]
 }

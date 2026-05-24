@@ -1,5 +1,9 @@
 import postgres from 'postgres'
+import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import { env } from '../src/env.js'
+import { seedFolhaPublico } from '@saas-municipal/database/seeds/folha-publico'
+import { hashSnapshotSha256 } from '@saas-municipal/database/utils/hash-snapshot'
+import { folhaCalculoSchema } from '@saas-municipal/database'
 
 export interface OrcamentoFixtures {
   entidadeId: string
@@ -292,4 +296,85 @@ export async function seedDespesaProntaParaPagar(
   } finally {
     await client.end()
   }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Folha calculo (B35)
+// ─────────────────────────────────────────────────────────────
+
+type Db = PostgresJsDatabase<Record<string, never>>
+
+/**
+ * Seed completo do modulo folha-calculo pra testes do engine (B35.2+).
+ *
+ * Aplica em ORDEM:
+ *   1. seedFolhaPublico (INSS/IRRF/SF 2020-2026)
+ *   2. RPPS aliquota vigente do tenant
+ *   3. (B35.2: cargo + vinculos + dependentes + periodo fiscal + folha)
+ *
+ * Retorna IDs pra os testes usarem.
+ */
+export async function seedFolhaCalculoCompleto(opts: {
+  tenantDb: Db
+  publicDb: Db
+  competencia: Date // ex: new Date('2026-05-01')
+}): Promise<{
+  rppsAliquotaId: string
+  cargoId: string
+  vinculoRgpsId: string
+  vinculoRppsId: string
+  vinculoComissionadoId: string
+  pessoaId: string
+  folhaId: string
+  periodoFiscalId: string
+}> {
+  // 1. Seed publico (idempotente)
+  await seedFolhaPublico(opts.publicDb)
+
+  // 2. RPPS aliquota do municipio (exemplo: Santa Izabel do Oeste/PR)
+  const [rpps] = await opts.tenantDb
+    .insert(folhaCalculoSchema.rppsAliquotas)
+    .values({
+      vigenciaInicio: '2024-01-01',
+      vigenciaFim: null,
+      aliquotaServidor: '0.1400',
+      aliquotaPatronalNormal: '0.2200',
+      aliquotaPatronalSuplementar: '0.0500',
+      tetoContribuicao: null,
+      fundamentacaoLegal: 'Lei Municipal n. XXX/YYYY (fixture de teste)',
+      ativa: true,
+    })
+    .returning({ id: folhaCalculoSchema.rppsAliquotas.id })
+
+  // 3-5. (continua no B35.2 quando engine precisar dessas fixtures especificas)
+  return {
+    rppsAliquotaId: rpps!.id,
+    cargoId: 'TODO',
+    vinculoRgpsId: 'TODO',
+    vinculoRppsId: 'TODO',
+    vinculoComissionadoId: 'TODO',
+    pessoaId: 'TODO',
+    folhaId: 'TODO',
+    periodoFiscalId: 'TODO',
+  }
+}
+
+/**
+ * Helper pra testes: gera holerite snapshot fake e calcula hash.
+ */
+export function gerarSnapshotFake(opts: {
+  vinculoId: string
+  bruto: number
+  liquido: number
+}) {
+  const snapshot = {
+    vinculoId: opts.vinculoId,
+    competencia: '2026-05-01',
+    rubricas: [
+      { codigo: 'VENCIMENTO', valor: opts.bruto, tipo: 'PROVENTO' },
+      { codigo: 'INSS', valor: opts.bruto * 0.14, tipo: 'DESCONTO' },
+    ],
+    totais: { bruto: opts.bruto, descontos: opts.bruto - opts.liquido, liquido: opts.liquido },
+  }
+  return { snapshot, hash: hashSnapshotSha256(snapshot) }
 }

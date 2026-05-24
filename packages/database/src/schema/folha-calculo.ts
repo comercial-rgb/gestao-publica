@@ -37,7 +37,7 @@ import {
 import { sql } from 'drizzle-orm'
 
 // Referencias (B33/B34 + Camada 2)
-import { pessoas, vinculosFuncionais, rubricas, folhas, users, dotacoes, estrategiaProporcionalidadeEnum } from './tenant.js'
+import { pessoas, vinculosFuncionais, rubricas, folhas, users, dotacoes, estrategiaProporcionalidadeEnum } from './tenant'
 
 // ============================================================
 // ENUMS

@@ -23,7 +23,7 @@ if (!process.env.DATABASE_URL) {
  * no Drizzle, mas o migrator do tenant remove esse prefixo antes de executar.
  */
 export default defineConfig({
-  schema: './src/schema/tenant.ts',
+  schema: ['./src/schema/tenant.ts', './src/schema/folha-calculo.ts'],
   out: './drizzle/tenant',
   dialect: 'postgresql',
   schemaFilter: ['public'],

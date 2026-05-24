@@ -10,7 +10,9 @@
     "./schema/public": "./src/schema/public.ts",
     "./schema/tenant": "./src/schema/tenant.ts",
     "./tenancy": "./src/tenancy.ts",
-    "./client": "./src/client.ts"
+    "./client": "./src/client.ts",
+    "./seeds/folha-publico": "./src/seeds/folha-publico.ts",
+    "./utils/hash-snapshot": "./src/utils/hash-snapshot.ts"
   },
   "scripts": {
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
@@ -24,6 +26,7 @@
     "db:reseed:permissions": "tsx src/reseed-tenants.ts",
     "db:seed:orcamento-stn": "tsx src/seed-orcamento-stn.ts",
     "db:bootstrap:test": "tsx src/bootstrap-test-db.ts",
+    "db:seed:folha:publico": "tsx src/seed-folha-publico.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
