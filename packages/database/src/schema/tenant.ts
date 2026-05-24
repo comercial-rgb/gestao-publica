@@ -1275,3 +1275,185 @@ export type NewOrdemPagamento = typeof ordensPagamento.$inferInsert
 export type Pagamento = typeof pagamentos.$inferSelect
 export type NewPagamento = typeof pagamentos.$inferInsert
 export type PagamentoAnulacao = typeof pagamentosAnulacoes.$inferSelect
+
+// ─────────────────────────────────────────────────────────────
+// MODULO FOLHA DE PAGAMENTO
+// ─────────────────────────────────────────────────────────────
+
+export const vinculoTipoEnum = pgEnum('vinculo_tipo', ['efetivo', 'comissionado', 'temporario', 'estagiario', 'aposentado', 'pensionista', 'agente_politico', 'cedido'])
+export const vinculoStatusEnum = pgEnum('vinculo_status', ['ativo', 'inativo', 'afastado', 'aposentado', 'exonerado', 'falecido'])
+export const regimeJuridicoEnum = pgEnum('regime_juridico', ['estatutario', 'clt', 'temporario_lei', 'comissionado', 'eletivo'])
+export const regimePrevidenciarioEnum = pgEnum('regime_previdenciario', ['rpps', 'rgps', 'isento'])
+export const rubricaTipoEnum = pgEnum('rubrica_tipo', ['provento', 'desconto', 'informativo', 'base_calculo'])
+export const rubricaCalculoEnum = pgEnum('rubrica_calculo', ['fixo', 'percentual_base', 'tabela_progressiva', 'horas', 'dias', 'manual', 'formula_sistema'])
+export const folhaTipoEnum = pgEnum('folha_tipo', ['mensal', 'decimo_terceiro_primeira', 'decimo_terceiro_segunda', 'decimo_terceiro_integral', 'ferias', 'rescisao', 'complementar'])
+export const folhaStatusEnum = pgEnum('folha_status', ['em_elaboracao', 'calculando', 'calculada', 'em_revisao', 'aprovada', 'encerrada', 'cancelada'])
+export const feriasTipoEnum = pgEnum('ferias_tipo', ['gozo', 'gozo_com_abono', 'pecunia', 'indenizatorias'])
+export const rescisaoMotivoEnum = pgEnum('rescisao_motivo', ['exoneracao_pedido', 'exoneracao_oficio', 'demissao_justa_causa', 'aposentadoria_voluntaria', 'aposentadoria_compulsoria', 'aposentadoria_invalidez', 'falecimento', 'fim_mandato', 'fim_contrato_temporario', 'transferencia'])
+export const lancamentoOrigemEnum = pgEnum('lancamento_origem', ['automatico', 'manual', 'importado', 'judicial'])
+export const jobStatusEnum = pgEnum('job_status', ['pendente', 'processando', 'concluido', 'falhou', 'cancelado'])
+
+export const cargos = pgTable('cargos', {
+  id: uuid('id').primaryKey().defaultRandom(), codigo: varchar('codigo', { length: 20 }).notNull(), nome: varchar('nome', { length: 200 }).notNull(), descricao: text('descricao'),
+  regimeJuridico: regimeJuridicoEnum('regime_juridico').notNull(), classe: varchar('classe', { length: 50 }), escolaridadeMinima: varchar('escolaridade_minima', { length: 100 }),
+  cargaHorariaSemanal: integer('carga_horaria_semanal').notNull().default(40), ativo: boolean('ativo').notNull().default(true), deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(), createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
+}, (t) => ({ codigoUnique: uniqueIndex('cargos_codigo_idx').on(t.codigo), ativoIdx: index('cargos_ativo_idx').on(t.ativo), regimeIdx: index('cargos_regime_idx').on(t.regimeJuridico) }))
+
+export const cargosNiveisReferencias = pgTable('cargos_niveis_referencias', {
+  id: uuid('id').primaryKey().defaultRandom(), cargoId: uuid('cargo_id').notNull().references(() => cargos.id, { onDelete: 'cascade' }),
+  nivel: varchar('nivel', { length: 20 }).notNull(), referencia: varchar('referencia', { length: 20 }).notNull(),
+  vencimentoBase: numeric('vencimento_base', { precision: 14, scale: 2 }).notNull(), observacoes: text('observacoes'),
+  ativo: boolean('ativo').notNull().default(true), vigenciaInicio: date('vigencia_inicio').notNull(), vigenciaFim: date('vigencia_fim'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({ cargoNivelRefUnique: uniqueIndex('cargo_niv_ref_idx').on(t.cargoId, t.nivel, t.referencia, t.vigenciaInicio), cargoIdx: index('cargo_niv_ref_cargo_idx').on(t.cargoId) }))
+
+export const vinculosFuncionais = pgTable('vinculos_funcionais', {
+  id: uuid('id').primaryKey().defaultRandom(), pessoaId: uuid('pessoa_id').notNull().references((): AnyPgColumn => pessoas.id, { onDelete: 'restrict' }),
+  matricula: varchar('matricula', { length: 30 }).notNull(), tipo: vinculoTipoEnum('tipo').notNull(), status: vinculoStatusEnum('status').notNull().default('ativo'),
+  cargoId: uuid('cargo_id').references(() => cargos.id, { onDelete: 'restrict' }), nivelReferenciaId: uuid('nivel_referencia_id').references(() => cargosNiveisReferencias.id),
+  entidadeId: uuid('entidade_id').notNull().references((): AnyPgColumn => entidades.id), regimeJuridico: regimeJuridicoEnum('regime_juridico').notNull(), regimePrevidenciario: regimePrevidenciarioEnum('regime_previdenciario').notNull(),
+  dataAdmissao: date('data_admissao').notNull(), dataExoneracao: date('data_exoneracao'), dataAposentadoria: date('data_aposentadoria'), dataFalecimento: date('data_falecimento'),
+  cargaHorariaSemanal: integer('carga_horaria_semanal').notNull().default(40), localTrabalho: varchar('local_trabalho', { length: 200 }), centroCustoCodigo: varchar('centro_custo_codigo', { length: 30 }),
+  bancoCodigo: varchar('banco_codigo', { length: 10 }), agencia: varchar('agencia', { length: 20 }), contaTipo: varchar('conta_tipo', { length: 20 }), contaNumero: varchar('conta_numero', { length: 30 }),
+  qtdDependentesIrrf: integer('qtd_dependentes_irrf').notNull().default(0), qtdDependentesSalarioFamilia: integer('qtd_dependentes_salario_familia').notNull().default(0),
+  observacoes: text('observacoes'), deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(), createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
+}, (t) => ({ matriculaUnique: uniqueIndex('vinc_matricula_idx').on(t.matricula), pessoaIdx: index('vinc_pessoa_idx').on(t.pessoaId), statusIdx: index('vinc_status_idx').on(t.status, t.tipo), cargoIdx: index('vinc_cargo_idx').on(t.cargoId), entidadeIdx: index('vinc_entidade_idx').on(t.entidadeId) }))
+
+export const vinculosEventos = pgTable('vinculos_eventos', {
+  id: uuid('id').primaryKey().defaultRandom(), vinculoId: uuid('vinculo_id').notNull().references(() => vinculosFuncionais.id, { onDelete: 'cascade' }),
+  tipoEvento: varchar('tipo_evento', { length: 50 }).notNull(), dataEvento: date('data_evento').notNull(),
+  statusAnterior: vinculoStatusEnum('status_anterior'), statusNovo: vinculoStatusEnum('status_novo'),
+  cargoAnteriorId: uuid('cargo_anterior_id').references(() => cargos.id), cargoNovoId: uuid('cargo_novo_id').references(() => cargos.id),
+  documentoReferencia: varchar('documento_referencia', { length: 200 }), motivo: text('motivo').notNull(), userId: uuid('user_id').references((): AnyPgColumn => users.id),
+  registradoEm: timestamp('registrado_em', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({ vinculoIdx: index('vinc_eventos_vinculo_idx').on(t.vinculoId, t.dataEvento), dataIdx: index('vinc_eventos_data_idx').on(t.dataEvento) }))
+
+export const rubricas = pgTable('rubricas', {
+  id: uuid('id').primaryKey().defaultRandom(), codigo: varchar('codigo', { length: 20 }).notNull(), nome: varchar('nome', { length: 200 }).notNull(), descricao: text('descricao'),
+  tipo: rubricaTipoEnum('tipo').notNull(), calculo: rubricaCalculoEnum('calculo').notNull(), parametros: jsonb('parametros').$type<Record<string, unknown>>(),
+  incideInss: boolean('incide_inss').notNull().default(false), incideIrrf: boolean('incide_irrf').notNull().default(false), incideFgts: boolean('incide_fgts').notNull().default(false),
+  incideDecimoTerceiro: boolean('incide_decimo_terceiro').notNull().default(false), incideFerias: boolean('incide_ferias').notNull().default(false), incideRpps: boolean('incide_rpps').notNull().default(false),
+  folhaMensal: boolean('folha_mensal').notNull().default(true), folhaDecimoTerceiro: boolean('folha_decimo_terceiro').notNull().default(false), folhaFerias: boolean('folha_ferias').notNull().default(false), folhaRescisao: boolean('folha_rescisao').notNull().default(false),
+  classificacaoContabil: varchar('classificacao_contabil', { length: 30 }), ativo: boolean('ativo').notNull().default(true), deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(), createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
+}, (t) => ({ codigoUnique: uniqueIndex('rubricas_codigo_idx').on(t.codigo), tipoIdx: index('rubricas_tipo_idx').on(t.tipo), ativoIdx: index('rubricas_ativo_idx').on(t.ativo, t.calculo) }))
+
+export const rubricasVinculos = pgTable('rubricas_vinculos', {
+  id: uuid('id').primaryKey().defaultRandom(), vinculoId: uuid('vinculo_id').notNull().references(() => vinculosFuncionais.id, { onDelete: 'cascade' }),
+  rubricaId: uuid('rubrica_id').notNull().references(() => rubricas.id, { onDelete: 'restrict' }),
+  valor: numeric('valor', { precision: 14, scale: 2 }), percentual: numeric('percentual', { precision: 8, scale: 4 }), quantidade: numeric('quantidade', { precision: 8, scale: 2 }),
+  vigenciaInicio: date('vigencia_inicio').notNull(), vigenciaFim: date('vigencia_fim'), documentoReferencia: varchar('documento_referencia', { length: 200 }), observacoes: text('observacoes'),
+  ativo: boolean('ativo').notNull().default(true), createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(), createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
+}, (t) => ({ vinculoRubricaIdx: index('rub_vinc_idx').on(t.vinculoId, t.rubricaId), vigenciaIdx: index('rub_vinc_vigencia_idx').on(t.vigenciaInicio, t.vigenciaFim) }))
+
+export const folhas = pgTable('folhas', {
+  id: uuid('id').primaryKey().defaultRandom(), numero: varchar('numero', { length: 50 }).notNull(), tipo: folhaTipoEnum('tipo').notNull(), status: folhaStatusEnum('status').notNull().default('em_elaboracao'),
+  descricao: varchar('descricao', { length: 300 }).notNull(), exercicioId: uuid('exercicio_id').notNull().references(() => exercicios.id, { onDelete: 'restrict' }), mesFiscalId: uuid('mes_fiscal_id').notNull().references(() => mesesFiscais.id, { onDelete: 'restrict' }),
+  competenciaMes: integer('competencia_mes').notNull(), competenciaAno: integer('competencia_ano').notNull(), dataPagamento: date('data_pagamento'),
+  totalProventos: numeric('total_proventos', { precision: 18, scale: 2 }).notNull().default('0'), totalDescontos: numeric('total_descontos', { precision: 18, scale: 2 }).notNull().default('0'), totalLiquido: numeric('total_liquido', { precision: 18, scale: 2 }).notNull().default('0'),
+  totalBaseInss: numeric('total_base_inss', { precision: 18, scale: 2 }).notNull().default('0'), totalBaseIrrf: numeric('total_base_irrf', { precision: 18, scale: 2 }).notNull().default('0'), totalBaseFgts: numeric('total_base_fgts', { precision: 18, scale: 2 }).notNull().default('0'),
+  qtdServidores: integer('qtd_servidores').notNull().default(0),
+  calculoIniciadoEm: timestamp('calculo_iniciado_em', { withTimezone: true }), calculoConcluidoEm: timestamp('calculo_concluido_em', { withTimezone: true }),
+  aprovadaEm: timestamp('aprovada_em', { withTimezone: true }), aprovadaPorUserId: uuid('aprovada_por_user_id').references((): AnyPgColumn => users.id),
+  encerradaEm: timestamp('encerrada_em', { withTimezone: true }), encerradaPorUserId: uuid('encerrada_por_user_id').references((): AnyPgColumn => users.id),
+  observacoes: text('observacoes'), deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(), createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
+}, (t) => ({ numeroUnique: uniqueIndex('folhas_numero_idx').on(t.numero), statusIdx: index('folhas_status_idx').on(t.status, t.tipo), competenciaIdx: index('folhas_competencia_idx').on(t.competenciaAno, t.competenciaMes), exercicioIdx: index('folhas_exercicio_idx').on(t.exercicioId) }))
+
+export const folhasLancamentos = pgTable('folhas_lancamentos', {
+  id: uuid('id').primaryKey().defaultRandom(), folhaId: uuid('folha_id').notNull().references(() => folhas.id, { onDelete: 'cascade' }),
+  vinculoId: uuid('vinculo_id').notNull().references(() => vinculosFuncionais.id, { onDelete: 'restrict' }), rubricaId: uuid('rubrica_id').notNull().references(() => rubricas.id, { onDelete: 'restrict' }),
+  origem: lancamentoOrigemEnum('origem').notNull().default('automatico'), ordem: integer('ordem').notNull().default(0),
+  valor: numeric('valor', { precision: 14, scale: 2 }).notNull(), baseCalculo: numeric('base_calculo', { precision: 14, scale: 2 }), percentual: numeric('percentual', { precision: 8, scale: 4 }), quantidade: numeric('quantidade', { precision: 8, scale: 2 }),
+  observacoes: text('observacoes'), documentoReferencia: varchar('documento_referencia', { length: 200 }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(), createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
+}, (t) => ({ folhaVinculoIdx: index('lanc_folha_vinc_idx').on(t.folhaId, t.vinculoId), vinculoIdx: index('lanc_vinculo_idx').on(t.vinculoId), rubricaIdx: index('lanc_rubrica_idx').on(t.rubricaId), folhaIdx: index('lanc_folha_idx').on(t.folhaId) }))
+
+export const holerites = pgTable('holerites', {
+  id: uuid('id').primaryKey().defaultRandom(), folhaId: uuid('folha_id').notNull().references(() => folhas.id, { onDelete: 'cascade' }),
+  vinculoId: uuid('vinculo_id').notNull().references(() => vinculosFuncionais.id, { onDelete: 'restrict' }), numero: varchar('numero', { length: 50 }).notNull(),
+  totalProventos: numeric('total_proventos', { precision: 14, scale: 2 }).notNull().default('0'), totalDescontos: numeric('total_descontos', { precision: 14, scale: 2 }).notNull().default('0'), totalLiquido: numeric('total_liquido', { precision: 14, scale: 2 }).notNull().default('0'),
+  snapshot: jsonb('snapshot').$type<Record<string, unknown>>().notNull(), geradoEm: timestamp('gerado_em', { withTimezone: true }).notNull().defaultNow(), visualizadoEm: timestamp('visualizado_em', { withTimezone: true }),
+}, (t) => ({ folhaVinculoUnique: uniqueIndex('hol_folha_vinc_idx').on(t.folhaId, t.vinculoId), vinculoIdx: index('hol_vinculo_idx').on(t.vinculoId), numeroIdx: index('hol_numero_idx').on(t.numero) }))
+
+export const folhasFerias = pgTable('folhas_ferias', {
+  id: uuid('id').primaryKey().defaultRandom(), folhaId: uuid('folha_id').notNull().references(() => folhas.id, { onDelete: 'cascade' }),
+  vinculoId: uuid('vinculo_id').notNull().references(() => vinculosFuncionais.id, { onDelete: 'restrict' }), tipo: feriasTipoEnum('tipo').notNull(),
+  periodoAquisitivoInicio: date('periodo_aquisitivo_inicio').notNull(), periodoAquisitivoFim: date('periodo_aquisitivo_fim').notNull(),
+  diasDireito: integer('dias_direito').notNull().default(30), diasGozados: integer('dias_gozados').notNull(), gozoInicio: date('gozo_inicio'), gozoFim: date('gozo_fim'),
+  diasAbono: integer('dias_abono').notNull().default(0), adiantaDecimoTerceiro: boolean('adianta_decimo_terceiro').notNull().default(false), observacoes: text('observacoes'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({ folhaVinculoUnique: uniqueIndex('fer_folha_vinc_idx').on(t.folhaId, t.vinculoId), vinculoIdx: index('fer_vinculo_idx').on(t.vinculoId) }))
+
+export const folhasRescisoes = pgTable('folhas_rescisoes', {
+  id: uuid('id').primaryKey().defaultRandom(), folhaId: uuid('folha_id').notNull().references(() => folhas.id, { onDelete: 'cascade' }),
+  vinculoId: uuid('vinculo_id').notNull().references(() => vinculosFuncionais.id, { onDelete: 'restrict' }), motivo: rescisaoMotivoEnum('motivo').notNull(),
+  dataDesligamento: date('data_desligamento').notNull(), dataPagamento: date('data_pagamento').notNull(), documentoReferencia: varchar('documento_referencia', { length: 200 }),
+  saldoSalario: numeric('saldo_salario', { precision: 14, scale: 2 }).notNull().default('0'), decimoTerceiroProporcional: numeric('decimo_terceiro_proporcional', { precision: 14, scale: 2 }).notNull().default('0'),
+  feriasProporcionais: numeric('ferias_proporcionais', { precision: 14, scale: 2 }).notNull().default('0'), avisoPrevioIndenizado: numeric('aviso_previo_indenizado', { precision: 14, scale: 2 }).notNull().default('0'), multaFgts: numeric('multa_fgts', { precision: 14, scale: 2 }).notNull().default('0'),
+  observacoes: text('observacoes'), createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({ folhaVinculoUnique: uniqueIndex('resc_folha_vinc_idx').on(t.folhaId, t.vinculoId), vinculoIdx: index('resc_vinculo_idx').on(t.vinculoId), dataIdx: index('resc_data_idx').on(t.dataDesligamento) }))
+
+export const folhasEmpenhos = pgTable('folhas_empenhos', {
+  id: uuid('id').primaryKey().defaultRandom(), folhaId: uuid('folha_id').notNull().references(() => folhas.id, { onDelete: 'restrict' }),
+  empenhoId: uuid('empenho_id').notNull().references(() => empenhos.id, { onDelete: 'restrict' }),
+  valor: numeric('valor', { precision: 14, scale: 2 }).notNull(), observacoes: text('observacoes'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(), createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
+}, (t) => ({ folhaEmpenhoUnique: uniqueIndex('folha_emp_idx').on(t.folhaId, t.empenhoId), folhaIdx: index('folha_emp_folha_idx').on(t.folhaId), empenhoIdx: index('folha_emp_empenho_idx').on(t.empenhoId) }))
+
+export const folhaJobs = pgTable('folha_jobs', {
+  id: uuid('id').primaryKey().defaultRandom(), folhaId: uuid('folha_id').notNull().references(() => folhas.id, { onDelete: 'cascade' }),
+  bullJobId: varchar('bull_job_id', { length: 100 }), tipo: varchar('tipo', { length: 50 }).notNull(), status: jobStatusEnum('status').notNull().default('pendente'),
+  qtdTotal: integer('qtd_total').notNull().default(0), qtdProcessado: integer('qtd_processado').notNull().default(0), qtdErro: integer('qtd_erro').notNull().default(0),
+  iniciadoEm: timestamp('iniciado_em', { withTimezone: true }), concluidoEm: timestamp('concluido_em', { withTimezone: true }), tentativas: integer('tentativas').notNull().default(0), erroDetalhe: text('erro_detalhe'),
+  payload: jsonb('payload').$type<Record<string, unknown>>(), createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(), createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
+}, (t) => ({ folhaIdx: index('jobs_folha_idx').on(t.folhaId), statusIdx: index('jobs_status_idx').on(t.status), bullIdx: index('jobs_bull_idx').on(t.bullJobId) }))
+
+// Folha relations
+export const cargosRelations = relations(cargos, ({ many }) => ({ niveisReferencias: many(cargosNiveisReferencias), vinculos: many(vinculosFuncionais) }))
+export const cargosNiveisReferenciasRelations = relations(cargosNiveisReferencias, ({ one }) => ({ cargo: one(cargos, { fields: [cargosNiveisReferencias.cargoId], references: [cargos.id] }) }))
+export const vinculosFuncionaisRelations = relations(vinculosFuncionais, ({ one, many }) => ({
+  pessoa: one(pessoas, { fields: [vinculosFuncionais.pessoaId], references: [pessoas.id] }),
+  cargo: one(cargos, { fields: [vinculosFuncionais.cargoId], references: [cargos.id] }),
+  nivelReferencia: one(cargosNiveisReferencias, { fields: [vinculosFuncionais.nivelReferenciaId], references: [cargosNiveisReferencias.id] }),
+  entidade: one(entidades, { fields: [vinculosFuncionais.entidadeId], references: [entidades.id] }),
+  eventos: many(vinculosEventos), rubricasVinculos: many(rubricasVinculos), lancamentos: many(folhasLancamentos), holerites: many(holerites),
+}))
+export const vinculosEventosRelations = relations(vinculosEventos, ({ one }) => ({
+  vinculo: one(vinculosFuncionais, { fields: [vinculosEventos.vinculoId], references: [vinculosFuncionais.id] }),
+  cargoAnterior: one(cargos, { fields: [vinculosEventos.cargoAnteriorId], references: [cargos.id], relationName: 'vinculo_cargo_anterior' }),
+  cargoNovo: one(cargos, { fields: [vinculosEventos.cargoNovoId], references: [cargos.id], relationName: 'vinculo_cargo_novo' }),
+}))
+export const rubricasRelations = relations(rubricas, ({ many }) => ({ vinculos: many(rubricasVinculos), lancamentos: many(folhasLancamentos) }))
+export const rubricasVinculosRelations = relations(rubricasVinculos, ({ one }) => ({ vinculo: one(vinculosFuncionais, { fields: [rubricasVinculos.vinculoId], references: [vinculosFuncionais.id] }), rubrica: one(rubricas, { fields: [rubricasVinculos.rubricaId], references: [rubricas.id] }) }))
+export const folhasRelations = relations(folhas, ({ one, many }) => ({
+  exercicio: one(exercicios, { fields: [folhas.exercicioId], references: [exercicios.id] }), mesFiscal: one(mesesFiscais, { fields: [folhas.mesFiscalId], references: [mesesFiscais.id] }),
+  lancamentos: many(folhasLancamentos), holerites: many(holerites), ferias: many(folhasFerias), rescisoes: many(folhasRescisoes), empenhosVinculados: many(folhasEmpenhos), jobs: many(folhaJobs),
+}))
+export const folhasLancamentosRelations = relations(folhasLancamentos, ({ one }) => ({ folha: one(folhas, { fields: [folhasLancamentos.folhaId], references: [folhas.id] }), vinculo: one(vinculosFuncionais, { fields: [folhasLancamentos.vinculoId], references: [vinculosFuncionais.id] }), rubrica: one(rubricas, { fields: [folhasLancamentos.rubricaId], references: [rubricas.id] }) }))
+export const holeritesRelations = relations(holerites, ({ one }) => ({ folha: one(folhas, { fields: [holerites.folhaId], references: [folhas.id] }), vinculo: one(vinculosFuncionais, { fields: [holerites.vinculoId], references: [vinculosFuncionais.id] }) }))
+export const folhasFeriasRelations = relations(folhasFerias, ({ one }) => ({ folha: one(folhas, { fields: [folhasFerias.folhaId], references: [folhas.id] }), vinculo: one(vinculosFuncionais, { fields: [folhasFerias.vinculoId], references: [vinculosFuncionais.id] }) }))
+export const folhasRescisoesRelations = relations(folhasRescisoes, ({ one }) => ({ folha: one(folhas, { fields: [folhasRescisoes.folhaId], references: [folhas.id] }), vinculo: one(vinculosFuncionais, { fields: [folhasRescisoes.vinculoId], references: [vinculosFuncionais.id] }) }))
+export const folhasEmpenhosRelations = relations(folhasEmpenhos, ({ one }) => ({ folha: one(folhas, { fields: [folhasEmpenhos.folhaId], references: [folhas.id] }), empenho: one(empenhos, { fields: [folhasEmpenhos.empenhoId], references: [empenhos.id] }) }))
+export const folhaJobsRelations = relations(folhaJobs, ({ one }) => ({ folha: one(folhas, { fields: [folhaJobs.folhaId], references: [folhas.id] }) }))
+
+export type Cargo = typeof cargos.$inferSelect
+export type NewCargo = typeof cargos.$inferInsert
+export type CargoNivelReferencia = typeof cargosNiveisReferencias.$inferSelect
+export type VinculoFuncional = typeof vinculosFuncionais.$inferSelect
+export type NewVinculoFuncional = typeof vinculosFuncionais.$inferInsert
+export type VinculoEvento = typeof vinculosEventos.$inferSelect
+export type Rubrica = typeof rubricas.$inferSelect
+export type NewRubrica = typeof rubricas.$inferInsert
+export type RubricaVinculo = typeof rubricasVinculos.$inferSelect
+export type Folha = typeof folhas.$inferSelect
+export type NewFolha = typeof folhas.$inferInsert
+export type FolhaLancamento = typeof folhasLancamentos.$inferSelect
+export type NewFolhaLancamento = typeof folhasLancamentos.$inferInsert
+export type Holerite = typeof holerites.$inferSelect
+export type FolhaFerias = typeof folhasFerias.$inferSelect
+export type FolhaRescisao = typeof folhasRescisoes.$inferSelect
+export type FolhaEmpenho = typeof folhasEmpenhos.$inferSelect
+export type FolhaJob = typeof folhaJobs.$inferSelect

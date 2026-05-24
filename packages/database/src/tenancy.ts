@@ -530,7 +530,14 @@ export async function reseedTenantBaseline(
           ('despesas:autorizar_pagamento', 'Criar e aprovar ordens de pagamento',          'despesas'),
           ('despesas:pagar',               'Executar pagamentos de OPs aprovadas',         'despesas'),
           ('despesas:anular',              'Anular empenhos, liquidações e pagamentos',    'despesas'),
-          ('despesas:relatorios',          'Gerar relatórios de execução de despesa',      'despesas')
+          ('despesas:relatorios',          'Gerar relatórios de execução de despesa',      'despesas'),
+          ('folha:read',              'Visualizar folha de pagamento',                  'folha'),
+          ('folha:cadastros',         'Gerir cargos, rubricas e vinculos funcionais',  'folha'),
+          ('folha:calcular',          'Iniciar calculo de folhas',                      'folha'),
+          ('folha:revisar',           'Revisar folha calculada',                        'folha'),
+          ('folha:aprovar',           'Aprovar folha para pagamento',                   'folha'),
+          ('folha:encerrar',          'Encerrar folha (imutavel apos)',                'folha'),
+          ('folha:relatorios',        'Gerar relatorios e holerites',                   'folha')
         ON CONFLICT (slug) DO NOTHING RETURNING slug
       `)
       counters.permissionsAdded = permResult.length
@@ -552,7 +559,8 @@ export async function reseedTenantBaseline(
             'cadastros:read','dashboard:read','fiscal:read','fiscal:fechar_mes',
             'receitas:read','receitas:write','receitas:arrecadar','receitas:relatorios',
             'orcamento:read','orcamento:write','orcamento:relatorios',
-            'despesas:read','despesas:empenhar','despesas:liquidar','despesas:autorizar_pagamento','despesas:relatorios'
+            'despesas:read','despesas:empenhar','despesas:liquidar','despesas:autorizar_pagamento','despesas:relatorios',
+            'folha:read','folha:cadastros','folha:relatorios'
           )
         ON CONFLICT DO NOTHING RETURNING role_id
       `)
@@ -566,7 +574,8 @@ export async function reseedTenantBaseline(
             'cadastros:read','dashboard:read','audit:read','fiscal:read',
             'receitas:read','receitas:arrecadar','receitas:relatorios',
             'orcamento:read','orcamento:relatorios',
-            'despesas:read','despesas:liquidar','despesas:relatorios'
+            'despesas:read','despesas:liquidar','despesas:relatorios',
+            'folha:read','folha:calcular','folha:revisar','folha:relatorios'
           )
         ON CONFLICT DO NOTHING RETURNING role_id
       `)
@@ -584,7 +593,7 @@ export async function reseedTenantBaseline(
         INSERT INTO role_permissions (role_id, permission_id)
         SELECT r.id, p.id FROM roles r CROSS JOIN permissions p
         WHERE r.slug = 'operador'
-          AND p.slug IN ('cadastros:read','cadastros:write','dashboard:read','fiscal:read','receitas:read','receitas:arrecadar','despesas:read')
+          AND p.slug IN ('cadastros:read','cadastros:write','dashboard:read','fiscal:read','receitas:read','receitas:arrecadar','despesas:read','folha:read')
         ON CONFLICT DO NOTHING RETURNING role_id
       `)
       counters.rolePermissionsAdded += rp5.length
@@ -593,7 +602,7 @@ export async function reseedTenantBaseline(
         INSERT INTO role_permissions (role_id, permission_id)
         SELECT r.id, p.id FROM roles r CROSS JOIN permissions p
         WHERE r.slug = 'rh'
-          AND p.slug IN ('cadastros:read','cadastros:write','dashboard:read','fiscal:read')
+          AND p.slug IN ('cadastros:read','cadastros:write','dashboard:read','fiscal:read','folha:read','folha:cadastros','folha:calcular','folha:relatorios')
         ON CONFLICT DO NOTHING RETURNING role_id
       `)
       counters.rolePermissionsAdded += rp6.length
