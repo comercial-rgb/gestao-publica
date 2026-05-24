@@ -29,5 +29,5 @@ export * from './resolvers/index.js'
 // Calculadoras
 export * from './calculadoras/index.js'
 
-// TODO B35.2C: engine orquestrador
-// export { calcularHolerite } from './engine.js'
+// Engine orquestrador
+export * from './engine/index.js'
