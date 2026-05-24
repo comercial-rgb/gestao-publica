@@ -214,3 +214,82 @@ export async function seedCreditoAprovado(
     await client.end()
   }
 }
+
+export interface DespesaPipelineFixtures {
+  fornecedorId: string
+  empenhoId: string
+  empenhoNumero: string
+  liquidacaoId: string
+  liquidacaoNumero: string
+  opId: string
+  opNumero: string
+  mesFiscalId: string
+  empenhoValor: string
+  empenhoLiquidadoInicial: string
+  opValor: string
+}
+
+/**
+ * Cria pipeline pronto ate liquidacao:
+ *   - usa seedOrcamentoBasico para ter dotacao A (100k)
+ *   - cria 1 fornecedor PJ
+ *   - cria 1 empenho de 30k na dotacao A
+ *   - cria 1 liquidacao de 15k do empenho
+ *   - cria 1 OP de 15k aprovada (pronta pra receber pagamento)
+ */
+export async function seedDespesaProntaParaPagar(
+  schemaName: string,
+  userId: string,
+  orcamento: OrcamentoFixtures,
+): Promise<DespesaPipelineFixtures> {
+  const client = postgres(env.DATABASE_URL, { max: 1 })
+
+  try {
+    return await client.begin(async (tx) => {
+      await tx.unsafe(`SET LOCAL search_path TO "${schemaName}", public`)
+
+      const [mes] = await tx<{ id: string }[]>`
+        SELECT id FROM meses_fiscais WHERE exercicio_id = ${orcamento.exercicioId}::uuid AND mes = 1
+      `
+      if (!mes) throw new Error('Mes fiscal 01/2026 nao foi seedado pelo baseline')
+
+      const [fornecedor] = await tx<{ id: string }[]>`
+        INSERT INTO pessoas (tipo, nome, documento, active) VALUES ('PJ', 'Fornecedor Test Ltda', '12345678000100', true) RETURNING id
+      `
+
+      const [empenho] = await tx<{ id: string; numero: string }[]>`
+        INSERT INTO empenhos (numero, tipo, status, exercicio_id, mes_fiscal_id, dotacao_id, fornecedor_pessoa_id, data_empenho, valor, valor_liquidado, valor_pago, valor_anulado, objeto, created_by)
+        VALUES ('2026/TEST01', 'ordinario', 'vigente', ${orcamento.exercicioId}::uuid, ${mes!.id}::uuid, ${orcamento.dotacaoAId}::uuid, ${fornecedor!.id}::uuid, '2026-01-15', '30000.00', '0', '0', '0', 'Empenho de teste para cobertura de cascata de pagamento', ${userId}::uuid)
+        RETURNING id, numero
+      `
+
+      await tx`UPDATE dotacoes SET valor_empenhado = valor_empenhado + 30000 WHERE id = ${orcamento.dotacaoAId}::uuid`
+
+      const [liquidacao] = await tx<{ id: string; numero: string }[]>`
+        INSERT INTO liquidacoes (numero, status, empenho_id, mes_fiscal_id, data_liquidacao, valor, valor_pago, documento_comprovante, created_by)
+        VALUES ('2026/TEST-L01', 'vigente', ${empenho!.id}::uuid, ${mes!.id}::uuid, '2026-01-20', '15000.00', '0', 'NF TEST-001', ${userId}::uuid)
+        RETURNING id, numero
+      `
+
+      await tx`UPDATE empenhos SET valor_liquidado = valor_liquidado + 15000 WHERE id = ${empenho!.id}::uuid`
+      await tx`UPDATE dotacoes SET valor_liquidado = valor_liquidado + 15000 WHERE id = ${orcamento.dotacaoAId}::uuid`
+
+      const [op] = await tx<{ id: string; numero: string }[]>`
+        INSERT INTO ordens_pagamento (numero, status, liquidacao_id, mes_fiscal_id, valor, valor_pago, data_emissao, data_aprovacao, aprovada_em, aprovada_por_user_id, created_by)
+        VALUES ('2026/TEST-OP01', 'aprovada', ${liquidacao!.id}::uuid, ${mes!.id}::uuid, '15000.00', '0', '2026-01-21', '2026-01-22', NOW(), ${userId}::uuid, ${userId}::uuid)
+        RETURNING id, numero
+      `
+
+      return {
+        fornecedorId: fornecedor!.id,
+        empenhoId: empenho!.id, empenhoNumero: empenho!.numero,
+        liquidacaoId: liquidacao!.id, liquidacaoNumero: liquidacao!.numero,
+        opId: op!.id, opNumero: op!.numero,
+        mesFiscalId: mes!.id,
+        empenhoValor: '30000.00', empenhoLiquidadoInicial: '15000.00', opValor: '15000.00',
+      }
+    })
+  } finally {
+    await client.end()
+  }
+}
