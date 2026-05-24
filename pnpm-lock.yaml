@@ -184,6 +184,28 @@ importers:
         specifier: ^5.7.2
         version: 5.9.3
 
+  packages/folha-engine:
+    dependencies:
+      '@saas-municipal/database':
+        specifier: workspace:*
+        version: link:../database
+      drizzle-orm:
+        specifier: ^0.38.3
+        version: 0.38.4(@types/react@19.2.15)(postgres@3.4.9)(react@19.2.6)
+      postgres:
+        specifier: ^3.4.5
+        version: 3.4.9
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.19.19
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@22.19.19)
+
 packages:
 
   '@alloc/quick-lru@5.2.0':
