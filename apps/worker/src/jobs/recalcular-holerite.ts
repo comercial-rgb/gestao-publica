@@ -30,7 +30,7 @@ import type { RecalcularHoleritePayload } from '../queues/folha.js'
 import { tenantPool } from '../utils/tenant-pool.js'
 import { logger } from '../utils/logger.js'
 import { publicDb, redisConnection, redisPubSub } from '../connection.js'
-import { resolverRubricasParaVinculos } from '../utils/resolver-rubricas-vinculo.js'
+import { resolverRubricasParaVinculos } from '@saas-municipal/folha-engine'
 import { config } from '../config.js'
 
 async function acquireLock(redis: Redis, key: string, ttl: number): Promise<boolean> {

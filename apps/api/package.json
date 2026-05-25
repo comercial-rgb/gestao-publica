@@ -24,6 +24,8 @@
     "@fastify/websocket": "^11.2.0",
     "@saas-municipal/auth": "workspace:*",
     "@saas-municipal/database": "workspace:*",
+    "@saas-municipal/folha-engine": "workspace:*",
+    "@saas-municipal/worker": "workspace:*",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.38.3",
     "fastify": "^5.2.0",

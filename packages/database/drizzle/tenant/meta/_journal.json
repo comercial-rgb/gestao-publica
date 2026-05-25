@@ -64,6 +64,13 @@
       "when": 1779638074677,
       "tag": "0008_vinculo_rubricas_esocial_pendentes",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1779666573012,
+      "tag": "0009_folhas_audit_reabertura",
+      "breakpoints": true
     }
   ]
 }

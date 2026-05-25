@@ -16,7 +16,7 @@
 import { and, eq, inArray, isNull, lte, or, gte } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
-import type { RubricaParaCalcular } from '@saas-municipal/folha-engine'
+import type { RubricaParaCalcular } from '../engine/calcular-holerite.js'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyDb = PostgresJsDatabase<any>

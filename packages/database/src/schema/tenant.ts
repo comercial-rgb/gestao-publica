@@ -1366,6 +1366,10 @@ export const folhas = pgTable('folhas', {
   aprovadaEm: timestamp('aprovada_em', { withTimezone: true }), aprovadaPorUserId: uuid('aprovada_por_user_id').references((): AnyPgColumn => users.id),
   encerradaEm: timestamp('encerrada_em', { withTimezone: true }), encerradaPorUserId: uuid('encerrada_por_user_id').references((): AnyPgColumn => users.id),
   observacoes: text('observacoes'), deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  // Audit de reabertura (B35.4 -- TCE exige rastro)
+  reabertaEm: timestamp('reaberta_em', { withTimezone: true }), reabertaPor: uuid('reaberta_por').references((): AnyPgColumn => users.id), motivoReabertura: text('motivo_reabertura'),
+  // Audit de cancelamento
+  canceladaEm: timestamp('cancelada_em', { withTimezone: true }), canceladaPor: uuid('cancelada_por').references((): AnyPgColumn => users.id), motivoCancelamento: text('motivo_cancelamento'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(), createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
 }, (t) => ({ numeroUnique: uniqueIndex('folhas_numero_idx').on(t.numero), statusIdx: index('folhas_status_idx').on(t.status, t.tipo), competenciaIdx: index('folhas_competencia_idx').on(t.competenciaAno, t.competenciaMes), exercicioIdx: index('folhas_exercicio_idx').on(t.exercicioId) }))
 

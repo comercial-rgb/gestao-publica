@@ -46,7 +46,7 @@ import { tenantPool } from '../utils/tenant-pool.js'
 import { logger } from '../utils/logger.js'
 import { publicDb, redisConnection } from '../connection.js'
 import { ProgressoTracker } from '../progresso/tracker.js'
-import { resolverRubricasParaVinculos } from '../utils/resolver-rubricas-vinculo.js'
+import { resolverRubricasParaVinculos } from '@saas-municipal/folha-engine'
 import { config } from '../config.js'
 
 // ============================================================
