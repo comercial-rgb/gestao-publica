@@ -1,7 +1,12 @@
 # Estado da execução
 
-> Produzido por ENT00 em 2026-09-09. Dados reais, medidos nesta máquina.
-> Sem estimativa, sem percentual de cobertura, sem "provavelmente".
+> Produzido por ENT00 em 2026-09-09 e atualizado por **ENT01 (em curso)**.
+> Dados reais, medidos nesta máquina. Sem estimativa, sem percentual de
+> cobertura, sem "provavelmente".
+>
+> ⚠️ **ENT01 NÃO ESTÁ NO GATE.** O que está registrado abaixo é o que foi feito e
+> medido até agora; a seção "ENT01 — o que falta" diz o que ainda não foi, e é ela
+> que impede este documento de ser lido como encerramento.
 
 ## Identificação
 
@@ -128,14 +133,57 @@ Causa medida:
 | `GRANT`/`REVOKE`/`CREATE ROLE`/`ROW LEVEL SECURITY` nas 63 migrations | **zero ocorrências** |
 
 Domínio protege quem passa por ele. Não protege de um script, de um console de
-banco ou de um adapter futuro. O teste correspondente está marcado com
-`it.fails`: ele afirma que a asserção correta **não passa hoje**. Quando ENT01
-criar o papel de runtime sem propriedade das tabelas, a asserção passará e o
-`it.fails` ficará vermelho de propósito — é o lembrete de remover o marcador.
-Um teste que expira sozinho vale mais que um TODO que ninguém lê.
+banco ou de um adapter futuro.
 
-Isto é pré-requisito direto de ENT01, que exige papel sem `BYPASSRLS`, sem
-propriedade indiscriminada das tabelas e sem DDL.
+### ✅ FECHADA EM ENT01 — e o `it.fails` expirou sozinho, como prometido
+
+`prisma/papel-runtime.ts` criou `gestao_app`: sem `SUPERUSER`, sem `BYPASSRLS`,
+sem `CREATEDB`/`CREATEROLE`, sem `REPLICATION`, sem posse de tabela e **sem
+`CREATE` no schema** — logo, sem DDL. `SELECT` e `INSERT` em tudo; `UPDATE` e
+`DELETE` apenas num **censo de três tabelas**, levantado por varredura do código
+de produção e assinado em código:
+
+| Tabela | Permissão | Por quê |
+|---|---|---|
+| `Usuario` | `UPDATE ("ativo")` | ativar/desativar. Por COLUNA: `GRANT UPDATE` na tabela deixaria reescrever `identificador`, a identidade que aparece no `criadoPor` de todo fato do razão |
+| `FichaOrcamentaria` | `UPDATE` nas 4 colunas de saldo | o cache recalculado por SUM |
+| `VinculoUsuarioPerfil` | `DELETE` | revogar perfil |
+
+A mesma sequência do ENT00, agora pelo papel da aplicação:
+
+```
+SELECT  → ok (a restrição não cegou a aplicação)
+UPDATE  → ERROR: permission denied for table LancamentoContabil
+DELETE  → ERROR: permission denied for table LancamentoContabil
+CREATE TABLE → ERROR: permission denied for schema public
+```
+
+O `it.fails` de `test/invariantes-nucleo.test.ts` ficou **vermelho quando a
+proteção chegou** — que era exatamente o que ele prometia fazer — e virou
+asserção positiva, agora rodando pelo client do papel restrito. Rodá-la com o
+dono continuaria falhando (o dono pode mutar as próprias tabelas, e é assim que a
+fixture limpa o banco): seria a mesma lacuna, medida com o instrumento errado.
+
+### O trinco pessimista teve de mudar de primitiva — e o achado é de fundo
+
+`SELECT ... FOR UPDATE` **exige privilégio de UPDATE**, em todos os modos. Medido
+contra o papel restrito:
+
+```
+SELECT id FROM "Liquidacao" LIMIT 1 FOR UPDATE;    → ERROR: permission denied
+SELECT id FROM "Liquidacao" LIMIT 1 FOR SHARE;     → ERROR: permission denied
+SELECT id FROM "Liquidacao" LIMIT 1 FOR KEY SHARE; → ERROR: permission denied
+SELECT pg_advisory_xact_lock(42, 7);               → ok
+```
+
+E a aplicação **não pode** ter UPDATE em `Empenho`, `Liquidacao` ou `Contrato` —
+são append-only, e é o que este lote acabou de fechar. A saída não foi afrouxar o
+grant: foi usar a primitiva certa. `packages/locks` passou a
+`pg_advisory_xact_lock`, que diz exatamente o que se quer ali — **exclusão
+mútua** — e nada além; `FOR UPDATE` dizia "vou mudar esta linha", e ninguém vai.
+Mesma vida (morre no commit), mesma detecção de deadlock, mesma ordem de
+aquisição. E ela trava um id cuja linha ainda não existe, coisa que o `FOR
+UPDATE` não fazia — passava batido.
 
 ## Migrações e SQL aplicados
 
@@ -154,12 +202,14 @@ dois bancos.
 
 | Pendência | Natureza | Bloqueia | Próxima ação | Responsável |
 |---|---|---|---|---|
-| Ledger mutável pelo papel da aplicação | Segurança / invariante 2 | ENT01 | Criar papel de runtime sem propriedade das tabelas, sem DDL, sem `BYPASSRLS`; avaliar `FORCE ROW LEVEL SECURITY` | ENT01 |
+| ~~Ledger mutável pelo papel da aplicação~~ | Segurança / invariante 2 | — | ✅ **FECHADA em ENT01**: papel `gestao_app` sem superusuário, sem posse, sem DDL; `UPDATE`/`DELETE` só num censo de 3 tabelas. `FORCE ROW LEVEL SECURITY` **não** foi ligado: sem eixo de tenant, não há política de linha a escrever — ver "ENT01 — o que falta" | ENT01 |
 | `test/` fora dos três alvos de typecheck | Qualidade | nada hoje | `tsconfig.backend.json` não inclui `test/` e `tsconfig.json` o exclui: erro de tipo em teste só aparece em runtime | a definir |
 | 15 vulnerabilidades em dependências | Ambiente | nada hoje | **Não corrigidas de propósito**: `npm audit fix --force` troca versões e o lote exige preservar a instalação reproduzível. Tratar em commit separado com regressão completa | a definir |
-| `PROJETO.md` defasado | Documentação | leitura futura | Ver divergência abaixo | ENT01 |
+| `PROJETO.md` defasado | Documentação | leitura futura | Ver divergência abaixo — **ainda não corrigido**; ENT01 acrescentou o M19 ao mapa, e a correção das linhas M09–M14 continua pendente | ENT01 |
 | Nenhuma credencial ou convênio externo | Dependência de terceiro | validação externa de cada integração | Ver `docs/dependencias-externas.md` | a definir |
-| Referência de conformidade em código de tela | Interface | ENT01 | `app/(areas)/administracao/usuarios/AcoesUsuario.tsx` traz `(TR 4.55/4.56)` em comentário — permitido — mas `app/(areas)/integracoes/sagres/page.tsx` carrega `secao: "§4.4"` em **dado renderizado**. ENT01 proíbe rótulo de conformidade na interface: conferir o texto efetivamente renderizado | ENT01 |
+| ~~Referência de conformidade em código de tela~~ | Interface | — | ✅ **FECHADA em ENT01**: 85 ocorrências removidas de 21 arquivos; 15 frases reescritas em vocabulário de negócio. `test/ui/rotulos-de-conformidade.test.ts` impede a volta, e prova também que o vocabulário do negócio NÃO foi varrido junto. Uma exceção nomeada: as seções do **leiaute do TCE-PB** na tela do SAGRES (normativo externo, como "LRF art. 8º"), com a coluna rotulada para não ficar ambíguo | ENT01 |
+| Código interno de módulo em texto de ajuda | Interface | nada hoje | 15 ocorrências de "M03", "M07", "M10" em texto de tela. Não é identificador de catálogo, mas não diz nada a quem usa. Registrado em `test/ui/rotulos-de-conformidade.test.ts` | lote que revisar tela a tela |
+| Eixo **município** não existe no schema | Arquitetura | testes 4, 7 e 9 do incremento | `EnteConfig` é singleton por PK; o escopo de permissão é `ENTE \| UG`; nenhuma das 118 tabelas tem coluna de tenant. O próprio pacote registra que a escolha entre produto único e dois produtos "não dá para inferir do código". Ver `docs/caracterizacao-m01-m05.md` §6 | **decisão do usuário** |
 
 ### Divergência registrada, não corrigida
 
@@ -210,10 +260,76 @@ ENT00 não entrega funcionalidade de produto. As 2.037 cláusulas de
 base garante; não comprova atendimento de cláusula. Rodar 1288 testes que já
 existiam não valida uma linha do documento de origem.
 
+## ENT01 — o que foi feito, e é medido
+
+| Frente | Estado | Evidência |
+|---|---|---|
+| Caracterização de M01 e M05 (§2.2) | ✅ | `docs/caracterizacao-m01-m05.md`; baseline dos dois módulos: 11 arquivos, 97 testes, 42,85 s |
+| Papel de runtime (§3, 1º item) | ✅ | `prisma/papel-runtime.ts`, `npm run db:papel`, `test/papel-runtime.test.ts` (15 testes) |
+| Append-only garantido pelo BANCO | ✅ | UPDATE/DELETE/TRUNCATE no razão recusados pelo papel da aplicação |
+| A cadeia da despesa roda sob o papel restrito | ✅ | empenho → liquidação → pagamento com retenção, com os valores do cenário de aceite |
+| T02 — pessoas e credores | ✅ | M19 (schema, domínio, ports, serviço, adapter, consultas) + tela + detalhe + histórico |
+| T02 provado pela INTERFACE | ✅ | `npm run smoke:pessoas` — 9 passos em navegador real, 0 falhas |
+| Nenhum identificador de catálogo em tela (teste 24) | ✅ | 85 removidos; `test/ui/rotulos-de-conformidade.test.ts` |
+
+### O cenário de aceite, conferido perna a perna
+
+Dotação 10.000,00 · empenho 1.000,00 · liquidação 1.000,00 · retenção **informada**
+de 100,00 · saída de caixa 900,00. Valores de engenharia — não representam alíquota
+legal, pagamento real nem tabela tributária de município algum.
+
+Esperado, **registrado antes de rodar**, e conferido:
+
+| Conta | Tipo | Subsistema | Valor |
+|---|---|---|---|
+| 2.1.3.1.1.00.00 (obrigação) | DÉBITO | PATRIMONIAL | 1.000,00 |
+| 1.1.1.1.2.00.00 (caixa) | CRÉDITO | PATRIMONIAL | **900,00** |
+| 2.1.8.8.1.01.00 (consignação) | CRÉDITO | PATRIMONIAL | 100,00 |
+| 6.2.2.1.3.03.00 (crédito liquidado) | DÉBITO | ORÇAMENTÁRIO | 1.000,00 |
+| 6.2.2.1.3.04.00 (crédito pago) | CRÉDITO | ORÇAMENTÁRIO | 1.000,00 |
+
+Um lançamento com pernas de **valores diferentes**: o caixa leva o líquido, as
+demais levam o bruto. Cada subsistema fecha sozinho — conferido, e não por
+compensação entre eles.
+
+### Baselines de ENT01
+
+| Medida | ENT00 (fim) | ENT01 (agora) |
+|---|---|---|
+| Arquivos de teste | 130 | **135** |
+| Testes | 1.302 + 1 falha esperada | **1.371, zero falha esperada** |
+| Duração | 312,17 s | **358,18 s** (máquina livre) |
+| `tsc` backend / app / scripts | limpos | limpos |
+| Migrations | 63 | **65** |
+| Smoke visual | 8 ok / 2 avisos | **19/19 rotas** |
+
+⚠️ **Uma execução intermediária acusou 2 falhas, e elas foram investigadas, não
+descartadas.** Uma era real (`listarPessoas` fora do censo do M16 — o grep-teste
+bidirecional cobrando, que é o trabalho dele) e foi corrigida. A outra foi
+**timeout de 5 s** no M14, com o servidor Next e o Chromium do smoke disputando a
+máquina; reexecutada isoladamente e com a máquina livre, passou nas duas vezes.
+Fica registrado porque "reexecutei e passou" só vale acompanhado do motivo.
+
+## ENT01 — o que FALTA (o lote não está no gate)
+
+| Frente | Estado | O que falta |
+|---|---|---|
+| T01 entrada e contexto | parcial | O contexto real existe e é fail-closed. Falta a regra de troca de entidade preservando o exercício **com motivo declarado** quando não puder, e o teste das duas abas |
+| T03 dotações e fontes | existe | `/planejamento/qdd`. Falta declarar na tela quais saldos são **atuais** e quais são em data — a caracterização mostrou que só há o atual |
+| T04 empenhos | existe | Falta oferecer o cadastro de credor como sugestão (pendência `CREDOR-NO-EMPENHO`) |
+| **T05 detalhe do empenho** | **não existe** | Origem, liquidações, retenções, pagamentos, estornos, lançamentos e histórico no mesmo contexto |
+| T06 liquidação e retenções | parcial | O domínio faz retenção; a **tela** não a oferece |
+| T07 pagamento | parcial | Falta separar "preparar/autorizar", "registrar", "enviar ao banco" e "confirmação bancária" |
+| T08 razão e conferência | existe | Falta evidenciar **totalizadores por subsistema** e a relação de estorno |
+| T09 integrações | existe | Falta confrontar com registros reais de tentativa |
+| Os 25 testes do incremento | ~8 cobertos | Faltam, entre outros: pool que não carrega contexto, unidade de trabalho que reverte tudo junto, período fechado por rota alternativa, nenhum GET que emite |
+| Anulação/estorno pela tela | não existe | O domínio faz; a UI não (pendência `5.35-UI`, anterior a este lote) |
+
 ## Próximo lote
 
 | Campo | Valor |
 |---|---|
-| Prompt a executar | `prompts/01-CONTEXTO-E-PRIMEIRA-ENTREGA.md`, com `especificacoes/PRIMEIRA-ENTREGA.md` |
-| Pré-condições | Gate de ENT00 aprovado. Ambiente de pé: container na 5436, dois bancos migrados e com `prisma/sql/` aplicado |
-| Riscos conhecidos | (1) O papel da aplicação é superusuário e dono das tabelas — ENT01 exige o oposto, e a correção precisa vir **antes** dos testes de isolamento, senão eles passam por engano. (2) A cadeia da despesa (M05) e o ledger (M01) precisam de caracterização antes de ganhar tela: rodar a suíte desses módulos e registrar saldo por data, geração de lançamento por evento, regra de estorno por perna e período aberto. (3) O cenário de aceite de ENT01 tem pernas de valores diferentes — caixa leva o líquido, demais pernas o bruto; quem persiste não pode recarimbar valor único por cima |
+| Prompt em execução | `prompts/01-CONTEXTO-E-PRIMEIRA-ENTREGA.md`, com `especificacoes/PRIMEIRA-ENTREGA.md` — **em curso, não encerrado** |
+| Estado | 4 commits sobre `f2ae6fa`. A fundação de segurança e o cadastro que faltava estão de pé; as telas da cadeia da despesa e a maior parte dos 25 testes, não |
+| Decisão pendente do usuário | **O eixo município.** O ENT01 pede "município, entidade gestora e exercício como dimensões distintas", e o município não existe nesta base — `EnteConfig` é singleton. Acrescentá-lo é reescrita transversal em 118 tabelas, e o próprio pacote registra que a escolha "precisa ser tomada por quem conhece o objetivo comercial". Este lote entrega o eixo **UG × exercício**, que existe e é a segregação real do sistema; os cenários que dependem de "Município A não lê B" ficam **declarados como pendência**, não como atendidos |
+| Riscos conhecidos | (1) O trinco pessimista mudou de primitiva — a regressão está verde, mas concorrência é onde uma mudança dessas se paga tarde: os testes do M05 sob concorrência continuam sendo a rede. (2) T05 é a tela mais pesada do lote e ainda não começou. (3) A retenção existe no domínio e não na tela: enquanto for assim, o cenário de aceite só atravessa por teste, não pela interface |

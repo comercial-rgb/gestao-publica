@@ -78,6 +78,7 @@ Numeração **definitiva**, alinhada à ordem de dependência real.
 | M16 | segurança / auditoria | pendente |
 | M17 | integrações | pendente |
 | M18 | IA | pendente |
+| M19 | pessoas e credores (cadastro append-only, papéis, histórico) | concluído — ENT01 |
 
 > **Numeração revisada na Parte 3:** o scaffold original tinha receita/despesa
 > fora da ordem de dependência. Módulos com código (M01/M02/M04) mantêm número;
