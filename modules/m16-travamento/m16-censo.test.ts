@@ -298,7 +298,9 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     // + 14 (ENT02/M21 — o processo digital: abrir, tramitar, receber, complementar,
     //   solicitar e responder parecer, solicitar e atender readequação, encerrar,
     //   arquivar, reabrir, apensar, desapensar e tornar movimento sem efeito) = 119.
-    expect(nomes.length).toBe(119);
+    // + 4 (ENT02/M22 — anexarArquivo, assinarDocumento, criarFilaDeAssinatura e
+    //   assinarNaFila) = 123.
+    expect(nomes.length).toBe(123);
 
     // 97 serviços, 93 ações distintas. Os pares que compartilham ação (4: importarExtratoBb
     // REUSA IMPORTAR_EXTRATO). transferirEntreContas tem AÇÃO PRÓPRIA (não compartilha) → +1 ação.
@@ -319,7 +321,10 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     // razão é a mesma de T07: quem atende o balcão abre e tramita, quem responde pelo
     // mérito encerra. Uma ação única "GERIR_PROCESSO" daria os três a quem precisa de um,
     // e o encerramento é justamente o que a ouvidoria mede.
-    expect(TODAS_AS_ACOES.length).toBe(115);
+    // 123 serviços, 119 ações distintas. As 4 do M22 também são próprias: assinar não
+    // é anexar, e nenhuma das duas é tramitar. Juntar assinatura e trâmite faria do
+    // despacho um ato assinado por quem apenas o encaminhou.
+    expect(TODAS_AS_ACOES.length).toBe(119);
     expect(ACAO_DO_SERVICO.encerrarExercicio).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.encerrarExercicioComRestos).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.importarExtrato).toBe("IMPORTAR_EXTRATO");

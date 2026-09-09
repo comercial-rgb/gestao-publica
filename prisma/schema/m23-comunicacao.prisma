@@ -205,8 +205,8 @@ model MovimentoDoComunicado {
   /// invisível para quem já leu. Ver `ESCRITA_MUTAVEL_DO_RUNTIME`.
   hashConteudo String? @db.VarChar(64)
 
-  assinaturaId String? @unique
-  assinatura   AssinaturaDeDocumento? @relation(fields: [assinaturaId], references: [id])
+  /// Ver `MovimentoDoProcesso.assinatura`: a assinatura aponta para cá.
+  assinatura AssinaturaDeDocumento? @relation("AssinaturaDoMovimentoDeComunicado")
 
   criadoEm  DateTime @default(now())
   criadoPor String

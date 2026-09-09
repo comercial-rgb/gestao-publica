@@ -169,6 +169,16 @@ enum AcaoDoSistema {
   APENSAR_PROCESSO
   DESAPENSAR_PROCESSO
   TORNAR_MOVIMENTO_SEM_EFEITO
+
+  // ── M22 — anexos e assinatura (ENT02) ──
+  //
+  /// ⚠️ ASSINAR é ação PRÓPRIA. Quem instrui o processo não é necessariamente quem
+  /// responde por ele: juntar a assinatura ao trâmite faria do despacho um ato
+  /// assinado por quem apenas o encaminhou.
+  ANEXAR_ARQUIVO
+  ASSINAR_DOCUMENTO
+  CRIAR_FILA_DE_ASSINATURA
+  ASSINAR_NA_FILA
 }
 
 /// O USUÁRIO. TR 4.55.

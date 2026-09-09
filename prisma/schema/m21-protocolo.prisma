@@ -383,10 +383,17 @@ model MovimentoDoProcesso {
   tornaSemEfeito   MovimentoDoProcesso? @relation("SemEfeito", fields: [tornaSemEfeitoId], references: [id])
   anuladoPor       MovimentoDoProcesso? @relation("SemEfeito")
 
-  /// ⚠️ O MOVIMENTO PODE SER ASSINADO. `assinaturaId` nulo = não assinado; o
-  /// catálogo pede que o histórico mostre QUAIS movimentos foram assinados.
-  assinaturaId String?          @unique
-  assinatura   AssinaturaDeDocumento? @relation(fields: [assinaturaId], references: [id])
+  /// ⚠️ A ASSINATURA APONTA PARA CÁ, E NÃO O CONTRÁRIO — back-relation, sem coluna.
+  ///
+  /// A primeira versão deste arquivo tinha `assinaturaId` aqui, e ela estava errada por
+  /// um motivo concreto: assinar depois de criar o movimento exigiria UPDATE numa tabela
+  /// append-only, e o papel de runtime teria de ganhar esse privilégio. Pior, um UPDATE
+  /// pode TROCAR a assinatura de um movimento por outra — o `@unique` impede duas, não
+  /// impede a substituição.
+  ///
+  /// Com a FK do outro lado, assinar é um INSERT. O movimento nunca é reescrito, e o
+  /// runtime continua sem UPDATE aqui.
+  assinatura AssinaturaDeDocumento? @relation("AssinaturaDoMovimentoDeProcesso")
 
   anexos Anexo[]
 

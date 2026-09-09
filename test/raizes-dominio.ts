@@ -39,6 +39,29 @@ export const RAIZES_DE_DOMINIO = ["modules", "adapters"] as const;
 export const RAIZES_DE_CODIGO = [...RAIZES_DE_DOMINIO, "packages", "prisma/seed", "test"] as const;
 
 /**
+ * TODO O CÓDIGO DE PRODUÇÃO QUE PODE FALAR COM O BANCO — inclusive a borda.
+ *
+ * ⚠️ POR QUE ELA É MAIS LARGA QUE `RAIZES_DE_CODIGO`. Aquela lista serve aos guards que
+ * defendem invariantes do DOMÍNIO (o funil do razão, o censo das ações), e o domínio não
+ * mora em `app/` nem em `lib/`. Mas alguns invariantes são sobre a ESCRITA em si — "só o
+ * módulo X cria linhas na tabela Y" — e a escrita pode ser tentada de uma server action,
+ * de uma porta ou de um script de manutenção. Um guard desses que não varresse `app/`
+ * deixaria de fora justamente o lugar mais fácil de escrever um `create` apressado.
+ *
+ * A regra do arquivo continua a mesma, e é ela que importa: a lista mora AQUI, uma vez, e
+ * o próximo diretório entra numa linha só — não em cada scanner.
+ */
+export const RAIZES_DE_ESCRITA = [
+  ...RAIZES_DE_DOMINIO,
+  "packages",
+  "lib",
+  "app",
+  "prisma/seed",
+  "scripts",
+  "test",
+] as const;
+
+/**
  * Os caminhos absolutos que EXISTEM, a partir de uma lista de raízes relativas.
  *
  * Um diretório ausente não é falha (checkout parcial, build limpo) — mas também não pode ser

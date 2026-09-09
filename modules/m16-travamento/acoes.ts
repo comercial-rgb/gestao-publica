@@ -185,7 +185,16 @@ export type AcaoDoSistema =
   | "REABRIR_PROCESSO"
   | "APENSAR_PROCESSO"
   | "DESAPENSAR_PROCESSO"
-  | "TORNAR_MOVIMENTO_SEM_EFEITO";
+  | "TORNAR_MOVIMENTO_SEM_EFEITO"
+  // ── M22 — anexos e assinatura (ENT02) ──
+  //
+  // ⚠️ ASSINAR É AÇÃO PRÓPRIA, separada de tudo o mais. Quem instrui o processo não é
+  // necessariamente quem responde por ele: dar a assinatura junto com o trâmite faria
+  // do despacho um ato assinado por quem só o encaminhou.
+  | "ANEXAR_ARQUIVO"
+  | "ASSINAR_DOCUMENTO"
+  | "CRIAR_FILA_DE_ASSINATURA"
+  | "ASSINAR_NA_FILA";
 
 /**
  * O NOME DO SERVIÇO, exatamente como ele é exportado. É esta união que o grep-teste
@@ -312,7 +321,12 @@ export type NomeDeServico =
   | "reabrirProcesso"
   | "apensarProcesso"
   | "desapensarProcesso"
-  | "tornarMovimentoSemEfeito";
+  | "tornarMovimentoSemEfeito"
+  // ── M22 — anexos e assinatura (ENT02) ──
+  | "anexarArquivo"
+  | "assinarDocumento"
+  | "criarFilaDeAssinatura"
+  | "assinarNaFila";
 
 /**
  * ⚠️ O RECORD EXAUSTIVO — serviço → ação.
@@ -472,6 +486,12 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   apensarProcesso: "APENSAR_PROCESSO",
   desapensarProcesso: "DESAPENSAR_PROCESSO",
   tornarMovimentoSemEfeito: "TORNAR_MOVIMENTO_SEM_EFEITO",
+
+  // ── M22 — anexos e assinatura (ENT02) ──
+  anexarArquivo: "ANEXAR_ARQUIVO",
+  assinarDocumento: "ASSINAR_DOCUMENTO",
+  criarFilaDeAssinatura: "CRIAR_FILA_DE_ASSINATURA",
+  assinarNaFila: "ASSINAR_NA_FILA",
 };
 
 /** Todas as ações do rol — a lista que o seed de perfis e as mensagens de erro usam. */
@@ -779,6 +799,30 @@ export const FORA_DO_CENSO: Record<string, string> = {
   // ── M24 — notificações (ENT02). Notificar NÃO é ato do usuário: é o sistema contando
   // o que aconteceu. Exigir permissão para notificar permitiria agir sem avisar ninguém,
   // que é o oposto do que a notificação existe para garantir. Mesma razão do log da borda.
+  //
+  // ── M21 — as CONSULTAS do protocolo (ENT02). Leitura pura: nenhuma grava.
+  //
+  // ⚠️ `podeVerProcesso` NÃO é uma exceção à autorização — é a REGRA DE VISIBILIDADE,
+  // e ela é uma só para a caixa, para a busca e para o download de anexo. Escrevê-la em
+  // três lugares garantiria que um dia divergissem, e a divergência interessante é
+  // sempre a mesma: o processo some da listagem e o anexo continua baixável.
+  podeVerProcesso: "leitura (a regra de visibilidade do processo — compartilhada pela caixa, pela busca e pelo anexo)",
+  listarProcessos: "leitura (a caixa de processos, com o recorte de visibilidade no where)",
+  dossieDoProcesso: "leitura (o dossiê e a linha do tempo; devolve null a quem não pode ver)",
+  acompanhamentoExterno: "leitura (a consulta do requerente por número + código verificador, sem sessão)",
+  //
+  // ── M22 — a leitura do anexo. Ela NÃO é uma ação porque a permissão que a governa é a
+  // do REGISTRO DONO: quem pode ler o processo pode ler o anexo dele, e uma ação
+  // "BAIXAR_ANEXO" seria uma segunda regra de acesso — que divergiria da primeira.
+  baixarAnexo: "leitura (entrega o arquivo depois de perguntar ao registro dono se este usuário pode)",
+  podeVerComunicado: "leitura (a regra de visibilidade do comunicado — remetente, destinatários e global)",
+  //
+  // ⚠️ O ARMAZENAMENTO É I/O DE DISCO, não ato do usuário. `gravarArquivo` e `lerArquivo`
+  // são chamados DE DENTRO de `anexarArquivo` e `baixarAnexo`, que é onde a autorização
+  // mora. Dar-lhes ação própria criaria uma permissão "escrever no disco" que ninguém
+  // saberia conceder — e que não corresponde a nenhum botão.
+  gravarArquivo: "I/O de disco (chamado por anexarArquivo, que é quem autoriza)",
+  lerArquivo: "I/O de disco com conferência de integridade (chamado por baixarAnexo, que é quem autoriza)",
   registrarNotificacao: "porta do sistema (o aviso do fato — não é ato do usuário)",
   notificarVarios: "porta do sistema (o mesmo aviso a N destinatários, deduplicados)",
   ugDaReserva: "resolvedor de escopo (6.5)",

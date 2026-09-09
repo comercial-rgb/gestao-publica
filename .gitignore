@@ -36,3 +36,7 @@ secrets.json
 .DS_Store
 *.log
 .cache-*
+
+# ENT02 — armazenamento local dos anexos. NAO e servido estaticamente, e nao vai para o git:
+# sao documentos de processo, e o repositorio nao e lugar de guardar documento de ninguem.
+var/

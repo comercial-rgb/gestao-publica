@@ -113,11 +113,18 @@ model AssinaturaDeDocumento {
   /// A posição na fila que produziu esta assinatura, quando veio de uma.
   signatarioId String? @unique
 
+  /// ⚠️ O MOVIMENTO ASSINADO É APONTADO DAQUI, e não o contrário. Ver
+  /// `MovimentoDoProcesso.assinatura`: com a FK deste lado, assinar é um INSERT, e a
+  /// tabela de movimentos continua sem UPDATE — que é o que append-only significa.
+  movimentoProcessoId String?              @unique
+  movimentoProcesso   MovimentoDoProcesso? @relation("AssinaturaDoMovimentoDeProcesso", fields: [movimentoProcessoId], references: [id])
+
+  movimentoComunicadoId String?                @unique
+  movimentoComunicado   MovimentoDoComunicado? @relation("AssinaturaDoMovimentoDeComunicado", fields: [movimentoComunicadoId], references: [id])
+
   criadoEm DateTime @default(now())
 
-  movimentoDoProcesso   MovimentoDoProcesso?
-  movimentoDoComunicado MovimentoDoComunicado?
-  signatario          SignatarioDaFila? @relation(fields: [signatarioId], references: [id])
+  signatario SignatarioDaFila? @relation(fields: [signatarioId], references: [id])
 
   @@index([anexoId])
   @@index([assinadoPor])
