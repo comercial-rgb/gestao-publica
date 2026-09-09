@@ -166,7 +166,26 @@ export type AcaoDoSistema =
   | "REVOGAR_PERFIL"
   | "ATIVAR_USUARIO"
   | "INATIVAR_USUARIO"
-  | "RESETAR_SENHA";
+  | "RESETAR_SENHA"
+  // ── M21 — protocolo e processo digital (ENT02) ──
+  //
+  // ⚠️ UMA AÇÃO POR ATO, e não um "GERIR_PROCESSO" que agrupasse tudo. Abrir, tramitar
+  // e encerrar são decisões de peso diferente: o atendente do balcão abre e tramita; quem
+  // encerra responde pelo mérito. Um crachá só daria os três a quem precisa de um.
+  | "ABRIR_PROCESSO"
+  | "TRAMITAR_PROCESSO"
+  | "RECEBER_PROCESSO"
+  | "COMPLEMENTAR_PROCESSO"
+  | "SOLICITAR_PARECER"
+  | "RESPONDER_PARECER"
+  | "SOLICITAR_READEQUACAO"
+  | "ATENDER_READEQUACAO"
+  | "ENCERRAR_PROCESSO"
+  | "ARQUIVAR_PROCESSO"
+  | "REABRIR_PROCESSO"
+  | "APENSAR_PROCESSO"
+  | "DESAPENSAR_PROCESSO"
+  | "TORNAR_MOVIMENTO_SEM_EFEITO";
 
 /**
  * O NOME DO SERVIÇO, exatamente como ele é exportado. É esta união que o grep-teste
@@ -278,7 +297,22 @@ export type NomeDeServico =
   | "revogarPerfil"
   | "ativarUsuario"
   | "inativarUsuario"
-  | "resetarSenha";
+  | "resetarSenha"
+  // ── M21 — protocolo (ENT02) ──
+  | "abrirProcesso"
+  | "tramitar"
+  | "receberProcesso"
+  | "complementarProcesso"
+  | "solicitarParecer"
+  | "responderParecer"
+  | "solicitarReadequacao"
+  | "atenderReadequacao"
+  | "encerrarProcesso"
+  | "arquivarProcesso"
+  | "reabrirProcesso"
+  | "apensarProcesso"
+  | "desapensarProcesso"
+  | "tornarMovimentoSemEfeito";
 
 /**
  * ⚠️ O RECORD EXAUSTIVO — serviço → ação.
@@ -422,6 +456,22 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   ativarUsuario: "ATIVAR_USUARIO",
   inativarUsuario: "INATIVAR_USUARIO",
   resetarSenha: "RESETAR_SENHA",
+
+  // ── M21 — protocolo e processo digital (ENT02) ──
+  abrirProcesso: "ABRIR_PROCESSO",
+  tramitar: "TRAMITAR_PROCESSO",
+  receberProcesso: "RECEBER_PROCESSO",
+  complementarProcesso: "COMPLEMENTAR_PROCESSO",
+  solicitarParecer: "SOLICITAR_PARECER",
+  responderParecer: "RESPONDER_PARECER",
+  solicitarReadequacao: "SOLICITAR_READEQUACAO",
+  atenderReadequacao: "ATENDER_READEQUACAO",
+  encerrarProcesso: "ENCERRAR_PROCESSO",
+  arquivarProcesso: "ARQUIVAR_PROCESSO",
+  reabrirProcesso: "REABRIR_PROCESSO",
+  apensarProcesso: "APENSAR_PROCESSO",
+  desapensarProcesso: "DESAPENSAR_PROCESSO",
+  tornarMovimentoSemEfeito: "TORNAR_MOVIMENTO_SEM_EFEITO",
 };
 
 /** Todas as ações do rol — a lista que o seed de perfis e as mensagens de erro usam. */
@@ -724,6 +774,13 @@ export const FORA_DO_CENSO: Record<string, string> = {
   // ── Os RESOLVEDORES DE ESCOPO (TR 6.5). Eles não são atos: são a pergunta "de qual
   // unidade gestora é este fato?", e a resposta sai andando até a ficha. Ver `escopo.ts`.
   ugDaFicha: "resolvedor de escopo (6.5)",
+  ugDoSetor: "resolvedor de escopo (6.5) — a UG sai da unidade orçamentária do setor (ENT02)",
+  //
+  // ── M24 — notificações (ENT02). Notificar NÃO é ato do usuário: é o sistema contando
+  // o que aconteceu. Exigir permissão para notificar permitiria agir sem avisar ninguém,
+  // que é o oposto do que a notificação existe para garantir. Mesma razão do log da borda.
+  registrarNotificacao: "porta do sistema (o aviso do fato — não é ato do usuário)",
+  notificarVarios: "porta do sistema (o mesmo aviso a N destinatários, deduplicados)",
   ugDaReserva: "resolvedor de escopo (6.5)",
   ugDoEmpenho: "resolvedor de escopo (6.5)",
   ugDaLiquidacao: "resolvedor de escopo (6.5)",

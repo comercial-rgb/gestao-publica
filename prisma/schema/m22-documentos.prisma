@@ -1,0 +1,164 @@
+// ============================================================================
+// M22 — ANEXOS E ASSINATURA.
+//
+// ═══ ⚠️ O ANEXO É AUTORIZADO PELO REGISTRO, NÃO PELO MÓDULO ═══
+// "Quem pode ver este arquivo?" não tem resposta no arquivo: tem resposta no
+// REGISTRO a que ele pertence. Um anexo de processo sigiloso só é legível por quem
+// pode ler AQUELE processo — e a mesma pessoa, no processo ao lado, não pode.
+//
+// Por isso o anexo NÃO tem coluna de permissão própria: ela seria uma segunda
+// verdade sobre o acesso, e o dia em que divergisse do sigilo do processo, o
+// arquivo vazaria enquanto a tela do processo continuaria dizendo "sigiloso".
+//
+// ═══ ⚠️ POR QUE FKs NULÁVEIS, E NÃO (tipo, id) POLIMÓRFICO ═══
+// A tentação é `registroTipo String` + `registroId String`, que aceita qualquer
+// consumidor futuro. O preço é que o banco deixa de garantir que o registro existe:
+// um id digitado errado vira um anexo órfão que nenhuma tela mostra e nenhuma
+// limpeza encontra.
+//
+// Aqui os donos possíveis são poucos e conhecidos, e cada um é uma FK de verdade.
+// O invariante "exatamente UM dono" não é expressável no Prisma e é cobrado em dois
+// lugares: no caso de uso (que só aceita um) e num teste que varre a tabela.
+//
+// ═══ ⚠️ O ARQUIVO NÃO MORA NO BANCO, E A URL NÃO É ADIVINHÁVEL ═══
+// O conteúdo vai para o armazenamento local, com nome derivado do id (cuid). Não há
+// rota estática servindo essa pasta: o download passa por um handler que resolve o
+// registro dono e autoriza. Uma pasta pública com nome sequencial é o vazamento
+// clássico — quem descobre um id descobre todos.
+// ============================================================================
+
+/// A ORIGEM do arquivo. O catálogo distingue upload, digitalização e captura por
+/// câmera; a distinção importa porque um documento digitalizado tem valor probatório
+/// diferente de um gerado pelo sistema.
+enum OrigemDoAnexo {
+  UPLOAD
+  DIGITALIZACAO
+  CAMERA
+  /// Gerado pelo próprio sistema (um comprovante, um relatório executado).
+  SISTEMA
+}
+
+model Anexo {
+  id String @id @default(cuid())
+
+  /// Nome como o usuário o vê. NÃO é o nome no disco — ver o cabeçalho.
+  nomeOriginal String
+  /// MIME validado NO SERVIDOR contra o rol permitido. O `accept` do input é
+  /// conveniência de tela; ele não protege ninguém.
+  mimeType     String  @db.VarChar(120)
+  tamanhoBytes Int
+  /// SHA-256 do conteúdo, em hexadecimal. É o que torna a integridade VERIFICÁVEL:
+  /// sem ele, "o arquivo é o mesmo" é uma afirmação sem prova.
+  sha256       String  @db.VarChar(64)
+  origem       OrigemDoAnexo @default(UPLOAD)
+
+  // ── O DONO. EXATAMENTE UM destes é não-nulo. ──
+  processoId String?
+  processo   Processo? @relation(fields: [processoId], references: [id])
+
+  movimentoProcessoId String?
+  movimentoProcesso   MovimentoDoProcesso? @relation(fields: [movimentoProcessoId], references: [id])
+
+  comunicadoId String?
+  comunicado   Comunicado? @relation(fields: [comunicadoId], references: [id])
+
+  pessoaId String?
+  pessoa   Pessoa? @relation("AnexoDePessoa", fields: [pessoaId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  assinaturas AssinaturaDeDocumento[]
+  filas       FilaDeAssinatura[]     @relation("AnexoEmFila")
+
+  @@index([processoId])
+  @@index([movimentoProcessoId])
+  @@index([comunicadoId])
+  @@index([pessoaId])
+  @@index([sha256])
+}
+
+/// OS MODOS DA LEI 14.063/2020, e eles NÃO são intercambiáveis.
+///
+/// ⚠️ `QUALIFICADA` EXIGE CERTIFICADO ICP-BRASIL, e não há provedor configurado neste
+/// repositório. O modo existe no enum porque ele é o destino declarado; o caso de uso
+/// RECUSA produzi-lo, com motivo, do mesmo jeito que o envio ao banco do T07 recusa.
+/// Um modo que devolvesse "assinado" sem certificado seria uma assinatura fabricada —
+/// e ela pareceria válida na tela exatamente como a verdadeira.
+enum ModoDeAssinatura {
+  SIMPLES
+  AVANCADA
+  QUALIFICADA
+}
+
+/// UMA ASSINATURA — o vínculo entre uma IDENTIDADE, um CONTEÚDO e um INSTANTE.
+///
+/// ⚠️ O `hashConteudo` É O QUE TORNA A ASSINATURA VERIFICÁVEL EM SEPARADO. Assinar
+/// "o documento 42" não prova nada: o documento 42 pode ter mudado. Assinar o HASH do
+/// conteúdo prova que aquele byte-a-byte foi o que a pessoa viu.
+model AssinaturaDeDocumento {
+  id String @id @default(cuid())
+
+  modo ModoDeAssinatura
+
+  /// O `identificador` do usuário. Texto, não FK — mesma razão do `criadoPor`.
+  assinadoPor String
+  /// SHA-256 hexadecimal do conteúdo assinado.
+  hashConteudo String @db.VarChar(64)
+
+  /// O anexo assinado, quando a assinatura recai sobre um arquivo.
+  anexoId String?
+  anexo   Anexo?  @relation(fields: [anexoId], references: [id])
+
+  /// A posição na fila que produziu esta assinatura, quando veio de uma.
+  signatarioId String? @unique
+
+  criadoEm DateTime @default(now())
+
+  movimentoDoProcesso   MovimentoDoProcesso?
+  movimentoDoComunicado MovimentoDoComunicado?
+  signatario          SignatarioDaFila? @relation(fields: [signatarioId], references: [id])
+
+  @@index([anexoId])
+  @@index([assinadoPor])
+  @@index([hashConteudo])
+}
+
+/// A FILA DE ASSINATURAS — o documento assinado segue para o PRÓXIMO signatário.
+///
+/// ⚠️ A ORDEM É DADO, NÃO CONVENÇÃO. `SignatarioDaFila.ordem` decide quem assina
+/// quando; o caso de uso recusa a assinatura de quem não é o próximo. Sem isso, a
+/// "fila" seria uma lista, e o terceiro signatário poderia assinar antes do primeiro.
+model FilaDeAssinatura {
+  id String @id @default(cuid())
+
+  /// O que se assina. Descrição operacional, para a tela e para a notificação.
+  descricao String
+
+  modo ModoDeAssinatura
+
+  anexoId String?
+  anexo   Anexo?  @relation("AnexoEmFila", fields: [anexoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  signatarios SignatarioDaFila[]
+}
+
+model SignatarioDaFila {
+  id String @id @default(cuid())
+
+  filaId String
+  fila   FilaDeAssinatura @relation(fields: [filaId], references: [id])
+
+  ordem          Int
+  /// `identificador` do usuário que deve assinar.
+  usuarioIdent   String
+
+  assinatura AssinaturaDeDocumento?
+
+  @@unique([filaId, ordem])
+  @@unique([filaId, usuarioIdent])
+  @@index([usuarioIdent])
+}

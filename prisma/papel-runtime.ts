@@ -63,6 +63,40 @@ export const ESCRITA_MUTAVEL_DO_RUNTIME: Readonly<
     delete: false,
   },
   VinculoUsuarioPerfil: { update: [], delete: true },
+
+  // ── ENT02 ─────────────────────────────────────────────────────────────────
+  //
+  // ⚠️ CINCO CADASTROS COM `ativo`, E NENHUM FATO. O protocolo e a comunicação
+  // interna são append-only nos MOVIMENTOS — processo, trâmite, comunicado e
+  // leitura só inserem. O que muda é CADASTRO: desativar um setor extinto, um
+  // assunto que a entidade não usa mais, um tipo de comunicado. Mesma escolha do
+  // `Usuario.ativo` do M16, e pelo mesmo motivo: apagar o cadastro levaria junto
+  // o histórico de tudo o que tramitou por ele.
+  Setor: { update: ["ativo"], delete: false },
+  Assunto: { update: ["ativo"], delete: false },
+  Subassunto: { update: ["ativo"], delete: false },
+  TipoDeComunicado: { update: ["ativo"], delete: false },
+
+  // ⚠️ O RASCUNHO É O ÚNICO DOCUMENTO EDITÁVEL DO REPOSITÓRIO, e o grant é por
+  // coluna justamente por isso. Um rascunho é um comunicado que ainda não foi
+  // enviado (não há movimento `ENVIO`), e editá-lo antes de enviar é o que se
+  // espera de um rascunho.
+  //
+  // O grant NÃO consegue dizer "só antes do envio" — quem diz isso é o caso de
+  // uso. Então o envio grava, no movimento `ENVIO`, o SHA-256 de assunto+corpo:
+  // se alguém alterar o texto depois, o hash deixa de bater e o histórico
+  // denuncia. Sem esse carimbo, a edição de um documento já lido seria invisível.
+  Comunicado: { update: ["assunto", "corpo"], delete: false },
+
+  // Tirar um marcador não é reescrever história: a tag não afirma nada sobre o
+  // documento, ela só ajuda quem procura.
+  TagAplicadaAoComunicado: { update: [], delete: true },
+
+  // ⚠️ MARCAR COMO LIDA É A ÚNICA MUTAÇÃO, e ela é do DESTINATÁRIO sobre a PRÓPRIA
+  // notificação. `entregueEm` fica FORA do grant de propósito: quem carimba entrega
+  // é o adaptador do canal, e hoje não existe nenhum — um runtime capaz de escrever
+  // `entregueEm` poderia declarar entregue um e-mail que ninguém enviou.
+  Notificacao: { update: ["lidaEm"], delete: false },
 };
 
 /** Tabelas que o runtime NÃO lê nem escreve — controle do próprio Prisma. */

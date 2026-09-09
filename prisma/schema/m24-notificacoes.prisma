@@ -1,0 +1,62 @@
+// ============================================================================
+// M24 — NOTIFICAÇÕES: um serviço, três canais.
+//
+// ═══ ⚠️ SÓ UM DOS TRÊS CANAIS EXISTE, E O REGISTRO DIZ ISSO ═══
+// Dentro do sistema: real. A notificação é gravada e o destinatário a vê.
+// E-mail e push: NÃO HÁ PROVEDOR, e enviar mensagem externa está fora da
+// autorização de trabalho deste repositório. Então a notificação é REGISTRADA com
+// `entregueEm` nulo e `motivoIndisponivel` preenchido.
+//
+// A alternativa — não gravar nada — seria pior de um jeito específico: o dia em
+// que o provedor existir, ninguém saberá quais avisos deixaram de sair. Aqui a
+// fila do que não foi entregue É a lista de trabalho da integração futura.
+//
+// ⚠️ E O REGISTRO **NÃO** DIZ "ENVIADO". `entregueEm` nulo com motivo declarado é o
+// mesmo desenho do envio ao banco do T07: um `entregueEm` carimbado sem entrega
+// seria um comprovante fabricado.
+// ============================================================================
+
+enum CanalDeNotificacao {
+  SISTEMA
+  EMAIL
+  PUSH
+}
+
+/// ⚠️ O DESTINATÁRIO É O `identificador` DO USUÁRIO, texto e não FK — a mesma
+/// escolha do `criadoPor` de todo fato do repositório. Um requerente externo que
+/// acompanha o processo pelo código verificador não é usuário do sistema, e uma FK
+/// impediria de notificá-lo.
+model Notificacao {
+  id String @id @default(cuid())
+
+  destinatario String
+
+  canal CanalDeNotificacao @default(SISTEMA)
+
+  /// O EVENTO que a originou — "TRAMITE_RECEBIDO", "PARECER_SOLICITADO",
+  /// "DOCUMENTO_AGUARDANDO_ASSINATURA", "PRAZO_PROXIMO_DO_FIM". Texto de propósito:
+  /// um enum obrigaria migration a cada evento novo, e o log que RECUSA o que ainda
+  /// não classificou perde justamente o evento novo (ver `RegistroDeOperacao`, M16).
+  evento String
+
+  titulo String
+  corpo  String
+
+  /// Rota interna para onde a notificação leva. NUNCA URL absoluta: uma URL vinda
+  /// do banco e renderizada como link é um redirecionamento aberto esperando
+  /// acontecer.
+  rota String?
+
+  /// Carimbado SÓ quando a entrega aconteceu de verdade. Ver o cabeçalho.
+  entregueEm DateTime?
+  /// Por que não foi entregue. Preenchido nos canais sem provedor.
+  motivoIndisponivel String?
+
+  lidaEm DateTime?
+
+  criadoEm DateTime @default(now())
+
+  @@index([destinatario, lidaEm])
+  @@index([destinatario, criadoEm])
+  @@index([canal, entregueEm])
+}

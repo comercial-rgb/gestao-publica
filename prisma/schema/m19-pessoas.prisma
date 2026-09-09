@@ -82,6 +82,13 @@ model Pessoa {
   versoes    VersaoDePessoa[]
   movimentos MovimentoDePapelDaPessoa[]
 
+  /// ENT02 — back-relations VIRTUAIS (nenhuma coluna nova). A pessoa é o cadastro
+  /// único: ela é requerente de processo, requerente adicional e dona de anexo, sem
+  /// que nada disso a duplique.
+  processosComoRequerente Processo[]                      @relation("RequerentePrincipal")
+  requerenteAdicionalEm   RequerenteAdicionalDoProcesso[] @relation("RequerenteAdicional")
+  anexos                  Anexo[]                         @relation("AnexoDePessoa")
+
   criadoEm  DateTime @default(now())
   criadoPor String
 

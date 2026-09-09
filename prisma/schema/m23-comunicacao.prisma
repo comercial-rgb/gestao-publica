@@ -1,0 +1,217 @@
+// ============================================================================
+// M23 — COMUNICAÇÃO INTERNA: memorando, ofício, circular.
+//
+// ═══ ⚠️ AS CAIXAS NÃO SÃO TABELAS ═══
+// Entrada, saída, rascunhos, favoritos e arquivados são CONSULTAS sobre os mesmos
+// dados, não cinco tabelas nem uma coluna `caixa`. Uma coluna `caixa` mutável seria
+// errada por construção: o MESMO comunicado está na saída de quem enviou e na
+// entrada de quem recebeu, ao mesmo tempo. A caixa é sempre relativa a QUEM OLHA.
+//
+// ═══ ⚠️ CIRCULAR NÃO ACEITA RESPOSTA, E ISSO É REGRA DO CASO DE USO ═══
+// Não é um botão escondido. `responder` recusa um comunicado cujo tipo tem
+// `aceitaResposta = false`, e recusa no servidor.
+//
+// ═══ ⚠️ RESPOSTA É RESTRITA A QUEM JÁ ESTÁ ENVOLVIDO; ENCAMINHAMENTO É ABERTO ═══
+// Responder alcança apenas os setores já presentes no comunicado — se responder
+// pudesse alcançar qualquer setor, "responder" seria "encaminhar" com outro nome, e
+// o destinatário novo receberia o histórico inteiro sem que ninguém tivesse decidido
+// incluí-lo. Encaminhar é justamente o ato de decidir isso, e ele é registrado.
+// ============================================================================
+
+/// TIPO DE COMUNICADO — criável pela entidade. Memorando, ofício e circular são
+/// SEEDS, não valores de enum: o catálogo pede "entre outros tipos adicionais,
+/// conforme a necessidade da contratante", e um enum obrigaria migration a cada tipo.
+model TipoDeComunicado {
+  id String @id @default(cuid())
+
+  codigo String @unique @db.VarChar(10)
+  nome   String
+
+  /// Circular = false. Ver o cabeçalho.
+  aceitaResposta Boolean @default(true)
+
+  /// Assinatura eletrônica exigida por tipo (Lei 14.063/2020). Nulo = não exige.
+  /// Quando exigida, o caso de uso recusa o envio sem assinatura.
+  modoDeAssinaturaExigido ModoDeAssinatura?
+
+  ativo Boolean @default(true)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  setoresAutorizados TipoDeComunicadoPorSetor[]
+  comunicados        Comunicado[]
+}
+
+/// PRIVILÉGIO POR SETOR (o catálogo pede tipos específicos por setor).
+///
+/// ⚠️ AUSÊNCIA DE LINHAS = LIBERADO A TODOS. É a escolha oposta ao fail-closed do
+/// resto do repositório, e ela é deliberada: aqui não se protege dinheiro nem dado
+/// sigiloso — o pior caso é um setor emitir um memorando que não devia. Fail-closed
+/// obrigaria cadastrar N×M linhas antes do primeiro comunicado, e o efeito prático
+/// seria alguém liberar tudo para destravar. A restrição existe quando alguém a
+/// declara, e ela é visível na tela do tipo.
+model TipoDeComunicadoPorSetor {
+  id String @id @default(cuid())
+
+  tipoId String
+  tipo   TipoDeComunicado @relation(fields: [tipoId], references: [id])
+
+  setorId String
+  setor   Setor  @relation(fields: [setorId], references: [id])
+
+  @@unique([tipoId, setorId])
+  @@index([setorId])
+}
+
+/// TAG — marcador livre do comunicado.
+model TagDeComunicado {
+  id String @id @default(cuid())
+
+  nome String @unique
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  comunicados TagAplicadaAoComunicado[]
+}
+
+model TagAplicadaAoComunicado {
+  id String @id @default(cuid())
+
+  comunicadoId String
+  comunicado   Comunicado @relation(fields: [comunicadoId], references: [id])
+
+  tagId String
+  tag   TagDeComunicado @relation(fields: [tagId], references: [id])
+
+  @@unique([comunicadoId, tagId])
+  @@index([tagId])
+}
+
+/// O COMUNICADO — cabeçalho imutável. Como o processo, o estado vem dos movimentos.
+///
+/// ⚠️ NUMERAÇÃO POR ANO, TIPO E SETOR — três eixos, e a unicidade os carrega todos.
+/// O memorando 1/2026 da Saúde e o memorando 1/2026 da Educação são documentos
+/// diferentes e legítimos; uma sequência única no ente obrigaria os dois setores a
+/// disputarem a mesma fila.
+model Comunicado {
+  id String @id @default(cuid())
+
+  exercicioId String
+  exercicio   Exercicio @relation(fields: [exercicioId], references: [id])
+
+  numero Int
+
+  tipoId String
+  tipo   TipoDeComunicado @relation(fields: [tipoId], references: [id])
+
+  setorRemetenteId String
+  setorRemetente   Setor  @relation("SetorRemetente", fields: [setorRemetenteId], references: [id])
+
+  assunto String
+  corpo   String
+
+  /// ⚠️ RASCUNHO É A AUSÊNCIA DO MOVIMENTO `ENVIO` — e não uma coluna `enviadoEm`.
+  /// A primeira versão deste arquivo tinha a coluna, e ela era a SEGUNDA VERDADE
+  /// sobre o mesmo fato: o movimento `ENVIO` já carrega quem enviou, quando e com
+  /// qual assinatura. Duas fontes para "isto foi enviado?" divergem no dia em que
+  /// alguém gravar uma e esquecer a outra — e a tela mostraria "rascunho" sobre um
+  /// documento que os destinatários já leram. A assinatura exigida pelo tipo mora,
+  /// pela mesma razão, no movimento de ENVIO.
+
+  /// O comunicado que este responde (nulo quando é o primeiro da conversa).
+  respondeAId String?
+  respondeA   Comunicado?  @relation("RespostaDeComunicado", fields: [respondeAId], references: [id])
+  respostas   Comunicado[] @relation("RespostaDeComunicado")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  destinatarios DestinatarioDoComunicado[]
+  movimentos    MovimentoDoComunicado[]
+  tags          TagAplicadaAoComunicado[]
+  anexos        Anexo[]
+
+  @@unique([exercicioId, tipoId, setorRemetenteId, numero])
+  @@index([tipoId])
+  @@index([setorRemetenteId])
+  @@index([respondeAId])
+  @@index([exercicioId, criadoEm])
+}
+
+/// DESTINATÁRIO — setor, e opcionalmente "aos cuidados de" um usuário.
+///
+/// ⚠️ O A/C NÃO RESTRINGE O ACESSO. Ele DESTACA para uma pessoa dentro do setor que
+/// já recebeu. Tratá-lo como restrição faria o comunicado sumir para o resto do
+/// setor — e um memorando endereçado ao setor é do setor, mesmo quando alguém é
+/// nomeado nele.
+model DestinatarioDoComunicado {
+  id String @id @default(cuid())
+
+  comunicadoId String
+  comunicado   Comunicado @relation(fields: [comunicadoId], references: [id])
+
+  setorId String
+  setor   Setor  @relation(fields: [setorId], references: [id])
+
+  /// `identificador` do usuário em A/C. Nulo = sem A/C.
+  aosCuidadosDe String?
+
+  /// Entrou por ENCAMINHAMENTO (e não na emissão)? É o que distingue quem estava na
+  /// conversa desde o começo de quem foi trazido depois.
+  porEncaminhamento Boolean @default(false)
+
+  @@unique([comunicadoId, setorId])
+  @@index([setorId])
+  @@index([aosCuidadosDe])
+}
+
+enum TipoMovimentoDoComunicado {
+  ENVIO
+  /// LEITURA registrada: quem, quando e por qual origem.
+  LEITURA
+  ENCAMINHAMENTO
+  ARQUIVAMENTO
+  DESARQUIVAMENTO
+  FAVORITADO
+  DESFAVORITADO
+}
+
+/// O MOVIMENTO — e é ele que responde "quem leu, quando e de onde".
+///
+/// ⚠️ FAVORITO E ARQUIVAMENTO SÃO POR USUÁRIO, não do comunicado. O mesmo comunicado
+/// pode estar arquivado para mim e ativo para você; uma coluna `arquivado` no
+/// comunicado esconderia o documento de todo mundo porque uma pessoa o arquivou.
+model MovimentoDoComunicado {
+  id String @id @default(cuid())
+
+  comunicadoId String
+  comunicado   Comunicado @relation(fields: [comunicadoId], references: [id])
+
+  tipo TipoMovimentoDoComunicado
+
+  /// O setor a que o movimento se refere (destino do encaminhamento, setor de quem leu).
+  setorId String?
+  setor   Setor?  @relation(fields: [setorId], references: [id])
+
+  /// ORIGEM da leitura — "SISTEMA", "APLICATIVO". Texto: o catálogo pede a origem, e
+  /// um enum obrigaria migration a cada canal novo.
+  origem String?
+
+  /// ⚠️ SÓ NO `ENVIO`: SHA-256 de `assunto` + `corpo` no instante em que o
+  /// comunicado saiu. É o carimbo que o grant por coluna não consegue dar — o
+  /// rascunho é editável, e sem este hash uma edição feita DEPOIS do envio seria
+  /// invisível para quem já leu. Ver `ESCRITA_MUTAVEL_DO_RUNTIME`.
+  hashConteudo String? @db.VarChar(64)
+
+  assinaturaId String? @unique
+  assinatura   AssinaturaDeDocumento? @relation(fields: [assinaturaId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([comunicadoId])
+  @@index([comunicadoId, criadoEm])
+  @@index([criadoPor])
+}

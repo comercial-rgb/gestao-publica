@@ -132,6 +132,21 @@ export const ORDEM_DOS_LOCKS = {
   ClasseDeMaterial: 11,
   /** M10 — as provisões. Ninguém as trava antes de nada. */
   ProvisaoMatematica: 12,
+  /**
+   * M21 — A SEQUÊNCIA DO PROTOCOLO (ENT02). Último posto: a abertura de processo não
+   * trava mais nada depois dele, e nada trava um processo antes de decidir sobre a
+   * ficha, o contrato ou a liquidação — protocolo e execução da despesa não se cruzam.
+   *
+   * ⚠️ A CORRIDA AQUI NÃO É DE SALDO, É DE NÚMERO — e ela é a mesma. Duas aberturas
+   * concorrentes no mesmo exercício leem `MAX(numero)` no MESMO estado, as duas
+   * calculam o mesmo próximo, e as duas gravam. O `@@unique([exercicioId, numero])`
+   * transformaria isso numa violação de constraint — o segundo usuário veria um erro
+   * de banco depois de preencher o formulário inteiro, em vez de receber o número 2.
+   *
+   * O trinco é sobre o EXERCÍCIO (a fila é por exercício), não sobre o processo: o
+   * processo ainda não existe quando se decide o número dele.
+   */
+  SequenciaDeProtocolo: 13,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

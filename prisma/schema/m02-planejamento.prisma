@@ -85,6 +85,10 @@ model UnidadeOrcamentaria {
   fichas FichaOrcamentaria[]
   /// back-relation M16 (permissões por unidade gestora — 6.5) — campo VIRTUAL.
   permissoesManad PermissaoDePerfil[]
+  /// back-relation M21 — os SETORES (centros de custo) desta unidade. É a amarra que
+  /// faz a permissão por UG do M16 valer também para a tramitação de processo, sem
+  /// um segundo eixo de acesso.
+  setores         Setor[]
 
   @@index([orgaoId])
 }

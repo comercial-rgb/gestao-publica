@@ -1,0 +1,479 @@
+// ============================================================================
+// M21 — PROTOCOLO E PROCESSO DIGITAL.
+//
+// ═══ ⚠️ NÃO HÁ COLUNA `situacao`, E ISSO É A DECISÃO CENTRAL DESTE ARQUIVO ═══
+// A situação de um processo (aberto, em trâmite, aguardando parecer, paralisado,
+// encerrado, arquivado) é DERIVADA dos movimentos, como o `statusDoEmpenho` sai
+// dos SUMs e o `estadoDaOrdem` sai dos movimentos da ordem de pagamento.
+//
+// Uma coluna `situacao` mutável exigiria UPDATE, e o papel de runtime (ENT00/ENT01)
+// concede UPDATE por COLUNA, sob censo assinado. Mais grave: ela seria a SEGUNDA
+// verdade sobre o processo, e o dia em que divergisse do histórico a tela diria
+// "encerrado" sobre um processo cujo último movimento é um trâmite.
+//
+// ═══ ⚠️ O ROTEIRO É COPIADO PARA O PROCESSO NA ABERTURA ═══
+// `EtapaDoRoteiro` pertence ao ASSUNTO e muda quando a entidade a reconfigura.
+// `EtapaDoProcesso` é a CÓPIA feita no instante da abertura. Sem a cópia, mudar o
+// prazo de uma etapa hoje reescreveria o prazo de todo processo aberto no ano
+// passado — e um processo que estava no prazo passaria a estar atrasado
+// retroativamente, sem que nada tivesse acontecido com ele.
+//
+// É a mesma doutrina de `Empenho.credorCpfCnpj` (M19): o FATO guarda o valor que
+// valia quando ele aconteceu; o CADASTRO descreve como as coisas são agora.
+//
+// ═══ ⚠️ "EXCLUIR TRÂMITE" É UM MOVIMENTO, NÃO UM DELETE ═══
+// O catálogo pede exclusão do último trâmite/complemento. Aqui isso é um movimento
+// `TORNADO_SEM_EFEITO` que APONTA para o movimento anulado — a mesma doutrina do
+// estorno do razão. O histórico continua mostrando que o trâmite existiu e que
+// alguém o desfez, com nome e hora. Um DELETE apagaria as duas coisas, e a segunda
+// é justamente a que o controle interno procura.
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// CADASTROS
+// ----------------------------------------------------------------------------
+
+/// O SETOR — o centro de custo administrativo por onde o processo tramita.
+///
+/// ⚠️ ELE PENDURA NUMA UNIDADE ORÇAMENTÁRIA, E ISSO NÃO É DECORAÇÃO. A autorização
+/// do M16 é escopada por `unidadeOrcId`; amarrando o setor à UG, "quem pode tramitar
+/// para o setor X" passa a ser respondido pelo MESMO mecanismo que já decide quem
+/// pode empenhar na UG X. Um eixo de permissão próprio para setor seria uma segunda
+/// regra de acesso, e duas regras de acesso divergem.
+model Setor {
+  id String @id @default(cuid())
+
+  /// Código administrativo, único no ente. É o que aparece na tela e no protocolo.
+  codigo String @unique @db.VarChar(10)
+  nome   String
+
+  unidadeOrcId String
+  unidadeOrc   UnidadeOrcamentaria @relation(fields: [unidadeOrcId], references: [id])
+
+  /// Cadastro, não fato: desativar é UPDATE de uma coluna, declarada no censo do
+  /// papel de runtime. Mesma escolha do `Usuario.ativo` do M16.
+  ativo Boolean @default(true)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  etapasDeRoteiro EtapaDoRoteiro[]
+  etapasDeProcesso EtapaDoProcesso[]
+  processosAbertos Processo[]         @relation("SetorDeAbertura")
+  movimentosOrigem MovimentoDoProcesso[] @relation("SetorOrigem")
+  movimentosDestino MovimentoDoProcesso[] @relation("SetorDestino")
+  lotados           UsuarioDoSetor[]
+  tiposDeComunicado TipoDeComunicadoPorSetor[]
+  comunicadosEmitidos Comunicado[]     @relation("SetorRemetente")
+  destinosDeComunicado DestinatarioDoComunicado[]
+  movimentosDeComunicado MovimentoDoComunicado[]
+
+  @@index([unidadeOrcId])
+}
+
+/// A LOTAÇÃO — em quais setores o usuário trabalha.
+///
+/// ═══ ⚠️ ISTO NÃO É UMA SEGUNDA REGRA DE AUTORIZAÇÃO ═══
+/// Quem responde "ele PODE tramitar?" continua sendo o M16, por ação e por unidade
+/// gestora. O que esta tabela responde é outra pergunta, que o M16 declara fora do
+/// seu escopo desde o ENT01 ("leituras ficam de fora... a leitura segregada é camada
+/// de APLICAÇÃO"): **quais caixas este usuário enxerga**, e de qual mesa ele pode
+/// despachar.
+///
+/// As duas se somam, e nenhuma substitui a outra: sem a permissão do M16 o ato é
+/// negado; sem a lotação, o processo nem aparece — porque ele não está na mesa dele.
+///
+/// ⚠️ QUEM TEM PERMISSÃO GLOBAL É GESTOR, e enxerga todos os setores. É a leitura do
+/// catálogo (5.42.54/55) reusando o mecanismo que já existe, em vez de inventar um
+/// crachá de "gestor de processos" que ninguém saberia conceder.
+model UsuarioDoSetor {
+  id String @id @default(cuid())
+
+  /// O `identificador` do usuário — texto, como o `criadoPor` de todo fato.
+  usuarioIdent String
+
+  setorId String
+  setor   Setor  @relation(fields: [setorId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([usuarioIdent, setorId])
+  @@index([setorId])
+  @@index([usuarioIdent])
+}
+
+/// O ASSUNTO do processo. É ele que carrega o roteiro, o prazo e as regras.
+model Assunto {
+  id String @id @default(cuid())
+
+  codigo String @unique @db.VarChar(10)
+  nome   String
+
+  /// Texto de orientação ao cidadão, exibido na abertura. Sem limite de tamanho.
+  textoOrientacao String?
+
+  /// Termo de aceite que o requerente tem de aceitar para abrir pelo autoatendimento.
+  /// Nulo = não exige.
+  termoDeAceite String?
+
+  /// O assunto permite requerente ANÔNIMO? Fail-closed: o default é não.
+  permiteAnonimo Boolean @default(false)
+
+  /// Processos deste assunto nascem sigilosos. O sigilo do processo pode ser
+  /// declarado na abertura mesmo quando o assunto não o exige; o inverso não —
+  /// ver `abrirProcesso`.
+  sigiloPadrao Boolean @default(false)
+
+  /// ⚠️ O BLOQUEIO DE TRAMITAÇÃO POR TAXA EM ABERTO É CONFIGURAÇÃO DO ASSUNTO, e
+  /// ele é verificado no CASO DE USO, nunca só no botão.
+  bloqueiaTramiteComTaxaAberta Boolean @default(false)
+
+  ativo Boolean @default(true)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  subassuntos Subassunto[]
+  roteiro     EtapaDoRoteiro[]
+  processos   Processo[]
+}
+
+model Subassunto {
+  id String @id @default(cuid())
+
+  assuntoId String
+  assunto   Assunto @relation(fields: [assuntoId], references: [id])
+
+  codigo String  @db.VarChar(10)
+  nome   String
+  ativo  Boolean @default(true)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  processos Processo[]
+
+  @@unique([assuntoId, codigo])
+  @@index([assuntoId])
+}
+
+/// UMA ETAPA DO ROTEIRO CONFIGURÁVEL DO ASSUNTO — setor, ordem e prazo.
+///
+/// ⚠️ NÃO É FLUXOGRAMA. O catálogo pede também uma ferramenta gráfica de fluxo; ela
+/// está declarada como pendência do lote (ver MODULO.md). O que existe aqui é o
+/// roteiro linear com prazo por etapa, que é o que o controle de prazo consome.
+model EtapaDoRoteiro {
+  id String @id @default(cuid())
+
+  assuntoId String
+  assunto   Assunto @relation(fields: [assuntoId], references: [id])
+
+  /// 1, 2, 3… A ordem em que o processo deve percorrer os setores.
+  ordem Int
+
+  setorId String
+  setor   Setor  @relation(fields: [setorId], references: [id])
+
+  /// Prazo da ETAPA, em dias corridos, contados do recebimento no setor.
+  prazoDias Int
+
+  descricao String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([assuntoId, ordem])
+  @@index([assuntoId])
+  @@index([setorId])
+}
+
+// ----------------------------------------------------------------------------
+// O PROCESSO
+// ----------------------------------------------------------------------------
+
+enum FinalidadeDoProcesso {
+  ATENDIMENTO_AO_PUBLICO
+  INTERNO
+}
+
+enum PrioridadeDoProcesso {
+  NORMAL
+  ALTA
+  URGENTE
+}
+
+/// O PROCESSO — o cabeçalho IMUTÁVEL. Tudo o que acontece com ele é movimento.
+///
+/// ⚠️ A NUMERAÇÃO REINICIA A CADA EXERCÍCIO, e a unicidade é `[exercicioId, numero]`.
+/// Duas aberturas concorrentes no mesmo exercício disputam o mesmo trinco
+/// (`packages/locks`, posto `SequenciaDeProtocolo`) ANTES de somar o último número —
+/// sem isso as duas leem `MAX(numero)` no mesmo estado e as duas gravam o mesmo
+/// número. É a mesma corrida da ficha (6fa5d4e) e do contrato (e0e7e9f).
+model Processo {
+  id String @id @default(cuid())
+
+  exercicioId String
+  exercicio   Exercicio @relation(fields: [exercicioId], references: [id])
+
+  /// Sequencial dentro do exercício. Ver o cabeçalho.
+  numero Int
+
+  /// ⚠️ O CÓDIGO VERIFICADOR É O QUE PERMITE A CONSULTA EXTERNA sem sessão. Ele é
+  /// aleatório, não derivado do número: derivá-lo tornaria toda a base consultável
+  /// por quem descobrisse a fórmula.
+  codigoVerificador String @unique @db.VarChar(12)
+
+  assuntoId String
+  assunto   Assunto @relation(fields: [assuntoId], references: [id])
+
+  subassuntoId String?
+  subassunto   Subassunto? @relation(fields: [subassuntoId], references: [id])
+
+  /// O requerente do cadastro único. NULO quando o processo é anônimo — e nesse
+  /// caso o contato abaixo é o único canal.
+  requerenteId String?
+  requerente   Pessoa? @relation("RequerentePrincipal", fields: [requerenteId], references: [id])
+
+  /// Contato do requerente anônimo (telefone e/ou e-mail). Só faz sentido com
+  /// `requerenteId` nulo; o caso de uso cobra a exclusividade.
+  contatoAnonimo String?
+
+  finalidade FinalidadeDoProcesso
+  prioridade PrioridadeDoProcesso @default(NORMAL)
+
+  /// ⚠️ SIGILOSO É IMUTÁVEL POR CONSTRUÇÃO. Rebaixar o sigilo de um processo já
+  /// tramitado não devolve o sigilo do que já foi visto; e elevá-lo depois não
+  /// desfaz as leituras anteriores. Quem precisa de outro regime abre outro
+  /// processo — e o histórico mostra os dois.
+  sigiloso Boolean @default(false)
+
+  /// O texto da abertura. Sem limite de caracteres (o catálogo cobra isso).
+  textoAbertura String
+
+  /// O processo tem documentação FÍSICA além da digital?
+  documentacaoFisica Boolean @default(false)
+
+  setorAberturaId String
+  setorAbertura   Setor  @relation("SetorDeAbertura", fields: [setorAberturaId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  etapas               EtapaDoProcesso[]
+  movimentos           MovimentoDoProcesso[]
+  requerentesAdicionais RequerenteAdicionalDoProcesso[]
+  taxas                TaxaDoProcesso[]
+  anexos               Anexo[]
+  apensamentosComoPrincipal MovimentoDeApensamento[] @relation("ProcessoPrincipal")
+  apensamentosComoApenso    MovimentoDeApensamento[] @relation("ProcessoApenso")
+
+  @@unique([exercicioId, numero])
+  @@index([assuntoId])
+  @@index([requerenteId])
+  @@index([setorAberturaId])
+  @@index([exercicioId, criadoEm])
+}
+
+/// A CÓPIA do roteiro no instante da abertura. Ver o cabeçalho do arquivo.
+model EtapaDoProcesso {
+  id String @id @default(cuid())
+
+  processoId String
+  processo   Processo @relation(fields: [processoId], references: [id])
+
+  ordem     Int
+  setorId   String
+  setor     Setor  @relation(fields: [setorId], references: [id])
+  prazoDias Int
+  descricao String
+
+  @@unique([processoId, ordem])
+  @@index([processoId])
+  @@index([setorId])
+}
+
+/// Requerentes ADICIONAIS. Só inclusão — o catálogo pede incluir, não remover, e
+/// uma remoção silenciosa apagaria de quem o processo também era.
+model RequerenteAdicionalDoProcesso {
+  id String @id @default(cuid())
+
+  processoId String
+  processo   Processo @relation(fields: [processoId], references: [id])
+
+  pessoaId String
+  pessoa   Pessoa @relation("RequerenteAdicional", fields: [pessoaId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([processoId, pessoaId])
+  @@index([processoId])
+  @@index([pessoaId])
+}
+
+// ----------------------------------------------------------------------------
+// OS MOVIMENTOS — a linha do tempo, e a única fonte da situação
+// ----------------------------------------------------------------------------
+
+/// ⚠️ NÃO HÁ MOVIMENTO "ABERTURA": abrir É criar o processo, do mesmo jeito que não
+/// há movimento "nascer" (ver `TipoMovimentoDaOrdem`, M05). A linha do tempo exibe a
+/// abertura a partir do próprio cabeçalho.
+enum TipoMovimentoDoProcesso {
+  /// Enviado a outro setor (ou a um usuário). Ainda NÃO recebido.
+  TRAMITE
+  /// O destino ACEITOU o processo. É este movimento que inicia a contagem do prazo
+  /// da etapa — não o trâmite: um processo enviado na sexta e recebido na segunda
+  /// não consumiu o fim de semana do prazo de quem o recebeu.
+  RECEBIMENTO
+  /// Texto ou documento acrescentado sem mudar de setor.
+  COMPLEMENTO
+  /// Pedido de parecer a um setor/usuário.
+  PARECER_SOLICITADO
+  /// A resposta ao pedido. Aponta para o `PARECER_SOLICITADO` em `respondeAId`.
+  PARECER_RESPONDIDO
+  /// Pedido de readequação AO REQUERENTE. É o que habilita a ação externa.
+  READEQUACAO_SOLICITADA
+  /// O requerente atendeu. Aponta para a solicitação em `respondeAId`.
+  READEQUACAO_ATENDIDA
+  /// Prazo estourado: o processo para de contar até ser reaberto.
+  PARALISACAO
+  ENCERRAMENTO
+  ARQUIVAMENTO
+  REABERTURA
+  CANCELAMENTO
+  /// Alteração de dados cadastrais do processo (requerente, assunto, endereço).
+  /// O QUE mudou vai no texto — o cabeçalho é imutável, então a alteração vale
+  /// como declaração, não como reescrita.
+  ALTERACAO
+  /// Torna sem efeito um movimento anterior (`tornaSemEfeitoId`). Substitui o
+  /// DELETE que o catálogo pede — ver o cabeçalho do arquivo.
+  TORNADO_SEM_EFEITO
+}
+
+model MovimentoDoProcesso {
+  id String @id @default(cuid())
+
+  processoId String
+  processo   Processo @relation(fields: [processoId], references: [id])
+
+  tipo TipoMovimentoDoProcesso
+
+  setorOrigemId String?
+  setorOrigem   Setor?  @relation("SetorOrigem", fields: [setorOrigemId], references: [id])
+
+  setorDestinoId String?
+  setorDestino   Setor?  @relation("SetorDestino", fields: [setorDestinoId], references: [id])
+
+  /// Destino NOMINAL (o catálogo pede movimentação por setor OU por usuário). É o
+  /// `identificador` do `Usuario`, não FK: o mesmo motivo do `criadoPor` de todo
+  /// fato do repositório.
+  usuarioDestino String?
+
+  /// O texto do movimento — parecer, despacho, complemento. Sem limite.
+  texto String
+
+  /// Aponta para o movimento que este responde (parecer, readequação).
+  respondeAId String?
+  respondeA   MovimentoDoProcesso? @relation("Resposta", fields: [respondeAId], references: [id])
+  respostas   MovimentoDoProcesso[] @relation("Resposta")
+
+  /// Aponta para o movimento que este torna sem efeito.
+  tornaSemEfeitoId String?              @unique
+  tornaSemEfeito   MovimentoDoProcesso? @relation("SemEfeito", fields: [tornaSemEfeitoId], references: [id])
+  anuladoPor       MovimentoDoProcesso? @relation("SemEfeito")
+
+  /// ⚠️ O MOVIMENTO PODE SER ASSINADO. `assinaturaId` nulo = não assinado; o
+  /// catálogo pede que o histórico mostre QUAIS movimentos foram assinados.
+  assinaturaId String?          @unique
+  assinatura   AssinaturaDeDocumento? @relation(fields: [assinaturaId], references: [id])
+
+  anexos Anexo[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([processoId])
+  @@index([processoId, criadoEm])
+  @@index([setorDestinoId])
+  @@index([respondeAId])
+}
+
+/// APENSAMENTO — append-only, com o estado derivado do último movimento do par.
+///
+/// ⚠️ O EFEITO É REAL: enquanto apensado, o processo APENSO acompanha a movimentação
+/// do PRINCIPAL. Um apensamento que só desenha um vínculo na tela não é apensamento,
+/// é um rótulo.
+enum TipoMovimentoDeApensamento {
+  APENSADO
+  DESAPENSADO
+}
+
+model MovimentoDeApensamento {
+  id String @id @default(cuid())
+
+  processoPrincipalId String
+  processoPrincipal   Processo @relation("ProcessoPrincipal", fields: [processoPrincipalId], references: [id])
+
+  processoApensoId String
+  processoApenso   Processo @relation("ProcessoApenso", fields: [processoApensoId], references: [id])
+
+  tipo   TipoMovimentoDeApensamento
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([processoPrincipalId])
+  @@index([processoApensoId])
+  @@index([processoApensoId, criadoEm])
+}
+
+// ----------------------------------------------------------------------------
+// TAXAS — e o bloqueio de tramitação que o caso de uso verifica
+// ----------------------------------------------------------------------------
+
+/// ⚠️ ESTA NÃO É A GUIA BANCÁRIA. A emissão em padrão FEBRABAN/PIX pertence ao bloco
+/// de arrecadação (5.29), que não existe neste repositório — está declarado como
+/// pendência. O que existe aqui é o REGISTRO da taxa e a sua SITUAÇÃO, que é o que o
+/// bloqueio de tramitação consome. Nenhuma tela deste lote imprime guia.
+model TaxaDoProcesso {
+  id String @id @default(cuid())
+
+  processoId String
+  processo   Processo @relation(fields: [processoId], references: [id])
+
+  descricao  String
+  valor      Decimal  @db.Decimal(18, 2)
+  vencimento DateTime
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  movimentos MovimentoDaTaxa[]
+
+  @@index([processoId])
+}
+
+/// EMITIDA é a ausência de movimento (a taxa nasce em aberto). Só a baixa e o
+/// cancelamento são fatos.
+enum TipoMovimentoDaTaxa {
+  PAGAMENTO
+  CANCELAMENTO
+}
+
+model MovimentoDaTaxa {
+  id String @id @default(cuid())
+
+  taxaId String
+  taxa   TaxaDoProcesso @relation(fields: [taxaId], references: [id])
+
+  tipo   TipoMovimentoDaTaxa
+  motivo String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([taxaId])
+  @@index([taxaId, criadoEm])
+}

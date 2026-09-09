@@ -61,9 +61,33 @@ export type EscopoDoFato =
   | { readonly interno: { readonly tipo: string; readonly id: string } }
   | { readonly vinculo: string }
   /** O lançamento manual estornado: as partidas dele podem tocar N fichas — logo, N UGs. */
-  | { readonly lancamento: string };
+  | { readonly lancamento: string }
+  /**
+   * ENT02 — O SETOR (centro de custo). A UG sai da unidade orçamentária a que o setor
+   * pertence, e é isso que faz a permissão por UG (6.5) valer para a tramitação de
+   * processo sem inventar um segundo eixo de acesso.
+   *
+   * ⚠️ O ALVO É O SETOR ONDE O FATO ACONTECE, como em todo o resto deste arquivo: para
+   * tramitar, o setor de ORIGEM (onde o processo está); para abrir, o de abertura.
+   * Quem escolhe qual é o serviço — não este resolvedor.
+   */
+  | { readonly setor: string };
 
 const UG_DA_FICHA = { select: { unidadeOrcId: true } } as const;
+
+/**
+ * A UG DE UM SETOR (ENT02). Fail-closed por ausência: um setor que não existe devolve
+ * `undefined`, e `undefined` NÃO significa "vale em qualquer lugar" — significa que
+ * nenhuma permissão de UG específica cobre o ato, e só a GLOBAL passa. É a mesma
+ * semântica dos outros resolvedores deste arquivo.
+ */
+export async function ugDoSetor(tx: Tx, setorId: string): Promise<string | undefined> {
+  const s = await tx.setor.findUnique({
+    where: { id: setorId },
+    select: { unidadeOrcId: true },
+  });
+  return s?.unidadeOrcId ?? undefined;
+}
 
 export async function ugDaFicha(tx: Tx, fichaId: string): Promise<string | undefined> {
   const f = await tx.fichaOrcamentaria.findUnique({
@@ -219,6 +243,7 @@ async function resolverUgs(tx: Tx, escopo: EscopoDoFato): Promise<readonly strin
 
   if ("ugs" in escopo) return [...new Set(escopo.ugs)];
   if ("ug" in escopo) return umaOuNenhuma(escopo.ug);
+  if ("setor" in escopo) return umaOuNenhuma(await ugDoSetor(tx, escopo.setor));
   if ("fichas" in escopo) {
     const ugs = await Promise.all(
       [...new Set(escopo.fichas)].map((f) => ugDaFicha(tx, f))

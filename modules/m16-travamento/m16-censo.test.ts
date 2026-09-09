@@ -295,7 +295,10 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   CADASTRAR_PESSOA, ALTERAR_PESSOA e MOVER_PAPEL_DE_PESSOA) = 102.
     // + 3 (ENT01/T07 — prepararOrdemDePagamento, autorizarOrdemDePagamento e
     //   cancelarOrdemDePagamento, ações próprias) = 105.
-    expect(nomes.length).toBe(105);
+    // + 14 (ENT02/M21 — o processo digital: abrir, tramitar, receber, complementar,
+    //   solicitar e responder parecer, solicitar e atender readequação, encerrar,
+    //   arquivar, reabrir, apensar, desapensar e tornar movimento sem efeito) = 119.
+    expect(nomes.length).toBe(119);
 
     // 97 serviços, 93 ações distintas. Os pares que compartilham ação (4: importarExtratoBb
     // REUSA IMPORTAR_EXTRATO). transferirEntreContas tem AÇÃO PRÓPRIA (não compartilha) → +1 ação.
@@ -312,7 +315,11 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     // separação consiste: preparar a ordem e AUTORIZÁ-LA têm de poder ser dadas a pessoas
     // diferentes. Uma ação única "GERIR_ORDEM_PAGAMENTO" juntaria de volta exatamente o
     // que a etapa existe para separar — quem pede o pagamento e quem consente com ele.
-    expect(TODAS_AS_ACOES.length).toBe(101);
+    // 119 serviços, 115 ações distintas. As 14 do M21 são PRÓPRIAS, uma por ato — e a
+    // razão é a mesma de T07: quem atende o balcão abre e tramita, quem responde pelo
+    // mérito encerra. Uma ação única "GERIR_PROCESSO" daria os três a quem precisa de um,
+    // e o encerramento é justamente o que a ouvidoria mede.
+    expect(TODAS_AS_ACOES.length).toBe(115);
     expect(ACAO_DO_SERVICO.encerrarExercicio).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.encerrarExercicioComRestos).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.importarExtrato).toBe("IMPORTAR_EXTRATO");

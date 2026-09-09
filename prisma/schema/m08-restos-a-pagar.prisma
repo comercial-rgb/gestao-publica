@@ -24,6 +24,11 @@ model Exercicio {
 
   encerramento EncerramentoExercicio?
 
+  /// ENT02 — a numeração de protocolo e a de comunicado REINICIAM por exercício.
+  /// Back-relations virtuais: nenhuma coluna nova aqui.
+  processos   Processo[]
+  comunicados Comunicado[]
+
   criadoEm  DateTime @default(now())
   criadoPor String
 }

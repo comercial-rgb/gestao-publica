@@ -149,6 +149,26 @@ enum AcaoDoSistema {
   ATIVAR_USUARIO
   INATIVAR_USUARIO
   RESETAR_SENHA
+
+  // ── M21 — protocolo e processo digital (ENT02) ──
+  //
+  /// ⚠️ UMA AÇÃO POR ATO. Abrir, tramitar e encerrar são decisões de peso diferente:
+  /// o atendente do balcão abre e tramita; quem encerra responde pelo mérito. Um
+  /// "GERIR_PROCESSO" único daria os três a quem precisa de um.
+  ABRIR_PROCESSO
+  TRAMITAR_PROCESSO
+  RECEBER_PROCESSO
+  COMPLEMENTAR_PROCESSO
+  SOLICITAR_PARECER
+  RESPONDER_PARECER
+  SOLICITAR_READEQUACAO
+  ATENDER_READEQUACAO
+  ENCERRAR_PROCESSO
+  ARQUIVAR_PROCESSO
+  REABRIR_PROCESSO
+  APENSAR_PROCESSO
+  DESAPENSAR_PROCESSO
+  TORNAR_MOVIMENTO_SEM_EFEITO
 }
 
 /// O USUÁRIO. TR 4.55.

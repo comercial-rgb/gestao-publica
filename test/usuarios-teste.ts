@@ -95,6 +95,9 @@ const IDENTIDADES_DAS_FIXTURES: readonly string[] = [
   "m13@cg.pb.gov.br",
   // ── ENT01: a cadeia da despesa exercitada pelo PAPEL DE RUNTIME ──
   "ent01@cg.pb.gov.br",
+  // ── ENT02: o processo digital (M21) e a comunicação interna (M23) ──
+  "protocolo@cg.pb.gov.br",
+  "juridico@cg.pb.gov.br",
   // ── os automáticos dos helpers e seeds ──
   "LOA",
   "TESTE",
