@@ -143,6 +143,10 @@ const TABELAS = [
   "Funcao",
   "UnidadeOrcamentaria",
   "Orgao",
+  // M19 — pessoas e credores (cadastro append-only: pessoa, versões e papéis)
+  "MovimentoDePapelDaPessoa",
+  "VersaoDePessoa",
+  "Pessoa",
   // base — integração
   "IntegracaoInbox",
   "EventoFiscalOutbox",
