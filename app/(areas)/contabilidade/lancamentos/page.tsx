@@ -6,9 +6,11 @@ import { TabelaDeDados, type ColunaTabela } from "../../../../components/ui/Tabe
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import {
   gerarDiario,
+  totaisPorSubsistema,
   PortaSemBancoError,
   type LancamentoDoDiario,
 } from "../../../../lib/portas/livros";
+import { SelecaoESoma, type LancamentoSelecionavel } from "./SelecaoESoma";
 import { somarValoresDigitados } from "../../../../lib/format/moeda";
 import { dataBr, descreverRecorte, recorteDe } from "../../../../lib/recorte";
 import { lerPeriodo } from "../../relatorios/livros/periodo";
@@ -61,6 +63,10 @@ export default async function LancamentosPage({
   const conta = umTexto(sp["conta"]);
   const subsistema = umSubsistema(sp["subsistema"]);
   const origem = umTexto(sp["origem"]);
+  // T08 — os filtros que faltavam: o IDENTIFICADOR DO FATO e a FONTE. A entidade
+  // (unidade gestora) vem do seletor do cabeçalho, que já é o contexto da sessão.
+  const origemId = umTexto(sp["fato"]);
+  const fonte = umTexto(sp["fonte"]);
 
   let lancamentos: readonly LancamentoDoDiario[];
   try {
@@ -73,6 +79,11 @@ export default async function LancamentosPage({
         ...(conta !== "" ? { conta } : {}),
         ...(subsistema !== undefined ? { subsistema } : {}),
         ...(origem !== "" ? { origemTipo: origem } : {}),
+        ...(origemId !== "" ? { origemId } : {}),
+        ...(fonte !== "" ? { fonteCodigo: fonte } : {}),
+        ...(recorte.unidadeCodigo !== undefined
+          ? { unidadeCodigo: recorte.unidadeCodigo }
+          : {}),
       },
     });
   } catch (erro) {
@@ -102,6 +113,20 @@ export default async function LancamentosPage({
   const origensDisponiveis = [...new Set(lancamentos.map((l) => l.origemTipo))].sort();
   const desbalanceados = linhas.filter((l) => !l.balanceado).length;
 
+  // ⚠️ OS TOTAIS VÊM DO MÓDULO. Somar aqui pareceria inofensivo — é um `reduce` — e seria
+  // a segunda aritmética do razão: no dia em que o corte por natureza mudar lá, a tela
+  // continuaria somando do jeito antigo, e discordaria do relatório com a mesma certeza.
+  const totais = totaisPorSubsistema(lancamentos);
+  const selecionaveis: readonly LancamentoSelecionavel[] = lancamentos.map((l) => ({
+    id: l.id,
+    rotulo: `${l.numeroControle} · ${dataBr(l.data)} · ${l.origemTipo}${l.estornoDeId !== null ? " (estorno)" : ""} — ${l.historico.slice(0, 70)}`,
+    partidas: l.partidas.map((p) => ({
+      tipo: p.tipo,
+      subsistema: p.subsistema,
+      valor: p.valor,
+    })),
+  }));
+
   const cabecalho = (
     <PageHeader
       titulo="Lançamentos contábeis"
@@ -113,6 +138,8 @@ export default async function LancamentosPage({
           conta={conta}
           subsistema={subsistema ?? ""}
           origem={origem}
+          fato={origemId}
+          fonte={fonte}
           origensDisponiveis={origensDisponiveis}
         />
       }
@@ -142,6 +169,51 @@ export default async function LancamentosPage({
           razão em <a href="/relatorios/consistencia" className="text-[color:var(--color-primary)] hover:underline">Relatórios · Consistência</a>.
         </div>
       ) : null}
+
+      {/*
+        T08 — TOTALIZADORES POR SUBSISTEMA.
+        ⚠️ A DIFERENÇA POR SUBSISTEMA, e não só o total geral: um conjunto pode fechar no
+        total com o orçamentário faltando 100 e o patrimonial sobrando 100. O total geral
+        diria "fecha", e os DOIS subsistemas estariam errados.
+      */}
+      {totais.length === 0 ? null : (
+        <div className="rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-4 shadow-[var(--shadow-card)]">
+          <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">
+            Totais do recorte, por subsistema
+          </h2>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[30rem] text-xs">
+              <thead>
+                <tr className="border-b border-[color:var(--color-border)] text-[color:var(--color-ink-3)]">
+                  <th scope="col" className="py-1 pr-3 text-left font-medium">Subsistema</th>
+                  <th scope="col" className="py-1 pr-3 text-right font-medium">Débito</th>
+                  <th scope="col" className="py-1 pr-3 text-right font-medium">Crédito</th>
+                  <th scope="col" className="py-1 text-right font-medium">Diferença</th>
+                </tr>
+              </thead>
+              <tbody>
+                {totais.map((t) => (
+                  <tr key={t.subsistema} className="border-b border-[color:var(--color-border)] last:border-0">
+                    <td className="py-1 pr-3 text-[color:var(--color-ink-2)]">{t.subsistema}</td>
+                    <td className="py-1 pr-3 text-right"><ValorMonetario valor={t.debito} /></td>
+                    <td className="py-1 pr-3 text-right"><ValorMonetario valor={t.credito} /></td>
+                    <td className="py-1 text-right font-semibold">
+                      <ValorMonetario valor={t.diferenca} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2 text-xs text-[color:var(--color-ink-2)]">
+            Diferença zero em cada linha é o esperado. O recorte pode conter apenas um lado
+            de um lançamento quando o filtro é por conta — nesse caso a diferença reflete o
+            recorte, não um erro do razão.
+          </p>
+        </div>
+      )}
+
+      {linhas.length === 0 ? null : <SelecaoESoma lancamentos={selecionaveis} />}
 
       {linhas.length === 0 ? (
         <EstadoVazio
@@ -349,4 +421,28 @@ const colunasDe = (exercicio: number): readonly ColunaTabela<LinhaDeLancamento>[
     ),
   },
   { chave: "origem", cabecalho: "Origem (drill)", alinhamento: "esquerda", largura: "12rem", celula: (l) => <Drill l={l} exercicio={exercicio} /> },
+  {
+    chave: "estorno",
+    cabecalho: "Estorno de",
+    alinhamento: "esquerda",
+    largura: "8rem",
+    /*
+      ⚠️ A RELAÇÃO DE ESTORNO NA TELA, e não deduzida pelo valor espelhado.
+      A correção neste sistema é um lançamento NOVO apontando para o original — nunca um
+      UPDATE. Sem esta coluna, quem lê vê dois lançamentos que se anulam e tem de adivinhar
+      qual é a correção de qual; com um estorno parcial, adivinhar deixa de funcionar.
+    */
+    celula: (l) =>
+      l.estornoDeId === null ? (
+        <span className="text-[color:var(--color-ink-3)]">—</span>
+      ) : (
+        <a
+          href={`?fato=${encodeURIComponent(l.origemId ?? "")}`}
+          title={`Estorna o lançamento ${l.estornoDeId}`}
+          className="text-xs text-[color:var(--color-primary)] hover:underline"
+        >
+          ver o par
+        </a>
+      ),
+  },
 ];

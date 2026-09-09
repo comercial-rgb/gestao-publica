@@ -49,6 +49,10 @@ const ROTAS = [
   "/planejamento/cmd-mba",
   "/despesa/ordem-cronologica",
   "/despesa/ordem-cronologica?fonte=500",
+  // ── ENT01 ──
+  "/despesa/empenhos?exercicio=2026",
+  "/despesa/ordens?exercicio=2026",
+  "/cadastros/pessoas",
   "/contabilidade",
   "/contabilidade/plano-de-contas",
   "/contabilidade/plano-de-contas?classe=2",

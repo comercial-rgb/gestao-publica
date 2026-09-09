@@ -37,6 +37,8 @@ export async function pagarAction(
   const fonteId = String(formData.get("fonteId") ?? "").trim();
   const historico = String(formData.get("historico") ?? "").trim();
   const dataBruta = String(formData.get("data") ?? "").trim();
+  // T07 — vazio = pagamento sem ordem (o caminho de sempre).
+  const ordemDePagamentoId = String(formData.get("ordemDePagamentoId") ?? "").trim();
 
   const retencoes = lerRetencoes(formData);
   if (typeof retencoes === "string") return { erro: retencoes };
@@ -88,6 +90,7 @@ export async function pagarAction(
       // Lista vazia vira AUSENTE na porta — o caminho sem retenção continua sendo o de
       // sempre, partida por partida.
       ...(retencoes.length > 0 ? { retencoes } : {}),
+      ...(ordemDePagamentoId !== "" ? { ordemDePagamentoId } : {}),
     });
     revalidatePath("/despesa/pagamentos");
     revalidatePath("/despesa/liquidacoes");

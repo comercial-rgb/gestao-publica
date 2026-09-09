@@ -25,6 +25,10 @@ export interface FiltroDeLancamentosProps {
   readonly conta: string;
   readonly subsistema: string;
   readonly origem: string;
+  /** T08 — o IDENTIFICADOR DO FATO (`origemId`): tudo que ESTE documento produziu no razão. */
+  readonly fato: string;
+  /** T08 — o código da FONTE de recursos, pela ficha da partida. */
+  readonly fonte: string;
   /** Os `origemTipo` que EXISTEM no período consultado — a lista sai do dado, não de um enum. */
   readonly origensDisponiveis: readonly string[];
 }
@@ -35,6 +39,8 @@ export function FiltroDeLancamentos({
   conta,
   subsistema,
   origem,
+  fato,
+  fonte,
   origensDisponiveis,
 }: FiltroDeLancamentosProps): React.ReactElement {
   const router = useRouter();
@@ -45,6 +51,8 @@ export function FiltroDeLancamentos({
   const [c, setC] = useState(conta);
   const [s, setS] = useState(subsistema);
   const [o, setO] = useState(origem);
+  const [f, setF] = useState(fato);
+  const [fr, setFr] = useState(fonte);
 
   const aplicar = (): void => {
     const p = new URLSearchParams(params.toString());
@@ -54,6 +62,8 @@ export function FiltroDeLancamentos({
       ["conta", c],
       ["subsistema", s],
       ["origem", o],
+      ["fato", f],
+      ["fonte", fr],
     ] as const) {
       if (valor.trim() !== "") p.set(chave, valor.trim());
       else p.delete(chave);
@@ -70,6 +80,33 @@ export function FiltroDeLancamentos({
       <label className="flex flex-col gap-0.5 text-xs text-[color:var(--color-ink-2)]">
         <span className="uppercase tracking-wide">Até</span>
         <input type="date" aria-label="Data final" className={CLASSE} value={a} onChange={(e) => setA(e.target.value)} />
+      </label>
+      <label className="flex flex-col gap-0.5 text-xs text-[color:var(--color-ink-2)]">
+        <span className="uppercase tracking-wide">Fonte</span>
+        <input
+          type="text"
+          aria-label="Código da fonte de recursos"
+          placeholder="500"
+          className={`${CLASSE} w-20`}
+          value={fr}
+          onChange={(e) => setFr(e.target.value)}
+        />
+      </label>
+      <label className="flex flex-col gap-0.5 text-xs text-[color:var(--color-ink-2)]">
+        {/*
+          ⚠️ O IDENTIFICADOR DO FATO, e não o número do documento. O razão amarra pelo
+          `origemId` — o id interno do empenho, da liquidação, do pagamento. É ele que traz
+          o lançamento E o estorno dele na mesma consulta, que é a pergunta de quem confere.
+        */}
+        <span className="uppercase tracking-wide">Fato (id)</span>
+        <input
+          type="text"
+          aria-label="Identificador do fato de origem"
+          placeholder="id do empenho, da liquidação…"
+          className={`${CLASSE} w-52`}
+          value={f}
+          onChange={(e) => setF(e.target.value)}
+        />
       </label>
       <label className="flex flex-col gap-0.5 text-xs text-[color:var(--color-ink-2)]">
         <span className="uppercase tracking-wide">Conta</span>

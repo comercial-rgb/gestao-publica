@@ -18,7 +18,8 @@ import {
   type TipoDeConsignacaoDaTela,
 } from "../../../../lib/portas/pagamento";
 import { dataBr, descreverRecorte, recorteDe } from "../../../../lib/recorte";
-import { FormPagamento, type LiquidacaoPagavel } from "./FormPagamento";
+import { FormPagamento, type LiquidacaoPagavel, type OrdemAutorizadaParaTela } from "./FormPagamento";
+import { lerOrdensDePagamento } from "../../../../lib/portas/ordem-pagamento";
 import { listarPagamentosDaExecucao, type PagamentoDaTela } from "../../../../lib/portas/anulacao";
 import { FormAnular } from "../FormAnular";
 import { BotaoCsv } from "../../../../components/ui/BotaoCsv";
@@ -68,8 +69,9 @@ export default async function PagamentosPage({
   let contas: readonly ContaBancariaDaTela[];
   let pagamentos: readonly PagamentoDaTela[];
   let tiposDeConsignacao: readonly TipoDeConsignacaoDaTela[];
+  let ordens: Awaited<ReturnType<typeof lerOrdensDePagamento>>;
   try {
-    [filas, contas, pagamentos, tiposDeConsignacao] = await Promise.all([
+    [filas, contas, pagamentos, tiposDeConsignacao, ordens] = await Promise.all([
       lerFilasDePagamento(),
       lerContasBancarias(),
       // ⚠️ Os pagamentos EXECUTADOS (para anular, TR 5.35) — a fila mostra o que falta; esta lista, o
@@ -79,6 +81,9 @@ export default async function PagamentosPage({
       // desabilitados, com o motivo. Filtrar aqui esconderia do operador que o tipo existe
       // e que falta só um cadastro.
       lerTiposDeConsignacao(),
+      // T07 — só as AUTORIZADAS entram no select: uma ordem preparada ainda não consente
+      // com nada, e oferecê-la faria o operador receber a recusa depois de preencher.
+      lerOrdensDePagamento({ exercicio: recorte.exercicio, unidadeCodigo: recorte.unidadeCodigo }),
     ]);
   } catch (erro) {
     return (
@@ -127,6 +132,17 @@ export default async function PagamentosPage({
         )}
         contas={contas}
         tiposDeConsignacao={tiposDeConsignacao}
+        ordensAutorizadas={ordens
+          .filter((o) => o.estado === "AUTORIZADA")
+          .map(
+            (o): OrdemAutorizadaParaTela => ({
+              id: o.id,
+              numero: o.numero,
+              liquidacaoNumero: o.liquidacaoNumero,
+              credorCpfCnpj: o.credorCpfCnpj,
+              valor: o.valor,
+            })
+          )}
       />
 
       {filas.length === 0 ? (

@@ -35,6 +35,8 @@ import {
 // M11 (TR 4.50) — o rol FECHADO dos elementos que SÃO obra. Reusado, nunca recopiado:
 // derivar "é obra?" por texto pegaria o elemento 37 ("Locação de Mão-de-Obra").
 import { ELEMENTOS_DE_OBRA } from "../m11-licitacoes/obras.js";
+// T07 — o guard da ordem de pagamento. Ele NÃO abre transação: roda dentro desta.
+import { exigirOrdemAutorizada } from "./ordem-pagamento.js";
 // ⚠️ O FUNIL DO RAZÃO (M01). Todo lançamento passa por ele — e é lá que mora o
 // travamento de competência (M16). Ver `m01-funil.test.ts`: o grep-teste proíbe o
 // `lancamentoContabil.create` fora dele.
@@ -1617,6 +1619,23 @@ export function criarDespesaRepositoryPrisma(
         // FUNDEB — bastava usar a conta do FUNDEB, e os dois "casavam". Ver `guard-fonte`.
         await exigirFonteDaFicha(tx, p.liquidacaoId, p.fonteId);
 
+        // T07 — A ORDEM DE PAGAMENTO, quando houver. DENTRO da transação e antes de
+        // gravar: entre conferir e gravar, outra transação poderia consumir a mesma
+        // autorização — e a `@unique` em `ordemDePagamentoId` é a rede final, mas uma
+        // rede que estoura com erro de constraint em vez de mensagem de negócio.
+        //
+        // ⚠️ ANTES DO TETO DA LIQUIDAÇÃO, de propósito. Pagar duas vezes contra a MESMA
+        // ordem também estoura o teto — mas "excede a liquidação" manda o operador
+        // procurar o valor, e o problema era outro: a autorização já tinha sido usada.
+        // O guard mais específico fala primeiro.
+        if (p.ordemDePagamentoId !== undefined) {
+          await exigirOrdemAutorizada(tx, {
+            ordemId: p.ordemDePagamentoId,
+            liquidacaoId: p.liquidacaoId,
+            valor: p.valor,
+          });
+        }
+
         // Limite: SUM REAL do já pago, dentro da transação.
         const liquidado = toMoney(liq.valor.toFixed(2));
         const jaPago = await pagoLiquido(tx, p.liquidacaoId);
@@ -1657,6 +1676,9 @@ export function criarDespesaRepositoryPrisma(
             contaBancaria: p.contaBancaria,
             fonteId: p.fonteId,
             lancamentoId: lancamento.id,
+            ...(p.ordemDePagamentoId !== undefined
+              ? { ordemDePagamentoId: p.ordemDePagamentoId }
+              : {}),
             criadoPor: p.criadoPor,
           },
           select: { id: true },

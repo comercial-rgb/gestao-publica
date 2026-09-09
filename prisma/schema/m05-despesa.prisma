@@ -252,6 +252,8 @@ model Liquidacao {
   anulacoesParciais   Liquidacao[] @relation("AnulacaoParcialLiquidacao")
 
   pagamentos Pagamento[]
+  /// back-relation T07 — as ordens de pagamento preparadas sobre esta liquidação.
+  ordensDePagamento OrdemDePagamento[]
   /// back-relation M06 — campo VIRTUAL, não gera coluna.
   quebrasDeOrdem JustificativaQuebraOrdem[]
   /// back-relation M10 — campo VIRTUAL, não gera coluna.
@@ -333,6 +335,16 @@ model Pagamento {
 
   lancamentoId String             @unique
   lancamento   LancamentoContabil @relation(fields: [lancamentoId], references: [id])
+
+  /// T07 — a ORDEM que autorizou este pagamento. NULLABLE, aditiva, sem backfill:
+  /// os pagamentos que já existem nasceram antes de a ordem existir, e inventar
+  /// uma autorização retroativa seria pior que não ter nenhuma.
+  ///
+  /// ⚠️ `@unique`: uma ordem autorizada paga UMA vez. Sem isto, a mesma
+  /// autorização poderia lastrear dois desembolsos — e os dois pareceriam
+  /// regulares, cada um com a sua assinatura.
+  ordemDePagamentoId String?           @unique
+  ordemDePagamento   OrdemDePagamento? @relation(fields: [ordemDePagamentoId], references: [id])
 
   estornoDeId String?
   estornoDe   Pagamento?  @relation("EstornoPagamento", fields: [estornoDeId], references: [id])

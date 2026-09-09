@@ -1,0 +1,91 @@
+// ============================================================================
+// M05 — A ORDEM DE PAGAMENTO: preparar e autorizar ANTES de pagar.
+//
+// ═══ POR QUE ISTO EXISTE, E O QUE ELA **NÃO** É ═══
+// Até aqui pagar era UM ato: `pagar()` registrava o pagamento administrativo,
+// lançava no razão e acabou. Quem apertava o botão era, ao mesmo tempo, quem
+// decidia que aquele credor seria pago naquele dia. É a segregação de funções
+// que falta — a mesma que separa quem empenha de quem liquida.
+//
+// A ordem é ADMINISTRATIVA: ela **não toca o razão** e não reserva nada. O que
+// reserva a dotação é o empenho; o que reconhece a obrigação é a liquidação. A
+// ordem só diz "esta obrigação está autorizada a ser paga, por esta conta, neste
+// valor" — e diz QUEM autorizou.
+//
+// ⚠️ POR ISSO ELA NÃO TEM `lancamentoId`. Um lançamento aqui seria contabilizar
+// uma intenção: o razão registra FATOS, e autorizar não é um fato patrimonial.
+//
+// ═══ SEM COLUNA DE STATUS — a doutrina do repositório ═══
+// O estado é DERIVADO dos movimentos (`estadoDaOrdem`, em ordem-pagamento.ts),
+// como o `statusDoEmpenho` sai dos SUMs. Uma coluna `status` num modelo
+// append-only fica congelada no valor inicial para sempre.
+// ============================================================================
+
+/// TR 5.38 · T07 — a ordem preparada. APPEND-ONLY.
+model OrdemDePagamento {
+  id String @id @default(cuid())
+
+  /// Número do documento administrativo, único DENTRO da liquidação.
+  numero String
+
+  liquidacaoId String
+  liquidacao   Liquidacao @relation(fields: [liquidacaoId], references: [id])
+
+  /// O valor autorizado. O pagamento que a consome tem de ser EXATAMENTE este —
+  /// ver `ordem-pagamento.ts`: pagar menos deixaria o resto sem autorização, e
+  /// pagar mais é óbvio.
+  valor Decimal @db.Decimal(18, 2)
+
+  /// A data em que se PRETENDE pagar. Não é a data do fato — quem tem data de
+  /// fato é o `Pagamento`, e ela pode ser outra.
+  dataPrevista DateTime
+
+  /// Código da `ContaBancaria` de onde o dinheiro deve sair.
+  contaBancaria String
+  /// TR 5.23 — tem de casar com a fonte da conta bancária. O guard é do M05.
+  fonteId       String
+  fonte         FonteRecurso @relation(fields: [fonteId], references: [id])
+
+  historico String
+
+  movimentos MovimentoDaOrdemDePagamento[]
+  /// back-relation: o pagamento que consumiu esta ordem. Campo VIRTUAL.
+  pagamentos Pagamento[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([liquidacaoId, numero])
+  @@index([liquidacaoId])
+  @@index([fonteId])
+}
+
+/// ⚠️ DOIS MOVIMENTOS, E NENHUM "PREPARAR". Preparar É criar a ordem — não há
+/// movimento para isso, do mesmo jeito que não há movimento "nascer". O estado
+/// PREPARADA é a ausência de movimento, e é isso que `estadoDaOrdem` lê.
+enum TipoMovimentoDaOrdem {
+  /// Alguém — que não pode ser quem preparou — autorizou o pagamento.
+  AUTORIZACAO
+  /// A ordem foi cancelada. Motivo OBRIGATÓRIO.
+  CANCELAMENTO
+}
+
+model MovimentoDaOrdemDePagamento {
+  id String @id @default(cuid())
+
+  ordemId String
+  ordem   OrdemDePagamento @relation(fields: [ordemId], references: [id])
+
+  tipo TipoMovimentoDaOrdem
+
+  /// Opcional na AUTORIZAÇÃO, OBRIGATÓRIO no CANCELAMENTO (mín. 10 — o Zod
+  /// cobra). Cancelar uma ordem autorizada é o ato que o controle interno vai
+  /// querer explicado.
+  motivo String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([ordemId])
+  @@index([ordemId, criadoEm])
+}

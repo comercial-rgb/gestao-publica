@@ -35,6 +35,15 @@ export interface ContaParaPagar {
  * `from ".../lib/portas/"` numa ilha client — e está certo em ser cego. Mesmo padrão do
  * `FichaParaEmpenho` e do `TipoAnulavel`.
  */
+/** Uma ordem AUTORIZADA, esperando o pagamento que a consome (T07). */
+export interface OrdemAutorizadaParaTela {
+  readonly id: string;
+  readonly numero: string;
+  readonly liquidacaoNumero: string;
+  readonly credorCpfCnpj: string;
+  readonly valor: string;
+}
+
 export interface TipoDeConsignacaoParaTela {
   readonly id: string;
   readonly codigo: string;
@@ -70,10 +79,12 @@ export function FormPagamento({
   liquidacoes,
   contas,
   tiposDeConsignacao,
+  ordensAutorizadas,
 }: {
   readonly liquidacoes: readonly LiquidacaoPagavel[];
   readonly contas: readonly ContaParaPagar[];
   readonly tiposDeConsignacao: readonly TipoDeConsignacaoParaTela[];
+  readonly ordensAutorizadas: readonly OrdemAutorizadaParaTela[];
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoPagamento, FormData>(
     pagarAction,
@@ -192,6 +203,25 @@ export function FormPagamento({
         </label>
         {/* A fonte acompanha a conta: o usuário não a digita (TR 5.23). */}
         <input type="hidden" name="fonteId" value={selecionada?.fonteId ?? ""} />
+
+        {/*
+          ⚠️ A ORDEM É OPCIONAL, e a tela diz por quê em vez de deixar o campo mudo. Os
+          pagamentos anteriores a T07 não têm ordem, e inventar uma autorização retroativa
+          para eles seria pior que não ter nenhuma. Escolhida uma ordem, o domínio confere
+          liquidação e valor EXATOS — uma escolha errada é recusada com o motivo, não
+          silenciosamente aceita.
+        */}
+        <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2 lg:col-span-3">
+          <span className={ROTULO}>Ordem autorizada (opcional)</span>
+          <select name="ordemDePagamentoId" defaultValue="" className={CAMPO}>
+            <option value="">Sem ordem — registro direto</option>
+            {ordensAutorizadas.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.numero} — liquidação {o.liquidacaoNumero} · {o.credorCpfCnpj} · {o.valor}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2 lg:col-span-3">
           <span className={ROTULO}>Histórico</span>

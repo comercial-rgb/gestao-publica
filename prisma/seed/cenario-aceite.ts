@@ -74,6 +74,26 @@ const FICHA_ID = "ac-ficha";
 const FICHA_NUMERO = 1;
 
 /**
+ * A SEGUNDA FICHA — orçamento de REEXECUÇÃO, e ela existe por um motivo medido.
+ *
+ * A ficha do cenário tem exatamente os 10.000,00 do §2.4, e cada execução do smoke da
+ * cadeia consome 1.000,00 dela. Na décima primeira, o domínio recusa o empenho por saldo
+ * insuficiente — corretamente, e foi o que aconteceu aqui.
+ *
+ * A saída ERRADA seria inflar a ficha do cenário: os 10.000,00 são o número que a
+ * especificação fixou, e mexer nele para caber mais teste é adulterar o cenário. A outra
+ * saída errada seria o seed "repor" a dotação — repor dotação é CRÉDITO ADICIONAL, ato do
+ * M03 com lei ou decreto, não efeito colateral de seed.
+ *
+ * Então há uma segunda ficha, declarada como o que é: orçamento de desenvolvimento para
+ * reexecutar o smoke. O smoke escolhe a de maior saldo; a do cenário fica intacta para
+ * quem quiser conferi-la.
+ */
+const FICHA_REEXECUCAO_ID = "ac-ficha-reexec";
+const FICHA_REEXECUCAO_NUMERO = 2;
+const DOTACAO_REEXECUCAO = "500000.00";
+
+/**
  * ⚠️ ELEMENTO 39 (serviços de terceiros PJ), e a escolha NÃO é arbitrária.
  * O elemento 30 (material) cai na recusa nomeada `LiquidacaoDeMaterialBloqueadaError`:
  * material vira ESTOQUE, e a entrada no almoxarifado é ato do M10 que a tela de
@@ -178,6 +198,51 @@ if (jaExiste === null) {
   });
 }
 
+// A ficha de reexecução — mesma classificação, orçamento próprio e declarado.
+const reexecucaoExiste = await prisma.fichaOrcamentaria.findUnique({
+  where: { id: FICHA_REEXECUCAO_ID },
+  select: { id: true },
+});
+if (reexecucaoExiste === null) {
+  await prisma.$transaction(async (tx) => {
+    await tx.fichaOrcamentaria.create({
+      data: {
+        id: FICHA_REEXECUCAO_ID,
+        exercicio: EXERCICIO,
+        numero: FICHA_REEXECUCAO_NUMERO,
+        orgaoId: ORGAO.id,
+        unidadeOrcId: UNIDADE.id,
+        funcaoId: funcao.id,
+        subfuncaoId: subfuncao.id,
+        programaId: PROGRAMA.id,
+        acaoId: ACAO.id,
+        naturezaDespesaId: natureza.id,
+        fonteId: FONTE.id,
+        // ⚠️ `exercicioFonte: 2` só para não colidir com a unicidade SAGRES da ficha 1
+        // (mesma unidade, função, subfunção, programa, ação, natureza e fonte).
+        exercicioFonte: 2,
+        valorDotado: DOTACAO_REEXECUCAO,
+      },
+    });
+    await registrarMovimentoDotacao(tx, {
+      fichaId: FICHA_REEXECUCAO_ID,
+      tipo: "DOTACAO_INICIAL",
+      valor: DOTACAO_REEXECUCAO,
+      origemTipo: "LOA",
+      origemId: FICHA_REEXECUCAO_ID,
+      criadoPor: POR,
+      data: new Date(Date.UTC(EXERCICIO, 0, 1, 12, 0, 0)),
+      historico: `Dotação inicial da ficha ${FICHA_REEXECUCAO_NUMERO} (orçamento de reexecução do smoke)`,
+    });
+    await recalcularCache(tx, FICHA_REEXECUCAO_ID);
+  });
+}
+
+const reexecucao = await prisma.fichaOrcamentaria.findUniqueOrThrow({
+  where: { id: FICHA_REEXECUCAO_ID },
+  select: { numero: true, saldoDisponivel: true },
+});
+
 const ficha = await prisma.fichaOrcamentaria.findUniqueOrThrow({
   where: { id: FICHA_ID },
   select: { numero: true, saldoDisponivel: true, saldoEmpenhado: true },
@@ -200,9 +265,12 @@ console.log(
   decreto), não efeito colateral de um seed. Quando o saldo acabar, o domínio recusa o
   empenho com a mensagem dele — que é a resposta certa, e não um defeito do smoke.
 */
-const cabem = Math.floor(Number(ficha.saldoDisponivel.toFixed(2)) / 1000);
 console.log(
-  `  cabem mais ~${cabem} execução(ões) do smoke nesta ficha` +
+  `  ficha ${reexecucao.numero} (reexecução do smoke) · disponível ${reexecucao.saldoDisponivel.toFixed(2)}`
+);
+const cabem = Math.floor(Number(reexecucao.saldoDisponivel.toFixed(2)) / 1000);
+console.log(
+  `  cabem ~${cabem} execução(ões) do smoke na ficha de reexecução` +
     (cabem === 0
       ? "  <- esgotada: o próximo empenho será recusado pelo domínio, corretamente"
       : "")

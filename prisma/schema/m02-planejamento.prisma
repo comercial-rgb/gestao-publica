@@ -204,6 +204,8 @@ model FonteRecurso {
   // back-relations M04/M05 — campos VIRTUAIS, não geram coluna.
   receitasArrecadadas ReceitaArrecadada[]
   pagamentos          Pagamento[]
+  /// back-relation T07 — as ordens de pagamento desta fonte. Campo VIRTUAL.
+  ordensDePagamento   OrdemDePagamento[]
   contasBancarias     ContaBancaria[]
   // back-relations M03 — campos VIRTUAIS, não geram coluna.
   itensCredito        ItemCredito[]

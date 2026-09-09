@@ -114,6 +114,15 @@ export interface LancamentoDoDiario {
    */
   readonly origemId: string | null;
   readonly natureza: NaturezaLancamento;
+  /**
+   * O lançamento que ESTE estorna. `null` no lançamento normal.
+   *
+   * ⚠️ ADITIVO, e ele existia no schema desde sempre. A correção neste sistema é um
+   * lançamento NOVO apontando para o original — nunca um `UPDATE`. Sem expor a referência,
+   * a tela mostrava dois lançamentos que se anulam sem dizer que um é o estorno do outro,
+   * e quem lê tinha de deduzir pelo valor espelhado.
+   */
+  readonly estornoDeId: string | null;
   readonly criadoPor: string;
   readonly partidas: readonly PartidaDoDiario[];
 }
@@ -124,6 +133,76 @@ export interface FiltrosDoDiario {
   readonly subsistema?: "ORCAMENTARIO" | "PATRIMONIAL" | "CONTROLE";
   readonly origemTipo?: string;
   readonly natureza?: EscolhaDeNatureza;
+  /**
+   * O IDENTIFICADOR DO FATO — `origemId`. É o que responde "mostre-me tudo que este
+   * empenho produziu no razão", inclusive os estornos.
+   */
+  readonly origemId?: string;
+  /** Código da FONTE de recursos, pela ficha da partida. */
+  readonly fonteCodigo?: string;
+  /**
+   * Código da UNIDADE ORÇAMENTÁRIA, pela ficha da partida.
+   *
+   * ⚠️ ESTE FILTRO RECORTA PELO QUE TEM DIMENSÃO ORÇAMENTÁRIA, e isso precisa ser dito na
+   * tela. Partida patrimonial e de controle não tem ficha — e não deveria ter: a conta de
+   * Bancos é do ENTE, não da Secretaria de Saúde. Filtrando por unidade, um lançamento
+   * entra se ALGUMA partida dele for daquela unidade; um lançamento sem ficha nenhuma
+   * (o manual, o de encerramento) fica de fora. É o recorte correto, e é parcial por
+   * natureza — não por limitação da consulta.
+   */
+  readonly unidadeCodigo?: string;
+}
+
+/** O total de um subsistema num conjunto de lançamentos. */
+export interface TotalDeSubsistema {
+  readonly subsistema: string;
+  readonly debito: string;
+  readonly credito: string;
+  /** debito − credito. Zero é o esperado; diferente de zero é o que a tela tem de gritar. */
+  readonly diferenca: string;
+}
+
+/**
+ * OS TOTAIS POR SUBSISTEMA de um recorte. PURA — recebe o que a consulta devolveu.
+ *
+ * ═══ ⚠️ POR QUE A DIFERENÇA POR SUBSISTEMA, E NÃO SÓ O TOTAL ═══
+ * Um conjunto de lançamentos pode fechar no TOTAL e estar aberto DENTRO de cada
+ * subsistema — basta o orçamentário faltar 100 e o patrimonial sobrar 100. O total geral
+ * diria "fecha", e os dois subsistemas estariam errados. É o mesmo furo que o motor do
+ * ledger fecha na escrituração, e que um relatório que soma tudo junto reabre na leitura.
+ *
+ * ⚠️ SOMA EM CENTAVOS INTEIROS. `Number` sobre dinheiro é como o float entra num sistema
+ * contábil, e ele entra pela porta do relatório — que é onde ninguém procura.
+ */
+export function totaisPorSubsistema(
+  lancamentos: readonly LancamentoDoDiario[]
+): readonly TotalDeSubsistema[] {
+  const acc = new Map<string, { d: bigint; c: bigint }>();
+  for (const l of lancamentos) {
+    for (const p of l.partidas) {
+      const atual = acc.get(p.subsistema) ?? { d: 0n, c: 0n };
+      const centavos = BigInt(p.valor.replace(".", ""));
+      if (p.tipo === "DEBITO") atual.d += centavos;
+      else atual.c += centavos;
+      acc.set(p.subsistema, atual);
+    }
+  }
+  return [...acc.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([subsistema, { d, c }]) => ({
+      subsistema,
+      debito: emReais(d),
+      credito: emReais(c),
+      diferenca: emReais(d - c),
+    }));
+}
+
+/** Centavos (BigInt) -> "1234.56". Sem float em nenhum ponto. */
+function emReais(centavos: bigint): string {
+  const neg = centavos < 0n;
+  const abs = neg ? -centavos : centavos;
+  const s = abs.toString().padStart(3, "0");
+  return `${neg ? "-" : ""}${s.slice(0, -2)}.${s.slice(-2)}`;
 }
 
 /**
@@ -158,13 +237,30 @@ export async function diario(
       dataTransacao: { gte: janela.desde, lte: janela.ate },
       ...whereNatureza,
       ...(filtros.origemTipo !== undefined ? { origemTipo: filtros.origemTipo } : {}),
-      // TR 5.94 — recorte por CONTA e por SUBSISTEMA: "tem ao menos uma partida que..."
-      ...(filtros.conta !== undefined || filtros.subsistema !== undefined
+      ...(filtros.origemId !== undefined ? { origemId: filtros.origemId } : {}),
+      // TR 5.94 — recorte por CONTA, SUBSISTEMA, FONTE e UNIDADE: "tem ao menos uma
+      // partida que...". Tudo no `where` — zero pós-filtro em JS onde o SQL alcança.
+      ...(filtros.conta !== undefined ||
+      filtros.subsistema !== undefined ||
+      filtros.fonteCodigo !== undefined ||
+      filtros.unidadeCodigo !== undefined
         ? {
             partidas: {
               some: {
                 ...(filtros.conta !== undefined ? { conta: { codigo: filtros.conta } } : {}),
                 ...(filtros.subsistema !== undefined ? { subsistema: filtros.subsistema } : {}),
+                ...(filtros.fonteCodigo !== undefined || filtros.unidadeCodigo !== undefined
+                  ? {
+                      ficha: {
+                        ...(filtros.fonteCodigo !== undefined
+                          ? { fonte: { codigo: filtros.fonteCodigo } }
+                          : {}),
+                        ...(filtros.unidadeCodigo !== undefined
+                          ? { unidadeOrc: { codigo: filtros.unidadeCodigo } }
+                          : {}),
+                      },
+                    }
+                  : {}),
               },
             },
           }
@@ -181,6 +277,7 @@ export async function diario(
       // Aditivo: o id do documento de origem, para o drill. Coluna já indexada — custo zero.
       origemId: true,
       natureza: true,
+      estornoDeId: true,
       criadoPor: true,
       partidas: {
         // dentro do lançamento, ordem estável também: débitos e créditos por conta.
@@ -203,6 +300,7 @@ export async function diario(
     origemTipo: l.origemTipo,
     origemId: l.origemId,
     natureza: l.natureza ?? "NORMAL", // nulo lê-se NORMAL
+    estornoDeId: l.estornoDeId,
     criadoPor: l.criadoPor,
     partidas: l.partidas.map((p) => ({
       conta: p.conta.codigo,

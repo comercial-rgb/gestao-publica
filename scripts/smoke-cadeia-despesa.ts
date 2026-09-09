@@ -64,6 +64,8 @@ const NE = `2026NE${SUF}`;
 const NL = `2026NL${SUF}`;
 const NP = `2026OP${SUF}`;
 const NP_ANULACAO = `2026OP${SUF}A`;
+/** T07 — o número da ordem de pagamento preparada pela tela. */
+const NO = `2026ORD${SUF}`;
 
 const CREDOR = "11.222.333/0001-81";
 const CONSIGNATARIO = "INSS - smoke";
@@ -277,7 +279,32 @@ async function main(): Promise<void> {
 
     // ── 1. EMPENHAR ────────────────────────────────────────────────────────
     await irPara(page, `/despesa/empenhos?exercicio=${EXERCICIO}`);
-    const ficha = await opcaoQueContem(page, 'select[name="fichaId"]', "339039");
+    /*
+      ⚠️ A FICHA COM MAIS SALDO, e não a primeira que casar com o elemento.
+      A ficha do cenário de aceite tem exatamente os 10.000,00 do §2.4 e cada execução
+      deste smoke consome 1.000,00 dela; esgotada, o domínio recusa o empenho — o que está
+      certo, e foi o que aconteceu. O seed cria uma segunda ficha, declarada como orçamento
+      de reexecução; o smoke escolhe pelo saldo e deixa a do cenário intacta para quem
+      quiser conferi-la.
+    */
+    const ficha = await page.evaluate(() => {
+      const s = document.querySelector('select[name="fichaId"]');
+      if (!(s instanceof HTMLSelectElement)) return null;
+      let melhor: { valor: string; saldo: number } | null = null;
+      for (const o of Array.from(s.options)) {
+        if (o.value === "" || o.disabled) continue;
+        if (o.textContent?.includes("339039") !== true) continue;
+        // ⚠️ O SALDO SAI CRU DA PORTA ("500000.00"), não formatado em pt-BR — dinheiro
+        // atravessa a fronteira como string decimal, e é isso que o `<option>` imprime.
+        // A primeira versão deste smoke procurou "1.234,56" e não achou nada: escolheu
+        // sempre a primeira ficha, que era a já esgotada.
+        const m = /disponível\s+(-?[\d]+\.\d{2})\s*$/.exec(o.textContent.trim());
+        const saldo = m === null ? 0 : Number(m[1]!);
+        if (melhor === null || saldo > melhor.saldo) melhor = { valor: o.value, saldo };
+      }
+      return melhor?.valor ?? null;
+    });
+    if (ficha === null) throw new Error("nenhuma ficha do elemento 339039 no seletor");
     await preencherEEnviar(page, 'select[name="fichaId"]', [
       { sel: 'select[name="fichaId"]', valor: ficha, tipo: "select" },
       { sel: 'input[name="numero"]', valor: NE },
@@ -354,6 +381,76 @@ async function main(): Promise<void> {
       listaLiquidacoes.includes(NL),
       `${NL} não está na lista depois do recarregamento`
     );
+
+    // ── 4b. T07 — AS QUATRO ETAPAS, e a segregação provada pela tela ───────
+    //
+    // ⚠️ ANTES DE PAGAR, e não depois. A ordem de pagamento é a etapa que PRECEDE o
+    // registro — e, na prática, `liquidacoesParaOrdem` só oferece o que ainda cabe: uma
+    // liquidação já paga por inteiro some da lista, corretamente. A primeira versão deste
+    // smoke tentava preparar a ordem depois de pagar e não achava a liquidação. Quem
+    // estava certo era a tela.
+    await irPara(page, `/despesa/ordens?exercicio=${EXERCICIO}`);
+    const liqParaOrdem = await opcaoQueContem(page, 'select[name="liquidacaoId"]', NL);
+    const contaDaOrdem = await opcaoQueContem(page, 'select[name="contaBancaria"]', "CC-500-01");
+    await preencherEEnviar(page, 'select[name="liquidacaoId"]', [
+      { sel: 'select[name="liquidacaoId"]', valor: liqParaOrdem, tipo: "select" },
+      { sel: 'input[name="numero"]', valor: NO },
+      { sel: SELETOR_VISIVEL["valor"]!, valor: LIQUIDACAO, indice: 0 },
+      { sel: 'input[name="dataPrevista"]', valor: "2026-06-20", tipo: "data" },
+      { sel: 'select[name="contaBancaria"]', valor: contaDaOrdem, tipo: "select" },
+      { sel: 'input[name="historico"]', valor: `ordem do smoke ${SUF}` },
+    ]);
+
+    const ordens = await irPara(page, `/despesa/ordens?exercicio=${EXERCICIO}`);
+    conferir(
+      "preparar a ordem pela tela e reencontrá-la recarregando",
+      ordens.includes(NO) && ordens.includes("Aguardando autorização"),
+      `${NO} não está na lista, ou não nasceu aguardando autorização`
+    );
+    conferir(
+      "a tela declara o envio ao banco INDISPONÍVEL, com motivo — e sem botão",
+      ordens.includes("Envio ao banco: indisponível") &&
+        !/enviar ao banco\b(?!:)/i.test(ordens),
+      "a etapa de envio ao banco não está declarada indisponível, ou há botão de envio"
+    );
+    conferir(
+      "as quatro etapas aparecem, cada uma com o seu estado",
+      ordens.includes("1. Preparada") &&
+        ordens.includes("2. Autorizada") &&
+        ordens.includes("3. Pagamento registrado") &&
+        ordens.includes("4. Confirmação do banco"),
+      "o painel das quatro etapas não apareceu"
+    );
+
+    /*
+      ⚠️ AQUI A TELA TEM DE RECUSAR. O smoke está logado com UM usuário, e foi ele quem
+      preparou a ordem. Autorizar é ato de OUTRA pessoa — a recusa vem do domínio, e é
+      isso que se confere. Um smoke que "conseguisse" autorizar aqui estaria provando que
+      a segregação não existe.
+    */
+    const abriuAutorizar = await page.evaluate(() => {
+      for (const su of Array.from(document.querySelectorAll("summary"))) {
+        if (su.textContent?.includes("Autorizar") === true) {
+          (su as HTMLElement).click();
+          return true;
+        }
+      }
+      return false;
+    });
+    if (abriuAutorizar) {
+      await new Promise((r) => setTimeout(r, 300));
+      await preencherEEnviar(page, 'details[open] input[name="motivo"]', [
+        { sel: 'details[open] input[name="motivo"]', valor: "conferido pelo smoke" },
+      ]);
+      const resposta = await texto(page);
+      conferir(
+        "QUEM PREPAROU NÃO AUTORIZA — a tela mostra a recusa do domínio",
+        /SEGREGAÇÃO DE FUNÇÕES/.test(resposta),
+        `a recusa da segregação não apareceu. Texto: ${resposta.slice(-500)}`
+      );
+    } else {
+      falhou("abrir o formulário de autorização", "não achei o gatilho Autorizar");
+    }
 
     // ── 5. PAGAR COM RETENÇÃO INFORMADA (T06/T07) ──────────────────────────
     await irPara(page, "/despesa/pagamentos");
@@ -459,6 +556,22 @@ async function main(): Promise<void> {
       "o dossiê mostra o pago BRUTO de 1.000,00 — a obrigação morre inteira",
       dossie2.includes("1.000,00"),
       "o valor bruto sumiu do quadro de valores"
+    );
+
+    // ── 6c. T08 — o razão com totalizador por subsistema ───────────────────
+    const razao = await irPara(
+      page,
+      `/contabilidade/lancamentos?desde=2026-01-01&ate=2026-12-31&fato=${encodeURIComponent(dossieId)}`
+    );
+    conferir(
+      "o razão filtra pelo IDENTIFICADOR DO FATO e traz os lançamentos do empenho",
+      razao.includes("Totais do recorte, por subsistema"),
+      "o totalizador por subsistema não apareceu na consulta do razão"
+    );
+    conferir(
+      "o razão oferece selecionar e somar",
+      razao.includes("Selecionar e somar"),
+      "o painel de seleção e soma não apareceu"
     );
 
     // ── 7. ESTORNAR — e não devolver ao caixa o que nunca saiu ─────────────

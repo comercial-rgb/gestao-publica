@@ -75,6 +75,13 @@ export type AcaoDoSistema =
   | "ANULAR_LIQUIDACAO"
   | "ANULAR_LIQUIDACAO_PARCIAL"
   | "PAGAR"
+  // ── M05 — T07: a ordem de pagamento. TRÊS ações, e a separação é o ponto ──
+  /** Preparar a ordem: dizer QUE se pretende pagar. Não autoriza nada. */
+  | "PREPARAR_ORDEM_PAGAMENTO"
+  /** Autorizar: o consentimento. Ação PRÓPRIA para que o ente possa dá-la a outra pessoa. */
+  | "AUTORIZAR_ORDEM_PAGAMENTO"
+  /** Cancelar a ordem — motivo obrigatório. */
+  | "CANCELAR_ORDEM_PAGAMENTO"
   | "ANULAR_PAGAMENTO"
   | "ANULAR_PAGAMENTO_PARCIAL"
   | "ESTORNAR_ANULACAO_PARCIAL"
@@ -196,6 +203,9 @@ export type NomeDeServico =
   | "anularLiquidacao"
   | "anularLiquidacaoParcial"
   | "pagar"
+  | "prepararOrdemDePagamento"
+  | "autorizarOrdemDePagamento"
+  | "cancelarOrdemDePagamento"
   | "anularPagamento"
   | "anularPagamentoParcial"
   | "estornarAnulacaoParcial"
@@ -319,6 +329,11 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   anularLiquidacao: "ANULAR_LIQUIDACAO",
   anularLiquidacaoParcial: "ANULAR_LIQUIDACAO_PARCIAL",
   pagar: "PAGAR",
+  // T07 — cada etapa da ordem é uma ação própria. Um "GERIR_ORDEM" só juntaria de volta
+  // o que a separação existe para separar: quem pede o pagamento e quem o consente.
+  prepararOrdemDePagamento: "PREPARAR_ORDEM_PAGAMENTO",
+  autorizarOrdemDePagamento: "AUTORIZAR_ORDEM_PAGAMENTO",
+  cancelarOrdemDePagamento: "CANCELAR_ORDEM_PAGAMENTO",
   anularPagamento: "ANULAR_PAGAMENTO",
   anularPagamentoParcial: "ANULAR_PAGAMENTO_PARCIAL",
   estornarAnulacaoParcial: "ESTORNAR_ANULACAO_PARCIAL",
@@ -550,6 +565,12 @@ export const FORA_DO_CENSO: Record<string, string> = {
   listarEmpenhos: "leitura (a execução de um exercício/unidade com os saldos da TR 5.17 — a tela de empenhos)",
   listarLiquidacoes: "leitura (as liquidações com o empenho de origem — a tela de liquidações)",
   listarPagamentos: "leitura (os pagamentos executados de um exercício/unidade — a tela de anulação, TR 5.35)",
+  listarOrdensDePagamento:
+    "leitura (as ordens de pagamento de um exercício/unidade, com as quatro etapas de T07 — a tela)",
+  liquidacoesParaOrdem:
+    "leitura (as liquidações que ainda comportam ordem — o vocabulário do formulário)",
+  exigirOrdemAutorizada:
+    "guard (T07 — confere, DENTRO da transação do pagamento, que a ordem está AUTORIZADA, é da mesma liquidação e tem o valor exato; não abre transação e não pede permissão própria — quem paga já pediu a dele)",
   dossieDoEmpenho:
     "leitura (o dossiê de UM empenho: origem, liquidações, pagamentos, retenções, anulações e o razão de toda a cadeia — a tela de conferência do empenho)",
   dadosDasLiquidacoes: "leitura (credor e empenho de cada liquidação — o que a fila do art. 141 não carrega; enriquece o painel do M06)",

@@ -291,6 +291,12 @@ export interface PagarParams {
    */
   readonly justificativaQuebraOrdem?: JustificativaQuebraOrdemInput | undefined;
   /**
+   * T07 — a ordem que autorizou o pagamento. O adapter confere, DENTRO da transação,
+   * que ela está AUTORIZADA, é da mesma liquidação, tem o valor exato e ainda não foi
+   * consumida. Ausente = pagamento sem ordem (o caminho de sempre).
+   */
+  readonly ordemDePagamentoId?: string | undefined;
+  /**
    * M07 — as retenções na fonte deste pagamento. Os `MovimentoExtraorcamentario`
    * nascem na MESMA transação do pagamento; as pernas de passivo delas já vêm
    * dentro do `lancamento` (composto). Ausente/vazia = pagamento sem retenção.

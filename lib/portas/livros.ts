@@ -51,6 +51,16 @@ export async function gerarBalancete(p: {
 }
 
 export type { Balancete, LancamentoDoDiario, RazaoAnalitico, FiltrosDoDiario };
+/**
+ * OS TOTAIS POR SUBSISTEMA — reexportados do M12, nunca recalculados aqui.
+ *
+ * ⚠️ A TENTAÇÃO É SOMAR NA TELA. Ela parece inofensiva (é só um `reduce`), e é assim que
+ * nasce a segunda aritmética do razão: no dia em que o módulo mudar o corte por natureza
+ * ou o tratamento do estorno, a tela continuará somando do jeito antigo — e vai discordar
+ * do relatório, com a mesma cara de certeza.
+ */
+export { totaisPorSubsistema } from "../../modules/m12-relatorios/livros";
+export type { TotalDeSubsistema } from "../../modules/m12-relatorios/livros";
 export type { LinhaDoRazao } from "../../modules/m12-relatorios/livros";
 export type { LinhaDoBalancete } from "../../modules/m12-relatorios/livros";
 export type { PartidaDoDiario } from "../../modules/m12-relatorios/livros";

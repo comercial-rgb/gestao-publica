@@ -276,6 +276,14 @@ export async function registrarPagamento(input: {
         readonly valor: string;
       }[]
     | undefined;
+  /**
+   * T07 — a ordem AUTORIZADA que lastreia este pagamento. Ausente = registro direto.
+   *
+   * ⚠️ A PORTA SÓ ENCAMINHA. Quem confere que a ordem está autorizada, é da mesma
+   * liquidação, tem o valor exato e ainda não foi consumida é o domínio, DENTRO da
+   * transação — entre conferir aqui e gravar lá, outra requisição pode consumi-la.
+   */
+  readonly ordemDePagamentoId?: string | undefined;
 }): Promise<string> {
   const retencoes = await comporRetencoes(input.retencoes ?? []);
 
@@ -292,6 +300,9 @@ export async function registrarPagamento(input: {
         criadoPor,
         ...(input.justificativaQuebraOrdem !== undefined
           ? { justificativaQuebraOrdem: input.justificativaQuebraOrdem }
+          : {}),
+        ...(input.ordemDePagamentoId !== undefined
+          ? { ordemDePagamentoId: input.ordemDePagamentoId }
           : {}),
       },
       roteiroPagamento({

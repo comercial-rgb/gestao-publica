@@ -185,6 +185,11 @@ export async function pagar(
       ...(dados.justificativaQuebraOrdem !== undefined
         ? { justificativaQuebraOrdem: dados.justificativaQuebraOrdem }
         : {}),
+      // T07: a ordem que autoriza. O adapter a confere DENTRO da transação —
+      // conferir aqui seria conferir um estado que pode mudar antes da gravação.
+      ...(dados.ordemDePagamentoId !== undefined
+        ? { ordemDePagamentoId: dados.ordemDePagamentoId }
+        : {}),
       // M07: os movimentos do consignatário nascem na MESMA transação.
       ...(composto.retencoes.length > 0
         ? { retencoes: composto.retencoes }

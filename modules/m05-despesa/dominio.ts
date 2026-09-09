@@ -366,6 +366,16 @@ export const zPagarInput = z.object({
    * Pagar a cabeça da fila não exige nada. Pagar outra sem isto = rejeitado.
    */
   justificativaQuebraOrdem: zJustificativaQuebraOrdemInput.optional(),
+  /**
+   * T07 — a ORDEM DE PAGAMENTO que autoriza este desembolso.
+   *
+   * ⚠️ OPCIONAL, e a opcionalidade é uma decisão declarada. Torná-la obrigatória
+   * quebraria todo pagamento que já existe e toda fixture — e, pior, obrigaria a
+   * inventar uma autorização retroativa para os pagamentos anteriores à ordem existir.
+   * Um ente que queira exigi-la o faz negando a ação `PAGAR` a quem não tem ordem; o
+   * caminho sem ordem continua sendo o de sempre, partida por partida.
+   */
+  ordemDePagamentoId: z.string().min(1).optional(),
 });
 
 export const zAnularLiquidacaoInput = z.object({

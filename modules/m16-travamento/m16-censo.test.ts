@@ -293,7 +293,9 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   IMPORTAR_FOLHA e IMPORTAR_TRIBUTOS) = 99.
     // + 3 (ENT01/M19 — cadastrarPessoa, alterarPessoa e moverPapelDePessoa, ações próprias
     //   CADASTRAR_PESSOA, ALTERAR_PESSOA e MOVER_PAPEL_DE_PESSOA) = 102.
-    expect(nomes.length).toBe(102);
+    // + 3 (ENT01/T07 — prepararOrdemDePagamento, autorizarOrdemDePagamento e
+    //   cancelarOrdemDePagamento, ações próprias) = 105.
+    expect(nomes.length).toBe(105);
 
     // 97 serviços, 93 ações distintas. Os pares que compartilham ação (4: importarExtratoBb
     // REUSA IMPORTAR_EXTRATO). transferirEntreContas tem AÇÃO PRÓPRIA (não compartilha) → +1 ação.
@@ -306,7 +308,11 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     // deliberado: cadastrar uma pessoa, corrigir o cadastro dela e conceder-lhe o papel de
     // CREDOR são poderes diferentes. Uma ação única "GESTAO_DE_PESSOAS" daria, a quem só
     // devia digitar endereço, o poder de tornar alguém credor do ente.
-    expect(TODAS_AS_ACOES.length).toBe(98);
+    // 105 serviços, 101 ações distintas. As três de T07 são PRÓPRIAS, e é nisso que a
+    // separação consiste: preparar a ordem e AUTORIZÁ-LA têm de poder ser dadas a pessoas
+    // diferentes. Uma ação única "GERIR_ORDEM_PAGAMENTO" juntaria de volta exatamente o
+    // que a etapa existe para separar — quem pede o pagamento e quem consente com ele.
+    expect(TODAS_AS_ACOES.length).toBe(101);
     expect(ACAO_DO_SERVICO.encerrarExercicio).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.encerrarExercicioComRestos).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.importarExtrato).toBe("IMPORTAR_EXTRATO");
