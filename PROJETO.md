@@ -54,7 +54,7 @@ Não leia nem altere outros módulos. Os alicerces compartilhados são
 dobradas, domain puro) e `prisma/schema/_base.prisma` (enums globais,
 inbox/outbox de integração).
 
-## Módulos (M01–M18)
+## Módulos (M01–M19)
 
 Numeração **definitiva**, alinhada à ordem de dependência real.
 
