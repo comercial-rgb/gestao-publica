@@ -26,6 +26,7 @@ export const AREAS: readonly AreaNav[] = [
   { slug: "contabilidade", rotulo: "Contabilidade", descricao: "Plano de contas PCASP e os lançamentos de partidas dobradas que sustentam os livros." },
   { slug: "relatorios", rotulo: "Relatórios", descricao: "Livros obrigatórios, balanços, RREO e demonstrativos fiscais." },
   { slug: "transparencia", rotulo: "Transparência", descricao: "Datasets do portal e exports federais (MSC, MANAD)." },
+  { slug: "cadastros", rotulo: "Cadastros", descricao: "Pessoas e credores: o cadastro compartilhado que a despesa, as consignações e a folha usam." },
   { slug: "administracao", rotulo: "Administração", descricao: "Usuários, perfis, permissões e registro de operações." },
   { slug: "integracoes", rotulo: "Integrações", descricao: "Central de integrações: SAGRES TXT/JSON, Banco do Brasil e API TCE-PB." },
   { slug: "suporte", rotulo: "Suporte", descricao: "Canais de atendimento e prazos de resposta contratados (TR 4.20.9)." },
@@ -135,6 +136,11 @@ export const ADMINISTRACAO: readonly RelatorioNav[] = [
   { href: "/administracao/perfis", numero: "Perfis", rotulo: "Perfis e Permissões", descricao: "O que cada perfil concede — o censo do M16 (TR 4.56)." },
   { href: "/administracao/auditoria", numero: "Auditoria", rotulo: "Auditoria", descricao: "Registro de operações da borda (TR 6.1-6.3)." },
   { href: "/administracao/senha", numero: "Senha", rotulo: "Trocar Senha", descricao: "Troca a própria senha — revoga as sessões abertas." },
+];
+
+/** Os CADASTROS BASE — fonte única da landing e do submenu. */
+export const CADASTROS: readonly RelatorioNav[] = [
+  { href: "/cadastros/pessoas", numero: "Pessoas", rotulo: "Pessoas e Credores", descricao: "Uma pessoa, vários papéis. Cadastro append-only: alterar cria versão, e o histórico fica." },
 ];
 
 /** Os livros obrigatórios com página — fonte única da landing. */

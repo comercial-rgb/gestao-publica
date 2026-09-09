@@ -35,15 +35,21 @@ import { FiltroGerencial } from "./FiltroGerencial";
  * existe. O `where` do M05 sabe alcançar a anulação pelo empenho-pai; um `.filter()` na
  * borda, não.
  *
- * ═══ ⚠️ "CREDOR" AQUI É UM DOCUMENTO, NÃO UMA PESSOA — E A TELA DIZ ISSO ═══
- * Não existe entidade Credor/Fornecedor no schema deste sistema. O `Empenho` carrega uma
- * STRING (`credorCpfCnpj`) e mais nada: sem nome, sem cadastro, sem chave estrangeira.
- * Logo o filtro é CASAMENTO EXATO POR CPF/CNPJ, e a tela oferece um `select` dos
- * documentos que de fato existem no exercício — nunca um campo "nome do credor", que
- * devolveria vazio sempre e faria o usuário concluir "este fornecedor não recebeu nada".
- * Prometer uma busca que o banco não pode cumprir é a forma mais barata de um sistema
- * mentir. O aviso ao pé da tabela repete isso em português, para quem não leu este
- * comentário.
+ * ═══ ⚠️ "CREDOR" AQUI É UM DOCUMENTO, E CONTINUA SENDO — MESMO DEPOIS DO CADASTRO ═══
+ * O `Empenho` carrega uma STRING (`credorCpfCnpj`): o documento como foi informado NO ATO.
+ * O ENT01 criou o cadastro de pessoas (M19), mas isso NÃO transformou esta coluna em chave
+ * estrangeira, e não deveria — um empenho de 2026 não pode mudar de credor porque alguém
+ * corrigiu um cadastro em 2027.
+ *
+ * Logo o filtro continua sendo CASAMENTO EXATO POR CPF/CNPJ, e a tela oferece um `select`
+ * dos documentos que de fato existem no exercício — nunca um campo "nome do credor", que
+ * devolveria vazio para todo empenho cujo credor não esteja cadastrado, fazendo o usuário
+ * concluir "este fornecedor não recebeu nada". Prometer uma busca que o banco não pode
+ * cumprir é a forma mais barata de um sistema mentir.
+ *
+ * PENDÊNCIA `NOME-DO-CREDOR-NA-CONSULTA`: exibir, AO LADO do documento, o nome cadastrado
+ * quando ele existir — como enfeite de leitura, jamais como filtro. Enquanto houver
+ * empenho de credor não cadastrado, filtrar por nome esconde execução real.
  */
 export const dynamic = "force-dynamic";
 

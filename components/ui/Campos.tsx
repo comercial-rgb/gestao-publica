@@ -174,10 +174,10 @@ export function CampoCpfCnpj({
  * CAMPO DE TELEFONE — exibe `(00) 00000-0000` (celular) ou `(00) 0000-0000` (fixo), submete só
  * dígitos.
  *
- * ⚠️ SEM CONSUMIDOR HOJE. Nenhum form deste sistema tem campo de telefone (a 7.9 procurou: zero
- * ocorrências em `app/`, `components/` e `lib/`). Ele existe porque a diretriz de máscaras o pediu,
- * e fica testado para o dia em que o cadastro de credor/fornecedor chegar. Está aqui como
- * componente pronto, não como código morto que alguém descobre e não sabe se pode apagar.
+ * ⚠️ O CONSUMIDOR CHEGOU (ENT01). Este campo passou três blocos sem nenhum: existia porque a
+ * diretriz de máscaras o pediu, e ficou testado esperando "o dia em que o cadastro de
+ * credor/fornecedor chegar". Chegou — é o M19, em `/cadastros/pessoas`. O comentário fica como
+ * registro de que componente pronto e esperado NÃO é código morto.
  */
 export function CampoTelefone({
   name,

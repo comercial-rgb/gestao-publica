@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ADMINISTRACAO, AREAS, CONTABILIDADE, EXECUCAO_DESPESA, EXECUCAO_RECEITA, PLANEJAMENTO, RELATORIOS_GERENCIAIS, RELATORIOS_LIVROS, RELATORIOS_RGF, RELATORIOS_RREO, type RelatorioNav } from "../../lib/navegacao";
+import { ADMINISTRACAO, AREAS, CADASTROS, CONTABILIDADE, EXECUCAO_DESPESA, EXECUCAO_RECEITA, PLANEJAMENTO, RELATORIOS_GERENCIAIS, RELATORIOS_LIVROS, RELATORIOS_RGF, RELATORIOS_RREO, type RelatorioNav } from "../../lib/navegacao";
 
 /** Os submenus por área (grupo → itens). Só aparecem na área ativa e expandida. */
 const SUBMENUS: Record<string, readonly (readonly [string, readonly RelatorioNav[]])[]> = {
   relatorios: [["RREO", RELATORIOS_RREO], ["RGF", RELATORIOS_RGF], ["Livros", RELATORIOS_LIVROS], ["Gerenciais", RELATORIOS_GERENCIAIS]],
   administracao: [["Administração", ADMINISTRACAO]],
+  cadastros: [["Cadastros", CADASTROS]],
   despesa: [["Execução", EXECUCAO_DESPESA]],
   receita: [["Execução", EXECUCAO_RECEITA]],
   planejamento: [["Planejamento", PLANEJAMENTO]],

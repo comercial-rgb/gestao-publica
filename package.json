@@ -29,6 +29,7 @@
     "poc:usuario-restrito": "tsx scripts/poc-usuario-restrito.ts",
     "db:sql": "tsx scripts/aplicar-sql-manual.ts",
     "smoke:visual": "tsx scripts/smoke-visual.ts",
+    "smoke:pessoas": "tsx scripts/smoke-cadastro-pessoas.ts",
     "typecheck:app": "tsc --noEmit -p tsconfig.json",
     "typecheck:scripts": "tsc --noEmit -p tsconfig.scripts.json",
     "dev": "next dev",

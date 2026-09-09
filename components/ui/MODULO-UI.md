@@ -33,6 +33,7 @@ O compilador não pega nada disso (são imports válidos); o grep pega.
 | `liquidacao.ts` | liquidações + empenho de origem | não — ver §5 |
 | `pagamento.ts` | a fila do art. 141 (M06 × M05) | não — ver §5 |
 | `arrecadacao.ts` | guias do exercício + rol da LOA | não — ver §5 |
+| `pessoas.ts` | cadastro de pessoas e credores (M19), com papéis e histórico | **sim** (cadastrar, alterar, mover papel) |
 
 **Toda escrita passa por `comEscritaAutenticada`**: exige sessão (fail-closed), injeta o
 `criadoPor` real e grava `RegistroDeOperacao`.
@@ -105,7 +106,7 @@ justificativa e o pagamento serem atômicos.
 | **4.45–4.46** | solicitação de empenho | — |
 | **4.61** | anulação de receita (ato próprio, guia própria) | — |
 | **`data` × `dataArrecadacao`** | M05 nomeia a data genericamente (`data`, por ato); M04 a nomeia pelo fato (`dataArrecadacao`). Divergência de **nome**, não de semântica — as duas são a data do FATO. Registrado, sem mexer. | — |
-| **integração-contexto-real** | `UiContext` ainda serve exercícios/UGs **mock**. Os códigos oferecidos podem não existir no banco → a página responde com EstadoVazio nomeado, não erro. | `lib/ui-context.tsx` |
+| ~~**integração-contexto-real**~~ | ✅ **quitada**: `lib/portas/contexto.ts` lê exercícios e UGs do banco, contra `PermissaoDePerfil`, fail-closed (sem permissão = lista vazia, nunca "todas"); `app/(areas)/layout.tsx` injeta o resultado no `UiContext`. Esta linha dizia "mock" depois de o mock ter saído. | `lib/portas/contexto.ts` |
 | **dashboard-portas** | alguns cards do painel ainda são mock | — |
 
 ### O que NÃO é pendência (e por que)
@@ -116,7 +117,13 @@ justificativa e o pagamento serem atômicos.
 - **A fila do art. 141 não filtra por UG nem por exercício.** A ordem é por **fonte × categoria**:
   recortá-la por unidade a partiria em filas que a lei não criou, cada pedaço com uma "posição 1"
   própria. O seletor não afeta `/despesa/pagamentos`.
-- **O credor não é um select.** `credorCpfCnpj: z.string().min(11)` — não há tabela de credores.
+- ~~**O credor não é um select.**~~ **Deixou de valer no ENT01.** O M19 criou o cadastro
+  (`Pessoa`, append-only, com papéis). `Empenho.credorCpfCnpj` continua STRING de propósito — o
+  fato guarda o documento como ele foi informado no ato, e uma FK apontaria para um cadastro que
+  muda depois. A ligação é o DOCUMENTO, indexado dos dois lados. **Pendência `CREDOR-NO-EMPENHO`:**
+  o formulário de empenho ainda pede o documento digitado; oferecer o cadastro como sugestão (sem
+  torná-lo obrigatório, porque a base tem empenhos de credores não cadastrados) é trabalho do lote
+  que mexer naquela tela.
 - **A categoria da ordem cronológica é obrigatória no empenho sem contrato.** O `superRefine` do
   `zEmpenharInput` recusa sem ela: um default a faria virar `FORNECIMENTO_BENS` em silêncio.
 
