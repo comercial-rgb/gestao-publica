@@ -152,11 +152,26 @@ const TABELAS = [
   "EventoFiscalOutbox",
 ] as const;
 
-export async function limparBanco(prisma: PrismaClient): Promise<void> {
+/**
+ * SÓ A LIMPEZA, sem semear ninguém.
+ *
+ * ⚠️ EXISTE PARA UM CASO SÓ: `test/seed-de-producao.test.ts`, que precisa de um banco
+ * VAZIO e depois semeado **apenas pelos seeds de produção**. Se ele usasse `limparBanco`,
+ * receberia de brinde os usuários de fixture — e passaria a provar que o sistema funciona
+ * com um ator que produção nenhuma tem. Era exatamente a classe de falso-verde que aquele
+ * teste existe para caçar.
+ *
+ * Todo o resto da suíte continua usando `limparBanco`.
+ */
+export async function truncarTudo(prisma: PrismaClient): Promise<void> {
   const lista = TABELAS.map((t) => `"${t}"`).join(", ");
   await prisma.$executeRawUnsafe(
     `TRUNCATE TABLE ${lista} RESTART IDENTITY CASCADE`
   );
+}
+
+export async function limparBanco(prisma: PrismaClient): Promise<void> {
+  await truncarTudo(prisma);
 
   // ⚠️ E OS USUÁRIOS RENASCEM AQUI — de propósito.
   //
