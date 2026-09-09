@@ -11,19 +11,26 @@ import {
  * ambiente) e concede ao papel; ao final, CONFERE conectando como o próprio papel.
  *
  * Uso:
- *   npm run db:papel            # DATABASE_URL e DATABASE_URL_TEST
- *   npm run db:papel -- <url>   # um banco específico
+ *   npm run db:papel                    # DATABASE_URL e DATABASE_URL_TEST
+ *   npm run db:papel -- <url>           # um banco específico
+ *   APP_DB_SCHEMA=<schema> npm run db:papel
+ *
+ * ⚠️ O SCHEMA É PARÂMETRO (default `public`). Ver
+ * `docs/adr/ADR-eixo-de-municipio.md`: o produto vai atender vários municípios por
+ * schema por município, e é este script que dá acesso da aplicação a cada schema novo.
+ * Enquanto houver um só, o default cobre tudo — mas a suposição sai do código agora,
+ * enquanto é barata.
  *
  * ⚠️ Rode-o DEPOIS de `prisma migrate deploy`: os grants são sobre tabelas que têm de
  * existir. Rodar de novo depois de uma migration nova é barato e idempotente — e é o que
  * realinha o papel com o schema.
  */
-async function provisionarEm(urlDoDono: string): Promise<void> {
+async function provisionarEm(urlDoDono: string, schema: string): Promise<void> {
   const papel = papelDoAmbiente();
   const dono = new Client({ connectionString: urlDoDono });
   await dono.connect();
   try {
-    await provisionarPapelDeRuntime(dono, papel);
+    await provisionarPapelDeRuntime(dono, papel, schema);
   } finally {
     await dono.end();
   }
@@ -41,23 +48,27 @@ async function provisionarEm(urlDoDono: string): Promise<void> {
       bypassrls: boolean;
       pode_criar: string | null;
     }>(
+      // ⚠️ A CONFERÊNCIA PERGUNTA PELO SCHEMA PROVISIONADO, não por `public`. Conceder
+      // num schema e conferir noutro é o jeito de um provisionamento passar sem ter
+      // acontecido — e com um schema por município isso deixaria de ser hipótese.
       `SELECT current_user AS usuario,
               r.rolsuper    AS superusuario,
               r.rolbypassrls AS bypassrls,
-              has_schema_privilege(current_user, 'public', 'CREATE')::text AS pode_criar
-         FROM pg_roles r WHERE r.rolname = current_user`
+              has_schema_privilege(current_user, $1, 'CREATE')::text AS pode_criar
+         FROM pg_roles r WHERE r.rolname = current_user`,
+      [schema]
     );
     const l = rows[0];
     if (l === undefined) throw new Error("pg_roles não devolveu o papel corrente.");
     if (l.superusuario || l.bypassrls || l.pode_criar === "true") {
       throw new Error(
         `Papel "${l.usuario}" provisionado com privilégio a mais ` +
-          `(superusuario=${l.superusuario}, bypassrls=${l.bypassrls}, CREATE em public=${l.pode_criar}).`
+          `(superusuario=${l.superusuario}, bypassrls=${l.bypassrls}, CREATE em ${schema}=${l.pode_criar}).`
       );
     }
     const alvo = new URL(urlDoDono).pathname.replace(/^\//, "");
     console.log(
-      `[papel] ${alvo}: "${l.usuario}" ok — sem superusuário, sem BYPASSRLS, sem DDL.`
+      `[papel] ${alvo} (schema ${schema}): "${l.usuario}" ok — sem superusuário, sem BYPASSRLS, sem DDL.`
     );
   } finally {
     await comoPapel.end();
@@ -79,8 +90,12 @@ async function main(): Promise<void> {
     );
   }
 
+  // Um schema por execução: provisionar N schemas de uma vez esconderia qual deles
+  // falhou. Quem provisiona vários chama o script várias vezes, e vê o resultado de cada.
+  const schema = (process.env["APP_DB_SCHEMA"] ?? "public").trim() || "public";
+
   for (const url of urls) {
-    await provisionarEm(url);
+    await provisionarEm(url, schema);
   }
 }
 

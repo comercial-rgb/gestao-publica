@@ -40,6 +40,7 @@ import {
   type Violacao,
 } from "../../adapters/tribunais/tce-pb/sagres";
 import { resolverTribunal, type ExportadorTribunal } from "../../packages/tribunais-core";
+import { enteDoContexto } from "../../modules/m01-core-contabil/contexto-do-ente";
 
 /**
  * PORTA — SAGRES TXT (M15). A ÚNICA superfície que a UI enxerga; o domínio (adapters/tribunais/tce-pb/sagres) nunca
@@ -75,17 +76,14 @@ export { PortaSemBancoError };
  * duas coisas proibidas nesta fatia. Elas sobem quando houver um segundo tribunal para unificar.
  */
 async function tribunalDoEnte(prisma: ReturnType<typeof cliente>): Promise<ExportadorTribunal> {
-  const ente = await prisma.enteConfig.findUnique({
-    where: { id: "unico" },
-    select: { tribunalCodigo: true },
-  });
-  if (ente === null) {
-    throw new Error(
-      "SAGRES — a configuração do ente NÃO está semeada (EnteConfig \"unico\"). É dela que sai o " +
-        "tribunal de jurisdição (`tribunalCodigo`), e sem ele não há a quem exportar. Rode o seed " +
-        "do ente antes. (O MSC e o MANAD param pelo mesmo motivo.)"
-    );
-  }
+  // ⚠️ O `select` SAIU JUNTO COM A CHAVE. `enteDoContexto` devolve a linha inteira do
+  // singleton — uma linha, poucas colunas — e em troca a suposição "o ente é a linha
+  // `unico`" passa a existir em UM arquivo só. Ver docs/adr/ADR-eixo-de-municipio.md.
+  const ente = await enteDoContexto(
+    prisma,
+    "É da configuração do ente que sai o tribunal de jurisdição (`tribunalCodigo`), e " +
+      "sem ele não há a quem exportar. (A MSC e o MANAD param pelo mesmo motivo.)"
+  );
   // `resolverTribunal` lança TRIBUNAL_NAO_SUPORTADO quando o código não tem adapter — o que é
   // exatamente o que deve acontecer: exportar para um tribunal que este binário não implementa
   // produziria um arquivo que ninguém pode receber.

@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import puppeteer, { type Browser, type BrowserContext, type Page } from "puppeteer";
 import { criarPrismaClient } from "../modules/m01-core-contabil/adapter-prisma.js";
+import { ID_DO_ENTE_UNICO } from "../modules/m01-core-contabil/contexto-do-ente.js";
 import type { PrismaClient } from "../prisma/generated/client/client.js";
 import { ACOES_DE_ADMINISTRACAO } from "../modules/m16-travamento/acoes.js";
 import { listarSaldosExtra } from "../modules/m07-extraorcamentario/consultas.js";
@@ -180,7 +181,11 @@ async function bloco1Massa(prisma: PrismaClient): Promise<{ dias: string[]; mese
 
   // O EnteConfig alimenta cabeçalho de PDF e exports federais. Vazio = documento sem identificação
   // do ente na frente da Comissão.
-  const ente = await prisma.enteConfig.findFirst();
+  // ⚠️ POR CHAVE, NÃO `findFirst`. Este script CONFERE — ele não pode derrubar, então não
+  // usa o `enteDoContexto` (que é fail-closed de propósito). Mas ele usa a MESMA chave:
+  // um `findFirst` acharia qualquer linha e diria "ok" sobre um ente que a aplicação não
+  // lê. A constante é compartilhada; o comportamento, não.
+  const ente = await prisma.enteConfig.findUnique({ where: { id: ID_DO_ENTE_UNICO } });
   const enteOk = ente !== null && ente.nome.trim() !== "" && ente.codigoIbge.trim() !== "";
   conferir(
     1,

@@ -8,6 +8,7 @@ import {
   type SomasDaConta,
   type SomasDaContaPorLancamento,
 } from "../../m01-core-contabil/adapter-prisma.js";
+import { enteDoContexto } from "../../m01-core-contabil/contexto-do-ente.js";
 import {
   conferirM1,
   conferirM2,
@@ -187,15 +188,18 @@ export async function gerarMsc(
   const c = parsearCompetencia(competencia);
 
   // ═══ A CONFIG DO ENTE — semeada, conferida por humano, NUNCA hardcode ═══
-  const ente = await leitor.enteConfig.findUnique({ where: { id: "unico" } });
-  if (ente === null) {
-    throw new Error(
-      `MSC — a configuração do ente NÃO está semeada (EnteConfig "unico"). O código ` +
-        `IBGE e o Poder/Órgão entram em TODA linha do arquivo: sem eles, a MSC seria ` +
-        `enviada à União em nome de ninguém. Semeie a config — e confira o código IBGE ` +
-        `contra a tabela oficial antes.`
-    );
-  }
+  //
+  // ⚠️ QUEM SABE ONDE O ENTE MORA É `enteDoContexto`, não este gerador. A chave do
+  // singleton estava escrita à mão aqui e em mais três lugares; a decisão de atender
+  // vários municípios por schema (ver docs/adr) transforma "achar o ente" numa função
+  // do contexto. A MENSAGEM continua sendo desta função — o ente ausente quebra coisas
+  // diferentes em cada chamador, e "MSC enviada à União em nome de ninguém" é o que
+  // torna a recusa acionável.
+  const ente = await enteDoContexto(
+    leitor,
+    "O código IBGE e o Poder/Órgão entram em TODA linha da MSC: sem eles, o arquivo " +
+      "seria enviado à União em nome de ninguém."
+  );
   const instituicao = `${ente.codigoIbge}EX`;
 
   const janelas = recortes(tipo, c);

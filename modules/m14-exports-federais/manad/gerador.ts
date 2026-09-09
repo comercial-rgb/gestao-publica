@@ -1,6 +1,7 @@
 import { toMoney, type Money } from "../../../packages/contracts/index.js";
 import { somaLiquidaEstornaveis } from "../../../packages/estornaveis/index.js";
 import type { PrismaClient } from "../../../prisma/generated/client/client.js";
+import { enteDoContexto } from "../../m01-core-contabil/contexto-do-ente.js";
 // A soma do saldo de RP é do M08 — o dono dela. Zero segunda aritmética.
 import { saldoDosRestos } from "../../m08-restos-a-pagar/restos.js";
 import { TIP_OBRA_SERVICO, type TipoObraServicoRepo } from "../../m11-licitacoes/obras.js";
@@ -156,14 +157,13 @@ async function bloco0(
   entrada: EntradaManad,
   exercicio: number
 ): Promise<readonly LinhaManad[]> {
-  const ente = await leitor.enteConfig.findUnique({ where: { id: "unico" } });
-  if (ente === null) {
-    throw new Error(
-      `MANAD — a configuração do ente NÃO está semeada (EnteConfig "unico"). O CNPJ, a ` +
-        `UF e o código IBGE entram no registro 0000: sem eles o arquivo iria à Receita em ` +
-        `nome de ninguém.`
-    );
-  }
+  // ⚠️ A CHAVE DO SINGLETON NÃO MORA MAIS AQUI — ver `enteDoContexto`. A mensagem, sim:
+  // é ela que diz o que ESTE gerador não consegue fazer sem o ente.
+  const ente = await enteDoContexto(
+    leitor,
+    "O CNPJ, a UF e o código IBGE entram no registro 0000 do MANAD: sem eles o arquivo " +
+      "iria à Receita em nome de ninguém."
+  );
   // FAIL-CLOSED nos campos que o MANAD exige e a MSC não usava.
   const faltando = (
     [

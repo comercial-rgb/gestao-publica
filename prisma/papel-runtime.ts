@@ -133,10 +133,34 @@ export function urlDoRuntime(urlDoDono: string, papel: PapelDeRuntime): string {
  */
 export async function provisionarPapelDeRuntime(
   cliente: Client,
-  papel: PapelDeRuntime
+  papel: PapelDeRuntime,
+  /**
+   * O SCHEMA sobre o qual os privilégios são concedidos. Default `"public"` — o único
+   * que existe hoje.
+   *
+   * ═══ ⚠️ POR QUE ISTO É PARÂMETRO, E NÃO A CONSTANTE QUE ERA ═══
+   * A decisão de produto (`docs/adr/ADR-eixo-de-municipio.md`) é atender vários
+   * municípios por **schema por município**. Nesse desenho é ESTE script que provisiona
+   * o acesso da aplicação a cada schema novo — e ele não pode assumir `public`, ou o
+   * município recém-criado nasceria sem grant nenhum e a aplicação responderia
+   * "permission denied" na primeira leitura.
+   *
+   * ⚠️ E A MUDANÇA NÃO É SÓ NAS TRÊS LINHAS ÓBVIAS. Os `GRANT ... ON TABLE <t>` do
+   * censo e do `FORA_DO_ALCANCE_DO_RUNTIME` eram **não qualificados**: resolviam pelo
+   * `search_path` do dono. Com um schema por município, um `search_path` diferente do
+   * esperado concederia privilégio na tabela do município ERRADO — e concederia em
+   * silêncio, porque o SQL é válido. Agora toda referência é qualificada.
+   *
+   * ⚠️ ISTO NÃO IMPLANTA MULTI-TENANCY. Nada aqui cria schema, resolve município ou lê
+   * membership. O parâmetro só para de dificultar o lote que fará isso.
+   */
+  schema: string = "public"
 ): Promise<void> {
   const id = cliente.escapeIdentifier(papel.usuario);
   const senha = cliente.escapeLiteral(papel.senha);
+  const sch = cliente.escapeIdentifier(schema);
+  /** `schema.tabela`, sempre — ver o aviso sobre `search_path` no parâmetro. */
+  const tabelaEm = (t: string): string => `${sch}.${cliente.escapeIdentifier(t)}`;
 
   // (1) O papel. LOGIN e nada mais: sem SUPERUSER (atravessa tudo), sem BYPASSRLS
   //     (atravessa política de linha), sem CREATEDB/CREATEROLE (escalada), sem
@@ -159,21 +183,21 @@ export async function provisionarPapelDeRuntime(
   // (2) O schema: USAGE, nunca CREATE. Sem CREATE não há DDL — o runtime não cria
   //     tabela, não dropa índice e não altera coluna. É o que separa "a aplicação" de
   //     "a migration", e a separação vira física em vez de disciplinar.
-  await cliente.query(`REVOKE ALL ON SCHEMA public FROM ${id}`);
-  await cliente.query(`GRANT USAGE ON SCHEMA public TO ${id}`);
+  await cliente.query(`REVOKE ALL ON SCHEMA ${sch} FROM ${id}`);
+  await cliente.query(`GRANT USAGE ON SCHEMA ${sch} TO ${id}`);
 
   // (3) O padrão do repositório é APPEND-ONLY: SELECT e INSERT, nada mais. Um REVOKE ALL
   //     antes, para que retirar uma tabela do censo de fato a retire (sem ele, o grant
   //     antigo sobreviveria a esta função e o censo mentiria).
-  await cliente.query(`REVOKE ALL ON ALL TABLES IN SCHEMA public FROM ${id}`);
+  await cliente.query(`REVOKE ALL ON ALL TABLES IN SCHEMA ${sch} FROM ${id}`);
   await cliente.query(
-    `GRANT SELECT, INSERT ON ALL TABLES IN SCHEMA public TO ${id}`
+    `GRANT SELECT, INSERT ON ALL TABLES IN SCHEMA ${sch} TO ${id}`
   );
-  await cliente.query(`GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO ${id}`);
+  await cliente.query(`GRANT USAGE ON ALL SEQUENCES IN SCHEMA ${sch} TO ${id}`);
 
   // (4) As três exceções do censo, por coluna onde a coluna importa.
   for (const [tabela, permissao] of Object.entries(ESCRITA_MUTAVEL_DO_RUNTIME)) {
-    const t = cliente.escapeIdentifier(tabela);
+    const t = tabelaEm(tabela);
     if (permissao.update.length > 0) {
       const colunas = permissao.update
         .map((c) => cliente.escapeIdentifier(c))
@@ -189,7 +213,7 @@ export async function provisionarPapelDeRuntime(
   //     consulta a tabela em algumas rotas de diagnóstico, mas quem escreve nela é o
   //     `migrate deploy`, que roda como dono.
   for (const tabela of FORA_DO_ALCANCE_DO_RUNTIME) {
-    const t = cliente.escapeIdentifier(tabela);
+    const t = tabelaEm(tabela);
     await cliente.query(`REVOKE ALL ON TABLE ${t} FROM ${id}`);
     await cliente.query(`GRANT SELECT ON TABLE ${t} TO ${id}`);
   }
@@ -205,11 +229,11 @@ export async function provisionarPapelDeRuntime(
     throw new Error("Não foi possível resolver current_user para o ALTER DEFAULT PRIVILEGES.");
   }
   await cliente.query(
-    `ALTER DEFAULT PRIVILEGES FOR ROLE ${cliente.escapeIdentifier(dono)} IN SCHEMA public ` +
+    `ALTER DEFAULT PRIVILEGES FOR ROLE ${cliente.escapeIdentifier(dono)} IN SCHEMA ${sch} ` +
       `GRANT SELECT, INSERT ON TABLES TO ${id}`
   );
   await cliente.query(
-    `ALTER DEFAULT PRIVILEGES FOR ROLE ${cliente.escapeIdentifier(dono)} IN SCHEMA public ` +
+    `ALTER DEFAULT PRIVILEGES FOR ROLE ${cliente.escapeIdentifier(dono)} IN SCHEMA ${sch} ` +
       `GRANT USAGE ON SEQUENCES TO ${id}`
   );
 }
