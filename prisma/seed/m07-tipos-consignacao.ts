@@ -20,20 +20,52 @@ if (DATABASE_URL === undefined) {
 const prisma = criarPrismaClient(DATABASE_URL);
 
 for (const t of TIPOS_CONSIGNACAO) {
+  // ⚠️ FAIL-CLOSED: a conta de passivo TEM de existir no plano. Semear o tipo sem ela
+  // deixaria a retenção indisponível na tela sem que ninguém soubesse por quê — e o
+  // motivo apareceria só na hora de reter, no meio de um pagamento.
+  const conta = await prisma.contaPcasp.findUnique({
+    where: { codigo: t.contaPassivo },
+    select: { id: true, analitica: true },
+  });
+  if (conta === null) {
+    throw new Error(
+      `Conta ${t.contaPassivo} (passivo da consignação ${t.codigo}) não existe no plano. ` +
+        `Rode o seed do PCASP antes: npm run seed:pcasp.`
+    );
+  }
+  if (!conta.analitica) {
+    throw new Error(
+      `Conta ${t.contaPassivo} (passivo da consignação ${t.codigo}) é SINTÉTICA. ` +
+        `Conta sintética não recebe partida — o lançamento da retenção seria recusado ` +
+        `pelo M01 no meio do pagamento.`
+    );
+  }
+
   await prisma.tipoConsignacao.upsert({
     where: { codigo: t.codigo },
-    update: { descricao: t.descricao },
-    create: { codigo: t.codigo, descricao: t.descricao, criadoPor: "SEED" },
+    update: { descricao: t.descricao, contaPassivoId: conta.id },
+    create: {
+      codigo: t.codigo,
+      descricao: t.descricao,
+      contaPassivoId: conta.id,
+      criadoPor: "SEED",
+    },
   });
 }
 
 const todos = await prisma.tipoConsignacao.findMany({
   orderBy: { codigo: "asc" },
+  include: { contaPassivo: { select: { codigo: true } } },
 });
 
 console.log(`TIPOS DE CONSIGNAÇÃO (${todos.length}):\n`);
 for (const t of todos) {
-  console.log(`  ${t.ativo ? " " : "x"} ${t.codigo.padEnd(24)} ${t.descricao}`);
+  // A conta aparece no relatório do seed porque é ela que decide se a retenção fica
+  // DISPONÍVEL na tela. Um tipo sem conta é um tipo que ninguém consegue usar.
+  const conta = t.contaPassivo?.codigo ?? "SEM CONTA DE PASSIVO";
+  console.log(
+    `  ${t.ativo ? " " : "x"} ${t.codigo.padEnd(24)} ${conta.padEnd(18)} ${t.descricao}`
+  );
 }
 console.log(
   `\n  ⚠️ Seed MÍNIMO. O rol oficial do SAGRES-PB é pendência de dados ` +

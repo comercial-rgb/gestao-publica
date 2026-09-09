@@ -121,7 +121,10 @@ async function preencherEEnviar(
   for (const [nome, valor] of Object.entries(campos)) {
     const seletor = SELETOR_VISIVEL[nome] ?? `[name="${nome}"]`;
     await page.waitForSelector(seletor, { timeout: 5000 });
-    await page.click(seletor, { clickCount: 3 }); // seleciona o que houver
+    // `count`, e não `clickCount`: o nome mudou no Puppeteer e a opção desconhecida era
+    // ACEITA em silêncio — o clique virava um só, o campo não era selecionado e o valor
+    // novo se concatenava ao velho. O `typecheck:scripts` é quem pegou.
+    await page.click(seletor, { count: 3 }); // seleciona o que houver
     await page.keyboard.press("Backspace");
     await page.type(seletor, valor, { delay: 5 });
   }

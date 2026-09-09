@@ -654,8 +654,15 @@ function doCredor(credorCpfCnpj: string | undefined): {
   };
 }
 
-/** Toda linha estornável tem a mesma forma; o `map` é um só. */
-function comoLinha(x: {
+/**
+ * Toda linha estornável tem a mesma forma; o `map` é um só.
+ *
+ * ⚠️ EXPORTADO para `./dossie.ts` — e exportar foi a alternativa MENOS ruim. O dossiê do
+ * empenho monta a mesma aritmética líquida sobre o mesmo conjunto de fatos; recopiá-la lá
+ * criaria uma segunda noção de "quanto deste empenho ainda vale", e as duas divergiriam no
+ * primeiro caso que só uma delas conhecesse (a anulação da anulação, por exemplo).
+ */
+export function comoLinha(x: {
   readonly id: string;
   readonly valor: { toFixed: (n: number) => string };
   readonly estornoDeId: string | null;
@@ -687,7 +694,7 @@ function comoLinha(x: {
  * A ARITMÉTICA CONTINUA SENDO UMA: `somaLiquidaEstornaveis`. O que muda aqui é só o
  * RECORTE — o fato, as parciais dele e os estornos dele.
  */
-function liquidoDeUmFato(
+export function liquidoDeUmFato(
   fatoId: string,
   universo: readonly LinhaEstornavel[]
 ): Money {

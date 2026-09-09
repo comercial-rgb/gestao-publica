@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { ehHipotese, registrarPagamento } from "../../../../lib/portas/pagamento";
+import { desmascararValor } from "../../../../lib/format/mascaras";
 
 export interface EstadoPagamento {
   readonly erro?: string;
@@ -36,6 +37,9 @@ export async function pagarAction(
   const fonteId = String(formData.get("fonteId") ?? "").trim();
   const historico = String(formData.get("historico") ?? "").trim();
   const dataBruta = String(formData.get("data") ?? "").trim();
+
+  const retencoes = lerRetencoes(formData);
+  if (typeof retencoes === "string") return { erro: retencoes };
 
   const hipoteseBruta = String(formData.get("hipotese") ?? "").trim();
   const justificativa = String(formData.get("justificativa") ?? "").trim();
@@ -81,6 +85,9 @@ export async function pagarAction(
             },
           }
         : {}),
+      // Lista vazia vira AUSENTE na porta — o caminho sem retenção continua sendo o de
+      // sempre, partida por partida.
+      ...(retencoes.length > 0 ? { retencoes } : {}),
     });
     revalidatePath("/despesa/pagamentos");
     revalidatePath("/despesa/liquidacoes");
@@ -89,4 +96,61 @@ export async function pagarAction(
   } catch (e) {
     return { erro: e instanceof Error ? e.message : "Não foi possível pagar." };
   }
+}
+
+/**
+ * AS LINHAS DE RETENÇÃO, do formulário para a porta. Devolve a mensagem de erro (string)
+ * quando o preenchimento está incoerente.
+ *
+ * ⚠️ TRÊS LISTAS PARALELAS, E A CORRESPONDÊNCIA É POSICIONAL. `getAll` devolve os valores
+ * na ordem do DOM; a linha `i` é `(tipo[i], credor[i], valor[i])`. Se os três tamanhos
+ * divergirem, alguma coisa chegou pela metade — e casar posições de listas de tamanhos
+ * diferentes silenciosamente retiraria dinheiro a favor do consignatário errado. Por isso
+ * a recusa é explícita, ANTES da transação.
+ *
+ * ⚠️ NENHUMA REGRA DE NEGÓCIO AQUI. Retenção maior que o pagamento, duplicada para o
+ * mesmo (tipo, credor), valor não positivo — tudo isso é do domínio (M07), dentro da
+ * transação, e a mensagem dele sobe como veio. O que se faz aqui é só ler o formulário.
+ */
+function lerRetencoes(
+  formData: FormData
+): readonly {
+  readonly tipoConsignacaoId: string;
+  readonly credorConsignatario: string;
+  readonly valor: string;
+}[] | string {
+  const tipos = formData.getAll("retencaoTipo").map((v) => String(v).trim());
+  const credores = formData.getAll("retencaoCredor").map((v) => String(v).trim());
+  const valores = formData
+    .getAll("retencaoValor")
+    .map((v) => desmascararValor(String(v)));
+
+  if (tipos.length !== credores.length || tipos.length !== valores.length) {
+    return (
+      "As retenções chegaram incompletas ao servidor (tipo, consignatário e valor não " +
+      "vieram em igual número). Refaça a linha de retenção. Nada foi gravado."
+    );
+  }
+
+  const linhas: {
+    readonly tipoConsignacaoId: string;
+    readonly credorConsignatario: string;
+    readonly valor: string;
+  }[] = [];
+
+  for (const [i, tipo] of tipos.entries()) {
+    const credor = credores[i] ?? "";
+    const valor = valores[i] ?? "";
+    // Linha inteiramente vazia = o usuário abriu e não usou. Ignorar é o certo.
+    if (tipo === "" && credor === "" && (valor === "" || valor === "0")) continue;
+    if (tipo === "" || credor === "" || valor === "") {
+      return (
+        `A ${i + 1}ª retenção está pela metade: escolha a consignação, diga a favor de ` +
+        "quem e informe o valor. Nada foi gravado."
+      );
+    }
+    linhas.push({ tipoConsignacaoId: tipo, credorConsignatario: credor, valor });
+  }
+
+  return linhas;
 }

@@ -17,14 +17,35 @@
 export interface TipoConsignacaoSeed {
   readonly codigo: string;
   readonly descricao: string;
+  /**
+   * A conta do PCASP onde o passivo desta consignação nasce.
+   *
+   * ⚠️ TODAS APONTAM PARA A MESMA CONTA, E ISSO NÃO É DESCUIDO. O plano MÍNIMO deste
+   * repositório (`prisma/seed/pcasp.ts`) tem UMA conta analítica de consignações —
+   * `2.1.8.8.1.01.00`. Um ente real segrega o INSS do IRRF em contas próprias; quando o
+   * plano dele entrar, é o CADASTRO que muda, não o código.
+   *
+   * ⚠️ E ISTO NÃO SUBSTITUI A SEGREGAÇÃO DO SALDO. Quanto se deve a cada consignatário é
+   * `Σ(valor × sinal)` por **(tipo, credor)** em `MovimentoExtraorcamentario` — não o
+   * saldo da conta contábil. Duas consignações na mesma conta do razão continuam sendo
+   * duas dívidas distintas, com dois credores distintos.
+   */
+  readonly contaPassivo: string;
 }
 
+/**
+ * A ÚNICA conta analítica de consignações do plano mínimo. Ver o aviso acima antes de
+ * tratá-la como recomendação de plano de contas: ela é o que EXISTE aqui, não o que um
+ * ente deve ter.
+ */
+const CONSIGNACOES = "2.1.8.8.1.01.00";
+
 export const TIPOS_CONSIGNACAO: readonly TipoConsignacaoSeed[] = [
-  { codigo: "INSS", descricao: "Retenção previdenciária - INSS" },
-  { codigo: "IRRF", descricao: "Imposto de Renda Retido na Fonte" },
-  { codigo: "ISS", descricao: "Imposto Sobre Serviços retido na fonte" },
-  { codigo: "PENSAO_ALIMENTICIA", descricao: "Pensão alimentícia" },
-  { codigo: "CONSIGNACAO_EMPRESTIMO", descricao: "Consignação de empréstimo" },
-  { codigo: "CAUCAO", descricao: "Caução / garantia contratual (Lei 14.133, art. 96)" },
-  { codigo: "RETENCAO_CONTRATUAL", descricao: "Retenção contratual" },
+  { codigo: "INSS", descricao: "Retenção previdenciária - INSS", contaPassivo: CONSIGNACOES },
+  { codigo: "IRRF", descricao: "Imposto de Renda Retido na Fonte", contaPassivo: CONSIGNACOES },
+  { codigo: "ISS", descricao: "Imposto Sobre Serviços retido na fonte", contaPassivo: CONSIGNACOES },
+  { codigo: "PENSAO_ALIMENTICIA", descricao: "Pensão alimentícia", contaPassivo: CONSIGNACOES },
+  { codigo: "CONSIGNACAO_EMPRESTIMO", descricao: "Consignação de empréstimo", contaPassivo: CONSIGNACOES },
+  { codigo: "CAUCAO", descricao: "Caução / garantia contratual (Lei 14.133, art. 96)", contaPassivo: CONSIGNACOES },
+  { codigo: "RETENCAO_CONTRATUAL", descricao: "Retenção contratual", contaPassivo: CONSIGNACOES },
 ];

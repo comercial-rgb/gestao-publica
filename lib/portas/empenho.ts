@@ -10,6 +10,11 @@ import {
 import { criarM05Deps } from "../../modules/m05-despesa/adapter-prisma";
 import { empenhar } from "../../modules/m05-despesa/servico";
 import { roteiroEmpenho } from "../../modules/m01-core-contabil/roteiros";
+import {
+  dossieDoEmpenho,
+  type DossieDoEmpenho,
+  type FatoDaCadeia,
+} from "../../modules/m05-despesa/dossie";
 
 /**
  * PORTA — EMPENHOS (execução da despesa, TR 5.17).
@@ -196,5 +201,261 @@ function paraTela(e: EmpenhoNaLista): EmpenhoDaTela {
     saldoAPagar: e.saldoAPagar.toFixed(2),
     anulado: e.anulado,
     status: e.status,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// O DOSSIÊ DE UM EMPENHO — a tela de conferência.
+//
+// ⚠️ A PORTA SÓ TROCA `Decimal` POR `string`. Nenhuma soma nasce aqui: quem monta a
+// cadeia, o líquido de cada fato, o retido vivo e o total por subsistema é
+// `modules/m05-despesa/dossie.ts`. Uma aritmética a mais nesta camada seria a segunda
+// resposta para "quanto deste empenho ainda vale" — e a tela mostraria a errada com a
+// mesma confiança com que mostraria a certa.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface FatoDaCadeiaDaTela {
+  readonly id: string;
+  readonly numero: string;
+  readonly data: Date;
+  readonly valor: string;
+  readonly natureza: string;
+  readonly refereSeA: string | null;
+  readonly lancamentoId: string;
+  readonly criadoEm: Date;
+  readonly criadoPor: string;
+}
+
+export interface RetencaoDaTela {
+  readonly id: string;
+  readonly tipoCodigo: string;
+  readonly tipoDescricao: string;
+  readonly credorConsignatario: string;
+  readonly valor: string;
+  readonly data: Date;
+  readonly movimento: string;
+  readonly estornoDeId: string | null;
+  readonly criadoPor: string;
+}
+
+export interface PagamentoDoDossieDaTela {
+  readonly id: string;
+  readonly numero: string;
+  readonly data: Date;
+  readonly valor: string;
+  readonly pagoLiquido: string;
+  readonly totalRetido: string;
+  readonly saidaDeCaixa: string;
+  readonly contaBancaria: string;
+  readonly fonteCodigo: string;
+  readonly anulado: boolean;
+  readonly cadeia: readonly FatoDaCadeiaDaTela[];
+  readonly retencoes: readonly RetencaoDaTela[];
+}
+
+export interface LiquidacaoDoDossieDaTela {
+  readonly id: string;
+  readonly numero: string;
+  readonly data: Date;
+  readonly valor: string;
+  readonly liquidadoLiquido: string;
+  readonly pago: string;
+  readonly saldoAPagar: string;
+  readonly responsavelAtesto: string;
+  readonly notaFiscalNum: string | null;
+  readonly notaFiscalSerie: string | null;
+  readonly notaFiscalData: Date | null;
+  readonly anulado: boolean;
+  readonly cadeia: readonly FatoDaCadeiaDaTela[];
+  readonly pagamentos: readonly PagamentoDoDossieDaTela[];
+}
+
+export interface PartidaDaTela {
+  readonly contaCodigo: string;
+  readonly contaTitulo: string;
+  readonly tipo: string;
+  readonly subsistema: string;
+  readonly valor: string;
+  readonly fichaNumero: number | null;
+}
+
+export interface TotalDoSubsistemaDaTela {
+  readonly subsistema: string;
+  readonly debito: string;
+  readonly credito: string;
+  readonly fecha: boolean;
+}
+
+export interface LancamentoDaTela {
+  readonly id: string;
+  readonly numeroControle: string;
+  readonly dataTransacao: Date;
+  readonly historico: string;
+  readonly origemTipo: string;
+  readonly estornoDeId: string | null;
+  readonly criadoEm: Date;
+  readonly criadoPor: string;
+  readonly partidas: readonly PartidaDaTela[];
+  readonly totais: readonly TotalDoSubsistemaDaTela[];
+}
+
+export interface OrigemDaTela {
+  readonly fichaId: string;
+  readonly fichaNumero: number;
+  readonly exercicio: number;
+  readonly orgaoCodigo: string;
+  readonly orgaoNome: string;
+  readonly unidadeCodigo: string;
+  readonly unidadeNome: string;
+  readonly funcaoCodigo: string;
+  readonly funcaoDescricao: string;
+  readonly subfuncaoCodigo: string;
+  readonly subfuncaoDescricao: string;
+  readonly programaCodigo: string;
+  readonly programaDescricao: string;
+  readonly acaoCodigo: string;
+  readonly acaoDescricao: string;
+  readonly naturezaCodigo: string;
+  readonly naturezaDescricao: string;
+  readonly fonteCodigo: string;
+  readonly fonteDescricao: string;
+  readonly saldoDisponivelHoje: string;
+  readonly contratoNumero: string | null;
+  readonly contratadoNome: string | null;
+  readonly obraDescricao: string | null;
+}
+
+export interface DossieDaTela {
+  readonly id: string;
+  readonly numero: string;
+  readonly data: Date;
+  readonly tipo: string;
+  readonly credorCpfCnpj: string;
+  readonly historico: string;
+  readonly categoriaOrdemCronologica: string;
+  readonly criadoEm: Date;
+  readonly criadoPor: string;
+  readonly valor: string;
+  readonly empenhadoLiquido: string;
+  readonly anulacoes: string;
+  readonly liquidado: string;
+  readonly pago: string;
+  readonly saldoALiquidar: string;
+  readonly saldoAPagar: string;
+  readonly totalRetido: string;
+  readonly saidaDeCaixa: string;
+  readonly anulado: boolean;
+  readonly status: string;
+  readonly origem: OrigemDaTela;
+  readonly cadeia: readonly FatoDaCadeiaDaTela[];
+  readonly liquidacoes: readonly LiquidacaoDoDossieDaTela[];
+  readonly lancamentos: readonly LancamentoDaTela[];
+}
+
+/** O que a página recebe: o dossiê, um desvio para o original, ou nada. */
+export type ResultadoDoDossie =
+  | { readonly tipo: "dossie"; readonly dossie: DossieDaTela }
+  /** O id era de uma ANULAÇÃO. A tela leva o usuário ao empenho de origem. */
+  | { readonly tipo: "anulacao"; readonly empenhoOriginalId: string }
+  | { readonly tipo: "inexistente" };
+
+export async function lerDossieDoEmpenho(
+  empenhoId: string
+): Promise<ResultadoDoDossie> {
+  const d = await dossieDoEmpenho(cliente(), empenhoId);
+  if (d === null) return { tipo: "inexistente" };
+  if ("redirecionarPara" in d) {
+    return { tipo: "anulacao", empenhoOriginalId: d.redirecionarPara };
+  }
+  return { tipo: "dossie", dossie: paraTelaODossie(d) };
+}
+
+function fato(f: FatoDaCadeia): FatoDaCadeiaDaTela {
+  return { ...f, valor: f.valor.toFixed(2) };
+}
+
+function paraTelaODossie(d: DossieDoEmpenho): DossieDaTela {
+  return {
+    id: d.id,
+    numero: d.numero,
+    data: d.data,
+    tipo: d.tipo,
+    credorCpfCnpj: d.credorCpfCnpj,
+    historico: d.historico,
+    categoriaOrdemCronologica: d.categoriaOrdemCronologica,
+    criadoEm: d.criadoEm,
+    criadoPor: d.criadoPor,
+    valor: d.valor.toFixed(2),
+    empenhadoLiquido: d.empenhadoLiquido.toFixed(2),
+    anulacoes: d.anulacoes.toFixed(2),
+    liquidado: d.liquidado.toFixed(2),
+    pago: d.pago.toFixed(2),
+    saldoALiquidar: d.saldoALiquidar.toFixed(2),
+    saldoAPagar: d.saldoAPagar.toFixed(2),
+    totalRetido: d.totalRetido.toFixed(2),
+    saidaDeCaixa: d.saidaDeCaixa.toFixed(2),
+    anulado: d.anulado,
+    status: d.status,
+    origem: {
+      ...d.origem,
+      saldoDisponivelHoje: d.origem.saldoDisponivelHoje.toFixed(2),
+    },
+    cadeia: d.cadeia.map(fato),
+    liquidacoes: d.liquidacoes.map((l) => ({
+      id: l.id,
+      numero: l.numero,
+      data: l.data,
+      valor: l.valor.toFixed(2),
+      liquidadoLiquido: l.liquidadoLiquido.toFixed(2),
+      pago: l.pago.toFixed(2),
+      saldoAPagar: l.saldoAPagar.toFixed(2),
+      responsavelAtesto: l.responsavelAtesto,
+      notaFiscalNum: l.notaFiscalNum,
+      notaFiscalSerie: l.notaFiscalSerie,
+      notaFiscalData: l.notaFiscalData,
+      anulado: l.anulado,
+      cadeia: l.cadeia.map(fato),
+      pagamentos: l.pagamentos.map((p) => ({
+        id: p.id,
+        numero: p.numero,
+        data: p.data,
+        valor: p.valor.toFixed(2),
+        pagoLiquido: p.pagoLiquido.toFixed(2),
+        totalRetido: p.totalRetido.toFixed(2),
+        saidaDeCaixa: p.saidaDeCaixa.toFixed(2),
+        contaBancaria: p.contaBancaria,
+        fonteCodigo: p.fonteCodigo,
+        anulado: p.anulado,
+        cadeia: p.cadeia.map(fato),
+        retencoes: p.retencoes.map((r) => ({
+          id: r.id,
+          tipoCodigo: r.tipoCodigo,
+          tipoDescricao: r.tipoDescricao,
+          credorConsignatario: r.credorConsignatario,
+          valor: r.valor.toFixed(2),
+          data: r.data,
+          movimento: r.movimento,
+          estornoDeId: r.estornoDeId,
+          criadoPor: r.criadoPor,
+        })),
+      })),
+    })),
+    lancamentos: d.lancamentos.map((l) => ({
+      id: l.id,
+      numeroControle: l.numeroControle,
+      dataTransacao: l.dataTransacao,
+      historico: l.historico,
+      origemTipo: l.origemTipo,
+      estornoDeId: l.estornoDeId,
+      criadoEm: l.criadoEm,
+      criadoPor: l.criadoPor,
+      partidas: l.partidas.map((p) => ({ ...p, valor: p.valor.toFixed(2) })),
+      totais: l.totais.map((t) => ({
+        subsistema: t.subsistema,
+        debito: t.debito.toFixed(2),
+        credito: t.credito.toFixed(2),
+        fecha: t.fecha,
+      })),
+    })),
   };
 }

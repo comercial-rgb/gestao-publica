@@ -29,6 +29,20 @@ export interface ContaParaPagar {
   readonly fonteCodigo: string;
 }
 
+/**
+ * ⚠️ DECLARADO AQUI, não importado de `lib/portas/pagamento`. Seria `import type` (some na
+ * compilação), mas o grep trivalente da fronteira é TEXTUAL e barra qualquer
+ * `from ".../lib/portas/"` numa ilha client — e está certo em ser cego. Mesmo padrão do
+ * `FichaParaEmpenho` e do `TipoAnulavel`.
+ */
+export interface TipoDeConsignacaoParaTela {
+  readonly id: string;
+  readonly codigo: string;
+  readonly descricao: string;
+  readonly disponivel: boolean;
+  readonly motivoIndisponivel: string | null;
+}
+
 const ROTULO_HIPOTESE: Record<string, string> = {
   I_EMERGENCIA_CALAMIDADE: "I — emergência ou calamidade pública",
   II_ME_EPP_RISCO: "II — ME/EPP em risco de descontinuidade",
@@ -55,9 +69,11 @@ const ROTULO_HIPOTESE: Record<string, string> = {
 export function FormPagamento({
   liquidacoes,
   contas,
+  tiposDeConsignacao,
 }: {
   readonly liquidacoes: readonly LiquidacaoPagavel[];
   readonly contas: readonly ContaParaPagar[];
+  readonly tiposDeConsignacao: readonly TipoDeConsignacaoParaTela[];
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoPagamento, FormData>(
     pagarAction,
@@ -66,7 +82,20 @@ export function FormPagamento({
   const ref = useRef<HTMLFormElement>(null);
   const [escolhida, setEscolhida] = useState<string>("");
   const [conta, setConta] = useState<string>("");
-  if (estado.sucesso !== undefined) ref.current?.reset();
+  /**
+   * As linhas de retenção. Só o NÚMERO delas é estado; os valores vivem no DOM e chegam
+   * ao servidor por `getAll` do nome repetido.
+   *
+   * ⚠️ E O ESTADO NÃO CALCULA NADA. Não há "total retido" nem "líquido" mostrado aqui de
+   * propósito: seria uma conta feita no navegador sobre um valor que o servidor ainda vai
+   * conferir, e um número na tela que discordasse do gravado é pior que número nenhum.
+   * Quem soma é o motor do M07, dentro da transação; o resultado aparece no dossiê do
+   * empenho, depois de gravado.
+   */
+  const [linhasRetencao, setLinhasRetencao] = useState<number>(0);
+  if (estado.sucesso !== undefined) {
+    ref.current?.reset();
+  }
 
   if (liquidacoes.length === 0) {
     return (
@@ -221,6 +250,12 @@ export function FormPagamento({
         </fieldset>
       ) : null}
 
+      <Retencoes
+        tipos={tiposDeConsignacao}
+        linhas={linhasRetencao}
+        aoMudar={setLinhasRetencao}
+      />
+
       {estado.erro !== undefined ? (
         <p
           role="alert"
@@ -243,5 +278,123 @@ export function FormPagamento({
         {pendente ? "Pagando…" : foraDaOrdem ? "Pagar fora da ordem" : "Pagar"}
       </button>
     </form>
+  );
+}
+
+/**
+ * RETENÇÃO NA FONTE — o bloco que faltava para o pagamento composto existir pela TELA.
+ *
+ * ═══ ⚠️ O QUE ACONTECE QUANDO SE RETÉM, E POR QUE A TELA DIZ ISSO ═══
+ * Pagar 1.000 retendo 100 é UM fato, não dois. A obrigação com o fornecedor morre
+ * INTEIRA (1.000); do caixa saem 900; e nascem 100 de dívida nova, com o consignatário.
+ * Nenhuma outra perna muda de valor — nem a orçamentária: retenção NÃO é desconto de
+ * despesa. Quem escreve isso na tela evita a pergunta que sempre vem depois ("cadê os
+ * 100 reais?") e, pior, a correção manual que ela costuma provocar.
+ *
+ * ═══ ⚠️ O VALOR É INFORMADO, NÃO CALCULADO ═══
+ * Alíquota de INSS ou de ISS depende de legislação tributária que este sistema não
+ * conhece — regime do prestador, base, retenção mínima, o município de incidência. Um
+ * cálculo automático aqui seria dinheiro recolhido a menor com o ente respondendo pela
+ * diferença. O sistema garante o que ele PODE garantir: que o lançamento feche, que o
+ * passivo nasça na conta parametrizada e que o caixa saia pelo líquido.
+ *
+ * ═══ ⚠️ O TIPO INDISPONÍVEL APARECE, DESABILITADO, COM O MOTIVO ═══
+ * Esconder "ISS" de quem precisa reter ISS faz o operador concluir que o sistema não
+ * retém ISS — e gravar o pagamento cheio. Mostrá-lo dizendo "sem conta de passivo
+ * parametrizada" transforma um beco sem saída numa pendência de cadastro.
+ */
+function Retencoes({
+  tipos,
+  linhas,
+  aoMudar,
+}: {
+  readonly tipos: readonly TipoDeConsignacaoParaTela[];
+  readonly linhas: number;
+  readonly aoMudar: (n: number) => void;
+}): React.ReactElement {
+  const disponiveis = tipos.filter((t) => t.disponivel);
+
+  return (
+    <fieldset className="mt-4 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3">
+      <legend className="px-1 text-xs font-semibold text-[color:var(--color-ink)]">
+        Retenção na fonte (opcional)
+      </legend>
+
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
+        O que se retém <strong>não sai do caixa</strong>: a obrigação com o credor é
+        extinta pelo <strong>valor cheio</strong>, o banco paga o líquido e o valor retido
+        vira <strong>dívida com o consignatário</strong>. Informe o valor — ele{" "}
+        <strong>não é calculado</strong> pelo sistema.
+      </p>
+
+      {disponiveis.length === 0 ? (
+        <p className="text-xs text-[color:var(--color-ink-2)]">
+          Nenhum tipo de consignação está pronto para receber retenção. Os tipos existem,
+          mas falta parametrizar a conta de passivo de cada um — reter sem ela deixaria o
+          lançamento sem a perna da dívida.
+        </p>
+      ) : (
+        <>
+          {Array.from({ length: linhas }, (_, i) => (
+            <div key={i} className="mb-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <label className="text-xs text-[color:var(--color-ink-2)]">
+                <span className={ROTULO}>Consignação</span>
+                {/*
+                  ⚠️ NOMES REPETIDOS, DE PROPÓSITO. Três campos com o mesmo `name` chegam
+                  ao servidor como três listas paralelas (`getAll`), na ordem do DOM. Um
+                  índice no nome (`retencaoValor-0`) obrigaria a action a adivinhar quantas
+                  linhas existiram — e a errar quando uma do meio fosse removida.
+                */}
+                <select name="retencaoTipo" defaultValue="" required className={CAMPO}>
+                  <option value="" disabled>
+                    Escolha…
+                  </option>
+                  {tipos.map((t) => (
+                    <option key={t.id} value={t.id} disabled={!t.disponivel}>
+                      {t.codigo} — {t.descricao}
+                      {t.disponivel ? "" : ` (indisponível: ${t.motivoIndisponivel})`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="text-xs text-[color:var(--color-ink-2)]">
+                <span className={ROTULO}>A favor de (consignatário)</span>
+                <input
+                  name="retencaoCredor"
+                  required
+                  placeholder="INSS  ·  Município de Campina Grande"
+                  className={CAMPO}
+                />
+              </label>
+
+              <label className="text-xs text-[color:var(--color-ink-2)]">
+                <span className={ROTULO}>Valor retido (R$)</span>
+                <CampoValor name="retencaoValor" required placeholder="100,00" className={CAMPO} />
+              </label>
+            </div>
+          ))}
+
+          <div className="flex flex-wrap gap-3 text-xs">
+            <button
+              type="button"
+              onClick={() => aoMudar(linhas + 1)}
+              className="font-medium text-[color:var(--color-primary)] hover:underline"
+            >
+              Acrescentar retenção
+            </button>
+            {linhas === 0 ? null : (
+              <button
+                type="button"
+                onClick={() => aoMudar(linhas - 1)}
+                className="font-medium text-[color:var(--color-ink-2)] hover:underline"
+              >
+                Remover a última
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </fieldset>
   );
 }

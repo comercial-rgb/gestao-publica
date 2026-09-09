@@ -10,10 +10,12 @@ import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import {
   lerContasBancarias,
   lerFilasDePagamento,
+  lerTiposDeConsignacao,
   PortaSemBancoError,
   type ContaBancariaDaTela,
   type GrupoDaFila,
   type LinhaDaFila,
+  type TipoDeConsignacaoDaTela,
 } from "../../../../lib/portas/pagamento";
 import { dataBr, descreverRecorte, recorteDe } from "../../../../lib/recorte";
 import { FormPagamento, type LiquidacaoPagavel } from "./FormPagamento";
@@ -34,9 +36,10 @@ import { formatarMoeda } from "../../../../lib/format/moeda";
  * não criou, e cada pedaço teria uma "posição 1" própria: quatro cabeças de fila onde a lei
  * quer uma. Por isso o seletor do cabeçalho não afeta esta página.
  *
- * ⚠️ SÓ LEITURA NESTA FATIA. Quando o pagamento nascer (pendência **7.2-roteiro-pcasp**), ele
- * chama `pagar()` do M05 com `justificativaQuebraOrdem` — nunca o M06 direto, para que a
- * justificativa e o pagamento sejam atômicos. O desenho está em `lib/portas/pagamento.ts`.
+ * ⚠️ ESTE AVISO DIZIA "SÓ LEITURA NESTA FATIA". Não é mais verdade: a tela paga, e agora
+ * paga COM RETENÇÃO NA FONTE. O que continua valendo é a direção — `pagar()` do M05 com a
+ * justificativa e as retenções juntas, nunca o M06 nem o M07 por fora, para que o
+ * pagamento, a justificativa da quebra e a dívida com o consignatário sejam ATÔMICOS.
  */
 export const dynamic = "force-dynamic";
 
@@ -64,13 +67,18 @@ export default async function PagamentosPage({
   let filas: readonly GrupoDaFila[];
   let contas: readonly ContaBancariaDaTela[];
   let pagamentos: readonly PagamentoDaTela[];
+  let tiposDeConsignacao: readonly TipoDeConsignacaoDaTela[];
   try {
-    [filas, contas, pagamentos] = await Promise.all([
+    [filas, contas, pagamentos, tiposDeConsignacao] = await Promise.all([
       lerFilasDePagamento(),
       lerContasBancarias(),
       // ⚠️ Os pagamentos EXECUTADOS (para anular, TR 5.35) — a fila mostra o que falta; esta lista, o
       // que já saiu. Esta SIM tem recorte por exercício/UG (diferente da fila do art. 141).
       listarPagamentosDaExecucao({ exercicio: recorte.exercicio, unidadeCodigo: recorte.unidadeCodigo }),
+      // ⚠️ TODOS os tipos, inclusive os que não podem receber retenção — o form os mostra
+      // desabilitados, com o motivo. Filtrar aqui esconderia do operador que o tipo existe
+      // e que falta só um cadastro.
+      lerTiposDeConsignacao(),
     ]);
   } catch (erro) {
     return (
@@ -118,6 +126,7 @@ export default async function PagamentosPage({
           )
         )}
         contas={contas}
+        tiposDeConsignacao={tiposDeConsignacao}
       />
 
       {filas.length === 0 ? (

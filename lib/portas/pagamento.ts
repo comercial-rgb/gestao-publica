@@ -15,9 +15,19 @@ import {
   zHipoteseQuebraOrdem,
   type HipoteseQuebraOrdem,
 } from "../../modules/m06-ordem-cronologica/dominio";
+// A RETENÇÃO NA FONTE é do M07, e a seta é sempre M05 -> M07: quem paga, retém, dentro
+// da MESMA transação. A porta só reúne o que o `pagar()` precisa receber.
+import { listarTiposConsignacao } from "../../modules/m07-extraorcamentario/consultas";
+import type { RetencoesDoPagamento } from "../../modules/m07-extraorcamentario/dominio";
 
 /**
- * PORTA — A FILA DO ART. 141 (ordem cronológica de pagamentos, TR 5.29). **SÓ LEITURA.**
+ * PORTA — PAGAMENTOS: a fila do art. 141 (leitura) e o ato de pagar (escrita).
+ *
+ * ⚠️ ESTE CABEÇALHO DIZIA "SÓ LEITURA" e que "não há `pagar()` aqui". Não é mais
+ * verdade: `registrarPagamento` existe logo abaixo, e agora também recebe RETENÇÃO. A
+ * afirmação ficou para trás quando a escrita chegou, e um comentário que descreve um
+ * arquivo que já não existe é pior que nenhum — quem confia nele para de ler o código.
+ * O que segue abaixo continua valendo, e é a parte que importa: a direção da dependência.
  *
  * ═══ A COMPOSIÇÃO, E POR QUE ELA É DE DOIS MÓDULOS ═══
  * A ORDEM é do M06: `filasEm(null)` devolve todas as filas (fonte × categoria) como
@@ -31,9 +41,9 @@ import {
  * A tela precisa dizer QUEM está na frente — então a porta pergunta ao dono do dado
  * (`dadosDasLiquidacoes`, M05). Compor é o trabalho da porta; derivar não é.
  *
- * ═══ ⚠️ NÃO HÁ `pagar()` AQUI — E O DESENHO DELE JÁ ESTÁ DECIDIDO ═══
- * Quando a escrita nascer (bloqueada em **7.2-roteiro-pcasp**, ver `./empenho.ts`), ela
- * chama `pagar()` do **M05** passando `justificativaQuebraOrdem` — NUNCA o M06 direto.
+ * ═══ ⚠️ A ESCRITA CHAMA O M05, NUNCA O M06 DIRETO ═══
+ * `registrarPagamento` chama `pagar()` do **M05** passando `justificativaQuebraOrdem` e
+ * as retenções — NUNCA o M06 nem o M07 por fora.
  * A direção da dependência é explícita em `m06-ordem-cronologica/ports.ts`:
  *
  *   "o M06 **não importa o M05**. É o `pagar()` do M05 que chama
@@ -248,7 +258,27 @@ export async function registrarPagamento(input: {
         readonly autorizadoPor: string;
       }
     | undefined;
+  /**
+   * RETENÇÃO NA FONTE (M07). Lista vazia ou ausente = pagamento SEM retenção, pelo
+   * caminho idêntico ao de sempre.
+   *
+   * ⚠️ O VALOR VEM DO OPERADOR, NUNCA CALCULADO AQUI. Quanto se retém de INSS ou de ISS
+   * é matéria de legislação tributária (alíquota, base, retenção mínima, regime do
+   * prestador) que este sistema NÃO conhece — e uma alíquota chutada na borda seria
+   * dinheiro recolhido a menor, com o ente respondendo pela diferença. Por isso a tela
+   * PERGUNTA o valor; o sistema garante o resto: que o lançamento feche, que o passivo
+   * nasça na conta certa e que o caixa saia pelo líquido.
+   */
+  readonly retencoes?:
+    | readonly {
+        readonly tipoConsignacaoId: string;
+        readonly credorConsignatario: string;
+        readonly valor: string;
+      }[]
+    | undefined;
 }): Promise<string> {
+  const retencoes = await comporRetencoes(input.retencoes ?? []);
+
   return comEscritaAutenticada("PAGAR", async (criadoPor) => {
     const r = await pagar(
       {
@@ -268,10 +298,103 @@ export async function registrarPagamento(input: {
         obrigacaoAPagar: CONTA_FORNECEDORES,
         disponibilidade: CONTA_DISPONIBILIDADE,
       }),
-      criarM05Deps(cliente())
+      criarM05Deps(cliente()),
+      // ⚠️ `undefined`, e não `{retencoes: []}`, quando não há retenção: é o que faz o
+      // motor do M07 devolver EXATAMENTE as partidas de antes. Um objeto vazio passaria
+      // pelo caminho composto para chegar ao mesmo lugar — e "chegar ao mesmo lugar" é
+      // uma promessa que só um teste sustenta, não uma que se assuma.
+      retencoes
     );
     return r.pagamentoId;
   });
+}
+
+/**
+ * Resolve a CONTA DE PASSIVO de cada retenção no cadastro — fail-closed.
+ *
+ * ⚠️ A CONTA NÃO VEM DO NAVEGADOR. A tela manda tipo, credor e valor; qual passivo
+ * recebe aquela consignação é parâmetro do ente, e lê-se aqui, do banco. Aceitar a conta
+ * do formulário deixaria qualquer requisição escolher onde a dívida nasce — inclusive
+ * numa conta de despesa, e o lançamento fecharia.
+ */
+async function comporRetencoes(
+  pedidas: readonly {
+    readonly tipoConsignacaoId: string;
+    readonly credorConsignatario: string;
+    readonly valor: string;
+  }[]
+): Promise<RetencoesDoPagamento | undefined> {
+  if (pedidas.length === 0) return undefined;
+
+  const tipos = await listarTiposConsignacao(cliente());
+  const porId = new Map(tipos.map((t) => [t.id, t] as const));
+
+  return {
+    contaDisponibilidade: CONTA_DISPONIBILIDADE,
+    retencoes: pedidas.map((r) => {
+      const tipo = porId.get(r.tipoConsignacaoId);
+      if (tipo === undefined) {
+        throw new Error(
+          `Tipo de consignação ${r.tipoConsignacaoId} não existe. Nada foi gravado.`
+        );
+      }
+      if (!tipo.ativo) {
+        throw new Error(
+          `O tipo de consignação ${tipo.codigo} (${tipo.descricao}) está INATIVO e não ` +
+            `pode receber retenção nova. Nada foi gravado.`
+        );
+      }
+      if (tipo.contaPassivoCodigo === null) {
+        throw new Error(
+          `O tipo de consignação ${tipo.codigo} (${tipo.descricao}) não tem CONTA DE ` +
+            `PASSIVO parametrizada. Reter é fazer nascer uma dívida com o consignatário, ` +
+            `e sem saber em que conta ela nasce o lançamento não teria a perna do ` +
+            `passivo. Cadastre a conta antes de reter. Nada foi gravado.`
+        );
+      }
+      return {
+        tipoConsignacaoId: r.tipoConsignacaoId,
+        credorConsignatario: r.credorConsignatario,
+        valor: r.valor,
+        contaConsignacaoAPagar: tipo.contaPassivoCodigo,
+      };
+    }),
+  };
+}
+
+/** Um tipo de consignação como o form de pagamento o consome. */
+export interface TipoDeConsignacaoDaTela {
+  readonly id: string;
+  readonly codigo: string;
+  readonly descricao: string;
+  /** `false` = o tipo existe mas NÃO pode receber retenção; a tela diz por quê. */
+  readonly disponivel: boolean;
+  readonly motivoIndisponivel: string | null;
+}
+
+/**
+ * OS TIPOS DE CONSIGNAÇÃO PARA A TELA — inclusive os que NÃO dá para usar, e o motivo.
+ *
+ * ⚠️ ESCONDER O INDISPONÍVEL SERIA PIOR. Quem precisa reter ISS e não encontra "ISS" na
+ * lista conclui que o sistema não faz retenção de ISS, e vai gravar o pagamento cheio. A
+ * lista mostra o tipo, desabilitado, dizendo que falta a conta de passivo — que é uma
+ * pendência de CADASTRO, resolvível, e não um limite do sistema.
+ */
+export async function lerTiposDeConsignacao(): Promise<
+  readonly TipoDeConsignacaoDaTela[]
+> {
+  const tipos = await listarTiposConsignacao(cliente());
+  return tipos.map((t) => ({
+    id: t.id,
+    codigo: t.codigo,
+    descricao: t.descricao,
+    disponivel: t.ativo && t.contaPassivoCodigo !== null,
+    motivoIndisponivel: !t.ativo
+      ? "tipo inativo no cadastro"
+      : t.contaPassivoCodigo === null
+        ? "sem conta de passivo parametrizada"
+        : null,
+  }));
 }
 
 /**

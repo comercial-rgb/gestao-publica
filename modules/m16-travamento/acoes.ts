@@ -550,6 +550,8 @@ export const FORA_DO_CENSO: Record<string, string> = {
   listarEmpenhos: "leitura (a execução de um exercício/unidade com os saldos da TR 5.17 — a tela de empenhos)",
   listarLiquidacoes: "leitura (as liquidações com o empenho de origem — a tela de liquidações)",
   listarPagamentos: "leitura (os pagamentos executados de um exercício/unidade — a tela de anulação, TR 5.35)",
+  dossieDoEmpenho:
+    "leitura (o dossiê de UM empenho: origem, liquidações, pagamentos, retenções, anulações e o razão de toda a cadeia — a tela de conferência do empenho)",
   dadosDasLiquidacoes: "leitura (credor e empenho de cada liquidação — o que a fila do art. 141 não carrega; enriquece o painel do M06)",
   saldoDaLei: "leitura",
   saldoDosRestos: "leitura",

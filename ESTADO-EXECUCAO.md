@@ -29,7 +29,7 @@
 | Postgres desenvolvimento | `localhost:5436/gestao_publica` — PostgreSQL 18.6, container `pg-gestao-publica` | 2026-09-09 |
 | Postgres teste | `localhost:5436/gestao_publica_test` — **database distinto**, mesmo servidor | 2026-09-09 |
 | Redis | **não aplicável** — o `siafic-cg` não tem dependência de Redis | 2026-09-09 |
-| Migrations aplicadas até | `20260728160000_contrato_campos_tr` — **63 migrations**, nos dois bancos | 2026-09-09 |
+| Migrations aplicadas até | ENT00: `20260728160000_contrato_campos_tr` (**63**). ENT01: `20260909195419_m07_conta_passivo_da_consignacao` (**66**), nos dois bancos | 2026-09-09 |
 | `prisma/sql/` aplicado | **sim — 17/17 arquivos**, nos dois bancos | 2026-09-09 |
 
 ### Portas — por que 5436
@@ -189,10 +189,16 @@ UPDATE` não fazia — passava batido.
 
 | Migration ou arquivo | Efeito | Reversão prevista |
 |---|---|---|
-| 63 migrations de `prisma/migrations/` | Schema completo M01–M20 + adapters | Nenhuma reescrita; evolução aditiva |
+| 63 migrations de `prisma/migrations/` | Schema completo M01–M20 + adapters (herdadas de ENT00) | Nenhuma reescrita; evolução aditiva |
 | 17 arquivos de `prisma/sql/` | Índices parciais e checks que o Prisma não representa | Reaplicáveis por `npm run db:sql` |
+| `20260909175636_m19_pessoas_e_credores` | ENT01 — cadastro append-only de pessoas | Aditiva: três tabelas novas |
+| `20260909175700_renomear_indice_certidao_fornecedor` | ENT01 — drift pré-existente, separado em migration própria para não viajar de carona | Aditiva |
+| `20260909195419_m07_conta_passivo_da_consignacao` | ENT01 — `TipoConsignacao.contaPassivoId`, o que libera a retenção na tela | **Aditiva pura**: coluna nullable, sem backfill e sem default |
 
-Nenhuma migration foi criada, apagada ou reescrita neste lote.
+**Nenhuma migration herdada foi apagada ou reescrita.** As três de ENT01 são
+aditivas; a última é nullable e sem default de propósito — um default carimbaria
+toda consignação com um passivo inventado, e o razão passaria a acumular dívida com
+o consignatário errado sem ninguém perceber.
 
 `migrate deploy` sozinho **não** deixa o banco pronto: índice parcial ausente não
 gera drift e não aparece no diff do Prisma. Os 17 arquivos foram aplicados nos
@@ -271,6 +277,10 @@ existiam não valida uma linha do documento de origem.
 | T02 — pessoas e credores | ✅ | M19 (schema, domínio, ports, serviço, adapter, consultas) + tela + detalhe + histórico |
 | T02 provado pela INTERFACE | ✅ | `npm run smoke:pessoas` — 9 passos em navegador real, 0 falhas |
 | Nenhum identificador de catálogo em tela (teste 24) | ✅ | 85 removidos; `test/ui/rotulos-de-conformidade.test.ts` |
+| T05 — detalhe do empenho | ✅ | `/despesa/empenhos/[id]`: origem, liquidações, retenções, pagamentos, anulações, razão e histórico no mesmo contexto. A consulta é do M05 (`dossie.ts`); a tela não soma nada |
+| T06/T07 — retenção **pela tela** | ✅ | O form de pagamento oferece linhas de retenção; a conta de passivo vem do CADASTRO (`TipoConsignacao.contaPassivoId`), nunca do navegador |
+| A cadeia atravessa pela INTERFACE | ✅ | `npm run smoke:cadeia` — empenhar, recarregar, liquidar, recarregar, pagar com retenção, conferir no dossiê, anular, recarregar. 17 passos, 0 falhas |
+| Estorno não infla o caixa pelo bruto | ✅ | medido no razão: o estorno devolve **900,00** a Bancos e mata 100,00 de Consignações. Ver abaixo |
 
 ### O cenário de aceite, conferido perna a perna
 
@@ -292,16 +302,60 @@ Um lançamento com pernas de **valores diferentes**: o caixa leva o líquido, as
 demais levam o bruto. Cada subsistema fecha sozinho — conferido, e não por
 compensação entre eles.
 
+#### E o ESTORNO, que é onde este cenário se paga
+
+Anulado o pagamento **pela tela**, o razão recebeu (medido, `2026OP865626A`):
+
+| Conta | Tipo | Subsistema | Valor |
+|---|---|---|---|
+| 2.1.3.1.1.00.00 (obrigação) | CRÉDITO | PATRIMONIAL | 1.000,00 |
+| 1.1.1.1.2.00.00 (caixa) | DÉBITO | PATRIMONIAL | **900,00** |
+| 2.1.8.8.1.01.00 (consignação) | DÉBITO | PATRIMONIAL | 100,00 |
+| 6.2.2.1.3.04.00 (crédito pago) | DÉBITO | ORÇAMENTÁRIO | 1.000,00 |
+| 6.2.2.1.3.03.00 (crédito liquidado) | CRÉDITO | ORÇAMENTÁRIO | 1.000,00 |
+| 8.2.1.1.4.01.00 (DDR utilizada) | DÉBITO | CONTROLE | 1.000,00 |
+| 8.2.1.1.3.01.00 (DDR por liquidação) | CRÉDITO | CONTROLE | 1.000,00 |
+
+**O caixa recebe de volta 900,00 — o que saiu —, nunca os 1.000,00 do bruto.**
+Um estorno pelo bruto inventaria 100,00 de disponibilidade que nunca saiu, e o
+lançamento **fecharia do mesmo jeito**: os dois lados errados na mesma medida. É
+por isso que nenhuma amarração de balancete pega esse erro, e é por isso que ele
+tem teste e smoke próprios (`modules/m05-despesa/m05-dossie.test.ts`).
+
+### Afirmações do repositório que este lote encontrou FALSAS
+
+Corrigir a documentação não é higiene: um comentário que descreve um sistema que já
+não existe faz o próximo leitor **parar de ler o código**. As quatro:
+
+| Onde | Dizia | É |
+|---|---|---|
+| `components/ui/MODULO-UI.md`, tabela de portas | escrita "não — ver §5" nas quatro portas de execução | O próprio §5, três parágrafos abaixo, dizia que elas escrevem desde a 7.3. Duas afirmações opostas no mesmo documento |
+| `components/ui/MODULO-UI.md`, pendência `5.35-UI` | "anulação na tela — falta o ato na UI" | `FormAnular` existe e está em uso nas três listas da despesa **desde a cópia da origem**. A pendência estava quitada e ninguém apagou a linha |
+| `lib/portas/pagamento.ts`, cabeçalho | "**SÓ LEITURA**" e "não há `pagar()` aqui" | `registrarPagamento` estava logo abaixo |
+| `app/(areas)/despesa/pagamentos/page.tsx` | "SÓ LEITURA NESTA FATIA" | a tela paga |
+
+E uma **lacuna** que só apareceu porque este lote precisou semear um banco de verdade:
+
+> **`RoteiroOrcamentario` não tinha seed de produção.** A tabela-parâmetro é
+> fail-closed por desenho — sem ela, o movimento de dotação não lança no razão e
+> **nenhuma ficha nasce**. Os roteiros existiam só num helper de TESTE
+> (`test/roteiro-orcamentario.ts`), então a suíte inteira passava enquanto um banco
+> real não conseguia criar a primeira ficha. **A suíte não podia pegar isso: ela
+> mesma semeava o que faltava.** Fechado em `prisma/seed/roteiro-orcamentario.ts`,
+> importando os códigos de conta do domínio em vez de redigitá-los.
+
 ### Baselines de ENT01
 
 | Medida | ENT00 (fim) | ENT01 (agora) |
 |---|---|---|
-| Arquivos de teste | 130 | **135** |
-| Testes | 1.302 + 1 falha esperada | **1.371, zero falha esperada** |
-| Duração | 312,17 s | **358,18 s** (máquina livre) |
+| Arquivos de teste | 130 | **136** |
+| Testes | 1.302 + 1 falha esperada | **1.382, zero falha esperada** |
+| Duração | 312,17 s | **418,06 s** (máquina livre) |
 | `tsc` backend / app / scripts | limpos | limpos |
-| Migrations | 63 | **65** |
+| Migrations | 63 | **66** |
 | Smoke visual | 8 ok / 2 avisos | **19/19 rotas** |
+| Smoke do cadastro de pessoas | — | **9/9 passos** (navegador real) |
+| Smoke da cadeia da despesa | — | **17/17 passos** (navegador real) |
 
 ⚠️ **Uma execução intermediária acusou 2 falhas, e elas foram investigadas, não
 descartadas.** Uma era real (`listarPessoas` fora do censo do M16 — o grep-teste
@@ -317,19 +371,19 @@ Fica registrado porque "reexecutei e passou" só vale acompanhado do motivo.
 | T01 entrada e contexto | parcial | O contexto real existe e é fail-closed. Falta a regra de troca de entidade preservando o exercício **com motivo declarado** quando não puder, e o teste das duas abas |
 | T03 dotações e fontes | existe | `/planejamento/qdd`. Falta declarar na tela quais saldos são **atuais** e quais são em data — a caracterização mostrou que só há o atual |
 | T04 empenhos | existe | Falta oferecer o cadastro de credor como sugestão (pendência `CREDOR-NO-EMPENHO`) |
-| **T05 detalhe do empenho** | **não existe** | Origem, liquidações, retenções, pagamentos, estornos, lançamentos e histórico no mesmo contexto |
-| T06 liquidação e retenções | parcial | O domínio faz retenção; a **tela** não a oferece |
-| T07 pagamento | parcial | Falta separar "preparar/autorizar", "registrar", "enviar ao banco" e "confirmação bancária" |
-| T08 razão e conferência | existe | Falta evidenciar **totalizadores por subsistema** e a relação de estorno |
+| ~~**T05 detalhe do empenho**~~ | ✅ **feito** | `/despesa/empenhos/[id]` |
+| ~~T06 retenção na tela~~ | ✅ **feito** | O form de pagamento pergunta o valor retido; a conta de passivo é cadastro |
+| T07 pagamento | parcial | Falta separar "preparar/autorizar", "registrar", "enviar ao banco" e "confirmação bancária". O que existe é o ato único de pagar (agora com retenção) |
+| T08 razão e conferência | parcial | O **detalhe do empenho** já mostra totalizador por subsistema e a relação de estorno; a tela geral do razão (`/contabilidade/lancamentos`) ainda não |
 | T09 integrações | existe | Falta confrontar com registros reais de tentativa |
-| Os 25 testes do incremento | ~8 cobertos | Faltam, entre outros: pool que não carrega contexto, unidade de trabalho que reverte tudo junto, período fechado por rota alternativa, nenhum GET que emite |
-| Anulação/estorno pela tela | não existe | O domínio faz; a UI não (pendência `5.35-UI`, anterior a este lote) |
+| Os 25 testes do incremento | ~12 cobertos | Faltam, entre outros: pool que não carrega contexto, unidade de trabalho que reverte fato+razão+auditoria+outbox junto, período fechado por rota alternativa, nenhum GET que emite |
+| Cadastro de tipos de consignação | não existe | A conta de passivo se parametriza por seed. A tela mostra o tipo sem conta DESABILITADO com o motivo, em vez de escondê-lo (pendência `CONTA-PASSIVO-CONSIGNACAO-UI`) |
 
 ## Próximo lote
 
 | Campo | Valor |
 |---|---|
 | Prompt em execução | `prompts/01-CONTEXTO-E-PRIMEIRA-ENTREGA.md`, com `especificacoes/PRIMEIRA-ENTREGA.md` — **em curso, não encerrado** |
-| Estado | 4 commits sobre `f2ae6fa`. A fundação de segurança e o cadastro que faltava estão de pé; as telas da cadeia da despesa e a maior parte dos 25 testes, não |
+| Estado | A fundação de segurança, o cadastro de credores, o detalhe do empenho e a retenção pela tela estão de pé — e a cadeia inteira foi executada **pela interface**, incluindo o estorno. Faltam a decomposição do pagamento (T07), a tela geral do razão e cerca de metade dos 25 testes |
 | Decisão pendente do usuário | **O eixo município.** O ENT01 pede "município, entidade gestora e exercício como dimensões distintas", e o município não existe nesta base — `EnteConfig` é singleton. Acrescentá-lo é reescrita transversal em 118 tabelas, e o próprio pacote registra que a escolha "precisa ser tomada por quem conhece o objetivo comercial". Este lote entrega o eixo **UG × exercício**, que existe e é a segregação real do sistema; os cenários que dependem de "Município A não lê B" ficam **declarados como pendência**, não como atendidos |
-| Riscos conhecidos | (1) O trinco pessimista mudou de primitiva — a regressão está verde, mas concorrência é onde uma mudança dessas se paga tarde: os testes do M05 sob concorrência continuam sendo a rede. (2) T05 é a tela mais pesada do lote e ainda não começou. (3) A retenção existe no domínio e não na tela: enquanto for assim, o cenário de aceite só atravessa por teste, não pela interface |
+| Riscos conhecidos | (1) O trinco pessimista mudou de primitiva — a regressão está verde, mas concorrência é onde uma mudança dessas se paga tarde: os testes do M05 sob concorrência continuam sendo a rede. (2) O valor retido é **informado pelo operador**, nunca calculado: alíquota é matéria tributária que este sistema não conhece, e um cálculo automático seria recolhimento a menor com o ente respondendo pela diferença. Está dito na tela. (3) Todos os tipos de consignação apontam hoje para a MESMA conta de passivo, porque o plano mínimo tem uma só analítica — o saldo por consignatário continua sendo por `(tipo, credor)`, não pela conta contábil |

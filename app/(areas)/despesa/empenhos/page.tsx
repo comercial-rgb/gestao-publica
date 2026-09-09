@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Badge, type StatusBadge } from "../../../../components/ui/Badge";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
@@ -157,7 +158,17 @@ const COLUNAS: readonly ColunaTabela<EmpenhoDaTela>[] = [
     cabecalho: "Nº",
     alinhamento: "esquerda",
     largura: "7rem",
-    celula: (l) => l.numero,
+    // O NÚMERO É A PORTA DO DOSSIÊ. A lista responde "o que aconteceu no exercício"; a
+    // pergunta seguinte — "e com ESTE empenho?" — tem tela própria, e o caminho até ela
+    // é o número, que é como o documento se chama na boca de quem confere.
+    celula: (l) => (
+      <Link
+        href={`/despesa/empenhos/${l.id}`}
+        className="font-medium text-[color:var(--color-ink)] underline-offset-2 hover:underline"
+      >
+        {l.numero}
+      </Link>
+    ),
   },
   {
     chave: "data",

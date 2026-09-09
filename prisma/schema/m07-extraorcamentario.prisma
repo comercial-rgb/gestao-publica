@@ -20,6 +20,28 @@ model TipoConsignacao {
   descricao String
   ativo     Boolean @default(true)
 
+  /// A conta do PCASP onde o PASSIVO desta consignação nasce — a perna que fica
+  /// devendo ao consignatário quando se retém na fonte.
+  ///
+  /// ⚠️ POR QUE ELA PRECISA EXISTIR NO CADASTRO, E NÃO NO CÓDIGO.
+  /// Até aqui, `contaConsignacaoAPagar` era um PARÂMETRO que cada chamador passava —
+  /// e todos os chamadores eram teste ou seed. Nenhuma TELA podia oferecer retenção,
+  /// porque a tela não tem de onde tirar a conta: qual passivo recebe o INSS retido é
+  /// escolha do ente sobre o plano de contas DELE, não uma regra que se deduza.
+  ///
+  /// As duas alternativas eram piores. Um mapa `{"INSS": "2.1.8..."}` no código seria
+  /// inventar o plano de contas de todo município a partir de um exemplo. Pedir a conta
+  /// ao operador a cada pagamento poria uma decisão contábil permanente numa tela de
+  /// execução, para ser reacertada — e errada — a cada retenção.
+  ///
+  /// NULLABLE, aditiva, SEM backfill e SEM default — a mesma doutrina de
+  /// `ContaBancaria.contaContabilId`. Um default carimbaria toda consignação com um
+  /// passivo inventado, e o razão passaria a acumular dívida com o consignatário errado
+  /// sem ninguém perceber. Quem retém é FAIL-CLOSED: o tipo sem conta NÃO é oferecido na
+  /// tela, e o motivo é declarado ali mesmo.
+  contaPassivoId String?
+  contaPassivo   ContaPcasp? @relation("PassivoDaConsignacao", fields: [contaPassivoId], references: [id])
+
   movimentos MovimentoExtraorcamentario[]
 
   criadoEm  DateTime @default(now())

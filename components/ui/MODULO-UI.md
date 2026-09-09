@@ -29,14 +29,18 @@ O compilador não pega nada disso (são imports válidos); o grep pega.
 | `planejamento.ts` | reprevisão de receita | **sim** (`registrarReprevisao`) |
 | `administracao.ts` | usuários, perfis | **sim** (trocar a própria senha) |
 | `auditoria.ts` | `RegistroDeOperacao` (filtros, paginação) | não |
-| `empenho.ts` | empenhos + saldos da TR 5.17 | não — ver §5 |
-| `liquidacao.ts` | liquidações + empenho de origem | não — ver §5 |
-| `pagamento.ts` | a fila do art. 141 (M06 × M05) | não — ver §5 |
-| `arrecadacao.ts` | guias do exercício + rol da LOA | não — ver §5 |
+| `empenho.ts` | empenhos + saldos da TR 5.17 · **o dossiê de UM empenho** (origem, liquidações, retenções, pagamentos, anulações, razão e histórico) | **sim** (`registrarEmpenho`) |
+| `liquidacao.ts` | liquidações + empenho de origem | **sim** (`registrarLiquidacao`) |
+| `pagamento.ts` | a fila do art. 141 (M06 × M05) · tipos de consignação para a retenção | **sim** (`registrarPagamento`, com retenção) |
+| `arrecadacao.ts` | guias do exercício + rol da LOA | **sim** (`registrarArrecadacao`) |
 | `pessoas.ts` | cadastro de pessoas e credores (M19), com papéis e histórico | **sim** (cadastrar, alterar, mover papel) |
 
 **Toda escrita passa por `comEscritaAutenticada`**: exige sessão (fail-closed), injeta o
 `criadoPor` real e grava `RegistroDeOperacao`.
+
+> ⚠️ **Esta coluna dizia "não — ver §5" nas quatro portas de execução, enquanto o próprio §5
+> dizia que elas escrevem desde a 7.3.** Duas afirmações opostas no mesmo documento: quem lesse
+> a tabela concluiria que a tela não grava. Corrigido junto com a entrada da retenção.
 
 ## 3. Dinheiro atravessa a UI como STRING
 
@@ -97,8 +101,6 @@ justificativa e o pagamento serem atômicos.
 | **LIQUIDACAO-MATERIAL-ALMOXARIFADO** | liquidar material (elemento 30) recusa na porta. O rol do M01 manda material para o ESTOQUE — e está certo, material vira ativo. Mas a entrada no almoxarifado é ato do M10 (classe, quantidade), e liquidar sem ela deixaria estoque no razão que movimento nenhum explica: a amarração razão × almoxarifado acusaria para sempre. Os dois são **um** ato, e ele é do domínio — não dá para montá-lo na borda empilhando duas chamadas (se a 2ª falha, a 1ª já gravou). | `lib/portas/liquidacao.ts` |
 | **MAPA-NATUREZA-CONTA** | a VPA da arrecadação depende da natureza da receita, e o plano mínimo tem uma só (`4.1.1.2.1.01.00`). Irmã do MAPA-ELEMENTO-CONTA; o xlsx PCASP Estendido fecha. | `lib/portas/arrecadacao.ts` |
 | **liquidoDoFato-anulacao-total** | `packages/estornaveis.liquidoDoFato` **não zera** um fato anulado TOTALMENTE (o filtro dele descarta a linha do estorno), embora o docstring prometa. Zero chamadores e nenhum teste antes desta fatia. Contornado localmente por `liquidoDeUmFato` (mesmo `somaLiquidaEstornaveis`, recorte certo). | `modules/m05-despesa/consultas.ts` |
-| **5.35-UI** | anulação (total e parcial) na tela — o domínio já faz; falta o ato na UI | — |
-| **5.24 → M15** | retenções no pagamento (o `pagar` já aceita `retencoes`; o M15 não existe) | — |
 | **5.21.2–5.21.4** | NF **eletrônica** (chave, validação, consulta). Os campos simples de NF já existem no domínio. | — |
 | **5.21.6-data-atesto** | `responsavelAtesto` existe e é obrigatório; **data do atesto não existe** no `model Liquidacao`. Coluna nova = decisão de domínio. | `lib/portas/liquidacao.ts` |
 | **5.18** | subempenho | — |
@@ -107,6 +109,7 @@ justificativa e o pagamento serem atômicos.
 | **4.61** | anulação de receita (ato próprio, guia própria) | — |
 | **`data` × `dataArrecadacao`** | M05 nomeia a data genericamente (`data`, por ato); M04 a nomeia pelo fato (`dataArrecadacao`). Divergência de **nome**, não de semântica — as duas são a data do FATO. Registrado, sem mexer. | — |
 | ~~**integração-contexto-real**~~ | ✅ **quitada**: `lib/portas/contexto.ts` lê exercícios e UGs do banco, contra `PermissaoDePerfil`, fail-closed (sem permissão = lista vazia, nunca "todas"); `app/(areas)/layout.tsx` injeta o resultado no `UiContext`. Esta linha dizia "mock" depois de o mock ter saído. | `lib/portas/contexto.ts` |
+| **CONTA-PASSIVO-CONSIGNACAO-UI** | `TipoConsignacao.contaPassivoId` entrou no schema e é o que libera a retenção na tela — mas **não há cadastro de tipos de consignação na interface**. Hoje a conta se parametriza por seed (`npm run seed:m07`). A tela de pagamento já mostra o tipo sem conta DESABILITADO, dizendo o motivo, em vez de escondê-lo. | `prisma/seed/m07-tipos-consignacao.ts` |
 | **dashboard-portas** | alguns cards do painel ainda são mock | — |
 
 ### O que NÃO é pendência (e por que)

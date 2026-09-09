@@ -88,12 +88,32 @@ export interface TipoConsignacaoNaLista {
   readonly codigo: string;
   readonly descricao: string;
   readonly ativo: boolean;
+  /**
+   * A conta do PCASP onde o passivo desta consignação nasce. `null` = NÃO PARAMETRIZADA.
+   *
+   * ⚠️ SEM ELA A RETENÇÃO É IMPOSSÍVEL, e é melhor que seja. Reter na fonte é fazer
+   * nascer uma dívida com o consignatário; sem saber em que conta ela nasce, o
+   * lançamento não tem perna de passivo e não fecharia. Quem oferece retenção na tela
+   * TEM de filtrar por este campo e dizer o motivo de um tipo estar de fora — esconder
+   * o tipo em silêncio faria o operador procurar um cadastro que ele não sabe que
+   * existe.
+   */
+  readonly contaPassivoCodigo: string | null;
 }
 
 /** Os EVENTOS (tipos de consignação) — o cadastro extensível (INSS/ISS/consignações). */
 export async function listarTiposConsignacao(prisma: PrismaClient): Promise<TipoConsignacaoNaLista[]> {
-  const tipos = await prisma.tipoConsignacao.findMany({ orderBy: [{ codigo: "asc" }] });
-  return tipos.map((t) => ({ id: t.id, codigo: t.codigo, descricao: t.descricao, ativo: t.ativo }));
+  const tipos = await prisma.tipoConsignacao.findMany({
+    orderBy: [{ codigo: "asc" }],
+    include: { contaPassivo: { select: { codigo: true } } },
+  });
+  return tipos.map((t) => ({
+    id: t.id,
+    codigo: t.codigo,
+    descricao: t.descricao,
+    ativo: t.ativo,
+    contaPassivoCodigo: t.contaPassivo?.codigo ?? null,
+  }));
 }
 
 export interface SaldoConsignatarioNaLista {
