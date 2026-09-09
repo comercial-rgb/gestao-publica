@@ -34,6 +34,7 @@ O compilador não pega nada disso (são imports válidos); o grep pega.
 | `pagamento.ts` | a fila do art. 141 (M06 × M05) · tipos de consignação para a retenção | **sim** (`registrarPagamento`, com retenção) |
 | `arrecadacao.ts` | guias do exercício + rol da LOA | **sim** (`registrarArrecadacao`) |
 | `pessoas.ts` | cadastro de pessoas e credores (M19), com papéis e histórico | **sim** (cadastrar, alterar, mover papel) |
+| `ordem-pagamento.ts` | T07 — as quatro etapas do pagamento; a etapa 3 (envio ao banco) declara-se **indisponível** com motivo | **sim** (preparar, autorizar, cancelar) |
 
 **Toda escrita passa por `comEscritaAutenticada`**: exige sessão (fail-closed), injeta o
 `criadoPor` real e grava `RegistroDeOperacao`.
@@ -110,6 +111,11 @@ justificativa e o pagamento serem atômicos.
 | **`data` × `dataArrecadacao`** | M05 nomeia a data genericamente (`data`, por ato); M04 a nomeia pelo fato (`dataArrecadacao`). Divergência de **nome**, não de semântica — as duas são a data do FATO. Registrado, sem mexer. | — |
 | ~~**integração-contexto-real**~~ | ✅ **quitada**: `lib/portas/contexto.ts` lê exercícios e UGs do banco, contra `PermissaoDePerfil`, fail-closed (sem permissão = lista vazia, nunca "todas"); `app/(areas)/layout.tsx` injeta o resultado no `UiContext`. Esta linha dizia "mock" depois de o mock ter saído. | `lib/portas/contexto.ts` |
 | **CONTA-PASSIVO-CONSIGNACAO-UI** | `TipoConsignacao.contaPassivoId` entrou no schema e é o que libera a retenção na tela — mas **não há cadastro de tipos de consignação na interface**. Hoje a conta se parametriza por seed (`npm run seed:m07`). A tela de pagamento já mostra o tipo sem conta DESABILITADO, dizendo o motivo, em vez de escondê-lo. | `prisma/seed/m07-tipos-consignacao.ts` |
+| **TROCA-DE-ENTIDADE-SEM-EXERCICIO** | trocar de entidade preserva o exercício na URL, mas quando o exercício **não existe** na entidade nova a tela não declara o motivo nem exige escolha explícita — ela simplesmente não acha nada. O incremento pede as duas coisas (teste 2). | `components/ui/SincronizarContexto.tsx` |
+| **IDEMPOTENCIA-DE-REQUISICAO** | repetir a mesma requisição **recusa** (chave de negócio duplicada) em vez de devolver o efeito anterior. Retorno idempotente exige chave de idempotência POR REQUISIÇÃO, guardada com o resultado — outra coisa que a chave de negócio (`ficha + número`). Confundir as duas faria o sistema devolver "sucesso" para uma segunda nota com o mesmo número e **valor diferente**. | `test/borda-de-escrita.test.ts` |
+| **RELATORIO-VS-TELA-CONFRONTADOS** | tela e PDF chamam a MESMA porta com os MESMOS filtros — garantia ESTRUTURAL. Falta o teste que gere as duas saídas e as confronte linha a linha (teste 20). | `app/(areas)/contabilidade/lancamentos/page.tsx` |
+| **CONCEDER-ACAO-A-PERFIL-UI** | ação nova no censo **não alcança perfil que já existe**: o bootstrap monta o perfil de instalação uma vez, e as três ações de T07 chegaram como `ACESSO NEGADO` ao administrador. Hoje o caminho é `npm run db:conceder` (script, fora de `prisma/seed/`, com as ações digitadas uma a uma). Não há caso de uso nem tela para conceder ação a perfil. | `scripts/conceder-acoes-ao-perfil.ts` |
+| **ENVIO-AO-BANCO-M17B** | a etapa 3 de T07 não existe: o M17 é só leitura (extrato e saldo). A porta declara indisponível com motivo e o tipo de retorno impede escrever o caminho feliz. Sem rota e sem botão. | `lib/portas/ordem-pagamento.ts` |
 | **dashboard-portas** | alguns cards do painel ainda são mock | — |
 
 ### O que NÃO é pendência (e por que)

@@ -1,18 +1,24 @@
 # Estado da execução
 
-> Produzido por ENT00 em 2026-09-09 e atualizado por **ENT01 (em curso)**.
+> Produzido por ENT00 em 2026-09-09 e atualizado por **ENT01**.
 > Dados reais, medidos nesta máquina. Sem estimativa, sem percentual de
 > cobertura, sem "provavelmente".
 >
-> ⚠️ **ENT01 NÃO ESTÁ NO GATE.** O que está registrado abaixo é o que foi feito e
-> medido até agora; a seção "ENT01 — o que falta" diz o que ainda não foi, e é ela
-> que impede este documento de ser lido como encerramento.
+> ⚠️ **ENT01 CHEGOU AO GATE, e o gate não é "tudo pronto".** Ele comprova o que foi
+> testado — nada além. Dos 25 testes mínimos do incremento, **18 estão cobertos,
+> 4 parciais e 3 não cobertos**, e os três são o mesmo assunto: o eixo município,
+> decidido por ADR e deliberadamente fora deste lote. O inventário item a item é
+> um TESTE (`test/incremento-25.test.ts`), não uma tabela — ele falha se a
+> evidência apontada deixar de existir.
+>
+> As seções "o que FALTA" e "pendências" continuam abaixo, e é delas que sai a
+> conversa do próximo lote.
 
 ## Identificação
 
 | Campo | Valor |
 |---|---|
-| Último lote concluído | **ENT00** — preservar, instrumentar e obter baselines reais |
+| Último lote concluído | **ENT01** — contexto seguro e a primeira despesa que atravessa o sistema (no gate, aguardando revisão) |
 | Data e hora | 2026-09-09, 13:17 (UTC-4) |
 | Repositório de trabalho | `/Users/winnervinicius/Developer/gestao-publica` |
 | Commit | commit de encerramento de ENT00, sobre `116e1ca` (cópia da origem). O hash exato deste commit está em `git log -1` — não é repetido aqui porque um documento que cita o próprio hash muda o hash ao ser corrigido |
@@ -64,6 +70,28 @@ credencial e não é. A faixa 5436 evita a colisão inteira.
 | `pnpm -C packages/folha-engine test` | saas-municipal | 10 arquivos, 81 testes, todos passando | 3,9 s | 2026-09-09 |
 | `pnpm -C apps/worker test` | saas-municipal | 4 arquivos, 7 testes, todos passando | 0,5 s | 2026-09-09 |
 | `pnpm smoke` | saas-municipal | **8 ok, 2 avisos, 0 falhas** | — | 2026-09-09 |
+
+### Comandos de ENT01 (esta máquina, banco `localhost:5436`)
+
+| Comando | Resultado | Duração | Data |
+|---|---|---|---|
+| `npx prisma migrate deploy` (dev e teste) | **68 migrations** aplicadas nos dois bancos | — | 2026-09-09 |
+| `npm run db:papel` | `gestao_app` provisionado nos dois bancos, **schema `public`** — sem superusuário, sem BYPASSRLS, sem DDL | — | 2026-09-09 |
+| `npm run seed:pcasp` · `seed:m02` · `seed:roteiro-orc` · `seed:m07` | plano de contas, classificações da STN, roteiro orçamentário e tipos de consignação | — | 2026-09-09 |
+| `SEED_IDENTIDADE=… npm run seed:cenario-aceite` | ficha 1 com **10.000,00** (o §2.4) e ficha 2 de reexecução | — | 2026-09-09 |
+| `npm run db:conceder ADMINISTRADOR PREPARAR_ORDEM_PAGAMENTO …` | 3 ações concedidas — ver o achado do funil de autorização | — | 2026-09-09 |
+| `npx tsc --noEmit` (backend · app · scripts) | **exit 0, os três limpos** | — | 2026-09-09 |
+| `npx next build` | **compilado, 0 erros** | 5,1 s | 2026-09-09 |
+| `npx vitest run` | **144 arquivos, 1441 testes, 0 falhas** | ~340 s (máquina livre) | 2026-09-09 |
+| `npm run smoke:visual` | **22/22 rotas** · CSS medido no navegador | — | 2026-09-09 |
+| `npm run smoke:pessoas` | **9/9 passos**, 0 falhas | — | 2026-09-09 |
+| `npm run smoke:cadeia` | **23/23 passos**, 0 falhas | — | 2026-09-09 |
+
+⚠️ **A rota real até aqui não foi reta, e as curvas estão registradas** — cada uma
+na seção que a explica: o `FOR UPDATE` que o papel restrito recusou; o seed do
+roteiro orçamentário que não existia em produção; a conta de passivo que vinha do
+chamador; o teste que passava pelo motivo errado; a ação nova que não alcançou o
+perfil existente. Nenhuma delas apareceria num relatório de "tudo verde".
 
 Nenhuma falha de negócio no baseline. Os 2 avisos do smoke são de ambiente:
 `API_URL` não definida (check pulado) e o tenant `santa-izabel-oeste` sem vínculo
@@ -194,9 +222,11 @@ UPDATE` não fazia — passava batido.
 | `20260909175636_m19_pessoas_e_credores` | ENT01 — cadastro append-only de pessoas | Aditiva: três tabelas novas |
 | `20260909175700_renomear_indice_certidao_fornecedor` | ENT01 — drift pré-existente, separado em migration própria para não viajar de carona | Aditiva |
 | `20260909195419_m07_conta_passivo_da_consignacao` | ENT01 — `TipoConsignacao.contaPassivoId`, o que libera a retenção na tela | **Aditiva pura**: coluna nullable, sem backfill e sem default |
+| `20260909213000_m05_ordem_de_pagamento` | ENT01/T07 — `OrdemDePagamento`, `MovimentoDaOrdemDePagamento` e `Pagamento.ordemDePagamentoId` | **Aditiva**: duas tabelas novas e uma coluna nullable com `@unique` |
+| `20260909214500_m16_acoes_da_ordem_de_pagamento` | ENT01/T07 — três valores no enum `AcaoDoSistema` | **Aditiva**: `ADD VALUE` no enum |
 
-**Nenhuma migration herdada foi apagada ou reescrita.** As três de ENT01 são
-aditivas; a última é nullable e sem default de propósito — um default carimbaria
+**Nenhuma migration herdada foi apagada ou reescrita.** As cinco de ENT01 são
+aditivas; a de `contaPassivoId` é nullable e sem default de propósito — um default carimbaria
 toda consignação com um passivo inventado, e o razão passaria a acumular dívida com
 o consignatário errado sem ninguém perceber.
 
@@ -322,6 +352,36 @@ lançamento **fecharia do mesmo jeito**: os dois lados errados na mesma medida. 
 por isso que nenhuma amarração de balancete pega esse erro, e é por isso que ele
 tem teste e smoke próprios (`modules/m05-despesa/m05-dossie.test.ts`).
 
+### O achado do funil de autorização — ação nova não alcança perfil existente
+
+Descoberto pelo smoke, não por um teste. As três ações de T07 entraram no censo, e
+o administrador da instalação recebeu:
+
+```
+ACESSO NEGADO: o usuário "admin@cg.pb.gov.br" não tem permissão para
+PREPARAR_ORDEM_PAGAMENTO na unidade gestora ac-uo.
+  perfis do usuário: ADMINISTRADOR
+  o que faltou: A AÇÃO — nenhum dos perfis dele concede PREPARAR_ORDEM_PAGAMENTO,
+  em unidade nenhuma. Não é escopo: é a ação.
+```
+
+**O funil estava certo.** O que faltava era o caminho de **atualização**: o
+`bootstrap-usuario` monta o perfil de instalação a partir do censo **uma vez**, na
+vida do banco. Uma versão que acrescenta ações deixa o administrador sem elas — e
+ele descobre abrindo a tela nova.
+
+O caminho existe agora: `npm run db:conceder <PERFIL> <ACAO>...`. Ele mora em
+`scripts/`, **fora de `prisma/seed/`** — o t5 do M16 proíbe perfil, usuário e
+permissão no seed, e a razão continua inteira ("um seed que carimba um
+superusuário entrega a chave-mestra a quem rodar `npm run seed`"). E exige as
+ações **por nome, uma a uma**: um `--todas` seria a chave-mestra com cara de
+rotina. Não cria perfil; exige `SEED_IDENTIDADE`, porque conceder poder é um ato e
+fica com o nome de quem o praticou.
+
+⚠️ **Continua sem tela e sem caso de uso.** Conceder uma ação a um perfil não é
+serviço do M16 — há `concederPerfil` (usuário → perfil), não `concederAcao`
+(perfil → ação). Pendência `CONCEDER-ACAO-A-PERFIL-UI`.
+
 ### Afirmações do repositório que este lote encontrou FALSAS
 
 Corrigir a documentação não é higiene: um comentário que descreve um sistema que já
@@ -348,14 +408,15 @@ E uma **lacuna** que só apareceu porque este lote precisou semear um banco de v
 
 | Medida | ENT00 (fim) | ENT01 (agora) |
 |---|---|---|
-| Arquivos de teste | 130 | **136** |
-| Testes | 1.302 + 1 falha esperada | **1.382, zero falha esperada** |
-| Duração | 312,17 s | **418,06 s** (máquina livre) |
+| Arquivos de teste | 130 | **144** |
+| Testes | 1.302 + 1 falha esperada | **1.441, zero falha esperada** |
+| Duração | 312,17 s | **~340 s** (máquina livre) |
 | `tsc` backend / app / scripts | limpos | limpos |
-| Migrations | 63 | **66** |
-| Smoke visual | 8 ok / 2 avisos | **19/19 rotas** |
+| Migrations | 63 | **68** |
+| Smoke visual | 8 ok / 2 avisos | **22/22 rotas** |
 | Smoke do cadastro de pessoas | — | **9/9 passos** (navegador real) |
-| Smoke da cadeia da despesa | — | **17/17 passos** (navegador real) |
+| Smoke da cadeia da despesa | — | **23/23 passos** (navegador real) |
+| Os 25 do incremento | — | **18 cobertos · 4 parciais · 3 não cobertos** |
 
 ⚠️ **Uma execução intermediária acusou 2 falhas, e elas foram investigadas, não
 descartadas.** Uma era real (`listarPessoas` fora do censo do M16 — o grep-teste
@@ -364,26 +425,130 @@ bidirecional cobrando, que é o trabalho dele) e foi corrigida. A outra foi
 máquina; reexecutada isoladamente e com a máquina livre, passou nas duas vezes.
 Fica registrado porque "reexecutei e passou" só vale acompanhado do motivo.
 
-## ENT01 — o que FALTA (o lote não está no gate)
+## ENT01 — o GATE, item a item
+
+O gate do prompt 01, §4, tem seis critérios. O que cada um exige e o que o
+sustenta:
+
+| # | Critério | Situação | Evidência (comando, nesta máquina) |
+|---|---|---|---|
+| 1 | A cadeia inteira executada **pela interface**, do cadastro do credor ao razão | ✅ | `npm run smoke:cadeia` — **23 passos, 0 falhas**, navegador real |
+| 2 | Cada tela, recarregada, encontra o dado persistido | ✅ | o mesmo smoke recarrega depois de cada escrita; `npm run smoke:pessoas` — 9/9 |
+| 3 | Os valores por conta e subsistema conferem com o esperado **registrado antes** | ✅ | `test/papel-runtime.test.ts`, `modules/m05-despesa/m05-dossie.test.ts` |
+| 4 | O estorno inverte as pernas certas, preserva o original e não aumenta o caixa pelo bruto | ✅ | medido: caixa recebe **900,00** de volta. `m08-anulacao-rp`, `m05-dossie`, e o smoke |
+| 5 | Os 25 testes do incremento passam, e a regressão de ENT00 continua verde | ⚠️ **parcial, e declarado** | **18 cobertos, 4 parciais, 3 não cobertos** — `test/incremento-25.test.ts` |
+| 6 | `ESTADO-EXECUCAO.md` atualizado | ✅ | este documento |
+
+### ⚠️ O critério 5, sem maquiagem
+
+Três dos 25 **não estão cobertos**, e são o mesmo assunto:
+
+| # | Cenário | Por que não |
+|---|---|---|
+| 4 | Município A não lê dados de B | O eixo município **não existe** nesta base |
+| 5 | FK de outro tenant não é aceita | idem |
+| 7 | Consolidação de A não inclui B | idem |
+
+`EnteConfig` é singleton por chave primária e nenhuma das 118 tabelas tem coluna
+de tenant. A decisão foi tomada e está em `docs/adr/ADR-eixo-de-municipio.md`
+(**aceito**, 2026-09-09): o produto atenderá vários municípios por **schema por
+município**, com plano de controle em `public` — não por `tenant_id`. É lote
+transversal próprio, posterior a este.
+
+**Estes três seguem declarados como pendência, nunca como atendidos.** Nenhum
+município novo foi habilitado.
+
+Quatro são **parciais**, com o que falta escrito:
+
+| # | Cenário | O que existe | O que falta |
+|---|---|---|---|
+| 2 | Troca de entidade preservando o ano | a troca acontece sem novo login e o exercício segue na URL | quando o exercício não existe na entidade nova, declarar o motivo e exigir escolha explícita (`TROCA-DE-ENTIDADE-SEM-EXERCICIO`) |
+| 9 | Job/anexo não vaza; memberships revogadas | revogar perfil e inativar usuário derrubam as sessões; o worker passa pelos mesmos guards | a metade dos **tenants** é o item 4 |
+| 13 | Idempotência | chave repetida é **recusada** pelo banco, com payload igual ou divergente, e o primeiro fica intacto | repetir NÃO devolve o efeito anterior. Exige chave de idempotência **por requisição** (`IDEMPOTENCIA-DE-REQUISICAO`) |
+| 20 | Relatório == tela | tela e PDF chamam a MESMA porta com os MESMOS filtros; os totais vêm do módulo | o teste que gere as duas saídas e as **confronte linha a linha** (`RELATORIO-VS-TELA-CONFRONTADOS`) |
+
+## ENT01 — o que ficou de pé nesta segunda parte
+
+| Frente | Estado | O que é |
+|---|---|---|
+| **T05 detalhe do empenho** | ✅ | `/despesa/empenhos/[id]` — origem, liquidações, retenções, pagamentos, anulações, razão e histórico no mesmo contexto |
+| **T06 retenção pela tela** | ✅ | o form de pagamento pergunta o valor retido; a **conta de passivo é do cadastro**, conferida dentro da transação |
+| **T07 pagamento em quatro etapas** | ✅ (etapa 3 declarada indisponível) | ordem de pagamento com preparar/autorizar **segregados**, registro, envio ao banco **indisponível com motivo**, confirmação lida do M09 |
+| **T08 razão e conferência** | ✅ | totalizadores por subsistema **com a diferença**, filtros de fato/fonte/unidade, seleção múltipla com soma, coluna de estorno |
+| Os três testes difíceis | ✅ | pool (8), unidade de trabalho (14), período fechado por três rotas (11) |
+| Seed de produção puro | ✅ | `test/seed-de-producao.test.ts` — banco vazio, seeds de produção, primeira escrita de cada módulo |
+
+### As duas consequências do ADR que valeram já
+
+Nenhuma das duas implanta multi-tenancy. Elas param de **dificultá-la**:
+
+- **`EnteConfig` atrás de uma função** (`modules/m01-core-contabil/contexto-do-ente.ts`).
+  A chave do singleton estava escrita à mão em quatro lugares.
+- **O schema virou parâmetro** nos grants do `gestao_app`. E não eram só as três
+  linhas óbvias: os `GRANT ... ON TABLE` do censo eram **não qualificados**, e
+  resolviam pelo `search_path` do dono — com um schema por município, um
+  `search_path` diferente concederia privilégio na tabela do município errado, em
+  silêncio, porque o SQL é válido.
+
+## ENT01 — o que FALTA (e não bloqueia o gate)
 
 | Frente | Estado | O que falta |
 |---|---|---|
-| T01 entrada e contexto | parcial | O contexto real existe e é fail-closed. Falta a regra de troca de entidade preservando o exercício **com motivo declarado** quando não puder, e o teste das duas abas |
-| T03 dotações e fontes | existe | `/planejamento/qdd`. Falta declarar na tela quais saldos são **atuais** e quais são em data — a caracterização mostrou que só há o atual |
-| T04 empenhos | existe | Falta oferecer o cadastro de credor como sugestão (pendência `CREDOR-NO-EMPENHO`) |
-| ~~**T05 detalhe do empenho**~~ | ✅ **feito** | `/despesa/empenhos/[id]` |
-| ~~T06 retenção na tela~~ | ✅ **feito** | O form de pagamento pergunta o valor retido; a conta de passivo é cadastro |
-| T07 pagamento | parcial | Falta separar "preparar/autorizar", "registrar", "enviar ao banco" e "confirmação bancária". O que existe é o ato único de pagar (agora com retenção) |
-| T08 razão e conferência | parcial | O **detalhe do empenho** já mostra totalizador por subsistema e a relação de estorno; a tela geral do razão (`/contabilidade/lancamentos`) ainda não |
-| T09 integrações | existe | Falta confrontar com registros reais de tentativa |
-| Os 25 testes do incremento | ~12 cobertos | Faltam, entre outros: pool que não carrega contexto, unidade de trabalho que reverte fato+razão+auditoria+outbox junto, período fechado por rota alternativa, nenhum GET que emite |
-| Cadastro de tipos de consignação | não existe | A conta de passivo se parametriza por seed. A tela mostra o tipo sem conta DESABILITADO com o motivo, em vez de escondê-lo (pendência `CONTA-PASSIVO-CONSIGNACAO-UI`) |
+| T01 entrada e contexto | parcial | ver o item 2 do incremento |
+| T03 dotações e fontes | existe | declarar na tela quais saldos são **atuais** e quais são em data — a caracterização mostrou que só há o atual |
+| T04 empenhos | existe | oferecer o cadastro de credor como sugestão (`CREDOR-NO-EMPENHO`) |
+| T09 integrações | existe | confrontar com registros reais de tentativa |
+| Envio ao banco (T07, etapa 3) | **não existe** | o M17 é só leitura. A porta declara indisponível com motivo, e o tipo de retorno **impede escrever o caminho feliz** (`ENVIO-AO-BANCO-M17B`) |
+| Cadastro de tipos de consignação | não existe | a conta de passivo se parametriza por seed; a tela mostra o tipo sem conta DESABILITADO com o motivo (`CONTA-PASSIVO-CONSIGNACAO-UI`) |
+| Conceder ação a perfil | não existe | ação nova no censo não alcança perfil existente. Hoje: `npm run db:conceder` (`CONCEDER-ACAO-A-PERFIL-UI`) |
 
 ## Próximo lote
 
 | Campo | Valor |
 |---|---|
-| Prompt em execução | `prompts/01-CONTEXTO-E-PRIMEIRA-ENTREGA.md`, com `especificacoes/PRIMEIRA-ENTREGA.md` — **em curso, não encerrado** |
-| Estado | A fundação de segurança, o cadastro de credores, o detalhe do empenho e a retenção pela tela estão de pé — e a cadeia inteira foi executada **pela interface**, incluindo o estorno. Faltam a decomposição do pagamento (T07), a tela geral do razão e cerca de metade dos 25 testes |
-| Decisão pendente do usuário | **O eixo município.** O ENT01 pede "município, entidade gestora e exercício como dimensões distintas", e o município não existe nesta base — `EnteConfig` é singleton. Acrescentá-lo é reescrita transversal em 118 tabelas, e o próprio pacote registra que a escolha "precisa ser tomada por quem conhece o objetivo comercial". Este lote entrega o eixo **UG × exercício**, que existe e é a segregação real do sistema; os cenários que dependem de "Município A não lê B" ficam **declarados como pendência**, não como atendidos |
-| Riscos conhecidos | (1) O trinco pessimista mudou de primitiva — a regressão está verde, mas concorrência é onde uma mudança dessas se paga tarde: os testes do M05 sob concorrência continuam sendo a rede. (2) O valor retido é **informado pelo operador**, nunca calculado: alíquota é matéria tributária que este sistema não conhece, e um cálculo automático seria recolhimento a menor com o ente respondendo pela diferença. Está dito na tela. (3) Todos os tipos de consignação apontam hoje para a MESMA conta de passivo, porque o plano mínimo tem uma só analítica — o saldo por consignatário continua sendo por `(tipo, credor)`, não pela conta contábil |
+| Lote encerrado | `prompts/01-CONTEXTO-E-PRIMEIRA-ENTREGA.md` com `especificacoes/PRIMEIRA-ENTREGA.md` — **no gate, aguardando revisão**. ENT02 NÃO foi iniciado |
+| Decisão tomada | **O eixo município: schema por município**, com plano de controle em `public`. `docs/adr/ADR-eixo-de-municipio.md`, estado **aceito**, 2026-09-09. Duas das cinco consequências foram executadas dentro deste lote (o `EnteConfig` atrás de função e o schema como parâmetro nos grants); as outras três são o lote transversal |
+| Riscos conhecidos | (1) O trinco pessimista mudou de primitiva em ENT01 — a regressão está verde, mas concorrência se paga tarde: os testes do M05 sob concorrência continuam sendo a rede, e `packages/locks/locks.test.ts` agora cobra que ninguém trave por fora. (2) O valor retido é **informado**, nunca calculado — ver o adiamento declarado abaixo. (3) Todos os tipos de consignação apontam para a MESMA conta de passivo, porque o plano mínimo tem uma só analítica; o saldo por consignatário continua sendo por `(tipo, credor)`, nunca pela conta contábil. (4) A etapa de envio ao banco não existe, e a tela diz isso — o risco é alguém ler "pagamento registrado" como "dinheiro transferido" |
+
+## ⚠️ Adiamentos DELIBERADOS, com destino
+
+Um adiamento sem destino vira lacuna que ninguém reabre. Estes têm.
+
+### O cálculo da retenção na fonte
+
+**Hoje:** o valor retido é **informado pelo operador**. A tela diz isso, com todas
+as letras, no bloco de retenção.
+
+**Por que não é decisão de produto, e sim adiamento:** alíquota de INSS, IRRF ou
+ISS depende de legislação tributária — regime do prestador, base de cálculo,
+retenção mínima, o município de incidência do ISS. Este sistema não conhece nada
+disso. Um cálculo automático hoje seria **recolhimento a menor com o ente
+respondendo pela diferença**, e o erro apareceria numa fiscalização, não num
+teste.
+
+**Quando entra, e com o quê:** com o bloco fazendário. E não como uma constante:
+regra **versionada por vigência** (a alíquota de 2026 não recalcula uma retenção
+de 2025) e **memória de cálculo** persistida junto da retenção — base, alíquota,
+versão da regra —, porque quem confere precisa ver a conta, não o resultado.
+
+O incremento já previa exatamente isto: *"se houver cálculo de alíquota/base,
+apresentar a regra versionada e memória; para a fixture inicial usar um valor
+explicitamente informado, sem inventar uma alíquota legal"*.
+
+**O que o sistema garante enquanto isso:** que o lançamento feche, que o passivo
+nasça na conta do **cadastro** (não numa escolhida por quem chamou) e que o caixa
+saia pelo líquido.
+
+### O envio ao banco
+
+**Hoje:** indisponível, com motivo declarado, sem rota e sem botão. O tipo de
+retorno da porta é `disponivel: false` **literal** — enquanto não houver o que
+ligar, nenhum código consegue escrever o caminho feliz; o compilador recusa.
+
+**Quando entra:** com o M17-b (escrita bancária). O M17 atual é só leitura —
+extrato e saldo.
+
+**O que não pode acontecer nesse meio-tempo:** um botão "enviar" que devolva
+sucesso local. É a diferença entre "o pagamento foi registrado" e "o dinheiro
+saiu", e um sistema que as confunde produz o pior tipo de erro: o que parece
+resolvido.
