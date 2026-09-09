@@ -237,7 +237,11 @@ describe("M09 — conciliação bancária", () => {
     });
 
     await prisma.tipoConsignacao.create({
-      data: { id: "tc-inss", codigo: "INSS", descricao: "INSS", criadoPor: POR },
+      data: {
+        id: "tc-inss", codigo: "INSS", descricao: "INSS", criadoPor: POR,
+        // A conta de passivo é do CADASTRO — a gravação a confronta com a conta composta.
+        contaPassivo: { connect: { codigo: P_INSS } },
+      },
     });
     await criarFichaDeTeste(prisma, {
       id: FICHA, exercicio: 2026, numero: 1, orgaoId: "org-01", unidadeOrcId: "uo-01",

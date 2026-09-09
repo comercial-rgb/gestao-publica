@@ -145,7 +145,8 @@ async function semear(): Promise<void> {
     data: { id: "cb1", codigo: "CC-001", descricao: "Movimento", fonteId: FONTE },
   });
   await prisma.tipoConsignacao.create({
-    data: { id: T_INSS, codigo: "INSS", descricao: "INSS", criadoPor: POR },
+    // A conta de passivo é do CADASTRO: a gravação confronta a conta composta com ela.
+    data: { id: T_INSS, codigo: "INSS", descricao: "INSS", contaPassivoId: "c-consig", criadoPor: POR },
   });
 
   const base = {

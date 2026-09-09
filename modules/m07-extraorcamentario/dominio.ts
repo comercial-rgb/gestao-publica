@@ -281,11 +281,30 @@ export interface RetencoesDoPagamento {
   readonly retencoes: readonly RetencaoDoPagamentoInput[];
 }
 
-/** O que a persistência precisa de uma retenção (a conta já virou perna). */
+/**
+ * O que a persistência precisa de uma retenção.
+ *
+ * ⚠️ A CONTA VEM JUNTO — e ela vem para ser CONFERIDA, não para ser usada. A perna do
+ * passivo já foi composta lá em cima, no motor puro, com a conta que o chamador passou.
+ * Quem grava confronta essa conta com a do CADASTRO (`TipoConsignacao.contaPassivo`),
+ * dentro da transação, e derruba o pagamento inteiro se divergirem.
+ *
+ * ═══ POR QUE ISSO PRECISA EXISTIR ═══
+ * Sem a conferência, `contaConsignacaoAPagar` é um parâmetro livre do chamador: qualquer
+ * código que chame `pagar()` — uma rota nova, um worker, um importador — pode fazer o
+ * passivo do INSS nascer numa conta de despesa. O lançamento FECHA (é só uma conta
+ * credora a mais), o balancete não acusa, e a dívida com o consignatário desaparece do
+ * lugar onde alguém a procuraria.
+ *
+ * Proteger isso só na borda (a porta que monta a tela) não basta: a borda é UMA das
+ * entradas. A conferência tem de estar onde toda entrada passa — a transação.
+ */
 export interface RetencaoParaPersistir {
   readonly tipoConsignacaoId: string;
   readonly credorConsignatario: string;
   readonly valor: Money;
+  /** A conta usada na perna de passivo. Conferida contra o cadastro na gravação. */
+  readonly contaConsignacaoAPagar: string;
 }
 
 export interface PagamentoComposto {

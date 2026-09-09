@@ -274,9 +274,21 @@ export async function semearSagresPoc(prisma: PrismaClient, opcoes: OpcoesSeedPo
   // ISS na fonte: o líquido sai ao fornecedor e o retido nasce como ingresso extra (receita extra
   // vinculada ao pagamento, TR 5.25/5.41), com saldo próprio. Depois, recolhimento PARCIAL do ISS
   // (despesa extra, TR 5.43-5.45) — a trava de saldo do M07 impede recolher mais do que se reteve.
-  const tipoIss = await prisma.tipoConsignacao.upsert({ where: { codigo: "ISS" }, update: {}, create: { codigo: "ISS", descricao: "ISS retido na fonte", criadoPor: por } });
+  // ⚠️ A CONTA DE PASSIVO ENTRA NO CADASTRO, e o `update` também a grava: um seed
+  // idempotente que só a pusesse no `create` deixaria uma base semeada ANTES desta
+  // coluna com o tipo sem conta — e a retenção passaria a ser recusada, sem que rodar o
+  // seed de novo resolvesse. O upsert tem de realinhar, não só criar.
+  const tipoIss = await prisma.tipoConsignacao.upsert({
+    where: { codigo: "ISS" },
+    update: { contaPassivo: { connect: { codigo: CONTA_CONSIGNACAO_ISS } } },
+    create: { codigo: "ISS", descricao: "ISS retido na fonte", contaPassivo: { connect: { codigo: CONTA_CONSIGNACAO_ISS } }, criadoPor: por },
+  });
   // INSS: cadastrado para o importador de folha (M20) — a fixture da POC retém INSS e ISS.
-  await prisma.tipoConsignacao.upsert({ where: { codigo: "INSS" }, update: {}, create: { codigo: "INSS", descricao: "INSS retido na fonte", criadoPor: por } });
+  await prisma.tipoConsignacao.upsert({
+    where: { codigo: "INSS" },
+    update: { contaPassivo: { connect: { codigo: CONTA_CONSIGNACAO_INSS } } },
+    create: { codigo: "INSS", descricao: "INSS retido na fonte", contaPassivo: { connect: { codigo: CONTA_CONSIGNACAO_INSS } }, criadoPor: por },
+  });
   const emp3 = await empenhar(
     { fichaId: "ficha-poc", numero: "3", tipo: "ORDINARIO", valor: "10000.00", data: D(9, 10), credorCpfCnpj: "12345678000199", historico: "Empenho de servicos com retencao - POC (setembro)", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", subelementoId: subEmpenho.id, criadoPor: por },
     R_EMPENHO, deps

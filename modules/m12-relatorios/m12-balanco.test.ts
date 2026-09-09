@@ -164,7 +164,11 @@ describe("M12 — Balanço Orçamentário (Anexo 12)", () => {
       data: { id: "cb1", codigo: "CC-001", descricao: "Livre", fonteId: FONTE },
     });
     const tipoInss = await prisma.tipoConsignacao.create({
-      data: { codigo: "INSS", descricao: "INSS", criadoPor: POR },
+      data: {
+        codigo: "INSS", descricao: "INSS", criadoPor: POR,
+        // A conta de passivo é do CADASTRO — a gravação a confronta com a conta composta.
+        contaPassivo: { connect: { codigo: P_INSS } },
+      },
     });
 
     // ── RECEITA: prevê 10.000, arrecada 8.000 ────────────────────────────

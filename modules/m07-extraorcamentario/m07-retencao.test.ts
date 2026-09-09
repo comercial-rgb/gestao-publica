@@ -136,11 +136,22 @@ async function semear(): Promise<void> {
     },
   ]);
 
+  /*
+    ⚠️ CADA TIPO NASCE COM A SUA CONTA DE PASSIVO — e a fixture não escolhe mais isso na
+    hora de reter. Quem decide onde o passivo da consignação nasce é o CADASTRO; a
+    gravação confronta a conta composta com a cadastrada e derruba na divergência. Uma
+    fixture que passasse `P_ISS` retendo INSS deixaria de compilar a realidade, e agora
+    deixa de passar também.
+
+    O `ANTIGO` (inativo) recebe conta de propósito: o teste que o usa prova que a recusa
+    vem de estar INATIVO, e não de faltar cadastro. Sem conta, ele passaria pelo motivo
+    errado — o pior tipo de teste verde.
+  */
   const tipos = await Promise.all([
-    prisma.tipoConsignacao.create({ data: { codigo: "INSS", descricao: "INSS", criadoPor: "TESTE" } }),
-    prisma.tipoConsignacao.create({ data: { codigo: "ISS", descricao: "ISS retido", criadoPor: "TESTE" } }),
-    prisma.tipoConsignacao.create({ data: { codigo: "PENSAO", descricao: "Pensão alimentícia", criadoPor: "TESTE" } }),
-    prisma.tipoConsignacao.create({ data: { codigo: "ANTIGO", descricao: "Desativado", ativo: false, criadoPor: "TESTE" } }),
+    prisma.tipoConsignacao.create({ data: { codigo: "INSS", descricao: "INSS", contaPassivoId: "c-inss", criadoPor: "TESTE" } }),
+    prisma.tipoConsignacao.create({ data: { codigo: "ISS", descricao: "ISS retido", contaPassivoId: "c-iss", criadoPor: "TESTE" } }),
+    prisma.tipoConsignacao.create({ data: { codigo: "PENSAO", descricao: "Pensão alimentícia", contaPassivoId: "c-pensao", criadoPor: "TESTE" } }),
+    prisma.tipoConsignacao.create({ data: { codigo: "ANTIGO", descricao: "Desativado", ativo: false, contaPassivoId: "c-iss", criadoPor: "TESTE" } }),
   ]);
   [T_INSS, T_ISS, T_PENSAO, T_INATIVO] = tipos.map((t) => t.id) as [string, string, string, string];
 }
@@ -401,6 +412,48 @@ describe("M07 — pagar() com RETENÇÃO", () => {
     expect(
       await prisma.lancamentoContabil.count({ where: { origemTipo: "PAGAMENTO" } })
     ).toBe(0);
+    expect(await prisma.movimentoExtraorcamentario.count()).toBe(0);
+  });
+
+  /*
+    ⚠️ ESTES DOIS TESTES SÃO SOBRE **ONDE** A PROTEÇÃO MORA, e não sobre a tela.
+
+    A tela de pagamento mostra o tipo sem conta DESABILITADO, com o motivo. Isso é
+    conveniência: ajuda quem opera, e não protege nada. A pergunta que importa é o que
+    acontece quando alguém chama o caso de uso direto — uma rota nova, um worker, um
+    importador, um script. A resposta tem de ser a mesma, e vem daqui: da transação.
+
+    O segundo teste é o que quase não se escreve. Passar a conta ERRADA não quebra nada
+    visível: o lançamento FECHA (é só mais uma conta credora), o balancete não acusa, e a
+    dívida com o consignatário simplesmente nasce no lugar onde ninguém a procura.
+  */
+  it("tipo SEM conta de passivo: o caso de uso recusa — não é só a tela que esconde", async () => {
+    const semConta = await prisma.tipoConsignacao.create({
+      data: { codigo: "SEM_CONTA", descricao: "Tipo sem passivo parametrizado", criadoPor: "TESTE" },
+      select: { id: true },
+    });
+
+    await expect(
+      pagar(pgto(liq, "1000.00"), R_PAGAMENTO, deps, {
+        contaDisponibilidade: CAIXA,
+        retencoes: [retencao(semConta.id, "Sindicato", "50.00", P_ISS)],
+      })
+    ).rejects.toThrow(/não tem CONTA DE PASSIVO parametrizada/);
+
+    expect(await prisma.pagamento.count()).toBe(0);
+    expect(await prisma.movimentoExtraorcamentario.count()).toBe(0);
+  });
+
+  it("conta divergente do CADASTRO: recusa — quem escolhe onde o passivo nasce é o cadastro", async () => {
+    await expect(
+      pagar(pgto(liq, "1000.00"), R_PAGAMENTO, deps, {
+        contaDisponibilidade: CAIXA,
+        // O tipo é INSS (cadastrado em P_INSS); a chamada compõe em P_ISS.
+        retencoes: [retencao(T_INSS, "INSS", "100.00", P_ISS)],
+      })
+    ).rejects.toThrow(/cadastro diz/);
+
+    expect(await prisma.pagamento.count()).toBe(0);
     expect(await prisma.movimentoExtraorcamentario.count()).toBe(0);
   });
 

@@ -146,10 +146,20 @@ export async function criarLancamentoExtra(
 export async function exigirTipoAtivo(
   tx: Tx,
   tipoConsignacaoId: string
-): Promise<{ id: string; codigo: string }> {
+): Promise<{
+  id: string;
+  codigo: string;
+  /** Código PCASP do passivo, do CADASTRO. `null` = não parametrizado. */
+  contaPassivo: string | null;
+}> {
   const t = await tx.tipoConsignacao.findUnique({
     where: { id: tipoConsignacaoId },
-    select: { id: true, codigo: true, ativo: true },
+    select: {
+      id: true,
+      codigo: true,
+      ativo: true,
+      contaPassivo: { select: { codigo: true } },
+    },
   });
   if (t === null) {
     throw new Error(`Tipo de consignação ${tipoConsignacaoId} não existe.`);
@@ -159,7 +169,7 @@ export async function exigirTipoAtivo(
       `Tipo de consignação ${t.codigo} está INATIVO — não recebe movimento novo.`
     );
   }
-  return { id: t.id, codigo: t.codigo };
+  return { id: t.id, codigo: t.codigo, contaPassivo: t.contaPassivo?.codigo ?? null };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -273,7 +273,11 @@ async function semear(): Promise<void> {
 
   // M07 — a consignação (passivo financeiro: dinheiro de terceiro no caixa).
   await prisma.tipoConsignacao.create({
-    data: { id: TIPO_CONSIG, codigo: "INSS", descricao: "INSS retido", criadoPor: POR },
+    data: {
+      id: TIPO_CONSIG, codigo: "INSS", descricao: "INSS retido", criadoPor: POR,
+      // A conta de passivo é do CADASTRO — a gravação a confronta com a conta composta.
+      contaPassivo: { connect: { codigo: CONSIGNACAO } },
+    },
   });
 
   // M08 — a conta do PL que recebe o resultado apurado. (O Exercicio 2026 já

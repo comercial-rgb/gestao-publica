@@ -252,6 +252,54 @@ ortodoxia:
 chegarão **zeradas** ao encerramento e a classificação **segue valendo**: encerrar zero é não
 lançar nada. A tabela não muda.
 
+## ⚠️ O ESTORNO É POR PERNA — o caixa recebe de volta o LÍQUIDO, nunca o bruto
+
+Esta seção existe porque a armadilha é **reintroduzível**, e reintroduzida ela fica
+invisível. Dois estornos deste módulo já fizeram exatamente isso.
+
+### O fato
+
+Pagar 1.000,00 retendo 100,00 é **um** lançamento com pernas de valores diferentes:
+
+| Conta | Tipo | Subsistema | Valor |
+|---|---|---|---|
+| obrigação a pagar | DÉBITO | PATRIMONIAL | 1.000,00 |
+| disponibilidade (caixa/bancos) | CRÉDITO | PATRIMONIAL | **900,00** |
+| consignação a pagar | CRÉDITO | PATRIMONIAL | 100,00 |
+| crédito liquidado | DÉBITO | ORÇAMENTÁRIO | 1.000,00 |
+| crédito pago | CRÉDITO | ORÇAMENTÁRIO | 1.000,00 |
+
+Do banco saíram **900,00**. Os 100,00 nunca saíram: mudaram de dono dentro do caixa.
+
+### O erro, e por que ele é invisível
+
+O estorno tem de inverter **cada perna pelo valor dela**: o caixa volta a receber 900,00
+e a consignação morre por 100,00. Um gerador de estorno que recarimbe um valor ÚNICO por
+cima de todas as pernas devolve **1.000,00** ao caixa.
+
+E aí vem a parte que engana:
+
+> **O lançamento continua fechando.** Se o estorno usa 1.000,00 em todas as pernas, ΣD
+> continua igual a ΣC — dentro de cada subsistema, inclusive. O balancete fecha. A
+> amarração razão × razão fecha. **Os dois lados estão errados na mesma medida**, e é
+> exatamente por isso que nenhuma conferência de balanceamento detecta o erro.
+
+O que sobra é 100,00 de disponibilidade que nunca existiu, e uma dívida com o
+consignatário que continua no passivo sem lastro em caixa. Descobre-se na conciliação
+bancária — meses depois, com o extrato do banco na mão.
+
+### A regra
+
+- Quem gera o estorno produz **o valor de cada perna**, lido do lançamento original.
+- Quem persiste **não recarimba** um valor por cima. Se a assinatura da persistência
+  aceita um `valor` único, ela está errada para lançamentos compostos.
+- Nenhum teste de balanceamento cobre isto. A rede é comparar **perna a perna** contra o
+  esperado escrito **antes** de rodar — ver `m08-anulacao-rp.test.ts` ("paga RP 1000
+  retendo 100 → o estorno devolve 900 ao caixa, NÃO 1000") e
+  `m05-despesa/m05-dossie.test.ts`.
+
+Vale para todo estorno de pagamento com retenção: o do M05 e o do M08 (restos a pagar).
+
 ## Pendências
 
 - **A INSCRIÇÃO de RP não gera lançamento contábil.** Ela grava só a linha em

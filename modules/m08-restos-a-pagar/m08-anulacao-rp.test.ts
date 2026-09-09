@@ -514,7 +514,8 @@ describe("M08 — estorno de lançamento com pernas DESIGUAIS", () => {
       },
     });
     const t = await prisma.tipoConsignacao.create({
-      data: { codigo: "INSS", descricao: "INSS", criadoPor: "TESTE" },
+      // A conta de passivo é do CADASTRO — a gravação a confronta com a conta composta.
+      data: { codigo: "INSS", descricao: "INSS", contaPassivoId: "c-inss", criadoPor: "TESTE" },
     });
     tipoInss = t.id;
   });

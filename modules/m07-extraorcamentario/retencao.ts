@@ -51,6 +51,36 @@ export async function registrarRetencoesDoPagamento(
     // Fail-closed: tipo inexistente ou INATIVO derruba o pagamento inteiro.
     const tipo = await exigirTipoAtivo(tx, r.tipoConsignacaoId);
 
+    /*
+      ⚠️ A CONTA DO PASSIVO É DO CADASTRO — o chamador não a escolhe.
+
+      A perna de passivo já foi composta antes desta transação, com a conta que veio no
+      parâmetro. Aqui ela é CONFRONTADA com `TipoConsignacao.contaPassivo`. Sem este
+      confronto, qualquer código que chame `pagar()` — uma rota nova, um worker, um
+      importador — poderia fazer o passivo do INSS nascer numa conta de despesa: o
+      lançamento FECHARIA (é só mais uma conta credora), o balancete não acusaria, e a
+      dívida com o consignatário sumiria do lugar onde alguém a procura.
+
+      A borda também recusa, antes, com mensagem melhor. Mas a borda é UMA das entradas;
+      esta é a que todas atravessam.
+    */
+    if (tipo.contaPassivo === null) {
+      throw new Error(
+        `Tipo de consignação ${tipo.codigo} não tem CONTA DE PASSIVO parametrizada. ` +
+          `Reter é fazer nascer uma dívida com o consignatário, e sem saber em que conta ` +
+          `ela nasce o passivo iria parar numa conta escolhida por quem chamou. ` +
+          `Cadastre a conta antes de reter. Nada foi gravado.`
+      );
+    }
+    if (r.contaConsignacaoAPagar !== tipo.contaPassivo) {
+      throw new Error(
+        `Retenção de ${tipo.codigo} composta na conta ${r.contaConsignacaoAPagar}, mas o ` +
+          `cadastro diz ${tipo.contaPassivo}. Quem decide onde o passivo da consignação ` +
+          `nasce é o CADASTRO, não quem chama — senão a dívida com o consignatário pode ` +
+          `nascer em qualquer conta e o lançamento fecha do mesmo jeito. Nada foi gravado.`
+      );
+    }
+
     const mov = await tx.movimentoExtraorcamentario.create({
       data: {
         tipoConsignacaoId: tipo.id,

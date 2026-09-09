@@ -141,7 +141,11 @@ async function semear(): Promise<void> {
     data: { id: "cb-1", codigo: "CC-001", descricao: "Conta livre", fonteId: FONTE },
   });
   await dono.tipoConsignacao.create({
-    data: { id: "tc-inss", codigo: "INSS", descricao: "INSS", criadoPor: CRIADO_POR },
+    data: {
+      id: "tc-inss", codigo: "INSS", descricao: "INSS", criadoPor: CRIADO_POR,
+      // A conta de passivo é do CADASTRO — a gravação a confronta com a conta composta.
+      contaPassivo: { connect: { codigo: P_INSS } },
+    },
   });
   await criarFichaDeTeste(dono, {
     id: FICHA_ID, exercicio: 2026, numero: 1,

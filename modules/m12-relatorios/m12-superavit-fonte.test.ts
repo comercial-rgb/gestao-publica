@@ -187,7 +187,11 @@ async function semear(): Promise<void> {
     ],
   });
   await prisma.tipoConsignacao.create({
-    data: { id: T_INSS, codigo: "INSS", descricao: "INSS retido", criadoPor: POR },
+    data: {
+      id: T_INSS, codigo: "INSS", descricao: "INSS retido", criadoPor: POR,
+      // A conta de passivo é do CADASTRO — a gravação a confronta com a conta composta.
+      contaPassivo: { connect: { codigo: CONSIGNACAO } },
+    },
   });
 
   const fichaBase = {
