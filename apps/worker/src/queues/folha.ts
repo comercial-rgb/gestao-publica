@@ -14,7 +14,9 @@ import { redisConnection } from '../connection.js'
 // Nomes
 // ============================================================
 
-export const FOLHA_QUEUE_NAME = 'folha'
+import { FOLHA_QUEUE_NAME } from './names.js'
+
+export { FOLHA_QUEUE_NAME }
 
 // ============================================================
 // Tipos de jobs

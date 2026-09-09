@@ -510,3 +510,128 @@ compliance fiscal completo (INSS, IRRF Reforma Lei 15.270/2025, salario-familia,
   refactor de rubricas existentes
 - **Decimal.js para precisao**: rejeitado -- overhead desnecessario, `number` cobre
   ate 15 digitos significativos (suficiente pra folha municipal)
+
+---
+
+## ADR-017 -- Verificacao ponta-a-ponta da Folha: E2E com worker inline + smoke de ambiente (B35.5)
+
+**Data:** 2026-09-09
+**Status:** Aceito
+**Decisores:** Winner (Gerente Geral)
+
+### Contexto
+
+Ao fim do B35.4 o modulo Folha tinha 102 testes verdes e `pnpm typecheck` limpo
+em 6/6 pacotes. Ainda assim, **nenhum teste jamais processou uma folha com
+vinculos reais**: as fixtures do B35.4 (`seedFolhaCalculoCompleto`) eram um stub
+que devolvia `'TODO'`, e os testes de rota exercitavam apenas caminhos de erro
+(folha vazia, duplicada, transicao invalida).
+
+Isso escondeu um defeito que quebraria a folha em producao para **qualquer**
+tenant com pelo menos um servidor cadastrado: em
+`resolverRubricasParaVinculos`, o array de ids era interpolado direto no
+template `sql` do Drizzle:
+
+```ts
+WHERE rv.vinculo_id = ANY(${vinculoIds}::uuid[])
+```
+
+O Drizzle expande um array JS puro numa **lista de placeholders** -- `($1, $2)` --
+e nao num unico parametro de array. O Postgres recebe um *record* onde esperava
+`uuid[]` e aborta com `cannot cast type record to uuid[]`.
+
+O caminho so nao falhava nos testes porque a funcao tem um curto-circuito
+(`if (vinculoIds.length === 0) return new Map()`), e todos os cenarios existentes
+tinham zero vinculos. O defeito atingia as tres portas de entrada do modulo:
+`validarFolha`, `simularHolerite` e o job `processarFolhaMensal`.
+
+### Decisao
+
+Adotar duas camadas de verificacao complementares, alem dos testes unitarios.
+
+#### 1. Fixture real, nao stub
+
+`seedFolhaCalculoCompleto` passa a criar um cenario completo e deterministico:
+entidade, cargo com nivel/referencia, aliquota RPPS, 3 pessoas com 3 vinculos
+ativos, dependentes e rubricas atribuidas. Os tres vinculos foram escolhidos
+para cobrir os regimes que divergem no calculo:
+
+| Vinculo | Base | Exercita |
+|---|---|---|
+| RGPS | R$ 1.600,00 + 2 dependentes | INSS progressivo por faixa + salario-familia |
+| RPPS | R$ 6.500,00 + 1 dependente | aliquota linear municipal (14%) |
+| Comissionado | R$ 10.500,00 (2 rubricas) | teto INSS + IRRF em faixa alta |
+
+Rubricas usam `estrategia_proporcionalidade = 'INTEGRAL'` para que o resultado
+nao dependa de eventos funcionais do mes -- o calculo fica reproduzivel.
+
+#### 2. E2E atravessa API -> DB -> worker -> DB -> API
+
+`apps/api/test/integration/folha/folha-e2e.test.ts` percorre o ciclo de vida
+real: criar, validar, simular, fechar (202 + enfileiramento real no BullMQ),
+processar, consultar holerites, reprocessar e reabrir.
+
+O job do worker e invocado **inline**, com um `Job` falso, em vez de subir um
+worker consumindo a fila. Motivo: um worker real torna o teste dependente de
+temporizacao (polling, retry, backoff) e transforma falha em timeout, que nao
+diz nada sobre a causa. Inline, a stack do erro aponta a linha exata -- foi
+assim que o defeito acima apareceu. O enfileiramento de verdade continua
+coberto: a rota `/fechar` publica na fila e o teste confere o `jobId` retornado.
+
+Para viabilizar isso, `apps/worker/package.json` passa a exportar cada job
+individualmente. O export raiz (`.`) aponta para `src/index.ts`, que **sobe um
+worker no import** -- importar dali dentro de um teste ligaria um consumidor
+fantasma na fila.
+
+Pela mesma razao, `FOLHA_QUEUE_NAME` foi extraido para `src/queues/names.ts`:
+`queues/folha.ts` instancia a `Queue` e as conexoes Redis/PG no import, entao
+scripts que so precisam do nome da fila nao devem depender dele.
+
+#### 3. Smoke de ambiente (`pnpm smoke`)
+
+Testes rodam contra um banco efemero e nao dizem nada sobre o ambiente
+implantado. `apps/worker/src/smoke.ts` verifica, **sem escrever nada**, se um
+ambiente ja implantado tem as pre-condicoes para fechar folha:
+
+- conectividade Postgres e Redis, e a fila `folha` acessivel (com contagem de jobs)
+- tabelas federais INSS/IRRF/salario-familia com vigencia na competencia
+- `/health/ready` da API, quando `API_URL` esta definida
+- por tenant com o modulo ativo: schema provisionado, tabelas da folha presentes,
+  rubrica vigente para todo vinculo ativo e aliquota RPPS vigente quando ha
+  servidor no regime proprio
+
+Distingue **FALHA** (exit 1, bloqueia o fechamento) de **AVISO** (exit 0, so
+sinaliza). O criterio e simples: aparece como falha aquilo que `validarFolha`
+recusaria no fechamento.
+
+### Consequencias
+
+**Positivas:**
+- Defeito bloqueante encontrado e corrigido antes de chegar a producao
+- A fixture real vira base para B36 (13o, ferias, rescisao), que precisa do
+  mesmo cenario de vinculos
+- O smoke roda em producao como checagem pos-deploy e pre-fechamento mensal,
+  respondendo "esse ambiente consegue fechar a folha de setembro?" sem escrever
+
+**Negativas / dividas:**
+- O E2E nao exercita BullMQ ponta-a-ponta (fila -> worker -> conclusao).
+  Lock distribuido, retry e backoff continuam sem cobertura automatizada;
+  cobrir isso exige um worker de verdade e pertence a um teste de carga (B39)
+- O reprocessamento no E2E apaga holerites e lancamentos antes de rodar de novo,
+  porque `holerites` tem unique em `(folha_id, vinculo_id)`. O caminho real de
+  recalculo e o job `RECALCULAR_HOLERITE`, que versiona -- ainda sem E2E proprio
+- O smoke le `DATABASE_URL`/`REDIS_URL` do ambiente e nao carrega `.env`;
+  em producao as variaveis vem do orquestrador, mas em dev exige exporta-las
+
+### Alternativas consideradas
+
+- **Subir um worker BullMQ real no E2E**: rejeitado -- teste dependente de
+  temporizacao, falhas viram timeout opaco. Fica para o teste de carga do B39
+- **Mockar o DB no E2E**: rejeitado -- contraria o ADR-014 (integration first) e
+  o defeito encontrado era exatamente de dialeto SQL, invisivel sob mock
+- **Substituir o `ANY(...)` por `inArray()` do Drizzle**: rejeitado -- as duas
+  queries do resolver sao SQL cru por causa dos JOINs com filtro de vigencia;
+  `sql.param()` resolve sem reescrever a query
+- **Smoke como rota autenticada na API**: rejeitado -- os checks por tenant
+  varrem todos os schemas, o que nao cabe num request HTTP; script de ops
+  roda no deploy e no cron mensal

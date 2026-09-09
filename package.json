@@ -24,6 +24,7 @@
     "db:reseed:permissions": "pnpm --filter @saas-municipal/database db:reseed:permissions",
     "db:seed:orcamento-stn": "pnpm --filter @saas-municipal/database db:seed:orcamento-stn",
     "db:bootstrap:test": "pnpm --filter @saas-municipal/database run db:bootstrap:test",
+    "smoke": "pnpm --filter @saas-municipal/worker run smoke",
     "test": "pnpm --filter @saas-municipal/api run test",
     "test:watch": "pnpm --filter @saas-municipal/api run test:watch",
     "docker:up": "docker compose up -d",

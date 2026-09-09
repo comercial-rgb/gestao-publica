@@ -26,19 +26,18 @@ Para setup e arquitetura, veja [README.md](./README.md).
 
 ## PRÓXIMO PASSO RECOMENDADO
 
-### → Bloco 0.7 — Cookies httpOnly
+### → Bloco B36 — Folhas suplementares (13º, férias, rescisão)
 
-O middleware (H7) já está pronto e aguardando cookies. Falta apenas:
+O módulo Folha fechou o ciclo mensal completo no **B35.5**: engine, worker
+BullMQ, rotas REST, WebSocket de progresso, E2E ponta-a-ponta e smoke de
+ambiente. As tabelas `folhas_ferias` e `folhas_rescisoes` já existem no schema,
+mas ainda não têm engine nem rotas.
 
-1. **API** — setar cookies `httpOnly` nos endpoints de login/refresh/logout:
-   - `sm_admin_access` / `sm_admin_refresh` (master)
-   - `sm_tenant_access` / `sm_tenant_refresh` (tenant)
-2. **Web** — remover `localStorage` dos tokens em `/login` e `/admin/login`
-3. **Ativar modo estrito** — `NEXT_PUBLIC_AUTH_MIDDLEWARE_STRICT=true` no `.env`
+Antes de B36, dois débitos técnicos herdados do B35 (ver ADR-016/017):
 
-Com isso, o middleware passa a proteger `/admin/*` e `/tenant/*` sem depender de tokens no browser.
-
----
+1. **Teto agregado INSS** — o orquestrador precisa chamar
+   `aplicarTetoAgregadoInss` para pessoas com mais de um vínculo RGPS
+2. **IRRF pré-2024** — placeholder em `desconto_simplificado` (migration 0004)
 
 ## Camada 0 — Fundação técnica
 
@@ -52,58 +51,25 @@ Blocos incrementais que precedem os módulos funcionais (Receitas, Despesas, Fol
 | **0.4** | Cadastros base no schema tenant (pessoas, entidades, textos jurídicos…) | ✅ Concluído |
 | **0.5** | UI admin (login, dashboard, CRUD de prefeituras) | ✅ Concluído |
 | **0.6** | Paginação cursor-based nas listagens da API | ✅ Concluído (H8) |
-| **0.7** | Cookies httpOnly (substituir localStorage) | 🔄 **Próximo** — middleware pronto (H7); falta setar cookies na API |
-| **0.8** | Drizzle tenant: resolver schema dinâmico (eliminar hardcode `tenant_template` nas queries) | ⏳ Pendente |
-| **0.9** | `pnpm typecheck` limpo em todo o monorepo | ⏳ Pendente |
-| **0.10** | Health check robusto (Postgres + Redis) | 🔄 Parcial — Redis conectado (H5); falta `app.redis.ping()` e check do Postgres em `/health` |
-| **0.11** | UI tenant completa | 🔄 Esqueleto criado (H1) — ver abaixo |
+| **0.7** | Cookies httpOnly (substituir localStorage) | ✅ Concluído — `Set-Cookie` em admin/tenant auth + CSRF; sem `localStorage` no web |
+| **0.8** | Drizzle tenant: resolver schema dinâmico | ✅ Concluído — runtime usa `createTenantDatabase(url, schemaName)`; `tenant_template` ficou só no template de migrations |
+| **0.9** | `pnpm typecheck` limpo em todo o monorepo | ✅ Concluído — 6/6 pacotes |
+| **0.10** | Health check robusto (Postgres + Redis) | ✅ Concluído — `/health/live`, `/health/ready` (PG + Redis, 503 em falha) e `/health/info` |
+| **0.11** | UI tenant completa | 🔄 Em andamento — telas de orçamento, despesas e folha existem; falta navegação por módulo contratado |
 
-### Bloco 0.7 — Cookies httpOnly (detalhe)
+### Bloco 0.11 — UI tenant (detalhe)
 
-**Já feito (H7):**
-- `apps/web/middleware.ts` com rotas protegidas e modo permissivo (`NEXT_PUBLIC_AUTH_MIDDLEWARE_STRICT=false` por default)
-- Cookies esperados: `sm_admin_access`, `sm_tenant_access`
-- Redirect automático para `/admin/login` ou `/login` quando strict=true e cookie ausente
-
-**A fazer:**
-- [ ] `Set-Cookie` httpOnly nos handlers de auth (master + tenant)
-- [ ] Refresh token também em cookie httpOnly (separado do access)
-- [ ] Logout limpa cookies
-- [ ] Remover `localStorage` das páginas de login
-- [ ] Documentar flag no `.env.example` (já presente)
-- [ ] Ativar `NEXT_PUBLIC_AUTH_MIDDLEWARE_STRICT=true` após migração
-
-### Bloco 0.10 — Health check robusto (detalhe)
-
-**Já feito (H5):**
-- Plugin Redis registrado (`apps/api/src/plugins/redis.ts`)
-- Rate-limit usa store Redis quando `REDIS_URL` está definido
-- Log de conexão na subida da API
+**Já feito:**
+- Auth por cookie httpOnly (`sm_admin_*` / `sm_tenant_*`) + CSRF; sem `localStorage`
+- Telas de orçamento (LOA, dotações, créditos), despesas (empenhos, pipeline,
+  pagamentos) e folha (servidores, holerite)
+- Cadastros de pessoas e editor de documentos
 
 **A fazer:**
-- [ ] Expandir `GET /health` para verificar dependências:
-  ```ts
-  // Exemplo
-  await app.redis?.ping()          // Redis
-  await masterDb.execute(sql`SELECT 1`)  // Postgres
-  ```
-- [ ] Retornar `503` com detalhes se alguma dependência falhar
-- [ ] (Opcional) endpoint `/health/ready` vs `/health/live` para Kubernetes
-
-### Bloco 0.11 — UI tenant completa (detalhe)
-
-**Já feito (H1):**
-- Redirect pós-login: `/login` → `/tenant/dashboard`
-- Esqueleto mínimo criado:
-  - `apps/web/app/tenant/layout.tsx` — header com nome da prefeitura + botão Sair (localStorage por enquanto)
-  - `apps/web/app/tenant/dashboard/page.tsx` — boas-vindas, roles/permissions, grid de módulos “Em breve”
-
-**A fazer:**
-- [ ] Migrar auth para cookies (depende do Bloco 0.7)
-- [ ] Telas de cadastros: Pessoas, Entidades, Textos Jurídicos
+- [ ] Navegação lateral / menu dirigido pelos módulos contratados do tenant
 - [ ] Gestão de usuários do tenant (`/tenant/users`)
-- [ ] Navegação lateral / menu por módulo contratado
-- [ ] Corrigir queries Drizzle no schema dinâmico (depende do Bloco 0.8)
+- [ ] Telas de cadastro do módulo Folha (cargos, rubricas, vínculos) — B38
+- [ ] Ativar `NEXT_PUBLIC_AUTH_MIDDLEWARE_STRICT=true`
 
 ---
 
@@ -114,11 +80,15 @@ Blocos incrementais que precedem os módulos funcionais (Receitas, Despesas, Fol
 - [x] Auth master + tenant + RBAC
 - [x] Provisioning automático de schema
 
-## Camada 2 — Registro (próximo)
+## Camada 2 — Registro
 
-- [ ] **Receitas** (tributos, lançamentos, recebimentos)
-- [ ] **Despesas** (Empenho → Liquidação → Pagamento)
-- [ ] **Folha de Pagamento** (servidores, eventos, cálculo, geração de empenhos)
+- [x] **Orçamento** (PPA/LOA, dotações, créditos adicionais)
+- [x] **Receitas** (naturezas, tipos, lançamentos, arrecadações, anulações)
+- [x] **Despesas** (Empenho → Liquidação → Ordem de pagamento → Pagamento)
+- [x] **Folha de Pagamento — ciclo mensal** (B33–B35.5: cadastros, engine de
+      cálculo, worker BullMQ, rotas REST, progresso via WebSocket)
+- [ ] **Folha — suplementares** (B36: 13º, férias, rescisão)
+- [ ] **Folha — UI completa** (B38)
 
 ## Camada 3 — Inteligência
 

@@ -1,6 +1,7 @@
 # Modulo Folha de Pagamento
 
-Status: B35.2 concluido (engine puro). Aguardando B35.3 (worker) e B35.4 (API).
+Status: B35.5 concluido. Engine, worker BullMQ, rotas REST, WebSocket de progresso,
+E2E ponta-a-ponta e smoke de ambiente prontos. Proximo: B36 (folhas suplementares).
 
 ## Visao geral
 
@@ -129,7 +130,16 @@ console.log(evento.xml)         // XML pronto pra envio
 pnpm -C packages/folha-engine test
 ```
 
-Cobertura atual (apos B35.2D): 81 testes verdes em 10 arquivos.
+Cobertura atual (apos B35.5): **116 testes verdes** -- 81 no engine, 7 no worker,
+28 na API.
+
+```bash
+pnpm -C packages/folha-engine test   # 81 -- calculo puro, sem I/O
+pnpm -C apps/worker test             #  7 -- smoke dos 4 jobs
+pnpm test                            # 28 -- integration da API (inclui o E2E)
+```
+
+### Engine (81)
 
 | Arquivo | Testes | Escopo |
 |---|---|---|
@@ -144,11 +154,41 @@ Cobertura atual (apos B35.2D): 81 testes verdes em 10 arquivos.
 | snapshot.test.ts | 6 | Idempotencia hash, fiscal vs metadata |
 | esocial.test.ts | 12 | Categorias, S-1200/S-1202, XML |
 
-## Proximos passos
+### E2E do ciclo completo (B35.5)
 
-- **B35.3** -- Worker BullMQ com 4 jobs + WebSocket progresso
-- **B35.4** -- API Fastify (simular, fechar, reabrir, integrar despesas)
-- **B35.5** -- Testes integrados E2E + smoke tests prod
+`apps/api/test/integration/folha/folha-e2e.test.ts` -- 14 cenarios que atravessam
+API -> DB -> worker -> DB -> API com dados reais (3 vinculos, 3 regimes):
+
+criar folha, validar pre-fechamento, simular sem persistir, fechar (202 +
+enfileiramento), processar pelo worker, conferir correcao fiscal por regime,
+determinismo do hash entre reprocessamentos, consultas de holerite e reabertura
+auditada.
+
+O job do worker roda **inline** (Job falso), nao via consumidor BullMQ -- ver
+ADR-017 em `docs/DECISOES.md`.
+
+A fixture `seedFolhaCalculoCompleto` (em `apps/api/test/fixtures.ts`) monta o
+cenario: RGPS R$ 1.600 com 2 dependentes (salario-familia), RPPS R$ 6.500
+(aliquota linear 14%) e comissionado R$ 10.500 (teto INSS + IRRF alto).
+
+## Smoke de ambiente
+
+Checagem read-only de um ambiente ja implantado -- roda pos-deploy e antes do
+fechamento mensal:
+
+```bash
+pnpm smoke                                    # usa DATABASE_URL / REDIS_URL do ambiente
+API_URL=https://api.exemplo.gov.br pnpm smoke # inclui check de /health/ready
+SMOKE_COMPETENCIA=2026-05-01 pnpm smoke       # competencia especifica
+```
+
+Verifica conectividade (Postgres, Redis, fila `folha`), vigencia das tabelas
+federais e, por tenant com o modulo ativo, se todo vinculo ativo tem rubrica
+vigente e se ha aliquota RPPS quando existe servidor no regime proprio.
+
+Sai com codigo 1 se houver FALHA; AVISO nao derruba.
+
+## Proximos passos
 - **B36** -- Folhas suplementares (13o + ferias + rescisao)
 - **B38** -- UI completa (cadastros, simulacao, fechamento)
 - **B40-B42** -- eSocial Fase 3+4 (tabelas S-1000/S-1010/S-2200 + envio webservice)

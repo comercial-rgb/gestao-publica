@@ -8,14 +8,20 @@
     ".": "./src/index.ts",
     "./queues/folha": "./src/queues/folha.ts",
     "./connection": "./src/connection.ts",
-    "./config": "./src/config.ts"
+    "./config": "./src/config.ts",
+    "./jobs/processar-folha-mensal": "./src/jobs/processar-folha-mensal.ts",
+    "./jobs/recalcular-holerite": "./src/jobs/recalcular-holerite.ts",
+    "./jobs/gerar-empenhos-folha": "./src/jobs/gerar-empenhos-folha.ts",
+    "./jobs/enviar-esocial-s1200": "./src/jobs/enviar-esocial-s1200.ts",
+    "./utils/tenant-pool": "./src/utils/tenant-pool.ts"
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "smoke": "tsx src/smoke.ts"
   },
   "dependencies": {
     "@saas-municipal/database": "workspace:*",

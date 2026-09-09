@@ -56,7 +56,7 @@ export async function resolverRubricasParaVinculos(params: {
       r.codigo_esocial
     FROM rubricas_vinculos rv
     JOIN rubricas r ON r.id = rv.rubrica_id AND r.ativo = true AND r.deleted_at IS NULL AND r.folha_mensal = true
-    WHERE rv.vinculo_id = ANY(${vinculoIds}::uuid[])
+    WHERE rv.vinculo_id = ANY(${sql.param(vinculoIds)}::uuid[])
       AND rv.ativo = true
       AND rv.vigencia_inicio <= ${compIso}
       AND (rv.vigencia_fim IS NULL OR rv.vigencia_fim >= ${compIso})
@@ -82,7 +82,7 @@ export async function resolverRubricasParaVinculos(params: {
       r.codigo_esocial
     FROM vinculo_rubricas vr
     JOIN rubricas r ON r.id = vr.rubrica_id AND r.deleted_at IS NULL
-    WHERE vr.vinculo_id = ANY(${vinculoIds}::uuid[])
+    WHERE vr.vinculo_id = ANY(${sql.param(vinculoIds)}::uuid[])
       AND vr.deleted_at IS NULL
       AND vr.vigencia_inicio <= ${compIso}
       AND (vr.vigencia_fim IS NULL OR vr.vigencia_fim >= ${compIso})
