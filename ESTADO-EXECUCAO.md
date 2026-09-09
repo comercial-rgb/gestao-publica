@@ -24,7 +24,7 @@
 | Postgres desenvolvimento | `localhost:5436/gestao_publica` — PostgreSQL 18.6, container `pg-gestao-publica` | 2026-09-09 |
 | Postgres teste | `localhost:5436/gestao_publica_test` — **database distinto**, mesmo servidor | 2026-09-09 |
 | Redis | **não aplicável** — o `siafic-cg` não tem dependência de Redis | 2026-09-09 |
-| Migrations aplicadas até | `20260728160000_contrato_campos_tr` — **64 migrations**, nos dois bancos | 2026-09-09 |
+| Migrations aplicadas até | `20260728160000_contrato_campos_tr` — **63 migrations**, nos dois bancos | 2026-09-09 |
 | `prisma/sql/` aplicado | **sim — 17/17 arquivos**, nos dois bancos | 2026-09-09 |
 
 ### Portas — por que 5436
@@ -46,8 +46,8 @@ credencial e não é. A faixa 5436 evita a colisão inteira.
 |---|---|---|---|---|
 | `npm install` | gestao-publica | exit 0 · 15 vulnerabilidades relatadas (6 moderadas, 8 altas, 1 crítica) — **não corrigidas de propósito**, ver pendências | — | 2026-09-09 |
 | `npx prisma generate` | gestao-publica | Prisma Client 7.8.0 gerado | 0,4 s | 2026-09-09 |
-| `npx prisma migrate deploy` | gestao-publica (dev) | 64 migrations aplicadas | — | 2026-09-09 |
-| `npx prisma migrate deploy` | gestao-publica (teste) | 64 migrations aplicadas | — | 2026-09-09 |
+| `npx prisma migrate deploy` | gestao-publica (dev) | 63 migrations aplicadas | — | 2026-09-09 |
+| `npx prisma migrate deploy` | gestao-publica (teste) | 63 migrations aplicadas | — | 2026-09-09 |
 | `npm run db:sql` | gestao-publica (dev e teste) | 17/17 arquivos aplicados | — | 2026-09-09 |
 | `npx tsc --noEmit -p tsconfig.backend.json` | gestao-publica | **exit 0, limpo** | 7,7 s | 2026-09-09 |
 | `npx tsc --noEmit -p tsconfig.json` | gestao-publica | **exit 0, limpo** | — | 2026-09-09 |
@@ -125,7 +125,7 @@ Causa medida:
 | `usesuper` | **`t` — é superusuário** |
 | `tableowner` de `LancamentoContabil` | `gestao` — **a aplicação é dona da tabela** |
 | `relrowsecurity` | `f` — sem política de linha |
-| `GRANT`/`REVOKE`/`CREATE ROLE`/`ROW LEVEL SECURITY` nas 64 migrations | **zero ocorrências** |
+| `GRANT`/`REVOKE`/`CREATE ROLE`/`ROW LEVEL SECURITY` nas 63 migrations | **zero ocorrências** |
 
 Domínio protege quem passa por ele. Não protege de um script, de um console de
 banco ou de um adapter futuro. O teste correspondente está marcado com
@@ -141,7 +141,7 @@ propriedade indiscriminada das tabelas e sem DDL.
 
 | Migration ou arquivo | Efeito | Reversão prevista |
 |---|---|---|
-| 64 migrations de `prisma/migrations/` | Schema completo M01–M20 + adapters | Nenhuma reescrita; evolução aditiva |
+| 63 migrations de `prisma/migrations/` | Schema completo M01–M20 + adapters | Nenhuma reescrita; evolução aditiva |
 | 17 arquivos de `prisma/sql/` | Índices parciais e checks que o Prisma não representa | Reaplicáveis por `npm run db:sql` |
 
 Nenhuma migration foi criada, apagada ou reescrita neste lote.
