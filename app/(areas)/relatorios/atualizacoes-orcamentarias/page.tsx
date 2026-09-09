@@ -60,7 +60,7 @@ export default async function AtualizacoesOrcamentariasPage({
     return (
       <div className="space-y-4">
         <SincronizarContexto />
-        <PageHeader titulo="Atualizações orçamentárias" subtitulo={`Exercício ${exercicio} — TR 4.40`} />
+        <PageHeader titulo="Atualizações orçamentárias" subtitulo={`Exercício ${exercicio}`} />
         <EstadoVazio
           titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível ler as atualizações"}
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
@@ -77,7 +77,7 @@ export default async function AtualizacoesOrcamentariasPage({
   const cabecalho = (
     <PageHeader
       titulo="Atualizações orçamentárias"
-      subtitulo={`Exercício ${exercicio} — todo movimento de crédito adicional, por ficha, decreto, fonte e UG (TR 4.40)`}
+      subtitulo={`Exercício ${exercicio} — todo movimento de crédito adicional, por ficha, decreto, fonte e UG`}
       acoes={<FiltroAtualizacoes {...opcoes} {...filtro} />}
     />
   );

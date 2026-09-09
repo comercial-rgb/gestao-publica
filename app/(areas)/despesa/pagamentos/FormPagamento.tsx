@@ -82,7 +82,7 @@ export function FormPagamento({
         <strong className="text-[color:var(--color-ink)]">
           Nenhuma conta bancária cadastrada
         </strong>{" "}
-        — o dinheiro tem de sair de algum lugar, e a TR 5.23 amarra a fonte do pagamento
+        — o dinheiro tem de sair de algum lugar, e a regra de fonte amarra o pagamento
         à da conta. O cadastro de contas bancárias ainda não tem tela.
       </div>
     );

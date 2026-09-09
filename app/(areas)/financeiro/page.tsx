@@ -7,13 +7,13 @@ import { AREAS } from "../../../lib/navegacao";
  */
 
 const ITENS: readonly ItemHub[] = [
-  { titulo: "Extraorçamentário", descricao: "Consignações e retenções na fonte: o dinheiro de terceiros no caixa, com saldo por consignatário e recolhimentos (TR 5.39–5.49).", href: "/financeiro/extraorcamentario" },
+  { titulo: "Extraorçamentário", descricao: "Consignações e retenções na fonte: o dinheiro de terceiros no caixa, com saldo por consignatário e recolhimentos.", href: "/financeiro/extraorcamentario" },
   { titulo: "Fila de pagamentos", descricao: "Ordem cronológica por fonte e categoria — a fila da Lei 14.133/2021, art. 141.", href: "/despesa/pagamentos", onde: "Despesa" },
   // ⚠️ ANTES este item apontava para /integracoes, e o card do BB de lá não tinha ação: dois links
   // que se apontavam e nenhum que chegava ao número. Aponta direto para a tela que responde a
   // pergunta ("o banco e o razão contam a mesma história?"); a Central continua sendo o lugar da
   // IMPORTAÇÃO, e é para lá que a tela de conciliação manda quando não há extrato.
-  { titulo: "Conciliação bancária", descricao: "O extrato do Banco do Brasil confrontado com o razão: correspondências pagamento × extrato, pendências dos dois lados e a diferença toda nomeada (TR 5.50–5.60).", href: "/financeiro/conciliacao" },
+  { titulo: "Conciliação bancária", descricao: "O extrato do Banco do Brasil confrontado com o razão: correspondências pagamento × extrato, pendências dos dois lados e a diferença toda nomeada.", href: "/financeiro/conciliacao" },
   { titulo: "Disponibilidade de caixa e RP", descricao: "O que sobra em cada fonte e se o ente pode inscrever restos a pagar (RGF Anexo 5).", href: "/relatorios/rgf/anexo5", onde: "Relatórios" },
 ];
 

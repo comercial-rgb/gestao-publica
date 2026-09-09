@@ -136,7 +136,7 @@ export function FormDecretoCredito({
           {leis.length === 0 ? "Sem lei de crédito neste exercício" : "Sem fichas neste exercício"}
         </strong>{" "}
         {leis.length === 0
-          ? "— um decreto executa o TETO de uma lei autorizadora (TR 4.30); sem lei, não há o que executar. O cadastro de LEIS ainda não tem formulário nesta tela: hoje ele entra pelo serviço/seed do M03, e fica NOMEADO aqui como a próxima fatia."
+          ? "— um decreto executa o TETO de uma lei autorizadora; sem lei, não há o que executar. O cadastro de LEIS ainda não tem formulário nesta tela: hoje ele entra pelo serviço/seed do M03, e fica NOMEADO aqui como a próxima fatia."
           : "— as pernas do decreto suplementam ou anulam FICHAS da LOA. Sem ficha, não há dotação a alterar."}
       </div>
     );
@@ -150,7 +150,7 @@ export function FormDecretoCredito({
             <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Novo decreto de crédito adicional</h2>
             <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">
               Executa (parte d)o teto de uma lei, suplementando e anulando fichas. As travas (teto da
-              lei, saldo da ficha, fonte, TR 5.111) são do domínio, aplicadas na gravação.
+              lei, saldo da ficha, fonte, fechamento por fonte) são do domínio, aplicadas na gravação.
             </p>
           </div>
           <button type="button" onClick={() => setAberto(true)} className={CLASSE_BOTAO_PRIMARIO}>
@@ -202,7 +202,7 @@ export function FormDecretoCredito({
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
           <span className={ROTULO}>Origem do recurso</span>
           {/* ⚠️ SEM DEFAULT. A origem decide CONTRA O QUÊ o domínio valida: ANULACAO exige que as
-              pernas fechem por fonte (5.111); as outras três são recurso NOVO e batem contra a
+              pernas fechem por fonte; as outras três são recurso NOVO e batem contra a
               disponibilidade declarada da fonte. Um default escolheria essa amarração no lugar do
               usuário — e em silêncio. */}
           <select name="origemRecurso" value={origemRecurso} onChange={(e) => setOrigemRecurso(e.target.value)} className={CAMPO}>
@@ -318,7 +318,7 @@ export function FormDecretoCredito({
             <>As pernas <strong>fecham por fonte</strong> — o total suplementado iguala o anulado em cada fonte.</>
           ) : (
             <>
-              <strong>As pernas ainda não fecham por fonte</strong> (TR 5.111):{" "}
+              <strong>As pernas ainda não fecham por fonte</strong>:{" "}
               {desequilibrios.map((d) => `fonte ${d.fonteCodigo} sobra ${formatarMoeda(d.diferenca).texto}`).join("; ")}.
               Num decreto por anulação, cada fonte tem de sair no zero. Quem recusa é o domínio, na
               gravação — este aviso só antecipa a conversa.

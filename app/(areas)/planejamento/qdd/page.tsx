@@ -42,7 +42,7 @@ export default async function QddPage({
   const cabecalho = (
     <PageHeader
       titulo="QDD — Quadro de Detalhamento da Despesa"
-      subtitulo={`${descreverRecorte(recorte)} — dotação inicial, créditos e dotação atualizada por ficha (TR 4.20–4.40)`}
+      subtitulo={`${descreverRecorte(recorte)} — dotação inicial, créditos e dotação atualizada por ficha`}
     />
   );
 

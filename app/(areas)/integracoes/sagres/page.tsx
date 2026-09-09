@@ -87,6 +87,23 @@ function BannerHonesto(): React.ReactElement {
  * de `adapters/tribunais/tce-pb/sagres/MODULO.md` (a fonte); aqui a tela a exibe para o avaliador não ter de abrir
  * o repositório. Nunca "linha vazia falsa": o que não exporta diz POR QUE (DIRETIVA §5).
  */
+/**
+ * ⚠️ O "§" DESTA TABELA É DO LEIAUTE DO TRIBUNAL — NÃO DO NOSSO CATÁLOGO.
+ *
+ * A regra do lote é clara: nenhum número de cláusula do termo de referência pode aparecer
+ * em tela, como rótulo de atendimento ou identificador de catálogo. Foram removidos 85
+ * deles do produto inteiro, e `test/ui/rotulos-de-conformidade.test.ts` impede que voltem.
+ *
+ * Estes §§ são outra coisa: são as seções do **leiaute publicado pelo TCE-PB** para o
+ * SAGRES — documento normativo EXTERNO, da mesma natureza que "LRF art. 8º". Quando o
+ * tribunal rejeita um arquivo, ele rejeita citando a seção; sem ela nesta tela, o operador
+ * fica sem o vocabulário para responder. Removê-los tornaria a tela pior no exato trabalho
+ * para o qual ela existe.
+ *
+ * O cabeçalho da coluna diz de quem é a seção, para que a leitura não fique ambígua. Esta
+ * é a ÚNICA exceção do teste, e ela é nomeada lá — exceção declarada é decisão; exceção
+ * silenciosa é buraco.
+ */
 const MATRIZ_SAGRES: readonly { readonly entidade: string; readonly secao: string; readonly exporta: boolean; readonly nota: string }[] = [
   { entidade: "Dotacao", secao: "§4.4", exporta: true, nota: "FichaOrcamentaria (a ficha foi desenhada como esta tabela)." },
   { entidade: "Empenhos", secao: "§4.8", exporta: true, nota: "Empenho + Ficha." },
@@ -246,7 +263,7 @@ export default async function SagresPage({
             <thead>
               <tr className="border-b border-[color:var(--color-border)] text-xs uppercase tracking-wide text-[color:var(--color-ink-3)]">
                 <th className="py-2 pr-3 font-semibold">Entidade</th>
-                <th className="py-2 pr-3 font-semibold">Seção</th>
+                <th className="py-2 pr-3 font-semibold">Seção do leiaute do TCE</th>
                 <th className="py-2 pr-3 font-semibold">Status</th>
                 <th className="py-2 font-semibold">Origem / motivo</th>
               </tr>

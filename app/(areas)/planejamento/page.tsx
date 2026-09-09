@@ -7,10 +7,10 @@ import { AREAS } from "../../../lib/navegacao";
  */
 
 const ITENS: readonly ItemHub[] = [
-  { titulo: "QDD — Quadro de Detalhamento da Despesa", descricao: "A dotação de cada ficha: inicial, os créditos que a alteraram e a dotação atualizada — o teto contra o qual se empenha (TR 4.20–4.40).", href: "/planejamento/qdd" },
+  { titulo: "QDD — Quadro de Detalhamento da Despesa", descricao: "A dotação de cada ficha: inicial, os créditos que a alteraram e a dotação atualizada — o teto contra o qual se empenha.", href: "/planejamento/qdd" },
   { titulo: "Programação financeira — CMD/MBA", descricao: "O cronograma mensal de desembolso (os duodécimos por fonte) e as metas bimestrais de arrecadação, com o decreto que as institui (LRF art. 8º e 13).", href: "/planejamento/cmd-mba" },
-  { titulo: "Créditos adicionais", descricao: "Decretos de suplementação e anulação, com o teto da lei e a dotação atualizada de cada ficha (TR 4.20–4.40).", href: "/planejamento/creditos-adicionais" },
-  { titulo: "Atualizações orçamentárias", descricao: "Todo movimento de crédito do exercício, filtrável por ficha, decreto, fonte e UG (TR 4.40).", href: "/relatorios/atualizacoes-orcamentarias", onde: "Relatórios" },
+  { titulo: "Créditos adicionais", descricao: "Decretos de suplementação e anulação, com o teto da lei e a dotação atualizada de cada ficha.", href: "/planejamento/creditos-adicionais" },
+  { titulo: "Atualizações orçamentárias", descricao: "Todo movimento de crédito do exercício, filtrável por ficha, decreto, fonte e UG.", href: "/relatorios/atualizacoes-orcamentarias", onde: "Relatórios" },
   { titulo: "Reprevisão da receita", descricao: "Revisão da previsão de arrecadação ao longo do exercício (LRF art. 12).", href: "/planejamento/reprevisao" },
   { titulo: "Consistência da LOA", descricao: "As identidades dos demonstrativos conferidas num lugar só — o diagnóstico antes do envio ao TCE.", href: "/relatorios/consistencia", onde: "Relatórios" },
   { titulo: "Balancete de verificação", descricao: "Saldo e movimento por conta, provando que débitos e créditos fecham.", href: "/relatorios/livros/balancete", onde: "Relatórios" },

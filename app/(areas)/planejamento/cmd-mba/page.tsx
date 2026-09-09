@@ -96,7 +96,7 @@ export default async function CmdMbaPage({
         <strong>último período absorve a diferença</strong> — por isso dezembro (ou o 6º bimestre) costuma diferir dos
         demais em alguns centavos. Planos são <strong>versionados e append-only</strong>: retificar é publicar decreto
         novo, e a versão anterior fica na base. Exibe-se aqui a <strong>vigente</strong> — a de vigência mais recente já
-        decorrida, o mesmo critério contra o qual a limitação de empenho (TR 4.43) julga o empenho.
+        decorrida, o mesmo critério contra o qual a limitação de empenho julga o empenho.
       </div>
 
       {semNada ? (
@@ -106,7 +106,7 @@ export default async function CmdMbaPage({
             `Não há CMD nem MBA vigente para o exercício ${recorte.exercicio}. ${descreverAusencia(cmd, "CMD")} ` +
             `${descreverAusencia(mba, "MBA")} A programação nasce de decreto do Executivo (proposta a partir da LOA, ` +
             `depois retificada por versões novas) — o banco atual foi semeado sem nenhuma. Nada foi arbitrado nesta tela: ` +
-            `um cronograma inventado viraria teto de empenho falso quando a limitação do TR 4.43 fosse ligada.`
+            `um cronograma inventado viraria teto de empenho falso quando a limitação de empenho fosse ligada.`
           }
         />
       ) : null}
@@ -119,7 +119,7 @@ export default async function CmdMbaPage({
               Cronograma Mensal de Desembolso — os duodécimos
             </h2>
             <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">
-              Quanto cada fonte pode desembolsar em cada mês (LRF art. 8º · TR 4.18).
+              Quanto cada fonte pode desembolsar em cada mês (LRF art. 8º).
             </p>
           </div>
           {cmd.vigente !== null ? <Vigencia versao={cmd.vigente} versoes={cmd.versoes} /> : null}
@@ -216,7 +216,7 @@ export default async function CmdMbaPage({
       </div>
 
       <p className="text-xs text-[color:var(--color-ink-3)]">
-        A <strong>limitação de empenho</strong> do TR 4.43 é <strong>opt-in por exercício</strong>: ausente, ela está
+        A <strong>limitação de empenho</strong> é <strong>opt-in por exercício</strong>: ausente, ela está
         DESLIGADA e o cronograma acima é planejamento, não trava. Ligada, o empenho passa a ser julgado contra a cota da
         fonte no mês — e uma fonte <strong>sem cota</strong> naquele mês é rejeitada (fail-closed), o que é diferente de
         uma cota de valor 0,00 (bloqueio deliberado). As{" "}
@@ -291,7 +291,7 @@ function AvisoSemCota({
         .map((l) => `${l.fonteCodigo} → ${l.periodosSemLinha.map((i) => rotulos[i - 1] ?? String(i)).join(", ")}`)
         .join(" · ")}
       . Estas células mostram 0,00 porque não existe linha no decreto para aquele {periodo} — e não porque
-      alguém programou zero. Com a limitação do TR 4.43 ativa, empenho em fonte/{periodo} sem cota é
+      alguém programou zero. Com a limitação de empenho ativa, empenho em fonte/{periodo} sem cota é
       <strong> rejeitado</strong>.
     </div>
   );

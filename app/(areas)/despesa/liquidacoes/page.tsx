@@ -41,7 +41,7 @@ export default async function LiquidacoesPage({
   const cabecalho = (
     <PageHeader
       titulo="Liquidações"
-      subtitulo={`${descreverRecorte(recorte)} — o marco de exigibilidade da despesa (TR 5.21)`}
+      subtitulo={`${descreverRecorte(recorte)} — o marco de exigibilidade da despesa`}
     />
   );
 

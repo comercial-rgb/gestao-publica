@@ -80,7 +80,7 @@ export default function SuportePage(): React.ReactElement {
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[color:var(--color-ink-2)]">
-          Prazos de resposta por classe de chamado (TR 4.20.9)
+          Prazos de resposta por classe de chamado
         </h2>
         <Card>
           <table className="w-full text-sm">

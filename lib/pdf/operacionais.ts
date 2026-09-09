@@ -61,7 +61,7 @@ export async function montarPdfArrecadacao(p: { readonly exercicio: number }): P
   return {
     ente: ENTE,
     titulo: "Arrecadação — guias do exercício",
-    subtitulo: "Execução da receita · TR 4.59 (a receita é do ente, sem unidade orçamentária)",
+    subtitulo: "Execução da receita — a receita é do ente, sem unidade orçamentária",
     periodo: `Exercício ${p.exercicio}`,
     secoes: [secao],
     notas: [
@@ -89,10 +89,10 @@ export async function montarPdfEmpenhos(p: { readonly exercicio: number; readonl
   return {
     ente: ENTE,
     titulo: "Empenhos — execução da despesa",
-    subtitulo: `Empenhado, liquidado, pago e saldos · TR 5.17${p.unidadeCodigo !== undefined ? ` · unidade ${p.unidadeCodigo}` : ""}`,
+    subtitulo: `Empenhado, liquidado, pago e saldos${p.unidadeCodigo !== undefined ? ` · unidade ${p.unidadeCodigo}` : ""}`,
     periodo: `Exercício ${p.exercicio}`,
     secoes: [secao],
-    notas: [`${empenhos.length} empenho(s) · valores em R$ · empenhado já líquido das anulações (TR 5.35).`],
+    notas: [`${empenhos.length} empenho(s) · valores em R$ · empenhado já líquido das anulações.`],
   };
 }
 
@@ -151,7 +151,7 @@ export async function montarPdfGerencialEmpenhos(p: {
   return {
     ente: ENTE,
     titulo: "Relatório gerencial — despesa por credor e fonte",
-    subtitulo: `Empenhado, liquidado, pago e saldos · TR 5.17${p.unidadeCodigo !== undefined ? ` · unidade ${p.unidadeCodigo}` : ""}`,
+    subtitulo: `Empenhado, liquidado, pago e saldos${p.unidadeCodigo !== undefined ? ` · unidade ${p.unidadeCodigo}` : ""}`,
     periodo: p.periodo,
     secoes: [secao],
     notas: [
@@ -159,7 +159,7 @@ export async function montarPdfGerencialEmpenhos(p: {
         ? `⚠️ RELATÓRIO FILTRADO: ${recorteEmTexto.join(" · ")}. Só os empenhos deste recorte estão listados.`
         : "Sem filtro: todos os empenhos do recorte de exercício/unidade.",
       "O filtro de credor é casamento por CPF/CNPJ — este sistema não tem cadastro de credores, e o empenho guarda apenas o documento. Não há busca por nome.",
-      `${empenhos.length} empenho(s) · valores em R$ · empenhado já líquido das anulações (TR 5.35).`,
+      `${empenhos.length} empenho(s) · valores em R$ · empenhado já líquido das anulações.`,
     ],
   };
 }
@@ -181,7 +181,7 @@ export async function montarPdfLiquidacoes(p: { readonly exercicio: number; read
   return {
     ente: ENTE,
     titulo: "Liquidações — exigibilidade da despesa",
-    subtitulo: `O marco que põe a despesa na fila do art. 141 · TR 5.21${p.unidadeCodigo !== undefined ? ` · unidade ${p.unidadeCodigo}` : ""}`,
+    subtitulo: `O marco que põe a despesa na fila do art. 141${p.unidadeCodigo !== undefined ? ` · unidade ${p.unidadeCodigo}` : ""}`,
     periodo: `Exercício ${p.exercicio}`,
     secoes: [secao],
     notas: [`${liqs.length} liquidação(ões) · valores em R$ · o saldo a pagar é a posição na ordem cronológica.`],
@@ -258,7 +258,7 @@ export async function montarNotaEmpenho(p: { readonly exercicio: number; readonl
     ],
   };
   const valores: SecaoPdf = {
-    titulo: "Valores (TR 5.17)",
+    titulo: "Valores",
     colunas: [{ rotulo: "Rubrica" }, { rotulo: "Valor", alinhamento: "direita" }],
     linhas: [
       ["Empenhado (líquido de anulações)", brl(e.empenhadoLiquido)],
@@ -278,7 +278,7 @@ export async function montarNotaEmpenho(p: { readonly exercicio: number; readonl
   return {
     ente: ENTE,
     titulo: `Nota de Empenho nº ${e.numero}`,
-    subtitulo: "Documento de execução da despesa · TR 5.17 / 5.19",
+    subtitulo: "Documento de execução da despesa",
     periodo: `Exercício ${p.exercicio}`,
     secoes: [identificacao, valores, historico],
     notas: [
@@ -314,7 +314,7 @@ export async function montarGuiaArrecadacao(p: { readonly exercicio: number; rea
   return {
     ente: ENTE,
     titulo: `Guia de arrecadação nº ${g.numeroReceita}`,
-    subtitulo: "Documento da receita orçamentária · TR 4.59",
+    subtitulo: "Documento da receita orçamentária",
     periodo: `Exercício ${p.exercicio}`,
     secoes: [identificacao, valores],
     notas: [g.sinal === -1 ? "Esta guia é uma ANULAÇÃO (ato próprio, append-only)." : "Valores em R$ · registro append-only (a guia anulada permanece na base)."],
@@ -373,12 +373,12 @@ export async function montarDecreto(p: { readonly ano: number; readonly id: stri
   return {
     ente: ENTE,
     titulo: `Decreto de crédito adicional nº ${d.numero}/${d.ano}`,
-    subtitulo: "Créditos adicionais · TR 4.20–4.30",
+    subtitulo: "Créditos adicionais",
     periodo: `Exercício ${p.ano}`,
     secoes: [identificacao, itens, totais],
     notas: [
       d.encerrado && d.encerramento !== null ? `Encerrado em ${dataBr(d.encerramento.data)} — ${d.encerramento.motivo}.` : "Documento ativo.",
-      "Valores em R$ · num decreto por anulação, o suplementado fecha com o anulado por fonte (TR 5.111).",
+      "Valores em R$ · num decreto por anulação, o suplementado fecha com o anulado por fonte.",
     ],
   };
 }
@@ -415,7 +415,7 @@ export async function montarExtraorcamentario(p: { readonly exercicio: number })
   return {
     ente: ENTE,
     titulo: "Extraorçamentário — consignações e retenções",
-    subtitulo: "Dinheiro de terceiros no caixa · TR 5.39–5.49",
+    subtitulo: "Dinheiro de terceiros no caixa",
     periodo: `Exercício ${p.exercicio}`,
     secoes: [secaoSaldos, secaoRet, secaoDisp],
     notas: ["Valores em R$ · o saldo a repassar é o que o ente ainda deve ao consignatário; o recolhimento nunca excede o retido (5.45/5.107)."],
@@ -447,7 +447,7 @@ export async function montarPatrimonio(p: { readonly exercicio: number }): Promi
   return {
     ente: ENTE,
     titulo: "Patrimônio — bens e dívida consolidada",
-    subtitulo: "Posição patrimonial por classe · TR 5.82–5.86",
+    subtitulo: "Posição patrimonial por classe",
     periodo: `Exercício ${p.exercicio}`,
     secoes: [posicao, divida],
     notas: ["Valores em R$ · a posição de cada classe é anterior + ingressos + atualizações = final (SUM dos lançamentos). A dívida é o mesmo saldo do RGF Anexo 2."],
@@ -512,7 +512,7 @@ export async function montarPdfAtualizacoesOrcamentarias(p: {
   return {
     ente: ENTE,
     titulo: "Atualizações orçamentárias",
-    subtitulo: "Movimentos de crédito adicional por ficha, decreto, fonte e unidade · TR 4.40",
+    subtitulo: "Movimentos de crédito adicional por ficha, decreto, fonte e unidade",
     periodo: `Exercício ${p.exercicio}`,
     secoes: [movimentos, quadroTotais],
     notas: [
@@ -578,7 +578,7 @@ function secaoMatriz(
 function secaoTexto(titulo: string, texto: string): SecaoPdf {
   return {
     titulo,
-    colunas: [{ rotulo: "Minuta (TR 4.19 — modelo de decreto)" }],
+    colunas: [{ rotulo: "Minuta — modelo de decreto" }],
     linhas: texto
       .split(/\n{2,}/)
       .map((p) => p.trim())
@@ -660,7 +660,7 @@ export async function montarProgramacaoFinanceira(p: { readonly exercicio: numbe
       notas.push(
         `⚠️ Fonte(s) com MÊS SEM COTA (ausência, não zero): ${semCota
           .map((l) => `${l.fonteCodigo} → ${l.periodosSemLinha.map((i) => MESES[i - 1] ?? i).join(", ")}`)
-          .join(" · ")}. Com a limitação de empenho do TR 4.43 ATIVA, empenhar em fonte/mês sem cota é rejeitado (fail-closed).`
+          .join(" · ")}. Com a limitação de empenho ATIVA, empenhar em fonte/mês sem cota é rejeitado (fail-closed).`
       );
     }
   } else {
@@ -719,14 +719,14 @@ export async function montarProgramacaoFinanceira(p: { readonly exercicio: numbe
   }
 
   notas.push(
-    "Valores em R$ · a distribuição fecha ao centavo com a LOA: as parcelas levam o valor truncado e o ÚLTIMO período absorve a diferença (TR 4.18).",
-    "As minutas de decreto saem do template do ente (TemplateDecreto) ou do modelo default do sistema (TR 4.19/4.24) — são MINUTA, não ato publicado."
+    "Valores em R$ · a distribuição fecha ao centavo com a LOA: as parcelas levam o valor truncado e o ÚLTIMO período absorve a diferença.",
+    "As minutas de decreto saem do template do ente (TemplateDecreto) ou do modelo default do sistema — são MINUTA, não ato publicado."
   );
 
   return {
     ente: ENTE,
     titulo: "Programação financeira — CMD e MBA",
-    subtitulo: "Cronograma Mensal de Desembolso e Metas Bimestrais de Arrecadação · TR 4.18/4.19/4.43/4.44 · LRF arts. 8º, 9º e 13",
+    subtitulo: "Cronograma Mensal de Desembolso e Metas Bimestrais de Arrecadação · LRF arts. 8º, 9º e 13",
     periodo: `Exercício ${p.exercicio}`,
     secoes,
     notas,

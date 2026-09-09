@@ -23,7 +23,7 @@ export default async function BensPage({
   const cabecalho = (
     <PageHeader
       titulo="Patrimônio — bens e dívida"
-      subtitulo={`Exercício ${exercicio} — posição por classe (TR 5.86) e dívida consolidada (5.82–5.83)`}
+      subtitulo={`Exercício ${exercicio} — posição por classe e dívida consolidada`}
       acoes={<BotaoPdf href={`/patrimonio/bens/pdf?exercicio=${exercicio}`} />}
     />
   );
@@ -55,7 +55,7 @@ export default async function BensPage({
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
         A posição de cada classe é <strong>derivada por SUM</strong> dos lançamentos patrimoniais
         (avaliação, reavaliação, depreciação, baixa): <strong>saldo anterior + ingressos + atualizações
-        = saldo final</strong> (TR 5.86). A depreciação e a reavaliação são as <em>atualizações</em>.
+        = saldo final</strong>. A depreciação e a reavaliação são as <em>atualizações</em>.
       </div>
 
       {/* ── POSIÇÃO POR CLASSE (5.86) ── */}

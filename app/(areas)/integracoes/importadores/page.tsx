@@ -24,7 +24,7 @@ export default async function ImportadoresPage(): Promise<React.ReactElement> {
     <div className="space-y-6">
       <PageHeader
         titulo="Importadores — folha e tributário"
-        subtitulo="Arquivo externo → prévia validada → confirmação em lote pelos serviços reais (TR 7.10–7.11)"
+        subtitulo="Arquivo externo → prévia validada → confirmação em lote pelos serviços reais"
       />
 
       <div className="rounded-[var(--radius-lg)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-5 text-sm">

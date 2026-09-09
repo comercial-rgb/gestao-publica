@@ -467,6 +467,11 @@ export const FORA_DO_CENSO: Record<string, string> = {
   listarContasPcasp: "leitura (Prisma → DTO do plano de contas PCASP, SEM saldo — o saldo é do razão/M12 — não muta)",
   vocabularioDosEmpenhos: "leitura (Prisma distinct → credores/fontes com empenho no recorte, para os filtros — não muta)",
   listarLeis: "leitura (Prisma → DTO das leis de crédito, para o SELECT do form — não muta)",
+  //
+  // ── Pessoas e credores (M19): a listagem é leitura pura. ──
+  // A derivação (versão vigente, papéis vigentes) acontece em SQL para que o filtro caia
+  // sobre a versão VIGENTE e não sobre nomes antigos — mas continua sendo SELECT.
+  listarPessoas: "leitura (SQL com DISTINCT ON → DTO da lista de pessoas, com os papéis vigentes — não muta)",
   // ── Importadores (M20): a PRÉVIA é pura (parse+validação, nada grava) e o histórico é leitura. ──
   previaDaFolha: "puro (texto → linhas+violações; a prévia NÃO grava — a confirmação é que é ato)",
   previaDeTributos: "puro (texto → linhas+violações; a prévia NÃO grava)",

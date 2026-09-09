@@ -22,7 +22,7 @@ export default async function AuditoriaPage({
   const pagina = Math.max(1, Number.parseInt(um("pagina") || "1", 10) || 1);
   const resultado = (["SUCESSO", "NEGADO", "ERRO"] as const).includes(resultadoStr as "SUCESSO") ? (resultadoStr as OperacaoAuditada["resultado"]) : undefined;
 
-  const cabecalho = <PageHeader titulo="Auditoria" subtitulo="Registro de operações da borda — quem, quando, qual ação e resultado (TR 6.1-6.3)" acoes={<FiltroAuditoria usuario={usuario} acao={acao} resultado={resultadoStr} desde={desdeStr} ate={ateStr} />} />;
+  const cabecalho = <PageHeader titulo="Auditoria" subtitulo="Registro de operações da borda — quem, quando, qual ação e resultado" acoes={<FiltroAuditoria usuario={usuario} acao={acao} resultado={resultadoStr} desde={desdeStr} ate={ateStr} />} />;
 
   let dados: PaginaDeAuditoria;
   try {

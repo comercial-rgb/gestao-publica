@@ -48,7 +48,7 @@ export default async function ConsistenciaPage({
   const cabecalho = (
     <PageHeader
       titulo="Relatório de Consistência"
-      subtitulo={`Exercício ${exercicio} · ${preEnvio ? "Diagnóstico pré-envio (MSC/Siconfi)" : escopo} — TR 5.128–5.131 · 7.27`}
+      subtitulo={`Exercício ${exercicio} · ${preEnvio ? "Diagnóstico pré-envio (MSC/Siconfi)" : escopo}`}
       acoes={<SeletorConsistencia exercicio={exercicio} escopo={escBruto} />}
     />
   );

@@ -163,7 +163,7 @@ export default async function RelatoriosGerenciaisPage({
             linhas={empenhos}
             keyDe={(l) => l.id}
             legenda={
-              `${empenhos.length} empenho(s) · valores em R$ · empenhado já líquido das anulações (TR 5.35)` +
+              `${empenhos.length} empenho(s) · valores em R$ · empenhado já líquido das anulações` +
               (recorteEmTexto.length > 0 ? ` · recorte: ${recorteEmTexto.join(" · ")}` : " · sem filtro") +
               "."
             }

@@ -40,7 +40,7 @@ export default async function EmpenhosPage({
   const cabecalho = (
     <PageHeader
       titulo="Empenhos"
-      subtitulo={`${descreverRecorte(recorte)} — empenhado, liquidado, pago e saldos (TR 5.17)`}
+      subtitulo={`${descreverRecorte(recorte)} — empenhado, liquidado, pago e saldos`}
     />
   );
 
@@ -82,7 +82,7 @@ export default async function EmpenhosPage({
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
         O <strong>status</strong> e os saldos são <strong>derivados</strong> dos fatos — não há
         coluna de status no banco. <strong>Empenhado</strong> já vem líquido das anulações (a
-        total zera; as parciais subtraem, TR 5.35). O saldo mostrado na ficha é{" "}
+        total zera; as parciais subtraem). O saldo mostrado na ficha é{" "}
         <strong>orientação</strong>: quem decide se cabe é o domínio, contra o saldo real,
         dentro da transação.
       </div>

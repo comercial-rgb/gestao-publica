@@ -37,7 +37,7 @@ export default async function CreditosAdicionaisPage({
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
   const { exercicio, unidadeCodigo } = recorteDe(await searchParams);
-  const cabecalho = <PageHeader titulo="Créditos adicionais" subtitulo={`Exercício ${exercicio} — decretos, suplementações e anulações (TR 4.20–4.40)`} />;
+  const cabecalho = <PageHeader titulo="Créditos adicionais" subtitulo={`Exercício ${exercicio} — decretos, suplementações e anulações`} />;
 
   let decretos: readonly DecretoNaLista[];
   let leis: readonly LeiNaLista[];
@@ -71,7 +71,7 @@ export default async function CreditosAdicionaisPage({
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
         Cada decreto executa (parte do) teto de uma <strong>lei</strong>. Num decreto por{" "}
-        <strong>anulação</strong>, o suplementado fecha com o anulado <strong>por fonte</strong> (TR 5.111).
+        <strong>anulação</strong>, o suplementado fecha com o anulado <strong>por fonte</strong>.
         A <strong>dotação atualizada</strong> de cada ficha soma automaticamente estes créditos — é o
         mesmo saldo que a emissão de empenho respeita. "Encerrado" é o <strong>fato</strong> de alguém ter
         encerrado (append-only), não um campo editável.
@@ -147,7 +147,8 @@ export default async function CreditosAdicionaisPage({
 
       <p className="text-xs text-[color:var(--color-ink-3)]">
         O cadastro de <strong>decreto + movimentos</strong> já é feito aqui, pela porta de escrita do
-        M03 (as travas 5.111/teto/saldo/fonte são aplicadas na gravação, dentro da transação). O
+        do domínio (as travas de fechamento por fonte, teto, saldo e fonte são aplicadas na
+        gravação, dentro da transação). O
         cadastro de <strong>LEIS de crédito</strong> ainda NÃO tem formulário — a porta de escrita
         existe (<code>criarLeiCredito</code>), mas a tela não a chama, e hoje a lei entra pelo
         serviço/seed do M03. Fica <strong>nomeado</strong> como próxima fatia, e não preenchido com

@@ -8,7 +8,7 @@ import { listarPerfis, PortaSemBancoError, type PerfilAdmin } from "../../../../
 export const dynamic = "force-dynamic";
 
 export default async function PerfisPage(): Promise<React.ReactElement> {
-  const cabecalho = <PageHeader titulo="Perfis e Permissões" subtitulo="O que cada perfil concede (TR 4.56) — as ações do censo, por perfil" />;
+  const cabecalho = <PageHeader titulo="Perfis e Permissões" subtitulo="O que cada perfil concede — as ações do censo, por perfil" />;
   let perfis: readonly PerfilAdmin[];
   try {
     perfis = await listarPerfis();
