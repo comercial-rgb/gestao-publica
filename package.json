@@ -21,6 +21,7 @@
     "seed:sagres-poc": "tsx prisma/seed/sagres-poc.ts",
     "seed:poc-programacao": "tsx prisma/seed/poc-programacao.ts",
     "seed:poc-fila": "tsx prisma/seed/poc-fila.ts",
+    "db:papel": "tsx scripts/provisionar-papel-runtime.ts",
     "bb:smoke": "tsx scripts/bb-smoke.ts",
     "poc:contingencia": "tsx scripts/poc-contingencia.ts",
     "poc:conferir": "tsx scripts/poc-conferir.ts",

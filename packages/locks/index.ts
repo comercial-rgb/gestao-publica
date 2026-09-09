@@ -8,11 +8,42 @@
  * leem o razão no MESMO estado — cada uma enxerga o que estava commitado quando ELA
  * começou —, as duas veem saldo, e as DUAS gravam. Nenhum guard errou; o saldo
  * estourou. Já aconteceu com a ficha (6fa5d4e), com o contrato (e0e7e9f) e com a
- * dívida (8d71e2b). `SELECT ... FOR UPDATE` trava a LINHA e faz a segunda transação
- * ESPERAR — e só então somar, já enxergando a primeira.
+ * dívida (8d71e2b). O lock faz a segunda transação ESPERAR — e só então somar, já
+ * enxergando a primeira.
  *
  * ⚠️ O LOCK TEM DE VIR ANTES DA SOMA. Travar depois de somar é travar um número que
  * já está velho.
+ *
+ * ═══ ⚠️ POR QUE ADVISORY LOCK, E NÃO `SELECT ... FOR UPDATE` ═══
+ * Era `FOR UPDATE` até o papel de runtime existir (ENT01). O Postgres exige privilégio
+ * de **UPDATE** para travar uma linha — em TODOS os modos: `FOR UPDATE`, `FOR SHARE` e
+ * `FOR KEY SHARE` recusam igual. Medido contra o papel restrito:
+ *
+ *     SELECT id FROM "Liquidacao" LIMIT 1 FOR SHARE;  -> ERROR: permission denied
+ *     SELECT pg_advisory_xact_lock(42, 7);            -> ok
+ *
+ * E a aplicação NÃO PODE ter UPDATE nestas tabelas: `Empenho`, `Liquidacao`, `Contrato`
+ * e `InscricaoRestosAPagar` são append-only, e o ENT00 mediu o preço de o append-only
+ * existir só no domínio. A saída não é afrouxar o grant — é usar a primitiva certa.
+ *
+ * **E ela é a primitiva mais honesta.** `FOR UPDATE` diz ao banco "vou mudar esta linha",
+ * e aqui ninguém vai: o que se quer é EXCLUSÃO MÚTUA sobre um id enquanto se soma o
+ * razão. `pg_advisory_xact_lock` diz exatamente isso, e nada além. Ela também trava um id
+ * cuja linha ainda NÃO EXISTE — o `FOR UPDATE` não travava nada nesse caso, e passava
+ * batido.
+ *
+ * ⚠️ O QUE MUDA, E O QUE NÃO MUDA. O trinco continua morrendo no commit/rollback (é
+ * `_xact_`), o Postgres continua detectando deadlock entre eles, e a ordem de aquisição
+ * continua sendo a deste arquivo. O que muda: o trinco não é mais oponível a quem NÃO
+ * chama `travar()`. Aqui isso não custa nada — a única escrita concorrente possível é a
+ * do próprio caso de uso, e não há um único `FOR UPDATE` avulso no repositório (grep:
+ * este arquivo era o único sítio de SQL).
+ *
+ * ⚠️ COLISÃO DE HASH: `hashtext` devolve int4, e dois ids DIFERENTES do MESMO recurso
+ * podem cair no mesmo trinco. O efeito é serializar duas operações que poderiam ter
+ * corrido juntas — perda de vazão, nunca de correção. O caminho oposto (dois ids que
+ * DEVERIAM colidir e não colidem) é o que quebraria, e ele não existe: o hash é função
+ * do id.
  *
  * ═══ POR QUE ISTO É UM PACOTE, E NÃO UMA FUNÇÃO NO M05 ═══
  * O M08 (restos a pagar) também decide sobre o saldo de uma LIQUIDAÇÃO — e o M05 já
@@ -146,11 +177,18 @@ export async function travar(
   }
   postoAtingido.set(tx as object, posto);
 
-  // O nome da tabela vem do Record (nunca da entrada do usuário) — o id vai
-  // PARAMETRIZADO.
+  // A CHAVE DO LOCK: (posto do recurso, hash do id). O posto é único por recurso —
+  // ele já é a fila de aquisição —, então ele serve de espaço de nomes: uma ficha e
+  // uma liquidação de mesmo id não disputam o mesmo trinco.
+  //
+  // O id vai PARAMETRIZADO; o posto vem do Record, nunca da entrada do usuário.
   for (const id of [...new Set(ids)].sort()) {
+    // O `1 AS travado` embrulha a chamada porque `pg_advisory_xact_lock` devolve
+    // `void`, e o driver do Prisma não desserializa esse tipo. A subconsulta é
+    // avaliada normalmente — o trinco é adquirido —, e o que sobe é um int.
     await tx.$queryRawUnsafe(
-      `SELECT id FROM "${recurso}" WHERE id = $1 FOR UPDATE`,
+      "SELECT 1 AS travado FROM (SELECT pg_advisory_xact_lock($1::int4, hashtext($2)::int4)) AS trinco",
+      posto,
       id
     );
   }

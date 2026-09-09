@@ -1,6 +1,10 @@
 import { criarPrismaClient } from "../modules/m01-core-contabil/adapter-prisma.js";
 import type { PrismaClient } from "../prisma/generated/client/client.js";
 import { alvoDoBanco } from "./db-teste.js";
+import {
+  papelDoAmbiente,
+  urlDoRuntime,
+} from "../prisma/papel-runtime.js";
 
 /**
  * O BANCO DE TESTE É OBRIGATÓRIO. Sem ele, a suíte NÃO RODA — ela FALHA.
@@ -135,4 +139,21 @@ export async function exigirBanco(prisma: PrismaClient): Promise<void> {
   } catch (causa) {
     throw erroDeBancoInacessivel(urlDeTesteJaValidada(), causa);
   }
+}
+
+/**
+ * O client do banco de teste conectado como o PAPEL DE RUNTIME — a conta com que a
+ * APLICAÇÃO fala com o banco: sem superusuário, sem posse de tabela, sem DDL.
+ *
+ * ⚠️ POR QUE ELE NÃO É O CLIENT PADRÃO DA SUÍTE. As fixtures TRUNCAM (o `limparBanco` do
+ * `beforeEach`), e truncar é exatamente um dos poderes que o papel de runtime não tem —
+ * de propósito. Fixture e aplicação querem coisas OPOSTAS do banco, e por isso usam
+ * papéis diferentes: o dono semeia e limpa o banco descartável; o papel de runtime
+ * executa os casos de uso. Um teste que semeasse com o papel restrito provaria só que a
+ * fixture não roda; um que operasse com o dono provaria só que superusuário passa.
+ */
+export function criarPrismaDoPapelDeRuntime(): PrismaClient {
+  return criarPrismaClient(
+    urlDoRuntime(urlDeTesteJaValidada(), papelDoAmbiente())
+  );
 }

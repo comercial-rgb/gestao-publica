@@ -93,6 +93,8 @@ const IDENTIDADES_DAS_FIXTURES: readonly string[] = [
   "m11@cg.pb.gov.br",
   "m12@cg.pb.gov.br",
   "m13@cg.pb.gov.br",
+  // ── ENT01: a cadeia da despesa exercitada pelo PAPEL DE RUNTIME ──
+  "ent01@cg.pb.gov.br",
   // ── os automáticos dos helpers e seeds ──
   "LOA",
   "TESTE",

@@ -1,0 +1,153 @@
+// ----------------------------------------------------------------------------
+// M19 — PESSOAS E CREDORES
+//
+// O cadastro compartilhado que o resto do sistema não tinha. Até aqui, o credor de
+// um empenho era `Empenho.credorCpfCnpj`: uma STRING solta, com índice e nada mais.
+// Não havia nome, papel, contato, relação nem histórico — e não havia como responder
+// "quem é este credor?" senão lendo o CNPJ.
+//
+// ═══ ⚠️ O QUE **NÃO** MUDA, E É DELIBERADO ═══
+// `Empenho.credorCpfCnpj` FICA COMO ESTÁ. Não vira FK.
+//
+// Não é preguiça de migração — é o que um fato append-only exige. O empenho registra o
+// documento do credor **no momento em que a despesa foi empenhada**. Uma FK apontaria
+// para um cadastro que muda depois, e o dia em que alguém corrigisse o cadastro o
+// empenho de 2026 passaria a dizer outra coisa. O fato guarda o dado; o cadastro
+// descreve a pessoa. São papéis diferentes, e por isso são colunas diferentes.
+//
+// A ligação entre os dois é o DOCUMENTO — que já é indexado dos dois lados. Um credor
+// sem cadastro continua empenhável (é o estado de hoje, e derrubá-lo quebraria a base);
+// a tela mostra o cadastro quando ele existe e o documento cru quando não existe.
+//
+// ═══ ⚠️ POR QUE O CADASTRO É APPEND-ONLY, SE CADASTRO NÃO É FATO CONTÁBIL ═══
+// O `Usuario` do M16 usa `ativo Boolean`, e o comentário de lá diz em voz alta que
+// "cadastro não é fato contábil". Aqui a escolha é outra, e por dois motivos concretos:
+//
+//   1. O ENT01 pede TIMELINE do cadastro — "autor, momento e alterações" (teste 21).
+//      Uma linha mutável não tem alterações: tem o estado de agora. A timeline teria de
+//      ser uma segunda tabela de diffs, escrita à mão a cada UPDATE, e que mente no dia
+//      em que alguém esquecer de escrevê-la. Com versões, a timeline É a tabela.
+//   2. O PAPEL DE RUNTIME (ENT01) não tem UPDATE fora de um censo assinado. Um cadastro
+//      mutável exigiria abrir UPDATE em mais uma tabela — e o endereço de um credor é
+//      exatamente o campo que um fraudador quer mudar sem deixar rastro.
+//
+// O custo é uma leitura a mais (a versão vigente). Está pago pelo índice
+// `[pessoaId, criadoEm]`.
+// ----------------------------------------------------------------------------
+
+enum TipoDePessoa {
+  FISICA
+  JURIDICA
+}
+
+/// Os papéis que uma pessoa pode exercer. UMA pessoa, VÁRIOS papéis — o credor de um
+/// empenho pode ser o mesmo que recebe pensão numa consignação, e são fatos distintos
+/// sobre a mesma pessoa. Rol fechado: um papel novo é decisão de quem o cria, não efeito
+/// colateral de uma string digitada numa tela.
+enum PapelDePessoa {
+  /// Quem recebe pagamento de despesa (o credor do empenho).
+  CREDOR
+  /// Quem recebe consignação/retenção (o consignatário do M07).
+  CONSIGNATARIO
+  /// Servidor do ente. NÃO se confunde com credor — a folha é domínio próprio.
+  SERVIDOR
+  /// Quem responde pela pessoa jurídica perante o ente.
+  REPRESENTANTE
+}
+
+/// CONCEDIDO abre o papel; ENCERRADO o fecha. O papel VIGENTE é derivado: o último
+/// movimento daquele par (pessoa, papel). Não há coluna `vigenciaFim` porque fechá-la
+/// exigiria UPDATE — e o histórico de quando um papel foi retirado, e por quem, é
+/// justamente o que uma auditoria pergunta.
+enum MovimentoDePapel {
+  CONCEDIDO
+  ENCERRADO
+}
+
+/// A PESSOA — a identidade estável. Só o que NUNCA muda mora aqui.
+///
+/// ⚠️ O DOCUMENTO É A IDENTIDADE, e é único. Ele não está na versão porque corrigir um
+/// CPF digitado errado não é "atualizar a pessoa": é dizer que aquela pessoa era outra.
+/// Nesse caso o certo é desativar o cadastro errado e criar o certo — e o histórico
+/// mostra os dois, que é o que aconteceu de verdade.
+model Pessoa {
+  id String @id @default(cuid())
+
+  /// CPF (11) ou CNPJ (14), SEM máscara. A validação de dígito verificador é do
+  /// domínio (`modules/m19-pessoas/dominio.ts`), fail-closed, antes de qualquer I/O.
+  /// O schema garante o formato e a unicidade; ele não sabe calcular DV.
+  documento String       @unique @db.VarChar(14)
+  tipo      TipoDePessoa
+
+  versoes    VersaoDePessoa[]
+  movimentos MovimentoDePapelDaPessoa[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([tipo])
+}
+
+/// A VERSÃO — o estado cadastral num instante. A vigente é a de `criadoEm` mais recente.
+///
+/// ⚠️ `ativa` MORA AQUI, e não na `Pessoa`: desativar um credor É uma alteração
+/// cadastral, com autor e momento, e não um interruptor sem história. Reativar é outra
+/// versão. As duas aparecem na timeline.
+model VersaoDePessoa {
+  id       String @id @default(cuid())
+  pessoaId String
+  pessoa   Pessoa @relation(fields: [pessoaId], references: [id])
+
+  /// Nome da pessoa física ou razão social da jurídica.
+  nome         String
+  /// Nome fantasia — só faz sentido para PJ, e por isso é opcional (o domínio recusa
+  /// preenchê-lo numa PF).
+  nomeFantasia String?
+
+  email    String?
+  telefone String?
+
+  logradouro  String?
+  numero      String?
+  complemento String?
+  bairro      String?
+  municipio   String?
+  uf          String? @db.VarChar(2)
+  cep         String? @db.VarChar(8)
+
+  ativa Boolean @default(true)
+
+  /// O que esta versão mudou, em linguagem de quem cadastrou ("correção de endereço").
+  /// Opcional na criação (a primeira versão não corrige nada) e exigido pelo domínio
+  /// nas seguintes — um histórico sem motivo é uma lista de carimbos.
+  motivo String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([pessoaId, criadoEm])
+}
+
+/// O MOVIMENTO DE PAPEL — append-only, como todo fato deste repositório.
+///
+/// O par `[pessoaId, papel]` NÃO é único: conceder, encerrar e conceder de novo é uma
+/// história legítima (o fornecedor que voltou a ser credor). Quem responde "ele é credor
+/// hoje?" é a leitura do ÚLTIMO movimento, não uma coluna.
+model MovimentoDePapelDaPessoa {
+  id       String @id @default(cuid())
+  pessoaId String
+  pessoa   Pessoa @relation(fields: [pessoaId], references: [id])
+
+  papel     PapelDePessoa
+  movimento MovimentoDePapel
+
+  /// A data do ATO — o corte é ela, como em todo o resto do sistema.
+  data   DateTime
+  motivo String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([pessoaId, papel, data])
+  @@index([papel])
+}

@@ -5,6 +5,10 @@ import { join } from "node:path";
 import { Client } from "pg";
 import { erroDeBancoInacessivel } from "./banco.js";
 import { alvoDoBanco, urlDoBancoDeTeste } from "./db-teste.js";
+import {
+  papelDoAmbiente,
+  provisionarPapelDeRuntime,
+} from "../prisma/papel-runtime.js";
 
 /**
  * GLOBAL SETUP do Vitest — roda UMA vez, antes de toda a suíte.
@@ -93,6 +97,15 @@ export default async function setup(): Promise<void> {
       );
     }
     console.log(`[teste] SQL manual aplicado: ${arquivos.join(", ")}`);
+
+    // (5) O PAPEL DE RUNTIME. Ele tem de existir ANTES da suíte porque os testes de
+    //     isolamento conectam COM ELE — e um teste de isolamento rodado com o papel
+    //     errado (superusuário dono das tabelas) passa provando nada. Reprovisionar a
+    //     cada execução realinha os grants com o schema que as migrations acabaram de
+    //     aplicar: tabela nova entra com SELECT/INSERT, e UPDATE/DELETE continuam
+    //     saindo só do censo assinado em prisma/papel-runtime.ts.
+    await provisionarPapelDeRuntime(cliente, papelDoAmbiente());
+    console.log("[teste] papel de runtime provisionado.");
   } finally {
     await cliente.end();
   }

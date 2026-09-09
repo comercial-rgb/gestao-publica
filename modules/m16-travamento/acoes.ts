@@ -146,6 +146,10 @@ export type AcaoDoSistema =
   | "CADASTRAR_OBRA"
   // ── M12 — relatórios (parametrização) ──
   | "CADASTRAR_LINHA_DEMONSTRATIVO"
+  // ── M19 — pessoas e credores ──
+  | "CADASTRAR_PESSOA"
+  | "ALTERAR_PESSOA"
+  | "MOVER_PAPEL_DE_PESSOA"
   // ── M16 — travamento ──
   | "TRAVAR_COMPETENCIA"
   | "DESTRAVAR_COMPETENCIA"
@@ -255,6 +259,9 @@ export type NomeDeServico =
   | "cadastrarLinhaDemonstrativo"
   | "travar"
   | "destravar"
+  | "cadastrarPessoa"
+  | "alterarPessoa"
+  | "moverPapelDePessoa"
   // ── M16 — administração de usuários (7.14) ──
   | "criarUsuario"
   | "concederPerfil"
@@ -382,6 +389,10 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   estornarMovimentoContratual: "ESTORNAR_MOVIMENTO_CONTRATUAL",
   cadastrarLimite: "CADASTRAR_LIMITE",
   cadastrarObra: "CADASTRAR_OBRA",
+
+  cadastrarPessoa: "CADASTRAR_PESSOA",
+  alterarPessoa: "ALTERAR_PESSOA",
+  moverPapelDePessoa: "MOVER_PAPEL_DE_PESSOA",
 
   cadastrarLinhaDemonstrativo: "CADASTRAR_LINHA_DEMONSTRATIVO",
 

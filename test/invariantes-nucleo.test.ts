@@ -14,7 +14,11 @@ import { Decimal } from "decimal.js";
 import { toMoney } from "../packages/contracts/index.js";
 import type { Partida } from "../packages/ledger/lancamento.js";
 import { validarLancamento } from "../packages/ledger/motor.js";
-import { criarPrismaDeTeste, exigirBanco } from "./banco.js";
+import {
+  criarPrismaDeTeste,
+  criarPrismaDoPapelDeRuntime,
+  exigirBanco,
+} from "./banco.js";
 import type { PrismaClient } from "../prisma/generated/client/client.js";
 
 function partida(
@@ -152,14 +156,24 @@ describe("INVARIANTE 4b · guard de subsistema contra o 1º dígito do PCASP", (
 // ════════════════════════════════════════════════════════════════════════
 
 describe("INVARIANTES 2 e 3 · contra o banco de teste", () => {
+  /** O DONO: semeia o alvo e confere o resultado. */
   let prisma: PrismaClient;
+  /**
+   * A APLICAÇÃO. Os testes de append-only precisam dele, e não do dono: o dono PODE
+   * mutar as próprias tabelas — é assim que a fixture limpa o banco. Medir o
+   * append-only com o dono é medir com o instrumento errado.
+   */
+  let app: PrismaClient;
 
   beforeAll(async () => {
     prisma = criarPrismaDeTeste();
+    app = criarPrismaDoPapelDeRuntime();
     await exigirBanco(prisma);
+    await exigirBanco(app);
   });
 
   afterAll(async () => {
+    await app.$disconnect();
     await prisma.$disconnect();
   });
 
@@ -228,50 +242,79 @@ describe("INVARIANTES 2 e 3 · contra o banco de teste", () => {
     });
 
     /**
-     * ⚠️ LACUNA CONHECIDA, MEDIDA E DATADA — não é teste decorativo.
+     * ⚠️ A LACUNA DO ENT00 — FECHADA NO ENT01, E O TESTE MUDOU DE SINAL.
      *
-     * `it.fails` afirma: "esta asserção NÃO passa hoje". O que ela pede é o
-     * correto — que o banco recuse um UPDATE em lançamento. Hoje ele aceita,
-     * porque a conexão da aplicação é a DONA das tabelas e não há trigger,
-     * RULE nem política de linha em nenhuma das 64 migrations. Varredura em
-     * ENT00 por GRANT/REVOKE/CREATE ROLE/ROW LEVEL SECURITY: zero ocorrências.
+     * Isto era um `it.fails`: "esta asserção NÃO passa hoje". O que ela pedia era o
+     * correto — que o BANCO recusasse um UPDATE em lançamento —, e o banco aceitava,
+     * porque a conexão da aplicação era SUPERUSUÁRIA e DONA das tabelas. Varredura do
+     * ENT00 por GRANT/REVOKE/CREATE ROLE/ROW LEVEL SECURITY nas 63 migrations: zero.
      *
-     * O append-only existe hoje no DOMÍNIO (tipos readonly, sem caminho de
-     * mutação, estorno como fato novo). Domínio protege quem passa por ele; não
-     * protege de um script, de um console de banco ou de um adapter futuro.
+     * O ENT01 criou o papel de runtime (`prisma/papel-runtime.ts`): sem superusuário,
+     * sem posse de tabela, sem DDL, com SELECT/INSERT em tudo e UPDATE/DELETE só num
+     * censo de três tabelas que alguém assina. O razão não está nele.
      *
-     * QUANDO ENT01 criar o papel de runtime sem propriedade das tabelas, esta
-     * asserção passará e o `it.fails` virará vermelho — de propósito. Esse
-     * vermelho é o lembrete de remover o marcador. Um teste que expira sozinho
-     * vale mais que um TODO que ninguém lê.
+     * ⚠️ E O CLIENT DESTE TESTE MUDOU JUNTO — é o ponto. Ele agora conecta como a
+     * APLICAÇÃO, não como o dono. Rodá-lo com o dono continuaria falhando (o dono
+     * pode mesmo mutar as próprias tabelas, e é assim que a fixture limpa o banco):
+     * seria a mesma lacuna, medida com o instrumento errado.
+     *
+     * O `it.fails` ficou vermelho quando a proteção chegou — que era exatamente o que
+     * ele prometia fazer. Um teste que expira sozinho vale mais que um TODO que
+     * ninguém lê.
      */
-    it.fails(
-      "o banco deveria recusar UPDATE em lançamento pelo papel da aplicação",
-      async () => {
-        // O teste cria o próprio alvo: depender de resíduo de outro arquivo
-        // faria a falha esperada acontecer por banco vazio, e não por falta de
-        // proteção — passando pelo motivo errado.
-        const alvo = await prisma.lancamentoContabil.create({
-          data: {
-            numeroControle: `ENT00-APPEND-${Date.now()}`,
-            dataTransacao: new Date("2026-01-02T00:00:00Z"),
-            historico: "lancamento alvo do teste de append-only",
-            origemTipo: "TESTE_INVARIANTE",
-            criadoPor: "ent00",
-          },
-        });
+    it("o banco recusa UPDATE em lançamento pelo papel da aplicação", async () => {
+      // O teste cria o próprio alvo: depender de resíduo de outro arquivo faria a
+      // recusa acontecer por linha inexistente, e não por falta de privilégio —
+      // passando pelo motivo errado.
+      const alvo = await prisma.lancamentoContabil.create({
+        data: {
+          numeroControle: `ENT01-APPEND-${Date.now()}`,
+          dataTransacao: new Date("2026-01-02T00:00:00Z"),
+          historico: "lancamento alvo do teste de append-only",
+          origemTipo: "TESTE_INVARIANTE",
+          criadoPor: "ent00",
+        },
+      });
 
-        try {
-          await expect(
-            prisma.lancamentoContabil.update({
-              where: { id: alvo.id },
-              data: { historico: "MUTACAO INDEVIDA — ENT00" },
-            })
-          ).rejects.toThrow();
-        } finally {
-          await prisma.lancamentoContabil.deleteMany({ where: { id: alvo.id } });
-        }
+      try {
+        await expect(
+          app.lancamentoContabil.update({
+            where: { id: alvo.id },
+            data: { historico: "MUTACAO INDEVIDA — ENT01" },
+          })
+        ).rejects.toThrow(/permission denied|permissão negada/i);
+
+        // ...e a linha continua exatamente como nasceu.
+        const depois = await prisma.lancamentoContabil.findUniqueOrThrow({
+          where: { id: alvo.id },
+        });
+        expect(depois.historico).toBe("lancamento alvo do teste de append-only");
+      } finally {
+        await prisma.lancamentoContabil.deleteMany({ where: { id: alvo.id } });
       }
-    );
+    });
+
+    it("o banco recusa DELETE em lançamento pelo papel da aplicação", async () => {
+      const alvo = await prisma.lancamentoContabil.create({
+        data: {
+          numeroControle: `ENT01-APPEND-DEL-${Date.now()}`,
+          dataTransacao: new Date("2026-01-02T00:00:00Z"),
+          historico: "lancamento alvo do teste de append-only",
+          origemTipo: "TESTE_INVARIANTE",
+          criadoPor: "ent00",
+        },
+      });
+
+      try {
+        await expect(
+          app.lancamentoContabil.delete({ where: { id: alvo.id } })
+        ).rejects.toThrow(/permission denied|permissão negada/i);
+        expect(
+          await prisma.lancamentoContabil.count({ where: { id: alvo.id } })
+        ).toBe(1);
+      } finally {
+        await prisma.lancamentoContabil.deleteMany({ where: { id: alvo.id } });
+      }
+    });
   });
 });

@@ -291,7 +291,9 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     // + 1 (submeterCaptura, S3 — Captura 2.0, ação própria SUBMETER_CAPTURA) = 97.
     // + 2 (TRAVA-4/M20 — confirmarImportacaoFolha e confirmarImportacaoTributos, ações próprias
     //   IMPORTAR_FOLHA e IMPORTAR_TRIBUTOS) = 99.
-    expect(nomes.length).toBe(99);
+    // + 3 (ENT01/M19 — cadastrarPessoa, alterarPessoa e moverPapelDePessoa, ações próprias
+    //   CADASTRAR_PESSOA, ALTERAR_PESSOA e MOVER_PAPEL_DE_PESSOA) = 102.
+    expect(nomes.length).toBe(102);
 
     // 97 serviços, 93 ações distintas. Os pares que compartilham ação (4: importarExtratoBb
     // REUSA IMPORTAR_EXTRATO). transferirEntreContas tem AÇÃO PRÓPRIA (não compartilha) → +1 ação.
@@ -300,7 +302,11 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   · proporMbaDaLoa / registrarVersaoMba            → CRIAR_VERSAO_MBA
     //   · importarExtrato / importarExtratoBb            → IMPORTAR_EXTRATO
     // 99 serviços, 95 ações distintas (os 2 importadores do M20 têm ação PRÓPRIA cada um).
-    expect(TODAS_AS_ACOES.length).toBe(95);
+    // 102 serviços, 98 ações distintas — os 3 do M19 têm ação PRÓPRIA cada um, e isso é
+    // deliberado: cadastrar uma pessoa, corrigir o cadastro dela e conceder-lhe o papel de
+    // CREDOR são poderes diferentes. Uma ação única "GESTAO_DE_PESSOAS" daria, a quem só
+    // devia digitar endereço, o poder de tornar alguém credor do ente.
+    expect(TODAS_AS_ACOES.length).toBe(98);
     expect(ACAO_DO_SERVICO.encerrarExercicio).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.encerrarExercicioComRestos).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.importarExtrato).toBe("IMPORTAR_EXTRATO");
