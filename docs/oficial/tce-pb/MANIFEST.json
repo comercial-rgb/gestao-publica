@@ -1,0 +1,128 @@
+{
+  "$comment": "Procedência das fontes oficiais TCE-PB. Winner preenche dataDownload; o executor calcula sha256 no Passo 0 da S1 e o preenche (PATCH §4). Não editar arquivos baixados; versão nova = entrada nova.",
+  "arquivos": [
+    {
+      "fonte": "TCE-PB — Wiki Dados da Contabilidade (SAGRES Contabilidade 2026)",
+      "arquivo": "layout-contabilidade-2026-v1.1-12122025.html",
+      "url": "https://docs.tcepb.tc.br/books/dados-da-contabilidade/page/versao-11-12122025",
+      "versao": "2026 v1.1",
+      "dataPublicacao": "2025-12-12",
+      "dataDownload": "2026-07-18",
+      "sha256": "b782a9a27f7407eb7fa8f064f2f07626175ac2edc34a0b1832a0daf7431876a1"
+    },
+    {
+      "fonte": "TCE-PB — SAGRES Captura (layout-sagres-2, seção 2026)",
+      "arquivo": "Pcasp_2025.xlsx",
+      "url": "https://tce.pb.gov.br/wp-content/uploads/2024/12/Pcasp_2025.xlsx",
+      "versao": "PCASP vigente linkado na seção 2026 (nome original Pcasp_2025)",
+      "dataPublicacao": "2024-10-29",
+      "dataDownload": "2026-07-18",
+      "sha256": "52ae7c7336b27a5c2056f7e36947be8ca8c995b6fae74c891d88cab74c517ffb"
+    },
+    {
+      "fonte": "TCE-PB — SAGRES Captura (layout-sagres-2, seção 2026)",
+      "arquivo": "subelementos_2026.xlsx",
+      "url": "https://tce.pb.gov.br/wp-content/uploads/2025/12/subelementos_2026.xlsx",
+      "versao": "2026",
+      "dataPublicacao": "2025-12",
+      "dataDownload": "2026-07-18",
+      "sha256": "9ffeb662ddd53b30acb39af51a8c4e0a9aeafc12eff92dc334d1caca43d2740d"
+    },
+    {
+      "fonte": "TCE-PB — SAGRES Captura (layout-sagres-2, seção 2026)",
+      "arquivo": "relacao_elemento_subelemento_2026.xlsx",
+      "url": "https://tce.pb.gov.br/wp-content/uploads/2025/12/relacao_elemento_subelemento_2026.xlsx",
+      "versao": "2026",
+      "dataPublicacao": "2025-12",
+      "dataDownload": "2026-07-18",
+      "sha256": "39415aeb238433118de93badbd1463780192096cf1c7b820fbdca3eaa3f8d2ef"
+    },
+    {
+      "fonte": "TCE-PB — SAGRES Captura (layout-sagres-2, seção 2026)",
+      "arquivo": "relacionamento_fonterecursos_co_2026.xlsx",
+      "url": "https://tce.pb.gov.br/wp-content/uploads/2025/12/relacionamento_fonterecursos_co_2026.xlsx",
+      "versao": "2026",
+      "dataPublicacao": "2025-12",
+      "dataDownload": "2026-07-18",
+      "sha256": "444a4924a8016b9288c1568f535e932b351f5700b12159a8fbb42766fdf1fe62"
+    },
+    {
+      "fonte": "TCE-PB — Apresentação SAGRES Captura 2.0 (reunião 09/07/2026)",
+      "arquivo": "SAGRES-Captura-2.0.pdf",
+      "url": "https://tce.pb.gov.br/wp-content/uploads/2026/07/SAGRES-Captura-2.0.pdf",
+      "versao": "2026-07-09",
+      "dataPublicacao": "2026-07",
+      "dataDownload": "2026-07-18",
+      "sha256": "4100eaeb863454f4c21c258dbbe7ad41f8c66aad3d328e7188854149f636cb39"
+    },
+    {
+      "fonte": "TCE-PB — estante SAGRES Captura 2.0, página Entidades (Contabilidade) — JSON Schemas oficiais (draft 2020-12) embutidos",
+      "arquivo": "captura20-entidades-contabilidade.html",
+      "url": "https://docs.tcepb.tc.br/shelves/sagres-captura-20",
+      "versao": "2026 (página salva 19/07/2026)",
+      "dataPublicacao": "2026",
+      "dataDownload": "2026-07-19",
+      "sha256": "0998cdc5e623bbfb27d25e40b1ce372620ece57c67afc6eef12a9350ff8e955f"
+    },
+    {
+      "fonte": "TCE-PB — estante SAGRES Captura 2.0, página Tabelas de Domínio",
+      "arquivo": "captura20-tabelas-de-dominio.html",
+      "url": "https://docs.tcepb.tc.br/shelves/sagres-captura-20",
+      "versao": "2026 (página salva 19/07/2026)",
+      "dataPublicacao": "2026",
+      "dataDownload": "2026-07-19",
+      "sha256": "bdbefe386c694a55dd4b6443901ab34f9728299911790c9d1679e10259289fa8"
+    },
+    {
+      "fonte": "TCE-PB — estante SAGRES Captura 2.0, página Autenticação",
+      "arquivo": "captura20-autenticacao.html",
+      "url": "https://docs.tcepb.tc.br/shelves/sagres-captura-20",
+      "versao": "2026 (página salva 19/07/2026)",
+      "dataPublicacao": "2026",
+      "dataDownload": "2026-07-19",
+      "sha256": "28e1926dbc07cafb209626ae9a43c714a95b25f5bfb710ce4da3094d50ef5a61"
+    },
+    {
+      "fonte": "TCE-PB — estante SAGRES Captura 2.0, página Consolidações",
+      "arquivo": "captura20-consolidacoes.html",
+      "url": "https://docs.tcepb.tc.br/shelves/sagres-captura-20",
+      "versao": "2026 (página salva 19/07/2026)",
+      "dataPublicacao": "2026",
+      "dataDownload": "2026-07-19",
+      "sha256": "6c7897d88be9fc607ca971626a2692084f4604d58a175dc4981519e726f64ba9"
+    },
+    {
+      "fonte": "TCE-PB — estante SAGRES Captura 2.0, página Changelog",
+      "arquivo": "captura20-changelog.html",
+      "url": "https://docs.tcepb.tc.br/shelves/sagres-captura-20",
+      "versao": "2026 (página salva 19/07/2026)",
+      "dataPublicacao": "2026",
+      "dataDownload": "2026-07-19",
+      "sha256": "222dcc15bed02059793365fac4f958ccc2a6d1f3d2f550562e6c0069f8c5b6ec"
+    },
+    {
+      "fonte": "TCE-PB — OpenAPI SAGRES Captura Municipal (endpoints de SUBMISSÃO do Captura 2.0)",
+      "arquivo": "openapi-captura-municipal.json",
+      "url": "https://docs-api.tce.pb.gov.br/docs/openapi-captura-municipal",
+      "versao": "OpenAPI 3.1.0",
+      "dataPublicacao": "2026",
+      "dataDownload": "2026-07-19",
+      "sha256": "3422314599d44240fdcdc7c8e2ea89448c8bab4c30f263ad86f97f3e3ece1438"
+    },
+    {
+      "fonte": "TCE-PB — OpenAPI/Swagger da API de consulta SAGRES vigente",
+      "arquivo": "openapi-sagrescaptura.json",
+      "url": "https://sagrescaptura.tce.pb.gov.br/api/docs",
+      "versao": "Swagger 2.0",
+      "dataPublicacao": "2026",
+      "dataDownload": "2026-07-19",
+      "sha256": "3813a9c658cbc24feea0643322d2fd23b9f2e94bc77ed6b03393f43724efcec7"
+    }
+  ],
+  "pendentes": [
+    {
+      "fonte": "(nenhum) — OpenAPI do Captura 2.0 (submissão) e da API de consulta agora versionados. S4 (gateway de consulta) consome openapi-sagrescaptura.json; a submissão real do Captura consome openapi-captura-municipal.json.",
+      "bloqueia": "nada — contratos presentes; falta só a CONSTRUÇÃO (S4) e a credencial de acesso"
+    }
+  ]
+}

@@ -1,0 +1,199 @@
+// ============================================================================
+// M14 — exports federais (SICONFI / MSC — TR 7.34, Portaria STN 642/2019).
+//
+// DUAS TABELAS-PARÂMETRO, e NADA MAIS. O M14 é LEITURA PURA: a MSC é derivada do
+// razão (M01) a cada geração. Nenhum saldo, nenhum arquivo e nenhuma linha da
+// matriz são materializados — materializar seria criar a segunda verdade sobre o
+// que já foi enviado, e o dia em que ela divergisse do razão o TCE veria uma MSC
+// que o sistema não sabe mais reproduzir.
+// ============================================================================
+
+/// A IDENTIDADE DO ENTE NO SICONFI — e ela é DADO CONFERIDO, não constante de código.
+///
+/// O código IBGE e o Poder/Órgão (IC "PO") entram em TODA linha da MSC. Um dígito
+/// errado aqui derruba o arquivo inteiro no validador da STN — ou, pior, o entrega
+/// no lugar de outro ente. Por isso NÃO são hardcode: são semeados, com o nome de
+/// quem conferiu e a data em que conferiu.
+///
+/// SINGLETON: um SIAFIC, um ente (é o que a Portaria 642 pressupõe). O `id` fixo
+/// garante isso sem coluna de flag.
+model EnteConfig {
+  /// Sempre "unico". O singleton, imposto pela PK.
+  id String @id
+
+  /// Código IBGE do município — 7 dígitos.
+  /// ⚠️ CONFERIR CONTRA A TABELA OFICIAL DO IBGE ANTES DE SEMEAR. Campina
+  /// Grande/PB é 2504009, mas este arquivo NÃO é a fonte disso: o seed é.
+  codigoIbge String @db.VarChar(7)
+
+  /// IC "PO" (Poder/Órgão) do leiaute da MSC. Valor da tabela oficial da STN.
+  poderOrgao String
+
+  nome String
+
+  // ── ADITIVO MANAD (TR 7.36) — o registro 0000 ────────────────────────────
+  //
+  // ⚠️ TUDO NULLABLE, e isso é DELIBERADO: a MSC já roda, e o EnteConfig dela está
+  // semeado. Um NOT NULL aqui quebraria a MSC de quem ainda não vai gerar MANAD.
+  // O fail-closed vive no GERADOR: sem o campo, o MANAD não sai — nomeando o que
+  // falta. O padrão do `indicadorSuperavit` (M01), pela mesma razão.
+
+  /// 0000 campo 03 — CNPJ do ente, 14 dígitos, SEM máscara.
+  cnpj String? @db.VarChar(14)
+  /// 0000 campo 04 — CPF (quando o declarante é pessoa física; num ente, vazio).
+  cpf String? @db.VarChar(11)
+  /// 0000 campo 05 — CEI (matrícula). Vazio quando não há.
+  cei String? @db.VarChar(12)
+  /// 0000 campo 06 — NIT.
+  nit String? @db.VarChar(11)
+  /// 0000 campo 07 — UF, 2 letras.
+  uf String? @db.VarChar(2)
+  /// 0000 campo 08 — Inscrição Estadual.
+  inscricaoEstadual String?
+  /// 0000 campo 10 — Inscrição Municipal.
+  inscricaoMunicipal String?
+  /// 0000 campo 11 — SUFRAMA. Vazio fora da Zona Franca (3.1.9).
+  suframa String? @db.VarChar(9)
+  /// 0000 campo 12 — IND_CENTR: 0-sem centralização / 1-centralizador / 2-centralizada.
+  indCentralizacao String? @db.VarChar(1)
+
+  // ── ADITIVO SAGRES (M15/S6) — IDENTIFICAÇÃO INSTITUCIONAL (quita IDENTIFICACAO-DO-ENTE) ──
+  //
+  /// O ORDENADOR de despesa (SAGRES Empenhos §4.8 campo cpfOrdenador / Ordenador §4.36). É atributo
+  /// do ENTE/UG, não do empenho — por isso mora aqui, e o empenho o herda. NULLABLE (aditivo, sem
+  /// backfill): o gerador de Empenhos preenche `cpfOrdenador` a partir daqui; sem ele, o campo fica
+  /// vazio e o validador (S3) acusa — como antes. Quita o gap `cpfOrdenador` da S3.
+  nomeOrdenador String?
+  cpfOrdenador  String? @db.VarChar(11)
+  /// O CONTADOR/responsável técnico (SAGRES ResponsavelSiafic §4.48 — ainda não exportado). CRC é o
+  /// registro no Conselho Regional de Contabilidade. Nullable; cadastro institucional mínimo.
+  nomeContador String?
+  cpfContador  String? @db.VarChar(11)
+  crcContador  String?
+
+  // ── MULTI-ENTE (packages/tribunais-core) — QUAL TRIBUNAL É O DESTE ENTE ───
+  //
+  // ⚠️ NOT NULL, E SEM DEFAULT. É a diferença entre este bloco e o aditivo MANAD
+  // acima, e ela é deliberada. Um MANAD sem CNPJ é um MANAD que ainda não vai ser
+  // gerado; um ente sem tribunal é um ente que o sistema não sabe atender — não há
+  // exportação "genérica" para cair de volta. Um `@default("TCE-PB")` seria pior
+  // que nada: o dia em que Lapão/BA fosse semeado sem informar o tribunal, ele
+  // viraria silenciosamente um ente paraibano e a remessa sairia para o TCE errado.
+  // Sem default, esquecer o campo é um erro na hora de semear, não uma descoberta
+  // no dia da entrega.
+
+  /// O Tribunal de Contas de jurisdição, no formato `AAA-UF` (ex.: "TCE-PB",
+  /// "TCM-BA"). É a chave que o `resolverTribunal` usa para achar o exportador —
+  /// o formato é imposto por CHECK na migration, não só por convenção.
+  tribunalCodigo String @db.Text
+  /// A UF de jurisdição, 2 letras maiúsculas. Redundante com o sufixo do código
+  /// de propósito: o código é chave de resolução, a UF é dado consultável.
+  tribunalUf String @db.Char(2)
+  /// QUAL plano de contas o ente adota (ex.: "pcasp-federal"). O TCM-BA publica o
+  /// seu; o seed correspondente entra em PR próprio, junto do adapter daquele
+  /// tribunal — declarar aqui o nome do seed não cria o seed.
+  planoContasSeed String
+
+  /// ⚠️ QUEM CONFERIU, E QUANDO. Um dado que vai para a União com o nome do
+  /// município tem de ter um humano por trás.
+  conferidoPor String
+  conferidoEm  DateTime
+
+  criadoEm DateTime @default(now())
+}
+
+// ----------------------------------------------------------------------------
+// MANAD — os registros 0050 (contabilista) e 0100 (empresa/técnico gerador).
+//
+// ⚠️ POR QUE SÃO TABELAS PRÓPRIAS, E NÃO MAIS COLUNAS NO EnteConfig: o leiaute diz
+// "vários" para os dois. Um ente troca de contabilista, e o MANAD de um período
+// pede o contabilista DAQUELE período (o 0050 tem DT_INI/DT_FIN justamente para
+// isso). Espremer isso em colunas do singleton obrigaria a sobrescrever o histórico
+// — e o histórico é o dado.
+// ----------------------------------------------------------------------------
+
+/// REGISTRO 0050 — o contabilista responsável, com o período de responsabilidade.
+model ManadContabilista {
+  id String @id @default(cuid())
+
+  nome           String
+  /// CNPJ do escritório de contabilidade (quando houver).
+  cnpjEscritorio String? @db.VarChar(14)
+  cpf            String  @db.VarChar(11)
+  crc            String  @db.VarChar(11)
+
+  /// O PERÍODO de responsabilidade. É por ele que o gerador escolhe QUEM assina o
+  /// arquivo daquele período — nunca "o último cadastrado".
+  dtInicio DateTime
+  dtFim    DateTime?
+
+  endereco   String?
+  numero     String?
+  complemento String?
+  bairro     String?
+  cep        String? @db.VarChar(8)
+  uf         String? @db.VarChar(2)
+  caixaPostal String?
+  cepCaixaPostal String? @db.VarChar(8)
+  fone       String?
+  fax        String?
+  email      String?
+
+  conferidoPor String
+  conferidoEm  DateTime
+  criadoEm     DateTime @default(now())
+
+  @@index([dtInicio])
+}
+
+/// REGISTRO 0100 — a empresa/técnico responsável pela geração do arquivo.
+model ManadEmpresaGeradora {
+  id String @id @default(cuid())
+
+  /// EMP_TEC — nome da empresa ou do técnico.
+  empresaOuTecnico String
+  cargo            String
+
+  /// O período em que ele prestou o serviço de informática ao ente.
+  dtInicioServico DateTime
+  dtFimServico    DateTime?
+
+  cnpj  String? @db.VarChar(14)
+  cpf   String? @db.VarChar(11)
+  fone  String?
+  fax   String?
+  email String?
+
+  conferidoPor String
+  conferidoEm  DateTime
+  criadoEm     DateTime @default(now())
+
+  @@index([dtInicioServico])
+}
+
+/// A MATRIZ conta × IC EXIGIDA (Anexo II da MSC).
+///
+/// NASCE VAZIA — de propósito. A tabela do Anexo II é dado oficial e ele não está
+/// no repositório; inventá-la seria publicar uma exigência que ninguém escreveu.
+/// Vazia, ela não exige nada e a MSC sai igual.
+///
+/// Quando o Anexo II entrar (por INSERT — o padrão dos roteiros contábeis), cada
+/// linha diz "conta que começa com este prefixo TEM de trazer esta IC". A conta que
+/// não conseguir derivar a IC exigida vira PENDÊNCIA NOMEADA no resultado — e o
+/// arquivo SAI MESMO ASSIM. É deliberado: um export que se recusa a existir por
+/// causa de uma dimensão que o razão ainda não carrega deixa o ente sem entregar
+/// nada. O furo aparece, com nome e conta; o gestor decide.
+model IcExigidaPorConta {
+  id String @id @default(cuid())
+
+  /// Prefixo do código da conta (ex.: "1.1" para as disponibilidades).
+  prefixoConta String
+  /// O código da IC no leiaute (ex.: "FR", "FP", "PO", "ND").
+  ic           String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([prefixoConta, ic])
+  @@index([prefixoConta])
+}

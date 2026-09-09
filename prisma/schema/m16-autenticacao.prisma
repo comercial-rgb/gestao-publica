@@ -1,0 +1,202 @@
+/// ═══════════════════════════════════════════════════════════════════════════════════════
+/// M16 — AUTENTICAÇÃO (TR 4.55) e REGISTRO DE OPERAÇÃO (TR 6.1-6.3).
+///
+/// O bloco 2 deu ao sistema IDENTIDADES (quem é), o bloco 3 deu PERMISSÕES (o que pode).
+/// Faltava a pergunta que vem ANTES das duas: **como o sistema sabe que é ele mesmo?**
+/// Até aqui, `criadoPor` era uma identidade AFIRMADA pelo chamador — cadastrada, sim, mas
+/// afirmada. Quem digitasse `criadoPor: "prefeito@cg.pb.gov.br"` era o prefeito.
+///
+/// ⚠️ E O 6.3 PEDE O **LOCAL DA OPERAÇÃO** — "de onde partiu". Isso não é um campo a mais no
+/// lançamento: é um LOG, e ele é append-only pelo mesmo motivo que o razão é (ver
+/// `RegistroDeOperacao`).
+/// ═══════════════════════════════════════════════════════════════════════════════════════
+
+/// A CREDENCIAL — E ELA É UM **EVENTO**, NÃO UMA COLUNA. TR 4.55.
+///
+/// ═══ ⚠️ POR QUE ISTO NÃO CONTRADIZ O `ativo` DO `Usuario` (o achado de 498de7b) ═══
+/// Naquele bloco, `ativo` ficou como COLUNA, e o argumento foi: "cadastro não é fato contábil;
+/// um `MovimentoUsuario` append-only seria um padrão que o repositório não tem". Continua
+/// valendo — e a credencial é OUTRA COISA, pela linha que separa ESTADO de ATO:
+///
+///   · `ativo` é um ESTADO que se CONSULTA ("ele pode lançar?"). A resposta é sim ou não, e o
+///     ontem dela não interessa a ninguém.
+///   · DEFINIR SENHA é um **ATO**: tem autor, tem hora, e o HISTÓRICO É A PROVA. A pergunta que
+///     o controle interno faz não é "qual é a senha dele?" (ninguém pode responder isso) — é
+///     "QUEM trocou a senha do tesoureiro na véspera do pagamento, e QUANDO?". Uma coluna
+///     sobrescrita não responde: ela apaga a evidência do ato anterior no instante do novo.
+///
+/// É a mesma anatomia do `MovimentoTravamento`: append-only, e **a vigente é a ÚLTIMA**.
+/// Trocar a senha não faz UPDATE — grava um evento novo, e o anterior fica de pé, como fato.
+model CredencialDeUsuario {
+  id String @id @default(cuid())
+
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+
+  /// ⚠️ AUTODESCRITIVO, e isso é o ponto: `scrypt$N$r$p$saltB64$hashB64`.
+  ///
+  /// Os PARÂMETROS viajam junto com o hash. É o que permite ENDURECER o custo amanhã (o
+  /// hardware melhora; o N de hoje é fraco em cinco anos) sem invalidar as credenciais de
+  /// ontem: cada hash sabe com que parâmetros foi feito, e a verificação os LÊ dele — nunca de
+  /// uma constante global, que mudaria debaixo dos hashes antigos e derrubaria todo mundo.
+  ///
+  /// ⚠️ O QUE **NUNCA** ESTÁ AQUI É A SENHA. Nem a senha, nem nada de que ela se derive por
+  /// caminho de volta. O `salt` é público de propósito (ele existe para que duas senhas iguais
+  /// não gerem hashes iguais — não para ser segredo).
+  hashString String
+
+  /// Quem definiu. Numa troca pelo próprio usuário, é ele; num reset, é o administrador — e
+  /// essa diferença é EXATAMENTE o que o controle interno vai querer ler.
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  /// A vigente é a de `criadoEm` mais recente — a consulta ordena por aqui.
+  @@index([usuarioId, criadoEm])
+}
+
+/// A SESSÃO ABERTA — o fato "alguém entrou". A VALIDADE É **DERIVADA**, nunca uma flag.
+///
+/// ⚠️ NÃO EXISTE COLUNA `valida`. "Esta sessão vale?" responde-se DERIVANDO: o hash existe, o
+/// `expiraEm` ainda não passou, e não há `SessaoRevogada` apontando para ela. É a mesma
+/// disciplina do resto do repositório — o status do empenho é derivado dos SUMs, "já foi
+/// estornado?" é derivado de `estornos`, e o travamento é derivado dos eventos.
+///
+/// Uma flag `valida` seria uma quarta verdade a manter em sincronia com as outras três, e o dia
+/// em que ela divergisse (a revogação gravada e a flag não), o sistema deixaria entrar quem já
+/// tinha sido expulso — em silêncio.
+model SessaoAberta {
+  id String @id @default(cuid())
+
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+
+  /// ⚠️ O **HASH** DO TOKEN (SHA-256), NUNCA O TOKEN.
+  ///
+  /// O token em claro é devolvido UMA VEZ, no instante do login, e some. Um vazamento do banco
+  /// (backup, dump, `SELECT *` de um DBA curioso) não entrega sessão nenhuma: o que está aqui
+  /// não se re-apresenta.
+  ///
+  /// SHA-256 puro basta AQUI — e a diferença para a senha é real: o token são 32 bytes de
+  /// entropia CRIPTOGRÁFICA (`randomBytes`), não uma palavra que alguém escolheu. Não há
+  /// dicionário para atacá-lo; não precisa de custo de memória. A SENHA, sim (é por isso que
+  /// ela leva scrypt).
+  tokenHash String @unique
+
+  /// O corte da validade. `agora > expiraEm` = morta, sem UPDATE nenhum.
+  expiraEm DateTime
+
+  /// TR 6.3 — o LOCAL da operação. Nulos são legítimos: um job interno não tem IP nem agente.
+  ip     String?
+  agente String?
+
+  revogacao SessaoRevogada?
+
+  criadoEm DateTime @default(now())
+
+  @@index([usuarioId])
+  @@index([expiraEm])
+}
+
+/// A REVOGAÇÃO — um FATO, não um DELETE.
+///
+/// Apagar a `SessaoAberta` "revogaria" a sessão e apagaria junto a prova de que ela existiu.
+/// O controle interno pergunta "quando a sessão dele foi derrubada, e POR QUÊ?" — e `DELETE`
+/// não responde.
+model SessaoRevogada {
+  id String @id @default(cuid())
+
+  sessaoId String       @unique
+  sessao   SessaoAberta @relation(fields: [sessaoId], references: [id])
+
+  /// Obrigatório. "Logout" é motivo; "troca de senha" é motivo; "suspeita de comprometimento"
+  /// é motivo. Uma revogação sem motivo é uma pergunta sem resposta no dia da auditoria.
+  motivo String
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+}
+
+/// A TENTATIVA DE LOGIN — e é dela que o CADEADO se DERIVA. Sem flag, sem contador.
+///
+/// ⚠️ NÃO EXISTE `tentativasFalhas Int` NO `Usuario`, E NÃO É ESQUECIMENTO. Um contador é
+/// estado mutável: ele precisa ser incrementado, zerado no sucesso, zerado no tempo — e cada
+/// uma dessas três escritas é uma chance de divergir. Pior: ele APAGA a história (o contador em
+/// 0 não diz que houve 4 tentativas às 3 da manhã de ontem).
+///
+/// Aqui o cadeado é uma CONSULTA: "quantas falhas deste identificador nos últimos 15 minutos?".
+/// A resposta sai dos FATOS, e os fatos ficam — para o controle interno ler.
+///
+/// ⚠️ E ELA É GRAVADA ATÉ PARA USUÁRIO QUE **NÃO EXISTE**, com o identificador informado. É o
+/// que permite ver, no log, alguém varrendo nomes de usuário. Um `WHERE usuarioId = ...` não
+/// conseguiria registrar isso — daí o campo ser o identificador em texto, e não uma FK.
+model TentativaDeLogin {
+  id String @id @default(cuid())
+
+  /// O que foi DIGITADO — pode não corresponder a usuário nenhum. Não é FK, de propósito.
+  identificador String
+  sucesso       Boolean
+
+  /// TR 6.3 — de onde partiu.
+  ip String?
+
+  criadoEm DateTime @default(now())
+
+  /// O índice do cadeado: (identificador, janela de tempo).
+  @@index([identificador, criadoEm])
+}
+
+/// O RESULTADO de uma operação registrada. TR 6.2.
+enum ResultadoOperacao {
+  SUCESSO
+  /// A autorização (bloco 3) recusou — e o TCE quer LER isso.
+  NEGADO
+  /// Estourou por outra razão (guard de negócio, saldo, trava).
+  ERRO
+}
+
+/// O REGISTRO DE OPERAÇÃO — o 6.1/6.2/6.3 completo, e ele é APPEND-ONLY.
+///
+/// ═══ QUEM · QUANDO · DE ONDE · O QUÊ · COMO TERMINOU ═══
+/// O razão já dizia QUEM (o `criadoPor` de cada fato) e QUANDO. Faltavam duas coisas, e as duas
+/// são do 6.3:
+///
+///   · **DE ONDE** (`ip`, `agente`) — o razão não tem, e nem deve ter: um `LancamentoContabil`
+///     é um fato CONTÁBIL, e o IP de quem o digitou não é dado contábil. Ele é dado de ACESSO,
+///     e mora aqui.
+///
+///   · **O QUE FOI **NEGADO****. E este é o ponto que o razão NUNCA poderia cobrir, por
+///     construção: quando a autorização recusa, **não há fato** — nada é gravado, e é assim que
+///     tem de ser ("nada foi gravado" é a promessa do bloco 3). Mas a TENTATIVA existiu, e ela é
+///     precisamente o que o controle interno procura: *quem tentou pagar fora da sua unidade, às
+///     17h de sexta, e foi barrado?* Sem este registro, a negação é invisível — o sistema
+///     protege e não conta a ninguém que protegeu.
+///
+/// ⚠️ ESCRITO PELA **BORDA**, VIA PORTA. O domínio não conhece IP nem user-agent (ele nem sabe
+/// que existe HTTP), e enfiar isso na assinatura dos 76 serviços seria contaminar o núcleo com
+/// um detalhe de transporte. Ver `RegistroDeOperacaoPort` — quando a camada HTTP nascer, ela
+/// preenche os campos; hoje, o teste faz o papel dela.
+model RegistroDeOperacao {
+  id String @id @default(cuid())
+
+  /// O identificador do usuário (texto, não FK): a operação de um usuário inexistente — uma
+  /// tentativa com token forjado — também se registra.
+  usuarioIdent String
+
+  /// A ação tentada. String livre: aqui entram tanto as `AcaoDoSistema` do censo quanto os atos
+  /// da própria borda (`LOGIN`, `LOGOUT`), e o log não deve recusar o que ainda não classificou.
+  acao String
+
+  /// TR 6.3 — o LOCAL.
+  ip     String?
+  agente String?
+
+  resultado ResultadoOperacao
+  /// A mensagem da negação, quando houve. É ela que responde "por quê".
+  detalhe String?
+
+  criadoEm DateTime @default(now())
+
+  @@index([usuarioIdent, criadoEm])
+  @@index([criadoEm])
+  @@index([resultado])
+}

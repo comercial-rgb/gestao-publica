@@ -1,0 +1,249 @@
+/// ═══════════════════════════════════════════════════════════════════════════════════════
+/// M04 — RECONHECIMENTO DA RECEITA PELO FATO GERADOR. TR 5.87/5.88 · 4.62 · NBC TSP.
+///
+/// ═══ ⚠️ A COMPETÊNCIA RENASCE AQUI — E O CONTRASTE COM c398b4f É O PONTO ═══
+/// Em `c398b4f` eu REMOVI a `LancamentoContabil.competencia`. Ela era uma segunda data,
+/// herdada pelos estornos, divergente da `dataTransacao`, e **sem um único leitor** — uma
+/// coluna que só se escrevia e que mentia com cara de verdade.
+///
+/// O commit que a removeu prometeu, por escrito, a rota: *"a competência contábil de verdade
+/// nasce na ENTIDADE DONA DO FATO, com LEITOR NOMEADO no mesmo commit. Coluna sem leitor não
+/// entra."*
+///
+/// **É este commit.** E as três condições estão cumpridas, uma a uma:
+///   1. ela nasce na entidade DONA (`ReceitaReconhecida`), e não pendurada no lançamento
+///      genérico, que não sabe de que fato é;
+///   2. ela tem NOME PRÓPRIO — `dataFatoGerador` —, e não um "competencia" que cada módulo
+///      interpretaria à sua maneira;
+///   3. ela tem LEITOR **no mesmo commit**: `saldoAArrecadar` corta por ela, e o teste t1 prova
+///      que ela GOVERNA o corte. Ela decide alguma coisa desde o primeiro dia.
+///
+/// A lição do `campoData` (M01) vale inteira: quem soma tem de dizer POR QUAL DATA soma. O
+/// reconhecimento soma pela do FATO GERADOR (o IPTU de 2026 é de 2026, mesmo que a guia entre
+/// em julho); a arrecadação continua somando pela data do dinheiro. São duas perguntas
+/// diferentes, e agora cada uma tem a sua data — em vez de uma data só, dormente, tentando
+/// responder às duas.
+/// ═══════════════════════════════════════════════════════════════════════════════════════
+
+/// O RECONHECIMENTO — o crédito nasce no FATO GERADOR, não no caixa.
+///
+/// ═══ O QUE MUDA, CONTABILMENTE ═══
+/// Até aqui a receita só existia quando o dinheiro entrava: a arrecadação fazia
+/// **D caixa × C VPA**, e o ente que lançava o IPTU em janeiro e recebia em julho não tinha,
+/// de janeiro a julho, **nada** no balanço — nem o crédito contra o contribuinte, nem a
+/// variação patrimonial que ele já havia gerado. O patrimônio do município aparecia menor do
+/// que era, e o regime de competência (NBC TSP) ficava por conta do relatório.
+///
+/// Com o reconhecimento:
+///   · RECONHECER  →  D crédito a receber (ativo, classe 1) × C VPA (classe 4)
+///   · ARRECADAR   →  D caixa × C crédito a receber            ← **PERMUTATIVA**
+///
+/// ⚠️ E A VPA **NÃO SE REPETE**. É a regra que o t1 prova com um literal: reconhecidos 10.000 e
+/// arrecadados 6.000, a VPA continua 10.000 — não vira 16.000. A arrecadação de um crédito já
+/// reconhecido não gera riqueza nova; ela só TROCA um ativo (o crédito) por outro (o dinheiro).
+/// Quem lançasse VPA de novo estaria contando a mesma receita duas vezes, e o resultado do
+/// exercício sairia inflado — exatamente o erro que o regime de competência existe para evitar.
+model ReceitaReconhecida {
+  id String @id @default(cuid())
+
+  /// O código de 8 dígitos, validado pelo `parsearNaturezaReceita` (nada de código solto). É
+  /// dele que sai a ORIGEM — e é a origem que escolhe o roteiro.
+  naturezaCodigo String
+
+  fonteId String
+  fonte   FonteRecurso @relation(fields: [fonteId], references: [id])
+
+  /// ⚠️ **A COMPETÊNCIA.** A data do FATO GERADOR — o dia em que o crédito passou a existir
+  /// (o lançamento do IPTU, a prestação do serviço, a competência da contribuição). NÃO é a
+  /// data em que alguém digitou, e NÃO é a data em que o dinheiro entrou.
+  ///
+  /// É por ELA que `saldoAArrecadar` corta. É o leitor, e ele está no mesmo commit.
+  dataFatoGerador DateTime
+
+  valor Decimal @db.Decimal(18, 2)
+
+  /// ⚠️ SIGILO FISCAL (TR 7.4.2 · CTN art. 198). REFERÊNCIA OPACA, e **nunca** um CPF.
+  ///
+  /// Ela existe para o ente amarrar o crédito ao seu cadastro tributário (a inscrição
+  /// imobiliária, o número do processo) — e é OPACA de propósito: o que a transparência não
+  /// pode publicar, o sistema não precisa guardar em claro.
+  ///
+  /// ⚠️ E ELA **NÃO SAI NOS DATASETS DO M13**, nunca. O `datasetReceita` é AGREGADO por
+  /// natureza+fonte e não conhece esta tabela — publicar "IPTU, 1.240,00, João da Silva" seria
+  /// quebrar o sigilo fiscal em nome da transparência, que é exatamente o que o 7.4.2 proíbe.
+  /// Há grep-teste provando a ausência (`t9`).
+  contribuinteRef String?
+
+  historico String
+
+  /// ⚠️ A CHAVE DE IDEMPOTÊNCIA DA INTEGRAÇÃO TRIBUTÁRIA (TR 7.6/4.68) — o gancho, não a lógica.
+  ///
+  /// A integração NÃO é escopo deste bloco. Mas ela virá, e virá em LOTE — e um lote
+  /// reprocessado (a rede caiu no meio, o operador clicou duas vezes) que não tivesse por onde
+  /// se reconhecer geraria o mesmo crédito duas vezes, dobrando a VPA do município em silêncio.
+  ///
+  /// A coluna sai barata hoje (nullable, sem uma linha de lógica) e torna a idempotência um
+  /// `upsert` amanhã. É o oposto da competência dormente: aqui a coluna nasce SEM leitor, e por
+  /// isso ela é NULLABLE e não decide nada — ela é um espaço reservado, declarado como tal, e
+  /// não uma verdade que finge estar em uso.
+  referenciaExterna String? @unique
+
+  /// A contabilização. 1-1: um lançamento por reconhecimento.
+  lancamentoId String             @unique
+  lancamento   LancamentoContabil @relation(fields: [lancamentoId], references: [id])
+
+  /// APPEND-ONLY: o estorno referencia o original (o crédito reconhecido POR ERRO).
+  estornoDeId String?
+  estornoDe   ReceitaReconhecida?  @relation("EstornoReconhecimento", fields: [estornoDeId], references: [id])
+  estornos    ReceitaReconhecida[] @relation("EstornoReconhecimento")
+
+  /// Obrigatório no ESTORNO (Zod, mín. 10). Desfazer um crédito do município exige explicação.
+  motivo String?
+
+  vinculos     VinculoArrecadacaoReconhecimento[]
+  inscricoes   InscricaoDeReconhecimento[]
+  cancelamentos CancelamentoDeReconhecimento[]
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  /// O índice do LEITOR do 5.87: o corte é por natureza e por data do FATO GERADOR.
+  @@index([naturezaCodigo, dataFatoGerador])
+  @@index([fonteId])
+  @@index([estornoDeId])
+}
+
+/// O ROTEIRO DO RECONHECIMENTO — por ORIGEM da receita, e a origem é DERIVADA do código.
+///
+/// ⚠️ TABELA-PARÂMETRO, FAIL-CLOSED. Nenhuma conta do PCASP é inventada no código — é o padrão
+/// da casa (`RoteiroDividaAtiva`, `RoteiroPatrimonial`, `RoteiroAlmoxarifado`, `RoteiroProvisao`).
+/// Origem sem roteiro cadastrado **não reconhece**: melhor não contabilizar do que contabilizar
+/// na conta errada.
+///
+/// A chave é a `OrigemReceita` (IMPOSTOS_TAXAS_CONTRIBUICOES_DE_MELHORIA, TRANSFERENCIAS_CORRENTES,
+/// ...) — os 13 valores que o `parsearNaturezaReceita` já deriva do 1º+2º dígitos. Não é uma
+/// "família" inventada para este bloco: é a classificação que a natureza JÁ tem.
+model RoteiroReconhecimento {
+  id String @id @default(cuid())
+
+  /// String, e não enum do Prisma — de propósito: a `OrigemReceita` já é uma união de TIPO em
+  /// `m04/natureza.ts`, derivada do código. Um enum aqui seria uma SEGUNDA lista, e o dia em
+  /// que as duas divergissem, o roteiro apontaria para uma origem que o parser não produz.
+  origem String @unique
+
+  /// O ATIVO — o crédito a receber (classe 1). É esta conta que o reconhecimento DEBITA, que a
+  /// arrecadação vinculada CREDITA, e que a inscrição em dívida ativa RECLASSIFICA.
+  contaCreditoAReceberId String
+  contaCreditoAReceber   ContaPcasp @relation("CreditoAReceberReconhecimento", fields: [contaCreditoAReceberId], references: [id])
+
+  /// A VPA (classe 4) — a variação patrimonial aumentativa que o fato gerador produziu.
+  contaVpaId String
+  contaVpa   ContaPcasp @relation("VpaReconhecimento", fields: [contaVpaId], references: [id])
+
+  /// ⚠️ A VPD DA RENÚNCIA/PRESCRIÇÃO — e ela é NULLABLE porque **cancelar não é estornar**.
+  ///
+  /// São dois atos, e modelá-los como um só seria o erro:
+  ///   · ESTORNAR   = o crédito nunca deveria ter existido (erro de lançamento). O fato se NEGA:
+  ///     inverte-se o lançamento, e a VPA volta atrás. Não houve perda — houve engano.
+  ///   · CANCELAR   = o crédito existiu e MORREU (anistia, remissão, prescrição). O fato ACONTECEU
+  ///     e a receita foi reconhecida com razão; o que se perdeu depois é uma **VPD** —
+  ///     D VPD × C crédito a receber. A VPA de janeiro FICA, porque ela foi verdadeira em janeiro.
+  ///
+  /// Confundi-los apagaria da história a renúncia fiscal do município — que é justamente o
+  /// número que o controle interno e o TCE procuram. É o precedente da REVERSAO de provisão
+  /// (M10): reverter não é estornar.
+  ///
+  /// NULO = a origem não cancela. Tentar cancelar sem roteiro de VPD **falha nomeando**.
+  contaVpdId String?
+  contaVpd   ContaPcasp? @relation("VpdReconhecimento", fields: [contaVpdId], references: [id])
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+}
+
+/// O VÍNCULO arrecadação ↔ reconhecimento. **N:N COM VALOR**, e a cardinalidade é a real.
+///
+/// Uma guia pode quitar VÁRIOS reconhecimentos (o carnê que paga IPTU e taxa de lixo); e um
+/// reconhecimento pode ser quitado por VÁRIAS guias (o IPTU parcelado em 10). Um
+/// `reconhecimentoId` nullable na `ReceitaArrecadada` seria 1:1 — e mentiria sobre os dois casos.
+/// É o precedente da operação composta da dívida ativa (uma guia, N dívidas).
+///
+/// ⚠️ NÃO HÁ ESTORNO AQUI, E É DE PROPÓSITO: quando a arrecadação é ANULADA, o vínculo dela
+/// simplesmente PARA DE CONTAR — a soma do saldo só olha vínculos de arrecadações VIVAS. É a
+/// mesma disciplina do `packages/estornaveis`: não se apaga o fato, deriva-se em cima dele. Zero
+/// escrita para desfazer, e nada a divergir.
+model VinculoArrecadacaoReconhecimento {
+  id String @id @default(cuid())
+
+  arrecadacaoId String
+  arrecadacao   ReceitaArrecadada @relation(fields: [arrecadacaoId], references: [id])
+
+  reconhecimentoId String
+  reconhecimento   ReceitaReconhecida @relation(fields: [reconhecimentoId], references: [id])
+
+  /// Quanto DESTA guia baixou DESTE reconhecimento. Σ (por reconhecimento) <= saldo dele.
+  valor Decimal @db.Decimal(18, 2)
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  /// Uma guia baixa um reconhecimento UMA vez (o valor é um só; para baixar mais, outra guia).
+  @@unique([arrecadacaoId, reconhecimentoId])
+  @@index([reconhecimentoId])
+}
+
+/// A RECLASSIFICAÇÃO — o crédito a receber que virou DÍVIDA ATIVA. Fecha a pendência do bloco 6.
+///
+/// ⚠️ E ELA **NÃO GERA VPA**. O crédito já foi reconhecido (a VPA nasceu no fato gerador); o que
+/// a inscrição faz é MOVER o ativo de lugar: D dívida ativa × C crédito a receber. Lançar VPA de
+/// novo aqui contaria a mesma receita duas vezes — e era exatamente esse o buraco que o bloco 6
+/// deixou nomeado.
+///
+/// (Sem reconhecimento prévio, a inscrição segue como sempre: D dívida ativa × C VPA. São dois
+/// caminhos, e o parâmetro `reconhecimentoId` é que escolhe — ver `inscreverDividaAtiva`.)
+model InscricaoDeReconhecimento {
+  id String @id @default(cuid())
+
+  reconhecimentoId String
+  reconhecimento   ReceitaReconhecida @relation(fields: [reconhecimentoId], references: [id])
+
+  /// O movimento de INSCRICAO (M10) que reclassificou este crédito. 1-1.
+  movimentoDividaAtivaId String               @unique
+  movimentoDividaAtiva   MovimentoDividaAtiva @relation(fields: [movimentoDividaAtivaId], references: [id])
+
+  valor Decimal @db.Decimal(18, 2)
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  @@index([reconhecimentoId])
+}
+
+/// O CANCELAMENTO — a receita que MORREU depois de ter nascido. **VPD, não estorno.**
+///
+/// Anistia, remissão, prescrição: o crédito existiu (e a VPA daquele mês foi verdadeira), e
+/// depois se perdeu. A perda é uma VARIAÇÃO DIMINUTIVA — D VPD × C crédito a receber —, e é ela
+/// que revela a RENÚNCIA FISCAL do município.
+///
+/// Estornar, aqui, seria apagar da história a renúncia: a VPA de janeiro sumiria, e o município
+/// pareceria nunca ter tido aquele crédito. O TCE pergunta "quanto o ente perdoou este ano?", e
+/// só o cancelamento por VPD responde.
+model CancelamentoDeReconhecimento {
+  id String @id @default(cuid())
+
+  reconhecimentoId String
+  reconhecimento   ReceitaReconhecida @relation(fields: [reconhecimentoId], references: [id])
+
+  /// Parcial é legítimo: anistia-se parte de um crédito.
+  valor  Decimal @db.Decimal(18, 2)
+  /// Obrigatório (Zod, mín. 10). "Prescrição", "anistia da Lei X" — é o que o TCE vai ler.
+  motivo String
+
+  lancamentoId String             @unique
+  lancamento   LancamentoContabil @relation(fields: [lancamentoId], references: [id])
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  @@index([reconhecimentoId])
+}

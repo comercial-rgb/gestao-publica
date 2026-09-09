@@ -1,0 +1,215 @@
+// ============================================================================
+// M08 — exercício, encerramento e restos a pagar (Lei 4.320/64, art. 36; MCASP).
+//
+// APPEND-ONLY em tudo. Estado DERIVADO: não existe coluna `status` no exercício.
+// "Está encerrado?" = existe um EncerramentoExercicio apontando para ele.
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// Exercicio — o ano financeiro. SEM coluna `status`.
+//
+// POR QUE NÃO HÁ FK DAS DEMAIS TABELAS PARA CÁ:
+// o ano já vive como `exercicio Int` na FichaOrcamentaria, na ReceitaPrevista, na
+// ReceitaArrecadada e na DisponibilidadeRecursoNovo, e como `ano Int` na
+// LeiCredito e no DecretoCredito. Trocar tudo isso por FK NOT NULL seria uma
+// migração destrutiva em 6 tabelas — e não compraria nada: `ano` já é a chave
+// natural, e é por ela que os guards resolvem o exercício. A integridade que
+// importa (não operar em exercício inexistente ou encerrado) é imposta pelos
+// guards, com fail-closed.
+// ----------------------------------------------------------------------------
+
+model Exercicio {
+  id  String @id @default(cuid())
+  ano Int    @unique
+
+  encerramento EncerramentoExercicio?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+// ----------------------------------------------------------------------------
+// EncerramentoExercicio — o FATO "este exercício foi encerrado". APPEND-ONLY.
+//
+// `exercicioId @unique` já garante "1 encerramento por exercício", e o Prisma
+// expressa isso perfeitamente. NÃO foi para prisma/sql/ de propósito: aquela
+// pasta existe para o que o Prisma NÃO consegue expressar (índices PARCIAIS, com
+// WHERE). Aqui não há WHERE — pôr um índice manual seria repetir o padrão sem o
+// motivo dele.
+// ----------------------------------------------------------------------------
+
+model EncerramentoExercicio {
+  id          String    @id @default(cuid())
+  exercicioId String    @unique
+  exercicio   Exercicio @relation(fields: [exercicioId], references: [id])
+
+  encerradoPor String
+  criadoEm     DateTime @default(now())
+}
+
+// ----------------------------------------------------------------------------
+// RESTOS A PAGAR (Lei 4.320/64, art. 36).
+//
+// PROCESSADO      = liquidado e NÃO pago no encerramento.
+// NAO_PROCESSADO  = empenhado e NÃO liquidado no encerramento.
+// Um empenho pode gerar AS DUAS inscrições (a parte liquidada e a que não foi).
+//
+// RP NÃO CONSOME DOTAÇÃO DO EXERCÍCIO CORRENTE: nenhuma operação de RP toca
+// MovimentoDotacao. O saldo de RP tem o seu próprio razão (MovimentoRestosAPagar).
+// ----------------------------------------------------------------------------
+
+enum TipoRestosAPagar {
+  PROCESSADO
+  NAO_PROCESSADO
+}
+
+enum TipoMovimentoRestosAPagar {
+  PAGAMENTO
+  CANCELAMENTO
+  /// Estorno de um PAGAMENTO. DEVOLVE saldo à inscrição. Sem ele, anular um
+  /// pagamento de RP deixaria o movimento original órfão e o saldo ficaria
+  /// errado PARA MENOS: o sistema acharia que pagou algo que foi desfeito.
+  ESTORNO_PAGAMENTO
+
+  /// Estorno de um CANCELAMENTO. DEVOLVE saldo à inscrição. Sem ele, um
+  /// cancelamento feito por engano seria IRREVERSÍVEL — a obrigação com o
+  /// credor teria sido extinta no sistema sem ter sido extinta na vida.
+  ESTORNO_CANCELAMENTO
+}
+
+model InscricaoRestosAPagar {
+  id        String  @id @default(cuid())
+  empenhoId String
+  empenho   Empenho @relation(fields: [empenhoId], references: [id])
+
+  /// Ano do exercício em que a despesa foi empenhada.
+  exercicioOrigem Int
+  tipo            TipoRestosAPagar
+
+  /// Calculado por SUM NO MOMENTO DA INSCRIÇÃO, dentro da transação do
+  /// encerramento. NUNCA digitado — é o retrato do saldo naquele instante.
+  valorInscrito Decimal @db.Decimal(18, 2)
+
+  movimentos MovimentoRestosAPagar[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  /// Um empenho gera NO MÁXIMO uma inscrição de cada tipo por exercício.
+  @@unique([empenhoId, exercicioOrigem, tipo], name: "uq_inscricao_rp")
+  @@index([exercicioOrigem, tipo])
+  @@index([empenhoId])
+}
+
+/// O razão do saldo de RP. APPEND-ONLY.
+/// saldo = valorInscrito − SUM(movimentos). Sempre por SUM, nunca por coluna.
+model MovimentoRestosAPagar {
+  id          String                @id @default(cuid())
+  inscricaoId String
+  inscricao   InscricaoRestosAPagar @relation(fields: [inscricaoId], references: [id])
+
+  tipo  TipoMovimentoRestosAPagar
+  /// SEMPRE positivo. O SINAL vem do tipo:
+  ///   PAGAMENTO, CANCELAMENTO  -> REDUZEM o saldo
+  ///   ESTORNO_PAGAMENTO        -> DEVOLVE saldo
+  valor Decimal                   @db.Decimal(18, 2)
+
+  /// Referências contábeis do fato que gerou o movimento.
+  lancamentoId String?
+  lancamento   LancamentoContabil? @relation(fields: [lancamentoId], references: [id])
+  pagamentoId  String?
+  pagamento    Pagamento?          @relation(fields: [pagamentoId], references: [id])
+
+  /// APPEND-ONLY: o ESTORNO_PAGAMENTO referencia o PAGAMENTO que ele desfaz.
+  /// O original NUNCA é alterado nem apagado.
+  estornoDeId String?
+  estornoDe   MovimentoRestosAPagar?  @relation("EstornoMovRP", fields: [estornoDeId], references: [id])
+  estornos    MovimentoRestosAPagar[] @relation("EstornoMovRP")
+
+  motivo String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([inscricaoId, tipo])
+  @@index([lancamentoId])
+  @@index([estornoDeId])
+}
+
+// ----------------------------------------------------------------------------
+// RoteiroEncerramento — a conta de RESULTADOS ACUMULADOS, por PARÂMETRO.
+//
+// A apuração do resultado (MCASP) zera as classes 3 e 4 contra o Patrimônio
+// Líquido. QUAL conta do PL recebe o resultado é dado do ente — nunca um código
+// inventado. Sem roteiro, a apuração LANÇA (padrão do RoteiroPatrimonial do M10).
+// ----------------------------------------------------------------------------
+
+model RoteiroEncerramento {
+  id    String @id @default(cuid())
+  /// Singleton: só existe um roteiro de encerramento por ente.
+  chave String @unique @default("PADRAO")
+
+  contaResultadosAcumuladosId String
+  contaResultadosAcumulados   ContaPcasp @relation("ResultadosAcumulados", fields: [contaResultadosAcumuladosId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+// ----------------------------------------------------------------------------
+// A VIRADA DAS CONTAS DE CONTROLE ORÇAMENTÁRIO (classes 5 e 6).
+//
+// A apuração acima zera as classes 3 e 4. Ela NÃO toca as 5/6 — e essa era a
+// pendência nomeada em eada7b5: a dotação inicial, o crédito disponível e o
+// empenhado seguiam acumulando entre exercícios, e o `beginning_balance` da MSC
+// de janeiro trazia o orçamento que já tinha acabado.
+//
+// ═══ POR QUE UMA TABELA, E NÃO UM `Record` NO CÓDIGO ═══
+// O Record exaustivo é a ferramenta certa quando o conjunto é FECHADO e o
+// compilador pode cobrar (é o caso do `TipoMovimentoDotacao`). O PLANO DE CONTAS
+// não é fechado: ele é do ENTE, entra por INSERT, e cresce sem recompilar nada.
+// Um Record de códigos de conta seria uma lista que envelhece em silêncio — a
+// conta 6 nova do ente cairia num `undefined` e o encerramento a puliria.
+//
+// FAIL-CLOSED, então, em tempo de EXECUÇÃO: conta de controle COM SALDO e SEM
+// destino classificado = a operação INTEIRA cai, nomeando a conta e o saldo. É a
+// mesma escolha do RoteiroOrcamentario (M05): sem parâmetro, não se grava.
+//
+// ═══ OS DOIS DESTINOS ═══
+//   ENCERRA    o saldo MORRE em 31/12 (a autorização orçamentária é anual —
+//              art. 165 CF; o crédito não empenhado caduca — art. 167, II).
+//   TRANSFERE  o saldo ATRAVESSA a virada, e não há NADA a lançar: ele já está
+//              lá. O caso canônico é o controle de RESTOS A PAGAR (5.3/6.3): o
+//              RP inscrito não morre com o ano — é justamente o que sobrevive
+//              a ele.
+//
+// ⚠️ E O ESPELHO: as classes 5 e 6 são a MESMA moeda em duas faces (a 5 diz "de
+// onde vem", a 6 diz "em que estado está"), e por isso o lançamento de
+// encerramento FECHA SOZINHO — sem conta de plug, ao contrário da apuração, que
+// precisa do PL. A consequência é uma rede DE GRAÇA: classificar UMA perna de um
+// par como TRANSFERE e a outra como ENCERRA desequilibra o lançamento, e o motor
+// do M01 o recusa. Uma conta 6 só transfere EM PAR com a sua 5.
+// ----------------------------------------------------------------------------
+
+enum DestinoNaVirada {
+  ENCERRA
+  TRANSFERE
+}
+
+model ContaNaVirada {
+  id String @id @default(cuid())
+
+  /// UMA classificação por conta — a unicidade é do banco, não de um `if`.
+  contaId String     @unique
+  conta   ContaPcasp @relation("DestinoNaVirada", fields: [contaId], references: [id])
+
+  destino DestinoNaVirada
+
+  /// ⚠️ A JUSTIFICATIVA É OBRIGATÓRIA, e ela vai para a mensagem de erro e para o
+  /// histórico do lançamento. Um destino sem razão escrita é um chute com força de
+  /// norma — e quem auditar em 2030 vai perguntar por que a dotação morreu e o RP não.
+  justificativa String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

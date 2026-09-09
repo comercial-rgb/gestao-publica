@@ -1,0 +1,45 @@
+// ============================================================================
+// M20 — importadores de arquivo externo (folha e tributário). TR 7.10-7.11 / 5.80.
+//
+// O ARQUIVO NÃO É O FATO. O importador lê, valida e PROPÕE; quem grava são os
+// serviços REAIS do domínio (M05 empenho/liquidação/pagamento, M07 retenção,
+// M04 arrecadação) — o importador nunca escreve razão por conta própria.
+//
+// IDEMPOTÊNCIA PELO HASH DA ORIGEM, mesmo padrão do extrato bancário (M09):
+// reimportar o MESMO arquivo é recusa NOMEADA, nunca duplicação silenciosa.
+//
+// ⚠️ O LAYOUT É PARAMETRIZÁVEL. Não existe layout oficial de folha do município
+// (é insumo do ente): o mapa de colunas vive em configuração (como o SPEC_BB e a
+// registry do SAGRES), e a POC usa uma fixture SINTÉTICA claramente identificada.
+// APPEND-ONLY: sem updatedAt, sem deletedAt.
+// ============================================================================
+
+enum TipoImportacao {
+  FOLHA
+  TRIBUTOS
+}
+
+/// O REGISTRO da importação — a trilha (quem, quando, qual arquivo) e a trava de
+/// idempotência. Uma linha por arquivo efetivamente confirmado.
+model ImportacaoArquivo {
+  id   String         @id @default(cuid())
+  tipo TipoImportacao
+
+  /// sha256 do CONTEÚDO do arquivo. É a trava: reimportar o mesmo = recusa nomeada.
+  arquivoHash String @unique
+  nomeArquivo String
+
+  /// Quantas linhas de dado o arquivo trouxe (após o cabeçalho).
+  linhas Int
+  /// Quantos fatos o lote gerou (empenhos+liquidações+pagamentos, ou guias).
+  fatosGerados Int
+
+  /// A correlação da operação, para casar a trilha com o RegistroDeOperacao (TR 4.12.2).
+  correlationId String @unique
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([tipo])
+  @@index([criadoEm])
+}

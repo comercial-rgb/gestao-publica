@@ -1,0 +1,10 @@
+{
+  "name": "@siafic/tribunais-core",
+  "version": "1.0.0",
+  "description": "Porta de Tribunal de Contas: contrato, registro de tribunais e executor de exportacao.",
+  "type": "module",
+  "main": "index.ts",
+  "types": "index.ts",
+  "private": true,
+  "license": "ISC"
+}

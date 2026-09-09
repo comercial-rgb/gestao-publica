@@ -1,0 +1,31 @@
+/// ═══════════════════════════════════════════════════════════════════════════════════════
+/// M12 — CONTRATO DE PPP (RREO Anexo 13). Lei 11.079/2004 · MDF 15ª ed.
+///
+/// ⚠️ ESQUELETO HONESTO. Campina Grande NÃO tem PPP ativa hoje. Esta tabela é o MÍNIMO para o
+/// Anexo 13 existir sem inventar: identificação, objeto, vigência e os dois valores que o teto de
+/// 5% da RCL (Lei 11.079 art. 28) precisa. O LAYOUT COMPLETO da Tabela 13 da 15ª ed. (as várias
+/// linhas de ativos/passivos/garantias e o fluxo plurianual) é PENDÊNCIA DE DADO nomeada no
+/// MODULO — ele entra quando houver um contrato real para modelá-lo contra, não reconstruído de
+/// memória. O demonstrativo mostra o que está DECLARADO aqui, e diz o que falta.
+model ContratoPPP {
+  id String @id @default(cuid())
+
+  numero String
+  objeto String
+  /// O parceiro privado (a concessionária).
+  parceiroPrivado String
+
+  vigenciaInicio DateTime
+  vigenciaFim    DateTime
+
+  /// O valor global do contrato.
+  valorGlobal Decimal @db.Decimal(18, 2)
+
+  /// A CONTRAPRESTAÇÃO ANUAL — a despesa de caráter continuado que conta no teto de 5% da RCL.
+  contraprestacaoAnual Decimal @db.Decimal(18, 2)
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  @@index([vigenciaInicio, vigenciaFim])
+}

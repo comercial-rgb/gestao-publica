@@ -1,0 +1,88 @@
+// ============================================================================
+// _base.prisma — datasource, generator e infraestrutura de integração.
+// REGRA DE OURO: dinheiro NUNCA é Float. Sempre Decimal @db.Decimal(18,2).
+// Alíquotas/índices: Decimal @db.Decimal(9,6).
+// Models de negócio NÃO entram aqui — cada módulo (M01–M18) traz o seu .prisma.
+// ============================================================================
+
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/client"
+
+  // ⚠️ NodeNext (tsconfig.backend.json, o gate dos 815) exige extensão explícita nos imports
+  // relativos. Sem isto o gerador emite `import ... from "./enums"` (sem extensão), o NodeNext
+  // não resolve, os enums colapsam para `{}` e o backend tsc explode (~557 erros). Fixado.
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+// ----------------------------------------------------------------------------
+// Enums globais de integração
+// ----------------------------------------------------------------------------
+
+enum FonteIntegracao {
+  BANCO_DO_BRASIL
+  TCE_PB
+  EFD_REINF
+  ESOCIAL
+  TRIBUTARIO
+  FOLHA
+}
+
+enum StatusInbox {
+  RECEBIDO
+  PROCESSADO
+  ERRO
+  IGNORADO
+}
+
+enum StatusOutbox {
+  PENDENTE
+  ASSINADO
+  TRANSMITIDO
+  ACEITO
+  REJEITADO
+}
+
+// ----------------------------------------------------------------------------
+// Inbox de integração: toda entrada externa passa por aqui.
+// Idempotência garantida por @@unique([fonte, chaveIdemp]) — INVARIANTE 3.
+// ----------------------------------------------------------------------------
+
+model IntegracaoInbox {
+  id           String          @id @default(uuid())
+  fonte        FonteIntegracao
+  tipoEvento   String
+  chaveIdemp   String
+  payloadRaw   Json
+  status       StatusInbox     @default(RECEBIDO)
+  erro         String?
+  processadoEm DateTime?
+  recebidoEm   DateTime        @default(now())
+
+  @@unique([fonte, chaveIdemp])
+  @@index([fonte, status])
+}
+
+// ----------------------------------------------------------------------------
+// Outbox de eventos fiscais: toda saída (ex.: R-2010, S-1200) passa por aqui.
+// Idempotência garantida por @@unique([destino, chaveIdemp]) — INVARIANTE 3.
+// ----------------------------------------------------------------------------
+
+model EventoFiscalOutbox {
+  id         String          @id @default(uuid())
+  destino    FonteIntegracao
+  tipoEvento String
+  chaveIdemp String
+  payloadRaw Json
+  status     StatusOutbox    @default(PENDENTE)
+  protocolo  String?
+  erro       String?
+  criadoEm   DateTime        @default(now())
+
+  @@unique([destino, chaveIdemp])
+}

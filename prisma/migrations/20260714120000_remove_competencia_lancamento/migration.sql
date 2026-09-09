@@ -1,0 +1,54 @@
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- MIGRAÇÃO DESTRUTIVA — remove `LancamentoContabil.competencia`.
+--
+-- ⚠️ MANUAL, E EM MIGRAÇÃO SEPARADA (padrão da casa). O `migrate dev` recusaria o DROP com
+-- P3015 / aviso de perda de dados; o SQL abaixo saiu de
+-- `prisma migrate diff --from-config-datasource --to-schema prisma/schema --script`,
+-- foi lido, e é exatamente o que se pretende.
+--
+-- ═══ POR QUE A COLUNA MORRE — E A VERIFICAÇÃO QUE AUTORIZOU O DROP ═══
+--
+-- Ela era uma SEGUNDA COMPETÊNCIA DORMENTE:
+--
+--   1. TODO ESTORNO A HERDAVA. `packages/ledger/estorno.ts` fazia
+--      `competencia: params.competenciaEstorno ?? original.competencia` — em `gerarEstorno` E
+--      em `gerarAnulacaoParcial`. ~20 pontos (M01, M04, M05, M07, M08, M10) carregavam a
+--      competência do original para o estorno.
+--
+--   2. ELA DIVERGIA da `dataTransacao`. Rodado contra o banco de verdade (498de7b):
+--        2026NL000099   dataTransacao=2026-07-05   competencia=2026-07-01   <<< DIVERGEM
+--
+--   3. E NINGUÉM A LIA. GREP FINAL (o que autorizou este DROP): ZERO `where`, ZERO `orderBy`,
+--      ZERO `groupBy`, ZERO filtro por `LancamentoContabil.competencia`, em produção E em
+--      teste. Todo corte deste repositório é por `dataTransacao` (o travamento do M16 — ver
+--      `guard.ts`) ou por `criadoEm` (o encerramento do M08). MSC, MANAD, DVP, balanços e os
+--      datasets do M13 NÃO a emitem. Os ~20 `select: { competencia: true }` que existiam a
+--      liam APENAS para reescrevê-la no estorno — o laço fechado, sem consumidor.
+--
+--   4. O `competenciaEstorno` (o parâmetro que prometia "fazer o estorno cair na competência
+--      aberta") NUNCA foi passado por ninguém em produção. Ele morre junto.
+--
+-- ⚠️ UMA COLUNA QUE SÓ SE ESCREVE, E QUE DIVERGE, É UMA MINA ARMADA PARA O PRIMEIRO LEITOR
+-- INGÊNUO. O dia em que alguém escrevesse `where: { competencia: ... }` acreditando nela, o
+-- estorno de janeiro apareceria em dezembro — e o relatório fecharia, plausível e errado. É
+-- pior do que não ter competência nenhuma: é ter uma que MENTE, com cara de verdade.
+--
+-- ═══ A ROTA: A COMPETÊNCIA DE VERDADE RENASCE NO 5.87/5.88 ═══
+-- Isto NÃO é a desistência da competência contábil (o regime de competência, NBC TSP — a
+-- despesa pertence ao mês do FATO GERADOR, não ao do pagamento). É a remoção de um campo que
+-- não a implementava.
+--
+-- Quando o 5.87/5.88 chegar, ela nasce na ENTIDADE DONA DO FATO (a liquidação tem a sua; o
+-- movimento patrimonial JÁ TEM a dele — ver `MovimentoPatrimonial.competencia`, que é legítima
+-- e continua intacta), COM LEITOR NOMEADO no mesmo commit. Coluna sem leitor não entra.
+--
+-- HISTÓRICO: a4f2bd6 afirmou "escrita e nunca lida" · 498de7b desmentiu a afirmação (achou a
+-- herança nos estornos e a divergência no banco) e CANCELOU a remoção · este commit a remove,
+-- agora com a verificação feita. Ver `modules/m01-core-contabil/MODULO.md`.
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+
+-- DropIndex
+DROP INDEX "LancamentoContabil_competencia_idx";
+
+-- AlterTable
+ALTER TABLE "LancamentoContabil" DROP COLUMN "competencia";

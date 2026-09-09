@@ -1,0 +1,351 @@
+// ============================================================================
+// M02 — planejamento: FICHA ORÇAMENTÁRIA (dotação) + RECEITA PREVISTA.
+//
+// Abordagem HÍBRIDA: núcleo conceitual MCASP com os campos do layout SAGRES-PB
+// (TCE-PB) já embutidos, para que gerar Dotacao.txt / ReceitaPrevista.txt seja
+// um SELECT direto, sem tradução.
+//
+// A FICHA é a unidade: os componentes da classificação compõem UMA
+// FichaOrcamentaria, e a PartidaContabil referencia a ficha por `fichaId`
+// (coluna ADITIVA e nullable no M01 — ver m01-core-contabil.prisma).
+//
+// Saldo / reserva / empenhado NÃO moram aqui (são M05). A ficha guarda só a
+// estrutura classificatória + o valor DOTADO (fixado pela LOA).
+// REGRA DE OURO: dinheiro é Decimal @db.Decimal(18,2). Nunca Float.
+// ============================================================================
+
+enum TipoAcao {
+  PROJETO
+  ATIVIDADE
+  OPERACAO_ESPECIAL
+}
+
+/// Tipo de receita CONCEITUAL (MCASP) — estável, é a regra de negócio.
+/// DESACOPLADO do código do TCE de propósito: o SAGRES já redefiniu códigos no
+/// passado (TipoMeta virou NaturezaContratacao; tipoFonteRecurso virou 2 campos).
+/// Amarrar a regra de negócio ao número do TCE transforma cada mudança do TCE em
+/// migração de dados. A tradução vive em `TipoReceitaSagres` (de-para), usada só
+/// na EXPORTAÇÃO. Mesmo padrão de CodigoAcompanhamento/coId e
+/// FonteRecurso.codigoTce/codigoStn.
+enum TipoReceita {
+  ORCAMENTARIA
+  INTRA_ORCAMENTARIA
+  DEDUCAO
+}
+
+// ----------------------------------------------------------------------------
+// Tabelas de domínio da classificação. Cada uma: código + descrição + de-para.
+// ----------------------------------------------------------------------------
+
+/// Órgão = os 2 PRIMEIROS DÍGITOS da UO (padrão brasileiro: UO = ÓÓUUU).
+/// Daí a largura fixa: ela habilita o invariante `orgao.codigo == UO.codigo[0:2]`,
+/// aplicado no domínio (fail-closed, antes de qualquer I/O).
+model Orgao {
+  id     String @id @default(cuid())
+  codigo String @unique @db.VarChar(2)
+  nome   String
+
+  unidades UnidadeOrcamentaria[]
+  fichas   FichaOrcamentaria[]
+  /// back-relation M11 (obras — TR 4.50) — campo VIRTUAL, não gera coluna.
+  obras    Obra[]
+}
+
+model UnidadeOrcamentaria {
+  id        String @id @default(cuid())
+  /// SAGRES-PB: 5 dígitos.
+  codigo    String @unique @db.VarChar(5)
+  descricao String
+  orgaoId   String
+  orgao     Orgao  @relation(fields: [orgaoId], references: [id])
+
+  // ── ADITIVO MANAD (registro L400) ─────────────────────────────────────────
+  //
+  /// TIP_UN_ORC (L400 campo 06): 01-Prefeitura / 02-Câmara / 03-Sec. Educação /
+  /// 04-Sec. Saúde / 05-RPPS (exceto Autarquia) / 06-Autarquia (exceto RPPS) /
+  /// 07-Autarquia (RPPS) / 08-Fundação / 09-Empresa Estatal Dependente /
+  /// 10-Empresa Estatal não Dependente / 11-Consórcio / 12-Outras.
+  ///
+  /// ⚠️ ELE MORA NA **UNIDADE**, E NÃO NO `EnteConfig` — E A DIFERENÇA É REAL.
+  /// A tentação é pôr o tipo como parâmetro único do ente ("somos uma prefeitura").
+  /// Mas o leiaute o coloca no L400, que é POR UNIDADE — e com razão: um mesmo ente
+  /// tem a Prefeitura (01), a Secretaria de Educação (03), a de Saúde (04) e o RPPS
+  /// (05) como unidades DIFERENTES. Um parâmetro no ente carimbaria "01" em todas, e
+  /// a Receita — que usa exatamente este campo para saber onde procurar a retenção
+  /// previdenciária — receberia o RPPS declarado como prefeitura.
+  ///
+  /// NULLABLE (aditivo, sem backfill): o gerador do MANAD é FAIL-CLOSED e recusa a
+  /// unidade sem tipo, nomeando-a. Quem não gera MANAD não é afetado.
+  tipoManad String? @db.VarChar(2)
+
+  /// CNPJ da unidade (L400 campo 07), 14 dígitos sem máscara. Nem toda unidade tem
+  /// CNPJ próprio — vazio quando não tem (3.1.9).
+  cnpjManad String? @db.VarChar(14)
+
+  fichas FichaOrcamentaria[]
+  /// back-relation M16 (permissões por unidade gestora — 6.5) — campo VIRTUAL.
+  permissoesManad PermissaoDePerfil[]
+
+  @@index([orgaoId])
+}
+
+/// Portaria STN 42/1999.
+model Funcao {
+  id     String @id @default(cuid())
+  codigo String @unique @db.VarChar(2)
+  nome   String
+
+  fichas FichaOrcamentaria[]
+}
+
+/// Portaria STN 42/1999.
+model Subfuncao {
+  id     String @id @default(cuid())
+  codigo String @unique @db.VarChar(3)
+  nome   String
+
+  fichas FichaOrcamentaria[]
+}
+
+model Programa {
+  id                  String  @id @default(cuid())
+  codigo              String  @unique @db.VarChar(4)
+  descricao           String
+  objetivo            String?
+  /// Código do Objetivo do Milênio (SAGRES). String para preservar zeros à esquerda.
+  tipoObjetivoMilenio String?
+
+  fichas FichaOrcamentaria[]
+}
+
+model Acao {
+  id        String   @id @default(cuid())
+  codigo    String   @unique @db.VarChar(4)
+  descricao String
+  tipo      TipoAcao
+
+  /// TIP_PROJ_ATIV_OE (L650 campo 05): 01-RPPS / 02-Demais Proj/Ativ/Operações Especiais.
+  ///
+  /// ⚠️ NÃO É DERIVÁVEL DO `tipo` — e é por isso que é coluna. O `TipoAcao` do repositório
+  /// diz PROJETO/ATIVIDADE/OPERACAO_ESPECIAL (a classificação da Portaria 42); o MANAD
+  /// pergunta OUTRA coisa: "esta ação é do RPPS?". Um projeto pode ser do RPPS e uma
+  /// atividade também. Derivar "02" de "não é RPPS porque o tipo não diz" seria assumir
+  /// que o ente não tem regime próprio — exatamente o dado que a Receita veio conferir.
+  ///
+  /// NULLABLE (aditivo). O gerador é fail-closed e nomeia a ação sem tipo.
+  tipoManad String? @db.VarChar(2)
+
+  fichas FichaOrcamentaria[]
+}
+
+/// Natureza da despesa = 4 COMPONENTES (STN / Portaria 163), não uma FK única.
+/// `codigoCompleto` é a concatenação dos 4 — derivado, e o domínio verifica a
+/// coerência (fail-closed) para que ele nunca divirja das partes.
+model NaturezaDespesa {
+  id             String  @id @default(cuid())
+  codCategoria   String  @db.VarChar(1)
+  codNatureza    String  @db.VarChar(1)
+  codModalidade  String  @db.VarChar(2)
+  codElemento    String  @db.VarChar(2)
+  codigoCompleto String  @unique @db.VarChar(6)
+  descricao      String
+  mapeamentoStn  String?
+
+  // ── ADITIVO MANAD (registro L700 — a RUBRICA da despesa) ──────────────────
+  //
+  /// IND_TIPO_CONTA (L700 campo 05): S-sintética / A-analítica.
+  /// NM_NIVEL_CONTA (L700 campo 06): o nível dela na hierarquia da despesa.
+  ///
+  /// ⚠️ POR QUE SÃO COLUNAS, E NÃO DERIVAÇÃO DO CÓDIGO. A tentação é deduzir ("tem 6
+  /// dígitos, logo é analítica de nível 4"). Isso é INVENTAR a hierarquia: o plano de
+  /// despesa do ente é DADO dele, e a Receita compara este campo com o balancete que o
+  /// ente já lhe entrega por outras vias. Um "A" deduzido onde o ente classifica "S"
+  /// põe duas verdades sobre a mesma rubrica em dois arquivos fiscais.
+  ///
+  /// NULLABLE (aditivo, sem backfill). O gerador do MANAD é FAIL-CLOSED: rubrica com
+  /// movimento e sem estes campos derruba a geração, nomeando a rubrica.
+  indTipoContaManad String? @db.VarChar(1)
+  nivelContaManad   Int?
+
+  subelementos Subelemento[]
+  fichas       FichaOrcamentaria[]
+
+  @@unique([codCategoria, codNatureza, codModalidade, codElemento], name: "uq_natureza_componentes")
+}
+
+/// Aparece no EMPENHO (M05) — modelado já para não migrar depois.
+model Subelemento {
+  id         String          @id @default(cuid())
+  codigo     String          @db.VarChar(3)
+  descricao  String
+  naturezaId String
+  natureza   NaturezaDespesa @relation(fields: [naturezaId], references: [id])
+
+  // back-relation M05 — campo VIRTUAL, não gera coluna.
+  empenhos Empenho[]
+
+  @@unique([naturezaId, codigo])
+  @@index([naturezaId])
+}
+
+/// De-para TCE <-> STN embutido: exportar para o SAGRES ou para o SICONFI é
+/// escolher a coluna, não traduzir.
+model FonteRecurso {
+  id              String  @id @default(cuid())
+  codigo          String  @unique @db.VarChar(3)
+  descricao       String
+  codigoTce       String
+  codigoStn       String?
+  /// 1 = exercício atual, 2 = exercício anterior.
+  exercicioPadrao Int     @default(1)
+
+  fichas            FichaOrcamentaria[]
+  receitasPrevistas ReceitaPrevista[]
+  // back-relations M04/M05 — campos VIRTUAIS, não geram coluna.
+  receitasArrecadadas ReceitaArrecadada[]
+  pagamentos          Pagamento[]
+  contasBancarias     ContaBancaria[]
+  // back-relations M03 — campos VIRTUAIS, não geram coluna.
+  itensCredito        ItemCredito[]
+  disponibilidades    DisponibilidadeRecursoNovo[]
+  // back-relation M04 (TR 5.87) — reconhecimento pelo fato gerador. Campo VIRTUAL.
+  reconhecimentos     ReceitaReconhecida[]
+  // back-relations M02 (TR 4.18/4.43/4.44) — programação financeira. Campos VIRTUAIS.
+  cotasCmd            CotaCmd[]
+  metasMba           MetaMba[]
+  liberacoes         LiberacaoProgramacao[]
+}
+
+/// CO — Código de Acompanhamento da Execução (SAGRES-PB).
+/// Model renomeado de "CO" para nome legível: um model de 2 letras vira o
+/// acessor `prisma.cO`, ilegível para quem (humano ou IA) lê depois. O campo na
+/// ficha continua `coId`, preservando o vocabulário SAGRES onde ele importa.
+model CodigoAcompanhamento {
+  id        String @id @default(cuid())
+  codigo    String @unique @db.VarChar(4)
+  descricao String
+
+  fichas FichaOrcamentaria[]
+  // back-relation M04 — campo VIRTUAL, não gera coluna.
+  receitasArrecadadas ReceitaArrecadada[]
+}
+
+// ----------------------------------------------------------------------------
+// FICHA ORÇAMENTÁRIA — amarra os componentes REAIS do SAGRES-PB.
+// ----------------------------------------------------------------------------
+
+model FichaOrcamentaria {
+  id        String @id @default(cuid())
+  exercicio Int
+  numero    Int
+
+  orgaoId           String
+  orgao             Orgao                 @relation(fields: [orgaoId], references: [id])
+  unidadeOrcId      String
+  unidadeOrc        UnidadeOrcamentaria   @relation(fields: [unidadeOrcId], references: [id])
+  funcaoId          String
+  funcao            Funcao                @relation(fields: [funcaoId], references: [id])
+  subfuncaoId       String
+  subfuncao         Subfuncao             @relation(fields: [subfuncaoId], references: [id])
+  programaId        String
+  programa          Programa              @relation(fields: [programaId], references: [id])
+  acaoId            String
+  acao              Acao                  @relation(fields: [acaoId], references: [id])
+  naturezaDespesaId String
+  naturezaDespesa   NaturezaDespesa       @relation(fields: [naturezaDespesaId], references: [id])
+  fonteId           String
+  fonte             FonteRecurso          @relation(fields: [fonteId], references: [id])
+  /// Nem toda ficha tem CO — por isso nullable, e por isso FORA da unique.
+  coId              String?
+  co                CodigoAcompanhamento? @relation(fields: [coId], references: [id])
+
+  /// exercicioFonteRecurso do SAGRES: 1 = atual, 2 = anterior.
+  exercicioFonte Int     @default(1)
+  /// Valor FIXADO pela LOA. É a origem do movimento DOTACAO_INICIAL (M05).
+  valorDotado    Decimal @db.Decimal(18, 2)
+
+  // --- ADITIVO M05: colunas de saldo (CACHE, não fonte da verdade) -----------
+  // A fonte da verdade é MovimentoDotacao. Estas colunas SÓ são escritas como
+  // `coluna = SELECT SUM(MovimentoDotacao...)` dentro da MESMA transação que
+  // insere o movimento — NUNCA `saldo = saldo ± valor`.
+  // `reconciliarFicha()` compara cache vs SUM e tem de dar zero sempre.
+  saldoAutorizado Decimal @default(0) @db.Decimal(18, 2)
+  saldoReservado  Decimal @default(0) @db.Decimal(18, 2)
+  saldoEmpenhado  Decimal @default(0) @db.Decimal(18, 2)
+  /// autorizado − reservado − empenhado
+  saldoDisponivel Decimal @default(0) @db.Decimal(18, 2)
+
+  movimentos   MovimentoDotacao[]
+  reservas     ReservaDotacao[]
+  empenhos     Empenho[]
+  itensCredito ItemCredito[]
+  // ---------------------------------------------------------------------------
+
+  partidas PartidaContabil[]
+
+  @@unique([exercicio, numero])
+  // Chave do SAGRES-PB (tabela Dotacao). `coId` fica FORA de propósito: no
+  // Postgres, unique com coluna nullable trata NULLs como DISTINTOS entre si —
+  // duas fichas idênticas com co = NULL passariam pela constraint e furariam a
+  // integridade. Se o CO precisar entrar na unicidade, será via índice único
+  // parcial (padrão do projeto para o que o Prisma não expressa — ver M01).
+  @@unique([exercicio, unidadeOrcId, funcaoId, subfuncaoId, programaId, acaoId, naturezaDespesaId, exercicioFonte, fonteId], name: "uq_ficha_sagres")
+  @@index([exercicio])
+  @@index([orgaoId])
+  @@index([unidadeOrcId])
+  @@index([fonteId])
+}
+
+// ----------------------------------------------------------------------------
+// RECEITA PREVISTA (LOA).
+// ----------------------------------------------------------------------------
+
+/// Código de receita STN — 8 dígitos.
+model NaturezaReceita {
+  id            String  @id @default(cuid())
+  codigo        String  @unique @db.VarChar(8)
+  descricao     String
+  mapeamentoStn String?
+
+  /// ADITIVO MANAD (registro L200 — o balancete da receita, Anexo 10 da Lei 4.320).
+  /// IND_TIPO_CONTA S/A e NM_NIVEL_CONTA. Mesma razão da NaturezaDespesa: a hierarquia
+  /// é DADO do ente, não dedução do comprimento do código. Fail-closed no gerador.
+  indTipoContaManad String? @db.VarChar(1)
+  nivelContaManad   Int?
+
+  receitasPrevistas ReceitaPrevista[]
+  // back-relation M04 — campo VIRTUAL, não gera coluna.
+  receitasArrecadadas ReceitaArrecadada[]
+}
+
+/// DE-PARA tipo conceitual (MCASP) <-> código literal do SAGRES.
+///
+/// A `ReceitaPrevista` NÃO aponta para cá — ela guarda o enum `TipoReceita`.
+/// Esta tabela é consultada SÓ na exportação (join), de modo que uma
+/// renumeração do TCE seja um UPDATE de 3 linhas aqui, e não uma migração de
+/// dados em toda a base de receitas.
+model TipoReceitaSagres {
+  id           String      @id @default(cuid())
+  tipoInterno  TipoReceita @unique
+  /// Valor LITERAL do SAGRES (tabela 5.23 "TipoReceitaLancada").
+  /// PENDENTE DE DADO — ver MODULO.md. A estrutura está fechada.
+  codigoSagres String      @unique
+  descricao    String
+}
+
+model ReceitaPrevista {
+  id                String          @id @default(cuid())
+  exercicio         Int
+  naturezaReceitaId String
+  naturezaReceita   NaturezaReceita @relation(fields: [naturezaReceitaId], references: [id])
+  fonteId           String
+  fonte             FonteRecurso    @relation(fields: [fonteId], references: [id])
+  exercicioFonte    Int             @default(1)
+  /// Enum conceitual, NÃO FK. A tradução para o SAGRES é um join com
+  /// TipoReceitaSagres, feito só na exportação.
+  tipoReceita       TipoReceita
+  valorPrevisto     Decimal         @db.Decimal(18, 2)
+
+  @@unique([exercicio, naturezaReceitaId, exercicioFonte, fonteId, tipoReceita], name: "uq_receita_prevista")
+  @@index([exercicio])
+}

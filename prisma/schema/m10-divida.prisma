@@ -1,0 +1,146 @@
+// ============================================================================
+// M10 — DÍVIDA CONSOLIDADA / FUNDADA (TR 5.82, 4.64, 5.8, 4.48).
+//
+// APPEND-ONLY. O saldo da dívida NÃO é coluna: é Σ(valor × SINAL_MOVIMENTO_DIVIDA).
+// Uma coluna `saldoAtual` seria a segunda verdade — e o dia em que um estorno
+// esquecesse de atualizá-la, o ente amortizaria uma dívida que já não existe.
+//
+// ═══ ONDE CADA LANÇAMENTO CONTÁBIL É FEITO (derivado do MCASP, não inventado) ═══
+// A dívida NÃO tem um "roteiro de ingresso" nem um "roteiro de amortização", e a
+// razão é que os dois lançamentos JÁ SÃO FEITOS por quem é dono do fato:
+//
+//  · INGRESSO (operação de crédito) — é RECEITA ORÇAMENTÁRIA, e quem a contabiliza
+//    é o M04. No patrimonial ela é um fato PERMUTATIVO: entra dinheiro, nasce
+//    dívida (D caixa / C passivo). NÃO há VPA: o ente não ficou mais rico, ficou
+//    mais endividado. Como o roteiro da arrecadação já vem por PARÂMETRO, o ente
+//    aponta a perna credora dele para a CONTA DA DÍVIDA. Um roteiro próprio aqui
+//    creditaria o passivo UMA SEGUNDA VEZ.
+//
+//  · AMORTIZAÇÃO — é DESPESA ORÇAMENTÁRIA (grupo 6), e quem a contabiliza é o M05.
+//    Pagar principal também é PERMUTATIVO (D passivo / C caixa): não é VPD, o
+//    patrimônio líquido não muda. O roteiro da LIQUIDAÇÃO já vem por parâmetro —
+//    para um empenho do grupo 6 o ente aponta a perna da "variação diminutiva"
+//    para a CONTA DA DÍVIDA. O movimento aqui é o FATO e o VÍNCULO, não um segundo
+//    lançamento.
+//
+//  · ATUALIZAÇÃO MONETÁRIA — é o ÚNICO que não tem contrapartida orçamentária, e
+//    por isso é o único com `RoteiroDivida`: D VPD (variação monetária, 3.4.x) /
+//    C passivo. Aqui o patrimônio DIMINUI de verdade — a correção é despesa.
+//
+// A AMARRAÇÃO QUE ISSO CRIA: `saldoDaDivida` (Σ dos movimentos) tem de bater com o
+// saldo da CONTA CONTÁBIL da dívida no razão. Duas leituras independentes do mesmo
+// passivo — e o t1 as confronta.
+// ============================================================================
+
+/// MCASP: a dívida pública se divide por FORMA de contratação.
+enum TipoDivida {
+  /// Contratos de empréstimo/financiamento (bancos, organismos, União).
+  CONTRATUAL
+  /// Títulos emitidos pelo ente.
+  MOBILIARIA
+}
+
+model DividaConsolidada {
+  id            String     @id @default(cuid())
+  identificador String     @unique
+  credorNome    String
+  credorDocumento String
+  tipo          TipoDivida
+  /// A lei que autorizou a operação (art. 32 da LRF). Sem ela, não há dívida legal.
+  leiAutorizativa String
+  objeto          String
+
+  /// A conta de PASSIVO (classe 2) que esta dívida movimenta. Vem por PARÂMETRO,
+  /// como todo código contábil do projeto. É contra o saldo DELA que a Σ dos
+  /// movimentos é conferida.
+  contaContabilId String
+  contaContabil   ContaPcasp @relation("PassivoDaDivida", fields: [contaContabilId], references: [id])
+
+  movimentos MovimentoDivida[]
+  /// back-relation M05 (TR 4.48) — campo VIRTUAL, não gera coluna.
+  empenhos   Empenho[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([tipo])
+}
+
+/// Os SEIS tipos — os três fatos e os três estornos, desde o dia 1. A lição do
+/// 345af7d (M08): feature sem estorno é assimetria com prazo para virar bug.
+enum TipoMovimentoDivida {
+  INGRESSO_OPERACAO_CREDITO
+  ATUALIZACAO_MONETARIA
+  AMORTIZACAO
+  ESTORNO_INGRESSO_OPERACAO_CREDITO
+  ESTORNO_ATUALIZACAO_MONETARIA
+  ESTORNO_AMORTIZACAO
+}
+
+model MovimentoDivida {
+  id        String            @id @default(cuid())
+  dividaId  String
+  divida    DividaConsolidada @relation(fields: [dividaId], references: [id])
+
+  tipo  TipoMovimentoDivida
+  /// SEMPRE positivo. O sinal vem do tipo (SINAL_MOVIMENTO_DIVIDA).
+  valor Decimal             @db.Decimal(18, 2)
+
+  /// Obrigatória na ATUALIZACAO_MONETARIA (Zod): é ela que dá a IDEMPOTÊNCIA —
+  /// duas correções da mesma competência seriam a mesma correção duas vezes.
+  competencia DateTime?
+
+  /// A data do FATO (a assinatura do contrato, a data da correção, a do pagamento).
+  /// NUNCA `criadoEm`: recortar pela digitação faria a dívida de março, lançada em
+  /// maio, sumir do balanço de março (a lição do `campoData`, M09).
+  dataMovimento DateTime
+
+  /// TR 4.64 — o INGRESSO nasce de uma RECEITA ARRECADADA (a operação de crédito é
+  /// receita orçamentária). É este vínculo que mata o "dinheiro órfão" que o
+  /// superávit por fonte detectava: o caixa passa a ter um fato COM FONTE por trás.
+  receitaArrecadadaId String?
+  receitaArrecadada   ReceitaArrecadada? @relation(fields: [receitaArrecadadaId], references: [id])
+
+  /// A AMORTIZACAO nasce DENTRO do `pagar()` (M05), na mesma transação. Um movimento
+  /// com `pagamentoId` NÃO se estorna sozinho — estorna-se ANULANDO o pagamento
+  /// (a lição da retenção do M07: quem nasceu junto, morre junto).
+  pagamentoId String?
+  pagamento   Pagamento? @relation(fields: [pagamentoId], references: [id])
+
+  /// Só a ATUALIZACAO_MONETARIA tem lançamento PRÓPRIO (ver o cabeçalho): o
+  /// ingresso é contabilizado pelo M04 e a amortização pelo M05.
+  lancamentoId String?
+  lancamento   LancamentoContabil? @relation(fields: [lancamentoId], references: [id])
+
+  /// APPEND-ONLY. "Já estornado?" é DERIVADO de `estornos.length > 0`.
+  /// Unicidade no banco: prisma/sql/uq_estorno_divida_unico.sql.
+  estornoDeId String?
+  estornoDe   MovimentoDivida?  @relation("EstornoDivida", fields: [estornoDeId], references: [id])
+  estornos    MovimentoDivida[] @relation("EstornoDivida")
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([dividaId, tipo])
+  @@index([dataMovimento])
+  @@index([pagamentoId])
+  @@index([estornoDeId])
+}
+
+/// O roteiro contábil da dívida — TABELA, como todo roteiro do projeto (nenhuma
+/// conta mágica no código). Hoje só a ATUALIZACAO_MONETARIA precisa dele; se o
+/// PCASP real trouxer um lançamento próprio para outro tipo, ele entra por INSERT.
+model RoteiroDivida {
+  id   String              @id @default(cuid())
+  tipo TipoMovimentoDivida @unique
+
+  contaDebitoId String
+  contaDebito   ContaPcasp @relation("DebitoDivida", fields: [contaDebitoId], references: [id])
+  contaCreditoId String
+  contaCredito   ContaPcasp @relation("CreditoDivida", fields: [contaCreditoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

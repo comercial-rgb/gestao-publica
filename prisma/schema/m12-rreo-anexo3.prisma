@@ -1,0 +1,41 @@
+/// ═══════════════════════════════════════════════════════════════════════════════════════
+/// M12 — DE-PARA da RCL (RREO Anexo 3). LRF art. 53, I · MDF 15ª ed. · Portaria STN 710/2021.
+///
+/// ⚠️ ISTO É UM DE-PARA, e ele existe porque o RREO Anexo 3 tem SUB-LINHAS NOMEADAS que o código
+/// da natureza sozinho não dá: "Cota-Parte do FPM", "Cota-Parte do ICMS", "Dedução para o
+/// FUNDEB"... são rótulos do MDF, não da natureza. O de-para amarra `naturezaCodigo → chaveLinha`.
+///
+/// ═══ ⚠️ DUAS DISCIPLINAS, E A DIFERENÇA IMPORTA ═══
+///   · CORRENTES (a linha I): FAIL-OPEN. Uma natureza de categoria 1 SEM entrada aqui cai na
+///     "Outras/Outros da ORIGEM" dela (derivada pelo parser). É comportamento de DEMONSTRATIVO:
+///     o total das correntes não pode sumir só porque uma sub-linha não foi nomeada.
+///   · DEDUÇÕES (a linha II): FAIL-CLOSED. Uma dedução só entra se estiver mapeada AQUI. Uma
+///     dedução que "vazasse" para fail-open somaria no lugar errado e a RCL sairia MAIOR do que
+///     é — e a RCL é a base dos limites de pessoal e endividamento. Dedução sem mapa = a linha
+///     fica VAZIA e NOMEADA ("interruptor vazio"), nunca um zero silencioso.
+///
+/// ═══ ROL FECHADO CRESCE POR DECISÃO ═══
+/// Este de-para é SEEDED só com as naturezas que existem no repositório/fixtures hoje. O mapa
+/// MDF completo (as centenas de naturezas da planilha oficial da 15ª edição) é PENDÊNCIA DE
+/// DADO nomeada — ele entra quando o ente carregar o plano de receita completo, não agora.
+model DeParaRclAnexo3 {
+  id String @id @default(cuid())
+
+  /// O código de 8 dígitos da natureza (o mesmo do `NaturezaReceita.codigo`).
+  naturezaCodigo String @db.VarChar(8)
+
+  /// A chave da linha do demonstrativo (ex.: "IPTU", "FPM", "DED_FUNDEB"). O rótulo humano e a
+  /// posição na hierarquia moram no CÓDIGO (a estrutura do MDF é norma, fixa) — aqui é só a
+  /// amarração natureza → chave.
+  chaveLinha String
+
+  /// "corrente" (linha I, fail-open) | "deducao" (linha II, fail-closed). Ver o cabeçalho.
+  tipo String
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  /// Uma natureza mapeia para UMA linha. A unicidade é do banco.
+  @@unique([naturezaCodigo])
+  @@index([chaveLinha])
+}

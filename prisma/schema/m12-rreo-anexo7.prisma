@@ -1,0 +1,36 @@
+/// ═══════════════════════════════════════════════════════════════════════════════════════
+/// M12 — DE-PARA ÓRGÃO → PODER (RREO Anexo 7). LRF art. 53, V · MDF 15ª ed. · Tabela 7.
+///
+/// ⚠️ POR QUE ISTO EXISTE. O Anexo 7 publica os Restos a Pagar POR PODER E ÓRGÃO. O `Orgao` do
+/// sistema tem `codigo`+`nome` e MAIS NADA — não há coluna de Poder, e o `EnteConfig.poderOrgao`
+/// é o IC "PO" ÚNICO do ente (para a MSC), não uma classificação por órgão. Este de-para amarra
+/// `orgaoCodigo → poder` para que a Prefeitura caia no EXECUTIVO e a Câmara no LEGISLATIVO.
+///
+/// ═══ ⚠️ FAIL-CLOSED, E A DIFERENÇA IMPORTA ═══
+/// Aqui NÃO há fail-open de apresentação (como o "Outras" do Anexo 3): isto é PUBLICAÇÃO POR
+/// PODER. Um órgão SEM poder mapeado FAZ O GERADOR PARAR, nomeando o órgão — publicar um resto
+/// "sem poder" ou empurrá-lo para um poder-padrão seria declarar ao TCE um número no lugar errado.
+/// O rol de poderes é FECHADO (EXECUTIVO, LEGISLATIVO) — a esfera municipal não tem Judiciário
+/// nem Ministério Público próprios; um poder novo entra por DECISÃO, não por adivinhação.
+///
+/// ═══ ROL FECHADO CRESCE POR DECISÃO · MESMA FAMÍLIA DA SEGREGAÇÃO POR UG ═══
+/// Seeded só com os órgãos que existem no ente hoje (Campina Grande = Prefeitura + Câmara). É
+/// PARENTE das pendências `livros-por-ug` (MODULO-LIVROS) e `censo UG` (MODULO-BLOCO3): as três
+/// perguntam "de QUEM é este número". Quando a segregação por UG amadurecer, o poder do órgão e a
+/// UG conversam — por ora, cada uma nomeia a sua fatia.
+model DeParaOrgaoPoder {
+  id String @id @default(cuid())
+
+  /// O `codigo` de 2 dígitos do órgão (o mesmo do `Orgao.codigo`).
+  orgaoCodigo String @db.VarChar(2)
+
+  /// "EXECUTIVO" | "LEGISLATIVO". Rol fechado — ver o cabeçalho.
+  poder String
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  /// Um órgão pertence a UM poder. A unicidade é do banco.
+  @@unique([orgaoCodigo])
+  @@index([poder])
+}

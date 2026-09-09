@@ -1,0 +1,38 @@
+node_modules/
+prisma/generated/
+.env
+.env.local
+.env.*.local
+dist/
+coverage/
+
+# Pacote de contingência da POC (artefatos gerados por scripts/poc-contingencia.ts).
+# FORA do git de propósito: são saídas reprodutíveis do banco de demonstração, não código.
+CONTINGENCIA/
+
+# Next.js
+.next/
+next-env.d.ts
+*.tsbuildinfo
+
+# --- Endurecimento aplicado na colocacao sob controle de versao (ENT00) ---
+# Segredos e material criptografico. O repositorio nunca havia passado por
+# revisao de segredos; estes padroes sao preventivos, nao corretivos.
+.env
+.env.*
+!.env.example
+*.pem
+*.pfx
+*.p12
+*.key
+*.jks
+*.keystore
+*.crt
+*.cer
+credentials.json
+secrets.json
+
+# Artefatos de ambiente e de execucao
+.DS_Store
+*.log
+.cache-*

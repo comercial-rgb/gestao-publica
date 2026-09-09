@@ -1,0 +1,46 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    // Os JSON Schemas oficiais do Captura 2.0 entram por IMPORT ESTÁTICO (`with { type: "json" }`),
+    // e não por leitura de disco: o `readFileSync` sobrevivia ao tsx mas morria no bundle de
+    // produção do Next. Ver o comentário de `obterMotor` em adapters/tribunais/tce-pb/captura/validacao-captura.ts.
+    "resolveJsonModule": true,
+    "types": ["node"],
+    // ── ALIASES DO MONOREPO MULTI-ENTE ──────────────────────────────────────────────────────────
+    //
+    // ⚠️ DECLARADOS, MAS AINDA NÃO USADOS — e é de propósito. Todo import deste PR continua
+    // RELATIVO (`../../../packages/tribunais-core/porta.js`), porque trocar a forma dos specifiers
+    // mudaria a resolução em runtime e este PR promete não mudar comportamento nenhum.
+    //
+    // ⚠️ ANTES DE USAR O ALIAS, LEIA: o Next e o tsx resolvem `paths` sozinhos; o VITEST NÃO —
+    // ele precisa do `vite-tsconfig-paths` (ou de um `resolve.alias` no vitest.config.ts). Um
+    // `import ... from "@siafic/tribunais-core"` escrito hoje passaria no typecheck e quebraria só
+    // ao rodar a suíte. Quem for adotar o alias adota o plugin no mesmo PR.
+    "paths": {
+      "@siafic/tribunais-core": ["./packages/tribunais-core/index.ts"],
+      "@siafic/tribunais-core/*": ["./packages/tribunais-core/*"],
+      "adapters/*": ["./adapters/*"]
+    }
+  },
+  "include": [
+    "packages/**/*.ts",
+    "modules/**/*.ts",
+    // Os adapters de tribunal (M15/M18/M19 do TCE-PB moraram em modules/ até este PR) são
+    // domínio como qualquer outro: mesmo NodeNext, mesmo strict, mesmo gate de typecheck.
+    "adapters/**/*.ts",
+    "prisma.config.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": ["node_modules", "prisma/generated"]
+}

@@ -1,0 +1,63 @@
+// ============================================================================
+// TCM-BA / SIGA — as tabelas de DE/PARA do adapter.
+//
+// ⚠️ POR QUE ESTE ARQUIVO MORA AQUI, E NÃO JUNTO DO ADAPTER.
+// O `prisma.config.ts` carrega o schema de UMA pasta: `prisma/schema`. Um
+// `.prisma` dentro de `adapters/tribunais/tcm-ba/` seria ignorado em silêncio —
+// `prisma validate` passaria sem lê-lo, o client não teria os models, e a
+// migration não teria contra o que casar. É o mesmo motivo pelo qual o
+// `m18-captura.prisma` continua aqui embora o código do M18 tenha ido para
+// `adapters/tribunais/tce-pb/captura/`: o CÓDIGO é do adapter, o SCHEMA é do
+// banco, e o banco é um só.
+//
+// ⚠️ POR QUE O DE/PARA EXISTE. O TCM-BA não identifica conta contábil pelo
+// código PCASP nem fonte de recurso pelo código da STN: ele usa os números
+// DELE. Sem a tradução não há como gerar ContaCont nem Dotacao — e inventar um
+// número mandaria lançamento para a conta errada. Por isso o validador BLOQUEIA
+// quando o de/para falta, em vez de omitir a linha ou chutar.
+//
+// ⚠️ SEM RELATION PARA ContaPcasp/FonteRecurso, E ISSO É DELIBERADO. Declarar a
+// relação exigiria acrescentar a back-relation nos models do M01/M02 — módulos
+// que este PR não pode tocar. A integridade é garantida pelo @unique da coluna
+// e pela validação prévia, que é quem de fato recusa a remessa.
+// ============================================================================
+
+/// Conta contábil do ente (PCASP) → a identificação da conta no SIGA.
+model DeParaContaSiga {
+  id String @id @default(cuid())
+
+  /// FK lógica para ContaPcasp.id. Uma conta do ente tem UM de/para.
+  contaPcaspId String @unique
+
+  /// O `nu_SequencialTC` do arquivo ContaCont (14) — 5 dígitos no layout.
+  sequencialTcm Int
+
+  /// `tp_ContaContabil`: 1=Conta Bancária 2=Despesa 3=Receita 4=Tesouro
+  /// 5=Ativo 6=Passivo 7=Variação Passiva 8=Variação Ativa 9=Antecip. Compensada.
+  tipoContaSiga Int
+
+  /// `tp_OrigemSaldo`: C=Crédito, D=Débito, M=Mista.
+  origemSaldo String @db.Char(1)
+
+  /// `cd_RecebeLanc`: 1=Sim, 2=Não.
+  recebeLanc Int
+
+  criadoEm DateTime @default(now())
+
+  /// O par (sequencial, tipo) é a identidade da conta no TCM — duas contas do
+  /// ente não podem apontar para o mesmo par, senão a remessa duplicaria a conta.
+  @@unique([sequencialTcm, tipoContaSiga])
+}
+
+/// Fonte de recurso do ente → o código da fonte no TCM-BA.
+model DeParaFonteSiga {
+  id String @id @default(cuid())
+
+  /// FK lógica para FonteRecurso.id.
+  fonteRecursoId String @unique
+
+  /// `cd_FonteRecurso` dos arquivos Dotacao (22) e Empenho (23) — 4 dígitos.
+  codigoTcmBa Int
+
+  criadoEm DateTime @default(now())
+}

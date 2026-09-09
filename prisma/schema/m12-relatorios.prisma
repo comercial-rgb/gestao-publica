@@ -1,0 +1,89 @@
+// ============================================================================
+// M12 — o MAPEAMENTO dos demonstrativos (linha do anexo → contas do PCASP).
+//
+// ⚠️ O M12 CONTINUA SEM ESCREVER NADA. Estas tabelas são PARAMETRIZAÇÃO, não
+// fato: elas são o "roteiro contábil" dos anexos, exatamente como o
+// `RoteiroPatrimonial` é o do M10. O relatório LÊ o mapeamento e o razão, e não
+// grava uma linha sequer.
+//
+// POR QUE TABELA, E NÃO CÓDIGO: o PLANO de contas é dado do ente. Dizer "a linha
+// Caixa e Equivalentes é a conta 1.1.1" no código seria inventar plano — e no dia
+// em que o PCASP real chegar, seria reescrever o relatório. Aqui é um INSERT.
+//
+// (A ESTRUTURA do PCASP — a natureza de saldo de cada classe — essa sim é código:
+// vive em `CLASSE_PCASP` no M01, porque não é escolha do ente, é o MCASP.)
+// ============================================================================
+
+enum AnexoDemonstrativo {
+  /// Balanço Patrimonial (art. 105 da Lei 4.320/64).
+  ANEXO_14
+  /// Demonstração das Variações Patrimoniais (art. 104). Ainda não implementado.
+  ANEXO_15
+}
+
+/// Os grupos das linhas. O nome nasceu no Anexo 14 (Balanço) e o Anexo 15 (DVP)
+/// reusa a MESMA tabela de mapeamento — daí os grupos VPA/VPD aqui.
+enum GrupoBalanco {
+  // ── Anexo 14 (Balanço Patrimonial) ──
+  ATIVO_CIRCULANTE
+  ATIVO_NAO_CIRCULANTE
+  PASSIVO_CIRCULANTE
+  PASSIVO_NAO_CIRCULANTE
+  PATRIMONIO_LIQUIDO
+
+  // ── Anexo 15 (DVP) ──
+  /// Variações Patrimoniais AUMENTATIVAS (classe 4).
+  VPA
+  /// Variações Patrimoniais DIMINUTIVAS (classe 3).
+  VPD
+}
+
+// ----------------------------------------------------------------------------
+// LinhaDemonstrativo — uma linha do quadro (ex.: "Caixa e Equivalentes de Caixa").
+// ----------------------------------------------------------------------------
+
+model LinhaDemonstrativo {
+  id    String             @id @default(cuid())
+  anexo AnexoDemonstrativo
+
+  codigoLinha String
+  rotulo      String
+  grupo       GrupoBalanco
+  ordem       Int
+  ativa       Boolean      @default(true)
+
+  prefixos PrefixoDaLinha[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([anexo, codigoLinha])
+  @@index([anexo, grupo, ordem])
+}
+
+// ----------------------------------------------------------------------------
+// PrefixoDaLinha — a conta pertence à linha se o CÓDIGO dela COMEÇA com o prefixo.
+//
+// Prefixo, e não lista de contas: o plano tem milhares de contas analíticas, e
+// listá-las uma a uma faria o mapeamento envelhecer a cada conta nova. "1.1.1"
+// pega a subárvore inteira de Caixa e Equivalentes, hoje e sempre.
+//
+// A SOBREPOSIÇÃO É PROIBIDA (guard no cadastro): se "1.1" e "1.1.1" existissem
+// como prefixos de linhas diferentes, a conta 1.1.1.02 cairia em DUAS linhas e o
+// mesmo dinheiro seria somado duas vezes no Ativo. O relatório ainda defende a
+// invariante (A3), porque um INSERT direto dribla o serviço.
+// ----------------------------------------------------------------------------
+
+model PrefixoDaLinha {
+  id     String             @id @default(cuid())
+  linhaId String
+  linha   LinhaDemonstrativo @relation(fields: [linhaId], references: [id])
+
+  prefixoConta String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([linhaId])
+  @@index([prefixoConta])
+}

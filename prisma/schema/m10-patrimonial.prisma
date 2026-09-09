@@ -1,0 +1,298 @@
+// ============================================================================
+// M10 — patrimonial: classes de bens, bens individualizados e movimentos.
+//
+// TR 3.1  — registro INDIVIDUALIZADO do bem (cadastro + amarração opcional).
+// TR 5.84 — lançamentos contábeis SINTÉTICOS, por CLASSE. Rol de tipos FECHADO.
+// TR 5.15 — levantamento por classe.
+//
+// ═══ O GRÃO É A CLASSE ═══
+// O lançamento contábil é da CLASSE, sempre. O bem é IDENTIDADE (o que é, onde
+// está, quando entrou) — e o `bemId` no movimento é uma AMARRAÇÃO OPCIONAL: ela
+// permite responder "quanto vale ESTE bem?" sem quebrar o sintético.
+//
+// ═══ O CADASTRO NÃO TEM VALOR ═══
+// `BemPatrimonial` NÃO tem coluna de valor, e isso é o ponto: valor é FUNÇÃO dos
+// movimentos (SUM com sinal), nunca um número guardado. Uma coluna `valorAtual`
+// precisaria de UPDATE a cada depreciação — e derraparia no primeiro estorno.
+//
+// APPEND-ONLY em tudo. Sem updatedAt, sem deletedAt.
+// ============================================================================
+
+enum EspecieDeBem {
+  MOVEL
+  IMOVEL
+}
+
+/// ⚠️ ROL FECHADO (TR 5.84). Os ESTORNOS existem DESDE O DIA 1 — a lição do M08,
+/// onde o estorno chegou depois e custou dois bugs seguidos (345af7d, 4768cff).
+/// O sinal de cada tipo vive em `SINAL_MOVIMENTO_PATRIMONIAL` (dominio.ts), e o
+/// `Record` exaustivo faz o TypeScript apontar quem esquecer de tratar um tipo.
+enum TipoMovimentoPatrimonial {
+  // ── AUMENTAM o valor contábil (+1) ──
+  AQUISICAO
+  AVALIACAO_INICIAL
+  CUSTO_SUBSEQUENTE
+  DOACAO_RECEBIDA
+  REAVALIACAO_AUMENTO
+
+  // ── REDUZEM o valor contábil (−1) ──
+  DEPRECIACAO
+  /// MCASP 1.1.5 — o trio da redução do valor recuperável é depreciação (bens
+  /// tangíveis), AMORTIZAÇÃO (intangíveis) e exaustão (recursos naturais). O rol
+  /// do TR 5.84 é exemplificativo ("tais como"), e o MCASP exige os três.
+  AMORTIZACAO
+  EXAUSTAO
+  IMPAIRMENT
+  REAVALIACAO_REDUCAO
+  DOACAO_REALIZADA
+  BAIXA_ALIENACAO
+
+  // ── AUMENTA o valor contábil (+1), mas é RETIFICADORA ──
+  /// A baixa da DEPRECIAÇÃO ACUMULADA do bem alienado (TR 4.65).
+  ///
+  /// ⚠️ DUAS CLASSIFICAÇÕES, E AS DUAS SÃO DELIBERADAS:
+  ///  · SINAL = +1 — ela REDUZ a acumulada, e a acumulada é NEGATIVA no contábil;
+  ///    tirar um número negativo AUMENTA o valor contábil. (Faz sentido: o bem
+  ///    sai com valor bruto E com a depreciação dele; o líquido baixado é a
+  ///    diferença.)
+  ///  · EH_ATUALIZACAO_ACUMULADA = true — ela é RETIFICADORA: mexe na acumulada,
+  ///    NÃO no valor bruto. Se entrasse no bruto, o bem alienado sairia do ativo
+  ///    pelo líquido e a base depreciável das parcelas seguintes ficaria maior do
+  ///    que o ativo que sobrou.
+  BAIXA_DE_ATUALIZACAO_ACUMULADA
+
+  // ── ESTORNOS: sinal OPOSTO ao do movimento que desfazem ──
+  ESTORNO_AQUISICAO
+  ESTORNO_AVALIACAO_INICIAL
+  ESTORNO_CUSTO_SUBSEQUENTE
+  ESTORNO_DOACAO_RECEBIDA
+  ESTORNO_REAVALIACAO_AUMENTO
+  ESTORNO_DEPRECIACAO
+  ESTORNO_AMORTIZACAO
+  ESTORNO_EXAUSTAO
+  ESTORNO_IMPAIRMENT
+  ESTORNO_REAVALIACAO_REDUCAO
+  ESTORNO_DOACAO_REALIZADA
+  ESTORNO_BAIXA_ALIENACAO
+  ESTORNO_BAIXA_DE_ATUALIZACAO_ACUMULADA
+}
+
+/// As chaves de roteiro do RESULTADO da alienação (TR 4.65).
+///
+/// NÃO são tipos de movimento: o ganho/perda não muda o ativo — ele já saiu pela
+/// baixa. É só um lançamento de resultado. Por isso vivem num enum PRÓPRIO, e não
+/// dentro de `TipoMovimentoPatrimonial`: enfiá-las lá poluiria os dois Records
+/// exaustivos (sinal e retificadora) com valores que não são movimento nenhum — e
+/// são justamente esses Records que seguram a corretude do módulo.
+enum ChaveResultadoAlienacao {
+  GANHO_ALIENACAO
+  PERDA_ALIENACAO
+}
+
+// ----------------------------------------------------------------------------
+// ClasseDeBens — o grão do sintético (TR 5.84 / 5.15).
+// ----------------------------------------------------------------------------
+
+model ClasseDeBens {
+  id        String       @id @default(cuid())
+  codigo    String       @unique
+  descricao String
+  especie   EspecieDeBem
+
+  /// A conta de ATIVO do PCASP que esta classe movimenta. Vem por PARÂMETRO,
+  /// como todo código contábil do projeto — nada é inventado no código.
+  contaContabilAtivoId String
+  contaContabilAtivo   ContaPcasp @relation("AtivoDaClasse", fields: [contaContabilAtivoId], references: [id])
+
+  ativa Boolean @default(true)
+
+  bens       BemPatrimonial[]
+  movimentos MovimentoPatrimonial[]
+  /// back-relation M05/M11 (TR 4.49) — campo VIRTUAL, não gera coluna.
+  empenhos   Empenho[]
+  parametro  ParametroAtualizacaoClasse?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// O método de redução do valor recuperável (MCASP 1.1.5).
+enum MetodoAtualizacao {
+  /// Bens tangíveis (móveis, imóveis).
+  DEPRECIACAO
+  /// Intangíveis.
+  AMORTIZACAO
+  /// Recursos naturais.
+  EXAUSTAO
+}
+
+// ----------------------------------------------------------------------------
+// ParametroAtualizacaoClasse — vida útil e residual, POR CLASSE.
+//
+// ⚠️ O MÉTODO MORA AQUI, e não num mapa `especie → método` no código: o MCASP
+// SUGERE, o ENTE DECIDE. Um imóvel deprecia; uma licença de software amortiza; uma
+// jazida exaure — e nada disso se deduz da espécie MOVEL/IMOVEL. Quem sabe é quem
+// parametriza.
+//
+// Sem parâmetro, `atualizarCompetencia` LANÇA: não existe vida útil default.
+// ----------------------------------------------------------------------------
+
+model ParametroAtualizacaoClasse {
+  id String @id @default(cuid())
+
+  classeDeBensId String       @unique
+  classeDeBens   ClasseDeBens @relation(fields: [classeDeBensId], references: [id])
+
+  metodo MetodoAtualizacao
+
+  /// Em MESES. > 0 (conferido no serviço — fail-closed).
+  vidaUtilMeses Int
+
+  /// Fração do valor que NÃO se deprecia (0 a 1, exclusive). Taxa = Decimal(9,6),
+  /// como toda alíquota do projeto — nunca float.
+  percentualResidual Decimal @db.Decimal(9, 6)
+
+  ativo Boolean @default(true)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+// ----------------------------------------------------------------------------
+// BemPatrimonial — IDENTIDADE (TR 3.1). ZERO coluna de valor.
+// ----------------------------------------------------------------------------
+
+model BemPatrimonial {
+  id               String @id @default(cuid())
+  numeroTombamento String @unique
+  descricao        String
+
+  classeDeBensId String
+  classeDeBens   ClasseDeBens @relation(fields: [classeDeBensId], references: [id])
+
+  dataAquisicao DateTime
+
+  movimentos MovimentoPatrimonial[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([classeDeBensId])
+}
+
+// ----------------------------------------------------------------------------
+// MovimentoPatrimonial — o razão do patrimônio. APPEND-ONLY.
+//
+// `valor` é SEMPRE > 0; quem dá o sinal é o TIPO. Não existe movimento com valor
+// negativo escondendo uma baixa.
+// ----------------------------------------------------------------------------
+
+model MovimentoPatrimonial {
+  id String @id @default(cuid())
+
+  /// OBRIGATÓRIO: o lançamento contábil é sempre da CLASSE (TR 5.84).
+  classeDeBensId String
+  classeDeBens   ClasseDeBens @relation(fields: [classeDeBensId], references: [id])
+
+  /// OPCIONAL: a amarração individualizada (TR 3.1). Nulo = movimento sintético
+  /// da classe (uma depreciação em lote, p.ex.) — e ele é tão válido quanto.
+  bemId String?
+  bem   BemPatrimonial? @relation(fields: [bemId], references: [id])
+
+  tipo  TipoMovimentoPatrimonial
+  /// SEMPRE positivo. O sinal vem do tipo.
+  valor Decimal                  @db.Decimal(18, 2)
+
+  dataMovimento DateTime
+  /// Competência do fato (uso no bloco 2 — depreciação mensal).
+  competencia   DateTime?
+
+  /// Só na AQUISICAO: a liquidação (M05) que trouxe o bem.
+  liquidacaoId String?
+  liquidacao   Liquidacao? @relation(fields: [liquidacaoId], references: [id])
+
+  /// TR 4.65 — a receita de alienação que este movimento gerou.
+  ///
+  /// ⚠️ GUARD DEGRADADO: o M04 NÃO classifica receita "de alienação" (não há
+  /// campo nem natureza dedicada no modelo). Só dá para conferir que a receita
+  /// EXISTE e não foi anulada. Amarrar a NATUREZA da receita à alienação é
+  /// pendência do M04 — quando ela chegar, o guard aperta aqui sem migração.
+  receitaArrecadadaId String?
+  receitaArrecadada   ReceitaArrecadada? @relation(fields: [receitaArrecadadaId], references: [id])
+
+  /// Agrupa os movimentos de UMA OPERAÇÃO composta (a alienação gera dois: a
+  /// baixa do bruto e a baixa da acumulada). Estornar um estorna TODOS — meia
+  /// alienação estornada deixaria o ativo com o bruto de volta e a depreciação
+  /// não, ou vice-versa.
+  operacaoId String?
+
+  /// APPEND-ONLY: o estorno referencia o movimento que desfaz.
+  estornoDeId String?
+  estornoDe   MovimentoPatrimonial?  @relation("EstornoPatrimonial", fields: [estornoDeId], references: [id])
+  estornos    MovimentoPatrimonial[] @relation("EstornoPatrimonial")
+
+  /// A contabilização deste movimento (TR 5.84).
+  lancamentoId String
+  lancamento   LancamentoContabil @relation(fields: [lancamentoId], references: [id])
+
+  motivo String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([classeDeBensId, tipo])
+  @@index([bemId])
+  @@index([estornoDeId])
+  @@index([liquidacaoId])
+  @@index([dataMovimento])
+  @@index([operacaoId])
+}
+
+// ----------------------------------------------------------------------------
+// RoteiroResultadoAlienacao — o roteiro do GANHO/PERDA (TR 4.65).
+//
+// Model IRMÃO do RoteiroPatrimonial, e não uma linha dele, porque a chave é de
+// outro enum. Trocar o tipo da coluna `RoteiroPatrimonial.tipo` para um enum
+// maior NÃO seria migração aditiva (o Prisma dropa e recria a coluna) — e o
+// invariante do projeto é aditiva pura.
+// ----------------------------------------------------------------------------
+
+model RoteiroResultadoAlienacao {
+  id    String                  @id @default(cuid())
+  chave ChaveResultadoAlienacao @unique
+
+  contaDebitoId String
+  contaDebito   ContaPcasp @relation("DebitoResultado", fields: [contaDebitoId], references: [id])
+
+  contaCreditoId String
+  contaCredito   ContaPcasp @relation("CreditoResultado", fields: [contaCreditoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+// ----------------------------------------------------------------------------
+// RoteiroPatrimonial — o roteiro contábil de cada tipo, POR PARÂMETRO.
+//
+// É uma TABELA, e não um mapa no código, porque os códigos do PCASP são dado do
+// ente, não constante de programa. Tipo sem roteiro parametrizado = o serviço
+// LANÇA (fail-closed): melhor não contabilizar do que contabilizar na conta
+// errada.
+//
+// Os ESTORNOS não precisam de roteiro: o lançamento de estorno é gerado pelo
+// motor do M01 (`gerarEstorno`), invertendo as pernas do original.
+// ----------------------------------------------------------------------------
+
+model RoteiroPatrimonial {
+  id   String                   @id @default(cuid())
+  tipo TipoMovimentoPatrimonial @unique
+
+  contaDebitoId String
+  contaDebito   ContaPcasp @relation("DebitoPatrimonial", fields: [contaDebitoId], references: [id])
+
+  contaCreditoId String
+  contaCredito   ContaPcasp @relation("CreditoPatrimonial", fields: [contaCreditoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

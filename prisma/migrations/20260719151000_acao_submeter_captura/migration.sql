@@ -1,0 +1,2 @@
+-- M16 — nova ação SUBMETER_CAPTURA (Captura 2.0). SEPARADA: ALTER TYPE ADD VALUE em enum existente.
+ALTER TYPE "AcaoDoSistema" ADD VALUE 'SUBMETER_CAPTURA';

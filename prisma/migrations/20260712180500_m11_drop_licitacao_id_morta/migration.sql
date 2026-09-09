@@ -1,0 +1,31 @@
+-- ☠️ MIGRATION DESTRUTIVA — a ÚNICA do repositório. Escrita À MÃO, e separada da
+-- aditiva de propósito: um DROP no meio de um ADD COLUMN é como uma coluna viva
+-- morre por engano num rollback.
+--
+-- O SQL abaixo NÃO foi digitado de memória: saiu de
+--   `prisma migrate diff --from-config-datasource --to-schema ./prisma/schema --script`
+-- rodado DEPOIS de a migration aditiva (20260712174946_m11_vinculo_empenho_contrato)
+-- estar aplicada — por isso o diff isola exatamente uma linha.
+--
+-- ═══ POR QUE ESTA COLUNA PODE MORRER ═══
+-- `ReservaDotacao.licitacaoId` nasceu como "vínculo futuro com o módulo de
+-- licitações (M11). String por ora." Chegou o M11, e ela não serve:
+--
+--   1. É uma STRING SEM FK. Aponta para nada; nada garante que o valor exista.
+--   2. NUNCA FOI LIDA. O serviço a ESCREVIA (reservar() a repassava ao adapter),
+--      mas nenhum guard, nenhum relatório e nenhum SELECT jamais a consultaram —
+--      uma coluna que só se escreve não é um vínculo, é um comentário caro.
+--   3. NENHUMA LINHA TEM VALOR: `SELECT count(*) FROM "ReservaDotacao" WHERE
+--      "licitacaoId" IS NOT NULL` = 0, e nenhum teste a preenche (grep = 0).
+--   4. PRÉ-PRODUÇÃO: o sistema ainda não rodou no ente. Não há histórico a
+--      preservar.
+--
+-- O vínculo de verdade é `ReservaDotacao.processoId` — FK para
+-- `ProcessoLicitatorio`, criada na migration aditiva anterior e LIDA pelo guard da
+-- TR 4.42 (reserva vinculada a licitação só é liberada por empenho que informe o
+-- contrato daquela licitação).
+--
+-- Manter as duas seria manter DUAS VERDADES sobre o mesmo vínculo — exatamente o
+-- erro que o `indicadorSuperavit` nos ensinou a não cometer (lá a lição foi não
+-- duplicar uma coluna que já existia; aqui é não deixar viva a que foi substituída).
+ALTER TABLE "ReservaDotacao" DROP COLUMN "licitacaoId";

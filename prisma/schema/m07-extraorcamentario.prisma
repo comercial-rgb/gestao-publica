@@ -1,0 +1,87 @@
+// ============================================================================
+// M07 — extraorçamentário: consignações, retenções e cauções.
+//
+// Dinheiro de TERCEIROS transitando pelo caixa: entra sem ser receita, sai sem
+// ser despesa. NÃO toca dotação (MovimentoDotacao) nem a fila do art. 141 (M06).
+//
+// SIMÉTRICO DESDE O DIA 1: os quatro tipos de movimento (ingresso, dispêndio e
+// os dois estornos) existem desde o início. No M08 os estornos chegaram depois e
+// custaram dois bugs (345af7d, 4768cff) — a assimetria é uma bomba-relógio.
+//
+// APPEND-ONLY em tudo. Sem updatedAt, sem deletedAt.
+// ============================================================================
+
+/// TABELA, não enum: o rol NÃO é fechado — o ente pode criar tipos próprios
+/// (consignação de plano de saúde, de sindicato, de associação...). Um enum
+/// exigiria migração a cada tipo novo.
+model TipoConsignacao {
+  id        String  @id @default(cuid())
+  codigo    String  @unique
+  descricao String
+  ativo     Boolean @default(true)
+
+  movimentos MovimentoExtraorcamentario[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+enum TipoMovimentoExtra {
+  /// Dinheiro de terceiro ENTRA no caixa (retenção na fonte, caução, depósito).
+  INGRESSO
+  /// Dinheiro de terceiro SAI (repasse ao consignatário, devolução da caução).
+  DISPENDIO
+  /// Desfaz um INGRESSO.
+  ESTORNO_INGRESSO
+  /// Desfaz um DISPENDIO.
+  ESTORNO_DISPENDIO
+}
+
+// ----------------------------------------------------------------------------
+// MovimentoExtraorcamentario — o razão do dinheiro de terceiros. APPEND-ONLY.
+//
+// Saldo por (tipoConsignacao, credorConsignatario) = Σ(valor × sinal do tipo).
+// O `valor` é SEMPRE positivo; quem dá o sinal é o tipo (SINAL_MOVIMENTO_EXTRA,
+// em dominio.ts). NENHUMA soma bruta — lição do M08.
+// ----------------------------------------------------------------------------
+
+model MovimentoExtraorcamentario {
+  id String @id @default(cuid())
+
+  tipoConsignacaoId String
+  tipoConsignacao   TipoConsignacao @relation(fields: [tipoConsignacaoId], references: [id])
+  /// A quem o dinheiro pertence (INSS, o servidor da pensão, o caucionante...).
+  credorConsignatario String
+
+  contaBancariaId String
+  contaBancaria   ContaBancaria @relation(fields: [contaBancariaId], references: [id])
+
+  tipo  TipoMovimentoExtra
+  /// SEMPRE positivo. O sinal vem do tipo.
+  valor Decimal            @db.Decimal(18, 2)
+  data  DateTime
+
+  /// Preenchido quando a origem é RETENÇÃO NA FONTE: o ingresso nasceu dentro
+  /// de um pagamento. Nulo nos ingressos avulsos (caução, depósito).
+  pagamentoId String?
+  pagamento   Pagamento? @relation(fields: [pagamentoId], references: [id])
+
+  /// APPEND-ONLY: o estorno referencia o movimento que desfaz.
+  estornoDeId String?
+  estornoDe   MovimentoExtraorcamentario?  @relation("EstornoExtra", fields: [estornoDeId], references: [id])
+  estornos    MovimentoExtraorcamentario[] @relation("EstornoExtra")
+
+  lancamentoId String
+  lancamento   LancamentoContabil @relation(fields: [lancamentoId], references: [id])
+
+  historico String
+  motivo    String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([tipoConsignacaoId, credorConsignatario])
+  @@index([pagamentoId])
+  @@index([estornoDeId])
+  @@index([data])
+}

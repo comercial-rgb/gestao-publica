@@ -1,0 +1,106 @@
+// ============================================================================
+// M10 — ALMOXARIFADO (TR 5.85/5.86).
+//
+// SINTÉTICO POR CLASSE: o sistema não controla o parafuso — controla o SALDO da
+// classe de material. Controle por item exige contagem física, código de barras e
+// um módulo inteiro; o que o TCE cobra aqui é o saldo contábil por classe, e é isso
+// que o razão tem de bater.
+//
+// APPEND-ONLY. O saldo é Σ(valor × SINAL_MOVIMENTO_ALMOXARIFADO) — NUNCA coluna.
+//
+// ═══ ONDE CADA LANÇAMENTO É FEITO (espelho da dívida — blocos 4 e 5) ═══
+//  · ENTRADA — é PERMUTATIVA (um ativo vira outro: o dinheiro vira material) e quem
+//    a contabiliza é o M05: o roteiro da LIQUIDAÇÃO já vem por PARÂMETRO, e para
+//    material de consumo a perna de DÉBITO aponta para o ESTOQUE em vez de uma VPD
+//    (D estoque / C fornecedor). NÃO há despesa patrimonial na compra: a VPD nasce
+//    no CONSUMO, não na aquisição — é a competência do MCASP. Um roteiro de entrada
+//    aqui debitaria o estoque DUAS VEZES.
+//  · SAÍDA POR CONSUMO — D VPD (consumo de material) / C estoque. É AQUI que a
+//    despesa patrimonial acontece.
+//  · AJUSTES DE INVENTÁRIO — sobra (D estoque / C VPA) e falta (D VPD / C estoque).
+//
+// A AMARRAÇÃO: Σ dos movimentos == saldo da CONTA CONTÁBIL no razão (grão = conta,
+// como na dívida ativa).
+// ============================================================================
+
+model ClasseDeMaterial {
+  id        String @id @default(cuid())
+  codigo    String @unique
+  descricao String
+
+  /// A conta de ESTOQUE (classe 1, circulante) que esta classe movimenta. Vem por
+  /// PARÂMETRO, como todo código contábil do projeto.
+  contaContabilId String
+  contaContabil   ContaPcasp @relation("EstoqueDaClasse", fields: [contaContabilId], references: [id])
+
+  ativa Boolean @default(true)
+
+  movimentos MovimentoAlmoxarifado[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// OITO tipos — os quatro fatos e os quatro estornos, desde o dia 1.
+enum TipoMovimentoAlmoxarifado {
+  ENTRADA
+  SAIDA_CONSUMO
+  AJUSTE_ENTRADA
+  AJUSTE_SAIDA
+  ESTORNO_ENTRADA
+  ESTORNO_SAIDA_CONSUMO
+  ESTORNO_AJUSTE_ENTRADA
+  ESTORNO_AJUSTE_SAIDA
+}
+
+model MovimentoAlmoxarifado {
+  id                 String                    @id @default(cuid())
+  classeDeMaterialId String
+  classeDeMaterial   ClasseDeMaterial          @relation(fields: [classeDeMaterialId], references: [id])
+
+  tipo  TipoMovimentoAlmoxarifado
+  /// SEMPRE positivo. O sinal vem do tipo.
+  valor Decimal                   @db.Decimal(18, 2)
+
+  /// A ENTRADA nasce de uma LIQUIDAÇÃO (o material foi recebido e atestado). Uma
+  /// liquidação pode abastecer VÁRIAS classes — e a soma das entradas dela não pode
+  /// passar do que ela liquidou.
+  liquidacaoId String?
+  liquidacao   Liquidacao? @relation(fields: [liquidacaoId], references: [id])
+
+  /// A data do FATO (o recebimento, a requisição, o inventário).
+  dataMovimento DateTime
+
+  /// Só SAÍDA e AJUSTES têm lançamento próprio — a ENTRADA é lançada pelo M05.
+  lancamentoId String?
+  lancamento   LancamentoContabil? @relation("LancamentoAlmoxarifado", fields: [lancamentoId], references: [id])
+
+  /// APPEND-ONLY. Unicidade: prisma/sql/uq_estorno_almoxarifado_unico.sql.
+  estornoDeId String?
+  estornoDe   MovimentoAlmoxarifado?  @relation("EstornoAlmoxarifado", fields: [estornoDeId], references: [id])
+  estornos    MovimentoAlmoxarifado[] @relation("EstornoAlmoxarifado")
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([classeDeMaterialId, tipo])
+  @@index([dataMovimento])
+  @@index([liquidacaoId])
+  @@index([estornoDeId])
+}
+
+/// Roteiro por TABELA. A ENTRADA NÃO tem — e é de propósito (ver o cabeçalho).
+model RoteiroAlmoxarifado {
+  id   String                    @id @default(cuid())
+  tipo TipoMovimentoAlmoxarifado @unique
+
+  contaDebitoId String
+  contaDebito   ContaPcasp @relation("DebitoAlmoxarifado", fields: [contaDebitoId], references: [id])
+  contaCreditoId String
+  contaCredito   ContaPcasp @relation("CreditoAlmoxarifado", fields: [contaCreditoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

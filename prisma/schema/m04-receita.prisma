@@ -1,0 +1,87 @@
+// ============================================================================
+// M04 — receita: execução da receita orçamentária (arrecadação).
+//
+// PRIMEIRO consumidor real do ledger (M01) + classificação (M02). Toda
+// arrecadação vira um LancamentoContabil balanceado, append-only.
+//
+// REGRA DE OURO: dinheiro é Decimal @db.Decimal(18,2). Nunca Float.
+// APPEND-ONLY: ReceitaArrecadada nunca sofre UPDATE/DELETE — sem updatedAt,
+// sem deletedAt. Anulação = registro NOVO que referencia o original.
+// ============================================================================
+
+enum TipoLancamentoReceita {
+  ARRECADACAO
+  ANULACAO
+  RETIFICACAO
+}
+
+/// DE-PARA tipo conceitual <-> código literal do SAGRES, mesmo padrão de
+/// `TipoReceitaSagres` (M02): a `ReceitaArrecadada` guarda o ENUM, não uma FK.
+/// A tradução é um join feito só na exportação, para que uma renumeração do TCE
+/// seja um UPDATE de 3 linhas aqui, e não migração de dados em toda a base.
+model TipoLancamentoReceitaSagres {
+  id           String                @id @default(cuid())
+  tipoInterno  TipoLancamentoReceita @unique
+  /// Valor LITERAL do SAGRES (tabela ReceitaOrcamentaria).
+  /// PENDENTE DE DADO — ver MODULO.md. A estrutura está fechada.
+  codigoSagres String                @unique
+  descricao    String
+}
+
+// ----------------------------------------------------------------------------
+// Receita arrecadada — APPEND-ONLY.
+// "Foi anulada?" é DERIVADO da relação `estornos` (não existe campo mutável),
+// exatamente como no LancamentoContabil do M01.
+// ----------------------------------------------------------------------------
+
+model ReceitaArrecadada {
+  id        String @id @default(cuid())
+  exercicio Int
+
+  naturezaReceitaId String
+  naturezaReceita   NaturezaReceita       @relation(fields: [naturezaReceitaId], references: [id])
+  fonteId           String
+  fonte             FonteRecurso          @relation(fields: [fonteId], references: [id])
+  coId              String?
+  co                CodigoAcompanhamento? @relation(fields: [coId], references: [id])
+  exercicioFonte    Int                   @default(1)
+
+  tipo            TipoLancamentoReceita
+  valor           Decimal               @db.Decimal(18, 2)
+  dataArrecadacao DateTime
+  /// Nº da receita/guia (SAGRES ReceitaOrcamentaria).
+  numeroReceita   String
+
+  /// A contabilização desta arrecadação. 1-1: um lançamento por receita.
+  lancamentoId String             @unique
+  lancamento   LancamentoContabil @relation(fields: [lancamentoId], references: [id])
+
+  /// APPEND-ONLY: a anulação referencia o original. Imutável, setado na criação.
+  estornoDeId String?
+  estornoDe   ReceitaArrecadada?  @relation("EstornoReceita", fields: [estornoDeId], references: [id])
+  estornos    ReceitaArrecadada[] @relation("EstornoReceita")
+
+  /// back-relation M10 (TR 4.64) — campo VIRTUAL, não gera coluna. É por aqui que
+  /// a operação de crédito liga o caixa que entrou à dívida que nasceu.
+  movimentosDivida MovimentoDivida[]
+  /// back-relation M10 (TR 4.63) — o recebimento de dívida ativa é receita.
+  recebimentosDividaAtiva MovimentoDividaAtiva[] @relation("RecebimentoDividaAtiva")
+
+  /// back-relation M10 (TR 4.65) — campo VIRTUAL, não gera coluna.
+  movimentosPatrimoniais MovimentoPatrimonial[]
+
+  /// back-relation M04 (TR 5.87) — os reconhecimentos que ESTA guia quitou (N:N com valor).
+  vinculosReconhecimento VinculoArrecadacaoReconhecimento[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+  // SEM updatedAt, SEM deletedAt.
+
+  /// Uma guia não pode ser arrecadada duas vezes. A anulação usa o mesmo
+  /// número com outro `tipo`, por isso o tipo entra na chave.
+  @@unique([exercicio, numeroReceita, tipo], name: "uq_receita_guia")
+  @@index([exercicio, naturezaReceitaId])
+  @@index([fonteId])
+  @@index([estornoDeId])
+  @@index([dataArrecadacao])
+}

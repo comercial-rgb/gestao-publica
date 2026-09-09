@@ -1,0 +1,59 @@
+// ============================================================================
+// M16 — TRAVAMENTO DE COMPETÊNCIA.
+//
+// TR 4.52 (travamento mensal ou por data) · TR 4.53 (bloqueio de lançamentos por
+// período) · TR 4.54 (bloqueio/desbloqueio por usuário).
+//
+// UMA TABELA, TRÊS REQUISITOS. Parecem três coisas e são uma só: uma JANELA de
+// datas do FATO, um ESCOPO (todo mundo ou um usuário) e um SENTIDO (travar ou
+// destravar). Três tabelas seriam três verdades sobre "este fato pode ser
+// lançado?" — e o dia em que discordassem, ninguém saberia qual o sistema obedeceu.
+//
+// APPEND-ONLY, ESTADO DERIVADO. Não existe coluna `travado` em lugar nenhum:
+// destravar NÃO apaga a trava, acrescenta um evento. O histórico fica — com motivo
+// e autor —, e é ele que responde ao TCE a pergunta que sempre vem: "quem reabriu
+// março, e por quê?". Mesmo desenho do encerramento do exercício (M08) e do estorno
+// do razão (M01).
+// ============================================================================
+
+enum TipoMovimentoTravamento {
+  TRAVAR
+  DESTRAVAR
+}
+
+model MovimentoTravamento {
+  id String @id @default(cuid())
+
+  tipo TipoMovimentoTravamento
+
+  /// A JANELA, pela DATA DO FATO (`dataTransacao` do lançamento) — nunca pela data
+  /// da digitação. Travar janeiro trava os FATOS de janeiro, não o que foi digitado
+  /// em janeiro: um fato de dezembro digitado em janeiro pertence a DEZEMBRO, e é a
+  /// competência dele que manda. (É o mesmo corte que a MSC, a DVP e o Balanço usam.)
+  ///
+  /// Travamento MENSAL (4.52) = 1º ao último instante do mês.
+  /// Travamento POR DATA (4.52/4.53) = qualquer intervalo.
+  /// O modelo é o mesmo; muda a janela.
+  janelaInicio DateTime
+  janelaFim    DateTime
+
+  /// ⚠️ `null` = GLOBAL (4.52/4.53). Preenchido = a trava vale SÓ para aquele autor
+  /// (4.54) — e ela VENCE a global, para ele. Ver a precedência em `derivarTravamento`.
+  ///
+  /// ⚠️ PENDÊNCIA NOMEADA: é uma STRING LIVRE, comparada com o `criadoPor` do
+  /// lançamento (que também é string livre — não há tabela de usuários no
+  /// repositório). Um `usuarioAlvo` com um typo trava/destrava NINGUÉM, em silêncio.
+  /// Quando a tabela de usuários existir, isto vira FK. Bloco 2.
+  usuarioAlvo String?
+
+  /// OPCIONAL no TRAVAR (fechar o mês é rotina), OBRIGATÓRIO no DESTRAVAR (mín. 10
+  /// caracteres — o guard está no Zod). Reabrir um período fechado é o ato que o
+  /// controle interno vai querer explicado.
+  motivo String?
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  @@index([usuarioAlvo])
+  @@index([janelaInicio, janelaFim])
+}

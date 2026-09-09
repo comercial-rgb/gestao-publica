@@ -1,0 +1,411 @@
+// ============================================================================
+// M05 — despesa: reserva → empenho → liquidação → pagamento.
+//
+// SALDO MATERIALIZADO POR RECÁLCULO:
+//   `MovimentoDotacao` é a FONTE DA VERDADE. As colunas de saldo da
+//   FichaOrcamentaria são CACHE, e só são escritas como
+//   `coluna = SELECT SUM(MovimentoDotacao...)` dentro da MESMA transação que
+//   insere o movimento. NUNCA `saldo = saldo ± valor` (UPDATE cego).
+//   `reconciliarFicha()` compara cache vs SUM e tem de dar zero SEMPRE.
+//
+// APPEND-ONLY: reserva, empenho, liquidação, pagamento e seus movimentos são
+// imutáveis. Sem updatedAt, sem deletedAt. Anulação = registro NOVO.
+//
+// STATUS É DERIVADO, NÃO COLUNA — ver nota no fim do arquivo.
+// ============================================================================
+
+enum TipoMovimentoDotacao {
+  DOTACAO_INICIAL
+  CREDITO_ADICIONAL
+  ANULACAO_CREDITO
+  RESERVA
+  RESERVA_LIBERADA
+  EMPENHO
+  EMPENHO_ANULADO
+}
+
+enum TipoEmpenho {
+  ORDINARIO
+  GLOBAL
+  ESTIMATIVO
+}
+
+// ----------------------------------------------------------------------------
+// MovimentoDotacao — o razão do saldo orçamentário. APPEND-ONLY.
+// `valor` é SEMPRE > 0; quem dá o sinal é o `tipo`.
+// ----------------------------------------------------------------------------
+
+model MovimentoDotacao {
+  id      String              @id @default(cuid())
+  fichaId String
+  ficha   FichaOrcamentaria   @relation(fields: [fichaId], references: [id])
+  tipo    TipoMovimentoDotacao
+  /// SEMPRE positivo. O sinal vem do tipo (ver SINAIS em dominio.ts).
+  valor   Decimal             @db.Decimal(18, 2)
+
+  origemTipo String
+  origemId   String?
+  /// Movimento que ESTORNA outro (ex.: EMPENHO_ANULADO -> o EMPENHO original).
+  estornoDeId String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  /// back-relation M03 — campo VIRTUAL, não gera coluna.
+  itemCredito ItemCredito?
+
+  @@index([fichaId, tipo])
+  @@index([origemTipo, origemId])
+}
+
+// ----------------------------------------------------------------------------
+// ReservaDotacao — pré-empenho. APPEND-ONLY.
+// NÃO tem coluna `status`: "liberada?" é DERIVADO de `estornos` e do quanto já
+// foi empenhado contra ela.
+// ----------------------------------------------------------------------------
+
+model ReservaDotacao {
+  id      String            @id @default(cuid())
+  fichaId String
+  ficha   FichaOrcamentaria @relation(fields: [fichaId], references: [id])
+  valor   Decimal           @db.Decimal(18, 2)
+  /// M11 — TR 4.41/4.42: a reserva pode nascer VINCULADA a um processo
+  /// licitatório. NULLABLE de propósito: reserva sem licitação continua válida
+  /// (é o caminho de sempre). Quando preenchida, o empenho que a consome TEM de
+  /// informar um contrato DO MESMO PROCESSO — é o que a 4.42 exige ("liberado
+  /// apenas quando houver vinculação com uma licitação e esta informada na
+  /// emissão da nota de empenho").
+  processoId String?
+  processo   ProcessoLicitatorio? @relation(fields: [processoId], references: [id])
+
+  historico   String
+
+  estornoDeId String?
+  estornoDe   ReservaDotacao?  @relation("EstornoReserva", fields: [estornoDeId], references: [id])
+  estornos    ReservaDotacao[] @relation("EstornoReserva")
+
+  empenhos ReservaEmpenho[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([fichaId])
+  @@index([estornoDeId])
+}
+
+/// Um empenho nasce de no máximo uma reserva; o join fica explícito para não
+/// pendurar FK opcional no Empenho e ter de mexer nele depois.
+model ReservaEmpenho {
+  reservaId String
+  reserva   ReservaDotacao @relation(fields: [reservaId], references: [id])
+  empenhoId String         @unique
+  empenho   Empenho        @relation(fields: [empenhoId], references: [id])
+
+  @@id([reservaId, empenhoId])
+  @@index([reservaId])
+}
+
+// ----------------------------------------------------------------------------
+// Empenho — APPEND-ONLY. Sem coluna `status` (ver nota no fim).
+// ----------------------------------------------------------------------------
+
+model Empenho {
+  id      String            @id @default(cuid())
+  fichaId String
+  ficha   FichaOrcamentaria @relation(fields: [fichaId], references: [id])
+
+  /// ADITIVO M05: opcional. O Subelemento (M02) ainda não tem seed real
+  /// (arquivo TCE-PB pendente) — empenho é válido sem ele.
+  subelementoId String?
+  subelemento   Subelemento? @relation(fields: [subelementoId], references: [id])
+
+  /// M11 — a dimensão CONTRATO do empenho (TR 5.6/5.101/5.102/5.112).
+  ///
+  /// NULLABLE de propósito: nem toda despesa vem de contrato (diárias, folha,
+  /// sentenças). Um NOT NULL aqui quebraria metade do M05 e obrigaria a inventar
+  /// um "contrato genérico" — que é como um sistema começa a mentir.
+  ///
+  /// ⚠️ A ANULAÇÃO **COPIA** este campo do original. Sem isso, a soma do
+  /// empenhado por contrato veria o empenho original e não veria a anulação dele:
+  /// o contrato ficaria eternamente empenhado.
+  contratoId String?
+  contrato   Contrato? @relation(fields: [contratoId], references: [id])
+
+  /// M11/M10 (TR 4.49 e 5.15) — a CLASSE DE BENS que este empenho vai adquirir.
+  ///
+  /// NULLABLE de propósito: só é exigida quando o empenho é de CAPITAL (grupos 4 e
+  /// 5) E vem de contrato — a cadeia licitatória é o escopo do TR. Custeio não
+  /// compra bem, e o grupo 6 (amortização da dívida) é capital SEM bem (a lição do
+  /// M10).
+  ///
+  /// É um vínculo SINTÉTICO — a promessa do empenho. O fato patrimonial é o
+  /// `MovimentoPatrimonial` (M10), e o `adquirirBem` recusa divergir dele.
+  classeDeBensId String?
+  classeDeBens   ClasseDeBens? @relation(fields: [classeDeBensId], references: [id])
+
+  /// M10 (TR 4.48) — a DÍVIDA que este empenho amortiza.
+  ///
+  /// NULLABLE, mas OBRIGATÓRIO no grupo 6 (Amortização da Dívida) e PROIBIDO fora
+  /// dele: amortizar sem dizer QUAL dívida é pagar no escuro; e vincular dívida a
+  /// um empenho de custeio é um vínculo sem sentido. Os dois lados são guard.
+  dividaId String?
+  divida   DividaConsolidada? @relation(fields: [dividaId], references: [id])
+
+  /// M11 (TR 4.50) — a OBRA que este empenho executa.
+  ///
+  /// ⚠️ O GUARD É **UNIDIRECIONAL**, e essa é a diferença deliberada para o 4.48.
+  ///   · elemento 51 (Obras e Instalações) SEM obra  -> REJEITA.
+  ///   · obra num empenho de OUTRO elemento          -> PERMITIDO.
+  ///
+  /// O 4.48 é bicondicional (dívida fora do grupo 6 é vínculo sem sentido). Aqui não:
+  /// a instalação elétrica de uma escola pode vir no elemento 39, e o ente ter todo o
+  /// direito de rastreá-la na obra. Um vínculo VOLUNTÁRIO não é erro — proibi-lo
+  /// obrigaria o ente a mentir na classificação para conseguir rastrear.
+  ///
+  /// A ANULAÇÃO (total e parcial) COPIA este campo — como copia o `contratoId`, e pelo
+  /// mesmo motivo: sem isso, a soma por obra veria o empenho e não veria a redução dele.
+  obraId String?
+  obra   Obra?   @relation(fields: [obraId], references: [id])
+
+  numero       String
+  tipo         TipoEmpenho
+  valor        Decimal     @db.Decimal(18, 2)
+  data         DateTime
+  credorCpfCnpj String
+  historico     String
+
+  /// M06 — Lei 14.133/2021, art. 141: a ordem cronológica é por fonte,
+  /// subdividida por categoria de contrato. OBRIGATÓRIO e SEM DEFAULT: um
+  /// default no schema faria todo empenho silenciosamente virar
+  /// FORNECIMENTO_BENS, e a fila de obras se misturaria com a de bens sem
+  /// ninguém perceber. A liquidação HERDA a categoria do seu empenho.
+  categoriaOrdemCronologica CategoriaOrdemCronologica
+
+  /// A contabilização do empenho. 1-1.
+  lancamentoId String             @unique
+  lancamento   LancamentoContabil @relation(fields: [lancamentoId], references: [id])
+
+  estornoDeId String?
+  estornoDe   Empenho?  @relation("EstornoEmpenho", fields: [estornoDeId], references: [id])
+  estornos    Empenho[] @relation("EstornoEmpenho")
+
+  /// TR 5.35 — ANULAÇÃO PARCIAL. NÃO é estorno: o fato original CONTINUA valendo, por
+  /// MENOS. Por isso a coluna é PRÓPRIA — usar `estornoDeId` faria toda leitura
+  /// líquida do repositório ZERAR o fato inteiro (a fila do art. 141, o saldo do
+  /// contrato, o superávit por fonte, o relatório de restos — todos de uma vez).
+  /// Quem soma: packages/estornaveis.
+  anulacaoParcialDeId String?
+  anulacaoParcialDe   Empenho? @relation("AnulacaoParcialEmpenho", fields: [anulacaoParcialDeId], references: [id])
+  anulacoesParciais   Empenho[] @relation("AnulacaoParcialEmpenho")
+
+  reserva     ReservaEmpenho?
+  liquidacoes Liquidacao[]
+  /// back-relation M08 — campo VIRTUAL, não gera coluna.
+  inscricoesRestos InscricaoRestosAPagar[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([fichaId, numero])
+  @@index([fichaId])
+  @@index([estornoDeId])
+  @@index([credorCpfCnpj])
+}
+
+// ----------------------------------------------------------------------------
+// BLOCO 2 — liquidação e pagamento. APPEND-ONLY, como tudo aqui.
+// Nenhuma coluna de status: o estado do empenho é DERIVADO dos SUMs
+// (statusDoEmpenho, em dominio.ts).
+// ----------------------------------------------------------------------------
+
+model Liquidacao {
+  id        String  @id @default(cuid())
+  empenhoId String
+  empenho   Empenho @relation(fields: [empenhoId], references: [id])
+
+  numero            String
+  valor             Decimal  @db.Decimal(18, 2)
+  data              DateTime
+  responsavelAtesto String
+
+  /// Nota fiscal — opcional (nem toda liquidação tem NF).
+  notaFiscalChave  String?
+  notaFiscalNum    String?
+  notaFiscalSerie  String?
+  notaFiscalData   DateTime?
+  notaFiscalValor  Decimal?  @db.Decimal(18, 2)
+
+  lancamentoId String             @unique
+  lancamento   LancamentoContabil @relation(fields: [lancamentoId], references: [id])
+
+  estornoDeId String?
+  estornoDe   Liquidacao?  @relation("EstornoLiquidacao", fields: [estornoDeId], references: [id])
+  estornos    Liquidacao[] @relation("EstornoLiquidacao")
+
+  /// TR 5.35 — ANULAÇÃO PARCIAL. NÃO é estorno: o fato original CONTINUA valendo, por
+  /// MENOS. Por isso a coluna é PRÓPRIA — usar `estornoDeId` faria toda leitura
+  /// líquida do repositório ZERAR o fato inteiro (a fila do art. 141, o saldo do
+  /// contrato, o superávit por fonte, o relatório de restos — todos de uma vez).
+  /// Quem soma: packages/estornaveis.
+  anulacaoParcialDeId String?
+  anulacaoParcialDe   Liquidacao? @relation("AnulacaoParcialLiquidacao", fields: [anulacaoParcialDeId], references: [id])
+  anulacoesParciais   Liquidacao[] @relation("AnulacaoParcialLiquidacao")
+
+  pagamentos Pagamento[]
+  /// back-relation M06 — campo VIRTUAL, não gera coluna.
+  quebrasDeOrdem JustificativaQuebraOrdem[]
+  /// back-relation M10 — campo VIRTUAL, não gera coluna.
+  movimentosPatrimoniais MovimentoPatrimonial[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([empenhoId, numero])
+  @@index([empenhoId])
+  @@index([estornoDeId])
+  /// A fila do art. 141 ordena por data de liquidação.
+  @@index([data])
+  /// back-relation M10 (TR 5.85) — a entrada no almoxarifado nasce da liquidação.
+  entradasAlmoxarifado MovimentoAlmoxarifado[]
+}
+
+/// Conta bancária do ente. Existe para que a TR 5.23 seja VERIFICÁVEL: sem
+/// saber a fonte da conta, "a fonte do pagamento tem de casar com a fonte da
+/// conta" é uma regra que não dá para checar. `Pagamento.contaBancaria` guarda
+/// o código, e o adapter confere a fonte contra esta tabela.
+model ContaBancaria {
+  id        String       @id @default(cuid())
+  codigo    String       @unique
+  descricao String
+  fonteId   String
+  fonte     FonteRecurso @relation(fields: [fonteId], references: [id])
+
+  /// M09 — a conta do PCASP que ESTA conta bancária movimenta.
+  ///
+  /// NULLABLE de propósito: a coluna entra sem backfill e sem default (migration
+  /// aditiva pura, um passo só). Um default seria pior que nulo — apontaria toda
+  /// conta bancária para uma conta contábil inventada, e a conciliação
+  /// compararia o extrato de um banco com o razão de outro.
+  /// A conciliação EXIGE o mapeamento e FALHA com mensagem se ele faltar: é o
+  /// operador que sabe qual conta contábil é qual, não o sistema.
+  contaContabilId String?
+  contaContabil   ContaPcasp? @relation(fields: [contaContabilId], references: [id])
+
+  /// ── ADITIVO SAGRES (M15, S2) — a IDENTIFICAÇÃO BANCÁRIA estruturada ──
+  ///
+  /// O SAGRES (CadastroContaBancaria §4.23, SaldoMensal §4.26) exige banco (FEBRABAN, 3),
+  /// agência e conta COM DÍGITO. O modelo só tinha um `codigo` interno — insuficiente. Estes
+  /// campos são o DADO CRU (só dígitos, sem máscara); a máscara BR (`00000-0`) é da UI.
+  ///
+  /// NULLABLE, aditiva, SEM backfill e SEM default — exatamente a doutrina do `contaContabilId`
+  /// logo acima: um default carimbaria toda conta com um banco inventado. Quem exporta SAGRES é
+  /// FAIL-CLOSED e recusa a conta sem a tripla, nomeando-a; quem não exporta não é afetado.
+  banco         String? @db.VarChar(3)
+  agencia       String?
+  digitoAgencia String?
+  conta         String?
+  digitoConta   String?
+
+  /// back-relations M07 / M09 — campos VIRTUAIS, não geram coluna.
+  movimentosExtra    MovimentoExtraorcamentario[]
+  extratos           ExtratoBancario[]
+  lancamentosExtrato LancamentoExtrato[]
+  transferenciasOrigem  TransferenciaEntreContas[] @relation("TransferenciaOrigem")
+  transferenciasDestino TransferenciaEntreContas[] @relation("TransferenciaDestino")
+
+  @@index([fonteId])
+}
+
+model Pagamento {
+  id           String     @id @default(cuid())
+  liquidacaoId String
+  liquidacao   Liquidacao @relation(fields: [liquidacaoId], references: [id])
+
+  numero String
+  valor  Decimal  @db.Decimal(18, 2)
+  data   DateTime
+
+  /// Código da ContaBancaria de onde saiu o dinheiro.
+  contaBancaria String
+  /// TR 5.23: TEM de ser igual à fonte da conta bancária acima.
+  fonteId       String
+  fonte         FonteRecurso @relation(fields: [fonteId], references: [id])
+
+  lancamentoId String             @unique
+  lancamento   LancamentoContabil @relation(fields: [lancamentoId], references: [id])
+
+  estornoDeId String?
+  estornoDe   Pagamento?  @relation("EstornoPagamento", fields: [estornoDeId], references: [id])
+  estornos    Pagamento[] @relation("EstornoPagamento")
+
+  /// TR 5.35 — ANULAÇÃO PARCIAL. NÃO é estorno: o fato original CONTINUA valendo, por
+  /// MENOS. Por isso a coluna é PRÓPRIA — usar `estornoDeId` faria toda leitura
+  /// líquida do repositório ZERAR o fato inteiro (a fila do art. 141, o saldo do
+  /// contrato, o superávit por fonte, o relatório de restos — todos de uma vez).
+  /// Quem soma: packages/estornaveis.
+  anulacaoParcialDeId String?
+  anulacaoParcialDe   Pagamento? @relation("AnulacaoParcialPagamento", fields: [anulacaoParcialDeId], references: [id])
+  anulacoesParciais   Pagamento[] @relation("AnulacaoParcialPagamento")
+
+  /// back-relations M08 / M07 — campos VIRTUAIS, não geram coluna.
+  movimentosRestos MovimentoRestosAPagar[]
+  retencoes        MovimentoExtraorcamentario[]
+  /// back-relation M10 — a AMORTIZACAO nasce dentro do pagamento e morre com ele.
+  movimentosDivida MovimentoDivida[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([liquidacaoId, numero])
+  @@index([liquidacaoId])
+  @@index([fonteId])
+  @@index([estornoDeId])
+}
+
+// ----------------------------------------------------------------------------
+// NOTA — POR QUE NÃO EXISTE COLUNA `status`
+//
+// O spec pedia `status StatusEmpenho` no Empenho E append-only na mesma frase.
+// As duas coisas não coexistem: para o status andar (EMPENHADO ->
+// PARCIAL_LIQUIDADO -> ...) seria preciso dar UPDATE no empenho, que é
+// exatamente o que o append-only proíbe. Um status gravado na criação ficaria
+// congelado em EMPENHADO para sempre — pior que não ter.
+//
+// O próprio spec diz "máquinas de estado DERIVADAS dos valores, não campo
+// editável solto". É o que fizemos: `statusDoEmpenho()` (dominio.ts, puro)
+// calcula o estado a partir dos SUMs de liquidação/pagamento/anulação — mesmo
+// padrão do saldo da ficha, mas sem nem precisar de cache.
+// ----------------------------------------------------------------------------
+
+/// ROTEIRO CONTÁBIL DO SUBSISTEMA ORÇAMENTÁRIO (tabela-parâmetro).
+///
+/// ⚠️ POR QUE ELE NASCE AGORA, E O QUE ELE CURA.
+/// Até 09406c1 o razão só conhecia DUAS pernas da dotação: o EMPENHO (D crédito
+/// disponível / C crédito empenhado) e o seu estorno. A LOA, os créditos adicionais e
+/// as reservas viviam SÓ no `MovimentoDotacao` — nunca tocaram o razão. Resultado, que
+/// a MSC (M14) expôs no t1 de 46dfd5d: o CRÉDITO DISPONÍVEL era **debitado** pelo
+/// empenho e **nunca creditado** pela dotação. Uma conta CREDORA com saldo DEVEDOR,
+/// permanente — e o subsistema orçamentário do razão simplesmente NÃO refletia o
+/// orçamento. O balancete fechava (todo lançamento é balanceado), e foi por isso que
+/// nenhuma amarração pegou.
+///
+/// FAIL-CLOSED: tipo que deve lançar e não tem roteiro = a operação INTEIRA cai. Um
+/// movimento de dotação sem a sua perna no razão é a volta do mesmo furo.
+///
+/// O EMPENHO e o EMPENHO_ANULADO **não entram aqui** — o M05 já os lança pelo roteiro
+/// que o chamador passa. Um roteiro paralelo os lançaria DUAS vezes: é a lição da
+/// ENTRADA do almoxarifado (que não tem roteiro próprio porque a liquidação já debitou
+/// o estoque).
+model RoteiroOrcamentario {
+  id   String               @id @default(cuid())
+  tipo TipoMovimentoDotacao @unique
+
+  contaDebitoId String
+  contaDebito   ContaPcasp @relation("DebitoOrcamentario", fields: [contaDebitoId], references: [id])
+
+  contaCreditoId String
+  contaCredito   ContaPcasp @relation("CreditoOrcamentario", fields: [contaCreditoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

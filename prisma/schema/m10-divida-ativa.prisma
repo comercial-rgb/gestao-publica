@@ -1,0 +1,135 @@
+// ============================================================================
+// M10 — DÍVIDA ATIVA (TR 5.83, 4.63; art. 39 da Lei 4.320/64).
+//
+// O crédito do ente contra o CONTRIBUINTE — o espelho da dívida consolidada (que é
+// o crédito de TERCEIROS contra o ente). Mesma anatomia: append-only, saldo por Σ,
+// roteiro por tabela, estornos desde o dia 1.
+//
+// ═══ ONDE CADA LANÇAMENTO É FEITO (espelho do bloco 4, derivado do MCASP) ═══
+//  · INSCRIÇÃO — D ativo (dívida ativa) / C VPA. Aqui o patrimônio AUMENTA de
+//    verdade: o ente reconhece um crédito que não tinha reconhecido.
+//  · ATUALIZAÇÃO (juros/multa/correção) — mesmo par: o crédito cresce, e o
+//    acréscimo é VPA.
+//  · CANCELAMENTO (prescrição, remissão, decisão judicial) — D VPD / C ativo. O
+//    crédito morre, e a perda é despesa patrimonial.
+//  · RECEBIMENTO — **SEM ROTEIRO PRÓPRIO, e é de propósito**. Receber dívida ativa
+//    é RECEITA ORÇAMENTÁRIA: quem contabiliza é o M04 (D caixa / C ativo dívida
+//    ativa). É fato PERMUTATIVO — um ativo vira outro; o ente não fica mais rico,
+//    ele TROCA um crédito por dinheiro. NÃO há VPA (a VPA já foi reconhecida na
+//    INSCRIÇÃO — reconhecê-la de novo contaria a mesma receita duas vezes). O
+//    roteiro da arrecadação já vem por PARÂMETRO: a perna credora aponta para o
+//    ATIVO. É o mesmo desenho do ingresso de operação de crédito (bloco 4), com o
+//    sinal trocado.
+//
+// A AMARRAÇÃO: Σ dos movimentos == saldo da CONTA CONTÁBIL no razão. Duas leituras
+// independentes do mesmo crédito.
+// ============================================================================
+
+/// Art. 39, § 2º da Lei 4.320/64 — o rol é FECHADO. Não existe "outra": ou o
+/// crédito nasce de tributo, ou não nasce.
+enum OrigemDividaAtiva {
+  /// Impostos, taxas, contribuições de melhoria — e seus acréscimos legais.
+  TRIBUTARIA
+  /// Multas (não tributárias), aluguéis, foros, laudêmios, preços públicos,
+  /// ressarcimentos, alcances de responsáveis.
+  NAO_TRIBUTARIA
+}
+
+model DividaAtiva {
+  id              String            @id @default(cuid())
+  identificador   String            @unique
+  devedorNome     String
+  devedorDocumento String
+  origem          OrigemDividaAtiva
+
+  /// A conta de ATIVO (classe 1) que este crédito movimenta. Vem por PARÂMETRO,
+  /// como todo código contábil do projeto. É contra o saldo DELA que a Σ dos
+  /// movimentos é conferida.
+  contaContabilId String
+  contaContabil   ContaPcasp @relation("AtivoDaDividaAtiva", fields: [contaContabilId], references: [id])
+
+  movimentos MovimentoDividaAtiva[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([origem])
+  @@index([devedorDocumento])
+}
+
+/// OITO tipos — os quatro fatos e os quatro estornos, desde o dia 1.
+enum TipoMovimentoDividaAtiva {
+  INSCRICAO
+  ATUALIZACAO
+  RECEBIMENTO
+  CANCELAMENTO
+  ESTORNO_INSCRICAO
+  ESTORNO_ATUALIZACAO
+  ESTORNO_RECEBIMENTO
+  ESTORNO_CANCELAMENTO
+}
+
+model MovimentoDividaAtiva {
+  id            String                   @id @default(cuid())
+  dividaAtivaId String
+  dividaAtiva   DividaAtiva              @relation(fields: [dividaAtivaId], references: [id])
+
+  tipo  TipoMovimentoDividaAtiva
+  /// SEMPRE positivo. O sinal vem do tipo (SINAL_MOVIMENTO_DIVIDA_ATIVA).
+  valor Decimal                  @db.Decimal(18, 2)
+
+  /// Obrigatória na ATUALIZACAO (Zod) — é ela que dá a idempotência: duas correções
+  /// da mesma competência seriam a mesma correção duas vezes.
+  competencia DateTime?
+
+  /// A data do FATO (a inscrição, a correção, o recebimento, a prescrição).
+  dataMovimento DateTime
+
+  /// TR 4.63 — o RECEBIMENTO nasce de uma RECEITA ARRECADADA (receber dívida ativa
+  /// é receita orçamentária). Uma MESMA receita pode quitar VÁRIAS dívidas (um
+  /// acordo, uma guia única) — e a soma dos recebimentos dela não pode passar do
+  /// que ela arrecadou.
+  receitaArrecadadaId String?
+  receitaArrecadada   ReceitaArrecadada? @relation("RecebimentoDividaAtiva", fields: [receitaArrecadadaId], references: [id])
+
+  /// INSCRICAO, ATUALIZACAO e CANCELAMENTO têm lançamento próprio (RoteiroDividaAtiva).
+  /// O RECEBIMENTO não tem — quem o contabiliza é o M04 (ver o cabeçalho).
+  lancamentoId String?
+  lancamento   LancamentoContabil? @relation("LancamentoDividaAtiva", fields: [lancamentoId], references: [id])
+
+  /// APPEND-ONLY. "Já estornado?" é DERIVADO de `estornos.length > 0`.
+  /// Unicidade no banco: prisma/sql/uq_estorno_divida_ativa_unico.sql.
+  estornoDeId String?
+  estornoDe   MovimentoDividaAtiva?  @relation("EstornoDividaAtiva", fields: [estornoDeId], references: [id])
+  estornos    MovimentoDividaAtiva[] @relation("EstornoDividaAtiva")
+
+  /// back-relation M04 (TR 5.87) — quando esta INSCRICAO reclassificou um crédito reconhecido.
+  /// VIRTUAL, 1-1: só as inscrições que vieram de reconhecimento têm o vínculo.
+  inscricaoDeReconhecimento InscricaoDeReconhecimento?
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([dividaAtivaId, tipo])
+  @@index([dataMovimento])
+  @@index([receitaArrecadadaId])
+  @@index([estornoDeId])
+}
+
+/// O roteiro contábil — TABELA, como todo roteiro do projeto. APENAS INSCRICAO,
+/// ATUALIZACAO e CANCELAMENTO: o RECEBIMENTO não tem roteiro POR DESIGN (o M04 o
+/// contabiliza; ver o cabeçalho e o espelho no bloco 4).
+model RoteiroDividaAtiva {
+  id   String                   @id @default(cuid())
+  tipo TipoMovimentoDividaAtiva @unique
+
+  contaDebitoId String
+  contaDebito   ContaPcasp @relation("DebitoDividaAtiva", fields: [contaDebitoId], references: [id])
+  contaCreditoId String
+  contaCredito   ContaPcasp @relation("CreditoDividaAtiva", fields: [contaCreditoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

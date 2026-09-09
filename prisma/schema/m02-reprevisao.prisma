@@ -1,0 +1,33 @@
+/// ═══════════════════════════════════════════════════════════════════════════════════════
+/// M02 — REPREVISÃO DE RECEITA (reestimativa). LRF art. 12 · MDF (previsão atualizada).
+///
+/// ⚠️ A REPREVISÃO É GERENCIAL, NÃO É FATO CONTÁBIL. A `ReceitaPrevista` deste sistema é tabela de
+/// PLANEJAMENTO (não tem lançamento no razão — a previsão de receita não é escriturada aqui). Logo
+/// a reprevisão é um AJUSTE de planejamento, append-only, SEM funil e SEM razão.
+///
+/// ⚠️ APPEND-ONLY. Cada reestimativa é uma LINHA nova (o `valorAjuste`, com sinal: + aumenta, −
+/// reduz). A previsão ATUALIZADA de uma natureza = previsão inicial + Σ dos ajustes. Nunca se
+/// edita nem apaga uma reprevisão — corrigir é lançar outra. É o que destrava a coluna "previsão
+/// atualizada" dos Anexos 1/3/8/12, que até aqui repetia a inicial (pendência nomeada).
+model ReceitaReprevista {
+  id String @id @default(cuid())
+
+  exercicio Int
+  /// O código de 8 dígitos da natureza (o mesmo que os relatórios agrupam).
+  naturezaCodigo String @db.VarChar(8)
+  /// O código de 3 dígitos da fonte.
+  fonteCodigo String @db.VarChar(3)
+  /// Enum conceitual (ORCAMENTARIA/DEDUCAO...), guardado como string — a tradução SAGRES é no export.
+  tipoReceita String
+
+  /// O AJUSTE, COM SINAL. Positivo aumenta a previsão; negativo reduz. Append-only.
+  valorAjuste Decimal @db.Decimal(18, 2)
+
+  motivo    String
+  data      DateTime
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  @@index([exercicio])
+  @@index([exercicio, naturezaCodigo])
+}

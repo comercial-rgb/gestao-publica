@@ -1,0 +1,79 @@
+// ============================================================================
+// M10 — PROVISÕES MATEMÁTICAS PREVIDENCIÁRIAS (TR 5.89).
+//
+// O passivo atuarial do RPPS: o que o ente vai dever aos servidores. APPEND-ONLY,
+// saldo por Σ, roteiro por tabela — a mesma anatomia da dívida consolidada.
+//
+// ⚠️ A REVERSÃO É UM FATO NOVO, NÃO UM ESTORNO. O cálculo atuarial de 2027 pode
+// mostrar que a provisão de 2026 estava ALTA — e reduzi-la é um ganho patrimonial
+// (D passivo / C VPA), não a correção de um erro. O ESTORNO existe para o outro
+// caso: a provisão que foi lançada ERRADA. Confundir os dois faria o resultado do
+// exercício absorver, como ganho, a correção de um lançamento equivocado.
+// ============================================================================
+
+model ProvisaoMatematica {
+  id            String @id @default(cuid())
+  identificador String @unique
+  descricao     String
+
+  /// A conta de PASSIVO (classe 2) que esta provisão movimenta. Parâmetro.
+  contaContabilId String
+  contaContabil   ContaPcasp @relation("PassivoDaProvisao", fields: [contaContabilId], references: [id])
+
+  movimentos MovimentoProvisao[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+enum TipoMovimentoProvisao {
+  CONSTITUICAO
+  ATUALIZACAO
+  REVERSAO
+  ESTORNO_CONSTITUICAO
+  ESTORNO_ATUALIZACAO
+  ESTORNO_REVERSAO
+}
+
+model MovimentoProvisao {
+  id         String             @id @default(cuid())
+  provisaoId String
+  provisao   ProvisaoMatematica @relation(fields: [provisaoId], references: [id])
+
+  tipo  TipoMovimentoProvisao
+  valor Decimal               @db.Decimal(18, 2)
+
+  /// Obrigatória na ATUALIZACAO (Zod) — é ela que dá a idempotência.
+  competencia   DateTime?
+  dataMovimento DateTime
+
+  lancamentoId String?
+  lancamento   LancamentoContabil? @relation("LancamentoProvisao", fields: [lancamentoId], references: [id])
+
+  /// Unicidade: prisma/sql/uq_estorno_provisao_unico.sql.
+  estornoDeId String?
+  estornoDe   MovimentoProvisao?  @relation("EstornoProvisao", fields: [estornoDeId], references: [id])
+  estornos    MovimentoProvisao[] @relation("EstornoProvisao")
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([provisaoId, tipo])
+  @@index([dataMovimento])
+  @@index([estornoDeId])
+}
+
+model RoteiroProvisao {
+  id   String                @id @default(cuid())
+  tipo TipoMovimentoProvisao @unique
+
+  contaDebitoId String
+  contaDebito   ContaPcasp @relation("DebitoProvisao", fields: [contaDebitoId], references: [id])
+  contaCreditoId String
+  contaCredito   ContaPcasp @relation("CreditoProvisao", fields: [contaCreditoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

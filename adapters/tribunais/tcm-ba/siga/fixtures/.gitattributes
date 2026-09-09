@@ -1,0 +1,15 @@
+# ⚠️ O GOLDEN É COMPARADO BYTE A BYTE — o git NÃO PODE NORMALIZÁ-LO.
+#
+# Este repositório roda com `core.autocrlf=true`: no checkout, o git converte LF em CRLF em
+# arquivos que ele considera texto. O `empenho-golden.txt` é um registro fixed-width de 500 bytes
+# exatos, gravado em latin1 e SEM quebra de linha — hoje não há LF para converter, e por isso a
+# normalização não o afeta.
+#
+# Isso é sorte, não garantia. Bastaria um `\n` entrar no arquivo (um editor que "conserta" o final
+# de arquivo, uma regeneração distraída) para o git passar a reescrevê-lo no checkout — e o teste
+# golden falharia em algumas máquinas e passaria em outras, que é o pior modo de falha possível:
+# quem não reproduz conclui que o teste é instável e o desativa.
+#
+# `-text` diz ao git para tratar o conteúdo como opaco: sem conversão de fim de linha, em nenhuma
+# direção, em nenhuma plataforma.
+*.txt -text

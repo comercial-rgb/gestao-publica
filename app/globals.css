@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+/*
+  SIAFIC — TOKENS DE DESIGN (Tailwind v4, CSS-first).
+
+  ⚠️ TODA COR MORA AQUI, COMO VARIÁVEL. Nenhum componente escreve hex solto — é a regra do
+  bloco. A identidade é a de um sistema contábil governamental: sobriedade, densidade, sem
+  gradiente decorativo. Cinzas FRIOS (slate) + um azul institucional para ação/navegação;
+  verde/vermelho SÓ para semântica contábil (positivo/negativo).
+
+  Os tokens são consumidos pelo Tailwind (`bg-surface`, `text-ink`, ...) e pelo `lib/design/
+  tokens.ts` (acesso tipado no TS). O `@theme` gera as utilitárias.
+*/
+@theme {
+  /* ── superfícies e tinta (cinzas frios) ── */
+  --color-canvas: #f1f5f9; /* fundo da aplicação (slate-100) */
+  --color-surface: #ffffff; /* cartões, tabelas, painéis */
+  --color-surface-2: #f8fafc; /* faixas zebra, cabeçalhos de tabela (slate-50) */
+  --color-border: #e2e8f0; /* divisórias (slate-200) */
+  --color-border-strong: #cbd5e1; /* divisória de ênfase (slate-300) */
+
+  --color-ink: #0f172a; /* texto principal (slate-900) */
+  --color-ink-2: #475569; /* texto secundário (slate-600) */
+  --color-ink-3: #94a3b8; /* texto terciário / desabilitado (slate-400) */
+
+  /* ── azul institucional (ação, navegação ativa) ── */
+  --color-primary: #1e4e8c; /* azul institucional sóbrio */
+  --color-primary-hover: #1a4478;
+  --color-primary-fg: #ffffff; /* texto sobre o azul */
+  --color-primary-soft: #e8eef6; /* fundo de item ativo na sidebar */
+
+  /* ── SEMÂNTICA CONTÁBIL — verde/vermelho SÓ para sinal de valor ── */
+  --color-positivo: #15803d; /* superávit, saldo credor favorável (green-700) */
+  --color-negativo: #b91c1c; /* déficit, valor negativo contábil (red-700) */
+
+  /* ── status (badges), tons sóbrios ── */
+  --color-status-neutro-bg: #f1f5f9;
+  --color-status-neutro-fg: #475569;
+  --color-status-ok-bg: #dcfce7;
+  --color-status-ok-fg: #15803d;
+  --color-status-alerta-bg: #fef9c3;
+  --color-status-alerta-fg: #854d0e;
+  --color-status-erro-bg: #fee2e2;
+  --color-status-erro-fg: #b91c1c;
+
+  /* ── tipografia ── */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "Segoe UI Mono", Menlo, Consolas, monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+
+  /* ── raios e sombra (um único nível, discreto) ── */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --shadow-card: 0 1px 3px rgb(15 23 42 / 0.08);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 0.875rem; /* densidade: 14px base */
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Valores monetários e numéricos: dígitos de largura fixa (colunas alinham). */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Foco visível e AA — navegação por teclado na sidebar depende disto. */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/*
+  ⚠️ IMPRESSÃO — o relatório vai para papel/PDF (o 7.5 fará o PDF de verdade). Aqui já limpamos
+  o cromo: sem sidebar, sem cabeçalho, sem rodapé de app. Só o conteúdo, em preto no branco.
+*/
+@media print {
+  [data-chrome] {
+    display: none !important;
+  }
+  body {
+    background: #ffffff;
+    font-size: 11pt;
+  }
+  main {
+    padding: 0 !important;
+  }
+}

@@ -1,0 +1,44 @@
+// ============================================================================
+// M18 — SAGRES Captura 2.0: execução de submissão (JSON). APPEND-ONLY.
+//
+// Persiste CADA submissão: correlation ID, entidade, modo, estado terminal, hash
+// do payload, simulationId (só MOCK/SIMULATED) e a contagem de violações. É a
+// trilha de auditoria do §6 da diretiva — o que foi gerado e o que aconteceu.
+// NUNCA guarda protocolo/recibo/aceite: isso só existe com resposta real do TCE.
+// ============================================================================
+
+enum ModoCaptura {
+  MOCK
+  SANDBOX
+  LIVE
+}
+
+enum EstadoCaptura {
+  DRAFT
+  VALIDATED_LOCAL
+  REJECTED_LOCAL
+  SUBMITTED_MOCK
+  SIMULATED
+}
+
+model ExecucaoCaptura {
+  id            String        @id @default(cuid())
+  /// Correlation ID da submissão (uuid) — único, atravessa o log.
+  correlationId String        @unique
+  entidade      String
+  modo          ModoCaptura
+  estado        EstadoCaptura
+  quantidadeElementos Int
+  /// sha256 do envelope JSON gerado — prova de integridade local.
+  hashPayload   String
+  /// uuid INTERNO da simulação (só quando SIMULATED). NUNCA um protocolo do TCE.
+  simulationId  String?
+  /// Quantas violações de schema (0 = validado limpo).
+  violacoes     Int           @default(0)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([entidade])
+  @@index([estado])
+}

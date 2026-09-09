@@ -1,0 +1,195 @@
+// ============================================================================
+// M09 — tesouraria: extrato bancário (import OFX) + conciliação.
+//
+// APPEND-ONLY em tudo. Sem updatedAt, sem deletedAt. O extrato é o que o BANCO
+// disse; ele não se corrige — se o banco reemitir, isso é FATO NOVO, e o sistema
+// tem de parar e pedir decisão humana (ver `linhaHash`).
+//
+// "CONCILIADO" É DERIVADO, NUNCA FLAG: um lançamento está conciliado se a soma
+// dos vínculos dele, COM OS SINAIS (SINAL_VINCULO), é > 0. Uma coluna
+// `conciliado` exigiria UPDATE — o que este modelo proíbe — e derraparia na
+// primeira anulação.
+// ============================================================================
+
+enum NaturezaLancamentoExtrato {
+  /// Dinheiro ENTROU na conta (TRNAMT > 0 no OFX).
+  CREDITO
+  /// Dinheiro SAIU da conta (TRNAMT < 0 no OFX).
+  DEBITO
+}
+
+/// A que tabela do sistema o lançamento do extrato foi amarrado.
+/// String + enum em vez de 3 FKs: são três origens (M05, M04, M07), e uma FK
+/// para cada faria três colunas nuláveis mutuamente exclusivas.
+enum TipoInternoConciliacao {
+  /// M05 — Pagamento.
+  PAGAMENTO
+  /// M04 — ReceitaArrecadada.
+  ARRECADACAO
+  /// M07 — MovimentoExtraorcamentario (retenção, caução, repasse).
+  MOVIMENTO_EXTRA
+}
+
+enum TipoVinculo {
+  VINCULO
+  /// Desfaz um VINCULO. Simétrico DESDE O DIA 1 — a lição do M07/M08.
+  ESTORNO_VINCULO
+}
+
+// ----------------------------------------------------------------------------
+// ExtratoBancario — o arquivo que o banco mandou. APPEND-ONLY.
+// ----------------------------------------------------------------------------
+
+model ExtratoBancario {
+  id String @id @default(cuid())
+
+  contaBancariaId String
+  contaBancaria   ContaBancaria @relation(fields: [contaBancariaId], references: [id])
+
+  /// sha256 do ARQUIVO INTEIRO. É o que torna o import idempotente: reimportar o
+  /// mesmo arquivo é no-op, não erro — o operador que clicou duas vezes não
+  /// merece um erro, e o sistema não pode duplicar o extrato por causa dele.
+  arquivoHash String @unique
+
+  periodoInicio DateTime
+  periodoFim    DateTime
+
+  /// De onde o extrato veio: arquivo OFX ou a API do Banco do Brasil (M17-a). NULO lê-se OFX —
+  /// aditiva, sem backfill, e todo import que já existe é OFX. A conciliação é a MESMA; a origem só
+  /// aparece na tela e na trilha, para o operador saber a procedência do que concilia.
+  origem OrigemExtrato @default(OFX)
+
+  lancamentos LancamentoExtrato[]
+
+  criadoEm    DateTime @default(now())
+  importadoPor String
+}
+
+enum OrigemExtrato {
+  OFX
+  API_BB
+}
+
+// ----------------------------------------------------------------------------
+// LancamentoExtrato — uma linha (STMTTRN) do extrato. APPEND-ONLY.
+//
+// `valor` é SEMPRE POSITIVO; quem dá o sinal é a `natureza`. Mesma disciplina do
+// resto do projeto: não existe valor negativo escondendo um débito.
+// ----------------------------------------------------------------------------
+
+model LancamentoExtrato {
+  id String @id @default(cuid())
+
+  extratoId String
+  extrato   ExtratoBancario @relation(fields: [extratoId], references: [id])
+
+  /// DENORMALIZADO do extrato — e de propósito: o índice único (conta, fitid) é
+  /// o que impede a mesma transação bancária de entrar duas vezes por arquivos
+  /// diferentes (extratos com período sobreposto são o caso NORMAL). O Prisma não
+  /// indexa através de relação, então a coluna tem de estar aqui. Quem importa
+  /// grava as duas na mesma transação.
+  contaBancariaId String
+  contaBancaria   ContaBancaria @relation(fields: [contaBancariaId], references: [id])
+
+  /// FITID — o id que o BANCO deu à transação. Único por conta, para sempre.
+  fitid        String
+  dataPostagem DateTime
+
+  /// SEMPRE positivo. O sinal vem da `natureza`.
+  valor    Decimal                   @db.Decimal(18, 2)
+  natureza NaturezaLancamentoExtrato
+
+  /// CHECKNUM do OFX (nº do documento/cheque). Nem todo banco manda.
+  documento String?
+  memo      String
+
+  /// sha256 do conteúdo canônico da linha. Se o banco reemitir o MESMO FITID com
+  /// conteúdo DIFERENTE, o import ABORTA: isso não é reimportação, é o banco
+  /// mudando o passado. Decisão humana — nunca automática.
+  linhaHash String
+
+  vinculos VinculoConciliacao[]
+
+  criadoEm DateTime @default(now())
+
+  /// A MESMA transação bancária não entra duas vezes na mesma conta.
+  @@unique([contaBancariaId, fitid], name: "uq_extrato_conta_fitid")
+  @@index([extratoId])
+  @@index([contaBancariaId, dataPostagem])
+}
+
+// ----------------------------------------------------------------------------
+// VinculoConciliacao — "esta linha do extrato é ESTE fato do sistema".
+// APPEND-ONLY, e SIMÉTRICO desde o dia 1 (VINCULO / ESTORNO_VINCULO).
+//
+// Parcial dos dois lados é legítimo: um depósito único pode cobrir N
+// arrecadações, e uma arrecadação pode chegar em N depósitos. Por isso o vínculo
+// carrega VALOR, e não é 1-1.
+// ----------------------------------------------------------------------------
+
+model VinculoConciliacao {
+  id String @id @default(cuid())
+
+  lancamentoExtratoId String
+  lancamentoExtrato   LancamentoExtrato @relation(fields: [lancamentoExtratoId], references: [id])
+
+  tipoInterno TipoInternoConciliacao
+  /// Id do registro interno (Pagamento / ReceitaArrecadada /
+  /// MovimentoExtraorcamentario). String, não FK — são três tabelas.
+  internoId   String
+
+  /// SEMPRE positivo. O sinal vem do `tipo` (SINAL_VINCULO).
+  valor Decimal     @db.Decimal(18, 2)
+  tipo  TipoVinculo
+
+  /// APPEND-ONLY: o estorno referencia o vínculo que desfaz.
+  estornoDeId String?
+  estornoDe   VinculoConciliacao?  @relation("EstornoVinculo", fields: [estornoDeId], references: [id])
+  estornos    VinculoConciliacao[] @relation("EstornoVinculo")
+
+  /// Obrigatório no ESTORNO (Zod, min 10). Desfazer conciliação exige explicação.
+  motivo String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([lancamentoExtratoId])
+  @@index([tipoInterno, internoId])
+  @@index([estornoDeId])
+}
+
+// ----------------------------------------------------------------------------
+// TransferenciaEntreContas — TR 5.61: movimentação financeira entre contas da
+// MESMA UG. APPEND-ONLY. É o FATO que o SAGRes MovimentacaoEntreContasBancarias
+// (§4.59) exporta — a tripla (M15/S2) identifica as contas, mas o EVENTO da
+// transferência não existia. A contabilização vai pelo funil (razao.ts); a fonte
+// deriva do fato (a conta de origem). Não há transferência para si mesma.
+// ----------------------------------------------------------------------------
+
+model TransferenciaEntreContas {
+  id String @id @default(cuid())
+
+  contaOrigemId String
+  contaOrigem   ContaBancaria @relation("TransferenciaOrigem", fields: [contaOrigemId], references: [id])
+  contaDestinoId String
+  contaDestino   ContaBancaria @relation("TransferenciaDestino", fields: [contaDestinoId], references: [id])
+
+  /// SEMPRE positivo.
+  valor Decimal  @db.Decimal(18, 2)
+  data  DateTime
+
+  /// Número de controle da transação (SAGRES §4.59 "Código da Movimentação", Caractere 7).
+  codigo    String
+  historico String
+
+  /// A contabilização (funil razao.ts). 1-1.
+  lancamentoId String             @unique
+  lancamento   LancamentoContabil @relation(fields: [lancamentoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([contaOrigemId])
+  @@index([contaDestinoId])
+  @@index([data])
+}

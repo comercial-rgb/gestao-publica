@@ -1,0 +1,43 @@
+/// ═══════════════════════════════════════════════════════════════════════════════════════
+/// M12 — DE-PARAS do RREO Anexo 11 (Alienação de Ativos). LRF art. 53 §1º III · MDF 15ª ed.
+/// ═══════════════════════════════════════════════════════════════════════════════════════
+
+/// ⚠️ DE-PARA NATUREZA → TIPO DE BEM ALIENADO (quadro de receitas, item I).
+///
+/// A alienação de bens é a ORIGEM 2 da categoria de capital (2º dígito, Portaria 163) — o M10 já
+/// exige isso ao sustentar a baixa (TR 4.65). O que a origem NÃO diz é se o bem era MÓVEL, IMÓVEL
+/// ou INTANGÍVEL, nem separa os RENDIMENTOS de aplicação dos recursos (que são origem 13, receita
+/// patrimonial, mas entram no mesmo quadro). Este de-para amarra `naturezaCodigo → chave`. Rol
+/// fechado {MOVEIS, IMOVEIS, INTANGIVEIS, RENDIMENTOS}; sem mapa, a receita não aparece no quadro.
+model DeParaReceitaAlienacao {
+  id String @id @default(cuid())
+
+  naturezaCodigo String @db.VarChar(8)
+
+  /// "MOVEIS" | "IMOVEIS" | "INTANGIVEIS" | "RENDIMENTOS". Rol fechado.
+  chave String
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  @@unique([naturezaCodigo])
+  @@index([chave])
+}
+
+/// ⚠️ DE-PARA FONTE DE ALIENAÇÃO (quadro de aplicação, item II) — INTERRUPTOR NOMEADO.
+///
+/// O art. 44 da LRF vincula os recursos de alienação a despesa de CAPITAL (ou aos regimes de
+/// previdência). O quadro II mostra a APLICAÇÃO desses recursos — mas o sistema não tem uma fonte
+/// "de alienação" pré-definida. Esta tabela DIZ quais fontes são recursos de alienação; o ente a
+/// preenche. VAZIA, o quadro II é zero NOMEADO (não há aplicação a mostrar) — nunca um zero
+/// silencioso. Uma fonte aqui = "as despesas desta fonte são a aplicação dos recursos de alienação".
+model DeParaFonteAlienacao {
+  id String @id @default(cuid())
+
+  fonteCodigo String @db.VarChar(3)
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  @@unique([fonteCodigo])
+}

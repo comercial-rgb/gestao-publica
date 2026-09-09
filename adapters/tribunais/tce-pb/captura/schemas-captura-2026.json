@@ -1,0 +1,4092 @@
+{
+  "Lista de Ações": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Ações",
+    "description": "Lista de objetos representando a entidade Ação",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Ação",
+          "description": "Representação do schema para envio da entidade Ação",
+          "type": "object",
+          "properties": {
+            "codigoUnidadeGestora": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoAcao": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "descricaoAcao": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 70
+            },
+            "tipoAcao": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "descricaoMeta": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 150
+            },
+            "unidadeMedida": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "codigoUnidadeGestora",
+            "codigoAcao",
+            "descricaoAcao",
+            "tipoAcao",
+            "descricaoMeta",
+            "unidadeMedida",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Conciliações Bancárias": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Conciliações Bancárias",
+    "description": "Lista de objetos representando a entidade Conciliação Bancária",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Conciliação Bancária",
+          "description": "Representação do schema para envio da entidade Conciliação Bancária",
+          "type": "object",
+          "properties": {
+            "numeroContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 13,
+              "pattern": "^[A-Z0-9]+$"
+            },
+            "numeroAgenciaContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 6,
+              "pattern": "^[A-Z0-9]+$"
+            },
+            "codigoBancoContaBancaria": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "numero": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 8,
+              "pattern": "^[0-9]+$"
+            },
+            "tipoContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "cnpjGerenciaContaBancaria": {
+              "type": "string",
+              "minLength": 14,
+              "maxLength": 14,
+              "pattern": "^[A-Z0-9]+$"
+            },
+            "tipoConciliacao": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "descricao": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 150
+            },
+            "data": {
+              "type": "string",
+              "format": "date"
+            },
+            "numeroCheque": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroDocDebito": {
+              "type": "string",
+              "minLength": 11,
+              "maxLength": 11
+            },
+            "valorConciliacao": {
+              "type": "number",
+              "minimum": 0
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "numeroContaBancaria",
+            "numeroAgenciaContaBancaria",
+            "codigoBancoContaBancaria",
+            "numero",
+            "tipoContaBancaria",
+            "cnpjGerenciaContaBancaria",
+            "tipoConciliacao",
+            "descricao",
+            "data",
+            "numeroCheque",
+            "numeroDocDebito",
+            "valorConciliacao",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Conta Bancária": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Conta Bancária",
+    "description": "Schema para envio de contas bancárias por unidade gestora",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "object",
+          "properties": {
+            "numeroContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 13,
+              "pattern": "^[A-Z0-9]+$"
+            },
+            "codigoBancoContaBancaria": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroAgenciaContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 6,
+              "pattern": "^[A-Z0-9]+$"
+            },
+            "descricaoContaBancaria": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 100
+            },
+            "tipoContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "cnpjGerenciaContaBancaria": {
+              "type": "string",
+              "minLength": 14,
+              "maxLength": 14,
+              "pattern": "^[A-Z0-9]+$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "numeroContaBancaria",
+            "codigoBancoContaBancaria",
+            "numeroAgenciaContaBancaria",
+            "descricaoContaBancaria",
+            "tipoContaBancaria",
+            "cnpjGerenciaContaBancaria",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Conta Bancária Credor": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Conta Bancária Credor",
+    "description": "Schema para envio de contas bancárias dos credores por unidade gestora",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "object",
+          "properties": {
+            "cpfCnpjCredor": {
+              "type": "string",
+              "minLength": 11,
+              "maxLength": 14,
+              "pattern": "^[A-Z0-9]+$"
+            },
+            "numeroContaBancariaCredor": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 13,
+              "pattern": "^[A-Z0-9]+$"
+            },
+            "codigoBancoContaBancariaCredor": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroAgenciaContaBancariaCredor": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 6,
+              "pattern": "^[A-Z0-9]+$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "cpfCnpjCredor",
+            "numeroContaBancariaCredor",
+            "codigoBancoContaBancariaCredor",
+            "numeroAgenciaContaBancariaCredor",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Credor": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Credor",
+    "description": "Schema para envio de credores por unidade gestora",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "object",
+          "properties": {
+            "cpfCnpj": {
+              "type": "string",
+              "minLength": 11,
+              "maxLength": 14,
+              "pattern": "^[A-Z0-9]+$"
+            },
+            "nome": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 150
+            },
+            "tipo": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "cpfCnpj",
+            "nome",
+            "tipo",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Despesas Extraorçamentárias": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Despesas Extraorçamentárias",
+    "description": "Lista de objetos representando a entidade Despesa Extraorçamentária",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Despesa Extraorçamentária",
+          "description": "Representação do schema para envio da entidade Despesa Extraorçamentária",
+          "type": "object",
+          "properties": {
+            "numeroDespesaExtra": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoContaContabil": {
+              "type": "string",
+              "minLength": 9,
+              "maxLength": 9,
+              "pattern": "^[0-9]+$"
+            },
+            "cpfCnpjCredor": {
+              "type": "string",
+              "minLength": 14,
+              "maxLength": 14,
+              "pattern": "^[0-9]+$"
+            },
+            "exercicioFonteRecurso": {
+              "type": "string",
+              "enum": [
+                "ATUAL",
+                "ANTERIOR"
+              ]
+            },
+            "codigoFonteRecurso": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoBancoContaBancaria": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 13,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroAgenciaContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "tipoContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "cnpjGerenciaContaBancaria": {
+              "type": "string",
+              "minLength": 14,
+              "maxLength": 14,
+              "pattern": "^[0-9]+$"
+            },
+            "valorDespesaExtra": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "historico": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 500
+            },
+            "codigoDespesaExtra": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 8,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoFonteRecursoPagamento": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "co": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoUnidadeGestoraReceitaExtra": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "exercicioReceitaExtra": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroReceitaExtra": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "numeroDespesaExtra",
+            "codigoContaContabil",
+            "cpfCnpjFornecedor",
+            "exercicioFonteRecurso",
+            "codigoFonteRecurso",
+            "codigoBancoContaBancaria",
+            "numeroContaBancaria",
+            "numeroAgenciaContaBancaria",
+            "tipoContaBancaria",
+            "cnpjGerenciaContaBancaria",
+            "valorDespesaExtra",
+            "historico",
+            "codigoDespesaExtra",
+            "codigoFonteRecursoPagamento",
+            "co",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Dotações": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Dotações",
+    "description": "Lista de objetos representando a entidade Dotação",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Dotação",
+          "description": "Representação do schema para envio da entidade Dotação",
+          "type": "object",
+          "properties": {
+            "codigoUnidadeGestora": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoUnidadeOrcamentaria": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoFuncao": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoSubfuncao": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoPrograma": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoAcao": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoCategoriaEconomica": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoNaturezaDespesa": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoModalidadeDespesa": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoElementoDespesa": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "pattern": "^[0-9]+$"
+            },
+            "exercicioFonteRecurso": {
+              "type": "string",
+              "enum": [
+                "ATUAL",
+                "ANTERIOR"
+              ]
+            },
+            "codigoFonteRecurso": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "valorDotacao": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "codigoUnidadeGestora",
+            "codigoUnidadeOrcamentaria",
+            "codigoFuncao",
+            "codigoSubfuncao",
+            "codigoPrograma",
+            "codigoAcao",
+            "codigoCategoriaEconomica",
+            "codigoNaturezaDespesa",
+            "codigoModalidadeDespesa",
+            "codigoElementoDespesa",
+            "exercicioFonteRecurso",
+            "codigoFonteRecurso",
+            "valorDotacao",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Emendas Impositivas": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Emendas Impositivas",
+    "description": "Lista de objetos representando a entidade Emenda Impositiva",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Emenda Impositiva",
+          "description": "Representação do schema para envio da entidade Emenda Impositiva",
+          "type": "object",
+          "properties": {
+            "codigoUnidadeGestora": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEmendaImpositiva": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "cpfAutor": {
+              "type": "string",
+              "minLength": 11,
+              "maxLength": 11,
+              "pattern": "^[0-9]+$"
+            },
+            "nomeAutor": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 150
+            },
+            "cnpjBeneficiario": {
+              "type": "string",
+              "minLength": 14,
+              "maxLength": 14,
+              "pattern": "^[A-Z0-9]+$"
+            },
+            "nomeBeneficiario": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 150
+            },
+            "finalidade": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 500
+            },
+            "valorEmendaImpositiva": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "codigoUnidadeGestora",
+            "numeroEmendaImpositiva",
+            "cpfAutor",
+            "nomeAutor",
+            "cnpjBeneficiario",
+            "nomeBeneficiario",
+            "finalidade",
+            "valorEmenda",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Empenhos": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Empenhos",
+    "description": "Schema para envio de empenhos por unidade gestora",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "object",
+          "properties": {
+            "codigoUnidadeOrcamentaria": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEmpenho": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "tipoEmpenho": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "valorEmpenho": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "codigoFuncao": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoSubfuncao": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoPrograma": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoAcao": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoCategoriaEconomica": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoNaturezaDespesa": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoModalidadeDespesa": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoElementoDespesa": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoSubelementoDespesa": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoCO": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "exercicioFonteRecurso": {
+              "type": "string",
+              "enum": [
+                "ATUAL",
+                "ANTERIOR"
+              ]
+            },
+            "codigoFonteRecurso": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoNaturezaContratacao": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoModalidadeLicitacao": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroObra": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 8
+            },
+            "numeroLicitacao": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 10,
+              "pattern": "^\\d{5}/\\d{4}$"
+            },
+            "historico": {
+              "type": "string",
+              "maxLength": 4000
+            },
+            "cpfCnpjCredor": {
+              "type": "string",
+              "minLength": 11,
+              "maxLength": 14,
+              "pattern": "^[A-Z0-9]+$"
+            },
+            "cpfOrdenador": {
+              "type": "string",
+              "minLength": 11,
+              "maxLength": 11,
+              "pattern": "^[0-9]+$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "codigoUnidadeOrcamentaria",
+            "numeroEmpenho",
+            "tipoEmpenho",
+            "valorEmpenho",
+            "codigoFuncao",
+            "codigoSubfuncao",
+            "codigoPrograma",
+            "codigoAcao",
+            "codigoCategoriaEconomica",
+            "codigoNaturezaDespesa",
+            "codigoModalidadeDespesa",
+            "codigoElementoDespesa",
+            "codigoSubelementoDespesa",
+            "exercicioFonteRecurso",
+            "codigoFonteRecurso",
+            "codigoNaturezaContratacao",
+            "historico",
+            "cpfCnpjCredor",
+            "cpfOrdenador",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Estornos de Despesas Extraorçamentárias": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Estornos de Despesas Extraorçamentárias",
+    "description": "Lista de objetos representando a entidade Estorno de Despesa Extraorçamentária",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Estorno de Despesa Extraorçamentária",
+          "description": "Representação do schema para envio da entidade Estorno de Despesa Extraorçamentária",
+          "type": "object",
+          "properties": {
+            "numeroDespesaExtra": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEstornoDespesaExtra": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "dataEstornoDespesaExtra": {
+              "type": "string",
+              "format": "date"
+            },
+            "valorEstornoDespesaExtra": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "motivo": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "numeroDespesaExtra",
+            "numeroEstornoDespesaExtra",
+            "dataEstornoDespesaExtra",
+            "valorEstornoDespesaExtra",
+            "motivo",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Estornos de Empenho": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Estornos de Empenho",
+    "description": "Schema para envio de estornos de empenho por unidade gestora",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "object",
+          "properties": {
+            "codigoUnidadeOrcamentaria": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEmpenho": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEstornoEmpenho": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "valorEstornoEmpenho": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "motivo": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "codigoUnidadeOrcamentaria",
+            "numeroEmpenho",
+            "numeroEstornoEmpenho",
+            "valorEstornoEmpenho",
+            "motivo",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Estornos de Liquidação": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Estornos de Liquidação",
+    "description": "Schema para envio de estornos de liquidação por unidade gestora",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "object",
+          "properties": {
+            "codigoUnidadeOrcamentaria": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEmpenho": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroLiquidacao": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEstornoLiquidacao": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "motivoEstornoLiquidacao": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "valorEstornoLiquidacao": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "codigoUnidadeOrcamentaria",
+            "numeroEmpenho",
+            "numeroLiquidacao",
+            "numeroEstornoLiquidacao",
+            "motivoEstornoLiquidacao",
+            "valorEstornoLiquidacao",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Estornos de Liquidação de Restos a Pagar": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Estornos de Liquidação de Restos a Pagar",
+    "description": "Lista de objetos representando a entidade Estorno Liquidação Resto",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Estorno Liquidação Resto",
+          "description": "Representação do schema para envio da entidade Estorno Liquidação Resto",
+          "type": "object",
+          "properties": {
+            "anoEmissaoEmpenho": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoUnidadeOrcamentaria": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEmpenho": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroLiquidacao": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEstornoLiquidacaoResto": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "motivo": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "valorEstornoLiquidacaoResto": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "anoEmissaoEmpenho",
+            "codigoUnidadeOrcamentaria",
+            "numeroEmpenho",
+            "numeroLiquidacao",
+            "numeroEstornoLiquidacaoResto",
+            "motivo",
+            "valorEstornoLiquidacaoResto",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Estornos de Pagamento": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Estornos de Pagamento",
+    "description": "Schema para envio de estornos de pagamento por unidade gestora",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "object",
+          "properties": {
+            "codigoUnidadeOrcamentaria": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEmpenho": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroLiquidacao": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroPagamento": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEstornoPagamento": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "motivoEstornoPagamento": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "valorEstornoPagamento": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "codigoUnidadeOrcamentaria",
+            "numeroEmpenho",
+            "numeroLiquidacao",
+            "numeroPagamento",
+            "numeroEstornoPagamento",
+            "motivoEstornoPagamento",
+            "valorEstornoPagamento",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Estornos de Pagamento de Restos a Pagar": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Estornos de Pagamento de Restos a Pagar",
+    "description": "Lista de objetos representando a entidade Estorno Pagamento Resto",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Estorno Pagamento Resto",
+          "description": "Representação do schema para envio da entidade Estorno Pagamento Resto",
+          "type": "object",
+          "properties": {
+            "anoEmissaoEmpenho": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoUnidadeOrcamentaria": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEmpenho": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroLiquidacao": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroPagamento": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEstornoPagamentoResto": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "dataEstornoPagamentoResto": {
+              "type": "string",
+              "format": "date"
+            },
+            "motivo": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "despesaLiquidada": {
+              "type": "string",
+              "enum": [
+                "SIM",
+                "NAO"
+              ]
+            },
+            "valorEstornoPagamentoResto": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "codigoUnidadeGestoraOrigem": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "anoEmissaoEmpenho",
+            "codigoUnidadeOrcamentaria",
+            "numeroEmpenho",
+            "numeroPagamento",
+            "numeroEstornoPagamentoResto",
+            "dataEstornoPagamentoResto",
+            "motivo",
+            "despesaLiquidada",
+            "valorEstornoPagamentoResto",
+            "codigoUnidadeGestoraOrigem",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Estornos de Receitas Extraorçamentárias": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Estornos de Receitas Extraorçamentárias",
+    "description": "Lista de objetos representando a entidade Estorno de Receita Extraorçamentária",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Estorno de Receita Extraorçamentária",
+          "description": "Representação do schema para envio da entidade Estorno de Receita Extraorçamentária",
+          "type": "object",
+          "properties": {
+            "numeroReceitaExtra": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEstornoReceitaExtra": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "valorEstornoReceitaExtra": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "motivo": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 255
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "numeroReceitaExtra",
+            "numeroEstornoReceitaExtra",
+            "dataEstornoReceitaExtra",
+            "valorEstornoReceitaExtra",
+            "motivo",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Estornos de Restos a Pagar": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Estornos de Restos a Pagar",
+    "description": "Lista de objetos representando a entidade Estorno Restos",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Estorno Restos",
+          "description": "Representação do schema para envio da entidade Estorno Restos",
+          "type": "object",
+          "properties": {
+            "anoEmissaoEmpenho": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoUnidadeOrcamentaria": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEmpenho": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEstornoResto": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "valorEstornoResto": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "motivo": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "despesaLiquidada": {
+              "type": "string",
+              "enum": [
+                "SIM",
+                "NAO"
+              ]
+            },
+            "codigoUnidadeGestoraOrigem": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "anoEmissaoEmpenho",
+            "codigoUnidadeOrcamentaria",
+            "numeroEmpenho",
+            "numeroEstornoResto",
+            "dataEstornoResto",
+            "valorEstornoResto",
+            "motivo",
+            "despesaLiquidada",
+            "codigoUnidadeGestoraOrigem",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Estornos de Retenção": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Estornos de Retenção",
+    "description": "Schema para envio de estornos de retenção por unidade gestora",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "object",
+          "properties": {
+            "codigoUnidadeOrcamentaria": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEmpenho": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroLiquidacao": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroPagamento": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "tipoRetencao": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEstornoRetencao": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "valorEstornoRetencao": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "codigoUnidadeOrcamentaria",
+            "numeroEmpenho",
+            "numeroLiquidacao",
+            "numeroPagamento",
+            "tipoRetencao",
+            "numeroEstornoRetencao",
+            "valorEstornoRetencao",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Estornos de Retenção de Restos a Pagar": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Estornos de Retenção de Restos a Pagar",
+    "description": "Lista de objetos representando a entidade Estorno Retenção Resto",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Estorno Retenção Resto",
+          "description": "Representação do schema para envio da entidade Estorno Retenção Resto",
+          "type": "object",
+          "properties": {
+            "anoEmissaoEmpenho": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoUnidadeOrcamentaria": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEmpenho": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroLiquidacao": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroPagamento": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "tipoRetencao": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEstornoRetencaoResto": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "dataEstornoRetencaoResto": {
+              "type": "string",
+              "format": "date"
+            },
+            "motivo": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "valorEstornoRetencaoResto": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "codigoUnidadeGestoraOrigem": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "anoEmissaoEmpenho",
+            "codigoUnidadeOrcamentaria",
+            "numeroEmpenho",
+            "numeroPagamento",
+            "tipoRetencao",
+            "numeroEstornoRetencaoResto",
+            "dataEstornoRetencaoResto",
+            "motivo",
+            "valorEstornoRetencaoResto",
+            "codigoUnidadeGestoraOrigem",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Liquidações": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Liquidações",
+    "description": "Schema para envio de liquidações por unidade gestora",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "object",
+          "properties": {
+            "codigoUnidadeOrcamentaria": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEmpenho": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroLiquidacao": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "tipoNotaFiscal": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroChaveNotaFiscal": {
+              "type": "string",
+              "minLength": 44,
+              "maxLength": 44,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroNotaFiscal": {
+              "type": "string",
+              "maxLength": 15
+            },
+            "serieNotaFiscal": {
+              "type": "string",
+              "maxLength": 12
+            },
+            "dataNotaFiscal": {
+              "type": "string",
+              "format": "date"
+            },
+            "valorNotaFiscal": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "valorLiquidacao": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "codigoUnidadeOrcamentaria",
+            "numeroEmpenho",
+            "numeroLiquidacao",
+            "valorLiquidacao"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Liquidações de Restos a Pagar": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Liquidações de Restos a Pagar",
+    "description": "Lista de objetos representando a entidade Liquidação Resto",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Liquidação Resto",
+          "description": "Representação do schema para envio da entidade Liquidação Resto",
+          "type": "object",
+          "properties": {
+            "anoEmissaoEmpenho": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoUnidadeOrcamentaria": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEmpenho": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroLiquidacaoResto": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "tipoNotaFiscal": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroChaveNotaFiscal": {
+              "type": "string",
+              "minLength": 44,
+              "maxLength": 44,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroNotaFiscal": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 15
+            },
+            "serieNotaFiscal": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 12
+            },
+            "dataNotaFiscal": {
+              "type": "string",
+              "format": "date"
+            },
+            "valorNotaFiscal": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "valorLiquidacaoResto": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "codigoUnidadeGestoraOrigem": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "anoEmissaoEmpenho",
+            "codigoUnidadeOrcamentaria",
+            "numeroEmpenho",
+            "numeroLiquidacaoResto",
+            "dataLiquidacaoResto",
+            "tipoNotaFiscal",
+            "numeroChaveNotaFiscal",
+            "numeroNotaFiscal",
+            "serieNotaFiscal",
+            "dataNotaFiscal",
+            "valorNotaFiscal",
+            "valorLiquidacaoResto",
+            "codigoUnidadeGestoraOrigem",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Transferências Bancárias": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Transferências Bancárias",
+    "description": "Lista de objetos representando a entidade Transferência Bancária",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Transferência Bancária",
+          "description": "Representação do schema para envio da entidade Transferência Bancária",
+          "type": "object",
+          "properties": {
+            "codigoBancoContaBancariaOrigem": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroAgenciaContaBancariaOrigem": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroContaBancariaOrigem": {
+              "type": "string",
+              "minLength": 13,
+              "maxLength": 13,
+              "pattern": "^[0-9]+$"
+            },
+            "tipoContaBancariaOrigem": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoBancoContaBancariaDestino": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroAgenciaContaBancariaDestino": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroContaBancariaDestino": {
+              "type": "string",
+              "minLength": 13,
+              "maxLength": 13,
+              "pattern": "^[0-9]+$"
+            },
+            "tipoContaBancariaDestino": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "valorTransferencia": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "codigoMovimentacao": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "codigoBancoContaBancariaOrigem",
+            "numeroAgenciaContaBancariaOrigem",
+            "numeroContaBancariaOrigem",
+            "tipoContaBancariaOrigem",
+            "codigoBancoContaBancariaDestino",
+            "numeroAgenciaContaBancariaDestino",
+            "numeroContaBancariaDestino",
+            "tipoContaBancariaDestino",
+            "valorTransferencia",
+            "dataMovimentacao",
+            "codigoMovimentacao",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Leis Orçamentárias": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Leis Orçamentárias",
+    "description": "Lista de objetos representando a entidade Lei Orçamentária",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Lei Orçamentária",
+          "description": "Representação do schema para envio da entidade Lei Orçamentária",
+          "type": "object",
+          "properties": {
+            "exercicioLei": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroLei": {
+              "type": "string",
+              "minLength": 9,
+              "maxLength": 9,
+              "pattern": "^[0-9]+$"
+            },
+            "dataPublicacao": {
+              "type": "string",
+              "format": "date"
+            },
+            "tipoLei": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "protocoloTCE": {
+              "type": "string",
+              "minLength": 9,
+              "maxLength": 9,
+              "pattern": "^[0-9]{6}/[0-9]{2}$"
+            },
+            "tipoAutorizacao": {
+              "type": "string",
+              "enum": [
+                "SIM",
+                "NAO"
+              ]
+            },
+            "valor": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "exercicioLei",
+            "numeroLei",
+            "dataPublicacao",
+            "tipoLei",
+            "protocoloTCE",
+            "tipoAutorizacao",
+            "valor",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Ordenador": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Ordenador",
+    "description": "Schema para envio de ordenadores por unidade gestora",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "object",
+          "properties": {
+            "cpfOrdenador": {
+              "type": "string",
+              "minLength": 11,
+              "maxLength": 11,
+              "pattern": "^[0-9]+$"
+            },
+            "nomeOrdenador": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 150
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "cpfOrdenador",
+            "nomeOrdenador",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Pagamentos": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Pagamentos",
+    "description": "Schema para envio de pagamentos por unidade gestora",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "object",
+          "properties": {
+            "codigoUnidadeOrcamentaria": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEmpenho": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroLiquidacao": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroPagamento": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "valorPagamento": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "codigoBancoContaBancaria": {
+              "type": "string",
+              "maxLength": 3
+            },
+            "numeroContaBancaria": {
+              "type": "string",
+              "maxLength": 13
+            },
+            "tipoContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroAgenciaContaBancaria": {
+              "type": "string",
+              "maxLength": 6
+            },
+            "cnpjGerenciaContaBancaria": {
+              "type": "string",
+              "minLength": 14,
+              "maxLength": 14
+            },
+            "numeroDocumentoDebito": {
+              "type": "string",
+              "maxLength": 11
+            },
+            "codigoBancoContaBancariaCredor": {
+              "type": "string",
+              "maxLength": 3
+            },
+            "numeroAgenciaContaBancariaCredor": {
+              "type": "string",
+              "maxLength": 6
+            },
+            "numeroContaBancariaCredor": {
+              "type": "string",
+              "maxLength": 13
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "codigoUnidadeOrcamentaria",
+            "numeroEmpenho",
+            "numeroLiquidacao",
+            "numeroPagamento",
+            "valorPagamento",
+            "codigoBancoContaBancaria",
+            "numeroContaBancaria",
+            "tipoContaBancaria",
+            "numeroAgenciaContaBancaria",
+            "cnpjGerenciaContaBancaria",
+            "numeroDocumentoDebito",
+            "codigoBancoContaBancariaCredor",
+            "numeroAgenciaContaBancariaCredor",
+            "numeroContaBancariaCredor",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Pagamentos de Restos a Pagar": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Pagamentos de Restos a Pagar",
+    "description": "Lista de objetos representando a entidade Pagamento Resto",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Pagamento Resto",
+          "description": "Representação do schema para envio da entidade Pagamento Resto",
+          "type": "object",
+          "properties": {
+            "anoEmissaoEmpenho": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoUnidadeOrcamentaria": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEmpenho": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroLiquidacao": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroPagamentoResto": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "dataPagamentoResto": {
+              "type": "string",
+              "format": "date"
+            },
+            "valorPagamentoResto": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "codigoBancoContaBancariaDebito": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroContaBancariaDebito": {
+              "type": "string",
+              "minLength": 13,
+              "maxLength": 13,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroAgenciaContaBancariaDebito": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "tipoContaBancariaDebito": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "cnpjGerenciaContaBancariaDebito": {
+              "type": "string",
+              "minLength": 14,
+              "maxLength": 14,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroCheque": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroDocDebito": {
+              "type": "string",
+              "minLength": 11,
+              "maxLength": 11,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoBancoContaBancariaCredito": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroAgenciaContaBancariaCredito": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroContaBancariaCredito": {
+              "type": "string",
+              "minLength": 13,
+              "maxLength": 13,
+              "pattern": "^[0-9]+$"
+            },
+            "exercicioFonteRecurso": {
+              "type": "string",
+              "enum": [
+                "ATUAL",
+                "ANTERIOR"
+              ]
+            },
+            "codigoFonteRecurso": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoCO": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoUnidadeGestoraOrigem": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "anoEmissaoEmpenho",
+            "codigoUnidadeOrcamentaria",
+            "numeroEmpenho",
+            "numeroPagamentoResto",
+            "dataPagamentoResto",
+            "valorPagamentoResto",
+            "codigoBancoContaBancariaDebito",
+            "numeroContaBancariaDebito",
+            "numeroAgenciaContaBancariaDebito",
+            "tipoContaBancariaDebito",
+            "cnpjGerenciaContaBancariaDebito",
+            "numeroCheque",
+            "numeroDocDebito",
+            "codigoBancoContaBancariaCredito",
+            "numeroAgenciaContaBancariaCredito",
+            "numeroContaBancariaCredito",
+            "exercicioFonteRecurso",
+            "codigoFonteRecurso",
+            "codigoCO",
+            "codigoUnidadeGestoraOrigem",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Programas": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Programas",
+    "description": "Lista de objetos representando a entidade Programa",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Programa",
+          "description": "Representação do schema para envio da entidade Programa",
+          "type": "object",
+          "properties": {
+            "codigoUnidadeGestora": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoPrograma": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "descricaoPrograma": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 70
+            },
+            "descricaoObjetivoMilenio": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 150
+            },
+            "tipoObjetivoMilenio": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "pattern": "^[0-9]+$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "codigoUnidadeGestora",
+            "codigoPrograma",
+            "descricaoPrograma",
+            "descricaoObjetivoMilenio",
+            "tipoObjetivoMilenio",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Receitas Extraorçamentárias": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Receitas Extraorçamentárias",
+    "description": "Lista de objetos representando a entidade Receita Extraorçamentária",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Receita Extraorçamentária",
+          "description": "Representação do schema para envio da entidade Receita Extraorçamentária",
+          "type": "object",
+          "properties": {
+            "numeroReceitaExtra": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoContaContabil": {
+              "type": "string",
+              "minLength": 9,
+              "maxLength": 9,
+              "pattern": "^[0-9]+$"
+            },
+            "cpfCnpjCredor": {
+              "type": "string",
+              "minLength": 14,
+              "maxLength": 14,
+              "pattern": "^[0-9]+$"
+            },
+            "exercicioFonteRecurso": {
+              "type": "string",
+              "enum": [
+                "ATUAL",
+                "ANTERIOR"
+              ]
+            },
+            "codigoFonteRecurso": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 13,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroAgenciaContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoBancoContaBancaria": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "tipoContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "valorReceitaExtra": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "historico": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 500
+            },
+            "codigoReceitaExtra": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 8,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoUnidadeGestoraRetencao": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoUnidadeOrcamentariaRetencao": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "anoEmissaoEmpenho": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEmpenho": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroPagamento": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "tipoRetencao": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "cnpjGerenciaContaBancaria": {
+              "type": "string",
+              "minLength": 14,
+              "maxLength": 14,
+              "pattern": "^[0-9]+$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "numeroReceitaExtra",
+            "codigoContaContabil",
+            "cpfCnpjCredor",
+            "exercicioFonteRecurso",
+            "codigoFonteRecurso",
+            "numeroContaBancaria",
+            "numeroAgenciaContaBancaria",
+            "codigoBancoContaBancaria",
+            "cnpjGerenciaContaBancariaContaBancaria",
+            "tipoContaBancaria",
+            "valorReceitaExtra",
+            "historico",
+            "codigoReceitaExtra",
+            "codigoUnidadeGestoraRetencao",
+            "codigoUnidadeOrcamentariaRetencao",
+            "numeroEmpenho",
+            "numeroPagamento",
+            "tipoRetencao",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Receitas Orçamentárias": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Receitas Orçamentárias",
+    "description": "Lista de objetos representando a entidade Receita Orçamentária",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Receita Orçamentária",
+          "description": "Representação do schema para envio da entidade Receita Orçamentária",
+          "type": "object",
+          "properties": {
+            "numeroReceita": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[A-Z0-9]+$"
+            },
+            "codigoReceitaOrcamentaria": {
+              "description": "Código da Receita Orçamentária Prevista padrão da STN/TCE",
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 8,
+              "pattern": "^[0-9]+$"
+            },
+            "tipoLancamentoReceita": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "tipoReceitaLancada": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "exercicioFonteRecurso": {
+              "type": "string",
+              "enum": [
+                "ATUAL"
+              ]
+            },
+            "codigoFonteRecurso": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "valorReceitaOrcamentaria": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "codigoCO": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 13,
+              "pattern": "^[A-Z0-9]+$"
+            },
+            "codigoBancoContaBancaria": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroAgenciaContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 6,
+              "pattern": "^[A-Z0-9]+$"
+            },
+            "tipoContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "cnpjGerenciaContaBancaria": {
+              "type": "string",
+              "minLength": 14,
+              "maxLength": 14,
+              "pattern": "^[A-Z0-9]+$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "numeroReceita",
+            "codigoReceitaOrcamentaria",
+            "tipoLancamentoReceita",
+            "tipoReceitaLancada",
+            "exercicioFonteRecurso",
+            "codigoFonteRecurso",
+            "valorReceitaOrcamentaria",
+            "tipoContaBancaria",
+            "numeroContaBancaria",
+            "codigoBancoContaBancaria",
+            "numeroAgenciaContaBancaria",
+            "cnpjGerenciaContaBancaria",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Receitas Previstas": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Receitas Previstas",
+    "description": "Lista de objetos representando a entidade Receita Prevista",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Receita Prevista",
+          "description": "Representação do schema para envio da entidade Receita Prevista",
+          "type": "object",
+          "properties": {
+            "codigoUnidadeGestora": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoReceitaOrcamentaria": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 8,
+              "pattern": "^[0-9]+$"
+            },
+            "exercicioFonteRecurso": {
+              "type": "string",
+              "enum": [
+                "ATUAL",
+                "ANTERIOR"
+              ]
+            },
+            "codigoFonteRecurso": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "tipoReceitaLancada": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "valorReceita": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "codigoUnidadeGestora",
+            "codigoReceitaOrcamentaria",
+            "exercicioFonteRecurso",
+            "codigoFonteRecurso",
+            "tipoReceitaLancada",
+            "valorReceita",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Relacionamentos Empenho Licitação": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Relacionamentos Empenho Licitação",
+    "description": "Lista de objetos representando a entidade Relacionamento Empenho Licitação",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Relacionamento Empenho Licitação",
+          "description": "Representação do schema para envio da entidade Relacionamento Empenho Licitação",
+          "type": "object",
+          "properties": {
+            "codigoUnidadeOrcamentaria": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEmpenho": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoUnidadeGestoraLicitacao": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroLicitacao": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 10,
+              "pattern": "^\\d{5}/\\d{4}$"
+            },
+            "codigoModalidadeLicitacao": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "codigoUnidadeOrcamentaria",
+            "numeroEmpenho",
+            "codigoUnidadeGestoraLicitacao",
+            "numeroLicitacao",
+            "codigoModalidadeLicitacao",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Relacionamentos Empenho Natureza Contratação": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Relacionamentos Empenho Natureza Contratação",
+    "description": "Lista de objetos representando a entidade Relacionamento Empenho Natureza Contratação",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Relacionamento Empenho Natureza Contratação",
+          "description": "Representação do schema para envio da entidade Relacionamento Empenho Natureza Contratação",
+          "type": "object",
+          "properties": {
+            "codigoUnidadeOrcamentaria": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "anoEmissaoEmpenho": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEmpenho": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoNaturezaContratacao": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "codigoUnidadeOrcamentaria",
+            "anoEmissaoEmpenho",
+            "numeroEmpenho",
+            "naturezaContratacao",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Relacionamentos Liquidação Código Agrupamento Folha Pagamento": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Relacionamentos Liquidação Código Agrupamento Folha Pagamento",
+    "description": "Lista de objetos representando a entidade Relacionamento Liquidação Código Agrupamento Folha Pagamento",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Relacionamento Liquidação Código Agrupamento Folha Pagamento",
+          "description": "Representação do schema para envio da entidade Relacionamento Liquidação Código Agrupamento Folha Pagamento",
+          "type": "object",
+          "properties": {
+            "codigoUnidadeOrcamentaria": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEmpenho": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroLiquidacao": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoAgrupamentoFolha": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 10
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "codigoUnidadeOrcamentaria",
+            "numeroEmpenho",
+            "numeroLiquidacao",
+            "codigoAgrupamentoFolha",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Responsaveis Siafic": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Responsaveis Siafic",
+    "description": "Lista de objetos representando a entidade Responsavel Siafic",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Responsavel Siafic",
+          "description": "Representação do schema para envio da entidade Responsavel Siafic",
+          "type": "object",
+          "properties": {
+            "cnpjEmpresa": {
+              "type": "string",
+              "minLength": 14,
+              "maxLength": 14,
+              "pattern": "^[A-Z0-9]+$"
+            },
+            "tipoLogradouro": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 150
+            },
+            "numeroLogradouro": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50
+            },
+            "cepLogradouro": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 30
+            },
+            "complementoLogradouro": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300
+            },
+            "nomeEmpresa": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 80
+            },
+            "telefoneEmpresa": {
+              "type": "string",
+              "minLength": 11,
+              "maxLength": 11,
+              "pattern": "^[0-9]+$"
+            },
+            "emailEmpresa": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 50,
+              "format": "email"
+            },
+            "denominacaoSiafic": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 30
+            },
+            "cpfResponsavelTecnico": {
+              "type": "string",
+              "minLength": 11,
+              "maxLength": 11,
+              "pattern": "^[0-9]+$"
+            },
+            "nomeResponsavelTecnico": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 60
+            },
+            "emailResponsavelTecnico": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 30,
+              "format": "email"
+            },
+            "telefoneResponsavelTecnico": {
+              "type": "string",
+              "minLength": 11,
+              "maxLength": 11,
+              "pattern": "^[0-9]+$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "cnpjEmpresa",
+            "nomeEmpresa",
+            "numeroLogradouro",
+            "cepLogradouro",
+            "tipoLogradouro",
+            "complementoLogradouro",
+            "telefoneEmpresa",
+            "emailEmpresa",
+            "denominacaoSiafic",
+            "cpfResponsavelTecnico",
+            "nomeResponsavelTecnico",
+            "emailResponsavelTecnico",
+            "telefoneResponsavelTecnico",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Restos Inscritos": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Restos Inscritos",
+    "description": "Lista de objetos representando a entidade Restos Inscritos",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Restos Inscritos",
+          "description": "Representação do schema para envio da entidade Restos Inscritos",
+          "type": "object",
+          "properties": {
+            "codigoUnidadeOrcamentariaOrigem": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEmpenhoOrigem": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoUnidadeGestoraOrigem": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "valorInscrito": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "valorProcessado": {
+              "type": "number",
+              "minimum": 0
+            },
+            "valorNaoProcessado": {
+              "type": "number",
+              "minimum": 0
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "codigoUnidadeOrcamentariaOrigem",
+            "numeroEmpenhoOrigem",
+            "codigoUnidadeGestoraOrigem",
+            "valorInscrito",
+            "valorProcessado",
+            "valorNaoProcessado",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Retenções": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Retenções",
+    "description": "Schema para envio de retenções por unidade gestora",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "object",
+          "properties": {
+            "codigoUnidadeOrcamentaria": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEmpenho": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroLiquidacao": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroPagamento": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroRetencao": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "tipoRetencao": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "valorRetencao": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "codigoUnidadeOrcamentaria",
+            "numeroEmpenho",
+            "numeroLiquidacao",
+            "numeroPagamento",
+            "numeroRetencao",
+            "tipoRetencao",
+            "valorRetencao",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Retenções de Restos a Pagar": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Retenções de Restos a Pagar",
+    "description": "Lista de objetos representando a entidade Retenção Resto",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Retenção Resto",
+          "description": "Representação do schema para envio da entidade Retenção Resto",
+          "type": "object",
+          "properties": {
+            "anoEmissaoEmpenho": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 4,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoUnidadeOrcamentaria": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroEmpenho": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroLiquidacao": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroPagamento": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroRetencao": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^[0-9]+$"
+            },
+            "valorRetencaoResto": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "tipoRetencao": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoUnidadeGestoraOrigem": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "anoEmissaoEmpenho",
+            "codigoUnidadeOrcamentaria",
+            "numeroEmpenho",
+            "numeroPagamento",
+            "valorRetencaoResto",
+            "tipoRetencao",
+            "codigoUnidadeGestoraOrigem",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Saldos Mensais": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Saldos Mensais",
+    "description": "Lista de objetos representando a entidade Saldo Mensal",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Saldo Mensal",
+          "description": "Representação do schema para envio da entidade Saldo Mensal",
+          "type": "object",
+          "properties": {
+            "numeroContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 13,
+              "pattern": "^[A-Z0-9]+$"
+            },
+            "numeroAgenciaContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 6,
+              "pattern": "^[A-Z0-9]+$"
+            },
+            "codigoBancoContaBancaria": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "valorSaldoMensal": {
+              "type": "number"
+            },
+            "tipoContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "cnpjGerenciaContaBancaria": {
+              "type": "string",
+              "minLength": 14,
+              "maxLength": 14,
+              "pattern": "^[A-Z0-9]+$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "numeroContaBancaria",
+            "numeroAgenciaContaBancaria",
+            "codigoBancoContaBancaria",
+            "valorSaldoMensal",
+            "tipoContaBancaria",
+            "cnpjGerenciaContaBancaria",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Transferências Concedidas": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Transferências Concedidas",
+    "description": "Lista de objetos representando a entidade Transferência Concedida",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Transferência Concedida",
+          "description": "Representação do schema para envio da entidade Transferência Concedida",
+          "type": "object",
+          "properties": {
+            "codigoUnidadeGestoraRecebedora": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "tipoTransferencia": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "tipoLancamento": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "valor": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "numeroContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 13
+            },
+            "codigoBancoContaBancaria": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroAgenciaContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 6
+            },
+            "tipoContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "cnpjGerenciaContaBancaria": {
+              "type": "string",
+              "minLength": 14,
+              "maxLength": 14,
+              "pattern": "^[0-9]+$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "codigoUnidadeGestoraRecebedora",
+            "tipoTransferencia",
+            "tipoLancamento",
+            "valor",
+            "numeroContaBancaria",
+            "codigoBancoContaBancaria",
+            "numeroAgenciaContaBancaria",
+            "tipoContaBancaria",
+            "cnpjGerenciaContaBancaria",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Transferências": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Transferências",
+    "description": "Lista de objetos representando a entidade Transferência",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Transferência",
+          "description": "Representação do schema para envio da entidade Transferência",
+          "type": "object",
+          "properties": {
+            "codigoUnidadeGestoraTransferencia": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "tipoTransferencia": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "tipoLancamento": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "valor": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "numeroContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 13
+            },
+            "codigoBancoContaBancaria": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[0-9]+$"
+            },
+            "numeroAgenciaContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 6
+            },
+            "tipoContaBancaria": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "pattern": "^[0-9]+$"
+            },
+            "cnpjGerenciaContaBancaria": {
+              "type": "string",
+              "minLength": 14,
+              "maxLength": 14,
+              "pattern": "^[0-9]+$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "codigoUnidadeGestoraTransferencia",
+            "dataTransferencia",
+            "tipoTransferencia",
+            "tipoLancamento",
+            "valor",
+            "numeroContaBancaria",
+            "codigoBancoContaBancaria",
+            "numeroAgenciaContaBancaria",
+            "tipoContaBancaria",
+            "cnpjGerenciaContaBancaria",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  },
+  "Lista de Unidades Orçamentárias": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lista de Unidades Orçamentárias",
+    "description": "Lista de objetos representando a entidade Unidade Orçamentária",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)\\.\\d{3,6}$",
+        "examples": [
+          "2025-09-11T15:30:00.123456"
+        ]
+      },
+      "elementos": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "title": "Unidade Orçamentária",
+          "description": "Representação do schema para envio da entidade Orçamentária",
+          "type": "object",
+          "properties": {
+            "codigoUnidadeGestora": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "pattern": "^[0-9]+$"
+            },
+            "codigoUnidadeOrcamentaria": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 5,
+              "pattern": "^[0-9]+$"
+            },
+            "descricaoUnidadeOrcamentaria": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 50
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          "required": [
+            "codigoUnidadeGestora",
+            "codigoUnidadeOrcamentaria",
+            "descricaoUnidadeOrcamentaria",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "timestamp",
+      "elementos"
+    ],
+    "additionalProperties": false
+  }
+}

@@ -1,0 +1,484 @@
+// ============================================================================
+// M11 — licitações e contratos (Lei 14.133/2021).
+//
+// APPEND-ONLY em tudo: nem `ProcessoLicitatorio`, nem `Contrato`, nem
+// `MovimentoContratual` têm updatedAt ou deletedAt. Um aditivo NÃO altera o
+// contrato — ele é um FATO NOVO que se soma a ele. Corrigir um aditivo errado é
+// estorná-lo (outro fato), nunca apagá-lo: o TCE precisa ver que o aditivo
+// existiu e foi desfeito, não um contrato que finge que ele nunca houve.
+//
+// ESTADO É DERIVADO, NUNCA COLUNA:
+//   · valor atual do contrato  = valorInicial + Σ(valor × SINAL_VALOR)
+//   · fim da vigência          = vigenciaFimInicial + Σ(dias × SINAL_PRAZO)
+//   · processo homologado?     = dataHomologacao != null
+// Uma coluna `valorAtual` seria um cache — e cache de dinheiro é o bug do TR 5.9
+// esperando acontecer.
+// ============================================================================
+
+/// ROL FECHADO — Lei 14.133/2021, art. 28 (modalidades) + arts. 74 e 75
+/// (inexigibilidade e dispensa). Não existe "OUTRA": a contratação direta é
+/// uma das duas últimas, e é por isso que elas entram aqui e não numa flag
+/// separada. Um enum força a migration a cada rol novo — e é exatamente o que
+/// se quer: mudança no rol é mudança na LEI, não configuração do ente.
+enum ModalidadeLicitacao {
+  PREGAO_ELETRONICO
+  PREGAO_PRESENCIAL
+  CONCORRENCIA
+  CONCURSO
+  LEILAO
+  DIALOGO_COMPETITIVO
+  /// Art. 75 — contratação direta por dispensa.
+  DISPENSA
+  /// Art. 74 — inviabilidade de competição.
+  INEXIGIBILIDADE
+}
+
+/// As hipóteses do art. 75 que TÊM TETO (I: obras/engenharia; II: compras e demais
+/// serviços) — e todas as outras, que não têm. `OUTRAS` cobre os incisos III a XVI
+/// (emergência, licitação deserta, produtor rural...): a dispensa ali não depende
+/// de valor, e é por isso que ela NÃO passa pelo guard do limite.
+enum HipoteseDispensa {
+  POR_VALOR_OBRAS
+  POR_VALOR_COMPRAS
+  OUTRAS
+}
+
+model ProcessoLicitatorio {
+  id             String              @id @default(cuid())
+  numeroProcesso String              @unique
+  modalidade     ModalidadeLicitacao
+  objeto         String
+  valorLicitado  Decimal             @db.Decimal(18, 2)
+
+  /// A hipótese do art. 75 — OBRIGATÓRIA quando a modalidade é DISPENSA, PROIBIDA
+  /// quando não é. O CHECK (prisma/sql/ck_hipotese_dispensa.sql) impõe a
+  /// bicondicional.
+  ///
+  /// ⚠️ ELA MORA NO **PROCESSO**, NÃO NO CONTRATO — e não por gosto: a modalidade
+  /// mora aqui, e um CHECK **não atravessa tabelas**. Pendurada no `Contrato`, a
+  /// bicondicional "modalidade=DISPENSA ⟺ hipótese NOT NULL" seria inexequível no
+  /// banco (só um trigger a alcançaria). E é aqui mesmo que ela pertence: quem
+  /// dispensa a licitação é o PROCESSO; o contrato só executa o que ele decidiu.
+  hipoteseDispensa HipoteseDispensa?
+
+  /// NULO = NÃO HOMOLOGADO **NO CADASTRO**. A situação é DERIVADA — não há coluna
+  /// `situacao`, que seria uma segunda verdade capaz de dizer "HOMOLOGADO" sem
+  /// data e "EM ANDAMENTO" com ela.
+  ///
+  /// ⚠️ ESTE É O CAMINHO DO PROCESSO QUE JÁ NASCE HOMOLOGADO (carga histórica, ou
+  /// cadastro feito depois do fato). Homologar um processo que já existe é o
+  /// EVENTO `HomologacaoProcesso` — porque um UPDATE aqui violaria o append-only.
+  /// As duas fontes NUNCA convivem: `homologarProcesso()` recusa um processo que
+  /// já trouxe a data no cadastro (duas verdades = erro), e a leitura passa por
+  /// UMA função (`homologadoEm`).
+  dataHomologacao DateTime?
+
+  /// O FATO "este processo foi homologado" — append-only, e ÚNICO (@unique):
+  /// homologar duas vezes não é corrigir, é inventar uma segunda data.
+  homologacao HomologacaoProcesso?
+
+  contratos Contrato[]
+  /// back-relation M05 (TR 4.41/4.42) — campo VIRTUAL, não gera coluna.
+  reservas  ReservaDotacao[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([modalidade])
+}
+
+/// OS LIMITES DE CONTRATAÇÃO DIRETA (art. 75, I e II, da Lei 14.133/2021).
+///
+/// APPEND-ONLY: decreto novo = LINHA NOVA. O limite vigente numa data D é o de
+/// MAIOR `vigenciaInicio` <= D — derivação, nunca uma coluna "ativo" que alguém
+/// esquece de virar. E é assim que um contrato de 2026 continua sendo julgado pelo
+/// limite de 2026 depois que o decreto de 2027 chegar: o passado não se reescreve.
+///
+/// O CONTROLE INTERNO pode ser MAIS restritivo que a lei (nunca menos): o teto real
+/// é MIN(oficial, controle interno). O Zod barra um controle interno acima do
+/// oficial — seria o ente se autorizando o que a lei não autoriza.
+model LimiteContratacao {
+  id             String   @id @default(cuid())
+  vigenciaInicio DateTime
+  /// De onde o número saiu. Sem isto, um valor no banco é só um palpite caro.
+  fonteLegal     String
+
+  limiteObrasEngenharia Decimal @db.Decimal(18, 2)
+  limiteComprasServicos Decimal @db.Decimal(18, 2)
+
+  /// Tetos internos do ente — opcionais, e sempre <= os oficiais.
+  limiteControleInternoObras   Decimal? @db.Decimal(18, 2)
+  limiteControleInternoCompras Decimal? @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([vigenciaInicio])
+}
+
+/// HOMOLOGAÇÃO — o FATO, não a flag.
+///
+/// O bloco 1 deixou a tensão declarada: homologar DEPOIS do cadastro exigiria um
+/// UPDATE em `dataHomologacao`, e o ledger deste sistema não faz UPDATE. A saída
+/// é a mesma de sempre: o fato vira LINHA. `@unique` no processo porque um
+/// processo se homologa UMA vez — a segunda "homologação" seria outra data para o
+/// mesmo ato, e é ela que o banco barra (não só o serviço).
+model HomologacaoProcesso {
+  id         String              @id @default(cuid())
+  processoId String              @unique
+  processo   ProcessoLicitatorio @relation(fields: [processoId], references: [id])
+
+  /// A data do ATO (a assinatura da homologação), não a da digitação.
+  data DateTime
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+model Contrato {
+  numeroContrato String @unique
+  id             String @id @default(cuid())
+
+  /// OBRIGATÓRIO. Todo contrato nasce de um processo — inclusive a contratação
+  /// direta: dispensa e inexigibilidade são MODALIDADES (arts. 74/75), não a
+  /// ausência de processo. Um `processoId` nulo abriria a porta para o contrato
+  /// sem rastro, que é precisamente o que a lei quer impedir.
+  processoId String
+  processo   ProcessoLicitatorio @relation(fields: [processoId], references: [id])
+
+  /// CPF ou CNPJ — sem máscara.
+  contratadoDocumento String
+  contratadoNome      String
+
+  valorInicial       Decimal  @db.Decimal(18, 2)
+  vigenciaInicio     DateTime
+  /// O ÚLTIMO INSTANTE da vigência original. As prorrogações NÃO o alteram: elas
+  /// entram como movimento, e o fim vigente é derivado.
+  vigenciaFimInicial DateTime
+
+  /// M06 (art. 141) — a MESMA categoria que o empenho usa na fila cronológica.
+  /// Enum REUSADO, não redeclarado: é daqui que o bloco 2 fará o empenho HERDAR
+  /// a categoria do contrato. Duas listas iguais em módulos diferentes é como as
+  /// duas filas do art. 141 começam a divergir.
+  categoriaOrdemCronologica CategoriaOrdemCronologica
+
+  // ── ADITIVO TR/CONTRATOS ──────────────────────────────────────────────────
+  //
+  // ⚠️ TUDO NULLABLE (menos o alerta), e isso é DELIBERADO: os contratos de
+  // Campina Grande já estão cadastrados sem estes campos. Um NOT NULL aqui
+  // exigiria backfill inventado — e valor inventado num contrato é o que o TCE
+  // lê como declaração do ente. O fail-closed vive em quem GERA o documento:
+  // sem o campo, o extrato o nomeia como ausente em vez de imprimir vazio.
+  //
+  // ⚠️ SÓ ENTROU O QUE NÃO É DERIVÁVEL NEM CONSULTÁVEL. Dotação orçamentária e
+  // notas fiscais NÃO viraram coluna: já se alcançam por `Empenho.contratoId`
+  // (m05-despesa.prisma:131). Duplicá-las aqui criaria a segunda verdade que o
+  // cabeçalho deste arquivo recusa.
+
+  /// TR req. 2 — o OBJETO do contrato.
+  ///
+  /// ⚠️ NÃO É O DO PROCESSO. `ProcessoLicitatorio.objeto` (linha 50) descreve o
+  /// que foi LICITADO; um processo gera N contratos (`contratos Contrato[]`,
+  /// linha 80), cada um com a sua parcela. Reusar o objeto do processo faria
+  /// três contratos de uma ata declararem o mesmo objeto ao Tribunal.
+  objeto String?
+
+  /// TR req. 1 — o FISCAL do contrato (Lei 14.133, art. 117). CPF sem máscara.
+  ///
+  /// ⚠️ É PESSOA, NÃO SETOR: o art. 117 responsabiliza um representante da
+  /// Administração especialmente designado. Guardar só o nome do setor apagaria
+  /// exatamente a informação que a norma quer nominal.
+  fiscalNome      String?
+  fiscalCpf       String? @db.VarChar(11)
+  /// O ato que o designou (portaria/decreto) — sem ele o nome é alegação.
+  fiscalDesignacao String?
+
+  /// TR req. 2 — a MOEDA do contrato. ISO 4217 (BRL, USD, EUR).
+  ///
+  /// ⚠️ SEM DEFAULT "BRL", de propósito. Um default carimbaria BRL nos contratos
+  /// históricos, inclusive num eventual contrato em moeda estrangeira — e a
+  /// afirmação errada seria indistinguível da correta. Nulo diz "não informado".
+  moeda String? @db.Char(3)
+
+  /// TR req. 2 — o valor MENSAL, quando o contrato é de execução continuada.
+  ///
+  /// ⚠️ NÃO É `valorInicial / meses`. Contrato de serviço continuado tem parcela
+  /// contratada, que não é o total dividido pela vigência (há parcelas variáveis,
+  /// reajuste no meio, e mês de implantação). Derivar produziria um número que o
+  /// contrato não diz.
+  valorMensal Decimal? @db.Decimal(18, 2)
+
+  /// TR req. 7 — de quantos dias antes do fim da vigência o alerta dispara.
+  ///
+  /// ⚠️ O ÚNICO NOT NULL DESTE BLOCO, e o motivo é o requisito: o alerta tem de
+  /// ter comportamento SEMPRE definido. Nulo aqui significaria "alertar quando?"
+  /// — e a resposta na prática seria "nunca", que é o oposto do que o req. 7
+  /// pede. 90 dias é o prazo usual para instruir prorrogação (art. 107) e é
+  /// configurável POR CONTRATO, como o requisito exige do gestor.
+  diasAlertaVencimento Int @default(90)
+
+  movimentos MovimentoContratual[]
+  /// TR req. 2 — os pareceres deste contrato. Ver `ParecerContrato`.
+  pareceres  ParecerContrato[]
+  /// back-relation M05 — campo VIRTUAL, não gera coluna. É a dimensão CONTRATO do
+  /// empenho: o `empenhadoLiquidoDoContrato` soma por aqui.
+  empenhos   Empenho[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([processoId])
+  @@index([contratadoDocumento])
+}
+
+/// As DUAS dimensões de um aditivo: VALOR e PRAZO. Um movimento mexe em UMA
+/// delas — e é o `tipo` que diz em qual (ver SINAL_VALOR_CONTRATUAL e
+/// SINAL_PRAZO_CONTRATUAL, no dominio.ts).
+///
+/// Os estornos nascem AQUI, no mesmo commit dos originais. A lição do 345af7d
+/// (M08) foi cara: feature sem estorno é assimetria com prazo para virar bug.
+enum TipoMovimentoContratual {
+  ACRESCIMO_VALOR
+  SUPRESSAO_VALOR
+  PRORROGACAO_PRAZO
+  ESTORNO_ACRESCIMO_VALOR
+  ESTORNO_SUPRESSAO_VALOR
+  ESTORNO_PRORROGACAO_PRAZO
+}
+
+model MovimentoContratual {
+  id         String   @id @default(cuid())
+  contratoId String
+  contrato   Contrato @relation(fields: [contratoId], references: [id])
+
+  tipo TipoMovimentoContratual
+
+  /// XOR: `valor` nos movimentos de VALOR, `dias` nos de PRAZO — nunca os dois,
+  /// nunca nenhum. O Zod barra na entrada; o CHECK
+  /// (prisma/sql/ck_movimento_contratual_xor.sql) barra o INSERT direto, que
+  /// dribla o serviço. Sem o CHECK, um aditivo com valor E dias somaria nas duas
+  /// dimensões ao mesmo tempo.
+  valor Decimal? @db.Decimal(18, 2)
+  dias  Int?
+
+  /// A DATA DO FATO: quando o aditivo foi assinado. NÃO é `criadoEm` (a data da
+  /// digitação). Recortar o valor de um contrato pela digitação faria um aditivo
+  /// de março lançado em maio sumir do relatório de março — a lição do
+  /// `campoData` (M09).
+  data DateTime
+
+  numeroAditivo String
+
+  /// APPEND-ONLY: o estorno referencia o movimento que desfaz. "Já estornado?" é
+  /// DERIVADO de `estornos.length > 0` — nunca uma flag.
+  /// Unicidade no banco: prisma/sql/uq_estorno_contratual_unico.sql.
+  estornoDeId String?
+  estornoDe   MovimentoContratual?  @relation("EstornoContratual", fields: [estornoDeId], references: [id])
+  estornos    MovimentoContratual[] @relation("EstornoContratual")
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([contratoId])
+  @@index([estornoDeId])
+  @@index([data])
+}
+
+/// TIPO DE PARECER — rol fechado. O jurídico é o do art. 53 da Lei 14.133 (exame
+/// prévio obrigatório); os demais acompanham a instrução do processo.
+enum TipoParecerContrato {
+  JURIDICO
+  TECNICO
+  CONTROLE_INTERNO
+  CONTABIL
+}
+
+/// PARECER DE CONTRATO — TR req. 2. APPEND-ONLY, como todo o M11.
+///
+/// ⚠️ POR QUE ENTIDADE E NÃO COLUNA. O requisito diz "pareceres", no plural, e eles
+/// são heterogêneos: um contrato tem o jurídico do art. 53, pode ter o técnico, e
+/// ganha outro a cada aditivo. Uma coluna `parecer String?` guardaria UM — e o dia
+/// em que o segundo chegasse, alguém concatenaria os dois no mesmo campo ou
+/// sobrescreveria o primeiro. Cada parecer tem data, autor e conclusão PRÓPRIAS:
+/// isso é linha, não texto.
+///
+/// ⚠️ SEM `situacao` DERIVADA EM COLUNA: "o contrato tem parecer jurídico
+/// favorável?" é uma consulta sobre estas linhas, não uma flag no contrato.
+model ParecerContrato {
+  id         String   @id @default(cuid())
+  contratoId String
+  contrato   Contrato @relation(fields: [contratoId], references: [id])
+
+  tipo TipoParecerContrato
+
+  /// A data do ATO (a assinatura do parecer), não a da digitação — a mesma
+  /// doutrina do `MovimentoContratual.data`.
+  data DateTime
+
+  /// Quem assinou. Nome livre: o parecerista pode ser externo ao ente (assessoria
+  /// jurídica contratada), e nem todo signatário é `Usuario` deste sistema.
+  autor String
+
+  /// A conclusão em texto. NÃO é enum favorável/desfavorável: parecer jurídico
+  /// costuma ser favorável COM RESSALVAS, e reduzir isso a um booleano apagaria
+  /// justamente a ressalva que o controle interno precisa ler.
+  conclusao String
+
+  /// Referência do documento no protocolo do ente (número do parecer/processo).
+  referencia String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([contratoId])
+  @@index([tipo])
+}
+
+/// TIPO DE CERTIDÃO — as habilitações fiscais e trabalhistas da Lei 14.133,
+/// arts. 68 e 69.
+enum TipoCertidaoFornecedor {
+  FEDERAL
+  ESTADUAL
+  MUNICIPAL
+  FGTS
+  TRABALHISTA
+  FALENCIA_CONCORDATA
+}
+
+/// CERTIDÃO DE FORNECEDOR — TR req. 11. APPEND-ONLY: renovar é LINHA NOVA.
+///
+/// ═══ ⚠️ ELA É DO FORNECEDOR, NÃO DO CONTRATO ═══
+/// Não há `contratoId` aqui, e a ausência é a decisão. A certidão negativa de um
+/// CNPJ vale para TODOS os contratos daquele fornecedor: pendurá-la num contrato
+/// obrigaria a recadastrar a mesma certidão N vezes, e a N-ésima cópia é a que
+/// alguém esquece de renovar.
+///
+/// ⚠️ E A CHAVE É O DOCUMENTO, porque não existe model `Fornecedor` neste
+/// repositório — o contratado é identificado inline por
+/// `Contrato.contratadoDocumento` (linha 150). Criar um `Fornecedor` agora
+/// exigiria migrar todos os contratos existentes para ele, o que é outro PR. A FK
+/// lógica é o documento; quando o `Fornecedor` nascer, ele herda esta tabela.
+///
+/// ⚠️ SEM COLUNA `vencida`: é `validade < hoje`, e "hoje" muda todo dia. Uma flag
+/// precisaria de um job para virar — e no dia em que o job falhasse, o sistema
+/// diria "válida" sobre uma certidão vencida.
+model CertidaoFornecedor {
+  id String @id @default(cuid())
+
+  /// FK LÓGICA para `Contrato.contratadoDocumento` — não há model `Fornecedor`
+  /// neste repositório. CPF (11) ou CNPJ (14), SEM máscara, só dígitos.
+  ///
+  /// ⚠️ A NORMALIZAÇÃO É OBRIGATÓRIA NA ESCRITA, e o CHECK a impõe dos DOIS lados
+  /// (aqui e no `Contrato`). Sem ela, "12.345.678/0001-99" e "12345678000199"
+  /// viram DUAS empresas: a certidão fica pendurada numa e a tela da outra a
+  /// declara ausente — um fornecedor com certidão válida aparecendo como
+  /// irregular, sem erro nenhum. Use `normalizarDocumento` (m11/documento.ts).
+  contratadoDocumento String
+
+  tipo TipoCertidaoFornecedor
+
+  /// O número/código de verificação emitido pelo órgão.
+  numero String
+
+  dataEmissao DateTime
+  /// ⚠️ A data até a qual ela vale. É o que o req. 11 cobra, e é o que o alerta lê.
+  validade    DateTime
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  /// ⚠️ O ÍNDICE DA CONSULTA DOMINANTE: "as certidões VÁLIDAS deste fornecedor
+  /// HOJE". Ela filtra por documento, opcionalmente por tipo, e corta por
+  /// validade — nessa ordem. Um índice só em `contratadoDocumento` obrigaria o
+  /// Postgres a ler todas as certidões históricas do fornecedor para descartar
+  /// as vencidas, e um fornecedor antigo tem dezenas.
+  @@index([contratadoDocumento, tipo, validade])
+  @@index([validade])
+}
+
+// ----------------------------------------------------------------------------
+// OBRA — TR 4.50. O cadastro que faltava, e o furo que ele fecha.
+//
+// ⚠️ POR QUE ELE MORA NO M11, E NÃO NUM MÓDULO PRÓPRIO.
+// O precedente do repositório é claro: o cadastro que o EMPENHO referencia mora no
+// módulo DONO DO CONCEITO — `ClasseDeBens` e `DividaConsolidada` no M10, `Contrato`
+// aqui. Uma obra é OBJETO DE CONTRATO (ela nasce de uma licitação e é executada por
+// um contratado), e por isso a casa dela é o M11. O GUARD, esse fica no M05 (é ele
+// que lê a natureza da ficha) — exatamente como os guards 4.48 e 4.49.
+//
+// ⚠️ E O QUE ELE CURA: sem obra, o registro L800 do MANAD (obras e serviços sujeitos
+// à RETENÇÃO PREVIDENCIÁRIA) saía VAZIO — e o L800 é precisamente o que a AFPS vem
+// procurar no MANAD. Um município que constrói escola e entrega MANAD sem L800
+// entrega o arquivo sem a parte que interessa à fiscalização.
+// ----------------------------------------------------------------------------
+
+/// O ROL OFICIAL — IN/INSS/DC 100/2003, colado do leiaute do MANAD (registro L800,
+/// campo 06). Os códigos de 2 dígitos que vão no arquivo estão no Record
+/// `TIP_OBRA_SERVICO` (modules/m11-licitacoes/obras.ts) — aqui ficam os NOMES, porque
+/// um enum do Prisma não pode começar com dígito.
+///
+/// ⚠️ É UM ROL FECHADO, DE NORMA. Um tipo novo NÃO se inventa: ele entra quando a
+/// Receita publicar. E um valor novo aqui NÃO COMPILA até alguém lhe dar o código de
+/// 2 dígitos no Record — que é o ponto.
+enum TipoObraServico {
+  /// 01 — Serviços diversos sujeitos à retenção.
+  SERVICOS_DIVERSOS_SUJEITOS_A_RETENCAO
+  /// 02 — Transporte de passageiros por pessoa física.
+  TRANSPORTE_DE_PASSAGEIROS_POR_PF
+  /// 03 — Limpeza hospitalar.
+  LIMPEZA_HOSPITALAR
+  /// 04 — Demais limpezas.
+  DEMAIS_LIMPEZAS
+  /// 05 — Pavimentação asfáltica.
+  PAVIMENTACAO_ASFALTICA
+  /// 06 — Terraplanagem, aterro sanitário e dragagem.
+  TERRAPLANAGEM_ATERRO_SANITARIO_E_DRAGAGEM
+  /// 07 — Obras de arte (pontes, viadutos).
+  OBRAS_DE_ARTE
+  /// 08 — Drenagem.
+  DRENAGEM
+  /// 09 — Demais serviços de construção civil COM equipamentos (exceto manuais).
+  DEMAIS_SERVICOS_DE_CONSTRUCAO_CIVIL_COM_EQUIPAMENTOS
+  /// 10 — Edificações em geral.
+  EDIFICACOES_EM_GERAL
+}
+
+model Obra {
+  id String @id @default(cuid())
+
+  /// O identificador da obra no ente (o número do processo de obra, a placa, o que
+  /// o ente usar). Único — é por ele que o humano a encontra.
+  identificador String @unique
+  descricao     String
+
+  /// O tipo do rol da IN/INSS/DC 100/2003. Vai no L800 como código de 2 dígitos.
+  tipoObraServico TipoObraServico
+
+  /// ⚠️ A MATRÍCULA CEI — 12 dígitos, e ela é **NULLABLE DE PROPÓSITO**.
+  ///
+  /// Uma obra começa ANTES de ter matrícula: o CEI se abre na Receita, e entre a
+  /// ordem de serviço e a matrícula há dias. Exigi-lo aqui obrigaria o ente a
+  /// INVENTAR um CEI para conseguir empenhar — e um CEI inventado num arquivo da
+  /// Receita é infinitamente pior do que um campo vazio.
+  ///
+  /// Vazio, ele sai como `||` no L800 (item 3.1.9) e vira PENDÊNCIA VIVA no
+  /// resultado da geração: o arquivo sai, e o furo sai junto, com o nome da obra.
+  cei String? @db.VarChar(12)
+
+  /// O órgão responsável. Nem toda obra tem um definido no cadastro.
+  orgaoId String?
+  orgao   Orgao?  @relation(fields: [orgaoId], references: [id])
+
+  /// Obra encerrada não recebe empenho novo. Estado, não fato — é cadastro.
+  ativa Boolean @default(true)
+
+  empenhos Empenho[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([orgaoId])
+  @@index([ativa])
+}

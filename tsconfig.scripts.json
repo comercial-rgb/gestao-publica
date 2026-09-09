@@ -1,0 +1,24 @@
+{
+  // ── TYPECHECK DOS SCRIPTS (scripts/*.ts) ──────────────────────────────────────────────────────
+  //
+  // Os scripts operacionais (bb-smoke, poc-contingencia) são a ÚNICA fatia do repo que atravessa as
+  // duas metades: importam `modules/` (domínio, resolução nodenext, specifiers com `.js`) E `lib/`
+  // (a camada do app, resolução bundler, specifiers sem extensão). Nenhum dos dois tsconfigs
+  // existentes os cobria — `tsconfig.backend.json` não inclui `lib/` (e quebra nos imports sem
+  // extensão), e `tsconfig.json` exclui `modules/`.
+  //
+  // Este arquivo herda o do APP (resolução `bundler`, que aceita as duas formas de specifier) e
+  // apenas remove o `exclude` de `modules`/`packages`. Sem isto, um script podia quebrar em runtime
+  // com erro de tipo que nenhum gate pegava.
+  "extends": "./tsconfig.json",
+  "include": [
+    "scripts/**/*.ts",
+    "lib/**/*.ts",
+    "modules/**/*.ts",
+    // `poc-contingencia` e `poc-erro-proposital` importam o gerador SAGRES, que agora mora em
+    // adapters/. Sem esta linha os scripts voltariam a ser typecheck-cegos justo na fatia movida.
+    "adapters/**/*.ts",
+    "packages/**/*.ts"
+  ],
+  "exclude": ["node_modules", "prisma/generated"]
+}

@@ -1,0 +1,52 @@
+/// ═══════════════════════════════════════════════════════════════════════════════════════
+/// M12 — DE-PARAS do RREO Anexo 8 (MDE — Manutenção e Desenvolvimento do Ensino).
+/// LDB art. 72 · CF art. 212/212-A · MDF 15ª ed. (modelo municípios).
+/// ═══════════════════════════════════════════════════════════════════════════════════════
+
+/// ⚠️ DE-PARA NATUREZA → PAPEL FUNDEB (quadro de receitas do FUNDEB, linhas 6.1-6.4).
+///
+/// As receitas RECEBIDAS do FUNDEB (retorno da distribuição, complementações VAAF/VAAT da União,
+/// rendimentos de aplicação) são naturezas próprias — e o domínio não as distingue por conta. Este
+/// de-para amarra `naturezaCodigo → papel`. O papel é um ROL FECHADO (RETORNO/VAAF/VAAT/RENDIMENTOS);
+/// um papel novo entra por DECISÃO. Sem natureza mapeada, a linha nasce VAZIA e nomeada.
+model DeParaFundebReceita {
+  id String @id @default(cuid())
+
+  /// O código de 8 dígitos da natureza (o mesmo do `NaturezaReceita.codigo`).
+  naturezaCodigo String @db.VarChar(8)
+
+  /// "RETORNO" | "VAAF" | "VAAT" | "RENDIMENTOS". Rol fechado — ver o cabeçalho.
+  papel String
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  @@unique([naturezaCodigo])
+  @@index([papel])
+}
+
+/// ⚠️ DE-PARA FONTE → CLASSE DE EDUCAÇÃO (as despesas do FUNDEB e do MDE, por origem do recurso).
+///
+/// O quadro de despesas do FUNDEB precisa saber quais despesas foram custeadas com recursos DO
+/// FUNDEB (e, no bloco 2, distinguir VAAT do FUNDEB genérico — o VAAT tem regras próprias de
+/// aplicação: 50% educação infantil, 15% capital). A `FonteRecurso` não carrega essa classe.
+///
+/// ⚠️ ROL FECHADO {FUNDEB, VAAT, IMPOSTOS_MDE, OUTRAS}. VAAT é DISTINTO do FUNDEB genérico de
+/// propósito (consumidor: linhas 16/17 do bloco 2). Uma fonte de educação sem classe mapeada FAZ o
+/// gerador parar nomeando-a (fail-closed) — o indicador de 70% e o mínimo de 25% são limites
+/// constitucionais, e custear educação com recurso não classificado poria o número no lugar errado.
+model DeParaFonteClasseEducacao {
+  id String @id @default(cuid())
+
+  /// O `codigo` de 3 dígitos da fonte (o mesmo do `FonteRecurso.codigo`).
+  fonteCodigo String @db.VarChar(3)
+
+  /// "FUNDEB" | "VAAT" | "IMPOSTOS_MDE" | "OUTRAS". Rol fechado — ver o cabeçalho.
+  classe String
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  @@unique([fonteCodigo])
+  @@index([classe])
+}

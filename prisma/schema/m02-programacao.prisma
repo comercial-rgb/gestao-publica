@@ -1,0 +1,181 @@
+/// ═══════════════════════════════════════════════════════════════════════════════════════
+/// M02 — CRONOGRAMA MENSAL DE DESEMBOLSO (CMD) e METAS BIMESTRAIS DE ARRECADAÇÃO (MBA).
+/// TR 4.18 (CMD/MBA com base na LOA) · 4.19 (modelo de decreto) · 4.43 (limitação de empenho
+/// pelo CMD) · 4.44 (liberação de saldos) · art. 8º e 9º da LRF.
+///
+/// ═══ O QUE ISTO É, EM UMA FRASE ═══
+/// A LOA diz QUANTO o ente pode gastar no ANO. O CMD diz QUANTO por MÊS, por FONTE — para o
+/// caixa não secar em março com o orçamento inteiro empenhado. Quando a receita frustra
+/// (art. 9º LRF), o ente CONTINGENCIA: limita o empenho ao cronograma, e o guard do 4.43 é o
+/// que dá dentes a essa limitação.
+///
+/// ═══ ⚠️ PLANOS SÃO VERSIONADOS, APPEND-ONLY — retificar é criar VERSÃO NOVA ═══
+/// Um decreto de programação financeira é ATO POLÍTICO: ele é publicado, e depois retificado
+/// por outro decreto. Sobrescrever a versão anterior apagaria a história — e a pergunta do
+/// controle interno ("qual era a cota de março QUANDO o empenho foi feito?") ficaria sem
+/// resposta. A VIGENTE é a de `vigenteDesde` mais recente na data do fato. É a anatomia do
+/// `LimiteContratacao` (TR 5.106): decreto novo = linha nova, nunca UPDATE.
+/// ═══════════════════════════════════════════════════════════════════════════════════════
+
+/// UMA VERSÃO DO CMD — o cronograma inteiro de um exercício, numa data.
+model VersaoCmd {
+  id        String @id @default(cuid())
+  exercicio Int
+
+  /// Sequencial dentro do exercício: 1 (a proposta da LOA), 2, 3... (as retificações).
+  numero Int
+
+  /// O ATO que a publicou — o número do decreto/ofício. É o que o TCE cobra.
+  atoRef String
+
+  /// A partir de quando ela vale. A vigente num instante é a de `vigenteDesde` <= instante,
+  /// com o maior `vigenteDesde`.
+  vigenteDesde DateTime
+
+  cotas CotaCmd[]
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  @@unique([exercicio, numero])
+  @@index([exercicio, vigenteDesde])
+}
+
+/// A COTA — o grão do CMD é FONTE × MÊS. É contra ELA que o guard do 4.43 decide.
+model CotaCmd {
+  id String @id @default(cuid())
+
+  versaoId String
+  versao   VersaoCmd @relation(fields: [versaoId], references: [id])
+
+  fonteId String
+  fonte   FonteRecurso @relation(fields: [fonteId], references: [id])
+
+  /// 1 a 12. O mês do desembolso previsto.
+  mes Int
+
+  /// ⚠️ >= 0. Zero é LEGÍTIMO (um mês sem desembolso programado — o guard, se ativo, rejeita
+  /// QUALQUER empenho da fonte naquele mês). Negativo, não: uma cota negativa não tem sentido
+  /// contábil — retirar programação é uma VERSÃO NOVA com valor menor, não um número negativo.
+  valor Decimal @db.Decimal(18, 2)
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  /// Uma cota por (versão, fonte, mês). A unicidade é do banco.
+  @@unique([versaoId, fonteId, mes])
+  @@index([fonteId, mes])
+}
+
+/// UMA VERSÃO DO MBA — as metas bimestrais de arrecadação (art. 13 da LRF, desdobramento).
+model VersaoMba {
+  id        String @id @default(cuid())
+  exercicio Int
+  numero    Int
+  atoRef    String
+  vigenteDesde DateTime
+
+  metas MetaMba[]
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  @@unique([exercicio, numero])
+  @@index([exercicio, vigenteDesde])
+}
+
+/// A META — grão FONTE × BIMESTRE (1 a 6). O leitor do art. 9º confronta contra o arrecadado.
+model MetaMba {
+  id String @id @default(cuid())
+
+  versaoId String
+  versao   VersaoMba @relation(fields: [versaoId], references: [id])
+
+  fonteId String
+  fonte   FonteRecurso @relation(fields: [fonteId], references: [id])
+
+  /// 1 a 6.
+  bimestre Int
+
+  valor Decimal @db.Decimal(18, 2)
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  @@unique([versaoId, fonteId, bimestre])
+  @@index([fonteId, bimestre])
+}
+
+/// A LIBERAÇÃO DE SALDOS (TR 4.44) — quando a receita se comporta, o ente LIBERA o que
+/// contingenciou. É um EVENTO, append-only, com ato e motivo.
+///
+/// ⚠️ SÓ POSITIVA. Liberar é DEVOLVER cota que a limitação segurou — o valor soma ao teto do
+/// mês. RETIRAR cota (o inverso) NÃO é uma liberação negativa: é uma VERSÃO NOVA do CMD, com a
+/// cota menor. Confundir os dois faria o teto do mês virar uma corrida entre eventos de sinais
+/// opostos, sem que ninguém soubesse qual era o plano vigente. Uma liberação negativa é
+/// recusada pelo Zod (valor > 0).
+model LiberacaoProgramacao {
+  id        String @id @default(cuid())
+  exercicio Int
+
+  fonteId String
+  fonte   FonteRecurso @relation(fields: [fonteId], references: [id])
+
+  /// O mês cujo teto esta liberação aumenta.
+  mes Int
+
+  /// > 0 (Zod). Ver o cabeçalho — liberação NEGATIVA não existe.
+  valor Decimal @db.Decimal(18, 2)
+
+  atoRef String
+  motivo String
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  @@index([exercicio, fonteId, mes])
+}
+
+/// O INTERRUPTOR DO 4.43 — a limitação de empenho é OPT-IN, por exercício.
+///
+/// ⚠️ E É UM EVENTO, NÃO UMA FLAG MUTÁVEL. Ativar a limitação (contingenciar) é um ATO do
+/// Executivo, com data e autor — e desativá-la também. A vigência é a do `criadoEm` mais
+/// recente. Assim o controle interno lê "a limitação foi ligada em 15/03 e desligada em 10/06",
+/// que é exatamente o que o art. 9º pede quando o desembolso é restabelecido.
+///
+/// ⚠️ AUSENTE = DESLIGADO. O default é OFF: um ente que nunca contingenciou empenha como sempre,
+/// e o guard do 4.43 nem roda. É o que preserva a regressão — nenhuma fixture ativa isto.
+model EventoLimitacaoEmpenho {
+  id        String @id @default(cuid())
+  exercicio Int
+
+  /// `true` = LIGA a limitação; `false` = DESLIGA. A vigente é a última por `criadoEm`.
+  ativo Boolean
+
+  atoRef String
+  motivo String
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  @@index([exercicio, criadoEm])
+}
+
+/// O MODELO DE DECRETO (TR 4.19/4.24) — o texto-parâmetro, personalizável pelo ente.
+///
+/// ⚠️ TABELA-PARÂMETRO, mesma anatomia do RoteiroReconhecimento/RoteiroDividaAtiva: o TEXTO do
+/// decreto é do ENTE, não do código. O default (uma função pura com placeholders nomeados) sai
+/// no serviço; quem quer o SEU texto cadastra um template aqui, e o gerador o usa.
+model TemplateDecreto {
+  id String @id @default(cuid())
+
+  /// Que decreto este template gera: "CMD", "MBA", "LIMITACAO", "LIBERACAO".
+  tipo String @unique
+
+  /// O corpo com placeholders `{exercicio}`, `{ato}`, `{data}`, `{corpo}` etc. Ver
+  /// `gerarTextoDecreto` — os placeholders são NOMEADOS e o gerador falha se faltar um.
+  texto String
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+}

@@ -1,0 +1,160 @@
+// ============================================================================
+// M03 — créditos adicionais (TR 4.20–4.40).
+//
+// REUSA o mecanismo de saldo do M05: cada item de crédito gera um
+// MovimentoDotacao (CREDITO_ADICIONAL na ficha suplementada, ANULACAO_CREDITO na
+// ficha anulada), e as colunas de saldo são recalculadas por SUM na MESMA
+// transação. Nada disso é reimplementado aqui.
+//
+// APPEND-ONLY em tudo. Sem updatedAt, sem deletedAt.
+// ============================================================================
+
+enum TipoCredito {
+  SUPLEMENTAR
+  ESPECIAL
+  EXTRAORDINARIO
+}
+
+enum OrigemRecurso {
+  /// Tira de outra(s) ficha(s). Operação de DOIS LADOS que TEM de fechar.
+  ANULACAO
+  /// Recurso NOVO — o total autorizado sobe legitimamente.
+  SUPERAVIT_FINANCEIRO
+  EXCESSO_ARRECADACAO
+  OPERACAO_CREDITO
+}
+
+enum TipoItemCredito {
+  SUPLEMENTACAO
+  ANULACAO
+}
+
+// ----------------------------------------------------------------------------
+// LeiCredito — autoriza um TETO (TR 4.30). Os decretos consomem esse teto.
+// ----------------------------------------------------------------------------
+
+model LeiCredito {
+  id     String @id @default(cuid())
+  numero String
+  ano    Int
+  tipoCredito TipoCredito
+  /// TETO que os decretos desta lei podem consumir, somados.
+  valorAutorizado Decimal  @db.Decimal(18, 2)
+  /// Percentual da LOA autorizado (quando a lei se expressa em %).
+  percentualLimite Decimal? @db.Decimal(9, 6)
+  dataPublicacao   DateTime
+
+  decretos DecretoCredito[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([ano, numero])
+  @@index([ano])
+}
+
+// ----------------------------------------------------------------------------
+// DecretoCredito — executa (parte do) teto da lei.
+//
+// NÃO existe coluna `status`. "Encerrado?" é DERIVADO da EXISTÊNCIA de um
+// DecretoEncerramento — mesmo padrão do estorno no ledger e do status do empenho
+// no M05. Uma coluna `status` exigiria UPDATE no decreto, que o append-only
+// proíbe; e o encerramento é um FATO (alguém encerrou, numa data), não um
+// atributo do decreto.
+// ----------------------------------------------------------------------------
+
+model DecretoCredito {
+  id     String     @id @default(cuid())
+  leiId  String
+  lei    LeiCredito @relation(fields: [leiId], references: [id])
+  numero String
+  ano    Int
+  data   DateTime
+
+  origemRecurso OrigemRecurso
+
+  itens       ItemCredito[]
+  encerramento DecretoEncerramento?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([ano, numero])
+  @@index([leiId])
+}
+
+/// O FATO "este decreto foi encerrado". Append-only: existir = encerrado.
+model DecretoEncerramento {
+  id        String         @id @default(cuid())
+  decretoId String         @unique
+  decreto   DecretoCredito @relation(fields: [decretoId], references: [id])
+  data      DateTime
+  motivo    String
+  criadoEm  DateTime       @default(now())
+  criadoPor String
+}
+
+// ----------------------------------------------------------------------------
+// ItemCredito — uma perna do crédito. Cada item gera UM MovimentoDotacao.
+//
+// É o "partidas dobradas da dotação": num decreto por ANULACAO,
+// Σ(ANULACAO) == Σ(SUPLEMENTACAO) por fonte (TR 5.111).
+// ----------------------------------------------------------------------------
+
+model ItemCredito {
+  id        String         @id @default(cuid())
+  decretoId String
+  decreto   DecretoCredito @relation(fields: [decretoId], references: [id])
+
+  fichaId String
+  ficha   FichaOrcamentaria @relation(fields: [fichaId], references: [id])
+
+  tipo  TipoItemCredito
+  valor Decimal         @db.Decimal(18, 2)
+
+  /// Fonte do recurso desta perna. TEM de bater com a fonte da ficha.
+  fonteId String
+  fonte   FonteRecurso @relation(fields: [fonteId], references: [id])
+
+  /// O movimento de saldo que este item gerou (M05). 1-1.
+  movimentoDotacaoId String           @unique
+  movimentoDotacao   MovimentoDotacao @relation(fields: [movimentoDotacaoId], references: [id])
+
+  estornoDeId String?
+  estornoDe   ItemCredito?  @relation("EstornoItemCredito", fields: [estornoDeId], references: [id])
+  estornos    ItemCredito[] @relation("EstornoItemCredito")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([decretoId])
+  @@index([fichaId])
+  @@index([estornoDeId])
+}
+
+// ----------------------------------------------------------------------------
+// DisponibilidadeRecursoNovo — o "saldo da fonte" para crédito SEM anulação.
+//
+// POR QUE EXISTE: o spec manda "validar saldo da fonte de superávit/excesso",
+// mas não havia NADA no sistema contra o que validar. Sem esta tabela, o
+// invariante 5 seria uma checagem que sempre passa — pior que não ter.
+// Aqui se DECLARA a disponibilidade apurada (superávit do balanço anterior,
+// excesso de arrecadação, valor da operação de crédito contratada), e o crédito
+// por recurso novo não pode ultrapassá-la.
+// ----------------------------------------------------------------------------
+
+model DisponibilidadeRecursoNovo {
+  id        String        @id @default(cuid())
+  exercicio Int
+  fonteId   String
+  fonte     FonteRecurso  @relation(fields: [fonteId], references: [id])
+  origem    OrigemRecurso
+  valor     Decimal       @db.Decimal(18, 2)
+  descricao String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([exercicio, fonteId, origem])
+  @@index([fonteId])
+}

@@ -1,0 +1,64 @@
+// ============================================================================
+// M06 — ordem cronológica de pagamentos (Lei 14.133/2021, art. 141).
+//
+// A FILA É DERIVADA, NÃO TABELA. `filaDePagamentos(fonte, categoria)` é uma
+// CONSULTA: liquidações com saldo a pagar > 0 (SUM real dos pagamentos < valor
+// liquidado), ordenadas por data de liquidação. Materializar a fila numa coluna
+// seria criar mais um cache para derrapar — e a fila muda a cada pagamento.
+//
+// A ÚNICA tabela deste módulo é a JustificativaQuebraOrdem: append-only, porque
+// o §2º manda apurar responsabilidade por preterição imotivada. Uma justificativa
+// editável depois do fato não serve de prova de nada.
+// ============================================================================
+
+/// Art. 141, caput: a ordem cronológica é POR FONTE, subdividida nestas 4
+/// categorias de contrato.
+enum CategoriaOrdemCronologica {
+  FORNECIMENTO_BENS
+  LOCACAO
+  PRESTACAO_SERVICOS
+  REALIZACAO_OBRAS
+}
+
+/// Art. 141, §1º — hipóteses TAXATIVAS de quebra da ordem. Não há "outros".
+enum HipoteseQuebraOrdem {
+  /// I — grave perturbação da ordem, emergência ou calamidade pública.
+  I_EMERGENCIA_CALAMIDADE
+  /// II — ME/EPP/agricultor familiar/produtor rural PF/MEI/cooperativa, com
+  /// risco de descontinuidade do objeto.
+  II_ME_EPP_RISCO
+  /// III — serviços de sistemas estruturantes, com risco de descontinuidade.
+  III_SISTEMAS_ESTRUTURANTES
+  /// IV — direitos de contratos em falência, recuperação judicial ou dissolução.
+  IV_FALENCIA_RECUPERACAO
+  /// V — objeto imprescindível à integridade do patrimônio ou às atividades
+  /// finalísticas.
+  V_ATIVIDADE_FINALISTICA
+}
+
+// ----------------------------------------------------------------------------
+// JustificativaQuebraOrdem — APPEND-ONLY. Sem updatedAt, sem deletedAt.
+//
+// Registrada na MESMA transação do pagamento que quebra a ordem. Se o pagamento
+// falhar, a justificativa não existe; se a justificativa falhar, o pagamento não
+// acontece. Não há meio-termo — é o que o §2º exige para poder apurar.
+// ----------------------------------------------------------------------------
+
+model JustificativaQuebraOrdem {
+  id String @id @default(cuid())
+
+  /// A liquidação que está sendo paga FORA de ordem.
+  liquidacaoId String
+  liquidacao   Liquidacao @relation(fields: [liquidacaoId], references: [id])
+
+  hipotese      HipoteseQuebraOrdem
+  /// Texto da justificativa prévia (§1º). Mínimo de 30 caracteres — Zod.
+  justificativa String
+  autorizadoPor String
+
+  criadoEm DateTime @default(now())
+
+  @@index([liquidacaoId])
+  @@index([hipotese])
+  @@index([criadoEm])
+}

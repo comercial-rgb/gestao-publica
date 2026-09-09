@@ -1,0 +1,387 @@
+{
+  "empenhos": {
+    "path": "/api/v1/empenhos",
+    "metodo": "GET",
+    "params": [
+      {
+        "name": "codUnidadeGestora",
+        "in": "query",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "name": "dataMinima",
+        "in": "query",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "name": "dataMaxima",
+        "in": "query",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "name": "anoEmissaoEmpenho",
+        "in": "query",
+        "required": false,
+        "type": "integer"
+      },
+      {
+        "name": "codUnidadeOrcamentaria",
+        "in": "query",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "numero",
+        "in": "query",
+        "required": false,
+        "type": "integer"
+      }
+    ],
+    "respostaItem": {
+      "type": "object",
+      "required": [
+        "anoEmissao",
+        "codSubElemento",
+        "codUnidadeGestora",
+        "codUnidadeOrcamentaria",
+        "cpfCnpjFornecedor",
+        "cpfOrdenador",
+        "dotacao",
+        "historico",
+        "licitacao",
+        "numero",
+        "tipo",
+        "valor"
+      ],
+      "properties": {
+        "codUnidadeGestora": {
+          "type": "string"
+        },
+        "codUnidadeOrcamentaria": {
+          "type": "string"
+        },
+        "anoEmissao": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "numero": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "dotacao": {
+          "type": "object",
+          "required": [
+            "codAcao",
+            "codCategoriaEconomica",
+            "codElementoDespesa",
+            "codFuncao",
+            "codModalidadeDespesa",
+            "codNaturezaDespesa",
+            "codPrograma",
+            "codSubFuncao",
+            "tipoFonteRecurso"
+          ],
+          "properties": {
+            "codFuncao": {
+              "type": "string"
+            },
+            "codSubFuncao": {
+              "type": "string"
+            },
+            "codPrograma": {
+              "type": "string"
+            },
+            "codAcao": {
+              "type": "string"
+            },
+            "codCategoriaEconomica": {
+              "type": "string"
+            },
+            "codNaturezaDespesa": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "codModalidadeDespesa": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "codElementoDespesa": {
+              "type": "string"
+            },
+            "tipoFonteRecurso": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        },
+        "codSubElemento": {
+          "type": "string"
+        },
+        "licitacao": {
+          "type": "object",
+          "required": [
+            "modalidade"
+          ],
+          "properties": {
+            "numero": {
+              "type": "string"
+            },
+            "modalidade": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        },
+        "tipo": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "competencia": {
+          "type": "string",
+          "example": "2019-01-01"
+        },
+        "valor": {
+          "type": "number"
+        },
+        "historico": {
+          "type": "string"
+        },
+        "cpfCnpjFornecedor": {
+          "type": "string"
+        },
+        "tipoMeta": {
+          "type": "object"
+        },
+        "numeroObra": {
+          "type": "string"
+        },
+        "exercicioFonteRecurso": {
+          "type": "object"
+        },
+        "cpfOrdenador": {
+          "type": "string"
+        },
+        "co": {
+          "type": "object",
+          "required": [
+            "codigo",
+            "descricao"
+          ],
+          "properties": {
+            "codigo": {
+              "type": "string"
+            },
+            "descricao": {
+              "type": "string"
+            }
+          }
+        },
+        "naturezaContratacao": {
+          "type": "object",
+          "required": [
+            "codigo",
+            "descricao"
+          ],
+          "properties": {
+            "codigo": {
+              "type": "string"
+            },
+            "descricao": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "pagamentos": {
+    "path": "/api/v1/pagamentos",
+    "metodo": "GET",
+    "params": [
+      {
+        "name": "codUnidadeGestora",
+        "in": "query",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "name": "dataMinima",
+        "in": "query",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "name": "dataMaxima",
+        "in": "query",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "name": "codUnidadeOrcamentaria",
+        "in": "query",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "anoEmissaoEmpenho",
+        "in": "query",
+        "required": false,
+        "type": "integer"
+      },
+      {
+        "name": "numEmpenho",
+        "in": "query",
+        "required": false,
+        "type": "integer"
+      },
+      {
+        "name": "numero",
+        "in": "query",
+        "required": false,
+        "type": "integer"
+      }
+    ],
+    "respostaItem": {
+      "type": "object",
+      "required": [
+        "anoEmissaoEmpenho",
+        "codBancoDebito",
+        "codUnidadeGestora",
+        "codUnidadeOrcamentaria",
+        "numAgenciaDebito",
+        "numContaDebito",
+        "numEmpenho",
+        "numero",
+        "tipoContaDebito",
+        "tipoFonteRecurso",
+        "valor"
+      ],
+      "properties": {
+        "codUnidadeGestora": {
+          "type": "string"
+        },
+        "codUnidadeOrcamentaria": {
+          "type": "string"
+        },
+        "anoEmissaoEmpenho": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "numEmpenho": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "numero": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "competencia": {
+          "type": "string",
+          "example": "2019-01-01"
+        },
+        "valor": {
+          "type": "number"
+        },
+        "codBancoDebito": {
+          "type": "string"
+        },
+        "numAgenciaDebito": {
+          "type": "string"
+        },
+        "numContaDebito": {
+          "type": "string"
+        },
+        "tipoContaDebito": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "tipoFonteRecurso": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "chequeEmitido": {
+          "type": "string"
+        },
+        "documentoDebitoAutomatico": {
+          "type": "string"
+        },
+        "codBancoCredito": {
+          "type": "string"
+        },
+        "numAgenciaCredito": {
+          "type": "string"
+        },
+        "numContaCredito": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "dotacoes": {
+    "path": "/api/v1/dotacoes",
+    "metodo": "GET",
+    "params": [
+      {
+        "name": "codUnidadeGestora",
+        "in": "query",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "name": "exercicio",
+        "in": "query",
+        "required": true,
+        "type": "integer"
+      }
+    ],
+    "respostaItem": {
+      "type": "object",
+      "required": [
+        "codAcao",
+        "codCategoriaEconomica",
+        "codElementoDespesa",
+        "codFuncao",
+        "codModalidadeDespesa",
+        "codNaturezaDespesa",
+        "codPrograma",
+        "codSubFuncao",
+        "tipoFonteRecurso"
+      ],
+      "properties": {
+        "codFuncao": {
+          "type": "string"
+        },
+        "codSubFuncao": {
+          "type": "string"
+        },
+        "codPrograma": {
+          "type": "string"
+        },
+        "codAcao": {
+          "type": "string"
+        },
+        "codCategoriaEconomica": {
+          "type": "string"
+        },
+        "codNaturezaDespesa": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "codModalidadeDespesa": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "codElementoDespesa": {
+          "type": "string"
+        },
+        "tipoFonteRecurso": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    }
+  }
+}

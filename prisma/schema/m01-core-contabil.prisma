@@ -1,0 +1,198 @@
+// ============================================================================
+// M01 — core-contabil: plano de contas PCASP + ledger de partidas dobradas.
+// REGRA DE OURO: dinheiro NUNCA é Float. Sempre Decimal @db.Decimal(18,2).
+// INVARIANTE 2: o ledger é APPEND-ONLY — LancamentoContabil e PartidaContabil
+// não têm updatedAt nem deletedAt. Correção = novo lançamento de estorno.
+// ============================================================================
+
+enum NaturezaSaldo {
+  DEVEDORA
+  CREDORA
+}
+
+/// Atributo MCASP: F = financeiro, P = permanente.
+enum IndicadorSuperavit {
+  F
+  P
+}
+
+/// Perna única: cada partida toca UMA conta, como débito OU crédito.
+enum TipoPartida {
+  DEBITO
+  CREDITO
+}
+
+enum Subsistema {
+  ORCAMENTARIO
+  PATRIMONIAL
+  CONTROLE
+}
+
+// ----------------------------------------------------------------------------
+// Plano de contas PCASP (hierárquico).
+// FAIL-CLOSED: só conta com `analitica = true` pode receber partida. A regra é
+// aplicada no M01 (que tem banco), nunca no motor puro de packages/ledger.
+// ----------------------------------------------------------------------------
+
+model ContaPcasp {
+  id                 String             @id @default(cuid())
+  codigo             String             @unique
+  nome               String
+  naturezaSaldo      NaturezaSaldo
+  nivel              Int
+  contaPaiId         String?
+  contaPai           ContaPcasp?        @relation("Hierarquia", fields: [contaPaiId], references: [id])
+  filhas             ContaPcasp[]       @relation("Hierarquia")
+  analitica          Boolean
+  indicadorSuperavit IndicadorSuperavit?
+  partidas           PartidaContabil[]
+  /// back-relation M09 — campo VIRTUAL, não gera coluna.
+  contasBancarias    ContaBancaria[]
+  /// back-relations M10 — campos VIRTUAIS, não geram coluna.
+  classesDeBens      ClasseDeBens[]       @relation("AtivoDaClasse")
+  roteirosDebito     RoteiroPatrimonial[] @relation("DebitoPatrimonial")
+  roteirosCredito    RoteiroPatrimonial[] @relation("CreditoPatrimonial")
+  roteirosResultadoDebito  RoteiroResultadoAlienacao[] @relation("DebitoResultado")
+  roteirosResultadoCredito RoteiroResultadoAlienacao[] @relation("CreditoResultado")
+  /// back-relations M05 (roteiro do subsistema ORÇAMENTÁRIO) — campos VIRTUAIS.
+  roteirosOrcDebito  RoteiroOrcamentario[] @relation("DebitoOrcamentario")
+  roteirosOrcCredito RoteiroOrcamentario[] @relation("CreditoOrcamentario")
+  /// back-relation M08 (apuração do resultado) — campo VIRTUAL.
+  roteirosEncerramento     RoteiroEncerramento[]       @relation("ResultadosAcumulados")
+  /// back-relation M08 (destino da conta de controle na virada) — campo VIRTUAL.
+  destinoNaVirada          ContaNaVirada[]             @relation("DestinoNaVirada")
+  /// back-relations M10 (dívida) — campos VIRTUAIS, não geram coluna.
+  passivosDeDivida         DividaConsolidada[]         @relation("PassivoDaDivida")
+  roteirosDividaDebito     RoteiroDivida[]             @relation("DebitoDivida")
+  roteirosDividaCredito    RoteiroDivida[]             @relation("CreditoDivida")
+  /// back-relations M10 (dívida ATIVA) — campos VIRTUAIS.
+  ativosDeDividaAtiva      DividaAtiva[]               @relation("AtivoDaDividaAtiva")
+  roteirosDivAtivaDebito   RoteiroDividaAtiva[]        @relation("DebitoDividaAtiva")
+  roteirosDivAtivaCredito  RoteiroDividaAtiva[]        @relation("CreditoDividaAtiva")
+  /// back-relations M10 (almoxarifado e provisões) — campos VIRTUAIS.
+  estoquesDeClasse         ClasseDeMaterial[]          @relation("EstoqueDaClasse")
+  roteirosAlmoxDebito      RoteiroAlmoxarifado[]       @relation("DebitoAlmoxarifado")
+  roteirosAlmoxCredito     RoteiroAlmoxarifado[]       @relation("CreditoAlmoxarifado")
+  passivosDeProvisao       ProvisaoMatematica[]        @relation("PassivoDaProvisao")
+  roteirosProvisaoDebito   RoteiroProvisao[]           @relation("DebitoProvisao")
+  roteirosProvisaoCredito  RoteiroProvisao[]           @relation("CreditoProvisao")
+  // back-relations M04 (TR 5.87) — o reconhecimento pelo fato gerador. Campos VIRTUAIS.
+  roteirosReconhecCredito  RoteiroReconhecimento[]     @relation("CreditoAReceberReconhecimento")
+  roteirosReconhecVpa      RoteiroReconhecimento[]     @relation("VpaReconhecimento")
+  roteirosReconhecVpd      RoteiroReconhecimento[]     @relation("VpdReconhecimento")
+
+  @@index([contaPaiId])
+  @@index([analitica])
+}
+
+// ----------------------------------------------------------------------------
+// Lançamento contábil — APPEND-ONLY. Nunca UPDATE, nunca DELETE.
+// `numeroControle` agrupa o fato contábil (TR pág. 2, item 2.5) e NÃO é único:
+// um mesmo fato pode gerar lançamentos em subsistemas distintos.
+// "Está estornado?" NÃO é um campo — é derivado de `estornos.length > 0`.
+// ----------------------------------------------------------------------------
+
+/// A NATUREZA do lançamento. Nasceu com a apuração do resultado (M08).
+///
+/// Um lançamento de ENCERRAMENTO não é um FATO NOVO: ele apenas TRANSFERE o
+/// resultado das contas de variação (classes 3/4) para o Patrimônio Líquido. Ele
+/// entra no Balanço (o saldo é o saldo), mas NÃO pode entrar na DVP — senão a
+/// demonstração contaria a mesma receita duas vezes: uma quando ela aconteceu, e
+/// outra quando ela foi transferida.
+enum NaturezaLancamento {
+  NORMAL
+  ENCERRAMENTO
+}
+
+/// ⚠️ NÃO EXISTE `competencia` AQUI — E A AUSÊNCIA É UMA DECISÃO, COM HISTÓRIA.
+///
+/// A coluna existiu, e era uma SEGUNDA COMPETÊNCIA DORMENTE: todo estorno herdava a do
+/// original (`competenciaEstorno ?? original.competencia`), ela DIVERGIA da `dataTransacao` no
+/// banco de verdade — e NINGUÉM a lia. Nenhum relatório, nenhum corte, nenhum filtro: MSC, DVP,
+/// balanços e o travamento cortam todos por `dataTransacao`.
+///
+/// Uma coluna que só se escreve, e que diverge, é uma MINA ARMADA para o primeiro leitor
+/// ingênuo: o dia em que alguém escrevesse `where: { competencia: ... }` acreditando nela, o
+/// estorno de janeiro apareceria em dezembro — e o relatório fecharia, plausível e errado.
+///
+/// A competência contábil de VERDADE (a do fato gerador, NBC TSP) renasce no 5.87/5.88: na
+/// entidade DONA do fato, com LEITOR NOMEADO. Ver `MODULO.md` (§ a competência) e a migração
+/// `*_remove_competencia_lancamento`.
+model LancamentoContabil {
+  id             String               @id @default(cuid())
+  numeroControle String
+  dataTransacao  DateTime
+  historico      String
+
+  /// NULO lê-se NORMAL. Nullable de propósito: a coluna entra ADITIVA, sem
+  /// backfill e sem os 3 passos. Todo lançamento que já existe é normal — e o
+  /// código trata o nulo como NORMAL (fail-safe na leitura).
+  natureza NaturezaLancamento?
+  origemTipo     String
+  origemId       String?
+  estornoDeId    String?
+  estornoDe      LancamentoContabil?  @relation("Estorno", fields: [estornoDeId], references: [id])
+  estornos       LancamentoContabil[] @relation("Estorno")
+  partidas       PartidaContabil[]
+  criadoEm       DateTime             @default(now())
+  criadoPor      String
+
+  // --- back-relations M04 / M05 ----------------------------------------------
+  // Campos VIRTUAIS: não geram coluna. As FKs vivem nas tabelas filhas.
+  // O Prisma exige o lado inverso da relação; nada no M01 muda no banco.
+  receita          ReceitaArrecadada?
+  empenho          Empenho?
+  liquidacao       Liquidacao?
+  pagamento        Pagamento?
+  movimentosRestos MovimentoRestosAPagar[]
+  movimentosExtra  MovimentoExtraorcamentario[]
+  movimentosPatrimoniais MovimentoPatrimonial[]
+  movimentosDivida       MovimentoDivida[]
+  movimentosDividaAtiva  MovimentoDividaAtiva[]  @relation("LancamentoDividaAtiva")
+  movimentosAlmoxarifado MovimentoAlmoxarifado[] @relation("LancamentoAlmoxarifado")
+  movimentosProvisao     MovimentoProvisao[]     @relation("LancamentoProvisao")
+  transferenciaEntreContas TransferenciaEntreContas?
+  // M04 (TR 5.87) — o reconhecimento e o cancelamento (VPD) da receita.
+  reconhecimento         ReceitaReconhecida?
+  cancelamentoReconhec   CancelamentoDeReconhecimento?
+  // ---------------------------------------------------------------------------
+
+  @@index([numeroControle])
+  @@index([dataTransacao])
+  @@index([origemTipo, origemId])
+  // NÃO usar @unique em estornoDeId — quebraria estornos[]. Unicidade do
+  // estorno no banco: prisma/sql/uq_estorno_unico.sql (aplicar pós-migrate).
+  // O SQL NÃO pode morar em prisma/migrations/ — toda subpasta de lá é lida
+  // como migration e o Prisma exige migration.sql dentro (erro P3015).
+  @@index([estornoDeId])
+}
+
+// ----------------------------------------------------------------------------
+// Partida (perna) — uma conta, um tipo, um valor. Também append-only.
+// Dimensões (fonte de recurso, categoria econômica, ficha, centro de custo)
+// entram como colunas ADITIVAS em M02/M05 — não mexer nas existentes.
+// ----------------------------------------------------------------------------
+
+model PartidaContabil {
+  id           String             @id @default(cuid())
+  lancamentoId String
+  lancamento   LancamentoContabil @relation(fields: [lancamentoId], references: [id])
+  contaId      String
+  conta        ContaPcasp         @relation(fields: [contaId], references: [id])
+  tipo         TipoPartida
+  subsistema   Subsistema
+  valor        Decimal            @db.Decimal(18, 2)
+
+  // --- ADITIVO M02 (planejamento) -------------------------------------------
+  // Dimensão orçamentária da partida. NULLABLE de propósito: partida
+  // patrimonial/controle não tem ficha, e o M01 continua válido sem ela.
+  // Isto é tudo que o M02 acrescenta ao M01 — nenhuma coluna existente muda.
+  fichaId      String?
+  ficha        FichaOrcamentaria? @relation(fields: [fichaId], references: [id])
+  // --------------------------------------------------------------------------
+
+  @@index([lancamentoId])
+  @@index([contaId])
+  @@index([contaId, subsistema])
+  @@index([fichaId])
+}

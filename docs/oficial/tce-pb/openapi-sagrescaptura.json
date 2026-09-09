@@ -1,0 +1,3565 @@
+{
+  "swagger" : "2.0",
+  "info" : {
+    "description" : "Documentação dos endpoints do SAGRES Captura. Para os endpoints que precisam de autenticação, é necessário informar o token, fornecido pelo TCE, através da chave 'AuthToken' no cabeçalho da requisição HTTP.",
+    "version" : "v1",
+    "title" : "SAGRES Captura API",
+    "contact" : {
+      "name" : "suportesagres@tce.pb.gov.br"
+    },
+    "license" : {
+      "name" : "",
+      "url" : "http://licenseUrl"
+    }
+  },
+  "host" : "sagrescaptura.tce.pb.gov.br/api",
+  "basePath" : "/",
+  "tags" : [ {
+    "name" : "receitas-previstas"
+  }, {
+    "name" : "codigos-agrupamentos-folhas-pagamentos"
+  }, {
+    "name" : "dotacoes"
+  }, {
+    "name" : "envios"
+  }, {
+    "name" : "unidades-orcamentarias"
+  }, {
+    "name" : "restos-pagamentos"
+  }, {
+    "name" : "estornos-pagamentos"
+  }, {
+    "name" : "acoes"
+  }, {
+    "name" : "restos-retencoes"
+  }, {
+    "name" : "restos-cancelamentos"
+  }, {
+    "name" : "atualizacoes-orcamentarias"
+  }, {
+    "name" : "estornos"
+  }, {
+    "name" : "retencoes"
+  }, {
+    "name" : "receitas-orcamentarias"
+  }, {
+    "name" : "restos-estornos-pagamentos"
+  }, {
+    "name" : "historicos-funcionais"
+  }, {
+    "name" : "restos-inscritos"
+  }, {
+    "name" : "restos-estornos-liquidacoes"
+  }, {
+    "name" : "matriculas"
+  }, {
+    "name" : "estornos-retencoes"
+  }, {
+    "name" : "programas"
+  }, {
+    "name" : "relacionamentos-empenho-tipometa"
+  }, {
+    "name" : "estornos-liquidacoes"
+  }, {
+    "name" : "vantagens-desconto"
+  }, {
+    "name" : "restos-liquidacoes"
+  }, {
+    "name" : "cargos"
+  }, {
+    "name" : "FolhaPagamento"
+  }, {
+    "name" : "servidores"
+  }, {
+    "name" : "restos-estornos-retencoes"
+  }, {
+    "name" : "empenhos"
+  }, {
+    "name" : "liquidacoes"
+  }, {
+    "name" : "pagamentos"
+  } ],
+  "schemes" : [ "https" ],
+  "paths" : {
+    "/api/v1/receitas-previstas" : {
+      "get" : {
+        "tags" : [ "receitas-previstas" ],
+        "summary" : "Filtragem de receitas previstas",
+        "description" : "Retorna uma lista de receitas previstas filtrada pelos parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMinima",
+          "in" : "query",
+          "description" : "Data mínima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMaxima",
+          "in" : "query",
+          "description" : "Data máxima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de receitas previstas",
+            "schema" : {
+              "$ref" : "#/definitions/ReceitaPrevista"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/codigos-agrupamentos-folhas-pagamentos" : {
+      "get" : {
+        "tags" : [ "codigos-agrupamentos-folhas-pagamentos" ],
+        "summary" : "Filtragem de códigos de agrupamentos da folha de pagamento",
+        "description" : "Retorna uma lista de códigos de agrupamentos das folhas de pagamentos filtrada pelos parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "exercicio",
+          "in" : "query",
+          "description" : "Ano do exercício",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de códigos de agrupamentos da folhas de pagamentos",
+            "schema" : {
+              "$ref" : "#/definitions/CodigoAgrupamentoFolhaPagamentoResource"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dotacoes" : {
+      "get" : {
+        "tags" : [ "dotacoes" ],
+        "summary" : "Filtragem de dotações",
+        "description" : "Retorna uma lista de dotações filtrada pelos parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "exercicio",
+          "in" : "query",
+          "description" : "Ano do exercício",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de dotações",
+            "schema" : {
+              "$ref" : "#/definitions/Dotacao"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/envios" : {
+      "get" : {
+        "tags" : [ "envios" ],
+        "summary" : "Filtragem de envios",
+        "description" : "Retorna uma lista de envios filtrados pelo parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora. Múltiplos valores só serão considerados em conjunto com o parâmetro 'ultimoPendente'.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMinima",
+          "in" : "query",
+          "description" : "Data mínima da competência da entidade no formato 'yyyy-MM-dd'. Caso o parâmetro 'ultimoPendente' não seja informado, esse parâmetro é obrigatório.",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "dataMaxima",
+          "in" : "query",
+          "description" : "Data máxima da competência da entidade no formato 'yyyy-MM-dd'. Caso o parâmetro 'ultimoPendente' não seja informado, esse parâmetro é obrigatório.",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "ultimoPendente",
+          "in" : "query",
+          "description" : "Substitui os filtros de data, filtrando o envio 'pendente' ou 'em aberto' de cada Unidade Gestora informada.",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "tipoEnvio",
+          "in" : "query",
+          "description" : "Tipo do Envio do Arquivo",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "withPrazo",
+          "in" : "query",
+          "description" : "Caso o envio possua um prazo, será adicionado o atributo 'prazo' nos envios consultados.",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "withDiasCorridosAtraso",
+          "in" : "query",
+          "description" : "Caso o envio possua um prazo, será adicionado o atributo 'diasCorridosEmAtraso' nos envios consultados.",
+          "required" : false,
+          "type" : "boolean"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de envios",
+            "schema" : {
+              "$ref" : "#/definitions/Envio"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/unidades-orcamentarias" : {
+      "get" : {
+        "tags" : [ "unidades-orcamentarias" ],
+        "summary" : "Filtragem de unidades orçamentárias",
+        "description" : "Retorna uma lista de unidades orçamentárias filtrada pelos parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "exercicio",
+          "in" : "query",
+          "description" : "Ano do exercício",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de unidades orçamentárias",
+            "schema" : {
+              "$ref" : "#/definitions/Servidor"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/restos-pagamentos" : {
+      "get" : {
+        "tags" : [ "restos-pagamentos" ],
+        "summary" : "Filtragem de pagamentos",
+        "description" : "Retorna uma lista de RestosPagamento filtrada pelos parâmetros informados.",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMinima",
+          "in" : "query",
+          "description" : "Data mínima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMaxima",
+          "in" : "query",
+          "description" : "Data máxima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "codUnidadeOrcamentaria",
+          "in" : "query",
+          "description" : "Código da Unidade Orçamentária",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "anoEmissaoEmpenho",
+          "in" : "query",
+          "description" : "Ano de Emissão do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "numRestosInscrito",
+          "in" : "query",
+          "description" : "Número do empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "numero",
+          "in" : "query",
+          "description" : "Número da parcela",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de RestosPagamento",
+            "schema" : {
+              "$ref" : "#/definitions/Restos Pagamento"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/estornos-pagamentos" : {
+      "get" : {
+        "tags" : [ "estornos-pagamentos" ],
+        "summary" : "Filtragem de estornos pagamentos",
+        "description" : "Retorna uma lista de estornos pagamentos filtrada pelos parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMinima",
+          "in" : "query",
+          "description" : "Data mínima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMaxima",
+          "in" : "query",
+          "description" : "Data máxima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "codUnidadeOrcamentaria",
+          "in" : "query",
+          "description" : "Código da Unidade Orçamentária",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "anoEmissaoEmpenho",
+          "in" : "query",
+          "description" : "Ano de Emissão do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "numEmpenho",
+          "in" : "query",
+          "description" : "Número do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "numPagamento",
+          "in" : "query",
+          "description" : "Número da Parcela de Pagamento",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "numero",
+          "in" : "query",
+          "description" : "Número do estorno do Pagamento",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de EstornoPagamento",
+            "schema" : {
+              "$ref" : "#/definitions/EstornoPagamento"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/acoes" : {
+      "get" : {
+        "tags" : [ "acoes" ],
+        "summary" : "Filtragem de ações",
+        "description" : "Retorna uma lista de ações filtrada pelos parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "exercicio",
+          "in" : "query",
+          "description" : "Ano do exercício",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de ações",
+            "schema" : {
+              "$ref" : "#/definitions/Acao"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/restos-retencoes" : {
+      "get" : {
+        "tags" : [ "restos-retencoes" ],
+        "summary" : "Filtragem de Restos de Retenções",
+        "description" : "Retorna uma lista de RestosRetencao filtrada pelos parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMinima",
+          "in" : "query",
+          "description" : "Data mínima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMaxima",
+          "in" : "query",
+          "description" : "Data máxima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "codUnidadeOrcamentaria",
+          "in" : "query",
+          "description" : "Código da Unidade Orçamentária",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "anoEmissaoEmpenho",
+          "in" : "query",
+          "description" : "Ano de Emissão do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "numRestosInscrito",
+          "in" : "query",
+          "description" : "Número do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "numRestosPagamento",
+          "in" : "query",
+          "description" : "Número do Resto Pagamento",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "tipoRetencao",
+          "in" : "query",
+          "description" : "Tipo de Retenção Efetuada",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de RestosRetencao",
+            "schema" : {
+              "$ref" : "#/definitions/Restos Retencao"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/restos-cancelamentos" : {
+      "get" : {
+        "tags" : [ "restos-cancelamentos" ],
+        "summary" : "Filtragem de Restos Cancelamentos",
+        "description" : "Retorna uma lista de RestosCancelamento filtrada pelos parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMinima",
+          "in" : "query",
+          "description" : "Data mínima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMaxima",
+          "in" : "query",
+          "description" : "Data máxima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "codUnidadeOrcamentaria",
+          "in" : "query",
+          "description" : "Código da Unidade Orçamentária",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "anoEmissaoEmpenho",
+          "in" : "query",
+          "description" : "Ano de Emissão do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "numRestosInscrito",
+          "in" : "query",
+          "description" : "Número do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "numero",
+          "in" : "query",
+          "description" : "Número do Estorno",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de RestosCancelamento",
+            "schema" : {
+              "$ref" : "#/definitions/Restos Cancelamento"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/atualizacoes-orcamentarias" : {
+      "get" : {
+        "tags" : [ "atualizacoes-orcamentarias" ],
+        "summary" : "Lista das atualizações orçamentárias",
+        "description" : "Retorna uma lista de atualizações orçamentárias <br><br> Só serão retornadas atualizações orçamentárias a partir do Exercício 2024",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMinima",
+          "in" : "query",
+          "description" : "Data mínima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMaxima",
+          "in" : "query",
+          "description" : "Data máxima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de Atualizacões Orçamentárias",
+            "schema" : {
+              "$ref" : "#/definitions/AtualizacaoOrcamentaria"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/estornos" : {
+      "get" : {
+        "tags" : [ "estornos" ],
+        "summary" : "Filtragem de estornos",
+        "description" : "Retorna uma lista de estornos filtrada pelos parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMinima",
+          "in" : "query",
+          "description" : "Data mínima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMaxima",
+          "in" : "query",
+          "description" : "Data máxima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "codUnidadeOrcamentaria",
+          "in" : "query",
+          "description" : "Código da Unidade Orçamentária",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "anoEmissaoEmpenho",
+          "in" : "query",
+          "description" : "Ano de Emissão do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "numEmpenho",
+          "in" : "query",
+          "description" : "Número do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "numero",
+          "in" : "query",
+          "description" : "Número do Estorno",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de Estorno",
+            "schema" : {
+              "$ref" : "#/definitions/Estorno"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/retencoes" : {
+      "get" : {
+        "tags" : [ "retencoes" ],
+        "summary" : "Filtragem de retenções",
+        "description" : "Retorna uma lista de retenções filtrada pelo parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMinima",
+          "in" : "query",
+          "description" : "Data mínima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMaxima",
+          "in" : "query",
+          "description" : "Data máxima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "anoEmissaoEmpenho",
+          "in" : "query",
+          "description" : "Ano de Emissão do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "codUnidadeOrcamentaria",
+          "in" : "query",
+          "description" : "Código da Unidade Orçamentária",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "numEmpenho",
+          "in" : "query",
+          "description" : "Número do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "numPagamento",
+          "in" : "query",
+          "description" : "Número do pagamento",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "tipoRetencao",
+          "in" : "query",
+          "description" : "Tipo da retenção",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de Retenções",
+            "schema" : {
+              "$ref" : "#/definitions/Retencao"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/receitas-orcamentarias" : {
+      "get" : {
+        "tags" : [ "receitas-orcamentarias" ],
+        "summary" : "Lista das receitas orçamentárias",
+        "description" : "Retorna uma lista de receitas orçamentárias",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMinima",
+          "in" : "query",
+          "description" : "Data mínima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMaxima",
+          "in" : "query",
+          "description" : "Data máxima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de Receitas orçamentárias",
+            "schema" : {
+              "$ref" : "#/definitions/ReceitaOrcamentaria"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/restos-estornos-pagamentos" : {
+      "get" : {
+        "tags" : [ "restos-estornos-pagamentos" ],
+        "summary" : "Filtragem de Restos de Estornos de Pagamentos",
+        "description" : "Retorna uma lista de restos de estornos de pagamentos filtrada pelos parâmetros informados.",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMinima",
+          "in" : "query",
+          "description" : "Data mínima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMaxima",
+          "in" : "query",
+          "description" : "Data máxima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "anoEmissaoEmpenho",
+          "in" : "query",
+          "description" : "Ano de Emissão do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "codUnidadeOrcamentaria",
+          "in" : "query",
+          "description" : "Código da Unidade Orçamentária",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "numRestosInscrito",
+          "in" : "query",
+          "description" : "Número do empenho estornado",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "numRestosPagamento",
+          "in" : "query",
+          "description" : "Número do pagamento estornado",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "numero",
+          "in" : "query",
+          "description" : "Número do estorno do pagamento",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de RestosEstornoPagamento",
+            "schema" : {
+              "$ref" : "#/definitions/Restos Estorno Pagamento"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/historicos-funcionais" : {
+      "get" : {
+        "tags" : [ "historicos-funcionais" ],
+        "summary" : "Filtragem de históricos funcionais",
+        "description" : "Retorna uma lista de históricos funcionais filtrada pelos parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de históricos funcionais",
+            "schema" : {
+              "$ref" : "#/definitions/HistoricoFuncional"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/restos-inscritos" : {
+      "get" : {
+        "tags" : [ "restos-inscritos" ],
+        "summary" : "Filtragem de restos inscritos",
+        "description" : "Retorna uma lista de RestosInscrito filtrados pelos parâmetros informados.",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMinima",
+          "in" : "query",
+          "description" : "Data mínima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMaxima",
+          "in" : "query",
+          "description" : "Data máxima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "codUnidadeOrcamentaria",
+          "in" : "query",
+          "description" : "Código da Unidade Orçamentária",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "anoEmissaoEmpenho",
+          "in" : "query",
+          "description" : "Ano de Emissão do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "numero",
+          "in" : "query",
+          "description" : "Número do empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de RestosInscrito",
+            "schema" : {
+              "$ref" : "#/definitions/RestosInscrito"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/restos-estornos-liquidacoes" : {
+      "get" : {
+        "tags" : [ "restos-estornos-liquidacoes" ],
+        "summary" : "Filtragem de Restos de Estornos de Liquidações",
+        "description" : "Retorna uma lista de restos de estornos de liquidações filtrada pelos parâmetros informados.",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMinima",
+          "in" : "query",
+          "description" : "Data mínima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMaxima",
+          "in" : "query",
+          "description" : "Data máxima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "anoEmissaoEmpenho",
+          "in" : "query",
+          "description" : "Ano de Emissão do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "codUnidadeOrcamentaria",
+          "in" : "query",
+          "description" : "Código da Unidade Orçamentária",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "numRestosInscrito",
+          "in" : "query",
+          "description" : "Número do empenho inscrito",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "numRestosLiquidacao",
+          "in" : "query",
+          "description" : "Número da liquidação estornada",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "numero",
+          "in" : "query",
+          "description" : "Número do estorno da liquidação",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de RestosEstornoLiquidacao",
+            "schema" : {
+              "$ref" : "#/definitions/Restos Estorno Liquidacao"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/matriculas" : {
+      "get" : {
+        "tags" : [ "matriculas" ],
+        "summary" : "Filtragem de servidores",
+        "description" : "Retorna uma lista de matrículas filtrada pelos parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de matrículas",
+            "schema" : {
+              "$ref" : "#/definitions/Matricula"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/estornos-retencoes" : {
+      "get" : {
+        "tags" : [ "estornos-retencoes" ],
+        "summary" : "Filtragem de estornos de retenções",
+        "description" : "Retorna uma lista de estornos de retenções filtrada pelo parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMinima",
+          "in" : "query",
+          "description" : "Data mínima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMaxima",
+          "in" : "query",
+          "description" : "Data máxima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "anoEmissaoEmpenho",
+          "in" : "query",
+          "description" : "Ano de Emissão do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "codUnidadeOrcamentaria",
+          "in" : "query",
+          "description" : "Código da Unidade Orçamentária",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "numEmpenho",
+          "in" : "query",
+          "description" : "Número do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "numPagamento",
+          "in" : "query",
+          "description" : "Número do pagamento",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "tipoRetencao",
+          "in" : "query",
+          "description" : "Tipo da retenção",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "numero",
+          "in" : "query",
+          "description" : "Número do estorno da retenção",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de Estornos de Retenções",
+            "schema" : {
+              "$ref" : "#/definitions/EstornoRetencao"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/programas" : {
+      "get" : {
+        "tags" : [ "programas" ],
+        "summary" : "Filtragem de programas",
+        "description" : "Retorna uma lista de programas filtrada pelos parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "exercicio",
+          "in" : "query",
+          "description" : "Ano do exercício",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de programas",
+            "schema" : {
+              "$ref" : "#/definitions/Programa"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/relacionamentos-empenho-tipometa" : {
+      "get" : {
+        "tags" : [ "relacionamentos-empenho-tipometa" ],
+        "summary" : "Filtragem de Relacionamentos Empenho Tipo Meta",
+        "description" : "Retorna uma lista de RelacionamentoEmpenhoTipoMeta filtrada pelos parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da Unidade Gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMinima",
+          "in" : "query",
+          "description" : "Data mínima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMaxima",
+          "in" : "query",
+          "description" : "Data máxima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "codUnidadeOrcamentaria",
+          "in" : "query",
+          "description" : "Código da Unidade Orçamentária",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "anoEmissaoEmpenho",
+          "in" : "query",
+          "description" : "Ano de Emissão do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "numEmpenho",
+          "in" : "query",
+          "description" : "Número do Empenho",
+          "required" : false,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de RelacionamentoEmpenhoTipoMeta",
+            "schema" : {
+              "$ref" : "#/definitions/RelacionamentoEmpenhoTipoMeta"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/estornos-liquidacoes" : {
+      "get" : {
+        "tags" : [ "estornos-liquidacoes" ],
+        "summary" : "Filtragem de estornos liquidações",
+        "description" : "Retorna uma lista de estornos de liquidações filtrada pelos parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da Unidade Gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMinima",
+          "in" : "query",
+          "description" : "Data mínima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMaxima",
+          "in" : "query",
+          "description" : "Data máxima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "anoEmissaoEmpenho",
+          "in" : "query",
+          "description" : "Ano de Emissão do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "codUnidadeOrcamentaria",
+          "in" : "query",
+          "description" : "Código da Unidade Orçamentária",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "numEmpenho",
+          "in" : "query",
+          "description" : "Número do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "numLiquidacao",
+          "in" : "query",
+          "description" : "Número da Liquidação",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "numero",
+          "in" : "query",
+          "description" : "Número do Estorno da Liquidação",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de EstornoLiquidacao",
+            "schema" : {
+              "$ref" : "#/definitions/EstornoLiquidacao"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/vantagens-desconto" : {
+      "get" : {
+        "tags" : [ "vantagens-desconto" ],
+        "summary" : "Filtragem de vantagens de desconto",
+        "description" : "Retorna uma lista de vantagens de desconto filtrada pelos parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de vantagens de desconto",
+            "schema" : {
+              "$ref" : "#/definitions/VantagemDesconto"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/restos-liquidacoes" : {
+      "get" : {
+        "tags" : [ "restos-liquidacoes" ],
+        "summary" : "Filtragem de Restos de Liquidações",
+        "description" : "Retorna uma lista de RestosLiquidacao filtrada pelos parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMinima",
+          "in" : "query",
+          "description" : "Data mínima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMaxima",
+          "in" : "query",
+          "description" : "Data máxima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "codUnidadeOrcamentaria",
+          "in" : "query",
+          "description" : "Código da Unidade Orçamentária",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "anoEmissaoEmpenho",
+          "in" : "query",
+          "description" : "Ano de Emissão do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "numRestosInscrito",
+          "in" : "query",
+          "description" : "Número do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "numero",
+          "in" : "query",
+          "description" : "Número da Liquidação",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de RestosLiquidacao",
+            "schema" : {
+              "$ref" : "#/definitions/Restos Liquidacao"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cargos" : {
+      "get" : {
+        "tags" : [ "cargos" ],
+        "summary" : "Filtragem de cargos",
+        "description" : "Retorna uma lista de cargos filtrada pelos parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de cargos",
+            "schema" : {
+              "$ref" : "#/definitions/Cargo"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/folhas-pagamentos" : {
+      "get" : {
+        "tags" : [ "FolhaPagamento" ],
+        "summary" : "Filtragem de folhas de pagamentos",
+        "description" : "Retorna uma lista de folhas de pagamentos filtrada pelos parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "exercicio",
+          "in" : "query",
+          "description" : "Ano do exercício",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "mesCompetencia",
+          "in" : "query",
+          "description" : "Mês da competência",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de folhas de pagamentos",
+            "schema" : {
+              "$ref" : "#/definitions/FolhaPagamento"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/servidores" : {
+      "get" : {
+        "tags" : [ "servidores" ],
+        "summary" : "Filtragem de servidores",
+        "description" : "Retorna uma lista de servidores filtrada pelos parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de servidores",
+            "schema" : {
+              "$ref" : "#/definitions/Servidor"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/restos-estornos-retencoes" : {
+      "get" : {
+        "tags" : [ "restos-estornos-retencoes" ],
+        "summary" : "Filtragem de Restos de Estornos de Retenções",
+        "description" : "Retorna uma lista de RestosEstornoRetencao filtrada pelos parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMinima",
+          "in" : "query",
+          "description" : "Data mínima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMaxima",
+          "in" : "query",
+          "description" : "Data máxima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "codUnidadeOrcamentaria",
+          "in" : "query",
+          "description" : "Código da Unidade Orçamentária",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "anoEmissaoEmpenho",
+          "in" : "query",
+          "description" : "Ano de Emissão do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "numRestosInscrito",
+          "in" : "query",
+          "description" : "Número do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "numRestosPagamento",
+          "in" : "query",
+          "description" : "Número da Parcela do Pagamento",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "tipoRetencao",
+          "in" : "query",
+          "description" : "Tipo de Retenção",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "numero",
+          "in" : "query",
+          "description" : "Número do Estorno da Retenção de Restos",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de RestosEstornoRetencao",
+            "schema" : {
+              "$ref" : "#/definitions/Restos Estorno Retencao"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/empenhos" : {
+      "get" : {
+        "tags" : [ "empenhos" ],
+        "summary" : "Filtragem de empenhos",
+        "description" : "Retorna uma lista de empenhos filtrada pelo parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMinima",
+          "in" : "query",
+          "description" : "Data mínima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMaxima",
+          "in" : "query",
+          "description" : "Data máxima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "anoEmissaoEmpenho",
+          "in" : "query",
+          "description" : "Ano de Emissão do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "codUnidadeOrcamentaria",
+          "in" : "query",
+          "description" : "Código da Unidade Orçamentária",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "numero",
+          "in" : "query",
+          "description" : "Número do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de Empenhos",
+            "schema" : {
+              "$ref" : "#/definitions/Empenho"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/liquidacoes" : {
+      "get" : {
+        "tags" : [ "liquidacoes" ],
+        "summary" : "Filtragem de liquidações",
+        "description" : "Retorna uma lista de liquidações filtradas pelos parâmetros informados",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMinima",
+          "in" : "query",
+          "description" : "Data mínima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMaxima",
+          "in" : "query",
+          "description" : "Data máxima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "anoEmissaoEmpenho",
+          "in" : "query",
+          "description" : "Ano de Emissão do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "codUnidadeOrcamentaria",
+          "in" : "query",
+          "description" : "Código da Unidade Orçamentária",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "numEmpenho",
+          "in" : "query",
+          "description" : "Número do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "numero",
+          "in" : "query",
+          "description" : "Número da Liquidação",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de Liquidações",
+            "schema" : {
+              "$ref" : "#/definitions/Liquidacao"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pagamentos" : {
+      "get" : {
+        "tags" : [ "pagamentos" ],
+        "summary" : "Filtragem de pagamentos",
+        "description" : "Retorna uma lista de pagamentos filtrada pelos parâmetros informados.",
+        "operationId" : "filtered",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "codUnidadeGestora",
+          "in" : "query",
+          "description" : "Código da unidade gestora",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMinima",
+          "in" : "query",
+          "description" : "Data mínima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "dataMaxima",
+          "in" : "query",
+          "description" : "Data máxima da competência da entidade no formato 'yyyy-MM-dd'",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "codUnidadeOrcamentaria",
+          "in" : "query",
+          "description" : "Código da Unidade Orçamentária",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "anoEmissaoEmpenho",
+          "in" : "query",
+          "description" : "Ano de Emissão do Empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "numEmpenho",
+          "in" : "query",
+          "description" : "Número do empenho",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "numero",
+          "in" : "query",
+          "description" : "Número do pagamento",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retorna uma lista de pagamentos",
+            "schema" : {
+              "$ref" : "#/definitions/Pagamento"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions" : {
+    "CodReceitaOrcamentaria" : {
+      "type" : "object",
+      "required" : [ "codigo", "descricao" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "string"
+        },
+        "descricao" : {
+          "type" : "string"
+        }
+      }
+    },
+    "ReceitaPrevista" : {
+      "type" : "object",
+      "required" : [ "classificacaoReceitaOrcamentaria", "codUnidadeGestora", "competencia", "tipoFonteRecurso", "tipoReceita", "valor" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "competencia" : {
+          "type" : "string"
+        },
+        "classificacaoReceitaOrcamentaria" : {
+          "$ref" : "#/definitions/CodReceitaOrcamentaria"
+        },
+        "tipoFonteRecurso" : {
+          "$ref" : "#/definitions/TipoFonteRecurso"
+        },
+        "tipoReceita" : {
+          "$ref" : "#/definitions/TipoReceitaLancada"
+        },
+        "valor" : {
+          "type" : "number"
+        }
+      }
+    },
+    "TipoFonteRecurso" : {
+      "type" : "object",
+      "required" : [ "codigo", "nome" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "nome" : {
+          "type" : "string"
+        }
+      }
+    },
+    "TipoReceitaLancada" : {
+      "type" : "object",
+      "required" : [ "codigo", "descricao" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "descricao" : {
+          "type" : "string"
+        }
+      }
+    },
+    "CodigoAgrupamentoFolhaPagamentoResource" : {
+      "type" : "object",
+      "required" : [ "ano", "codUnidadeGestora", "codigo", "mesCompetencia", "mesEnvio", "nome" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "nome" : {
+          "type" : "string"
+        },
+        "ano" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "mesEnvio" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "mesCompetencia" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "codigo" : {
+          "type" : "string"
+        }
+      }
+    },
+    "Acao" : {
+      "type" : "object",
+      "required" : [ "codUnidadeGestora", "codigo" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "codigo" : {
+          "type" : "string"
+        },
+        "descricao" : {
+          "type" : "string"
+        },
+        "tipoAcao" : {
+          "$ref" : "#/definitions/TipoAcao"
+        },
+        "descricaoMeta" : {
+          "type" : "string"
+        },
+        "unidadeMedida" : {
+          "type" : "string"
+        }
+      }
+    },
+    "CodCategoriaEconomica" : {
+      "type" : "object",
+      "required" : [ "codigo", "nome" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "string"
+        },
+        "nome" : {
+          "type" : "string"
+        }
+      }
+    },
+    "CodElementoDespesa" : {
+      "type" : "object",
+      "required" : [ "codigo", "nome" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "string"
+        },
+        "nome" : {
+          "type" : "string"
+        }
+      }
+    },
+    "CodFuncao" : {
+      "type" : "object",
+      "required" : [ "cod", "nome" ],
+      "properties" : {
+        "cod" : {
+          "type" : "string"
+        },
+        "nome" : {
+          "type" : "string"
+        }
+      }
+    },
+    "CodModalidadeDespesa" : {
+      "type" : "object",
+      "required" : [ "codigo", "nome" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "nome" : {
+          "type" : "string"
+        }
+      }
+    },
+    "CodNaturezaDespesa" : {
+      "type" : "object",
+      "required" : [ "codigo", "nome" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "nome" : {
+          "type" : "string"
+        }
+      }
+    },
+    "CodSubFuncao" : {
+      "type" : "object",
+      "required" : [ "cod", "nome" ],
+      "properties" : {
+        "cod" : {
+          "type" : "string"
+        },
+        "nome" : {
+          "type" : "string"
+        }
+      }
+    },
+    "Dotacao" : {
+      "type" : "object",
+      "required" : [ "codAcao", "codCategoriaEconomica", "codElementoDespesa", "codFuncao", "codModalidadeDespesa", "codNaturezaDespesa", "codPrograma", "codSubFuncao", "tipoFonteRecurso" ],
+      "properties" : {
+        "codFuncao" : {
+          "type" : "string"
+        },
+        "codSubFuncao" : {
+          "type" : "string"
+        },
+        "codPrograma" : {
+          "type" : "string"
+        },
+        "codAcao" : {
+          "type" : "string"
+        },
+        "codCategoriaEconomica" : {
+          "type" : "string"
+        },
+        "codNaturezaDespesa" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "codModalidadeDespesa" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "codElementoDespesa" : {
+          "type" : "string"
+        },
+        "tipoFonteRecurso" : {
+          "type" : "integer",
+          "format" : "int32"
+        }
+      }
+    },
+    "Programa" : {
+      "type" : "object",
+      "required" : [ "ano", "cod", "unidadeGestora" ],
+      "properties" : {
+        "unidadeGestora" : {
+          "type" : "string"
+        },
+        "ano" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "cod" : {
+          "type" : "string"
+        },
+        "denominacao" : {
+          "type" : "string"
+        },
+        "descObjetivo" : {
+          "type" : "string"
+        },
+        "objetivoMilenio" : {
+          "$ref" : "#/definitions/TipoObjetivoMilenio"
+        },
+        "mesEnvio" : {
+          "type" : "object"
+        }
+      }
+    },
+    "TipoAcao" : {
+      "type" : "object",
+      "required" : [ "codigo", "descricao" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "string"
+        },
+        "descricao" : {
+          "type" : "string"
+        }
+      }
+    },
+    "TipoObjetivoMilenio" : {
+      "type" : "object",
+      "required" : [ "codigo", "descricao" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "descricao" : {
+          "type" : "string"
+        }
+      }
+    },
+    "ArquivoImportacao" : {
+      "type" : "object",
+      "required" : [ "enviadoEm", "nome", "numeroLinhas" ],
+      "properties" : {
+        "nome" : {
+          "type" : "string"
+        },
+        "anoCompetencia" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "mesCompetencia" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "diaCompetencia" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "numeroLinhas" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "somaDosValores" : {
+          "type" : "number"
+        },
+        "semMovimentacao" : {
+          "type" : "string",
+          "example" : "Sim, Não"
+        },
+        "enviadoEm" : {
+          "type" : "string",
+          "format" : "date"
+        },
+        "atualizadoEm" : {
+          "type" : "string",
+          "format" : "date-time"
+        }
+      }
+    },
+    "Envio" : {
+      "type" : "object",
+      "required" : [ "arquivosEnviados", "codUnidadeGestora" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "tipoEnvio" : {
+          "type" : "string",
+          "example" : "mensal, pessoal, diario, orcamento"
+        },
+        "situacao" : {
+          "type" : "string",
+          "example" : "não enviado, com pendências, preparado para envio, enviado, necessário substituição, em processo de reenvio"
+        },
+        "ano" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "mes" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "dia" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "confirmadoEm" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "arquivosEnviados" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/ArquivoImportacao"
+          }
+        },
+        "prazo" : {
+          "type" : "string",
+          "format" : "date",
+          "example" : "2020-01-05",
+          "description" : "O prazo esperado da competência do envio. Não é o prazo oficial."
+        },
+        "diasCorridosEmAtraso" : {
+          "type" : "integer",
+          "format" : "int64",
+          "example" : 3,
+          "description" : "A quantidade de dias corridos em atraso em relação a data que foi realizada a requisição."
+        }
+      }
+    },
+    "Servidor" : {
+      "type" : "object",
+      "required" : [ "codUnidadeGestora", "cpf", "isVigente", "nome", "orgaoEmissor", "portadorDeficiencia", "rg", "sexo" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "nome" : {
+          "type" : "string"
+        },
+        "cpf" : {
+          "type" : "string"
+        },
+        "rg" : {
+          "type" : "string"
+        },
+        "orgaoEmissor" : {
+          "type" : "string"
+        },
+        "dtNascimento" : {
+          "type" : "string",
+          "example" : "2019-01-01"
+        },
+        "sexo" : {
+          "type" : "string"
+        },
+        "portadorDeficiencia" : {
+          "type" : "boolean"
+        },
+        "isVigente" : {
+          "type" : "boolean"
+        },
+        "dtVigenciaInicio" : {
+          "type" : "string",
+          "example" : "2019-01-01",
+          "description" : "Data em que o servidor começou seu exercício"
+        },
+        "dtVigenciaFim" : {
+          "type" : "string",
+          "example" : "2019-01-01",
+          "description" : "Data em que o servidor finalizou seu exercício"
+        }
+      }
+    },
+    "Co" : {
+      "type" : "object",
+      "required" : [ "codigo", "descricao" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "string"
+        },
+        "descricao" : {
+          "type" : "string"
+        }
+      }
+    },
+    "Restos Pagamento" : {
+      "type" : "object",
+      "required" : [ "anoEmissaoEmpenho", "codBancoDebito", "codUnidadeGestora", "codUnidadeOrcamentaria", "numAgenciaDebito", "numContaDebito", "numRestosInscrito", "numero", "tipoContaDebito", "tipoFonteRecurso", "valor" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "codUnidadeOrcamentaria" : {
+          "type" : "string"
+        },
+        "anoEmissaoEmpenho" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "numRestosInscrito" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "numero" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "competencia" : {
+          "type" : "string",
+          "example" : "2019-01-01"
+        },
+        "valor" : {
+          "type" : "number"
+        },
+        "codBancoDebito" : {
+          "type" : "string"
+        },
+        "numAgenciaDebito" : {
+          "type" : "string"
+        },
+        "numContaDebito" : {
+          "type" : "string"
+        },
+        "tipoContaDebito" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "tipoFonteRecurso" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "chequeEmitido" : {
+          "type" : "string"
+        },
+        "documentoDebitoAutomatico" : {
+          "type" : "string"
+        },
+        "codBancoCredito" : {
+          "type" : "string"
+        },
+        "numAgenciaCredito" : {
+          "type" : "string"
+        },
+        "numContaCredito" : {
+          "type" : "string"
+        },
+        "co" : {
+          "$ref" : "#/definitions/Co"
+        }
+      }
+    },
+    "EstornoPagamento" : {
+      "type" : "object",
+      "required" : [ "anoEmissaoEmpenho", "codUnidadeGestora", "codUnidadeOrcamentaria", "motivo", "numEmpenho", "numPagamento", "numero", "valor" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "codUnidadeOrcamentaria" : {
+          "type" : "string"
+        },
+        "anoEmissaoEmpenho" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "numEmpenho" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "numPagamento" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "numero" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "motivo" : {
+          "type" : "string"
+        },
+        "competencia" : {
+          "type" : "string",
+          "example" : "2019-01-01"
+        },
+        "valor" : {
+          "type" : "number"
+        }
+      }
+    },
+    "Restos Retencao" : {
+      "type" : "object",
+      "required" : [ "anoEmissaoEmpenho", "codUnidadeGestora", "codUnidadeOrcamentaria", "numRestosInscrito", "numRestosPagamento", "tipoRetencao" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "anoEmissaoEmpenho" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "codUnidadeOrcamentaria" : {
+          "type" : "string"
+        },
+        "numRestosInscrito" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "numRestosPagamento" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "valorRetencao" : {
+          "type" : "number"
+        },
+        "tipoRetencao" : {
+          "type" : "integer",
+          "format" : "int32"
+        }
+      }
+    },
+    "Restos Cancelamento" : {
+      "type" : "object",
+      "required" : [ "anoEmissaoEmpenho", "codUnidadeGestora", "codUnidadeOrcamentaria", "motivo", "numRestosInscrito", "numero", "valor" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "anoEmissaoEmpenho" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "codUnidadeOrcamentaria" : {
+          "type" : "string"
+        },
+        "numRestosInscrito" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "numero" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "competencia" : {
+          "type" : "string",
+          "example" : "2019-01-01"
+        },
+        "valor" : {
+          "type" : "number"
+        },
+        "motivo" : {
+          "type" : "string"
+        }
+      }
+    },
+    "AcaoSimplificado" : {
+      "type" : "object",
+      "required" : [ "codigo", "desc" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "string"
+        },
+        "desc" : {
+          "type" : "string"
+        }
+      }
+    },
+    "AtualizacaoOrcamentaria" : {
+      "type" : "object",
+      "required" : [ "acao", "codCategoriaEconomica", "codElementoDespesa", "codFuncao", "codModalidadeDespesa", "codNaturezaDespesa", "codSubFuncao", "codUnidadeGestora", "codigoClassificacao", "competencia", "id", "numeroDecreto", "programa", "tipoAlteracaoOrcamentaria", "unidadeOrcamentaria", "valor" ],
+      "properties" : {
+        "id" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "competencia" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "valor" : {
+          "type" : "number"
+        },
+        "codigoClassificacao" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "numeroDecreto" : {
+          "type" : "string"
+        },
+        "exercicioFonteRecurso" : {
+          "$ref" : "#/definitions/Value"
+        },
+        "unidadeOrcamentaria" : {
+          "$ref" : "#/definitions/UnidadeOrcamentariaSimplificado"
+        },
+        "acao" : {
+          "$ref" : "#/definitions/AcaoSimplificado"
+        },
+        "programa" : {
+          "$ref" : "#/definitions/ProgramaSimplificado"
+        },
+        "codFuncao" : {
+          "$ref" : "#/definitions/CodFuncao"
+        },
+        "codSubFuncao" : {
+          "$ref" : "#/definitions/CodSubFuncao"
+        },
+        "codCategoriaEconomica" : {
+          "$ref" : "#/definitions/CodCategoriaEconomica"
+        },
+        "codNaturezaDespesa" : {
+          "$ref" : "#/definitions/CodNaturezaDespesa"
+        },
+        "codModalidadeDespesa" : {
+          "$ref" : "#/definitions/CodModalidadeDespesa"
+        },
+        "codElementoDespesa" : {
+          "$ref" : "#/definitions/CodElementoDespesa"
+        },
+        "tipoAlteracaoOrcamentaria" : {
+          "$ref" : "#/definitions/TipoAlteracaoOrcamentaria"
+        },
+        "tipoFonteRecurso" : {
+          "$ref" : "#/definitions/TipoFonteRecurso"
+        }
+      }
+    },
+    "ProgramaSimplificado" : {
+      "type" : "object",
+      "required" : [ "codigo", "desc" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "string"
+        },
+        "desc" : {
+          "type" : "string"
+        }
+      }
+    },
+    "TipoAlteracaoOrcamentaria" : {
+      "type" : "object",
+      "required" : [ "codigo", "descricao" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "string"
+        },
+        "descricao" : {
+          "type" : "string"
+        }
+      }
+    },
+    "UnidadeOrcamentariaSimplificado" : {
+      "type" : "object",
+      "required" : [ "codigo", "descricao" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "string"
+        },
+        "descricao" : {
+          "type" : "string"
+        }
+      }
+    },
+    "Value" : {
+      "type" : "object"
+    },
+    "Estorno" : {
+      "type" : "object",
+      "required" : [ "anoEmissaoEmpenho", "codUnidadeGestora", "codUnidadeOrcamentaria", "motivo", "numEmpenho", "numero", "valor" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "codUnidadeOrcamentaria" : {
+          "type" : "string"
+        },
+        "anoEmissaoEmpenho" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "numEmpenho" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "numero" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "motivo" : {
+          "type" : "string"
+        },
+        "competencia" : {
+          "type" : "string",
+          "example" : "2019-01-01"
+        },
+        "valor" : {
+          "type" : "number"
+        }
+      }
+    },
+    "Retencao" : {
+      "type" : "object",
+      "required" : [ "anoEmissaoEmpenho", "codUnidadeGestora", "codUnidadeOrcamentaria", "numEmpenho", "numPagamento", "tipoRetencao", "valor" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "codUnidadeOrcamentaria" : {
+          "type" : "string"
+        },
+        "anoEmissaoEmpenho" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "numEmpenho" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "numPagamento" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "tipoRetencao" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "competencia" : {
+          "type" : "string",
+          "example" : "2019-01-01"
+        },
+        "valor" : {
+          "type" : "number"
+        }
+      }
+    },
+    "ContaBancariaResource" : {
+      "type" : "object",
+      "required" : [ "agencia", "ano", "codBanco", "codUnidadeGestora", "mesEnvio", "numero", "tipo" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "ano" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "mesEnvio" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "codBanco" : {
+          "type" : "string"
+        },
+        "agencia" : {
+          "type" : "string"
+        },
+        "numero" : {
+          "type" : "string"
+        },
+        "nome" : {
+          "type" : "string"
+        },
+        "tipo" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "ativa" : {
+          "type" : "object"
+        }
+      }
+    },
+    "ReceitaOrcamentaria" : {
+      "type" : "object",
+      "required" : [ "codReceitaOrcamentaria", "codUnidadeGestora", "competencia", "id", "tipoFonteRecurso", "tipoLancamento", "tipoReceitaLancada", "valor" ],
+      "properties" : {
+        "id" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "competencia" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "valor" : {
+          "type" : "number"
+        },
+        "numeroReceita" : {
+          "type" : "object"
+        },
+        "codReceitaOrcamentaria" : {
+          "$ref" : "#/definitions/CodReceitaOrcamentaria"
+        },
+        "tipoLancamento" : {
+          "$ref" : "#/definitions/TipoLancamento"
+        },
+        "tipoFonteRecurso" : {
+          "$ref" : "#/definitions/TipoFonteRecurso"
+        },
+        "tipoReceitaLancada" : {
+          "$ref" : "#/definitions/TipoReceitaLancada"
+        },
+        "co" : {
+          "$ref" : "#/definitions/Co"
+        },
+        "contaBancaria" : {
+          "$ref" : "#/definitions/ContaBancariaResource"
+        }
+      }
+    },
+    "TipoLancamento" : {
+      "type" : "object",
+      "required" : [ "codigo", "multiplicador", "nome" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "nome" : {
+          "type" : "string"
+        },
+        "multiplicador" : {
+          "type" : "integer",
+          "format" : "int32"
+        }
+      }
+    },
+    "Restos Estorno Pagamento" : {
+      "type" : "object",
+      "required" : [ "anoEmissaoEmpenho", "codUnidadeGestora", "codUnidadeOrcamentaria", "motivo", "numRestosInscrito", "numRestosPagamento", "numero", "valor" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "anoEmissaoEmpenho" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "codUnidadeOrcamentaria" : {
+          "type" : "string"
+        },
+        "numRestosInscrito" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "numRestosPagamento" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "numero" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "competencia" : {
+          "type" : "string",
+          "example" : "2019-01-01"
+        },
+        "motivo" : {
+          "type" : "string"
+        },
+        "valor" : {
+          "type" : "number"
+        }
+      }
+    },
+    "HistoricoFuncional" : {
+      "type" : "object",
+      "required" : [ "anoReferencia", "codUnidadeGestora", "cpfSegurado", "lotacaoServidor", "matricula", "mesReferencia", "servidor", "tipoAtoPessoal", "tipoRegimePrevidencia", "tipoRegimeTrabalho", "tipoSituacaoFuncional" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "dtMovimentacao" : {
+          "type" : "string",
+          "example" : "2019-01-01",
+          "description" : "Data em que ocorreu a movimentação"
+        },
+        "anoReferencia" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "mesReferencia" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "cpfSegurado" : {
+          "type" : "string"
+        },
+        "lotacaoServidor" : {
+          "$ref" : "#/definitions/UnidadeOrcamentariaSimplificado"
+        },
+        "servidor" : {
+          "$ref" : "#/definitions/Servidor"
+        },
+        "matricula" : {
+          "$ref" : "#/definitions/Matricula Simplificada"
+        },
+        "tipoAtoPessoal" : {
+          "$ref" : "#/definitions/TipoAtoPessoal"
+        },
+        "tipoRegimePrevidencia" : {
+          "$ref" : "#/definitions/TipoRegimePrevidencia"
+        },
+        "tipoSituacaoFuncional" : {
+          "$ref" : "#/definitions/TipoSituacaoFuncional"
+        },
+        "tipoRegimeTrabalho" : {
+          "$ref" : "#/definitions/TipoRegimeTrabalho"
+        }
+      }
+    },
+    "Matricula Simplificada" : {
+      "type" : "object",
+      "required" : [ "codUnidadeGestora", "cpf", "matricula" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "cpf" : {
+          "type" : "string"
+        },
+        "matricula" : {
+          "type" : "string"
+        },
+        "dataAdmissao" : {
+          "type" : "string",
+          "example" : "2019-01-01"
+        }
+      }
+    },
+    "TipoAtoPessoal" : {
+      "type" : "object",
+      "required" : [ "codigo", "nome" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "nome" : {
+          "type" : "string"
+        }
+      }
+    },
+    "TipoRegimePrevidencia" : {
+      "type" : "object",
+      "required" : [ "codigo", "nome" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "nome" : {
+          "type" : "string"
+        }
+      }
+    },
+    "TipoRegimeTrabalho" : {
+      "type" : "object",
+      "required" : [ "codigo", "nome" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "nome" : {
+          "type" : "string"
+        }
+      }
+    },
+    "TipoSituacaoFuncional" : {
+      "type" : "object",
+      "required" : [ "codigo", "nome" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "nome" : {
+          "type" : "string"
+        }
+      }
+    },
+    "RestosInscrito" : {
+      "type" : "object",
+      "required" : [ "anoEmissaoEmpenho", "codCredor", "codSubelemento", "codUnidadeGestora", "codUnidadeOrcamentaria", "descSubelemento", "descUnidadeGestora", "descUnidadeOrcamentaria", "historico", "numero", "restosInscritodotacao", "valorInscrito", "valorNaoProcessado", "valorProcessado" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "descUnidadeGestora" : {
+          "type" : "string"
+        },
+        "anoEmissaoEmpenho" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "codUnidadeOrcamentaria" : {
+          "type" : "string"
+        },
+        "descUnidadeOrcamentaria" : {
+          "type" : "string"
+        },
+        "restosInscritodotacao" : {
+          "$ref" : "#/definitions/RestosInscritoDotacao"
+        },
+        "codSubelemento" : {
+          "type" : "string"
+        },
+        "descSubelemento" : {
+          "type" : "string"
+        },
+        "numero" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "competencia" : {
+          "type" : "string",
+          "example" : "2019-01-01"
+        },
+        "codCredor" : {
+          "type" : "string"
+        },
+        "nomeCredor" : {
+          "type" : "string"
+        },
+        "historico" : {
+          "type" : "string"
+        },
+        "valorInscrito" : {
+          "type" : "number"
+        },
+        "valorProcessado" : {
+          "type" : "number"
+        },
+        "valorNaoProcessado" : {
+          "type" : "number"
+        },
+        "unidadeGestoraOrigem" : {
+          "type" : "string"
+        },
+        "coAtual" : {
+          "$ref" : "#/definitions/Co"
+        },
+        "tipoFonteRecursoAtual" : {
+          "$ref" : "#/definitions/TipoFonteRecurso"
+        }
+      }
+    },
+    "RestosInscritoDotacao" : {
+      "type" : "object",
+      "required" : [ "codAcao", "codCategoriaEconomica", "codClassificacao", "codElemento", "codFuncao", "codModalidade", "codNaturaDespesa", "codPrograma", "codSubfuncao", "descAcao", "descCategoriaEconomica", "descFuncao", "descModalidade", "descNaturezaDespesa", "descPrograma", "descSubfuncao", "descTipoRecurso", "descricaoElemento", "tipoFonteRecurso" ],
+      "properties" : {
+        "codFuncao" : {
+          "type" : "string"
+        },
+        "descFuncao" : {
+          "type" : "string"
+        },
+        "codSubfuncao" : {
+          "type" : "string"
+        },
+        "descSubfuncao" : {
+          "type" : "string"
+        },
+        "codPrograma" : {
+          "type" : "string"
+        },
+        "descPrograma" : {
+          "type" : "string"
+        },
+        "codAcao" : {
+          "type" : "string"
+        },
+        "descAcao" : {
+          "type" : "string"
+        },
+        "codClassificacao" : {
+          "type" : "string"
+        },
+        "codCategoriaEconomica" : {
+          "type" : "string"
+        },
+        "descCategoriaEconomica" : {
+          "type" : "string"
+        },
+        "codNaturaDespesa" : {
+          "type" : "string"
+        },
+        "descNaturezaDespesa" : {
+          "type" : "string"
+        },
+        "codModalidade" : {
+          "type" : "string"
+        },
+        "descModalidade" : {
+          "type" : "string"
+        },
+        "codElemento" : {
+          "type" : "string"
+        },
+        "descricaoElemento" : {
+          "type" : "string"
+        },
+        "tipoFonteRecurso" : {
+          "type" : "string"
+        },
+        "descTipoRecurso" : {
+          "type" : "string"
+        }
+      }
+    },
+    "Restos Estorno Liquidacao" : {
+      "type" : "object",
+      "required" : [ "anoEmissaoEmpenho", "codUnidadeGestora", "codUnidadeOrcamentaria", "motivo", "numRestosInscrito", "numRestosLiquidacao", "numero", "valor" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "anoEmissaoEmpenho" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "codUnidadeOrcamentaria" : {
+          "type" : "string"
+        },
+        "numRestosInscrito" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "numRestosLiquidacao" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "numero" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "competencia" : {
+          "type" : "string",
+          "example" : "2019-01-01"
+        },
+        "motivo" : {
+          "type" : "string"
+        },
+        "valor" : {
+          "type" : "number"
+        }
+      }
+    },
+    "Cargo Simplificado" : {
+      "type" : "object",
+      "required" : [ "codUnidadeGestora", "codigo", "isVigente", "nome" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "codigo" : {
+          "type" : "string"
+        },
+        "nome" : {
+          "type" : "string"
+        },
+        "isVigente" : {
+          "type" : "boolean"
+        },
+        "dtVigenciaInicio" : {
+          "type" : "string",
+          "example" : "2019-01-01",
+          "description" : "Data em que o cargo passou a ficar vigente"
+        },
+        "dtVigenciaFim" : {
+          "type" : "string",
+          "example" : "2019-01-01",
+          "description" : "Data em que o cargo parou de ficar vigente"
+        }
+      }
+    },
+    "Matricula" : {
+      "type" : "object",
+      "required" : [ "cargo", "codUnidadeGestora", "cpf", "matricula" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "cpf" : {
+          "type" : "string"
+        },
+        "matricula" : {
+          "type" : "string"
+        },
+        "dataAdmissao" : {
+          "type" : "string",
+          "example" : "2019-01-01"
+        },
+        "cargo" : {
+          "$ref" : "#/definitions/Cargo Simplificado"
+        }
+      }
+    },
+    "EstornoRetencao" : {
+      "type" : "object",
+      "required" : [ "anoEmissaoEmpenho", "codUnidadeGestora", "codUnidadeOrcamentaria", "numEmpenho", "numPagamento", "numero", "tipoRetencao", "valor" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "codUnidadeOrcamentaria" : {
+          "type" : "string"
+        },
+        "anoEmissaoEmpenho" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "numEmpenho" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "numPagamento" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "tipoRetencao" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "numero" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "competencia" : {
+          "type" : "string",
+          "example" : "2019-01-01"
+        },
+        "valor" : {
+          "type" : "number"
+        }
+      }
+    },
+    "RelacionamentoEmpenhoTipoMeta" : {
+      "type" : "object",
+      "required" : [ "anoEmissaoEmpenho", "codUnidadeGestora", "numEmpenho", "tipoMeta", "unidadeOrcamentaria" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "unidadeOrcamentaria" : {
+          "$ref" : "#/definitions/UnidadeOrcamentariaSimplificado"
+        },
+        "anoEmissaoEmpenho" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "numEmpenho" : {
+          "type" : "string"
+        },
+        "tipoMeta" : {
+          "$ref" : "#/definitions/TipoMeta"
+        }
+      }
+    },
+    "TipoMeta" : {
+      "type" : "object",
+      "required" : [ "codigo", "descricao" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "descricao" : {
+          "type" : "string"
+        }
+      }
+    },
+    "Liquidacao" : {
+      "type" : "object",
+      "required" : [ "anoEmissaoEmpenho", "codUnidadeGestora", "codUnidadeOrcamentaria", "notaFiscal", "numEmpenho", "numero", "valor" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "codUnidadeOrcamentaria" : {
+          "type" : "string"
+        },
+        "anoEmissaoEmpenho" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "numEmpenho" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "numero" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "competencia" : {
+          "type" : "string",
+          "example" : "2019-01-01"
+        },
+        "notaFiscal" : {
+          "$ref" : "#/definitions/NotaFiscal"
+        },
+        "valor" : {
+          "type" : "number"
+        }
+      }
+    },
+    "NotaFiscal" : {
+      "type" : "object",
+      "required" : [ "codTipoNotaFiscal" ],
+      "properties" : {
+        "codTipoNotaFiscal" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "numChaveAcesso" : {
+          "type" : "string"
+        },
+        "numero" : {
+          "type" : "string"
+        },
+        "numSerie" : {
+          "type" : "string"
+        },
+        "dataEmissao" : {
+          "type" : "string",
+          "example" : "2019-01-01"
+        },
+        "valor" : {
+          "type" : "number"
+        }
+      }
+    },
+    "EstornoLiquidacao" : {
+      "type" : "object",
+      "required" : [ "anoEmissaoEmpenho", "codUnidadeGestora", "codUnidadeOrcamentaria", "motivo", "numEmpenho", "numLiquidacao", "numero", "valor" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "codUnidadeOrcamentaria" : {
+          "type" : "string"
+        },
+        "anoEmissaoEmpenho" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "numEmpenho" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "numLiquidacao" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "numero" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "competencia" : {
+          "type" : "string",
+          "example" : "2019-01-01"
+        },
+        "motivo" : {
+          "type" : "string"
+        },
+        "valor" : {
+          "type" : "number"
+        }
+      }
+    },
+    "TipoContabilizacaoFopag" : {
+      "type" : "object",
+      "required" : [ "codigo", "nome" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "nome" : {
+          "type" : "string"
+        }
+      }
+    },
+    "TipoLancamentoFopag" : {
+      "type" : "object",
+      "required" : [ "codigo", "nome" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "nome" : {
+          "type" : "string"
+        }
+      }
+    },
+    "VantagemDesconto" : {
+      "type" : "object",
+      "required" : [ "anoCompetencia", "codUnidadeGestora", "codigo", "mesCompetencia", "nomenclatura", "tipoContabilizacaoFopag", "tipoLancamentoFopag" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "codigo" : {
+          "type" : "string"
+        },
+        "nomenclatura" : {
+          "type" : "string"
+        },
+        "calcBasePrevidenciario" : {
+          "type" : "object"
+        },
+        "anoCompetencia" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "mesCompetencia" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "tipoLancamentoFopag" : {
+          "$ref" : "#/definitions/TipoLancamentoFopag"
+        },
+        "tipoContabilizacaoFopag" : {
+          "$ref" : "#/definitions/TipoContabilizacaoFopag"
+        }
+      }
+    },
+    "Restos Liquidacao" : {
+      "type" : "object",
+      "required" : [ "anoEmissaoEmpenho", "codUnidadeGestora", "codUnidadeOrcamentaria", "numRestosInscrito", "numero", "tipoNotaFiscalId", "valorLiquidacao" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "anoEmissaoEmpenho" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "codUnidadeOrcamentaria" : {
+          "type" : "string"
+        },
+        "numRestosInscrito" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "numero" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "competencia" : {
+          "type" : "string",
+          "example" : "2019-01-01"
+        },
+        "tipoNotaFiscalId" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "numChaveAcessoNfe" : {
+          "type" : "string"
+        },
+        "numNotaFiscal" : {
+          "type" : "string"
+        },
+        "serieNotaFiscal" : {
+          "type" : "string"
+        },
+        "dataEmissaoNotaFiscal" : {
+          "type" : "string",
+          "example" : "2019-01-01"
+        },
+        "valorNotaFiscal" : {
+          "type" : "number"
+        },
+        "valorLiquidacao" : {
+          "type" : "number"
+        }
+      }
+    },
+    "CBO" : {
+      "type" : "object",
+      "required" : [ "codigo", "nome" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "string"
+        },
+        "nome" : {
+          "type" : "string"
+        }
+      }
+    },
+    "Cargo" : {
+      "type" : "object",
+      "required" : [ "cbo", "codUnidadeGestora", "codigo", "isVigente", "nome", "tipoCargo", "tipoEscolaridade" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "codigo" : {
+          "type" : "string"
+        },
+        "nome" : {
+          "type" : "string"
+        },
+        "isVigente" : {
+          "type" : "boolean"
+        },
+        "dtVigenciaInicio" : {
+          "type" : "string",
+          "example" : "2019-01-01",
+          "description" : "Data em que o cargo passou a ficar vigente"
+        },
+        "dtVigenciaFim" : {
+          "type" : "string",
+          "example" : "2019-01-01",
+          "description" : "Data em que o cargo parou de ficar vigente"
+        },
+        "cbo" : {
+          "$ref" : "#/definitions/CBO"
+        },
+        "tipoEscolaridade" : {
+          "$ref" : "#/definitions/TipoEscolaridade"
+        },
+        "tipoCargo" : {
+          "$ref" : "#/definitions/TipoCargo"
+        }
+      }
+    },
+    "TipoCargo" : {
+      "type" : "object",
+      "required" : [ "codigo", "descricao" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "descricao" : {
+          "type" : "string"
+        }
+      }
+    },
+    "TipoEscolaridade" : {
+      "type" : "object",
+      "required" : [ "codigo", "nome" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "nome" : {
+          "type" : "string"
+        }
+      }
+    },
+    "FolhaPagamento" : {
+      "type" : "object",
+      "required" : [ "anoReferencia", "cargo", "cargoPeriodo", "codUnidadeGestora", "codigoAgrupamentoFolhaPagamento", "codigoOperacao", "codigoVantagensDesconto", "matricula", "mesReferencia", "servidor", "servidorPeriodo", "tipoFolhaPagamento", "valorLancamento" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "servidor" : {
+          "$ref" : "#/definitions/Servidor"
+        },
+        "cargo" : {
+          "$ref" : "#/definitions/Cargo Simplificado"
+        },
+        "servidorPeriodo" : {
+          "type" : "string"
+        },
+        "cargoPeriodo" : {
+          "type" : "string"
+        },
+        "matricula" : {
+          "$ref" : "#/definitions/Matricula Simplificada"
+        },
+        "anoReferencia" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "mesReferencia" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "codigoOperacao" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "valorLancamento" : {
+          "type" : "number"
+        },
+        "codigoVantagensDesconto" : {
+          "$ref" : "#/definitions/VantagemDescontoSimplificado"
+        },
+        "tipoFolhaPagamento" : {
+          "$ref" : "#/definitions/TipoFopag"
+        },
+        "codigoAgrupamentoFolhaPagamento" : {
+          "$ref" : "#/definitions/CodigoAgrupamentoFolhaPagamentoResource"
+        }
+      }
+    },
+    "TipoFopag" : {
+      "type" : "object",
+      "required" : [ "codigo", "descricao" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "descricao" : {
+          "type" : "string"
+        }
+      }
+    },
+    "VantagemDescontoSimplificado" : {
+      "type" : "object",
+      "required" : [ "anoCompetencia", "codUnidadeGestora", "codigo", "mesCompetencia", "nomenclatura" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "codigo" : {
+          "type" : "string"
+        },
+        "nomenclatura" : {
+          "type" : "string"
+        },
+        "calcBasePrevidenciario" : {
+          "type" : "object"
+        },
+        "anoCompetencia" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "mesCompetencia" : {
+          "type" : "integer",
+          "format" : "int32"
+        }
+      }
+    },
+    "Restos Estorno Retencao" : {
+      "type" : "object",
+      "required" : [ "anoEmissaoEmpenho", "codUnidadeGestora", "codUnidadeOrcamentaria", "motivo", "numRestosInscrito", "numRestosPagamento", "numero", "tipoRetencao", "valor" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "anoEmissaoEmpenho" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "codUnidadeOrcamentaria" : {
+          "type" : "string"
+        },
+        "numRestosInscrito" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "numRestosPagamento" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "tipoRetencao" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "numero" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "competencia" : {
+          "type" : "string",
+          "example" : "2019-01-01"
+        },
+        "motivo" : {
+          "type" : "string"
+        },
+        "valor" : {
+          "type" : "number"
+        }
+      }
+    },
+    "Empenho" : {
+      "type" : "object",
+      "required" : [ "anoEmissao", "codSubElemento", "codUnidadeGestora", "codUnidadeOrcamentaria", "cpfCnpjFornecedor", "cpfOrdenador", "dotacao", "historico", "licitacao", "numero", "tipo", "valor" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "codUnidadeOrcamentaria" : {
+          "type" : "string"
+        },
+        "anoEmissao" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "numero" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "dotacao" : {
+          "$ref" : "#/definitions/Dotacao"
+        },
+        "codSubElemento" : {
+          "type" : "string"
+        },
+        "licitacao" : {
+          "$ref" : "#/definitions/Licitacao"
+        },
+        "tipo" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "competencia" : {
+          "type" : "string",
+          "example" : "2019-01-01"
+        },
+        "valor" : {
+          "type" : "number"
+        },
+        "historico" : {
+          "type" : "string"
+        },
+        "cpfCnpjFornecedor" : {
+          "type" : "string"
+        },
+        "tipoMeta" : {
+          "type" : "object"
+        },
+        "numeroObra" : {
+          "type" : "string"
+        },
+        "exercicioFonteRecurso" : {
+          "type" : "object"
+        },
+        "cpfOrdenador" : {
+          "type" : "string"
+        },
+        "co" : {
+          "$ref" : "#/definitions/Co"
+        },
+        "naturezaContratacao" : {
+          "$ref" : "#/definitions/NaturezaContratacao"
+        }
+      }
+    },
+    "Licitacao" : {
+      "type" : "object",
+      "required" : [ "modalidade" ],
+      "properties" : {
+        "numero" : {
+          "type" : "string"
+        },
+        "modalidade" : {
+          "type" : "integer",
+          "format" : "int32"
+        }
+      }
+    },
+    "NaturezaContratacao" : {
+      "type" : "object",
+      "required" : [ "codigo", "descricao" ],
+      "properties" : {
+        "codigo" : {
+          "type" : "string"
+        },
+        "descricao" : {
+          "type" : "string"
+        }
+      }
+    },
+    "Pagamento" : {
+      "type" : "object",
+      "required" : [ "anoEmissaoEmpenho", "codBancoDebito", "codUnidadeGestora", "codUnidadeOrcamentaria", "numAgenciaDebito", "numContaDebito", "numEmpenho", "numero", "tipoContaDebito", "tipoFonteRecurso", "valor" ],
+      "properties" : {
+        "codUnidadeGestora" : {
+          "type" : "string"
+        },
+        "codUnidadeOrcamentaria" : {
+          "type" : "string"
+        },
+        "anoEmissaoEmpenho" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "numEmpenho" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "numero" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "competencia" : {
+          "type" : "string",
+          "example" : "2019-01-01"
+        },
+        "valor" : {
+          "type" : "number"
+        },
+        "codBancoDebito" : {
+          "type" : "string"
+        },
+        "numAgenciaDebito" : {
+          "type" : "string"
+        },
+        "numContaDebito" : {
+          "type" : "string"
+        },
+        "tipoContaDebito" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "tipoFonteRecurso" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "chequeEmitido" : {
+          "type" : "string"
+        },
+        "documentoDebitoAutomatico" : {
+          "type" : "string"
+        },
+        "codBancoCredito" : {
+          "type" : "string"
+        },
+        "numAgenciaCredito" : {
+          "type" : "string"
+        },
+        "numContaCredito" : {
+          "type" : "string"
+        }
+      }
+    }
+  }
+}

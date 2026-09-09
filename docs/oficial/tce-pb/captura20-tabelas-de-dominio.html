@@ -1,0 +1,4873 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>Tabelas de Domínio</title>
+
+            <meta http-equiv="Content-Security-Policy" content="frame-src &#039;self&#039; https://*.draw.io https://*.youtube.com https://*.youtube-nocookie.com https://*.vimeo.com https://embed.diagrams.net; script-src http: https: &#039;nonce-D1mCjcGRnikqgzd4BRbjgBet&#039; &#039;strict-dynamic&#039;; object-src &#039;self&#039;; base-uri &#039;self&#039;">
+    
+    <style>
+            ﻿.dummy-style{color:red}:root{--font-body: -apple-system, BlinkMacSystemFont, Segoe UI, Oxygen, Ubuntu, Roboto, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;--font-code: Lucida Console, DejaVu Sans Mono, Ubuntu Mono, Monaco, monospace;--color-primary: #206ea7;--color-primary-light: rgba(32,110,167,0.15);--color-link: #206ea7;--color-page: #206ea7;--color-page-draft: #7e50b1;--color-chapter: #af4d0d;--color-book: #077b70;--color-bookshelf: #a94747;--color-positive: #0f7d15;--color-negative: #ab0f0e;--color-info: #0288D1;--color-warning: #cf4d03;--bg-disabled: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' height='100%25' width='100%25'%3E%3Cdefs%3E%3Cpattern id='doodad' width='19' height='19' viewBox='0 0 40 40' patternUnits='userSpaceOnUse' patternTransform='rotate(143)'%3E%3Crect width='100%25' height='100%25' fill='rgba(42, 67, 101,0)'/%3E%3Cpath d='M-10 30h60v20h-60zM-10-10h60v20h-60' fill='rgba(26, 32, 44,0)'/%3E%3Cpath d='M-10 10h60v20h-60zM-10-30h60v20h-60z' fill='rgba(0, 0, 0,0.05)'/%3E%3C/pattern%3E%3C/defs%3E%3Crect fill='url(%23doodad)' height='200%25' width='200%25'/%3E%3C/svg%3E")}:root.dark-mode{--bg-disabled: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' height='100%25' width='100%25'%3E%3Cdefs%3E%3Cpattern id='doodad' width='19' height='19' viewBox='0 0 40 40' patternUnits='userSpaceOnUse' patternTransform='rotate(143)'%3E%3Crect width='100%25' height='100%25' fill='rgba(42, 67, 101,0)'/%3E%3Cpath d='M-10 30h60v20h-60zM-10-10h60v20h-60' fill='rgba(26, 32, 44,0)'/%3E%3Cpath d='M-10 10h60v20h-60zM-10-30h60v20h-60z' fill='rgba(255, 255, 255,0.05)'/%3E%3C/pattern%3E%3C/defs%3E%3Crect fill='url(%23doodad)' height='200%25' width='200%25'/%3E%3C/svg%3E");color-scheme:only dark;--color-positive: #4aa850;--color-negative: #e85c5b;--color-warning: #de8a5a}:root:not(.dark-mode){color-scheme:only light}*{box-sizing:border-box;outline-color:var(--color-primary);outline-width:1px}*:focus{outline-style:dotted}html{height:100%;overflow-y:scroll;background-color:#f2f2f2}html.flexbox{overflow-y:hidden}html.dark-mode{background-color:#111}body{font-size:14px;line-height:1.6;color:#444}html.dark-mode body{color:#aaa}body{-webkit-font-smoothing:antialiased;height:100%;display:flex;flex-direction:column}body,button,input,select,label,textarea{font-family:var(--font-body)}pre,#markdown-editor-input,.text-mono,.code-base,span.code,code{font-family:var(--font-code)}h1{font-size:3.425em;line-height:1.22222222em;margin-top:.48888889em;margin-bottom:.48888889em}h2{font-size:2.8275em;line-height:1.294117647em;margin-top:.8627451em;margin-bottom:.43137255em}h3{font-size:2.333em;line-height:1.221428572em;margin-top:.78571429em;margin-bottom:.43137255em}h4{font-size:1.666em;line-height:1.375em;margin-top:.78571429em;margin-bottom:.43137255em}h1,h2,h3,h4,h5,h6{font-weight:400;position:relative;display:block;font-family:var(--font-heading, var(--font-body));color:#222}html.dark-mode h1,html.dark-mode h2,html.dark-mode h3,html.dark-mode h4,html.dark-mode h5,html.dark-mode h6{color:#bbb}h5{font-size:1.4em}h5,h6{line-height:1.2em;margin-top:.78571429em;margin-bottom:.66em}@media screen and (max-width: 600px){h1{font-size:2.8275em}h2{font-size:2.333em}h3{font-size:1.666em}h4{font-size:1.333em}h5{font-size:1.161616em}}.list-heading{font-size:2rem}h2.list-heading{font-size:1.333rem}a{color:var(--color-link);fill:currentColor;cursor:pointer;text-decoration:none;transition:filter ease-in-out 80ms;line-height:1.6}a:hover{text-decoration:underline}a.icon{display:inline-block}a svg{position:relative;display:inline-block}a:focus img:only-child{outline:2px dashed var(--color-link);outline-offset:2px}a.no-link-style{color:inherit}a.no-link-style:hover{text-decoration:none}.blended-links a{color:inherit}.blended-links a svg{fill:currentColor}p,ul,ol,pre,table,blockquote{margin-top:.3em;margin-bottom:1.375em}hr{border:0;height:1px;background:#eaeaea}html.dark-mode hr{background:#555}hr{margin-bottom:24px}hr.faded{background-image:linear-gradient(to right, #FFF, #e3e0e0 20%, #e3e0e0 80%, #FFF)}hr.darker{background:#ddd}html.dark-mode hr.darker{background:#666}hr.margin-top,hr.even{margin-top:24px}strong,b,.bold,.strong{font-weight:bold}strong>strong,strong>b,strong>.bold,strong>.strong,b>strong,b>b,b>.bold,b>.strong,.bold>strong,.bold>b,.bold>.bold,.bold>.strong,.strong>strong,.strong>b,.strong>.bold,.strong>.strong{font-weight:bolder}em,i,.italic{font-style:italic}small,p.small,span.small,.text-small{font-size:.75rem}sup,.superscript{vertical-align:super;font-size:.8em}sub,.subscript{vertical-align:sub;font-size:.8em}pre{font-size:12px;border:1px solid #ddd;background-color:#fff}html.dark-mode pre{background-color:#2b2b2b}pre{border-color:#ddd}html.dark-mode pre{border-color:#111}pre{border-radius:4px;padding-inline-start:26px;position:relative;padding-top:3px;padding-bottom:3px}pre:before{content:"";display:block;position:absolute;top:0;width:22.4px;inset-inline-start:0;height:100%;background-color:#f5f5f5}html.dark-mode pre:before{background-color:#313335}pre:before{border-inline-end:1px solid #ddd}html.dark-mode pre:before{border-inline-end:none}@media print{pre{padding-left:12px}pre:before{display:none}}blockquote{display:block;position:relative;border-left:4px solid rgba(0,0,0,0);border-left-color:var(--color-primary);background-color:#f8f8f8}html.dark-mode blockquote{background-color:#333}blockquote{padding:12px 16px 12px 32px;overflow:auto}blockquote:before{content:"“";font-size:2em;font-weight:bold;position:absolute;top:12px;left:12px;color:#777}.text-mono{font-family:var(--font-code)}.text-uppercase{text-transform:uppercase}.text-capitals{text-transform:capitalize}.code-base,span.code,code{font-size:.84em;border:1px solid #ddd;border-radius:3px;background-color:#f8f8f8}html.dark-mode .code-base,html.dark-mode span.code,html.dark-mode code{background-color:#2b2b2b}.code-base,span.code,code{border-color:#ddd}html.dark-mode .code-base,html.dark-mode span.code,html.dark-mode code{border-color:#444}code{display:inline;padding:1px 3px;white-space:pre-wrap;line-height:1.2em}span.code{padding:1px 6px}pre code{background-color:rgba(0,0,0,0);border:0;font-size:1em;display:block;line-height:1.6}span.highlight{font-weight:bold;padding:2px 4px}ul,ol{padding-left:32px;padding-right:32px;display:flow-root}ul p,ol p{margin:0}ul{list-style:disc}ul ul{list-style:circle}ul label{margin:0}ol{list-style:decimal}li>ol,li>ul{margin-top:0;margin-bottom:0;margin-block-end:0;margin-block-start:0;padding-block-end:0;padding-block-start:0;padding-left:19.2px;padding-right:19.2px}li.checkbox-item,li.task-list-item{display:list-item;list-style:none;margin-left:-19.2px;margin-inline-start:-19.2px;margin-inline-end:0}li.checkbox-item input[type=checkbox],li.task-list-item input[type=checkbox]{margin-right:6px;margin-inline-end:6px;margin-inline-start:0}li.checkbox-item li.checkbox-item,li.checkbox-item li.task-list-item,li.task-list-item li.checkbox-item,li.task-list-item li.task-list-item{margin-left:6px;margin-inline-start:6px;margin-inline-end:0}.underlined{text-decoration:underline}.text-center{text-align:center}.text-left{text-align:start}.text-right{text-align:end}@media screen and (min-width: 361px){.text-xxs-center{text-align:center}.text-xxs-left{text-align:start}.text-xxs-right{text-align:end}}@media screen and (min-width: 401px){.text-xs-center{text-align:center}.text-xs-left{text-align:start}.text-xs-right{text-align:end}}@media screen and (min-width: 601px){.text-s-center{text-align:center}.text-s-left{text-align:start}.text-s-right{text-align:end}}@media screen and (min-width: 881px){.text-m-center{text-align:center}.text-m-left{text-align:start}.text-m-right{text-align:end}}@media screen and (min-width: 1001px){.text-l-center{text-align:center}.text-l-left{text-align:start}.text-l-right{text-align:end}}@media screen and (min-width: 1101px){.text-xl-center{text-align:center}.text-xl-left{text-align:start}.text-xl-right{text-align:end}}.text-bigger{font-size:1.1em}.text-large{font-size:1.6666em}.no-color{color:inherit}.break-text{white-space:normal;word-wrap:break-word;overflow-wrap:break-word}.text-limit-lines-1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.text-limit-lines-2{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}.header-group{margin:16px 0}.header-group h1,.header-group h2,.header-group h3,.header-group h4,.header-group h5,.header-group h6{margin:0}span.sep{color:#bbb;padding:0 6px}.list>*{display:block}.svg-icon{width:1em;height:1em;display:inline-block;position:relative;bottom:-0.105em;margin-inline-end:6px;pointer-events:none;fill:currentColor}table{min-width:100px;max-width:100%}table thead{background-color:#f8f8f8}html.dark-mode table thead{background-color:#333}table thead{font-weight:500}table td,table th{min-width:10px;padding:6px 8px;border:1px solid #ddd;overflow:auto;line-height:1.2;word-break:break-word;vertical-align:top}table td p,table th p{margin:0}table.table{width:100%}table.table tr td,table.table tr th{border-bottom:1px solid rgba(0,0,0,.05)}table.table th,table.table td{text-align:start;border:none;padding:12px 12px;vertical-align:middle;margin:0;overflow:visible}table.table th{font-weight:bold}table.table tr:hover{background-color:#f2f2f2}html.dark-mode table.table tr:hover{background-color:#333}table.table .text-right{text-align:end}table.table .text-center{text-align:center}table.table td.actions{overflow:visible}table.table a{display:inline-block}table.table.expand-to-padding{margin-left:-12px;margin-right:-12px;width:calc(100% + 2*12px);max-width:calc(100% + 2*12px)}table.no-style td{border:0;padding:0}table.list-table{margin:0 -6px}table.list-table td{border:0;vertical-align:middle;padding:6px}.page-content{width:100%;max-width:840px;margin:0 auto;overflow-wrap:break-word;position:relative}.page-content .align-left{text-align:left}.page-content img.align-left,.page-content table.align-left,.page-content iframe.align-left,.page-content video.align-left{float:left !important;margin:6px 16px 16px 0}.page-content .align-right{text-align:right !important}.page-content img.align-right,.page-content table.align-right,.page-content iframe.align-right,.page-content video.align-right{float:right !important;margin:6px 0 6px 12px}.page-content .align-center{text-align:center}.page-content img.align-center,.page-content video.align-center,.page-content iframe.align-center{display:block}.page-content img.align-center,.page-content table.align-center,.page-content iframe.align-center,.page-content video.align-center{margin-left:auto;margin-right:auto}.page-content .align-justify{text-align:justify}.page-content h1,.page-content h2,.page-content h3,.page-content h4,.page-content h5,.page-content h6,.page-content pre{clear:left}.page-content hr{clear:both;margin:16px 0}.page-content table{hyphens:auto;table-layout:fixed;max-width:100%;height:auto !important}.page-content ins,.page-content del{text-decoration:none}.page-content ins{background:#dbffdb}.page-content del{background:#ffecec}.page-content details{border:1px solid;border-color:#ddd}html.dark-mode .page-content details{border-color:#555}.page-content details{margin-bottom:1em;padding:12px}.page-content details>summary{margin-top:-12px;margin-left:-12px;margin-right:-12px;margin-bottom:-12px;font-weight:bold;background-color:#eee}html.dark-mode .page-content details>summary{background-color:#333}.page-content details>summary{padding:6px 12px}.page-content details[open]>summary{margin-bottom:12px;border-bottom:1px solid;border-color:#ddd}html.dark-mode .page-content details[open]>summary{border-color:#555}.page-content details>summary+*{margin-top:.2em}.page-content details:after{content:"";display:block;clear:both}.page-content li>input[type=checkbox]{vertical-align:top;margin-top:.3em}.page-content p:empty{min-height:1.6em}.page-content.page-revision pre code{white-space:pre-wrap}.page-content .cm-editor{margin-bottom:1.375em}.page-content video,.page-content iframe{max-width:100%}.page-content a{text-decoration:underline}body .page-content img,.page-content img:not([data-mce-object]){max-width:100%;height:auto}.callout{border-left:3px solid #bbb;border-inline-start:3px solid #bbb;border-inline-end:none;background-color:#eee;padding:12px;padding-left:32px;padding-inline-start:32px;padding-inline-end:12px;display:block;position:relative;overflow:auto}.callout:before{background-image:url("data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9IiMwMTUzODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+ICAgIDxwYXRoIGQ9Ik0wIDBoMjR2MjRIMHoiIGZpbGw9Im5vbmUiLz4gICAgPHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTEgMTVoLTJ2LTZoMnY2em0wLThoLTJWN2gydjJ6Ii8+PC9zdmc+");background-repeat:no-repeat;content:"";width:1.2em;height:1.2em;left:8px;inset-inline-start:8px;inset-inline-end:unset;top:50%;margin-top:-9px;display:inline-block;position:absolute;line-height:1;opacity:.8}.callout.success{border-color:#0f7d15}html.dark-mode .callout.success{border-color:#4aa850}.callout.success{background-color:#eafdeb}html.dark-mode .callout.success{background-color:#122913}.callout.success{color:#063409}html.dark-mode .callout.success{color:#4aa850}.callout.success:before{background-image:url("data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9IiMzNzZjMzkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+ICAgIDxwYXRoIGQ9Ik0wIDBoMjR2MjRIMHoiIGZpbGw9Im5vbmUiLz4gICAgPHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bS0yIDE1bC01LTUgMS40MS0xLjQxTDEwIDE0LjE3bDcuNTktNy41OUwxOSA4bC05IDl6Ii8+PC9zdmc+")}.callout.danger{border-color:#ab0f0e}html.dark-mode .callout.danger{border-color:#e85c5b}.callout.danger{background-color:#fcdbdb}html.dark-mode .callout.danger{background-color:#250505}.callout.danger{color:#4d0706}html.dark-mode .callout.danger{color:#e85c5b}.callout.danger:before{background-image:url("data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9IiNiOTE4MTgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+ICAgIDxwYXRoIGQ9Ik0xNS43MyAzSDguMjdMMyA4LjI3djcuNDZMOC4yNyAyMWg3LjQ2TDIxIDE1LjczVjguMjdMMTUuNzMgM3pNMTIgMTcuM2MtLjcyIDAtMS4zLS41OC0xLjMtMS4zIDAtLjcyLjU4LTEuMyAxLjMtMS4zLjcyIDAgMS4zLjU4IDEuMyAxLjMgMCAuNzItLjU4IDEuMy0xLjMgMS4zem0xLTQuM2gtMlY3aDJ2NnoiLz4gICAgPHBhdGggZD0iTTAgMGgyNHYyNEgweiIgZmlsbD0ibm9uZSIvPjwvc3ZnPg==")}.callout.info{border-color:#0288d1}html.dark-mode .callout.info{border-color:#0288d1}.callout.info{background-color:#d3efff}html.dark-mode .callout.info{background-color:#001825}.callout.info{color:#01466c}html.dark-mode .callout.info{color:#0288d1}.callout.warning{border-color:#cf4d03}html.dark-mode .callout.warning{border-color:#de8a5a}.callout.warning{background-color:#fee3d3}html.dark-mode .callout.warning{background-color:#30170a}.callout.warning{color:#6a2802}html.dark-mode .callout.warning{color:#de8a5a}.callout.warning:before{background-image:url("data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9IiNiNjUzMWMiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+ICAgIDxwYXRoIGQ9Ik0wIDBoMjR2MjRIMHoiIGZpbGw9Im5vbmUiLz4gICAgPHBhdGggZD0iTTEgMjFoMjJMMTIgMiAxIDIxem0xMi0zaC0ydi0yaDJ2MnptMC00aC0ydi00aDJ2NHoiLz48L3N2Zz4=")}.callout a{color:inherit;text-decoration:underline}a[data-mention-user-id]{display:inline-block;position:relative;color:var(--color-link);padding:.1em .4em;display:-webkit-inline-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;max-width:180px;overflow:hidden;text-overflow:ellipsis;font-size:.92em;margin-inline:.2em;vertical-align:middle;border-radius:3px;border:1px solid rgba(0,0,0,0)}a[data-mention-user-id]:hover{text-decoration:none;border-color:currentColor}a[data-mention-user-id]:after{content:"";background-color:currentColor;opacity:.2;position:absolute;top:0;right:0;width:100%;height:100%;display:block}html,body{background-color:#fff}body{font-family:"DejaVu Sans",-apple-system,BlinkMacSystemFont,"Segoe UI","Oxygen","Ubuntu","Roboto","Cantarell","Fira Sans","Droid Sans","Helvetica Neue",sans-serif;margin:0;padding:0;display:block}table{border-spacing:0;border-collapse:collapse}.page-content{overflow:hidden}pre{padding-left:12px}pre:before{display:none}pre code{white-space:pre-wrap}.page-break{page-break-after:always}@media screen{.page-break{border-top:1px solid #ddd}}ul.contents ul li{list-style:circle}.chapter-hint{color:#888;margin-top:32px}.chapter-hint+h1{margin-top:0}body.export-format-pdf{font-size:14px;line-height:1.2}body.export-format-pdf h1,body.export-format-pdf h2,body.export-format-pdf h3,body.export-format-pdf h4,body.export-format-pdf h5,body.export-format-pdf h6{line-height:1.2}body.export-format-pdf table{max-width:800px !important;font-size:.8em;width:100% !important}body.export-format-pdf table td{width:auto !important}body.export-format-pdf .page-content .float{float:none !important}body.export-format-pdf .page-content img.align-left,body.export-format-pdf .page-content img.align-right{float:none !important;clear:both;display:block}body.export-format-pdf.export-engine-dompdf .page-content a>img{max-width:700px}body.export-format-pdf.export-engine-dompdf .page-content td a>img{max-width:100%}/*# sourceMappingURL=export-styles.css.map */
+
+    </style>
+
+
+    </head>
+<body class="export export-format-html export-engine-none">
+<div class="page-content" dir="auto">
+    
+    <h1 style="font-size: 4.8em">Tabelas de Domínio</h1>
+    <div><p>Esta página apresenta as <strong>tabelas de domínio utilizadas pelo SAGRES Captura 2.0</strong>. Essas tabelas definem valores padronizados que devem ser utilizados no envio e na validação das informações pelas entidades.</p><p>Como o sistema ainda está em evolução, os <strong>valores, estruturas ou regras associadas a essas tabelas de domínio podem sofrer alterações ao longo do tempo</strong>.</p><p>⚠️ Recomenda-se consultar esta página periodicamente para acompanhar possíveis atualizações.</p></div>
+
+    <ul class="contents">
+                    <li><a href="#page-425">Categoria Econômica</a></li>
+                                <li><a href="#page-540">Código Despesa Extra</a></li>
+                                <li><a href="#page-532">Código Receita Extra</a></li>
+                                <li><a href="#page-576">Emenda Parlamentar</a></li>
+                                <li><a href="#page-486">Modalidade Licitação</a></li>
+                                <li><a href="#page-476">Natureza Contratação</a></li>
+                                <li><a href="#page-426">Natureza Despesa</a></li>
+                                <li><a href="#page-511">Regras Nota Fiscal</a></li>
+                                <li><a href="#page-541">Subelemento</a></li>
+                                <li><a href="#page-420">Tipo Ação</a></li>
+                                <li><a href="#page-471">Tipo Alteração Orçamentária</a></li>
+                                <li><a href="#page-421">Tipo Ato Jurídico</a></li>
+                                <li><a href="#page-651">Tipo Ato Pessoal</a></li>
+                                <li><a href="#page-664">Tipo Natureza Acumulação</a></li>
+                                <li><a href="#page-665">Tipo Cargo</a></li>
+                                <li><a href="#page-666">Tipo Situação Matrícula</a></li>
+                                <li><a href="#page-630">Tipo Categoria Frota</a></li>
+                                <li><a href="#page-634">Tipo Combustível</a></li>
+                                <li><a href="#page-600">Tipo Conciliação</a></li>
+                                <li><a href="#page-441">Tipo Conta Bancária</a></li>
+                                <li><a href="#page-640">Tipo Contabilização Folha Pagamento</a></li>
+                                <li><a href="#page-517">Tipo Credor</a></li>
+                                <li><a href="#page-475">Tipo Empenho</a></li>
+                                <li><a href="#page-643">Tipo Escolaridade</a></li>
+                                <li><a href="#page-624">Tipo Frota</a></li>
+                                <li><a href="#page-656">Tipo Folha</a></li>
+                                <li><a href="#page-442">Tipo Lançamento</a></li>
+                                <li><a href="#page-639">Tipo Lançamento Folha Pagamento</a></li>
+                                <li><a href="#page-551">Tipo Lei</a></li>
+                                <li><a href="#page-423">Tipo Natureza Jurídica</a></li>
+                                <li><a href="#page-478">Tipo Nota Fiscal</a></li>
+                                <li><a href="#page-422">Tipo Objeto Milênio</a></li>
+                                <li><a href="#page-424">Tipo Receita Lançada</a></li>
+                                <li><a href="#page-652">Tipo Regime Previdência</a></li>
+                                <li><a href="#page-653">Tipo Regime Trabalho</a></li>
+                                <li><a href="#page-481">Tipo Retenção</a></li>
+                                <li><a href="#page-631">Tipo Situação Frota</a></li>
+                                <li><a href="#page-533">Tipo Transferência</a></li>
+                        </ul>
+
+                        <div class="page-break"></div>
+
+
+<h1 id="page-425">Categoria Econômica</h1>
+<table id="bkmrk-codigo-descri%C3%A7%C3%A3o-3-d" style="border-collapse:collapse;border-style:solid;">
+<thead>
+<tr>
+<th>Codigo</th>
+<th class="align-left">Descrição</th>
+<th>Exercício Inicio</th>
+<th>Exercício Fim</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3</td>
+<td>Despesa Corrente</td>
+<td>2025</td>
+<td>-</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Despesa de Capital</td>
+<td>2025</td>
+<td>-</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Reserva de Contingência</td>
+<td>2025</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<p id="bkmrk-"></p>                                <div class="page-break"></div>
+
+
+<h1 id="page-540">Código Despesa Extra</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-100" class="MsoNormalTable">
+<thead>
+<tr>
+<td>
+<p class="MsoNormal"><strong>Código</strong></p>
+</td>
+<td>
+<p class="MsoNormal"><strong>Descrição</strong></p>
+</td>
+<td>
+<p class="MsoNormal"><strong>Exercício Início</strong></p>
+</td>
+<td>
+<p class="MsoNormal"><strong>Exercício Fim</strong></p>
+</td>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<p class="MsoNormal">20000010</p>
+</td>
+<td>
+<p class="MsoNormal">Restos a Pagar</p>
+</td>
+<td>
+<p class="MsoNormal">2025</p>
+</td>
+<td>
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p class="MsoNormal">20000011</p>
+</td>
+<td>
+<p class="MsoNormal">Serviços da Dívida</p>
+</td>
+<td>
+<p class="MsoNormal">2025</p>
+</td>
+<td>
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p class="MsoNormal">20000012</p>
+</td>
+<td>
+<p class="MsoNormal">Débitos de Tesouraria</p>
+</td>
+<td>
+<p class="MsoNormal">2025</p>
+</td>
+<td>
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p class="MsoNormal">20000017</p>
+</td>
+<td>
+<p class="MsoNormal">Consignações</p>
+</td>
+<td>2025</td>
+<td>-</td>
+</tr>
+<tr>
+<td>
+<p class="MsoNormal">20000018</p>
+</td>
+<td>
+<p class="MsoNormal">Depósitos</p>
+</td>
+<td>2025</td>
+<td>-</td>
+</tr>
+<tr>
+<td>
+<p class="MsoNormal">20000019</p>
+</td>
+<td>
+<p class="MsoNormal">Outras Operações</p>
+</td>
+<td>2025</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-532">Código Receita Extra</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-100" class="MsoNormalTable">
+<thead>
+<tr>
+<td>
+<p class="MsoNormal"><strong>Código</strong></p>
+</td>
+<td>
+<p class="MsoNormal"><strong>Descrição</strong></p>
+</td>
+<td>
+<p class="MsoNormal"><strong>Exercício Início</strong></p>
+</td>
+<td>
+<p class="MsoNormal"><strong>Exercício Fim</strong></p>
+</td>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<p class="MsoNormal">10000014</p>
+</td>
+<td>
+<p class="MsoNormal">Consignações</p>
+</td>
+<td>
+<p class="MsoNormal">2025</p>
+</td>
+<td>
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p class="MsoNormal">10000015</p>
+</td>
+<td>
+<p class="MsoNormal">Débitos de Tesouraria</p>
+</td>
+<td>
+<p class="MsoNormal">2025</p>
+</td>
+<td>
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p class="MsoNormal">10000016</p>
+</td>
+<td>
+<p class="MsoNormal">Depósitos</p>
+</td>
+<td>
+<p class="MsoNormal">2025</p>
+</td>
+<td>
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p class="MsoNormal">10000017</p>
+</td>
+<td>
+<p class="MsoNormal">Outras Operações</p>
+</td>
+<td>
+<p class="MsoNormal">2025</p>
+</td>
+<td>
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-576">Emenda Parlamentar</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-100" class="MsoNormalTable" style="width:73.2143%;height:178.781px;">
+<thead>
+<tr style="height:29.7969px;">
+<td style="width:13.8889%;height:29.7969px;">
+<p class="MsoNormal"><strong>Código</strong></p>
+</td>
+<td style="width:47.0588%;height:29.7969px;">
+<p class="MsoNormal"><strong>Descrição</strong></p>
+</td>
+<td style="width:22.0588%;height:29.7969px;">
+<p class="MsoNormal"><strong>Exercício Início</strong></p>
+</td>
+<td style="width:16.9935%;height:29.7969px;">
+<p class="MsoNormal"><strong>Exercício Fim</strong></p>
+</td>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:13.8889%;height:29.7969px;">1110</td>
+<td style="width:47.0588%;height:29.7969px;">Identificação das Emendas Individuais</td>
+<td style="width:22.0588%;height:29.7969px;">
+<p class="MsoNormal">2027</p>
+</td>
+<td style="width:16.9935%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:13.8889%;height:29.7969px;">1120</td>
+<td style="width:47.0588%;height:29.7969px;">Identificação das Emendas de Bancada</td>
+<td style="width:22.0588%;height:29.7969px;">
+<p class="MsoNormal">2027</p>
+</td>
+<td style="width:16.9935%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:13.8889%;height:29.7969px;">1130</td>
+<td style="width:47.0588%;height:29.7969px;">Identificação das Emendas de Comissão</td>
+<td style="width:22.0588%;height:29.7969px;">
+<p class="MsoNormal">2027</p>
+</td>
+<td style="width:16.9935%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:13.8889%;height:29.7969px;">1140</td>
+<td style="width:47.0588%;height:29.7969px;">Identificação das Emendas de Relator</td>
+<td style="width:22.0588%;height:29.7969px;">2027</td>
+<td style="width:16.9935%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:13.8889%;height:29.7969px;">1190</td>
+<td style="width:47.0588%;height:29.7969px;">Identificação de Outras Emendas</td>
+<td style="width:22.0588%;height:29.7969px;">2027</td>
+<td style="width:16.9935%;height:29.7969px;">-</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-486">Modalidade Licitação</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-3-c" class="min-w-full border-collapse text-sm leading-[1.7] whitespace-normal" style="width:95.3571%;height:1042.67px;">
+<thead class="text-left">
+<tr style="height:29.7969px;">
+<th class="text-text-100 border-b-0.5 border-border-300/60 py-2 pr-4 align-top font-bold align-left" style="width:10.1252%;height:29.7969px;" scope="col">Código</th>
+<th class="text-text-100 border-b-0.5 border-border-300/60 py-2 pr-4 align-top font-bold align-left" style="width:63.2512%;height:29.7969px;" scope="col">Descrição</th>
+<th class="align-left" style="width:14.0003%;height:29.7969px;" scope="col">Exercício Início</th>
+<th class="align-left" style="width:12.6252%;height:29.7969px;" scope="col">Exercício Fim</th>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:10.1252%;">15</td>
+<td style="width:63.2512%;">Licitação da Lei Nº 13.303/2016</td>
+<td style="width:14.0003%;height:29.7969px;">2025</td>
+<td style="width:12.6252%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.1252%;">16</td>
+<td style="width:63.2512%;">Licitação da Lei Nº 13.303/2016 (Art. 28, Art. 29 ou Art. 30)</td>
+<td style="width:14.0003%;height:29.7969px;">2025</td>
+<td style="width:12.6252%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.1252%;">19</td>
+<td style="width:63.2512%;">Contratação Emergencial de Organização (Art. 12, II da Lei Nº 9.454/2011)</td>
+<td style="width:14.0003%;height:29.7969px;">2025</td>
+<td style="width:12.6252%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.1252%;">21</td>
+<td style="width:63.2512%;">Dispensa (Lei Nº 14.133/2021)</td>
+<td style="width:14.0003%;height:29.7969px;">2025</td>
+<td style="width:12.6252%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.1252%;">22</td>
+<td style="width:63.2512%;">Inexigibilidade (Lei Nº 14.133/2021)</td>
+<td style="width:14.0003%;height:29.7969px;">2025</td>
+<td style="width:12.6252%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.1252%;">23</td>
+<td style="width:63.2512%;">Concorrência (Lei Nº 14.133/2021)</td>
+<td style="width:14.0003%;height:29.7969px;">2025</td>
+<td style="width:12.6252%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:27.5938px;">
+<td style="width:10.1252%;">24</td>
+<td style="width:63.2512%;">Pregão (Lei Nº 14.133/2021)</td>
+<td style="width:14.0003%;height:27.5938px;">2025</td>
+<td style="width:12.6252%;height:27.5938px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.1252%;">25</td>
+<td style="width:63.2512%;">Concurso (Lei Nº 14.133/2021)</td>
+<td style="width:14.0003%;height:29.7969px;">2025</td>
+<td style="width:12.6252%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.1252%;">28</td>
+<td style="width:63.2512%;">Licitação Internacional Não Competitiva</td>
+<td style="width:14.0003%;height:29.7969px;">2025</td>
+<td style="width:12.6252%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.1252%;">29</td>
+<td style="width:63.2512%;">Licitação Internacional Competitiva</td>
+<td style="width:14.0003%;height:29.7969px;">2025</td>
+<td style="width:12.6252%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.1252%;">30</td>
+<td style="width:63.2512%;">Credenciamento (Lei Nº 14.133/2021)</td>
+<td style="width:14.0003%;height:29.7969px;">2025</td>
+<td style="width:12.6252%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.1252%;">31</td>
+<td style="width:63.2512%;">Concorrência - Publicidade (Lei Nº 12.232/2010)</td>
+<td style="width:14.0003%;height:29.7969px;">2025</td>
+<td style="width:12.6252%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.1252%;">32</td>
+<td style="width:63.2512%;">Diálogo Competitivo (Lei Nº 14.133/2021)</td>
+<td style="width:14.0003%;height:29.7969px;">2025</td>
+<td style="width:12.6252%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:31.5938px;">
+<td class="border-b-0.5 border-border-300/30 py-2 pr-4 align-top" style="width:10.1252%;height:31.5938px;">33</td>
+<td class="border-b-0.5 border-border-300/30 py-2 pr-4 align-top" style="width:63.2512%;height:31.5938px;">Alienação de bens, dispensada a licitação (Lei Nº 14.133/2021)</td>
+<td style="width:14.0003%;height:31.5938px;">2025</td>
+<td style="width:12.6252%;height:31.5938px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td class="border-b-0.5 border-border-300/30 py-2 pr-4 align-top" style="width:10.1252%;height:29.7969px;">34</td>
+<td class="border-b-0.5 border-border-300/30 py-2 pr-4 align-top" style="width:63.2512%;height:29.7969px;">Leilão (Lei Nº 14.133/2021)</td>
+<td style="width:14.0003%;height:29.7969px;">2025</td>
+<td style="width:12.6252%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.1252%;">35</td>
+<td style="width:63.2512%;">Adesão à Ata de Registro de Preços (Lei Nº 14.133/2021)</td>
+<td style="width:14.0003%;height:29.7969px;">2025</td>
+<td style="width:12.6252%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td class="border-b-0.5 border-border-300/30 py-2 pr-4 align-top" style="width:10.1252%;height:29.7969px;">36</td>
+<td class="border-b-0.5 border-border-300/30 py-2 pr-4 align-top" style="width:63.2512%;height:29.7969px;">Credenciamento (Lei 8.666/1993)</td>
+<td style="width:14.0003%;height:29.7969px;">2025</td>
+<td style="width:12.6252%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:33.5938px;">
+<td style="width:10.1252%;">37</td>
+<td style="width:63.2512%;">Dispensa por valor (art. 29, incisos I e II da Lei 13.303/2016)</td>
+<td style="width:14.0003%;height:33.5938px;">2025</td>
+<td style="width:12.6252%;height:33.5938px;">-</td>
+</tr>
+<tr style="height:31.5938px;">
+<td style="width:10.1252%;">38</td>
+<td style="width:63.2512%;">Dispensa demais motivos (art. 29, incisos III a XVIII, e §§ 1º, 2º e 3º, todos da Lei 13.303/2016)</td>
+<td style="width:14.0003%;height:31.5938px;">2025</td>
+<td style="width:12.6252%;height:31.5938px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.1252%;">39</td>
+<td style="width:63.2512%;">Inexigibilidade (art. 30 da Lei 13.303/2016)</td>
+<td style="width:14.0003%;height:29.7969px;">2025</td>
+<td style="width:12.6252%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.1252%;">100</td>
+<td style="width:63.2512%;">Dispensa Lei 14.133/2021 não enviada ao Tribunal</td>
+<td style="width:14.0003%;height:29.7969px;">2025</td>
+<td style="width:12.6252%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.1252%;">101</td>
+<td style="width:63.2512%;">Inexigibilidade Lei 14.133/2021 não enviada ao Tribunal</td>
+<td style="width:14.0003%;height:29.7969px;">2025</td>
+<td style="width:12.6252%;height:29.7969px;">-</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-476">Natureza Contratação</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-obs" style="width:98.0952%;height:172.375px;">
+<thead>
+<tr style="height:31.5938px;">
+<th style="width:9.90099%;height:31.5938px;" scope="col">
+<p dir="ltr">Código</p>
+</th>
+<th style="width:27.9703%;height:31.5938px;" scope="col">
+<p dir="ltr">Descrição</p>
+</th>
+<th style="width:34.2822%;height:31.5938px;" scope="col">
+<p dir="ltr">Observações</p>
+</th>
+<th style="width:13.4901%;height:31.5938px;" scope="col">
+<p dir="ltr">Exercício Início</p>
+</th>
+<th style="width:14.3564%;height:31.5938px;" scope="col">
+<p dir="ltr">Exercício Fim</p>
+</th>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:9.90099%;height:29.7969px;">
+<p dir="ltr">0</p>
+</td>
+<td style="width:27.9703%;height:29.7969px;">
+<p dir="ltr">Outros</p>
+</td>
+<td style="width:34.2822%;height:29.7969px;">
+<p dir="ltr">Demais despesas</p>
+</td>
+<td style="width:13.4901%;height:29.7969px;">
+<p dir="ltr">2025 </p>
+</td>
+<td style="width:14.3564%;height:29.7969px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:9.90099%;height:29.7969px;">
+<p dir="ltr">1</p>
+</td>
+<td style="width:27.9703%;height:29.7969px;">
+<p dir="ltr">Fornecimento de Bens</p>
+</td>
+<td style="width:34.2822%;height:29.7969px;">
+<p dir="ltr">Art. 141, inc. I, Lei 14133/2021</p>
+</td>
+<td style="width:13.4901%;height:29.7969px;">
+<p dir="ltr">2025 </p>
+</td>
+<td style="width:14.3564%;height:29.7969px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:9.90099%;height:29.7969px;">
+<p dir="ltr">2</p>
+</td>
+<td style="width:27.9703%;height:29.7969px;">
+<p dir="ltr">Locações</p>
+</td>
+<td style="width:34.2822%;height:29.7969px;">
+<p dir="ltr">Art. 141, inc. II, Lei 14133/2021</p>
+</td>
+<td style="width:13.4901%;height:29.7969px;">
+<p dir="ltr">2025 </p>
+</td>
+<td style="width:14.3564%;height:29.7969px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:9.90099%;height:29.7969px;">
+<p dir="ltr">3</p>
+</td>
+<td style="width:27.9703%;height:29.7969px;">
+<p dir="ltr">Prestação de Serviços</p>
+</td>
+<td style="width:34.2822%;height:29.7969px;">
+<p dir="ltr">Art. 141, inc. III, Lei 14133/2021</p>
+</td>
+<td style="width:13.4901%;height:29.7969px;">
+<p dir="ltr">2025 </p>
+</td>
+<td style="width:14.3564%;height:29.7969px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr style="height:21.5938px;">
+<td style="width:9.90099%;height:21.5938px;">
+<p dir="ltr">4</p>
+</td>
+<td style="width:27.9703%;height:21.5938px;">
+<p dir="ltr">Realização de Obras</p>
+</td>
+<td style="width:34.2822%;height:21.5938px;">
+<p dir="ltr">Art. 141, inc. IV, Lei 14133/2021</p>
+</td>
+<td style="width:13.4901%;height:21.5938px;">
+<p dir="ltr">2025 </p>
+</td>
+<td style="width:14.3564%;height:21.5938px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-426">Natureza Despesa</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-1-p" style="border-collapse:collapse;border-style:solid;">
+<thead>
+<tr>
+<th>Código</th>
+<th class="align-left">Descrição</th>
+<th>Exercício Inicio</th>
+<th>Exercício Fim</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Pessoal e Encargos Sociais</td>
+<td>2025</td>
+<td>-</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Juros e Encargos da Dívida</td>
+<td>2025</td>
+<td>-</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Outras Despesas Correntes</td>
+<td>2025</td>
+<td>-</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Investimentos</td>
+<td>2025</td>
+<td>-</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Inversões Financeiras</td>
+<td>2025</td>
+<td>-</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Amortização da Dívida</td>
+<td>2025</td>
+<td>-</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Reserva de Contingência</td>
+<td>2025</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<p id="bkmrk-"></p>                                <div class="page-break"></div>
+
+
+<h1 id="page-511">Regras Nota Fiscal</h1>
+<h3 id="bkmrk-regras-nota-fiscal">⚠️<span style="color:rgb(224,62,45);">Não implementar por enquanto, as regras irão mudar</span></h3>
+<table id="bkmrk-tipo-descri%C3%A7%C3%A3o-n%C2%BA-ch" style="width:100%;">
+<thead>
+<tr>
+<td style="width:14.3027%;"><strong>Tipo</strong></td>
+<td style="width:16.6865%;"><strong>Descrição</strong></td>
+<td style="width:17.1633%;"><strong>Nº Chave Acesso</strong></td>
+<td style="width:11.7985%;"><strong>Número</strong></td>
+<td style="width:11.5627%;"><strong>Série</strong></td>
+<td style="width:14.3027%;"><strong>Data</strong></td>
+<td style="width:14.3027%;"><strong>Valor</strong></td>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="width:14.3027%;"><s><span style="color:rgb(224,62,45);">0</span></s></td>
+<td style="width:16.6865%;"><s><span style="color:rgb(224,62,45);">Sem Nota Fiscal</span></s></td>
+<td style="width:17.1633%;"><s><span style="color:rgb(224,62,45);">não informar</span></s></td>
+<td style="width:11.7985%;"><s><span style="color:rgb(224,62,45);">não informar</span></s></td>
+<td style="width:11.5627%;"><s><span style="color:rgb(224,62,45);">não informar</span></s></td>
+<td style="width:14.3027%;"><s><span style="color:rgb(224,62,45);">não informar</span></s></td>
+<td style="width:14.3027%;"><s><span style="color:rgb(224,62,45);">não informar</span></s></td>
+</tr>
+<tr>
+<td style="width:14.3027%;">1</td>
+<td style="width:16.6865%;">A Nota Fiscal Avulsa Eletrônica – Estadual (NFA-e)</td>
+<td style="width:17.1633%;">SIM</td>
+<td style="width:11.7985%;">SIM</td>
+<td style="width:11.5627%;">NÃO</td>
+<td style="width:14.3027%;">SIM</td>
+<td style="width:14.3027%;">SIM</td>
+</tr>
+<tr>
+<td style="width:14.3027%;">2</td>
+<td style="width:16.6865%;">Nota Fiscal – Eletrônica – Estadual (NF-e)</td>
+<td style="width:17.1633%;">SIM</td>
+<td style="width:11.7985%;">SIM</td>
+<td style="width:11.5627%;">NÃO</td>
+<td style="width:14.3027%;">SIM</td>
+<td style="width:14.3027%;">SIM</td>
+</tr>
+<tr>
+<td style="width:14.3027%;">3</td>
+<td style="width:16.6865%;">Nota Fiscal de Prestação de Serviços - Eletrônica</td>
+<td style="width:17.1633%;">não informar</td>
+<td style="width:11.7985%;">SIM</td>
+<td style="width:11.5627%;">NÃO</td>
+<td style="width:14.3027%;">SIM</td>
+<td style="width:14.3027%;">SIM</td>
+</tr>
+<tr>
+<td style="width:14.3027%;">6</td>
+<td style="width:16.6865%;">Nota Fiscal de Prestação de Serviços - Papel</td>
+<td style="width:17.1633%;">não informar</td>
+<td style="width:11.7985%;">SIM</td>
+<td style="width:11.5627%;">NÃO</td>
+<td style="width:14.3027%;">SIM</td>
+<td style="width:14.3027%;">SIM</td>
+</tr>
+<tr>
+<td style="width:14.3027%;">7</td>
+<td style="width:16.6865%;">Nota Fiscal Avulsa de Prestação de Serviços - Papel</td>
+<td style="width:17.1633%;">não informar</td>
+<td style="width:11.7985%;">SIM</td>
+<td style="width:11.5627%;">NÃO</td>
+<td style="width:14.3027%;">SIM</td>
+<td style="width:14.3027%;">SIM</td>
+</tr>
+<tr>
+<td style="width:14.3027%;">8</td>
+<td style="width:16.6865%;">Nota Fiscal Avulsa de Prestação de Serviços - Eletrônica</td>
+<td style="width:17.1633%;">não informar</td>
+<td style="width:11.7985%;">SIM</td>
+<td style="width:11.5627%;">NÃO</td>
+<td style="width:14.3027%;">SIM</td>
+<td style="width:14.3027%;">SIM</td>
+</tr>
+<tr>
+<td style="width:14.3027%;">13</td>
+<td style="width:16.6865%;">Bilhete de Passagem</td>
+<td style="width:17.1633%;">não informar</td>
+<td style="width:11.7985%;">SIM</td>
+<td style="width:11.5627%;">NÃO</td>
+<td style="width:14.3027%;">SIM</td>
+<td style="width:14.3027%;">SIM</td>
+</tr>
+<tr>
+<td style="width:14.3027%;">15</td>
+<td style="width:16.6865%;">Conhecimento de Transporte de Cargas Eletrônico (Rodoviário, Ferroviário, Aquaviário ou Aéreo) CT-e</td>
+<td style="width:17.1633%;">não informar</td>
+<td style="width:11.7985%;">SIM</td>
+<td style="width:11.5627%;">NÃO</td>
+<td style="width:14.3027%;">SIM</td>
+<td style="width:14.3027%;">SIM</td>
+</tr>
+<tr>
+<td style="width:14.3027%;">16</td>
+<td style="width:16.6865%;">Nota Fiscal/Conta de Energia Elétrica</td>
+<td style="width:17.1633%;">não informar</td>
+<td style="width:11.7985%;">SIM</td>
+<td style="width:11.5627%;">NÃO</td>
+<td style="width:14.3027%;">SIM</td>
+<td style="width:14.3027%;">SIM</td>
+</tr>
+<tr>
+<td style="width:14.3027%;">17</td>
+<td style="width:16.6865%;">Nota Fiscal/Conta de Comunicações ou de Telecomunicações</td>
+<td style="width:17.1633%;">não informar</td>
+<td style="width:11.7985%;">SIM</td>
+<td style="width:11.5627%;">NÃO</td>
+<td style="width:14.3027%;">SIM</td>
+<td style="width:14.3027%;">SIM</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-541">Subelemento</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-000" class="MsoNormalTable" style="width:100%;height:3546.41px;">
+<thead>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal"><strong>Código</strong></p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal"><strong>Descrição</strong></p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal"><strong>Exercício Inicio</strong></p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal"><strong>Exercício Fim</strong></p>
+</td>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">000</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">Salário Família</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">001</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">COMBUSTÍVEIS E LUBRIFICANTES AUTOMOTIVOS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">002</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">GÊNEROS DE ALIMENTAÇÃO</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">003</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MATERIAL FARMACOLÓGICO</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">004</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MATERIAL ODONTOLÓGICO</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">005</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MATERIAL EDUCATIVO E ESPORTIVO</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">006</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MATERIAL PARA FESTIVIDADES E HOMENAGENS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">007</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MATERIAL DE EXPEDIENTE</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">008</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MATERIAL DE PROCESSAMENTO DE DADOS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">009</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">UNIFORMES, TECIDOS E AVIAMENTOS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">010</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MATERIAL PARA MANUTENÇÃO DE BENS IMÓVEIS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">011</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MATERIAL PARA MANUTENÇÃO DE BENS MÓVEIS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">012</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MATERIAL HOSPITALAR</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">013</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MATERIAL PARA MANUTENÇÃO DE VEÍCULOS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">014</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MATERIAL PARA REABILITAÇÃO PROFISSIONAL</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">015</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MATERIAL BIBLIOGRÁFICO NÃO IMOBILIZÁVEL</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">016</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">AQUISIÇÃO DE SOFTWARES DE BASE</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">017</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">BILHETES DE PASSAGEM</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">018</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MATERIAL DE CONSUMO - PAGTO ANTECIPADO</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">019</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">OUTROS MATERIAIS DE CONSUMO</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">020</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SERVIÇOS TÉCNICOS PROFISSIONAIS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">021</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">ESTAGIÁRIOS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">022</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">BOLSA DE INICIAÇÃO AO TRABALHO</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">023</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">PRÓ-LABORE A CONSULTORES EVENTUAIS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">024</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">CONFERÊNCIAS E EXPOSIÇÕES</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">025</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">LOCAÇÃO DE IMÓVEIS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">026</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">LOCAÇÃO DE BENS MÓVEIS E INTANGÍVEIS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">027</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MANUTENÇÃO E CONSERVAÇÃO DE EQUIPAMENTOS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">028</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MANUTENÇÃO E CONSERVAÇÃO DE VEÍCULOS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:31.5938px;">
+<td style="width:7.74732%;height:31.5938px;">
+<p class="MsoNormal">029</p>
+</td>
+<td style="width:65.6734%;height:31.5938px;">
+<p class="MsoNormal">MANUTENÇÃO E CONSERVAÇÃO DE BENS MÓVEIS DE OUTRAS NATUREZAS</p>
+</td>
+<td style="width:13.9452%;height:31.5938px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:31.5938px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">030</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MANUTENÇÃO E CONSERVAÇÃO DE BENS IMÓVEIS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">031</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">FORNECIMENTO DE ALIMENTAÇÃO</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">032</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SERVIÇOS DE LIMPEZA E CONSERVAÇÃO</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">033</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SERVIÇOS DE COMUNICAÇÃO EM GERAL</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">034</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SERVIÇOS MÉDICOS E ODONTOLÓGICOS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:30.5938px;">
+<td style="width:7.74732%;height:30.5938px;">
+<p class="MsoNormal">035</p>
+</td>
+<td style="width:65.6734%;height:30.5938px;">
+<p class="MsoNormal">SERVIÇO DE APOIO ADMINISTRATIVO, TÉCNICO E OPERACIONAL</p>
+</td>
+<td style="width:13.9452%;height:30.5938px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:30.5938px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">036</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SERVIÇOS DE ÁUDIO, VÍDEO E FOTO</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">037</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">OUTROS SERVIÇOS DE TERCEIROS PFPAGTO ANTECIPADO</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">038</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">OUTROS SERVIÇOS DE PESSOA FÍSICA</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">039</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">ASSINATURAS DE PERIÓDICOS E ANUIDADES</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">040</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MANUTENÇÃO DE SOFTWARE</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">041</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">LOCAÇÃO DE IMÓVEIS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">042</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">LOCAÇÃO DE SOFTWARES</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">043</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">LOCAÇÃO DE MÁQUINAS E EQUIPAMENTOS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">044</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MANUTENÇÃO E CONSERVAÇÃO DE BENS IMÓVEIS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:31.5938px;">
+<td style="width:7.74732%;height:31.5938px;">
+<p class="MsoNormal">045</p>
+</td>
+<td style="width:65.6734%;height:31.5938px;">
+<p class="MsoNormal">MANUTENÇÃO E CONSERVAÇÃO DE MÁQUINAS E EQUIPAMENTOS</p>
+</td>
+<td style="width:13.9452%;height:31.5938px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:31.5938px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">046</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MANUTENÇÃO E CONSERVAÇÃO DE VEÍCULOS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">047</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MANUTENÇÃO E CONSERVAÇÃO DE ESTRADAS E VIAS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">048</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">FESTIVIDADES E HOMENAGENS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">049</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SERVIÇOS DE ENERGIA ELÉTRICA</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">050</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SERVIÇOS DE ÁGUA E ESGOTO</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:32.5938px;">
+<td style="width:7.74732%;height:32.5938px;">
+<p class="MsoNormal">051</p>
+</td>
+<td style="width:65.6734%;height:32.5938px;">
+<p class="MsoNormal">SERVIÇO MÉDICO, HOSPITAL, ODONTOLÓGICO E LABORATORIAIS</p>
+</td>
+<td style="width:13.9452%;height:32.5938px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:32.5938px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">052</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SERVIÇOS DE ASSISTÊNCIA SOCIAL</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">053</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SERVIÇOS DE TELECOMUNICAÇÕES</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">054</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SERVIÇOS DE APOIO AO ENSINO</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">055</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">VIGILÂNCIA OSTENSIVA</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">056</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">LIMPEZA E CONSERVAÇÃO</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">057</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SERVIÇOS BANCÁRIOS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">058</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SERVIÇOS DE PUBLICIDADE E PROPAGANDA</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">059</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">AQUISIÇÃO DE SOFTWARES DE APLICAÇÃO</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">060</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">OUTROS SERVIÇOS DE TERCEIROS PJ- PAGTO ANTECIPADO</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">061</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">OUTROS SERVIÇOS DE TERCEIROS, PESSOA JURÍDICA</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">062</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">APARELHOS E EQUIPAMENTOS DE COMUNICAÇÃO</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:46.5938px;">
+<td style="width:7.74732%;height:46.5938px;">
+<p class="MsoNormal">063</p>
+</td>
+<td style="width:65.6734%;height:46.5938px;">
+<p class="MsoNormal">APARELHOS, EQUIPAMENTOS, UTENSÍLIOS MÉDICOODONTOLÓGICO, LABORATORIAL E HOSPITALAR</p>
+</td>
+<td style="width:13.9452%;height:46.5938px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:46.5938px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">064</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">APARELHOS E UTENSÍLIOS DOMÉSTICOS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">065</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">COLEÇÕES E MATERIAIS BIBLIOGRÁFICOS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">066</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">INSTRUMENTOS MUSICAIS E ARTÍSTICOS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">067</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MÁQUINAS E EQUIPAM. DE NATUREZA INDUSTRIAL</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">068</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MÁQUINAS E EQUIPAMENTOS ENERGÉTICOS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">069</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MÁQUINAS, UTENSÍLIOS E EQUIPAMENTOS DIVERSOS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">070</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">EQUIPAMENTOS DE PROCESSAMENTO DE DADOS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">071</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">EQUIPAMENTOS E UTENSÍLIOS HIDRÁULICOS E ELÉTRICOS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">072</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MÁQUINAS E EQUIPAMENTOS AGRÍCOLAS E RODOVIÁRIOS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">073</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MOBILIÁRIO EM GERAL</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">074</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">OBRAS DE ARTE E PEÇAS PARA MUSEU</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">075</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SEMOVENTES E EQUIPAMENTOS DE MONTARIA</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">076</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">PEÇAS NÃO INCORPORÁVEIS A IMÓVEIS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">077</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">VEÍCULOS DE TRAÇÃO MECÂNICA</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">078</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">ACESSÓRIOS PARA AUTOMÓVEIS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:32.5938px;">
+<td style="width:7.74732%;height:32.5938px;">
+<p class="MsoNormal">079</p>
+</td>
+<td style="width:65.6734%;height:32.5938px;">
+<p class="MsoNormal">EQUIPAMENTOS E SISTEMA DE PROTEÇÃO E VIGILÂNCIA AMBIENTAL</p>
+</td>
+<td style="width:13.9452%;height:32.5938px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:32.5938px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">080</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">OUTROS MATERIAIS PERMANENTES</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">081</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">VENCIMENTOS E VANTAGENS FIXAS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">082</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">OBRIGAÇÕES PATRONAIS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">083</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">CONTRATAÇÃO POR TEMPO DETERMINADO</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">084</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">OUTRAS DESPESAS VARIÁVEIS DE PESSOAL</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:31.5938px;">
+<td style="width:7.74732%;height:31.5938px;">
+<p class="MsoNormal">085</p>
+</td>
+<td style="width:65.6734%;height:31.5938px;">
+<p class="MsoNormal">OUTRAS DESPESAS DE PESSOAL DECORRENTE DE CONTRATAÇÃO</p>
+</td>
+<td style="width:13.9452%;height:31.5938px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:31.5938px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">086</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SEGUROS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">087</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SERVIÇOS POSTAIS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">088</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">MULTA E JUROS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">089</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SERVIÇO NOTARIAL E REGISTRAL</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">090</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SERVIÇO TÉCNICO PROFISSIONAL NÃO EVENTUAL</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">091</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SERVIÇO DE ACESSO A INTERNET</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">092</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">ENTIDADE DA ADMINISTRAÇÃO PRESTADORA DE SERVIÇO PÚBLICO</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">093</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">DIÁRIAS A COLABORADORES</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">094</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">REMUNERAÇÃO A CONSELHEIROS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">095</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">LOCAÇÃO DE VEÍCULOS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">096</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">PESSOAL VINCULADO AO REGIME PRÓPRIO DE PREVIDÊNCIA</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:31.5938px;">
+<td style="width:7.74732%;height:31.5938px;">
+<p class="MsoNormal">097</p>
+</td>
+<td style="width:65.6734%;height:31.5938px;">
+<p class="MsoNormal">PESSOAL VINCULADO AO REGIME GERAL DA PREVIDÊNCIA SOCIAL</p>
+</td>
+<td style="width:13.9452%;height:31.5938px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:31.5938px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">098</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">TICKET COMBUSTÍVEL</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">099</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SEM SUBELEMENTO</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">100</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">LICENÇA SAÚDE RGPS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">101</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SALÁRIO MATERNIDADE RGPS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">102</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">AUXÍLIO-RECLUSÃO</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">103</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">LICENÇA SAÚDE RPPS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">104</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SALÁRIO MATERNIDADE RPPS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">106</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">INDENIZAÇÃO PAGA A SERVIDOR</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">107</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">OBRIGAÇÕES TRIBUTÁRIAS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">108</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">OBRIGAÇÕES PATRONAIS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">109</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">SENTENÇAS JUDICIAIS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">110</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">JETONS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">111</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">DEVOLUÇÃO DE RECURSOS</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">112</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">Contratação de carro pipa</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2026</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">113</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">Contratação transporte escolar</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2026</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">114</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">Contratação transporte de pessoas</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2026</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">115</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">Contratação transporte de resíduos</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2026</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">116</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">Contratação transporte de materiais diversos</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2026</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:7.74732%;height:29.7969px;">
+<p class="MsoNormal">117</p>
+</td>
+<td style="width:65.6734%;height:29.7969px;">
+<p class="MsoNormal">limpeza urbana</p>
+</td>
+<td style="width:13.9452%;height:29.7969px;">
+<p class="MsoNormal">2026</p>
+</td>
+<td style="width:12.6341%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p id="bkmrk-%C2%A0"></p>                                <div class="page-break"></div>
+
+
+<h1 id="page-420">Tipo Ação</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-exe" style="border-collapse:collapse;width:63.2143%;border-width:1px;border-style:solid;height:119.188px;"><colgroup><col style="width:16.0377%;"><col style="width:33.3962%;"><col style="width:22.2617%;"><col style="width:28.4931%;"></colgroup>
+<thead>
+<tr style="height:29.7969px;">
+<td style="height:29.7969px;">Código</td>
+<td style="height:29.7969px;">Descrição</td>
+<td style="height:29.7969px;">Exercício Início</td>
+<td style="height:29.7969px;">Exercício Fim</td>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="height:29.7969px;">0</td>
+<td style="height:29.7969px;">Operações Especiais</td>
+<td style="height:29.7969px;">2025</td>
+<td style="height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="height:29.7969px;">1</td>
+<td style="height:29.7969px;">Projeto</td>
+<td style="height:29.7969px;">2025</td>
+<td style="height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="height:29.7969px;">2</td>
+<td style="height:29.7969px;">Atividade</td>
+<td style="height:29.7969px;">2025</td>
+<td style="height:29.7969px;">-</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-471">Tipo Alteração Orçamentária</h1>
+<div dir="ltr" id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-1-a" style="text-align:left;">
+<table style="width:92.619%;height:501.928px;">
+<thead>
+<tr style="height:29.7917px;">
+<th style="width:10.0414%;height:29.7917px;" scope="col">
+<p dir="ltr">Código</p>
+</th>
+<th style="width:59.4566%;height:29.7917px;" scope="col">
+<p dir="ltr">Descrição</p>
+</th>
+<th style="width:15.3153%;height:29.7917px;" scope="col">
+<p dir="ltr">Exercício Início</p>
+</th>
+<th style="width:15.1866%;height:29.7917px;" scope="col">
+<p dir="ltr">Exercício Fim</p>
+</th>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7917px;">
+<td style="width:10.0414%;height:29.7917px;">
+<p dir="ltr">1</p>
+</td>
+<td style="width:59.4566%;height:29.7917px;">
+<p dir="ltr">Abre Crédito Suplementar - Operação de Crédito</p>
+</td>
+<td style="width:15.3153%;height:29.7917px;">
+<p dir="ltr">2025</p>
+</td>
+<td style="width:15.1866%;height:29.7917px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr style="height:29.7917px;">
+<td style="width:10.0414%;height:29.7917px;">
+<p dir="ltr">2</p>
+</td>
+<td style="width:59.4566%;height:29.7917px;">
+<p dir="ltr">Abre Crédito Suplementar - Superávit Financeiro</p>
+</td>
+<td style="width:15.3153%;height:29.7917px;">
+<p dir="ltr">2025</p>
+</td>
+<td style="width:15.1866%;height:29.7917px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr style="height:29.7917px;">
+<td style="width:10.0414%;height:29.7917px;">
+<p dir="ltr">3</p>
+</td>
+<td style="width:59.4566%;height:29.7917px;">
+<p dir="ltr">Abre Crédito Suplementar - Excesso de Arrecadação</p>
+</td>
+<td style="width:15.3153%;height:29.7917px;">
+<p dir="ltr">2025</p>
+</td>
+<td style="width:15.1866%;height:29.7917px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr style="height:29.7917px;">
+<td style="width:10.0414%;height:29.7917px;">
+<p dir="ltr">4</p>
+</td>
+<td style="width:59.4566%;height:29.7917px;">
+<p dir="ltr">Abre Crédito Suplementar - Anulação de dotação</p>
+</td>
+<td style="width:15.3153%;height:29.7917px;">
+<p dir="ltr">2025</p>
+</td>
+<td style="width:15.1866%;height:29.7917px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr style="height:29.7917px;">
+<td style="width:10.0414%;height:29.7917px;">
+<p dir="ltr"><span style="color:rgb(0,0,0);"><s>5</s></span></p>
+</td>
+<td style="width:59.4566%;height:29.7917px;">
+<p dir="ltr"><span style="color:rgb(0,0,0);"><s>Transferência de Recurso p/a Reserva de Contingência</s></span></p>
+</td>
+<td style="width:15.3153%;height:29.7917px;">
+<p dir="ltr"><span style="color:rgb(0,0,0);">-</span></p>
+</td>
+<td style="width:15.1866%;height:29.7917px;">
+<p dir="ltr"><span style="color:rgb(0,0,0);"><s>-</s></span></p>
+</td>
+</tr>
+<tr style="height:29.7917px;">
+<td style="width:10.0414%;height:29.7917px;">
+<p dir="ltr">6</p>
+</td>
+<td style="width:59.4566%;height:29.7917px;">
+<p dir="ltr">Abre Crédito Especial - Operação de Crédito</p>
+</td>
+<td style="width:15.3153%;height:29.7917px;">
+<p dir="ltr">2025</p>
+</td>
+<td style="width:15.1866%;height:29.7917px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr style="height:29.7917px;">
+<td style="width:10.0414%;height:29.7917px;">
+<p dir="ltr">7</p>
+</td>
+<td style="width:59.4566%;height:29.7917px;">
+<p dir="ltr">Abre Crédito Especial - Superávit Financeiro</p>
+</td>
+<td style="width:15.3153%;height:29.7917px;">
+<p dir="ltr">2025</p>
+</td>
+<td style="width:15.1866%;height:29.7917px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr style="height:29.7917px;">
+<td style="width:10.0414%;height:29.7917px;">
+<p dir="ltr">8</p>
+</td>
+<td style="width:59.4566%;height:29.7917px;">
+<p dir="ltr">Abre Crédito Especial - Anulação de Dotação</p>
+</td>
+<td style="width:15.3153%;height:29.7917px;">
+<p dir="ltr">2025</p>
+</td>
+<td style="width:15.1866%;height:29.7917px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr style="height:29.7917px;">
+<td style="width:10.0414%;height:29.7917px;">
+<p dir="ltr">9</p>
+</td>
+<td style="width:59.4566%;height:29.7917px;">
+<p dir="ltr">Abre Crédito Especial - Excesso de Arrecadação</p>
+</td>
+<td style="width:15.3153%;height:29.7917px;">
+<p dir="ltr">2025</p>
+</td>
+<td style="width:15.1866%;height:29.7917px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr style="height:29.7917px;">
+<td style="width:10.0414%;height:29.7917px;">
+<p dir="ltr">10</p>
+</td>
+<td style="width:59.4566%;height:29.7917px;">
+<p dir="ltr">Abre Crédito Extraordinário</p>
+</td>
+<td style="width:15.3153%;height:29.7917px;">
+<p dir="ltr">2025</p>
+</td>
+<td style="width:15.1866%;height:29.7917px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr style="height:29.7917px;">
+<td style="width:10.0414%;height:29.7917px;">
+<p dir="ltr">11</p>
+</td>
+<td style="width:59.4566%;height:29.7917px;">
+<p dir="ltr">Anulação</p>
+</td>
+<td style="width:15.3153%;height:29.7917px;">
+<p dir="ltr">2025</p>
+</td>
+<td style="width:15.1866%;height:29.7917px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr style="height:29.7917px;">
+<td style="width:10.0414%;height:29.7917px;">
+<p dir="ltr">12</p>
+</td>
+<td style="width:59.4566%;height:29.7917px;">
+<p dir="ltr">Transposição, Remanejamento, Transferências – Origem</p>
+</td>
+<td style="width:15.3153%;height:29.7917px;">
+<p dir="ltr">2025</p>
+</td>
+<td style="width:15.1866%;height:29.7917px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr style="height:29.4583px;">
+<td style="width:10.0414%;height:29.4583px;">
+<p dir="ltr">13</p>
+</td>
+<td style="width:59.4566%;height:29.4583px;">
+<p dir="ltr">Transposição, Remanejamento, Transferências – Destino</p>
+</td>
+<td style="width:15.3153%;height:29.4583px;">
+<p dir="ltr">2025</p>
+</td>
+<td style="width:15.1866%;height:29.4583px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr style="height:29.7917px;">
+<td style="width:10.0414%;height:29.7917px;">
+<p dir="ltr">14</p>
+</td>
+<td style="width:59.4566%;height:29.7917px;">
+<p dir="ltr">Ofício – Origem</p>
+</td>
+<td style="width:15.3153%;height:29.7917px;">
+<p dir="ltr">2025</p>
+</td>
+<td style="width:15.1866%;height:29.7917px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr style="height:29.7917px;">
+<td style="width:10.0414%;height:29.7917px;">
+<p dir="ltr">15</p>
+</td>
+<td style="width:59.4566%;height:29.7917px;">
+<p dir="ltr">Ofício – Destino</p>
+</td>
+<td style="width:15.3153%;height:29.7917px;">
+<p dir="ltr">2025</p>
+</td>
+<td style="width:15.1866%;height:29.7917px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr style="height:25.5938px;">
+<td style="width:10.0414%;height:25.5938px;">
+<p dir="ltr">16</p>
+</td>
+<td style="width:59.4566%;height:25.5938px;">
+<p dir="ltr">Reabertura de Crédito Especial - Superávit Financeiro</p>
+</td>
+<td style="width:15.3153%;height:25.5938px;">
+<p dir="ltr">2025</p>
+</td>
+<td style="width:15.1866%;height:25.5938px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p id="bkmrk-obs.%3A-o-tipo-14-e-15" dir="ltr">Obs.: Os tipos <strong>14</strong> e <strong>15</strong> (Ofício) serão utilizados para movimentações orçamentárias apenas nos elementos de despesa. </p>                                <div class="page-break"></div>
+
+
+<h1 id="page-421">Tipo Ato Jurídico</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-exe" style="width:55.7143%;height:144.781px;"><colgroup><col style="width:13.6691%;"><col style="width:86.3309%;"></colgroup>
+<thead>
+<tr style="height:23.5938px;">
+<td style="height:23.5938px;">Código</td>
+<td style="height:23.5938px;">Descrição</td>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="height:29.7969px;">1</td>
+<td style="height:29.7969px;">Lei</td>
+</tr>
+<tr style="height:31.7969px;">
+<td style="height:31.7969px;">2</td>
+<td style="height:31.7969px;">Decreto</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="height:29.7969px;">3</td>
+<td style="height:29.7969px;">Portaria</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="height:29.7969px;">4</td>
+<td style="height:29.7969px;">Outros</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-651">Tipo Ato Pessoal</h1>
+<table style="width:87.1429%;height:953.501px;" id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-exe">
+<thead>
+<tr style="height:29.7969px;">
+<th style="width:8.60015%;height:29.7969px;">Código</th>
+<th class="align-left" style="width:62.5064%;height:29.7969px;">Descrição</th>
+<th style="width:15.1362%;height:29.7969px;">Exercício Início</th>
+<th style="width:13.5758%;height:29.7969px;">Exercício Fim</th>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">1</td>
+<td style="width:62.5064%;height:29.7969px;">Admissão p/ cargo efetivo</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">2</td>
+<td style="width:62.5064%;height:29.7969px;">Admissão p/ cargo comissionado</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">3</td>
+<td style="width:62.5064%;height:29.7969px;">Admissão p/ emprego público</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">4</td>
+<td style="width:62.5064%;height:29.7969px;">Reintegração</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">5</td>
+<td style="width:62.5064%;height:29.7969px;">Aposentadoria do município</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">6</td>
+<td style="width:62.5064%;height:29.7969px;">Exoneração/Demissão</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">7</td>
+<td style="width:62.5064%;height:29.7969px;">Falecimento</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">8</td>
+<td style="width:62.5064%;height:29.7969px;">Contratação por tempo determinado</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">9</td>
+<td style="width:62.5064%;height:29.7969px;">Dispensa</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">10</td>
+<td style="width:62.5064%;height:29.7969px;">Afastamento contando o tempo de serviço</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">11</td>
+<td style="width:62.5064%;height:29.7969px;">Afastamento sem contar o tempo de serviço</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">12</td>
+<td style="width:62.5064%;height:29.7969px;">À disposição com ônus</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">13</td>
+<td style="width:62.5064%;height:29.7969px;">À disposição sem ônus</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">14</td>
+<td style="width:62.5064%;height:29.7969px;">Disponibilidade</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">15</td>
+<td style="width:62.5064%;height:29.7969px;">Reversão/Readaptação</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">16</td>
+<td style="width:62.5064%;height:29.7969px;">Nomeação p/ cargo Eletivo</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">17</td>
+<td style="width:62.5064%;height:29.7969px;">Benefício previdenciário (Auxílio Saúde, Sal. Maternidade, Sal. Família)</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">18</td>
+<td style="width:62.5064%;height:29.7969px;">Alteração da unidade orçamentária de trabalho</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">19</td>
+<td style="width:62.5064%;height:29.7969px;">Retorno do afastamento (contando ou não tempo de serviço)</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">20</td>
+<td style="width:62.5064%;height:29.7969px;">Retorno de servidor que se encontrava à disposição (com ou sem ônus)</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">21</td>
+<td style="width:62.5064%;height:29.7969px;">Retorno de servidor em gozo de Benefício Previdenciário</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">22</td>
+<td style="width:62.5064%;height:29.7969px;">Rescisão de contrato por tempo determinado</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">23</td>
+<td style="width:62.5064%;height:29.7969px;">Reestruturação de cargos</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">24</td>
+<td style="width:62.5064%;height:29.7969px;">Aposentadoria (ingresso no instituto)</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">25</td>
+<td style="width:62.5064%;height:29.7969px;">Pensão por morte (ingresso no instituto)</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">26</td>
+<td style="width:62.5064%;height:29.7969px;">Pensão especial (decisão judicial)</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">27</td>
+<td style="width:62.5064%;height:29.7969px;">Nomeação de efetivo para função de confiança/cargo comissionado</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">28</td>
+<td style="width:62.5064%;height:29.7969px;">Retorno de efetivo de função de confiança/cargo comissionado</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">29</td>
+<td style="width:62.5064%;height:29.7969px;">Afastamento para tratamento de saúde</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">30</td>
+<td style="width:62.5064%;height:29.7969px;">Afastamento por licença gestante</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">99</td>
+<td style="width:62.5064%;height:29.7969px;">Outros</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-664">Tipo Natureza Acumulação</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-1-d-1" class="MsoNormalTable" style="width:102.619%;height:238.375px;">
+<thead>
+<tr style="height:29.7969px;">
+<td style="width:14.3027%;height:29.7969px;">
+<p class="MsoNormal"><strong>Código</strong></p>
+</td>
+<td style="width:45.7688%;height:29.7969px;">
+<p class="MsoNormal"><strong>Descrição</strong></p>
+</td>
+<td style="width:14.7884%;height:29.7969px;">
+<p class="MsoNormal"><strong>Exercício Início</strong></p>
+</td>
+<td style="width:25.2592%;height:29.7969px;">
+<p class="MsoNormal"><strong>Exercício Fim</strong></p>
+</td>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:14.3027%;height:29.7969px;">
+<p class="MsoNormal">0</p>
+</td>
+<td style="width:45.7688%;height:29.7969px;">
+<p class="MsoNormal">Outros</p>
+</td>
+<td style="width:14.7884%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:25.2592%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:14.3027%;height:29.7969px;">
+<p class="MsoNormal">1</p>
+</td>
+<td style="width:45.7688%;height:29.7969px;">
+<p class="MsoNormal">Professor</p>
+</td>
+<td style="width:14.7884%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:25.2592%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:14.3027%;height:29.7969px;">
+<p class="MsoNormal">2</p>
+</td>
+<td style="width:45.7688%;height:29.7969px;">
+<p class="MsoNormal">Profissional de Saúde com Profissão Regulamentada</p>
+</td>
+<td style="width:14.7884%;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:25.2592%;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:14.3027%;height:29.7969px;">
+<p class="MsoNormal">3</p>
+</td>
+<td style="width:45.7688%;height:29.7969px;">
+<p class="MsoNormal">Vereador</p>
+</td>
+<td style="width:14.7884%;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:25.2592%;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-665">Tipo Cargo</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-1-d-1" class="MsoNormalTable" style="width:102.619%;height:326.563px;">
+<thead>
+<tr style="height:29.7969px;">
+<td style="width:14.3027%;height:29.7969px;">
+<p class="MsoNormal"><strong>Código</strong></p>
+</td>
+<td style="width:48.1497%;height:29.7969px;">
+<p class="MsoNormal"><strong>Descrição</strong></p>
+</td>
+<td style="width:22.4105%;height:29.7969px;">
+<p class="MsoNormal"><strong>Exercício Início</strong></p>
+</td>
+<td style="width:15.2563%;height:29.7969px;">
+<p class="MsoNormal"><strong>Exercício Fim</strong></p>
+</td>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:14.3027%;height:29.7969px;">
+<p class="MsoNormal">0</p>
+</td>
+<td style="width:48.1497%;height:29.7969px;">
+<p class="MsoNormal">Inativos / Pensionistas</p>
+</td>
+<td style="width:22.4105%;height:29.7969px;">
+<p class="MsoNormal">2026</p>
+</td>
+<td style="width:15.2563%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:14.3027%;height:29.7969px;">
+<p class="MsoNormal">1</p>
+</td>
+<td style="width:48.1497%;height:29.7969px;">
+<p class="MsoNormal">Efetivos</p>
+</td>
+<td style="width:22.4105%;height:29.7969px;">
+<p class="MsoNormal">2026</p>
+</td>
+<td style="width:15.2563%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:32.7969px;">
+<td style="width:14.3027%;height:32.7969px;">
+<p class="MsoNormal">2</p>
+</td>
+<td style="width:48.1497%;height:32.7969px;">
+<p class="MsoNormal">Eletivos</p>
+</td>
+<td style="width:22.4105%;height:32.7969px;">
+<p class="MsoNormal">2026</p>
+</td>
+<td style="width:15.2563%;height:32.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:14.3027%;height:29.7969px;">
+<p class="MsoNormal">3</p>
+</td>
+<td style="width:48.1497%;height:29.7969px;">
+<p class="MsoNormal">Cargo comissionado</p>
+</td>
+<td style="width:22.4105%;height:29.7969px;">
+<p class="MsoNormal">2026</p>
+</td>
+<td style="width:15.2563%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:14.3027%;height:29.7969px;">
+<p class="MsoNormal"><s><span style="color:rgb(224,62,45);">4</span></s></p>
+</td>
+<td style="width:48.1497%;height:29.7969px;">
+<p class="MsoNormal"><s><span style="color:rgb(224,62,45);">Função de confiança (excluir)</span></s></p>
+</td>
+<td style="width:22.4105%;height:29.7969px;">
+<p class="MsoNormal"><s><span style="color:rgb(224,62,45);">2026</span></s></p>
+</td>
+<td style="width:15.2563%;height:29.7969px;">
+<p class="MsoNormal"><s><span style="color:rgb(224,62,45);">-</span></s></p>
+</td>
+</tr>
+<tr style="height:25.5938px;">
+<td style="width:14.3027%;height:25.5938px;">
+<p class="MsoNormal">5</p>
+</td>
+<td style="width:48.1497%;height:25.5938px;">
+<p class="MsoNormal">Contratação por excepcional interesse público</p>
+</td>
+<td style="width:22.4105%;height:25.5938px;">
+<p class="MsoNormal">2026</p>
+</td>
+<td style="width:15.2563%;height:25.5938px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:14.3027%;height:29.7969px;">
+<p class="MsoNormal">6</p>
+</td>
+<td style="width:48.1497%;height:29.7969px;">
+<p class="MsoNormal">Emprego público</p>
+</td>
+<td style="width:22.4105%;height:29.7969px;">
+<p class="MsoNormal">2026</p>
+</td>
+<td style="width:15.2563%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:14.3027%;height:29.7969px;">
+<p class="MsoNormal">7</p>
+</td>
+<td style="width:48.1497%;height:29.7969px;">
+<p class="MsoNormal">Benefício previdenciário temporário</p>
+</td>
+<td style="width:22.4105%;height:29.7969px;">
+<p class="MsoNormal">2026</p>
+</td>
+<td style="width:15.2563%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:14.3027%;height:29.7969px;">
+<p class="MsoNormal">8</p>
+</td>
+<td style="width:48.1497%;height:29.7969px;">
+<p class="MsoNormal">À disposição</p>
+</td>
+<td style="width:22.4105%;height:29.7969px;">
+<p class="MsoNormal">2026</p>
+</td>
+<td style="width:15.2563%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:14.3027%;height:29.7969px;">
+<p class="MsoNormal">9</p>
+</td>
+<td style="width:48.1497%;height:29.7969px;">
+<p class="MsoNormal">Efetivo-Comissionado / Função Confiança</p>
+</td>
+<td style="width:22.4105%;height:29.7969px;">
+<p class="MsoNormal">2026</p>
+</td>
+<td style="width:15.2563%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-666">Tipo Situação Matrícula</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-1-d-1" class="MsoNormalTable" style="width:102.619%;height:271.172px;">
+<thead>
+<tr style="height:29.7969px;">
+<td style="width:14.3027%;height:29.7969px;">
+<p class="MsoNormal"><strong>Código</strong></p>
+</td>
+<td style="width:48.1497%;height:29.7969px;">
+<p class="MsoNormal"><strong>Descrição</strong></p>
+</td>
+<td style="width:22.4105%;height:29.7969px;">
+<p class="MsoNormal"><strong>Exercício Início</strong></p>
+</td>
+<td style="width:15.2563%;height:29.7969px;">
+<p class="MsoNormal"><strong>Exercício Fim</strong></p>
+</td>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:14.3027%;height:29.7969px;">
+<p class="MsoNormal">0</p>
+</td>
+<td style="width:48.1497%;height:29.7969px;">
+<p class="MsoNormal">Admissão</p>
+</td>
+<td style="width:22.4105%;height:29.7969px;">
+<p class="MsoNormal">2026</p>
+</td>
+<td style="width:15.2563%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:14.3027%;height:29.7969px;">
+<p class="MsoNormal">1</p>
+</td>
+<td style="width:48.1497%;height:29.7969px;">
+<p class="MsoNormal">Aposentadoria</p>
+</td>
+<td style="width:22.4105%;height:29.7969px;">
+<p class="MsoNormal">2026</p>
+</td>
+<td style="width:15.2563%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:32.7969px;">
+<td style="width:14.3027%;height:32.7969px;">
+<p class="MsoNormal">2</p>
+</td>
+<td style="width:48.1497%;height:32.7969px;">
+<p class="MsoNormal">Óbito</p>
+</td>
+<td style="width:22.4105%;height:32.7969px;">
+<p class="MsoNormal">2026</p>
+</td>
+<td style="width:15.2563%;height:32.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:14.3027%;height:29.7969px;">
+<p class="MsoNormal">3</p>
+</td>
+<td style="width:48.1497%;height:29.7969px;">
+<p class="MsoNormal">Exoneração ou Demissão</p>
+</td>
+<td style="width:22.4105%;height:29.7969px;">
+<p class="MsoNormal">2026</p>
+</td>
+<td style="width:15.2563%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:14.3027%;height:29.7969px;">
+<p class="MsoNormal">4</p>
+</td>
+<td style="width:48.1497%;height:29.7969px;">
+<p class="MsoNormal">Afastamento Temporário</p>
+</td>
+<td style="width:22.4105%;height:29.7969px;">
+<p class="MsoNormal">2026</p>
+</td>
+<td style="width:15.2563%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:14.3027%;height:29.7969px;">
+<p class="MsoNormal">5</p>
+</td>
+<td style="width:48.1497%;height:29.7969px;">
+<p class="MsoNormal">Retorno Afastamento Temporário</p>
+</td>
+<td style="width:22.4105%;height:29.7969px;">
+<p class="MsoNormal">2026</p>
+</td>
+<td style="width:15.2563%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-630">Tipo Categoria Frota</h1>
+<table id="bkmrk-codigo-descri%C3%A7%C3%A3o-3-d" style="width:66.9048%;height:89.3907px;">
+<thead>
+<tr style="height:29.7969px;">
+<th class="align-left" style="width:11.2016%;height:29.7969px;">Codigo</th>
+<th class="align-left" style="width:51.1399%;height:29.7969px;">Descrição</th>
+<th class="align-left" style="width:19.7148%;height:29.7969px;">Exercício Início</th>
+<th style="width:17.6824%;height:29.7969px;">Exercício Fim</th>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:11.2016%;height:29.7969px;">1</td>
+<td style="width:51.1399%;height:29.7969px;">Veículo</td>
+<td style="width:19.7148%;height:29.7969px;">2025</td>
+<td style="width:17.6824%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:11.2016%;height:29.7969px;">2</td>
+<td style="width:51.1399%;height:29.7969px;">Máquina</td>
+<td style="width:19.7148%;height:29.7969px;">2025</td>
+<td style="width:17.6824%;height:29.7969px;">-</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-634">Tipo Combustível</h1>
+<table id="bkmrk-codigo-descri%C3%A7%C3%A3o-3-d" style="width:68.3333%;height:89.3907px;">
+<thead>
+<tr style="height:29.7969px;">
+<th class="align-left" style="width:11.1696%;height:29.7969px;">Codigo</th>
+<th class="align-left" style="width:51.4848%;height:29.7969px;">Descrição</th>
+<th class="align-left" style="width:19.7213%;height:29.7969px;">Exercício Início</th>
+<th style="width:17.627%;height:29.7969px;">Exercício Fim</th>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:11.1696%;height:29.7969px;">1</td>
+<td style="width:51.4848%;height:29.7969px;">Gasolina</td>
+<td style="width:19.7213%;height:29.7969px;">2025</td>
+<td style="width:17.627%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:11.1696%;height:29.7969px;">2</td>
+<td style="width:51.4848%;height:29.7969px;">Diesel</td>
+<td style="width:19.7213%;height:29.7969px;">2025</td>
+<td style="width:17.627%;height:29.7969px;">-</td>
+</tr>
+<tr>
+<td style="width:11.1696%;">3</td>
+<td style="width:51.4848%;">Etanol</td>
+<td style="width:19.7213%;height:29.7969px;">2025</td>
+<td style="width:17.627%;height:29.7969px;">-</td>
+</tr>
+<tr>
+<td style="width:11.1696%;">4</td>
+<td style="width:51.4848%;">Gás Natural</td>
+<td style="width:19.7213%;height:29.7969px;">2025</td>
+<td style="width:17.627%;height:29.7969px;">-</td>
+</tr>
+<tr>
+<td style="width:11.1696%;">5</td>
+<td style="width:51.4848%;">Arla 32</td>
+<td style="width:19.7213%;height:29.7969px;">2025</td>
+<td style="width:17.627%;height:29.7969px;">-</td>
+</tr>
+<tr>
+<td style="width:11.1696%;">6</td>
+<td style="width:51.4848%;">Eletricidade</td>
+<td style="width:19.7213%;height:29.7969px;">2025</td>
+<td style="width:17.627%;height:29.7969px;">-</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-600">Tipo Conciliação</h1>
+<table id="bkmrk-codigo-descri%C3%A7%C3%A3o-3-d">
+<thead>
+<tr>
+<th class="align-left">Codigo</th>
+<th class="align-left">Descrição</th>
+<th>Multiplicador</th>
+<th class="align-left">Exercício Início</th>
+<th>Exercício Fim</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Saldo conforme extrato bancário</td>
+<td>0</td>
+<td>2025</td>
+<td>-</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Entrada não considerada pelo banco</td>
+<td>1</td>
+<td>2025</td>
+<td>-</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Saída não considerada pela contabilidade</td>
+<td>1</td>
+<td>2025</td>
+<td>-</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Entrada não considerada pela contabilidade</td>
+<td>-1</td>
+<td>2025</td>
+<td><br></td>
+</tr>
+<tr>
+<td>5</td>
+<td>Saída não considerada pelo banco</td>
+<td>-1</td>
+<td>2025</td>
+<td><br></td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-441">Tipo Conta Bancária</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-1-c" style="width:98.0952%;"><colgroup><col style="width:13.9733%;"><col style="width:59.4168%;"><col style="width:13.6074%;"><col style="width:13.0025%;"></colgroup>
+<thead>
+<tr>
+<th scope="col">
+<p dir="ltr">Código</p>
+</th>
+<th scope="col">
+<p dir="ltr">Descrição</p>
+</th>
+<th scope="col">
+<p dir="ltr">Exercício Início</p>
+</th>
+<th scope="col">
+<p dir="ltr">Exercício Fim</p>
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<p dir="ltr">1</p>
+</td>
+<td>
+<p dir="ltr">Conta Corrente</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">2</p>
+</td>
+<td>
+<p dir="ltr">Conta Corrente - Fopag</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">3</p>
+</td>
+<td>
+<p dir="ltr">Conta Investimento - Títulos Públicos</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">4</p>
+</td>
+<td>
+<p dir="ltr">Conta Investimento - Poupança</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">5</p>
+</td>
+<td>
+<p dir="ltr">Conta Investimento - Fundo de Investimento</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">6</p>
+</td>
+<td>
+<p dir="ltr">Conta Investimento - CDB</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">7</p>
+</td>
+<td>
+<p dir="ltr">Conta Investimento - Outras Aplicações Financeiras de Liquidez Imediata</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-640">Tipo Contabilização Folha Pagamento</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-1-d-1" class="MsoNormalTable" style="width:73.3333%;height:89.3907px;">
+<thead>
+<tr style="height:29.7969px;">
+<td style="width:23.252%;height:29.7969px;">
+<p class="MsoNormal"><strong>Código</strong></p>
+</td>
+<td style="width:38.374%;height:29.7969px;">
+<p class="MsoNormal"><strong>Descrição</strong></p>
+</td>
+<td style="width:19.187%;">
+<p class="MsoNormal"><strong>Exercício Início</strong></p>
+</td>
+<td style="width:19.187%;">
+<p class="MsoNormal"><strong>Exercício Fim</strong></p>
+</td>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:23.252%;height:29.7969px;">
+<p class="MsoNormal">0</p>
+</td>
+<td style="width:38.374%;height:29.7969px;">
+<p class="MsoNormal">Orçamentário</p>
+</td>
+<td style="width:19.187%;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:19.187%;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:23.252%;height:29.7969px;">
+<p class="MsoNormal">1</p>
+</td>
+<td style="width:38.374%;height:29.7969px;">
+<p class="MsoNormal">Extraorçamentário</p>
+</td>
+<td style="width:19.187%;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:19.187%;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-517">Tipo Credor</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-1-p" class="MsoNormalTable" style="width:392px;height:96.9845px;">
+<thead>
+<tr style="height:32.5938px;">
+<td style="width:66px;height:32.5938px;">
+<p class="MsoNormal"><strong>Código</strong></p>
+</td>
+<td style="width:114.75px;height:32.5938px;">
+<p class="MsoNormal"><strong>Descrição</strong></p>
+</td>
+<td style="width:116px;height:32.5938px;">
+<p class="MsoNormal"><strong>Exercício Início</strong></p>
+</td>
+<td style="width:207.5px;height:32.5938px;">
+<p class="MsoNormal"><strong>Exercício Fim</strong></p>
+</td>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:66px;height:29.7969px;">
+<p class="MsoNormal">1</p>
+</td>
+<td style="width:114.75px;height:29.7969px;">
+<p class="MsoNormal">Pessoa Física</p>
+</td>
+<td style="width:116px;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:207.5px;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:34.5938px;">
+<td style="width:66px;height:34.5938px;">
+<p class="MsoNormal">2</p>
+</td>
+<td style="width:114.75px;height:34.5938px;">
+<p class="MsoNormal">Pessoa Jurídica</p>
+</td>
+<td style="width:116px;height:34.5938px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:207.5px;height:34.5938px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-475">Tipo Empenho</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-1-o">
+<thead>
+<tr>
+<th scope="col">
+<p dir="ltr">Código</p>
+</th>
+<th scope="col">
+<p dir="ltr">Descrição</p>
+</th>
+<th scope="col">
+<p dir="ltr">Exercício Início</p>
+</th>
+<th scope="col">
+<p dir="ltr">Exercício Fim</p>
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<p dir="ltr">1</p>
+</td>
+<td>
+<p dir="ltr">Ordinário</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">2</p>
+</td>
+<td>
+<p dir="ltr">Estimativo</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">3</p>
+</td>
+<td>
+<p dir="ltr">Global</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-643">Tipo Escolaridade</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-1-d-1" class="MsoNormalTable" style="width:73.3333%;height:238.375px;">
+<thead>
+<tr style="height:29.7969px;">
+<td style="width:23.2526%;height:29.7969px;">
+<p class="MsoNormal"><strong>Código</strong></p>
+</td>
+<td style="width:38.375%;height:29.7969px;">
+<p class="MsoNormal"><strong>Descrição</strong></p>
+</td>
+<td style="width:19.1875%;height:29.7969px;">
+<p class="MsoNormal"><strong>Exercício Início</strong></p>
+</td>
+<td style="width:19.1875%;height:29.7969px;">
+<p class="MsoNormal"><strong>Exercício Fim</strong></p>
+</td>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:23.2526%;height:29.7969px;">
+<p class="MsoNormal">0</p>
+</td>
+<td style="width:38.375%;height:29.7969px;">
+<p class="MsoNormal">Sem exigência</p>
+</td>
+<td style="width:19.1875%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:19.1875%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:23.2526%;height:29.7969px;">
+<p class="MsoNormal">1</p>
+</td>
+<td style="width:38.375%;height:29.7969px;">
+<p class="MsoNormal">Alfabetização</p>
+</td>
+<td style="width:19.1875%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:19.1875%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:23.2526%;height:29.7969px;">
+<p class="MsoNormal">2</p>
+</td>
+<td style="width:38.375%;height:29.7969px;">
+<p class="MsoNormal">Ensino fundamental</p>
+</td>
+<td style="width:19.1875%;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:19.1875%;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:23.2526%;height:29.7969px;">
+<p class="MsoNormal">3</p>
+</td>
+<td style="width:38.375%;height:29.7969px;">
+<p class="MsoNormal">Ensino médio</p>
+</td>
+<td style="width:19.1875%;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:19.1875%;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:23.2526%;height:29.7969px;">
+<p class="MsoNormal">4</p>
+</td>
+<td style="width:38.375%;height:29.7969px;">
+<p class="MsoNormal">Superior incompleto</p>
+</td>
+<td style="width:19.1875%;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:19.1875%;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:23.2526%;height:29.7969px;">
+<p class="MsoNormal">5</p>
+</td>
+<td style="width:38.375%;height:29.7969px;">
+<p class="MsoNormal">Superior completo</p>
+</td>
+<td style="width:19.1875%;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:19.1875%;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:23.2526%;height:29.7969px;">
+<p class="MsoNormal">6</p>
+</td>
+<td style="width:38.375%;height:29.7969px;">
+<p class="MsoNormal">Pós graduação</p>
+</td>
+<td style="width:19.1875%;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:19.1875%;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-624">Tipo Frota</h1>
+<table id="bkmrk-codigo-descri%C3%A7%C3%A3o-3-d" style="width:66.9048%;height:148.984px;">
+<thead>
+<tr style="height:29.7969px;">
+<th class="align-left" style="width:11.2016%;height:29.7969px;">Codigo</th>
+<th class="align-left" style="width:51.1399%;height:29.7969px;">Descrição</th>
+<th class="align-left" style="width:19.7148%;height:29.7969px;">Exercício Início</th>
+<th style="width:17.6824%;height:29.7969px;">Exercício Fim</th>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:11.2016%;height:29.7969px;">1</td>
+<td style="width:51.1399%;height:29.7969px;">Próprio</td>
+<td style="width:19.7148%;height:29.7969px;">2025</td>
+<td style="width:17.6824%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:11.2016%;height:29.7969px;">2</td>
+<td style="width:51.1399%;height:29.7969px;">Locado</td>
+<td style="width:19.7148%;height:29.7969px;">2025</td>
+<td style="width:17.6824%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:11.2016%;height:29.7969px;">3</td>
+<td style="width:51.1399%;height:29.7969px;">Prestação de Serviços</td>
+<td style="width:19.7148%;height:29.7969px;">2025</td>
+<td style="width:17.6824%;height:29.7969px;"><br></td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:11.2016%;height:29.7969px;">4</td>
+<td style="width:51.1399%;height:29.7969px;">Cedido</td>
+<td style="width:19.7148%;height:29.7969px;">2025</td>
+<td style="width:17.6824%;height:29.7969px;"><br></td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-656">Tipo Folha</h1>
+<table id="bkmrk-codigo-descri%C3%A7%C3%A3o-3-d" style="width:66.9048%;height:148.984px;">
+<thead>
+<tr style="height:29.7969px;">
+<th class="align-left" style="width:11.2016%;height:29.7969px;">Codigo</th>
+<th class="align-left" style="width:51.1399%;height:29.7969px;">Descrição</th>
+<th class="align-left" style="width:19.7148%;height:29.7969px;">Exercício Início</th>
+<th style="width:17.6824%;height:29.7969px;">Exercício Fim</th>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:11.2016%;height:29.7969px;">0</td>
+<td style="width:51.1399%;height:29.7969px;">Normal</td>
+<td style="width:19.7148%;height:29.7969px;">2025</td>
+<td style="width:17.6824%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:11.2016%;height:29.7969px;">1</td>
+<td style="width:51.1399%;height:29.7969px;">13º Sal.</td>
+<td style="width:19.7148%;height:29.7969px;">2025</td>
+<td style="width:17.6824%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:11.2016%;height:29.7969px;">2</td>
+<td style="width:51.1399%;height:29.7969px;">F. Extra</td>
+<td style="width:19.7148%;height:29.7969px;">2025</td>
+<td style="width:17.6824%;height:29.7969px;"><br></td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:11.2016%;height:29.7969px;">3</td>
+<td style="width:51.1399%;height:29.7969px;">F. Suplementar</td>
+<td style="width:19.7148%;height:29.7969px;">2025</td>
+<td style="width:17.6824%;height:29.7969px;"><br></td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-442">Tipo Lançamento</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-1-o" style="width:45.4762%;height:89.3907px;">
+<thead>
+<tr style="height:29.7969px;">
+<th style="width:16.7965%;height:29.7969px;" scope="col">
+<p dir="ltr">Código</p>
+</th>
+<th style="width:20.7363%;height:29.7969px;" scope="col">
+<p dir="ltr">Descrição</p>
+</th>
+<th style="width:32.021%;height:29.7969px;" scope="col">
+<p dir="ltr">Exercício Início</p>
+</th>
+<th style="width:30.4462%;height:29.7969px;" scope="col">
+<p dir="ltr">Exercício Fim</p>
+</th>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:16.7965%;height:29.7969px;">
+<p dir="ltr">1</p>
+</td>
+<td style="width:20.7363%;height:29.7969px;">
+<p dir="ltr">Ordinário</p>
+</td>
+<td style="width:32.021%;height:29.7969px;">
+<p dir="ltr">2025</p>
+</td>
+<td style="width:30.4462%;height:29.7969px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:16.7965%;height:29.7969px;">
+<p dir="ltr">2</p>
+</td>
+<td style="width:20.7363%;height:29.7969px;">
+<p dir="ltr">Estorno</p>
+</td>
+<td style="width:32.021%;height:29.7969px;">
+<p dir="ltr">2025</p>
+</td>
+<td style="width:30.4462%;height:29.7969px;">
+<p dir="ltr">-</p>
+</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-639">Tipo Lançamento Folha Pagamento</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-1-d-1" class="MsoNormalTable" style="width:73.3333%;height:89.3907px;">
+<thead>
+<tr style="height:29.7969px;">
+<td style="width:23.252%;height:29.7969px;">
+<p class="MsoNormal"><strong>Código</strong></p>
+</td>
+<td style="width:38.374%;height:29.7969px;">
+<p class="MsoNormal"><strong>Descrição</strong></p>
+</td>
+<td style="width:19.187%;">
+<p class="MsoNormal"><strong>Exercício Início</strong></p>
+</td>
+<td style="width:19.187%;">
+<p class="MsoNormal"><strong>Exercício Fim</strong></p>
+</td>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:23.252%;height:29.7969px;">
+<p class="MsoNormal">0</p>
+</td>
+<td style="width:38.374%;height:29.7969px;">
+<p class="MsoNormal">Vantagem</p>
+</td>
+<td style="width:19.187%;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:19.187%;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:23.252%;height:29.7969px;">
+<p class="MsoNormal">1</p>
+</td>
+<td style="width:38.374%;height:29.7969px;">
+<p class="MsoNormal">Desconto</p>
+</td>
+<td style="width:19.187%;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:19.187%;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-551">Tipo Lei</h1>
+<table id="bkmrk-codigo-descri%C3%A7%C3%A3o-3-d" style="width:81.5476%;height:144.781px;">
+<thead>
+<tr style="height:29.7969px;">
+<th class="align-left" style="width:16.9591%;height:29.7969px;">Codigo</th>
+<th class="align-left" style="width:48.5322%;height:29.7969px;">Descrição</th>
+<th class="align-left" style="width:19.7426%;height:29.7969px;">Exercício Incio</th>
+<th style="width:14.7661%;height:29.7969px;">Exercício Fim</th>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:16.9591%;height:29.7969px;">0 </td>
+<td style="width:48.5322%;height:29.7969px;">LOA</td>
+<td style="width:19.7426%;height:29.7969px;">2025</td>
+<td style="width:14.7661%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:16.9591%;height:29.7969px;">1</td>
+<td style="width:48.5322%;height:29.7969px;">Crédito Suplementar</td>
+<td style="width:19.7426%;height:29.7969px;">2025</td>
+<td style="width:14.7661%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:16.9591%;height:29.7969px;">2</td>
+<td style="width:48.5322%;height:29.7969px;">Crédito Especial</td>
+<td style="width:19.7426%;height:29.7969px;">2025</td>
+<td style="width:14.7661%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:25.5938px;">
+<td style="width:16.9591%;height:25.5938px;">3</td>
+<td style="width:48.5322%;height:25.5938px;">Transposição, Transferência ou Remanejamento</td>
+<td style="width:19.7426%;height:25.5938px;">2025</td>
+<td style="width:14.7661%;height:25.5938px;">-</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-423">Tipo Natureza Jurídica</h1>
+<p id="bkmrk-%C2%A0"> </p>
+<table style="border-collapse:collapse;border-style:solid;" id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-1-c">
+<thead>
+<tr>
+<th>Código</th>
+<th class="align-left">Descrição</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Câmara Municipal</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Prefeitura Municipal/Secretarias</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Autarquia</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Fundação</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Sociedade de Economia Mista</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Fundos</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Empresas Públicas</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Autarquia Previdenciária</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Fundo Previdenciário</td>
+</tr>
+</tbody>
+</table>
+<p id="bkmrk-%C2%A0-1"> </p>                                <div class="page-break"></div>
+
+
+<h1 id="page-478">Tipo Nota Fiscal</h1>
+<div dir="ltr" id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-00--1" style="text-align:left;">
+<table style="width:93.3333%;"><colgroup><col style="width:11.8812%;"><col style="width:53.3416%;"><col style="width:15.2228%;"><col style="width:19.5545%;"></colgroup>
+<thead>
+<tr>
+<th scope="col">
+<p dir="ltr">Código</p>
+</th>
+<th scope="col">
+<p dir="ltr">Descrição</p>
+</th>
+<th scope="col">
+<p dir="ltr">Exercício Início</p>
+</th>
+<th scope="col">
+<p dir="ltr">Exercício Fim</p>
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<p dir="ltr"><s><span style="color:rgb(224,62,45);">00</span></s></p>
+</td>
+<td>
+<p dir="ltr"><s><span style="color:rgb(224,62,45);">Sem Nota Fiscal</span></s></p>
+</td>
+<td>
+<p dir="ltr"><s><span style="color:rgb(224,62,45);">2025</span></s></p>
+</td>
+<td>
+<p dir="ltr"><s><span style="color:rgb(224,62,45);">-</span></s></p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">01</p>
+</td>
+<td>
+<p dir="ltr">A Nota Fiscal Avulsa Eletrônica – Estadual (NFA-e)</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">02</p>
+</td>
+<td>
+<p dir="ltr">Nota Fiscal – Eletrônica – Estadual (NF-e)</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">03</p>
+</td>
+<td>
+<p dir="ltr">Nota Fiscal de Prestação de Serviços - Eletrônica</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">06</p>
+</td>
+<td>
+<p dir="ltr">Nota Fiscal de Prestação de Serviços - Papel</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">07</p>
+</td>
+<td>
+<p dir="ltr">Nota Fiscal Avulsa de Prestação de Serviços - Papel</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">08</p>
+</td>
+<td>
+<p dir="ltr">Nota Fiscal Avulsa de Prestação de Serviços - Eletrônica</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">13</p>
+</td>
+<td>
+<p dir="ltr">Bilhete de passagem</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">15</p>
+</td>
+<td>
+<p dir="ltr">Conhecimento de Transporte de Cargas Eletrônico (Rodoviário, Ferroviário, Aquaviário ou Aéreo) CT-e</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">16</p>
+</td>
+<td>
+<p dir="ltr">Nota Fiscal/Conta de Energia Elétrica</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">17</p>
+</td>
+<td>
+<p dir="ltr">Nota Fiscal/Conta de Comunicações ou de Telecomunicações</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p id="bkmrk-observa%C3%A7%C3%A3o%3A-de-acord" dir="ltr">Observação: De acordo com a legislação fiscal vigente, somente os documentos fiscais eletrônicos acima poderão ser emitidos quando o destinatário da mercadoria for órgão público. Desta forma, quando da liquidação da despesa, para os elementos de despesa 30 e 52, estas notas fiscais eletrônicas estaduais serão obrigatoriamente informadas juntamente com a respectiva liquidação da despesa. Os tipos de notas fiscais permitidos para estes elementos são as 01 e 02. </p>                                <div class="page-break"></div>
+
+
+<h1 id="page-422">Tipo Objeto Milênio</h1>
+<table id="bkmrk-c%C3%B3digo-descricao-1-a" style="border-collapse:collapse;border-style:solid;width:76.7857%;height:446.953px;">
+<thead>
+<tr style="height:29.7969px;">
+<th style="width:10.7145%;height:29.7969px;">Código</th>
+<th class="align-left" style="width:53.728%;height:29.7969px;">Descrição</th>
+<th class="align-left" style="width:18.7893%;height:29.7969px;">Exercício Início</th>
+<th class="align-left" style="width:16.7706%;height:29.7969px;">Exercício Fim</th>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:10.7145%;height:29.7969px;">01</td>
+<td style="width:53.728%;height:29.7969px;">Acabar com a Fome e a Miséria</td>
+<td style="width:18.7893%;height:29.7969px;">2025</td>
+<td style="width:16.7706%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.7145%;height:29.7969px;">02</td>
+<td style="width:53.728%;height:29.7969px;">Educação Básica de Qualidade para todos</td>
+<td style="width:18.7893%;height:29.7969px;">2025</td>
+<td style="width:16.7706%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.7145%;height:29.7969px;">03</td>
+<td style="width:53.728%;height:29.7969px;">Igualdade entre Sexos e Valorização da Mulher</td>
+<td style="width:18.7893%;height:29.7969px;">2025</td>
+<td style="width:16.7706%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.7145%;height:29.7969px;">04</td>
+<td style="width:53.728%;height:29.7969px;">Reduzir a Mortalidade Infantil</td>
+<td style="width:18.7893%;height:29.7969px;">2025</td>
+<td style="width:16.7706%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.7145%;height:29.7969px;">05</td>
+<td style="width:53.728%;height:29.7969px;">Melhorar a Saúde das Gestantes</td>
+<td style="width:18.7893%;height:29.7969px;">2025</td>
+<td style="width:16.7706%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.7145%;height:29.7969px;">06</td>
+<td style="width:53.728%;height:29.7969px;">Combater a Aids, a Malária e outras doenças</td>
+<td style="width:18.7893%;height:29.7969px;">2025</td>
+<td style="width:16.7706%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.7145%;height:29.7969px;">07</td>
+<td style="width:53.728%;height:29.7969px;">Qualidade de Vida e Respeito ao Meio Ambiente</td>
+<td style="width:18.7893%;height:29.7969px;">2025</td>
+<td style="width:16.7706%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.7145%;height:29.7969px;">08</td>
+<td style="width:53.728%;height:29.7969px;">Todo Mundo trabalhando pelo Desenvolvimento</td>
+<td style="width:18.7893%;height:29.7969px;">2025</td>
+<td style="width:16.7706%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.7145%;height:29.7969px;">09</td>
+<td style="width:53.728%;height:29.7969px;">Outros Objetivos</td>
+<td style="width:18.7893%;height:29.7969px;">2025</td>
+<td style="width:16.7706%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.7145%;">
+<p class="MsoNormal">10</p>
+</td>
+<td style="width:53.728%;">
+<p class="MsoNormal">Redução das desigualdades</p>
+</td>
+<td style="width:18.7893%;height:29.7969px;">2026</td>
+<td style="width:16.7706%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.7145%;">
+<p class="MsoNormal">11</p>
+</td>
+<td style="width:53.728%;">
+<p class="MsoNormal">Cidades e comunidades sustentáveis</p>
+</td>
+<td style="width:18.7893%;height:29.7969px;">2026</td>
+<td style="width:16.7706%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.7145%;">
+<p class="MsoNormal">12</p>
+</td>
+<td style="width:53.728%;">
+<p class="MsoNormal">Consumo e produção responsáveis</p>
+</td>
+<td style="width:18.7893%;height:29.7969px;">2026</td>
+<td style="width:16.7706%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.7145%;">
+<p class="MsoNormal">13</p>
+</td>
+<td style="width:53.728%;">
+<p class="MsoNormal">Ação contra a mudança global do clima</p>
+</td>
+<td style="width:18.7893%;height:29.7969px;">2026</td>
+<td style="width:16.7706%;height:29.7969px;">-</td>
+</tr>
+<tr>
+<td style="width:10.7145%;">
+<p class="MsoNormal">14</p>
+</td>
+<td style="width:53.728%;">
+<p class="MsoNormal">Vida na água</p>
+</td>
+<td style="width:18.7893%;height:29.7969px;">2026</td>
+<td style="width:16.7706%;height:29.7969px;">-</td>
+</tr>
+<tr>
+<td style="width:10.7145%;">
+<p class="MsoNormal">15</p>
+</td>
+<td style="width:53.728%;">
+<p class="MsoNormal">Vida terrestre</p>
+</td>
+<td style="width:18.7893%;height:29.7969px;">2026</td>
+<td style="width:16.7706%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:10.7145%;">
+<p class="MsoNormal">16</p>
+</td>
+<td style="width:53.728%;">
+<p class="MsoNormal">Paz, justiça e instituições eficazes</p>
+</td>
+<td style="width:18.7893%;height:29.7969px;">2026</td>
+<td style="width:16.7706%;height:29.7969px;">-</td>
+</tr>
+<tr>
+<td style="width:10.7145%;">
+<p class="MsoNormal">17</p>
+</td>
+<td style="width:53.728%;">
+<p class="MsoNormal">Parcerias e meios de implementação</p>
+</td>
+<td style="width:18.7893%;height:29.7969px;">2026</td>
+<td style="width:16.7706%;height:29.7969px;">-</td>
+</tr>
+<tr>
+<td style="width:10.7145%;">
+<p class="MsoNormal">99</p>
+</td>
+<td style="width:53.728%;">
+<p class="MsoNormal">Primeira Infância</p>
+</td>
+<td style="width:18.7893%;height:29.7969px;">2026</td>
+<td style="width:16.7706%;height:29.7969px;">-</td>
+</tr>
+</tbody>
+</table>
+
+<p id="bkmrk-"><br></p>                                <div class="page-break"></div>
+
+
+<h1 id="page-424">Tipo Receita Lançada</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-mul" style="border-collapse:collapse;border-style:solid;">
+<thead>
+<tr>
+<td>Código</td>
+<td class="align-left">Descrição</td>
+<td>multiplicador</td>
+<td>Exercício Início</td>
+<td>Exercício Fim</td>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Lançamento de Receita</td>
+<td>1</td>
+<td>2025</td>
+<td>-</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Dedução de Receita para a Formação do Fundeb</td>
+<td>-1</td>
+<td>2025</td>
+<td>-</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Dedução de Receita de Investimentos</td>
+<td>-1</td>
+<td>2025</td>
+<td>-</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Outras Deduções de Receita</td>
+<td>-1</td>
+<td>2025</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<p id="bkmrk-"></p>                                <div class="page-break"></div>
+
+
+<h1 id="page-652">Tipo Regime Previdência</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-exe" style="width:87.1429%;height:595.938px;">
+<thead>
+<tr style="height:29.7969px;">
+<th style="width:8.60015%;height:29.7969px;">Código</th>
+<th class="align-left" style="width:62.5064%;height:29.7969px;">Descrição</th>
+<th style="width:15.1362%;height:29.7969px;">Exercício Início</th>
+<th style="width:13.5758%;height:29.7969px;">Exercício Fim</th>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">0</td>
+<td style="width:62.5064%;height:29.7969px;">Sem vínculo</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">1</td>
+<td style="width:62.5064%;height:29.7969px;">Regime geral</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.60015%;height:29.7969px;">2</td>
+<td style="width:62.5064%;height:29.7969px;">Regime próprio</td>
+<td style="width:15.1362%;height:29.7969px;">2025</td>
+<td style="width:13.5758%;height:29.7969px;">-</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-653">Tipo Regime Trabalho</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-exe" style="width:88.3333%;height:119.188px;">
+<thead>
+<tr style="height:29.7969px;">
+<th style="width:8.61833%;height:29.7969px;">Código</th>
+<th class="align-left" style="width:62.6539%;height:29.7969px;">Descrição</th>
+<th style="width:15.1847%;height:29.7969px;">Exercício Início</th>
+<th style="width:13.5431%;height:29.7969px;">Exercício Fim</th>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:8.61833%;height:29.7969px;">0</td>
+<td style="width:62.6539%;height:29.7969px;">Estatutário</td>
+<td style="width:15.1847%;height:29.7969px;">2025</td>
+<td style="width:13.5431%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.61833%;height:29.7969px;">1</td>
+<td style="width:62.6539%;height:29.7969px;">Coletista</td>
+<td style="width:15.1847%;height:29.7969px;">2025</td>
+<td style="width:13.5431%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:8.61833%;height:29.7969px;">2</td>
+<td style="width:62.6539%;height:29.7969px;">Contratual</td>
+<td style="width:15.1847%;height:29.7969px;">2025</td>
+<td style="width:13.5431%;height:29.7969px;">-</td>
+</tr>
+<tr>
+<td style="width:8.61833%;">3</td>
+<td style="width:62.6539%;">Eletivo</td>
+<td style="width:15.1847%;height:29.7969px;">2025</td>
+<td style="width:13.5431%;height:29.7969px;">-</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-481">Tipo Retenção</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-1-i" style="width:103.81%;"><colgroup><col style="width:8.22408%;"><col style="width:64.7199%;"><col style="width:13.4652%;"><col style="width:13.5909%;"></colgroup>
+<thead>
+<tr>
+<th scope="col">
+<p dir="ltr">Código</p>
+</th>
+<th scope="col">
+<p class="align-left" dir="ltr">Descrição</p>
+</th>
+<th scope="col">
+<p dir="ltr">Exercício Início</p>
+</th>
+<th scope="col">
+<p dir="ltr">Exercício Fim</p>
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<p dir="ltr">1</p>
+</td>
+<td>
+<p dir="ltr">ISS</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">2</p>
+</td>
+<td>
+<p dir="ltr">IRRF</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">3</p>
+</td>
+<td>
+<p dir="ltr">INSS</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">4</p>
+</td>
+<td>
+<p dir="ltr">Previdência Própria</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p dir="ltr">5</p>
+</td>
+<td>
+<p dir="ltr">Outras Consignações</p>
+</td>
+<td>
+<p dir="ltr">2025</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p class="MsoNormal">6</p>
+</td>
+<td>
+<p class="MsoNormal">Consignação de empréstimos consignados</p>
+</td>
+<td>
+<p dir="ltr">2026</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p class="MsoNormal">7</p>
+</td>
+<td>
+<p class="MsoNormal">Consignação pensão alimentícia</p>
+</td>
+<td>
+<p dir="ltr">2026</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+<tr>
+<td>
+<p class="MsoNormal">8</p>
+</td>
+<td>
+<p class="MsoNormal">Consignação em favor de Regime Próprio de previdência de outro ente da Federação</p>
+</td>
+<td>
+<p dir="ltr">2026</p>
+</td>
+<td>
+<p dir="ltr">-</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p id="bkmrk-%C2%A0"></p>                                <div class="page-break"></div>
+
+
+<h1 id="page-631">Tipo Situação Frota</h1>
+<table id="bkmrk-codigo-descri%C3%A7%C3%A3o-3-d" style="width:68.3333%;height:89.3907px;">
+<thead>
+<tr style="height:29.7969px;">
+<th class="align-left" style="width:11.2299%;height:29.7969px;">Codigo</th>
+<th class="align-left" style="width:51.3369%;height:29.7969px;">Descrição</th>
+<th class="align-left" style="width:19.7861%;height:29.7969px;">Exercício Início</th>
+<th style="width:17.6471%;height:29.7969px;">Exercício Fim</th>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:11.2299%;height:29.7969px;">1</td>
+<td style="width:51.3369%;height:29.7969px;">Em uso</td>
+<td style="width:19.7861%;height:29.7969px;">2025</td>
+<td style="width:17.6471%;height:29.7969px;">-</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:11.2299%;height:29.7969px;">2</td>
+<td style="width:51.3369%;height:29.7969px;">Em Manutenção</td>
+<td style="width:19.7861%;height:29.7969px;">2025</td>
+<td style="width:17.6471%;height:29.7969px;">-</td>
+</tr>
+<tr>
+<td style="width:11.2299%;">3</td>
+<td style="width:51.3369%;">Baixada</td>
+<td style="width:19.7861%;height:29.7969px;">2025</td>
+<td style="width:17.6471%;height:29.7969px;">-</td>
+</tr>
+<tr>
+<td style="width:11.2299%;">4</td>
+<td style="width:51.3369%;">Baixa Temporária</td>
+<td style="width:19.7861%;height:29.7969px;">2025</td>
+<td style="width:17.6471%;height:29.7969px;">-</td>
+</tr>
+</tbody>
+</table>                                <div class="page-break"></div>
+
+
+<h1 id="page-533">Tipo Transferência</h1>
+<table id="bkmrk-c%C3%B3digo-descri%C3%A7%C3%A3o-1-d-1" class="MsoNormalTable" style="width:90.119%;height:304.547px;">
+<thead>
+<tr style="height:29.7969px;">
+<td style="width:23.2804%;height:29.7969px;">
+<p class="MsoNormal"><strong>Código</strong></p>
+</td>
+<td style="width:46.8254%;height:29.7969px;">
+<p class="MsoNormal"><strong>Descrição</strong></p>
+</td>
+<td style="width:16.1398%;height:29.7969px;">
+<p class="MsoNormal"><strong>Exercício Início</strong></p>
+</td>
+<td style="width:13.7543%;height:29.7969px;">
+<p class="MsoNormal"><strong>Exercício Fim</strong></p>
+</td>
+</tr>
+</thead>
+<tbody>
+<tr style="height:29.7969px;">
+<td style="width:23.2804%;height:29.7969px;">
+<p class="MsoNormal">1</p>
+</td>
+<td style="width:46.8254%;height:29.7969px;">
+<p class="MsoNormal">Duodécimo</p>
+</td>
+<td style="width:16.1398%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:13.7543%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:23.2804%;height:29.7969px;">
+<p class="MsoNormal">2</p>
+</td>
+<td style="width:46.8254%;height:29.7969px;">
+<p class="MsoNormal">Aporte para Despesas Administrativas / Custeio</p>
+</td>
+<td style="width:16.1398%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:13.7543%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:23.2804%;height:29.7969px;">
+<p class="MsoNormal">3</p>
+</td>
+<td style="width:46.8254%;height:29.7969px;">
+<p class="MsoNormal">Aporte para Cobertura de Insuficiência Financeira</p>
+</td>
+<td style="width:16.1398%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:13.7543%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:49.375px;">
+<td style="width:23.2804%;height:49.375px;">
+<p class="MsoNormal">4</p>
+</td>
+<td style="width:46.8254%;height:49.375px;">
+<p class="MsoNormal">Aporte para Pagamento de Benefícios Previdenciários de Responsabilidade do Ente</p>
+</td>
+<td style="width:16.1398%;height:49.375px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:13.7543%;height:49.375px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:23.2804%;height:29.7969px;">
+<p class="MsoNormal">5</p>
+</td>
+<td style="width:46.8254%;height:29.7969px;">
+<p class="MsoNormal">Outros Aportes</p>
+</td>
+<td style="width:16.1398%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:13.7543%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:46.5938px;">
+<td style="width:23.2804%;height:46.5938px;">
+<p class="MsoNormal">6</p>
+</td>
+<td style="width:46.8254%;height:46.5938px;">
+<p class="MsoNormal">Investimentos ou Resgates de Investimentos e Aplicações Financeiras</p>
+</td>
+<td style="width:16.1398%;height:46.5938px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:13.7543%;height:46.5938px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:23.2804%;height:29.7969px;">
+<p class="MsoNormal">8</p>
+</td>
+<td style="width:46.8254%;height:29.7969px;">
+<p class="MsoNormal">Devolução de Recursos</p>
+</td>
+<td style="width:16.1398%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:13.7543%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+<tr style="height:29.7969px;">
+<td style="width:23.2804%;height:29.7969px;">
+<p class="MsoNormal">9</p>
+</td>
+<td style="width:46.8254%;height:29.7969px;">
+<p class="MsoNormal">Transferências Indireta ( Geral )</p>
+</td>
+<td style="width:16.1398%;height:29.7969px;">
+<p class="MsoNormal">2025</p>
+</td>
+<td style="width:13.7543%;height:29.7969px;">
+<p class="MsoNormal">-</p>
+</td>
+</tr>
+</tbody>
+</table>            
+</div>
+</body>
+</html>

@@ -1,0 +1,69 @@
+/// ═══════════════════════════════════════════════════════════════════════════════════════
+/// M12 — DE-PARAS do RREO Anexo 12 (ASPS — Ações e Serviços Públicos de Saúde).
+/// LC 141/2012 art. 35 · MDF 15ª ed. · Tabela 12.2 (municípios).
+///
+/// São DOIS de-paras, e cada um responde a UMA pergunta que o código da natureza sozinho não dá.
+/// ═══════════════════════════════════════════════════════════════════════════════════════
+
+/// ⚠️ DE-PARA NATUREZA → IMPOSTO/TRANSFERÊNCIA (a base de impostos, art. 198 CF + LC 141).
+///
+/// A base ASPS é apurada sobre a RECEITA DE IMPOSTOS e as TRANSFERÊNCIAS constitucionais. O código
+/// da natureza diz o TIPO (8º dígito: principal/multas/dívida ativa/multas-DA) — e o motor lê o
+/// tipo do dígito, NUNCA daqui. O que o dígito NÃO diz é a IDENTIDADE ("isto é IPTU", "isto é
+/// Cota-Parte do FPM", "isto é a dedução do FUNDEB"). É só isso que este de-para amarra:
+/// `naturezaCodigo → chave`. O grupo (imposto × transferência), o rótulo e a ordem no demonstrativo
+/// moram no CÓDIGO (a estrutura da Tabela 12.2 é norma fixa) — não se repetem por linha aqui.
+///
+/// ═══ ⚠️ A DEDUÇÃO DO FUNDEB — POR QUE ELA TAMBÉM ENTRA AQUI ═══
+/// O domínio NÃO tem um mecanismo de "dedução": a arrecadação é líquida só de anulações (o sinal).
+/// A dedução do FUNDEB é, na prática, uma NATUREZA REDUTORA própria — e é assim que ela entra: com
+/// a chave "DED_FUNDEB". A base ASPS usa o valor BRUTO das transferências (instrução STN — a
+/// dedução do FUNDEB NÃO abate a base do art. 198), então o motor EXCLUI a redutora do bruto e a
+/// subtrai só no líquido (que serve a outros consumidores). Uma dedução sem mapa = ela não deduz.
+///
+/// ═══ ROL FECHADO CRESCE POR DECISÃO ═══
+/// Seed mínimo com as naturezas do ente hoje. O mapa completo da Portaria 163/Tabela 12.2 é
+/// PENDÊNCIA DE DADO nomeada (entra com o plano de receita completo).
+model DeParaBaseImpostoAsps {
+  id String @id @default(cuid())
+
+  /// O código de 8 dígitos da natureza (o mesmo do `NaturezaReceita.codigo`).
+  naturezaCodigo String @db.VarChar(8)
+
+  /// A identidade da linha ("IPTU", "FPM", "ICMS", "DED_FUNDEB", "IBS"...). O grupo/rótulo/ordem
+  /// (e se está fora da base em 2026, como o IBS) moram no código do motor.
+  chave String
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  /// Uma natureza mapeia para UMA chave. A unicidade é do banco.
+  @@unique([naturezaCodigo])
+  @@index([chave])
+}
+
+/// ⚠️ DE-PARA FONTE → CLASSE ASPS (as "despesas custeadas com outros recursos", quadro V).
+///
+/// O quadro de despesas NÃO computadas do Anexo 12 separa o que foi custeado por RECURSOS PRÓPRIOS
+/// (que contam para o mínimo) do que veio de SUS, OPERAÇÃO DE CRÉDITO e OUTROS (que NÃO contam). A
+/// `FonteRecurso` tem código e descrição, mas não uma classe ASPS — este de-para a dá.
+///
+/// ⚠️ ROL FECHADO {PROPRIOS, SUS, OPERACAO_CREDITO, OUTROS}. Uma fonte que aparecer numa despesa de
+/// saúde SEM classe mapeada FAZ o gerador parar nomeando a fonte (fail-closed): custear ASPS com
+/// recurso não classificado poria a diferença no lugar errado, e a base é limite constitucional.
+/// O rol completo da Portaria STN 710 é pendência de dado; o seed traz o que o ente usa.
+model DeParaFonteClasseAsps {
+  id String @id @default(cuid())
+
+  /// O `codigo` de 3 dígitos da fonte (o mesmo do `FonteRecurso.codigo`).
+  fonteCodigo String @db.VarChar(3)
+
+  /// "PROPRIOS" | "SUS" | "OPERACAO_CREDITO" | "OUTROS". Rol fechado — ver o cabeçalho.
+  classe String
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  @@unique([fonteCodigo])
+  @@index([classe])
+}
