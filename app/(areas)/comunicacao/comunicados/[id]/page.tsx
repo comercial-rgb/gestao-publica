@@ -48,8 +48,22 @@ export default async function ComunicadoPage({
   const naCaixa = caixa.find((x) => x.id === id);
   const arquivado = naCaixa?.caixa === "ARQUIVADO";
 
-  // O destino não pode ser o próprio remetente — ele já tem o documento na saída.
-  const destinos = todosSetores.filter((s) => s.id !== c.remetenteId);
+  // ⚠️ O DESTINO NÃO PODE SER O REMETENTE nem quem JÁ ESTÁ na conversa.
+  //
+  // A primeira versão desta tela excluía só o remetente, e o smoke a pegou: ela oferecia
+  // um setor que já era destinatário, e o servidor recusava com "o setor já está no
+  // comunicado". Oferecer o que o servidor recusa é a definição de uma tela que mente —
+  // e é o mesmo defeito que o seletor de setores da abertura de processo evita.
+  //
+  // O rótulo é a única coisa que a porta publica dos destinatários, então é por ele que
+  // se compara. Um id seria melhor; publicá-lo é a próxima correção desta porta, e o
+  // servidor continua sendo quem decide de qualquer forma.
+  const jaEnvolvidos = new Set<string>([
+    ...c.destinatarios.map((d) => d.setor),
+  ]);
+  const destinos = todosSetores.filter(
+    (s) => s.id !== c.remetenteId && !jaEnvolvidos.has(s.rotulo)
+  );
 
   return (
     <div className="flex flex-col gap-6">

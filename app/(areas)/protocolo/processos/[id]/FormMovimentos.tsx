@@ -96,7 +96,7 @@ export function FormReceber({ processoId }: { readonly processoId: string }): Re
       titulo="Receber"
       descricao="O prazo da etapa começa no RECEBIMENTO, não no trâmite: um processo enviado na sexta e recebido na segunda não consumiu o fim de semana de quem o recebeu."
     >
-      <form action={action}>
+      <form action={action} data-acao="receber">
         <input type="hidden" name="processoId" value={processoId} />
         <button type="submit" className={CLASSE_BOTAO_PRIMARIO} disabled={pendente}>
           {pendente ? "Recebendo…" : "Receber processo"}
@@ -120,7 +120,7 @@ export function FormTramitar({
   );
   return (
     <Painel titulo="Tramitar" descricao="Os apensos vigentes vão junto, na mesma transação.">
-      <form action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+      <form data-acao="tramitar" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <input type="hidden" name="processoId" value={processoId} />
         <CampoSelect
           name="setorDestinoId"
@@ -166,7 +166,7 @@ export function FormComplementar({
   );
   return (
     <Painel titulo="Complementar" descricao="Acrescenta texto sem mudar de setor.">
-      <form action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+      <form data-acao="complementar" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <input type="hidden" name="processoId" value={processoId} />
         <CampoTextarea name="texto" rotulo="Complemento" required largura={4} linhas={3} />
         <div className="md:col-span-4">
@@ -203,7 +203,7 @@ export function FormParecer({
       titulo="Parecer"
       descricao="Pedir parecer NÃO move o processo de setor. E a resposta aponta para o pedido: dois pedidos e uma resposta não fecham os dois."
     >
-      <form action={acaoPedir} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+      <form data-acao="solicitar-parecer" action={acaoPedir} className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <input type="hidden" name="processoId" value={processoId} />
         <CampoSelect
           name="setorDestinoId"
@@ -224,6 +224,7 @@ export function FormParecer({
 
       {pendencias.length > 0 ? (
         <form
+          data-acao="responder-parecer"
           action={acaoResponder}
           className="mt-4 grid grid-cols-1 gap-3 border-t border-[color:var(--color-border)] pt-4 md:grid-cols-4"
         >
@@ -273,7 +274,7 @@ export function FormReadequacao({
       titulo="Readequação do requerente"
       descricao="É o único movimento que o REQUERENTE produz. Ele também pode atendê-lo por fora, pela consulta pública, com o código verificador."
     >
-      <form action={acaoPedir} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+      <form data-acao="solicitar-readequacao" action={acaoPedir} className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <input type="hidden" name="processoId" value={processoId} />
         <CampoTextarea
           name="texto"
@@ -293,6 +294,7 @@ export function FormReadequacao({
 
       {pendencias.length > 0 ? (
         <form
+          data-acao="atender-readequacao"
           action={acaoAtender}
           className="mt-4 grid grid-cols-1 gap-3 border-t border-[color:var(--color-border)] pt-4 md:grid-cols-4"
         >
@@ -345,7 +347,7 @@ export function FormDesfecho({
       descricao="Encerrar decide o MÉRITO (está resolvido). Arquivar decide a GUARDA (sai da mesa). São dois atos porque a data em que o pedido do cidadão foi respondido é o número que a ouvidoria mede."
     >
       {!fechado ? (
-        <form action={acaoEncerrar} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <form data-acao="encerrar" action={acaoEncerrar} className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <input type="hidden" name="processoId" value={processoId} />
           <CampoTextarea name="texto" rotulo="Parecer de encerramento" required largura={4} linhas={3} />
           <div className="md:col-span-4">
@@ -359,6 +361,7 @@ export function FormDesfecho({
 
       {situacao === "ENCERRADO" ? (
         <form
+          data-acao="arquivar"
           action={acaoArquivar}
           className="mt-4 grid grid-cols-1 gap-3 border-t border-[color:var(--color-border)] pt-4 md:grid-cols-4"
         >
@@ -375,6 +378,7 @@ export function FormDesfecho({
 
       {fechado ? (
         <form
+          data-acao="reabrir"
           action={acaoReabrir}
           className="mt-4 grid grid-cols-1 gap-3 border-t border-[color:var(--color-border)] pt-4 md:grid-cols-4"
         >
@@ -416,7 +420,7 @@ export function FormApensamento({
       descricao="Enquanto apensado, o processo ACOMPANHA a movimentação do principal — de verdade, na mesma transação. Não é um rótulo na tela."
     >
       {candidatos.length > 0 ? (
-        <form action={acaoApensar} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <form data-acao="apensar" action={acaoApensar} className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <input type="hidden" name="processoId" value={processoId} />
           <CampoSelect
             name="processoApensoId"
@@ -442,6 +446,7 @@ export function FormApensamento({
 
       {apensos.length > 0 ? (
         <form
+          data-acao="desapensar"
           action={acaoDesapensar}
           className="mt-4 grid grid-cols-1 gap-3 border-t border-[color:var(--color-border)] pt-4 md:grid-cols-4"
         >
@@ -488,7 +493,7 @@ export function FormTornarSemEfeito({
       titulo="Tornar sem efeito"
       descricao="Isto NÃO apaga. O movimento continua no histórico, marcado, com quem o desfez e por quê — e deixa de contar para a situação e para o prazo. Só o último trâmite ou complemento."
     >
-      <form action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+      <form data-acao="tornar-sem-efeito" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <input type="hidden" name="processoId" value={processoId} />
         <input type="hidden" name="movimentoId" value={anulavel.id} />
         <p className="text-xs text-[color:var(--color-ink-2)] md:col-span-4">
@@ -534,7 +539,7 @@ export function FormCamposAdicionais({
       titulo="Campos adicionais"
       descricao="Definidos pela entidade, por cadastro e por unidade gestora. Cada alteração é uma versão — o valor anterior fica no histórico."
     >
-      <form action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+      <form data-acao="campos-adicionais" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <input type="hidden" name="processoId" value={processoId} />
         {editaveis.map((c) => {
           const nome = `campo:${c.codigo}`;

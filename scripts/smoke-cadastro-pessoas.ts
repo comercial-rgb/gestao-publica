@@ -154,7 +154,17 @@ async function main(): Promise<void> {
 
   const browser: Browser = await puppeteer.launch({
     headless: true,
-    args: ["--no-sandbox"],
+    // ⚠️ AS FLAGS DE MEMÓRIA NÃO SÃO ENFEITE. Numa máquina sob pressão de memória o
+    // renderer do Chromium é paginado para o disco e o runtime dele simplesmente PARA:
+    // o puppeteer devolve "Runtime.callFunctionOn timed out", que se lê como se a tela
+    // não tivesse respondido — e mandaria a próxima pessoa procurar defeito na tela.
+    args: [
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--disable-extensions",
+    ],
+    protocolTimeout: 45000,
   });
   const page = await browser.newPage();
   await page.setViewport({ width: 1440, height: 1000 });

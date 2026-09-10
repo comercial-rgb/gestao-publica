@@ -79,7 +79,7 @@ export function FormAbrirProcesso({
   }
 
   return (
-    <form ref={ref} action={action} className={CLASSE_PAINEL_FORMULARIO}>
+    <form ref={ref} data-acao="abrir-processo" action={action} className={CLASSE_PAINEL_FORMULARIO}>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <CampoSelect
           name="exercicio"

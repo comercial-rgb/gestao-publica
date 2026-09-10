@@ -96,7 +96,7 @@ export function FormNovoModelo({
   const disponiveis = colunasPorFonte[fonte] ?? [];
 
   return (
-    <form action={action} className={CLASSE_PAINEL_FORMULARIO}>
+    <form data-acao="novo-modelo" action={action} className={CLASSE_PAINEL_FORMULARIO}>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <CampoTexto
           name="codigo"
@@ -226,7 +226,7 @@ export function FormExecutar({
     );
   }
   return (
-    <form action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+    <form data-acao="executar-relatorio" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
       <CampoSelect
         name="modeloId"
         rotulo="Modelo"
@@ -267,7 +267,7 @@ export function FormCopiar({ modeloId }: { readonly modeloId: string }): React.R
     {}
   );
   return (
-    <form action={action} className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
+    <form data-acao="copiar-modelo" action={action} className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
       <input type="hidden" name="modeloId" value={modeloId} />
       <input name="novoCodigo" className={CLASSE_CAMPO} placeholder="novo_codigo" aria-label="Código da cópia" required />
       <input name="novoNome" className={CLASSE_CAMPO} placeholder="Nome da cópia" aria-label="Nome da cópia" required />

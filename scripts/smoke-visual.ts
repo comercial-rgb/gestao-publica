@@ -59,6 +59,17 @@ const ROTAS = [
   "/contabilidade/lancamentos?desde=2026-09-01&ate=2026-09-30",
   "/relatorios/gerenciais",
   "/suporte",
+  // ── ENT02 ──
+  // ⚠️ AS ROTAS NOVAS ENTRAM AQUI, e não em outro lugar: esta lista é o que o smoke
+  // visual varre. Uma tela nova fora dela não é acusada por ninguém — o smoke continua
+  // dizendo "22/22 rota(s) OK", verde e cego, que é o pior modo de falha de um guarda.
+  "/protocolo",
+  "/protocolo/processos",
+  "/comunicacao",
+  "/comunicacao/comunicados",
+  "/comunicacao/comunicados?caixa=SAIDA",
+  "/relatorios/designer",
+  "/suporte/chamados",
 ] as const;
 
 interface Resultado {
@@ -168,7 +179,20 @@ console.log(`═══ SMOKE VISUAL (navegador real) — ${BASE} ═══\n`);
 let browser: Browser | undefined;
 const resultados: Resultado[] = [];
 try {
-  browser = await puppeteer.launch({ headless: true });
+  browser = await puppeteer.launch({
+    headless: true,
+    // ⚠️ AS FLAGS DE MEMÓRIA NÃO SÃO ENFEITE. Numa máquina sob pressão de memória o
+    // renderer do Chromium é paginado para o disco e o runtime dele simplesmente PARA:
+    // o puppeteer devolve "Runtime.callFunctionOn timed out", que se lê como se a tela
+    // não tivesse respondido — e mandaria a próxima pessoa procurar defeito na tela.
+    args: [
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--disable-extensions",
+    ],
+    protocolTimeout: 45000,
+  });
   const page = await browser.newPage();
   await page.setViewport({ width: 1440, height: 900 });
 

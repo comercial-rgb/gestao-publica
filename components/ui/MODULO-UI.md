@@ -336,3 +336,64 @@ tudo `comEscritaAutenticada` com as ações novas. Um executor que tentasse rese
 NEGADO pelo domínio, e a tela não o esconde. ⚠️ Segue nomeada só a **troca-obrigatória no primeiro
 acesso** (campo de schema, fora da exceção da 7.14) — o interruptor da página a declara. Ver
 `modules/m16-travamento/MODULO.md#7.14`.
+
+---
+
+## ENT02 — as telas do protocolo, da comunicação, do designer e do suporte
+
+### As rotas novas
+
+| Rota | O que é |
+|---|---|
+| `/protocolo` · `/protocolo/processos` · `/protocolo/processos/[id]` | a caixa, a abertura e o dossiê com todos os movimentos |
+| `/consulta` | **fora de `app/(areas)`** — o acompanhamento do requerente, sem sessão |
+| `/comunicacao` · `/comunicacao/comunicados` · `/comunicacao/comunicados/[id]` | as caixas como abas e o documento com as ações |
+| `/relatorios/designer` | modelos, execução em segundo plano e o resultado em CSV |
+| `/suporte/chamados` · `/suporte/chamados/[id]` | abrir, atender, encerrar, reabrir e avaliar |
+
+### `data-acao` — a identidade estável de cada formulário
+
+A tela do processo tem **catorze** formulários, e vários compartilham nomes de campo
+(`texto`, `setorDestinoId`). Cada `<form>` carrega `data-acao="tramitar"`,
+`"solicitar-parecer"`, `"encerrar"`…
+
+**Isto não é enfeite de teste — é o que impede um erro real.** A primeira versão do
+smoke localizava o formulário pelo primeiro campo com aquele nome, e como
+`document.querySelector` devolve o **primeiro da página**, ela preenchia os campos do
+parecer e apertava o botão do **trâmite**. Passou por oito passos e falhou no nono
+dizendo que o parecer não aparecera — o que era verdade, porque o parecer nunca foi
+enviado.
+
+É a mesma disciplina do `data-mascara`: um marcador estável para o que a estrutura
+visual não identifica sozinha.
+
+### A tela não pode oferecer o que o servidor recusa
+
+Dois lugares em que isso foi corrigido **porque o smoke pegou**:
+
+- o seletor de "abrir aqui" só oferece os setores em que a pessoa está **lotada**;
+- o seletor de **encaminhamento** exclui o remetente **e quem já está na conversa** — a
+  primeira versão excluía só o remetente, e o servidor recusava com "o setor já está no
+  comunicado".
+
+Oferecer o que o servidor recusa é a definição de uma tela que mente: o usuário escolhe,
+preenche o formulário inteiro e só então descobre o limite.
+
+### Formulários funcionam sem JavaScript de montagem
+
+O designer usa **seis linhas fixas** de coluna em vez de um "adicionar coluna"; o envio
+de comunicado usa `<select multiple>`. Um construtor dinâmico pareceria melhor e faria o
+formulário depender do que o React montou — e é justamente isso que um smoke de
+navegador precisa exercitar.
+
+### Novas pendências de UI
+
+| Pendência | O que falta |
+|---|---|
+| `PROTOCOLO-ANEXO-UI` | anexar arquivo pela tela do processo. O M22 existe, é autorizado por registro e tem teste; falta o `input[type=file]` e a rota de download autorizada. |
+| `PROTOCOLO-CADASTRO-UI` | telas de setor, lotação, assunto e roteiro. Os casos de uso existem (`m21-protocolo/cadastros.ts`) e são exercitados pelo seed do cenário; falta a superfície. |
+| `COMUNICADO-TIPO-UI` | tela para criar tipo de comunicado e definir o privilégio por setor. |
+| `CAMPO-ADICIONAL-DEFINICAO-UI` | tela para a entidade DEFINIR os campos adicionais. Preencher já é pela tela; definir ainda é pelo seed. |
+| `SUPORTE-SEVERIDADE-UI` | tela para cadastrar a escala de severidade. |
+| `AJUDA-CONTEXTUAL-UI` | o painel de ajuda por rota na própria tela. O texto é gravado e lido (`m27-suporte`), e o seed o escreve para duas rotas; falta exibi-lo. |
+| `DESIGNER-VERSAO-UI` | criar nova versão de um modelo pela tela. Copiar, distribuir e retirar já estão lá. |

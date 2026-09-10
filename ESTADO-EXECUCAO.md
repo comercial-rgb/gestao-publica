@@ -1,25 +1,32 @@
 # Estado da execução
 
-> Produzido por ENT00 em 2026-09-09 e atualizado por **ENT01**.
+> Produzido por ENT00 em 2026-09-09, atualizado por **ENT01** e por **ENT02**.
 > Dados reais, medidos nesta máquina. Sem estimativa, sem percentual de
 > cobertura, sem "provavelmente".
 >
-> ⚠️ **ENT01 CHEGOU AO GATE, e o gate não é "tudo pronto".** Ele comprova o que foi
-> testado — nada além. Dos 25 testes mínimos do incremento, **18 estão cobertos,
-> 4 parciais e 3 não cobertos**, e os três são o mesmo assunto: o eixo município,
-> decidido por ADR e deliberadamente fora deste lote. O inventário item a item é
-> um TESTE (`test/incremento-25.test.ts`), não uma tabela — ele falha se a
-> evidência apontada deixar de existir.
+> ⚠️ **ENT02 CHEGOU AO GATE.** A definição de concluído da seção 6 do prompt do lote
+> está atendida item a item (tabela abaixo), com a cadeia percorrida **pela
+> interface** e conferida por smoke de navegador: **37 passos, 0 falhas**.
 >
-> As seções "o que FALTA" e "pendências" continuam abaixo, e é delas que sai a
-> conversa do próximo lote.
+> ⚠️ **E O GATE CONTINUA NÃO SIGNIFICANDO "TUDO PRONTO".** Dos 22 testes mínimos do
+> lote, **20 estão cobertos, 1 parcial e 1 não coberto**. O inventário item a item é um
+> TESTE (`test/lote-ent02.test.ts`), não uma tabela, e o placar vai para a saída da
+> suíte a cada execução.
+>
+> ⚠️ **E ESTES NÚMEROS FORAM CORRIGIDOS.** A primeira versão deste cabeçalho dizia
+> "17 cobertos, 2 parciais, 3 não cobertos" — escritos de memória, antes da conferência
+> item a item, e errados. Ficam registrados aqui porque um documento que corrige em
+> silêncio ensina a próxima pessoa a confiar no número sem conferir.
+>
+> As pendências nomeadas estão nos `MODULO.md` de cada módulo e em
+> `components/ui/MODULO-UI.md`.
 
 ## Identificação
 
 | Campo | Valor |
 |---|---|
-| Último lote concluído | **ENT01** — contexto seguro e a primeira despesa que atravessa o sistema (no gate, aguardando revisão) |
-| Data e hora | 2026-09-09, 13:17 (UTC-4) |
+| Último lote concluído | **ENT02** — capacidades transversais exercitadas por documentos reais (no gate, aguardando revisão) |
+| Data e hora | ENT01: 2026-09-09 13:17 · **ENT02: 2026-09-10, 06:10 (UTC-4)** |
 | Repositório de trabalho | `/Users/winnervinicius/Developer/gestao-publica` |
 | Commit | commit de encerramento de ENT00, sobre `116e1ca` (cópia da origem). O hash exato deste commit está em `git log -1` — não é repetido aqui porque um documento que cita o próprio hash muda o hash ao ser corrigido |
 | Branch | `main` |
@@ -35,7 +42,7 @@
 | Postgres desenvolvimento | `localhost:5436/gestao_publica` — PostgreSQL 18.6, container `pg-gestao-publica` | 2026-09-09 |
 | Postgres teste | `localhost:5436/gestao_publica_test` — **database distinto**, mesmo servidor | 2026-09-09 |
 | Redis | **não aplicável** — o `siafic-cg` não tem dependência de Redis | 2026-09-09 |
-| Migrations aplicadas até | ENT00: `20260728160000_contrato_campos_tr` (**63**). ENT01: `20260909195419_m07_conta_passivo_da_consignacao` (**66**), nos dois bancos | 2026-09-09 |
+| Migrations aplicadas até | ENT00: **63**. ENT01: **68**. ENT02: `20260910050000_m21_acoes_de_cadastro` (**80**), nos dois bancos | 2026-09-10 |
 | `prisma/sql/` aplicado | **sim — 17/17 arquivos**, nos dois bancos | 2026-09-09 |
 
 ### Portas — por que 5436
@@ -552,3 +559,154 @@ extrato e saldo.
 sucesso local. É a diferença entre "o pagamento foi registrado" e "o dinheiro
 saiu", e um sistema que as confunde produz o pior tipo de erro: o que parece
 resolvido.
+
+---
+
+# ENT02 — capacidades transversais exercitadas por documentos reais
+
+> Executado em 2026-09-10, nesta máquina, sobre o ENT01 no gate.
+> Sete módulos novos, todos os números medidos.
+
+## 1. O gate, item a item (seção 6 do prompt do lote)
+
+| # | Definição de concluído | Situação | Prova |
+|---|---|---|---|
+| 1 | Um processo digital percorre abertura, tramitação, parecer, readequação, encerramento e arquivamento, **pela interface**, com dados persistidos e visíveis após recarga | ✅ | `scripts/smoke-ent02.ts` — 37 passos, 0 falhas. Cada passo **recarrega a tela do servidor** antes de conferir |
+| 2 | Um comunicado percorre inclusão, resposta, encaminhamento, leitura registrada e arquivamento | ✅ | mesmo smoke, passos 22-28 |
+| 3 | Um cadastro de pessoa recebe campo adicional, anexo e assinatura, e exibe a linha do tempo no detalhe | ⚠️ **PARCIAL** | campo adicional e linha do tempo: sim, na tela do **processo**. Em PESSOA: o backend existe (`m25`, `m22`) e é testado, mas **falta a superfície** — pendências `CAMPO-ADICIONAL-DEFINICAO-UI` e `PROTOCOLO-ANEXO-UI` |
+| 4 | Um relatório operacional é produzido **pelo designer**, com modelo copiado, visibilidade definida e execução em segundo plano | ✅ | smoke, passos 29-36: cria o modelo, recusa a expressão maliciosa, copia (a cópia nasce restrita), executa e abre o CSV com o campo calculado |
+| 5 | Toda a suíte existente continua verde e os testes deste lote passam | ✅ | **153 arquivos, 1556 testes, 0 falhas** (403s) |
+| 6 | `ESTADO-EXECUCAO.md` registra código, gate, comandos, resultados reais e o próximo lote | ✅ | este documento |
+
+### O critério 3, dito sem maquiagem
+
+O prompt pede o trio **campo adicional + anexo + assinatura** no cadastro de **pessoa**.
+O que existe:
+
+- **campo adicional**: o motor é genérico (`CadastroComCamposAdicionais` inclui `PESSOA`)
+  e testado; a tela de preenchimento existe para **processo**, não para pessoa;
+- **anexo**: `Anexo.pessoaId` existe, a autorização por registro existe e é testada —
+  **não há `input[type=file]` nem rota de download**;
+- **assinatura**: existe e é testada sobre anexo e sobre movimento — não há tela.
+
+Nada disso foi contornado com um substituto que pareça pronto. As três pendências estão
+nomeadas em `components/ui/MODULO-UI.md`.
+
+## 2. Os 22 testes mínimos do lote (seção 5)
+
+**20 cobertos · 1 parcial · 1 não coberto.** O inventário é `test/lote-ent02.test.ts`,
+que imprime o placar a cada execução e falha se a classificação mudar sem alguém decidir.
+
+| # | Item | Situação |
+|---|---|---|
+| 1 | Processo do município A não visível em B | **NÃO COBERTO** — é o eixo município, decidido pelo ADR e fora deste lote. Segue declarado, como no ENT01 |
+| 4 | Anexo não acessível **por URL** a quem não tem permissão | **PARCIAL** — a regra está provada (quem não é envolvido recebe `null`) e o arquivo mora fora de pasta servida estaticamente; falta a URL, porque não há rota HTTP de download |
+| demais 20 | — | cobertos, cada um com o arquivo e o teste apontados no inventário |
+
+## 3. Os sete módulos, e a decisão central de cada um
+
+| Módulo | Bloco | A decisão que governa |
+|---|---|---|
+| **M21** protocolo | 5.42 (75 cláusulas, era `AUSENTE_CONFIRMADO`) | **não existe coluna `situacao`** — ela é derivada dos movimentos, como o `statusDoEmpenho` sai dos SUMs |
+| **M22** anexos e assinatura | 2.4/2.5 do prompt | a autorização do anexo é a do **registro dono**; nenhuma regra de acesso nova |
+| **M23** comunicação interna | 5.43 (53 cláusulas, era `AUSENTE_CONFIRMADO`) | **as caixas são ponto de vista, não estado** — o mesmo documento está na saída de um e na entrada do outro |
+| **M24** notificações | 2.6 | um serviço, três canais, **e só um existe** — e-mail e push ficam registrados com `entregueEm` nulo e motivo |
+| **M25** campos adicionais | 5.29.7 | **quatro colunas tipadas**, não um `valor String`: comparar "1.000" com "900" como texto diria que 900 é maior |
+| **M26** designer | 2.7 | a linguagem é **pequena por construção** — o que ela não sabe fazer, ela não faz, e não porque alguém a proibiu |
+| **M27** suporte | 2.8 | severidade é **dado de configuração**, não enum: é o que cada contratante negocia no contrato |
+
+## 4. O que o ENT02 acrescentou, em números medidos
+
+| Medida | ENT01 (gate) | ENT02 (gate) |
+|---|---:|---:|
+| Arquivos de teste | 144 | **153** |
+| Testes | 1441 | **1556** |
+| Serviços no censo | 105 | **156** |
+| Ações distintas | 101 | **149** |
+| Migrations | 68 | **80** |
+| Rotas no smoke visual | 22 | **29** |
+| Passos de smoke de cadeia | 23 (despesa) | 23 (despesa) + **37 (ENT02)** |
+
+## 5. Os comandos, e o que cada um respondeu
+
+| Comando | Resultado real | Quando |
+|---|---|---|
+| `npx vitest run` | **153 arquivos, 1556 testes, 0 falhas** — 403s | 2026-09-10 |
+| `npm run typecheck` · `typecheck:app` · `typecheck:scripts` | limpos | 2026-09-10 |
+| `npm run build` | compila; 7 rotas novas | 2026-09-10 |
+| `npm run db:papel` | papel sem superusuário, sem BYPASSRLS, sem DDL, nos dois bancos | 2026-09-10 |
+| `SEED_IDENTIDADE=… npm run seed:ent02` | cenário semeado: 3 setores, 3 assuntos com roteiro, 3 tipos de comunicado, 3 severidades, 5 campos adicionais, 2 ajudas | 2026-09-10 |
+| `npx tsx scripts/smoke-ent02.ts` | **37 passos, 0 falhas** | 2026-09-10 |
+| `npx tsx scripts/smoke-cadeia-despesa.ts` | **23 passos, 0 falhas** — o ENT01 continua atravessando | 2026-09-10 |
+| `npx tsx scripts/smoke-visual.ts` | **29/29 rotas** | 2026-09-10 |
+| `npx tsx scripts/smoke-cadastro-pessoas.ts` | **6 ok, 3 falhas** — ver abaixo | 2026-09-10 |
+
+### ⚠️ As 3 falhas do smoke de pessoas são resíduo, e o motivo vai junto
+
+O cadastro de teste `11222333000181` ("Fornecedor de Smoke ME") **ficou no banco de
+desenvolvimento** numa execução anterior, em **2026-09-09 22:04:47**. As três falhas são
+o smoke colidindo com o próprio resíduo — ele mesmo avisa isso na saída ("o cadastro de
+teste pode ter ficado no banco de dev"). Os passos que não dependem de criar (detalhe,
+concessão de papel, histórico, recusa de duplicado) passam.
+
+**Não removi o registro**: é dado do banco de desenvolvimento, criado fora desta sessão,
+e apagá-lo é decisão de quem opera o ambiente — não de quem está no meio de um lote.
+
+## 6. ⚠️ O falso alarme que quase virou conclusão errada
+
+Uma regressão intermediária deu **13 falhas em M05, M08, M12, M19 e M20** e levou
+**107 minutos** (o normal é ~7). Nenhum desses módulos tinha sido tocado.
+
+**Não era o código.** Eram **duas execuções da suíte disputando o mesmo banco de teste**,
+porque lancei um subconjunto enquanto a completa ainda rodava. Com o banco quieto, os
+mesmos arquivos passam em 12 segundos.
+
+O que sobrou de real da investigação foi outra coisa, e ela valeu: `TRUNCATE` de 141
+tabelas **vazias** custava **1794 ms** — o custo é tomar `ACCESS EXCLUSIVE` e recriar o
+arquivo de cada tabela e índice, não as linhas. Passou a truncar só o que tem linha
+(detecção por `EXISTS`, que lê linha e não estatística): **21 ms**.
+
+> ⚠️ E uma armadilha do driver ficou escrita no código: com o delimitador `$$`, o bloco
+> `DO` é **aceito, não levanta erro e não executa**. A falha aparece longe, no arquivo
+> seguinte, como violação de unicidade. O delimitador é nomeado (`$limpeza$`).
+
+## 7. ⚠️ O outro falso alarme: o Chromium sob pressão de memória
+
+Os smokes falhavam com `Runtime.callFunctionOn timed out` — que se lê como *"a tela não
+respondeu"* e mandaria a próxima pessoa procurar defeito na tela.
+
+Medido: **84 MB de memória física livre e 6,6 GB dos 8 GB de swap em uso**. O renderer
+estava sendo paginado para o disco. Os quatro smokes ganharam
+`--disable-dev-shm-usage`, `--disable-gpu`, `--disable-extensions` e `protocolTimeout`
+explícito — e passaram a rodar.
+
+## 8. O que o smoke pegou, e que nenhum teste de módulo pegaria
+
+| Achado | Onde |
+|---|---|
+| A tela preenchia os campos do **parecer** e apertava o botão do **trâmite** — `querySelector` devolve o primeiro da página | corrigido na TELA: cada `<form>` ganhou `data-acao` |
+| O seletor de **encaminhamento** oferecia um setor que o servidor recusa ("o setor já está no comunicado") | a tela passou a excluir também quem já está na conversa |
+| A porta do comunicado não publicava o **modo de assinatura exigido** — tornava impossível enviar um ofício que a entidade configurou para exigir assinatura | publicado |
+| A linha do tempo não publicava `respondeAId` — o seletor de "responder parecer" ofereceria pedidos já respondidos | publicado |
+
+## 9. Adiamentos DELIBERADOS, com destino
+
+| O que | Por que agora não | Destino |
+|---|---|---|
+| **Eixo município** (teste 1) | Decisão do ADR: schema por município é lote transversal próprio | lote de tenancy |
+| **Rota de download de anexo** (teste 4) | O arquivo e a autorização existem e são testados; falta a superfície HTTP | `PROTOCOLO-ANEXO-UI` |
+| **Fluxograma visual do processo** | O próprio prompt manda não implementá-lo agora | lote posterior identificado |
+| **Guia bancária da taxa** | Pertence ao bloco de arrecadação (5.29), `AUSENTE_CONFIRMADO`, frente ENT06 | `PROTOCOLO-GUIA-BANCARIA` |
+| **Assinatura qualificada / HSM** | Sem provedor. O caso de uso RECUSA produzi-la | `ASSINATURA-ICP-HSM` |
+| **Envio real de e-mail e push** | Sem provedor, e envio externo está fora da autorização de trabalho | `NOTIFICACAO-EMAIL-PUSH` |
+| **Trabalhador contínuo do designer** | Sem agendador. Hoje a fila é drenada ao abrir a tela, e isso está declarado | `DESIGNER-WORKER-CONTINUO` |
+| **Telas de cadastro** (setor, assunto, tipo de comunicado, severidade, definição de campo) | Os casos de uso existem e são exercitados pelo seed do cenário | 5 pendências em `MODULO-UI.md` |
+
+## 10. O próximo lote
+
+`prompts/03-ENT03-FINANCEIRO-E-CONTROLE.md`, **depois da revisão deste gate**.
+
+E antes dele, a decisão que segue de pé desde o ENT01: o **lote de tenancy** fecha os
+itens 4, 5 e 7 do incremento do ENT01 e o teste 1 deste lote. Enquanto ele não vier,
+esses continuam declarados — nunca marcados como atendidos, e nenhum município novo
+habilitado.

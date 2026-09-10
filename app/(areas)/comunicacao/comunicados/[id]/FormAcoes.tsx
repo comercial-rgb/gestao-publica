@@ -60,7 +60,7 @@ export function FormEditarRascunho({
       titulo="Editar rascunho"
       descricao="Editável até o envio, e nunca depois: quem já leu leu o texto que saiu. O envio carimba o hash do conteúdo, e é ele que denuncia uma alteração feita por outro caminho."
     >
-      <form action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+      <form data-acao="editar-rascunho" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <input type="hidden" name="comunicadoId" value={comunicadoId} />
         <CampoTexto name="assunto" rotulo="Assunto" required largura={4} defaultValue={assunto} />
         <CampoTextarea name="corpo" rotulo="Corpo" required largura={4} linhas={6} defaultValue={corpo} />
@@ -104,7 +104,7 @@ export function FormEnviar({
           : "O comunicado sai para os setores escolhidos e some da sua caixa de rascunhos."
       }
     >
-      <form action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+      <form data-acao="enviar" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <input type="hidden" name="comunicadoId" value={comunicadoId} />
         <label className="flex flex-col gap-1 text-xs text-[color:var(--color-ink-2)] md:col-span-2">
           <span className="font-medium text-[color:var(--color-ink)]">
@@ -180,7 +180,7 @@ export function FormResponder({
       titulo="Responder"
       descricao="A resposta alcança apenas os setores JÁ ENVOLVIDOS. Para trazer alguém novo, use encaminhar — e o encaminhamento fica registrado como tal."
     >
-      <form action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+      <form data-acao="responder" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <input type="hidden" name="comunicadoId" value={comunicadoId} />
         <CampoSelect
           name="setorRemetenteId"
@@ -225,7 +225,7 @@ export function FormEncaminhar({
       titulo="Encaminhar"
       descricao="É o ato que INCLUI alguém novo na conversa — e por isso ele é registrado, ao contrário de uma resposta que alcançasse qualquer setor."
     >
-      <form action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+      <form data-acao="encaminhar" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <input type="hidden" name="comunicadoId" value={comunicadoId} />
         <CampoSelect
           name="setorDestinoId"
@@ -282,19 +282,19 @@ export function FormAcoesPessoais({
       descricao="Arquivar e favoritar são SEUS: o mesmo comunicado pode estar arquivado para você e ativo para outra pessoa. A etiqueta, ao contrário, é visível a todos os envolvidos."
     >
       <div className="flex flex-wrap gap-2">
-        <form action={acaoCiencia}>
+        <form data-acao="ciencia" action={acaoCiencia}>
           <input type="hidden" name="comunicadoId" value={comunicadoId} />
           <button type="submit" className={CLASSE_BOTAO_PRIMARIO} disabled={pendenteCiencia}>
             {pendenteCiencia ? "Registrando…" : "Registrar ciência"}
           </button>
         </form>
-        <form action={acaoArquivo}>
+        <form data-acao="arquivo" action={acaoArquivo}>
           <input type="hidden" name="comunicadoId" value={comunicadoId} />
           <button type="submit" className={CLASSE_BOTAO_PRIMARIO} disabled={pendenteArquivo}>
             {arquivado ? "Desarquivar" : "Arquivar"}
           </button>
         </form>
-        <form action={acaoFavorito}>
+        <form data-acao="favorito" action={acaoFavorito}>
           <input type="hidden" name="comunicadoId" value={comunicadoId} />
           <button type="submit" className={CLASSE_BOTAO_PRIMARIO} disabled={pendenteFavorito}>
             Favoritar
@@ -306,7 +306,7 @@ export function FormAcoesPessoais({
       <ResultadoComunicado estado={arquivo} />
       <ResultadoComunicado estado={favorito} />
 
-      <form action={acaoEtiqueta} className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
+      <form data-acao="etiqueta" action={acaoEtiqueta} className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
         <input type="hidden" name="comunicadoId" value={comunicadoId} />
         <CampoTexto name="tag" rotulo="Etiqueta" largura={2} placeholder="prazo curto" />
         <div className="md:col-span-4">
