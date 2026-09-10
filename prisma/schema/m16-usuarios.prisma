@@ -170,6 +170,17 @@ enum AcaoDoSistema {
   DESAPENSAR_PROCESSO
   TORNAR_MOVIMENTO_SEM_EFEITO
 
+  // ── M21 — os CADASTROS do protocolo (ENT02) ──
+  //
+  /// ⚠️ CONFIGURAR NÃO É OPERAR. Quem desenha o roteiro de um assunto decide por
+  /// quantos setores todo processo daquele tipo vai passar e em quantos dias; quem
+  /// abre o processo apenas o usa.
+  CRIAR_SETOR
+  LOTAR_USUARIO_NO_SETOR
+  CRIAR_ASSUNTO
+  REGISTRAR_TAXA_DO_PROCESSO
+  BAIXAR_TAXA_DO_PROCESSO
+
   // ── M22 — anexos e assinatura (ENT02) ──
   //
   /// ⚠️ ASSINAR é ação PRÓPRIA. Quem instrui o processo não é necessariamente quem

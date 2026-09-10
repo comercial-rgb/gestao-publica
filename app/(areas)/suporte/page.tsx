@@ -1,20 +1,26 @@
-import { Card } from "../../../components/ui/Card";
+import { Card, CardNavegacao } from "../../../components/ui/Card";
 import { PageHeader } from "../../../components/ui/PageHeader";
 import { AREAS } from "../../../lib/navegacao";
 
 /**
  * SUPORTE — os canais de atendimento e os PRAZOS CONTRATADOS (TR 4.20.9).
  *
- * ⚠️ ESTA TELA É ESTÁTICA POR HONESTIDADE, e a distinção importa. Ela publica o que o contrato
- * PROMETE — os canais e os prazos por classe de chamado. Ela NÃO é um helpdesk: não abre chamado,
- * não tem fila, não mostra histórico e não sabe o estado de nenhum atendimento. O helpdesk e o
- * WhatsApp Business são ferramentas EXTERNAS, operadas fora deste sistema, e é lá que o chamado
- * nasce e é acompanhado.
+ * ⚠️ ESTA TELA PUBLICA O QUE O CONTRATO PROMETE — os canais e os prazos por classe de chamado.
+ * Ela continua sem inventar número: nada de "chamados abertos" ou "tempo médio de resposta" que
+ * dado nenhum sustente.
  *
- * Fazer esta tela FINGIR uma fila (com números inventados de "chamados abertos" ou "tempo médio de
- * resposta") seria exatamente o tipo de vitrine que o resto do sistema recusa: um número na tela
- * que nenhum dado sustenta. Se um dia o helpdesk expuser API, esta tela passa a lê-la — e aí os
- * números serão dele, não nossos.
+ * ═══ ⚠️ O QUE MUDOU NO ENT02, E POR QUE ESTE COMENTÁRIO FOI REESCRITO ═══
+ * Até o ENT01 esta tela dizia, em voz alta, que o sistema NÃO abria nem acompanhava chamado —
+ * e era verdade: o helpdesk era ferramenta externa. Com o M27 isso deixou de ser verdade: existe
+ * chamado com número único, fila por severidade, histórico e pesquisa de satisfação, em
+ * `/suporte/chamados`.
+ *
+ * Deixar a frase antiga aqui seria pior do que nunca tê-la escrito: uma afirmação que o próprio
+ * repositório desmente é exatamente o tipo de comentário que faz a próxima pessoa desconfiar de
+ * todos os outros.
+ *
+ * Os canais EXTERNOS continuam existindo e continuam listados — WhatsApp e e-mail são o primeiro
+ * contato, e a triagem por eles não deixa de valer porque agora há uma fila interna.
  *
  * ⚠️ Imports RELATIVOS na UI (ver components/ui/MODULO-UI.md).
  */
@@ -58,10 +64,25 @@ export default function SuportePage(): React.ReactElement {
       <PageHeader titulo={area.rotulo} subtitulo={area.descricao} />
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        Esta tela publica os <strong>canais e os prazos contratados</strong>. Ela não abre nem
-        acompanha chamado: o atendimento acontece nas ferramentas externas listadas abaixo, e é
-        nelas que o chamado tem número, fila e histórico.
+        Esta tela publica os <strong>canais e os prazos contratados</strong>. Para abrir e
+        acompanhar um chamado <strong>dentro do sistema</strong>, use{" "}
+        <a href="/suporte/chamados" className="text-[color:var(--color-primary)] hover:underline">
+          Chamados
+        </a>
+        . Os canais externos abaixo continuam valendo para o primeiro contato e para a triagem.
       </div>
+
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[color:var(--color-ink-2)]">Atendimento no sistema</h2>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <CardNavegacao
+            href="/suporte/chamados"
+            rotulo="Chamados"
+            titulo="Abrir e acompanhar chamado"
+            descricao="Número único no produto inteiro, severidade cadastrada pela entidade, histórico e pesquisa de satisfação."
+          />
+        </div>
+      </section>
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[color:var(--color-ink-2)]">Canais de atendimento</h2>

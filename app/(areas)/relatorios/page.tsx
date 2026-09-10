@@ -1,6 +1,6 @@
 import { CardNavegacao } from "../../../components/ui/Card";
 import { PageHeader } from "../../../components/ui/PageHeader";
-import { AREAS, RELATORIOS_GERENCIAIS, RELATORIOS_LIVROS, RELATORIOS_RGF, RELATORIOS_RREO } from "../../../lib/navegacao";
+import { AREAS, RELATORIOS_DESIGNER, RELATORIOS_GERENCIAIS, RELATORIOS_LIVROS, RELATORIOS_RGF, RELATORIOS_RREO } from "../../../lib/navegacao";
 
 /**
  * Landing da área RELATÓRIOS — o índice dos demonstrativos. Cada grupo (RREO, RGF, Livros) lista os
@@ -56,6 +56,20 @@ export default function RelatoriosPage(): React.ReactElement {
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[color:var(--color-ink-2)]">Gerenciais</h2>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {RELATORIOS_GERENCIAIS.map((rel) => (
+            <CardNavegacao key={rel.href} href={rel.href} rotulo={rel.numero} titulo={rel.rotulo} descricao={rel.descricao} />
+          ))}
+        </div>
+      </section>
+
+      {/* ── Designer ──
+          ⚠️ SEÇÃO PRÓPRIA, e a razão é a mesma que separa os gerenciais dos livros, levada
+          um passo adiante: nos gerenciais o usuário escolhe o FILTRO; aqui ele escreve a
+          COLUNA. Pô-lo entre os relatórios legais sugeriria que um RREO também se desenha —
+          e a fórmula do RREO está na lei, não na tela. */}
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[color:var(--color-ink-2)]">Desenhados pela entidade</h2>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {RELATORIOS_DESIGNER.map((rel) => (
             <CardNavegacao key={rel.href} href={rel.href} rotulo={rel.numero} titulo={rel.rotulo} descricao={rel.descricao} />
           ))}
         </div>

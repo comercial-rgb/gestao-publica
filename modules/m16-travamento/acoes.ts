@@ -186,6 +186,17 @@ export type AcaoDoSistema =
   | "APENSAR_PROCESSO"
   | "DESAPENSAR_PROCESSO"
   | "TORNAR_MOVIMENTO_SEM_EFEITO"
+  // ── M21 — os CADASTROS do protocolo (ENT02) ──
+  //
+  // ⚠️ CONFIGURAR NÃO É OPERAR. Quem desenha o roteiro de um assunto decide por quantos
+  // setores todo processo daquele tipo vai passar e em quantos dias; quem abre o
+  // processo apenas o usa. Uma ação única daria o primeiro poder a quem precisa do
+  // segundo.
+  | "CRIAR_SETOR"
+  | "LOTAR_USUARIO_NO_SETOR"
+  | "CRIAR_ASSUNTO"
+  | "REGISTRAR_TAXA_DO_PROCESSO"
+  | "BAIXAR_TAXA_DO_PROCESSO"
   // ── M22 — anexos e assinatura (ENT02) ──
   //
   // ⚠️ ASSINAR É AÇÃO PRÓPRIA, separada de tudo o mais. Quem instrui o processo não é
@@ -372,6 +383,12 @@ export type NomeDeServico =
   | "apensarProcesso"
   | "desapensarProcesso"
   | "tornarMovimentoSemEfeito"
+  // ── M21 — cadastros do protocolo (ENT02) ──
+  | "criarSetor"
+  | "lotarUsuarioNoSetor"
+  | "criarAssunto"
+  | "registrarTaxaDoProcesso"
+  | "baixarTaxaDoProcesso"
   // ── M22 — anexos e assinatura (ENT02) ──
   | "anexarArquivo"
   | "assinarDocumento"
@@ -568,6 +585,13 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   apensarProcesso: "APENSAR_PROCESSO",
   desapensarProcesso: "DESAPENSAR_PROCESSO",
   tornarMovimentoSemEfeito: "TORNAR_MOVIMENTO_SEM_EFEITO",
+
+  // ── M21 — cadastros do protocolo (ENT02) ──
+  criarSetor: "CRIAR_SETOR",
+  lotarUsuarioNoSetor: "LOTAR_USUARIO_NO_SETOR",
+  criarAssunto: "CRIAR_ASSUNTO",
+  registrarTaxaDoProcesso: "REGISTRAR_TAXA_DO_PROCESSO",
+  baixarTaxaDoProcesso: "BAIXAR_TAXA_DO_PROCESSO",
 
   // ── M22 — anexos e assinatura (ENT02) ──
   anexarArquivo: "ANEXAR_ARQUIVO",

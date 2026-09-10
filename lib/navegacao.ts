@@ -157,6 +157,18 @@ export const CADASTROS: readonly RelatorioNav[] = [
   { href: "/cadastros/pessoas", numero: "Pessoas", rotulo: "Pessoas e Credores", descricao: "Uma pessoa, vários papéis. Cadastro append-only: alterar cria versão, e o histórico fica." },
 ];
 
+/**
+ * O DESIGNER — fonte única da landing e do submenu.
+ *
+ * ⚠️ ELE FICA EM RELATÓRIOS, MAS NÃO É UM RELATÓRIO LEGAL. RREO, RGF e balanços têm
+ * fórmula fixada em lei; o designer é a capacidade de o usuário montar o que ninguém
+ * previu. Ficam na mesma área porque é onde o usuário procura — e a descrição diz a
+ * diferença em voz alta.
+ */
+export const RELATORIOS_DESIGNER: readonly RelatorioNav[] = [
+  { href: "/relatorios/designer", numero: "Designer", rotulo: "Modelos do usuário", descricao: "Relatórios desenhados pela entidade, com campos calculados por gramática segura e execução em segundo plano." },
+];
+
 /** Os livros obrigatórios com página — fonte única da landing. */
 export const RELATORIOS_LIVROS: readonly RelatorioNav[] = [
   { href: "/relatorios/livros/diario", numero: "Diário", rotulo: "Livro Diário", descricao: "Todos os lançamentos, em ordem cronológica estável." },

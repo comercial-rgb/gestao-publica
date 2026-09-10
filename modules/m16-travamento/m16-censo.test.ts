@@ -318,7 +318,9 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   retirar e executar) = 144.
     // + 7 (ENT02/M27 — ajuda de rota, nível de severidade, abrir, responder, encerrar
     //   e reabrir chamado, e a pesquisa de satisfação) = 151.
-    expect(nomes.length).toBe(151);
+    // + 5 (ENT02/M21 cadastros — criar setor, lotar usuário, criar assunto com roteiro,
+    //   registrar e baixar taxa do processo) = 156.
+    expect(nomes.length).toBe(156);
 
     // 97 serviços, 93 ações distintas. Os pares que compartilham ação (4: importarExtratoBb
     // REUSA IMPORTAR_EXTRATO). transferirEntreContas tem AÇÃO PRÓPRIA (não compartilha) → +1 ação.
@@ -355,7 +357,10 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     // 151 serviços, 144 ações distintas. RESPONDER e ENCERRAR chamado são separadas de
     // propósito: quem abriu é quem sabe se o problema acabou, e encerrar junto com a
     // resposta faria a métrica de resolução medir a velocidade de digitar.
-    expect(TODAS_AS_ACOES.length).toBe(144);
+    // 156 serviços, 149 ações distintas. Os cadastros do M21 têm ações próprias porque
+    // CONFIGURAR NÃO É OPERAR: quem desenha o roteiro de um assunto decide por quantos
+    // setores todo processo daquele tipo vai passar; quem abre o processo apenas o usa.
+    expect(TODAS_AS_ACOES.length).toBe(149);
     expect(ACAO_DO_SERVICO.encerrarExercicio).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.encerrarExercicioComRestos).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.importarExtrato).toBe("IMPORTAR_EXTRATO");

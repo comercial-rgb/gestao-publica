@@ -39,7 +39,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "relatorios:processar": "tsx scripts/processar-relatorios.ts"
+    "relatorios:processar": "tsx scripts/processar-relatorios.ts",
+    "seed:ent02": "tsx prisma/seed/cenario-ent02.ts"
   },
   "keywords": [],
   "author": "",
