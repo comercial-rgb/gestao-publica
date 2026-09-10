@@ -9,6 +9,11 @@
 > interface** e conferida por smoke de navegador: **43 passos, 0 falhas** (eram 37 no
 > gate; o fechamento acrescentou os 6 passos dos anexos).
 >
+> ⚠️ **ENT03 ABERTO E PARADO NO GATE PARCIAL (2026-09-10).** A caracterização foi feita
+> e é o entregável principal deste ponto: `docs/caracterizacao/`. A tesouraria ganhou lote
+> de pagamento, borderô e retorno bancário. **A maior parte do prompt do ENT03 NÃO foi
+> executada** — a seção 12 lista item a item o que ficou, sem eufemismo.
+>
 > ⚠️ **FECHAMENTO DO ENT02 (2026-09-10, tarde).** Quatro itens pedidos na revisão do
 > gate foram entregues em commits separados, com a suíte verde antes e depois de cada
 > um: a superfície dos anexos, a idempotência do smoke de pessoas, a trava de
@@ -853,9 +858,142 @@ tela o renderiza uma vez e funciona; no dia em que renderizar dois, o `list` do 
 apontaria para as sugestões do primeiro, em silêncio. Corrigido com `useId` em vez de aberto
 como exceção.
 
-## 11. O próximo lote
+## 11. ENT03 — a caracterização, a tesouraria, e o que NÃO foi feito
 
-`prompts/03-ENT03-FINANCEIRO-E-CONTROLE.md`, **depois da revisão deste fechamento**.
+> Executado em 2026-09-10. **Parado no gate, aguardando revisão.**
+
+### 12.1 A ordem foi respeitada: caracterizar antes de ampliar
+
+**Nada novo entrou em M01, M04, M05, M06, M07, M08, M12 ou M14 antes da medição.** E a
+medição encerrou a dúvida de 09/09:
+
+```
+$ npx vitest run modules/m01-core-contabil modules/m04-receita modules/m05-despesa \
+    modules/m06-ordem-cronologica modules/m07-extraorcamentario \
+    modules/m08-restos-a-pagar modules/m12-relatorios modules/m14-exports-federais
+
+ Test Files  61 passed (61)
+      Tests  647 passed (647)
+   Duration  190.52s
+```
+
+**Nenhuma das 13 falhas de 09/09 era defeito.** Eram duas suítes disputando o banco.
+
+`docs/caracterizacao/01-financeiro.md` registra os cinco comportamentos, e
+`test/caracterizacao/financeiro.test.ts` (15 testes) os prende: **três deles registram
+LIMITAÇÃO, não garantia** — se alguém as corrigir, o teste falha, e a correção vira decisão
+consciente.
+
+**O achado que muda o plano:** ⚠️ **não existe saldo de dotação por data.**
+`saldosDaFicha` tem dois parâmetros e nenhum é temporal, e `MovimentoDotacao` **não tem
+data de competência** — só `criadoEm`, o instante da gravação. Um decreto de 20/06 lançado
+em 15/07 responderia errado a "qual era o saldo em 30/06?", **em silêncio**. E o empenho
+TEM `data`, o que torna a assimetria uma armadilha.
+
+Cotas por período, contingenciamento e prévia de alteração (2.5) dependem disso. **Nenhum
+deles foi construído**, e é por essa razão.
+
+### 12.2 A máquina — decidido e registrado ANTES de abrir o lote
+
+`docs/caracterizacao/00-maquina-e-concorrencia.md`. Medido: 8 GB de RAM, Docker com
+3,825 GiB reservados, **7,4 GB dos 8 GB de swap em uso em repouso**. Durante a suíte sobram
+29–232 MB; durante o smoke o swap chega a **7857 MB de 8192 (96%)**.
+
+Cada um passa sozinho; os dois juntos não passam. `scripts/trinco-de-maquina.ts` serializa
+suíte, smokes e build. Ele **não substitui** a trava do ENT02: aquela protege o banco e é
+por banco; esta protege a máquina.
+
+**Recusado:** limitar a concorrência da suíte. O RSS somado dos processos node no pico foi
+**538 MB** — ela não é a maior consumidora. Cortar workers a deixaria mais lenta sem
+devolver memória.
+
+⚠️ **Nada foi parado nem reconfigurado no Docker.** Os três containers de outro projeto e o
+limite da VM são ambiente do usuário. Fica o número.
+
+### 12.3 O que a tesouraria ganhou
+
+Lote de pagamento, borderô e retorno bancário — os **testes 4, 5 e 6** do lote do ENT03,
+com 18 testes novos. O detalhe está em `modules/m09-tesouraria/MODULO.md`.
+
+Três decisões que valem repetir aqui:
+
+- **o lote AGRUPA** `OrdemDePagamento` e `MovimentoExtraorcamentario` que já existiam — não
+  copia valor, credor nem conta, e quem paga continua sendo o M05;
+- **a ordem cronológica é conferida na inclusão**, contra a mesma fila do M06 — porque a
+  caracterização mostrou que o domínio **relata** e não bloqueia;
+- **o borderô vira um `Anexo` de origem SISTEMA**, então é baixável pela rota do ENT02 e
+  assinável pela fila do M22, sem código novo.
+
+⚠️ **E o guard da ordem cronológica nasceu errado.** Sem descontar da fila os itens já em
+lote vigente, um lote com duas liquidações da mesma fonte era **impossível de compor**. Só
+apareceu porque o teste tinha duas liquidações — com uma só, ele passaria por vacuidade.
+
+### 12.4 ⚠️ O que NÃO foi feito — a maior parte do prompt
+
+| Seção do prompt | Situação |
+|---|---|
+| 2.2 movimentação bancária por fonte | **não feito** — `TESOURARIA-MOVIMENTACAO` |
+| 2.2 conciliação: cópia de pendências ao período seguinte | **não feito** — `CONCILIACAO-COPIA-PENDENCIAS` |
+| 2.3 diárias, adiantamentos, prestação de contas online | **não iniciado** |
+| 2.4 convênios, precatórios, dívida fundada, PPP, consórcios, obras, multas | **não iniciado** |
+| 2.5 planejamento (audiências, emendas, prévia, cotas, contingenciamento…) | **não iniciado** — e 2.5 depende do achado 12.1 |
+| 2.6 controle interno (módulo novo) | **não iniciado** |
+| 2.7 assinatura no fluxo financeiro | **parcial**: o borderô entra na fila; empenho, liquidação, ordem e comprovante **não** |
+| 2.8 consulta externa do fornecedor | **não iniciado** |
+| Telas do lote e do borderô | **não feitas** — `LOTE-UI`. Os casos de uso existem e são testados |
+
+Dos **22 testes mínimos** do lote, **3 estão cobertos** (4, 5 e 6). Os outros 19 não.
+
+A definição de concluído (seção 5 do prompt) **não está atendida**: nenhum dos quatro
+percursos pela interface existe.
+
+### 12.5 O catálogo — a medida real de quanto falta
+
+`scripts/marcar-catalogo.ts` marca `situacao` e `evidencia` só onde há **comportamento,
+teste e evidência** — que é o aviso do próprio catálogo. Ele **recusa** marcação sem
+evidência e falha se um id não existir.
+
+| Situação | Cláusulas |
+|---|---:|
+| `NAO_VERIFICADO` | 1999 (98,1%) |
+| `VALIDADO_LOCALMENTE` | 21 |
+| `IMPLEMENTADO_NAO_VALIDADO` | 10 |
+| `AUSENTE_CONFIRMADO` | 4 |
+| `DEPENDENCIA_EXTERNA` | 2 |
+| `PARCIAL` | 1 |
+
+**38 de 2037 cláusulas verificadas — 1,9%.** O número é desconfortável e é o ponto: sem
+ele, "ENT01 e ENT02 concluídos" soaria como muito mais do que é. As 1999 restantes não
+foram olhadas, e ninguém deve supor nada sobre elas.
+
+⚠️ **O catálogo vive em `gestao-publica-execucao/`, que NÃO é repositório git.** A alteração
+não é revertível por `git checkout`. O script é idempotente e o estado anterior era
+`NAO_VERIFICADO` com evidência vazia em todas as 2037 — reconstruível, mas registro aqui
+porque a irreversibilidade é real.
+
+### 12.6 Comandos e resultados
+
+| Comando | Resultado | Data |
+|---|---|---|
+| suíte dos 8 módulos | **61 arquivos, 647 testes, 0 falhas** — 190s | 2026-09-10 |
+| `npm run test:tudo` | **159 arquivos, 1613 testes, 0 falhas** — 334s | 2026-09-10 |
+| 3 typechecks | limpos | 2026-09-10 |
+| `npx prisma migrate deploy` | 3 migrations aditivas, **zero DROP** | 2026-09-10 |
+| `npx tsx scripts/marcar-catalogo.ts` | 38 marcações, 1,9% do catálogo | 2026-09-10 |
+
+Censo do M16: **156 → 161 serviços, 149 → 154 ações**. Migrations: **83**.
+
+## 12. O próximo passo
+
+⚠️ **O ENT03 está ABERTO e PARADO no gate parcial** — ver a seção 11. Ele não está
+concluído, e o próximo passo não é outro lote: é a revisão do que já foi feito e a
+decisão sobre o que segue.
+
+**A decisão que bloqueia a seção 2.5 do ENT03**, e que precisa ser tomada antes da primeira
+cota de despesa: `MovimentoDotacao` ganha data de competência — uma migration que muda o
+significado de todos os saldos — ou o corte por data se deriva de outra fonte? A
+caracterização (11.1) mostrou que hoje não há corte nenhum, e cotas, contingenciamento e
+prévia de alteração dependem dele.
 
 ⚠️ **E ele abre pela CARACTERIZAÇÃO, não por funcionalidade.** A instrução da revisão é
 explícita e vale registrar por inteiro: rodar a suíte de **M01, M04, M05, M06, M07, M08,
