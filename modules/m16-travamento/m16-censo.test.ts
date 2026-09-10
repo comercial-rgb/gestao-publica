@@ -142,6 +142,16 @@ const CHAMA_A_AUTORIZACAO = /(autorizarNo\(|autorizar\(|autz\.exigir\()/;
 const AUTORIZA_EM_HELPER: Record<string, string> = {
   travar: "registrar() — o helper privado que abre a $transaction (a ação vem do corpo público)",
   destravar: "registrar() — idem",
+  // ⚠️ M23 (ENT02) — os quatro movimentos PESSOAIS da caixa. Eles são o MESMO corpo com
+  // um tipo diferente: carregar o comunicado, achar o setor pelo qual o usuário
+  // participa dele, autorizar e inserir. A ação de cada um continua nascendo no corpo
+  // público (o t6b prova que é a certa), e quem faz a chamada é o helper que abre a
+  // transação — como em `travar`. Quatro cópias da mesma transação seriam quatro
+  // lugares para alguém corrigir um guard e esquecer três.
+  arquivarComunicado: "movimentoPessoal() — o helper privado que abre a $transaction",
+  desarquivarComunicado: "movimentoPessoal() — idem",
+  favoritarComunicado: "movimentoPessoal() — idem",
+  desfavoritarComunicado: "movimentoPessoal() — idem",
 };
 
 describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
@@ -300,7 +310,10 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   arquivar, reabrir, apensar, desapensar e tornar movimento sem efeito) = 119.
     // + 4 (ENT02/M22 — anexarArquivo, assinarDocumento, criarFilaDeAssinatura e
     //   assinarNaFila) = 123.
-    expect(nomes.length).toBe(123);
+    // + 12 (ENT02/M23 — o comunicado interno: criar tipo, rascunhar, editar rascunho,
+    //   enviar, responder, encaminhar, marcar leitura, arquivar, desarquivar,
+    //   favoritar, desfavoritar e etiquetar) = 135.
+    expect(nomes.length).toBe(135);
 
     // 97 serviços, 93 ações distintas. Os pares que compartilham ação (4: importarExtratoBb
     // REUSA IMPORTAR_EXTRATO). transferirEntreContas tem AÇÃO PRÓPRIA (não compartilha) → +1 ação.
@@ -324,7 +337,11 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     // 123 serviços, 119 ações distintas. As 4 do M22 também são próprias: assinar não
     // é anexar, e nenhuma das duas é tramitar. Juntar assinatura e trâmite faria do
     // despacho um ato assinado por quem apenas o encaminhou.
-    expect(TODAS_AS_ACOES.length).toBe(119);
+    // 135 serviços, 128 ações distintas. Os QUATRO movimentos pessoais da caixa do M23
+    // compartilham `GERIR_MINHA_CAIXA` — arquivar, desarquivar, favoritar e
+    // desfavoritar são o mesmo poder sobre a própria caixa, e nenhum deles muda o
+    // documento para outra pessoa. Ninguém negaria um sem negar os outros três.
+    expect(TODAS_AS_ACOES.length).toBe(128);
     expect(ACAO_DO_SERVICO.encerrarExercicio).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.encerrarExercicioComRestos).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.importarExtrato).toBe("IMPORTAR_EXTRATO");

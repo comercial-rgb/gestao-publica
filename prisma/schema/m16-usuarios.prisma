@@ -179,6 +179,21 @@ enum AcaoDoSistema {
   ASSINAR_DOCUMENTO
   CRIAR_FILA_DE_ASSINATURA
   ASSINAR_NA_FILA
+
+  // ── M23 — comunicação interna (ENT02) ──
+  //
+  /// ⚠️ `GERIR_MINHA_CAIXA` cobre arquivar, desarquivar, favoritar e desfavoritar:
+  /// é o MESMO poder — organizar a própria caixa —, e nenhum deles muda o documento
+  /// para outra pessoa. Etiquetar fica separado porque a tag é visível a todos.
+  CRIAR_TIPO_DE_COMUNICADO
+  RASCUNHAR_COMUNICADO
+  EDITAR_RASCUNHO_DE_COMUNICADO
+  ENVIAR_COMUNICADO
+  RESPONDER_COMUNICADO
+  ENCAMINHAR_COMUNICADO
+  MARCAR_LEITURA_DE_COMUNICADO
+  GERIR_MINHA_CAIXA
+  ETIQUETAR_COMUNICADO
 }
 
 /// O USUÁRIO. TR 4.55.

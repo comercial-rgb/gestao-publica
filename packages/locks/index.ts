@@ -147,6 +147,16 @@ export const ORDEM_DOS_LOCKS = {
    * processo ainda não existe quando se decide o número dele.
    */
   SequenciaDeProtocolo: 13,
+  /**
+   * M23 — A SEQUÊNCIA DO COMUNICADO (ENT02). Mesma corrida do protocolo, num grão
+   * diferente: a numeração é por (exercício, tipo, setor remetente), então o id
+   * travado é essa TRÍPLICE, não o exercício sozinho.
+   *
+   * ⚠️ TRAVAR O EXERCÍCIO INTEIRO AQUI SERIA PIOR QUE O BUG. Todo memorando de todo
+   * setor passaria pela mesma fila, e a Educação esperaria a Saúde para numerar um
+   * documento que não disputa numeração nenhuma com ela.
+   */
+  SequenciaDeComunicado: 14,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

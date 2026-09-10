@@ -194,7 +194,26 @@ export type AcaoDoSistema =
   | "ANEXAR_ARQUIVO"
   | "ASSINAR_DOCUMENTO"
   | "CRIAR_FILA_DE_ASSINATURA"
-  | "ASSINAR_NA_FILA";
+  | "ASSINAR_NA_FILA"
+  // ── M23 — comunicação interna (ENT02) ──
+  //
+  // ⚠️ ARQUIVAR, DESARQUIVAR, FAVORITAR E DESFAVORITAR COMPARTILHAM UMA AÇÃO SÓ. Eles
+  // são o MESMO poder — organizar a própria caixa — e nenhum deles muda o documento
+  // para outra pessoa. Quatro crachás separados para "guardar" e "desguardar" o meu
+  // próprio e-mail seriam quatro linhas de permissão que ninguém jamais negaria uma
+  // sem negar as outras.
+  //
+  // ETIQUETAR fica de fora dessa fusão de propósito: a tag é VISÍVEL a todos os
+  // envolvidos, e por isso não é organização pessoal.
+  | "CRIAR_TIPO_DE_COMUNICADO"
+  | "RASCUNHAR_COMUNICADO"
+  | "EDITAR_RASCUNHO_DE_COMUNICADO"
+  | "ENVIAR_COMUNICADO"
+  | "RESPONDER_COMUNICADO"
+  | "ENCAMINHAR_COMUNICADO"
+  | "MARCAR_LEITURA_DE_COMUNICADO"
+  | "GERIR_MINHA_CAIXA"
+  | "ETIQUETAR_COMUNICADO";
 
 /**
  * O NOME DO SERVIÇO, exatamente como ele é exportado. É esta união que o grep-teste
@@ -326,7 +345,20 @@ export type NomeDeServico =
   | "anexarArquivo"
   | "assinarDocumento"
   | "criarFilaDeAssinatura"
-  | "assinarNaFila";
+  | "assinarNaFila"
+  // ── M23 — comunicação interna (ENT02) ──
+  | "criarTipoDeComunicado"
+  | "rascunharComunicado"
+  | "editarRascunho"
+  | "enviarComunicado"
+  | "responderComunicado"
+  | "encaminharComunicado"
+  | "marcarLeitura"
+  | "arquivarComunicado"
+  | "desarquivarComunicado"
+  | "favoritarComunicado"
+  | "desfavoritarComunicado"
+  | "etiquetarComunicado";
 
 /**
  * ⚠️ O RECORD EXAUSTIVO — serviço → ação.
@@ -492,6 +524,21 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   assinarDocumento: "ASSINAR_DOCUMENTO",
   criarFilaDeAssinatura: "CRIAR_FILA_DE_ASSINATURA",
   assinarNaFila: "ASSINAR_NA_FILA",
+
+  // ── M23 — comunicação interna (ENT02) ──
+  criarTipoDeComunicado: "CRIAR_TIPO_DE_COMUNICADO",
+  rascunharComunicado: "RASCUNHAR_COMUNICADO",
+  editarRascunho: "EDITAR_RASCUNHO_DE_COMUNICADO",
+  enviarComunicado: "ENVIAR_COMUNICADO",
+  responderComunicado: "RESPONDER_COMUNICADO",
+  encaminharComunicado: "ENCAMINHAR_COMUNICADO",
+  marcarLeitura: "MARCAR_LEITURA_DE_COMUNICADO",
+  // Os quatro compartilham a ação — ver o comentário na união das ações.
+  arquivarComunicado: "GERIR_MINHA_CAIXA",
+  desarquivarComunicado: "GERIR_MINHA_CAIXA",
+  favoritarComunicado: "GERIR_MINHA_CAIXA",
+  desfavoritarComunicado: "GERIR_MINHA_CAIXA",
+  etiquetarComunicado: "ETIQUETAR_COMUNICADO",
 };
 
 /** Todas as ações do rol — a lista que o seed de perfis e as mensagens de erro usam. */
@@ -816,6 +863,11 @@ export const FORA_DO_CENSO: Record<string, string> = {
   // "BAIXAR_ANEXO" seria uma segunda regra de acesso — que divergiria da primeira.
   baixarAnexo: "leitura (entrega o arquivo depois de perguntar ao registro dono se este usuário pode)",
   podeVerComunicado: "leitura (a regra de visibilidade do comunicado — remetente, destinatários e global)",
+  //
+  // ── M23 — as CONSULTAS da comunicação interna (ENT02). Leitura pura.
+  listarCaixaDeComunicados: "leitura (a caixa CALCULADA para quem pergunta — não há coluna de caixa)",
+  leiturasDoComunicado: "leitura (quem leu, quando e por qual origem; devolve null a quem não participa)",
+  integridadeDoEnvio: "leitura (confronta o hash carimbado no envio com o texto de hoje)",
   //
   // ⚠️ O ARMAZENAMENTO É I/O DE DISCO, não ato do usuário. `gravarArquivo` e `lerArquivo`
   // são chamados DE DENTRO de `anexarArquivo` e `baixarAnexo`, que é onde a autorização

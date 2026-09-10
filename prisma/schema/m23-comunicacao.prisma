@@ -120,6 +120,14 @@ model Comunicado {
   /// documento que os destinatários já leram. A assinatura exigida pelo tipo mora,
   /// pela mesma razão, no movimento de ENVIO.
 
+  /// ⚠️ RELACIONAMENTO COM O PROCESSO DIGITAL (o catálogo pede). Nulo quando o
+  /// comunicado não nasce de um processo. O relacionamento com processo JUDICIAL
+  /// também é pedido, e fica como pendência declarada: a procuradoria (5.41) é
+  /// AUSENTE_CONFIRMADO e pertence a outra frente — uma FK para uma tabela que não
+  /// existe seria uma promessa de integridade que ninguém pode cumprir.
+  processoId String?
+  processo   Processo? @relation("ComunicadoDoProcesso", fields: [processoId], references: [id])
+
   /// O comunicado que este responde (nulo quando é o primeiro da conversa).
   respondeAId String?
   respondeA   Comunicado?  @relation("RespostaDeComunicado", fields: [respondeAId], references: [id])
@@ -134,6 +142,7 @@ model Comunicado {
   anexos        Anexo[]
 
   @@unique([exercicioId, tipoId, setorRemetenteId, numero])
+  @@index([processoId])
   @@index([tipoId])
   @@index([setorRemetenteId])
   @@index([respondeAId])

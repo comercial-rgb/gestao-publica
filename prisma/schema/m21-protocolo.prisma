@@ -265,6 +265,7 @@ model Processo {
   requerentesAdicionais RequerenteAdicionalDoProcesso[]
   taxas                TaxaDoProcesso[]
   anexos               Anexo[]
+  comunicados          Comunicado[]              @relation("ComunicadoDoProcesso")
   apensamentosComoPrincipal MovimentoDeApensamento[] @relation("ProcessoPrincipal")
   apensamentosComoApenso    MovimentoDeApensamento[] @relation("ProcessoApenso")
 

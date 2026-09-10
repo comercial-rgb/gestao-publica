@@ -98,6 +98,7 @@ const IDENTIDADES_DAS_FIXTURES: readonly string[] = [
   // ── ENT02: o processo digital (M21) e a comunicação interna (M23) ──
   "protocolo@cg.pb.gov.br",
   "juridico@cg.pb.gov.br",
+  "gabinete@cg.pb.gov.br",
   // ── os automáticos dos helpers e seeds ──
   "LOA",
   "TESTE",
