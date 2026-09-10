@@ -31,9 +31,9 @@
     "poc:erro-proposital": "tsx scripts/poc-erro-proposital.ts",
     "poc:usuario-restrito": "tsx scripts/poc-usuario-restrito.ts",
     "db:sql": "tsx scripts/aplicar-sql-manual.ts",
-    "smoke:visual": "tsx scripts/smoke-visual.ts",
-    "smoke:pessoas": "tsx scripts/smoke-cadastro-pessoas.ts",
-    "smoke:cadeia": "tsx scripts/smoke-cadeia-despesa.ts",
+    "smoke:visual": "tsx scripts/trinco-de-maquina.ts 'smoke visual' -- npx tsx scripts/smoke-visual.ts",
+    "smoke:pessoas": "tsx scripts/trinco-de-maquina.ts 'smoke de pessoas' -- npx tsx scripts/smoke-cadastro-pessoas.ts",
+    "smoke:cadeia": "tsx scripts/trinco-de-maquina.ts 'smoke da cadeia da despesa' -- npx tsx scripts/smoke-cadeia-despesa.ts",
     "typecheck:app": "tsc --noEmit -p tsconfig.json",
     "typecheck:scripts": "tsc --noEmit -p tsconfig.scripts.json",
     "dev": "next dev",
@@ -41,7 +41,9 @@
     "start": "next start",
     "relatorios:processar": "tsx scripts/processar-relatorios.ts",
     "seed:ent02": "tsx prisma/seed/cenario-ent02.ts",
-    "smoke:ent02": "tsx scripts/smoke-ent02.ts"
+    "smoke:ent02": "tsx scripts/trinco-de-maquina.ts 'smoke do ENT02' -- npx tsx scripts/smoke-ent02.ts",
+    "pesado": "tsx scripts/trinco-de-maquina.ts",
+    "test:tudo": "tsx scripts/trinco-de-maquina.ts 'suite completa' -- npx vitest run"
   },
   "keywords": [],
   "author": "",
