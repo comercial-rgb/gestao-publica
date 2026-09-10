@@ -1,3 +1,4 @@
+import { diaCivil } from "../../packages/datas/index.js";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
@@ -109,8 +110,8 @@ export function periodoDoExtrato(e: ExtratoOfx): PeriodoExtrato {
     if (e.periodoFim < e.periodoInicio) {
       throw new Error(
         `Extrato com período invertido: DTSTART ` +
-          `${e.periodoInicio.toISOString().slice(0, 10)} > DTEND ` +
-          `${e.periodoFim.toISOString().slice(0, 10)}.`
+          `${diaCivil(e.periodoInicio)} > DTEND ` +
+          `${diaCivil(e.periodoFim)}.`
       );
     }
     return { inicio: e.periodoInicio, fim: e.periodoFim };

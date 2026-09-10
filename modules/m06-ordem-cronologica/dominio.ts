@@ -1,3 +1,4 @@
+import { compararPorDiaCivil } from "../../packages/datas/index.js";
 import { z } from "zod";
 import type { Money } from "../../packages/contracts/index.js";
 
@@ -78,9 +79,21 @@ export interface LiquidacaoNaFila {
 export function ordenarFila(
   liquidacoes: readonly LiquidacaoNaFila[]
 ): readonly LiquidacaoNaFila[] {
+  // ⚠️ A COMPARAÇÃO É POR **DIA CIVIL**, e não por instante — e a diferença é o que faz
+  // o desempate existir.
+  //
+  // O art. 141 ordena pela DATA de exigibilidade, e o desempate pelo número da liquidação
+  // existe justamente porque duas liquidações do MESMO DIA precisam de uma ordem total.
+  // Comparando `getTime()`, duas liquidações do mesmo dia gravadas em horas diferentes
+  // **não empatam** — e o desempate pelo número nunca chega a rodar. A ordem cronológica
+  // vira a ordem de quem digitou primeiro, que não é a regra e não é auditável.
+  //
+  // Pior, na virada do dia: uma liquidação de 30/06 às 22:00 (civil) é `2026-07-01T01:00Z`
+  // e, pelo instante, ordenaria depois de uma de 01/07 pela manhã — invertendo a fila
+  // entre dois dias diferentes. Ver `packages/datas`.
   return [...liquidacoes].sort((a, b) => {
-    const porData = a.dataLiquidacao.getTime() - b.dataLiquidacao.getTime();
-    if (porData !== 0) return porData;
+    const porDia = compararPorDiaCivil(a.dataLiquidacao, b.dataLiquidacao);
+    if (porDia !== 0) return porDia;
     return a.numero.localeCompare(b.numero);
   });
 }

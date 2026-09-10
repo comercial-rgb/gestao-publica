@@ -1,3 +1,4 @@
+import { diaCivil } from "../../packages/datas/index.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { randomUUID } from "node:crypto";
@@ -264,7 +265,7 @@ async function registrarMovimentoPatrimonial(
   const partidas = await partidasParaPersistir(tx, d.valor, roteiro);
 
   const lancamentoId = await lancarNoRazao(tx, {
-      numeroControle: `PATR-${d.tipo}-${d.dataMovimento.toISOString().slice(0, 10)}`,
+      numeroControle: `PATR-${d.tipo}-${diaCivil(d.dataMovimento)}`,
       dataTransacao: d.dataMovimento,
       historico: d.historico,
       origemTipo: `PATRIMONIAL_${d.tipo}`,

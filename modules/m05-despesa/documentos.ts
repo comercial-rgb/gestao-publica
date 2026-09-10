@@ -1,4 +1,5 @@
 import { toMoney, type Money } from "../../packages/contracts/index.js";
+import { diaCivilBr } from "../../packages/datas/index.js";
 
 /**
  * OS DOCUMENTOS DA DESPESA — nota de empenho, nota de liquidação e ordem de pagamento.
@@ -26,11 +27,16 @@ import { toMoney, type Money } from "../../packages/contracts/index.js";
  * dotação. É documento operacional: ele vai para a mão de quem assina.
  */
 
-/** Data no formato brasileiro, a partir do instante em UTC. Determinística. */
+/**
+ * Data no formato brasileiro, no DIA CIVIL DO ENTE. Determinística.
+ *
+ * ⚠️ A PRIMEIRA VERSÃO CORTAVA O ISO EM UTC, e isso imprimia o dia errado no documento
+ * que alguém ASSINA. Um empenho de **30/06 às 22:00** (civil) é `2026-07-01T01:00Z`: a
+ * nota sairia com "01/07/2026", um dia depois do fato, e a assinatura cobriria esse
+ * texto. Ver `packages/datas`.
+ */
 function dia(d: Date): string {
-  const iso = d.toISOString().slice(0, 10);
-  const [ano, mes, dd] = iso.split("-") as [string, string, string];
-  return `${dd}/${mes}/${ano}`;
+  return diaCivilBr(d);
 }
 
 /** Valor com duas casas e separador de milhar — sem depender do locale da máquina. */

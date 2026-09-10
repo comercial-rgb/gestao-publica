@@ -1,4 +1,10 @@
 import { z } from "zod";
+import {
+  diaCivilBr,
+  fimDoDiaCivil,
+  inicioDoDiaCivil,
+  janelaCivilDoMes,
+} from "../../packages/datas/index.js";
 
 /**
  * M16 — TRAVAMENTO DE COMPETÊNCIA. DOMÍNIO PURO (sem I/O).
@@ -55,19 +61,29 @@ export function janelaDaCompetencia(competencia: string): {
   if (mes < 1 || mes > 12) {
     throw new Error(`Competência "${competencia}": o mês ${mes} não existe.`);
   }
-  return {
-    inicio: new Date(Date.UTC(ano, mes - 1, 1, 0, 0, 0, 0)),
-    fim: new Date(Date.UTC(ano, mes, 0, 23, 59, 59, 999)),
-  };
+  // ⚠️ A JANELA É DO MÊS **CIVIL DO ENTE**, e não do mês em UTC. Ver
+  // `packages/datas` — e o defeito que isso curou, com os números:
+  //
+  // Montada com `Date.UTC`, a janela de `2026-12` ia de 2026-12-01T00:00Z a
+  // 2026-12-31T23:59:59.999Z — em horário civil, de **30/11 às 21:00** a **31/12 às
+  // 20:59:59**. As duas pontas erradas:
+  //
+  //   · o lançamento de **31/12 às 22:00** (civil) caía FORA — escapava da trava de
+  //     dezembro, que é exatamente o lançamento que alguém esconderia ali;
+  //   · o de **30/11 às 22:00** (civil) caía DENTRO — recusado por uma trava de um mês
+  //     que não é o dele.
+  //
+  // `janelaCivilDoMes` respeita horário de verão: o Brasil teve até 2019 e pode voltar a
+  // ter. Um `-3` cravado estaria errado em qualquer exercício histórico.
+  return janelaCivilDoMes(competencia);
 }
 
 /** Como a janela aparece nas mensagens de erro — a data do FATO, não a da digitação. */
 export function descreverJanela(inicio: Date, fim: Date): string {
-  const d = (x: Date): string =>
-    `${String(x.getUTCDate()).padStart(2, "0")}/` +
-    `${String(x.getUTCMonth() + 1).padStart(2, "0")}/` +
-    `${x.getUTCFullYear()}`;
-  return `${d(inicio)} a ${d(fim)}`;
+  // ⚠️ NA DATA CIVIL DO ENTE, e não em UTC. A mensagem dizia "31/12 a 31/12" para uma
+  // janela que, em UTC, terminava no dia 1º — e quem a lesse procuraria o defeito no
+  // lugar errado.
+  return `${diaCivilBr(inicio)} a ${diaCivilBr(fim)}`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -172,19 +188,37 @@ export function derivarTravamento(
 
 const zJanela = z
   .object({
-    /** Uma competência "YYYY-MM" (o mensal do 4.52) — ou o par de datas, abaixo. */
+    /** Uma competência "YYYY-MM" (o mensal do 4.52) — ou o par de dias, abaixo. */
     competencia: z.string().optional(),
-    janelaInicio: z.coerce.date().optional(),
-    janelaFim: z.coerce.date().optional(),
+    /**
+     * ⚠️ DIA CIVIL, COMO TEXTO `YYYY-MM-DD` — e NÃO um `Date`.
+     *
+     * O tipo mudou em 2026-09-10, e a mudança é o conserto. Um `Date` é um INSTANTE, e
+     * "travar de 10/01 a 20/01" não fala de instantes: fala de onze dias do calendário do
+     * ente. Enquanto o campo era `Date`, uma tela que enviasse `2026-01-10T00:00:00Z`
+     * estaria pedindo, ao pé da letra, uma janela que começa às 21:00 do dia **09/01** no
+     * horário de Brasília — e ninguém que digitou "10/01" queria isso.
+     *
+     * A ambiguidade não se resolve interpretando melhor o `Date`: ela se resolve não
+     * aceitando `Date` para uma coisa que não é instante. Ver `packages/datas`.
+     */
+    diaInicio: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "O dia da janela é `YYYY-MM-DD` (dia civil do ente).")
+      .optional(),
+    diaFim: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "O dia da janela é `YYYY-MM-DD` (dia civil do ente).")
+      .optional(),
   })
   .refine(
     (d) =>
       (d.competencia !== undefined) !==
-      (d.janelaInicio !== undefined && d.janelaFim !== undefined),
+      (d.diaInicio !== undefined && d.diaFim !== undefined),
     {
       message:
         'Informe OU uma `competencia` ("YYYY-MM", o travamento mensal do TR 4.52) OU o par ' +
-        "`janelaInicio`/`janelaFim` (o travamento por data). Os dois juntos seriam duas " +
+        "`diaInicio`/`diaFim` (o travamento por data). Os dois juntos seriam duas " +
         "janelas para o mesmo evento, e o sistema teria de escolher uma — coisa que ele " +
         "não vai fazer.",
     }
@@ -223,16 +257,26 @@ export type DestravarInput = z.input<typeof zDestravarInput>;
 /** Resolve a janela (competência mensal OU intervalo) e valida a ordem. */
 export function resolverJanela(d: {
   readonly competencia?: string | undefined;
-  readonly janelaInicio?: Date | undefined;
-  readonly janelaFim?: Date | undefined;
+  readonly diaInicio?: string | undefined;
+  readonly diaFim?: string | undefined;
 }): { readonly inicio: Date; readonly fim: Date } {
   if (d.competencia !== undefined) return janelaDaCompetencia(d.competencia);
 
-  const inicio = d.janelaInicio!;
-  const fim = d.janelaFim!;
+  // ⚠️ A JANELA POR DATA COBRE OS DIAS CIVIS INTEIROS, e não os instantes recebidos.
+  //
+  // "Travar de 10/01 a 20/01" significa os onze dias civis, completos. O chamador manda
+  // instantes — e uma tela que envie `2026-01-10T00:00:00Z` estaria pedindo, ao pé da
+  // letra, uma janela que começa às 21:00 do dia **09/01** no horário do ente, e que
+  // termina antes do fim do dia 20.
+  //
+  // As duas pontas erradas são as mesmas do travamento mensal: um fato da noite do dia 20
+  // escaparia da trava, e um fato da noite do dia 9 seria travado sem estar no intervalo
+  // que alguém pediu. Normalizar aqui é o que faz o intervalo significar o que a tela diz.
+  const inicio = inicioDoDiaCivil(d.diaInicio!);
+  const fim = fimDoDiaCivil(d.diaFim!);
   if (fim < inicio) {
     throw new Error(
-      `Janela invertida: início ${inicio.toISOString()} depois do fim ${fim.toISOString()}.`
+      `Janela invertida: início ${diaCivilBr(inicio)} depois do fim ${diaCivilBr(fim)}.`
     );
   }
   return { inicio, fim };

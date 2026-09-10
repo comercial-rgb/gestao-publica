@@ -1,3 +1,4 @@
+import { diaCivil } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { toMoney } from "../../packages/contracts/index.js";
 import { travar } from "../../packages/locks/index.js";
@@ -7,7 +8,10 @@ import type { Tx } from "../m16-travamento/autorizacao.js";
 import { estadoDaOrdem } from "../m05-despesa/ordem-pagamento.js";
 import { avaliarOrdem } from "../m06-ordem-cronologica/dominio.js";
 import { anexarArquivo } from "../m22-documentos/anexos.js";
-import { criarFilaDeAssinatura } from "../m22-documentos/assinatura.js";
+import {
+  criarFilaDeAssinatura,
+  exigirFilaViavel,
+} from "../m22-documentos/assinatura.js";
 import { sha256 } from "./dominio.js";
 import {
   conteudoDoBordero,
@@ -329,7 +333,7 @@ async function exigirOrdemCronologica(
     throw new Error(
       `QUEBRA DA ORDEM CRONOLÓGICA (art. 141): a ordem ${numeroOrdem} é a ${r.posicao}ª da ` +
         `fila, e a liquidação ${r.preterida.numero} (de ` +
-        `${r.preterida.dataLiquidacao.toISOString().slice(0, 10)}) está na frente, na mesma ` +
+        `${diaCivil(r.preterida.dataLiquidacao)}) está na frente, na mesma ` +
         `fonte e categoria.\n\n` +
         `Incluí-la no lote pagaria antes de quem tem exigibilidade anterior — e o lote não ` +
         `é uma rota alternativa à regra: ele passa pelo MESMO guard do pagamento ` +
@@ -427,6 +431,21 @@ export async function gerarBordero(
   input: GerarBorderoInput
 ): Promise<{ readonly borderoId: string; readonly numero: number; readonly hash: string }> {
   const d = zGerarBordero.parse(input);
+
+  // ⚠️ AS PRÉ-CONDIÇÕES DA FILA, ANTES DE QUALQUER ESCRITA — e este guard conserta um
+  // defeito real, achado pela varredura "efeito colateral antes da operação guardada".
+  //
+  // O `Bordero` é gravado numa transação e o anexo e a fila vêm DEPOIS (as três não
+  // cabem numa transação só). Se a fila recusasse, o borderô já existia — e
+  // `gerarBordero` recusa um segundo borderô no mesmo lote, com razão. O lote ficava
+  // **impossível de transmitir, para sempre**.
+  //
+  // O modo QUALIFICADA já era barrado pelo Zod (`zGerarBordero` só aceita SIMPLES e
+  // AVANCADA). A porta que restava era o SIGNATÁRIO REPETIDO, conferido só lá dentro.
+  //
+  // É a MESMA função que `criarFilaDeAssinatura` usa, e a mesma correção aplicada ao
+  // `porNaFila` do M05 — não uma cópia da regra.
+  exigirFilaViavel(d.modo, d.signatarios);
 
   const { borderoId, numero, hash, descricao, conteudo } = await prisma.$transaction(async (tx) => {
     const lote = await carregarLote(tx, d.loteId);

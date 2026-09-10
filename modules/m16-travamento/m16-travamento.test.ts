@@ -382,13 +382,48 @@ describe("M16 — travamento de competência (TR 4.52/4.53/4.54)", () => {
     expect(depois.toFixed(2)).toBe(antes.toFixed(2));
   });
 
+  /**
+   * ⚠️ O LANÇAMENTO QUE ESCAPAVA DA TRAVA — e ele é o que alguém esconderia ali.
+   *
+   * A janela de `2026-12` era montada com `Date.UTC`: de `2026-12-01T00:00Z` a
+   * `2026-12-31T23:59:59.999Z`. Em horário civil do ente isso vai de **30/11 às 21:00** a
+   * **31/12 às 20:59:59** — e portanto:
+   *
+   *   · um fato de **31/12 às 22:00** (civil) caía FORA da janela e era ACEITO, embora
+   *     seja um lançamento de dezembro num dezembro travado;
+   *   · um fato de **30/11 às 22:00** (civil) caía DENTRO e era RECUSADO, embora seja
+   *     novembro.
+   *
+   * Este teste prende as duas pontas. Ele usa horas de NOITE de propósito: as fixtures do
+   * repositório vivem ao meio-dia, e ao meio-dia o defeito não aparece.
+   */
+  it("t5b: a trava de dezembro pega o fato de 31/12 à NOITE, e não pega o de 30/11 à noite", async () => {
+    await travar(prisma, { competencia: "2026-12", criadoPor: ADMIN });
+
+    // 31/12/2026 às 22:00 no horário do ente = 01/01/2027T01:00Z.
+    // Pelo eixo UTC ele é "janeiro" e escapava; pelo civil ele é dezembro e é recusado.
+    await expect(arrecadar("2027-01-01T01:00:00Z", ALICE, "NOITE-31")).rejects.toThrow(
+      /janela TRAVADA de 01\/12\/2026 a 31\/12\/2026/
+    );
+
+    // 30/11/2026 às 22:00 no horário do ente = 01/12/2026T01:00Z.
+    // Pelo eixo UTC ele era "dezembro" e era travado à toa; pelo civil é novembro e passa.
+    await expect(
+      arrecadar("2026-12-01T01:00:00Z", ALICE, "NOITE-30")
+    ).resolves.toBeDefined();
+  });
+
   // ═══════════════════════════════════════════════════════════════════════════
   // t6 — INTERVALO POR DATA (TR 4.52 "ou por data" · 4.53 "por período").
   // ═══════════════════════════════════════════════════════════════════════════
   it("t6: travar 10/01..20/01 -> fato de 15/01 rejeita, de 25/01 passa (o mesmo modelo, outra janela)", async () => {
+    // ⚠️ DIA CIVIL, COMO TEXTO — e não `Date`. Enquanto o campo era `Date`, este mesmo
+    // teste passava `2026-01-10T00:00:00Z`, que no horário do ente é **21:00 do dia 09**:
+    // a janela começava um dia antes do que o nome dela dizia, e terminava antes do fim
+    // do dia 20. Ver `packages/datas` e a nota em `zJanela`.
     await travar(prisma, {
-      janelaInicio: new Date("2026-01-10T00:00:00.000Z"),
-      janelaFim: new Date("2026-01-20T23:59:59.999Z"),
+      diaInicio: "2026-01-10",
+      diaFim: "2026-01-20",
       criadoPor: ADMIN,
     });
 
@@ -404,8 +439,8 @@ describe("M16 — travamento de competência (TR 4.52/4.53/4.54)", () => {
     await expect(
       travar(prisma, {
         competencia: "2026-02",
-        janelaInicio: new Date("2026-02-01T00:00:00Z"),
-        janelaFim: new Date("2026-02-28T00:00:00Z"),
+        diaInicio: "2026-02-01",
+        diaFim: "2026-02-28",
         criadoPor: ADMIN,
       })
     ).rejects.toThrow();

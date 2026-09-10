@@ -1,3 +1,4 @@
+import { diaCivil } from "../../packages/datas/index.js";
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
@@ -261,7 +262,7 @@ export function criarOrdemCronologicaPrisma(
             `A liquidação ${alvo.numero} está na posição ${ordem.posicao} da fila ` +
             `(fonte ${alvo.empenho.ficha.fonte.codigo}, categoria ${categoria}); ` +
             `a cabeça é a liquidação ${preterida.numero}, liquidada em ` +
-            `${preterida.dataLiquidacao.toISOString().slice(0, 10)}. ` +
+            `${diaCivil(preterida.dataLiquidacao)}. ` +
             `O §1º só admite pagar fora de ordem mediante justificativa prévia ` +
             `numa das hipóteses taxativas.`
         );

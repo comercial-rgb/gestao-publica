@@ -1,3 +1,4 @@
+import { diaCivil } from "../../packages/datas/index.js";
 import { z } from "zod";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 
@@ -182,7 +183,11 @@ export function conteudoDoBordero(p: {
 
   return [
     `BORDERO;${p.numero}`,
-    `VENCIMENTO;${p.dataVencimento.toISOString().slice(0, 10)}`,
+    // ⚠️ DIA CIVIL DO ENTE, e não o corte do ISO em UTC. Este texto é o conteúdo
+    // CANÔNICO do borderô — é dele que sai o `hashConteudo` e é ele que vai à assinatura.
+    // Um vencimento de 30/06 às 22:00 (civil) sairia como "2026-07-01" e o documento
+    // assinado diria um dia a mais que o fato. Ver `packages/datas`.
+    `VENCIMENTO;${diaCivil(p.dataVencimento)}`,
     `CONTA;${p.contaBancaria}`,
     ...linhas,
     `TOTAL;${total.toFixed(2)};${p.linhas.length}`,

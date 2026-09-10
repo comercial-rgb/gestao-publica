@@ -1,3 +1,4 @@
+import { diaCivil } from "../../packages/datas/index.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { randomUUID } from "node:crypto";
@@ -200,7 +201,7 @@ export async function registrarIngressoExtra(
     }
 
     const lancamentoId = await criarLancamentoExtra(tx, {
-      numeroControle: `EXTRA-IN-${tipo.codigo}-${dados.data.toISOString().slice(0, 10)}`,
+      numeroControle: `EXTRA-IN-${tipo.codigo}-${diaCivil(dados.data)}`,
       data: dados.data,
       historico: dados.historico,
       origemTipo: "INGRESSO_EXTRA",
@@ -281,7 +282,7 @@ export async function registrarDispendioExtra(
     }
 
     const lancamentoId = await criarLancamentoExtra(tx, {
-      numeroControle: `EXTRA-OUT-${tipo.codigo}-${dados.data.toISOString().slice(0, 10)}`,
+      numeroControle: `EXTRA-OUT-${tipo.codigo}-${diaCivil(dados.data)}`,
       data: dados.data,
       historico: dados.historico,
       origemTipo: "DISPENDIO_EXTRA",

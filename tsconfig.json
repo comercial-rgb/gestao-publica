@@ -28,6 +28,13 @@
   },
   "include": [
     "next-env.d.ts",
+    // ⚠️ `middleware.ts` ENTROU EM 2026-09-10, PELA VARREDURA DE COBERTURA. Ele estava
+    // fora dos TRÊS tsconfig — e roda em TODA requisição. Código de produção no caminho
+    // mais quente do sistema, que o compilador nunca tinha olhado.
+    "middleware.ts",
+    // ⚠️ E os testes de UI, que precisam de `jsx` e `lib: dom` — que só este config tem.
+    // Eles estavam fora por ficarem sob `test/`, que este config excluía inteiro.
+    "test/ui/**/*.tsx",
     "app/**/*.ts",
     "app/**/*.tsx",
     "components/**/*.ts",
@@ -36,5 +43,8 @@
     "lib/**/*.tsx",
     ".next/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "packages", "modules", "adapters", "prisma", "test"]
+  // ⚠️ `test` SAIU DO EXCLUDE, e o `include` acima é que passa a mandar: só
+  // `test/ui/**/*.tsx` entra. `exclude` vence `include` no TypeScript, então manter
+  // "test" aqui deixaria os testes de UI fora por mais que fossem incluídos.
+  "exclude": ["node_modules", "packages", "modules", "adapters", "prisma"]
 }

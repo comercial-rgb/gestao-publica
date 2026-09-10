@@ -1,4 +1,5 @@
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
+import { anoCivil, diaCivilBr } from "../../packages/datas/index.js";
 
 /**
  * GUARD DO EXERCÍCIO — fail-closed.
@@ -57,7 +58,7 @@ export async function exigirExercicioAberto(
   if (exercicio.encerramento !== null) {
     throw new Error(
       `Exercício ${ano} está ENCERRADO (em ` +
-        `${exercicio.encerramento.criadoEm.toISOString().slice(0, 10)}) — ` +
+        `${diaCivilBr(exercicio.encerramento.criadoEm)}) — ` +
         `${operacao} rejeitado. Despesa de exercício encerrado vira RESTOS A ` +
         `PAGAR; use as operações de RP.`
     );
@@ -169,11 +170,20 @@ export async function exigirCompetenciaEmExercicioAberto(
   competencia: Date,
   operacao: string
 ): Promise<void> {
-  // ⚠️ UTC, e não a hora local. `getFullYear()` numa máquina a oeste de Greenwich diria
-  // 2025 para uma competência de 01/01/2026T00:00Z — e o movimento seria recusado por um
-  // exercício encerrado que não é o dele. Todas as competências deste sistema são
-  // gravadas em UTC (ver o `Date.UTC` da dotação inicial).
-  const ano = competencia.getUTCFullYear();
+  // ⚠️ O ANO **CIVIL DO ENTE**, e nem o de UTC nem o da máquina.
+  //
+  // A primeira versão usava `getUTCFullYear()` com o argumento de que "as competências
+  // são gravadas em UTC". O argumento estava errado nas duas pontas, e a varredura de
+  // datas do ENT03a mostrou por quê:
+  //
+  //   · `2026-01-01T00:00Z` é **31/12/2025** no horário do ente — pelo ano UTC ele seria
+  //     atribuído a 2026 e escaparia de uma conferência sobre 2025;
+  //   · `2027-01-01T01:00Z` é **31/12/2026** no horário do ente — pelo ano UTC seria
+  //     2027, e um fato do último dia do exercício de 2026 não seria conferido contra ele.
+  //
+  // `getFullYear()` (hora da máquina) seria pior ainda: a resposta passaria a depender de
+  // onde o servidor está. Ver `packages/datas`.
+  const ano = anoCivil(competencia);
 
   // Ver o docblock: só uma transação de verdade tem memória.
   const memorizavel = !("$transaction" in tx);
@@ -183,7 +193,7 @@ export async function exigirCompetenciaEmExercicioAberto(
   if (await estaEncerrado(tx, ano)) {
     throw new Error(
       `Exercício ${ano} está ENCERRADO — ${operacao} com competência em ` +
-        `${competencia.toISOString().slice(0, 10)} rejeitado. A data do FATO cai dentro ` +
+        `${diaCivilBr(competencia)} rejeitado. A data do FATO cai dentro ` +
         `de um exercício cujos demonstrativos já foram publicados; mover o saldo dele ` +
         `agora tornaria falso o que já foi entregue. Despesa de exercício encerrado vira ` +
         `RESTOS A PAGAR. Nada foi gravado.`

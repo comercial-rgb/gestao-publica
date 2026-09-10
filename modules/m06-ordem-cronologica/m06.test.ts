@@ -57,6 +57,42 @@ describe("M06 — ordenarFila (puro)", () => {
     expect(fila.map((l) => l.numero)).toEqual(["NL1", "NL5", "NL9"]);
   });
 
+  /**
+   * ⚠️ O DESEMPATE SÓ EXISTE SE HOUVER EMPATE — e comparando INSTANTES ele nunca havia.
+   *
+   * Duas liquidações do MESMO dia civil, gravadas em horas diferentes, não empatavam por
+   * `getTime()`. O desempate pelo número — que é o que dá ordem TOTAL à fila do art. 141 —
+   * simplesmente não rodava, e a ordem cronológica virava a ordem de quem digitou
+   * primeiro. Auditável não é.
+   *
+   * Aqui as duas são de 05/01 no calendário do ente, em horas distintas: `NL9` às 08:00 e
+   * `NL1` às 22:00. Por instante, `NL9` viria primeiro. Pelo dia civil elas empatam, e o
+   * número decide — `NL1` antes de `NL9`.
+   */
+  it("empata liquidações do MESMO DIA CIVIL, ainda que em horas diferentes", () => {
+    const fila = ordenarFila([
+      // 05/01 às 08:00 no horário do ente.
+      liq("z", "NL9", "2026-01-05T11:00:00Z"),
+      // 05/01 às 22:00 no horário do ente — MESMO dia civil, instante posterior.
+      liq("a", "NL1", "2026-01-06T01:00:00Z"),
+    ]);
+    expect(fila.map((l) => l.numero)).toEqual(["NL1", "NL9"]);
+  });
+
+  /**
+   * ⚠️ E A VIRADA DO DIA NÃO PODE INVERTER A FILA. Uma liquidação de 30/06 às 22:00
+   * (civil) é `2026-07-01T01:00Z`. Pelo instante ela ordenaria DEPOIS de uma de 01/07 pela
+   * manhã (`2026-07-01T11:00Z`) — invertendo dois dias diferentes, e preterindo a mais
+   * antiga.
+   */
+  it("a liquidação da NOITE de 30/06 vem antes da MANHÃ de 01/07", () => {
+    const fila = ordenarFila([
+      liq("manha01", "NL2", "2026-07-01T11:00:00Z"), // 01/07 às 08:00 civil
+      liq("noite30", "NL1", "2026-07-01T01:00:00Z"), // 30/06 às 22:00 civil
+    ]);
+    expect(fila.map((l) => l.liquidacaoId)).toEqual(["noite30", "manha01"]);
+  });
+
   it("não muta o array original", () => {
     const original = [liq("c", "NL3", "2026-03-10"), liq("a", "NL1", "2026-01-05")];
     const copia = [...original];

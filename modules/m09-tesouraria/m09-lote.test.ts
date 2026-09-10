@@ -324,6 +324,52 @@ describe("M09 — o borderô e as assinaturas exigidas", () => {
     return loteId;
   }
 
+  /**
+   * ⚠️ ACHADO PELA VARREDURA "EFEITO COLATERAL ANTES DA OPERAÇÃO GUARDADA" (ENT03a).
+   *
+   * `gerarBordero` grava o `Bordero` numa transação e SÓ DEPOIS cria o anexo e a fila —
+   * as três não cabem numa transação só (transação aninhada no Prisma não compõe).
+   *
+   * Se a fila for recusada, o borderô JÁ EXISTE. E `gerarBordero` recusa um segundo
+   * borderô no mesmo lote ("já tem borderô", e com razão: enviaria os mesmos pagamentos
+   * duas vezes). Resultado: **o lote fica impossível de transmitir, para sempre.**
+   *
+   * É EXATAMENTE a forma do defeito do `porNaFila` (M05), que este lote já corrigiu — e
+   * a varredura existe porque a mesma forma tende a repetir onde há efeito colateral
+   * antes de uma operação que pode recusar.
+   *
+   * ⚠️ A PORTA DE ENTRADA AQUI NÃO É O MODO: `zGerarBordero` já recusa QUALIFICADA no
+   * Zod, antes de qualquer escrita. É o **signatário repetido**, que só é conferido lá
+   * dentro, por `criarFilaDeAssinatura`.
+   */
+  it("t8b: signatário repetido não pode deixar o lote sem borderô para sempre", async () => {
+    const loteId = await loteFechadoComUmItem();
+
+    // A tentativa errada: o mesmo signatário duas vezes.
+    await expect(
+      gerarBordero(prisma, {
+        loteId,
+        signatarios: [TESOUREIRO, TESOUREIRO],
+        modo: "AVANCADA",
+        criadoPor: TESOUREIRO,
+      })
+    ).rejects.toThrow(/Signatário repetido/);
+
+    // ⚠️ NADA PODE TER FICADO PARA TRÁS — nem borderô, nem anexo.
+    expect(await prisma.bordero.count()).toBe(0);
+    expect(await prisma.anexo.count()).toBe(0);
+
+    // E a tentativa CORRETA tem de funcionar.
+    const b = await gerarBordero(prisma, {
+      loteId,
+      signatarios: [TESOUREIRO, POR],
+      modo: "AVANCADA",
+      criadoPor: TESOUREIRO,
+    });
+    expect(b.borderoId).toBeTruthy();
+    expect(await prisma.bordero.count()).toBe(1);
+  });
+
   it("t9: borderô SEM signatário não é sequer GERADO", async () => {
     const loteId = await loteFechadoComUmItem();
     // ⚠️ O "nem gerado" do teste 5 do lote. `[].every(...)` é `true` em JavaScript: uma

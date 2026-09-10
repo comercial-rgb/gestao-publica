@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { zMoney, type Money } from "../../packages/contracts/index.js";
+import { anoCivil, diaCivil } from "../../packages/datas/index.js";
 import {
   validarLancamento,
   type Partida,
@@ -185,13 +186,19 @@ export const zRegistrarArrecadacaoInput = z
   .superRefine((a, ctx) => {
     // A data tem de cair DENTRO do exercício declarado. Sem isso, uma
     // arrecadação de 2027 entraria no exercício 2026 e o balancete mentiria.
-    const ano = a.dataArrecadacao.getUTCFullYear();
+    //
+    // ⚠️ O ANO É O **CIVIL DO ENTE**, e não o de UTC. Uma arrecadação de **31/12 às
+    // 22:00** no horário de Brasília é `2027-01-01T01:00Z` — pelo ano UTC ela era
+    // recusada como "fora do exercício 2026", sendo que é o último dia dele. E a recusa
+    // vinha antes de qualquer outro guard, então a guia simplesmente não entrava.
+    // Ver `packages/datas`.
+    const ano = anoCivil(a.dataArrecadacao);
     if (ano !== a.exercicio) {
       ctx.addIssue({
         code: "custom",
         path: ["dataArrecadacao"],
         message:
-          `Data de arrecadação (${a.dataArrecadacao.toISOString().slice(0, 10)}) ` +
+          `Data de arrecadação (${diaCivil(a.dataArrecadacao)}) ` +
           `está fora do exercício ${a.exercicio}.`,
       });
     }

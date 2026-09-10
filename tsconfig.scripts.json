@@ -13,6 +13,11 @@
   "extends": "./tsconfig.json",
   "include": [
     "scripts/**/*.ts",
+    // ⚠️ `prisma/seed` ENTROU EM 2026-09-10, PELA VARREDURA DE COBERTURA. Ele estava
+    // fora dos TRÊS tsconfig — 29 arquivos, e CINCO deles são `.test.ts` que RODAM NA
+    // SUÍTE (pcasp, seed, sagres-poc, sagres-poc-erro, depara-impostos). Testes que a
+    // suíte executa e o compilador nunca viu.
+    "prisma/seed/**/*.ts",
     "lib/**/*.ts",
     "modules/**/*.ts",
     // `poc-contingencia` e `poc-erro-proposital` importam o gerador SAGRES, que agora mora em

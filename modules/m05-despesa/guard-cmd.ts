@@ -1,3 +1,4 @@
+import { competenciaCivil } from "../../packages/datas/index.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import { travar } from "../../packages/locks/index.js";
@@ -85,7 +86,11 @@ export async function exigirCotaCmd(
   // ── (1) A LIMITAÇÃO ESTÁ LIGADA? Se não, o guard é NO-OP. ──
   if (!(await limitacaoAtiva(tx, ficha.exercicio))) return;
 
-  const mes = p.data.getUTCMonth() + 1;
+  // ⚠️ O MÊS **CIVIL DO ENTE**, e não o de UTC. Um empenho de **30/06 às 22:00** no
+  // horário de Brasília é `2026-07-01T01:00Z`: pelo mês UTC ele seria contado contra a
+  // cota de JULHO, deixando a de junho com folga que não existe e estourando a de julho
+  // com despesa que não é dela. Ver `packages/datas`.
+  const mes = Number(competenciaCivil(p.data).slice(5, 7));
 
   // ── (2) A COTA VIGENTE de (fonte, mês) na data do empenho. ──
   // A vigente é a cota da VersaoCmd de maior `vigenteDesde` <= data, para aquela fonte/mês.

@@ -1,3 +1,4 @@
+import { diaCivil } from "../../packages/datas/index.js";
 import { z } from "zod";
 import { toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
 import {
@@ -85,7 +86,7 @@ export type CorteTemporal =
 /** Só para mensagem de erro e histórico — nunca para decidir comportamento. */
 export function descreverCorte(c: CorteTemporal): string {
   if (c.eixo === "CORRENTE") return "saldo corrente (todos os movimentos)";
-  const dia = c.ate.toISOString().slice(0, 10);
+  const dia = diaCivil(c.ate);
   return c.eixo === "COMPETENCIA"
     ? `saldo por competência até ${dia}`
     : `saldo como registrado até ${dia}`;

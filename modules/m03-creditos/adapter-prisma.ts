@@ -1,3 +1,4 @@
+import { diaCivil } from "../../packages/datas/index.js";
 import { criarAutorizacaoPortPrisma } from "../m16-travamento/porta.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
@@ -265,7 +266,7 @@ async function amarrar(
     return exigirCabe(
       c,
       derivado,
-      `arrecadado LÍQUIDO da fonte até ${c.dataDoFato.toISOString().slice(0, 10)} ` +
+      `arrecadado LÍQUIDO da fonte até ${diaCivil(c.dataDoFato)} ` +
         `MENOS a previsão atualizada dela — o REALIZADO, sem tendência (art. 43 § 3º)`
     );
   }
@@ -282,7 +283,7 @@ async function amarrar(
     c,
     derivado,
     `arrecadado LÍQUIDO da fonte com natureza de ORIGEM "operações de crédito" (2º ` +
-      `dígito) até ${c.dataDoFato.toISOString().slice(0, 10)} — o que ENTROU do ` +
+      `dígito) até ${diaCivil(c.dataDoFato)} — o que ENTROU do ` +
       `empréstimo, não o que o contrato promete`
   );
 }
