@@ -81,6 +81,31 @@ model Anexo {
   borderoId String?
   bordero   Bordero? @relation(fields: [borderoId], references: [id])
 
+  /// ⚠️ M05 (ENT03a) — EMPENHO, LIQUIDAÇÃO E ORDEM DE PAGAMENTO TAMBÉM SÃO DOCUMENTOS.
+  ///
+  /// Até o ENT03a só o borderô entrava na fila de assinaturas, e a assimetria era
+  /// arbitrária: a nota de empenho é o documento que o ordenador assina, e é ela que o
+  /// TCE pede assinada — mais do que o borderô, que é instrumento bancário.
+  ///
+  /// Mesmo desenho do borderô, e pela mesma razão: o texto canônico vira `Anexo` de
+  /// origem SISTEMA. Ele é baixável pela rota do ENT02 com autorização por registro,
+  /// assinável pela fila do M22, e a conferência de integridade do `lerArquivo` passa a
+  /// valer para ele. A alternativa — afrouxar a fila para aceitar assinatura sem anexo —
+  /// produziria assinaturas sobre o nada.
+  ///
+  /// ⚠️ E O ESCOPO NÃO AFROUXA. O anexo de um empenho é escopado pelo EMPENHO (que tem
+  /// UG, pela ficha); o da liquidação, pela LIQUIDAÇÃO; o da ordem, pela liquidação dela.
+  /// Escopá-los como "ENTE" — o que o borderô faz, e ali com razão — daria a quem anexa
+  /// no nível do ente o poder de gerar o documento assinável de outra unidade.
+  empenhoId String?
+  empenho   Empenho? @relation(fields: [empenhoId], references: [id])
+
+  liquidacaoId String?
+  liquidacao   Liquidacao? @relation(fields: [liquidacaoId], references: [id])
+
+  ordemDePagamentoId String?
+  ordemDePagamento   OrdemDePagamento? @relation(fields: [ordemDePagamentoId], references: [id])
+
   criadoEm  DateTime @default(now())
   criadoPor String
 
@@ -93,6 +118,9 @@ model Anexo {
   @@index([pessoaId])
   @@index([chamadoId])
   @@index([borderoId])
+  @@index([empenhoId])
+  @@index([liquidacaoId])
+  @@index([ordemDePagamentoId])
   @@index([sha256])
 }
 

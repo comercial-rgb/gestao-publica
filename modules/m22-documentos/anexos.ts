@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import type { Tx } from "../m16-travamento/autorizacao.js";
-import { autorizarNo } from "../m16-travamento/escopo.js";
+import { autorizarNo, type EscopoDoFato } from "../m16-travamento/escopo.js";
 import { setorAtual } from "../m21-protocolo/dominio.js";
 import { podeVerProcesso } from "../m21-protocolo/consultas.js";
 import {
@@ -40,18 +40,30 @@ export const zAnexar = z
     comunicadoId: z.string().min(1).optional(),
     pessoaId: z.string().min(1).optional(),
     borderoId: z.string().min(1).optional(),
+    // ── ENT03a: os documentos da despesa também entram na fila de assinaturas ──
+    empenhoId: z.string().min(1).optional(),
+    liquidacaoId: z.string().min(1).optional(),
+    ordemDePagamentoId: z.string().min(1).optional(),
     criadoPor: z.string().min(1),
   })
   .refine(
     (d) =>
-      [d.processoId, d.movimentoProcessoId, d.comunicadoId, d.pessoaId, d.borderoId].filter(
-        (v) => v !== undefined
-      ).length === 1,
+      [
+        d.processoId,
+        d.movimentoProcessoId,
+        d.comunicadoId,
+        d.pessoaId,
+        d.borderoId,
+        d.empenhoId,
+        d.liquidacaoId,
+        d.ordemDePagamentoId,
+      ].filter((v) => v !== undefined).length === 1,
     {
       message:
         "Um anexo pertence a EXATAMENTE UM registro: processo, movimento de processo, " +
-        "comunicado, pessoa ou borderô. Sem dono, ninguém sabe quem pode lê-lo; com dois, " +
-        "não se sabe qual regra de acesso vale.",
+        "comunicado, pessoa, borderô, empenho, liquidação ou ordem de pagamento. Sem " +
+        "dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual regra de acesso " +
+        "vale.",
     }
   );
 
@@ -92,6 +104,9 @@ export async function anexarArquivo(
         comunicadoId: d.comunicadoId ?? null,
         pessoaId: d.pessoaId ?? null,
         borderoId: d.borderoId ?? null,
+        empenhoId: d.empenhoId ?? null,
+        liquidacaoId: d.liquidacaoId ?? null,
+        ordemDePagamentoId: d.ordemDePagamentoId ?? null,
         criadoPor: d.criadoPor,
       },
       select: { id: true },
@@ -111,9 +126,44 @@ export async function anexarArquivo(
  */
 async function escopoDoDono(
   tx: Tx,
-  d: { readonly processoId?: string | undefined; readonly movimentoProcessoId?: string | undefined; readonly comunicadoId?: string | undefined; readonly pessoaId?: string | undefined; readonly borderoId?: string | undefined }
-): Promise<"ENTE" | { readonly setor: string }> {
+  d: {
+    readonly processoId?: string | undefined;
+    readonly movimentoProcessoId?: string | undefined;
+    readonly comunicadoId?: string | undefined;
+    readonly pessoaId?: string | undefined;
+    readonly borderoId?: string | undefined;
+    readonly empenhoId?: string | undefined;
+    readonly liquidacaoId?: string | undefined;
+    readonly ordemDePagamentoId?: string | undefined;
+  }
+): Promise<EscopoDoFato> {
   if (d.pessoaId !== undefined) return "ENTE";
+
+  // ⚠️ OS DOCUMENTOS DA DESPESA SEGUEM A UG DO FATO, e NÃO viram atos do ENTE.
+  //
+  // Seria mais simples devolver "ENTE" aqui, como o borderô faz — mas ali há razão (a
+  // tesouraria paga pelo ente, e um borderô reúne ordens de unidades diferentes). Um
+  // empenho pertence a UMA ficha, de UMA unidade orçamentária, e `empenhar` é escopado
+  // por ela. Gerar o documento assinável dele no escopo do ENTE daria a quem anexa no
+  // nível do ente o poder de produzir a nota de empenho de outra unidade — afrouxando,
+  // pela porta do anexo, exatamente o que o M16 fecha na porta do empenho.
+  if (d.empenhoId !== undefined) return { empenho: d.empenhoId };
+  if (d.liquidacaoId !== undefined) return { liquidacao: d.liquidacaoId };
+  if (d.ordemDePagamentoId !== undefined) {
+    // A ordem não tem escopo próprio no M16: ela é escopada pela LIQUIDAÇÃO, que é como
+    // `prepararOrdemDePagamento` e `autorizarOrdemDePagamento` já fazem. Um segundo
+    // critério aqui poderia divergir do que autoriza a própria ordem.
+    const o = await tx.ordemDePagamento.findUnique({
+      where: { id: d.ordemDePagamentoId },
+      select: { liquidacaoId: true },
+    });
+    if (o === null) {
+      throw new Error(
+        `Ordem de pagamento ${d.ordemDePagamentoId} não existe. Nada foi gravado.`
+      );
+    }
+    return { liquidacao: o.liquidacaoId };
+  }
 
   // ⚠️ O BORDERÔ É ATO DO ENTE, e não de uma unidade. A tesouraria paga pelo ente: um
   // borderô reúne ordens de unidades diferentes que saem da MESMA conta bancária, e

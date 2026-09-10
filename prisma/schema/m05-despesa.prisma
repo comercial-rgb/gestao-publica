@@ -227,6 +227,9 @@ model Empenho {
   @@index([fichaId])
   @@index([estornoDeId])
   @@index([credorCpfCnpj])
+
+  /// M22 (ENT03a) — o documento gerado para assinatura. Campo VIRTUAL.
+  anexos Anexo[]
 }
 
 // ----------------------------------------------------------------------------
@@ -286,6 +289,9 @@ model Liquidacao {
   @@index([data])
   /// back-relation M10 (TR 5.85) — a entrada no almoxarifado nasce da liquidação.
   entradasAlmoxarifado MovimentoAlmoxarifado[]
+
+  /// M22 (ENT03a) — o documento gerado para assinatura. Campo VIRTUAL.
+  anexos Anexo[]
 }
 
 /// Conta bancária do ente. Existe para que a TR 5.23 seja VERIFICÁVEL: sem

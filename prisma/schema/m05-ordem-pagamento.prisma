@@ -60,6 +60,9 @@ model OrdemDePagamento {
   @@unique([liquidacaoId, numero])
   @@index([liquidacaoId])
   @@index([fonteId])
+
+  /// M22 (ENT03a) — o documento gerado para assinatura. Campo VIRTUAL.
+  anexos Anexo[]
 }
 
 /// ⚠️ DOIS MOVIMENTOS, E NENHUM "PREPARAR". Preparar É criar a ordem — não há

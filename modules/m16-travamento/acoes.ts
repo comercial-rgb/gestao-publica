@@ -839,6 +839,25 @@ export const FORA_DO_CENSO: Record<string, string> = {
   // consultar um saldo que o próprio extrato já mostra.
   fatosDeCaixaDaConta: "leitura",
   saldoDaContaBancaria: "leitura",
+
+  // ⚠️ M05/ENT03a — OS TRÊS SÃO COMPOSÁVEIS, e uma ação própria para eles seria uma
+  // permissão que não significa nada de novo.
+  //
+  // Eles não gravam por conta própria: montam o texto canônico do fato (função pura) e
+  // chamam `anexarArquivo` e `criarFilaDeAssinatura`. Cada uma dessas DUAS já é uma ação
+  // do censo, e cada uma já autoriza no escopo certo — o anexo pelo EMPENHO ou pela
+  // LIQUIDAÇÃO (ver `escopoDoDono`), a fila pelo alvo do anexo.
+  //
+  // Uma terceira ação aqui teria de ser concedida junto com as outras duas para servir
+  // de alguma coisa, e poderia DIVERGIR delas: alguém com a ação nova e sem a de anexar
+  // receberia uma recusa vinda de dentro, com a mensagem errada. Pior, alguém poderia
+  // um dia conceder só a nova achando que bastava, e o sistema recusaria por outro
+  // motivo — a permissão viraria decoração.
+  enviarEmpenhoParaAssinatura: "composável interno",
+  enviarLiquidacaoParaAssinatura: "composável interno",
+  enviarOrdemParaAssinatura: "composável interno",
+  // Pré-condição PURA da fila, compartilhada entre o M22 e o M05. Não toca o banco.
+  exigirFilaViavel: "guard",
   situacaoDoLancamento: "leitura",
   vinculoLiquidoDoLancamento: "leitura",
   vinculoLiquidoDoMovimento: "leitura",

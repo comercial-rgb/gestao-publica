@@ -225,24 +225,52 @@ export const zCriarFila = z.object({
 });
 export type CriarFilaInput = z.input<typeof zCriarFila>;
 
+/**
+ * AS PRÉ-CONDIÇÕES DA FILA — PURAS, e exportadas de propósito.
+ *
+ * ⚠️ ELAS EXISTEM SEPARADAS PORQUE QUEM GERA UM DOCUMENTO PRECISA SABER **ANTES DE
+ * GRAVÁ-LO** se a fila vai ser aceita.
+ *
+ * O caso que obrigou a extração: `enviarEmpenhoParaAssinatura` (M05) grava o `Anexo` e
+ * só então abre a fila — e as duas operações não cabem numa transação só (transação
+ * aninhada no Prisma não compõe). Uma tentativa com modo QUALIFICADA criava o anexo e
+ * morria na fila, deixando um documento órfão; e o guard de "um documento por fato"
+ * passava a recusar a tentativa seguinte, correta. **O empenho ficava impossível de
+ * assinar por qualquer modo, para sempre.**
+ *
+ * Conferir aqui, antes de gravar qualquer coisa, torna o órfão inalcançável por erro de
+ * entrada — sobra só a falha de infraestrutura no meio, que é outra classe de problema.
+ *
+ * ⚠️ E É UMA FUNÇÃO SÓ, chamada pelos dois lados. Recopiar as duas conferências no M05
+ * teria criado a segunda verdade sobre "esta fila é viável?", e elas divergiriam na
+ * primeira regra nova que alguém acrescentasse de um lado só.
+ */
+export function exigirFilaViavel(
+  modo: "SIMPLES" | "AVANCADA" | "QUALIFICADA",
+  signatarios: readonly string[]
+): readonly string[] {
+  if (modo === "QUALIFICADA") {
+    const estado = estadoDaAssinaturaQualificada();
+    throw new Error(`${estado.motivo}\n${estado.detalhe}`);
+  }
+
+  const unicos = [...new Set(signatarios)];
+  if (unicos.length !== signatarios.length) {
+    throw new Error(
+      "Signatário repetido na fila. Assinar duas vezes o mesmo documento não acrescenta " +
+        "nada, e a fila ficaria travada esperando a segunda. Nada foi gravado."
+    );
+  }
+  return unicos;
+}
+
 export async function criarFilaDeAssinatura(
   prisma: PrismaClient,
   input: CriarFilaInput
 ): Promise<{ readonly filaId: string; readonly proximo: string }> {
   const d = zCriarFila.parse(input);
 
-  if (d.modo === "QUALIFICADA") {
-    const estado = estadoDaAssinaturaQualificada();
-    throw new Error(`${estado.motivo}\n${estado.detalhe}`);
-  }
-
-  const unicos = [...new Set(d.signatarios)];
-  if (unicos.length !== d.signatarios.length) {
-    throw new Error(
-      "Signatário repetido na fila. Assinar duas vezes o mesmo documento não acrescenta " +
-        "nada, e a fila ficaria travada esperando a segunda. Nada foi gravado."
-    );
-  }
+  const unicos = exigirFilaViavel(d.modo, d.signatarios);
 
   return prisma.$transaction(async (tx) => {
     const alvo = await resolverAlvo(tx, { anexoId: d.anexoId });

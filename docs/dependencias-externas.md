@@ -63,8 +63,9 @@ SAGRES para e-Sfinge não produz o conector de SC — é contrato diferente.
 
 | Órgão | Funcionalidade | Documento oficial | Versão | Ambiente | Credencial | Convênio | Protocolo | Restrição | Próxima ação | Responsável |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Banco do Brasil | Borderô e retorno bancário | — | — | — | não configurada | não firmado | — | `CODIGO_LOCAL_SEM_VALIDACAO` — M17 e `scripts/bb-smoke.ts`. **Um banco não equivale a todos os convênios** | Levantar quais bancos o município usa de fato | a definir |
+| Banco do Brasil | Borderô e retorno bancário | — | — | — | não configurada | não firmado | — | `CODIGO_LOCAL_SEM_VALIDACAO` — M17 e `scripts/bb-smoke.ts`. **Um banco não equivale a todos os convênios**. `enviarBordero` (M09) RECUSA sempre, nomeando: não há convênio configurado. Pendência `BORDERO-CONVENIO-BANCARIO` | Levantar quais bancos o município usa de fato — a resposta muda o layout de remessa, e ela não se adivinha | a definir |
 | Convênios bancários (demais) | Guias FEBRABAN com código de barras, PIX, registro de cobrança, retorno | — | — | — | não solicitadas | não firmados | — | `AUSENTE` | Levantar convênios vigentes do município | a definir |
+| — (formato) | Remessa e retorno CNAB 240/400 | FEBRABAN CNAB 240, layout por banco | **não obtido** | não aplicável — arquivo | não aplicável | — | — | `AUSENTE`. ⚠️ **O layout CNAB é POR BANCO**, não único: o "padrão FEBRABAN" fixa a estrutura e cada banco define os campos de segmento. Escrever um gerador contra a especificação genérica produz arquivo que o banco recusa | Obter o manual do banco escolhido; testar contra validador independente, **não** contra o próprio gerador (a lição do OFX) | a definir |
 | — (formato) | Extrato OFX/OFC para conciliação | OFX 1.0.2 (SGML) | 1.0.2 | não aplicável — arquivo, não webservice | não aplicável | — | — | `VALIDADO_CONTRA_TERCEIRO` — `packages/ofx` conferido contra `ofxtools` 1.1.1 (PyPI) em 2026-09-10: 3 arquivos, 6 transações, todos os campos conferem. **Correção ao que esta linha dizia antes: a conciliação do M09 NÃO existe "só como schema"** — `conciliacao.ts` (351), `vinculo.ts` (497), `extrato.ts` (164), `dominio.ts` (350) e 1607 linhas de teste | Obter um extrato OFX REAL de banco brasileiro e acrescentá-lo ao corpus; o corpus atual é sintético, ainda que conforme | a definir |
 
 ## Jurídico, assinatura e saúde
@@ -73,6 +74,7 @@ SAGRES para e-Sfinge não produz o conector de SC — é contrato diferente.
 |---|---|---|---|---|---|---|---|---|---|---|
 | Tribunal de Justiça de SC | Peticionamento e acompanhamento processual (1º e 2º grau) | — | — | — | não solicitada | não firmado | — | `AUSENTE` + `PENDENTE_DESCOBERTA`. **Não assumir TJSC = PJe/MNI.** A documentação consultada trata eproc; endpoints e credenciamento não confirmados. Não substituir por scraping nem por retorno simulado | Confirmar o contrato técnico antes de escrever qualquer código de ENT08 | a definir |
 | Provedor de HSM | Custódia de certificado A1 em nuvem, assinatura sem token físico | — | — | — | **provedor não definido** | — | — | `AUSENTE`. Armazenar A1 cifrado no banco **não** satisfaz este requisito e não pode ser chamado de HSM. Isolar o adaptador; a ausência não bloqueia o restante do lote | Definir provedor; até lá, modo A1 indisponível com motivo declarado | a definir |
+| — (formato) | Certificado A3 em token/cartão | — | — | — | não aplicável | — | — | `AUSENTE`. ⚠️ **A3 é fisicamente diferente de A1**: a chave privada não sai do dispositivo, então a assinatura acontece NA MÁQUINA DO USUÁRIO, não no servidor. Um adaptador que trate os dois igual não funciona para nenhum dos dois | Decidir o caminho do A3 (componente local ou extensão) antes de desenhar o adaptador — a decisão muda a arquitetura, não só a configuração | a definir |
 | ICP-Brasil | Assinatura digital de PDF, XML e TXT | — | — | — | — | — | — | `AUSENTE`. Hash de arquivo, imagem de assinatura e checkbox não equivalem a assinatura criptográfica | Definir biblioteca e política de verificação | a definir |
 | BNAFAR / Ministério da Saúde | Envio de entradas, saídas e posição de estoque da assistência farmacêutica | — | — | — | não solicitada | — | — | `AUSENTE` | Obter especificação do webservice | a definir |
 | TSE | Exportação de permissionários e de NFS-e de candidatos e partidos | — | — | — | — | — | — | `AUSENTE` | Obter layout | a definir |
@@ -83,10 +85,45 @@ SAGRES para e-Sfinge não produz o conector de SC — é contrato diferente.
 
 | Estado | Integrações |
 |---|---:|
-| `CODIGO_LOCAL_SEM_VALIDACAO` | 5 |
-| `AUSENTE` | 18 |
+| `VALIDADO_CONTRA_TERCEIRO` | 1 |
+| `CODIGO_LOCAL_SEM_VALIDACAO` | 4 |
+| `AUSENTE` | 20 |
 | Credenciais obtidas | **0** |
 | Convênios firmados | **0** |
 | Transmissões reais executadas | **0** |
 
 Nenhuma integração externa foi exercitada contra ambiente de órgão neste lote.
+
+---
+
+## O que o ENT03a mudou nesta página
+
+**Uma linha saiu de `CODIGO_LOCAL_SEM_VALIDACAO` para `VALIDADO_CONTRA_TERCEIRO`**: o
+`packages/ofx` foi conferido contra o `ofxtools` 1.1.1, uma implementação independente.
+Isso vale para o **formato do arquivo** e não substitui aceite de órgão nenhum — por isso
+o estado é novo em vez de reaproveitar um existente.
+
+⚠️ **E a conferência achou o que um teste próprio não podia achar.** Os arquivos que os
+testes antigos montavam **não eram OFX válido** (faltavam `SECURITY`, `ENCODING`,
+`COMPRESSION`, `OLDFILEUID`, `NEWFILEUID`, `<SIGNONMSGSRSV1>` e `<LEDGERBAL>`); e uma
+transação de `20260131235900[-3:BRT]` é **31/01** para o nosso leitor e **01/02** se lida
+em UTC — um dia, na virada do mês, que numa conciliação mensal é a diferença entre fechar
+e não fechar.
+
+**Duas correções de fato nesta página:**
+
+- a conciliação do M09 **não** existia "só como schema" — a afirmação estava errada e foi
+  corrigida na linha do OFX;
+- **duas linhas novas** que faltavam ao inventário: o **CNAB** (cujo layout é por banco, e
+  não único — escrever contra a especificação genérica produz arquivo recusado) e o
+  **certificado A3**, que é fisicamente diferente do A1: a chave não sai do dispositivo, e
+  a assinatura acontece na máquina do usuário. Tratar os dois pelo mesmo adaptador não
+  funciona para nenhum.
+
+⚠️ **O que continua não conhecível, e por quê.** As colunas *credencial*, *convênio* e
+*protocolo* seguem vazias em quase toda a tabela porque **nada foi solicitado a órgão
+nenhum** — solicitar é ato externo, fora da autorização deste trabalho. O que era
+conhecível sem contato externo (documento oficial, versão, formato, restrição técnica,
+próxima ação) foi preenchido onde havia base para preencher. Preencher o resto exigiria
+inventar, e um inventário inventado é pior que um vazio: ele para de ser lido como
+pendência.
