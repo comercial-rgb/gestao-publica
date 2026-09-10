@@ -10,7 +10,7 @@ import {
   roteiroPagamento,
   type RoteiroContabil,
 } from "./dominio.js";
-import { empenhar, reconciliarFicha, saldosDaFicha } from "./servico.js";
+import { empenhar, reconciliarFicha, saldosCorrentesDaFicha } from "./servico.js";
 import {
   anularLiquidacao,
   anularPagamento,
@@ -498,7 +498,7 @@ describe("M05 — CADEIA COMPLETA", () => {
     expect(totais.anulado).toBe(false);
 
     // a ficha: 10000 dotado, 1000 empenhado, 9000 disponível
-    const s = await saldosDaFicha(FICHA_ID, deps);
+    const s = await saldosCorrentesDaFicha(FICHA_ID, deps);
     expect(s.autorizado.toFixed(2)).toBe("10000.00");
     expect(s.empenhado.toFixed(2)).toBe("1000.00");
     expect(s.reservado.toFixed(2)).toBe("0.00");

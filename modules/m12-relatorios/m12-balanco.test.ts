@@ -208,6 +208,9 @@ describe("M12 — Balanço Orçamentário (Anexo 12)", () => {
       data: {
         fichaId: FICHA, tipo: "CREDITO_ADICIONAL", valor: "2000.00",
         origemTipo: "CREDITO_ADICIONAL", criadoPor: POR,
+        // Competência dentro do exercício do Anexo 12 — pelo instante da gravação,
+        // a suplementação cairia no exercício em que o teste roda.
+        competencia: new Date(Date.UTC(2026, 5, 15, 12, 0, 0)),
       },
     });
 

@@ -13,7 +13,7 @@ import {
   liberarReserva,
   reconciliarFicha,
   reservarDotacao,
-  saldosDaFicha,
+  saldosCorrentesDaFicha,
 } from "./servico.js";
 import type { M05Deps } from "./ports.js";
 
@@ -114,7 +114,7 @@ describe("M05 — reserva, empenho e saldo", () => {
       deps
     );
 
-    const s = await saldosDaFicha(FICHA_ID, deps);
+    const s = await saldosCorrentesDaFicha(FICHA_ID, deps);
     expect(s.autorizado.toFixed(2)).toBe("10000.00");
     expect(s.reservado.toFixed(2)).toBe("1.00");
     expect(s.disponivel.toFixed(2)).toBe("9999.00");
@@ -127,7 +127,7 @@ describe("M05 — reserva, empenho e saldo", () => {
       deps
     );
 
-    const s = await saldosDaFicha(FICHA_ID, deps);
+    const s = await saldosCorrentesDaFicha(FICHA_ID, deps);
     expect(s.reservado.toFixed(2)).toBe("3000.00");
     expect(s.empenhado.toFixed(2)).toBe("0.00");
     expect(s.disponivel.toFixed(2)).toBe("7000.00");
@@ -149,7 +149,7 @@ describe("M05 — reserva, empenho e saldo", () => {
 
     // TR 4.51 fail-closed: nada foi gravado
     expect(await prisma.reservaDotacao.count()).toBe(1);
-    const s = await saldosDaFicha(FICHA_ID, deps);
+    const s = await saldosCorrentesDaFicha(FICHA_ID, deps);
     expect(s.disponivel.toFixed(2)).toBe("1000.00");
     expect(await reconciliarFicha(FICHA_ID, deps)).toEqual([]);
   });
@@ -174,7 +174,7 @@ describe("M05 — reserva, empenho e saldo", () => {
     // ADITIVO M01: a partida carrega a ficha
     expect(partidas.every((p) => p.fichaId === FICHA_ID)).toBe(true);
 
-    const s = await saldosDaFicha(FICHA_ID, deps);
+    const s = await saldosCorrentesDaFicha(FICHA_ID, deps);
     expect(s.empenhado.toFixed(2)).toBe("4000.00");
     expect(s.disponivel.toFixed(2)).toBe("6000.00");
     expect(await reconciliarFicha(FICHA_ID, deps)).toEqual([]);
@@ -236,7 +236,7 @@ describe("M05 — reserva, empenho e saldo", () => {
       { fichaId: FICHA_ID, valor: "3000.00", historico: "reserva", criadoPor: CRIADO_POR },
       deps
     );
-    expect((await saldosDaFicha(FICHA_ID, deps)).disponivel.toFixed(2)).toBe("7000.00");
+    expect((await saldosCorrentesDaFicha(FICHA_ID, deps)).disponivel.toFixed(2)).toBe("7000.00");
 
     await empenhar(
       { ...empenhoBase("2026NE0001", "3000.00"), reservaId },
@@ -244,7 +244,7 @@ describe("M05 — reserva, empenho e saldo", () => {
       deps
     );
 
-    const s = await saldosDaFicha(FICHA_ID, deps);
+    const s = await saldosCorrentesDaFicha(FICHA_ID, deps);
     // reservado voltou a zero (RESERVA_LIBERADA), empenhado subiu
     expect(s.reservado.toFixed(2)).toBe("0.00");
     expect(s.empenhado.toFixed(2)).toBe("3000.00");
@@ -285,7 +285,7 @@ describe("M05 — reserva, empenho e saldo", () => {
       deps
     );
 
-    const s = await saldosDaFicha(FICHA_ID, deps);
+    const s = await saldosCorrentesDaFicha(FICHA_ID, deps);
     expect(s.reservado.toFixed(2)).toBe("0.00");
     expect(s.disponivel.toFixed(2)).toBe("10000.00");
     expect(await reconciliarFicha(FICHA_ID, deps)).toEqual([]);
@@ -311,7 +311,7 @@ describe("M05 — reserva, empenho e saldo", () => {
     );
 
     // saldo devolvido
-    const s = await saldosDaFicha(FICHA_ID, deps);
+    const s = await saldosCorrentesDaFicha(FICHA_ID, deps);
     expect(s.empenhado.toFixed(2)).toBe("0.00");
     expect(s.disponivel.toFixed(2)).toBe("10000.00");
     expect(await reconciliarFicha(FICHA_ID, deps)).toEqual([]);
@@ -457,7 +457,7 @@ describe("M05 — reserva, empenho e saldo", () => {
     expect(await reconciliarFicha(FICHA_ID, deps)).toEqual([]);
 
     // conferência final, na unha
-    const s = await saldosDaFicha(FICHA_ID, deps);
+    const s = await saldosCorrentesDaFicha(FICHA_ID, deps);
     // reservado: 1000 + 500 + 250 + 123.45 + 0.01 = 1873.46; liberado 1000 -> 873.46
     expect(s.reservado.toFixed(2)).toBe("873.46");
     // empenhado: 2000+1500+300+77.77+999.99 = 4877.76; anulado 2000 -> 2877.76

@@ -759,7 +759,13 @@ export const FORA_DO_CENSO: Record<string, string> = {
   listarArrecadacoes: "leitura (as guias de um período e o total líquido das anulações — a tela da arrecadação)",
   listarNaturezasPrevistas: "leitura (o rol da LOA — o vocabulário que a tela oferece em vez de 8 dígitos de cabeça)",
   despesaPorFonte: "leitura",
-  saldosDaFicha: "leitura",
+  // ⚠️ TRÊS ONDE HAVIA UMA (ADR de 2026-09-10). `saldosDaFicha` foi RETIRADA: os dois
+  // eixos de tempo do movimento de dotação respondem perguntas diferentes, e a
+  // assinatura antiga respondia uma delas em silêncio. Todas as três são LEITURA —
+  // nenhuma grava, e por isso nenhuma vira ação de permissão.
+  saldosCorrentesDaFicha: "leitura",
+  saldosDaFichaPorCompetencia: "leitura",
+  saldosDaFichaPorRegistro: "leitura",
   statusDeEmpenho: "leitura",
   totaisPorTipo: "leitura",
   empenhadoLiquidoPorContrato: "leitura",
@@ -918,6 +924,8 @@ export const FORA_DO_CENSO: Record<string, string> = {
   exigirTipoAtivo: "guard",
   exigirExercicioAberto: "guard",
   exigirExercicioDaFichaAberto: "guard",
+  // Guard novo do ADR de 2026-09-10: confere o exercício da COMPETÊNCIA, não o da ficha.
+  exigirCompetenciaEmExercicioAberto: "guard",
   exigirLiquidacaoCorrente: "guard",
   exigirPagamentoCorrente: "guard",
   exigirAnulacaoDePagamentoCorrente: "guard",

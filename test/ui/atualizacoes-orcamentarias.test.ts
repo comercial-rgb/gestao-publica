@@ -5,7 +5,7 @@ import {
   opcoesDeFiltro,
   totaisDeAtualizacoes,
   type DecretoParaRelatorio,
-} from "../../lib/relatorios/atualizacoes-orcamentarias";
+} from "../../lib/relatorios/atualizacoes-orcamentarias.js";
 
 /**
  * O RELATÓRIO 4.40 — o achatamento, os quatro filtros e os totais, provados sem banco e sem React.

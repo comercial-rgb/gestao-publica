@@ -13,8 +13,8 @@ import {
   mascararCpfCnpj,
   mascararTelefone,
   soDigitos,
-} from "../../lib/format/mascaras";
-import { formatarMoeda } from "../../lib/format/moeda";
+} from "../../lib/format/mascaras.js";
+import { formatarMoeda } from "../../lib/format/moeda.js";
 
 describe("desmascararValor — a tela → o domínio", () => {
   it("lê o pt-BR que o campo exibe", () => {

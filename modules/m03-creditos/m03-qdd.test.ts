@@ -6,7 +6,7 @@ import { criarFichasDeTeste } from "../../test/ficha-teste.js";
 import { criarM03Deps } from "./adapter-prisma.js";
 import { criarDecreto, criarLei, executarCredito } from "./servico.js";
 import { listarQdd } from "./consultas.js";
-import { saldosDaFicha } from "../m05-despesa/servico.js";
+import { saldosCorrentesDaFicha } from "../m05-despesa/servico.js";
 import { criarM05Deps } from "../m05-despesa/adapter-prisma.js";
 import type { M03Deps } from "./ports.js";
 
@@ -23,7 +23,7 @@ import type { M03Deps } from "./ports.js";
  * ═══ A AMARRAÇÃO QUE IMPORTA (t3) ═══
  * O QDD não pode ter uma segunda definição de dotação. `listarQdd` delega ao `calcularSaldos` do
  * M05 — o MESMO que escreve o cache da ficha e o mesmo que a `reconciliarFicha` confere. O teste
- * compara a coluna do QDD com o `saldosDaFicha().autorizado` e exige IGUALDADE: no dia em que
+ * compara a coluna do QDD com o `saldosCorrentesDaFicha().autorizado` e exige IGUALDADE: no dia em que
  * alguém reescrever a soma aqui, é esta linha que cai. Um QDD que discorda do teto contra o qual
  * o empenho é julgado seria pior do que não ter QDD.
  *
@@ -162,7 +162,7 @@ describe("M03 — QDD: a coluna DOTAÇÃO ATUALIZADA", () => {
     const qdd = await listarQdd(prisma, { exercicio: 2026 });
 
     for (const l of qdd) {
-      const saldos = await saldosDaFicha(l.fichaId, deps05);
+      const saldos = await saldosCorrentesDaFicha(l.fichaId, deps05);
       expect(
         l.dotacaoAtualizada,
         `a ficha ${l.numero}: o QDD e o saldo AUTORIZADO da ficha têm de ser o mesmo número — ` +

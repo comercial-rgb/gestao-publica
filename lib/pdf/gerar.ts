@@ -5,7 +5,7 @@ import {
   renderizarCorpo,
   rodapeTemplate,
   type DocumentoPdf,
-} from "./documento";
+} from "./documento.js";
 
 /**
  * O MOTOR DE PDF — o headless que transforma o corpo HTML (de `documento.ts`) em A4 (TR 7.5/5.120).

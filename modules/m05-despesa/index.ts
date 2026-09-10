@@ -4,7 +4,9 @@ export {
   empenhar,
   anularEmpenho,
   reconciliarFicha,
-  saldosDaFicha,
+  saldosCorrentesDaFicha,
+  saldosDaFichaPorCompetencia,
+  saldosDaFichaPorRegistro,
 } from "./servico.js";
 
 export {

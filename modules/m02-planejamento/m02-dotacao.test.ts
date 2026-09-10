@@ -7,7 +7,7 @@ import { criarM05Deps } from "../m05-despesa/adapter-prisma.js";
 import {
   reconciliarFicha,
   reservarDotacao,
-  saldosDaFicha,
+  saldosCorrentesDaFicha,
 } from "../m05-despesa/servico.js";
 import { criarM02Deps } from "./adapter-prisma.js";
 import { backfillDotacaoInicial } from "./backfill-dotacao-inicial.js";
@@ -76,7 +76,7 @@ describe("M02 — dotação inicial EAGER", () => {
     const fichaId = await criarFicha(FICHA, deps);
 
     // nenhuma reserva, nenhum empenho, nenhum crédito — a ficha só nasceu.
-    const s = await saldosDaFicha(fichaId, deps05);
+    const s = await saldosCorrentesDaFicha(fichaId, deps05);
     expect(s.autorizado.toFixed(2)).toBe("1500000.00"); // antes: "0.00"
     expect(s.reservado.toFixed(2)).toBe("0.00");
     expect(s.empenhado.toFixed(2)).toBe("0.00");
@@ -126,6 +126,7 @@ describe("M02 — dotação inicial EAGER", () => {
           valor: "1500000.00",
           origemTipo: "LOA",
           criadoPor: "atacante",
+          competencia: new Date(Date.UTC(FICHA.exercicio, 0, 1, 12, 0, 0)),
         },
       });
     } catch (e) {
@@ -139,7 +140,7 @@ describe("M02 — dotação inicial EAGER", () => {
     expect(String(erro)).toMatch(/uq_dotacao_inicial_unica|Unique constraint/i);
 
     // e o saldo NÃO contou a dotação duas vezes
-    const s = await saldosDaFicha(fichaId, deps05);
+    const s = await saldosCorrentesDaFicha(fichaId, deps05);
     expect(s.autorizado.toFixed(2)).toBe("1500000.00"); // não 3.000.000
   });
 
@@ -151,7 +152,7 @@ describe("M02 — dotação inicial EAGER", () => {
     expect(movs[0]!.tipo).toBe("DOTACAO_INICIAL");
     expect(movs[0]!.valor.toFixed(2)).toBe("0.00");
 
-    const s = await saldosDaFicha(fichaId, deps05);
+    const s = await saldosCorrentesDaFicha(fichaId, deps05);
     expect(s.autorizado.toFixed(2)).toBe("0.00");
     expect(await reconciliarFicha(fichaId, deps05)).toEqual([]);
   });
@@ -161,12 +162,15 @@ describe("M02 — dotação inicial EAGER", () => {
 
     await prisma.movimentoDotacao.createMany({
       data: [
-        { fichaId, tipo: "RESERVA", valor: "100.00", origemTipo: "T", criadoPor: "t" },
-        { fichaId, tipo: "RESERVA", valor: "200.00", origemTipo: "T", criadoPor: "t" },
+        // Reserva não tem data própria: competência derivada, como no adapter.
+        { fichaId, tipo: "RESERVA", valor: "100.00", origemTipo: "T", criadoPor: "t",
+          competencia: new Date(), competenciaDerivada: true },
+        { fichaId, tipo: "RESERVA", valor: "200.00", origemTipo: "T", criadoPor: "t",
+          competencia: new Date(), competenciaDerivada: true },
       ],
     });
 
-    const s = await saldosDaFicha(fichaId, deps05);
+    const s = await saldosCorrentesDaFicha(fichaId, deps05);
     expect(s.reservado.toFixed(2)).toBe("300.00");
   });
 });
@@ -207,7 +211,7 @@ describe("M02 — backfill da dotação inicial", () => {
     const deps05 = criarM05Deps(prisma);
 
     // o bug, reproduzido: cache e SUM ambos zerados
-    expect((await saldosDaFicha(a, deps05)).autorizado.toFixed(2)).toBe("0.00");
+    expect((await saldosCorrentesDaFicha(a, deps05)).autorizado.toFixed(2)).toBe("0.00");
     const antesA = await prisma.fichaOrcamentaria.findUniqueOrThrow({ where: { id: a } });
     expect(antesA.saldoAutorizado.toFixed(2)).toBe("0.00");
 
@@ -218,8 +222,8 @@ describe("M02 — backfill da dotação inicial", () => {
     expect(r.criadas).toBe(2);
 
     // consertado nas duas pontas: SUM e cache
-    expect((await saldosDaFicha(a, deps05)).autorizado.toFixed(2)).toBe("10000.00");
-    expect((await saldosDaFicha(b, deps05)).autorizado.toFixed(2)).toBe("5000.00");
+    expect((await saldosCorrentesDaFicha(a, deps05)).autorizado.toFixed(2)).toBe("10000.00");
+    expect((await saldosCorrentesDaFicha(b, deps05)).autorizado.toFixed(2)).toBe("5000.00");
     const depoisA = await prisma.fichaOrcamentaria.findUniqueOrThrow({ where: { id: a } });
     expect(depoisA.saldoAutorizado.toFixed(2)).toBe("10000.00");
     expect(depoisA.saldoDisponivel.toFixed(2)).toBe("10000.00");
@@ -250,7 +254,7 @@ describe("M02 — backfill da dotação inicial", () => {
       { fichaId: orfa, valor: "100.00", historico: "r", criadoPor: "t" },
       deps05
     );
-    const s = await saldosDaFicha(orfa, deps05);
+    const s = await saldosCorrentesDaFicha(orfa, deps05);
     expect(s.autorizado.toFixed(2)).toBe("10000.00");
     expect(s.disponivel.toFixed(2)).toBe("9900.00");
     expect(await reconciliarFicha(orfa, deps05)).toEqual([]);

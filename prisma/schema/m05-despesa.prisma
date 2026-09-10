@@ -48,14 +48,31 @@ model MovimentoDotacao {
   /// Movimento que ESTORNA outro (ex.: EMPENHO_ANULADO -> o EMPENHO original).
   estornoDeId String?
 
+  /// ══ O EIXO DE REGISTRO. Instante da GRAVAÇÃO. Nunca é substituído: sem ele
+  /// não há como reproduzir um demonstrativo já publicado nem investigar
+  /// divergência. Ver docs/adr/ADR-competencia-no-movimento-de-dotacao.md.
   criadoEm  DateTime @default(now())
   criadoPor String
+
+  /// ══ O EIXO DE COMPETÊNCIA. Data do EFEITO LEGAL do ato, não da digitação.
+  /// É ELA que corta saldo por data, cotas, contingenciamento e demonstrativo
+  /// de período — `criadoEm` NÃO serve para isso e responder por ele é o
+  /// defeito que este campo cura (decreto de 20/06 digitado em 15/07).
+  competencia DateTime
+  /// ⚠️ A INCERTEZA MORA NO DADO, NÃO NA MEMÓRIA DE QUEM MIGROU. `true` quando
+  /// a competência foi derivada de `criadoEm` por não haver ato de origem com
+  /// data — hoje, as reservas, que não têm data própria. Marcar permite
+  /// encontrá-las no dia em que `ReservaDotacao` ganhar data.
+  competenciaDerivada Boolean @default(false)
 
   /// back-relation M03 — campo VIRTUAL, não gera coluna.
   itemCredito ItemCredito?
 
   @@index([fichaId, tipo])
   @@index([origemTipo, origemId])
+  /// O índice do corte por data: `saldosDaFicha` com competência filtra por
+  /// (ficha, competencia <= X) e agrupa por tipo.
+  @@index([fichaId, competencia])
 }
 
 // ----------------------------------------------------------------------------

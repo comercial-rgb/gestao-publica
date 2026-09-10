@@ -496,7 +496,12 @@ export function criarCreditoRepositoryPrisma(
         for (const item of p.itens) {
           if (item.tipo !== "ANULACAO") continue;
           await garantirDotacaoInicial(tx, item.fichaId, p.criadoPor);
-          const saldos = calcularSaldos(await totaisPorTipo(tx, item.fichaId));
+          // ⚠️ CORRENTE: o guard pergunta se há saldo para anular AGORA. Cortado por
+          // competência, ele ignoraria empenhos posteriores e deixaria anular o que já
+          // foi gasto.
+          const saldos = calcularSaldos(
+            await totaisPorTipo(tx, item.fichaId, { eixo: "CORRENTE" })
+          );
           if (item.valor.greaterThan(saldos.disponivel)) {
             const ficha = fichaPorId.get(item.fichaId)!;
             throw new Error(
@@ -588,7 +593,10 @@ export function criarCreditoRepositoryPrisma(
           // Anular uma SUPLEMENTACAO tira o saldo de volta — e isso pode faltar
           // se a ficha já empenhou. Fail-closed.
           if (item.tipo === "SUPLEMENTACAO") {
-            const saldos = calcularSaldos(await totaisPorTipo(tx, item.fichaId));
+            // ⚠️ CORRENTE — mesmo motivo do guard acima.
+            const saldos = calcularSaldos(
+              await totaisPorTipo(tx, item.fichaId, { eixo: "CORRENTE" })
+            );
             const valor = toMoney(item.valor.toFixed(2));
             if (valor.greaterThan(saldos.disponivel)) {
               throw new Error(

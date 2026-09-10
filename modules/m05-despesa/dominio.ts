@@ -57,6 +57,40 @@ const SINAIS: Record<
 /** Total por tipo, como sai de um GROUP BY no banco. */
 export type TotaisPorTipo = Readonly<Partial<Record<TipoMovimentoDotacao, Money>>>;
 
+/**
+ * ═══ O CORTE TEMPORAL DO SALDO — E POR QUE ELE É OBRIGATÓRIO ═══
+ *
+ * `MovimentoDotacao` tem DOIS eixos de tempo, e eles respondem perguntas diferentes
+ * (ver `docs/adr/ADR-competencia-no-movimento-de-dotacao.md`):
+ *
+ *   · `competencia` — a data do EFEITO LEGAL do ato. "Qual era a dotação disponível
+ *     em 30/06?" O decreto de 20/06 digitado em 15/07 conta para junho.
+ *   · `criadoEm`    — o instante da GRAVAÇÃO. "O que o sistema RESPONDIA em 30/06?"
+ *     O mesmo decreto não conta para junho, porque em junho ninguém o tinha digitado.
+ *
+ * ⚠️ NENHUM DOS DOIS É O PADRÃO, E É DE PROPÓSITO. Um padrão implícito é como o
+ * defeito nasceu: `saldosDaFicha(fichaId, deps)` respondia SEM corte, e quem
+ * perguntasse "saldo em 30/06" receberia o saldo de hoje sem nada avisar. Quem
+ * consulta saldo agora DECLARA o eixo — e um eixo declarado errado é um erro que
+ * alguém pode ler no código.
+ */
+export type CorteTemporal =
+  /** Todos os movimentos. O saldo de AGORA — o que a tela do dia mostra. */
+  | { readonly eixo: "CORRENTE" }
+  /** Movimentos com competência <= `ate`. Posição do orçamento, cotas, demonstrativo. */
+  | { readonly eixo: "COMPETENCIA"; readonly ate: Date }
+  /** Movimentos gravados <= `ate`. Reproduzir demonstrativo já publicado, auditoria. */
+  | { readonly eixo: "REGISTRO"; readonly ate: Date };
+
+/** Só para mensagem de erro e histórico — nunca para decidir comportamento. */
+export function descreverCorte(c: CorteTemporal): string {
+  if (c.eixo === "CORRENTE") return "saldo corrente (todos os movimentos)";
+  const dia = c.ate.toISOString().slice(0, 10);
+  return c.eixo === "COMPETENCIA"
+    ? `saldo por competência até ${dia}`
+    : `saldo como registrado até ${dia}`;
+}
+
 export interface SaldosFicha {
   readonly autorizado: Money;
   readonly reservado: Money;

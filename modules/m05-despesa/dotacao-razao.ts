@@ -5,6 +5,7 @@ import type { TipoMovimentoDotacao } from "./dominio.js";
 // travamento de competência (M16). Ver `m01-funil.test.ts`: o grep-teste proíbe o
 // `lancamentoContabil.create` fora dele.
 import { lancarNoRazao } from "../m01-core-contabil/razao.js";
+import { exigirCompetenciaEmExercicioAberto } from "../m08-restos-a-pagar/guard-exercicio.js";
 
 /**
  * O MOVIMENTO DE DOTAÇÃO E A SUA PERNA NO RAZÃO — UM FATO, UMA TRANSAÇÃO.
@@ -68,9 +69,19 @@ export interface MovimentoDotacaoParams {
   readonly estornoDeId?: string | null | undefined;
   readonly criadoPor: string;
   /**
-   * A data do FATO. É ela que corta a MSC e o balancete — nunca o `criadoEm`.
-   * A dotação inicial é de 1º de janeiro do exercício da ficha, e é isso que o chamador
-   * informa quando sabe; quando não informa, o padrão é esse mesmo.
+   * A data do FATO — a COMPETÊNCIA. É ela que corta a MSC, o balancete e, desde
+   * o ADR de 2026-09-10, o SALDO POR DATA.
+   *
+   * ⚠️ ATÉ 2026-09-10 ESTE CAMPO CHEGAVA AO RAZÃO E ERA DESCARTADO NO MOVIMENTO.
+   * `movimentoDotacao.create` gravava só `criadoEm`, e por isso "qual era o saldo em
+   * 30/06?" respondia pelo instante da DIGITAÇÃO. No banco de desenvolvimento havia
+   * doze empenhos de 10/04 gravados em 09/09 — cinco meses de erro, em silêncio.
+   * Ver `docs/adr/ADR-competencia-no-movimento-de-dotacao.md`.
+   *
+   * ⚠️ NÃO INFORMAR TEM PREÇO, E O PREÇO FICA NO DADO. Sem `data`, a competência
+   * vira o instante da gravação e a linha nasce com `competenciaDerivada = true`.
+   * Isso não é um erro — é o caso honesto da reserva, que não tem data própria — mas
+   * é rastreável, e é para ser rastreável que a marca existe.
    */
   readonly data?: Date | undefined;
   readonly historico?: string | undefined;
@@ -87,6 +98,21 @@ export async function registrarMovimentoDotacao(
   tx: Tx,
   p: MovimentoDotacaoParams
 ): Promise<{ readonly movimentoId: string }> {
+  // ⚠️ A COMPETÊNCIA É DECIDIDA UMA VEZ, AQUI, e a MESMA vai para o movimento e para a
+  // perna do razão. Calcular `new Date()` duas vezes daria ao movimento e ao lançamento
+  // instantes diferentes por alguns milissegundos — e uma consulta cortada exatamente
+  // nessa fronteira veria um sem o outro.
+  const competencia = p.data ?? new Date();
+
+  // ⚠️ PERÍODO ABERTO, CONFERIDO PELA COMPETÊNCIA — e é um guard NOVO, não uma cópia do
+  // que já havia. `exigirExercicioDaFichaAberto` olha o exercício da FICHA; este olha o
+  // do FATO. Só os dois juntos fecham a antedatação para exercício encerrado.
+  await exigirCompetenciaEmExercicioAberto(
+    tx,
+    competencia,
+    `movimento de dotação ${p.tipo}`
+  );
+
   const mov = await tx.movimentoDotacao.create({
     data: {
       fichaId: p.fichaId,
@@ -96,6 +122,9 @@ export async function registrarMovimentoDotacao(
       origemId: p.origemId ?? null,
       estornoDeId: p.estornoDeId ?? null,
       criadoPor: p.criadoPor,
+      competencia,
+      // Quem não informou a data do fato não tem data do fato: a linha diz isso.
+      competenciaDerivada: p.data === undefined,
     },
     select: { id: true },
   });
@@ -131,14 +160,13 @@ export async function registrarMovimentoDotacao(
     }
   }
 
-  const data = p.data ?? new Date();
-
   // ⚠️ AS DUAS PERNAS, NO SUBSISTEMA ORÇAMENTÁRIO. O motor do M01 valida ΣD == ΣC por
   // subsistema — um lançamento torto não chega ao banco.
   await lancarNoRazao(tx, {
     id: randomUUID(),
     numeroControle: `DOT-${p.tipo}-${mov.id}`,
-    dataTransacao: data,
+    // A MESMA competência do movimento — ver acima.
+    dataTransacao: competencia,
     historico: p.historico ?? `${p.tipo} na ficha ${p.fichaId}`,
     origemTipo: p.origemTipo,
     origemId: mov.id,

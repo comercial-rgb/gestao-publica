@@ -6,7 +6,7 @@ import { limparBanco } from "../../test/limpar-banco.js";
 import { criarFichasDeTeste } from "../../test/ficha-teste.js";
 import { criarM05Deps } from "../m05-despesa/adapter-prisma.js";
 import { roteiroEmpenho } from "../m05-despesa/dominio.js";
-import { empenhar, reconciliarFicha, saldosDaFicha } from "../m05-despesa/servico.js";
+import { empenhar, reconciliarFicha, saldosCorrentesDaFicha } from "../m05-despesa/servico.js";
 import { criarM03Deps } from "./adapter-prisma.js";
 import { validarBalanceamento } from "./dominio.js";
 import {
@@ -138,8 +138,8 @@ describe("M03 — crédito por ANULAÇÃO (balanceado)", () => {
       deps
     );
 
-    const sa = await saldosDaFicha(FICHA_A, deps05);
-    const sb = await saldosDaFicha(FICHA_B, deps05);
+    const sa = await saldosCorrentesDaFicha(FICHA_A, deps05);
+    const sb = await saldosCorrentesDaFicha(FICHA_B, deps05);
 
     expect(sa.autorizado.toFixed(2)).toBe("9500.00"); // 10000 - 500
     expect(sb.autorizado.toFixed(2)).toBe("5500.00"); // 5000 + 500
@@ -215,8 +215,8 @@ describe("M03 — crédito por ANULAÇÃO (balanceado)", () => {
       })
     ).toBe(0);
     // os saldos das duas fichas seguem intactos
-    expect((await saldosDaFicha(FICHA_A, deps05)).autorizado.toFixed(2)).toBe("10000.00");
-    expect((await saldosDaFicha(FICHA_B, deps05)).autorizado.toFixed(2)).toBe("5000.00");
+    expect((await saldosCorrentesDaFicha(FICHA_A, deps05)).autorizado.toFixed(2)).toBe("10000.00");
+    expect((await saldosCorrentesDaFicha(FICHA_B, deps05)).autorizado.toFixed(2)).toBe("5000.00");
   });
 
   it("TR 5.111: REJEITA fonte divergente — fecha no total mas não por fonte", async () => {
@@ -340,7 +340,7 @@ describe("M03 — crédito por RECURSO NOVO", () => {
       deps
     );
 
-    const sb = await saldosDaFicha(FICHA_B, deps05);
+    const sb = await saldosCorrentesDaFicha(FICHA_B, deps05);
     expect(sb.autorizado.toFixed(2)).toBe("7000.00"); // 5000 + 2000 (dinheiro novo)
     expect(await reconciliarFicha(FICHA_B, deps05)).toEqual([]);
 
@@ -352,7 +352,7 @@ describe("M03 — crédito por RECURSO NOVO", () => {
     expect(movsA[0]!.tipo).toBe("DOTACAO_INICIAL");
 
     // ficha A intocada pelo crédito: segue com a dotação da LOA
-    expect((await saldosDaFicha(FICHA_A, deps05)).autorizado.toFixed(2)).toBe("10000.00");
+    expect((await saldosCorrentesDaFicha(FICHA_A, deps05)).autorizado.toFixed(2)).toBe("10000.00");
   });
 
   it("REJEITA perna de anulação num decreto por recurso novo", async () => {
@@ -474,8 +474,8 @@ describe("M03 — encerramento e anulação", () => {
     );
 
     // saldos voltaram ao original
-    expect((await saldosDaFicha(FICHA_A, deps05)).autorizado.toFixed(2)).toBe("10000.00");
-    expect((await saldosDaFicha(FICHA_B, deps05)).autorizado.toFixed(2)).toBe("5000.00");
+    expect((await saldosCorrentesDaFicha(FICHA_A, deps05)).autorizado.toFixed(2)).toBe("10000.00");
+    expect((await saldosCorrentesDaFicha(FICHA_B, deps05)).autorizado.toFixed(2)).toBe("5000.00");
     expect(await reconciliarFicha(FICHA_A, deps05)).toEqual([]);
     expect(await reconciliarFicha(FICHA_B, deps05)).toEqual([]);
 
@@ -553,7 +553,7 @@ describe("M03 × M05 — o crédito vira saldo EMPENHÁVEL", () => {
     const e = await empenhar(empenhoGrande, R_EMPENHO, deps05);
     expect(e.empenhoId).toBeTruthy();
 
-    const sb = await saldosDaFicha(FICHA_B, deps05);
+    const sb = await saldosCorrentesDaFicha(FICHA_B, deps05);
     expect(sb.autorizado.toFixed(2)).toBe("5500.00");
     expect(sb.empenhado.toFixed(2)).toBe("5300.00");
     expect(sb.disponivel.toFixed(2)).toBe("200.00");

@@ -46,6 +46,12 @@ export async function backfillDotacaoInicial(
           origemTipo: "LOA",
           origemId: ficha.id,
           criadoPor: "BACKFILL",
+          // ⚠️ 1º DE JANEIRO DO EXERCÍCIO DA FICHA — a mesma regra do adapter do M02.
+          // NÃO é `competenciaDerivada`: a data da LOA é CONHECIDA, é o exercício da
+          // própria ficha. Marcar como derivada aqui esconderia dado bom entre os
+          // duvidosos. Pelo instante do backfill, a MSC mostraria a LOA "entrando" no
+          // dia em que alguém rodou o script.
+          competencia: new Date(Date.UTC(ficha.exercicio, 0, 1, 12, 0, 0)),
         },
       });
       // o cache também estava mentindo — recalcula do SUM.

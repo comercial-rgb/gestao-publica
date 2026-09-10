@@ -4,7 +4,7 @@ import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
 import { limparBanco } from "../../test/limpar-banco.js";
 import { criarFichaDeTeste } from "../../test/ficha-teste.js";
 import { roteiroEmpenho, roteiroLiquidacao, roteiroPagamento } from "./dominio.js";
-import { empenhar, reservarDotacao, saldosDaFicha } from "./servico.js";
+import { empenhar, reservarDotacao, saldosCorrentesDaFicha } from "./servico.js";
 import { liquidar, pagar } from "./servico-bloco2.js";
 import type { M05Deps } from "./ports.js";
 import { criarM05DepsComContratos } from "../m11-licitacoes/adapter-m05.js";
@@ -161,7 +161,7 @@ describe("M05 — concorrência no saldo da ficha", () => {
       expect(await prisma.empenho.count({ where: { fichaId: FICHA } })).toBe(1);
 
       // e o cache (recalculado sob o lock) conta a mesma história do SUM
-      const s = await saldosDaFicha(FICHA, deps);
+      const s = await saldosCorrentesDaFicha(FICHA, deps);
       expect(s.empenhado.toFixed(2)).toBe("60000.00");
       expect(s.disponivel.toFixed(2)).toBe("40000.00");
     }
@@ -189,7 +189,7 @@ describe("M05 — concorrência no saldo da ficha", () => {
       ).toMatch(/Saldo insuficiente na ficha/);
 
       // reservado + empenhado <= dotado (100.000), sempre
-      const s = await saldosDaFicha(FICHA, deps);
+      const s = await saldosCorrentesDaFicha(FICHA, deps);
       const consumido = Number(s.reservado.toFixed(2)) + Number(s.empenhado.toFixed(2));
       expect(consumido).toBe(60000);
       expect(consumido).toBeLessThanOrEqual(100000);

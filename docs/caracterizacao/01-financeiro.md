@@ -48,7 +48,12 @@ despercebido quando fica restritivo demais; este tem o teste do caminho feliz ju
 
 ## 3. Os cinco comportamentos que o ENT03 vai tocar
 
-### 3.1 ⚠️ Saldo de dotação por data — **não existe**
+### 3.1 ⚠️ Saldo de dotação por data — **não existia; resolvido em ENT03a**
+
+> **ATUALIZAÇÃO DE 2026-09-10.** O que esta seção descreve foi **corrigido** no ENT03a,
+> pela alternativa A de `docs/adr/ADR-competencia-no-movimento-de-dotacao.md`. O texto
+> abaixo fica como está — é o registro do que o sistema fazia, e é dele que a decisão
+> saiu. O que mudou está no fim da seção, em **"O que aconteceu depois"**.
 
 **Este é o achado que mais muda o planejamento do lote.**
 
@@ -76,6 +81,31 @@ migration que muda o significado de todos os saldos — ou se deriva o corte de 
 uma decisão de desenho, e ela precisa ser tomada **antes** de escrever a primeira cota.
 
 *Testes: `c1`, `c2`.*
+
+#### O que aconteceu depois
+
+A decisão foi tomada (ADR aceito, alternativa A) e implementada no ENT03a:
+
+- `MovimentoDotacao` ganhou `competencia` e `competenciaDerivada`, em migration aditiva
+  de três passos (nullable → backfill → `NOT NULL`), sem `DROP`;
+- o backfill recuperou a data do fato do próprio razão (`LancamentoContabil.dataTransacao`
+  da perna do movimento) e de `Empenho.data` — **zero linhas caíram no caso derivado**;
+- `saldosDaFicha` **foi retirada**. No lugar entraram `saldosCorrentesDaFicha`,
+  `saldosDaFichaPorCompetencia` e `saldosDaFichaPorRegistro`. A assinatura antiga não
+  ganhou um terceiro parâmetro opcional, de propósito: um opcional deixaria todo chamador
+  respondendo pelo eixo antigo sem que ninguém decidisse isso;
+- um guard novo (`exigirCompetenciaEmExercicioAberto`) recusa movimento cuja **competência**
+  caia em exercício encerrado — vetor que `exigirExercicioDaFichaAberto` não via, porque
+  ele olha o exercício da ficha e não o do fato.
+
+⚠️ **E a medição confirmou o defeito no dado real.** No banco de desenvolvimento havia doze
+empenhos com `Empenho.data` de **10/04** e `criadoEm` de **09/09** — cinco meses. Um corte
+por `criadoEm` em 30/06 teria respondido que nenhum deles existia.
+
+⚠️ **O c2 antigo NÃO teria pego esta mudança.** Ele afirmava, no docblock, vigiar a chegada
+de uma coluna de competência, mas a asserção era `nomes.filter(/^data/i)` — e a coluna
+criada chama-se `competencia`. Teria passado verde sobre exatamente o que dizia vigiar. O
+c2 atual afirma o **conjunto exato** de colunas: sobra e falta acusam igual.
 
 ### 3.2 Geração de lançamento por evento — o roteiro é **parâmetro**, não tabela
 

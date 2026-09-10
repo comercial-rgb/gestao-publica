@@ -983,33 +983,208 @@ porque a irreversibilidade é real.
 
 Censo do M16: **156 → 161 serviços, 149 → 154 ações**. Migrations: **83**.
 
-## 12. O próximo passo
+## 13. ENT03a — o catálogo sob git, e a competência
 
-⚠️ **O ENT03 está ABERTO e PARADO no gate parcial** — ver a seção 11. Ele não está
-concluído, e o próximo passo não é outro lote: é a revisão do que já foi feito e a
-decisão sobre o que segue.
+> ⚠️ **Este lote NÃO está concluído.** O ENT03a tem seis itens; o que segue cobre o
+> **item 1 inteiro** e a parte do item 5 que era exercitável agora. Os itens 2, 3, 4 e 6
+> estão em aberto. O que falta está dito, sem eufemismo, em **12.5**.
 
-**A decisão que bloqueia a seção 2.5 do ENT03**, e que precisa ser tomada antes da primeira
-cota de despesa: `MovimentoDotacao` ganha data de competência — uma migration que muda o
-significado de todos os saldos — ou o corte por data se deriva de outra fonte? A
-caracterização (11.1) mostrou que hoje não há corte nenhum, e cotas, contingenciamento e
-prévia de alteração dependem dele.
+### 13.1 O instrumento de medição entrou sob controle de versão
 
-⚠️ **E ele abre pela CARACTERIZAÇÃO, não por funcionalidade.** A instrução da revisão é
-explícita e vale registrar por inteiro: rodar a suíte de **M01, M04, M05, M06, M07, M08,
-M12 e M14** e registrar o comportamento ATUAL antes de ampliar qualquer coisa.
+`gestao-publica-execucao/` não era repositório git. O catálogo de 2037 cláusulas é a única
+medida de quanto do termo de referência está atendido, e uma marcação errada, um script mal
+rodado ou um arquivo sobrescrito não tinham como ser desfeitos nem revistos.
 
-A razão é a mesma que os dois falsos alarmes deste lote demonstraram: **não se escreve
-funcionalidade nova sobre suíte que ninguém mediu.** Aqueles oito módulos apareceram
-vermelhos em 09/09 por concorrência de banco, e a leitura apressada teria sido "há defeitos
-no financeiro". A caracterização é o que separa o que aqueles arquivos realmente afirmam do
-que se supõe que eles afirmem — e é a linha de base contra a qual qualquer regressão do
-ENT03 vai ser lida.
+Dois commits, e a divisão é deliberada:
 
-A caracterização **não** é parte deste fechamento: ela é o primeiro passo do ENT03, e o
-ENT03 não foi iniciado.
+| Commit | O que é |
+|---|---|
+| `aa41282` | **estado zero** — as 2037 cláusulas em `NAO_VERIFICADO`, evidência vazia |
+| `fe3c7db` | as 38 marcações de ENT01 e ENT02, legíveis como diff de exatamente 76 linhas |
 
-E antes dele, a decisão que segue de pé desde o ENT01: o **lote de tenancy** fecha os
-itens 4, 5 e 7 do incremento do ENT01 e o teste 1 deste lote. Enquanto ele não vier,
-esses continuam declarados — nunca marcados como atendidos, e nenhum município novo
-habilitado.
+Reconstruí o estado zero de propósito. Commitar o catálogo já marcado teria enterrado as 38
+marcações no commit inicial, invisíveis — que é o oposto de pôr o instrumento sob revisão.
+
+Conferido antes do primeiro commit: **nenhum valor de credencial** nos arquivos, só as
+palavras em prosa. O PDF fonte está versionado e seu `sha256` confere com
+`resultado-auditoria.json`. O `.cache-tr-layout.txt` **não** foi ignorado, e o `.gitignore`
+diz por quê: ele é derivado por `pdftotext -layout`, cuja saída depende da versão do
+poppler, e os ids de cláusula que saem desse recorte são a chave de toda evidência já
+registrada.
+
+### 13.2 A competência — o defeito estava no banco de desenvolvimento
+
+ADR **aceito** em `docs/adr/ADR-competencia-no-movimento-de-dotacao.md`, alternativa A.
+
+⚠️ **A medição achou o defeito no dado real, não em hipótese.** No banco de desenvolvimento
+havia doze empenhos com `Empenho.data` de **10/04** e `criadoEm` de **09/09** — cinco meses
+de distância. Uma consulta de saldo em 30/06 cortada por `criadoEm` teria respondido que
+nenhum dos doze existia. Todos são fatos de abril.
+
+⚠️ **E a competência já era conhecida — era calculada e jogada fora.**
+`MovimentoDotacaoParams` **já tinha** o campo `data`, com o comentário
+*"A data do FATO. É ela que corta a MSC e o balancete — nunca o `criadoEm`"*, escrito antes
+deste ADR. Cinco dos seis chamadores já a informavam bem (1º de janeiro para a LOA, a data
+do decreto para o crédito, a data do empenho). `registrarMovimentoDotacao` usava esse valor
+**apenas** para a perna do razão e não o gravava no movimento. Não se introduziu um conceito
+novo: persistiu-se o que já existia.
+
+Migration aditiva de três passos numa transação — `competencia` nullable, backfill,
+`NOT NULL` — mais `competenciaDerivada`. **Zero `DROP`.** O backfill recuperou a data do
+próprio razão (`LancamentoContabil.dataTransacao` da perna, `origemId = movimento.id`) e de
+`Empenho.data`: **14 linhas, 0 derivadas, 0 nulas.**
+
+⚠️ **O grant não foi afrouxado, e isso foi medido antes e depois.** `MovimentoDotacao` não
+consta de `ESCRITA_MUTAVEL_DO_RUNTIME`, e `gestao_app` tem apenas `INSERT, SELECT` — antes
+e depois da migration. O `UPDATE` do backfill rodou uma vez, dentro da migration, pelo papel
+`gestao`, que é o de migração.
+
+**A assinatura antiga não sobreviveu.** `saldosDaFicha(fichaId, deps)` foi **retirada**; no
+lugar entraram `saldosCorrentesDaFicha`, `saldosDaFichaPorCompetencia` e
+`saldosDaFichaPorRegistro`. Não ganhou um terceiro parâmetro opcional de propósito: um
+opcional deixaria todos os chamadores de hoje respondendo pelo eixo antigo sem que ninguém
+tivesse decidido isso. A retirada quebrou 9 arquivos na compilação, e cada um foi olhado.
+
+### 13.3 ⚠️ Três acusações, e as três eram contra mim
+
+**(a) O c2 da caracterização teria deixado passar.** Ele afirmava, no docblock, vigiar a
+chegada de uma coluna de competência. A asserção era `nomes.filter(/^data/i)` — e a coluna
+criada chama-se `competencia`. **Teria passado verde sobre exatamente o que dizia vigiar.**
+A lição não é sobre a regex: um teste de caracterização que vigia um NOME de coluna vigia a
+grafia, não o conceito. O c2 atual afirma o conjunto exato de colunas.
+
+**(b) `test/` não era typechecked por nenhum tsconfig.** `tsconfig.json` exclui `test`; os
+outros dois nunca a incluíram. A retirada de `saldosDaFicha` acusou 9 arquivos em
+`modules/**` na compilação e **zero** em `test/**` — o teste de caracterização só quebrou em
+tempo de execução. `test/**/*.ts` entrou em `tsconfig.backend.json`, e as 12 quebras que
+isso revelou foram corrigidas: quatro imports sem `.js` (um deles em `lib/pdf/gerar.ts`, que
+fazia o módulo resolver como `any` e apagava três erros de tipo por tabela) e cinco
+`estornoDeId: null` onde o tipo diz `string | undefined`.
+
+⚠️ **`test/ui/*.tsx` continua FORA** — exige `jsx` e `lib: dom`, que o config de backend não
+tem de propósito. Pendência declarada, não resolvida.
+
+**(c) O guard nasceu errado, e um teste existente me corrigiu.** A primeira versão de
+`exigirCompetenciaEmExercicioAberto` recusava exercício ENCERRADO **e também** exercício
+INEXISTENTE. Ela derrubou o `t5` do M16 — *"anular em JANEIRO um empenho de dezembro travado
+PASSA"* —, cuja anulação tem data de **20/01/2027**, ano ainda não aberto. Recusar ali
+impediria o ente de **corrigir em janeiro um erro de dezembro**.
+
+A condição do ADR é "competência em período **FECHADO**". Um ano que ninguém abriu não é um
+período fechado: é um período que não começou. Tratá-los igual transformou uma proteção
+contra antedatar numa proibição de pós-datar. O guard passou a perguntar `estaEncerrado`, e
+o `c3b` prende a distinção.
+
+### 13.4 ⚠️ O custo do guard, medido em vez de suposto
+
+O `t8` do M03 (dois créditos concorrentes, 5 rodadas) começou a estourar o limite de 5000 ms
+do vitest. Em vez de subir o timeout, medi — as mesmas 18 suítes, nas duas condições:
+
+| Condição | `t8` |
+|---|---|
+| sem o guard | **2745 ms** — passa |
+| com o guard, sem memória | **5035 ms** — estoura |
+| com o guard, memorizado | **3395 ms** — passa |
+
+O guard era chamado uma vez por movimento, e um decreto com vários itens repetia o mesmo
+`SELECT` em `Exercicio` com o lock da ficha na mão. A memória vive por transação
+(`WeakMap` chaveada no `tx`) e guarda só ANO ABERTO — o encerrado lança e nunca é
+memorizado. E o cliente de longa vida fica **fora** da memória: memorizar num objeto que
+vive o processo inteiro deixaria o guard respondendo "aberto" para sempre depois de um
+encerramento. A distinção é `"$transaction" in tx`, e ela erra para o lado de não
+memorizar.
+
+### 13.5 O parser de OFX conferido contra terceiro — e o que ele revelou
+
+O prompt manda: *"Se o teste do OFX usar o seu parser para conferir o seu parser, ele passa
+com qualquer interpretação errada consistente."* Era exatamente o caso: os 23 testes de
+`ofx.test.ts` montam um OFX com um helper deste repositório e comparam com o que o próprio
+teste acabou de escrever.
+
+O desmentidor é o **`ofxtools` 1.1.1** (PyPI, terceiro). `scripts/oraculo-ofx.py` lê
+`packages/ofx/corpus/*.ofx` com ele e congela o resultado em `esperado.json`;
+`packages/ofx/oraculo.test.ts` confronta o nosso parser com o que o outro leu.
+
+**Resultado: os dois concordam em todos os campos** — 3 arquivos, 6 transações. E a
+conferência achou duas coisas que nenhum teste anterior podia achar:
+
+⚠️ **1. Os arquivos dos testes antigos não eram OFX válido.** O `ofxtools` recusou o
+cabeçalho de quatro linhas (falta `SECURITY`, `ENCODING`, `COMPRESSION`, `OLDFILEUID`,
+`NEWFILEUID`), e recusou o corpo sem `<SIGNONMSGSRSV1>` e sem `<LEDGERBAL>`. Nenhum deles
+teria vindo de um banco de verdade. Ser mais permissivo na entrada é menos perigoso que ler
+valor errado, então não virou defeito — mas o corpus novo é conforme.
+
+⚠️ **2. A virada de mês.** `<DTPOSTED>20260131235900[-3:BRT]` — o último minuto de janeiro
+em Brasília. O `ofxtools` normaliza para UTC e guarda `2026-02-01T02:59Z`; lido como data em
+UTC, isso é **fevereiro**. O nosso parser guarda **31/01**.
+
+**Um dia de diferença numa transação do último dia do mês é uma mudança de mês**, e a
+conciliação bancária é mensal. Quem está certo é o nosso parser, por razão de domínio: a
+conciliação é feita contra o extrato que o tesoureiro tem na mão, e o extrato do banco
+brasileiro imprime 31/01. O `esperado.json` guarda **as duas** leituras — `instanteUtc`, o
+oráculo cru, e `dataLocalDeclarada` — e um teste prova que elas divergem, para que o caso de
+fronteira não desapareça do corpus.
+
+⚠️ **`ofxtools` não entrou no `package.json`.** É ferramenta de conferência, roda à mão
+quando o corpus muda; o `esperado.json` é versionado justamente para que a suíte não dependa
+de python nem de rede.
+
+### 13.6 ⚠️ O que NÃO foi feito neste lote
+
+Preciso ser direto: **quatro dos seis itens do ENT03a estão em aberto.**
+
+| Item | Estado |
+|---|---|
+| 1. Competência | **feito**, com ADR, migration, guard e testes |
+| 2. M09 completo (movimentação bancária, conciliação, cópia de pendências, seleção múltipla) | **não iniciado** |
+| 3. Telas do financeiro — os quatro percursos | **não iniciado** |
+| 4. Empenho, liquidação e OP na fila de assinaturas | **não iniciado** — só o borderô entra |
+| 5. `packages/integracao` | **não iniciado.** Só o exercício do OFX (12.5) foi feito; cofre de credenciais, validação contra esquema, detecção de duplicidade em retransmissão e custódia de certificado continuam ausentes |
+| 6. `docs/dependencias-externas.md` | **parcial** — só a linha do OFX foi atualizada, com a correção de que a conciliação do M09 não existe "só como schema" |
+
+A definição de concluído do ENT03 **continua não atendida**: nenhum dos quatro percursos
+pela interface existe.
+
+### 13.7 Comandos e resultados
+
+| Comando | Resultado | Data |
+|---|---|---|
+| `npm run test:tudo` | **160 arquivos, 1623 testes, 0 falhas, 411,6 s** | 2026-09-10 |
+| `npm run typecheck` (backend, agora com `test/**/*.ts`) | 0 erros | 2026-09-10 |
+| `npm run typecheck:app` | 0 erros | 2026-09-10 |
+| `npm run typecheck:scripts` | 0 erros | 2026-09-10 |
+| `npx prisma migrate deploy` | 1 migration aplicada, 0 `DROP` | 2026-09-10 |
+| `oraculo-ofx.py` (ofxtools 1.1.1) | 3 arquivos, 6 transações, todos os campos conferem | 2026-09-10 |
+| `psql` — grants de `MovimentoDotacao` | `gestao_app`: `INSERT, SELECT` antes e depois | 2026-09-10 |
+| `psql` — backfill | 14 linhas, 0 derivadas, 0 nulas | 2026-09-10 |
+
+⚠️ **Duas execuções intermediárias foram vermelhas, e as duas eram defeito meu**, não falso
+alarme: o `t5` do M16 (guard recusando ano não aberto — ver 13.3c) e o `t8` do M03 (custo do
+guard sem memória — ver 13.4). Ambas foram corrigidas no código, nenhuma no teste.
+
+## 14. O próximo passo
+
+⚠️ **O ENT03a está ABERTO e PARADO no gate.** Dos seis itens, um está feito e um está
+parcial — ver 13.6. O próximo passo não é outro lote: é a revisão deste e a decisão sobre
+o que segue.
+
+**A decisão que bloqueava a seção 2.5 do ENT03 está TOMADA e IMPLEMENTADA.** Cotas por
+período, contingenciamento e prévia de alteração orçamentária já têm sobre o que ser
+construídos: `saldosDaFichaPorCompetencia` responde "qual era o saldo em X", e o guard de
+competência recusa escrita em exercício encerrado. Nenhum dos três foi construído.
+
+**A ordem que resta, se o lote continuar:** item 2 (M09 — e verificar antes se conciliação,
+borderô e lote já cobrem parte do que o prompt pede, para não criar um segundo caminho para
+os mesmos fatos), item 4 (a fila de assinaturas, que é reuso do ENT02 e é barato), item 5
+(`packages/integracao`), item 3 (as telas, que fecham a definição de concluído) e item 6.
+
+**Duas pendências declaradas deste lote**, nenhuma delas resolvida:
+
+- `test/ui/*.tsx` continua fora do typecheck — exige `jsx` e `lib: dom`, que o config de
+  backend não tem de propósito. Ou ganha um quarto tsconfig, ou fica declarado;
+- o corpus de OFX é **sintético**, ainda que conforme. Um extrato real de banco brasileiro
+  é o que fecharia essa conferência.
+
+E de pé desde o ENT01: o **lote de tenancy** fecha os itens 4, 5 e 7 do incremento do ENT01
+e o teste 1 do ENT02. Enquanto ele não vier, esses continuam declarados — nunca marcados
+como atendidos, e nenhum município novo habilitado.

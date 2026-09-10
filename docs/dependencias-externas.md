@@ -16,6 +16,7 @@
 | Estado | Significado |
 |---|---|
 | `CODIGO_LOCAL_SEM_VALIDACAO` | Existe adapter no disco; nunca exercitado contra o órgão |
+| `VALIDADO_CONTRA_TERCEIRO` | Conferido contra implementação independente do formato — **não** contra o órgão. Vale para formato de arquivo; não substitui aceite |
 | `AUSENTE` | Nenhum código em nenhum dos dois repositórios |
 | `PENDENTE_DESCOBERTA` | Falta obter o documento técnico oficial, versão e vigência |
 
@@ -64,7 +65,7 @@ SAGRES para e-Sfinge não produz o conector de SC — é contrato diferente.
 |---|---|---|---|---|---|---|---|---|---|---|
 | Banco do Brasil | Borderô e retorno bancário | — | — | — | não configurada | não firmado | — | `CODIGO_LOCAL_SEM_VALIDACAO` — M17 e `scripts/bb-smoke.ts`. **Um banco não equivale a todos os convênios** | Levantar quais bancos o município usa de fato | a definir |
 | Convênios bancários (demais) | Guias FEBRABAN com código de barras, PIX, registro de cobrança, retorno | — | — | — | não solicitadas | não firmados | — | `AUSENTE` | Levantar convênios vigentes do município | a definir |
-| — (formato) | Extrato OFX/OFC para conciliação | — | — | — | não aplicável | — | — | `CODIGO_LOCAL_SEM_VALIDACAO` — `packages/ofx`. A conciliação em si (M09) existe só como schema | Caracterizar `packages/ofx` ao entrar em ENT03 | a definir |
+| — (formato) | Extrato OFX/OFC para conciliação | OFX 1.0.2 (SGML) | 1.0.2 | não aplicável — arquivo, não webservice | não aplicável | — | — | `VALIDADO_CONTRA_TERCEIRO` — `packages/ofx` conferido contra `ofxtools` 1.1.1 (PyPI) em 2026-09-10: 3 arquivos, 6 transações, todos os campos conferem. **Correção ao que esta linha dizia antes: a conciliação do M09 NÃO existe "só como schema"** — `conciliacao.ts` (351), `vinculo.ts` (497), `extrato.ts` (164), `dominio.ts` (350) e 1607 linhas de teste | Obter um extrato OFX REAL de banco brasileiro e acrescentá-lo ao corpus; o corpus atual é sintético, ainda que conforme | a definir |
 
 ## Jurídico, assinatura e saúde
 

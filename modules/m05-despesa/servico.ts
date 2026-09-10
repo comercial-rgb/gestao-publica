@@ -284,7 +284,9 @@ export async function reconciliarFicha(
 ): Promise<readonly Divergencia[]> {
   const [cache, real] = await Promise.all([
     deps.despesa.saldosCache(fichaId),
-    deps.despesa.saldosReais(fichaId),
+    // ⚠️ CORRENTE: a reconciliação compara o cache — que é o saldo de agora — com o SUM.
+    // Qualquer outro eixo compararia coisas diferentes e acusaria divergência falsa.
+    deps.despesa.saldosReais(fichaId, { eixo: "CORRENTE" }),
   ]);
 
   const chaves = [
@@ -305,12 +307,65 @@ export async function reconciliarFicha(
   return divergencias;
 }
 
-/** Saldos correntes (do SUM real — nunca do cache). */
-export async function saldosDaFicha(
+/**
+ * ═══ ⚠️ `saldosDaFicha(fichaId, deps)` NÃO EXISTE MAIS, E A REMOÇÃO É O PONTO ═══
+ *
+ * Ela existiu até 2026-09-10 com dois parâmetros, nenhum temporal, e respondia SEMPRE
+ * pelo saldo de agora. Quem perguntasse "qual era o saldo em 30/06?" recebia o saldo de
+ * hoje — resposta plausível, silenciosa e errada.
+ *
+ * A correção NÃO foi acrescentar um terceiro parâmetro opcional: um padrão implícito
+ * teria deixado todos os chamadores de hoje respondendo pelo eixo antigo sem que
+ * ninguém tivesse decidido isso. O nome antigo foi RETIRADO, para que cada chamador
+ * quebre na compilação e alguém escolha o eixo olhando para o caso.
+ *
+ * Ver `docs/adr/ADR-competencia-no-movimento-de-dotacao.md` e `CorteTemporal`.
+ */
+
+/**
+ * O saldo de AGORA — todos os movimentos, sem corte. É o que a tela do dia mostra e o
+ * que os guards de reserva e empenho consultam.
+ *
+ * Este é o sucessor direto do antigo `saldosDaFicha`: mesmo resultado, nome que diz
+ * qual dos três eixos ele responde.
+ */
+export async function saldosCorrentesDaFicha(
   fichaId: string,
   deps: M05Deps
 ): Promise<SaldosFicha> {
-  return deps.despesa.saldosReais(fichaId);
+  return deps.despesa.saldosReais(fichaId, { eixo: "CORRENTE" });
+}
+
+/**
+ * "QUAL ERA A DOTAÇÃO DISPONÍVEL EM `ate`?" — corte por COMPETÊNCIA, a data do efeito
+ * legal do ato. O decreto de 20/06 digitado em 15/07 CONTA para 30/06.
+ *
+ * É este o eixo de cotas por período, contingenciamento, prévia de alteração
+ * orçamentária e posição do orçamento por data.
+ */
+export async function saldosDaFichaPorCompetencia(
+  fichaId: string,
+  ate: Date,
+  deps: M05Deps
+): Promise<SaldosFicha> {
+  return deps.despesa.saldosReais(fichaId, { eixo: "COMPETENCIA", ate });
+}
+
+/**
+ * "O QUE O SISTEMA RESPONDIA EM `ate`?" — corte por REGISTRO, o instante da gravação.
+ * O mesmo decreto de 20/06 digitado em 15/07 NÃO conta para 30/06, porque em 30/06
+ * ninguém o tinha digitado.
+ *
+ * É este o eixo de auditoria e de reprodução de demonstrativo já publicado: um
+ * demonstrativo emitido em 30/06 tem de poder ser reemitido idêntico, e ele foi
+ * calculado sobre o que estava gravado naquele dia — não sobre o que se sabe hoje.
+ */
+export async function saldosDaFichaPorRegistro(
+  fichaId: string,
+  ate: Date,
+  deps: M05Deps
+): Promise<SaldosFicha> {
+  return deps.despesa.saldosReais(fichaId, { eixo: "REGISTRO", ate });
 }
 
 export { comporPartidas };

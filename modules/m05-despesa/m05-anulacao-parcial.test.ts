@@ -10,7 +10,7 @@ import {
   roteiroLiquidacao,
   roteiroPagamento,
 } from "./dominio.js";
-import { empenhar, saldosDaFicha } from "./servico.js";
+import { empenhar, saldosCorrentesDaFicha } from "./servico.js";
 import { anularPagamento, liquidar, pagar } from "./servico-bloco2.js";
 import {
   anularEmpenhoParcial,
@@ -256,7 +256,7 @@ describe("TR 5.35 — anulação parcial", () => {
     expect(msg).toMatch(/4000\.00/);
     expect(msg).toMatch(/anule a liquidação primeiro/);
 
-    const antes = await saldosDaFicha(FICHA, deps);
+    const antes = await saldosCorrentesDaFicha(FICHA, deps);
     expect(antes.empenhado.toFixed(2)).toBe("10000.00");
 
     // ═══ 4.000,00 — EXATAMENTE o saldo a liquidar ═══
@@ -271,7 +271,7 @@ describe("TR 5.35 — anulação parcial", () => {
     );
 
     // ⚠️ A FICHA RECUPERA 4.000 POR DERIVAÇÃO (nenhuma escrita de saldo).
-    const depois = await saldosDaFicha(FICHA, deps);
+    const depois = await saldosCorrentesDaFicha(FICHA, deps);
     expect(depois.empenhado.toFixed(2)).toBe("6000.00");
     expect(Number(antes.disponivel.toFixed(2)) + 4000).toBe(
       Number(depois.disponivel.toFixed(2))
@@ -295,7 +295,7 @@ describe("TR 5.35 — anulação parcial", () => {
       },
       deps
     );
-    const restaurado = await saldosDaFicha(FICHA, deps);
+    const restaurado = await saldosCorrentesDaFicha(FICHA, deps);
     expect(restaurado.empenhado.toFixed(2)).toBe("10000.00");
     expect(await ledgerFecha()).toBe(true);
   });
@@ -572,7 +572,7 @@ describe("TR 5.35 — anulação parcial", () => {
         String((r.filter((x) => x.status === "rejected")[0] as PromiseRejectedResult).reason)
       ).toMatch(/ANULAÇÃO PARCIAL MAIOR QUE O SALDO A LIQUIDAR/);
 
-      const s = await saldosDaFicha(FICHA, deps);
+      const s = await saldosCorrentesDaFicha(FICHA, deps);
       expect(s.empenhado.toFixed(2)).toBe("6000.00");
     }
   }, 90_000);

@@ -22,7 +22,7 @@ import {
 import { criarM05Deps } from "./adapter-prisma.js";
 import { conferirDotacaoContraRazao } from "./conferir-dotacao.js";
 import { roteiroEmpenho } from "./dominio.js";
-import { empenhar, reservarDotacao, saldosDaFicha } from "./servico.js";
+import { empenhar, reservarDotacao, saldosCorrentesDaFicha } from "./servico.js";
 import type { M03Deps } from "../m03-creditos/ports.js";
 import type { M05Deps } from "./ports.js";
 
@@ -171,7 +171,7 @@ describe("M02/M05 — a dotação no razão", () => {
     expect(await noRazao(CONTA_CREDITO_EMPENHADO)).toBe(6000);
 
     // ...e o disponível da FICHA A, pelos movimentos: 10.000 − 6.000 = 4.000
-    const sa = await saldosDaFicha(FICHA_A, deps);
+    const sa = await saldosCorrentesDaFicha(FICHA_A, deps);
     expect(sa.autorizado.toFixed(2)).toBe("10000.00");
     expect(sa.empenhado.toFixed(2)).toBe("6000.00");
     expect(sa.disponivel.toFixed(2)).toBe("4000.00");
@@ -223,7 +223,7 @@ describe("M02/M05 — a dotação no razão", () => {
     expect(await noRazao(CONTA_CREDITO_DISPONIVEL)).toBe(8000);
     expect(await noRazao(CONTA_CREDITO_RESERVADO)).toBe(1000);
 
-    const sa = await saldosDaFicha(FICHA_A, deps);
+    const sa = await saldosCorrentesDaFicha(FICHA_A, deps);
     expect(sa.reservado.toFixed(2)).toBe("1000.00");
     expect(sa.disponivel.toFixed(2)).toBe("3000.00"); // 10.000 − 1.000 − 6.000
 
@@ -343,8 +343,8 @@ describe("M03 — o crédito adicional no razão", () => {
     );
 
     // autorizado: A = 10.000 + 2.000 = 12.000 · B = 5.000 − 2.000 = 3.000
-    expect((await saldosDaFicha(FICHA_A, deps)).autorizado.toFixed(2)).toBe("12000.00");
-    expect((await saldosDaFicha(FICHA_B, deps)).autorizado.toFixed(2)).toBe("3000.00");
+    expect((await saldosCorrentesDaFicha(FICHA_A, deps)).autorizado.toFixed(2)).toBe("12000.00");
+    expect((await saldosCorrentesDaFicha(FICHA_B, deps)).autorizado.toFixed(2)).toBe("3000.00");
 
     // ⚠️ NO RAZÃO: as duas pernas se cancelam no disponível global (é uma ANULAÇÃO — o
     // dinheiro só mudou de ficha), e a dotação ADICIONAL registra as duas passagens.
@@ -366,8 +366,8 @@ describe("M03 — o crédito adicional no razão", () => {
     );
 
     // os saldos VOLTAM
-    expect((await saldosDaFicha(FICHA_A, deps)).autorizado.toFixed(2)).toBe("10000.00");
-    expect((await saldosDaFicha(FICHA_B, deps)).autorizado.toFixed(2)).toBe("5000.00");
+    expect((await saldosCorrentesDaFicha(FICHA_A, deps)).autorizado.toFixed(2)).toBe("10000.00");
+    expect((await saldosCorrentesDaFicha(FICHA_B, deps)).autorizado.toFixed(2)).toBe("5000.00");
 
     // ...e o razão volta junto — a A1-orc prova que as duas leituras não divergiram
     expect(await noRazao(CONTA_CREDITO_DISPONIVEL)).toBe(15000);

@@ -14,6 +14,7 @@ import type {
 } from "../m01-core-contabil/ports.js";
 import type {
   CategoriaOrdemCronologica,
+  CorteTemporal,
   SaldosFicha,
   TipoEmpenho,
   TotaisEmpenho,
@@ -178,8 +179,13 @@ export interface DespesaRepositoryPort {
   /** Liberação: registro NOVO + RESERVA_LIBERADA. Sem lançamento contábil. */
   liberarReserva(params: LiberarReservaParams): Promise<string>;
 
-  /** Saldos calculados do SUM REAL dos movimentos (nunca do cache). */
-  saldosReais(fichaId: string): Promise<SaldosFicha>;
+  /**
+   * Saldos calculados do SUM REAL dos movimentos (nunca do cache).
+   *
+   * ⚠️ `corte` É OBRIGATÓRIO. Ver `CorteTemporal` no domínio: competência e registro
+   * respondem perguntas diferentes, e não há resposta correta por omissão.
+   */
+  saldosReais(fichaId: string, corte: CorteTemporal): Promise<SaldosFicha>;
 
   /** Saldos como estão gravados nas colunas cache. */
   saldosCache(fichaId: string): Promise<SaldosFicha>;

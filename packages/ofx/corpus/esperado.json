@@ -1,0 +1,87 @@
+{
+  "_gerado_por": "ofxtools 1.1.1 (PyPI) via scripts/oraculo-ofx.py",
+  "_aviso": "NAO EDITE A MAO. Estes valores foram lidos por uma implementacao INDEPENDENTE do nosso parser. Editar este arquivo para fazer um teste passar destroi a unica coisa que ele prova.",
+  "arquivos": {
+    "01-basico.ofx": {
+      "moeda": "BRL",
+      "acctid": "12345-6",
+      "bankid": "001",
+      "periodoInicio": "2026-01-01",
+      "periodoFim": "2026-01-31",
+      "transacoes": [
+        {
+          "fitid": "F1",
+          "instanteUtc": "2026-01-15T15:00:00+00:00",
+          "dataLocalDeclarada": "2026-01-15",
+          "valor": "1500.00",
+          "natureza": "DEBITO",
+          "memo": "PAGTO FORNECEDOR",
+          "documento": "000123"
+        },
+        {
+          "fitid": "F2",
+          "instanteUtc": "2026-01-16T00:00:00+00:00",
+          "dataLocalDeclarada": "2026-01-16",
+          "valor": "2500.50",
+          "natureza": "CREDITO",
+          "memo": "REPASSE FPM",
+          "documento": null
+        },
+        {
+          "fitid": "F3",
+          "instanteUtc": "2026-02-01T02:59:00+00:00",
+          "dataLocalDeclarada": "2026-01-31",
+          "valor": "0.01",
+          "natureza": "DEBITO",
+          "memo": "TARIFA",
+          "documento": null
+        }
+      ]
+    },
+    "02-sem-checknum-e-memo-longo.ofx": {
+      "moeda": "BRL",
+      "acctid": "98765-4",
+      "bankid": "033",
+      "periodoInicio": "2026-02-01",
+      "periodoFim": "2026-02-28",
+      "transacoes": [
+        {
+          "fitid": "2026020100001",
+          "instanteUtc": "2026-02-01T00:00:00+00:00",
+          "dataLocalDeclarada": "2026-02-01",
+          "valor": "1000000.00",
+          "natureza": "CREDITO",
+          "memo": "TRANSFERENCIA RECEBIDA CONV 0001/2026 SEC EDUCACAO PARCELA 1",
+          "documento": null
+        },
+        {
+          "fitid": "2026022800002",
+          "instanteUtc": "2026-02-28T00:00:00+00:00",
+          "dataLocalDeclarada": "2026-02-28",
+          "valor": "999999.99",
+          "natureza": "DEBITO",
+          "memo": "APLICACAO FUNDO CURTO PRAZO",
+          "documento": null
+        }
+      ]
+    },
+    "03-uma-transacao.ofx": {
+      "moeda": "BRL",
+      "acctid": "00011122-3",
+      "bankid": "104",
+      "periodoInicio": "2026-03-01",
+      "periodoFim": "2026-03-01",
+      "transacoes": [
+        {
+          "fitid": "UNICA",
+          "instanteUtc": "2026-03-01T00:00:00+00:00",
+          "dataLocalDeclarada": "2026-03-01",
+          "valor": "42.00",
+          "natureza": "DEBITO",
+          "memo": "TARIFA MANUTENCAO",
+          "documento": null
+        }
+      ]
+    }
+  }
+}

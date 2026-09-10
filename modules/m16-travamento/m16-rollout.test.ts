@@ -20,7 +20,7 @@ import {
   roteiroPagamento,
   type RoteiroContabil,
 } from "../m05-despesa/dominio.js";
-import { empenhar, saldosDaFicha } from "../m05-despesa/servico.js";
+import { empenhar, saldosCorrentesDaFicha } from "../m05-despesa/servico.js";
 import { anularLiquidacao, liquidar, pagar } from "../m05-despesa/servico-bloco2.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
 import { abrirExercicio } from "../m08-restos-a-pagar/exercicio.js";
@@ -355,8 +355,8 @@ describe("M16 bloco 3 — o ROLLOUT da autorização (TR 4.56 · 6.4 · 6.5)", (
     await executarCredito({ decretoId, itens, criadoPor: ADMIN }, m03);
     expect(await prisma.itemCredito.count()).toBe(2);
 
-    const saude = await saldosDaFicha(FICHA_SAUDE, deps);
-    const educ = await saldosDaFicha(FICHA_EDUC, deps);
+    const saude = await saldosCorrentesDaFicha(FICHA_SAUDE, deps);
+    const educ = await saldosCorrentesDaFicha(FICHA_EDUC, deps);
     expect(saude.autorizado.toFixed(2)).toBe("102000.00"); // 100.000 + 2.000
     expect(educ.autorizado.toFixed(2)).toBe("98000.00"); //  100.000 − 2.000
   });
@@ -421,7 +421,7 @@ describe("M16 bloco 3 — o ROLLOUT da autorização (TR 4.56 · 6.4 · 6.5)", (
     expect(e.empenhoId).toBeDefined();
 
     // ⚠️ O LITERAL DE NEGÓCIO INTACTO: o saldo da ficha caiu, e o razão recebeu o lançamento.
-    const saldos = await saldosDaFicha(FICHA_SAUDE, deps);
+    const saldos = await saldosCorrentesDaFicha(FICHA_SAUDE, deps);
     expect(saldos.empenhado.toFixed(2)).toBe("1000.00");
     expect(saldos.disponivel.toFixed(2)).toBe("99000.00");
     expect(
@@ -443,7 +443,7 @@ describe("M16 bloco 3 — o ROLLOUT da autorização (TR 4.56 · 6.4 · 6.5)", (
     ).rejects.toThrow(new RegExp(`não tem permissão para EMPENHAR na unidade gestora ${UO_EDUC}`));
 
     // ⚠️ ZERO ESCRITA: a ficha da Educação não foi tocada.
-    const educ = await saldosDaFicha(FICHA_EDUC, deps);
+    const educ = await saldosCorrentesDaFicha(FICHA_EDUC, deps);
     expect(educ.empenhado.toFixed(2)).toBe("0.00");
   });
 
@@ -706,7 +706,7 @@ describe("M16 bloco 3 — o ROLLOUT da autorização (TR 4.56 · 6.4 · 6.5)", (
       deps
     );
     expect(pago.pagamentoId).toBeDefined();
-    const saldos = await saldosDaFicha(FICHA_SAUDE, deps);
+    const saldos = await saldosCorrentesDaFicha(FICHA_SAUDE, deps);
     expect(saldos.empenhado.toFixed(2)).toBe("1000.00");
 
     // ── NEGADA na Educação: o MESMO ato, o MESMO valor, a MESMA conta bancária ──
@@ -829,7 +829,7 @@ describe("M16 bloco 3 — o ROLLOUT da autorização (TR 4.56 · 6.4 · 6.5)", (
       )
     ).rejects.toThrow(/o que faltou: O VÍNCULO/);
 
-    const saldos = await saldosDaFicha(FICHA_SAUDE, deps);
+    const saldos = await saldosCorrentesDaFicha(FICHA_SAUDE, deps);
     expect(saldos.empenhado.toFixed(2)).toBe("0.00");
   });
 

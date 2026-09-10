@@ -12,7 +12,10 @@ import {
 import { criarOrdemCronologicaPrisma } from "../m06-ordem-cronologica/adapter-prisma.js";
 // Guard de exercício (M08). Fica num arquivo isolado justamente para não criar
 // o ciclo M05 -> M08 -> M05.
-import { exigirExercicioDaFichaAberto } from "../m08-restos-a-pagar/guard-exercicio.js";
+import {
+  exigirCompetenciaEmExercicioAberto,
+  exigirExercicioDaFichaAberto,
+} from "../m08-restos-a-pagar/guard-exercicio.js";
 import { registrarMovimentoDotacao } from "./dotacao-razao.js";
 import { exigirFonteDaFicha } from "./guard-fonte.js";
 import { exigirCotaCmd } from "./guard-cmd.js";
@@ -49,6 +52,7 @@ import {
 import {
   calcularSaldos,
   type CategoriaOrdemCronologica,
+  type CorteTemporal,
   type SaldosFicha,
   type TipoMovimentoDotacao,
   type TotaisPorTipo,
@@ -157,11 +161,31 @@ export async function travarLiquidacoes(
   await travar(tx, "Liquidacao", liquidacaoIds);
 }
 
-/** GROUP BY tipo -> total. É o SUM REAL, a fonte da verdade. */
-export async function totaisPorTipo(tx: Tx, fichaId: string): Promise<TotaisPorTipo> {
+/**
+ * GROUP BY tipo -> total. É o SUM REAL, a fonte da verdade.
+ *
+ * ⚠️ O CORTE É OBRIGATÓRIO — ver `CorteTemporal` no domínio. Antes de 2026-09-10 esta
+ * função somava TUDO e o chamador não tinha como pedir outra coisa; hoje ela exige que
+ * o eixo seja declarado, porque somar tudo é uma das três respostas possíveis e não a
+ * única.
+ */
+export async function totaisPorTipo(
+  tx: Tx,
+  fichaId: string,
+  corte: CorteTemporal
+): Promise<TotaisPorTipo> {
+  // ⚠️ `lte` E NÃO `lt`: "até 30/06" inclui 30/06. Com `lt`, o ato do próprio dia do
+  // fechamento ficaria de fora do demonstrativo daquele dia.
+  const where =
+    corte.eixo === "CORRENTE"
+      ? { fichaId }
+      : corte.eixo === "COMPETENCIA"
+        ? { fichaId, competencia: { lte: corte.ate } }
+        : { fichaId, criadoEm: { lte: corte.ate } };
+
   const linhas = await tx.movimentoDotacao.groupBy({
     by: ["tipo"],
-    where: { fichaId },
+    where,
     _sum: { valor: true },
   });
 
@@ -218,7 +242,10 @@ export async function garantirDotacaoInicial(
  * NUNCA incrementando. Chamar SEMPRE dentro da transação, depois do INSERT.
  */
 export async function recalcularCache(tx: Tx, fichaId: string): Promise<SaldosFicha> {
-  const saldos = calcularSaldos(await totaisPorTipo(tx, fichaId));
+  // ⚠️ CORRENTE, e por definição. As quatro colunas de cache da ficha SÃO o saldo de
+  // agora — é o que a reconciliação confere contra o SUM. Um cache cortado por
+  // competência seria o saldo de uma data guardado como se fosse o de hoje.
+  const saldos = calcularSaldos(await totaisPorTipo(tx, fichaId, { eixo: "CORRENTE" }));
 
   await tx.fichaOrcamentaria.update({
     where: { id: fichaId },
@@ -660,7 +687,10 @@ export function criarDespesaRepositoryPrisma(
         await garantirDotacaoInicial(tx, p.fichaId, p.criadoPor);
 
         // INVARIANTE 5: saldo do SUM REAL, dentro da transação E sob o lock.
-        const saldos = calcularSaldos(await totaisPorTipo(tx, p.fichaId));
+        // ⚠️ CORRENTE: o guard pergunta "há dinheiro disponível AGORA para reservar?".
+        // Cortado por competência, ele ignoraria um crédito adicional já concedido e
+        // recusaria uma reserva legítima; cortado por registro, o mesmo.
+        const saldos = calcularSaldos(await totaisPorTipo(tx, p.fichaId, { eixo: "CORRENTE" }));
         exigirSaldo(saldos.disponivel, p.valor, p.fichaId);
 
         const reserva = await tx.reservaDotacao.create({
@@ -709,9 +739,13 @@ export function criarDespesaRepositoryPrisma(
         // M08 — fail-closed: não se empenha em exercício encerrado. Despesa de
         // exercício encerrado vira restos a pagar, não empenho novo.
         await exigirExercicioDaFichaAberto(tx, p.fichaId, "empenho");
+        // ⚠️ E a data do PRÓPRIO empenho: `p.data` vem de fora. Sem isto, um empenho
+        // datado de 20/12 do exercício encerrado entraria com a ficha do ano aberto.
+        await exigirCompetenciaEmExercicioAberto(tx, p.data, "empenho");
         await garantirDotacaoInicial(tx, p.fichaId, p.criadoPor);
 
-        const saldos = calcularSaldos(await totaisPorTipo(tx, p.fichaId));
+        // ⚠️ CORRENTE — mesmo motivo do guard da reserva, logo acima.
+        const saldos = calcularSaldos(await totaisPorTipo(tx, p.fichaId, { eixo: "CORRENTE" }));
 
         // Empenho vindo de reserva NÃO precisa de disponível novo: o valor já
         // está retido em `reservado`, e ele será liberado agora. O que se exige
@@ -800,6 +834,10 @@ export function criarDespesaRepositoryPrisma(
             origemTipo: "EMPENHO",
             origemId: empenho.id,
             criadoPor: p.criadoPor,
+            // ⚠️ A COMPETÊNCIA É A DATA DO EMPENHO — a MESMA que foi gravada em
+            // `Empenho.data` logo acima. Era exatamente esta simetria que faltava:
+            // o empenho tinha data do fato e o movimento dele, não.
+            competencia: p.data,
           },
         });
 
@@ -845,6 +883,13 @@ export function criarDespesaRepositoryPrisma(
         if (original === null) {
           throw new Error(`Empenho ${p.empenhoOriginalId} não encontrado.`);
         }
+
+        // ⚠️ GUARD NOVO (ADR de 2026-09-10). A anulação DEVOLVE crédito à ficha, e o
+        // movimento dela carrega `p.data` como competência. Datada dentro de um
+        // exercício encerrado, ela alteraria um saldo cujos demonstrativos já foram
+        // publicados. Anular despesa de exercício encerrado é operação de restos a
+        // pagar, não de empenho.
+        await exigirCompetenciaEmExercicioAberto(tx, p.data, "anulação de empenho");
         // Recheck na tx: a garantia dura é o índice único parcial.
         if (original.estornos.length > 0) {
           throw new Error(`Empenho ${p.empenhoOriginalId} já foi anulado.`);
@@ -896,6 +941,9 @@ export function criarDespesaRepositoryPrisma(
             origemId: anulacao.id,
             estornoDeId: original.id,
             criadoPor: p.criadoPor,
+            // A competência é a data da ANULAÇÃO, não a do empenho original: a
+            // anulação é um fato NOVO, e é no mês dela que o crédito volta.
+            competencia: p.data,
           },
         });
 
@@ -952,6 +1000,7 @@ export function criarDespesaRepositoryPrisma(
         // LOCK: a FICHA (posto 1) — decide-se sobre saldo, trava-se antes de somar.
         await travarFichas(tx, [original.fichaId]);
         await exigirExercicioDaFichaAberto(tx, original.fichaId, "anulação parcial");
+        await exigirCompetenciaEmExercicioAberto(tx, p.data, "anulação parcial");
 
         // ═══ O GUARD: o SALDO A LIQUIDAR ═══
         const empenhado = await empenhadoLiquidoDoEmpenho(tx, original.id);
@@ -1006,6 +1055,8 @@ export function criarDespesaRepositoryPrisma(
             origemTipo: "ANULACAO_PARCIAL_EMPENHO",
             origemId: anulacao.id,
             criadoPor: p.criadoPor,
+            // Data da anulação parcial — o fato novo que reduz.
+            competencia: p.data,
           },
         });
 
@@ -1203,6 +1254,14 @@ export function criarDespesaRepositoryPrisma(
      */
     async estornarAnulacaoParcial(p, lancamento): Promise<string> {
       return prisma.$transaction(async (tx) => {
+        // ⚠️ GUARD NOVO (ADR de 2026-09-10) — o estorno RECONSOME dotação, com `p.data`
+        // como competência. Mesma razão da anulação: não se mexe em exercício encerrado.
+        await exigirCompetenciaEmExercicioAberto(
+          tx,
+          p.data,
+          "estorno de anulação parcial"
+        );
+
         if (p.nivel === "EMPENHO") {
           const parcial = await tx.empenho.findUnique({
             where: { id: p.anulacaoId },
@@ -1231,7 +1290,8 @@ export function criarDespesaRepositoryPrisma(
 
           // LOCK: a ficha — restaurar o empenho CONSOME dotação de novo.
           await travarFichas(tx, [parcial.fichaId]);
-          const saldos = calcularSaldos(await totaisPorTipo(tx, parcial.fichaId));
+          // ⚠️ CORRENTE: restaurar o empenho consome dotação AGORA.
+          const saldos = calcularSaldos(await totaisPorTipo(tx, parcial.fichaId, { eixo: "CORRENTE" }));
           const valor = toMoney(parcial.valor.toFixed(2));
           exigirSaldo(saldos.disponivel, valor, parcial.fichaId);
 
@@ -1268,6 +1328,9 @@ export function criarDespesaRepositoryPrisma(
               origemId: estorno.id,
               estornoDeId: parcial.id,
               criadoPor: p.criadoPor,
+              // Data do ESTORNO. A dotação volta a ser consumida no mês em que se
+              // estornou, não naquele em que se anulou.
+              competencia: p.data,
             },
           });
 
@@ -1413,8 +1476,11 @@ export function criarDespesaRepositoryPrisma(
       });
     },
 
-    async saldosReais(fichaId: string): Promise<SaldosFicha> {
-      return calcularSaldos(await totaisPorTipo(prisma, fichaId));
+    async saldosReais(
+      fichaId: string,
+      corte: CorteTemporal
+    ): Promise<SaldosFicha> {
+      return calcularSaldos(await totaisPorTipo(prisma, fichaId, corte));
     },
 
     async saldosCache(fichaId: string): Promise<SaldosFicha> {

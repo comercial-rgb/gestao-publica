@@ -11,9 +11,16 @@ import {
   roteiroPagamento,
 } from "../../modules/m05-despesa/dominio.js";
 import { empenhar } from "../../modules/m05-despesa/servico.js";
-import { saldosDaFicha } from "../../modules/m05-despesa/servico.js";
+import {
+  saldosCorrentesDaFicha,
+  saldosDaFichaPorCompetencia,
+  saldosDaFichaPorRegistro,
+} from "../../modules/m05-despesa/servico.js";
 import { avaliarOrdem, ordenarFila } from "../../modules/m06-ordem-cronologica/dominio.js";
-import { exigirExercicioAberto } from "../../modules/m08-restos-a-pagar/guard-exercicio.js";
+import {
+  exigirCompetenciaEmExercicioAberto,
+  exigirExercicioAberto,
+} from "../../modules/m08-restos-a-pagar/guard-exercicio.js";
 import { encerrarExercicio } from "../../modules/m08-restos-a-pagar/exercicio.js";
 import { gerarAnulacaoParcial, gerarEstorno } from "../../packages/ledger/index.js";
 import { toMoney } from "../../packages/contracts/index.js";
@@ -125,36 +132,39 @@ describe("caracterização · saldo de dotação por data", () => {
   beforeEach(semear);
 
   /**
-   * ⚠️ **NÃO EXISTE SALDO DE DOTAÇÃO POR DATA. Existe saldo TOTAL.**
+   * ═══ ⚠️ ESTA CARACTERIZAÇÃO FOI SUPERADA EM 2026-09-10, DE PROPÓSITO ═══
    *
-   * Este é o achado mais importante da caracterização, e ele contradiz o que o nome do
-   * requisito sugere. Duas causas, e as duas são estruturais:
+   * O que c1 e c2 registravam, e que era verdade quando foram escritos:
    *
-   *   · `totaisPorTipo` (adapter do M05) agrupa `MovimentoDotacao` por `tipo` com
-   *     `where: { fichaId }` — e mais nada. Não há parâmetro de corte;
-   *   · `MovimentoDotacao` **não tem data de competência**. Tem `criadoEm`, que é o
-   *     instante em que a LINHA foi gravada, não a data do FATO.
+   *   · `MovimentoDotacao` não tinha data de competência, só `criadoEm`;
+   *   · `saldosDaFicha(fichaId, deps)` tinha dois parâmetros, nenhum temporal;
+   *   · logo, não havia saldo de dotação por data — havia saldo total.
    *
-   * A diferença entre as duas coisas é exatamente o que quebra um corte temporal: um
-   * decreto de crédito adicional com data de 20/06 lançado no sistema em 15/07 tem
-   * `criadoEm` de julho. Perguntar "qual era o saldo em 30/06?" filtrando por `criadoEm`
-   * daria a resposta errada, e daria em silêncio.
+   * O teste ACUSOU, que é a função dele, e a acusação virou decisão registrada em
+   * `docs/adr/ADR-competencia-no-movimento-de-dotacao.md` (aceito, alternativa A).
+   * Os testes abaixo passam a caracterizar o comportamento NOVO.
    *
-   * ⚠️ E O EMPENHO **TEM** `data`. `consultas.ts` corta por ela (`data: { lte: corte }`).
-   * Então a assimetria é real e é a armadilha: quem vir o corte funcionando no empenho
-   * pode supor que ele funciona na dotação também.
+   * ═══ ⚠️ E UMA CONFISSÃO SOBRE O c2 ANTIGO, QUE IMPORTA MAIS QUE A MUDANÇA ═══
+   * O c2 original afirmava, no docblock, que "se alguém acrescentar uma
+   * `dataCompetencia`, este teste falha". Ele NÃO teria falhado. A asserção era:
    *
-   * ISTO IMPORTA PARA O ENT03: cotas de despesa por período, contingenciamento e prévia
-   * de alteração orçamentária **dependem de saldo por data**. Nenhum deles pode ser
-   * construído sobre `saldosDaFicha` como ela está — e essa decisão precisa ser tomada
-   * de propósito, não descoberta no meio da implementação.
+   *     expect(nomes.filter((n) => /^data/i.test(n))).toEqual([])
+   *
+   * A coluna que este lote acrescentou chama-se `competencia` — não começa com "data",
+   * não casa com a regex, e o teste teria passado VERDE sobre a mudança exata que ele
+   * dizia vigiar. O guard era mais estreito que a promessa do seu próprio comentário.
+   *
+   * A lição não é sobre esta regex: **um teste de caracterização que vigia um NOME de
+   * coluna vigia a grafia, não o conceito.** O c2 abaixo passa a afirmar o conjunto
+   * EXATO de colunas — sobra e falta acusam igual, e nenhuma grafia nova escapa.
    */
-  it("c1: o saldo da ficha é ACUMULADO e não aceita corte temporal", async () => {
-    const antes = await saldosDaFicha(FICHA, deps);
+  it("c1: o saldo da ficha aceita corte por COMPETÊNCIA e por REGISTRO", async () => {
+    const antes = await saldosCorrentesDaFicha(FICHA, deps);
     expect(antes.autorizado.toFixed(2)).toBe("500000.00");
     expect(antes.disponivel.toFixed(2)).toBe("500000.00");
 
-    // Um empenho com data de FEVEREIRO.
+    // Um empenho com data de FEVEREIRO, gravado AGORA. É a assimetria inteira num
+    // fato só: a competência é de fevereiro, o registro é de hoje.
     await empenhar(
       {
         fichaId: FICHA, numero: "NE-C1", tipo: "ORDINARIO", valor: "30000.00",
@@ -166,38 +176,149 @@ describe("caracterização · saldo de dotação por data", () => {
       deps
     );
 
-    const depois = await saldosDaFicha(FICHA, deps);
-    expect(depois.empenhado.toFixed(2)).toBe("30000.00");
-    expect(depois.disponivel.toFixed(2)).toBe("470000.00");
+    const corrente = await saldosCorrentesDaFicha(FICHA, deps);
+    expect(corrente.empenhado.toFixed(2)).toBe("30000.00");
+    expect(corrente.disponivel.toFixed(2)).toBe("470000.00");
 
-    // ⚠️ A ASSINATURA NÃO ACEITA DATA. Não há "saldo em 31/01" a pedir — e é isto que o
-    // teste registra. `saldosDaFicha(fichaId, deps)`: dois parâmetros, nenhum temporal.
-    expect(saldosDaFicha.length).toBe(2);
+    // ⚠️ O QUE ANTES NÃO EXISTIA. Em 31/01 o empenho de 10/02 ainda não competia.
+    const emJaneiro = await saldosDaFichaPorCompetencia(
+      FICHA,
+      new Date("2026-01-31T23:59:59Z"),
+      deps
+    );
+    expect(emJaneiro.empenhado.toFixed(2)).toBe("0.00");
+    expect(emJaneiro.disponivel.toFixed(2)).toBe("500000.00");
+
+    // Em 28/02 ele já competia.
+    const emFevereiro = await saldosDaFichaPorCompetencia(
+      FICHA,
+      new Date("2026-02-28T23:59:59Z"),
+      deps
+    );
+    expect(emFevereiro.empenhado.toFixed(2)).toBe("30000.00");
+
+    // ⚠️ E OS DOIS EIXOS DIVERGEM — é isto que prova que são dois, e não um com
+    // dois nomes. Por REGISTRO, em 28/02 o empenho ainda não estava gravado (ele foi
+    // gravado agora, neste teste), então o empenhado é ZERO. Por COMPETÊNCIA, é 30.000.
+    const registradoAteFevereiro = await saldosDaFichaPorRegistro(
+      FICHA,
+      new Date("2026-02-28T23:59:59Z"),
+      deps
+    );
+    expect(registradoAteFevereiro.empenhado.toFixed(2)).toBe("0.00");
+    expect(emFevereiro.empenhado.toFixed(2)).not.toBe(
+      registradoAteFevereiro.empenhado.toFixed(2)
+    );
+
+    // ⚠️ A ASSINATURA ANTIGA NÃO SOBREVIVEU. `saldosDaFicha` foi RETIRADA — não ganhou
+    // um terceiro parâmetro opcional. Um opcional teria deixado todo chamador de hoje
+    // respondendo pelo eixo antigo sem que ninguém decidisse isso.
+    const servico = await import("../../modules/m05-despesa/servico.js");
+    expect(Object.keys(servico)).not.toContain("saldosDaFicha");
+    expect(saldosDaFichaPorCompetencia.length).toBe(3);
   });
 
-  it("c2: `MovimentoDotacao` guarda `criadoEm` (gravação), não data de competência", async () => {
+  it("c2: `MovimentoDotacao` guarda os DOIS eixos — competência e registro", async () => {
     const movimentos = await prisma.movimentoDotacao.findMany({
       where: { fichaId: FICHA },
-      select: { tipo: true, valor: true, criadoEm: true },
+      select: { tipo: true, valor: true, criadoEm: true, competencia: true },
     });
     expect(movimentos.length).toBeGreaterThan(0);
 
-    // ⚠️ O QUE ESTE `expect` REGISTRA: as colunas que existem. Se alguém acrescentar uma
-    // `dataCompetencia`, este teste falha — e essa é a hora de decidir o que os saldos
-    // passam a significar, em vez de descobrir depois que dois relatórios divergiram.
     const colunas = Object.keys(movimentos[0] as object).sort();
-    expect(colunas).toEqual(["criadoEm", "tipo", "valor"]);
+    expect(colunas).toEqual(["competencia", "criadoEm", "tipo", "valor"]);
 
+    // ⚠️ O CONJUNTO EXATO, e não uma regex sobre nomes — ver o docblock acima. Sobra
+    // acusa (coluna nova sem decisão) e falta acusa (coluna removida). Nenhuma grafia
+    // futura escapa porque não casou com um prefixo.
     const campos = await prisma.$queryRawUnsafe<{ column_name: string }[]>(
       `SELECT column_name FROM information_schema.columns
         WHERE table_name = 'MovimentoDotacao' ORDER BY column_name`
     );
-    const nomes = campos.map((c) => c.column_name);
-    expect(nomes).toContain("criadoEm");
-    expect(
-      nomes.filter((n) => /^data/i.test(n)),
-      "hoje NÃO há coluna de data de competência em MovimentoDotacao — ver o docblock"
-    ).toEqual([]);
+    expect(campos.map((c) => c.column_name)).toEqual([
+      "competencia",
+      "competenciaDerivada",
+      "criadoEm",
+      "criadoPor",
+      "estornoDeId",
+      "fichaId",
+      "id",
+      "origemId",
+      "origemTipo",
+      "tipo",
+      "valor",
+    ]);
+
+    // ⚠️ A DOTAÇÃO INICIAL COMPETE EM 1º DE JANEIRO, não no dia da digitação. Sem isto,
+    // a MSC de março mostraria a LOA "entrando" em março.
+    const loa = movimentos.find((m) => m.tipo === "DOTACAO_INICIAL");
+    expect(loa).toBeDefined();
+    expect(loa!.competencia.toISOString().slice(0, 10)).toBe("2026-01-01");
+    // E os dois eixos são MESMO diferentes nesta linha — a prova de que não é um alias.
+    expect(loa!.competencia.getTime()).not.toBe(loa!.criadoEm.getTime());
+  });
+
+  it("c3a: movimento com competência em exercício ENCERRADO é recusado", async () => {
+    // ⚠️ O VETOR QUE A COMPETÊNCIA ABRIU, e que o guard antigo não via: a ficha é de
+    // 2026 (aberto), mas o FATO é datado de 2025 (encerrado). `exigirExercicioDaFichaAberto`
+    // olharia 2026 e deixaria passar.
+    await prisma.exercicio.upsert({
+      where: { ano: 2025 },
+      update: {},
+      create: { ano: 2025, criadoPor: POR },
+    });
+    await encerrarExercicio(prisma, { ano: 2025, encerradoPor: POR });
+
+    await expect(
+      empenhar(
+        {
+          fichaId: FICHA, numero: "NE-C3A", tipo: "ORDINARIO", valor: "100.00",
+          data: new Date("2025-12-20T12:00:00Z"), credorCpfCnpj: CREDOR,
+          historico: "empenho antedatado", categoriaOrdemCronologica: "FORNECIMENTO_BENS",
+          criadoPor: POR,
+        },
+        R_EMPENHO,
+        deps
+      )
+    ).rejects.toThrow(/ENCERRADO/);
+  });
+
+  /**
+   * ⚠️ E A FRONTEIRA DO GUARD, QUE UM TESTE EXISTENTE ME CORRIGIU.
+   *
+   * A primeira versão de `exigirCompetenciaEmExercicioAberto` recusava exercício
+   * ENCERRADO **e também** exercício INEXISTENTE. Ela derrubou o `t5` do M16 — "anular em
+   * JANEIRO um empenho de dezembro travado PASSA" —, cuja anulação tem data de
+   * **20/01/2027**, ano ainda não aberto.
+   *
+   * O teste estava certo e o guard errado: recusar ali impediria o ente de **corrigir em
+   * janeiro um erro de dezembro**, que é precisamente o que ele tem de poder fazer.
+   *
+   * A condição do ADR é "competência em período **FECHADO**". Um ano que ninguém abriu não
+   * é um período fechado — é um período que não começou. Este teste prende a distinção,
+   * para que a próxima pessoa que quiser "endurecer o guard" veja o preço antes.
+   */
+  it("c3b: competência em ano AINDA NÃO ABERTO passa — não é a mesma coisa que fechado", async () => {
+    const semExercicio = await prisma.exercicio.findUnique({ where: { ano: 2028 } });
+    expect(semExercicio, "2028 não deve estar aberto neste fixture").toBeNull();
+
+    await expect(
+      exigirCompetenciaEmExercicioAberto(
+        prisma,
+        new Date("2028-01-20T12:00:00Z"),
+        "correção de janeiro"
+      )
+    ).resolves.toBeUndefined();
+
+    // E o exercício ENCERRADO continua sendo recusado — o guard não virou decoração.
+    await encerrarExercicio(prisma, { ano: 2026, encerradoPor: POR });
+    await expect(
+      exigirCompetenciaEmExercicioAberto(
+        prisma,
+        new Date("2026-06-15T12:00:00Z"),
+        "movimento retroativo"
+      )
+    ).rejects.toThrow(/ENCERRADO/);
   });
 });
 
@@ -296,7 +417,6 @@ describe("caracterização · regra de estorno por perna", () => {
       numeroControle: "2026/000123",
       dataTransacao: new Date("2026-03-01T12:00:00Z"),
       historico: "pagamento com retenção",
-      estornoDeId: null,
       estornos: [] as readonly string[],
       partidas: [
         { conta: FORNECEDOR, tipo: "DEBITO" as const, subsistema: "PATRIMONIAL" as const, valor: toMoney("1000.00") },
@@ -327,7 +447,7 @@ describe("caracterização · regra de estorno por perna", () => {
   it("c5: estornar duas vezes o mesmo lançamento é RECUSADO", () => {
     const jaEstornado = {
       id: "l-x", numeroControle: "2026/000200", dataTransacao: new Date("2026-03-01T12:00:00Z"),
-      historico: "x", estornoDeId: null, estornos: ["l-y"] as readonly string[],
+      historico: "x", estornos: ["l-y"] as readonly string[],
       partidas: [
         { conta: C_DISPONIVEL, tipo: "DEBITO" as const, subsistema: "ORCAMENTARIO" as const, valor: toMoney("10.00") },
         { conta: C_EMPENHADO, tipo: "CREDITO" as const, subsistema: "ORCAMENTARIO" as const, valor: toMoney("10.00") },
@@ -354,7 +474,7 @@ describe("caracterização · regra de estorno por perna", () => {
   it("c6: anulação parcial de lançamento COMPOSTO é recusada, com motivo", () => {
     const comRetencao = {
       id: "l-r", numeroControle: "2026/000300", dataTransacao: new Date("2026-03-01T12:00:00Z"),
-      historico: "pagamento com retenção", estornoDeId: null, estornos: [] as readonly string[],
+      historico: "pagamento com retenção", estornos: [] as readonly string[],
       partidas: [
         { conta: FORNECEDOR, tipo: "DEBITO" as const, subsistema: "PATRIMONIAL" as const, valor: toMoney("1000.00") },
         { conta: CAIXA, tipo: "CREDITO" as const, subsistema: "PATRIMONIAL" as const, valor: toMoney("900.00") },
@@ -372,7 +492,7 @@ describe("caracterização · regra de estorno por perna", () => {
   it("c7: a anulação parcial NÃO é estorno — não marca `estornoDeId` e admite repetição", () => {
     const simples = {
       id: "l-s", numeroControle: "2026/000400", dataTransacao: new Date("2026-03-01T12:00:00Z"),
-      historico: "empenho", estornoDeId: null, estornos: [] as readonly string[],
+      historico: "empenho", estornos: [] as readonly string[],
       partidas: [
         { conta: C_DISPONIVEL, tipo: "DEBITO" as const, subsistema: "ORCAMENTARIO" as const, valor: toMoney("1000.00") },
         { conta: C_EMPENHADO, tipo: "CREDITO" as const, subsistema: "ORCAMENTARIO" as const, valor: toMoney("1000.00") },

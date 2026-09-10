@@ -39,6 +39,17 @@
     // Os adapters de tribunal (M15/M18/M19 do TCE-PB moraram em modules/ até este PR) são
     // domínio como qualquer outro: mesmo NodeNext, mesmo strict, mesmo gate de typecheck.
     "adapters/**/*.ts",
+    // ⚠️ `test/` ENTROU EM 2026-09-10, E A OMISSÃO CUSTOU CARO. Nenhum dos três
+    // tsconfig cobria esta pasta: `tsconfig.json` a exclui, este e o de scripts nunca
+    // a incluíram. Resultado — a suíte de caracterização, os testes de UI e os
+    // ajudantes de banco NÃO eram typechecked.
+    //
+    // O que isso deixou passar: a retirada de `saldosDaFicha` acusou 9 arquivos em
+    // `modules/**` na compilação e ZERO em `test/**`, e o teste de caracterização só
+    // quebrou em tempo de execução, com `saldosDaFicha is not a function`. Um
+    // renomeio que o compilador enxerga de um lado e não do outro é pior que nenhum
+    // dos dois, porque dá a impressão de cobertura completa.
+    "test/**/*.ts",
     "prisma.config.ts",
     "vitest.config.ts"
   ],
