@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef } from "react";
+import { useActionState, useId, useRef } from "react";
 import { CampoValor } from "../../../../components/ui/Campos";
 import {
   CLASSE_BOTAO_PRIMARIO,
@@ -37,6 +37,18 @@ export function FormArrecadacao({
   readonly exercicio: number;
   readonly naturezas: readonly NaturezaParaGuia[];
 }): React.ReactElement {
+  // ⚠️ O ID DO `<datalist>` VEM DO `useId`, e não é literal.
+  //
+  // `<input list="x">` acha o `<datalist id="x">` pelo id, que é GLOBAL ao documento. Hoje
+  // esta tela renderiza o formulário uma vez só e um literal funcionaria — mas o dia em que
+  // ela renderizar dois (uma arrecadação por conta, digamos) haverá dois `#naturezas-loa`, e
+  // o `list` do segundo passará a apontar para as sugestões do primeiro. Nada estoura: a
+  // lista simplesmente sugere as naturezas erradas.
+  //
+  // É a mesma doença dos catorze formulários da tela do processo, num atributo diferente —
+  // e o grep de `test/ui/formularios-na-mesma-pagina.test.tsx` foi quem apontou este aqui.
+  const idNaturezas = `naturezas-loa-${useId()}`;
+
   const [estado, action, pendente] = useActionState<EstadoArrecadacao, FormData>(
     arrecadarAction,
     {}
@@ -62,12 +74,12 @@ export function FormArrecadacao({
             name="natureza"
             required
             pattern="\d{8}"
-            list="naturezas-loa"
+            list={idNaturezas}
             placeholder="11121101"
             className={CAMPO}
           />
           {/* SUGESTÃO, não restrição — ver o cabeçalho: receita não prevista existe. */}
-          <datalist id="naturezas-loa">
+          <datalist id={idNaturezas}>
             {naturezas.map((n) => (
               <option key={`${n.naturezaCodigo}-${n.fonteCodigo}`} value={n.naturezaCodigo}>
                 {n.naturezaDescricao} · fonte {n.fonteCodigo}
