@@ -32,6 +32,34 @@ export const MIMES_ACEITOS: Readonly<Record<string, string>> = {
   "image/png": "png",
 };
 
+/**
+ * OS FORMATOS QUE O PRÓPRIO SISTEMA GERA — e por que eles são um rol SEPARADO.
+ *
+ * ⚠️ A DISTINÇÃO NÃO É UM BURACO NO ROL; É O RECONHECIMENTO DE QUE OS DOIS RISCOS SÃO
+ * DIFERENTES.
+ *
+ * `MIMES_ACEITOS` protege contra o que entra DE FORA: um requerente externo enviando um
+ * arquivo pelo protocolo. Ali o rol é curto de propósito — nada de HTML, nada de SVG,
+ * nada de executável renomeado.
+ *
+ * Um borderô, um comprovante ou um relatório GERADO PELO SISTEMA não corre esse risco: o
+ * conteúdo foi montado por nós, byte a byte, a partir de dados do banco. Recusá-lo pelo
+ * rol de upload obrigaria a inventar um PDF só para caber numa regra que não foi escrita
+ * para ele — ou, pior, a afrouxar o rol de upload, que é o que protege o caso perigoso.
+ *
+ * ⚠️ E A DEFESA DO DOWNLOAD CONTINUA VALENDO PARA OS DOIS. A rota responde `attachment` +
+ * `nosniff`: nada é renderizado na origem da aplicação, venha de onde vier. Este rol
+ * decide o que se PODE gerar, não afrouxa como se entrega.
+ *
+ * ⚠️ ELE SÓ VALE COM `origem: "SISTEMA"`. Um upload que se declarasse `text/plain` continua
+ * recusado — e a origem não é escolha do formulário: quem a passa é o caso de uso.
+ */
+export const MIMES_GERADOS_PELO_SISTEMA: Readonly<Record<string, string>> = {
+  ...MIMES_ACEITOS,
+  "text/plain": "txt",
+  "text/csv": "csv",
+};
+
 /** 25 MB. Limite do SERVIDOR: o do formulário é sugestão, e sugestão não protege. */
 export const TAMANHO_MAXIMO_BYTES = 25 * 1024 * 1024;
 
@@ -80,9 +108,14 @@ export function sha256(conteudo: Uint8Array): string {
  */
 export function recusaDoArquivo(
   mimeType: string,
-  tamanhoBytes: number
+  tamanhoBytes: number,
+  origem: "UPLOAD" | "DIGITALIZACAO" | "CAMERA" | "SISTEMA" = "UPLOAD"
 ): string | null {
-  if (!(mimeType in MIMES_ACEITOS)) {
+  // ⚠️ O ROL DEPENDE DA ORIGEM — ver `MIMES_GERADOS_PELO_SISTEMA`. O default é o
+  // RESTRITIVO: quem não disser nada é tratado como upload de fora.
+  const rol = origem === "SISTEMA" ? MIMES_GERADOS_PELO_SISTEMA : MIMES_ACEITOS;
+
+  if (!(mimeType in rol)) {
     return (
       `Formato não aceito: "${mimeType}". Os formatos aceitos são PDF, DOC, DOCX, XLS, ` +
       `XLSX, JPG, PNG e ODT. A conferência é do SERVIDOR — o filtro da tela é ` +

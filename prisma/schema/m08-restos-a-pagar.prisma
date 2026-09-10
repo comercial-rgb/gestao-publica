@@ -31,6 +31,9 @@ model Exercicio {
 
   criadoEm  DateTime @default(now())
   criadoPor String
+
+  /// back-relation M09 — os lotes de pagamento do exercício. Campo VIRTUAL.
+  lotesDePagamento LoteDePagamento[]
 }
 
 // ----------------------------------------------------------------------------

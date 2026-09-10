@@ -255,7 +255,17 @@ export type AcaoDoSistema =
   | "RESPONDER_CHAMADO"
   | "ENCERRAR_CHAMADO"
   | "REABRIR_CHAMADO"
-  | "RESPONDER_PESQUISA_DE_SATISFACAO";
+  | "RESPONDER_PESQUISA_DE_SATISFACAO"
+  // ── M09 — lote de pagamento e borderô (ENT03) ──
+  //
+  // ⚠️ AÇÕES PRÓPRIAS, e não reuso de PAGAR. Compor a remessa e autorizar o pagamento são
+  // atos de pessoas diferentes: quem monta o lote na tesouraria não é quem autoriza a
+  // ordem. Reusar PAGAR daria a quem compõe o crachá de quem paga.
+  | "CRIAR_LOTE_DE_PAGAMENTO"
+  | "INCLUIR_NO_LOTE"
+  | "FECHAR_LOTE"
+  | "GERAR_BORDERO"
+  | "PROCESSAR_RETORNO_BANCARIO";
 
 /**
  * O NOME DO SERVIÇO, exatamente como ele é exportado. É esta união que o grep-teste
@@ -425,7 +435,13 @@ export type NomeDeServico =
   | "responderChamado"
   | "encerrarChamado"
   | "reabrirChamado"
-  | "responderPesquisaDeSatisfacao";
+  | "responderPesquisaDeSatisfacao"
+  // ── M09 — lote de pagamento e borderô (ENT03) ──
+  | "criarLoteDePagamento"
+  | "incluirNoLote"
+  | "fecharLote"
+  | "gerarBordero"
+  | "processarRetornoBancario";
 
 /**
  * ⚠️ O RECORD EXAUSTIVO — serviço → ação.
@@ -635,6 +651,17 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   encerrarChamado: "ENCERRAR_CHAMADO",
   reabrirChamado: "REABRIR_CHAMADO",
   responderPesquisaDeSatisfacao: "RESPONDER_PESQUISA_DE_SATISFACAO",
+  //
+  // ── M09 — LOTE DE PAGAMENTO E BORDERÔ (ENT03) ──
+  //
+  // ⚠️ AÇÕES PRÓPRIAS, e não reuso de PAGAR. Compor a remessa e autorizar o pagamento são
+  // atos diferentes, de pessoas diferentes: quem monta o lote na tesouraria não é quem
+  // autoriza a ordem. Reusar PAGAR daria a quem compõe o crachá de quem paga.
+  criarLoteDePagamento: "CRIAR_LOTE_DE_PAGAMENTO",
+  incluirNoLote: "INCLUIR_NO_LOTE",
+  fecharLote: "FECHAR_LOTE",
+  gerarBordero: "GERAR_BORDERO",
+  processarRetornoBancario: "PROCESSAR_RETORNO_BANCARIO",
 };
 
 /** Todas as ações do rol — a lista que o seed de perfis e as mensagens de erro usam. */
@@ -958,6 +985,16 @@ export const FORA_DO_CENSO: Record<string, string> = {
   // do REGISTRO DONO: quem pode ler o processo pode ler o anexo dele, e uma ação
   // "BAIXAR_ANEXO" seria uma segunda regra de acesso — que divergiria da primeira.
   baixarAnexo: "leitura (entrega o arquivo depois de perguntar ao registro dono se este usuário pode)",
+  //
+  // ⚠️ `enviarBordero` NÃO É UMA AÇÃO, e a razão é que ele nunca grava nada: não há canal
+  // bancário configurado, e ele SEMPRE recusa. Dar-lhe uma ação criaria uma permissão que
+  // o ente concederia a alguém para fazer... nada. E, pior, o dia em que o convênio
+  // existisse, a permissão já estaria distribuída sem que ninguém tivesse decidido isso.
+  //
+  // Ele confere as assinaturas (que é uma LEITURA da fila do M22) e então nomeia o motivo
+  // do bloqueio. Quando o canal existir, ele vira um serviço de escrita e ENTRA no censo —
+  // e esse commit terá de acrescentar a ação de propósito, que é o comportamento certo.
+  enviarBordero: "guard que sempre recusa (transmissão indisponível: sem convênio bancário) — não grava nada",
   podeVerComunicado: "leitura (a regra de visibilidade do comunicado — remetente, destinatários e global)",
   //
   // ── M22 — a LISTA e o LOTE. Mesma doutrina do `baixarAnexo`, e vale repetir por quê: a

@@ -68,6 +68,19 @@ model Anexo {
   chamadoId String?
   chamado   Chamado? @relation(fields: [chamadoId], references: [id])
 
+  /// ⚠️ M09 (ENT03) — O BORDERÔ É UM DOCUMENTO, e documento mora aqui.
+  ///
+  /// A alternativa era afrouxar `criarFilaDeAssinatura` para aceitar fila sem anexo. Seria
+  /// pior: a fila existe para assinar um CONTEÚDO, e o `hashConteudo` da assinatura só
+  /// significa alguma coisa se houver conteúdo a que ele corresponda. Uma fila sem anexo
+  /// produziria assinaturas sobre o nada.
+  ///
+  /// O borderô gerado vira um `Anexo` de origem SISTEMA, com o texto canônico dentro — o
+  /// mesmo texto de que sai o `Bordero.hashConteudo`. Ele é baixável pela rota do ENT02,
+  /// com a autorização por registro, e assinável pela fila do M22. Um caminho só.
+  borderoId String?
+  bordero   Bordero? @relation(fields: [borderoId], references: [id])
+
   criadoEm  DateTime @default(now())
   criadoPor String
 
@@ -79,6 +92,7 @@ model Anexo {
   @@index([comunicadoId])
   @@index([pessoaId])
   @@index([chamadoId])
+  @@index([borderoId])
   @@index([sha256])
 }
 
@@ -155,6 +169,9 @@ model FilaDeAssinatura {
   criadoPor String
 
   signatarios SignatarioDaFila[]
+
+  /// back-relation M09 — o borderô que esta fila assina. Campo VIRTUAL.
+  bordero Bordero?
 }
 
 model SignatarioDaFila {

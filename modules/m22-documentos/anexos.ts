@@ -39,18 +39,19 @@ export const zAnexar = z
     movimentoProcessoId: z.string().min(1).optional(),
     comunicadoId: z.string().min(1).optional(),
     pessoaId: z.string().min(1).optional(),
+    borderoId: z.string().min(1).optional(),
     criadoPor: z.string().min(1),
   })
   .refine(
     (d) =>
-      [d.processoId, d.movimentoProcessoId, d.comunicadoId, d.pessoaId].filter(
+      [d.processoId, d.movimentoProcessoId, d.comunicadoId, d.pessoaId, d.borderoId].filter(
         (v) => v !== undefined
       ).length === 1,
     {
       message:
         "Um anexo pertence a EXATAMENTE UM registro: processo, movimento de processo, " +
-        "comunicado ou pessoa. Sem dono, ninguém sabe quem pode lê-lo; com dois, não se " +
-        "sabe qual regra de acesso vale.",
+        "comunicado, pessoa ou borderô. Sem dono, ninguém sabe quem pode lê-lo; com dois, " +
+        "não se sabe qual regra de acesso vale.",
     }
   );
 
@@ -71,7 +72,7 @@ export async function anexarArquivo(
 ): Promise<{ readonly anexoId: string; readonly sha256: string }> {
   const d = zAnexar.parse(input);
 
-  const recusa = recusaDoArquivo(d.mimeType, d.conteudo.byteLength);
+  const recusa = recusaDoArquivo(d.mimeType, d.conteudo.byteLength, d.origem);
   if (recusa !== null) throw new Error(recusa);
 
   return prisma.$transaction(async (tx) => {
@@ -90,6 +91,7 @@ export async function anexarArquivo(
         movimentoProcessoId: d.movimentoProcessoId ?? null,
         comunicadoId: d.comunicadoId ?? null,
         pessoaId: d.pessoaId ?? null,
+        borderoId: d.borderoId ?? null,
         criadoPor: d.criadoPor,
       },
       select: { id: true },
@@ -109,9 +111,15 @@ export async function anexarArquivo(
  */
 async function escopoDoDono(
   tx: Tx,
-  d: { readonly processoId?: string | undefined; readonly movimentoProcessoId?: string | undefined; readonly comunicadoId?: string | undefined; readonly pessoaId?: string | undefined }
+  d: { readonly processoId?: string | undefined; readonly movimentoProcessoId?: string | undefined; readonly comunicadoId?: string | undefined; readonly pessoaId?: string | undefined; readonly borderoId?: string | undefined }
 ): Promise<"ENTE" | { readonly setor: string }> {
   if (d.pessoaId !== undefined) return "ENTE";
+
+  // ⚠️ O BORDERÔ É ATO DO ENTE, e não de uma unidade. A tesouraria paga pelo ente: um
+  // borderô reúne ordens de unidades diferentes que saem da MESMA conta bancária, e
+  // escopá-lo numa UG faria a autorização recair sobre uma das unidades por acidente de
+  // qual ordem entrou primeiro.
+  if (d.borderoId !== undefined) return "ENTE";
 
   if (d.comunicadoId !== undefined) {
     const c = await tx.comunicado.findUnique({
@@ -202,6 +210,7 @@ export async function baixarAnexo(
       movimentoProcessoId: true,
       comunicadoId: true,
       pessoaId: true,
+      borderoId: true,
       movimentoProcesso: { select: { processoId: true } },
     },
   });
@@ -217,7 +226,7 @@ export async function baixarAnexo(
     const pode = await podeVerComunicado(prisma, a.comunicadoId, usuarioIdent);
     if (!pode) return null;
   } else {
-    // Anexo de PESSOA: o cadastro é compartilhado, e a leitura dele já é do ente.
+    // Anexo de PESSOA ou de BORDERÔ: os dois são do ENTE, e a leitura deles também.
     // Exige apenas usuário ATIVO — quem foi revogado não baixa nada.
     const u = await prisma.usuario.findUnique({
       where: { identificador: usuarioIdent },

@@ -316,6 +316,9 @@ model ContaBancaria {
   transferenciasDestino TransferenciaEntreContas[] @relation("TransferenciaDestino")
 
   @@index([fonteId])
+
+  /// back-relation M09 — os lotes de pagamento que saem desta conta. Campo VIRTUAL.
+  lotesDePagamento LoteDePagamento[]
 }
 
 model Pagamento {

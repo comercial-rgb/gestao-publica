@@ -166,6 +166,20 @@ export const ORDEM_DOS_LOCKS = {
    * não há eixo por onde repartir a fila sem repartir a numeração junto.
    */
   SequenciaDeChamado: 15,
+  /**
+   * M09 — A SEQUÊNCIA DO LOTE DE PAGAMENTO (ENT03). Último posto, e ele não sobe a fila:
+   * compor um lote não decide sobre ficha, contrato nem liquidação — ele AGRUPA ordens que
+   * já foram autorizadas, e a autorização de cada uma já passou por aqueles postos.
+   *
+   * ⚠️ A CORRIDA É DE NÚMERO, como no protocolo e no comunicado. Duas criações concorrentes
+   * no mesmo exercício leem `MAX(numero)` no MESMO estado, calculam o mesmo próximo, e as
+   * duas gravam — o `@@unique([exercicioId, numero])` transformaria isso numa violação de
+   * constraint na cara do segundo operador, em vez de lhe dar o número 2.
+   *
+   * O trinco é sobre o EXERCÍCIO (a fila é por exercício), não sobre o lote: o lote ainda
+   * não existe quando se decide o número dele.
+   */
+  SequenciaDeLoteDePagamento: 16,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

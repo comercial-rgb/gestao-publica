@@ -96,6 +96,9 @@ model MovimentoExtraorcamentario {
   lancamentoId String
   lancamento   LancamentoContabil @relation(fields: [lancamentoId], references: [id])
 
+  /// back-relation M09 — o item de lote que a agrupou. Campo VIRTUAL.
+  itemDeLote ItemDoLote?
+
   historico String
   motivo    String?
 

@@ -320,7 +320,14 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   e reabrir chamado, e a pesquisa de satisfação) = 151.
     // + 5 (ENT02/M21 cadastros — criar setor, lotar usuário, criar assunto com roteiro,
     //   registrar e baixar taxa do processo) = 156.
-    expect(nomes.length).toBe(156);
+    // + 5 (ENT03/M09 — o lote de pagamento e o borderô: criar lote, incluir item, fechar,
+    //   gerar borderô e processar retorno bancário) = 161.
+    //
+    // ⚠️ `enviarBordero` NÃO entra: ele nunca grava. Sem convênio bancário configurado ele
+    // sempre recusa, e uma ação para ele seria uma permissão que o ente concederia a
+    // alguém para fazer nada — e que ficaria distribuída no dia em que o canal existisse,
+    // sem ninguém ter decidido isso. Ele está em FORA_DO_CENSO, com o motivo.
+    expect(nomes.length).toBe(161);
 
     // 97 serviços, 93 ações distintas. Os pares que compartilham ação (4: importarExtratoBb
     // REUSA IMPORTAR_EXTRATO). transferirEntreContas tem AÇÃO PRÓPRIA (não compartilha) → +1 ação.
@@ -360,7 +367,9 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     // 156 serviços, 149 ações distintas. Os cadastros do M21 têm ações próprias porque
     // CONFIGURAR NÃO É OPERAR: quem desenha o roteiro de um assunto decide por quantos
     // setores todo processo daquele tipo vai passar; quem abre o processo apenas o usa.
-    expect(TODAS_AS_ACOES.length).toBe(149);
+    // + 5 (ENT03/M09 — o lote e o borderô; ações PRÓPRIAS, e não reuso de PAGAR: compor a
+    //   remessa e autorizar o pagamento são atos de pessoas diferentes) = 154.
+    expect(TODAS_AS_ACOES.length).toBe(154);
     expect(ACAO_DO_SERVICO.encerrarExercicio).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.encerrarExercicioComRestos).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.importarExtrato).toBe("IMPORTAR_EXTRATO");

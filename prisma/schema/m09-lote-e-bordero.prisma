@@ -1,0 +1,212 @@
+// ============================================================================
+// M09 — LOTE DE PAGAMENTO E BORDERÔ (ENT03, 2.2).
+//
+// ═══ ⚠️ O LOTE AGRUPA O QUE JÁ EXISTE; ELE NÃO RECRIA NADA ═══
+// A verificação veio antes do modelo, como o prompt manda. O que já havia:
+//
+//   · `OrdemDePagamento` (M05) — a AUTORIZAÇÃO individual: uma por liquidação, com
+//     conta bancária, fonte, data prevista, e estado DERIVADO de movimentos;
+//   · `MovimentoExtraorcamentario` (M07) — a nota extra, com conta bancária própria;
+//   · `TransferenciaEntreContas` (M09) — o movimento entre contas da mesma UG;
+//   · `ContaBancaria` (no schema do M05) — já com `fonteId` e `contaContabilId`.
+//
+// Por isso `ItemDoLote` aponta para a ordem ou para a nota — ele NÃO copia valor,
+// credor nem conta. Um lote que carregasse cópias seria a segunda verdade sobre o
+// pagamento, e divergiria no dia em que a ordem fosse cancelada e o lote não soubesse.
+//
+// ═══ ⚠️ NENHUMA COLUNA DE SITUAÇÃO, AQUI TAMBÉM ═══
+// "Em que pé está o lote?" é derivado de `MovimentoDoLote`, append-only — a mesma
+// doutrina do processo (M21), do comunicado (M23) e da própria `OrdemDePagamento`.
+// Uma coluna `situacao` exigiria UPDATE e seria a segunda verdade sobre o estado.
+//
+// ═══ ⚠️ O BORDERÔ NÃO GUARDA "ASSINADO" ═══
+// Ele aponta para uma `FilaDeAssinatura` do M22, e "tem todas as assinaturas?" é lido
+// DE LÁ. Um booleano aqui poderia dizer "assinado" sobre uma fila incompleta — e é
+// justamente isso que o teste 5 do lote existe para impedir.
+// ============================================================================
+
+/// Os movimentos de um LOTE. Append-only: o estado é o último movimento vigente.
+///
+/// ⚠️ NÃO HÁ "CRIAR" — criar o lote É a existência dele, do mesmo jeito que não há
+/// movimento "nascer". O estado inicial (ABERTO) é a ausência de movimento.
+enum TipoMovimentoDoLote {
+  /// Fechado para composição: não entra nem sai item. É o que habilita o borderô.
+  FECHADO
+  /// Reaberto para correção, antes de qualquer borderô.
+  REABERTO
+  /// Cancelado com motivo. Um lote cancelado não gera borderô.
+  CANCELADO
+}
+
+model LoteDePagamento {
+  id String @id @default(cuid())
+
+  exercicioId String
+  exercicio   Exercicio @relation(fields: [exercicioId], references: [id])
+
+  /// Sequencial por exercício. A numeração não se reaproveita.
+  numero Int
+
+  /// ⚠️ A DATA DE VENCIMENTO DO LOTE (2.2). É a data em que se PRETENDE liquidar
+  /// financeiramente a remessa — não a data de nenhum fato. Quem tem data de fato é o
+  /// `Pagamento`, e ela pode ser outra.
+  dataVencimento DateTime
+
+  /// ⚠️ A CONTA PAGADORA É DO LOTE, e é ela que amarra a fonte.
+  ///
+  /// Todo item tem de sair desta conta: um lote com itens de contas diferentes seria
+  /// dois lotes, e o borderô que sai dele iria a dois bancos. O guard está no caso de
+  /// uso, porque é lá que se conhece a conta de cada ordem.
+  contaBancariaId String
+  contaBancaria   ContaBancaria @relation(fields: [contaBancariaId], references: [id])
+
+  descricao String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  itens      ItemDoLote[]
+  movimentos MovimentoDoLote[]
+  borderos   Bordero[]
+
+  @@unique([exercicioId, numero])
+  @@index([contaBancariaId])
+  @@index([dataVencimento])
+}
+
+/// ⚠️ EXATAMENTE UM dos dois é não-nulo — a ordem orçamentária OU a nota extra.
+///
+/// Mesma escolha do `Anexo` (M22) e pelo mesmo motivo: um par `(tipo, id)` polimórfico
+/// aceitaria qualquer consumidor futuro e faria o banco parar de garantir que o
+/// registro existe. Aqui os dois donos possíveis são conhecidos, e cada um é uma FK de
+/// verdade. O invariante "exatamente um" é cobrado no caso de uso e num teste que varre
+/// a tabela — o Prisma não o expressa.
+model ItemDoLote {
+  id String @id @default(cuid())
+
+  loteId String
+  lote   LoteDePagamento @relation(fields: [loteId], references: [id])
+
+  ordemId String?
+  ordem   OrdemDePagamento? @relation(fields: [ordemId], references: [id])
+
+  movimentoExtraId String?
+  movimentoExtra   MovimentoExtraorcamentario? @relation(fields: [movimentoExtraId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  /// back-relation: a baixa do retorno bancário deste item. Campo VIRTUAL.
+  baixa BaixaDeRetornoBancario? @relation("BaixaDoItem")
+
+  /// ⚠️ A MESMA ORDEM NÃO ENTRA EM DOIS LOTES. Sem isto, a mesma autorização de
+  /// pagamento seria enviada ao banco duas vezes — e o segundo borderô pareceria
+  /// legítimo até o extrato chegar.
+  @@unique([ordemId])
+  @@unique([movimentoExtraId])
+  @@index([loteId])
+}
+
+model MovimentoDoLote {
+  id String @id @default(cuid())
+
+  loteId String
+  lote   LoteDePagamento @relation(fields: [loteId], references: [id])
+
+  tipo   TipoMovimentoDoLote
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([loteId, criadoEm])
+}
+
+/// Os movimentos de um BORDERÔ. Append-only, mesma doutrina.
+enum TipoMovimentoDoBordero {
+  /// Transmitido ao banco. ⚠️ Só existe com convênio configurado — ver o caso de uso.
+  ENVIADO
+  /// O retorno do banco chegou e foi processado.
+  RETORNO_PROCESSADO
+  /// Cancelado antes do envio.
+  CANCELADO
+}
+
+model Bordero {
+  id String @id @default(cuid())
+
+  loteId String
+  lote   LoteDePagamento @relation(fields: [loteId], references: [id])
+
+  /// Sequencial por exercício, herdado do lote.
+  numero Int
+
+  /// ⚠️ A FILA DE ASSINATURAS É DO M22 (ENT02), e não uma cópia local.
+  ///
+  /// "Tem todas as assinaturas?" é lido de lá: `SignatarioDaFila` × `AssinaturaDeDocumento`.
+  /// Um booleano `assinado` aqui poderia dizer que sim sobre uma fila incompleta — e o
+  /// dinheiro sairia. É exatamente o que o teste 5 do lote existe para impedir.
+  ///
+  /// NULLABLE porque a fila é criada junto com o borderô, na mesma transação, e a FK
+  /// aponta para uma linha que nasce no mesmo instante.
+  filaAssinaturaId String?           @unique
+  filaAssinatura   FilaDeAssinatura? @relation(fields: [filaAssinaturaId], references: [id])
+
+  /// O hash do conteúdo do borderô no instante da geração. É o que torna verificável
+  /// que o documento assinado é o mesmo que foi enviado — a mesma razão do
+  /// `hashConteudo` da assinatura (M22) e do `hashConteudo` do comunicado (M23).
+  hashConteudo String @db.VarChar(64)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  movimentos MovimentoDoBordero[]
+  baixas     BaixaDeRetornoBancario[]
+  /// back-relation M22 — o documento gerado deste borderô. Campo VIRTUAL.
+  anexos     Anexo[]
+
+  @@unique([loteId, numero])
+  @@index([loteId])
+}
+
+model MovimentoDoBordero {
+  id String @id @default(cuid())
+
+  borderoId String
+  bordero   Bordero @relation(fields: [borderoId], references: [id])
+
+  tipo   TipoMovimentoDoBordero
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([borderoId, criadoEm])
+}
+
+/// A BAIXA DE UM ITEM pelo retorno do banco.
+///
+/// ⚠️ UMA LINHA POR ITEM BAIXADO, e não uma marca no item. Duas razões:
+///   · o retorno traz quando o banco liquidou, que é um dado do banco e não nosso;
+///   · e `@@unique([itemId])` é o que torna o **retorno repetido idempotente**. Sem ele,
+///     reprocessar o mesmo arquivo baixaria o mesmo item duas vezes — o teste 6 do lote.
+model BaixaDeRetornoBancario {
+  id String @id @default(cuid())
+
+  borderoId String
+  bordero   Bordero @relation(fields: [borderoId], references: [id])
+
+  itemId String     @unique
+  item   ItemDoLote @relation("BaixaDoItem", fields: [itemId], references: [id])
+
+  /// Quando o BANCO liquidou. Não é `criadoEm` — ver o cabeçalho.
+  dataLiquidacaoBanco DateTime
+
+  /// O identificador que o banco devolveu, para rastreio e para a conciliação.
+  identificadorBanco String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([borderoId])
+}

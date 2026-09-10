@@ -51,6 +51,8 @@ model OrdemDePagamento {
   movimentos MovimentoDaOrdemDePagamento[]
   /// back-relation: o pagamento que consumiu esta ordem. Campo VIRTUAL.
   pagamentos Pagamento[]
+  /// back-relation M09 — o item de lote que a agrupou. Campo VIRTUAL.
+  itemDeLote ItemDoLote?
 
   criadoEm  DateTime @default(now())
   criadoPor String
