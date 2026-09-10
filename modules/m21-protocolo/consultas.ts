@@ -379,6 +379,14 @@ export interface MovimentoDaLinhaDoTempo {
   readonly modoDaAssinatura: string | null;
   readonly semEfeito: boolean;
   readonly anulaMovimentoId: string | null;
+  /**
+   * O movimento que ESTE responde (parecer, readequação).
+   *
+   * ⚠️ ELE É PUBLICADO PORQUE A TELA PRECISA DELE. Sem este campo, o seletor de "responder
+   * ao pedido" ofereceria pedidos já respondidos, e a recusa viria do servidor depois de
+   * a pessoa ter digitado o parecer inteiro.
+   */
+  readonly respondeAId: string | null;
   readonly anexos: readonly { readonly id: string; readonly nome: string }[];
 }
 
@@ -627,6 +635,7 @@ export async function dossieDoProcesso(
       modoDaAssinatura: m.assinatura?.modo ?? null,
       semEfeito: !vigentes.has(m.id),
       anulaMovimentoId: m.tornaSemEfeitoId,
+      respondeAId: m.respondeAId,
       anexos: m.anexos.map((a) => ({ id: a.id, nome: a.nomeOriginal })),
     })),
   };

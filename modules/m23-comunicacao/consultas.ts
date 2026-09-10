@@ -7,6 +7,8 @@ import {
   type Caixa,
 } from "./dominio.js";
 
+export type { Caixa };
+
 /**
  * M23 — AS CONSULTAS. Leitura pura.
  *

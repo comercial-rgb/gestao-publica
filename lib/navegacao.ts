@@ -26,6 +26,8 @@ export const AREAS: readonly AreaNav[] = [
   { slug: "contabilidade", rotulo: "Contabilidade", descricao: "Plano de contas PCASP e os lançamentos de partidas dobradas que sustentam os livros." },
   { slug: "relatorios", rotulo: "Relatórios", descricao: "Livros obrigatórios, balanços, RREO e demonstrativos fiscais." },
   { slug: "transparencia", rotulo: "Transparência", descricao: "Datasets do portal e exports federais (MSC, MANAD)." },
+  { slug: "protocolo", rotulo: "Protocolo", descricao: "Processos digitais: abertura, tramitação entre setores, parecer, readequação, encerramento e arquivamento." },
+  { slug: "comunicacao", rotulo: "Comunicação interna", descricao: "Memorandos, ofícios e circulares, com caixas, leitura registrada e assinatura por tipo." },
   { slug: "cadastros", rotulo: "Cadastros", descricao: "Pessoas e credores: o cadastro compartilhado que a despesa, as consignações e a folha usam." },
   { slug: "administracao", rotulo: "Administração", descricao: "Usuários, perfis, permissões e registro de operações." },
   { slug: "integracoes", rotulo: "Integrações", descricao: "Central de integrações: SAGRES TXT/JSON, Banco do Brasil e API TCE-PB." },
@@ -140,6 +142,17 @@ export const ADMINISTRACAO: readonly RelatorioNav[] = [
 ];
 
 /** Os CADASTROS BASE — fonte única da landing e do submenu. */
+/** O PROTOCOLO — fonte única da landing e do submenu. */
+export const PROTOCOLO: readonly RelatorioNav[] = [
+  { href: "/protocolo/processos", numero: "Processos", rotulo: "Processos digitais", descricao: "Abertura, tramitação entre setores, parecer, readequação, encerramento e arquivamento — com a situação derivada dos movimentos." },
+  { href: "/consulta", numero: "Consulta", rotulo: "Acompanhar processo", descricao: "Consulta pelo número e pelo código verificador, SEM SENHA — fora da área autenticada, porque quem a usa é o requerente." },
+];
+
+/** A COMUNICAÇÃO INTERNA — fonte única da landing e do submenu. */
+export const COMUNICACAO: readonly RelatorioNav[] = [
+  { href: "/comunicacao/comunicados", numero: "Comunicados", rotulo: "Memorandos, ofícios e circulares", descricao: "Caixas de entrada, saída, rascunhos, favoritos e arquivados — calculadas para quem olha." },
+];
+
 export const CADASTROS: readonly RelatorioNav[] = [
   { href: "/cadastros/pessoas", numero: "Pessoas", rotulo: "Pessoas e Credores", descricao: "Uma pessoa, vários papéis. Cadastro append-only: alterar cria versão, e o histórico fica." },
 ];
