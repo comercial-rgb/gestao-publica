@@ -157,6 +157,15 @@ export const ORDEM_DOS_LOCKS = {
    * documento que não disputa numeração nenhuma com ela.
    */
   SequenciaDeComunicado: 14,
+  /**
+   * M27 — A SEQUÊNCIA DO CHAMADO DE SUPORTE (ENT02). Único no produto inteiro, e não
+   * por entidade: quem atende olha uma fila só, e dois chamados "42" de entidades
+   * diferentes na mesma tela é o começo de uma resposta enviada ao cliente errado.
+   *
+   * ⚠️ A FILA É UMA SÓ, ENTÃO O TRINCO É UM SÓ. O id travado é a constante abaixo —
+   * não há eixo por onde repartir a fila sem repartir a numeração junto.
+   */
+  SequenciaDeChamado: 15,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

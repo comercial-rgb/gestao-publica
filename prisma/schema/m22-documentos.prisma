@@ -65,6 +65,9 @@ model Anexo {
   pessoaId String?
   pessoa   Pessoa? @relation("AnexoDePessoa", fields: [pessoaId], references: [id])
 
+  chamadoId String?
+  chamado   Chamado? @relation(fields: [chamadoId], references: [id])
+
   criadoEm  DateTime @default(now())
   criadoPor String
 
@@ -75,6 +78,7 @@ model Anexo {
   @@index([movimentoProcessoId])
   @@index([comunicadoId])
   @@index([pessoaId])
+  @@index([chamadoId])
   @@index([sha256])
 }
 

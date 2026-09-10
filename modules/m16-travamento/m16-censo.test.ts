@@ -316,7 +316,9 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     // + 3 (ENT02/M25 — definir, desativar e preencher campos adicionais) = 138.
     // + 6 (ENT02/M26 — o designer: criar modelo, nova versão, copiar, distribuir,
     //   retirar e executar) = 144.
-    expect(nomes.length).toBe(144);
+    // + 7 (ENT02/M27 — ajuda de rota, nível de severidade, abrir, responder, encerrar
+    //   e reabrir chamado, e a pesquisa de satisfação) = 151.
+    expect(nomes.length).toBe(151);
 
     // 97 serviços, 93 ações distintas. Os pares que compartilham ação (4: importarExtratoBb
     // REUSA IMPORTAR_EXTRATO). transferirEntreContas tem AÇÃO PRÓPRIA (não compartilha) → +1 ação.
@@ -350,7 +352,10 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     // 144 serviços, 137 ações distintas. DISTRIBUIR tem ação própria porque o catálogo
     // pede permissão própria — e com razão: desenhar um relatório para a própria unidade
     // é uma coisa; empurrá-lo para outra entidade é outra, e envolve terceiros.
-    expect(TODAS_AS_ACOES.length).toBe(137);
+    // 151 serviços, 144 ações distintas. RESPONDER e ENCERRAR chamado são separadas de
+    // propósito: quem abriu é quem sabe se o problema acabou, e encerrar junto com a
+    // resposta faria a métrica de resolução medir a velocidade de digitar.
+    expect(TODAS_AS_ACOES.length).toBe(144);
     expect(ACAO_DO_SERVICO.encerrarExercicio).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.encerrarExercicioComRestos).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.importarExtrato).toBe("IMPORTAR_EXTRATO");

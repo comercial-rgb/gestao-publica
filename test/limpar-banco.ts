@@ -18,6 +18,12 @@ import { semearUsuariosDeTeste } from "./usuarios-teste.js";
  */
 const TABELAS = [
   // ── ENT02 — M21 protocolo · M22 documentos · M23 comunicação · M24 notificações ──
+  // ── M27 ajuda e suporte ──
+  "PesquisaDeSatisfacao",
+  "MovimentoDoChamado",
+  "Chamado",
+  "NivelDeSeveridade",
+  "AjudaDeRota",
   // ── M26 designer de relatórios ──
   "ResultadoDaExecucao",
   "MovimentoDaExecucao",

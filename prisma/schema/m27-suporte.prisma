@@ -1,0 +1,132 @@
+// ============================================================================
+// M27 — AJUDA CONTEXTUAL E CHAMADOS DE SUPORTE.
+//
+// ═══ ⚠️ A AJUDA É POR ROTA, E EDITÁVEL — MAS NÃO REESCRITA ═══
+// Cada versão do texto é uma linha nova; a vigente é a mais recente daquela rota.
+// Editar no lugar exigiria UPDATE e apagaria a resposta que o servidor leu ontem —
+// e "quem mudou este texto de ajuda, e quando?" é pergunta legítima quando alguém
+// seguiu a instrução antiga e errou.
+//
+// ═══ ⚠️ SEVERIDADE É DADO DE CONFIGURAÇÃO, NÃO TEXTO FIXO NA TELA ═══
+// O prompt do lote é explícito. Um enum `BAIXA|MEDIA|ALTA` obrigaria migration a
+// cada entidade que quisesse a sua escala — e escala de severidade é justamente o
+// que cada contratante negocia no contrato de suporte.
+// ============================================================================
+
+/// A AJUDA de uma rota. APPEND-ONLY: a vigente é a de `criadoEm` mais recente.
+///
+/// ⚠️ A ROTA É INTERNA E VALIDADA. Ela nunca é URL absoluta: um texto de ajuda que
+/// aponta para fora, vindo do banco e renderizado como link, é redirecionamento
+/// aberto esperando acontecer.
+model AjudaDeRota {
+  id String @id @default(cuid())
+
+  /// "/protocolo/processos", "/comunicacao/comunicados". Sem domínio, sem protocolo.
+  rota String
+
+  titulo   String
+  conteudo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([rota, criadoEm])
+}
+
+/// O NÍVEL DE SEVERIDADE — cadastro da entidade. Ver o cabeçalho.
+model NivelDeSeveridade {
+  id String @id @default(cuid())
+
+  codigo String @unique @db.VarChar(10)
+  nome   String
+  /// 1 = mais grave. É a ordem de exibição e de fila.
+  ordem  Int
+
+  /// Prazo de resposta acordado, em horas. Nulo = sem prazo declarado.
+  prazoHoras Int?
+
+  ativo Boolean @default(true)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  chamados Chamado[]
+}
+
+/// O CHAMADO.
+///
+/// ⚠️ O NÚMERO É ÚNICO NO PRODUTO INTEIRO, e não por entidade — o catálogo pede
+/// "número único, multi-entidade". Quem atende o suporte olha uma fila só; dois
+/// chamados "42" de entidades diferentes na mesma tela é o começo de uma resposta
+/// enviada para o cliente errado.
+model Chamado {
+  id String @id @default(cuid())
+
+  numero Int @unique
+
+  /// A unidade gestora de quem abriu. É o recorte de leitura.
+  unidadeOrcId String
+  unidadeOrc   UnidadeOrcamentaria @relation("ChamadoDaUnidade", fields: [unidadeOrcId], references: [id])
+
+  severidadeId String
+  severidade   NivelDeSeveridade @relation(fields: [severidadeId], references: [id])
+
+  titulo    String
+  descricao String
+
+  /// A rota em que o problema aconteceu. É o que liga o chamado à ajuda contextual.
+  rota String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  movimentos MovimentoDoChamado[]
+  anexos     Anexo[]
+  satisfacao PesquisaDeSatisfacao?
+
+  @@index([unidadeOrcId, criadoEm])
+  @@index([criadoPor])
+}
+
+/// ⚠️ ABERTO É A AUSÊNCIA DE MOVIMENTO — mesma doutrina do processo e da ordem de
+/// pagamento. Não há coluna de situação.
+enum TipoMovimentoDoChamado {
+  RESPOSTA
+  ENCERRAMENTO
+  REABERTURA
+}
+
+model MovimentoDoChamado {
+  id String @id @default(cuid())
+
+  chamadoId String
+  chamado   Chamado @relation(fields: [chamadoId], references: [id])
+
+  tipo  TipoMovimentoDoChamado
+  texto String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([chamadoId])
+  @@index([chamadoId, criadoEm])
+}
+
+/// A PESQUISA DE SATISFAÇÃO — uma por chamado, respondida por quem o abriu.
+///
+/// ⚠️ ELA NÃO É EDITÁVEL. Uma nota que pode ser trocada depois de o suporte ver o
+/// resultado não é pesquisa: é negociação.
+model PesquisaDeSatisfacao {
+  id String @id @default(cuid())
+
+  chamadoId String  @unique
+  chamado   Chamado @relation(fields: [chamadoId], references: [id])
+
+  /// 1 a 5. O rol é do domínio (Zod), não do banco — mudar a escala não deve exigir
+  /// migration, e o histórico guarda a escala que valia.
+  nota       Int
+  comentario String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

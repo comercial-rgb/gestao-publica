@@ -215,6 +215,19 @@ enum AcaoDoSistema {
   DISTRIBUIR_MODELO_DE_RELATORIO
   RETIRAR_MODELO_DE_RELATORIO
   EXECUTAR_RELATORIO
+
+  // ── M27 — ajuda contextual e chamados (ENT02) ──
+  //
+  /// ⚠️ RESPONDER e ENCERRAR são ações SEPARADAS: quem abriu o chamado é quem sabe se
+  /// o problema acabou. Encerrar junto com a resposta faria a métrica de resolução
+  /// medir a velocidade de digitar, não a de resolver.
+  ESCREVER_AJUDA_DE_ROTA
+  CRIAR_NIVEL_DE_SEVERIDADE
+  ABRIR_CHAMADO
+  RESPONDER_CHAMADO
+  ENCERRAR_CHAMADO
+  REABRIR_CHAMADO
+  RESPONDER_PESQUISA_DE_SATISFACAO
 }
 
 /// O USUÁRIO. TR 4.55.

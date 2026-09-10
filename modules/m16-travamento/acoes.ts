@@ -232,7 +232,19 @@ export type AcaoDoSistema =
   | "COPIAR_MODELO_DE_RELATORIO"
   | "DISTRIBUIR_MODELO_DE_RELATORIO"
   | "RETIRAR_MODELO_DE_RELATORIO"
-  | "EXECUTAR_RELATORIO";
+  | "EXECUTAR_RELATORIO"
+  // ── M27 — ajuda contextual e chamados (ENT02) ──
+  //
+  // ⚠️ RESPONDER e ENCERRAR sao acoes SEPARADAS. Quem abriu o chamado e quem sabe se
+  // o problema acabou; deixar o suporte encerrar junto com a resposta faria a metrica
+  // de resolucao medir a velocidade de digitar, nao a de resolver.
+  | "ESCREVER_AJUDA_DE_ROTA"
+  | "CRIAR_NIVEL_DE_SEVERIDADE"
+  | "ABRIR_CHAMADO"
+  | "RESPONDER_CHAMADO"
+  | "ENCERRAR_CHAMADO"
+  | "REABRIR_CHAMADO"
+  | "RESPONDER_PESQUISA_DE_SATISFACAO";
 
 /**
  * O NOME DO SERVIÇO, exatamente como ele é exportado. É esta união que o grep-teste
@@ -388,7 +400,15 @@ export type NomeDeServico =
   | "copiarModeloDeRelatorio"
   | "distribuirModeloDeRelatorio"
   | "retirarModeloDeRelatorio"
-  | "executarRelatorio";
+  | "executarRelatorio"
+  // ── M27 — ajuda e suporte (ENT02) ──
+  | "escreverAjudaDeRota"
+  | "criarNivelDeSeveridade"
+  | "abrirChamado"
+  | "responderChamado"
+  | "encerrarChamado"
+  | "reabrirChamado"
+  | "responderPesquisaDeSatisfacao";
 
 /**
  * ⚠️ O RECORD EXAUSTIVO — serviço → ação.
@@ -582,6 +602,15 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   distribuirModeloDeRelatorio: "DISTRIBUIR_MODELO_DE_RELATORIO",
   retirarModeloDeRelatorio: "RETIRAR_MODELO_DE_RELATORIO",
   executarRelatorio: "EXECUTAR_RELATORIO",
+
+  // ── M27 — ajuda e suporte (ENT02) ──
+  escreverAjudaDeRota: "ESCREVER_AJUDA_DE_ROTA",
+  criarNivelDeSeveridade: "CRIAR_NIVEL_DE_SEVERIDADE",
+  abrirChamado: "ABRIR_CHAMADO",
+  responderChamado: "RESPONDER_CHAMADO",
+  encerrarChamado: "ENCERRAR_CHAMADO",
+  reabrirChamado: "REABRIR_CHAMADO",
+  responderPesquisaDeSatisfacao: "RESPONDER_PESQUISA_DE_SATISFACAO",
 };
 
 /** Todas as ações do rol — a lista que o seed de perfis e as mensagens de erro usam. */
@@ -926,6 +955,11 @@ export const FORA_DO_CENSO: Record<string, string> = {
   processarExecucoesPendentes: "trabalhador da fila (a autorização foi no enfileiramento)",
   lerFonteProcessos: "leitura (a fonte de dados do designer, já recortada por unidade e por sigilo)",
   lerFonteComunicados: "leitura (idem, para comunicados)",
+  //
+  // ── M27 — ajuda e suporte (ENT02). Leitura pura.
+  ajudaDaRota: "leitura (o texto de ajuda VIGENTE de uma rota — o mais recente)",
+  listarChamados: "leitura (os chamados que o usuário pode ver; quem abriu vê o seu)",
+  detalheDoChamado: "leitura (o histórico do chamado; devolve null a quem não pode ver)",
   //
   // ⚠️ O ARMAZENAMENTO É I/O DE DISCO, não ato do usuário. `gravarArquivo` e `lerArquivo`
   // são chamados DE DENTRO de `anexarArquivo` e `baixarAnexo`, que é onde a autorização

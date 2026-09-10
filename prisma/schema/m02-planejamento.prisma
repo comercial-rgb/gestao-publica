@@ -97,6 +97,7 @@ model UnidadeOrcamentaria {
   modelosDeRelatorio    ModeloDeRelatorio[]
   modelosRecebidos      DistribuicaoDeModelo[] @relation("ModeloDistribuido")
   execucoesDeRelatorio  ExecucaoDeRelatorio[]  @relation("ExecucaoDeRelatorio")
+  chamados              Chamado[]              @relation("ChamadoDaUnidade")
 
   @@index([orgaoId])
 }
