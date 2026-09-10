@@ -83,6 +83,10 @@ export const EXECUCAO_DESPESA: readonly RelatorioNav[] = [
   { href: "/despesa/ordens", numero: "Ordens de pagamento", rotulo: "Ordens de Pagamento", descricao: "Preparar, autorizar, registrar e conferir — as quatro etapas, cada uma com o seu estado real." },
   { href: "/despesa/pagamentos", numero: "Fila de pagamentos", rotulo: "Fila de Pagamentos", descricao: "Ordem cronológica por fonte e categoria (Lei 14.133/2021, art. 141)." },
   { href: "/despesa/ordem-cronologica", numero: "Ordem cronológica", rotulo: "Ordem Cronológica", descricao: "O painel da Lei 14.133: posição, credor, empenho e saldo a pagar, com filtro por fonte (art. 141)." },
+  // ⚠️ A ASSINATURA MORA NA DESPESA, e não em "Documentos": a pergunta é "a nota de
+  // empenho está assinada?", e quem a faz é quem executa a despesa. A FILA, essa sim, é a
+  // do ENT02 — reusada, não recriada.
+  { href: "/despesa/assinaturas", numero: "Assinaturas", rotulo: "Assinatura dos Documentos", descricao: "Empenho, liquidação e ordem de pagamento na fila de assinaturas — ordenada, e só conclui com todos." },
 ];
 
 /**
@@ -110,6 +114,14 @@ export const PLANEJAMENTO: readonly RelatorioNav[] = [
 export const FINANCEIRO: readonly RelatorioNav[] = [
   { href: "/financeiro/extraorcamentario", numero: "Extraorçamentário", rotulo: "Extraorçamentário", descricao: "Consignações, retenções na fonte e recolhimentos — o dinheiro de terceiros no caixa." },
   { href: "/financeiro/conciliacao", numero: "Conciliação", rotulo: "Conciliação Bancária", descricao: "Extrato do banco × razão: correspondências, pendências dos dois lados e a diferença toda nomeada." },
+  // ⚠️ A CONCILIAÇÃO POR PERÍODO é entrada PRÓPRIA, e não uma aba da de cima. São duas
+  // perguntas diferentes: aquela responde "como está agora?"; esta responde "qual foi a
+  // conciliação de junho, quem a encerrou, e o que ela deixou para julho?". Foi a
+  // distinção que o ADR de 2026-09-10 registrou — e esconder a segunda dentro da primeira
+  // faria o fechamento parecer um detalhe de uma tela de consulta.
+  { href: "/financeiro/conciliacao/periodo", numero: "Períodos", rotulo: "Conciliação por período", descricao: "Abrir, justificar o que fica em aberto e encerrar — o período seguinte herda o não resolvido, por referência." },
+  { href: "/financeiro/movimentacao", numero: "Movimentação", rotulo: "Movimentação Bancária", descricao: "Depósito, saque, aplicação, resgate, rendimento e tarifa — com saldo por fonte no momento da operação." },
+  { href: "/financeiro/lotes", numero: "Lotes", rotulo: "Lotes e Borderô", descricao: "Agrupar ordens autorizadas, fechar, gerar o borderô assinável e baixar pelo retorno do banco." },
 ];
 
 /**

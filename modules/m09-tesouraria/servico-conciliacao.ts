@@ -147,19 +147,41 @@ export async function abrirConciliacao(
       anteriorId = candidata.id;
     }
 
-    const criada = await tx.conciliacaoBancaria.create({
-      data: {
-        contaBancariaId: conta.id,
-        periodoInicio: inicio,
-        periodoFim: fim,
-        anteriorId,
-        criadoPor: d.criadoPor,
-        movimentos: { create: { tipo: "ABRIR", criadoPor: d.criadoPor } },
-      },
-      select: { id: true },
-    });
-
-    return { conciliacaoId: criada.id, rotulo: rotuloDoPeriodo(inicio, fim) };
+    // ⚠️ O ÍNDICE ÚNICO É A GARANTIA; ESTE `catch` É A MENSAGEM.
+    //
+    // Quem impede duas conciliações do mesmo período na mesma conta é o banco — um
+    // `findFirst` antes do `create` perderia a corrida entre duas requisições. Mas o erro
+    // cru do Prisma ("Unique constraint failed on the fields...") vazava para a TELA, e o
+    // operador lia um nome de coluna em vez de saber o que fazer. O smoke do ENT03a
+    // mostrou isso na segunda execução, ao repetir o mesmo período.
+    try {
+      const criada = await tx.conciliacaoBancaria.create({
+        data: {
+          contaBancariaId: conta.id,
+          periodoInicio: inicio,
+          periodoFim: fim,
+          anteriorId,
+          criadoPor: d.criadoPor,
+          movimentos: { create: { tipo: "ABRIR", criadoPor: d.criadoPor } },
+        },
+        select: { id: true },
+      });
+      return { conciliacaoId: criada.id, rotulo: rotuloDoPeriodo(inicio, fim) };
+    } catch (erro) {
+      if (
+        typeof erro === "object" &&
+        erro !== null &&
+        (erro as { code?: unknown }).code === "P2002"
+      ) {
+        throw new Error(
+          `A conta ${conta.codigo} já tem uma conciliação começando em ` +
+            `${d.diaInicio}. Duas conciliações do mesmo período na mesma conta seriam ` +
+            `duas verdades sobre o mesmo fechamento. Abra o período SEGUINTE, ou consulte ` +
+            `o que já existe. Nada foi gravado.`
+        );
+      }
+      throw erro;
+    }
   });
 }
 
