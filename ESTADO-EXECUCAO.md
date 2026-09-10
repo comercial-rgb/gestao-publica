@@ -6,12 +6,20 @@
 >
 > ⚠️ **ENT02 CHEGOU AO GATE.** A definição de concluído da seção 6 do prompt do lote
 > está atendida item a item (tabela abaixo), com a cadeia percorrida **pela
-> interface** e conferida por smoke de navegador: **37 passos, 0 falhas**.
+> interface** e conferida por smoke de navegador: **43 passos, 0 falhas** (eram 37 no
+> gate; o fechamento acrescentou os 6 passos dos anexos).
+>
+> ⚠️ **FECHAMENTO DO ENT02 (2026-09-10, tarde).** Quatro itens pedidos na revisão do
+> gate foram entregues em commits separados, com a suíte verde antes e depois de cada
+> um: a superfície dos anexos, a idempotência do smoke de pessoas, a trava de
+> concorrência da suíte e a prova dos formulários na mesma página. A seção 10 conta o
+> que cada um era e o que mediu.
 >
 > ⚠️ **E O GATE CONTINUA NÃO SIGNIFICANDO "TUDO PRONTO".** Dos 22 testes mínimos do
-> lote, **20 estão cobertos, 1 parcial e 1 não coberto**. O inventário item a item é um
-> TESTE (`test/lote-ent02.test.ts`), não uma tabela, e o placar vai para a saída da
-> suíte a cada execução.
+> lote, **21 estão cobertos e 1 não coberto** (o eixo município, do lote de tenancy).
+> O item 4 saiu de parcial no fechamento. O inventário item a item é um TESTE
+> (`test/lote-ent02.test.ts`), não uma tabela, e o placar vai para a saída da suíte a
+> cada execução.
 >
 > ⚠️ **E ESTES NÚMEROS FORAM CORRIGIDOS.** A primeira versão deste cabeçalho dizia
 > "17 cobertos, 2 parciais, 3 não cobertos" — escritos de memória, antes da conferência
@@ -571,11 +579,11 @@ resolvido.
 
 | # | Definição de concluído | Situação | Prova |
 |---|---|---|---|
-| 1 | Um processo digital percorre abertura, tramitação, parecer, readequação, encerramento e arquivamento, **pela interface**, com dados persistidos e visíveis após recarga | ✅ | `scripts/smoke-ent02.ts` — 37 passos, 0 falhas. Cada passo **recarrega a tela do servidor** antes de conferir |
+| 1 | Um processo digital percorre abertura, tramitação, parecer, readequação, encerramento e arquivamento, **pela interface**, com dados persistidos e visíveis após recarga | ✅ | `scripts/smoke-ent02.ts` — **43 passos, 0 falhas**. Cada passo **recarrega a tela do servidor** antes de conferir |
 | 2 | Um comunicado percorre inclusão, resposta, encaminhamento, leitura registrada e arquivamento | ✅ | mesmo smoke, passos 22-28 |
-| 3 | Um cadastro de pessoa recebe campo adicional, anexo e assinatura, e exibe a linha do tempo no detalhe | ⚠️ **PARCIAL** | campo adicional e linha do tempo: sim, na tela do **processo**. Em PESSOA: o backend existe (`m25`, `m22`) e é testado, mas **falta a superfície** — pendências `CAMPO-ADICIONAL-DEFINICAO-UI` e `PROTOCOLO-ANEXO-UI` |
+| 3 | Um cadastro de pessoa recebe campo adicional, anexo e assinatura, e exibe a linha do tempo no detalhe | ⚠️ **PARCIAL** (era 0 de 3 na tela de pessoa, agora é 1 de 3) | **anexo: entregue** no fechamento — a tela da pessoa tem `input[type=file]`, lista com download individual e lote. **Campo adicional e assinatura em PESSOA continuam sem superfície**: o motor existe e é testado, a tela não. Pendências `CAMPO-ADICIONAL-DEFINICAO-UI` e `ASSINATURA-UI` |
 | 4 | Um relatório operacional é produzido **pelo designer**, com modelo copiado, visibilidade definida e execução em segundo plano | ✅ | smoke, passos 29-36: cria o modelo, recusa a expressão maliciosa, copia (a cópia nasce restrita), executa e abre o CSV com o campo calculado |
-| 5 | Toda a suíte existente continua verde e os testes deste lote passam | ✅ | **153 arquivos, 1556 testes, 0 falhas** (403s) |
+| 5 | Toda a suíte existente continua verde e os testes deste lote passam | ✅ | **157 arquivos, 1580 testes, 0 falhas** (334s). No gate eram 153/1556 em 403s — o fechamento acrescentou 4 arquivos e 24 testes, e o tempo caiu porque a suíte deixou de disputar o banco |
 | 6 | `ESTADO-EXECUCAO.md` registra código, gate, comandos, resultados reais e o próximo lote | ✅ | este documento |
 
 ### O critério 3, dito sem maquiagem
@@ -585,16 +593,18 @@ O que existe:
 
 - **campo adicional**: o motor é genérico (`CadastroComCamposAdicionais` inclui `PESSOA`)
   e testado; a tela de preenchimento existe para **processo**, não para pessoa;
-- **anexo**: `Anexo.pessoaId` existe, a autorização por registro existe e é testada —
-  **não há `input[type=file]` nem rota de download**;
+- **anexo**: **resolvido no fechamento**. `Anexo.pessoaId` já existia com autorização por
+  registro; agora existem o `input[type=file]`, a rota de download individual
+  (`/documentos/anexos/[id]`) e a de lote, as duas autorizadas pelo registro dono;
 - **assinatura**: existe e é testada sobre anexo e sobre movimento — não há tela.
 
-Nada disso foi contornado com um substituto que pareça pronto. As três pendências estão
-nomeadas em `components/ui/MODULO-UI.md`.
+Nada disso foi contornado com um substituto que pareça pronto. As pendências que restam
+estão nomeadas em `components/ui/MODULO-UI.md`.
 
 ## 2. Os 22 testes mínimos do lote (seção 5)
 
-**20 cobertos · 1 parcial · 1 não coberto.** O inventário é `test/lote-ent02.test.ts`,
+**21 cobertos · 0 parciais · 1 não coberto.** (Era 20/1/1 no gate; o item 4 fechou no
+fechamento — ver a seção 10.) O inventário é `test/lote-ent02.test.ts`,
 que imprime o placar a cada execução e falha se a classificação mudar sem alguém decidir.
 
 | # | Item | Situação |
@@ -617,21 +627,31 @@ que imprime o placar a cada execução e falha se a classificação mudar sem al
 
 ## 4. O que o ENT02 acrescentou, em números medidos
 
-| Medida | ENT01 (gate) | ENT02 (gate) |
-|---|---:|---:|
-| Arquivos de teste | 144 | **153** |
-| Testes | 1441 | **1556** |
-| Serviços no censo | 105 | **156** |
-| Ações distintas | 101 | **149** |
-| Migrations | 68 | **80** |
-| Rotas no smoke visual | 22 | **29** |
-| Passos de smoke de cadeia | 23 (despesa) | 23 (despesa) + **37 (ENT02)** |
+| Medida | ENT01 (gate) | ENT02 (gate) | ENT02 (fechamento) |
+|---|---:|---:|---:|
+| Arquivos de teste | 144 | 153 | **157** |
+| Testes | 1441 | 1556 | **1580** |
+| Serviços no censo | 105 | 156 | 156 |
+| Ações distintas | 101 | 149 | 149 |
+| Migrations | 68 | 80 | 80 |
+| Rotas no smoke visual | 22 | **29** | 29 |
+| Passos de smoke de cadeia | 23 (despesa) | 23 + 37 (ENT02) | 23 + **43** (ENT02) |
+| Passos do smoke de pessoas | 9 | 6 ok / **3 falhas** | **9 ok / 0 falhas**, três execuções seguidas |
+
+⚠️ **Nem serviço nem ação nova no fechamento, e isso é deliberado.** Os quatro itens são
+superfície, teste e infraestrutura — o download de anexo é LEITURA, e leitura não vira ação
+do censo porque a permissão que a governa é a do registro dono. Uma ação `BAIXAR_ANEXO`
+seria uma segunda regra de acesso, que divergiria da primeira. As cinco leituras novas
+entraram em `FORA_DO_CENSO` com o motivo.
 
 ## 5. Os comandos, e o que cada um respondeu
 
 | Comando | Resultado real | Quando |
 |---|---|---|
-| `npx vitest run` | **153 arquivos, 1556 testes, 0 falhas** — 403s | 2026-09-10 |
+| `npx vitest run` (gate) | **153 arquivos, 1556 testes, 0 falhas** — 403s | 2026-09-10 |
+| `npx vitest run` (fechamento) | **157 arquivos, 1580 testes, 0 falhas** — 334s | 2026-09-10 |
+| `npx tsx scripts/smoke-ent02.ts` (fechamento) | **43 passos, 0 falhas** | 2026-09-10 |
+| `npm run smoke:pessoas` ×3 seguidas (fechamento) | **9/9 cada**, 0 falhas | 2026-09-10 |
 | `npm run typecheck` · `typecheck:app` · `typecheck:scripts` | limpos | 2026-09-10 |
 | `npm run build` | compila; 7 rotas novas | 2026-09-10 |
 | `npm run db:papel` | papel sem superusuário, sem BYPASSRLS, sem DDL, nos dois bancos | 2026-09-10 |
@@ -694,7 +714,6 @@ explícito — e passaram a rodar.
 | O que | Por que agora não | Destino |
 |---|---|---|
 | **Eixo município** (teste 1) | Decisão do ADR: schema por município é lote transversal próprio | lote de tenancy |
-| **Rota de download de anexo** (teste 4) | O arquivo e a autorização existem e são testados; falta a superfície HTTP | `PROTOCOLO-ANEXO-UI` |
 | **Fluxograma visual do processo** | O próprio prompt manda não implementá-lo agora | lote posterior identificado |
 | **Guia bancária da taxa** | Pertence ao bloco de arrecadação (5.29), `AUSENTE_CONFIRMADO`, frente ENT06 | `PROTOCOLO-GUIA-BANCARIA` |
 | **Assinatura qualificada / HSM** | Sem provedor. O caso de uso RECUSA produzi-la | `ASSINATURA-ICP-HSM` |
@@ -702,9 +721,155 @@ explícito — e passaram a rodar.
 | **Trabalhador contínuo do designer** | Sem agendador. Hoje a fila é drenada ao abrir a tela, e isso está declarado | `DESIGNER-WORKER-CONTINUO` |
 | **Telas de cadastro** (setor, assunto, tipo de comunicado, severidade, definição de campo) | Os casos de uso existem e são exercitados pelo seed do cenário | 5 pendências em `MODULO-UI.md` |
 
-## 10. O próximo lote
+## 10. O fechamento do ENT02 — os quatro itens da revisão
 
-`prompts/03-ENT03-FINANCEIRO-E-CONTROLE.md`, **depois da revisão deste gate**.
+> Executado em 2026-09-10, à tarde. Quatro commits separados, suíte verde antes e depois
+> de cada um. A ordem de execução não foi a de numeração: a trava da suíte (item 3) veio
+> primeiro porque é a infraestrutura que permite medir os outros três com confiança.
+
+| Item | Commit | Suíte depois |
+|---|---|---|
+| 3. Trava de concorrência da suíte | `f68e760` | 155 arquivos · 1560 testes · 383s |
+| 1. Superfície dos anexos | `42acb00` | 156 · 1574 · 363s |
+| 2. Smoke de pessoas idempotente | `5eb33b2` | 156 · 1574 · 349s |
+| 4. Formulários na mesma página | `68108ff` | 157 · 1580 · 334s |
+
+### 11.1 O escopo dos anexos era GLOBAL, e foi medido antes de escrever
+
+A revisão perguntou se a rota de download faltava só na tela de pessoa ou no produto
+inteiro. Medido, e é o pior caso:
+
+- `lib/portas/` não tinha porta de documentos;
+- `anexarArquivo` e `baixarAnexo` eram chamados **só pelo próprio arquivo de teste**;
+- o único `input[type=file]` do produto era o do importador de CSV;
+- não havia rota de download em lugar nenhum.
+
+O M22 fechou o ENT02 com caso de uso, autorização por registro, hash, conferência de
+integridade e quinze testes — **e zero consumidores**. Um cofre sem porta. Pior: a tela do
+processo já LISTAVA o nome dos anexos de cada movimento, sem link — a forma mais silenciosa
+de prometer sem entregar.
+
+**Três decisões da superfície.** A saída é rota HTTP e não Server Action (um PDF de 20 MB
+atravessaria o protocolo do React como array de bytes e o browser não saberia salvá-lo). A
+porta usa `sessaoAtual` e não `exigirSessao` — este REDIRECIONA para `/login`, e um browser
+que seguisse o 307 salvaria o HTML do login com o nome do PDF; sem sessão a rota responde
+**404**, a mesma resposta de "não existe", porque um 401 confirmaria que o anexo existe.
+E `attachment` + `nosniff`: `inline` faria o browser renderizar o arquivo na origem da
+aplicação, e um "anexo" HTML enviado por requerente externo viraria script com o cookie de
+quem o abriu.
+
+**Enumerar já é vazar.** A lista também pergunta ao registro dono: os nomes dos arquivos de
+um processo disciplinar contam a história inteira sem que ninguém baixe nada.
+
+**O lote não é atalho para fora da autorização.** Ele monta o zip com o que `baixarAnexo`
+entregaria um a um, e confere o hash de cada arquivo — um adulterado derruba o lote inteiro.
+Se ele engolisse, o download individual recusaria e o lote entregaria: duas respostas para a
+mesma pergunta, e a mais permissiva ganharia.
+
+O contêiner ZIP saiu do M14 para `packages/zip` em vez de virar um segundo formatador do
+mesmo formato binário. O teste do M14 compara **byte a byte** e exige duas execuções
+idênticas — é ele que prova que o artefato fiscal não mudou de forma.
+
+### 11.2 Dois defeitos que os testes acharam, e os dois eram meus
+
+**O diretório central do zip escrevia offset 0 em toda entrada.** Constante correta para um
+arquivo, errada para três: o extrator mostraria o primeiro documento três vezes, com três
+nomes diferentes, sem estourar nada. Pego porque o teste chama o `unzip` **do sistema
+operacional** — um programa que este repositório não escreveu e não pode enganar. Conferir
+os bytes contra a minha própria leitura dos bytes provaria só que sei ler o que escrevi.
+
+**`nomeSeguroNoZip` removia os pontos iniciais antes de achatar as barras**, e
+`../../.ssh/authorized_keys` saía com um `..` vivo no meio. O teste só pegou porque compara
+o nome inteiro; um `not.toContain("/")` teria passado.
+
+E um terceiro, no smoke: a requisição anônima saía de `about:blank` e falhava por CORS, não
+por autorização. O smoke acusava "a requisição anônima nem completou" — **um servidor que
+entregasse o anexo a qualquer um teria dado exatamente a mesma falha**. Um teste de
+segurança que passa a errar do lado seguro é o mais perigoso que existe.
+
+### 11.3 Por que documento pré-existente derrubava o smoke de pessoas
+
+A regra de deduplicação está certa e é testada — o próprio passo 7 do smoke prova que a tela
+mostra a recusa do domínio. O caminho tratado era o do domínio; o que ninguém tratou foi o
+smoke: o passo 2 assumia banco limpo.
+
+**E o comentário no topo do arquivo era falso de duas maneiras.** Dizia que documento único
+por execução "não é possível — o DV depende dos dígitos do meio", confundindo "não posso
+trocar dígitos mantendo um DV fixo" com "não posso gerar um CNPJ válido aleatório" — o DV se
+calcula a partir dos dígitos sorteados. E dizia que "o smoke LIMPA o próprio rastro no fim":
+**não havia teardown nenhum**. O comentário descrevia comportamento que o arquivo não tinha.
+
+Escolhido **gerar** em vez de limpar: teardown resolve o caso feliz e falha quando importa —
+se o processo morre no meio, o rastro fica e a execução seguinte herda o problema, que é
+exatamente o que aconteceu. E apagar exigiria dar ao smoke poder de DELETE sobre um cadastro
+append-only, que o M19 não tem de propósito.
+
+Medido: **três execuções consecutivas contra o mesmo banco de dev, 9 ok / 0 falhas cada**
+(antes: 6 ok / 3 falhas da segunda em diante).
+
+De caminho, dois outros achados no mesmo arquivo: o passo 4 abria o **primeiro** link da
+lista (num banco com outras pessoas, o detalhe de outra — e falharia dizendo "o detalhe não
+traz o nome": sintoma verdadeiro, causa errada); e o arquivo nunca importou `dotenv`, então
+a única forma de rodá-lo era digitar a senha como argumento, que fica no histórico do shell.
+
+### 11.4 A trava da suíte
+
+`pg_advisory_lock` de sessão, tomado no `global-setup` **antes** de migrar, aplicar SQL ou
+provisionar o papel. O segundo processo recebe o pid, o `application_name` de quem segura, o
+endereço do banco, o que fazer, e o registro do episódio que motivou a trava.
+
+Advisory lock e não arquivo de trinco: o recurso disputado é o **banco**, não a máquina — um
+arquivo em `/tmp` não veria outro checkout apontando para o mesmo banco e barraria duas
+suítes que usam bancos diferentes. E ele morre com a conexão, inclusive sob `kill -9`;
+arquivo de trinco sobrevive e deixa a suíte travada até alguém apagá-lo à mão.
+
+Ele **falha em vez de esperar**. O caso real não é duas pessoas rodando ao mesmo tempo: é a
+mesma pessoa esquecendo a suíte completa noutra janela. Ela precisa saber disso, não aguardar
+107 minutos por um resultado que chegaria contaminado.
+
+O teste é auto-verificável: quando ele roda, o trinco já está tomado pelo próprio
+`global-setup`, então pedi-lo dali **é** a concorrência que se quer provar. Se alguém remover
+a trava, `travarASuite` sucede e o teste falha.
+
+Medido: com o trinco preso, exit 1 e a mensagem nomeando o processo 19037.
+
+### 11.5 Os catorze formulários — a resposta direta
+
+**Os ids não estavam repetidos, e não foi preciso torná-los únicos nem renderizar um por
+vez.** `CampoEnvolvido` já montava o id com `useId()`, único por instância — então `label
+for`, leitor de tela e navegação por teclado sempre funcionaram. O que estava errado era o
+**smoke**, que localizava campos com `querySelector` global.
+
+Mas "eu li o código e ele usa `useId`" é o tipo de afirmação que envelhece. Agora há prova:
+seis testes que exigem zero ids repetidos com `name` repetidos, que todo `label for` e todo
+`aria-describedby` apontem para dentro do **próprio** formulário (um id único apontando para
+o campo do form vizinho passaria num teste de unicidade e ainda mandaria o foco para o lugar
+errado), que todo `<form>` tenha `data-acao` único, e que o `FormData` de cada um leve só os
+seus campos.
+
+O sexto alcança as **telas**, não o componente — e **achou um caso real que a leitura não
+pegou**: o `<datalist>` de naturezas da arrecadação usava `id="naturezas-loa"` fixo. Hoje a
+tela o renderiza uma vez e funciona; no dia em que renderizar dois, o `list` do segundo input
+apontaria para as sugestões do primeiro, em silêncio. Corrigido com `useId` em vez de aberto
+como exceção.
+
+## 11. O próximo lote
+
+`prompts/03-ENT03-FINANCEIRO-E-CONTROLE.md`, **depois da revisão deste fechamento**.
+
+⚠️ **E ele abre pela CARACTERIZAÇÃO, não por funcionalidade.** A instrução da revisão é
+explícita e vale registrar por inteiro: rodar a suíte de **M01, M04, M05, M06, M07, M08,
+M12 e M14** e registrar o comportamento ATUAL antes de ampliar qualquer coisa.
+
+A razão é a mesma que os dois falsos alarmes deste lote demonstraram: **não se escreve
+funcionalidade nova sobre suíte que ninguém mediu.** Aqueles oito módulos apareceram
+vermelhos em 09/09 por concorrência de banco, e a leitura apressada teria sido "há defeitos
+no financeiro". A caracterização é o que separa o que aqueles arquivos realmente afirmam do
+que se supõe que eles afirmem — e é a linha de base contra a qual qualquer regressão do
+ENT03 vai ser lida.
+
+A caracterização **não** é parte deste fechamento: ela é o primeiro passo do ENT03, e o
+ENT03 não foi iniciado.
 
 E antes dele, a decisão que segue de pé desde o ENT01: o **lote de tenancy** fecha os
 itens 4, 5 e 7 do incremento do ENT01 e o teste 1 deste lote. Enquanto ele não vier,

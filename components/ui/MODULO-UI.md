@@ -394,6 +394,7 @@ navegador precisa exercitar.
 | `PROTOCOLO-CADASTRO-UI` | telas de setor, lotação, assunto e roteiro. Os casos de uso existem (`m21-protocolo/cadastros.ts`) e são exercitados pelo seed do cenário; falta a superfície. |
 | `COMUNICADO-TIPO-UI` | tela para criar tipo de comunicado e definir o privilégio por setor. |
 | `CAMPO-ADICIONAL-DEFINICAO-UI` | tela para a entidade DEFINIR os campos adicionais. Preencher já é pela tela; definir ainda é pelo seed. |
+| `ASSINATURA-UI` | assinar um documento (e montar fila de assinatura) **pela tela**. O M22 tem os três modos, o hash do conteúdo, a fila ordenada e teste; o que falta é a superfície. ⚠️ Ela chega junto com o provedor ICP (`ASSINATURA-ICP-HSM`) ou antes dele? **Antes**: os modos SIMPLES e AVANÇADA funcionam hoje e são os que o dia a dia usa; o QUALIFICADO continuará recusando com motivo, que é o comportamento certo — e uma tela que oferecesse só o modo indisponível seria pior que tela nenhuma. |
 | `SUPORTE-SEVERIDADE-UI` | tela para cadastrar a escala de severidade. |
 | `AJUDA-CONTEXTUAL-UI` | o painel de ajuda por rota na própria tela. O texto é gravado e lido (`m27-suporte`), e o seed o escreve para duas rotas; falta exibi-lo. |
 | `DESIGNER-VERSAO-UI` | criar nova versão de um modelo pela tela. Copiar, distribuir e retirar já estão lá. |
