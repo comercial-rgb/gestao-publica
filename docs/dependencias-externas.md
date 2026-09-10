@@ -32,7 +32,7 @@ SAGRES para e-Sfinge não produz o conector de SC — é contrato diferente.
 
 | Órgão | Funcionalidade | Documento oficial | Versão | Ambiente | Credencial | Convênio | Protocolo | Restrição | Próxima ação | Responsável |
 |---|---|---|---|---|---|---|---|---|---|---|
-| TCE/SC | Remessa e-Sfinge (atos jurídicos, obras, pessoal, execução orçamentária, registros contábeis, tributário, planejamento, gestão fiscal) | IN TC-28/2021 e IN TC-35/2024 — **não obtidos** | — | — | não solicitada | — | — | `AUSENTE`. Sem conector SC. Prazos por módulo e regras de consistência impeditivas/alerta não mapeados | Obter IN TC-28/2021, IN TC-35/2024 e layout vigente do e-Sfinge; registrar versão e vigência antes de codificar | a definir |
+| TCE/SC | Remessa e-Sfinge (atos jurídicos, obras, pessoal, execução orçamentária, registros contábeis, tributário, planejamento, gestão fiscal) | IN TC-28/2021 e IN TC-35/2024 — **não obtidos** | — | — | não solicitada | — | — | `AUSENTE`. Sem conector SC. Prazos por módulo e regras de consistência impeditivas/alerta não mapeados. ⚠️ **É o único cuja ausência bloqueia ARQUITETURA**: sem o leiaute não se sabe o recorte dos registros, e escrever o conector antes é escrever o errado | **Baixar do portal do TCE/SC** (público, sem credencial): IN TC-28/2021, IN TC-35/2024 e o leiaute vigente do e-Sfinge. Registrar versão e vigência ANTES de codificar | a definir |
 | TCE/PB | Remessa SAGRES | — | — | — | não aplicável ao destino | — | — | `CODIGO_LOCAL_SEM_VALIDACAO` — `adapters/tribunais/tce-pb`. Preservar como histórico/produto | Nenhuma neste projeto; não converter em conector SC | — |
 | TCM/BA | Remessa SIGA | — | — | — | não aplicável ao destino | — | — | `CODIGO_LOCAL_SEM_VALIDACAO` — `adapters/tribunais/tcm-ba`. Preservar como histórico/produto | Nenhuma neste projeto | — |
 | STN / Tesouro Nacional | MSC e MANAD | — | — | — | — | — | — | `CODIGO_LOCAL_SEM_VALIDACAO` — M14. Formatação determinística testada localmente não prova aceite | Confirmar layout vigente ao entrar em ENT03 | a definir |
@@ -95,6 +95,31 @@ SAGRES para e-Sfinge não produz o conector de SC — é contrato diferente.
 Nenhuma integração externa foi exercitada contra ambiente de órgão neste lote.
 
 ---
+
+## O que o fechamento do ENT03a acrescentou
+
+**Uma coluna que estava vazia por preguiça, e não por falta de informação.** As linhas
+abaixo tiveram o **documento oficial** e a **próxima ação** preenchidos com o que é
+conhecível **sem contato externo** — e credenciamento é calendário, não desenvolvimento:
+quanto antes a próxima ação for executada, antes o relógio começa a correr.
+
+| Órgão / formato | Documento oficial | O que a próxima ação DEPENDE |
+|---|---|---|
+| TCE/SC — e-Sfinge | IN TC-28/2021, IN TC-35/2024 | download público no portal do TCE/SC; **não** exige credencial |
+| ADN — NFS-e nacional | manual + XSD do ambiente nacional | download público; o **credenciamento** é passo posterior |
+| eSocial | leiaute S-1.3 (ou vigente) | download público; a transmissão exige **certificado** |
+| CNAB 240 | manual do **banco escolhido** | depende de escolher o banco — é decisão do ente, não técnica |
+| FEBRABAN — guias e código de barras | manual de cobrança do banco | idem |
+| SICONFI — MSC | leiaute anual da STN | download público |
+
+⚠️ **A ordem das três primeiras não é arbitrária.** O leiaute do TCE/SC é o único cuja
+ausência **bloqueia arquitetura**: sem ele não se sabe o recorte dos registros, e escrever
+o conector antes seria escrever o conector errado. Os outros dois bloqueiam **transmissão**,
+não desenho.
+
+⚠️ **E há uma decisão de ente pendente que trava duas linhas**: *qual banco o município
+usa*. Sem ela, CNAB e FEBRABAN não têm manual a obter — o layout é **por banco**, e o
+"padrão FEBRABAN" fixa só a estrutura. Essa não é pergunta técnica: é pergunta de contrato.
 
 ## O que o ENT03a mudou nesta página
 

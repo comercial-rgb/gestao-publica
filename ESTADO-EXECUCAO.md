@@ -985,10 +985,9 @@ Censo do M16: **156 → 161 serviços, 149 → 154 ações**. Migrations: **83**
 
 ## 13. ENT03a — o catálogo sob git, a competência, a tesouraria e as assinaturas
 
-> ⚠️ **Este lote NÃO está concluído.** O ENT03a tem seis itens: **três feitos** (1, 4 e 6),
-> **um parcial** (2) e **dois não iniciados** (3 e 5). A definição de concluído do ENT03
-> segue **não atendida** — nenhum percurso pela interface existe. O que falta está dito,
-> sem eufemismo, em **13.9**.
+> ⚠️ **Esta seção é a PRIMEIRA METADE do ENT03a**, escrita quando o lote ainda estava
+> aberto. O fechamento — as duas decisões, os tripwires, as varreduras e as telas — está na
+> **seção 14**, e é lá que a definição de concluído é respondida.
 
 ### 13.1 O instrumento de medição entrou sob controle de versão
 
@@ -1297,37 +1296,200 @@ cenário não distingue as alternativas:
 **Censo M16:** 161 → 163 serviços, 154 → 156 ações, mais 3 composáveis e 1 guard
 classificados.
 
-## 14. O próximo passo
+## 14. ENT03a — o fechamento: as duas decisões, os tripwires e as telas
 
-⚠️ **O ENT03a está ABERTO e PARADO no gate.** Dos seis itens: **três feitos** (1, 4, 6),
-**um parcial** (2) e **dois não iniciados** (3 e 5). Ver 13.9. O próximo passo não é outro
-lote: é a revisão deste e a decisão sobre o que segue.
+> ⚠️ **O lote FECHA.** Os quatro percursos da definição de concluído existem **pela
+> interface**, com dado persistido e visível **após recarga** — provado por smoke de
+> navegador, 28 passos, 0 falhas, **duas execuções seguidas**. O que ficou de fora está
+> em **14.8**, e o item 5 saiu de escopo por decisão da revisão (vai para o ENT03b).
 
-**A decisão que bloqueava a seção 2.5 do ENT03 está TOMADA e IMPLEMENTADA.** Cotas por
-período, contingenciamento e prévia de alteração orçamentária já têm sobre o que ser
-construídos: `saldosDaFichaPorCompetencia` responde "qual era o saldo em X", e o guard de
-competência recusa escrita em exercício encerrado. **Nenhum dos três foi construído.**
+### 14.1 Os 14 tripwires, provados por mutação
 
-**Uma decisão de modelo precisa ser tomada antes de continuar o item 2**, e ela é do mesmo
-tipo da competência — se for descoberta no meio da implementação, custa o dobro:
+O `c2` afirmava, no próprio docblock, vigiar a chegada de uma coluna de competência. A
+asserção era `/^data/i`, e a coluna criada chama-se `competencia`: **ele teria passado
+verde sobre exatamente o que dizia vigiar.**
 
-> **A conciliação vira um objeto com fechamento, ou continua cumulativa até um corte?**
-> As cláusulas 5.10.2.46 ("a **próxima** conciliação") e 5.10.2.49 ("conciliações de
-> períodos **anteriores**") pressupõem conciliações discretas. O modelo atual é cumulativo,
-> e por isso a *cópia* de pendências já acontece por derivação — mas não há o que listar
-> como "período anterior". Ver 13.9.
+Um tripwire que nunca ficou vermelho tem **valor desconhecido**, e é pior que não ter — dá
+a sensação oposta. `scripts/tripwires-caracterizacao.ts` muta o que cada teste diz vigiar,
+confere que fica vermelho e reverte (o revert é garantido por `finally`; um script destes
+que morresse no meio deixaria código mutado no repositório).
 
-**A ordem que resta, se o lote continuar:** a decisão acima, depois o restante do item 2
-(pendências manuais e seleção múltipla com soma), o item 5 (`packages/integracao` — e o
-achado do A3 muda a arquitetura dele, não a configuração), e o item 3 (as telas, que são o
-que fecha a definição de concluído).
+**14 de 14 PROVADOS.** Cada um verde-antes e vermelho-com-mutação.
 
-**Duas pendências declaradas deste lote**, nenhuma delas resolvida:
+⚠️ **E o `c14` exigiu mutar OS DOIS guards.** Desde o ADR da competência, `empenhar` confere
+o exercício **da ficha** e o **da competência**. Remover só um deixaria o outro recusando, e
+o tripwire ficaria verde provando nada — que é o modo de falha que o script existe para
+achar.
 
-- `test/ui/*.tsx` continua fora do typecheck — exige `jsx` e `lib: dom`, que o config de
-  backend não tem de propósito. Ou ganha um quarto tsconfig, ou fica declarado;
-- o corpus de OFX é **sintético**, ainda que conforme. Um extrato real de banco brasileiro
-  é o que fecharia essa conferência.
+### 14.2 Varredura (a) — cobertura de tsconfig
+
+**34 arquivos estavam fora dos três**, e dois doeram: `middleware.ts` (produção, roda em
+**toda requisição**) e `prisma/seed/**` — 29 arquivos, **cinco deles `.test.ts` que a suíte
+EXECUTA**. Testes rodando sem nunca terem sido compilados.
+
+**Buraco na rede é pior que ausência de rede**: três typechecks verdes davam a conclusão
+errada sobre o repositório inteiro. Agora são **698 de 698**, e um teste de ~6 s impede o
+buraco de reabrir.
+
+### 14.3 Varredura (b) — efeito colateral antes da operação guardada
+
+A forma do defeito do `porNaFila` **repetia em `gerarBordero`**: ele grava o `Bordero` e só
+depois abre a fila. Com **signatário repetido** a fila recusa, o borderô fica órfão, e "o
+lote já tem borderô" passa a recusar a tentativa seguinte — **o lote fica impossível de
+transmitir, para sempre.** Reproduzido em `t8b` antes de corrigir.
+
+As demais formas foram verificadas e estão limpas: a numeração aloca **dentro** da
+transação (rollback devolve), o outbox **não tem produtor** e já tinha guarda própria, e
+não há consumo de certificado.
+
+### 14.4 Varredura (c) — a data civil do ente
+
+ADR próprio: **comparação de data no domínio usa a data civil do ente, nunca UTC.**
+`packages/datas` é a régua — com `Intl`, não `-3` cravado: o Brasil teve horário de verão
+até 2019 e pode voltar a ter.
+
+| Área | O defeito | A consequência |
+|---|---|---|
+| **período fechado** | a janela de `2026-12` era 01/12 00:00Z a 31/12 23:59Z — civilmente **30/11 21:00 a 31/12 20:59** | o lançamento de **31/12 às 22:00 ESCAPAVA** da trava de dezembro |
+| **período por data** | a janela era `Date` — instante para o que é dia civil | "travar de 10/01 a 20/01" começava às 21:00 do dia **09** |
+| **competência** | `getUTCFullYear()` no guard da arrecadação | guia de **31/12 às 22:00** recusada como "fora do exercício 2026" |
+| **cota mensal do CMD** | `getUTCMonth()` | empenho de **30/06 às 22:00** contado contra **julho** |
+| **ordem cronológica** | comparava instantes | duas liquidações do mesmo dia **não empatavam**, e o desempate pelo número — que dá ordem TOTAL ao art. 141 — **nunca rodava** |
+| **vencimento** | `toISOString().slice(0,10)` | a nota de empenho e o borderô, **documentos assinados**, imprimiam um dia a mais |
+
+⚠️ **Nenhum aparecia nas fixtures**: quase toda fixture usa **meio-dia UTC**, e ao meio-dia
+os dois eixos coincidem. Os testes novos usam horas de noite de propósito.
+
+Formato externo (SAGRES, SIGA, MANAD, BB, OFX) permanece em UTC — converter ali produziria
+arquivo recusado. A lista de exceções tem **um motivo por linha**, e é ela que faz a
+próxima ocorrência ser decisão de alguém em vez de descuido.
+
+### 14.5 Decisão 1 — a conta admite mais de uma fonte
+
+Município pequeno não abre uma conta por fonte: o controle de destinação acontece **dentro**
+da conta. Vínculo muitos-para-muitos, migration aditiva, e a fonte única virou a **primeira
+linha** do rol no backfill — sem isso toda conta existente ficaria com rol vazio e o guard
+recusaria **toda** movimentação no dia seguinte à migration.
+
+⚠️ **A fonte continua obrigatória no movimento**, e o motivo é o oposto do que parece: conta
+multifonte significa que a fonte precisa ser **declarada**, porque não dá mais para
+inferi-la.
+
+⚠️ **E a regra virou UMA.** `conta.fonteId !== informada` estava escrito à mão em **quatro**
+lugares — e com a conta multifonte os quatro passariam a **recusar o pagamento legítimo**
+pela segunda fonte, que é o caso que a decisão veio permitir. A regra mora em
+`guard-fonte.ts`; cinco sítios a chamam.
+
+**Rol vazio cai para a fonte padrão**, e não é brecha: a primeira versão recusava tudo, o
+que tornaria **inutilizável** qualquer conta criada por fora. O fallback admite
+exatamente UMA fonte — a mesma de antes.
+
+### 14.6 Decisão 2 — a conciliação é objeto discreto
+
+**O que se persiste é o JUÍZO, não o saldo.** Saldos e enumeração continuam derivados.
+Congelar valor no encerramento criaria a segunda verdade — e a tela de conferência é o pior
+lugar do sistema para tê-la: um valor congelado divergindo do razão faria o operador
+conferir o sistema contra ele mesmo.
+
+⚠️ **"Cópia para o período seguinte" não é cópia.** `t7` prova pelo dado: julho enxerga a
+pendência de junho e a **contagem de linhas no banco não muda**. Duplicar faria a soma
+contar a mesma pendência duas vezes.
+
+**Pendência manual é decisão registrada, não fato**: aponta motivo e **não cria lançamento**
+(`t5`). **Encerrada é imutável**, e o estado é **derivado** — `t1` confere que a tabela não
+tem `status`, `encerrada` nem `estado`.
+
+### 14.7 As telas — o item que fecha o lote
+
+Quatro telas, quatro Server Actions, duas portas, e um smoke que percorre os quatro
+caminhos: `/financeiro/movimentacao`, `/financeiro/conciliacao/periodo`,
+`/financeiro/lotes`, `/despesa/assinaturas`.
+
+⚠️ **A recarga é o ponto.** Conferir a tela logo depois do envio prova que o React
+renderizou; conferir depois de um `goto` novo prova que **o servidor tem o dado**.
+
+#### O que o smoke achou, e que nenhum teste de módulo acharia
+
+1. **A página do período devolvia 500** quando a conta não tinha conta contábil mapeada. O
+   domínio recusava com a mensagem certa; a página deixava a exceção subir. **Um 500
+   esconde a única informação que o operador precisava ler**: qual conta parametrizar.
+2. **O erro cru do Prisma vazava para a tela** ao repetir um período. O índice único
+   continua sendo a garantia — um `findFirst` antes do `create` perderia a corrida —, mas
+   a **mensagem** agora diz o que fazer.
+3. `<input type="date">` **não aceita** `type()` com `YYYY-MM-DD`: o Chrome espera o
+   formato do locale, e o ISO vira `Invalid Date`.
+4. O campo de valor é **mascarado** e o `name` está no **hidden** — um seletor por `name`
+   casa só o hidden, que o puppeteer recusa clicar.
+
+⚠️ **E as ações novas precisaram ser CONCEDIDAS ao perfil.** O M16 recusou com a mensagem
+exata do que faltava — *"Não é escopo: é a ação"* — e foi por ela que se soube o que pedir.
+O caminho de atualização (`conceder-acoes-ao-perfil.ts`) existe justamente porque perfil já
+criado não recebe ação nova sozinho.
+
+### 14.8 ⚠️ O que NÃO foi feito
+
+| Item | Estado |
+|---|---|
+| 1. Completar o item 2 | **feito** — pendências manuais, períodos anteriores e a soma da seleção múltipla |
+| 2. Telas — os quatro percursos | **feito**, com smoke |
+| 3. `packages/integracao` | **fora de escopo por decisão da revisão** — vai para o ENT03b |
+| 4. `docs/dependencias-externas.md` | **feito no que é conhecível sem contato externo** |
+
+**Pendências nomeadas, nenhuma delas silenciosa:**
+
+- `SELECAO-MULTIPLA-UI` — a soma da seleção existe e é pura; **falta a tela** de seleção
+  múltipla de lançamentos (5.10.2.47 ficou `PARCIAL`);
+- `CONCILIACAO-PERIODO-PDF` — lista e lê períodos anteriores; **falta a impressão**;
+- `ROL-DE-FONTES-UI` — a tela mostra o rol por conta, mas **não há cadastro** dele;
+- `DATA-CIVIL-RESTANTES` — restos a pagar, vigência de contrato, bimestre do RREO;
+- `DATA-CIVIL-APRESENTACAO` — ~10 sítios em `app/` e `lib/` ainda imprimem por UTC;
+- `M07-FONTE-NO-MOVIMENTO` — o movimento extraorçamentário **não tem fonte** no modelo, e
+  por isso o saldo por fonte tem um balde `(sem fonte declarada)`. Atribuí-lo à fonte
+  padrão seria inventar — justamente no número que prova que recurso vinculado não custeou
+  outra coisa;
+- `test/ui/*.tsx` entrou no typecheck; **`BORDERO-CONVENIO-BANCARIO` segue de pé**: o envio
+  ao banco é indisponível, e a tela **não oferece o botão** em vez de simular.
+
+### 14.9 Comandos e resultados
+
+| Comando | Resultado | Data |
+|---|---|---|
+| `npm run test:tudo` | **167 arquivos, 1694 testes, 0 falhas, 390,1 s** | 2026-09-10 |
+| `npx tsx scripts/smoke-ent03a.ts` | **28 passos, 0 falhas** — duas execuções seguidas | 2026-09-10 |
+| `npx tsx scripts/tripwires-caracterizacao.ts` | **14 de 14 provados** | 2026-09-10 |
+| `npx tsx scripts/cobertura-de-tsconfig.ts` | **698 de 698 cobertos, 0 descobertos** | 2026-09-10 |
+| `npx next build` | limpo, com as 4 rotas novas | 2026-09-10 |
+| `npm run typecheck` · `:app` · `:scripts` | 0 erros nos três | 2026-09-10 |
+
+**Migrations do lote:** 8 no ENT03a, **todas aditivas, zero `DROP`**. Total: 91.
+**Censo M16:** 156 → **167 serviços**, 149 → **160 ações**.
+**Catálogo:** 38 → **51 de 2037 (2,5%)**, das quais **7 novas em `VALIDADO_LOCALMENTE`**.
+
+## 15. O próximo passo
+
+⚠️ **O ENT03a está FECHADO e PARADO no gate.** Os quatro percursos existem pela interface;
+o item 5 saiu de escopo por decisão da revisão.
+
+**Para o ENT03b**, na ordem em que o relógio cobra:
+
+1. **`packages/integracao`** — cofre de credenciais por entidade e ambiente, validação
+   contra esquema, detecção de duplicidade em retransmissão, custódia de certificado. ⚠️ E o
+   achado do **A3 muda a arquitetura, não a configuração**: a chave não sai do dispositivo,
+   então a assinatura acontece **na máquina do usuário**, não no servidor. Tratar A1 e A3
+   pelo mesmo adaptador não funciona para nenhum dos dois.
+2. **Baixar os leiautes que são públicos** — TCE/SC (IN TC-28/2021, IN TC-35/2024), ADN,
+   eSocial. Credenciamento é **calendário, não desenvolvimento**, e o do TCE/SC é o único
+   que bloqueia **arquitetura**.
+3. **A decisão de ente que trava duas linhas do inventário**: *qual banco o município usa*.
+   O layout CNAB é **por banco**; sem a resposta não há manual a obter.
+
+⚠️ **E o padrão a procurar, que já apareceu TRÊS vezes**: o modelo responde "agora" e o
+documento pergunta "naquela data". Foi a competência, a conta multifonte e a conciliação.
+Os próximos candidatos estão nomeados no ADR da conciliação: **posição de estoque do
+almoxarifado, saldo de contrato e de ata de registro de preços, situação cadastral do
+imóvel e da empresa, margem consignável do servidor**. Quando um requisito disser "na
+data", **verifique antes de construir se o modelo tem o eixo** — é mais barato do que
+descobrir no meio da implementação, e foi o que aconteceu nas três vezes.
 
 E de pé desde o ENT01: o **lote de tenancy** fecha os itens 4, 5 e 7 do incremento do ENT01
 e o teste 1 do ENT02. Enquanto ele não vier, esses continuam declarados — nunca marcados
