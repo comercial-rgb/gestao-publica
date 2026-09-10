@@ -2395,8 +2395,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "`enviarEmpenhoParaAssinatura` e `enviarLiquidacaoParaAssinatura` geram o documento canônico como `Anexo` de origem SISTEMA e o entregam à FilaDeAssinatura do ENT02 — a mesma fila do borderô, não uma paralela. A fila é ordenada e só conclui com todos. modules/m05-despesa/m05-assinatura-da-despesa.test.ts t1 e t4. Sem exercício pela tela.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "evidencia": "scripts/smoke-ent03a.ts (28 passos, 0 falhas, 2026-09-10, duas execuções): em /despesa/assinaturas o documento é gerado, entra na fila do ENT02 e é assinado — o estado aparece APÓS RECARGA. A fila é a MESMA do M22 (a do borderô), não uma paralela; ela é ordenada e só conclui com todos. Testes: modules/m05-despesa/m05-assinatura-da-despesa.test.ts t1 e t4.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.47",
@@ -3431,8 +3431,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "A cláusula pede vincular UMA OU MAIS fontes de recurso à conta bancária. O modelo tem `ContaBancaria.fonteId` — exatamente UMA fonte por conta, NOT NULL. Verificado em prisma/schema/m05-despesa.prisma. O controle de saldo por fonte (5.10.2.19) funciona porque, neste modelo, saldo por fonte É saldo por conta; com N fontes por conta ele precisaria de um eixo novo. Pendência CONTA-MULTIFONTE.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "evidencia": "Vínculo muitos-para-muitos `FonteDaContaBancaria`, em migration aditiva com backfill (a fonte única virou a primeira linha do rol). O movimento VALIDA que a fonte informada está no rol, pela mesma função que os outros quatro sítios da TR 5.23 usam (`exigirFonteNoRolDaConta`). Rol vazio cai para a fonte PADRÃO e recusa qualquer outra. modules/m09-tesouraria/m09-movimentacao.test.ts t18/t19/t20. ADR: docs/adr/ADR-conta-bancaria-com-varias-fontes.md. A TELA mostra o rol por conta, mas o CADASTRO do rol ainda não tem superfície — pendência ROL-DE-FONTES-UI.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.2.7",
@@ -3599,8 +3599,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "`MovimentoBancario` com DEPOSITO, SAQUE, APLICACAO, RESGATE, RENDIMENTO e TARIFA; a transferência entre contas já existia (`transferirEntreContas`). A fonte deriva da conta (não se digita). modules/m09-tesouraria/m09-movimentacao.test.ts, 17 testes. Sem exercício pela tela.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "evidencia": "scripts/smoke-ent03a.ts (28 passos, 0 falhas, 2026-09-10, duas execuções): registra DEPOSITO e TARIFA pela tela /financeiro/movimentacao, escolhendo conta, fonte e contrapartida, e ambos aparecem na lista APÓS RECARGA. A fonte é DECLARADA (conta multifonte não permite inferi-la). Testes: modules/m09-tesouraria/m09-movimentacao.test.ts, 20 testes.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.19",
@@ -3613,8 +3613,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "O saldo é conferido DENTRO da transação, depois do lock da conta (posto 17 do packages/locks) — não antes de abri-la, que deixaria a janela de dois saques concorrentes. m09-movimentacao.test.ts t3: o segundo saque é recusado nomeando quanto falta, e nada fica gravado. t4 registra a decisão de TARIFA e RENDIMENTO não passarem pelo guard (o banco já debitou; recusar o registro não desfaz). Sem exercício pela tela.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "evidencia": "scripts/smoke-ent03a.ts (28 passos, 0 falhas, 2026-09-10, duas execuções): o saque acima do saldo é RECUSADO pela tela nomeando quanto falta (\"SALDO INSUFICIENTE ... faltam 999.988.734,00\"), e nada fica gravado. O saldo é conferido DENTRO da transação, depois do lock da conta (posto 17) — não antes de abri-la, que deixaria a janela de dois saques concorrentes. m09-movimentacao.test.ts t3; t4 registra a decisão de TARIFA e RENDIMENTO não passarem pelo guard.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.20",
@@ -3977,8 +3977,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "scripts/smoke-ent03a.ts (28 passos, 0 falhas, 2026-09-10, duas execuções): a pendência manual é incluída pela tela, com motivo obrigatório, e aparece APÓS RECARGA com o motivo. ⚠️ Ela é DECISÃO REGISTRADA, não fato: NÃO gera lançamento contábil — m09-conciliacao-periodo.test.ts t5 prova que o razão não se move. ADR: docs/adr/ADR-conciliacao-como-objeto-discreto.md.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.46",
@@ -3991,8 +3991,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Pendências automáticas são DERIVADAS (o residual do extrato e do interno), e a \"cópia para o período seguinte\" é REFERÊNCIA ao conjunto não resolvido da anterior — nunca duplicação: m09-conciliacao-periodo.test.ts t7 prova pelo dado que a contagem de linhas no banco NÃO MUDA ao abrir o período seguinte. Duplicar faria a soma contar a mesma pendência duas vezes. scripts/smoke-ent03a.ts (28 passos, 0 falhas, 2026-09-10, duas execuções) exercita abrir → encerrar → abrir o seguinte pela tela.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.47",
@@ -4005,8 +4005,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "A SOMA da seleção existe e é pura (`somarSelecao`), com a mesma conta que a tela mostraria e o serviço cobraria; item repetido é recusado, porque dobraria a soma e faria um vínculo de valor inexistente parecer certo. m09-conciliacao-periodo.test.ts t13/t14/t15/t16. O que FALTA é a superfície: não há tela de seleção múltipla de lançamentos para conciliar com um ou vários registros do extrato. Pendência SELECAO-MULTIPLA-UI.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.48",
@@ -4033,8 +4033,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "scripts/smoke-ent03a.ts (28 passos, 0 falhas, 2026-09-10, duas execuções): os dois períodos (o encerrado e o seguinte) aparecem listados APÓS RECARGA, com estado e autoria do encerramento. A leitura conciliacoesDaConta lista da mais recente para a mais antiga — m09-conciliacao-periodo.test.ts t17. A IMPRESSÃO (PDF) da conciliação de período ainda não existe: pendência CONCILIACAO-PERIODO-PDF.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.50",
@@ -4257,8 +4257,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "`enviarOrdemParaAssinatura` põe a ordem na FilaDeAssinatura; a tramitação entre assinantes é a ordem da fila, e `assinarNaFila` RECUSA quem tenta furá-la nomeando quem falta e em que posição. m05-assinatura-da-despesa.test.ts t1 e t4 (a negação afirma o motivo, não só o resultado). Sem exercício pela tela.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "evidencia": "scripts/smoke-ent03a.ts (28 passos, 0 falhas, 2026-09-10, duas execuções): a ordem de pagamento entra na fila pela tela e é assinada, com o estado visível após recarga. O serviço assinarNaFila RECUSA quem tenta furar a ordem, nomeando quem falta e em que posição — m05-assinatura-da-despesa.test.ts t4 (a negação afirma o MOTIVO, não só o resultado).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.66",
