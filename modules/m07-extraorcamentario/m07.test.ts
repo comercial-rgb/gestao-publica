@@ -258,7 +258,7 @@ describe("M07 — ciclo da CAUÇÃO", () => {
         dispendio(T_INSS, "INSS", "150.00", "CC-001", FONTE_540),
         R_OUT
       )
-    ).rejects.toThrow(/TR 5\.23.*diverge da fonte da conta bancária/s);
+    ).rejects.toThrow(/FONTE FORA DO ROL \(TR 5\.23\)/);
 
     expect(await prisma.movimentoExtraorcamentario.count()).toBe(1);
   });

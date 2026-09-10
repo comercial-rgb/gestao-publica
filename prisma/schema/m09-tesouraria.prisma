@@ -252,6 +252,20 @@ model MovimentoBancario {
   /// SEMPRE positivo — quem dá o sinal é o `tipo`.
   valor Decimal @db.Decimal(18, 2)
 
+  /// ⚠️ A FONTE DO MOVIMENTO — OBRIGATÓRIA, e o motivo é o oposto do que parece.
+  ///
+  /// Desde que a conta admite VÁRIAS fontes (TR 5.10.2.6), a fonte deixou de poder ser
+  /// inferida da conta. Conta multifonte não significa movimento sem fonte: significa
+  /// que a fonte precisa ser DECLARADA, porque não há mais como adivinhá-la.
+  ///
+  /// Sem ela, o controle de destinação — a prova de que recurso vinculado não custeou
+  /// outra coisa — deixaria de existir dentro da conta, que é exatamente onde ele
+  /// acontece num município que não abre uma conta por fonte.
+  ///
+  /// O caso de uso RECUSA fonte que não esteja no rol da conta.
+  fonteId String
+  fonte   FonteRecurso @relation(fields: [fonteId], references: [id])
+
   /// A data do FATO, e é ela que corta o saldo e a conciliação — nunca
   /// `criadoEm`. Mesma disciplina de `MovimentoDotacao.competencia`.
   data DateTime
@@ -279,4 +293,171 @@ model MovimentoBancario {
 
   @@index([contaBancariaId, data])
   @@index([estornoDeId])
+}
+
+// ============================================================================
+// FonteDaContaBancaria — TR 5.10.2.6: a conta admite MAIS DE UMA fonte.
+//
+// Decidido em docs/adr/ADR-conta-bancaria-com-varias-fontes.md (aceito).
+//
+// ⚠️ POR QUE NÃO BASTAVA `ContaBancaria.fonteId`. Município pequeno não abre uma
+// conta por fonte: uma conta única costuma abrigar recurso ordinário, convênio e
+// vinculado ao mesmo tempo, e o CONTROLE DE DESTINAÇÃO — a prova de que recurso
+// vinculado não custeou outra coisa — acontece DENTRO da conta.
+//
+// ⚠️ E `ContaBancaria.fonteId` NÃO SAI AGORA. Ele permanece como a fonte PADRÃO
+// (usada por quem não tem conta no modelo, como a arrecadação do M04), e a
+// primeira linha deste vínculo nasce dele no backfill. Quem manda no guard do
+// movimento é o VÍNCULO.
+// ============================================================================
+
+model FonteDaContaBancaria {
+  id String @id @default(cuid())
+
+  contaBancariaId String
+  contaBancaria   ContaBancaria @relation(fields: [contaBancariaId], references: [id])
+
+  fonteId String
+  fonte   FonteRecurso @relation(fields: [fonteId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  /// A mesma fonte não entra duas vezes na mesma conta — o rol viraria ambíguo e a
+  /// listagem mostraria a fonte repetida.
+  @@unique([contaBancariaId, fonteId])
+  @@index([fonteId])
+}
+
+// ============================================================================
+// A CONCILIAÇÃO BANCÁRIA COMO OBJETO DISCRETO — TR 5.10.2.45/.46/.49/.52.
+//
+// Decidido em docs/adr/ADR-conciliacao-como-objeto-discreto.md (aceito).
+//
+// ⚠️ O QUE SE PERSISTE É O JUÍZO, NÃO O SALDO. Saldos e enumeração de fatos
+// continuam DERIVADOS pela álgebra de `caixa.ts` e `conciliacao.ts`. Congelar
+// valor no encerramento criaria a segunda verdade — e a tela de conferência é o
+// pior lugar do sistema para tê-la, porque ela existe justamente para comparar
+// duas fontes.
+//
+// O que NÃO é derivável, e por isso mora aqui:
+//   · qual fato corresponde a qual linha do extrato (o VinculoConciliacao, que já
+//     existia);
+//   · por que uma pendência permanece em aberto (a justificativa);
+//   · uma pendência que o operador DECLARA e que o sistema não tem como derivar;
+//   · o estado da conciliação e quem a encerrou.
+// ============================================================================
+
+model ConciliacaoBancaria {
+  id String @id @default(cuid())
+
+  contaBancariaId String
+  contaBancaria   ContaBancaria @relation(fields: [contaBancariaId], references: [id])
+
+  /// O período, em INSTANTES que delimitam DIAS CIVIS do ente (packages/datas).
+  /// Ver ADR-data-civil-do-ente: com `Date.UTC` o período de dezembro começaria às
+  /// 21:00 de 30/11 e deixaria de fora o fato da noite de 31/12.
+  periodoInicio DateTime
+  periodoFim    DateTime
+
+  /// ⚠️ O ENCADEAMENTO — é ele que substitui a "cópia" de pendências.
+  ///
+  /// A conciliação seguinte REFERENCIA a anterior; o conjunto não resolvido dela é
+  /// lido POR DERIVAÇÃO, não duplicado. Duplicar a linha criaria dois registros da
+  /// mesma pendência e a soma passaria a contar duas vezes — o oposto do que a
+  /// conciliação existe para garantir.
+  anteriorId String?              @unique
+  anterior   ConciliacaoBancaria? @relation("EncadeamentoDaConciliacao", fields: [anteriorId], references: [id])
+  seguinte   ConciliacaoBancaria? @relation("EncadeamentoDaConciliacao")
+
+  movimentos        MovimentoDaConciliacao[]
+  pendenciasManuais PendenciaManualDeConciliacao[]
+  justificativas    JustificativaDePendencia[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  /// Um período por conta. Duas conciliações do mesmo mês na mesma conta seriam duas
+  /// verdades sobre o mesmo fechamento.
+  @@unique([contaBancariaId, periodoInicio])
+  @@index([contaBancariaId, periodoFim])
+}
+
+enum TipoMovimentoDaConciliacao {
+  ABRIR
+  ENCERRAR
+}
+
+/// ⚠️ "ENCERRADA" É DERIVADO, como o exercício (M08), o lote (M09) e o processo (M21).
+/// Não há coluna de estado: ela exigiria UPDATE, e a tabela é append-only.
+model MovimentoDaConciliacao {
+  id String @id @default(cuid())
+
+  conciliacaoId String
+  conciliacao   ConciliacaoBancaria @relation(fields: [conciliacaoId], references: [id])
+
+  tipo TipoMovimentoDaConciliacao
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([conciliacaoId, criadoEm])
+}
+
+/// ⚠️ PENDÊNCIA MANUAL É DECISÃO REGISTRADA, NÃO FATO INVENTADO (TR 5.10.2.45).
+///
+/// Ela aponta o MOTIVO e **não cria lançamento**. Uma pendência que gerasse lançamento
+/// seria um fato contábil nascido de uma anotação de tela — e o razão passaria a conter
+/// o que ninguém empenhou, liquidou ou pagou.
+///
+/// O `valor` é informativo: ele entra no relatório de pendências para que o operador
+/// veja o total que ainda precisa de explicação, e NUNCA na amarração da conciliação
+/// (que é uma identidade entre razão e extrato, e a pendência manual não está em
+/// nenhum dos dois).
+model PendenciaManualDeConciliacao {
+  id String @id @default(cuid())
+
+  conciliacaoId String
+  conciliacao   ConciliacaoBancaria @relation(fields: [conciliacaoId], references: [id])
+
+  descricao String
+  /// Por que esta pendência existe. Obrigatório — é ela que a torna decisão e não palpite.
+  motivo    String
+  valor     Decimal                @db.Decimal(18, 2)
+  natureza  NaturezaLancamentoExtrato
+
+  /// Resolver é FATO NOVO, apontando para a original — nunca UPDATE.
+  resolveDeId String?                       @unique
+  resolveDe   PendenciaManualDeConciliacao? @relation("ResolucaoDePendencia", fields: [resolveDeId], references: [id])
+  resolucao   PendenciaManualDeConciliacao? @relation("ResolucaoDePendencia")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([conciliacaoId])
+}
+
+/// POR QUE UMA PENDÊNCIA DERIVADA PERMANECE EM ABERTO (TR 5.10.2.46).
+///
+/// A pendência em si é derivada (o residual do extrato ou do interno). O que não se
+/// deriva é a EXPLICAÇÃO — "cheque não compensado", "depósito em trânsito" — e é ela
+/// que o controle interno lê ao conferir o fechamento.
+model JustificativaDePendencia {
+  id String @id @default(cuid())
+
+  conciliacaoId String
+  conciliacao   ConciliacaoBancaria @relation(fields: [conciliacaoId], references: [id])
+
+  /// "EXTRATO" ou o `TipoInternoConciliacao` — de que lado está a pendência.
+  lado       String
+  /// O id da linha do extrato ou do fato interno.
+  referencia String
+  motivo     String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  /// Uma justificativa vigente por pendência dentro da conciliação. Corrigir é
+  /// substituir a linha inteira — e o append-only guarda a anterior pelo `criadoEm`.
+  @@unique([conciliacaoId, lado, referencia])
 }

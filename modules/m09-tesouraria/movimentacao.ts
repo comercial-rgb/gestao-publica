@@ -10,6 +10,7 @@ import { exigirCompetenciaEmExercicioAberto } from "../m08-restos-a-pagar/guard-
 // verificação, e o dia em que ele fosse tomado fora de ordem produziria um deadlock que
 // nenhuma mensagem explicaria.
 import { travar } from "../../packages/locks/index.js";
+import { exigirFonteNoRolDaConta } from "../m05-despesa/guard-fonte.js";
 import { fatosDeCaixaDaConta } from "./caixa.js";
 import {
   comSinalDoMovimentoBancario,
@@ -92,6 +93,16 @@ export async function registrarMovimentoBancario(
     if (conta === null) {
       throw new Error(`Conta bancária ${dados.contaBancariaId} não cadastrada.`);
     }
+
+    // ⚠️ A FONTE TEM DE ESTAR NO ROL DA CONTA (TR 5.10.2.6). Ver `exigirFonteDaConta`:
+    // é este guard que mantém o controle de destinação de pé numa conta que comporta
+    // recurso ordinário, convênio e vinculado ao mesmo tempo.
+    await exigirFonteNoRolDaConta(
+      tx,
+      { id: conta.id },
+      dados.fonteId,
+      `movimento bancário ${dados.tipo}`
+    );
 
     // FAIL-CLOSED: sem mapeamento contábil não há como lançar. A mesma doutrina da
     // conciliação e da transferência — é o operador que sabe qual conta é qual.
@@ -183,6 +194,7 @@ export async function registrarMovimentoBancario(
     const movimento = await tx.movimentoBancario.create({
       data: {
         contaBancariaId: conta.id,
+        fonteId: dados.fonteId,
         tipo: dados.tipo,
         valor: valorStr,
         data: dados.data,
@@ -246,6 +258,7 @@ export async function estornarMovimentoBancario(
         estornoDeId: true,
         estornos: { select: { id: true } },
         contaBancariaId: true,
+        fonteId: true,
         contaBancaria: {
           select: {
             id: true,
@@ -303,6 +316,10 @@ export async function estornarMovimentoBancario(
     const estorno = await tx.movimentoBancario.create({
       data: {
         contaBancariaId: original.contaBancariaId,
+        // ⚠️ E A FONTE TAMBÉM É A DO ORIGINAL, não a "da conta". O estorno desfaz um
+        // movimento de UMA fonte específica; devolver o valor a outra fonte moveria
+        // dinheiro entre destinações sem que nada registrasse a transposição.
+        fonteId: original.fonteId,
         // ⚠️ O TIPO É O MESMO DO ORIGINAL, e o que desfaz é o `estornoDeId`. Inverter o
         // tipo (SAQUE viraria DEPOSITO) faria um relatório de "quanto se sacou no mês"
         // contar um depósito que nunca houve.

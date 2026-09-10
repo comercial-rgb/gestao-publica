@@ -17,7 +17,7 @@ import {
   exigirExercicioDaFichaAberto,
 } from "../m08-restos-a-pagar/guard-exercicio.js";
 import { registrarMovimentoDotacao } from "./dotacao-razao.js";
-import { exigirFonteDaFicha } from "./guard-fonte.js";
+import { exigirFonteDaFicha, exigirFonteNoRolDaConta } from "./guard-fonte.js";
 import { exigirCotaCmd } from "./guard-cmd.js";
 import {
   exigirAnulacaoDePagamentoCorrente,
@@ -1672,13 +1672,9 @@ export function criarDespesaRepositoryPrisma(
             `Conta bancária "${p.contaBancaria}" não cadastrada.`
           );
         }
-        if (conta.fonteId !== p.fonteId) {
-          throw new Error(
-            `TR 5.23 — fonte do pagamento (${p.fonteId}) diverge da fonte da ` +
-              `conta bancária "${p.contaBancaria}" (${conta.fonteId}). ` +
-              `Pagar recurso de uma fonte com dinheiro de outra é desvio.`
-          );
-        }
+        // ⚠️ "NO ROL", e não "igual à da conta" — ver `guard-fonte.ts`. A conta admite
+        // várias fontes desde o ADR de 2026-09-10.
+        await exigirFonteNoRolDaConta(tx, { id: conta.id }, p.fonteId, "pagamento");
 
         // ...E O OUTRO ELO DA CORRENTE: a fonte da FICHA que autorizou a despesa. O
         // guard da conta sozinho deixava pagar uma despesa da fonte 500 com dinheiro do

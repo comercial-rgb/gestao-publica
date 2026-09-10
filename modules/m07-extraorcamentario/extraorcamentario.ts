@@ -1,3 +1,4 @@
+import { exigirFonteNoRolDaConta } from "../m05-despesa/guard-fonte.js";
 import { diaCivil } from "../../packages/datas/index.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
@@ -256,12 +257,9 @@ export async function registrarDispendioExtra(
 
     // TR 5.23 — a fonte tem de casar com a da conta bancária. Vale aqui também:
     // devolver caução com dinheiro de outra fonte é desvio igual.
-    if (conta.fonteId !== dados.fonteId) {
-      throw new Error(
-        `TR 5.23 — fonte do dispêndio (${dados.fonteId}) diverge da fonte da ` +
-          `conta bancária "${dados.contaBancaria}" (${conta.fonteId}).`
-      );
-    }
+    // ⚠️ "NO ROL", e não "igual à da conta" — a conta admite várias fontes desde o
+    // ADR de 2026-09-10. A regra mora em `m05-despesa/guard-fonte.ts`, uma vez.
+    await exigirFonteNoRolDaConta(tx, { id: conta.id }, dados.fonteId, "dispêndio extraorçamentário");
 
     // FAIL-CLOSED: não se repassa mais do que se reteve. O saldo sai do SUM real
     // (com os sinais), DENTRO da transação.

@@ -108,6 +108,10 @@ export type AcaoDoSistema =
   | "TRANSFERIR_ENTRE_CONTAS"
   | "REGISTRAR_MOVIMENTO_BANCARIO"
   | "ESTORNAR_MOVIMENTO_BANCARIO"
+  | "ABRIR_CONCILIACAO"
+  | "ENCERRAR_CONCILIACAO"
+  | "REGISTRAR_PENDENCIA_MANUAL"
+  | "JUSTIFICAR_PENDENCIA"
   // ── M18 — SAGRES Captura 2.0 ──
   | "SUBMETER_CAPTURA"
   // ── M20 — importadores de arquivo externo (folha/tributário) ──
@@ -332,6 +336,10 @@ export type NomeDeServico =
   | "transferirEntreContas"
   | "registrarMovimentoBancario"
   | "estornarMovimentoBancario"
+  | "abrirConciliacao"
+  | "encerrarConciliacao"
+  | "registrarPendenciaManual"
+  | "justificarPendencia"
   | "submeterCaptura"
   | "confirmarImportacaoFolha"
   | "confirmarImportacaoTributos"
@@ -530,6 +538,14 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   transferirEntreContas: "TRANSFERIR_ENTRE_CONTAS",
   registrarMovimentoBancario: "REGISTRAR_MOVIMENTO_BANCARIO",
   estornarMovimentoBancario: "ESTORNAR_MOVIMENTO_BANCARIO",
+  // ⚠️ ABRIR e ENCERRAR são ações SEPARADAS. Encerrar é o ato que o controle interno lê
+  // como "isto foi conferido", e quem opera a conciliação no dia a dia não é
+  // necessariamente quem assina o fechamento — é a segregação do TR 6.4, a mesma que
+  // separa preparar e autorizar a ordem de pagamento.
+  abrirConciliacao: "ABRIR_CONCILIACAO",
+  encerrarConciliacao: "ENCERRAR_CONCILIACAO",
+  registrarPendenciaManual: "REGISTRAR_PENDENCIA_MANUAL",
+  justificarPendencia: "JUSTIFICAR_PENDENCIA",
   submeterCaptura: "SUBMETER_CAPTURA",
   confirmarImportacaoFolha: "IMPORTAR_FOLHA",
   confirmarImportacaoTributos: "IMPORTAR_TRIBUTOS",
@@ -838,6 +854,16 @@ export const FORA_DO_CENSO: Record<string, string> = {
   // somam os fatos que já existem. Dar ação a elas seria conceder permissão para
   // consultar um saldo que o próprio extrato já mostra.
   fatosDeCaixaDaConta: "leitura",
+  lerConciliacao: "leitura",
+  conciliacoesDaConta: "leitura",
+  naoResolvidasDe: "leitura",
+  exigirConciliacaoAberta: "guard",
+  estadoDaConciliacao: "leitura",
+  somarSelecao: "leitura",
+  rotuloDoPeriodo: "leitura",
+  chaveDoPeriodo: "leitura",
+  exigirFonteNoRol: "guard",
+  exigirFonteNoRolDaConta: "guard",
   saldoDaContaBancaria: "leitura",
 
   // ⚠️ M05/ENT03a — OS TRÊS SÃO COMPOSÁVEIS, e uma ação própria para eles seria uma

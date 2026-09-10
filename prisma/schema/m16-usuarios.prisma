@@ -95,6 +95,15 @@ enum AcaoDoSistema {
   /// Desfazer o movimento é ato SEPARADO de registrá-lo — a mesma disciplina do
   /// ESTORNAR_VINCULO.
   ESTORNAR_MOVIMENTO_BANCARIO
+  /// M09/ENT03a — a conciliação como objeto discreto (TR 5.10.2.45/.46/.49).
+  /// ABRIR e ENCERRAR são ações SEPARADAS: encerrar é o ato que o controle interno lê
+  /// como "isto foi conferido", e quem opera a conciliação no dia a dia não é
+  /// necessariamente quem assina o fechamento. É a segregação do 6.4.
+  ABRIR_CONCILIACAO
+  ENCERRAR_CONCILIACAO
+  /// Declarar pendência e explicar pendência são atos distintos de registrar o juízo.
+  REGISTRAR_PENDENCIA_MANUAL
+  JUSTIFICAR_PENDENCIA
   SUBMETER_CAPTURA
 
   // M20 — importadores de arquivo externo (folha/tributário).

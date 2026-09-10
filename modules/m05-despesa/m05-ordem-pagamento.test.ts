@@ -378,7 +378,7 @@ describe("T07 — o teto da ordem", () => {
         contaBancaria: "CC-OUTRA", fonteId: fonteDoTeste,
         historico: "ordem com fonte trocada", criadoPor: PREPARADOR,
       })
-    ).rejects.toThrow(/não é a da conta bancária/);
+    ).rejects.toThrow(/FONTE FORA DO ROL \(TR 5\.23\)/);
   });
 
   it("anulado o pagamento, o saldo volta a caber numa ordem nova", async () => {

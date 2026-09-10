@@ -1,3 +1,4 @@
+import { exigirFonteNoRolDaConta } from "./guard-fonte.js";
 import { z } from "zod";
 import { toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
@@ -237,21 +238,13 @@ export async function prepararOrdemDePagamento(
       );
     }
 
-    // TR 5.23 — a fonte do pagamento casa com a da conta bancária. O guard é aqui e
+    // TR 5.23 — a fonte da ordem tem de estar no ROL da conta bancária. O guard é aqui e
     // também no `pagar()`: a ordem que nasce com a fonte errada só quebraria no fim.
-    const conta = await tx.contaBancaria.findUnique({
-      where: { codigo: d.contaBancaria },
-      select: { fonteId: true },
-    });
-    if (conta === null) {
-      throw new Error(`Conta bancária "${d.contaBancaria}" não cadastrada. Nada foi gravado.`);
-    }
-    if (conta.fonteId !== d.fonteId) {
-      throw new Error(
-        `A fonte da ordem não é a da conta bancária "${d.contaBancaria}". Pagar por uma ` +
-          `conta de outra fonte é usar dinheiro carimbado no lugar errado. Nada foi gravado.`
-      );
-    }
+    //
+    // ⚠️ "NO ROL", e não "igual à da conta": desde o ADR de 2026-09-10 a conta admite
+    // várias fontes, e a comparação antiga recusaria o pagamento legítimo pela segunda
+    // fonte de uma conta multifonte. A regra mora em `guard-fonte.ts`, uma vez.
+    await exigirFonteNoRolDaConta(tx, { codigo: d.contaBancaria }, d.fonteId, "ordem de pagamento");
 
     const o = await tx.ordemDePagamento.create({
       data: {

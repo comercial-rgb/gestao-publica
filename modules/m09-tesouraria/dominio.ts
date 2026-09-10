@@ -476,8 +476,24 @@ export function exigirSaldoBancario(
   }
 }
 
+/**
+ * ⚠️ A REGRA DO ROL DE FONTES MORA EM `m05-despesa/guard-fonte.ts`, e é reexportada aqui
+ * só por conveniência de importação.
+ *
+ * Ela era escrita à mão em QUATRO sítios (ordem de pagamento, `pagar()`, restos a pagar
+ * e dispêndio extraorçamentário) e este seria o quinto. Quatro cópias de uma regra é a
+ * garantia de que a quinta mudança esquece uma — e a esquecida mente em silêncio.
+ */
+export { exigirFonteNoRol } from "../m05-despesa/guard-fonte.js";
+
 export const zRegistrarMovimentoBancario = z.object({
   contaBancariaId: z.string().min(1),
+  /**
+   * ⚠️ OBRIGATÓRIA, e o motivo é o oposto do que parece. Conta multifonte não significa
+   * movimento sem fonte — significa que a fonte precisa ser DECLARADA, porque não há
+   * mais como adivinhá-la a partir da conta.
+   */
+  fonteId: z.string().min(1),
   tipo: z.enum([
     "DEPOSITO",
     "SAQUE",

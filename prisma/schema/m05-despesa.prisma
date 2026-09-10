@@ -339,6 +339,10 @@ model ContaBancaria {
   transferenciasDestino TransferenciaEntreContas[] @relation("TransferenciaDestino")
   /// M09 — depósito, saque, aplicação, resgate, rendimento e tarifa. Campo VIRTUAL.
   movimentosBancarios   MovimentoBancario[]
+  /// M09/ENT03a — o rol de fontes que ESTA conta pode conter (TR 5.10.2.6). VIRTUAL.
+  fontesPermitidas      FonteDaContaBancaria[]
+  /// M09/ENT03a — as conciliações desta conta, por período. VIRTUAL.
+  conciliacoes          ConciliacaoBancaria[]
 
   @@index([fonteId])
 

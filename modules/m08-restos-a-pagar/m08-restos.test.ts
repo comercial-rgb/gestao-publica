@@ -293,7 +293,7 @@ describe("M08 3a — ciclo RPP (processado)", () => {
         },
         R_PAG_RP
       )
-    ).rejects.toThrow(/TR 5\.23.*diverge da fonte da conta bancária/s);
+    ).rejects.toThrow(/FONTE FORA DO ROL \(TR 5\.23\)/);
 
     expect(await prisma.pagamento.count()).toBe(0);
     expect(await prisma.movimentoRestosAPagar.count()).toBe(0);

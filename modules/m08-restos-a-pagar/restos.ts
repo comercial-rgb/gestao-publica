@@ -1,3 +1,4 @@
+import { exigirFonteNoRolDaConta } from "../m05-despesa/guard-fonte.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { randomUUID } from "node:crypto";
@@ -418,12 +419,9 @@ export async function pagarRestosAPagar(
     if (conta === null) {
       throw new Error(`Conta bancária "${dados.contaBancaria}" não cadastrada.`);
     }
-    if (conta.fonteId !== dados.fonteId) {
-      throw new Error(
-        `TR 5.23 — fonte do pagamento (${dados.fonteId}) diverge da fonte da ` +
-          `conta bancária "${dados.contaBancaria}" (${conta.fonteId}).`
-      );
-    }
+    // ⚠️ "NO ROL", e não "igual à da conta" — a conta admite várias fontes desde o
+    // ADR de 2026-09-10. A regra mora em `m05-despesa/guard-fonte.ts`, uma vez.
+    await exigirFonteNoRolDaConta(tx, { id: conta.id }, dados.fonteId, "pagamento de restos a pagar");
 
     // ⚠️ O MESMO GUARD DO `pagar()` DO M05 — e ele TEM de estar aqui, porque o pagamento
     // de RP NÃO passa por lá: este caminho cria o `Pagamento` por conta própria. Fechar

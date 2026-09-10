@@ -220,6 +220,10 @@ model FonteRecurso {
   /// back-relation T07 — as ordens de pagamento desta fonte. Campo VIRTUAL.
   ordensDePagamento   OrdemDePagamento[]
   contasBancarias     ContaBancaria[]
+  /// M09/ENT03a — o rol de contas que podem conter esta fonte (TR 5.10.2.6). VIRTUAL.
+  contasPermitidas    FonteDaContaBancaria[]
+  /// M09/ENT03a — os movimentos bancários desta fonte. Campo VIRTUAL.
+  movimentosBancarios MovimentoBancario[]
   // back-relations M03 — campos VIRTUAIS, não geram coluna.
   itensCredito        ItemCredito[]
   disponibilidades    DisponibilidadeRecursoNovo[]
