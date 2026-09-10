@@ -1,0 +1,200 @@
+// ============================================================================
+// M26 — O DESIGNER DE RELATÓRIOS.
+//
+// ═══ ⚠️ O M12 ENTREGA OS RELATÓRIOS LEGAIS CALCULADOS. ISTO É OUTRA COISA ═══
+// O prompt do lote é explícito quanto a isso, e a confusão é fácil: RREO, RGF e
+// balanços são cálculos NORMATIVOS, com fórmula fixada em lei — eles não são
+// "modelos" que alguém desenha. O designer é a capacidade de o USUÁRIO montar um
+// relatório operacional que ninguém previu. As duas são exigidas, e nenhuma
+// substitui a outra.
+//
+// ═══ ⚠️ NÃO HÁ COLUNA `vigenciaFim`, E A VIGÊNCIA MESMO ASSIM EXISTE ═══
+// A versão vigente numa data é a de MAIOR `vigenciaInicio <= data` que não tenha
+// sido retirada. Uma coluna `vigenciaFim` exigiria UPDATE na versão anterior a cada
+// versão nova — e o dia em que essa segunda escrita falhasse, duas versões estariam
+// vigentes ao mesmo tempo, com a mais antiga vencendo por acaso.
+//
+// ═══ ⚠️ NENHUM SQL DO USUÁRIO CHEGA AO BANCO ═══
+// A `fonte` é um rol FECHADO, e cada valor corresponde a uma consulta escrita à mão
+// em `fontes.ts`. O usuário escolhe a fonte e escreve EXPRESSÕES sobre as colunas
+// que aquela fonte publica — nunca a consulta. Ver `gramatica.ts`.
+// ============================================================================
+
+/// As fontes de dados que o designer publica. ROL FECHADO — ver o cabeçalho.
+enum FonteDeRelatorio {
+  PROCESSOS
+  COMUNICADOS
+}
+
+/// ⚠️ `AUTOR` É O PADRÃO. Um modelo nasce privado: publicar é ato, e ato deliberado.
+enum VisibilidadeDoModelo {
+  PUBLICO
+  AUTOR
+}
+
+enum TipoDeColunaDoModelo {
+  TEXTO
+  NUMERO
+  MOEDA
+  DATA
+  BOOLEANO
+}
+
+model ModeloDeRelatorio {
+  id String @id @default(cuid())
+
+  unidadeOrcId String
+  unidadeOrc   UnidadeOrcamentaria @relation(fields: [unidadeOrcId], references: [id])
+
+  /// Identificador estável do modelo ao longo das versões.
+  codigo String @db.VarChar(30)
+  nome   String
+  descricao String?
+
+  fonte        FonteDeRelatorio
+  visibilidade VisibilidadeDoModelo @default(AUTOR)
+
+  /// 1, 2, 3… Uma versão nova NÃO reescreve a anterior.
+  versao         Int      @default(1)
+  vigenciaInicio DateTime
+
+  /// De qual modelo este foi COPIADO. A cópia é um modelo NOVO, com código próprio —
+  /// e o original fica intacto, que é o que o catálogo pede.
+  copiadoDeId String?
+  copiadoDe   ModeloDeRelatorio?  @relation("CopiaDeModelo", fields: [copiadoDeId], references: [id])
+  copias      ModeloDeRelatorio[] @relation("CopiaDeModelo")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  colunas       ColunaDoModelo[]
+  distribuicoes DistribuicaoDeModelo[]
+  execucoes     ExecucaoDeRelatorio[]
+  retirada      RetiradaDeModelo?
+
+  @@unique([unidadeOrcId, codigo, versao])
+  @@index([unidadeOrcId, codigo])
+  @@index([criadoPor])
+}
+
+/// A COLUNA — rótulo, expressão e o TIPO que decide a apresentação.
+///
+/// ⚠️ O TIPO NÃO É DECORAÇÃO. A gramática devolve `Decimal`, e `1000.50` em Decimal é
+/// `1000.5`. Duas casas são decisão de APRESENTAÇÃO, e quem sabe que aquela coluna é
+/// dinheiro é ela — não a gramática, que acolchoaria dias como "10.00".
+model ColunaDoModelo {
+  id String @id @default(cuid())
+
+  modeloId String
+  modelo   ModeloDeRelatorio @relation(fields: [modeloId], references: [id])
+
+  ordem  Int
+  rotulo String
+  /// A expressão, na gramática segura. Guardada como TEXTO e analisada a cada
+  /// execução — nunca `eval`, nunca SQL.
+  expressao String
+  tipo      TipoDeColunaDoModelo @default(TEXTO)
+
+  @@unique([modeloId, ordem])
+  @@index([modeloId])
+}
+
+/// A RETIRADA — o fim da vigência, como FATO. Ver o cabeçalho.
+model RetiradaDeModelo {
+  id String @id @default(cuid())
+
+  modeloId String            @unique
+  modelo   ModeloDeRelatorio @relation(fields: [modeloId], references: [id])
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// DISTRIBUIÇÃO para outra entidade autorizada (o catálogo pede, com permissão própria).
+///
+/// ⚠️ ELA NÃO COPIA O MODELO: dá ACESSO a ele. Copiar faria duas cópias divergirem na
+/// primeira correção, e a entidade que recebeu continuaria com o defeito.
+model DistribuicaoDeModelo {
+  id String @id @default(cuid())
+
+  modeloId String
+  modelo   ModeloDeRelatorio @relation(fields: [modeloId], references: [id])
+
+  unidadeOrcId String
+  unidadeOrc   UnidadeOrcamentaria @relation("ModeloDistribuido", fields: [unidadeOrcId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([modeloId, unidadeOrcId])
+  @@index([unidadeOrcId])
+}
+
+/// A EXECUÇÃO — enfileirada por um ato do usuário, processada depois.
+///
+/// ⚠️ SEM COLUNA DE SITUAÇÃO. Pendente é a ausência de movimento; concluída e falha são
+/// movimentos. É o mesmo desenho da ordem de pagamento (M05) e do processo (M21).
+model ExecucaoDeRelatorio {
+  id String @id @default(cuid())
+
+  modeloId String
+  modelo   ModeloDeRelatorio @relation(fields: [modeloId], references: [id])
+
+  /// A unidade gestora sobre a qual o relatório roda. Um modelo distribuído roda sobre
+  /// os dados de QUEM O EXECUTA, não sobre os de quem o desenhou.
+  unidadeOrcId String
+  unidadeOrc   UnidadeOrcamentaria @relation("ExecucaoDeRelatorio", fields: [unidadeOrcId], references: [id])
+
+  /// Filtros informados na execução, como texto simples "campo=valor" por linha.
+  /// NÃO é SQL, e não vira SQL: é confrontado com as colunas publicadas pela fonte.
+  filtros String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  movimentos MovimentoDaExecucao[]
+  resultado  ResultadoDaExecucao?
+
+  @@index([modeloId])
+  @@index([criadoPor, criadoEm])
+}
+
+enum TipoMovimentoDaExecucao {
+  CONCLUSAO
+  FALHA
+}
+
+model MovimentoDaExecucao {
+  id String @id @default(cuid())
+
+  execucaoId String
+  execucao   ExecucaoDeRelatorio @relation(fields: [execucaoId], references: [id])
+
+  tipo    TipoMovimentoDaExecucao
+  /// A mensagem da falha, quando houve. É ela que responde "por quê" ao usuário.
+  detalhe String?
+
+  criadoEm DateTime @default(now())
+
+  @@index([execucaoId])
+}
+
+/// O RESULTADO — CSV, 1:1 com a execução, append-only.
+///
+/// ⚠️ ELE É UMA TABELA À PARTE, e não colunas na execução. Guardá-lo na execução
+/// exigiria UPDATE; aqui a conclusão é um INSERT, e uma execução sem resultado é
+/// exatamente uma execução que não concluiu.
+model ResultadoDaExecucao {
+  id String @id @default(cuid())
+
+  execucaoId String              @unique
+  execucao   ExecucaoDeRelatorio @relation(fields: [execucaoId], references: [id])
+
+  /// CSV RFC-4180, como o M13. O arquivo que o usuário abre.
+  csv    String
+  linhas Int
+
+  criadoEm DateTime @default(now())
+}

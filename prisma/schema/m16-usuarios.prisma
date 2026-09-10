@@ -203,6 +203,18 @@ enum AcaoDoSistema {
   DEFINIR_CAMPO_ADICIONAL
   DESATIVAR_CAMPO_ADICIONAL
   PREENCHER_CAMPOS_ADICIONAIS
+
+  // ── M26 — designer de relatórios (ENT02) ──
+  //
+  /// ⚠️ DISTRIBUIR tem ação PRÓPRIA porque o catálogo pede permissão própria: desenhar
+  /// um relatório para a própria unidade é uma coisa; empurrá-lo para outra entidade é
+  /// outra, e envolve terceiros.
+  CRIAR_MODELO_DE_RELATORIO
+  NOVA_VERSAO_DE_MODELO
+  COPIAR_MODELO_DE_RELATORIO
+  DISTRIBUIR_MODELO_DE_RELATORIO
+  RETIRAR_MODELO_DE_RELATORIO
+  EXECUTAR_RELATORIO
 }
 
 /// O USUÁRIO. TR 4.55.

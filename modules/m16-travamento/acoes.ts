@@ -221,7 +221,18 @@ export type AcaoDoSistema =
   // única deixaria qualquer atendente criar campo novo no cadastro do ente.
   | "DEFINIR_CAMPO_ADICIONAL"
   | "DESATIVAR_CAMPO_ADICIONAL"
-  | "PREENCHER_CAMPOS_ADICIONAIS";
+  | "PREENCHER_CAMPOS_ADICIONAIS"
+  // ── M26 — designer de relatórios (ENT02) ──
+  //
+  // ⚠️ DISTRIBUIR TEM AÇÃO PRÓPRIA porque o catálogo pede permissão própria — e com
+  // razão: desenhar um relatório para a própria unidade é uma coisa; empurrá-lo para
+  // outra entidade é outra, e ela envolve terceiros.
+  | "CRIAR_MODELO_DE_RELATORIO"
+  | "NOVA_VERSAO_DE_MODELO"
+  | "COPIAR_MODELO_DE_RELATORIO"
+  | "DISTRIBUIR_MODELO_DE_RELATORIO"
+  | "RETIRAR_MODELO_DE_RELATORIO"
+  | "EXECUTAR_RELATORIO";
 
 /**
  * O NOME DO SERVIÇO, exatamente como ele é exportado. É esta união que o grep-teste
@@ -370,7 +381,14 @@ export type NomeDeServico =
   // ── M25 — campos adicionais (ENT02) ──
   | "definirCampoAdicional"
   | "desativarCampoAdicional"
-  | "preencherCamposAdicionais";
+  | "preencherCamposAdicionais"
+  // ── M26 — designer de relatórios (ENT02) ──
+  | "criarModeloDeRelatorio"
+  | "novaVersaoDoModelo"
+  | "copiarModeloDeRelatorio"
+  | "distribuirModeloDeRelatorio"
+  | "retirarModeloDeRelatorio"
+  | "executarRelatorio";
 
 /**
  * ⚠️ O RECORD EXAUSTIVO — serviço → ação.
@@ -556,6 +574,14 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   definirCampoAdicional: "DEFINIR_CAMPO_ADICIONAL",
   desativarCampoAdicional: "DESATIVAR_CAMPO_ADICIONAL",
   preencherCamposAdicionais: "PREENCHER_CAMPOS_ADICIONAIS",
+
+  // ── M26 — designer de relatórios (ENT02) ──
+  criarModeloDeRelatorio: "CRIAR_MODELO_DE_RELATORIO",
+  novaVersaoDoModelo: "NOVA_VERSAO_DE_MODELO",
+  copiarModeloDeRelatorio: "COPIAR_MODELO_DE_RELATORIO",
+  distribuirModeloDeRelatorio: "DISTRIBUIR_MODELO_DE_RELATORIO",
+  retirarModeloDeRelatorio: "RETIRAR_MODELO_DE_RELATORIO",
+  executarRelatorio: "EXECUTAR_RELATORIO",
 };
 
 /** Todas as ações do rol — a lista que o seed de perfis e as mensagens de erro usam. */
@@ -890,6 +916,16 @@ export const FORA_DO_CENSO: Record<string, string> = {
   camposDoRegistro: "leitura (os campos de um registro com o valor VIGENTE — o mais recente)",
   historicoDeCamposAdicionais: "leitura (o histórico É a tabela: os valores são append-only)",
   registrosComCampo: "leitura (o filtro da listagem, sobre a coluna TIPADA e só o valor vigente)",
+  //
+  // ── M26 — designer de relatórios (ENT02).
+  //
+  // ⚠️ `processarExecucoesPendentes` NÃO é ato do usuário: é o trabalhador drenando a
+  // fila. A autorização aconteceu no ENFILEIRAMENTO, com a identidade de quem pediu.
+  // Exigir crachá do trabalhador seria pedir permissão ao processo — e a única saída
+  // seria dar-lhe um de superusuário, que é o oposto do que se quer.
+  processarExecucoesPendentes: "trabalhador da fila (a autorização foi no enfileiramento)",
+  lerFonteProcessos: "leitura (a fonte de dados do designer, já recortada por unidade e por sigilo)",
+  lerFonteComunicados: "leitura (idem, para comunicados)",
   //
   // ⚠️ O ARMAZENAMENTO É I/O DE DISCO, não ato do usuário. `gravarArquivo` e `lerArquivo`
   // são chamados DE DENTRO de `anexarArquivo` e `baixarAnexo`, que é onde a autorização

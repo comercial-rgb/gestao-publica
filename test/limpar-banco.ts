@@ -18,6 +18,14 @@ import { semearUsuariosDeTeste } from "./usuarios-teste.js";
  */
 const TABELAS = [
   // ── ENT02 — M21 protocolo · M22 documentos · M23 comunicação · M24 notificações ──
+  // ── M26 designer de relatórios ──
+  "ResultadoDaExecucao",
+  "MovimentoDaExecucao",
+  "ExecucaoDeRelatorio",
+  "DistribuicaoDeModelo",
+  "RetiradaDeModelo",
+  "ColunaDoModelo",
+  "ModeloDeRelatorio",
   // ── M25 campos adicionais ──
   "ValorDeCampoAdicional",
   "OpcaoDeCampoAdicional",
@@ -198,11 +206,52 @@ const TABELAS = [
  *
  * Todo o resto da suíte continua usando `limparBanco`.
  */
+/**
+ * ⚠️ TRUNCA SÓ O QUE TEM LINHA — E ISSO FOI MEDIDO, NÃO SUPOSTO.
+ *
+ * `TRUNCATE` de 141 tabelas VAZIAS custava **1,8 segundo**. O custo não é das linhas:
+ * o Postgres toma `ACCESS EXCLUSIVE` em cada tabela e cria um relfilenode novo para
+ * cada tabela E cada índice, tenha ela zero linhas ou um milhão. Medido contra
+ * `gestao_publica_test`:
+ *
+ *     TRUNCATE TABLE <141 tabelas vazias> ...     -> 1794 ms
+ *     detecção das não-vazias (141 EXISTS)        ->  174 ms
+ *
+ * Como a suíte limpa o banco uma vez por arquivo (às vezes por teste), esse 1,8 s
+ * multiplicava por centenas — e foi o que fez a regressão do ENT02 sair de 7 minutos
+ * para 107, com treze testes caindo por espera em módulos que ninguém tinha tocado.
+ * O sintoma não apontava para a limpeza: apontava para o M05, o M08, o M12 e o M20.
+ *
+ * ⚠️ A DETECÇÃO LÊ LINHA, NÃO ESTATÍSTICA. `EXISTS (SELECT 1 FROM t)` para em cima da
+ * primeira linha e diz a verdade. A tentação seria `pg_stat_user_tables.n_live_tup`,
+ * que é barato e é ESTIMATIVA: uma estimativa velha faria a limpeza PULAR uma tabela
+ * com dados, e o estado do teste anterior vazaria para o seguinte. É exatamente a
+ * classe de falso-verde que esta suíte existe para não ter.
+ *
+ * ⚠️ E TUDO NUMA IDA SÓ. O bloco roda no servidor: detectar aqui e truncar noutra
+ * chamada abriria uma janela em que outra sessão insere entre as duas — inofensiva
+ * hoje (a suíte é serial), e a espécie de coisa que deixa de ser inofensiva sem aviso.
+ */
 export async function truncarTudo(prisma: PrismaClient): Promise<void> {
-  const lista = TABELAS.map((t) => `"${t}"`).join(", ");
-  await prisma.$executeRawUnsafe(
-    `TRUNCATE TABLE ${lista} RESTART IDENTITY CASCADE`
-  );
+  const existencias = TABELAS.map(
+    (t) => `SELECT '"${t}"' AS t WHERE EXISTS (SELECT 1 FROM "${t}")`
+  ).join(" UNION ALL ");
+
+  // ⚠️ O DELIMITADOR É NOMEADO (`$limpeza$`), E NÃO `$$` — E ISSO CUSTOU UMA DEPURAÇÃO.
+  // Com `$$`, o driver ACEITA a chamada, não levanta erro nenhum e NÃO EXECUTA o bloco:
+  // o banco continua com as linhas do teste anterior, e a falha aparece longe daqui,
+  // como "Unique constraint failed on Perfil.nome" no arquivo seguinte. Um delimitador
+  // com nome não colide com a substituição de parâmetros do driver.
+  await prisma.$executeRawUnsafe(`
+    DO $limpeza$
+    DECLARE lista text;
+    BEGIN
+      SELECT string_agg(t, ', ') INTO lista FROM (${existencias}) q;
+      IF lista IS NOT NULL THEN
+        EXECUTE 'TRUNCATE TABLE ' || lista || ' RESTART IDENTITY CASCADE';
+      END IF;
+    END $limpeza$;
+  `);
 }
 
 export async function limparBanco(prisma: PrismaClient): Promise<void> {
