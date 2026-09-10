@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "titulo": "Contrato de funcionalidade",
+  "descricao": "Formato preenchido antes de implementar cada funcionalidade de um lote. É especificação de trabalho, não implementação. Um contrato preenchido não comprova atendimento.",
+  "exemplo": {
+    "identificador": "ENT02-processo-abertura",
+    "origem": {
+      "clausulas": ["5.42.1", "5.42.9", "5.42.12"],
+      "observacao": "Confirmar o texto no catálogo antes de implementar; a lista pode crescer ao ler os subitens."
+    },
+    "ator": ["servidor autorizado", "requerente externo"],
+    "contexto": {
+      "tenant": "resolvido no servidor por membership",
+      "entidade": "obrigatória",
+      "exercicio": "obrigatório",
+      "permissao": "processo.abrir"
+    },
+    "tela": {
+      "nome": "Abertura de processo",
+      "rota_proposta": "/gestao/{entidade}/{exercicio}/protocolo/processos/novo",
+      "rota_real": ""
+    },
+    "campos": [
+      {
+        "nome": "assunto",
+        "tipo": "referencia",
+        "obrigatorio": true,
+        "origem": "cláusula",
+        "regra": "carrega roteiro, prazo, documentos exigidos e taxa"
+      },
+      {
+        "nome": "requerente",
+        "tipo": "referencia",
+        "obrigatorio": true,
+        "origem": "cláusula",
+        "regra": "cadastro único; anônimo apenas quando o assunto permitir"
+      },
+      {
+        "nome": "observacao_interna",
+        "tipo": "texto",
+        "obrigatorio": false,
+        "origem": "proposta",
+        "justificativa": "necessária para o parecer; marcar como proposta até confirmação"
+      }
+    ],
+    "filtros": ["situacao", "assunto", "periodo", "requerente", "centro_de_custo"],
+    "acoes": [
+      {
+        "nome": "abrir",
+        "tipo": "comando",
+        "permissao": "processo.abrir",
+        "validacoes": ["assunto ativo", "documentos obrigatórios presentes", "período aberto quando houver taxa"],
+        "efeitos": ["numeração sequencial por exercício", "primeiro trâmite", "auditoria", "notificação ao setor de destino"]
+      }
+    ],
+    "estados": ["aberto", "em_tramite", "aguardando_readequacao", "encerrado", "arquivado", "cancelado", "paralisado"],
+    "efeitos_financeiros": "taxa emitida quando o assunto exigir; sem lançamento contábil na abertura",
+    "documentos": ["comprovante de abertura"],
+    "integracoes": [],
+    "testes": [
+      "abertura em município A não é visível em B",
+      "numeração não colide entre exercícios",
+      "duas aberturas concorrentes não geram o mesmo número",
+      "documento obrigatório ausente impede a abertura no servidor",
+      "recarregar a listagem encontra o processo persistido"
+    ],
+    "situacao": "NAO_VERIFICADO",
+    "evidencia": ""
+  },
+  "regras": [
+    "Campo sem fundamento na origem é marcado como proposta, com justificativa.",
+    "Não tornar opcional um campo exigido pela origem, nem obrigatório um campo sem fundamento para facilitar a modelagem.",
+    "rota_real é preenchida depois de verificar a rota que existe no código.",
+    "situacao só muda com evidência: origem, arquivos, cenário, comando executado, ambiente, data e commit."
+  ]
+}

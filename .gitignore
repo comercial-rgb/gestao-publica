@@ -1,0 +1,9 @@
+# Lixo do sistema de arquivos, nao do projeto.
+.DS_Store
+
+# ATENCAO: `.cache-tr-layout.txt` NAO esta aqui, e e deliberado.
+# Ele e derivado do PDF por `pdftotext -layout`, mas a saida depende da VERSAO
+# do poppler instalado. Uma versao diferente pode cortar as clausulas em
+# fronteiras diferentes — e os ids de clausula sao a chave de toda evidencia
+# ja registrada no catalogo. Versionar o texto intermediario e o que permite
+# provar que uma regeracao futura produziu o mesmo recorte.
