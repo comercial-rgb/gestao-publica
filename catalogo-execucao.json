@@ -24599,8 +24599,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10): abre o processo, tramita, recebe, pede e responde parecer, pede e atende readequação, encerra e arquiva — cada passo recarregando a tela do servidor. Testes: modules/m21-protocolo/m21-protocolo.test.ts.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.42.2",
@@ -24613,8 +24613,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Não há provedor ICP-Brasil configurado. `estadoDaAssinaturaQualificada()` devolve `disponivel: false` e o caso de uso RECUSA produzir assinatura QUALIFICADA — em vez de gravar uma que pareceria válida na tela. modules/m22-documentos/m22-documentos.test.ts t9. Pendência ASSINATURA-ICP-HSM.",
+      "situacao": "DEPENDENCIA_EXTERNA"
     },
     {
       "id": "5.42.3",
@@ -24655,8 +24655,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`Processo.contatoAnonimo` + `Assunto.permiteAnonimo`; o caso de uso exige contato quando não há requerente. modules/m21-protocolo/m21-protocolo.test.ts. Sem exercício pela tela.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.42.6",
@@ -24669,8 +24669,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Campo `finalidade` (ATENDIMENTO_AO_PUBLICO | INTERNO) preenchido pelo formulário. scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.42.7",
@@ -24697,8 +24697,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`RequerenteAdicionalDoProcesso`, com teste em modules/m21-protocolo/m21-protocolo.test.ts. A tela mostra os adicionais mas não os inclui — sem superfície de inclusão.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.42.9",
@@ -24711,8 +24711,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`@@unique([exercicioId, numero])` + trinco `SequenciaDeProtocolo` (packages/locks) contra a corrida de numeração. A sequência reinicia por exercício porque o número é por exercício. modules/m21-protocolo/m21-protocolo.test.ts.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.42.10",
@@ -24739,8 +24739,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`Assunto.termoDeAceite` e o guard `aceitouTermo` no caso de uso. modules/m21-protocolo/m21-protocolo.test.ts. A tela publica o termo; o smoke não exercita o caminho de recusa.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.42.12",
@@ -24781,8 +24781,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`EtapaDoRoteiro` copiada para `EtapaDoProcesso` no instante da abertura — reconfigurar o assunto depois NÃO mexe em processo já aberto. scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10) confere o roteiro copiado na tela.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.42.15",
@@ -24795,8 +24795,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`EtapaDoRoteiro.prazoDias`, copiado para a etapa do processo. modules/m21-protocolo/m21-dominio.test.ts. Sem tela de configuração de roteiro.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.42.16",
@@ -24809,8 +24809,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`situacaoDePrazo` classifica por faixa (EM_DIA / A_VENCER / VENCIDO) e a contagem começa no RECEBIMENTO, não no trâmite — modules/m21-protocolo/m21-dominio.test.ts. Falta a paralisação automática de processo que estourou o prazo (5.42.44).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.42.17",
@@ -24823,8 +24823,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Verificado: não há emissão de guia em padrão bancário. `TaxaDoProcesso` registra a taxa e a baixa, sem gerar documento de arrecadação. Pertence ao bloco de arrecadação (5.29). Pendência PROTOCOLO-GUIA-BANCARIA.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.42.18",
@@ -24865,8 +24865,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`exigirTaxasEmDia` no caso de uso, dentro da transação. modules/m21-protocolo/m21-protocolo.test.ts t13 e m21-cadastros.test.ts t6.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.42.21",
@@ -24879,8 +24879,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`registrarNotificacao`/`notificarVarios` (M24) são chamados na tramitação, com alvo por setor ou por usuário. modules/m21-protocolo/m21-protocolo.test.ts. ⚠️ A notificação é INTERNA: e-mail e push são DEPENDENCIA_EXTERNA — ver 5.42.47.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.42.22",
@@ -24893,8 +24893,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Mesmo guard de 5.42.20, aplicado na tramitação — o guard está no caso de uso, e não há rota de tramitação que não passe por ele. modules/m21-protocolo/m21-protocolo.test.ts t13.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.42.23",
@@ -24907,8 +24907,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`Processo.prioridade` (NORMAL/ALTA/URGENTE), exibida como distintivo na tela. scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.42.24",
@@ -24935,8 +24935,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "A situação é DERIVADA dos movimentos (`situacaoDoProcesso`) — não há coluna `situacao`. Do registro ao arquivamento em scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.42.26",
@@ -24949,8 +24949,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`MovimentoDoProcesso` é append-only e o dossiê traz a cadeia inteira. scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10) confere o histórico depois do arquivamento.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.42.27",
@@ -24963,8 +24963,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Linha do tempo na tela do processo, mostrando também os movimentos TORNADOS SEM EFEITO — riscados, com quem os desfez. Escondê-los faria a anulação virar um DELETE com outro nome. scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.42.28",
@@ -24977,8 +24977,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`MovimentoDeApensamento` (append-only) e `alvosDaMovimentacao`: os apensos vigentes tramitam junto, na MESMA transação. modules/m21-protocolo/m21-protocolo.test.ts.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.42.29",
@@ -24991,8 +24991,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`anexarArquivo` valida tipo e tamanho NO SERVIDOR, calcula SHA-256 e grava fora de pasta pública. A tela do processo tem `input[type=file]` e scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10) sobe o arquivo, baixa por HTTP e confere os bytes.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.42.30",
@@ -25005,8 +25005,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "A permissão do anexo é a DO PROCESSO, resolvida a cada leitura — não uma cópia gravada no dia do envio. Depois da tramitação, origem e destino continuam lendo: modules/m22-documentos/m22-documentos.test.ts t7. scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.42.31",
@@ -25033,8 +25033,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Rota `/documentos/lote?processo=<id>`: zip com os arquivos que `baixarAnexo` entregaria um a um, conferindo o hash de cada um. modules/m22-documentos/m22-documentos.test.ts t18-t20; scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10) valida a assinatura PK do zip.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.42.33",
@@ -25075,8 +25075,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`tramitar` aceita setor de destino e, opcionalmente, usuário (\"aos cuidados de\"). scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.42.36",
@@ -25089,8 +25089,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Textos de abertura e movimento são `String` sem limite de coluna; a tela usa `textarea`. scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.42.37",
@@ -25145,8 +25145,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "⚠️ NÃO é exclusão: `tornarMovimentoSemEfeito` grava um movimento NOVO que anula o anterior, e o original continua no histórico, marcado. Excluir de verdade quebraria o append-only. modules/m21-protocolo/m21-protocolo.test.ts.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.42.41",
@@ -25201,8 +25201,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Verificado: `situacaoDePrazo` CLASSIFICA o prazo, mas nada paralisa o processo automaticamente ao estourá-lo. Não há agendador neste ambiente. Pendência PROTOCOLO-PARALISACAO-AUTOMATICA.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.42.45",
@@ -25243,8 +25243,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`estadoDoEnvioExterno()` devolve indisponível com motivo (MOTIVO_CANAL_INDISPONIVEL): não há provedor de e-mail nem de push. A notificação INTERNA funciona e é gravada. Pendência NOTIFICACAO-EMAIL-PUSH.",
+      "situacao": "DEPENDENCIA_EXTERNA"
     },
     {
       "id": "5.42.48",
@@ -25271,8 +25271,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`listarProcessos` devolve a caixa CALCULADA para quem pergunta, aplicando `podeVerProcesso` — a mesma regra do dossiê e do anexo. scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.42.50",
@@ -25313,8 +25313,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "O gerenciamento acontece na própria tela de visualização: catorze formulários, cada um com `data-acao` e estado próprio. scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10) exercita trâmite, recebimento, parecer, readequação, encerramento e arquivamento a partir dela.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.42.53",
@@ -25355,8 +25355,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`ehGestor` + permissão global (`unidadeOrcId` nulo) dão visão de todos os processos. modules/m21-protocolo/m21-protocolo.test.ts.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.42.56",
@@ -25369,8 +25369,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`Processo.sigiloso` restringe a visualização aos envolvidos — e a MESMA função (`podeVerProcesso`) responde à caixa, ao dossiê, ao anexo e à fonte do designer, para que as quatro não possam divergir. modules/m22-documentos/m22-documentos.test.ts t6/t16/t19. scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10) confere que a consulta pública não mostra parecer interno.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.42.57",
@@ -25383,8 +25383,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`solicitarReadequacao`/`atenderReadequacao`, com a situação derivada AGUARDANDO_READEQUACAO. scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.42.58",
@@ -25397,8 +25397,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`/consulta` — fora de `(areas)`, SEM sessão: número + exercício + código verificador. scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10) confere que ela funciona sem sessão, que NÃO mostra o parecer interno, e que código errado não revela nada.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.42.59",
@@ -25411,8 +25411,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`solicitarParecer` notifica o setor de destino; a situação vira AGUARDANDO_PARECER. scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.42.60",
@@ -25425,8 +25425,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`responderParecer` grava `respondeAId`, e o seletor da tela só oferece pedidos ainda ABERTOS — oferecer um já respondido faria a pessoa digitar o parecer inteiro para o servidor recusar. scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.42.61",
@@ -25467,8 +25467,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Verificado: não há ferramenta de fluxograma. O roteiro por assunto (5.42.14) cobre a sequência de etapas, não o desenho gráfico. Pendência PROTOCOLO-FLUXOGRAMA.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.42.64",
@@ -25635,8 +25635,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Verificado: não há painéis indicadores de processo. Os dados existem e são consultáveis pelo designer de relatórios (5.43), mas o painel em si não foi construído. Pendência PROTOCOLO-PAINEIS.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.43.1",
@@ -25649,8 +25649,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Designer com fonte de dados, colunas, filtros e expressões. scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10) cria o modelo, copia, executa em segundo plano e abre o CSV com o campo calculado.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.43.2",
