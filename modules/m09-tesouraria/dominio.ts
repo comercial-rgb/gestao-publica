@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
 import type { ExtratoOfx, TransacaoOfx } from "../../packages/ofx/index.js";
+import type { TipoMovimentoBancario } from "../../prisma/generated/client/client.js";
 // A FONTE ÚNICA DO SINAL do M07 — reusada, nunca recopiada.
 import {
   SINAL_MOVIMENTO_EXTRA,
@@ -219,7 +220,15 @@ export type NaturezaExtratoDb = "CREDITO" | "DEBITO";
 export type TipoInternoConciliacao =
   | "PAGAMENTO"
   | "ARRECADACAO"
-  | "MOVIMENTO_EXTRA";
+  | "MOVIMENTO_EXTRA"
+  /** M09 — a movimentação bancária (TR 5.62): depósito, saque, aplicação, resgate,
+   * rendimento e tarifa. Sem ele, a linha de tarifa do extrato não teria contra o que
+   * ser conciliada. */
+  | "MOVIMENTO_BANCARIO"
+  /** M09 — a transferência entre contas próprias. ⚠️ Ela ENTRA no lado interno apenas
+   * quando as duas contas têm contas contábeis DIFERENTES — ver o critério no cabeçalho
+   * de `caixa.ts`, que é o que mantém a identidade da conciliação de pé. */
+  | "TRANSFERENCIA";
 
 /** O sentido do dinheiro no lado INTERNO. */
 export type SentidoInterno = "ENTRADA" | "SAIDA";
@@ -348,3 +357,164 @@ export class ConflitoDeFitidError extends Error {
     this.name = "ConflitoDeFitidError";
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MOVIMENTAÇÃO BANCÁRIA — as regras PURAS. Zero I/O.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * ⚠️ A FONTE ÚNICA DO SINAL DO MOVIMENTO BANCÁRIO — Record EXAUSTIVO.
+ *
+ * O `valor` gravado é SEMPRE positivo; quem diz se o dinheiro entrou ou saiu é o
+ * TIPO. Um tipo novo **não compila** até alguém dizer o sinal dele — e isso não é
+ * cerimônia: um tipo sem sinal declarado entraria numa soma como zero, ou pior,
+ * como positivo por descuido, e o saldo da conta passaria a mentir em silêncio.
+ *
+ * APLICACAO é −1 e RESGATE é +1 porque este é o ponto de vista da CONTA MOVIMENTO:
+ * aplicar tira dinheiro dela (vai para a aplicação), resgatar devolve. O dinheiro
+ * não deixa o ente em nenhum dos dois — mas deixa ESTA conta, e é o saldo DESTA
+ * conta que o extrato mostra e a conciliação confere.
+ */
+export const SINAL_MOVIMENTO_BANCARIO: Record<TipoMovimentoBancario, 1 | -1> = {
+  DEPOSITO: 1,
+  SAQUE: -1,
+  APLICACAO: -1,
+  RESGATE: 1,
+  RENDIMENTO: 1,
+  TARIFA: -1,
+};
+
+/** O sentido de cada tipo, para o guard de natureza da conciliação. */
+export const SENTIDO_MOVIMENTO_BANCARIO: Record<
+  TipoMovimentoBancario,
+  SentidoInterno
+> = {
+  DEPOSITO: "ENTRADA",
+  SAQUE: "SAIDA",
+  APLICACAO: "SAIDA",
+  RESGATE: "ENTRADA",
+  RENDIMENTO: "ENTRADA",
+  TARIFA: "SAIDA",
+};
+
+/**
+ * ⚠️ QUEM O ENTE PROVOCA E QUEM O BANCO IMPÕE — e por que a distinção decide o guard.
+ *
+ * RENDIMENTO e TARIFA **não são atos do ordenador**: o banco credita o juro e debita
+ * a tarifa, e o ente só toma conhecimento quando o extrato chega. Exigir saldo prévio
+ * para registrar uma tarifa recusaria o registro de um fato que **já aconteceu** — e a
+ * conta ficaria com saldo diferente do extrato justamente por causa da recusa.
+ *
+ * Os outros quatro são atos: o ente decide sacar, aplicar, resgatar, depositar. Para
+ * esses, "há saldo?" é uma pergunta legítima ANTES.
+ */
+export const E_ATO_DO_ENTE: Record<TipoMovimentoBancario, boolean> = {
+  DEPOSITO: true,
+  SAQUE: true,
+  APLICACAO: true,
+  RESGATE: true,
+  /** O banco credita; o ente registra o que já foi creditado. */
+  RENDIMENTO: false,
+  /** O banco debita; recusar o registro não desfaz o débito. */
+  TARIFA: false,
+};
+
+export function comSinalDoMovimentoBancario(
+  tipo: TipoMovimentoBancario,
+  valor: Money
+): Money {
+  return SINAL_MOVIMENTO_BANCARIO[tipo] === 1
+    ? valor
+    : toMoney(valor.negated());
+}
+
+/**
+ * O SALDO DA CONTA BANCÁRIA — puro, sobre os fatos que a moveram.
+ *
+ * ⚠️ ELE NÃO É UMA COLUNA, E NUNCA SERÁ. Uma coluna `saldo` exigiria UPDATE — o que
+ * `MovimentoBancario`, `Pagamento`, `ReceitaArrecadada` e o resto do repositório
+ * proíbem — e derraparia no primeiro estorno. O saldo é uma FUNÇÃO dos fatos, e é a
+ * mesma função que a conciliação usa para montar o lado interno.
+ */
+export interface FatoDeCaixa {
+  readonly sentido: SentidoInterno;
+  /** SEMPRE positivo. */
+  readonly valor: Money;
+}
+
+export function saldoDosFatosDeCaixa(fatos: readonly FatoDeCaixa[]): Money {
+  return fatos.reduce(
+    (acc, f) =>
+      f.sentido === "ENTRADA"
+        ? toMoney(acc.plus(f.valor))
+        : toMoney(acc.minus(f.valor)),
+    toMoney("0.00")
+  );
+}
+
+/**
+ * O GUARD DO SALDO — puro, e ele diz o NÚMERO.
+ *
+ * ⚠️ "Saldo insuficiente" manda abrir chamado; "saldo 1.200,00, a operação pede
+ * 5.000,00, faltam 3.800,00" manda transferir 3.800. A mesma disciplina da mensagem
+ * de `recusaDoArquivo` e de `exigirCapacidade`.
+ */
+export function exigirSaldoBancario(
+  saldo: Money,
+  valor: Money,
+  descricaoDaConta: string,
+  operacao: string
+): void {
+  if (valor.greaterThan(saldo)) {
+    const falta = toMoney(valor.minus(saldo));
+    throw new Error(
+      `SALDO INSUFICIENTE na conta ${descricaoDaConta}: saldo ${saldo.toFixed(2)}, ` +
+        `${operacao} pede ${valor.toFixed(2)}, faltam ${falta.toFixed(2)}. ` +
+        `Nada foi gravado.`
+    );
+  }
+}
+
+export const zRegistrarMovimentoBancario = z.object({
+  contaBancariaId: z.string().min(1),
+  tipo: z.enum([
+    "DEPOSITO",
+    "SAQUE",
+    "APLICACAO",
+    "RESGATE",
+    "RENDIMENTO",
+    "TARIFA",
+  ]),
+  valor: zMoney.refine((v) => v.greaterThan(0), {
+    message: "Valor do movimento bancário deve ser > 0",
+  }),
+  data: z.date(),
+  historico: z.string().trim().min(3),
+  /**
+   * A conta do PCASP da CONTRAPARTIDA — o outro lado do lançamento.
+   *
+   * ⚠️ ELA É INFORMADA, e não adivinhada. A contrapartida de uma tarifa é despesa
+   * financeira; a de um rendimento é receita financeira; a de uma aplicação é a conta
+   * de aplicações. Escolher por conta do operador acertaria às vezes e erraria em
+   * silêncio no resto — e é o operador que sabe qual conta é qual, a mesma doutrina
+   * do `contaContabilId` da conta bancária.
+   */
+  contaContrapartidaId: z.string().min(1),
+  criadoPor: z.string().min(1),
+});
+export type RegistrarMovimentoBancarioInput = z.input<
+  typeof zRegistrarMovimentoBancario
+>;
+
+export const zEstornarMovimentoBancario = z.object({
+  movimentoId: z.string().min(1),
+  motivo: z
+    .string()
+    .trim()
+    .min(10, "O estorno de movimento bancário exige motivo (mínimo 10 caracteres)."),
+  data: z.date(),
+  criadoPor: z.string().min(1),
+});
+export type EstornarMovimentoBancarioInput = z.input<
+  typeof zEstornarMovimentoBancario
+>;

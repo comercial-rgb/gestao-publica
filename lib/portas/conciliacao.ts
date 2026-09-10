@@ -2,6 +2,8 @@ import { cliente, PortaSemBancoError } from "./cliente";
 import { exigirSessao } from "./sessao";
 import { serializar, toMoney, type Money } from "../../packages/contracts/index.js";
 import { conciliacaoBancaria } from "../../modules/m09-tesouraria/conciliacao";
+import type { TipoInternoConciliacao } from "../../modules/m09-tesouraria/dominio";
+import type { TipoMovimentoBancario } from "../../prisma/generated/client/client";
 import { estadoDoModoBb, mascararAgencia, mascararConta } from "../../modules/m17-banco-bb/modos";
 import { mascararCpfCnpj } from "../format/mascaras";
 
@@ -83,7 +85,15 @@ export interface LadoExtrato {
 
 /** O outro lado: o fato do sistema (pagamento, arrecadação, movimento extraorçamentário). */
 export interface LadoInterno {
-  readonly tipo: "PAGAMENTO" | "ARRECADACAO" | "MOVIMENTO_EXTRA";
+  /**
+   * ⚠️ O TIPO VEM DO DOMÍNIO, e não é mais recopiado aqui.
+   *
+   * Esta união era escrita à mão, com três membros. Quando o M09 ganhou
+   * `MOVIMENTO_BANCARIO` e `TRANSFERENCIA`, a cópia ficou para trás — e o compilador
+   * pegou, mas só porque a origem é um tipo. Se fosse `string`, a tela teria passado a
+   * receber dois tipos que ela não sabe desenhar, em silêncio.
+   */
+  readonly tipo: TipoInternoConciliacao;
   /** "Pagamento nº 1", "Arrecadação nº 7"… — o documento como o usuário o chama. */
   readonly rotulo: string;
   readonly data: Date;
@@ -113,7 +123,7 @@ export interface PendenciaExtrato {
 
 /** No RAZÃO e não no banco (cheque não compensado, depósito não creditado). */
 export interface PendenciaInterna extends PendenciaExtrato {
-  readonly tipo: "PAGAMENTO" | "ARRECADACAO" | "MOVIMENTO_EXTRA";
+  readonly tipo: TipoInternoConciliacao;
 }
 
 /**
@@ -317,7 +327,7 @@ export async function lerPainelConciliacao(p: {
  */
 async function resolverInterno(
   prisma: ReturnType<typeof cliente>,
-  tipo: "PAGAMENTO" | "ARRECADACAO" | "MOVIMENTO_EXTRA",
+  tipo: TipoInternoConciliacao,
   id: string
 ): Promise<LadoInterno | null> {
   switch (tipo) {
@@ -369,5 +379,56 @@ async function resolverInterno(
         detalhe: `${mv.tipoConsignacao.descricao} · ${mv.credorConsignatario}`,
       };
     }
+    // ── M09, TR 5.62 ────────────────────────────────────────────────────────
+    case "MOVIMENTO_BANCARIO": {
+      const mb = await prisma.movimentoBancario.findUnique({
+        where: { id },
+        select: {
+          tipo: true, valor: true, data: true, historico: true,
+          contaBancaria: { select: { codigo: true, descricao: true } },
+        },
+      });
+      if (mb === null) return null;
+      return {
+        tipo,
+        rotulo: `${ROTULO_MOVIMENTO_BANCARIO[mb.tipo]} — conta ${mb.contaBancaria.codigo}`,
+        data: mb.data,
+        valor: mb.valor.toFixed(2),
+        detalhe: `${mb.contaBancaria.descricao} · ${mb.historico}`,
+      };
+    }
+    // ── M09, TR 5.61 ────────────────────────────────────────────────────────
+    case "TRANSFERENCIA": {
+      const tr = await prisma.transferenciaEntreContas.findUnique({
+        where: { id },
+        select: {
+          codigo: true, valor: true, data: true, historico: true,
+          contaOrigem: { select: { codigo: true } },
+          contaDestino: { select: { codigo: true } },
+        },
+      });
+      if (tr === null) return null;
+      return {
+        tipo,
+        rotulo: `Transferência nº ${tr.codigo}`,
+        data: tr.data,
+        valor: tr.valor.toFixed(2),
+        detalhe:
+          `De ${tr.contaOrigem.codigo} para ${tr.contaDestino.codigo} · ${tr.historico}`,
+      };
+    }
   }
 }
+
+/**
+ * O rótulo de cada tipo na TELA. Record exaustivo — um tipo novo não compila até
+ * alguém escrever como ele se chama para quem lê, em vez de vazar o nome do enum.
+ */
+const ROTULO_MOVIMENTO_BANCARIO: Record<TipoMovimentoBancario, string> = {
+  DEPOSITO: "Depósito",
+  SAQUE: "Saque",
+  APLICACAO: "Aplicação financeira",
+  RESGATE: "Resgate de aplicação",
+  RENDIMENTO: "Rendimento creditado",
+  TARIFA: "Tarifa bancária",
+};

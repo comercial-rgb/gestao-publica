@@ -322,12 +322,13 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   registrar e baixar taxa do processo) = 156.
     // + 5 (ENT03/M09 — o lote de pagamento e o borderô: criar lote, incluir item, fechar,
     //   gerar borderô e processar retorno bancário) = 161.
+    // + 2 (ENT03a/M09 — a movimentação bancária: registrar e estornar movimento) = 163.
     //
     // ⚠️ `enviarBordero` NÃO entra: ele nunca grava. Sem convênio bancário configurado ele
     // sempre recusa, e uma ação para ele seria uma permissão que o ente concederia a
     // alguém para fazer nada — e que ficaria distribuída no dia em que o canal existisse,
     // sem ninguém ter decidido isso. Ele está em FORA_DO_CENSO, com o motivo.
-    expect(nomes.length).toBe(161);
+    expect(nomes.length).toBe(163);
 
     // 97 serviços, 93 ações distintas. Os pares que compartilham ação (4: importarExtratoBb
     // REUSA IMPORTAR_EXTRATO). transferirEntreContas tem AÇÃO PRÓPRIA (não compartilha) → +1 ação.
@@ -369,7 +370,12 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     // setores todo processo daquele tipo vai passar; quem abre o processo apenas o usa.
     // + 5 (ENT03/M09 — o lote e o borderô; ações PRÓPRIAS, e não reuso de PAGAR: compor a
     //   remessa e autorizar o pagamento são atos de pessoas diferentes) = 154.
-    expect(TODAS_AS_ACOES.length).toBe(154);
+    // + 2 (ENT03a/M09 — a movimentação bancária. Ações PRÓPRIAS, e não reuso de
+    //   TRANSFERIR_ENTRE_CONTAS: mover dinheiro ENTRE contas do ente e TIRAR dinheiro da
+    //   conta são atos diferentes, e quem pode um não necessariamente pode o outro. E
+    //   ESTORNAR é separada de REGISTRAR pela mesma razão do ESTORNAR_VINCULO: desfazer
+    //   um fato de caixa é poder próprio) = 156.
+    expect(TODAS_AS_ACOES.length).toBe(156);
     expect(ACAO_DO_SERVICO.encerrarExercicio).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.encerrarExercicioComRestos).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.importarExtrato).toBe("IMPORTAR_EXTRATO");

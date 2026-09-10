@@ -3,6 +3,7 @@ import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import {
+  SENTIDO_MOVIMENTO_BANCARIO,
   exigirCapacidade,
   exigirNaturezasCompativeis,
   tetoConciliavelDoPagamento,
@@ -279,10 +280,123 @@ async function carregarMovimentoExtra(
   };
 }
 
+/**
+ * MOVIMENTAÇÃO BANCÁRIA (TR 5.62) — depósito, saque, aplicação, resgate, rendimento,
+ * tarifa. É o fato que a linha de tarifa do extrato precisava ter contra o que conciliar.
+ */
+async function carregarMovimentoBancario(
+  tx: Tx,
+  id: string
+): Promise<MovimentoInterno> {
+  const m = await tx.movimentoBancario.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      tipo: true,
+      valor: true,
+      historico: true,
+      contaBancariaId: true,
+      contaBancaria: { select: { fonteId: true } },
+      estornoDeId: true,
+      estornos: { select: { id: true } },
+    },
+  });
+  if (m === null) {
+    throw new Error(`Movimento bancário ${id} não encontrado.`);
+  }
+  // ESTORNO NÃO É CONCILIÁVEL — a mesma porta fechada do M07.
+  if (m.estornoDeId !== null) {
+    throw new Error(
+      `Movimento bancário ${id} É um estorno: estorno não é conciliável. Concilie o ` +
+        `movimento original, ou registre a diferença.`
+    );
+  }
+  if (m.estornos.length > 0) {
+    throw new Error(
+      `Movimento bancário ${id} foi ESTORNADO — não recebe vínculo de conciliação.`
+    );
+  }
+  return {
+    descricao: `o movimento bancário ${m.tipo} (${m.historico})`,
+    sentido: SENTIDO_MOVIMENTO_BANCARIO[m.tipo],
+    valorConciliavel: toMoney(m.valor.toFixed(2)),
+    contaBancariaId: m.contaBancariaId,
+    fonteId: m.contaBancaria.fonteId,
+  };
+}
+
+/**
+ * TRANSFERÊNCIA ENTRE CONTAS — TR 5.61.
+ *
+ * ⚠️ ELA APARECE NOS DOIS EXTRATOS, e o sentido depende de QUAL conta se está
+ * conciliando. Por isso o `contaBancariaId` devolvido aqui é `null`: quem confere se a
+ * linha do extrato pertence à conta certa é o guard do `vincular()`, e ele não pode ser
+ * enganado por uma das duas pontas. O sentido é resolvido pela conta da LINHA DO EXTRATO
+ * que está sendo vinculada — ver `resolverSentidoDaTransferencia`.
+ */
+async function carregarTransferencia(
+  tx: Tx,
+  id: string,
+  contaDaLinha: string
+): Promise<MovimentoInterno> {
+  const t = await tx.transferenciaEntreContas.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      codigo: true,
+      valor: true,
+      contaOrigemId: true,
+      contaDestinoId: true,
+      contaOrigem: { select: { codigo: true, fonteId: true, contaContabilId: true } },
+      contaDestino: { select: { codigo: true, contaContabilId: true } },
+    },
+  });
+  if (t === null) {
+    throw new Error(`Transferência entre contas ${id} não encontrada.`);
+  }
+
+  // ⚠️ A TRANSFERÊNCIA ENTRE CONTAS DE MESMA CONTA CONTÁBIL NÃO É CONCILIÁVEL, e a
+  // recusa é honesta: o razão registrou D e C na MESMA conta, então o saldo contábil
+  // desta conta bancária não se moveu. Conciliar a linha do extrato contra ela faria a
+  // identidade da conciliação deixar de fechar — o relatório inteiro pararia de sair.
+  // Ver o critério no cabeçalho de `caixa.ts`.
+  if (t.contaOrigem.contaContabilId === t.contaDestino.contaContabilId) {
+    throw new Error(
+      `A transferência ${t.codigo} liga duas contas bancárias mapeadas para a MESMA ` +
+        `conta contábil: no razão ela é um lançamento de saldo líquido zero, e o saldo ` +
+        `contábil desta conta não se moveu. Conciliar contra ela faria a amarração do ` +
+        `relatório deixar de fechar. A linha do extrato fica como diferença — e isso é ` +
+        `verdade, porque o razão realmente não distingue este movimento.`
+    );
+  }
+
+  const ehOrigem = t.contaOrigemId === contaDaLinha;
+  const ehDestino = t.contaDestinoId === contaDaLinha;
+  if (!ehOrigem && !ehDestino) {
+    throw new Error(
+      `A transferência ${t.codigo} não toca a conta bancária da linha do extrato ` +
+        `(${contaDaLinha}): ela vai de ${t.contaOrigem.codigo} para ` +
+        `${t.contaDestino.codigo}.`
+    );
+  }
+
+  return {
+    descricao:
+      `a transferência ${t.codigo} ` +
+      `(${t.contaOrigem.codigo} para ${t.contaDestino.codigo})`,
+    sentido: ehOrigem ? "SAIDA" : "ENTRADA",
+    valorConciliavel: toMoney(t.valor.toFixed(2)),
+    contaBancariaId: contaDaLinha,
+    fonteId: t.contaOrigem.fonteId,
+  };
+}
+
 async function carregarInterno(
   tx: Tx,
   tipo: TipoInternoConciliacao,
-  id: string
+  id: string,
+  /** A conta bancária da LINHA DO EXTRATO — só a transferência precisa dela. */
+  contaDaLinha: string
 ): Promise<MovimentoInterno> {
   switch (tipo) {
     case "PAGAMENTO":
@@ -291,6 +405,10 @@ async function carregarInterno(
       return carregarArrecadacao(tx, id);
     case "MOVIMENTO_EXTRA":
       return carregarMovimentoExtra(tx, id);
+    case "MOVIMENTO_BANCARIO":
+      return carregarMovimentoBancario(tx, id);
+    case "TRANSFERENCIA":
+      return carregarTransferencia(tx, id, contaDaLinha);
   }
 }
 
@@ -331,7 +449,12 @@ export async function vincular(
     }
 
     // (c) (d) (g) — o movimento interno existe, não é estorno, não está estornado.
-    const interno = await carregarInterno(tx, dados.tipoInterno, dados.internoId);
+    const interno = await carregarInterno(
+      tx,
+      dados.tipoInterno,
+      dados.internoId,
+      linha.contaBancariaId
+    );
 
     // (e) naturezas compatíveis.
     exigirNaturezasCompativeis(linha.natureza, interno.sentido, interno.descricao);

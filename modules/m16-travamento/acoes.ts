@@ -106,6 +106,8 @@ export type AcaoDoSistema =
   | "VINCULAR_CONCILIACAO"
   | "ESTORNAR_VINCULO"
   | "TRANSFERIR_ENTRE_CONTAS"
+  | "REGISTRAR_MOVIMENTO_BANCARIO"
+  | "ESTORNAR_MOVIMENTO_BANCARIO"
   // ── M18 — SAGRES Captura 2.0 ──
   | "SUBMETER_CAPTURA"
   // ── M20 — importadores de arquivo externo (folha/tributário) ──
@@ -328,6 +330,8 @@ export type NomeDeServico =
   | "vincular"
   | "estornarVinculo"
   | "transferirEntreContas"
+  | "registrarMovimentoBancario"
+  | "estornarMovimentoBancario"
   | "submeterCaptura"
   | "confirmarImportacaoFolha"
   | "confirmarImportacaoTributos"
@@ -524,6 +528,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   vincular: "VINCULAR_CONCILIACAO",
   estornarVinculo: "ESTORNAR_VINCULO",
   transferirEntreContas: "TRANSFERIR_ENTRE_CONTAS",
+  registrarMovimentoBancario: "REGISTRAR_MOVIMENTO_BANCARIO",
+  estornarMovimentoBancario: "ESTORNAR_MOVIMENTO_BANCARIO",
   submeterCaptura: "SUBMETER_CAPTURA",
   confirmarImportacaoFolha: "IMPORTAR_FOLHA",
   confirmarImportacaoTributos: "IMPORTAR_TRIBUTOS",
@@ -827,6 +833,12 @@ export const FORA_DO_CENSO: Record<string, string> = {
   extraorcamentarioPorFonte: "leitura",
   totaisDoConsignatario: "leitura",
   conciliacaoBancaria: "leitura",
+  // ⚠️ M09/ENT03a — as duas são LEITURA, e a distinção importa: quem GRAVA movimento
+  // bancário é `registrarMovimentoBancario`, que tem ação própria. Estas duas apenas
+  // somam os fatos que já existem. Dar ação a elas seria conceder permissão para
+  // consultar um saldo que o próprio extrato já mostra.
+  fatosDeCaixaDaConta: "leitura",
+  saldoDaContaBancaria: "leitura",
   situacaoDoLancamento: "leitura",
   vinculoLiquidoDoLancamento: "leitura",
   vinculoLiquidoDoMovimento: "leitura",

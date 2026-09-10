@@ -26,9 +26,9 @@ Mais `lib/portas/conciliacao.ts` e `packages/ofx` (parser de 333 linhas + 214 de
 **O que faltava de 2.2**, e é o que este lote acrescentou: **lote de pagamento**,
 **borderô** e **retorno bancário**.
 
-O que continua faltando: **movimentação bancária** (depósito, aplicação, resgate) com
-controle de saldo **por fonte** no momento da operação. `ContaBancaria` já tem `fonteId` e
-`contaContabilId`; o fato de movimentação não existe. Pendência `TESOURARIA-MOVIMENTACAO`.
+**O que o ENT03a acrescentou**: a **movimentação bancária** (TR 5.62) — depósito, saque,
+aplicação, resgate, rendimento e tarifa — com controle de saldo no momento da operação e
+lançamento simultâneo. A pendência `TESOURARIA-MOVIMENTACAO` está **fechada**. Ver a seção 7.
 
 ## 2. O lote de pagamento — ele AGRUPA, não recria
 
@@ -139,11 +139,85 @@ pago o que o banco não liquidou.
 | Pendência | O que falta |
 |---|---|
 | `BORDERO-CONVENIO-BANCARIO` | transmissão real ao banco. O caso de uso RECUSA, nomeando |
-| `TESOURARIA-MOVIMENTACAO` | depósito, aplicação e resgate com saldo por fonte no momento da operação |
 | `LOTE-UI` | telas do lote e do borderô. Os casos de uso existem e são testados; não há superfície |
 | `CONCILIACAO-COPIA-PENDENCIAS` | cópia de pendências não baixadas para o período seguinte (2.2) |
 
-## 7. Onde olhar
+## 7. A movimentação bancária (ENT03a) — TR 5.62
+
+### O que ela cura
+
+O sistema sabia registrar dinheiro saindo por pagamento (M05), entrando por arrecadação
+(M04), entrando e saindo por movimento extraorçamentário (M07) e **andando** entre contas
+próprias. Não sabia registrar o resto do que uma conta de ente público faz todo mês:
+depósito, saque, aplicação, resgate, rendimento creditado e tarifa debitada.
+
+Sem esses fatos, o saldo calculado pelo sistema difere do extrato por um valor que ninguém
+consegue nomear — e a conciliação devolve uma diferença sem linha que a explique.
+
+### ⚠️ O saldo é conferido DENTRO da transação, sob lock
+
+"Controle de saldo no momento da operação" é exigência técnica, não retórica. Conferir
+antes de abrir a transação deixa a janela clássica: dois saques de 600 numa conta com 1.000
+leem ambos "há saldo", gravam ambos, e a conta fecha o dia com −200.
+
+`travar(tx, "ContaBancaria", [id])` (posto **17** do `packages/locks`) vem **antes** da
+leitura do saldo. O lock é advisory e não `SELECT ... FOR UPDATE` porque **não há linha de
+saldo para travar** — o saldo é derivado dos fatos, e é isso que o mantém honesto.
+
+### ⚠️ Tarifa e rendimento NÃO passam pelo guard — e isso é decisão
+
+`E_ATO_DO_ENTE` separa o que o ente provoca do que o banco impõe. O banco debita a tarifa
+por conta própria: quando o extrato chega, o débito **já aconteceu**. Recusar o REGISTRO
+por falta de saldo não desfaz nada — só afasta o sistema do extrato, que é o oposto do que
+a conciliação precisa.
+
+### ⚠️ Um só caminho para os mesmos fatos
+
+`fatosDeCaixaDaConta` (`caixa.ts`) é a **fonte única**. A enumeração vivia dentro de
+`conciliacao.ts`; quando o saldo precisou da mesma resposta, ela foi **extraída**, não
+copiada. Uma segunda consulta teria produzido o pior sintoma possível: o guard aprovando um
+saque que a conciliação, minutos depois, mostraria como impossível.
+
+### ⚠️ E um defeito PRÉ-EXISTENTE que apareceu ao fazer isso
+
+A conciliação vale por uma identidade auto-executável:
+
+```
+saldoExtrato − saldoContabil == Σresidual(extrato) − Σresidual(interno)
+```
+
+Ela só fecha se o lado interno espelhar **o que o razão registrou na conta contábil desta
+conta bancária**. A transferência entre contas próprias não entrava no lado interno
+**nunca** — e o resultado dependia de um detalhe que ninguém tinha notado:
+
+| Contas | Razão na contábil da origem | Antes | Agora |
+|---|---|---|---|
+| mesma conta contábil | D e C na mesma conta → **líquido zero** | fechava | fecha (não entra) |
+| contas contábeis **diferentes** | C de X → **move** | **`CONCILIAÇÃO NÃO FECHA`** | fecha (entra) |
+
+Ou seja: a conciliação de qualquer conta que tivesse transferido para conta de outra
+natureza contábil **simplesmente não saía**. O critério correto não é "incluir" nem "não
+incluir": é **entrar quando o fato moveu a conta contábil desta conta**.
+
+⚠️ E os dois testes que provam isso foram conferidos por **mutação**: trocar a regra por
+"inclui sempre" derruba `t12` e `t14`; trocar por "nunca inclui" — o comportamento antigo —
+derruba `t13` e `t14`. Um teste que passasse nas três variantes não estaria provando a
+regra, e este era o risco real de um cenário com uma conta só.
+
+### As decisões
+
+| Decisão | Por quê |
+|---|---|
+| Tipo dá o sinal, valor sempre positivo | `SUM(valor)` cru somaria saques e depósitos juntos |
+| Estorno guarda o **mesmo tipo** do original | inverter faria "quanto se sacou no mês" contar um depósito que nunca houve |
+| Estorno não confere saldo | recusar a correção de um lançamento errado prenderia o sistema ao erro |
+| Estorno de estorno recusado | a cadeia somaria o mesmo dinheiro três vezes |
+| `@@unique` parcial em `estornoDeId` | dois estornos simultâneos leriam ambos "ainda não estornado" |
+| Contrapartida ≠ conta contábil da própria conta | seria lançamento de líquido zero: razão parado, extrato andando |
+| Contrapartida **informada**, não adivinhada | tarifa é despesa financeira, rendimento é receita, aplicação é outra conta — é o operador que sabe |
+| Ações próprias, não reuso de `TRANSFERIR_ENTRE_CONTAS` | mover entre contas do ente e tirar dinheiro da conta são poderes diferentes |
+
+## 8. Onde olhar
 
 | Arquivo | O que é |
 |---|---|
@@ -151,3 +225,6 @@ pago o que o banco não liquidou.
 | `servico-lote.ts` | os guards, dentro da transação — inclusive a ordem cronológica |
 | `m09-lote.test.ts` | 18 testes; cobre os testes 4, 5 e 6 do lote do ENT03 |
 | `prisma/schema/m09-lote-e-bordero.prisma` | os modelos, e o porquê de cada FK |
+| `caixa.ts` | **a fonte única** dos fatos que moveram a conta, e o critério de inclusão |
+| `movimentacao.ts` | o caso de uso da movimentação bancária: lock, guard, razão |
+| `m09-movimentacao.test.ts` | 17 testes, com fixture N=2 onde a regra só aparece em conjunto |

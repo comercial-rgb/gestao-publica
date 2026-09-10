@@ -28,6 +28,18 @@ enum TipoInternoConciliacao {
   ARRECADACAO
   /// M07 — MovimentoExtraorcamentario (retenção, caução, repasse).
   MOVIMENTO_EXTRA
+  /// M09 — MovimentoBancario (depósito, saque, aplicação, resgate, rendimento,
+  /// tarifa). Entrou com a movimentação bancária: a linha de tarifa do extrato
+  /// precisa ter contra o que ser conciliada.
+  MOVIMENTO_BANCARIO
+  /// M09 — TransferenciaEntreContas.
+  ///
+  /// ⚠️ ELE FALTAVA, E A FALTA ERA UM DEFEITO. A transferência move as duas
+  /// contas e portanto aparece nos DOIS extratos, mas não era um tipo
+  /// conciliável — então aquelas linhas do extrato NÃO PODIAM ser conciliadas
+  /// por caminho nenhum. Ficavam como diferença permanente, e a conciliação de
+  /// uma conta que já tivesse recebido uma transferência nunca fechava.
+  TRANSFERENCIA
 }
 
 enum TipoVinculo {
@@ -192,4 +204,79 @@ model TransferenciaEntreContas {
   @@index([contaOrigemId])
   @@index([contaDestinoId])
   @@index([data])
+}
+
+// ============================================================================
+// MOVIMENTAÇÃO BANCÁRIA — TR 5.62. O fato que faltava.
+//
+// ⚠️ O QUE ESTA TABELA CURA. Até aqui o sistema sabia registrar dinheiro que
+// SAI por pagamento (M05), que ENTRA por arrecadação (M04), que entra e sai
+// por movimento extraorçamentário (M07) e que ANDA entre contas próprias
+// (TransferenciaEntreContas). Não sabia registrar o resto do que uma conta
+// bancária de ente público faz todo mês: depósito em espécie, aplicação
+// financeira, resgate, rendimento creditado e tarifa debitada.
+//
+// Sem esses fatos, o saldo da conta calculado pelo sistema é MENOR ou MAIOR
+// que o do extrato por um valor que ninguém consegue nomear — e a conciliação
+// devolve uma diferença sem linha que a explique. Era a pendência
+// `TESOURARIA-MOVIMENTACAO`.
+//
+// ⚠️ APPEND-ONLY, e sem coluna de estado. Corrigir é ESTORNAR — um fato novo
+// que aponta para o original — como no resto do repositório.
+// ============================================================================
+
+/// O que a conta bancária fez. O SINAL vem daqui, nunca do valor gravado
+/// (ver SINAL_MOVIMENTO_BANCARIO em dominio.ts).
+enum TipoMovimentoBancario {
+  /// Dinheiro entra na conta em espécie ou por crédito avulso.
+  DEPOSITO
+  /// Dinheiro sai da conta em espécie.
+  SAQUE
+  /// Sai da conta movimento para a aplicação financeira.
+  APLICACAO
+  /// Volta da aplicação para a conta movimento.
+  RESGATE
+  /// Juros/correção creditados pelo banco. ENTRADA que o ente não provocou.
+  RENDIMENTO
+  /// Tarifa debitada pelo banco. SAÍDA que o ente não provocou.
+  TARIFA
+}
+
+model MovimentoBancario {
+  id String @id @default(cuid())
+
+  contaBancariaId String
+  contaBancaria   ContaBancaria @relation(fields: [contaBancariaId], references: [id])
+
+  tipo TipoMovimentoBancario
+  /// SEMPRE positivo — quem dá o sinal é o `tipo`.
+  valor Decimal @db.Decimal(18, 2)
+
+  /// A data do FATO, e é ela que corta o saldo e a conciliação — nunca
+  /// `criadoEm`. Mesma disciplina de `MovimentoDotacao.competencia`.
+  data DateTime
+
+  historico String
+
+  /// A contrapartida no razão, pelo funil, na MESMA transação. 1-1.
+  ///
+  /// ⚠️ SEM ESTE LANÇAMENTO O FATO NÃO EXISTE. Um movimento bancário que
+  /// mexesse no saldo da conta e não tocasse o razão recriaria exatamente o
+  /// furo de 46dfd5d, agora do lado do caixa: o extrato andaria e o razão não.
+  lancamentoId String             @unique
+  lancamento   LancamentoContabil @relation(fields: [lancamentoId], references: [id])
+
+  /// APPEND-ONLY: o estorno referencia o movimento que desfaz.
+  estornoDeId String?
+  estornoDe   MovimentoBancario?  @relation("EstornoMovimentoBancario", fields: [estornoDeId], references: [id])
+  estornos    MovimentoBancario[] @relation("EstornoMovimentoBancario")
+
+  /// Obrigatório no ESTORNO (Zod, min 10). Desfazer movimento exige explicação.
+  motivo String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([contaBancariaId, data])
+  @@index([estornoDeId])
 }

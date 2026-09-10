@@ -154,6 +154,8 @@ model LancamentoContabil {
   movimentosAlmoxarifado MovimentoAlmoxarifado[] @relation("LancamentoAlmoxarifado")
   movimentosProvisao     MovimentoProvisao[]     @relation("LancamentoProvisao")
   transferenciaEntreContas TransferenciaEntreContas?
+  /// M09 — a contrapartida do movimento bancário. Campo VIRTUAL, 1-1.
+  movimentoBancario        MovimentoBancario?
   // M04 (TR 5.87) — o reconhecimento e o cancelamento (VPD) da receita.
   reconhecimento         ReceitaReconhecida?
   cancelamentoReconhec   CancelamentoDeReconhecimento?

@@ -180,6 +180,20 @@ export const ORDEM_DOS_LOCKS = {
    * não existe quando se decide o número dele.
    */
   SequenciaDeLoteDePagamento: 16,
+  /**
+   * M09 — A CONTA BANCÁRIA (ENT03a, TR 5.62). Último posto, e ele não sobe a fila.
+   *
+   * ⚠️ A CORRIDA É SOMA-DECIDE-GRAVA, a mesma da ficha (6fa5d4e) e do contrato
+   * (e0e7e9f), num grão novo. O saldo da conta é DERIVADO dos fatos que a moveram —
+   * não há linha de saldo para travar com `SELECT ... FOR UPDATE`, e é isso que o
+   * mantém honesto. Sob READ COMMITTED, dois saques de 600 numa conta com 1.000 leem
+   * ambos "há saldo", os dois gravam, e a conta fecha o dia com −200.
+   *
+   * Por que o ÚLTIMO posto: quem mexe na conta bancária já autorizou tudo o que
+   * precisava antes. O pagamento trava a liquidação (6) e o resto a pagar (7) e só
+   * então toca o caixa; nenhum caminho trava a conta e depois decide sobre uma ficha.
+   */
+  ContaBancaria: 17,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

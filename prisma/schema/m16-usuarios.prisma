@@ -87,6 +87,14 @@ enum AcaoDoSistema {
   VINCULAR_CONCILIACAO
   ESTORNAR_VINCULO
   TRANSFERIR_ENTRE_CONTAS
+  /// M09 — TR 5.62: depósito, saque, aplicação, resgate, rendimento e tarifa.
+  /// Ação PRÓPRIA, e não reuso de TRANSFERIR_ENTRE_CONTAS: mover dinheiro entre
+  /// contas do ente e tirar dinheiro da conta são atos diferentes, e quem pode um
+  /// não necessariamente pode o outro.
+  REGISTRAR_MOVIMENTO_BANCARIO
+  /// Desfazer o movimento é ato SEPARADO de registrá-lo — a mesma disciplina do
+  /// ESTORNAR_VINCULO.
+  ESTORNAR_MOVIMENTO_BANCARIO
   SUBMETER_CAPTURA
 
   // M20 — importadores de arquivo externo (folha/tributário).

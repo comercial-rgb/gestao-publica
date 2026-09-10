@@ -12,11 +12,11 @@ import {
   comSinalDaNatureza,
   comSinalDoSentido,
   saldoDoExtrato,
-  tetoConciliavelDoPagamento,
   type NaturezaExtratoDb,
-  type SentidoInterno,
   type TipoInternoConciliacao,
 } from "./dominio.js";
+// ⚠️ A FONTE ÚNICA dos fatos que moveram a conta — ver o cabeçalho de `caixa.ts`.
+import { fatosDeCaixaDaConta, type ContaParaCaixa } from "./caixa.js";
 import {
   vinculoLiquidoDoLancamento,
   vinculoLiquidoDoMovimento,
@@ -112,6 +112,9 @@ export async function conciliacaoBancaria(
       id: true,
       codigo: true,
       fonteId: true,
+      // ⚠️ O ID, e não só o código: o critério de inclusão da transferência no lado
+      // interno compara a conta contábil da origem com a do destino (ver `caixa.ts`).
+      contaContabilId: true,
       contaContabil: { select: { codigo: true } },
     },
   });
@@ -172,7 +175,7 @@ export async function conciliacaoBancaria(
     }
   }
 
-  const internoSemVinculo = await diferencasInternas(prisma, conta, corte);
+  const internoSemVinculo = await residuaisInternos(prisma, conta, corte);
 
   // ── (d) A AMARRAÇÃO — auto-executável ────────────────────────────────────
   const diferenca = sub(saldoExtrato, saldoContabil);
@@ -210,141 +213,49 @@ export async function conciliacaoBancaria(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// O LADO INTERNO — os fatos do sistema que MOVERAM ESTA conta bancária.
+// O LADO INTERNO — agora uma CASCA sobre `caixa.ts`.
 //
-// São exatamente os CONCILIÁVEIS do bloco 2 (mesmos predicados): vivos, não
-// estornos, e — no caso do M07 — sem `pagamentoId` (a retenção na fonte não tem
-// linha bancária própria).
+// ⚠️ A ENUMERAÇÃO SAIU DAQUI, E A SAÍDA FOI O PONTO. Ela vivia neste arquivo e era a
+// única resposta para "que fatos moveram esta conta?". Quando a movimentação bancária
+// (TR 5.62) precisou da mesma resposta para perguntar "há saldo?", escrever uma segunda
+// consulta teria criado um segundo caminho para os mesmos fatos — e o sintoma seria o
+// pior possível: o guard de saldo aprovando um saque que a conciliação, minutos depois,
+// mostraria como impossível.
 //
-// E os anulados? Ficam de fora dos DOIS lados, e isso é consistente: no razão, a
-// anulação inverte as pernas do original, e o par soma ZERO no caixa. Excluir os
-// dois do relatório mantém a amarração exata.
+// O que sobrou aqui é o que é EXCLUSIVO da conciliação: descontar do fato o que já foi
+// vinculado, e ficar só com o residual. O saldo não desconta vínculo nenhum — vínculo
+// não move dinheiro, só explica.
 // ═══════════════════════════════════════════════════════════════════════════
 
-async function diferencasInternas(
+async function residuaisInternos(
   prisma: PrismaClient,
-  conta: { id: string; codigo: string; fonteId: string },
+  conta: ContaParaCaixa,
   corte: Date
 ): Promise<readonly LinhaDiferencaInterna[]> {
-  const linhas: LinhaDiferencaInterna[] = [];
+  const fatos = await fatosDeCaixaDaConta(prisma, conta, corte);
 
-  const acrescentar = async (
-    tipoInterno: TipoInternoConciliacao,
-    id: string,
-    data: Date,
-    descricao: string,
-    teto: Money,
-    sentido: SentidoInterno
-  ): Promise<void> => {
+  const linhas: LinhaDiferencaInterna[] = [];
+  for (const f of fatos) {
+    // O vínculo também respeita o corte: um vínculo feito depois não pode explicar
+    // retroativamente um fato que, naquela data, estava em aberto.
     const vinculado = await vinculoLiquidoDoMovimento(
       prisma,
-      tipoInterno,
-      id,
+      f.tipoInterno,
+      f.id,
       corte
     );
-    const residual = sub(teto, vinculado);
+    const residual = sub(f.teto, vinculado);
     if (residual.greaterThan(0)) {
       linhas.push({
-        tipoInterno,
-        id,
-        data,
-        descricao,
-        residual: serializar(comSinalDoSentido(sentido, residual)),
+        tipoInterno: f.tipoInterno,
+        id: f.id,
+        data: f.data,
+        descricao: f.descricao,
+        residual: serializar(comSinalDoSentido(f.sentido, residual)),
       });
     }
-  };
-
-  // ── PAGAMENTOS (SAÍDA) — pelo LÍQUIDO ────────────────────────────────────
-  const pagamentos = await prisma.pagamento.findMany({
-    where: {
-      contaBancaria: conta.codigo, // o M05 guarda o CÓDIGO da conta
-      data: { lte: corte },
-      estornoDeId: null, // não é uma anulação
-      estornos: { none: {} }, // e não foi anulado
-    },
-    select: {
-      id: true,
-      numero: true,
-      valor: true,
-      data: true,
-      retencoes: { select: { tipo: true, valor: true } },
-    },
-  });
-  for (const p of pagamentos) {
-    // O MESMO teto que o `vincular()` usa. Fonte única.
-    const teto = tetoConciliavelDoPagamento(
-      toMoney(p.valor.toFixed(2)),
-      p.retencoes.map((r) => ({ tipo: r.tipo, valor: toMoney(r.valor.toFixed(2)) }))
-    );
-    await acrescentar(
-      "PAGAMENTO",
-      p.id,
-      p.data,
-      `Pagamento ${p.numero}`,
-      teto,
-      "SAIDA"
-    );
   }
-
-  // ── ARRECADAÇÕES (ENTRADA) ───────────────────────────────────────────────
-  // ⚠️ `ReceitaArrecadada` NÃO TEM ContaBancaria no modelo (M04) — o vínculo
-  // possível é a FONTE (mesma limitação do bloco 2). Se duas contas bancárias
-  // dividirem a mesma fonte, a arrecadação apareceria nas duas: é a pendência
-  // registrada no MODULO.md, e o dia em que o M04 ganhar a conta ela some.
-  const arrecadacoes = await prisma.receitaArrecadada.findMany({
-    where: {
-      fonteId: conta.fonteId,
-      tipo: "ARRECADACAO",
-      dataArrecadacao: { lte: corte },
-      estornoDeId: null,
-      estornos: { none: {} },
-    },
-    select: { id: true, numeroReceita: true, valor: true, dataArrecadacao: true },
-  });
-  for (const a of arrecadacoes) {
-    await acrescentar(
-      "ARRECADACAO",
-      a.id,
-      a.dataArrecadacao,
-      `Arrecadação ${a.numeroReceita}`,
-      toMoney(a.valor.toFixed(2)),
-      "ENTRADA"
-    );
-  }
-
-  // ── MOVIMENTOS EXTRAORÇAMENTÁRIOS (ingresso = ENTRADA; dispêndio = SAÍDA) ─
-  const extras = await prisma.movimentoExtraorcamentario.findMany({
-    where: {
-      contaBancariaId: conta.id,
-      tipo: { in: ["INGRESSO", "DISPENDIO"] },
-      data: { lte: corte },
-      // A RETENÇÃO NA FONTE não tem linha bancária própria (nasceu dentro do
-      // pagamento, e o extrato já mostra o líquido dele).
-      pagamentoId: null,
-      estornoDeId: null,
-      estornos: { none: {} },
-    },
-    select: {
-      id: true,
-      tipo: true,
-      valor: true,
-      data: true,
-      credorConsignatario: true,
-      tipoConsignacao: { select: { codigo: true } },
-    },
-  });
-  for (const m of extras) {
-    await acrescentar(
-      "MOVIMENTO_EXTRA",
-      m.id,
-      m.data,
-      `${m.tipo} ${m.tipoConsignacao.codigo} — ${m.credorConsignatario}`,
-      toMoney(m.valor.toFixed(2)),
-      m.tipo === "INGRESSO" ? "ENTRADA" : "SAIDA"
-    );
-  }
-
-  return linhas.sort((a, b) => a.data.getTime() - b.data.getTime());
+  return linhas;
 }
 
 /** A natureza usada no relatório — reexportada para quem consome a estrutura. */

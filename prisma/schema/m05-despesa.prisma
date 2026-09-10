@@ -331,6 +331,8 @@ model ContaBancaria {
   lancamentosExtrato LancamentoExtrato[]
   transferenciasOrigem  TransferenciaEntreContas[] @relation("TransferenciaOrigem")
   transferenciasDestino TransferenciaEntreContas[] @relation("TransferenciaDestino")
+  /// M09 — depósito, saque, aplicação, resgate, rendimento e tarifa. Campo VIRTUAL.
+  movimentosBancarios   MovimentoBancario[]
 
   @@index([fonteId])
 
