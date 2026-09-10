@@ -88,6 +88,7 @@ model Pessoa {
   processosComoRequerente Processo[]                      @relation("RequerentePrincipal")
   requerenteAdicionalEm   RequerenteAdicionalDoProcesso[] @relation("RequerenteAdicional")
   anexos                  Anexo[]                         @relation("AnexoDePessoa")
+  camposAdicionais        ValorDeCampoAdicional[]         @relation("CampoAdicionalDePessoa")
 
   criadoEm  DateTime @default(now())
   criadoPor String

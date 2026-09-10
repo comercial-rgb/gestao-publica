@@ -18,6 +18,10 @@ import { semearUsuariosDeTeste } from "./usuarios-teste.js";
  */
 const TABELAS = [
   // ── ENT02 — M21 protocolo · M22 documentos · M23 comunicação · M24 notificações ──
+  // ── M25 campos adicionais ──
+  "ValorDeCampoAdicional",
+  "OpcaoDeCampoAdicional",
+  "DefinicaoDeCampoAdicional",
   // A ordem aqui é irrelevante (TRUNCATE CASCADE resolve o grafo), mas a lista tem de
   // ser COMPLETA: uma tabela esquecida faz o processo 1/2026 de um teste sobreviver ao
   // seguinte, e a numeração — que reinicia por exercício — passa a começar em 2.

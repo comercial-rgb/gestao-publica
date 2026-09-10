@@ -97,6 +97,13 @@ export const ESCRITA_MUTAVEL_DO_RUNTIME: Readonly<
   // é o adaptador do canal, e hoje não existe nenhum — um runtime capaz de escrever
   // `entregueEm` poderia declarar entregue um e-mail que ninguém enviou.
   Notificacao: { update: ["lidaEm"], delete: false },
+
+  // ⚠️ DESATIVAR UM CAMPO ADICIONAL, E SÓ ISSO. Os VALORES são append-only: corrigir um
+  // campo é gravar outro valor, e o anterior continua na história — que é o que o
+  // catálogo quer dizer com "versionado e auditado". O que muda é a DEFINIÇÃO deixar de
+  // aparecer no formulário. Apagá-la levaria os valores junto, e com eles o histórico
+  // de um dado que a entidade coletou de verdade.
+  DefinicaoDeCampoAdicional: { update: ["ativo"], delete: false },
 };
 
 /** Tabelas que o runtime NÃO lê nem escreve — controle do próprio Prisma. */

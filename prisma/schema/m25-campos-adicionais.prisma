@@ -1,0 +1,156 @@
+// ============================================================================
+// M25 — CAMPOS ADICIONAIS definidos pelo usuário.
+//
+// ═══ ⚠️ UM CAMPO DE OBSERVAÇÃO FIXO NÃO SATISFAZ ISTO ═══
+// O prompt do lote é explícito, e a razão é concreta: um `observacao TEXT` aceita
+// qualquer coisa, não filtra na listagem, não valida, não versiona e não diz o que
+// significa. O que o catálogo pede (5.29.7) são CAMPOS com TIPO, definidos pela
+// entidade, persistidos, filtráveis, exibidos no detalhe e auditados.
+//
+// ═══ ⚠️ O VALOR VAI EM COLUNA TIPADA, NÃO NUM TEXT ÚNICO ═══
+// A tentação é `valor String` e converter na leitura. O preço aparece no primeiro
+// filtro: "processos com valor acima de 1.000" viraria comparação de texto, e "900"
+// seria maior que "1.000". Data em texto ordena errado do mesmo jeito.
+//
+// Quatro colunas anuláveis, uma por família de tipo, e o caso de uso preenche a que
+// corresponde ao tipo declarado. O filtro cai sobre a coluna certa, no SQL.
+//
+// ═══ ⚠️ O VALOR É APPEND-ONLY — A VERSÃO VIGENTE É A MAIS RECENTE ═══
+// O catálogo pede que o campo seja "versionado e auditado". Com append-only, a
+// auditoria É a tabela: não há uma segunda estrutura de diffs para alguém esquecer de
+// escrever. É a mesma escolha da `VersaoDePessoa` (M19).
+//
+// E ela tem um efeito colateral que importa: o papel de runtime NÃO precisa de UPDATE
+// aqui. Corrigir um campo é gravar outro valor, e o anterior continua visível.
+// ============================================================================
+
+/// Os cadastros que aceitam campos adicionais HOJE.
+///
+/// ⚠️ ROL FECHADO, E NÃO POR TIMIDEZ. Cada valor aqui corresponde a uma FK real na
+/// `ValorDeCampoAdicional`. Um `registroTipo String` livre aceitaria qualquer coisa e o
+/// banco deixaria de garantir que o registro existe — um id digitado errado viraria um
+/// valor órfão que nenhuma tela mostra e nenhuma limpeza encontra.
+enum CadastroComCamposAdicionais {
+  PESSOA
+  PROCESSO
+  COMUNICADO
+}
+
+/// Os sete tipos da cláusula 5.29.7. Nem um a mais, nem um a menos.
+enum TipoDeCampoAdicional {
+  /// Monetário. Vai para `valorNumero` (Decimal 18,2) — nunca para texto, nunca float.
+  VALOR
+  /// Lista de opções FIXAS, cadastradas junto com a definição.
+  LISTA
+  ALFANUMERICO
+  DATA
+  /// Lista cujas opções vêm de um cadastro do sistema (setores, assuntos).
+  LISTA_DINAMICA
+  HORA
+  BOOLEANO
+}
+
+/// A DEFINIÇÃO — o que a entidade declarou que quer guardar.
+///
+/// ⚠️ ELA É POR UNIDADE GESTORA, e é isso que o teste 13 do lote cobra ("campo
+/// adicional de uma entidade não vaza para outra entidade do mesmo município"). O eixo
+/// é o mesmo do ENT01 — nenhuma coluna de tenant, nenhuma unicidade reescopada.
+model DefinicaoDeCampoAdicional {
+  id String @id @default(cuid())
+
+  unidadeOrcId String
+  unidadeOrc   UnidadeOrcamentaria @relation(fields: [unidadeOrcId], references: [id])
+
+  cadastro CadastroComCamposAdicionais
+
+  /// Identificador estável do campo dentro do cadastro daquela unidade.
+  codigo String @db.VarChar(30)
+  /// O que aparece na tela.
+  rotulo String
+
+  tipo TipoDeCampoAdicional
+
+  /// ⚠️ OBRIGATÓRIO É COBRADO NO CASO DE USO, não pelo banco: um campo declarado
+  /// obrigatório hoje não pode invalidar registros gravados ontem, e um NOT NULL
+  /// retroativo faria exatamente isso.
+  obrigatorio Boolean @default(false)
+
+  /// Ordem de exibição no formulário.
+  ordem Int
+
+  /// Só para `LISTA_DINAMICA`: de qual cadastro vêm as opções. Rol fechado validado no
+  /// domínio — uma string livre viraria nome de tabela vindo do usuário.
+  origemDinamica String? @db.VarChar(30)
+
+  ativo Boolean @default(true)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  opcoes OpcaoDeCampoAdicional[]
+  valores ValorDeCampoAdicional[]
+
+  @@unique([unidadeOrcId, cadastro, codigo])
+  @@index([unidadeOrcId, cadastro, ativo])
+}
+
+/// As opções de um campo do tipo `LISTA`.
+model OpcaoDeCampoAdicional {
+  id String @id @default(cuid())
+
+  definicaoId String
+  definicao   DefinicaoDeCampoAdicional @relation(fields: [definicaoId], references: [id])
+
+  valor String
+  ordem Int
+
+  @@unique([definicaoId, valor])
+  @@index([definicaoId])
+}
+
+/// O VALOR — append-only. A versão vigente é a de `criadoEm` mais recente.
+///
+/// ⚠️ EXATAMENTE UMA das FKs de registro é não-nula, e ela tem de corresponder ao
+/// `cadastro` da definição. O banco não expressa isso; o caso de uso cobra, e o teste
+/// varre a tabela.
+model ValorDeCampoAdicional {
+  id String @id @default(cuid())
+
+  definicaoId String
+  definicao   DefinicaoDeCampoAdicional @relation(fields: [definicaoId], references: [id])
+
+  pessoaId String?
+  pessoa   Pessoa? @relation("CampoAdicionalDePessoa", fields: [pessoaId], references: [id])
+
+  processoId String?
+  processo   Processo? @relation("CampoAdicionalDeProcesso", fields: [processoId], references: [id])
+
+  comunicadoId String?
+  comunicado   Comunicado? @relation("CampoAdicionalDeComunicado", fields: [comunicadoId], references: [id])
+
+  // ── O VALOR, na coluna do TIPO. Ver o cabeçalho: filtro de texto sobre número diz
+  // que "900" é maior que "1.000". ──
+  //
+  /// ALFANUMERICO, LISTA, LISTA_DINAMICA e HORA (como "HH:MM", que ordena certo em texto).
+  valorTexto    String?
+  /// VALOR (monetário). Decimal, nunca float — regra do núcleo.
+  valorNumero   Decimal?  @db.Decimal(18, 2)
+  valorData     DateTime?
+  valorBooleano Boolean?
+
+  /// ⚠️ NULO EM TODAS AS COLUNAS = O CAMPO FOI APAGADO. É um fato, e ele fica na
+  /// história: sem esta linha, "apagar" seria deletar a anterior e o histórico perderia
+  /// que o dado existiu.
+  apagado Boolean @default(false)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([definicaoId, criadoEm])
+  @@index([pessoaId])
+  @@index([processoId])
+  @@index([comunicadoId])
+  @@index([valorTexto])
+  @@index([valorNumero])
+  @@index([valorData])
+}

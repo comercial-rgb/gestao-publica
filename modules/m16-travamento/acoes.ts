@@ -213,7 +213,15 @@ export type AcaoDoSistema =
   | "ENCAMINHAR_COMUNICADO"
   | "MARCAR_LEITURA_DE_COMUNICADO"
   | "GERIR_MINHA_CAIXA"
-  | "ETIQUETAR_COMUNICADO";
+  | "ETIQUETAR_COMUNICADO"
+  // ── M25 — campos adicionais (ENT02) ──
+  //
+  // ⚠️ DEFINIR E PREENCHER SÃO PODERES DIFERENTES, e a separação é o ponto: quem
+  // preenche um formulário não é quem decide o que o formulário pergunta. Uma ação
+  // única deixaria qualquer atendente criar campo novo no cadastro do ente.
+  | "DEFINIR_CAMPO_ADICIONAL"
+  | "DESATIVAR_CAMPO_ADICIONAL"
+  | "PREENCHER_CAMPOS_ADICIONAIS";
 
 /**
  * O NOME DO SERVIÇO, exatamente como ele é exportado. É esta união que o grep-teste
@@ -358,7 +366,11 @@ export type NomeDeServico =
   | "desarquivarComunicado"
   | "favoritarComunicado"
   | "desfavoritarComunicado"
-  | "etiquetarComunicado";
+  | "etiquetarComunicado"
+  // ── M25 — campos adicionais (ENT02) ──
+  | "definirCampoAdicional"
+  | "desativarCampoAdicional"
+  | "preencherCamposAdicionais";
 
 /**
  * ⚠️ O RECORD EXAUSTIVO — serviço → ação.
@@ -539,6 +551,11 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   favoritarComunicado: "GERIR_MINHA_CAIXA",
   desfavoritarComunicado: "GERIR_MINHA_CAIXA",
   etiquetarComunicado: "ETIQUETAR_COMUNICADO",
+
+  // ── M25 — campos adicionais (ENT02) ──
+  definirCampoAdicional: "DEFINIR_CAMPO_ADICIONAL",
+  desativarCampoAdicional: "DESATIVAR_CAMPO_ADICIONAL",
+  preencherCamposAdicionais: "PREENCHER_CAMPOS_ADICIONAIS",
 };
 
 /** Todas as ações do rol — a lista que o seed de perfis e as mensagens de erro usam. */
@@ -868,6 +885,11 @@ export const FORA_DO_CENSO: Record<string, string> = {
   listarCaixaDeComunicados: "leitura (a caixa CALCULADA para quem pergunta — não há coluna de caixa)",
   leiturasDoComunicado: "leitura (quem leu, quando e por qual origem; devolve null a quem não participa)",
   integridadeDoEnvio: "leitura (confronta o hash carimbado no envio com o texto de hoje)",
+  //
+  // ── M25 — as CONSULTAS dos campos adicionais (ENT02). Leitura pura.
+  camposDoRegistro: "leitura (os campos de um registro com o valor VIGENTE — o mais recente)",
+  historicoDeCamposAdicionais: "leitura (o histórico É a tabela: os valores são append-only)",
+  registrosComCampo: "leitura (o filtro da listagem, sobre a coluna TIPADA e só o valor vigente)",
   //
   // ⚠️ O ARMAZENAMENTO É I/O DE DISCO, não ato do usuário. `gravarArquivo` e `lerArquivo`
   // são chamados DE DENTRO de `anexarArquivo` e `baixarAnexo`, que é onde a autorização

@@ -194,6 +194,15 @@ enum AcaoDoSistema {
   MARCAR_LEITURA_DE_COMUNICADO
   GERIR_MINHA_CAIXA
   ETIQUETAR_COMUNICADO
+
+  // ── M25 — campos adicionais (ENT02) ──
+  //
+  /// ⚠️ DEFINIR e PREENCHER sao poderes diferentes: quem preenche o formulário não é
+  /// quem decide o que ele pergunta. Uma ação única deixaria qualquer atendente criar
+  /// campo novo no cadastro do ente.
+  DEFINIR_CAMPO_ADICIONAL
+  DESATIVAR_CAMPO_ADICIONAL
+  PREENCHER_CAMPOS_ADICIONAIS
 }
 
 /// O USUÁRIO. TR 4.55.

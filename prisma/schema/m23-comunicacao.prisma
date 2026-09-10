@@ -140,6 +140,7 @@ model Comunicado {
   movimentos    MovimentoDoComunicado[]
   tags          TagAplicadaAoComunicado[]
   anexos        Anexo[]
+  camposAdicionais ValorDeCampoAdicional[] @relation("CampoAdicionalDeComunicado")
 
   @@unique([exercicioId, tipoId, setorRemetenteId, numero])
   @@index([processoId])

@@ -313,7 +313,8 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     // + 12 (ENT02/M23 — o comunicado interno: criar tipo, rascunhar, editar rascunho,
     //   enviar, responder, encaminhar, marcar leitura, arquivar, desarquivar,
     //   favoritar, desfavoritar e etiquetar) = 135.
-    expect(nomes.length).toBe(135);
+    // + 3 (ENT02/M25 — definir, desativar e preencher campos adicionais) = 138.
+    expect(nomes.length).toBe(138);
 
     // 97 serviços, 93 ações distintas. Os pares que compartilham ação (4: importarExtratoBb
     // REUSA IMPORTAR_EXTRATO). transferirEntreContas tem AÇÃO PRÓPRIA (não compartilha) → +1 ação.
@@ -341,7 +342,10 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     // compartilham `GERIR_MINHA_CAIXA` — arquivar, desarquivar, favoritar e
     // desfavoritar são o mesmo poder sobre a própria caixa, e nenhum deles muda o
     // documento para outra pessoa. Ninguém negaria um sem negar os outros três.
-    expect(TODAS_AS_ACOES.length).toBe(128);
+    // 138 serviços, 131 ações distintas. As 3 do M25 são próprias: definir o campo e
+    // preenchê-lo são poderes diferentes — quem preenche o formulário não é quem decide
+    // o que ele pergunta.
+    expect(TODAS_AS_ACOES.length).toBe(131);
     expect(ACAO_DO_SERVICO.encerrarExercicio).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.encerrarExercicioComRestos).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.importarExtrato).toBe("IMPORTAR_EXTRATO");

@@ -89,6 +89,9 @@ model UnidadeOrcamentaria {
   /// faz a permissão por UG do M16 valer também para a tramitação de processo, sem
   /// um segundo eixo de acesso.
   setores         Setor[]
+  /// back-relation M25 — as definições de campo adicional desta unidade gestora. O
+  /// eixo é o mesmo do ENT01: campo de uma entidade não vaza para outra.
+  camposAdicionais DefinicaoDeCampoAdicional[]
 
   @@index([orgaoId])
 }
