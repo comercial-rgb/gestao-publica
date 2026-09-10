@@ -1,3 +1,7 @@
+// ⚠️ O `.env` — para o smoke achar SEED_ADMIN_SENHA sem a senha passar pelo histórico do
+// shell. O smoke do ENT02 já fazia isso; este não fazia, e a única forma de rodá-lo era
+// digitar a senha como terceiro argumento, que fica gravado no `~/.zsh_history`.
+import "dotenv/config";
 import puppeteer, { type Browser, type Page } from "puppeteer";
 
 /**
@@ -36,14 +40,68 @@ const USUARIO = process.argv[3] ?? "admin@cg.pb.gov.br";
 const SENHA = process.argv[4] ?? process.env["SEED_ADMIN_SENHA"] ?? "";
 
 /**
- * ⚠️ DOCUMENTO SINTÉTICO, com DV válido, e ÚNICO POR EXECUÇÃO nos dígitos do meio não é
- * possível — o DV depende deles. Então o smoke LIMPA o próprio rastro no fim, e o
- * cadastro usa sempre o mesmo CNPJ de teste. Ele não pertence a empresa nenhuma.
+ * O DOCUMENTO É GERADO A CADA EXECUÇÃO — e a versão anterior deste arquivo errava aqui.
+ *
+ * ═══ ⚠️ O COMENTÁRIO QUE ESTAVA AQUI ERA FALSO, DE DUAS MANEIRAS ═══
+ * Ele dizia: "documento sintético único por execução não é possível — o DV depende dos
+ * dígitos do meio. Então o smoke LIMPA o próprio rastro no fim."
+ *
+ *   · A premissa é falsa. O DV não impede um documento por execução: ele se CALCULA a
+ *     partir dos dígitos sorteados, que é o que `cnpjDeTeste()` faz abaixo. O raciocínio
+ *     confundia "não posso trocar os dígitos mantendo um DV fixo" com "não posso gerar um
+ *     CNPJ válido aleatório".
+ *   · E a conclusão era falsa também: **o smoke nunca limpou rastro nenhum**. Não havia
+ *     teardown. O comentário descrevia um comportamento que não existia no arquivo.
+ *
+ * ═══ O QUE ISSO CUSTOU, MEDIDO ═══
+ * O cadastro `11222333000181` ficou no banco de desenvolvimento numa execução de
+ * 2026-09-09 22:04:47. Da segunda execução em diante o passo 2 (cadastrar) era RECUSADO
+ * pelo domínio — corretamente, porque o documento já existia —, e com ele caíam os passos
+ * que dependiam do cadastro novo. Resultado: **6 ok / 3 falhas**, nenhuma delas um defeito
+ * do sistema. O smoke acusava o próprio rastro.
+ *
+ * ═══ ⚠️ POR QUE GERAR, E NÃO LIMPAR NO FIM ═══
+ * Um teardown resolve o caso feliz e falha justamente quando importa: se o processo morre
+ * no meio (ou o `finally` não roda, ou a máquina cai), o rastro fica e a execução seguinte
+ * herda o problema — que é exatamente o que aconteceu. Um documento por execução torna o
+ * smoke idempotente **por construção**: não há estado a limpar, porque não há colisão
+ * possível.
+ *
+ * ⚠️ E O RASTRO QUE FICA É DELIBERADO, como no smoke do ENT02: um cadastro por execução no
+ * banco de dev, com o instante no nome. Apagá-lo exigiria dar ao smoke poder de DELETE
+ * sobre um cadastro append-only — e o M19 não tem delete, de propósito.
+ *
+ * ⚠️ O DOCUMENTO NÃO PERTENCE A EMPRESA NENHUMA. A raiz é sorteada em 8 dígitos e o DV é
+ * calculado; a chance de colidir com um CNPJ real existe no papel e não tem consequência,
+ * porque este é um banco de desenvolvimento local.
  */
-const CNPJ = "11.222.333/0001-81";
-const CNPJ_LIMPO = "11222333000181";
-const NOME = "Fornecedor de Smoke Ltda";
-const NOME_ALTERADO = "Fornecedor de Smoke ME";
+function cnpjDeTeste(): string {
+  const raiz = Array.from({ length: 8 }, () =>
+    String(Math.floor(Math.random() * 10))
+  ).join("");
+  const base = `${raiz}0001`;
+  const dv = (parcial: string): string => {
+    // Pesos do módulo 11 da Receita, da direita para a esquerda: 2..9 e recomeça em 2.
+    let soma = 0;
+    let peso = 2;
+    for (let i = parcial.length - 1; i >= 0; i--) {
+      soma += Number(parcial[i]) * peso;
+      peso = peso === 9 ? 2 : peso + 1;
+    }
+    const resto = soma % 11;
+    return String(resto < 2 ? 0 : 11 - resto);
+  };
+  const d1 = dv(base);
+  const d2 = dv(base + d1);
+  return `${base}${d1}${d2}`;
+}
+
+const CNPJ_LIMPO = cnpjDeTeste();
+const CNPJ = `${CNPJ_LIMPO.slice(0, 2)}.${CNPJ_LIMPO.slice(2, 5)}.${CNPJ_LIMPO.slice(5, 8)}/${CNPJ_LIMPO.slice(8, 12)}-${CNPJ_LIMPO.slice(12)}`;
+
+const SUF = String(Date.now()).slice(-6);
+const NOME = `Fornecedor de Smoke ${SUF} Ltda`;
+const NOME_ALTERADO = `Fornecedor de Smoke ${SUF} ME`;
 
 const falhas: string[] = [];
 const passos: string[] = [];
@@ -199,23 +257,37 @@ async function main(): Promise<void> {
     const listaRecarregada = await irPara(page, "/cadastros/pessoas");
     if (!listaRecarregada.includes(NOME)) {
       falhou("recarregar a lista", "o cadastro recém-criado não está lá");
-    } else if (!listaRecarregada.includes("11.222.333/0001-81")) {
+    } else if (!listaRecarregada.includes(CNPJ)) {
       falhou("recarregar a lista", "o documento não aparece formatado na lista");
     } else {
       ok("recarregar a lista e encontrar o cadastro persistido");
     }
 
     // ── 4. o detalhe ───────────────────────────────────────────────────────
-    const link = await page.$(`a[href^="/cadastros/pessoas/"]`);
-    if (link === null) {
-      falhou("abrir o detalhe", "não há link para o detalhe na lista");
+    //
+    // ⚠️ O LINK É O DA LINHA DESTE CADASTRO, não o primeiro da lista. `page.$` devolve o
+    // PRIMEIRO elemento do documento — num banco de desenvolvimento com outras pessoas
+    // cadastradas, ele abriria o detalhe de OUTRA. O smoke então conferiria nome, documento
+    // e histórico de um cadastro que ele não criou, e falharia dizendo "o detalhe não traz
+    // o nome" — sintoma verdadeiro, causa errada.
+    //
+    // É a mesma família do defeito que o smoke do ENT02 teve com os catorze formulários da
+    // tela do processo: seletor global onde a identidade da linha é o que importa.
+    const hrefDetalhe = await page.evaluate((doc) => {
+      for (const tr of Array.from(document.querySelectorAll("tbody tr"))) {
+        if (tr.textContent?.includes(doc) !== true) continue;
+        const a = tr.querySelector('a[href^="/cadastros/pessoas/"]');
+        if (a instanceof HTMLAnchorElement) return a.getAttribute("href");
+      }
+      return null;
+    }, CNPJ);
+
+    if (hrefDetalhe === null) {
+      falhou("abrir o detalhe", `não há link para o detalhe da linha de ${CNPJ}`);
     } else {
-      await Promise.all([
-        page.waitForNavigation({ waitUntil: "networkidle0" }),
-        link.click(),
-      ]);
+      await page.goto(`${BASE}${hrefDetalhe}`, { waitUntil: "networkidle0" });
       const detalhe = await texto(page);
-      const faltando = [NOME, "11.222.333/0001-81", "Ativa", "Histórico"].filter(
+      const faltando = [NOME, CNPJ, "Ativa", "Histórico"].filter(
         (t) => !detalhe.includes(t)
       );
       if (faltando.length > 0) {
@@ -302,7 +374,15 @@ async function main(): Promise<void> {
     `\n[smoke:pessoas] ${passos.length} passo(s) ok, ${falhas.length} falha(s).`
   );
   if (falhas.length > 0) {
-    console.error(`\nO cadastro de teste (${CNPJ_LIMPO}) pode ter ficado no banco de dev.`);
+    // ⚠️ O AVISO MUDOU DE SENTIDO. Antes ele alertava para um rastro que ENVENENAVA a
+    // execução seguinte; agora o documento é sorteado a cada corrida, então o cadastro que
+    // fica é apenas um registro a mais no banco de dev — como o processo e o comunicado que
+    // o smoke do ENT02 deixam. Ele continua sendo dito porque quem opera o ambiente deve
+    // saber o que apareceu lá, e por qual execução.
+    console.error(
+      `\nO cadastro desta execução (${CNPJ_LIMPO} — "${NOME}") ficou no banco de dev. ` +
+        `Ele NÃO atrapalha a próxima execução: o documento é sorteado a cada corrida.`
+    );
     process.exitCode = 1;
   }
 }
