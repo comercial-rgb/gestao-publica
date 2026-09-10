@@ -983,11 +983,12 @@ porque a irreversibilidade é real.
 
 Censo do M16: **156 → 161 serviços, 149 → 154 ações**. Migrations: **83**.
 
-## 13. ENT03a — o catálogo sob git, e a competência
+## 13. ENT03a — o catálogo sob git, a competência, a tesouraria e as assinaturas
 
-> ⚠️ **Este lote NÃO está concluído.** O ENT03a tem seis itens; o que segue cobre o
-> **item 1 inteiro** e a parte do item 5 que era exercitável agora. Os itens 2, 3, 4 e 6
-> estão em aberto. O que falta está dito, sem eufemismo, em **12.5**.
+> ⚠️ **Este lote NÃO está concluído.** O ENT03a tem seis itens: **três feitos** (1, 4 e 6),
+> **um parcial** (2) e **dois não iniciados** (3 e 5). A definição de concluído do ENT03
+> segue **não atendida** — nenhum percurso pela interface existe. O que falta está dito,
+> sem eufemismo, em **13.9**.
 
 ### 13.1 O instrumento de medição entrou sob controle de versão
 
@@ -1129,27 +1130,148 @@ fronteira não desapareça do corpus.
 quando o corpus muda; o `esperado.json` é versionado justamente para que a suíte não dependa
 de python nem de rede.
 
-### 13.6 ⚠️ O que NÃO foi feito neste lote
+### 13.6 A movimentação bancária (item 2) — e o defeito que ela revelou
 
-Preciso ser direto: **quatro dos seis itens do ENT03a estão em aberto.**
+`MovimentoBancario` (TR 5.62): depósito, saque, aplicação, resgate, rendimento e tarifa.
+Era a pendência `TESOURARIA-MOVIMENTACAO`, e ela está fechada.
+
+⚠️ **O saldo é conferido DENTRO da transação, sob lock** (posto 17 do `packages/locks`,
+tomado ANTES da leitura). "No momento da operação" é exigência técnica: conferir antes de
+abrir a transação deixa a janela clássica — dois saques de 600 numa conta de 1.000 leem
+ambos "há saldo" e gravam ambos. O lock é advisory e não `FOR UPDATE` porque **não há
+linha de saldo para travar**: o saldo é derivado dos fatos, e é isso que o mantém honesto.
+
+⚠️ **Tarifa e rendimento NÃO passam pelo guard, e é decisão.** O banco debita a tarifa por
+conta própria; quando o extrato chega, o débito já aconteceu. Recusar o registro por falta
+de saldo não desfaz nada — só afasta o sistema do extrato, que é o oposto do que a
+conciliação precisa.
+
+⚠️ **Um só caminho para os mesmos fatos.** A enumeração dos fatos que movem a conta vivia
+dentro de `conciliacao.ts`. Quando o saldo precisou da mesma resposta, ela foi
+**extraída** para `caixa.ts`, não copiada. Uma segunda consulta teria produzido o pior
+sintoma possível: o guard aprovando um saque que a conciliação, minutos depois, mostraria
+como impossível.
+
+#### ⚠️ E isso expôs um defeito que já existia
+
+A conciliação vale por uma identidade auto-executável — ela **lança** quando não fecha, em
+vez de devolver diferença sem nome. Ela só fecha se o lado interno espelhar o que o razão
+registrou **na conta contábil desta conta bancária**. A transferência entre contas
+próprias não entrava no lado interno **nunca**, e o resultado dependia de um detalhe que
+ninguém tinha notado:
+
+| Contas | Razão na contábil da origem | Antes | Agora |
+|---|---|---|---|
+| mesma conta contábil | D e C na mesma conta → **líquido zero** | fechava | fecha (não entra) |
+| contas contábeis **diferentes** | C de X → **move** | **`CONCILIAÇÃO NÃO FECHA`** | fecha (entra) |
+
+A conciliação de qualquer conta que tivesse transferido para conta de outra natureza
+contábil **simplesmente não saía**. O critério correto não é "incluir" nem "não incluir":
+é entrar **quando o fato moveu a conta contábil desta conta**.
+
+⚠️ **E a regra foi conferida por MUTAÇÃO**, porque um cenário com uma conta só não a
+distingue: trocar por "inclui sempre" derruba `t12` e `t14`; trocar por "nunca inclui" — o
+comportamento antigo — derruba `t13` e `t14`. Um teste que passasse nas três variantes não
+estaria provando nada.
+
+### 13.7 As assinaturas da despesa (item 4)
+
+Empenho, liquidação e ordem de pagamento entram na **mesma** `FilaDeAssinatura` do ENT02 —
+não numa paralela. O documento canônico vira `Anexo` de origem SISTEMA, e três coisas vêm
+de graça: é baixável pela rota do ENT02 com autorização por registro, é assinável pela
+fila, e a conferência de integridade do `lerArquivo` passa a valer para ele.
+
+⚠️ **O escopo não afrouxou.** O anexo do empenho é escopado pelo EMPENHO; o da liquidação,
+pela LIQUIDAÇÃO; o da ordem, pela liquidação dela — como o M16 já faz. Devolver "ENTE" (o
+que o borderô faz, e ali com razão) daria a quem anexa no nível do ente o poder de produzir
+o documento assinável de outra unidade. O `t7` prende isso.
+
+#### ⚠️ Um defeito meu, achado e corrigido dentro do lote
+
+`porNaFila` gravava o `Anexo` **antes** de abrir a fila, e as duas não cabem numa transação
+só. Uma tentativa com modo QUALIFICADA criava o anexo e morria na fila — e o guard de "um
+documento por fato" passava a recusar a tentativa **seguinte**, correta. **O empenho ficava
+impossível de assinar por qualquer modo, para sempre.**
+
+A correção confere as pré-condições antes de gravar, pela **mesma** função que a fila usa
+(`exigirFilaViavel`, extraída do M22) — não por uma cópia. Conferido por mutação: remover a
+conferência prévia derruba `t6`, `t8` e `t9`.
+
+⚠️ **E os dois `rejects.toThrow()` vazios viraram asserções sobre o motivo**, como o lote
+manda: "Ainda não é a sua vez: falta X (posição 1)" e "nenhum provedor de certificado
+configurado". Vazios, ficariam verdes se a recusa viesse de autorização ou de id errado —
+ambos compatíveis com a fila **não** estar sendo ordenada.
+
+### 13.8 O catálogo — 47 de 2037 (2,3%)
+
+Nove cláusulas novas, e **nenhuma** é `VALIDADO_LOCALMENTE`: não há tela. O motor existe e
+é testado; a superfície não.
+
+A marcação mais útil das nove é uma **ausência**. A **5.10.2.6** pede vincular *uma ou
+mais* fontes de recurso à conta bancária, e o modelo tem exatamente **uma** (`fonteId`,
+`NOT NULL`). O controle de saldo por fonte (5.10.2.19) funciona hoje porque, neste modelo,
+saldo por fonte **é** saldo por conta — com N fontes por conta ele precisaria de um eixo
+novo. Sem essa linha, a 5.10.2.19 pareceria fechar um requisito que só fecha por
+coincidência de modelagem.
+
+### 13.9 ⚠️ O que NÃO foi feito neste lote
 
 | Item | Estado |
 |---|---|
-| 1. Competência | **feito**, com ADR, migration, guard e testes |
-| 2. M09 completo (movimentação bancária, conciliação, cópia de pendências, seleção múltipla) | **não iniciado** |
-| 3. Telas do financeiro — os quatro percursos | **não iniciado** |
-| 4. Empenho, liquidação e OP na fila de assinaturas | **não iniciado** — só o borderô entra |
-| 5. `packages/integracao` | **não iniciado.** Só o exercício do OFX (12.5) foi feito; cofre de credenciais, validação contra esquema, detecção de duplicidade em retransmissão e custódia de certificado continuam ausentes |
-| 6. `docs/dependencias-externas.md` | **parcial** — só a linha do OFX foi atualizada, com a correção de que a conciliação do M09 não existe "só como schema" |
+| 1. Competência | **feito** — ADR, migration, guard, testes |
+| 2. M09 | **parcial.** Movimentação bancária **feita**; conciliação parcial e pendências automáticas **já existiam** (verificadas). **Faltam**: pendências manuais (5.10.2.45), cópia para o período seguinte (5.10.2.46) e seleção múltipla com soma (5.10.2.47) |
+| 3. Telas do financeiro | **não iniciado** |
+| 4. Fila de assinaturas | **feito** — empenho, liquidação e ordem |
+| 5. `packages/integracao` | **não iniciado.** Só o exercício do OFX (13.5). Cofre de credenciais, validação contra esquema, detecção de duplicidade em retransmissão e custódia de certificado continuam ausentes |
+| 6. `docs/dependencias-externas.md` | **feito no que era conhecível** — ver 13.10 |
 
-A definição de concluído do ENT03 **continua não atendida**: nenhum dos quatro percursos
-pela interface existe.
+⚠️ **A definição de concluído do ENT03 continua NÃO atendida**: nenhum dos quatro percursos
+pela interface existe. Três itens deste lote (2 parcial, 3 e 5) seguem abertos.
 
-### 13.7 Comandos e resultados
+#### ⚠️ E um achado que muda o desenho do que falta em 2
+
+As cláusulas **5.10.2.46** ("copiar automaticamente as pendências não baixadas para **a
+próxima conciliação**") e **5.10.2.49** ("visualizar e imprimir conciliações de períodos
+anteriores") pressupõem **conciliações discretas** — objetos com começo, fim e fechamento.
+
+O modelo atual é **cumulativo até um corte**: `conciliacaoBancaria(conta, corte)` soma tudo
+com `lte: corte`. Isso faz a *cópia* de pendências acontecer **por derivação** (uma linha
+não baixada continua aparecendo no corte seguinte, sem ninguém copiar nada) — mas deixa
+"a próxima conciliação" e "períodos anteriores" **sem âncora**: não há o que listar.
+
+Fechar essas duas exige um fato de **fechamento de conciliação**, e essa é uma decisão de
+modelo, não uma tela. Registrada aqui para ser decidida de propósito, e não descoberta no
+meio da implementação — que é exatamente a lição que o ADR da competência deixou.
+
+### 13.10 O inventário de dependências (item 6)
+
+Uma linha saiu de `CODIGO_LOCAL_SEM_VALIDACAO` para o estado novo
+`VALIDADO_CONTRA_TERCEIRO` — o OFX, conferido contra o `ofxtools`. Vale para **formato**, e
+não substitui aceite de órgão; por isso o estado é novo em vez de reaproveitar um existente.
+
+Duas correções de fato e duas linhas que faltavam:
+
+- a conciliação do M09 **não** existia "só como schema" — a afirmação estava errada;
+- **CNAB**: o layout é **por banco**, não único. Escrever contra a especificação genérica
+  da FEBRABAN produz arquivo que o banco recusa;
+- **certificado A3**: fisicamente diferente do A1 — a chave não sai do dispositivo, e a
+  assinatura acontece **na máquina do usuário**, não no servidor. Um adaptador que trate os
+  dois igual não funciona para nenhum dos dois. Isso muda a arquitetura do item 5, não a
+  configuração dele.
+
+⚠️ **O que continua vazio, e por quê.** As colunas *credencial*, *convênio* e *protocolo*
+seguem vazias em quase toda a tabela porque **nada foi solicitado a órgão nenhum** —
+solicitar é ato externo, fora da autorização deste trabalho. O que era conhecível sem
+contato externo foi preenchido. Preencher o resto exigiria inventar, e um inventário
+inventado é pior que um vazio: ele para de ser lido como pendência.
+
+### 13.11 Comandos e resultados
 
 | Comando | Resultado | Data |
 |---|---|---|
-| `npm run test:tudo` | **160 arquivos, 1623 testes, 0 falhas, 411,6 s** | 2026-09-10 |
+| `npm run test:tudo` (fim do lote) | **162 arquivos, 1649 testes, 0 falhas, 356,1 s** | 2026-09-10 |
+| `npm run test:tudo` (item 2) | 161 arquivos, 1640 testes, 0 falhas, 408,6 s | 2026-09-10 |
+| `npm run test:tudo` (item 1) | 160 arquivos, 1623 testes, 0 falhas, 411,6 s | 2026-09-10 |
 | `npm run typecheck` (backend, agora com `test/**/*.ts`) | 0 erros | 2026-09-10 |
 | `npm run typecheck:app` | 0 erros | 2026-09-10 |
 | `npm run typecheck:scripts` | 0 erros | 2026-09-10 |
@@ -1162,21 +1284,43 @@ pela interface existe.
 alarme: o `t5` do M16 (guard recusando ano não aberto — ver 13.3c) e o `t8` do M03 (custo do
 guard sem memória — ver 13.4). Ambas foram corrigidas no código, nenhuma no teste.
 
+⚠️ **E três regras foram conferidas por MUTAÇÃO**, porque passar não prova nada quando o
+cenário não distingue as alternativas:
+
+| Regra | Mutação | Quem acusou |
+|---|---|---|
+| inclusão da transferência no lado interno | "inclui sempre" | `t12`, `t14` |
+| idem | "nunca inclui" (comportamento antigo) | `t13`, `t14` |
+| pré-condição da fila antes de gravar | remover a conferência | `t6`, `t8`, `t9` |
+
+**Migrations do lote:** 4, todas aditivas, **zero `DROP`**. Total agora: 87.
+**Censo M16:** 161 → 163 serviços, 154 → 156 ações, mais 3 composáveis e 1 guard
+classificados.
+
 ## 14. O próximo passo
 
-⚠️ **O ENT03a está ABERTO e PARADO no gate.** Dos seis itens, um está feito e um está
-parcial — ver 13.6. O próximo passo não é outro lote: é a revisão deste e a decisão sobre
-o que segue.
+⚠️ **O ENT03a está ABERTO e PARADO no gate.** Dos seis itens: **três feitos** (1, 4, 6),
+**um parcial** (2) e **dois não iniciados** (3 e 5). Ver 13.9. O próximo passo não é outro
+lote: é a revisão deste e a decisão sobre o que segue.
 
 **A decisão que bloqueava a seção 2.5 do ENT03 está TOMADA e IMPLEMENTADA.** Cotas por
 período, contingenciamento e prévia de alteração orçamentária já têm sobre o que ser
 construídos: `saldosDaFichaPorCompetencia` responde "qual era o saldo em X", e o guard de
-competência recusa escrita em exercício encerrado. Nenhum dos três foi construído.
+competência recusa escrita em exercício encerrado. **Nenhum dos três foi construído.**
 
-**A ordem que resta, se o lote continuar:** item 2 (M09 — e verificar antes se conciliação,
-borderô e lote já cobrem parte do que o prompt pede, para não criar um segundo caminho para
-os mesmos fatos), item 4 (a fila de assinaturas, que é reuso do ENT02 e é barato), item 5
-(`packages/integracao`), item 3 (as telas, que fecham a definição de concluído) e item 6.
+**Uma decisão de modelo precisa ser tomada antes de continuar o item 2**, e ela é do mesmo
+tipo da competência — se for descoberta no meio da implementação, custa o dobro:
+
+> **A conciliação vira um objeto com fechamento, ou continua cumulativa até um corte?**
+> As cláusulas 5.10.2.46 ("a **próxima** conciliação") e 5.10.2.49 ("conciliações de
+> períodos **anteriores**") pressupõem conciliações discretas. O modelo atual é cumulativo,
+> e por isso a *cópia* de pendências já acontece por derivação — mas não há o que listar
+> como "período anterior". Ver 13.9.
+
+**A ordem que resta, se o lote continuar:** a decisão acima, depois o restante do item 2
+(pendências manuais e seleção múltipla com soma), o item 5 (`packages/integracao` — e o
+achado do A3 muda a arquitetura dele, não a configuração), e o item 3 (as telas, que são o
+que fecha a definição de concluído).
 
 **Duas pendências declaradas deste lote**, nenhuma delas resolvida:
 

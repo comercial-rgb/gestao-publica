@@ -68,6 +68,66 @@ const SMOKE = "scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10)";
  * arquivo e o teste — não o módulo em geral.
  */
 const MAPA: Readonly<Record<string, Marca>> = {
+  // ══ ENT03a ═══════════════════════════════════════════════════════════════
+  //
+  // ⚠️ NENHUMA DELAS É `VALIDADO_LOCALMENTE`, e a razão é uma só: **não há tela**.
+  // O motor existe e é testado; a superfície não. Marcar acima disso inverteria o
+  // propósito do catálogo — ele passaria a esconder o que falta.
+
+  // ── 5.10.2 MOVIMENTAÇÃO BANCÁRIA (M09, TR 5.62) ──────────────────────────
+  "5.10.2.6": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia:
+      "A cláusula pede vincular UMA OU MAIS fontes de recurso à conta bancária. O modelo tem `ContaBancaria.fonteId` — exatamente UMA fonte por conta, NOT NULL. Verificado em prisma/schema/m05-despesa.prisma. O controle de saldo por fonte (5.10.2.19) funciona porque, neste modelo, saldo por fonte É saldo por conta; com N fontes por conta ele precisaria de um eixo novo. Pendência CONTA-MULTIFONTE.",
+  },
+  "5.10.2.15": {
+    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    evidencia:
+      "`registrarMovimentoBancario` grava o `MovimentoBancario` e a perna no razão na MESMA transação — ou as duas, ou nenhuma; não há lapso possível. modules/m09-tesouraria/m09-movimentacao.test.ts t5 confere o par de partidas e t6 a inversão na saída. `MovimentoBancario.lancamentoId` é `@unique`. Sem exercício pela tela.",
+  },
+  "5.10.2.18": {
+    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    evidencia:
+      "`MovimentoBancario` com DEPOSITO, SAQUE, APLICACAO, RESGATE, RENDIMENTO e TARIFA; a transferência entre contas já existia (`transferirEntreContas`). A fonte deriva da conta (não se digita). modules/m09-tesouraria/m09-movimentacao.test.ts, 17 testes. Sem exercício pela tela.",
+  },
+  "5.10.2.19": {
+    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    evidencia:
+      "O saldo é conferido DENTRO da transação, depois do lock da conta (posto 17 do packages/locks) — não antes de abri-la, que deixaria a janela de dois saques concorrentes. m09-movimentacao.test.ts t3: o segundo saque é recusado nomeando quanto falta, e nada fica gravado. t4 registra a decisão de TARIFA e RENDIMENTO não passarem pelo guard (o banco já debitou; recusar o registro não desfaz). Sem exercício pela tela.",
+  },
+  "5.10.2.20": {
+    situacao: "PARCIAL",
+    evidencia:
+      "O ESTORNO existe e faz os lançamentos invertidos automaticamente, preservando o valor de cada perna, com motivo obrigatório e recusa de estorno duplo e de estorno-de-estorno (m09-movimentacao.test.ts t9, t10, t11). O que FALTA é a CONSULTA na rotina de inclusão: não há tela de movimentação bancária. Pendência LOTE-UI/MOVIMENTACAO-UI.",
+  },
+
+  // ── 5.10 ASSINATURA DIGITAL DA CADEIA DA DESPESA (M05 + M22) ─────────────
+  "5.10.1.46": {
+    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    evidencia:
+      "`enviarEmpenhoParaAssinatura` e `enviarLiquidacaoParaAssinatura` geram o documento canônico como `Anexo` de origem SISTEMA e o entregam à FilaDeAssinatura do ENT02 — a mesma fila do borderô, não uma paralela. A fila é ordenada e só conclui com todos. modules/m05-despesa/m05-assinatura-da-despesa.test.ts t1 e t4. Sem exercício pela tela.",
+  },
+  "5.10.2.65": {
+    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    evidencia:
+      "`enviarOrdemParaAssinatura` põe a ordem na FilaDeAssinatura; a tramitação entre assinantes é a ordem da fila, e `assinarNaFila` RECUSA quem tenta furá-la nomeando quem falta e em que posição. m05-assinatura-da-despesa.test.ts t1 e t4 (a negação afirma o motivo, não só o resultado). Sem exercício pela tela.",
+  },
+  "5.10.2.69": {
+    situacao: "PARCIAL",
+    evidencia:
+      "A ORDEM DE PAGAMENTO entra na fila e é assinável (m05-assinatura-da-despesa.test.ts t1). O COMPROVANTE DE PAGAMENTO não: não há documento canônico de `Pagamento`, e portanto não há o que assinar. Metade do enunciado está atendida e metade não. Pendência COMPROVANTE-PAGAMENTO-DOCUMENTO.",
+  },
+
+  // ── 5.10.2 CONCILIAÇÃO — o que já existia, verificado neste lote ─────────
+  "5.10.2.48": {
+    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    evidencia:
+      "A conciliação PARCIAL já existia e foi verificada: `vincular` aceita um `valor` menor que o do fato, `exigirCapacidade` recusa o que passa do teto, e a conciliação lista apenas o RESIDUAL (`teto − vinculado`), de modo que o já conciliado some da consulta. modules/m09-tesouraria/dominio.ts e conciliacao.ts; testes em m09-conciliacao. Sem exercício pela tela.",
+  },
+
+  // ── 5.9 SALDO DE DOTAÇÃO POR DATA (M05, ADR de 2026-09-10) ──────────────
+  // Marcado abaixo, junto das cláusulas de execução orçamentária.
+
   // ── 5.42 PROTOCOLO E PROCESSO DIGITAL (M21/M22) ──────────────────────────
   "5.42.1": {
     situacao: "VALIDADO_LOCALMENTE",
