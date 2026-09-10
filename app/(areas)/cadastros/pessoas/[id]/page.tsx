@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Badge } from "../../../../../components/ui/Badge";
 import { Card } from "../../../../../components/ui/Card";
+import { ListaDeAnexos } from "../../../../../components/ui/ListaDeAnexos";
 import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
 import {
@@ -9,6 +10,12 @@ import {
   PortaSemBancoError,
   type PapelDePessoa,
 } from "../../../../../lib/portas/pessoas";
+import {
+  EXTENSOES_ACEITAS,
+  lerAnexosDaPessoa,
+  TAMANHO_MAXIMO_BYTES,
+} from "../../../../../lib/portas/documentos";
+import { FormAnexo } from "../../../documentos/FormAnexo";
 import { FormAlterarPessoa } from "./FormAlterarPessoa";
 import { FormPapel } from "./FormPapel";
 
@@ -49,6 +56,7 @@ export default async function DetalheDaPessoaPage({
 
   let pessoa: Awaited<ReturnType<typeof buscarPessoaDaTela>>;
   let historico: Awaited<ReturnType<typeof historicoDaPessoa>>;
+  let anexos: Awaited<ReturnType<typeof lerAnexosDaPessoa>> = [];
   try {
     pessoa = await buscarPessoaDaTela(id);
     if (pessoa === null) {
@@ -63,6 +71,7 @@ export default async function DetalheDaPessoaPage({
       );
     }
     historico = await historicoDaPessoa(id);
+    anexos = await lerAnexosDaPessoa(id);
   } catch (erro) {
     return (
       <div className="space-y-4">
@@ -131,6 +140,32 @@ export default async function DetalheDaPessoaPage({
       />
 
       <FormPapel pessoaId={pessoa.id} papeisVigentes={[...pessoa.papeis]} />
+
+      <Card>
+        <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">
+          Documentos
+        </h2>
+        {/* ⚠️ O CADASTRO DE PESSOAS É COMPARTILHADO (M19), e a regra de acesso do anexo é
+            a MESMA da ficha: usuário ativo lê. Um anexo mais restrito que o cadastro a que
+            ele pertence seria uma promessa que a tela ao lado — nome, documento, histórico
+            — desmente na mesma página. */}
+        <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
+          Documentos deste cadastro. O download passa pelo servidor, que confere a
+          verificação (SHA-256) do arquivo antes de entregá-lo: um arquivo trocado no disco
+          depois de anexado é recusado em vez de ser servido como se fosse o original.
+        </p>
+        <ListaDeAnexos
+          anexos={anexos}
+          {...(anexos.length > 0 ? { lote: `/documentos/lote?pessoa=${pessoa.id}` } : {})}
+        />
+        <div className="mt-4 border-t border-[color:var(--color-border)] pt-4">
+          <FormAnexo
+            dono={{ pessoaId: pessoa.id }}
+            accept={EXTENSOES_ACEITAS}
+            tamanhoMaximoBytes={TAMANHO_MAXIMO_BYTES}
+          />
+        </div>
+      </Card>
 
       <Card>
         <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">

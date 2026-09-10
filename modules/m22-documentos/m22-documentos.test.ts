@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { execFileSync } from "node:child_process";
 import { readFileSync, mkdtempSync, writeFileSync } from "node:fs";
 import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -10,6 +11,12 @@ import { RAIZES_DE_ESCRITA, raizesExistentes } from "../../test/raizes-dominio.j
 import { limparBanco } from "../../test/limpar-banco.js";
 import { abrirProcesso, tramitar } from "../m21-protocolo/servico.js";
 import { anexarArquivo, baixarAnexo } from "./anexos.js";
+import {
+  listarAnexosDaPessoa,
+  listarAnexosDoProcesso,
+  loteDeAnexosDaPessoa,
+  loteDeAnexosDoProcesso,
+} from "./consultas.js";
 import {
   assinarDocumento,
   assinarNaFila,
@@ -454,5 +461,200 @@ describe("M22 — o invariante que o Prisma não expressa", () => {
         "Se o caso novo é legítimo, faça-o passar por `anexarArquivo` (ou acrescente o " +
         "arquivo a PERMITIDOS, aqui, com o motivo).\n\nFora do módulo:\n"
     ).toEqual([]);
+  });
+});
+
+/**
+ * A LISTA E O LOTE — as duas leituras que o ENT02 deixou sem consumidor, e o que elas
+ * arriscam quando erram.
+ *
+ * ═══ ⚠️ ENUMERAR JÁ É VAZAR ═══
+ * O t6 acima prova que o CONTEÚDO de um anexo sigiloso não sai. Estes provam a metade que
+ * costuma passar despercebida: os NOMES também não. "denuncia-contra-fulano.pdf" numa
+ * lista conta a história inteira sem que ninguém baixe coisa alguma — e uma lista que
+ * enumerasse sem perguntar seria pior que um download aberto, porque parece inofensiva.
+ */
+describe("M22 — a LISTA e o LOTE, sob a mesma regra do registro dono", () => {
+  it("t16: a lista de um processo sigiloso é VAZIA para quem não é envolvido", async () => {
+    const p = await abrirProcesso(prisma, {
+      ...ABERTURA, assuntoId: assuntoSigiloso, requerenteId,
+    });
+    await anexarArquivo(prisma, {
+      nomeOriginal: "denuncia-contra-o-secretario.pdf", mimeType: "application/pdf",
+      conteudo: PDF, processoId: p.processoId, criadoPor: PROTOCOLO,
+    });
+
+    const intruso = await prisma.usuario.create({
+      data: { identificador: "curioso@cg.pb.gov.br", nome: "Curioso", criadoPor: "SEED" },
+      select: { id: true },
+    });
+    const perfil = await prisma.perfil.create({
+      data: {
+        nome: "SO_LEITURA_UO", descricao: "Escopado na UG.", criadoPor: "SEED",
+        permissoes: { create: [{ acao: "ANEXAR_ARQUIVO", unidadeOrcId: "d-uo", criadoPor: "SEED" }] },
+      },
+      select: { id: true },
+    });
+    await prisma.vinculoUsuarioPerfil.create({
+      data: { usuarioId: intruso.id, perfilId: perfil.id, criadoPor: "SEED" },
+    });
+    await prisma.usuarioDoSetor.create({
+      data: { usuarioIdent: "curioso@cg.pb.gov.br", setorId: "d-s2", criadoPor: "SEED" },
+    });
+
+    const doIntruso = await listarAnexosDoProcesso(
+      prisma, p.processoId, "curioso@cg.pb.gov.br"
+    );
+    // ⚠️ VAZIA, não um erro. A mesma resposta de "processo não existe" — distingui-las
+    // faria da rota um oráculo de quais processos existem.
+    expect(doIntruso).toEqual([]);
+
+    // E o nome do arquivo, que é o que vazaria, não aparece em lugar nenhum da resposta.
+    expect(JSON.stringify(doIntruso)).not.toContain("denuncia");
+
+    const meu = await listarAnexosDoProcesso(prisma, p.processoId, PROTOCOLO);
+    expect(meu.map((a) => a.nome)).toEqual(["denuncia-contra-o-secretario.pdf"]);
+  });
+
+  it("t17: a lista traz os anexos DO PROCESSO e os DOS MOVIMENTOS, numa lista só", async () => {
+    const p = await abrirProcesso(prisma, { ...ABERTURA, assuntoId, requerenteId });
+    await anexarArquivo(prisma, {
+      nomeOriginal: "requerimento.pdf", mimeType: "application/pdf",
+      conteudo: PDF, processoId: p.processoId, criadoPor: PROTOCOLO,
+    });
+
+    const t = await tramitar(prisma, {
+      processoId: p.processoId, setorDestinoId: "d-s2", texto: "Ao jurídico.",
+      criadoPor: PROTOCOLO,
+    });
+    const movimentoId = (
+      await prisma.movimentoDoProcesso.findFirstOrThrow({
+        where: { processoId: p.processoId, tipo: "TRAMITE" },
+        select: { id: true },
+      })
+    ).id;
+    expect(t).toBeDefined();
+
+    await anexarArquivo(prisma, {
+      nomeOriginal: "despacho.pdf", mimeType: "application/pdf",
+      conteudo: new TextEncoder().encode("%PDF-1.7\ndespacho de encaminhamento\n"),
+      movimentoProcessoId: movimentoId, criadoPor: PROTOCOLO,
+    });
+
+    const lista = await listarAnexosDoProcesso(prisma, p.processoId, JURIDICO);
+    expect(lista.map((a) => a.nome)).toEqual(["requerimento.pdf", "despacho.pdf"]);
+    expect(lista.map((a) => a.origem)).toEqual(["PROCESSO", "MOVIMENTO"]);
+    // ⚠️ O ANEXO DO MOVIMENTO DIZ DE QUAL MOVIMENTO ELE VEIO. Sem isso, a tela mostraria
+    // dois arquivos soltos e quem lê o dossiê não saberia a que ato cada um pertence.
+    expect(lista[1]?.movimento).toBe("TRAMITE");
+  });
+
+  it("t18: o LOTE é um zip real, com os arquivos que ESTE usuário poderia baixar um a um", async () => {
+    const p = await abrirProcesso(prisma, { ...ABERTURA, assuntoId, requerenteId });
+    const conteudos = {
+      "requerimento.pdf": "%PDF-1.7\nrequerimento do interessado\n",
+      "comprovante.png": "PNG\ncomprovante\n",
+    };
+    for (const [nome, texto] of Object.entries(conteudos)) {
+      await anexarArquivo(prisma, {
+        nomeOriginal: nome,
+        mimeType: nome.endsWith(".pdf") ? "application/pdf" : "image/png",
+        conteudo: new TextEncoder().encode(texto),
+        processoId: p.processoId,
+        criadoPor: PROTOCOLO,
+      });
+    }
+
+    const lote = await loteDeAnexosDoProcesso(prisma, p.processoId, PROTOCOLO);
+    expect(lote).not.toBeNull();
+    expect(lote?.arquivos).toBe(2);
+    expect(lote?.nome).toMatch(/^processo-\d+-2026-anexos\.zip$/);
+
+    // ⚠️ O ORÁCULO EXTERNO. Extrair com o `unzip` do sistema — um programa que este
+    // repositório não escreveu — é o que separa "montei bytes" de "gerei um zip".
+    const dir = mkdtempSync(join(tmpdir(), "lote-teste-"));
+    const caminho = join(dir, "lote.zip");
+    writeFileSync(caminho, lote?.zip as Buffer);
+    execFileSync("unzip", ["-q", caminho, "-d", dir]);
+
+    const extraidos = readdirSync(dir).filter((f) => f !== "lote.zip").sort();
+    expect(extraidos).toEqual(["001-requerimento.pdf", "002-comprovante.png"]);
+    expect(readFileSync(join(dir, "001-requerimento.pdf"), "utf8")).toBe(
+      conteudos["requerimento.pdf"]
+    );
+  });
+
+  it("t19: o lote NÃO é atalho para fora da autorização — sigiloso dá null a quem não pode", async () => {
+    const p = await abrirProcesso(prisma, {
+      ...ABERTURA, assuntoId: assuntoSigiloso, requerenteId,
+    });
+    await anexarArquivo(prisma, {
+      nomeOriginal: "sigiloso.pdf", mimeType: "application/pdf",
+      conteudo: PDF, processoId: p.processoId, criadoPor: PROTOCOLO,
+    });
+
+    await prisma.usuario.create({
+      data: { identificador: "curioso@cg.pb.gov.br", nome: "Curioso", criadoPor: "SEED" },
+    });
+    await prisma.usuarioDoSetor.create({
+      data: { usuarioIdent: "curioso@cg.pb.gov.br", setorId: "d-s2", criadoPor: "SEED" },
+    });
+
+    // ⚠️ `null`, e é a MESMA resposta de "não há anexo nenhum". Um lote que estourasse
+    // "acesso negado" confirmaria que existem documentos ali — que é metade do que o
+    // sigilo esconde.
+    expect(
+      await loteDeAnexosDoProcesso(prisma, p.processoId, "curioso@cg.pb.gov.br")
+    ).toBeNull();
+    expect(await loteDeAnexosDoProcesso(prisma, p.processoId, PROTOCOLO)).not.toBeNull();
+  });
+
+  it("t20: o lote confere a INTEGRIDADE de cada arquivo — um trocado derruba o lote inteiro", async () => {
+    const p = await abrirProcesso(prisma, { ...ABERTURA, assuntoId, requerenteId });
+    const bom = await anexarArquivo(prisma, {
+      nomeOriginal: "bom.pdf", mimeType: "application/pdf",
+      conteudo: PDF, processoId: p.processoId, criadoPor: PROTOCOLO,
+    });
+    const ruim = await anexarArquivo(prisma, {
+      nomeOriginal: "adulterado.pdf", mimeType: "application/pdf",
+      conteudo: new TextEncoder().encode("%PDF-1.7\noriginal\n"),
+      processoId: p.processoId, criadoPor: PROTOCOLO,
+    });
+    expect(bom.anexoId).not.toBe(ruim.anexoId);
+
+    writeFileSync(caminhoDoAnexo(ruim.anexoId), "%PDF-1.7\nTROCADO NO DISCO\n");
+
+    // ⚠️ O LOTE NÃO PODE SER A PORTA DOS FUNDOS DA INTEGRIDADE. Se ele engolisse o arquivo
+    // adulterado (ou o pulasse em silêncio), o download individual recusaria e o lote
+    // entregaria — duas respostas para a mesma pergunta, e a mais permissiva ganharia.
+    await expect(
+      loteDeAnexosDoProcesso(prisma, p.processoId, PROTOCOLO)
+    ).rejects.toThrow(/INTEGRIDADE/);
+  });
+
+  it("t21: a lista de uma PESSOA exige usuário ativo — revogado não enumera nada", async () => {
+    await anexarArquivo(prisma, {
+      nomeOriginal: "procuracao.pdf", mimeType: "application/pdf",
+      conteudo: PDF, pessoaId: requerenteId, criadoPor: PROTOCOLO,
+    });
+
+    expect(
+      (await listarAnexosDaPessoa(prisma, requerenteId, PROTOCOLO)).map((a) => a.nome)
+    ).toEqual(["procuracao.pdf"]);
+
+    await prisma.usuario.create({
+      data: {
+        identificador: "revogado@cg.pb.gov.br", nome: "Revogado", ativo: false,
+        criadoPor: "SEED",
+      },
+    });
+    // ⚠️ QUEM FOI REVOGADO NÃO LÊ NADA — nem a lista. O cadastro de pessoas é do ente, e
+    // "do ente" quer dizer "de quem trabalha nele HOJE".
+    expect(
+      await listarAnexosDaPessoa(prisma, requerenteId, "revogado@cg.pb.gov.br")
+    ).toEqual([]);
+    expect(
+      await loteDeAnexosDaPessoa(prisma, requerenteId, "revogado@cg.pb.gov.br")
+    ).toBeNull();
   });
 });

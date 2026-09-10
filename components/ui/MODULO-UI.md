@@ -390,7 +390,7 @@ navegador precisa exercitar.
 
 | Pendência | O que falta |
 |---|---|
-| `PROTOCOLO-ANEXO-UI` | anexar arquivo pela tela do processo. O M22 existe, é autorizado por registro e tem teste; falta o `input[type=file]` e a rota de download autorizada. |
+| ~~`PROTOCOLO-ANEXO-UI`~~ | **RESOLVIDA no fecho do ENT02.** `app/(areas)/documentos/` traz o `input[type=file]` (ilha `FormAnexo`, reusada por processo e pessoa), a rota de download individual e a de lote, as duas autorizadas pelo registro dono. O smoke baixa por HTTP com sessão e recebe 404 sem ela. |
 | `PROTOCOLO-CADASTRO-UI` | telas de setor, lotação, assunto e roteiro. Os casos de uso existem (`m21-protocolo/cadastros.ts`) e são exercitados pelo seed do cenário; falta a superfície. |
 | `COMUNICADO-TIPO-UI` | tela para criar tipo de comunicado e definir o privilégio por setor. |
 | `CAMPO-ADICIONAL-DEFINICAO-UI` | tela para a entidade DEFINIR os campos adicionais. Preencher já é pela tela; definir ainda é pelo seed. |

@@ -1,4 +1,4 @@
-import { deflateRawSync } from "node:zlib";
+import { ziparEntradas } from "../../../packages/zip/index.js";
 import { toMoney, type Money } from "../../../packages/contracts/index.js";
 
 /**
@@ -499,96 +499,18 @@ export function serializarMscCsv(r: ResultadoMsc): string {
 
 // ─── ZIP ────────────────────────────────────────────────────────────────────
 //
-// ⚠️ SEM DEPENDÊNCIA NOVA — e é uma escolha, não preguiça.
+// ⚠️ O CONTÊINER MUDOU DE CASA, e o motivo está em `packages/zip`: o download em lote
+// de anexos (M22) precisou do MESMO formato binário, com N arquivos em vez de um. Havia
+// a opção de escrever um segundo formatador de zip ali — e ter dois, com a correção de
+// amanhã aplicada só a um deles.
 //
-// O SICONFI recebe a MSC ZIPADA. O `node:zlib` da biblioteca padrão faz DEFLATE, mas
-// NÃO faz ZIP: o .zip é um CONTÊINER (cabeçalhos locais + diretório central + CRC-32),
-// e o gzip não é isso. Trazer uma lib de zip para escrever UM arquivo dentro de UM
-// contêiner seria acrescentar uma dependência de terceiros — com o seu ciclo de CVE — a
-// um sistema que envia dado fiscal à União, para gerar 100 linhas de estrutura que a
-// especificação (APPNOTE.TXT da PKWARE) publica há trinta anos.
-//
-// O que está abaixo é o contêiner mínimo: UM arquivo, método DEFLATE (8), sem
-// criptografia, sem ZIP64 (a MSC de um município não passa de 4 GB). O `deflateRawSync`
-// — que é da stdlib — faz a compressão de verdade.
+// O que ficou aqui é a CHAMADA de uma entrada. O teste desta função compara BYTE A BYTE e
+// exige que duas execuções produzam o mesmo arquivo: é ele que prova que a mudança de casa
+// não mexeu no artefato que vai para a União.
 
-const TABELA_CRC32 = (() => {
-  const t = new Uint32Array(256);
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    t[n] = c >>> 0;
-  }
-  return t;
-})();
-
-function crc32(buf: Buffer): number {
-  let c = 0xffffffff;
-  for (const b of buf) c = TABELA_CRC32[(c ^ b) & 0xff]! ^ (c >>> 8);
-  return (c ^ 0xffffffff) >>> 0;
-}
-
-/** Um .zip com UM arquivo. Estrutura: header local + dados + diretório central + EOCD. */
+/** Um .zip com UM arquivo — o pacote da MSC. O contêiner mora em `packages/zip`. */
 export function zipar(nomeDoArquivo: string, conteudo: string): Buffer {
-  const nome = Buffer.from(nomeDoArquivo, "utf8");
-  const cru = Buffer.from(conteudo, "utf8");
-  const comprimido = deflateRawSync(cru);
-  const crc = crc32(cru);
-
-  // ⚠️ DATA FIXA (1980-01-01, o zero do formato MS-DOS). Um timestamp real faria o
-  // MESMO conteúdo gerar bytes DIFERENTES a cada execução — e um arquivo enviado à
-  // União tem de ser reproduzível: quem auditar amanhã precisa gerar o mesmo byte.
-  const hora = 0;
-  const data = 0x0021; // 1º de janeiro de 1980
-
-  const local = Buffer.alloc(30);
-  local.writeUInt32LE(0x04034b50, 0); // assinatura
-  local.writeUInt16LE(20, 4); // versão mínima
-  local.writeUInt16LE(0, 6); // flags
-  local.writeUInt16LE(8, 8); // método: deflate
-  local.writeUInt16LE(hora, 10);
-  local.writeUInt16LE(data, 12);
-  local.writeUInt32LE(crc, 14);
-  local.writeUInt32LE(comprimido.length, 18);
-  local.writeUInt32LE(cru.length, 22);
-  local.writeUInt16LE(nome.length, 26);
-  local.writeUInt16LE(0, 28); // extra
-
-  const central = Buffer.alloc(46);
-  central.writeUInt32LE(0x02014b50, 0);
-  central.writeUInt16LE(20, 4); // versão de quem escreveu
-  central.writeUInt16LE(20, 6); // versão mínima
-  central.writeUInt16LE(0, 8);
-  central.writeUInt16LE(8, 10);
-  central.writeUInt16LE(hora, 12);
-  central.writeUInt16LE(data, 14);
-  central.writeUInt32LE(crc, 16);
-  central.writeUInt32LE(comprimido.length, 20);
-  central.writeUInt32LE(cru.length, 24);
-  central.writeUInt16LE(nome.length, 28);
-  central.writeUInt16LE(0, 30); // extra
-  central.writeUInt16LE(0, 32); // comentário
-  central.writeUInt16LE(0, 34); // disco
-  central.writeUInt16LE(0, 36); // atributos internos
-  central.writeUInt32LE(0, 38); // atributos externos
-  central.writeUInt32LE(0, 42); // offset do header local
-
-  const inicioDoCentral = local.length + nome.length + comprimido.length;
-  const tamanhoDoCentral = central.length + nome.length;
-
-  const eocd = Buffer.alloc(22);
-  eocd.writeUInt32LE(0x06054b50, 0);
-  eocd.writeUInt16LE(0, 4); // disco
-  eocd.writeUInt16LE(0, 6); // disco do início do central
-  eocd.writeUInt16LE(1, 8); // entradas neste disco
-  eocd.writeUInt16LE(1, 10); // entradas no total
-  eocd.writeUInt32LE(tamanhoDoCentral, 12);
-  eocd.writeUInt32LE(inicioDoCentral, 16);
-  eocd.writeUInt16LE(0, 20); // comentário
-
-  return Buffer.concat([
-    local, nome, comprimido,
-    central, nome,
-    eocd,
+  return ziparEntradas([
+    { nome: nomeDoArquivo, conteudo: new Uint8Array(Buffer.from(conteudo, "utf8")) },
   ]);
 }

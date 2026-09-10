@@ -1,7 +1,14 @@
 import { notFound } from "next/navigation";
 import { Badge, type StatusBadge } from "../../../../../components/ui/Badge";
 import { Card } from "../../../../../components/ui/Card";
+import { ListaDeAnexos } from "../../../../../components/ui/ListaDeAnexos";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
+import { FormAnexo } from "../../../documentos/FormAnexo";
+import {
+  EXTENSOES_ACEITAS,
+  lerAnexosDoProcesso,
+  TAMANHO_MAXIMO_BYTES,
+} from "../../../../../lib/portas/documentos";
 import {
   lerCaixaDeProcessos,
   lerCamposDoProcesso,
@@ -62,10 +69,11 @@ export default async function ProcessoPage({
   const dossie = await lerDossieDoProcesso(id);
   if (dossie === null) notFound();
 
-  const [setores, campos, caixa] = await Promise.all([
+  const [setores, campos, caixa, anexos] = await Promise.all([
     lerSetoresAtivos(),
     lerCamposDoProcesso(id),
     lerCaixaDeProcessos(),
+    lerAnexosDoProcesso(id),
   ]);
 
   // ⚠️ AS PENDÊNCIAS ABERTAS — as que ninguém respondeu ainda. O seletor só oferece
@@ -233,6 +241,36 @@ export default async function ProcessoPage({
 
       <Card>
         <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">
+          Documentos
+        </h2>
+        {/* ⚠️ OS ANEXOS SEGUEM O PROCESSO NA TRAMITAÇÃO, e a lista prova isso: quem pode
+            ver o processo agora vê os documentos que o setor anterior juntou. A permissão
+            é sempre a DO PROCESSO, resolvida no servidor a cada leitura — não uma cópia
+            gravada no anexo no dia em que ele foi enviado. */}
+        <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
+          Os documentos acompanham o processo por toda a tramitação. Quem pode ver o
+          processo pode baixá-los; quem não pode recebe a mesma resposta de um processo
+          que não existe, mesmo com o endereço do arquivo em mãos.
+        </p>
+        <ListaDeAnexos
+          anexos={anexos}
+          {...(anexos.length > 0
+            ? { lote: `/documentos/lote?processo=${dossie.id}` }
+            : {})}
+        />
+        {!fechado ? (
+          <div className="mt-4 border-t border-[color:var(--color-border)] pt-4">
+            <FormAnexo
+              dono={{ processoId: dossie.id }}
+              accept={EXTENSOES_ACEITAS}
+              tamanhoMaximoBytes={TAMANHO_MAXIMO_BYTES}
+            />
+          </div>
+        ) : null}
+      </Card>
+
+      <Card>
+        <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">
           Linha do tempo
         </h2>
         <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
@@ -283,9 +321,25 @@ export default async function ProcessoPage({
               >
                 {m.texto}
               </p>
+              {/* ⚠️ OS ANEXOS DO MOVIMENTO SÃO LINKS, e antes eram só nomes. Listar o
+                  nome de um documento sem meio de abri-lo é a forma mais silenciosa de
+                  prometer sem entregar: a tela dizia que o arquivo estava lá, e não havia
+                  rota nenhuma que o servisse. */}
               {m.anexos.length > 0 ? (
                 <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">
-                  Anexos: {m.anexos.map((a) => a.nome).join(", ")}
+                  Anexos:{" "}
+                  {m.anexos.map((a, i) => (
+                    <span key={a.id}>
+                      {i > 0 ? ", " : ""}
+                      <a
+                        href={`/documentos/anexos/${a.id}`}
+                        className="text-[color:var(--color-acento)] underline underline-offset-2"
+                        data-anexo={a.id}
+                      >
+                        {a.nome}
+                      </a>
+                    </span>
+                  ))}
                 </p>
               ) : null}
             </li>

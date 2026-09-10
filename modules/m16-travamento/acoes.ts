@@ -960,6 +960,16 @@ export const FORA_DO_CENSO: Record<string, string> = {
   baixarAnexo: "leitura (entrega o arquivo depois de perguntar ao registro dono se este usuário pode)",
   podeVerComunicado: "leitura (a regra de visibilidade do comunicado — remetente, destinatários e global)",
   //
+  // ── M22 — a LISTA e o LOTE. Mesma doutrina do `baixarAnexo`, e vale repetir por quê: a
+  // lista também é vazamento quando erra. Os NOMES dos arquivos de um processo disciplinar
+  // contam a história inteira sem que ninguém precise baixar coisa alguma — por isso elas
+  // perguntam ao registro dono ANTES de enumerar, e devolvem lista vazia a quem não pode.
+  listarAnexosDoProcesso: "leitura (os anexos que ESTE usuário pode ver — pergunta ao processo dono)",
+  listarAnexosDaPessoa: "leitura (os anexos de um cadastro do ente; exige usuário ativo)",
+  listarAnexosDoComunicado: "leitura (os anexos de um comunicado — pergunta ao M23 quem participa)",
+  loteDeAnexosDoProcesso: "leitura (monta o zip com o que baixarAnexo entregaria um a um)",
+  loteDeAnexosDaPessoa: "leitura (idem, para o cadastro de pessoas)",
+  //
   // ── M23 — as CONSULTAS da comunicação interna (ENT02). Leitura pura.
   listarCaixaDeComunicados: "leitura (a caixa CALCULADA para quem pergunta — não há coluna de caixa)",
   leiturasDoComunicado: "leitura (quem leu, quando e por qual origem; devolve null a quem não participa)",

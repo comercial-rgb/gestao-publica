@@ -1,5 +1,8 @@
 // `.env` para o smoke achar SEED_ADMIN_SENHA sem a senha passar pelo histórico do shell.
 import "dotenv/config";
+import { writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import puppeteer, { type Browser, type Page } from "puppeteer";
 
 /**
@@ -50,6 +53,11 @@ const PEDIDO_READEQUACAO = `Falta o comprovante de residencia ${SUF}.`;
 const RESPOSTA_READEQUACAO = `Comprovante anexado ${SUF}.`;
 const ENCERRAMENTO = `Pedido deferido nos termos do parecer ${SUF}.`;
 const ARQUIVAMENTO = `Arquive-se ${SUF}.`;
+
+// ⚠️ O CONTEÚDO É COMPARADO BYTE A BYTE NO DOWNLOAD. Um arquivo aleatório provaria que
+// "algo desceu"; este prova que desceu O MESMO — que é o que a conferência de integridade
+// do M22 promete e o que um lote montado errado quebraria em silêncio.
+const CONTEUDO_ANEXO = `%PDF-1.7\nrequerimento do smoke ${SUF}\n`;
 
 const ASSUNTO_COMUNICADO = `Orientacao interna ${SUF}`;
 const CORPO_COMUNICADO = `Segue orientacao sobre o procedimento ${SUF}.`;
@@ -352,6 +360,130 @@ async function main(): Promise<void> {
       "o roteiro do assunto foi COPIADO para o processo",
       dossie.includes("Roteiro") && dossie.includes("Triagem"),
       "o processo não mostra o roteiro copiado do assunto"
+    );
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 1b. ANEXO — o arquivo entra pela tela, sai pela rota, e NÃO sai para quem
+    //     não tem permissão NO REGISTRO.
+    //
+    // ⚠️ ESTE BLOCO EXISTE PORQUE O ENT02 FECHOU SEM ELE. O M22 nasceu com caso de
+    // uso, autorização por registro, hash e quinze testes — e com zero consumidores:
+    // não havia porta, não havia rota, e o único input de arquivo do produto era o do
+    // importador de CSV. O produto tinha um cofre sem porta.
+    // ═══════════════════════════════════════════════════════════════════════
+    const arquivoTemp = join(tmpdir(), `anexo-smoke-${SUF}.pdf`);
+    writeFileSync(arquivoTemp, CONTEUDO_ANEXO);
+
+    const inputArquivo = await page.$('form[data-acao="anexar"] input[type="file"]');
+    if (inputArquivo === null) {
+      throw new Error("a tela do processo não tem input de arquivo (form data-acao=anexar)");
+    }
+    await inputArquivo.uploadFile(arquivoTemp);
+    await page.evaluate(() => {
+      const f = document.querySelector('form[data-acao="anexar"]');
+      const b = f?.querySelector('button[type="submit"]');
+      if (b instanceof HTMLButtonElement) b.click();
+    });
+    await new Promise((r) => setTimeout(r, 3000));
+
+    dossie = await irPara(page, processoHref);
+    conferir(
+      "anexar documento pela tela e reencontrá-lo na página RECARREGADA",
+      dossie.includes(`anexo-smoke-${SUF}.pdf`),
+      "o anexo não apareceu na lista de documentos depois da recarga"
+    );
+
+    // O href do anexo, lido da própria tela — é o endereço que um usuário teria.
+    const hrefAnexo = await page.evaluate(() => {
+      const a = document.querySelector("a[data-anexo]");
+      return a instanceof HTMLAnchorElement ? a.getAttribute("href") : null;
+    });
+    if (hrefAnexo === null) throw new Error("a lista de documentos não expôs link de download");
+
+    // ⚠️ O DOWNLOAD É MEDIDO POR HTTP, com o cookie da sessão — não por um clique cujo
+    // resultado o navegador esconde numa pasta. O que importa aqui são o status, o
+    // cabeçalho e os BYTES, e só o fetch os entrega.
+    const baixado = await page.evaluate(async (u) => {
+      const r = await fetch(u, { credentials: "include" });
+      return {
+        status: r.status,
+        disposicao: r.headers.get("content-disposition"),
+        nosniff: r.headers.get("x-content-type-options"),
+        hash: r.headers.get("x-anexo-sha256"),
+        corpo: await r.text(),
+      };
+    }, hrefAnexo);
+
+    conferir(
+      "o anexo é entregue pela rota, com o conteúdo íntegro",
+      baixado.status === 200 && baixado.corpo === CONTEUDO_ANEXO,
+      `status ${baixado.status}, ${baixado.corpo.length} byte(s) — esperava ${CONTEUDO_ANEXO.length}`
+    );
+    conferir(
+      "o download vem como anexo e sem adivinhação de tipo (attachment + nosniff)",
+      baixado.disposicao?.startsWith("attachment") === true &&
+        baixado.nosniff === "nosniff",
+      `content-disposition=${baixado.disposicao} x-content-type-options=${baixado.nosniff}`
+    );
+    conferir(
+      "o hash do arquivo viaja no cabeçalho — a integridade é conferível por fora",
+      typeof baixado.hash === "string" && baixado.hash.length === 64,
+      `x-anexo-sha256=${baixado.hash}`
+    );
+
+    // ⚠️ SEM SESSÃO, 404 — E ESTE É O TESTE 4 DO LOTE, o que estava PARCIAL no gate do
+    // ENT02 justamente por não existir rota nenhuma para medir.
+    //
+    // A ausência de cookie tem de dar a MESMA resposta de "não existe". Um 401 ou um
+    // redirecionamento para /login confirmaria que o anexo existe; pior, um 307 seguido
+    // pelo browser faria o usuário salvar o HTML da tela de login com o nome do PDF.
+    const semSessao = await browser.createBrowserContext();
+    const anonima = await semSessao.newPage();
+    // ⚠️ A PÁGINA PRECISA ESTAR NA ORIGEM ANTES DO `fetch`. A primeira versão chamava o
+    // fetch de `about:blank` — e ele falhava por CORS, não por autorização. O smoke
+    // acusou "a requisição anônima nem completou", que era verdade e não media nada: um
+    // servidor que ENTREGASSE o anexo a qualquer um teria dado exatamente a mesma falha.
+    // Um teste de segurança que passa a errar do lado seguro é o mais perigoso que existe.
+    await anonima.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
+    const respostaAnonima = await anonima.evaluate(async (u) => {
+      try {
+        const r = await fetch(u, { credentials: "omit", redirect: "manual" });
+        return { status: r.status, tipo: r.headers.get("content-type") ?? "", erro: "" };
+      } catch (e) {
+        return { status: -1, tipo: "", erro: e instanceof Error ? e.message : String(e) };
+      }
+    }, hrefAnexo);
+    await anonima.close();
+    await semSessao.close();
+
+    conferir(
+      "quem NÃO tem sessão recebe 404 no endereço do anexo — nem o arquivo, nem a confirmação de que ele existe",
+      respostaAnonima.status === 404 && !respostaAnonima.tipo.includes("pdf"),
+      respostaAnonima.status === -1
+        ? `a requisição anônima nem completou: ${respostaAnonima.erro}`
+        : `respondeu ${respostaAnonima.status} (${respostaAnonima.tipo})`
+    );
+
+    // O LOTE. Dois documentos no processo, um zip com os dois.
+    const loteResposta = await page.evaluate(async (u) => {
+      const r = await fetch(u, { credentials: "include" });
+      const buf = await r.arrayBuffer();
+      const b = new Uint8Array(buf);
+      return {
+        status: r.status,
+        quantos: r.headers.get("x-anexos-no-lote"),
+        tamanho: b.byteLength,
+        // "PK\x03\x04" — a assinatura do header local de um zip.
+        assinatura: b[0] === 0x50 && b[1] === 0x4b && b[2] === 0x03 && b[3] === 0x04,
+      };
+    }, `${BASE}/documentos/lote?processo=${processoHref.split("/").pop()}`);
+
+    conferir(
+      "o download EM LOTE entrega um zip de verdade, com a contagem no cabeçalho",
+      loteResposta.status === 200 &&
+        loteResposta.assinatura &&
+        Number(loteResposta.quantos) >= 1,
+      `status ${loteResposta.status}, ${loteResposta.tamanho} byte(s), x-anexos-no-lote=${loteResposta.quantos}, assinatura zip=${loteResposta.assinatura}`
     );
 
     // ═══════════════════════════════════════════════════════════════════════

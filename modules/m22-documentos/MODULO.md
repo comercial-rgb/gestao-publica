@@ -116,10 +116,41 @@ abrir.
 |---|---|---|
 | `ASSINATURA-ICP-HSM` | assinatura qualificada e custódia A1 | Sem provedor. O modo existe no enum como destino declarado; o caso de uso recusa produzi-lo. |
 | `ANEXO-DIGITALIZACAO-CAMERA` | origem por scanner e por câmera | O enum `OrigemDoAnexo` já distingue os quatro casos e o servidor os aceita; falta a captura na tela, que depende do aplicativo (5.40). |
-| `ANEXO-DOWNLOAD-EM-LOTE` | baixar todos os anexos de um processo num arquivo só (5.42.32/33) | Empacotamento; os anexos individuais existem e são autorizados um a um. |
+| ~~`ANEXO-DOWNLOAD-EM-LOTE`~~ | **RESOLVIDA no fecho do ENT02.** `consultas.ts` monta o zip com os arquivos que `baixarAnexo` entregaria um a um — a mesma pergunta ao mesmo registro dono, nunca uma consulta direta à tabela. O contêiner é `packages/zip`, sem dependência de terceiros. |
 | `ANEXO-ARMAZENAMENTO-REMOTO` | armazenamento fora do disco local | Hoje é sistema de arquivos local, atrás de `ANEXOS_DIR`. A porta já está isolada em `armazenamento.ts` — trocá-la é substituir quatro funções. |
 
 ---
+
+## 5b. A superfície, e por que ela chegou depois
+
+O M22 fechou o ENT02 com caso de uso, autorização por registro, hash, conferência de
+integridade e quinze testes — e com **zero consumidores**. `anexarArquivo` e `baixarAnexo`
+eram chamados só pelo próprio arquivo de teste: não havia porta, não havia rota, e o único
+`input[type=file]` do produto era o do importador de CSV.
+
+Na prática o produto tinha **um cofre sem porta**. Nada entrava pela interface, e o que
+entrasse por um script não sairia. "Documentos preservados na tramitação, com download
+individual e em lote" era uma promessa que nenhuma tela cumpria — e a tela do processo
+chegava a LISTAR o nome dos anexos de cada movimento, sem link nenhum, que é a forma mais
+silenciosa de prometer sem entregar.
+
+Três decisões da superfície valem registro:
+
+**A saída é uma rota HTTP, não uma Server Action.** Server Action devolve JSON serializado
+pelo protocolo do React; um PDF de 20 MB atravessaria como array de bytes e o browser não
+teria como salvá-lo. O download é `Content-Type` + `Content-Disposition`, e o navegador faz
+o resto.
+
+**A porta de download usa `sessaoAtual`, não `exigirSessao`.** `exigirSessao` REDIRECIONA
+para `/login` — o certo numa página e um desastre silencioso numa rota de arquivo: o browser
+seguiria o 307, receberia o HTML do login e salvaria isso com o nome do PDF. Sem sessão a
+porta devolve `null` e a rota responde **404** — a mesma resposta de "não existe", porque um
+401 confirmaria a existência do anexo a quem varre identificadores.
+
+**`attachment` + `nosniff`, e não é estética.** `inline` faria o browser RENDERIZAR o
+arquivo na origem da aplicação: um "anexo" HTML ou SVG enviado por um requerente externo
+viraria script rodando com o cookie de sessão de quem o abriu. O rol de MIMEs não aceita
+esses tipos hoje — mas a defesa não pode depender de o rol nunca mudar.
 
 ## 6. Onde olhar
 
@@ -129,4 +160,8 @@ abrir.
 | `armazenamento.ts` | disco: caminho, validação, hash, integridade. Sem Prisma |
 | `anexos.ts` | anexar e baixar, com a autorização vinda do registro dono |
 | `assinatura.ts` | os três modos, o hash do conteúdo e a fila ordenada |
-| `m22-documentos.test.ts` | 15 testes contra banco e disco de verdade |
+| `consultas.ts` | a lista e o lote — as leituras, sob a regra do registro dono |
+| `lib/portas/documentos.ts` | a porta: entrada pelo formulário, saída pela rota |
+| `app/(areas)/documentos/` | o `input[type=file]`, a rota de download e a de lote |
+| `packages/zip/` | o contêiner ZIP de N arquivos, compartilhado com o M14 |
+| `m22-documentos.test.ts` | 21 testes contra banco e disco de verdade |

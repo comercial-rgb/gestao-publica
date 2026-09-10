@@ -60,12 +60,15 @@ const ITENS: readonly ItemDoLote[] = [
   {
     n: 4,
     enunciado: "Anexo de um processo não é acessível por URL a quem não tem permissão no registro.",
-    situacao: "PARCIAL",
+    situacao: "COBERTO",
     evidencia:
-      "A REGRA está provada (m22-documentos.test.ts t6: quem não é envolvido recebe null), e " +
-      "o arquivo mora fora de qualquer pasta servida estaticamente. O que falta é a URL: não " +
-      "há rota HTTP de download — pendência PROTOCOLO-ANEXO-UI. Enquanto ela não existir, o " +
-      "enunciado não é exercitável como escrito.",
+      "A URL existe agora: `app/(areas)/documentos/anexos/[id]/route.ts`. Duas metades, e as " +
+      "duas medidas. NO DOMÍNIO: quem está logado e não tem permissão NO REGISTRO recebe null " +
+      "no download (m22 t6) e lista VAZIA na enumeração (t16) — os nomes dos arquivos também " +
+      "não vazam, e o lote devolve null pelo mesmo caminho (t19). POR HTTP: o smoke do ENT02 " +
+      "baixa o anexo com o cookie da sessão, confere os bytes, o `attachment`, o `nosniff` e o " +
+      "hash no cabeçalho, e então repete a MESMA URL sem sessão e recebe 404 — não 401, não " +
+      "redirecionamento para o login: a mesma resposta de um anexo que não existe.",
   },
   {
     n: 5,
@@ -245,11 +248,17 @@ describe("ENT02 — o inventário dos 22 testes mínimos do lote", () => {
       cobertos: cobertos.length,
       parciais: parciais.length,
       naoCobertos: naoCobertos.length,
-    }).toEqual({ cobertos: 20, parciais: 1, naoCobertos: 1 });
+    }).toEqual({ cobertos: 21, parciais: 0, naoCobertos: 1 });
 
     // ⚠️ O ÚNICO NÃO COBERTO É O EIXO MUNICÍPIO — o mesmo do ENT01, e por decisão de
     // ADR. Se um dia outro item cair para NÃO COBERTO, este teste falha nomeando.
     expect(naoCobertos.map((i) => i.n)).toEqual([1]);
-    expect(parciais.map((i) => i.n)).toEqual([4]);
+
+    // ⚠️ O 4 SAIU DE PARCIAL, e o número mudou por uma razão que vale escrever: o
+    // enunciado fala em "acessível por URL", e até o fechamento do ENT02 não HAVIA URL
+    // nenhuma — nem para quem tem permissão. O item ficou parcial não porque a regra
+    // falhasse, mas porque não existia superfície onde exercitá-la. A rota de download
+    // (com autorização por registro) é o que o tornou exercitável.
+    expect(parciais.map((i) => i.n)).toEqual([]);
   });
 });
