@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { readdirSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
+import { DIRETORIOS_INERTES } from "../test/raizes-dominio.js";
 
 /**
  * ═══ QUE ARQUIVOS `.ts`/`.tsx` NÃO ESTÃO EM NENHUM DOS TRÊS TSCONFIG ═══
@@ -44,6 +45,22 @@ const IGNORADOS = new Set([
   // O client do Prisma é GERADO — recompilá-lo não diz nada sobre o nosso código, e ele
   // é grande o bastante para dominar qualquer medição.
   "generated",
+  // ⚠️ OS DIRETÓRIOS INERTES (`doador/`) — A ÚNICA EXCLUSÃO QUE ESTE VARREDOR PRECISOU
+  // GANHAR PELA ABSORÇÃO, e foi MEDIDA antes de escrita.
+  //
+  // Importar `doador/saas-municipal` deixou este varredor vermelho com **199 descobertos,
+  // os 199 dentro de `doador/` e ZERO fora** — e ele estava certo: nenhum dos três
+  // tsconfig cobre aquele código, porque nenhum deve cobrir. Os três `include` são listas
+  // brancas e já não o alcançavam; o que quebrou foi só a afirmação deste arquivo, que
+  // varre o repositório INTEIRO por construção (é justamente o que o torna útil: um
+  // varredor que só olhasse as raízes conhecidas nunca teria achado `middleware.ts`).
+  //
+  // ⚠️ A EXCLUSÃO NÃO ENFRAQUECE A REDE. O que este varredor promete é "todo arquivo NOSSO
+  // está em algum config". `doador/` não é nosso: é repositório absorvido, inerte por
+  // decisão, e o guard de inércia (`test/inercia-do-doador.test.ts`) é quem prova que ele
+  // continua desligado. Sem esta linha, a alternativa real não seria mais rigor — seria
+  // um varredor cronicamente vermelho, e varredor cronicamente vermelho deixa de ser lido.
+  ...DIRETORIOS_INERTES,
 ]);
 
 function arquivosDoConfig(config: string): ReadonlySet<string> {

@@ -25,5 +25,13 @@
     "adapters/**/*.ts",
     "packages/**/*.ts"
   ],
-  "exclude": ["node_modules", "prisma/generated"]
+  // ⚠️ `doador` — repositório ABSORVIDO, inerte por decisão. Ver docs/doador.md.
+  //
+  // MEDIDO: os `include` deste arquivo são lista branca e já não o alcançavam — a
+  // importação NÃO quebrou nenhum dos três typecheck. Esta linha é DECLARAÇÃO, não
+  // conserto: diz, no arquivo que decide, que aquele código não é para ser compilado
+  // aqui. Sem ela, a próxima linha de `include` que alargar uma raiz (um `**/*.ts`
+  // apressado) puxaria 199 arquivos de terceiro para dentro do nosso gate de tipos, e o
+  // primeiro erro apareceria como se fosse nosso.
+  "exclude": ["node_modules", "prisma/generated", "doador"]
 }

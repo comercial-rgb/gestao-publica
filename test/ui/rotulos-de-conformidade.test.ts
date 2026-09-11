@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
+import { ehInerte } from "../raizes-dominio.js";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -72,6 +73,20 @@ function arquivosDaCamadaDeApresentacao(): readonly string[] {
     .split("\n")
     .filter((a) => a !== "")
     .filter((a) => !a.endsWith(".test.ts") && !a.endsWith(".test.tsx"))
+    // ⚠️ DIRETÓRIO INERTE (`doador/`) — e aqui a exclusão é HONESTAMENTE REDUNDANTE HOJE.
+    //
+    // MEDIDO na absorção: este guard ficou VERDE com o doador importado, porque o `find`
+    // acima nomeia três raízes à mão e `doador/` não é nenhuma delas. O filtro não remove
+    // nada neste commit — e está escrito assim mesmo, com o motivo à vista, porque a raiz
+    // escrita à mão é exatamente o que `test/raizes-dominio.ts` documenta como o jeito de
+    // um guard parar de guardar em silêncio. No dia em que este `find` ganhar uma quarta
+    // raiz, ou virar `find .`, a promessa do guard — "nenhum identificador do NOSSO
+    // catálogo em tela" — passaria a ser cobrada de tela de terceiro que nunca a fez.
+    //
+    // ⚠️ REDUNDANTE NÃO É DECORAÇÃO, e a diferença está em `inercia-do-doador.test.ts`:
+    // lá esta linha é MUTADA, e a mutação acusa. Instrumento que ninguém consegue derrubar
+    // é que é decoração.
+    .filter((a) => !ehInerte(a))
     .sort();
 }
 

@@ -22,6 +22,20 @@ export default defineConfig({
     // cada raiz está na lista moraram aqui até o ENT03b e foram para lá junto com ela.
     include: [...INCLUDE_DA_SUITE],
 
+    // ⚠️ `doador/**` — EXCLUSÃO DECLARADA, com a medição que a justifica.
+    //
+    // MEDIDO na importação: `vitest list --filesOnly` coletou ZERO arquivos do doador,
+    // porque os `include` acima são ANCORADOS (`packages/**`, e não `**/packages/**`) e
+    // `doador/saas-municipal/packages/folha-engine/test/*.test.ts` não casa com eles.
+    //
+    // ⚠️ ENTÃO POR QUE ESCREVER A EXCLUSÃO. Porque o que segura hoje é a ÂNCORA, e âncora
+    // se perde numa edição de uma linha: trocar `packages/**` por `**/packages/**` — o
+    // reflexo de quem acabou de mover um pacote de lugar — puxaria os 10 `.test.ts` do
+    // folha-engine absorvido para dentro da suíte. Eles não rodariam: o doador usa pnpm com
+    // workspaces e está sem dependências instaladas de propósito. O modo de falha seria uma
+    // suíte vermelha por motivo que não é nosso, no gate, sem ninguém entender de onde veio.
+    exclude: ["**/node_modules/**", "doador/**"],
+
     // ⚠️ AMBIENTE: `node` continua o DEFAULT — quase toda a suíte é domínio + Prisma, e um DOM
     // global custaria a todos por causa de poucos. Quem precisa de DOM pede POR ARQUIVO, no
     // docblock: `// @vitest-environment happy-dom` (ver `test/ui/Campos.test.tsx`).

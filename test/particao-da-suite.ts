@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
-import { RAIZES_DE_CODIGO, raizesExistentes } from "./raizes-dominio.js";
+import { DIRETORIOS_INERTES, RAIZES_DE_CODIGO, raizesExistentes } from "./raizes-dominio.js";
 
 /**
  * ═══ A PARTIÇÃO DA SUÍTE — RÁPIDA E COMPLETA, E A CONTA FECHA ═══
@@ -42,7 +42,20 @@ export const PORTAS_DO_BANCO: readonly string[] = [
   "test/roteiro-orcamentario.ts",
 ];
 
-const IGNORAR = new Set(["node_modules", "generated", ".git", ".next", "dist"]);
+// ⚠️ `DIRETORIOS_INERTES` ENTRA AQUI MESMO SEM SER ALCANÇÁVEL HOJE, e a razão é a
+// promessa deste arquivo: a união das duas partições é o conjunto INTEIRO dos testes. Se
+// um dia `doador` entrasse em `RAIZES_DE_CODIGO`, os 10 `.test.ts` do folha-engine
+// absorvido entrariam na conta — e `particao-da-suite.test.ts` os cobraria de uma das duas
+// partições. Esta linha é o que impede a promessa de passar a valer para código de
+// terceiro que não tem banco de teste, `setup.ts` nem intenção de rodar.
+const IGNORAR = new Set([
+  "node_modules",
+  "generated",
+  ".git",
+  ".next",
+  "dist",
+  ...DIRETORIOS_INERTES,
+]);
 
 /** Todo arquivo de teste do repositório, em caminho relativo com "/". */
 export function arquivosDeTeste(raiz: string): readonly string[] {

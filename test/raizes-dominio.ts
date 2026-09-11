@@ -29,6 +29,28 @@ import { join } from "node:path";
  * O `raizes-dominio.test.ts` faz cumprir isso: ele falha se um scanner voltar a escrever "modules"
  * na mão.
  */
+/**
+ * ═══ ⚠️ DIRETÓRIOS INERTES — CÓDIGO QUE MORA AQUI E NÃO É NOSSO ═══
+ *
+ * `doador/` guarda repositórios ABSORVIDOS com histórico, preservados para extração
+ * futura e deliberadamente desligados do build. Não é código de produção, não é código de
+ * apoio, não é dependência: é material de consulta versionado.
+ *
+ * ⚠️ POR QUE UMA LISTA, E NÃO O NOME `doador` ESCRITO EM CADA VARREDOR. É a mesma lição
+ * que custou dois guardas acima, na direção contrária: o varredor que escreve o nome à mão
+ * é o varredor que esquece de atualizá-lo. Aqui a consequência de esquecer seria varrer
+ * código de terceiro como se fosse nosso — e cobrar dele disciplina de data civil, censo de
+ * ação e rótulo de conformidade que ele nunca prometeu cumprir.
+ *
+ * ⚠️ E A EXCLUSÃO É EXECUTADA, NÃO APENAS DECLARADA. `raizesExistentes` abaixo RECUSA
+ * devolver raiz que caia aqui dentro, e é por onde passam o guard de data civil
+ * (`RAIZES_DE_DOMINIO`) e o de tabela morta (`RAIZES_DE_ESCRITA`). Uma constante que
+ * ninguém consulta seria decoração com aparência de rede.
+ *
+ * A condição de remoção do diretório está em `docs/doador.md`.
+ */
+export const DIRETORIOS_INERTES = ["doador"] as const;
+
 export const RAIZES_DE_DOMINIO = ["modules", "adapters"] as const;
 
 /**
@@ -74,6 +96,10 @@ export function raizesExistentes(
 ): string[] {
   const achadas: string[] = [];
   for (const raiz of raizes) {
+    // ⚠️ RECUSA ANTES DO `statSync`, e de propósito. Uma raiz inerte não é "ausente": ela
+    // EXISTE no disco e seria varrida. Quem a pedir — hoje ninguém, e é essa a questão —
+    // recebe silêncio aqui em vez de centenas de arquivos de terceiro na acusação.
+    if (ehInerte(raiz)) continue;
     const abs = join(raizRepo, raiz);
     try {
       if (statSync(abs).isDirectory()) achadas.push(abs);
@@ -82,4 +108,10 @@ export function raizesExistentes(
     }
   }
   return achadas;
+}
+
+/** Se um caminho relativo (com "/") cai dentro de um diretório inerte. */
+export function ehInerte(caminhoRelativo: string): boolean {
+  const p = caminhoRelativo.replace(/\\/g, "/").replace(/^\.\//, "");
+  return DIRETORIOS_INERTES.some((d) => p === d || p.startsWith(`${d}/`));
 }

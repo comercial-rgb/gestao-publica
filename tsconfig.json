@@ -46,5 +46,13 @@
   // ⚠️ `test` SAIU DO EXCLUDE, e o `include` acima é que passa a mandar: só
   // `test/ui/**/*.tsx` entra. `exclude` vence `include` no TypeScript, então manter
   // "test" aqui deixaria os testes de UI fora por mais que fossem incluídos.
-  "exclude": ["node_modules", "packages", "modules", "adapters", "prisma"]
+  // ⚠️ `doador` — repositório ABSORVIDO, inerte por decisão. Ver docs/doador.md.
+  //
+  // MEDIDO: os `include` deste arquivo são lista branca e já não o alcançavam — a
+  // importação NÃO quebrou nenhum dos três typecheck. Esta linha é DECLARAÇÃO, não
+  // conserto: diz, no arquivo que decide, que aquele código não é para ser compilado
+  // aqui. Sem ela, a próxima linha de `include` que alargar uma raiz (um `**/*.ts`
+  // apressado) puxaria 199 arquivos de terceiro para dentro do nosso gate de tipos, e o
+  // primeiro erro apareceria como se fosse nosso.
+  "exclude": ["node_modules", "packages", "modules", "adapters", "prisma", "doador"]
 }
