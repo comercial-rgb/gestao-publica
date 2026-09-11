@@ -1,0 +1,76 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1779548849296,
+      "tag": "0000_sad_jubilee",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779550648991,
+      "tag": "0001_smiling_eternity",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779552683359,
+      "tag": "0002_public_midnight",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779554324531,
+      "tag": "0003_mushy_dark_beast",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779564651369,
+      "tag": "0004_clumsy_iron_patriot",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779574003531,
+      "tag": "0005_crazy_scarlet_witch",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779587423804,
+      "tag": "0006_amused_tombstone",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779592565637,
+      "tag": "0007_keen_wallow",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1779638074677,
+      "tag": "0008_vinculo_rubricas_esocial_pendentes",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1779666573012,
+      "tag": "0009_folhas_audit_reabertura",
+      "breakpoints": true
+    }
+  ]
+}

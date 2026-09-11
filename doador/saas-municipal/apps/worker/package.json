@@ -1,0 +1,41 @@
+{
+  "name": "@saas-municipal/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./queues/folha": "./src/queues/folha.ts",
+    "./connection": "./src/connection.ts",
+    "./config": "./src/config.ts",
+    "./jobs/processar-folha-mensal": "./src/jobs/processar-folha-mensal.ts",
+    "./jobs/recalcular-holerite": "./src/jobs/recalcular-holerite.ts",
+    "./jobs/gerar-empenhos-folha": "./src/jobs/gerar-empenhos-folha.ts",
+    "./jobs/enviar-esocial-s1200": "./src/jobs/enviar-esocial-s1200.ts",
+    "./utils/tenant-pool": "./src/utils/tenant-pool.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "smoke": "tsx src/smoke.ts"
+  },
+  "dependencies": {
+    "@saas-municipal/database": "workspace:*",
+    "@saas-municipal/folha-engine": "workspace:*",
+    "bullmq": "^5.34.0",
+    "ioredis": "^5.4.1",
+    "drizzle-orm": "^0.38.3",
+    "postgres": "^3.4.5",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.9"
+  }
+}

@@ -1,0 +1,54 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply text-carvao-900 antialiased;
+  }
+  body {
+    @apply bg-areia-50 font-sans;
+    font-feature-settings: "ss01", "cv11";
+  }
+  h1, h2, h3, h4 {
+    @apply font-display tracking-tight;
+    font-feature-settings: "ss01";
+  }
+  /* Numbers tabular by default — útil para tabelas financeiras */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium
+           transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-verde-700 text-white hover:bg-verde-800 focus-visible:ring-verde-600;
+  }
+  .btn-secondary {
+    @apply btn bg-carvao-100 text-carvao-900 hover:bg-carvao-200 focus-visible:ring-carvao-400;
+  }
+  .btn-danger {
+    @apply btn bg-red-700 text-white hover:bg-red-800 focus-visible:ring-red-500;
+  }
+  .input {
+    @apply block w-full rounded-md border border-carvao-200 bg-white px-3 py-2 text-sm
+           text-carvao-900 placeholder-carvao-400
+           focus:border-verde-600 focus:outline-none focus:ring-1 focus:ring-verde-600;
+  }
+  .label {
+    @apply block text-xs font-semibold uppercase tracking-wider text-carvao-600 mb-1;
+  }
+  .card {
+    @apply bg-white rounded-lg shadow-card border border-carvao-100;
+  }
+  .badge {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+}
