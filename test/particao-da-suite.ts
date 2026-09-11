@@ -91,10 +91,29 @@ const IMPORT = /(?:from|import)\s*\(?\s*["'](\.[^"']+)["']/g;
  * Memorizado por (arquivo, especificador) e por conteúdo lido, cai para milissegundos.
  * Aumentar o timeout teria escondido um custo que é O(arquivos × grafo) e que voltaria a
  * estourar no próximo módulo — timeout se mede e se memoiza, não se aumenta.
+ *
+ * ═══ ⚠️ E ELE VOLTOU A ESTOURAR, EXATAMENTE COMO ESTE PARÁGRAFO PREVIU ═══
+ *
+ * No portão de 2026-09-11 o teste morreu por TIMEOUT em 6.072 ms — não por asserção. A
+ * causa foi medida antes de qualquer conserto: a primeira chamada de `particionar` custava
+ * **3.824 ms**, e as seguintes 5 ms. A memoização estava funcionando; o que não cabia mais
+ * era a PRIMEIRA chamada, a 24% do teto de 5 s, num custo que cresce com o repositório.
+ *
+ * ⚠️ O DEGRAU QUE FALTAVA ERA A ARESTA. Memorizava-se o conteúdo lido e a resolução de cada
+ * especificador, mas NÃO a lista de arestas do arquivo: `caminhar` mantém `vistos` por
+ * chamada, então um nó alcançado a partir de 100 testes tinha o `matchAll(IMPORT)`
+ * reexecutado 100 vezes sobre o mesmo texto já em memória. O `packages/contracts/index.ts`
+ * do parágrafo acima parou de ser RESOLVIDO centenas de vezes e continuou sendo VARRIDO
+ * centenas de vezes.
+ *
+ * Com `arestas` memorizado por (arquivo, raiz), a regex roda uma vez por arquivo em vez de
+ * uma vez por par (teste, arquivo). A primeira chamada cai de 3.824 ms para o que a medição
+ * registrar no commit — e o conserto continua sendo memória, não timeout maior.
  */
 const resolucoes = new Map<string, string | null>();
 const fontes = new Map<string, string | null>();
 const alcanca = new Map<string, boolean>();
+const arestas = new Map<string, readonly string[]>();
 
 /** Resolve um especificador relativo em ESM (`./x.js`) para o arquivo `.ts`/`.tsx` real. */
 function resolverRelativo(deArquivo: string, espec: string, raiz: string): string | null {
@@ -159,14 +178,27 @@ function caminhar(arquivo: string, raiz: string): boolean {
     if (vistos.has(atual)) continue;
     vistos.add(atual);
     if (portas.has(atual)) return true;
-    const fonte = lerMemo(join(raiz, atual));
-    if (fonte === null) continue;
-    for (const m of fonte.matchAll(IMPORT)) {
-      const alvo = resolverRelativo(atual, m[1]!, raiz);
-      if (alvo !== null) fila.push(alvo);
-    }
+    for (const alvo of arestasDe(atual, raiz)) fila.push(alvo);
   }
   return false;
+}
+
+/** Os arquivos que `arquivo` importa por caminho relativo — varrido UMA vez por arquivo. */
+function arestasDe(arquivo: string, raiz: string): readonly string[] {
+  const chave = `${raiz}\u0000${arquivo}`;
+  const memo = arestas.get(chave);
+  if (memo !== undefined) return memo;
+
+  const fonte = lerMemo(join(raiz, arquivo));
+  const achadas: string[] = [];
+  if (fonte !== null) {
+    for (const m of fonte.matchAll(IMPORT)) {
+      const alvo = resolverRelativo(arquivo, m[1]!, raiz);
+      if (alvo !== null) achadas.push(alvo);
+    }
+  }
+  arestas.set(chave, achadas);
+  return achadas;
 }
 
 /** A partição: `{ rapida, lenta }`, e a união é `arquivosDeTeste`. */
