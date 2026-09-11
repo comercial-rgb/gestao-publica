@@ -425,6 +425,29 @@ async function main(): Promise<void> {
       "o depósito não apareceu, ou não apareceu com a movimentação liberada"
     );
 
+    // ⚠️ O MÍNIMO E O MÁXIMO SÃO POR DEPÓSITO (5.18.3), e é por isso que este passo só
+    // pode vir DEPOIS do depósito existir. A ação mora na tela do material porque é o
+    // material que tem níveis; o depósito é o recorte.
+    await irPara(page, detMat);
+    const depParaParametro = await opcaoQueCasa(
+      page,
+      'form[data-acao="definir-parametro"] select[name="depositoId"]',
+      codDep
+    );
+    const rParam = await preencherEEnviar(page, "definir-parametro", [
+      { sel: 'select[name="depositoId"]', valor: depParaParametro, tipo: "select" },
+      { sel: 'input[name="quantidadeMinima"]', valor: "5" },
+      { sel: 'input[name="quantidadeMaxima"]', valor: "50" },
+    ]);
+    conferir("material: o servidor aceitou o mínimo e o máximo", rParam.tipo === "ok", rParam.texto);
+
+    const tMatComParam = await irPara(page, detMat);
+    conferir(
+      "material: RECARREGADO, o detalhe mostra o mínimo e o máximo daquele depósito",
+      tMatComParam.includes(codDep.toLowerCase()) && tMatComParam.includes("5.000"),
+      "o detalhe não trouxe os níveis por depósito"
+    );
+
     // ══════════════════════════════════════════════════════════════════════
     // 4 · A REQUISIÇÃO, E O ATENDIMENTO PARCIAL
     //
@@ -624,6 +647,73 @@ async function main(): Promise<void> {
       soPendentes.includes(numReq.toLowerCase()),
       "a requisição com saldo não apareceu no filtro de pendentes"
     );
+    // ══════════════════════════════════════════════════════════════════════
+    // 7 · O BLOQUEIO POR DEPÓSITO (5.18.13) — e ele RECUSA movimentação
+    //
+    // ⚠️ ESTE BLOCO VEIO PARAR NO FIM, E A PRIMEIRA VERSÃO O TINHA NO MEIO. Lá ele
+    // bloqueava e encerrava o depósito ANTES de o percurso tentar atender a requisição — e
+    // o encerramento com `fim` = hoje deixa o bloqueio VIGENTE hoje (início <= hoje <= fim).
+    // A movimentação do mesmo dia era então recusada POR BLOQUEIO, e não por falta de
+    // estoque, e a asserção seguinte falhava. O domínio estava certo e o percurso errado.
+    //
+    // No fim, ele prova mais: que o bloqueio RECUSA movimentação de verdade, com a
+    // mensagem que nomeia o motivo.
+    // ══════════════════════════════════════════════════════════════════════
+    await irPara(page, "/patrimonio/almoxarifado/depositos");
+    const detDep = await detalheDe(page, "/patrimonio/almoxarifado/depositos", codDep);
+    await irPara(page, detDep);
+    const rBloq = await preencherEEnviar(page, "bloquear", [
+      { sel: 'input[name="inicio"]', valor: dia(), tipo: "data" },
+      { sel: 'input[name="motivo"]', valor: "Bloqueio do percurso, sem prazo" },
+    ]);
+    conferir("depósito: o servidor aceitou o bloqueio", rBloq.tipo === "ok", rBloq.texto);
+
+    await irPara(page, "/patrimonio/almoxarifado/depositos");
+    conferir(
+      "depósito: RECARREGADA, a linha deste depósito passa a dizer BLOQUEADA",
+      await linhaDiz(page, codDep, "bloqueada"),
+      "o bloqueio não apareceu na listagem"
+    );
+
+    // ⚠️ O BLOQUEIO NÃO É RÓTULO: ele RECUSA. Tentar atender a requisição agora tem de
+    // falhar nomeando o motivo do bloqueio — e não a falta de estoque.
+    await irPara(page, detReq);
+    const itemAindaFalta = await primeiraOpcao(
+      page,
+      'form[data-acao="atender"] select[name="itemDeRequisicaoId"]'
+    );
+    const rBloqueada = await preencherEEnviar(page, "atender", [
+      { sel: 'select[name="itemDeRequisicaoId"]', valor: itemAindaFalta, tipo: "select" },
+      { sel: 'input[name="quantidade"]', valor: "1" },
+      { sel: 'input[name="dataMovimento"]', valor: dia(), tipo: "data" },
+      { sel: 'input[name="motivo"]', valor: "Tentativa com depósito bloqueado" },
+    ]);
+    conferir(
+      "bloqueio: a movimentação é RECUSADA e a mensagem nomeia o motivo do bloqueio",
+      rBloqueada.tipo === "erro" && rBloqueada.texto.includes("Bloqueio do percurso"),
+      `esperava recusa citando o bloqueio; veio "${rBloqueada.tipo}": ${rBloqueada.texto.slice(0, 200)}`
+    );
+
+    await irPara(page, detDep);
+    const bloqueioOp = await primeiraOpcao(page, 'form[data-acao="encerrar-bloqueio"] select[name="bloqueioId"]');
+    const rEnc = await preencherEEnviar(page, "encerrar-bloqueio", [
+      { sel: 'select[name="bloqueioId"]', valor: bloqueioOp, tipo: "select" },
+      { sel: 'input[name="fim"]', valor: dia(), tipo: "data" },
+    ]);
+    conferir("depósito: o servidor aceitou encerrar o bloqueio", rEnc.tipo === "ok", rEnc.texto);
+
+    // ⚠️ O HISTÓRICO MORA NA ABA `historico`, e a aba `dados` é a que abre por padrão. A
+    // primeira versão desta asserção lia a aba errada e concluía que o bloqueio encerrado
+    // tinha sumido — ele estava lá, numa aba que o percurso não tinha aberto.
+    await irPara(page, detDep);
+    const hrefHist = await hrefDaAba(page, "historico");
+    const histDep = await irPara(page, hrefHist.replace(BASE, ""));
+    conferir(
+      "depósito: o bloqueio encerrado NÃO some — ele ganha fim, e o histórico o mantém",
+      histDep.includes("bloqueio do percurso"),
+      "o bloqueio encerrado desapareceu do histórico"
+    );
+
     // ══════════════════════════════════════════════════════════════════════
     // 8 · O PAINEL DE PENDÊNCIAS — contagem sobre registro que existe
     //
