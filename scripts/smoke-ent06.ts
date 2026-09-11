@@ -624,6 +624,43 @@ async function main(): Promise<void> {
       soPendentes.includes(numReq.toLowerCase()),
       "a requisição com saldo não apareceu no filtro de pendentes"
     );
+    // ══════════════════════════════════════════════════════════════════════
+    // 8 · O PAINEL DE PENDÊNCIAS — contagem sobre registro que existe
+    //
+    // ⚠️ O PERCURSO DEIXOU UMA REQUISIÇÃO COM SALDO E UM MATERIAL NO CATÁLOGO. A faixa tem
+    // de aparecer POR CAUSA DISSO — e é essa a diferença entre indicador e número bonito:
+    // o percurso cria o fato e depois exige que o painel o conte.
+    // ══════════════════════════════════════════════════════════════════════
+    const home = await irPara(page, "/");
+    conferir(
+      "painel: a faixa de requisições aguardando atendimento aparece, e o percurso criou o fato",
+      home.includes("requisições aguardando atendimento"),
+      "o painel não mostrou a faixa das requisições com saldo"
+    );
+    conferir(
+      "painel: a faixa diz EM PORTUGUÊS o que foi contado",
+      home.includes("ainda não foi totalmente entregue"),
+      "a faixa apareceu sem o critério do que ela conta"
+    );
+    // ⚠️ A PRIMEIRA VERSÃO DESTA ASSERÇÃO ESTAVA ERRADA, e o banco povoado a pegou. Ela
+    // exigia que a faixa de inventários abertos NÃO aparecesse, porque este percurso fecha
+    // o inventário que abre. Mas uma execução ANTERIOR tinha falhado no meio e deixado um
+    // inventário aberto — e o painel estava certo em contá-lo. A asserção cobrava do
+    // produto um banco limpo, que é exatamente o que o repositório já aprendeu a não fazer.
+    //
+    // O que se afirma agora é a PROPRIEDADE, e não o estado: nenhuma faixa exibe zero.
+    // Quantas faixas existem depende do que o ente tem para fazer hoje.
+    const faixaZerada = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("a, li, div"))
+        .map((e) => (e.textContent ?? "").trim())
+        .some((t) => /^\s*0\s*$/.test(t))
+    );
+    conferir(
+      "painel: nenhuma faixa exibe ZERO — o que não tem trabalho some, e não vira um zero bonito",
+      !faixaZerada,
+      "apareceu uma faixa com contagem zero"
+    );
+
   } finally {
     if (navegador !== undefined) await navegador.close();
   }
