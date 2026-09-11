@@ -1,0 +1,176 @@
+// ============================================================================
+// M29 — PRECATÓRIOS JUDICIAIS (CF art. 100 · EC 114/2021)
+//
+// ═══ ⚠️ A ORDEM CRONOLÓGICA AQUI É OUTRA, E NÃO É A DO ART. 141 ═══
+// O M06 já implementa a ordem cronológica de PAGAMENTOS (Lei 14.133, art. 141): por fonte,
+// subdividida por categoria de contrato. Precatório tem a SUA, constitucional, e ela é
+// diferente em três pontos:
+//
+//   · a preferência é por NATUREZA: alimentar antes de comum (CF art. 100, §1º);
+//   · dentro da natureza, a ordem é a de APRESENTAÇÃO (a autuação), não a de liquidação;
+//   · há preferência ETÁRIA e por DOENÇA GRAVE dentro dos alimentares (§2º), até o triplo
+//     do teto — e essa é a única subdivisão que a Constituição autoriza.
+//
+// Enfiar precatório na fila do art. 141 faria as duas ordens brigarem pela mesma linha, e o
+// resultado dependeria de qual guard rodasse primeiro. São filas distintas porque são leis
+// distintas.
+//
+// ═══ ⚠️ O QUE ESTE MÓDULO **NÃO** FAZ, E FICA NOMEADO ═══
+// O regime especial de pagamento do art. 101 do ADCT (parcelamento, percentual da RCL,
+// conta especial no tribunal) NÃO está aqui. Ele depende de um dado que o ente tem de
+// declarar — a adesão ao regime e o percentual homologado — e inventá-lo produziria um
+// cronograma de pagamento que parece oficial. Pendência `PRECATORIO-REGIME-ESPECIAL`.
+// ============================================================================
+
+/// CF art. 100, §1º. A natureza decide a PREFERÊNCIA, não só a classificação.
+enum NaturezaDoPrecatorio {
+  /// Salários, vencimentos, proventos, pensões, indenizações por morte ou invalidez,
+  /// benefícios previdenciários e honorários. Pagam-se ANTES dos comuns.
+  ALIMENTAR
+  /// Todo o resto.
+  COMUM
+}
+
+/// CF art. 100, §2º — a preferência DENTRO dos alimentares, limitada ao triplo do teto.
+///
+/// ⚠️ `NENHUMA` É UM VALOR, e não a ausência do campo. Um nulo aqui significaria "ainda não
+/// se examinou", que é diferente de "examinou-se e não há preferência" — e as duas coisas
+/// produzem ordens de pagamento diferentes.
+enum PreferenciaDoPrecatorio {
+  NENHUMA
+  /// Idoso (60 anos ou mais na data da expedição, ou que complete no curso do processo).
+  IDOSO
+  /// Portador de doença grave, na forma da lei.
+  DOENCA_GRAVE
+  /// Pessoa com deficiência.
+  DEFICIENCIA
+}
+
+model Precatorio {
+  id String @id @default(cuid())
+
+  /// O número do processo judicial. Único — dois precatórios com o mesmo número seriam o
+  /// mesmo precatório contado duas vezes na fila.
+  numeroProcesso String @unique
+  /// O tribunal de origem (texto: são muitos, e o rol não é do ente).
+  tribunal String
+  /// O ofício requisitório / número do precatório no tribunal, quando houver.
+  oficioRequisitorio String?
+
+  beneficiarioNome      String
+  beneficiarioDocumento String @db.VarChar(14)
+
+  natureza    NaturezaDoPrecatorio
+  preferencia PreferenciaDoPrecatorio @default(NENHUMA)
+
+  /// ⚠️ A DATA DA APRESENTAÇÃO — é ELA que ordena a fila, e não `criadoEm`.
+  ///
+  /// CF art. 100: a ordem é a de apresentação do precatório. Ordenar pelo instante em que
+  /// alguém digitou faria a fila ser a ordem de digitação — exatamente o defeito que o eixo
+  /// de data civil achou na ordem cronológica do art. 141, onde o desempate pelo número
+  /// nunca rodava porque os instantes não empatavam.
+  dataApresentacao DateTime
+
+  /// O exercício em que ele deve ser pago (art. 100, §5º: apresentado até 2 de abril, entra
+  /// no orçamento do exercício seguinte).
+  exercicioDePagamento Int
+
+  /// O valor ORIGINAL requisitado. As atualizações são MOVIMENTOS, nunca um UPDATE aqui —
+  /// atualizar a coluna apagaria o valor que o tribunal requisitou.
+  valorOriginal Decimal @db.Decimal(18, 2)
+
+  /// A conta de PASSIVO (classe 2) que este precatório movimenta. Por parâmetro.
+  contaContabilId String
+  contaContabil   ContaPcasp @relation("PassivoDoPrecatorio", fields: [contaContabilId], references: [id])
+
+  movimentos MovimentoPrecatorio[]
+  /// back-relation M05 — campo VIRTUAL.
+  empenhos   Empenho[]
+  /// back-relations M22/M25 (ENT03b) — campos VIRTUAIS.
+  anexos          Anexo[]
+  camposAdicionais ValorDeCampoAdicional[] @relation("CampoAdicionalDePrecatorio")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([natureza, preferencia, dataApresentacao])
+  @@index([exercicioDePagamento])
+}
+
+enum TipoMovimentoPrecatorio {
+  /// O reconhecimento do passivo — o precatório entra no balanço.
+  INSCRICAO
+  /// Juros e correção do período, por competência. A competência dá a idempotência.
+  ATUALIZACAO
+  /// O pagamento (parcial ou total). Nasce DENTRO do `pagar()` do M05.
+  PAGAMENTO
+  /// O precatório foi cancelado/extinto por decisão judicial.
+  CANCELAMENTO
+  ESTORNO_INSCRICAO
+  ESTORNO_ATUALIZACAO
+  ESTORNO_PAGAMENTO
+  ESTORNO_CANCELAMENTO
+}
+
+model MovimentoPrecatorio {
+  id           String     @id @default(cuid())
+  precatorioId String
+  precatorio   Precatorio @relation(fields: [precatorioId], references: [id])
+
+  tipo  TipoMovimentoPrecatorio
+  /// SEMPRE positivo; o sinal vem do tipo.
+  valor Decimal                 @db.Decimal(18, 2)
+
+  /// Obrigatória na ATUALIZACAO (Zod): duas correções da mesma competência seriam a mesma
+  /// correção duas vezes. Mesmo desenho do `MovimentoDivida`.
+  competencia DateTime?
+
+  /// A data do FATO.
+  dataMovimento DateTime
+
+  /// O pagamento que quitou (parte d)o precatório. Um movimento com `pagamentoId` NÃO se
+  /// estorna sozinho: estorna-se ANULANDO o pagamento. Quem nasceu junto, morre junto — a
+  /// lição da retenção do M07.
+  pagamentoId String?
+  pagamento   Pagamento? @relation(fields: [pagamentoId], references: [id])
+
+  lancamentoId String?             @unique
+  lancamento   LancamentoContabil? @relation(fields: [lancamentoId], references: [id])
+
+  /// ⚠️ A JUSTIFICATIVA DE QUEBRA DA ORDEM CONSTITUCIONAL.
+  ///
+  /// Pagar um precatório na frente de outro que tem preferência é possível — há casos
+  /// legítimos (acordo homologado, sequestro de verba determinado pelo tribunal). O que não
+  /// é possível é fazê-lo SEM DIZER POR QUÊ. Mesma anatomia do
+  /// `Pagamento.justificativaQuebraOrdem` do art. 141: o guard exige o texto, e o texto fica
+  /// no mesmo movimento, na mesma transação. Nulo = não houve quebra.
+  justificativaQuebraDeOrdem String?
+
+  estornoDeId String?
+  estornoDe   MovimentoPrecatorio?  @relation("EstornoPrecatorio", fields: [estornoDeId], references: [id])
+  estornos    MovimentoPrecatorio[] @relation("EstornoPrecatorio")
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([precatorioId, tipo])
+  @@index([dataMovimento])
+  @@index([pagamentoId])
+  @@index([estornoDeId])
+}
+
+model RoteiroPrecatorio {
+  id   String                  @id @default(cuid())
+  tipo TipoMovimentoPrecatorio @unique
+
+  contaDebitoId String
+  contaDebito   ContaPcasp @relation("DebitoDoRoteiroPrecatorio", fields: [contaDebitoId], references: [id])
+  contaCreditoId String
+  contaCredito   ContaPcasp @relation("CreditoDoRoteiroPrecatorio", fields: [contaCreditoId], references: [id])
+
+  historicoPadrao String
+
+  criadoEm DateTime @default(now())
+}

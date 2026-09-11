@@ -106,6 +106,35 @@ model Anexo {
   ordemDePagamentoId String?
   ordemDePagamento   OrdemDePagamento? @relation(fields: [ordemDePagamentoId], references: [id])
 
+  /// ⚠️ ENT03b — OS CADASTROS DO MOLDE. UMA COLUNA POR TIPO DE DONO, e não um par
+  /// (`donoTipo`, `donoId`) genérico.
+  ///
+  /// A tentação do molde é justamente essa: um dono genérico fecharia o caso de qualquer
+  /// cadastro futuro sem migration. O preço aparece no primeiro id errado — o banco deixaria
+  /// de garantir que o registro existe, e um `donoId` digitado errado viraria anexo ÓRFÃO
+  /// que nenhuma tela mostra e nenhuma limpeza encontra. É o mesmo argumento que o
+  /// `CadastroComCamposAdicionais` do M25 já fez, e pela mesma razão.
+  ///
+  /// O molde automatiza a SUPERFÍCIE, não o modelo: cadastro novo com anexo custa uma
+  /// migration aditiva com a coluna e UMA linha no descritor.
+  convenioId String?
+  convenio   Convenio? @relation(fields: [convenioId], references: [id])
+
+  precatorioId String?
+  precatorio   Precatorio? @relation(fields: [precatorioId], references: [id])
+
+  consorcioId String?
+  consorcio   ConsorcioPublico? @relation(fields: [consorcioId], references: [id])
+
+  obraId String?
+  obra   Obra?   @relation(fields: [obraId], references: [id])
+
+  auditoriaId String?
+  auditoria   AuditoriaInterna? @relation(fields: [auditoriaId], references: [id])
+
+  /// O relatório circunstanciado gerado a partir deste anexo (origem SISTEMA). Campo VIRTUAL.
+  relatorioCircunstanciado RelatorioCircunstanciado? @relation("AnexoDoRelatorioCircunstanciado")
+
   criadoEm  DateTime @default(now())
   criadoPor String
 
@@ -121,6 +150,11 @@ model Anexo {
   @@index([empenhoId])
   @@index([liquidacaoId])
   @@index([ordemDePagamentoId])
+  @@index([convenioId])
+  @@index([precatorioId])
+  @@index([consorcioId])
+  @@index([obraId])
+  @@index([auditoriaId])
   @@index([sha256])
 }
 

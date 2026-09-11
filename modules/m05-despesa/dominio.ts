@@ -383,6 +383,15 @@ export const zLiquidarInput = z.object({
   notaFiscalValor: zValorPositivo.optional(),
   historico: z.string().min(1),
   criadoPor: z.string().min(1),
+  /**
+   * M11 (ENT03b) — A MEDIÇÃO que autoriza esta liquidação.
+   *
+   * ⚠️ OPCIONAL AQUI E OBRIGATÓRIA NO GUARD quando o empenho tem OBRA. Torná-la obrigatória
+   * no Zod quebraria toda liquidação de custeio, material e serviço — que não têm medição
+   * nenhuma. Quem sabe se ela é exigível é o EMPENHO, e essa leitura é do adapter, dentro da
+   * transação. Ver `exigirMedicaoAprovadaDaObra`.
+   */
+  medicaoId: z.string().min(1).optional(),
 });
 
 export const zPagarInput = z.object({
@@ -411,6 +420,14 @@ export const zPagarInput = z.object({
    * caminho sem ordem continua sendo o de sempre, partida por partida.
    */
   ordemDePagamentoId: z.string().min(1).optional(),
+  /**
+   * M29 (ENT03b · CF art. 100) — a justificativa da quebra da ordem CONSTITUCIONAL.
+   *
+   * ⚠️ SEPARADA da do art. 141, e o motivo está em `PagarParams`: aquela exige uma hipótese
+   * de um rol fechado da Lei 14.133, e nenhuma das cinco cobre os casos do art. 100.
+   * Sem ela, pagar um precatório na frente de quem tem preferência é rejeitado (fail-closed).
+   */
+  justificativaOrdemConstitucional: z.string().trim().min(20).optional(),
 });
 
 export const zAnularLiquidacaoInput = z.object({

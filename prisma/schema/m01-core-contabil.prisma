@@ -65,6 +65,16 @@ model ContaPcasp {
   destinoNaVirada          ContaNaVirada[]             @relation("DestinoNaVirada")
   /// back-relations M10 (dívida) — campos VIRTUAIS, não geram coluna.
   passivosDeDivida         DividaConsolidada[]         @relation("PassivoDaDivida")
+  // ── ENT03b: os cadastros novos apontam a conta por PARÂMETRO, como todos os outros. ──
+  controlesDeConvenio      Convenio[]                  @relation("ControleDoConvenio")
+  debitosDoRoteiroConvenio  RoteiroConvenio[]          @relation("DebitoDoRoteiroConvenio")
+  creditosDoRoteiroConvenio RoteiroConvenio[]          @relation("CreditoDoRoteiroConvenio")
+  passivosDePrecatorio     Precatorio[]                @relation("PassivoDoPrecatorio")
+  debitosDoRoteiroPrecatorio  RoteiroPrecatorio[]      @relation("DebitoDoRoteiroPrecatorio")
+  creditosDoRoteiroPrecatorio RoteiroPrecatorio[]      @relation("CreditoDoRoteiroPrecatorio")
+  controlesDeConsorcio     ConsorcioPublico[]          @relation("ControleDoConsorcio")
+  debitosDoRoteiroConsorcio  RoteiroConsorcio[]        @relation("DebitoDoRoteiroConsorcio")
+  creditosDoRoteiroConsorcio RoteiroConsorcio[]        @relation("CreditoDoRoteiroConsorcio")
   roteirosDividaDebito     RoteiroDivida[]             @relation("DebitoDivida")
   roteirosDividaCredito    RoteiroDivida[]             @relation("CreditoDivida")
   /// back-relations M10 (dívida ATIVA) — campos VIRTUAIS.
@@ -153,6 +163,10 @@ model LancamentoContabil {
   movimentosDividaAtiva  MovimentoDividaAtiva[]  @relation("LancamentoDividaAtiva")
   movimentosAlmoxarifado MovimentoAlmoxarifado[] @relation("LancamentoAlmoxarifado")
   movimentosProvisao     MovimentoProvisao[]     @relation("LancamentoProvisao")
+  // ── ENT03b ──
+  movimentosConvenio     MovimentoConvenio[]
+  movimentosPrecatorio   MovimentoPrecatorio[]
+  movimentosConsorcio    MovimentoConsorcio[]
   transferenciaEntreContas TransferenciaEntreContas?
   /// M09 — a contrapartida do movimento bancário. Campo VIRTUAL, 1-1.
   movimentoBancario        MovimentoBancario?

@@ -194,6 +194,30 @@ export const ORDEM_DOS_LOCKS = {
    * então toca o caixa; nenhum caminho trava a conta e depois decide sobre uma ficha.
    */
   ContaBancaria: 17,
+  /**
+   * ⚠️ ENT03b — OS TRÊS CADASTROS COM TETO PRÓPRIO. Postos 18, 19 e 20, e eles vêm DEPOIS
+   * da conta bancária porque nenhum deles é tocado no caminho do pagamento.
+   *
+   * A corrida é a mesma de sempre — SOMA, DECIDE, GRAVA — num grão novo cada:
+   *
+   *   · `Convenio`: duas liberações concorrentes da última parcela leem o mesmo saldo a
+   *     liberar, as duas passam, e o ente repassa mais do que o termo autoriza. O saldo é
+   *     DERIVADO dos movimentos — não há linha de saldo para travar, e é isso que o mantém
+   *     honesto;
+   *   · `Precatorio`: dois pagamentos concorrentes leem o mesmo passivo e a MESMA posição na
+   *     fila constitucional. A fila é a parte grave: as duas transações veem "sou o próximo",
+   *     e as duas pagam — furando a ordem do art. 100 sem que nenhum guard tenha errado;
+   *   · `ConsorcioPublico`: dois repasses concorrentes conferem a Σ do exercício contra o
+   *     mesmo teto de rateio, os dois passam, e o ente repassa acima do que o art. 8º da Lei
+   *     11.107 permite.
+   *
+   * ⚠️ A ORDEM ENTRE OS TRÊS É ARBITRÁRIA E ISSO NÃO IMPORTA — nenhum caminho do repositório
+   * trava dois deles na mesma transação. O que importa é que sejam TODOS depois de 17: um
+   * pagamento de precatório trava a liquidação (6) e a conta (17) antes de chegar aqui.
+   */
+  Convenio: 18,
+  Precatorio: 19,
+  ConsorcioPublico: 20,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

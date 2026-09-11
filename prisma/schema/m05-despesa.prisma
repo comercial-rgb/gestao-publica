@@ -184,6 +184,29 @@ model Empenho {
   obraId String?
   obra   Obra?   @relation(fields: [obraId], references: [id])
 
+  /// M28 (ENT03b) — o CONVÊNIO que este empenho executa.
+  ///
+  /// ⚠️ VOLUNTÁRIO, como o vínculo da obra e ao contrário do da dívida. Nem toda despesa de
+  /// convênio cai num elemento exclusivo (o repasse vai no 41/42/43, mas a contrapartida do
+  /// convenente vai no elemento da despesa que ela custeia) — exigir o vínculo por elemento
+  /// obrigaria o ente a classificar errado para conseguir rastrear. O que o guard COBRA é o
+  /// outro lado: liberar parcela de convênio sem empenho é repasse que despesa nenhuma
+  /// explica.
+  convenioId String?
+  convenio   Convenio? @relation(fields: [convenioId], references: [id])
+
+  /// M29 (ENT03b) — o PRECATÓRIO que este empenho paga.
+  precatorioId String?
+  precatorio   Precatorio? @relation(fields: [precatorioId], references: [id])
+
+  /// M30 (ENT03b) — o CONSÓRCIO a que este empenho repassa.
+  consorcioId String?
+  consorcio   ConsorcioPublico? @relation(fields: [consorcioId], references: [id])
+
+  /// back-relations ENT03b — os movimentos que ESTE empenho executou. Campos VIRTUAIS.
+  movimentosConvenio  MovimentoConvenio[]
+  movimentosConsorcio MovimentoConsorcio[]
+
   numero       String
   tipo         TipoEmpenho
   valor        Decimal     @db.Decimal(18, 2)
@@ -242,6 +265,15 @@ model Liquidacao {
   id        String  @id @default(cuid())
   empenhoId String
   empenho   Empenho @relation(fields: [empenhoId], references: [id])
+
+  /// M11 (ENT03b) — a MEDIÇÃO que autorizou esta liquidação.
+  ///
+  /// ⚠️ NULLABLE NA COLUNA, OBRIGATÓRIA NO GUARD quando o empenho tem obra. O NOT NULL aqui
+  /// invalidaria toda liquidação já gravada, e a liquidação de custeio não tem medição
+  /// nenhuma. Quem cobra é o caso de uso: empenho COM obra exige medição APROVADA, e a
+  /// medição tem de ser da mesma obra.
+  medicaoId String?
+  medicao   MedicaoDeObra? @relation(fields: [medicaoId], references: [id])
 
   numero            String
   valor             Decimal  @db.Decimal(18, 2)
@@ -396,6 +428,8 @@ model Pagamento {
   retencoes        MovimentoExtraorcamentario[]
   /// back-relation M10 — a AMORTIZACAO nasce dentro do pagamento e morre com ele.
   movimentosDivida MovimentoDivida[]
+  /// ENT03b — o precatório que este pagamento quitou. Campo VIRTUAL.
+  movimentosPrecatorio MovimentoPrecatorio[]
 
   criadoEm  DateTime @default(now())
   criadoPor String

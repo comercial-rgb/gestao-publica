@@ -84,6 +84,7 @@ export async function liquidar(
       ...(dados.notaFiscalSerie !== undefined ? { notaFiscalSerie: dados.notaFiscalSerie } : {}),
       ...(dados.notaFiscalData !== undefined ? { notaFiscalData: dados.notaFiscalData } : {}),
       ...(dados.notaFiscalValor !== undefined ? { notaFiscalValor: dados.notaFiscalValor } : {}),
+      ...(dados.medicaoId !== undefined ? { medicaoId: dados.medicaoId } : {}),
       criadoPor: dados.criadoPor,
     },
     {
@@ -180,6 +181,9 @@ export async function pagar(
       data: dados.data,
       contaBancaria: dados.contaBancaria,
       fonteId: dados.fonteId,
+      ...(dados.justificativaOrdemConstitucional !== undefined
+        ? { justificativaOrdemConstitucional: dados.justificativaOrdemConstitucional }
+        : {}),
       criadoPor: dados.criadoPor,
       // M06 (art. 141): só necessária para pagar fora da ordem.
       ...(dados.justificativaQuebraOrdem !== undefined

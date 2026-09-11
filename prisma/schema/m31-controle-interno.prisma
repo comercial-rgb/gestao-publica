@@ -1,0 +1,225 @@
+// ============================================================================
+// M31 — CONTROLE INTERNO (CF art. 74 · LRF art. 59)
+//
+// ═══ ⚠️ ESTE MÓDULO NÃO TEM EFEITO CONTÁBIL, E ISSO É DECISÃO, NÃO FALTA ═══
+// Auditoria interna não empenha, não liquida, não move o razão. Ela PRODUZ JUÍZO sobre o que
+// os outros módulos fizeram. Dar-lhe um lançamento contábil seria inventar um fato — e o fato
+// inventado apareceria no balanço indistinguível dos verdadeiros.
+//
+// O que ela produz é DOCUMENTO: o relatório circunstanciado, que é assinado, e cuja
+// assinatura é o que lhe dá valor perante o tribunal. Por isso ele entra na fila do M22 pelo
+// mesmo caminho do borderô e da nota de empenho — um caminho só.
+//
+// ═══ ⚠️ A RESPOSTA DO CHECKLIST É APPEND-ONLY ═══
+// "Conforme" que vira "não conforme" depois de uma conversa é EXATAMENTE o que a auditoria
+// precisa conseguir provar que aconteceu. Um UPDATE na resposta apagaria a primeira, e a
+// pergunta "isto foi alterado depois?" ficaria sem resposta — num módulo cuja razão de
+// existir é responder essa classe de pergunta.
+//
+// ═══ ⚠️ NÃO HÁ COLUNA DE SITUAÇÃO DA AUDITORIA ═══
+// Aberta/encerrada é DERIVADO dos movimentos. Mesma decisão do lote, do borderô, do exercício
+// e da conciliação.
+// ============================================================================
+
+enum TipoDeAuditoria {
+  /// Do plano anual de auditoria interna.
+  PROGRAMADA
+  /// Por determinação, denúncia ou fato superveniente.
+  EXTRAORDINARIA
+  /// Acompanhamento de providências de uma auditoria anterior.
+  MONITORAMENTO
+}
+
+model AuditoriaInterna {
+  id String @id @default(cuid())
+
+  identificador String @unique
+  objeto        String
+
+  tipo TipoDeAuditoria
+
+  /// O órgão auditado. É o recorte que faz "as auditorias da Secretaria de Saúde" ser uma
+  /// pergunta respondível.
+  orgaoId String
+  orgao   Orgao  @relation(fields: [orgaoId], references: [id])
+
+  /// ⚠️ O PERÍODO AUDITADO — as duas pontas são instantes gravados, comparados por DIA CIVIL
+  /// do ente. Um período que termina em 31/12 termina às 23:59:59 do ente.
+  periodoInicio DateTime
+  periodoFim    DateTime
+
+  /// O responsável pela auditoria — o `identificador` do usuário, texto, mesma razão do
+  /// `criadoPor`.
+  responsavel String
+
+  itens          ItemDeChecklist[]
+  irregularidades Irregularidade[]
+  movimentos     MovimentoDaAuditoria[]
+  relatorios     RelatorioCircunstanciado[]
+  /// back-relations M22/M25 (ENT03b) — campos VIRTUAIS.
+  anexos          Anexo[]
+  camposAdicionais ValorDeCampoAdicional[] @relation("CampoAdicionalDeAuditoria")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([orgaoId])
+  @@index([tipo])
+  @@index([periodoInicio, periodoFim])
+}
+
+/// Um ITEM do checklist — a pergunta, não a resposta.
+///
+/// ⚠️ A PERGUNTA CARREGA A BASE LEGAL, e ela é obrigatória. Um item de checklist sem
+/// fundamento é opinião do auditor com aparência de norma — e quem for cobrado por ele não
+/// tem onde conferir.
+model ItemDeChecklist {
+  id          String           @id @default(cuid())
+  auditoriaId String
+  auditoria   AuditoriaInterna @relation(fields: [auditoriaId], references: [id])
+
+  ordem    Int
+  pergunta String
+  /// O dispositivo que fundamenta a pergunta ("Lei 14.133, art. 141").
+  baseLegal String
+
+  respostas       RespostaDeChecklist[]
+  irregularidades Irregularidade[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([auditoriaId, ordem])
+}
+
+enum RespostaDoChecklist {
+  CONFORME
+  NAO_CONFORME
+  /// O item não se aplica ao objeto auditado. É diferente de "conforme": não se verificou.
+  NAO_APLICAVEL
+}
+
+/// A RESPOSTA — append-only. A vigente é a mais recente; as anteriores ficam.
+model RespostaDeChecklist {
+  id     String          @id @default(cuid())
+  itemId String
+  item   ItemDeChecklist @relation(fields: [itemId], references: [id])
+
+  resposta RespostaDoChecklist
+  /// ⚠️ OBRIGATÓRIA EM `NAO_CONFORME` e em `NAO_APLICAVEL` — cobrado no caso de uso, não pelo
+  /// banco: "não conforme" sem dizer o que se viu não é achado, é acusação.
+  observacao String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([itemId, criadoEm])
+}
+
+enum GravidadeDaIrregularidade {
+  /// Falha formal, sem dano. Corrige-se e segue.
+  FORMAL
+  /// Descumprimento com risco de dano ou de responsabilização.
+  GRAVE
+  /// Dano ao erário apurado ou indício de ato doloso — vai ao tribunal.
+  GRAVISSIMA
+}
+
+model Irregularidade {
+  id          String           @id @default(cuid())
+  auditoriaId String
+  auditoria   AuditoriaInterna @relation(fields: [auditoriaId], references: [id])
+
+  /// O item do checklist que a revelou, quando veio de um. Nulo = achado fora do roteiro,
+  /// que é um achado como qualquer outro.
+  itemId String?
+  item   ItemDeChecklist? @relation(fields: [itemId], references: [id])
+
+  descricao String
+  gravidade GravidadeDaIrregularidade
+
+  /// A PROVIDÊNCIA determinada e o PRAZO. Sem os dois, o achado é observação — e observação
+  /// não se cobra.
+  providencia String
+  /// O prazo, como DIA civil do ente (gravado no último instante do dia).
+  prazo DateTime
+
+  /// ⚠️ "SANADA?" É DERIVADO das providências registradas, e não uma coluna booleana.
+  providencias ProvidenciaDaIrregularidade[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([auditoriaId, gravidade])
+  @@index([prazo])
+}
+
+model ProvidenciaDaIrregularidade {
+  id               String         @id @default(cuid())
+  irregularidadeId String
+  irregularidade   Irregularidade @relation(fields: [irregularidadeId], references: [id])
+
+  /// O que o auditado fez, e quando (data do FATO).
+  relato        String
+  dataProvidencia DateTime
+  /// O auditor ACEITOU a providência? Nulo = ainda não apreciada.
+  aceita Boolean?
+  /// Obrigatória quando `aceita` é falso — cobrado no caso de uso.
+  motivoDaRecusa String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([irregularidadeId, criadoEm])
+}
+
+enum TipoMovimentoDaAuditoria {
+  ABERTURA
+  ENCERRAMENTO
+  /// Reabrir é um FATO, não um UPDATE. Uma auditoria reaberta tem de dizer por quê.
+  REABERTURA
+}
+
+model MovimentoDaAuditoria {
+  id          String           @id @default(cuid())
+  auditoriaId String
+  auditoria   AuditoriaInterna @relation(fields: [auditoriaId], references: [id])
+
+  tipo TipoMovimentoDaAuditoria
+  /// A data do FATO.
+  dataMovimento DateTime
+  motivo        String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([auditoriaId, criadoEm])
+}
+
+/// O RELATÓRIO CIRCUNSTANCIADO — o produto da auditoria, e ele é DOCUMENTO.
+///
+/// ⚠️ O TEXTO CANÔNICO VIRA `Anexo` DE ORIGEM SISTEMA, e é o anexo que se assina. Mesmo
+/// desenho do borderô (M09) e da nota de empenho (M05), e pela mesma razão: a fila assina um
+/// CONTEÚDO, e o `hashConteudo` da assinatura só significa alguma coisa se houver conteúdo a
+/// que ele corresponda. Um relatório assinado "por referência" seria assinatura sobre o nada.
+model RelatorioCircunstanciado {
+  id          String           @id @default(cuid())
+  auditoriaId String
+  auditoria   AuditoriaInterna @relation(fields: [auditoriaId], references: [id])
+
+  /// A versão — append-only. Um relatório refeito é OUTRA linha, e a anterior fica: é ela
+  /// que o auditado recebeu.
+  versao Int
+
+  /// SHA-256 do texto canônico. É o que torna a assinatura verificável em separado.
+  hashConteudo String @db.VarChar(64)
+
+  /// O anexo gerado (origem SISTEMA) com o texto dentro.
+  anexoId String? @unique
+  anexo   Anexo?  @relation("AnexoDoRelatorioCircunstanciado", fields: [anexoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([auditoriaId, versao])
+}

@@ -1465,32 +1465,273 @@ criado não recebe ação nova sozinho.
 **Censo M16:** 156 → **167 serviços**, 149 → **160 ações**.
 **Catálogo:** 38 → **51 de 2037 (2,5%)**, das quais **7 novas em `VALIDADO_LOCALMENTE`**.
 
-## 15. O próximo passo
+## 16. ENT03b — o molde de recurso, os cinco cadastros e a medição que falhou
 
-⚠️ **O ENT03a está FECHADO e PARADO no gate.** Os quatro percursos existem pela interface;
-o item 5 saiu de escopo por decisão da revisão.
+**Data:** 2026-09-11. **Estado:** fechado, parado no gate.
 
-**Para o ENT03b**, na ordem em que o relógio cobra:
+⚠️ **O LOTE MUDOU DE MÉTODO, E A MUDANÇA FOI MEDIDA — INCLUSIVE ONDE ELA NÃO FUNCIONOU.**
+A revisão fixou a meta: **60 a 90 cláusulas** marcadas com evidência, contra ~10 de cada um
+dos cinco gates anteriores. Saíram **40**. A seção 16.8 explica por quê, com o número.
 
-1. **`packages/integracao`** — cofre de credenciais por entidade e ambiente, validação
-   contra esquema, detecção de duplicidade em retransmissão, custódia de certificado. ⚠️ E o
-   achado do **A3 muda a arquitetura, não a configuração**: a chave não sai do dispositivo,
-   então a assinatura acontece **na máquina do usuário**, não no servidor. Tratar A1 e A3
-   pelo mesmo adaptador não funciona para nenhum dos dois.
-2. **Baixar os leiautes que são públicos** — TCE/SC (IN TC-28/2021, IN TC-35/2024), ADN,
-   eSocial. Credenciamento é **calendário, não desenvolvimento**, e o do TCE/SC é o único
-   que bloqueia **arquitetura**.
-3. **A decisão de ente que trava duas linhas do inventário**: *qual banco o município usa*.
-   O layout CNAB é **por banco**; sem a resposta não há manual a obter.
+### 16.1 · Antes de tudo: `DATA-CIVIL-RESTANTES`, e o buraco que ela escondia
 
-⚠️ **E o padrão a procurar, que já apareceu TRÊS vezes**: o modelo responde "agora" e o
-documento pergunta "naquela data". Foi a competência, a conta multifonte e a conciliação.
-Os próximos candidatos estão nomeados no ADR da conciliação: **posição de estoque do
-almoxarifado, saldo de contrato e de ata de registro de preços, situação cadastral do
-imóvel e da empresa, margem consignável do servidor**. Quando um requisito disser "na
-data", **verifique antes de construir se o modelo tem o eixo** — é mais barato do que
-descobrir no meio da implementação, e foi o que aconteceu nas três vezes.
+A pendência nomeava **cinco** sítios. A medição achou **trinta e cinco**.
 
-E de pé desde o ENT01: o **lote de tenancy** fecha os itens 4, 5 e 7 do incremento do ENT01
-e o teste 1 do ENT02. Enquanto ele não vier, esses continuam declarados — nunca marcados
-como atendidos, e nenhum município novo habilitado.
+⚠️ **A pendência só listava o que a guarda sabia ler.** `test/data-civil.test.ts` procurava
+duas formas — `getUTCFullYear` e `toISOString().slice(0,10)`. A forma **dominante** era a
+terceira: a **construção** da janela por `new Date(Date.UTC(...))`.
+
+É o caso do `c2` outra vez: uma guarda que dizia vigiar o eixo de data e ficava verde sobre
+a metade do eixo que ela não sabia ler.
+
+| Sítio | O que a janela em UTC fazia |
+|---|---|
+| `janelaDoBimestre` | **régua de OITO anexos do RREO** — o 1º bimestre de 2026 ia de **31/12/2025 às 21:00** a **28/02 às 20:59** civis |
+| `janelaDosDozeMeses` | a janela da **RCL**, que entra no limite de pessoal e no de endividamento |
+| `guard-cmd.janelaDoMes` | **é guard** — ele classificava o empenho pelo mês civil e somava o consumido por janela UTC: o empenho de 30/06 às 22:00 era cobrado contra julho **e não entrava na soma de junho nenhuma das duas vezes** |
+| `msc/parsearCompetencia` | o encerramento do exercício caía **fora** da MSC de dezembro e reaparecia como abertura de janeiro: **a M3 não fechava** |
+| `ordem-cronologica` (M12) | o pagamento de 30/06 às 22:00 **omitido** da publicação do art. 141, §3º |
+| `m11.vigenciaFim` | prorrogar 150 dias atravessando a virada do horário de verão **movia o dia do vencimento** |
+| `m02.gerarDecreto*` | **decreto é documento assinado**, e imprimia um dia a mais para vigência da noite |
+| + `m10` (5), `rgf-anexo2/3/4/6`, `mde-*`, `m07`, `m20`, `m26` (3) | |
+
+**A MSC saiu da lista de "leiaute externo", por decisão.** O que o leiaute define é o
+**formato** do que se escreve; o que a janela decide é **quais fatos entram na remessa** — e
+essa é pergunta de domínio. O Siconfi recebe uma *competência*, não um instante.
+
+⚠️ **Provado por mutação: 11 de 11** (`scripts/mutacoes-eixo-de-data.ts`), devolvendo a cada
+sítio **exatamente o código que estava lá antes do conserto**. **Duas ficaram VERDES na
+primeira rodada, e as duas eram achados:**
+
+| Mutação | Por que nada acusava |
+|---|---|
+| `vigenciaFim` de volta a milissegundos | o teste que eu havia escrito prorrogava **365 dias de 30/06/2018 a 30/06/2019** — as duas pontas FORA do horário de verão, onde as duas aritméticas coincidem. Trocado por **150 dias**, que cruzam a virada de 04/11 |
+| `janelaDoBimestre` de volta a `Date.UTC` | **nenhum teste do repositório acusava** — todos os anexos passavam porque as fixtures usam meio-dia. Criado `m12-janelas.test.ts`, que afirma o **instante exato** das bordas: afirmar só o dia civil passaria com 00:00 e com 03:00 locais |
+
+⚠️ **E as fixtures dos testes estavam em Greenwich.** Nove arquivos acusaram, e em todos a
+FIXTURE é que estava errada: `new Date("2026-01-01T00:00:00Z")` como "primeiro instante do
+período" é **31/12 às 21:00 do ano anterior** — o `t6b` do M10 chamava de "primeiro instante"
+um fato da véspera.
+
+### 16.2 · O custo da suíte: partida, e a conta fecha
+
+| | arquivos | testes | tempo |
+|---|---:|---:|---:|
+| **rápida** (`npm run test:rapido`) | 55 | 583 | **~9 s** |
+| **completa** (`npm run test:tudo`) | 180 | 1.830 | **~700 s** |
+
+⚠️ **É decisão de agendamento, não de rigor.** A exclusão é **CALCULADA** pelo que o arquivo
+importa — não uma lista escrita à mão que envelhece calada —, e
+`test/particao-da-suite.test.ts` prova que a **união das duas é o conjunto inteiro** e que
+nenhum arquivo da partição rápida alcança uma porta do banco. **Provado por mutação:** pôr um
+`new PrismaClient()` num teste rápido deixa o guard vermelho.
+
+⚠️ **O custo da partição foi MEDIDO (3,6 s) e MEMOIZADO (1,2 s)**, não contornado com timeout
+maior. E o `raizes-dominio.test.ts` acusou a primeira versão por enumerar as raízes à mão —
+o guarda dos guardas segue funcionando.
+
+### 16.3 · PARTE 1 — o molde
+
+`lib/molde/` (dado puro) + `components/molde/` (superfície) + `lib/portas/molde.ts` (o que
+precisa do servidor). De **um descritor** saem: listagem com filtros compostos, ordenação por
+URL, paginação, exportação CSV, **seleção múltipla com soma no servidor**, formulário de
+criação, **detalhe com cinco abas fixas** (dados, campos adicionais, anexos, histórico,
+relacionados) e **barra de ações amarrada a permissão nomeada**.
+
+**Os três limites foram respeitados, e um deles doeu:**
+
+1. **provado pelos cadastros do próprio lote** — quatro, nesta sessão;
+2. **cadastro que não coube escapa** — o consórcio precisou de UM argumento a mais no
+   detalhe (o exercício, porque os saldos são anuais). Ele cabe; se precisasse de dois, viraria
+   tela escrita à mão;
+3. **nenhuma regra de negócio dentro do molde** — o `FormularioDeRecurso` diz isso no
+   docblock, e o que ele valida é `required`/`min`, conveniência de digitação. Quem recusa é o
+   caso de uso, dentro da transação.
+
+⚠️ **O QUE O MOLDE NÃO GENERALIZA, E É DECISÃO:** anexos e campos adicionais continuam com
+**uma FK por tipo de dono**. A tentação era um par `(donoTipo, donoId)` livre — e o preço
+apareceria no primeiro id errado: o banco deixaria de garantir que o registro existe, e um
+`donoId` digitado errado viraria anexo **órfão** que nenhuma tela mostra e nenhuma limpeza
+acha. O molde automatiza a **superfície**, não o modelo: cadastro novo com anexo custa uma
+migration aditiva e **uma linha** no descritor.
+
+⚠️ **`definirRecurso` verifica em TEMPO DE MÓDULO e ESTOURA.** Aba de anexos sem dono, coluna
+somável que não é dinheiro, ação sem crachá — o `next build` falha junto. O erro aparece
+antes de alguém abrir a página.
+
+⚠️ **E a fronteira acusou o molde duas vezes**, as duas com razão:
+- `lib/portas/recursos/dados.ts` importava `LinhaDoMolde` de `components/` — **o dado
+  dependendo do pixel**. Os DTOs foram para `lib/molde/tipos.ts`;
+- `somarSelecionadas` morava na porta e arrastava `next/headers` para o tsconfig do backend.
+  Função pura em porta é dependência que viaja.
+
+### 16.4 · PARTE 2 — os cinco cadastros, e o que cada um trouxe de próprio
+
+| Cadastro | O que ele tem que os outros não têm |
+|---|---|
+| **Convênios** (M28) | **três saldos independentes** — a liberar, a prestar contas, glosado. Por isso NÃO há mapa de sinal: um `Record<Tipo, 1 \| -1>` obrigaria a inventar um zero, e zero ali é mentira que o compilador não pega. O papel do ente (concedente/convenente) é NOT NULL sem default: o efeito contábil é OPOSTO |
+| **Precatórios** (M29) | a **fila do art. 100**, que não é a do art. 141 e não é um `ORDER BY`: ela depende do saldo devido (Σ dos movimentos) e da regra de que a preferência do §2º só vale DENTRO dos alimentares |
+| **Consórcios** (M30) | o **contrato de rateio anual** (art. 8º). O teto é a **soma** do original com os aditivos, nunca "o último vale" — e o exercício do movimento é DECLARADO, não derivado da data |
+| **Medições de obra** (M11) | **liquidar obra exige medição aprovada**, na transação da liquidação. Bordas de período **inclusivas**: acabar em X e começar em X se sobrepõe |
+| **Controle interno** (M31) | **regime de superfície, declarado** — ele não move o razão. Três segregações reais no código, não só no censo |
+
+⚠️ **TRÊS SEGREGAÇÕES DE FUNÇÃO VIRARAM GUARD, e não só crachá separado:** quem **mede** não
+aprova a medição; quem **relata** a providência não a aprecia; quem **libera** a parcela não
+aprova a prestação de contas. As duas primeiras recusam o **mesmo usuário** nas duas pontas.
+
+⚠️ **O achado do art. 141 × art. 100.** A primeira versão reusava a justificativa de quebra de
+ordem do art. 141 para o precatório — "o pagamento é um ato só, a razão dele é uma". **O
+primeiro teste derrubou o argumento:** aquele campo exige uma `hipotese` de um **rol fechado
+da Lei 14.133**, e nenhuma das cinco cobre acordo homologado nem sequestro de verba. Reusar
+obrigaria o operador a declarar uma **hipótese falsa** para conseguir pagar — e a declaração
+falsa ficaria gravada com a mesma aparência das verdadeiras. Hoje são dois campos.
+
+### 16.5 · O percurso de navegador — 40 passos, 0 falhas, duas execuções
+
+`scripts/smoke-ent03b.ts`, sobre os quatro cadastros. **Ele achou seis coisas**, e três eram
+defeitos de verdade:
+
+| O que o smoke achou | Era defeito? |
+|---|---|
+| **o campo de CPF/CNPJ aparecia SEM RÓTULO** | **sim.** `CampoCpfCnpj` é um campo nu, como o `CampoValor`, e ignorava o `rotulo` que o molde passava. Nenhum teste de módulo pegaria: o formulário funcionava, o valor chegava ao servidor, o registro gravava. **Faltava o rótulo** — quem usa leitor de tela ouviria "caixa de edição" e nada mais |
+| as colunas derivadas não apareciam | **não** — a lista estava vazia e o molde mostrava o estado vazio, que é o certo. O teste é que conferia cedo demais |
+| o histórico do convênio estava vazio | **não** — a glosa foi RECUSADA por falta de `RoteiroConvenio` no banco de dev, e a recusa está certa: as contas vêm por parâmetro |
+| três marcadores não casavam | **não** — `innerText` devolve o texto **transformado pelo CSS**, e os rótulos são `uppercase` |
+
+⚠️ **E o smoke provou pela tela o que mais importa:** repassar a consórcio **sem contrato de
+rateio** é recusado **citando o art. 8º da Lei 11.107**, e nada fica gravado.
+
+### 16.6 · PARTE 3 — a varredura do ENT04/ENT05, em bloco
+
+`docs/varredura-de-modelo-ent04-ent05.md` — 543 cláusulas lidas, **treze decisões trazidas de
+uma vez**, cada uma com a cláusula que a revela e a alternativa recomendada.
+
+⚠️ **A varredura achou uma QUINTA família que ainda não tinha nome:** o documento pede
+**CONFIGURÁVEL** e a implementação óbvia é **CONSTANTE**. Cinco cláusulas (margem consignável,
+férias especiais, estorno de provisão na rescisão, obrigatoriedade do protocolo do atestado,
+limite mínimo de estoque). É a armadilha do roteiro contábil num domínio novo, e o repositório
+já tem a resposta: **nenhum código no código** — parâmetro em tabela, fail-closed.
+
+**Os três alertas altos da família 3** (efeito antes da guarda):
+- **5.12.60 — reintegração reutilizando a MESMA matrícula.** É a forma exata do `porNaFila`:
+  gravar antes de conferir deixaria meio-vínculo e a reintegração **impossível para sempre**;
+- **5.12.59 — simulação de rescisão.** "Não seja efetivamente executado" é promessa de
+  ausência de efeito colateral, e promessas assim se quebram em silêncio;
+- **5.19.38 — virada mensal da depreciação.** Lote sobre N bens: falhar no 300º deixa 299
+  depreciados, e rodar de novo deprecia os 299 **outra vez**.
+
+### 16.7 · Os regimes, declarados
+
+| Entrega | Regime | Por quê |
+|---|---|---|
+| eixo de data civil (35 sítios) | **profundidade** | é razão contábil e guard: caracterização, mutação 11/11, fixture N=2, negação com motivo |
+| convênios, precatórios, consórcios, medições | **profundidade** | movem o razão e têm teto próprio |
+| controle interno | **superfície** | **não move o razão** — não há comportamento contábil anterior a caracterizar. Caso de uso + autorização + percurso de navegador |
+| o molde e as telas | **superfície** | guarda do descritor, teste de autorização, um percurso por família de tela |
+
+⚠️ **Nenhum rebaixamento de profundidade para superfície aconteceu neste lote.** O controle
+interno nasceu em superfície porque é o regime certo para ele, não porque foi rebaixado.
+
+### 16.8 · ⚠️ A MEDIÇÃO QUE FALHOU — 40, e a meta era 60 a 90
+
+**O molde funcionou. A meta não foi atingida. As duas coisas são verdade, e o número explica:**
+
+| | |
+|---|---:|
+| cláusulas marcadas neste lote | **40** |
+| das quais vieram dos **4 cadastros novos** | **17** |
+| das quais vieram de **medir o que já estava construído e nunca fora olhado** | **23** |
+| densidade do catálogo | **~4 cláusulas por cadastro** |
+
+⚠️ **A conta é essa: 4 cadastros × ~4 cláusulas = 17.** Para 60–90 num lote, o lote precisa de
+**~15 cadastros pelo molde**. O que mudou é que isso **agora é possível** — os quatro
+cadastros com listagem, formulário, detalhe de cinco abas e barra de ações custaram, juntos, o
+que UM custava antes. O que não mudou é a densidade do catálogo, e ela não depende do método.
+
+⚠️ **E 23 das 40 são uma segunda medição, sobre um segundo problema:** havia código testado e
+verde que **nunca tinha sido olhado pelo catálogo** — dívida fundada, PPP, encerramento do
+exercício, papel de runtime, campos adicionais, designer. Um instrumento que mede para baixo
+esconde tanto quanto um que mede para cima.
+
+### 16.9 · O que NÃO foi feito, e está nomeado
+
+| Pendência | O que é |
+|---|---|
+| `ANEXO-DO-MOLDE-UI` | a aba de anexos **mostra**; o upload por ela ainda não foi ligado |
+| `ROTEIROS-ENT03B-PARAMETRIZACAO` | o banco de dev não tem `RoteiroConvenio`/`Precatorio`/`Consorcio` — a tela recusa nomeando |
+| `PPP-ANEXOS` / `PPP-VINCULO-EMPENHO` | `Anexo` e `Empenho` não têm coluna para PPP |
+| `DIVIDA-PARCELAS` | não há modelo de parcela — sem o previsto, o comparativo previsto × pago é impossível |
+| `AUDITORIA-EVENTOS` | sem modelo de evento, instaurar auditoria a partir dele não tem de onde partir |
+| `AUDITORIA-SEM-EIXO-DE-REGISTRO` | `RegistroDeOperacao` guarda a AÇÃO e não o REGISTRO |
+| `PRECATORIO-HIPOTESE-DE-QUEBRA` | o rol de hipóteses do art. 100 não está normatizado |
+| `CHECKLIST-GRUPOS`, `RELATORIO-CIRCUNSTANCIADO-UI`, `CONVENIO-PAINEL-DE-ATRASO`, `PRECATORIO-RELATORIO`, `DIVIDA-RELATORIO`, `DIVIDA-RECLASSIFICACAO`, `AJUDA-DAS-TELAS-DO-MOLDE` | superfície e relatórios que faltam |
+| `SELECAO-MULTIPLA-UI` | **saiu de graça no molde** — a soma da seleção é do servidor, em Decimal |
+| `CONCILIACAO-PERIODO-PDF`, `ROL-DE-FONTES-UI` | ENT03c, por decisão da revisão |
+| `DATA-CIVIL-APRESENTACAO`, `M07-FONTE-NO-MOVIMENTO` | registradas |
+| `packages/integracao` | **ENT03c**, por decisão da revisão |
+
+### 16.10 · Comandos e resultados — reprodutíveis
+
+| Comando | Resultado | Quando |
+|---|---|---|
+| `npm run test:tudo` | **180 arquivos, 1.830 testes, 0 falhas**, 699 s | 2026-09-11 |
+| `npm run test:rapido` | **55 arquivos, 583 testes, 0 falhas**, 9,2 s | 2026-09-11 |
+| `npx tsx scripts/mutacoes-eixo-de-data.ts` | **11 de 11 sítios PROVADOS** | 2026-09-11 |
+| `scripts/smoke-ent03b.ts` | **40 passos, 0 falhas**, duas execuções | 2026-09-11 |
+| `npm run typecheck` / `:app` / `:scripts` | 0 erros cada | 2026-09-11 |
+| `npx next build` | limpo, com as 10 rotas novas | 2026-09-11 |
+| `npx prisma migrate dev` | **3 migrations aditivas, ZERO `DROP`** (94 no total) | 2026-09-11 |
+| `npx tsx scripts/marcar-catalogo.ts --aplicar` | **91 de 2037 (4,5%)**, +40 | 2026-09-11 |
+
+⚠️ **UMA INTERMITÊNCIA, COM O MOTIVO JUNTO.** Numa execução em que `test:rapido` rodou
+**encadeado com dois `tsc`** no mesmo shell (`typecheck && typecheck:scripts && test:rapido`),
+**3 de 583 testes falharam** por timeout de 5 s — os que varrem disco. Em execução isolada,
+verde duas vezes seguidas. **Causa: contenção de CPU numa máquina de 8 GB**, e não o código.
+Registrado em vez de descartado.
+
+⚠️ **Uma deriva de schema apareceu e foi fechada.** A primeira migration do ENT03b vinha
+querendo **derrubar** `MovimentoBancario_fonteId_idx` — um índice que a migration do ENT03a
+criou e que o modelo nunca declarou. É assim que a deriva se manifesta: não como erro, como
+**remoção silenciosa** de um índice que o saldo por fonte usa. Declarado no schema, a deriva
+acabou e a migration ficou com **zero `DROP`**.
+
+---
+
+## 17. O próximo passo
+
+⚠️ **O ENT03b está FECHADO e PARADO no gate.** O molde existe e foi provado pelos cadastros
+do próprio lote; `DATA-CIVIL-RESTANTES` está fechada e provada por mutação; a varredura do
+ENT04/ENT05 trouxe treze decisões de uma vez.
+
+**Para o ENT03c**, na ordem em que o relógio cobra:
+
+1. **As treze decisões da varredura** (`docs/varredura-de-modelo-ent04-ent05.md`). Elas não
+   exigem contato externo nem credencial — são decisões de **MODELO**, e o custo de tomá-las
+   agora é uma conversa; o de tomá-las depois é migração de dados sobre fatos que o tribunal
+   já recebeu. **É o item mais barato e o mais caro de adiar.**
+2. **`packages/integracao`** — cofre de credenciais por entidade e ambiente, validação contra
+   esquema, detecção de duplicidade em retransmissão, custódia de certificado. ⚠️ O achado do
+   **A3 muda a arquitetura, não a configuração**: a chave não sai do dispositivo, então a
+   assinatura acontece **na máquina do usuário**, não no servidor.
+3. **Planejamento** — cotas, contingenciamento, prévia, emendas, audiências, que saíram do
+   ENT03b por decisão da revisão.
+4. **Baixar os leiautes públicos** — TCE/SC (IN TC-28/2021, IN TC-35/2024), ADN, eSocial.
+   Credenciamento é **calendário, não desenvolvimento**.
+5. **A decisão de ente que trava duas linhas do inventário**: *qual banco o município usa*.
+
+⚠️ **E o que a medição deste lote diz sobre o desenho dos próximos.** O molde cortou o custo
+por cadastro; o catálogo tem **~4 cláusulas por cadastro**. Um lote que queira 60–90 cláusulas
+precisa de **~15 cadastros pelo molde** — não de mais profundidade nos que já existem. Os
+candidatos com modelo já pronto e sem tela são: **dívida fundada, PPP, obras com medições,
+diárias e adiantamentos, extraorçamentário, e os cadastros do ENT05** (almoxarifado,
+patrimônio, frota). Cada um deles é hoje um descritor e duas rotas.
+
+⚠️ **O padrão a procurar continua o mesmo, e já apareceu QUATRO vezes**: o modelo responde
+"agora" e o documento pergunta "naquela data". Foi a competência, a conta multifonte, a
+conciliação — e agora, na varredura, a **posição de estoque**, o **preço médio**, a **margem
+consignável** e a **situação do bem**. Quando um requisito disser "na data", **verifique antes
+de construir se o modelo tem o eixo**.
+
+E de pé desde o ENT01: o **lote de tenancy** fecha os itens 4, 5 e 7 do incremento do ENT01 e
+o teste 1 do ENT02. Enquanto ele não vier, esses continuam declarados — nunca marcados como
+atendidos, e nenhum município novo habilitado.

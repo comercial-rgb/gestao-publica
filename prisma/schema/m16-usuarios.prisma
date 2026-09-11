@@ -263,6 +263,49 @@ enum AcaoDoSistema {
   FECHAR_LOTE
   GERAR_BORDERO
   PROCESSAR_RETORNO_BANCARIO
+
+  // ── M28 — CONVÊNIOS E TRANSFERÊNCIAS VOLUNTÁRIAS (ENT03b · LRF art. 25) ──
+  CADASTRAR_CONVENIO
+  LIBERAR_PARCELA_DE_CONVENIO
+  /// ⚠️ SEPARADA DE `LIBERAR_PARCELA_DE_CONVENIO`, e a separação é SEGREGAÇÃO (TR 6.4):
+  /// quem libera o repasse não é quem aprova a prestação de contas dele. Um crachá só para
+  /// as duas coisas deixaria a mesma pessoa transferir e dar quitação — que é exatamente o
+  /// arranjo que o controle interno existe para impedir.
+  APROVAR_PRESTACAO_DE_CONTAS
+  GLOSAR_CONVENIO
+  REGISTRAR_DEVOLUCAO_DE_CONVENIO
+  ESTORNAR_MOVIMENTO_DE_CONVENIO
+
+  // ── M29 — PRECATÓRIOS JUDICIAIS (ENT03b · CF art. 100) ──
+  CADASTRAR_PRECATORIO
+  INSCREVER_PRECATORIO
+  ATUALIZAR_PRECATORIO
+  CANCELAR_PRECATORIO
+  ESTORNAR_MOVIMENTO_DE_PRECATORIO
+
+  // ── M30 — CONSÓRCIOS PÚBLICOS (ENT03b · Lei 11.107/2005) ──
+  CADASTRAR_CONSORCIO
+  /// O contrato de RATEIO é o que autoriza a despesa (art. 8º) — e é ele que fixa o teto que
+  /// o guard do repasse confere. Cadastrá-lo é ato distinto de repassar.
+  REGISTRAR_CONTRATO_DE_RATEIO
+  REPASSAR_AO_CONSORCIO
+  REGISTRAR_DEVOLUCAO_DE_CONSORCIO
+  ESTORNAR_MOVIMENTO_DE_CONSORCIO
+
+  // ── M11 — MEDIÇÃO DE OBRA (ENT03b · Lei 14.133 art. 140) ──
+  REGISTRAR_MEDICAO_DE_OBRA
+  /// ⚠️ APROVAR É OUTRO CRACHÁ, pela mesma razão do convênio: quem mede não é quem aprova a
+  /// medição. Medir e aprovar com o mesmo poder é atestar o próprio serviço.
+  APROVAR_MEDICAO_DE_OBRA
+
+  // ── M31 — CONTROLE INTERNO (ENT03b · CF art. 74) ──
+  ABRIR_AUDITORIA_INTERNA
+  RESPONDER_CHECKLIST_DE_AUDITORIA
+  REGISTRAR_IRREGULARIDADE
+  REGISTRAR_PROVIDENCIA
+  APRECIAR_PROVIDENCIA
+  ENCERRAR_AUDITORIA_INTERNA
+  EMITIR_RELATORIO_CIRCUNSTANCIADO
 }
 
 /// O USUÁRIO. TR 4.55.

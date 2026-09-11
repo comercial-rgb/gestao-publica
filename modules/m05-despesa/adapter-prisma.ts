@@ -44,6 +44,12 @@ import { exigirOrdemAutorizada } from "./ordem-pagamento.js";
 // travamento de competência (M16). Ver `m01-funil.test.ts`: o grep-teste proíbe o
 // `lancamentoContabil.create` fora dele.
 import { lancarNoRazao } from "../m01-core-contabil/razao.js";
+import { exigirMedicaoAprovadaDaObra } from "../m11-licitacoes/medicoes.js";
+import {
+  baixarPrecatorioNoPagamento,
+  exigirOrdemDoArt100,
+} from "../m29-precatorios/servico.js";
+import { anoCivil } from "../../packages/datas/index.js";
 // M10 — a dívida. A amortização nasce DENTRO do pagamento e morre com ele.
 import {
   amortizarNoPagamento,
@@ -1581,6 +1587,7 @@ export function criarDespesaRepositoryPrisma(
           select: {
             id: true,
             valor: true,
+            obraId: true,
             estornoDeId: true,
             estornos: { select: { id: true } },
           },
@@ -1612,12 +1619,29 @@ export function criarDespesaRepositoryPrisma(
           );
         }
 
+        // ⚠️ M11 (ENT03b) — LIQUIDAR OBRA EXIGE MEDIÇÃO APROVADA (Lei 14.133, art. 140).
+        //
+        // O guard é UNIDIRECIONAL, como o do `obraId` no empenho: empenho COM obra exige
+        // medição; empenho sem obra ignora o campo. A liquidação de custeio, de material e
+        // de serviço não tem medição nenhuma, e exigi-la delas quebraria a execução inteira.
+        //
+        // ⚠️ AQUI, NA TRANSAÇÃO DA LIQUIDAÇÃO, e não na borda: se a medição não serve, a
+        // LIQUIDAÇÃO INTEIRA aborta. Não existe "liquidou sem medir".
+        if (empenho.obraId !== null) {
+          await exigirMedicaoAprovadaDaObra(tx, {
+            obraId: empenho.obraId,
+            medicaoId: p.medicaoId,
+            valorDaLiquidacao: p.valor,
+          });
+        }
+
         await criarLancamento(tx, lancamento);
 
         const liq = await tx.liquidacao.create({
           data: {
             id: p.liquidacaoId,
             empenhoId: p.empenhoId,
+            medicaoId: p.medicaoId ?? null,
             numero: p.numero,
             valor: p.valor.toFixed(2),
             data: p.data,
@@ -1766,10 +1790,15 @@ export function criarDespesaRepositoryPrisma(
         // retenção não perdoa parte da dívida — ela muda o credor daquele pedaço.
         // Se a dívida não cobrir o valor, o PAGAMENTO INTEIRO aborta: não existe
         // "pagou mas não amortizou". (Mesmo desenho da retenção do M07.)
-        const dividaDoEmpenho = await tx.liquidacao.findUniqueOrThrow({
+        const vinculosDoEmpenho = await tx.liquidacao.findUniqueOrThrow({
           where: { id: p.liquidacaoId },
-          select: { empenho: { select: { dividaId: true } } },
+          select: {
+            empenho: {
+              select: { dividaId: true, precatorioId: true, data: true, numero: true },
+            },
+          },
         });
+        const dividaDoEmpenho = vinculosDoEmpenho;
         if (dividaDoEmpenho.empenho.dividaId !== null) {
           await amortizarNoPagamento(tx, {
             dividaId: dividaDoEmpenho.empenho.dividaId,
@@ -1778,6 +1807,42 @@ export function criarDespesaRepositoryPrisma(
             data: p.data,
             numeroPagamento: p.numero,
             criadoPor: p.criadoPor,
+          });
+        }
+
+        // ═══ M29 (ENT03b · CF art. 100) — O PRECATÓRIO, NA MESMA TRANSAÇÃO ═══
+        //
+        // ⚠️ SÃO DUAS COISAS, E AS DUAS ABORTAM O PAGAMENTO INTEIRO:
+        //   1. a ORDEM CONSTITUCIONAL — alimentar antes de comum, preferência do §2º,
+        //      depois a data de apresentação. Furá-la é possível (acordo homologado,
+        //      sequestro determinado pelo tribunal) e exige JUSTIFICATIVA no mesmo ato;
+        //   2. a BAIXA do passivo, pelo BRUTO — a retenção não perdoa parte do precatório,
+        //      ela muda o credor daquele pedaço. É o mesmo desenho da dívida logo acima.
+        //
+        // ⚠️ NÃO EXISTE "PAGOU MAS FUROU A FILA" nem "pagou mas não baixou": se qualquer
+        // das duas falhar, o pagamento inteiro aborta.
+        if (vinculosDoEmpenho.empenho.precatorioId !== null) {
+          const exercicio = anoCivil(vinculosDoEmpenho.empenho.data);
+          await exigirOrdemDoArt100(tx, {
+            precatorioId: vinculosDoEmpenho.empenho.precatorioId,
+            exercicio,
+            // ⚠️ É A JUSTIFICATIVA DO ART. 100, E NÃO A DO ART. 141 — ver `PagarParams`.
+            // A primeira versão reusava a do 141, e o primeiro teste derrubou o argumento:
+            // aquele campo exige uma HIPÓTESE de um rol fechado da Lei 14.133, e nenhuma das
+            // cinco cobre acordo homologado nem sequestro de verba. Reusar obrigaria o
+            // operador a declarar uma hipótese falsa para conseguir pagar.
+            justificativaOrdemConstitucional: p.justificativaOrdemConstitucional,
+          });
+          await baixarPrecatorioNoPagamento(tx, {
+            precatorioId: vinculosDoEmpenho.empenho.precatorioId,
+            pagamentoId: pag.id,
+            valorBruto: p.valor,
+            data: p.data,
+            numeroPagamento: p.numero,
+            criadoPor: p.criadoPor,
+            ...(p.justificativaOrdemConstitucional !== undefined
+              ? { justificativaQuebraDeOrdem: p.justificativaOrdemConstitucional }
+              : {}),
           });
         }
 

@@ -49,6 +49,8 @@ model Orgao {
   fichas   FichaOrcamentaria[]
   /// back-relation M11 (obras — TR 4.50) — campo VIRTUAL, não gera coluna.
   obras    Obra[]
+  /// ENT03b — as auditorias internas deste órgão. Campo VIRTUAL.
+  auditorias AuditoriaInterna[]
 }
 
 model UnidadeOrcamentaria {
@@ -224,6 +226,9 @@ model FonteRecurso {
   contasPermitidas    FonteDaContaBancaria[]
   /// M09/ENT03a — os movimentos bancários desta fonte. Campo VIRTUAL.
   movimentosBancarios MovimentoBancario[]
+  /// ENT03b — os cadastros com fonte vinculada. Campos VIRTUAIS.
+  convenios           Convenio[]
+  consorcios          ConsorcioPublico[]
   // back-relations M03 — campos VIRTUAIS, não geram coluna.
   itensCredito        ItemCredito[]
   disponibilidades    DisponibilidadeRecursoNovo[]

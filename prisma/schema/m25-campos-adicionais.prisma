@@ -34,6 +34,14 @@ enum CadastroComCamposAdicionais {
   PESSOA
   PROCESSO
   COMUNICADO
+  /// ⚠️ ENT03b — os cadastros do molde. Cada valor aqui CONTINUA correspondendo a uma FK
+  /// real na `ValorDeCampoAdicional`: o rol é fechado pela mesma razão de antes, e o molde
+  /// não afrouxou isso. Cadastro novo = um valor aqui, uma coluna lá, uma linha no descritor.
+  CONVENIO
+  PRECATORIO
+  CONSORCIO
+  OBRA
+  AUDITORIA_INTERNA
 }
 
 /// Os sete tipos da cláusula 5.29.7. Nem um a mais, nem um a menos.
@@ -128,6 +136,22 @@ model ValorDeCampoAdicional {
   comunicadoId String?
   comunicado   Comunicado? @relation("CampoAdicionalDeComunicado", fields: [comunicadoId], references: [id])
 
+  // ── ENT03b — os cadastros do molde. Uma FK por dono, como as três de cima. ──
+  convenioId String?
+  convenio   Convenio? @relation("CampoAdicionalDeConvenio", fields: [convenioId], references: [id])
+
+  precatorioId String?
+  precatorio   Precatorio? @relation("CampoAdicionalDePrecatorio", fields: [precatorioId], references: [id])
+
+  consorcioId String?
+  consorcio   ConsorcioPublico? @relation("CampoAdicionalDeConsorcio", fields: [consorcioId], references: [id])
+
+  obraId String?
+  obra   Obra? @relation("CampoAdicionalDeObra", fields: [obraId], references: [id])
+
+  auditoriaId String?
+  auditoria   AuditoriaInterna? @relation("CampoAdicionalDeAuditoria", fields: [auditoriaId], references: [id])
+
   // ── O VALOR, na coluna do TIPO. Ver o cabeçalho: filtro de texto sobre número diz
   // que "900" é maior que "1.000". ──
   //
@@ -150,6 +174,11 @@ model ValorDeCampoAdicional {
   @@index([pessoaId])
   @@index([processoId])
   @@index([comunicadoId])
+  @@index([convenioId])
+  @@index([precatorioId])
+  @@index([consorcioId])
+  @@index([obraId])
+  @@index([auditoriaId])
   @@index([valorTexto])
   @@index([valorNumero])
   @@index([valorData])

@@ -274,6 +274,8 @@ export interface LiquidarParams {
   readonly notaFiscalSerie?: string | undefined;
   readonly notaFiscalData?: Date | undefined;
   readonly notaFiscalValor?: Money | undefined;
+  /** M11 (ENT03b) — a medição aprovada, quando o empenho tem obra. Ver `zLiquidarInput`. */
+  readonly medicaoId?: string | undefined;
   readonly criadoPor: string;
 }
 
@@ -296,6 +298,24 @@ export interface PagarParams {
    * Sem ela, pagar quem não é a cabeça da fila é rejeitado (fail-closed).
    */
   readonly justificativaQuebraOrdem?: JustificativaQuebraOrdemInput | undefined;
+  /**
+   * M29 (ENT03b · CF art. 100) — A JUSTIFICATIVA DA QUEBRA DA ORDEM **CONSTITUCIONAL**, e ela
+   * é SEPARADA da do art. 141.
+   *
+   * ⚠️ A PRIMEIRA VERSÃO REUSAVA `justificativaQuebraOrdem`, com o argumento de que o
+   * pagamento é um ato só e a razão dele é uma. O argumento caiu no primeiro teste: aquele
+   * campo exige uma `hipotese` de um ROL FECHADO da Lei 14.133 (emergência/calamidade, ME-EPP
+   * em risco, sistemas estruturantes, falência/recuperação, atividade finalística) — e
+   * NENHUMA delas cobre os casos do art. 100 (acordo homologado nos autos, sequestro de verba
+   * determinado pelo tribunal). Reusar obrigaria o operador a declarar uma hipótese FALSA para
+   * conseguir pagar, e a declaração falsa ficaria gravada com a mesma aparência das
+   * verdadeiras.
+   *
+   * ⚠️ SÓ TEXTO, E NÃO UM ROL. O rol das hipóteses de preterição do art. 100 não está
+   * modelado — pendência nomeada `PRECATORIO-HIPOTESE-DE-QUEBRA`. Inventá-lo aqui seria
+   * fabricar um rol normativo, que é pior que não ter nenhum.
+   */
+  readonly justificativaOrdemConstitucional?: string | undefined;
   /**
    * T07 — a ordem que autorizou o pagamento. O adapter confere, DENTRO da transação,
    * que ela está AUTORIZADA, é da mesma liquidação, tem o valor exato e ainda não foi

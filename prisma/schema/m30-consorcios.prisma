@@ -1,0 +1,157 @@
+// ============================================================================
+// M30 — CONSÓRCIOS PÚBLICOS (Lei 11.107/2005 · Decreto 6.017/2007)
+//
+// ═══ ⚠️ O CONTRATO DE RATEIO É ANUAL, E É ELE QUE AUTORIZA A DESPESA ═══
+// Lei 11.107, art. 8º: os entes só entregam recursos ao consórcio mediante CONTRATO DE
+// RATEIO, formalizado em CADA EXERCÍCIO e com prazo que não excede o da dotação. O §2º é
+// explícito: é vedada a aplicação de recursos a despesas genéricas.
+//
+// Isso tem duas consequências de modelo, e as duas estão aqui:
+//
+//   1. o rateio é uma linha POR EXERCÍCIO, não uma coluna do consórcio. Um `valorAnual` no
+//      cadastro seria a segunda verdade sobre um documento que se refaz todo ano, e o valor
+//      de 2026 apagaria o de 2025 — que é justamente o que a prestação de contas precisa ver;
+//   2. repassar mais do que o rateio do exercício autoriza é despesa sem amparo. O guard
+//      confere a Σ dos repasses do exercício contra o rateio DAQUELE exercício.
+//
+// ═══ ⚠️ O CONSÓRCIO NÃO É CREDOR COMUM ═══
+// Ele é associação pública, com CNPJ próprio, e a transferência a ele é classificada como
+// transferência a consórcio — não como serviço prestado. O vínculo com o empenho existe para
+// que "quanto já repassamos ao consórcio" tenha UMA resposta, e não duas.
+// ============================================================================
+
+model ConsorcioPublico {
+  id String @id @default(cuid())
+
+  /// O identificador do consórcio no ente. Único.
+  identificador String @unique
+  denominacao   String
+  /// O CNPJ da associação pública. 14 dígitos, sem máscara.
+  cnpj String @db.VarChar(14)
+
+  /// O protocolo de intenções ratificado por lei (art. 5º) — sem ele o consórcio não existe
+  /// juridicamente para o ente.
+  protocoloDeIntencoes String
+  /// A lei municipal que ratificou o protocolo.
+  leiRatificadora String
+
+  /// A área de atuação declarada (saúde, resíduos, transporte). Texto: o rol não é do ente.
+  areaDeAtuacao String
+
+  fonteRecursoId String
+  fonteRecurso   FonteRecurso @relation(fields: [fonteRecursoId], references: [id])
+
+  /// A conta de CONTROLE/passivo do rateio. Por parâmetro.
+  contaContabilId String
+  contaContabil   ContaPcasp @relation("ControleDoConsorcio", fields: [contaContabilId], references: [id])
+
+  rateios    ContratoDeRateio[]
+  movimentos MovimentoConsorcio[]
+  /// back-relation M05 — campo VIRTUAL.
+  empenhos   Empenho[]
+  /// back-relations M22/M25 (ENT03b) — campos VIRTUAIS.
+  anexos          Anexo[]
+  camposAdicionais ValorDeCampoAdicional[] @relation("CampoAdicionalDeConsorcio")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([fonteRecursoId])
+}
+
+/// O CONTRATO DE RATEIO de um exercício — art. 8º da Lei 11.107.
+///
+/// ⚠️ APPEND-ONLY, E COM EXERCÍCIO ÚNICO POR CONSÓRCIO. Corrigir o valor de um rateio é
+/// gravar um ADITIVO (outra linha, apontando a original), nunca um UPDATE: o valor original é
+/// o que o contrato assinado diz, e a prestação de contas o compara com o executado.
+model ContratoDeRateio {
+  id          String           @id @default(cuid())
+  consorcioId String
+  consorcio   ConsorcioPublico @relation(fields: [consorcioId], references: [id])
+
+  exercicio Int
+  /// A cota do ENTE naquele exercício. É o teto que o guard do repasse confere.
+  valorDoEnte Decimal @db.Decimal(18, 2)
+  /// A data de assinatura do contrato de rateio.
+  dataAssinatura DateTime
+
+  /// O aditivo aponta para o rateio original. Nulo = é o contrato original do exercício.
+  ///
+  /// ⚠️ O TETO DO EXERCÍCIO É A SOMA DO ORIGINAL COM OS ADITIVOS, e não a última linha. A
+  /// leitura "o último vale" faria um aditivo de supressão parecer o valor inteiro.
+  aditivoDeId String?
+  aditivoDe   ContratoDeRateio?  @relation("AditivoDeRateio", fields: [aditivoDeId], references: [id])
+  aditivos    ContratoDeRateio[] @relation("AditivoDeRateio")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  /// ⚠️ UM CONTRATO ORIGINAL POR EXERCÍCIO — a unicidade parcial (só onde `aditivoDeId` é
+  /// nulo) está em `prisma/sql/uq_rateio_original_por_exercicio.sql`, porque o Prisma não
+  /// expressa índice parcial. Sem ela, dois contratos originais de 2026 dobrariam o teto.
+  @@index([consorcioId, exercicio])
+  @@index([aditivoDeId])
+}
+
+enum TipoMovimentoConsorcio {
+  /// O REPASSE efetivo da cota (ou de parte dela) ao consórcio.
+  REPASSE
+  /// A DEVOLUÇÃO de saldo não aplicado, ao fim do exercício.
+  DEVOLUCAO
+  ESTORNO_REPASSE
+  ESTORNO_DEVOLUCAO
+}
+
+model MovimentoConsorcio {
+  id          String           @id @default(cuid())
+  consorcioId String
+  consorcio   ConsorcioPublico @relation(fields: [consorcioId], references: [id])
+
+  tipo  TipoMovimentoConsorcio
+  valor Decimal                @db.Decimal(18, 2)
+
+  /// ⚠️ O EXERCÍCIO DO MOVIMENTO É EXPLÍCITO, e não derivado da `dataMovimento`.
+  ///
+  /// Parece redundante e não é: o rateio é POR EXERCÍCIO, e um repasse de janeiro pode ser
+  /// da cota do ano anterior (restos a pagar). Derivá-lo da data cobraria o repasse contra o
+  /// rateio errado — exatamente o defeito que o eixo de data civil achou na cota mensal do
+  /// CMD, onde o empenho de 30/06 à noite era cobrado contra julho.
+  exercicio Int
+
+  dataMovimento DateTime
+  competencia   DateTime
+
+  empenhoId String?
+  empenho   Empenho? @relation(fields: [empenhoId], references: [id])
+
+  lancamentoId String?             @unique
+  lancamento   LancamentoContabil? @relation(fields: [lancamentoId], references: [id])
+
+  estornoDeId String?
+  estornoDe   MovimentoConsorcio?  @relation("EstornoConsorcio", fields: [estornoDeId], references: [id])
+  estornos    MovimentoConsorcio[] @relation("EstornoConsorcio")
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([consorcioId, exercicio, tipo])
+  @@index([dataMovimento])
+  @@index([empenhoId])
+  @@index([estornoDeId])
+}
+
+model RoteiroConsorcio {
+  id   String                 @id @default(cuid())
+  tipo TipoMovimentoConsorcio @unique
+
+  contaDebitoId String
+  contaDebito   ContaPcasp @relation("DebitoDoRoteiroConsorcio", fields: [contaDebitoId], references: [id])
+  contaCreditoId String
+  contaCredito   ContaPcasp @relation("CreditoDoRoteiroConsorcio", fields: [contaCreditoId], references: [id])
+
+  historicoPadrao String
+
+  criadoEm DateTime @default(now())
+}

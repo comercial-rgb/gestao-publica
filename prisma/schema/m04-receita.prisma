@@ -66,6 +66,8 @@ model ReceitaArrecadada {
   movimentosDivida MovimentoDivida[]
   /// back-relation M10 (TR 4.63) — o recebimento de dívida ativa é receita.
   recebimentosDividaAtiva MovimentoDividaAtiva[] @relation("RecebimentoDividaAtiva")
+  /// ENT03b — a parcela de convênio que esta arrecadação trouxe. Campo VIRTUAL.
+  movimentosConvenio      MovimentoConvenio[]
 
   /// back-relation M10 (TR 4.65) — campo VIRTUAL, não gera coluna.
   movimentosPatrimoniais MovimentoPatrimonial[]

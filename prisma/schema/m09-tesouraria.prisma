@@ -292,6 +292,11 @@ model MovimentoBancario {
   criadoPor String
 
   @@index([contaBancariaId, data])
+  /// ⚠️ O ÍNDICE DA FONTE EXISTIA NO BANCO E NÃO NO SCHEMA — a migration do ENT03a o criou
+  /// e o modelo nunca o declarou. A primeira migration do ENT03b veio querendo DERRUBÁ-LO,
+  /// que é como a deriva entre schema e banco se manifesta: não como erro, como remoção
+  /// silenciosa de um índice que o saldo por fonte usa. Declarado aqui, a deriva acabou.
+  @@index([fonteId])
   @@index([estornoDeId])
 }
 

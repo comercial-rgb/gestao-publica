@@ -152,6 +152,23 @@ const AUTORIZA_EM_HELPER: Record<string, string> = {
   desarquivarComunicado: "movimentoPessoal() — idem",
   favoritarComunicado: "movimentoPessoal() — idem",
   desfavoritarComunicado: "movimentoPessoal() — idem",
+  // ⚠️ ENT03b — os movimentos COM LANÇAMENTO dos três cadastros novos. Mesmo desenho: cada
+  // um é o MESMO corpo (travar, ler saldo, conferir o guard do tipo, resolver o roteiro,
+  // lançar no razão, gravar) com um tipo e um guard diferentes. A ação continua nascendo no
+  // corpo público — o t6b prova que é a certa —, e quem abre a transação e faz a chamada é
+  // o helper.
+  //
+  // ⚠️ E A PRIMEIRA VERSÃO ESCOLHIA A AÇÃO DENTRO DO HELPER, por um `switch` sobre o tipo.
+  // O t6 acusou os sete, e a acusação estava certa: quem lê `glosar` tem de ver, ali, qual
+  // crachá ela exige. Hoje a ação é PARÂMETRO, passada pelo serviço público.
+  aprovarPrestacaoDeContas: "movimentoComLancamento() — o helper privado que abre a $transaction",
+  glosar: "movimentoComLancamento() — idem",
+  registrarDevolucao: "movimentoComLancamento() — idem",
+  inscreverPrecatorio: "comLancamento() — o helper privado que abre a $transaction",
+  registrarAtualizacaoDePrecatorio: "comLancamento() — idem",
+  cancelarPrecatorio: "comLancamento() — idem",
+  repassarAoConsorcio: "comLancamento() — o helper privado que abre a $transaction",
+  registrarDevolucaoDeConsorcio: "comLancamento() — idem",
 };
 
 describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
@@ -330,7 +347,19 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     // sempre recusa, e uma ação para ele seria uma permissão que o ente concederia a
     // alguém para fazer nada — e que ficaria distribuída no dia em que o canal existisse,
     // sem ninguém ter decidido isso. Ele está em FORA_DO_CENSO, com o motivo.
-    expect(nomes.length).toBe(167);
+    // + 25 (ENT03b — os cadastros do molde):
+    //     6 convênios (cadastrar, liberar parcela, aprovar prestação, glosar, devolver,
+    //       estornar movimento);
+    //     5 precatórios (cadastrar, inscrever, atualizar, cancelar, estornar movimento);
+    //     5 consórcios (cadastrar, registrar contrato de rateio, repassar, devolver,
+    //       estornar movimento);
+    //     2 medições de obra (registrar e APROVAR — crachás distintos, por segregação:
+    //       quem mede não aprova);
+    //     7 controle interno (abrir auditoria, responder checklist, registrar
+    //       irregularidade, registrar providência, APRECIAR providência — outro crachá,
+    //       pela mesma razão —, encerrar auditoria e emitir relatório circunstanciado)
+    //   = 192.
+    expect(nomes.length).toBe(192);
 
     // 97 serviços, 93 ações distintas. Os pares que compartilham ação (4: importarExtratoBb
     // REUSA IMPORTAR_EXTRATO). transferirEntreContas tem AÇÃO PRÓPRIA (não compartilha) → +1 ação.
@@ -381,7 +410,20 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   é o ato que o controle interno lê como "isto foi conferido", e quem opera a
     //   conciliação no dia a dia não é necessariamente quem assina o fechamento. É a
     //   mesma segregação do TR 6.4 que separa preparar e autorizar a ordem) = 160.
-    expect(TODAS_AS_ACOES.length).toBe(160);
+    // + 25 (ENT03b). ⚠️ AQUI OS SERVIÇOS E AS AÇÕES BATEM UM A UM, e isso é decisão: não há
+    //   um par compartilhando crachá em nenhum dos cinco cadastros. Os dois casos em que a
+    //   tentação de compartilhar era grande viraram SEPARAÇÃO deliberada, por segregação de
+    //   função (TR 6.4 · CF art. 74):
+    //     · LIBERAR_PARCELA_DE_CONVENIO × APROVAR_PRESTACAO_DE_CONTAS — quem transfere não dá
+    //       quitação de si mesmo;
+    //     · REGISTRAR_MEDICAO_DE_OBRA × APROVAR_MEDICAO_DE_OBRA — quem mede não atesta o
+    //       próprio serviço, e a aprovação é o que libera a liquidação;
+    //     · REGISTRAR_PROVIDENCIA × APRECIAR_PROVIDENCIA — o auditado relata, o auditor
+    //       aceita; um crachá só faria o auditado declarar sanada a própria irregularidade.
+    //   Os três guards de verdade estão no código, e não só no censo — ver
+    //   `aprovarMedicao` e `apreciarProvidencia`, que recusam o MESMO usuário nas duas pontas.
+    //   = 185.
+    expect(TODAS_AS_ACOES.length).toBe(185);
     expect(ACAO_DO_SERVICO.encerrarExercicio).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.encerrarExercicioComRestos).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.importarExtrato).toBe("IMPORTAR_EXTRATO");

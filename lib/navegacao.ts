@@ -29,6 +29,9 @@ export const AREAS: readonly AreaNav[] = [
   { slug: "protocolo", rotulo: "Protocolo", descricao: "Processos digitais: abertura, tramitação entre setores, parecer, readequação, encerramento e arquivamento." },
   { slug: "comunicacao", rotulo: "Comunicação interna", descricao: "Memorandos, ofícios e circulares, com caixas, leitura registrada e assinatura por tipo." },
   { slug: "cadastros", rotulo: "Cadastros", descricao: "Pessoas e credores: o cadastro compartilhado que a despesa, as consignações e a folha usam." },
+  { slug: "transferencias", rotulo: "Transferências", descricao: "Convênios de repasse e consórcios públicos — o dinheiro que sai do ente para outro, e o que entra por termo." },
+  { slug: "divida", rotulo: "Dívida e precatórios", descricao: "Dívida fundada, precatórios judiciais e a ordem do art. 100 da Constituição." },
+  { slug: "controle-interno", rotulo: "Controle interno", descricao: "Auditorias, checklist com base legal, irregularidades e o relatório circunstanciado (CF art. 74)." },
   { slug: "administracao", rotulo: "Administração", descricao: "Usuários, perfis, permissões e registro de operações." },
   { slug: "integracoes", rotulo: "Integrações", descricao: "Central de integrações: SAGRES TXT/JSON, Banco do Brasil e API TCE-PB." },
   { slug: "suporte", rotulo: "Suporte", descricao: "Canais de atendimento e prazos de resposta contratados." },
@@ -257,3 +260,26 @@ export function rotuloDaRota(href: string): string | null {
   if (area !== null && area !== undefined) return area.rotulo;
   return ITENS_NAVEGAVEIS.find((i) => i.href === href)?.rotulo ?? null;
 }
+
+/**
+ * OS CADASTROS DO MOLDE (ENT03b) — e eles são declarados AQUI, uma vez.
+ *
+ * ⚠️ A NAVEGAÇÃO NÃO É DERIVADA DO DESCRITOR, e a decisão é deliberada. O descritor sabe a
+ * ROTA, mas não sabe onde ela pertence na cabeça de quem usa o sistema: "convênios" e
+ * "consórcios" são a mesma área para o operador (o dinheiro que atravessa a fronteira do
+ * ente) e módulos diferentes para o código. Derivar a sidebar do descritor faria a árvore da
+ * navegação seguir a árvore dos módulos — que é exatamente o que o cabeçalho deste arquivo
+ * recusa.
+ */
+export const TRANSFERENCIAS: readonly RelatorioNav[] = [
+  { href: "/transferencias/convenios", numero: "Convênios", rotulo: "Convênios de Repasse", descricao: "Termos em que o ente concede ou recebe: saldo a liberar, pendente de prestação de contas e glosado, cada um a sua conta." },
+  { href: "/transferencias/consorcios", numero: "Consórcios", rotulo: "Consórcios Públicos", descricao: "Rateio anual, aditivos e repasses — o repasse só acontece dentro do contrato do exercício." },
+];
+
+export const DIVIDA: readonly RelatorioNav[] = [
+  { href: "/divida/precatorios", numero: "Precatórios", rotulo: "Precatórios Judiciais", descricao: "A fila do art. 100: alimentar antes de comum, a preferência do §2º, depois a data de apresentação." },
+];
+
+export const CONTROLE_INTERNO: readonly RelatorioNav[] = [
+  { href: "/controle-interno/auditorias", numero: "Auditorias", rotulo: "Auditorias Internas", descricao: "Roteiro com base legal, achados com providência e prazo, e o relatório circunstanciado que se assina." },
+];

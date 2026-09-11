@@ -152,3 +152,31 @@ conhecível sem contato externo (documento oficial, versão, formato, restriçã
 próxima ação) foi preenchido onde havia base para preencher. Preencher o resto exigiria
 inventar, e um inventário inventado é pior que um vazio: ele para de ser lido como
 pendência.
+
+---
+
+## O que o ENT03b acrescentou ao inventário
+
+⚠️ **O ENT03b quase não mexeu aqui, e isso é informação.** Os cinco cadastros que ele
+construiu — convênios, precatórios, consórcios, medições de obra e controle interno — são
+**inteiramente internos**: nenhum depende de credencial, provedor, convênio bancário ou
+certificado. Foi por isso que eles foram escolhidos para provar o molde.
+
+Três linhas novas, todas **conhecíveis sem contato externo**:
+
+| Dependência | Órgão / norma | Documento oficial | O que falta | Próxima ação | Estado |
+|---|---|---|---|---|---|
+| **Precatórios — regime especial do art. 101 do ADCT** | Tribunal de Justiça de SC | CF art. 100 e ADCT art. 101; Resolução CNJ 303/2019 | saber se o ente **aderiu** ao regime especial e qual o percentual da RCL homologado | perguntar à Procuradoria do município; é decisão do ENTE, não do fornecedor | `DECISAO_DO_ENTE` |
+| **Precatórios — rol de hipóteses de preterição** | CF art. 100, §§ 1º a 6º | a Constituição, e a jurisprudência do TJ | o rol das hipóteses que autorizam pagar fora da ordem (acordo homologado, sequestro determinado) não está normatizado como lista fechada | decisão jurídica do ente; hoje o sistema exige TEXTO livre com no mínimo 20 caracteres, e recusa sem ele | `DECISAO_DO_ENTE` |
+| **Consórcios — o consórcio de que o ente participa** | — | protocolo de intenções e lei ratificadora municipais | saber **quais** consórcios Anita Garibaldi integra, e o CNPJ de cada um | pedir ao setor de contabilidade as leis ratificadoras vigentes | `DECISAO_DO_ENTE` |
+
+⚠️ **A única dependência EXTERNA que o ENT03b encostou foi para reafirmar que ela continua
+de pé:** a custódia de certificado A1 em HSM (cláusula 5.8.16) foi marcada no catálogo como
+`DEPENDENCIA_EXTERNA`, com o registro de que o modo `QUALIFICADA` **recusa** produzir
+assinatura sem provedor — em vez de devolver "assinado" sobre o nada.
+
+⚠️ **E uma dependência INTERNA foi descoberta pelo percurso de navegador:** o banco de
+desenvolvimento não tem `RoteiroConvenio` cadastrado, e a tela **recusa a glosa nomeando o
+que falta**. Isso não é dependência externa — é **parametrização contábil do ente**, e ela é
+o mesmo tipo de decisão que o plano de contas: quem escolhe as contas é o contador do
+município, não o fornecedor. Pendência `ROTEIROS-ENT03B-PARAMETRIZACAO`.

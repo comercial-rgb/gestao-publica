@@ -271,7 +271,45 @@ export type AcaoDoSistema =
   | "INCLUIR_NO_LOTE"
   | "FECHAR_LOTE"
   | "GERAR_BORDERO"
-  | "PROCESSAR_RETORNO_BANCARIO";
+  | "PROCESSAR_RETORNO_BANCARIO"
+  // ── M28 — convênios e transferências voluntárias (ENT03b · LRF art. 25) ──
+  | "CADASTRAR_CONVENIO"
+  | "LIBERAR_PARCELA_DE_CONVENIO"
+  /** ⚠️ SEPARADA DE `LIBERAR_PARCELA`, e a separação é SEGREGAÇÃO (TR 6.4): quem libera o
+   *  repasse não é quem aprova a prestação de contas dele. Um crachá só para as duas coisas
+   *  deixaria a mesma pessoa transferir e dar quitação — que é exatamente o arranjo que o
+   *  controle interno existe para impedir. */
+  | "APROVAR_PRESTACAO_DE_CONTAS"
+  | "GLOSAR_CONVENIO"
+  | "REGISTRAR_DEVOLUCAO_DE_CONVENIO"
+  | "ESTORNAR_MOVIMENTO_DE_CONVENIO"
+  // ── M29 — precatórios judiciais (ENT03b · CF art. 100) ──
+  | "CADASTRAR_PRECATORIO"
+  | "INSCREVER_PRECATORIO"
+  | "ATUALIZAR_PRECATORIO"
+  | "CANCELAR_PRECATORIO"
+  | "ESTORNAR_MOVIMENTO_DE_PRECATORIO"
+  // ── M30 — consórcios públicos (ENT03b · Lei 11.107/2005) ──
+  | "CADASTRAR_CONSORCIO"
+  /** O contrato de RATEIO é o que autoriza a despesa (art. 8º) — e é ele que fixa o teto que
+   *  o guard do repasse confere. Cadastrá-lo é ato distinto de repassar. */
+  | "REGISTRAR_CONTRATO_DE_RATEIO"
+  | "REPASSAR_AO_CONSORCIO"
+  | "REGISTRAR_DEVOLUCAO_DE_CONSORCIO"
+  | "ESTORNAR_MOVIMENTO_DE_CONSORCIO"
+  // ── M11 — medição de obra (ENT03b · Lei 14.133 art. 140) ──
+  | "REGISTRAR_MEDICAO_DE_OBRA"
+  /** ⚠️ APROVAR É OUTRO CRACHÁ, pela mesma razão do convênio: quem mede não é quem aprova a
+   *  medição. Medir e aprovar com o mesmo poder é atestar o próprio serviço. */
+  | "APROVAR_MEDICAO_DE_OBRA"
+  // ── M31 — controle interno (ENT03b · CF art. 74) ──
+  | "ABRIR_AUDITORIA_INTERNA"
+  | "RESPONDER_CHECKLIST_DE_AUDITORIA"
+  | "REGISTRAR_IRREGULARIDADE"
+  | "REGISTRAR_PROVIDENCIA"
+  | "APRECIAR_PROVIDENCIA"
+  | "ENCERRAR_AUDITORIA_INTERNA"
+  | "EMITIR_RELATORIO_CIRCUNSTANCIADO";
 
 /**
  * O NOME DO SERVIÇO, exatamente como ele é exportado. É esta união que o grep-teste
@@ -453,7 +491,37 @@ export type NomeDeServico =
   | "incluirNoLote"
   | "fecharLote"
   | "gerarBordero"
-  | "processarRetornoBancario";
+  | "processarRetornoBancario"
+  // ── M28 — convênios (ENT03b) ──
+  | "cadastrarConvenio"
+  | "liberarParcela"
+  | "aprovarPrestacaoDeContas"
+  | "glosar"
+  | "registrarDevolucao"
+  | "estornarMovimentoConvenio"
+  // ── M29 — precatórios (ENT03b) ──
+  | "cadastrarPrecatorio"
+  | "inscreverPrecatorio"
+  | "registrarAtualizacaoDePrecatorio"
+  | "cancelarPrecatorio"
+  | "estornarMovimentoPrecatorio"
+  // ── M30 — consórcios (ENT03b) ──
+  | "cadastrarConsorcio"
+  | "registrarContratoDeRateio"
+  | "repassarAoConsorcio"
+  | "registrarDevolucaoDeConsorcio"
+  | "estornarMovimentoConsorcio"
+  // ── M11 — medição de obra (ENT03b) ──
+  | "registrarMedicao"
+  | "aprovarMedicao"
+  // ── M31 — controle interno (ENT03b) ──
+  | "abrirAuditoria"
+  | "responderItemDoChecklist"
+  | "registrarIrregularidade"
+  | "registrarProvidencia"
+  | "apreciarProvidencia"
+  | "encerrarAuditoria"
+  | "emitirRelatorioCircunstanciado";
 
 /**
  * ⚠️ O RECORD EXAUSTIVO — serviço → ação.
@@ -684,6 +752,41 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   fecharLote: "FECHAR_LOTE",
   gerarBordero: "GERAR_BORDERO",
   processarRetornoBancario: "PROCESSAR_RETORNO_BANCARIO",
+
+  // ── M28 — convênios (ENT03b) ──
+  cadastrarConvenio: "CADASTRAR_CONVENIO",
+  liberarParcela: "LIBERAR_PARCELA_DE_CONVENIO",
+  aprovarPrestacaoDeContas: "APROVAR_PRESTACAO_DE_CONTAS",
+  glosar: "GLOSAR_CONVENIO",
+  registrarDevolucao: "REGISTRAR_DEVOLUCAO_DE_CONVENIO",
+  estornarMovimentoConvenio: "ESTORNAR_MOVIMENTO_DE_CONVENIO",
+
+  // ── M29 — precatórios (ENT03b) ──
+  cadastrarPrecatorio: "CADASTRAR_PRECATORIO",
+  inscreverPrecatorio: "INSCREVER_PRECATORIO",
+  registrarAtualizacaoDePrecatorio: "ATUALIZAR_PRECATORIO",
+  cancelarPrecatorio: "CANCELAR_PRECATORIO",
+  estornarMovimentoPrecatorio: "ESTORNAR_MOVIMENTO_DE_PRECATORIO",
+
+  // ── M30 — consórcios (ENT03b) ──
+  cadastrarConsorcio: "CADASTRAR_CONSORCIO",
+  registrarContratoDeRateio: "REGISTRAR_CONTRATO_DE_RATEIO",
+  repassarAoConsorcio: "REPASSAR_AO_CONSORCIO",
+  registrarDevolucaoDeConsorcio: "REGISTRAR_DEVOLUCAO_DE_CONSORCIO",
+  estornarMovimentoConsorcio: "ESTORNAR_MOVIMENTO_DE_CONSORCIO",
+
+  // ── M11 — medição de obra (ENT03b) ──
+  registrarMedicao: "REGISTRAR_MEDICAO_DE_OBRA",
+  aprovarMedicao: "APROVAR_MEDICAO_DE_OBRA",
+
+  // ── M31 — controle interno (ENT03b) ──
+  abrirAuditoria: "ABRIR_AUDITORIA_INTERNA",
+  responderItemDoChecklist: "RESPONDER_CHECKLIST_DE_AUDITORIA",
+  registrarIrregularidade: "REGISTRAR_IRREGULARIDADE",
+  registrarProvidencia: "REGISTRAR_PROVIDENCIA",
+  apreciarProvidencia: "APRECIAR_PROVIDENCIA",
+  encerrarAuditoria: "ENCERRAR_AUDITORIA_INTERNA",
+  emitirRelatorioCircunstanciado: "EMITIR_RELATORIO_CIRCUNSTANCIADO",
 };
 
 /** Todas as ações do rol — a lista que o seed de perfis e as mensagens de erro usam. */
@@ -714,6 +817,24 @@ export const ACOES_DE_ADMINISTRACAO: readonly AcaoDoSistema[] = [
  * grep-teste lê esta lista — nada sai do censo por descuido.
  */
 export const FORA_DO_CENSO: Record<string, string> = {
+  // ── ENT03b — os GUARDS e as LEITURAS dos cadastros novos. ──
+  //
+  // ⚠️ OS DOIS PRIMEIROS SÃO GUARDS CHAMADOS DE DENTRO DE OUTRO SERVIÇO, na transação DELE.
+  // Dar-lhes ação própria seria pior que inútil: o ente concederia "exigir a ordem do art.
+  // 100" a alguém — um poder que não existe —, e quem NÃO o tivesse veria o `pagar()` do M05
+  // ser recusado por falta de permissão para um guard que ele nem pediu. Quem cobra a ação é
+  // o serviço que os chama (`pagar` e `liquidar`).
+  exigirOrdemDoArt100:
+    "guard chamado de dentro do pagar() do M05, na transação dele (a ação é a de PAGAR)",
+  exigirMedicaoAprovadaDaObra:
+    "guard chamado de dentro do liquidar() do M05, na transação dele (a ação é a de LIQUIDAR)",
+  filaDePrecatorios: "leitura (monta a fila do art. 100 por Σ dos movimentos — não muta)",
+  // ⚠️ NASCE DENTRO DO `pagar()`, e morre com ele. Mesma razão do `amortizarNoPagamento`
+  // (M10) e do `registrarRetencao` (M07): quem nasceu junto, morre junto. Uma ação própria
+  // aqui deixaria alguém baixar o passivo do precatório SEM o dinheiro ter saído.
+  baixarPrecatorioNoPagamento:
+    "perna interna do pagar() do M05, na transação dele (a ação é a de PAGAR)",
+
   // ── SAGRES (M15): os geradores de arquivo TXT são LEITURA PURA (Prisma findMany → serialização).
   // Não mutam estado — o teste-invariante do próprio M15 prova que não há create/update/aggregate.
   // Exportar/gerar um arquivo é ato de LEITURA; a autorização de quem pode exportar é da tela (S2/S6).

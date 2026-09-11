@@ -220,6 +220,8 @@ model Contrato {
   movimentos MovimentoContratual[]
   /// TR req. 2 — os pareceres deste contrato. Ver `ParecerContrato`.
   pareceres  ParecerContrato[]
+  /// back-relation M11 (ENT03b) — campo VIRTUAL.
+  medicoes   MedicaoDeObra[]
   /// back-relation M05 — campo VIRTUAL, não gera coluna. É a dimensão CONTRATO do
   /// empenho: o `empenhadoLiquidoDoContrato` soma por aqui.
   empenhos   Empenho[]
@@ -475,10 +477,74 @@ model Obra {
   ativa Boolean @default(true)
 
   empenhos Empenho[]
+  /// back-relation M11 (ENT03b) — campo VIRTUAL.
+  medicoes MedicaoDeObra[]
+  /// back-relations M22/M25 (ENT03b) — campos VIRTUAIS.
+  anexos          Anexo[]
+  camposAdicionais ValorDeCampoAdicional[] @relation("CampoAdicionalDeObra")
 
   criadoEm  DateTime @default(now())
   criadoPor String
 
   @@index([orgaoId])
   @@index([ativa])
+}
+
+/// A MEDIÇÃO DE OBRA — o fato que autoriza liquidar (Lei 14.133, art. 140).
+///
+/// ═══ ⚠️ LIQUIDAR OBRA SEM MEDIÇÃO É PAGAR O QUE NINGUÉM CONFERIU ═══
+/// A liquidação existe para verificar o direito adquirido pelo credor (Lei 4.320, art. 63).
+/// Em obra, quem verifica é a MEDIÇÃO: o responsável técnico atesta o que foi executado no
+/// período. Uma liquidação de obra sem medição é a etapa de conferência pulada — e o pior é
+/// que ela não deixa rastro: o razão fica idêntico ao de uma obra conferida.
+///
+/// ═══ ⚠️ OS PERÍODOS NÃO SE SOBREPÕEM, E O ACUMULADO NÃO PASSA DO CONTRATO ═══
+/// São duas regras distintas e as duas são guard no caso de uso:
+///   · sobreposição de período mediria o mesmo serviço duas vezes;
+///   · Σ das medições > valor do contrato é execução acima do contratado — que, se for
+///     legítima, exige aditivo ANTES, não medição depois.
+///
+/// ⚠️ E O PERÍODO É COMPARADO POR DIA CIVIL DO ENTE. Uma medição que termina em 31/01
+/// termina às 23:59:59 do ente; em UTC ela terminaria às 20:59:59 e as três horas restantes
+/// ficariam sem medição nenhuma — ou dentro da medição seguinte.
+model MedicaoDeObra {
+  id     String @id @default(cuid())
+  obraId String
+  obra   Obra   @relation(fields: [obraId], references: [id])
+
+  /// O contrato sob o qual se mede. Uma obra pode ter mais de um (o de execução e o de
+  /// supervisão), e medir sem dizer qual deixaria o teto ambíguo.
+  contratoId String
+  contrato   Contrato @relation(fields: [contratoId], references: [id])
+
+  /// Sequencial POR OBRA. Único junto com a obra — duas medições nº 3 seriam a mesma
+  /// medição contada duas vezes no acumulado.
+  numero Int
+
+  periodoInicio DateTime
+  periodoFim    DateTime
+
+  /// O valor medido NO PERÍODO — nunca o acumulado. O acumulado é derivado da soma, e uma
+  /// coluna de acumulado seria a segunda verdade sobre ela.
+  valorMedido Decimal @db.Decimal(18, 2)
+
+  /// Quem atestou tecnicamente, e o registro profissional. Sem o registro, o atesto é de
+  /// alguém que pode não poder atestar.
+  responsavelTecnico String
+  registroProfissional String
+
+  /// ⚠️ A APROVAÇÃO É UM FATO COM AUTOR E DATA, não um booleano. "Aprovada?" se responde por
+  /// `aprovadaEm !== null`, e quem aprovou fica.
+  aprovadaEm  DateTime?
+  aprovadaPor String?
+
+  /// As liquidações que esta medição autorizou. back-relation — campo VIRTUAL.
+  liquidacoes Liquidacao[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([obraId, numero])
+  @@index([contratoId])
+  @@index([periodoInicio, periodoFim])
 }

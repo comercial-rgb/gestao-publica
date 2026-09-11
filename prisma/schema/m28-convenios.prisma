@@ -1,0 +1,195 @@
+// ============================================================================
+// M28 — CONVÊNIOS E TRANSFERÊNCIAS VOLUNTÁRIAS (LRF art. 25 · Lei 4.320 art. 12)
+//
+// ═══ ⚠️ O ENTE ESTÁ NOS DOIS LADOS, E ISSO É O DESENHO TODO ═══
+// Um convênio de repasse tem CONCEDENTE (quem transfere) e CONVENENTE (quem recebe e
+// presta contas). O município é às vezes um, às vezes o outro — e o efeito contábil é
+// OPOSTO nos dois casos: como concedente ele empenha despesa e cobra prestação de contas;
+// como convenente ele registra receita de transferência e DEVE a prestação.
+//
+// Modelar isso como duas tabelas duplicaria a vigência, o objeto, a contrapartida e as
+// parcelas. Modelar como uma tabela SEM dizer o papel faria a mesma tela pedir "aprovar a
+// prestação de contas" a quem tem de PRESTÁ-LA. É por isso que `papelDoEnte` é NOT NULL e
+// sem default: um default faria todo convênio nascer num dos dois lados em silêncio.
+//
+// ═══ ⚠️ NÃO HÁ COLUNA DE SITUAÇÃO ═══
+// "Em execução", "prestação aprovada", "encerrado" são DERIVADOS dos movimentos. É a mesma
+// decisão do lote, do borderô, do exercício e da conciliação — e pela mesma razão: uma
+// coluna de estado é a segunda verdade sobre os fatos que a produziram, e o dia em que as
+// duas divergirem a tela dirá "encerrado" sobre um convênio que ainda tem parcela a liberar.
+// ============================================================================
+
+/// De que lado o ente está. Ver o cabeçalho: NOT NULL e sem default, de propósito.
+enum PapelNoConvenio {
+  /// O ente TRANSFERE. Empenha despesa (elemento 41/42/43) e RECEBE prestação de contas.
+  CONCEDENTE
+  /// O ente RECEBE. Registra receita de transferência e DEVE a prestação de contas.
+  CONVENENTE
+}
+
+model Convenio {
+  id String @id @default(cuid())
+
+  /// O número do convênio no ente. Único — é por ele que o humano o encontra, e é ele que
+  /// vai no ofício, no extrato do DOU e na remessa ao tribunal.
+  identificador String @unique
+  objeto        String
+
+  papelDoEnte PapelNoConvenio
+
+  /// A OUTRA parte. Nome e documento como eles constam do termo — texto, não FK.
+  ///
+  /// ⚠️ NÃO É FK PARA `Pessoa`, e é decisão. O concedente costuma ser a União, um estado ou
+  /// um fundo — que não são credores do ente e não cabem no cadastro de pessoas (M19) sem
+  /// inventar papel. Quando a outra parte TAMBÉM é credora (uma OSC que recebe repasse), o
+  /// vínculo acontece pelo EMPENHO, que já tem o CPF/CNPJ do credor.
+  partidaNome      String
+  partidaDocumento String @db.VarChar(14)
+
+  /// A lei/portaria que autorizou. LRF art. 25 exige autorização na LOA para transferência
+  /// voluntária; sem ela o repasse não tem base.
+  leiAutorizativa String
+
+  /// O valor do REPASSE (o que sai do concedente) e a CONTRAPARTIDA (o que o convenente põe
+  /// do próprio caixa). São dois valores distintos e os dois vão no extrato.
+  valorRepasse       Decimal @db.Decimal(18, 2)
+  valorContrapartida Decimal @db.Decimal(18, 2)
+
+  /// ⚠️ VIGÊNCIA GRAVADA COMO INSTANTE E COMPARADA POR DIA CIVIL. O último instante do dia
+  /// de encerramento é `fimDoDiaCivil` — ver `docs/adr/ADR-data-civil-do-ente.md`. Um
+  /// convênio que vence em 31/12 vence às 23:59:59 DO ENTE, não às 20:59:59.
+  vigenciaInicio DateTime
+  vigenciaFim    DateTime
+
+  /// O prazo para prestar contas, em dias CORRIDOS depois do fim da vigência.
+  diasParaPrestacaoDeContas Int @default(60)
+
+  /// A fonte de recurso do convênio. Recurso de convênio é VINCULADO: gastá-lo em outra
+  /// coisa é o desvio que o superávit por fonte existe para expor.
+  fonteRecursoId String
+  fonteRecurso   FonteRecurso @relation(fields: [fonteRecursoId], references: [id])
+
+  /// A conta de CONTROLE (classe 8) ou de passivo que este convênio movimenta. Vem por
+  /// PARÂMETRO, como todo código contábil do projeto — nenhuma conta mágica no código.
+  contaContabilId String
+  contaContabil   ContaPcasp @relation("ControleDoConvenio", fields: [contaContabilId], references: [id])
+
+  movimentos MovimentoConvenio[]
+  /// back-relation M05 — campo VIRTUAL, não gera coluna.
+  empenhos   Empenho[]
+  /// back-relations M22/M25 (ENT03b) — campos VIRTUAIS.
+  anexos          Anexo[]
+  camposAdicionais ValorDeCampoAdicional[] @relation("CampoAdicionalDeConvenio")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([papelDoEnte])
+  @@index([vigenciaInicio, vigenciaFim])
+  @@index([fonteRecursoId])
+}
+
+/// Os fatos do convênio — e os estornos desde o dia 1.
+///
+/// ⚠️ ESTORNO NO DIA 1, e a lição custou um lote: "feature sem estorno é assimetria com
+/// prazo para virar bug" (M08, 345af7d). Cada fato tem o seu.
+enum TipoMovimentoConvenio {
+  /// Uma PARCELA foi liberada (o dinheiro andou). Como concedente é saída; como convenente,
+  /// entrada — e o sinal vem do `papelDoEnte`, não do tipo.
+  LIBERACAO_DE_PARCELA
+  /// A prestação de contas daquela parcela foi APROVADA — e é isso que baixa o controle.
+  PRESTACAO_APROVADA
+  /// GLOSA: parte do que foi prestado não foi aceita. Ela NÃO devolve dinheiro por si — ela
+  /// declara que aquele valor é devido de volta.
+  GLOSA
+  /// A DEVOLUÇÃO efetiva do valor glosado ou do saldo não aplicado.
+  DEVOLUCAO
+  ESTORNO_LIBERACAO_DE_PARCELA
+  ESTORNO_PRESTACAO_APROVADA
+  ESTORNO_GLOSA
+  ESTORNO_DEVOLUCAO
+}
+
+model MovimentoConvenio {
+  id         String   @id @default(cuid())
+  convenioId String
+  convenio   Convenio @relation(fields: [convenioId], references: [id])
+
+  tipo TipoMovimentoConvenio
+  /// SEMPRE positivo. O sinal vem do tipo (`SINAL_MOVIMENTO_CONVENIO`) — a mesma regra da
+  /// dívida (M10) e do RP (M08).
+  valor Decimal @db.Decimal(18, 2)
+
+  /// O número da parcela, quando o movimento é de parcela. Junto com o tipo, é o que dá
+  /// IDEMPOTÊNCIA: liberar duas vezes a parcela 3 seria a mesma liberação duas vezes.
+  parcela Int?
+
+  /// A data do FATO (a ordem bancária do repasse, o despacho que aprovou a prestação).
+  /// NUNCA `criadoEm`: recortar pela digitação faria a liberação de março, lançada em maio,
+  /// sumir do extrato de março. É a lição do `campoData` (M09).
+  dataMovimento DateTime
+
+  /// ⚠️ A COMPETÊNCIA, que é o eixo de período fechado. Gravada como instante e comparada
+  /// pelo mês CIVIL do ente — a mesma decisão do `MovimentoDotacao` (ADR do ENT03a).
+  competencia DateTime
+
+  /// O EMPENHO que executou esta liberação, quando o ente é concedente. É este vínculo que
+  /// faz o convênio e a despesa contarem a MESMA história — sem ele, "quanto já foi
+  /// repassado" teria duas respostas.
+  empenhoId String?
+  empenho   Empenho? @relation(fields: [empenhoId], references: [id])
+
+  /// A RECEITA arrecadada que trouxe a parcela, quando o ente é convenente. O espelho do
+  /// campo acima, e pela mesma razão do `MovimentoDivida.receitaArrecadadaId`: sem ele o
+  /// caixa teria dinheiro que fato nenhum explica.
+  receitaArrecadadaId String?
+  receitaArrecadada   ReceitaArrecadada? @relation(fields: [receitaArrecadadaId], references: [id])
+
+  /// O lançamento no razão, quando este movimento tem contabilização PRÓPRIA. A liberação
+  /// pelo empenho é contabilizada pelo M05; a aprovação da prestação e a glosa mexem nas
+  /// contas de CONTROLE e têm lançamento próprio.
+  lancamentoId String?             @unique
+  lancamento   LancamentoContabil? @relation(fields: [lancamentoId], references: [id])
+
+  /// APPEND-ONLY. "Já estornado?" é DERIVADO de `estornos.length > 0` — nunca uma coluna.
+  /// Unicidade no banco: prisma/sql/uq_estorno_convenio_unico.sql.
+  estornoDeId String?
+  estornoDe   MovimentoConvenio?  @relation("EstornoConvenio", fields: [estornoDeId], references: [id])
+  estornos    MovimentoConvenio[] @relation("EstornoConvenio")
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([convenioId, tipo])
+  @@index([dataMovimento])
+  @@index([competencia])
+  @@index([empenhoId])
+  @@index([estornoDeId])
+}
+
+/// O ROTEIRO CONTÁBIL do convênio — TABELA, como todo roteiro do projeto.
+///
+/// ⚠️ NENHUMA CONTA NO CÓDIGO. `resolverContas` é fail-closed: roteiro ausente RECUSA o
+/// movimento, em vez de escolher uma conta plausível. Uma conta plausível errada produz um
+/// balanço que fecha e mente.
+model RoteiroConvenio {
+  id   String                @id @default(cuid())
+  tipo TipoMovimentoConvenio
+
+  /// O papel do ente muda o lançamento: o controle do concedente é "a haver de prestação de
+  /// contas"; o do convenente é "a prestar contas". A chave é o par.
+  papelDoEnte PapelNoConvenio
+
+  contaDebitoId String
+  contaDebito   ContaPcasp @relation("DebitoDoRoteiroConvenio", fields: [contaDebitoId], references: [id])
+  contaCreditoId String
+  contaCredito   ContaPcasp @relation("CreditoDoRoteiroConvenio", fields: [contaCreditoId], references: [id])
+
+  historicoPadrao String
+
+  criadoEm DateTime @default(now())
+
+  @@unique([tipo, papelDoEnte])
+}
