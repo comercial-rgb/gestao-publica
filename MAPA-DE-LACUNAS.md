@@ -151,6 +151,33 @@ que decorrem dos números, não de preferência:
   ausente, sem corrigir a tabela silenciosamente.
 - `BASE_FORTE` obriga a passo de caracterização: rodar a suíte do módulo, ler o
   `MODULO.md` e registrar o comportamento atual **antes** de ampliar.
+
+### ⚠️ 4.1 · O critério de `BASE_FORTE` foi DERRUBADO pelo censo do ENT03c
+
+O censo do ENT03c mediu M01–M22 contra as cláusulas e encontrou o mesmo erro três
+vezes: **a coluna "origem no `siafic-cg`" registrava que existe um arquivo com aquele
+nome, não que o comportamento exista.** O nome do módulo bate; o domínio é outro.
+
+| Seção | O que a tabela dizia | O que a medição achou |
+|---|---|---|
+| **5.18 Almoxarifado** (25) | `BASE_FORTE` — M10 | O almoxarifado é **contábil, não físico**: move VALOR por classe contra a conta de estoque e **não tem quantidade**. Sem quantidade não há preço médio, saldo mínimo, inventário, depósito nem lote. **20 das 25 cláusulas são `AUSENTE_CONFIRMADO`** |
+| **5.19 Patrimônio** (46) | `BASE_FORTE` — M10 | É a **contabilidade do bem, não a gestão dele**. Depreciação por NBC TSP 07 com os três métodos do MCASP, provada — e nenhuma localização, responsável, comissão ou termo |
+| **5.17 Compras e Contratos** (113) | `BASE_FORTE` — M11 | Tem o **processo e o contrato**; não tem a **compra**. Requisição, cotação, ordem de compra e recebimento não existem |
+
+Nos três, o motor é bom e está provado. **Falta o cadastro que o alimenta** — e é
+essa distinção que a classificação por nome de arquivo não consegue fazer.
+
+**Consequência para as 469 cláusulas de `BASE_FORTE`:** elas precisam da medição
+cláusula a cláusula que o ENT03c fez, não da leitura de schema que produziu esta
+tabela. O ENT03c mediu 9 seções e marcou 220; as demais continuam sobre o critério
+antigo, que já se sabe insuficiente.
+
+⚠️ **E o ENT04 mostrou que o mesmo vale para o PARÂMETRO, não só para o código.** Com
+o PCASP oficial do TCE-PB carregado (7.864 contas), o confronto revelou que o sistema
+opera contas cujo nome no plano é outro: a conta de banco é a variante **INTRA OFSS**,
+o "almoxarifado" é **MERCADORIAS PARA REVENDA**, e a "dívida fundada" é **PESSOAL A
+PAGAR**. Nenhum código era inventado — todos existem no plano; estavam no lugar
+errado. Ter o arquivo, ter a tabela e ter o código certo são três coisas diferentes.
 - `AUSENTE_CONFIRMADO` não autoriza inventar o domínio. As cláusulas do catálogo
   são o ponto de partida; regra normativa exige documento oficial com versão e
   vigência.
