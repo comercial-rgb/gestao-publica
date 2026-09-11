@@ -10165,8 +10165,8 @@
       "candidato_reaproveitamento": "siafic-cg:M10",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "ENT05 (modelo das tres secoes derrubadas): requisicoesPendentes deriva os itens com saldo nao atendido, por deposito ou por setor. SEM coluna de situacao: o estorno de uma saida devolve o item a pendencia sozinho, e ha teste provando exatamente isso.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "evidencia": "scripts/smoke-ent06.ts (48 passos, 0 falhas, 2026-09-11): a requisição é criada PELA TELA (/patrimonio/almoxarifado/requisicoes), e a lista RECARREGADA a traz persistida com o acompanhamento — \"Faltam 10\", derivado da diferença entre o solicitado e as saídas vinculadas ao item. Não há coluna de quantidade atendida, de propósito: ela poderia divergir das saídas no primeiro estorno. O detalhe mostra o item, o total solicitado e o não atendido, e o filtro \"com saldo a atender\" responde por derivação, não por `where`.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.18.9",
@@ -10221,8 +10221,8 @@
       "candidato_reaproveitamento": "siafic-cg:M10",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "ENT05 (modelo das tres secoes derrubadas): InventarioDeEstoque com abertura, fechamento e termos. Enquanto aberto, BLOQUEIA a movimentacao do deposito - e pela MESMA leitura do bloqueio manual, nao por uma segunda regra. Fechar sem contagem RECUSA; dois inventarios abertos no mesmo deposito RECUSAM.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "evidencia": "scripts/smoke-ent06.ts (48 passos, 0 falhas, 2026-09-11): abertura e fechamento atravessados pela tela. ⚠️ E O BLOQUEIO FOI VERIFICADO DE FORA DO INVENTÁRIO: aberto o inventário, a LISTA DE DEPÓSITOS — que não sabe nada sobre inventário — passa a dizer que a movimentação daquele depósito está bloqueada; fechado, ela volta a dizer liberada. É isso que prova que o bloqueio é FATO do domínio e não rótulo de uma tela. A contagem é registrada e a divergência é derivada contra a posição NA DATA DE ABERTURA (contou 7 contra posição 0, sobra 7), e a tela diz que divergência não vira ajuste automático.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.18.13",
@@ -10235,8 +10235,8 @@
       "candidato_reaproveitamento": "siafic-cg:M10",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "ENT05 (modelo das tres secoes derrubadas): BloqueioDeEstoque e FATO com inicio, fim opcional e motivo (decisao D14) - os tres alcances da clausula (produto, deposito, o par) saem das duas colunas opcionais. Encerrar POE O FIM, nao apaga a linha: o historico e o que explica por que uma saida foi recusada naquele dia.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "evidencia": "scripts/smoke-ent06.ts (48 passos, 0 falhas, 2026-09-11): o bloqueio é criado pela tela do depósito (por depósito inteiro ou por material), a listagem RECARREGADA passa a dizer \"Bloqueada\", e — o que importa — a tentativa de movimentar é RECUSADA pelo servidor com a mensagem nomeando o motivo do bloqueio. Encerrado, o bloqueio NÃO some: ele ganha data de fim e o histórico o mantém, porque o período em que ele valeu é o que explica as recusas daquele intervalo.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.18.14",
