@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
-import { ehInerte } from "../raizes-dominio.js";
+import { relative, resolve } from "node:path";
+import { raizesExistentes } from "../raizes-dominio.js";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -64,29 +65,40 @@ const EXCECOES_NOMEADAS: readonly string[] = [
   "app/(areas)/integracoes/sagres/page.tsx",
 ];
 
-/** Onde o usuário enxerga: telas, componentes e a camada que monta texto para eles. */
-function arquivosDaCamadaDeApresentacao(): readonly string[] {
-  return execSync('find app components lib -name "*.tsx" -o -name "*.ts"', {
+/**
+ * Onde o usuário enxerga: telas, componentes e a camada que monta texto para eles.
+ *
+ * ⚠️ AS RAÍZES PASSAM POR `raizesExistentes`, E NÃO VÃO CRUAS PARA O `find`. Até a
+ * absorção do doador elas eram três nomes escritos à mão aqui dentro — exatamente o que
+ * `test/raizes-dominio.ts` documenta como o jeito de um guard parar de guardar em
+ * silêncio, e o que fez o censo do M16 e o funil do M01 cegarem quando o M15/M18/M19
+ * mudaram de diretório.
+ *
+ * ⚠️ E É DAÍ QUE VEM A EXCLUSÃO DO DOADOR, em vez de um filtro escrito aqui.
+ * `raizesExistentes` RECUSA raiz inerte, então o dia em que `doador/` — ou qualquer
+ * repositório absorvido depois dele — for acrescentado a esta lista por engano, ele é
+ * descartado com motivo declarado em vez de ter suas telas cobradas por um catálogo que
+ * nunca prometeu cumprir. A prova por mutação dessa recusa está em `raizes-dominio.test.ts`
+ * e em `inercia-do-doador.test.ts`; MEDIDO na absorção, este guard ficou verde sozinho,
+ * porque o `find` nunca chegou perto do doador.
+ */
+export const RAIZES_DE_APRESENTACAO = ["app", "components", "lib"] as const;
+
+function arquivosDaCamadaDeApresentacao(
+  raizes: readonly string[] = RAIZES_DE_APRESENTACAO
+): readonly string[] {
+  const RAIZ_REPO = resolve(import.meta.dirname, "..", "..");
+  const dirs = raizesExistentes(RAIZ_REPO, raizes);
+  if (dirs.length === 0) return [];
+
+  return execSync(`find ${dirs.map((d) => JSON.stringify(d)).join(" ")} -name "*.tsx" -o -name "*.ts"`, {
     encoding: "utf8",
   })
     .trim()
     .split("\n")
     .filter((a) => a !== "")
+    .map((a) => relative(RAIZ_REPO, a).replace(/\\/g, "/"))
     .filter((a) => !a.endsWith(".test.ts") && !a.endsWith(".test.tsx"))
-    // ⚠️ DIRETÓRIO INERTE (`doador/`) — e aqui a exclusão é HONESTAMENTE REDUNDANTE HOJE.
-    //
-    // MEDIDO na absorção: este guard ficou VERDE com o doador importado, porque o `find`
-    // acima nomeia três raízes à mão e `doador/` não é nenhuma delas. O filtro não remove
-    // nada neste commit — e está escrito assim mesmo, com o motivo à vista, porque a raiz
-    // escrita à mão é exatamente o que `test/raizes-dominio.ts` documenta como o jeito de
-    // um guard parar de guardar em silêncio. No dia em que este `find` ganhar uma quarta
-    // raiz, ou virar `find .`, a promessa do guard — "nenhum identificador do NOSSO
-    // catálogo em tela" — passaria a ser cobrada de tela de terceiro que nunca a fez.
-    //
-    // ⚠️ REDUNDANTE NÃO É DECORAÇÃO, e a diferença está em `inercia-do-doador.test.ts`:
-    // lá esta linha é MUTADA, e a mutação acusa. Instrumento que ninguém consegue derrubar
-    // é que é decoração.
-    .filter((a) => !ehInerte(a))
     .sort();
 }
 
