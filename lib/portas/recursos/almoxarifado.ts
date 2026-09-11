@@ -92,7 +92,17 @@ export const MATERIAIS: DefinicaoDeRecurso = definirRecurso({
         { nome: "quantidadeMaxima", rotulo: "Quantidade máxima", tipo: "texto", largura: 1, placeholder: "100" },
       ] },
     { nome: "relacionar-marca", rotulo: "Aprovar marca", acaoDoCenso: "RELACIONAR_MARCA_AO_MATERIAL",
-      aviso: "Marca aprovada restringe o que a compra aceita para este material.",
+      // ⚠️ ACHADO DESTE LOTE, e ele fica NO CÓDIGO e não na tela. Nenhum caso de uso do
+      // repositório CRIA uma `MarcaAprovada`: o ENT05 modelou a tabela e a relação
+      // `MaterialMarca`, e o serviço que cadastra a marca não existe. Enquanto não
+      // existir, este seletor vem vazio e o molde o mostra desabilitado — comportamento
+      // correto para um campo sem opção. Pendência `CADASTRO-DE-MARCA-APROVADA`.
+      //
+      // O aviso ABAIXO é o que o servidor municipal lê, e por isso fala a língua dele:
+      // sem identificador interno, sem nome de lote, sem emoji.
+      aviso:
+        "Marca aprovada restringe o que a compra aceita para este material. " +
+        "Se a lista vier vazia, é porque ainda não há marca cadastrada no sistema.",
       campos: [
         { nome: "marcaId", rotulo: "Marca", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
       ] },
@@ -272,7 +282,117 @@ export const INVENTARIOS_DE_ESTOQUE: DefinicaoDeRecurso = definirRecurso({
   ],
 });
 
+/**
+ * ═══ OS TRÊS CADASTROS DE APOIO ═══
+ *
+ * ⚠️ ELES NÃO SÃO ENFEITE: SEM OS TRÊS, O FORMULÁRIO DE MATERIAL NÃO MONTA. Medido no banco
+ * de desenvolvimento durante este lote — `ClasseDeMaterial`, `GrupoDeMaterial` e
+ * `UnidadeDeMedida` estavam todos em ZERO, e os três são campo obrigatório de
+ * `cadastrarMaterial`. A tela de material renderizava o seletor desabilitado dizendo o
+ * motivo (o molde faz isso), o que é honesto e inútil: não havia por onde criar a opção.
+ *
+ * Os três têm caso de uso e ação de censo desde o ENT05. O que faltava era descritor.
+ */
+
+export const CLASSES_DE_MATERIAL: DefinicaoDeRecurso = definirRecurso({
+  nome: "classes-de-material",
+  rotulo: "Classes de material",
+  rotuloSingular: "Classe de material",
+  rota: "/patrimonio/almoxarifado/classes",
+  descricao:
+    "A amarração entre o eixo FÍSICO e o CONTÁBIL: é a classe que diz em que conta de " +
+    "estoque a entrada e a saída do material batem no razão.",
+  campos: [
+    { nome: "codigo", rotulo: "Código", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "3.0.10" },
+    { nome: "descricao", rotulo: "Descrição", tipo: "texto", obrigatorio: true, largura: 3 },
+    { nome: "contaContabilId", rotulo: "Conta de estoque", tipo: "selecao", obrigatorio: true, largura: 3, opcoes: [],
+      ajuda: "Conta do ativo circulante. É nela que o valor do estoque desta classe fica." },
+  ],
+  colunas: [
+    { nome: "codigo", cabecalho: "Código", tipo: "link", ordenavel: true },
+    { nome: "descricao", cabecalho: "Descrição", tipo: "texto" },
+    { nome: "conta", cabecalho: "Conta de estoque", tipo: "texto" },
+    { nome: "materiais", cabecalho: "Materiais", tipo: "inteiro" },
+  ],
+  filtros: [{ nome: "q", rotulo: "Código ou descrição", tipo: "texto", largura: 2 }],
+  acoes: [],
+  // ⚠️ AS CLASSES DO PCASP SÃO DECLARADAS porque o campo é `contaContabilId`, e
+  // `verificarDefinicao` cobra. `["1"]` é o ativo: estoque é ativo circulante, e oferecer
+  // as 6.074 analíticas do plano faria o seletor mandar 400 KB e ainda deixar escolher uma
+  // conta de despesa onde o domínio exige ativo.
+  classesDeConta: ["1"],
+  permissoes: { criar: "CADASTRAR_CLASSE_DE_MATERIAL" },
+  abas: [...ABAS_SEM_MODELO_NOVO],
+  relacionados: [
+    { rotulo: "Materiais desta classe",
+      href: "/patrimonio/almoxarifado/materiais?q={id}",
+      explicacao: "A classe é o que faz a quantidade virar valor no razão — o material herda a conta dela." },
+  ],
+});
+
+export const GRUPOS_DE_MATERIAL: DefinicaoDeRecurso = definirRecurso({
+  nome: "grupos-de-material",
+  rotulo: "Grupos de material",
+  rotuloSingular: "Grupo de material",
+  rota: "/patrimonio/almoxarifado/grupos",
+  descricao:
+    "A árvore que organiza o catálogo de materiais. Um grupo pode ter grupo pai — é como " +
+    "'Expediente' fica dentro de 'Consumo'.",
+  campos: [
+    { nome: "codigo", rotulo: "Código", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "01.02" },
+    { nome: "descricao", rotulo: "Descrição", tipo: "texto", obrigatorio: true, largura: 3 },
+    { nome: "paiId", rotulo: "Grupo pai", tipo: "selecao", largura: 2, opcoes: [],
+      ajuda: "Em branco para grupo de primeiro nível." },
+  ],
+  colunas: [
+    { nome: "codigo", cabecalho: "Código", tipo: "link", ordenavel: true },
+    { nome: "descricao", cabecalho: "Descrição", tipo: "texto" },
+    { nome: "pai", cabecalho: "Grupo pai", tipo: "texto" },
+    { nome: "materiais", cabecalho: "Materiais", tipo: "inteiro" },
+  ],
+  filtros: [{ nome: "q", rotulo: "Código ou descrição", tipo: "texto", largura: 2 }],
+  acoes: [],
+  permissoes: { criar: "CADASTRAR_GRUPO_DE_MATERIAL" },
+  abas: [...ABAS_SEM_MODELO_NOVO],
+  relacionados: [
+    { rotulo: "Materiais deste grupo",
+      href: "/patrimonio/almoxarifado/materiais?q={id}",
+      explicacao: "O grupo classifica o catálogo; quem carrega a conta contábil é a classe, não ele." },
+  ],
+});
+
+export const UNIDADES_DE_MEDIDA: DefinicaoDeRecurso = definirRecurso({
+  nome: "unidades-de-medida",
+  rotulo: "Unidades de medida",
+  rotuloSingular: "Unidade de medida",
+  rota: "/patrimonio/almoxarifado/unidades",
+  descricao:
+    "A medida em que o saldo é contado. Sem ela o material não se cadastra: somar '3 caixas' " +
+    "com '36 unidades' produz um número sem significado.",
+  campos: [
+    { nome: "sigla", rotulo: "Sigla", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "UN" },
+    { nome: "descricao", rotulo: "Descrição", tipo: "texto", obrigatorio: true, largura: 3, placeholder: "Unidade" },
+  ],
+  colunas: [
+    { nome: "sigla", cabecalho: "Sigla", tipo: "link", ordenavel: true },
+    { nome: "descricao", cabecalho: "Descrição", tipo: "texto" },
+    { nome: "materiais", cabecalho: "Materiais", tipo: "inteiro" },
+  ],
+  filtros: [{ nome: "q", rotulo: "Sigla ou descrição", tipo: "texto", largura: 2 }],
+  acoes: [],
+  permissoes: { criar: "CADASTRAR_UNIDADE_DE_MEDIDA" },
+  abas: [...ABAS_SEM_MODELO_NOVO],
+  relacionados: [
+    { rotulo: "Materiais que usam esta unidade",
+      href: "/patrimonio/almoxarifado/materiais?q={id}",
+      explicacao: "A unidade de ESTOQUE tem fator 1 por definição — ela é a própria medida do saldo." },
+  ],
+});
+
 export const RECURSOS_DO_ALMOXARIFADO: readonly DefinicaoDeRecurso[] = [
+  CLASSES_DE_MATERIAL,
+  GRUPOS_DE_MATERIAL,
+  UNIDADES_DE_MEDIDA,
   MATERIAIS,
   DEPOSITOS,
   REQUISICOES_DE_MATERIAL,

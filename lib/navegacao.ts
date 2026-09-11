@@ -316,8 +316,12 @@ export const DIVIDA: readonly RelatorioNav[] = [
  * porque é dela que saem ao mesmo tempo o hub da área e o índice da busca global.
  */
 export const ALMOXARIFADO: readonly RelatorioNav[] = [
+  { href: "/patrimonio/almoxarifado/classes", numero: "Classes", rotulo: "Classes de Material", descricao: "A amarração entre o eixo físico e o contábil: é a classe que diz em que conta de estoque a entrada e a saída batem no razão." },
+  { href: "/patrimonio/almoxarifado/grupos", numero: "Grupos", rotulo: "Grupos de Material", descricao: "A árvore que organiza o catálogo — um grupo pode ter grupo pai, e é assim que 'Expediente' fica dentro de 'Consumo'." },
+  { href: "/patrimonio/almoxarifado/unidades", numero: "Unidades", rotulo: "Unidades de Medida", descricao: "A medida em que o saldo é contado. Sem ela o material não se cadastra: somar caixas com unidades produz um número sem significado." },
   { href: "/patrimonio/almoxarifado/materiais", numero: "Materiais", rotulo: "Materiais", descricao: "Unidade de estoque, grupo, classe contábil e CATMAT — mais o mínimo e o máximo por depósito. O saldo não mora aqui: ele é derivado dos movimentos." },
   { href: "/patrimonio/almoxarifado/depositos", numero: "Depósitos", rotulo: "Depósitos", descricao: "Onde o material fica, sob qual unidade gestora e com qual responsável — e os bloqueios que recusam movimentação enquanto vigem." },
+  { href: "/patrimonio/almoxarifado/estoque", numero: "Posição", rotulo: "Posição de Estoque", descricao: "Quanto havia de cada material, num depósito, NUMA DATA — com preço médio, mínimo e máximo, e os lotes vencidos e a vencer. É a pergunta que refuta uma coluna de saldo: coluna só sabe responder 'agora'." },
   { href: "/patrimonio/almoxarifado/requisicoes", numero: "Requisições", rotulo: "Requisições de Material", descricao: "O setor pede, o almoxarifado atende — e o atendimento pode ser parcial. O que falta é a diferença entre o solicitado e as saídas vinculadas." },
   { href: "/patrimonio/almoxarifado/inventarios", numero: "Inventários", rotulo: "Inventários de Estoque", descricao: "Enquanto aberto, bloqueia a movimentação do depósito — é isso que torna a contagem comparável com a posição na data de abertura." },
 ];

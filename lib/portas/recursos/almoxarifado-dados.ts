@@ -1,8 +1,15 @@
 import { toMoney } from "../../../packages/contracts/index.js";
-import { diaCivil, diaCivilBr } from "../../../packages/datas/index.js";
+import {
+  diaCivil,
+  diaCivilBr,
+  diferencaEmDiasCivis,
+  meioDiaCivil,
+} from "../../../packages/datas/index.js";
 import {
   abrirInventarioDeEstoque,
   bloquearEstoque,
+  cadastrarGrupoDeMaterial,
+  cadastrarUnidadeDeMedida,
   cadastrarDeposito,
   cadastrarMaterial,
   definirParametroDeEstoque,
@@ -19,6 +26,7 @@ import {
   type MovimentoParaPosicao,
   type TipoMovimentoFisicoEstoque,
 } from "../../../modules/m10-patrimonial/estoque-fisico-dominio.js";
+import { cadastrarClasseDeMaterial } from "../../../modules/m10-patrimonial/almoxarifado.js";
 import {
   relacionarElementoAoMaterial,
   relacionarMarcaAoMaterial,
@@ -1010,4 +1018,416 @@ export async function acaoDoInventarioDeEstoque(
     default:
       throw new Error(`Ação "${acao}" não existe neste cadastro. Nada foi gravado.`);
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// OS TRÊS CADASTROS DE APOIO — sem eles o material não se cadastra
+// ═══════════════════════════════════════════════════════════════════════════
+
+export async function listarClassesDeMaterial(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
+  const prisma = cliente();
+  const q = c.filtros["q"] ?? "";
+  const where = q === "" ? {} : { OR: [{ codigo: texto(q) }, { descricao: texto(q) }] };
+  const [total, linhas] = await Promise.all([
+    prisma.classeDeMaterial.count({ where }),
+    prisma.classeDeMaterial.findMany({
+      where,
+      ...paginacao(c),
+      orderBy: c.ordem === null ? { codigo: "asc" } : { [c.ordem]: c.direcao },
+      select: {
+        id: true, codigo: true, descricao: true,
+        contaContabil: { select: { codigo: true, nome: true } },
+        _count: { select: { materiais: true } },
+      },
+    }),
+  ]);
+  return {
+    total,
+    linhas: linhas.map((x) => ({
+      id: x.id,
+      codigo: x.codigo,
+      descricao: x.descricao,
+      conta: `${x.contaContabil.codigo} — ${x.contaContabil.nome}`,
+      materiais: String(x._count.materiais),
+    })),
+  };
+}
+
+export async function verClasseDeMaterial(id: string): Promise<DetalheLido | null> {
+  const prisma = cliente();
+  const x = await prisma.classeDeMaterial.findUnique({
+    where: { id },
+    select: {
+      codigo: true, descricao: true, ativa: true, criadoEm: true, criadoPor: true,
+      contaContabil: { select: { codigo: true, nome: true } },
+      materiais: { select: { id: true, codigo: true, descricaoSucinta: true, criadoEm: true, criadoPor: true }, orderBy: { codigo: "asc" }, take: 100 },
+    },
+  });
+  if (x === null) return null;
+  return {
+    titulo: `${x.codigo} — ${x.descricao}`,
+    subtitulo: `Conta de estoque ${x.contaContabil.codigo}`,
+    selos: [{ texto: x.ativa ? "Ativa" : "Inativa", tom: x.ativa ? "ok" : "neutro" }],
+    dados: [
+      { rotulo: "Conta de estoque", valor: `${x.contaContabil.codigo} — ${x.contaContabil.nome}`,
+        nota: "É nela que o valor do estoque desta classe fica, e é ela que a entrada e a saída movem." },
+      { rotulo: "Materiais nesta classe", valor: String(x.materiais.length), tipo: "inteiro" },
+      { rotulo: "Criada em", valor: diaCivilBr(x.criadoEm), tipo: "data" },
+    ],
+    historico: x.materiais.map((m) => ({
+      id: m.id,
+      oQue: `Material ${m.codigo} — ${m.descricaoSucinta}`,
+      quando: diaCivilBr(m.criadoEm),
+      registradoEm: diaCivilBr(m.criadoEm),
+      por: m.criadoPor,
+      motivo: null,
+      estornado: false,
+    })),
+  };
+}
+
+export async function listarGruposDeMaterial(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
+  const prisma = cliente();
+  const q = c.filtros["q"] ?? "";
+  const where = q === "" ? {} : { OR: [{ codigo: texto(q) }, { descricao: texto(q) }] };
+  const [total, linhas] = await Promise.all([
+    prisma.grupoDeMaterial.count({ where }),
+    prisma.grupoDeMaterial.findMany({
+      where,
+      ...paginacao(c),
+      orderBy: c.ordem === null ? { codigo: "asc" } : { [c.ordem]: c.direcao },
+      select: {
+        id: true, codigo: true, descricao: true,
+        pai: { select: { codigo: true, descricao: true } },
+        _count: { select: { materiais: true } },
+      },
+    }),
+  ]);
+  return {
+    total,
+    linhas: linhas.map((x) => ({
+      id: x.id,
+      codigo: x.codigo,
+      descricao: x.descricao,
+      pai: x.pai === null ? "—" : `${x.pai.codigo} — ${x.pai.descricao}`,
+      materiais: String(x._count.materiais),
+    })),
+  };
+}
+
+export async function verGrupoDeMaterial(id: string): Promise<DetalheLido | null> {
+  const prisma = cliente();
+  const x = await prisma.grupoDeMaterial.findUnique({
+    where: { id },
+    select: {
+      codigo: true, descricao: true, criadoEm: true, criadoPor: true,
+      pai: { select: { codigo: true, descricao: true } },
+      filhos: { select: { codigo: true, descricao: true } },
+      materiais: { select: { id: true, codigo: true, descricaoSucinta: true, criadoEm: true, criadoPor: true }, orderBy: { codigo: "asc" }, take: 100 },
+    },
+  });
+  if (x === null) return null;
+  return {
+    titulo: `${x.codigo} — ${x.descricao}`,
+    subtitulo: x.pai === null ? "Grupo de primeiro nível" : `Dentro de ${x.pai.codigo} ${x.pai.descricao}`,
+    selos: [{ texto: `${x.materiais.length} materiais`, tom: "neutro" }],
+    dados: [
+      { rotulo: "Grupo pai", valor: x.pai === null ? "nenhum — é de primeiro nível" : `${x.pai.codigo} — ${x.pai.descricao}` },
+      { rotulo: "Subgrupos",
+        valor: x.filhos.length === 0 ? "nenhum" : x.filhos.map((f) => `${f.codigo} — ${f.descricao}`).join(" · ") },
+      { rotulo: "Criado em", valor: diaCivilBr(x.criadoEm), tipo: "data" },
+    ],
+    historico: x.materiais.map((m) => ({
+      id: m.id,
+      oQue: `Material ${m.codigo} — ${m.descricaoSucinta}`,
+      quando: diaCivilBr(m.criadoEm),
+      registradoEm: diaCivilBr(m.criadoEm),
+      por: m.criadoPor,
+      motivo: null,
+      estornado: false,
+    })),
+  };
+}
+
+export async function listarUnidadesDeMedidaDoMolde(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
+  const prisma = cliente();
+  const q = c.filtros["q"] ?? "";
+  const where = q === "" ? {} : { OR: [{ sigla: texto(q) }, { descricao: texto(q) }] };
+  const [total, linhas] = await Promise.all([
+    prisma.unidadeDeMedida.count({ where }),
+    prisma.unidadeDeMedida.findMany({
+      where,
+      ...paginacao(c),
+      orderBy: c.ordem === null ? { sigla: "asc" } : { [c.ordem]: c.direcao },
+      select: { id: true, sigla: true, descricao: true, _count: { select: { materiais: true } } },
+    }),
+  ]);
+  return {
+    total,
+    linhas: linhas.map((x) => ({
+      id: x.id,
+      sigla: x.sigla,
+      descricao: x.descricao,
+      materiais: String(x._count.materiais),
+    })),
+  };
+}
+
+export async function verUnidadeDeMedida(id: string): Promise<DetalheLido | null> {
+  const prisma = cliente();
+  const x = await prisma.unidadeDeMedida.findUnique({
+    where: { id },
+    select: {
+      sigla: true, descricao: true, criadoEm: true, criadoPor: true,
+      materiais: {
+        select: {
+          id: true, ehDeEstoque: true, fatorParaEstoque: true, criadoEm: true, criadoPor: true,
+          material: { select: { codigo: true, descricaoSucinta: true } },
+        },
+        take: 100,
+      },
+    },
+  });
+  if (x === null) return null;
+  return {
+    titulo: `${x.sigla} — ${x.descricao}`,
+    subtitulo: `${x.materiais.length} materiais usam esta unidade`,
+    selos: [
+      { texto: `${x.materiais.filter((m) => m.ehDeEstoque).length} como unidade de estoque`, tom: "neutro" },
+    ],
+    dados: [
+      { rotulo: "Sigla", valor: x.sigla },
+      { rotulo: "Descrição", valor: x.descricao },
+      { rotulo: "Uso como unidade de estoque",
+        valor: String(x.materiais.filter((m) => m.ehDeEstoque).length),
+        tipo: "inteiro",
+        nota: "A unidade de estoque tem fator 1 por definição — ela é a própria medida do saldo." },
+      { rotulo: "Criada em", valor: diaCivilBr(x.criadoEm), tipo: "data" },
+    ],
+    historico: x.materiais.map((m) => ({
+      id: m.id,
+      oQue:
+        `${m.material.codigo} — ${m.material.descricaoSucinta}` +
+        (m.ehDeEstoque ? " (unidade de estoque)" : ` (fator ${m.fatorParaEstoque.toFixed(6)})`),
+      quando: diaCivilBr(m.criadoEm),
+      registradoEm: diaCivilBr(m.criadoEm),
+      por: m.criadoPor,
+      motivo: null,
+      estornado: false,
+    })),
+  };
+}
+
+export async function criarClasseDeMaterial(c: Campos): Promise<void> {
+  await comEscritaAutenticada("CADASTRAR_CLASSE_DE_MATERIAL", (criadoPor) =>
+    cadastrarClasseDeMaterial(cliente(), {
+      codigo: t(c, "codigo"),
+      descricao: t(c, "descricao"),
+      contaContabilId: t(c, "contaContabilId"),
+      criadoPor,
+    })
+  );
+}
+
+export async function criarGrupoDeMaterial(c: Campos): Promise<void> {
+  await comEscritaAutenticada("CADASTRAR_GRUPO_DE_MATERIAL", (criadoPor) =>
+    cadastrarGrupoDeMaterial(cliente(), {
+      codigo: t(c, "codigo"),
+      descricao: t(c, "descricao"),
+      ...(opcional(c, "paiId") !== undefined ? { paiId: t(c, "paiId") } : {}),
+      criadoPor,
+    })
+  );
+}
+
+export async function criarUnidadeDeMedida(c: Campos): Promise<void> {
+  await comEscritaAutenticada("CADASTRAR_UNIDADE_DE_MEDIDA", (criadoPor) =>
+    cadastrarUnidadeDeMedida(cliente(), {
+      sigla: t(c, "sigla"),
+      descricao: t(c, "descricao"),
+      criadoPor,
+    })
+  );
+}
+
+/**
+ * ⚠️ OS TRÊS CADASTROS DE APOIO NÃO TÊM AÇÃO DE DETALHE, e o molde cobra coerência: um
+ * recurso sem ação nenhuma e sem permissão de criar seria tela de leitura, e para isso a
+ * listagem basta. Eles TÊM `criar` — então a função de ação existe só para o despacho
+ * fail-closed do `__acao`, e recusa tudo o que não seja "criar".
+ */
+export async function semAcaoDeDetalhe(acao: string): Promise<void> {
+  throw new Error(`Ação "${acao}" não existe neste cadastro. Nada foi gravado.`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// A POSIÇÃO DE ESTOQUE — a cláusula que derrubou a coluna de saldo
+//
+// ⚠️ ESTA SUPERFÍCIE NÃO É CADASTRO, E POR ISSO ESCAPA DO MOLDE. Ela não cria, não edita e
+// não tem detalhe: é uma CONSULTA com quatro perguntas sobre o mesmo depósito. O molde
+// monta listagem-com-formulário; forçá-lo a montar isto seria crescê-lo para acomodar
+// exceção, que é o limite 2 do `lib/molde/tipos.ts`. Escreve-se à mão, como o consórcio.
+//
+// ⚠️ E A PERGUNTA CENTRAL É "NAQUELA DATA". É ela que refuta uma coluna de saldo dentro da
+// própria seção 5.18: uma coluna só sabe responder "agora", e o almoxarife precisa saber o
+// que havia no fechamento do mês passado.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface LinhaDaPosicao {
+  readonly materialId: string;
+  readonly codigo: string;
+  readonly descricao: string;
+  readonly unidade: string;
+  readonly quantidade: string;
+  readonly valor: string;
+  readonly precoMedio: string;
+  readonly minimo: string | null;
+  readonly maximo: string | null;
+  readonly abaixoDoMinimo: boolean;
+  readonly acimaDoMaximo: boolean;
+}
+
+export interface LoteNaValidade {
+  readonly identificacao: string;
+  readonly material: string;
+  readonly validade: string;
+  readonly quantidade: string;
+}
+
+export interface PosicaoDoDeposito {
+  readonly deposito: { readonly id: string; readonly codigo: string; readonly nome: string };
+  readonly dia: string;
+  readonly bloqueado: boolean;
+  readonly motivosDoBloqueio: readonly string[];
+  readonly linhas: readonly LinhaDaPosicao[];
+  readonly totalEmValor: string;
+  readonly vencidos: readonly LoteNaValidade[];
+  readonly aVencer: readonly LoteNaValidade[];
+}
+
+export async function depositosParaConsulta(): Promise<
+  readonly { readonly id: string; readonly codigo: string; readonly nome: string }[]
+> {
+  return cliente().deposito.findMany({
+    where: { ativo: true },
+    select: { id: true, codigo: true, nome: true },
+    orderBy: { codigo: "asc" },
+    take: 300,
+  });
+}
+
+export async function posicaoDoDeposito(
+  depositoId: string,
+  ateDia?: string
+): Promise<PosicaoDoDeposito | null> {
+  const prisma = cliente();
+  const dep = await prisma.deposito.findUnique({
+    where: { id: depositoId },
+    select: { id: true, codigo: true, nome: true },
+  });
+  if (dep === null) return null;
+
+  // ⚠️ O PADRÃO É HOJE PELO DIA CIVIL DO ENTE, e não `new Date().toISOString()`. O ISO é
+  // UTC: às 22:00 do fuso do ente ele responderia pelo dia SEGUINTE, e a tela mostraria a
+  // posição de amanhã sem ninguém perceber.
+  const dia = ateDia === undefined || ateDia === "" ? diaCivil(new Date()) : ateDia;
+
+  const [materiais, bloqueios, inventariosAbertos, lotes] = await Promise.all([
+    prisma.material.findMany({
+      where: { ativo: true, movimentos: { some: { depositoId } } },
+      select: {
+        id: true, codigo: true, descricaoSucinta: true,
+        unidades: { where: { ehDeEstoque: true }, select: { unidadeDeMedida: { select: { sigla: true } } } },
+        parametros: { where: { depositoId }, select: { quantidadeMinima: true, quantidadeMaxima: true } },
+        movimentos: {
+          where: { depositoId },
+          select: { tipo: true, quantidade: true, valorTotal: true, dataMovimento: true },
+        },
+      },
+      orderBy: { codigo: "asc" },
+      take: 500,
+    }),
+    prisma.bloqueioDeEstoque.findMany({
+      where: { OR: [{ depositoId }, { depositoId: null }] },
+      select: { inicio: true, fim: true, motivo: true },
+    }),
+    prisma.inventarioDeEstoque.findMany({
+      where: { depositoId, dataFechamento: null },
+      select: { dataAbertura: true },
+    }),
+    prisma.loteDeMaterial.findMany({
+      where: { depositoId, validade: { not: null } },
+      select: {
+        id: true, identificacao: true, validade: true,
+        material: { select: { codigo: true, descricaoSucinta: true } },
+        movimentos: { select: { tipo: true, quantidade: true, valorTotal: true, dataMovimento: true } },
+      },
+    }),
+  ]);
+
+  const corte = meioDiaCivil(dia);
+  const motivos = [
+    ...bloqueios
+      .filter((b) => b.inicio <= corte && (b.fim === null || b.fim >= corte))
+      .map((b) => b.motivo),
+    ...inventariosAbertos.map(() => "inventário aberto"),
+  ];
+
+  let total = toMoney("0");
+  const linhas: LinhaDaPosicao[] = [];
+  for (const m of materiais) {
+    const posicao = posicaoDeEstoque(paraPosicao(m.movimentos), dia);
+    if (posicao.quantidade.isZero() && posicao.valor.isZero()) continue;
+    total = total.plus(posicao.valor);
+    const p = m.parametros[0];
+    const minimo = p?.quantidadeMinima ?? null;
+    const maximo = p?.quantidadeMaxima ?? null;
+    linhas.push({
+      materialId: m.id,
+      codigo: m.codigo,
+      descricao: m.descricaoSucinta,
+      unidade: m.unidades[0]?.unidadeDeMedida.sigla ?? "—",
+      quantidade: posicao.quantidade.toFixed(3),
+      valor: posicao.valor.toFixed(2),
+      // ⚠️ O PREÇO MÉDIO RECUSA POSIÇÃO ZERADA OU NEGATIVA — dividir por zero produziria
+      // "Infinity" numa tela de dinheiro. Quem recusa é o domínio, não esta porta.
+      precoMedio: posicao.quantidade.greaterThan(0)
+        ? precoMedioDaPosicao(posicao).toFixed(6)
+        : "—",
+      minimo: minimo === null ? null : minimo.toFixed(3),
+      maximo: maximo === null ? null : maximo.toFixed(3),
+      abaixoDoMinimo: minimo !== null && posicao.quantidade.lessThan(toMoney(minimo.toFixed(4))),
+      acimaDoMaximo: maximo !== null && posicao.quantidade.greaterThan(toMoney(maximo.toFixed(4))),
+    });
+  }
+
+  // ⚠️ SÓ LOTE COM SALDO ENTRA NO RELATÓRIO DE VALIDADE. Um lote já consumido não vence
+  // para ninguém — e foi exatamente este o defeito que o teste do ENT05 pegou.
+  const vencidos: LoteNaValidade[] = [];
+  const aVencer: LoteNaValidade[] = [];
+  for (const l of lotes) {
+    if (l.validade === null) continue;
+    const posicao = posicaoDeEstoque(paraPosicao(l.movimentos), dia);
+    if (!posicao.quantidade.greaterThan(0)) continue;
+    const registro: LoteNaValidade = {
+      identificacao: l.identificacao,
+      material: `${l.material.codigo} — ${l.material.descricaoSucinta}`,
+      validade: diaCivilBr(l.validade),
+      quantidade: posicao.quantidade.toFixed(3),
+    };
+    const diasAteVencer = diferencaEmDiasCivis(l.validade, corte);
+    if (diasAteVencer < 0) vencidos.push(registro);
+    else if (diasAteVencer <= 30) aVencer.push(registro);
+  }
+
+  return {
+    deposito: dep,
+    dia,
+    bloqueado: motivos.length > 0,
+    motivosDoBloqueio: [...new Set(motivos)],
+    linhas,
+    totalEmValor: total.toFixed(2),
+    vencidos,
+    aVencer,
+  };
 }
