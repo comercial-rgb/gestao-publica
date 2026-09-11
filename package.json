@@ -50,6 +50,7 @@
     "test:rapido": "vitest run -c vitest.rapido.config.ts",
     "smoke:ent03b": "tsx scripts/trinco-de-maquina.ts 'smoke do ENT03b' -- npx tsx scripts/smoke-ent03b.ts",
     "deriva": "tsx scripts/deriva-de-schema.ts",
+    "deriva:perfil": "tsx scripts/deriva-de-perfil.ts",
     "test:fuso": "tsx scripts/trinco-de-maquina.ts 'suite sob outro fuso' -- env TZ=Pacific/Kiritimati npx vitest run",
     "portao": "tsx scripts/trinco-de-maquina.ts 'portao' -- npx tsx scripts/portao.ts",
     "smoke:ent03c": "tsx scripts/trinco-de-maquina.ts 'smoke do ENT03c' -- npx tsx scripts/smoke-ent03c.ts",
