@@ -2681,12 +2681,91 @@ citar a forma proibida entre aspas — a mesma anatomia que o guard já document
 
 | Comando | Resultado | Data |
 |---|---|---|
-| `npm run portao -- --fim-de-lote` | ver 21.8 | 2026-09-11 |
+| `npm run portao -- --fim-de-lote` | **10 de 10**, saída 0; 200 arquivos / 2.087 testes verdes nas duas passagens de fuso — ver 21.8 | 2026-09-11 |
 | `npx tsx scripts/smoke-ent06.ts` | **48 passos, 0 falhas** | 2026-09-11 |
 | `npx tsx scripts/marcar-catalogo.ts --aplicar` | **3 promovidas**; 316 de 2037 (15,5%) — o percentual não se move | 2026-09-11 |
 | `npm run deriva:perfil` | 38 ações sem perfil → concedidas em dev → "censo e perfis batem: 223 ações" | 2026-09-11 |
 
 ⚠️ **O QUE NÃO RODOU:** nenhuma migration — este lote não abriu modelo.
+
+### 21.8 · O portão de fechamento, e a rodada que a hibernação derrubou
+
+⚠️ **A PRIMEIRA RODADA FALHOU, E O MOTIVO ESTÁ AQUI JUNTO** — falha intermitente só se
+descarta com a causa medida, nunca por "deve ter sido a máquina".
+
+**Rodada 1** — `npm run portao -- --fim-de-lote`, `2026-09-11T22:33:24Z`:
+
+```
+ok      typecheck:backend        18s      ok      test:rapido              12s
+ok      typecheck:app             2s      FALHOU  test:tudo              3395s
+ok      typecheck:scripts         2s      pulado  test:fuso                 0s
+ok      cobertura-de-tsconfig     7s      ok      build                    48s
+ok      prisma:validate           1s
+ok      deriva                  334s
+```
+
+**O que falhou: 15 testes em 12 arquivos. Falhas de asserção: ZERO.**
+
+```
+9  Hook timed out in 10000ms          (o beforeEach que limpa e semeia o banco)
+2  TimeoutError — Chromium, WS endpoint em 30000ms
+1  Test timed out in 90000ms
+1  Test timed out in 5000ms
+2  PrismaClientKnownRequestError
+```
+
+⚠️ **TRÊS SINAIS INDEPENDENTES APONTANDO PARA A MESMA CAUSA:**
+
+1. **Nenhuma asserção falhou.** Nada está logicamente errado — só nada coube no tempo.
+2. **As falhas caem em módulos que este lote não tocou** — M02, M03, M05, M09, M12, PDF,
+   OFX. Um lote que quebrasse o M10 não derrubaria o importador de OFX.
+3. **Os tempos são absurdos para o que aqueles testes fazem**: 327.815 ms, 357.098 ms,
+   311.997 ms para testes que rodam em milissegundos. `deriva`, que leva 8 a 14 s, levou
+   **334 s**.
+
+**Medido durante a rodada:** swap em 8.315 MB de 9.216 MB, **13 MB de RAM livre**, 6.177 MB
+de memória comprimida, load average 11,5. Numa máquina de 8 GB com 6 GB comprimidos, cada
+toque de página é uma descompressão — e cada arquivo de teste paga partida de processo mais
+carga do cliente Prisma contra isso.
+
+**A causa raiz, informada pelo operador e coerente com tudo acima: a máquina hibernou
+durante a rodada.**
+
+**Rodada 2** — mesmo comando, `2026-09-11T23:38Z`, com a máquina desperta e o load em 4,3:
+
+```
+ok  typecheck:backend    18s      ok  test:rapido      11s
+ok  typecheck:app         3s      ok  test:tudo       637s
+ok  typecheck:scripts     2s      ok  test:fuso       503s   (Pacific/Kiritimati)
+ok  cobertura-tsconfig    7s      ok  build            31s
+ok  prisma:validate       1s
+ok  deriva               10s
+```
+
+**10 de 10, `CODIGO_DE_SAIDA_DO_PORTAO=0`.** A suíte: **200 arquivos, 2.087 testes**, verdes
+nas duas passagens de fuso. Cobertura de tsconfig: 855 de 855, zero descobertos.
+
+⚠️ **E A COMPARAÇÃO ENTRE AS DUAS RODADAS É A PRÓPRIA PROVA DA CAUSA.** Mesmo commit, mesmo
+comando, uma hora de diferença:
+
+| | rodada 1 (hibernada) | rodada 2 | razão |
+|---|---:|---:|---:|
+| `deriva` | 334s | 10s | **33x** |
+| `test:tudo` | 3395s (falhou) | 637s | **5,3x** |
+| `build` | 48s | 31s | 1,5x |
+
+Nenhuma linha de código mudou entre as duas.
+
+**O agendamento do fuso foi exercido pela primeira vez**, e o relatório o nomeia:
+`[agenda ] test:fuso roda — portão de fechamento do lote — o fuso roda sempre aqui`.
+
+**Contraprova executada**, e é ela que fecha o argumento: os dois arquivos deste lote que
+aparecem entre os 12 — `m11-compras.test.ts` e `m16-rollout.test.ts` — falharam pelo mesmo
+`Hook timed out in 10000ms`, e rodados em seguida deram **27 testes verdes em 23,9 s**.
+
+⚠️ **E O PORTÃO ACERTOU EM MARCAR VERMELHO.** Um gate que tolerasse timeout como ruído
+deixaria passar a lentidão real no dia em que ela fosse de código. A resposta certa não é
+afrouxar o limite: é medir a causa e rodar de novo — que é o que a rodada 2 registra abaixo.
 
 ## 19. O próximo passo
 
