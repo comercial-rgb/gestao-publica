@@ -4,6 +4,7 @@ import { dclNoCorte } from "./rgf-anexo2.js";
 import { variacaoMonetariaDaDivida } from "../m10-patrimonial/consultas.js";
 import { anexo6 } from "./rreo-anexo6.js";
 import { janelaDoBimestre, type Bimestre } from "./rreo-anexo1.js";
+import { janelaCivilDoAno } from "../../packages/datas/index.js";
 
 /**
  * RREO — ANEXO 6 · RESULTADO PRIMÁRIO E NOMINAL, ABAIXO DA LINHA (LRF, art. 53, III). 7.8-b.
@@ -110,8 +111,9 @@ export interface Anexo6AbaixoDaLinha {
 
 /** O último instante de 31/12 do exercício anterior. Ver o cabeçalho. */
 function corteDeAbertura(exercicio: number): Date {
-  // Um milissegundo antes de 01/01 às 00:00 do exercício — o fim de 31/12 do ano anterior.
-  return new Date(Date.UTC(exercicio, 0, 1, 0, 0, 0, 0) - 1);
+  // O último instante CIVIL de 31/12 do ano anterior. Em UTC o corte caía às 20:59:59, e
+  // as três últimas horas do exercício ficavam fora dos dois lados da abertura.
+  return janelaCivilDoAno(exercicio - 1).fim;
 }
 
 export async function anexo6AbaixoDaLinha(

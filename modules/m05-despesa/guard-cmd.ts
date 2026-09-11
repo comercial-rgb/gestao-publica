@@ -1,4 +1,4 @@
-import { competenciaCivil } from "../../packages/datas/index.js";
+import { competenciaCivil, janelaCivilDeMeses } from "../../packages/datas/index.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import { travar } from "../../packages/locks/index.js";
@@ -38,12 +38,17 @@ type Tx = Omit<
   "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends"
 >;
 
-/** A janela [início, fim] de um mês (1-12) de um exercício, em UTC. */
+/**
+ * A janela [início, fim] de um mês (1-12) de um exercício, NO CALENDÁRIO DO ENTE.
+ *
+ * ⚠️ ERA `Date.UTC`, e a janela de junho ia de 31/05 às 21:00 a 30/06 às 20:59 civis. O
+ * guard já classificava o empenho pelo mês CIVIL (`competenciaCivil`), mas somava o
+ * consumido por esta janela: o empenho de 30/06 às 22:00 era cobrado contra a cota de
+ * JULHO e não entrava na soma de junho nenhuma das duas vezes. As duas pontas do guard
+ * precisam da mesma régua.
+ */
 function janelaDoMes(exercicio: number, mes: number): { inicio: Date; fim: Date } {
-  const inicio = new Date(Date.UTC(exercicio, mes - 1, 1, 0, 0, 0, 0));
-  // O primeiro instante do mês seguinte, menos 1ms.
-  const fim = new Date(Date.UTC(exercicio, mes, 1, 0, 0, 0, 0) - 1);
-  return { inicio, fim };
+  return janelaCivilDeMeses(exercicio, mes, 1);
 }
 
 /**

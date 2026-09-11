@@ -18,6 +18,7 @@ import type { Tx } from "./guard-exercicio.js";
 // travamento de competência (M16). Ver `m01-funil.test.ts`: o grep-teste proíbe o
 // `lancamentoContabil.create` fora dele.
 import { lancarNoRazao } from "../m01-core-contabil/razao.js";
+import { janelaCivilDoAno } from "../../packages/datas/index.js";
 
 /**
  * APURAÇÃO DO RESULTADO DO EXERCÍCIO (MCASP) — o encerramento das contas de
@@ -81,7 +82,9 @@ export interface ResultadoApuracao {
  * a lição do `campoData` do M09.
  */
 function ultimoInstanteDoExercicio(ano: number): Date {
-  return new Date(Date.UTC(ano, 11, 31, 23, 59, 59, 0));
+  // ⚠️ CIVIL, não UTC: `Date.UTC(ano, 11, 31, 23:59:59)` é 31/12 às 20:59:59 em São Paulo,
+  // e as três horas que sobram são exatamente onde mora o lançamento de véspera de virada.
+  return janelaCivilDoAno(ano).fim;
 }
 
 export async function apurarResultadoDoExercicio(

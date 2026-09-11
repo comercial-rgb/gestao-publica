@@ -6,6 +6,7 @@ import { demonstracaoVariacoesPatrimoniais } from "./dvp.js";
 import { balancoOrcamentario } from "./balanco-orcamentario.js";
 import { medir, verificarGeracao, type EscopoConsistencia, type Verificacao } from "./consistencia-contrato.js";
 import { verificacoesDaLoa } from "./consistencia-loa.js";
+import { janelaCivilDoAno } from "../../packages/datas/index.js";
 
 export type { ResultadoVerificacao, EscopoConsistencia, Verificacao } from "./consistencia-contrato.js";
 
@@ -35,7 +36,7 @@ export type { ResultadoVerificacao, EscopoConsistencia, Verificacao } from "./co
 // de transação de escrita —, então o cliente cheio é o tipo certo.
 type Leitor = PrismaClient;
 
-const inicioDoExercicio = (exercicio: number): Date => new Date(Date.UTC(exercicio, 0, 1, 0, 0, 0, 0));
+const inicioDoExercicio = (exercicio: number): Date => janelaCivilDoAno(exercicio).inicio;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // AS VERIFICAÇÕES, POR ESCOPO

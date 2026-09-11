@@ -4,13 +4,16 @@ import {
   competenciaCivil,
   compararPorDiaCivil,
   diaCivil,
+  diferencaEmDiasCivis,
   diaCivilBr,
   fimDoDiaCivil,
   FUSO_DO_ENTE,
   inicioDoDiaCivil,
   instanteCivil,
+  janelaCivilDeMeses,
   janelaCivilDoAno,
   janelaCivilDoMes,
+  normalizarMes,
   mesmoDiaCivil,
 } from "./index.js";
 
@@ -212,5 +215,85 @@ describe("data civil do ente", () => {
     const instante = new Date("2026-02-01T02:59:00Z");
     expect(diaCivil(instante, "UTC")).toBe("2026-02-01");
     expect(diaCivil(instante, FUSO_DO_ENTE)).toBe("2026-01-31");
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // A CORRIDA DE MESES — bimestre, quadrimestre, doze meses
+  //
+  // ⚠️ ELA FECHA A METADE DO EIXO QUE O REGEX NÃO ENXERGAVA. A guarda do ENT03a
+  // procurava `getUTC*`, e por isso NÃO VIA a forma dominante do defeito, que é a
+  // CONSTRUÇÃO da janela por `new Date(Date.UTC(...))`. Os testes abaixo prendem os
+  // instantes exatos das duas pontas.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  it("t16: a janela do 1º bimestre começa em 01/01 às 00:00 CIVIS, não em 31/12 às 21:00", () => {
+    const j = janelaCivilDeMeses(2026, 1, 2);
+    // 01/01/2026 00:00 em São Paulo é 03:00Z — e NÃO 2026-01-01T00:00:00Z, que civilmente
+    // ainda é 31/12/2025 às 21:00 e portanto pertence a um exercício já encerrado.
+    expect(j.inicio.toISOString()).toBe("2026-01-01T03:00:00.000Z");
+    expect(diaCivil(j.inicio)).toBe("2026-01-01");
+    expect(diaCivil(j.fim)).toBe("2026-02-28");
+    expect(j.fim.toISOString()).toBe("2026-03-01T02:59:59.999Z");
+  });
+
+  it("t17: um fato de 28/02 às 22:00 civis está DENTRO do 1º bimestre", () => {
+    const j = janelaCivilDeMeses(2026, 1, 2);
+    const fato = instanteCivil(2026, 2, 28, 22, 0);
+    expect(fato >= j.inicio && fato <= j.fim).toBe(true);
+    // A mesma pergunta no eixo antigo: a janela acabava em 28/02T23:59:59Z, e 22:00
+    // civis são 01/03T01:00Z — o fato caía no bimestre SEGUINTE.
+    expect(fato.toISOString()).toBe("2026-03-01T01:00:00.000Z");
+  });
+
+  it("t18: a corrida de doze meses do 1º bimestre recua para MARÇO do exercício anterior", () => {
+    const j = janelaCivilDeMeses(2026, 2 - 11, 12); // último mês = fev/2026
+    expect(diaCivil(j.inicio)).toBe("2025-03-01");
+    expect(diaCivil(j.fim)).toBe("2026-02-28");
+  });
+
+  it("t19: o mês transborda o ano nos dois sentidos", () => {
+    expect(normalizarMes(2026, 0)).toBe("2025-12");
+    expect(normalizarMes(2026, 13)).toBe("2027-01");
+    expect(normalizarMes(2026, -11)).toBe("2025-01");
+    expect(normalizarMes(2026, 7)).toBe("2026-07");
+  });
+
+  it("t20: fevereiro bissexto entra inteiro na janela", () => {
+    const j = janelaCivilDeMeses(2028, 1, 2);
+    expect(diaCivil(j.fim)).toBe("2028-02-29");
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // A DISTÂNCIA EM DIAS — "faltam 90 dias para vencer"
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  it("t21: o contrato que termina no ÚLTIMO instante de amanhã vence em 1 dia, não em 0", () => {
+    const fim = fimDoDiaCivil("2026-03-16");
+    const hoje = instanteCivil(2026, 3, 15, 10, 0);
+    expect(diferencaEmDiasCivis(fim, hoje)).toBe(1);
+  });
+
+  it("t22: a conta não muda com a hora do dia — nem às 22:00, quando o eixo UTC já virou", () => {
+    const fim = fimDoDiaCivil("2026-12-31");
+    for (const hora of [0, 10, 22, 23]) {
+      const hoje = instanteCivil(2026, 12, 30, hora, 30);
+      expect(diferencaEmDiasCivis(fim, hoje), `às ${hora}h`).toBe(1);
+    }
+  });
+
+  it("t23: vencido dá negativo, e o mesmo dia dá zero", () => {
+    expect(diferencaEmDiasCivis(fimDoDiaCivil("2026-03-10"), instanteCivil(2026, 3, 15, 12))).toBe(-5);
+    expect(diferencaEmDiasCivis(fimDoDiaCivil("2026-03-15"), instanteCivil(2026, 3, 15, 12))).toBe(0);
+  });
+
+  it("t24: a virada do horário de verão de 2018 não perde nem ganha um dia", () => {
+    // 04/11/2018 teve 23 horas em São Paulo. Contar por milissegundos daria 0,96 dia.
+    const de = instanteCivil(2018, 11, 3, 12, 0);
+    const ate = instanteCivil(2018, 11, 4, 12, 0);
+    expect(diferencaEmDiasCivis(ate, de)).toBe(1);
+    // e a travessia inteira do horário de verão: 15/10/2018 a 15/03/2019 são 151 dias.
+    expect(
+      diferencaEmDiasCivis(instanteCivil(2019, 3, 15, 12), instanteCivil(2018, 10, 15, 12))
+    ).toBe(151);
   });
 });

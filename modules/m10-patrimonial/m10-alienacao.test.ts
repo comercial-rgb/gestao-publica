@@ -18,6 +18,7 @@ import { demonstrativoPatrimonialPorClasse } from "./demonstrativo.js";
 import { criarM04Deps } from "../m04-receita/adapter-prisma.js";
 import { roteiroArrecadacao } from "../m04-receita/dominio.js";
 import { registrarArrecadacao } from "../m04-receita/servico.js";
+import { fimDoDiaCivil, janelaCivilDoAno } from "../../packages/datas/index.js";
 
 /**
  * M10 bloco 3 — alienação (TR 4.65) e demonstrativo por classe (TR 5.86).
@@ -569,12 +570,12 @@ describe("M10 — demonstrativo por classe (TR 5.86)", () => {
   it("t6b: o corte pega o movimento no PRÓPRIO dia do início (inclusivo) e exclui o de véspera", async () => {
     await registrarEntradaAvulsa(prisma, {
       tipo: "AVALIACAO_INICIAL", classeDeBensId: CLASSE, valor: "100.00",
-      dataMovimento: new Date("2025-12-31T23:59:59Z"),
+      dataMovimento: fimDoDiaCivil("2025-12-31"),
       motivo: "Movimento na véspera do período.", criadoPor: POR,
     });
     await registrarEntradaAvulsa(prisma, {
       tipo: "DOACAO_RECEBIDA", classeDeBensId: CLASSE, valor: "50.00",
-      dataMovimento: new Date("2026-01-01T00:00:00Z"),
+      dataMovimento: janelaCivilDoAno(2026).inicio,
       motivo: "Movimento no primeiro instante do período.", criadoPor: POR,
     });
 
@@ -584,6 +585,25 @@ describe("M10 — demonstrativo por classe (TR 5.86)", () => {
     expect(veiculos.saldoAnterior).toBe("100.00"); // a véspera
     expect(veiculos.ingressos).toBe("50.00"); // o primeiro instante
     expect(veiculos.saldoFinal).toBe("150.00");
+  });
+
+  it("t6c: a borda é a do CALENDÁRIO DO ENTE — 01/01 às 00:00Z ainda é a véspera", async () => {
+    // ⚠️ ESTE É O CASO QUE DISTINGUE OS DOIS EIXOS, e a versão anterior do t6b o
+    // confundia com "o primeiro instante do período": `2026-01-01T00:00:00Z` é
+    // **31/12/2025 às 21:00** em São Paulo. Um bem doado na noite da virada pertence ao
+    // exercício que acabou — e o demonstrativo do ano seguinte o traz como SALDO
+    // ANTERIOR, nunca como ingresso do período.
+    await registrarEntradaAvulsa(prisma, {
+      tipo: "AVALIACAO_INICIAL", classeDeBensId: CLASSE, valor: "700.00",
+      dataMovimento: new Date("2026-01-01T00:00:00Z"),
+      motivo: "Doacao na noite da virada, hora de Greenwich.", criadoPor: POR,
+    });
+
+    const d = await demonstrativoPatrimonialPorClasse(prisma, 2026);
+    const veiculos = d.classes.find((c) => c.classeDeBensId === CLASSE)!;
+
+    expect(veiculos.saldoAnterior).toBe("700.00");
+    expect(veiculos.ingressos).toBe("0.00");
   });
 
   it("período invertido: fail-closed", async () => {

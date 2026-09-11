@@ -4,6 +4,7 @@ import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { anexo8, medirDespesa, type DespesaFundeb } from "./rreo-anexo8.js";
 import type { Bimestre } from "./rreo-anexo1.js";
 import { rgfAnexo5 } from "./rgf-anexo5.js";
+import { janelaCivilDeMeses, janelaCivilDoAno } from "../../packages/datas/index.js";
 
 type Tx = Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">;
 
@@ -321,7 +322,7 @@ async function rpComLastro(
 ): Promise<{ rpPorFonte: readonly RpDaFonte[]; rpSemLastroTotal: Cifra }> {
   const a5 = await rgfAnexo5(prisma, {
     exercicio,
-    corte: new Date(Date.UTC(exercicio, 11, 31, 23, 59, 59)),
+    corte: janelaCivilDoAno(exercicio).fim,
   });
 
   const zero = toMoney("0.00");
@@ -362,5 +363,5 @@ async function rpComLastro(
 
 /** O último instante do bimestre — o mesmo corte do bloco 1. */
 function fimDoBimestre(exercicio: number, bimestre: Bimestre): Date {
-  return new Date(Date.UTC(exercicio, bimestre * 2, 0, 23, 59, 59));
+  return janelaCivilDeMeses(exercicio, (bimestre - 1) * 2 + 1, 2).fim;
 }

@@ -115,13 +115,20 @@ describe("M26 — as funções permitidas, e só elas", () => {
     expect((calc("ARRED(valor, 0)") as Decimal).toString()).toBe("1001");
     expect((calc("ARRED(1000.505, 2)") as Decimal).toString()).toBe("1000.51");
     expect(calc("DIAS(encerrado_em, aberto_em)")).toEqual(new Decimal(10));
+    // ⚠️ DIAS conta CALENDÁRIO: 01/03 a 11/03 são 10 dias com ou sem a hora batendo.
+    expect(calc("DIAS(aberto_em, encerrado_em)")).toEqual(new Decimal(-10));
     expect(calc('CONCAT(assunto, " nº ", numero)')).toBe("Requerimento nº 42");
     expect(calc("VAZIO(vazio)")).toBe(true);
     expect(calc("VAZIO(assunto)")).toBe(false);
   });
 
-  it("t11: o operador & concatena, e datas viram dd/mm/aaaa", () => {
-    expect(calc('"aberto em " & aberto_em')).toBe("aberto em 01/03/2026");
+  it("t11: o operador & concatena, e datas viram o DIA CIVIL DO ENTE em dd/mm/aaaa", () => {
+    // ⚠️ 28/02, E ISSO É A CORREÇÃO, NÃO UMA REGRESSÃO. A fixture é o instante
+    // `2026-03-01T00:00:00Z`, que em São Paulo é **28/02 às 21:00**. O relatório do
+    // desenhista imprime o dia que o ente viveu, não o de Greenwich: o processo aberto na
+    // noite do último dia de fevereiro não pode aparecer como de março num relatório que
+    // alguém leva para a reunião. Ver `docs/adr/ADR-data-civil-do-ente.md`.
+    expect(calc('"aberto em " & aberto_em')).toBe("aberto em 28/02/2026");
   });
 
   it("t12: ARRED recusa casas absurdas — e DIAS recusa o que não é data", () => {
@@ -142,7 +149,10 @@ describe("M26 — as funções permitidas, e só elas", () => {
     expect(paraCelula(new Decimal(42))).toBe("42");
     expect(paraCelula(true)).toBe("Sim");
     expect(paraCelula(null)).toBe("");
-    expect(paraCelula(new Date("2026-03-01T00:00:00Z"))).toBe("01/03/2026");
+    // ⚠️ O MESMO DE t11: `2026-03-01T00:00:00Z` é 28/02 às 21:00 no calendário do ente.
+    expect(paraCelula(new Date("2026-03-01T00:00:00Z"))).toBe("28/02/2026");
+    // e o meio-dia, onde os dois eixos coincidem, continua sendo o dia que se espera.
+    expect(paraCelula(new Date("2026-03-01T12:00:00Z"))).toBe("01/03/2026");
 
     // A COLUNA declara o tipo, e é ele que decide a apresentação.
     expect(formatarCelula("MOEDA", new Decimal("1000.50"))).toBe("1000.50");

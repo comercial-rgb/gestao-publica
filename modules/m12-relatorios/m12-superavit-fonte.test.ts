@@ -20,6 +20,7 @@ import { pagarRestosAPagar } from "../m08-restos-a-pagar/restos.js";
 import { balancoPatrimonial } from "./balanco-patrimonial.js";
 import { cadastrarLinhaDemonstrativo } from "./cadastro-linhas.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
+import { fimDoDiaCivil, janelaCivilDoAno } from "../../packages/datas/index.js";
 
 /**
  * ANEXO 14 — BLOCO 4: SUPERÁVIT FINANCEIRO POR FONTE
@@ -146,8 +147,17 @@ const R_PAGAMENTO_RP = roteiroPagamentoRestos({
   restosAPagarProcessados: FORNECEDOR, disponibilidade: CAIXA,
 });
 
-const CORTE_2026 = new Date("2026-12-31T23:59:59Z");
-const CORTE_2027 = new Date("2027-12-31T23:59:59Z");
+
+/**
+ * ⚠️ O FIM DO EXERCÍCIO É O DO ENTE, E ISSO VIROU LITERAL AQUI DEPOIS DE UMA ACUSAÇÃO.
+ *
+ * O corte era `new Date("YYYY-12-31T23:59:59Z")`, que em São Paulo é **31/12 às 20:59:59**.
+ * Quando o ENT03b pôs o fato do encerramento no último instante CIVIL do exercício, ele
+ * passou a cair TRÊS HORAS DEPOIS deste corte — e o teste acusou. A acusação estava certa:
+ * o corte é que estava em Greenwich. Ver `docs/adr/ADR-data-civil-do-ente.md`.
+ */
+const CORTE_2026 = janelaCivilDoAno(2026).fim;
+const CORTE_2027 = janelaCivilDoAno(2027).fim;
 let deps: M05Deps;
 
 async function semear(): Promise<void> {

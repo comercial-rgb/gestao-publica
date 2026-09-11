@@ -1,5 +1,6 @@
 import { ziparEntradas } from "../../../packages/zip/index.js";
 import { toMoney, type Money } from "../../../packages/contracts/index.js";
+import { janelaCivilDoMes } from "../../../packages/datas/index.js";
 
 /**
  * M14 — MATRIZ DE SALDOS CONTÁBEIS (MSC). DOMÍNIO PURO (sem I/O).
@@ -111,13 +112,20 @@ export function parsearCompetencia(rotulo: string): Competencia {
     throw new Error(`Competência "${rotulo}": mês ${mes} não existe.`);
   }
 
+  const janela = janelaCivilDoMes(rotulo);
   return {
     ano,
     mes,
     rotulo,
-    inicio: new Date(Date.UTC(ano, mes - 1, 1, 0, 0, 0, 0)),
-    fim: new Date(Date.UTC(ano, mes, 0, 23, 59, 59, 999)),
-    anteriorAoInicio: new Date(Date.UTC(ano, mes - 1, 1, 0, 0, 0, 0) - 1),
+    // ⚠️ A JANELA É CIVIL, E ISSO NÃO CONTRADIZ A REGRA DO LEIAUTE EXTERNO.
+    // O que o leiaute define é o FORMATO do que se escreve no arquivo; o que esta janela
+    // decide é QUAIS FATOS entram na remessa de dezembro — e essa é pergunta de domínio.
+    // Com `Date.UTC`, o encerramento do exercício (31/12 às 23:59:59 CIVIS) caía fora da
+    // MSC de dezembro e reaparecia como abertura de janeiro: a M3 não fechava e o
+    // `beginning_balance` de 2027 trazia orçamento morto. O Siconfi recebe uma
+    // COMPETÊNCIA, não um instante.
+    ...janela,
+    anteriorAoInicio: new Date(janela.inicio.getTime() - 1),
   };
 }
 

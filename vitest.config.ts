@@ -1,4 +1,5 @@
 import { defineConfig } from "vitest/config";
+import { INCLUDE_DA_SUITE } from "./test/particao-da-suite.js";
 
 export default defineConfig({
   // ⚠️ JSX AUTOMÁTICO (7.9) — sem isto, um `.tsx` não compila aqui.
@@ -15,22 +16,11 @@ export default defineConfig({
   oxc: { jsx: { runtime: "automatic" } },
 
   test: {
-    include: [
-      "packages/**/*.test.ts",
-      "modules/**/*.test.ts",
-      // ⚠️ OS ADAPTERS DE TRIBUNAL. Os testes do SAGRES/Captura/Consulta moravam em `modules/` e
-      // vieram para `adapters/tribunais/tce-pb/**` — sem esta linha, os 4 arquivos de teste do M15
-      // e os 3 do M18/M19 sumiriam do `include` e a suíte ficaria VERDE sem tê-los executado. É a
-      // mesma armadilha que a linha do `.tsx` abaixo evita, e a mesma que o `global-setup` recusa
-      // ao não pular teste de banco: verde que não rodou nada é pior que vermelho.
-      "adapters/**/*.test.ts",
-      "prisma/seed/**/*.test.ts",
-      "test/**/*.test.ts",
-      // ⚠️ .tsx (7.9): os testes de COMPONENTE. Sem esta linha um `Campos.test.tsx` seria
-      // silenciosamente IGNORADO — a suíte passaria verde sem nunca tê-lo executado, que é a
-      // mesma armadilha que o `global-setup` recusa ao não pular teste de banco.
-      "test/**/*.test.tsx",
-    ],
+    // ⚠️ OS `include` VÊM DE `test/particao-da-suite.ts`, e não escritos aqui. São a MESMA
+    // lista que a suíte rápida usa: duas listas divergiriam em silêncio, e a divergência
+    // apareceria como um arquivo que nenhuma das duas roda. Os comentários sobre por que
+    // cada raiz está na lista moraram aqui até o ENT03b e foram para lá junto com ela.
+    include: [...INCLUDE_DA_SUITE],
 
     // ⚠️ AMBIENTE: `node` continua o DEFAULT — quase toda a suíte é domínio + Prisma, e um DOM
     // global custaria a todos por causa de poucos. Quem precisa de DOM pede POR ARQUIVO, no

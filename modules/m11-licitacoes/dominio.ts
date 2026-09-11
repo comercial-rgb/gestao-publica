@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
+import { diferencaEmDiasCivis, somarDiasCivis } from "../../packages/datas/index.js";
 
 /**
  * M11 — DOMÍNIO PURO de licitações e contratos (Lei 14.133/2021).
@@ -204,7 +205,6 @@ export interface MovimentoDoContrato {
   readonly dias: number | null;
 }
 
-const MS_POR_DIA = 86_400_000;
 
 /**
  * O VALOR ATUAL do contrato = valorInicial + Σ(valor × SINAL_VALOR).
@@ -236,7 +236,7 @@ export function valorAtualizado(
  * O FIM DA VIGÊNCIA = vigenciaFimInicial + Σ(dias × SINAL_PRAZO) dias.
  *
  * `vigenciaFimInicial` é o ÚLTIMO INSTANTE da vigência original, e a soma é em
- * dias UTC (86.400.000 ms) — sem horário de verão para deslocar a data.
+ * dias CIVIS do ente — ver `somarDiasCivis`, que é o que atravessa o horário de verão.
  */
 export function vigenciaFim(
   vigenciaFimInicial: Date,
@@ -254,7 +254,10 @@ export function vigenciaFim(
     }
     dias += sinal * m.dias;
   }
-  return new Date(vigenciaFimInicial.getTime() + dias * MS_POR_DIA);
+  // ⚠️ A SOMA É NO CALENDÁRIO, não em milissegundos. `vigenciaFimInicial` guarda o ÚLTIMO
+  // instante do dia (23:59:59), e somar 86.400.000 ms atravessando a virada do horário de
+  // verão desloca a hora civil em 60 minutos — o que muda o DIA em que o contrato vence.
+  return somarDiasCivis(vigenciaFimInicial, dias);
 }
 
 /**
@@ -282,13 +285,16 @@ export function estaVigente(
  *
  * ⚠️ A CONTA É EM DIAS DE CALENDÁRIO, não em milissegundos arredondados. `vigenciaFimInicial`
  * guarda o ÚLTIMO INSTANTE do último dia (23:59:59), então `fim - hoje` em ms daria 0,99 dia para
- * um contrato que vence AMANHÃ — e `Math.floor` o transformaria em "vence hoje". Normalizar as
- * duas pontas para o início do dia UTC é o que faz "faltam 90 dias" significar 90 dias.
+ * um contrato que vence AMANHÃ — e `Math.floor` o transformaria em "vence hoje".
+ *
+ * ⚠️ E OS DIAS SÃO OS DO CALENDÁRIO DO ENTE. Normalizar as duas pontas pelo dia UTC estava
+ * errado dos dois lados ao mesmo tempo: um fim gravado em 31/12 às 23:59 CIVIS é 01/01 em
+ * Greenwich, e um `hoje` das 22:00 também. Às 10:00 de 30/12, um contrato que vence em
+ * 31/12 dizia **2 dias**. O alerta de 90 dias — que é prazo de PROVIDÊNCIA, não enfeite —
+ * disparava um dia cedo ou um dia tarde conforme a hora em que a tela fosse aberta.
  */
 export function diasAteVencimento(fim: Date, hoje: Date): number {
-  const diaUtc = (d: Date): number =>
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-  return Math.round((diaUtc(fim) - diaUtc(hoje)) / MS_POR_DIA);
+  return diferencaEmDiasCivis(fim, hoje);
 }
 
 /**

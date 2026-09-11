@@ -7,6 +7,7 @@ import { arrecadadoPorFonte } from "../m04-receita/consultas.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { previsaoPorFonte } from "./consultas.js";
+import { diaCivil, janelaCivilDeMeses } from "../../packages/datas/index.js";
 import {
   bimestreDoMes,
   gerarTextoDecreto,
@@ -302,7 +303,7 @@ export async function confrontoMba(
       metaAcum = toMoney(metaAcum.plus(meta));
 
       // o arrecadado acumulado até o FIM do bimestre b (mês 2·b, último dia).
-      const fim = new Date(Date.UTC(p.exercicio, 2 * b, 1, 0, 0, 0, 0) - 1);
+      const fim = janelaCivilDeMeses(p.exercicio, 2 * b - 1, 2).fim;
       const arrecadadoMap = await arrecadadoPorFonte(leitor, { ate: fim });
       const arrecadado = arrecadadoMap.get(fonteId) ?? toMoney("0.00");
 
@@ -343,7 +344,9 @@ export async function gerarDecretoCmd(
   return gerarTextoDecreto(template, {
     ato: p.atoRef,
     exercicio: String(p.exercicio),
-    data: p.dataVigencia.toISOString().slice(0, 10),
+    // ⚠️ O DECRETO É DOCUMENTO ASSINADO, e a data impressa nele é a data CIVIL do ente:
+    // um decreto com vigência em 31/12 às 22:00 saía datado de 1º de janeiro.
+    data: diaCivil(p.dataVigencia),
     corpo: p.corpo,
   });
 }
@@ -365,7 +368,7 @@ export async function gerarDecretoMba(
   return gerarTextoDecreto(template, {
     ato: p.atoRef,
     exercicio: String(p.exercicio),
-    data: p.dataVigencia.toISOString().slice(0, 10),
+    data: diaCivil(p.dataVigencia),
     corpo: p.corpo,
   });
 }

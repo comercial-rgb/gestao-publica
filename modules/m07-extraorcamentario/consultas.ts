@@ -1,6 +1,7 @@
 import { Decimal, toMoney, type Money } from "../../packages/contracts/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { totaisPorConsignatario, SINAL_MOVIMENTO_EXTRA } from "./dominio.js";
+import { janelaCivilDoAno } from "../../packages/datas/index.js";
 
 /** O client OU uma transação dele — ver a nota do M04 (`consultas.ts`). */
 type Tx = Omit<
@@ -159,10 +160,12 @@ export interface RetencaoNaLista {
 
 /** As RETENÇÕES do exercício (ingressos nascidos DENTRO de um pagamento — vínculo 5.25), com drill. */
 export async function listarRetencoes(prisma: PrismaClient, params: { readonly exercicio: number }): Promise<RetencaoNaLista[]> {
-  const gte = new Date(Date.UTC(params.exercicio, 0, 1));
-  const lt = new Date(Date.UTC(params.exercicio + 1, 0, 1));
+  // ⚠️ EXERCÍCIO CIVIL. Em `Date.UTC` a janela começava em 31/12 às 21:00 do ano
+  // anterior: a retenção da virada aparecia no exercício errado, e a do dia 31 à noite
+  // sumia dos dois.
+  const { inicio: gte, fim: lte } = janelaCivilDoAno(params.exercicio);
   const movs = await prisma.movimentoExtraorcamentario.findMany({
-    where: { tipo: "INGRESSO", pagamentoId: { not: null }, data: { gte, lt } },
+    where: { tipo: "INGRESSO", pagamentoId: { not: null }, data: { gte, lte } },
     include: {
       tipoConsignacao: { select: { codigo: true } },
       pagamento: { select: { numero: true, liquidacao: { select: { empenho: { select: { numero: true } } } } } },
@@ -191,10 +194,12 @@ export interface DispendioNaLista {
 
 /** As DESPESAS EXTRA (recolhimentos/repasses ao consignatário) do exercício. */
 export async function listarDispendios(prisma: PrismaClient, params: { readonly exercicio: number }): Promise<DispendioNaLista[]> {
-  const gte = new Date(Date.UTC(params.exercicio, 0, 1));
-  const lt = new Date(Date.UTC(params.exercicio + 1, 0, 1));
+  // ⚠️ EXERCÍCIO CIVIL. Em `Date.UTC` a janela começava em 31/12 às 21:00 do ano
+  // anterior: a retenção da virada aparecia no exercício errado, e a do dia 31 à noite
+  // sumia dos dois.
+  const { inicio: gte, fim: lte } = janelaCivilDoAno(params.exercicio);
   const movs = await prisma.movimentoExtraorcamentario.findMany({
-    where: { tipo: "DISPENDIO", data: { gte, lt } },
+    where: { tipo: "DISPENDIO", data: { gte, lte } },
     include: { tipoConsignacao: { select: { codigo: true } } },
     orderBy: [{ data: "asc" }],
   });

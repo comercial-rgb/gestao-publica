@@ -11,6 +11,7 @@ import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { previsaoPorFonte } from "../m02-planejamento/consultas.js";
 import { arrecadadoPorFonte } from "../m04-receita/consultas.js";
 import { linhasDoSuperavitPorFonte } from "./superavit-por-fonte.js";
+import { janelaCivilDoAno } from "../../packages/datas/index.js";
 
 /**
  * M12 × M03 — O ÚNICO LUGAR ONDE OS DOIS SE ENCONTRAM (TR 4.37/4.39).
@@ -44,7 +45,7 @@ import { linhasDoSuperavitPorFonte } from "./superavit-por-fonte.js";
  * pega: o que já se usou pode deixar de caber.
  */
 function fimDoExercicio(ano: number): Date {
-  return new Date(Date.UTC(ano, 11, 31, 23, 59, 59, 999));
+  return janelaCivilDoAno(ano).fim;
 }
 
 export function criarSuperavitFinanceiroPortPrisma(): SuperavitFinanceiroPort {

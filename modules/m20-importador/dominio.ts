@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { Decimal } from "../../packages/contracts/index.js";
+import { instanteCivil } from "../../packages/datas/index.js";
 
 /**
  * M20 — O DOMÍNIO PURO DOS IMPORTADORES (TR 7.10-7.11). Zero I/O, zero Prisma: recebe o TEXTO do
@@ -135,14 +136,17 @@ function valorDecimal(bruto: string): string | null {
   }
 }
 
-/** Data ISO (aaaa-mm-dd) ou BR (dd/mm/aaaa) → Date UTC. `null` se inválida. */
+/** Data ISO (aaaa-mm-dd) ou BR (dd/mm/aaaa) → meio-dia CIVIL do ente. `null` se inválida. */
 function dataDoTexto(bruto: string): Date | null {
   const t = bruto.trim();
   const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
   const br = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t);
   const [a, m, d] = iso !== null ? [iso[1]!, iso[2]!, iso[3]!] : br !== null ? [br[3]!, br[2]!, br[1]!] : [];
   if (a === undefined) return null;
-  const data = new Date(Date.UTC(Number(a), Number(m) - 1, Number(d), 12, 0, 0));
+  // ⚠️ MEIO-DIA, e civil: o meio-dia é a hora que sobrevive à virada do horário de verão
+  // (o dia de 23 horas ainda o contém) e que nunca troca de dia civil por três horas de
+  // fuso — a planilha importada diz um DIA, não um instante.
+  const data = instanteCivil(Number(a), Number(m), Number(d), 12);
   return Number.isNaN(data.getTime()) ? null : data;
 }
 

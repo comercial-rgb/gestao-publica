@@ -6,6 +6,7 @@ import {
 } from "../../packages/ledger/index.js";
 // Os GRUPOS oficiais (Portaria STN/SOF 163/2001) já vivem no repo — fonte única.
 import { GRUPOS_NATUREZA_DESPESA } from "../../prisma/seed/dados/natureza-componentes.js";
+import { janelaCivilDoMes } from "../../packages/datas/index.js";
 
 /**
  * DOMAIN do M10 — SEM I/O.
@@ -414,7 +415,7 @@ export function competenciaParaData(competencia: string): Date {
       `Competência inválida: "${competencia}". Use o formato YYYY-MM (ex.: 2026-03).`
     );
   }
-  return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, 1));
+  return janelaCivilDoMes(competencia).inicio;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -6,6 +6,7 @@ import { saldoDaInscricao, SINAL_MOVIMENTO_RP, totaisDosMovimentos } from "./dom
 // diferentes no dia em que uma delas aprendesse um caso novo. `m08 → m05` já existe
 // (`restos.ts` → `m05/guard-fonte.js`) e não fecha ciclo: `m05/consultas` importa `m08/dominio`.
 import { chaveNd } from "../m05-despesa/consultas.js";
+import { anoCivil, janelaCivilDoAno } from "../../packages/datas/index.js";
 
 /** O client OU uma transação dele — ver a nota do M04 (`consultas.ts`). */
 type Tx = Omit<
@@ -49,9 +50,15 @@ export interface RestosDaFonte {
   readonly aPagar: Money;
 }
 
-/** O último instante do exercício: quando a inscrição PASSA A EXISTIR. */
+/**
+ * O último instante do exercício: quando a inscrição PASSA A EXISTIR.
+ *
+ * ⚠️ É O ÚLTIMO INSTANTE CIVIL DO ENTE, e não `Date.UTC(ano, 11, 31, 23:59:59)`. Aquele
+ * instante é 31/12 às **20:59:59** em São Paulo: uma inscrição feita na virada do ano, ou
+ * um pagamento de 31/12 à noite, caía do lado errado do corte.
+ */
 function fimDoExercicio(ano: number): Date {
-  return new Date(Date.UTC(ano, 11, 31, 23, 59, 59, 0));
+  return janelaCivilDoAno(ano).fim;
 }
 
 export async function restosAPagarPorFonte(
@@ -377,7 +384,7 @@ export async function restosParaAnexo7(
             `recortá-lo por ano (somá-lo pelo \`criadoEm\` misturaria digitação e fato).`
         );
       }
-      const ano = m.lancamento.dataTransacao.getUTCFullYear();
+      const ano = anoCivil(m.lancamento.dataTransacao);
       if (ano > ref) continue; // futuro: fora do Anexo 7 de `ref`
       acumularMovimento(ano < ref ? antes : noAno, m.tipo, toMoney(m.valor.toFixed(2)));
     }
@@ -386,7 +393,7 @@ export async function restosParaAnexo7(
     let liquidadoNo = zero();
     for (const l of i.empenho.liquidacoes) {
       if (l.lancamento?.origemTipo !== "LIQUIDACAO_RP") continue; // só liquidação DE RP
-      const ano = l.data.getUTCFullYear();
+      const ano = anoCivil(l.data);
       if (ano > ref) continue;
       const v = toMoney(l.valor.toFixed(2));
       if (ano < ref) liquidadoAntes = toMoney(liquidadoAntes.plus(v));

@@ -10,6 +10,7 @@ import { origemDaNatureza } from "../m04-receita/dominio.js";
 // travamento de competência (M16). Ver `m01-funil.test.ts`: o grep-teste proíbe o
 // `lancamentoContabil.create` fora dele.
 import { lancarNoRazao } from "../m01-core-contabil/razao.js";
+import { janelaCivilDoMes } from "../../packages/datas/index.js";
 
 /**
  * M10 — DÍVIDA CONSOLIDADA / FUNDADA (TR 5.82, 4.64, 5.8, 4.48).
@@ -151,10 +152,9 @@ export type EstornarMovimentoDividaInput = z.input<
   typeof zEstornarMovimentoDividaInput
 >;
 
-/** O 1º instante da competência "YYYY-MM", em UTC. */
+/** O 1º instante da competência "YYYY-MM", no calendário civil do ente. */
 export function inicioDaCompetencia(competencia: string): Date {
-  const [ano, mes] = competencia.split("-").map(Number);
-  return new Date(Date.UTC(ano!, mes! - 1, 1, 0, 0, 0, 0));
+  return janelaCivilDoMes(competencia).inicio;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

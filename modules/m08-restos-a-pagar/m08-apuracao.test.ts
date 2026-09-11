@@ -16,6 +16,7 @@ import { demonstracaoVariacoesPatrimoniais } from "../m12-relatorios/dvp.js";
 import { encerrarExercicioComRestos } from "./encerramento.js";
 import { apurarResultadoDoExercicio, estornarApuracao, ORIGEM_APURACAO } from "./apuracao.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
+import { fimDoDiaCivil, janelaCivilDoAno } from "../../packages/datas/index.js";
 
 /**
  * M08 — APURAÇÃO DO RESULTADO DO EXERCÍCIO (MCASP).
@@ -103,9 +104,18 @@ const R_ARRECADACAO = roteiroArrecadacao({
 });
 
 const INICIO_2026 = new Date("2026-01-01T00:00:00Z");
-const FIM_2026 = new Date("2026-12-31T23:59:59Z");
+
+/**
+ * ⚠️ O FIM DO EXERCÍCIO É O DO ENTE, E ISSO VIROU LITERAL AQUI DEPOIS DE UMA ACUSAÇÃO.
+ *
+ * O corte era `new Date("YYYY-12-31T23:59:59Z")`, que em São Paulo é **31/12 às 20:59:59**.
+ * Quando o ENT03b pôs o fato do encerramento no último instante CIVIL do exercício, ele
+ * passou a cair TRÊS HORAS DEPOIS deste corte — e o teste acusou. A acusação estava certa:
+ * o corte é que estava em Greenwich. Ver `docs/adr/ADR-data-civil-do-ente.md`.
+ */
+const FIM_2026 = janelaCivilDoAno(2026).fim;
 const INICIO_2027 = new Date("2027-01-01T00:00:00Z");
-const FIM_2027 = new Date("2027-12-31T23:59:59Z");
+const FIM_2027 = janelaCivilDoAno(2027).fim;
 
 let deps: M05Deps;
 let exercicio2026: string;
@@ -254,7 +264,8 @@ describe("M08 — apuração do resultado do exercício", () => {
       include: { partidas: true },
     });
     expect(lanc.natureza).toBe("ENCERRAMENTO");
-    expect(lanc.dataTransacao.toISOString()).toBe("2026-12-31T23:59:59.000Z");
+    // 31/12/2026 às 23:59:59.999 CIVIS — que em Greenwich é 01/01/2027 às 02:59:59.999.
+    expect(lanc.dataTransacao.toISOString()).toBe("2027-01-01T02:59:59.999Z");
     // 3 pernas: D VPA 8.000 / C VPD 2.000 / C Resultados Acumulados 6.000
     expect(lanc.partidas).toHaveLength(3);
 
@@ -421,7 +432,7 @@ describe("M08 — apuração do resultado do exercício", () => {
       await prisma.lancamentoContabil.create({
         data: {
           numeroControle: "CLANDESTINO",
-          dataTransacao: new Date("2026-12-31T23:59:59Z"),
+          dataTransacao: fimDoDiaCivil("2026-12-31"),
           historico: "estorno clandestino",
           origemTipo: "ATAQUE",
           natureza: "ENCERRAMENTO",

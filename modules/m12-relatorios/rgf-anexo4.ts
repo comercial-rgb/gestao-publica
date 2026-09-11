@@ -5,6 +5,7 @@ import { origemDaNatureza, parsearNaturezaReceita } from "../m04-receita/naturez
 import { ingressosOperacaoCreditoPorTipo } from "../m10-patrimonial/consultas.js";
 import { rclAjustadaDoQuadrimestre } from "./rcl-ajustada.js";
 import type { Quadrimestre } from "./rgf-anexo1.js";
+import { janelaCivilDeMeses, janelaCivilDoAno } from "../../packages/datas/index.js";
 
 /**
  * RGF — ANEXO 4: OPERAÇÕES DE CRÉDITO. LRF art. 55, I, "d".
@@ -98,9 +99,10 @@ function janelas(exercicio: number, quadrimestre: Quadrimestre): {
   readonly inicioQuadrimestre: Date;
   readonly fimQuadrimestre: Date;
 } {
-  const inicioExercicio = new Date(Date.UTC(exercicio, 0, 1, 0, 0, 0, 0));
-  const inicioQuadrimestre = new Date(Date.UTC(exercicio, (quadrimestre - 1) * 4, 1, 0, 0, 0, 0));
-  const fimQuadrimestre = new Date(Date.UTC(exercicio, quadrimestre * 4, 0, 23, 59, 59));
+  const inicioExercicio = janelaCivilDoAno(exercicio).inicio;
+  const q = janelaCivilDeMeses(exercicio, (quadrimestre - 1) * 4 + 1, 4);
+  const inicioQuadrimestre = q.inicio;
+  const fimQuadrimestre = q.fim;
   return { inicioExercicio, inicioQuadrimestre, fimQuadrimestre };
 }
 

@@ -2,6 +2,7 @@ import { toMoney, type Money } from "../../packages/contracts/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import { anexo3, janelaDosDozeMeses } from "./rreo-anexo3.js";
+import { janelaCivilDoAno } from "../../packages/datas/index.js";
 
 /**
  * RGF — ANEXO 1: DEMONSTRATIVO DA DESPESA COM PESSOAL. LRF art. 55, I, "a" · art. 18-20 · MDF 15ª ed.
@@ -198,7 +199,7 @@ export async function rgfAnexo1(
 
   // RPNP inscritos cujo encerramento (31/12 do ano de origem) está contido na janela.
   for (const i of await leitor.inscricaoRestosAPagar.findMany({ where: { tipo: "NAO_PROCESSADO", empenho: { ficha: ehPessoal } }, select: { valorInscrito: true, exercicioOrigem: true, empenho: { select: { ficha: { select: { orgao: { select: { codigo: true } }, naturezaDespesa: { select: { codElemento: true } } } } } } } })) {
-    const dezembro = new Date(Date.UTC(i.exercicioOrigem, 11, 31, 23, 59, 59, 0));
+    const dezembro = janelaCivilDoAno(i.exercicioOrigem).fim;
     if (dezembro < desde || dezembro > ate) continue;
     const f = i.empenho.ficha;
     aplicarPessoal(doPoder(poderDoOrgao(f.orgao.codigo)), f.naturezaDespesa.codElemento, toMoney(i.valorInscrito.toFixed(2)), false, "rpnp");

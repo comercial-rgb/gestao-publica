@@ -9,6 +9,7 @@ import { toMoney } from "../../packages/contracts/index.js";
 import { recalcularCache } from "../m05-despesa/adapter-prisma.js";
 import { exigirExercicioAberto } from "../m08-restos-a-pagar/guard-exercicio.js";
 import { registrarMovimentoDotacao } from "../m05-despesa/dotacao-razao.js";
+import { instanteCivil } from "../../packages/datas/index.js";
 import type {
   ClassificacaoRepositoryPort,
   FichaParaPersistir,
@@ -190,7 +191,7 @@ export function criarFichaRepositoryPrisma(
             // ⚠️ A DOTAÇÃO É UM FATO DE 1º DE JANEIRO do exercício — não do dia da
             // digitação. Pela data de digitação, a MSC de março mostraria a LOA
             // "entrando" em março.
-            data: new Date(Date.UTC(ficha.exercicio, 0, 1, 12, 0, 0)),
+            data: instanteCivil(ficha.exercicio, 1, 1, 12),
             historico: `Dotação inicial da ficha ${ficha.numero} (LOA ${ficha.exercicio})`,
           });
 

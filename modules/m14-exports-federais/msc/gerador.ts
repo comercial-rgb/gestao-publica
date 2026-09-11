@@ -9,6 +9,7 @@ import {
   type SomasDaContaPorLancamento,
 } from "../../m01-core-contabil/adapter-prisma.js";
 import { enteDoContexto } from "../../m01-core-contabil/contexto-do-ente.js";
+import { janelaCivilDoAno } from "../../../packages/datas/index.js";
 import {
   conferirM1,
   conferirM2,
@@ -104,7 +105,7 @@ function recortes(
   { readonly desde?: Date; readonly ate: Date; readonly natureza: FiltroDeNatureza }
 > {
   /** 1º de janeiro do ano DA COMPETÊNCIA — o divisor entre "o meu encerramento" e "a história". */
-  const inicioDoExercicio = new Date(Date.UTC(c.ano, 0, 1, 0, 0, 0, 0));
+  const inicioDoExercicio = janelaCivilDoAno(c.ano).inicio;
 
   const SEM_O_MEU_ENCERRAMENTO: FiltroDeNatureza = {
     excluir: ["ENCERRAMENTO"],

@@ -12,6 +12,7 @@ import { lancarNoRazao } from "../m01-core-contabil/razao.js";
 // M10 → M04 (a seta que a composta da dívida ativa já usa — sem ciclo): o saldo do
 // reconhecimento é do M04, e é ele que a reclassificação (TR 5.87) baixa.
 import { saldoReconhecidoDe } from "../m04-receita/reconhecimento.js";
+import { janelaCivilDoMes } from "../../packages/datas/index.js";
 import {
   TIPOS_QUE_QUITAM_DIVIDA_ATIVA,
   tipoDaNatureza,
@@ -226,8 +227,7 @@ export type EstornarMovimentoDividaAtivaInput = z.input<
 >;
 
 function inicioDaCompetencia(competencia: string): Date {
-  const [ano, mes] = competencia.split("-").map(Number);
-  return new Date(Date.UTC(ano!, mes! - 1, 1, 0, 0, 0, 0));
+  return janelaCivilDoMes(competencia).inicio;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

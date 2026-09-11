@@ -24,6 +24,7 @@ import {
 } from "./encerramento-controles.js";
 import { encerrarExercicioComRestos } from "./encerramento.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
+import { fimDoDiaCivil, janelaCivilDoAno } from "../../packages/datas/index.js";
 
 /**
  * M08 — O ENCERRAMENTO DAS CONTAS DE CONTROLE ORÇAMENTÁRIO (a pendência de eada7b5).
@@ -396,7 +397,16 @@ async function lancarControleDeRp(): Promise<void> {
   });
 }
 
-const FIM_2026 = new Date("2026-12-31T23:59:59Z");
+
+/**
+ * ⚠️ O FIM DO EXERCÍCIO É O DO ENTE, E ISSO VIROU LITERAL AQUI DEPOIS DE UMA ACUSAÇÃO.
+ *
+ * O corte era `new Date("YYYY-12-31T23:59:59Z")`, que em São Paulo é **31/12 às 20:59:59**.
+ * Quando o ENT03b pôs o fato do encerramento no último instante CIVIL do exercício, ele
+ * passou a cair TRÊS HORAS DEPOIS deste corte — e o teste acusou. A acusação estava certa:
+ * o corte é que estava em Greenwich. Ver `docs/adr/ADR-data-civil-do-ente.md`.
+ */
+const FIM_2026 = janelaCivilDoAno(2026).fim;
 
 /** Os saldos das 5/6 no corte — a MESMA leitura que o serviço usa. */
 async function saldos(): Promise<Map<string, string>> {
@@ -510,7 +520,9 @@ describe("M08 — encerramento das contas de controle (a virada)", () => {
       },
     });
     expect(lanc.natureza).toBe("ENCERRAMENTO");
-    expect(lanc.dataTransacao.toISOString()).toBe("2026-12-31T23:59:59.000Z");
+    // 31/12/2026 às 23:59:59.999 CIVIS. A virada é um fato do ÚLTIMO instante do
+    // exercício do ente — que em Greenwich já é 01/01 às 02:59:59.999.
+    expect(lanc.dataTransacao.toISOString()).toBe("2027-01-01T02:59:59.999Z");
     expect(lanc.partidas).toHaveLength(7);
     expect(new Set(lanc.partidas.map((p) => p.subsistema))).toEqual(new Set(["ORCAMENTARIO"]));
 

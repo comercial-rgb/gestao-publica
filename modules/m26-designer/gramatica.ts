@@ -1,4 +1,5 @@
 import { Decimal } from "decimal.js";
+import { diaCivilBr, diferencaEmDiasCivis } from "../../packages/datas/index.js";
 
 /**
  * M26 — A GRAMÁTICA DOS CAMPOS CALCULADOS.
@@ -356,7 +357,7 @@ export function avaliar(
   const texto = (v: Valor): string => {
     if (v === null) return "";
     if (v instanceof Decimal) return v.toString();
-    if (v instanceof Date) return v.toISOString().slice(0, 10).split("-").reverse().join("/");
+    if (v instanceof Date) return diaCivilBr(v);
     return String(v);
   };
 
@@ -460,9 +461,10 @@ export function avaliar(
             if (!(fim instanceof Date) || !(inicio instanceof Date)) {
               throw new ErroDeExecucao("DIAS espera duas datas.");
             }
-            return new Decimal(
-              Math.round((fim.getTime() - inicio.getTime()) / 86_400_000)
-            );
+            // ⚠️ DIAS DE CALENDÁRIO, não milissegundos. Duas datas gravadas no último
+            // instante do dia distam 9,96 dias se houver virada de horário de verão no
+            // meio — e o `Math.round` devolvia 10 por sorte, não por construção.
+            return new Decimal(diferencaEmDiasCivis(fim, inicio));
           }
           case "VAZIO": {
             const v = ir(n.args[0]!);
@@ -507,7 +509,10 @@ export function paraCelula(v: Valor): string {
   if (typeof v === "boolean") return v ? "Sim" : "Não";
   if (v instanceof Decimal) return v.toFixed(Math.min(v.decimalPlaces(), 6));
   if (v instanceof Date) {
-    return v.toISOString().slice(0, 10).split("-").reverse().join("/");
+    // ⚠️ DIA CIVIL DO ENTE. O valor vem de uma COLUNA DE DOMÍNIO (a data do processo, a do
+    // comunicado): imprimi-lo por UTC fazia o relatório do desenhista mostrar 01/01 para
+    // um fato de 31/12 à noite — e o relatório é o que alguém leva para a reunião.
+    return diaCivilBr(v);
   }
   return v;
 }

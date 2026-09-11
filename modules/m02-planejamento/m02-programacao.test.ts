@@ -355,9 +355,20 @@ describe("M02 — programação financeira (TR 4.18/4.19/4.43/4.44)", () => {
       data: { tipo: "CMD", texto: "Prefeitura de Campina Grande — Decreto {ato} ({exercicio}). {corpo} Vigente: {data}.", criadoPor: POR },
     });
     const texto = await gerarDecretoCmd(prisma, {
-      exercicio: EXERC, atoRef: "099", dataVigencia: new Date("2026-03-01T00:00:00Z"), corpo: "Cronograma anexo.",
+      // ⚠️ MEIO-DIA, e não meia-noite UTC. `2026-03-01T00:00:00Z` é **28/02 às 21:00** no
+      // calendário do ente, e o decreto imprime o dia que o ente viveu: a fixture dizia
+      // "vigente em 1º de março" e guardava um instante de fevereiro.
+      exercicio: EXERC, atoRef: "099", dataVigencia: new Date("2026-03-01T12:00:00Z"), corpo: "Cronograma anexo.",
     });
     expect(texto).toBe("Prefeitura de Campina Grande — Decreto 099 (2026). Cronograma anexo. Vigente: 2026-03-01.");
+
+    // ⚠️ O EIXO: o mesmo decreto, com vigência na NOITE de 28/02, imprime 28/02 — e não
+    // 01/03. Decreto é documento assinado; a data nele é a do ente.
+    const naNoite = await gerarDecretoCmd(prisma, {
+      exercicio: EXERC, atoRef: "099", dataVigencia: new Date("2026-03-01T01:00:00Z"),
+      corpo: "Cronograma anexo.",
+    });
+    expect(naNoite).toContain("Vigente: 2026-02-28.");
 
     // sem template cadastrado para MBA → cai no default (contém o art. 13 da LRF).
     const mba = await (await import("./programacao.js")).gerarDecretoMba(prisma, {

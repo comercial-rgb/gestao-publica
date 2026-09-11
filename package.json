@@ -44,7 +44,8 @@
     "smoke:ent02": "tsx scripts/trinco-de-maquina.ts 'smoke do ENT02' -- npx tsx scripts/smoke-ent02.ts",
     "smoke:ent03a": "tsx scripts/trinco-de-maquina.ts 'smoke do ENT03a' -- npx tsx scripts/smoke-ent03a.ts",
     "pesado": "tsx scripts/trinco-de-maquina.ts",
-    "test:tudo": "tsx scripts/trinco-de-maquina.ts 'suite completa' -- npx vitest run"
+    "test:tudo": "tsx scripts/trinco-de-maquina.ts 'suite completa' -- npx vitest run",
+    "test:rapido": "vitest run -c vitest.rapido.config.ts"
   },
   "keywords": [],
   "author": "",

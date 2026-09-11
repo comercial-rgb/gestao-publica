@@ -1,5 +1,6 @@
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { recalcularCache } from "../m05-despesa/adapter-prisma.js";
+import { instanteCivil } from "../../packages/datas/index.js";
 
 /**
  * BACKFILL — cria a DOTACAO_INICIAL faltante em fichas antigas.
@@ -51,7 +52,7 @@ export async function backfillDotacaoInicial(
           // própria ficha. Marcar como derivada aqui esconderia dado bom entre os
           // duvidosos. Pelo instante do backfill, a MSC mostraria a LOA "entrando" no
           // dia em que alguém rodou o script.
-          competencia: new Date(Date.UTC(ficha.exercicio, 0, 1, 12, 0, 0)),
+          competencia: instanteCivil(ficha.exercicio, 1, 1, 12),
         },
       });
       // o cache também estava mentindo — recalcula do SUM.

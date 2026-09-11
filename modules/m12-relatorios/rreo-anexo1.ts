@@ -3,6 +3,7 @@ import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import { arrecadadoPorNaturezaFonte } from "../m04-receita/consultas.js";
 import { reprevisaoAcumuladaPorNatureza } from "../m02-planejamento/consultas.js";
+import { janelaCivilDeMeses, janelaCivilDoAno } from "../../packages/datas/index.js";
 import {
   CATEGORIAS_RECEITA,
   ORIGEM_RECEITA,
@@ -48,10 +49,15 @@ export function janelaDoBimestre(exercicio: number, bimestre: Bimestre): {
   /** O início do exercício — o corte inferior do ACUMULADO (coluna c). */
   readonly inicioExercicio: Date;
 } {
-  const mesInicio = (bimestre - 1) * 2; // 0-indexed: bim1 → mês 0 (jan)
-  const inicio = new Date(Date.UTC(exercicio, mesInicio, 1, 0, 0, 0, 0));
-  const fim = new Date(Date.UTC(exercicio, mesInicio + 2, 1, 0, 0, 0, 0) - 1);
-  const inicioExercicio = new Date(Date.UTC(exercicio, 0, 1, 0, 0, 0, 0));
+  // ⚠️ A JANELA É CIVIL, e esta função é a régua de OITO anexos do RREO. Montada com
+  // `Date.UTC`, a do 1º bimestre de 2026 começava em **31/12/2025 às 21:00** e terminava
+  // em **28/02 às 20:59** — três horas do exercício ANTERIOR entravam no acumulado, e as
+  // três últimas horas do bimestre caíam no seguinte. Num relatório que a LRF manda
+  // publicar, um dia de receita no bimestre errado é a diferença entre bater e não bater
+  // com o RREO do bimestre vizinho.
+  const mesInicio = (bimestre - 1) * 2 + 1; // 1-indexed: bim1 → mês 1 (jan)
+  const { inicio, fim } = janelaCivilDeMeses(exercicio, mesInicio, 2);
+  const inicioExercicio = janelaCivilDoAno(exercicio).inicio;
   return { inicio, fim, inicioExercicio };
 }
 

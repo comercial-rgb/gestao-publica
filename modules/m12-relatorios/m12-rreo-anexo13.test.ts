@@ -6,6 +6,7 @@ import { criarM04Deps } from "../m04-receita/adapter-prisma.js";
 import { roteiroArrecadacao } from "../m04-receita/dominio.js";
 import { registrarArrecadacao } from "../m04-receita/servico.js";
 import { anexo13 } from "./rreo-anexo13.js";
+import { janelaCivilDoAno } from "../../packages/datas/index.js";
 
 /**
  * RREO — ANEXO 13: PPP (Lei 11.079/2004 art. 28). Esqueleto honesto: sem contrato = vazio; com
@@ -58,7 +59,11 @@ describe("M12 — RREO Anexo 13 (PPP, Lei 11.079/2004)", () => {
     await prisma.contratoPPP.create({
       data: {
         numero: "PPP-01", objeto: "Iluminação pública", parceiroPrivado: "Concessionária X",
-        vigenciaInicio: new Date("2024-01-01T00:00:00Z"), vigenciaFim: new Date("2039-12-31T00:00:00Z"),
+        // ⚠️ AS DUAS PONTAS PELA RÉGUA CIVIL. Escritas como meia-noite UTC, o início
+        // "01/01/2024" era **31/12/2023 às 21:00** para o ente, e o anexo publicava a
+        // vigência do contrato começando um ano antes do que a lei autorizou.
+        vigenciaInicio: janelaCivilDoAno(2024).inicio,
+        vigenciaFim: janelaCivilDoAno(2039).fim,
         valorGlobal: "600000000.00", contraprestacaoAnual: "40000.00", criadoPor: "TESTE",
       },
     });

@@ -2,6 +2,7 @@ import { toMoney, type Money } from "../../packages/contracts/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { anexo3 } from "./rreo-anexo3.js";
 import { type Bimestre } from "./rreo-anexo1.js";
+import { anoCivil, janelaCivilDoAno } from "../../packages/datas/index.js";
 
 /**
  * RREO — ANEXO 13: PARCERIAS PÚBLICO-PRIVADAS (PPP). Lei 11.079/2004 art. 28 · MDF 15ª ed.
@@ -70,8 +71,7 @@ export async function anexo13(
   ];
 
   // contratos vigentes em ALGUM momento do exercício (vigência cruza o ano).
-  const inicioAno = new Date(Date.UTC(p.exercicio, 0, 1, 0, 0, 0, 0));
-  const fimAno = new Date(Date.UTC(p.exercicio, 11, 31, 23, 59, 59, 0));
+  const { inicio: inicioAno, fim: fimAno } = janelaCivilDoAno(p.exercicio);
   const registros = await leitor.contratoPPP.findMany({
     where: { vigenciaInicio: { lte: fimAno }, vigenciaFim: { gte: inicioAno } },
     orderBy: { numero: "asc" },
@@ -86,7 +86,7 @@ export async function anexo13(
     numero: c.numero,
     objeto: c.objeto,
     parceiroPrivado: c.parceiroPrivado,
-    vigencia: `${c.vigenciaInicio.getUTCFullYear()}–${c.vigenciaFim.getUTCFullYear()}`,
+    vigencia: `${anoCivil(c.vigenciaInicio)}–${anoCivil(c.vigenciaFim)}`,
     valorGlobal: toMoney(c.valorGlobal.toFixed(2)).toFixed(2),
     contraprestacaoAnual: toMoney(c.contraprestacaoAnual.toFixed(2)).toFixed(2),
   }));

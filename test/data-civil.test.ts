@@ -25,9 +25,21 @@ import { raizesExistentes, RAIZES_DE_DOMINIO } from "./raizes-dominio.js";
 
 const RAIZ = resolve(import.meta.dirname, "..");
 
-/** `getUTCFullYear`, `getUTCMonth`, `getUTCDate` e o corte do ISO em 10 caracteres. */
+/**
+ * ⚠️ TRÊS FORMAS, E A TERCEIRA É A QUE O ENT03a NÃO ENXERGAVA.
+ *
+ * A guarda nasceu procurando LEITURA por UTC (`getUTCFullYear`) e IMPRESSÃO por UTC
+ * (`toISOString().slice(0,10)`). Faltava a forma DOMINANTE: a **construção** da janela por
+ * `new Date(Date.UTC(...))`. A varredura do ENT03b achou **35 arquivos** assim — entre eles
+ * o `janelaDoBimestre`, que é a régua de OITO anexos do RREO, e o `janelaDoMes` do guard da
+ * cota mensal do CMD, que decide aceitar ou recusar um empenho.
+ *
+ * ⚠️ ERA EXATAMENTE O CASO DO `c2`: uma guarda que dizia vigiar o eixo de data e ficava
+ * verde sobre a metade do eixo que ela não sabia ler. Buraco na rede é pior que ausência
+ * de rede — a rede dá a sensação oposta.
+ */
 const PADRAO =
-  /getUTC(?:FullYear|Month|Date)\s*\(|toISOString\s*\(\s*\)\s*\.\s*slice\s*\(\s*0\s*,\s*10\s*\)/;
+  /getUTC(?:FullYear|Month|Date)\s*\(|toISOString\s*\(\s*\)\s*\.\s*slice\s*\(\s*0\s*,\s*10\s*\)|Date\s*\.\s*UTC\s*\(/;
 
 /**
  * Onde `getUTC*` é CORRETO, com o motivo. Formato externo não é comparação de domínio:
@@ -41,6 +53,7 @@ const EXCECOES: Readonly<Record<string, string>> = {
   "modules/m14-exports-federais/manad/gerador.ts": "leiaute da Receita",
   "modules/m17-banco-bb/normalizar.ts": "leiaute do banco",
   "modules/m17-banco-bb/cliente-bb.ts": "leiaute do banco",
+  "modules/m17-banco-bb/fixtures-poc.ts": "fixture do leiaute do banco",
 
   // ⚠️ OS ADAPTERS DE TRIBUNAL SÃO LEIAUTE EXTERNO, e o eixo é o que o órgão define.
   // Converter para a data civil do ente aqui produziria arquivo RECUSADO na remessa —
@@ -51,22 +64,15 @@ const EXCECOES: Readonly<Record<string, string>> = {
   "adapters/tribunais/tce-pb/sagres/nomenclatura.ts": "nome de arquivo do leiaute SAGRES",
   "adapters/tribunais/tcm-ba/siga/writer.ts": "leiaute do TCM-BA (SIGA)",
   "adapters/tribunais/tcm-ba/validar.ts": "leiaute do TCM-BA (SIGA)",
+  "adapters/tribunais/tcm-ba/siga/fixtures/empenho-golden.ts":
+    "fixture GOLDEN do leiaute do TCM-BA — o instante é o que o arquivo de referência tem",
 
-  // ⚠️ OS DE BAIXO NÃO SÃO FORMATO EXTERNO — são PENDÊNCIA NOMEADA.
-  // Ficaram fora das quatro áreas que a revisão do ENT03a mandou verificar, e mexer
-  // neles sem teste de fronteira seria trocar um erro conhecido por um desconhecido.
-  // Pendência DATA-CIVIL-RESTANTES; ver o ADR.
-  "modules/m08-restos-a-pagar/consultas.ts": "PENDENTE — corte de restos a pagar",
-  "modules/m11-licitacoes/dominio.ts": "PENDENTE — vigência de contrato",
-  "modules/m12-relatorios/rreo-anexo3.ts": "PENDENTE — bimestre do RREO",
-  "modules/m12-relatorios/rreo-anexo13.ts": "PENDENTE — período do demonstrativo",
-  "modules/m02-planejamento/programacao.ts": "PENDENTE — data de vigência da versão",
-  "modules/m26-designer/gramatica.ts":
-    "formata valor ARBITRÁRIO do desenhista, que pode não ser data de domínio",
-  "modules/m26-designer/servico.ts": "idem — formatação genérica de valor",
+  // ⚠️ A DE BAIXO NÃO É FORMATO EXTERNO. É a ÚNICA que sobrou depois que o ENT03b
+  // fechou a pendência `DATA-CIVIL-RESTANTES`, e tem decisão registrada.
   "modules/m25-campos-adicionais/dominio.ts":
-    "o `!==` da linha 104 é ida-e-volta contra a string digitada, e depende de UTC nos " +
-    "dois lados; trocar um lado só quebraria a validação",
+    "`valorData` é DATA PURA ancorada em meia-noite UTC, por decisão registrada no topo do " +
+    "arquivo: nada compara, soma ou corta período por ele, e a ida e a volta usam a MESMA " +
+    "âncora — provado em `m25-campos-adicionais.test.ts`",
 };
 
 function fontes(dir: string): readonly string[] {

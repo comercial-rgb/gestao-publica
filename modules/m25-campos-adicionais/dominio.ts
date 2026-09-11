@@ -2,6 +2,26 @@ import { Decimal } from "decimal.js";
 import { z } from "zod";
 
 /**
+ * ═══ ⚠️ `valorData` É UMA DATA PURA, E A ÂNCORA É MEIA-NOITE UTC — POR DECISÃO ═══
+ *
+ * O campo adicional do tipo DATA guarda o que o usuário DIGITOU num calendário: "15/03/2026".
+ * Isso não é um instante — é uma casa do calendário, sem hora e sem fuso. A coluna do banco
+ * é `DateTime` porque o Prisma não tem `Date` puro, e a âncora escolhida é **meia-noite UTC**.
+ *
+ * ⚠️ POR QUE NÃO A MEIA-NOITE CIVIL DO ENTE, que é a régua de todo o resto do repositório:
+ * porque aqui NÃO HÁ COMPARAÇÃO DE DOMÍNIO NENHUMA. Nada soma, corta período, trava
+ * competência ou ordena fila por este valor — ele é digitado, guardado e mostrado de volta.
+ * O que importa é que a IDA e a VOLTA usem a MESMA âncora, e é isso que `m25-data-pura.test.ts`
+ * prova com uma data cujo dia civil e cujo dia UTC divergem.
+ *
+ * ⚠️ NO DIA EM QUE ALGUÉM FILTRAR OU SOMAR POR ESTE CAMPO, esta decisão vira defeito: a
+ * âncora precisará virar civil, nas DUAS pontas e com migração do que já está gravado.
+ * Trocar um lado só quebra a validação de "31/02 não existe", que é uma conferência de
+ * ida-e-volta.
+ */
+
+
+/**
  * M25 — CAMPOS ADICIONAIS. Domínio PURO.
  *
  * ═══ ⚠️ O TIPO DECIDE EM QUAL COLUNA O VALOR CAI ═══
@@ -95,6 +115,7 @@ export function valorParaColunas(
       if (partes === null) {
         throw new Error(`"${bruto}" não é uma data. Use dd/mm/aaaa.`);
       }
+      // ⚠️ `valorData` É UMA DATA PURA, não um instante — ver a nota `valorData` É UMA DATA PURA no topo.
       const data = new Date(`${partes.a}-${partes.m}-${partes.d}T00:00:00.000Z`);
       if (Number.isNaN(data.getTime())) {
         throw new Error(`"${bruto}" não é uma data válida.`);
@@ -158,7 +179,8 @@ export function exibirValor(tipo: TipoDeCampo, c: ColunasDoValor): string {
     case "DATA":
       return c.valorData === null
         ? ""
-        : c.valorData.toISOString().slice(0, 10).split("-").reverse().join("/");
+        : // A volta EXATA da ida: a mesma âncora dos dois lados. Ver `ANCORA_DA_DATA_PURA`.
+          c.valorData.toISOString().slice(0, 10).split("-").reverse().join("/");
     case "BOOLEANO":
       return c.valorBooleano === null ? "" : c.valorBooleano ? "Sim" : "Não";
     default:

@@ -5,6 +5,7 @@ import {
   type Money,
 } from "../../packages/contracts/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
+import { janelaCivilDoAno } from "../../packages/datas/index.js";
 import {
   SINAL_MOVIMENTO_ALMOXARIFADO,
   saldoDoAlmoxarifado,
@@ -154,8 +155,8 @@ export async function demonstrativoPatrimonialPorClasse(
   const { inicio, fim } =
     typeof periodo === "number"
       ? {
-          inicio: new Date(Date.UTC(periodo, 0, 1, 0, 0, 0, 0)),
-          fim: new Date(Date.UTC(periodo, 11, 31, 23, 59, 59, 999)),
+          inicio: janelaCivilDoAno(periodo).inicio,
+          fim: janelaCivilDoAno(periodo).fim,
         }
       : periodo;
 

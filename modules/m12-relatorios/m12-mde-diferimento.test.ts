@@ -280,7 +280,11 @@ describe("M12 — MDE: o diferimento do art. 25, §3º", () => {
     const liquidacaoId = await gastar("280000.00", "280000.00", "275000.00");
 
     const { fim } = janelaDoDiferimento(2026);
-    expect(fim.toISOString()).toBe("2027-04-30T23:59:59.000Z");
+    // 30/04/2027 às 23:59:59.999 CIVIS — o último instante de abril PARA O ENTE, que em
+    // Greenwich já é 01/05 às 02:59:59.999. A janela do art. 25, §3º acaba no fim de
+    // abril do ente: com o corte em UTC, as três últimas horas de 30/04 caíam fora do
+    // diferimento e passavam a contar no exercício corrente.
+    expect(fim.toISOString()).toBe("2027-05-01T02:59:59.999Z");
 
     // UM DIA depois do fim da janela.
     await pagar(

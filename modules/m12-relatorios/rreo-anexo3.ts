@@ -11,6 +11,7 @@ import {
 } from "../m04-receita/natureza.js";
 import { type Bimestre } from "./rreo-anexo1.js";
 import { reprevisaoAcumuladaPorNatureza } from "../m02-planejamento/consultas.js";
+import { janelaCivilDoMes, normalizarMes } from "../../packages/datas/index.js";
 
 /**
  * RREO — ANEXO 3: DEMONSTRATIVO DA RECEITA CORRENTE LÍQUIDA (RCL).
@@ -79,22 +80,22 @@ const NOMES_MES = [
  * As 12 janelas mensais que TERMINAM no fim do `bimestre` do `exercicio`, em ordem cronológica
  * (a mais antiga primeiro). O último mês do bimestre b é o mês `2b` (1-indexado); a janela recua
  * 11 meses a partir dele — e é por isso que ela entra no exercício anterior nos primeiros
- * bimestres. Datas em UTC, mesmo eixo do `janelaDoBimestre`.
+ * bimestres. Datas no calendário CIVIL do ente, mesmo eixo do `janelaDoBimestre`.
  */
 export function janelaDosDozeMeses(
   exercicio: number,
   bimestre: Bimestre
 ): readonly JanelaMensal[] {
-  // último mês do bimestre, 0-indexado: bim1 → fev (índice 1), bim6 → dez (índice 11).
-  const ultimoMes0 = bimestre * 2 - 1;
+  // último mês do bimestre, 1-indexado: bim1 → fev (2), bim6 → dez (12).
+  const ultimoMes = bimestre * 2;
   const janelas: JanelaMensal[] = [];
   for (let i = 11; i >= 0; i--) {
-    // índice de mês ABSOLUTO (pode ser negativo → o Date rola para o ano anterior).
-    const idx = ultimoMes0 - i;
-    const desde = new Date(Date.UTC(exercicio, idx, 1, 0, 0, 0, 0));
-    const ate = new Date(Date.UTC(exercicio, idx + 1, 1, 0, 0, 0, 0) - 1);
-    const ano = desde.getUTCFullYear();
-    const mes = desde.getUTCMonth() + 1;
+    // O mês pode ficar NEGATIVO e transbordar para o exercício anterior — é o que a RCL
+    // dos doze meses precisa nos primeiros bimestres. `normalizarMes` faz esse rolo.
+    const competencia = normalizarMes(exercicio, ultimoMes - i);
+    const { inicio: desde, fim: ate } = janelaCivilDoMes(competencia);
+    const ano = Number(competencia.slice(0, 4));
+    const mes = Number(competencia.slice(5, 7));
     janelas.push({ ano, mes, desde, ate, rotulo: `${NOMES_MES[mes - 1]}/${ano}` });
   }
   return janelas;

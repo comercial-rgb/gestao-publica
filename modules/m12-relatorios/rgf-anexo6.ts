@@ -6,6 +6,7 @@ import { rgfAnexo3 } from "./rgf-anexo3.js";
 import { rgfAnexo4 } from "./rgf-anexo4.js";
 import { rgfAnexo5 } from "./rgf-anexo5.js";
 import type { Quadrimestre } from "./rgf-anexo1.js";
+import { janelaCivilDoAno } from "../../packages/datas/index.js";
 import {
   situacaoDePessoal,
   situacaoDeTeto,
@@ -146,7 +147,7 @@ export async function rgfAnexo6(
   if (p.quadrimestre === 3) {
     // O Anexo 5 é por CORTE (31/12 do exercício). Ele não tem total consolidado de "antes" nem de
     // "g" — só por fonte (a nota¹ é por vinculação); consolidar é SOMAR as fontes, não recalcular.
-    const corte = new Date(Date.UTC(p.exercicio, 12, 0, 23, 59, 59));
+    const corte = janelaCivilDoAno(p.exercicio).fim;
     const a5 = await rgfAnexo5(prisma, { exercicio: p.exercicio, corte });
     let antes = toMoney("0.00");
     let rpnp = toMoney("0.00");

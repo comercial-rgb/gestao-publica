@@ -22,6 +22,7 @@ import { apurarResultadoDoExercicio } from "../m08-restos-a-pagar/apuracao.js";
 import { balancoPatrimonial, LINHA_RESULTADO } from "./balanco-patrimonial.js";
 import { cadastrarLinhaDemonstrativo } from "./cadastro-linhas.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
+import { fimDoDiaCivil, janelaCivilDoAno } from "../../packages/datas/index.js";
 
 /**
  * ANEXO 14 — BALANÇO PATRIMONIAL (art. 105 da Lei 4.320/64).
@@ -195,7 +196,16 @@ const R_INGRESSO = roteiroIngressoExtra({
   disponibilidade: CAIXA, consignacaoAPagar: CONSIGNACAO,
 });
 
-const CORTE = new Date("2026-12-31T23:59:59Z");
+
+/**
+ * ⚠️ O FIM DO EXERCÍCIO É O DO ENTE, E ISSO VIROU LITERAL AQUI DEPOIS DE UMA ACUSAÇÃO.
+ *
+ * O corte era `new Date("YYYY-12-31T23:59:59Z")`, que em São Paulo é **31/12 às 20:59:59**.
+ * Quando o ENT03b pôs o fato do encerramento no último instante CIVIL do exercício, ele
+ * passou a cair TRÊS HORAS DEPOIS deste corte — e o teste acusou. A acusação estava certa:
+ * o corte é que estava em Greenwich. Ver `docs/adr/ADR-data-civil-do-ente.md`.
+ */
+const CORTE = janelaCivilDoAno(2026).fim;
 let deps: M05Deps;
 
 /** As linhas do quadro principal — rótulos do MCASP, prefixos do plano. */
@@ -512,7 +522,7 @@ describe("Anexo 14 — Balanço Patrimonial", () => {
     await arrecadar("1000.00", "2026-06-15T12:00:00Z", "GUIA-2");
 
     // corte em 31/03: só a primeira
-    const emMarco = await balancoPatrimonial(prisma, new Date("2026-03-31T23:59:59Z"));
+    const emMarco = await balancoPatrimonial(prisma, fimDoDiaCivil("2026-03-31"));
     expect(linhaDe(emMarco, "AC.CAIXA").valor).toBe("8000.00");
     expect(emMarco.totalAtivo).toBe("8000.00");
 
@@ -698,7 +708,7 @@ describe("Anexo 14 — Balanço Patrimonial", () => {
     );
 
     // ── EM 31/03: o pagamento de julho AINDA NÃO ACONTECEU ────────────────
-    const marco = (await balancoPatrimonial(prisma, new Date("2026-03-31T23:59:59Z")))
+    const marco = (await balancoPatrimonial(prisma, fimDoDiaCivil("2026-03-31")))
       .quadroFinanceiroPermanente;
     expect(marco.ativoFinanceiro).toBe("8000.00"); // caixa cheio
     expect(marco.passivoFinanceiro).toBe("6000.00"); // a dívida inteira

@@ -51,7 +51,8 @@
     // dos dois, porque dá a impressão de cobertura completa.
     "test/**/*.ts",
     "prisma.config.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "vitest.rapido.config.ts"
   ],
   "exclude": ["node_modules", "prisma/generated"]
 }

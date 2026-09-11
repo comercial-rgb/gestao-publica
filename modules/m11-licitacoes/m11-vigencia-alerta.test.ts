@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { diaCivil, diaCivilBr, fimDoDiaCivil, instanteCivil } from "../../packages/datas/index.js";
 import {
   diasAteVencimento,
   estaEmAlertaDeVencimento,
@@ -46,6 +47,60 @@ describe("M11 — dias até o vencimento", () => {
 
   it("atravessa a virada do ano sem se perder", () => {
     expect(diasAteVencimento(fimDoDia(2027, 1, 10), meioDia(2026, 12, 31))).toBe(10);
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ⚠️ O EIXO DE DATA — e por que as fixtures acima NÃO acusavam o defeito
+  //
+  // Todas usam meio-dia e fim-de-dia em UTC, e nesse eixo as duas réguas coincidem.
+  // O defeito só aparece quando o fim do contrato é o último instante CIVIL do dia —
+  // que é o que o banco guarda — e a tela é aberta fora da janela do meio-dia.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  it("o fim gravado no último instante CIVIL do dia não empurra o vencimento para o dia seguinte", () => {
+    // 31/12/2026 às 23:59:59 civis é 01/01/2027 às 02:59:59Z: no eixo UTC o contrato
+    // "terminava" em janeiro, e às 10:00 de 30/12 a tela dizia 2 dias para quem vence em 1.
+    const fim = fimDoDiaCivil("2026-12-31");
+    expect(diasAteVencimento(fim, instanteCivil(2026, 12, 30, 10, 0))).toBe(1);
+    expect(diasAteVencimento(fim, instanteCivil(2026, 12, 31, 10, 0))).toBe(0);
+  });
+
+  it("a resposta não depende da HORA em que alguém abriu a tela", () => {
+    const fim = fimDoDiaCivil("2026-12-31");
+    const respostas = [0, 9, 15, 22, 23].map((h) =>
+      diasAteVencimento(fim, instanteCivil(2026, 11, 2, h, 30))
+    );
+    expect(new Set(respostas).size, `respostas divergentes: ${respostas.join(", ")}`).toBe(1);
+    expect(respostas[0]).toBe(59);
+  });
+
+  it("prorrogar dias ENTRANDO no horário de verão não move o DIA do vencimento", () => {
+    // ⚠️ O PRAZO TEM DE CRUZAR A VIRADA, e é isso que distingue as duas aritméticas. Um
+    // ano cheio de 30/06/2018 a 30/06/2019 tem as duas pontas FORA do horário de verão, e
+    // ali as duas contas coincidem — a primeira versão deste teste ficava verde com o
+    // defeito, e a mutação de `scripts/mutacoes-eixo-de-data.ts` foi quem mostrou.
+    //
+    // O horário de verão de 2018 começou em 04/11. De 30/06 + 150 dias = **27/11/2018**.
+    // Somando 150 x 86.400.000 ms a um fim de 23:59:59 civis, o instante cai em
+    // 28/11T02:59:59.999Z — e com o fuso já em −2 isso é **28/11 às 00:59:59**: o
+    // contrato passava a vencer UM DIA DEPOIS do que o aditivo concedeu.
+    const fim = vigenciaFim(fimDoDiaCivil("2018-06-30"), [
+      { tipo: "PRORROGACAO_PRAZO", dias: 150, valor: null },
+    ]);
+    expect(diaCivil(fim)).toBe("2018-11-27");
+    // e a hora civil do fim continua sendo o ÚLTIMO instante do dia, não 00:59.
+    expect(diaCivilBr(fim)).toBe("27/11/2018");
+    expect(fim.getTime()).toBe(fimDoDiaCivil("2018-11-27").getTime());
+  });
+
+  it("prorrogar SAINDO do horário de verão também não move o dia", () => {
+    // O horário de verão de 2018/2019 acabou em 17/02/2019. De 01/12/2018 + 100 dias =
+    // 11/03/2019 — e a travessia é no outro sentido.
+    const fim = vigenciaFim(fimDoDiaCivil("2018-12-01"), [
+      { tipo: "PRORROGACAO_PRAZO", dias: 100, valor: null },
+    ]);
+    expect(diaCivil(fim)).toBe("2019-03-11");
+    expect(fim.getTime()).toBe(fimDoDiaCivil("2019-03-11").getTime());
   });
 });
 

@@ -9,6 +9,7 @@ import type { PrismaClient } from "../../prisma/generated/client/client.js";
 // travamento de competência (M16). Ver `m01-funil.test.ts`: o grep-teste proíbe o
 // `lancamentoContabil.create` fora dele.
 import { lancarNoRazao } from "../m01-core-contabil/razao.js";
+import { janelaCivilDoMes } from "../../packages/datas/index.js";
 
 /**
  * M10 — PROVISÕES MATEMÁTICAS PREVIDENCIÁRIAS (TR 5.89).
@@ -134,8 +135,7 @@ export type EstornarMovimentoProvisaoInput = z.input<
 >;
 
 function inicioDaCompetencia(competencia: string): Date {
-  const [ano, mes] = competencia.split("-").map(Number);
-  return new Date(Date.UTC(ano!, mes! - 1, 1, 0, 0, 0, 0));
+  return janelaCivilDoMes(competencia).inicio;
 }
 
 export async function saldoDaProvisaoEm(

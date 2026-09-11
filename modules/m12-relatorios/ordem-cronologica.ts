@@ -10,6 +10,7 @@ import type {
   LiquidacaoNaFila,
 } from "../m06-ordem-cronologica/dominio.js";
 import { serializar, type Dinheiro } from "./dominio.js";
+import { janelaCivilDeMeses } from "../../packages/datas/index.js";
 
 /**
  * ORDEM CRONOLÓGICA — DATASET MENSAL DO §3º (M12, bloco 3b). LEITURA PURA.
@@ -107,9 +108,10 @@ export async function ordemCronologicaMensal(
     throw new Error(`Mês inválido: ${mes}. Use 1 a 12.`);
   }
 
-  const inicio = new Date(Date.UTC(ano, mes - 1, 1, 0, 0, 0, 0));
-  // Último instante do mês: dia 0 do mês SEGUINTE.
-  const fim = new Date(Date.UTC(ano, mes, 0, 23, 59, 59, 999));
+  // ⚠️ A JANELA É CIVIL. A publicação do §3º do art. 141 é sobre o MÊS do ente: com
+  // `Date.UTC` o pagamento de 30/06 às 22:00 saía do mês em que o credor o recebeu, e a
+  // ordem publicada omitia justamente a linha que alguém procuraria ali.
+  const { inicio, fim } = janelaCivilDeMeses(ano, mes, 1);
 
   // FAIL-CLOSED: mês futuro não tem fila nem quebras — tem chute. Publicar uma
   // estrutura vazia daria a impressão de "nada pendente", que é o oposto de

@@ -2,6 +2,7 @@ import { serializar, toMoney, type Dinheiro, type Money } from "../../packages/c
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { rclAjustadaDoQuadrimestre } from "./rcl-ajustada.js";
 import type { Quadrimestre } from "./rgf-anexo1.js";
+import { janelaCivilDeMeses } from "../../packages/datas/index.js";
 
 /**
  * RGF — ANEXO 3: GARANTIAS E CONTRAGARANTIAS DE VALORES. LRF art. 55, I, "c" · art. 40 §1º.
@@ -110,7 +111,7 @@ function linhaZerada(def: { chave: string; rotulo: string }): LinhaGarantia {
 
 /** O último instante do quadrimestre — a mesma conversão do RGF Anexo 1/2. */
 function corteDoQuadrimestre(exercicio: number, quadrimestre: Quadrimestre): Date {
-  return new Date(Date.UTC(exercicio, quadrimestre * 4, 0, 23, 59, 59));
+  return janelaCivilDeMeses(exercicio, (quadrimestre - 1) * 4 + 1, 4).fim;
 }
 
 async function medirColuna(prisma: Tx, exercicio: number, quadrimestre: Quadrimestre): Promise<ValoresColunaAnexo3> {

@@ -5,6 +5,7 @@ import type { Tx } from "../m16-travamento/autorizacao.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { registrarNotificacao } from "../m24-notificacoes/notificacoes.js";
 import { COLUNAS_DA_FONTE, lerFonteComunicados, lerFonteProcessos } from "./fontes.js";
+import { diaCivil } from "../../packages/datas/index.js";
 import {
   analisar,
   avaliar,
@@ -528,7 +529,7 @@ async function produzirResultado(tx: Tx, execucaoId: string): Promise<void> {
     filtros.every((f) => {
       const v = l[f.campo];
       const texto =
-        v === null ? "" : v instanceof Date ? v.toISOString().slice(0, 10) : String(v);
+        v === null ? "" : v instanceof Date ? diaCivil(v) : String(v);
       return texto.toLowerCase().includes(f.valor.toLowerCase());
     })
   );

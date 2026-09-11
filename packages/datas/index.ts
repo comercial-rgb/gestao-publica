@@ -237,3 +237,98 @@ function exigirDia(dia: string): [number, number, number] {
   }
   return [Number(m[1]), Number(m[2]), Number(m[3])];
 }
+
+/**
+ * A JANELA CIVIL DE UMA CORRIDA DE MESES — bimestre, quadrimestre, semestre, doze meses.
+ *
+ * `mesInicio` é 1-indexado e PODE SAIR DO ANO nos dois sentidos: `mes 0` é dezembro do
+ * ano anterior, `mes 13` é janeiro do seguinte. É o que a janela de doze meses da RCL
+ * precisa — no 1º bimestre ela começa em março do exercício ANTERIOR.
+ *
+ * ⚠️ ELA EXISTE PARA SUBSTITUIR `new Date(Date.UTC(ano, mes, 1))`, que é a forma como o
+ * defeito de eixo entrou em quase todo relatório: a janela do bimestre 1 de 2026 nascia
+ * em **31/12/2025 às 21:00** civis e terminava em **28/02 às 20:59** — o que faz a
+ * receita da noite do último dia do bimestre cair no bimestre seguinte, e a despesa da
+ * noite de 31/12 entrar num exercício que já encerrou.
+ */
+export function janelaCivilDeMeses(
+  ano: number,
+  mesInicio: number,
+  quantidadeDeMeses: number,
+  fuso: string = FUSO_DO_ENTE
+): { readonly inicio: Date; readonly fim: Date } {
+  if (!Number.isInteger(quantidadeDeMeses) || quantidadeDeMeses < 1) {
+    throw new Error(
+      `A corrida de meses precisa de pelo menos 1 mês; recebeu ${quantidadeDeMeses}.`
+    );
+  }
+  const primeiro = normalizarMes(ano, mesInicio);
+  const ultimo = normalizarMes(ano, mesInicio + quantidadeDeMeses - 1);
+  return {
+    inicio: janelaCivilDoMes(primeiro, fuso).inicio,
+    fim: janelaCivilDoMes(ultimo, fuso).fim,
+  };
+}
+
+/**
+ * A competência `YYYY-MM` de um mês que pode ter transbordado do ano — `mes 0` é o
+ * dezembro anterior, `mes 13` o janeiro seguinte.
+ */
+export function normalizarMes(ano: number, mes: number): string {
+  const absoluto = ano * 12 + (mes - 1);
+  const a = Math.floor(absoluto / 12);
+  const m = absoluto - a * 12 + 1;
+  return `${String(a).padStart(4, "0")}-${String(m).padStart(2, "0")}`;
+}
+
+/**
+ * QUANTOS DIAS CIVIS SEPARAM DOIS INSTANTES — `ate` menos `de`, inteiro, com sinal.
+ *
+ * ⚠️ A CONTA É ENTRE DIAS DO CALENDÁRIO, e não entre instantes divididos por 86.400.000.
+ * Um contrato cujo fim está gravado no ÚLTIMO instante do dia (23:59:59) dista do meio-dia
+ * de hoje 0,99 dia — e um `Math.floor` transformaria "vence amanhã" em "vence hoje".
+ * Fixar as duas pontas no MEIO-DIA CIVIL também é o que atravessa a virada do horário de
+ * verão sem perder ou ganhar um dia: o dia de 23 horas ainda contém o meio-dia.
+ */
+export function diferencaEmDiasCivis(
+  ate: Date,
+  de: Date,
+  fuso: string = FUSO_DO_ENTE
+): number {
+  const meioDia = (d: Date): number => {
+    const [a, m, dd] = exigirDia(diaCivil(d, fuso));
+    return instanteCivil(a, m, dd, 12, 0, 0, 0, fuso).getTime();
+  };
+  return Math.round((meioDia(ate) - meioDia(de)) / 86_400_000);
+}
+
+/**
+ * SOMA DIAS AO CALENDÁRIO, preservando a hora civil — `dias` pode ser negativo.
+ *
+ * ⚠️ NÃO É `getTime() + dias * 86.400.000`. Essa soma é em instantes, e atravessar a
+ * virada do horário de verão desloca a HORA civil em 60 minutos: um contrato que terminava
+ * às 23:59:59 do dia X passa a terminar às 22:59:59 (ou às 00:59:59 do dia SEGUINTE) do
+ * dia X+N. Como `vigenciaFim` guarda justamente o último instante do dia, uma prorrogação
+ * de 365 dias mudava o DIA em que o contrato vence.
+ */
+export function somarDiasCivis(
+  instante: Date,
+  dias: number,
+  fuso: string = FUSO_DO_ENTE
+): Date {
+  const p = partes(instante, fuso);
+  // O dia + N é resolvido no calendário proléptico do próprio `Date`, em UTC, onde a
+  // aritmética de dias é exata por não haver horário de verão nenhum — e só depois o
+  // resultado volta a ser lido como dia CIVIL.
+  const rolado = new Date(Date.UTC(p.ano, p.mes - 1, p.dia + dias));
+  return instanteCivil(
+    rolado.getUTCFullYear(),
+    rolado.getUTCMonth() + 1,
+    rolado.getUTCDate(),
+    p.hora,
+    p.minuto,
+    p.segundo,
+    instante.getUTCMilliseconds(),
+    fuso
+  );
+}

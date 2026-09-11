@@ -365,3 +365,30 @@ describe("M25 — definição, preenchimento e histórico", () => {
     ).rejects.toThrow(/não encontrado\(s\)/);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// A DATA PURA — a ida e a volta usam a MESMA âncora
+//
+// ⚠️ ESTE ARQUIVO É A PROVA DE UMA EXCEÇÃO, não de uma regra. `test/data-civil.test.ts`
+// deixa `m25-campos-adicionais/dominio.ts` de fora da guarda do eixo civil, e uma exceção
+// sem prova é só uma linha numa lista. Os casos abaixo usam datas cujo dia CIVIL e cujo
+// dia UTC divergem — que é onde a âncora errada apareceria.
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("M25 — a data pura não perde um dia na ida e volta", () => {
+  it("o dia digitado volta igual, inclusive no 1º e no último dia do ano", () => {
+    for (const digitado of ["01/01/2026", "31/12/2026", "29/02/2028", "15/03/2026"]) {
+      const colunas = valorParaColunas("DATA", digitado, []);
+      expect(exibirValor("DATA", colunas), digitado).toBe(digitado);
+    }
+  });
+
+  it("o formato ISO do input[type=date] entra pela mesma porta", () => {
+    const colunas = valorParaColunas("DATA", "2026-12-31", []);
+    expect(exibirValor("DATA", colunas)).toBe("31/12/2026");
+  });
+
+  it("31/02 continua recusado — é a conferência de ida-e-volta que recusa", () => {
+    expect(() => valorParaColunas("DATA", "31/02/2026", [])).toThrow(/exista no calendário/);
+  });
+});

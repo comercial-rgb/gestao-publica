@@ -4,6 +4,7 @@ import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { anexo8 } from "./rreo-anexo8.js";
 import { rgfAnexo5 } from "./rgf-anexo5.js";
 import { despesaPorFonte } from "../m05-despesa/consultas.js";
+import { janelaCivilDoAno, janelaCivilDoMes } from "../../packages/datas/index.js";
 
 type Tx = Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">;
 
@@ -102,8 +103,8 @@ export function janelaDoDiferimento(exercicio: number): {
   readonly fim: Date;
 } {
   return {
-    inicio: new Date(Date.UTC(exercicio + 1, 0, 1, 0, 0, 0)),
-    fim: new Date(Date.UTC(exercicio + 1, 3, 30, 23, 59, 59)),
+    inicio: janelaCivilDoAno(exercicio + 1).inicio,
+    fim: janelaCivilDoMes(`${exercicio + 1}-04`).fim,
   };
 }
 
@@ -131,7 +132,7 @@ export async function diferimentoFundeb(
   // O OUTRO caminho até o mesmo saldo — ver `SOBRE_R_DIF`.
   const a5 = await rgfAnexo5(prisma, {
     exercicio: p.exercicio,
-    corte: new Date(Date.UTC(p.exercicio, 11, 31, 23, 59, 59)),
+    corte: janelaCivilDoAno(p.exercicio).fim,
   });
   let disponibilidadeLiquida = toMoney("0.00");
   for (const linha of a5.linhas) {
@@ -174,7 +175,7 @@ async function aplicadoNaJanela(
   if (fontesFundeb.length === 0) return null;
 
   const { fim } = janelaDoDiferimento(exercicio);
-  const fechamento = new Date(Date.UTC(exercicio, 11, 31, 23, 59, 59));
+  const fechamento = janelaCivilDoAno(exercicio).fim;
 
   const ate30Abril = await despesaPorFonte(prisma, { ate: fim });
   const ate31Dez = await despesaPorFonte(prisma, { ate: fechamento });

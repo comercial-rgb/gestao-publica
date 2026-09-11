@@ -7,6 +7,7 @@ import { rgfAnexo5 } from "./rgf-anexo5.js";
 import { restosAPagarPorFonte } from "../m08-restos-a-pagar/consultas.js";
 import { passivoAtuarialEm, saldoDaDividaPorTipo } from "../m10-patrimonial/consultas.js";
 import type { Quadrimestre } from "./rgf-anexo1.js";
+import { janelaCivilDeMeses } from "../../packages/datas/index.js";
 
 type Tx = Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">;
 
@@ -289,7 +290,7 @@ export async function rgfAnexo2(
 
 /** O último instante do quadrimestre — a mesma conversão do RGF Anexo 1. */
 function corteDoQuadrimestre(exercicio: number, quadrimestre: Quadrimestre): Date {
-  return new Date(Date.UTC(exercicio, quadrimestre * 4, 0, 23, 59, 59));
+  return janelaCivilDeMeses(exercicio, (quadrimestre - 1) * 4 + 1, 4).fim;
 }
 
 async function medirColuna(
