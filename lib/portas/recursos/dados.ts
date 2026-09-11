@@ -4,6 +4,7 @@ import {
   diaCivil,
   diaCivilBr,
   fimDoDiaCivil,
+  meioDiaCivil,
 } from "../../../packages/datas/index.js";
 import {
   estadoDoConvenio,
@@ -739,6 +740,29 @@ import {
   repassarAoConsorcio,
 } from "../../../modules/m30-consorcios/servico.js";
 import {
+  cadastrarDivida,
+  registrarAtualizacaoMonetaria,
+  saldoDaDivida,
+} from "../../../modules/m10-patrimonial/divida.js";
+import type { TipoMovimentoDivida } from "../../../modules/m10-patrimonial/divida.js";
+import {
+  atualizarDividaAtiva,
+  cadastrarDividaAtiva,
+  cancelarDividaAtiva,
+  inscreverDividaAtiva,
+  saldoDaDividaAtiva,
+  type TipoMovimentoDividaAtiva,
+} from "../../../modules/m10-patrimonial/divida-ativa.js";
+import {
+  cadastrarObra,
+  TIP_OBRA_SERVICO,
+  type TipoObraServicoRepo,
+} from "../../../modules/m11-licitacoes/obras.js";
+import {
+  aprovarMedicao,
+  registrarMedicao,
+} from "../../../modules/m11-licitacoes/medicoes.js";
+import {
   abrirAuditoria,
   encerrarAuditoria,
   registrarIrregularidade,
@@ -994,13 +1018,560 @@ export async function acaoDaAuditoria(
  * nomes dos campos deste cadastro. Uma interface com as três chaves fixas obrigaria cada
  * consumidor a mapeá-la à mão — e o mapeamento seria o lugar onde alguém esqueceria um campo.
  */
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ENT03c — DÍVIDA FUNDADA, DÍVIDA ATIVA E OBRAS
+//
+// ⚠️ NENHUMA REGRA DE NEGÓCIO AQUI. Estas funções LEEM para a tela e DESPACHAM para o
+// caso de uso. Todo saldo abaixo é `Σ(valor × sinal)` calculado pela função PURA do
+// próprio módulo — nunca uma soma reescrita aqui. Duas aritméticas para o mesmo saldo é
+// uma a mais do que se precisa para divergirem, e a que diverge é sempre a da tela.
+// ══════════════════════════════════════════════════════════════════════════════
+
+const ROTULO_TIPO_DIVIDA: Readonly<Record<string, string>> = {
+  CONTRATUAL: "Contratual",
+  MOBILIARIA: "Mobiliária",
+};
+
+const ROTULO_MOV_DIVIDA: Readonly<Record<string, string>> = {
+  INGRESSO_OPERACAO_CREDITO: "Ingresso de operação de crédito",
+  ATUALIZACAO_MONETARIA: "Atualização monetária",
+  AMORTIZACAO: "Amortização",
+  ESTORNO_INGRESSO_OPERACAO_CREDITO: "Estorno do ingresso",
+  ESTORNO_ATUALIZACAO_MONETARIA: "Estorno da atualização",
+  ESTORNO_AMORTIZACAO: "Estorno da amortização",
+};
+
+/** Σ de um subconjunto de tipos, em Decimal. O sinal vem do módulo, não daqui. */
+function somaDosTipos(
+  movimentos: readonly { readonly tipo: string; readonly valor: { toFixed(n: number): string } }[],
+  tipos: readonly string[]
+): string {
+  let total = new Decimal("0.00");
+  for (const m of movimentos) {
+    if (tipos.includes(m.tipo)) total = total.plus(new Decimal(m.valor.toFixed(2)));
+  }
+  return total.toFixed(2);
+}
+
+export async function listarDividasFundadas(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
+  const prisma = cliente();
+  const q = c.filtros["q"] ?? "";
+  const tipo = c.filtros["tipo"] ?? "";
+
+  const where = {
+    ...(q === "" ? {} : { OR: [{ identificador: texto(q) }, { credorNome: texto(q) }] }),
+    ...(tipo === "" ? {} : { tipo: tipo as "CONTRATUAL" | "MOBILIARIA" }),
+  };
+
+  const [total, linhas] = await Promise.all([
+    prisma.dividaConsolidada.count({ where }),
+    prisma.dividaConsolidada.findMany({
+      where,
+      ...paginacao(c),
+      orderBy: c.ordem === null ? { identificador: "asc" } : { [c.ordem]: c.direcao },
+      select: {
+        id: true, identificador: true, credorNome: true, tipo: true,
+        movimentos: { select: { tipo: true, valor: true } },
+      },
+    }),
+  ]);
+
+  return {
+    total,
+    linhas: linhas.map((d) => {
+      const movimentos = d.movimentos.map((m) => ({
+        tipo: m.tipo as TipoMovimentoDivida,
+        valor: toMoney(m.valor.toFixed(2)),
+      }));
+      return {
+        id: d.id,
+        identificador: d.identificador,
+        credorNome: d.credorNome,
+        tipo: ROTULO_TIPO_DIVIDA[d.tipo] ?? d.tipo,
+        ingressado: somaDosTipos(d.movimentos, ["INGRESSO_OPERACAO_CREDITO"]),
+        amortizado: somaDosTipos(d.movimentos, ["AMORTIZACAO"]),
+        // ⚠️ O SALDO NÃO É `ingressado − amortizado`: a atualização monetária também o
+        // move, e o estorno soma com o sinal dele. Quem sabe a conta é o módulo.
+        saldo: saldoDaDivida(movimentos).toFixed(2),
+      };
+    }),
+  };
+}
+
+export async function verDividaFundada(id: string): Promise<DetalheLido | null> {
+  const prisma = cliente();
+  const d = await prisma.dividaConsolidada.findUnique({
+    where: { id },
+    select: {
+      identificador: true, credorNome: true, credorDocumento: true, tipo: true,
+      leiAutorizativa: true, objeto: true,
+      contaContabil: { select: { codigo: true, nome: true } },
+      movimentos: {
+        select: {
+          id: true, tipo: true, valor: true, competencia: true, dataMovimento: true,
+          motivo: true, criadoEm: true, criadoPor: true,
+          estornos: { select: { id: true } },
+        },
+        orderBy: { dataMovimento: "desc" },
+      },
+    },
+  });
+  if (d === null) return null;
+
+  const movimentos = d.movimentos.map((m) => ({
+    tipo: m.tipo as TipoMovimentoDivida,
+    valor: toMoney(m.valor.toFixed(2)),
+  }));
+  const saldo = saldoDaDivida(movimentos);
+
+  return {
+    titulo: `Dívida ${d.identificador}`,
+    subtitulo: `${ROTULO_TIPO_DIVIDA[d.tipo] ?? d.tipo} · ${d.credorNome}`,
+    selos: [
+      { texto: ROTULO_TIPO_DIVIDA[d.tipo] ?? d.tipo, tom: "neutro" },
+      {
+        texto: saldo.isZero() ? "Quitada" : "Em aberto",
+        tom: saldo.isZero() ? "ok" : "neutro",
+      },
+    ],
+    dados: [
+      { rotulo: "Objeto", valor: d.objeto, tipo: "longo" },
+      { rotulo: "Credor", valor: `${d.credorNome} · ${d.credorDocumento}` },
+      { rotulo: "Lei autorizativa", valor: d.leiAutorizativa, nota: "LRF art. 32" },
+      { rotulo: "Ingressado", valor: somaDosTipos(d.movimentos, ["INGRESSO_OPERACAO_CREDITO"]), tipo: "dinheiro",
+        nota: "Lançado pelo M04 — o ingresso é receita de operação de crédito, e é fato permutativo." },
+      { rotulo: "Atualização monetária", valor: somaDosTipos(d.movimentos, ["ATUALIZACAO_MONETARIA"]), tipo: "dinheiro",
+        nota: "O único movimento que nasce aqui — e o único que reduz o patrimônio." },
+      { rotulo: "Amortizado", valor: somaDosTipos(d.movimentos, ["AMORTIZACAO"]), tipo: "dinheiro",
+        nota: "Lançado pelo M05 dentro do pagamento — pagar principal é permutativo, não é VPD." },
+      { rotulo: "Saldo devedor", valor: saldo.toFixed(2), tipo: "dinheiro",
+        nota: "Derivado dos movimentos. Tem de bater com o saldo da conta contábil do passivo." },
+      { rotulo: "Conta do passivo", valor: `${d.contaContabil.codigo} — ${d.contaContabil.nome}` },
+    ],
+    historico: d.movimentos.map((m) => ({
+      id: m.id,
+      oQue: `${ROTULO_MOV_DIVIDA[m.tipo] ?? m.tipo}${m.competencia === null ? "" : ` — ${competenciaCivil(m.competencia)}`}`,
+      quando: diaCivilBr(m.dataMovimento),
+      registradoEm: diaCivilBr(m.criadoEm),
+      por: m.criadoPor,
+      motivo: m.motivo,
+      valor: m.valor.toFixed(2),
+      estornado: m.estornos.length > 0,
+    })),
+  };
+}
+
+const ROTULO_ORIGEM_ATIVA: Readonly<Record<string, string>> = {
+  TRIBUTARIA: "Tributária",
+  NAO_TRIBUTARIA: "Não tributária",
+};
+
+const ROTULO_MOV_ATIVA: Readonly<Record<string, string>> = {
+  INSCRICAO: "Inscrição",
+  ATUALIZACAO: "Atualização (juros, multa, correção)",
+  RECEBIMENTO: "Recebimento",
+  CANCELAMENTO: "Cancelamento",
+  ESTORNO_INSCRICAO: "Estorno da inscrição",
+  ESTORNO_ATUALIZACAO: "Estorno da atualização",
+  ESTORNO_RECEBIMENTO: "Estorno do recebimento",
+  ESTORNO_CANCELAMENTO: "Estorno do cancelamento",
+};
+
+export async function listarDividasAtivas(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
+  const prisma = cliente();
+  const q = c.filtros["q"] ?? "";
+  const origem = c.filtros["origem"] ?? "";
+
+  const where = {
+    ...(q === "" ? {} : { OR: [{ identificador: texto(q) }, { devedorNome: texto(q) }] }),
+    ...(origem === "" ? {} : { origem: origem as "TRIBUTARIA" | "NAO_TRIBUTARIA" }),
+  };
+
+  const [total, linhas] = await Promise.all([
+    prisma.dividaAtiva.count({ where }),
+    prisma.dividaAtiva.findMany({
+      where,
+      ...paginacao(c),
+      orderBy: c.ordem === null ? { identificador: "asc" } : { [c.ordem]: c.direcao },
+      select: {
+        id: true, identificador: true, devedorNome: true, origem: true,
+        movimentos: { select: { tipo: true, valor: true } },
+      },
+    }),
+  ]);
+
+  return {
+    total,
+    linhas: linhas.map((d) => {
+      const movimentos = d.movimentos.map((m) => ({
+        tipo: m.tipo as TipoMovimentoDividaAtiva,
+        valor: toMoney(m.valor.toFixed(2)),
+      }));
+      return {
+        id: d.id,
+        identificador: d.identificador,
+        devedorNome: d.devedorNome,
+        origem: ROTULO_ORIGEM_ATIVA[d.origem] ?? d.origem,
+        inscrito: somaDosTipos(d.movimentos, ["INSCRICAO", "ATUALIZACAO"]),
+        baixado: somaDosTipos(d.movimentos, ["RECEBIMENTO", "CANCELAMENTO"]),
+        saldo: saldoDaDividaAtiva(movimentos).toFixed(2),
+      };
+    }),
+  };
+}
+
+export async function verDividaAtiva(id: string): Promise<DetalheLido | null> {
+  const prisma = cliente();
+  const d = await prisma.dividaAtiva.findUnique({
+    where: { id },
+    select: {
+      identificador: true, devedorNome: true, devedorDocumento: true, origem: true,
+      contaContabil: { select: { codigo: true, nome: true } },
+      movimentos: {
+        select: {
+          id: true, tipo: true, valor: true, competencia: true, dataMovimento: true,
+          motivo: true, criadoEm: true, criadoPor: true,
+          estornos: { select: { id: true } },
+        },
+        orderBy: { dataMovimento: "desc" },
+      },
+    },
+  });
+  if (d === null) return null;
+
+  const movimentos = d.movimentos.map((m) => ({
+    tipo: m.tipo as TipoMovimentoDividaAtiva,
+    valor: toMoney(m.valor.toFixed(2)),
+  }));
+  const saldo = saldoDaDividaAtiva(movimentos);
+
+  return {
+    titulo: `Dívida ativa ${d.identificador}`,
+    subtitulo: `${ROTULO_ORIGEM_ATIVA[d.origem] ?? d.origem} · ${d.devedorNome}`,
+    selos: [
+      { texto: ROTULO_ORIGEM_ATIVA[d.origem] ?? d.origem, tom: "neutro" },
+      {
+        texto: saldo.isZero() ? "Baixada" : "A receber",
+        tom: saldo.isZero() ? "ok" : "neutro",
+      },
+    ],
+    dados: [
+      { rotulo: "Devedor", valor: `${d.devedorNome} · ${d.devedorDocumento}` },
+      { rotulo: "Origem", valor: ROTULO_ORIGEM_ATIVA[d.origem] ?? d.origem,
+        nota: "Art. 39, § 2º da Lei 4.320/64 — o rol tem DUAS origens, e só duas." },
+      { rotulo: "Inscrito", valor: somaDosTipos(d.movimentos, ["INSCRICAO"]), tipo: "dinheiro",
+        nota: "A inscrição reconhece um crédito que o ente não tinha: o patrimônio cresce (VPA)." },
+      { rotulo: "Atualizações", valor: somaDosTipos(d.movimentos, ["ATUALIZACAO"]), tipo: "dinheiro",
+        nota: "Juros, multa e correção — também VPA, e idempotentes por competência." },
+      { rotulo: "Recebido", valor: somaDosTipos(d.movimentos, ["RECEBIMENTO"]), tipo: "dinheiro",
+        nota: "Entra pela receita (M04). Aqui é permutativo: um ativo vira outro, SEM nova VPA." },
+      { rotulo: "Cancelado", valor: somaDosTipos(d.movimentos, ["CANCELAMENTO"]), tipo: "dinheiro",
+        nota: "Prescrição, remissão ou decisão judicial — o crédito morre e a perda é VPD." },
+      { rotulo: "Saldo a receber", valor: saldo.toFixed(2), tipo: "dinheiro",
+        nota: "Derivado dos movimentos, e conferido contra o razão pelo teste de integração." },
+      { rotulo: "Conta do ativo", valor: `${d.contaContabil.codigo} — ${d.contaContabil.nome}` },
+    ],
+    historico: d.movimentos.map((m) => ({
+      id: m.id,
+      oQue: `${ROTULO_MOV_ATIVA[m.tipo] ?? m.tipo}${m.competencia === null ? "" : ` — ${competenciaCivil(m.competencia)}`}`,
+      quando: diaCivilBr(m.dataMovimento),
+      registradoEm: diaCivilBr(m.criadoEm),
+      por: m.criadoPor,
+      motivo: m.motivo,
+      valor: m.valor.toFixed(2),
+      estornado: m.estornos.length > 0,
+    })),
+  };
+}
+
+export async function listarObras(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
+  const prisma = cliente();
+  const q = c.filtros["q"] ?? "";
+  const tipo = c.filtros["tipoObraServico"] ?? "";
+
+  const where = {
+    ...(q === "" ? {} : { OR: [{ identificador: texto(q) }, { descricao: texto(q) }] }),
+    ...(tipo === "" ? {} : { tipoObraServico: tipo as TipoObraServicoRepo }),
+  };
+
+  const [total, linhas] = await Promise.all([
+    prisma.obra.count({ where }),
+    prisma.obra.findMany({
+      where,
+      ...paginacao(c),
+      orderBy: c.ordem === null ? { identificador: "asc" } : { [c.ordem]: c.direcao },
+      select: {
+        id: true, identificador: true, descricao: true, tipoObraServico: true, ativa: true,
+        medicoes: { select: { valorMedido: true, aprovadaEm: true } },
+      },
+    }),
+  ]);
+
+  return {
+    total,
+    linhas: linhas.map((o) => {
+      let medido = new Decimal("0.00");
+      let aprovado = new Decimal("0.00");
+      for (const m of o.medicoes) {
+        medido = medido.plus(new Decimal(m.valorMedido.toFixed(2)));
+        if (m.aprovadaEm !== null) aprovado = aprovado.plus(new Decimal(m.valorMedido.toFixed(2)));
+      }
+      return {
+        id: o.id,
+        identificador: o.identificador,
+        descricao: o.descricao,
+        tipo: `${TIP_OBRA_SERVICO[o.tipoObraServico as TipoObraServicoRepo]} — ${o.tipoObraServico}`,
+        medicoes: String(o.medicoes.length),
+        medido: medido.toFixed(2),
+        aprovado: aprovado.toFixed(2),
+        // ⚠️ A SITUAÇÃO É DERIVADA, e a diferença entre medido e aprovado é a informação:
+        // medição pendente é obra que ainda NÃO pode ser liquidada.
+        estado: !o.ativa
+          ? "Inativa"
+          : o.medicoes.length === 0
+            ? "Sem medição"
+            : medido.equals(aprovado)
+              ? "Medições aprovadas"
+              : "Medição pendente de aprovação",
+      };
+    }),
+  };
+}
+
+export async function verObra(id: string): Promise<DetalheLido | null> {
+  const prisma = cliente();
+  const o = await prisma.obra.findUnique({
+    where: { id },
+    select: {
+      identificador: true, descricao: true, tipoObraServico: true, cei: true, ativa: true,
+      orgao: { select: { codigo: true, nome: true } },
+      medicoes: {
+        select: {
+          id: true, numero: true, valorMedido: true, periodoInicio: true, periodoFim: true,
+          responsavelTecnico: true, registroProfissional: true,
+          aprovadaEm: true, aprovadaPor: true, criadoEm: true, criadoPor: true,
+          contrato: { select: { numeroContrato: true } },
+        },
+        orderBy: { numero: "desc" },
+      },
+    },
+  });
+  if (o === null) return null;
+
+  let medido = new Decimal("0.00");
+  let aprovado = new Decimal("0.00");
+  for (const m of o.medicoes) {
+    medido = medido.plus(new Decimal(m.valorMedido.toFixed(2)));
+    if (m.aprovadaEm !== null) aprovado = aprovado.plus(new Decimal(m.valorMedido.toFixed(2)));
+  }
+  const pendentes = o.medicoes.filter((m) => m.aprovadaEm === null).length;
+
+  return {
+    titulo: `Obra ${o.identificador}`,
+    subtitulo: o.descricao,
+    selos: [
+      { texto: o.ativa ? "Ativa" : "Inativa", tom: o.ativa ? "ok" : "neutro" },
+      ...(pendentes > 0
+        ? [{ texto: `${pendentes} medição(ões) a aprovar`, tom: "alerta" as const }]
+        : []),
+    ],
+    dados: [
+      { rotulo: "Descrição", valor: o.descricao, tipo: "longo" },
+      { rotulo: "Tipo", valor: `${TIP_OBRA_SERVICO[o.tipoObraServico as TipoObraServicoRepo]} — ${o.tipoObraServico}`,
+        nota: "Rol FECHADO da IN/INSS/DC 100/2003 — é norma, não catálogo do ente." },
+      {
+        rotulo: "CEI",
+        valor: o.cei ?? "não informado",
+        ...(o.cei === null
+          ? { nota: "A obra existe antes da matrícula; um CEI inventado seria pior que o vazio." }
+          : {}),
+      },
+      { rotulo: "Órgão responsável", valor: o.orgao === null ? "não informado" : `${o.orgao.codigo} — ${o.orgao.nome}` },
+      { rotulo: "Total medido", valor: medido.toFixed(2), tipo: "dinheiro" },
+      { rotulo: "Total aprovado", valor: aprovado.toFixed(2), tipo: "dinheiro",
+        nota: "Só o APROVADO autoriza liquidar — e não se liquida acima do medido." },
+    ],
+    historico: o.medicoes.map((m) => ({
+      id: m.id,
+      oQue:
+        `Medição ${m.numero} (contrato ${m.contrato.numeroContrato}) — ` +
+        `${diaCivilBr(m.periodoInicio)} a ${diaCivilBr(m.periodoFim)} · ` +
+        `${m.responsavelTecnico}${m.registroProfissional === null ? "" : ` (${m.registroProfissional})`}` +
+        (m.aprovadaEm === null ? " · AGUARDANDO APROVAÇÃO" : ` · aprovada por ${m.aprovadaPor ?? ""}`),
+      quando: diaCivilBr(m.periodoFim),
+      registradoEm: diaCivilBr(m.criadoEm),
+      por: m.criadoPor,
+      motivo: null,
+      valor: m.valorMedido.toFixed(2),
+      estornado: false,
+    })),
+  };
+}
+
+// ── AS ESCRITAS ────────────────────────────────────────────────────────────
+
+export async function criarDividaFundada(c: Campos): Promise<void> {
+  await comEscritaAutenticada("CADASTRAR_DIVIDA", (criadoPor) =>
+    cadastrarDivida(cliente(), {
+      identificador: t(c, "identificador"),
+      credorNome: t(c, "credorNome"),
+      credorDocumento: t(c, "credorDocumento"),
+      tipo: t(c, "tipo") as "CONTRATUAL" | "MOBILIARIA",
+      leiAutorizativa: t(c, "leiAutorizativa"),
+      objeto: t(c, "objeto"),
+      contaContabilId: t(c, "contaContabilId"),
+      criadoPor,
+    })
+  );
+}
+
+export async function acaoDaDividaFundada(
+  acao: string,
+  dividaId: string,
+  c: Campos
+): Promise<void> {
+  switch (acao) {
+    case "atualizacao-monetaria":
+      await comEscritaAutenticada("REGISTRAR_ATUALIZACAO_MONETARIA", (criadoPor) =>
+        registrarAtualizacaoMonetaria(cliente(), {
+          dividaId,
+          valor: t(c, "valor"),
+          competencia: t(c, "competencia"),
+          dataMovimento: meioDiaCivil(t(c, "diaMovimento")),
+          motivo: t(c, "motivo"),
+          criadoPor,
+        })
+      );
+      return;
+    default:
+      throw new Error(`Ação "${acao}" não existe neste cadastro. Nada foi gravado.`);
+  }
+}
+
+export async function criarDividaAtiva(c: Campos): Promise<void> {
+  await comEscritaAutenticada("CADASTRAR_DIVIDA_ATIVA", (criadoPor) =>
+    cadastrarDividaAtiva(cliente(), {
+      identificador: t(c, "identificador"),
+      devedorNome: t(c, "devedorNome"),
+      devedorDocumento: t(c, "devedorDocumento"),
+      origem: t(c, "origem") as "TRIBUTARIA" | "NAO_TRIBUTARIA",
+      contaContabilId: t(c, "contaContabilId"),
+      criadoPor,
+    })
+  );
+}
+
+export async function acaoDaDividaAtiva(
+  acao: string,
+  dividaAtivaId: string,
+  c: Campos
+): Promise<void> {
+  const dataMovimento = meioDiaCivil(t(c, "diaMovimento"));
+  switch (acao) {
+    case "inscrever":
+      await comEscritaAutenticada("INSCREVER_DIVIDA_ATIVA", (criadoPor) =>
+        inscreverDividaAtiva(cliente(), {
+          dividaAtivaId,
+          valor: t(c, "valor"),
+          dataMovimento,
+          motivo: t(c, "motivo"),
+          criadoPor,
+        })
+      );
+      return;
+    case "atualizar":
+      await comEscritaAutenticada("ATUALIZAR_DIVIDA_ATIVA", (criadoPor) =>
+        atualizarDividaAtiva(cliente(), {
+          dividaAtivaId,
+          valor: t(c, "valor"),
+          competencia: t(c, "competencia"),
+          dataMovimento,
+          motivo: t(c, "motivo"),
+          criadoPor,
+        })
+      );
+      return;
+    case "cancelar":
+      await comEscritaAutenticada("CANCELAR_DIVIDA_ATIVA", (criadoPor) =>
+        cancelarDividaAtiva(cliente(), {
+          dividaAtivaId,
+          valor: t(c, "valor"),
+          dataMovimento,
+          motivo: t(c, "motivo"),
+          criadoPor,
+        })
+      );
+      return;
+    default:
+      throw new Error(`Ação "${acao}" não existe neste cadastro. Nada foi gravado.`);
+  }
+}
+
+export async function criarObra(c: Campos): Promise<void> {
+  await comEscritaAutenticada("CADASTRAR_OBRA", (criadoPor) =>
+    cadastrarObra(cliente(), {
+      identificador: t(c, "identificador"),
+      descricao: t(c, "descricao"),
+      tipoObraServico: t(c, "tipoObraServico") as TipoObraServicoRepo,
+      ...(opcional(c, "cei") !== undefined ? { cei: t(c, "cei") } : {}),
+      ...(opcional(c, "orgaoId") !== undefined ? { orgaoId: t(c, "orgaoId") } : {}),
+      criadoPor,
+    })
+  );
+}
+
+export async function acaoDaObra(acao: string, obraId: string, c: Campos): Promise<void> {
+  switch (acao) {
+    case "medir":
+      await comEscritaAutenticada("REGISTRAR_MEDICAO_DE_OBRA", (criadoPor) =>
+        registrarMedicao(cliente(), {
+          obraId,
+          contratoId: t(c, "contratoId"),
+          numero: n(c, "numero", 1),
+          diaInicio: t(c, "diaInicio"),
+          diaFim: t(c, "diaFim"),
+          valorMedido: t(c, "valorMedido"),
+          responsavelTecnico: t(c, "responsavelTecnico"),
+          registroProfissional: t(c, "registroProfissional"),
+          criadoPor,
+        })
+      );
+      return;
+    case "aprovar":
+      // ⚠️ O `criadoPor` QUE CHEGA AQUI É QUEM ESTÁ NA SESSÃO, e é ele que o caso de uso
+      // compara com quem mediu. A segregação "quem mede não aprova" é conferida NO
+      // SERVIDOR — mandar o aprovador pelo formulário deixaria o próprio medidor
+      // escolher o crachá.
+      await comEscritaAutenticada("APROVAR_MEDICAO_DE_OBRA", (criadoPor) =>
+        aprovarMedicao(cliente(), {
+          medicaoId: t(c, "medicaoId"),
+          diaAprovacao: t(c, "diaAprovacao"),
+          criadoPor,
+        })
+      );
+      return;
+    default:
+      throw new Error(`Ação "${acao}" não existe neste cadastro. Nada foi gravado.`);
+  }
+}
+
 export type OpcoesDoCadastro = Readonly<
   Record<string, readonly { readonly valor: string; readonly rotulo: string }[]>
 >;
 
-export async function opcoesDoCadastro(): Promise<OpcoesDoCadastro> {
+/**
+ * ⚠️ O PARÂMETRO OPCIONAL EXISTE POR CAUSA DA MEDIÇÃO, e ele é a exceção que o molde
+ * previa: quase toda opção é do ENTE (fontes, contas, órgãos) e não depende de qual
+ * registro está aberto. A medição não — "aprovar medição" só pode oferecer as medições
+ * DAQUELA obra, e oferecer as de outra obra seria montar um formulário que o caso de uso
+ * vai recusar (`m11-medicoes-integracao.test.ts` t6b prova a recusa).
+ */
+export async function opcoesDoCadastro(
+  p: { readonly obraId?: string } = {}
+): Promise<OpcoesDoCadastro> {
   const prisma = cliente();
-  const [fontes, contas, orgaos] = await Promise.all([
+  const [fontes, contas, orgaos, contratos, medicoes] = await Promise.all([
     prisma.fonteRecurso.findMany({ select: { id: true, codigo: true, descricao: true }, orderBy: { codigo: "asc" } }),
     // ⚠️ SÓ ANALÍTICAS. Lançar em conta sintética é o erro que o funil do M01 recusa — e
     // oferecê-la aqui seria montar um formulário que o domínio vai rejeitar.
@@ -1011,10 +1582,33 @@ export async function opcoesDoCadastro(): Promise<OpcoesDoCadastro> {
       take: 500,
     }),
     prisma.orgao.findMany({ select: { id: true, codigo: true, nome: true }, orderBy: { codigo: "asc" } }),
+    prisma.contrato.findMany({
+      select: { id: true, numeroContrato: true, contratadoNome: true },
+      orderBy: { numeroContrato: "asc" },
+      take: 500,
+    }),
+    p.obraId === undefined
+      ? Promise.resolve([])
+      : prisma.medicaoDeObra.findMany({
+          // ⚠️ SÓ AS NÃO APROVADAS: aprovar duas vezes é recusado no servidor porque a
+          // segunda apagaria quem aprovou primeiro (t3b). Oferecer a já aprovada seria
+          // convidar para uma recusa.
+          where: { obraId: p.obraId, aprovadaEm: null },
+          select: { id: true, numero: true, valorMedido: true, periodoFim: true },
+          orderBy: { numero: "asc" },
+        }),
   ]);
   return {
     fonteRecursoId: fontes.map((f) => ({ valor: f.id, rotulo: `${f.codigo} — ${f.descricao}` })),
     contaContabilId: contas.map((c) => ({ valor: c.id, rotulo: `${c.codigo} — ${c.nome}` })),
     orgaoId: orgaos.map((o) => ({ valor: o.id, rotulo: `${o.codigo} — ${o.nome}` })),
+    contratoId: contratos.map((c) => ({
+      valor: c.id,
+      rotulo: `${c.numeroContrato} — ${c.contratadoNome}`,
+    })),
+    medicaoId: medicoes.map((m) => ({
+      valor: m.id,
+      rotulo: `Medição ${m.numero} — ${m.valorMedido.toFixed(2)} (até ${diaCivilBr(m.periodoFim)})`,
+    })),
   };
 }

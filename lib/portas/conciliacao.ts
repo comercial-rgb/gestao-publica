@@ -6,6 +6,7 @@ import type { TipoInternoConciliacao } from "../../modules/m09-tesouraria/domini
 import type { TipoMovimentoBancario } from "../../prisma/generated/client/client";
 import { estadoDoModoBb, mascararAgencia, mascararConta } from "../../modules/m17-banco-bb/modos";
 import { mascararCpfCnpj } from "../format/mascaras";
+import { janelaCivilDoAno } from "../../packages/datas/index";
 
 /**
  * PORTA — CONCILIAÇÃO BANCÁRIA (M09 bloco 3 + M17-a). SÓ LEITURA.
@@ -192,8 +193,9 @@ export async function lerPainelConciliacao(p: {
   const prisma = cliente();
 
   // O recorte do exercício é pelo FIM do período: um extrato é do ano em que ele fecha.
-  const inicioDoAno = new Date(Date.UTC(p.exercicio, 0, 1));
-  const inicioDoAnoSeguinte = new Date(Date.UTC(p.exercicio + 1, 0, 1));
+  // ⚠️ A JANELA DO EXERCÍCIO É CIVIL — ver docs/adr/ADR-data-civil-do-ente.md.
+  const inicioDoAno = janelaCivilDoAno(p.exercicio).inicio;
+  const inicioDoAnoSeguinte = janelaCivilDoAno(p.exercicio + 1).inicio;
 
   const extrato = await prisma.extratoBancario.findFirst({
     where: { periodoFim: { gte: inicioDoAno, lt: inicioDoAnoSeguinte } },

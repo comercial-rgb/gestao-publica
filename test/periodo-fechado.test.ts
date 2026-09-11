@@ -191,13 +191,21 @@ describe("período fechado — as três rotas", () => {
     await fecharNovembro();
     const antes = await lancamentosEmNovembro();
     const tipo = await prisma.tipoConsignacao.findFirstOrThrow({ select: { id: true } });
+    // A fonte vem da própria conta do cenário — o ingresso passou a exigi-la (ENT03c,
+    // pendência M07-FONTE-NO-MOVIMENTO). O que este teste prova é a TRAVA DE COMPETÊNCIA,
+    // e ela tem de disparar ANTES de qualquer conferência de fonte.
+    const contaDoCenario = await prisma.contaBancaria.findFirstOrThrow({
+      where: { codigo: "CC-POC-A" },
+      select: { fonteId: true },
+    });
 
     await expect(
       registrarIngressoExtra(
         prisma,
         {
           tipoConsignacaoId: tipo.id, credorConsignatario: "Caucionante",
-          contaBancaria: "CC-POC-A", valor: "50.00", data: DATA_NA_COMPETENCIA,
+          contaBancaria: "CC-POC-A", fonteId: contaDoCenario.fonteId,
+          valor: "50.00", data: DATA_NA_COMPETENCIA,
           historico: "caução em mês fechado", criadoPor: POR,
         },
         [

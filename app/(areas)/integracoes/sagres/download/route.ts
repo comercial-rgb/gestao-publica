@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { baixarPacoteSagres } from "../../../../../lib/portas/sagres";
 import { POC_SAGRES } from "../../../../../lib/portas/sagres-poc";
+import { inicioDoDiaCivil, janelaCivilDoMes } from "../../../../../packages/datas/index";
 
 /**
  * DOWNLOAD DO PACOTE SAGRES (ZIP diário/mensal + manifesto). GET autenticado — a porta chama
@@ -13,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const diaParam = req.nextUrl.searchParams.get("dia");
-  const dia = diaParam !== null && diaParam !== "" ? new Date(`${diaParam}T00:00:00Z`) : POC_SAGRES.dia;
+  const dia = diaParam !== null && diaParam !== "" ? inicioDoDiaCivil(diaParam) : POC_SAGRES.dia;
   if (Number.isNaN(dia.getTime())) {
     return NextResponse.json({ erro: "parâmetro 'dia' inválido (aaaa-mm-dd)." }, { status: 400 });
   }
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   // baixado divergiria em silêncio da prévia que a Comissão acabou de conferir na tela.
   // Ausente, cai no mês do próprio dia — o comportamento anterior, preservado para links antigos.
   const mesParam = req.nextUrl.searchParams.get("mes");
-  const mes = mesParam !== null && mesParam !== "" ? new Date(`${mesParam}-01T00:00:00Z`) : undefined;
+  const mes = mesParam !== null && mesParam !== "" ? janelaCivilDoMes(mesParam).inicio : undefined;
   if (mes !== undefined && Number.isNaN(mes.getTime())) {
     return NextResponse.json({ erro: "parâmetro 'mes' inválido (aaaa-mm)." }, { status: 400 });
   }

@@ -1,3 +1,4 @@
+import { instanteCivil } from "../../packages/datas/index";
 /**
  * PARÂMETROS POC DO SAGRES — UG e competência FICTÍCIAS, claramente identificadas como POC
  * (DIRETIVA §5: "UG sintética; nenhum dado corresponde a pessoa, empresa ou conta real").
@@ -12,7 +13,7 @@ export const POC_SAGRES = {
   /** CNPJ fictício do ente gerenciador (14 dígitos, sem máscara) — não é CNPJ real. */
   cnpjGerenciadora: "12345678000199",
   /** Dia de referência: compõe o pacote diário; seu mês/ano, o mensal. */
-  dia: new Date(Date.UTC(2026, 6, 15)),
+  dia: instanteCivil(2026, 7, 15, 12, 0, 0),
   /** Conta arrecadadora designada da UG (parâmetro de exportação da ReceitaOrcamentaria — S7). */
   codContaArrecadadora: "CC-POC-A",
   /**

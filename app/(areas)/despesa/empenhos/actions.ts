@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { registrarEmpenho } from "../../../../lib/portas/empenho";
+import { meioDiaCivil } from "../../../../packages/datas/index";
 
 export interface EstadoEmpenho {
   readonly erro?: string;
@@ -63,10 +64,11 @@ export async function empenharAction(
       numero,
       tipo: tipoBruto,
       valor,
-      // `T12:00:00Z` — meio-dia UTC. A data do fato é um DIA, não um instante; ancorar
-      // no meio-dia evita que o fuso empurre o dia para trás no `getUTCFullYear` dos
-      // guards de exercício.
-      data: new Date(`${dataBruta}T12:00:00Z`),
+      // ⚠️ MEIO-DIA CIVIL — ver `meioDiaCivil` em packages/datas. Era `T12:00:00Z`, que é
+      // meio-dia em Greenwich: o dia civil saía certo, mas por uma régua diferente da do
+      // resto do sistema. A justificativa antiga citava `getUTCFullYear` nos guards de
+      // exercício, e esses guards já leem o calendário do ente desde o ENT03b.
+      data: meioDiaCivil(dataBruta),
       credorCpfCnpj,
       historico,
       categoriaOrdemCronologica: categoriaBruta,

@@ -1697,41 +1697,284 @@ acabou e a migration ficou com **zero `DROP`**.
 
 ---
 
-## 17. O próximo passo
+## 17. ENT03c — o censo dos módulos existentes, três cadastros, e cinco tabelas mortas
 
-⚠️ **O ENT03b está FECHADO e PARADO no gate.** O molde existe e foi provado pelos cadastros
-do próprio lote; `DATA-CIVIL-RESTANTES` está fechada e provada por mutação; a varredura do
-ENT04/ENT05 trouxe treze decisões de uma vez.
+⚠️ **A CONTAGEM DO LOTE, SEPARADA — porque foi essa separação que mostrou onde estava o ganho.**
 
-**Para o ENT03c**, na ordem em que o relógio cobra:
+| Origem | Cláusulas |
+|---|---:|
+| **CENSO** — medir o que já existia contra o catálogo | **220** |
+| **CONSTRUÇÃO** — comportamento novo escrito neste lote | **0** |
+| **Total do lote** | **220** |
+| Catálogo | 91 → **311 de 2037 (15,3%)** |
 
-1. **As treze decisões da varredura** (`docs/varredura-de-modelo-ent04-ent05.md`). Elas não
-   exigem contato externo nem credencial — são decisões de **MODELO**, e o custo de tomá-las
-   agora é uma conversa; o de tomá-las depois é migração de dados sobre fatos que o tribunal
-   já recebeu. **É o item mais barato e o mais caro de adiar.**
-2. **`packages/integracao`** — cofre de credenciais por entidade e ambiente, validação contra
-   esquema, detecção de duplicidade em retransmissão, custódia de certificado. ⚠️ O achado do
-   **A3 muda a arquitetura, não a configuração**: a chave não sai do dispositivo, então a
-   assinatura acontece **na máquina do usuário**, não no servidor.
-3. **Planejamento** — cotas, contingenciamento, prévia, emendas, audiências, que saíram do
-   ENT03b por decisão da revisão.
-4. **Baixar os leiautes públicos** — TCE/SC (IN TC-28/2021, IN TC-35/2024), ADN, eSocial.
-   Credenciamento é **calendário, não desenvolvimento**.
+⚠️ **E O ZERO DA SEGUNDA LINHA É O RESULTADO, não uma falha.** O ENT03b mediu que o
+catálogo tem ~4 cláusulas por cadastro e concluiu que um lote de 60–90 precisaria de ~15
+cadastros. O ENT03c testou a outra hipótese — **medir rende mais que construir** — e o
+número é 220 contra 40. O molde do ENT03b continua sendo o que torna os cadastros baratos;
+o que este lote mostra é que **a fila do que já existe e nunca foi olhado é maior do que a
+fila do que falta construir**, e sai por uma fração do custo.
+
+Os três cadastros entregues pelo molde (dívida fundada, dívida ativa, obras com medições)
+**não acrescentaram cláusula nenhuma ao placar** — eles deram TELA ao que o censo tinha
+acabado de marcar como `IMPLEMENTADO_NAO_VALIDADO`. Isso é honesto e está registrado: a
+marcação deles subiria para `VALIDADO_LOCALMENTE` quando os roteiros contábeis estiverem
+parametrizados nesta máquina (ver 17.6).
+
+### 17.1 · Antes de tudo: a PROPRIEDADE, não o padrão
+
+Duas vezes uma guarda procurou uma forma e achou só aquela forma. Este lote parou de
+enumerar formas:
+
+**A suíte inteira sob `Pacific/Kiritimati` (UTC+14) dá resultado IDÊNTICO ao de
+`America/Sao_Paulo`** — 183 arquivos, 1.869 testes, 0 falhas nos dois fusos. `npm run
+test:fuso` entrou no gate. ⚠️ E a descoberta anterior à execução importa: **`TZ` não estava
+definido em lugar nenhum do repositório** — a suíte sempre rodou no fuso da máquina, que é
+exatamente o `FUSO_DO_ENTE`. Todo `getFullYear()` do código estava acidentalmente certo.
+
+**O padrão da fixture saiu do meio-dia para a HORA DE BORDA** (`test/instantes.ts`,
+`DIA_DE_BORDA` = 22:00 civis). A linha trocada foi UMA — a dotação inicial de
+`test/ficha-teste.ts`, que alcança quase toda a suíte. Ela acusou **o `c2`**, a
+caracterização que existe para vigiar os dois eixos de data: a asserção lia
+`competencia.toISOString().slice(0,10)` e dizia "2026-01-02". A competência civil continua
+1º de janeiro; **quem estava em Greenwich era o teste** — dentro do próprio arquivo que
+caracteriza o defeito.
+
+⚠️ **AS DUAS ALAVANCAS PEGAM CLASSES DIFERENTES, e nenhuma pega a da outra:**
+
+| | pega | não pega |
+|---|---|---|
+| **fuso deslocado** | quem lê o relógio do HOSPEDEIRO (`getFullYear()`, `toLocaleString` sem `timeZone`) | eixo UTC — está errado em qualquer máquina, de forma estável |
+| **hora de borda** | quem lê o eixo UTC (`getUTCFullYear`, `Date.UTC`, ISO fatiado) | eixo do hospedeiro — nesta máquina ele acerta |
+
+### 17.2 · `DATA-CIVIL-APRESENTACAO`: a pendência dizia ~10, a medição achou 57
+
+Terceira vez consecutiva em que a estimativa de um padrão fica muito abaixo da medição
+(foram 5→35 no ENT03b, e agora 10→57). **Cinco formas, e duas eram desconhecidas:**
+
+1. `getUTC*` — leitura por UTC;
+2. `toISOString().slice(0,10)` — impressão por UTC;
+3. `new Date(Date.UTC(...))` — construção de janela por UTC (a do ENT03b);
+4. **`toLocaleString("pt-BR")` sem `timeZone`** — o relógio de QUEM RENDERIZA. Em componente
+   de servidor, isso é a **máquina**. Oito telas imprimiam instante assim;
+5. **`` new Date(`${dia}T23:59:59.999Z`) ``** — a mais traiçoeira, porque *parece*
+   deliberada: hora escrita à mão, com milissegundos, como quem sabe o que faz. E 23:59:59Z
+   é 20:59:59 no ente — o corte perde as três últimas horas do dia.
+
+O que a varredura achou, nomeado:
+
+- **`dataBr` de `lib/recorte.ts`** — o formatador que quase toda tela usa — **imprimia por
+  UTC**. Um fato de 31/12 às 22:00 saía "01/01", no ano seguinte;
+- **treze sítios da BORDA DE ESCRITA** (empenho, liquidação, pagamento, ordem, arrecadação,
+  crédito adicional, movimentação bancária) ancoravam a data do fato em `T12:00:00Z` — que é
+  meio-dia em **Greenwich**. O dia civil saía certo, mas por uma régua diferente da do resto
+  do sistema, e "certo por outra régua" é como as cinco formas nasceram, uma a uma. Virou
+  `meioDiaCivil` em `packages/datas`;
+- a **competência da remessa SAGRES** era normalizada pelo último dia do mês em UTC — que no
+  horário de verão cai às 21:00 do penúltimo dia do ente, e o pacote mensal perderia o último
+  dia inteiro.
+
+A guarda `data-civil.test.ts` **cresceu de escopo** (agora varre `app/`, `lib/` e
+`components/`, além do domínio) e **de padrão** (as cinco formas). Provada por mutação:
+reintroduzir `new Date().getFullYear()` numa tela faz o teste acusar o arquivo e a linha.
+
+### 17.3 · `M07-FONTE-NO-MOVIMENTO`: o defeito era pior que a pendência
+
+A pendência dizia "o movimento extraorçamentário não tem fonte, então o saldo por fonte tem
+um balde `(sem fonte declarada)`" — o que descreve um buraco **honesto**, visível na tela.
+
+⚠️ **A medição achou outra coisa.** `extraorcamentarioPorFonte` atribuía **todos** os
+movimentos à fonte PADRÃO da conta bancária. Numa conta de fonte única isso acerta por
+coincidência; mas desde o ADR de 2026-09-10 uma conta admite um **rol** de fontes (TR
+5.10.2.6). Numa conta multifonte, a fonte padrão é um **palpite** — e o palpite estava no
+número que existe para provar que recurso vinculado não custeou outra coisa.
+
+Pior: **o dispêndio já conferia a fonte contra o rol e não a gravava.** Conferir e esquecer
+é o pior dos dois mundos — o guard roda, o operador declara a fonte certa, o dado se perde,
+e a consulta responde pela conta de novo.
+
+Fechado: `MovimentoExtraorcamentario.fonteId` (nullable, porque os movimentos antigos não
+têm como saber — preenchê-los seria escrever a invenção no banco), o ingresso passou a
+**exigir e conferir** a fonte contra o rol, o estorno **herda** a do original, e a consulta
+lê a do movimento. **Provado por mutação**: com a atribuição antiga, o teste novo acusa
+`10.000,00` na fonte livre e **nada** no FUNDEB — 7.000 de dinheiro vinculado contados como
+livre.
+
+### 17.4 · O censo — e o que ele diz sobre "BASE_FORTE"
+
+Nove seções varridas contra M01–M22. ⚠️ **O achado estrutural: "BASE_FORTE" no mapa de
+lacunas significa "existe um arquivo com esse nome"** — e o próprio mapa avisa isso. Medido
+cláusula a cláusula, o M10 se parte em dois:
+
+- **o almoxarifado é CONTÁBIL, não FÍSICO.** Move VALOR por classe de material contra a
+  conta de estoque do PCASP. **Não há quantidade** — logo não há preço médio, saldo mínimo,
+  inventário, depósito, lote nem validade. **20 das 25 cláusulas da 5.18 são
+  `AUSENTE_CONFIRMADO`**, numa seção que o mapa classificava como base forte;
+- **o patrimônio é a CONTABILIDADE do bem, não a GESTÃO dele.** Tombamento, classe, valor
+  contábil, depreciação por competência (NBC TSP 07, os três métodos do MCASP) e alienação
+  com resultado — tudo provado. Não há localização, responsável, estado de conservação,
+  comissão, termo nem etiqueta;
+- **o M11 tem o PROCESSO e o CONTRATO; não tem a COMPRA.** A cadeia processo → homologação →
+  contrato → aditivo → empenho → liquidação → medição é das partes mais bem provadas do
+  repositório. Produto, proposta, lance, comissão, fornecedor, ordem de compra, ata de
+  registro de preços, plano anual e pesquisa de preços: nenhum tem modelo.
+
+Nos três casos **o motor é bom e está provado; o que falta é o cadastro que o alimenta.** É
+a diferença entre "ampliar o que existe" e "construir o que falta", e ela muda o custo do
+próximo lote.
+
+Achados nomeados durante a varredura:
+
+- **`ProcessoLicitatorio.modalidade` é NOT NULL** — a 5.17.16 ("digitar o processo sem
+  modalidade e escolhê-la após o parecer jurídico") é **impedimento de modelo**, não tela que
+  falta;
+- **o motor de workflow EXISTE — no M21.** Roteiro copiado na abertura, etapa com setor e
+  prazo, situação derivada dos movimentos, prazo contado do recebimento, tramitação só para
+  quem é lotado no setor. A licitação simplesmente **não está ligada a ele**. Por isso a
+  5.17.17 é `PARCIAL` e não `AUSENTE`;
+- **o leiaute do TCM-BA pede o número do SUBEMPENHO** e o gerador repete o do empenho, porque
+  subempenho não existe no modelo. A remessa declara um conceito que o sistema não tem.
+
+### 17.5 · ⚠️ CINCO TABELAS MORTAS — e o guard que agora as vigia
+
+`ParecerContrato` e `CertidaoFornecedor` estão no schema, com os tipos certos, migration
+aplicada — e **nenhuma linha de código escrita à mão as lê ou escreve**. As 57 ocorrências
+dos dois nomes estão todas em `prisma/generated/`.
+
+⚠️ **É o modo de falha mais perigoso deste inventário: a tabela PARECE atendimento.** Quem
+abre o schema perguntando "o sistema registra parecer jurídico?" acha `ParecerContrato` com
+`JURIDICO`, `TECNICO`, `CONTROLE_INTERNO` e `CONTABIL`, e conclui que sim. É literalmente a
+regra do prompt — *"código que existe não é comportamento provado"* — acontecendo.
+
+Virou guard permanente: `test/modelo-sem-caso-de-uso.test.ts`. E quando ele ficou **correto**
+achou mais três: `TipoLancamentoReceitaSagres`, `DeParaContaSiga` e `DeParaFonteSiga`.
+
+⚠️ **O guard errou duas vezes antes de acertar, e as duas lições ficaram no código:**
+
+1. **prosa não é código.** Ele ficava verde sozinho e vermelho na suíte completa — e quem o
+   acusava era a **evidência do próprio catálogo**, que explica em português que
+   `ParecerContrato` é tabela sem caso de uso. Um nome citado dentro de uma string é
+   documentação, exatamente como dentro de um comentário (`test/prosa.ts`);
+2. **delimitador aninhado é gramática, não padrão.** A primeira versão do removedor de
+   literais era regex, e um backtick dentro de uma string comum fazia o padrão engolir
+   centenas de linhas — **vinte modelos legítimos apareceram como órfãos**. Virou varredor de
+   caracteres;
+3. e a tentação que foi recusada: aceitar o **nome do campo de relação** como prova de uso.
+   Não serve — `pareceres` aparece quatro vezes no repositório e **nenhuma** é de
+   `ParecerContrato`; são os pareceres do PROCESSO, no M21. A dedução por nome de campo teria
+   escondido justamente o achado.
+
+### 17.6 · Os três cadastros pelo molde — e o que o navegador provou
+
+Dívida fundada, dívida ativa e obras com medições: **os três saíram do próprio censo**, com
+o mesmo padrão — caso de uso completo, invariante provado, e nenhuma rota em `app/`.
+
+⚠️ **NENHUM DELES PRECISOU DE AÇÃO NOVA NO CENSO DO M16.** As doze ações que as telas
+disparam já existiam desde que os casos de uso nasceram. É a medida mais honesta do custo do
+molde: **três descritores, nove rotas, uma migration aditiva de duas colunas.**
+
+Smoke: **34 passos, 0 falhas, duas execuções** (`scripts/smoke-ent03c.ts`).
+
+⚠️ **E ELE ACHOU DUAS COISAS.** A primeira execução teve 3 falhas, todas com a **mesma
+causa, e a causa não é defeito**: esta máquina não tem `RoteiroDivida` nem
+`RoteiroDividaAtiva` parametrizados, e o caso de uso **recusa fail-closed** — *"as contas do
+PCASP vêm por PARÂMETRO — nenhuma conta é inventada no código"*. O PCASP semeado aqui é o
+mínimo da POC (26 contas analíticas, sem a VPD de variação monetária). **Fabricar um código
+de conta para o smoke passar seria inventar norma da STN dentro de um teste** — não foi
+feito. Pendência `ROTEIROS-PATRIMONIAIS-NAO-PARAMETRIZADOS`.
+
+A segunda foi pior e mais útil: **um passo passava pelo motivo errado.** A asserção "a
+correção aparece no histórico" procurava `"atualização monetária"` no texto da página — e
+esse é o **rótulo** de uma linha do painel de dados, que aparece com ou sem movimento. Mesma
+classe de falso-verde do ENT03b. Hoje a asserção é sobre a **aba de histórico** e prova o
+oposto: que a recusa **não deixou movimento órfão**.
+
+### 17.7 · `prisma migrate diff` no gate
+
+`npm run deriva` monta um banco de sombra, aplica migrations + `prisma/sql/`, e separa duas
+perguntas: **migrations × modelo** tem de ser vazio; **banco completo × modelo** só pode
+conter os objetos que `prisma/sql/` cria de propósito (a lista é lida dos arquivos, não
+escrita à mão). **Provado por mutação**: removida uma linha `@@index` do schema, ele produz
+exatamente o `DROP INDEX` da deriva do ENT03b.
+
+⚠️ E ele **quebrou o `prisma validate` de todo mundo** na primeira versão, porque `env()`
+do Prisma **lança** quando a variável não existe, em vez de devolver indefinido. A chave do
+banco de sombra hoje só existe quando a variável existe.
+
+### 17.8 · Os regimes, declarados
+
+| Entrega | Regime | Por quê |
+|---|---|---|
+| `DATA-CIVIL-APRESENTACAO`, `M07-FONTE-NO-MOVIMENTO` | **profundidade** | eixo de data e saldo por fonte: caracterização, teste de negação afirmando o motivo, e **mutação provada** nos dois |
+| prova de fuso, hora de borda, `deriva`, guards de censo | **profundidade** | são guards; um guard não provado por mutação é uma rede com buraco |
+| censo das 9 seções | **superfície** | teste de caso de uso e de autorização, sem caracterização nova — é medição do que já roda há meses |
+| 3 cadastros pelo molde | **superfície** | percurso de navegador por família de tela, sem tripwire mutado |
+
+Nenhum rebaixamento de profundidade para superfície neste lote.
+
+### 17.9 · O que NÃO foi feito, e está nomeado
+
+- `ROTEIROS-PATRIMONIAIS-NAO-PARAMETRIZADOS` — dívida fundada e dívida ativa só movimentam
+  depois que o ente parametrizar o roteiro. **E há um achado de superfície junto**: a tela
+  oferece a ação e o operador só descobre a falta depois de preencher o formulário inteiro;
+- `SCHEMA-SEM-CASO-DE-USO` — as cinco tabelas mortas: escrever o caso de uso ou remover;
+- `SUBEMPENHO-NO-LEIAUTE-TCM-BA` — a remessa pede o que o modelo não tem;
+- `LICITACAO-SEM-WORKFLOW` — o motor do M21 existe e a licitação não o usa; falta a FK;
+- as demais pendências do ENT03b seguem de pé, e `packages/integracao` e o **planejamento**
+  continuam fora de escopo por decisão, agora para o **ENT03d**;
+- **o lote de tenancy** segue de pé desde o ENT01 — e o censo o encontrou de novo: 5.17.34
+  (licitação multientidade) e 5.19.27/5.19.28 (patrimônio por unidade gestora, transferência
+  entre entidades) **dependem dele**, não de tela.
+
+### 17.10 · Comandos e resultados — reprodutíveis
+
+| Comando | Resultado | Data |
+|---|---|---|
+| `npm run test:tudo` | **183 arquivos, 1.869 testes, 0 falhas, 638 s** | 2026-09-11 |
+| `npm run test:fuso` (`Pacific/Kiritimati`) | **183 arquivos, 1.869 testes, 0 falhas** — idêntico | 2026-09-11 |
+
+⚠️ **UMA INTERMITÊNCIA, REGISTRADA COM O QUE SE SABE E SEM O QUE NÃO SE SABE.** A execução
+do `test:fuso` das **01:22 de 2026-09-11** acusou **2 falhas em 1.869**. Duas execuções
+seguintes do MESMO comando, no MESMO commit, deram **0 falhas** — e uma delas com o
+`next start -p 3011` do smoke ainda de pé, que é a configuração mais carregada das três.
+Máquina de 8 GB, suíte serializada contra um banco só.
+
+⚠️ **E O QUE FALTA AQUI É CULPA DA MINHA FERRAMENTA, NÃO DO TESTE: os nomes dos dois testes
+que falharam NÃO foram capturados.** O comando canalizava a saída por um `grep` que descartou
+o bloco de falhas antes de ele chegar ao arquivo. Uma intermitência sem o nome do teste é
+quase inútil — ela não se investiga e não se reproduz. As execuções seguintes passaram a
+gravar o log inteiro em arquivo e só depois filtrar. **A causa da falha segue não isolada**,
+e está aqui por isso: descartá-la em silêncio seria exatamente o que a regra do lote proíbe.
+| `npm run test:rapido` | 583 testes, 0 falhas, ~9 s | 2026-09-11 |
+| `npm run deriva` | migrations × modelo limpo; 24 objetos de `prisma/sql/` | 2026-09-11 |
+| `npx tsx scripts/smoke-ent03c.ts` | **34 passos, 0 falhas** — duas execuções | 2026-09-11 |
+| `npx tsc` (backend, app, scripts) | 0 erros nos três | 2026-09-11 |
+| `npx next build` | limpo; as 9 rotas novas na tabela | 2026-09-11 |
+| `npx tsx scripts/cobertura-de-tsconfig.ts` | **787 de 787 cobertos, 0 descobertos** | 2026-09-11 |
+| `npx tsx scripts/marcar-catalogo.ts --aplicar` | **311 de 2037 (15,3%)** | 2026-09-11 |
+
+## 18. O próximo passo
+
+⚠️ **O ENT03c está FECHADO e PARADO no gate.**
+
+**Para o ENT03d**, na ordem em que o relógio cobra:
+
+1. **As treze decisões da varredura do ENT04/ENT05** (`docs/varredura-de-modelo-ent04-ent05.md`).
+   Continuam sendo o item mais barato e o mais caro de adiar — são decisões de **modelo**, e
+   o custo de tomá-las depois é migração sobre fatos que o tribunal já recebeu.
+2. **Continuar o censo.** Ele rendeu **220 cláusulas**; sobram **1.726** em `NAO_VERIFICADO`,
+   e as seções com código no disco e sem medição ainda são muitas — 5.12 (folha, em outro
+   ORM), 5.8 (características gerais), 5.20–5.22. ⚠️ **É o melhor retorno por hora do
+   projeto, e o ENT03c só confirmou isso.**
+3. **`packages/integracao`** — cofre de credenciais, validação contra esquema, detecção de
+   duplicidade, custódia de certificado. O achado do A3 muda a arquitetura, não a
+   configuração.
+4. **Planejamento** — cotas, contingenciamento, prévia, emendas, audiências.
 5. **A decisão de ente que trava duas linhas do inventário**: *qual banco o município usa*.
 
-⚠️ **E o que a medição deste lote diz sobre o desenho dos próximos.** O molde cortou o custo
-por cadastro; o catálogo tem **~4 cláusulas por cadastro**. Um lote que queira 60–90 cláusulas
-precisa de **~15 cadastros pelo molde** — não de mais profundidade nos que já existem. Os
-candidatos com modelo já pronto e sem tela são: **dívida fundada, PPP, obras com medições,
-diárias e adiantamentos, extraorçamentário, e os cadastros do ENT05** (almoxarifado,
-patrimônio, frota). Cada um deles é hoje um descritor e duas rotas.
-
-⚠️ **O padrão a procurar continua o mesmo, e já apareceu QUATRO vezes**: o modelo responde
-"agora" e o documento pergunta "naquela data". Foi a competência, a conta multifonte, a
-conciliação — e agora, na varredura, a **posição de estoque**, o **preço médio**, a **margem
-consignável** e a **situação do bem**. Quando um requisito disser "na data", **verifique antes
-de construir se o modelo tem o eixo**.
-
-E de pé desde o ENT01: o **lote de tenancy** fecha os itens 4, 5 e 7 do incremento do ENT01 e
-o teste 1 do ENT02. Enquanto ele não vier, esses continuam declarados — nunca marcados como
-atendidos, e nenhum município novo habilitado.
+⚠️ **E O QUE A MEDIÇÃO DESTE LOTE DIZ SOBRE O DESENHO DOS PRÓXIMOS.** O ENT03b concluiu que
+um lote de 60–90 cláusulas precisaria de ~15 cadastros pelo molde. **A conclusão estava
+certa e a pergunta estava errada.** Construir rende ~4 cláusulas por cadastro; **medir
+rendeu 220 num lote só** — e medir é também o que impede o lote seguinte de construir por
+cima de uma ausência que ninguém tinha confirmado. A ordem certa é **censar primeiro,
+construir depois**, e as 1.726 cláusulas não verificadas são a fila.

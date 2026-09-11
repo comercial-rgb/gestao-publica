@@ -15,6 +15,7 @@ import {
 import { lerContasBancarias } from "../../../../lib/portas/pagamento";
 import { dataBr, descreverRecorte, recorteDe } from "../../../../lib/recorte";
 import { FormAutorizar, FormCancelar, FormOrdem } from "./FormOrdem";
+import { instanteCivilBr } from "../../../../packages/datas/index";
 
 /**
  * ORDENS DE PAGAMENTO — as QUATRO ETAPAS, cada uma com o seu estado real.
@@ -51,7 +52,9 @@ function tomDoEstado(estado: string): StatusBadge {
 }
 
 function instante(d: Date): string {
-  return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  // ⚠️ SEM `timeZone`, o `Intl` usa o relógio de QUEM RENDERIZA — a máquina, num
+  // componente de servidor. `instanteCivilBr` fixa o fuso do ente.
+  return instanteCivilBr(d);
 }
 
 export default async function OrdensDePagamentoPage({

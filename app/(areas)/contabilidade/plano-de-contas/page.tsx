@@ -12,6 +12,7 @@ import {
 } from "../../../../lib/portas/contabilidade";
 import { gerarBalancete, type LinhaDoBalancete } from "../../../../lib/portas/livros";
 import { descreverRecorte, recorteDe } from "../../../../lib/recorte";
+import { janelaCivilDoAno } from "../../../../packages/datas/index";
 
 /**
  * PLANO DE CONTAS PCASP — o cadastro (M01) com o SALDO de cada conta ao lado.
@@ -70,8 +71,10 @@ export default async function PlanoDeContasPage({
     // ⚠️ A JANELA DO SALDO É O EXERCÍCIO INTEIRO do recorte — o saldo que se espera ver ao lado de
     // uma conta do plano é o acumulado do ano, não o de uma janela arbitrária. Quem quer o saldo
     // de um mês tem o Balancete, que é a tela feita para escolher a janela.
-    const desde = new Date(Date.UTC(recorte.exercicio, 0, 1, 0, 0, 0));
-    const ate = new Date(Date.UTC(recorte.exercicio, 11, 31, 23, 59, 59));
+    // ⚠️ A JANELA DO EXERCÍCIO É CIVIL. Construída em UTC, ela começava às 21:00 de
+    // 31/12 do ano anterior e terminava às 20:59:59 de 31/12 — deixando de fora os
+    // lançamentos da noite do último dia e trazendo os da véspera do primeiro.
+    const { inicio: desde, fim: ate } = janelaCivilDoAno(recorte.exercicio);
     const [plano, analitico, sintetico] = await Promise.all([
       listarPlanoDeContas(),
       gerarBalancete({ desde, ate, modo: "ANALITICO" }),

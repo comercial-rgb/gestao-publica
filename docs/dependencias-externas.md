@@ -180,3 +180,45 @@ desenvolvimento não tem `RoteiroConvenio` cadastrado, e a tela **recusa a glosa
 que falta**. Isso não é dependência externa — é **parametrização contábil do ente**, e ela é
 o mesmo tipo de decisão que o plano de contas: quem escolhe as contas é o contador do
 município, não o fornecedor. Pendência `ROTEIROS-ENT03B-PARAMETRIZACAO`.
+
+## O que o ENT03c acrescentou ao inventário
+
+O lote foi de **censo**, e censo não contrata nada: nenhuma dependência externa nova foi
+criada. O que ele fez foi **nomear** dependências que já existiam e ninguém tinha escrito.
+
+### Decisões do ente (`DECISAO_DO_ENTE`) que o censo revelou
+
+| O que trava | Onde aparece | Por que é do ente |
+|---|---|---|
+| **Roteiros contábeis da dívida fundada e da dívida ativa** | `RoteiroDivida`, `RoteiroDividaAtiva` | O par débito/crédito de cada tipo de movimento sai do PCASP **do ente**. O sistema recusa `fail-closed` em vez de escolher a conta — e é por isso que o smoke do ENT03c registra a recusa em vez de inventar um código de conta da STN. Pendência `ROTEIROS-PATRIMONIAIS-NAO-PARAMETRIZADOS`. |
+| **Quais contas bancárias comportam quais fontes** | `FonteDaContaBancaria` | O rol por conta é do ente. O ENT03c fechou a `M07-FONTE-NO-MOVIMENTO` usando esse rol para conferir a fonte do ingresso extraorçamentário — sem o rol cadastrado, o ingresso não passa. |
+| **Qual o limite interno de contratação direta**, quando mais restritivo que o oficial | `LimiteContratacao` | Já era decisão do ente; o censo confirmou que o guard usa `MIN(oficial, interno)` e que **sem limite vigente na data o sistema recusa** — nunca "passa porque falta parâmetro". |
+
+### Dependências externas que o censo nomeou, e que não existem deste lado
+
+Nenhuma delas foi construída — estão aqui porque o censo as encontrou como **ausência
+confirmada**, e é mais barato saber disso agora:
+
+- **Compras Públicas (pregão eletrônico)** — a 5.17.62 pede importação de lances por web
+  service. Quando existir, é credencial + contrato + endpoint, e depende de
+  `packages/integracao`. Marcada `AUSENTE_CONFIRMADO` e não `DEPENDENCIA_EXTERNA` porque
+  **não há sequer o lado de cá**;
+- **CATMAT (Catálogo de Materiais do Governo Federal)** — a 5.17.6. Catálogo externo: quando
+  existir, "de onde vem a lista" é dependência, não decisão;
+- **Cartório de protesto** — a 5.34.23 pede remessa para cobrança em cartório. Depende de
+  convênio com a comarca;
+- **Acesso de TERCEIRO ao sistema** — a cotação online do fornecedor (5.17.48), a proposta
+  comercial (5.17.68), o portal do cidadão (5.34.10, 5.34.27) e a Manifestação de Interesse
+  Social (5.17.110) exigem que alguém de fora do ente entre no sistema. ⚠️ **Isso é
+  arquitetura de acesso, não tela**: hoje todo usuário é servidor, com perfil e unidade
+  gestora. É a mesma classe do lote de tenancy, e vale registrar junto com ele.
+
+### E o que o censo confirmou que NÃO é dependência externa
+
+- **`ParecerContrato` e `CertidaoFornecedor`** não dependem de ninguém: são tabelas do
+  próprio schema **sem caso de uso**. O que falta é código, não convênio;
+- **`DeParaContaSiga` e `DeParaFonteSiga`** idem — o de-para do leiaute do TCM-BA existe como
+  tabela e não é lido por linha nenhuma;
+- **o subempenho do leiaute do TCM-BA** é ausência de MODELO deste lado, não exigência
+  externa mal atendida: o tribunal pede o número, e o gerador repete o do empenho porque
+  subempenho não existe aqui.

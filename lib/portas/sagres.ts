@@ -41,6 +41,7 @@ import {
 } from "../../adapters/tribunais/tce-pb/sagres";
 import { resolverTribunal, type ExportadorTribunal } from "../../packages/tribunais-core";
 import { enteDoContexto } from "../../modules/m01-core-contabil/contexto-do-ente";
+import { anoCivil, competenciaCivil, diaCivil, janelaCivilDoMes } from "../../packages/datas/index";
 
 /**
  * PORTA — SAGRES TXT (M15). A ÚNICA superfície que a UI enxerga; o domínio (adapters/tribunais/tce-pb/sagres) nunca
@@ -150,9 +151,15 @@ export interface ParamsSagres {
  * O nome do arquivo mensal usa só mm+aaaa (ver `nomeArquivo`), logo esta normalização NÃO muda o
  * nome nem o conteúdo de nenhum pacote já aceito — só torna a competência explícita.
  */
+/**
+ * ⚠️ A NORMALIZAÇÃO ERA EM UTC, e este é o lugar onde isso decide o CONTEÚDO da remessa:
+ * o último dia do mês em Greenwich cai às 21:00 do penúltimo dia no ente durante o horário
+ * de verão, e o pacote mensal perderia o último dia inteiro. A competência que o tribunal
+ * espera é a do CALENDÁRIO DO ENTE.
+ */
 function competenciaMensalDe(p: ParamsSagres): Date {
   const base = p.mes ?? p.dia;
-  return new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + 1, 0));
+  return janelaCivilDoMes(competenciaCivil(base)).fim;
 }
 
 function reguaDe(largura: number): { dezenas: string; unidades: string } {
@@ -183,7 +190,7 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
   // O MENSAL tem competência própria (§4.4 e §4.26); o exercício da Dotacao é o do MÊS pedido, não o
   // do dia — quem pede o dia 31/12 e o mês 01 de outro ano precisa das duas coisas certas.
   const mesRef = competenciaMensalDe(p);
-  const exercicio = mesRef.getUTCFullYear();
+  const exercicio = anoCivil(mesRef);
 
   // (1) LER OS FATOS (uma vez) — para validar antes de serializar.
   const [dotacao, empenhos, liquidacoes, pagamentos, receitas, cadastro, saldos, movimentacoes, retencoes, despesasExtra] = await Promise.all([
@@ -230,10 +237,10 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
   ]);
   const arquivosGerados = [aDotacao, aEmpenhos, aLiquidacao, aPagamentos, aReceita, aCadastro, aSaldo, aMovimentacao, aRetencao, aDespesaExtra];
 
-  const mm = String(p.dia.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(p.dia.getUTCDate()).padStart(2, "0");
-  const competenciaDiaria = `${p.dia.getUTCFullYear()}-${mm}-${dd}`;
-  const competenciaMensal = `${mesRef.getUTCFullYear()}-${String(mesRef.getUTCMonth() + 1).padStart(2, "0")}`;
+  // ⚠️ AS COMPETÊNCIAS SÃO CIVIS. Um pacote pedido para 10/07 tem de conter os fatos do
+  // 10/07 DO ENTE — e o nome do arquivo tem de dizer o mesmo dia que o conteúdo.
+  const competenciaDiaria = diaCivil(p.dia);
+  const competenciaMensal = competenciaCivil(mesRef);
 
   const { manifesto } = montarPacote(
     { layout: tribunal.layoutVersao, periodicidade: "PACOTE", competencia: competenciaDiaria, codUnidadeGestora: p.codUnidadeGestora },
@@ -285,7 +292,7 @@ export async function baixarPacoteSagres(p: ParamsSagres): Promise<PacoteParaDow
   const tribunal = await tribunalDoEnte(prisma);
   // Mesma normalização da prévia — o ZIP baixado TEM de ser o que a tela mostrou.
   const mesRef = competenciaMensalDe(p);
-  const exercicio = mesRef.getUTCFullYear();
+  const exercicio = anoCivil(mesRef);
   const arquivos = await Promise.all([
     gerarDotacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, exercicio, competencia: mesRef }),
     gerarEmpenhos(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
@@ -298,10 +305,9 @@ export async function baixarPacoteSagres(p: ParamsSagres): Promise<PacoteParaDow
     gerarRetencao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia }),
   ]);
-  const mm = String(p.dia.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(p.dia.getUTCDate()).padStart(2, "0");
+
   const pacote = montarPacote(
-    { layout: tribunal.layoutVersao, periodicidade: "PACOTE", competencia: `${p.dia.getUTCFullYear()}-${mm}-${dd}`, codUnidadeGestora: p.codUnidadeGestora },
+    { layout: tribunal.layoutVersao, periodicidade: "PACOTE", competencia: diaCivil(p.dia), codUnidadeGestora: p.codUnidadeGestora },
     arquivos
   );
   return { nome: pacote.nome, zip: pacote.zip, hashPacote: pacote.manifesto.hashPacote };
@@ -403,7 +409,7 @@ function rotularResumo(r: ResumoMovimento): string {
 
 /** aaaa-mm-dd em UTC — a mesma normalização do `scripts/poc-contingencia.ts`. */
 function isoDia(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return diaCivil(d);
 }
 
 /**

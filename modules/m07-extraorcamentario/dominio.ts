@@ -188,6 +188,13 @@ export const zRegistrarIngressoExtraInput = z.object({
   tipoConsignacaoId: z.string().min(1),
   credorConsignatario: zCredor,
   contaBancaria: z.string().min(1),
+  /**
+   * ⚠️ A FONTE DO INGRESSO, e ela PASSOU A SER OBRIGATÓRIA no ENT03c. O dispêndio já a
+   * exigia e a conferia contra o rol da conta; o ingresso não — e o resultado é que a
+   * caução entrava sem fonte e o saldo por fonte da tesouraria tinha um balde residual.
+   * Ver `MovimentoExtraorcamentario.fonteId` no schema.
+   */
+  fonteId: z.string().min(1),
   valor: zValorPositivo,
   data: z.coerce.date(),
   historico: z.string().min(1),

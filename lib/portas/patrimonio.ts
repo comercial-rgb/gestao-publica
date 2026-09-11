@@ -1,6 +1,7 @@
 import { cliente, PortaSemBancoError } from "./cliente";
 import { demonstrativoPatrimonialPorClasse } from "../../modules/m10-patrimonial/demonstrativo";
 import { saldoDaDividaPorTipo } from "../../modules/m10-patrimonial/consultas";
+import { janelaCivilDoAno } from "../../packages/datas/index";
 
 /**
  * PORTA — PATRIMÔNIO (M10, TR 5.82–5.86). A tela consome ISTO (grep trivalente). LEITURA: a posição
@@ -25,7 +26,8 @@ export interface DividaPorTipoDaTela {
 
 /** O saldo da dívida consolidada por tipo, no corte do exercício (o dono do RGF Anexo 2). */
 export async function lerDividas(p: { readonly exercicio: number }): Promise<DividaPorTipoDaTela> {
-  const corte = new Date(Date.UTC(p.exercicio, 11, 31, 23, 59, 59));
+  // ⚠️ Ver o comentário gêmeo em app/(areas)/relatorios/consistencia/page.tsx.
+  const corte = janelaCivilDoAno(p.exercicio).fim;
   const s = await saldoDaDividaPorTipo(cliente(), { corte });
   return { mobiliaria: s.mobiliaria.toFixed(2), contratual: s.contratual.toFixed(2), total: s.total.toFixed(2) };
 }

@@ -1,4 +1,5 @@
 import { lerAcompanhamentoExterno } from "../../lib/portas/protocolo";
+import { instanteCivilBr } from "../../packages/datas/index";
 
 /**
  * A CONSULTA DO REQUERENTE — número + código verificador, SEM SESSÃO (5.42.58).
@@ -22,7 +23,9 @@ import { lerAcompanhamentoExterno } from "../../lib/portas/protocolo";
 export const dynamic = "force-dynamic";
 
 function instante(d: Date): string {
-  return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  // ⚠️ SEM `timeZone`, o `Intl` usa o relógio de QUEM RENDERIZA — a máquina, num
+  // componente de servidor. `instanteCivilBr` fixa o fuso do ente.
+  return instanteCivilBr(d);
 }
 
 export default async function ConsultaPublicaPage({

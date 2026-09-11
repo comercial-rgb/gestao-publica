@@ -5,6 +5,7 @@ import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
 import { gerarDiario, PortaSemBancoError, type LancamentoDoDiario } from "../../../../../lib/portas/livros";
 import { SeletorPeriodo } from "../SeletorPeriodo";
 import { lerPeriodo, PADRAO_DESDE, PADRAO_ATE } from "../periodo";
+import { diaCivilBr } from "../../../../../packages/datas/index";
 
 /** Livro DIÁRIO — todo lançamento da janela, em ordem cronológica. Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
@@ -35,7 +36,7 @@ export default async function DiarioPage({
   const linhas = lancamentos.map((l) => ({
     ...l,
     totalDebito: l.partidas.filter((p) => p.tipo === "DEBITO").reduce((s, p) => s + Number(p.valor), 0).toFixed(2),
-    dataFmt: l.data.toISOString().slice(0, 10).split("-").reverse().join("/"),
+    dataFmt: diaCivilBr(l.data),
   }));
 
   return (

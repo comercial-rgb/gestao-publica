@@ -16,6 +16,7 @@ import {
   FormIncluir,
   FormRetorno,
 } from "./FormsDoLote";
+import { anoCivil, diaCivil } from "../../../../packages/datas/index";
 
 /**
  * LOTE DE PAGAMENTO, BORDERÔ E RETORNO — a segunda metade do primeiro percurso.
@@ -41,13 +42,15 @@ export default async function LotesPage(): Promise<React.ReactElement> {
 
   try {
     const [contas, lista, ordens, signatarios] = await Promise.all([
-      contasComSaldo(new Date().toISOString().slice(0, 10)),
+      contasComSaldo(diaCivil(new Date())),
       lotes(),
       ordensDisponiveisParaLote(),
       possiveisSignatarios(),
     ]);
 
-    const exercicio = new Date().getFullYear();
+    // ⚠️ ERA `getFullYear()` — o ano do relógio da MÁQUINA. Em 31/12 às 22:00 no ente,
+    // uma máquina em UTC já diria o ano seguinte, e o lote nasceria no exercício errado.
+    const exercicio = anoCivil(new Date());
 
     return (
       <div className="space-y-6">

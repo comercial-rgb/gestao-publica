@@ -238,6 +238,7 @@ model FonteRecurso {
   cotasCmd            CotaCmd[]
   metasMba           MetaMba[]
   liberacoes         LiberacaoProgramacao[]
+  movimentosExtraorcamentarios MovimentoExtraorcamentario[]
 }
 
 /// CO — Código de Acompanhamento da Execução (SAGRES-PB).

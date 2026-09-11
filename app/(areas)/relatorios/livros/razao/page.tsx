@@ -6,6 +6,7 @@ import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
 import { gerarRazao, PortaSemBancoError, type LinhaDoRazao, type RazaoAnalitico } from "../../../../../lib/portas/livros";
 import { SeletorPeriodo } from "../SeletorPeriodo";
 import { lerPeriodo } from "../periodo";
+import { diaCivilBr } from "../../../../../packages/datas/index";
 
 /** Livro RAZÃO de uma conta — saldo anterior, movimentos com saldo corrente, saldo final. */
 export const dynamic = "force-dynamic";
@@ -38,7 +39,7 @@ export default async function RazaoPage({
     return <div>{cabecalho}<EstadoVazio titulo="Sem movimento" descricao={`A conta ${conta} não tem saldo anterior nem movimento no período.`} /></div>;
   }
 
-  const linhas = dados.linhas.map((l) => ({ ...l, dataFmt: l.data.toISOString().slice(0, 10).split("-").reverse().join("/") }));
+  const linhas = dados.linhas.map((l) => ({ ...l, dataFmt: diaCivilBr(l.data) }));
 
   return (
     <div className="space-y-4">

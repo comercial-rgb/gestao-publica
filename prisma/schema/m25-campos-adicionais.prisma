@@ -42,6 +42,10 @@ enum CadastroComCamposAdicionais {
   CONSORCIO
   OBRA
   AUDITORIA_INTERNA
+  /// ⚠️ ENT03c — os cadastros do lote do censo. O rol segue FECHADO e cada valor segue
+  /// correspondendo a uma FK real em `ValorDeCampoAdicional`.
+  DIVIDA_FUNDADA
+  DIVIDA_ATIVA
 }
 
 /// Os sete tipos da cláusula 5.29.7. Nem um a mais, nem um a menos.
@@ -151,6 +155,12 @@ model ValorDeCampoAdicional {
 
   auditoriaId String?
   auditoria   AuditoriaInterna? @relation("CampoAdicionalDeAuditoria", fields: [auditoriaId], references: [id])
+
+  dividaId String?
+  divida   DividaConsolidada? @relation("CampoAdicionalDeDivida", fields: [dividaId], references: [id])
+
+  dividaAtivaId String?
+  dividaAtiva   DividaAtiva? @relation("CampoAdicionalDeDividaAtiva", fields: [dividaAtivaId], references: [id])
 
   // ── O VALOR, na coluna do TIPO. Ver o cabeçalho: filtro de texto sobre número diz
   // que "900" é maior que "1.000". ──

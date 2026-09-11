@@ -7,6 +7,7 @@ import {
   prepararOrdem,
 } from "../../../../lib/portas/ordem-pagamento";
 import { desmascararValor } from "../../../../lib/format/mascaras";
+import { meioDiaCivil } from "../../../../packages/datas/index";
 
 export interface EstadoDaOrdem {
   readonly erro?: string;
@@ -49,7 +50,7 @@ export async function prepararOrdemAction(
       numero,
       valor,
       // `T12:00:00Z` — a data é um DIA; o fuso não a empurra para trás.
-      dataPrevista: new Date(`${dataBruta}T12:00:00Z`),
+      dataPrevista: meioDiaCivil(dataBruta),
       contaBancaria,
       fonteId,
       historico,

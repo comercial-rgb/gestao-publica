@@ -176,6 +176,7 @@ describe("M07 — Zod dos inputs", () => {
     tipoConsignacaoId: "t1",
     credorConsignatario: "INSS",
     contaBancaria: "CC-001",
+    fonteId: "fnt-500",
     valor: "150.00",
     data: new Date("2026-05-01T12:00:00Z"),
     historico: "retenção",

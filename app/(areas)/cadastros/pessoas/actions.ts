@@ -7,6 +7,7 @@ import {
   registrarPessoa,
   type PapelDePessoa,
 } from "../../../../lib/portas/pessoas";
+import { meioDiaCivil } from "../../../../packages/datas/index";
 
 /**
  * Server Actions do cadastro de pessoas.
@@ -115,7 +116,7 @@ export async function moverPapelAction(
     // um papel que vigora desde janeiro é uma coisa; carimbar janeiro como hoje é outra.
     return { erro: "Informe a data do ato." };
   }
-  const data = new Date(`${dataBruta}T12:00:00Z`);
+  const data = meioDiaCivil(dataBruta);
   if (Number.isNaN(data.getTime())) {
     return { erro: `Data inválida: "${dataBruta}".` };
   }

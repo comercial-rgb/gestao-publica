@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useMemo, useState } from "react";
+import { anoCivil } from "../packages/datas/index";
 
 /**
  * O CONTEXTO DE UI — EXERCÍCIO e UNIDADE GESTORA ativos.
@@ -77,7 +78,7 @@ export function UiContextProvider({
 }: UiContextProviderProps): React.ReactElement {
   // O exercício default é o mais recente cadastrado (a lista vem ordenada desc pela porta).
   const [exercicio, setExercicio] = useState<number>(
-    exercicios[0]?.ano ?? new Date().getUTCFullYear()
+    exercicios[0]?.ano ?? anoCivil(new Date())
   );
   const [ug, setUg] = useState<UgSelecionada>(() => ugInicial(ugs, podeConsolidado));
 

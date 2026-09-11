@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { exigirSessao } from "../../../../../lib/portas/sessao";
 import { montarDecreto, emitir } from "../../../../../lib/pdf/operacionais";
+import { anoCivil } from "../../../../../packages/datas/index";
 
 /**
  * EMISSÃO — DECRETO DE CRÉDITO ADICIONAL (TRAVA-1, F3): documento individual, lido do M03 via porta.
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const id = req.nextUrl.searchParams.get("id") ?? "";
   if (id === "") return NextResponse.json({ erro: "parâmetro 'id' do decreto é obrigatório." }, { status: 400 });
   const anoBruto = Number.parseInt(req.nextUrl.searchParams.get("ano") ?? "", 10);
-  const ano = Number.isInteger(anoBruto) ? anoBruto : new Date().getUTCFullYear();
+  const ano = Number.isInteger(anoBruto) ? anoBruto : anoCivil(new Date());
   const doc = await montarDecreto({ ano, id });
   if (doc === null) return NextResponse.json({ erro: `decreto não encontrado no exercício ${ano}.` }, { status: 404 });
   const r = await emitir(doc, `decreto-credito-${ano}`);

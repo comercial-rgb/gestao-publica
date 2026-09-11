@@ -49,16 +49,27 @@ export async function extraorcamentarioPorFonte(
       tipo: true,
       valor: true,
       pagamentoId: true,
+      fonteId: true,
       contaBancaria: { select: { fonteId: true } },
     },
   });
 
+  // ⚠️ A FONTE É A DO MOVIMENTO, e cai na da conta SÓ para os movimentos gravados antes
+  // de `MovimentoExtraorcamentario.fonteId` existir. Numa conta MULTIFONTE — que é o que
+  // a TR 5.10.2.6 exige e o ADR de 2026-09-10 implantou — a fonte padrão da conta não
+  // descreve o movimento; ela é um palpite, e o palpite mora justamente no número que
+  // prova que recurso vinculado não custeou outra coisa.
+  const fonteDo = (m: {
+    readonly fonteId: string | null;
+    readonly contaBancaria: { readonly fonteId: string };
+  }): string => m.fonteId ?? m.contaBancaria.fonteId;
+
   const por = new Map<string, ExtraDaFonte>();
-  const fontes = new Set(movimentos.map((m) => m.contaBancaria.fonteId));
+  const fontes = new Set(movimentos.map(fonteDo));
 
   for (const fonteId of fontes) {
     const daFonte = movimentos
-      .filter((m) => m.contaBancaria.fonteId === fonteId)
+      .filter((m) => fonteDo(m) === fonteId)
       .map((m) => ({
         tipo: m.tipo,
         valor: toMoney(m.valor.toFixed(2)),

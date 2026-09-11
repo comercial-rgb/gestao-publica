@@ -5,6 +5,7 @@ import { POC_SAGRES } from "./sagres-poc";
 import { criarRegistroDeOperacaoPrisma } from "../../modules/m16-travamento/operacao";
 import { lerFatosEmpenhos } from "../../adapters/tribunais/tce-pb/sagres";
 import { compararEmpenhos, criarGatewayTce, estadoDoModoTce, type LinhaComparacao, type ModoTce } from "../../adapters/tribunais/tce-pb/consulta";
+import { instanteCivil } from "../../packages/datas/index";
 
 export type { LinhaComparacao, SituacaoComparacao } from "../../adapters/tribunais/tce-pb/consulta";
 
@@ -33,7 +34,7 @@ export async function compararEmpenhosLocalTce(): Promise<ResultadoComparacaoTce
   const modo: ModoTce = "MOCK";
 
   // Local: os empenhos da massa POC (leitura). TCE: o gateway MOCK (fixtures conformes).
-  const locais = await lerFatosEmpenhos(prisma, { codUnidadeGestora: POC_SAGRES.codUnidadeGestora, dia: new Date(Date.UTC(2026, 6, 10)) });
+  const locais = await lerFatosEmpenhos(prisma, { codUnidadeGestora: POC_SAGRES.codUnidadeGestora, dia: instanteCivil(2026, 7, 10, 12, 0, 0) });
   const resposta = await criarGatewayTce(modo).consultar("empenhos", { codUnidadeGestora: POC_SAGRES.codUnidadeGestora, dataMinima: "2026-07-01", dataMaxima: "2026-07-31" });
 
   const linhas = compararEmpenhos(locais, resposta.registros);

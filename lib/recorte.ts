@@ -9,6 +9,8 @@
  *
  * ⚠️ SEM DOMÍNIO E SEM PRISMA — é `lib/` fora de `lib/portas/`. Só parse de string.
  */
+import { diaCivilBr } from "../packages/datas/index";
+
 
 /** O exercício default quando a URL ainda não tem um (o primeiro render, antes da ilha sincronizar). */
 export const EXERCICIO_PADRAO = 2026;
@@ -51,7 +53,12 @@ export function descreverRecorte(r: RecorteDaPagina): string {
   }`;
 }
 
-/** Data (UTC) → "dd/mm/aaaa". A data do FATO, como o usuário a escreve. */
+/**
+ * Data → "dd/mm/aaaa" NO CALENDÁRIO DO ENTE. A data do FATO, como o usuário a escreve.
+ *
+ * ⚠️ ESTA LINHA IMPRIMIA POR UTC, e é o formatador que quase toda tela usa. Um fato de
+ * 31/12 às 22:00 saía "01/01" — e no ano seguinte. Ver docs/adr/ADR-data-civil-do-ente.md.
+ */
 export function dataBr(d: Date): string {
-  return d.toISOString().slice(0, 10).split("-").reverse().join("/");
+  return diaCivilBr(d);
 }

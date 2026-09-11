@@ -23,6 +23,7 @@ import {
 } from "../../modules/m08-restos-a-pagar/guard-exercicio.js";
 import { encerrarExercicio } from "../../modules/m08-restos-a-pagar/exercicio.js";
 import { gerarAnulacaoParcial, gerarEstorno } from "../../packages/ledger/index.js";
+import { diaCivil } from "../../packages/datas/index.js";
 import { toMoney } from "../../packages/contracts/index.js";
 
 /**
@@ -253,7 +254,14 @@ describe("caracterização · saldo de dotação por data", () => {
     // a MSC de março mostraria a LOA "entrando" em março.
     const loa = movimentos.find((m) => m.tipo === "DOTACAO_INICIAL");
     expect(loa).toBeDefined();
-    expect(loa!.competencia.toISOString().slice(0, 10)).toBe("2026-01-01");
+    // ⚠️ A LEITURA É PELA RÉGUA CIVIL, NÃO PELO ISO. Esta linha dizia
+    // `.toISOString().slice(0,10)` e passou por meses — porque a fixture da ficha nascia
+    // ao MEIO-DIA UTC, e ao meio-dia os dois eixos coincidem. Quando o ENT03c moveu o
+    // padrão da fixture para a HORA DE BORDA (22:00 civis, `test/instantes.ts`), a
+    // asserção acusou "2026-01-02": a competência CIVIL continua 1º de janeiro, e quem
+    // estava em Greenwich era o TESTE. É a mesma classe de defeito que este arquivo
+    // caracteriza — encontrada dentro do próprio arquivo que a caracteriza.
+    expect(diaCivil(loa!.competencia)).toBe("2026-01-01");
     // E os dois eixos são MESMO diferentes nesta linha — a prova de que não é um alias.
     expect(loa!.competencia.getTime()).not.toBe(loa!.criadoEm.getTime());
   });

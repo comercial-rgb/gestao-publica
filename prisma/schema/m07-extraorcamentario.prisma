@@ -78,6 +78,24 @@ model MovimentoExtraorcamentario {
   contaBancariaId String
   contaBancaria   ContaBancaria @relation(fields: [contaBancariaId], references: [id])
 
+  /// A FONTE DO RECURSO que este movimento carrega.
+  ///
+  /// ⚠️ ELA NÃO É A FONTE DA CONTA, e é por isso que existe como coluna. Desde o ADR de
+  /// 2026-09-10 uma conta bancária admite um ROL de fontes (`FonteDaContaBancaria`, TR
+  /// 5.10.2.6) — a conta única com fonte única era a cardinalidade errada. Enquanto o
+  /// movimento não declarava a sua, `extraorcamentarioPorFonte` atribuía TODOS os
+  /// movimentos à fonte PADRÃO da conta, e numa conta multifonte isso é exatamente o
+  /// número que não se pode inventar: o que prova que recurso vinculado não custeou
+  /// outra coisa.
+  ///
+  /// ⚠️ NULLABLE DE PROPÓSITO. Os movimentos gravados ANTES desta coluna não têm como
+  /// saber a fonte, e preenchê-los com a da conta seria escrever a invenção no banco em
+  /// vez de deixá-la na consulta. Eles continuam somando no balde declarado
+  /// `(sem fonte declarada)` da tela de tesouraria; os novos, não — o caso de uso EXIGE a
+  /// fonte e a confere contra o rol da conta.
+  fonteId String?
+  fonte   FonteRecurso? @relation(fields: [fonteId], references: [id])
+
   tipo  TipoMovimentoExtra
   /// SEMPRE positivo. O sinal vem do tipo.
   valor Decimal            @db.Decimal(18, 2)
@@ -109,4 +127,5 @@ model MovimentoExtraorcamentario {
   @@index([pagamentoId])
   @@index([estornoDeId])
   @@index([data])
+  @@index([fonteId])
 }

@@ -14,6 +14,7 @@ import {
   FormJustificar,
   FormPendenciaManual,
 } from "./FormsDoPeriodo";
+import { diaCivil } from "../../../../../packages/datas/index";
 
 /**
  * CONCILIAÇÃO POR PERÍODO — TR 5.10.2.45/.46/.49/.52.
@@ -48,7 +49,7 @@ export default async function PeriodoDeConciliacaoPage({
   );
 
   try {
-    const contas = await contasComSaldo(new Date().toISOString().slice(0, 10));
+    const contas = await contasComSaldo(diaCivil(new Date()));
     const conta = contas.find((c) => c.id === contaParam) ?? contas[0];
 
     if (conta === undefined) {

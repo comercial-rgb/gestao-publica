@@ -25,6 +25,7 @@ import {
   type ResultadoSubmissao,
   type ViolacaoCaptura,
 } from "../../adapters/tribunais/tce-pb/captura";
+import { anoCivil } from "../../packages/datas/index";
 
 export type { EntidadeCaptura, ModoCaptura } from "../../adapters/tribunais/tce-pb/captura";
 
@@ -52,7 +53,8 @@ async function elementosDaEntidade(entidade: EntidadeCaptura): Promise<Record<st
   const ug = POC_SAGRES.codUnidadeGestora;
   const cnpj = POC_SAGRES.cnpjGerenciadora;
   const dia = POC_SAGRES.dia;
-  const exercicio = dia.getUTCFullYear();
+  // ⚠️ O EXERCÍCIO DO FATO É O DO CALENDÁRIO DO ENTE.
+  const exercicio = anoCivil(dia);
   switch (entidade) {
     case "dotacao":
       return (await lerFatosDotacao(prisma, { codUnidadeGestora: ug, exercicio })).map((f) => dotacaoParaCaptura(f));

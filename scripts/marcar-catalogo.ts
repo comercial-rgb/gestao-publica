@@ -80,6 +80,17 @@ const SMOKE_03B = "scripts/smoke-ent03b.ts (40 passos, 0 falhas, 2026-09-11, dua
  * Cada linha é uma afirmação, e ela tem de ser defensável sozinha. A evidência aponta o
  * arquivo e o teste — não o módulo em geral.
  */
+/**
+ * O CENSO DO ENT03c — a varredura sistemática dos módulos existentes contra o catálogo.
+ *
+ * ⚠️ ELE NÃO É UMA LEITURA DE CÓDIGO. Cada marcação abaixo que afirma PRESENÇA cita o
+ * teste que a sustenta, e todos rodaram no gate deste lote; cada marcação que afirma
+ * AUSÊNCIA tem contraprova executável em `test/censo-de-ausencias.test.ts`, que quebra no
+ * dia em que a coisa ausente nascer. "Código que existe não é comportamento provado" vale
+ * nos dois sentidos: arquivo que falta também não é ausência provada.
+ */
+const CENSO = "Censo ENT03c (varredura sistemática módulo x catálogo):";
+
 const MAPA: Readonly<Record<string, Marca>> = {
   // ══ ENT03a ═══════════════════════════════════════════════════════════════
   //
@@ -553,6 +564,869 @@ const MAPA: Readonly<Record<string, Marca>> = {
     situacao: "DEPENDENCIA_EXTERNA",
     evidencia: `Verificado: NÃO há custódia de certificado A1 em HSM. O modo \`QUALIFICADA\` existe no enum porque é o destino declarado, e o caso de uso RECUSA produzi-lo, com motivo — um modo que devolvesse "assinado" sem certificado seria uma assinatura FABRICADA, e ela pareceria válida na tela exatamente como a verdadeira. Depende de provedor de custódia contratado. Pendência: item 5 do ENT03a, adiado para o ENT03b e depois para o ENT03c (packages/integracao).`,
   },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ENT03c · O CENSO DOS MÓDULOS EXISTENTES
+  //
+  // ⚠️ O QUE A VARREDURA ACHOU, E É O ACHADO DO LOTE: "BASE_FORTE" no mapa de lacunas
+  // significa "existe um arquivo com esse nome", e o próprio mapa avisa isso. Medido
+  // contra o catálogo, o M10 se parte em dois:
+  //
+  //   · o ALMOXARIFADO é CONTÁBIL, não FÍSICO — move VALOR por classe de material contra
+  //     a conta de estoque do PCASP. Não há quantidade, unidade, depósito, lote nem
+  //     validade. Sem quantidade não existe preço médio, saldo físico mínimo nem
+  //     inventário: 20 das 25 cláusulas da 5.18 são AUSENTE_CONFIRMADO;
+  //   · o PATRIMÔNIO é a CONTABILIDADE do bem, não a GESTÃO dele — tombamento, classe,
+  //     valor contábil, depreciação por competência e alienação com resultado, tudo com
+  //     lançamento na mesma transação. Não há localização, responsável, estado de
+  //     conservação, comissão nem termo.
+  //
+  // Nos dois casos o MOTOR é bom e está provado; o que falta é o CADASTRO que o alimenta.
+  // Essa é a diferença entre "ampliar o que existe" e "construir o que falta", e ela muda
+  // o custo do próximo lote. As ausências têm contraprova executável em
+  // `test/censo-de-ausencias.test.ts`: o dia em que uma delas nascer, o teste quebra
+  // nomeando a cláusula que precisa mudar de situação.
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // ── 5.18 · ALMOXARIFADO (M10) ──────────────────────────────────────────────
+  "5.18.1": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} Entradas, saídas de consumo e ajustes movimentam o saldo e lançam no razão na MESMA transação — 5.000 − 1.800 − 200 = 3.000 e o razão concorda (m10-almoxarifado.test.ts t1). O consumo acima do estoque é recusado, o IGUAL passa e +0,01 depois não (t3), e dois consumos concorrentes contra o mesmo estoque gravam UM só (t4). ⚠️ FALTA a TRANSFERÊNCIA entre depósitos — não há depósito no modelo — e falta a "atualização dos estoques" no sentido FÍSICO: \`MovimentoAlmoxarifado\` tem \`valor\` e não tem quantidade.`,
+  },
+  "5.18.2": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não existe requisição ao almoxarifado: nenhum modelo, nenhum caso de uso, nenhuma tela. A saída é registrada direto por \`registrarSaidaConsumo\`, sem pedido que a anteceda — e portanto não há o que "sugerir quantidades disponíveis" nem o que anular ao rejeitar. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.18.3": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há saldo FÍSICO nem limite mínimo. \`saldoDoAlmoxarifado\` soma VALOR (Σ valor × sinal do tipo) e o modelo não tem quantidade nem unidade de medida — a pergunta "quantas resmas restam" não tem onde ser respondida. ⚠️ Isto não é uma tela que falta: é ausência de MODELO, e construir a tela primeiro produziria um número inventado.`,
+  },
+  "5.18.4": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há cota de consumo por departamento — nem departamento como eixo do movimento. \`MovimentoAlmoxarifado\` liga classe de material, liquidação e lançamento; não liga unidade requisitante. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.18.5": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não existe consulta de últimas compras para estimativa de custo: não há pesquisa de preços, cotação nem histórico por produto em nenhum dos módulos (grep por \`ultimasCompras|pesquisaDePreco|cotacaoDePreco|precoUltimaCompra\` em prisma/schema, modules, lib e app: zero). O M11 registra o VALOR do contrato, não o preço do item.`,
+  },
+  "5.18.6": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não existe requisição ao Compras para reposição de estoque — nem o pedido, nem o ponto de reposição que o dispararia (que dependeria do saldo físico, também ausente). Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.18.7": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} A entrada NASCE da liquidação — o material entra porque foi recebido e atestado — e uma liquidação pode abastecer VÁRIAS classes sem que a soma passe do que ela liquidou (m10-almoxarifado.test.ts t2). O guard do elemento fecha a porta ao que não é material de consumo: serviço (39) não entra e o 32 é recusado com mensagem de DECISÃO, não de defeito (t9, t10). ⚠️ O QUE FALTA é o ITEM: não há item de ordem de compra nem de empenho no modelo, então "importar sem redigitação dos produtos" não tem de onde importar. O operador digita valor e classe.`,
+  },
+  "5.18.8": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Usuários não requisitam materiais: não há pedido, não há acompanhamento de pedido, não há caixa de entrada do responsável pelo almoxarifado. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.18.9": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem requisição não há atendimento parcial nem saldo não atendido — as duas coisas que esta cláusula pede são propriedades de um pedido que não existe no modelo. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.18.10": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há centro de custo na distribuição de materiais: o movimento não carrega unidade, setor nem departamento, e a VPD do consumo é lançada contra a conta da classe, sem recorte. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.18.11": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Preço médio é impossível neste modelo, não apenas não implementado: preço médio é valor ÷ quantidade, e não há quantidade. ⚠️ É a família já conhecida do lote anterior — o documento pergunta uma coisa que o modelo não tem eixo para responder. Construir "preço médio" sobre o que existe produziria o valor total travestido de preço unitário.`,
+  },
+  "5.18.12": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há inventário: nem abertura, nem fechamento, nem bloqueio de movimentação durante a contagem. O que existe é o AJUSTE (\`AJUSTE_ENTRADA\`/\`AJUSTE_SAIDA\`), que é o LANÇAMENTO do resultado de um inventário — não o inventário. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.18.13": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há bloqueio por produto nem por depósito — não há produto (só classe de material) nem depósito no modelo. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.18.14": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há lote nem data de validade, e portanto não há consulta de vencimento em 30 dias nem de vencidos. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.18.15": {
+    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    evidencia: `${CENSO} ⚠️ ESTA É A CLÁUSULA FORTE DA SEÇÃO, e ela é forte de verdade. A integração com a contabilidade não é uma rotina que roda depois: a saída e os ajustes têm lançamento PRÓPRIO na mesma transação (\`TEM_ROTEIRO_ALMOXARIFADO\`), e a ENTRADA é lançada pelo M05 — deliberadamente, para não lançar o estoque duas vezes. \`conferirAlmoxarifadoContraRazao\` confronta as duas leituras independentes do mesmo saldo, e o t1 as fecha em 3.000,00 com VPD de 2.000,00. No Anexo 14 o estoque entra como ATIVO e a provisão como PASSIVO, e o superávit ignora os dois (t6). Sem tela: o almoxarifado não tem rota em app/.`,
+  },
+  "5.18.16": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} O demonstrativo por classe (TR 5.86) tem a seção do almoxarifado com saldo anterior + ingressos + atualizações = saldo final, célula a célula por literal (m10-almoxarifado.test.ts t7, m10-alienacao.test.ts t6). O corte do período é INCLUSIVO no início e a borda é a do calendário do ente — 01/01 às 00:00Z ainda é a véspera (t6b, t6c), e período invertido é fail-closed. ⚠️ FALTA o recorte por MATERIAL (o eixo é a classe contábil) e falta a distinção analítico/sintético.`,
+  },
+  "5.18.17": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há relatório por produto, nota fiscal ou setor: nenhum dos três é eixo do movimento de almoxarifado. A nota fiscal chega no M20 (importador) e não se liga ao estoque. Contraprova parcial em test/censo-de-ausencias.test.ts (produto/depósito/centro de custo).`,
+  },
+  "5.18.18": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} O relatório financeiro com entradas, saídas e saldo por período existe — é a seção do almoxarifado no demonstrativo 5.86, com os cortes de data civil provados (m10-alienacao.test.ts t6b/t6c). ⚠️ FALTA o recorte por DEPÓSITO: não há depósito no modelo, e o ente que tem três almoxarifados veria os três somados numa linha só.`,
+  },
+  "5.18.19": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há resumo anual mês a mês do saldo financeiro do estoque. O demonstrativo responde UM período por vez; a série de doze meses com resultado final do ano não existe como consulta nem como relatório.`,
+  },
+  "5.18.20": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem lote e sem validade (ver 5.18.14) não há relatório de materiais vencidos ou a vencer, e a seleção por almoxarifado/depósito também não tem eixo. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.18.21": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há múltiplos almoxarifados: \`ClasseDeMaterial\` é única no ente e o movimento não aponta depósito. "De forma integrada" pressupõe mais de um, e há exatamente um — implícito. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.18.22": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há virada mensal do almoxarifado — nem o conceito de "mês e ano do almoxarifado" como estado do módulo. O corte temporal aqui é a data do FATO em cada movimento, e o fechamento de período é o do M16 (competência), que é do razão inteiro. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.18.23": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há remessa de saída de produtos. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.18.24": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há remessa e não há requisição — logo não há como vincular uma ou mais requisições a uma remessa. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.18.25": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há fluxo de etapas da remessa (separação, conferência, transporte, entrega). ⚠️ E vale registrar o que existe perto disso: o repositório já sabe fazer fluxo com etapas e segregação — a medição de obra prova "quem mede não aprova" (m11-medicoes-integracao.test.ts t3) e a auditoria interna prova "quem relata não aprecia". O padrão existe; a remessa não.`,
+  },
+
+  // ── 5.19 · PATRIMÔNIO (M10) ────────────────────────────────────────────────
+  "5.19.1": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há registro de inventário de bens. O que existe é a REAVALIAÇÃO e o IMPAIRMENT, que são o efeito CONTÁBIL do que um inventário conclui — não o inventário. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.2": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há etiqueta nem código de barras. O \`numeroTombamento\` existe e é único, que é a metade difícil; imprimir a etiqueta é a metade que falta. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.3": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} O bem se cadastra com tombamento único, descrição, classe e data de aquisição, e a FORMA de incorporação é o TIPO do movimento: \`AQUISICAO\`, \`DOACAO_RECEBIDA\`, \`AVALIACAO_INICIAL\`, \`CUSTO_SUBSEQUENTE\` — cada um com roteiro próprio, e tipo sem roteiro parametrizado é erro nomeado com ZERO escrita (m10-patrimonio.test.ts t10). ⚠️ FALTA a classificação móvel/imóvel — não há campo de tipo do bem — e faltam comodato e permuta como formas de incorporação.`,
+  },
+  "5.19.4": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} O bem entra pela LIQUIDAÇÃO de despesa de capital, com movimento e lançamento balanceado na mesma transação (m10-patrimonio.test.ts t1); liquidação de despesa CORRENTE não incorpora bem e o SELECT prova zero (t2); liquidação anulada no M05 também não (t3). ⚠️ FALTA a ORDEM DE COMPRA e falta o ITEM: sem item não há "importação dos itens sem redigitação dos produtos" — o operador informa valor e classe.`,
+  },
+  "5.19.5": {
+    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    evidencia: `${CENSO} ⚠️ A CLÁUSULA PEDE QUE NÃO HAJA DIFERENÇA DE SALDO ENTRE PATRIMÔNIO E CONTABILIDADE, e aqui isso é estrutural, não uma conciliação que roda depois: \`MovimentoPatrimonial.lancamentoId\` é NOT NULL — não existe movimento de bem sem lançamento contábil. A conta vem da CLASSE, e o empenho de capital com contrato exige a classe, com o bem tendo de ser DELA (m11-limites.test.ts t6). Bem de outra classe é rejeitado (m10-patrimonio.test.ts t6). Sem tela de incorporação individual.`,
+  },
+  "5.19.6": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} Incorporar MAIS do que a liquidação é rejeitado (m10-patrimonio.test.ts t4) — o saldo da liquidação governa, e ele é derivado da soma das incorporações, nunca uma flag. ⚠️ FALTA o controle POR ITEM: o modelo não tem itens de empenho nem de ordem de compra, então "não incorporar duas vezes o mesmo item" é uma pergunta sem eixo. O controle é por VALOR, e duas incorporações de metade cada passam.`,
+  },
+  "5.19.7": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há tipo de bem cadastrável. O eixo de classificação é a \`ClasseDeBens\`, que é CONTÁBIL (aponta a conta do PCASP e carrega os parâmetros de depreciação) — usá-la como "tipo do bem" misturaria duas perguntas diferentes na mesma coluna.`,
+  },
+  "5.19.8": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} O mecanismo de campos personalizados EXISTE e está provado (M25, sete tipos, valor em coluna tipada), mas \`BEM\` não está no enum \`CadastroComCamposAdicionais\` — o rol é FECHADO de propósito, e cada valor corresponde a uma FK real. Acrescentar o bem é um valor no enum, uma coluna em \`ValorDeCampoAdicional\` e uma linha no descritor do molde; é barato, e não foi feito.`,
+  },
+  "5.19.9": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há cadastro contínuo nem recebimento em grande quantidade: \`adquirirBem\` cria um bem por chamada, e não há importação em lote nem tela de digitação sequencial.`,
+  },
+  "5.19.10": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} O bem não tem responsável, então "somente os bens sob a sua responsabilidade" não é um filtro possível. ⚠️ A autorização por ação existe e é boa (M16), mas ela responde "quem pode fazer o quê", não "de quem é este bem". Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.11": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há estado de conservação. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.12": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há situação física do bem (empréstimo, locação, manutenção). ⚠️ E quando ela existir, a pergunta certa é "qual era a situação NAQUELA data" — a família que já apareceu quatro vezes neste projeto. Um campo \`situacao\` responderia só "agora", e o repositório já decidiu contra colunas de estado: situação se DERIVA de movimentos append-only.`,
+  },
+  "5.19.13": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} O motor sabe o residual e PARA nele: a última parcela é o RESTO exato e a seguinte é erro (m10-competencia.test.ts t4), e a base cai com baixa e impairment (tN1, tN2) sem alterar o resto quando nada mudou (tN3, regressão). ⚠️ FALTA a CONSULTA que lista os bens que já atingiram o residual — o dado existe em \`valorContabilDoBem\`, e ninguém pergunta isso ao sistema hoje.`,
+  },
+  "5.19.14": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} A consulta de bens por localização, responsável e código do produto não existe porque os três campos não existem. Por tombamento e descrição o dado está no modelo, mas não há tela: a rota /patrimonio/bens é o DEMONSTRATIVO por classe, não a lista de bens.`,
+  },
+  "5.19.15": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} Cadastramento, classificação (classe), movimentação (onze tipos com roteiro) e baixa existem e estão provados — inclusive que a classe positiva NÃO mascara a baixa de um bem que já não vale (m10-patrimonio.test.ts t5b), que é o erro que um saldo só por classe esconderia. ⚠️ FALTA a LOCALIZAÇÃO, citada no enunciado, e falta a tela de manutenção do cadastro.`,
+  },
+  "5.19.16": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há cadastro de comissões nem vínculo de ato designatório aos atos de reavaliação, depreciação e inventário. ⚠️ O repositório JÁ SABE fazer a segregação que uma comissão formaliza — "quem mede não aprova" está provado na medição de obra e "quem relata não aprecia" na auditoria interna. O que falta é a comissão como entidade. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.17": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem inventário (5.19.1) e sem estado de conservação (5.19.11) não há como controlar os dois pelo registro dos inventários realizados. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.18": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há atualização de inventário por grupos (repartição, responsável, conta contábil, classe): não há inventário, e três dos quatro eixos de agrupamento não existem no modelo. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.19": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há transferência de bem entre departamentos — nem departamento como localização do bem. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.20": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há como alimentar o sistema com estado e localização no momento do inventário: os três conceitos (inventário, estado, localização) estão ausentes. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.21": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há relatório de inconsistência de inventário — nem "lugar de origem" do bem para comparar com onde ele foi encontrado. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.22": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há termo de abertura nem de fechamento de inventário. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.23": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} A movimentação FINANCEIRA está completa e provada: agregação (\`CUSTO_SUBSEQUENTE\`, que aumenta a base e faz a parcela seguinte crescer — m10-competencia.test.ts t5), reavaliação nos DOIS sentidos conforme NBC TSP 07 (t9), depreciação, amortização, exaustão, impairment e baixa. ⚠️ FALTA a movimentação FÍSICA, que o enunciado nomeia primeiro: não há transferência de bem. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.24": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} O histórico do bem existe e é append-only: \`MovimentoPatrimonial\` guarda cada fato com data, valor, motivo, autor e lançamento, o estorno é fato novo apontando o original (t8) e o duplo estorno é barrado pelo índice parcial, inclusive por INSERT direto (t9). O bem soma só o que é dele e a classe soma tudo, inclusive o sintético (t7). ⚠️ FALTAM os ANEXOS: \`Anexo\` não tem \`bemId\` — não há foto nem documento do bem. E falta o inventário na linha do tempo.`,
+  },
+  "5.19.25": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} O vínculo com o empenho existe pela LIQUIDAÇÃO (\`MovimentoPatrimonial.liquidacaoId\`), e a liquidação aponta o empenho — a cadeia é navegável e é a mesma que impede incorporar mais do que se liquidou. ⚠️ FALTA a ORDEM DE COMPRA, que não existe no repositório, e falta a consulta que mostra esse vínculo a partir do bem.`,
+  },
+  "5.19.26": {
+    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    evidencia: `${CENSO} Depreciação e reavaliação por BEM (o movimento aceita \`bemId\`) com histórico do valor contábil: base 12.000, residual 10%, vida 24 → parcela 450,00 e contábil 11.550,00 (m10-competencia.test.ts t1). A MESMA competência duas vezes é rejeitada e o SELECT prova UM movimento (t2); estornada, ela pode ser refeita, porque quem governa é o SALDO e não uma trava (t3). A alteração a maior e a menor são tipos distintos (\`REAVALIACAO_AUMENTO\`/\`REAVALIACAO_REDUCAO\`), e a redução que estouraria o valor contábil é recusada (t9b). Sem tela.`,
+  },
+  "5.19.27": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} O bem não tem unidade gestora. ⚠️ E há uma ausência maior por trás: o eixo de MUNICÍPIO/entidade não existe no repositório (docs/adr/ADR-eixo-de-municipio.md) — o lote de tenancy segue de pé desde o ENT01. Controlar "por unidade gestora" depende dele.`,
+  },
+  "5.19.28": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há transferência de bens entre entidades com baixa e incorporação automáticas — e não poderia haver antes do eixo de entidade (ver 5.19.27). Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.29": {
+    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    evidencia: `${CENSO} ⚠️ A SEGUNDA CLÁUSULA FORTE DA SEÇÃO. As rotinas seguem as NBCASP: valor residual e vida útil por classe (\`ParametroAtualizacaoClasse\`), os TRÊS métodos que o MCASP 1.1.5 exige — depreciação para tangíveis, amortização para intangíveis, exaustão para recursos naturais — com roteiro próprio cada um (m10-competencia.test.ts t7), reavaliação nos dois sentidos por NBC TSP 07 (t9) e impairment com o teto do valor contábil (t6). Classe SEM parâmetro é erro nomeado com zero escrita, movimento E lançamento (t8) — fail-closed, nunca "deprecia com o default". Sem tela.`,
+  },
+  "5.19.30": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há cadastro de motivos de baixa: \`motivo\` é texto livre no movimento. Um rol cadastrável pela instituição — que é o que a cláusula pede — não existe.`,
+  },
+  "5.19.31": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} O designer de relatórios (M26) permite ao usuário montar relatório próprio, copiar modelo e executar em segundo plano, e o PDF sai do demonstrativo patrimonial pela tela (/patrimonio/bens). ⚠️ FALTA a impressão A PARTIR DA CONSULTA de bens, porque a consulta de bens não existe (5.19.14).`,
+  },
+  "5.19.32": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} A integração com a CONTABILIDADE é estrutural (\`lancamentoId\` NOT NULL) e a integração com COMPRAS existe pela cadeia contrato → empenho → liquidação → bem, com a classe herdada do empenho (m11-limites.test.ts t6). ⚠️ FALTAM FROTA e TRIBUTÁRIO: os dois módulos não existem no repositório — a 5.20 e as seções 5.23–5.36 são AUSENTE_CONFIRMADO no mapa de lacunas.`,
+  },
+  "5.19.33": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há solicitação de transferência de bem nem notificação ao responsável. ⚠️ O mecanismo de NOTIFICAÇÃO existe (M24) e a fila de assinaturas mostra que o repositório sabe fazer pendência com destinatário; o que falta é a solicitação de transferência. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.34": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Dos cinco eixos pedidos — situação, repartição, espécie, localização e data de aquisição — só a data de aquisição existe no modelo. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.35": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} O dado existe e é obrigatório: todo movimento do bem tem \`lancamentoId\` NOT NULL, e o razão é consultável pela tela (/relatorios/livros/razao). ⚠️ FALTA o caminho INVERSO que a cláusula pede — partir do bem e ver os lançamentos dele — porque não há tela de gerenciamento do bem individual.`,
+  },
+  "5.19.36": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há termo de responsabilidade, individual, setorial ou por responsável — e não há responsável. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.37": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há termo de baixa patrimonial. A BAIXA existe como fato contábil e está provada (m10-patrimonio.test.ts t5, t5b); o documento que a formaliza, não. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.38": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} O cálculo da competência existe, é idempotente e é exato: a mesma competência duas vezes é rejeitada com SELECT provando um movimento (m10-competencia.test.ts t2), e a parcela para no residual (t4). ⚠️ FALTA a VIRADA em LOTE — hoje se chama \`atualizarCompetencia\` bem a bem, e não há rotina que percorra os bens cuja depreciação começa no mês corrente. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.39": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} O estorno por movimento existe, restaura classe E bem com lançamento invertido e valor PRESERVADO (m10-patrimonio.test.ts t8), e estorno de estorno é erro (t8b). Estornada a competência, ela pode ser refeita (m10-competencia.test.ts t3). ⚠️ FALTA o estorno da VIRADA como operação única, porque a virada não existe (5.19.38).`,
+  },
+  "5.19.40": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} O demonstrativo patrimonial agrupa por CLASSE DE BENS e por TIPO de movimento, célula a célula por literal, com saldo anterior + ingressos + atualizações = saldo final (m10-alienacao.test.ts t6). ⚠️ FALTAM os outros agrupamentos pedidos — tipo do bem e responsável — porque os campos não existem.`,
+  },
+  "5.19.41": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há manutenção de bem, prevista ou realizada. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.42": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há fórmula de avaliação editável pelo usuário. O que existe é \`ParametroAtualizacaoClasse\` (vida útil, residual, método) — parâmetros de uma fórmula FIXA, não uma fórmula que o usuário escreve. ⚠️ E a distância entre as duas coisas é maior do que parece: fórmula editável é uma linguagem, com validação e limites; o M26 tem uma gramática própria e ela seria o ponto de partida honesto. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.43": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há concessão de bem imóvel. Depende do módulo Tributário, que é AUSENTE_CONFIRMADO por inteiro. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.44": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há consulta de contratos de concessão de imóveis nem gerência dos itens do contrato — o M11 registra o contrato como valor e prazo derivados de movimentos, sem itens. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.45": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há matrícula de imóvel nem registro da taxa de concessão em receitas diversas a partir dela. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.19.46": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem concessão (5.19.43) não há situação de pagamento de concessão para consultar dentro do patrimônio. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+
+  // ── 5.11 · CONTROLE INTERNO (M31) — o que o ENT03b deixou sem medir ────────
+  "5.11.1": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: `${CENSO} Acesso por senha (scrypt) com permissão POR AÇÃO DE NEGÓCIO e por perfil, negando por omissão — sem perfil o usuário não pode nada (modules/m16-travamento/autorizacao.ts). A "caracterização do usuário" é o censo de ações: 192 serviços e 185 ações, com grep-teste provando as DUAS direções (m16-censo.test.ts). ${SMOKE_03B} entra nas auditorias com usuário restrito: quem não tem a ação não vê o botão, e vê o motivo.`,
+  },
+  "5.11.4": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há checklist REUTILIZÁVEL de onde selecionar itens: \`ItemDeChecklist\` pertence a UMA auditoria (\`auditoriaId\` NOT NULL, \`@@unique([auditoriaId, ordem])\`). Cada auditoria escreve os próprios itens do zero — não existe modelo de checklist, e portanto não existe "selecionar apenas os itens que se deseja analisar". Pendência CHECKLIST-GRUPOS. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.11.5": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} Incluir itens novos funciona e está provado — o item entra com ordem, pergunta e base legal, e a resposta que muda deixa as DUAS, append-only (m31-controle-interno.test.ts t2). ⚠️ FALTA DUPLICAR: sem checklist como entidade própria (5.11.4) não há o que copiar. Pendência CHECKLIST-GRUPOS.`,
+  },
+  "5.11.6": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} A auditoria se vincula ao ÓRGÃO (\`AuditoriaInterna.orgaoId\`, FK real, com índice), e o órgão é o mesmo do orçamento — não uma segunda tabela de órgãos. ⚠️ FALTA a UNIDADE e falta o CENTRO DE CUSTO, que o enunciado pede explicitamente: nenhum dos dois é eixo da auditoria hoje.`,
+  },
+  "5.11.7": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há agendamento de auditoria: nem evento, nem data prevista, nem monitoramento, nem cancelamento com justificativa. A auditoria nasce já aberta pelo movimento de ABERTURA. ⚠️ O M24 (notificações) existe e seria o destino natural do "notificar"; o que falta é o agendamento. Pendência AUDITORIA-EVENTOS.`,
+  },
+  "5.11.8": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há visibilidade configurável por tipo (todos / centro de custo / apenas responsáveis). A autorização do M16 é por AÇÃO e por unidade gestora — ela responde "quem pode abrir auditoria", não "quem pode VER esta auditoria". ⚠️ São perguntas diferentes, e tratar uma como a outra daria acesso de leitura a quem tem acesso de escrita em outro órgão.`,
+  },
+  "5.11.12": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há cadastro de eventos nem de parâmetros do controle interno — é a mesma ausência que sustenta a 5.11.13 (instaurar auditoria a partir de evento), já marcada AUSENTE_CONFIRMADO no ENT03b. Pendência AUDITORIA-EVENTOS.`,
+  },
+  "5.11.14": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} Os anexos existem, com autorização POR REGISTRO (o M22 confere o dono antes de entregar o arquivo), sha256, mime e tamanho, e a auditoria é um dos donos possíveis (\`Anexo.auditoriaId\`). ⚠️ FALTA a GESTÃO que a cláusula pede: não há título, descrição, ano nem tipo no anexo, e portanto não há busca por palavra-chave nem alteração. E EXCLUIR não vai existir: o anexo é append-only por decisão do projeto — a remoção seria um fato novo, não um DELETE.`,
+  },
+
+  // ── 5.17 · COMPRAS, LICITAÇÕES E CONTRATOS (M11) ───────────────────────────
+  //
+  // ⚠️ O M11 TEM O PROCESSO E O CONTRATO; NÃO TEM A COMPRA. A cadeia
+  // processo → homologação → contrato → aditivo → empenho → liquidação → medição está
+  // construída e é das partes mais bem provadas do repositório. O que não existe é a
+  // metade de COMPRAS: produto, proposta, lance, comissão, fornecedor, ordem de compra,
+  // ata de registro de preços, plano anual e pesquisa de preços — nenhum deles tem modelo.
+  //
+  // ⚠️ E O CENSO ACHOU CINCO TABELAS MORTAS. Duas na 5.17 (`ParecerContrato` e
+  // `CertidaoFornecedor`) e mais três quando o guard ficou correto
+  // (`TipoLancamentoReceitaSagres`, `DeParaContaSiga`, `DeParaFonteSiga`): existem no
+  // schema, com os tipos certos, e NENHUMA linha de código escrita à mão as lê ou escreve.
+  // É o modo de falha mais perigoso deste inventário — a tabela PARECE atendimento, e quem
+  // lê o schema procurando "o sistema registra parecer jurídico?" conclui que sim.
+  // Virou guard permanente: test/modelo-sem-caso-de-uso.test.ts.
+  "5.17.1": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} Da Lei 14.133 estão cumpridos e provados: o rol FECHADO de modalidades, com oito valores e os dois Records cobrindo os seis tipos (m11.test.ts t6); o teto do art. 75 aplicado de forma ESTRITA — 65.492,10 passa e 65.492,11 não (m11-limites.test.ts t2); o limite VIGENTE NA DATA do contrato, com fail-closed quando não há parâmetro, nunca "passa porque falta limite" (t5); e o teto interno mais restritivo VENCENDO o oficial (t3). ⚠️ FALTA o art. 125 (25%/50% de acréscimo e supressão), que é pendência DECLARADA no próprio código (modules/m11-licitacoes/contratos.ts). "Plena conformidade" é enunciado que nenhuma marcação pode afirmar por inteiro.`,
+  },
+  "5.17.2": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há cadastro de materiais/produtos — nenhum modelo, nenhum caso de uso. O que se contrata no M11 é o OBJETO do processo, um texto livre. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.3": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem produto não há classificação de produto. ⚠️ A distinção consumo/permanente EXISTE, mas noutro eixo e para outra pergunta: o ELEMENTO da natureza de despesa decide se a liquidação vira estoque (elemento 30) ou bem (grupo de capital), e os dois rois são fechados e provados (m10-almoxarifado.test.ts t9/t10, m11-limites.test.ts t6). É classificação ORÇAMENTÁRIA, não catálogo de produto.`,
+  },
+  "5.17.4": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} O mecanismo de campos personalizados existe e está provado (M25, sete tipos, coluna tipada), mas não há PRODUTO para recebê-los e \`PRODUTO\` não está no enum \`CadastroComCamposAdicionais\`, que é fechado por decisão.`,
+  },
+  "5.17.5": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há produto e não há marca. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.6": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há relacionamento com o CATMAT — nem produto para relacionar. ⚠️ E o CATMAT é catálogo EXTERNO do governo federal: quando existir, a pergunta "de onde vem a lista" é dependência externa, não decisão do ente.`,
+  },
+  "5.17.7": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há imagem de referência de produto. O M22 sabe guardar arquivo com sha256, mime e autorização por registro; o que falta é o produto como dono possível de um anexo.`,
+  },
+  "5.17.8": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há produto para desabilitar. ⚠️ O padrão que a cláusula pede — desativar preservando o histórico — já é praticado no repositório: \`ClasseDeBens\` e \`ClasseDeMaterial\` têm \`ativa\`, e classe inativa não recebe movimento, com teste (m10-patrimonio.test.ts).`,
+  },
+  "5.17.9": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há relacionamento produto × elemento de despesa, porque não há produto. ⚠️ O guard EQUIVALENTE existe e é forte no outro sentido: a liquidação de elemento 39 (serviço) não entra no almoxarifado e o elemento 32 é recusado nomeando DECISÃO, não defeito (m10-almoxarifado.test.ts t9/t10); o elemento 51 sem obra é recusado (m11-obras.test.ts t3). O eixo protegido é a natureza, não o produto.`,
+  },
+  "5.17.10": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há histórico de aquisições por material: não há produto, não há ordem de compra e não há valor unitário em lugar nenhum do modelo. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.11": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há rol de itens. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.12": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há solicitação de cadastro de produto com aprovação. ⚠️ As duas peças que ela exigiria existem: o M24 notifica de verdade (o trâmite do M21 notifica quem está lotado no destino — m21-protocolo.test.ts t12) e o M21 sabe fazer aprovação por etapa. Falta o produto.`,
+  },
+  "5.17.13": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há cadastro de comissões de licitação, nem pregoeiro, nem leiloeiro, nem o ato que os designa. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.14": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} O processo se registra com número único, modalidade, objeto e valor licitado (\`ProcessoLicitatorio\`), e contrato em processo NÃO HOMOLOGADO é rejeitado com NADA gravado (m11.test.ts t2). ⚠️ FALTAM a DATA do processo — só existe \`criadoEm\`, que é o instante do registro e não o do fato — e as requisições de compra, que não existem. O ano do processo vive dentro da string do número, não como eixo.`,
+  },
+  "5.17.15": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} O número do processo é informado pelo operador; não há sugestão sequencial por modalidade nem anual. ⚠️ O repositório JÁ SABE numerar com segurança: o M21 numera 1/2026, reinicia no exercício seguinte e duas aberturas CONCORRENTES não recebem o mesmo número (m21-protocolo.test.ts t1, t2, t3). O padrão existe e não foi aplicado aqui.`,
+  },
+  "5.17.16": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} ⚠️ NÃO É SÓ AUSÊNCIA, É IMPEDIMENTO DE MODELO: \`ProcessoLicitatorio.modalidade\` é NOT NULL. Digitar o processo sem modalidade e escolhê-la depois do parecer jurídico é literalmente impossível hoje — exigiria tornar a coluna anulável e decidir o que a homologação faz enquanto ela está vazia.`,
+  },
+  "5.17.17": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} ⚠️ ACHADO: O MOTOR DE WORKFLOW EXISTE — no M21, e é bom. \`EtapaDoProcesso\` é a CÓPIA do roteiro feita na abertura (mudar o roteiro depois não reescreve o passado — m21-protocolo.test.ts t1), a situação é DERIVADA dos movimentos e nunca uma coluna (m21-dominio.test.ts t1–t8), o prazo conta do RECEBIMENTO e não do envio (t9–t12), quem não está lotado no setor não tramita mesmo tendo a permissão da unidade (t14) e a taxa em aberto bloqueia a tramitação (t13). ⚠️ O QUE FALTA é o VÍNCULO: \`ProcessoLicitatorio\` não se liga a \`Processo\`. A licitação não usa o workflow que o ente já tem.`,
+  },
+  "5.17.18": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não existe minuta de edital como cadastro, e \`Anexo\` não tem dono do tipo licitação ou contrato — o rol de donos é fechado e cada um é uma FK real. Anexar documento à minuta exigiria as duas coisas.`,
+  },
+  "5.17.19": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem minuta (5.17.18) não há visualização agrupada dos documentos dela. ⚠️ A classificação de anexo também não existe: \`Anexo\` guarda nome, mime, tamanho, sha256 e origem — não tipo nem classificação.`,
+  },
+  "5.17.20": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há emissão de edital, ata de sessão, aviso de licitação nem termo de homologação. ⚠️ A HOMOLOGAÇÃO em si existe e é forte — por EVENTO, com as duas verdades (cadastro × evento) confrontadas e o duplo evento barrado (m11-integracao.test.ts t7), e processo sem homologação não vira contrato (t8). O que falta é o DOCUMENTO que a formaliza.`,
+  },
+  "5.17.21": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} ⚠️ ACHADO DO CENSO — SCHEMA SEM CASO DE USO. \`ParecerContrato\` existe no schema com \`CONTABIL\` entre os quatro tipos, e NENHUMA linha de código escrita à mão escreve ou lê essa tabela (as 57 ocorrências do nome estão todas em prisma/generated/). A tabela PARECE atendimento e não atende nada. Virou guard permanente: test/modelo-sem-caso-de-uso.test.ts. Pendência SCHEMA-SEM-CASO-DE-USO.`,
+  },
+  "5.17.22": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Mesmo achado da 5.17.21: \`ParecerContrato\` tem \`JURIDICO\` e \`TECNICO\` entre os tipos e nenhum caso de uso os escreve. ⚠️ E há uma segunda distância: o parecer modelado pertence ao CONTRATO, e a cláusula o pede no PROCESSO — que é antes, e é onde o parecer jurídico decide a modalidade (5.17.16). Pendência SCHEMA-SEM-CASO-DE-USO.`,
+  },
+  "5.17.23": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há recurso nem impugnação do processo, nem julgamento deles. Contraprova parcial em test/censo-de-ausencias.test.ts (comissão, que julgaria).`,
+  },
+  "5.17.24": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há anulação nem revogação do processo licitatório — nem total nem parcial. \`situacaoDoProcesso\` deriva de \`dataHomologacao\` e conhece exatamente dois estados. ⚠️ A ANULAÇÃO existe e é rigorosa noutro lugar: no empenho, na liquidação e no pagamento, sempre por fato novo append-only, com estorno cruzado e unicidade no banco.`,
+  },
+  "5.17.25": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há proposta nem classificação de propostas do pregão presencial. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.26": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há lances, nem por lote nem por item, nem tela de sessão. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.27": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem rodada de lances não há negociação ao final dela. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.28": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há julgamento com tratamento diferenciado de ME/EPP (LC 123/2006): não há proposta, não há porte do fornecedor e não há fornecedor. ⚠️ A dispensa por ME-EPP aparece no repositório APENAS como hipótese da justificativa de quebra de ordem cronológica do art. 141 — que é outro instituto, e não julga proposta nenhuma.`,
+  },
+  "5.17.29": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há participante da licitação, e portanto não há documento de participante. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.30": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há proposta com valor unitário e total, nem quadro comparativo por fornecedor. ⚠️ E vale nomear a razão de fundo: sem ITEM não há valor unitário em lugar nenhum do sistema — a mesma ausência que derruba a 5.18.11 (preço médio) e a 5.19.6 (saldo do item do empenho).`,
+  },
+  "5.17.31": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há desclassificação de participante. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.32": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há inabilitação de participante nem a convocação do segundo colocado que ela dispara no pregão. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.33": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} A consulta consolidada do processo não existe porque quatro dos cinco dados que ela reúne não existem (lances, requisições, vencedores, propostas). ⚠️ O que EXISTE e é consultável é o relatório de processos licitatórios do 5.103, com cada célula provada por literal e as três linhas de fechamento (m11-limites.test.ts t8, t9) — outra pergunta, respondida bem.`,
+  },
+  "5.17.34": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Licitação multientidade depende do eixo de ENTIDADE, que não existe no repositório (docs/adr/ADR-eixo-de-municipio.md). O lote de tenancy segue de pé desde o ENT01 — e enquanto ele não vier, "entidade principal e participantes" não tem onde ser modelado.`,
+  },
+  "5.17.35": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há fluxo de licitação de publicidade, nem sessão de abertura de envelopes, nem julgamento de proposta técnica.`,
+  },
+  "5.17.36": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há pontuação, índice técnico nem classificação automática por preço e técnica. Contraprova em test/censo-de-ausencias.test.ts (proposta).`,
+  },
+  "5.17.37": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há comissão para relacionar ao processo nem membros para selecionar. ⚠️ A SEGREGAÇÃO que uma comissão existe para garantir já está provada duas vezes no repositório — "quem mede não aprova" (m11-medicoes-integracao.test.ts t3, t3b) e "quem relata não aprecia" no controle interno. O padrão existe; a comissão não.`,
+  },
+  "5.17.38": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há cadastro de publicações da licitação, com data e veículo. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.39": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} ⚠️ ESTA É FORTE. A reserva orçamentária vinculada à licitação existe e o guard é apertado: reserva VINCULADA a licitação exige contrato DAQUELE processo (TR 4.42, m11-integracao.test.ts t6), a categoria do empenho é HERDADA do contrato e divergência é erro — nunca sobrescrita em silêncio (t4) — e o saldo do contrato bloqueia, com a anulação devolvendo por derivação e nunca por flag (t3). ⚠️ FALTA a indicação do recurso no PROCESSO antes do contrato, e falta a liberação da diferença na adjudicação (5.17.77).`,
+  },
+  "5.17.40": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há ata de registro de preços. ⚠️ É a família "naquela data" de novo, e foi nomeada na varredura do ENT03b: saldo de ata é pergunta com eixo TEMPORAL, e construí-la como coluna de saldo repetiria o erro que o contrato já não comete (lá o valor é DERIVADO dos movimentos — m11.test.ts t1). Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.41": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem ata não há fiscal nem gestor de ata. O contrato TEM fiscal (\`fiscalNome\`, \`fiscalCpf\`, \`fiscalDesignacao\`); a ata não existe.`,
+  },
+  "5.17.42": {
+    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    evidencia: `${CENSO} ⚠️ A INTEGRAÇÃO COM A CONTABILIDADE É A PARTE MAIS PROVADA DA SEÇÃO. A reserva bloqueia a dotação e o empenho a consome; dois empenhos concorrentes que estourariam o contrato gravam exatamente UM (m11-limites.test.ts t1); empenhar COM contrato sem o M11 ligado às dependências FALHA em vez de passar batido (m11-integracao.test.ts t9); e a vigência bloqueia com a borda passando, o dia seguinte não, e a prorrogação liberando (t2). Sem tela: /licitacoes é uma landing de navegação, não um cadastro.`,
+  },
+  "5.17.43": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há cópia de processo licitatório. ⚠️ O padrão existe no M26: \`copiarModeloDeRelatorio\` copia e a cópia é independente do original, com teste. Aplicá-lo ao processo é trabalho, não descoberta.`,
+  },
+  "5.17.44": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há credenciamento/chamamento nem definição de cotas. As hipóteses de dispensa modeladas são três (\`POR_VALOR_OBRAS\`, \`POR_VALOR_COMPRAS\`, \`OUTRAS\`), com CHECK no banco que pega o INSERT direto nos dois sentidos (m11-limites.test.ts t7) — e nenhuma delas é credenciamento.`,
+  },
+  "5.17.45": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há publicação seletiva de dados e documentos do processo na internet. O M13 publica datasets de execução orçamentária; licitação não está entre eles, e não há o que escolher publicar porque itens, certidões e propostas não existem.`,
+  },
+  "5.17.46": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há pesquisa de preços nem planilha de preços. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.47": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem coleta de preços não há critério de preço médio, maior ou menor sobre ela. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.48": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há cotação online por fornecedor. ⚠️ E ela é de uma classe que o repositório ainda não tem: acesso de TERCEIRO (o fornecedor) ao sistema. Hoje todo usuário é servidor do ente, com perfil e unidade gestora — um portal do fornecedor é decisão de arquitetura de acesso, não uma tela a mais.`,
+  },
+  "5.17.49": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há integração entre a licitação e o processo digital: \`ProcessoLicitatorio\` não se liga a \`Processo\` do M21. ⚠️ Os dois lados existem e são bons — falta a ponte, que é uma FK e um caso de uso. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.50": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem o vínculo da 5.17.49 não há compartilhamento automático de anexos entre os dois processos — e \`Anexo\` também não aceita licitação como dono. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.51": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há solicitação de compra dos itens homologados — não há item, e a homologação é do PROCESSO inteiro (\`HomologacaoProcesso\`), não item a item. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.52": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem solicitação de compra não há controle de autorizadas, pendentes e anuladas. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.53": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há rotina de autorização de solicitação de compra. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.54": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há centro de custo como eixo de acesso. ⚠️ O recorte EQUIVALENTE existe e funciona noutro eixo: o M21 impede tramitar quem não está LOTADO no setor, mesmo tendo a permissão da unidade gestora (m21-protocolo.test.ts t14) — que é exatamente a forma desta cláusula, aplicada ao protocolo.`,
+  },
+  "5.17.55": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem solicitação de compra não há notificação de nova solicitação. O M24 notifica de verdade e está provado no trâmite do M21 (t12); falta o fato a notificar.`,
+  },
+  "5.17.56": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há requisição ao Compras. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.57": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem requisição ao Compras não há autorização dela com reserva de recursos. ⚠️ A RESERVA em si existe, é rigorosa e está provada (\`ReservaDotacao\`, m11-integracao.test.ts t6) — o que falta é a requisição que a dispararia.`,
+  },
+  "5.17.58": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} O relatório de processos licitatórios existe e é do tipo OURO — cada célula conferida por literal, com as três linhas de fechamento L1/L2/L3, e a L1 quebrando NOMEANDO o valor se a coluna de aditivos ignorar as supressões (m11-limites.test.ts t8, t9). ⚠️ FALTA "da abertura à conclusão": o relatório mostra o que o modelo tem (processo, contrato, aditivos, empenhos), e abertura de sessão, propostas, recursos e adjudicação não existem.`,
+  },
+  "5.17.59": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há relação mensal de compras para o TCU (art. 1º, VI, da Lei 9.755/98). As remessas que existem são para tribunais ESTADUAIS (SAGRES/TCE-PB e SIGA/TCM-BA), com leiaute próprio.`,
+  },
+  "5.17.60": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há proposta por lote nem rateio dela entre subitens. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.61": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} A escolha de ASSINANTES existe e é forte: \`FilaDeAssinatura\` com signatários ordenados, e a assinatura da despesa (empenho, liquidação, OP) tem fila própria com teste (modules/m05-despesa/m05-assinatura-da-despesa.test.ts). A geração de PDF existe em toda a série de relatórios. ⚠️ FALTAM os OUTROS FORMATOS (html, doc, xls) e falta a escolha de quantidade de vias — e falta o documento de licitação, que não existe (5.17.20).`,
+  },
+  "5.17.62": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há integração com o Compras Públicas nem com nenhum provedor de pregão eletrônico. ⚠️ É DEPENDÊNCIA EXTERNA quando existir (credencial, contrato, endpoint), e \`packages/integracao\` — o cofre de credenciais por entidade — está adiado para o ENT03d. Marcada AUSENTE e não DEPENDENCIA_EXTERNA porque não há sequer o lado de cá.`,
+  },
+  "5.17.63": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} A modalidade e o número da licitação VIAJAM na remessa: o leiaute SAGRES 2026v11 carrega \`modalidadeLicitacao\` e \`numLicitacao\` no registro do empenho, com validação e golden (adapters/tribunais/tce-pb/sagres/). ⚠️ O QUE FALTA são os registros PRÓPRIOS de licitação e contrato do leiaute — participantes, propostas, itens, atas — que dependem dos modelos ausentes desta seção.`,
+  },
+  "5.17.64": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} A situação do processo é DERIVADA e nunca uma coluna — \`situacaoDoProcesso(dataHomologacao)\`, e a homologação tem duas verdades confrontadas (cadastro × evento) com o duplo evento barrado (m11-integracao.test.ts t7). ⚠️ MAS O ROL É DE DOIS: aberto e homologado. Faltam anulada (total/parcial), deserta, fracassada, descartada e aguardando — e a homologação PARCIAL, que o enunciado pede, é impossível hoje: \`HomologacaoProcesso\` é do processo inteiro.`,
+  },
+  "5.17.65": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há controles de Registro de Preços do art. 40 da Lei 14.133. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.66": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem ata de registro de preços e sem solicitação ao compras, não há controle de entrega das mercadorias licitadas. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.67": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há modelo de edital padrão. ⚠️ O M26 (designer) tem gramática própria, cópia de modelo e execução em segundo plano — é o ponto de partida honesto para modelo de documento, e não foi aplicado a edital.`,
+  },
+  "5.17.68": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há proposta comercial online. Mesma classe da 5.17.48: exige acesso de TERCEIRO ao sistema, que a arquitetura de acesso atual (todo usuário é servidor, com perfil e unidade gestora) não contempla.`,
+  },
+  "5.17.69": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há plano anual de licitações. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.70": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem plano anual não há intenção de licitação com centro de custo e compartilhamento. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.71": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há adesão de secretarias a intenção de licitação. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.72": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem intenção e sem produto não há itens da intenção com unidade de medida. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.73": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem intenção não há planilha de preços gerada a partir dela. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.74": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem rol de itens (5.17.11) e sem intenção (5.17.70) não há importação de um no outro. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.75": {
+    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    evidencia: `${CENSO} ⚠️ O NÚCLEO DA SEÇÃO, E ELE É SÓLIDO. Valor e prazo do contrato são DERIVADOS dos movimentos, nunca colunas de saldo — 115.000 e 31/03/2027 a partir dos aditivos (m11.test.ts t1) — e o corte é pela data do FATO: o aditivo de 2027 não muda o contrato de 2026 (t7). O XOR valor/prazo é barrado pelo Zod nos dois sentidos e pelo CHECK no INSERT direto (t4), o estorno devolve a dimensão CERTA e o duplo estorno é barrado pelo índice (t5). ⚠️ FALTAM publicações e reajuste/apostila. Sem tela.`,
+  },
+  "5.17.76": {
+    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    evidencia: `${CENSO} ⚠️ O ALERTA É DOS COMPORTAMENTOS MAIS BEM PROVADOS DO REPOSITÓRIO. A janela é do PRÓPRIO contrato (\`diasAlertaVencimento\`) — 30 dias não alerta o que 90 alertaria — e inclui as duas bordas; VENCIDO NÃO É "A VENCER", e as duas listas são disjuntas; o alerta lê o fim DERIVADO, então prorrogar tira o contrato da janela; a contagem é em DIAS DE CALENDÁRIO e é 0 no próprio dia do vencimento, porque o contrato ainda vale nele; e a resposta NÃO depende da hora em que alguém abriu a tela nem de entrar ou sair do horário de verão (m11-vigencia-alerta.test.ts, 13 casos). Sem tela que a mostre.`,
+  },
+  "5.17.77": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há adjudicação como ato, e portanto não há liberação da diferença entre o estimado e o vencido. ⚠️ A reserva existe e o saldo é derivado — o que falta é o FATO que dispararia a liberação.`,
+  },
+  "5.17.78": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há rescisão de contrato: \`TipoMovimentoContratual\` tem seis valores (acréscimo, supressão, prorrogação e os três estornos) e nenhum deles é rescisão. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.79": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} Três dos cinco tipos pedidos existem como movimento contratual com efeito real e estorno próprio: acréscimo, supressão (diminuição) e prorrogação — e a visualização do tipo de alteração é o próprio movimento, append-only. ⚠️ FALTAM equilíbrio econômico-financeiro, rescisão e "outros". Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.80": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} Aditivos e supressões se registram, e o bloqueio por SALDO é exato: supressão maior que o saldo é rejeitada, IGUAL ao saldo passa e +0,01 depois não (m11.test.ts t3); o acréscimo não pode levar uma dispensa a ALCANÇAR o teto do art. 75 (m11-limites.test.ts t4). ⚠️ FALTA o bloqueio do art. 125 (25% em geral, 50% em reforma de edifício) — é PENDÊNCIA DECLARADA no próprio código (modules/m11-licitacoes/contratos.ts), não um esquecimento.`,
+  },
+  "5.17.81": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há alteração por equilíbrio econômico-financeiro. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.82": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há apostila. ⚠️ E a distinção importa juridicamente: apostila NÃO é aditivo — ela registra reajuste previsto no contrato, sem alterar o pactuado. Registrá-la como \`ACRESCIMO_VALOR\` faria o sistema declarar um aditivo que não houve, e é isso que o TCE lê. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.83": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} O contrato tem fiscal com nome, CPF e designação (\`fiscalNome\`, \`fiscalCpf\`, \`fiscalDesignacao\`), e a segregação que o fiscal encarna está provada na medição: quem mede NÃO aprova, e aprovar duas vezes é recusado porque a segunda apagaria quem aprovou primeiro (m11-medicoes-integracao.test.ts t3, t3b). ⚠️ FALTA o GESTOR (papel distinto do fiscal) e falta a definição nos ADITIVOS, que o enunciado pede — o fiscal é um por contrato, não um por instrumento.`,
+  },
+  "5.17.84": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há cadastro de publicações do contrato. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.85": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} O controle de vencimento de CONTRATOS existe e é o da 5.17.76, com as duas listas disjuntas e a janela por contrato. ⚠️ FALTAM os outros dois alvos do enunciado: autorizações de fornecimento (que são ordens de compra, ausentes) e o relatório específico de termos aditivos a vencer.`,
+  },
+  "5.17.86": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há cadastro de fornecedor nem CRC. ⚠️ O contratado existe como DOIS CAMPOS no contrato (\`contratadoDocumento\`, \`contratadoNome\`), não como entidade — e a normalização do documento já trata o mascarado e o limpo como a MESMA chave, que é o que impede duas empresas iguais (m11-vigencia-alerta.test.ts). O M19 tem cadastro de pessoas; fornecedor não se liga a ele. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.87": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} ⚠️ SCHEMA SEM CASO DE USO — o segundo achado do gênero. \`CertidaoFornecedor\` está no schema com tipo, número, emissão, validade e índice por validade, e NENHUMA linha de código escrita à mão a escreve ou lê (as duas menções fora de prisma/generated/ são comentários). Guard permanente: test/modelo-sem-caso-de-uso.test.ts. Pendência SCHEMA-SEM-CASO-DE-USO.`,
+  },
+  "5.17.88": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há registro de suspensão ou impedimento de licitar, nem data de reabilitação. ⚠️ É a família "naquela data" outra vez: a pergunta certa é "este fornecedor estava impedido NA DATA da contratação", e um campo booleano responderia só "agora".`,
+  },
+  "5.17.89": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem caso de uso de certidão (5.17.87) não há controle de validade nem relatório de vencidas e a vencer. ⚠️ E o repositório JÁ SABE fazer exatamente este relatório: a janela de alerta do contrato, com as duas listas disjuntas, é o mesmo problema resolvido.`,
+  },
+  "5.17.90": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Mesmo caso da 5.17.89: a tabela existe, o comportamento não. Pendência SCHEMA-SEM-CASO-DE-USO.`,
+  },
+  "5.17.91": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há responsável legal nem sócios do fornecedor — não há fornecedor. ⚠️ O M19 modela pessoa com versões e movimentos de papel; ligar fornecedor a pessoa seria o caminho, e não existe. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.92": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há índices contábeis do fornecedor (liquidez, solvência) nem os saldos que os alimentam. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.93": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há atestado de capacidade técnica. Ele exigiria a lista de produtos/serviços fornecidos à entidade, que depende do item, ausente.`,
+  },
+  "5.17.94": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} A validade de documento do fornecedor não é verificada na emissão de contrato nem de ordem de compra: a tabela de certidões não tem caso de uso e a ordem de compra não existe. ⚠️ É um guard AUSENTE numa borda de escrita — a classe de lacuna que este projeto trata como mais cara, porque o efeito (contrato emitido) é durável. Pendência SCHEMA-SEM-CASO-DE-USO.`,
+  },
+  "5.17.95": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há relatório gerencial por fornecedor. O eixo existe no banco (\`Contrato.contratadoDocumento\` tem índice), mas não há consulta nem tela que o use, e ordens de compra não existem.`,
+  },
+  "5.17.96": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há ordem de compra — nem ordinária, nem global, nem estimativa. ⚠️ E a ausência é maior do que a tela: a ordem de compra é o documento que liga a licitação ao recebimento, e sem ela o almoxarifado e o patrimônio recebem por LIQUIDAÇÃO (que é o aceite contábil), não por entrega. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.97": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem ordem de compra não há emissão dela com fornecedor, finalidade e recurso orçamentário. ⚠️ O EMPENHO já carrega todos esses dados e é o que hoje cumpre esse papel — mas empenho é ato ORÇAMENTÁRIO, e a cláusula pede o ato de COMPRA, que o antecede.`,
+  },
+  "5.17.98": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há parcelamento de ordem de compra nem SUBEMPENHO. ⚠️ ACHADO: o leiaute do TCM-BA PEDE o número do subempenho, e o gerador repete o número do empenho porque subempenho não existe aqui (adapters/tribunais/tcm-ba/siga/specs/pag-emp2.ts). A remessa declara um conceito que o modelo não tem — e o comentário no código diz exatamente isso: "branco não equivale".`,
+  },
+  "5.17.99": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem ordem de compra não há alteração dela condicionada à inexistência de empenho. ⚠️ O guard EQUIVALENTE existe no M05 e é rigoroso: liquidação anulada não incorpora bem, e anular o empenho sem pagar não mexe no saldo da dívida (m10-divida.test.ts t8) — a condicional "só se o passo seguinte não aconteceu" é padrão conhecido aqui.`,
+  },
+  "5.17.100": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem ordem de compra não há estorno dela. ⚠️ O ESTORNO em cascata que a cláusula descreve — estornar o empenho estorna os itens — já é praticado no repositório: anular o pagamento estorna a amortização da dívida JUNTO, na mesma transação, e o estorno avulso é porta fechada (m10-divida.test.ts t5).`,
+  },
+  "5.17.101": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem ordem de compra não há retenção nela. ⚠️ As RETENÇÕES existem e são um módulo inteiro (M07 extraorçamentário, com tipos de consignação parametrizados e teste próprio) — só que no PAGAMENTO, que é onde elas acontecem de fato.`,
+  },
+  "5.17.102": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem ordem de compra não há desconto nela. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.103": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há identificação de consumo imediato na ordem de compra. ⚠️ A DECISÃO CONTÁBIL equivalente existe e é fechada: o elemento da natureza decide se a liquidação vira estoque (elemento 30, rol \`ELEMENTOS_DE_ALMOXARIFADO\` com um único valor) ou despesa direta, com o 32 recusado nomeando DECISÃO (m10-almoxarifado.test.ts t10). O eixo é a natureza, não uma marca do produto.`,
+  },
+  "5.17.104": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem ata de registro de preços não há como impedir ordem de compra sobre ata vencida. ⚠️ O guard ANÁLOGO existe e é dos melhores do repositório: a vigência do contrato bloqueia o empenho, a borda passa, o dia seguinte não, e a prorrogação libera (m11-integracao.test.ts t2) — a mesma pergunta, respondida para contrato.`,
+  },
+  "5.17.105": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há recebimento de ordem de compra nem saldo pendente a entregar. ⚠️ O saldo por quantidade dependeria de ITEM, ausente em todo o repositório — a mesma raiz da 5.18.11 e da 5.19.6.`,
+  },
+  "5.17.106": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Sem ordem de compra não há extrato de movimentação dela. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+  "5.17.107": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há consulta de débitos do contribuinte: o módulo tributário é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). ⚠️ E a consulta de regularidade fiscal do CONTRATADO também não existe pelo outro lado — \`CertidaoFornecedor\` é tabela sem caso de uso (5.17.87).`,
+  },
+  "5.17.108": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} Os dados de contrato que a execução carrega viajam na remessa: o empenho leva modalidade e número da licitação no leiaute SAGRES 2026v11, com validação e arquivo golden (adapters/tribunais/tce-pb/sagres/). ⚠️ FALTAM os registros PRÓPRIOS de contrato do leiaute — aditivos, publicações, fiscais, rescisão — vários deles dependendo de modelos ausentes desta seção.`,
+  },
+  "5.17.109": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há gestão de parcerias da Lei 13.019/2014 (OSC): nem termo de fomento, nem de colaboração, nem acordo de cooperação, nem chamamento público. ⚠️ O CONVÊNIO de repasse existe desde o ENT03b, com prestação de contas, glosa e três saldos independentes — e é instituto DIFERENTE: convênio entre entes públicos não é parceria com organização da sociedade civil, e tratá-los como o mesmo cadastro produziria prestação de contas com regra errada.`,
+  },
+  "5.17.110": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há Manifestação de Interesse Social pelo portal. Depende de acesso de terceiro (cidadão/OSC), que a arquitetura de acesso atual não contempla — a mesma raiz da 5.17.48 e da 5.17.68.`,
+  },
+  "5.17.111": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há menu de parcerias no portal da transparência. O M13 publica datasets de execução orçamentária; parcerias não estão entre eles, e a 5.17.109 é ausente.`,
+  },
+  "5.17.112": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há agenda pública de licitações. ⚠️ Ela dependeria de eventos datados do processo (sessão de abertura, julgamento), e o processo hoje tem exatamente uma data relevante — a homologação.`,
+  },
+  "5.17.113": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: `${CENSO} Não há relação entre contrato e bem imóvel para concessões — nem itens de contrato aos quais relacionar o bem. É a mesma ausência das cláusulas 5.19.43 a 5.19.46. Contraprova em test/censo-de-ausencias.test.ts.`,
+  },
+
+  // ── 5.34 · DÍVIDA ATIVA (M10 — só a rotina contábil) ───────────────────────
+  //
+  // ⚠️ A SEÇÃO MEDE DUAS COISAS DIFERENTES COM O MESMO NOME. O M10 tem a dívida ativa
+  // CONTÁBIL — o art. 39 da Lei 4.320/64, o reconhecimento do ativo, a atualização e a
+  // baixa, tudo com lançamento na mesma transação e amarração com o razão. A 5.34 pede o
+  // módulo TRIBUTÁRIO: parcelamento, REFIS, execução fiscal, CDA, protesto em cartório,
+  // portal do cidadão. São 25 das 28 cláusulas, e nenhuma tem uma linha escrita.
+  //
+  // ⚠️ E É POR ISSO QUE A TELA DESTE LOTE **NÃO** OFERECE O RECEBIMENTO: recebimento é
+  // receita orçamentária e entra pela guia (M04). Uma ação aqui criaria o segundo caminho
+  // para o mesmo fato — e o segundo contaria a receita duas vezes, porque a VPA já foi
+  // reconhecida na inscrição.
+  "5.34.1": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há livro de registro da dívida ativa nem emissão dele." },
+  "5.34.2": {
+    situacao: "PARCIAL",
+    evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). A DATA DE INSCRIÇÃO existe e é a data do FATO (`MovimentoDividaAtiva.dataMovimento`), visível na aba de histórico do cadastro novo deste lote. FALTA o número do LIVRO, que depende da 5.34.1.",
+  },
+  "5.34.3": {
+    situacao: "PARCIAL",
+    evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). O ESTORNO da inscrição existe, é fato novo append-only e o duplo estorno é barrado pelo índice parcial (m10-divida-ativa.test.ts t4). FALTA a condicional que a cláusula descreve — \"só se não houve movimentação posterior\": hoje o estorno do RECEBIMENTO é porta fechada, mas o da inscrição não confere o que veio depois.",
+  },
+  "5.34.4": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há parcelamento nem programa de recuperação fiscal." },
+  "5.34.5": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Sem parcelamento não há número máximo de acordos por inscrição." },
+  "5.34.6": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há prazo de adesão por modalidade de parcelamento." },
+  "5.34.7": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há desconto nem prazo de adesão para pagamento à vista." },
+  "5.34.8": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há consulta de parcelamentos, porque não há parcelamento." },
+  "5.34.9": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há termo de parcelamento nem responsável pelo ato." },
+  "5.34.10": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há portal do cidadão. Ele é de uma classe que o repositório ainda não tem: acesso de TERCEIRO ao sistema — hoje todo usuário é servidor do ente, com perfil e unidade gestora." },
+  "5.34.11": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há permissão por modalidade de parcelamento. A autorização do M16 é por AÇÃO DE NEGÓCIO e por unidade gestora, e é boa nisso — mas ela não recorta por parâmetro do ato." },
+  "5.34.12": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Sem parcelamento não há cancelamento dele, individual, geral ou automático." },
+  "5.34.13": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há método de cancelamento por imputação nem por abatimento proporcional." },
+  "5.34.14": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há antecipação de parcelas." },
+  "5.34.15": { situacao: "PARCIAL", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). A consulta por DEVEDOR existe desde este lote — a listagem do molde filtra por identificador ou devedor e soma a seleção no servidor. FALTA o recorte por IMÓVEL e por EMPRESA (não há cadastro imobiliário nem mobiliário) e falta a separação administrativa/judicial/cartório, que não é eixo do modelo." },
+  "5.34.16": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há contagem de parcelamentos nem dados de ajuizamento." },
+  "5.34.17": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). O valor da dívida ativa aqui é UM número por movimento; a decomposição em tributo, correção, multa e juros não existe como eixo. Simular valores futuros exigiria um motor de cálculo tributário, que é o maior vazio do projeto." },
+  "5.34.18": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há responsável tributário. O devedor é um par nome/documento no cadastro, não uma relação com o M19." },
+  "5.34.19": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há classificação administrativa/judicial/cartório, e portanto não há privilégio por ela." },
+  "5.34.20": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há processo de execução fiscal, nem geração em lote." },
+  "5.34.21": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Sem execução fiscal não há honorários nem custas." },
+  "5.34.22": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há CDA nem petição de dívida ativa." },
+  "5.34.23": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há remessa para cartório. Quando existir, será DEPENDENCIA_EXTERNA — depende de convênio com o cartório de protesto." },
+  "5.34.24": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Sem remessa a cartório não há desistência nem cancelamento de protesto." },
+  "5.34.25": {
+    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    evidencia: "${CENSO} ⚠️ A CLÁUSULA FORTE DA SEÇÃO, e ela está atendida no que é contábil. Toda movimentação da dívida ativa tem lançamento na MESMA transação — inscrição (D ativo / C VPA), atualização (mesmo par), cancelamento (D VPD / C ativo) — e o recebimento é DELIBERADAMENTE sem roteiro próprio: ele é permutativo, e reconhecer VPA de novo contaria a receita duas vezes. `conferirDividaAtivaContraRazao` confronta as duas leituras e o t8 prova que a amarração PEGA um lançamento direto na conta. O ciclo fecha em 10.000 + 300 − 4.000 − 1.000 = 5.300 com o razão concordando (t1). ⚠️ FALTAM os fatos que não existem: desconto e prescrição não são tipos de movimento. Sem tela até este lote; a tela do molde do ENT03c cobre inscrição, atualização e cancelamento.",
+  },
+  "5.34.26": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há inscrição automática mensal de débitos em atraso — não há débito de exercício a inscrever, porque não há lançamento tributário." },
+  "5.34.27": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há emissão de guia pelo portal do cidadão." },
+  "5.34.28": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há notificação de débito em PDF nem geração em lote." },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════

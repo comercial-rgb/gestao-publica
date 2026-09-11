@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { ehHipotese, registrarPagamento } from "../../../../lib/portas/pagamento";
 import { desmascararValor } from "../../../../lib/format/mascaras";
+import { meioDiaCivil } from "../../../../packages/datas/index";
 
 export interface EstadoPagamento {
   readonly erro?: string;
@@ -74,7 +75,7 @@ export async function pagarAction(
       liquidacaoId,
       numero,
       valor,
-      data: new Date(`${dataBruta}T12:00:00Z`),
+      data: meioDiaCivil(dataBruta),
       contaBancaria,
       fonteId,
       historico,

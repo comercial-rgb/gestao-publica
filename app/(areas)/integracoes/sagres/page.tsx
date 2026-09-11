@@ -13,6 +13,7 @@ import {
 } from "../../../../lib/portas/sagres";
 import { POC_SAGRES } from "../../../../lib/portas/sagres-poc";
 import { SeletorCompetencia } from "./SeletorCompetencia";
+import { diaCivil, inicioDoDiaCivil, janelaCivilDoMes } from "../../../../packages/datas/index";
 
 /**
  * TELA SAGRES 2026 (M15, S2) — prévia monoespaçada com régua de posições, lista de validações,
@@ -122,7 +123,7 @@ const MATRIZ_SAGRES: readonly { readonly entidade: string; readonly secao: strin
 
 /** aaaa-mm-dd a partir de um Date UTC — o mesmo formato que a porta e o `<input type="date">` usam. */
 function isoDia(d: Date): string {
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+  return diaCivil(d);
 }
 
 /**
@@ -184,14 +185,14 @@ export default async function SagresPage({
   // ── NORMALIZAÇÃO DOS PARÂMETROS ──
   // O `dia` é livre (o seletor aceita qualquer data); só o FORMATO é validado. Data inválida vira
   // erro NOMEADO em vez de silenciosamente cair no padrão — quem digitou errado precisa saber.
-  const diaEscolhido = diaParam !== undefined && diaParam !== "" ? new Date(`${diaParam}T00:00:00Z`) : POC_SAGRES.dia;
+  const diaEscolhido = diaParam !== undefined && diaParam !== "" ? inicioDoDiaCivil(diaParam) : POC_SAGRES.dia;
   const diaValido = !Number.isNaN(diaEscolhido.getTime());
 
   // O `mes` é INDEPENDENTE do dia; ausente, cai no mês do dia (o comportamento histórico da tela).
   // Qualquer data dentro do mês serve — a porta normaliza para o último dia dele.
   const mesFallback = diaValido ? isoDia(diaEscolhido).slice(0, 7) : "";
   const mesTexto = mesParam !== undefined && mesParam !== "" ? mesParam : mesFallback;
-  const mesEscolhido = new Date(`${mesTexto}-01T00:00:00Z`);
+  const mesEscolhido = janelaCivilDoMes(mesTexto).inicio;
   const mesValido = !Number.isNaN(mesEscolhido.getTime());
 
   const cabecalho = (

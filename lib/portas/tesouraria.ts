@@ -26,7 +26,7 @@ import { estadoDoLote } from "../../modules/m09-tesouraria/lote";
 // qualquer. Sem isso a página devolvia 500 — e um 500 esconde a única coisa que o
 // operador precisava ler: qual conta parametrizar.
 import { MapeamentoContabilAusenteError } from "../../modules/m09-tesouraria/conciliacao";
-import { diaCivil, diaCivilBr } from "../../packages/datas/index";
+import { diaCivil, diaCivilBr, fimDoDiaCivil, meioDiaCivil } from "../../packages/datas/index";
 
 /**
  * PORTA — A TESOURARIA PELA TELA (ENT03a, item 3).
@@ -82,7 +82,9 @@ const SEM_FONTE = "(sem fonte declarada)";
 
 export async function contasComSaldo(ate: string): Promise<readonly ContaDaTela[]> {
   const prisma = cliente();
-  const corte = new Date(`${ate}T23:59:59.999Z`);
+  // ⚠️ O CORTE É O FIM DO DIA CIVIL, não 23:59:59 em Greenwich — que no fuso do ente é
+  // 20:59:59, e deixaria de fora três horas de movimento do próprio dia pedido.
+  const corte = fimDoDiaCivil(ate);
 
   const contas = await prisma.contaBancaria.findMany({
     orderBy: { codigo: "asc" },
@@ -218,9 +220,9 @@ export async function registrarMovimento(
       fonteId: input.fonteId,
       tipo: input.tipo,
       valor: input.valor,
-      // ⚠️ MEIO-DIA no dia civil informado. A data do fato é um DIA; o instante é só o
-      // ancoradouro. O meio-dia mantém o dia civil estável em qualquer fuso do país.
-      data: new Date(`${input.dia}T12:00:00Z`),
+      // ⚠️ MEIO-DIA CIVIL do dia informado — a régua é `packages/datas`, e o motivo do
+      // meio-dia (doze horas de folga para cada lado da borda) está no docblock dela.
+      data: meioDiaCivil(input.dia),
       historico: input.historico,
       contaContrapartidaId: input.contaContrapartidaId,
       criadoPor,
@@ -238,7 +240,7 @@ export async function estornarMovimento(
     const r = await estornarMovimentoBancario(cliente(), {
       movimentoId,
       motivo,
-      data: new Date(`${dia}T12:00:00Z`),
+      data: meioDiaCivil(dia),
       criadoPor,
     });
     return r.movimentoId;
@@ -427,7 +429,7 @@ export async function criarLote(input: {
       exercicio: input.exercicio,
       contaBancariaId: input.contaBancariaId,
       descricao: input.descricao,
-      dataVencimento: new Date(`${input.diaVencimento}T12:00:00Z`),
+      dataVencimento: meioDiaCivil(input.diaVencimento),
       criadoPor,
     });
     return r.numero;
@@ -510,7 +512,7 @@ export async function registrarRetorno(
       borderoId,
       linhas: linhas.map((l) => ({
         itemId: l.itemId,
-        dataLiquidacaoBanco: new Date(`${l.pagoEm}T12:00:00Z`),
+        dataLiquidacaoBanco: meioDiaCivil(l.pagoEm),
         identificadorBanco: l.identificadorBanco,
       })),
       criadoPor,

@@ -278,6 +278,8 @@ export const TRANSFERENCIAS: readonly RelatorioNav[] = [
 
 export const DIVIDA: readonly RelatorioNav[] = [
   { href: "/divida/precatorios", numero: "Precatórios", rotulo: "Precatórios Judiciais", descricao: "A fila do art. 100: alimentar antes de comum, a preferência do §2º, depois a data de apresentação." },
+  { href: "/divida/fundada", numero: "Dívida fundada", rotulo: "Dívida Fundada", descricao: "A dívida consolidada da LRF: ingresso pela receita, amortização pela despesa, e só a atualização monetária nasce no cadastro." },
+  { href: "/divida/ativa", numero: "Dívida ativa", rotulo: "Dívida Ativa", descricao: "O crédito do ente contra o contribuinte (art. 39 da Lei 4.320/64): inscrição, atualização, cancelamento — o recebimento entra pela receita." },
 ];
 
 export const CONTROLE_INTERNO: readonly RelatorioNav[] = [

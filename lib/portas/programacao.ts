@@ -6,6 +6,7 @@ import {
   gerarDecretoCmd,
   gerarDecretoMba,
 } from "../../modules/m02-planejamento/programacao";
+import { anoCivil, mesCivil } from "../../packages/datas/index";
 
 /**
  * PORTA — PROGRAMAÇÃO FINANCEIRA (M02: CMD e MBA. TR 4.18/4.19/4.43/4.44, LRF arts. 8º, 9º e 13).
@@ -270,10 +271,12 @@ export async function lerConfrontoMba(p: {
  * mês de hoje: em julho (bimestre 4) o último FECHADO é o 3.
  */
 function ultimoBimestreFechado(exercicio: number, em: Date): number {
-  const anoRef = em.getUTCFullYear();
+  // ⚠️ O ano e o mês de referência são CIVIS — o bimestre do RREO é do calendário do
+  // ente, e às 22:00 de 30/04 o eixo UTC já estaria em maio, no bimestre seguinte.
+  const anoRef = anoCivil(em);
   if (exercicio < anoRef) return 6;
   if (exercicio > anoRef) return 0;
-  return bimestreDoMes(em.getUTCMonth() + 1) - 1;
+  return bimestreDoMes(mesCivil(em)) - 1;
 }
 
 // ── O TEXTO DO DECRETO (TR 4.19/4.24) ─────────────────────────────────────────────

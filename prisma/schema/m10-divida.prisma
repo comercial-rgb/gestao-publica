@@ -64,6 +64,8 @@ model DividaConsolidada {
   criadoPor String
 
   @@index([tipo])
+  anexos           Anexo[]
+  camposAdicionais ValorDeCampoAdicional[] @relation("CampoAdicionalDeDivida")
 }
 
 /// Os SEIS tipos — os três fatos e os três estornos, desde o dia 1. A lição do

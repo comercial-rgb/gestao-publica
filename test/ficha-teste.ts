@@ -2,6 +2,7 @@ import type { PrismaClient } from "../prisma/generated/client/client.js";
 import { registrarMovimentoDotacao } from "../modules/m05-despesa/dotacao-razao.js";
 import { semearRoteiroOrcamentario } from "./roteiro-orcamentario.js";
 import { recalcularCache } from "../modules/m05-despesa/adapter-prisma.js";
+import { DIA_DE_BORDA } from "./instantes.js";
 
 /**
  * Cria uma ficha DE TESTE com id explícito — e com a sua DOTACAO_INICIAL.
@@ -83,7 +84,12 @@ export async function criarFichaDeTeste(
       origemTipo: "LOA",
       origemId: criada.id,
       criadoPor: "LOA",
-      data: new Date(Date.UTC(f.exercicio, 0, 1, 12, 0, 0)),
+      // ⚠️ HORA DE BORDA, NÃO MEIO-DIA — ver `test/instantes.ts`. Esta é a fixture que
+      // alcança quase toda a suíte: toda ficha de teste nasce com a dotação inicial daqui.
+      // Ao meio-dia UTC os dois eixos de data coincidem, e uma fixture que coincide não
+      // consegue acusar código que compara data por UTC. Às 22:00 civis de 01/01 ela
+      // consegue: para o ente é 1º de janeiro, para Greenwich já é dia 2.
+      data: DIA_DE_BORDA(f.exercicio, 1, 1),
       historico: `Dotação inicial da ficha ${f.numero} (LOA ${f.exercicio})`,
     });
 

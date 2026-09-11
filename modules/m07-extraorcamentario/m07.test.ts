@@ -13,6 +13,7 @@ import {
   registrarIngressoExtra,
   saldoExtraorcamentario,
 } from "./extraorcamentario.js";
+import { DIA_DE_BORDA } from "../../test/instantes.js";
 
 /**
  * M07 bloco 2 — ingresso, dispêndio e estorno avulsos.
@@ -114,13 +115,22 @@ async function conferirBalanceamento(): Promise<void> {
   }
 }
 
-function ingresso(tipoId: string, credor: string, valor: string, conta = "CC-001") {
+function ingresso(
+  tipoId: string,
+  credor: string,
+  valor: string,
+  conta = "CC-001",
+  fonteId = FONTE_500
+) {
   return {
     tipoConsignacaoId: tipoId,
     credorConsignatario: credor,
     contaBancaria: conta,
+    fonteId,
     valor,
-    data: new Date("2026-05-01T12:00:00Z"),
+    // ⚠️ HORA DE BORDA — ver test/instantes.ts. Ao meio-dia os dois eixos de data
+    // coincidem, e uma fixture que coincide não consegue acusar comparação por UTC.
+    data: DIA_DE_BORDA(2026, 5, 1),
     historico: `ingresso ${credor}`,
     criadoPor: POR,
   };
@@ -139,7 +149,7 @@ function dispendio(
     contaBancaria: conta,
     fonteId,
     valor,
-    data: new Date("2026-06-01T12:00:00Z"),
+    data: DIA_DE_BORDA(2026, 6, 1),
     historico: `dispêndio ${credor}`,
     criadoPor: POR,
   };

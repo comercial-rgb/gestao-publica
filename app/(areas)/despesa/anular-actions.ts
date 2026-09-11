@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { anularExecucao, type TipoAnulavel } from "../../../lib/portas/anulacao";
 import { desmascararValor } from "../../../lib/format/mascaras";
+import { meioDiaCivil } from "../../../packages/datas/index";
 
 export interface EstadoAnulacao {
   readonly erro?: string;
@@ -57,7 +58,7 @@ export async function anularDespesaAction(
       valor: valorCru,
       motivo,
       // `T12:00:00Z` — a data do fato é um DIA (mesma âncora do empenho); o fuso não a empurra atrás.
-      data: new Date(`${dataBruta}T12:00:00Z`),
+      data: meioDiaCivil(dataBruta),
       total,
     });
     revalidatePath(CAMINHO[tipo]);

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { anularReceita } from "../../../../lib/portas/anulacao";
+import { meioDiaCivil } from "../../../../packages/datas/index";
 
 export interface EstadoAnulacaoReceita {
   readonly erro?: string;
@@ -30,7 +31,7 @@ export async function anularReceitaAction(
     await anularReceita({
       receitaId,
       numeroReceita: numero,
-      data: new Date(`${dataBruta}T12:00:00Z`),
+      data: meioDiaCivil(dataBruta),
     });
     revalidatePath("/receita/arrecadacoes");
     return { sucesso: `Anulação ${numero} registrada.` };

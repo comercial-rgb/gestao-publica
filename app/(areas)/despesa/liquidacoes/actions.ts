@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { registrarLiquidacao } from "../../../../lib/portas/liquidacao";
+import { meioDiaCivil } from "../../../../packages/datas/index";
 
 export interface EstadoLiquidacao {
   readonly erro?: string;
@@ -38,7 +39,7 @@ export async function liquidarAction(
       empenhoId,
       numero,
       valor,
-      data: new Date(`${dataBruta}T12:00:00Z`),
+      data: meioDiaCivil(dataBruta),
       responsavelAtesto,
       historico,
     });

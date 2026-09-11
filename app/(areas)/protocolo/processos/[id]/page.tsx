@@ -27,6 +27,7 @@ import {
   FormTornarSemEfeito,
   FormTramitar,
 } from "./FormMovimentos";
+import { instanteCivilBr } from "../../../../../packages/datas/index";
 
 /**
  * O DOSSIÊ DO PROCESSO — e o gerenciamento acontece AQUI (5.42.52).
@@ -56,7 +57,9 @@ const TOM_DA_SITUACAO: Record<string, StatusBadge> = {
 };
 
 function instante(d: Date): string {
-  return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  // ⚠️ SEM `timeZone`, o `Intl` usa o relógio de QUEM RENDERIZA — a máquina, num
+  // componente de servidor. `instanteCivilBr` fixa o fuso do ente.
+  return instanteCivilBr(d);
 }
 
 export default async function ProcessoPage({

@@ -1,4 +1,5 @@
 import type { AnexoNaLista } from "../../lib/portas/documentos";
+import { instanteCivilBr } from "../../packages/datas/index";
 
 /**
  * A LISTA DE ANEXOS DE UM REGISTRO — com download individual e em lote.
@@ -20,7 +21,9 @@ function tamanhoLegivel(bytes: number): string {
 }
 
 function instante(d: Date): string {
-  return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  // ⚠️ SEM `timeZone`, o `Intl` usa o relógio de QUEM RENDERIZA — a máquina, num
+  // componente de servidor. `instanteCivilBr` fixa o fuso do ente.
+  return instanteCivilBr(d);
 }
 
 export function ListaDeAnexos({

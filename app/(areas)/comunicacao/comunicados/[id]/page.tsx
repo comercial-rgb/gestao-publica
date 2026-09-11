@@ -15,6 +15,7 @@ import {
   FormEnviar,
   FormResponder,
 } from "./FormAcoes";
+import { instanteCivilBr } from "../../../../../packages/datas/index";
 
 /**
  * O COMUNICADO — e as ações acontecem aqui, não numa tela à parte.
@@ -26,7 +27,9 @@ import {
 export const dynamic = "force-dynamic";
 
 function instante(d: Date): string {
-  return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  // ⚠️ SEM `timeZone`, o `Intl` usa o relógio de QUEM RENDERIZA — a máquina, num
+  // componente de servidor. `instanteCivilBr` fixa o fuso do ente.
+  return instanteCivilBr(d);
 }
 
 export default async function ComunicadoPage({

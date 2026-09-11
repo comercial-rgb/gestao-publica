@@ -562,7 +562,7 @@ describe("Anexo 14 — Balanço Patrimonial", () => {
       prisma,
       {
         tipoConsignacaoId: TIPO_CONSIG, credorConsignatario: "Receita Federal",
-        contaBancaria: "CC-001", valor: "900.00",
+        contaBancaria: "CC-001", fonteId: FONTE, valor: "900.00",
         data: new Date("2026-06-01T12:00:00Z"),
         historico: "INSS retido de terceiros", criadoPor: POR,
       },

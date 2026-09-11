@@ -18,6 +18,7 @@ import {
 import { FormAnexo } from "../../../documentos/FormAnexo";
 import { FormAlterarPessoa } from "./FormAlterarPessoa";
 import { FormPapel } from "./FormPapel";
+import { diaCivilBr, instanteCivilBr } from "../../../../../packages/datas/index";
 
 /**
  * DETALHE DA PESSOA — dados, papéis, relacionados e histórico, no MESMO contexto.
@@ -39,12 +40,15 @@ const ROTULO_DO_PAPEL: Record<PapelDePessoa, string> = {
   REPRESENTANTE: "Representante",
 };
 
+// ⚠️ AS DUAS LINHAS ABAIXO USAVAM O RELÓGIO DE QUEM RENDERIZA — `toLocaleString` sem
+// `timeZone` lê o fuso do PROCESSO, e em componente de servidor isso é a MÁQUINA, não o
+// ente. A régua é `packages/datas`.
 function instante(d: Date): string {
-  return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  return instanteCivilBr(d);
 }
 
 function dia(d: Date): string {
-  return d.toLocaleDateString("pt-BR");
+  return diaCivilBr(d);
 }
 
 export default async function DetalheDaPessoaPage({

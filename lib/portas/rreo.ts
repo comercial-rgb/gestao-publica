@@ -32,6 +32,7 @@ import {
   type HarmonizacaoAnexo6,
 } from "../../modules/m12-relatorios/rreo-anexo6-abaixo";
 import { type Bimestre } from "../../modules/m12-relatorios/rreo-anexo1";
+import { janelaCivilDeMeses } from "../../packages/datas/index";
 
 /**
  * PORTA — RREO. A ÚNICA borda entre a UI e o domínio dos relatórios fiscais.
@@ -178,7 +179,9 @@ export async function gerarRgfAnexo5(p: {
   readonly quadrimestre: Quadrimestre;
 }): Promise<Anexo5> {
   const mesFinal = p.quadrimestre * 4; // 1→abril, 2→agosto, 3→dezembro
-  const corte = new Date(Date.UTC(p.exercicio, mesFinal, 0, 23, 59, 59));
+  // ⚠️ O FIM DO BIMESTRE É O ÚLTIMO INSTANTE CIVIL DO ÚLTIMO DIA DELE. Em UTC a conta
+  // acertava o DIA e errava a HORA — e é na hora que mora o fato da noite do dia 30.
+  const corte = janelaCivilDeMeses(p.exercicio, 1, mesFinal).fim;
   return rgfAnexo5(cliente(), { exercicio: p.exercicio, corte });
 }
 

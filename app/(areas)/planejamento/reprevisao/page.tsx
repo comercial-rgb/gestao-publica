@@ -4,6 +4,7 @@ import { TabelaDeDados, type ColunaTabela } from "../../../../components/ui/Tabe
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import { gerarReprevisoes, PortaSemBancoError, type ReprevisaoRegistrada } from "../../../../lib/portas/planejamento";
 import { FormReprevisao } from "./FormReprevisao";
+import { diaCivilBr } from "../../../../packages/datas/index";
 
 /**
  * REPREVISÃO DE RECEITA — histórico append-only (LRF art. 12). Server Component, força-dinâmica.
@@ -46,7 +47,7 @@ export default async function ReprevisaoPage({
       ) : (
         <TabelaDeDados
           colunas={COLUNAS}
-          linhas={reprevisoes.map((r) => ({ ...r, dataFmt: r.data.toISOString().slice(0, 10).split("-").reverse().join("/") }))}
+          linhas={reprevisoes.map((r) => ({ ...r, dataFmt: diaCivilBr(r.data) }))}
           keyDe={(l) => l.id}
           legenda={`${reprevisoes.length} reestimativa(s) · valores em R$ (com sinal: + aumenta, − reduz).`}
         />

@@ -352,10 +352,277 @@ export const AUDITORIAS: DefinicaoDeRecurso = definirRecurso({
   ],
 });
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ENT03c — OS CADASTROS QUE O CENSO ACHOU COM MOTOR E SEM TELA
+//
+// ⚠️ OS TRÊS SAÍRAM DA PRÓPRIA VARREDURA DESTE LOTE, e é isso que os torna baratos: o
+// censo mediu o M10 e o M11 cláusula a cláusula e encontrou o mesmo padrão três vezes —
+// caso de uso completo, invariante provado por teste de integração, e NENHUMA rota em
+// `app/`. A dívida fundada amortiza dentro do pagamento; a dívida ativa inscreve, atualiza
+// por competência idempotente e recebe pela guia; a obra mede com período que não se
+// sobrepõe e segregação entre quem mede e quem aprova. Tudo isso existia e não tinha onde
+// ser usado.
+//
+// ⚠️ E NENHUM DELES PRECISOU DE AÇÃO NOVA NO CENSO DO M16. As doze ações que estas telas
+// disparam já estavam lá desde que os casos de uso nasceram — o que faltava era a
+// superfície. É a medida mais honesta do que o molde custa: três cadastros, três
+// descritores, nove rotas, uma migration aditiva de duas colunas.
+// ══════════════════════════════════════════════════════════════════════════════
+
+/** As dez do rol FECHADO da IN/INSS/DC 100/2003 — o mesmo rol que o Zod do M11 cobra. */
+const TIPOS_DE_OBRA_OPCOES = [
+  { valor: "SERVICOS_DIVERSOS_SUJEITOS_A_RETENCAO", rotulo: "01 — Serviços diversos sujeitos a retenção" },
+  { valor: "TRANSPORTE_DE_PASSAGEIROS_POR_PF", rotulo: "02 — Transporte de passageiros por pessoa física" },
+  { valor: "LIMPEZA_HOSPITALAR", rotulo: "03 — Limpeza hospitalar" },
+  { valor: "DEMAIS_LIMPEZAS", rotulo: "04 — Demais limpezas" },
+  { valor: "PAVIMENTACAO_ASFALTICA", rotulo: "05 — Pavimentação asfáltica" },
+  { valor: "TERRAPLANAGEM_ATERRO_SANITARIO_E_DRAGAGEM", rotulo: "06 — Terraplanagem, aterro sanitário e dragagem" },
+  { valor: "OBRAS_DE_ARTE", rotulo: "07 — Obras de arte (pontes, viadutos)" },
+  { valor: "DRENAGEM", rotulo: "08 — Drenagem" },
+  { valor: "DEMAIS_SERVICOS_DE_CONSTRUCAO_CIVIL_COM_EQUIPAMENTOS", rotulo: "09 — Demais serviços de construção civil com equipamentos" },
+  { valor: "EDIFICACOES_EM_GERAL", rotulo: "10 — Edificações em geral" },
+] as const;
+
+export const DIVIDA_FUNDADA: DefinicaoDeRecurso = definirRecurso({
+  nome: "divida-fundada",
+  rotulo: "Dívida fundada",
+  rotuloSingular: "Dívida",
+  rota: "/divida/fundada",
+  descricao:
+    "A dívida consolidada do ente (LRF art. 29, I). O ingresso é receita de operação de " +
+    "crédito e a amortização é despesa do grupo 6 — os dois são lançados por quem é dono " +
+    "do fato. Só a atualização monetária nasce aqui, e é a única que diminui o patrimônio.",
+  campos: [
+    { nome: "identificador", rotulo: "Identificador", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "DF-2026-001" },
+    { nome: "tipo", rotulo: "Tipo", tipo: "selecao", obrigatorio: true, largura: 1,
+      opcoes: [
+        { valor: "CONTRATUAL", rotulo: "Contratual (contrato de financiamento)" },
+        { valor: "MOBILIARIA", rotulo: "Mobiliária (títulos)" },
+      ] },
+    { nome: "credorNome", rotulo: "Credor", tipo: "texto", obrigatorio: true, largura: 2 },
+    { nome: "credorDocumento", rotulo: "CNPJ do credor", tipo: "cpfCnpj", obrigatorio: true, largura: 1 },
+    { nome: "leiAutorizativa", rotulo: "Lei autorizativa", tipo: "texto", obrigatorio: true, largura: 2,
+      ajuda: "Art. 32 da LRF: sem autorização legislativa, a operação de crédito não se contrata." },
+    { nome: "objeto", rotulo: "Objeto", tipo: "textoLongo", obrigatorio: true, largura: 4 },
+    { nome: "contaContabilId", rotulo: "Conta do passivo", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+  ],
+  colunas: [
+    { nome: "identificador", cabecalho: "Identificador", tipo: "link", ordenavel: true },
+    { nome: "credorNome", cabecalho: "Credor", tipo: "texto" },
+    { nome: "tipo", cabecalho: "Tipo", tipo: "texto" },
+    { nome: "ingressado", cabecalho: "Ingressado", tipo: "dinheiro", somavel: true },
+    { nome: "amortizado", cabecalho: "Amortizado", tipo: "dinheiro", somavel: true },
+    { nome: "saldo", cabecalho: "Saldo devedor", tipo: "dinheiro", somavel: true },
+  ],
+  filtros: [
+    { nome: "q", rotulo: "Identificador ou credor", tipo: "texto", largura: 2 },
+    { nome: "tipo", rotulo: "Tipo", tipo: "selecao", largura: 1,
+      opcoes: [
+        { valor: "CONTRATUAL", rotulo: "Contratual" },
+        { valor: "MOBILIARIA", rotulo: "Mobiliária" },
+      ] },
+  ],
+  acoes: [
+    { nome: "atualizacao-monetaria", rotulo: "Registrar atualização monetária",
+      acaoDoCenso: "REGISTRAR_ATUALIZACAO_MONETARIA",
+      aviso:
+        "A correção é a ÚNICA movimentação que nasce aqui, e ela é DESPESA: o ente fica " +
+        "mais pobre. Ingresso e amortização são lançados pela receita e pela despesa. " +
+        "A competência dá a idempotência — a mesma duas vezes é recusada.",
+      campos: [
+        { nome: "valor", rotulo: "Valor da correção (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
+        { nome: "competencia", rotulo: "Competência (AAAA-MM)", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "2026-02" },
+        { nome: "diaMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 4 },
+      ] },
+  ],
+  permissoes: { criar: "CADASTRAR_DIVIDA", anexar: "ANEXAR_ARQUIVO" },
+  abas: [...ABAS_COMPLETAS],
+  donoDoAnexo: "dividaId",
+  cadastroDeCamposAdicionais: "DIVIDA_FUNDADA",
+  relacionados: [
+    {
+      rotulo: "Empenhos de amortização (grupo 6)",
+      href: "/relatorios/gerenciais?divida={id}",
+      explicacao:
+        "A amortização é despesa orçamentária e vive no M05 — esta tela não a reconta. " +
+        "O saldo aqui e o saldo da conta contábil são duas leituras independentes do " +
+        "mesmo passivo, e é o teste de integração que as confronta.",
+    },
+    {
+      rotulo: "RGF Anexo 2 — dívida consolidada",
+      href: "/relatorios/rgf/anexo2",
+      explicacao: "O demonstrativo lê o mesmo saldo por tipo que esta lista mostra.",
+    },
+  ],
+});
+
+export const DIVIDA_ATIVA: DefinicaoDeRecurso = definirRecurso({
+  nome: "divida-ativa",
+  rotulo: "Dívida ativa",
+  rotuloSingular: "Dívida ativa",
+  rota: "/divida/ativa",
+  descricao:
+    "O crédito do ente contra o contribuinte (art. 39 da Lei 4.320/64). A inscrição " +
+    "reconhece um ativo; o recebimento é permutativo e entra pela receita, nunca aqui.",
+  campos: [
+    { nome: "identificador", rotulo: "Identificador", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "DA-2026-000123" },
+    { nome: "devedorNome", rotulo: "Devedor", tipo: "texto", obrigatorio: true, largura: 2 },
+    { nome: "devedorDocumento", rotulo: "CPF/CNPJ do devedor", tipo: "cpfCnpj", obrigatorio: true, largura: 1 },
+    { nome: "origem", rotulo: "Origem", tipo: "selecao", obrigatorio: true, largura: 2,
+      ajuda: "O art. 39, § 2º dá DUAS origens, e só duas. O rol é da lei, não do ente.",
+      opcoes: [
+        { valor: "TRIBUTARIA", rotulo: "Tributária — tributos e seus acréscimos" },
+        { valor: "NAO_TRIBUTARIA", rotulo: "Não tributária — multas, aluguéis, ressarcimentos, alcances" },
+      ] },
+    { nome: "contaContabilId", rotulo: "Conta do ativo", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+  ],
+  colunas: [
+    { nome: "identificador", cabecalho: "Identificador", tipo: "link", ordenavel: true },
+    { nome: "devedorNome", cabecalho: "Devedor", tipo: "texto" },
+    { nome: "origem", cabecalho: "Origem", tipo: "texto" },
+    { nome: "inscrito", cabecalho: "Inscrito + atualizado", tipo: "dinheiro", somavel: true },
+    { nome: "baixado", cabecalho: "Recebido + cancelado", tipo: "dinheiro", somavel: true },
+    { nome: "saldo", cabecalho: "Saldo a receber", tipo: "dinheiro", somavel: true },
+  ],
+  filtros: [
+    { nome: "q", rotulo: "Identificador ou devedor", tipo: "texto", largura: 2 },
+    { nome: "origem", rotulo: "Origem", tipo: "selecao", largura: 1,
+      opcoes: [
+        { valor: "TRIBUTARIA", rotulo: "Tributária" },
+        { valor: "NAO_TRIBUTARIA", rotulo: "Não tributária" },
+      ] },
+  ],
+  acoes: [
+    { nome: "inscrever", rotulo: "Inscrever em dívida ativa", acaoDoCenso: "INSCREVER_DIVIDA_ATIVA",
+      aviso:
+        "A inscrição RECONHECE um crédito que o ente ainda não tinha no ativo — o " +
+        "patrimônio cresce. Se o crédito já foi reconhecido antes (fato gerador), a " +
+        "inscrição é RECLASSIFICAÇÃO e não cria riqueza nova; essa variante ainda não " +
+        "tem tela e só existe pelo caso de uso.",
+      campos: [
+        { nome: "valor", rotulo: "Valor inscrito (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
+        { nome: "diaMovimento", rotulo: "Data da inscrição", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 4 },
+      ] },
+    { nome: "atualizar", rotulo: "Atualizar (juros, multa, correção)", acaoDoCenso: "ATUALIZAR_DIVIDA_ATIVA",
+      aviso: "A competência dá a idempotência: a mesma duas vezes é recusada, e o estorno a libera.",
+      campos: [
+        { nome: "valor", rotulo: "Valor do acréscimo (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
+        { nome: "competencia", rotulo: "Competência (AAAA-MM)", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "2026-02" },
+        { nome: "diaMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 4 },
+      ] },
+    { nome: "cancelar", rotulo: "Cancelar (prescrição, remissão, decisão)", acaoDoCenso: "CANCELAR_DIVIDA_ATIVA",
+      irreversivel: true,
+      aviso:
+        "O cancelamento MATA o crédito e a perda é despesa. Ele não é o recebimento: " +
+        "quem recebe é a receita, pela guia de arrecadação, e ali o fato é permutativo.",
+      campos: [
+        { nome: "valor", rotulo: "Valor cancelado (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
+        { nome: "diaMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 4 },
+      ] },
+  ],
+  permissoes: { criar: "CADASTRAR_DIVIDA_ATIVA", anexar: "ANEXAR_ARQUIVO" },
+  abas: [...ABAS_COMPLETAS],
+  donoDoAnexo: "dividaAtivaId",
+  cadastroDeCamposAdicionais: "DIVIDA_ATIVA",
+  relacionados: [
+    {
+      rotulo: "Arrecadações que quitaram dívida ativa",
+      href: "/receita/arrecadacoes",
+      explicacao:
+        "O recebimento é RECEITA ORÇAMENTÁRIA e mora no M04 — reconhecê-lo aqui contaria " +
+        "a mesma receita duas vezes, porque a VPA já foi reconhecida na inscrição.",
+    },
+  ],
+});
+
+export const OBRAS: DefinicaoDeRecurso = definirRecurso({
+  nome: "obras",
+  rotulo: "Obras e serviços de engenharia",
+  rotuloSingular: "Obra",
+  rota: "/licitacoes/obras",
+  descricao:
+    "O cadastro de obras da IN/INSS/DC 100/2003 e as medições que autorizam a liquidação. " +
+    "Quem mede não aprova, o período de uma medição não se sobrepõe ao de outra, e sem " +
+    "medição aprovada a liquidação da obra é recusada inteira.",
+  campos: [
+    { nome: "identificador", rotulo: "Identificador", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "OB-2026-001" },
+    { nome: "descricao", rotulo: "Descrição", tipo: "textoLongo", obrigatorio: true, largura: 3 },
+    { nome: "tipoObraServico", rotulo: "Tipo (IN/INSS/DC 100/2003)", tipo: "selecao", obrigatorio: true, largura: 2,
+      ajuda: "O rol é FECHADO — é norma, não catálogo do ente.",
+      opcoes: [...TIPOS_DE_OBRA_OPCOES] },
+    { nome: "cei", rotulo: "CEI (12 dígitos)", tipo: "texto", largura: 1,
+      ajuda: "Pode ficar vazio: a obra existe antes da matrícula, e o CEI leva dias para sair na Receita. Um CEI inventado num arquivo da Receita é pior que um campo vazio." },
+    { nome: "orgaoId", rotulo: "Órgão responsável", tipo: "selecao", largura: 2, opcoes: [] },
+  ],
+  colunas: [
+    { nome: "identificador", cabecalho: "Identificador", tipo: "link", ordenavel: true },
+    { nome: "descricao", cabecalho: "Descrição", tipo: "texto" },
+    { nome: "tipo", cabecalho: "Tipo", tipo: "texto" },
+    { nome: "medicoes", cabecalho: "Medições", tipo: "inteiro", ordenavel: true },
+    { nome: "medido", cabecalho: "Medido", tipo: "dinheiro", somavel: true },
+    { nome: "aprovado", cabecalho: "Aprovado", tipo: "dinheiro", somavel: true },
+    { nome: "estado", cabecalho: "Situação", tipo: "situacao" },
+  ],
+  filtros: [
+    { nome: "q", rotulo: "Identificador ou descrição", tipo: "texto", largura: 2 },
+    { nome: "tipoObraServico", rotulo: "Tipo", tipo: "selecao", largura: 2, opcoes: [...TIPOS_DE_OBRA_OPCOES] },
+  ],
+  acoes: [
+    { nome: "medir", rotulo: "Registrar medição", acaoDoCenso: "REGISTRAR_MEDICAO_DE_OBRA",
+      aviso:
+        "O período não pode se sobrepor ao de outra medição do mesmo contrato, e a borda é " +
+        "INCLUSIVA: acabar em X e começar em X já se sobrepõe. O acumulado não passa do " +
+        "valor do contrato.",
+      campos: [
+        { nome: "contratoId", rotulo: "Contrato", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+        { nome: "numero", rotulo: "Número da medição", tipo: "inteiro", obrigatorio: true, largura: 1, minimo: 1, maximo: 999 },
+        { nome: "valorMedido", rotulo: "Valor medido (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
+        { nome: "diaInicio", rotulo: "Período — de", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "diaFim", rotulo: "Período — até", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "responsavelTecnico", rotulo: "Responsável técnico", tipo: "texto", obrigatorio: true, largura: 2 },
+        // ⚠️ OBRIGATÓRIO, e o domínio é que manda: "sem ele, o atesto é de alguém que
+        // pode não poder atestar" (modules/m11-licitacoes/medicoes.ts). O descritor o
+        // trouxe opcional na primeira escrita, e o typecheck derrubou — um formulário
+        // opcional aqui montaria um campo que o caso de uso recusaria depois de o
+        // operador preencher a tela inteira.
+        { nome: "registroProfissional", rotulo: "CREA/CAU do responsável", tipo: "texto", obrigatorio: true, largura: 1 },
+      ] },
+    { nome: "aprovar", rotulo: "Aprovar medição", acaoDoCenso: "APROVAR_MEDICAO_DE_OBRA",
+      aviso:
+        "QUEM MEDIU NÃO APROVA — a segregação é conferida no servidor, e aprovar duas " +
+        "vezes é recusado porque a segunda apagaria quem aprovou primeiro.",
+      campos: [
+        { nome: "medicaoId", rotulo: "Medição", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+        { nome: "diaAprovacao", rotulo: "Data da aprovação", tipo: "data", obrigatorio: true, largura: 1 },
+      ] },
+  ],
+  permissoes: { criar: "CADASTRAR_OBRA", anexar: "ANEXAR_ARQUIVO" },
+  abas: [...ABAS_COMPLETAS],
+  donoDoAnexo: "obraId",
+  cadastroDeCamposAdicionais: "OBRA",
+  relacionados: [
+    {
+      rotulo: "Empenhos de investimento desta obra",
+      href: "/relatorios/gerenciais?obra={id}",
+      explicacao:
+        "O elemento 51 EXIGE obra — empenhar investimento sem apontá-la é recusado " +
+        "nomeando. A execução continua sendo do M05.",
+    },
+  ],
+});
+
 /** Todos os recursos do molde — a lista que o teste do censo e a navegação consomem. */
 export const RECURSOS_DO_MOLDE: readonly DefinicaoDeRecurso[] = [
   CONVENIOS,
   PRECATORIOS,
   CONSORCIOS,
   AUDITORIAS,
+  DIVIDA_FUNDADA,
+  DIVIDA_ATIVA,
+  OBRAS,
 ];

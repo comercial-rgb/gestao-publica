@@ -14,6 +14,7 @@ import {
   type PagamentoDoDossieDaTela,
 } from "../../../../../lib/portas/empenho";
 import { formatarDocumento } from "../../../../../packages/documento";
+import { diaCivilBr, instanteCivilBr } from "../../../../../packages/datas/index";
 
 /**
  * DETALHE DO EMPENHO — origem, liquidações, retenções, pagamentos, anulações,
@@ -41,12 +42,16 @@ import { formatarDocumento } from "../../../../../packages/documento";
  */
 export const dynamic = "force-dynamic";
 
+// ⚠️ ERA `timeZone: "UTC"` — explícito, e explicitamente o eixo errado: a data do FATO é
+// a do ente, não a de Greenwich.
 function dataBr(d: Date): string {
-  return d.toLocaleDateString("pt-BR", { timeZone: "UTC" });
+  return diaCivilBr(d);
 }
 
 function instante(d: Date): string {
-  return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  // ⚠️ SEM `timeZone`, o `Intl` usa o relógio de QUEM RENDERIZA — a máquina, num
+  // componente de servidor. `instanteCivilBr` fixa o fuso do ente.
+  return instanteCivilBr(d);
 }
 
 const ROTULO_STATUS: Record<string, string> = {

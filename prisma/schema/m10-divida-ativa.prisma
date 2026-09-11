@@ -55,6 +55,8 @@ model DividaAtiva {
 
   @@index([origem])
   @@index([devedorDocumento])
+  anexos           Anexo[]
+  camposAdicionais ValorDeCampoAdicional[] @relation("CampoAdicionalDeDividaAtiva")
 }
 
 /// OITO tipos — os quatro fatos e os quatro estornos, desde o dia 1.

@@ -4,11 +4,14 @@ import { Card } from "../../../../../components/ui/Card";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
 import { lerChamado } from "../../../../../lib/portas/suporte";
 import { FormAtendimento, FormAvaliar } from "../FormChamado";
+import { instanteCivilBr } from "../../../../../packages/datas/index";
 
 export const dynamic = "force-dynamic";
 
 function instante(d: Date): string {
-  return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  // ⚠️ SEM `timeZone`, o `Intl` usa o relógio de QUEM RENDERIZA — a máquina, num
+  // componente de servidor. `instanteCivilBr` fixa o fuso do ente.
+  return instanteCivilBr(d);
 }
 
 export default async function ChamadoPage({

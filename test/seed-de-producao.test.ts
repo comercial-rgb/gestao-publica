@@ -196,13 +196,15 @@ describe("banco semeado só por seeds de produção", () => {
       where: { codigo: "CAUCAO" },
       select: { id: true, contaPassivo: { select: { codigo: true } } },
     });
-    const conta = await prisma.contaBancaria.findFirstOrThrow({ select: { codigo: true } });
+    const conta = await prisma.contaBancaria.findFirstOrThrow({
+      select: { codigo: true, fonteId: true },
+    });
 
     const r = await registrarIngressoExtra(
       prisma,
       {
         tipoConsignacaoId: tipo.id, credorConsignatario: "Caucionante Ltda",
-        contaBancaria: conta.codigo, valor: "500.00",
+        contaBancaria: conta.codigo, fonteId: conta.fonteId, valor: "500.00",
         data: new Date("2026-04-15T12:00:00Z"),
         historico: "caução contratual — primeira do banco", criadoPor: identidade,
       },

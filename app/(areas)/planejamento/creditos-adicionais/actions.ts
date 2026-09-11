@@ -7,6 +7,7 @@ import {
   lancarMovimentosCredito,
 } from "../../../../lib/portas/creditos";
 import { ehOrigem, errosDoRascunho, type MovimentoRascunho } from "./rascunho";
+import { meioDiaCivil } from "../../../../packages/datas/index";
 
 export interface EstadoEncerrar {
   readonly erro?: string;
@@ -94,7 +95,7 @@ export async function cadastrarDecretoAction(
       ano: anoBruto,
       // `T12:00:00Z` — meio-dia UTC: a data do fato é um DIA, e ancorar no meio-dia impede que o
       // fuso empurre o decreto para o dia (ou o exercício) anterior. Mesma escolha do empenho.
-      data: new Date(`${dataBruta}T12:00:00Z`),
+      data: meioDiaCivil(dataBruta),
       origemRecurso: origemBruta,
     });
   } catch (e) {

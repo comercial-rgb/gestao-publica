@@ -42,6 +42,34 @@ const PADRAO =
   /getUTC(?:FullYear|Month|Date)\s*\(|toISOString\s*\(\s*\)\s*\.\s*slice\s*\(\s*0\s*,\s*10\s*\)|Date\s*\.\s*UTC\s*\(/;
 
 /**
+ * ⚠️ A QUARTA FORMA, E ELA É SIMÉTRICA ÀS TRÊS DE CIMA — o ENT03c a encontrou fechando a
+ * `DATA-CIVIL-APRESENTACAO`. As três de cima leem o eixo **UTC**; esta lê o eixo do
+ * **HOSPEDEIRO**: `toLocaleString("pt-BR")` sem `timeZone`, `getFullYear()`,
+ * `new Date(a, m, d)`. São erros de direção oposta, e por isso nenhuma guarda pega as duas:
+ *
+ *   · o eixo UTC está errado em QUALQUER máquina, de forma estável — e por isso atravessa
+ *     a prova de fuso (`npm run test:fuso`) sem um arranhão;
+ *   · o eixo do hospedeiro está CERTO nesta máquina, que roda em America/Sao_Paulo, e erra
+ *     em qualquer outra. Nenhuma leitura de código o denuncia; só rodar noutro fuso.
+ *
+ * `npm run test:fuso` roda a suíte inteira sob `Pacific/Kiritimati` e exige resultado
+ * idêntico — é a prova da PROPRIEDADE. Este padrão é o aviso barato que chega antes.
+ */
+/**
+ * ⚠️ A QUINTA FORMA, achada ao fechar a `DATA-CIVIL-APRESENTACAO`: colar um dia civil num
+ * literal e carimbar `Z` no fim — `new Date(`${dia}T23:59:59.999Z`)`. Ela é a mais
+ * traiçoeira das cinco porque PARECE deliberada: tem a hora escrita à mão, com
+ * milissegundos, como quem sabe o que está fazendo. E está errada pelo mesmo motivo de
+ * sempre: 23:59:59Z é 20:59:59 no ente, e o corte perde as três últimas horas do dia.
+ *
+ * Use `inicioDoDiaCivil` e `fimDoDiaCivil`.
+ */
+const PADRAO_LITERAL_Z = /T\s*[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?Z`/;
+
+const PADRAO_HOSPEDEIRO =
+  /toLocale(?:Date|Time)?String\s*\(|(?<![A-Za-z])get(?:FullYear|Month|Date|Hours)\s*\(\s*\)/;
+
+/**
  * Onde `getUTC*` é CORRETO, com o motivo. Formato externo não é comparação de domínio:
  * o órgão define o próprio eixo, e converter para a data civil do ente ali produziria
  * arquivo recusado.
@@ -73,6 +101,7 @@ const EXCECOES: Readonly<Record<string, string>> = {
     "`valorData` é DATA PURA ancorada em meia-noite UTC, por decisão registrada no topo do " +
     "arquivo: nada compara, soma ou corta período por ele, e a ida e a volta usam a MESMA " +
     "âncora — provado em `m25-campos-adicionais.test.ts`",
+
 };
 
 function fontes(dir: string): readonly string[] {
@@ -101,13 +130,24 @@ describe("data civil do ente", () => {
     // encheria a lista de exceções de coisas que não são a mesma pergunta, e uma lista
     // cheia de exceções legítimas é uma lista que ninguém lê.
     //
-    // ⚠️ A APRESENTAÇÃO CONTINUA PENDENTE, e nomeada: `app/**` e `lib/**` ainda imprimem
-    // datas por UTC em ~10 sítios. Pendência DATA-CIVIL-APRESENTACAO — ver o ADR.
     // ⚠️ AS RAÍZES VÊM DE `test/raizes-dominio.ts`, e não escritas à mão aqui. Um scanner
     // que enumera raiz por conta própria PARA DE ENXERGAR o código no dia em que ele se
     // muda de diretório — e para em silêncio, continuando verde. Foi o que aconteceu
     // quando o M15/M18/M19 saíram de `modules/` para `adapters/`.
-    for (const raiz of raizesExistentes(RAIZ, [...RAIZES_DE_DOMINIO, "packages"])) {
+    // ⚠️ O ESCOPO CRESCEU NO ENT03c, e a pendência que ele fecha explica por quê. Até aqui
+    // a guarda varria só `modules/` e `packages/` — "a decisão fala de comparação de data
+    // NO DOMÍNIO". Só que a APRESENTAÇÃO também compara e também imprime: o formatador
+    // `dataBr` de `lib/recorte.ts`, que quase toda tela usa, imprimia por UTC, e oito telas
+    // imprimiam instante pelo relógio da MÁQUINA. Eram 44 sítios, não os ~10 que a
+    // pendência DATA-CIVIL-APRESENTACAO estimava — a terceira vez neste projeto em que a
+    // estimativa de um padrão ficou muito abaixo da medição.
+    for (const raiz of raizesExistentes(RAIZ, [
+      ...RAIZES_DE_DOMINIO,
+      "packages",
+      "lib",
+      "app",
+      "components",
+    ])) {
       for (const p of fontes(raiz)) {
         const rel = relative(RAIZ, p).replace(/\\/g, "/");
         if (rel in EXCECOES) continue;
@@ -117,7 +157,13 @@ describe("data civil do ente", () => {
           // Comentário não é código: o repositório explica o defeito em prosa, e citar
           // `getUTCMonth()` num comentário que conta a história não pode acusar.
           const semComentario = linha.replace(/\/\/.*$/, "").replace(/^\s*\*.*$/, "");
-          if (PADRAO.test(semComentario)) novos.push(`${rel}:${i + 1}`);
+          if (
+            PADRAO.test(semComentario) ||
+            PADRAO_HOSPEDEIRO.test(semComentario) ||
+            PADRAO_LITERAL_Z.test(semComentario)
+          ) {
+            novos.push(`${rel}:${i + 1}`);
+          }
         }
       }
     }

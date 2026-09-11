@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { Badge } from "../../../../components/ui/Badge";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO as CAMPO, CLASSE_PAINEL_FORMULARIO, CLASSE_ROTULO as ROTULO } from "../../../../components/ui/Formulario";
 import { previaAction, confirmarAction, type EstadoImportacao } from "./actions";
+import { diaCivilBr } from "../../../../packages/datas/index";
 
 /**
  * IMPORTADOR — ilha client em DOIS ATOS (TR 7.10-7.11): a PRÉVIA lê e valida (nada grava); a
@@ -80,7 +81,7 @@ export function FormImportador(): React.ReactElement {
                   : linhasTrib.map((l) => (
                       <tr key={l.linha} className="border-b border-[color:var(--color-border)]">
                         <td className="py-1 pr-3">{l.guia}</td><td className="py-1 pr-3">{l.naturezaCodigo}</td>
-                        <td className="py-1 pr-3">{l.fonteCodigo}</td><td className="py-1 pr-3">{new Date(l.data).toLocaleDateString("pt-BR")}</td>
+                        <td className="py-1 pr-3">{l.fonteCodigo}</td><td className="py-1 pr-3">{diaCivilBr(new Date(l.data))}</td>
                         <td className="py-1 text-right">{l.valor}</td>
                       </tr>
                     ))}

@@ -120,6 +120,15 @@ model Anexo {
   convenioId String?
   convenio   Convenio? @relation(fields: [convenioId], references: [id])
 
+  /// ⚠️ ENT03c — os cadastros que o molde ganhou neste lote. Cada um é UMA coluna aqui,
+  /// como o cabeçalho deste arquivo promete: o `Anexo` tem uma FK por tipo de dono, e não
+  /// um `donoTipo` livre, porque o banco tem de continuar garantindo que o registro existe.
+  dividaId String?
+  divida   DividaConsolidada? @relation(fields: [dividaId], references: [id])
+
+  dividaAtivaId String?
+  dividaAtiva   DividaAtiva? @relation(fields: [dividaAtivaId], references: [id])
+
   precatorioId String?
   precatorio   Precatorio? @relation(fields: [precatorioId], references: [id])
 

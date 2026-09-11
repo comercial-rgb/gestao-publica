@@ -327,7 +327,7 @@ describe("M09 — vínculo de conciliação", () => {
       prisma,
       {
         tipoConsignacaoId: "tc-inss", credorConsignatario: "Construtora Alfa",
-        contaBancaria: "CC-001", valor: "5000.00",
+        contaBancaria: "CC-001", fonteId: FONTE_500, valor: "5000.00",
         data: new Date("2026-01-10T12:00:00Z"), historico: "caução", criadoPor: POR,
       },
       R_IN_EXTRA
@@ -355,7 +355,7 @@ describe("M09 — vínculo de conciliação", () => {
       prisma,
       {
         tipoConsignacaoId: "tc-inss", credorConsignatario: "Construtora Alfa",
-        contaBancaria: "CC-001", valor: "5000.00",
+        contaBancaria: "CC-001", fonteId: FONTE_500, valor: "5000.00",
         data: new Date("2026-01-10T12:00:00Z"), historico: "caução", criadoPor: POR,
       },
       R_IN_EXTRA

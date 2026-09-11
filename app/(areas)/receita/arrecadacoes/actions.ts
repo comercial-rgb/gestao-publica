@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { registrarGuia } from "../../../../lib/portas/arrecadacao";
+import { meioDiaCivil } from "../../../../packages/datas/index";
 
 export interface EstadoArrecadacao {
   readonly erro?: string;
@@ -41,7 +42,7 @@ export async function arrecadarAction(
       ...(co !== "" ? { co } : {}),
       exercicioFonte,
       valor,
-      dataArrecadacao: new Date(`${dataBruta}T12:00:00Z`),
+      dataArrecadacao: meioDiaCivil(dataBruta),
       numeroReceita,
     });
     revalidatePath("/receita/arrecadacoes");

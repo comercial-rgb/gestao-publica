@@ -1,3 +1,4 @@
+import { fimDoDiaCivil, inicioDoDiaCivil } from "../../../../packages/datas/index";
 /** Período padrão dos livros: o exercício de 2026 inteiro (ISO yyyy-mm-dd). */
 export const PADRAO_DESDE = "2026-01-01";
 export const PADRAO_ATE = "2026-12-31";
@@ -13,8 +14,8 @@ export function lerPeriodo(sp: Record<string, string | string[] | undefined>): {
   const ateStr = umaData(sp["ate"], PADRAO_ATE);
   // corte inclusivo: `ate` cobre o dia inteiro (23:59:59).
   return {
-    desde: new Date(`${desdeStr}T00:00:00.000Z`),
-    ate: new Date(`${ateStr}T23:59:59.000Z`),
+    desde: inicioDoDiaCivil(desdeStr),
+    ate: fimDoDiaCivil(ateStr),
     desdeStr,
     ateStr,
   };

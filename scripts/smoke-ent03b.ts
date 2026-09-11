@@ -1,5 +1,6 @@
 import "dotenv/config";
 import puppeteer, { type Browser, type Page } from "puppeteer";
+import { diaCivil, somarDiasCivis } from "../packages/datas/index.js";
 
 /**
  * SMOKE DO ENT03b, PELO NAVEGADOR — o MOLDE, provado pelos cadastros que ele gera.
@@ -223,11 +224,16 @@ async function primeiraOpcao(page: Page, seletor: string): Promise<string> {
   return v;
 }
 
-/** Um dia civil relativo a hoje, como `YYYY-MM-DD`. */
+/**
+ * Um dia civil relativo a hoje, como `YYYY-MM-DD`.
+ *
+ * ⚠️ ERA `toISOString().slice(0,10)`, e o ISO é UTC. Rodando às 22:00 do fuso do ente, este
+ * smoke digitaria o dia SEGUINTE no formulário — e passaria, porque nada aqui confere QUAL
+ * dia foi digitado. Um smoke que digita a data errada em silêncio é pior que um que falha.
+ * Achado ao fechar a `DATA-CIVIL-APRESENTACAO` no ENT03c.
+ */
 function dia(offset = 0): string {
-  const d = new Date();
-  d.setDate(d.getDate() + offset);
-  return d.toISOString().slice(0, 10);
+  return diaCivil(somarDiasCivis(new Date(), offset));
 }
 
 

@@ -118,6 +118,15 @@ export function anoCivil(instante: Date, fuso: string = FUSO_DO_ENTE): number {
 }
 
 /** A competência civil, como `YYYY-MM`. */
+/**
+ * O MÊS civil do ente (1–12). O par de `anoCivil`, e faltava: sem ele, quem precisava do
+ * mês caía em `getUTCMonth() + 1` — que às 22:00 do último dia do mês já responde o mês
+ * seguinte. Foi o caso do bimestre do RREO em `lib/portas/programacao.ts`.
+ */
+export function mesCivil(instante: Date, fuso: string = FUSO_DO_ENTE): number {
+  return partes(instante, fuso).mes;
+}
+
 export function competenciaCivil(instante: Date, fuso: string = FUSO_DO_ENTE): string {
   const c = partes(instante, fuso);
   return `${String(c.ano).padStart(4, "0")}-${String(c.mes).padStart(2, "0")}`;
@@ -137,6 +146,25 @@ export function diaCivilBr(instante: Date, fuso: string = FUSO_DO_ENTE): string 
  * achar um offset aproximado; a segunda corrige na fronteira do horário de verão, onde o
  * palpite cai do lado errado da mudança.
  */
+/**
+ * Instante → "dd/mm/aaaa hh:mm" no fuso do ente. O par de `diaCivilBr`, para quando a HORA
+ * importa: o instante do REGISTRO de um movimento, a abertura de uma sessão, o envio.
+ *
+ * ⚠️ POR QUE ELE MORA AQUI e não em cada tela. Três páginas imprimiam instante com
+ * `toLocaleString("pt-BR")` sem `timeZone` — e sem `timeZone` o `Intl` usa o relógio de
+ * QUEM RENDERIZA. Em componente de servidor, isso é o relógio da MÁQUINA: o mesmo fato
+ * apareceria com horas diferentes conforme onde o processo subisse, e ninguém notaria até
+ * alguém comparar um print com o banco. A régua é uma só, e é esta.
+ */
+export function instanteCivilBr(instante: Date, fuso: string = FUSO_DO_ENTE): string {
+  const c = partes(instante, fuso);
+  const dois = (n: number): string => String(n).padStart(2, "0");
+  return (
+    `${dois(c.dia)}/${dois(c.mes)}/${String(c.ano).padStart(4, "0")} ` +
+    `${dois(c.hora)}:${dois(c.minuto)}`
+  );
+}
+
 export function instanteCivil(
   ano: number,
   mes: number,
@@ -154,6 +182,26 @@ export function instanteCivil(
 }
 
 /** O primeiro instante do dia civil `YYYY-MM-DD`. */
+/**
+ * "AAAA-MM-DD" → o MEIO-DIA CIVIL daquele dia. O ancoradouro do que é um DIA, não um
+ * instante: a data do fato que o usuário digita num formulário.
+ *
+ * ⚠️ POR QUE MEIO-DIA E NÃO MEIA-NOITE. A meia-noite é a borda, e borda é onde tudo dá
+ * errado: um deslize de uma hora em qualquer leitura joga o fato para o dia vizinho. Ao
+ * meio-dia há doze horas de folga para cada lado, e o dia civil se mantém em qualquer
+ * fuso do país.
+ *
+ * ⚠️ E POR QUE ELE EXISTE COMO FUNÇÃO. Treze sítios da borda de escrita — empenho,
+ * liquidação, pagamento, arrecadação, crédito adicional, movimentação bancária — faziam
+ * `new Date(`${dia}T12:00:00Z`)`, que é meio-dia em GREENWICH e nove da manhã no ente.
+ * O dia civil saía certo, mas por uma régua diferente da que o resto do sistema usa, e
+ * "certo por outra régua" é como as cinco formas do eixo de data nasceram, uma a uma.
+ */
+export function meioDiaCivil(dia: string, fuso: string = FUSO_DO_ENTE): Date {
+  const [ano, mes, d] = exigirDia(dia);
+  return instanteCivil(ano, mes, d, 12, 0, 0, 0, fuso);
+}
+
 export function inicioDoDiaCivil(dia: string, fuso: string = FUSO_DO_ENTE): Date {
   const [a, m, d] = exigirDia(dia);
   return instanteCivil(a, m, d, 0, 0, 0, 0, fuso);

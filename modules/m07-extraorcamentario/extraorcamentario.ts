@@ -201,6 +201,16 @@ export async function registrarIngressoExtra(
       throw new Error(`Conta bancária "${dados.contaBancaria}" não cadastrada.`);
     }
 
+    // ⚠️ MESMA REGRA DO DISPÊNDIO, e ela faltava aqui: a fonte tem de estar NO ROL da
+    // conta. Receber caução numa conta que não comporta aquela fonte é a mesma mistura de
+    // dinheiro vinculado que o dispêndio já barrava na saída.
+    await exigirFonteNoRolDaConta(
+      tx,
+      { id: conta.id },
+      dados.fonteId,
+      "ingresso extraorçamentário"
+    );
+
     const lancamentoId = await criarLancamentoExtra(tx, {
       numeroControle: `EXTRA-IN-${tipo.codigo}-${diaCivil(dados.data)}`,
       data: dados.data,
@@ -216,6 +226,7 @@ export async function registrarIngressoExtra(
         tipoConsignacaoId: tipo.id,
         credorConsignatario: dados.credorConsignatario,
         contaBancariaId: conta.id,
+        fonteId: dados.fonteId,
         tipo: "INGRESSO",
         valor: dados.valor.toFixed(2),
         data: dados.data,
@@ -294,6 +305,10 @@ export async function registrarDispendioExtra(
         tipoConsignacaoId: tipo.id,
         credorConsignatario: dados.credorConsignatario,
         contaBancariaId: conta.id,
+        // ⚠️ A FONTE JÁ ERA CONFERIDA contra o rol da conta e NÃO ERA GRAVADA. Conferir e
+        // esquecer é o pior dos dois mundos: o guard roda, o dado se perde, e a consulta
+        // volta a atribuir tudo à fonte padrão da conta.
+        fonteId: dados.fonteId,
         tipo: "DISPENDIO",
         valor: dados.valor.toFixed(2),
         data: dados.data,
@@ -339,6 +354,7 @@ export async function estornarMovimentoExtra(
         tipoConsignacaoId: true,
         credorConsignatario: true,
         contaBancariaId: true,
+        fonteId: true,
         pagamentoId: true,
         lancamentoId: true,
         estornoDeId: true,
@@ -465,6 +481,10 @@ export async function estornarMovimentoExtra(
         tipoConsignacaoId: original.tipoConsignacaoId,
         credorConsignatario: original.credorConsignatario,
         contaBancariaId: original.contaBancariaId,
+        // ⚠️ O ESTORNO HERDA A FONTE DO ORIGINAL, sem reconferir o rol: se a fonte saiu
+        // do rol da conta depois do fato, desfazer aquele fato continua tendo de ser
+        // possível — o estorno é a correção, não uma escrita nova.
+        fonteId: original.fonteId,
         tipo: tipoEstorno,
         valor: original.valor,
         data: dados.data,

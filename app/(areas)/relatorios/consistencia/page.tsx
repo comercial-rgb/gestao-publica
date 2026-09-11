@@ -13,6 +13,7 @@ import {
   type Verificacao,
 } from "../../../../lib/portas/consistencia";
 import { SeletorConsistencia } from "./SeletorConsistencia";
+import { janelaCivilDoAno } from "../../../../packages/datas/index";
 
 /**
  * RELATÓRIO DE CONSISTÊNCIA (TR 5.128–5.131 · 7.27) — INTERNO, atrás do shell autenticado.
@@ -43,7 +44,9 @@ export default async function ConsistenciaPage({
   const preEnvio = escBruto === "PRE_ENVIO";
   const escopo: EscopoConsistencia = ehEscopo(escBruto) ? escBruto : "MENSAL";
   // O corte: fim do exercício (31/12). Suficiente para o balancete acumulado e os anuais.
-  const corte = new Date(Date.UTC(exercicio, 11, 31, 23, 59, 59));
+  // ⚠️ O CORTE É O ÚLTIMO INSTANTE CIVIL DO EXERCÍCIO, não 23:59:59 em Greenwich —
+  // que no fuso do ente é 20:59:59, três horas antes do fim do ano.
+  const corte = janelaCivilDoAno(exercicio).fim;
 
   const cabecalho = (
     <PageHeader

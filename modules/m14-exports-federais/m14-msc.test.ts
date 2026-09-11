@@ -313,6 +313,7 @@ async function ingressoExtraDoFundeb(valor: string): Promise<void> {
       tipoConsignacaoId: "t-inss",
       credorConsignatario: "INSS",
       contaBancaria: "CC-002",
+      fonteId: FONTE_540,
       valor,
       data: new Date("2026-07-28T12:00:00Z"),
       historico: "INSS retido de terceiro",

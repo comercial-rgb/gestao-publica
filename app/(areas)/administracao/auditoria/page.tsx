@@ -5,6 +5,7 @@ import { PageHeader } from "../../../../components/ui/PageHeader";
 import { TabelaDeDados, type ColunaTabela } from "../../../../components/ui/TabelaDeDados";
 import { listarOperacoes, PortaSemBancoError, type OperacaoAuditada, type PaginaDeAuditoria } from "../../../../lib/portas/auditoria";
 import { FiltroAuditoria } from "./FiltroAuditoria";
+import { fimDoDiaCivil, inicioDoDiaCivil } from "../../../../packages/datas/index";
 
 /** ADMINISTRAÇÃO · Auditoria (RegistroDeOperacao, TR 6.1-6.3) — leitura com filtros e paginação. */
 export const dynamic = "force-dynamic";
@@ -28,7 +29,7 @@ export default async function AuditoriaPage({
   try {
     dados = await listarOperacoes({
       ...(usuario !== "" ? { usuario } : {}), ...(acao !== "" ? { acao } : {}), ...(resultado !== undefined ? { resultado } : {}),
-      ...(desdeStr !== "" ? { desde: new Date(`${desdeStr}T00:00:00.000Z`) } : {}), ...(ateStr !== "" ? { ate: new Date(`${ateStr}T23:59:59.000Z`) } : {}),
+      ...(desdeStr !== "" ? { desde: inicioDoDiaCivil(desdeStr) } : {}), ...(ateStr !== "" ? { ate: fimDoDiaCivil(ateStr) } : {}),
       pagina,
     });
   } catch (erro) {
