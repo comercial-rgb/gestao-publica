@@ -66,7 +66,8 @@ const R_LIQUIDACAO = roteiroLiquidacao({
 });
 const R_PAGAMENTO = roteiroPagamento({
   obrigacaoAPagar: "2.1.3.1.1.00.00",
-  disponibilidade: "1.1.1.1.2.00.00",
+  // ENT05 ITEM 3 — repontada: a antiga era a variante INTRA OFSS.
+  disponibilidade: "1.1.1.1.1.19.00",
 });
 const R_ARRECADACAO = roteiroArrecadacao({
   disponibilidade: "1.1.1.1.1.00.00",

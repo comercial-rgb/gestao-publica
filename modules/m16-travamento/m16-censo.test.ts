@@ -359,7 +359,39 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //       irregularidade, registrar providência, APRECIAR providência — outro crachá,
     //       pela mesma razão —, encerrar auditoria e emitir relatório circunstanciado)
     //   = 192.
-    expect(nomes.length).toBe(192);
+    // + 16 (ENT05 — o eixo FÍSICO do almoxarifado, TR 5.18):
+    //     4 cadastros (depósito, unidade de medida, grupo de material, material);
+    //     1 parâmetro de estoque (o mínimo/máximo por material E depósito);
+    //     4 movimentos (entrada física, saída física, estorno do movimento físico,
+    //       transferência entre depósitos);
+    //     2 requisição e cota (registrar requisição, definir cota de consumo);
+    //     3 inventário (abrir, registrar contagem, fechar — três crachás, por
+    //       segregação: quem conta não é quem fecha, e a divergência do fechamento
+    //       manda lançar ajuste contábil);
+    //     2 bloqueio (bloquear e encerrar bloqueio)
+    //   = 208.
+    // + 13 (ENT05 — o eixo de GESTÃO do bem, TR 5.19):
+    //     5 cadastros (localização, comissão, motivo de baixa, tipo de incorporação,
+    //       fórmula de avaliação);
+    //     3 movimentos (registrar movimento de gestão, transferir entre entidades,
+    //       estornar movimento de gestão);
+    //     2 documentos (etiqueta com código de barras, termo patrimonial);
+    //     3 inventário de bens (abrir, contar, fechar) — irmãos dos do estoque, e com
+    //       crachás PRÓPRIOS: o inventário de bens exige comissão designada, e quem o
+    //       fecha apura divergência sobre acervo tombado
+    //   = 221.
+    // + 1 (ENT05 ITEM 3 — `repontarConta`): a correção de eixo do plano de contas. Ação
+    //   PRÓPRIA e do ENTE, nunca agrupada com "cadastrar conta": cadastrar cria linha;
+    //   repontar MOVE SALDO que já existe, com lançamento que explica a mudança.
+    //   = 222.
+    // + 8 (ENT05 — A COMPRA, TR 5.17): relacionar marca, relacionar elemento, registrar
+    //   solicitação, movimentar solicitação (autorizar/anular), registrar pesquisa de
+    //   preços, emitir ordem, registrar recebimento e estornar ordem.
+    //   ⚠️ `EMITIR_ORDEM_DE_COMPRA` e `REGISTRAR_RECEBIMENTO_DE_ORDEM` são crachás
+    //   SEPARADOS de propósito: quem emite a ordem não é quem atesta que o material
+    //   chegou — é a segregação do 6.4 no ponto onde ela mais vale.
+    //   = 230.
+    expect(nomes.length).toBe(230);
 
     // 97 serviços, 93 ações distintas. Os pares que compartilham ação (4: importarExtratoBb
     // REUSA IMPORTAR_EXTRATO). transferirEntreContas tem AÇÃO PRÓPRIA (não compartilha) → +1 ação.
@@ -423,7 +455,21 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   Os três guards de verdade estão no código, e não só no censo — ver
     //   `aprovarMedicao` e `apreciarProvidencia`, que recusam o MESMO usuário nas duas pontas.
     //   = 185.
-    expect(TODAS_AS_ACOES.length).toBe(185);
+    // + 16 (ENT05 — o eixo FÍSICO do almoxarifado): AÇÃO PRÓPRIA PARA CADA UM dos 16
+    //   serviços, nenhuma compartilhada. É deliberado, e o caso que o mostra é o do
+    //   inventário: quem CONTA a prateleira não é quem FECHA o inventário, porque o
+    //   fechamento apura a divergência e manda lançar ajuste contábil sobre ela. Uma
+    //   ação única "GESTAO_DE_ESTOQUE" daria, a quem só devia contar caixas, o poder de
+    //   mexer no razão.
+    //   = 201.
+    // + 13 (ENT05 — o eixo de GESTÃO do bem): ação PRÓPRIA para cada serviço. Nenhuma é
+    //   compartilhada com as do estoque, e isso é deliberado: `ABRIR_INVENTARIO_DE_BENS`
+    //   e `ABRIR_INVENTARIO_DE_ESTOQUE` parecem a mesma coisa e não são — um percorre
+    //   prateleira de almoxarifado, o outro exige comissão designada por portaria.
+    //   = 214.
+    // + 1 (REPONTAR_CONTA) = 215.
+    // + 8 (ENT05 — A COMPRA): ação própria para cada serviço = 223.
+    expect(TODAS_AS_ACOES.length).toBe(223);
     expect(ACAO_DO_SERVICO.encerrarExercicio).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.encerrarExercicioComRestos).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.importarExtrato).toBe("IMPORTAR_EXTRATO");

@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "AcaoDoSistema" ADD VALUE 'REPONTAR_CONTA';

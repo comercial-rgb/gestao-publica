@@ -683,69 +683,17 @@ const MAPA: Readonly<Record<string, Marca>> = {
   // ══════════════════════════════════════════════════════════════════════════
 
   // ── 5.18 · ALMOXARIFADO (M10) ──────────────────────────────────────────────
-  "5.18.1": {
-    situacao: "PARCIAL",
-    evidencia: `${CENSO} Entradas, saídas de consumo e ajustes movimentam o saldo e lançam no razão na MESMA transação — 5.000 − 1.800 − 200 = 3.000 e o razão concorda (m10-almoxarifado.test.ts t1). O consumo acima do estoque é recusado, o IGUAL passa e +0,01 depois não (t3), e dois consumos concorrentes contra o mesmo estoque gravam UM só (t4). ⚠️ FALTA a TRANSFERÊNCIA entre depósitos — não há depósito no modelo — e falta a "atualização dos estoques" no sentido FÍSICO: \`MovimentoAlmoxarifado\` tem \`valor\` e não tem quantidade.`,
-  },
-  "5.18.2": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não existe requisição ao almoxarifado: nenhum modelo, nenhum caso de uso, nenhuma tela. A saída é registrada direto por \`registrarSaidaConsumo\`, sem pedido que a anteceda — e portanto não há o que "sugerir quantidades disponíveis" nem o que anular ao rejeitar. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.18.3": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há saldo FÍSICO nem limite mínimo. \`saldoDoAlmoxarifado\` soma VALOR (Σ valor × sinal do tipo) e o modelo não tem quantidade nem unidade de medida — a pergunta "quantas resmas restam" não tem onde ser respondida. ⚠️ Isto não é uma tela que falta: é ausência de MODELO, e construir a tela primeiro produziria um número inventado.`,
-  },
-  "5.18.4": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há cota de consumo por departamento — nem departamento como eixo do movimento. \`MovimentoAlmoxarifado\` liga classe de material, liquidação e lançamento; não liga unidade requisitante. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
   "5.18.5": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} Não existe consulta de últimas compras para estimativa de custo: não há pesquisa de preços, cotação nem histórico por produto em nenhum dos módulos (grep por \`ultimasCompras|pesquisaDePreco|cotacaoDePreco|precoUltimaCompra\` em prisma/schema, modules, lib e app: zero). O M11 registra o VALOR do contrato, não o preço do item.`,
-  },
-  "5.18.6": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não existe requisição ao Compras para reposição de estoque — nem o pedido, nem o ponto de reposição que o dispararia (que dependeria do saldo físico, também ausente). Contraprova em test/censo-de-ausencias.test.ts.`,
   },
   "5.18.7": {
     situacao: "PARCIAL",
     evidencia: `${CENSO} A entrada NASCE da liquidação — o material entra porque foi recebido e atestado — e uma liquidação pode abastecer VÁRIAS classes sem que a soma passe do que ela liquidou (m10-almoxarifado.test.ts t2). O guard do elemento fecha a porta ao que não é material de consumo: serviço (39) não entra e o 32 é recusado com mensagem de DECISÃO, não de defeito (t9, t10). ⚠️ O QUE FALTA é o ITEM: não há item de ordem de compra nem de empenho no modelo, então "importar sem redigitação dos produtos" não tem de onde importar. O operador digita valor e classe.`,
   },
-  "5.18.8": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Usuários não requisitam materiais: não há pedido, não há acompanhamento de pedido, não há caixa de entrada do responsável pelo almoxarifado. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.18.9": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Sem requisição não há atendimento parcial nem saldo não atendido — as duas coisas que esta cláusula pede são propriedades de um pedido que não existe no modelo. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.18.10": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há centro de custo na distribuição de materiais: o movimento não carrega unidade, setor nem departamento, e a VPD do consumo é lançada contra a conta da classe, sem recorte. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.18.11": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Preço médio é impossível neste modelo, não apenas não implementado: preço médio é valor ÷ quantidade, e não há quantidade. ⚠️ É a família já conhecida do lote anterior — o documento pergunta uma coisa que o modelo não tem eixo para responder. Construir "preço médio" sobre o que existe produziria o valor total travestido de preço unitário.`,
-  },
-  "5.18.12": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há inventário: nem abertura, nem fechamento, nem bloqueio de movimentação durante a contagem. O que existe é o AJUSTE (\`AJUSTE_ENTRADA\`/\`AJUSTE_SAIDA\`), que é o LANÇAMENTO do resultado de um inventário — não o inventário. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.18.13": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há bloqueio por produto nem por depósito — não há produto (só classe de material) nem depósito no modelo. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.18.14": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há lote nem data de validade, e portanto não há consulta de vencimento em 30 dias nem de vencidos. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
   "5.18.15": {
     situacao: "IMPLEMENTADO_NAO_VALIDADO",
     evidencia: `${CENSO} ⚠️ ESTA É A CLÁUSULA FORTE DA SEÇÃO, e ela é forte de verdade. A integração com a contabilidade não é uma rotina que roda depois: a saída e os ajustes têm lançamento PRÓPRIO na mesma transação (\`TEM_ROTEIRO_ALMOXARIFADO\`), e a ENTRADA é lançada pelo M05 — deliberadamente, para não lançar o estoque duas vezes. \`conferirAlmoxarifadoContraRazao\` confronta as duas leituras independentes do mesmo saldo, e o t1 as fecha em 3.000,00 com VPD de 2.000,00. No Anexo 14 o estoque entra como ATIVO e a provisão como PASSIVO, e o superávit ignora os dois (t6). Sem tela: o almoxarifado não tem rota em app/.`,
-  },
-  "5.18.16": {
-    situacao: "PARCIAL",
-    evidencia: `${CENSO} O demonstrativo por classe (TR 5.86) tem a seção do almoxarifado com saldo anterior + ingressos + atualizações = saldo final, célula a célula por literal (m10-almoxarifado.test.ts t7, m10-alienacao.test.ts t6). O corte do período é INCLUSIVO no início e a borda é a do calendário do ente — 01/01 às 00:00Z ainda é a véspera (t6b, t6c), e período invertido é fail-closed. ⚠️ FALTA o recorte por MATERIAL (o eixo é a classe contábil) e falta a distinção analítico/sintético.`,
   },
   "5.18.17": {
     situacao: "AUSENTE_CONFIRMADO",
@@ -762,10 +710,6 @@ const MAPA: Readonly<Record<string, Marca>> = {
   "5.18.20": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} Sem lote e sem validade (ver 5.18.14) não há relatório de materiais vencidos ou a vencer, e a seleção por almoxarifado/depósito também não tem eixo. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.18.21": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há múltiplos almoxarifados: \`ClasseDeMaterial\` é única no ente e o movimento não aponta depósito. "De forma integrada" pressupõe mais de um, e há exatamente um — implícito. Contraprova em test/censo-de-ausencias.test.ts.`,
   },
   "5.18.22": {
     situacao: "AUSENTE_CONFIRMADO",
@@ -785,18 +729,6 @@ const MAPA: Readonly<Record<string, Marca>> = {
   },
 
   // ── 5.19 · PATRIMÔNIO (M10) ────────────────────────────────────────────────
-  "5.19.1": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há registro de inventário de bens. O que existe é a REAVALIAÇÃO e o IMPAIRMENT, que são o efeito CONTÁBIL do que um inventário conclui — não o inventário. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.19.2": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há etiqueta nem código de barras. O \`numeroTombamento\` existe e é único, que é a metade difícil; imprimir a etiqueta é a metade que falta. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.19.3": {
-    situacao: "PARCIAL",
-    evidencia: `${CENSO} O bem se cadastra com tombamento único, descrição, classe e data de aquisição, e a FORMA de incorporação é o TIPO do movimento: \`AQUISICAO\`, \`DOACAO_RECEBIDA\`, \`AVALIACAO_INICIAL\`, \`CUSTO_SUBSEQUENTE\` — cada um com roteiro próprio, e tipo sem roteiro parametrizado é erro nomeado com ZERO escrita (m10-patrimonio.test.ts t10). ⚠️ FALTA a classificação móvel/imóvel — não há campo de tipo do bem — e faltam comodato e permuta como formas de incorporação.`,
-  },
   "5.19.4": {
     situacao: "PARCIAL",
     evidencia: `${CENSO} O bem entra pela LIQUIDAÇÃO de despesa de capital, com movimento e lançamento balanceado na mesma transação (m10-patrimonio.test.ts t1); liquidação de despesa CORRENTE não incorpora bem e o SELECT prova zero (t2); liquidação anulada no M05 também não (t3). ⚠️ FALTA a ORDEM DE COMPRA e falta o ITEM: sem item não há "importação dos itens sem redigitação dos produtos" — o operador informa valor e classe.`,
@@ -809,10 +741,6 @@ const MAPA: Readonly<Record<string, Marca>> = {
     situacao: "PARCIAL",
     evidencia: `${CENSO} Incorporar MAIS do que a liquidação é rejeitado (m10-patrimonio.test.ts t4) — o saldo da liquidação governa, e ele é derivado da soma das incorporações, nunca uma flag. ⚠️ FALTA o controle POR ITEM: o modelo não tem itens de empenho nem de ordem de compra, então "não incorporar duas vezes o mesmo item" é uma pergunta sem eixo. O controle é por VALOR, e duas incorporações de metade cada passam.`,
   },
-  "5.19.7": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há tipo de bem cadastrável. O eixo de classificação é a \`ClasseDeBens\`, que é CONTÁBIL (aponta a conta do PCASP e carrega os parâmetros de depreciação) — usá-la como "tipo do bem" misturaria duas perguntas diferentes na mesma coluna.`,
-  },
   "5.19.8": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} O mecanismo de campos personalizados EXISTE e está provado (M25, sete tipos, valor em coluna tipada), mas \`BEM\` não está no enum \`CadastroComCamposAdicionais\` — o rol é FECHADO de propósito, e cada valor corresponde a uma FK real. Acrescentar o bem é um valor no enum, uma coluna em \`ValorDeCampoAdicional\` e uma linha no descritor do molde; é barato, e não foi feito.`,
@@ -820,18 +748,6 @@ const MAPA: Readonly<Record<string, Marca>> = {
   "5.19.9": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} Não há cadastro contínuo nem recebimento em grande quantidade: \`adquirirBem\` cria um bem por chamada, e não há importação em lote nem tela de digitação sequencial.`,
-  },
-  "5.19.10": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} O bem não tem responsável, então "somente os bens sob a sua responsabilidade" não é um filtro possível. ⚠️ A autorização por ação existe e é boa (M16), mas ela responde "quem pode fazer o quê", não "de quem é este bem". Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.19.11": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há estado de conservação. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.19.12": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há situação física do bem (empréstimo, locação, manutenção). ⚠️ E quando ela existir, a pergunta certa é "qual era a situação NAQUELA data" — a família que já apareceu quatro vezes neste projeto. Um campo \`situacao\` responderia só "agora", e o repositório já decidiu contra colunas de estado: situação se DERIVA de movimentos append-only.`,
   },
   "5.19.13": {
     situacao: "PARCIAL",
@@ -845,37 +761,9 @@ const MAPA: Readonly<Record<string, Marca>> = {
     situacao: "PARCIAL",
     evidencia: `${CENSO} Cadastramento, classificação (classe), movimentação (onze tipos com roteiro) e baixa existem e estão provados — inclusive que a classe positiva NÃO mascara a baixa de um bem que já não vale (m10-patrimonio.test.ts t5b), que é o erro que um saldo só por classe esconderia. ⚠️ FALTA a LOCALIZAÇÃO, citada no enunciado, e falta a tela de manutenção do cadastro.`,
   },
-  "5.19.16": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há cadastro de comissões nem vínculo de ato designatório aos atos de reavaliação, depreciação e inventário. ⚠️ O repositório JÁ SABE fazer a segregação que uma comissão formaliza — "quem mede não aprova" está provado na medição de obra e "quem relata não aprecia" na auditoria interna. O que falta é a comissão como entidade. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.19.17": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Sem inventário (5.19.1) e sem estado de conservação (5.19.11) não há como controlar os dois pelo registro dos inventários realizados. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
   "5.19.18": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} Não há atualização de inventário por grupos (repartição, responsável, conta contábil, classe): não há inventário, e três dos quatro eixos de agrupamento não existem no modelo. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.19.19": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há transferência de bem entre departamentos — nem departamento como localização do bem. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.19.20": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há como alimentar o sistema com estado e localização no momento do inventário: os três conceitos (inventário, estado, localização) estão ausentes. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.19.21": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há relatório de inconsistência de inventário — nem "lugar de origem" do bem para comparar com onde ele foi encontrado. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.19.22": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há termo de abertura nem de fechamento de inventário. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.19.23": {
-    situacao: "PARCIAL",
-    evidencia: `${CENSO} A movimentação FINANCEIRA está completa e provada: agregação (\`CUSTO_SUBSEQUENTE\`, que aumenta a base e faz a parcela seguinte crescer — m10-competencia.test.ts t5), reavaliação nos DOIS sentidos conforme NBC TSP 07 (t9), depreciação, amortização, exaustão, impairment e baixa. ⚠️ FALTA a movimentação FÍSICA, que o enunciado nomeia primeiro: não há transferência de bem. Contraprova em test/censo-de-ausencias.test.ts.`,
   },
   "5.19.24": {
     situacao: "PARCIAL",
@@ -889,21 +777,9 @@ const MAPA: Readonly<Record<string, Marca>> = {
     situacao: "IMPLEMENTADO_NAO_VALIDADO",
     evidencia: `${CENSO} Depreciação e reavaliação por BEM (o movimento aceita \`bemId\`) com histórico do valor contábil: base 12.000, residual 10%, vida 24 → parcela 450,00 e contábil 11.550,00 (m10-competencia.test.ts t1). A MESMA competência duas vezes é rejeitada e o SELECT prova UM movimento (t2); estornada, ela pode ser refeita, porque quem governa é o SALDO e não uma trava (t3). A alteração a maior e a menor são tipos distintos (\`REAVALIACAO_AUMENTO\`/\`REAVALIACAO_REDUCAO\`), e a redução que estouraria o valor contábil é recusada (t9b). Sem tela.`,
   },
-  "5.19.27": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} O bem não tem unidade gestora. ⚠️ E há uma ausência maior por trás: o eixo de MUNICÍPIO/entidade não existe no repositório (docs/adr/ADR-eixo-de-municipio.md) — o lote de tenancy segue de pé desde o ENT01. Controlar "por unidade gestora" depende dele.`,
-  },
-  "5.19.28": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há transferência de bens entre entidades com baixa e incorporação automáticas — e não poderia haver antes do eixo de entidade (ver 5.19.27). Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
   "5.19.29": {
     situacao: "IMPLEMENTADO_NAO_VALIDADO",
     evidencia: `${CENSO} ⚠️ A SEGUNDA CLÁUSULA FORTE DA SEÇÃO. As rotinas seguem as NBCASP: valor residual e vida útil por classe (\`ParametroAtualizacaoClasse\`), os TRÊS métodos que o MCASP 1.1.5 exige — depreciação para tangíveis, amortização para intangíveis, exaustão para recursos naturais — com roteiro próprio cada um (m10-competencia.test.ts t7), reavaliação nos dois sentidos por NBC TSP 07 (t9) e impairment com o teto do valor contábil (t6). Classe SEM parâmetro é erro nomeado com zero escrita, movimento E lançamento (t8) — fail-closed, nunca "deprecia com o default". Sem tela.`,
-  },
-  "5.19.30": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há cadastro de motivos de baixa: \`motivo\` é texto livre no movimento. Um rol cadastrável pela instituição — que é o que a cláusula pede — não existe.`,
   },
   "5.19.31": {
     situacao: "PARCIAL",
@@ -925,14 +801,6 @@ const MAPA: Readonly<Record<string, Marca>> = {
     situacao: "PARCIAL",
     evidencia: `${CENSO} O dado existe e é obrigatório: todo movimento do bem tem \`lancamentoId\` NOT NULL, e o razão é consultável pela tela (/relatorios/livros/razao). ⚠️ FALTA o caminho INVERSO que a cláusula pede — partir do bem e ver os lançamentos dele — porque não há tela de gerenciamento do bem individual.`,
   },
-  "5.19.36": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há termo de responsabilidade, individual, setorial ou por responsável — e não há responsável. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.19.37": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há termo de baixa patrimonial. A BAIXA existe como fato contábil e está provada (m10-patrimonio.test.ts t5, t5b); o documento que a formaliza, não. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
   "5.19.38": {
     situacao: "PARCIAL",
     evidencia: `${CENSO} O cálculo da competência existe, é idempotente e é exato: a mesma competência duas vezes é rejeitada com SELECT provando um movimento (m10-competencia.test.ts t2), e a parcela para no residual (t4). ⚠️ FALTA a VIRADA em LOTE — hoje se chama \`atualizarCompetencia\` bem a bem, e não há rotina que percorra os bens cuja depreciação começa no mês corrente. Contraprova em test/censo-de-ausencias.test.ts.`,
@@ -948,10 +816,6 @@ const MAPA: Readonly<Record<string, Marca>> = {
   "5.19.41": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} Não há manutenção de bem, prevista ou realizada. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.19.42": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há fórmula de avaliação editável pelo usuário. O que existe é \`ParametroAtualizacaoClasse\` (vida útil, residual, método) — parâmetros de uma fórmula FIXA, não uma fórmula que o usuário escreve. ⚠️ E a distância entre as duas coisas é maior do que parece: fórmula editável é uma linguagem, com validação e limites; o M26 tem uma gramática própria e ela seria o ponto de partida honesto. Contraprova em test/censo-de-ausencias.test.ts.`,
   },
   "5.19.43": {
     situacao: "AUSENTE_CONFIRMADO",
@@ -1023,37 +887,13 @@ const MAPA: Readonly<Record<string, Marca>> = {
     situacao: "PARCIAL",
     evidencia: `${CENSO} Da Lei 14.133 estão cumpridos e provados: o rol FECHADO de modalidades, com oito valores e os dois Records cobrindo os seis tipos (m11.test.ts t6); o teto do art. 75 aplicado de forma ESTRITA — 65.492,10 passa e 65.492,11 não (m11-limites.test.ts t2); o limite VIGENTE NA DATA do contrato, com fail-closed quando não há parâmetro, nunca "passa porque falta limite" (t5); e o teto interno mais restritivo VENCENDO o oficial (t3). ⚠️ FALTA o art. 125 (25%/50% de acréscimo e supressão), que é pendência DECLARADA no próprio código (modules/m11-licitacoes/contratos.ts). "Plena conformidade" é enunciado que nenhuma marcação pode afirmar por inteiro.`,
   },
-  "5.17.2": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há cadastro de materiais/produtos — nenhum modelo, nenhum caso de uso. O que se contrata no M11 é o OBJETO do processo, um texto livre. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.17.3": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Sem produto não há classificação de produto. ⚠️ A distinção consumo/permanente EXISTE, mas noutro eixo e para outra pergunta: o ELEMENTO da natureza de despesa decide se a liquidação vira estoque (elemento 30) ou bem (grupo de capital), e os dois rois são fechados e provados (m10-almoxarifado.test.ts t9/t10, m11-limites.test.ts t6). É classificação ORÇAMENTÁRIA, não catálogo de produto.`,
-  },
   "5.17.4": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} O mecanismo de campos personalizados existe e está provado (M25, sete tipos, coluna tipada), mas não há PRODUTO para recebê-los e \`PRODUTO\` não está no enum \`CadastroComCamposAdicionais\`, que é fechado por decisão.`,
   },
-  "5.17.5": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há produto e não há marca. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.17.6": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há relacionamento com o CATMAT — nem produto para relacionar. ⚠️ E o CATMAT é catálogo EXTERNO do governo federal: quando existir, a pergunta "de onde vem a lista" é dependência externa, não decisão do ente.`,
-  },
   "5.17.7": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} Não há imagem de referência de produto. O M22 sabe guardar arquivo com sha256, mime e autorização por registro; o que falta é o produto como dono possível de um anexo.`,
-  },
-  "5.17.8": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há produto para desabilitar. ⚠️ O padrão que a cláusula pede — desativar preservando o histórico — já é praticado no repositório: \`ClasseDeBens\` e \`ClasseDeMaterial\` têm \`ativa\`, e classe inativa não recebe movimento, com teste (m10-patrimonio.test.ts).`,
-  },
-  "5.17.9": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há relacionamento produto × elemento de despesa, porque não há produto. ⚠️ O guard EQUIVALENTE existe e é forte no outro sentido: a liquidação de elemento 39 (serviço) não entra no almoxarifado e o elemento 32 é recusado nomeando DECISÃO, não defeito (m10-almoxarifado.test.ts t9/t10); o elemento 51 sem obra é recusado (m11-obras.test.ts t3). O eixo protegido é a natureza, não o produto.`,
   },
   "5.17.10": {
     situacao: "AUSENTE_CONFIRMADO",
@@ -1199,17 +1039,9 @@ const MAPA: Readonly<Record<string, Marca>> = {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} Não há publicação seletiva de dados e documentos do processo na internet. O M13 publica datasets de execução orçamentária; licitação não está entre eles, e não há o que escolher publicar porque itens, certidões e propostas não existem.`,
   },
-  "5.17.46": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há pesquisa de preços nem planilha de preços. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
   "5.17.47": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} Sem coleta de preços não há critério de preço médio, maior ou menor sobre ela. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.17.48": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há cotação online por fornecedor. ⚠️ E ela é de uma classe que o repositório ainda não tem: acesso de TERCEIRO (o fornecedor) ao sistema. Hoje todo usuário é servidor do ente, com perfil e unidade gestora — um portal do fornecedor é decisão de arquitetura de acesso, não uma tela a mais.`,
   },
   "5.17.49": {
     situacao: "AUSENTE_CONFIRMADO",
@@ -1219,29 +1051,9 @@ const MAPA: Readonly<Record<string, Marca>> = {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} Sem o vínculo da 5.17.49 não há compartilhamento automático de anexos entre os dois processos — e \`Anexo\` também não aceita licitação como dono. Contraprova em test/censo-de-ausencias.test.ts.`,
   },
-  "5.17.51": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há solicitação de compra dos itens homologados — não há item, e a homologação é do PROCESSO inteiro (\`HomologacaoProcesso\`), não item a item. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.17.52": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Sem solicitação de compra não há controle de autorizadas, pendentes e anuladas. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.17.53": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há rotina de autorização de solicitação de compra. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.17.54": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há centro de custo como eixo de acesso. ⚠️ O recorte EQUIVALENTE existe e funciona noutro eixo: o M21 impede tramitar quem não está LOTADO no setor, mesmo tendo a permissão da unidade gestora (m21-protocolo.test.ts t14) — que é exatamente a forma desta cláusula, aplicada ao protocolo.`,
-  },
   "5.17.55": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} Sem solicitação de compra não há notificação de nova solicitação. O M24 notifica de verdade e está provado no trâmite do M21 (t12); falta o fato a notificar.`,
-  },
-  "5.17.56": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há requisição ao Compras. Contraprova em test/censo-de-ausencias.test.ts.`,
   },
   "5.17.57": {
     situacao: "AUSENTE_CONFIRMADO",
@@ -1399,45 +1211,17 @@ const MAPA: Readonly<Record<string, Marca>> = {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} Não há relatório gerencial por fornecedor. O eixo existe no banco (\`Contrato.contratadoDocumento\` tem índice), mas não há consulta nem tela que o use, e ordens de compra não existem.`,
   },
-  "5.17.96": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há ordem de compra — nem ordinária, nem global, nem estimativa. ⚠️ E a ausência é maior do que a tela: a ordem de compra é o documento que liga a licitação ao recebimento, e sem ela o almoxarifado e o patrimônio recebem por LIQUIDAÇÃO (que é o aceite contábil), não por entrega. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.17.97": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Sem ordem de compra não há emissão dela com fornecedor, finalidade e recurso orçamentário. ⚠️ O EMPENHO já carrega todos esses dados e é o que hoje cumpre esse papel — mas empenho é ato ORÇAMENTÁRIO, e a cláusula pede o ato de COMPRA, que o antecede.`,
-  },
   "5.17.98": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} Não há parcelamento de ordem de compra nem SUBEMPENHO. ⚠️ ACHADO: o leiaute do TCM-BA PEDE o número do subempenho, e o gerador repete o número do empenho porque subempenho não existe aqui (adapters/tribunais/tcm-ba/siga/specs/pag-emp2.ts). A remessa declara um conceito que o modelo não tem — e o comentário no código diz exatamente isso: "branco não equivale".`,
-  },
-  "5.17.99": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Sem ordem de compra não há alteração dela condicionada à inexistência de empenho. ⚠️ O guard EQUIVALENTE existe no M05 e é rigoroso: liquidação anulada não incorpora bem, e anular o empenho sem pagar não mexe no saldo da dívida (m10-divida.test.ts t8) — a condicional "só se o passo seguinte não aconteceu" é padrão conhecido aqui.`,
-  },
-  "5.17.100": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Sem ordem de compra não há estorno dela. ⚠️ O ESTORNO em cascata que a cláusula descreve — estornar o empenho estorna os itens — já é praticado no repositório: anular o pagamento estorna a amortização da dívida JUNTO, na mesma transação, e o estorno avulso é porta fechada (m10-divida.test.ts t5).`,
   },
   "5.17.101": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} Sem ordem de compra não há retenção nela. ⚠️ As RETENÇÕES existem e são um módulo inteiro (M07 extraorçamentário, com tipos de consignação parametrizados e teste próprio) — só que no PAGAMENTO, que é onde elas acontecem de fato.`,
   },
-  "5.17.102": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Sem ordem de compra não há desconto nela. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.17.103": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há identificação de consumo imediato na ordem de compra. ⚠️ A DECISÃO CONTÁBIL equivalente existe e é fechada: o elemento da natureza decide se a liquidação vira estoque (elemento 30, rol \`ELEMENTOS_DE_ALMOXARIFADO\` com um único valor) ou despesa direta, com o 32 recusado nomeando DECISÃO (m10-almoxarifado.test.ts t10). O eixo é a natureza, não uma marca do produto.`,
-  },
   "5.17.104": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} Sem ata de registro de preços não há como impedir ordem de compra sobre ata vencida. ⚠️ O guard ANÁLOGO existe e é dos melhores do repositório: a vigência do contrato bloqueia o empenho, a borda passa, o dia seguinte não, e a prorrogação libera (m11-integracao.test.ts t2) — a mesma pergunta, respondida para contrato.`,
-  },
-  "5.17.105": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} Não há recebimento de ordem de compra nem saldo pendente a entregar. ⚠️ O saldo por quantidade dependeria de ITEM, ausente em todo o repositório — a mesma raiz da 5.18.11 e da 5.19.6.`,
   },
   "5.17.106": {
     situacao: "AUSENTE_CONFIRMADO",
@@ -1531,6 +1315,71 @@ const MAPA: Readonly<Record<string, Marca>> = {
   "5.34.26": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há inscrição automática mensal de débitos em atraso — não há débito de exercício a inscrever, porque não há lançamento tributário." },
   "5.34.27": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há emissão de guia pelo portal do cidadão." },
   "5.34.28": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há notificação de débito em PDF nem geração em lote." },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ENT05 — O MODELO DAS TRÊS SEÇÕES QUE O CENSO DERRUBOU
+  //
+  // ⚠️ TODAS ENTRAM COMO `IMPLEMENTADO_NAO_VALIDADO`, E ISSO É A MEDIDA HONESTA. Cada uma
+  // tem MODELO, CASO DE USO e TESTE contra banco — mas NENHUMA foi exercitada por tela:
+  // o ENT05 foi lote de MODELO, e as telas pelo molde não entraram. `VALIDADO_LOCALMENTE`
+  // exige percurso de navegador, e chamá-las de validadas seria dizer que um servidor
+  // municipal consegue usá-las hoje. Ele não consegue — não há tela.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  "5.18.1": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): As entradas, saidas e transferencias existem como MOVIMENTO FISICO com quantidade, deposito e lote (MovimentoFisicoDeEstoque). A transferencia e operacao COMPOSTA (par de pernas sob um operacaoId), e a saida move os DOIS eixos na mesma transacao. A 'atualizacao automatica do estoque' NAO virou coluna: a posicao e a soma de (quantidade x sinal) ate uma DATA CIVIL - decisao D1 da varredura, e a propria 5.18.16 a exige ao pedir o saldo ANTERIOR ao periodo." },
+  "5.18.2": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): registrarSaidaFisica recusa saida maior que a posicao do material no deposito na data, nomeando o que ha. O atendimento de requisicao confere o saldo NAO ATENDIDO do item antes de gravar." },
+  "5.18.3": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): ParametroDeEstoque guarda minimo e maximo POR MATERIAL E POR DEPOSITO (o minimo de luva no almoxarifado central nao e o do posto). materiaisAbaixoDoMinimo compara a POSICAO DERIVADA contra o parametro, e aceita data." },
+  "5.18.4": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): CotaDeConsumo por setor, material e competencia AAAA-MM. registrarSaidaFisica recusa quando a soma do mes estoura o limite. A competencia vem da DATA DO FATO: uma retirada de 31/12 as 23h50 civis consome a cota de dezembro, e ha fixture em hora de borda provando isso." },
+  "5.18.6": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): registrarRequisicaoDeMaterial cria a requisicao com itens; o atendimento e a saida fisica que aponta para o item." },
+  "5.18.8": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): requisicoesPendentes deriva os itens com saldo nao atendido, por deposito ou por setor. SEM coluna de situacao: o estorno de uma saida devolve o item a pendencia sozinho, e ha teste provando exatamente isso." },
+  "5.18.9": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): Atendimento PARCIAL provado: requisicao de 100, saida de 30, saldo nao atendido de 70. Atender alem do pedido RECUSA." },
+  "5.18.10": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): MovimentoFisicoDeEstoque.setorId registra o centro de custo que consumiu - o Setor do M21, cadastro que ja existe." },
+  "5.18.11": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): O preco medio e DERIVADO da mesma janela (valor da posicao dividido pela quantidade da posicao) e o preco EFETIVAMENTE aplicado e gravado no movimento de saida. Provado com N=2 a precos diferentes (100 a 5,00 mais 100 a 9,00 gera saida a 7,00, e nao a 9,00). Estoque zerado RECUSA em vez de devolver zero: custo zero atravessaria o razao sem acusar nada." },
+  "5.18.12": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): InventarioDeEstoque com abertura, fechamento e termos. Enquanto aberto, BLOQUEIA a movimentacao do deposito - e pela MESMA leitura do bloqueio manual, nao por uma segunda regra. Fechar sem contagem RECUSA; dois inventarios abertos no mesmo deposito RECUSAM." },
+  "5.18.13": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): BloqueioDeEstoque e FATO com inicio, fim opcional e motivo (decisao D14) - os tres alcances da clausula (produto, deposito, o par) saem das duas colunas opcionais. Encerrar POE O FIM, nao apaga a linha: o historico e o que explica por que uma saida foi recusada naquele dia." },
+  "5.18.14": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): validadeDoEstoqueDoDeposito separa vencidos e a vencer em 30 dias, com fronteira CIVIL: o lote que vence HOJE nao esta vencido. So entram lotes com posicao POSITIVA - listar lote ja consumido mandaria alguem procurar na prateleira o que nao esta la." },
+  "5.18.16": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): fichaDeControleDeEstoque devolve os movimentos do periodo E o saldo ANTERIOR a ele. E esta clausula que refuta a coluna de saldo dentro da propria secao." },
+  "5.18.21": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): Deposito com codigo, nome, unidade gestora e responsavel; a posicao e os bloqueios sao por deposito, e a transferencia entre dois e composta." },
+  "5.19.1": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): InventarioDeBens com exercicio, comissao designada, unidade gestora, abertura e fechamento. Irmao - e nao o mesmo - do inventario de ESTOQUE: este exige comissao por portaria." },
+  "5.19.2": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): gerarEtiquetaDeBem grava o codigo de barras no bem e e IDEMPOTENTE: a segunda chamada devolve a MESMA etiqueta. Gerar codigo novo faria o leitor deixar de reconhecer a etiqueta ja colada." },
+  "5.19.3": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): TipoDeIncorporacao e TABELA (adquirido, doacao, comodato, permuta, e o que o ente acrescentar), como a clausula pede ao dizer 'configuraveis pela instituicao'." },
+  "5.19.7": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): O mesmo TipoDeIncorporacao atende 'diversos Tipos de bens alem dos moveis e imoveis' - cresce por cadastro, nao por enum no codigo." },
+  "5.19.10": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): bensSobResponsabilidade deriva os bens de uma pessoa numa data. DERIVA em vez de filtrar por coluna: 'de quem era este bem em dezembro?' e a pergunta que o termo de responsabilidade faz." },
+  "5.19.11": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): EstadoDeConservacao (otimo, bom, regular, ruim, inservivel) como movimento; o estado ATUAL e o ultimo movimento do tipo ate uma data." },
+  "5.19.12": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): SituacaoFisicaDoBem (em uso, emprestimo, locacao, manutencao preventiva e corretiva, desuso, baixado) como movimento derivado." },
+  "5.19.16": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): ComissaoPatrimonial com finalidade, ATO QUE DESIGNOU, vigencia e membros ligados a Pessoa do M19. Exatamente UM presidente, fail-closed: zero deixa o termo sem quem o assine na condicao exigida, dois fazem ninguem responder. Abrir inventario com comissao de outra finalidade ou fora da vigencia RECUSA." },
+  "5.19.17": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): ContagemDeBem guarda o que a comissao OBSERVOU (encontrado, localizacao, estado); estado e situacao continuam derivados dos movimentos que a contagem gera." },
+  "5.19.19": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): registrarContagemDeBem com transferirParaOndeFoiEncontrado move o bem para onde a comissao o achou - e e EXPLICITO, nao implicito: a comissao DECIDE se corrige o cadastro ou se apenas registra a divergencia." },
+  "5.19.20": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): A contagem registra estado e localizacao OBSERVADOS no momento do inventario, e a comparacao e contra o estado do bem NA DATA DE ABERTURA. E o parenteses da clausula ('no momento do inventario') que exigiu o eixo temporal - decisao D4." },
+  "5.19.21": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): inconsistenciasDoInventarioDeBens deriva NAO_ENCONTRADO, LOCAL_DIFERENTE, ESTADO_DIFERENTE e SEM_REGISTRO_ANTERIOR. O ultimo e ACHADO, nao silencio: bem que a comissao encontrou e que o sistema nunca soube onde estava e exatamente o que o primeiro inventario existe para descobrir." },
+  "5.19.22": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): Termo de abertura e de fechamento como anexo do M22, ligados ao inventario. Fechar sem contagem RECUSA." },
+  "5.19.23": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): A movimentacao FISICA passou a existir (MovimentoDeGestaoDoBem: localizacao, responsavel, estado, situacao, transferencia entre entidades), ao lado da FINANCEIRA que ja existia (MovimentoPatrimonial: agregacao, reavaliacao, depreciacao). Os dois eixos sao separados de proposito, e ha teste contando LancamentoContabil antes e depois para provar que a gestao NAO toca o razao." },
+  "5.19.27": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): A unidade gestora do bem e derivada da ultima TRANSFERENCIA_ENTRADA; o inventario e POR unidade gestora." },
+  "5.19.28": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): transferirBemEntreEntidades gera as DUAS pernas sob um operacaoId, tudo-ou-nada, com viabilidade conferida ANTES de qualquer escrita. Estornar UMA estorna as DUAS - meia transferencia estornada deixaria o bem em duas entidades ou em nenhuma. Bem BAIXADO ou em origem diferente da declarada RECUSA." },
+  "5.19.30": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): MotivoDeBaixa e TABELA, 'de acordo com a necessidade da instituicao' - um enum no codigo seria a constante que erra no segundo ente." },
+  "5.19.36": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): TermoPatrimonial do tipo RESPONSABILIDADE, individual/setorial/por responsavel, com os bens como itens. Emitir o termo REGISTRA o movimento de responsabilidade na mesma transacao: sem isso o termo diria uma coisa e a derivacao do bem outra. Termo sem responsavel RECUSA." },
+  "5.19.37": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): TermoPatrimonial do tipo BAIXA, que poe a situacao do bem em BAIXADO pelo mesmo caminho." },
+  "5.19.42": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): FormulaDeAvaliacao com expressao INTERPRETADA por avaliador proprio - nunca eval nem Function. A gramatica tem quatro operacoes, parenteses, numeros e um rol FECHADO de seis grandezas do bem; identificador global, chamada de funcao e acesso a propriedade sao INEXPRIMIVEIS, nao bloqueados. Metade do teste e negacao, incluindo o ataque por constructor que derrota sanitizacao por lista negra. Formula invalida nao chega a ser salva." },
+  "5.17.2": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): Material com descricao sucinta e detalhada em db.Text (e o que cumpre 'sem limitacao de caracteres'), grupo/classe/subclasse por auto-relacao, e N-N de unidades de medida COM FATOR DE CONVERSAO. A N-N e literal na clausula ('uma ou mais unidades') e e o que torna aritmetico comprar em caixa e distribuir em unidade - decisao D6. Exatamente uma unidade de estoque, fail-closed." },
+  "5.17.3": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): ClassificacaoDeMaterial (consumo, permanente, servico, obra) e CategoriaDeMaterial (perecivel, nao perecivel, estocavel, combustivel) - os dois rois literais da clausula." },
+  "5.17.5": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): MarcaAprovada N-N com o material (decisao D7)." },
+  "5.17.6": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): Material.catmat opcional - nem todo material do ente tem correspondente federal, e inventar um seria pior do que nao ter." },
+  "5.17.8": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): Material.ativo desabilita o cadastro obsoleto; o servico recusa movimentar material inativo E o historico fica, porque o historico sao os movimentos." },
+  "5.17.9": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): MaterialElementoDespesa N-N, e emitirOrdemDeCompra RECUSA quando a ficha traz elemento nao relacionado - e o que 'impedindo' quer dizer. Material SEM relacao nenhuma PASSA, com o motivo declarado: ele nao esta sendo comprado no elemento errado, esta sendo comprado por quem ainda nao parametrizou." },
+  "5.17.46": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): PesquisaDePrecos com itens e cotacoes por fornecedor, para estimativa de novas aquisicoes." },
+  "5.17.48": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): estatisticasDaPesquisa deriva medio, minimo e maximo das cotacoes. Provado com N=3 a precos diferentes (9, 11, 13 gera min 9, max 13, medio 11): com duas cotacoes media e mediana coincidem, e uma implementacao errada passaria. Item SEM cotacao nao vira zero - ausencia nao e preco." },
+  "5.17.51": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): registrarSolicitacaoDeCompra com itens, justificativa e solicitante." },
+  "5.17.52": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): A situacao (pendente, autorizada, anulada) e DERIVADA dos movimentos. Uma coluna responderia 'autorizada' sem dizer POR QUEM e QUANDO - e e isso que o controle interno cobra quando a compra e questionada." },
+  "5.17.53": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): movimentarSolicitacaoDeCompra grava AUTORIZACAO como fato com autor e data. Autorizar duas vezes RECUSA; anular o que esta pendente RECUSA." },
+  "5.17.54": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): A solicitacao e do SETOR, e a autorizacao e cobrada com escopo de setor - a mesma porta que a tramitacao de processo do M21 usa, sem inventar um segundo eixo de acesso." },
+  "5.17.56": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): A solicitacao informa os itens e, opcionalmente, o recurso orcamentario pela ficha da ordem que dela nascer." },
+  "5.17.96": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): OrdemDeCompra nos tres tipos da clausula: ORDINARIA, GLOBAL e ESTIMATIVA." },
+  "5.17.97": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): A ordem registra data de emissao e de vencimento, fornecedor, finalidade e recurso orcamentario (ficha) - os dados que a clausula pede para a geracao dos empenhos." },
+  "5.17.99": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): A alteracao da ordem e possivel enquanto nao ha empenho; com recurso orcamentario declarado, o servico recusa alterar por si e aponta a cascata do empenho." },
+  "5.17.100": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): A CASCATA VAI DO EMPENHO PARA A ORDEM, e a clausula fixa essa direcao - que e o oposto do intuitivo. estornarOrdemDeCompra RECUSA quando a ordem tem recurso orcamentario declarado, porque estornar ali deixaria a dotacao comprometida por uma compra cancelada. Tambem recusa com recebimento ja feito: o material entrou. Pendencia nomeada EMPENHO-APONTA-PARA-ORDEM-DE-COMPRA para o vinculo que falta." },
+  "5.17.102": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): OrdemDeCompra.desconto, com recusa quando ele passa do total - a ordem ficaria negativa e o fornecedor pagaria ao ente." },
+  "5.17.103": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): OrdemDeCompra.consumoImediato marca os produtos que nao passam pela prateleira, para o lancamento de saida ja no empenhamento." },
+  "5.17.105": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): saldoDaOrdemDeCompra devolve quantidade, recebida, pendente e valor pendente, item a item, com corte por DATA CIVIL. Soma dos recebimentos, nunca coluna (decisao D5) - e receber alem do pedido RECUSA, porque o saldo negativo significaria que o ente aceitou e vai pagar mais do que contratou." },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════

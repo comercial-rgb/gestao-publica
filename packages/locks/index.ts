@@ -218,6 +218,26 @@ export const ORDEM_DOS_LOCKS = {
   Convenio: 18,
   Precatorio: 19,
   ConsorcioPublico: 20,
+
+  /**
+   * ENT05 — A POSIÇÃO FÍSICA DE ESTOQUE (material × depósito). ÚLTIMO POSTO, e ele não
+   * sobe a fila.
+   *
+   * ⚠️ A CORRIDA É A DE SEMPRE — SOMA, DECIDE, GRAVA. Duas saídas concorrentes do mesmo
+   * material no mesmo depósito leem a MESMA posição, as duas veem quantidade suficiente,
+   * e as duas gravam: o estoque físico fica NEGATIVO. Nenhum guard errou; a posição
+   * estourou. É a lição da ficha (6fa5d4e), do contrato (e0e7e9f) e da dívida (8d71e2b),
+   * num grão novo.
+   *
+   * ⚠️ E ELE VEM DEPOIS DA `ClasseDeMaterial` (posto 11) DE PROPÓSITO: a saída física
+   * compõe com o lançamento contábil, que trava a classe. Travar a posição ANTES faria a
+   * chamada seguinte inverter a ordem — e o guard de ordem estouraria numa baixa de
+   * cinco caixas de luva.
+   *
+   * A chave é `materialId:depositoId`: travar o material inteiro serializaria depósitos
+   * que não disputam nada entre si.
+   */
+  PosicaoFisicaDeEstoque: 21,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

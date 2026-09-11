@@ -85,6 +85,8 @@ model ProcessoLicitatorio {
   criadoPor String
 
   @@index([modalidade])
+  /// back-relation ENT05 (M11 compras) — VIRTUAL.
+  ordensDeCompra OrdemDeCompra[] @relation("OrdemDoProcesso")
 }
 
 /// OS LIMITES DE CONTRATAÇÃO DIRETA (art. 75, I e II, da Lei 14.133/2021).

@@ -123,6 +123,48 @@ export type AcaoDoSistema =
   | "REGISTRAR_SAIDA_CONSUMO"
   | "REGISTRAR_AJUSTE_ALMOXARIFADO"
   | "ESTORNAR_MOVIMENTO_ALMOXARIFADO"
+  // ── M10 — almoxarifado, EIXO FÍSICO (ENT05, TR 5.18) ──
+  | "CADASTRAR_DEPOSITO"
+  | "CADASTRAR_UNIDADE_DE_MEDIDA"
+  | "CADASTRAR_GRUPO_DE_MATERIAL"
+  | "CADASTRAR_MATERIAL"
+  | "DEFINIR_PARAMETRO_DE_ESTOQUE"
+  | "REGISTRAR_ENTRADA_FISICA"
+  | "REGISTRAR_SAIDA_FISICA"
+  | "ESTORNAR_MOVIMENTO_FISICO"
+  | "TRANSFERIR_ENTRE_DEPOSITOS"
+  | "REGISTRAR_REQUISICAO_DE_MATERIAL"
+  | "DEFINIR_COTA_DE_CONSUMO"
+  | "ABRIR_INVENTARIO_DE_ESTOQUE"
+  | "REGISTRAR_CONTAGEM_DE_INVENTARIO"
+  | "FECHAR_INVENTARIO_DE_ESTOQUE"
+  | "BLOQUEAR_ESTOQUE"
+  | "ENCERRAR_BLOQUEIO_DE_ESTOQUE"
+  // ── M10 — patrimônio, EIXO DE GESTÃO (ENT05, TR 5.19) ──
+  | "CADASTRAR_LOCALIZACAO_FISICA"
+  | "CADASTRAR_COMISSAO_PATRIMONIAL"
+  | "CADASTRAR_MOTIVO_DE_BAIXA"
+  | "CADASTRAR_TIPO_DE_INCORPORACAO"
+  | "CADASTRAR_FORMULA_DE_AVALIACAO"
+  | "REGISTRAR_MOVIMENTO_DE_GESTAO"
+  | "TRANSFERIR_BEM_ENTRE_ENTIDADES"
+  | "ESTORNAR_MOVIMENTO_DE_GESTAO"
+  | "GERAR_ETIQUETA_DE_BEM"
+  | "EMITIR_TERMO_PATRIMONIAL"
+  | "ABRIR_INVENTARIO_DE_BENS"
+  | "REGISTRAR_CONTAGEM_DE_BEM"
+  | "FECHAR_INVENTARIO_DE_BENS"
+  // ── M01 — a correção de eixo do plano de contas (ENT05, ITEM 3) ──
+  | "REPONTAR_CONTA"
+  // ── M11 — A COMPRA (ENT05, TR 5.17) ──
+  | "RELACIONAR_MARCA_AO_MATERIAL"
+  | "RELACIONAR_ELEMENTO_AO_MATERIAL"
+  | "REGISTRAR_SOLICITACAO_DE_COMPRA"
+  | "MOVIMENTAR_SOLICITACAO_DE_COMPRA"
+  | "REGISTRAR_PESQUISA_DE_PRECOS"
+  | "EMITIR_ORDEM_DE_COMPRA"
+  | "REGISTRAR_RECEBIMENTO_DE_ORDEM"
+  | "ESTORNAR_ORDEM_DE_COMPRA"
   // ── M10 — patrimônio ──
   | "ADQUIRIR_BEM"
   | "REGISTRAR_ENTRADA_AVULSA"
@@ -395,6 +437,44 @@ export type NomeDeServico =
   | "registrarCustoSubsequente"
   | "atualizarCompetencia"
   | "estornarMovimentoPatrimonial"
+  | "cadastrarDeposito"
+  | "cadastrarUnidadeDeMedida"
+  | "cadastrarGrupoDeMaterial"
+  | "cadastrarMaterial"
+  | "definirParametroDeEstoque"
+  | "registrarEntradaFisica"
+  | "registrarSaidaFisica"
+  | "estornarMovimentoFisico"
+  | "transferirEntreDepositos"
+  | "registrarRequisicaoDeMaterial"
+  | "definirCotaDeConsumo"
+  | "abrirInventarioDeEstoque"
+  | "registrarContagemDeInventario"
+  | "fecharInventarioDeEstoque"
+  | "bloquearEstoque"
+  | "encerrarBloqueioDeEstoque"
+  | "cadastrarLocalizacaoFisica"
+  | "cadastrarComissaoPatrimonial"
+  | "cadastrarMotivoDeBaixa"
+  | "cadastrarTipoDeIncorporacao"
+  | "cadastrarFormulaDeAvaliacao"
+  | "registrarMovimentoDeGestao"
+  | "transferirBemEntreEntidades"
+  | "estornarMovimentoDeGestao"
+  | "gerarEtiquetaDeBem"
+  | "emitirTermoPatrimonial"
+  | "abrirInventarioDeBens"
+  | "registrarContagemDeBem"
+  | "fecharInventarioDeBens"
+  | "repontarConta"
+  | "relacionarMarcaAoMaterial"
+  | "relacionarElementoAoMaterial"
+  | "registrarSolicitacaoDeCompra"
+  | "movimentarSolicitacaoDeCompra"
+  | "registrarPesquisaDePrecos"
+  | "emitirOrdemDeCompra"
+  | "registrarRecebimentoDeOrdem"
+  | "estornarOrdemDeCompra"
   | "cadastrarDivida"
   | "registrarAtualizacaoMonetaria"
   | "estornarMovimentoDivida"
@@ -634,6 +714,60 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   atualizarCompetencia: "ATUALIZAR_COMPETENCIA_PATRIMONIAL",
   estornarMovimentoPatrimonial: "ESTORNAR_MOVIMENTO_PATRIMONIAL",
 
+  // ENT05 — o eixo FÍSICO do almoxarifado (TR 5.18). Uma ação por serviço, como sempre:
+  // "bloquear estoque" e "fechar inventário" são poderes DIFERENTES, e a segregação do
+  // 6.4 existe para que o ente possa dar um sem dar o outro.
+  cadastrarDeposito: "CADASTRAR_DEPOSITO",
+  cadastrarUnidadeDeMedida: "CADASTRAR_UNIDADE_DE_MEDIDA",
+  cadastrarGrupoDeMaterial: "CADASTRAR_GRUPO_DE_MATERIAL",
+  cadastrarMaterial: "CADASTRAR_MATERIAL",
+  definirParametroDeEstoque: "DEFINIR_PARAMETRO_DE_ESTOQUE",
+  registrarEntradaFisica: "REGISTRAR_ENTRADA_FISICA",
+  registrarSaidaFisica: "REGISTRAR_SAIDA_FISICA",
+  estornarMovimentoFisico: "ESTORNAR_MOVIMENTO_FISICO",
+  transferirEntreDepositos: "TRANSFERIR_ENTRE_DEPOSITOS",
+  registrarRequisicaoDeMaterial: "REGISTRAR_REQUISICAO_DE_MATERIAL",
+  definirCotaDeConsumo: "DEFINIR_COTA_DE_CONSUMO",
+  abrirInventarioDeEstoque: "ABRIR_INVENTARIO_DE_ESTOQUE",
+  registrarContagemDeInventario: "REGISTRAR_CONTAGEM_DE_INVENTARIO",
+  fecharInventarioDeEstoque: "FECHAR_INVENTARIO_DE_ESTOQUE",
+  bloquearEstoque: "BLOQUEAR_ESTOQUE",
+  encerrarBloqueioDeEstoque: "ENCERRAR_BLOQUEIO_DE_ESTOQUE",
+
+  // ENT05 — o eixo de GESTÃO do bem (TR 5.19). Também aqui uma ação por serviço: quem
+  // CONTA o bem no inventário não é quem FECHA o inventário, e quem emite termo de
+  // responsabilidade não é, necessariamente, quem transfere bem entre entidades.
+  cadastrarLocalizacaoFisica: "CADASTRAR_LOCALIZACAO_FISICA",
+  cadastrarComissaoPatrimonial: "CADASTRAR_COMISSAO_PATRIMONIAL",
+  cadastrarMotivoDeBaixa: "CADASTRAR_MOTIVO_DE_BAIXA",
+  cadastrarTipoDeIncorporacao: "CADASTRAR_TIPO_DE_INCORPORACAO",
+  cadastrarFormulaDeAvaliacao: "CADASTRAR_FORMULA_DE_AVALIACAO",
+  registrarMovimentoDeGestao: "REGISTRAR_MOVIMENTO_DE_GESTAO",
+  transferirBemEntreEntidades: "TRANSFERIR_BEM_ENTRE_ENTIDADES",
+  estornarMovimentoDeGestao: "ESTORNAR_MOVIMENTO_DE_GESTAO",
+  gerarEtiquetaDeBem: "GERAR_ETIQUETA_DE_BEM",
+  emitirTermoPatrimonial: "EMITIR_TERMO_PATRIMONIAL",
+  abrirInventarioDeBens: "ABRIR_INVENTARIO_DE_BENS",
+  registrarContagemDeBem: "REGISTRAR_CONTAGEM_DE_BEM",
+  fecharInventarioDeBens: "FECHAR_INVENTARIO_DE_BENS",
+
+  // ENT05 ITEM 3 — repontar conta MOVE SALDO no razão inteiro. Ação própria, do ENTE, e
+  // nunca agrupada com cadastro de conta: cadastrar é criar linha; repontar é mexer em
+  // saldo que já existe.
+  repontarConta: "REPONTAR_CONTA",
+
+  // ENT05 — A COMPRA (TR 5.17). Ação própria para cada um, e o par que mais importa é
+  // `EMITIR_ORDEM_DE_COMPRA` x `REGISTRAR_RECEBIMENTO_DE_ORDEM`: quem emite a ordem não
+  // é quem atesta o recebimento — é a segregação do 6.4 no ponto onde ela mais vale.
+  relacionarMarcaAoMaterial: "RELACIONAR_MARCA_AO_MATERIAL",
+  relacionarElementoAoMaterial: "RELACIONAR_ELEMENTO_AO_MATERIAL",
+  registrarSolicitacaoDeCompra: "REGISTRAR_SOLICITACAO_DE_COMPRA",
+  movimentarSolicitacaoDeCompra: "MOVIMENTAR_SOLICITACAO_DE_COMPRA",
+  registrarPesquisaDePrecos: "REGISTRAR_PESQUISA_DE_PRECOS",
+  emitirOrdemDeCompra: "EMITIR_ORDEM_DE_COMPRA",
+  registrarRecebimentoDeOrdem: "REGISTRAR_RECEBIMENTO_DE_ORDEM",
+  estornarOrdemDeCompra: "ESTORNAR_ORDEM_DE_COMPRA",
+
   cadastrarDivida: "CADASTRAR_DIVIDA",
   registrarAtualizacaoMonetaria: "REGISTRAR_ATUALIZACAO_MONETARIA",
   estornarMovimentoDivida: "ESTORNAR_MOVIMENTO_DIVIDA",
@@ -817,6 +951,31 @@ export const ACOES_DE_ADMINISTRACAO: readonly AcaoDoSistema[] = [
  * grep-teste lê esta lista — nada sai do censo por descuido.
  */
 export const FORA_DO_CENSO: Record<string, string> = {
+  // ── ENT05 — o composável que une o eixo FÍSICO ao CONTÁBIL do almoxarifado. ──
+  //
+  // ⚠️ Ele NÃO autoriza e NÃO abre transação: recebe a `tx` de quem chama, justamente para
+  // que a saída física e o lançamento contábil sejam ATÔMICOS. Dar-lhe ação própria faria o
+  // ente conceder duas vezes o mesmo poder — quem cobra a ação é `registrarSaidaConsumo` (o
+  // serviço público) ou `registrarSaidaFisica` (o do eixo físico), cada um a sua.
+  estatisticasDaPesquisa: "leitura derivada (médio/mínimo/máximo das cotações, TR 5.17.48)",
+  saldoDaOrdemDeCompra: "leitura derivada (quantidade − Σ recebido, TR 5.17.105)",
+  situacaoDaSolicitacao: "leitura derivada dos movimentos (TR 5.17.52)",
+  saldoDaConta: "leitura derivada (Σ das partidas com o sinal da natureza)",
+  estadoDoBem: "leitura derivada (último movimento de cada eixo até uma data civil)",
+  bensSobResponsabilidade: "leitura derivada (TR 5.19.10)",
+  inconsistenciasDoInventarioDeBens: "leitura derivada (TR 5.19.21)",
+  avaliarBemPorFormula: "leitura: CALCULA e não escreve — lançar é registrarReavaliacao",
+  listarUnidadesDeMedida: "leitura (o rol que alimenta o formulário de material)",
+  materiaisAbaixoDoMinimo: "leitura derivada (posição contra o mínimo, TR 5.18.3)",
+  requisicoesPendentes: "leitura derivada (Σ solicitado − Σ atendido, TR 5.18.8/5.18.9)",
+  validadeDoEstoqueDoDeposito: "leitura derivada (vencidos e a vencer, TR 5.18.14/5.18.20)",
+  posicaoDoMaterial: "leitura derivada (a posição é Σ dos movimentos até uma data civil)",
+  fichaDeControleDeEstoque: "leitura derivada (TR 5.18.16 — movimentos do período + saldo anterior)",
+  bloqueiosVigentes: "leitura derivada (os bloqueios e o inventário aberto que alcançam um par)",
+  registrarSaidaConsumoNaTx:
+    "composável interno: recebe a tx do chamador para unir os dois eixos numa transação só " +
+    "(a ação é a de REGISTRAR_SAIDA_CONSUMO ou a de REGISTRAR_SAIDA_FISICA)",
+
   // ── ENT03b — os GUARDS e as LEITURAS dos cadastros novos. ──
   //
   // ⚠️ OS DOIS PRIMEIROS SÃO GUARDS CHAMADOS DE DENTRO DE OUTRO SERVIÇO, na transação DELE.

@@ -2203,34 +2203,321 @@ que o ITEM 4 existe para impedir — saída que não chega ao disco — reaparec
 ferramenta construída para impedi-la**. `scripts/portao.ts` passou a escrever com
 `writeFileSync`/`appendFileSync`.
 
+## 20. ENT05 — o modelo das três seções derrubadas
+
+### 20.1 · A contagem do lote, por natureza
+
+⚠️ **A META VEIO DECLARADA POR NATUREZA, e a medida tem de acompanhar.** Este foi lote de
+**modelo e superfície**, com meta de 80 a 120. O que ele entregou:
+
+| | |
+|---|---:|
+| **construção — cláusulas que saíram de `AUSENTE_CONFIRMADO`** | **50** |
+| **construção — cláusulas que saíram de `PARCIAL`** | **4** |
+| **total promovido para `IMPLEMENTADO_NAO_VALIDADO`** | **54** |
+| **censo** — medir o que já existia | 0 |
+| **acréscimo de produto SEM cláusula** (fora da contagem) | 3 frentes |
+| catálogo | **316 de 2037 (15,5%) — e o percentual NÃO se move** |
+
+⚠️ **POR QUE O PERCENTUAL NÃO SE MOVE, E POR QUE ISSO NÃO É ESTAGNAÇÃO.** As 184 cláusulas
+destas três seções **já estavam contadas** pelo censo do ENT03c — com veredito negativo. O
+que mudou não foi *quantas* foram olhadas: foi *o que se vê nelas*. Nas três seções:
+
+```
+AUSENTE_CONFIRMADO        146  ->   96     (−50)
+PARCIAL                    31  ->   27     (−4)
+IMPLEMENTADO_NAO_VALIDADO   7  ->   61     (+54)
+```
+
+**A medida deste lote é a segunda linha, não a primeira.** Um lote que constrói sobre
+seção já censada move situação, não cobertura — e confundir as duas faria o próximo lote
+achar que não avançou.
+
+⚠️ **E NENHUMA ENTROU COMO `VALIDADO_LOCALMENTE`.** Todas têm modelo, caso de uso e teste
+contra banco; **nenhuma tem tela**. O ITEM 2 (superfície pelo molde) NÃO foi executado — e
+chamá-las de validadas seria dizer que um servidor municipal consegue usá-las hoje. Ele não
+consegue. Ver 20.8.
+
+**Os acréscimos de produto sem cláusula**, fora da medida: o repontamento de conta
+(`repontarConta` + `MigracaoDeConta`), a reentrância do trinco de máquina, e a segunda
+direção do censo de ausências (`CONQUISTAS`).
+
+### 20.2 · A varredura, antes de modelar — e o que a rede NÃO pegou
+
+`docs/varredura-ent05-tres-secoes.md` procurou as cinco famílias por assinatura nas 184
+cláusulas e leu os achados um a um. **Catorze decisões (D1 a D14), todas de uma vez.**
+
+⚠️ **TRÊS DAS CATORZE A REDE NÃO PEGOU**, e são o motivo de a leitura não poder ser
+dispensada:
+
+- **D6** — a 5.17.2 pede "relacionar **uma ou mais** unidades de medida" no fim de uma
+  cláusula longa sobre descrição. É literal, e um `unidadeId` no material quebra no
+  primeiro material comprado em caixa e distribuído em unidade;
+- **D7** — marcas pré-aprovadas e elementos de despesa, as duas N-N, e a 5.17.9 pede uma
+  **guarda**, não um enfeite ("impedindo que determinado produto seja comprado com
+  elemento errado");
+- **D14** — bloqueio de estoque como **fato com início e fim**, não flag. Um
+  `bloqueado Boolean` responde "agora" e perde quem bloqueou, quando e por quê.
+
+E **uma das que a rede pegou não muda nada** (D9): a 5.17.67 pede que NÃO se multipliquem
+modelos de edital — é o inverso da família de cardinalidade. Ficou registrada para não ser
+reaberta.
+
+### 20.3 · ⚠️ O ALMOXARIFADO FÍSICO — e a cláusula que refuta a coluna na própria seção
+
+A 5.18.1 pede "atualização automática do estoque", que é a formulação exata de uma COLUNA
+de saldo. **A 5.18.16, quinze linhas abaixo, pede o saldo ANTERIOR ao período** — que
+coluna nenhuma sabe responder.
+
+A posição é `Σ(quantidade × sinal)` e `Σ(valor × sinal)` **até uma data civil**. O preço
+médio sai da mesma janela, e o preço **efetivamente aplicado** é gravado no movimento de
+saída, porque é fato.
+
+⚠️ **N = 2 É O QUE PROVA O PREÇO MÉDIO.** Com uma entrada só, "média" e "preço da última
+entrada" dão o mesmo número e qualquer implementação errada passa. Com 100 a R$ 5,00 e
+100 a R$ 9,00, a saída sai a **7,00** — e não a 9,00.
+
+⚠️ **E ESTOQUE ZERADO RECUSA, em vez de devolver zero.** Custo zero atravessaria o razão
+sem acusar nada.
+
+### 20.4 · ⚠️ O DEFEITO QUE O TESTE DE VALIDADE PEGOU, E ELE ERA MEU
+
+A primeira versão exigia lote só na ENTRADA. O teste da 5.18.14 consumiu um lote inteiro de
+dipirona e ele **continuou aparecendo em "a vencer"** — porque a saída não apontava para
+lote nenhum, e a posição POR LOTE nunca baixava.
+
+O efeito real: o relatório da 5.18.20 mandaria alguém procurar na prateleira um medicamento
+já distribuído — e, pior, esconderia que o lote que AINDA está lá é outro, com outra
+validade. Agora a saída de material com controle de lote **exige o lote**, confere que ele é
+daquele material e daquele depósito, e recusa se não houver saldo nele.
+
+⚠️ **E A TRANSFERÊNCIA DE MATERIAL COM LOTE RECUSA**, em vez de errar em silêncio: levar o
+lote para o outro depósito exige abrir o lote correspondente lá, preservando a validade.
+Pendência `TRANSFERENCIA-DE-MATERIAL-COM-LOTE`.
+
+### 20.5 · O PATRIMÔNIO COMO GESTÃO — o parêntese que é um eixo temporal
+
+> **5.19.20** — "informando seu estado e localização **atual (no momento do inventário)**"
+
+O parêntese é um eixo temporal escrito por extenso. Situação, estado e localização são
+**derivados do último movimento de cada tipo até uma data** — nenhuma coluna `atual`.
+
+⚠️ **O ESTORNO ANULA, e não é "mais um movimento no fim da fila".** A leitura remove os
+pares (original, estorno) ANTES de procurar o último de cada tipo. Tratá-lo como movimento
+comum faria a localização do bem voltar a ser a que o estorno desfez — o contrário do que
+estornar significa. Provado por mutação.
+
+⚠️ **E O EIXO DE GESTÃO NÃO TOCA O RAZÃO.** Há teste contando `LancamentoContabil` antes e
+depois de mover localização, emitir termo e transferir entre entidades: o número não muda. A
+contabilidade do bem (depreciação por NBC TSP 07, alienação com resultado) ficou intocada.
+
+### 20.6 · ⚠️ A CLÁUSULA MAIS PERIGOSA DAS TRÊS SEÇÕES
+
+> **5.19.42** — "avaliações a partir de fórmulas previamente cadastradas, podendo ser
+> **editadas pelo próprio usuário**"
+
+**Fórmula editável pelo usuário é código escrito pelo usuário.** A implementação óbvia é
+`eval(formula)` ou `new Function(formula)`, e as duas entregam a quem editar o cadastro a
+capacidade de ler `process.env` (onde está a senha do banco), abrir conexão ou apagar tabela.
+
+⚠️ **E SANITIZAR POR LISTA NEGRA NÃO RESOLVE:**
+`this.constructor.constructor("...")()` alcança o `Function` global sem escrever nenhuma
+palavra proibida.
+
+`modules/m10-patrimonial/formula-avaliacao.ts` é um **interpretador**, não um filtro:
+tokeniza, analisa e avalia sobre um universo fechado — quatro operações, parênteses, números
+e um rol FECHADO de seis grandezas do bem. Identificador global, chamada de função e acesso
+a propriedade **não são bloqueados: são inexprimíveis**. Metade do arquivo de teste é
+negação. Tudo em `Decimal`.
+
+### 20.7 · ⚠️ ITEM 3 — O REPONTAMENTO, E POR QUE ELE NÃO É UM `UPDATE`
+
+As quatro contas que o ENT04 mediu foram repontadas:
+
+| Era | O que ela é no PCASP | Passou a ser |
+|---|---|---|
+| `1.1.1.1.2.00.00` | CAIXA E EQUIVALENTES — **INTRA OFSS** | `1.1.1.1.1.19.00` |
+| `1.1.5.1.1.00.00` | **MERCADORIAS PARA REVENDA OU DOAÇÃO** | `1.1.5.6.1.01.00` |
+| `2.2.1.1.1.00.00` | **PESSOAL A PAGAR** | `2.2.2.1.1.02.98` |
+| `1.1.2.2.0.00.00` | **CLIENTES** (e sintética) | `1.1.2.1.1.99.00` |
+
+⚠️ **TROCAR O CÓDIGO DA CONTA SERIA RAZÃO REESCRITO COM OUTRO NOME.** Os lançamentos já
+feitos passariam a apontar para um conceito diferente do que tinham quando foram feitos, e o
+balancete do exercício anterior mudaria sozinho sem nada que explicasse por quê.
+
+`repontarConta` move o saldo com um **lançamento que explica a mudança**, acompanhado de um
+registro (`MigracaoDeConta`) com origem, destino, data, motivo e o saldo migrado.
+**Caracterização primeiro** (três testes escrevem o saldo como ele está, antes de mover), e
+a propriedade que vale é a **conservação**: `Σ(origem) + Σ(destino)` é o mesmo antes e
+depois. Recusa: repontar duas vezes, destino sintético, naturezas opostas, saldo invertido
+("conserte a causa primeiro") e conta de destino inexistente.
+
+⚠️ **UM ACHADO DENTRO DO ACHADO.** O próprio `prisma/seed/pcasp.ts` dizia, desde o M04, que
+aqueles códigos **não eram oficiais** e que "o xlsx confirma ou corrige". O xlsx chegou no
+ENT04. Este lote é o que executou a correção que o comentário previa.
+
+### 20.8 · ⚠️ O QUE NÃO ENTROU — ITEM 2, e a meta de 80 a 120
+
+**O ITEM 2 (superfície pelo molde) não foi executado.** As três seções ganharam modelo,
+caso de uso e teste; **nenhuma ganhou tela**. É a razão de as 54 cláusulas entrarem como
+`IMPLEMENTADO_NAO_VALIDADO` e não como `VALIDADO_LOCALMENTE`.
+
+**A meta era 80 a 120 e vieram 54.** A diferença não é ritmo: é que o lote gastou em
+MODELO o que a meta supunha gasto em modelo **e** superfície. Três domínios novos
+(almoxarifado físico com 14 modelos, gestão do bem com 11, a compra com 12) mais a correção
+de eixo do ITEM 3 consumiram o lote inteiro.
+
+⚠️ **E A ORDEM ESTAVA CERTA.** A superfície sobre modelo errado custa o dobro, e o segundo
+pagamento é feito com migração de dados — foi exatamente isso que o ITEM 3 acabou de pagar
+por uma decisão tomada no M04. O molde agora tem sobre o que montar: **as telas das três
+seções são lote de superfície, e é lá que as 54 viram `VALIDADO_LOCALMENTE`.**
+
+### 20.9 · ITEM 4 — medido, e a pendência fica
+
+A STN/MSC **não entrou no corpus**. O único arquivo de fonte de recursos presente
+(`relacionamento_fonterecursos_co_2026.xlsx`, TCE-PB) foi lido: **97 linhas de pares
+`CODIGO FONTE RECURSOS` × `CODIGO CO`** — códigos, não descrições.
+
+Pela regra do próprio lote: os 30 códigos oficiais permanecem e a pendência
+`FONTES-DESCRICAO-STN-MSC` fica. **Não preenchi por inferência.**
+
+### 20.10 · A REGRA NOVA — instrumento nasce com a prova de que acusa
+
+Três instrumentos nasceram ou mudaram neste lote, e os três têm mutação nas duas direções:
+
+| Instrumento | Mutação | O teste que morre |
+|---|---|---|
+| posição de estoque | corte por instante UTC | a borda de 23h50 de 31/12 |
+| preço médio | devolve zero em vez de recusar | a negação do estoque zerado |
+| estado do bem | estorno vira movimento comum | "o estorno ANULA" |
+| estado do bem | corte por instante UTC | a borda de 31/12 |
+| censo de ausências | nome ausente reaparece | "continua ausente: inventário de BENS" |
+| censo de ausências | leitor conquistado é renomeado | "continua existindo: ficha de controle" |
+
+⚠️ **E A ÚLTIMA LINHA CUSTOU TRÊS TENTATIVAS — as duas primeiras provaram o contrário do
+que eu queria.**
+
+1. Renomeei `fichaDeControleDeEstoque` para `fichaDeControleDeEstoqueRemovida`: o regex
+   continuou casando com o **prefixo**. Mutação inválida;
+2. renomeei de verdade, e o teste **continuou verde** — casando com a chave homônima que eu
+   mesmo escrevera no `FORA_DO_CENSO` do M16. **O guard estava atestando a existência de um
+   leitor pelo formulário que o declara;**
+3. troquei o padrão para `saldoAnterior`, um campo do retorno, e ele casou com o **Balanço
+   Financeiro do M12**, que usa o mesmo nome há lotes. Padrão genérico não é mais seguro que
+   específico — é só menos honesto.
+
+A correção foi estrutural: a prova de EXISTÊNCIA passou a ignorar os arquivos que apenas
+**nomeiam** coisas (o censo de ações do M16). A lista de AUSÊNCIA não precisa da exclusão, e
+é de propósito: lá, um nome que aparece na papelada é justamente o sinal de que alguém
+começou a construir.
+
+### 20.11 · Comandos e resultados — reprodutíveis
+
+| Comando | Resultado | Data |
+|---|---|---|
+| `npm run portao` | **10 de 10**, saída 0; 196 arquivos / 2.055 testes verdes nas duas passagens de fuso — ver 20.12 | 2026-09-11 |
+| `npx tsx scripts/marcar-catalogo.ts --aplicar` | **54 promovidas**; 316 de 2037 (15,5%) — o percentual não se move (20.1) | 2026-09-11 |
+| `npx prisma migrate dev` | 6 migrations novas (eixo físico, gestão do bem, compras, e três de enum de ação) | 2026-09-11 |
+| `npm run db:sql` | 24 arquivos aplicados, com 2 índices parciais novos | 2026-09-11 |
+
+⚠️ **O SMOKE PELO NAVEGADOR NÃO RODOU NESTE LOTE**, e é consequência direta de 20.8: não há
+tela nova para percorrer. O smoke do ENT03c/ENT04 continua válido sobre o que ele já cobria.
+
+### 20.12 · O portão do ENT05 — 10 de 10
+
+Rodada de `2026-09-11T16:16:14Z`, registro bruto em
+`.registro-de-execucao/portao-2026-09-11T16-16-14-305Z.log`, com um log por passo ao lado.
+
+| Passo | Estado | Segundos | Heap declarado | TZ |
+|---|---|---|---|---|
+| `typecheck:backend` | ok | 17 | 3072 MB | — |
+| `typecheck:app` | ok | 3 | 3072 MB | — |
+| `typecheck:scripts` | ok | 2 | 3072 MB | — |
+| `cobertura-de-tsconfig` | ok | 6 | padrão | — |
+| `prisma:validate` | ok | 1 | padrão | — |
+| `deriva` | ok | 8 | padrão | — |
+| `test:rapido` | ok | 13 | padrão | — |
+| `test:tudo` | ok | 703 | padrão | — |
+| `test:fuso` | ok | 673 | padrão | `Pacific/Kiritimati` |
+| `build` | ok | 39 | 4096 MB | — |
+
+`CODIGO_DE_SAIDA_DO_PORTAO=0`.
+
+**A suíte inteira:** 196 arquivos, **2.055 testes**, verdes nas duas passagens — a de fuso do
+hospedeiro e a de `Pacific/Kiritimati`. A rápida: 65 arquivos, 722 testes. Os números são
+idênticos entre `test:tudo` e `test:fuso`; é isso que se quer de uma propriedade, e não de
+um caso: **o mesmo conjunto passa com o relógio deslocado**, sem teste pulado sob TZ.
+
+**Duas coisas mudaram em relação à primeira rodada deste lote** (7 de 10), e as duas valem
+registro porque a diferença entre elas não é de grau:
+
+**1. `test:tudo` saiu de 26 falhas em 9 arquivos para verde.** As 26 eram uma causa só — as
+fixtures semeavam e procuravam pelas quatro contas de origem do repontamento (20.6). Não era
+regressão: era o guard de 20.6 funcionando com um lote de chamadores ainda por corrigir.
+
+**2. `test:fuso` deixou de sair `pulado`.** Ele declara `depende: ["test:tudo"]`, e na
+primeira rodada saiu `pulado 0s` — não porque passasse, mas porque o passo do qual depende
+falhou. ⚠️ **`pulado` num portão não é um passo barato; é um passo que não aconteceu.** A
+única rodada em que a disciplina de data civil dos três modelos novos foi de fato exercida
+sob relógio deslocado é esta, e ela custou 673 s. A leitura correta da primeira rodada não
+era "9 de 10 mais um pulado", era **7 de 10 com o instrumento mais caro por rodar**.
+
+**O `build` e o teto de heap.** Os dois passos que precisaram de teto declarado
+(`HEAP_DO_PASSO`, 20.10) o precisaram pelo mesmo motivo: o cliente Prisma cresceu com os três
+domínios do lote. O `build` sob o padrão do Node morria com *"Ineffective mark-compacts near
+heap limit"* **e nenhuma linha dizendo em que arquivo** — é a forma de falha que mais custa a
+diagnosticar, porque não se parece com erro de código. Sob 4096 MB compila em 3,9 s. O mesmo
+estouro no `typecheck:scripts`, sob 3072 MB, foi o que revelou as 54 chaves duplicadas de
+`marcar-catalogo.ts` (20.7): **o teto baixo não estava escondendo lentidão, estava escondendo
+um erro de tipo real.**
+
+**O que este portão NÃO cobre, e continua não cobrindo:** o smoke pelo navegador, pela razão
+de 20.8 — não há tela nova neste lote para percorrer.
+
 ## 19. O próximo passo
 
-⚠️ **O ENT04 está FECHADO e PARADO no gate.**
+⚠️ **O ENT05 está FECHADO e PARADO no gate** — 10 de 10, saída 0 (20.12). Nada foi
+publicado, nada foi transmitido, nenhum push externo.
 
-**Para o ENT05**, na ordem que a medição de 18.9 impõe — e ela mudou a ordem:
+**Para o ENT06**, na ordem que a medição de 20.1 impõe:
 
-0. ⚠️ **O MODELO das três seções que o censo derrubou**, antes de qualquer tela: quantidade
-   no almoxarifado (5.18 — 20 de 25 cláusulas ausentes), responsável/localização/termo no
-   bem (5.19), requisição e ordem de compra (5.17). **É onde moram as 469 cláusulas de
-   `BASE_FORTE`**, e é a única frente do projeto com esse volume. O molde entra depois, e aí
-   rende — entrar antes rendeu zero duas vezes seguidas.
+0. ⚠️ **O ITEM 2 DO ENT05 — as telas das três seções, pelo molde.** É a única frente do
+   projeto onde o modelo já está de pé, testado contra banco, e **só falta superfície**:
+   almoxarifado físico (14 modelos), gestão do bem (11), a compra (12). É também a única
+   forma de as **54 cláusulas de `IMPLEMENTADO_NAO_VALIDADO` virarem `VALIDADO_LOCALMENTE`**
+   — hoje elas existem no servidor e nenhum servidor municipal as alcança. **Lote de
+   superfície: a meta por natureza é alta**, e aqui o molde rende, porque não precisa
+   inventar modelo antes.
 
-1. **As treze decisões da varredura do ENT04/ENT05** (`docs/varredura-de-modelo-ent04-ent05.md`).
-   Continuam sendo o item mais barato e o mais caro de adiar — são decisões de **modelo**, e
-   o custo de tomá-las depois é migração sobre fatos que o tribunal já recebeu.
-2. **Continuar o censo.** Ele rendeu **220 cláusulas**; sobram **1.726** em `NAO_VERIFICADO`,
-   e as seções com código no disco e sem medição ainda são muitas — 5.12 (folha, em outro
-   ORM), 5.8 (características gerais), 5.20–5.22. ⚠️ **É o melhor retorno por hora do
-   projeto, e o ENT03c só confirmou isso.**
+1. **Continuar o censo.** Ele rendeu **220 cláusulas** no ENT03c; sobram **1.726** em
+   `NAO_VERIFICADO` — 5.12 (folha, em outro ORM), 5.8 (características gerais), 5.20–5.22.
+   ⚠️ **Continua sendo o melhor retorno por hora do projeto**, e o ENT05 não muda isso: o
+   ENT05 mostrou o que acontece quando se constrói sobre seção já censada — move situação,
+   não cobertura. As 1.726 são cobertura.
+
+2. **As decisões de modelo ainda abertas** (`docs/varredura-de-modelo-ent04-ent05.md`, e as
+   D1–D14 de `docs/varredura-ent05-tres-secoes.md` que ficaram como pendência). Continuam
+   sendo o item mais barato agora e o mais caro de adiar — **o ITEM 3 deste lote foi a conta
+   de uma decisão de modelo adiada desde o M04**, paga em migração.
+
 3. **`packages/integracao`** — cofre de credenciais, validação contra esquema, detecção de
    duplicidade, custódia de certificado. O achado do A3 muda a arquitetura, não a
    configuração.
+
 4. **Planejamento** — cotas, contingenciamento, prévia, emendas, audiências.
+
 5. **A decisão de ente que trava duas linhas do inventário**: *qual banco o município usa*.
 
-⚠️ **E O QUE A MEDIÇÃO DESTE LOTE DIZ SOBRE O DESENHO DOS PRÓXIMOS.** O ENT03b concluiu que
-um lote de 60–90 cláusulas precisaria de ~15 cadastros pelo molde. **A conclusão estava
-certa e a pergunta estava errada.** Construir rende ~4 cláusulas por cadastro; **medir
-rendeu 220 num lote só** — e medir é também o que impede o lote seguinte de construir por
-cima de uma ausência que ninguém tinha confirmado. A ordem certa é **censar primeiro,
-construir depois**, e as 1.726 cláusulas não verificadas são a fila.
+⚠️ **AS PENDÊNCIAS REGISTRADAS NO ENT05, que não devem ser abertas sem decisão:**
+`TRANSFERENCIA-DE-MATERIAL-COM-LOTE`, `AJUSTE-DE-INVENTARIO-EM-LOTE`,
+`ESTORNO-FISICO-E-CONTABIL-EM-CASCATA`, `EMPENHO-APONTA-PARA-ORDEM-DE-COMPRA`,
+`FONTES-DESCRICAO-STN-MSC`. As três primeiras são recusas explícitas no código, com
+mensagem — não são silêncios.
+
+⚠️ **E O QUE A MEDIÇÃO ACUMULADA DIZ SOBRE O DESENHO DOS LOTES.** O ENT03b concluiu que um
+lote de 60–90 cláusulas precisaria de ~15 cadastros pelo molde; o ENT03c mostrou que **medir
+rendeu 220 num lote só**; o ENT05 mostrou que **um lote de modelo puro rende ~54 e não podia
+render mais**, porque três domínios novos consomem o lote inteiro. As três medições não se
+contradizem: **a razão cláusulas-por-lote depende da natureza do lote.** Censo rende
+cobertura, modelo rende situação, superfície rende validação — e só a terceira é a que o
+servidor municipal enxerga.

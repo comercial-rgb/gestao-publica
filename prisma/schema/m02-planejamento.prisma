@@ -102,6 +102,11 @@ model UnidadeOrcamentaria {
   chamados              Chamado[]              @relation("ChamadoDaUnidade")
 
   @@index([orgaoId])
+  /// back-relation ENT05 — campo VIRTUAL, nenhuma coluna nova.
+  depositos Deposito[]
+  /// back-relations ENT05 (M10 gestão do bem) — VIRTUAIS.
+  transferenciasDeBem MovimentoDeGestaoDoBem[] @relation("TransferenciaDeBem")
+  inventariosDeBens   InventarioDeBens[]       @relation("InventarioDeBens")
 }
 
 /// Portaria STN 42/1999.
@@ -186,6 +191,8 @@ model NaturezaDespesa {
   fichas       FichaOrcamentaria[]
 
   @@unique([codCategoria, codNatureza, codModalidade, codElemento], name: "uq_natureza_componentes")
+  /// back-relation ENT05 (M11 compras) — VIRTUAL.
+  materiais MaterialElementoDespesa[] @relation("ElementoDoMaterial")
 }
 
 /// Aparece no EMPENHO (M05) — modelado já para não migrar depois.
@@ -319,6 +326,8 @@ model FichaOrcamentaria {
   @@index([orgaoId])
   @@index([unidadeOrcId])
   @@index([fonteId])
+  /// back-relation ENT05 (M11 compras) — VIRTUAL.
+  ordensDeCompra OrdemDeCompra[] @relation("FichaDaOrdem")
 }
 
 // ----------------------------------------------------------------------------

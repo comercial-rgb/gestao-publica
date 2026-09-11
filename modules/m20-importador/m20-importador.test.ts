@@ -28,7 +28,8 @@ const prisma = criarPrismaDeTeste();
 await exigirBanco(prisma);
 
 const POR = "m05@cg.pb.gov.br"; // identidade de fixture (o seed não cria usuários — t5)
-const CONTA_BANCOS = "1.1.1.1.2.00.00";
+// ENT05 ITEM 3 — repontada: a antiga era a variante INTRA OFSS.
+const CONTA_BANCOS = "1.1.1.1.1.19.00";
 const ROTEIROS = {
   empenho: roteiroEmpenho({ creditoDisponivel: "6.2.2.1.1.00.00", creditoEmpenhado: "6.2.2.1.3.01.00" }),
   liquidacao: roteiroLiquidacao({ variacaoDiminutiva: "3.3.2.1.1.01.00", obrigacaoAPagar: "2.1.3.1.1.00.00", creditoEmpenhado: "6.2.2.1.3.01.00", creditoLiquidado: "6.2.2.1.3.03.00" }),

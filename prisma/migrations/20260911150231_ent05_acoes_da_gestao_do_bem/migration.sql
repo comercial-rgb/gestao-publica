@@ -1,0 +1,21 @@
+-- AlterEnum
+-- This migration adds more than one value to an enum.
+-- With PostgreSQL versions 11 and earlier, this is not possible
+-- in a single migration. This can be worked around by creating
+-- multiple migrations, each migration adding only one value to
+-- the enum.
+
+
+ALTER TYPE "AcaoDoSistema" ADD VALUE 'CADASTRAR_LOCALIZACAO_FISICA';
+ALTER TYPE "AcaoDoSistema" ADD VALUE 'CADASTRAR_COMISSAO_PATRIMONIAL';
+ALTER TYPE "AcaoDoSistema" ADD VALUE 'CADASTRAR_MOTIVO_DE_BAIXA';
+ALTER TYPE "AcaoDoSistema" ADD VALUE 'CADASTRAR_TIPO_DE_INCORPORACAO';
+ALTER TYPE "AcaoDoSistema" ADD VALUE 'CADASTRAR_FORMULA_DE_AVALIACAO';
+ALTER TYPE "AcaoDoSistema" ADD VALUE 'REGISTRAR_MOVIMENTO_DE_GESTAO';
+ALTER TYPE "AcaoDoSistema" ADD VALUE 'TRANSFERIR_BEM_ENTRE_ENTIDADES';
+ALTER TYPE "AcaoDoSistema" ADD VALUE 'ESTORNAR_MOVIMENTO_DE_GESTAO';
+ALTER TYPE "AcaoDoSistema" ADD VALUE 'GERAR_ETIQUETA_DE_BEM';
+ALTER TYPE "AcaoDoSistema" ADD VALUE 'EMITIR_TERMO_PATRIMONIAL';
+ALTER TYPE "AcaoDoSistema" ADD VALUE 'ABRIR_INVENTARIO_DE_BENS';
+ALTER TYPE "AcaoDoSistema" ADD VALUE 'REGISTRAR_CONTAGEM_DE_BEM';
+ALTER TYPE "AcaoDoSistema" ADD VALUE 'FECHAR_INVENTARIO_DE_BENS';

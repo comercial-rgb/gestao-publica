@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { somenteCodigo } from "./prosa.js";
 import { carregarPlanoOficial } from "../prisma/seed/oficial/pcasp-oficial.js";
 
 /**
@@ -21,7 +22,7 @@ import { carregarPlanoOficial } from "../prisma/seed/oficial/pcasp-oficial.js";
  * **A má é de classificação, e é séria.** Confrontados os NOMES, o sistema opera contas que
  * no PCASP significam outra coisa:
  *
- *   · `1.1.1.1.2.00.00` o seed chama "Bancos Conta Movimento"; no PCASP é
+ *   · `1.1.1.1.2.00.00` o seed CHAMAVA "Bancos Conta Movimento" (repontado no ENT05); no PCASP é
  *     **"CAIXA E EQUIVALENTES DE CAIXA EM MOEDA NACIONAL - INTRA OFSS"** — a variante para
  *     transações ENTRE entes do mesmo orçamento fiscal e da seguridade. A conta bancária do
  *     município é `1.1.1.1.1.19.00`. Todo movimento de banco do sistema está numa conta
@@ -104,6 +105,9 @@ const SINTETICAS_TOLERADAS: ReadonlySet<string> = new Set([
   "6.2.2.1.2.00.00", "6.2.2.1.3.00.00", "7.0.0.0.0.00.00", "7.2.0.0.0.00.00",
   "7.2.1.0.0.00.00", "7.2.1.1.0.00.00", "8.0.0.0.0.00.00", "8.2.0.0.0.00.00",
   "8.2.1.0.0.00.00", "8.2.1.1.0.00.00", "8.2.1.1.1.00.00",
+  // ── ENT05 (ITEM 3) — os nós de HIERARQUIA que o repontamento trouxe junto. ──
+  // Eles entram no seed como PAIS das analíticas repontadas; nenhuma partida os toca.
+  "1.1.2.1.0.00.00", "2.2.2.0.0.00.00",
 ]);
 
 interface Uso {
@@ -183,11 +187,46 @@ describe("as contas do código contra o PCASP oficial", () => {
     ).toEqual([]);
   });
 
-  it("as quatro contas cujo NOME diverge do oficial estão medidas e nomeadas", () => {
-    // ⚠️ ESTE TESTE FIXA O ACHADO PARA QUE ELE NÃO SE PERCA. Ele NÃO tolera a divergência:
-    // ele a mantém visível e contada. No dia em que a pendência
-    // PLANO-DE-CONTAS-FORA-DO-PCASP for quitada, este teste falha — e é o sinal de que a
-    // documentação precisa acompanhar.
+  it("⚠️ AS QUATRO CONTAS REPONTADAS NO ENT05 SAÍRAM DO CÓDIGO DE PRODUÇÃO", () => {
+    // ⚠️ A PENDÊNCIA `PLANO-DE-CONTAS-FORA-DO-PCASP` FOI QUITADA NO ENT05 (ITEM 3), e
+    // este teste é o que impede que ela volte pela porta dos fundos.
+    //
+    // As quatro origens continuam EXISTINDO no plano oficial — elas são contas de
+    // verdade, e o repontamento não as apaga. O que não pode voltar é o CÓDIGO DE
+    // PRODUÇÃO apontar para elas como se fossem outra coisa.
+    const origensRepontadas = [
+      "1.1.1.1.2.00.00", // CAIXA E EQUIVALENTES — INTRA OFSS
+      "1.1.5.1.1.00.00", // MERCADORIAS PARA REVENDA OU DOAÇÃO
+      "2.2.1.1.1.00.00", // PESSOAL A PAGAR
+      "1.1.2.2.0.00.00", // CLIENTES
+    ];
+    const aindaEmProducao = origensRepontadas.filter((c) => {
+      const uso = usos.find((u) => u.codigo === c);
+      if (uso === undefined) return false;
+      // Fixture e teste podem citá-las (o repontamento tem de ser testável); o que não
+      // pode é `prisma/seed/` e `modules/**` de produção.
+      // ⚠️ PROSA NÃO É CÓDIGO — a mesma correção que o guard de tabela morta recebeu no
+      // ENT04. Este repositório DOCUMENTA o repontamento: o cabeçalho do seed oficial, o
+      // comentário do roteiro e a tabela de decisão citam as quatro origens pelo nome. Um
+      // guard que acusasse a explicação do conserto ficaria vermelho por dizer a verdade.
+      return uso.arquivos.some((a) => {
+        if (a.includes(".test.") || a.includes("migracao-de-conta")) return false;
+        const fonte = somenteCodigo(readFileSync(join(RAIZ, a), "utf8"));
+        return fonte.includes(c);
+      });
+    });
+    expect(
+      aindaEmProducao,
+      "\n\n⚠️ UMA CONTA REPONTADA VOLTOU AO CÓDIGO DE PRODUÇÃO.\n\n" +
+        "O ENT05 mediu que estas quatro apontavam para conceitos diferentes do que o " +
+        "sistema chama, e moveu o saldo com `repontarConta` — um lançamento que EXPLICA " +
+        "a mudança. Reintroduzi-las no seed ou num módulo faz o sistema voltar a lançar " +
+        "no lugar errado, agora sobre um saldo que já foi migrado.\n\nOnde voltou:\n"
+    ).toEqual([]);
+  });
+
+  it("as quatro origens continuam com o NOME oficial que o censo mediu", () => {
+    // Elas não somem do plano: são contas reais. O que muda é para onde a produção aponta.
     const divergencias: Record<string, string> = {
       "1.1.1.1.2.00.00": "CAIXA E EQUIVALENTES DE CAIXA EM MOEDA NACIONAL - INTRA OFSS",
       "1.1.5.1.1.00.00": "MERCADORIAS PARA REVENDA OU DOAÇÃO - CONSOLIDAÇÃO",

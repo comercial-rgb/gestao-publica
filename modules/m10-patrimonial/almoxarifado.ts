@@ -482,6 +482,74 @@ export async function registrarEntradaAlmoxarifado(
   });
 }
 
+/**
+ * ⚠️ O CORPO TRANSACIONAL DA SAÍDA, SEPARADO DO SERVIÇO — E O MOTIVO É O EIXO FÍSICO.
+ *
+ * O ENT05 acrescentou o eixo FÍSICO do almoxarifado (quantidade, depósito, lote, e o
+ * preço médio da 5.18.11). Uma saída física tem de gerar **o mesmo lançamento contábil
+ * que já gerava**, e as duas escritas precisam ser ATÔMICAS: se a física gravasse e a
+ * contábil falhasse, os dois eixos divergiriam e o `conferirAlmoxarifadoContraRazao`
+ * acusaria um defeito que ninguém provocou.
+ *
+ * Duas chamadas em duas transações não dão essa garantia. Por isso o corpo virou um
+ * COMPOSÁVEL que recebe a `tx` de quem chama — e continua existindo UMA implementação,
+ * e não duas que se parecem.
+ *
+ * ⚠️ ELE NÃO AUTORIZA, NÃO ABRE TRANSAÇÃO E NÃO TRAVA: quem chama faz as três coisas.
+ * O lock é do chamador por uma razão concreta de ORDEM — o eixo físico trava
+ * `ClasseDeMaterial` (posto 11) e depois `PosicaoFisicaDeEstoque` (posto 21); se este
+ * composável tornasse a travar a classe, seria uma INVERSÃO (11 depois de 21) e o guard
+ * de ordem estouraria na cara de quem só queria dar baixa em cinco caixas de luva.
+ *
+ * Está no `FORA_DO_CENSO` por isso, com este motivo.
+ */
+export async function registrarSaidaConsumoNaTx(
+  tx: Tx,
+  d: {
+    readonly classeDeMaterialId: string;
+    readonly valor: Money;
+    readonly dataMovimento: Date;
+    readonly motivo: string;
+    readonly criadoPor: string;
+  }
+): Promise<{ readonly movimentoId: string; readonly lancamentoId: string }> {
+  const classe = await exigirClasse(tx, d.classeDeMaterialId);
+
+  const saldo = await saldoDaClasseDeMaterial(tx, d.classeDeMaterialId);
+  if (d.valor.greaterThan(saldo)) {
+    throw new Error(
+      `CONSUMO MAIOR QUE O ESTOQUE da classe ${classe.codigo}: consumir ` +
+        `${d.valor.toFixed(2)} deixaria o estoque NEGATIVO — ele vale ` +
+        `${saldo.toFixed(2)}. Não se consome o que não há.`
+    );
+  }
+
+  const lancamentoId = await lancar(tx, {
+    tipoDoRoteiro: "SAIDA_CONSUMO",
+    inverter: false,
+    codigo: classe.codigo,
+    valor: d.valor,
+    data: d.dataMovimento,
+    classeDeMaterialId: d.classeDeMaterialId,
+    criadoPor: d.criadoPor,
+    historico: `Consumo de material da classe ${classe.codigo}`,
+  });
+
+  const criado = await tx.movimentoAlmoxarifado.create({
+    data: {
+      classeDeMaterialId: d.classeDeMaterialId,
+      tipo: "SAIDA_CONSUMO",
+      valor: d.valor.toFixed(2),
+      dataMovimento: d.dataMovimento,
+      lancamentoId,
+      motivo: d.motivo,
+      criadoPor: d.criadoPor,
+    },
+    select: { id: true },
+  });
+  return { movimentoId: criado.id, lancamentoId };
+}
+
 /** SAÍDA POR CONSUMO — D VPD (consumo) / C estoque. É AQUI que a despesa nasce. */
 export async function registrarSaidaConsumo(
   prisma: PrismaClient,
@@ -493,43 +561,9 @@ export async function registrarSaidaConsumo(
     // SEM UG: a saída por consumo é da CLASSE (o estoque), e a classe não tem unidade. É aqui que a
     // despesa patrimonial nasce — mas ela nasce do ESTOQUE, não de uma ficha.
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.registrarSaidaConsumo, "ENTE");
-
+    // O lock é DAQUI, e não do composável — ver o cabeçalho dele.
     await travarClasse(tx, d.classeDeMaterialId);
-    const classe = await exigirClasse(tx, d.classeDeMaterialId);
-
-    const saldo = await saldoDaClasseDeMaterial(tx, d.classeDeMaterialId);
-    if (d.valor.greaterThan(saldo)) {
-      throw new Error(
-        `CONSUMO MAIOR QUE O ESTOQUE da classe ${classe.codigo}: consumir ` +
-          `${d.valor.toFixed(2)} deixaria o estoque NEGATIVO — ele vale ` +
-          `${saldo.toFixed(2)}. Não se consome o que não há.`
-      );
-    }
-
-    const lancamentoId = await lancar(tx, {
-      tipoDoRoteiro: "SAIDA_CONSUMO",
-      inverter: false,
-      codigo: classe.codigo,
-      valor: d.valor,
-      data: d.dataMovimento,
-      classeDeMaterialId: d.classeDeMaterialId,
-      criadoPor: d.criadoPor,
-      historico: `Consumo de material da classe ${classe.codigo}`,
-    });
-
-    const criado = await tx.movimentoAlmoxarifado.create({
-      data: {
-        classeDeMaterialId: d.classeDeMaterialId,
-        tipo: "SAIDA_CONSUMO",
-        valor: d.valor.toFixed(2),
-        dataMovimento: d.dataMovimento,
-        lancamentoId,
-        motivo: d.motivo,
-        criadoPor: d.criadoPor,
-      },
-      select: { id: true },
-    });
-    return { movimentoId: criado.id, lancamentoId };
+    return registrarSaidaConsumoNaTx(tx, d);
   });
 }
 

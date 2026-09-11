@@ -182,7 +182,7 @@ describe("banco semeado só por seeds de produção", () => {
         origemTipo: "MANUAL",
         criadoPor: identidade,
         partidas: [
-          { conta: "1.1.1.1.2.00.00", tipo: "DEBITO", subsistema: "PATRIMONIAL", valor: "10.00" },
+          { conta: "1.1.1.1.1.19.00", tipo: "DEBITO", subsistema: "PATRIMONIAL", valor: "10.00" },
           { conta: "2.1.3.1.1.00.00", tipo: "CREDITO", subsistema: "PATRIMONIAL", valor: "10.00" },
         ],
       },
@@ -209,7 +209,7 @@ describe("banco semeado só por seeds de produção", () => {
         historico: "caução contratual — primeira do banco", criadoPor: identidade,
       },
       [
-        { conta: "1.1.1.1.2.00.00", tipo: "DEBITO", subsistema: "PATRIMONIAL" },
+        { conta: "1.1.1.1.1.19.00", tipo: "DEBITO", subsistema: "PATRIMONIAL" },
         { conta: tipo.contaPassivo!.codigo, tipo: "CREDITO", subsistema: "PATRIMONIAL" },
       ]
     );

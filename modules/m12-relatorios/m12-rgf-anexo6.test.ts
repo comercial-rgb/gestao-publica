@@ -40,7 +40,8 @@ const prisma = criarPrismaDeTeste();
 await exigirBanco(prisma);
 
 const POR = "orcamento@cg.pb.gov.br";
-const DIVIDA = "2.2.1.1.1.00.00";
+// ENT05 ITEM 3 — repontada: a antiga era PESSOAL A PAGAR.
+const DIVIDA = "2.2.2.1.1.02.98";
 const R_ARR_IPTU = roteiroArrecadacao({ disponibilidade: "1.1.1.1.1.00.00", variacaoAumentativa: "4.1.1.2.1.01.00" });
 const R_ARR_OPCRED = roteiroArrecadacao({ disponibilidade: "1.1.1.1.1.00.00", variacaoAumentativa: DIVIDA });
 const R_EMP = roteiroEmpenho();

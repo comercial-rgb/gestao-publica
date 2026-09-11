@@ -110,10 +110,11 @@ export const CONTAS_PCASP_STN: readonly ContaSeed[] = [
   { codigo: "1.0.0.0.0.00.00", nome: "Ativo", naturezaSaldo: "DEVEDORA", nivel: 1, analitica: false },
   { codigo: "1.1.0.0.0.00.00", nome: "Ativo Circulante", naturezaSaldo: "DEVEDORA", nivel: 2, analitica: false, pai: "1.0.0.0.0.00.00" },
   { codigo: "1.1.2.0.0.00.00", nome: "Créditos a Curto Prazo", naturezaSaldo: "DEVEDORA", nivel: 3, analitica: false, pai: "1.1.0.0.0.00.00" },
-  { codigo: "1.1.2.2.0.00.00", nome: "Créditos Tributários a Receber", naturezaSaldo: "DEVEDORA", nivel: 4, analitica: false, pai: "1.1.2.0.0.00.00" },
-  // ⚠️ ANALÍTICO A CONFIRMAR no xlsx PCASP Estendido — fonte secundária estadual
-  // diverge no 4º dígito. A hierarquia (1.1.2 → 1.1.2.2) é firme; a folha, não.
-  { codigo: "1.1.2.2.1.00.00", nome: "Créditos Tributários a Receber — Consolidação", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: true, indicadorSuperavit: "P", pai: "1.1.2.2.0.00.00" },
+  // ⚠️ REPONTADO NO ENT05 (ITEM 3). Era `1.1.2.2.0.00.00`/`1.1.2.2.1.00.00`, e a nota
+  // antiga aqui dizia "ANALÍTICO A CONFIRMAR no xlsx PCASP Estendido". O xlsx chegou no
+  // ENT04 e CORRIGIU: `1.1.2.2.x` é **CLIENTES**; crédito tributário é `1.1.2.1.x`.
+  { codigo: "1.1.2.1.0.00.00", nome: "Créditos Tributários a Receber", naturezaSaldo: "DEVEDORA", nivel: 4, analitica: false, pai: "1.1.2.0.0.00.00" },
+  { codigo: "1.1.2.1.1.99.00", nome: "Outros Créditos Tributários a Receber", naturezaSaldo: "DEVEDORA", nivel: 7, analitica: true, indicadorSuperavit: "P", pai: "1.1.2.1.0.00.00" },
 ];
 
 /**
@@ -134,9 +135,13 @@ export const CONTAS_PCASP_STN: readonly ContaSeed[] = [
 export const CONTAS_FIXTURE_A_CONFIRMAR: readonly ContaSeed[] = [
   { codigo: "1.1.1.0.0.00.00", nome: "Caixa e Equivalentes de Caixa", naturezaSaldo: "DEVEDORA", nivel: 3, analitica: false, pai: "1.1.0.0.0.00.00" },
   { codigo: "1.1.1.1.1.00.00", nome: "Caixa", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: true, indicadorSuperavit: "F", pai: "1.1.1.0.0.00.00" },
-  { codigo: "1.1.1.1.2.00.00", nome: "Bancos Conta Movimento", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: true, indicadorSuperavit: "F", pai: "1.1.1.0.0.00.00" },
+  // ⚠️ REPONTADA NO ENT05 (ITEM 3): `1.1.1.1.2.00.00` é a variante INTRA OFSS (transação
+  // entre órgãos do MESMO ente), não a conta bancária comum.
+  { codigo: "1.1.1.1.1.19.00", nome: "Bancos Conta Movimento — Demais Contas", naturezaSaldo: "DEVEDORA", nivel: 7, analitica: true, indicadorSuperavit: "F", pai: "1.1.1.0.0.00.00" },
   { codigo: "1.1.5.0.0.00.00", nome: "Estoques", naturezaSaldo: "DEVEDORA", nivel: 3, analitica: false, pai: "1.1.0.0.0.00.00" },
-  { codigo: "1.1.5.1.1.00.00", nome: "Almoxarifado", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: true, indicadorSuperavit: "P", pai: "1.1.5.0.0.00.00" },
+  // ⚠️ REPONTADA NO ENT05 (ITEM 3): `1.1.5.1.1.00.00` é MERCADORIAS PARA REVENDA OU
+  // DOAÇÃO — estoque para ALIENAR ou DISTRIBUIR, não o almoxarifado de consumo próprio.
+  { codigo: "1.1.5.6.1.01.00", nome: "Material de Consumo", naturezaSaldo: "DEVEDORA", nivel: 7, analitica: true, indicadorSuperavit: "P", pai: "1.1.5.0.0.00.00" },
 
   { codigo: "2.0.0.0.0.00.00", nome: "Passivo e Patrimônio Líquido", naturezaSaldo: "CREDORA", nivel: 1, analitica: false },
   { codigo: "2.1.0.0.0.00.00", nome: "Passivo Circulante", naturezaSaldo: "CREDORA", nivel: 2, analitica: false, pai: "2.0.0.0.0.00.00" },
@@ -148,7 +153,10 @@ export const CONTAS_FIXTURE_A_CONFIRMAR: readonly ContaSeed[] = [
   { codigo: "2.1.8.8.1.01.00", nome: "Consignações", naturezaSaldo: "CREDORA", nivel: 6, analitica: true, indicadorSuperavit: "F", pai: "2.1.8.0.0.00.00" },
   { codigo: "2.2.0.0.0.00.00", nome: "Passivo Não Circulante", naturezaSaldo: "CREDORA", nivel: 2, analitica: false, pai: "2.0.0.0.0.00.00" },
   { codigo: "2.2.1.0.0.00.00", nome: "Obrigações a Longo Prazo", naturezaSaldo: "CREDORA", nivel: 3, analitica: false, pai: "2.2.0.0.0.00.00" },
-  { codigo: "2.2.1.1.1.00.00", nome: "Dívida Fundada Interna", naturezaSaldo: "CREDORA", nivel: 5, analitica: true, indicadorSuperavit: "P", pai: "2.2.1.0.0.00.00" },
+  // ⚠️ REPONTADA NO ENT05 (ITEM 3): `2.2.1.1.1.00.00` é PESSOAL A PAGAR — obrigação de
+  // folha. Empréstimo interno de longo prazo por contrato é `2.2.2.1.1.02.98`.
+  { codigo: "2.2.2.0.0.00.00", nome: "Empréstimos e Financiamentos a Longo Prazo", naturezaSaldo: "CREDORA", nivel: 3, analitica: false, pai: "2.2.0.0.0.00.00" },
+  { codigo: "2.2.2.1.1.02.98", nome: "Outros Contratos — Empréstimos Internos", naturezaSaldo: "CREDORA", nivel: 7, analitica: true, indicadorSuperavit: "P", pai: "2.2.2.0.0.00.00" },
 
   // RÓTULO adotado do oficial (Pcasp_2025.xlsx, cód. 300000000 = "VARIAÇÃO PATRIMONIAL DIMINUTIVA",
   // singular). Decisão do Winner na S-massa — era divergência de rótulo, não estrutural.

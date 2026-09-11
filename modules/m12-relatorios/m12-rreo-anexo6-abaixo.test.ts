@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { CONTA_DIVIDA_FUNDADA } from "../m01-core-contabil/roteiros.js";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
 import { limparBanco } from "../../test/limpar-banco.js";
@@ -98,7 +99,10 @@ async function semear(): Promise<void> {
 
   // A dívida e o ingresso de 2024 (o saldo de abertura). Sem ela o M05 recusa o empenho do grupo 6.
   const contaDivida = await prisma.contaPcasp.findFirstOrThrow({
-    where: { codigo: "2.2.1.1.1.00.00" },
+    // ⚠️ PELA CONSTANTE, NÃO PELO LITERAL. O ENT05 repontou a conta (ITEM 3) e este
+    // literal apontava para PESSOAL A PAGAR — a fixture semeava uma conta e o roteiro
+    // pedia outra. Pela constante, a fixture acompanha o repontamento sozinha.
+    where: { codigo: CONTA_DIVIDA_FUNDADA },
     select: { id: true },
   });
   await prisma.dividaConsolidada.create({

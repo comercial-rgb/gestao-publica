@@ -51,7 +51,7 @@ const prisma = criarPrismaDeTeste();
 await exigirBanco(prisma);
 
 const POR = "m05@cg.pb.gov.br";
-const CONTA_BANCOS = "1.1.1.1.2.00.00";
+const CONTA_BANCOS = "1.1.1.1.1.19.00";
 
 const ROTEIROS = {
   empenho: roteiroEmpenho({ creditoDisponivel: "6.2.2.1.1.00.00", creditoEmpenhado: "6.2.2.1.3.01.00" }),
@@ -174,7 +174,7 @@ describe("período fechado — as três rotas", () => {
           origemTipo: "MANUAL",
           criadoPor: POR,
           partidas: [
-            { conta: "1.1.1.1.2.00.00", tipo: "DEBITO", subsistema: "PATRIMONIAL", valor: "10.00" },
+            { conta: "1.1.1.1.1.19.00", tipo: "DEBITO", subsistema: "PATRIMONIAL", valor: "10.00" },
             { conta: "2.1.3.1.1.00.00", tipo: "CREDITO", subsistema: "PATRIMONIAL", valor: "10.00" },
           ],
         },
@@ -209,7 +209,7 @@ describe("período fechado — as três rotas", () => {
           historico: "caução em mês fechado", criadoPor: POR,
         },
         [
-          { conta: "1.1.1.1.2.00.00", tipo: "DEBITO", subsistema: "PATRIMONIAL" },
+          { conta: "1.1.1.1.1.19.00", tipo: "DEBITO", subsistema: "PATRIMONIAL" },
           { conta: "2.1.8.8.1.01.00", tipo: "CREDITO", subsistema: "PATRIMONIAL" },
         ]
       )

@@ -95,10 +95,24 @@ export const CONTA_DDR_UTILIZADA = "8.2.1.1.4.01.00";
 
 /** Variação Patrimonial Diminutiva — a despesa incorrida que NÃO vira ativo. */
 export const CONTA_VPD = "3.3.2.1.1.01.00";
-/** Almoxarifado — material de consumo entra como ATIVO, não como despesa. */
-export const CONTA_ESTOQUE = "1.1.5.1.1.00.00";
-/** Dívida fundada — o empenho do elemento 71 AMORTIZA passivo; não há VPD. */
-export const CONTA_DIVIDA_FUNDADA = "2.2.1.1.1.00.00";
+/**
+ * Almoxarifado — material de consumo entra como ATIVO, não como despesa.
+ *
+ * ⚠️ REPONTADA NO ENT05 (ITEM 3). Era `1.1.5.1.1.00.00`, que no PCASP oficial é
+ * **MERCADORIAS PARA REVENDA OU DOAÇÃO** — estoque para ALIENAR ou DISTRIBUIR, não o
+ * almoxarifado de consumo próprio. O saldo já lançado na conta antiga é movido pelo
+ * `repontarConta`, com lançamento que explica a mudança; esta constante passa a apontar o
+ * conceito certo daqui para a frente.
+ */
+export const CONTA_ESTOQUE = "1.1.5.6.1.01.00";
+/**
+ * Dívida fundada — o empenho do elemento 71 AMORTIZA passivo; não há VPD.
+ *
+ * ⚠️ REPONTADA NO ENT05 (ITEM 3). Era `2.2.1.1.1.00.00`, que no PCASP oficial é
+ * **PESSOAL A PAGAR** — obrigação de folha. Empréstimo interno de longo prazo por
+ * contrato é `2.2.2.1.1.02.98`.
+ */
+export const CONTA_DIVIDA_FUNDADA = "2.2.2.1.1.02.98";
 
 /**
  * O ROL FECHADO DA PERNA DEVEDORA DA LIQUIDAÇÃO — e por que ele é fechado.

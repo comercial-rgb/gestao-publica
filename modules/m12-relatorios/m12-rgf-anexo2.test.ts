@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { CONTA_DIVIDA_FUNDADA } from "../m01-core-contabil/roteiros.js";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
 import { criarFichaDeTeste } from "../../test/ficha-teste.js";
@@ -122,7 +123,9 @@ async function semear(): Promise<void> {
   // ── A DÍVIDA CONSOLIDADA (M10) ──
   // A conta de passivo vem do plano de produção — a Dívida Fundada Interna.
   const passivo = await prisma.contaPcasp.findUniqueOrThrow({
-    where: { codigo: "2.2.1.1.1.00.00" },
+    // ⚠️ PELA CONSTANTE, NÃO PELO LITERAL — o ENT05 repontou a conta (ITEM 3), e este
+    // literal apontava para PESSOAL A PAGAR.
+    where: { codigo: CONTA_DIVIDA_FUNDADA },
     select: { id: true },
   });
   for (const d of [

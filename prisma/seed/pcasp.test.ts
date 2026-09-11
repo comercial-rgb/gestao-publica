@@ -82,8 +82,8 @@ describe("seed:pcasp — o plano mínimo, com procedência", () => {
 
     // As duas contas confirmadas nesta sessão.
     expect(porCodigo.get("4.6.4.1.1.00.00")?.naturezaSaldo).toBe("CREDORA");
-    expect(porCodigo.get("1.1.2.2.1.00.00")?.naturezaSaldo).toBe("DEVEDORA");
-    expect(porCodigo.get("1.1.2.2.1.00.00")?.indicadorSuperavit).toBe("P");
+    expect(porCodigo.get("1.1.2.1.1.99.00")?.naturezaSaldo).toBe("DEVEDORA");
+    expect(porCodigo.get("1.1.2.1.1.99.00")?.indicadorSuperavit).toBe("P");
 
     // A DDR entra no plano (é oficial) mesmo sem roteiro que a use — DDR-CLASSE-8.
     expect(porCodigo.get("8.2.1.1.1.00.00")?.analitica).toBe(true);

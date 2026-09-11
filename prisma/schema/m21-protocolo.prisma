@@ -69,6 +69,15 @@ model Setor {
   movimentosDeComunicado MovimentoDoComunicado[]
 
   @@index([unidadeOrcId])
+  /// back-relations ENT05 (M10 fisico) — VIRTUAIS.
+  consumosDeMaterial    MovimentoFisicoDeEstoque[] @relation("ConsumoDeMaterial")
+  requisicoesDeMaterial RequisicaoDeMaterial[]     @relation("RequisicaoDeMaterial")
+  cotasDeConsumo        CotaDeConsumo[]            @relation("CotaDeConsumo")
+  /// back-relations ENT05 (M10 gestão do bem) — VIRTUAIS.
+  localizacoesFisicas LocalizacaoFisica[] @relation("LocalizacaoDeSetor")
+  termosPatrimoniais  TermoPatrimonial[]  @relation("TermoPatrimonialDeSetor")
+  /// back-relation ENT05 (M11 compras) — VIRTUAL.
+  solicitacoesDeCompra SolicitacaoDeCompra[] @relation("SolicitacaoDeCompra")
 }
 
 /// A LOTAÇÃO — em quais setores o usuário trabalha.
@@ -275,6 +284,8 @@ model Processo {
   @@index([requerenteId])
   @@index([setorAberturaId])
   @@index([exercicioId, criadoEm])
+  /// back-relation ENT05 (M11 compras) — VIRTUAL.
+  solicitacoesDeCompra SolicitacaoDeCompra[] @relation("ProcessoDaSolicitacao")
 }
 
 /// A CÓPIA do roteiro no instante da abertura. Ver o cabeçalho do arquivo.

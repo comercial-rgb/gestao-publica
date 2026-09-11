@@ -49,7 +49,7 @@ await exigirBanco(prisma);
 
 const RAIZ = fileURLToPath(new URL("..", import.meta.url));
 
-const CAIXA = "1.1.1.1.2.00.00";
+const CAIXA = "1.1.1.1.1.19.00";
 const P_INSS = "2.1.8.8.1.01.00";
 const P_OUTRO = "2.1.8.8.1.02.00";
 const POR = "ent01@cg.pb.gov.br";

@@ -131,6 +131,55 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   REGISTRAR_SAIDA_CONSUMO: "patrimonio",
   REGISTRAR_AJUSTE_ALMOXARIFADO: "patrimonio",
   ESTORNAR_MOVIMENTO_ALMOXARIFADO: "patrimonio",
+
+  // ENT05 — o eixo FÍSICO do almoxarifado (TR 5.18). Mora em "patrimonio", junto do
+  // eixo contábil que ele acompanha: separá-lo numa área própria faria o mesmo
+  // almoxarifado aparecer em dois lugares do menu.
+  CADASTRAR_DEPOSITO: "patrimonio",
+  CADASTRAR_UNIDADE_DE_MEDIDA: "cadastros",
+  CADASTRAR_GRUPO_DE_MATERIAL: "cadastros",
+  CADASTRAR_MATERIAL: "cadastros",
+  DEFINIR_PARAMETRO_DE_ESTOQUE: "patrimonio",
+  REGISTRAR_ENTRADA_FISICA: "patrimonio",
+  REGISTRAR_SAIDA_FISICA: "patrimonio",
+  ESTORNAR_MOVIMENTO_FISICO: "patrimonio",
+  TRANSFERIR_ENTRE_DEPOSITOS: "patrimonio",
+  REGISTRAR_REQUISICAO_DE_MATERIAL: "patrimonio",
+  DEFINIR_COTA_DE_CONSUMO: "patrimonio",
+  ABRIR_INVENTARIO_DE_ESTOQUE: "patrimonio",
+  REGISTRAR_CONTAGEM_DE_INVENTARIO: "patrimonio",
+  FECHAR_INVENTARIO_DE_ESTOQUE: "patrimonio",
+  BLOQUEAR_ESTOQUE: "patrimonio",
+  ENCERRAR_BLOQUEIO_DE_ESTOQUE: "patrimonio",
+
+  // ENT05 — o eixo de GESTÃO do bem (TR 5.19).
+  CADASTRAR_LOCALIZACAO_FISICA: "cadastros",
+  CADASTRAR_COMISSAO_PATRIMONIAL: "cadastros",
+  CADASTRAR_MOTIVO_DE_BAIXA: "cadastros",
+  CADASTRAR_TIPO_DE_INCORPORACAO: "cadastros",
+  CADASTRAR_FORMULA_DE_AVALIACAO: "cadastros",
+  REGISTRAR_MOVIMENTO_DE_GESTAO: "patrimonio",
+  TRANSFERIR_BEM_ENTRE_ENTIDADES: "patrimonio",
+  ESTORNAR_MOVIMENTO_DE_GESTAO: "patrimonio",
+  GERAR_ETIQUETA_DE_BEM: "patrimonio",
+  EMITIR_TERMO_PATRIMONIAL: "patrimonio",
+  ABRIR_INVENTARIO_DE_BENS: "patrimonio",
+  REGISTRAR_CONTAGEM_DE_BEM: "patrimonio",
+  FECHAR_INVENTARIO_DE_BENS: "patrimonio",
+
+  // ENT05 ITEM 3 — a correção de eixo do plano de contas.
+  REPONTAR_CONTA: "contabilidade",
+
+  // ENT05 — A COMPRA (TR 5.17). Mora em "licitacoes", com o processo e o contrato que
+  // ela alimenta; o cadastro de marca e o vínculo com elemento são cadastro.
+  RELACIONAR_MARCA_AO_MATERIAL: "cadastros",
+  RELACIONAR_ELEMENTO_AO_MATERIAL: "cadastros",
+  REGISTRAR_SOLICITACAO_DE_COMPRA: "licitacoes",
+  MOVIMENTAR_SOLICITACAO_DE_COMPRA: "licitacoes",
+  REGISTRAR_PESQUISA_DE_PRECOS: "licitacoes",
+  EMITIR_ORDEM_DE_COMPRA: "licitacoes",
+  REGISTRAR_RECEBIMENTO_DE_ORDEM: "licitacoes",
+  ESTORNAR_ORDEM_DE_COMPRA: "licitacoes",
   // M10 — patrimônio
   ADQUIRIR_BEM: "patrimonio",
   REGISTRAR_ENTRADA_AVULSA: "patrimonio",

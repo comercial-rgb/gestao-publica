@@ -95,6 +95,9 @@ model ContaPcasp {
 
   @@index([contaPaiId])
   @@index([analitica])
+  /// back-relations ENT05 (ITEM 3 — o repontamento) — VIRTUAIS.
+  migracoesComoOrigem  MigracaoDeConta[] @relation("MigracaoOrigem")
+  migracoesComoDestino MigracaoDeConta[] @relation("MigracaoDestino")
 }
 
 // ----------------------------------------------------------------------------
@@ -183,6 +186,8 @@ model LancamentoContabil {
   // O SQL NÃO pode morar em prisma/migrations/ — toda subpasta de lá é lida
   // como migration e o Prisma exige migration.sql dentro (erro P3015).
   @@index([estornoDeId])
+  /// back-relation ENT05 (ITEM 3) — VIRTUAL.
+  migracoesDeConta MigracaoDeConta[] @relation("LancamentoDeMigracao")
 }
 
 // ----------------------------------------------------------------------------
@@ -213,4 +218,56 @@ model PartidaContabil {
   @@index([contaId])
   @@index([contaId, subsistema])
   @@index([fichaId])
+}
+
+// ----------------------------------------------------------------------------
+// MigracaoDeConta — ENT05, ITEM 3: o REPONTAMENTO de conta como FATO.
+//
+// ═══ ⚠️ SALDO QUE MUDA DE CONTA SEM MOVIMENTO QUE O EXPLIQUE É RAZÃO REESCRITO ═══
+// O censo do ENT04 achou quatro contas de produção apontando para códigos que, no PCASP
+// oficial, significam outra coisa: a conta bancária estava na variante INTRA OFSS, o
+// almoxarifado em MERCADORIAS PARA REVENDA, a dívida fundada em PESSOAL A PAGAR e os
+// créditos tributários em CLIENTES.
+//
+// A correção NÃO é um UPDATE no código da conta. Mudar o código deixaria os lançamentos
+// já feitos apontando para um conceito diferente do que tinham quando foram feitos — e o
+// balancete do exercício anterior mudaria sozinho, sem nada que explicasse por quê.
+//
+// A correção é um LANÇAMENTO DE MIGRAÇÃO: o saldo sai da conta de origem e entra na de
+// destino, com data, motivo e referência. Quem ler o razão vê a migração acontecer.
+//
+// APPEND-ONLY. Migrar de volta é outra migração, não a remoção desta.
+// ----------------------------------------------------------------------------
+
+model MigracaoDeConta {
+  id String @id @default(cuid())
+
+  contaOrigemId String
+  contaOrigem   ContaPcasp @relation("MigracaoOrigem", fields: [contaOrigemId], references: [id])
+
+  contaDestinoId String
+  contaDestino   ContaPcasp @relation("MigracaoDestino", fields: [contaDestinoId], references: [id])
+
+  /// ⚠️ DATA CIVIL do fato. O saldo migrado é o saldo NESTA data — e é ela que separa o
+  /// que ficou no exercício anterior do que entrou no novo.
+  data DateTime
+
+  /// O saldo que MIGROU, congelado como evidência. Ele é derivável do razão, e é gravado
+  /// aqui mesmo assim: é o número que a migração usou, e conferi-lo contra a derivação de
+  /// hoje é exatamente como se descobre que alguém lançou algo retroativo depois.
+  saldoMigrado Decimal @db.Decimal(18, 2)
+
+  motivo String
+
+  /// O lançamento que EXECUTOU a migração. Nulo só quando o saldo era zero — e aí não há
+  /// o que lançar: um lançamento de valor zero polui o razão sem dizer nada.
+  lancamentoId String?
+  lancamento   LancamentoContabil? @relation("LancamentoDeMigracao", fields: [lancamentoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([contaOrigemId])
+  @@index([contaDestinoId])
+  @@index([data])
 }

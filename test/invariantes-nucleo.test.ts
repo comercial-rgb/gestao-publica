@@ -62,7 +62,7 @@ describe("INVARIANTE 1 · valor monetário em number onde o domínio exige Decim
     // E o motor aceita o lançamento equivalente feito em Decimal.
     const partidas = [
       partida("1.1.1.1.1.00.00", "DEBITO", "0.10", "PATRIMONIAL"),
-      partida("1.1.1.1.2.00.00", "DEBITO", "0.20", "PATRIMONIAL"),
+      partida("1.1.1.1.1.19.00", "DEBITO", "0.20", "PATRIMONIAL"),
       partida("1.1.2.2.1.00.00", "CREDITO", "0.30", "PATRIMONIAL"),
     ];
     expect(validarLancamento(partidas)).toHaveLength(3);

@@ -1,0 +1,361 @@
+// ============================================================================
+// M11 — A COMPRA (TR 5.17, o subconjunto de SUPRIMENTOS).
+//
+// ═══ ⚠️ O QUE O M11 JÁ TEM, E O QUE FALTAVA ═══
+// `m11-licitacoes.prisma` tem o PROCESSO (modalidade, homologação, limites) e o CONTRATO
+// (aditivo, fiscal, vigência, medição). Está provado e não muda.
+//
+// O que o censo do ENT03c mostrou faltar é o que ALIMENTA os dois: a requisição que abre
+// o processo, a pesquisa de preços que estima o valor, e a ordem de compra que executa o
+// que foi licitado — e que termina em entrada de estoque ou incorporação patrimonial.
+//
+// O `Material` (ENT05, eixo físico do almoxarifado) é o mesmo cadastro: um material só,
+// usado pela compra e pelo estoque. Dois cadastros de material seriam a segunda verdade
+// sobre o que o ente compra.
+//
+// ═══ ⚠️ NENHUMA COLUNA DE SALDO NEM DE SITUAÇÃO ═══
+// O saldo do item da ordem é `quantidade − Σ(recebido)`; a situação da requisição é
+// derivada dos movimentos dela. Decisões D1 e D5 da varredura.
+//
+// APPEND-ONLY nos movimentos.
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// MarcaAprovada — TR 5.17.5 ("relacionamento do produto com marcas pré aprovadas").
+// ----------------------------------------------------------------------------
+
+model MarcaAprovada {
+  id        String  @id @default(cuid())
+  nome      String  @unique
+  ativa     Boolean @default(true)
+
+  materiais MaterialMarca[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// N-N — decisão D7. Um material aceita várias marcas, e a mesma marca serve a vários.
+model MaterialMarca {
+  id String @id @default(cuid())
+
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id])
+
+  marcaId String
+  marca   MarcaAprovada @relation(fields: [marcaId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([materialId, marcaId])
+  @@index([marcaId])
+}
+
+// ----------------------------------------------------------------------------
+// MaterialElementoDespesa — TR 5.17.9 ("impedindo que determinado produto seja comprado
+// com elemento errado ou não relacionado").
+//
+// ⚠️ A CLÁUSULA PEDE UMA GUARDA, NÃO UM ENFEITE. Comprar com elemento não relacionado
+// RECUSA, nomeando o material e o elemento — é o que "impedindo" quer dizer.
+// ----------------------------------------------------------------------------
+
+model MaterialElementoDespesa {
+  id String @id @default(cuid())
+
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id])
+
+  naturezaDespesaId String
+  naturezaDespesa   NaturezaDespesa @relation("ElementoDoMaterial", fields: [naturezaDespesaId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([materialId, naturezaDespesaId])
+  @@index([naturezaDespesaId])
+}
+
+// ----------------------------------------------------------------------------
+// SolicitacaoDeCompra — TR 5.17.51 a 5.17.57.
+//
+// ⚠️ SEM COLUNA DE SITUAÇÃO ("autorizada, pendente, anulada" — 5.17.52). Ela é derivada
+// dos movimentos: autorizar é um FATO com autor e data, anular é outro. Uma coluna
+// perderia QUEM autorizou e QUANDO, que é exatamente o que o controle interno cobra.
+// ----------------------------------------------------------------------------
+
+model SolicitacaoDeCompra {
+  id     String @id @default(cuid())
+  numero String @unique @db.VarChar(20)
+
+  /// TR 5.17.54 — "controlar as solicitações por centro de custo, não permitindo que
+  /// outros usuários acessem". O setor é o eixo de acesso, e é o mesmo do M21.
+  setorId String
+  setor   Setor  @relation("SolicitacaoDeCompra", fields: [setorId], references: [id])
+
+  /// ⚠️ DATA CIVIL do pedido.
+  data DateTime
+
+  justificativa String @db.Text
+
+  solicitante String
+
+  /// TR 5.17.49 — "integração com o processo digital/protocolo criando automaticamente um
+  /// processo a partir da digitação de uma requisição". NULLABLE: a integração é uma
+  /// decisão do ente, e uma solicitação sem processo continua válida.
+  processoDigitalId String?
+  processoDigital   Processo? @relation("ProcessoDaSolicitacao", fields: [processoDigitalId], references: [id])
+
+  itens      ItemDeSolicitacaoDeCompra[]
+  movimentos MovimentoDaSolicitacao[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([setorId, data])
+  @@index([processoDigitalId])
+}
+
+model ItemDeSolicitacaoDeCompra {
+  id String @id @default(cuid())
+
+  solicitacaoId String
+  solicitacao   SolicitacaoDeCompra @relation(fields: [solicitacaoId], references: [id])
+
+  materialId String
+  material   Material @relation("ItemDeSolicitacao", fields: [materialId], references: [id])
+
+  quantidade Decimal @db.Decimal(18, 4)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([solicitacaoId])
+  @@index([materialId])
+}
+
+/// TR 5.17.52, 5.17.53 — autorizar e anular são FATOS, com autor e data.
+enum TipoMovimentoDaSolicitacao {
+  AUTORIZACAO
+  ANULACAO
+}
+
+model MovimentoDaSolicitacao {
+  id String @id @default(cuid())
+
+  solicitacaoId String
+  solicitacao   SolicitacaoDeCompra @relation(fields: [solicitacaoId], references: [id])
+
+  tipo TipoMovimentoDaSolicitacao
+  data DateTime
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([solicitacaoId, tipo])
+}
+
+// ----------------------------------------------------------------------------
+// PesquisaDePrecos — TR 5.17.46, 5.17.47, 5.17.48.
+//
+// ⚠️ MÉDIO, MÍNIMO E MÁXIMO SÃO DERIVADOS das cotações, nunca colunas. A 5.17.48 pede
+// "o cálculo dos preços médios, mínimos e máximos automaticamente" — três números que
+// mudam a cada cotação nova, e que uma coluna congelaria na primeira.
+// ----------------------------------------------------------------------------
+
+model PesquisaDePrecos {
+  id     String @id @default(cuid())
+  numero String @unique @db.VarChar(20)
+
+  objeto String @db.Text
+
+  /// ⚠️ DATA CIVIL. A estimativa vale para a data em que foi feita — uma pesquisa de
+  /// março não estima o preço de dezembro, e a 5.17.46 fala em "estimativa de valores
+  /// para NOVAS aquisições".
+  data DateTime
+
+  itens ItemDePesquisaDePrecos[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([data])
+}
+
+model ItemDePesquisaDePrecos {
+  id String @id @default(cuid())
+
+  pesquisaId String
+  pesquisa   PesquisaDePrecos @relation(fields: [pesquisaId], references: [id])
+
+  materialId String
+  material   Material @relation("ItemDePesquisa", fields: [materialId], references: [id])
+
+  quantidade Decimal @db.Decimal(18, 4)
+
+  cotacoes CotacaoDePreco[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([pesquisaId, materialId])
+  @@index([materialId])
+}
+
+/// TR 5.17.48 — "os fornecedores digitarem os preços praticados".
+model CotacaoDePreco {
+  id String @id @default(cuid())
+
+  itemId String
+  item   ItemDePesquisaDePrecos @relation(fields: [itemId], references: [id])
+
+  /// O fornecedor cotado é a `Pessoa` do M19 — cadastro único.
+  fornecedorId String
+  fornecedor   Pessoa @relation("FornecedorCotado", fields: [fornecedorId], references: [id])
+
+  valorUnitario Decimal @db.Decimal(18, 6)
+
+  /// A origem da cotação: proposta do fornecedor, nota fiscal, portal de compras.
+  origem String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([itemId, fornecedorId])
+  @@index([fornecedorId])
+}
+
+// ----------------------------------------------------------------------------
+// OrdemDeCompra — TR 5.17.96 a 5.17.106.
+//
+// ⚠️ SEM COLUNA DE SALDO. O "saldo pendente a ser entregue" da 5.17.105 é
+// `quantidade − Σ(recebimentos)`, item a item, com corte por data. Decisão D5.
+// ----------------------------------------------------------------------------
+
+/// TR 5.17.96 — "ordinária, global ou estimativa".
+enum TipoDeOrdemDeCompra {
+  ORDINARIA
+  GLOBAL
+  ESTIMATIVA
+}
+
+model OrdemDeCompra {
+  id     String @id @default(cuid())
+  numero String @unique @db.VarChar(20)
+
+  tipo TipoDeOrdemDeCompra
+
+  /// A licitação que a originou. NULLABLE: compra dispensável não tem processo.
+  processoId String?
+  processo   ProcessoLicitatorio? @relation("OrdemDoProcesso", fields: [processoId], references: [id])
+
+  /// O fornecedor — `Pessoa` do M19.
+  fornecedorId String
+  fornecedor   Pessoa @relation("FornecedorDaOrdem", fields: [fornecedorId], references: [id])
+
+  /// ⚠️ DATAS CIVIS (TR 5.17.97 — "data de emissão e vencimento").
+  dataEmissao    DateTime
+  dataVencimento DateTime?
+
+  finalidade String @db.Text
+
+  /// TR 5.17.97 — o recurso orçamentário, "para que essas informações sejam utilizadas na
+  /// geração dos empenhos".
+  fichaId String?
+  ficha   FichaOrcamentaria? @relation("FichaDaOrdem", fields: [fichaId], references: [id])
+
+  /// TR 5.17.103 — "identificar se os produtos terão CONSUMO IMEDIATO, a fim de fazer os
+  /// lançamentos de saída do estoque já no momento do empenhamento".
+  consumoImediato Boolean @default(false)
+
+  /// TR 5.17.102 — desconto na ordem.
+  desconto Decimal? @db.Decimal(18, 2)
+
+  itens        ItemDeOrdemDeCompra[]
+  recebimentos RecebimentoDeOrdem[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([fornecedorId])
+  @@index([processoId])
+  @@index([dataEmissao])
+  @@index([fichaId])
+}
+
+model ItemDeOrdemDeCompra {
+  id String @id @default(cuid())
+
+  ordemId String
+  ordem   OrdemDeCompra @relation(fields: [ordemId], references: [id])
+
+  materialId String
+  material   Material @relation("ItemDeOrdem", fields: [materialId], references: [id])
+
+  quantidade    Decimal @db.Decimal(18, 4)
+  valorUnitario Decimal @db.Decimal(18, 6)
+
+  /// ⚠️ NÃO EXISTE `quantidadeRecebida`. O recebido é Σ dos recebimentos que apontam
+  /// para este item — decisão D5, e é onde uma coluna derraparia no primeiro estorno.
+  recebimentos RecebimentoDeItem[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([ordemId])
+  @@index([materialId])
+}
+
+/// TR 5.17.105 — o recebimento, que é o que baixa o saldo pendente da ordem.
+///
+/// ⚠️ ELE É O ELO COM O ALMOXARIFADO E COM O PATRIMÔNIO: material de consumo entra em
+/// estoque (`MovimentoFisicoDeEstoque`), equipamento vira bem (`BemPatrimonial`). O
+/// recebimento aponta para os dois, e nenhum dos dois é obrigatório — a 5.17.103 admite
+/// consumo imediato, que não passa pela prateleira.
+model RecebimentoDeOrdem {
+  id String @id @default(cuid())
+
+  ordemId String
+  ordem   OrdemDeCompra @relation(fields: [ordemId], references: [id])
+
+  /// ⚠️ DATA CIVIL do recebimento.
+  data DateTime
+
+  /// A nota fiscal que acompanhou (TR 5.18.7 — "entradas por meio de informações de
+  /// notas fiscais").
+  notaFiscal String?
+
+  responsavelRecebimento String
+
+  itens RecebimentoDeItem[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([ordemId, data])
+}
+
+model RecebimentoDeItem {
+  id String @id @default(cuid())
+
+  recebimentoId String
+  recebimento   RecebimentoDeOrdem @relation(fields: [recebimentoId], references: [id])
+
+  itemDeOrdemId String
+  itemDeOrdem   ItemDeOrdemDeCompra @relation(fields: [itemDeOrdemId], references: [id])
+
+  quantidade Decimal @db.Decimal(18, 4)
+
+  /// O movimento FÍSICO de estoque que este recebimento gerou (quando gerou).
+  movimentoFisicoId String?
+  movimentoFisico   MovimentoFisicoDeEstoque? @relation("RecebimentoDeEstoque", fields: [movimentoFisicoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([recebimentoId])
+  @@index([itemDeOrdemId])
+  @@index([movimentoFisicoId])
+}

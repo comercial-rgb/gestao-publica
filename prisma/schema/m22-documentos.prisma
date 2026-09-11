@@ -165,6 +165,13 @@ model Anexo {
   @@index([obraId])
   @@index([auditoriaId])
   @@index([sha256])
+  /// back-relations ENT05 — termos de inventario de estoque. VIRTUAIS.
+  termosAberturaInventarioEstoque   InventarioDeEstoque[] @relation("TermoAberturaInventarioEstoque")
+  termosFechamentoInventarioEstoque InventarioDeEstoque[] @relation("TermoFechamentoInventarioEstoque")
+  /// back-relations ENT05 — termos do inventário de BENS e do termo patrimonial.
+  termosAberturaInventarioBens   InventarioDeBens[] @relation("TermoAberturaInventarioBens")
+  termosFechamentoInventarioBens InventarioDeBens[] @relation("TermoFechamentoInventarioBens")
+  documentosDeTermoPatrimonial   TermoPatrimonial[] @relation("DocumentoDeTermoPatrimonial")
 }
 
 /// OS MODOS DA LEI 14.063/2020, e eles NÃO são intercambiáveis.

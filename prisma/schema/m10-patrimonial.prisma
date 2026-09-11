@@ -178,6 +178,25 @@ model BemPatrimonial {
   criadoPor String
 
   @@index([classeDeBensId])
+
+  // ── ENT05 — o eixo de GESTÃO (TR 5.19) ──
+  /// TR 5.19.2 — a etiqueta com código de barras. O conteúdo é o número de tombamento;
+  /// a coluna guarda o código EMITIDO, para que reimprimir dê a mesma etiqueta.
+  ///
+  /// ⚠️ A UNICIDADE É ÍNDICE PARCIAL DECLARADO, e não `@unique`: a coluna é anulável (o
+  /// bem antigo não tem etiqueta), e no Postgres um índice único não restringe linhas com
+  /// NULL. Ver `prisma/sql/uq_codigo_de_barras_do_bem.sql` — é a mesma escolha da
+  /// contagem de inventário sem lote.
+  codigoDeBarras String? @db.VarChar(60)
+
+  /// TR 5.19.3 — adquirido, doação, comodato, permuta, e o que o ente acrescentar.
+  /// NULLABLE (aditivo, sem backfill): bem antigo sem tipo continua válido.
+  tipoDeIncorporacaoId String?
+  tipoDeIncorporacao   TipoDeIncorporacao? @relation(fields: [tipoDeIncorporacaoId], references: [id])
+
+  movimentosDeGestao MovimentoDeGestaoDoBem[]
+  contagens          ContagemDeBem[]          @relation("ContagemDeBem")
+  itensDeTermo       ItemDeTermoPatrimonial[] @relation("ItemDeTermoPatrimonial")
 }
 
 // ----------------------------------------------------------------------------

@@ -110,6 +110,33 @@ const TZ_DO_PASSO: Readonly<Record<string, string>> = {
   "test:fuso": "Pacific/Kiritimati",
 };
 
+/**
+ * ⚠️ O HEAP DO `tsc`, E POR QUE ELE PRECISOU SER DECLARADO (ENT05).
+ *
+ * O Node usa ~2 GB de heap velho por padrão. Com os três domínios novos do ENT05
+ * (almoxarifado físico, gestão do bem, compras), o cliente gerado do Prisma cresceu o
+ * bastante para que `tsc -p tsconfig.scripts.json` ESTOURASSE — e o modo de falha é o
+ * pior possível: o processo morre com "JavaScript heap out of memory" e exit != 0, o
+ * portão marca o passo como FALHOU, e **os erros de tipo reais ficam invisíveis**.
+ *
+ * Foi literalmente o que aconteceu: sob 2 GB o passo morria; sob 3 GB ele rodou e acusou
+ * 54 chaves duplicadas em `scripts/marcar-catalogo.ts`. O estouro estava MASCARANDO
+ * defeito de verdade.
+ *
+ * 3 GB é o teto medido nesta máquina de 8 GB — e ele cabe porque o trinco garante que
+ * nada pesado roda junto. Se um dia não couber, o sinal é o mesmo: o passo morre, e a
+ * resposta é medir de novo, nunca baixar o número até "passar".
+ */
+const HEAP_DO_PASSO: Readonly<Record<string, number>> = {
+  "typecheck:backend": 3072,
+  "typecheck:app": 3072,
+  "typecheck:scripts": 3072,
+  // ⚠️ O `next build` ESTOUROU PELO MESMO MOTIVO, e no mesmo lote: ele typechecka o app
+  // inteiro durante a compilação. O log dizia apenas "Ineffective mark-compacts near heap
+  // limit" — nenhuma linha sobre qual arquivo, porque o processo morre antes de reportar.
+  build: 4096,
+};
+
 interface Resultado {
   readonly nome: string;
   readonly estado: "passou" | "falhou" | "pulado";
@@ -136,11 +163,13 @@ interface Resultado {
  */
 function rodar(passo: Passo, registro: string): { ok: boolean; segundos: number } {
   const tz = TZ_DO_PASSO[passo.nome];
+  const heap = HEAP_DO_PASSO[passo.nome];
   writeFileSync(
     registro,
     `# passo ..... ${passo.nome}\n` +
       `# comando ... ${passo.comando.join(" ")}\n` +
       `# TZ ........ ${tz ?? process.env["TZ"] ?? "(nao definido)"}\n` +
+      `# heap ...... ${heap === undefined ? "(padrao do node)" : `${heap} MB`}\n` +
       `# quando .... ${new Date().toISOString()}\n\n`
   );
 
@@ -149,7 +178,15 @@ function rodar(passo: Passo, registro: string): { ok: boolean; segundos: number 
   const r = spawnSync(bin as string, args, {
     cwd: RAIZ,
     encoding: "utf8",
-    env: tz === undefined ? process.env : { ...process.env, TZ: tz },
+    env: {
+      ...process.env,
+      ...(tz === undefined ? {} : { TZ: tz }),
+      ...(heap === undefined
+        ? {}
+        : {
+            NODE_OPTIONS: `${process.env["NODE_OPTIONS"] ?? ""} --max-old-space-size=${heap}`.trim(),
+          }),
+    },
     stdio: ["ignore", "pipe", "pipe"],
     maxBuffer: 64 * 1024 * 1024,
   });

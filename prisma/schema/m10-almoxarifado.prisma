@@ -39,6 +39,8 @@ model ClasseDeMaterial {
 
   criadoEm  DateTime @default(now())
   criadoPor String
+  /// back-relation ENT05 — o eixo FISICO pendurado na classe contabil.
+  materiais Material[]
 }
 
 /// OITO tipos — os quatro fatos e os quatro estornos, desde o dia 1.
@@ -89,6 +91,8 @@ model MovimentoAlmoxarifado {
   @@index([dataMovimento])
   @@index([liquidacaoId])
   @@index([estornoDeId])
+  /// back-relation ENT05 — os movimentos fisicos que este contabil acompanha.
+  movimentosFisicos MovimentoFisicoDeEstoque[]
 }
 
 /// Roteiro por TABELA. A ENTRADA NÃO tem — e é de propósito (ver o cabeçalho).

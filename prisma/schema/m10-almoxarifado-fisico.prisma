@@ -1,0 +1,570 @@
+// ============================================================================
+// M10 — ALMOXARIFADO, EIXO FÍSICO (TR 5.18).
+//
+// ═══ ⚠️ ELE ACOMPANHA O CONTÁBIL, NÃO O SUBSTITUI ═══
+// `m10-almoxarifado.prisma` continua inteiro e intocado: o razão do almoxarifado é
+// SINTÉTICO POR CLASSE, e a entrada continua gerando exatamente o mesmo lançamento
+// que gerava antes (quem contabiliza a entrada é o M05, pela liquidação).
+//
+// O que faltava era o eixo FÍSICO — quantidade, depósito, lote, validade — que o
+// censo do ENT03c mostrou não existir: o M10 movia VALOR por classe, e a seção 5.18
+// pergunta por QUANTIDADE de material em depósito.
+//
+// A amarração entre os dois eixos é `MovimentoFisicoDeEstoque.movimentoAlmoxarifadoId`:
+// o movimento físico aponta para o contábil que ele acompanha. Ela é OPCIONAL, e isso
+// é deliberado — uma transferência entre dois depósitos da mesma classe não muda o
+// saldo contábil nenhum, e não deve inventar lançamento para existir.
+//
+// ═══ ⚠️ NENHUMA COLUNA DE SALDO — decisão D1 da varredura ═══
+// A 5.18.1 diz "atualização automática do estoque", que é a formulação exata de uma
+// COLUNA. A 5.18.16 a refuta na mesma seção: ela pede o saldo **anterior ao período**,
+// que coluna nenhuma sabe responder. A posição é Σ(quantidade × sinal) e
+// Σ(valor × sinal) até uma DATA CIVIL, pelo mesmo molde do saldo da dívida.
+//
+// ═══ ⚠️ PREÇO MÉDIO — decisão D2 ═══
+// Derivado da mesma janela. E o preço EFETIVAMENTE aplicado numa saída é gravado NO
+// MOVIMENTO DE SAÍDA, porque é um fato: foi por aquele preço que se lançou. Duas
+// leituras independentes que têm de bater.
+//
+// APPEND-ONLY nos movimentos. Correção é movimento novo referenciando o original.
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// Deposito — TR 5.18.21 ("os inúmeros almoxarifados/depósitos de forma integrada").
+// ----------------------------------------------------------------------------
+
+model Deposito {
+  id     String @id @default(cuid())
+  codigo String @unique @db.VarChar(10)
+  nome   String
+
+  /// A unidade gestora dona do depósito. O almoxarifado da Saúde não é o da Educação,
+  /// e o saldo de um não responde pelo outro.
+  unidadeOrcId String
+  unidadeOrc   UnidadeOrcamentaria @relation(fields: [unidadeOrcId], references: [id])
+
+  /// O responsável pelo depósito (TR 5.18.13 — "o responsável pelo almoxarifado
+  /// possa realizar bloqueios"). É a `Pessoa` do M19, cadastro único.
+  responsavelId String?
+  responsavel   Pessoa? @relation("ResponsavelDeDeposito", fields: [responsavelId], references: [id])
+
+  /// Cadastro, não fato — mesma escolha do `Setor.ativo` do M21.
+  ativo Boolean @default(true)
+
+  movimentos  MovimentoFisicoDeEstoque[]
+  parametros  ParametroDeEstoque[]
+  lotes       LoteDeMaterial[]
+  requisicoes RequisicaoDeMaterial[]
+  inventarios InventarioDeEstoque[]
+  bloqueios   BloqueioDeEstoque[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([unidadeOrcId])
+}
+
+// ----------------------------------------------------------------------------
+// UnidadeDeMedida e a relação N-N com o material — decisão D6 (TR 5.17.2).
+//
+// ⚠️ "RELACIONAR UMA OU MAIS UNIDADES DE MEDIDA" É LITERAL, e um `unidadeId` no
+// material quebra no primeiro material COMPRADO EM CAIXA e DISTRIBUÍDO EM UNIDADE —
+// que é o caso comum do almoxarifado, não a exceção.
+// ----------------------------------------------------------------------------
+
+model UnidadeDeMedida {
+  id        String @id @default(cuid())
+  sigla     String @unique @db.VarChar(10)
+  descricao String
+
+  materiais MaterialUnidade[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// ⚠️ O FATOR É O QUE TORNA A N-N ÚTIL. Sem ele, "caixa" e "unidade" seriam dois
+/// rótulos sem relação, e somar as duas daria um número sem significado. Com ele, o
+/// saldo é SEMPRE na unidade de estoque, e cada movimento declara em que unidade foi
+/// feito — o que preserva o documento ("entraram 3 caixas") e a aritmética.
+model MaterialUnidade {
+  id String @id @default(cuid())
+
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id])
+
+  unidadeDeMedidaId String
+  unidadeDeMedida   UnidadeDeMedida @relation(fields: [unidadeDeMedidaId], references: [id])
+
+  /// Quantas unidades DE ESTOQUE cabem em uma desta. A unidade de estoque tem fator 1.
+  /// Decimal porque "1 caixa = 12,5 kg" existe. Nunca float.
+  fatorParaEstoque Decimal @db.Decimal(18, 6)
+
+  /// Exatamente UMA por material — conferido no serviço (fail-closed), porque o
+  /// Postgres não expressa "único quando verdadeiro" sem índice parcial, e o índice
+  /// parcial vive em prisma/sql/ declarado, como todo SQL manual deste projeto.
+  ehDeEstoque Boolean @default(false)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([materialId, unidadeDeMedidaId])
+  @@index([unidadeDeMedidaId])
+}
+
+// ----------------------------------------------------------------------------
+// GrupoDeMaterial — TR 5.17.2 ("a que grupo, classe ou subclasse o material pertence").
+//
+// Auto-relação: grupo -> classe -> subclasse é a MESMA entidade em três níveis, e não
+// três tabelas. Três tabelas obrigariam a uma quarta no dia em que o ente quisesse um
+// nível a mais — e o TR não promete que são três para sempre.
+// ----------------------------------------------------------------------------
+
+model GrupoDeMaterial {
+  id        String @id @default(cuid())
+  codigo    String @unique @db.VarChar(20)
+  descricao String
+
+  paiId String?
+  pai   GrupoDeMaterial?  @relation("HierarquiaDeGrupo", fields: [paiId], references: [id])
+  filhos GrupoDeMaterial[] @relation("HierarquiaDeGrupo")
+
+  materiais Material[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([paiId])
+}
+
+// ----------------------------------------------------------------------------
+// Material — o item que o almoxarifado de fato controla (TR 5.17.2 a 5.17.11).
+//
+// ⚠️ ELE NÃO SUBSTITUI A `ClasseDeMaterial`. A classe é o grão CONTÁBIL (um saldo por
+// conta do PCASP); o material é o grão FÍSICO. Cada material pertence a uma classe, e
+// é por aí que a quantidade encontra o valor no razão.
+// ----------------------------------------------------------------------------
+
+/// TR 5.17.3 — "Consumo / Permanente / Serviços / Obras".
+enum ClassificacaoDeMaterial {
+  CONSUMO
+  PERMANENTE
+  SERVICO
+  OBRA
+}
+
+/// TR 5.17.3 — "Perecível / Não perecível / Estocável / Combustível".
+enum CategoriaDeMaterial {
+  PERECIVEL
+  NAO_PERECIVEL
+  ESTOCAVEL
+  COMBUSTIVEL
+}
+
+model Material {
+  id     String @id @default(cuid())
+  codigo String @unique @db.VarChar(20)
+
+  /// TR 5.17.2 — "descrição sucinta e detalhada SEM LIMITAÇÃO DE CARACTERES".
+  /// `@db.Text` é o que cumpre "sem limitação"; um VarChar(n) qualquer seria um
+  /// limite escolhido por mim e não pelo documento.
+  descricaoSucinta  String @db.Text
+  descricaoDetalhada String @db.Text
+
+  grupoId String
+  grupo   GrupoDeMaterial @relation(fields: [grupoId], references: [id])
+
+  classificacao ClassificacaoDeMaterial
+  categoria     CategoriaDeMaterial
+
+  /// TR 5.17.6 — CATMAT (Catálogo de Materiais do Governo Federal). Opcional: nem
+  /// todo material do ente tem correspondente federal, e inventar um seria pior do
+  /// que não ter.
+  catmat String? @db.VarChar(20)
+
+  /// A amarração com o eixo CONTÁBIL. É por ela que a quantidade vira valor no razão.
+  classeDeMaterialId String
+  classeDeMaterial   ClasseDeMaterial @relation(fields: [classeDeMaterialId], references: [id])
+
+  /// TR 5.18: material com controle de lote e validade (medicamento, alimento).
+  /// Quando verdadeiro, o serviço EXIGE lote na entrada — fail-closed.
+  controlaLote Boolean @default(false)
+
+  /// TR 5.17.8 — "desabilitação de cadastros obsoletos, MANTENDO todo seu histórico".
+  /// Por isso é uma coluna de cadastro e não um delete: o histórico é o movimento, e
+  /// ele fica.
+  ativo Boolean @default(true)
+
+  unidades   MaterialUnidade[]
+  parametros ParametroDeEstoque[]
+  lotes      LoteDeMaterial[]
+  movimentos MovimentoFisicoDeEstoque[]
+  itensDeRequisicao ItemDeRequisicaoDeMaterial[]
+  cotas      CotaDeConsumo[]
+  contagens  ContagemDeInventario[]
+  bloqueios  BloqueioDeEstoque[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([grupoId])
+  @@index([classeDeMaterialId])
+  @@index([catmat])
+  // ── back-relations ENT05 (M11 compras) — VIRTUAIS ──
+  marcas             MaterialMarca[]
+  elementosDeDespesa MaterialElementoDespesa[]
+  itensDeSolicitacao ItemDeSolicitacaoDeCompra[] @relation("ItemDeSolicitacao")
+  itensDePesquisa    ItemDePesquisaDePrecos[]    @relation("ItemDePesquisa")
+  itensDeOrdem       ItemDeOrdemDeCompra[]       @relation("ItemDeOrdem")
+}
+
+// ----------------------------------------------------------------------------
+// ParametroDeEstoque — TR 5.18.3 ("possibilitando indicar seus limites mínimos").
+//
+// POR MATERIAL E POR DEPÓSITO: o mínimo de luva cirúrgica no almoxarifado central não
+// é o mínimo dela no posto de saúde. Um mínimo só por material carimbaria o mesmo
+// número nos dois.
+// ----------------------------------------------------------------------------
+
+model ParametroDeEstoque {
+  id String @id @default(cuid())
+
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id])
+
+  depositoId String
+  deposito   Deposito @relation(fields: [depositoId], references: [id])
+
+  /// Na unidade de ESTOQUE do material. Ambos opcionais: o TR pede o mínimo; o máximo
+  /// é do ente. Ausente = sem alerta, nunca "zero".
+  quantidadeMinima Decimal? @db.Decimal(18, 4)
+  quantidadeMaxima Decimal? @db.Decimal(18, 4)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([materialId, depositoId])
+  @@index([depositoId])
+}
+
+// ----------------------------------------------------------------------------
+// LoteDeMaterial — TR 5.18.14 e 5.18.20 (vencimento e controle de validade).
+// ----------------------------------------------------------------------------
+
+model LoteDeMaterial {
+  id String @id @default(cuid())
+
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id])
+
+  depositoId String
+  deposito   Deposito @relation(fields: [depositoId], references: [id])
+
+  identificacao String @db.VarChar(60)
+
+  /// ⚠️ DATA CIVIL. "Vencido em 30 dias" é pergunta de CALENDÁRIO, e a comparação por
+  /// instante já custou 35 arquivos neste repositório (pendência DATA-CIVIL, ENT03b).
+  /// Guardada como DateTime à meia-noite UTC, lida com as funções civis do núcleo.
+  validade DateTime?
+
+  movimentos MovimentoFisicoDeEstoque[]
+  contagens  ContagemDeInventario[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([materialId, depositoId, identificacao])
+  @@index([validade])
+  @@index([depositoId])
+}
+
+// ----------------------------------------------------------------------------
+// MovimentoFisicoDeEstoque — o razão FÍSICO. APPEND-ONLY.
+//
+// `quantidade` e `valorTotal` são SEMPRE positivos; quem dá o sinal é o TIPO. Não
+// existe movimento com quantidade negativa escondendo uma saída — é a mesma regra dos
+// outros cinco razões deste projeto.
+// ----------------------------------------------------------------------------
+
+/// Os fatos e os estornos, desde o dia 1 — a lição do M08, onde o estorno chegou
+/// depois e custou dois bugs seguidos.
+enum TipoMovimentoFisicoEstoque {
+  ENTRADA
+  SAIDA
+  /// A transferência é um PAR sob o mesmo `operacaoId` (saída de um depósito, entrada
+  /// no outro). Nunca um movimento só com dois depósitos: isso tornaria o saldo de
+  /// cada depósito uma leitura com caso especial.
+  TRANSFERENCIA_SAIDA
+  TRANSFERENCIA_ENTRADA
+  /// Acerto de inventário (TR 5.18.12).
+  AJUSTE_ENTRADA
+  AJUSTE_SAIDA
+
+  ESTORNO_ENTRADA
+  ESTORNO_SAIDA
+  ESTORNO_TRANSFERENCIA_SAIDA
+  ESTORNO_TRANSFERENCIA_ENTRADA
+  ESTORNO_AJUSTE_ENTRADA
+  ESTORNO_AJUSTE_SAIDA
+}
+
+model MovimentoFisicoDeEstoque {
+  id String @id @default(cuid())
+
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id])
+
+  depositoId String
+  deposito   Deposito @relation(fields: [depositoId], references: [id])
+
+  loteId String?
+  lote   LoteDeMaterial? @relation(fields: [loteId], references: [id])
+
+  tipo TipoMovimentoFisicoEstoque
+
+  /// SEMPRE positiva, na unidade de ESTOQUE. O sinal vem do tipo.
+  quantidade Decimal @db.Decimal(18, 4)
+
+  /// ⚠️ O PREÇO EFETIVAMENTE APLICADO — decisão D2. Numa SAÍDA ele é o preço médio
+  /// calculado NAQUELE momento, e fica gravado porque é um FATO: foi por ele que se
+  /// lançou. Sem isto, "por que a saída de março saiu a R$ 4,12?" não tem resposta
+  /// depois da primeira entrada de abril.
+  ///
+  /// 6 casas: preço unitário de material de consumo tem centavos de centavo, e
+  /// arredondar aqui empurra o erro para o valor total.
+  valorUnitario Decimal @db.Decimal(18, 6)
+
+  /// quantidade × valorUnitario, arredondado a 2 casas com os helpers do núcleo.
+  /// Guardado, e não derivado na leitura, porque é ELE que tem de bater com o razão —
+  /// e uma multiplicação refeita na leitura pode arredondar diferente.
+  valorTotal Decimal @db.Decimal(18, 2)
+
+  /// ⚠️ A DATA DO FATO, distinta do `criadoEm`. É o eixo da decisão D1: toda posição
+  /// é "até esta data", e lançar hoje um recebimento de ontem não pode mover o saldo
+  /// de hoje para trás no tempo.
+  dataMovimento DateTime
+
+  /// TR 5.18.10 — centro de custo (setor) que consumiu. O `Setor` do M21 é o cadastro
+  /// que já existe; criar um "departamento" paralelo seria a segunda verdade.
+  setorId String?
+  setor   Setor? @relation("ConsumoDeMaterial", fields: [setorId], references: [id])
+
+  /// A amarração com o eixo CONTÁBIL. OPCIONAL de propósito: transferir entre dois
+  /// depósitos da MESMA classe não move saldo contábil nenhum, e não deve inventar
+  /// lançamento para existir.
+  movimentoAlmoxarifadoId String?
+  movimentoAlmoxarifado   MovimentoAlmoxarifado? @relation(fields: [movimentoAlmoxarifadoId], references: [id])
+
+  /// TR 5.18.9 — a saída que ATENDE um item de requisição (atendimento parcial: um
+  /// item pode ser atendido por vários movimentos).
+  itemDeRequisicaoId String?
+  itemDeRequisicao   ItemDeRequisicaoDeMaterial? @relation(fields: [itemDeRequisicaoId], references: [id])
+
+  /// Agrupa as duas pernas de UMA transferência. Estornar uma estorna as duas — meia
+  /// transferência estornada deixaria material em dois lugares ou em nenhum.
+  operacaoId String?
+
+  /// APPEND-ONLY: o estorno referencia o movimento que desfaz.
+  estornoDeId String?
+  estornoDe   MovimentoFisicoDeEstoque?  @relation("EstornoFisicoEstoque", fields: [estornoDeId], references: [id])
+  estornos    MovimentoFisicoDeEstoque[] @relation("EstornoFisicoEstoque")
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([materialId, depositoId, dataMovimento])
+  @@index([depositoId, dataMovimento])
+  @@index([loteId])
+  @@index([setorId])
+  @@index([itemDeRequisicaoId])
+  @@index([estornoDeId])
+  @@index([operacaoId])
+  @@index([movimentoAlmoxarifadoId])
+  /// back-relation ENT05 (M11 compras) — o recebimento que gerou este movimento.
+  recebimentos RecebimentoDeItem[] @relation("RecebimentoDeEstoque")
+}
+
+// ----------------------------------------------------------------------------
+// RequisicaoDeMaterial — TR 5.18.2, 5.18.6, 5.18.8, 5.18.9.
+//
+// ⚠️ SEM COLUNA DE SITUAÇÃO. "Pendente / atendida parcialmente / atendida" é
+// DERIVADO de Σ(atendido) contra Σ(solicitado), por item. Uma coluna `situacao`
+// precisaria de UPDATE a cada atendimento e derraparia no primeiro estorno — é a
+// mesma regra que vale para todo o resto do sistema.
+// ----------------------------------------------------------------------------
+
+model RequisicaoDeMaterial {
+  id     String @id @default(cuid())
+  numero String @unique @db.VarChar(20)
+
+  depositoId String
+  deposito   Deposito @relation(fields: [depositoId], references: [id])
+
+  /// O setor que pede — é ele que a cota da 5.18.4 limita.
+  setorId String
+  setor   Setor  @relation("RequisicaoDeMaterial", fields: [setorId], references: [id])
+
+  /// ⚠️ DATA CIVIL do pedido. A cota é MENSAL (5.18.4), e o mês de uma requisição é o
+  /// da data dela — não o do instante em que alguém a digitou.
+  dataRequisicao DateTime
+
+  solicitante String
+
+  itens ItemDeRequisicaoDeMaterial[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([depositoId, dataRequisicao])
+  @@index([setorId])
+}
+
+model ItemDeRequisicaoDeMaterial {
+  id String @id @default(cuid())
+
+  requisicaoId String
+  requisicao   RequisicaoDeMaterial @relation(fields: [requisicaoId], references: [id])
+
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id])
+
+  /// Na unidade de ESTOQUE.
+  quantidadeSolicitada Decimal @db.Decimal(18, 4)
+
+  /// ⚠️ NÃO EXISTE `quantidadeAtendida`. O atendido é Σ dos movimentos de saída que
+  /// apontam para este item, menos os estornos — decisão D5. Uma coluna aqui seria a
+  /// segunda verdade sobre um número que o razão físico já responde.
+  atendimentos MovimentoFisicoDeEstoque[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([requisicaoId])
+  @@index([materialId])
+}
+
+// ----------------------------------------------------------------------------
+// CotaDeConsumo — TR 5.18.4 ("quantidade limite que poderão requisitar MENSALMENTE").
+// ----------------------------------------------------------------------------
+
+model CotaDeConsumo {
+  id String @id @default(cuid())
+
+  setorId String
+  setor   Setor  @relation("CotaDeConsumo", fields: [setorId], references: [id])
+
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id])
+
+  /// AAAA-MM. String porque é um RÓTULO de competência, não um instante — a mesma
+  /// escolha que o M10 já faz na depreciação. Um DateTime aqui convidaria a comparar
+  /// por instante o que é calendário.
+  competencia String @db.VarChar(7)
+
+  quantidadeLimite Decimal @db.Decimal(18, 4)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([setorId, materialId, competencia])
+  @@index([materialId])
+}
+
+// ----------------------------------------------------------------------------
+// InventarioDeEstoque — TR 5.18.12, e a decisão D3.
+//
+// ⚠️ ELE GUARDA O JUÍZO, NUNCA O SALDO. A contagem física é um fato observado; a
+// DIVERGÊNCIA é derivada (contado menos Σ dos movimentos até o fechamento). Congelar
+// o saldo aqui criaria a segunda verdade — exatamente o que a conciliação bancária do
+// ENT03a recusou.
+// ----------------------------------------------------------------------------
+
+model InventarioDeEstoque {
+  id String @id @default(cuid())
+
+  depositoId String
+  deposito   Deposito @relation(fields: [depositoId], references: [id])
+
+  /// ⚠️ DATAS CIVIS. A 5.18.12 manda bloquear a movimentação enquanto o inventário
+  /// corre, e "a movimentação da noite do fechamento entrou ou não?" é uma pergunta
+  /// de calendário cuja resposta muda o resultado do inventário.
+  dataAbertura   DateTime
+  dataFechamento DateTime?
+
+  /// TR 5.19.22 pede termo de abertura e de fechamento; aqui eles são anexos do M22,
+  /// que já é o cadastro de documento deste sistema.
+  termoAberturaId   String?
+  termoAbertura     Anexo?  @relation("TermoAberturaInventarioEstoque", fields: [termoAberturaId], references: [id])
+  termoFechamentoId String?
+  termoFechamento   Anexo?  @relation("TermoFechamentoInventarioEstoque", fields: [termoFechamentoId], references: [id])
+
+  contagens ContagemDeInventario[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([depositoId, dataAbertura])
+}
+
+model ContagemDeInventario {
+  id String @id @default(cuid())
+
+  inventarioId String
+  inventario   InventarioDeEstoque @relation(fields: [inventarioId], references: [id])
+
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id])
+
+  loteId String?
+  lote   LoteDeMaterial? @relation(fields: [loteId], references: [id])
+
+  /// O que a comissão CONTOU. Fato observado, na unidade de estoque.
+  quantidadeContada Decimal @db.Decimal(18, 4)
+
+  /// ⚠️ NÃO EXISTE `quantidadeEsperada` NEM `divergencia`. As duas são derivadas dos
+  /// movimentos até a data de fechamento — guardá-las seria congelar um número que o
+  /// razão físico recalcula, e no dia em que divergissem não haveria como saber qual
+  /// das duas está certa.
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([inventarioId, materialId, loteId])
+  @@index([materialId])
+  @@index([loteId])
+}
+
+// ----------------------------------------------------------------------------
+// BloqueioDeEstoque — TR 5.18.13, e a decisão D14.
+//
+// ⚠️ FATO COM INÍCIO E FIM, NÃO FLAG. Um `bloqueado Boolean` responde "agora" e perde
+// quem bloqueou, quando e por quê — e a 5.18.12 precisa saber se a movimentação da
+// noite do fechamento estava bloqueada.
+//
+// Os três alcances da cláusula ("por produto, por depósito, ou produto do depósito")
+// saem das duas colunas opcionais: material sem depósito = o material em toda parte;
+// depósito sem material = o depósito inteiro; os dois = o material naquele depósito.
+// ----------------------------------------------------------------------------
+
+model BloqueioDeEstoque {
+  id String @id @default(cuid())
+
+  materialId String?
+  material   Material? @relation(fields: [materialId], references: [id])
+
+  depositoId String?
+  deposito   Deposito? @relation(fields: [depositoId], references: [id])
+
+  /// DATAS CIVIS, pelo mesmo motivo do inventário.
+  inicio DateTime
+  fim    DateTime?
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([materialId, inicio])
+  @@index([depositoId, inicio])
+}

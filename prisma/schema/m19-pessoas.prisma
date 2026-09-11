@@ -94,6 +94,15 @@ model Pessoa {
   criadoPor String
 
   @@index([tipo])
+  /// back-relation ENT05 (M10 fisico) — VIRTUAL.
+  depositosSobResponsabilidade Deposito[] @relation("ResponsavelDeDeposito")
+  /// back-relations ENT05 (M10 gestão do bem) — VIRTUAIS.
+  bensSobResponsabilidade MovimentoDeGestaoDoBem[]      @relation("ResponsavelPeloBem")
+  comissoesPatrimoniais   MembroDeComissaoPatrimonial[] @relation("MembroDeComissaoPatrimonial")
+  termosPatrimoniais      TermoPatrimonial[]            @relation("ResponsavelDeTermo")
+  /// back-relations ENT05 (M11 compras) — VIRTUAIS.
+  cotacoes      CotacaoDePreco[] @relation("FornecedorCotado")
+  ordensDeCompra OrdemDeCompra[] @relation("FornecedorDaOrdem")
 }
 
 /// A VERSÃO — o estado cadastral num instante. A vigente é a de `criadoEm` mais recente.

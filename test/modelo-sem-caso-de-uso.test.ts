@@ -72,6 +72,25 @@ const SEM_CASO_DE_USO: Readonly<Record<string, string>> = {
  * Cada linha nomeia o pai e o campo — quem ler pode conferir em um grep.
  */
 const ESCRITO_POR_ANINHAMENTO: Readonly<Record<string, string>> = {
+  CotacaoDePreco:
+    "escrito por `cotacoes: { create: ... }` em registrarPesquisaDePrecos " +
+    "(modules/m11-licitacoes/compras.ts); LIDO em estatisticasDaPesquisa pela relação " +
+    "`cotacoes` do item da pesquisa — é dela que saem médio, mínimo e máximo",
+  ItemDeSolicitacaoDeCompra:
+    "escrito por `itens: { create: ... }` em registrarSolicitacaoDeCompra " +
+    "(modules/m11-licitacoes/compras.ts) — solicitação e itens nascem no mesmo ato",
+  RecebimentoDeItem:
+    "escrito por `itens: { create: ... }` em registrarRecebimentoDeOrdem " +
+    "(modules/m11-licitacoes/compras.ts); LIDO em saldoDaOrdemDeCompra pela relação " +
+    "`recebimentos` do item da ordem",
+  MembroDeComissaoPatrimonial:
+    "escrito por `membros: { create: ... }` em cadastrarComissaoPatrimonial " +
+    "(modules/m10-patrimonial/gestao-do-bem.ts) — a comissão e seus membros nascem no " +
+    "mesmo ato, porque uma comissão sem membro não delibera",
+  ItemDeTermoPatrimonial:
+    "escrito por `itens: { create: ... }` em emitirTermoPatrimonial " +
+    "(modules/m10-patrimonial/gestao-do-bem.ts) — o termo e os bens que ele entrega " +
+    "nascem juntos, e um termo sem bem não entrega nada",
   OpcaoDeCampoAdicional:
     "escrito por `opcoes: { create: ... }` em modules/m25-campos-adicionais/servico.ts",
   ColunaDoModelo: "escrito por `colunas: { create: ... }` em modules/m26-designer/",

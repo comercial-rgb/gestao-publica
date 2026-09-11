@@ -1,0 +1,415 @@
+// ============================================================================
+// M10 — PATRIMÔNIO, EIXO DE GESTÃO (TR 5.19).
+//
+// ═══ ⚠️ ELE ACOMPANHA A CONTABILIDADE DO BEM, NÃO A SUBSTITUI ═══
+// `m10-patrimonial.prisma` continua inteiro e intocado. A depreciação por NBC TSP 07, o
+// valor contábil derivado dos movimentos, a alienação com resultado — tudo isso está
+// provado e não muda uma linha.
+//
+// O que o censo do ENT03c mostrou faltar é a GESTÃO: onde o bem está, quem responde por
+// ele, em que estado se encontra, que comissão o inventariou, e o termo que o entregou a
+// alguém. O `BemPatrimonial` tinha tombamento, classe e data de aquisição — e mais nada.
+//
+// ═══ ⚠️ NENHUMA COLUNA `localizacaoAtual`, `responsavelAtual` OU `situacao` ═══
+// Decisão D4 da varredura. A TR 5.19.20 pede "seu estado e localização **atual (no momento
+// do inventário)**" — o parêntese é um eixo temporal escrito por extenso. Situação, estado
+// e localização são DERIVADOS do último movimento de cada tipo ATÉ UMA DATA, como o papel
+// da pessoa (M19) é derivado dos movimentos de concessão e encerramento.
+//
+// APPEND-ONLY. Corrigir é movimento novo.
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// LocalizacaoFisica — TR 5.19.14, 5.19.34 (consulta e relatório por localização).
+//
+// Auto-relação pelo mesmo motivo do grupo de material: prédio → andar → sala é a mesma
+// entidade em níveis, e o TR não promete quantos níveis o ente usa.
+// ----------------------------------------------------------------------------
+
+model LocalizacaoFisica {
+  id        String @id @default(cuid())
+  codigo    String @unique @db.VarChar(20)
+  descricao String
+
+  paiId  String?
+  pai    LocalizacaoFisica?  @relation("HierarquiaDeLocalizacao", fields: [paiId], references: [id])
+  filhos LocalizacaoFisica[] @relation("HierarquiaDeLocalizacao")
+
+  /// O setor responsável pela localização (TR 5.19.18 — "repartição").
+  setorId String?
+  setor   Setor?  @relation("LocalizacaoDeSetor", fields: [setorId], references: [id])
+
+  movimentos          MovimentoDeGestaoDoBem[]
+  contagensObservadas ContagemDeBem[]          @relation("LocalizacaoObservada")
+
+  ativa Boolean @default(true)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([paiId])
+  @@index([setorId])
+}
+
+// ----------------------------------------------------------------------------
+// ComissaoPatrimonial — TR 5.19.16 ("cadastro de comissões, com indicação do texto
+// jurídico que designou, indicação dos membros responsáveis").
+//
+// ⚠️ A FINALIDADE É UM ROL, e ela importa: a comissão de inventário não é a de
+// reavaliação. Uma comissão sem finalidade deixaria o ente assinar um termo de
+// reavaliação com a portaria do inventário.
+// ----------------------------------------------------------------------------
+
+enum FinalidadeDeComissao {
+  INVENTARIO
+  REAVALIACAO
+  DEPRECIACAO
+  BAIXA
+}
+
+model ComissaoPatrimonial {
+  id        String @id @default(cuid())
+  codigo    String @unique @db.VarChar(20)
+  descricao String
+
+  finalidade FinalidadeDeComissao
+
+  /// TR 5.19.16 — "o texto jurídico que designou": a portaria ou o decreto.
+  atoDesignacao String
+
+  /// ⚠️ DATAS CIVIS. Uma comissão vigente "naquela data" é a pergunta que o termo de
+  /// inventário faz — e é ela que diz se a assinatura de 31/12 valia.
+  vigenciaInicio DateTime
+  vigenciaFim    DateTime?
+
+  membros     MembroDeComissaoPatrimonial[]
+  inventarios InventarioDeBens[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([finalidade, vigenciaInicio])
+}
+
+model MembroDeComissaoPatrimonial {
+  id String @id @default(cuid())
+
+  comissaoId String
+  comissao   ComissaoPatrimonial @relation(fields: [comissaoId], references: [id])
+
+  /// A `Pessoa` do M19 — cadastro único. Um "nome do membro" em texto criaria a segunda
+  /// verdade sobre quem é a pessoa.
+  pessoaId String
+  pessoa   Pessoa @relation("MembroDeComissaoPatrimonial", fields: [pessoaId], references: [id])
+
+  /// TR 5.19.16 — "atribuições designadas e natureza do cargo".
+  atribuicao String
+
+  presidente Boolean @default(false)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([comissaoId, pessoaId])
+  @@index([pessoaId])
+}
+
+// ----------------------------------------------------------------------------
+// MovimentoDeGestaoDoBem — o razão da GESTÃO. APPEND-ONLY.
+//
+// ⚠️ ELE NÃO TEM VALOR, e é o ponto. Valor é o `MovimentoPatrimonial`, que já existe e
+// já está provado. Este aqui move POSIÇÃO, RESPONSABILIDADE e ESTADO — coisas que não
+// passam pelo razão contábil e que, por isso mesmo, nunca tiveram onde morar.
+// ----------------------------------------------------------------------------
+
+/// TR 5.19.11 — "bom, ótimo, regular" é exemplo ("exemplo:"), não rol fechado. Mas um
+/// texto livre tornaria impossível o relatório por estado (5.19.34), e cada digitador
+/// inventaria o seu. O rol abaixo é o do MCASP, e cresce por DECISÃO — nunca por
+/// digitação.
+enum EstadoDeConservacao {
+  OTIMO
+  BOM
+  REGULAR
+  RUIM
+  INSERVIVEL
+}
+
+/// TR 5.19.12 — "empréstimo, locação, manutenções preventivas e corretivas".
+enum SituacaoFisicaDoBem {
+  EM_USO
+  EM_EMPRESTIMO
+  EM_LOCACAO
+  EM_MANUTENCAO_PREVENTIVA
+  EM_MANUTENCAO_CORRETIVA
+  EM_DESUSO
+  BAIXADO
+}
+
+enum TipoMovimentoDeGestao {
+  /// TR 5.19.15, 5.19.19 — o bem mudou de lugar.
+  LOCALIZACAO
+  /// TR 5.19.10, 5.19.36 — o bem passou a responder por alguém.
+  RESPONSAVEL
+  /// TR 5.19.11, 5.19.17 — o estado mudou (ou foi observado no inventário).
+  ESTADO
+  /// TR 5.19.12 — emprestado, locado, em manutenção.
+  SITUACAO
+  /// TR 5.19.28 — a perna de SAÍDA da transferência entre entidades.
+  TRANSFERENCIA_SAIDA
+  /// TR 5.19.28 — a perna de ENTRADA, na entidade de destino.
+  TRANSFERENCIA_ENTRADA
+
+  ESTORNO_LOCALIZACAO
+  ESTORNO_RESPONSAVEL
+  ESTORNO_ESTADO
+  ESTORNO_SITUACAO
+  ESTORNO_TRANSFERENCIA_SAIDA
+  ESTORNO_TRANSFERENCIA_ENTRADA
+}
+
+model MovimentoDeGestaoDoBem {
+  id String @id @default(cuid())
+
+  bemId String
+  bem   BemPatrimonial @relation(fields: [bemId], references: [id])
+
+  tipo TipoMovimentoDeGestao
+
+  /// ⚠️ A DATA DO FATO, distinta do `criadoEm` — o eixo da decisão D4. "Onde estava o bem
+  /// em 31/12?" só tem resposta com ela.
+  dataMovimento DateTime
+
+  // ── O que muda, conforme o tipo. Um campo por eixo, e o serviço exige o certo. ──
+  localizacaoId String?
+  localizacao   LocalizacaoFisica? @relation(fields: [localizacaoId], references: [id])
+
+  responsavelId String?
+  responsavel   Pessoa? @relation("ResponsavelPeloBem", fields: [responsavelId], references: [id])
+
+  estado   EstadoDeConservacao?
+  situacao SituacaoFisicaDoBem?
+
+  /// TR 5.19.27, 5.19.28 — a unidade gestora de destino/origem na transferência.
+  unidadeOrcId String?
+  unidadeOrc   UnidadeOrcamentaria? @relation("TransferenciaDeBem", fields: [unidadeOrcId], references: [id])
+
+  /// O inventário que observou este fato (TR 5.19.17, 5.19.19, 5.19.20).
+  inventarioId String?
+  inventario   InventarioDeBens? @relation(fields: [inventarioId], references: [id])
+
+  /// As duas pernas de UMA transferência entre entidades andam sob o mesmo id.
+  operacaoId String?
+
+  estornoDeId String?
+  estornoDe   MovimentoDeGestaoDoBem?  @relation("EstornoDeGestao", fields: [estornoDeId], references: [id])
+  estornos    MovimentoDeGestaoDoBem[] @relation("EstornoDeGestao")
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([bemId, tipo, dataMovimento])
+  @@index([localizacaoId])
+  @@index([responsavelId])
+  @@index([inventarioId])
+  @@index([estornoDeId])
+  @@index([operacaoId])
+}
+
+// ----------------------------------------------------------------------------
+// InventarioDeBens — TR 5.19.1, 5.19.17 a 5.19.22.
+//
+// ⚠️ IRMÃO, E NÃO O MESMO, DO `InventarioDeEstoque`. Um conta prateleira de almoxarifado
+// por material e lote; o outro percorre bens TOMBADOS, com comissão designada e termo
+// assinado. Unificá-los faria a contagem de um exigir os campos do outro — e foi
+// exatamente um falso positivo desse tipo que o censo de ausências pegou quando o
+// inventário de estoque nasceu.
+// ----------------------------------------------------------------------------
+
+model InventarioDeBens {
+  id        String @id @default(cuid())
+  exercicio Int
+
+  /// TR 5.19.16 — a comissão que o realiza. OBRIGATÓRIA: inventário sem comissão
+  /// designada não tem quem assine o termo.
+  comissaoId String
+  comissao   ComissaoPatrimonial @relation(fields: [comissaoId], references: [id])
+
+  /// TR 5.19.27 — o inventário é POR UNIDADE GESTORA.
+  unidadeOrcId String
+  unidadeOrc   UnidadeOrcamentaria @relation("InventarioDeBens", fields: [unidadeOrcId], references: [id])
+
+  dataAbertura   DateTime
+  dataFechamento DateTime?
+
+  /// TR 5.19.22 — "com termo de abertura e fechamento".
+  termoAberturaId   String?
+  termoAbertura     Anexo?  @relation("TermoAberturaInventarioBens", fields: [termoAberturaId], references: [id])
+  termoFechamentoId String?
+  termoFechamento   Anexo?  @relation("TermoFechamentoInventarioBens", fields: [termoFechamentoId], references: [id])
+
+  contagens  ContagemDeBem[]
+  movimentos MovimentoDeGestaoDoBem[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([unidadeOrcId, exercicio])
+  @@index([comissaoId])
+}
+
+/// A OBSERVAÇÃO da comissão sobre um bem (TR 5.19.20).
+///
+/// ⚠️ ELA GUARDA O QUE FOI VISTO, e a divergência é DERIVADA: "estava onde devia?" é a
+/// localização observada contra a derivada dos movimentos até a data. Guardar um
+/// `divergente Boolean` congelaria um juízo que o razão da gestão recalcula.
+model ContagemDeBem {
+  id String @id @default(cuid())
+
+  inventarioId String
+  inventario   InventarioDeBens @relation(fields: [inventarioId], references: [id])
+
+  bemId String
+  bem   BemPatrimonial @relation("ContagemDeBem", fields: [bemId], references: [id])
+
+  /// TR 5.19.21 — o bem foi encontrado? Não encontrar É o achado do inventário.
+  encontrado Boolean
+
+  /// O que a comissão OBSERVOU, no momento do inventário (TR 5.19.20).
+  localizacaoObservadaId String?
+  localizacaoObservada   LocalizacaoFisica? @relation("LocalizacaoObservada", fields: [localizacaoObservadaId], references: [id])
+
+  estadoObservado EstadoDeConservacao?
+
+  observacao String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([inventarioId, bemId])
+  @@index([bemId])
+  @@index([localizacaoObservadaId])
+}
+
+// ----------------------------------------------------------------------------
+// TermoPatrimonial — TR 5.19.36 (responsabilidade) e 5.19.37 (baixa).
+//
+// ⚠️ O TERMO É UM FATO COM DATA E ALCANCE, não um PDF. O documento gerado é anexo; o
+// termo é o registro de que alguém assumiu a responsabilidade por aqueles bens naquele
+// dia — e é ele que responde "quem respondia pelo bem em 31/12?".
+// ----------------------------------------------------------------------------
+
+enum TipoDeTermoPatrimonial {
+  RESPONSABILIDADE
+  BAIXA
+}
+
+model TermoPatrimonial {
+  id     String @id @default(cuid())
+  numero String @unique @db.VarChar(20)
+
+  tipo TipoDeTermoPatrimonial
+
+  /// Em quem recai (responsabilidade). Nulo no termo de baixa.
+  responsavelId String?
+  responsavel   Pessoa? @relation("ResponsavelDeTermo", fields: [responsavelId], references: [id])
+
+  /// TR 5.19.36 — "individuais, setoriais ou por responsável".
+  setorId String?
+  setor   Setor?  @relation("TermoPatrimonialDeSetor", fields: [setorId], references: [id])
+
+  data DateTime
+
+  documentoId String?
+  documento   Anexo?  @relation("DocumentoDeTermoPatrimonial", fields: [documentoId], references: [id])
+
+  itens ItemDeTermoPatrimonial[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([responsavelId])
+  @@index([setorId])
+  @@index([data])
+}
+
+model ItemDeTermoPatrimonial {
+  id String @id @default(cuid())
+
+  termoId String
+  termo   TermoPatrimonial @relation(fields: [termoId], references: [id])
+
+  bemId String
+  bem   BemPatrimonial @relation("ItemDeTermoPatrimonial", fields: [bemId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([termoId, bemId])
+  @@index([bemId])
+}
+
+// ----------------------------------------------------------------------------
+// MotivoDeBaixa — TR 5.19.30 ("inclusão de motivos de baixa de acordo com a necessidade
+// da instituição"). É TABELA porque a cláusula manda ser: um enum no código seria a
+// constante que erra no segundo ente.
+// ----------------------------------------------------------------------------
+
+model MotivoDeBaixa {
+  id        String  @id @default(cuid())
+  codigo    String  @unique @db.VarChar(20)
+  descricao String
+  ativo     Boolean @default(true)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+// ----------------------------------------------------------------------------
+// TipoDeIncorporacao — TR 5.19.3 ("adquirido, recebido em doação, comodato, permuta e
+// outras incorporações CONFIGURÁVEIS pela instituição") e 5.19.7 ("diversos Tipos de
+// bens além dos móveis e imóveis").
+// ----------------------------------------------------------------------------
+
+model TipoDeIncorporacao {
+  id        String  @id @default(cuid())
+  codigo    String  @unique @db.VarChar(20)
+  descricao String
+  ativo     Boolean @default(true)
+
+  bens BemPatrimonial[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+// ----------------------------------------------------------------------------
+// FormulaDeAvaliacao — TR 5.19.42 ("avaliações a partir de fórmulas previamente
+// cadastradas, podendo ser EDITADAS pelo próprio usuário").
+//
+// ═══ ⚠️⚠️ FÓRMULA EDITÁVEL PELO USUÁRIO É CÓDIGO ESCRITO PELO USUÁRIO ═══
+// É a cláusula mais perigosa das três seções, e o perigo não é hipotético: a
+// implementação óbvia é `eval(formula)` ou `new Function(formula)`, e as duas dão a quem
+// puder editar o cadastro a capacidade de executar qualquer coisa no servidor — ler
+// variáveis de ambiente, abrir conexão, apagar tabela.
+//
+// A `expressao` guardada aqui é INTERPRETADA por um avaliador próprio
+// (`modules/m10-patrimonial/formula-avaliacao.ts`) que conhece quatro operações, os
+// parênteses e um rol FECHADO de grandezas do bem. Nada além disso existe para ele — não
+// há identificador global, não há chamada de função, não há acesso a propriedade.
+// ----------------------------------------------------------------------------
+
+model FormulaDeAvaliacao {
+  id        String @id @default(cuid())
+  codigo    String @unique @db.VarChar(20)
+  descricao String
+
+  /// A expressão, em notação infixa sobre as grandezas nomeadas. Ver o avaliador.
+  expressao String @db.Text
+
+  ativa Boolean @default(true)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

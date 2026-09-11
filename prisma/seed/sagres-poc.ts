@@ -46,7 +46,7 @@ const D = (mes: number, dia: number): Date => new Date(Date.UTC(2026, mes - 1, d
 const CONTA_DOTACAO_INICIAL = "5.2.2.1.1.00.00";
 const CONTA_DOTACAO_ADICIONAL = "5.2.2.1.2.00.00"; // o que os decretos acrescentam (roteiros.ts, canônico)
 const CONTA_CREDITO_DISPONIVEL = "6.2.2.1.1.00.00";
-const CONTA_BANCOS = "1.1.1.1.2.00.00";
+const CONTA_BANCOS = "1.1.1.1.1.19.00"; // ENT05 ITEM 3 — repontada: a antiga era INTRA OFSS
 const CONTA_CONSIGNACAO_ISS = "2.1.8.8.1.02.00"; // Consignações ISS a pagar (passivo, M07) — mesmo código do m07-retencao.test
 const CONTA_CONSIGNACAO_INSS = "2.1.8.8.1.01.00"; // Consignações INSS a pagar (usada pelo importador de folha, M20)
 // Patrimônio (M10, TRAVA-3) — contas CANÔNICAS (mesmos códigos dos testes do M10 / par do despacho 0b).
