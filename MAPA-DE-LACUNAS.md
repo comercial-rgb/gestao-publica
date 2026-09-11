@@ -167,6 +167,25 @@ nome, não que o comportamento exista.** O nome do módulo bate; o domínio é o
 Nos três, o motor é bom e está provado. **Falta o cadastro que o alimenta** — e é
 essa distinção que a classificação por nome de arquivo não consegue fazer.
 
+### ⚠️ 4.1.1 · O ENT05 construiu o modelo das três, e a tabela tem de acompanhar
+
+O ENT05 partiu daqui, e o resultado por seção:
+
+| Seção | O que nasceu | Cláusulas que saíram de `AUSENTE_CONFIRMADO`/`PARCIAL` |
+|---|---|---:|
+| **5.18 Almoxarifado** | eixo FÍSICO: material com unidades N-N, depósito, lote com validade, movimento com quantidade, preço médio derivado, requisição com atendimento parcial, cota mensal, inventário que bloqueia, bloqueio como fato | **14** |
+| **5.19 Patrimônio** | eixo de GESTÃO: localização, responsável, estado, situação, comissão designada, inventário de bens com termo, etiqueta idempotente, transferência entre entidades composta, fórmula de avaliação interpretada | **20** |
+| **5.17 Compras** | a COMPRA: marca e elemento do material, solicitação com situação derivada, pesquisa de preços com médio/mínimo/máximo, ordem de compra com saldo pendente derivado, recebimento | **20** |
+
+⚠️ **AS 54 ESTÃO EM `IMPLEMENTADO_NAO_VALIDADO`, NÃO EM `VALIDADO_LOCALMENTE`.** Elas têm
+modelo, caso de uso e teste contra banco — e **nenhuma tem tela**. A superfície pelo molde
+é o lote seguinte, e é lá que elas se validam.
+
+⚠️ **E O PERCENTUAL DO CATÁLOGO NÃO SE MOVEU** (316 de 2037). As 184 cláusulas destas
+seções já estavam contadas pelo censo do ENT03c, com veredito negativo. Lote que constrói
+sobre seção já censada move **situação**, não **cobertura** — confundir as duas faria o
+próximo lote achar que não avançou.
+
 **Consequência para as 469 cláusulas de `BASE_FORTE`:** elas precisam da medição
 cláusula a cláusula que o ENT03c fez, não da leitura de schema que produziu esta
 tabela. O ENT03c mediu 9 seções e marcou 220; as demais continuam sobre o critério
