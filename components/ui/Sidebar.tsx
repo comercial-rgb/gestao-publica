@@ -32,12 +32,23 @@ export function Sidebar({
   colapsadaInicial,
   usuario,
   sairAction,
+  areasVisiveis,
 }: {
   readonly colapsadaInicial: boolean;
   /** O identificador do usuário logado (real, da sessão). */
   readonly usuario?: string;
   /** Server Action de logout (form action). */
   readonly sairAction?: () => Promise<void>;
+  /**
+   * OS SLUGS QUE ESTE USUÁRIO PODE VER — calculados NO SERVIDOR, a partir das mesmas
+   * permissões que `autorizar` confere.
+   *
+   * ⚠️ ELES CHEGAM POR PROPS, e não de uma consulta daqui: este componente é client, o
+   * Prisma não atravessa a fronteira, e `test/ui/fronteira-ui.test.ts` recusa a tentativa.
+   * ⚠️ E A LISTA NÃO TEM PADRÃO "TUDO". Omitir a prop mostra TODAS as áreas, o que só é
+   * correto em teste de render isolado; o layout sempre a passa.
+   */
+  readonly areasVisiveis?: readonly string[];
 }): React.ReactElement {
   const pathname = usePathname();
   // O estado vive no cookie; o toggle o reescreve e força um re-render por reload leve do estado.
@@ -79,7 +90,9 @@ export function Sidebar({
       {/* navegação */}
       <nav aria-label="Áreas do sistema" className="flex-1 overflow-y-auto py-2">
         <ul className="flex flex-col gap-0.5 px-2">
-          {AREAS.map((area) => {
+          {AREAS.filter(
+            (a) => areasVisiveis === undefined || areasVisiveis.includes(a.slug)
+          ).map((area) => {
             const href = `/${area.slug}`;
             const ativo = pathname === href || pathname.startsWith(`${href}/`);
             // ⚠️ Algumas áreas ganham SUBMENU (Relatórios, Administração). Só aparece quando a área

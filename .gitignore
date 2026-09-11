@@ -40,3 +40,7 @@ secrets.json
 # ENT02 — armazenamento local dos anexos. NAO e servido estaticamente, e nao vai para o git:
 # sao documentos de processo, e o repositorio nao e lugar de guardar documento de ninguem.
 var/
+
+# Saida bruta das execucoes pesadas (scripts/trinco-de-maquina.ts). Gerada, nao codigo.
+# Existe porque uma intermitencia do ENT03c perdeu os nomes dos testes ao passar por grep.
+.registro-de-execucao/

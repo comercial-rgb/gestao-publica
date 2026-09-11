@@ -711,6 +711,114 @@ export async function verAuditoria(id: string): Promise<DetalheLido | null> {
   };
 }
 
+
+const ROTULO_MOV_PROVISAO: Readonly<Record<string, string>> = {
+  CONSTITUICAO: "Constituição",
+  ATUALIZACAO: "Atualização",
+  REVERSAO: "Reversão",
+  ESTORNO_CONSTITUICAO: "Estorno da constituição",
+  ESTORNO_ATUALIZACAO: "Estorno da atualização",
+  ESTORNO_REVERSAO: "Estorno da reversão",
+};
+
+export async function listarProvisoes(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
+  const prisma = cliente();
+  const q = c.filtros["q"] ?? "";
+  const where = q === "" ? {} : { OR: [{ identificador: texto(q) }, { descricao: texto(q) }] };
+
+  const [total, linhas] = await Promise.all([
+    prisma.provisaoMatematica.count({ where }),
+    prisma.provisaoMatematica.findMany({
+      where,
+      ...paginacao(c),
+      orderBy: c.ordem === null ? { identificador: "asc" } : { [c.ordem]: c.direcao },
+      select: {
+        id: true, identificador: true, descricao: true,
+        movimentos: { select: { tipo: true, valor: true } },
+      },
+    }),
+  ]);
+
+  return {
+    total,
+    linhas: linhas.map((p) => ({
+      id: p.id,
+      identificador: p.identificador,
+      descricao: p.descricao,
+      constituido: somaDosTipos(p.movimentos, ["CONSTITUICAO", "ATUALIZACAO"]),
+      revertido: somaDosTipos(p.movimentos, ["REVERSAO"]),
+      // ⚠️ O SALDO VEM DO MÓDULO, não de `constituido − revertido`: os estornos entram com
+      // o sinal deles, e quem conhece os sinais é `SINAL_MOVIMENTO_PROVISAO`.
+      saldo: saldoDaProvisao(
+        p.movimentos.map((m) => ({
+          tipo: m.tipo as TipoMovimentoProvisao,
+          valor: toMoney(m.valor.toFixed(2)),
+        }))
+      ).toFixed(2),
+    })),
+  };
+}
+
+export async function verProvisao(id: string): Promise<DetalheLido | null> {
+  const prisma = cliente();
+  const p = await prisma.provisaoMatematica.findUnique({
+    where: { id },
+    select: {
+      identificador: true, descricao: true,
+      contaContabil: { select: { codigo: true, nome: true } },
+      movimentos: {
+        select: {
+          id: true, tipo: true, valor: true, competencia: true, dataMovimento: true,
+          motivo: true, criadoEm: true, criadoPor: true,
+          estornos: { select: { id: true } },
+        },
+        orderBy: { dataMovimento: "desc" },
+      },
+    },
+  });
+  if (p === null) return null;
+
+  const saldo = saldoDaProvisao(
+    p.movimentos.map((m) => ({
+      tipo: m.tipo as TipoMovimentoProvisao,
+      valor: toMoney(m.valor.toFixed(2)),
+    }))
+  );
+
+  return {
+    titulo: `Provisão ${p.identificador}`,
+    subtitulo: p.descricao,
+    selos: [
+      {
+        texto: saldo.isZero() ? "Sem saldo provisionado" : "Provisionada",
+        tom: saldo.isZero() ? "ok" : "neutro",
+      },
+    ],
+    dados: [
+      { rotulo: "Descrição", valor: p.descricao, tipo: "longo" },
+      { rotulo: "Constituído", valor: somaDosTipos(p.movimentos, ["CONSTITUICAO"]), tipo: "dinheiro",
+        nota: "Variação patrimonial DIMINUTIVA — não é despesa orçamentária e não consome dotação." },
+      { rotulo: "Atualizações", valor: somaDosTipos(p.movimentos, ["ATUALIZACAO"]), tipo: "dinheiro",
+        nota: "Por competência, e idempotente: a mesma competência duas vezes é recusada." },
+      { rotulo: "Revertido", valor: somaDosTipos(p.movimentos, ["REVERSAO"]), tipo: "dinheiro",
+        nota: "O risco não se concretizou. Reverter acima do saldo é recusado no servidor." },
+      { rotulo: "Saldo provisionado", valor: saldo.toFixed(2), tipo: "dinheiro",
+        nota: "Derivado dos movimentos. Tem de bater com o saldo da conta de passivo." },
+      { rotulo: "Conta do passivo", valor: `${p.contaContabil.codigo} — ${p.contaContabil.nome}` },
+    ],
+    historico: p.movimentos.map((m) => ({
+      id: m.id,
+      oQue: `${ROTULO_MOV_PROVISAO[m.tipo] ?? m.tipo}${m.competencia === null ? "" : ` — ${competenciaCivil(m.competencia)}`}`,
+      quando: diaCivilBr(m.dataMovimento),
+      registradoEm: diaCivilBr(m.criadoEm),
+      por: m.criadoPor,
+      motivo: m.motivo,
+      valor: m.valor.toFixed(2),
+      estornado: m.estornos.length > 0,
+    })),
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // AS ESCRITAS — todas por `comEscritaAutenticada`
 //
@@ -720,6 +828,14 @@ export async function verAuditoria(id: string): Promise<DetalheLido | null> {
 // mesma recusa, e as duas divergiriam no dia em que o guard aprendesse um caso novo.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import {
+  atualizarProvisao,
+  cadastrarProvisao,
+  constituirProvisao,
+  reverterProvisao,
+  saldoDaProvisao,
+  type TipoMovimentoProvisao,
+} from "../../../modules/m10-patrimonial/provisoes.js";
 import { comEscritaAutenticada } from "../sessao";
 import {
   aprovarPrestacaoDeContas,
@@ -1568,7 +1684,25 @@ export type OpcoesDoCadastro = Readonly<
  * vai recusar (`m11-medicoes-integracao.test.ts` t6b prova a recusa).
  */
 export async function opcoesDoCadastro(
-  p: { readonly obraId?: string } = {}
+  p: {
+    readonly obraId?: string;
+    /**
+     * As CLASSES do PCASP que este formulário aceita — "2" para conta de passivo, "1"
+     * para ativo, "7"/"8" para controle.
+     *
+     * ⚠️ ISTO NASCEU DE UM DEFEITO REAL, E DE UMA ARMADILHA DE TRUNCAMENTO. Enquanto o
+     * banco tinha 64 contas, `take: 500` pegava todas e o filtro não fazia falta. Com o
+     * plano oficial (7.864 contas, 6.074 analíticas) as 500 primeiras POR CÓDIGO são
+     * todas da classe 1 — e o campo "Conta do passivo" da dívida fundada passou a não
+     * oferecer NENHUMA conta de passivo. O formulário continuava montando, bonito e
+     * inútil: o defeito não era um erro, era uma lista curta.
+     *
+     * Sem filtro, a alternativa seria mandar as 6.074 opções para o navegador (~400 KB
+     * de HTML por `select`) e ainda deixar o operador escolher uma conta de ativo onde
+     * o domínio exige passivo — que o caso de uso recusaria depois.
+     */
+    readonly classesDeConta?: readonly string[];
+  } = {}
 ): Promise<OpcoesDoCadastro> {
   const prisma = cliente();
   const [fontes, contas, orgaos, contratos, medicoes] = await Promise.all([
@@ -1576,10 +1710,17 @@ export async function opcoesDoCadastro(
     // ⚠️ SÓ ANALÍTICAS. Lançar em conta sintética é o erro que o funil do M01 recusa — e
     // oferecê-la aqui seria montar um formulário que o domínio vai rejeitar.
     prisma.contaPcasp.findMany({
-      where: { analitica: true },
+      where: {
+        analitica: true,
+        ...(p.classesDeConta === undefined || p.classesDeConta.length === 0
+          ? {}
+          : { OR: p.classesDeConta.map((c) => ({ codigo: { startsWith: `${c}.` } })) }),
+      },
       select: { id: true, codigo: true, nome: true },
       orderBy: { codigo: "asc" },
-      take: 500,
+      // ⚠️ O TETO COBRE A MAIOR CLASSE INTEIRA (a 1 tem 1.401 analíticas no plano
+      // oficial). Um teto abaixo disso volta a truncar em silêncio — ver acima.
+      take: 2000,
     }),
     prisma.orgao.findMany({ select: { id: true, codigo: true, nome: true }, orderBy: { codigo: "asc" } }),
     prisma.contrato.findMany({
@@ -1611,4 +1752,60 @@ export async function opcoesDoCadastro(
       rotulo: `Medição ${m.numero} — ${m.valorMedido.toFixed(2)} (até ${diaCivilBr(m.periodoFim)})`,
     })),
   };
+}
+
+export async function criarProvisao(c: Campos): Promise<void> {
+  await comEscritaAutenticada("CADASTRAR_PROVISAO", (criadoPor) =>
+    cadastrarProvisao(cliente(), {
+      identificador: t(c, "identificador"),
+      descricao: t(c, "descricao"),
+      contaContabilId: t(c, "contaContabilId"),
+      criadoPor,
+    })
+  );
+}
+
+export async function acaoDaProvisao(
+  acao: string,
+  provisaoId: string,
+  c: Campos
+): Promise<void> {
+  switch (acao) {
+    case "constituir":
+      await comEscritaAutenticada("CONSTITUIR_PROVISAO", (criadoPor) =>
+        constituirProvisao(cliente(), {
+          provisaoId,
+          valor: t(c, "valor"),
+          dataMovimento: meioDiaCivil(t(c, "diaMovimento")),
+          motivo: t(c, "motivo"),
+          criadoPor,
+        })
+      );
+      return;
+    case "atualizar":
+      await comEscritaAutenticada("ATUALIZAR_PROVISAO", (criadoPor) =>
+        atualizarProvisao(cliente(), {
+          provisaoId,
+          valor: t(c, "valor"),
+          competencia: t(c, "competencia"),
+          dataMovimento: meioDiaCivil(t(c, "diaMovimento")),
+          motivo: t(c, "motivo"),
+          criadoPor,
+        })
+      );
+      return;
+    case "reverter":
+      await comEscritaAutenticada("REVERTER_PROVISAO", (criadoPor) =>
+        reverterProvisao(cliente(), {
+          provisaoId,
+          valor: t(c, "valor"),
+          dataMovimento: meioDiaCivil(t(c, "diaMovimento")),
+          motivo: t(c, "motivo"),
+          criadoPor,
+        })
+      );
+      return;
+    default:
+      throw new Error(`Ação "${acao}" não existe neste cadastro. Nada foi gravado.`);
+  }
 }

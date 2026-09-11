@@ -1953,11 +1953,267 @@ e está aqui por isso: descartá-la em silêncio seria exatamente o que a regra 
 | `npx tsx scripts/cobertura-de-tsconfig.ts` | **787 de 787 cobertos, 0 descobertos** | 2026-09-11 |
 | `npx tsx scripts/marcar-catalogo.ts --aplicar` | **311 de 2037 (15,3%)** | 2026-09-11 |
 
-## 18. O próximo passo
+## 18. ENT04 — os seeds oficiais, a casca e o que a medição disse
 
-⚠️ **O ENT03c está FECHADO e PARADO no gate.**
+⚠️ **Este lote entregou os quatro itens pedidos e marcou 5 cláusulas.** A distância entre
+as duas frases é o achado principal, e ela está medida em 18.9.
 
-**Para o ENT03d**, na ordem em que o relógio cobra:
+### 18.1 · A contagem do lote, separada
+
+| | |
+|---|---:|
+| **censo** — medir o que já existia | **0** |
+| **construção** — comportamento novo com cláusula | **5** |
+| **acréscimo de produto SEM cláusula** (fora da contagem, por decisão) | 6 frentes |
+| catálogo | 311 → **316 de 2037 (15,5%)** |
+
+Promoções (não somam ao total, porque já estavam verificadas): **5.10.1.82** e **5.34.25**
+de `IMPLEMENTADO_NAO_VALIDADO` para **`VALIDADO_LOCALMENTE`**, pelo smoke.
+
+**Os acréscimos de produto sem cláusula**, registrados fora da medida para não diluí-la:
+barra lateral filtrada por permissão; busca global; painel de pendências do usuário;
+portão executável; registro bruto de execução; cadastro de **provisões** pelo molde.
+
+### 18.2 · ⚠️ O ITEM 1 virou o achado do lote: o plano de contas estava no lugar errado
+
+`docs/oficial/tce-pb/Pcasp_2025.xlsx` — publicado pelo TCE-PB, sha256 conferido contra o
+`MANIFEST.json` **antes de qualquer leitura** — entrou no sistema: **7.864 contas**, com
+nome, natureza de saldo, nível e hierarquia. `npm run seed:pcasp-oficial`.
+
+Confrontados os **70** códigos PCASP que o código de produção usa contra a tabela real:
+
+- **ZERO inventados.** Todos existem no plano publicado. Nenhum lote anterior fabricou
+  código de conta — a disciplina segurou, e isso agora é teste
+  (`test/contas-contra-o-plano-oficial.test.ts`).
+- **E quatro estão no lugar errado**, o que só o confronto de NOME revela:
+
+| O sistema chama de | No PCASP é |
+|---|---|
+| `1.1.1.1.2.00.00` "Bancos Conta Movimento" | **CAIXA E EQUIVALENTES… - INTRA OFSS** (a variante para transações entre entes do mesmo OFSS). O banco do município é `1.1.1.1.1.19.00` |
+| `1.1.5.1.1.00.00` "Almoxarifado" | **MERCADORIAS PARA REVENDA OU DOAÇÃO**. Almoxarifado é `1.1.5.6.x` |
+| `2.2.1.1.1.00.00` "Dívida Fundada Interna" | **PESSOAL A PAGAR - CONSOLIDAÇÃO**. A dívida fundada é `2.2.2.x` |
+| `1.1.2.2.x` "Créditos Tributários a Receber" | **CLIENTES** |
+
+E `6.2.1.2.0.00.00` RECEITA REALIZADA estava semeada como **DEVEDORA**; a classe 6 é
+credora e a conta não é retificadora. O seed oficial corrigiu essa, que é de dado.
+
+⚠️ **AS OUTRAS QUATRO NÃO FORAM CORRIGIDAS NESTE LOTE, E É DECISÃO.** Trocar a conta de um
+roteiro muda **lançamento já gravado**: o saldo migra de conta sem que exista movimento
+explicando a migração, e dois exercícios deixam de fechar entre si. É correção de eixo do
+mesmo peso que a do eixo de data, e como aquela precisa de **caracterização antes** — o que
+cada conta hoje acumula, e para onde cada saldo vai. Pendência
+**`PLANO-DE-CONTAS-FORA-DO-PCASP`**. O guard mantém a lista visível e **falha se ela
+crescer**.
+
+### 18.3 · ⚠️ O plano oficial quebrou um formulário, e o defeito não era um erro
+
+Com 6.074 contas analíticas no banco, `opcoesDoCadastro` — que pedia "todas as analíticas"
+com `take: 500` — passou a trazer **só a classe 1**, porque são as 500 primeiras por
+código. O campo "Conta do passivo" da dívida fundada ficou **sem nenhuma conta de passivo**.
+
+Nada estourou. O formulário montou, o `select` apareceu, e não havia o que escolher.
+**Lista curta não é exceção: é um formulário bonito e inútil.**
+
+A correção é declarativa, não um teto maior: o descritor diz **quais classes** o campo
+aceita (`classesDeConta`), `verificarDefinicao` **cobra** a declaração, e a consulta filtra
+por elas. Teto maior adiaria o mesmo defeito para o dia em que o plano crescesse — e ainda
+mandaria 400 KB de `<option>` ao navegador. `test/molde/opcoes-de-conta.test.ts`.
+
+### 18.4 · Os roteiros, e a linha entre fato e escolha
+
+`npm run seed:roteiros-patrimoniais` parametrizou **16 roteiros** — 8 de dívida ativa, 2 de
+dívida fundada, 6 de provisão — e o smoke do ENT03c, que provava a **recusa**, agora prova
+a **aceitação**. Fecha `ROTEIROS-PATRIMONIAIS-NAO-PARAMETRIZADOS`.
+
+⚠️ **A distinção está escrita no próprio seed, e importa mais que o resultado.** **Fato:**
+todo código existe no PCASP oficial, é **analítico**, e o seed **recusa rodar** se algum
+deixar de existir ou de ser analítico. **Escolha:** qual par débito/crédito corresponde a
+cada evento é doutrina do MCASP, não dado do arquivo do TCE — está explicada linha a linha,
+e **é do contador do ente**. O seed a torna explícita e revisável num lugar só.
+
+### 18.5 · O menu não pode oferecer o que o servidor nega
+
+A barra lateral mostrava as **18 áreas** a todos. Agora a visibilidade vem do **mesmo**
+`PermissaoDePerfil` que o `autorizar` lê — sem lista paralela.
+
+⚠️ **A exaustividade é do compilador, não da boa vontade:**
+`Record<AcaoDoSistema, SlugDeArea | "transversal">` obriga uma entrada para cada uma das
+**185** ações do censo. Ação nova não compila até dizer onde mora.
+
+E o teste é de **propriedade**, não de lista: *área escondida ⟺ o servidor nega TODAS as
+ações dela* — percorrendo as 185 ações contra o `autorizar` de verdade. Mutação: fazendo o
+menu mostrar tudo, ele acusa nominalmente ("Planejamento APARECE no menu e o servidor nega
+TODAS as suas ações"). `test/menu-contra-o-servidor.test.ts`.
+
+⚠️ **E o que ele NÃO resolve está dito:** o censo do M16 cobre **mutações**; leitura ainda
+não é permissão. Por isso `transparencia` — só leitura — fica visível a qualquer sessão.
+Isso não é o menu mentindo: é o menu dizendo a verdade sobre um servidor que ali não nega.
+
+### 18.6 · Busca, pendências e o que ficou de fora por honestidade
+
+**Busca global**: índice **derivado** de `RECURSOS_DO_MOLDE`, `AREAS` e das listas de
+navegação — o cadastro do próximo lote entra sozinho. O recorte de permissão é feito **no
+servidor**; o cliente só casa texto. Um destino com ação exige **aquela** ação: quem pode
+lançar consórcio não recebe "Convênios" como se fosse atalho autorizado.
+⚠️ Ela **não busca dado** (o convênio nº 12/2026): isso exige o recorte de unidade gestora
+de cada consulta, e ignorá-lo vazaria títulos de registros por lista de resultados.
+Pendência **`BUSCA-DE-REGISTRO`**.
+
+**Painel de pendências**: assinaturas na fila, pareceres aguardando você, conciliações em
+aberto — três contagens sobre registro existente, cada uma com o critério em português na
+tela. **"Pendente" é derivado da ausência do fato** (o signatário sem assinatura, o pedido
+de parecer sem resposta), nunca de coluna de estado. **A faixa some quando não há nada** —
+três zeros no topo ensinam o operador a não olhar para ali.
+
+⚠️ **"Prazos próximos" NÃO foi entregue.** O prazo mora na etapa do roteiro do assunto
+(M21) e exige a contagem por dia útil a partir do RECEBIMENTO, não do trâmite. Um painel
+com prazo aproximado é pior que nenhum. Pendência **`PAINEL-DE-PRAZOS`**.
+
+### 18.7 · A ferramenta que perdeu os nomes
+
+`stdio: "inherit"` era a causa: o filho escrevia direto no terminal do chamador, e um
+`| grep` destruía a saída para sempre. Agora o runner **grava em disco antes** de qualquer
+cano, e só depois filtra — e o resumo do que falhou sai por `stderr`, porque por `stdout`
+o mesmo `grep` esconderia a pista.
+
+**Provado reproduzindo o ENT03c:** um teste falhando, `2>/dev/null | grep Duration` — o
+terminal ficou só com a duração, e o nome `NOME-QUE-NAO-PODE-SE-PERDER` estava intacto no
+arquivo. `test/registro-de-execucao.test.ts` fixa a propriedade.
+
+⚠️ **E ela já pagou num caso real, não num fixture:** a primeira execução do portão caiu, e
+o nome do teste responsável estava gravado. O defeito era do próprio trinco — 18.11.
+
+### 18.8 · O portão, e o guard de tabela morta
+
+O "gate" era uma **tabela em documento**: nove comandos para alguém lembrar de rodar, na
+ordem certa, e transcrever. Virou `npm run portao` — dez passos, saída bruta por passo,
+e **não para no primeiro erro** (só pula o que depende do que caiu, e diz que pulou).
+Ele também **nomeia o que não roda**: o smoke de navegador e a instalação real.
+
+O guard de tabela morta **já era do schema inteiro** (189 modelos). Medido e provado por
+mutação: um modelo novo sem leitor é acusado pelo nome. O que faltava era o gate, e é o
+que o portão dá.
+
+### 18.9 · ⚠️ O GARGALO, nomeado — porque a meta era 60–90 e vieram 5
+
+Não é o molde, e não é o censo. É **o desencontro entre o que tem motor e o que o catálogo
+pede**, e este lote o mediu nas duas direções:
+
+1. **Os quatro itens do ENT04 são infraestrutura.** Seeds oficiais, casca, guards e
+   ferramenta quase não têm cláusula: o catálogo descreve **funcionalidade de negócio**.
+   Foi o lote certo a fazer — sem os seeds nenhum percurso demonstrava — e ele rende pouco
+   em contagem por natureza, não por execução.
+2. **O cadastro de PROVISÕES, entregue pelo molde e provado pelo smoke, marcou ZERO.** As
+   oito cláusulas que dizem "provisão" são **todas de folha** (férias, 13º, licença-prêmio,
+   seção 5.12). A provisão **contábil** do M10 — matemática previdenciária e riscos — não é
+   pedida em cláusula nenhuma. Buscas por "atuarial", "riscos fiscais", "passivo
+   contingente" e "NBC TSP" no catálogo: 1, 0, 0 e 0.
+3. **É a segunda vez seguida.** No ENT03c, os três cadastros do molde também somaram zero —
+   deram *tela* ao que o censo acabara de marcar `IMPLEMENTADO_NAO_VALIDADO`.
+
+**A conclusão, medida:** os motores que existem sem tela (dívida, provisões) quase não
+aparecem no catálogo; e as **469 cláusulas** de `BASE_FORTE` estão em módulos cujo motor o
+censo do ENT03c mostrou que **não existe** — almoxarifado físico, gestão patrimonial,
+compras. Construir tela para motor pronto rende ~0; construir motor rende muito e custa
+caro.
+
+⚠️ **Por isso o próximo lote não deve começar pelo molde.** Ele deve começar pelo **modelo**
+das três seções derrubadas — quantidade no almoxarifado, responsável/localização no bem,
+requisição e ordem de compra — que é onde as 469 cláusulas moram. O molde entra **depois**,
+e aí rende.
+
+### 18.10 · Comandos e resultados — reprodutíveis
+
+| Comando | Resultado | Data |
+|---|---|---|
+| `npm run portao` | **10 de 10 passos**, na terceira execução — as duas primeiras vermelhas por um defeito que ele mesmo pegou; passo a passo em 18.11 | 2026-09-11 |
+| `npx tsx scripts/smoke-ent03c.ts` | **41 passos, 0 falhas — DUAS execuções**, a segunda contra o banco já povoado pela primeira | 2026-09-11 |
+| `npm run seed:pcasp-oficial` | 7.864 contas; 7.800 criadas; 1 natureza corrigida; 12 divergências de `analitica` **relatadas e não alteradas** | 2026-09-11 |
+| `npm run seed:roteiros-patrimoniais` | 8 + 2 + 6 roteiros | 2026-09-11 |
+| `npx tsx scripts/cobertura-de-tsconfig.ts` | **809 de 809 cobertos, 0 descobertos** | 2026-09-11 |
+| `npx tsx scripts/marcar-catalogo.ts --aplicar` | **316 de 2037 (15,5%)** | 2026-09-11 |
+
+⚠️ **A intermitência do ENT03c continua sem isolamento** — 2 falhas em 1.869 numa execução
+do `test:fuso`, nomes perdidos pelo `grep`. **Ela não pode mais acontecer** (18.7), mas
+também não foi reproduzida: o `test:fuso` deste lote rodou **1.912 testes sob
+`Pacific/Kiritimati` com 0 falhas** (18.11). Fica registrada como não isolada, e não como
+resolvida — uma execução limpa não refuta uma intermitência.
+
+### 18.11 · O portão, rodado — e o que ele pegou na primeira tentativa
+
+`npm run portao`, **2026-09-11**, TZ do hospedeiro `America/Recife`, Node v20.20.0.
+**Três execuções: as duas primeiras vermelhas, a terceira 10 de 10.**
+
+| Passo | Resultado | Tempo |
+|---|---|---|
+| `typecheck:backend` | limpo | 18s |
+| `typecheck:app` | limpo | 3s |
+| `typecheck:scripts` | limpo | 2s |
+| `cobertura-de-tsconfig` | **809 de 809 cobertos, 0 descobertos** | 6s |
+| `prisma:validate` | limpo | 1s |
+| `deriva` | migrations x modelo limpo; banco x modelo só os **24 objetos** de `prisma/sql/` | 12s |
+| `test:rapido` | **62 arquivos, 656 testes, 0 falhas** | 12s |
+| `test:tudo` | **189 arquivos, 1.912 testes, 0 falhas** | 430s |
+| `test:fuso` | **189 arquivos, 1.912 testes, 0 falhas**, sob `Pacific/Kiritimati` | 459s |
+| `build` | compilou; 21 páginas estáticas | 38s |
+
+**Código de saída medido, não suposto:** a cadeia inteira
+(`npm` → `tsx` → trinco → `npx` → `tsx`) devolve o código do filho — filho com `exit 5`
+devolveu **5**. Um wrapper que engolisse isso faria um gate vermelho se anunciar verde, e
+é uma coisa que se mede, não se assume.
+
+⚠️ **E o portão pegou um defeito logo na primeira tentativa — meu, e no lugar mais
+constrangedor possível: dentro da ferramenta do ITEM 4.**
+
+`test/registro-de-execucao.test.ts` roda o próprio trinco como filho para provar que a
+saída bruta chega ao disco. **Sozinho ele passava (656/656); dentro do portão falhava
+sempre** — 1 falha em 656 e 1 em 1.912, o mesmo arquivo, com o `test:fuso` pulado por
+dependência. O portão rodava sob o trinco, o trinco aninhado encontrava o dono vivo, e
+recusava. O filho saía com código 1 em vez do 3 que o script pediu.
+
+**O defeito não era do teste.** O trinco conta **máquina**, não processo: quando o dono é um
+ancestral, a memória já está contabilizada por ele, e recusar ali não protegia nada — só
+impedia que qualquer trabalho pesado invocasse a si mesmo. Era uma armadilha latente para
+qualquer passo futuro do portão que chamasse um comando com trinco.
+
+A correção é **reentrância por descendência**: quem toma o trinco exporta o próprio PID em
+`TRINCO_DE_MAQUINA_DONO`, e todo descendente herda pelo `spawn`. Não é dispensa — a
+variável só vale se apontar para o PID **que de fato detém o trinco agora** e que ainda
+está **vivo**; herança de shell antigo ou valor inventado é recusada como qualquer outro.
+O aninhado também **não toma e não libera** o trinco: se tomasse, o soltaria ao sair e
+devolveria a máquina no meio do trabalho do ancestral — o estado exato que o trinco existe
+para impedir.
+
+**Provado por mutação, nas duas metades** — cada uma mata exatamente um teste, e só um:
+
+| Mutação em `travarAMaquina` | Teste que morre |
+|---|---|
+| `dono.pid === herdado` → `false` | o descendente do dono passa — e NÃO fica com o trinco na mão |
+| `dono.pid === herdado` → `true` | dono FORJADO não abre o trinco alheio |
+
+⚠️ **O que a reentrância NÃO protege, dito em voz alta:** um trabalho pesado que dispare
+outro **em paralelo consigo mesmo** passa agora. Nada no repositório faz isso — os passos
+do portão são sequenciais — e o dia em que alguém fizer, é esta linha a reler.
+
+⚠️ **A segunda execução também custou uma lição de método:** a primeira rodada do portão
+acusou `test:rapido` falhando e **o arquivo de registro do passo não existia**. Causa:
+`spawnSync` bloqueia o event loop, e as escritas assíncronas de `createWriteStream` ficavam
+enfileiradas esperando um loop que só voltava a girar no fim. É a mesma classe de defeito
+que o ITEM 4 existe para impedir — saída que não chega ao disco — reaparecida **dentro da
+ferramenta construída para impedi-la**. `scripts/portao.ts` passou a escrever com
+`writeFileSync`/`appendFileSync`.
+
+## 19. O próximo passo
+
+⚠️ **O ENT04 está FECHADO e PARADO no gate.**
+
+**Para o ENT05**, na ordem que a medição de 18.9 impõe — e ela mudou a ordem:
+
+0. ⚠️ **O MODELO das três seções que o censo derrubou**, antes de qualquer tela: quantidade
+   no almoxarifado (5.18 — 20 de 25 cláusulas ausentes), responsável/localização/termo no
+   bem (5.19), requisição e ordem de compra (5.17). **É onde moram as 469 cláusulas de
+   `BASE_FORTE`**, e é a única frente do projeto com esse volume. O molde entra depois, e aí
+   rende — entrar antes rendeu zero duas vezes seguidas.
 
 1. **As treze decisões da varredura do ENT04/ENT05** (`docs/varredura-de-modelo-ent04-ent05.md`).
    Continuam sendo o item mais barato e o mais caro de adiar — são decisões de **modelo**, e

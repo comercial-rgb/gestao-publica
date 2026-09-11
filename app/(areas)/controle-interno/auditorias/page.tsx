@@ -36,7 +36,7 @@ export default async function AuditoriasPage({
   try {
     const [pagina, opcoes, permitidas] = await Promise.all([
       listarAuditorias(consulta),
-      opcoesDoCadastro(),
+      opcoesDoCadastro({ classesDeConta: AUDITORIAS.classesDeConta ?? [] }),
       acoesPermitidas([
         ...Object.values(AUDITORIAS.permissoes).filter((p): p is string => p !== undefined),
         ...AUDITORIAS.acoes.map((a) => a.acaoDoCenso),

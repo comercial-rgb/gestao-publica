@@ -213,13 +213,36 @@ async function hrefDaAba(page: Page, aba: string): Promise<string> {
   return href;
 }
 
-async function primeiroDetalhe(page: Page, rota: string): Promise<string> {
-  const href = await page.evaluate((r) => {
-    const links = Array.from(document.querySelectorAll("table a"));
-    const alvo = links.find((a) => (a.getAttribute("href") ?? "").startsWith(`${r}/`));
-    return alvo?.getAttribute("href") ?? null;
-  }, rota);
-  if (href === null) throw new Error(`nenhum link de detalhe em ${rota}`);
+/**
+ * O detalhe do registro cujo texto da LINHA contém o identificador.
+ *
+ * ⚠️ POR QUE ELE EXISTE, E É UM DEFEITO QUE ESTE SMOKE TINHA. `primeiroDetalhe` devolve a
+ * PRIMEIRA linha da lista — que na primeira execução é a que acabou de ser criada e, na
+ * segunda, é a de ONTEM. O smoke passou no ENT03c por isso e falhou na primeira reexecução
+ * com o banco já povoado: "competência 2026-03 já atualizada" e "o saldo vale 20000, não
+ * 10000" não eram defeitos do produto — eram o smoke medindo o registro errado.
+ *
+ * Um percurso que só passa em banco limpo não prova nada sobre um sistema que vai rodar
+ * anos com dado acumulado.
+ */
+async function detalheDe(page: Page, rota: string, identificador: string): Promise<string> {
+  const href = await page.evaluate(
+    (r, ident) => {
+      const linhas = Array.from(document.querySelectorAll("table tr"));
+      for (const tr of linhas) {
+        if (!(tr.textContent ?? "").includes(ident)) continue;
+        const a = tr.querySelector("a");
+        const h = a?.getAttribute("href") ?? "";
+        if (h.startsWith(`${r}/`)) return h;
+      }
+      return null;
+    },
+    rota,
+    identificador
+  );
+  if (href === null) {
+    throw new Error(`nenhuma linha com "${identificador}" em ${rota}`);
+  }
   return href;
 }
 
@@ -289,7 +312,7 @@ async function main(): Promise<void> {
       "o identificador não apareceu na lista recarregada"
     );
 
-    const detDF = (await primeiroDetalhe(page, "/divida/fundada")).replace(BASE, "");
+    const detDF = (await detalheDe(page, "/divida/fundada", idDF)).replace(BASE, "");
     const tDetDF = await irPara(page, detDF);
     conferir(
       "dívida fundada: o detalhe mostra o saldo DERIVADO e a lei autorizativa",
@@ -298,12 +321,16 @@ async function main(): Promise<void> {
     );
     await conferirAsCincoAbas(page, detDF, "dívida fundada");
 
-    // ⚠️ ESTE AMBIENTE NÃO TEM `RoteiroDivida` PARAMETRIZADO, e o que o smoke prova aqui é
-    // melhor do que o caminho feliz: a tela ALCANÇA o caso de uso, e o caso de uso RECUSA
-    // fail-closed em vez de inventar a conta contábil. O PCASP semeado nesta máquina é o
-    // mínimo da POC — 26 contas analíticas, sem a VPD de variação monetária —, e fabricar
-    // um código de conta para o smoke passar seria inventar norma da STN dentro de um teste.
-    // Pendência ROTEIROS-PATRIMONIAIS-NAO-PARAMETRIZADOS.
+    // ⚠️ ATÉ O ENT03c ESTE PASSO PROVAVA A RECUSA, e a recusa era o comportamento certo: o
+    // ambiente não tinha `RoteiroDivida` parametrizado, e fabricar um código de conta para
+    // o smoke passar seria inventar norma da STN dentro de um teste.
+    //
+    // O ENT04 tirou o motivo da recusa em vez de contorná-lo: `seed:pcasp-oficial` trouxe
+    // as 7.864 contas do PCASP publicado pelo TCE-PB (sha256 conferido contra o MANIFEST),
+    // e `seed:roteiros-patrimoniais` parametrizou o roteiro com contas REAIS e ANALÍTICAS —
+    // D 3.4.3.1.1.01.00 (variações monetárias de dívida contratual interna) contra
+    // C 2.2.2.1.1.02.98 (empréstimos internos em contratos). Agora o caminho feliz é
+    // exigível. Fecha ROTEIROS-PATRIMONIAIS-NAO-PARAMETRIZADOS.
     const rCorrecao = await preencherEEnviar(page, "atualizacao-monetaria", [
       { sel: 'input[name="competencia"]', valor: "2026-03" },
       { sel: '[data-mascara="valor"]', valor: "1.200,00" },
@@ -311,23 +338,22 @@ async function main(): Promise<void> {
       { sel: 'input[name="motivo"]', valor: "Correção monetária de março, IPCA informado pelo agente financeiro" },
     ]);
     conferir(
-      "dívida fundada: a ação chega ao caso de uso e ele RECUSA sem roteiro parametrizado",
-      rCorrecao.tipo === "erro" && rCorrecao.texto.includes("RoteiroDivida"),
-      `esperava a recusa por roteiro ausente; veio "${rCorrecao.tipo}": ${rCorrecao.texto}`
+      "dívida fundada: a correção monetária é ACEITA com o roteiro parametrizado",
+      rCorrecao.tipo === "ok",
+      `esperava sucesso; veio "${rCorrecao.tipo}": ${rCorrecao.texto}`
     );
 
-    // ⚠️ E A RECUSA TEM DE SER TOTAL. "Nada foi gravado" é a parte que um teste de tela
-    // esquece: se o movimento tivesse entrado sem lançamento, o histórico o mostraria.
+    // ⚠️ E O SUCESSO TEM DE SER VISÍVEL NO HISTÓRICO. "A tela disse que deu certo" não é
+    // persistência — é a mesma classe de falso-verde que o ENT03b pegou.
     //
     // ⚠️ A ASSERÇÃO É SOBRE O HISTÓRICO, E NÃO SOBRE A PÁGINA. A primeira versão procurava
     // "atualização monetária" no texto da página inteira e PASSAVA — porque esse é o RÓTULO
-    // de uma linha do painel de dados, que aparece com ou sem movimento. Era a mesma classe
-    // de falso-verde do ENT03b: asserção que casa com a moldura em vez do conteúdo.
+    // de uma linha do painel de dados, que aparece com ou sem movimento.
     const historicoDF = await irPara(page, (await hrefDaAba(page, "historico")).replace(BASE, ""));
     conferir(
-      "dívida fundada: a recusa não deixou movimento órfão no histórico",
-      !historicoDF.includes("1.200,00"),
-      "um movimento apareceu no histórico depois de o servidor ter recusado"
+      "dívida fundada: o movimento de correção aparece no histórico, com o valor",
+      historicoDF.includes("1.200,00"),
+      "o servidor aceitou a correção mas ela não apareceu no histórico da dívida"
     );
 
     // ══════════════════════════════════════════════════════════════════════
@@ -362,7 +388,7 @@ async function main(): Promise<void> {
       "o identificador não apareceu na lista recarregada"
     );
 
-    const detDA = (await primeiroDetalhe(page, "/divida/ativa")).replace(BASE, "");
+    const detDA = (await detalheDe(page, "/divida/ativa", idDA)).replace(BASE, "");
     const tDetDA = await irPara(page, detDA);
     conferir(
       "dívida ativa: o detalhe nomeia o art. 39, § 2º e o saldo a receber",
@@ -371,20 +397,28 @@ async function main(): Promise<void> {
     );
     await conferirAsCincoAbas(page, detDA, "dívida ativa");
 
-    // Mesma parametrização ausente da dívida fundada — e a mesma recusa fail-closed.
+    // Mesmo desbloqueio da dívida fundada: o roteiro da INSCRICAO agora existe, com contas
+    // reais — D 1.1.2.5.1.01.99 (dívida ativa tributária) contra C 4.6.3.9.1.00.00 (ganho
+    // por incorporação de ativos). Inscrever CRIA um crédito que não existia no ativo; não
+    // é receita orçamentária, e por isso a contrapartida é VPA e não classe 6.
     const rInscricao = await preencherEEnviar(page, "inscrever", [
       { sel: '[data-mascara="valor"]', valor: "10.000,00" },
       { sel: 'input[type="date"]', valor: dia(0), tipo: "data" },
       { sel: 'input[name="motivo"]', valor: "Inscrição de IPTU 2025 não quitado, notificação esgotada" },
     ]);
     conferir(
-      "dívida ativa: a ação chega ao caso de uso e ele RECUSA sem roteiro parametrizado",
-      rInscricao.tipo === "erro" && rInscricao.texto.includes("RoteiroDividaAtiva"),
-      `esperava a recusa por roteiro ausente; veio "${rInscricao.tipo}": ${rInscricao.texto}`
+      "dívida ativa: a inscrição é ACEITA com o roteiro parametrizado",
+      rInscricao.tipo === "ok",
+      `esperava sucesso; veio "${rInscricao.tipo}": ${rInscricao.texto}`
     );
 
     // ⚠️ O CANCELAMENTO ACIMA DO SALDO. O motor recusa; o passo existe para provar que a
     // tela não ofereceu um atalho — ela manda o mesmo número pelo mesmo caso de uso.
+    //
+    // ⚠️ E AGORA ELE VALE MAIS DO QUE VALIA. Enquanto a inscrição era recusada, o saldo era
+    // ZERO e "cancelar 99.999 de um saldo 0" é recusa trivial — qualquer guarda pega. Com
+    // 10.000,00 inscritos de verdade, o que se prova é a comparação com o saldo DERIVADO
+    // dos movimentos, que é a asserção que interessa.
     const rCancelaDemais = await preencherEEnviar(page, "cancelar", [
       { sel: '[data-mascara="valor"]', valor: "99.999,00" },
       { sel: 'input[type="date"]', valor: dia(0), tipo: "data" },
@@ -392,8 +426,8 @@ async function main(): Promise<void> {
     ]);
     conferir(
       "dívida ativa: cancelar ACIMA do saldo é RECUSADO, e a recusa nomeia o saldo real",
-      rCancelaDemais.tipo === "erro" && rCancelaDemais.texto.includes("0.00"),
-      `esperava a recusa por saldo; veio "${rCancelaDemais.tipo}": ${rCancelaDemais.texto}`
+      rCancelaDemais.tipo === "erro" && rCancelaDemais.texto.includes("10000.00"),
+      `esperava a recusa nomeando o saldo 10000.00; veio "${rCancelaDemais.tipo}": ${rCancelaDemais.texto}`
     );
 
     // ⚠️ O RECEBIMENTO NÃO É OFERECIDO, E ISSO É A DECISÃO. Ele é receita orçamentária e
@@ -438,7 +472,7 @@ async function main(): Promise<void> {
       "a coluna de situação não trouxe o estado derivado"
     );
 
-    const detOB = (await primeiroDetalhe(page, "/licitacoes/obras")).replace(BASE, "");
+    const detOB = (await detalheDe(page, "/licitacoes/obras", idOB)).replace(BASE, "");
     const tDetOB = await irPara(page, detOB);
     conferir(
       "obras: o detalhe nomeia o rol FECHADO da IN/INSS/DC 100/2003",
@@ -505,7 +539,87 @@ async function main(): Promise<void> {
     }
 
     // ══════════════════════════════════════════════════════════════════════
-    // 4 · A LISTAGEM DO MOLDE — ordenação e seleção, numa das três telas
+    // 4 · PROVISÕES  (ENT04 — o quarto cadastro pelo molde)
+    //
+    // ⚠️ POR QUE ELE ENTRA NESTE ARQUIVO. Este smoke é o percurso dos cadastros do MOLDE,
+    // e provisões é um deles. Um segundo arquivo duplicaria as 210 linhas de harness — e
+    // duas cópias de um percurso divergem no dia em que uma ganha um passo.
+    //
+    // ⚠️ E O CADASTRO DE PROVISÕES TEM **TRÊS** ABAS, NÃO CINCO: anexo e campo adicional
+    // exigem FK própria, que ele não tem. Por isso `conferirAsCincoAbas` NÃO é chamado
+    // aqui — chamá-lo exigiria abas que o descritor nega de propósito.
+    // ══════════════════════════════════════════════════════════════════════
+    const listaPR = await irPara(page, "/patrimonio/provisoes");
+    conferir(
+      "provisões: a listagem abre com os filtros declarados",
+      listaPR.includes("provisões") && listaPR.includes("identificador ou descrição"),
+      "a listagem não trouxe o título ou a barra de filtros"
+    );
+
+    const idProv = `PROV-SMOKE-${Date.now().toString().slice(-6)}`;
+    // ⚠️ A CONTA TEM DE SER DE PASSIVO — e o `select` só oferece a classe 2 porque o
+    // descritor declara `classesDeConta: ["2"]`. Antes disso, com o plano oficial no banco,
+    // a lista vinha só com contas do ativo e o cadastro era impossível.
+    const contaDaProvisao = await opcaoQueCasa(page, 'select[name="contaContabilId"]', "2.");
+    conferir(
+      "provisões: o seletor de conta oferece conta de PASSIVO (classe 2)",
+      contaDaProvisao !== "",
+      "o seletor não ofereceu nenhuma conta da classe 2 — o formulário montaria inútil"
+    );
+
+    const rCriaProv = await preencherEEnviar(page, "criar-provisoes", [
+      { sel: 'input[name="identificador"]', valor: idProv },
+      { sel: 'textarea[name="descricao"]', valor: "Provisão para riscos trabalhistas — reclamações em curso" },
+      { sel: 'select[name="contaContabilId"]', valor: contaDaProvisao, tipo: "select" },
+    ]);
+    conferir(
+      "provisões: o cadastro foi aceito",
+      rCriaProv.tipo === "ok",
+      `esperava sucesso; veio "${rCriaProv.tipo}": ${rCriaProv.texto}`
+    );
+
+    const aposRecargaPR = await irPara(page, "/patrimonio/provisoes");
+    conferir(
+      "provisões: o registro aparece APÓS RECARGA",
+      aposRecargaPR.includes(idProv.toLowerCase()),
+      "o identificador não apareceu na lista depois de recarregar — não persistiu"
+    );
+
+    const detPR = (await detalheDe(page, "/patrimonio/provisoes", idProv)).replace(BASE, "");
+    await irPara(page, detPR);
+
+    const rConstituir = await preencherEEnviar(page, "constituir", [
+      { sel: '[data-mascara="valor"]', valor: "50.000,00" },
+      { sel: 'input[type="date"]', valor: dia(0), tipo: "data" },
+      { sel: 'input[name="motivo"]', valor: "Constituição inicial pelo laudo atuarial de 2026" },
+    ]);
+    conferir(
+      "provisões: constituir é ACEITO e lança contra o passivo",
+      rConstituir.tipo === "ok",
+      `esperava sucesso; veio "${rConstituir.tipo}": ${rConstituir.texto}`
+    );
+
+    // ⚠️ REVERTER ACIMA DO SALDO. O motor recusa; o passo prova que a tela não abriu atalho.
+    const rReverteDemais = await preencherEEnviar(page, "reverter", [
+      { sel: '[data-mascara="valor"]', valor: "80.000,00" },
+      { sel: 'input[type="date"]', valor: dia(0), tipo: "data" },
+      { sel: 'input[name="motivo"]', valor: "Tentativa de reverter mais do que foi constituído" },
+    ]);
+    conferir(
+      "provisões: reverter ACIMA do saldo é RECUSADO — a provisão não fica negativa",
+      rReverteDemais.tipo === "erro",
+      `esperava recusa; veio "${rReverteDemais.tipo}": ${rReverteDemais.texto}`
+    );
+
+    const histPR = await irPara(page, (await hrefDaAba(page, "historico")).replace(BASE, ""));
+    conferir(
+      "provisões: o histórico mostra a constituição e NÃO mostra a reversão recusada",
+      histPR.includes("50.000,00") && !histPR.includes("80.000,00"),
+      "o histórico não bate com o que o servidor aceitou e recusou"
+    );
+
+    // ══════════════════════════════════════════════════════════════════════
+    // 5 · A LISTAGEM DO MOLDE — ordenação e seleção, numa das telas
     // ══════════════════════════════════════════════════════════════════════
     const ordenada = await irPara(page, "/divida/fundada?ordem=identificador&direcao=desc");
     conferir(

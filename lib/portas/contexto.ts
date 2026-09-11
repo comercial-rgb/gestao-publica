@@ -1,4 +1,5 @@
 import { cliente } from "./cliente";
+import type { AcaoDoSistema } from "../../modules/m16-travamento/acoes";
 import { exigirSessao } from "./sessao";
 import type { Identidade } from "../../modules/m16-travamento/autenticacao";
 
@@ -44,6 +45,47 @@ export interface ContextoDoUsuario {
    * ele conteria unidades que o usuário não pode ler.
    */
   readonly podeConsolidado: boolean;
+  /**
+   * AS AÇÕES QUE ESTE USUÁRIO REALMENTE TEM — o insumo da barra lateral.
+   *
+   * ⚠️ ELAS VÊM DA MESMA TABELA QUE `autorizar` LÊ (`PermissaoDePerfil`, pelos vínculos de
+   * perfil). Não há segunda fonte: um menu com a própria ideia de quem pode o quê é o
+   * defeito do seletor de encaminhamento do ENT02, repetido em escala de sistema.
+   */
+  readonly acoes: readonly AcaoDoSistema[];
+}
+
+/**
+ * AS AÇÕES DO USUÁRIO, sem recorte de unidade.
+ *
+ * ⚠️ SEM RECORTE DE UG, E DE PROPÓSITO. A pergunta da barra lateral é "esta área existe
+ * para ele em ALGUM lugar do ente?", não "ele pode empenhar NESTA unidade?". Filtrar por UG
+ * aqui esconderia a área inteira de quem tem a ação em outra unidade — e ele deixaria de
+ * achar a tela que pode usar. A pergunta específica continua sendo do `autorizar`, no ato.
+ *
+ * ⚠️ FAIL-CLOSED, como as UGs: usuário inexistente, inativo ou sem perfil devolve VAZIO.
+ * Tratar vazio como "mostre tudo" faria de quem não tem crachá o usuário mais visível do
+ * sistema.
+ */
+export async function listarAcoesDoUsuario(
+  sessao: Identidade
+): Promise<readonly AcaoDoSistema[]> {
+  const prisma = cliente();
+  const usuario = await prisma.usuario.findUnique({
+    where: { identificador: sessao.identificador },
+    select: { id: true, ativo: true },
+  });
+  if (usuario === null || !usuario.ativo) return [];
+
+  const vinculos = await prisma.vinculoUsuarioPerfil.findMany({
+    where: { usuarioId: usuario.id },
+    select: { perfil: { select: { permissoes: { select: { acao: true } } } } },
+  });
+  return [
+    ...new Set(
+      vinculos.flatMap((v) => v.perfil.permissoes.map((p) => p.acao as AcaoDoSistema))
+    ),
+  ];
 }
 
 /**
@@ -133,9 +175,10 @@ export async function listarExercicios(): Promise<readonly ExercicioDisponivel[]
  */
 export async function carregarContextoDoUsuario(): Promise<ContextoDoUsuario> {
   const sessao = await exigirSessao();
-  const [{ ugs, global }, exercicios] = await Promise.all([
+  const [{ ugs, global }, exercicios, acoes] = await Promise.all([
     listarUgsDoUsuario(sessao),
     listarExercicios(),
+    listarAcoesDoUsuario(sessao),
   ]);
-  return { exercicios, ugs, podeConsolidado: global };
+  return { exercicios, ugs, podeConsolidado: global, acoes };
 }

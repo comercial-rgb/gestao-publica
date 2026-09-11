@@ -33,7 +33,7 @@ export default async function DividaAtivaPage({
   try {
     const [pagina, opcoes, permitidas] = await Promise.all([
       listarDividasAtivas(consulta),
-      opcoesDoCadastro(),
+      opcoesDoCadastro({ classesDeConta: DIVIDA_ATIVA.classesDeConta ?? [] }),
       acoesPermitidas([
         ...Object.values(DIVIDA_ATIVA.permissoes).filter((p): p is string => p !== undefined),
         ...DIVIDA_ATIVA.acoes.map((a) => a.acaoDoCenso),

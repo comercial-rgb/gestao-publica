@@ -222,3 +222,54 @@ confirmada**, e é mais barato saber disso agora:
 - **o subempenho do leiaute do TCM-BA** é ausência de MODELO deste lado, não exigência
   externa mal atendida: o tribunal pede o número, e o gerador repete o do empenho porque
   subempenho não existe aqui.
+
+---
+
+## O que o ENT04 acrescentou ao inventário
+
+### Dependência que DEIXOU de existir: o plano de contas
+
+⚠️ **O PCASP saiu da lista.** Ele nunca foi "dependência externa" no sentido de precisar de
+convênio ou credencial — o arquivo estava em `docs/oficial/tce-pb/Pcasp_2025.xlsx` desde o
+começo, publicado pelo TCE-PB e com procedência no `MANIFEST.json`. O que faltava era um
+**leitor**: `.xlsx` é um zip de XML, e sem ler zip a alternativa era digitar código de conta
+à mão. `packages/zip` ganhou a leitura e `packages/planilha` nasceu para isso; as 7.864
+contas entram por `npm run seed:pcasp-oficial`, com o `sha256` conferido **antes** de
+qualquer linha ser lida.
+
+Vale registrar o padrão: **"não temos o dado" e "não sabemos abrir o arquivo que já temos"
+se parecem por fora e têm custos muito diferentes.** O primeiro depende de terceiro; o
+segundo é uma tarde de trabalho.
+
+### Dependência CONFIRMADA e nova: a tabela de fontes da STN
+
+- **Descrições das fontes/destinações de recurso** — a seção **5.22 do leiaute de
+  contabilidade 2026 v1.1** diz, literalmente, que `TipoFonteRecursos` é *"definido pela
+  Secretaria do Tesouro Nacional e disponibilizada pela Matriz de Saldos Contábeis - MSC"*.
+  O corpus local tem os **30 códigos** oficiais (`relacionamento_fonterecursos_co_2026.xlsx`,
+  com o relacionamento fonte × CO que o leiaute exige) e **não tem as descrições**. A única
+  com base textual local é o grupo **FUNDEB (540 a 543)**, que o próprio leiaute nomeia ao
+  proibir relacioná-las a outra conta corrente.
+
+  ⚠️ **Escrever as descrições de memória seria inventar tabela normativa** — a mesma recusa
+  que impediu fabricar código de conta no smoke do ENT03c. Pendência
+  **`FONTES-DESCRICAO-STN-MSC`**. O mesmo vale para função, subfunção, natureza de despesa,
+  categoria econômica e receita orçamentária: as seções 5.2, 5.4, 5.5, 5.6, 5.7, 5.9 e 5.11
+  do leiaute **todas remetem à STN/MSC**. Sete tabelas, uma dependência.
+
+### Um achado sobre o arquivo oficial que vale para o próximo que chegar
+
+O `Pcasp_2025.xlsx` tem **duas armadilhas medidas**, e as duas produzem dado errado quando
+lidas ingenuamente — nenhuma delas estoura:
+
+1. **228 descrições quebradas em duas linhas** (72 delas em 2025). Quando a descrição
+   original tinha quebra de linha, quem gerou a planilha emitiu uma segunda linha com o
+   resto do texto na coluna A e os dois indicadores deslocados para B e C. Lida direto, a
+   conta `352159900` fica truncada e surge uma conta fantasma de código `0`;
+2. **cada conta de 2025 aparece duas vezes** — 15.728 linhas para 7.864 contas.
+
+E uma divergência entre o arquivo e o que o `LEIA-ME.md` anuncia: a coluna
+**`exige_retencao` está zerada em TODO o bloco de 2025**. Ela é usada em 2022, 2023 e 2024
+(42 contas em 2024). Como `ContaPcasp` não tem coluna para isso, nada se perde hoje — fica
+registrado para quando a retenção automática do M07 precisar da marca, e a resposta será ler
+o bloco de 2024, **nomeando**.

@@ -5,45 +5,46 @@ import { ListaDeRecurso } from "../../../../components/molde/ListaDeRecurso";
 import { lerConsulta, TAMANHO_DE_PAGINA, type ParametrosBrutos } from "../../../../lib/molde/consulta";
 import { somarSelecionadas } from "../../../../lib/molde/soma";
 import { acoesPermitidas, exigirLeitura } from "../../../../lib/portas/molde";
-import { OBRAS } from "../../../../lib/portas/recursos/definicoes";
+import { PROVISOES } from "../../../../lib/portas/recursos/definicoes";
 import {
-  listarObras,
+  listarProvisoes,
   opcoesDoCadastro,
   PortaSemBancoError,
 } from "../../../../lib/portas/recursos/dados";
-import { acaoDeObraAction } from "./actions";
+import { acaoDeProvisaoAction } from "./actions";
 
 /**
- * OBRAS — gerada pelo MOLDE.
+ * PROVISÕES — gerada pelo MOLDE.
  *
- * ⚠️ MEDIDO E APROVADO SÃO COLUNAS SEPARADAS de propósito: a diferença entre as duas
- * é exatamente o que ainda NÃO autoriza liquidar.
+ * ⚠️ O SALDO PROVISIONADO É DERIVADO dos movimentos, nunca uma coluna — e não é
+ * `constituído − revertido`: os estornos entram com o sinal deles, e quem conhece os
+ * sinais é `SINAL_MOVIMENTO_PROVISAO`, no módulo.
  */
 export const dynamic = "force-dynamic";
 
-export default async function ObrasPage({
+export default async function ProvisoesPage({
   searchParams,
 }: {
   readonly searchParams: Promise<ParametrosBrutos>;
 }): Promise<React.ReactElement> {
   await exigirLeitura();
-  const consulta = lerConsulta(OBRAS, await searchParams);
+  const consulta = lerConsulta(PROVISOES, await searchParams);
 
   try {
     const [pagina, opcoes, permitidas] = await Promise.all([
-      listarObras(consulta),
-      opcoesDoCadastro({ classesDeConta: OBRAS.classesDeConta ?? [] }),
+      listarProvisoes(consulta),
+      opcoesDoCadastro({ classesDeConta: PROVISOES.classesDeConta ?? [] }),
       acoesPermitidas([
-        ...Object.values(OBRAS.permissoes).filter((p): p is string => p !== undefined),
-        ...OBRAS.acoes.map((a) => a.acaoDoCenso),
+        ...Object.values(PROVISOES.permissoes).filter((p): p is string => p !== undefined),
+        ...PROVISOES.acoes.map((a) => a.acaoDoCenso),
       ]),
     ]);
 
-    const somaveis = OBRAS.colunas.filter((c) => c.somavel === true).map((c) => c.nome);
+    const somaveis = PROVISOES.colunas.filter((c) => c.somavel === true).map((c) => c.nome);
 
     return (
       <ListaDeRecurso
-        definicao={OBRAS}
+        definicao={PROVISOES}
         linhas={pagina.linhas}
         total={pagina.total}
         pagina={consulta.pagina}
@@ -55,10 +56,10 @@ export default async function ObrasPage({
         somaDaSelecao={somarSelecionadas(pagina.linhas, consulta.selecionados, somaveis)}
         formulario={
           <FormsDoRecurso
-            definicao={OBRAS}
+            definicao={PROVISOES}
             permitidas={[...permitidas]}
             opcoes={opcoes}
-            action={acaoDeObraAction}
+            action={acaoDeProvisaoAction}
             modo="criar"
           />
         }
@@ -68,7 +69,7 @@ export default async function ObrasPage({
     if (e instanceof PortaSemBancoError) {
       return (
         <div className="space-y-6">
-          <PageHeader titulo={OBRAS.rotulo} subtitulo={OBRAS.descricao} />
+          <PageHeader titulo={PROVISOES.rotulo} subtitulo={PROVISOES.descricao} />
           <EstadoVazio
             titulo="Banco de dados indisponível"
             descricao="Este cadastro lê e escreve no banco. Sem ele, esta tela não tem o que mostrar — e não vai fingir que tem."

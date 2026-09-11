@@ -1,4 +1,4 @@
-import { deflateRawSync } from "node:zlib";
+import { deflateRawSync, inflateRawSync } from "node:zlib";
 
 /**
  * O CONTÊINER ZIP — N arquivos, sem dependência de terceiros.
@@ -208,4 +208,101 @@ export function nomeSeguroNoZip(ordem: number, nomeOriginal: string): string {
 
   const seguro = limpo === "" ? "arquivo" : limpo.slice(0, 120);
   return `${String(ordem).padStart(3, "0")}-${seguro}`;
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// LEITURA — o caminho inverso, para abrir o que o TCE publica
+// ════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * ═══ LER UM .ZIP — e a razão de estar NESTE arquivo ═══
+ *
+ * ⚠️ O QUE PEDIU ISTO. O corpus oficial do TCE-PB chega em `.xlsx`, e um `.xlsx` É UM ZIP
+ * de XML. Sem leitura de zip, o plano de contas oficial — 7.864 contas com procedência —
+ * não entra no sistema, e a alternativa é digitar código de conta à mão: exatamente a
+ * fabricação que o smoke do ENT03c se recusou a fazer.
+ *
+ * A escolha de casa é a mesma que trouxe a ESCRITA para cá: um formato, um lugar. Um
+ * leitor de zip dentro do seed e um escritor dentro do pacote seriam duas leituras da
+ * mesma APPNOTE, e o dia em que uma ganhasse correção a outra continuaria errada.
+ *
+ * ⚠️ LÊ PELO DIRETÓRIO CENTRAL, NÃO VARRENDO HEADERS LOCAIS. Varrer do começo procurando
+ * `PK\x03\x04` parece mais simples e é errado: a assinatura pode aparecer DENTRO dos dados
+ * comprimidos, e um arquivo removido continua com o header local no lugar. O diretório
+ * central é a única lista autoritativa do que o contêiner contém — é por ele que todo
+ * extrator sério anda.
+ *
+ * ⚠️ SEM ZIP64 (o mesmo limite da escrita) E SEM CRIPTOGRAFIA. Os dois são RECUSADOS com
+ * nome, em vez de devolver bytes truncados que o chamador leria como dado válido.
+ */
+
+const ASSINATURA_EOCD = 0x06054b50;
+const ASSINATURA_CENTRAL = 0x02014b50;
+const ASSINATURA_LOCAL = 0x04034b50;
+/** O EOCD tem 22 bytes fixos + até 65.535 de comentário. */
+const MAX_COMENTARIO_EOCD = 0xffff;
+
+function acharEocd(buf: Buffer): number {
+  const minimo = Math.max(0, buf.length - MAX_COMENTARIO_EOCD - 22);
+  for (let i = buf.length - 22; i >= minimo; i--) {
+    if (buf.readUInt32LE(i) === ASSINATURA_EOCD) return i;
+  }
+  throw new Error(
+    "Não é um arquivo .zip válido: o diretório central (EOCD) não foi encontrado. " +
+      "Um .xlsx é um zip — se este não é, o download veio truncado ou é outra coisa."
+  );
+}
+
+/** O conteúdo de cada arquivo dentro do contêiner, por nome. */
+export function lerEntradasDoZip(buf: Buffer): ReadonlyMap<string, Buffer> {
+  const eocd = acharEocd(buf);
+  const quantas = buf.readUInt16LE(eocd + 10);
+  let p = buf.readUInt32LE(eocd + 16);
+
+  const saida = new Map<string, Buffer>();
+  for (let i = 0; i < quantas; i++) {
+    if (buf.readUInt32LE(p) !== ASSINATURA_CENTRAL) {
+      throw new Error(
+        `Diretório central corrompido na entrada ${i + 1} de ${quantas}: assinatura ` +
+          `inesperada em ${p}.`
+      );
+    }
+    const bandeira = buf.readUInt16LE(p + 8);
+    const metodo = buf.readUInt16LE(p + 10);
+    const tamComprimido = buf.readUInt32LE(p + 20);
+    const tamNome = buf.readUInt16LE(p + 28);
+    const tamExtra = buf.readUInt16LE(p + 30);
+    const tamComentario = buf.readUInt16LE(p + 32);
+    const deslocLocal = buf.readUInt32LE(p + 42);
+    const nome = buf.toString("utf8", p + 46, p + 46 + tamNome);
+
+    // ⚠️ BIT 0 DA BANDEIRA = CRIPTOGRAFADO. Sem isto, o inflate devolveria lixo e o
+    // chamador leria lixo como se fosse XML.
+    if ((bandeira & 0x1) !== 0) {
+      throw new Error(`A entrada "${nome}" está criptografada; não há suporte.`);
+    }
+
+    if (buf.readUInt32LE(deslocLocal) !== ASSINATURA_LOCAL) {
+      throw new Error(`Header local ausente para "${nome}".`);
+    }
+    // ⚠️ OS TAMANHOS DE NOME E EXTRA DO HEADER LOCAL PODEM DIFERIR DOS DO CENTRAL — e
+    // usar os do central para calcular o início dos dados é um erro clássico que desloca
+    // a leitura em alguns bytes.
+    const tamNomeLocal = buf.readUInt16LE(deslocLocal + 26);
+    const tamExtraLocal = buf.readUInt16LE(deslocLocal + 28);
+    const inicio = deslocLocal + 30 + tamNomeLocal + tamExtraLocal;
+    const bruto = buf.subarray(inicio, inicio + tamComprimido);
+
+    if (metodo === 0) saida.set(nome, Buffer.from(bruto));
+    else if (metodo === 8) saida.set(nome, inflateRawSync(bruto));
+    else {
+      throw new Error(
+        `A entrada "${nome}" usa o método de compressão ${metodo}; só há suporte a ` +
+          `armazenado (0) e deflate (8).`
+      );
+    }
+
+    p += 46 + tamNome + tamExtra + tamComentario;
+  }
+  return saida;
 }

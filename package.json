@@ -10,6 +10,8 @@
     "prisma:generate": "prisma generate",
     "seed:m02": "tsx prisma/seed/m02-seed-oficial.ts",
     "seed:pcasp": "tsx prisma/seed/pcasp.ts",
+    "seed:pcasp-oficial": "tsx prisma/seed/pcasp-oficial.ts",
+    "seed:roteiros-patrimoniais": "tsx prisma/seed/roteiros-patrimoniais.ts",
     "seed:bootstrap": "tsx prisma/seed/bootstrap-usuario.ts",
     "seed:exercicio": "tsx prisma/seed/m08-exercicio.ts",
     "seed:m07": "tsx prisma/seed/m07-tipos-consignacao.ts",
@@ -49,6 +51,7 @@
     "smoke:ent03b": "tsx scripts/trinco-de-maquina.ts 'smoke do ENT03b' -- npx tsx scripts/smoke-ent03b.ts",
     "deriva": "tsx scripts/deriva-de-schema.ts",
     "test:fuso": "tsx scripts/trinco-de-maquina.ts 'suite sob outro fuso' -- env TZ=Pacific/Kiritimati npx vitest run",
+    "portao": "tsx scripts/trinco-de-maquina.ts 'portao' -- npx tsx scripts/portao.ts",
     "smoke:ent03c": "tsx scripts/trinco-de-maquina.ts 'smoke do ENT03c' -- npx tsx scripts/smoke-ent03c.ts"
   },
   "keywords": [],

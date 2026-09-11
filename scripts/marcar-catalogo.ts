@@ -91,7 +91,91 @@ const SMOKE_03B = "scripts/smoke-ent03b.ts (40 passos, 0 falhas, 2026-09-11, dua
  */
 const CENSO = "Censo ENT03c (varredura sistemática módulo x catálogo):";
 
+const SMOKE_04 =
+  "scripts/smoke-ent03c.ts (41 passos, 0 falhas, 2026-09-11, DUAS execuções — a segunda " +
+  "contra o banco já povoado pela primeira, que é o que prova que o percurso não depende " +
+  "de banco limpo)";
+
+const PCASP_OFICIAL =
+  "prisma/seed/pcasp-oficial.ts semeia as 7.864 contas do `Pcasp_2025.xlsx` publicado pelo " +
+  "TCE-PB (sha256 conferido contra docs/oficial/tce-pb/MANIFEST.json antes de qualquer " +
+  "leitura; versão e vigência registradas lá). test/pcasp-oficial.test.ts.";
+
 const MAPA: Readonly<Record<string, Marca>> = {
+  // ══ ENT04 — seeds de produção, shell e navegação ═════════════════════════
+  //
+  // ⚠️ A CONTAGEM DESTE LOTE É PEQUENA, E O MOTIVO É MEDIÇÃO, NÃO EXECUÇÃO. Os quatro itens
+  // do ENT04 são INFRAESTRUTURA (seeds oficiais, casca, guards, ferramenta) — e
+  // infraestrutura quase não tem cláusula no catálogo. O cadastro de PROVISÕES, entregue
+  // pelo molde e provado pelo smoke, marcou ZERO: as oito cláusulas que dizem "provisão"
+  // são todas de FOLHA (férias, 13º, licença-prêmio, seções 5.12), e a provisão contábil
+  // do M10 — matemática previdenciária e riscos — não é pedida em cláusula nenhuma.
+  // Está registrado em ESTADO-EXECUCAO §19.
+
+  "5.9.3.3": {
+    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    evidencia:
+      PCASP_OFICIAL + " O plano é ÚNICO: uma tabela `ContaPcasp` sem recorte por entidade, " +
+      "e a hierarquia (`contaPaiId`) fecha — nenhuma conta com pai inexistente. ⚠️ NÃO " +
+      "VALIDADO por tela: não há tela de manutenção do plano, só a consulta em " +
+      "app/(areas)/contabilidade/plano-de-contas.",
+  },
+  "5.10.1.72": {
+    situacao: "PARCIAL",
+    evidencia:
+      "O CONTROLE EXISTE e é do adapter (INVARIANTE 5): partida em conta sintética é " +
+      "recusada, e `opcoesDoCadastro` só oferece analíticas ao formulário. ⚠️ E A MEDIÇÃO " +
+      "CONTRA O PLANO REAL MOSTROU QUE O ENTE NÃO CUMPRE: confrontados os 70 códigos que o " +
+      "código de produção usa contra o PCASP oficial, 55 são SINTÉTICOS lá — a maioria é " +
+      "ancestral de hierarquia e nunca recebe partida, mas cerca de dez estão em ROTEIRO " +
+      "(5.2.2.1.1.00.00 da dotação inicial, 8.2.1.1.1.00.00 da DDR, 2.1.3.1.1.00.00 de " +
+      "fornecedores). test/contas-contra-o-plano-oficial.test.ts fixa a lista e FALHA se " +
+      "ela crescer. A correção muda lançamento já gravado e exige caracterização antes — " +
+      "pendência PLANO-DE-CONTAS-FORA-DO-PCASP.",
+  },
+  "5.10.1.71": {
+    situacao: "PARCIAL",
+    evidencia:
+      "OS EVENTOS SÃO TABELA, não código: RoteiroOrcamentario, RoteiroDivida, " +
+      "RoteiroDividaAtiva, RoteiroProvisao, RoteiroPatrimonial, RoteiroConvenio, " +
+      "RoteiroConsorcio, RoteiroPrecatorio, RoteiroEncerramento, RoteiroAlmoxarifado, " +
+      "RoteiroReconhecimento e RoteiroResultadoAlienacao — doze, cada um com conta de " +
+      "débito e de crédito por parâmetro, e o caso de uso RECUSA sem o roteiro em vez de " +
+      "inventar conta (prisma/seed/roteiros-patrimoniais.ts; smoke provou a recusa no " +
+      "ENT03c e a aceitação no ENT04). O histórico de cada registro mostra os movimentos " +
+      "com valor, data do fato e quem lançou. ⚠️ FALTA A CONSULTA DO PRÓPRIO EVENTO: não " +
+      "há tela onde o usuário veja, ANTES de executar, quais lançamentos uma transação " +
+      "vai produzir — é a segunda metade literal da cláusula. Pendência " +
+      "CONSULTA-DE-EVENTOS-CONTABEIS.",
+  },
+  "5.8.9": {
+    situacao: "PARCIAL",
+    evidencia:
+      "A TROCA DE ENTIDADE E DE EXERCÍCIO É NO CABEÇALHO, sem novo login " +
+      "(components/ui/Seletores.tsx sobre lib/portas/contexto.ts), e o seletor oferece " +
+      "SÓ as unidades que as permissões do usuário alcançam — fail-closed: sem permissão, " +
+      "lista vazia, nunca \"todas\". O exercício selecionado é preservado na troca porque " +
+      "os dois vivem no mesmo contexto e viajam na URL. ⚠️ \"ALTERNÂNCIA ENTRE SISTEMAS\" " +
+      "NÃO SE APLICA COMO ESCRITO: este é um sistema único com áreas, não uma suíte de " +
+      "sistemas separados. Marcar PARCIAL em vez de atendido é a leitura honesta do " +
+      "enunciado.",
+  },
+  "5.9.3.2": {
+    situacao: "PARCIAL",
+    evidencia:
+      "OS CÓDIGOS SÃO OFICIAIS E ESTÃO NO REPOSITÓRIO: as 30 fontes de " +
+      "docs/oficial/tce-pb/relacionamento_fonterecursos_co_2026.xlsx (sha256 no MANIFEST), " +
+      "com o relacionamento fonte x CO que o leiaute 2026 v1.1 exige. ⚠️ AS DESCRIÇÕES " +
+      "NÃO ESTÃO: a seção 5.22 do leiaute do TCE diz, literalmente, que TipoFonteRecursos é " +
+      "\"definido pela Secretaria do Tesouro Nacional e disponibilizada pela Matriz de " +
+      "Saldos Contábeis\" — e a MSC não está no corpus local. Escrever as descrições de " +
+      "memória seria inventar tabela normativa; a única exceção com base textual é o grupo " +
+      "FUNDEB (540-543), que o próprio leiaute nomeia. O grupo/especificação/detalhamento " +
+      "da STN que a cláusula pede vem da mesma tabela ausente. Pendência " +
+      "FONTES-DESCRICAO-STN-MSC.",
+  },
+  // ── PROMOÇÕES: o que o smoke do ENT04 exercitou de ponta a ponta ─────────
+
   // ══ ENT03a ═══════════════════════════════════════════════════════════════
   //
   // ⚠️ NENHUMA DELAS É `VALIDADO_LOCALMENTE`, e a razão é uma só: **não há tela**.
@@ -445,9 +529,19 @@ const MAPA: Readonly<Record<string, Marca>> = {
 
   // ── 5.10.1.82-86 · DÍVIDA FUNDADA (M10, desde o ENT01) ──────────────────
   "5.10.1.82": {
-    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    situacao: "VALIDADO_LOCALMENTE",
     evidencia:
-      "`DividaConsolidada` com identificador, credor, tipo (CONTRATUAL/MOBILIARIA), LEI AUTORIZATIVA (art. 32 da LRF — sem ela não há dívida legal) e conta de passivo por PARÂMETRO. As incorporações posteriores são MOVIMENTOS (`ATUALIZACAO_MONETARIA`), com lançamento próprio por `RoteiroDivida` e idempotência pela competência. modules/m10-patrimonial/m10-divida.test.ts. ⚠️ Sem tela, e o histórico gerencial exigido pelo TCE não foi conferido contra leiaute — pendência DIVIDA-UI.",
+      SMOKE_04 +
+      " O cadastro, a correção monetária e o histórico foram exercitados PELA TELA: o " +
+      "registro reaparece após RECARGA, a correção é ACEITA com o roteiro parametrizado " +
+      "(D 3.4.3.1.1.01.00 variações monetárias de dívida contratual interna contra " +
+      "C 2.2.2.1.1.02.98 empréstimos internos em contratos — contas reais do PCASP " +
+      "oficial) e o movimento aparece no histórico com o valor. No ENT03c este mesmo " +
+      "passo provava a RECUSA por falta de roteiro; o ENT04 tirou o motivo da recusa em " +
+      "vez de contorná-lo. ⚠️ CONTINUAM FALTANDO o número de parcelas e o comparativo " +
+      "previsto x realizado — não há modelo de PARCELA da dívida (5.10.1.84 é " +
+      "AUSENTE_CONFIRMADO, pendência DIVIDA-PARCELAS). A cláusula segue atendida só na " +
+      "primeira metade, e é por isso que a evidência diz qual.",
   },
   "5.10.1.83": {
     situacao: "IMPLEMENTADO_NAO_VALIDADO",
@@ -1421,8 +1515,18 @@ const MAPA: Readonly<Record<string, Marca>> = {
   "5.34.23": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há remessa para cartório. Quando existir, será DEPENDENCIA_EXTERNA — depende de convênio com o cartório de protesto." },
   "5.34.24": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Sem remessa a cartório não há desistência nem cancelamento de protesto." },
   "5.34.25": {
-    situacao: "IMPLEMENTADO_NAO_VALIDADO",
-    evidencia: "${CENSO} ⚠️ A CLÁUSULA FORTE DA SEÇÃO, e ela está atendida no que é contábil. Toda movimentação da dívida ativa tem lançamento na MESMA transação — inscrição (D ativo / C VPA), atualização (mesmo par), cancelamento (D VPD / C ativo) — e o recebimento é DELIBERADAMENTE sem roteiro próprio: ele é permutativo, e reconhecer VPA de novo contaria a receita duas vezes. `conferirDividaAtivaContraRazao` confronta as duas leituras e o t8 prova que a amarração PEGA um lançamento direto na conta. O ciclo fecha em 10.000 + 300 − 4.000 − 1.000 = 5.300 com o razão concordando (t1). ⚠️ FALTAM os fatos que não existem: desconto e prescrição não são tipos de movimento. Sem tela até este lote; a tela do molde do ENT03c cobre inscrição, atualização e cancelamento.",
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia:
+      SMOKE_04 +
+      " A INSCRIÇÃO foi exercitada pela tela e é ACEITA com o roteiro parametrizado " +
+      "(D 1.1.2.5.1.01.99 dívida ativa tributária contra C 4.6.3.9.1.00.00 ganho por " +
+      "incorporação de ativos — inscrever cria ATIVO, não receita: a receita só ocorre " +
+      "no recebimento). O cancelamento acima do saldo é RECUSADO e a recusa NOMEIA o " +
+      "saldo derivado real, o que prova que a inscrição persistiu e que o saldo vem dos " +
+      "movimentos. Os oito tipos de movimento têm roteiro. ⚠️ A CONSULTA DIÁRIA da " +
+      "segunda metade existe POR REGISTRO (aba histórico), não como movimento do dia do " +
+      "ente inteiro; e o roteiro é ÚNICO por tipo, então IPTU e ISS caem na mesma conta " +
+      "genérica — pendência DIVIDA-ATIVA-SEM-TRIBUTO-NO-ROTEIRO.",
   },
   "5.34.26": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há inscrição automática mensal de débitos em atraso — não há débito de exercício a inscrever, porque não há lançamento tributário." },
   "5.34.27": { situacao: "AUSENTE_CONFIRMADO", evidencia: "${CENSO} A dívida ativa que existe é a CONTÁBIL (M10): inscrição, atualização por competência idempotente, cancelamento e recebimento, cada um com roteiro parametrizado e conferência contra o razão. O que esta cláusula pede é do módulo TRIBUTÁRIO — que é AUSENTE_CONFIRMADO por inteiro no mapa de lacunas (seções 5.23–5.36, 562 cláusulas sem código). Não há emissão de guia pelo portal do cidadão." },

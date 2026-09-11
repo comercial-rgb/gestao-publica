@@ -10,6 +10,7 @@ import {
   gerarRreoAnexo8,
   gerarRreoAnexo12,
 } from "../../lib/portas/rreo";
+import { PainelDePendencias } from "./PainelDePendencias";
 import { SincronizarHome } from "./SincronizarHome";
 
 /**
@@ -61,6 +62,11 @@ export default async function DashboardPage({
     <div>
       <SincronizarHome />
       <PageHeader titulo="Painel" subtitulo={`Execução do exercício ${exercicio} — números reais, atualizados a cada carregamento.`} />
+
+      {/* ⚠️ ANTES DOS INDICADORES, e de propósito: o que ESPERA por quem abriu a tela vem
+          antes do retrato do ente. Um painel que começa pelo consolidado obriga o operador
+          a procurar o próprio trabalho embaixo. A faixa some quando não há pendência. */}
+      <PainelDePendencias />
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <CardLink href="/relatorios/rreo/anexo1" rotulo="Despesa do exercício" nota="Empenhada / liquidada / paga">

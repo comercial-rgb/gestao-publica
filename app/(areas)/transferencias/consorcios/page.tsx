@@ -36,7 +36,7 @@ export default async function ConsorciosPage({
   try {
     const [pagina, opcoes, permitidas] = await Promise.all([
       listarConsorcios(consulta),
-      opcoesDoCadastro(),
+      opcoesDoCadastro({ classesDeConta: CONSORCIOS.classesDeConta ?? [] }),
       acoesPermitidas([
         ...Object.values(CONSORCIOS.permissoes).filter((p): p is string => p !== undefined),
         ...CONSORCIOS.acoes.map((a) => a.acaoDoCenso),

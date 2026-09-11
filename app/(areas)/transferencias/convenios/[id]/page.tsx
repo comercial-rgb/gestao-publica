@@ -29,7 +29,7 @@ export default async function ConvenioPage({
 
   const [detalhe, opcoes, permitidas] = await Promise.all([
     verConvenio(id),
-    opcoesDoCadastro(),
+    opcoesDoCadastro({ classesDeConta: CONVENIOS.classesDeConta ?? [] }),
     acoesPermitidas(CONVENIOS.acoes.map((a) => a.acaoDoCenso)),
   ]);
   if (detalhe === null) notFound();

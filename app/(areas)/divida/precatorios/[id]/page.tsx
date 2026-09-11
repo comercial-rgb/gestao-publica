@@ -29,7 +29,7 @@ export default async function PrecatoriosDetalhePage({
 
   const [detalhe, opcoes, permitidas] = await Promise.all([
     verPrecatorio(id),
-    opcoesDoCadastro(),
+    opcoesDoCadastro({ classesDeConta: PRECATORIOS.classesDeConta ?? [] }),
     acoesPermitidas(PRECATORIOS.acoes.map((a) => a.acaoDoCenso)),
   ]);
   if (detalhe === null) notFound();

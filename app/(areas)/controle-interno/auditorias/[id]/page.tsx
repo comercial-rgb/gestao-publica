@@ -29,7 +29,7 @@ export default async function AuditoriasDetalhePage({
 
   const [detalhe, opcoes, permitidas] = await Promise.all([
     verAuditoria(id),
-    opcoesDoCadastro(),
+    opcoesDoCadastro({ classesDeConta: AUDITORIAS.classesDeConta ?? [] }),
     acoesPermitidas(AUDITORIAS.acoes.map((a) => a.acaoDoCenso)),
   ]);
   if (detalhe === null) notFound();

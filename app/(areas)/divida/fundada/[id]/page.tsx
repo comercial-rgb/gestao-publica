@@ -28,7 +28,7 @@ export default async function DividaFundadaDetalhePage({
 
   const [detalhe, opcoes, permitidas] = await Promise.all([
     verDividaFundada(id),
-    opcoesDoCadastro(),
+    opcoesDoCadastro({ classesDeConta: DIVIDA_FUNDADA.classesDeConta ?? [] }),
     acoesPermitidas(DIVIDA_FUNDADA.acoes.map((a) => a.acaoDoCenso)),
   ]);
   if (detalhe === null) notFound();

@@ -37,7 +37,7 @@ export default async function ConveniosPage({
   try {
     const [pagina, opcoes, permitidas] = await Promise.all([
       listarConvenios(consulta),
-      opcoesDoCadastro(),
+      opcoesDoCadastro({ classesDeConta: CONVENIOS.classesDeConta ?? [] }),
       acoesPermitidas([
         ...Object.values(CONVENIOS.permissoes).filter((p): p is string => p !== undefined),
         ...CONVENIOS.acoes.map((a) => a.acaoDoCenso),

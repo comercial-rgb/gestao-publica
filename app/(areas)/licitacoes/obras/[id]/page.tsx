@@ -28,7 +28,7 @@ export default async function ObrasDetalhePage({
 
   const [detalhe, opcoes, permitidas] = await Promise.all([
     verObra(id),
-    opcoesDoCadastro({ obraId: id }),
+    opcoesDoCadastro({ obraId: id, classesDeConta: OBRAS.classesDeConta ?? [] }),
     acoesPermitidas(OBRAS.acoes.map((a) => a.acaoDoCenso)),
   ]);
   if (detalhe === null) notFound();

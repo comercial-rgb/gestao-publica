@@ -5,6 +5,8 @@ import { Sidebar } from "../../components/ui/Sidebar";
 import { carregarContextoDoUsuario } from "../../lib/portas/contexto";
 import { exigirSessao } from "../../lib/portas/sessao";
 import { UiContextProvider } from "../../lib/ui-context";
+import { areasVisiveis } from "../../lib/portas/navegacao-permissoes";
+import { permitidos } from "../../lib/portas/busca-global";
 import { sairAction } from "./actions";
 
 /**
@@ -25,6 +27,13 @@ export default async function AreasLayout({
   // decide QUAIS unidades ele pode oferecer é a porta, contra as permissões reais do usuário.
   const contexto = await carregarContextoDoUsuario();
 
+  // ⚠️ O RECORTE DA BUSCA É FEITO AQUI, NO SERVIDOR, e pela MESMA regra da barra lateral:
+  // destino com ação exige a ação; destino de leitura herda a visibilidade da área.
+  const visiveis = areasVisiveis(contexto.acoes);
+  const podeAgir = new Set(contexto.acoes);
+  const podeVer = new Set<string>(visiveis);
+  const destinosDaBusca = permitidos({ acoes: podeAgir, areas: podeVer });
+
   return (
     <UiContextProvider
       exercicios={contexto.exercicios}
@@ -32,9 +41,14 @@ export default async function AreasLayout({
       podeConsolidado={contexto.podeConsolidado}
     >
       <div className="flex h-screen overflow-hidden">
-        <Sidebar colapsadaInicial={colapsada} usuario={ident.identificador} sairAction={sairAction} />
+        <Sidebar
+          colapsadaInicial={colapsada}
+          usuario={ident.identificador}
+          sairAction={sairAction}
+          areasVisiveis={visiveis}
+        />
         <div className="flex min-w-0 flex-1 flex-col">
-          <Header />
+          <Header destinosDaBusca={destinosDaBusca} />
           <main className="flex-1 overflow-y-auto p-8">{children}</main>
           <Footer />
         </div>

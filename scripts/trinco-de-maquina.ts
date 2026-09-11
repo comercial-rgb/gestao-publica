@@ -1,6 +1,14 @@
-import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import {
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 /**
  * O TRINCO DE MÁQUINA — um trabalho pesado por vez, porque o recurso escasso é a RAM.
@@ -53,6 +61,12 @@ import { join } from "node:path";
 
 const CAMINHO = join(tmpdir(), "gestao-publica-trabalho-pesado.trinco");
 
+/**
+ * ⚠️ O PID DO DONO, HERDADO PELOS DESCENDENTES. Ver `travarAMaquina` — é o que distingue
+ * "um segundo trabalho pesado" de "um pedaço do trabalho que já está rodando".
+ */
+export const VARIAVEL_DO_DONO = "TRINCO_DE_MAQUINA_DONO";
+
 interface Dono {
   readonly pid: number;
   readonly tarefa: string;
@@ -95,6 +109,41 @@ export interface TrincoDeMaquina {
 export function travarAMaquina(tarefa: string): TrincoDeMaquina {
   const dono = donoAtual();
 
+  // ═══ ⚠️ UM DESCENDENTE DO DONO NÃO É UM SEGUNDO TRABALHO PESADO ═══
+  //
+  // O CASO REAL, medido em 11/09/2026 no portão do ENT04. `test/registro-de-execucao.test.ts`
+  // roda o próprio trinco como filho para provar que a saída bruta chega ao disco. Sozinho
+  // ele passava (654/654). **Dentro do portão ele falhava sempre** — porque o portão roda
+  // sob o trinco, o trinco aninhado encontrava o dono vivo e recusava, e o filho saía com
+  // código 1 em vez do 3 que o script pediu. O portão inteiro ficava vermelho por isso, nas
+  // duas suítes: 1 falha em 654 e 1 em 1.910, o mesmo arquivo.
+  //
+  // ⚠️ E O DEFEITO NÃO ERA DO TESTE. O trinco conta MÁQUINA, não processo: quando o dono é
+  // um ancestral, a máquina JÁ ESTÁ contabilizada por ele. Recusar ali não protegia memória
+  // nenhuma — só impedia que qualquer trabalho pesado invocasse a si mesmo. Era uma armadilha
+  // latente para qualquer passo futuro do portão que chamasse um comando com trinco.
+  //
+  // ⚠️ POR QUE ISTO NÃO É UMA PORTA DOS FUNDOS. A variável não é uma dispensa que alguém
+  // liga: ela só vale se apontar para o PID QUE DE FATO DETÉM o trinco agora e que ainda
+  // está vivo. Um valor herdado de um shell antigo, ou forjado para um PID qualquer, não
+  // casa com o dono do arquivo e é recusado como qualquer outro — há teste de negação para
+  // exatamente isso.
+  //
+  // ⚠️ O QUE ELA NÃO PROTEGE, DITO EM VOZ ALTA: um trabalho pesado que dispare OUTRO trabalho
+  // pesado **em paralelo consigo mesmo** passa agora. Nada no repositório faz isso — os passos
+  // do portão são sequenciais — e o dia em que alguém fizer, esta é a linha a reler.
+  const herdado = Number.parseInt(process.env[VARIAVEL_DO_DONO] ?? "", 10);
+  if (
+    dono !== null &&
+    Number.isInteger(herdado) &&
+    dono.pid === herdado &&
+    vivo(dono.pid)
+  ) {
+    // Não toma e NÃO LIBERA: o arquivo é do ancestral, e apagá-lo aqui soltaria a máquina
+    // enquanto o trabalho dele ainda corre.
+    return { liberar: (): void => {} };
+  }
+
   if (dono !== null && dono.pid !== process.pid) {
     if (vivo(dono.pid)) {
       throw new Error(
@@ -131,6 +180,11 @@ export function travarAMaquina(tarefa: string): TrincoDeMaquina {
     } satisfies Dono)
   );
 
+  // ⚠️ DAQUI PARA BAIXO, TODO DESCENDENTE HERDA O PID DO DONO. `process.env` é copiado para
+  // cada filho no `spawn`, então não há nada a passar à mão: o portão, o vitest, os workers
+  // do vitest e o que eles dispararem já chegam sabendo de quem é o trinco.
+  process.env[VARIAVEL_DO_DONO] = String(process.pid);
+
   let liberado = false;
   const liberar = (): void => {
     if (liberado) return;
@@ -157,9 +211,63 @@ export function travarAMaquina(tarefa: string): TrincoDeMaquina {
 }
 
 /**
+ * ═══ O REGISTRO BRUTO — GRAVAR PRIMEIRO, FILTRAR DEPOIS ═══
+ *
+ * ⚠️ O QUE ACONTECEU, E É O MOTIVO DESTE TRECHO EXISTIR. No fechamento do ENT03c, uma
+ * execução do `test:fuso` acusou **2 falhas em 1.869** e os NOMES DOS TESTES QUE FALHARAM
+ * SE PERDERAM. Não porque o Vitest não os tenha impresso: porque o comando que os
+ * capturava era `npm run test:fuso | grep ...`, e o `grep` descartou tudo que não casava
+ * ANTES de qualquer coisa ser gravada. Duas execuções seguintes no mesmo commit vieram
+ * limpas, e a falha ficou **não isolada** — registrada como intermitência sem nome.
+ *
+ * **Falha intermitente sem nome é falha que não se investiga.** Uma intermitência só é
+ * descartável com o motivo junto; sem o nome do teste não há nem por onde começar.
+ *
+ * ⚠️ A CORREÇÃO NÃO É "LEMBRAR DE NÃO USAR GREP". Isso é disciplina, e disciplina falha
+ * exatamente no dia cansado em que a falha rara aparece. A correção é ESTRUTURAL: o
+ * runner não pode mais entregar a saída só ao terminal. Ele a escreve em disco ANTES de
+ * ela passar por qualquer cano — e então quem filtrar, filtra a cópia.
+ *
+ * Por isso `stdio: "inherit"` saiu do stdout/stderr. Ele era a causa: o filho escrevia
+ * direto no terminal do chamador, e o que o chamador fizesse com aquilo era irreversível.
+ * (A ENTRADA continua herdada — sem isso um comando que pergunta algo trava mudo.)
+ *
+ * ⚠️ E O AVISO DO CAMINHO VAI PARA `stderr`. Se fosse para `stdout`, o mesmo `| grep` que
+ * causou o problema esconderia a única pista de como recuperá-lo.
+ */
+const RAIZ_DO_REPO = fileURLToPath(new URL("..", import.meta.url));
+const PASTA_DE_REGISTRO = join(RAIZ_DO_REPO, ".registro-de-execucao");
+
+export function caminhoDoRegistro(tarefa: string, quando = new Date()): string {
+  const apelido =
+    tarefa
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .replace(/[^a-zA-Z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase() || "trabalho-pesado";
+  // Carimbo ordenável, sem os dois-pontos que atrapalham nome de arquivo.
+  const carimbo = quando.toISOString().replace(/[:.]/g, "-");
+  return join(PASTA_DE_REGISTRO, `${apelido}-${carimbo}.log`);
+}
+
+/**
+ * As linhas que NOMEIAM o que falhou. É a parte "filtrar depois" — e ela roda sobre o
+ * texto já gravado, nunca no lugar da gravação.
+ */
+export function linhasDeFalha(bruto: string): readonly string[] {
+  // eslint-disable-next-line no-control-regex
+  const semCor = bruto.replace(/\[[0-9;]*m/g, "");
+  return semCor
+    .split("\n")
+    .filter((l) => /^\s*FAIL\s|^\s*(Test Files|Tests)\s+\d+\s+failed/.test(l))
+    .map((l) => l.trimEnd());
+}
+
+/**
  * Uso como comando: `tsx scripts/trinco-de-maquina.ts <tarefa> -- <comando...>`
  *
- * Ele toma o trinco, roda o comando herdando o terminal, e solta. O código de saída é o
+ * Ele toma o trinco, roda o comando GRAVANDO a saída bruta, e solta. O código de saída é o
  * do comando — um wrapper que engolisse o exit code faria a suíte "passar" quando falhou.
  */
 if (process.argv[1]?.endsWith("trinco-de-maquina.ts") === true) {
@@ -174,8 +282,54 @@ if (process.argv[1]?.endsWith("trinco-de-maquina.ts") === true) {
   const [comando, ...args] = process.argv.slice(separador + 1);
 
   const trinco = travarAMaquina(tarefa);
-  const { spawnSync } = await import("node:child_process");
-  const r = spawnSync(comando as string, args, { stdio: "inherit" });
+  mkdirSync(PASTA_DE_REGISTRO, { recursive: true });
+  const registro = caminhoDoRegistro(tarefa);
+  const arquivo = createWriteStream(registro, { flags: "a" });
+
+  arquivo.write(
+    `# tarefa .... ${tarefa}\n` +
+      `# comando ... ${[comando, ...args].join(" ")}\n` +
+      `# quando .... ${new Date().toISOString()}\n` +
+      `# TZ ........ ${process.env["TZ"] ?? "(nao definido)"}\n` +
+      `# node ...... ${process.version}\n\n`
+  );
+  console.error(`[registro] saida bruta em ${registro}`);
+
+  const { spawn } = await import("node:child_process");
+  const filho = spawn(comando as string, args, {
+    stdio: ["inherit", "pipe", "pipe"],
+  });
+
+  // ⚠️ AS DUAS PONTAS, NESTA ORDEM: disco primeiro, terminal depois. Cada pedaço é escrito
+  // assim que chega — a saída da suíte passa de 1 MB e não é acumulada só em memória.
+  let bruto = "";
+  const encaminhar = (
+    fluxo: NodeJS.ReadableStream,
+    saida: NodeJS.WriteStream
+  ): void => {
+    fluxo.on("data", (pedaco: Buffer) => {
+      arquivo.write(pedaco);
+      bruto += pedaco.toString("utf8");
+      saida.write(pedaco);
+    });
+  };
+  if (filho.stdout !== null) encaminhar(filho.stdout, process.stdout);
+  if (filho.stderr !== null) encaminhar(filho.stderr, process.stderr);
+
+  const codigo = await new Promise<number>((resolve) => {
+    filho.on("close", (c, sinal) => resolve(c ?? (sinal !== null ? 128 : 1)));
+  });
+
+  await new Promise<void>((resolve) => arquivo.end(() => resolve()));
   trinco.liberar();
-  process.exit(r.status ?? 1);
+
+  // O resumo vai para `stderr` junto com o caminho — pelo mesmo motivo do aviso de cima.
+  const falhas = linhasDeFalha(bruto);
+  if (falhas.length > 0) {
+    console.error(`\n[registro] o que falhou, extraido do que foi gravado:`);
+    for (const l of falhas) console.error(`  ${l}`);
+  }
+  console.error(`[registro] saida bruta preservada em ${registro}`);
+
+  process.exit(codigo);
 }

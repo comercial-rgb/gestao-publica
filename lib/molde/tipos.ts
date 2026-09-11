@@ -210,6 +210,19 @@ export interface DefinicaoDeRecurso {
    */
   readonly assinavel?: boolean;
 
+  /**
+   * As CLASSES do PCASP que o campo `contaContabilId` deste cadastro aceita — `["2"]` para
+   * conta de passivo, `["1"]` para ativo, `["7", "8"]` para controle.
+   *
+   * ⚠️ OBRIGATÓRIO QUANDO O CADASTRO TEM CAMPO DE CONTA, e `verificarDefinicao` cobra.
+   * Enquanto o banco tinha 64 contas, oferecer "todas as analíticas" funcionava por
+   * acidente. Com o plano oficial do TCE-PB (6.074 analíticas) isso passou a significar
+   * duas coisas ruins ao mesmo tempo: uma lista de 400 KB no navegador, e — porque a
+   * consulta tem teto — um "Conta do passivo" sem nenhuma conta de passivo, porque as
+   * primeiras por código são todas da classe 1. O formulário montava, bonito e inútil.
+   */
+  readonly classesDeConta?: readonly string[];
+
   /** Consultas existentes a que o detalhe liga, com o filtro já aplicado. */
   readonly relacionados?: readonly {
     readonly rotulo: string;
@@ -247,6 +260,23 @@ export function verificarDefinicao(d: DefinicaoDeRecurso): readonly string[] {
     e.push(`a rota "${d.rota}" precisa começar com "/" e não terminar com "/"`);
   }
   if (d.colunas.length === 0) e.push("a listagem não tem coluna nenhuma");
+
+  // ⚠️ CAMPO DE CONTA SEM CLASSE DECLARADA É UM SELECT QUE PODE VIR VAZIO DA CLASSE CERTA.
+  // Com o plano oficial do TCE-PB no banco (6.074 contas analíticas), "todas as analíticas"
+  // deixou de ser uma lista; a consulta tem teto e as primeiras por código são todas da
+  // classe 1. Um "Conta do passivo" sem conta de passivo monta sem erro e não serve.
+  if (
+    d.campos.some((c) => c.nome === "contaContabilId") &&
+    (d.classesDeConta === undefined || d.classesDeConta.length === 0)
+  ) {
+    e.push(
+      "tem campo `contaContabilId` e não declara `classesDeConta` — diga quais classes do " +
+        'PCASP o campo aceita (por exemplo ["2"] para passivo)'
+    );
+  }
+  for (const c of d.classesDeConta ?? []) {
+    if (!/^[1-8]$/.test(c)) e.push(`a classe de conta "${c}" não é uma das oito do PCASP`);
+  }
   if (d.campos.length === 0 && d.permissoes.criar !== undefined) {
     e.push("declara permissão de criar e não tem campo nenhum para o formulário");
   }

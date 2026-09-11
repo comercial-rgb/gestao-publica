@@ -8,9 +8,36 @@
  * Esta é a ÚNICA fonte da estrutura de navegação — a sidebar e o breadcrumb derivam dela.
  */
 
+/**
+ * Os slugs das áreas, como UNIÃO e não como `string`.
+ *
+ * ⚠️ ELE EXISTE PARA QUE `lib/portas/navegacao-permissoes.ts` SEJA CONFERIDO NAS DUAS PONTAS: com
+ * `string`, um erro de digitação em "financeiro" produziria uma área que nunca aparece para
+ * ninguém, e nada reclamaria. Com a união, o compilador recusa.
+ */
+export type SlugDeArea =
+  | "planejamento"
+  | "receita"
+  | "despesa"
+  | "financeiro"
+  | "patrimonio"
+  | "licitacoes"
+  | "contabilidade"
+  | "relatorios"
+  | "transparencia"
+  | "protocolo"
+  | "comunicacao"
+  | "cadastros"
+  | "transferencias"
+  | "divida"
+  | "controle-interno"
+  | "administracao"
+  | "integracoes"
+  | "suporte";
+
 export interface AreaNav {
   /** O segmento da rota (`/planejamento`). */
-  readonly slug: string;
+  readonly slug: SlugDeArea;
   readonly rotulo: string;
   /** Uma linha do que a área faz — vira o subtítulo da página placeholder. */
   readonly descricao: string;

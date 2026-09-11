@@ -36,7 +36,7 @@ export default async function PrecatoriosPage({
   try {
     const [pagina, opcoes, permitidas] = await Promise.all([
       listarPrecatorios(consulta),
-      opcoesDoCadastro(),
+      opcoesDoCadastro({ classesDeConta: PRECATORIOS.classesDeConta ?? [] }),
       acoesPermitidas([
         ...Object.values(PRECATORIOS.permissoes).filter((p): p is string => p !== undefined),
         ...PRECATORIOS.acoes.map((a) => a.acaoDoCenso),

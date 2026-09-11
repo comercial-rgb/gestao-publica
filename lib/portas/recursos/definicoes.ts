@@ -104,6 +104,7 @@ export const CONVENIOS: DefinicaoDeRecurso = definirRecurso({
         { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 3 },
       ] },
   ],
+  classesDeConta: ["7", "8"],
   permissoes: { criar: "CADASTRAR_CONVENIO", anexar: "ANEXAR_ARQUIVO" },
   abas: [...ABAS_COMPLETAS],
   donoDoAnexo: "convenioId",
@@ -197,6 +198,7 @@ export const PRECATORIOS: DefinicaoDeRecurso = definirRecurso({
         { nome: "motivo", rotulo: "Decisão que cancelou", tipo: "texto", obrigatorio: true, largura: 2 },
       ] },
   ],
+  classesDeConta: ["2"],
   permissoes: { criar: "CADASTRAR_PRECATORIO", anexar: "ANEXAR_ARQUIVO" },
   abas: [...ABAS_COMPLETAS],
   donoDoAnexo: "precatorioId",
@@ -260,6 +262,7 @@ export const CONSORCIOS: DefinicaoDeRecurso = definirRecurso({
         { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 4 },
       ] },
   ],
+  classesDeConta: ["7", "8"],
   permissoes: { criar: "CADASTRAR_CONSORCIO", anexar: "ANEXAR_ARQUIVO" },
   abas: [...ABAS_COMPLETAS],
   donoDoAnexo: "consorcioId",
@@ -437,6 +440,7 @@ export const DIVIDA_FUNDADA: DefinicaoDeRecurso = definirRecurso({
         { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 4 },
       ] },
   ],
+  classesDeConta: ["2"],
   permissoes: { criar: "CADASTRAR_DIVIDA", anexar: "ANEXAR_ARQUIVO" },
   abas: [...ABAS_COMPLETAS],
   donoDoAnexo: "dividaId",
@@ -525,6 +529,7 @@ export const DIVIDA_ATIVA: DefinicaoDeRecurso = definirRecurso({
         { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 4 },
       ] },
   ],
+  classesDeConta: ["1"],
   permissoes: { criar: "CADASTRAR_DIVIDA_ATIVA", anexar: "ANEXAR_ARQUIVO" },
   abas: [...ABAS_COMPLETAS],
   donoDoAnexo: "dividaAtivaId",
@@ -617,6 +622,77 @@ export const OBRAS: DefinicaoDeRecurso = definirRecurso({
 });
 
 /** Todos os recursos do molde — a lista que o teste do censo e a navegação consomem. */
+export const PROVISOES: DefinicaoDeRecurso = definirRecurso({
+  nome: "provisoes",
+  rotulo: "Provisões",
+  rotuloSingular: "Provisão",
+  rota: "/patrimonio/provisoes",
+  descricao:
+    "O que o ente reconhece que vai dever antes de dever — provisão matemática " +
+    "previdenciária, riscos cíveis e trabalhistas (NBC TSP 03). Constituir é VPD: o " +
+    "patrimônio diminui hoje por uma obrigação que vence depois.",
+  campos: [
+    { nome: "identificador", rotulo: "Identificador", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "PROV-2026-001" },
+    { nome: "descricao", rotulo: "Descrição", tipo: "textoLongo", obrigatorio: true, largura: 3,
+      ajuda: "O que esta provisão cobre — o cálculo atuarial, a ação judicial, o risco reconhecido." },
+    { nome: "contaContabilId", rotulo: "Conta do passivo", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+  ],
+  colunas: [
+    { nome: "identificador", cabecalho: "Identificador", tipo: "link", ordenavel: true },
+    { nome: "descricao", cabecalho: "Descrição", tipo: "texto" },
+    { nome: "constituido", cabecalho: "Constituído", tipo: "dinheiro", somavel: true },
+    { nome: "revertido", cabecalho: "Revertido", tipo: "dinheiro", somavel: true },
+    { nome: "saldo", cabecalho: "Saldo provisionado", tipo: "dinheiro", somavel: true },
+  ],
+  filtros: [{ nome: "q", rotulo: "Identificador ou descrição", tipo: "texto", largura: 2 }],
+  acoes: [
+    { nome: "constituir", rotulo: "Constituir provisão", acaoDoCenso: "CONSTITUIR_PROVISAO",
+      aviso:
+        "Constituir é VARIAÇÃO PATRIMONIAL DIMINUTIVA: o ente fica mais pobre hoje por uma " +
+        "obrigação que vence depois. Não é despesa orçamentária e não consome dotação.",
+      campos: [
+        { nome: "valor", rotulo: "Valor (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
+        { nome: "diaMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 4 },
+      ] },
+    { nome: "atualizar", rotulo: "Atualizar provisão", acaoDoCenso: "ATUALIZAR_PROVISAO",
+      aviso:
+        "A atualização é por COMPETÊNCIA, e é ela que dá a idempotência: a mesma " +
+        "competência duas vezes é recusada, e não somada.",
+      campos: [
+        { nome: "valor", rotulo: "Valor da atualização (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
+        { nome: "competencia", rotulo: "Competência (AAAA-MM)", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "2026-03" },
+        { nome: "diaMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 4 },
+      ] },
+    { nome: "reverter", rotulo: "Reverter provisão", acaoDoCenso: "REVERTER_PROVISAO",
+      aviso:
+        "Reverter é o contrário de constituir: o risco não se concretizou. O servidor " +
+        "RECUSA reverter mais do que o saldo — a provisão não fica negativa.",
+      campos: [
+        { nome: "valor", rotulo: "Valor revertido (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
+        { nome: "diaMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 4 },
+      ] },
+  ],
+  classesDeConta: ["2"],
+  permissoes: { criar: "CADASTRAR_PROVISAO" },
+  // ⚠️ SEM AS ABAS DE ANEXO E DE CAMPOS ADICIONAIS, e é decisão declarada: as duas exigem
+  // FK própria (`Anexo.provisaoId`, `ValorDeCampoAdicional.provisaoId`) e um valor no rol
+  // fechado do M25. Declará-las sem isso produziria uma aba "Anexos" que perde o arquivo —
+  // e aba vazia é pior que aba ausente. Pendência PROVISAO-ANEXOS-E-CAMPOS.
+  abas: ["dados", "historico", "relacionados"],
+  relacionados: [
+    {
+      rotulo: "RGF Anexo 2 — dívida consolidada",
+      href: "/relatorios/rgf/anexo2",
+      explicacao:
+        "A provisão matemática previdenciária entra na dívida consolidada do RPPS. " +
+        "Quem soma é o M12 — esta tela não reconta.",
+    },
+  ],
+});
+
 export const RECURSOS_DO_MOLDE: readonly DefinicaoDeRecurso[] = [
   CONVENIOS,
   PRECATORIOS,
@@ -625,4 +701,5 @@ export const RECURSOS_DO_MOLDE: readonly DefinicaoDeRecurso[] = [
   DIVIDA_FUNDADA,
   DIVIDA_ATIVA,
   OBRAS,
+  PROVISOES,
 ];

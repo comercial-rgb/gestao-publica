@@ -4,18 +4,21 @@ import { DetalheDeRecurso } from "../../../../../components/molde/DetalheDeRecur
 import { lerConsulta, type ParametrosBrutos } from "../../../../../lib/molde/consulta";
 import type { AbaDoMolde } from "../../../../../lib/molde/tipos";
 import { acoesPermitidas, exigirLeitura } from "../../../../../lib/portas/molde";
-import { DIVIDA_ATIVA } from "../../../../../lib/portas/recursos/definicoes";
-import { opcoesDoCadastro, verDividaAtiva } from "../../../../../lib/portas/recursos/dados";
-import { acaoDeDividaAtivaAction } from "../actions";
+import { PROVISOES } from "../../../../../lib/portas/recursos/definicoes";
+import { opcoesDoCadastro, verProvisao } from "../../../../../lib/portas/recursos/dados";
+import { acaoDeProvisaoAction } from "../actions";
 
 /**
- * O DETALHE DE UM REGISTRO DE DÍVIDA ATIVA — as cinco abas fixas do molde.
+ * O DETALHE DE UMA PROVISÃO — as abas DECLARADAS no descritor.
+ *
+ * ⚠️ SÃO TRÊS, E NÃO CINCO: anexos e campos adicionais exigem FK própria e um valor no rol
+ * fechado do M25. Declarar a aba sem a FK produziria um "Anexos" que perde o arquivo.
  *
  * ⚠️ A ABA VEM DA URL (`?aba=historico`), e cada aba é lida no servidor SÓ QUANDO PEDIDA.
  */
 export const dynamic = "force-dynamic";
 
-export default async function DividaAtivaDetalhePage({
+export default async function ProvisaoDetalhePage({
   params,
   searchParams,
 }: {
@@ -24,18 +27,18 @@ export default async function DividaAtivaDetalhePage({
 }): Promise<React.ReactElement> {
   await exigirLeitura();
   const { id } = await params;
-  const consulta = lerConsulta(DIVIDA_ATIVA, await searchParams);
+  const consulta = lerConsulta(PROVISOES, await searchParams);
 
   const [detalhe, opcoes, permitidas] = await Promise.all([
-    verDividaAtiva(id),
-    opcoesDoCadastro({ classesDeConta: DIVIDA_ATIVA.classesDeConta ?? [] }),
-    acoesPermitidas(DIVIDA_ATIVA.acoes.map((a) => a.acaoDoCenso)),
+    verProvisao(id),
+    opcoesDoCadastro({ classesDeConta: PROVISOES.classesDeConta ?? [] }),
+    acoesPermitidas(PROVISOES.acoes.map((a) => a.acaoDoCenso)),
   ]);
   if (detalhe === null) notFound();
 
   return (
     <DetalheDeRecurso
-      definicao={DIVIDA_ATIVA}
+      definicao={PROVISOES}
       id={id}
       titulo={detalhe.titulo}
       subtitulo={detalhe.subtitulo}
@@ -45,11 +48,11 @@ export default async function DividaAtivaDetalhePage({
       historico={detalhe.historico}
       acoes={
         <FormsDoRecurso
-          definicao={DIVIDA_ATIVA}
+          definicao={PROVISOES}
           permitidas={[...permitidas]}
           opcoes={opcoes}
           registroId={id}
-          action={acaoDeDividaAtivaAction}
+          action={acaoDeProvisaoAction}
           modo="acoes"
         />
       }
