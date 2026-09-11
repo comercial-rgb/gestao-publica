@@ -91,6 +91,19 @@ const SMOKE_03B = "scripts/smoke-ent03b.ts (40 passos, 0 falhas, 2026-09-11, dua
  */
 const CENSO = "Censo ENT03c (varredura sistemática módulo x catálogo):";
 
+/**
+ * ⚠️ O PERCURSO DO ENT06 — E É ELE QUE PROMOVE, NÃO O DESCRITOR.
+ *
+ * Uma tela gerada pelo molde compila, aparece no `next build` e pode estar inteiramente
+ * quebrada: seletor que vem vazio, formulário que grava e lista que não mostra, aviso de
+ * sucesso sem persistência. Nenhuma dessas falhas aparece no typecheck nem na suíte de
+ * módulo — a suíte prova o DOMÍNIO, e o domínio já estava provado desde o ENT05.
+ *
+ * `VALIDADO_LOCALMENTE` aqui significa **este percurso exercitou o caminho inteiro pela
+ * interface**, e nada menos.
+ */
+const PERCURSO_ENT06 = "scripts/smoke-ent06.ts (48 passos, 0 falhas, 2026-09-11):";
+
 const SMOKE_04 =
   "scripts/smoke-ent03c.ts (41 passos, 0 falhas, 2026-09-11, DUAS execuções — a segunda " +
   "contra o banco já povoado pela primeira, que é o que prova que o percurso não depende " +
@@ -681,6 +694,41 @@ const MAPA: Readonly<Record<string, Marca>> = {
   // `test/censo-de-ausencias.test.ts`: o dia em que uma delas nascer, o teste quebra
   // nomeando a cláusula que precisa mudar de situação.
   // ══════════════════════════════════════════════════════════════════════════
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ENT06 — AS CLÁUSULAS QUE GANHARAM TELA, E SÓ AS QUE O PERCURSO ATRAVESSOU
+  //
+  // ⚠️ TRÊS, E NÃO QUINZE. A seção 5.18 tinha 15 cláusulas em
+  // `IMPLEMENTADO_NAO_VALIDADO`, e este lote deu tela a quase todas. Mas
+  // `VALIDADO_LOCALMENTE` afirma que o caminho foi ATRAVESSADO pela interface, e a maior
+  // parte dele não pôde ser: **não há tela de ENTRADA de material**.
+  //
+  // Sem entrada, não entra estoque; sem estoque, não há preço médio a calcular, não há
+  // saída a atender, não há transferência a fazer e não há lote a vencer. O percurso
+  // tentou atender a requisição e o servidor recusou — corretamente — dizendo "não se
+  // entrega o que não há na prateleira".
+  //
+  // ⚠️ E A ENTRADA NÃO É UMA TELA A MAIS: ela nasce da LIQUIDAÇÃO. `registrarEntradaFisica`
+  // aceita `movimentoAlmoxarifadoId`, e o ENT05 mediu que sem essa amarração a classe
+  // contábil fica em zero e a saída é recusada. A superfície da entrada atravessa M05 e
+  // M10, e é lote próprio. Pendência: `TELA-DE-ENTRADA-DE-MATERIAL`.
+  //
+  // Promover as outras doze sem percurso seria dizer que um servidor municipal consegue
+  // usá-las. Ele consegue cadastrar, requisitar, inventariar e bloquear. Ele não consegue,
+  // ainda, pôr material na prateleira.
+  // ══════════════════════════════════════════════════════════════════════════
+  "5.18.8": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: `${PERCURSO_ENT06} a requisição é criada PELA TELA (/patrimonio/almoxarifado/requisicoes), e a lista RECARREGADA a traz persistida com o acompanhamento — "Faltam 10", derivado da diferença entre o solicitado e as saídas vinculadas ao item. Não há coluna de quantidade atendida, de propósito: ela poderia divergir das saídas no primeiro estorno. O detalhe mostra o item, o total solicitado e o não atendido, e o filtro "com saldo a atender" responde por derivação, não por \`where\`.`,
+  },
+  "5.18.12": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: `${PERCURSO_ENT06} abertura e fechamento atravessados pela tela. ⚠️ E O BLOQUEIO FOI VERIFICADO DE FORA DO INVENTÁRIO: aberto o inventário, a LISTA DE DEPÓSITOS — que não sabe nada sobre inventário — passa a dizer que a movimentação daquele depósito está bloqueada; fechado, ela volta a dizer liberada. É isso que prova que o bloqueio é FATO do domínio e não rótulo de uma tela. A contagem é registrada e a divergência é derivada contra a posição NA DATA DE ABERTURA (contou 7 contra posição 0, sobra 7), e a tela diz que divergência não vira ajuste automático.`,
+  },
+  "5.18.13": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: `${PERCURSO_ENT06} o bloqueio é criado pela tela do depósito (por depósito inteiro ou por material), a listagem RECARREGADA passa a dizer "Bloqueada", e — o que importa — a tentativa de movimentar é RECUSADA pelo servidor com a mensagem nomeando o motivo do bloqueio. Encerrado, o bloqueio NÃO some: ele ganha data de fim e o histórico o mantém, porque o período em que ele valeu é o que explica as recusas daquele intervalo.`,
+  },
 
   // ── 5.18 · ALMOXARIFADO (M10) ──────────────────────────────────────────────
   "5.18.5": {
@@ -1331,12 +1379,9 @@ const MAPA: Readonly<Record<string, Marca>> = {
   "5.18.3": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): ParametroDeEstoque guarda minimo e maximo POR MATERIAL E POR DEPOSITO (o minimo de luva no almoxarifado central nao e o do posto). materiaisAbaixoDoMinimo compara a POSICAO DERIVADA contra o parametro, e aceita data." },
   "5.18.4": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): CotaDeConsumo por setor, material e competencia AAAA-MM. registrarSaidaFisica recusa quando a soma do mes estoura o limite. A competencia vem da DATA DO FATO: uma retirada de 31/12 as 23h50 civis consome a cota de dezembro, e ha fixture em hora de borda provando isso." },
   "5.18.6": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): registrarRequisicaoDeMaterial cria a requisicao com itens; o atendimento e a saida fisica que aponta para o item." },
-  "5.18.8": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): requisicoesPendentes deriva os itens com saldo nao atendido, por deposito ou por setor. SEM coluna de situacao: o estorno de uma saida devolve o item a pendencia sozinho, e ha teste provando exatamente isso." },
   "5.18.9": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): Atendimento PARCIAL provado: requisicao de 100, saida de 30, saldo nao atendido de 70. Atender alem do pedido RECUSA." },
   "5.18.10": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): MovimentoFisicoDeEstoque.setorId registra o centro de custo que consumiu - o Setor do M21, cadastro que ja existe." },
   "5.18.11": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): O preco medio e DERIVADO da mesma janela (valor da posicao dividido pela quantidade da posicao) e o preco EFETIVAMENTE aplicado e gravado no movimento de saida. Provado com N=2 a precos diferentes (100 a 5,00 mais 100 a 9,00 gera saida a 7,00, e nao a 9,00). Estoque zerado RECUSA em vez de devolver zero: custo zero atravessaria o razao sem acusar nada." },
-  "5.18.12": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): InventarioDeEstoque com abertura, fechamento e termos. Enquanto aberto, BLOQUEIA a movimentacao do deposito - e pela MESMA leitura do bloqueio manual, nao por uma segunda regra. Fechar sem contagem RECUSA; dois inventarios abertos no mesmo deposito RECUSAM." },
-  "5.18.13": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): BloqueioDeEstoque e FATO com inicio, fim opcional e motivo (decisao D14) - os tres alcances da clausula (produto, deposito, o par) saem das duas colunas opcionais. Encerrar POE O FIM, nao apaga a linha: o historico e o que explica por que uma saida foi recusada naquele dia." },
   "5.18.14": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): validadeDoEstoqueDoDeposito separa vencidos e a vencer em 30 dias, com fronteira CIVIL: o lote que vence HOJE nao esta vencido. So entram lotes com posicao POSITIVA - listar lote ja consumido mandaria alguem procurar na prateleira o que nao esta la." },
   "5.18.16": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): fichaDeControleDeEstoque devolve os movimentos do periodo E o saldo ANTERIOR a ele. E esta clausula que refuta a coluna de saldo dentro da propria secao." },
   "5.18.21": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): Deposito com codigo, nome, unidade gestora e responsavel; a posicao e os bloqueios sao por deposito, e a transferencia entre dois e composta." },

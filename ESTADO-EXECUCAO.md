@@ -2474,6 +2474,220 @@ um erro de tipo real.**
 **O que este portão NÃO cobre, e continua não cobrindo:** o smoke pelo navegador, pela razão
 de 20.8 — não há tela nova neste lote para percorrer.
 
+## 21. ENT06 item 0 — a superfície do almoxarifado físico
+
+### 21.1 · A contagem do lote, por natureza
+
+⚠️ **ESTE É LOTE DE SUPERFÍCIE, E A MEDIDA DELE É VALIDAÇÃO, NÃO COBERTURA.** O percentual
+do catálogo não se move e não deveria: as cláusulas destas seções já estavam contadas.
+
+| | |
+|---|---:|
+| **validação — cláusulas que saíram de `IMPLEMENTADO_NAO_VALIDADO`** | **3** |
+| construção — cláusulas que saíram de `AUSENTE_CONFIRMADO` | 0 |
+| censo — medir o que já existia | 0 |
+| **acréscimo de produto SEM cláusula** (fora da contagem) | 3 frentes |
+| catálogo | 316 de 2037 (15,5%) — inalterado |
+
+```
+IMPLEMENTADO_NAO_VALIDADO   88  ->  85     (−3)
+VALIDADO_LOCALMENTE         43  ->  46     (+3)
+```
+
+⚠️ **TRÊS, E A SEÇÃO 5.18 TINHA QUINZE ESPERANDO.** Este lote deu tela a quase todas — sete
+descritores pelo molde, uma tela escrita à mão, quinze rotas no build. E ainda assim só três
+foram promovidas, porque `VALIDADO_LOCALMENTE` afirma que o caminho foi **atravessado pela
+interface**, e a maior parte dele não pôde ser.
+
+**A razão é uma só, e está nomeada em 21.4: não há tela de ENTRADA de material.**
+
+As três promovidas — 5.18.8 (requisição com acompanhamento), 5.18.12 (inventário bloqueando
+a movimentação) e 5.18.13 (bloqueio por depósito) — são exatamente as que não dependem de
+haver estoque na prateleira.
+
+**Os acréscimos de produto sem cláusula**, fora da medida: o agendamento do passo de fuso
+pelo diff (21.2), o detector de deriva entre censo e perfis (21.5) e as seis faixas novas do
+painel de pendências.
+
+### 21.2 · O agendamento do portão — lido do diff, não escolhido
+
+`test:fuso` é a suíte inteira de novo sob `TZ=Pacific/Kiritimati`, e custa o mesmo que
+`test:tudo` — entre 673 s e 908 s nas medições desta máquina. Rodar os dois em todo portão
+dobra o passo mais caro, e **um portão de trinta minutos passa a ser rodado no fim do dia**.
+
+`scripts/fuso-do-diff.ts` decide por **caminho** (`packages/datas`, os guards de período, as
+janelas de relatório do M12, o próprio decisor e o portão) e por **conteúdo** (`new Date`,
+`Date.now/UTC/parse`, `getUTC*`, `toISOString`, `toLocale*String`, `Intl.DateTimeFormat`, os
+helpers civis do núcleo, o vocabulário de eixo temporal e `vi.setSystemTime`).
+
+⚠️ **É AGENDAMENTO, NÃO RIGOR.** Nada deixa de rodar: o fuso é obrigado sempre que o diff
+toca relógio, e `npm run portao -- --fim-de-lote` o roda incondicionalmente.
+
+⚠️ **E ELE FALHA PARA O LADO DE RODAR.** Sem marca do último portão verde, com marca
+apontando para commit que sumiu (rebase, reset) ou sem git, a resposta é o passo caro. Um
+agendamento que erra para o lado de pular vira, na prática, um passo que nunca roda.
+
+⚠️ **O RELATÓRIO NÃO ESCONDE O AGENDADO.** Estado próprio `agendado`, separado de `pulado`
+(que quer dizer "não pôde rodar porque algo quebrou antes"), **fora do numerador**, nomeado
+com o motivo e com o comando que o obriga. "10 de 10" com o fuso pulado seria verdadeiro e
+enganoso ao mesmo tempo.
+
+### 21.3 · ⚠️ O ACHADO QUE TORNA TUDO ISTO INALCANÇÁVEL EM PRODUÇÃO
+
+Medido no banco de desenvolvimento, e é o maior achado do lote:
+
+```
+censo do M16 ........ 223 ações
+perfil concedia ..... 185 ações
+FALTAVAM ............  38  —  TODAS as do ENT05
+```
+
+**O efeito não é um erro na tela: é a tela não existir para quem usa.** O molde esconde o
+formulário de quem não tem a ação, e faz certo — oferecer e recusar depois ensina que o
+sistema é instável. Então um lote inteiro de funcionalidade entregue fica invisível: sem
+mensagem, sem log, sem nada que denuncie. **Ninguém abre chamado dizendo "a tela que eu
+nunca vi não apareceu".**
+
+⚠️ **E O BOOTSTRAP NÃO RESOLVE, NEM DEVE.** Ele deriva as permissões de `TODAS_AS_ACOES`,
+então nasce correto — mas é ato de INSTALAÇÃO e recusa rodar em banco povoado, de propósito:
+um script re-executável capaz de carimbar administrador entregaria a chave-mestra a quem
+tivesse acesso ao shell. A recusa é decisão de segurança e continua.
+
+⚠️ **O QUE FALTA É O OUTRO LADO: não existe caso de uso que conceda uma AÇÃO a um PERFIL.**
+`concederPerfil` concede o PERFIL a um USUÁRIO — outra coisa. Os únicos escritores de
+`PermissaoDePerfil` no repositório são o bootstrap e um teste. Pendência
+`CONCEDER_ACAO_A_PERFIL`, e ela bloqueia a entrega do ENT05 e deste lote em qualquer
+instalação que já exista.
+
+### 21.4 · ⚠️ O QUE NÃO ENTROU, E POR QUÊ
+
+**Não há tela de ENTRADA de material**, e é ela que trava a promoção das outras doze
+cláusulas de 5.18. Sem entrada não entra estoque; sem estoque não há preço médio a calcular,
+saída a atender, transferência a fazer nem lote a vencer. O percurso tentou atender a
+requisição e o servidor recusou — corretamente — dizendo *"não se entrega o que não há na
+prateleira"*.
+
+⚠️ **E A ENTRADA NÃO É UMA TELA A MAIS: ELA NASCE DA LIQUIDAÇÃO.**
+`registrarEntradaFisica` aceita `movimentoAlmoxarifadoId`, e o ENT05 mediu que sem essa
+amarração a classe contábil fica em zero e a saída é recusada. A superfície da entrada
+atravessa M05 e M10 — é lote próprio. Pendência `TELA-DE-ENTRADA-DE-MATERIAL`.
+
+**As seções 5.19 (gestão do bem) e 5.17 (a compra) não ganharam tela neste lote.** O
+almoxarifado consumiu-o inteiro, e a razão está em 21.6: o lote não foi só montar molde.
+
+**Sem aba de anexos e sem aba de campos adicionais** nos cadastros novos. As duas custam
+MODELO — uma coluna de dono em `Anexo`, um valor em `CadastroComCamposAdicionais` com a FK
+correspondente — e este lote não abre modelo. `verificarDefinicao` recusa declarar a aba sem
+o modelo, com razão: aba vazia ensina que o sistema perdeu o arquivo. Pendência
+`ANEXO-NOS-CADASTROS-DO-ALMOXARIFADO`. ⚠️ O que **já** está ligado ao M22 e não precisou de
+modelo: os termos de abertura e fechamento do inventário são `Anexo` desde o ENT05, e
+portanto já entram na fila de assinaturas.
+
+**Formulário de UM item onde o caso de uso recebe array.** `cadastrarMaterial` recebe
+`unidades[]` e `registrarRequisicaoDeMaterial` recebe `itens[]`; o molde não tem campo
+repetidor e **não cresce para ganhar um** (limite 2). A tela cria o caso de UM e diz isso no
+campo. Pendências `MATERIAL-COM-MULTIPLAS-UNIDADES` e `REQUISICAO-COM-VARIOS-ITENS`.
+
+**`MarcaAprovada` não tem caso de uso que a crie.** O ENT05 modelou a tabela e a relação, e
+o serviço que cadastra a marca não existe — então a ação "Aprovar marca" tem seletor vazio e
+o molde o mostra desabilitado. Pendência `CADASTRO-DE-MARCA-APROVADA`.
+
+### 21.5 · ⚠️ O DEFEITO DE EIXO QUE O PERCURSO ACHOU
+
+A mensagem de recusa do servidor dizia *"em 2026-09-10"* para uma data digitada como 11/09.
+Medido:
+
+```
+z.coerce.date("2026-09-11")  ->  2026-09-11T00:00:00.000Z   (meia-noite UTC)
+diaCivil desse instante      ->  2026-09-10                 (o ente é UTC-3)
+```
+
+**O operador digita 11 e o sistema guarda um instante cujo dia civil do ente é 10.**
+
+⚠️ **E NÃO É APRESENTAÇÃO.** `posicaoDeEstoque(movimentos, ateDia)` corta por
+`compararPorDiaCivil`: um movimento digitado como 11 **entra na posição pedida "até 10"** — a
+posição de ontem inclui um movimento de hoje. A ficha de controle (5.18.16) tem o mesmo
+corte, e o inventário compara a contagem contra a posição na data de abertura. É justamente
+a cláusula "naquela data" que o ENT05 declarou como a razão de não haver coluna de saldo.
+
+**Como o resto do repositório faz:** o M28 recebe `zDia` — a string `YYYY-MM-DD` — e ancora
+com `inicioDoDiaCivil`, meia-noite **do ente** (03:00Z). Com a âncora certa, a posição até o
+dia 10 responde zero, que é o correto.
+
+⚠️ **POR QUE O GUARD DE DATA CIVIL NÃO PEGOU.** Ele vigia formas no código-fonte: `getUTC*`,
+fatiar ISO, `Date.UTC(`, literal `Z` e relógio do hospedeiro. `z.coerce.date()` não é
+nenhuma delas — é uma porta nova para o mesmo eixo errado.
+
+⚠️ **E EU TENTEI FECHAR A PORTA COM UM PADRÃO NOVO, E ESTAVA ERRADO.** Acrescentar
+`z.coerce.date` às formas proibidas acusou **96 sítios** no repositório, 54 deles nos módulos
+do ENT05. O padrão é largo demais porque `z.coerce.date` é **inócuo** quando recebe um
+instante ISO completo — o defeito é a string `YYYY-MM-DD` **crua** chegar nele, e isso é
+fluxo de dados, não forma no texto. Um guard que exigisse noventa exceções seria a "lista
+cheia de exceções que ninguém lê" que o próprio arquivo adverte. Revertido.
+
+**O que fica:** `modules/m10-patrimonial/m10-eixo-de-data-da-entrada.test.ts`, com o
+comportamento preso em quatro asserções — inclusive uma amostra em quatro estações provando
+que o erro é de **um dia, sempre para trás**, e não deslocamento aleatório nem horário de
+verão. Pendência `EIXO-DE-DATA-NA-ENTRADA-DO-ENT05`, no mesmo regime da competência e do
+repontamento: caracterizar primeiro, corrigir com movimento que explique a mudança.
+
+### 21.6 · O que o percurso provou, e o que ele custou
+
+`scripts/smoke-ent06.ts` — **48 passos, 0 falhas**. A cadeia: unidade de medida → grupo →
+classe contábil → material → depósito → requisição → tentativa de atendimento → inventário →
+contagem → fechamento → posição em duas datas → bloqueio → painel.
+
+⚠️ **É O PERCURSO QUE PROMOVE, NÃO O DESCRITOR.** Uma tela do molde compila, aparece no
+`next build` e pode estar inteiramente quebrada. O que o percurso provou e nenhum teste de
+módulo prova:
+
+- **os três seletores obrigatórios do material têm opção** — e essa asserção nasceu de um
+  achado: `ClasseDeMaterial`, `GrupoDeMaterial` e `UnidadeDeMedida` estavam todos em **zero**
+  no banco, e os três são campo obrigatório. Sem eles o formulário monta com três seletores
+  vazios. Foi o que obrigou a acrescentar os três cadastros de apoio;
+- **recarregada, cada lista traz o registro persistido** — não estado de componente;
+- **"faltam 10" é derivado**, não coluna;
+- **o servidor recusa e a mensagem do domínio sobe como veio**, e depois da recusa o saldo
+  continua 10 — nada foi gravado;
+- ⚠️ **o bloqueio atravessa de uma tela para outra**: aberto o inventário, a lista de
+  depósitos — que não sabe nada sobre inventário — passa a dizer "bloqueada". É isso que
+  prova que o bloqueio é FATO do domínio e não rótulo de uma tela;
+- **a mesma consulta de posição responde por duas datas**, e a consulta é `GET`.
+
+**Quatro defeitos meus que o percurso pegou**, e nenhum deles era do produto:
+
+1. `relacionados` do material apontava para `/estoque`, que eu **não tinha construído** —
+   link para o nada, mesma família de botão sem handler. Foi o que obrigou a construir a
+   tela de posição;
+2. `detalheDe` lê a página **atual**, e eu procurava o registro depois de ter navegado para
+   outra tela — duas vezes, no mesmo degrau;
+3. os passos de bloqueio estavam **antes** das movimentações: encerrar com `fim` = hoje deixa
+   o bloqueio vigente hoje, e o domínio recusava com razão. No fim do percurso ele prova
+   mais — que o bloqueio **recusa** movimentação, com a mensagem nomeando o motivo;
+4. a asserção do histórico lia a aba `dados`, que é a que abre por padrão.
+
+⚠️ **E UMA ASSERÇÃO FROUXA, CORRIGIDA PELO BANCO POVOADO.** Eu exigia que a faixa de
+inventários abertos não aparecesse no painel, porque o percurso fecha o que abre — mas uma
+execução anterior falhara no meio e deixara um inventário aberto, e **o painel estava certo
+em contá-lo**. A asserção cobrava do produto um banco limpo. Agora ela afirma a propriedade
+(nenhuma faixa exibe zero), não o estado.
+
+**Dois guards do repositório pegaram a tela escrita à mão:** identidade literal de campo é
+proibida (vários formulários coexistem na mesma página), corrigida com rótulo **envolvendo**
+o campo; e a primeira versão do comentário que explicava isso derrubou o próprio guard, ao
+citar a forma proibida entre aspas — a mesma anatomia que o guard já documenta sobre si.
+
+### 21.7 · Comandos e resultados
+
+| Comando | Resultado | Data |
+|---|---|---|
+| `npm run portao -- --fim-de-lote` | ver 21.8 | 2026-09-11 |
+| `npx tsx scripts/smoke-ent06.ts` | **48 passos, 0 falhas** | 2026-09-11 |
+| `npx tsx scripts/marcar-catalogo.ts --aplicar` | **3 promovidas**; 316 de 2037 (15,5%) — o percentual não se move | 2026-09-11 |
+| `npm run deriva:perfil` | 38 ações sem perfil → concedidas em dev → "censo e perfis batem: 223 ações" | 2026-09-11 |
+
+⚠️ **O QUE NÃO RODOU:** nenhuma migration — este lote não abriu modelo.
+
 ## 19. O próximo passo
 
 ⚠️ **O ENT05 está FECHADO e PARADO no gate** — 10 de 10, saída 0 (20.12). Nada foi
