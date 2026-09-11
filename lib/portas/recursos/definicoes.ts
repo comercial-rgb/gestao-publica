@@ -1,4 +1,5 @@
 import { definirRecurso, type DefinicaoDeRecurso } from "../../molde/tipos.js";
+import { RECURSOS_DO_ALMOXARIFADO } from "./almoxarifado.js";
 
 /**
  * OS DESCRITORES DOS CADASTROS DO ENT03b — a prova do molde.
@@ -702,4 +703,9 @@ export const RECURSOS_DO_MOLDE: readonly DefinicaoDeRecurso[] = [
   DIVIDA_ATIVA,
   OBRAS,
   PROVISOES,
+  // ⚠️ ENT06 — as três seções que o ENT05 modelou e deixou sem tela. Entram na MESMA
+  // lista porque é dela que saem a busca global (`lib/portas/busca-global.ts`) e o censo
+  // do molde: um cadastro que entrasse por fora ficaria invisível na busca e sem a
+  // verificação de que suas ações existem no censo do M16.
+  ...RECURSOS_DO_ALMOXARIFADO,
 ];

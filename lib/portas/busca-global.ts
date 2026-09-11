@@ -15,6 +15,7 @@ import {
   RELATORIOS_LIVROS,
   RELATORIOS_RGF,
   RELATORIOS_RREO,
+  ALMOXARIFADO,
   TRANSFERENCIAS,
   CONTROLE_INTERNO,
   COMUNICACAO,
@@ -64,6 +65,7 @@ const GRUPOS_DE_RELATORIO: readonly (readonly [
   ["protocolo", "Protocolo", PROTOCOLO],
   ["comunicacao", "Comunicação interna", COMUNICACAO],
   ["transferencias", "Transferências", TRANSFERENCIAS],
+  ["patrimonio", "Patrimônio", ALMOXARIFADO],
   ["divida", "Dívida e precatórios", DIVIDA],
   ["controle-interno", "Controle interno", CONTROLE_INTERNO],
 ];

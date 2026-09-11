@@ -309,6 +309,19 @@ export const DIVIDA: readonly RelatorioNav[] = [
   { href: "/divida/ativa", numero: "Dívida ativa", rotulo: "Dívida Ativa", descricao: "O crédito do ente contra o contribuinte (art. 39 da Lei 4.320/64): inscrição, atualização, cancelamento — o recebimento entra pela receita." },
 ];
 
+/**
+ * ⚠️ ENT06 — O ALMOXARIFADO FÍSICO GANHOU TELA. Até aqui a seção 5.18 tinha modelo, caso de
+ * uso e teste contra banco, e nenhuma rota: existia no servidor e nenhum servidor municipal
+ * a alcançava. Estas quatro entradas são o que muda isso — e entram AQUI, numa lista só,
+ * porque é dela que saem ao mesmo tempo o hub da área e o índice da busca global.
+ */
+export const ALMOXARIFADO: readonly RelatorioNav[] = [
+  { href: "/patrimonio/almoxarifado/materiais", numero: "Materiais", rotulo: "Materiais", descricao: "Unidade de estoque, grupo, classe contábil e CATMAT — mais o mínimo e o máximo por depósito. O saldo não mora aqui: ele é derivado dos movimentos." },
+  { href: "/patrimonio/almoxarifado/depositos", numero: "Depósitos", rotulo: "Depósitos", descricao: "Onde o material fica, sob qual unidade gestora e com qual responsável — e os bloqueios que recusam movimentação enquanto vigem." },
+  { href: "/patrimonio/almoxarifado/requisicoes", numero: "Requisições", rotulo: "Requisições de Material", descricao: "O setor pede, o almoxarifado atende — e o atendimento pode ser parcial. O que falta é a diferença entre o solicitado e as saídas vinculadas." },
+  { href: "/patrimonio/almoxarifado/inventarios", numero: "Inventários", rotulo: "Inventários de Estoque", descricao: "Enquanto aberto, bloqueia a movimentação do depósito — é isso que torna a contagem comparável com a posição na data de abertura." },
+];
+
 export const CONTROLE_INTERNO: readonly RelatorioNav[] = [
   { href: "/controle-interno/auditorias", numero: "Auditorias", rotulo: "Auditorias Internas", descricao: "Roteiro com base legal, achados com providência e prazo, e o relatório circunstanciado que se assina." },
 ];
