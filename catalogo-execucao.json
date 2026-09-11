@@ -85,8 +85,8 @@
       "candidato_reaproveitamento": "siafic-cg:M16, siafic-cg:M12, packages/contracts",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "CAMPOS PERSONALIZADOS por unidade gestora (M25): sete tipos, valor em COLUNA TIPADA (filtro de texto sobre número diria que \"900\" é maior que \"1.000\"), append-only e por cadastro. O rol de cadastros é FECHADO e cada valor corresponde a uma FK real — o ENT03b acrescentou cinco (convênio, precatório, consórcio, obra, auditoria). scripts/smoke-ent03b.ts (40 passos, 0 falhas, 2026-09-11, duas execuções) abre a aba \"Campos adicionais\" nos cadastros do molde; scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10) exercita a definição e o preenchimento no protocolo.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.8.6",
@@ -127,8 +127,8 @@
       "candidato_reaproveitamento": "siafic-cg:M16, siafic-cg:M12, packages/contracts",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Acesso por senha (scrypt), permissão POR AÇÃO DE NEGÓCIO e por PERFIL, com recorte por unidade gestora — e nega por omissão: sem perfil, o usuário não pode NADA (modules/m16-travamento/autorizacao.ts). O censo é EXAUSTIVO e o grep-teste prova as duas direções: todo serviço de mutação tem ação, e toda ação tem serviço (m16-censo.test.ts, 192 serviços e 185 ações no ENT03b). scripts/smoke-ent03b.ts (40 passos, 0 falhas, 2026-09-11, duas execuções): quem não tem a ação NÃO VÊ o botão, e vê o motivo.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.8.9",
@@ -155,8 +155,8 @@
       "candidato_reaproveitamento": "siafic-cg:M16, siafic-cg:M12, packages/contracts",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "O designer permite COPIAR um modelo (`copiarModeloDeRelatorio`), e a cópia é independente — o original fica inalterado. scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10) cria o modelo, copia e executa. Testes: modules/m26-designer/m26-designer.test.ts.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.8.11",
@@ -169,8 +169,8 @@
       "candidato_reaproveitamento": "siafic-cg:M16, siafic-cg:M12, packages/contracts",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "A execução do relatório roda EM SEGUNDO PLANO e o usuário continua trabalhando — calcular dentro da requisição faria o navegador esperar. scripts/smoke-ent02.ts (43 passos, 0 falhas, 2026-09-10) dispara a execução, segue navegando e abre o CSV quando ele fica pronto.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.8.12",
@@ -183,8 +183,8 @@
       "candidato_reaproveitamento": "siafic-cg:M16, siafic-cg:M12, packages/contracts",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`distribuirModeloDeRelatorio` e `retirarModeloDeRelatorio` existem, com ação própria no censo cada uma (distribuir e retirar são poderes distintos). modules/m26-designer/m26-designer.test.ts. ⚠️ A distribuição para OUTRAS ENTIDADES não se demonstra: o eixo de município não existe (docs/adr/ADR-eixo-de-municipio.md). Sem exercício pela tela.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.8.13",
@@ -239,8 +239,8 @@
       "candidato_reaproveitamento": "siafic-cg:M16, siafic-cg:M12, packages/contracts",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Verificado: NÃO há custódia de certificado A1 em HSM. O modo `QUALIFICADA` existe no enum porque é o destino declarado, e o caso de uso RECUSA produzi-lo, com motivo — um modo que devolvesse \"assinado\" sem certificado seria uma assinatura FABRICADA, e ela pareceria válida na tela exatamente como a verdadeira. Depende de provedor de custódia contratado. Pendência: item 5 do ENT03a, adiado para o ENT03b e depois para o ENT03c (packages/integracao).",
+      "situacao": "DEPENDENCIA_EXTERNA"
     },
     {
       "id": "5.8.17",
@@ -253,8 +253,8 @@
       "candidato_reaproveitamento": "siafic-cg:M16, siafic-cg:M12, packages/contracts",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "A LINHA DO TEMPO está DENTRO do cadastro — é a aba \"Histórico\" do molde, e ela mostra cada movimento com a DATA DO FATO e o INSTANTE DO REGISTRO separados, o autor e o motivo. ⚠️ As duas datas são diferentes de propósito: mostrar só uma faria o movimento de março, lançado em maio, parecer de maio. scripts/smoke-ent03b.ts (40 passos, 0 falhas, 2026-09-11, duas execuções) confere as duas na aba de histórico da auditoria (abertura + achado). A fonte é a tabela APPEND-ONLY do próprio registro — nas tabelas deste repositório a auditoria É a tabela.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.8.18",
@@ -281,8 +281,8 @@
       "candidato_reaproveitamento": "siafic-cg:M16, siafic-cg:M12, packages/contracts",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "A história COMPLETA existe e nada se apaga: cada correção é um fato novo apontando o original, e a resposta de checklist que muda deixa as DUAS (m31-controle-interno.test.ts t2). O que a cláusula pede ALÉM disso é o DIFF CAMPO A CAMPO (\"novos dados e dados anteriores\") — e ele não existe como apresentação. ⚠️ E há uma ausência de MODELO por trás: `RegistroDeOperacao` guarda quem, quando, qual ação e o resultado, e NÃO guarda QUAL REGISTRO — \"todas as operações sobre este convênio\" é pergunta que aquela tabela não responde. Pendência AUDITORIA-SEM-EIXO-DE-REGISTRO.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.8.20",
@@ -295,8 +295,8 @@
       "candidato_reaproveitamento": "siafic-cg:M16, siafic-cg:M12, packages/contracts",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`escreverAjudaDeRota` (M27) grava ajuda POR ROTA, e a rota é a chave — a ajuda aparece onde a dúvida acontece, sem abrir chamado. Testes em modules/m27-suporte/. ⚠️ A ajuda das telas do molde ainda não foi escrita: o mecanismo existe, o conteúdo não. Pendência AJUDA-DAS-TELAS-DO-MOLDE.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.8.21",
@@ -337,8 +337,8 @@
       "candidato_reaproveitamento": "siafic-cg:M16, siafic-cg:M12, packages/contracts",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "O papel de runtime do banco NÃO É DONO DAS TABELAS e NÃO TEM UPDATE nem DELETE no razão — o append-only deixou de depender de todo mundo lembrar. A superfície mutável é um CENSO TIPADO (prisma/papel-runtime.ts: `Usuario.ativo` por COLUNA, os saldos da ficha, e o DELETE do vínculo de perfil), e test/papel-runtime.test.ts confronta a lista com os GRANTS REAIS do banco nas duas direções: sobra é grant esquecido, falta é privilégio não declarado. ⚠️ O ENT00 mediu o contrário antes disso: `UPDATE ... -> UPDATE 1` por SQL cru.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.8.24",
@@ -2675,8 +2675,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Cadastro de `Convenio` com papel do ente (CONCEDENTE/CONVENENTE, NOT NULL e sem default — o efeito contábil é OPOSTO nos dois casos), contas por PARÂMETRO (`contaContabilId` + `RoteiroConvenio` por par tipo×papel) e vínculo ao empenho por `Empenho.convenioId`. O vínculo é COBRADO: como concedente, liberar parcela SEM empenho é recusado (\"repasse sem empenho é despesa sem dotação\") e empenho de OUTRO convênio também — modules/m28-convenios/m28-convenios.test.ts t4 e t4b. scripts/smoke-ent03b.ts (40 passos, 0 falhas, 2026-09-11, duas execuções): o convênio é cadastrado pela tela e aparece após recarga com a situação DERIVADA.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.67",
@@ -2689,8 +2689,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "A aba de ANEXOS existe no detalhe e `Anexo.convenioId` entrou em migration aditiva (uma coluna por tipo de dono — o rol é fechado pela mesma razão do M25: um `donoTipo` livre faria o banco deixar de garantir que o registro existe). A aba de RELACIONADOS aponta a consulta dos empenhos com o filtro aplicado, sem recontar (quem soma empenho é o M05). scripts/smoke-ent03b.ts (40 passos, 0 falhas, 2026-09-11, duas execuções) abre as duas abas. ⚠️ O UPLOAD por esta tela ainda não foi ligado — pendência ANEXO-DO-MOLDE-UI.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.1.68",
@@ -2703,8 +2703,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`aprovarPrestacaoDeContas` faz o lançamento contábil pelo `RoteiroConvenio` (par tipo×papel) na MESMA transação do movimento, e RECUSA aprovar acima do pendente (\"dar quitação de dinheiro que não saiu\") — m28-convenios.test.ts t1 e t5. Os três saldos são INDEPENDENTES e provados por literal: a liberar, a prestar contas e o glosado (m28-dominio.test.ts t1–t5). ⚠️ Pela TELA a ação existe e é oferecida, mas o banco de desenvolvimento não tem `RoteiroConvenio` cadastrado e a tela RECUSA nomeando o que falta — pendência ROTEIROS-ENT03B-PARAMETRIZACAO.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.1.69",
@@ -2717,8 +2717,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "O estado do convênio é DERIVADO e distingue PRESTACAO_VENCIDA de EM_EXECUCAO, com precedência da vencida (m28-dominio.test.ts t8 — um convênio com saldo a liberar E prazo vencido aparece como VENCIDO, que é o que o gestor precisa ver ANTES de liberar a próxima parcela). O prazo conta em DIAS CIVIS a partir do fim da vigência, e a resposta não depende da hora do dia (t9). scripts/smoke-ent03b.ts (40 passos, 0 falhas, 2026-09-11, duas execuções) vê a situação na listagem. ⚠️ FALTA a consulta dedicada de prestações em atraso com responsável e prazo — pendência CONVENIO-PAINEL-DE-ATRASO.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.70",
@@ -2829,8 +2829,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Cadastro de `ConsorcioPublico` com área de atuação, protocolo de intenções e lei ratificadora (art. 5º). O repasse só acontece dentro do CONTRATO DE RATEIO do exercício (art. 8º): sem ele a tela RECUSA citando o artigo — provado PELO NAVEGADOR em scripts/smoke-ent03b.ts (40 passos, 0 falhas, 2026-09-11, duas execuções), e por m30-consorcios.test.ts t1. O teto é a SOMA do original com os aditivos, nunca \"o último vale\" (t3, e m30-rateio.test.ts t2/t3); dois contratos ORIGINAIS do mesmo exercício são recusados pelo índice parcial do banco (t4).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.78",
@@ -2843,8 +2843,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Cadastro de `Precatorio` com natureza (ALIMENTAR/COMUM), preferência do §2º, tribunal, ofício requisitório, beneficiário e exercício de pagamento. ⚠️ A DATA DE APRESENTAÇÃO é gravada como DIA CIVIL DO ENTE e é ELA que ordena a fila — não o `criadoEm` (m29-precatorios.test.ts t9). scripts/smoke-ent03b.ts (40 passos, 0 falhas, 2026-09-11, duas execuções): cadastrado pela tela e visível após recarga com a classificação do art. 100.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.79",
@@ -2857,8 +2857,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "INSCRIÇÃO, ATUALIZAÇÃO (juros/correção), CANCELAMENTO e PAGAMENTO, cada um com lançamento por `RoteiroPrecatorio` (o pagamento é contabilizado pelo M05 e a baixa nasce DENTRO do `pagar()`, na transação dele). A atualização é IDEMPOTENTE pela competência (m29-precatorios.test.ts t6) e inscrever duas vezes é recusado (t7). ⚠️ A baixa pelo pagamento NÃO se estorna sozinha: anula-se o pagamento (t8) — quem nasceu junto, morre junto. Sem exercício pela tela.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.1.80",
@@ -2871,8 +2871,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`Empenho.precatorioId` em migration aditiva, e a aba de RELACIONADOS do detalhe aponta a consulta dos empenhos com o filtro do precatório aplicado — sem recontar. scripts/smoke-ent03b.ts (40 passos, 0 falhas, 2026-09-11, duas execuções) abre a aba. A consulta de destino é a gerencial que já existe.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.1.81",
@@ -2885,8 +2885,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "O DETALHE mostra o valor requisitado, o saldo devido (Σ dos movimentos, nunca uma coluna) e a aba de HISTÓRICO com cada movimento, as duas datas (fato e registro), o autor, o motivo e a marca de estornado — e a quebra da ordem do art. 100, quando houve, com a justificativa. scripts/smoke-ent03b.ts (40 passos, 0 falhas, 2026-09-11, duas execuções) exercita as cinco abas. ⚠️ FALTA o relatório impresso com saldo inicial × movimentações × saldo atual — pendência PRECATORIO-RELATORIO.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.82",
@@ -2899,8 +2899,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`DividaConsolidada` com identificador, credor, tipo (CONTRATUAL/MOBILIARIA), LEI AUTORIZATIVA (art. 32 da LRF — sem ela não há dívida legal) e conta de passivo por PARÂMETRO. As incorporações posteriores são MOVIMENTOS (`ATUALIZACAO_MONETARIA`), com lançamento próprio por `RoteiroDivida` e idempotência pela competência. modules/m10-patrimonial/m10-divida.test.ts. ⚠️ Sem tela, e o histórico gerencial exigido pelo TCE não foi conferido contra leiaute — pendência DIVIDA-UI.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.1.83",
@@ -2913,8 +2913,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`Empenho.dividaId` com guard BICONDICIONAL: elemento do grupo 6 (amortização) SEM dívida é rejeitado, e dívida em empenho fora do grupo 6 também — vínculo sem sentido é erro nos dois sentidos. A amortização nasce DENTRO do `pagar()`, na transação dele, PELO BRUTO (a retenção não perdoa parte da dívida: ela muda o credor daquele pedaço). m10-divida.test.ts t1 e t3 (atomicidade: dívida menor que o pagamento aborta o PAGAMENTO INTEIRO).",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.1.84",
@@ -2927,8 +2927,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Verificado: NÃO há modelo de PARCELA da dívida. O que existe são os movimentos (ingresso, atualização, amortização) e o saldo derivado deles — não há cronograma previsto contra o qual comparar o pago. ⚠️ Marcar a ausência é o que expõe a lacuna: o comparativo previsto × pago que a cláusula pede é impossível sem o previsto, e construir o relatório antes do modelo produziria uma coluna sempre vazia. Pendência DIVIDA-PARCELAS.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.85",
@@ -2941,8 +2941,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "ATUALIZAÇÃO MONETÁRIA e AMORTIZAÇÃO existem, com lançamento automático e estorno simétrico desde o dia 1 (m10-divida.test.ts). ⚠️ FALTAM o CANCELAMENTO e a TRANSFERÊNCIA DE LONGO PARA CURTO PRAZO — a segunda é reclassificação entre contas de passivo e exige roteiro próprio. Pendência DIVIDA-RECLASSIFICACAO.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.86",
@@ -2955,8 +2955,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Verificado: não há relatório gerencial de dívida (nem de uma, nem do conjunto). O `saldoDaDividaEm` responde a pergunta por API e é testado, mas nenhuma tela ou impressão o expõe. Pendência DIVIDA-RELATORIO.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.87",
@@ -2969,8 +2969,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`ContratoPPP` existe com número, objeto, parceiro privado, vigência, valor global e contraprestação anual — o mínimo para o RREO Anexo 13 existir sem inventar (modules/m12-relatorios/m12-rreo-anexo13.test.ts prova o teto de 5% da RCL). ⚠️ FALTAM o TIPO da parceria e a SITUAÇÃO que a cláusula pede, e não há tela. O próprio schema registra que o layout completo da Tabela 13 é pendência de DADO: ele entra quando houver contrato real para modelar contra, não reconstruído de memória. Pendência PPP-CADASTRO-COMPLETO.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.88",
@@ -2983,8 +2983,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Verificado: `Anexo` NÃO tem coluna para `ContratoPPP`. O rol de donos do anexo é fechado por decisão (um `donoTipo` livre faria o banco deixar de garantir que o registro existe), e a PPP não entrou nele no ENT03b — o molde cobriu convênio, precatório, consórcio, obra e auditoria. Custo: uma migration aditiva com a coluna e uma linha no descritor. Pendência PPP-ANEXOS.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.89",
@@ -2997,8 +2997,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Verificado: `Empenho` NÃO tem `contratoPppId`. Os vínculos que existem são contrato, dívida, obra, convênio, precatório e consórcio. Mesmo custo e mesma forma do .88. Pendência PPP-VINCULO-EMPENHO.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.90",
@@ -3011,8 +3011,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "O travamento de competência (M16) impede lançamento em período fechado pela DATA DO FATO — e o corte é pela janela CIVIL do ente, não por UTC: um lançamento de 31/12 às 22:00 escapava da trava de dezembro até o ENT03b (docs/adr/ADR-data-civil-do-ente.md). modules/m16-travamento/m16-travamento.test.ts. A imutabilidade não é só do domínio: o papel de runtime do banco NÃO TEM UPDATE nem DELETE no razão (prisma/papel-runtime.ts, test/papel-runtime.test.ts confronta a lista com os grants REAIS nas duas direções). ⚠️ FALTA a conferência automática de DIVERGÊNCIAS DE SALDO no fechamento mensal — o que existe é `modules/m12-relatorios/consistencia.ts`, que roda sob demanda. Pendência FECHAMENTO-MENSAL-DIVERGENCIAS.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.1.91",
@@ -3025,8 +3025,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`MovimentoPatrimonial.lancamentoId` é NOT NULL: não existe movimento de bem sem lançamento contábil — a integração não é uma rotina que roda depois, é a mesma transação. Depreciação, reavaliação e as movimentações físicas passam pelo funil do M01 (modules/m10-patrimonial/). ⚠️ EXAUSTÃO e AMORTIZAÇÃO não foram verificadas em separado. Sem exercício pela tela.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.1.92",
@@ -3053,8 +3053,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "A MSC de ENCERRAMENTO costura os exercícios: o `beginning_balance` de janeiro do ano seguinte traz o saldo DEPOIS do encerramento, e NÃO traz orçamento morto (modules/m14-exports-federais/m14-msc.test.ts t5). ⚠️ O ENT03b corrigiu a janela da competência da MSC, que era UTC: o encerramento de 31/12 às 23:59:59 CIVIS caía fora da remessa de dezembro e reaparecia como abertura de janeiro — a M3 não fechava. Os conta-correntes da MSC são gravados no próprio lançamento. Sem tela de abertura.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.1.94",
@@ -3067,8 +3067,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "O exercício seguinte recebe movimento SEM o anterior estar encerrado — não há guard que exija o encerramento, e o guard que existe é o oposto (`exigirExercicioAberto` recusa lançar em exercício ENCERRADO). modules/m08-restos-a-pagar/m08-encerramento-controles.test.ts prova que apurar e encerrar são independentes e sem ordem obrigatória entre si. ⚠️ A marcação é VALIDADO porque a cadeia da despesa de um exercício aberto foi exercitada pela interface nos smokes do ENT02 e do ENT03a.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.95",
@@ -3081,8 +3081,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`estornarEncerramentoControles` e `estornarApuracao` desfazem o encerramento por FATO NOVO (nunca UPDATE), restaurando cada saldo — e os literais provam a restauração conta a conta (m08-encerramento-controles.test.ts t4). Refazer é encerrar de novo depois do estorno. ⚠️ Sem tela: a rotina existe como caso de uso. Pendência ENCERRAMENTO-UI.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.1.96",
@@ -4383,8 +4383,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`AuditoriaInterna` com identificador, objeto, tipo, ÓRGÃO auditado, período (dias civis do ente) e responsável. A ABERTURA é um MOVIMENTO gravado na mesma transação — o estado (aberta/encerrada) é DERIVADO dele, nunca uma coluna (m31-controle-interno.test.ts t1). scripts/smoke-ent03b.ts (40 passos, 0 falhas, 2026-09-11, duas execuções): aberta pela tela e visível após recarga com a situação derivada. ⚠️ O vínculo com PROCESSO DIGITAL e com as INSTRUÇÕES NORMATIVAS não existe — pendência AUDITORIA-VINCULO-PROCESSO.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.11.3",
@@ -4397,8 +4397,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`ItemDeChecklist` com pergunta e BASE LEGAL OBRIGATÓRIA (item sem fundamento é opinião do auditor com aparência de norma — m31-controle-interno.test.ts t9), e `RespostaDeChecklist` APPEND-ONLY: \"conforme\" que vira \"não conforme\" deixa as DUAS (t2). \"Não conforme\" e \"não aplicável\" exigem observação (t3/t3b). ⚠️ FALTAM os GRUPOS e o enquadramento em CATEGORIAS que a cláusula pede — pendência CHECKLIST-GRUPOS.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.11.4",
@@ -4481,8 +4481,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`Anexo.auditoriaId` em migration aditiva e a aba de ANEXOS no detalhe. scripts/smoke-ent03b.ts (40 passos, 0 falhas, 2026-09-11, duas execuções) abre a aba. O upload por esta tela ainda não foi ligado — pendência ANEXO-DO-MOLDE-UI.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.11.10",
@@ -4495,8 +4495,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`Irregularidade` com descrição, gravidade, PROVIDÊNCIA e PRAZO — sem os dois últimos o achado é observação, e observação não se cobra. O prazo vale o DIA INTEIRO no calendário do ente (m31-dominio.test.ts t8). A providência do auditado e a APRECIAÇÃO do auditor são atos SEPARADOS, com crachás distintos, e o mesmo usuário é RECUSADO nas duas pontas (m31-controle-interno.test.ts t6) — quem relata não aprecia. Recusar exige motivo (t6b). scripts/smoke-ent03b.ts (40 passos, 0 falhas, 2026-09-11, duas execuções): o achado é registrado pela tela e aparece após recarga.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.11.11",
@@ -4509,8 +4509,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`RelatorioCircunstanciado` com VERSÃO append-only (refazer é outra linha; a anterior fica, porque é ela que o auditado recebeu) e SHA-256 do texto canônico — o mesmo desenho do borderô e da nota de empenho, e pela mesma razão: a fila do M22 assina um CONTEÚDO. Texto curto é recusado nomeando o tamanho (m31-controle-interno.test.ts t7). ⚠️ FALTAM a emissão pela tela, os QUADROS e o anexo gerado — pendência RELATORIO-CIRCUNSTANCIADO-UI.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.11.12",
@@ -4537,8 +4537,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Verificado: não há EVENTOS de auditoria (agendamento, notificação, monitoramento), e por isso não há como instaurar auditoria A PARTIR de irregularidade apontada em evento. O que existe é a auditoria instaurada à mão. ⚠️ Marcar a ausência é o que expõe a lacuna: o modelo de EVENTO das 5.11.7/5.11.12 é pré-requisito desta cláusula, e construí-la sem ele produziria um botão que não tem de onde partir. Pendência AUDITORIA-EVENTOS.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.11.14",
@@ -12153,8 +12153,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "`MedicaoDeObra` com período (dias CIVIS do ente — 31/01 termina às 23:59:59 DELE, e não às 20:59:59), valor medido NO PERÍODO (o acumulado é derivado), responsável técnico e REGISTRO PROFISSIONAL obrigatório. Dois guards distintos: períodos NÃO se sobrepõem, com bordas INCLUSIVAS (m11-medicoes.test.ts t2 — acabar em X e começar em X sobrepõe, que é o caso mais comum), e Σ das medições não passa do valor VIGENTE do contrato (m11-medicoes-integracao.test.ts t1). ⚠️ LIQUIDAR OBRA EXIGE MEDIÇÃO APROVADA, dentro da transação da liquidação: sem medição, com medição pendente, acima do medido ou de OUTRA obra, a liquidação INTEIRA aborta (t4–t6b). Quem mede NÃO aprova (t3). Sem tela.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.22.1",
@@ -21295,8 +21295,8 @@
       "candidato_reaproveitamento": "siafic-cg:M13 (datasets, sem portal)",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "Verificado: o cadastro de convênios e a aba de anexos existem no sistema INTERNO (5.10.1.66/.67), e o PORTAL DA TRANSPARÊNCIA não os publica. É dataset novo no M13, não reuso de tela — a consulta pública tem recorte e autorização próprios. Pendência TRANSPARENCIA-CONVENIOS.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.38.38",
