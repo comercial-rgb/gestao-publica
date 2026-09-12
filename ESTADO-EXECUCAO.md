@@ -3651,6 +3651,102 @@ linha do histórico, que o molde não oferece — e o molde não cresce para aco
 | `npm run smoke:acervo` | **21 passos, 0 falhas** | 2026-09-12 |
 | `npm run portao -- --fim-de-lote` | **10 de 10** na PRIMEIRA execução — `test:fuso` EXECUTADO (520s) | 2026-09-12 |
 
+## 30. Checkpoint de revisão — 2026-09-12
+
+⚠️ **ESTE É UM CHECKPOINT, NÃO UM FECHAMENTO.** Pedido pelo operador durante a execução da
+ENT09. O lote **não está concluído**: o portão de fim de lote NÃO rodou para ele, e a cláusula
+`5.19.2` NÃO foi marcada no catálogo, embora o percurso a prove.
+
+### 30.1 · Estado real
+
+| | |
+|---|---|
+| Repositório | `gestao-publica` · remoto `github.com/comercial-rgb/gestao-publica` |
+| Branch / HEAD | `main` · `f63b20f115c724dd6f6d81d2fbfdb567bee71363` |
+| Árvore | limpa no momento do commit de preservação |
+| Referência auditada `1994358` | **é ancestral do HEAD** — sem reset, sem merge |
+
+**Commits desde a referência auditada:**
+
+| Commit | Lote | Natureza |
+|---|---|---|
+| `5954c60` | ENT07 — acervo (classe e bem) | modelo + superfície |
+| `39f4a6e` | correção das contagens do censo | teste |
+| `8beb6b1` | ENT08 — eixo de gestão do bem | superfície pura |
+| `f63b20f` | ENT09 **parcial** — etiqueta | superfície, **não fechado** |
+
+**Escopo real da ENT09** (não deduzir pelo número): o pedido original era a **baixa do bem**, e
+foi medido até a parede antes de qualquer código — duas vezes, por motivos independentes
+(`ROTEIRO-PATRIMONIAL-NAO-PARAMETRIZADO` e `USUARIO-SEM-PESSOA`, ambas registradas em §19). O
+escopo vigente é **a etiqueta com código de barras** — `docs/lotes/ENT09-a-etiqueta-do-bem.md`.
+Frente do produto: **acervo patrimonial (TR 5.19)**.
+
+**Último portão executado:** `8beb6b1` — **10 de 10**, `test:fuso` EXECUTADO (520s). O trabalho
+de `f63b20f` **não passou por portão**. Verificado nele: typecheck nos três projetos, descritor
+validado em tempo de módulo com 5 ações, `test:rapido` 70/759, build limpo, `smoke-acervo`
+**25 passos, 0 falhas**.
+
+### 30.2 · Migrations e permissões no intervalo
+
+Uma única migration, no ENT07: `prisma/migrations/20260912081500_ent07_acoes_do_acervo` —
+**aditiva**, dois valores no enum `AcaoDoSistema` (`CADASTRAR_CLASSE_DE_BENS`, `CADASTRAR_BEM`),
+com `prisma/schema/m16-usuarios.prisma` (+4 linhas). ENT08 e ENT09 **não tocaram schema**: as
+ações que usam (`REGISTRAR_MOVIMENTO_DE_GESTAO`, `GERAR_ETIQUETA_DE_BEM`) já existiam no censo.
+
+Concessão registrada com autor: `npm run db:conceder ADMINISTRADOR CADASTRAR_CLASSE_DE_BENS
+CADASTRAR_BEM`, autor `admin@enginesistemas.com.br`; `deriva:perfil` fecha em **228 de 228**.
+
+### 30.3 · Classificação dos achados
+
+**A · Reaproveitamento do siafic-cg — `NÃO VERIFICADO`, por ausência do objeto.**
+O SHA auditado `c04ad5a…` **não existe** no clone local (`git cat-file` → *bad object*). O clone
+em `~/Developer/siafic-cg` é um instantâneo de **um commit** (`91df4d3`, 2026-09-09), só `main`,
+**sem remotes**, sem `feat/seed-demo-completo`; e o `modules/m10-patrimonial/` dele **não tem**
+`acervo.ts` nem `m10-acervo.test.ts`. Buscar do remoto é operação externa e não foi feita.
+⚠️ **Correção de premissa:** a afirmação da ENT07 de que "nada no domínio criava um
+`BemPatrimonial`" foi medida **neste** repositório (e vale também para o instantâneo local da
+origem). Ela **não cobre** `c04ad5a`. A distinção correta é: *ausente na cópia atual e no
+instantâneo local; existente na origem numa referência inalcançável daqui*.
+
+**B · Autorização de leitura — `AINDA PRESENTE`.** Caminho executável, com evidência:
+
+| Arquivo | Evidência |
+|---|---|
+| `lib/portas/molde.ts:89-91` | `exigirLeitura()` é `return exigirSessao()` — **guarda com nome de autorização e corpo de autenticação**; 42 telas a chamam |
+| `lib/portas/sessao.ts:45-52` | `exigirSessao` = sessão ou redirect. Sem unidade, sem escopo |
+| `lib/recorte.ts:36-46` | exercício ilegível → **2026 em silêncio**; `ug` ausente → **consolidado (o ente)**; o arquivo declara-se "só parse de string" |
+| `app/(areas)/despesa/empenhos/page.tsx:39,54,58` | `unidadeCodigo` da URL entra direto na consulta |
+| `lib/portas/empenho.ts:84,110,133` | `unidadeCodigo` só é espalhado em parâmetro; o único import de autorização é `comEscritaAutenticada` (**escrita**) |
+| `app/(areas)/despesa/empenhos/pdf/route.ts:15-17` | `exigirSessao()` e segue para o PDF — autenticação, não autorização |
+| grep | `unidadesDoUsuario`/`escopoDeLeitura`/`ugsDoUsuario` → **nenhuma ocorrência** |
+| contraste | a **escrita** resolve a UG pelo ALVO do fato (`escopo.ts:238 resolverUgs`) e autoriza por UG. A leitura não tem equivalente |
+
+⚠️ **Teste HTTP com usuário limitado e duas unidades NÃO foi executado** — o banco de
+desenvolvimento tem **uma** `UnidadeOrcamentaria`, e criar massa para isso é decisão do operador.
+Nenhum teste da suíte afirma recusa de leitura de unidade alheia.
+
+**C · Resultado das operações — dividido, e cada metade com evidência.**
+
+- `RESOLVIDO COM EVIDÊNCIA` — **o log sobrevive ao rollback**. `operacao.ts` grava o registro
+  **fora** da transação do ato, de propósito e documentado: *"o log do 6.3 tem de sobreviver
+  exatamente ao caso em que o fato NÃO sobrevive"*. E o envelope **re-lança**, não engole.
+- `AINDA PRESENTE` — **sucesso persistido pode virar falsa falha**. Em
+  `operacao.ts` (`comOperacaoRegistrada`), `await porta.registrar(…"SUCESSO")` está **dentro do
+  mesmo `try`** do ato. Falhando essa escrita, o `catch` classifica como `ERRO` e **re-lança**:
+  o usuário vê falha num ato **já commitado**, e a auditoria grava ERRO sobre operação
+  bem-sucedida. Adjacente: o `registrar` do `catch` é desprotegido — se estourar, **o erro
+  original se perde**. Em `lib/portas/sessao.ts:69-72` a mesma forma faz um login bem-sucedido
+  ser gravado como **`NEGADO`**, poluindo justamente o relatório de tentativas barradas.
+- `NÃO VERIFICADO` — **retry e idempotência do envelope**: não exercitados nesta sessão.
+
+### 30.4 · Pendências acumuladas (nomeadas, não silenciosas)
+
+`ROTEIRO-PATRIMONIAL-NAO-PARAMETRIZADO` · `USUARIO-SEM-PESSOA` · `MOTIVO-DE-BAIXA-ORFAO` ·
+`BAIXA-E-TERMO-SEM-SUPERFICIE` · `DERIVA-DE-PERFIL-FORA-DO-PORTAO` · `PERCURSOS-SEM-HELPER-COMUM`
+· `ENTRAR-POR-CLIQUE-FRAGIL` · `RECORTE-DE-CONTA-POR-NOME-LITERAL` · `IDENTIDADE-DO-PRODUTO` ·
+`ZMOTIVO-DUPLICADO` · `COMISSAO-COM-MEMBROS` · `ESTORNO-POR-LINHA-DO-HISTORICO` ·
+`LIQUIDACAO-MATERIAL-ALMOXARIFADO` (§24, decisão devida).
+
 ## 19. O próximo passo
 
 ⚠️ **ONDE PARAMOS.** O ENT06 correu até aqui em seis levas: item 0 (superfície do
