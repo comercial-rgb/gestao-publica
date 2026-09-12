@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   EscopoDeLeituraError,
+  exercicioAutorizado,
   EXERCICIO_PADRAO,
   ExercicioIlegivelError,
   recorteAutorizado,
@@ -109,6 +110,58 @@ describe("o recorte autorizado — o exercício", () => {
 
   it("exercício VAZIO é ausência, não ilegibilidade", () => {
     expect(pedir({ exercicio: "" }, SO_SAUDE).exercicio).toBe(EXERCICIO_PADRAO);
+  });
+});
+
+/**
+ * ⚠️ AS LEITURAS DO **ENTE** — e a razão de elas terem função própria.
+ *
+ * Receita, extraorçamentário, conciliação, patrimônio, plano de contas e programação
+ * financeira não passam `unidadeCodigo` a porta nenhuma: a dimensão não existe no modelo
+ * delas. Elas precisam da recusa do EXERCÍCIO e **não** da recusa de unidade — impor esta
+ * segunda faria a tela recusar um `?ug=` que ela própria ignora, quebrando link salvo sem
+ * proteger dado algum.
+ */
+describe("o exercício autorizado — a metade que as leituras do ENTE usam", () => {
+  it("ausente cai no padrão; presente e legível é respeitado", () => {
+    expect(exercicioAutorizado({})).toBe(EXERCICIO_PADRAO);
+    expect(exercicioAutorizado({ exercicio: "" })).toBe(EXERCICIO_PADRAO);
+    expect(exercicioAutorizado({ exercicio: "2025" })).toBe(2025);
+  });
+
+  it("recusa o ilegível com a MESMA classe de erro, nomeando o valor", () => {
+    expect(() => exercicioAutorizado({ exercicio: "abc" })).toThrow(ExercicioIlegivelError);
+    expect(() => exercicioAutorizado({ exercicio: "abc" })).toThrow(/"abc"/);
+    expect(() => exercicioAutorizado({ exercicio: "2026abc" })).toThrow(
+      ExercicioIlegivelError
+    );
+    expect(() => exercicioAutorizado({ exercicio: "202" })).toThrow(ExercicioIlegivelError);
+  });
+
+  /**
+   * ⚠️ ESTA É A ASSERÇÃO QUE JUSTIFICA A FUNÇÃO EXISTIR. Se ela também conferisse unidade,
+   * eu teria feito das leituras do ente uma cópia disfarçada da outra decisão — e o
+   * conserto teria o custo que eu disse estar evitando.
+   */
+  it("NÃO confere unidade — um `?ug=` alheio atravessa sem recusa", () => {
+    expect(exercicioAutorizado({ exercicio: "2026", ug: EDUCACAO })).toBe(2026);
+    expect(exercicioAutorizado({ ug: "99999" })).toBe(EXERCICIO_PADRAO);
+  });
+
+  it("as duas funções concordam sobre o exercício — um parse, não dois", () => {
+    // ⚠️ O RISCO REAL DE TER DUAS ENTRADAS É DIVERGIREM. `recorteAutorizado` chama esta
+    // função em vez de repetir o parse; esta asserção é o que prova que continua assim.
+    for (const bruto of ["2024", "2026", "1999"]) {
+      expect(pedir({ exercicio: bruto, ug: SAUDE }, SO_SAUDE).exercicio).toBe(
+        exercicioAutorizado({ exercicio: bruto })
+      );
+    }
+    for (const ruim of ["abc", "2026abc", "202", "-2026"]) {
+      expect(() => pedir({ exercicio: ruim, ug: SAUDE }, SO_SAUDE)).toThrow(
+        ExercicioIlegivelError
+      );
+      expect(() => exercicioAutorizado({ exercicio: ruim })).toThrow(ExercicioIlegivelError);
+    }
   });
 });
 

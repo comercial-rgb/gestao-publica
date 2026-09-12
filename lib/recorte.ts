@@ -136,6 +136,44 @@ function nomearUnidades(unidades: readonly string[]): string {
 }
 
 /**
+ * O EXERCÍCIO PEDIDO, OU A RECUSA — **sem tocar em unidade**.
+ *
+ * ═══ ⚠️ POR QUE ELE EXISTE SEPARADO, E NÃO É DUPLICAÇÃO ═══
+ * Metade das leituras do sistema é do **ENTE**, não de unidade: a arrecadação da receita, o
+ * extraorçamentário, a conciliação bancária, a posição patrimonial, o plano de contas, a
+ * programação financeira (o caixa é um só). Medido: essas telas **não passam
+ * `unidadeCodigo` a porta nenhuma** — a dimensão não existe no modelo delas.
+ *
+ * Aplicar-lhes `recorteAutorizado` daria a recusa do exercício (que elas precisam) junto da
+ * recusa de UNIDADE (que para elas é inerte). O efeito seria recusar `?ug=` numa tela que
+ * ignora `ug` — quebrando link salvo **sem nenhum ganho de acesso**, porque não há dado de
+ * outra unidade a proteger ali. Seria rigor aparente com custo real.
+ *
+ * ⚠️ E É UM LUGAR SÓ. `recorteAutorizado` chama esta função em vez de repetir o parse: dois
+ * parses do mesmo parâmetro divergiriam no primeiro caso de borda, e o repositório já pagou
+ * essa conta em `PERCURSOS-SEM-HELPER-COMUM` (dez cópias, cinco divergidas).
+ *
+ * ⚠️ A CONFERÊNCIA É SOBRE A STRING INTEIRA, não sobre o resultado do parse:
+ * `Number.parseInt("2026abc", 10)` devolve **2026**. Um ano com sujeira colada não é um ano,
+ * e aceitá-lo faria `?exercicio=2026';DROP` parecer legível.
+ *
+ * ⚠️ AUSENTE CAI NO PADRÃO, e isso não é frouxidão: o primeiro render acontece antes de a
+ * ilha do cabeçalho sincronizar a URL, e recusar a ausência quebraria toda navegação por
+ * link sem parâmetro. Só o valor PRESENTE e ilegível recusa.
+ */
+export function exercicioAutorizado(
+  pedido: Record<string, string | string[] | undefined>
+): number {
+  const bruto = primeiro(pedido["exercicio"])?.trim();
+  if (bruto === undefined || bruto === "") return EXERCICIO_PADRAO;
+  const n = Number.parseInt(bruto, 10);
+  if (!/^\d{4}$/.test(bruto) || !Number.isInteger(n)) {
+    throw new ExercicioIlegivelError(bruto);
+  }
+  return n;
+}
+
+/**
  * O RECORTE EFETIVO — ou a recusa.
  *
  * A tabela de decisão, inteira:
@@ -175,18 +213,7 @@ export function recorteAutorizado(p: {
   /** Identificador do usuário — entra na recusa, como na escrita. */
   readonly identificador: string;
 }): RecorteDaPagina {
-  const bruto = primeiro(p.pedido["exercicio"])?.trim();
-  if (bruto !== undefined && bruto !== "") {
-    const n = Number.parseInt(bruto, 10);
-    // ⚠️ `Number.parseInt("2026abc")` devolve 2026 — por isso a conferência é sobre a
-    // STRING INTEIRA, não sobre o resultado do parse. Um ano com sujeira colada não é um
-    // ano, e aceitá-lo faria `?exercicio=2026';DROP` parecer legível.
-    if (!/^\d{4}$/.test(bruto) || !Number.isInteger(n)) {
-      throw new ExercicioIlegivelError(bruto);
-    }
-  }
-  const exercicio =
-    bruto !== undefined && bruto !== "" ? Number.parseInt(bruto, 10) : EXERCICIO_PADRAO;
+  const exercicio = exercicioAutorizado(p.pedido);
 
   const ug = primeiro(p.pedido["ug"])?.trim();
   const temUg = ug !== undefined && ug !== "";
