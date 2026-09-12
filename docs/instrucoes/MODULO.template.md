@@ -1,7 +1,9 @@
 # Mxx — Nome
 
 <!-- Copie este template para modules/mxx-nome/MODULO.md e preencha. -->
-<!-- Convenção: 1 sessão = 1 módulo = leia só PROJETO.md + este MODULO.md. -->
+<!-- Leia o MODULO.md de TODO módulo que o lote toca: ligar ao que existe (anexos, campos
+     adicionais, assinatura, protocolo) exige ler o módulo ligado. O que não se faz é
+     ALTERAR módulo fora do escopo declarado do lote. -->
 
 ## Requisitos TR cobertos
 
@@ -18,7 +20,7 @@
 
 ## Invariantes (NUNCA violar)
 
-<!-- Além dos 4 invariantes globais do PROJETO.md, liste os específicos deste
+<!-- Além dos invariantes globais do CLAUDE.md, liste os específicos deste
      módulo (ex.: empenho nunca excede dotação disponível). -->
 
 -

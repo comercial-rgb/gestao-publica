@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 /**
  * MARCA `situacao` E `evidencia` NO CATÁLOGO DE EXECUÇÃO — só para o que tem
@@ -41,9 +42,18 @@ import { readFileSync, writeFileSync } from "node:fs";
  *       (sem `--aplicar` ele só relata o que faria)
  */
 
+/**
+ * ⚠️ O CATÁLOGO MORA NA REPO, E O CAMINHO SAI DESTE ARQUIVO — não do diretório de onde o
+ * comando foi chamado, e não de um caminho absoluto de uma máquina.
+ *
+ * Ele apontava para `/Users/.../gestao-publica-execucao/catalogo-execucao.json`: a MEDIDA
+ * vivia fora do código que ela mede. Cada lote pedia dois commits em dois repositórios, e
+ * um deles podia ficar para trás sem que nada reclamasse — o catálogo diria "validado" para
+ * um commit que a repo não tem, ou o contrário.
+ */
 const CAMINHO =
   process.env["CATALOGO"] ??
-  "/Users/winnervinicius/Developer/gestao-publica-execucao/catalogo-execucao.json";
+  fileURLToPath(new URL("../docs/edital/catalogo-execucao.json", import.meta.url));
 
 type Situacao =
   | "NAO_VERIFICADO"

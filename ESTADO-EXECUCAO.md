@@ -2767,6 +2767,103 @@ aparecem entre os 12 — `m11-compras.test.ts` e `m16-rollout.test.ts` — falha
 deixaria passar a lentidão real no dia em que ela fosse de código. A resposta certa não é
 afrouxar o limite: é medir a causa e rodar de novo — que é o que a rodada 2 registra abaixo.
 
+## 22. Organização dos documentos — uma repo, um lugar
+
+Lote documental, pedido pelo operador. **Contagem por natureza: zero cláusulas** — nada foi
+construído, nada foi medido no catálogo. O que mudou foi onde as coisas estão.
+
+### 22.1 · Os três defeitos de arrumação que o levantamento achou
+
+1. ⚠️ **AS REGRAS DO REPOSITÓRIO NÃO EXISTIAM EM ARQUIVO.** O texto que define invariantes,
+   proibições e regime de rigor vivia no chat, e era colado a cada sessão. Não havia
+   `CLAUDE.md`. Uma sessão que começasse sem a colagem não tinha como saber que dinheiro é
+   `Decimal` nem que a razão é append-only.
+2. ⚠️ **A MEDIDA VIVIA FORA DO CÓDIGO QUE ELA MEDE.** O catálogo de 2.037 cláusulas estava
+   em `../gestao-publica-execucao`, outro repositório, alcançado por **caminho absoluto de
+   uma máquina** em `scripts/marcar-catalogo.ts`. Cada lote pedia dois commits em dois
+   lugares, e nada acusaria se um ficasse para trás.
+3. ⚠️ **INSTRUÇÕES SUPERADAS ESTAVAM NO CAMINHO DE QUEM EXECUTA.**
+   `docs/missao-poc/PROMPT-MESTRE.md` abre com *"Copie todo o conteúdo abaixo para o Claude
+   Code"* — uma ordem de julho, da POC de Campina Grande, pronta para ser obedecida por
+   engano. Foi para `docs/historico/`, que o índice declara como não-se-segue.
+
+### 22.2 · O pacote de execução entrou com histórico
+
+`git subtree add --prefix=docs/_pacote ../gestao-publica-execucao main` — a mesma técnica do
+doador, e pela mesma razão: os 9 commits do catálogo **são a trilha de evidência das
+marcações**. Importar por cópia jogaria fora a pergunta "quem marcou esta cláusula, quando e
+com que prova". A origem ficou marcada com a tag `pacote-absorvido`.
+
+### 22.3 · O mapa de onde para onde
+
+| De | Para |
+|---|---|
+| `gestao-publica-execucao/catalogo-execucao.json` e a fonte | `docs/edital/` |
+| `PROMPT-MESTRE-IMPLEMENTACAO.md`, `MAPA-DE-LACUNAS.md`, gabarito, especificações | `docs/instrucoes/` |
+| `prompts/00` a `prompts/03` | `docs/lotes/ENT00` a `ENT03` |
+| README do pacote, `INSTRUCAO-CONTINUACAO.md`, `CONTEXTO-SIAFIC-E-SAAS-MUNICIPAL.md` | `docs/historico/pacote-de-execucao/` |
+| `PROJETO.md` | `docs/instrucoes/arquitetura.md` |
+| `MODULO.template.md` | `docs/instrucoes/MODULO.template.md` |
+| `README-POC.md`, `APRESENTACAO-POC-PASSO-A-PASSO.md`, `docs/missao-poc/` | `docs/historico/poc-pregao-330-2026/` |
+| `docs/caracterizacao-m01-m05.md` | `docs/caracterizacao/m01-m05.md` |
+| as duas `docs/varredura-*.md` | `docs/varreduras/` |
+
+Novos: `CLAUDE.md` na raiz, `docs/LEIA-ME.md` (índice e precedência), `docs/edital/LEIA-ME.md`
+e `docs/lotes/ENT06-item0-telas-das-tres-secoes.md` — o pedido do lote que acabou de fechar,
+que até agora só existia no chat.
+
+⚠️ **TRÊS DOCUMENTOS FORAM SALVOS DE SUMIR.** Roteiro, checklist e plano B da apresentação do
+Pregão 90023/2026 existiam **só** em `~/Desktop/saas-municipal/docs/`, fora de qualquer git.
+Estão em `docs/historico/apresentacao-pregao-90023-2026/`.
+
+### 22.4 · O que mudou de CONTEÚDO, e por quê
+
+**`docs/instrucoes/arquitetura.md`** (ex-`PROJETO.md`) contradizia o jeito atual de trabalhar
+em quatro pontos, e os quatro foram corrigidos:
+
+- mandava **"1 sessão = 1 módulo, não leia nem altere outros módulos"**. O ENT06 precisou
+  ligar M10 a M21, M22, M25 e M26; obedecer teria levado a reconstruir o que existe. Agora:
+  ler é livre, **alterar** é que fica no escopo do lote;
+- ⚠️ **a tabela de status dos módulos saiu inteira.** Ela dava M09 a M14 como pendentes
+  quando os seis têm código e testes, não conhecia M20 a M31 e nomeava M15, M17 e M18 que
+  não existem. **É a prova de que status em documento envelhece** — e o mapa de lacunas já
+  tinha precisado corrigir essa mesma divergência;
+- o banco de desenvolvimento citava `pg-siafic` na porta 5432; o real é `pg-gestao-publica`,
+  usuário `gestao`, base `gestao_publica`, porta 5436, conferido por `docker inspect`;
+- o título dizia "SIAFIC — Campina Grande", que é o recorte da POC e não o produto.
+
+**`docs/instrucoes/MODULO.template.md`**: a mesma regra de 1 sessão = 1 módulo, e o ponteiro
+para os invariantes, que agora é o `CLAUDE.md`.
+
+**`scripts/marcar-catalogo.ts`**: o caminho do catálogo passa a sair do próprio arquivo
+(`import.meta.url`), com `CATALOGO` no ambiente ainda sobrepondo.
+
+### 22.5 · O que NÃO foi tocado, de propósito
+
+⚠️ **O HISTÓRICO DESTE ARQUIVO CONTINUA CITANDO OS CAMINHOS ANTIGOS**, e está certo: as
+seções 1 a 21 registram o que era verdade quando foram escritas. Reescrevê-las para "ficar
+consistente" apagaria a única evidência de que o catálogo já viveu fora da repo. A tabela de
+22.3 é a tradução; o registro fica como está. Pela mesma razão, os prompts de lote em
+`docs/lotes/` ficam **como vieram**, com as referências da época.
+
+**Faltam os pedidos dos lotes ENT03a, ENT03b, ENT03c, ENT04 e ENT05** — foram escritos no
+chat e não chegaram a arquivo. O resultado de cada um está aqui; o pedido, não. Pendência
+`PEDIDOS-DE-LOTE-AUSENTES`.
+
+### 22.6 · Verificado pelo efeito, não pela papelada
+
+| O que se afirma | Como foi conferido | Resultado |
+|---|---|---|
+| o script acha o catálogo no lugar novo | `npx tsx scripts/marcar-catalogo.ts` (sem `--aplicar`) | 316 de 2037 (15,5%), 46 validadas, 48 parciais, 3 de terceiro — idêntico ao de antes da mudança |
+| o histórico do pacote veio junto | `git log` alcança os commits do catálogo por `docs/edital/` | 9 commits, do primeiro censo ao do ENT06 |
+| nenhuma referência viva ficou apontando para o vazio | varredura por nome em todo o repositório | as que restam estão em registro histórico, em `docs/historico/` e nos prompts como vieram |
+
+### 22.7 · Pendência nova, nomeada
+
+`ENV-EXAMPLE-DESATUALIZADO` — o `.env.example` mostra porta 5432 e o nome antigo do banco.
+Não foi corrigido aqui porque é configuração e este lote é documental; está anotado no
+próprio `arquitetura.md`, onde quem sobe ambiente vai ler.
+
 ## 19. O próximo passo
 
 ⚠️ **O ENT05 está FECHADO e PARADO no gate** — 10 de 10, saída 0 (20.12). Nada foi
@@ -2788,8 +2885,8 @@ publicado, nada foi transmitido, nenhum push externo.
    ENT05 mostrou o que acontece quando se constrói sobre seção já censada — move situação,
    não cobertura. As 1.726 são cobertura.
 
-2. **As decisões de modelo ainda abertas** (`docs/varredura-de-modelo-ent04-ent05.md`, e as
-   D1–D14 de `docs/varredura-ent05-tres-secoes.md` que ficaram como pendência). Continuam
+2. **As decisões de modelo ainda abertas** (`docs/varreduras/varredura-de-modelo-ent04-ent05.md`,
+   e as D1–D14 de `docs/varreduras/varredura-ent05-tres-secoes.md` que ficaram como pendência). Continuam
    sendo o item mais barato agora e o mais caro de adiar — **o ITEM 3 deste lote foi a conta
    de uma decisão de modelo adiada desde o M04**, paga em migração.
 

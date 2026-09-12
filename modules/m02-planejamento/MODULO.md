@@ -155,7 +155,7 @@ Durante três sessões, `vitest run` truncava as tabelas de domínio e apagava o
 seed. **Corrigido na 2c-final**: a suíte roda num banco isolado
 (`DATABASE_URL_TEST`), e `test/db-teste.ts` ABORTA se essa variável faltar ou
 apontar para o mesmo banco que `DATABASE_URL`. Provado: dev fica em 29/111 antes
-e depois de rodar a suíte inteira. Ver `PROJETO.md`.
+e depois de rodar a suíte inteira. Ver `docs/instrucoes/arquitetura.md`.
 
 ## Dotação inicial EAGER (Parte 5-fix)
 

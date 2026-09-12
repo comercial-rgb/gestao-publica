@@ -1,8 +1,13 @@
-# SIAFIC — Prefeitura de Campina Grande/PB
+# Arquitetura técnica do gestao-publica
 
-Sistema de contabilidade pública em conformidade com o SIAFIC (Decreto Federal
-10.540/2020): Sistema Único e Integrado de Execução Orçamentária, Administração
-Financeira e Controle. Monorepo modular — cada módulo de negócio é uma pasta
+As decisões de stack e de desenho do núcleo, e as armadilhas que já custaram tempo.
+As REGRAS do repositório estão no `CLAUDE.md`, na raiz; este arquivo é o detalhe
+técnico que elas pressupõem.
+
+O núcleo nasceu como SIAFIC (Decreto Federal 10.540/2020) para a POC de Campina
+Grande/PB, e é por isso que o vocabulário do M01 ao M14 é o daquele decreto.
+**O produto não é esse recorte:** SIAFIC é um conjunto de módulos daqui, e o
+sistema é de gestão pública municipal inteira. Cada módulo de negócio é uma pasta
 fechada com seu próprio manifesto `MODULO.md`.
 
 ## Stack (FIXO — não trocar)
@@ -42,58 +47,61 @@ fechada com seu próprio manifesto `MODULO.md`.
 4. **Fail-closed.** Na dúvida, rejeite. Lançamento desbalanceado = erro,
    nunca grava.
 
-## Convenção de trabalho com IA
+## Convenção de trabalho
 
-**1 sessão = 1 módulo.** Ao trabalhar em um módulo, leia SOMENTE:
+⚠️ **ESTA SEÇÃO DIZIA "1 sessão = 1 módulo, não leia nem altere outros módulos", e a
+regra caiu por medição.** Um lote de superfície liga o cadastro novo aos anexos do
+M22, aos campos adicionais do M25, ao protocolo do M21 e ao designer do M26 — e a
+instrução de não ler outro módulo levaria a reconstruir o que já existe, que é o
+defeito mais caro deste repositório.
 
-1. Este `PROJETO.md` (visão macro + invariantes), e
-2. O `MODULO.md` do módulo alvo (use `MODULO.template.md` como base ao criar).
+O que vale:
 
-Não leia nem altere outros módulos. Os alicerces compartilhados são
+1. `CLAUDE.md` — as regras e os invariantes;
+2. `ESTADO-EXECUCAO.md` — onde paramos;
+3. o `MODULO.md` de **todo** módulo que o lote toca, alvo e ligado (use
+   `MODULO.template.md` como base ao criar um);
+4. este arquivo, para o desenho do núcleo.
+
+**Ler é livre; ALTERAR é que fica no escopo declarado do lote.** Os alicerces
+compartilhados são
 `packages/contracts/` (tipos + Zod), `packages/ledger/` (motor de partidas
 dobradas, domain puro) e `prisma/schema/_base.prisma` (enums globais,
 inbox/outbox de integração).
 
-## Módulos (M01–M19)
+## Módulos
 
-Numeração **definitiva**, alinhada à ordem de dependência real.
+⚠️ **A TABELA DE STATUS QUE HAVIA AQUI FOI REMOVIDA, E A REMOÇÃO É A LIÇÃO.** Ela
+listava M09 a M14 como "pendentes" quando os seis já tinham código e testes; não
+conhecia os módulos M20 a M31; e nomeava M15, M17 e M18 que não existem como pasta.
+Um leitor que confiasse nela trataria módulo pronto como ausente — e foi o que o
+mapa de lacunas precisou corrigir em 2026-09-11.
 
-| Módulo | Nome | Status |
-| --- | --- | --- |
-| M01 | core-contábil | concluído |
-| M02 | planejamento | estrutura + seed concluídos; PPA/LDO/LOA e limites pendentes |
-| M03 | créditos adicionais | concluído |
-| M04 | receita | concluído |
-| M05 | despesa: reserva → empenho → liquidação → pagamento | concluído |
-| M06 | ordem cronológica de pagamento | concluído |
-| M07 | extraorçamentário (consignações, retenções, cauções) | concluído |
-| M08 | restos a pagar + exercício | concluído |
-| M09 | financeiro / tesouraria | pendente |
-| M10 | patrimonial | pendente |
-| M11 | licitações / contratos | pendente |
-| M12 | relatórios | pendente |
-| M13 | transparência | pendente |
-| M14 | exports federais | pendente |
-| M15 | retenções / motor fiscal | pendente |
-| M16 | segurança / auditoria | pendente |
-| M17 | integrações | pendente |
-| M18 | IA | pendente |
-| M19 | pessoas e credores (cadastro append-only, papéis, histórico) | concluído — ENT01 |
+**Status de módulo não mora em documento.** Mora em três lugares que não envelhecem
+sozinhos:
 
-> **Numeração revisada na Parte 3:** o scaffold original tinha receita/despesa
-> fora da ordem de dependência. Módulos com código (M01/M02/M04) mantêm número;
-> a renumeração afetou só rótulos de módulos ainda não construídos.
+- `modules/` e `adapters/` — o que existe no disco, com o `MODULO.md` de cada um;
+- `ESTADO-EXECUCAO.md` — o que o último lote provou, com comando e resultado;
+- `docs/edital/catalogo-execucao.json` — quanto do edital cada seção atende, por
+  cláusula e com evidência.
+
+A numeração dos módulos é definitiva e segue a ordem de dependência real: quem tem
+código mantém o número.
 
 ## Estrutura do repositório
 
 ```
-PROJETO.md              ← este arquivo (visão macro)
-MODULO.template.md      ← template para o MODULO.md de cada módulo
-prisma.config.ts        ← config Prisma 7 (schema multi-arquivo)
-prisma/schema/          ← *.prisma (base + 1 arquivo por módulo)
-packages/contracts/     ← tipos compartilhados + Zod (money, periodo)
-packages/ledger/        ← motor de partidas dobradas (domain puro, zero I/O)
-modules/                ← M01–M18, uma pasta fechada por módulo
+CLAUDE.md                     ← as regras (carregado sozinho em toda sessão)
+ESTADO-EXECUCAO.md            ← o checkpoint entre lotes
+docs/LEIA-ME.md               ← o índice de todos os documentos
+docs/instrucoes/arquitetura.md← este arquivo
+docs/instrucoes/MODULO.template.md ← base do MODULO.md de cada módulo
+prisma.config.ts              ← config Prisma 7 (schema multi-arquivo)
+prisma/schema/                ← *.prisma (base + 1 arquivo por módulo)
+packages/contracts/           ← tipos compartilhados + Zod (money, periodo)
+packages/ledger/              ← motor de partidas dobradas (domain puro, zero I/O)
+modules/                      ← uma pasta fechada por módulo
+lib/molde/ e components/molde/← o descritor de recurso e a superfície que ele monta
 ```
 
 ## Modelo do ledger: PERNA ÚNICA
@@ -137,17 +145,25 @@ um lançamento de pernas uniformes.
 
 ## Banco de desenvolvimento
 
+O container de desenvolvimento em uso nesta máquina (conferido em 2026-09-12):
+**`pg-gestao-publica`, `postgres:18`, usuário `gestao`, base `gestao_publica`, porta
+`5436`.** A senha está no `.env`, não aqui.
+
 ```bash
-# Postgres descartável (credenciais batem com o DATABASE_URL do .env.example)
-docker run --name pg-siafic -e POSTGRES_USER=siafic -e POSTGRES_PASSWORD=siafic \
-  -e POSTGRES_DB=siafic_cg -p 5432:5432 -d postgres:18
+# Postgres descartável
+docker run --name pg-gestao-publica -e POSTGRES_USER=gestao -e POSTGRES_PASSWORD=<senha> \
+  -e POSTGRES_DB=gestao_publica -p 5436:5432 -d postgres:18
 
 npx prisma migrate dev   # aplica as migrations versionadas
 
 # SQL fora do alcance do Prisma (índices parciais etc.) — passo separado,
-# OBRIGATÓRIO em todo ambiente novo. Ver prisma/sql/.
-docker exec -i pg-siafic psql -U siafic -d siafic_cg < prisma/sql/uq_estorno_unico.sql
+# OBRIGATÓRIO em todo ambiente novo. Ver prisma/sql/ e scripts/aplicar-sql-manual.ts.
+npx tsx scripts/aplicar-sql-manual.ts
 ```
+
+⚠️ **O `.env.example` ainda mostra a porta 5432 e o nome antigo.** Pendência
+`ENV-EXAMPLE-DESATUALIZADO` — corrigi-la é mexer em configuração, e este lote é
+documental. Quem subir ambiente novo confere o container antes do arquivo.
 
 ## Banco de TESTE isolado (obrigatório)
 

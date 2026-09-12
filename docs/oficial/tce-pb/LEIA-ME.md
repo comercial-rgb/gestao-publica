@@ -23,7 +23,7 @@
 ## Regras deste diretório
 1. **Não editar** arquivos baixados. Versão nova do TCE = arquivo novo com data no nome; nunca sobrescrever (golden files referenciam a versão).
 2. Procedência em `MANIFEST.json`: Winner preenche `fonte/url/versao/dataPublicacao/dataDownload`; **o executor calcula e grava `sha256` no Passo 0 da S1** (hash atesta integridade a partir do repo).
-3. Divergência entre estes arquivos e qualquer resumo em `docs/missao-poc/PATCH.md` → **estes arquivos mandam**; divergência reportada no bloco verde.
+3. Divergência entre estes arquivos e qualquer resumo em `docs/historico/poc-pregao-330-2026/missao-poc/PATCH.md` → **estes arquivos mandam**; divergência reportada no bloco verde.
 
 ## Credenciais TCE (duas, distintas — PATCH §6)
 - **Captura 2.0 (testes 2026, obrigatório 2027):** solicitar usuário de testes ao suporte do TCE, informando participação no PE 330/2026 (SEFIN Campina Grande), pedindo também UG fictícia/homologação e OpenAPI/schemas atualizados.

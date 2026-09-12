@@ -12,7 +12,8 @@ import { Client } from "pg";
  * porque o schema.prisma não sabe expressá-los. O resultado silencioso: um banco de demonstração
  * ficava SEM as travas de append-only (duplo estorno, dotação inicial única, XOR do movimento
  * contratual). Os testes passavam — eles aplicam o SQL — enquanto o ambiente demonstrado não tinha
- * as travas. Este script fecha esse buraco, e o roteiro do README-POC passa a chamá-lo.
+ * as travas. Este script fecha esse buraco, e o roteiro do README-POC passa a chamá-lo (hoje
+ * em `docs/historico/poc-pregao-330-2026/README-POC.md`).
  *
  * IDEMPOTENTE: `CREATE UNIQUE INDEX` vira `... IF NOT EXISTS` (mesma transformação do global-setup),
  * então rodar duas vezes é no-op. Aplica a pasta INTEIRA e ordenada: um `.sql` novo entra sozinho,
