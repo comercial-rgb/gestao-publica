@@ -1,7 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { exigirSessao } from "../../../../../lib/portas/sessao";
+import {
+  recorteDePagina,
+  type RecorteDaPagina,
+} from "../../../../../lib/portas/contexto";
+import { respostaDaRecusaDeLeitura } from "../../../../../lib/rotas/recusa";
 import { emitir, montarPdfGerencialEmpenhos } from "../../../../../lib/pdf/operacionais";
-import { descreverRecorte, recorteDe } from "../../../../../lib/recorte";
+import { descreverRecorte } from "../../../../../lib/recorte";
 import { recorteGerencialDe } from "../filtro";
 
 /**
@@ -23,10 +27,21 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  await exigirSessao();
-
   const sp = Object.fromEntries(req.nextUrl.searchParams);
-  const recorte = recorteDe(sp);
+
+  // ⚠️ AQUI O RECORTE NÃO AFETA SÓ O QUE SE LÊ — ELE VAI IMPRESSO NO PAPEL. Abaixo,
+  // `descreverRecorte(recorte)` entra no documento como a linha de período ("Exercício 2026
+  // · unidade 01003"). Um recorte não autorizado não produziria apenas uma lista indevida:
+  // sairia um PDF, assinado pelo ente, AFIRMANDO ser daquela unidade — e papel emitido é o
+  // que sobrevive à sessão que o pediu.
+  let recorte: RecorteDaPagina;
+  try {
+    recorte = await recorteDePagina(sp);
+  } catch (e) {
+    const recusa = respostaDaRecusaDeLeitura(e);
+    if (recusa !== null) return recusa;
+    throw e;
+  }
   const filtro = recorteGerencialDe(sp);
 
   const doc = await montarPdfGerencialEmpenhos({
