@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { exigirSessao } from "../../../../../lib/portas/sessao";
-import { recorteDe } from "../../../../../lib/recorte";
+import { exercicioAutorizado } from "../../../../../lib/recorte";
+import { respostaDaRecusaDeLeitura } from "../../../../../lib/rotas/recusa";
 import { montarPdfAtualizacoesOrcamentarias, emitir } from "../../../../../lib/pdf/operacionais";
 
 /**
@@ -19,7 +20,18 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest): Promise<NextResponse> {
   await exigirSessao();
   const sp = req.nextUrl.searchParams;
-  const { exercicio } = recorteDe(Object.fromEntries(sp));
+  // ⚠️ SÓ O EXERCÍCIO — esta rota entrega leitura do ENTE, e nenhum montador dela recebe
+  // unidade. O que morre aqui é o `?exercicio=abc` virando 2026 em silêncio: um PDF, com o
+  // rodapé do ente, afirmando ser de um ano que ninguém pediu. Papel emitido sobrevive à
+  // sessão que o pediu.
+  let exercicio: number;
+  try {
+    exercicio = exercicioAutorizado(Object.fromEntries(sp));
+  } catch (e) {
+    const recusa = respostaDaRecusaDeLeitura(e);
+    if (recusa !== null) return recusa;
+    throw e; // o que não é recusa de leitura SOBE.
+  }
   const doc = await montarPdfAtualizacoesOrcamentarias({
     exercicio,
     filtro: {
