@@ -223,6 +223,12 @@ const RAIZ = resolve(import.meta.dirname, "..", "..");
 const PORTAS_DE_OPCOES: readonly string[] = [
   "lib/portas/recursos/almoxarifado-dados.ts",
   "lib/portas/recursos/dados.ts",
+  // ⚠️ ENT06 — a porta da gestão do bem. Ela entrou aqui NO MESMO COMMIT em que nasceu, e a
+  // razão é um falso-verde que quase passou: `paiId` e `setorId` também existem na porta do
+  // almoxarifado, então os campos do cadastro novo encontrariam chave — pelo arquivo ERRADO.
+  // O t20 continuaria verde enquanto a tela mostrava select desabilitado. Um guard que
+  // enumera fontes só enxerga as fontes que alguém lembrou de declarar.
+  "lib/portas/recursos/gestao-do-bem-dados.ts",
 ];
 
 /**

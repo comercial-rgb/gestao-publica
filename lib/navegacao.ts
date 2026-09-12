@@ -326,6 +326,20 @@ export const ALMOXARIFADO: readonly RelatorioNav[] = [
   { href: "/patrimonio/almoxarifado/inventarios", numero: "Inventários", rotulo: "Inventários de Estoque", descricao: "Enquanto aberto, bloqueia a movimentação do depósito — é isso que torna a contagem comparável com a posição na data de abertura." },
 ];
 
+/**
+ * ⚠️ ENT06 — OS CADASTROS DE APOIO DA GESTÃO DO BEM (TR 5.19). Mesma razão da lista acima:
+ * é dela que saem, ao mesmo tempo, o hub da área e o índice da busca global. Repetir os
+ * itens no hub criaria duas verdades sobre o que existe nesta área.
+ *
+ * São os três que TODO o resto de 5.19 pressupõe: um bem se move PARA uma localização, sai
+ * do acervo POR um motivo, e entra nele POR um tipo de incorporação.
+ */
+export const GESTAO_DO_BEM: readonly RelatorioNav[] = [
+  { href: "/patrimonio/localizacoes", numero: "Localizações", rotulo: "Localizações Físicas", descricao: "Onde o bem fica, em árvore: prédio, andar, sala — com o setor que responde pela guarda. É para cá que a transferência move o bem, e é por aqui que o inventário sabe onde procurar." },
+  { href: "/patrimonio/motivos-de-baixa", numero: "Motivos", rotulo: "Motivos de Baixa", descricao: "Por que um bem sai do acervo: alienação, doação, inservível, furto. O rol é do ente — a TR 5.19.30 manda que seja configurável, e não uma lista fechada no código." },
+  { href: "/patrimonio/tipos-de-incorporacao", numero: "Incorporação", rotulo: "Tipos de Incorporação", descricao: "Como o bem entrou: adquirido, doação, comodato, permuta. Doação e compra produzem lançamentos diferentes, e é o tipo que explica a entrada." },
+];
+
 export const CONTROLE_INTERNO: readonly RelatorioNav[] = [
   { href: "/controle-interno/auditorias", numero: "Auditorias", rotulo: "Auditorias Internas", descricao: "Roteiro com base legal, achados com providência e prazo, e o relatório circunstanciado que se assina." },
 ];

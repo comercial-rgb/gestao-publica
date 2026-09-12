@@ -1,5 +1,6 @@
 import { definirRecurso, type DefinicaoDeRecurso } from "../../molde/tipos.js";
 import { RECURSOS_DO_ALMOXARIFADO } from "./almoxarifado.js";
+import { RECURSOS_DA_GESTAO_DO_BEM } from "./gestao-do-bem.js";
 
 /**
  * OS DESCRITORES DOS CADASTROS DO ENT03b — a prova do molde.
@@ -708,4 +709,9 @@ export const RECURSOS_DO_MOLDE: readonly DefinicaoDeRecurso[] = [
   // do molde: um cadastro que entrasse por fora ficaria invisível na busca e sem a
   // verificação de que suas ações existem no censo do M16.
   ...RECURSOS_DO_ALMOXARIFADO,
+  // ⚠️ ENT06 — os cadastros de apoio da GESTÃO DO BEM (TR 5.19). Entram pela mesma lista
+  // pelo mesmo motivo do almoxarifado: é dela que saem a busca global e o censo do molde.
+  // Um cadastro que entrasse por fora ficaria invisível na busca e sem a verificação de que
+  // suas ações existem no censo do M16.
+  ...RECURSOS_DA_GESTAO_DO_BEM,
 ];

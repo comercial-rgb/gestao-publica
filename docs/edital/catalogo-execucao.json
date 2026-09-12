@@ -10823,8 +10823,8 @@
       "candidato_reaproveitamento": "siafic-cg:M10",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "ENT05 (modelo das tres secoes derrubadas): MotivoDeBaixa e TABELA, 'de acordo com a necessidade da instituicao' - um enum no codigo seria a constante que erra no segundo ente.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "evidencia": "scripts/smoke-gestao-do-bem.ts (10 passos, 0 falhas, 2026-09-12): o motivo de baixa é incluído PELA TELA /patrimonio/motivos-de-baixa, com código e descrição, e a lista o traz APÓS RECARGA. O modelo já estava provado desde o ENT05 — MotivoDeBaixa é TABELA, e um enum no código seria a constante que erra no segundo ente —; o que não existia era superfície, e um cadastro que o servidor municipal não alcança está implementado e não está entregue.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.19.31",

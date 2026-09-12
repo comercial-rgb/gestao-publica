@@ -3328,6 +3328,88 @@ descritor tiver campo dependente, o t20 passaria sem ter olhado nada.
 | `npx vitest run test/molde` | **25 testes** verdes (t20 e t20b entre eles) | 2026-09-12 |
 | mutação da chave `paiId` | acusou nomeando o campo; revertida, verde | 2026-09-12 |
 
+## 27. Os cadastros de apoio da gestão do bem — e o percurso que quase acusou a aplicação
+
+**O que foi construído.** Os três cadastros que todo o resto da gestão do bem pressupõe — um
+bem se move PARA uma localização, se baixa POR um motivo, entra no acervo POR um tipo de
+incorporação. Pelo molde: `lib/portas/recursos/gestao-do-bem.ts` (descritores),
+`gestao-do-bem-dados.ts` (camada de dados e `opcoesDaGestaoDoBem`), seis rotas
+(`/patrimonio/localizacoes`, `/motivos-de-baixa`, `/tipos-de-incorporacao`, e o `[id]` de cada),
+entrada no hub da área, na barra lateral e na busca global.
+
+A ordem não foi arbitrária: é a lição do almoxarifado. Lá o formulário de material montava com
+três seletores vazios porque unidade, grupo e classe não tinham tela. Os cadastros de apoio vêm
+primeiro para que a tela do BEM, quando vier, não nasça com seletor vazio.
+
+### 27.1 · Três telas, UMA cláusula — e por quê
+
+| Tela | Cláusula | Decisão |
+|---|---|---|
+| Motivos de baixa | 5.19.30 | **`VALIDADO_LOCALMENTE`** — a cláusula pede "a inclusão de motivos de baixa de acordo com a necessidade da instituição", e o percurso inclui um pela tela |
+| Tipos de incorporação | 5.19.3, 5.19.7 | **continuam `IMPLEMENTADO_NAO_VALIDADO`** — o sujeito das duas é o cadastro do BEM ("classificando o seu tipo", "para ser usado no cadastramento dos mesmos"). A tabela configurável é metade; a outra metade é a tela do bem |
+| Localizações físicas | nenhuma | as quatro de 5.19 que dizem "localização" (14, 15, 20, 34) pedem consulta, inventário e relatório POR localização — nunca o cadastro dela |
+
+⚠️ **A desproporção é o registro, não um efeito colateral.** Superfície entregue não é
+cláusula atendida, e um catálogo que confunde as duas passa a esconder o que falta. As
+localizações entram porque tudo o mais as pressupõe.
+
+### 27.2 · O percurso, e a asserção que ele existe para fazer
+
+`scripts/smoke-gestao-do-bem.ts` — **10 passos, 0 falhas**. A asserção central é o select da
+localização superior: as opções do molde são chaveadas pelo NOME DO CAMPO, e um campo sem
+chave correspondente aparece DESABILITADO dizendo "nenhuma opção cadastrada" — mensagem
+correta apontando a causa errada quando os registros existem (§26). O `t20` vigia isso no
+fonte; o percurso prova pela tela: criada a primeira localização, a segunda TEM de conseguir
+escolhê-la como superior. Provou.
+
+### 27.3 · O defeito que quase foi atribuído à aplicação
+
+O percurso falhou **três vezes** em `entrar`, sempre com `TimeoutError: Navigation timeout of
+30000 ms exceeded`. A mensagem aponta para a aplicação e para a senha; nenhuma das duas tinha
+qualquer coisa.
+
+O que a medição mostrou, em ordem:
+
+1. `RegistroDeOperacao` não guardava **nenhuma** tentativa de login no horário — nem
+   `NEGADO`. Como a porta registra a recusa, isso já excluía senha errada: o servidor nunca
+   foi chamado.
+2. A credencial estava sã e o filho do `trinco-de-maquina` enxergava `SEED_ADMIN_SENHA` com
+   os 22 caracteres — a hipótese de campo `required` vazio bloqueando o envio caiu.
+3. Uma sonda que **não** esperava navegação mostrou o form válido, os dois campos preenchidos
+   e o botão habilitado — e então morreu em `CdpElementHandle.evaluate`.
+
+É esse o ponto: **`page.click` não clica direto — ele calcula o ponto clicável, e esse cálculo
+é um `evaluate` no renderizador.** Com a máquina em pressão de memória (medido: 53 MB livres
+de 8 GB físicos, swap em 7,5 de 8), o `evaluate` trava, nenhuma requisição sai, e o sintoma
+chega 30 s depois como "timeout de navegação".
+
+A correção é no mecanismo, não no relógio: `requestSubmit` dispara o envio pelo caminho do
+próprio React, e a espera olha `page.url()`, que é lido do processo do NAVEGADOR e não do
+renderizador. É o mesmo mecanismo que `preencherEEnviar` já usava no corpo do percurso — só o
+`entrar` destoava. Somado a isso, navegador econômico (`--renderer-process-limit=1`,
+`--js-flags=--max-old-space-size=256`, sem GPU) e `protocolTimeout` alto, para que uma pausa
+do renderizador não seja relatada como defeito da aplicação. Depois disso: login em **0,5 s**,
+e `LOGIN SUCESSO` gravado no banco às 07:34:29.
+
+⚠️ **Pendência `ENTRAR-POR-CLIQUE-FRAGIL`.** Os outros percursos (`smoke-perfis`,
+`smoke-ent06`, `smoke-ent02`, `smoke-ent03a/b/c`, `smoke-cadeia`, `smoke-pessoas`,
+`smoke-visual`) ainda usam o idioma `Promise.all([waitForNavigation, click])`. Eles passam em
+máquina folgada e falham em máquina apertada **apontando para a senha** — que é o pior tipo
+de falha: a que mente sobre a própria causa. Não foram tocados aqui porque trocar o `entrar`
+de nove percursos no lote errado é mudança larga sem percurso que a prove.
+
+### 27.4 · Comandos e resultados
+
+| Comando | Resultado | Data |
+|---|---|---|
+| `npm run typecheck` (backend) | limpo | 2026-09-12 |
+| `npm run typecheck:scripts` | limpo | 2026-09-12 |
+| `npm run typecheck:app` | limpo | 2026-09-12 |
+| `npx vitest run test/molde test/busca-global.test.ts` | 31 testes verdes | 2026-09-12 |
+| `npm run build` | 136 rotas, as seis novas entre elas | 2026-09-12 |
+| `npm run smoke:gestao-do-bem` | **10 passos, 0 falhas** | 2026-09-12 |
+| sonda do registro (banco) | `LOGIN SUCESSO` 07:34:29; nada entre 04:42 e 07:34 | 2026-09-12 |
+
 ## 19. O próximo passo
 
 ⚠️ **O ENT05 está FECHADO e PARADO no gate** — 10 de 10, saída 0 (20.12). Nada foi

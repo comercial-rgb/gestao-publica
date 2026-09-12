@@ -125,6 +125,28 @@ const PERCURSO_ENT06 = "scripts/smoke-ent06.ts (48 passos, 0 falhas, 2026-09-11)
  */
 const PERCURSO_PERFIS = "scripts/smoke-perfis.ts (14 passos, 0 falhas, 2026-09-12):";
 
+/**
+ * ⚠️ O PERCURSO DA GESTÃO DO BEM — TRÊS TELAS ENTREGUES, **UMA** CLÁUSULA PROMOVIDA.
+ *
+ * A desproporção não é falha do lote: é o que o texto do edital diz, lido com honestidade.
+ *
+ * · Os MOTIVOS DE BAIXA fecham a 5.19.30 inteira — a cláusula pede "a inclusão de motivos de
+ *   baixa do bem de acordo com a necessidade da instituição", e é isso, e só isso, que ela
+ *   pede. O percurso inclui um pela tela e o encontra após recarga.
+ * · Os TIPOS DE INCORPORAÇÃO **não** fecham a 5.19.3 nem a 5.19.7, porque o sujeito das duas
+ *   é o CADASTRO DO BEM: "cadastrar bens ... classificando o seu tipo" e "para ser usado no
+ *   cadastramento dos mesmos". A tabela configurável é metade da cláusula; a metade que falta
+ *   é a tela do bem, que este lote não entregou.
+ * · As LOCALIZAÇÕES FÍSICAS não fecham cláusula nenhuma. As quatro de 5.19 que dizem
+ *   "localização" (14, 15, 20, 34) pedem CONSULTA, INVENTÁRIO e RELATÓRIO por localização —
+ *   nunca o cadastro dela. Ela entra porque tudo o mais a pressupõe, não porque marque.
+ *
+ * Marcar as três confundiria superfície entregue com cláusula atendida, que é precisamente o
+ * erro que este catálogo existe para não cometer.
+ */
+const PERCURSO_GESTAO_DO_BEM =
+  "scripts/smoke-gestao-do-bem.ts (10 passos, 0 falhas, 2026-09-12):";
+
 const SMOKE_04 =
   "scripts/smoke-ent03c.ts (41 passos, 0 falhas, 2026-09-11, DUAS execuções — a segunda " +
   "contra o banco já povoado pela primeira, que é o que prova que o percurso não depende " +
@@ -1422,7 +1444,10 @@ const MAPA: Readonly<Record<string, Marca>> = {
   "5.19.23": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): A movimentacao FISICA passou a existir (MovimentoDeGestaoDoBem: localizacao, responsavel, estado, situacao, transferencia entre entidades), ao lado da FINANCEIRA que ja existia (MovimentoPatrimonial: agregacao, reavaliacao, depreciacao). Os dois eixos sao separados de proposito, e ha teste contando LancamentoContabil antes e depois para provar que a gestao NAO toca o razao." },
   "5.19.27": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): A unidade gestora do bem e derivada da ultima TRANSFERENCIA_ENTRADA; o inventario e POR unidade gestora." },
   "5.19.28": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): transferirBemEntreEntidades gera as DUAS pernas sob um operacaoId, tudo-ou-nada, com viabilidade conferida ANTES de qualquer escrita. Estornar UMA estorna as DUAS - meia transferencia estornada deixaria o bem em duas entidades ou em nenhuma. Bem BAIXADO ou em origem diferente da declarada RECUSA." },
-  "5.19.30": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): MotivoDeBaixa e TABELA, 'de acordo com a necessidade da instituicao' - um enum no codigo seria a constante que erra no segundo ente." },
+  "5.19.30": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: `${PERCURSO_GESTAO_DO_BEM} o motivo de baixa é incluído PELA TELA /patrimonio/motivos-de-baixa, com código e descrição, e a lista o traz APÓS RECARGA. O modelo já estava provado desde o ENT05 — MotivoDeBaixa é TABELA, e um enum no código seria a constante que erra no segundo ente —; o que não existia era superfície, e um cadastro que o servidor municipal não alcança está implementado e não está entregue.`,
+  },
   "5.19.36": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): TermoPatrimonial do tipo RESPONSABILIDADE, individual/setorial/por responsavel, com os bens como itens. Emitir o termo REGISTRA o movimento de responsabilidade na mesma transacao: sem isso o termo diria uma coisa e a derivacao do bem outra. Termo sem responsavel RECUSA." },
   "5.19.37": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): TermoPatrimonial do tipo BAIXA, que poe a situacao do bem em BAIXADO pelo mesmo caminho." },
   "5.19.42": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): FormulaDeAvaliacao com expressao INTERPRETADA por avaliador proprio - nunca eval nem Function. A gramatica tem quatro operacoes, parenteses, numeros e um rol FECHADO de seis grandezas do bem; identificador global, chamada de funcao e acesso a propriedade sao INEXPRIMIVEIS, nao bloqueados. Metade do teste e negacao, incluindo o ataque por constructor que derrota sanitizacao por lista negra. Formula invalida nao chega a ser salva." },
