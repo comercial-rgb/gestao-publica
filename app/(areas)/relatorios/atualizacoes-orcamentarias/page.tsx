@@ -9,7 +9,7 @@ import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import { lerDecretos, PortaSemBancoError, type DecretoNaLista } from "../../../../lib/portas/creditos";
 import { paraCsv } from "../../../../lib/csv/csv";
 import { formatarMoeda } from "../../../../lib/format/moeda";
-import { dataBr, recorteDe } from "../../../../lib/recorte";
+import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
 import {
   filtrarAtualizacoes,
   linhasDeAtualizacao,
@@ -46,7 +46,33 @@ export default async function AtualizacoesOrcamentariasPage({
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
   const sp = await searchParams;
-  const { exercicio } = recorteDe(sp);
+  // ⚠️ SÓ O EXERCÍCIO. `lerDecretos({ ano })` não recebe unidade — o movimento de crédito
+  // adicional é do ENTE, e a UG aparece como COLUNA do resultado, não como recorte da
+  // consulta (o subtítulo desta tela diz isso: "por ficha, decreto, fonte e UG").
+  //
+  // ⚠️ E A RECUSA VEM ANTES DO TRY PRINCIPAL, de propósito: assim `exercicio` já está
+  // atribuído quando o `catch` de baixo roda, e aquele cabeçalho — que imprime
+  // `Exercício ${exercicio}` — continua podendo afirmá-lo, porque a essa altura o ano JÁ
+  // foi autorizado. O silêncio que morre aqui é o `?exercicio=abc` virando 2026.
+  let exercicio: number;
+  try {
+    exercicio = exercicioAutorizado(sp);
+  } catch (erro) {
+    return (
+      <div className="space-y-4">
+        <SincronizarContexto />
+        <PageHeader titulo="Atualizações orçamentárias" subtitulo="Movimentos de crédito adicional" />
+        <EstadoVazio
+          titulo={
+            erro instanceof ExercicioIlegivelError
+              ? "O exercício pedido não é um ano"
+              : "Não foi possível ler o recorte"
+          }
+          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+        />
+      </div>
+    );
+  }
   const um = (k: string): string => {
     const v = sp[k];
     return (Array.isArray(v) ? v[0] : v) ?? "";
