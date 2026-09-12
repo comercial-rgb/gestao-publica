@@ -3137,6 +3137,106 @@ pendência continua aberta com outro nome.
 **A recomendação:** migrar. Mas como lote PRÓPRIO, de profundidade, com a suíte do M10 no
 centro — e não como efeito colateral de um lote de superfície.
 
+## 25. ENT06 item 3 — o eixo da data do formulário, corrigido na fronteira
+
+Fecha `EIXO-DE-DATA-NA-ENTRADA-DO-ENT05`, caracterizado no item 0 e aberto desde então.
+
+### 25.1 · O defeito, e por onde ele entrava
+
+`<input type="date">` entrega `YYYY-MM-DD`. Essa string, entregue **crua** a um
+`z.coerce.date()`, vira meia-noite **UTC** — e no fuso do ente (UTC-3) o dia civil desse
+instante é o ANTERIOR:
+
+```
+z.coerce.date("2026-09-11")  ->  2026-09-11T00:00:00.000Z
+diaCivil(...) no fuso do ente ->  2026-09-10
+```
+
+**O operador digitava 11 e o sistema guardava um instante cujo dia civil era 10.** E não era
+apresentação: `posicaoDeEstoque` corta por dia civil, então o movimento digitado como 11
+entrava na posição pedida "até 10" — a posição de ontem incluindo um movimento de hoje. A
+ficha de controle (5.18.16) e o inventário usam o mesmo corte.
+
+### 25.2 · ⚠️ POR QUE A CORREÇÃO NÃO FOI NOS 25 SCHEMAS
+
+O item 0 tentou acrescentar `z.coerce.date` às formas proibidas pelo guard de data civil.
+**Acusou 96 sítios**, 54 nos módulos do ENT05, e foi revertido — com razão.
+
+A medição desta vez explica o porquê, e ela é o achado do lote:
+
+| | |
+|---|---:|
+| `z.coerce.date()` nos três módulos do ENT05 | 25 |
+| sítios onde a string CRUA do formulário chega a eles | **7** |
+| sítios em `lib/portas/recursos/dados.ts` (os demais cadastros) | **0** |
+
+`z.coerce.date` é **inócuo** quando recebe um `Date` ou um instante ISO completo — e é isso
+que testes, seeds e serviços internos passam (`new Date("2026-03-01T12:00:00Z")`: meio-dia,
+dia civil correto). Trocar os 25 por `zDia` quebraria todos eles para consertar quem nunca
+foi o culpado. **O defeito não é forma no texto: é fluxo de dados**, e o fluxo tem uma
+fronteira — o arquivo onde o molde converte `Campos` (que é `Record<string, string>`) em
+entrada de serviço.
+
+Os demais cadastros (convênio, precatório, consórcio, auditoria, dívida) já recebem `zDia`
+no domínio: **nunca tiveram o defeito**, e é por isso que a fronteira deles tem zero sítios.
+
+### 25.3 · O conserto
+
+Um irmão do `t()` em `lib/portas/recursos/almoxarifado-dados.ts`:
+
+```ts
+const dia = (c: Campos, k: string): Date => inicioDoDiaCivil(t(c, k));
+```
+
+Sete sítios passaram a usá-lo: bloqueio (início e fim), encerramento de bloqueio, requisição,
+movimento de requisição, e abertura e fechamento de inventário. Os schemas ficaram como
+estão.
+
+⚠️ **CONSEQUÊNCIA NOMEADA: data obrigatória vazia agora RECUSA.** `inicioDoDiaCivil("")`
+estoura com *"Dia "" inválido — o formato é YYYY-MM-DD"*. Antes, a string vazia virava
+`Invalid Date` silenciosamente dentro do `z.coerce.date`. Recusar com mensagem é o
+comportamento que o repositório pede; registrado aqui porque é mudança de comportamento
+visível, não só correção interna.
+
+### 25.4 · O instrumento, provado por mutação nas duas direções
+
+`test/eixo-de-data-no-molde.test.ts` — e ele vigia a **fronteira**, não uma quarta forma
+proibida no código-fonte, pela razão de 25.2. Três asserções: nenhum campo de data passa por
+`t(`; a fronteira de fato converte datas (anti-vacuidade); e o efeito, lado a lado, da âncora
+civil contra a crua.
+
+Mutando **um** sítio de volta para `t(c, ...)`:
+
+```
+MUTADO:    × nenhum campo de data chega ao serviço sem a âncora civil
+           × e a fronteira realmente converte datas — expected 6 to be >= 7
+REVERTIDO: 3 testes verdes
+```
+
+⚠️ **A MESMA MUTAÇÃO ACUSOU NAS DUAS METADES**, e é isso que se queria: a metade
+anti-vacuidade existe porque apagar os campos de data deixaria a primeira verde — um guard
+que fica verde quando o que ele vigia some não vigia nada.
+
+⚠️ **A LISTA DE FRONTEIRAS É EXPLÍCITA, e não um glob.** Um arquivo de fronteira novo é uma
+decisão, e quem o criar tem de vir declará-la. Com glob, mover a fronteira deixaria o guard
+verde vigiando o lugar errado.
+
+### 25.5 · Pendência nova, nomeada
+
+`ZDIA-DUPLICADO` — `zDia` está definido **cinco vezes** (M11 medições, M28, M29, M30, M31),
+sempre o mesmo regex. O lugar natural seria `packages/datas`, mas o pacote **não importa
+zod** hoje, e acrescentar essa dependência a ele é decisão de arquitetura, não limpeza. Fica
+nomeada; não foi tocada aqui.
+
+### 25.6 · Comandos e resultados
+
+| Comando | Resultado | Data |
+|---|---|---|
+| `npm run typecheck` / `:app` / `:scripts` | limpos | 2026-09-12 |
+| `npx vitest run` (guard novo + caracterização) | 7 verdes | 2026-09-12 |
+| mutação de um sítio e reversão | 2 falhas nomeadas → 3 verdes | 2026-09-12 |
+| `npx vitest run modules/m10-patrimonial` | **13 arquivos, 175 testes** verdes | 2026-09-12 |
+
 ## 19. O próximo passo
 
 ⚠️ **O ENT05 está FECHADO e PARADO no gate** — 10 de 10, saída 0 (20.12). Nada foi

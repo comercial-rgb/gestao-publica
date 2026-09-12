@@ -3,6 +3,7 @@ import {
   diaCivil,
   diaCivilBr,
   diferencaEmDiasCivis,
+  inicioDoDiaCivil,
   meioDiaCivil,
 } from "../../../packages/datas/index.js";
 import {
@@ -826,6 +827,27 @@ export async function opcoesDoAlmoxarifado(
 type Campos = Readonly<Record<string, string>>;
 
 const t = (c: Campos, k: string): string => (c[k] ?? "").trim();
+
+/**
+ * ⚠️ A DATA DO FORMULÁRIO, ANCORADA NO DIA CIVIL DO ENTE — e é por aqui que o defeito
+ * `EIXO-DE-DATA-NA-ENTRADA-DO-ENT05` entrava.
+ *
+ * `<input type="date">` entrega `YYYY-MM-DD`. Entregue crua a um `z.coerce.date()`, essa
+ * string vira meia-noite **UTC** — e no fuso do ente (UTC-3) o dia civil desse instante é o
+ * ANTERIOR. O operador digitava 11 e o sistema guardava um instante cujo dia civil era 10.
+ *
+ * ⚠️ E NÃO ERA SÓ APRESENTAÇÃO: `posicaoDeEstoque` corta por dia civil, então o movimento
+ * digitado como 11 entrava na posição pedida "até 10" — a posição de ontem incluindo um
+ * movimento de hoje. A ficha de controle e o inventário usam o mesmo corte.
+ *
+ * ⚠️ POR QUE A CORREÇÃO É AQUI E NÃO NOS SCHEMAS. Os 25 `z.coerce.date()` dos módulos do
+ * ENT05 são INÓCUOS quando recebem um `Date` ou um instante ISO completo — e é isso que
+ * testes, seeds e serviços internos passam. Trocá-los por `zDia` quebraria todos eles para
+ * consertar quem nunca foi o culpado: o problema é a string crua do formulário, e a
+ * fronteira do formulário é este arquivo.
+ */
+const dia = (c: Campos, k: string): Date => inicioDoDiaCivil(t(c, k));
+
 const opcional = (c: Campos, k: string): string | undefined => {
   const v = t(c, k);
   return v === "" ? undefined : v;
@@ -910,8 +932,8 @@ export async function acaoDoDeposito(acao: string, depositoId: string, c: Campos
         bloquearEstoque(cliente(), {
           depositoId,
           ...(opcional(c, "materialId") !== undefined ? { materialId: t(c, "materialId") } : {}),
-          inicio: t(c, "inicio"),
-          ...(opcional(c, "fim") !== undefined ? { fim: t(c, "fim") } : {}),
+          inicio: dia(c, "inicio"),
+          ...(opcional(c, "fim") !== undefined ? { fim: dia(c, "fim") } : {}),
           motivo: t(c, "motivo"),
           criadoPor,
         })
@@ -921,7 +943,7 @@ export async function acaoDoDeposito(acao: string, depositoId: string, c: Campos
       await comEscritaAutenticada("ENCERRAR_BLOQUEIO_DE_ESTOQUE", (criadoPor) =>
         encerrarBloqueioDeEstoque(cliente(), {
           bloqueioId: t(c, "bloqueioId"),
-          fim: t(c, "fim"),
+          fim: dia(c, "fim"),
           criadoPor,
         })
       );
@@ -937,7 +959,7 @@ export async function criarRequisicao(c: Campos): Promise<void> {
       numero: t(c, "numero"),
       depositoId: t(c, "depositoId"),
       setorId: t(c, "setorId"),
-      dataRequisicao: t(c, "dataRequisicao"),
+      dataRequisicao: dia(c, "dataRequisicao"),
       solicitante: t(c, "solicitante"),
       // ⚠️ UM ITEM — pendência `REQUISICAO-COM-VARIOS-ITENS`, dita no próprio campo.
       itens: [{ materialId: t(c, "materialId"), quantidadeSolicitada: t(c, "quantidade") }],
@@ -968,7 +990,7 @@ export async function acaoDaRequisicao(acao: string, _requisicaoId: string, c: C
       materialId: item.materialId,
       depositoId: item.requisicao.depositoId,
       quantidade: t(c, "quantidade"),
-      dataMovimento: t(c, "dataMovimento"),
+      dataMovimento: dia(c, "dataMovimento"),
       itemDeRequisicaoId: itemId,
       ...(opcional(c, "loteId") !== undefined ? { loteId: t(c, "loteId") } : {}),
       motivo: t(c, "motivo"),
@@ -981,7 +1003,7 @@ export async function criarInventarioDeEstoque(c: Campos): Promise<void> {
   await comEscritaAutenticada("ABRIR_INVENTARIO_DE_ESTOQUE", (criadoPor) =>
     abrirInventarioDeEstoque(cliente(), {
       depositoId: t(c, "depositoId"),
-      dataAbertura: t(c, "dataAbertura"),
+      dataAbertura: dia(c, "dataAbertura"),
       ...(opcional(c, "termoAberturaId") !== undefined ? { termoAberturaId: t(c, "termoAberturaId") } : {}),
       criadoPor,
     })
@@ -1009,7 +1031,7 @@ export async function acaoDoInventarioDeEstoque(
       await comEscritaAutenticada("FECHAR_INVENTARIO_DE_ESTOQUE", (criadoPor) =>
         fecharInventarioDeEstoque(cliente(), {
           inventarioId,
-          dataFechamento: t(c, "dataFechamento"),
+          dataFechamento: dia(c, "dataFechamento"),
           ...(opcional(c, "termoFechamentoId") !== undefined ? { termoFechamentoId: t(c, "termoFechamentoId") } : {}),
           criadoPor,
         })
