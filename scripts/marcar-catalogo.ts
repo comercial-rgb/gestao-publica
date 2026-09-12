@@ -197,6 +197,8 @@ const PCASP_OFICIAL =
  */
 const PERCURSO_ENT10 = "scripts/smoke-ent10.ts (16 passos, 0 falhas, 2026-09-12):";
 
+const PERCURSO_ENT11 = "scripts/smoke-roteiros.ts (17 passos, 0 falhas, 2026-09-12):";
+
 const MAPA: Readonly<Record<string, Marca>> = {
   "5.10.2.55": {
     situacao: "VALIDADO_LOCALMENTE",
@@ -254,10 +256,26 @@ const MAPA: Readonly<Record<string, Marca>> = {
       "débito e de crédito por parâmetro, e o caso de uso RECUSA sem o roteiro em vez de " +
       "inventar conta (prisma/seed/roteiros-patrimoniais.ts; smoke provou a recusa no " +
       "ENT03c e a aceitação no ENT04). O histórico de cada registro mostra os movimentos " +
-      "com valor, data do fato e quem lançou. ⚠️ FALTA A CONSULTA DO PRÓPRIO EVENTO: não " +
-      "há tela onde o usuário veja, ANTES de executar, quais lançamentos uma transação " +
-      "vai produzir — é a segunda metade literal da cláusula. Pendência " +
-      "CONSULTA-DE-EVENTOS-CONTABEIS.",
+      "com valor, data do fato e quem lançou. ⚠️ A SEGUNDA METADE DA CLÁUSULA — consultar, " +
+      "ANTES de executar, quais lançamentos uma transação vai produzir — passou a existir " +
+      "para a família PATRIMONIAL, e só para ela. " +
+      PERCURSO_ENT11 +
+      " /patrimonio/roteiros lista os TREZE eventos do bem (parametrizados ou não, porque " +
+      "o que falta é o que precisa ser visto) com o par débito/crédito de cada um, e " +
+      "/patrimonio/roteiros-de-resultado faz o mesmo para ganho e perda da alienação. A " +
+      "parametrização é feita PELA TELA, e as recusas foram exercidas por ela: débito e " +
+      "crédito na mesma conta, e evento que já tem roteiro (esta nomeando o par vigente e " +
+      "mandando usar a reparametrização, que é ato à parte porque muda a contabilidade dos " +
+      "movimentos futuros). A conferência das contas CHAMA O MOTOR do M01 (`comporPartidas`) " +
+      "em vez de reescrever a regra das classes — modules/m10-patrimonial/m10-roteiros.test.ts " +
+      "(12 testes) prova por DUAS mutações de conjuntos vermelhos disjuntos. ⚠️ E A MEDIÇÃO " +
+      "QUE ABRIU O LOTE: RoteiroPatrimonial tinha ZERO linhas e MovimentoPatrimonial " +
+      "também — o eixo financeiro inteiro do patrimônio era inalcançável, porque " +
+      "`roteiroDoTipo` é fail-closed e nenhum serviço sabia escrever a tabela. ⚠️ CONTINUA " +
+      "PARCIAL: os outros DEZ roteiros (orçamentário, dívida, dívida ativa, provisão, " +
+      "convênio, consórcio, precatório, encerramento, almoxarifado e reconhecimento) " +
+      "seguem sem tela de consulta. Pendência CONSULTA-DE-EVENTOS-CONTABEIS, agora " +
+      "reduzida a eles.",
   },
   "5.8.9": {
     situacao: "PARCIAL",

@@ -3951,6 +3951,115 @@ conciliação e patrimônio recusam exercício ilegível mas **não** exigem per
 Exigi-la tiraria essas telas da vista de todo usuário sem permissão global — mudança de
 comportamento visível, e não efeito colateral de um lote de guard.
 
+## 33. ENT11 — o eixo financeiro do patrimônio, e a tela que ninguém alcançava
+
+### 33.1 · A medição que abriu o lote
+
+`RoteiroPatrimonial` tinha **zero linhas**. `RoteiroResultadoAlienacao`, zero.
+`MovimentoPatrimonial`, zero. Não é coincidência: `roteiroDoTipo` é fail-closed e **recusa
+todo movimento de valor de um tipo sem roteiro** — "o M10 não inventa conta". O acervo podia
+ser cadastrado, classificado, etiquetado e movido de sala, e **nenhum bem podia receber um
+centavo**: avaliação, reavaliação, depreciação, amortização, exaustão, impairment, doação e
+baixa por alienação estavam todas atrás da mesma tabela vazia.
+
+O domínio estava pronto desde o ENT05 e provado. O que não existia era o **ato de
+parametrizar**: os únicos escritores daquelas tabelas eram os testes, por escrita crua, e o
+seed da POC, que cobre três dos treze tipos. O seed `roteiros-patrimoniais.ts` **não** as
+toca — apesar do nome, ele semeia dívida ativa, dívida fundada e provisão.
+
+### 33.2 · O que passou a existir, e a rota real
+
+| Rota | O que faz |
+|---|---|
+| `/patrimonio/roteiros` | os **treze** eventos do bem, parametrizados ou não, com o par débito/crédito |
+| `/patrimonio/roteiros/<TIPO>` | o detalhe, e a **reparametrização** como ato à parte |
+| `/patrimonio/roteiros-de-resultado` | ganho e perda da alienação, mesma disciplina |
+| `/patrimonio/roteiros-de-resultado/<CHAVE>` | idem |
+
+**A listagem mostra o que FALTA, e isso é a tela inteira.** Uma listagem das linhas gravadas
+mostraria hoje uma tela vazia — verdadeira e inútil. A porta compõe as linhas a partir de
+`TIPOS_BASE` e junta o roteiro quando existe; o `id` de cada linha é o **próprio tipo**,
+que é `@unique` no modelo e existe antes de haver roteiro. Com o id da linha do roteiro, as
+pendências — que são o ponto — não teriam para onde apontar.
+
+**A conferência das contas CHAMA O MOTOR, e não reescreve a regra.** Um roteiro só presta se
+o lançamento que ele produz for aceito, então o serviço compõe as partidas com
+`comporPartidas` — a mesma função que `registrarMovimentoPatrimonial` chama — e deixa o M01
+julgar. Reescrever aqui "as duas pernas são de classe 1 a 4" seria uma segunda verdade sobre
+a natureza de informação, e ela divergiria em silêncio.
+
+**Substituir é ato explícito.** Parametrizar um evento que já tem roteiro é **recusado**,
+nomeando o par vigente; trocar as contas é ação própria no detalhe, com o aviso de que vale
+para os movimentos **futuros** — o razão é append-only, e corrigir o passado é lançamento
+novo.
+
+**Uma ação do censo para os dois roteiros** (`PARAMETRIZAR_ROTEIRO_PATRIMONIAL`): as tabelas
+são separadas por um detalhe de **modelo** (as chaves vêm de enums diferentes, e uni-las não
+seria migration aditiva), não por diferença de **poder**. Censo de 228 para **229**; serviços
+de 235 para **237**. Migration aditiva de um valor de enum, **zero DROP**.
+
+### 33.3 · ⚠️ O defeito que o percurso pegou, e ele não era do código
+
+A primeira execução do percurso morreu no terceiro passo: **o seletor de conta veio com zero
+opções**. A causa não era a consulta — era que o formulário **não existia**: `FormsDoRecurso`
+esconde de quem não tem a ação, e `PARAMETRIZAR_ROTEIRO_PATRIMONIAL` nasceu neste lote.
+
+`npm run deriva:perfil` acusou na primeira tentativa: *"censo 229 ações · concedidas 228 —
+1 AÇÃO QUE NENHUM PERFIL CONCEDE"*. É a terceira vez que isto acontece (ENT06, ENT07, agora),
+e a pendência **`DERIVA-DE-PERFIL-FORA-DO-PORTAO`** já previa exatamente este lote: o portão
+roda `deriva` de **schema**, não de **perfil**. Um lote pode acrescentar ação, entregar a
+tela, fechar **10 de 10** e a tela ser inalcançável, sem nada acusar.
+
+Resolvido pelo caminho que existe (`conceder-acoes-ao-perfil.ts`, ação digitada a uma,
+`SEED_IDENTIDADE` como autor gravado em cada permissão). Depois: *"censo e perfis batem: 229
+ações"*.
+
+### 33.4 · As provas
+
+| Prova | Resultado |
+|---|---|
+| `m10-roteiros.test.ts` | **12 testes**, contra banco, N=2 no t10 e no t11 |
+| mutação A — a conferência das contas não acontece | vermelho em **t4 e t5**, e só neles |
+| mutação B — substituir deixa de ser explícito | vermelho em **t7**, e só nele |
+| revertido | 12/12 verde, arquivo **idêntico** ao original (`diff` vazio) |
+| `scripts/smoke-roteiros.ts` | **17 passos, 0 falhas**, código de saída 0 |
+
+O percurso é **re-executável**: a chave é um enum de rol fechado, então ele lê da tela o
+primeiro evento ainda pendente em vez de depender de banco limpo. E exercita **duas recusas**
+pela tela, com o motivo completo, além do caminho feliz.
+
+### 33.5 · ⚠️ Quatro defeitos meus, e o que cada um ensina
+
+1. **`somaDaSelecao={null}`** nas duas telas novas. O typecheck do editor não pegou; o
+   `next build` pegou. O molde espera o **mapa** (vazio quando não há coluna de dinheiro).
+2. **Comentário `//` na posição de atributo JSX** — não é comentário, é erro de sintaxe.
+   Introduzido ao *explicar* a correção do defeito 1.
+3. **Identificador de fixture inventado.** Usei `contador@cg.pb.gov.br`; `limparBanco` semeia
+   um rol fixo e ele não está nele. As **onze** asserções falharam medindo a identidade em
+   vez do que diziam medir — e a recusa era correta, que é o que torna isso traiçoeiro.
+4. **Asserção lendo `document.body`.** A busca por "parametrizado" achava a palavra na
+   **opção do próprio `select` de filtro**. É o mesmo defeito que o §32 já registrava, repetido
+   por mim. Trocado por propriedade nas duas direções, exigindo ao menos uma linha de cada
+   lado para não passar por vacuidade.
+
+⚠️ **E UM ERRO DE MÉTODO, PIOR QUE OS QUATRO.** Editei arquivos **com a suíte rodando**.
+Quatro das seis falhas daquele portão foram skew: o teste novo carregou contra um censo
+obsoleto em memória. Um portão executado sobre fonte em movimento não mede nada.
+
+### 33.6 · Pendências nomeadas
+
+| Pendência | O que é |
+|---|---|
+| `ROTEIRO-SEM-HISTORICO-PROPRIO` | substituir um roteiro perde o par anterior; o ato fica em `RegistroDeOperacao`, mas a tabela não versiona |
+| `ROTEIRO-DA-POC-COM-PAR-INSTRUMENTAL` | o percurso grava um par **contabilmente sem sentido** (as duas primeiras analíticas) no banco onde roda — aceitável em desenvolvimento, **inaceitável** numa instalação |
+| `DERIVA-DE-PERFIL-FORA-DO-PORTAO` | reincidente pela terceira vez; o portão não roda `deriva:perfil` |
+| `RECORTE-DE-CONTA-POR-NOME-LITERAL` | `verificarDefinicao` só cobra `classesDeConta` no campo literalmente chamado `contaContabilId`; aqui são `contaDebitoId`/`contaCreditoId`, e o guard fica mudo |
+| `CONSULTA-DE-EVENTOS-CONTABEIS` | reduzida: os **dez** roteiros restantes seguem sem tela |
+
+⚠️ **O SISTEMA NÃO ESCOLHE AS CONTAS, E ISSO NÃO É FALTA.** Qual par corresponde a cada
+evento é doutrina contábil do ente. O sistema oferece as analíticas do PCASP oficial, recusa
+o que o motor recusaria, e deixa a decisão com quem responde por ela.
+
 ## 19. O próximo passo
 
 ⚠️ **ONDE PARAMOS.** O ENT06 correu até aqui em seis levas: item 0 (superfície do
@@ -3992,6 +4101,20 @@ silêncio**. Agora são três caminhos separados por natureza medida — `recort
 dimensão de unidade) e `recorteNaoAutorizado` com **um** chamador declarado. `5.10.2.55` virou
 `VALIDADO_LOCALMENTE`. **Zero migration.** Portão **10 de 10** com `test:fuso` EXECUTADO
 (638s) e percurso de **dois atores** em **16 passos, 0 falhas**.
+
+⚠️ **O ENT11 ESTÁ CONSTRUÍDO — §33.** O eixo financeiro do patrimônio saiu de
+**inalcançável**: `RoteiroPatrimonial` tinha zero linhas, e `roteiroDoTipo` é fail-closed, de
+modo que nenhum bem podia receber um centavo. Agora há quatro rotas, dois serviços, uma ação
+no censo (228 → **229**), migration aditiva de um valor de enum com **zero DROP**, 12 testes
+de domínio com **duas mutações de conjuntos vermelhos disjuntos**, e percurso de **17 passos,
+0 falhas**. `5.10.1.71` **continua PARCIAL** com a evidência ampliada — a consulta do evento
+passou a existir para a família patrimonial e **não** para os outros dez roteiros. Nenhuma
+cláusula virou `VALIDADO_LOCALMENTE` neste lote, e isso é a leitura honesta.
+
+⚠️ **E ELE DESTRAVA UM BLOQUEIO ANTERIOR.** A **baixa do bem**, medida até a parede no ENT09 e
+barrada por `ROTEIRO-PATRIMONIAL-NAO-PARAMETRIZADO`, deixou de depender de escrita crua no
+banco: a parametrização agora tem tela, serviço, autorização e auditoria. O que resta ali é a
+decisão contábil de **quais contas** — que é do contador do ente, não de quem escreve código.
 
 ⚠️ **E O ENT10 TROUXE TRÊS LIÇÕES QUE VALEM MAIS QUE A CLÁUSULA.** (1) O primeiro portão deu
 **8 de 10** por dois **timeouts** do M03 — causados por eu rodar comandos em paralelo com a
