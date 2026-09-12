@@ -3802,6 +3802,155 @@ e, entre as duas, recarrega e vê o selo "Etiquetado", que é derivado de `codig
 | `npm run build` | limpo | 2026-09-12 |
 | `npm run smoke:acervo` | **25 passos, 0 falhas** | 2026-09-12 |
 
+## 32. ENT10 — a autorização de leitura por unidade
+
+> **Natureza do lote: PROFUNDIDADE.** É guard, e o CLAUDE.md põe guards nesse regime por
+> nome. Caracterização antes de ampliar, fixture N=2, tripwire provado por mutação, negação
+> que afirma o motivo.
+
+### O que passou a funcionar, e a rota real
+
+Uma tela de LEITURA não chamava `autorizar`. O `test/ui/contexto-ug.test.ts` corrigiu
+**metade** disso no ENT03c — o seletor do cabeçalho deixou de oferecer unidade alheia. A
+outra metade era a **URL**, e é ela que este lote fecha.
+
+| Caminho real | Antes | Agora |
+|---|---|---|
+| `/despesa/empenhos?exercicio=2026` (usuário de uma unidade) | o **ente inteiro** | cai na unidade dele |
+| `/despesa/empenhos?exercicio=2026&ug=<alheia>` | servia a unidade alheia | **recusa nomeando** onde ele tem leitura |
+| `/despesa/empenhos?exercicio=abc` | virava **2026 em silêncio** | recusa dizendo que não é um ano |
+| `/despesa/empenhos/pdf?ug=<alheia>` | **entregava o PDF** | **403** com o motivo |
+| `/receita/arrecadacoes/pdf?exercicio=abc` | 2026 em silêncio | **400** |
+
+**Os três caminhos de entrada, separados por natureza — e a separação foi medida:**
+
+- **`recorteDePagina(sp)`** (`lib/portas/contexto.ts`) — 13 arquivos com dimensão de
+  UNIDADE. Porta fina: resolve identidade (`exigirSessao`) e escopo (`listarUgsDoUsuario`,
+  a **mesma tabela** que `autorizar` lê) e encaminha para a decisão pura;
+- **`exercicioAutorizado(sp)`** (`lib/recorte.ts`) — 12 arquivos de leitura do **ENTE**
+  (receita, extraorçamentário, conciliação, patrimônio, plano de contas, programação
+  financeira). Elas **não passam `unidadeCodigo` a porta nenhuma**: impor-lhes recusa de
+  `?ug=` quebraria link salvo sem proteger dado algum;
+- **`recorteNaoAutorizado(sp)`** — **um** chamador, `despesa/ordem-cronologica`, que lê o
+  recorte **para não usá-lo**: a fila do art. 141 é do ente, e a nota ao pé declara isso.
+
+### Comandos executados, com resultado real
+
+| Comando | Resultado | Quando |
+|---|---|---|
+| `npm run portao -- --fim-de-lote` | **8 de 10** — `test:tudo` FALHOU, `test:fuso` **pulado** | 1ª execução |
+| `npm run portao -- --fim-de-lote` | **10 de 10**, `test:fuso` EXECUTADO (638s) | 2ª, máquina quieta |
+| `typecheck:backend` / `:app` / `:scripts` | 19s / 3s / 3s, limpos | portão final |
+| `cobertura-de-tsconfig` | **886 de 886, zero descobertos** | portão final |
+| `test:tudo` | **758s** (contra 1032s na execução contaminada) | portão final |
+| `test:rapido` | 71 arquivos, **772 asserções** | — |
+| `npx tsx scripts/smoke-ent10.ts` | **16 passos, 0 falhas**, código de saída 0 | 2026-09-12 |
+
+⚠️ **A PRIMEIRA EXECUÇÃO DO PORTÃO FALHOU POR CULPA MINHA, E O DIAGNÓSTICO IMPORTA MAIS QUE
+A FALHA.** Dois testes do M03 caíram — *"dois créditos concorrentes"* e um `beforeEach` — e
+os dois erros eram **timeout**, não asserção (`Test timed out in 5000ms`, `Hook timed out in
+10000ms`). Isolados, com a máquina quieta: **2 arquivos, 28 testes, 0 falhas, 21,84s**.
+Nenhum caminho de import liga aqueles arquivos ao que o lote tocou (`grep lib/|app/` = 0), e
+eles nunca falharam nos quatro portões anteriores. A causa: eu rodava consultas ao catálogo e
+varreduras **em paralelo** com `test:tudo`. É a repetição literal do incidente do ENT02 —
+treze falhas fantasma em oito módulos, lidas como "defeitos no financeiro", que eram disputa
+de máquina. **Nenhum `testTimeout` foi aumentado**: timeout se mede, não se aumenta.
+
+### Migrations e SQL aplicados
+
+**Nenhum.** Zero mudança de schema. O lote inteiro é decisão, porta e superfície — o
+resolvedor de escopo (`listarUgsDoUsuario`) já existia e estava correto desde o ENT03c.
+
+### Invariantes verificadas
+
+- **6 — autorização no servidor, por ação nomeada.** A recusa fala a língua da ESCRITA
+  (`modules/m16-travamento/autorizacao.ts`), que separa **A AÇÃO** de **O ESCOPO** porque as
+  duas pedem providências opostas. A leitura passou a nomear o escopo que o usuário **tem**;
+- **7 — tenant e entidade resolvidos no servidor.** *"URL, cabeçalho e campo de formulário
+  não conferem permissão"* — era exatamente a URL que conferia. Cada tela e cada rota resolve
+  o próprio escopo: herdar do layout seria autorização que some quando a rota é alcançada por
+  outro caminho, e as rotas de exportação **são** esse outro caminho;
+- **8 — fail-closed.** Sem escopo, recusa; `?ug=` ausente nunca produz consolidado para quem
+  não pode consolidar.
+
+### O catálogo
+
+| Situação | Cláusulas |
+|---|---|
+| `NAO_VERIFICADO` | 1.720 (84,4%) |
+| `AUSENTE_CONFIRMADO` | 134 |
+| `IMPLEMENTADO_NAO_VALIDADO` | 79 |
+| `VALIDADO_LOCALMENTE` | **53** |
+| `PARCIAL` | 48 |
+| `DEPENDENCIA_EXTERNA` | 3 |
+
+**317 de 2.037 verificadas (15,6%).** O lote rendeu **uma** cláusula — `5.10.2.55`,
+*"consultar despesa empenhada a pagar por unidade orçamentária"*. A desproporção entre 25
+sítios corrigidos e uma cláusula **não é falha**: quase todo o trabalho foi conserto de um
+furo, e furo consertado não é item de edital — é dívida paga. Lote de guard rende situação,
+não cobertura.
+
+### As quatro provas por mutação, com conjuntos vermelhos DISJUNTOS
+
+| Instrumento | Mutação | Vermelhos |
+|---|---|---|
+| caracterização | `daFicha` deixa de consolidar na omissão | 2 de 3 (t2 verde: outra metade) |
+| decisão pura | a pertinência não guarda | 6 de 23 |
+| decisão pura | consolidado por omissão para todos | 5 de 23 |
+| decisão pura | exercício ilegível vira o padrão | 5 de 23 |
+| grep-teste | aparece um segundo chamador do parse cru | 1 de 4 |
+| grep-teste | o nome antigo volta no chamador legítimo | 2 de 4 |
+
+Nenhum teste aparece em dois conjuntos: **cada afirmação tem o seu acusador**, em vez de um
+mesmo assert escrito três vezes.
+
+### ⚠️ Cinco asserções vazias, achadas por mutação — três dentro de instrumentos meus
+
+1. *"a recusa NÃO diz não encontrado"* ficava **verde com a guarda removida**: sem estouro, a
+   mensagem ficava vazia, e `expect("").not.toMatch(...)` passa. Duas negações sem afirmar
+   que a recusa **aconteceu** são duas tautologias;
+2. *"os empenhos da unidade alheia não aparecem"* procurava o **código da unidade** no
+   conteúdo — e a tabela de empenhos **não tem coluna de unidade**. Passava por vacuidade, e
+   continuaria verde com o vazamento de volta. Trocada por **contagem**;
+3. a gêmea dela, que exigia ver as duas unidades, era **insatisfazível** pelo mesmo motivo;
+4. duas asserções liam `document.body`, que inclui a barra lateral e o **seletor** — a palavra
+   "consolidado" vinha da opção do seletor, não do subtítulo. Passaram a ler o `<main>`.
+
+### ⚠️ O defeito é mais estreito do que parecia, e isso precisa ser dito
+
+Uma sonda mediu que `SincronizarContexto` faz `router.replace()` ao montar e **normaliza a
+URL** nos quatro casos (apaga, acrescenta, troca e substitui). Com JavaScript ativo, um
+usuário comum **não alcança** a unidade alheia pela barra de endereços. A exposição real eram
+as **rotas de exportação** — `GET` direto, sem ilha e sem menu. O guard das telas continua
+necessário como defesa em profundidade: ilha cliente não é fronteira de segurança, e `curl`,
+JS desligado ou cliente sem script passam ao largo dela. **O percurso desliga o JavaScript
+para interrogar o servidor** — com ele ligado, as seis "falhas" da primeira execução eram do
+percurso, não do código.
+
+### Pendências reais deste lote
+
+| Pendência | O que é |
+|---|---|
+| `CONSOLIDADO-PARCIAL-NAO-EXPRIMIVEL` | usuário com 2+ unidades e sem global **recusa pedindo que escolha**: `RecorteDaPagina` carrega UMA unidade e o `where` é um código único. Exprimi-lo pede `unidades: string[]` atravessando `daFicha` e as cinco consultas |
+| `DOSSIE-SEM-ESCOPO` | `lerDossieDoEmpenho` → `dossieDoEmpenho` → `findUnique` por id, **sem exercício, unidade ou identidade**. `/despesa/empenhos/<id alheio>` entrega o dossiê inteiro. O recorte autorizado **não** fecha isto — a unidade do empenho é transitiva pela ficha |
+| `DECRETO-COM-PARSE-PROPRIO` | `creditos-adicionais/decreto/route.ts` faz o próprio parse de `?ano=` com `Number.parseInt` + `anoCivil`, fora de `recorteDe`. Silêncio da mesma família, de outro parâmetro |
+| `SEED-SAGRES-POC-PARCIAL` | `seed:sagres-poc` **aborta** com recusa do art. 141 (*"a liquidação 1 está na posição 9 da fila"*) **depois** de criar órgão 99, UG 99001 e a ficha. Estado coerente (a transação desfez só o pagamento), mas o seed não completa |
+| `PERCURSOS-SEM-HELPER-COMUM` | agora são **onze** cópias de `entrar`, e a décima primeira é a única **parametrizada** (dois atores) e a única que desliga JS |
+
+**Fechada neste lote:** `PARTICAO-CEGA-A-PORTA` — `lib/portas/cliente.ts` era um caminho até o
+banco que a partição da suíte não nomeava, e **os dois guards daquele arquivo eram cegos a
+ele** (um usa `precisaDeBanco`, logo é tautológico com a lista; o outro procura
+`new PrismaClient(`, e `cliente()` chama `criarPrismaClient`). Um teste que alcançasse o banco
+só pela porta cairia na partição RÁPIDA, sem `setupFiles`, e `DATABASE_URL` seguiria sendo a
+do **desenvolvedor**. Custo medido antes: move **um** arquivo de rápida para lenta.
+
+### Decisão devida ao operador
+
+⚠️ **Exigir `podeConsolidado` para as leituras do ENTE?** Hoje receita, extraorçamentário,
+conciliação e patrimônio recusam exercício ilegível mas **não** exigem permissão global.
+Exigi-la tiraria essas telas da vista de todo usuário sem permissão global — mudança de
+comportamento visível, e não efeito colateral de um lote de guard.
+
 ## 19. O próximo passo
 
 ⚠️ **ONDE PARAMOS.** O ENT06 correu até aqui em seis levas: item 0 (superfície do
@@ -3835,6 +3984,25 @@ detalhe do bem, **sem campos**, com o percurso em **25 passos, 0 falhas** e a du
 botão como asserção central da idempotência. `5.19.2` virou `VALIDADO_LOCALMENTE`. Superfície
 pura — sem ação nova no censo, sem migration.
 
+⚠️ **O ENT10 ESTÁ FECHADO — §32.** A leitura passou a perguntar quem está pedindo. Uma tela de
+LEITURA não chamava `autorizar`: sem `?ug=` a porta entregava o **ente inteiro** a qualquer
+sessão, com `?ug=` alheia entregava a unidade alheia, e `?exercicio=abc` virava **2026 em
+silêncio**. Agora são três caminhos separados por natureza medida — `recorteDePagina`
+(13 arquivos com unidade), `exercicioAutorizado` (12 leituras do **ente**, que não têm
+dimensão de unidade) e `recorteNaoAutorizado` com **um** chamador declarado. `5.10.2.55` virou
+`VALIDADO_LOCALMENTE`. **Zero migration.** Portão **10 de 10** com `test:fuso` EXECUTADO
+(638s) e percurso de **dois atores** em **16 passos, 0 falhas**.
+
+⚠️ **E O ENT10 TROUXE TRÊS LIÇÕES QUE VALEM MAIS QUE A CLÁUSULA.** (1) O primeiro portão deu
+**8 de 10** por dois **timeouts** do M03 — causados por eu rodar comandos em paralelo com a
+suíte; isolados, aqueles testes dão 28 passes em 21,84s, e nenhum `testTimeout` foi aumentado.
+(2) **Cinco asserções vazias** foram achadas por mutação, três delas dentro de instrumentos
+que eu mesmo tinha escrito — inclusive uma negação que ficava verde com o guard REMOVIDO.
+(3) Uma sonda mediu que a ilha `SincronizarContexto` **normaliza a URL** antes de a página
+aparecer: pelo navegador, a unidade alheia já não era alcançável, e a exposição real eram as
+**rotas de exportação** por `GET` direto. O percurso desliga o JavaScript para interrogar o
+servidor — com ele ligado, seis "falhas" eram do percurso, não do código.
+
 ⚠️ **E DOIS ESCOPOS ANTERIORES DA ENT09 FORAM MEDIDOS ATÉ A PAREDE**, antes de qualquer código:
 a **baixa do bem** (bloqueada por `ROTEIRO-PATRIMONIAL-NAO-PARAMETRIZADO` — decisão contábil do
 município) e **"somente os meus bens"** (bloqueada por `USUARIO-SEM-PESSOA` — decisão de
@@ -3845,10 +4013,10 @@ restantes do acervo dependem de decisões que não são de quem escreve código.
 
 | Situação | Cláusulas |
 |---|---|
-| `NAO_VERIFICADO` | 1.721 (84,5%) |
+| `NAO_VERIFICADO` | 1.720 (84,4%) |
 | `AUSENTE_CONFIRMADO` | 134 |
 | `IMPLEMENTADO_NAO_VALIDADO` | 79 |
-| `VALIDADO_LOCALMENTE` | **52** |
+| `VALIDADO_LOCALMENTE` | **53** |
 | `PARCIAL` | 48 |
 | `DEPENDENCIA_EXTERNA` | 3 |
 
@@ -3923,34 +4091,58 @@ um lote de tela.
 
 | Situação | Cláusulas |
 |---|---|
-| `NAO_VERIFICADO` | 1.721 (84,5%) |
-| `AUSENTE_CONFIRMADO` | 134 |
-| `IMPLEMENTADO_NAO_VALIDADO` | 80 |
-| `VALIDADO_LOCALMENTE` | **51** |
-| `PARCIAL` | 48 |
-| `DEPENDENCIA_EXTERNA` | 3 |
+⚠️ **ESTA SEGUNDA TABELA FOI REMOVIDA, E A REMOÇÃO É A CORREÇÃO DE UM DEFEITO DE DOCUMENTO.**
+Ela repetia a contagem do catálogo com números **desatualizados** (`51` validadas, `80`
+implementadas) enquanto a tabela acima dizia outra coisa — duas verdades sobre a mesma
+medida, na mesma seção, e quem lesse a de baixo concluiria errado. A contagem vive **num
+lugar só**: a tabela acima, e a fonte dela é `npx tsx scripts/marcar-catalogo.ts` (sem
+`--aplicar`, ele relata sem gravar).
 
 316 de 2.037 verificadas (15,5%).
 
-**O PRÓXIMO LOTE — candidato: a BAIXA do bem, pela tela.** É o que falta para fechar a
-`5.19.15` por inteiro: cadastramento, classificação, movimentação e localização já existem; a
-**baixa** é a última palavra do texto e a única sem superfície. O cadastro de MOTIVOS DE BAIXA
-já foi entregue (§27) e existe justamente para ela.
+**A SEQUÊNCIA FOI DECIDIDA PELO OPERADOR (2026-09-12), E NÃO É MAIS LISTA DE CANDIDATOS:**
 
-⚠️ **MAS ELE NÃO É SUPERFÍCIE PURA, E ISSO PRECISA SER MEDIDO ANTES.** `baixarBem` vive em
-`patrimonio.ts`, no eixo **financeiro** — ele move valor e toca o razão, ao contrário das
-quatro ações do ENT08, que não o tocam. Pôr um botão de baixa ao lado dos quatro faria um
-formulário de "mover de sala" vizinho de um que dá baixa contábil, e a segregação do 6.4 não
-aceita essa vizinhança sem pensar. O lote começa medindo: que ação do censo `baixarBem` cobra,
-o que ele exige de entrada, e se a baixa cabe no detalhe do bem ou pede tela própria.
+> "Continuar em qualidade — fechar ENT10, depois a baixa do bem, transferência entre
+> entidades. Rende poucas cláusulas e deixa o sistema confiável."
 
-**Outros candidatos, na ordem em que a medição os favorece:**
+**ENT11 — a BAIXA do bem, pela tela.** É o que falta para fechar a `5.19.15` por inteiro:
+cadastramento, classificação, movimentação e localização já existem; a **baixa** é a última
+palavra do texto e a única sem superfície. O cadastro de MOTIVOS DE BAIXA já foi entregue
+(§27) e existe justamente para ela.
 
-1. **A consulta "somente os meus bens"** (`5.19.10`) — pequena, e o texto é literal: recorte
-   pelo usuário logado. Hoje a listagem filtra por tombamento, descrição e espécie.
-2. **Transferência de bem entre entidades** — ato composto, duas pernas sob um `operacaoId`,
-   com recusas próprias. Cabe numa tela, não num botão de formulário genérico.
-3. **Inventário de bens** — bloqueado por `COMISSAO-COM-MEMBROS`: o molde não tem campo
+⚠️ **A PAREDE DESTE LOTE JÁ FOI MEDIDA DUAS VEZES, E ESTÁ DECLARADA AQUI PARA NÃO SER
+REDESCOBERTA UMA TERCEIRA.** O eixo **financeiro** do patrimônio está inalcançável nesta
+instalação: `RoteiroPatrimonial` tem **zero linhas**, e `roteiroDoTipo` é fail-closed —
+*"o M10 não inventa conta: sem roteiro, o movimento NÃO é registrado"*. Isso **não se resolve
+semeando**: a fonte oficial publica um plano de contas, não um mapeamento tipo-de-movimento →
+débito/crédito. Qual conta cada movimento debita é **decisão contábil do município**.
+
+**Consequência prática, dita antes de começar:** o ENT11 entrega a metade **FÍSICA** da baixa
+(marcar `BAIXADO`, o termo, o motivo do rol da `5.19.30`) e **para** na contábil enquanto a
+decisão não vier. Prometer a baixa inteira sem essa decisão seria prometer o que o sistema
+recusa — corretamente — a fazer.
+
+⚠️ **E ELE NÃO É SUPERFÍCIE PURA.** `baixarBem` vive em `patrimonio.ts`, no eixo financeiro —
+move valor e toca o razão, ao contrário das quatro ações do ENT08. Pôr um botão de baixa ao
+lado dos quatro faria um formulário de "mover de sala" vizinho de um que dá baixa contábil, e
+a segregação do 6.4 não aceita essa vizinhança sem pensar. O lote começa medindo: que ação do
+censo `baixarBem` cobra, o que exige de entrada, e se cabe no detalhe do bem ou pede tela
+própria.
+
+**ENT12 — transferência de bem entre entidades.** Ato composto, duas pernas sob um
+`operacaoId`, com recusas próprias. Cabe numa tela, não num botão de formulário genérico.
+⚠️ **E ela NÃO tem a parede do ENT11** — é movimento de gestão, não lançamento no razão.
+
+**DEPOIS DELES, A DECISÃO JÁ TOMADA: VOLTAR AO CENSO.** E o ganho não é trabalhar mais
+rápido, é **trocar a natureza do lote** — a medição acumulada é clara: censo rendeu **220
+cláusulas num lote**, modelo rende ~54, superfície rende ~5. Com 1.720 cláusulas
+`NAO_VERIFICADO`, é lá que está o retorno por hora.
+
+**Fora da sequência, medidos e esperando:**
+
+1. **A consulta "somente os meus bens"** (`5.19.10`) — bloqueada por `USUARIO-SEM-PESSOA`:
+   quem autentica é `Usuario`, quem responde pelo bem é `Pessoa`, e nada liga os dois.
+2. **Inventário de bens** — bloqueado por `COMISSAO-COM-MEMBROS`: o molde não tem campo
    repetidor, e uma comissão de um membro só não é uma comissão.
 
 ⚠️ **PENDÊNCIA `RECORTE-DE-CONTA-POR-NOME-LITERAL` — CONFRONTADA, NÃO FECHADA.** O

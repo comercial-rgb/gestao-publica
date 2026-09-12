@@ -4117,8 +4117,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "scripts/smoke-ent10.ts (16 passos, 0 falhas, 2026-09-12): a consulta de empenhos mostra o SALDO A PAGAR por empenho (liquidado − pago, derivado — não há coluna de status no banco) e recorta por UNIDADE ORÇAMENTÁRIA. O recorte passou a vir AUTORIZADO no servidor (`recorteDePagina`, lib/portas/contexto): o operador restrito à UG 99001 cai na unidade dele quando omite `?ug=`, é RECUSADO ao pedir a UG 01001 com a mensagem nomeando onde ele TEM leitura, e a rota de exportação responde 403 em vez do arquivo. O administrador global continua recebendo o consolidado e o PDF (anti-regressão: um guard que negasse todos passaria nas demais asserções). Decisão provada por 23 asserções puras em test/ui/recorte-autorizado.test.ts e TRÊS mutações de conjuntos vermelhos disjuntos; o comportamento ANTERIOR está medido em test/caracterizacao/leitura-por-unidade.test.ts.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.56",

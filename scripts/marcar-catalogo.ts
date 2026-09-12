@@ -176,7 +176,43 @@ const PCASP_OFICIAL =
   "TCE-PB (sha256 conferido contra docs/oficial/tce-pb/MANIFEST.json antes de qualquer " +
   "leitura; versão e vigência registradas lá). test/pcasp-oficial.test.ts.";
 
+/**
+ * ⚠️ O PERCURSO DA ENT10 — E ELE MARCA **UMA** CLÁUSULA, NÃO A SEÇÃO INTEIRA.
+ *
+ * O lote corrigiu a autorização de leitura em 25 sítios (13 telas e 12 rotas), e isso rende
+ * uma cláusula só. A desproporção não é falha: quase todo o trabalho foi **conserto de um
+ * furo**, e furo consertado não é item de edital — é dívida paga.
+ *
+ * A `5.10.2.55` pede "consultar despesa empenhada a pagar por unidade orçamentária", e é o
+ * que a tela de empenhos faz: coluna "A pagar" (`saldoAPagar`, derivado de liquidado − pago)
+ * e recorte por unidade que agora vem AUTORIZADO. O percurso exercita os dois lados — o
+ * administrador global consolidando e o operador restrito confinado à unidade dele.
+ *
+ * ⚠️ E O QUE O PERCURSO **NÃO** PROVA, DITO JUNTO. Com JavaScript ativo, a ilha
+ * `SincronizarContexto` normaliza a URL antes de a página aparecer: pela barra de endereços
+ * de um navegador comum, a unidade alheia já não era alcançável. A exposição real eram as
+ * ROTAS de exportação (`GET` direto, sem ilha e sem menu), e é por status — 403 e 400 — que
+ * o percurso as prova fechadas. Marcar sem dizer isso faria a cláusula parecer maior do que
+ * a evidência sustenta.
+ */
+const PERCURSO_ENT10 = "scripts/smoke-ent10.ts (16 passos, 0 falhas, 2026-09-12):";
+
 const MAPA: Readonly<Record<string, Marca>> = {
+  "5.10.2.55": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia:
+      PERCURSO_ENT10 +
+      " a consulta de empenhos mostra o SALDO A PAGAR por empenho (liquidado − pago, " +
+      "derivado — não há coluna de status no banco) e recorta por UNIDADE ORÇAMENTÁRIA. O " +
+      "recorte passou a vir AUTORIZADO no servidor (`recorteDePagina`, lib/portas/contexto): " +
+      "o operador restrito à UG 99001 cai na unidade dele quando omite `?ug=`, é RECUSADO ao " +
+      "pedir a UG 01001 com a mensagem nomeando onde ele TEM leitura, e a rota de exportação " +
+      "responde 403 em vez do arquivo. O administrador global continua recebendo o " +
+      "consolidado e o PDF (anti-regressão: um guard que negasse todos passaria nas demais " +
+      "asserções). Decisão provada por 23 asserções puras em test/ui/recorte-autorizado.test.ts " +
+      "e TRÊS mutações de conjuntos vermelhos disjuntos; o comportamento ANTERIOR está " +
+      "medido em test/caracterizacao/leitura-por-unidade.test.ts.",
+  },
   // ══ ENT04 — seeds de produção, shell e navegação ═════════════════════════
   //
   // ⚠️ A CONTAGEM DESTE LOTE É PEQUENA, E O MOTIVO É MEDIÇÃO, NÃO EXECUÇÃO. Os quatro itens
