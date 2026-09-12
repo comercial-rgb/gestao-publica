@@ -3546,6 +3546,36 @@ quebrou. Lote próprio.
 | `npm run db:conceder` | 2 concedidas, com autor gravado | 2026-09-12 |
 | `npm run deriva:perfil` | **censo e perfis batem: 228 ações** | 2026-09-12 |
 | `npm run smoke:acervo` | **11 passos, 0 falhas** | 2026-09-12 |
+| `npm run portao -- --fim-de-lote` (1ª) | **7 de 10** — `t5c` do censo reprovou; `test:fuso` pulado | 2026-09-12 |
+| `npm run test:rapido` (após corrigir as contagens) | 70 arquivos, 759 testes, verde | 2026-09-12 |
+
+### 28.5 · O portão cobrou a conta do censo — e cobrou certo
+
+A primeira execução deu **7 de 10**. `test:rapido` e `test:tudo` reprovaram pelo mesmo e
+único teste: **`t5c` de `m16-censo.test.ts`** — `expected 235 to be 233`.
+
+⚠️ **NÃO ERA DEFEITO DO LOTE.** Aquelas contagens são digitadas À MÃO de propósito: é assim
+que acrescentar uma ação ao censo vira ato deliberado em vez de adição silenciosa. Eu
+acrescentei dois serviços e o guard cobrou a conta, que é exatamente o comportamento pelo
+qual ele existe. E `test:tudo` confirmou que não havia segundo defeito escondido atrás do
+primeiro: **202 de 203 arquivos e 2.116 de 2.117 testes verdes**, em 604 s.
+
+⚠️ **A LIÇÃO É OUTRA, E VALE MAIS QUE O NÚMERO: UM `it` COM DUAS CONTAS SÓ REPORTA UMA.**
+O `t5c` crava **duas** contagens — 233 serviços na linha 400 e 226 ações distintas na 479 —
+e as duas vivem no MESMO bloco. A segunda **nunca tinha executado**, porque a primeira
+estourava antes. Corrigir só o número que apareceu no relatório teria comprado uma segunda
+reprovação **604 s depois**, no mesmo teste, poucas linhas abaixo. Foi por isso que a
+correção começou lendo as duas, e não a acusada.
+
+As duas se deslocam juntas: **233 → 235 serviços** e **226 → 228 ações distintas** — e este
+último bate com o que `deriva:perfil` já havia dito por outro caminho, que é a confirmação
+independente de que a conta certa é 228.
+
+Cada incremento entrou com o argumento, como os anteriores: a classe e o bem são **dois
+crachás e não um**, porque cadastrar a CLASSE amarra uma conta do ativo — decisão contábil,
+e errá-la faz toda aquisição daquela classe lançar no lugar errado — enquanto cadastrar o
+BEM põe uma coisa no acervo. Uma ação única daria, a quem só devia tombar um armário, o
+poder de decidir em que conta do razão o acervo inteiro entra.
 
 ## 19. O próximo passo
 

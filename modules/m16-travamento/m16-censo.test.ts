@@ -397,7 +397,14 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   muda o que aquele crachá abre — para todos que o têm, de uma vez. Juntá-las daria, a
     //   quem só devia vincular servidores a perfis prontos, o poder de ampliar qualquer um.
     //   = 233.
-    expect(nomes.length).toBe(233);
+    // + 2 (ENT07 — O ACERVO: cadastrarClasseDeBens e cadastrarBem).
+    //   ⚠️ SÃO DOIS CRACHÁS, E NÃO UM, pelo mesmo motivo que separa contar prateleira de
+    //   fechar inventário. Cadastrar a CLASSE amarra uma conta do ativo: é decisão contábil,
+    //   e errá-la faz toda aquisição daquela classe lançar no lugar errado. Cadastrar o BEM
+    //   põe uma coisa no acervo. Uma ação única daria, a quem só devia tombar um armário, o
+    //   poder de decidir em que conta do razão o acervo inteiro entra.
+    //   = 235.
+    expect(nomes.length).toBe(235);
 
     // 97 serviços, 93 ações distintas. Os pares que compartilham ação (4: importarExtratoBb
     // REUSA IMPORTAR_EXTRATO). transferirEntreContas tem AÇÃO PRÓPRIA (não compartilha) → +1 ação.
@@ -476,7 +483,9 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     // + 1 (REPONTAR_CONTA) = 215.
     // + 8 (ENT05 — A COMPRA): ação própria para cada serviço = 223.
     // + 3 (ENT06 item 1 — os perfis: criar, conceder ação e revogar ação) = 226.
-    expect(TODAS_AS_ACOES.length).toBe(226);
+    // + 2 (ENT07 — o acervo: CADASTRAR_CLASSE_DE_BENS e CADASTRAR_BEM, ação própria para
+    //   cada serviço, pela segregação explicada acima) = 228.
+    expect(TODAS_AS_ACOES.length).toBe(228);
     expect(ACAO_DO_SERVICO.encerrarExercicio).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.encerrarExercicioComRestos).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.importarExtrato).toBe("IMPORTAR_EXTRATO");
