@@ -14,7 +14,13 @@ import {
 } from "../../../../lib/portas/liquidacao";
 import { listarEmpenhosDaExecucao } from "../../../../lib/portas/empenho";
 import { FormAnular } from "../FormAnular";
-import { dataBr, descreverRecorte, recorteDe } from "../../../../lib/recorte";
+import {
+  EscopoDeLeituraError,
+  ExercicioIlegivelError,
+  recorteDePagina,
+  type RecorteDaPagina,
+} from "../../../../lib/portas/contexto";
+import { dataBr, descreverRecorte } from "../../../../lib/recorte";
 import { BotaoCsv } from "../../../../components/ui/BotaoCsv";
 import { BotaoPdf } from "../../../../components/ui/BotaoPdf";
 import { paraCsv } from "../../../../lib/csv/csv";
@@ -36,18 +42,16 @@ export default async function LiquidacoesPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
-  const recorte = recorteDe(await searchParams);
+  const sp = await searchParams;
 
-  const cabecalho = (
-    <PageHeader
-      titulo="Liquidações"
-      subtitulo={`${descreverRecorte(recorte)} — o marco de exigibilidade da despesa`}
-    />
-  );
-
+  // ⚠️ O RECORTE VEM AUTORIZADO e a chamada está DENTRO do try: ela pode RECUSAR. E o
+  // cabeçalho ficou para DEPOIS, porque ele imprime `descreverRecorte(recorte)` — montá-lo
+  // antes afirmaria "consolidado (ente)" na tela de quem acabou de ser recusado.
+  let recorte: RecorteDaPagina;
   let liquidacoes: readonly LiquidacaoDaTela[];
   let liquidaveis: readonly EmpenhoLiquidavel[];
   try {
+    recorte = await recorteDePagina(sp);
     const [lista, empenhos] = await Promise.all([
       listarLiquidacoesDaExecucao({
         exercicio: recorte.exercicio,
@@ -70,15 +74,22 @@ export default async function LiquidacoesPage({
         saldoALiquidar: e.saldoALiquidar,
       }));
   } catch (erro) {
+    // ⚠️ A RECUSA DE ACESSO TEM TÍTULO PRÓPRIO: o genérico faria o servidor procurar
+    // defeito no sistema quando o que falta é escopo — e a mensagem do erro já diz quem
+    // resolve.
     return (
       <div className="space-y-4">
         <SincronizarContexto />
-        {cabecalho}
+        <PageHeader titulo="Liquidações" subtitulo="O marco de exigibilidade da despesa" />
         <EstadoVazio
           titulo={
-            erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
-              : "Não foi possível ler as liquidações"
+            erro instanceof EscopoDeLeituraError
+              ? "Esta unidade não está no seu acesso"
+              : erro instanceof ExercicioIlegivelError
+                ? "O exercício pedido não é um ano"
+                : erro instanceof PortaSemBancoError
+                  ? "Banco de dados não configurado"
+                  : "Não foi possível ler as liquidações"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
@@ -89,7 +100,10 @@ export default async function LiquidacoesPage({
   return (
     <div className="space-y-4">
       <SincronizarContexto />
-      {cabecalho}
+      <PageHeader
+        titulo="Liquidações"
+        subtitulo={`${descreverRecorte(recorte)} — o marco de exigibilidade da despesa`}
+      />
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
         A liquidação é o que <strong>põe a despesa na fila do art. 141</strong> — o saldo a pagar

@@ -17,7 +17,13 @@ import {
   type LinhaDaFila,
   type TipoDeConsignacaoDaTela,
 } from "../../../../lib/portas/pagamento";
-import { dataBr, descreverRecorte, recorteDe } from "../../../../lib/recorte";
+import {
+  EscopoDeLeituraError,
+  ExercicioIlegivelError,
+  recorteDePagina,
+  type RecorteDaPagina,
+} from "../../../../lib/portas/contexto";
+import { dataBr, descreverRecorte } from "../../../../lib/recorte";
 import { FormPagamento, type LiquidacaoPagavel, type OrdemAutorizadaParaTela } from "./FormPagamento";
 import { lerOrdensDePagamento } from "../../../../lib/portas/ordem-pagamento";
 import { listarPagamentosDaExecucao, type PagamentoDaTela } from "../../../../lib/portas/anulacao";
@@ -56,7 +62,12 @@ export default async function PagamentosPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
-  const recorte = recorteDe(await searchParams);
+  const sp = await searchParams;
+
+  // ⚠️ O CABEÇALHO **FICA AQUI**, ao contrário das outras telas migradas — e a diferença é
+  // do art. 141, não de estilo. O subtítulo desta página é FIXO ("ordem cronológica por
+  // fonte e categoria"): ele não imprime `descreverRecorte`, então não há recorte a
+  // descrever antes de autorizar, e movê-lo para depois do try não protegeria nada.
   const cabecalho = (
     <PageHeader
       titulo="Fila de Pagamentos"
@@ -65,12 +76,19 @@ export default async function PagamentosPage({
     />
   );
 
+  let recorte: RecorteDaPagina;
   let filas: readonly GrupoDaFila[];
   let contas: readonly ContaBancariaDaTela[];
   let pagamentos: readonly PagamentoDaTela[];
   let tiposDeConsignacao: readonly TipoDeConsignacaoDaTela[];
   let ordens: Awaited<ReturnType<typeof lerOrdensDePagamento>>;
   try {
+    // ⚠️ O RECORTE AUTORIZADO ALIMENTA DUAS DAS CINCO LEITURAS DESTA TELA, e **não** a
+    // fila. `lerFilasDePagamento()` não recebe argumento de propósito: a ordem do art. 141
+    // é por FONTE e CATEGORIA, e recortá-la por unidade a partiria em filas que a lei não
+    // criou — cada pedaço com uma "posição 1" própria. Quem tem recorte são os pagamentos
+    // JÁ EXECUTADOS e as ordens de pagamento, e essas duas passam a vir autorizadas.
+    recorte = await recorteDePagina(sp);
     [filas, contas, pagamentos, tiposDeConsignacao, ordens] = await Promise.all([
       lerFilasDePagamento(),
       lerContasBancarias(),
@@ -92,9 +110,13 @@ export default async function PagamentosPage({
         {cabecalho}
         <EstadoVazio
           titulo={
-            erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
-              : "Não foi possível ler a fila de pagamentos"
+            erro instanceof EscopoDeLeituraError
+              ? "Esta unidade não está no seu acesso"
+              : erro instanceof ExercicioIlegivelError
+                ? "O exercício pedido não é um ano"
+                : erro instanceof PortaSemBancoError
+                  ? "Banco de dados não configurado"
+                  : "Não foi possível ler a fila de pagamentos"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
