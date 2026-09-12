@@ -40,6 +40,36 @@ export const PORTAS_DO_BANCO: readonly string[] = [
   "test/usuarios-teste.ts",
   "test/ficha-teste.ts",
   "test/roteiro-orcamentario.ts",
+  // ⚠️ A SÉTIMA PORTA, E ELA NÃO MORA EM `test/` — foi por isso que ficou de fora.
+  //
+  // `lib/portas/cliente.ts` é um caminho até o banco como qualquer outro daqui: ele lê
+  // `DATABASE_URL` e abre conexão. A diferença é que ele é código de PRODUÇÃO, e a lista
+  // nasceu enumerando os helpers de teste — enumerou uma FORMA ("os módulos de test/ que
+  // abrem banco") em vez de afirmar a PROPRIEDADE ("o que abre banco").
+  //
+  // ⚠️ O MODO DE FALHA É O PIOR POSSÍVEL, e os DOIS guardas deste arquivo eram cegos a ele:
+  //
+  //   · o teste "nenhum arquivo da partição rápida alcança uma porta do banco" usa
+  //     `precisaDeBanco` para achar infratores — logo é TAUTOLÓGICO em relação a esta
+  //     lista: quem alcança o banco por um caminho não nomeado aqui não é infrator por
+  //     definição, e o guard fica verde;
+  //   · a "rede da rede" procura `new PrismaClient(` linha a linha, e `cliente()` chama
+  //     `criarPrismaClient(url)`. Não casa.
+  //
+  // Um teste que alcançasse o banco SÓ pela porta (importando `cliente()` e nada de
+  // `test/`) cairia na partição RÁPIDA, que não tem `globalSetup` nem `setupFiles` — e
+  // `DATABASE_URL` continuaria sendo a do DESENVOLVEDOR. Conexão com o banco de dev, que
+  // é exatamente o que `test/db-teste.ts` existe para tornar impossível, e que já custou
+  // três planos de contas truncados nesta obra.
+  //
+  // ⚠️ E O CAMINHO PASSOU A SER ALCANÇÁVEL AGORA, não em teoria: a ENT10 é o primeiro lote
+  // que chama portas de leitura reais de dentro da suíte
+  // (`test/caracterizacao/leitura-por-unidade.test.ts`).
+  //
+  // CUSTO MEDIDO antes de acrescentar: move UM arquivo de rápida (70) para lenta —
+  // `test/ui/FormDecretoCredito.test.tsx`, que já alcança `cliente.ts` hoje e roda sem
+  // provisionamento nenhum.
+  "lib/portas/cliente.ts",
 ];
 
 // ⚠️ `DIRETORIOS_INERTES` ENTRA AQUI MESMO SEM SER ALCANÇÁVEL HOJE, e a razão é a
