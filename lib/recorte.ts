@@ -44,6 +44,194 @@ export function recorteDe(sp: Params): RecorteDaPagina {
   };
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════
+// O RECORTE **AUTORIZADO** — a decisão pura, sem banco e sem request.
+//
+// ⚠️ POR QUE ELE EXISTE, E POR QUE NÃO É UMA GUARDA DENTRO DA CONSULTA.
+// `recorteDe` acima só faz parse: ele aceita qualquer `?ug=` e devolve. Nenhuma porta de
+// LEITURA pergunta quem está pedindo — `listarEmpenhosDaExecucao` não tem parâmetro de
+// identidade, e por isso não havia onde a pergunta caber. O defeito está na FORMA DE
+// ENTRADA, e é ela que muda aqui: o recorte passa a nascer de uma decisão que recebe o
+// escopo do usuário, ou recusa nomeando.
+//
+// Medido em `test/caracterizacao/leitura-por-unidade.test.ts`: hoje, sem `ug`, a porta
+// entrega DUAS unidades a qualquer sessão; com `?ug=` alheia, entrega a unidade alheia; e
+// a MESMA identidade recebe uma unidade de `listarUgsDoUsuario` e duas da lista.
+//
+// ⚠️ A ILHA DO CABEÇALHO NÃO É O FURO — e isso estreita o problema. `SincronizarContexto`
+// procura a UG em `ugsDisponiveis` (vindas de `listarUgsDoUsuario`) e APAGA o parâmetro
+// quando não a acha: "o que não está na lista não chega à URL". O que sobra é a URL
+// digitada, salva ou compartilhada — e as rotas de exportação, que entregam o arquivo
+// inteiro por GET direto, sem passar por menu.
+//
+// ⚠️ FUNÇÃO PURA, E A FRONTEIRA EXIGE ISSO. Este arquivo é zona 1 do
+// `test/ui/fronteira-ui.test.ts`: não pode importar `modules/**` nem Prisma. O escopo
+// chega por PARÂMETRO; quem o busca é a porta. É o que torna esta decisão testável sem
+// banco e sem request — e é por isso que a prova dela roda na partição rápida.
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * O ESCOPO DE LEITURA DE UM USUÁRIO — o que a porta descobre e esta decisão consome.
+ *
+ * Vem de `listarUgsDoUsuario` (`lib/portas/contexto.ts`), que já é a MESMA tabela que a
+ * escrita lê (`PermissaoDePerfil`): permissão com `unidadeOrcId` nulo é GLOBAL, permissões
+ * de UGs específicas são só aquelas, e nenhuma permissão devolve VAZIO. Não há segunda
+ * fonte sobre quem enxerga o quê.
+ */
+export interface EscopoDeLeitura {
+  /** Códigos SAGRES das unidades que ele pode ler. Vazio = nenhuma. */
+  readonly unidades: readonly string[];
+  /**
+   * Permissão GLOBAL em alguma ação. É o que autoriza o recorte CONSOLIDADO (o ente
+   * inteiro) — quem só tem unidades específicas não pode pedi-lo, porque ele conteria
+   * unidades que o usuário não pode ler.
+   */
+  readonly podeConsolidado: boolean;
+}
+
+/**
+ * O exercício pedido não é um ano.
+ *
+ * ⚠️ ANTES ISSO VIRAVA `2026` EM SILÊNCIO, e o silêncio era o defeito: `?exercicio=abc`
+ * devolvia o exercício padrão, e a tela respondia com confiança sobre um ano que o usuário
+ * não pediu. `NaN` seria pior ainda — uma consulta com `exercicio: NaN` não erra, devolve
+ * lista vazia, e a tela mentiria dizendo "não há empenhos".
+ *
+ * ⚠️ E O PARÂMETRO **AUSENTE** CONTINUA CAINDO NO PADRÃO. Ausência não é ilegibilidade: o
+ * primeiro render acontece antes de a ilha do cabeçalho sincronizar a URL, e recusar ali
+ * quebraria toda navegação por link sem parâmetro. Só o valor PRESENTE e ilegível recusa.
+ */
+export class ExercicioIlegivelError extends Error {
+  constructor(bruto: string) {
+    super(
+      `O exercício pedido ("${bruto}") não é um ano. Corrija o endereço ou use o seletor ` +
+        `de exercício no alto da tela. Nada foi consultado.`
+    );
+    this.name = "ExercicioIlegivelError";
+  }
+}
+
+/**
+ * A unidade pedida não está no escopo de leitura de quem pediu — ou o pedido é ambíguo.
+ *
+ * ⚠️ A MENSAGEM NOMEIA O ESCOPO QUE ELE **TEM**, e isso é deliberado: é a mesma distinção
+ * que a ESCRITA já faz (`modules/m16-travamento/autorizacao.ts`), onde "não tem permissão"
+ * se separa em A AÇÃO (o crachá não concede em lugar nenhum) e O ESCOPO (ele pode, só não
+ * aqui). As duas pedem providências OPOSTAS, e mandar as duas com o mesmo texto faz o
+ * servidor pedir a coisa errada ao administrador.
+ *
+ * ⚠️ E NÃO É "NÃO ENCONTRADO". Dizer que a unidade não existe mentiria sobre a base e
+ * deixaria o usuário procurando um erro de digitação que não há.
+ */
+export class EscopoDeLeituraError extends Error {
+  constructor(mensagem: string) {
+    super(mensagem);
+    this.name = "EscopoDeLeituraError";
+  }
+}
+
+/** Lista de unidades para a mensagem — ordenada, sem repetição, legível. */
+function nomearUnidades(unidades: readonly string[]): string {
+  return [...new Set(unidades)].sort().join(", ");
+}
+
+/**
+ * O RECORTE EFETIVO — ou a recusa.
+ *
+ * A tabela de decisão, inteira:
+ *
+ * | exercício          | `ug`                    | resposta                                  |
+ * |--------------------|-------------------------|-------------------------------------------|
+ * | ausente            | —                       | `EXERCICIO_PADRAO`                        |
+ * | presente, ilegível | —                       | recusa: `ExercicioIlegivelError`          |
+ * | ok                 | presente, no escopo     | aquela unidade                            |
+ * | ok                 | presente, fora          | recusa nomeando o escopo dele             |
+ * | ok                 | ausente, pode consolidar| consolidado (como hoje)                   |
+ * | ok                 | ausente, 1 unidade      | aquela unidade — sem consolidado           |
+ * | ok                 | ausente, 2+ unidades    | recusa pedindo que escolha                |
+ * | ok                 | ausente, 0 unidades     | recusa: não há o que ler                  |
+ *
+ * ⚠️ NUNCA CONSOLIDADO POR OMISSÃO. Era o caminho mais largo do defeito: omitir `ug`
+ * entregava o ente inteiro a qualquer sessão, e nenhuma tela de leitura chamava
+ * autorização para reclamar.
+ *
+ * ⚠️ A LINHA "2+ UNIDADES" É UMA LIMITAÇÃO DECLARADA, não um esquecimento.
+ * `RecorteDaPagina` carrega UMA unidade (`unidadeCodigo`), e o `where` das consultas é
+ * `unidadeOrc: { codigo }` — um único código. Um usuário com duas unidades e sem
+ * consolidado quer o CONSOLIDADO PARCIAL das dele, e isso não é exprimível no tipo de
+ * hoje: exprimi-lo pede `unidades: readonly string[]` atravessando `daFicha` e as cinco
+ * consultas que passam por ela. Escolher uma unidade por ele seria arbitrário; devolver o
+ * ente seria o defeito de volta. Então recusa, nomeando as dele e o que fazer.
+ * Pendência: `CONSOLIDADO-PARCIAL-NAO-EXPRIMIVEL`.
+ *
+ * ⚠️ E O USUÁRIO GLOBAL PASSA PELA MESMA PORTA. `listarUgsDoUsuario` devolve TODAS as
+ * unidades quando a permissão é global, então a conferência de pertinência vale para ele
+ * sem caso especial — é o que evita um ramo "se for global, aceite qualquer coisa", que é
+ * onde este tipo de guarda costuma vazar.
+ */
+export function recorteAutorizado(p: {
+  readonly pedido: Record<string, string | string[] | undefined>;
+  readonly escopo: EscopoDeLeitura;
+  /** Identificador do usuário — entra na recusa, como na escrita. */
+  readonly identificador: string;
+}): RecorteDaPagina {
+  const bruto = primeiro(p.pedido["exercicio"])?.trim();
+  if (bruto !== undefined && bruto !== "") {
+    const n = Number.parseInt(bruto, 10);
+    // ⚠️ `Number.parseInt("2026abc")` devolve 2026 — por isso a conferência é sobre a
+    // STRING INTEIRA, não sobre o resultado do parse. Um ano com sujeira colada não é um
+    // ano, e aceitá-lo faria `?exercicio=2026';DROP` parecer legível.
+    if (!/^\d{4}$/.test(bruto) || !Number.isInteger(n)) {
+      throw new ExercicioIlegivelError(bruto);
+    }
+  }
+  const exercicio =
+    bruto !== undefined && bruto !== "" ? Number.parseInt(bruto, 10) : EXERCICIO_PADRAO;
+
+  const ug = primeiro(p.pedido["ug"])?.trim();
+  const temUg = ug !== undefined && ug !== "";
+
+  if (temUg) {
+    if (!p.escopo.unidades.includes(ug)) {
+      throw new EscopoDeLeituraError(
+        p.escopo.unidades.length === 0
+          ? `ACESSO NEGADO: o usuário "${p.identificador}" não tem leitura em unidade ` +
+            `nenhuma, e por isso não pode ler a unidade ${ug}. Não é o endereço: é o ` +
+            `crachá. Quem resolve é o administrador, concedendo acesso a uma unidade.`
+          : `ACESSO NEGADO: a unidade ${ug} não está no escopo de leitura do usuário ` +
+            `"${p.identificador}". Ele TEM leitura, mas só em: ` +
+            `${nomearUnidades(p.escopo.unidades)}. Não é a ação: é ONDE. Quem resolve é o ` +
+            `administrador, estendendo o escopo.`
+      );
+    }
+    return { exercicio, unidadeCodigo: ug };
+  }
+
+  if (p.escopo.podeConsolidado) return { exercicio, unidadeCodigo: undefined };
+
+  if (p.escopo.unidades.length === 1) {
+    // ⚠️ CAI NO ESCOPO DELE em vez de recusar, e é o caso comum: o primeiro render
+    // acontece antes de a ilha do cabeçalho pôr `ug` na URL. Recusar aqui faria toda tela
+    // piscar uma recusa antes de funcionar.
+    return { exercicio, unidadeCodigo: p.escopo.unidades[0] };
+  }
+
+  if (p.escopo.unidades.length === 0) {
+    throw new EscopoDeLeituraError(
+      `ACESSO NEGADO: o usuário "${p.identificador}" não tem leitura em unidade nenhuma. ` +
+        `Não há o que consultar. Quem resolve é o administrador, concedendo acesso a uma ` +
+        `unidade (ou reativando o cadastro, se ele foi revogado).`
+    );
+  }
+
+  throw new EscopoDeLeituraError(
+    `ESCOLHA A UNIDADE: o usuário "${p.identificador}" tem leitura em mais de uma ` +
+      `unidade (${nomearUnidades(p.escopo.unidades)}) e não tem acesso consolidado ao ` +
+      `ente. Selecione uma unidade no alto da tela — o consolidado apenas das unidades ` +
+      `dele ainda não é oferecido.`
+  );
+}
+
 /** "2026 · unidade 01001" — o subtítulo que diz ao usuário o que ele está vendo. */
 export function descreverRecorte(r: RecorteDaPagina): string {
   return `Exercício ${r.exercicio} · ${

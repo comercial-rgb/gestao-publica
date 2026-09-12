@@ -35,6 +35,27 @@
     // ⚠️ E os testes de UI, que precisam de `jsx` e `lib: dom` — que só este config tem.
     // Eles estavam fora por ficarem sob `test/`, que este config excluía inteiro.
     "test/ui/**/*.tsx",
+    // ⚠️ E DOIS TESTES `.ts` QUE ALCANÇAM `lib/` — ENT10. O MOTIVO É MEDIDO, NÃO ESTÉTICO.
+    //
+    // `lib/` é escrito para a resolução DESTE config (`bundler`: import relativo SEM
+    // extensão) e mora no `include` logo abaixo. Sob `tsconfig.backend.json`, que é
+    // NodeNext, o MESMO import exige `.js`. Estes dois testes são os PRIMEIROS sob `test/`
+    // a importar as portas de leitura de verdade (`lib/portas/empenho`,
+    // `lib/portas/contexto`) e a decisão pura de `lib/recorte` — e, por entrarem no
+    // `test/**/*.ts` daquele config, arrastaram `lib/portas/**` para o alvo NodeNext pela
+    // PRIMEIRA VEZ, acendendo 25 erros TS2835/TS7006 em arquivos que ninguém tinha tocado.
+    //
+    // ⚠️ A ALTERNATIVA MEDIDA ERA PIOR: pôr `.js` em **255 imports** de ~50 arquivos de
+    // porta (só `rreo.ts` tem 33) — e `tsconfig.backend.json` avisa, no próprio comentário
+    // dos aliases, que trocar a forma dos specifiers MUDA A RESOLUÇÃO EM RUNTIME. Dois
+    // arquivos nomeados aqui, e os mesmos dois no `exclude` de lá, trocam alvo sem tocar
+    // uma linha de código de produção.
+    //
+    // ⚠️ NOMEADOS UM A UM, NÃO POR GLOB. Um `test/ui/**/*.ts` mudaria de alvo outros oito
+    // testes que hoje compilam bem no backend — e mudança de alvo que ninguém pediu é
+    // como um config passa a divergir do que seu comentário promete.
+    "test/ui/recorte-autorizado.test.ts",
+    "test/caracterizacao/leitura-por-unidade.test.ts",
     "app/**/*.ts",
     "app/**/*.tsx",
     "components/**/*.ts",

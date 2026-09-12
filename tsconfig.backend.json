@@ -62,5 +62,27 @@
   // aqui. Sem ela, a próxima linha de `include` que alargar uma raiz (um `**/*.ts`
   // apressado) puxaria 199 arquivos de terceiro para dentro do nosso gate de tipos, e o
   // primeiro erro apareceria como se fosse nosso.
-  "exclude": ["node_modules", "prisma/generated", "doador"]
+  // ⚠️ OS DOIS TESTES DA ENT10 SAEM DAQUI E ENTRAM NO `tsconfig.json` — e a troca é
+  // medida, não preferência.
+  //
+  // Eles são os primeiros arquivos sob `test/` a importar as PORTAS de leitura
+  // (`lib/portas/empenho`, `lib/portas/contexto`) e a decisão pura de `lib/recorte`. Como
+  // o `include` acima traz `test/**/*.ts`, esses imports arrastaram `lib/**` para este
+  // alvo NodeNext pela PRIMEIRA VEZ — e `lib/` é escrito para `moduleResolution: bundler`,
+  // com import relativo SEM extensão. Resultado medido: 25 erros TS2835/TS7006 em
+  // `lib/portas/contexto.ts`, `lib/portas/empenho.ts` e `lib/recorte.ts`, nenhum deles em
+  // linha escrita pelo lote. Afastar os dois arquivos deixou este alvo LIMPO — a
+  // causação foi confirmada por medição, não suposta.
+  //
+  // ⚠️ E A COBERTURA CONTINUA INTEIRA: `scripts/cobertura-de-tsconfig.ts` cobra que todo
+  // `.ts` nosso esteja em PELO MENOS UM dos três configs, e os dois passam a estar no do
+  // app, que já inclui `lib/**/*.ts` com a resolução certa. Buraco na rede seria tirá-los
+  // daqui sem pôr lá.
+  "exclude": [
+    "node_modules",
+    "prisma/generated",
+    "doador",
+    "test/ui/recorte-autorizado.test.ts",
+    "test/caracterizacao/leitura-por-unidade.test.ts"
+  ]
 }
