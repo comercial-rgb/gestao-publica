@@ -36,6 +36,8 @@ const TOMB = `TOMB-${SUF}`;
  * falha apareceria no lote seguinte, longe de quem a causou.
  */
 const TIPO = `INC-${SUF}`;
+/** A localização para onde o bem será movido — criada pelo próprio percurso, pela mesma razão. */
+const LOCAL = `LOC-${SUF}`;
 
 const falhas: string[] = [];
 const passos: string[] = [];
@@ -199,6 +201,24 @@ async function primeiraOpcao(page: Page, seletor: string): Promise<string | null
   }, seletor);
 }
 
+/**
+ * O href do detalhe cujo link de listagem carrega o texto — `null` quando não há.
+ *
+ * ⚠️ ELE SAI DA TELA, e não de um id montado à mão. Um percurso que constrói a rota do detalhe
+ * por conta própria continuaria verde no dia em que a listagem parasse de linkar — e é a
+ * listagem que o operador usa para chegar lá.
+ */
+async function hrefDoRegistro(page: Page, texto: string): Promise<string | null> {
+  return page.evaluate((t) => {
+    const a = Array.from(document.querySelectorAll("a")).find((x) =>
+      (x.textContent ?? "").includes(t)
+    );
+    if (a === undefined) return null;
+    const u = new URL(a.href);
+    return `${u.pathname}${u.search}`;
+  }, texto);
+}
+
 /** A opção cujo texto contém o pedaço — `null` quando não há. */
 async function opcaoQueCasa(page: Page, seletor: string, pedaco: string): Promise<string | null> {
   return page.evaluate(
@@ -349,7 +369,7 @@ async function main(): Promise<void> {
     );
 
     // ══════════════════════════════════════════════════════════════════════
-    // 3 · A RECUSA, PELA TELA — e ela tem de dizer o MOTIVO
+    // 4 · A RECUSA, PELA TELA — e ela tem de dizer o MOTIVO
     // ══════════════════════════════════════════════════════════════════════
     const opcaoDeNovo = await opcaoQueCasa(
       page,
@@ -371,7 +391,119 @@ async function main(): Promise<void> {
     }
 
     // ══════════════════════════════════════════════════════════════════════
-    // 4 · O HUB DA ÁREA — a mesma lista alimenta hub e busca
+    // 5 · O EIXO DE GESTÃO — mover o bem, e ver o movimento APÓS RECARGA
+    // ══════════════════════════════════════════════════════════════════════
+    await irPara(page, "/patrimonio/localizacoes");
+    const rLocal = await preencherEEnviar(page, "criar-localizacoes-fisicas", [
+      { sel: 'input[name="codigo"]', valor: LOCAL },
+      { sel: 'input[name="descricao"]', valor: "Sala do percurso do acervo" },
+    ]);
+    conferir("localização: o servidor aceitou", rLocal.tipo === "ok", rLocal.texto);
+
+    await irPara(page, "/patrimonio/bens-patrimoniais");
+    const href = await hrefDoRegistro(page, TOMB);
+    conferir(
+      "bem: a listagem dá link para o detalhe",
+      href !== null,
+      "não achei o link do bem na listagem"
+    );
+    if (href === null) throw new Error("sem link na listagem não há como abrir o detalhe");
+
+    await irPara(page, href);
+    const opcaoDoLocal = await opcaoQueCasa(
+      page,
+      'form[data-acao="mover-localizacao"] select[name="localizacaoId"]',
+      LOCAL
+    );
+    conferir(
+      "mover: o select de localização oferece a que acabou de ser criada",
+      opcaoDoLocal !== null,
+      "o select de localização não ofereceu a localização recém-cadastrada"
+    );
+
+    if (opcaoDoLocal !== null) {
+      const rMover = await preencherEEnviar(page, "mover-localizacao", [
+        { sel: 'select[name="localizacaoId"]', valor: opcaoDoLocal, tipo: "select" },
+        { sel: 'input[name="dataMovimento"]', valor: "2026-03-20", tipo: "data" },
+        { sel: 'input[name="motivo"]', valor: "Transferida para a sala do percurso" },
+      ]);
+      conferir("mover: o servidor aceitou", rMover.tipo === "ok", rMover.texto);
+
+      // ⚠️ RECARGA, E NA ABA DE HISTÓRICO. Um eixo DERIVADO que não reaparece depois de
+      // recarregar é indistinguível de estado de componente — e é justamente o que este
+      // percurso existe para separar. O movimento tem de trazer o tipo e o motivo.
+      const hist = await irPara(page, `${href}?aba=historico`);
+      conferir(
+        "mover: RECARREGADO, o histórico traz o movimento com o motivo",
+        hist.includes("localizacao") && hist.includes("sala do percurso"),
+        "o movimento não apareceu no histórico depois da recarga"
+      );
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // 6 · OS OUTROS TRÊS EIXOS — exercidos, não só oferecidos
+    //
+    // ⚠️ ESTE BLOCO EXISTE POR UMA LIÇÃO PAGA NO LOTE ANTERIOR. Um select que aparece na tela
+    // e ninguém escolhe prova que o formulário MONTOU — não prova a cláusula. A 5.19.11 pede
+    // "visualizar no cadastro e permitir o CONTROLE do estado de conservação", e a 5.19.12 o
+    // mesmo para a situação física: controle é ato, e ato se exerce.
+    // ══════════════════════════════════════════════════════════════════════
+    await irPara(page, href);
+
+    const rEstado = await preencherEEnviar(page, "registrar-estado", [
+      { sel: 'select[name="estado"]', valor: "BOM", tipo: "select" },
+      { sel: 'input[name="dataMovimento"]', valor: "2026-03-21", tipo: "data" },
+      { sel: 'input[name="motivo"]', valor: "Vistoria anual do percurso" },
+    ]);
+    conferir("estado de conservação: o servidor aceitou", rEstado.tipo === "ok", rEstado.texto);
+
+    await irPara(page, href);
+    const rSituacao = await preencherEEnviar(page, "registrar-situacao", [
+      { sel: 'select[name="situacao"]', valor: "EM_MANUTENCAO_CORRETIVA", tipo: "select" },
+      { sel: 'input[name="dataMovimento"]', valor: "2026-03-22", tipo: "data" },
+      { sel: 'input[name="motivo"]', valor: "Enviado para conserto no percurso" },
+    ]);
+    conferir("situação física: o servidor aceitou", rSituacao.tipo === "ok", rSituacao.texto);
+
+    // ⚠️ O RESPONSÁVEL É O ÚNICO QUE O PERCURSO NÃO CRIA. `Pessoa` é cadastro de outra área, e
+    // arrastá-lo para cá ampliaria o lote. Então a asserção é sobre o que importa nesta
+    // família de defeito: o select TEM de oferecer alguém. Se não oferecer, isso é achado —
+    // e não motivo para pular o passo em silêncio.
+    await irPara(page, href);
+    const opcaoDoResponsavel = await primeiraOpcao(
+      page,
+      'form[data-acao="atribuir-responsavel"] select[name="responsavelId"]'
+    );
+    conferir(
+      "responsável: o select oferece alguém (nome vindo da versão vigente da pessoa)",
+      opcaoDoResponsavel !== null,
+      "o select de responsável veio vazio — nenhuma pessoa com versão vigente ativa"
+    );
+
+    if (opcaoDoResponsavel !== null) {
+      const rResp = await preencherEEnviar(page, "atribuir-responsavel", [
+        { sel: 'select[name="responsavelId"]', valor: opcaoDoResponsavel, tipo: "select" },
+        { sel: 'input[name="dataMovimento"]', valor: "2026-03-23", tipo: "data" },
+        { sel: 'input[name="motivo"]', valor: "Termo de guarda do percurso" },
+      ]);
+      conferir("responsável: o servidor aceitou", rResp.tipo === "ok", rResp.texto);
+    }
+
+    // ⚠️ UMA RECARGA, TRÊS EIXOS. Cada movimento é derivado do ÚLTIMO do seu tipo, e por isso
+    // os três têm de coexistir no histórico: se um sobrescrevesse o outro, o bem teria estado
+    // ou situação, nunca os dois.
+    const histTudo = await irPara(page, `${href}?aba=historico`);
+    conferir(
+      "RECARREGADO, o histórico traz os TRÊS eixos coexistindo",
+      histTudo.includes("estado") &&
+        histTudo.includes("situacao") &&
+        histTudo.includes("vistoria anual") &&
+        histTudo.includes("conserto no percurso"),
+      "estado e situação não apareceram juntos no histórico depois da recarga"
+    );
+
+    // ══════════════════════════════════════════════════════════════════════
+    // 7 · O HUB DA ÁREA — a mesma lista alimenta hub e busca
     // ══════════════════════════════════════════════════════════════════════
     const hub = await irPara(page, "/patrimonio");
     conferir(

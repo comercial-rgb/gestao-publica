@@ -164,7 +164,7 @@ const PERCURSO_GESTAO_DO_BEM =
  * filtra por tombamento, descrição e espécie: continua `AUSENTE_CONFIRMADO`. A 5.19.15 pede
  * movimentação, localização e baixa pela tela, que não existem: continua `PARCIAL`.
  */
-const PERCURSO_ACERVO = "scripts/smoke-acervo.ts (11 passos, 0 falhas, 2026-09-12):";
+const PERCURSO_ACERVO = "scripts/smoke-acervo.ts (21 passos, 0 falhas, 2026-09-12):";
 
 const SMOKE_04 =
   "scripts/smoke-ent03c.ts (41 passos, 0 falhas, 2026-09-11, DUAS execuções — a segunda " +
@@ -1458,8 +1458,14 @@ const MAPA: Readonly<Record<string, Marca>> = {
     evidencia: `${PERCURSO_ACERVO} o tipo de incorporação é cadastrado pela tela e, na MESMA execução, aparece no select do formulário do bem e é ESCOLHIDO — que é exatamente o que a cláusula pede ao dizer "para ser usado no cadastramento dos mesmos". O rol cresce por cadastro do ente, não por enum no código: a tela de tipos e a do bem são as duas pontas do mesmo fato, e o percurso liga uma à outra sem passar pelo banco à mão.`,
   },
   "5.19.10": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): bensSobResponsabilidade deriva os bens de uma pessoa numa data. DERIVA em vez de filtrar por coluna: 'de quem era este bem em dezembro?' e a pergunta que o termo de responsabilidade faz." },
-  "5.19.11": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): EstadoDeConservacao (otimo, bom, regular, ruim, inservivel) como movimento; o estado ATUAL e o ultimo movimento do tipo ate uma data." },
-  "5.19.12": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): SituacaoFisicaDoBem (em uso, emprestimo, locacao, manutencao preventiva e corretiva, desuso, baixado) como movimento derivado." },
+  "5.19.11": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: `${PERCURSO_ACERVO} o estado de conservação é registrado PELA TELA, no detalhe do bem (ação "registrar-estado", com data do fato e motivo obrigatórios), e o histórico o traz APÓS RECARGA. A cláusula pede duas coisas — visualizar no cadastro e permitir o CONTROLE —, e controle é ato: o percurso escolhe BOM e confere o resultado, em vez de apenas constatar que o select existe. O estado ATUAL continua sendo derivado do último movimento do tipo (ENT05), e não uma coluna que alguém sobrescreve.`,
+  },
+  "5.19.12": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: `${PERCURSO_ACERVO} a situação física é registrada PELA TELA (ação "registrar-situacao"), e o percurso escolhe EM_MANUTENCAO_CORRETIVA — que é literalmente um dos exemplos do texto da cláusula ("manutenções preventivas e corretivas"). Depois de recarregar, o histórico traz o movimento com o motivo, E ao lado do movimento de ESTADO: os dois eixos coexistem, que é o que prova que um não sobrescreve o outro. Cada um deriva do último movimento do SEU tipo.`,
+  },
   "5.19.16": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): ComissaoPatrimonial com finalidade, ATO QUE DESIGNOU, vigencia e membros ligados a Pessoa do M19. Exatamente UM presidente, fail-closed: zero deixa o termo sem quem o assine na condicao exigida, dois fazem ninguem responder. Abrir inventario com comissao de outra finalidade ou fora da vigencia RECUSA." },
   "5.19.17": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): ContagemDeBem guarda o que a comissao OBSERVOU (encontrado, localizacao, estado); estado e situacao continuam derivados dos movimentos que a contagem gera." },
   "5.19.19": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): registrarContagemDeBem com transferirParaOndeFoiEncontrado move o bem para onde a comissao o achou - e e EXPLICITO, nao implicito: a comissao DECIDE se corrige o cadastro ou se apenas registra a divergencia." },

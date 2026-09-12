@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { EstadoDoMolde } from "../../../../components/molde/FormularioDeRecurso";
 import { BENS_PATRIMONIAIS } from "../../../../lib/portas/recursos/acervo";
-import { criarBem } from "../../../../lib/portas/recursos/acervo-dados";
+import { acaoDoBem, criarBem } from "../../../../lib/portas/recursos/acervo-dados";
 
 /**
  * A Server Action deste cadastro — despacho FAIL-CLOSED.
@@ -22,16 +22,23 @@ export async function acaoDeBensPatrimoniaisAction(
     if (typeof v === "string") campos[k] = v;
   }
   const acao = campos["__acao"] ?? "";
+  const id = campos["__id"] ?? "";
 
   try {
-    if (acao !== "criar") {
-      return { erro: `Ação "${acao}" não existe neste cadastro. Nada foi gravado.` };
+    if (acao === "criar") {
+      await criarBem(campos);
+    } else {
+      // ⚠️ SEM `__id` NÃO SE MOVE NADA. Um movimento de gestão sem bem identificado não tem
+      // sujeito — e `registrarMovimentoDeGestao` o recusaria, mas a recusa chegaria como erro
+      // de domínio sobre um id vazio, que não diz a quem usa a tela o que fazer em seguida.
+      if (id === "") return { erro: "Registro não identificado. Nada foi gravado." };
+      await acaoDoBem(acao, id, campos);
     }
-    await criarBem(campos);
   } catch (e) {
     return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
   }
 
   revalidatePath(BENS_PATRIMONIAIS.rota);
-  return { sucesso: "Bem cadastrado no acervo." };
+  if (id !== "") revalidatePath(`${BENS_PATRIMONIAIS.rota}/${id}`);
+  return { sucesso: acao === "criar" ? "Bem cadastrado no acervo." : "Movimento registrado." };
 }

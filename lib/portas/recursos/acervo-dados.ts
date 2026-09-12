@@ -2,6 +2,7 @@ import { diaCivilBr, inicioDoDiaCivil } from "../../../packages/datas/index.js";
 import {
   cadastrarBem,
   cadastrarClasseDeBens,
+  registrarMovimentoDeGestao,
 } from "../../../modules/m10-patrimonial/gestao-do-bem.js";
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { TAMANHO_DE_PAGINA } from "../../molde/consulta.js";
@@ -319,12 +320,83 @@ export async function criarBem(c: Campos): Promise<void> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// O EIXO DE GESTÃO — mover o bem, sem tocar o razão
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * O DESPACHANTE DAS AÇÕES DO BEM.
+ *
+ * ⚠️ NENHUMA REGRA DE NEGÓCIO AQUI. O campo obrigatório de cada tipo, a existência do bem e a
+ * recusa de movimento sobre bem baixado são decididos dentro da transação do domínio, e a
+ * mensagem sobe COMO VEIO.
+ *
+ * ⚠️ FAIL-CLOSED: ação desconhecida ESTOURA. Um `default` silencioso aqui deixaria a tela
+ * dizer "movimento registrado" sem ter gravado nada.
+ */
+export async function acaoDoBem(acao: string, bemId: string, c: Campos): Promise<void> {
+  const comum = (criadoPor: string) => ({
+    bemId,
+    dataMovimento: dia(c, "dataMovimento"),
+    motivo: t(c, "motivo"),
+    criadoPor,
+  });
+
+  switch (acao) {
+    case "mover-localizacao":
+      await comEscritaAutenticada("REGISTRAR_MOVIMENTO_DE_GESTAO", (criadoPor) =>
+        registrarMovimentoDeGestao(cliente(), {
+          ...comum(criadoPor),
+          tipo: "LOCALIZACAO",
+          localizacaoId: t(c, "localizacaoId"),
+        })
+      );
+      return;
+    case "atribuir-responsavel":
+      await comEscritaAutenticada("REGISTRAR_MOVIMENTO_DE_GESTAO", (criadoPor) =>
+        registrarMovimentoDeGestao(cliente(), {
+          ...comum(criadoPor),
+          tipo: "RESPONSAVEL",
+          responsavelId: t(c, "responsavelId"),
+        })
+      );
+      return;
+    case "registrar-estado":
+      await comEscritaAutenticada("REGISTRAR_MOVIMENTO_DE_GESTAO", (criadoPor) =>
+        registrarMovimentoDeGestao(cliente(), {
+          ...comum(criadoPor),
+          tipo: "ESTADO",
+          estado: t(c, "estado") as "OTIMO" | "BOM" | "REGULAR" | "RUIM" | "INSERVIVEL",
+        })
+      );
+      return;
+    case "registrar-situacao":
+      await comEscritaAutenticada("REGISTRAR_MOVIMENTO_DE_GESTAO", (criadoPor) =>
+        registrarMovimentoDeGestao(cliente(), {
+          ...comum(criadoPor),
+          tipo: "SITUACAO",
+          situacao: t(c, "situacao") as
+            | "EM_USO"
+            | "EM_EMPRESTIMO"
+            | "EM_LOCACAO"
+            | "EM_MANUTENCAO_PREVENTIVA"
+            | "EM_MANUTENCAO_CORRETIVA"
+            | "EM_DESUSO"
+            | "BAIXADO",
+        })
+      );
+      return;
+    default:
+      throw new Error(`Ação "${acao}" não existe neste cadastro. Nada foi gravado.`);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // AS OPÇÕES — chaveadas pelo NOME DO CAMPO do descritor (ver o cabeçalho)
 // ═══════════════════════════════════════════════════════════════════════════
 
 export async function opcoesDoAcervo(): Promise<OpcoesDoCadastro> {
   const prisma = cliente();
-  const [contas, classes, tipos] = await Promise.all([
+  const [contas, classes, tipos, localizacoes, pessoas] = await Promise.all([
     // ⚠️ SÓ ANALÍTICAS DA CLASSE 1, e o teto cobre a classe INTEIRA. O plano oficial tem
     // 1.404 analíticas de ativo; um teto abaixo disso truncaria em silêncio, e a conta que o
     // operador procura simplesmente não estaria na lista — sem erro, sem aviso. O ponto em
@@ -347,6 +419,29 @@ export async function opcoesDoAcervo(): Promise<OpcoesDoCadastro> {
       orderBy: { codigo: "asc" },
       take: 300,
     }),
+    prisma.localizacaoFisica.findMany({
+      where: { ativa: true },
+      select: { id: true, codigo: true, descricao: true },
+      orderBy: { codigo: "asc" },
+      take: 500,
+    }),
+    // ⚠️ O NOME DA PESSOA NÃO MORA EM `Pessoa` — ela só tem documento e tipo. O nome está na
+    // VERSÃO, e a vigente é a mais recente. Este é o idioma que o repositório já usa em quatro
+    // lugares (ver `protocolo.ts`): `take: 1` por `criadoEm` desc, e fora quem tem a versão
+    // vigente INATIVA. Um select montado sobre `Pessoa` crua seria uma lista de CPFs.
+    prisma.pessoa.findMany({
+      select: {
+        id: true,
+        documento: true,
+        versoes: {
+          select: { nome: true, ativa: true },
+          orderBy: { criadoEm: "desc" },
+          take: 1,
+        },
+      },
+      orderBy: { criadoEm: "desc" },
+      take: 500,
+    }),
   ]);
 
   return {
@@ -354,6 +449,16 @@ export async function opcoesDoAcervo(): Promise<OpcoesDoCadastro> {
       valor: c.id,
       rotulo: `${c.codigo} — ${c.nome}`,
     })),
+    localizacaoId: localizacoes.map((l) => ({
+      valor: l.id,
+      rotulo: `${l.codigo} — ${l.descricao}`,
+    })),
+    responsavelId: pessoas
+      .filter((p) => p.versoes[0]?.ativa !== false)
+      .map((p) => ({
+        valor: p.id,
+        rotulo: `${p.versoes[0]?.nome ?? p.documento} (${p.documento})`,
+      })),
     classeDeBensId: classes.map((c) => ({
       valor: c.id,
       rotulo: `${c.codigo} — ${c.descricao}`,

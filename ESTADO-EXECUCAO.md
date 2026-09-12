@@ -3548,6 +3548,7 @@ quebrou. Lote próprio.
 | `npm run smoke:acervo` | **11 passos, 0 falhas** | 2026-09-12 |
 | `npm run portao -- --fim-de-lote` (1ª) | **7 de 10** — `t5c` do censo reprovou; `test:fuso` pulado | 2026-09-12 |
 | `npm run test:rapido` (após corrigir as contagens) | 70 arquivos, 759 testes, verde | 2026-09-12 |
+| `npm run portao -- --fim-de-lote` (2ª) | **10 de 10** — `test:fuso` EXECUTADO (726s), não pulado | 2026-09-12 |
 
 ### 28.5 · O portão cobrou a conta do censo — e cobrou certo
 
@@ -3577,6 +3578,78 @@ e errá-la faz toda aquisição daquela classe lançar no lugar errado — enqua
 BEM põe uma coisa no acervo. Uma ação única daria, a quem só devia tombar um armário, o
 poder de decidir em que conta do razão o acervo inteiro entra.
 
+## 29. ENT08 — o eixo de gestão do bem, pela tela
+
+**O que foi construído.** O ENT07 tornou o bem alcançável; faltava **movê-lo**. Quatro ações
+no detalhe do bem — mover de localização, atribuir responsável, registrar estado de
+conservação, registrar situação física —, o despachante `acaoDoBem` na porta, e duas chaves
+novas de opção.
+
+⚠️ **A NATUREZA FOI DECLARADA ANTES, E ERA O OPOSTO DA DO ENT07: superfície pura.** Medido, não
+suposto: as ações já existiam no censo, já estavam em `AREA_DA_ACAO`, e nenhuma coluna ou enum
+era necessária. **Sem ação nova, sem migration.**
+
+⚠️ **QUATRO AÇÕES, UM SÓ CRACHÁ.** As quatro cobram `REGISTRAR_MOVIMENTO_DE_GESTAO`. A
+segregação que o edital pede aqui é entre MOVER o bem e AVALIÁ-LO, não entre mudar de sala e
+mudar de responsável — inventar quatro ações de censo seria inventar segregação que a fonte
+não pede, e cada uma teria de ser concedida à mão em toda instalação existente.
+
+⚠️ **UM FORMULÁRIO POR EIXO, e a razão é um guard do domínio.** `CAMPO_OBRIGATORIO_DO_TIPO`
+recusa movimento de LOCALIZACAO sem localização, de ESTADO sem estado, e assim por diante —
+porque um movimento gravável sem o campo **apagaria o eixo em silêncio**: a derivação leria o
+último movimento do tipo, acharia nulo, e concluiria que o bem não está em lugar nenhum. Um
+formulário único com os quatro campos convidaria a essa recusa três vezes em cada quatro.
+
+⚠️ **O NOME DO RESPONSÁVEL NÃO MORA EM `Pessoa`.** Ela só tem documento e tipo; o nome está na
+VERSÃO, e a vigente é a mais recente. O idioma já existia em quatro lugares do repositório
+(`protocolo.ts`), incluindo o filtro que descarta quem tem a versão vigente inativa. Reusá-lo
+evitou uma segunda verdade sobre a regra de versionamento — e evitou um select de CPFs crus.
+
+### 29.1 · O catálogo: duas promovidas, e uma que quase foi marcada errado
+
+| Cláusula | Decisão |
+|---|---|
+| 5.19.11 | **`VALIDADO_LOCALMENTE`** — "visualizar no cadastro e permitir o controle do estado de conservação" |
+| 5.19.12 | **`VALIDADO_LOCALMENTE`** — o percurso escolhe `EM_MANUTENCAO_CORRETIVA`, literalmente um exemplo do texto |
+| 5.19.10 | **continua `IMPLEMENTADO_NAO_VALIDADO`** — ver abaixo |
+| 5.19.15 | continua **`PARCIAL`** — cadastramento, classificação, movimentação e localização existem; a **baixa** não |
+| 5.19.24 | continua **`PARCIAL`** — o histórico traz as movimentações físicas; faltam as financeiras, o inventário e os anexos |
+
+⚠️ **A 5.19.10 QUASE FOI MARCADA PELO MOTIVO ERRADO.** Eu ia promovê-la porque o responsável
+passou a ser atribuível pela tela. O texto dela, lido literalmente, pede outra coisa:
+*"permitir ao usuário a possibilidade de visualizar somente os bens sob a SUA
+responsabilidade"* — uma consulta recortada pelo usuário logado, que não existe. A evidência
+antiga no marcador descrevia a derivação (`bensSobResponsabilidade`), não a cláusula, e por um
+momento marquei pela evidência em vez de pelo texto. **O catálogo se lê pelo edital, não pela
+nota que alguém deixou nele.**
+
+### 29.2 · O percurso foi fortalecido ANTES de marcar, não depois
+
+A primeira versão exercitava **um** dos quatro eixos: movia a localização e deixava estado,
+situação e responsável como selects que aparecem e ninguém usa. Isso prova que o formulário
+montou — não prova "permitir o CONTROLE", que é o verbo das duas cláusulas.
+
+É a mesma lição que o tipo de incorporação cobrou no ENT07 — com a diferença de que ali ela
+veio **depois** da primeira marcação, e aqui veio antes. O percurso passou a exercer os quatro,
+e a asserção final é que os três eixos **coexistem** no histórico depois de recarregar: se um
+sobrescrevesse o outro, o bem teria estado ou situação, nunca os dois.
+
+⚠️ **PENDÊNCIA `ESTORNO-POR-LINHA-DO-HISTORICO`.** `estornarMovimentoDeGestao` age sobre um
+movimento ESCOLHIDO (e devolve `movimentosId` no plural, porque a transferência estorna as
+duas pernas), enquanto as ações do molde agem sobre o id do RECURSO. Estornar exige ação por
+linha do histórico, que o molde não oferece — e o molde não cresce para acomodar exceção.
+
+### 29.3 · Comandos e resultados
+
+| Comando | Resultado | Data |
+|---|---|---|
+| `npm run typecheck` / `:app` / `:scripts` | limpos | 2026-09-12 |
+| descritor em tempo de módulo | 4 ações válidas; `estado` 5 opções, `situacao` 7 | 2026-09-12 |
+| `npx vitest run test/molde test/busca-global.test.ts` | 31 testes verdes | 2026-09-12 |
+| `npm run test:rapido` | 70 arquivos, 759 testes | 2026-09-12 |
+| `npm run build` | limpo | 2026-09-12 |
+| `npm run smoke:acervo` | **21 passos, 0 falhas** | 2026-09-12 |
+
 ## 19. O próximo passo
 
 ⚠️ **ONDE PARAMOS.** O ENT06 correu até aqui em seis levas: item 0 (superfície do
@@ -3592,30 +3665,51 @@ invariante razão↔estoque: **32 asserções**. Isso é decisão, não efeito c
 O trabalho está preservado no ramo `lote2-liquidacao-material` (`fc50f94`). Enquanto não
 houver decisão, o caminho de dois passos segue fail-closed e a pendência segue aberta.
 
-⚠️ **O ENT07 FOI ENTREGUE — §28.** O acervo (classe e bem) existe, com serviço, ação no
+⚠️ **O ENT07 ESTÁ FECHADO — §28.** O acervo (classe e bem) existe, com serviço, ação no
 censo, migration aditiva, seis rotas, 11 testes de domínio e percurso de **11 passos, 0
-falhas**. `5.19.3` e `5.19.7` viraram `VALIDADO_LOCALMENTE`.
+falhas**. `5.19.3` e `5.19.7` viraram `VALIDADO_LOCALMENTE`. O portão de fechamento deu
+**10 de 10 com `test:fuso` EXECUTADO** (726s), não pulado — em `39f4a6e`. Nada publicado,
+nada transmitido, nenhum push externo.
 
-**O catálogo depois deste lote:**
+⚠️ **O ENT08 FOI ENTREGUE — §29.** O eixo de gestão do bem tem tela: quatro ações no detalhe
+(localização, responsável, estado de conservação, situação física), despachante `acaoDoBem` na
+porta, e o percurso em **21 passos, 0 falhas**. `5.19.11` e `5.19.12` viraram
+`VALIDADO_LOCALMENTE`. Foi lote de **superfície pura** — sem ação nova no censo e sem
+migration —, e a natureza foi declarada antes de começar.
+
+**O catálogo depois destes dois lotes:**
 
 | Situação | Cláusulas |
 |---|---|
 | `NAO_VERIFICADO` | 1.721 (84,5%) |
 | `AUSENTE_CONFIRMADO` | 134 |
-| `IMPLEMENTADO_NAO_VALIDADO` | 82 |
-| `VALIDADO_LOCALMENTE` | **49** |
+| `IMPLEMENTADO_NAO_VALIDADO` | 80 |
+| `VALIDADO_LOCALMENTE` | **51** |
 | `PARCIAL` | 48 |
 | `DEPENDENCIA_EXTERNA` | 3 |
 
 316 de 2.037 verificadas (15,5%).
 
-**O PRÓXIMO LOTE — o eixo de GESTÃO do bem, pela tela.** É a continuação medida do acervo:
-o bem existe e é alcançável, e o que falta é movê-lo. `MovimentoDeGestaoDoBem` já está de pé
-e testado desde o ENT05 — localização, responsável, estado de conservação, situação física,
-tudo derivado do último movimento de cada tipo —, e **nenhum desses atos tem superfície**.
-É o que a `5.19.15` pede por inteiro ("cadastramento, classificação, **movimentação,
-localização e baixa**") e o que a `5.19.24` pede como histórico. O detalhe do bem já lê esse
-eixo; falta o formulário que o escreve.
+**O PRÓXIMO LOTE — candidato: a BAIXA do bem, pela tela.** É o que falta para fechar a
+`5.19.15` por inteiro: cadastramento, classificação, movimentação e localização já existem; a
+**baixa** é a última palavra do texto e a única sem superfície. O cadastro de MOTIVOS DE BAIXA
+já foi entregue (§27) e existe justamente para ela.
+
+⚠️ **MAS ELE NÃO É SUPERFÍCIE PURA, E ISSO PRECISA SER MEDIDO ANTES.** `baixarBem` vive em
+`patrimonio.ts`, no eixo **financeiro** — ele move valor e toca o razão, ao contrário das
+quatro ações do ENT08, que não o tocam. Pôr um botão de baixa ao lado dos quatro faria um
+formulário de "mover de sala" vizinho de um que dá baixa contábil, e a segregação do 6.4 não
+aceita essa vizinhança sem pensar. O lote começa medindo: que ação do censo `baixarBem` cobra,
+o que ele exige de entrada, e se a baixa cabe no detalhe do bem ou pede tela própria.
+
+**Outros candidatos, na ordem em que a medição os favorece:**
+
+1. **A consulta "somente os meus bens"** (`5.19.10`) — pequena, e o texto é literal: recorte
+   pelo usuário logado. Hoje a listagem filtra por tombamento, descrição e espécie.
+2. **Transferência de bem entre entidades** — ato composto, duas pernas sob um `operacaoId`,
+   com recusas próprias. Cabe numa tela, não num botão de formulário genérico.
+3. **Inventário de bens** — bloqueado por `COMISSAO-COM-MEMBROS`: o molde não tem campo
+   repetidor, e uma comissão de um membro só não é uma comissão.
 
 ⚠️ **PENDÊNCIA `RECORTE-DE-CONTA-POR-NOME-LITERAL` — CONFRONTADA, NÃO FECHADA.** O
 `verificarDefinicao` cobra `classesDeConta` procurando o campo pelo **nome literal**

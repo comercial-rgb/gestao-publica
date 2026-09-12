@@ -150,7 +150,84 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
       ],
     },
   ],
-  acoes: [],
+  // ⚠️ QUATRO AÇÕES, UMA POR EIXO — e cada uma leva SÓ o campo que o seu tipo exige.
+  //
+  // O domínio tem um guard (`CAMPO_OBRIGATORIO_DO_TIPO`) que recusa movimento de LOCALIZACAO
+  // sem localização, de RESPONSAVEL sem responsável, e assim por diante — porque um movimento
+  // gravável sem o campo APAGARIA o eixo em silêncio: a derivação leria o último movimento do
+  // tipo, acharia nulo, e concluiria que o bem não está em lugar nenhum. Um formulário único
+  // com os quatro campos convidaria exatamente a essa recusa, quatro vezes em cada três.
+  //
+  // ⚠️ E OS QUATRO SÃO O MESMO CRACHÁ (`REGISTRAR_MOVIMENTO_DE_GESTAO`), de propósito: a
+  // segregação que o edital pede aqui é entre MOVER o bem e AVALIÁ-LO, não entre mover de sala
+  // e mudar de responsável. Inventar quatro ações de censo seria inventar segregação que a
+  // fonte não pede — e cada uma teria de ser concedida a mão em toda instalação existente.
+  acoes: [
+    {
+      nome: "mover-localizacao",
+      rotulo: "Mover de localização",
+      acaoDoCenso: "REGISTRAR_MOVIMENTO_DE_GESTAO",
+      aviso: "Muda onde o bem está guardado. Não toca a contabilidade — valor é outro eixo.",
+      campos: [
+        { nome: "localizacaoId", rotulo: "Nova localização", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+        { nome: "dataMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 3 },
+      ],
+    },
+    {
+      nome: "atribuir-responsavel",
+      rotulo: "Atribuir responsável",
+      acaoDoCenso: "REGISTRAR_MOVIMENTO_DE_GESTAO",
+      aviso: "Quem responde pela guarda do bem a partir desta data. O bem continua sendo do ente.",
+      campos: [
+        { nome: "responsavelId", rotulo: "Responsável", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+        { nome: "dataMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 3 },
+      ],
+    },
+    {
+      nome: "registrar-estado",
+      rotulo: "Registrar estado de conservação",
+      acaoDoCenso: "REGISTRAR_MOVIMENTO_DE_GESTAO",
+      campos: [
+        // ⚠️ OPÇÕES LITERAIS: o rol é FECHADO no modelo, não é cadastro do ente. Buscá-lo na
+        // porta sugeriria que o município pode acrescentar uma sexta conservação.
+        {
+          nome: "estado", rotulo: "Estado", tipo: "selecao", obrigatorio: true, largura: 2,
+          opcoes: [
+            { valor: "OTIMO", rotulo: "Ótimo" },
+            { valor: "BOM", rotulo: "Bom" },
+            { valor: "REGULAR", rotulo: "Regular" },
+            { valor: "RUIM", rotulo: "Ruim" },
+            { valor: "INSERVIVEL", rotulo: "Inservível" },
+          ],
+        },
+        { nome: "dataMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 3 },
+      ],
+    },
+    {
+      nome: "registrar-situacao",
+      rotulo: "Registrar situação física",
+      acaoDoCenso: "REGISTRAR_MOVIMENTO_DE_GESTAO",
+      campos: [
+        {
+          nome: "situacao", rotulo: "Situação", tipo: "selecao", obrigatorio: true, largura: 2,
+          opcoes: [
+            { valor: "EM_USO", rotulo: "Em uso" },
+            { valor: "EM_EMPRESTIMO", rotulo: "Em empréstimo" },
+            { valor: "EM_LOCACAO", rotulo: "Em locação" },
+            { valor: "EM_MANUTENCAO_PREVENTIVA", rotulo: "Em manutenção preventiva" },
+            { valor: "EM_MANUTENCAO_CORRETIVA", rotulo: "Em manutenção corretiva" },
+            { valor: "EM_DESUSO", rotulo: "Em desuso" },
+            { valor: "BAIXADO", rotulo: "Baixado" },
+          ],
+        },
+        { nome: "dataMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 3 },
+      ],
+    },
+  ],
   permissoes: { criar: "CADASTRAR_BEM" },
 
   // ⚠️ SEM A ABA DE RELACIONADOS, pela mesma razão dos cadastros de apoio: ela exige uma

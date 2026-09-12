@@ -10445,7 +10445,7 @@
       "candidato_reaproveitamento": "siafic-cg:M10",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "scripts/smoke-acervo.ts (11 passos, 0 falhas, 2026-09-12): o bem é cadastrado PELA TELA /patrimonio/bens-patrimoniais, classificado por uma CLASSE — que carrega a espécie, móvel ou imóvel — e identificado por um TIPO DE INCORPORAÇÃO cadastrado no próprio percurso e escolhido no formulário. Após recarga, a listagem traz o bem com a classe e com como ele entrou. ⚠️ Até este lote NADA no domínio criava um BemPatrimonial: adquirirBem exige liquidação (o bem adquirido nasce de despesa liquidada) e registrarEntradaAvulsa recebe um bem que já existe. O serviço cadastrarBem e a ação CADASTRAR_BEM nasceram aqui; modules/m10-patrimonial/m10-acervo.test.ts (11 testes) prova as recusas nomeadas — classe desativada, tombamento repetido, tipo inexistente, sem permissão — e que o cadastro NÃO move o razão.",
+      "evidencia": "scripts/smoke-acervo.ts (21 passos, 0 falhas, 2026-09-12): o bem é cadastrado PELA TELA /patrimonio/bens-patrimoniais, classificado por uma CLASSE — que carrega a espécie, móvel ou imóvel — e identificado por um TIPO DE INCORPORAÇÃO cadastrado no próprio percurso e escolhido no formulário. Após recarga, a listagem traz o bem com a classe e com como ele entrou. ⚠️ Até este lote NADA no domínio criava um BemPatrimonial: adquirirBem exige liquidação (o bem adquirido nasce de despesa liquidada) e registrarEntradaAvulsa recebe um bem que já existe. O serviço cadastrarBem e a ação CADASTRAR_BEM nasceram aqui; modules/m10-patrimonial/m10-acervo.test.ts (11 testes) prova as recusas nomeadas — classe desativada, tombamento repetido, tipo inexistente, sem permissão — e que o cadastro NÃO move o razão.",
       "situacao": "VALIDADO_LOCALMENTE"
     },
     {
@@ -10501,7 +10501,7 @@
       "candidato_reaproveitamento": "siafic-cg:M10",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "scripts/smoke-acervo.ts (11 passos, 0 falhas, 2026-09-12): o tipo de incorporação é cadastrado pela tela e, na MESMA execução, aparece no select do formulário do bem e é ESCOLHIDO — que é exatamente o que a cláusula pede ao dizer \"para ser usado no cadastramento dos mesmos\". O rol cresce por cadastro do ente, não por enum no código: a tela de tipos e a do bem são as duas pontas do mesmo fato, e o percurso liga uma à outra sem passar pelo banco à mão.",
+      "evidencia": "scripts/smoke-acervo.ts (21 passos, 0 falhas, 2026-09-12): o tipo de incorporação é cadastrado pela tela e, na MESMA execução, aparece no select do formulário do bem e é ESCOLHIDO — que é exatamente o que a cláusula pede ao dizer \"para ser usado no cadastramento dos mesmos\". O rol cresce por cadastro do ente, não por enum no código: a tela de tipos e a do bem são as duas pontas do mesmo fato, e o percurso liga uma à outra sem passar pelo banco à mão.",
       "situacao": "VALIDADO_LOCALMENTE"
     },
     {
@@ -10557,8 +10557,8 @@
       "candidato_reaproveitamento": "siafic-cg:M10",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "ENT05 (modelo das tres secoes derrubadas): EstadoDeConservacao (otimo, bom, regular, ruim, inservivel) como movimento; o estado ATUAL e o ultimo movimento do tipo ate uma data.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "evidencia": "scripts/smoke-acervo.ts (21 passos, 0 falhas, 2026-09-12): o estado de conservação é registrado PELA TELA, no detalhe do bem (ação \"registrar-estado\", com data do fato e motivo obrigatórios), e o histórico o traz APÓS RECARGA. A cláusula pede duas coisas — visualizar no cadastro e permitir o CONTROLE —, e controle é ato: o percurso escolhe BOM e confere o resultado, em vez de apenas constatar que o select existe. O estado ATUAL continua sendo derivado do último movimento do tipo (ENT05), e não uma coluna que alguém sobrescreve.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.19.12",
@@ -10571,8 +10571,8 @@
       "candidato_reaproveitamento": "siafic-cg:M10",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "ENT05 (modelo das tres secoes derrubadas): SituacaoFisicaDoBem (em uso, emprestimo, locacao, manutencao preventiva e corretiva, desuso, baixado) como movimento derivado.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "evidencia": "scripts/smoke-acervo.ts (21 passos, 0 falhas, 2026-09-12): a situação física é registrada PELA TELA (ação \"registrar-situacao\"), e o percurso escolhe EM_MANUTENCAO_CORRETIVA — que é literalmente um dos exemplos do texto da cláusula (\"manutenções preventivas e corretivas\"). Depois de recarregar, o histórico traz o movimento com o motivo, E ao lado do movimento de ESTADO: os dois eixos coexistem, que é o que prova que um não sobrescreve o outro. Cada um deriva do último movimento do SEU tipo.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.19.13",
