@@ -16,7 +16,13 @@ import {
 import { paraCsv } from "../../../../lib/csv/csv";
 import { formatarMoeda } from "../../../../lib/format/moeda";
 import { mascararCpfCnpj } from "../../../../lib/format/mascaras";
-import { dataBr, descreverRecorte, recorteDe } from "../../../../lib/recorte";
+import {
+  EscopoDeLeituraError,
+  ExercicioIlegivelError,
+  recorteDePagina,
+  type RecorteDaPagina,
+} from "../../../../lib/portas/contexto";
+import { dataBr, descreverRecorte } from "../../../../lib/recorte";
 import { descreverFiltroGerencial, recorteGerencialDe } from "./filtro";
 import { FiltroGerencial } from "./FiltroGerencial";
 
@@ -59,17 +65,20 @@ export default async function RelatoriosGerenciaisPage({
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
   const sp = await searchParams;
-  const recorte = recorteDe(sp);
   const filtro = recorteGerencialDe(sp);
   const recorteEmTexto = descreverFiltroGerencial(filtro);
 
-  const subtitulo =
-    `${descreverRecorte(recorte)} — execução da despesa por credor (CPF/CNPJ) e fonte de recursos` +
-    (recorteEmTexto.length > 0 ? ` · filtrado: ${recorteEmTexto.join(" · ")}` : "");
-
+  // ⚠️ AQUI NÃO HÁ VARIÁVEL `cabecalho` — o que carrega o recorte é o `subtitulo`, e é ele
+  // que nasce DEPOIS do try. `descreverRecorte(recorte)` só pode ser escrito quando o
+  // recorte existe E foi autorizado; o `catch` usa subtítulo fixo.
+  //
+  // ⚠️ E O `filtro` (credor e fonte) CONTINUA ANTES, de propósito: ele recorta DENTRO do
+  // que o usuário pode ler, não decide o que ele pode ler. São perguntas diferentes.
+  let recorte: RecorteDaPagina;
   let empenhos: readonly EmpenhoDaTela[];
   let vocabulario: VocabularioDaTela;
   try {
+    recorte = await recorteDePagina(sp);
     // ⚠️ AS DUAS LEITURAS TÊM RECORTES DIFERENTES DE PROPÓSITO. A tabela leva o filtro; o
     // vocabulário do `select`, não — um vocabulário já filtrado colapsaria para a opção
     // escolhida e prenderia o usuário nela.
@@ -89,18 +98,30 @@ export default async function RelatoriosGerenciaisPage({
     return (
       <div className="space-y-4">
         <SincronizarContexto />
-        <PageHeader titulo="Relatórios gerenciais — despesa por credor e fonte" subtitulo={subtitulo} />
+        <PageHeader
+          titulo="Relatórios gerenciais — despesa por credor e fonte"
+          subtitulo="Execução da despesa por credor (CPF/CNPJ) e fonte de recursos"
+        />
         <EstadoVazio
           titulo={
-            erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
-              : "Não foi possível ler a execução da despesa"
+            erro instanceof EscopoDeLeituraError
+              ? "Esta unidade não está no seu acesso"
+              : erro instanceof ExercicioIlegivelError
+                ? "O exercício pedido não é um ano"
+                : erro instanceof PortaSemBancoError
+                  ? "Banco de dados não configurado"
+                  : "Não foi possível ler a execução da despesa"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
       </div>
     );
   }
+
+  // ⚠️ AQUI: `recorte` autorizado, e só agora o subtítulo pode afirmar o escopo.
+  const subtitulo =
+    `${descreverRecorte(recorte)} — execução da despesa por credor (CPF/CNPJ) e fonte de recursos` +
+    (recorteEmTexto.length > 0 ? ` · filtrado: ${recorteEmTexto.join(" · ")}` : "");
 
   // ⚠️ A QUERY DO PDF É A DA TELA. O botão "Imprimir PDF" é só um link: o recorte
   // atravessa pela URL, e o papel sai igual ao que está na frente do usuário.

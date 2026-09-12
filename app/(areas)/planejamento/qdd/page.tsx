@@ -7,7 +7,13 @@ import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import { lerQdd, PortaSemBancoError, type LinhaQdd } from "../../../../lib/portas/creditos";
 import { paraCsv } from "../../../../lib/csv/csv";
 import { formatarMoeda } from "../../../../lib/format/moeda";
-import { descreverRecorte, recorteDe } from "../../../../lib/recorte";
+import {
+  EscopoDeLeituraError,
+  ExercicioIlegivelError,
+  recorteDePagina,
+  type RecorteDaPagina,
+} from "../../../../lib/portas/contexto";
+import { descreverRecorte } from "../../../../lib/recorte";
 
 /**
  * QDD — QUADRO DE DETALHAMENTO DA DESPESA, com a coluna que o M03 existe para produzir:
@@ -38,29 +44,48 @@ export default async function QddPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
-  const recorte = recorteDe(await searchParams);
+  const sp = await searchParams;
+
+  // ⚠️ O CABEÇALHO NASCE DEPOIS DO TRY. Ele imprime `descreverRecorte(recorte)`, e um
+  // recorte que ainda não foi autorizado não existe para ser descrito: montá-lo antes
+  // afirmaria "consolidado (ente)" na tela de quem acabou de ser recusado.
+  let recorte: RecorteDaPagina;
+  let linhas: readonly LinhaQdd[];
+  try {
+    recorte = await recorteDePagina(sp);
+    linhas = await lerQdd({ exercicio: recorte.exercicio, unidadeCodigo: recorte.unidadeCodigo });
+  } catch (erro) {
+    return (
+      <div className="space-y-4">
+        <SincronizarContexto />
+        <PageHeader
+          titulo="QDD — Quadro de Detalhamento da Despesa"
+          subtitulo="Dotação inicial, créditos e dotação atualizada por ficha"
+        />
+        <EstadoVazio
+          titulo={
+            erro instanceof EscopoDeLeituraError
+              ? "Esta unidade não está no seu acesso"
+              : erro instanceof ExercicioIlegivelError
+                ? "O exercício pedido não é um ano"
+                : erro instanceof PortaSemBancoError
+                  ? "Banco de dados não configurado"
+                  : "Não foi possível ler o QDD"
+          }
+          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+        />
+      </div>
+    );
+  }
+
+  // ⚠️ AQUI: agora `recorte` existe e foi autorizado. As três saídas que já o usavam
+  // (cabeçalho, estado vazio e o nome do CSV) ficam intocadas.
   const cabecalho = (
     <PageHeader
       titulo="QDD — Quadro de Detalhamento da Despesa"
       subtitulo={`${descreverRecorte(recorte)} — dotação inicial, créditos e dotação atualizada por ficha`}
     />
   );
-
-  let linhas: readonly LinhaQdd[];
-  try {
-    linhas = await lerQdd({ exercicio: recorte.exercicio, unidadeCodigo: recorte.unidadeCodigo });
-  } catch (erro) {
-    return (
-      <div className="space-y-4">
-        <SincronizarContexto />
-        {cabecalho}
-        <EstadoVazio
-          titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível ler o QDD"}
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-4">
