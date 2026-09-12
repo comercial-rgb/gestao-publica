@@ -3056,6 +3056,87 @@ reintroduz por outro nome o "copiar de" que este lote recusou, porque conceder u
 perfil pai ampliaria todos os filhos sem que ninguém olhasse para nenhum. A segregação do TR
 6.4 depende de cada concessão ser um ato visível. Precisa de decisão antes de código.
 
+## 24. ENT06 item 2 — a liquidação de material, construída e PARADA por medição
+
+⚠️ **ESTE LOTE NÃO FECHOU, E O MOTIVO É O ACHADO.** Ele está inteiro, compilando, em
+`git stash@{0}` — nada foi perdido e nada foi commitado. O que o parou não foi dificuldade:
+foi a medição do que fechá-lo custa.
+
+### 24.1 · O que se foi construir, e por quê
+
+A revisão do item 0 nomeou a tela de entrada de material como o que travava a promoção de
+doze cláusulas de 5.18. Ao abrir, o problema era outro e maior: **não falta tela, falta o ato
+ser um só.** `lib/portas/liquidacao.ts` RECUSA liquidar elemento de material, com a pendência
+`LIQUIDACAO-MATERIAL-ALMOXARIFADO` — e recusava certo: o rol do M01 manda material debitar
+ESTOQUE, e liquidar sem a entrada deixaria o razão com estoque que nenhum movimento explica.
+
+O desenho saiu espelhado no que já existe: `AoAnularLiquidacaoPort` (o M05 declara, o M10
+implementa, o adapter chama **dentro da transação**). Foi escrito:
+
+- `AoLiquidarMaterialPort` + os tipos da entrada, em `ports.ts`;
+- `registrarEntradaAlmoxarifadoNaTx` e `registrarEntradaFisicaNaTx` — os corpos
+  transacionais extraídos, sem autorizar e sem abrir transação, no censo como exclusão
+  nomeada;
+- a implementação no M10 exigindo que **a soma das entradas iguale o liquidado** — a conferência
+  que o `MODULO.md` registrava como impossível com chamadas separadas;
+- o gancho no adapter, fail-closed, e a queda da recusa na porta.
+
+⚠️ **A ORDEM DOS LOCKS FOI CONFERIDA ANTES, porque era o que podia inviabilizar o desenho.**
+`Liquidacao` é posto 6, `ClasseDeMaterial` 11, `PosicaoFisicaDeEstoque` 21 — e a transação da
+liquidação **não trava nada**. A composição adquire 6, 11 e 21 em ordem crescente: sem
+inversão. O guard do `packages/locks` rastreia por identidade da `tx`, que é o que atravessa
+o port.
+
+Typecheck limpo nos três projetos.
+
+### 24.2 · ⚠️ A MEDIÇÃO QUE PAROU O LOTE
+
+```
+npx vitest run m10-almoxarifado m10-estoque-fisico m05-anulacao-parcial
+  ->  32 testes falhando em 3 arquivos, todos pelo gancho novo
+```
+
+E o levantamento do alcance:
+
+| | |
+|---|---:|
+| chamadas que liquidam material pelo caminho de dois passos | **11** |
+| chamadas a `registrarEntradaAlmoxarifado` (o segundo passo) | **21** |
+| chamadas em código de PRODUÇÃO | **0** |
+
+**Todas as 32 são testes, e é isso que importa:** o caminho de dois passos não existe em
+produção — a porta o recusava. Quem o exercita é justamente a suíte que **prova a amarração
+razão × almoxarifado**.
+
+⚠️ **ENTÃO FECHAR A PENDÊNCIA NÃO É ACRESCENTAR CÓDIGO: É REESCREVER A PROVA DE UM
+INVARIANTE.** As 32 asserções teriam de migrar do ato em dois passos para o ato composto. Pode
+ser a coisa certa — provavelmente é —, mas é decisão que tem de APARECER, e não acontecer de
+madrugada dentro de um lote que também entregava tela. É a mesma regra que proíbe rebaixar
+profundidade para superfície em silêncio.
+
+### 24.3 · Dois achados de desenho que a medição corrigiu, e que sobrevivem à decisão
+
+1. ⚠️ **O GUARD NÃO PODE DISPARAR PELO ELEMENTO.** A primeira versão perguntava "o elemento é
+   de material?" — e doze arquivos de teste liquidam com elemento 30 sem tocar em
+   almoxarifado (M09, M12, M02, M16). O repositório inteiro pagaria por uma regra de um
+   domínio. O critério certo é **a partida de débito bater numa conta que alguma
+   `ClasseDeMaterial` declara como sua**: vem da tabela, não de código, e é a mesma relação
+   que a amarração já usa.
+2. ⚠️ **E NEM POR CÓDIGO DE CONTA FIXO.** A fixture do M10 usa `1.1.5.1.1.00.00` e a produção
+   usa `1.1.5.6.1.01.00`. Um predicado contra a constante do M01 não dispararia justamente no
+   caso que precisa disparar. "Nenhum código no código" também vale para guard.
+
+### 24.4 · Onde está, e o que decidir
+
+`git stash@{0}`, com a mensagem inteira. Para retomar: `git stash pop`.
+
+**A decisão, em uma frase:** o ato composto substitui o ato em dois passos, e as 32 asserções
+migram — ou o ato composto convive com o antigo, e aí o fail-closed vira fail-open e a
+pendência continua aberta com outro nome.
+
+**A recomendação:** migrar. Mas como lote PRÓPRIO, de profundidade, com a suíte do M10 no
+centro — e não como efeito colateral de um lote de superfície.
+
 ## 19. O próximo passo
 
 ⚠️ **O ENT05 está FECHADO e PARADO no gate** — 10 de 10, saída 0 (20.12). Nada foi
