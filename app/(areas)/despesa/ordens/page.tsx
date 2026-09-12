@@ -13,7 +13,13 @@ import {
   type OrdemDaTela,
 } from "../../../../lib/portas/ordem-pagamento";
 import { lerContasBancarias } from "../../../../lib/portas/pagamento";
-import { dataBr, descreverRecorte, recorteDe } from "../../../../lib/recorte";
+import {
+  EscopoDeLeituraError,
+  ExercicioIlegivelError,
+  recorteDePagina,
+  type RecorteDaPagina,
+} from "../../../../lib/portas/contexto";
+import { dataBr, descreverRecorte } from "../../../../lib/recorte";
 import { FormAutorizar, FormCancelar, FormOrdem } from "./FormOrdem";
 import { instanteCivilBr } from "../../../../packages/datas/index";
 
@@ -62,19 +68,18 @@ export default async function OrdensDePagamentoPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
-  const recorte = recorteDe(await searchParams);
+  const sp = await searchParams;
 
-  const cabecalho = (
-    <PageHeader
-      titulo="Ordens de pagamento"
-      subtitulo={`${descreverRecorte(recorte)} — preparar, autorizar, registrar e conferir`}
-    />
-  );
-
+  // ⚠️ O CABEÇALHO NASCE **DEPOIS** DO TRY (ver abaixo). Ele imprime
+  // `descreverRecorte(recorte)`, e um recorte que ainda não foi autorizado não existe para
+  // ser descrito: montá-lo antes afirmaria "consolidado (ente)" na tela de quem acabou de
+  // ser recusado. O `catch` tem cabeçalho próprio, de subtítulo fixo.
+  let recorte: RecorteDaPagina;
   let ordens: readonly OrdemDaTela[];
   let liquidacoes: readonly LiquidacaoParaOrdemDaTela[];
   let contas: Awaited<ReturnType<typeof lerContasBancarias>>;
   try {
+    recorte = await recorteDePagina(sp);
     [ordens, liquidacoes, contas] = await Promise.all([
       lerOrdensDePagamento({
         exercicio: recorte.exercicio,
@@ -90,18 +95,34 @@ export default async function OrdensDePagamentoPage({
     return (
       <div className="space-y-4">
         <SincronizarContexto />
-        {cabecalho}
+        <PageHeader
+          titulo="Ordens de pagamento"
+          subtitulo="Preparar, autorizar, registrar e conferir"
+        />
         <EstadoVazio
           titulo={
-            erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
-              : "Não foi possível ler as ordens de pagamento"
+            erro instanceof EscopoDeLeituraError
+              ? "Esta unidade não está no seu acesso"
+              : erro instanceof ExercicioIlegivelError
+                ? "O exercício pedido não é um ano"
+                : erro instanceof PortaSemBancoError
+                  ? "Banco de dados não configurado"
+                  : "Não foi possível ler as ordens de pagamento"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
       </div>
     );
   }
+
+  // ⚠️ AQUI, e não antes do try: agora `recorte` existe E foi autorizado. As duas saídas
+  // que já o usavam (o retorno de sucesso e o estado vazio) continuam intocadas.
+  const cabecalho = (
+    <PageHeader
+      titulo="Ordens de pagamento"
+      subtitulo={`${descreverRecorte(recorte)} — preparar, autorizar, registrar e conferir`}
+    />
+  );
 
   const envio = estadoDoEnvioAoBanco();
 

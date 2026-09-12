@@ -12,7 +12,13 @@ import {
 } from "../../../../lib/portas/livros";
 import { SelecaoESoma, type LancamentoSelecionavel } from "./SelecaoESoma";
 import { somarValoresDigitados } from "../../../../lib/format/moeda";
-import { dataBr, descreverRecorte, recorteDe } from "../../../../lib/recorte";
+import {
+  EscopoDeLeituraError,
+  ExercicioIlegivelError,
+  recorteDePagina,
+  type RecorteDaPagina,
+} from "../../../../lib/portas/contexto";
+import { dataBr, descreverRecorte } from "../../../../lib/recorte";
 import { lerPeriodo } from "../../relatorios/livros/periodo";
 import { FiltroDeLancamentos } from "./FiltroDeLancamentos";
 
@@ -56,20 +62,28 @@ export default async function LancamentosPage({
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
   const sp = await searchParams;
-  const recorte = recorteDe(sp);
+  // ⚠️ O RECORTE MUDOU DE LUGAR — ele nasce DENTRO do try, porque agora pode RECUSAR.
   // Reaproveita o leitor de período dos livros — mesma semântica de corte (o `ate` cobre o dia
   // inteiro). Duplicá-lo aqui faria "31/12" significar coisas diferentes em duas telas do sistema.
   const { desde, ate, desdeStr, ateStr } = lerPeriodo(sp);
   const conta = umTexto(sp["conta"]);
   const subsistema = umSubsistema(sp["subsistema"]);
   const origem = umTexto(sp["origem"]);
-  // T08 — os filtros que faltavam: o IDENTIFICADOR DO FATO e a FONTE. A entidade
-  // (unidade gestora) vem do seletor do cabeçalho, que já é o contexto da sessão.
+  // T08 — os filtros que faltavam: o IDENTIFICADOR DO FATO e a FONTE.
+  //
+  // ⚠️ ESTA NOTA DIZIA QUE A UNIDADE "VEM DO SELETOR DO CABEÇALHO, QUE JÁ É O CONTEXTO DA
+  // SESSÃO" — e a metade errada dessa frase é a que importava. O seletor de fato só oferece
+  // unidades que o usuário pode ler (`SincronizarContexto` apaga da URL o que não está na
+  // lista). Mas a URL não vem só do seletor: ela é digitada, salva e compartilhada. Medido
+  // em `test/caracterizacao/leitura-por-unidade.test.ts`. Quem confere agora é
+  // `recorteDePagina`, no servidor, a cada leitura.
   const origemId = umTexto(sp["fato"]);
   const fonte = umTexto(sp["fonte"]);
 
+  let recorte: RecorteDaPagina;
   let lancamentos: readonly LancamentoDoDiario[];
   try {
+    recorte = await recorteDePagina(sp);
     // ⚠️ OS FILTROS VÃO À PORTA, não a um `.filter()` depois. O `diario` do M12 os compõe no
     // `where` do SQL; filtrar em memória traria o razão inteiro do banco para descartar quase tudo.
     lancamentos = await gerarDiario({
@@ -90,9 +104,20 @@ export default async function LancamentosPage({
     return (
       <div className="space-y-4">
         <SincronizarContexto />
-        <PageHeader titulo="Lançamentos contábeis" subtitulo={descreverRecorte(recorte)} />
+        {/* ⚠️ SEM `descreverRecorte(recorte)` AQUI. Este cabeçalho imprimia o recorte — e
+            este é justamente o caminho em que o recorte pode NÃO EXISTIR, porque a recusa
+            acontece ao montá-lo. Subtítulo fixo: um estado de erro não afirma escopo. */}
+        <PageHeader titulo="Lançamentos contábeis" subtitulo="Consulta analítica do razão" />
         <EstadoVazio
-          titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível consultar os lançamentos"}
+          titulo={
+            erro instanceof EscopoDeLeituraError
+              ? "Esta unidade não está no seu acesso"
+              : erro instanceof ExercicioIlegivelError
+                ? "O exercício pedido não é um ano"
+                : erro instanceof PortaSemBancoError
+                  ? "Banco de dados não configurado"
+                  : "Não foi possível consultar os lançamentos"
+          }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
       </div>
