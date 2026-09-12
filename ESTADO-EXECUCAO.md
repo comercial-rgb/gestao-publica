@@ -3015,7 +3015,41 @@ ambiente ficaria sem ninguém capaz de conceder qualquer ação.
 | `npm run smoke:perfis` | **14 passos, 0 falhas** | 2026-09-12 |
 | `npm run db:papel` | papel realinhado nos dois bancos, com o grant novo | 2026-09-12 |
 
-### 23.9 · Pendência nova, nomeada
+### 23.9 · O portão de fechamento — 10 de 10
+
+Rodada de `2026-09-12T04:45:53Z`, saída bruta em `.registro-de-execucao/`.
+
+| Passo | Estado | Segundos |
+|---|---|---:|
+| `typecheck:backend` | ok | 15 |
+| `typecheck:app` | ok | 3 |
+| `typecheck:scripts` | ok | 2 |
+| `cobertura-de-tsconfig` | ok | 6 |
+| `prisma:validate` | ok | 1 |
+| `deriva` | ok | 11 |
+| `test:rapido` | ok | 10 |
+| `test:tudo` | ok | 510 |
+| `test:fuso` | ok | 481 |
+| `build` | ok | 29 |
+
+`CODIGO_DE_SAIDA_DO_PORTAO=0`. A suíte: **201 arquivos, 2.101 testes**, verdes nas duas
+passagens de fuso.
+
+⚠️ **A DIFERENÇA CONFERE COM O LOTE, E ISSO É A AMARRAÇÃO.** O ENT06 item 0 fechou com 200
+arquivos e 2.087 testes; este lote acrescentou **um arquivo e catorze testes** — os 11 de
+`m16-perfis.test.ts` mais os 3 do papel de runtime. Número de teste que não bate com o que
+se escreveu é sinal de arquivo que não foi coletado.
+
+⚠️ **UMA RODADA ANTERIOR FOI INTERROMPIDA POR MIM, e o registro fica.** O portão da
+organização documental (§22) começou e foi morto no meio para liberar a máquina quando o
+operador pediu construção contínua. Ele não é o portão de nada: este, que roda sobre o commit
+`8c875c7`, cobre os dois lotes — a organização e os perfis — porque a árvore já continha as
+duas coisas.
+
+**O que este portão NÃO cobre:** o percurso de navegador, que roda à parte (`npm run
+smoke:perfis`, 14 passos, 0 falhas) porque exige `next start` e Chromium.
+
+### 23.10 · Pendência nova, nomeada
 
 `HIERARQUIA-DE-PERFIS` — perfil que herda de outro. Foi pedido, e **não entrou**: herança
 reintroduz por outro nome o "copiar de" que este lote recusou, porque conceder uma ação ao
