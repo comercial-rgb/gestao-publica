@@ -64,6 +64,22 @@ export const ESCRITA_MUTAVEL_DO_RUNTIME: Readonly<
   },
   VinculoUsuarioPerfil: { update: [], delete: true },
 
+  // ⚠️ ENT06 item 1 — REVOGAR UMA AÇÃO DE UM PERFIL APAGA A CONCESSÃO, e é a mesma doutrina
+  // do vínculo acima: a concessão é o FATO, e a ausência dela é a revogação. Não há coluna
+  // de revogação a marcar — marcá-la exigiria UPDATE numa linha que declara poder, e uma
+  // permissão "revogada" que continua na tabela é a que alguém lê como concedida.
+  //
+  // ⚠️ E ELE ENTROU AQUI PORQUE O CASO DE USO NASCEU, NÃO ANTES. Até o ENT06 os únicos
+  // escritores de `PermissaoDePerfil` eram o bootstrap de instalação e um teste — ambos
+  // rodam como DONO, não pelo papel da aplicação. A tela de perfis é a primeira coisa que
+  // apaga esta linha pelo runtime, e sem esta entrada ela falharia com "permission denied"
+  // no município, com a suíte verde na máquina de quem escreveu: o teste roda como dono.
+  //
+  // A trava contra revogar a ÚLTIMA concessão de `CONCEDER_ACAO_A_PERFIL` NÃO mora aqui —
+  // grant não sabe contar linhas. Ela é do caso de uso (`servico-perfis.ts`), e o teste
+  // t9 a prova nas duas direções.
+  PermissaoDePerfil: { update: [], delete: true },
+
   // ── ENT02 ─────────────────────────────────────────────────────────────────
   //
   // ⚠️ CINCO CADASTROS COM `ativo`, E NENHUM FATO. O protocolo e a comunicação

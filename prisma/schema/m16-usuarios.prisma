@@ -213,6 +213,15 @@ enum AcaoDoSistema {
   INATIVAR_USUARIO
   RESETAR_SENHA
 
+  // ── M16 — OS PERFIS (ENT06 item 1 · TR 4.56) ──
+  //
+  /// ⚠️ SEPARADAS DE `CONCEDER_PERFIL`, e a distinção é a razão de existirem: conceder um
+  /// PERFIL a um usuário entrega um crachá que já existe; conceder uma AÇÃO a um perfil muda
+  /// o que aquele crachá abre — para todos que o têm, de uma vez.
+  CRIAR_PERFIL
+  CONCEDER_ACAO_A_PERFIL
+  REVOGAR_ACAO_DE_PERFIL
+
   // ── M21 — protocolo e processo digital (ENT02) ──
   //
   /// ⚠️ UMA AÇÃO POR ATO. Abrir, tramitar e encerrar são decisões de peso diferente:

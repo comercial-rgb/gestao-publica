@@ -114,6 +114,17 @@ const CENSO = "Censo ENT03c (varredura sistemática módulo x catálogo):";
  */
 const PERCURSO_ENT06 = "scripts/smoke-ent06.ts (48 passos, 0 falhas, 2026-09-11):";
 
+/**
+ * ⚠️ O PERCURSO DOS PERFIS — e ele prova o que faltava para a 5.8.8 ser inteira.
+ *
+ * A cláusula pede controle de permissões "tanto por usuário quanto por grupo de usuários,
+ * com definição das permissões". O ENFORCEMENT já estava provado desde o ENT03b; o que não
+ * existia era a DEFINIÇÃO: conceder uma ação a um perfil só acontecia no bootstrap de
+ * instalação (que recusa rodar em banco povoado) e num script de terminal. Um administrador
+ * municipal não tem terminal.
+ */
+const PERCURSO_PERFIS = "scripts/smoke-perfis.ts (14 passos, 0 falhas, 2026-09-12):";
+
 const SMOKE_04 =
   "scripts/smoke-ent03c.ts (41 passos, 0 falhas, 2026-09-11, DUAS execuções — a segunda " +
   "contra o banco já povoado pela primeira, que é o que prova que o percurso não depende " +
@@ -647,7 +658,7 @@ const MAPA: Readonly<Record<string, Marca>> = {
   },
   "5.8.8": {
     situacao: "VALIDADO_LOCALMENTE",
-    evidencia: `Acesso por senha (scrypt), permissão POR AÇÃO DE NEGÓCIO e por PERFIL, com recorte por unidade gestora — e nega por omissão: sem perfil, o usuário não pode NADA (modules/m16-travamento/autorizacao.ts). O censo é EXAUSTIVO e o grep-teste prova as duas direções: todo serviço de mutação tem ação, e toda ação tem serviço (m16-censo.test.ts, 192 serviços e 185 ações no ENT03b). ${SMOKE_03B}: quem não tem a ação NÃO VÊ o botão, e vê o motivo.`,
+    evidencia: `Acesso por senha (scrypt), permissão POR AÇÃO DE NEGÓCIO e por PERFIL, com recorte por unidade gestora — e nega por omissão: sem perfil, o usuário não pode NADA (modules/m16-travamento/autorizacao.ts). O censo é EXAUSTIVO e o grep-teste prova as duas direções: todo serviço de mutação tem ação, e toda ação tem serviço (m16-censo.test.ts, 192 serviços e 185 ações no ENT03b). ${SMOKE_03B}: quem não tem a ação NÃO VÊ o botão, e vê o motivo. ⚠️ A DEFINIÇÃO das permissões — a segunda metade da cláusula — só ficou alcançável no ENT06 item 1: até ali, conceder uma ação a um perfil existia no bootstrap de INSTALAÇÃO (que recusa rodar em banco povoado) e num script de terminal, e uma instalação em operação não tinha caminho nenhum. ${PERCURSO_PERFIS} o administrador cria o perfil pela tela (ele nasce vazio), escolhe a ação POR ÁREA — não numa lista com o censo inteiro —, concede global ou por unidade gestora, e revoga; a ação concedida some da lista ao ser revogada e reaparece marcada como já concedida enquanto vale. A trava contra revogar a ÚLTIMA concessão de CONCEDER_ACAO_A_PERFIL foi exercida PELA TELA e recusou, com o motivo (m16-perfis.test.ts t9 a prova nas duas direções).`,
   },
   "5.8.17": {
     situacao: "VALIDADO_LOCALMENTE",

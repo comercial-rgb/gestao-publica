@@ -489,6 +489,73 @@ describe("papel de runtime — o razão é imutável no banco, não só no domí
   });
 });
 
+// ════════════════════════════════════════════════════════════════════════════
+// 5. ENT06 — A CONCESSÃO DE PERMISSÃO PELO PAPEL DA APLICAÇÃO
+//
+// ⚠️ POR QUE ESTE BLOCO EXISTE, E ELE NASCEU DE UMA MUTAÇÃO QUE NÃO ACUSOU.
+//
+// O censo (`ESCRITA_MUTAVEL_DO_RUNTIME`) ganhou `PermissaoDePerfil` porque a tela de perfis
+// REVOGA, e revogar apaga a linha. A prova tentada foi tirar a tabela do censo e esperar
+// vermelho — e **ficou verde**. A razão: o `global-setup` PROVISIONA a partir do próprio
+// censo antes da suíte, então censo e banco se movem juntos, e a comparação entre os dois
+// não consegue enxergar uma omissão. Aquele teste pega grant manual fora do censo; não pega
+// permissão que faltou.
+//
+// O que prova é o EFEITO: o papel da aplicação apagando a linha de verdade. Tire
+// `PermissaoDePerfil` do censo e este bloco fica vermelho com "permission denied" — que é a
+// mesma falha que o município veria, com a suíte de módulo verde na máquina de quem escreveu
+// (os testes de domínio conectam como DONO).
+// ════════════════════════════════════════════════════════════════════════════
+
+describe("papel de runtime — a tela de perfis escreve e apaga permissão", () => {
+  beforeEach(async () => {
+    await dono.permissaoDePerfil.deleteMany({ where: { perfil: { nome: "PAPEL-PERFIL" } } });
+    await dono.perfil.deleteMany({ where: { nome: "PAPEL-PERFIL" } });
+    await dono.perfil.create({
+      data: { id: "papel-perfil", nome: "PAPEL-PERFIL", descricao: "alvo do teste", criadoPor: CRIADO_POR },
+    });
+  });
+
+  it("o papel CONCEDE — a linha de permissão é INSERT, como todo fato do repositório", async () => {
+    await app.permissaoDePerfil.create({
+      data: { perfilId: "papel-perfil", acao: "CADASTRAR_DEPOSITO", criadoPor: CRIADO_POR },
+    });
+    expect(
+      await dono.permissaoDePerfil.count({ where: { perfilId: "papel-perfil" } })
+    ).toBe(1);
+  });
+
+  it("o papel REVOGA — e é isto que o censo precisou autorizar", async () => {
+    const criada = await dono.permissaoDePerfil.create({
+      data: { perfilId: "papel-perfil", acao: "CADASTRAR_MATERIAL", criadoPor: CRIADO_POR },
+      select: { id: true },
+    });
+
+    // ⚠️ SEM A ENTRADA NO CENSO, ESTA LINHA ESTOURA COM "permission denied" — e a tela de
+    // perfis falharia no município com a suíte de domínio verde.
+    await app.permissaoDePerfil.delete({ where: { id: criada.id } });
+
+    expect(await dono.permissaoDePerfil.count({ where: { id: criada.id } })).toBe(0);
+  });
+
+  it("o papel NÃO reescreve uma permissão — mudar de ação seria trocar o poder sem rastro", async () => {
+    const criada = await dono.permissaoDePerfil.create({
+      data: { perfilId: "papel-perfil", acao: "CADASTRAR_DEPOSITO", criadoPor: CRIADO_POR },
+      select: { id: true },
+    });
+
+    // ⚠️ O CENSO DECLARA `update: []` — DELETE sim, UPDATE não. Reescrever a ação de uma
+    // concessão existente mudaria o poder mantendo o `criadoPor` de quem concedeu OUTRA
+    // coisa: a auditoria diria que fulano concedeu o que ele não concedeu.
+    await expect(
+      app.permissaoDePerfil.update({ where: { id: criada.id }, data: { acao: "CADASTRAR_MATERIAL" } })
+    ).rejects.toThrow(/permission denied|permissão negada/i);
+
+    const depois = await dono.permissaoDePerfil.findUniqueOrThrow({ where: { id: criada.id } });
+    expect(String(depois.acao)).toBe("CADASTRAR_DEPOSITO");
+  });
+});
+
 afterAll(async () => {
   await app.$disconnect();
   await dono.$disconnect();

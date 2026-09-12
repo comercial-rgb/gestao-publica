@@ -391,7 +391,13 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   SEPARADOS de propósito: quem emite a ordem não é quem atesta que o material
     //   chegou — é a segregação do 6.4 no ponto onde ela mais vale.
     //   = 230.
-    expect(nomes.length).toBe(230);
+    // + 3 (ENT06 item 1 — OS PERFIS: criarPerfil, concederAcaoAoPerfil e revogarAcaoDoPerfil).
+    //   ⚠️ SEPARADAS DE `CONCEDER_PERFIL`, e a distinção é a razão de existirem: conceder um
+    //   PERFIL a um usuário entrega um crachá que já existe; conceder uma AÇÃO a um perfil
+    //   muda o que aquele crachá abre — para todos que o têm, de uma vez. Juntá-las daria, a
+    //   quem só devia vincular servidores a perfis prontos, o poder de ampliar qualquer um.
+    //   = 233.
+    expect(nomes.length).toBe(233);
 
     // 97 serviços, 93 ações distintas. Os pares que compartilham ação (4: importarExtratoBb
     // REUSA IMPORTAR_EXTRATO). transferirEntreContas tem AÇÃO PRÓPRIA (não compartilha) → +1 ação.
@@ -469,7 +475,8 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   = 214.
     // + 1 (REPONTAR_CONTA) = 215.
     // + 8 (ENT05 — A COMPRA): ação própria para cada serviço = 223.
-    expect(TODAS_AS_ACOES.length).toBe(223);
+    // + 3 (ENT06 item 1 — os perfis: criar, conceder ação e revogar ação) = 226.
+    expect(TODAS_AS_ACOES.length).toBe(226);
     expect(ACAO_DO_SERVICO.encerrarExercicio).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.encerrarExercicioComRestos).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.importarExtrato).toBe("IMPORTAR_EXTRATO");

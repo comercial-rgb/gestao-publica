@@ -215,6 +215,16 @@ export type AcaoDoSistema =
   | "ATIVAR_USUARIO"
   | "INATIVAR_USUARIO"
   | "RESETAR_SENHA"
+  // ── M16 — o CRACHÁ do crachá (ENT06 item 1) ──
+  //
+  // ⚠️ CONCEDER AÇÃO A PERFIL É O PODER DE DISTRIBUIR PODER, e por isso tem ação própria,
+  // separada de `CONCEDER_PERFIL`. Conceder um PERFIL a alguém entrega um crachá que já
+  // existe; conceder uma AÇÃO a um perfil MUDA o que aquele crachá abre — para todos que o
+  // têm, de uma vez. São poderes de ordem diferente, e juntá-los daria, a quem só devia
+  // vincular servidores a perfis prontos, a capacidade de ampliar qualquer perfil.
+  | "CRIAR_PERFIL"
+  | "CONCEDER_ACAO_A_PERFIL"
+  | "REVOGAR_ACAO_DE_PERFIL"
   // ── M21 — protocolo e processo digital (ENT02) ──
   //
   // ⚠️ UMA AÇÃO POR ATO, e não um "GERIR_PROCESSO" que agrupasse tudo. Abrir, tramitar
@@ -508,6 +518,10 @@ export type NomeDeServico =
   | "ativarUsuario"
   | "inativarUsuario"
   | "resetarSenha"
+  // ── M16 — perfis: criar e mudar o que um perfil concede (ENT06 item 1) ──
+  | "criarPerfil"
+  | "concederAcaoAoPerfil"
+  | "revogarAcaoDoPerfil"
   // ── M21 — protocolo (ENT02) ──
   | "abrirProcesso"
   | "tramitar"
@@ -810,6 +824,11 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   inativarUsuario: "INATIVAR_USUARIO",
   resetarSenha: "RESETAR_SENHA",
 
+  // M16 — os perfis (ENT06 item 1). Criar o crachá e mudar o que ele abre.
+  criarPerfil: "CRIAR_PERFIL",
+  concederAcaoAoPerfil: "CONCEDER_ACAO_A_PERFIL",
+  revogarAcaoDoPerfil: "REVOGAR_ACAO_DE_PERFIL",
+
   // ── M21 — protocolo e processo digital (ENT02) ──
   abrirProcesso: "ABRIR_PROCESSO",
   tramitar: "TRAMITAR_PROCESSO",
@@ -944,6 +963,9 @@ export const ACOES_DE_ADMINISTRACAO: readonly AcaoDoSistema[] = [
   "ATIVAR_USUARIO",
   "INATIVAR_USUARIO",
   "RESETAR_SENHA",
+  "CRIAR_PERFIL",
+  "CONCEDER_ACAO_A_PERFIL",
+  "REVOGAR_ACAO_DE_PERFIL",
 ];
 
 /**

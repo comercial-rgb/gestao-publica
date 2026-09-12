@@ -2855,14 +2855,172 @@ chat e não chegaram a arquivo. O resultado de cada um está aqui; o pedido, nã
 | O que se afirma | Como foi conferido | Resultado |
 |---|---|---|
 | o script acha o catálogo no lugar novo | `npx tsx scripts/marcar-catalogo.ts` (sem `--aplicar`) | 316 de 2037 (15,5%), 46 validadas, 48 parciais, 3 de terceiro — idêntico ao de antes da mudança |
-| o histórico do pacote veio junto | `git log` alcança os commits do catálogo por `docs/edital/` | 9 commits, do primeiro censo ao do ENT06 |
+| o histórico do pacote veio junto | `git log 86aa70b^2` | **9 commits**, de `aa41282` ("o instrumento de medição entra sob controle de versão") a `d353812` (ENT06) |
 | nenhuma referência viva ficou apontando para o vazio | varredura por nome em todo o repositório | as que restam estão em registro histórico, em `docs/historico/` e nos prompts como vieram |
+
+⚠️ **A PRIMEIRA VERSÃO DESTA TABELA AFIRMAVA O QUE A MEDIÇÃO DERRUBOU.** Eu havia escrito
+que `git log --follow docs/edital/catalogo-execucao.json` traria os 9 commits. **Traz um.**
+`git subtree add` cria um commit de MERGE (`86aa70b`, pais `fa09aae` e `d353812`), e
+`--follow` simplifica a história e para ali. Os commits **estão** na repo, alcançáveis pelo
+segundo pai — mas quem procurar pelo caminho do arquivo não os acha.
+
+Fica registrado porque a diferença aparece no dia em que alguém perguntar quem marcou uma
+cláusula e com que prova: a resposta está em `git log 86aa70b^2`, não em `--follow`. Para
+arquivo renomeado **dentro** desta repo o `--follow` funciona normalmente —
+`docs/instrucoes/arquitetura.md` alcança o antigo `PROJETO.md` até `116e1ca`, a cópia de
+trabalho vinda do `siafic-cg`.
 
 ### 22.7 · Pendência nova, nomeada
 
 `ENV-EXAMPLE-DESATUALIZADO` — o `.env.example` mostra porta 5432 e o nome antigo do banco.
 Não foi corrigido aqui porque é configuração e este lote é documental; está anotado no
 próprio `arquitetura.md`, onde quem sobe ambiente vai ler.
+
+## 23. ENT06 item 1 — conceder uma ação a um perfil
+
+O pedido está em `docs/lotes/ENT06-item1-conceder-acao-a-perfil.md`. Ele veio primeiro porque
+a revisão do item 0 achou o que bloqueava todo o resto.
+
+### 23.1 · A contagem do lote, por natureza
+
+| | |
+|---|---:|
+| validação — cláusulas promovidas | **0** |
+| construção — cláusulas que saíram de `AUSENTE_CONFIRMADO` | 0 |
+| evidência reforçada, sem mudar situação | 1 (`5.8.8`) |
+| catálogo | 316 de 2037 (15,5%) — inalterado |
+| censo de ações do M16 | 223 → **226** |
+
+⚠️ **ZERO CLÁUSULAS, E O LOTE ERA NECESSÁRIO.** Varri o catálogo: as cláusulas que falam de
+conceder permissão por perfil são 5.8.8 e 5.11.1, e **as duas já estavam
+`VALIDADO_LOCALMENTE`** desde o ENT03c. Marcá-las de novo não moveria nada, e inventar
+cláusula para este lote seria pior que contar zero.
+
+O que mudou foi a evidência de 5.8.8. A cláusula pede controle de permissões "tanto por
+usuário quanto por grupo de usuários, **com definição das permissões**" — e a evidência
+antiga provava só o *enforcement*. A definição não tinha caminho: existia no bootstrap de
+instalação e num script de terminal. **A marcação estava acima do que se podia provar pela
+tela, e agora não está mais.**
+
+### 23.2 · ⚠️ O PARADOXO QUE O PRÓPRIO LOTE PRODUZIU — e ele é a prova do problema
+
+A tela foi construída, o build passou, e o percurso falhou no **primeiro passo**: o
+formulário de criar perfil não existia na página. Medido na hora:
+
+```
+censo 226 ações · concedidas 223
+⚠️ 3 AÇÕES QUE NENHUM PERFIL CONCEDE:
+  · CONCEDER_ACAO_A_PERFIL   · CRIAR_PERFIL   · REVOGAR_ACAO_DE_PERFIL
+```
+
+**A tela que serve para conceder ações nasceu inalcançável pela ação que ela mesma precisa.**
+O perfil `ADMINISTRADOR` do banco de desenvolvimento tinha exatamente as 223 de antes deste
+lote: o bootstrap deriva do censo, mas roda **uma vez na vida do banco**.
+
+A saída foi o caminho que já existia para isso — `scripts/conceder-acoes-ao-perfil.ts`, com
+as ações digitadas uma a uma e `SEED_IDENTIDADE` como autor. Depois dele,
+`npm run deriva:perfil` respondeu *"censo e perfis batem: 226 ações"*.
+
+⚠️ **E A LIÇÃO NÃO É "AUTOMATIZAR A CONCESSÃO".** Fazer toda ação nova cair sozinha no perfil
+de instalação seria a chave-mestra por conveniência: cada lote ampliaria, em silêncio, o
+poder de quem já tem tudo. O desenho certo é o que está aqui — a ação nova nasce sem dono, o
+detector de deriva a acusa, e alguém assina a concessão. **O preço é este passo manual a cada
+lote que acrescenta ação, e ele é barato perto do outro.**
+
+### 23.3 · ⚠️ O SEGUNDO ACHADO: o censo assinado não cobria a revogação
+
+Revogar apaga a linha de `PermissaoDePerfil` — a concessão é o fato, e a ausência dela é a
+revogação (a mesma doutrina do vínculo de perfil). Só que `PermissaoDePerfil` **não estava**
+em `ESCRITA_MUTAVEL_DO_RUNTIME`: o papel da aplicação tinha `SELECT` e `INSERT`, e mais nada.
+
+**Os testes de domínio nunca pegariam isso** — eles conectam como DONO. A tela teria falhado
+no município com `permission denied`, com a suíte verde na máquina de quem escreveu. Entrou
+no censo, com o motivo, e `update: []`: revogar sim, reescrever não — mudar a ação de uma
+concessão existente trocaria o poder mantendo o `criadoPor` de quem concedeu outra coisa.
+
+### 23.4 · ⚠️ O TERCEIRO ACHADO: a mutação que NÃO acusou, e o instrumento que ela obrigou a escrever
+
+Tirei `PermissaoDePerfil` do censo esperando ver `test/papel-runtime.test.ts` ficar vermelho.
+**Ficou verde.**
+
+A razão: o `global-setup` **provisiona os grants a partir do próprio censo** antes da suíte.
+Censo e banco se movem juntos, e a comparação entre os dois não enxerga uma omissão — aquele
+teste pega grant manual fora do censo, que é outra coisa. Um guard que eu teria tomado por
+rede.
+
+O que prova é o **efeito**: três asserções novas em que o papel da aplicação concede, revoga e
+**é negado ao tentar reescrever** uma permissão. Com elas, a mesma mutação acusa:
+
+```
+MUTADO:    × o papel REVOGA — DriverAdapterError: permission denied for table PermissaoDePerfil
+REVERTIDO: ✓ 18 testes verdes
+```
+
+### 23.5 · A trava da última chave
+
+Revogar a última concessão de `CONCEDER_ACAO_A_PERFIL` deixaria o ente sem ninguém capaz de
+distribuir poder — e o bootstrap recusa rodar em banco povoado, corretamente. **A porta
+trancada por dentro, com a chave do lado de fora.** O caso de uso recusa, nomeando.
+
+Provada nas duas direções, e nos dois níveis:
+
+| prova | mutado | revertido |
+|---|---|---|
+| `m16-perfis.test.ts` t9 (mutação `outras === 0` → `=== -1`) | `promise resolved "undefined" instead of rejecting` | verde |
+| a tela, no percurso | o servidor recusou com a mensagem inteira, e a concessão continuou lá | — |
+
+⚠️ **O percurso tenta de verdade, no perfil que administra.** Se a trava não existisse, o
+ambiente ficaria sem ninguém capaz de conceder qualquer ação.
+
+### 23.6 · Dois defeitos meus que o percurso pegou, e um que o build pegou duas vezes
+
+1. **A mensagem de sucesso sumia na revogação que mais importa.** O bloco de revogar só era
+   renderizado quando havia permissões — revogar a ÚLTIMA esvaziava a lista, o bloco
+   desaparecia e levava junto a confirmação. O percurso leu silêncio onde o servidor tinha
+   respondido. Hoje a lista é que é condicional; a resposta fica.
+2. **O percurso afirmava o que a tela impede.** Eu mandava conceder a mesma ação de novo e
+   exigia a recusa nomeada na tela — mas a opção já concedida vem **desabilitada**, o
+   formulário sobe vazio e ninguém chega ao servidor. A recusa existe e é provada no domínio
+   (t4); pela tela o que se prova é a **prevenção**. Cobrar da interface um erro que ela
+   existe para evitar é medir a coisa errada.
+3. ⚠️ **O comentário que explicava o defeito derrubou o build — duas vezes.** Primeiro por
+   estar dentro do operador ternário (posição de expressão, onde chave com barra-asterisco é
+   objeto literal, não comentário); depois porque, ao explicar isso, ele **grafou** a
+   sequência que fecha comentário e se encerrou no meio. É a mesma anatomia que o guard de
+   rótulos já documenta sobre si: **a regra se enuncia, não se escreve.**
+
+### 23.7 · O que entrou, e onde
+
+| Camada | Arquivo |
+|---|---|
+| censo + enum | `modules/m16-travamento/acoes.ts`, `prisma/schema/m16-usuarios.prisma`, migration `20260912042331_ent06_acoes_de_perfil` |
+| domínio | `modules/m16-travamento/servico-perfis.ts` — criar, conceder, revogar |
+| papel de runtime | `prisma/papel-runtime.ts` — `PermissaoDePerfil` no censo assinado |
+| porta | `lib/portas/administracao.ts` — as três escritas, as unidades e o rol por área |
+| menu | `lib/portas/navegacao-permissoes.ts` — as três ações apontam para `administracao` |
+| tela | `app/(areas)/administracao/perfis/` — página, ações de servidor e duas ilhas |
+| provas | `m16-perfis.test.ts` (11), `test/papel-runtime.test.ts` (+3), `scripts/smoke-perfis.ts` |
+
+**A migration é aditiva**: três valores novos no enum, zero `DROP`.
+
+### 23.8 · Comandos e resultados
+
+| Comando | Resultado | Data |
+|---|---|---|
+| `npx prisma migrate dev --name ent06_acoes_de_perfil` | aplicada; enum de 223 para 226 valores | 2026-09-12 |
+| `npm run typecheck` / `:app` / `:scripts` | limpos, com teto de heap declarado | 2026-09-12 |
+| `npx vitest run` (M16 + papel + menu) | **46 testes verdes**, 6 arquivos | 2026-09-12 |
+| `npx vitest run test/papel-runtime.test.ts` | **18 verdes** (15 + 3 do lote) | 2026-09-12 |
+| `npm run deriva:perfil` | 3 ações sem perfil → concedidas pelo caminho de atualização → "censo e perfis batem: 226 ações" | 2026-09-12 |
+| `npm run smoke:perfis` | **14 passos, 0 falhas** | 2026-09-12 |
+| `npm run db:papel` | papel realinhado nos dois bancos, com o grant novo | 2026-09-12 |
+
+### 23.9 · Pendência nova, nomeada
+
+`HIERARQUIA-DE-PERFIS` — perfil que herda de outro. Foi pedido, e **não entrou**: herança
+reintroduz por outro nome o "copiar de" que este lote recusou, porque conceder uma ação ao
+perfil pai ampliaria todos os filhos sem que ninguém olhasse para nenhum. A segregação do TR
+6.4 depende de cada concessão ser um ato visível. Precisa de decisão antes de código.
 
 ## 19. O próximo passo
 

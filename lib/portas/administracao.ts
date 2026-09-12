@@ -9,6 +9,14 @@ import {
   resetarSenha,
   revogarPerfil,
 } from "../../modules/m16-travamento/servico-usuarios";
+import {
+  concederAcaoAoPerfil,
+  criarPerfil,
+  revogarAcaoDoPerfil,
+} from "../../modules/m16-travamento/servico-perfis";
+import { TODAS_AS_ACOES } from "../../modules/m16-travamento/acoes";
+import { AREA_DA_ACAO } from "./navegacao-permissoes";
+import { AREAS } from "../navegacao";
 
 /**
  * PORTA — ADMINISTRAÇÃO (usuários, perfis/permissões, troca da própria senha).
@@ -61,8 +69,17 @@ export interface PermissaoAdmin {
   readonly acao: string;
   /** null = todas as UGs (concessão global). */
   readonly unidadeOrc: string | null;
+  /**
+   * O id da unidade — o que o botão "revogar" precisa.
+   *
+   * ⚠️ É SEPARADO DO CÓDIGO de propósito: o código é o que a pessoa lê ("01001"), e o id é o
+   * que identifica a linha. Revogar pelo código obrigaria o servidor a reencontrar a unidade
+   * a cada clique, e duas unidades de códigos parecidos são um erro de digitação de distância.
+   */
+  readonly unidadeOrcId: string | null;
 }
 export interface PerfilAdmin {
+  readonly id: string;
   readonly nome: string;
   readonly descricao: string;
   readonly permissoes: readonly PermissaoAdmin[];
@@ -71,12 +88,73 @@ export interface PerfilAdmin {
 export async function listarPerfis(): Promise<readonly PerfilAdmin[]> {
   const ps = await cliente().perfil.findMany({
     orderBy: { nome: "asc" },
-    select: { nome: true, descricao: true, permissoes: { select: { acao: true, unidadeOrc: { select: { codigo: true } } } } },
+    select: {
+      id: true,
+      nome: true,
+      descricao: true,
+      permissoes: { select: { acao: true, unidadeOrcId: true, unidadeOrc: { select: { codigo: true } } } },
+    },
   });
   return ps.map((p) => ({
-    nome: p.nome, descricao: p.descricao,
-    permissoes: p.permissoes.map((perm) => ({ acao: perm.acao, unidadeOrc: perm.unidadeOrc?.codigo ?? null })).sort((a, b) => a.acao.localeCompare(b.acao)),
+    id: p.id, nome: p.nome, descricao: p.descricao,
+    permissoes: p.permissoes
+      .map((perm) => ({ acao: perm.acao, unidadeOrc: perm.unidadeOrc?.codigo ?? null, unidadeOrcId: perm.unidadeOrcId }))
+      .sort((a, b) => a.acao.localeCompare(b.acao)),
   }));
+}
+
+/** Uma unidade gestora, para o recorte opcional da concessão (TR 6.5). */
+export interface UnidadeParaConcessao {
+  readonly id: string;
+  readonly codigo: string;
+  readonly descricao: string;
+}
+export async function listarUnidadesParaConcessao(): Promise<readonly UnidadeParaConcessao[]> {
+  const us = await cliente().unidadeOrcamentaria.findMany({
+    orderBy: { codigo: "asc" },
+    select: { id: true, codigo: true, descricao: true },
+  });
+  return us;
+}
+
+/** As ações do censo, agrupadas pela área em que elas aparecem no menu. */
+export interface GrupoDeAcoes {
+  readonly slug: string;
+  readonly rotulo: string;
+  readonly acoes: readonly string[];
+}
+
+/**
+ * O ROL DE AÇÕES QUE A TELA OFERECE — agrupado por área, nunca numa lista só.
+ *
+ * ⚠️ SÃO MAIS DE DUZENTAS AÇÕES. Um `select` com todas elas, ordenadas alfabeticamente,
+ * seria um formulário bonito e inútil: quem administra procura "o que a tesouraria faz",
+ * não uma palavra que já sabe escrever. O agrupamento é o mesmo da barra lateral, e vem do
+ * MESMO mapa que decide a visibilidade do menu — não há segunda régua.
+ *
+ * `transversal` é grupo de verdade e não gaveta de sobra: anexar arquivo e preencher campo
+ * adicional acontecem DENTRO de outras áreas, e nenhuma delas abre tela própria.
+ */
+export function acoesDoCensoPorArea(): readonly GrupoDeAcoes[] {
+  const porArea = new Map<string, string[]>();
+  for (const acao of TODAS_AS_ACOES) {
+    const destino = AREA_DA_ACAO[acao];
+    const lista = porArea.get(destino) ?? [];
+    lista.push(acao);
+    porArea.set(destino, lista);
+  }
+
+  const grupos: GrupoDeAcoes[] = [];
+  for (const area of AREAS) {
+    const acoes = porArea.get(area.slug);
+    if (acoes === undefined || acoes.length === 0) continue;
+    grupos.push({ slug: area.slug, rotulo: area.rotulo, acoes: [...acoes].sort() });
+  }
+  const transversais = porArea.get("transversal");
+  if (transversais !== undefined && transversais.length > 0) {
+    grupos.push({ slug: "transversal", rotulo: "Transversal (dentro de outras áreas)", acoes: [...transversais].sort() });
+  }
+  return grupos;
 }
 
 /**
@@ -132,5 +210,42 @@ export async function inativarUsuarioAdmin(input: { readonly usuarioId: string }
 export async function resetarSenhaAdmin(input: { readonly usuarioId: string; readonly senhaTemporaria: string }): Promise<{ readonly sessoesRevogadas: number }> {
   return comEscritaAutenticada("RESETAR_SENHA", async (criadoPor) =>
     resetarSenha(cliente(), { usuarioId: input.usuarioId, senhaTemporaria: input.senhaTemporaria, criadoPor })
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// OS PERFIS (ENT06 item 1) — criar o crachá, e mudar o que ele abre
+//
+// ⚠️ ATÉ AQUI NÃO HAVIA CAMINHO NENHUM. O censo ganhava ações a cada lote, e os perfis de
+// uma instalação já existente continuavam com as antigas: a tela nova não aparecia para
+// ninguém, sem erro e sem log. Ver `deriva-de-perfil.ts`, que mede a distância.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export async function criarPerfilAdmin(input: {
+  readonly nome: string;
+  readonly descricao: string;
+}): Promise<{ readonly perfilId: string }> {
+  return comEscritaAutenticada("CRIAR_PERFIL", async (criadoPor) =>
+    criarPerfil(cliente(), { nome: input.nome, descricao: input.descricao, criadoPor })
+  );
+}
+
+export async function concederAcaoAoPerfilAdmin(input: {
+  readonly perfilId: string;
+  readonly acao: string;
+  readonly unidadeOrcId: string | null;
+}): Promise<void> {
+  await comEscritaAutenticada("CONCEDER_ACAO_A_PERFIL", async (criadoPor) =>
+    concederAcaoAoPerfil(cliente(), { ...input, criadoPor })
+  );
+}
+
+export async function revogarAcaoDoPerfilAdmin(input: {
+  readonly perfilId: string;
+  readonly acao: string;
+  readonly unidadeOrcId: string | null;
+}): Promise<void> {
+  await comEscritaAutenticada("REVOGAR_ACAO_DE_PERFIL", async (criadoPor) =>
+    revogarAcaoDoPerfil(cliente(), { ...input, criadoPor })
   );
 }
