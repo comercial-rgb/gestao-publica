@@ -164,7 +164,7 @@ const PERCURSO_GESTAO_DO_BEM =
  * filtra por tombamento, descrição e espécie: continua `AUSENTE_CONFIRMADO`. A 5.19.15 pede
  * movimentação, localização e baixa pela tela, que não existem: continua `PARCIAL`.
  */
-const PERCURSO_ACERVO = "scripts/smoke-acervo.ts (21 passos, 0 falhas, 2026-09-12):";
+const PERCURSO_ACERVO = "scripts/smoke-acervo.ts (25 passos, 0 falhas, 2026-09-12):";
 
 const SMOKE_04 =
   "scripts/smoke-ent03c.ts (41 passos, 0 falhas, 2026-09-11, DUAS execuções — a segunda " +
@@ -1448,7 +1448,10 @@ const MAPA: Readonly<Record<string, Marca>> = {
   "5.18.16": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): fichaDeControleDeEstoque devolve os movimentos do periodo E o saldo ANTERIOR a ele. E esta clausula que refuta a coluna de saldo dentro da propria secao." },
   "5.18.21": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): Deposito com codigo, nome, unidade gestora e responsavel; a posicao e os bloqueios sao por deposito, e a transferencia entre dois e composta." },
   "5.19.1": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): InventarioDeBens com exercicio, comissao designada, unidade gestora, abertura e fechamento. Irmao - e nao o mesmo - do inventario de ESTOQUE: este exige comissao por portaria." },
-  "5.19.2": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): gerarEtiquetaDeBem grava o codigo de barras no bem e e IDEMPOTENTE: a segunda chamada devolve a MESMA etiqueta. Gerar codigo novo faria o leitor deixar de reconhecer a etiqueta ja colada." },
+  "5.19.2": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: `${PERCURSO_ACERVO} a etiqueta é gerada PELA TELA, no detalhe do bem (ação "gerar-etiqueta", sem campos — o conteúdo é o próprio número de tombamento). Após recarga, o detalhe traz o selo "Etiquetado", que é DERIVADO de codigoDeBarras: o selo aparecendo depois de recarregar é o que separa persistência de estado de componente. ⚠️ E o percurso PRESSIONA O BOTÃO DUAS VEZES: a segunda geração é aceita e o código continua sendo o mesmo tombamento. A idempotência estava provada no domínio desde o ENT05; o que faltava era provar que o BOTÃO não a viola — gerar um código novo faria o leitor deixar de reconhecer a etiqueta já colada na prateleira. A cláusula pede a GERAÇÃO ("permitir a geração de etiquetas com códigos de barras"), não a impressão: o artefato físico, com layout e papel, é outra coisa e não entrou.`,
+  },
   "5.19.3": {
     situacao: "VALIDADO_LOCALMENTE",
     evidencia: `${PERCURSO_ACERVO} o bem é cadastrado PELA TELA /patrimonio/bens-patrimoniais, classificado por uma CLASSE — que carrega a espécie, móvel ou imóvel — e identificado por um TIPO DE INCORPORAÇÃO cadastrado no próprio percurso e escolhido no formulário. Após recarga, a listagem traz o bem com a classe e com como ele entrou. ⚠️ Até este lote NADA no domínio criava um BemPatrimonial: adquirirBem exige liquidação (o bem adquirido nasce de despesa liquidada) e registrarEntradaAvulsa recebe um bem que já existe. O serviço cadastrarBem e a ação CADASTRAR_BEM nasceram aqui; modules/m10-patrimonial/m10-acervo.test.ts (11 testes) prova as recusas nomeadas — classe desativada, tombamento repetido, tipo inexistente, sem permissão — e que o cadastro NÃO move o razão.`,

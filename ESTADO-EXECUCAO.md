@@ -3747,6 +3747,61 @@ Nenhum teste da suíte afirma recusa de leitura de unidade alheia.
 `ZMOTIVO-DUPLICADO` · `COMISSAO-COM-MEMBROS` · `ESTORNO-POR-LINHA-DO-HISTORICO` ·
 `LIQUIDACAO-MATERIAL-ALMOXARIFADO` (§24, decisão devida).
 
+## 31. ENT09 — a etiqueta do bem, e dois escopos medidos até a parede
+
+**O que foi construído.** A etiqueta com código de barras, pela tela: uma quinta ação no
+detalhe do bem, **sem campos** — o molde prevê ("vazio ⇒ só o botão") e a etiqueta não pergunta
+nada, porque o conteúdo dela é o próprio número de tombamento. Inventar um segundo
+identificador criaria duas verdades sobre o mesmo armário.
+
+⚠️ **Superfície pura, e a natureza foi declarada antes de começar:** `GERAR_ETIQUETA_DE_BEM` já
+existia no censo e já estava mapeada em `patrimonio`; `gestao-do-bem.ts` tem **zero** chamadas
+ao razão (contado, não presumido). Sem ação nova, sem migration.
+
+⚠️ **O caso da porta NÃO reusa o `comum(criadoPor)`** dos outros quatro movimentos, que carrega
+data do fato e motivo. A etiqueta não tem nenhum dos dois, e reaproveitar o objeto comum a faria
+pedir, no formulário, campos obrigatórios que o domínio jamais leria.
+
+### 31.1 · Dois escopos anteriores, medidos até a parede ANTES de qualquer código
+
+O pedido original da ENT09 era **a baixa do bem**. Não foi entregue, e não por dificuldade:
+
+| Escopo tentado | Parede | Natureza do bloqueio |
+|---|---|---|
+| Baixa do bem | `RoteiroPatrimonial` com **0 linhas** (enquanto `RoteiroOrcamentario` tem 5 e há 61 lançamentos) | **decisão contábil do município** — a fonte oficial publica plano de contas, não mapeamento tipo→débito/crédito |
+| "Somente os meus bens" (`5.19.10`) | `Usuario` **não tem vínculo** com `Pessoa`; `bensSobResponsabilidade` recebe um `Pessoa.id` | **decisão de modelagem** — um usuário do sistema *é* uma pessoa do cadastro? |
+
+⚠️ **E não se resolve semeando.** `roteiroDoTipo` é fail-closed por desenho e diz por quê: *"o
+M10 não inventa conta: sem roteiro, o movimento NÃO é registrado"*. Semear o roteiro para um
+percurso passar seria inventar norma, com efeito pior que a tela faltando — lançamentos no razão
+apontando para contas que ninguém escolheu. Pendências `ROTEIRO-PATRIMONIAL-NAO-PARAMETRIZADO` e
+`USUARIO-SEM-PESSOA`.
+
+⚠️ **Dois candidatos consecutivos até a parede é sinal, não azar.** As duas frentes restantes do
+acervo — a financeira e a de identidade — dependem de decisões que não são de quem escreve
+código. O que sobrou sem decisão pendente era pequeno, e é o que este lote entregou.
+
+### 31.2 · O catálogo: uma cláusula, e a leitura pelo texto
+
+`5.19.2` → **`VALIDADO_LOCALMENTE`**. O texto literal é *"Permitir a geração de etiquetas com
+códigos de barras"* — pede a **geração**, e é isso que o percurso exerce. O artefato físico
+(layout, papel, PDF) é outra coisa e ficou declaradamente fora: este lote entrega o **ato**.
+
+⚠️ **A asserção central é a idempotência PELO BOTÃO.** O domínio já a provava desde o ENT05
+(`reaproveitada: true` quando o bem já tem código). O que só o percurso prova é que o botão não
+a viola: ele pressiona **duas vezes** e confere que o código continua sendo o mesmo tombamento —
+e, entre as duas, recarrega e vê o selo "Etiquetado", que é derivado de `codigoDeBarras`.
+
+### 31.3 · Comandos e resultados
+
+| Comando | Resultado | Data |
+|---|---|---|
+| `npm run typecheck` / `:app` / `:scripts` | limpos | 2026-09-12 |
+| descritor em tempo de módulo | **5 ações**; `gerar-etiqueta` com `campos=0` | 2026-09-12 |
+| `npm run test:rapido` | 70 arquivos, 759 testes | 2026-09-12 |
+| `npm run build` | limpo | 2026-09-12 |
+| `npm run smoke:acervo` | **25 passos, 0 falhas** | 2026-09-12 |
+
 ## 19. O próximo passo
 
 ⚠️ **ONDE PARAMOS.** O ENT06 correu até aqui em seis levas: item 0 (superfície do
@@ -3774,6 +3829,32 @@ porta, e o percurso em **21 passos, 0 falhas**. `5.19.11` e `5.19.12` viraram
 `VALIDADO_LOCALMENTE`. Foi lote de **superfície pura** — sem ação nova no censo e sem
 migration —, e a natureza foi declarada antes de começar. O portão deu **10 de 10 na PRIMEIRA
 execução**, com `test:fuso` EXECUTADO (520s) — em `8beb6b1`.
+
+⚠️ **O ENT09 ESTÁ FECHADO — §31.** A etiqueta com código de barras tem tela: quinta ação no
+detalhe do bem, **sem campos**, com o percurso em **25 passos, 0 falhas** e a dupla pressão do
+botão como asserção central da idempotência. `5.19.2` virou `VALIDADO_LOCALMENTE`. Superfície
+pura — sem ação nova no censo, sem migration.
+
+⚠️ **E DOIS ESCOPOS ANTERIORES DA ENT09 FORAM MEDIDOS ATÉ A PAREDE**, antes de qualquer código:
+a **baixa do bem** (bloqueada por `ROTEIRO-PATRIMONIAL-NAO-PARAMETRIZADO` — decisão contábil do
+município) e **"somente os meus bens"** (bloqueada por `USUARIO-SEM-PESSOA` — decisão de
+modelagem). Dois candidatos consecutivos até a parede é sinal, não azar: as duas frentes
+restantes do acervo dependem de decisões que não são de quem escreve código.
+
+**O catálogo depois dos três lotes:**
+
+| Situação | Cláusulas |
+|---|---|
+| `NAO_VERIFICADO` | 1.721 (84,5%) |
+| `AUSENTE_CONFIRMADO` | 134 |
+| `IMPLEMENTADO_NAO_VALIDADO` | 79 |
+| `VALIDADO_LOCALMENTE` | **52** |
+| `PARCIAL` | 48 |
+| `DEPENDENCIA_EXTERNA` | 3 |
+
+316 de 2.037 verificadas (15,5%). O acervo patrimonial saiu de **zero telas** para **oito
+rotas** e **cinco cláusulas promovidas** (5.19.2, 5.19.3, 5.19.7, 5.19.11, 5.19.12) em três
+lotes.
 
 ⚠️ **PENDÊNCIA NOVA — `MOTIVO-DE-BAIXA-ORFAO`.** O rol de motivos de baixa que a `5.19.30`
 manda o ente configurar existe, é alcançável pela tela (§27) e **ato nenhum o lê**: o modelo
