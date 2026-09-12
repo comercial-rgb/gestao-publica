@@ -15,7 +15,12 @@ import {
   type EmpenhoDaTela,
   type FichaDaTela,
 } from "../../../../lib/portas/empenho";
-import { dataBr, descreverRecorte, recorteDe, type RecorteDaPagina } from "../../../../lib/recorte";
+import {
+  EscopoDeLeituraError,
+  ExercicioIlegivelError,
+  recorteDePagina,
+} from "../../../../lib/portas/contexto";
+import { dataBr, descreverRecorte, type RecorteDaPagina } from "../../../../lib/recorte";
 import { FormEmpenho } from "./FormEmpenho";
 import { FormAnular } from "../FormAnular";
 import { BotaoCsv } from "../../../../components/ui/BotaoCsv";
@@ -36,18 +41,21 @@ export default async function EmpenhosPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
-  const recorte = recorteDe(await searchParams);
+  const sp = await searchParams;
 
-  const cabecalho = (
-    <PageHeader
-      titulo="Empenhos"
-      subtitulo={`${descreverRecorte(recorte)} — empenhado, liquidado, pago e saldos`}
-    />
-  );
-
+  // ⚠️ O RECORTE VEM AUTORIZADO, e a chamada está DENTRO do try de propósito: ela pode
+  // RECUSAR. Antes era `recorteDe(sp)` — parse puro, que aceitava qualquer `?ug=` e
+  // entregava o ente inteiro quando o parâmetro faltava. Medido em
+  // `test/caracterizacao/leitura-por-unidade.test.ts`.
+  //
+  // ⚠️ E O CABEÇALHO PASSOU PARA DEPOIS. Ele imprime `descreverRecorte(recorte)`, e um
+  // recorte que ainda não foi autorizado não existe para ser descrito: montar o título
+  // antes seria afirmar "consolidado (ente)" na tela de quem acabou de ser recusado.
+  let recorte: RecorteDaPagina;
   let empenhos: readonly EmpenhoDaTela[];
   let fichas: readonly FichaDaTela[];
   try {
+    recorte = await recorteDePagina(sp);
     [empenhos, fichas] = await Promise.all([
       listarEmpenhosDaExecucao({
         exercicio: recorte.exercicio,
@@ -59,15 +67,23 @@ export default async function EmpenhosPage({
       }),
     ]);
   } catch (erro) {
+    // ⚠️ A RECUSA DE ACESSO TEM TÍTULO PRÓPRIO, e isso não é estética. Cair no genérico
+    // "não foi possível ler os empenhos" faria o servidor procurar defeito no sistema
+    // quando o que falta é escopo — e a mensagem do erro já diz quem resolve. Dizer "sem
+    // empenhos" seria pior ainda: a mentira mais cara que esta camada pode contar.
     return (
       <div className="space-y-4">
         <SincronizarContexto />
-        {cabecalho}
+        <PageHeader titulo="Empenhos" subtitulo="Execução da despesa" />
         <EstadoVazio
           titulo={
-            erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
-              : "Não foi possível ler os empenhos"
+            erro instanceof EscopoDeLeituraError
+              ? "Esta unidade não está no seu acesso"
+              : erro instanceof ExercicioIlegivelError
+                ? "O exercício pedido não é um ano"
+                : erro instanceof PortaSemBancoError
+                  ? "Banco de dados não configurado"
+                  : "Não foi possível ler os empenhos"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
@@ -78,7 +94,10 @@ export default async function EmpenhosPage({
   return (
     <div className="space-y-4">
       <SincronizarContexto />
-      {cabecalho}
+      <PageHeader
+        titulo="Empenhos"
+        subtitulo={`${descreverRecorte(recorte)} — empenhado, liquidado, pago e saldos`}
+      />
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
         O <strong>status</strong> e os saldos são <strong>derivados</strong> dos fatos — não há

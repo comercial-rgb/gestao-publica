@@ -2,6 +2,25 @@ import { cliente } from "./cliente";
 import type { AcaoDoSistema } from "../../modules/m16-travamento/acoes";
 import { exigirSessao } from "./sessao";
 import type { Identidade } from "../../modules/m16-travamento/autenticacao";
+// ⚠️ A DECISÃO É PURA E MORA FORA DA PORTA — ver `recorteDePagina`, abaixo. A porta traz a
+// identidade e o escopo (as duas coisas que exigem servidor) e encaminha; a regra tem 19
+// asserções e duas provas por mutação em `test/ui/recorte-autorizado.test.ts`, na partição
+// rápida, porque não precisa de banco.
+import {
+  EscopoDeLeituraError,
+  ExercicioIlegivelError,
+  recorteAutorizado,
+  type RecorteDaPagina,
+} from "../recorte";
+
+// ⚠️ OS DOIS ERROS SAEM PELA PORTA, e não é conveniência de import: é o idioma que ~70
+// telas já falam com `PortaSemBancoError` (e `lib/portas/tesouraria.ts` com
+// `MapeamentoContabilAusenteError`). A tela nomeia no `catch` o erro que a porta que ela
+// chamou reexporta — uma origem só. Fazê-la importar de `lib/recorte` E da porta espalharia
+// a procedência do mesmo erro por dois caminhos, e o dia em que a decisão se mudasse de
+// arquivo cada tela descobriria isso por conta própria.
+export { EscopoDeLeituraError, ExercicioIlegivelError };
+export type { RecorteDaPagina };
 
 /**
  * PORTA — O CONTEXTO DE TRABALHO: quais EXERCÍCIOS existem e quais UNIDADES GESTORAS o usuário
@@ -164,6 +183,48 @@ export async function listarExercicios(): Promise<readonly ExercicioDisponivel[]
     orderBy: { ano: "desc" },
   });
   return exercicios.map((e) => ({ ano: e.ano, encerrado: e.encerramento !== null }));
+}
+
+/**
+ * O RECORTE DE UMA PÁGINA, JÁ AUTORIZADO — a porta fina sobre a decisão pura.
+ *
+ * ═══ ⚠️ POR QUE ELA É FINA, E POR QUE ELA EXISTE ═══
+ * A decisão inteira mora em `lib/recorte.ts` (`recorteAutorizado`), que é PURA: sem banco,
+ * sem request, escopo por parâmetro. Aqui há só as duas coisas que exigem servidor —
+ * descobrir QUEM está pedindo (`exigirSessao`) e QUAL é o escopo dele
+ * (`listarUgsDoUsuario`) — e a decisão é encaminhada. Lógica nenhuma se repete: uma regra
+ * escrita duas vezes é a segunda verdade sobre quem pode ler o quê, e as duas divergem no
+ * primeiro caso de borda.
+ *
+ * ⚠️ E O ESCOPO VEM DA MESMA TABELA QUE A ESCRITA LÊ. `listarUgsDoUsuario` consulta
+ * `PermissaoDePerfil` pelos vínculos de perfil — a mesma fonte de `autorizar`. Não há
+ * segunda fonte: um recorte com a própria ideia de quem enxerga o quê seria o defeito do
+ * seletor de contexto repetido em escala de sistema.
+ *
+ * ⚠️ POR QUE CADA TELA CHAMA ISTO, EM VEZ DE HERDAR DO LAYOUT. O
+ * `app/(areas)/layout.tsx` já carrega `{ ugs, podeConsolidado }` por request — mas um
+ * layout Server Component NÃO passa props para as páginas no App Router, e, mais
+ * importante, autorização que depende do render do pai é autorização que some quando a
+ * rota é alcançada por outro caminho. As dez rotas de exportação são exatamente esse outro
+ * caminho: `GET` direto, sem layout e sem menu. Invariante 7 — tenant e entidade resolvidos
+ * no servidor, a cada leitura.
+ *
+ * ⚠️ ELA ESTOURA, E QUEM TRADUZ É A TELA. `EscopoDeLeituraError` e
+ * `ExercicioIlegivelError` sobem com a mensagem que explica o que fazer em seguida, e a
+ * página as nomeia no `catch` — o mesmo idioma de `PortaSemBancoError`, que ~70 telas já
+ * usam. Devolver `null` aqui faria a tela dizer "sem empenhos" para uma recusa de acesso,
+ * que é a mentira mais cara que esta camada pode contar.
+ */
+export async function recorteDePagina(
+  pedido: Record<string, string | string[] | undefined>
+): Promise<RecorteDaPagina> {
+  const sessao = await exigirSessao();
+  const { ugs, global } = await listarUgsDoUsuario(sessao);
+  return recorteAutorizado({
+    pedido,
+    escopo: { unidades: ugs.map((u) => u.codigo), podeConsolidado: global },
+    identificador: sessao.identificador,
+  });
 }
 
 /**
