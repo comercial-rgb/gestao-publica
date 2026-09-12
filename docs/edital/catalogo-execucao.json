@@ -10613,7 +10613,7 @@
       "candidato_reaproveitamento": "siafic-cg:M10",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "Censo ENT03c (varredura sistemática módulo x catálogo): Cadastramento, classificação (classe), movimentação (onze tipos com roteiro) e baixa existem e estão provados — inclusive que a classe positiva NÃO mascara a baixa de um bem que já não vale (m10-patrimonio.test.ts t5b), que é o erro que um saldo só por classe esconderia. ⚠️ FALTA a LOCALIZAÇÃO, citada no enunciado, e falta a tela de manutenção do cadastro.",
+      "evidencia": "Censo ENT03c (varredura sistemática módulo x catálogo): Cadastramento, classificação (classe), movimentação (onze tipos com roteiro) e baixa existem e estão provados — inclusive que a classe positiva NÃO mascara a baixa de um bem que já não vale (m10-patrimonio.test.ts t5b), que é o erro que um saldo só por classe esconderia. ⚠️ E A BAIXA PASSOU A TER TELA (scripts/smoke-eixo-de-valor.ts (20 passos, 0 falhas, 2026-09-12): ação \"Baixar do acervo\" no detalhe do bem, com o valor contábil à vista porque o domínio recusa baixa acima dele). A LOCALIZAÇÃO citada no enunciado também tem: cadastro próprio desde o ENT06 (/patrimonio/localizacoes) e a ação \"Mover de localização\" no detalhe desde o ENT08 — a evidência anterior dizia que faltava, e estava ESTALE. ⚠️ CONTINUA PARCIAL por outro motivo: não há tela de EDIÇÃO do cadastro do bem (só criação e ações), e \"manutenção\" é palavra do enunciado.",
       "situacao": "PARCIAL"
     },
     {
@@ -10725,8 +10725,8 @@
       "candidato_reaproveitamento": "siafic-cg:M10",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "ENT05 (modelo das tres secoes derrubadas): A movimentacao FISICA passou a existir (MovimentoDeGestaoDoBem: localizacao, responsavel, estado, situacao, transferencia entre entidades), ao lado da FINANCEIRA que ja existia (MovimentoPatrimonial: agregacao, reavaliacao, depreciacao). Os dois eixos sao separados de proposito, e ha teste contando LancamentoContabil antes e depois para provar que a gestao NAO toca o razao.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "evidencia": "OS DOIS EIXOS EXISTEM E SAO SEPARADOS DE PROPOSITO: o FISICO (MovimentoDeGestaoDoBem: localizacao, responsavel, estado, situacao, transferencia entre entidades) e o FINANCEIRO (MovimentoPatrimonial), com teste contando LancamentoContabil antes e depois para provar que a gestao NAO toca o razao. O eixo fisico foi validado por tela no ENT08. scripts/smoke-eixo-de-valor.ts (20 passos, 0 falhas, 2026-09-12): o eixo FINANCEIRO passou a ter tela: no detalhe do bem, 'Registrar entrada de valor' (AVALIACAO_INICIAL ou DOACAO_RECEBIDA) e 'Baixar do acervo' (BAIXA_ALIENACAO ou DOACAO_REALIZADA), e o detalhe passou a mostrar o VALOR CONTABIL — derivado dos movimentos com o sinal de cada tipo, nunca uma coluna. O percurso prova a cadeia inteira: parametriza o roteiro pela tela do ENT11, registra 5.000, ve o valor subir, baixa 1.200 e ve cair para 3.800, com os movimentos de valor e os de gestao convivendo no mesmo historico sem um apagar o outro. ⚠️ E O TETO DO BEM FOI EXERCIDO COM FIXTURE N=2: um segundo bem da MESMA classe, sem valor, enquanto a classe tem 3.800 — so o teto do BEM pode recusar, e a mensagem o nomeia ('ainda que a classe tenha 3800.00'). Com um bem so, os dois tetos valem o mesmo numero e a assercao passava por vacuidade; foi assim que a primeira execucao deste percurso ficou verde sem provar o guard. ⚠️ CONTINUA PARCIAL: a clausula nomeia agregacao, reavaliacao e depreciacao, e nenhuma das tres tem tela — registrarReavaliacao, registrarImpairment e atualizarCompetencia seguem sem superficie. Pendencia EIXO-DE-VALOR-SEM-REAVALIACAO-NA-TELA.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.19.24",

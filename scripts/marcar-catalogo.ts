@@ -199,6 +199,8 @@ const PERCURSO_ENT10 = "scripts/smoke-ent10.ts (16 passos, 0 falhas, 2026-09-12)
 
 const PERCURSO_ENT11 = "scripts/smoke-roteiros.ts (17 passos, 0 falhas, 2026-09-12):";
 
+const PERCURSO_ENT12 = "scripts/smoke-eixo-de-valor.ts (20 passos, 0 falhas, 2026-09-12):";
+
 const MAPA: Readonly<Record<string, Marca>> = {
   "5.10.2.55": {
     situacao: "VALIDADO_LOCALMENTE",
@@ -923,7 +925,7 @@ const MAPA: Readonly<Record<string, Marca>> = {
   },
   "5.19.15": {
     situacao: "PARCIAL",
-    evidencia: `${CENSO} Cadastramento, classificação (classe), movimentação (onze tipos com roteiro) e baixa existem e estão provados — inclusive que a classe positiva NÃO mascara a baixa de um bem que já não vale (m10-patrimonio.test.ts t5b), que é o erro que um saldo só por classe esconderia. ⚠️ FALTA a LOCALIZAÇÃO, citada no enunciado, e falta a tela de manutenção do cadastro.`,
+    evidencia: `${CENSO} Cadastramento, classificação (classe), movimentação (onze tipos com roteiro) e baixa existem e estão provados — inclusive que a classe positiva NÃO mascara a baixa de um bem que já não vale (m10-patrimonio.test.ts t5b), que é o erro que um saldo só por classe esconderia. ⚠️ E A BAIXA PASSOU A TER TELA (${PERCURSO_ENT12} ação "Baixar do acervo" no detalhe do bem, com o valor contábil à vista porque o domínio recusa baixa acima dele). A LOCALIZAÇÃO citada no enunciado também tem: cadastro próprio desde o ENT06 (/patrimonio/localizacoes) e a ação "Mover de localização" no detalhe desde o ENT08 — a evidência anterior dizia que faltava, e estava ESTALE. ⚠️ CONTINUA PARCIAL por outro motivo: não há tela de EDIÇÃO do cadastro do bem (só criação e ações), e "manutenção" é palavra do enunciado.`,
   },
   "5.19.18": {
     situacao: "AUSENTE_CONFIRMADO",
@@ -1529,7 +1531,31 @@ const MAPA: Readonly<Record<string, Marca>> = {
   "5.19.20": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): A contagem registra estado e localizacao OBSERVADOS no momento do inventario, e a comparacao e contra o estado do bem NA DATA DE ABERTURA. E o parenteses da clausula ('no momento do inventario') que exigiu o eixo temporal - decisao D4." },
   "5.19.21": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): inconsistenciasDoInventarioDeBens deriva NAO_ENCONTRADO, LOCAL_DIFERENTE, ESTADO_DIFERENTE e SEM_REGISTRO_ANTERIOR. O ultimo e ACHADO, nao silencio: bem que a comissao encontrou e que o sistema nunca soube onde estava e exatamente o que o primeiro inventario existe para descobrir." },
   "5.19.22": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): Termo de abertura e de fechamento como anexo do M22, ligados ao inventario. Fechar sem contagem RECUSA." },
-  "5.19.23": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): A movimentacao FISICA passou a existir (MovimentoDeGestaoDoBem: localizacao, responsavel, estado, situacao, transferencia entre entidades), ao lado da FINANCEIRA que ja existia (MovimentoPatrimonial: agregacao, reavaliacao, depreciacao). Os dois eixos sao separados de proposito, e ha teste contando LancamentoContabil antes e depois para provar que a gestao NAO toca o razao." },
+  "5.19.23": {
+    situacao: "PARCIAL",
+    evidencia:
+      "OS DOIS EIXOS EXISTEM E SAO SEPARADOS DE PROPOSITO: o FISICO " +
+      "(MovimentoDeGestaoDoBem: localizacao, responsavel, estado, situacao, transferencia " +
+      "entre entidades) e o FINANCEIRO (MovimentoPatrimonial), com teste contando " +
+      "LancamentoContabil antes e depois para provar que a gestao NAO toca o razao. O eixo " +
+      "fisico foi validado por tela no ENT08. " +
+      PERCURSO_ENT12 +
+      " o eixo FINANCEIRO passou a ter tela: no detalhe do bem, 'Registrar entrada de valor' " +
+      "(AVALIACAO_INICIAL ou DOACAO_RECEBIDA) e 'Baixar do acervo' (BAIXA_ALIENACAO ou " +
+      "DOACAO_REALIZADA), e o detalhe passou a mostrar o VALOR CONTABIL — derivado dos " +
+      "movimentos com o sinal de cada tipo, nunca uma coluna. O percurso prova a cadeia " +
+      "inteira: parametriza o roteiro pela tela do ENT11, registra 5.000, ve o valor subir, " +
+      "baixa 1.200 e ve cair para 3.800, com os movimentos de valor e os de gestao " +
+      "convivendo no mesmo historico sem um apagar o outro. ⚠️ E O TETO DO BEM FOI EXERCIDO " +
+      "COM FIXTURE N=2: um segundo bem da MESMA classe, sem valor, enquanto a classe tem " +
+      "3.800 — so o teto do BEM pode recusar, e a mensagem o nomeia ('ainda que a classe " +
+      "tenha 3800.00'). Com um bem so, os dois tetos valem o mesmo numero e a assercao " +
+      "passava por vacuidade; foi assim que a primeira execucao deste percurso ficou verde " +
+      "sem provar o guard. ⚠️ CONTINUA PARCIAL: a clausula nomeia agregacao, reavaliacao e " +
+      "depreciacao, e nenhuma das tres tem tela — registrarReavaliacao, registrarImpairment " +
+      "e atualizarCompetencia seguem sem superficie. Pendencia " +
+      "EIXO-DE-VALOR-SEM-REAVALIACAO-NA-TELA.",
+  },
   "5.19.27": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): A unidade gestora do bem e derivada da ultima TRANSFERENCIA_ENTRADA; o inventario e POR unidade gestora." },
   "5.19.28": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): transferirBemEntreEntidades gera as DUAS pernas sob um operacaoId, tudo-ou-nada, com viabilidade conferida ANTES de qualquer escrita. Estornar UMA estorna as DUAS - meia transferencia estornada deixaria o bem em duas entidades ou em nenhuma. Bem BAIXADO ou em origem diferente da declarada RECUSA." },
   "5.19.30": {

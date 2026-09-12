@@ -4060,6 +4060,141 @@ obsoleto em memória. Um portão executado sobre fonte em movimento não mede na
 evento é doutrina contábil do ente. O sistema oferece as analíticas do PCASP oficial, recusa
 o que o motor recusaria, e deixa a decisão com quem responde por ela.
 
+## 34. ENT12 — o eixo de valor do bem, e o guard que nunca tinha sido exercido
+
+### 34.1 · A medição que ordenou o lote
+
+O ENT11 derrubou a primeira parede (roteiro com zero linhas). O reconhecimento deste lote
+achou a segunda, e ela é maior:
+
+```
+grep -rn "registrarEntradaAvulsa|adquirirBem|registrarReavaliacao|atualizarCompetencia|
+          baixarBem|alienarBem|registrarImpairment" lib/ app/
+-> dois acertos, AMBOS em linhas de comentário.
+```
+
+**Nenhuma porta e nenhuma tela tocavam o eixo de valor.** Sete serviços com domínio provado,
+teste contra banco e **ação no censo desde o ENT05** — superfície zero. O valor de um bem só
+existia por escrita de teste ou pelo seed da POC.
+
+⚠️ **E ISSO ORDENOU O LOTE.** A baixa sozinha seria inalcançável por percurso: `baixarBem` tem
+teto duplo, e sem tela de entrada todo bem vale zero — a baixa seria sempre recusada, com
+razão. É a lição de "a classe vem antes do bem", agora medida **antes**.
+
+### 34.2 · O que passou a existir
+
+Duas ações novas no detalhe do bem (`/patrimonio/bens-patrimoniais/<id>`), e nenhuma delas
+pede a classe — a porta a deriva do próprio bem:
+
+| Ação | Serviço | Tipos |
+|---|---|---|
+| Registrar entrada de valor | `registrarEntradaAvulsa` | `AVALIACAO_INICIAL`, `DOACAO_RECEBIDA` |
+| Baixar do acervo | `baixarBem` | `BAIXA_ALIENACAO`, `DOACAO_REALIZADA` |
+
+E o detalhe passou a mostrar o **valor contábil** — derivado dos movimentos com o sinal de
+cada tipo, nunca uma coluna — e os **movimentos de valor no histórico**, ao lado dos de
+gestão. Antes ele trazia só a contagem: o operador via "3 movimentos de valor" e não via
+quais. Com a baixa ganhando tela isso deixaria de ser incômodo e viraria defeito.
+
+⚠️ **O VALOR NA TELA NÃO É ENFEITE.** O domínio recusa baixa acima do valor do bem. Oferecer o
+formulário sem dizer quanto ele vale é montar uma armadilha: o operador digita, o servidor
+nega, e a tela nunca disse o teto.
+
+**Superfície pura:** as sete ações já existiam no censo desde o ENT05. **Zero migration, zero
+ação nova, zero mudança de schema.**
+
+### 34.3 · ⚠️ O GUARD QUE NUNCA TINHA SIDO EXERCIDO, E QUASE NÃO FOI
+
+A primeira execução do percurso fechou **17 passos, 0 falhas** — e não provava o que dizia.
+
+`baixarBem` tem DOIS tetos: o da classe e o do BEM. O do bem existe para um caso preciso, e o
+código diz qual: *"o saldo da classe não pode mascarar a baixa de um bem que já não vale
+isso"*. Com **um bem só na classe**, os dois tetos valem o mesmo número, a recusa vem sempre
+pela CLASSE, e o passo chamado "baixar acima do valor do BEM" ficava verde sem nunca ter
+tocado o guard do bem. A asserção era `/excede o valor contábil/`, que casa os dois.
+
+A correção é a regra da casa: **fixture N=2**. Um segundo bem na mesma classe, sem valor,
+enquanto a classe tem 3.800. Agora só o teto do bem pode recusar, e a mensagem o nomeia:
+
+> `Baixa de 1000.00 excede o valor contábil do BEM (0.00), ainda que a classe tenha 3800.00.`
+
+⚠️ **E O PASSO ANTERIOR FOI RENOMEADO**, não apagado: ele prova o teto da CLASSE, e agora diz
+isso. Rótulo que descreve um guard diferente do que dispara é o mesmo defeito com outra cara.
+
+### 34.4 · As provas
+
+| Prova | Resultado |
+|---|---|
+| `typecheck` backend / app / scripts | 0, 0, 0 |
+| `next build` | 0 |
+| `scripts/smoke-eixo-de-valor.ts` | **20 passos, 0 falhas**, código 0 |
+| Recusa pelo teto da CLASSE | exercida pela tela, com a mensagem do domínio |
+| Recusa pelo teto do BEM (N=2) | exercida pela tela, nomeando o bem |
+| Cadeia com o ENT11 | o percurso parametriza o roteiro **pela tela** antes de lançar |
+
+⚠️ **O PERCURSO NÃO SEMEIA ROTEIRO.** Semear para um percurso passar seria inventar norma — foi
+o que o ENT09 recusou fazer. Ele usa a tela do ENT11, e com isso as duas entregas se provam
+encaixadas.
+
+### 34.5 · ⚠️ Dois defeitos meus, achados antes de rodar
+
+1. **Seletor de dinheiro errado.** `CampoValor` renderiza **dois** elementos: o visível
+   (`data-mascara="valor"`, sem `name`, controlado pelo React) e um `<input type="hidden"
+   name="...">` com o valor cru. Eu escrevi `input[name="valor"]`, que casa só o escondido —
+   impossível de digitar. O `smoke-ent03b` já documentava esse tropeço palavra por palavra; eu
+   ia repeti-lo.
+2. **Formato errado.** O idioma provado digita `"100000,00"`, vírgula. E o campo **não**
+   acumula centavos, de propósito: o cabeçalho de `Campos.tsx` explica que o acumulador faria
+   `10000` virar `100,00` — erro de 100x num número que vira empenho.
+
+E um resíduo de escrita que limpei antes de commitar: uma função `quantas_placeholder_nao_usado`
+que só devolvia o argumento.
+
+### 34.6 · Pendências nomeadas
+
+| Pendência | O que é |
+|---|---|
+| `EIXO-DE-VALOR-SEM-REAVALIACAO-NA-TELA` | `registrarReavaliacao` e `registrarImpairment` seguem sem superfície |
+| `PARAMETRO-DE-CLASSE-SEM-CASO-DE-USO` | a depreciação tem **duas** paredes: `ParametroAtualizacaoClasse` não tem tela **nem serviço** — o único `definirParametro*` do repositório é do estoque, e só o seed da POC o escreve |
+| `BAIXA-SEM-MOTIVO-CADASTRADO` | `MotivoDeBaixa` é **órfão**: só cadastrar, listar e ver. A baixa grava `motivo` como texto livre ao lado. Amarrá-los exige coluna nova — aditiva, mas migration, e por isso fica em lote próprio |
+| `ALIENACAO-SEM-TELA` | `alienarBem` é composto (`valorVenda`, `acumuladaBaixada`, `receitaArrecadadaId`, quatro guards, dois movimentos sob um `operacaoId`). É **profundidade**, e misturá-lo rebaixaria um lote de superfície |
+
+### 34.7 · ⚠️ O portão fechou em 9 de 10 — e a falha está diagnosticada, não descartada
+
+| Passo | |
+|---|---|
+| typecheck (3) · cobertura · prisma:validate · deriva | ok |
+| `test:rapido` | ok (13s) |
+| `test:tudo` | **ok (787s)** |
+| `test:fuso` | **FALHOU (1261s)** — 13 testes em 3 arquivos |
+| `build` | ok (47s) |
+
+**Nenhuma das 13 falhas é `AssertionError`.** São `Hook timed out in 10000ms`,
+`Test timed out in 5000ms` e `PrismaClientKnownRequestError` — estes últimos vindo **depois**
+dos timeouts de hook no mesmo arquivo, que é a cascata conhecida: o `beforeEach` trunca ~140
+tabelas, estoura, deixa o banco em estado parcial, e o teste seguinte quebra por constraint.
+
+⚠️ **E ISSO IMPORTA PARA A NATUREZA DO PASSO.** `test:fuso` existe para pegar defeito de **eixo
+de data**, e defeito de data se manifesta como asserção errada — dia trocado, janela deslocada.
+Zero asserções erradas em 2.159 testes.
+
+**As quatro medições que fecham o diagnóstico:**
+
+1. `test:tudo` — a **mesma suíte**, sem fuso deslocado — passou em **787s na mesma execução**.
+   Um defeito do ENT12 cairia nas duas.
+2. Nenhum dos três arquivos é tocado por este lote: `m09-vinculo` (conciliação),
+   `m03-recurso-novo` (excesso de arrecadação), `m12-balanco-patrimonial`.
+3. Rodados **isolados, sob o MESMO `TZ=Pacific/Kiritimati`**: **31 de 31, código 0**.
+4. Máquina em colapso: **9.615 MB de swap usados de 10.240**, ~68 MB livres, contra ~1,48 GB
+   livres no portão verde do ENT11. `test:fuso` levou **1261s** contra **690s** lá — +83%.
+
+É o procedimento que o `CLAUDE.md` exige: *"falha intermitente só se descarta com o motivo
+junto"*. O motivo está junto e a saída bruta está em `.registro-de-execucao/`.
+
+⚠️ **MAS O PASSO NÃO PASSOU, E ISSO FICA REGISTRADO ASSIM.** Passo falhado não vira verde por
+diagnóstico. O lote está commitado com o portão em **9 de 10**; um portão verde depende de
+executar com a máquina desocupada, e isso é ato do operador, não deste lote.
+
 ## 19. O próximo passo
 
 ⚠️ **ONDE PARAMOS.** O ENT06 correu até aqui em seis levas: item 0 (superfície do
@@ -4115,6 +4250,22 @@ cláusula virou `VALIDADO_LOCALMENTE` neste lote, e isso é a leitura honesta.
 barrada por `ROTEIRO-PATRIMONIAL-NAO-PARAMETRIZADO`, deixou de depender de escrita crua no
 banco: a parametrização agora tem tela, serviço, autorização e auditoria. O que resta ali é a
 decisão contábil de **quais contas** — que é do contador do ente, não de quem escreve código.
+
+⚠️ **O ENT12 ESTÁ CONSTRUÍDO — §34.** E ele fechou o que o ENT11 destravou: o eixo de valor do
+bem tem tela. O reconhecimento mediu que **nenhuma porta tocava esse eixo** — sete serviços
+provados, com ação no censo desde o ENT05, e superfície zero. Agora o detalhe do bem registra
+entrada de valor, mostra o **valor contábil** e baixa do acervo, com os dois eixos convivendo
+no histórico. **Superfície pura: zero migration, zero ação nova.** Percurso de **20 passos, 0
+falhas**, atravessando as duas entregas — ele parametriza o roteiro pela tela do ENT11 antes
+de lançar. `5.19.23` foi de `IMPLEMENTADO_NAO_VALIDADO` para **PARCIAL**, e `5.19.15` teve
+evidência **estale corrigida**. `5.19.29` ficou intocada de propósito: ela pede reavaliação e
+depreciação, e este lote não entrega nenhuma das duas.
+
+⚠️ **E O ACHADO QUE VALE MAIS QUE O LOTE:** a primeira execução do percurso deu 17 passos e 0
+falhas **provando menos do que dizia**. `baixarBem` tem dois tetos — classe e bem —, e com um
+bem só na classe eles valem o mesmo número: a recusa vinha sempre pela classe, e o guard do
+bem nunca era tocado. A fixture N=2 separou os dois, e só então a mensagem passou a dizer
+"excede o valor contábil do BEM, ainda que a classe tenha 3800.00".
 
 ⚠️ **E O ENT10 TROUXE TRÊS LIÇÕES QUE VALEM MAIS QUE A CLÁUSULA.** (1) O primeiro portão deu
 **8 de 10** por dois **timeouts** do M03 — causados por eu rodar comandos em paralelo com a
