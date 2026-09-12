@@ -352,6 +352,20 @@ export const ACERVO: readonly RelatorioNav[] = [
   { href: "/patrimonio/bens-patrimoniais", numero: "Acervo", rotulo: "Bens Patrimoniais", descricao: "O acervo bem a bem: o que é, em que classe entra, quando foi adquirido e como entrou. O valor não se informa aqui — ele vem dos movimentos patrimoniais." },
 ];
 
+/**
+ * ⚠️ ENT11 — O EIXO FINANCEIRO DO PATRIMÔNIO. Mesma razão das três listas acima: é dela que
+ * saem, ao mesmo tempo, o hub da área e o índice da busca global.
+ *
+ * ⚠️ E ELAS VÊM ANTES DE TUDO O MAIS NA PRÁTICA, ainda que apareçam depois na lista. Sem
+ * roteiro parametrizado, `roteiroDoTipo` RECUSA todo movimento de valor — avaliação,
+ * reavaliação, depreciação, baixa. Com zero linhas na tabela, o acervo inteiro podia ser
+ * cadastrado e nenhum bem podia receber um centavo.
+ */
+export const ROTEIROS_CONTABEIS: readonly RelatorioNav[] = [
+  { href: "/patrimonio/roteiros", numero: "Roteiros", rotulo: "Roteiros Contábeis do Patrimônio", descricao: "Em que par de contas do PCASP cada evento do bem bate na contabilidade — aquisição, reavaliação, depreciação, baixa. Evento sem roteiro não é registrado: o sistema recusa em vez de escolher a conta." },
+  { href: "/patrimonio/roteiros-de-resultado", numero: "Resultado", rotulo: "Roteiros do Resultado da Alienação", descricao: "O ganho e a perda apurados na venda do bem. Não mexem no ativo — ele já saiu pela baixa —, e por isso têm roteiro separado dos eventos do bem." },
+];
+
 export const CONTROLE_INTERNO: readonly RelatorioNav[] = [
   { href: "/controle-interno/auditorias", numero: "Auditorias", rotulo: "Auditorias Internas", descricao: "Roteiro com base legal, achados com providência e prazo, e o relatório circunstanciado que se assina." },
 ];
