@@ -1,0 +1,1882 @@
+{
+  "versao": 1,
+  "fonte": {
+    "arquivo": "Termo_de_referencia.pdf",
+    "sha256": "01a2b1ec8df0ca2167ce05597980983fa6bfd6267c70bfd4a650780a674e7ea1"
+  },
+  "escopo": "Condicoes de contratacao, migracao, implantacao, treinamento, suporte, manutencao, infraestrutura e contrato. Complementa catalogo-execucao.json; nao o duplica.",
+  "aviso": "Estas condicoes nao se comprovam com tela. Exigem artefato: arquitetura, contrato, plano, medicao, relatorio de teste ou rotina operacional.",
+  "total": 187,
+  "condicoes": [
+    {
+      "id": "4.1",
+      "texto": "A licitante provisoriamente declarada vencedora do certame, deverá submeter a solução ofertada a uma avaliação de conformidade do objeto ofertado, através de uma prova de conceito, visando dar segurança mínima à futura contratação, conforme preconizado na Lei de Licitações.",
+      "pagina_pdf": 2,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "88b0b90ab18de2cc"
+    },
+    {
+      "id": "4.2",
+      "texto": "A data, horário e local para realização da prova de conceito será divulgada pelo Pregoeiro.",
+      "pagina_pdf": 2,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "ef18a5fae98d4afc"
+    },
+    {
+      "id": "4.3",
+      "texto": "A prova de conceito deverá ser iniciada em até 03 (três) dias úteis após a definição da licitante provisoriamente declarada vencedora, por ‘Comissão Especial Julgadora’, nomeada e designada pela autoridade competente, formada por servidores com conhecimento técnico pertinente às áreas a serem avaliadas.",
+      "pagina_pdf": 2,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "07821d5197c93147"
+    },
+    {
+      "id": "4.4",
+      "texto": "A prova de conceito ocorrerá consoante o seguinte rito:",
+      "pagina_pdf": 2,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "a0f2bf02441d9aa7"
+    },
+    {
+      "id": "4.4.1",
+      "texto": "Leitura, de forma sequencial, pela licitante, em voz alta, da funcionalidade a ser demonstrada;",
+      "pagina_pdf": 2,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "372caf15e9085809"
+    },
+    {
+      "id": "4.4.2",
+      "texto": "Demonstração da funcionalidade em questão;",
+      "pagina_pdf": 2,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "28b7924ea3f2b482"
+    },
+    {
+      "id": "4.4.3",
+      "texto": "Além dos requisitos técnicos constantes do termo de referência, a Comissão poderá solicitar outras demonstrações que considerar necessárias à aferição ao atendimento ao edital, desde que não gerem à licitante esforço superior ao razoável.",
+      "pagina_pdf": 2,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "320ccc4b9e17f044"
+    },
+    {
+      "id": "4.5",
+      "texto": "A Comissão poderá a qualquer momento da sessão de avaliação, efetuar questionamentos acerca do objeto demonstrado.",
+      "pagina_pdf": 2,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "e1dc6bf6eac0e487"
+    },
+    {
+      "id": "4.6",
+      "texto": "Concluído a Prova de Conceito, a Comissão emitirá o ‘Termo de Aceite Definitivo ou de Recusa da Solução’, que será encaminhada ao Pregoeiro, a fim de que se possibilite a continuidade dos trâmites do presente processo licitatório.",
+      "pagina_pdf": 2,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "0e26c659ef14dc89"
+    },
+    {
+      "id": "4.6.1",
+      "texto": "O prazo de emissão do termo será de até 05 (cinco) dias úteis a contar da demonstração das características dos aplicativos pela licitante, que será publicada no site oficial.",
+      "pagina_pdf": 2,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "b7ac6e7c006e0e3d"
+    },
+    {
+      "id": "4.7",
+      "texto": "A proponente que convocada para avaliação não comparecendo em dia e hora previamente agendados para a realização da ‘Sessão Pública da Prova de Conceito’ será automaticamente desclassificada.",
+      "pagina_pdf": 2,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "5700d6188b591cb1"
+    },
+    {
+      "id": "4.8",
+      "texto": "O não atendimento a qualquer funcionalidade constante do termo de referência do edital poderá inabilitar a licitante, situação que será manifestada no Relatório de conclusão da avaliação técnica.",
+      "pagina_pdf": 3,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "74a8640163714b3d"
+    },
+    {
+      "id": "4.9",
+      "texto": "Caso a primeira colocada não compareça, ou não atenda aos requisitos do ‘Termo de Referência’ conforme regras aqui estabelecidas, será convocada a segunda colocada e assim sucessivamente, até a obtenção de uma proposta adequada, ou ser considerada fracassada a licitação.",
+      "pagina_pdf": 3,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "03ff64a379cfc6fd"
+    },
+    {
+      "id": "4.10",
+      "texto": "Caberá à Comissão de Avaliação garantir a plena execução de todas as atividades relativas à prova de conceito, e ainda avaliar cada funcionalidade demonstrada, preenchendo questionário específico de atendimento/não atendimento, pontuando as observações necessárias.",
+      "pagina_pdf": 3,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "ffc50ae51ffeb3fa"
+    },
+    {
+      "id": "4.11",
+      "texto": "Os aplicativos oferecidos pela empresa licitante vencedora deverão obrigatoriamente no ato da apresentação da amostra um percentual mínimo de 90% (noventa por cento) das funcionalidades de cada aplicativo, constantes, e 100% de todas os requisitos relacionados às características gerais da aplicação.",
+      "pagina_pdf": 3,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "5d99b21af9f50910"
+    },
+    {
+      "id": "4.12",
+      "texto": "Os 10% restantes referente ao não atendimento imediato de cada módulo pela empresa vencedora, deverão ser entregues dentro do período estipulado para implantação dos sistemas.",
+      "pagina_pdf": 3,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "1b88683932e87f1f"
+    },
+    {
+      "id": "4.13",
+      "texto": "Demais Requisitos de contratação estão elencados no Estudo Técnico Preliminar.",
+      "pagina_pdf": 3,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "06df18ca6045ecef"
+    },
+    {
+      "id": "4.14",
+      "texto": "Os itens (funcionalidades) que passarão por avaliação na Prova de Conceito, estão citados no decorrer no item abaixo.",
+      "pagina_pdf": 3,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "a805cabb2a741041"
+    },
+    {
+      "id": "4.15",
+      "texto": "A contratada será responsável por garantir, quando cabível, que a solução fornecida esteja, desde o início da execução contratual, plenamente compatível com os layouts, prazos, formatos, regras de consistência e demais requisitos técnicos exigidos pelos órgãos de controle externo, especialmente o Tribunal de Contas do Estado de Santa Catarina, no que se refere ao envio de dados por meio do sistema e-Sfinge, ou outro sistema que venha a substituí-lo, havendo obrigatoriedade de implementar nos sistemas as regras de consistência (CONs) impeditivas e de alerta divulgados pelo TCE/SC, além de disponibilizar funcionalidade, com atualização diária, que demonstre o estado das remessas. Em conformidade com a Instrução Normativa n. TC28/2021, a fim de garantir a tempestividade das remessas e a qualidade dos dados, informações e prestação de contas, a contratada deverá cumprir Acordo de Nível de Serviço – SLA, visando a resolução célere de problemas relacionados à disponibilidade dos sistemas responsáveis por remessa de dados ao TCE/SC.",
+      "pagina_pdf": 3,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "c2117d29f57b3dcd"
+    },
+    {
+      "id": "4.15.1",
+      "texto": "O envio dos dados deverá cumprir tabela de prazos do próprio TCE-SC. Dessa forma, a contratada terá o prazo máximo de 45 (quarenta e cinco) dias corridos, contados a partir da assinatura do contrato, para realizar todas as adequações iniciais necessárias ao correto funcionamento do sistema para o envio de dados aos órgãos de controle, permitindo a transmissão integral, tempestiva, consistente e conforme os layouts vigentes, sem restrições técnicas ou operacionais.",
+      "pagina_pdf": 3,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "cdc0cea410316b07"
+    },
+    {
+      "id": "4.15.2",
+      "texto": "O descumprimento deste prazo acarretará a aplicação de multa compensatória no valor de 30% (trinta por cento) do valor global do contrato, além de multa diária de R$ 5.000,00 (cinco mil reais) por dia de atraso, até a completa regularização da situação, sem prejuízo de outras sanções contratuais.",
+      "pagina_pdf": 4,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "2e6eb5440d2ce49c"
+    },
+    {
+      "id": "4.15.3",
+      "texto": "Durante toda a vigência contratual, a contratada também será responsável por manter o sistema continuamente atualizado, de forma a garantir o atendimento integral a todas as alterações legais, normativas, técnicas ou de layout exigidas pelos órgãos de controle ou por legislação vigente, com prazo máximo de 30 (trinta) dias corridos, contados da publicação oficial da norma ou comunicação formal da Administração, para implementar as devidas atualizações no sistema.",
+      "pagina_pdf": 4,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "4b5711ba0c6ca804"
+    },
+    {
+      "id": "4.15.4",
+      "texto": "O descumprimento deste prazo de atualização normativa acarretará igualmente a aplicação de multa compensatória no valor de 30% (trinta por cento) do valor global do contrato, além de multa diária de R$ 5.000,00 (cinco mil reais) por dia de atraso, até a completa adequação da solução.",
+      "pagina_pdf": 4,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "12bd1ddff8acff93"
+    },
+    {
+      "id": "4.15.5",
+      "texto": "Em caso de falhas operacionais, técnicas ou de qualquer execução defeituosa que comprometa a transmissão de dados órgãos de controle, especialmente ao TCE/SC, através do e- Sfinge, a contratada está obrigada à imediata correção, de modo a não haver prejuízo ao cumprimento dos prazos legais de envio de informações.",
+      "pagina_pdf": 4,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "2754df6bd78b92ad"
+    },
+    {
+      "id": "4.15.6",
+      "texto": "A não correção tempestiva implicará aplicação das sanções previstas neste item, cumulativamente com outras previstas contratualmente. A medida está plenamente de acordo com a Instrução Normativa N. TC-28/2021 e a atualização dada pela Instrução Normativa N. TC-35/2024, ambas do Tribunal de Contas do Estado de Santa Catarina, que estabelecem as diretrizes, prazos, layouts e regras de consistência para o envio de informações aos órgãos de controle externo, bem como a obrigatoriedade de adequação permanente dos sistemas de gestão pública às atualizações legais, normativas e técnicas.",
+      "pagina_pdf": 4,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "14bbb71a115e658a"
+    },
+    {
+      "id": "4.16",
+      "texto": "A contratada deverá disponibilizar tempestivamente, de forma completa, íntegra e atualizada, todos os dados, arquivos, documentos, cadastros e registros gerados, armazenados ou processados durante a execução contratual, em formato estruturado e aberto, compatível com sistemas informatizados usualmente adotados na administração pública, para fins de migração ou continuidade dos serviços por outro fornecedor eventualmente contratado.",
+      "pagina_pdf": 4,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "262184437f94abe9"
+    },
+    {
+      "id": "4.16.1",
+      "texto": "Essa obrigação inclui, sempre que solicitado pela Administração, o fornecimento de manuais, mapas de dados, dicionários de campos, bem como o apoio técnico necessário à correta extração e compreensão dos dados, sem qualquer custo adicional.",
+      "pagina_pdf": 5,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "718b996ff84e6fa2"
+    },
+    {
+      "id": "4.16.2",
+      "texto": "O descumprimento dessa obrigação será considerado infração grave, sujeitando a contratada às sanções legais e contratuais cabíveis, inclusive à declaração de inidoneidade, nos termos do art. 28, inciso V, da Instrução Normativa n. TC-28/2021 do Tribunal de Contas do Estado de Santa Catarina.",
+      "pagina_pdf": 5,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "7063292036191981"
+    },
+    {
+      "id": "4.17",
+      "texto": "Todos os dados, informações, registros, documentos, cadastros, arquivos e metadados inseridos, processados, gerados ou armazenados no(s) sistema(s) contratado(s) pertencem exclusivamente ao Município de Anita Garibaldi, ao Fundo Municipal de Saúde e à Câmara Municipal de Vereadores, na condição de unidades jurisdicionadas contratantes.",
+      "pagina_pdf": 5,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "618058f2ca50b037"
+    },
+    {
+      "id": "4.17.1",
+      "texto": "A contratada não poderá, sob nenhuma hipótese, utilizar, reproduzir, transferir, modificar, disponibilizar a terceiros ou reter tais dados após o encerramento contratual, salvo mediante autorização formal da Administração Pública.",
+      "pagina_pdf": 5,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "7f3d390024eb57d6"
+    },
+    {
+      "id": "4.17.2",
+      "texto": "O reconhecimento da propriedade dos dados pela contratante deve ser garantido contratualmente, em conformidade com o art. 29, inciso IV, da Instrução Normativa n. TC-28/2021 do Tribunal de Contas do Estado de Santa Catarina, resguardando-se o interesse público, a soberania dos dados institucionais e o pleno exercício da gestão administrativa.",
+      "pagina_pdf": 5,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "dac2c49b272534e2"
+    },
+    {
+      "id": "4.18",
+      "texto": "É vedada a existência, no(s) sistema(s) contratado(s), de qualquer funcionalidade que permita inserir, apagar ou modificar informações contábeis e/ou de auditoria em desacordo com os princípios e normas técnicas contábeis vigentes.",
+      "pagina_pdf": 5,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "986a52f4c34f6625"
+    },
+    {
+      "id": "4.19",
+      "texto": "Em regra, todos os módulos licitados serão implantados e utilizados desde o início da vigência contratual. No entanto, resguarda-se à Administração Municipal o direito de postergar, por conveniência e oportunidade, a implantação de um ou mais módulos, sem que isso gere qualquer obrigação de pagamento antecipado, sendo os valores correspondentes devidos apenas após o início efetivo da utilização, mediante solicitação formal. V - MODELO DE EXECUÇÃO DO OBJETO:",
+      "pagina_pdf": 5,
+      "natureza": "CONTRATUAL_E_PROCESSO",
+      "observacao": "Prova de conceito, prazos de orgao de controle, propriedade e portabilidade dos dados. Evidencia: rotina de exportacao integral, dicionario de dados e registro de processo.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "c56906babeb2662d"
+    },
+    {
+      "id": "5.1",
+      "texto": "MIGRAÇÃO DE DADOS:",
+      "pagina_pdf": 5,
+      "natureza": "MIGRACAO",
+      "observacao": "Evidencia: inventario das bases de origem, dicionario de destino, regras de transformacao com dono confirmado e reconciliacao.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "fbb2c8b45d75c11d"
+    },
+    {
+      "id": "5.1.1",
+      "texto": "A conversão/migração e o aproveitamento de todos os dados cadastrais e informações dos softwares em uso são de responsabilidade da empresa proponente, com disponibilização dos mesmos pelo Município.",
+      "pagina_pdf": 5,
+      "natureza": "MIGRACAO",
+      "observacao": "Evidencia: inventario das bases de origem, dicionario de destino, regras de transformacao com dono confirmado e reconciliacao.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "64d4d9b2bbd31632"
+    },
+    {
+      "id": "5.2",
+      "texto": "IMPLANTAÇÃO DOS SOFTWARES;",
+      "pagina_pdf": 6,
+      "natureza": "PROCESSO",
+      "observacao": "Evidencia: ordem de servico, aceite formal e ata.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "bbc10b32bf0301a3"
+    },
+    {
+      "id": "5.2.1",
+      "texto": "Deverão ser cumpridas as atividades para cada software contratado e solicitado via Ordem de Serviço, quando couber: instalação, configuração e parametrização.",
+      "pagina_pdf": 6,
+      "natureza": "PROCESSO",
+      "observacao": "Evidencia: ordem de servico, aceite formal e ata.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "fac47a1462082f32"
+    },
+    {
+      "id": "5.2.2",
+      "texto": "Acompanhamento dos usuários na sede da entidade durante a fase de implantação.",
+      "pagina_pdf": 6,
+      "natureza": "PROCESSO",
+      "observacao": "Evidencia: ordem de servico, aceite formal e ata.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "012e6de3ef008bfe"
+    },
+    {
+      "id": "5.2.3",
+      "texto": "O recebimento dos serviços de implantação se dará mediante aceite formal dos softwares contratados e solicitados via Ordem de Serviço, devendo ser obrigatoriamente antecedido de procedimentos de validação pelo responsável do setor onde o mesmo foi implantado, devendo ser formais e instrumentalizados.",
+      "pagina_pdf": 6,
+      "natureza": "PROCESSO",
+      "observacao": "Evidencia: ordem de servico, aceite formal e ata.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "f0a020dc95c7be3b"
+    },
+    {
+      "id": "5.2.4",
+      "texto": "Todas as decisões e entendimentos havidos entre as partes durante o andamento dos trabalhos e que implique em modificações, alterações de prazo ou implementações nos planos, cronogramas ou atividades pactuadas, deverão ser prévia e formalmente acordados e documentados entre as partes.",
+      "pagina_pdf": 6,
+      "natureza": "PROCESSO",
+      "observacao": "Evidencia: ordem de servico, aceite formal e ata.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "a91f3b0e1a954f42"
+    },
+    {
+      "id": "5.3",
+      "texto": "TREINAMENTO:",
+      "pagina_pdf": 6,
+      "natureza": "PROCESSO",
+      "observacao": "Evidencia: plano, execucao e avaliacao do treinamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "871465f948a8ce62"
+    },
+    {
+      "id": "5.3.1",
+      "texto": "A empresa contratada deverá realizar Treinamento dentro do prazo de implantação, compreendendo o uso das funções do software pertencente a sua área de responsabilidade, conhecimento sobre as parametrizações a serem usadas.",
+      "pagina_pdf": 6,
+      "natureza": "PROCESSO",
+      "observacao": "Evidencia: plano, execucao e avaliacao do treinamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "2ad48bca21d27c9e"
+    },
+    {
+      "id": "5.3.2",
+      "texto": "A proponente deverá estimar, em sua proposta, o custo para execução de treinamento, para capacitar os servidores públicos no uso dos softwares contratados e solicitados via Ordem de Serviço.",
+      "pagina_pdf": 6,
+      "natureza": "PROCESSO",
+      "observacao": "Evidencia: plano, execucao e avaliacao do treinamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "e500095d8f26b764"
+    },
+    {
+      "id": "5.3.3",
+      "texto": "A contratante resguardar-se-á o direito de acompanhar, adequar e avaliar o treinamento contratado com instrumentos próprios.",
+      "pagina_pdf": 6,
+      "natureza": "PROCESSO",
+      "observacao": "Evidencia: plano, execucao e avaliacao do treinamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "832495853f06277c"
+    },
+    {
+      "id": "5.4",
+      "texto": "SUPORTE TÉCNICO:",
+      "pagina_pdf": 6,
+      "natureza": "OPERACAO",
+      "observacao": "Portal de chamados, severidades configuradas e pesquisa de satisfacao sao software; disponibilidade da central e operacao.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "10b27cbb03e2f7b9"
+    },
+    {
+      "id": "5.4.1",
+      "texto": "O suporte técnico pós-implantação deverá ser sempre efetuado por técnico habilitado em favor de usuário devidamente treinado, e compreenderá: [a] Esclarecimento de dúvidas que possam surgir durante a operação e utilização dos aplicativos; [b] Realização de quaisquer atividades técnicas relacionadas a erros derivados de falha dos usuários; [c] Auxiliar o usuário, em caso de dúvidas, na elaboração de quaisquer atividades técnicas relacionadas à utilização dos aplicativos, Desenvolver relatórios específicos.",
+      "pagina_pdf": 6,
+      "natureza": "OPERACAO",
+      "observacao": "Portal de chamados, severidades configuradas e pesquisa de satisfacao sao software; disponibilidade da central e operacao.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "aa48a7e35d38a605"
+    },
+    {
+      "id": "5.4.2",
+      "texto": "O suporte técnico poderá ser prestado via acesso remoto mediante autorização prévia.",
+      "pagina_pdf": 7,
+      "natureza": "OPERACAO",
+      "observacao": "Portal de chamados, severidades configuradas e pesquisa de satisfacao sao software; disponibilidade da central e operacao.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "262642f51feb75b6"
+    },
+    {
+      "id": "5.4.3",
+      "texto": "O serviço de suporte técnico operacional deverá estar disponível de segunda a sexta- feira, das 08h00min às 12h00min e das 13h00min às 17h00min.",
+      "pagina_pdf": 7,
+      "natureza": "OPERACAO",
+      "observacao": "Portal de chamados, severidades configuradas e pesquisa de satisfacao sao software; disponibilidade da central e operacao.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "c36712f1a361305a"
+    },
+    {
+      "id": "5.4.4",
+      "texto": "A Contratada deverá disponibilizar a Contratante, portal de atendimento para suporte e sustentação ao usuário do aplicativo, permitindo à entidade uma visão gerencial completa dos serviços e do atendimento técnico prestado.",
+      "pagina_pdf": 7,
+      "natureza": "OPERACAO",
+      "observacao": "Portal de chamados, severidades configuradas e pesquisa de satisfacao sao software; disponibilidade da central e operacao.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "f0d05d1f7661a15d"
+    },
+    {
+      "id": "5.4.5",
+      "texto": "Para cada novo atendimento iniciado deverá ser vinculado um código ou número de chamado exclusivo, podendo ser listado e visualizado pelo usuário posteriormente.",
+      "pagina_pdf": 7,
+      "natureza": "OPERACAO",
+      "observacao": "Portal de chamados, severidades configuradas e pesquisa de satisfacao sao software; disponibilidade da central e operacao.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "928a6e1a0aa31b29"
+    },
+    {
+      "id": "5.4.6",
+      "texto": "O portal de atendimento deve permitir o cadastro dos usuários em diversas entidades a qual ele esteja vinculado, possibilitando abrir chamados, executar reclamações, enviar documentos, tramitar questões técnicas.",
+      "pagina_pdf": 7,
+      "natureza": "OPERACAO",
+      "observacao": "Portal de chamados, severidades configuradas e pesquisa de satisfacao sao software; disponibilidade da central e operacao.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "f325b2e4805800fe"
+    },
+    {
+      "id": "5.4.7",
+      "texto": "O portal de atendimento deve disponibilizar um recurso para o usuário pesquisar e visualizar todos os seus registros de chamados realizados.",
+      "pagina_pdf": 7,
+      "natureza": "OPERACAO",
+      "observacao": "Portal de chamados, severidades configuradas e pesquisa de satisfacao sao software; disponibilidade da central e operacao.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "9d85d9a12f0277c2"
+    },
+    {
+      "id": "5.4.8",
+      "texto": "O portal de atendimento deve permitir o envio/recebimento de notificações aos usuários envolvidos no atendimento de uma solicitação ou tarefa.",
+      "pagina_pdf": 7,
+      "natureza": "OPERACAO",
+      "observacao": "Portal de chamados, severidades configuradas e pesquisa de satisfacao sao software; disponibilidade da central e operacao.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "d626106fd12e6ba2"
+    },
+    {
+      "id": "5.4.9",
+      "texto": "O portal de atendimento deve possuir pesquisa de satisfação dos chamados atendidos, acessível pela entidade contratante, inclusive.",
+      "pagina_pdf": 7,
+      "natureza": "OPERACAO",
+      "observacao": "Portal de chamados, severidades configuradas e pesquisa de satisfacao sao software; disponibilidade da central e operacao.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "4b4a233c2b2c35fd"
+    },
+    {
+      "id": "5.4.10",
+      "texto": "O atendimento a solicitação do suporte deverá ser realizado por atendente apto a prover o devido suporte ao sistema, ou redirecionar o atendimento a quem o solucione.",
+      "pagina_pdf": 7,
+      "natureza": "OPERACAO",
+      "observacao": "Portal de chamados, severidades configuradas e pesquisa de satisfacao sao software; disponibilidade da central e operacao.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "3e97c8eac0c77744"
+    },
+    {
+      "id": "5.4.11",
+      "texto": "Deverá a Contratada dispor de central de atendimento via linha telefônica, sem custos de ligações para a Contratante.",
+      "pagina_pdf": 7,
+      "natureza": "OPERACAO",
+      "observacao": "Portal de chamados, severidades configuradas e pesquisa de satisfacao sao software; disponibilidade da central e operacao.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "169895d0fdb6f04d"
+    },
+    {
+      "id": "5.4.12",
+      "texto": "Níveis de Severidade e Prazos de Atendimento (conforme Art. 29 da INSTRUÇÃO NORMATIVA N 28/2021 do Tribunal de Contas do Estado de Santa Catarina).",
+      "pagina_pdf": 7,
+      "natureza": "OPERACAO",
+      "observacao": "Portal de chamados, severidades configuradas e pesquisa de satisfacao sao software; disponibilidade da central e operacao.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "e6ea31e24150efe6"
+    },
+    {
+      "id": "5.4.12.1",
+      "texto": "Os chamados serão classificados conforme a criticidade da ocorrência, devendo ser atendidos nos prazos abaixo, contados a partir da abertura formal do chamado: Nível de Descrição Tempo de atendimento Severidade Sistema totalmente inoperante (sem qualquer acesso ou 1 Até 5 horas úteis resposta) Sistema indisponível para serviços de atendimento ao 2 Até 18 horas úteis cidadão Descrição de funcionalidades essenciais ao funcionamento ou atendimento de prazos estabelecido Até 48 horas úteis ou no 3 em lei ou pelos órgãos de fiscalização, incluindo prazo consignado em Lei problemas relacionados à disponibilidade dos sistemas de gestão e à remessa dos dados ao TCE/SC Problemas ou dúvidas que dificultem a operação, sem 4 Até 72 horas úteis impedir o uso Dúvidas ou problemas que não afetam o funcionamento 5 Até 120 horas úteis do sistema Melhorias de sistema consideradas customizações não 6 Até 120 dias corridos decorrentes de previsão legal (conforme item 3) Melhorias em relatórios consideradas customizações 7 Até 5 dias uteis não decorrentes de previsão legal (conforme item 3)",
+      "pagina_pdf": 7,
+      "natureza": "OPERACAO",
+      "observacao": "Portal de chamados, severidades configuradas e pesquisa de satisfacao sao software; disponibilidade da central e operacao.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "947dc95950461bf0"
+    },
+    {
+      "id": "5.4.12.2",
+      "texto": "O descumprimento do subitem anterior (Tempo de atendimento ao suporte técnico) implicará em multas previstas no contrato.",
+      "pagina_pdf": 8,
+      "natureza": "OPERACAO",
+      "observacao": "Portal de chamados, severidades configuradas e pesquisa de satisfacao sao software; disponibilidade da central e operacao.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "e6c21348ec3ca4c5"
+    },
+    {
+      "id": "5.4.12.3",
+      "texto": "O descumprimento pela inexecução total ou parcial de qualquer obrigação assumida em decorrência da contratação, implicará em multas previstas no contrato.",
+      "pagina_pdf": 8,
+      "natureza": "OPERACAO",
+      "observacao": "Portal de chamados, severidades configuradas e pesquisa de satisfacao sao software; disponibilidade da central e operacao.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "4f470257e33037cd"
+    },
+    {
+      "id": "5.4.12.4",
+      "texto": "Os prazos acima determinados poderão ser prorrogados mediante convenção entre as partes.",
+      "pagina_pdf": 8,
+      "natureza": "OPERACAO",
+      "observacao": "Portal de chamados, severidades configuradas e pesquisa de satisfacao sao software; disponibilidade da central e operacao.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "c6efaca30bd1ccb1"
+    },
+    {
+      "id": "5.5",
+      "texto": "DA MANUTENÇÃO CORRETIVA, LEGAL E EVOLUTIVA",
+      "pagina_pdf": 8,
+      "natureza": "CONTRATUAL",
+      "observacao": "Manutencao corretiva, legal e evolutiva.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "9d76dfa7c18f5ca1"
+    },
+    {
+      "id": "5.5.1",
+      "texto": "A Contratada deverá prestar os serviços continuados de manutenções dos aplicativos, que deverão ser entendidos como corretiva, legal ou evolutiva, que assim seguem:",
+      "pagina_pdf": 8,
+      "natureza": "CONTRATUAL",
+      "observacao": "Manutencao corretiva, legal e evolutiva.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "2e99d892181d537e"
+    },
+    {
+      "id": "5.5.1.1",
+      "texto": "Manutenção corretiva: necessária para o reparo de imperfeições ou falhas no aplicativo que o impeça de funcionar adequadamente para as finalidades que foi desenvolvido.",
+      "pagina_pdf": 8,
+      "natureza": "CONTRATUAL",
+      "observacao": "Manutencao corretiva, legal e evolutiva.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "3cf38e23d487697b"
+    },
+    {
+      "id": "5.5.1.2",
+      "texto": "Manutenção legal: em caso de mudança na legislação, entre outros, a qual deverá ser elaborada uma programação para atendimento às mudanças ocorridas, sem prejuízos à operação do aplicativo e à legislação, durante a vigência contratual.",
+      "pagina_pdf": 8,
+      "natureza": "CONTRATUAL",
+      "observacao": "Manutencao corretiva, legal e evolutiva.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "30917e73b9adb446"
+    },
+    {
+      "id": "5.5.1.3",
+      "texto": "Todas as solicitações evolutivas que impliquem em modificações ou implementações nos planos, cronogramas ou atividades pactuadas, durante o período contratual, deverão ser prévias e formalmente acordadas e formalizadas entre as partes, podendo a Contratada verificar a viabilidade de executá-las ou não.",
+      "pagina_pdf": 8,
+      "natureza": "CONTRATUAL",
+      "observacao": "Manutencao corretiva, legal e evolutiva.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "0a5dc782dd326b9e"
+    },
+    {
+      "id": "5.5.2",
+      "texto": "Os serviços de manutenção deverão ser realizados durante toda a vigência do contrato, incluindo suas prorrogações.",
+      "pagina_pdf": 9,
+      "natureza": "CONTRATUAL",
+      "observacao": "Manutencao corretiva, legal e evolutiva.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "fa5d32ca7e0e8efb"
+    },
+    {
+      "id": "5.6",
+      "texto": "DOS SERVIÇOS TÉCNICOS DE DEMANDA VARIÁVEL",
+      "pagina_pdf": 9,
+      "natureza": "CONTRATUAL",
+      "observacao": "Servicos tecnicos de demanda variavel por hora.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "f1428c2d4763f6eb"
+    },
+    {
+      "id": "5.6.1",
+      "texto": "A Contratada poderá ser convocada pela Contratante para realizar ao longo da vigência do contrato os serviços técnicos de demanda variável, assim entendidos:",
+      "pagina_pdf": 9,
+      "natureza": "CONTRATUAL",
+      "observacao": "Servicos tecnicos de demanda variavel por hora.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "7464ec9102caac5a"
+    },
+    {
+      "id": "5.6.1.1",
+      "texto": "Serviços de personalização e customização de aplicativos, neles relacionados todo os abrangentes e correlatos, e todas as suas etapas.",
+      "pagina_pdf": 9,
+      "natureza": "CONTRATUAL",
+      "observacao": "Servicos tecnicos de demanda variavel por hora.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "7a730264a5408290"
+    },
+    {
+      "id": "5.6.2",
+      "texto": "Os serviços técnicos serão solicitados pela Contratante e deverão ser orçados previamente pela Contratada e caso aceito, serão aprovados e autorizados pela solicitante.",
+      "pagina_pdf": 9,
+      "natureza": "CONTRATUAL",
+      "observacao": "Servicos tecnicos de demanda variavel por hora.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "51c4bbf9c02b2558"
+    },
+    {
+      "id": "5.6.3",
+      "texto": "Os serviços técnicos, serão pagos por hora técnica efetivada, cuja estimativa encontra- se destacada no quadro de serviços contidos da proposta de preços.",
+      "pagina_pdf": 9,
+      "natureza": "CONTRATUAL",
+      "observacao": "Servicos tecnicos de demanda variavel por hora.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "84850952ada9f24d"
+    },
+    {
+      "id": "5.7",
+      "texto": "DO AMBIENTE COMPUTACIONAL E DATA CENTER (NUVEM):",
+      "pagina_pdf": 9,
+      "natureza": "INFRAESTRUTURA",
+      "observacao": "Data center, alta disponibilidade, criptografia, backup e recuperacao. Evidencia: arquitetura, certificacoes do provedor, medicao de disponibilidade e teste de restauracao documentado.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "d7d6b7068d648bdf"
+    },
+    {
+      "id": "5.7.1",
+      "texto": "Da Infraestrutura e Hospedagem",
+      "pagina_pdf": 9,
+      "natureza": "INFRAESTRUTURA",
+      "observacao": "Data center, alta disponibilidade, criptografia, backup e recuperacao. Evidencia: arquitetura, certificacoes do provedor, medicao de disponibilidade e teste de restauracao documentado.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "8fecb27c66cfd6b3"
+    },
+    {
+      "id": "5.7.1.1",
+      "texto": "A CONTRATADA deverá disponibilizar, sob sua inteira responsabilidade técnica e financeira, infraestrutura de Data Center em ambiente de computação em nuvem (Cloud Computing) para a hospedagem de todos os sistemas, plataformas e bancos de dados que integram o objeto desta contratação.",
+      "pagina_pdf": 9,
+      "natureza": "INFRAESTRUTURA",
+      "observacao": "Data center, alta disponibilidade, criptografia, backup e recuperacao. Evidencia: arquitetura, certificacoes do provedor, medicao de disponibilidade e teste de restauracao documentado.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "dc9ffe57e5d2f423"
+    },
+    {
+      "id": "5.7.1.2",
+      "texto": "O ambiente em nuvem deverá ser do tipo multizona (Multi-AZ) e contar com redundância geográfica ativa em localidades distintas. A arquitetura deve garantir a otimização da performance de processamento e das taxas de transmissão de dados, mitigando qualquer risco de interrupção ou inoperabilidade dos serviços em caso de falha física ou lógica de uma das zonas de disponibilidade.",
+      "pagina_pdf": 9,
+      "natureza": "INFRAESTRUTURA",
+      "observacao": "Data center, alta disponibilidade, criptografia, backup e recuperacao. Evidencia: arquitetura, certificacoes do provedor, medicao de disponibilidade e teste de restauracao documentado.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "53ea28e996bd3338"
+    },
+    {
+      "id": "5.7.1.3",
+      "texto": "O Data Center utilizado (seja próprio ou de terceiros subcontratados pela CONTRATADA) deverá possuir certificações de segurança reconhecidas internacionalmente, tais como ISO/IEC 27001 (Segurança da Informação), ISO/IEC 27018 (Proteção de dados pessoais em nuvem) e relatórios de auditoria SOC 2 Tipo II (ou equivalentes), cuja comprovação poderá ser exigida a qualquer tempo pela CONTRATANTE.",
+      "pagina_pdf": 9,
+      "natureza": "INFRAESTRUTURA",
+      "observacao": "Data center, alta disponibilidade, criptografia, backup e recuperacao. Evidencia: arquitetura, certificacoes do provedor, medicao de disponibilidade e teste de restauracao documentado.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "8a0644f55b603ea4"
+    },
+    {
+      "id": "5.7.2",
+      "texto": "Dos Níveis de Serviço (SLA) de Disponibilidade",
+      "pagina_pdf": 10,
+      "natureza": "INFRAESTRUTURA",
+      "observacao": "Data center, alta disponibilidade, criptografia, backup e recuperacao. Evidencia: arquitetura, certificacoes do provedor, medicao de disponibilidade e teste de restauracao documentado.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "e4dccb6543bc997b"
+    },
+    {
+      "id": "5.7.2.1",
+      "texto": "A CONTRATADA obriga-se a manter um Acordo de Nível de Serviço (SLA) de disponibilidade mensal (Uptime) de, no mínimo, 99,5% (noventa e nove vírgula cinco por cento).",
+      "pagina_pdf": 10,
+      "natureza": "INFRAESTRUTURA",
+      "observacao": "Data center, alta disponibilidade, criptografia, backup e recuperacao. Evidencia: arquitetura, certificacoes do provedor, medicao de disponibilidade e teste de restauracao documentado.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "9ec5548aca969705"
+    },
+    {
+      "id": "5.7.2.2",
+      "texto": "Nota de adequação: O índice original de 96% é considerado extremamente baixo para sistemas modernos de Gestão Pública em nuvem (equivaleria a quase 30 horas de sistema fora do ar por mês). O padrão de mercado seguro varia entre 99% e 99,9%.",
+      "pagina_pdf": 10,
+      "natureza": "INFRAESTRUTURA",
+      "observacao": "Data center, alta disponibilidade, criptografia, backup e recuperacao. Evidencia: arquitetura, certificacoes do provedor, medicao de disponibilidade e teste de restauracao documentado.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "df13c14df3a15f70"
+    },
+    {
+      "id": "5.7.2.3",
+      "texto": "O cálculo do Uptime mensal desconsiderará apenas as janelas de manutenção programada, que deverão ser comunicadas formalmente à CONTRATANTE com antecedência mínima de 48 (quarenta e oito) horas e realizadas preferencialmente entre as 22h00min e as 06h00min, ou em finais de semana.",
+      "pagina_pdf": 10,
+      "natureza": "INFRAESTRUTURA",
+      "observacao": "Data center, alta disponibilidade, criptografia, backup e recuperacao. Evidencia: arquitetura, certificacoes do provedor, medicao de disponibilidade e teste de restauracao documentado.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "98d18b6ead68907c"
+    },
+    {
+      "id": "5.7.2.4",
+      "texto": "descumprimento do SLA de disponibilidade mensal sujeitará a CONTRATADA às sanções administrativas e multas contratuais previstas neste Termo de Referência, calculadas de forma proporcional ao período de indisponibilidade.",
+      "pagina_pdf": 10,
+      "natureza": "INFRAESTRUTURA",
+      "observacao": "Data center, alta disponibilidade, criptografia, backup e recuperacao. Evidencia: arquitetura, certificacoes do provedor, medicao de disponibilidade e teste de restauracao documentado.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "66534514db202ff2"
+    },
+    {
+      "id": "5.7.3",
+      "texto": "Da Segurança, Integridade e Proteção de Dados (LGPD)",
+      "pagina_pdf": 10,
+      "natureza": "INFRAESTRUTURA",
+      "observacao": "Data center, alta disponibilidade, criptografia, backup e recuperacao. Evidencia: arquitetura, certificacoes do provedor, medicao de disponibilidade e teste de restauracao documentado.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "f46c9036a0d3a729"
+    },
+    {
+      "id": "5.7.3.1",
+      "texto": "A CONTRATADA é integralmente responsável pela custódia, segurança física, lógica e integridade de todos os dados públicos inseridos, gerados ou armazenados na plataforma. Estes dados são declarados, para todos os efeitos legais, como patrimônio exclusivo e inalienável do Município de Anita Garibaldi e da Câmara de Vereadores.",
+      "pagina_pdf": 10,
+      "natureza": "INFRAESTRUTURA",
+      "observacao": "Data center, alta disponibilidade, criptografia, backup e recuperacao. Evidencia: arquitetura, certificacoes do provedor, medicao de disponibilidade e teste de restauracao documentado.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "e68b24041dbbbb22"
+    },
+    {
+      "id": "5.7.3.2",
+      "texto": "O banco de dados deverá operar com replicação de dados em tempo real (síncrona ou assíncrona de alta performance), assegurando que não haja perda de informações ou de transações em caso de necessidade de failover (migração automática para o ambiente redundante).",
+      "pagina_pdf": 10,
+      "natureza": "INFRAESTRUTURA",
+      "observacao": "Data center, alta disponibilidade, criptografia, backup e recuperacao. Evidencia: arquitetura, certificacoes do provedor, medicao de disponibilidade e teste de restauracao documentado.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "a08b8658a04f2b22"
+    },
+    {
+      "id": "5.7.3.3",
+      "texto": "Todo o tráfego de dados entre os usuários e o Data Center deverá ocorrer sob protocolo criptografado HTTPS (utilizando certificados TLS atualizados de mercado), além de criptografia para os dados sensíveis armazenados em repouso (data-at-rest).",
+      "pagina_pdf": 10,
+      "natureza": "INFRAESTRUTURA",
+      "observacao": "Data center, alta disponibilidade, criptografia, backup e recuperacao. Evidencia: arquitetura, certificacoes do provedor, medicao de disponibilidade e teste de restauracao documentado.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "8282a1fb75a0f6d5"
+    },
+    {
+      "id": "5.7.3.4",
+      "texto": "O ambiente computacional fornecido deve estar em estrita conformidade com a Lei Geral de Proteção de Dados Pessoais (LGPD - Lei Federal nº 13.709/2018), devendo a CONTRATADA implementar controles de acesso rígidos, trilhas de auditoria imutáveis para todas as operações de alteração/exclusão de dados e mecanismos de prevenção contra vazamentos de informações.",
+      "pagina_pdf": 10,
+      "natureza": "INFRAESTRUTURA",
+      "observacao": "Data center, alta disponibilidade, criptografia, backup e recuperacao. Evidencia: arquitetura, certificacoes do provedor, medicao de disponibilidade e teste de restauracao documentado.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "a36682b4bf7d5b6b"
+    },
+    {
+      "id": "5.7.4",
+      "texto": "Da Política de Backup e Recuperação de Desastres",
+      "pagina_pdf": 10,
+      "natureza": "INFRAESTRUTURA",
+      "observacao": "Data center, alta disponibilidade, criptografia, backup e recuperacao. Evidencia: arquitetura, certificacoes do provedor, medicao de disponibilidade e teste de restauracao documentado.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "77101778e64dd0bb"
+    },
+    {
+      "id": "5.7.4.1",
+      "texto": "A CONTRATADA manterá rotina automatizada e diária de geração de cópias de segurança (backups) de todos os bancos de dados e aplicações.",
+      "pagina_pdf": 10,
+      "natureza": "INFRAESTRUTURA",
+      "observacao": "Data center, alta disponibilidade, criptografia, backup e recuperacao. Evidencia: arquitetura, certificacoes do provedor, medicao de disponibilidade e teste de restauracao documentado.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "2aaf00074526da53"
+    },
+    {
+      "id": "5.7.4.2",
+      "texto": "Os backups deverão ser armazenados em local físico distinto do servidor principal de produção (armazenamento off-site ou em nuvem isolada) e protegidos por criptografia.",
+      "pagina_pdf": 11,
+      "natureza": "INFRAESTRUTURA",
+      "observacao": "Data center, alta disponibilidade, criptografia, backup e recuperacao. Evidencia: arquitetura, certificacoes do provedor, medicao de disponibilidade e teste de restauracao documentado.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "bca7e59ca65bc6ae"
+    },
+    {
+      "id": "5.7.4.3",
+      "texto": "A política de backup deverá garantir: [a] RPO (Recovery Point Objective): Perda máxima tolerável de dados de até 4 (quatro) horas em caso de desastre. [b] RTO (Recovery Time Objective): Tempo máximo para recuperação e restabelecimento completo dos serviços de até 12 (doze) horas após a constatação de falha catastrófica.",
+      "pagina_pdf": 11,
+      "natureza": "INFRAESTRUTURA",
+      "observacao": "Data center, alta disponibilidade, criptografia, backup e recuperacao. Evidencia: arquitetura, certificacoes do provedor, medicao de disponibilidade e teste de restauracao documentado.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "41cd04ea91084dd1"
+    },
+    {
+      "id": "5.7.4.4",
+      "texto": "A CONTRATADA deverá realizar testes periódicos de restauração (restore) de dados, no mínimo a cada semestre, documentando os resultados em relatório técnico a ser disponibilizado à fiscalização do contrato mediante solicitação.",
+      "pagina_pdf": 11,
+      "natureza": "INFRAESTRUTURA",
+      "observacao": "Data center, alta disponibilidade, criptografia, backup e recuperacao. Evidencia: arquitetura, certificacoes do provedor, medicao de disponibilidade e teste de restauracao documentado.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "baf0c3309dba2741"
+    },
+    {
+      "id": "5.48",
+      "texto": "OBRIGAÇÕES DA CONTRATANTE [a] Acompanhar e fiscalizar a execução deste contrato; [b] Vetar o emprego de qualquer serviço que considerar incompatível com as especificações apresentadas na proposta da contratada, que possa ser inadequado, nocivo ou danificar bens patrimoniais ou ser prejudicial à saúde; [c] Designar Servidor ou Comissão para proceder aos recebimentos provisórios e definitivos do objeto contratado, ou rejeitá-lo; [d] Atestar as Notas Fiscais/Faturas após a efetiva entrega do objeto desta licitação; [e] Efetuar o pagamento à contratada; [f] Aplicar à contratada as sanções administrativas regulamentares e contratuais cabíveis.",
+      "pagina_pdf": 175,
+      "natureza": "NAO_CLASSIFICADO",
+      "observacao": "Classificar ao entrar no lote.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "f663b748aacdb4e0"
+    },
+    {
+      "id": "5.49",
+      "texto": "OBRIGAÇÕES DA CONTRATADA [a] Prestar os serviços conforme especificações e demais disposições deste Termo de Referência, do edital e nas condições contidas em sua proposta; [b] Prestar os serviços no local determinado e dentro dos prazos estabelecidos; [c] Atender prontamente quaisquer exigências da fiscalização inerentes ao objeto do contrato, formalizado por meio de Nota de Empenho; [d] Manter, durante toda a execução do contrato, formalizado por meio de Nota de Empenho, as mesmas condições da habilitação; [e] Emitir fatura no valor pactuado e condições do contrato, formalizado por meio de Nota de Empenho, apresentando-a à Contratante para ateste e pagamento; [f] Aceitar nas mesmas condições contratuais os acréscimos e supressões. VI GESTÃO DO CONTRATO:",
+      "pagina_pdf": 175,
+      "natureza": "NAO_CLASSIFICADO",
+      "observacao": "Classificar ao entrar no lote.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "b713125cccf4c512"
+    },
+    {
+      "id": "6.1",
+      "texto": "O contrato deverá ser executado fielmente pelas partes, de acordo com as cláusulas avençadas e as normas da Lei nº 14.133, de 2021, e cada parte responderá pelas consequências de sua inexecução total ou parcial.",
+      "pagina_pdf": 175,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "d46e5d9b86b4d860"
+    },
+    {
+      "id": "6.2",
+      "texto": "Em caso de impedimento, ordem de paralisação ou suspensão do contrato, o cronograma de execução será prorrogado automaticamente pelo tempo correspondente, anotadas tais circunstâncias mediante simples apostila.",
+      "pagina_pdf": 175,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "e03718719988d0bd"
+    },
+    {
+      "id": "6.3",
+      "texto": "As comunicações entre o órgão ou entidade e a contratada devem ser realizadas por escrito sempre que o ato exigir tal formalidade, admitindo-se o uso de mensagem eletrônica para esse fim.",
+      "pagina_pdf": 176,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "f15ba9cac9d5fea4"
+    },
+    {
+      "id": "6.4",
+      "texto": "O órgão ou entidade poderá convocar representante da empresa para adoção de providências que devam ser cumpridas de imediato.",
+      "pagina_pdf": 176,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "5c0c03b81b8b8b3c"
+    },
+    {
+      "id": "6.5",
+      "texto": "Após a assinatura do contrato ou instrumento equivalente, o órgão ou entidade poderá convocar o representante da empresa contratada para reunião inicial para apresentação do plano de fiscalização, que conterá informações acerca das obrigações contratuais, dos mecanismos de fiscalização, das estratégias para execução do objeto, do plano complementar de execução da contratada, quando houver, do método de aferição dos resultados e das sanções aplicáveis, dentre outros. Preposto",
+      "pagina_pdf": 176,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "f882d87b32f8f8de"
+    },
+    {
+      "id": "6.6",
+      "texto": "A Contratada designará formalmente o preposto da empresa, antes do início da prestação dos serviços, indicando no instrumento os poderes e deveres em relação à execução do objeto contratado.",
+      "pagina_pdf": 176,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "7f16fd559bc780be"
+    },
+    {
+      "id": "6.7",
+      "texto": "A Contratante poderá recusar, desde que justificadamente, a indicação ou a manutenção do preposto da empresa, hipótese em que a Contratada designará outro para o exercício da atividade. Fiscalização",
+      "pagina_pdf": 176,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "4d8648966074b36c"
+    },
+    {
+      "id": "6.8",
+      "texto": "A execução do contrato deverá ser acompanhada e fiscalizada pelo(s) fiscal(is) do contrato, ou pelos respectivos substitutos (Lei nº 14.133, de 2021, art. 117, caput). Fiscalização Técnica",
+      "pagina_pdf": 176,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "1e60c502f07d1c09"
+    },
+    {
+      "id": "6.9",
+      "texto": "O fiscal técnico do contrato acompanhará a execução do contrato, para que sejam cumpridas todas as condições estabelecidas no contrato, de modo a assegurar os melhores resultados para a Administração.",
+      "pagina_pdf": 176,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "cceeaaba6c06307c"
+    },
+    {
+      "id": "6.10",
+      "texto": "O fiscal técnico do contrato anotará no histórico de gerenciamento do contrato todas as ocorrências relacionadas à execução do contrato, com a descrição do que for necessário para a regularização das faltas ou dos defeitos observados.",
+      "pagina_pdf": 176,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "b829798a77793f1e"
+    },
+    {
+      "id": "6.11",
+      "texto": "Identificada qualquer inexatidão ou irregularidade, o fiscal técnico do contrato emitirá notificações para a correção da execução do contrato, determinando prazo para a correção.",
+      "pagina_pdf": 176,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "feb3f5cfce1b93ee"
+    },
+    {
+      "id": "6.12",
+      "texto": "O fiscal técnico do contrato informará ao gestor do contato, em tempo hábil, a situação que demandar decisão ou adoção de medidas que ultrapassem sua competência, para que adote as medidas necessárias e saneadoras, se for o caso.",
+      "pagina_pdf": 176,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "68f3555d95572b61"
+    },
+    {
+      "id": "6.13",
+      "texto": "No caso de ocorrências que possam inviabilizar a execução do contrato nas datas aprazadas, o fiscal técnico do contrato comunicará o fato imediatamente ao gestor do contrato.",
+      "pagina_pdf": 177,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "0cdfda8d5139b108"
+    },
+    {
+      "id": "6.14",
+      "texto": "O fiscal técnico do contrato comunicará ao gestor do contrato, em tempo hábil, o término do contrato sob sua responsabilidade, com vistas à tempestiva renovação ou à prorrogação contratual. Fiscalização Administrativa",
+      "pagina_pdf": 177,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "bed8ef04f99d051a"
+    },
+    {
+      "id": "6.15",
+      "texto": "O fiscal administrativo do contrato verificará a manutenção das condições de habilitação da contratada, acompanhará o empenho, o pagamento, as garantias, as glosas e a formalização de apostilamento e termos aditivos, solicitando quaisquer documentos comprobatórios pertinentes, caso necessário.",
+      "pagina_pdf": 177,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "d9f74bb385a069fb"
+    },
+    {
+      "id": "6.16",
+      "texto": "Caso ocorra descumprimento das obrigações contratuais, o fiscal administrativo do contrato atuará tempestivamente na solução do problema, reportando ao gestor do contrato para que tome as providências cabíveis, quando ultrapassar a sua competência. Gestor do Contrato",
+      "pagina_pdf": 177,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "76e778a7eb4ccaf2"
+    },
+    {
+      "id": "6.17",
+      "texto": "O gestor do contrato coordenará a atualização do processo de acompanhamento e fiscalização do contrato contendo todos os registros formais da execução no histórico de gerenciamento do contrato, a exemplo da ordem de serviço, do registro de ocorrências, das alterações e das prorrogações contratuais, elaborando relatório com vistas à verificação da necessidade de adequações do contrato para fins de atendimento da finalidade da administração.",
+      "pagina_pdf": 177,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "516850bf54e6101d"
+    },
+    {
+      "id": "6.18",
+      "texto": "O gestor do contrato acompanhará os registros realizados pelos fiscais do contrato, de todas as ocorrências relacionadas à execução do contrato e as medidas adotadas, informando, se for o caso, à autoridade superior àquelas que ultrapassarem a sua competência.",
+      "pagina_pdf": 177,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "890a67bc6e77929c"
+    },
+    {
+      "id": "6.19",
+      "texto": "O gestor do contrato acompanhará a manutenção das condições de habilitação da contratada, para fins de empenho de despesa e pagamento, e anotará os problemas que obstem o fluxo normal da liquidação e do pagamento da despesa no relatório de riscos eventuais.",
+      "pagina_pdf": 177,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "75a06d24587861bc"
+    },
+    {
+      "id": "6.20",
+      "texto": "O gestor do contrato emitirá documento comprobatório da avaliação realizada pelos fiscais técnico, administrativo e setorial quanto ao cumprimento de obrigações assumidas pelo contratado, com menção ao seu desempenho na execução contratual, baseado nos indicadores objetivamente definidos e aferidos, e a eventuais penalidades aplicadas, devendo constar do cadastro de atesto de cumprimento de obrigações",
+      "pagina_pdf": 177,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "eaf54b6969c00af7"
+    },
+    {
+      "id": "6.21",
+      "texto": "O gestor do contrato tomará providências para a formalização de processo administrativo de responsabilização para fins de aplicação de sanções, a ser conduzido pela comissão de que trata o art. 158 da Lei nº 14.133, de 2021, ou pelo agente ou pelo setor com competência para tal, conforme o caso.",
+      "pagina_pdf": 178,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "cadf6fc097997512"
+    },
+    {
+      "id": "6.22",
+      "texto": "O gestor do contrato deverá elaborar relatório final com informações sobre a consecução dos objetivos que tenham justificado a contratação e eventuais condutas a serem adotadas para o aprimoramento das atividades da Administração.",
+      "pagina_pdf": 178,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "1a18d865e0a6ea7c"
+    },
+    {
+      "id": "6.23",
+      "texto": "O gestor do contrato deverá enviar a documentação pertinente ao setor de contratos para a formalização dos procedimentos de liquidação e pagamento, no valor dimensionado pela fiscalização e gestão nos termos do contrato. VII - CRITÉRIOS DE MEDIÇÃO E DE PAGAMENTO:",
+      "pagina_pdf": 178,
+      "natureza": "CONTRATUAL",
+      "observacao": "Gestao e fiscalizacao do contrato.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "abc2e4564e5d6bb7"
+    },
+    {
+      "id": "7.1",
+      "texto": "A avaliação da execução do objeto utilizará o disposto neste item.",
+      "pagina_pdf": 178,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "ec62c48c002daa9c"
+    },
+    {
+      "id": "7.1.1",
+      "texto": "Será indicada a retenção ou glosa no pagamento, proporcional à irregularidade verificada, sem prejuízo das sanções cabíveis, caso se constate que a Contratada: [a] não produzir os resultados acordados, [b] deixar de executar, ou não executar com a qualidade mínima exigida as atividades contratadas; ou [c] deixar de utilizar materiais e recursos humanos exigidos para a execução do serviço, ou utilizá-los com qualidade ou quantidade inferior à demandada. Do recebimento",
+      "pagina_pdf": 178,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "475b75327a1030aa"
+    },
+    {
+      "id": "7.2",
+      "texto": "Os serviços serão recebidos provisoriamente, no prazo de 15(quinze) dias, pelos fiscais técnico e administrativo, mediante termos detalhados, quando verificado o cumprimento das exigências de caráter técnico e administrativo. (Art. 140, I, a, da Lei nº 14.133/2021).",
+      "pagina_pdf": 178,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "c11f9893cf02beb2"
+    },
+    {
+      "id": "7.3",
+      "texto": "O prazo da disposição acima será contado do recebimento de comunicação de cobrança oriunda do contratado com a comprovação da prestação dos serviços a que se referem a parcela a ser paga.",
+      "pagina_pdf": 178,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "8abfa951038de801"
+    },
+    {
+      "id": "7.4",
+      "texto": "O fiscal técnico do contrato realizará o recebimento provisório do objeto do contrato mediante termo detalhado que comprove o cumprimento das exigências de caráter técnico.",
+      "pagina_pdf": 178,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "039aa1bbdea71b4d"
+    },
+    {
+      "id": "7.5",
+      "texto": "O fiscal administrativo do contrato realizará o recebimento provisório do objeto do contrato mediante termo detalhado que comprove o cumprimento das exigências de caráter administrativo.",
+      "pagina_pdf": 178,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "36018d765b0ba273"
+    },
+    {
+      "id": "7.6",
+      "texto": "O fiscal setorial do contrato, quando houver, realizará o recebimento provisório sob o ponto de vista técnico e administrativo.",
+      "pagina_pdf": 179,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "391edf9232759198"
+    },
+    {
+      "id": "7.7",
+      "texto": "Para efeito de recebimento provisório, ao final de cada período de faturamento, o fiscal técnico do contrato irá apurar o resultado das avaliações da execução do objeto e, se for o caso, a análise do desempenho e qualidade da prestação dos serviços realizados em consonância com os indicadores previstos, que poderá resultar no redimensionamento de valores a serem pagos à contratada, registrando em relatório a ser encaminhado ao gestor do contrato.",
+      "pagina_pdf": 179,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "579881ae25edd666"
+    },
+    {
+      "id": "7.7.1",
+      "texto": "Será considerado como ocorrido o recebimento provisório com a entrega do termo detalhado ou, em havendo mais de um a ser feito, com a entrega do último;",
+      "pagina_pdf": 179,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "1e6991ce48b92c33"
+    },
+    {
+      "id": "7.7.2",
+      "texto": "O Contratado fica obrigado a reparar, corrigir, remover, reconstruir ou substituir, às suas expensas, no todo ou em parte, o objeto em que se verificarem vícios, defeitos ou incorreções resultantes da execução ou materiais empregados, cabendo à fiscalização não atestar a última e/ou única medição de serviços até que sejam sanadas todas as eventuais pendências que possam vir a ser apontadas no Recebimento Provisório.",
+      "pagina_pdf": 179,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "42cd04b16c55c9ca"
+    },
+    {
+      "id": "7.7.3",
+      "texto": "A fiscalização não efetuará o ateste da última e/ou única medição de serviços até que sejam sanadas todas as eventuais pendências que possam vir a ser apontadas no Recebimento Provisório. (Art. 119 c/c art. 140 da Lei nº 14133, de 2021)",
+      "pagina_pdf": 179,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "928aa349b8a2d31f"
+    },
+    {
+      "id": "7.7.4",
+      "texto": "O recebimento provisório também ficará sujeito, quando cabível, à conclusão de todos os testes de campo e à entrega dos Manuais e Instruções exigíveis.",
+      "pagina_pdf": 179,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "d64a790f8e2af8cf"
+    },
+    {
+      "id": "7.7.5",
+      "texto": "Os serviços poderão ser rejeitados, no todo ou em parte, quando em desacordo com as especificações constantes neste Termo de Referência e na proposta, sem prejuízo da aplicação das penalidades.",
+      "pagina_pdf": 179,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "489ef97f29220e08"
+    },
+    {
+      "id": "7.8",
+      "texto": "Quando a fiscalização for exercida por um único servidor, o Termo Detalhado deverá conter o registro, a análise e a conclusão acerca das ocorrências na execução do contrato, em relação à fiscalização técnica e administrativa e demais documentos que julgar necessários, devendo encaminhá-los ao gestor do contrato para recebimento definitivo.",
+      "pagina_pdf": 179,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "49166b132bbfde74"
+    },
+    {
+      "id": "7.9",
+      "texto": "No caso de controvérsia sobre a execução do objeto, quanto à dimensão, qualidade e quantidade, deverá ser observado o teor do art. 143 da Lei nº 14.133, de 2021, comunicando-se à empresa para emissão de Nota Fiscal no que pertine à parcela incontroversa da execução do objeto, para efeito de liquidação e pagamento.",
+      "pagina_pdf": 179,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "6c716dbb767814cc"
+    },
+    {
+      "id": "7.10",
+      "texto": "Nenhum prazo de recebimento ocorrerá enquanto pendente a solução, pelo contratado, de inconsistências verificadas na execução do objeto ou no instrumento de cobrança.",
+      "pagina_pdf": 179,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "1762b63acc6f9b79"
+    },
+    {
+      "id": "7.11",
+      "texto": "O recebimento provisório ou definitivo não excluirá a responsabilidade civil pela solidez e pela segurança do serviço nem a responsabilidade ético-profissional pela perfeita execução do contrato. Liquidação",
+      "pagina_pdf": 180,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "036f2e9c00880a41"
+    },
+    {
+      "id": "7.12",
+      "texto": "Recebida a Nota Fiscal ou documento de cobrança equivalente, correrá o prazo de dez dias úteis para fins de liquidação, na forma desta seção, prorrogáveis por igual período.",
+      "pagina_pdf": 180,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "dd0ceb110179eaca"
+    },
+    {
+      "id": "7.13",
+      "texto": "O prazo de que trata o item anterior será reduzido à metade, mantendo-se a possibilidade de prorrogação, nos casos de contratações decorrentes de despesas cujos valores não ultrapassem o limite de que trata o inciso II do art. 75 da Lei nº 14.133, de 2021",
+      "pagina_pdf": 180,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "0b3aa909725b47c1"
+    },
+    {
+      "id": "7.14",
+      "texto": "Para fins de liquidação, o setor competente deve verificar se a Nota Fiscal ou Fatura apresentada expressa os elementos necessários e essenciais do documento, tais como:",
+      "pagina_pdf": 180,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "2a384b07fd5ec23a"
+    },
+    {
+      "id": "7.14.1",
+      "texto": "o prazo de validade;",
+      "pagina_pdf": 180,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "c78aa9844cfd119b"
+    },
+    {
+      "id": "7.14.2",
+      "texto": "a data da emissão;",
+      "pagina_pdf": 180,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "4c80232c23321df8"
+    },
+    {
+      "id": "7.14.3",
+      "texto": "os dados do contrato e do órgão contratante;",
+      "pagina_pdf": 180,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "871edc57b0c2d289"
+    },
+    {
+      "id": "7.14.4",
+      "texto": "o período respectivo de execução do contrato;",
+      "pagina_pdf": 180,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "8ddca38547794688"
+    },
+    {
+      "id": "7.14.5",
+      "texto": "o valor a pagar; e",
+      "pagina_pdf": 180,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "75da4d7e78584cda"
+    },
+    {
+      "id": "7.14.6",
+      "texto": "eventual destaque do valor de retenções tributárias cabíveis.",
+      "pagina_pdf": 180,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "e43cee17270b643b"
+    },
+    {
+      "id": "7.15",
+      "texto": "Havendo erro na apresentação da Nota Fiscal/Fatura, ou circunstância que impeça a liquidação da despesa, esta ficará sobrestada até que o contratado providencie as medidas saneadoras, reiniciando-se o prazo após a comprovação da regularização da situação, sem ônus à contratante;",
+      "pagina_pdf": 180,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "270f7e84487e2d91"
+    },
+    {
+      "id": "7.16",
+      "texto": "A Nota Fiscal ou Fatura deverá ser obrigatoriamente acompanhada da comprovação da regularidade fiscal, constatada por meio de consulta aos sítios eletrônicos oficiais ou à documentação mencionada no art. 68 da Lei nº 14.133/2021.",
+      "pagina_pdf": 180,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "01fb6eabb64e71df"
+    },
+    {
+      "id": "7.17",
+      "texto": "A Administração deverá realizar consulta para: [a] verificar a manutenção das condições de habilitação exigidas no edital; [b] identificar possível razão que impeça a participação em licitação, no âmbito do órgão ou entidade, proibição de contratar com o Poder Público, bem como ocorrências impeditivas indiretas.",
+      "pagina_pdf": 180,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "11740f0710b23048"
+    },
+    {
+      "id": "7.18",
+      "texto": "Constatando-se a situação de irregularidade do contratado, será providenciada sua notificação, por escrito, para que, no prazo de 5 (cinco) dias úteis, regularize sua situação ou, no mesmo prazo, apresente sua defesa. O prazo poderá ser prorrogado uma vez, por igual período, a critério do contratante.",
+      "pagina_pdf": 180,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "03b2127e78d3b761"
+    },
+    {
+      "id": "7.19",
+      "texto": "Não havendo regularização ou sendo a defesa considerada improcedente, o contratante deverá comunicar aos órgãos responsáveis pela fiscalização da regularidade fiscal quanto à inadimplência do contratado, bem como quanto à existência de pagamento a ser efetuado, para que sejam acionados os meios pertinentes e necessários para garantir o recebimento de seus créditos.",
+      "pagina_pdf": 181,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "3186a0946e958bde"
+    },
+    {
+      "id": "7.20",
+      "texto": "Persistindo a irregularidade, o contratante deverá adotar as medidas necessárias à rescisão contratual nos autos do processo administrativo correspondente, assegurada ao contratado a ampla defesa.",
+      "pagina_pdf": 181,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "61675210b659066c"
+    },
+    {
+      "id": "7.21",
+      "texto": "Havendo a efetiva execução do objeto, os pagamentos serão realizados normalmente, até que se decida pela rescisão do contrato, caso o contratado não regularize sua situação. Prazo de pagamento",
+      "pagina_pdf": 181,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "13f70d80ba3a911f"
+    },
+    {
+      "id": "7.22",
+      "texto": "O pagamento será efetuado no prazo máximo de até quinze dias, contados da finalização da liquidação da despesa, conforme seção anterior.",
+      "pagina_pdf": 181,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "34be4d54bb2424d5"
+    },
+    {
+      "id": "7.23",
+      "texto": "No caso de atraso pelo Contratante, os valores devidos ao contratado serão atualizados monetariamente entre o termo final do prazo de pagamento até a data de sua efetiva realização, mediante aplicação do índice IPCA de correção monetária. Forma de pagamento",
+      "pagina_pdf": 181,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "5f25aa10c593b0d9"
+    },
+    {
+      "id": "7.24",
+      "texto": "O pagamento será realizado através de ordem bancária, para crédito em banco, agência e conta corrente indicados pelo contratado.",
+      "pagina_pdf": 181,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "01741eab7ff6ba04"
+    },
+    {
+      "id": "7.25",
+      "texto": "Será considerada data do pagamento o dia em que constar como emitida a ordem bancária para pagamento.",
+      "pagina_pdf": 181,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "a36606db3eaed837"
+    },
+    {
+      "id": "7.26",
+      "texto": "Quando do pagamento, será efetuada a retenção tributária prevista na legislação aplicável.",
+      "pagina_pdf": 181,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "9419fdeafb7089ba"
+    },
+    {
+      "id": "7.26.1",
+      "texto": "Independentemente do percentual de tributo inserido na planilha, quando houver, serão retidos na fonte, quando da realização do pagamento, os percentuais estabelecidos na legislação vigente.",
+      "pagina_pdf": 181,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "9f9a91cbc1df077f"
+    },
+    {
+      "id": "7.27",
+      "texto": "O contratado regularmente optante pelo Simples Nacional, nos termos da Lei Complementar nº 123, de 2006, não sofrerá a retenção tributária quanto aos impostos e contribuições abrangidos por aquele regime. No entanto, o pagamento ficará condicionado à apresentação de comprovação, por meio de documento oficial, de que faz jus ao tratamento tributário favorecido previsto na referida Lei Complementar. Antecipação de pagamento",
+      "pagina_pdf": 181,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "5a95945d668becda"
+    },
+    {
+      "id": "7.28",
+      "texto": "A presente contratação não permite a antecipação de pagamento. Cessão de crédito",
+      "pagina_pdf": 181,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "cb5359de076b825e"
+    },
+    {
+      "id": "7.29",
+      "texto": "Não será admitida a cessão fiduciária de direitos creditícios com instituição financeira. VIII - FORMA E CRITÉRIOS DE SELEÇÃO DO FORNECEDOR: Forma de seleção e critério de julgamento da proposta",
+      "pagina_pdf": 182,
+      "natureza": "CONTRATUAL",
+      "observacao": "Criterios de medicao, recebimento e pagamento.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "068505a5a2d87bbe"
+    },
+    {
+      "id": "8.1",
+      "texto": "O fornecedor será selecionado por meio da realização de procedimento de LICITAÇÃO, na modalidade PREGÃO, sob a forma ELETRÔNICA, com adoção do critério de julgamento pelo MENOR PREÇO. Regime de execução",
+      "pagina_pdf": 182,
+      "natureza": "CONTRATUAL",
+      "observacao": "Forma e criterios de selecao do fornecedor.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "cceb673ace080f20"
+    },
+    {
+      "id": "8.2",
+      "texto": "O regime de execução do contrato será Empreitada Por Preço Unitário. Critérios de aceitabilidade de preços",
+      "pagina_pdf": 182,
+      "natureza": "CONTRATUAL",
+      "observacao": "Forma e criterios de selecao do fornecedor.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "563ef0b290cc2f92"
+    },
+    {
+      "id": "8.3",
+      "texto": "O critério de aceitabilidade de preços será: MENOR PREÇO GLOBAL. Exigências de habilitação",
+      "pagina_pdf": 182,
+      "natureza": "CONTRATUAL",
+      "observacao": "Forma e criterios de selecao do fornecedor.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "bae5242f5dde4c45"
+    },
+    {
+      "id": "8.4",
+      "texto": "Para fins de habilitação, deverá o licitante comprovar os seguintes requisitos: Habilitação jurídica",
+      "pagina_pdf": 182,
+      "natureza": "CONTRATUAL",
+      "observacao": "Forma e criterios de selecao do fornecedor.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "69d120cc35de71ea"
+    },
+    {
+      "id": "8.5",
+      "texto": "Empresário individual: inscrição no Registro Público de Empresas Mercantis, a cargo da Junta Comercial da respectiva sede;",
+      "pagina_pdf": 182,
+      "natureza": "CONTRATUAL",
+      "observacao": "Forma e criterios de selecao do fornecedor.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "125a2509d12238ab"
+    },
+    {
+      "id": "8.6",
+      "texto": "Sociedade empresária, sociedade limitada unipessoal – SLU ou sociedade identificada como empresa individual de responsabilidade limitada - EIRELI: inscrição do ato constitutivo, estatuto ou contrato social no Registro Público de Empresas Mercantis, a cargo da Junta Comercial da respectiva sede, acompanhada de documento comprobatório de seus administradores;",
+      "pagina_pdf": 182,
+      "natureza": "CONTRATUAL",
+      "observacao": "Forma e criterios de selecao do fornecedor.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "8e44b4ee9e9eb9e7"
+    },
+    {
+      "id": "8.7",
+      "texto": "Sociedade empresária estrangeira: portaria de autorização de funcionamento no Brasil, publicada no Diário Oficial da União e arquivada na Junta Comercial da unidade federativa onde se localizar a filial, agência, sucursal ou estabelecimento, a qual será considerada como sua sede, conforme Instrução Normativa DREI/ME nº 77, de 18 de março de 2020.",
+      "pagina_pdf": 182,
+      "natureza": "CONTRATUAL",
+      "observacao": "Forma e criterios de selecao do fornecedor.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "3766d589f6eb709d"
+    },
+    {
+      "id": "8.8",
+      "texto": "Sociedade simples: inscrição do ato constitutivo no Registro Civil de Pessoas Jurídicas do local de sua sede, acompanhada de documento comprobatório de seus administradores;",
+      "pagina_pdf": 182,
+      "natureza": "CONTRATUAL",
+      "observacao": "Forma e criterios de selecao do fornecedor.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "e545efc6faa7b1b2"
+    },
+    {
+      "id": "8.9",
+      "texto": "Filial, sucursal ou agência de sociedade simples ou empresária: inscrição do ato constitutivo da filial, sucursal ou agência da sociedade simples ou empresária, respectivamente, no Registro Civil das Pessoas Jurídicas ou no Registro Público de Empresas Mercantis onde opera, com averbação no Registro onde tem sede a matriz",
+      "pagina_pdf": 182,
+      "natureza": "CONTRATUAL",
+      "observacao": "Forma e criterios de selecao do fornecedor.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "bbadbccac1d169aa"
+    },
+    {
+      "id": "8.10",
+      "texto": "Os documentos apresentados deverão estar acompanhados de todas as alterações ou da consolidação respectiva. Habilitação fiscal, social e trabalhista",
+      "pagina_pdf": 182,
+      "natureza": "CONTRATUAL",
+      "observacao": "Forma e criterios de selecao do fornecedor.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "e41011f82367fd6a"
+    },
+    {
+      "id": "8.11",
+      "texto": "Prova de inscrição no Cadastro Nacional de Pessoas Jurídicas ou no Cadastro de Pessoas Físicas, conforme o caso;",
+      "pagina_pdf": 183,
+      "natureza": "CONTRATUAL",
+      "observacao": "Forma e criterios de selecao do fornecedor.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "da453d8e506e8890"
+    },
+    {
+      "id": "8.12",
+      "texto": "Prova de regularidade fiscal perante a Fazenda Nacional, mediante apresentação de certidão expedida conjuntamente pela Secretaria da Receita Federal do Brasil (RFB) e pela Procuradoria-Geral da Fazenda Nacional (PGFN), referente a todos os créditos tributários federais e à Dívida Ativa da União (DAU) por elas administrados, inclusive aqueles relativos à Seguridade Social, nos termos da Portaria Conjunta nº 1.751, de 02 de outubro de 2014, do Secretário da Receita Federal do Brasil e da Procuradora-Geral da Fazenda Nacional.",
+      "pagina_pdf": 183,
+      "natureza": "CONTRATUAL",
+      "observacao": "Forma e criterios de selecao do fornecedor.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "9bbc2048e7e63c36"
+    },
+    {
+      "id": "8.13",
+      "texto": "Prova de regularidade com o Fundo de Garantia do Tempo de Serviço (FGTS);",
+      "pagina_pdf": 183,
+      "natureza": "CONTRATUAL",
+      "observacao": "Forma e criterios de selecao do fornecedor.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "77db4466d9a236c9"
+    },
+    {
+      "id": "8.14",
+      "texto": "Prova de inexistência de débitos inadimplidos perante a Justiça do Trabalho, mediante a apresentação de certidão negativa ou positiva com efeito de negativa, nos termos do Título VII-A da Consolidação das Leis do Trabalho, aprovada pelo Decreto-Lei nº 5.452, de 1º de maio de 1943;",
+      "pagina_pdf": 183,
+      "natureza": "CONTRATUAL",
+      "observacao": "Forma e criterios de selecao do fornecedor.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "152f925060766a4c"
+    },
+    {
+      "id": "8.15",
+      "texto": "Prova de inscrição no cadastro de contribuintes Municipal relativo ao domicílio ou sede do fornecedor, pertinente ao seu ramo de atividade e compatível com o objeto contratual;",
+      "pagina_pdf": 183,
+      "natureza": "CONTRATUAL",
+      "observacao": "Forma e criterios de selecao do fornecedor.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "e37142a4dc8af662"
+    },
+    {
+      "id": "8.16",
+      "texto": "Prova de regularidade com a Fazenda Municipal do domicílio ou sede do fornecedor, relativa à atividade em cujo exercício contrata ou concorre;",
+      "pagina_pdf": 183,
+      "natureza": "CONTRATUAL",
+      "observacao": "Forma e criterios de selecao do fornecedor.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "6687db6d2bb199a0"
+    },
+    {
+      "id": "8.17",
+      "texto": "Caso o fornecedor seja considerado isento dos tributos relacionados ao objeto contratual, deverá comprovar tal condição mediante a apresentação de declaração da Fazenda respectiva do seu domicílio ou sede, ou outra equivalente, na forma da lei.",
+      "pagina_pdf": 183,
+      "natureza": "CONTRATUAL",
+      "observacao": "Forma e criterios de selecao do fornecedor.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "ab181cbb21d2aa13"
+    },
+    {
+      "id": "8.18",
+      "texto": "O fornecedor enquadrado como microempreendedor individual que pretenda auferir os benefícios do tratamento diferenciado previstos na Lei Complementar n. 123, de 2006, estará dispensado da prova de inscrição nos cadastros de contribuintes estadual e municipal. Qualificação Econômico-Financeira",
+      "pagina_pdf": 183,
+      "natureza": "CONTRATUAL",
+      "observacao": "Forma e criterios de selecao do fornecedor.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "b86227139473deea"
+    },
+    {
+      "id": "8.19",
+      "texto": "certidão negativa de falência expedida pelo distribuidor da sede do fornecedor - Lei nº",
+      "pagina_pdf": 183,
+      "natureza": "CONTRATUAL",
+      "observacao": "Forma e criterios de selecao do fornecedor.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "4dca4da989a53d08"
+    },
+    {
+      "id": "14.133",
+      "texto": ", de 2021, art. 69, caput, inciso II); Qualificação Técnica",
+      "pagina_pdf": 183,
+      "natureza": "NAO_CLASSIFICADO",
+      "observacao": "Classificar ao entrar no lote.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "1fbfb6487a8b9d80"
+    },
+    {
+      "id": "8.20",
+      "texto": "Comprovação de capacidade para a execução do objeto, mediante apresentação de documento emitido por pessoa jurídica de direito público (apenas), no qual se ateste que a empresa executou a qualquer tempo, fornecimento igual ou semelhante a este que está sendo licitado (Atestado de Capacidade Técnica) (art. 67, inciso II, da Lei 14.133/2021). Documentação Complementar:",
+      "pagina_pdf": 183,
+      "natureza": "CONTRATUAL",
+      "observacao": "Forma e criterios de selecao do fornecedor.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "d9ba32ea28071ba8"
+    },
+    {
+      "id": "8.21",
+      "texto": "A proponente vencedora deverá declarar, em documento único que: [a] Não emprega menor de 18 anos em trabalho noturno, perigoso ou insalubre e não emprega menor de 16 anos, salvo menor, a partir de 14 anos, na condição de aprendiz, nos termos do artigo 7°, XXXIII, da Constituição; [b] Não possui, em sua cadeia produtiva, empregados executando trabalho degradante ou forçado, observando o disposto nos incisos III e IV do art. 1º e no inciso III do art. 5º da Constituição Federal; [c] Que cumpre as exigências de reserva de cargos para pessoa com deficiência e para reabilitado da Previdência Social, previstas em lei e em outras normas específicas; [d] A inexistência de quaisquer fatos impeditivos de sua habilitação e que a mesma não foi declarada inidônea por Ato do Poder Público Municipal, ou que esteja temporariamente impedida de licitar, contratar ou transacionar com a Administração Pública de Anita Garibaldi ou quaisquer de seus órgãos descentralizados (inciso III e IV do art. 156 da Lei 14.133/2021); [e] Que não possui funcionário público no quadro societário da empresa; [f] Que está adequada à Lei Geral de Proteção de Dados (LGPD) – Lei nº 13.709/2018; [g] Que a empresa conhece na íntegra o Edital, está ciente e concorda com as condições impostas nele e em seus anexos, ao passo que se submete às condições nele estabelecidas, bem como de que a proposta apresentada compreende a integralidade dos custos para atendimento dos direitos trabalhistas assegurados na Constituição Federal, nas leis trabalhistas, nas normas infralegais, nas convenções coletivas de trabalho e nos termos de ajustamento de conduta vigentes na data de sua entrega em definitivo e que cumpre plenamente os requisitos de habilitação definidos no instrumento convocatório; [h] Que atende aos requisitos de habilitação, e o declarante responderá pela veracidade das informações prestadas, na forma da lei (art. 63, I, da Lei nº 14.133/2021). IX – VALORES DA CONTRATAÇÃO:",
+      "pagina_pdf": 184,
+      "natureza": "CONTRATUAL",
+      "observacao": "Forma e criterios de selecao do fornecedor.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "ee51a4ccf647d2c0"
+    },
+    {
+      "id": "9.1",
+      "texto": "O Valor Global orçado é de R$ 578.692,62 (quinhentos e setenta e oito mil, novecentos e sessenta e dois reais e sessenta e dois centavo) dividido conforme itens abaixo: 1 MUNICÍPIO DE ANITA GARIBALDI Valor Valor Total Item Descrição Qtd Un Unitário (R$) (R$) Serviços de Diagnóstico, Configuração, 1 Migração, Habilitação e Treinamento de 1 un 57.838,70 57.838,70 Usuários Gestão do Planejamento e Orçamento (Plano 2 12 meses 564,01 6.768,15 Plurianual, LDO e LOA) 3 Gestão Contábil e Financeira 12 meses 2.179,67 26.156,07 4 Gestão de Controle Interno 12 meses 545,48 6.545,73 5 Folha de Pagamento | eSocial 12 meses 1.692,49 20.309,91 6 Segurança e Medicina do Trabalho 12 meses 255,19 3.062,33 7 Ponto Eletrônico 12 meses 802,13 9.625,55 8 Recrutamento e Seleção 12 meses 264,33 3.172,00 9 Treinamento e Desenvolvimento 12 meses 165,50 1.986,00 10 Gestão de Compras, Licitações e Contratos 12 meses 1.121,08 13.452,99 11 Gestão de Almoxarifado 12 meses 298,63 3.583,52 12 Gestão de Patrimônio 12 meses 583,57 7.002,85 13 Gestão de Frota e Combustíveis 12 meses 494,21 5.930,48 14 Gestão de Fiscalização de Contratos 12 meses 577,48 6.929,76 15 Aplicativo Mobile Fiscalização de Contratos 12 meses 616,18 7.394,20 16 Gestão de Fiscalização Fazendária 12 meses 809,96 9.719,51 17 Gestão de Escrita Fiscal Eletrônica 12 meses 709,57 8.514,79 18 Gestão do Simples Nacional 12 meses 453,98 5.447,72 19 Gestão da Nota Fiscal de Serviços - ADN 12 meses 1.580,17 18.961,99 20 Robô da Malha Fina 12 meses 1.360,75 16.329,00 21 Gestão de Domicílio Eletrônico 12 meses 701,24 8.414,88 22 Gestão de Arrecadação 12 meses 1.029,86 12.358,33 23 Gestão de IPTU e Taxas 12 meses 708,48 8.501,80 24 Gestão de ITBI e Taxas 12 meses 423,87 5.086,40 25 Gestão de ISSQN e Taxas 12 meses 481,86 5.782,27 26 Gestão de Receitas Diversas 12 meses 181,72 2.180,67 27 Gestão da Dívida Ativa 12 meses 649,57 7.794,84 28 Abertura de Empresas (Integração RedeSim) 12 meses 1.248,36 14.980,34 29 Gestão da Construção Civil 12 meses 762,29 9.147,52 30 Gestão do Portal Institucional Website 12 meses 393,36 4.720,31 31 Gestão do Portal de Transparência 12 meses 569,84 6.838,07 32 Gestão do Portal de Serviços e Autoatendimento 12 meses 591,66 7.099,96 33 Aplicativo Mobile Autoatendimento 12 meses 850,63 10.207,61 34 Gestão de Procuradoria 12 meses 861,17 10.334,05 35 Gestão do Protocolo e Processo Digital 12 meses 686,60 8.239,23 36 Gestão da Comunicação Interna 12 meses 946,02 11.352,21 37 Gestão de Serviços Públicos 12 meses 413,00 4.956,00 38 Gestão de Cemitério 12 meses 503,50 6.042,00 39 Gestão de Agricultura 12 meses 835,58 10.026,90 40 Data Center 12 meses 6.011,43 72.137,13 2 CÂMARA DE VEREADORES DE ANITA GARIBALDI Valor Valor Total Item Descrição Qtd Un Unitário (R$) (R$) Gestão do Planejamento e Orçamento (Plano 41 12 meses 204,11 2.449,28 Plurianual, LDO e LOA) 42 Gestão Contábil e Financeira 12 meses 616,75 7.401,00 43 Folha de Pagamento | eSocial 12 meses 635,42 7.625,00 44 Segurança e Medicina do Trabalho 12 meses 142,92 1.715,00 45 Gestão de Compras, Licitações e Contratos 12 meses 382,57 4.590,80 46 Gestão de Patrimônio 12 meses 222,25 2.667,00 47 Gestão do Portal da Transparência 12 meses 240,80 2.889,60 3 FUNDO MUNICIPA DE SAÚDE ANITA GARIBALDI: VALOR VALOR ITEM DESCRIÇÃO QTD UN UNIT. R$ TOTAL R$ Gestão do Planejamento e Orçamento (Plano 48 12 meses 212,03 2.544,37 Plurianual, LDO e LOA) 49 Gestão Contábil e Financeira 12 meses 551,50 6.618,03 50 Gestão de Compras, Licitações e Contratos 12 meses 384,44 4.613,29 51 Gestão de Patrimônio 12 meses 212,24 2.546,85 52 Gestão do Portal da Transparência 12 meses 171,90 2.062,78 Gestão de Assistência a Farmacêutica 53 12 meses 658,84 7.906,05 (Fármacia) 4 VALOR VALOR ITEM SERVIÇOS QTD UN UNIT. R$ TOTAL R$ 54 Serviços de customização 60 hora 325,23 19.513,80 55 Serviços de atendimento técnico presencial 100 hora 232,71 23.271,00 56 Serviços de atendimento técnico remoto 100 hora 156,17 15.617,00 X - ADEQUAÇÃO ORÇAMENTÁRIA:",
+      "pagina_pdf": 184,
+      "natureza": "CONTRATUAL",
+      "observacao": "Valores da contratacao.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "d3eac19415a8ad82"
+    },
+    {
+      "id": "10.1",
+      "texto": "As despesas decorrentes da presente contratação correrão à conta de recursos específicos consignados na Lei Orçamentária Anual.",
+      "pagina_pdf": 187,
+      "natureza": "CONTRATUAL",
+      "observacao": "Adequacao orcamentaria.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "d3d97ad3cbb3a72b"
+    },
+    {
+      "id": "10.1.1",
+      "texto": "A contratação será atendida pelas seguintes dotações:",
+      "pagina_pdf": 187,
+      "natureza": "CONTRATUAL",
+      "observacao": "Adequacao orcamentaria.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "10981a970d53067d"
+    },
+    {
+      "id": "10.2",
+      "texto": "A dotação relativa aos exercícios financeiros subsequentes será indicada após aprovação da Lei Orçamentária respectiva e liberação dos créditos correspondentes, mediante apostilamento. XI - ESPECIFICAÇÃO DO PRODUTO, PREFERENCIALMENTE CONFORME CATÁLOGO ELETRÔNICO DE PADRONIZAÇÃO, OBSERVADOS OS REQUISITOS DE QUALIDADE, RENDIMENTO, COMPATIBILIDADE, DURABILIDADE E SEGURANÇA:",
+      "pagina_pdf": 188,
+      "natureza": "CONTRATUAL",
+      "observacao": "Adequacao orcamentaria.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "6208389b9b01bb40"
+    },
+    {
+      "id": "11.1",
+      "texto": "O Município adotará o catálogo eletrônico de padronização de compras, serviços e obras, instituído pelo Poder Executivo Federal, conforme possibilidade prevista no artigo 19, inciso II, da Lei n.º 14.133, de 1º de abril de 2021, bem como, os catálogos constantes no PNCP (Portal Nacional de Contratações Públicas), sendo que o referido objeto não se encontra ainda previsto no referido catálogo. XII – LOCAIS DE EXECUÇÃO:",
+      "pagina_pdf": 188,
+      "natureza": "CONTRATUAL",
+      "observacao": "Especificacao do produto e catalogo eletronico.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "33d0020149e1c823"
+    },
+    {
+      "id": "12.1",
+      "texto": "Os serviços poderão ser prestados na sede da Prefeitura Municipal e da Câmara de Vereadores de Anita Garibaldi, situadas na Rua Otacilio Granzotto, nº 20, Centro, Anita Garibaldi/SC, ou de forma remota, a depender da demanda e necessidade dos Contratantes. Anita Garibaldi, SC, 16 de julho de 2026. ________________________ Wolney Luiz Cesconetto Secretário do Planejamento e Administração",
+      "pagina_pdf": 188,
+      "natureza": "CONTRATUAL",
+      "observacao": "Locais de execucao.",
+      "evidencia": "",
+      "situacao": "NAO_VERIFICADO",
+      "hash_referencia": "a0e2919a72a623de"
+    }
+  ]
+}
