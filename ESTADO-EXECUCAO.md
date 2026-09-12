@@ -3649,6 +3649,7 @@ linha do histórico, que o molde não oferece — e o molde não cresce para aco
 | `npm run test:rapido` | 70 arquivos, 759 testes | 2026-09-12 |
 | `npm run build` | limpo | 2026-09-12 |
 | `npm run smoke:acervo` | **21 passos, 0 falhas** | 2026-09-12 |
+| `npm run portao -- --fim-de-lote` | **10 de 10** na PRIMEIRA execução — `test:fuso` EXECUTADO (520s) | 2026-09-12 |
 
 ## 19. O próximo passo
 
@@ -3671,11 +3672,61 @@ falhas**. `5.19.3` e `5.19.7` viraram `VALIDADO_LOCALMENTE`. O portão de fecham
 **10 de 10 com `test:fuso` EXECUTADO** (726s), não pulado — em `39f4a6e`. Nada publicado,
 nada transmitido, nenhum push externo.
 
-⚠️ **O ENT08 FOI ENTREGUE — §29.** O eixo de gestão do bem tem tela: quatro ações no detalhe
+⚠️ **O ENT08 ESTÁ FECHADO — §29.** O eixo de gestão do bem tem tela: quatro ações no detalhe
 (localização, responsável, estado de conservação, situação física), despachante `acaoDoBem` na
 porta, e o percurso em **21 passos, 0 falhas**. `5.19.11` e `5.19.12` viraram
 `VALIDADO_LOCALMENTE`. Foi lote de **superfície pura** — sem ação nova no censo e sem
-migration —, e a natureza foi declarada antes de começar.
+migration —, e a natureza foi declarada antes de começar. O portão deu **10 de 10 na PRIMEIRA
+execução**, com `test:fuso` EXECUTADO (520s) — em `8beb6b1`.
+
+⚠️ **PENDÊNCIA NOVA — `MOTIVO-DE-BAIXA-ORFAO`.** O rol de motivos de baixa que a `5.19.30`
+manda o ente configurar existe, é alcançável pela tela (§27) e **ato nenhum o lê**: o modelo
+`MotivoDeBaixa` não tem uma única back-relation, e `zBaixarBemInput` toma `tipo` de um enum
+fechado de dois valores mais um `motivo` de texto livre. Isso **não invalida** a marcação — a
+cláusula pede a *inclusão*, e o percurso a provou —, mas um cadastro configurável que nada
+consome é mobília que não serve a nada. Ligá-lo ao ato exige FK nova, logo migration.
+
+⚠️ **PENDÊNCIA NOVA — `BAIXA-E-TERMO-SEM-SUPERFICIE`.** Nem `baixarBem` nem
+`emitirTermoPatrimonial` são alcançáveis por tela alguma — grep vazio em `lib/portas` e `app`.
+As duas ações já existem no censo e já estão mapeadas em `patrimonio`: **não falta ação, falta
+tela.** O termo, porém, recebe `bensId` como array (`"um termo sem bem não entrega nada a
+ninguém"`), e o molde não tem campo repetidor — mesma parede de `COMISSAO-COM-MEMBROS`.
+
+⚠️ **DECISÃO DEVIDA AO ENTE — `ROTEIRO-PATRIMONIAL-NAO-PARAMETRIZADO`.** O eixo FINANCEIRO do
+patrimônio está inteiro inalcançável nesta instalação, e **não por falta de tela**. Medido no
+banco de desenvolvimento:
+
+| Tabela | Linhas |
+|---|---|
+| `ContaPcasp` | 7.864 |
+| `RoteiroOrcamentario` | 5 |
+| `LancamentoContabil` | 61 |
+| **`RoteiroPatrimonial`** | **0** |
+| `RoteiroReconhecimento` / `RoteiroEncerramento` / `ParametroAtualizacaoClasse` | **0** |
+
+A contabilidade orçamentária roda; a patrimonial nunca foi parametrizada. E isso é o sistema
+**funcionando como desenhado**: `roteiroDoTipo` é fail-closed e diz por quê — *"o M10 não
+inventa conta: sem roteiro, o movimento NÃO é registrado"*.
+
+⚠️ **E NÃO SE RESOLVE SEMEANDO.** A fonte oficial (`docs/oficial/tce-pb/MANIFEST.json`) publica
+o layout do SAGRES, o PCASP e os subelementos — um **plano de contas**, não um mapeamento
+tipo-de-movimento → débito/crédito. Qual conta cada movimento patrimonial debita e credita é
+**decisão contábil do município**. Semeá-la para um percurso passar seria inventar norma, e o
+efeito seria pior que a tela faltando: lançamentos no razão apontando para contas que ninguém
+escolheu. Fica ao lado de "qual banco o município usa".
+
+⚠️ **PENDÊNCIA NOVA — `USUARIO-SEM-PESSOA`.** A `5.19.10` pede "visualizar somente os bens sob
+a SUA responsabilidade", e ela **não é derivável**: quem autentica é `Usuario` (identificador,
+nome, perfis, credenciais) e quem responde pelo bem é `Pessoa` — `bensSobResponsabilidade`
+recebe um `Pessoa.id`. **Nada liga os dois modelos.** Fechar a cláusula exige FK nova e, antes
+dela, a decisão de modelagem: um usuário do sistema **é** uma pessoa do cadastro? Nem sempre —
+uma conta de integração não é.
+
+⚠️ **E UMA DECISÃO QUE É DO OPERADOR, ao lado da de §24: AS DUAS BAIXAS NÃO SE CONHECEM.**
+`emitirTermoPatrimonial` marca o bem `BAIXADO` no eixo FÍSICO e não move valor; `baixarBem`
+move valor e não marca `BAIXADO`. Um bem pode estar baixado num eixo e não no outro, e hoje
+**nada acusa isso**. Unificá-los é decisão com consequência contábil — não efeito colateral de
+um lote de tela.
 
 **O catálogo depois destes dois lotes:**
 

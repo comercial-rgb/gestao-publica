@@ -227,6 +227,21 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
         { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 3 },
       ],
     },
+    {
+      // ⚠️ AÇÃO SEM CAMPOS — o molde prevê ("vazio ⇒ só o botão"), e a etiqueta não pergunta
+      // nada: o conteúdo dela é o PRÓPRIO número de tombamento. Inventar um segundo
+      // identificador criaria duas verdades sobre o mesmo armário.
+      //
+      // ⚠️ E ELA É IDEMPOTENTE NO DOMÍNIO: se o bem já tem código, o serviço devolve o MESMO
+      // e não reescreve — gerar um código novo faria o leitor deixar de reconhecer a etiqueta
+      // que já está colada na prateleira. O aviso diz isso a quem clica.
+      nome: "gerar-etiqueta",
+      rotulo: "Gerar etiqueta",
+      acaoDoCenso: "GERAR_ETIQUETA_DE_BEM",
+      aviso:
+        "O código é o próprio número de tombamento. Se o bem já tem etiqueta, esta ação " +
+        "devolve a mesma — reimprimir não muda o código já colado.",
+    },
   ],
   permissoes: { criar: "CADASTRAR_BEM" },
 

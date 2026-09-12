@@ -2,6 +2,7 @@ import { diaCivilBr, inicioDoDiaCivil } from "../../../packages/datas/index.js";
 import {
   cadastrarBem,
   cadastrarClasseDeBens,
+  gerarEtiquetaDeBem,
   registrarMovimentoDeGestao,
 } from "../../../modules/m10-patrimonial/gestao-do-bem.js";
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
@@ -383,6 +384,15 @@ export async function acaoDoBem(acao: string, bemId: string, c: Campos): Promise
             | "EM_DESUSO"
             | "BAIXADO",
         })
+      );
+      return;
+    // ⚠️ ESTE CASO NÃO USA `comum(criadoPor)`, e a diferença é de propósito: o objeto comum
+    // carrega data do fato e motivo, que os quatro movimentos de gestão exigem e a etiqueta
+    // não tem. Reaproveitá-lo aqui faria a ação pedir campos que ela não usa — e o formulário
+    // do molde os renderizaria, obrigatórios, sem que o domínio jamais os lesse.
+    case "gerar-etiqueta":
+      await comEscritaAutenticada("GERAR_ETIQUETA_DE_BEM", (criadoPor) =>
+        gerarEtiquetaDeBem(cliente(), { bemId, criadoPor })
       );
       return;
     default:

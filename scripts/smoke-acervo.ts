@@ -503,7 +503,45 @@ async function main(): Promise<void> {
     );
 
     // ══════════════════════════════════════════════════════════════════════
-    // 7 · O HUB DA ÁREA — a mesma lista alimenta hub e busca
+    // 7 · A ETIQUETA — e a asserção central é a IDEMPOTÊNCIA, pela tela
+    //
+    // ⚠️ PRESSIONA DUAS VEZES DE PROPÓSITO. O domínio devolve `reaproveitada: true` quando o
+    // bem já tem código, sem reescrever — porque gerar um código novo faria o leitor deixar de
+    // reconhecer a etiqueta já colada na prateleira. Um teste de unidade prova a função; só o
+    // percurso prova que o BOTÃO não a viola.
+    // ══════════════════════════════════════════════════════════════════════
+    await irPara(page, href);
+    const rEtiqueta1 = await preencherEEnviar(page, "gerar-etiqueta", []);
+    conferir("etiqueta: o servidor aceitou a primeira geração", rEtiqueta1.tipo === "ok", rEtiqueta1.texto);
+
+    // ⚠️ O SELO É DERIVADO de `codigoDeBarras` — se ele aparecer após recarga, a etiqueta
+    // persistiu pelo caminho que o operador enxerga, e não só na resposta da ação.
+    const comSelo = await irPara(page, href);
+    conferir(
+      "etiqueta: RECARREGADO, o detalhe mostra o selo derivado do código",
+      comSelo.includes("etiquetado"),
+      "o selo 'Etiquetado' não apareceu depois da recarga"
+    );
+
+    const rEtiqueta2 = await preencherEEnviar(page, "gerar-etiqueta", []);
+    conferir(
+      "etiqueta: a SEGUNDA geração também é aceita (idempotente, não recusa)",
+      rEtiqueta2.tipo === "ok",
+      rEtiqueta2.texto
+    );
+
+    // ⚠️ E A PROVA DE QUE ELA NÃO MUDOU: o código é o próprio tombamento, e o detalhe tem de
+    // continuar exibindo o MESMO. Uma segunda etiqueta diferente passaria como "sucesso" nas
+    // duas ações acima — é esta conferência que separa idempotente de "gravou de novo".
+    const depoisDaSegunda = await irPara(page, href);
+    conferir(
+      "etiqueta: o código continua sendo o tombamento — a segunda não gerou outro",
+      depoisDaSegunda.includes(TOMB.toLowerCase()) && depoisDaSegunda.includes("etiquetado"),
+      "o bem perdeu o selo ou o código deixou de ser o tombamento após a segunda geração"
+    );
+
+    // ══════════════════════════════════════════════════════════════════════
+    // 8 · O HUB DA ÁREA — a mesma lista alimenta hub e busca
     // ══════════════════════════════════════════════════════════════════════
     const hub = await irPara(page, "/patrimonio");
     conferir(
