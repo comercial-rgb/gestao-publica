@@ -3411,6 +3411,7 @@ de nove percursos no lote errado é mudança larga sem percurso que a prove.
 | sonda do registro (banco) | `LOGIN SUCESSO` 07:34:29; nada entre 04:42 e 07:34 | 2026-09-12 |
 | `npm run portao -- --fim-de-lote` (1ª) | **7 de 10** — `test:rapido` e `test:tudo` reprovados, `test:fuso` pulado | 2026-09-12 |
 | `npm run test:rapido` (após correção) | 70 arquivos, 759 testes, verde | 2026-09-12 |
+| `npm run portao -- --fim-de-lote` (2ª) | **10 de 10** — `test:fuso` EXECUTOU (463s), não pulado | 2026-09-12 |
 
 ### 27.5 · O portão recusou o lote, e a recusa estava certa
 
@@ -3448,18 +3449,40 @@ que foi violada. Guard serve exatamente para isso: a intenção não protege nin
 
 ## 19. O próximo passo
 
-⚠️ **O ENT05 está FECHADO e PARADO no gate** — 10 de 10, saída 0 (20.12). Nada foi
-publicado, nada foi transmitido, nenhum push externo.
+⚠️ **ONDE PARAMOS.** O ENT06 correu até aqui em seis levas: item 0 (superfície do
+almoxarifado físico, §21), item 1 (conceder ação a perfil, §23), item 2 (liquidação de
+material — **construído e PARADO por medição**, §24), item 3 (eixo da data na fronteira,
+§25), os selects que nunca recebiam opção (§26) e os cadastros de apoio da gestão do bem
+(§27). O último portão deu **10 de 10 com `test:fuso` EXECUTADO**, não pulado. Nada foi
+publicado, nada transmitido, nenhum push externo.
 
-**Para o ENT06**, na ordem que a medição de 20.1 impõe:
+⚠️ **A DECISÃO QUE CONTINUA DEVIDA AO OPERADOR — §24.** Fechar
+`LIQUIDACAO-MATERIAL-ALMOXARIFADO` pelo ato composto significa reescrever a prova do
+invariante razão↔estoque: **32 asserções**. Isso é decisão, não efeito colateral de um lote.
+O trabalho está preservado no ramo `lote2-liquidacao-material` (`fc50f94`). Enquanto não
+houver decisão, o caminho de dois passos segue fail-closed e a pendência segue aberta.
 
-0. ⚠️ **O ITEM 2 DO ENT05 — as telas das três seções, pelo molde.** É a única frente do
-   projeto onde o modelo já está de pé, testado contra banco, e **só falta superfície**:
-   almoxarifado físico (14 modelos), gestão do bem (11), a compra (12). É também a única
-   forma de as **54 cláusulas de `IMPLEMENTADO_NAO_VALIDADO` virarem `VALIDADO_LOCALMENTE`**
-   — hoje elas existem no servidor e nenhum servidor municipal as alcança. **Lote de
-   superfície: a meta por natureza é alta**, e aqui o molde rende, porque não precisa
-   inventar modelo antes.
+**O PRÓXIMO LOTE — o acervo: classes de bens, depois o bem.** Ele não é escolha de gosto:
+saiu de medição feita no fim de §27.
+
+| Medição | Número | O que decide |
+|---|---|---|
+| `ClasseDeBens` no banco | **0** | o select de classe do formulário do bem nasceria DESABILITADO — a classe entra ANTES do bem |
+| serviço que cria `BemPatrimonial` | **nenhum** | `adquirirBem` exige liquidação; `registrarEntradaAvulsa` recebe um bem que já existe. O lote é de MODELO mais superfície, não de superfície |
+| `ContaPcasp` analíticas de ativo | **1.404** | o campo de conta da classe exige recorte declarado, ou vira o "formulário bonito e inútil" da própria regra |
+| `numeroTombamento` gerado por numerador | **não existe** | o ente informa o tombamento; inventar formato seria inventar o que a fonte não diz |
+
+⚠️ **PENDÊNCIA NOVA — `RECORTE-DE-CONTA-POR-NOME-LITERAL`.** O `verificarDefinicao` cobra
+`classesDeConta` procurando o campo pelo **nome literal `contaContabilId`**. A coluna real de
+`ClasseDeBens` é `contaContabilAtivoId` — com esse nome, o guard não cobra recorte nenhum e
+o select de 1.404 contas monta sem que nada acuse. É guarda que enumera forma em vez de
+afirmar propriedade, e o lote do acervo esbarra nela de frente.
+
+⚠️ **PENDÊNCIA NOVA — `ENTRAR-POR-CLIQUE-FRAGIL`.** Nove percursos ainda entram por
+`Promise.all([waitForNavigation, click])`. Passam em máquina folgada e falham em máquina
+apertada **apontando para a senha** (§27.3).
+
+**E o que continua na fila, sem mudança:**
 
 1. **Continuar o censo.** Ele rendeu **220 cláusulas** no ENT03c; sobram **1.726** em
    `NAO_VERIFICADO` — 5.12 (folha, em outro ORM), 5.8 (características gerais), 5.20–5.22.
