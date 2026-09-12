@@ -3409,6 +3409,42 @@ de nove percursos no lote errado é mudança larga sem percurso que a prove.
 | `npm run build` | 136 rotas, as seis novas entre elas | 2026-09-12 |
 | `npm run smoke:gestao-do-bem` | **10 passos, 0 falhas** | 2026-09-12 |
 | sonda do registro (banco) | `LOGIN SUCESSO` 07:34:29; nada entre 04:42 e 07:34 | 2026-09-12 |
+| `npm run portao -- --fim-de-lote` (1ª) | **7 de 10** — `test:rapido` e `test:tudo` reprovados, `test:fuso` pulado | 2026-09-12 |
+| `npm run test:rapido` (após correção) | 70 arquivos, 759 testes, verde | 2026-09-12 |
+
+### 27.5 · O portão recusou o lote, e a recusa estava certa
+
+A primeira execução do portão deu **7 de 10**. Typecheck nos três projetos,
+`cobertura-de-tsconfig`, `prisma:validate`, `deriva` e `build` passaram; `test:rapido` e
+`test:tudo` reprovaram, e `test:fuso` ficou **pulado por depender de `test:tudo`** — que,
+pela regra deste repositório, não é passo barato: é passo que não aconteceu.
+
+**A causa foi uma só, e era minha.** `test/ui/rotulos-de-conformidade.test.ts` achou três
+ocorrências de número de cláusula em **texto renderizado**:
+
+| Onde | O que era |
+|---|---|
+| `lib/navegacao.ts` | a descrição do item de menu, que aparece no hub e na barra lateral |
+| `gestao-do-bem-dados.ts` | a `nota` de um campo do detalhe |
+| `gestao-do-bem.ts` | a `descricao` do descritor — subtítulo da tela e estado vazio |
+
+⚠️ **E a regra não é estética.** Número de cláusula em tela **declara atendimento a quem
+não tem como conferir** — é selo de conformidade com outro nome. O que a tela deve dizer é
+o que ela FAZ. O teste é explícito em que **comentário é permitido**, e por isso apaga os
+comentários antes de varrer: proibi-los empurraria a rastreabilidade para fora do código,
+que é onde ela deixa de ser mantida. A correção moveu o rastro para comentário e reescreveu
+as três frases em vocabulário de negócio — "o rol é do ente e se cadastra aqui".
+
+⚠️ **O que a medição prova sobre o resto do lote.** `test:tudo` reprovou por **esse teste e
+mais nada**: 201 de 202 arquivos e 2.105 de 2.106 testes verdes, em 541 s. O lote não tinha
+segundo defeito escondido atrás do primeiro — e é por isso que valeu deixar o portão correr
+até o fim em vez de matá-lo na primeira reprovação: ele não para no primeiro erro, e a
+lista completa saiu de uma passada só numa máquina que leva nove minutos para dar uma volta.
+
+⚠️ **Nota de método, e ela é desconfortável.** Este mesmo lote escreveu, no comentário do
+descritor, que o catálogo não deve confundir superfície entregue com cláusula atendida — e
+ao mesmo tempo carimbou o número da cláusula na tela. A regra estava citada no arquivo em
+que foi violada. Guard serve exatamente para isso: a intenção não protege ninguém.
 
 ## 19. O próximo passo
 

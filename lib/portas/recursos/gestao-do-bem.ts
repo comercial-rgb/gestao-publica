@@ -80,9 +80,13 @@ export const MOTIVOS_DE_BAIXA: DefinicaoDeRecurso = definirRecurso({
   rotulo: "Motivos de baixa",
   rotuloSingular: "Motivo de baixa",
   rota: "/patrimonio/motivos-de-baixa",
+  // ⚠️ A CLÁUSULA DE ORIGEM É A TR 5.19.30, e ela fica AQUI, em comentário, e não na
+  // descrição que vai para a tela. Número de cláusula em texto renderizado declara
+  // atendimento a quem não tem como conferir — o rastro pertence ao código, o rótulo
+  // pertence ao negócio. Foi assim que este lote reprovou no portão da primeira vez.
   descricao:
-    "Por que um bem sai do acervo: alienação, doação, inservível, furto. O rol é do ente — a " +
-    "TR 5.19.30 manda que ele seja configurável, e não uma lista fechada no código.",
+    "Por que um bem sai do acervo: alienação, doação, inservível, furto. O rol é do ente e " +
+    "se cadastra aqui, em vez de ser uma lista fechada no sistema.",
   campos: [
     { nome: "codigo", rotulo: "Código", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "BX-01" },
     { nome: "descricao", rotulo: "Descrição", tipo: "texto", obrigatorio: true, largura: 3 },

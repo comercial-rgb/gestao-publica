@@ -336,7 +336,7 @@ export const ALMOXARIFADO: readonly RelatorioNav[] = [
  */
 export const GESTAO_DO_BEM: readonly RelatorioNav[] = [
   { href: "/patrimonio/localizacoes", numero: "Localizações", rotulo: "Localizações Físicas", descricao: "Onde o bem fica, em árvore: prédio, andar, sala — com o setor que responde pela guarda. É para cá que a transferência move o bem, e é por aqui que o inventário sabe onde procurar." },
-  { href: "/patrimonio/motivos-de-baixa", numero: "Motivos", rotulo: "Motivos de Baixa", descricao: "Por que um bem sai do acervo: alienação, doação, inservível, furto. O rol é do ente — a TR 5.19.30 manda que seja configurável, e não uma lista fechada no código." },
+  { href: "/patrimonio/motivos-de-baixa", numero: "Motivos", rotulo: "Motivos de Baixa", descricao: "Por que um bem sai do acervo: alienação, doação, inservível, furto. O rol é do ente e se cadastra aqui — não é uma lista fechada no sistema." },
   { href: "/patrimonio/tipos-de-incorporacao", numero: "Incorporação", rotulo: "Tipos de Incorporação", descricao: "Como o bem entrou: adquirido, doação, comodato, permuta. Doação e compra produzem lançamentos diferentes, e é o tipo que explica a entrada." },
 ];
 

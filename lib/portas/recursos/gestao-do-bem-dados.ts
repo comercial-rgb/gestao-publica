@@ -197,7 +197,7 @@ export async function verMotivoDeBaixa(id: string): Promise<DetalheLido | null> 
       {
         rotulo: "O que este motivo significa",
         valor: x.descricao,
-        nota: "O rol é do ente (TR 5.19.30) — a baixa registra QUAL motivo, e o motivo explica a saída do bem.",
+        nota: "O rol é do ente — a baixa registra QUAL motivo, e o motivo explica a saída do bem.",
       },
       { rotulo: "Criado em", valor: diaCivilBr(x.criadoEm), tipo: "data" },
       { rotulo: "Criado por", valor: x.criadoPor },
