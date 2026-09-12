@@ -6,7 +6,7 @@ import { PageHeader } from "../../../../components/ui/PageHeader";
 import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import { lerPainelConciliacao, PortaSemBancoError, type PainelConciliacao } from "../../../../lib/portas/conciliacao";
-import { dataBr, recorteDe } from "../../../../lib/recorte";
+import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
 
 /**
  * CONCILIAÇÃO BANCÁRIA (M09 bloco 3 + M17-a) — SÓ LEITURA.
@@ -35,7 +35,37 @@ export default async function ConciliacaoBancariaPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
-  const { exercicio } = recorteDe(await searchParams);
+  const sp = await searchParams;
+
+  // ⚠️ SÓ O EXERCÍCIO: a conciliação confronta o extrato do BANCO com o razão, e conta
+  // bancária não pertence a unidade orçamentária — `lerPainelConciliacao({ exercicio })` não
+  // recebe unidade. Não há `?ug=` a recusar aqui.
+  //
+  // ⚠️ E A RECUSA VEM ANTES DO TRY PRINCIPAL, o que deixa o `cabecalho` onde estava: ele é
+  // usado em TRÊS saídas desta tela, e a essa altura `exercicio` já foi autorizado, então
+  // as três podem afirmá-lo sem mentir.
+  let exercicio: number;
+  try {
+    exercicio = exercicioAutorizado(sp);
+  } catch (erro) {
+    return (
+      <div className="space-y-4">
+        <SincronizarContexto />
+        <PageHeader
+          titulo="Conciliação bancária"
+          subtitulo="O extrato do banco confrontado com o razão"
+        />
+        <EstadoVazio
+          titulo={
+            erro instanceof ExercicioIlegivelError
+              ? "O exercício pedido não é um ano"
+              : "Não foi possível ler o recorte"
+          }
+          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+        />
+      </div>
+    );
+  }
 
   const cabecalho = (
     <PageHeader

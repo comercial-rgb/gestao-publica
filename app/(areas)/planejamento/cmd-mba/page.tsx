@@ -16,7 +16,7 @@ import {
   type PlanoProgramacao,
   type VersaoProgramacao,
 } from "../../../../lib/portas/programacao";
-import { dataBr, recorteDe } from "../../../../lib/recorte";
+import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
 
 /**
  * PROGRAMAÇÃO FINANCEIRA — CMD e MBA (TR 4.18/4.19/4.43/4.44 · LRF arts. 8º, 9º e 13).
@@ -49,11 +49,42 @@ export default async function CmdMbaPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
-  const recorte = recorteDe(await searchParams);
+  const sp = await searchParams;
+
+  // ⚠️ SÓ O EXERCÍCIO, E O SUBTÍTULO DESTA TELA JÁ DIZIA ISSO: "consolidado do ente". A
+  // programação financeira é do ENTE porque o caixa é um só — a mesma razão que a rota de
+  // PDF dela registra em comentário. As três leituras (`lerCmdVigente`, `lerMbaVigente`,
+  // `lerConfrontoMba`) recebem apenas o ano.
+  //
+  // ⚠️ E `recorte` DEIXOU DE EXISTIR aqui: o objeto carregava uma `unidadeCodigo` que esta
+  // tela nunca usou, e manter um campo que ninguém lê é um convite a alguém passá-lo adiante
+  // um dia, dando a esta página um recorte que a LRF não tem.
+  let exercicio: number;
+  try {
+    exercicio = exercicioAutorizado(sp);
+  } catch (erro) {
+    return (
+      <div className="space-y-4">
+        <SincronizarContexto />
+        <PageHeader
+          titulo="Programação financeira — CMD e MBA"
+          subtitulo="Cronograma mensal de desembolso e metas bimestrais de arrecadação"
+        />
+        <EstadoVazio
+          titulo={
+            erro instanceof ExercicioIlegivelError
+              ? "O exercício pedido não é um ano"
+              : "Não foi possível ler o recorte"
+          }
+          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+        />
+      </div>
+    );
+  }
   const cabecalho = (
     <PageHeader
       titulo="Programação financeira — CMD e MBA"
-      subtitulo={`Exercício ${recorte.exercicio} · consolidado do ente — cronograma mensal de desembolso e metas bimestrais de arrecadação (LRF arts. 8º, 9º e 13)`}
+      subtitulo={`Exercício ${exercicio} · consolidado do ente — cronograma mensal de desembolso e metas bimestrais de arrecadação (LRF arts. 8º, 9º e 13)`}
     />
   );
 
@@ -62,9 +93,9 @@ export default async function CmdMbaPage({
   let confronto: ConfrontoMbaDaTela;
   try {
     [cmd, mba, confronto] = await Promise.all([
-      lerCmdVigente({ exercicio: recorte.exercicio }),
-      lerMbaVigente({ exercicio: recorte.exercicio }),
-      lerConfrontoMba({ exercicio: recorte.exercicio }),
+      lerCmdVigente({ exercicio: exercicio }),
+      lerMbaVigente({ exercicio: exercicio }),
+      lerConfrontoMba({ exercicio: exercicio }),
     ]);
   } catch (erro) {
     return (
@@ -103,7 +134,7 @@ export default async function CmdMbaPage({
         <EstadoVazio
           titulo="Nenhuma programação financeira registrada"
           descricao={
-            `Não há CMD nem MBA vigente para o exercício ${recorte.exercicio}. ${descreverAusencia(cmd, "CMD")} ` +
+            `Não há CMD nem MBA vigente para o exercício ${exercicio}. ${descreverAusencia(cmd, "CMD")} ` +
             `${descreverAusencia(mba, "MBA")} A programação nasce de decreto do Executivo (proposta a partir da LOA, ` +
             `depois retificada por versões novas) — o banco atual foi semeado sem nenhuma. Nada foi arbitrado nesta tela: ` +
             `um cronograma inventado viraria teto de empenho falso quando a limitação de empenho fosse ligada.`
@@ -190,7 +221,7 @@ export default async function CmdMbaPage({
               titulo="Confronto sem linhas"
               descricao={
                 confronto.ateBimestre === 0
-                  ? `Nenhum bimestre do exercício ${recorte.exercicio} fechou até hoje. O art. 9º julga "ao final de um bimestre" — confrontar o bimestre em curso compararia a meta cheia com uma arrecadação pela metade e acusaria frustração inexistente.`
+                  ? `Nenhum bimestre do exercício ${exercicio} fechou até hoje. O art. 9º julga "ao final de um bimestre" — confrontar o bimestre em curso compararia a meta cheia com uma arrecadação pela metade e acusaria frustração inexistente.`
                   : mba.vigente === null
                     ? "Sem MBA vigente não há meta contra a qual confrontar o arrecadado. O confronto é meta × realização: sem a primeira, ele não existe."
                     : `O MBA vigente não tem metas nos bimestres já decorridos (até o ${confronto.ateBimestre}º).`
@@ -210,7 +241,7 @@ export default async function CmdMbaPage({
       <div className="flex justify-end">
         {/* O PDF é esta tela — as mesmas leituras — mais as MINUTAS de decreto (TR 4.19). */}
         <BotaoPdf
-          href={`/planejamento/cmd-mba/pdf?exercicio=${recorte.exercicio}`}
+          href={`/planejamento/cmd-mba/pdf?exercicio=${exercicio}`}
           rotulo="Imprimir programação e minutas de decreto"
         />
       </div>
