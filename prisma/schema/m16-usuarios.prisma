@@ -138,6 +138,13 @@ enum AcaoDoSistema {
   CADASTRAR_CLASSE_DE_BENS
   CADASTRAR_BEM
 
+  // ── ENT11 — M10 patrimônio, o EIXO FINANCEIRO: o roteiro contábil do evento ──
+  //
+  // ⚠️ UMA AÇÃO PARA OS DOIS ROTEIROS (`RoteiroPatrimonial` e `RoteiroResultadoAlienacao`):
+  // as chaves vêm de enums diferentes, mas o ato é o mesmo — dizer em que par de contas do
+  // PCASP um evento patrimonial bate. Ver a nota da união em `modules/m16-travamento/acoes.ts`.
+  PARAMETRIZAR_ROTEIRO_PATRIMONIAL
+
   // ── ENT05 — M10 patrimônio, EIXO DE GESTÃO (TR 5.19) ──
   CADASTRAR_LOCALIZACAO_FISICA
   CADASTRAR_COMISSAO_PATRIMONIAL

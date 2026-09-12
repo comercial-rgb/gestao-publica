@@ -157,6 +157,12 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   CADASTRAR_CLASSE_DE_BENS: "cadastros",
   CADASTRAR_BEM: "patrimonio",
 
+  // ENT11 — o roteiro contábil do evento patrimonial. Mora em "patrimonio" e não em
+  // "contabilidade": quem o parametriza é quem responde pelo acervo, e é da tela do
+  // patrimônio que ele é procurado. A conta que ele aponta é do PCASP, mas o EVENTO é
+  // patrimonial — classificá-lo pela conta mandaria o operador do bem para a área errada.
+  PARAMETRIZAR_ROTEIRO_PATRIMONIAL: "patrimonio",
+
   // ENT05 — o eixo de GESTÃO do bem (TR 5.19).
   CADASTRAR_LOCALIZACAO_FISICA: "cadastros",
   CADASTRAR_COMISSAO_PATRIMONIAL: "cadastros",

@@ -404,7 +404,17 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   põe uma coisa no acervo. Uma ação única daria, a quem só devia tombar um armário, o
     //   poder de decidir em que conta do razão o acervo inteiro entra.
     //   = 235.
-    expect(nomes.length).toBe(235);
+    // + 2 (ENT11 — O EIXO FINANCEIRO: parametrizarRoteiroPatrimonial e
+    //   parametrizarRoteiroResultadoAlienacao).
+    //   ⚠️ SÃO DOIS SERVIÇOS E UMA AÇÃO SÓ, e é a primeira vez que isso acontece fora dos
+    //   pares de conveniência. A razão é que as duas tabelas existem separadas por um
+    //   detalhe de MODELO — as chaves vêm de enums diferentes, e uni-las não seria migration
+    //   aditiva —, não por uma diferença de PODER. Quem parametriza em que conta a
+    //   depreciação bate é quem parametriza em que conta o ganho da alienação bate. Dois
+    //   crachás aqui inventariam uma segregação que o TR não pede, e cada um teria de ser
+    //   concedido à mão em toda instalação existente.
+    //   = 237 serviços, e o censo continua em 229 ações.
+    expect(nomes.length).toBe(237);
 
     // 97 serviços, 93 ações distintas. Os pares que compartilham ação (4: importarExtratoBb
     // REUSA IMPORTAR_EXTRATO). transferirEntreContas tem AÇÃO PRÓPRIA (não compartilha) → +1 ação.
@@ -485,7 +495,14 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     // + 3 (ENT06 item 1 — os perfis: criar, conceder ação e revogar ação) = 226.
     // + 2 (ENT07 — o acervo: CADASTRAR_CLASSE_DE_BENS e CADASTRAR_BEM, ação própria para
     //   cada serviço, pela segregação explicada acima) = 228.
-    expect(TODAS_AS_ACOES.length).toBe(228);
+    // + 1 (ENT11 — PARAMETRIZAR_ROTEIRO_PATRIMONIAL): UMA ação para os DOIS roteiros do
+    //   eixo financeiro (`RoteiroPatrimonial` e `RoteiroResultadoAlienacao`). São dois
+    //   serviços e dois modelos — as chaves vêm de enums diferentes —, mas o ato é o mesmo:
+    //   dizer em que par de contas do PCASP um evento patrimonial bate. Duas ações
+    //   inventariam segregação que o TR não pede. É o par de `encerrarExercicio` /
+    //   `encerrarExercicioComRestos`, que já compartilham crachá pela mesma razão.
+    //   = 229.
+    expect(TODAS_AS_ACOES.length).toBe(229);
     expect(ACAO_DO_SERVICO.encerrarExercicio).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.encerrarExercicioComRestos).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.importarExtrato).toBe("IMPORTAR_EXTRATO");

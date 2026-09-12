@@ -146,6 +146,16 @@ export type AcaoDoSistema =
   // e por isso duas ações — quem põe o bem no acervo não é quem lhe atribui valor.
   | "CADASTRAR_CLASSE_DE_BENS"
   | "CADASTRAR_BEM"
+  // ── ENT11 — o EIXO FINANCEIRO do patrimônio: o roteiro contábil de cada evento ──
+  //
+  // ⚠️ UMA AÇÃO PARA OS DOIS ROTEIROS, e a decisão é deliberada. `RoteiroPatrimonial` (o
+  // movimento do bem) e `RoteiroResultadoAlienacao` (o ganho/perda da venda) são tabelas
+  // irmãs porque as chaves vêm de enums diferentes — mas o ATO é o mesmo: dizer em que par
+  // de contas do PCASP um evento patrimonial bate. Duas ações inventariam uma segregação
+  // que o termo de referência não pede, e cada uma teria de ser concedida à mão em toda
+  // instalação existente. É o mesmo raciocínio de `REGISTRAR_MOVIMENTO_DE_GESTAO`, que
+  // cobre os quatro eixos de gestão do bem com um crachá só.
+  | "PARAMETRIZAR_ROTEIRO_PATRIMONIAL"
 
   // ── M10 — patrimônio, EIXO DE GESTÃO (ENT05, TR 5.19) ──
   | "CADASTRAR_LOCALIZACAO_FISICA"
@@ -624,7 +634,10 @@ export type NomeDeServico =
   | "registrarProvidencia"
   | "apreciarProvidencia"
   | "encerrarAuditoria"
-  | "emitirRelatorioCircunstanciado";
+  | "emitirRelatorioCircunstanciado"
+  // ENT11 — o eixo financeiro do patrimônio.
+  | "parametrizarRoteiroPatrimonial"
+  | "parametrizarRoteiroResultadoAlienacao";
 
 /**
  * ⚠️ O RECORD EXAUSTIVO — serviço → ação.
@@ -763,6 +776,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // ENT07 — o acervo.
   cadastrarClasseDeBens: "CADASTRAR_CLASSE_DE_BENS",
   cadastrarBem: "CADASTRAR_BEM",
+  // ENT11 — os dois roteiros do eixo financeiro, sob a MESMA ação (ver a nota na união).
+  parametrizarRoteiroPatrimonial: "PARAMETRIZAR_ROTEIRO_PATRIMONIAL",
+  parametrizarRoteiroResultadoAlienacao: "PARAMETRIZAR_ROTEIRO_PATRIMONIAL",
   cadastrarLocalizacaoFisica: "CADASTRAR_LOCALIZACAO_FISICA",
   cadastrarComissaoPatrimonial: "CADASTRAR_COMISSAO_PATRIMONIAL",
   cadastrarMotivoDeBaixa: "CADASTRAR_MOTIVO_DE_BAIXA",
