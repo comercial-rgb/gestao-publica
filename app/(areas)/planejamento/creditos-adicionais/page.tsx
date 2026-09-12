@@ -14,7 +14,13 @@ import {
   type LeiNaLista,
   type LinhaQdd,
 } from "../../../../lib/portas/creditos";
-import { dataBr, recorteDe } from "../../../../lib/recorte";
+import {
+  EscopoDeLeituraError,
+  ExercicioIlegivelError,
+  recorteDePagina,
+  type RecorteDaPagina,
+} from "../../../../lib/portas/contexto";
+import { dataBr } from "../../../../lib/recorte";
 import { FormEncerrarDecreto } from "./FormEncerrarDecreto";
 import { FormDecretoCredito } from "./FormDecretoCredito";
 
@@ -36,9 +42,13 @@ export default async function CreditosAdicionaisPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
-  const { exercicio, unidadeCodigo } = recorteDe(await searchParams);
-  const cabecalho = <PageHeader titulo="Créditos adicionais" subtitulo={`Exercício ${exercicio} — decretos, suplementações e anulações`} />;
+  const sp = await searchParams;
 
+  // ⚠️ O CABEÇALHO NASCE DEPOIS DO TRY — e aqui não é por causa de `descreverRecorte`
+  // (o subtítulo desta tela só cita o exercício), mas porque o próprio `exercicio` passa a
+  // vir de dentro dele: o recorte autorizado pode RECUSAR um exercício ilegível, e imprimir
+  // "Exercício 2026" antes de autorizar seria afirmar um ano que o usuário não pediu.
+  let recorte: RecorteDaPagina;
   let decretos: readonly DecretoNaLista[];
   let leis: readonly LeiNaLista[];
   // ⚠️ O QDD serve de VOCABULÁRIO ao form: ele é a única leitura que traz `fonteId` junto da
@@ -46,23 +56,39 @@ export default async function CreditosAdicionaisPage({
   // leitura de fichas só para o form abriria a porta a as duas discordarem.
   let fichas: readonly LinhaQdd[];
   try {
+    recorte = await recorteDePagina(sp);
     [decretos, leis, fichas] = await Promise.all([
-      lerDecretos({ ano: exercicio }),
-      lerLeis({ ano: exercicio }),
-      lerQdd({ exercicio, unidadeCodigo }),
+      lerDecretos({ ano: recorte.exercicio }),
+      lerLeis({ ano: recorte.exercicio }),
+      lerQdd({ exercicio: recorte.exercicio, unidadeCodigo: recorte.unidadeCodigo }),
     ]);
   } catch (erro) {
     return (
       <div className="space-y-4">
         <SincronizarContexto />
-        {cabecalho}
+        <PageHeader
+          titulo="Créditos adicionais"
+          subtitulo="Decretos, suplementações e anulações"
+        />
         <EstadoVazio
-          titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível ler os créditos adicionais"}
+          titulo={
+            erro instanceof EscopoDeLeituraError
+              ? "Esta unidade não está no seu acesso"
+              : erro instanceof ExercicioIlegivelError
+                ? "O exercício pedido não é um ano"
+                : erro instanceof PortaSemBancoError
+                  ? "Banco de dados não configurado"
+                  : "Não foi possível ler os créditos adicionais"
+          }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
       </div>
     );
   }
+
+  // ⚠️ AQUI: o exercício já foi autorizado, e só agora o cabeçalho pode afirmá-lo.
+  const exercicio = recorte.exercicio;
+  const cabecalho = <PageHeader titulo="Créditos adicionais" subtitulo={`Exercício ${exercicio} — decretos, suplementações e anulações`} />;
 
   return (
     <div className="space-y-4">
