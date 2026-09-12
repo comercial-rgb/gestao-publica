@@ -29,11 +29,41 @@ function primeiro(v: string | string[] | undefined): string | undefined {
 }
 
 /**
- * Lê o recorte da URL. Um exercício ilegível vira o padrão — nunca `NaN`: uma consulta
- * com `exercicio: NaN` não erra, ela devolve lista vazia, e a tela mentiria dizendo
- * "não há empenhos" quando o certo é "o ano que você pediu não é um ano".
+ * O RECORTE CRU DA URL — **SEM AUTORIZAÇÃO NENHUMA**. Quase nada deve chamar isto.
+ *
+ * ═══ ⚠️ O NOME É O AVISO, E ELE FOI TROCADO POR ISSO ═══
+ * Esta função chamava-se `recorteDe`, e o nome mentia por omissão: lia-se como "a forma de
+ * ler o recorte", e era a que todo mundo alcançava por reflexo ao escrever uma tela nova.
+ * Ela aceita **qualquer** `?ug=` sem perguntar de quem é o crachá, e a AUSÊNCIA do
+ * parâmetro produz o ENTE INTEIRO. Medido em
+ * `test/caracterizacao/leitura-por-unidade.test.ts`: a mesma identidade recebia UMA unidade
+ * de `listarUgsDoUsuario` e DUAS da lista de empenhos.
+ *
+ * O pedido da ENT10 exigia tornar o defeito **inexprimível, não vigiado**. Renomear é
+ * metade disso: quem digitar `recorteNaoAutorizado(sp)` não o faz sem ler o que está
+ * escrevendo. A outra metade é o grep-teste
+ * (`test/ui/recorte-sem-autorizacao.test.ts`), que falha quando aparece um segundo
+ * chamador.
+ *
+ * ═══ O QUE USAR NO LUGAR ═══
+ *   · `recorteDePagina(sp)` (`lib/portas/contexto`) — telas e rotas com dimensão de
+ *     UNIDADE. Resolve identidade e escopo no servidor e RECUSA nomeando;
+ *   · `exercicioAutorizado(sp)` (aqui) — leituras do ENTE (receita, extraorçamentário,
+ *     conciliação, patrimônio, plano de contas, programação financeira). Recusa exercício
+ *     ilegível e não toca em unidade.
+ *
+ * ═══ ⚠️ O ÚNICO CHAMADOR LEGÍTIMO, E POR QUE ELE É LEGÍTIMO ═══
+ * `app/(areas)/despesa/ordem-cronologica/page.tsx`. Aquela tela lê o recorte **para não
+ * usá-lo**: a ordem do art. 141 é do ENTE, por fonte e categoria, e a página imprime, no
+ * pé, que "o recorte do cabeçalho não se aplica a esta tela". Ela precisa do valor CRU
+ * justamente para dizer isso com o número que o usuário escolheu. Impor-lhe a recusa faria
+ * a tela rejeitar um parâmetro que ela própria declara inerte.
+ *
+ * Um exercício ilegível continua virando o padrão aqui — nunca `NaN`: uma consulta com
+ * `exercicio: NaN` não erra, devolve lista vazia, e a tela mentiria dizendo "não há
+ * empenhos" quando o certo é "o ano que você pediu não é um ano".
  */
-export function recorteDe(sp: Params): RecorteDaPagina {
+export function recorteNaoAutorizado(sp: Params): RecorteDaPagina {
   const bruto = primeiro(sp["exercicio"]);
   const n = bruto !== undefined ? Number.parseInt(bruto, 10) : Number.NaN;
   const ug = primeiro(sp["ug"])?.trim();

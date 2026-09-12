@@ -18,7 +18,7 @@ import {
   type LinhaDaFila,
 } from "../../../../lib/portas/pagamento";
 import { mascararCpfCnpj } from "../../../../lib/format/mascaras";
-import { dataBr, descreverRecorte, recorteDe } from "../../../../lib/recorte";
+import { dataBr, descreverRecorte, recorteNaoAutorizado } from "../../../../lib/recorte";
 import { SeletorFonte } from "./SeletorFonte";
 
 /**
@@ -91,7 +91,13 @@ export default async function OrdemCronologicaPage({
   // para a nota ao pé DIZER isso com o valor que o usuário escolheu no cabeçalho. Um recorte que a
   // tela ignora em silêncio é pior que um recorte que ela ignora em voz alta: o usuário troca a
   // unidade, nada muda, e ele conclui que a tela está quebrada.
-  const recorte = recorteDe(sp);
+  // ⚠️ O NOME MUDOU E O COMPORTAMENTO NÃO — de propósito. Esta é a ÚNICA tela do sistema
+  // que ainda lê o recorte cru, e ela o faz PARA NÃO USÁ-LO: a nota ao pé precisa do valor
+  // que o usuário escolheu no cabeçalho para dizer que ele não se aplica aqui. Todas as
+  // outras passaram a `recorteDePagina` (unidade) ou `exercicioAutorizado` (ente), e o
+  // grep-teste `test/ui/recorte-sem-autorizacao.test.ts` falha se aparecer um segundo
+  // chamador deste.
+  const recorte = recorteNaoAutorizado(sp);
 
   // `?fonte=` pode vir repetido na URL; vale o primeiro — a mesma regra do `recorteDe`.
   const bruto = sp["fonte"];
