@@ -5,6 +5,14 @@ import {
   gerarEtiquetaDeBem,
   registrarMovimentoDeGestao,
 } from "../../../modules/m10-patrimonial/gestao-do-bem.js";
+// ⚠️ ENT12 — O EIXO DE VALOR. Estes DOIS lançam no razão, ao contrário dos quatro de gestão:
+// por isso vêm de `patrimonio.js` (o bloco 1 do M10) e cobram crachá próprio.
+import {
+  baixarBem,
+  registrarEntradaAvulsa,
+  valorContabilDoBem,
+} from "../../../modules/m10-patrimonial/patrimonio.js";
+import { rotuloDoTipoPatrimonial } from "./roteiros.js";
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { TAMANHO_DE_PAGINA } from "../../molde/consulta.js";
 import { comEscritaAutenticada } from "../sessao";
@@ -251,10 +259,33 @@ export async function verBemPatrimonial(id: string): Promise<DetalheLido | null>
         orderBy: { dataMovimento: "desc" },
         take: 200,
       },
+      // ⚠️ ENT12 — OS MOVIMENTOS DE VALOR, ao lado dos de gestão. Até aqui o detalhe trazia
+      // só a CONTAGEM deles: o operador via "3 movimentos de valor" e não via quais. Com a
+      // baixa ganhando tela, isso deixou de ser incômodo e virou defeito — a baixa
+      // aconteceria e a tela não a mostraria.
+      movimentos: {
+        select: {
+          id: true,
+          tipo: true,
+          valor: true,
+          dataMovimento: true,
+          motivo: true,
+          criadoEm: true,
+          criadoPor: true,
+          estornos: { select: { id: true } },
+        },
+        orderBy: { dataMovimento: "desc" },
+        take: 200,
+      },
       _count: { select: { movimentos: true } },
     },
   });
   if (x === null) return null;
+
+  // ⚠️ O VALOR É DERIVADO, SEMPRE — `valorContabilDoBem` soma os movimentos COM O SINAL do
+  // tipo. Nunca uma coluna: uma `valorAtual` precisaria de UPDATE a cada depreciação e
+  // derraparia no primeiro estorno (é o que o cabeçalho do schema do M10 já diz).
+  const valorContabil = await valorContabilDoBem(cliente(), id);
 
   return {
     titulo: `${x.numeroTombamento} — ${x.descricao}`,
@@ -283,6 +314,15 @@ export async function verBemPatrimonial(id: string): Promise<DetalheLido | null>
       },
       { rotulo: "Data de aquisição", valor: diaCivilBr(x.dataAquisicao), tipo: "data" },
       {
+        // ⚠️ ESTE RÓTULO NÃO É ENFEITE, E O PERCURSO O LÊ PELO NOME. O domínio recusa baixa
+        // acima do valor do bem; oferecer o formulário sem dizer quanto ele vale seria montar
+        // uma armadilha — o operador digita, o servidor nega, e a tela nunca disse o teto.
+        rotulo: "Valor contábil",
+        valor: valorContabil.toFixed(2),
+        tipo: "dinheiro",
+        nota: "Soma dos movimentos de valor, com o sinal de cada tipo. É o teto de uma baixa: não se baixa mais do que o bem vale.",
+      },
+      {
         rotulo: "Movimentos de valor",
         valor: String(x._count.movimentos),
         tipo: "inteiro",
@@ -293,15 +333,31 @@ export async function verBemPatrimonial(id: string): Promise<DetalheLido | null>
     ],
     // ⚠️ O HISTÓRICO É O EIXO DE GESTÃO, e não o financeiro: onde o bem esteve, quem respondeu
     // por ele, em que estado e em que situação. O eixo de valor tem contagem própria acima.
-    historico: x.movimentosDeGestao.map((m) => ({
-      id: m.id,
-      oQue: m.tipo.replace(/_/g, " ").toLowerCase(),
-      quando: diaCivilBr(m.dataMovimento),
-      registradoEm: diaCivilBr(m.criadoEm),
-      por: m.criadoPor,
-      motivo: m.motivo,
-      estornado: m.estornos.length > 0,
-    })),
+    // ⚠️ OS DOIS EIXOS NO MESMO HISTÓRICO, e nenhum sobrescreve o outro — é o que o percurso
+    // afirma no último passo. O de VALOR carrega o montante; o de GESTÃO não tem montante
+    // nenhum, e forjar um zero ali faria o leitor achar que a mudança de sala não custou
+    // nada, quando na verdade a pergunta não se aplica.
+    historico: [
+      ...x.movimentos.map((m) => ({
+        id: m.id,
+        oQue: rotuloDoTipoPatrimonial(m.tipo),
+        quando: diaCivilBr(m.dataMovimento),
+        registradoEm: diaCivilBr(m.criadoEm),
+        por: m.criadoPor,
+        motivo: m.motivo,
+        valor: m.valor.toFixed(2),
+        estornado: m.estornos.length > 0,
+      })),
+      ...x.movimentosDeGestao.map((m) => ({
+        id: m.id,
+        oQue: m.tipo.replace(/_/g, " ").toLowerCase(),
+        quando: diaCivilBr(m.dataMovimento),
+        registradoEm: diaCivilBr(m.criadoEm),
+        por: m.criadoPor,
+        motivo: m.motivo,
+        estornado: m.estornos.length > 0,
+      })),
+    ],
   };
 }
 
@@ -334,6 +390,26 @@ export async function criarBem(c: Campos): Promise<void> {
  * ⚠️ FAIL-CLOSED: ação desconhecida ESTOURA. Um `default` silencioso aqui deixaria a tela
  * dizer "movimento registrado" sem ter gravado nada.
  */
+/**
+ * A CLASSE DO BEM — lida do próprio bem, nunca do formulário.
+ *
+ * ⚠️ ELA ESTOURA quando o bem não existe, e isso é deliberado: sem classe os dois serviços do
+ * eixo de valor receberiam string vazia e recusariam falando de "classe de bens  não existe",
+ * com o id em branco no meio da frase. A recusa pertence ao ponto onde se sabe o que faltou.
+ */
+async function classeDoBem(bemId: string): Promise<string> {
+  const bem = await cliente().bemPatrimonial.findUnique({
+    where: { id: bemId },
+    select: { classeDeBensId: true },
+  });
+  if (bem === null) {
+    throw new Error(
+      `Bem ${bemId} não existe. Nada foi gravado — um movimento de valor sem bem não tem sujeito.`
+    );
+  }
+  return bem.classeDeBensId;
+}
+
 export async function acaoDoBem(acao: string, bemId: string, c: Campos): Promise<void> {
   const comum = (criadoPor: string) => ({
     bemId,
@@ -390,9 +466,40 @@ export async function acaoDoBem(acao: string, bemId: string, c: Campos): Promise
     // carrega data do fato e motivo, que os quatro movimentos de gestão exigem e a etiqueta
     // não tem. Reaproveitá-lo aqui faria a ação pedir campos que ela não usa — e o formulário
     // do molde os renderizaria, obrigatórios, sem que o domínio jamais os lesse.
-    case "gerar-etiqueta":
-      await comEscritaAutenticada("GERAR_ETIQUETA_DE_BEM", (criadoPor) =>
-        gerarEtiquetaDeBem(cliente(), { bemId, criadoPor })
+    // ═══ ENT12 — O EIXO DE VALOR, e a classe vem DO BEM ═══
+    //
+    // ⚠️ A CLASSE NÃO É PERGUNTADA AO FORMULÁRIO, e é derivada aqui. Os dois serviços a
+    // exigem, mas o bem já tem uma: um seletor deixaria escolher classe diferente da do bem,
+    // e o núcleo recusaria com uma mensagem sobre levantamento por classe — correta, e
+    // inútil para quem está baixando um armário. Bem inexistente estoura ANTES de qualquer
+    // escrita, nomeando o que faltou.
+    case "registrar-entrada-de-valor":
+      await comEscritaAutenticada("REGISTRAR_ENTRADA_AVULSA", async (criadoPor) =>
+        registrarEntradaAvulsa(cliente(), {
+          classeDeBensId: await classeDoBem(bemId),
+          bemId,
+          tipo: t(c, "tipo") === "DOACAO_RECEBIDA" ? "DOACAO_RECEBIDA" : "AVALIACAO_INICIAL",
+          // ⚠️ O VALOR VAI COMO STRING DECIMAL, e isso é o contrato: `zMoney` aceita
+          // `Decimal` ou string no formato `-?\d+(\.\d+)?`, e transforma com `toMoney`.
+          // Converter aqui para `number` seria justamente o que o repositório proíbe.
+          valor: t(c, "valor"),
+          dataMovimento: dia(c, "dataMovimento"),
+          motivo: t(c, "motivo"),
+          criadoPor,
+        })
+      );
+      return;
+    case "baixar-do-acervo":
+      await comEscritaAutenticada("BAIXAR_BEM", async (criadoPor) =>
+        baixarBem(cliente(), {
+          classeDeBensId: await classeDoBem(bemId),
+          bemId,
+          tipo: t(c, "tipo") === "DOACAO_REALIZADA" ? "DOACAO_REALIZADA" : "BAIXA_ALIENACAO",
+          valor: t(c, "valor"),
+          dataMovimento: dia(c, "dataMovimento"),
+          motivo: t(c, "motivo"),
+          criadoPor,
+        })
       );
       return;
     default:

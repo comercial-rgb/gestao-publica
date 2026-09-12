@@ -242,6 +242,63 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
         "O código é o próprio número de tombamento. Se o bem já tem etiqueta, esta ação " +
         "devolve a mesma — reimprimir não muda o código já colado.",
     },
+
+    // ═══ ENT12 — O EIXO DE VALOR, e ele é OUTRO EIXO ═══
+    //
+    // ⚠️ ESTAS DUAS MEXEM NO RAZÃO, e as cinco de cima não. Por isso têm crachá PRÓPRIO
+    // (`REGISTRAR_ENTRADA_AVULSA` e `BAIXAR_BEM`, ambos no censo desde o ENT05): quem move
+    // um armário de sala não é, necessariamente, quem decide que ele entrou no patrimônio
+    // por vinte mil reais. Reusar `REGISTRAR_MOVIMENTO_DE_GESTAO` aqui daria, a quem só
+    // devia mudar de sala, o poder de lançar no razão.
+    //
+    // ⚠️ E NENHUMA DAS DUAS PEDE A CLASSE. O bem já tem uma, e a porta a deriva dele. Um
+    // seletor permitiria escolher classe diferente da do bem, e o núcleo recusaria com uma
+    // mensagem sobre levantamento por classe — tecnicamente correta, e inútil para quem
+    // está baixando um armário.
+    {
+      nome: "registrar-entrada-de-valor",
+      rotulo: "Registrar entrada de valor",
+      acaoDoCenso: "REGISTRAR_ENTRADA_AVULSA",
+      aviso:
+        "Esta ação LANÇA NO RAZÃO, ao contrário das de gestão. O evento precisa ter roteiro " +
+        "contábil parametrizado; sem ele o sistema recusa em vez de escolher uma conta.",
+      campos: [
+        {
+          // ⚠️ ROL FECHADO, e os dois valores são os que `zEntradaAvulsaInput` aceita. A
+          // aquisição não está aqui de propósito: `adquirirBem` exige liquidação — o bem
+          // comprado nasce de despesa liquidada, pela cadeia do M05, não por esta tela.
+          nome: "tipo", rotulo: "Tipo de entrada", tipo: "selecao", obrigatorio: true, largura: 2,
+          opcoes: [
+            { valor: "AVALIACAO_INICIAL", rotulo: "Avaliação inicial" },
+            { valor: "DOACAO_RECEBIDA", rotulo: "Doação recebida" },
+          ],
+        },
+        { nome: "valor", rotulo: "Valor (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
+        { nome: "dataMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 3 },
+      ],
+    },
+    {
+      nome: "baixar-do-acervo",
+      rotulo: "Baixar do acervo",
+      acaoDoCenso: "BAIXAR_BEM",
+      aviso:
+        "Reduz o valor contábil do bem e lança no razão. Não se baixa mais do que o bem vale " +
+        "— o valor atual está nos dados acima. A venda com apuração de ganho ou perda é outro " +
+        "ato, e não se faz por aqui.",
+      campos: [
+        {
+          nome: "tipo", rotulo: "Tipo de baixa", tipo: "selecao", obrigatorio: true, largura: 2,
+          opcoes: [
+            { valor: "BAIXA_ALIENACAO", rotulo: "Baixa por alienação" },
+            { valor: "DOACAO_REALIZADA", rotulo: "Doação realizada" },
+          ],
+        },
+        { nome: "valor", rotulo: "Valor (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
+        { nome: "dataMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 3 },
+      ],
+    },
   ],
   permissoes: { criar: "CADASTRAR_BEM" },
 
