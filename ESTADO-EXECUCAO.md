@@ -3856,6 +3856,20 @@ restantes do acervo dependem de decisões que não são de quem escreve código.
 rotas** e **cinco cláusulas promovidas** (5.19.2, 5.19.3, 5.19.7, 5.19.11, 5.19.12) em três
 lotes.
 
+⚠️ **PENDÊNCIA NOVA — `CONTEXTO-UG-REPRODUZ-CONSULTA`.** `test/ui/contexto-ug.test.ts` não chama
+`listarUgsDoUsuario`: ele **reproduz a consulta** contra o mesmo schema, e declara o custo em voz
+alta — *"se a porta divergir desta consulta, o teste continua verde"*. A justificativa escrita é
+que *"`lib/portas/cliente` depende de `next/headers` — inalcançável fora de um request"*, e ela
+**está factualmente errada**: `lib/portas/cliente.ts` importa `criarPrismaClient` e lê
+`DATABASE_URL`, com `PortaSemBancoError` nomeado — **não toca `next/headers`**. Quem depende de
+request é `sessao.ts`. As portas de LEITURA são alcançáveis pela suíte, e aquele teste pode
+passar a exercitar a função de verdade, perdendo a limitação que hoje carrega.
+
+⚠️ **PENDÊNCIA NOVA — `EXPORTACOES-SEM-TESTE`.** `test/pdf/pdf.test.ts` exercita `documento.ts` e
+`gerar.ts` (hash, HTML, Chromium) com um `DocumentoPdf` **literal**. Nenhum montador real
+(`montarPdfEmpenhos` e irmãos) é testado, e as **dez rotas de exportação** — NE, guia e oito PDFs
+— não têm cobertura alguma. São elas que entregam o arquivo inteiro por `GET` direto, sem menu.
+
 ⚠️ **PENDÊNCIA NOVA — `MOTIVO-DE-BAIXA-ORFAO`.** O rol de motivos de baixa que a `5.19.30`
 manda o ente configurar existe, é alcançável pela tela (§27) e **ato nenhum o lê**: o modelo
 `MotivoDeBaixa` não tem uma única back-relation, e `zBaixarBemInput` toma `tipo` de um enum
