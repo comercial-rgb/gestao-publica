@@ -33,7 +33,9 @@ export default async function ConsorciosDetalhePage({
     // É a única coisa que este detalhe pede além do id, e ela vem do filtro, com o ano CIVIL
     // do ente como padrão.
     verConsorcio(id, Number(consulta.filtros["exercicio"] ?? "") || anoCivil(new Date())),
-    opcoesDoCadastro({ classesDeConta: CONSORCIOS.classesDeConta ?? [] }),
+    // ⚠️ `consorcioId` RECORTA O SELECT DE ADITIVO: só os rateios deste consórcio, que é o
+    // mesmo recorte que o serviço confere antes de aceitar o aditivo.
+    opcoesDoCadastro({ consorcioId: id, classesDeConta: CONSORCIOS.classesDeConta ?? [] }),
     acoesPermitidas(CONSORCIOS.acoes.map((a) => a.acaoDoCenso)),
   ]);
   if (detalhe === null) notFound();

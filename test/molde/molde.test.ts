@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { TODAS_AS_ACOES } from "../../modules/m16-travamento/acoes.js";
 import { lerConsulta, MAXIMO_DE_SELECAO } from "../../lib/molde/consulta.js";
@@ -191,5 +193,123 @@ describe("o molde — a soma da seleção é em Decimal, no servidor", () => {
 
   it("t19: id marcado que não está na página é ignorado", () => {
     expect(somarSelecionadas(linhas, ["a", "zzz"], ["valorRepasse"])["valorRepasse"]).toBe("1000.50");
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// AS OPÇÕES DOS SELECTS — e o defeito real que este bloco nasceu para acusar
+//
+// ⚠️ O PREENCHIMENTO É POR NOME DO CAMPO. O descritor declara `opcoes: []` num campo de
+// seleção, e `FormsDoRecurso` o preenche procurando `opcoes[campo.nome]` na porta. Um campo
+// cujo nome não tem chave correspondente NUNCA recebe opção.
+//
+// ⚠️ E O MOLDE NÃO FALHA — ELE EXPLICA A CAUSA ERRADA. O campo aparece desabilitado dizendo
+// "Nenhuma opção cadastrada para X. Cadastre antes de usar esta tela". Foi o que aconteceu
+// com "Grupo pai" (`paiId`) no ENT06: a porta expunha `grupoId`, o descritor declarava
+// `paiId`, e o servidor que ACABARA de cadastrar um grupo lia que não havia nenhum. Uma
+// mensagem tecnicamente correta explicando a causa errada manda a pessoa fazer a coisa
+// errada — e nenhum teste de tela pegava, porque a tela montava.
+// ════════════════════════════════════════════════════════════════════════════
+
+const RAIZ = resolve(import.meta.dirname, "..", "..");
+
+/**
+ * As portas que preenchem as opções dos formulários do molde.
+ *
+ * ⚠️ LISTA EXPLÍCITA, e não um glob: uma porta de opções nova é DECISÃO, e quem a criar tem
+ * de vir declará-la aqui. Com glob, mover a fonte deixaria o guard verde vigiando o lugar
+ * errado — o mesmo motivo pelo qual o guard de eixo de data enumera suas fronteiras.
+ */
+const PORTAS_DE_OPCOES: readonly string[] = [
+  "lib/portas/recursos/almoxarifado-dados.ts",
+  "lib/portas/recursos/dados.ts",
+];
+
+/**
+ * O corpo de cada função `opcoes*`, do cabeçalho até o `}` da coluna zero.
+ *
+ * Recortar assim — e não varrer o arquivo inteiro — é o que impede um objeto literal
+ * qualquer de virar "chave exposta". É a mesma anatomia do `corpoDoServico` do censo do M16.
+ */
+function corpoDasOpcoes(conteudo: string): string {
+  const linhas = conteudo.split("\n");
+  const partes: string[] = [];
+  for (let i = 0; i < linhas.length; i++) {
+    if (!/^export async function opcoes[A-Za-z]*\(/.test(linhas[i] ?? "")) continue;
+    for (let k = i + 1; k < linhas.length; k++) {
+      if (linhas[k] === "}") {
+        partes.push(linhas.slice(i, k + 1).join("\n"));
+        i = k;
+        break;
+      }
+    }
+  }
+  return partes.join("\n");
+}
+
+function chavesExpostas(): ReadonlySet<string> {
+  const chaves = new Set<string>();
+  for (const rel of PORTAS_DE_OPCOES) {
+    const corpo = corpoDasOpcoes(readFileSync(resolve(RAIZ, rel), "utf8"));
+    for (const m of corpo.matchAll(/^ {4}([a-zA-Z][a-zA-Z0-9]*):/gm)) {
+      chaves.add(m[1] as string);
+    }
+  }
+  return chaves;
+}
+
+/** Todo campo de seleção de um descritor — os do formulário de criar E os das ações. */
+function selecoesSemOpcaoDeclarada(): readonly { readonly onde: string; readonly nome: string; readonly rotulo: string }[] {
+  const achados: { onde: string; nome: string; rotulo: string }[] = [];
+  for (const d of RECURSOS_DO_MOLDE) {
+    const campos = [...d.campos, ...d.acoes.flatMap((a) => a.campos ?? [])];
+    for (const c of campos) {
+      if (c.tipo !== "selecao") continue;
+      // Opções literais no próprio descritor (classificação, categoria, situação) não
+      // dependem de porta nenhuma.
+      if ((c.opcoes ?? []).length > 0) continue;
+      achados.push({ onde: d.nome, nome: c.nome, rotulo: c.rotulo });
+    }
+  }
+  return achados;
+}
+
+describe("o molde — as opções dos selects vêm da porta", () => {
+  it("t20: todo campo de seleção sem opções declaradas tem chave na porta", () => {
+    const expostas = chavesExpostas();
+
+    const semFonte = selecoesSemOpcaoDeclarada()
+      .filter((c) => !expostas.has(c.nome))
+      .map((c) => `${c.onde}.${c.nome}  ("${c.rotulo}")`);
+
+    expect(
+      semFonte,
+      "\n\n⚠️ CAMPO DE SELEÇÃO QUE NUNCA RECEBE OPÇÃO.\n\n" +
+        "O descritor declara `opcoes: []` e a porta não expõe chave com o nome do campo. O " +
+        "molde renderiza o campo DESABILITADO dizendo 'Nenhuma opção cadastrada — cadastre " +
+        "antes de usar esta tela' — e essa mensagem explica a causa ERRADA quando os " +
+        "registros existem: o que falta é a chave, não o cadastro.\n\n" +
+        "Duas saídas, e as duas são decisões:\n" +
+        "  · a opção vem do banco -> exponha a chave com o NOME DO CAMPO na porta;\n" +
+        "  · a opção é um rol fixo -> declare `opcoes: [...]` no próprio descritor.\n\n" +
+        "Sem fonte:\n"
+    ).toEqual([]);
+  });
+
+  /**
+   * ⚠️ A AMARRAÇÃO CONTRA VACUIDADE, e ela tem DUAS pontas: se a extração parar de enxergar
+   * as portas, ou se nenhum descritor tiver campo de seleção dependente, o t20 fica verde
+   * sem ter olhado nada.
+   */
+  it("t20b: a extração enxerga as portas e há o que vigiar", () => {
+    expect(
+      chavesExpostas().size,
+      "a extração não achou chave nenhuma — as portas mudaram de forma ou de lugar"
+    ).toBeGreaterThanOrEqual(15);
+
+    expect(
+      selecoesSemOpcaoDeclarada().length,
+      "nenhum descritor tem campo de seleção alimentado pela porta — o t20 passaria por vacuidade"
+    ).toBeGreaterThanOrEqual(5);
   });
 });

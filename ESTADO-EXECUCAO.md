@@ -3237,6 +3237,97 @@ nomeada; não foi tocada aqui.
 | mutação de um sítio e reversão | 2 falhas nomeadas → 3 verdes | 2026-09-12 |
 | `npx vitest run modules/m10-patrimonial` | **13 arquivos, 175 testes** verdes | 2026-09-12 |
 
+### 25.7 · O portão de fechamento — 10 de 10
+
+Rodada de `2026-09-12T06:18:57Z`, saída 0.
+
+| Passo | Segundos | | Passo | Segundos |
+|---|---:|---|---|---:|
+| `typecheck:backend` | 17 | | `test:rapido` | 12 |
+| `typecheck:app` | 3 | | `test:tudo` | 618 |
+| `typecheck:scripts` | 2 | | `test:fuso` | 495 |
+| `cobertura-de-tsconfig` | 7 | | `build` | 44 |
+| `prisma:validate` | 1 | | | |
+| `deriva` | 11 | | | |
+
+A suíte: **202 arquivos, 2.104 testes**, verdes nas duas passagens de fuso.
+
+⚠️ **E O `test:fuso` ERA O PASSO QUE IMPORTAVA NESTE LOTE.** Um conserto de eixo de data que
+só fosse exercitado no fuso do hospedeiro provaria pouco: a suíte inteira sob
+`Pacific/Kiritimati` é o que separa "funciona aqui" de "a propriedade vale". Ele rodou por
+agendamento — o diff toca `packages/datas` e os arquivos que `data-civil.test.ts` vigia.
+
+A diferença confere: 201 arquivos e 2.101 testes no lote anterior, **+1 arquivo e +3 testes**
+— o `test/eixo-de-data-no-molde.test.ts` e suas três asserções.
+
+## 26. Os selects que nunca recebiam opção — três defeitos da mesma classe
+
+Nasceu de uma desconfiança ao ler o código para outro lote, virou propriedade, e a
+propriedade achou **dois a mais do que a desconfiança**.
+
+### 26.1 · O defeito, e por que nenhum teste pegava
+
+O preenchimento das opções é **por nome do campo**: o descritor declara `opcoes: []` num
+campo de seleção e `FormsDoRecurso` procura `opcoes[campo.nome]` no que a porta devolveu. Um
+campo cujo nome não tem chave correspondente **nunca recebe opção**.
+
+⚠️ **E O MOLDE NÃO FALHA — ELE EXPLICA A CAUSA ERRADA.** O campo aparece desabilitado
+dizendo *"Nenhuma opção cadastrada para X. Cadastre antes de usar esta tela."* A tela monta,
+o build passa, o percurso de navegador passa (ele não abre aquele formulário), e o servidor
+que **acabou de cadastrar** o registro lê que não existe nenhum. Uma mensagem tecnicamente
+correta apontando a causa errada manda a pessoa fazer a coisa errada.
+
+### 26.2 · Os três, e o pior deles
+
+| Campo | Onde | O que acontecia |
+|---|---|---|
+| `paiId` — "Grupo pai" | grupos de material (ENT06 item 0) | a porta expunha `grupoId`; o descritor declara `paiId` |
+| `empenhoId` — "Empenho" | ação *liberar parcela* do convênio | **a ação ficava inexecutável pela tela quando o ente é CONCEDENTE**, porque aí o empenho é obrigatório e o campo não tinha o que oferecer |
+| `aditivoDeId` — "Aditivo ao contrato" | ação *registrar contrato de rateio* | nenhum rateio oferecido, então aditivo só por outro caminho |
+
+⚠️ **O DO CONVÊNIO É O GRAVE**: não era um campo opcional vazio — era um ato que o domínio
+exige e que a interface não permitia completar. `liberarParcela` recusa, nomeando, a
+liberação sem empenho quando o papel do ente é CONCEDENTE.
+
+### 26.3 · O conserto: opção contextual, no mesmo recorte que o domínio cobra
+
+Os três são o padrão que a `medicaoId` já usava — opções que dependem do registro aberto:
+
+- **empenho do convênio**: `Empenho.convenioId` é coluna real, e `exigirEmpenhoDoConvenio`
+  recusa empenho de outro termo ou sem convênio. O select oferece **exatamente** o que o
+  domínio aceita;
+- **rateio do consórcio**: o serviço confere `consorcioId` do original antes de aceitar o
+  aditivo;
+- **grupo pai**: o mesmo rol de grupos, sob a chave certa.
+
+⚠️ **E O RECORTE NÃO É SÓ CORREÇÃO — É O QUE EVITA A LISTA INÚTIL.** Sem `convenioId`, a
+alternativa seria listar todos os empenhos do ente: o `select` de centenas de itens que a
+conta do PCASP já ensinou a não fazer nesta mesma porta.
+
+### 26.4 · O instrumento — t20, e por que é propriedade e não conferência
+
+`test/molde/molde.test.ts`: todo campo de seleção declarado com `opcoes: []`, **incluindo os
+campos das ações**, tem de ter chave com o mesmo nome numa das portas de opções — extraídas
+do fonte, recortando só o corpo das funções `opcoes*` (a anatomia do censo do M16).
+
+⚠️ **A DESCONFIANÇA ACHOU UM; A PROPRIEDADE ACHOU TRÊS.** Eu tinha visto o `paiId`
+comparando duas listas à mão — e a comparação à mão não olhava os campos das ações nem os
+descritores do outro arquivo. É a diferença que a regra da casa descreve: guarda que enumera
+formas acha só aquelas formas.
+
+**Mutação, nas duas direções:** removida a chave `paiId` da porta, o t20 acusa nomeando
+`grupos-de-material.paiId  ("Grupo pai")`; devolvida, verde. O t20b é a amarração contra
+vacuidade e tem **duas pontas** — se a extração parar de enxergar as portas, ou se nenhum
+descritor tiver campo dependente, o t20 passaria sem ter olhado nada.
+
+### 26.5 · Comandos e resultados
+
+| Comando | Resultado | Data |
+|---|---|---|
+| `npm run typecheck` / `:app` | limpos | 2026-09-12 |
+| `npx vitest run test/molde` | **25 testes** verdes (t20 e t20b entre eles) | 2026-09-12 |
+| mutação da chave `paiId` | acusou nomeando o campo; revertida, verde | 2026-09-12 |
+
 ## 19. O próximo passo
 
 ⚠️ **O ENT05 está FECHADO e PARADO no gate** — 10 de 10, saída 0 (20.12). Nada foi

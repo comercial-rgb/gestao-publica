@@ -29,7 +29,10 @@ export default async function ConvenioPage({
 
   const [detalhe, opcoes, permitidas] = await Promise.all([
     verConvenio(id),
-    opcoesDoCadastro({ classesDeConta: CONVENIOS.classesDeConta ?? [] }),
+    // ⚠️ `convenioId` RECORTA O SELECT DE EMPENHO. Sem ele a ação "liberar parcela" oferecia
+    // um campo desabilitado dizendo "nenhuma opção cadastrada" — e o ente é CONCEDENTE
+    // justamente quando o empenho é obrigatório. Ver `opcoesDoCadastro`.
+    opcoesDoCadastro({ convenioId: id, classesDeConta: CONVENIOS.classesDeConta ?? [] }),
     acoesPermitidas(CONVENIOS.acoes.map((a) => a.acaoDoCenso)),
   ]);
   if (detalhe === null) notFound();

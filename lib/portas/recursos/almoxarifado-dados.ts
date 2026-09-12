@@ -779,6 +779,17 @@ export async function opcoesDoAlmoxarifado(
 
   return {
     grupoId: grupos.map((g) => ({ valor: g.id, rotulo: `${g.codigo} — ${g.descricao}` })),
+    paiId: grupos.map((g) => ({ valor: g.id, rotulo: `${g.codigo} — ${g.descricao}` })),
+    // ⚠️ `paiId` É O MESMO ROL DE GRUPOS, E A FALTA DESTA LINHA ERA UM DEFEITO REAL.
+    //
+    // O preenchimento das opções é POR NOME DO CAMPO (`FormsDoRecurso` procura
+    // `opcoes[campo.nome]`). O descritor de grupos declara o campo `paiId` com `opcoes: []`,
+    // e a porta só expunha `grupoId` — então o select "Grupo pai" nunca recebia opção.
+    //
+    // ⚠️ E O PIOR NÃO ERA O SELECT VAZIO: era a MENSAGEM. O molde desabilita o campo dizendo
+    // "Nenhuma opção cadastrada para grupo pai. Cadastre antes de usar esta tela" — o
+    // servidor que acabou de cadastrar um grupo lia que não havia nenhum. Uma mensagem
+    // tecnicamente correta explicando a causa ERRADA manda a pessoa fazer a coisa errada.
     classeDeMaterialId: classes.map((c) => ({ valor: c.id, rotulo: `${c.codigo} — ${c.descricao}` })),
     unidadeDeMedidaId: unidades.map((u) => ({ valor: u.id, rotulo: `${u.sigla} — ${u.descricao}` })),
     depositoId: depositos.map((d) => ({ valor: d.id, rotulo: `${d.codigo} — ${d.nome}` })),

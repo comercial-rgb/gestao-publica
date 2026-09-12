@@ -1702,10 +1702,20 @@ export async function opcoesDoCadastro(
      * o domínio exige passivo — que o caso de uso recusaria depois.
      */
     readonly classesDeConta?: readonly string[];
+    /**
+     * ⚠️ CONTEXTUAIS, COMO A MEDIÇÃO — e pela mesma razão. O domínio recusa empenho de OUTRO
+     * convênio e rateio de OUTRO consórcio; oferecer o que ele vai recusar é montar um
+     * formulário para a pessoa errar. E sem o recorte a alternativa seria listar todos os
+     * empenhos do ente, que é a lista longa e inútil que a conta do PCASP já ensinou a não
+     * fazer.
+     */
+    readonly convenioId?: string;
+    readonly consorcioId?: string;
   } = {}
 ): Promise<OpcoesDoCadastro> {
   const prisma = cliente();
-  const [fontes, contas, orgaos, contratos, medicoes] = await Promise.all([
+  const [fontes, contas, orgaos, contratos, medicoes, empenhosDoConvenio, rateiosDoConsorcio] =
+    await Promise.all([
     prisma.fonteRecurso.findMany({ select: { id: true, codigo: true, descricao: true }, orderBy: { codigo: "asc" } }),
     // ⚠️ SÓ ANALÍTICAS. Lançar em conta sintética é o erro que o funil do M01 recusa — e
     // oferecê-la aqui seria montar um formulário que o domínio vai rejeitar.
@@ -1738,7 +1748,27 @@ export async function opcoesDoCadastro(
           select: { id: true, numero: true, valorMedido: true, periodoFim: true },
           orderBy: { numero: "asc" },
         }),
-  ]);
+    // ⚠️ SÓ OS EMPENHOS DAQUELE CONVÊNIO. `exigirEmpenhoDoConvenio` recusa empenho de outro
+    // termo — "aceitá-lo faria 'quanto já repassamos neste termo' somar despesa que
+    // pertence a outro" — e recusa empenho sem convênio nenhum. O select oferece
+    // exatamente o que o domínio aceita.
+    p.convenioId === undefined
+      ? Promise.resolve([])
+      : prisma.empenho.findMany({
+          where: { convenioId: p.convenioId },
+          select: { id: true, numero: true, valor: true, data: true },
+          orderBy: { numero: "asc" },
+        }),
+    // ⚠️ SÓ OS RATEIOS DAQUELE CONSÓRCIO — o serviço confere `consorcioId` do original antes
+    // de aceitar o aditivo.
+    p.consorcioId === undefined
+      ? Promise.resolve([])
+      : prisma.contratoDeRateio.findMany({
+          where: { consorcioId: p.consorcioId },
+          select: { id: true, exercicio: true, valorDoEnte: true, dataAssinatura: true },
+          orderBy: [{ exercicio: "desc" }, { dataAssinatura: "desc" }],
+        }),
+    ]);
   return {
     fonteRecursoId: fontes.map((f) => ({ valor: f.id, rotulo: `${f.codigo} — ${f.descricao}` })),
     contaContabilId: contas.map((c) => ({ valor: c.id, rotulo: `${c.codigo} — ${c.nome}` })),
@@ -1750,6 +1780,14 @@ export async function opcoesDoCadastro(
     medicaoId: medicoes.map((m) => ({
       valor: m.id,
       rotulo: `Medição ${m.numero} — ${m.valorMedido.toFixed(2)} (até ${diaCivilBr(m.periodoFim)})`,
+    })),
+    empenhoId: empenhosDoConvenio.map((e) => ({
+      valor: e.id,
+      rotulo: `${e.numero} — ${e.valor.toFixed(2)} (${diaCivilBr(e.data)})`,
+    })),
+    aditivoDeId: rateiosDoConsorcio.map((r) => ({
+      valor: r.id,
+      rotulo: `Rateio ${r.exercicio} — ${r.valorDoEnte.toFixed(2)} (${diaCivilBr(r.dataAssinatura)})`,
     })),
   };
 }
