@@ -3447,6 +3447,106 @@ descritor, que o catálogo não deve confundir superfície entregue com cláusul
 ao mesmo tempo carimbou o número da cláusula na tela. A regra estava citada no arquivo em
 que foi violada. Guard serve exatamente para isso: a intenção não protege ninguém.
 
+## 28. ENT07 — o acervo: a classe e o bem, e três defeitos que o percurso pegou
+
+**O que foi construído.** O ato que faltava desde o começo do M10: **cadastrar um bem**. O
+modelo do `BemPatrimonial` é antigo, mas nada no domínio o criava — `adquirirBem` exige
+liquidação (o bem adquirido nasce de despesa liquidada) e `registrarEntradaAvulsa` recebe um
+`bemId` que já existe. Só o seed da POC e três arquivos de teste criavam bens, por escrita
+crua. Junto veio a **classe de bens**, que o bem pressupõe.
+
+| Camada | O que entrou |
+|---|---|
+| Domínio | `cadastrarClasseDeBens` e `cadastrarBem` em `gestao-do-bem.ts` |
+| Censo | `CADASTRAR_CLASSE_DE_BENS` e `CADASTRAR_BEM` — união, `NomeDeServico`, `ACAO_DO_SERVICO`, `AREA_DA_ACAO` |
+| Banco | enum `AcaoDoSistema` +2, migration **aditiva** `20260912081500_ent07_acoes_do_acervo` |
+| Superfície | descritores, porta, **6 rotas**, hub, barra lateral, busca global |
+| Prova | `m10-acervo.test.ts` (11 testes) e `smoke-acervo.ts` (11 passos) |
+
+⚠️ **A ORDEM FOI MEDIDA, NÃO INTUÍDA.** `ClasseDeBens` tinha **zero** registros no banco. Sem
+o cadastro de classes, o seletor do formulário do bem nasceria desabilitado dizendo "nenhuma
+opção cadastrada" — a mensagem certa apontando a causa errada, que é o defeito da §26.
+
+⚠️ **A CONTA DA CLASSE É CONFERIDA, NÃO SÓ REFERENCIADA.** Ela tem de ser ANALÍTICA e da
+classe 1. Conta sintética faria toda aquisição daquela classe lançar num nível que não recebe
+partida — e o razão só acusaria no fechamento, longe de quem cadastrou. Conta fora do ativo
+seria pior: o bem entraria no razão **diminuindo** o patrimônio.
+
+### 28.1 · O catálogo: duas cláusulas, e o que deliberadamente não se marcou
+
+`5.19.3` e `5.19.7` viraram **`VALIDADO_LOCALMENTE`**. Não viraram na primeira tentativa: o
+percurso cadastrava o bem **sem escolher** tipo de incorporação, e um select que aparece e
+ninguém usa prova que o formulário montou — não prova "a identificação do bem se adquirido,
+recebido em doação, comodato, permuta" nem o tipo "para ser usado no cadastramento dos
+mesmos". O percurso foi refeito para cadastrar o tipo na tela dele, escolhê-lo no formulário
+e conferir a origem na listagem após recarga.
+
+| Cláusula | Decisão |
+|---|---|
+| 5.19.14 | continua **`AUSENTE_CONFIRMADO`** — pede consulta por localização e responsável; a listagem filtra por tombamento, descrição e espécie |
+| 5.19.15 | continua **`PARCIAL`** — pede movimentação, localização e baixa pela tela, que não existem |
+
+### 28.2 · Os três defeitos que o percurso pegou — e nenhum deles era da aplicação
+
+**1. A tela existia e ninguém a alcançava.** As duas ações novas não estavam concedidas a
+perfil nenhum: `censo 228 · concedidas 226`. É a deriva que o ENT06 item 1 previu — o banco
+de TESTE deriva do censo, o de DESENVOLVIMENTO não, e por isso **toda tela nova nasce
+inalcançável numa instalação existente**. Resolvido pelo caminho que já existia
+(`conceder-acoes-ao-perfil.ts`), que recusou conceder sem autor declarado. Depois:
+`censo e perfis batem: 228 ações`.
+
+⚠️ **PENDÊNCIA `DERIVA-DE-PERFIL-FORA-DO-PORTAO`.** Os dez passos do portão incluem `deriva`,
+que é `deriva-de-schema.ts`. A deriva de **perfil** não é rodada por ele. Um lote pode
+acrescentar ação, entregar a tela, fechar **10 de 10** e a tela ser inalcançável — sem nada
+acusar. Acrescentá-la ao portão é decisão própria, não efeito colateral deste lote.
+
+**2. Um teto de heap que eu mesmo inventei.** O percurso subia o Chromium com
+`--js-flags=--max-old-space-size=256`, copiado por frugalidade. A tela de classes monta um
+select com **1.405 opções** — o recorte honesto das analíticas do ativo —, e navegar para fora
+dela com o *old space* travado estourava 60 s. Medido: sem o teto, a mesma sequência carrega
+em **81 ms** e o `networkidle2` assenta em **795 ms**. A correção foi a CAUSA, não o relógio:
+aumentar o timeout teria escondido um limite inventado por mim.
+
+**3. Um campo de data que o percurso não sabia preencher.** O formulário do bem enviava e
+**nada acontecia** — nem sucesso, nem recusa, nem registro. O molde renderiza `tipo: "data"`
+como `<input type="date">`, e digitar `"2026-03-10"` caractere a caractere deixa o campo
+VAZIO; o `required` barra o envio no NAVEGADOR e **nenhum POST sai**. Silêncio é o pior dos
+três estados, porque não acusa lugar nenhum.
+
+⚠️ **E A ORIGEM DESSE DEFEITO É DESCONFORTÁVEL: foi regressão minha.** O ramo `tipo: "data"`
+já existia em **seis** percursos. Eu copiei o `preencherEEnviar` do `smoke-gestao-do-bem.ts`,
+que é o outlier — não tem o ramo, e passa 10 de 10 apenas porque seus três cadastros não têm
+campo de data. **Ele passa por acidente do que lhe pedem preencher.**
+
+⚠️ **PENDÊNCIA `PERCURSOS-SEM-HELPER-COMUM`.** Há **dez cópias** de `preencherEEnviar`, uma
+por percurso, sem helper compartilhado — e elas divergiram: cinco não têm o ramo de data.
+Extrair o helper toca dez arquivos e exige reexecutar dez percursos para provar que nada
+quebrou. Lote próprio.
+
+### 28.3 · Duas coisas que este lote fechou de passagem
+
+- **`.env.example` documentava 2 de 4 variáveis exigidas.** Agora documenta as quatro, com o
+  motivo de cada uma — foi numa delas (`SEED_IDENTIDADE`) que o lote bateu. Fecha parte de
+  `ENV-EXAMPLE-DESATUALIZADO`.
+- ⚠️ **PENDÊNCIA NOVA — `IDENTIDADE-DO-PRODUTO`.** O operador informou que o ente de
+  Campina Grande/PB deixa de ser atendido e que o domínio passa a ser `enginesistemas.com.br`.
+  O sistema inteiro está carimbado `SIAFIC · Campina Grande/PB` — tela de login, rodapé,
+  seeds, identidades de fixture. Trocar isso é lote próprio: mexe em seed, em teste e na
+  casca. A concessão deste lote já foi gravada com autor no domínio novo.
+
+### 28.4 · Comandos e resultados
+
+| Comando | Resultado | Data |
+|---|---|---|
+| `npm run typecheck` / `:app` / `:scripts` | limpos | 2026-09-12 |
+| `npx vitest run modules/m10-patrimonial/m10-acervo.test.ts` | **11 testes** verdes | 2026-09-12 |
+| `npx vitest run test/molde test/busca-global.test.ts` | 31 testes verdes | 2026-09-12 |
+| `npx prisma migrate deploy` | `20260912081500_ent07_acoes_do_acervo` aplicada (105 no total) | 2026-09-12 |
+| `npm run build` | **140 rotas**, as 4 novas entre elas | 2026-09-12 |
+| `npm run db:conceder` | 2 concedidas, com autor gravado | 2026-09-12 |
+| `npm run deriva:perfil` | **censo e perfis batem: 228 ações** | 2026-09-12 |
+| `npm run smoke:acervo` | **11 passos, 0 falhas** | 2026-09-12 |
+
 ## 19. O próximo passo
 
 ⚠️ **ONDE PARAMOS.** O ENT06 correu até aqui em seis levas: item 0 (superfície do
@@ -3462,25 +3562,55 @@ invariante razão↔estoque: **32 asserções**. Isso é decisão, não efeito c
 O trabalho está preservado no ramo `lote2-liquidacao-material` (`fc50f94`). Enquanto não
 houver decisão, o caminho de dois passos segue fail-closed e a pendência segue aberta.
 
-**O PRÓXIMO LOTE — o acervo: classes de bens, depois o bem.** Ele não é escolha de gosto:
-saiu de medição feita no fim de §27.
+⚠️ **O ENT07 FOI ENTREGUE — §28.** O acervo (classe e bem) existe, com serviço, ação no
+censo, migration aditiva, seis rotas, 11 testes de domínio e percurso de **11 passos, 0
+falhas**. `5.19.3` e `5.19.7` viraram `VALIDADO_LOCALMENTE`.
 
-| Medição | Número | O que decide |
-|---|---|---|
-| `ClasseDeBens` no banco | **0** | o select de classe do formulário do bem nasceria DESABILITADO — a classe entra ANTES do bem |
-| serviço que cria `BemPatrimonial` | **nenhum** | `adquirirBem` exige liquidação; `registrarEntradaAvulsa` recebe um bem que já existe. O lote é de MODELO mais superfície, não de superfície |
-| `ContaPcasp` analíticas de ativo | **1.404** | o campo de conta da classe exige recorte declarado, ou vira o "formulário bonito e inútil" da própria regra |
-| `numeroTombamento` gerado por numerador | **não existe** | o ente informa o tombamento; inventar formato seria inventar o que a fonte não diz |
+**O catálogo depois deste lote:**
 
-⚠️ **PENDÊNCIA NOVA — `RECORTE-DE-CONTA-POR-NOME-LITERAL`.** O `verificarDefinicao` cobra
-`classesDeConta` procurando o campo pelo **nome literal `contaContabilId`**. A coluna real de
-`ClasseDeBens` é `contaContabilAtivoId` — com esse nome, o guard não cobra recorte nenhum e
-o select de 1.404 contas monta sem que nada acuse. É guarda que enumera forma em vez de
-afirmar propriedade, e o lote do acervo esbarra nela de frente.
+| Situação | Cláusulas |
+|---|---|
+| `NAO_VERIFICADO` | 1.721 (84,5%) |
+| `AUSENTE_CONFIRMADO` | 134 |
+| `IMPLEMENTADO_NAO_VALIDADO` | 82 |
+| `VALIDADO_LOCALMENTE` | **49** |
+| `PARCIAL` | 48 |
+| `DEPENDENCIA_EXTERNA` | 3 |
 
-⚠️ **PENDÊNCIA NOVA — `ENTRAR-POR-CLIQUE-FRAGIL`.** Nove percursos ainda entram por
+316 de 2.037 verificadas (15,5%).
+
+**O PRÓXIMO LOTE — o eixo de GESTÃO do bem, pela tela.** É a continuação medida do acervo:
+o bem existe e é alcançável, e o que falta é movê-lo. `MovimentoDeGestaoDoBem` já está de pé
+e testado desde o ENT05 — localização, responsável, estado de conservação, situação física,
+tudo derivado do último movimento de cada tipo —, e **nenhum desses atos tem superfície**.
+É o que a `5.19.15` pede por inteiro ("cadastramento, classificação, **movimentação,
+localização e baixa**") e o que a `5.19.24` pede como histórico. O detalhe do bem já lê esse
+eixo; falta o formulário que o escreve.
+
+⚠️ **PENDÊNCIA `RECORTE-DE-CONTA-POR-NOME-LITERAL` — CONFRONTADA, NÃO FECHADA.** O
+`verificarDefinicao` cobra `classesDeConta` procurando o campo pelo **nome literal**
+`contaContabilId`; a coluna real da classe é `contaContabilAtivoId`, e o guard fica mudo. O
+ENT07 esbarrou nela de frente e **declarou o recorte mesmo sem ser cobrado** — o descritor
+traz `classesDeConta: ["1"]` e a porta filtra por analíticas da classe 1, com teto de 2.000
+para não truncar em silêncio (a classe 1 tem 1.404 analíticas). O que continua aberto é o
+guard: ele segue enumerando uma forma em vez de afirmar a propriedade, e o próximo cadastro
+com conta sob outro nome passará sem recorte.
+
+⚠️ **PENDÊNCIA `ENTRAR-POR-CLIQUE-FRAGIL`.** Percursos ainda entram por
 `Promise.all([waitForNavigation, click])`. Passam em máquina folgada e falham em máquina
 apertada **apontando para a senha** (§27.3).
+
+⚠️ **PENDÊNCIA `PERCURSOS-SEM-HELPER-COMUM`.** Dez cópias de `preencherEEnviar`, uma por
+percurso, já divergidas: cinco sem o ramo de campo de data. Elas passam por acidente do que
+lhes pedem preencher (§28.2).
+
+⚠️ **PENDÊNCIA `DERIVA-DE-PERFIL-FORA-DO-PORTAO`.** O portão roda `deriva` (de schema) e não
+`deriva:perfil`. Uma ação nova pode ser entregue, fechar 10 de 10 e ser inalcançável em toda
+instalação existente (§28.2).
+
+⚠️ **PENDÊNCIA `IDENTIDADE-DO-PRODUTO`.** O ente de Campina Grande/PB deixa de ser atendido e
+o domínio passa a ser `enginesistemas.com.br`. O sistema está carimbado `SIAFIC · Campina
+Grande/PB` em tela de login, rodapé, seeds e identidades de fixture (§28.3).
 
 **E o que continua na fila, sem mudança:**
 

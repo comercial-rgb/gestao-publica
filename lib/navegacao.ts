@@ -340,6 +340,18 @@ export const GESTAO_DO_BEM: readonly RelatorioNav[] = [
   { href: "/patrimonio/tipos-de-incorporacao", numero: "Incorporação", rotulo: "Tipos de Incorporação", descricao: "Como o bem entrou: adquirido, doação, comodato, permuta. Doação e compra produzem lançamentos diferentes, e é o tipo que explica a entrada." },
 ];
 
+/**
+ * ⚠️ ENT07 — O ACERVO. Mesma razão das duas listas acima: é dela que saem, ao mesmo tempo, o
+ * hub da área e o índice da busca global.
+ *
+ * A CLASSE vem antes do BEM na lista porque vem antes na prática: o formulário do bem pede
+ * uma classe, e sem classe cadastrada o seletor nasce vazio.
+ */
+export const ACERVO: readonly RelatorioNav[] = [
+  { href: "/patrimonio/classes-de-bens", numero: "Classes", rotulo: "Classes de Bens", descricao: "Como o acervo se agrupa — móveis e imóveis — e, para cada grupo, a conta do ativo em que os bens daquela classe são registrados na contabilidade." },
+  { href: "/patrimonio/bens-patrimoniais", numero: "Acervo", rotulo: "Bens Patrimoniais", descricao: "O acervo bem a bem: o que é, em que classe entra, quando foi adquirido e como entrou. O valor não se informa aqui — ele vem dos movimentos patrimoniais." },
+];
+
 export const CONTROLE_INTERNO: readonly RelatorioNav[] = [
   { href: "/controle-interno/auditorias", numero: "Auditorias", rotulo: "Auditorias Internas", descricao: "Roteiro com base legal, achados com providência e prazo, e o relatório circunstanciado que se assina." },
 ];

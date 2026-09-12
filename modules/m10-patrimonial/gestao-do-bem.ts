@@ -281,6 +281,168 @@ export async function cadastrarTipoDeIncorporacao(
   });
 }
 
+export const zCadastrarClasseDeBensInput = z.object({
+  codigo: z.string().trim().min(1).max(30),
+  descricao: z.string().trim().min(3),
+  especie: z.enum(["MOVEL", "IMOVEL"]),
+  contaContabilAtivoId: z.string().min(1),
+  criadoPor: z.string().min(1),
+});
+export type CadastrarClasseDeBensInput = z.input<typeof zCadastrarClasseDeBensInput>;
+
+/**
+ * A CLASSE DE BENS — a classificação que diz em que conta do ativo o bem mora.
+ *
+ * ⚠️ A CONTA É CONFERIDA, NÃO SÓ REFERENCIADA. Ela tem de ser ANALÍTICA e da classe 1. Uma
+ * classe apontando para conta SINTÉTICA faria toda aquisição daquela classe lançar num nível
+ * que não recebe partida — e o razão só acusaria isso no fechamento, longe de quem cadastrou.
+ * Conta fora do ativo seria pior: o bem entraria no razão DIMINUINDO o patrimônio.
+ *
+ * ⚠️ E A CONFERÊNCIA VEM ANTES DA ESCRITA. Gravar a classe e só depois descobrir a conta
+ * errada deixaria uma classe inválida no cadastro — escolhível, na tela do bem, por quem não
+ * tem como saber.
+ */
+export async function cadastrarClasseDeBens(
+  prisma: PrismaClient,
+  input: CadastrarClasseDeBensInput
+): Promise<{ readonly classeId: string }> {
+  const d = zCadastrarClasseDeBensInput.parse(input);
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.cadastrarClasseDeBens, "ENTE");
+
+    const conta = await tx.contaPcasp.findUnique({
+      where: { id: d.contaContabilAtivoId },
+      select: { codigo: true, analitica: true },
+    });
+    if (conta === null) {
+      throw new Error(
+        `Conta contábil ${d.contaContabilAtivoId} não existe. A classe não foi criada.`
+      );
+    }
+    if (!conta.analitica) {
+      throw new Error(
+        `A conta ${conta.codigo} é SINTÉTICA e não recebe lançamento. A classe precisa de ` +
+          `conta analítica do ativo: sem isso, toda aquisição desta classe lançaria num ` +
+          `nível que não aceita partida. A classe não foi criada.`
+      );
+    }
+    // ⚠️ O PONTO NÃO É ENFEITE: `"1."` casa a CLASSE 1, e `"1"` casaria qualquer código que
+    // comece com o dígito. É o mesmo idioma que o recorte de contas da porta já usa.
+    if (!conta.codigo.startsWith("1.")) {
+      throw new Error(
+        `A conta ${conta.codigo} não é do ATIVO. Um bem incorporado por classe que aponta ` +
+          `para fora do ativo entraria no razão diminuindo o patrimônio. A classe não foi criada.`
+      );
+    }
+
+    const criada = await tx.classeDeBens.create({
+      data: {
+        codigo: d.codigo,
+        descricao: d.descricao,
+        especie: d.especie,
+        contaContabilAtivoId: d.contaContabilAtivoId,
+        criadoPor: d.criadoPor,
+      },
+      select: { id: true },
+    });
+    return { classeId: criada.id };
+  });
+}
+
+export const zCadastrarBemInput = z.object({
+  numeroTombamento: z.string().trim().min(1).max(60),
+  descricao: z.string().trim().min(3),
+  classeDeBensId: z.string().min(1),
+  dataAquisicao: z.coerce.date(),
+  tipoDeIncorporacaoId: z.string().min(1).optional(),
+  criadoPor: z.string().min(1),
+});
+export type CadastrarBemInput = z.input<typeof zCadastrarBemInput>;
+
+/**
+ * O BEM ENTRA NO ACERVO — e até aqui NADA no domínio o criava.
+ *
+ * O modelo do bem existe desde o começo do M10, mas só o seed da POC e os testes o criavam,
+ * por `prisma.bemPatrimonial.create` cru. `adquirirBem` exige `liquidacaoId` (o bem adquirido
+ * nasce de despesa liquidada) e `registrarEntradaAvulsa` recebe um `bemId` que JÁ EXISTE —
+ * ela registra o movimento financeiro, não o bem. Faltava o ato de cadastrar.
+ *
+ * ⚠️ O BEM NÃO NASCE COM VALOR, e isso não é falta. Valor é `MovimentoPatrimonial`, que já
+ * existe e já é provado. Cadastrar e avaliar são dois atos, e quem faz um não é
+ * necessariamente quem faz o outro — por isso são duas ações do censo, não uma.
+ *
+ * ⚠️ O TOMBAMENTO É INFORMADO PELO ENTE, não gerado. Não há numerador de tombamento neste
+ * repositório, e inventar um formato seria inventar a regra de numeração do município.
+ *
+ * ⚠️ A CLASSE TEM DE ESTAR ATIVA. Bem cadastrado em classe desativada some de todo relatório
+ * por classe: presente no banco e invisível na posição patrimonial.
+ */
+export async function cadastrarBem(
+  prisma: PrismaClient,
+  input: CadastrarBemInput
+): Promise<{ readonly bemId: string }> {
+  const d = zCadastrarBemInput.parse(input);
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.cadastrarBem, "ENTE");
+
+    const classe = await tx.classeDeBens.findUnique({
+      where: { id: d.classeDeBensId },
+      select: { codigo: true, ativa: true },
+    });
+    if (classe === null) {
+      throw new Error(`Classe de bens ${d.classeDeBensId} não existe. O bem não foi criado.`);
+    }
+    if (!classe.ativa) {
+      throw new Error(
+        `A classe ${classe.codigo} está DESATIVADA. Um bem cadastrado nela ficaria fora de ` +
+          `todo relatório por classe. O bem não foi criado.`
+      );
+    }
+
+    if (d.tipoDeIncorporacaoId !== undefined) {
+      const tipo = await tx.tipoDeIncorporacao.findUnique({
+        where: { id: d.tipoDeIncorporacaoId },
+        select: { id: true },
+      });
+      if (tipo === null) {
+        throw new Error(
+          `Tipo de incorporação ${d.tipoDeIncorporacaoId} não existe. O bem não foi criado.`
+        );
+      }
+    }
+
+    // ⚠️ A PRÉ-CONDIÇÃO VEM ANTES DA ESCRITA, e o índice único continua sendo a garantia
+    // REAL — entre esta leitura e o `create` cabe outra transação. O que a conferência compra
+    // é a MENSAGEM: "já existe o tombamento X" em vez do erro cru do banco, que não diz a
+    // quem digitou o que fazer em seguida.
+    const repetido = await tx.bemPatrimonial.findUnique({
+      where: { numeroTombamento: d.numeroTombamento },
+      select: { id: true },
+    });
+    if (repetido !== null) {
+      throw new Error(
+        `Já existe bem com o tombamento ${d.numeroTombamento}. Dois bens com o mesmo ` +
+          `tombamento tornam ambígua a etiqueta colada na prateleira. O bem não foi criado.`
+      );
+    }
+
+    const criado = await tx.bemPatrimonial.create({
+      data: {
+        numeroTombamento: d.numeroTombamento,
+        descricao: d.descricao,
+        classeDeBensId: d.classeDeBensId,
+        dataAquisicao: d.dataAquisicao,
+        ...(d.tipoDeIncorporacaoId !== undefined
+          ? { tipoDeIncorporacaoId: d.tipoDeIncorporacaoId }
+          : {}),
+        criadoPor: d.criadoPor,
+      },
+      select: { id: true },
+    });
+    return { bemId: criado.id };
+  });
+}
+
 export const zCadastrarFormulaDeAvaliacaoInput = z.object({
   codigo: z.string().trim().min(1).max(20),
   descricao: z.string().trim().min(3),

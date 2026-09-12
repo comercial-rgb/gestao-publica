@@ -17,6 +17,7 @@ import {
   RELATORIOS_RREO,
   ALMOXARIFADO,
   GESTAO_DO_BEM,
+  ACERVO,
   TRANSFERENCIAS,
   CONTROLE_INTERNO,
   COMUNICACAO,
@@ -69,7 +70,7 @@ const GRUPOS_DE_RELATORIO: readonly (readonly [
   // ⚠️ UMA LINHA POR ÁREA, e as duas listas do patrimônio entram JUNTAS nela. Abrir uma
   // segunda linha para a mesma área daria dois destinos de leitura com o mesmo rótulo, e
   // quem busca veria "Patrimônio" duas vezes sem saber qual é qual.
-  ["patrimonio", "Patrimônio", [...ALMOXARIFADO, ...GESTAO_DO_BEM]],
+  ["patrimonio", "Patrimônio", [...ALMOXARIFADO, ...GESTAO_DO_BEM, ...ACERVO]],
   ["divida", "Dívida e precatórios", DIVIDA],
   ["controle-interno", "Controle interno", CONTROLE_INTERNO],
 ];

@@ -147,6 +147,25 @@ const PERCURSO_PERFIS = "scripts/smoke-perfis.ts (14 passos, 0 falhas, 2026-09-1
 const PERCURSO_GESTAO_DO_BEM =
   "scripts/smoke-gestao-do-bem.ts (10 passos, 0 falhas, 2026-09-12):";
 
+/**
+ * ⚠️ O PERCURSO DO ACERVO — E ELE **EXERCITA** A INCORPORAÇÃO, NÃO SÓ A OFERECE.
+ *
+ * A primeira versão deste percurso cadastrava o bem sem escolher tipo de incorporação: o
+ * select aparecia na tela e ninguém o usava. Isso prova que o formulário MONTOU, e não prova
+ * o que as duas cláusulas pedem — "com a identificação do bem se adquirido, recebido em
+ * doação, comodato, permuta" (5.19.3) e o tipo "para ser usado no cadastramento dos mesmos"
+ * (5.19.7). Marcar assim seria marcar por dedução.
+ *
+ * O percurso passou a cadastrar o tipo na tela dele, escolhê-lo no formulário do bem, e
+ * conferir que a listagem traz o bem COM a origem, depois de recarregada.
+ *
+ * ⚠️ O QUE ELE **NÃO** PROMOVE, E POR QUÊ — porque entregar duas telas não é atender tudo o
+ * que as cita. A 5.19.14 pede consulta ao bem por LOCALIZAÇÃO e RESPONSÁVEL, e a listagem
+ * filtra por tombamento, descrição e espécie: continua `AUSENTE_CONFIRMADO`. A 5.19.15 pede
+ * movimentação, localização e baixa pela tela, que não existem: continua `PARCIAL`.
+ */
+const PERCURSO_ACERVO = "scripts/smoke-acervo.ts (11 passos, 0 falhas, 2026-09-12):";
+
 const SMOKE_04 =
   "scripts/smoke-ent03c.ts (41 passos, 0 falhas, 2026-09-11, DUAS execuções — a segunda " +
   "contra o banco já povoado pela primeira, que é o que prova que o percurso não depende " +
@@ -1430,8 +1449,14 @@ const MAPA: Readonly<Record<string, Marca>> = {
   "5.18.21": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): Deposito com codigo, nome, unidade gestora e responsavel; a posicao e os bloqueios sao por deposito, e a transferencia entre dois e composta." },
   "5.19.1": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): InventarioDeBens com exercicio, comissao designada, unidade gestora, abertura e fechamento. Irmao - e nao o mesmo - do inventario de ESTOQUE: este exige comissao por portaria." },
   "5.19.2": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): gerarEtiquetaDeBem grava o codigo de barras no bem e e IDEMPOTENTE: a segunda chamada devolve a MESMA etiqueta. Gerar codigo novo faria o leitor deixar de reconhecer a etiqueta ja colada." },
-  "5.19.3": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): TipoDeIncorporacao e TABELA (adquirido, doacao, comodato, permuta, e o que o ente acrescentar), como a clausula pede ao dizer 'configuraveis pela instituicao'." },
-  "5.19.7": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): O mesmo TipoDeIncorporacao atende 'diversos Tipos de bens alem dos moveis e imoveis' - cresce por cadastro, nao por enum no codigo." },
+  "5.19.3": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: `${PERCURSO_ACERVO} o bem é cadastrado PELA TELA /patrimonio/bens-patrimoniais, classificado por uma CLASSE — que carrega a espécie, móvel ou imóvel — e identificado por um TIPO DE INCORPORAÇÃO cadastrado no próprio percurso e escolhido no formulário. Após recarga, a listagem traz o bem com a classe e com como ele entrou. ⚠️ Até este lote NADA no domínio criava um BemPatrimonial: adquirirBem exige liquidação (o bem adquirido nasce de despesa liquidada) e registrarEntradaAvulsa recebe um bem que já existe. O serviço cadastrarBem e a ação CADASTRAR_BEM nasceram aqui; modules/m10-patrimonial/m10-acervo.test.ts (11 testes) prova as recusas nomeadas — classe desativada, tombamento repetido, tipo inexistente, sem permissão — e que o cadastro NÃO move o razão.`,
+  },
+  "5.19.7": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: `${PERCURSO_ACERVO} o tipo de incorporação é cadastrado pela tela e, na MESMA execução, aparece no select do formulário do bem e é ESCOLHIDO — que é exatamente o que a cláusula pede ao dizer "para ser usado no cadastramento dos mesmos". O rol cresce por cadastro do ente, não por enum no código: a tela de tipos e a do bem são as duas pontas do mesmo fato, e o percurso liga uma à outra sem passar pelo banco à mão.`,
+  },
   "5.19.10": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): bensSobResponsabilidade deriva os bens de uma pessoa numa data. DERIVA em vez de filtrar por coluna: 'de quem era este bem em dezembro?' e a pergunta que o termo de responsabilidade faz." },
   "5.19.11": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): EstadoDeConservacao (otimo, bom, regular, ruim, inservivel) como movimento; o estado ATUAL e o ultimo movimento do tipo ate uma data." },
   "5.19.12": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): SituacaoFisicaDoBem (em uso, emprestimo, locacao, manutencao preventiva e corretiva, desuso, baixado) como movimento derivado." },

@@ -229,6 +229,11 @@ const PORTAS_DE_OPCOES: readonly string[] = [
   // O t20 continuaria verde enquanto a tela mostrava select desabilitado. Um guard que
   // enumera fontes só enxerga as fontes que alguém lembrou de declarar.
   "lib/portas/recursos/gestao-do-bem-dados.ts",
+  // ⚠️ ENT07 — a porta do acervo, declarada NO MESMO COMMIT em que nasceu, pela mesma razão
+  // da linha acima. `classeDeBensId` e `tipoDeIncorporacaoId` não existem em nenhuma outra
+  // porta, mas `contaContabilAtivoId` é primo de `contaContabilId` — e um guard que enumera
+  // fontes só enxerga as que alguém lembrou de declarar.
+  "lib/portas/recursos/acervo-dados.ts",
 ];
 
 /**

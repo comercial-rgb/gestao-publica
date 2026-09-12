@@ -140,6 +140,13 @@ export type AcaoDoSistema =
   | "FECHAR_INVENTARIO_DE_ESTOQUE"
   | "BLOQUEAR_ESTOQUE"
   | "ENCERRAR_BLOQUEIO_DE_ESTOQUE"
+  // ── ENT07 — o ACERVO: a classe classifica, o bem existe ──
+  // Até aqui nada no domínio criava um `BemPatrimonial`: `adquirirBem` exige liquidação e
+  // `registrarEntradaAvulsa` recebe um bem que já existe. Cadastrar e AVALIAR são dois atos,
+  // e por isso duas ações — quem põe o bem no acervo não é quem lhe atribui valor.
+  | "CADASTRAR_CLASSE_DE_BENS"
+  | "CADASTRAR_BEM"
+
   // ── M10 — patrimônio, EIXO DE GESTÃO (ENT05, TR 5.19) ──
   | "CADASTRAR_LOCALIZACAO_FISICA"
   | "CADASTRAR_COMISSAO_PATRIMONIAL"
@@ -438,6 +445,8 @@ export type NomeDeServico =
   | "registrarSaidaConsumo"
   | "registrarAjusteAlmoxarifado"
   | "estornarMovimentoAlmoxarifado"
+  | "cadastrarClasseDeBens"
+  | "cadastrarBem"
   | "adquirirBem"
   | "registrarEntradaAvulsa"
   | "alienarBem"
@@ -751,6 +760,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // ENT05 — o eixo de GESTÃO do bem (TR 5.19). Também aqui uma ação por serviço: quem
   // CONTA o bem no inventário não é quem FECHA o inventário, e quem emite termo de
   // responsabilidade não é, necessariamente, quem transfere bem entre entidades.
+  // ENT07 — o acervo.
+  cadastrarClasseDeBens: "CADASTRAR_CLASSE_DE_BENS",
+  cadastrarBem: "CADASTRAR_BEM",
   cadastrarLocalizacaoFisica: "CADASTRAR_LOCALIZACAO_FISICA",
   cadastrarComissaoPatrimonial: "CADASTRAR_COMISSAO_PATRIMONIAL",
   cadastrarMotivoDeBaixa: "CADASTRAR_MOTIVO_DE_BAIXA",

@@ -152,6 +152,11 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   BLOQUEAR_ESTOQUE: "patrimonio",
   ENCERRAR_BLOQUEIO_DE_ESTOQUE: "patrimonio",
 
+  // ENT07 — o acervo. A CLASSE é tabela de apoio e mora em "cadastros"; o BEM é o acervo em
+  // si, e mora em "patrimonio", junto dos atos que o movem e o avaliam.
+  CADASTRAR_CLASSE_DE_BENS: "cadastros",
+  CADASTRAR_BEM: "patrimonio",
+
   // ENT05 — o eixo de GESTÃO do bem (TR 5.19).
   CADASTRAR_LOCALIZACAO_FISICA: "cadastros",
   CADASTRAR_COMISSAO_PATRIMONIAL: "cadastros",
