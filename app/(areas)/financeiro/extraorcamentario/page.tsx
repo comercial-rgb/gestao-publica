@@ -9,7 +9,7 @@ import {
   lerEventosExtra, lerSaldosExtra, lerRetencoes, lerDispendiosExtra, PortaSemBancoError,
   type TipoConsignacaoNaLista, type SaldoConsignatarioNaLista, type RetencaoNaLista, type DispendioNaLista,
 } from "../../../../lib/portas/extraorcamentario";
-import { dataBr, recorteDe } from "../../../../lib/recorte";
+import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
 
 /**
  * EXTRAORÇAMENTÁRIO (M07, TR 5.39–5.49) — dinheiro de terceiros no caixa: eventos (consignações),
@@ -23,7 +23,33 @@ export default async function ExtraorcamentarioPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
-  const { exercicio } = recorteDe(await searchParams);
+  const sp = await searchParams;
+
+  // ⚠️ SÓ O EXERCÍCIO: o extraorçamentário é dinheiro de terceiros no caixa do ENTE, e o
+  // caixa é um só. `lerEventosExtra` e `lerSaldosExtra` não recebem nem exercício; as outras
+  // duas recebem só ele. Não há unidade a recusar — só o silêncio do `?exercicio=abc`.
+  let exercicio: number;
+  try {
+    exercicio = exercicioAutorizado(sp);
+  } catch (erro) {
+    return (
+      <div className="space-y-4">
+        <SincronizarContexto />
+        <PageHeader
+          titulo="Extraorçamentário"
+          subtitulo="Consignações, retenções e recolhimentos (dinheiro de terceiros no caixa)"
+        />
+        <EstadoVazio
+          titulo={
+            erro instanceof ExercicioIlegivelError
+              ? "O exercício pedido não é um ano"
+              : "Não foi possível ler o recorte"
+          }
+          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+        />
+      </div>
+    );
+  }
   const cabecalho = (
     <PageHeader
       titulo="Extraorçamentário"

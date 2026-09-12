@@ -5,7 +5,7 @@ import { SincronizarContexto } from "../../../../components/ui/SincronizarContex
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import { BotaoPdf } from "../../../../components/ui/BotaoPdf";
 import { lerPosicaoPatrimonial, lerDividas, PortaSemBancoError, type DemonstrativoPatrimonial, type DividaPorTipoDaTela } from "../../../../lib/portas/patrimonio";
-import { recorteDe } from "../../../../lib/recorte";
+import { exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
 
 /**
  * PATRIMÔNIO (M10, TR 5.82–5.86) — a posição patrimonial por classe (5.86: saldo anterior + ingressos
@@ -19,7 +19,33 @@ export default async function BensPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
-  const { exercicio } = recorteDe(await searchParams);
+  const sp = await searchParams;
+
+  // ⚠️ SÓ O EXERCÍCIO. `lerPosicaoPatrimonial` e `lerDividas` recebem apenas o ano — e a
+  // medição do schema explica por quê: `BemPatrimonial` não tem `unidadeOrcId` nem `setorId`
+  // (ver a varredura da ENT10). Não há dimensão de unidade a recortar neste eixo.
+  let exercicio: number;
+  try {
+    exercicio = exercicioAutorizado(sp);
+  } catch (erro) {
+    return (
+      <div className="space-y-4">
+        <SincronizarContexto />
+        <PageHeader
+          titulo="Patrimônio"
+          subtitulo="Posição por classe e dívida consolidada"
+        />
+        <EstadoVazio
+          titulo={
+            erro instanceof ExercicioIlegivelError
+              ? "O exercício pedido não é um ano"
+              : "Não foi possível ler o recorte"
+          }
+          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+        />
+      </div>
+    );
+  }
   const cabecalho = (
     <PageHeader
       titulo="Patrimônio — bens e dívida"

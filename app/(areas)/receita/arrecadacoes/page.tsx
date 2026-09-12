@@ -15,7 +15,7 @@ import {
   type ArrecadacaoDoPeriodo,
   type NaturezaDaTela,
 } from "../../../../lib/portas/arrecadacao";
-import { dataBr, recorteDe } from "../../../../lib/recorte";
+import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
 import { BotaoCsv } from "../../../../components/ui/BotaoCsv";
 import { BotaoPdf } from "../../../../components/ui/BotaoPdf";
 import { paraCsv } from "../../../../lib/csv/csv";
@@ -42,7 +42,37 @@ export default async function ArrecadacoesPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
-  const { exercicio } = recorteDe(await searchParams);
+  const sp = await searchParams;
+
+  // ⚠️ SÓ O EXERCÍCIO, SEM UNIDADE — e o subtítulo desta tela já dizia por quê: "a receita
+  // não tem UG". As duas leituras (`lerArrecadacoes`, `lerNaturezasPrevistas`) não recebem
+  // unidade nenhuma. Impor recusa de `?ug=` aqui quebraria link salvo sem proteger dado
+  // algum, porque não há dado de outra unidade a proteger.
+  //
+  // O que ela ganha é a recusa do exercício ilegível: `?exercicio=abc` virava 2026 em
+  // silêncio, e a tela afirmava as guias de um ano que ninguém pediu.
+  let exercicio: number;
+  try {
+    exercicio = exercicioAutorizado(sp);
+  } catch (erro) {
+    return (
+      <div className="space-y-4">
+        <SincronizarContexto />
+        <PageHeader
+          titulo="Arrecadação"
+          subtitulo="Guias do ente, por natureza e fonte (a receita não tem UG)"
+        />
+        <EstadoVazio
+          titulo={
+            erro instanceof ExercicioIlegivelError
+              ? "O exercício pedido não é um ano"
+              : "Não foi possível ler o recorte"
+          }
+          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+        />
+      </div>
+    );
+  }
 
   const cabecalho = (
     <PageHeader
