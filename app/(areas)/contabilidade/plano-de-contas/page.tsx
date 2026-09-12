@@ -11,7 +11,13 @@ import {
   type ContaDoPlano,
 } from "../../../../lib/portas/contabilidade";
 import { gerarBalancete, type LinhaDoBalancete } from "../../../../lib/portas/livros";
-import { descreverRecorte, recorteDe } from "../../../../lib/recorte";
+import {
+  EscopoDeLeituraError,
+  ExercicioIlegivelError,
+  recorteDePagina,
+  type RecorteDaPagina,
+} from "../../../../lib/portas/contexto";
+import { descreverRecorte } from "../../../../lib/recorte";
 import { janelaCivilDoAno } from "../../../../packages/datas/index";
 
 /**
@@ -53,21 +59,25 @@ export default async function PlanoDeContasPage({
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
   const sp = await searchParams;
-  const recorte = recorteDe(sp);
   // Recorte de APRESENTAÇÃO (não vai à porta): `?classe=2` mostra só uma classe. É o caminho que
   // o roteiro de demonstração percorre — classe 2 → 2.1.8.8.1.01.00 (Consignações).
   const classeFiltro = umaClasse(sp["classe"]);
 
-  const cabecalho = (
-    <PageHeader
-      titulo="Plano de Contas PCASP"
-      subtitulo={`${descreverRecorte(recorte)} — contas por classe, com natureza do saldo e saldo do exercício`}
-    />
-  );
-
+  // ⚠️ AQUI O QUE O RECORTE AUTORIZADO ACRESCENTA É O **EXERCÍCIO**, NÃO A UNIDADE — e isso
+  // foi medido, não suposto. As três leituras desta tela (`listarPlanoDeContas` e os dois
+  // `gerarBalancete`) não recebem unidade nenhuma: o plano de contas é do ENTE, e a janela
+  // do saldo sai de `janelaCivilDoAno(recorte.exercicio)`. Forçar recorte de unidade aqui
+  // seria fabricar uma dimensão que o modelo não tem.
+  //
+  // O que ela ganha é a recusa do exercício ilegível: `?exercicio=abc` virava 2026 em
+  // silêncio, e a tela afirmava com confiança o saldo de um ano que ninguém pediu.
+  //
+  // ⚠️ E O CABEÇALHO NASCE DEPOIS DO TRY, porque imprime `descreverRecorte(recorte)`.
+  let recorte: RecorteDaPagina;
   let contas: readonly ContaDoPlano[];
   let linhasBalancete: readonly LinhaDoBalancete[];
   try {
+    recorte = await recorteDePagina(sp);
     // ⚠️ A JANELA DO SALDO É O EXERCÍCIO INTEIRO do recorte — o saldo que se espera ver ao lado de
     // uma conta do plano é o acumulado do ano, não o de uma janela arbitrária. Quem quer o saldo
     // de um mês tem o Balancete, que é a tela feita para escolher a janela.
@@ -86,14 +96,33 @@ export default async function PlanoDeContasPage({
     return (
       <div className="space-y-4">
         <SincronizarContexto />
-        {cabecalho}
+        <PageHeader
+          titulo="Plano de Contas PCASP"
+          subtitulo="Contas por classe, com natureza do saldo e saldo do exercício"
+        />
         <EstadoVazio
-          titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível ler o plano de contas"}
+          titulo={
+            erro instanceof EscopoDeLeituraError
+              ? "Esta unidade não está no seu acesso"
+              : erro instanceof ExercicioIlegivelError
+                ? "O exercício pedido não é um ano"
+                : erro instanceof PortaSemBancoError
+                  ? "Banco de dados não configurado"
+                  : "Não foi possível ler o plano de contas"
+          }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
       </div>
     );
   }
+
+  // ⚠️ AQUI: `recorte` autorizado, e só agora o cabeçalho pode afirmar o exercício.
+  const cabecalho = (
+    <PageHeader
+      titulo="Plano de Contas PCASP"
+      subtitulo={`${descreverRecorte(recorte)} — contas por classe, com natureza do saldo e saldo do exercício`}
+    />
+  );
 
   // A JUNÇÃO — por `codigo`, a chave única do plano e a mesma que o balancete usa como rótulo.
   const saldoPorConta = new Map(linhasBalancete.map((l) => [l.conta, l]));
