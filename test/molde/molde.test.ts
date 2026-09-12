@@ -234,6 +234,11 @@ const PORTAS_DE_OPCOES: readonly string[] = [
   // porta, mas `contaContabilAtivoId` é primo de `contaContabilId` — e um guard que enumera
   // fontes só enxerga as que alguém lembrou de declarar.
   "lib/portas/recursos/acervo-dados.ts",
+  // ⚠️ ENT11 — a porta dos roteiros contábeis, declarada NO MESMO COMMIT em que nasceu,
+  // pela mesma razão das duas linhas acima. `contaDebitoId` e `contaCreditoId` não existem
+  // em nenhuma outra porta de opções — mas é exatamente essa confiança que já produziu um
+  // falso-verde aqui: um guard que enumera fontes só enxerga as que alguém declarou.
+  "lib/portas/recursos/roteiros-dados.ts",
 ];
 
 /**

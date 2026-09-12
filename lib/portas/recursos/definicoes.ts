@@ -2,6 +2,7 @@ import { definirRecurso, type DefinicaoDeRecurso } from "../../molde/tipos.js";
 import { RECURSOS_DO_ALMOXARIFADO } from "./almoxarifado.js";
 import { RECURSOS_DA_GESTAO_DO_BEM } from "./gestao-do-bem.js";
 import { RECURSOS_DO_ACERVO } from "./acervo.js";
+import { RECURSOS_DOS_ROTEIROS } from "./roteiros.js";
 
 /**
  * OS DESCRITORES DOS CADASTROS DO ENT03b — a prova do molde.
@@ -718,4 +719,9 @@ export const RECURSOS_DO_MOLDE: readonly DefinicaoDeRecurso[] = [
   // ⚠️ ENT07 — o acervo. A classe e o bem entram pela mesma lista que tudo o mais: é dela que
   // saem a busca global e a verificação de que as ações declaradas existem no censo do M16.
   ...RECURSOS_DO_ACERVO,
+  // ⚠️ ENT11 — os roteiros contábeis do patrimônio. Entram pela mesma lista pelo mesmo
+  // motivo de todos os outros: é dela que saem a busca global e a verificação de que as
+  // ações declaradas existem no censo do M16. Um cadastro que entrasse por fora ficaria
+  // invisível na busca e sem a amarração da permissão.
+  ...RECURSOS_DOS_ROTEIROS,
 ];
