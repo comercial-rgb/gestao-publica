@@ -5542,8 +5542,10 @@ de fornecedor/itens/duplicidade/anexos (8). Recebimento/atesto/liquidação e pa
 
 ### 50.5 Portão do candidato
 
-`test:tudo` foi executado ao fim desta seção — resultado registrado em `.registro-de-execucao/v4-test-tudo-final.txt`
-e na linha abaixo desta (acrescentada depois da execução).
+`test:tudo` sobre a árvore `7147b53` (tudo desta seção commitado, servidor parado, nada mais rodando): **229 arquivos,
+2364/2364 testes, 794 s** — `.registro-de-execucao/v4-test-tudo-final.txt` (saída bruta em
+`suite-completa-2026-09-13T14-16-09-358Z.log`). Faltam para o portão integral: `test:fuso`, o SQL manual de
+`prisma/sql/` conferido no candidato e o `deriva:perfil`.
 
 ### 50.6 Próximo ponto exato
 
