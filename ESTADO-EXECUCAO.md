@@ -4821,6 +4821,17 @@ antigos (ENT07–ENT12, roteiros) ainda não foram reexecutados contra 3010.
 | `PERCURSOS-SOB-O-BANCO-PROPRIO` | os smokes anteriores continuam a reexecutar contra 3010 |
 | fechadas nesta seção | `MEUS-BENS-SEM-PERCURSO`, `PESQUISA-DO-ACERVO-SEM-PERCURSO`, `COMPETENCIA-SEM-PERCURSO`, `ESTORNO-SEM-PERCURSO`, `TERMOS-E-ETIQUETAS-SEM-PERCURSO` (parcial: etiquetas e termo de responsabilidade), `PDF-DO-TERMO-NAO-RENDERIZADO` |
 
+### 43.5-b · Os percursos anteriores contra 3010 (primeira leva)
+
+| Percurso | Resultado |
+|---|---|
+| `smoke-gestao-do-bem` | **10/10** (`.registro-de-execucao/v3-percursos-3010-gestao-do-bem.txt`) |
+| `smoke-acervo` | **25/25** |
+| `smoke-eixo-de-valor` | 1ª execução **14 ok / 6 falhas** — as quatro baixas ficavam em silêncio: a unidade 2 tornou o **motivo do rol** obrigatório na tela e o percurso antigo não o preenchia (o `required` do navegador segura o envio). O percurso passou a ler a primeira opção do rol e a preenchê-la; 2ª execução **21/21** |
+
+Restam contra 3010: `smoke-roteiros` (que deve passar a usar propor/publicar), `smoke-perfis`,
+`smoke-cadastro-pessoas`, `smoke-cadeia-despesa`, `smoke-ent02/03a/03b/03c/06/10`, `smoke-visual`.
+
 ### 43.6 · Próximo ponto exato
 
 Reexecutar os smokes existentes contra 3010 (`PERCURSOS-SOB-O-BANCO-PROPRIO`), começando

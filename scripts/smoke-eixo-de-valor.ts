@@ -239,6 +239,16 @@ async function valorContabilNaTela(page: Page): Promise<string | null> {
   });
 }
 
+/** A primeira opção útil de um select — para o MOTIVO DE BAIXA do rol do ente (V3, pacote 2). */
+async function primeiraOpcao(page: Page, seletor: string): Promise<string | null> {
+  return page.evaluate((sel) => {
+    const el = document.querySelector(sel);
+    if (!(el instanceof HTMLSelectElement)) return null;
+    const util = Array.from(el.options).find((o) => o.value !== "" && !o.disabled);
+    return util?.value ?? null;
+  }, seletor);
+}
+
 async function main(): Promise<void> {
   let navegador: Browser | undefined;
   try {
@@ -355,8 +365,17 @@ async function main(): Promise<void> {
     // ══════════════════════════════════════════════════════════════════════
     // 4 · A RECUSA DO TETO — baixar o que não se tem, ANTES de ter
     // ══════════════════════════════════════════════════════════════════════
+    // V3 (pacote 2): a baixa pede o MOTIVO DO ROL DO ENTE (obrigatório na tela). Sem motivo
+    // cadastrado o navegador segura o envio em silêncio — por isso a leitura é conferida.
+    const motivoDeBaixa = await primeiraOpcao(page, 'form[data-acao="baixar-do-acervo"] select[name="motivoDeBaixaId"]');
+    conferir(
+      "baixa: o select de motivo do rol oferece ao menos um motivo ativo",
+      motivoDeBaixa !== null,
+      "nenhum motivo de baixa cadastrado — cadastre um em /patrimonio/motivos-de-baixa"
+    );
     const rSemSaldo = await preencherEEnviar(page, "baixar-do-acervo", [
       { sel: 'select[name="tipo"]', valor: "BAIXA_ALIENACAO", tipo: "select" },
+      ...(motivoDeBaixa === null ? [] : [{ sel: 'select[name="motivoDeBaixaId"]', valor: motivoDeBaixa, tipo: "select" as const }]),
       { sel: 'input[data-mascara="valor"]', valor: BAIXA },
       { sel: 'input[name="dataMovimento"]', valor: "2026-04-01", tipo: "data" },
       { sel: 'input[name="motivo"]', valor: "Tentativa de baixa sem valor lancado" },
@@ -399,6 +418,7 @@ async function main(): Promise<void> {
     // ══════════════════════════════════════════════════════════════════════
     const rEstouro = await preencherEEnviar(page, "baixar-do-acervo", [
       { sel: 'select[name="tipo"]', valor: "BAIXA_ALIENACAO", tipo: "select" },
+      ...(motivoDeBaixa === null ? [] : [{ sel: 'select[name="motivoDeBaixaId"]', valor: motivoDeBaixa, tipo: "select" as const }]),
       { sel: 'input[data-mascara="valor"]', valor: ESTOURO },
       { sel: 'input[name="dataMovimento"]', valor: "2026-04-01", tipo: "data" },
       { sel: 'input[name="motivo"]', valor: "Tentativa de baixa acima do valor do bem" },
@@ -419,6 +439,7 @@ async function main(): Promise<void> {
     await irPara(page, href);
     const rBaixaOk = await preencherEEnviar(page, "baixar-do-acervo", [
       { sel: 'select[name="tipo"]', valor: "BAIXA_ALIENACAO", tipo: "select" },
+      ...(motivoDeBaixa === null ? [] : [{ sel: 'select[name="motivoDeBaixaId"]', valor: motivoDeBaixa, tipo: "select" as const }]),
       { sel: 'input[data-mascara="valor"]', valor: BAIXA },
       { sel: 'input[name="dataMovimento"]', valor: "2026-04-01", tipo: "data" },
       { sel: 'input[name="motivo"]', valor: "Baixa parcial do bem do percurso" },
@@ -465,6 +486,7 @@ async function main(): Promise<void> {
 
     const rTetoDoBem = await preencherEEnviar(page, "baixar-do-acervo", [
       { sel: 'select[name="tipo"]', valor: "BAIXA_ALIENACAO", tipo: "select" },
+      ...(motivoDeBaixa === null ? [] : [{ sel: 'select[name="motivoDeBaixaId"]', valor: motivoDeBaixa, tipo: "select" as const }]),
       { sel: 'input[data-mascara="valor"]', valor: "1000,00" },
       { sel: 'input[name="dataMovimento"]', valor: "2026-04-03", tipo: "data" },
       { sel: 'input[name="motivo"]', valor: "Baixa em bem sem valor, com classe com saldo" },
