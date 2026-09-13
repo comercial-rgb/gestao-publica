@@ -1,4 +1,5 @@
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
+import { normalizarDocumento, tipoDeDocumento } from "../../packages/documento/index.js";
 import { z } from "zod";
 import { ACAO_DO_SERVICO } from "./acoes.js";
 import { autorizar, type Tx } from "./autorizacao.js";
@@ -98,7 +99,7 @@ async function usuarioVinculadoAPessoa(tx: Tx, pessoaId: string): Promise<{ read
 
 export const zVincularPessoaAoUsuarioInput = z.object({
   usuarioId: z.string().min(1),
-  /** CPF (11) ou CNPJ (14) — com ou sem máscara; só os dígitos contam. */
+  /** O CPF da pessoa — com ou sem máscara. (CNPJ é recusado: não é identidade pessoal.) */
   documento: z.string().trim().min(1, "Informe o CPF ou CNPJ da pessoa."),
   motivo: zMotivo,
   criadoPor: zAtor,
@@ -112,11 +113,21 @@ export async function vincularPessoaAoUsuario(
   const d = zVincularPessoaAoUsuarioInput.parse(input);
   await autorizar(prisma, d.criadoPor, ACAO_DO_SERVICO.vincularPessoaAoUsuario);
 
-  const documento = d.documento.replace(/\D/g, "");
-  if (documento.length !== 11 && documento.length !== 14) {
+  const documento = normalizarDocumento(d.documento);
+  const tipo = tipoDeDocumento(documento);
+  if (tipo === "INVALIDO") {
     throw new Error(
-      `DOCUMENTO ILEGÍVEL: "${d.documento}" não tem 11 (CPF) nem 14 (CNPJ) dígitos. O vínculo é ` +
+      `DOCUMENTO ILEGÍVEL: "${d.documento}" não é um CPF (11 dígitos) nem um CNPJ (14 caracteres). O vínculo é ` +
         `pelo documento, e nunca pelo nome. Nada foi gravado.`
+    );
+  }
+  // ⚠️ V4 (§7): um USUÁRIO é uma pessoa FÍSICA. CNPJ não é identidade pessoal — representar uma
+  // organização é vínculo PRÓPRIO, com escopo (pendência REPRESENTACAO-DE-ORGANIZACAO-PELO-USUARIO).
+  if (tipo === "CNPJ") {
+    throw new Error(
+      `CNPJ NÃO É IDENTIDADE PESSOAL: "${d.documento}" é uma pessoa jurídica, e um usuário é uma pessoa física. ` +
+        `Um usuário se vincula ao SEU CPF; representar uma organização é um vínculo próprio, com escopo, que ainda ` +
+        `não existe (pendência REPRESENTACAO-DE-ORGANIZACAO-PELO-USUARIO). Nada foi gravado.`
     );
   }
 

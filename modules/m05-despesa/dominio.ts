@@ -1,4 +1,5 @@
 import { diaCivil } from "../../packages/datas/index.js";
+import { normalizarDocumento } from "../../packages/documento/index.js";
 import { z } from "zod";
 import { toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
 import {
@@ -329,7 +330,10 @@ export const zEmpenharInput = z
     tipo: zTipoEmpenho,
     valor: zValorPositivo,
     data: z.coerce.date(),
-    credorCpfCnpj: z.string().min(11, "CPF/CNPJ inválido"),
+    // V4 (§7): normalizado pelo pacote (sem máscara, maiúsculas — o CNPJ pode ser alfanumérico). O FORMATO
+    // não é exigido aqui de propósito: o empenho antigo com documento quebrado é dado legado que o portal
+    // (M13) OMITE com motivo — recusar aqui esconderia o caso que o M13 prova. Quem confere o DV é o M19.
+    credorCpfCnpj: z.string().transform(normalizarDocumento).pipe(z.string().min(11, "CPF/CNPJ inválido")),
     historico: z.string().min(1),
     /**
      * M06 (art. 141): define em qual fila o pagamento entra.

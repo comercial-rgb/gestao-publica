@@ -1,4 +1,5 @@
 import { ELEMENTOS } from "../../prisma/seed/dados/elementos.js";
+import { tipoDeDocumento } from "../../packages/documento/index.js";
 
 /**
  * M13 — TRANSPARÊNCIA. DOMÍNIO PURO (sem I/O).
@@ -39,7 +40,6 @@ export interface Beneficiario {
   readonly tipo: TipoDocumento;
 }
 
-const SO_DIGITOS = /^\d+$/;
 
 /**
  * ⚠️ FAIL-CLOSED DE EXPOSIÇÃO: NA DÚVIDA, NÃO EXPÕE.
@@ -58,9 +58,10 @@ const SO_DIGITOS = /^\d+$/;
  */
 export function identificarDocumento(bruto: string): Beneficiario | null {
   const d = bruto.trim();
-  if (!SO_DIGITOS.test(d)) return null;
-  if (d.length === 11) return { documento: mascararCpf(d), tipo: "CPF" };
-  if (d.length === 14) return { documento: exporCnpj(d), tipo: "CNPJ" };
+  // V4 (§7): o CNPJ pode ser alfanumérico; o tipo sai do PACOTE, que conhece os dois formatos.
+  const tipo = tipoDeDocumento(d);
+  if (tipo === "CPF") return { documento: mascararCpf(d), tipo: "CPF" };
+  if (tipo === "CNPJ") return { documento: exporCnpj(d), tipo: "CNPJ" };
   return null;
 }
 

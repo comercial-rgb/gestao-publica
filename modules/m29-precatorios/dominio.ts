@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { documentoTemFormatoValido, normalizarDocumento } from "../../packages/documento/index.js";
 import { toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
 import { compararPorDiaCivil, diaCivil } from "../../packages/datas/index.js";
 
@@ -219,7 +220,7 @@ export const zCadastrarPrecatorioInput = z.object({
   tribunal: z.string().trim().min(2),
   oficioRequisitorio: z.string().trim().min(1).optional(),
   beneficiarioNome: z.string().trim().min(3),
-  beneficiarioDocumento: z.string().regex(/^\d{11}$|^\d{14}$/),
+  beneficiarioDocumento: z.string().transform(normalizarDocumento).refine(documentoTemFormatoValido, "CPF (11 dígitos) ou CNPJ (14 caracteres, alfanumérico aceito), sem máscara."),
   natureza: z.enum(["ALIMENTAR", "COMUM"]),
   preferencia: z
     .enum(["NENHUMA", "IDOSO", "DOENCA_GRAVE", "DEFICIENCIA"])

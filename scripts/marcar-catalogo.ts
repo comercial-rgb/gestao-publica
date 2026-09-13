@@ -66,6 +66,12 @@ type Situacao =
 interface Marca {
   readonly situacao: Situacao;
   readonly evidencia: string;
+  /**
+   * V4 (§7): a ROTA VERIFICADA, estruturada — papel, contexto, passos, entrada, resultado esperado, resultado
+   * obtido, versão do código e artefato/teste. Uma rota dinâmica diz o padrão e como obter um alvo autorizado.
+   * Em fonte de infraestrutura, evidência de infraestrutura (não se inventa tela para preencher o campo).
+   */
+  readonly rota_verificada?: string;
 }
 
 /** O smoke que exercita a cadeia do ENT02 pela interface — 43 passos, 0 falhas. */
@@ -202,6 +208,61 @@ const PERCURSO_ENT11 = "scripts/smoke-roteiros.ts (17 passos, 0 falhas, 2026-09-
 const PERCURSO_ENT12 = "scripts/smoke-eixo-de-valor.ts (20 passos, 0 falhas, 2026-09-12):";
 
 const MAPA: Readonly<Record<string, Marca>> = {
+  // ══ Sessão noturna V4 (§7) — a revisão pedida pela auditoria de 77cbcc9: PARCIAL onde há parte obrigatória faltante ══
+  "5.19.14": {
+    situacao: "PARCIAL",
+    evidencia:
+      "V3 pacote 2 (unidade 1): a lista do acervo pesquisa por tombamento, código de barras, descrição, classe, " +
+      "localização, responsável (nome ou documento), situação, estado e espécie, com o estado atual derivado em SQL " +
+      "(test/acervo-pesquisa.test.ts; percurso smoke-pacote2 30/30 em 2026-09-13). ⚠️ RESSALVA MANTIDA: o critério " +
+      "'código do produto' da cláusula NÃO existe — o bem não tem campo de código de produto/catálogo, e não há " +
+      "caminho de consulta por ele. Pendência CODIGO-DO-PRODUTO-NO-BEM. Enquanto ela durar, é PARCIAL.",
+    rota_verificada:
+      "papel: usuário com CONSULTAR_PATRIMONIO (fixture patrimonio@cg.pb.gov.br) · contexto: banco dos percursos " +
+      "(DATABASE_URL_PERCURSOS), servidor em 3010 · passos: GET /patrimonio/bens-patrimoniais?q=<tombamento> ; " +
+      "?classe=<id> ; ?localizacao=<id> ; ?responsavel=<nome ou documento> ; ?situacao=<valor> · entrada: os filtros " +
+      "acima · esperado: a linha do bem com localização, responsável e situação atuais · obtido: 30/30 no " +
+      "smoke-pacote2 (scripts/smoke-pacote2.ts, seção 2), 2026-09-13 · versão: 27c15aa..63a3040 · artefato: " +
+      ".registro-de-execucao/v3-pacote2-percurso.txt; teste test/acervo-pesquisa.test.ts · rota dinâmica: os ids de " +
+      "classe/localização vêm dos seletores da própria tela.",
+  },
+  "5.19.36": {
+    situacao: "PARCIAL",
+    evidencia:
+      "ENT05: TermoPatrimonial (RESPONSABILIDADE), individual/setorial/por responsável; emitir registra o movimento na " +
+      "mesma transação. V3 (pacote 2, unidade 5): tela /patrimonio/termos e PDF pela rota autenticada. V4 (§5): a " +
+      "EMISSÃO É CONGELADA na criação (dados + modelo + sha256 canônico), a segunda via reproduz a emissão, a posição " +
+      "atual é outro documento, os recortes (individual/setorial/por responsável) são ditos no documento e o termo " +
+      "ASSINADO é anexável e conferido (m10-termo-documento.test.ts t4–t7, 7/7). ⚠️ RESSALVA: o percurso que LÊ o " +
+      "texto do PDF (pdf.js, scripts/smoke-pacote2.ts) ainda não foi reexecutado após a V4 — a validação anterior " +
+      "(30/30) conferia só status/tipo/tamanho. PARCIAL até o percurso rodar sob o build.",
+    rota_verificada:
+      "papel: EMITIR_TERMO_PATRIMONIAL (emitir) e CONSULTAR_PATRIMONIO (imprimir) · contexto: banco dos percursos, " +
+      "3010 · passos: /patrimonio/termos → criar (número, tipo, data, responsável, tombamentos) → detalhe → " +
+      "relacionados → PDF emitido (/patrimonio/termos/{id}/pdf) e posição atual (?via=atual); aba anexos → anexar o " +
+      "termo assinado · entrada: 1 bem; setor opcional · esperado: PDF com tombamento, responsável e declaração; " +
+      "cabeçalhos x-documento-via/x-documento-sha256; anexo listado com sha256 · obtido: domínio 7/7 " +
+      "(m10-termo-documento.test.ts); percurso PENDENTE · versão: 826c176 · artefato: " +
+      ".registro-de-execucao/v4-termo-verificacao-2.txt.",
+  },
+  "5.19.39": {
+    situacao: "PARCIAL",
+    evidencia:
+      "O estorno por movimento existe (m10-patrimonio.test.ts t8/t8b); estornada a competência, ela pode ser refeita " +
+      "(m10-competencia.test.ts t3). V3 (pacote 2, unidade 4): análise de dependências. V4 (§4): a competência tem " +
+      "IDENTIDADE DE EXECUÇÃO por classe (ExecucaoDeAtualizacao) e estornar um item desfaz a execução inteira — itens " +
+      "e o lançamento único, uma vez (m10-competencia-v4.test.ts t6); a dependência é impacto verificado (t8/t9). " +
+      "⚠️ RESSALVA MANTIDA: a VIRADA MENSAL como operação única sobre todas as classes NÃO existe (pendência " +
+      "VIRADA-DE-TODAS-AS-CLASSES); o que se estorna é a execução de UMA classe. PARCIAL.",
+    rota_verificada:
+      "papel: ATUALIZAR_COMPETENCIA_PATRIMONIAL (processar) e ESTORNAR_MOVIMENTO_PATRIMONIAL (estornar) · contexto: " +
+      "banco dos percursos, 3010 · passos: /patrimonio/competencia?classe=<id>&competencia=AAAA-MM → prévia item a " +
+      "item → Processar → histórico de execuções → 'analisar' → /patrimonio/estornos/valor/{movimentoId} → Estornar · " +
+      "entrada: classe com parâmetro vigente e ≥1 bem com valor · esperado: a execução inteira estornada, a " +
+      "competência livre de novo · obtido: domínio 9/9 (m10-competencia-v4.test.ts); percurso da tela nova PENDENTE " +
+      "· versão: 27ef63f · artefato: .registro-de-execucao/v4-competencia-testes.txt · rota dinâmica: o " +
+      "movimentoId vem do link 'analisar' do histórico.",
+  },
   "5.10.2.55": {
     situacao: "VALIDADO_LOCALMENTE",
     evidencia:
@@ -919,10 +980,6 @@ const MAPA: Readonly<Record<string, Marca>> = {
     situacao: "PARCIAL",
     evidencia: `${CENSO} O motor sabe o residual e PARA nele: a última parcela é o RESTO exato e a seguinte é erro (m10-competencia.test.ts t4), e a base cai com baixa e impairment (tN1, tN2) sem alterar o resto quando nada mudou (tN3, regressão). ⚠️ FALTA a CONSULTA que lista os bens que já atingiram o residual — o dado existe em \`valorContabilDoBem\`, e ninguém pergunta isso ao sistema hoje.`,
   },
-  "5.19.14": {
-    situacao: "VALIDADO_LOCALMENTE",
-    evidencia: `Orquestração V3, pacote 2 (unidade 1): a lista do acervo (/patrimonio/bens-patrimoniais) pesquisa por tombamento, código de barras e descrição, classe, localização, responsável (nome ou documento), situação (inclusive "sem registro"), estado de conservação e espécie, e mostra a localização, o responsável e a situação ATUAIS de cada bem — derivados em SQL parametrizado do último movimento vivo de cada eixo, pela mesma regra de estadoDoBemEm (dia civil, depois o instante do registro; o estorno anula o original). test/acervo-pesquisa.test.ts confronta a listagem com o domínio na mesma fixture N=2, inclusive depois de um estorno e com dois movimentos no mesmo dia registrados fora de ordem. Sem percurso de navegador pelos filtros novos ainda (PESQUISA-DO-ACERVO-SEM-PERCURSO). "Código do produto" segue sem campo no modelo do bem. PERCURSO (scripts/smoke-pacote2.ts, 30 passos, 0 falhas, banco dos percursos, .registro-de-execucao/v3-pacote2-percurso.txt): pesquisa por tombamento com a situação derivada e pesquisa por RESPONSÁVEL depois do termo — VALIDADO_LOCALMENTE.`,
-  },
   "5.19.15": {
     situacao: "PARCIAL",
     evidencia: `${CENSO} Cadastramento, classificação (classe), movimentação (onze tipos com roteiro) e baixa existem e estão provados — inclusive que a classe positiva NÃO mascara a baixa de um bem que já não vale (m10-patrimonio.test.ts t5b), que é o erro que um saldo só por classe esconderia. ⚠️ E A BAIXA PASSOU A TER TELA (${PERCURSO_ENT12} ação "Baixar do acervo" no detalhe do bem, com o valor contábil à vista porque o domínio recusa baixa acima dele). A LOCALIZAÇÃO citada no enunciado também tem: cadastro próprio desde o ENT06 (/patrimonio/localizacoes) e a ação "Mover de localização" no detalhe desde o ENT08 — a evidência anterior dizia que faltava, e estava ESTALE. ⚠️ CONTINUA PARCIAL por outro motivo: não há tela de EDIÇÃO do cadastro do bem (só criação e ações), e "manutenção" é palavra do enunciado.`,
@@ -970,10 +1027,6 @@ const MAPA: Readonly<Record<string, Marca>> = {
   "5.19.38": {
     situacao: "PARCIAL",
     evidencia: `${CENSO} O cálculo da competência existe, é idempotente e é exato: a mesma competência duas vezes é rejeitada com SELECT provando um movimento (m10-competencia.test.ts t2), e a parcela para no residual (t4). ⚠️ FALTA a VIRADA em LOTE — hoje se chama \`atualizarCompetencia\` bem a bem, e não há rotina que percorra os bens cuja depreciação começa no mês corrente. Contraprova em test/censo-de-ausencias.test.ts.`,
-  },
-  "5.19.39": {
-    situacao: "VALIDADO_LOCALMENTE",
-    evidencia: `${CENSO} O estorno por movimento existe, restaura classe E bem com lançamento invertido e valor PRESERVADO (m10-patrimonio.test.ts t8), e estorno de estorno é erro (t8b). Estornada a competência, ela pode ser refeita (m10-competencia.test.ts t3). ⚠️ FALTA o estorno da VIRADA como operação única, porque a virada não existe (5.19.38). ⚠️ V3 (pacote 2, unidade 4): o estorno ganhou ANÁLISE DE DEPENDÊNCIAS e tela (/patrimonio/estornos/valor/[id], alcançada pelo histórico do bem e pela lista de competências processadas): mostra o que o ato desfaz (movimento, arrastados da operação, lançamento do resultado), quem depende (a competência calculada sobre a base que incluía o movimento; a redução conferida contra o teto que o incluía) e bloqueia nomeando — estorne do mais recente ao mais antigo; o serviço refaz a análise na transação (m10-estorno-dependencias.test.ts). Sem percurso de navegador ainda (ESTORNO-SEM-PERCURSO). PERCURSO (scripts/smoke-pacote2.ts, 30 passos, 0 falhas, banco dos percursos, .registro-de-execucao/v3-pacote2-percurso.txt): a competência de março processada, o estorno da entrada BLOQUEADO pela dependência (a tela diz por quê), o estorno da competência pela tela de análise e a entrada liberada em seguida — VALIDADO_LOCALMENTE.`,
   },
   "5.19.40": {
     situacao: "PARCIAL",
@@ -1565,10 +1618,6 @@ const MAPA: Readonly<Record<string, Marca>> = {
     situacao: "VALIDADO_LOCALMENTE",
     evidencia: `${PERCURSO_GESTAO_DO_BEM} o motivo de baixa é incluído PELA TELA /patrimonio/motivos-de-baixa, com código e descrição, e a lista o traz APÓS RECARGA. O modelo já estava provado desde o ENT05 — MotivoDeBaixa é TABELA, e um enum no código seria a constante que erra no segundo ente —; o que não existia era superfície, e um cadastro que o servidor municipal não alcança está implementado e não está entregue.`,
   },
-  "5.19.36": {
-    situacao: "VALIDADO_LOCALMENTE",
-    evidencia: `ENT05: TermoPatrimonial do tipo RESPONSABILIDADE, individual/setorial/por responsavel, com os bens como itens; emitir REGISTRA o movimento de responsabilidade na mesma transacao; termo sem responsavel RECUSA. V3 (pacote 2, unidade 5): ganhou TELA (/patrimonio/termos — bens pelo tombamento, resolvidos com recusa nomeada; termo imutável; detalhe com os bens) e PDF (/patrimonio/termos/[id]/pdf, rota autenticada, mesmo motor e rodapé dos demonstrativos): cabeçalho com o responsável, uma linha por bem com valor contábil e localização derivados, total, declaração e assinaturas — o documento é composto como dado e testado contra literais (m10-termo-documento.test.ts). Sem percurso de navegador ainda; o PDF real não foi renderizado nesta rodada (PDF-DO-TERMO-NAO-RENDERIZADO). PERCURSO (scripts/smoke-pacote2.ts, 30 passos, 0 falhas, banco dos percursos, .registro-de-execucao/v3-pacote2-percurso.txt): termo emitido pela tela (bem pelo tombamento), lista recarregada, detalhe com o bem, PDF pela rota autenticada (200, application/pdf, > 1 KB, renderizado pelo Chromium do servidor) — VALIDADO_LOCALMENTE.`,
-  },
   "5.19.37": {
     situacao: "IMPLEMENTADO_NAO_VALIDADO",
     evidencia: `ENT05: TermoPatrimonial do tipo BAIXA, que poe a situacao do bem em BAIXADO pelo mesmo caminho. V3 (pacote 2, unidade 5): a mesma tela e o mesmo PDF do termo de responsabilidade, com a declaração de baixa e as assinaturas (m10-termo-documento.test.ts t2). Sem percurso de navegador ainda.`,
@@ -1639,12 +1688,14 @@ function main(): void {
       continue;
     }
 
-    if (c.situacao === marca.situacao && c.evidencia === marca.evidencia) {
+    const rota = marca.rota_verificada ?? (c["rota_verificada"] as string | undefined) ?? "";
+    if (c.situacao === marca.situacao && c.evidencia === marca.evidencia && (c["rota_verificada"] ?? "") === rota) {
       jaIguais++;
       continue;
     }
     c.situacao = marca.situacao;
     c.evidencia = marca.evidencia;
+    c["rota_verificada"] = rota;
     mudadas++;
   }
 

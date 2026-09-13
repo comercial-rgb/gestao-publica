@@ -1,4 +1,5 @@
 import type { Money } from "../../../../packages/contracts/index.js";
+import { normalizarDocumento } from "../../../../packages/documento/index.js";
 
 /**
  * FORMATADORES DE CAMPO — SAGRES Contabilidade TCE-PB (layout 2026 v1.1).
@@ -94,6 +95,28 @@ export function numerico(valor: string | number | null | undefined, tamanho: num
  * A VÍRGULA ocupa 1 posição. A conversão de borda (ponto→vírgula) acontece SÓ AQUI — o `Money` é
  * compartilhado com o resto do razão (que usa PONTO) e nunca muda.
  */
+/**
+ * DOCUMENTO (CPF/CNPJ) num campo NUMÉRICO do leiaute — V4 (§7). O leiaute SAGRES 2026 v11 reserva
+ * campos NUMÉRICOS de 11/14 posições para CPF/CNPJ. Um CNPJ ALFANUMÉRICO (Receita Federal, 2026)
+ * NÃO CABE nesse campo: tirar as letras produziria um número que não é o documento de ninguém —
+ * e é exatamente isso que `numerico()` faria em silêncio. Aqui a resposta é RECUSA NOMEADA até o
+ * tribunal publicar leiaute alfanumérico (pendência SAGRES-CNPJ-ALFANUMERICO).
+ */
+export function documento(valor: string | null | undefined, tamanho: number, onde: Onde): string {
+  if (valor === null || valor === undefined) return "0".repeat(tamanho);
+  const d = normalizarDocumento(valor);
+  if (d === "") return "0".repeat(tamanho);
+  if (/[A-Z]/.test(d)) {
+    throw new Error(
+      `SAGRES — CNPJ ALFANUMÉRICO no arquivo ${onde.arquivo}, campo ${onde.campo}: "${valor}". O leiaute ` +
+        `2026 v11 reserva um campo NUMÉRICO para o documento, e um CNPJ com letras não cabe nele — tirar as ` +
+        `letras mandaria ao tribunal um número que não é o documento de ninguém. Pendência ` +
+        `SAGRES-CNPJ-ALFANUMERICO: aguarda leiaute alfanumérico do TCE-PB. Nada foi gerado.`
+    );
+  }
+  return numerico(d, tamanho, onde);
+}
+
 export function valor(v: Money | null | undefined, tamanho: number, onde: Onde): string {
   // null/vazio → zeros com a vírgula no lugar (ex.: 16 → "0000000000000,00").
   const comVirgula = v === null || v === undefined ? "0,00" : v.toFixed(2).replace(".", ","); // "2547625.21" → "2547625,21"

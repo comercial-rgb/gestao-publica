@@ -1,4 +1,5 @@
 import { diaCivil, diaCivilBr, FUSO_DO_ENTE, inicioDoDiaCivil } from "../../../packages/datas/index.js";
+import { normalizarDocumento } from "../../../packages/documento/index.js";
 import { toMoney } from "../../../packages/contracts/index.js";
 import {
   cadastrarBem,
@@ -260,7 +261,7 @@ export async function listarBensPatrimoniais(c: ConsultaDoMolde): Promise<Pagina
   }
   if (f("responsavel") !== "") {
     const p = like(f("responsavel"));
-    const digitos = f("responsavel").replace(/\D/g, "");
+    const digitos = normalizarDocumento(f("responsavel"));
     if (digitos.length >= 3) {
       params.push(`%${digitos}%`);
       condicoes.push(`(vp."nome" ILIKE ${p} OR p."documento" LIKE $${params.length})`);

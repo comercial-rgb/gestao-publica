@@ -1,6 +1,6 @@
 import { diaCivilBr, inicioDoDiaCivil } from "../../../packages/datas/index.js";
 import type { Prisma } from "../../../prisma/generated/client/client.js";
-import { formatarDocumento } from "../../../packages/documento/index.js";
+import { formatarDocumento, normalizarDocumento } from "../../../packages/documento/index.js";
 import { emitirTermoPatrimonial } from "../../../modules/m10-patrimonial/gestao-do-bem.js";
 import { documentoDoTermo, type DocumentoDoTermoLido } from "../../../modules/m10-patrimonial/termo-documento.js";
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
@@ -43,7 +43,7 @@ export async function listarTermos(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
   const where: Prisma.TermoPatrimonialWhereInput = {};
   if (tipo === "RESPONSABILIDADE" || tipo === "BAIXA") where.tipo = tipo;
   if (q !== "") {
-    const digitos = q.replace(/\D/g, "");
+    const digitos = normalizarDocumento(q);
     where.OR = [
       { numero: { contains: q, mode: "insensitive" } },
       { responsavel: { versoes: { some: { nome: { contains: q, mode: "insensitive" } } } } },

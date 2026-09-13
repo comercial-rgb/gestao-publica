@@ -64,6 +64,9 @@ describe("vincular a pessoa ao usuário", () => {
 
   it("recusa nomeando: documento ilegível, pessoa não cadastrada, já vinculado, outra pessoa, pessoa de outro usuário", async () => {
     await expect(vincularPessoaAoUsuario(prisma, { usuarioId: usuarioA, documento: "123", motivo: "motivo qualquer", criadoPor: ADMIN })).rejects.toThrow(/DOCUMENTO ILEGÍVEL/);
+    // V4 (§7): CNPJ não é identidade pessoal — um usuário se vincula ao SEU CPF (numérico ou alfanumérico, o CNPJ é recusado)
+    await expect(vincularPessoaAoUsuario(prisma, { usuarioId: usuarioA, documento: "11.222.333/0001-81", motivo: "motivo qualquer", criadoPor: ADMIN })).rejects.toThrow(/CNPJ NÃO É IDENTIDADE PESSOAL[\s\S]*REPRESENTACAO-DE-ORGANIZACAO-PELO-USUARIO/);
+    await expect(vincularPessoaAoUsuario(prisma, { usuarioId: usuarioA, documento: "12.ABC.345/01DE-35", motivo: "motivo qualquer", criadoPor: ADMIN })).rejects.toThrow(/CNPJ NÃO É IDENTIDADE PESSOAL/);
     await expect(vincularPessoaAoUsuario(prisma, { usuarioId: usuarioA, documento: "00000000191", motivo: "motivo qualquer", criadoPor: ADMIN })).rejects.toThrow(/PESSOA NÃO CADASTRADA/);
     await vincularPessoaAoUsuario(prisma, { usuarioId: usuarioA, documento: CPF_A, motivo: "primeiro vínculo", criadoPor: ADMIN });
     await expect(vincularPessoaAoUsuario(prisma, { usuarioId: usuarioA, documento: CPF_A, motivo: "de novo", criadoPor: ADMIN })).rejects.toThrow(/JÁ VINCULADO/);

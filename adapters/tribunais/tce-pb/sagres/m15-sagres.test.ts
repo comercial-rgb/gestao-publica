@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { toMoney } from "../../../../packages/contracts/index.js";
-import { alfa, data, numerico, valor, zeros } from "./formatadores.js";
+import { alfa, data, documento, numerico, valor, zeros } from "./formatadores.js";
 import {
   larguraRegistro,
   serializarArquivo,
@@ -50,6 +50,12 @@ describe("formatadores de campo (unitário)", () => {
     expect(numerico("12", 7, ONDE)).toBe("0000012");
     expect(numerico(2001, 4, ONDE)).toBe("2001");
     expect(numerico(null, 4, ONDE)).toBe("0000"); // não exigido → zeros
+    // V4 (§7): o DOCUMENTO num campo numérico — o CNPJ numérico passa; o alfanumérico é RECUSADO nomeando,
+    // porque tirar as letras (o que `numerico` faria) mandaria ao tribunal o documento de ninguém.
+    expect(documento("11.222.333/0001-81", 14, ONDE)).toBe("11222333000181");
+    expect(documento("529.982.247-25", 14, ONDE)).toBe("00052998224725");
+    expect(() => documento("12.ABC.345/01DE-35", 14, ONDE)).toThrow(/CNPJ ALFANUMÉRICO[\s\S]*SAGRES-CNPJ-ALFANUMERICO/);
+    expect(() => numerico("12ABC34501DE35", 14, ONDE)).not.toThrow(); // o numérico genérico continua sendo o de códigos, não de documentos
     expect(numerico("12.345-6", 6, ONDE)).toBe("123456"); // só dígitos
     expect(() => numerico("12345678", 7, ONDE)).toThrow(/LONGO DEMAIS/);
   });

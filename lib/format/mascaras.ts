@@ -85,26 +85,33 @@ export function desmascararValor(texto: string): string {
   return negativo && !ehZero ? `-${cru}` : cru;
 }
 
+/** Só os caracteres de documento: dígitos e letras A–Z (em maiúsculas). É a base da máscara de CPF/CNPJ. */
+export function soCaracteresDeDocumento(texto: string): string {
+  return texto.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
 /**
- * CPF (11 dígitos) ou CNPJ (14) — POR COMPRIMENTO, que é a única coisa que se sabe enquanto a
- * pessoa ainda está digitando. Excedente é cortado em 14; nada aqui julga se o número é VÁLIDO
- * (dígito verificador é assunto do domínio, não da máscara).
+ * 000.000.000-00 enquanto couber num CPF (até 11, só dígitos); 00.000.000/0000-00 do 12º em
+ * diante — e a partir da PRIMEIRA LETRA, porque CPF não tem letra (V4 §7: o CNPJ é alfanumérico
+ * em 12 posições; os dois dígitos verificadores são numéricos). Excedente é cortado em 14; nada
+ * aqui julga se o número é VÁLIDO (dígito verificador é assunto do domínio, não da máscara).
  */
 export function mascararCpfCnpj(texto: string): string {
-  const d = soDigitos(texto).slice(0, 14);
-  if (d.length <= 11) {
+  const d = soCaracteresDeDocumento(texto).slice(0, 14);
+  if (d.length <= 11 && /^[0-9]*$/.test(d)) {
     // 000.000.000-00
     return d
       .replace(/^(\d{3})(\d)/, "$1.$2")
       .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
       .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4");
   }
-  // 00.000.000/0000-00
+  // 00.000.000/0000-00 — as posições são as mesmas com letras
+  const c = "[A-Z0-9]";
   return d
-    .replace(/^(\d{2})(\d)/, "$1.$2")
-    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
-    .replace(/^(\d{2})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3/$4")
-    .replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d)/, "$1.$2.$3/$4-$5");
+    .replace(new RegExp(`^(${c}{2})(${c})`), "$1.$2")
+    .replace(new RegExp(`^(${c}{2})\\.(${c}{3})(${c})`), "$1.$2.$3")
+    .replace(new RegExp(`^(${c}{2})\\.(${c}{3})\\.(${c}{3})(${c})`), "$1.$2.$3/$4")
+    .replace(new RegExp(`^(${c}{2})\\.(${c}{3})\\.(${c}{3})/(${c}{4})(${c})`), "$1.$2.$3/$4-$5");
 }
 
 /** (00) 00000-0000 no celular (11 dígitos); (00) 0000-0000 no fixo (10). Por comprimento. */

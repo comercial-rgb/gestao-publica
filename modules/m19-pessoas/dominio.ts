@@ -10,6 +10,7 @@
 import { z } from "zod";
 import {
   documentoTemDigitoValido,
+  documentoTemFormatoValido,
   formatarDocumento,
   normalizarDocumento,
   tipoDeDocumento,
@@ -56,8 +57,8 @@ export function tipoPeloDocumento(documento: string): TipoDePessoa | null {
 const zDocumento = z
   .string()
   .transform(normalizarDocumento)
-  .refine((d) => d.length === 11 || d.length === 14, {
-    message: "Documento deve ter 11 dígitos (CPF) ou 14 (CNPJ).",
+  .refine(documentoTemFormatoValido, {
+    message: "Documento deve ser um CPF (11 dígitos) ou um CNPJ (14 caracteres; letras nas doze primeiras posições são aceitas).",
   })
   .refine(documentoValido, {
     message:

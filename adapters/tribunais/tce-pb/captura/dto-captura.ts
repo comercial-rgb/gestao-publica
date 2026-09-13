@@ -7,6 +7,7 @@ import type {
   SaldoMensalFato,
 } from "../sagres/index.js";
 import { NATUREZA_CONTRATACAO_SAGRES, TIPO_EMPENHO_SAGRES } from "../sagres/index.js";
+import { normalizarDocumento } from "../../../../packages/documento/index.js";
 
 /**
  * CAPTURA 2.0 (M18) — a MESMA massa, OUTRA serialização.
@@ -74,7 +75,7 @@ export function empenhoParaCaptura(f: EmpenhoFato, action: AcaoCaptura = "CREATE
     codigoFonteRecurso: cod(f.codFonteRecurso, 3),
     codigoNaturezaContratacao: NATUREZA_CONTRATACAO_SAGRES[f.naturezaContratacao],
     historico: f.historico,
-    cpfCnpjCredor: f.credorCpfCnpj.replace(/\D/g, ""),
+    cpfCnpjCredor: normalizarDocumento(f.credorCpfCnpj),
     // cpfOrdenador é OBRIGATÓRIO no schema, mas não há origem por-empenho (ver M15/matriz). Quando
     // ausente, é omitido — e o validador (F2) o acusa, honestamente, como o TXT já acusa.
     ...(f.cpfOrdenador !== null ? { cpfOrdenador: cod(f.cpfOrdenador, 11) } : {}),
@@ -109,7 +110,7 @@ export function cadastroContaParaCaptura(f: CadastroContaFato, action: AcaoCaptu
     numeroAgenciaContaBancaria: f.numeroAgencia,
     descricaoContaBancaria: f.descricao,
     tipoContaBancaria: cod(f.tipo, 1),
-    cnpjGerenciaContaBancaria: f.cnpjGerencia.replace(/\D/g, ""),
+    cnpjGerenciaContaBancaria: normalizarDocumento(f.cnpjGerencia),
     action,
   };
 }
@@ -121,7 +122,7 @@ export function saldoMensalParaCaptura(f: SaldoMensalFato, action: AcaoCaptura =
     codigoBancoContaBancaria: cod(f.banco, 3),
     valorSaldoMensal: num(f.valor),
     tipoContaBancaria: cod(f.tipo, 1),
-    cnpjGerenciaContaBancaria: f.cnpjGerencia.replace(/\D/g, ""),
+    cnpjGerenciaContaBancaria: normalizarDocumento(f.cnpjGerencia),
     action,
   };
 }

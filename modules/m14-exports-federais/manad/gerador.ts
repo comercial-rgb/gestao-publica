@@ -1,4 +1,5 @@
 import { toMoney, type Money } from "../../../packages/contracts/index.js";
+import { cnpjEhAlfanumerico, normalizarDocumento } from "../../../packages/documento/index.js";
 import { somaLiquidaEstornaveis } from "../../../packages/estornaveis/index.js";
 import type { PrismaClient } from "../../../prisma/generated/client/client.js";
 import { enteDoContexto } from "../../m01-core-contabil/contexto-do-ente.js";
@@ -942,7 +943,7 @@ function l800(
         // 06|TIP_OBRA_SERVICO  07|CEI  08|DESC_SERV_OBRA
         String(exercicio),
         numero(ficha.naturezaDespesa.codigoCompleto, onde("L800", "COD_CTA_DESP")),
-        alfa(raiz.credorCpfCnpj.replace(/\D/g, ""), onde("L800", "COD_FORNECEDOR")),
+        alfa(normalizarDocumento(raiz.credorCpfCnpj), onde("L800", "COD_FORNECEDOR")),
         alfa(nmEmp(raizFicha, raiz.numero), onde("L800", "NM_EMP")),
         // O Record EXAUSTIVO do M11: um tipo novo NÃO COMPILA sem código de 2 dígitos.
         TIP_OBRA_SERVICO[obra.tipoObraServico],
@@ -1574,7 +1575,15 @@ async function l750(
   }
 
   return documentos.map((doc) => {
-    const so = doc.replace(/\D/g, "");
+    const so = normalizarDocumento(doc);
+    // V4 (§7): o leiaute MANAD reserva CNPJ_FORNECEDOR e CPF_FORNECEDOR como campos NUMÉRICOS. Um CNPJ
+    // alfanumérico não cabe neles — e tirar as letras mandaria à Receita o documento de ninguém.
+    if (cnpjEhAlfanumerico(so)) {
+      throw new Error(
+        `MANAD — CNPJ ALFANUMÉRICO: o credor "${doc}" tem letras, e o leiaute MANAD (L750, campo 06) é numérico. ` +
+          `Não se mutila o documento para caber; pendência MANAD-CNPJ-ALFANUMERICO (aguarda leiaute da Receita). Nada foi gerado.`
+      );
+    }
     // ⚠️ TIP_FORNECEDOR SAI DO COMPRIMENTO, E ELE É VALIDADO. 11 = PF, 14 = PJ. Qualquer
     // outro comprimento é dado quebrado, e um documento quebrado num arquivo da Receita
     // é o que faz a fiscalização bater na porta do credor errado.

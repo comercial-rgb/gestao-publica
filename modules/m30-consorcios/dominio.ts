@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizarDocumento, tipoDeDocumento } from "../../packages/documento/index.js";
 import { toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
 
 /**
@@ -82,7 +83,7 @@ const zDia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "A data é um DIA civil YYY
 export const zCadastrarConsorcioInput = z.object({
   identificador: z.string().trim().min(1).max(60),
   denominacao: z.string().trim().min(3),
-  cnpj: z.string().regex(/^\d{14}$/, "CNPJ com 14 dígitos, sem máscara."),
+  cnpj: z.string().transform(normalizarDocumento).refine((d) => tipoDeDocumento(d) === "CNPJ", "CNPJ com 14 caracteres (alfanumérico aceito), sem máscara."),
   protocoloDeIntencoes: z.string().trim().min(3),
   leiRatificadora: z.string().trim().min(3),
   areaDeAtuacao: z.string().trim().min(3),

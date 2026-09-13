@@ -195,12 +195,12 @@ const camposEmpenhos: readonly CampoLayout<EmpenhoFato>[] = [
   { nome: "historico", posInicial: 87, posFinal: 341, tipo: "ALFA", obrigatorio: true, origem: "empenho.historico", extrair: (f) => f.historico },
   // complementaçãoHistorico é COMPLEMENTO do histórico — vazio é válido (o modelo tem 1 histórico só).
   { nome: "complementacaoHistorico", posInicial: 342, posFinal: 596, tipo: "ALFA", obrigatorio: false, origem: "sem origem (modelo tem 1 histórico) → espaços", extrair: (f) => f.complementacaoHistorico },
-  { nome: "cpfCnpjFornecedor", posInicial: 597, posFinal: 610, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.credorCpfCnpj", extrair: (f) => f.credorCpfCnpj },
+  { nome: "cpfCnpjFornecedor", posInicial: 597, posFinal: 610, tipo: "DOCUMENTO", obrigatorio: true, origem: "empenho.credorCpfCnpj", extrair: (f) => f.credorCpfCnpj },
   { nome: "NaturezaContratacao", posInicial: 611, posFinal: 611, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.categoriaOrdemCronologica → §5.19", extrair: (f) => NATUREZA_CONTRATACAO_SAGRES[f.naturezaContratacao] },
   { nome: "numObra", posInicial: 612, posFinal: 619, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.obra?.numero (nullable→zeros)", extrair: (f) => f.numObra },
   { nome: "exercicioFonteRecurso", posInicial: 620, posFinal: 620, tipo: "NUMERICO", obrigatorio: true, origem: "ficha.exercicioFonte", extrair: (f) => f.exercicioFonteRecurso },
   { nome: "codFonteRecurso", posInicial: 621, posFinal: 623, tipo: "NUMERICO", obrigatorio: true, origem: "ficha.fonte.codigo", extrair: (f) => f.codFonteRecurso },
-  { nome: "cpfOrdenador", posInicial: 624, posFinal: 634, tipo: "NUMERICO", obrigatorio: true, origem: "ordenador da UG (ente-config, POC)", extrair: (f) => f.cpfOrdenador },
+  { nome: "cpfOrdenador", posInicial: 624, posFinal: 634, tipo: "DOCUMENTO", obrigatorio: true, origem: "ordenador da UG (ente-config, POC)", extrair: (f) => f.cpfOrdenador },
   { nome: "co", posInicial: 635, posFinal: 638, tipo: "NUMERICO", obrigatorio: true, origem: "ficha.co?.codigo (nullable→zeros)", extrair: (f) => f.co },
 ];
 
@@ -237,7 +237,7 @@ const camposCadastroConta: readonly CampoLayout<CadastroContaFato>[] = [
   { nome: "numAgencia", posInicial: 24, posFinal: 29, tipo: "ALFA", obrigatorio: true, origem: "ContaBancaria.agencia+digitoAgencia", extrair: (f) => f.numeroAgencia },
   { nome: "descricao", posInicial: 30, posFinal: 89, tipo: "ALFA", obrigatorio: true, origem: "ContaBancaria.descricao", extrair: (f) => f.descricao },
   { nome: "tipo", posInicial: 90, posFinal: 90, tipo: "NUMERICO", obrigatorio: true, origem: "§5.31 (default 1=Conta Corrente)", extrair: (f) => f.tipo },
-  { nome: "cnpjGerencia", posInicial: 91, posFinal: 104, tipo: "NUMERICO", obrigatorio: true, origem: "EnteConfig.cnpj", extrair: (f) => f.cnpjGerencia },
+  { nome: "cnpjGerencia", posInicial: 91, posFinal: 104, tipo: "DOCUMENTO", obrigatorio: true, origem: "EnteConfig.cnpj", extrair: (f) => f.cnpjGerencia },
 ];
 
 export const LAYOUT_CADASTRO_CONTA: LayoutArquivo<CadastroContaFato> = {
@@ -266,7 +266,7 @@ const camposSaldoMensal: readonly CampoLayout<SaldoMensalFato>[] = [
   { nome: "codBanco", posInicial: 26, posFinal: 28, tipo: "ALFA", obrigatorio: true, origem: "ContaBancaria.banco", extrair: (f) => f.banco },
   { nome: "valor", posInicial: 29, posFinal: 44, tipo: "VALOR", obrigatorio: true, origem: "SUM(LancamentoExtrato) até fim do mês", extrair: (f) => f.valor },
   { nome: "tipoContaBancaria", posInicial: 45, posFinal: 45, tipo: "NUMERICO", obrigatorio: true, origem: "§5.31 (default 1)", extrair: (f) => f.tipo },
-  { nome: "cnpjGerenciaContaBancaria", posInicial: 46, posFinal: 59, tipo: "NUMERICO", obrigatorio: true, origem: "EnteConfig.cnpj", extrair: (f) => f.cnpjGerencia },
+  { nome: "cnpjGerenciaContaBancaria", posInicial: 46, posFinal: 59, tipo: "DOCUMENTO", obrigatorio: true, origem: "EnteConfig.cnpj", extrair: (f) => f.cnpjGerencia },
 ];
 
 export const LAYOUT_SALDO_MENSAL: LayoutArquivo<SaldoMensalFato> = {
@@ -361,7 +361,7 @@ const camposPagamentos: readonly CampoLayout<PagamentoFato>[] = [
   { nome: "exercicioFonteRecurso", posInicial: 115, posFinal: 115, tipo: "NUMERICO", obrigatorio: true, origem: "ficha.exercicioFonte", extrair: (f) => f.exercicioFonteRecurso },
   { nome: "codFonteRecurso", posInicial: 116, posFinal: 118, tipo: "NUMERICO", obrigatorio: true, origem: "pagamento.fonte.codigo", extrair: (f) => f.codFonteRecurso },
   { nome: "tipoContaBancaria", posInicial: 119, posFinal: 119, tipo: "NUMERICO", obrigatorio: true, origem: "§5.31 (default 1)", extrair: (f) => f.tipoContaBancaria },
-  { nome: "cnpjGerenciaContaBancaria", posInicial: 120, posFinal: 133, tipo: "NUMERICO", obrigatorio: true, origem: "EnteConfig.cnpj", extrair: (f) => f.cnpjGerencia },
+  { nome: "cnpjGerenciaContaBancaria", posInicial: 120, posFinal: 133, tipo: "DOCUMENTO", obrigatorio: true, origem: "EnteConfig.cnpj", extrair: (f) => f.cnpjGerencia },
 ];
 
 export const LAYOUT_PAGAMENTOS: LayoutArquivo<PagamentoFato> = {
@@ -419,7 +419,7 @@ const camposReceitaOrcamentaria: readonly CampoLayout<ReceitaOrcamentariaFato>[]
   { nome: "codBanco", posInicial: 69, posFinal: 71, tipo: "NUMERICO", obrigatorio: true, origem: "contaArrecadadora.banco (FEBRABAN)", extrair: (f) => f.codBanco },
   { nome: "numAgencia", posInicial: 72, posFinal: 77, tipo: "ALFA", obrigatorio: true, origem: "contaArrecadadora.agencia+digito", extrair: (f) => f.numeroAgencia },
   { nome: "tipoContaBancaria", posInicial: 78, posFinal: 78, tipo: "NUMERICO", obrigatorio: true, origem: "§5.31 (default 1)", extrair: (f) => f.tipoContaBancaria },
-  { nome: "cnpjGerencia", posInicial: 79, posFinal: 92, tipo: "NUMERICO", obrigatorio: true, origem: "EnteConfig.cnpj", extrair: (f) => f.cnpjGerencia },
+  { nome: "cnpjGerencia", posInicial: 79, posFinal: 92, tipo: "DOCUMENTO", obrigatorio: true, origem: "EnteConfig.cnpj", extrair: (f) => f.cnpjGerencia },
 ];
 
 export const LAYOUT_RECEITA_ORCAMENTARIA: LayoutArquivo<ReceitaOrcamentariaFato> = {
@@ -561,7 +561,7 @@ const camposDespesaExtra: readonly CampoLayout<DespesaExtraFato>[] = [
   { nome: "codContaContabil", posInicial: 14, posFinal: 22, tipo: "NUMERICO", obrigatorio: true, origem: "partida DEBITO → ContaPcasp.codigo (sem pontos)", extrair: (f) => f.codContaContabil },
   { nome: "data", posInicial: 23, posFinal: 30, tipo: "DATA", obrigatorio: true, origem: "mov.data", extrair: (f) => f.data },
   // GAP 1 — o m07 guarda o consignatário como NOME, não documento. Sem origem → ZEROS (nomeado).
-  { nome: "cpfCnpjFornecedor", posInicial: 31, posFinal: 44, tipo: "NUMERICO", obrigatorio: true, origem: "GAP: m07.credorConsignatario é nome livre, não CPF/CNPJ → zeros", extrair: () => null },
+  { nome: "cpfCnpjFornecedor", posInicial: 31, posFinal: 44, tipo: "DOCUMENTO", obrigatorio: true, origem: "GAP: m07.credorConsignatario é nome livre, não CPF/CNPJ → zeros", extrair: () => null },
   { nome: "exercicioFonteRecurso", posInicial: 45, posFinal: 45, tipo: "NUMERICO", obrigatorio: true, origem: "1 = Atual", extrair: (f) => f.exercicioFonteRecurso },
   { nome: "codFonteRecurso", posInicial: 46, posFinal: 48, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (860/861/862/869 — STN)", extrair: (f) => f.codFonteRecursoExtra },
   { nome: "numContaBancaria", posInicial: 49, posFinal: 61, tipo: "ALFA", obrigatorio: true, origem: "mov.contaBancaria.conta+digito", extrair: (f) => f.numeroConta },
@@ -579,7 +579,7 @@ const camposDespesaExtra: readonly CampoLayout<DespesaExtraFato>[] = [
   { nome: "codUnidadeGestoraReceitaExtra", posInicial: 607, posFinal: 612, tipo: "ALFA", obrigatorio: false, origem: "vínculo ReceitaExtra não exigido → espaços", extrair: () => null },
   { nome: "exercicioReceitaExtra", posInicial: 613, posFinal: 616, tipo: "ALFA", obrigatorio: false, origem: "vínculo ReceitaExtra não exigido → espaços", extrair: () => null },
   { nome: "numReceitaExtra", posInicial: 617, posFinal: 623, tipo: "ALFA", obrigatorio: false, origem: "vínculo ReceitaExtra não exigido → espaços", extrair: () => null },
-  { nome: "cnpjGerenciaContaBancaria", posInicial: 624, posFinal: 637, tipo: "NUMERICO", obrigatorio: true, origem: "EnteConfig.cnpj (parâmetro export)", extrair: (f) => f.cnpjGerencia },
+  { nome: "cnpjGerenciaContaBancaria", posInicial: 624, posFinal: 637, tipo: "DOCUMENTO", obrigatorio: true, origem: "EnteConfig.cnpj (parâmetro export)", extrair: (f) => f.cnpjGerencia },
 ];
 
 export const LAYOUT_DESPESA_EXTRA: LayoutArquivo<DespesaExtraFato> = {

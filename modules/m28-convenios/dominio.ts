@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { documentoTemFormatoValido, normalizarDocumento } from "../../packages/documento/index.js";
 import { toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
 import { competenciaCivil, diaCivilBr, diferencaEmDiasCivis, somarDiasCivis } from "../../packages/datas/index.js";
 
@@ -184,7 +185,7 @@ export const zCadastrarConvenioInput = z.object({
   objeto: z.string().trim().min(10),
   papelDoEnte: z.enum(["CONCEDENTE", "CONVENENTE"]),
   partidaNome: z.string().trim().min(3),
-  partidaDocumento: z.string().regex(/^\d{11}$|^\d{14}$/, "CPF (11) ou CNPJ (14) dígitos, sem máscara."),
+  partidaDocumento: z.string().transform(normalizarDocumento).refine(documentoTemFormatoValido, "CPF (11 dígitos) ou CNPJ (14 caracteres, alfanumérico aceito), sem máscara."),
   leiAutorizativa: z.string().trim().min(3),
   valorRepasse: zMoney,
   valorContrapartida: zMoney,

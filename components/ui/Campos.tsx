@@ -6,8 +6,7 @@ import {
   mascararCep,
   mascararCpfCnpj,
   mascararTelefone,
-  soDigitos,
-} from "../../lib/format/mascaras";
+  soDigitos, soCaracteresDeDocumento } from "../../lib/format/mascaras";
 import { formatarMoeda } from "../../lib/format/moeda";
 import { CLASSE_AREA_TEXTO, CLASSE_CAMPO, CLASSE_ROTULO } from "./Formulario";
 
@@ -132,7 +131,8 @@ export function CampoValor({
 }
 
 /**
- * CAMPO DE CPF/CNPJ — exibe `000.000.000-00` ou `00.000.000/0000-00`, submete só dígitos.
+ * CAMPO DE CPF/CNPJ — exibe `000.000.000-00` ou `00.000.000/0000-00` (o CNPJ pode ter letras nas doze
+ * primeiras posições — V4 §7), submete sem máscara e em maiúsculas.
  *
  * ⚠️ SUBMETER SÓ DÍGITOS NÃO É ESTÉTICA, É INTEGRIDADE. O domínio distingue pessoa física de
  * jurídica pelo COMPRIMENTO (11 × 14) — `m13-transparencia/dominio.ts:47-63` — e chama "um CPF com
@@ -157,7 +157,8 @@ export function CampoCpfCnpj({
       <input
         {...(id !== undefined ? { id } : {})}
         type="text"
-        inputMode="numeric"
+        inputMode="text"
+        autoCapitalize="characters"
         value={texto}
         onChange={(e) => setTexto(mascararCpfCnpj(e.target.value))}
         {...(required === true ? { required: true } : {})}
@@ -165,7 +166,7 @@ export function CampoCpfCnpj({
         {...(className !== undefined ? { className } : {})}
         data-mascara="cpf-cnpj"
       />
-      <input type="hidden" name={name} value={soDigitos(texto)} />
+      <input type="hidden" name={name} value={soCaracteresDeDocumento(texto)} />
     </>
   );
 }
@@ -202,7 +203,7 @@ export function CampoTelefone({
         {...(className !== undefined ? { className } : {})}
         data-mascara="telefone"
       />
-      <input type="hidden" name={name} value={soDigitos(texto)} />
+      <input type="hidden" name={name} value={soCaracteresDeDocumento(texto)} />
     </>
   );
 }
@@ -235,7 +236,7 @@ export function CampoCep({
         {...(className !== undefined ? { className } : {})}
         data-mascara="cep"
       />
-      <input type="hidden" name={name} value={soDigitos(texto)} />
+      <input type="hidden" name={name} value={soCaracteresDeDocumento(texto)} />
     </>
   );
 }

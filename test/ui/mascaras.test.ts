@@ -12,6 +12,7 @@ import {
   mascararCep,
   mascararCpfCnpj,
   mascararTelefone,
+  soCaracteresDeDocumento,
   soDigitos,
 } from "../../lib/format/mascaras.js";
 import { formatarMoeda } from "../../lib/format/moeda.js";
@@ -117,6 +118,16 @@ describe("mascararCpfCnpj — 11 ↔ 14 por comprimento", () => {
 
   it("não valida dígito verificador (máscara é FORMA, não verdade)", () => {
     expect(mascararCpfCnpj("00000000000")).toBe("000.000.000-00");
+  });
+
+  // V4 (§7): o CNPJ alfanumérico (Receita Federal, 2026) — letras nas doze primeiras posições
+  it("CNPJ ALFANUMÉRICO: as letras ficam, sobem para maiúsculas e a máscara é a mesma", () => {
+    expect(mascararCpfCnpj("12ABC34501DE35")).toBe("12.ABC.345/01DE-35");
+    expect(mascararCpfCnpj("12abc34501de35")).toBe("12.ABC.345/01DE-35");
+    expect(mascararCpfCnpj("12.ABC.345/01DE-35")).toBe("12.ABC.345/01DE-35");
+    // a primeira letra já diz que é CNPJ, mesmo com menos de 12 caracteres
+    expect(mascararCpfCnpj("12A")).toBe("12.A");
+    expect(soCaracteresDeDocumento("12.abc.345/01de-35")).toBe("12ABC34501DE35");
   });
 });
 

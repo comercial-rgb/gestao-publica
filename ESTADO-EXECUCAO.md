@@ -6,10 +6,10 @@
 |---|---|
 | HEAD | ver `git log -1` — a seção 35 nomeia o commit de cada unidade |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | **Sessão noturna V4** (`docs/lotes/V4-sessao-noturna.md`): unidades 1 (contrato de comando, §45), 2 (competência por bem, §46) 3 (documentos estáveis, §47) e 4 (liquidação de material, §48) concluídas; a seguir, a liquidação de material (§6, stash preservado), CNPJ/catálogo (§7) e a cadeia planejamento→contratação→despesa (§8) |
-| Último resultado | seção 48 (liquidação de material como ato único: suíte completa 2292/2292 após dois guards, 804/804 rápidos, tsc ×3 limpos) |
+| Frente em execução | **Sessão noturna V4** (`docs/lotes/V4-sessao-noturna.md`): unidades 1 (contrato de comando, §45), 2 (competência por bem, §46) 3 (documentos estáveis, §47), 4 (liquidação de material, §48) e 5 (CNPJ alfanumérico e catálogo, §49) concluídas; a seguir o build com os percursos (§10) e, a liquidação de material (§6, stash preservado), CNPJ/catálogo (§7) e a cadeia planejamento→contratação→despesa (§8) |
+| Último resultado | seção 49 (CNPJ alfanumérico: 816/816 rápidos, 238/238 dirigidos, tsc ×3 limpos; catálogo 54/51/76) |
 | Pendências relevantes | seções 35.7, 36.4, 37.5, 38.5 a 43.5; as anteriores em §19 e nos `MODULO.md` |
-| Próximo passo | seção 48.5 — o CNPJ alfanumérico e a revisão do catálogo (V4 §7) |
+| Próximo passo | seção 49.5 — `next build` + `next start` e os percursos centrais (V4 §10); depois a Fila A (V4 §8) |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -5083,6 +5083,69 @@ Unidade 5 (seção 7 do pedido): o CNPJ alfanumérico na cadeia inteira (pacote 
 oficiais da Receita, máscara, CHECKs, filtros, M28/M29/M30, vínculo usuário↔pessoa só por CPF, SAGRES/MANAD/
 captura com recusa nomeada do alfanumérico onde o leiaute é numérico) e a revisão do catálogo (5.19.14, 5.19.36,
 5.19.39 com `rota_verificada`).
+
+## 49. Sessão noturna V4 — unidade 5: o CNPJ alfanumérico na cadeia inteira e a revisão do catálogo (achado A09; §7)
+
+Pedido: `docs/lotes/V4-sessao-noturna.md`, seção 7. Decisão: `docs/adr/ADR-cnpj-alfanumerico.md`. Fontes oficiais
+(lidas, não inferidas): o manual SERPRO/Receita "Cálculo dos dígitos verificadores de CNPJ alfanumérico" (05/11/2024)
+e os arquivos de referência (`codigos-cnpj.zip`, vetores do `test.ts` oficial), obtidos de
+gov.br/receitafederal (documentos técnicos do CNPJ).
+
+### 49.1 O que passou a funcionar
+
+- **`packages/documento`** conhece o CNPJ alfanumérico (12 × [A-Z0-9] + 2 dígitos; DV pela regra ASCII−48, mod 11):
+  normalização sem mutilação, formato, tipo, DV (`calcularDvDoCnpj`), exibição. 12 testes contra os vetores oficiais
+  (o exemplo do manual 12.ABC.345/01DE → 35; os válidos e inválidos do `test.ts`). O CPF e o CNPJ numérico
+  continuam iguais.
+- **Máscara e campo** (`mascararCpfCnpj`, `CampoCpfCnpj`): letras ficam e sobem para maiúsculas; a primeira letra já
+  diz CNPJ; o hidden submete sem máscara.
+- **CHECKs** de `Contrato` e `CertidaoFornecedor` ampliados (migration `20260913090000`, alteração de constraint
+  justificada, sem eliminação de dados); `Pessoa.documento` já cabia.
+- **M28/M29/M30** validam pelo pacote; **M05** normaliza o credor; **M19** mensagem/busca; **filtros** de termos e
+  acervo; **M13** expõe o alfanumérico inteiro (como o numérico).
+- **Usuário não é pessoa jurídica:** `vincularPessoaAoUsuario` recusa CNPJ nomeando (pendência
+  `REPRESENTACAO-DE-ORGANIZACAO-PELO-USUARIO`).
+- **Integrações com leiaute numérico recusam nomeando** em vez de mutilar: SAGRES (tipo de campo `DOCUMENTO`,
+  8 campos do leiaute 2026 v11; pendência `SAGRES-CNPJ-ALFANUMERICO`), MANAD L750/L800 (`MANAD-CNPJ-ALFANUMERICO`);
+  a captura do TCE-PB (que já aceita `^[A-Z0-9]+$`) recebe o documento normalizado. Registrado em
+  `docs/dependencias-externas.md`.
+- **Catálogo:** `scripts/marcar-catalogo.ts` grava `rota_verificada` (papel, contexto, passos, entrada, esperado,
+  obtido, versão, artefato; rota dinâmica com o padrão). 5.19.14, 5.19.36 e 5.19.39 revistas para **PARCIAL** com as
+  ressalvas mantidas (código do produto inexistente; percurso da leitura do PDF pendente; virada única inexistente).
+
+### 49.2 Comandos executados e resultados
+
+| Comando | Resultado |
+|---|---|
+| migration `20260913090000_v4_cnpj_alfanumerico_nos_checks` em test, dev e percursos | aplicada (CHECKs não entram no diff do Prisma) |
+| `tsc` backend, app e scripts | limpos |
+| `test:rapido` | **816/816** (77 arquivos; +12 do pacote `documento`) |
+| dirigidos: `packages/documento`, m19 (todos), `m16-pessoa-do-usuario`, m13, m28, m29, m30, `m05-consultas`, `m05-anulacao-parcial`, `adapters/tribunais/tce-pb` (todos), `m14-manad`, `m11-vigencia-alerta`, `m11-contratos` | **238/238** (`.registro-de-execucao/v4-cnpj-verificacao-2.txt`) |
+| `marcar-catalogo --aplicar` | 54 `VALIDADO_LOCALMENTE`, 51 `PARCIAL`, 76 `IMPLEMENTADO_NAO_VALIDADO`, 133 `AUSENTE_CONFIRMADO`, 3 `DEPENDENCIA_EXTERNA`, 1720 `NAO_VERIFICADO` — 317 classificadas, e isto NÃO é percentual de produto pronto |
+
+Decisão tomada durante a unidade: o credor do empenho continua sem exigência de FORMATO (só normalização): o M13
+prova que um documento quebrado LEGADO é omitido do portal com motivo, e recusar no empenho esconderia o caso. O DV
+continua sendo cobrado no cadastro de pessoas (M19).
+
+### 49.3 Não executado
+
+`test:tudo` nesta unidade (a mudança é de dado, não de transação); percursos de navegador (a seguir, sob o build).
+
+### 49.4 Pendências
+
+| Pendência | O que é |
+|---|---|
+| `SAGRES-CNPJ-ALFANUMERICO` | o leiaute 2026 v11 é numérico; o exportador recusa nomeando |
+| `MANAD-CNPJ-ALFANUMERICO` | idem para o MANAD (L750/L800) |
+| `REPRESENTACAO-DE-ORGANIZACAO-PELO-USUARIO` | representar uma pessoa jurídica é vínculo próprio com escopo, ainda sem desenho |
+| `CODIGO-DO-PRODUTO-NO-BEM` | a cláusula 5.19.14 pede consulta por código do produto; o bem não tem esse campo |
+
+### 49.5 Próximo ponto exato
+
+Seção 10 do pedido: `next build` e `next start` locais sobre o banco dos percursos, os smokes centrais (pacote 2 com
+a leitura do PDF, gestão do bem, acervo, eixo de valor, roteiros, perfis, pessoas, cadeia da despesa com a
+liquidação de material) e a investigação do 500 (`DEV-FRAME-JOIN-MASCARA-O-ERRO`) sob o servidor de produção; depois
+a seção 8 (Fila A: planejamento → contratação → nota → despesa).
 
 ## 19. O próximo passo
 

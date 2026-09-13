@@ -1,5 +1,5 @@
 import type { Money } from "../../../../packages/contracts/index.js";
-import { alfa, data, numerico, valor, zeros, type Onde } from "./formatadores.js";
+import { alfa, data, documento, numerico, valor, zeros, type Onde } from "./formatadores.js";
 
 /**
  * REGISTRY DECLARATIVA — SAGRES Contabilidade TCE-PB, POR VERSÃO DE LAYOUT.
@@ -20,6 +20,7 @@ export type Periodicidade = "DIARIO" | "MENSAL" | "ANUAL";
 /** O tipo de campo decide o formatador aplicado — e como o "não exigido" é preenchido. */
 export type TipoCampo =
   | "NUMERICO" // inteiro, zeros à esquerda
+  | "DOCUMENTO" // CPF/CNPJ num campo numérico: recusa o alfanumérico nomeando (V4 §7)
   | "VALOR" //    monetário, 13 int + vírgula + 2 dec
   | "DATA" //     ddmmaaaa
   | "ALFA" //     caractere, espaços à direita
@@ -96,6 +97,8 @@ function formatarCampo<T>(c: CampoLayout<T>, fato: T): string {
   switch (c.tipo) {
     case "NUMERICO":
       return numerico(bruto as string | number | null | undefined, tam, onde);
+    case "DOCUMENTO":
+      return documento(bruto as string | null | undefined, tam, onde);
     case "VALOR":
       return valor(bruto as Money | null | undefined, tam, onde);
     case "DATA":

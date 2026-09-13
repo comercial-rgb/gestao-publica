@@ -332,6 +332,9 @@ describe("M13 — dataset de DESPESA (TR 7.3)", () => {
     expect(mascararCpf("12345678909")).toBe("***.456.789-**");
     expect(identificarDocumento("123")).toBeNull();
     expect(identificarDocumento("abcdefghijk")).toBeNull();
+    // V4 (§7): o CNPJ alfanumérico é CNPJ — exposto inteiro, como o numérico; o CPF continua só numérico
+    expect(identificarDocumento("12ABC34501DE35")).toEqual({ documento: "12.ABC.345/01DE-35", tipo: "CNPJ" });
+    expect(identificarDocumento("5299822472A")).toBeNull();
     expect(identificarDocumento("123.456.789-09")).toBeNull(); // pontuado = não normalizado
   });
 
