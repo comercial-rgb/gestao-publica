@@ -469,6 +469,48 @@ describe("(1) sem permissão, TODA escrita estoura — e nada é gravado", () =>
    * Este é o eixo mais importante do módulo. Se as duas ações fossem uma, o quantitativo do TR
    * req. 9 viraria autoatendimento — quem quisesse nomear criaria a vaga e a ocuparia.
    */
+  /**
+   * ⚠️ A CARGA DO REGIME NO VÍNCULO JÁ DESLIGADO (V6 P2.3b) — a única exceção ao vínculo terminal,
+   * e ela existe porque SEM ELA NÃO HAVIA CAMINHO: a matrícula legada desligada no dia 1º de um
+   * mês viveu um dia, tem de ser paga por ele, e a folha precisa do regime para saber qual tabela
+   * aplicar. Recusar trancava a folha daquele mês para sempre.
+   *
+   * O que a exceção NÃO afrouxa: cargo, lotação e afastamento continuam recusados, e o regime com
+   * data POSTERIOR ao desligamento também — depois do fim não há regime a declarar.
+   */
+  it("⚠️ regime previdenciário no vínculo DESLIGADO: aceito ATÉ o desligamento, recusado depois — e nenhum outro evento passa", async () => {
+    const c = await cenario();
+    const { vinculoId } = await admitirServidor(prisma, {
+      servidorId: c.servidor, matricula: "DESL-1", tipo: "EFETIVO", regimeJuridico: "Estatutario",
+      dataAdmissao: D(2026, 1, 1), cargoId: c.cargoProfessor, lotacaoId: c.lotacao,
+      salarioBase: "3000.00", criadoPor: POR,
+    });
+    await desligarServidor(prisma, { vinculoId, data: D(2026, 9, 1), motivo: "exoneracao a pedido", criadoPor: POR });
+
+    // ATÉ o desligamento: aceito, e o regime passa a valer para as competências em que ele viveu.
+    await registrarMovimentacao(prisma, { vinculoId, tipo: "MUDANCA_REGIME_PREVIDENCIARIO", data: D(2026, 9, 1), motivo: "carga do regime do legado", regimePrevidenciario: "RGPS", criadoPor: POR });
+    const eventos = await prisma.historicoVinculo.findMany({ where: { vinculoId }, select: { data: true, criadoEm: true, tipo: true, cargoId: true, lotacaoId: true, salarioBase: true, regimePrevidenciario: true } });
+    const paraDominio = eventos.map((e) => ({ data: e.data, criadoEm: e.criadoEm, tipo: e.tipo as EventoDoVinculo["tipo"], cargoId: e.cargoId, lotacaoId: e.lotacaoId, salarioBase: e.salarioBase === null ? null : toMoney(e.salarioBase), regimePrevidenciario: e.regimePrevidenciario }));
+    expect(regimeVigenteEm(paraDominio, null, D(2026, 9, 1))).toBe("RGPS");
+
+    // DEPOIS do desligamento: recusado — não há regime a declarar para quem já saiu.
+    await expect(
+      registrarMovimentacao(prisma, { vinculoId, tipo: "MUDANCA_REGIME_PREVIDENCIARIO", data: D(2026, 10, 1), motivo: "tarde demais", regimePrevidenciario: "RPPS", criadoPor: POR })
+    ).rejects.toThrow(/desligad/i);
+
+    // ⚠️ E A EXCEÇÃO É SÓ DO REGIME: um AFASTAMENTO no DIA do desligamento continua recusado.
+    await expect(
+      registrarMovimentacao(prisma, { vinculoId, tipo: "AFASTAMENTO", data: D(2026, 9, 1), motivo: "licenca no dia da saida", criadoPor: POR })
+    ).rejects.toThrow(/desligad/i);
+
+    // ⚠️ E O QUE JÁ VALIA CONTINUA VALENDO, e é preciso dizê-lo para não se confundir com a
+    // exceção: a guarda olha a situação NA DATA DO FATO, então um evento datado DENTRO da vida do
+    // vínculo sempre foi aceito, mesmo registrado depois do desligamento — é a disciplina das
+    // duas datas (data do fato ≠ data do registro), não um afrouxamento novo.
+    await registrarMovimentacao(prisma, { vinculoId, tipo: "AFASTAMENTO", data: D(2026, 8, 1), motivo: "licenca de agosto, lancada agora", criadoPor: POR });
+    expect((await prisma.historicoVinculo.findMany({ where: { vinculoId }, select: { tipo: true } })).map((e) => e.tipo).sort()).toEqual(["ADMISSAO", "AFASTAMENTO", "DESLIGAMENTO", "MUDANCA_REGIME_PREVIDENCIARIO"]);
+  });
+
   it("⚠️ mudança de regime SEM regime de destino é recusada; afastamento que levasse regime também (V6 P2.3)", async () => {
     const c = await cenario();
     const { vinculoId } = await admitirServidor(prisma, {

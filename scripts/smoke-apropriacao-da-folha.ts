@@ -354,27 +354,30 @@ async function main(): Promise<void> {
       const href = await page.evaluate(() => (document.querySelector('tbody a[href^="/pessoal/servidores/"]') as HTMLAnchorElement | null)?.getAttribute("href") ?? "");
       if (href === "") break;
       await irPara(page, href);
-      const alvo = await opcaoQueCasa(page, 'form[data-acao="movimentar"] select[name="vinculoId"]', matricula);
+      // A carga do regime tem lista PRÓPRIA, que inclui os desligados — é o único lugar que os inclui.
+      const alvo = await opcaoQueCasa(page, 'form[data-acao="informar-regime"] select[name="vinculoRegimeId"]', matricula);
       if (alvo === null) {
         // ⚠️ LACUNA CONHECIDA DO PRODUTO, e o percurso a NOMEIA em vez de insistir: a matrícula
         // DESLIGADA não é oferecida às movimentações (regra certa — vínculo encerrado não recebe
         // evento novo), e por isso o regime previdenciário de um vínculo legado JÁ DESLIGADO não
         // tem por onde ser informado. A folha da competência em que ele ainda viveu um dia fica
         // travada. Pendência `REGIME-DE-VINCULO-DESLIGADO` (MODULO do M32).
-        falhou(
-          "1.2 o RH calcula a folha",
-          `a matrícula ${matricula} está DESLIGADA e não aparece nas movimentações: não há como informar o regime previdenciário dela pela tela. ` +
-            "Lacuna nomeada: REGIME-DE-VINCULO-DESLIGADO. O percurso com empenhos gravados está no log r2 de 5c4fad4 e em m33-apropriacao.test.ts."
-        );
+        falhou("1.2 o RH calcula a folha", `a matrícula ${matricula} não aparece nem na lista da carga do regime — nada a fazer pela tela.`);
         break;
       }
-      await preencherEEnviar(page, "movimentar", [
-        ...(alvo === null ? [] : [{ sel: 'select[name="vinculoId"]', valor: alvo.valor, tipo: "select" as const }]),
-        { sel: 'select[name="tipo"]', valor: "MUDANCA_REGIME_PREVIDENCIARIO", tipo: "select" },
-        { sel: 'input[name="data"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" },
-        { sel: 'select[name="regimePrevidenciario"]', valor: "RGPS", tipo: "select" },
-        { sel: 'input[name="motivo"]', valor: "carga do regime previdenciário do vínculo legado (percurso)" },
-      ]);
+      // ⚠️ A DATA TEM DE CAIR DENTRO DA VIDA DO VÍNCULO: o último dia da competência serve para
+      // quem estava vivo o mês todo; para quem foi DESLIGADO no começo dele, serve o primeiro dia
+      // (a carga do regime é aceita até o desligamento, inclusive). Duas tentativas cobrem os dois.
+      for (const data of [ultimoDiaDaCompetencia(COMP), `${COMP}-01`]) {
+        const r = await preencherEEnviar(page, "informar-regime", [
+          ...(alvo === null ? [] : [{ sel: 'select[name="vinculoRegimeId"]', valor: alvo.valor, tipo: "select" as const }]),
+          { sel: 'input[name="data"]', valor: data, tipo: "data" },
+          { sel: 'select[name="regimePrevidenciario"]', valor: "RGPS", tipo: "select" },
+          { sel: 'input[name="motivo"]', valor: "carga do regime previdenciário do vínculo legado (percurso)" },
+        ]);
+        if (r.tipo === "ok") break;
+        await irPara(page, href);
+      }
     }
     if (!falhas.some((f) => f.startsWith("1.2"))) conferir("1.2 o RH calcula a folha", rCalc.tipo === "ok", `${rCalc.tipo}: ${rCalc.texto.slice(0, 200)}`);
     if (rCalc.tipo !== "ok") {

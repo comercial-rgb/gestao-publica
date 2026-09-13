@@ -8,8 +8,8 @@
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
 | Frente em execução | **V6 produto integrado**: P0 identidade e shell (52), P1 vínculos (53, 54), P1.3 papéis (55), **P2 inteiro — M32 pessoal (55), M33 folha (56), portal do servidor (57) e apropriação contábil (58)** ENTREGUES. Próxima frente: P3 (processos e serviços digitais). A publicação da V5 segue SUSPENSA |
 | Último resultado | seção 58 — a folha fechada vira despesa: grupo de empenho (rubricas × ficha), apropriação pelo `empenhar` do M05, só o BRUTO, numeração determinística que dá idempotência, e retomável com o motivo. `next build` em `d87d07d`; m33-apropriacao 13/13; smoke-apropriacao 14/14 em `105446e` (sob `d87d07d` parou na lacuna `REGIME-DE-VINCULO-DESLIGADO`, nomeada em 58.3); smoke-folha 46/46 e smoke-portal 24/24 de regressão; censo 298 serviços / 271+21 ações; permissões v12; rápida 852/852; catálogo 368 de 2.037 verificadas |
-| Pendências relevantes | **`REGIME-DE-VINCULO-DESLIGADO`** (58.3 e MODULO do M32 — a decisão está escrita, falta tomá-la); `FICHA-DE-PESSOAL-NOS-PERCURSOS` (o banco de demonstração não tem ficha 319011 com dotação para a folha); do M33: `LIQUIDACAO-DA-FOLHA`, `PATRONAL-NA-MEMORIA`, `FOLHAS-NAO-MENSAIS`, `FALTAS-NA-FOLHA`, `PENSAO-ALIMENTICIA-NA-FOLHA`, `CONSIGNACOES-E-MARGEM`, `ARREDONDAMENTO-DA-FOLHA`, `CONTRACHEQUE-EM-PDF`, `RESUMO-DA-FOLHA`; do M32 (55.3); `MENSAGEM-SOME-COM-A-LINHA` e `MIGALHA-COM-ID` (P4); `ENDERECO-DO-ENTE`; `MARCA-NOS-PDFS`; seções 35.7 a 43.5, 52.4, 53.3, 54.3 |
-| Próximo passo | seção 58.6 — decidir `REGIME-DE-VINCULO-DESLIGADO` (é o que destrava a folha de qualquer competência com desligado legado), depois a liquidação da folha e o patronal; em paralelo, P3 |
+| Pendências relevantes | `FICHA-DE-PESSOAL-NOS-PERCURSOS` (o banco de demonstração não tem ficha 319011 com dotação para a folha); do M33: `LIQUIDACAO-DA-FOLHA`, `PATRONAL-NA-MEMORIA`, `FOLHAS-NAO-MENSAIS`, `FALTAS-NA-FOLHA`, `PENSAO-ALIMENTICIA-NA-FOLHA`, `CONSIGNACOES-E-MARGEM`, `ARREDONDAMENTO-DA-FOLHA`, `CONTRACHEQUE-EM-PDF`, `RESUMO-DA-FOLHA`; do M32 (55.3) e as telas sem superfície; `MENSAGEM-SOME-COM-A-LINHA` e `MIGALHA-COM-ID` (P4); `ENDERECO-DO-ENTE`; `MARCA-NOS-PDFS`; seções 35.7 a 43.5, 52.4, 53.3, 54.3. **`REGIME-DE-VINCULO-DESLIGADO` foi RESOLVIDA nesta sessão (58.7)** |
+| Próximo passo | seção 58.8 — a liquidação da folha (decisão sobre o responsável pelo atesto), o patronal na memória, e a ficha de pessoal nos percursos; em paralelo, P3 (processos e serviços digitais) |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -6433,8 +6433,8 @@ prova da idempotência pelo outro lado. O caminho com empenhos gravados está no
 R$ 3.000 cada) e nos 13 testes de unidade. Pendência: **`FICHA-DE-PESSOAL-NOS-PERCURSOS`** — o
 banco de demonstração precisa de uma ficha 319011 com dotação compatível.
 
-**⚠️ UMA LACUNA DO PRODUTO, ACHADA PELA REGRESSÃO E NÃO CORRIGIDA AQUI —
-`REGIME-DE-VINCULO-DESLIGADO`.** Cada execução do percurso consome uma competência de 2026, de
+**⚠️ UMA LACUNA DO PRODUTO, ACHADA PELA REGRESSÃO E CORRIGIDA NA MESMA SESSÃO —
+`REGIME-DE-VINCULO-DESLIGADO` (ver 58.7).** Cada execução do percurso consome uma competência de 2026, de
 dezembro para trás; ao chegar em setembro, a folha passou a incluir uma matrícula LEGADA que foi
 desligada no dia 1º daquele mês (viveu um dia, e por um dia tem de ser paga). Ela precisa de
 regime previdenciário para saber qual tabela aplicar — e a matrícula DESLIGADA não é oferecida às
@@ -6476,18 +6476,34 @@ lançamento e o mesmo movimento de dotação); saldo da ficha conferido na trans
 em DOIS níveis (o ato da apropriação e o empenho de cada parcela); idempotência com o escopo
 dentro da chave (série + competência + matrícula); nenhum identificador de cláusula na tela.
 
-### 58.6 Próximo ponto exato
+### 58.7 A lacuna achada pela regressão, e a decisão tomada
 
-1. **Decidir `REGIME-DE-VINCULO-DESLIGADO`** (58.3): é o que destrava a folha de qualquer
-   competência que inclua um desligado legado. A decisão e o seu recorte estreito já estão
-   escritos no `MODULO.md` do M32 (pendência 10) — falta tomá-la, implementar e provar com
-   fixture N=2 (um desligado com regime, um sem).
-2. **`LIQUIDACAO-DA-FOLHA`**: a apropriação empenha; liquidar continua ato próprio. O fechamento é
+`REGIME-DE-VINCULO-DESLIGADO` não ficou para depois: a folha de qualquer competência com um
+desligado legado ficava travada, e isso é o caminho comum de uma migração de dados.
+
+**A exceção é estreita, e o teste diz exatamente o quanto:** informar o regime com data ANTERIOR
+OU IGUAL ao desligamento é aceito no vínculo encerrado (é um fato que já era verdade enquanto ele
+vivia); o regime com data POSTERIOR é recusado; e nenhum outro evento passa no vínculo desligado,
+nem no DIA do desligamento. A tela ganhou ação PRÓPRIA — "Informar o regime previdenciário (carga
+do legado)" — com lista própria, a única que inclui os desligados: oferecer o desligado na lista
+das demais movimentações seria oferecer para recusar depois.
+
+⚠️ **E o teste registra o que JÁ VALIA**, para a exceção não ser lida como maior do que é: a
+guarda sempre olhou a situação NA DATA DO FATO, então um evento datado dentro da vida do vínculo
+já era aceito mesmo lançado depois do desligamento — disciplina das duas datas, não afrouxamento.
+
+`m32-pessoal.test.ts`: **58/58** (o teste novo afirma os quatro casos). A carga de regime do
+percurso passou a usar a ação nova, tentando o último dia da competência e, se o vínculo já estava
+desligado, o primeiro.
+
+### 58.8 Próximo ponto exato
+
+1. **`LIQUIDACAO-DA-FOLHA`**: a apropriação empenha; liquidar continua ato próprio. O fechamento é
    o atesto do CÁLCULO, e a liquidação em massa precisa de uma decisão sobre o responsável pelo
    atesto — não se inventa um nome no histórico.
-3. **`PATRONAL-NA-MEMORIA`**: `aliquotaPatronal` já está na tabela de contribuição; falta o
+2. **`PATRONAL-NA-MEMORIA`**: `aliquotaPatronal` já está na tabela de contribuição; falta o
    cálculo na memória e o grupo de empenho dos encargos (5.12.72/73 dependem dele).
-4. **`FICHA-DE-PESSOAL-NOS-PERCURSOS`**: o banco de demonstração precisa de uma ficha 319011 com
+3. **`FICHA-DE-PESSOAL-NOS-PERCURSOS`**: o banco de demonstração precisa de uma ficha 319011 com
    dotação compatível com a folha (hoje só há 339039, e a apropriação para por saldo).
 
 Depois: **P3** — mesa de trabalho (M21/M22/M23), fluxos de processo e carta de serviços.

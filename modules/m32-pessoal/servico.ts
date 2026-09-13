@@ -5,6 +5,7 @@ import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import {
   LIMITE_ETARIO_LEGAL,
   criaCicloDeLotacao,
+  dataDeDesligamento,
   situacaoDoVinculo,
   zAdmitirServidorInput,
   zBaixarFinalidadeDependenteInput,
@@ -509,7 +510,25 @@ export async function registrarMovimentacao(
 
     const v = await exigirVinculo(tx, dados.vinculoId);
     recusarSeAntesDaAdmissao(v.matricula, v.dataAdmissao, dados.data);
-    recusarSeDesligado(v.matricula, v.eventos, dados.data);
+    // ⚠️ A ÚNICA EXCEÇÃO AO VÍNCULO TERMINAL, e ela é estreita de propósito (V6 P2.3b).
+    //
+    // Informar o REGIME PREVIDENCIÁRIO com data ANTERIOR OU IGUAL ao desligamento não é uma
+    // movimentação em vínculo encerrado: é registrar um fato que JÁ ERA VERDADE enquanto ele
+    // vivia. Sem ela não há caminho nenhum — a matrícula legada desligada no dia 1º de um mês
+    // viveu um dia, tem de ser paga por ele, e a folha precisa do regime para saber qual tabela
+    // aplicar; recusar aqui trancava a folha daquele mês para sempre (pendência achada pelo
+    // percurso da apropriação).
+    //
+    // O que NÃO se afrouxou: cargo, lotação, afastamento e retorno continuam recusados em vínculo
+    // desligado, e o regime com data POSTERIOR ao desligamento também — depois do fim do vínculo
+    // não existe regime a declarar.
+    const cargaDeRegimeHistorico =
+      dados.tipo === "MUDANCA_REGIME_PREVIDENCIARIO" &&
+      (() => {
+        const fim = dataDeDesligamento(v.eventos);
+        return fim !== null && dados.data.getTime() <= fim.getTime();
+      })();
+    if (!cargaDeRegimeHistorico) recusarSeDesligado(v.matricula, v.eventos, dados.data);
 
     if (dados.cargoId !== undefined) await exigirCargoVigente(tx, dados.cargoId, dados.data);
     if (dados.lotacaoId !== undefined) {

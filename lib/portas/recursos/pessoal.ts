@@ -146,6 +146,18 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
       ],
     },
     {
+      nome: "informar-regime", rotulo: "Informar o regime previdenciário (carga do legado)", acaoDoCenso: "MOVIMENTAR_SERVIDOR",
+      aviso: "Para o vínculo que veio do cadastro antigo SEM regime declarado — inclusive o já DESLIGADO, que a folha ainda precisa pagar pelos dias em que viveu. A data tem de estar dentro da vida do vínculo (não antes da admissão, não depois do desligamento): é um fato que já era verdade, não uma movimentação nova.",
+      campos: [
+        { nome: "vinculoRegimeId", rotulo: "Vínculo (matrícula) — inclui os desligados", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+        { nome: "data", rotulo: "A partir de (dentro da vida do vínculo)", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "regimePrevidenciario", rotulo: "Regime previdenciário", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: [
+          { valor: "RGPS", rotulo: "RGPS — regime geral" }, { valor: "RPPS", rotulo: "RPPS — regime próprio" }, { valor: "ISENTO", rotulo: "Isento" },
+        ] },
+        { nome: "motivo", rotulo: "Motivo / fundamento", tipo: "texto", obrigatorio: true, largura: 4 },
+      ],
+    },
+    {
       nome: "desligar", rotulo: "Desligar", acaoDoCenso: "DESLIGAR_SERVIDOR", irreversivel: true,
       aviso: "Encerra o vínculo: é terminal. Readmitir é OUTRO vínculo, com outra matrícula.",
       campos: [

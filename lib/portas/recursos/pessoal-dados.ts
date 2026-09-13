@@ -233,7 +233,7 @@ export async function opcoesDoServidor(servidorId?: string): Promise<OpcoesDoCad
     }),
     prisma.cargo.findMany({ where: { dataExtincao: null }, orderBy: { codigo: "asc" }, select: { id: true, codigo: true, denominacao: true } }),
     prisma.lotacao.findMany({ where: { dataExtincao: null }, orderBy: { codigo: "asc" }, select: { id: true, codigo: true, nome: true } }),
-    servidorId === undefined ? Promise.resolve([]) : prisma.vinculo.findMany({ where: { servidorId }, orderBy: { dataAdmissao: "asc" }, select: { id: true, matricula: true, tipo: true, eventos: SELECAO_DE_EVENTOS } }),
+    servidorId === undefined ? Promise.resolve([]) : prisma.vinculo.findMany({ where: { servidorId }, orderBy: { dataAdmissao: "asc" }, select: { id: true, matricula: true, tipo: true, regimePrevidenciario: true, eventos: SELECAO_DE_EVENTOS } }),
   ]);
   const hoje = new Date();
   return {
@@ -244,6 +244,16 @@ export async function opcoesDoServidor(servidorId?: string): Promise<OpcoesDoCad
       .map((v) => ({ v, situacao: situacaoDoVinculo(eventos(v.eventos), hoje) }))
       .filter((x) => x.situacao !== "DESLIGADO")
       .map((x) => ({ valor: x.v.id, rotulo: `${x.v.matricula} · ${x.v.tipo} · ${ROTULO_DA_SITUACAO[x.situacao]}` })),
+    // ⚠️ ESTA LISTA INCLUI OS DESLIGADOS, e é a única que inclui: a carga do regime previdenciário
+    // do legado alcança o vínculo que já acabou (a folha ainda o paga pelos dias em que ele
+    // viveu). As demais movimentações continuam sem ele — e por isso são duas listas, não uma com
+    // um aviso.
+    vinculoRegimeId: vinculos.map((v) => {
+      const evs = eventos(v.eventos);
+      const situacao = situacaoDoVinculo(evs, hoje);
+      const regime = regimeVigenteEm(evs, v.regimePrevidenciario, hoje);
+      return { valor: v.id, rotulo: `${v.matricula} · ${v.tipo} · ${ROTULO_DA_SITUACAO[situacao]} · previdência: ${regime ?? "NÃO INFORMADA"}` };
+    }),
   };
 }
 
@@ -290,6 +300,17 @@ export async function acaoDoServidor(acao: string, servidorId: string, c: Campos
       return r.alertaAcumulacao.length > 0
         ? `Vínculo admitido. ATENÇÃO — acumulação: esta pessoa já tem ${r.alertaAcumulacao.map((a) => `${a.matricula} (${a.tipo})`).join(", ")}. Confira o limite constitucional.`
         : "Vínculo admitido: matrícula, cargo, lotação e salário registrados como evento de admissão.";
+    }
+    case "informar-regime": {
+      const v = await prisma.vinculo.findUnique({ where: { id: t(c, "vinculoRegimeId") }, select: { id: true, servidorId: true } });
+      if (v === null || v.servidorId !== servidorId) throw new Error("O vínculo informado não é deste servidor. Nada foi gravado.");
+      await comEscritaAutenticada("MOVIMENTAR_SERVIDOR", (criadoPor) =>
+        registrarMovimentacao(prisma, {
+          vinculoId: v.id, tipo: "MUDANCA_REGIME_PREVIDENCIARIO", data: dia(c, "data"), motivo: t(c, "motivo"),
+          regimePrevidenciario: t(c, "regimePrevidenciario") as "RGPS" | "RPPS" | "ISENTO", criadoPor,
+        })
+      );
+      return "Regime previdenciário informado como fato datado. A folha de cada competência passa a aplicar o regime daquela competência.";
     }
     case "movimentar": {
       const vinculoId = await exigirVinculoDoServidor();

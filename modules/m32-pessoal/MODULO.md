@@ -254,15 +254,19 @@ evento existir — não como verdade vigente. A admissão grava o regime nos DOI
 8. **`PIS-SEM-DV`** — `zPis` confere só os 11 dígitos.
 9. **`PESSOAL-SEM-TELA-CALENDARIO-CONTRATO-AVALIACAO`** e **`PESSOAL-SEM-TELA-BAIXA-DE-DEPENDENTE`**
    — serviço e ação existem; tela não (ver "Arquivos deste módulo").
-10. **`REGIME-DE-VINCULO-DESLIGADO`** (achado pelo percurso da apropriação, V6 P2.3b) — o regime
-    previdenciário de um vínculo legado que JÁ FOI DESLIGADO não tem por onde ser informado: a
-    matrícula desligada não é oferecida às movimentações (regra certa — vínculo encerrado não
-    recebe evento novo), e a folha da competência em que ele ainda viveu um dia exige o regime
-    para saber qual tabela aplicar. O ente fica sem caminho, e a folha do mês trava.
+10. **`REGIME-DE-VINCULO-DESLIGADO` — RESOLVIDA na mesma sessão (V6 P2.3b).** O percurso da
+    apropriação achou o caminho sem saída: a matrícula legada DESLIGADA no dia 1º de um mês viveu
+    um dia, tem de ser paga por ele, precisa de regime previdenciário para a folha saber qual
+    tabela aplicar — e não era oferecida em movimentação nenhuma.
 
-    **A decisão a tomar** (não tomada aqui de propósito, no fim de uma sessão longa): informar o
-    regime com data ANTERIOR OU IGUAL ao desligamento não é uma movimentação em vínculo
-    encerrado — é o registro de um fato que já era verdade enquanto ele vivia. Se aceita, a
-    exceção precisa ser NARROW (só `MUDANCA_REGIME_PREVIDENCIARIO`, só com data ≤ desligamento) e
-    a porta precisa oferecer a matrícula desligada apenas para esse tipo, sem reabrir o vínculo
-    para os demais eventos.
+    **A exceção, e o quanto ela é estreita:** informar o regime com data ANTERIOR OU IGUAL ao
+    desligamento é aceito mesmo no vínculo encerrado, porque é o registro de um fato que já era
+    verdade enquanto ele vivia, não uma movimentação nova. A ação da tela é PRÓPRIA ("Informar o
+    regime previdenciário (carga do legado)"), com lista PRÓPRIA — a única que inclui os
+    desligados. O que não mudou: cargo, lotação, afastamento e retorno continuam recusados no
+    vínculo desligado (inclusive no DIA do desligamento), e o regime com data POSTERIOR ao fim
+    também. Prova: `m32-pessoal.test.ts`, o teste que afirma os quatro casos.
+
+    ⚠️ **E ele registra o que JÁ VALIA**, para que a exceção não seja lida como maior do que é: a
+    guarda sempre olhou a situação NA DATA DO FATO, então um evento datado DENTRO da vida do
+    vínculo já era aceito mesmo lançado depois do desligamento — é a disciplina das duas datas.
