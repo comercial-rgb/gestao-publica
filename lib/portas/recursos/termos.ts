@@ -57,7 +57,7 @@ export const TERMOS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
     { nome: "tipo", rotulo: "Tipo", tipo: "selecao", largura: 1, opcoes: OPCOES_DE_TIPO_DE_TERMO.map((o) => ({ valor: o.valor, rotulo: o.rotulo.split(" — ")[0] ?? o.rotulo })) },
   ],
   acoes: [],
-  permissoes: { criar: "EMITIR_TERMO_PATRIMONIAL" },
+  permissoes: { criar: "EMITIR_TERMO_PATRIMONIAL", anexar: "ANEXAR_ARQUIVO" },
   abas: ["dados", "historico", "anexos", "relacionados"],
   donoDoAnexo: "termoPatrimonialId",
   relacionados: [

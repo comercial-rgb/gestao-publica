@@ -60,6 +60,7 @@
     "test/acervo-pesquisa.test.ts",
     "test/ui/acoes-despachadas.test.ts",
     "test/ui/chave-de-comando.test.ts",
+    "test/ui/descritores-consistentes.test.ts",
     "app/**/*.ts",
     "app/**/*.tsx",
     "components/**/*.ts",
