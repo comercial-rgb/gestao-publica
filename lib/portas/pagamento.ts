@@ -285,21 +285,22 @@ export async function registrarPagamento(input: {
    */
   readonly ordemDePagamentoId?: string | undefined;
 }): Promise<string> {
-  const retencoes = await comporRetencoes(input.retencoes ?? []);
+  // ⚠️ V6 P1.2 — A PERNA DE DISPONIBILIDADE É A CONTA CONTÁBIL DA CONTA BANCÁRIA QUE PAGA, lida
+  // do cadastro (fail-closed). Vinha de uma constante (1.1.1.1.2.00.00) enquanto as contas
+  // bancárias mapeiam outra (1.1.1.1.1.19.00): o pagamento saía da conta X na tesouraria e de
+  // outra conta no razão — e a conciliação de X nunca fechava. "Nenhum código no código."
+  const conta = await cliente().contaBancaria.findUnique({
+    where: { codigo: input.contaBancaria },
+    select: { codigo: true, contaContabil: { select: { codigo: true } } },
+  });
+  if (conta === null) throw new Error(`Conta bancária ${input.contaBancaria} não cadastrada. Nada foi gravado.`);
+  if (conta.contaContabil === null) {
+    throw new Error(`A conta bancária ${conta.codigo} não tem conta contábil mapeada; o pagamento não sabe de que conta do razão sai. Parametrize o mapeamento antes. Nada foi gravado.`);
+  }
+  const contaContabilDaConta = conta.contaContabil.codigo;
+  const retencoes = await comporRetencoes(input.retencoes ?? [], contaContabilDaConta);
 
   return comEscritaAutenticada("PAGAR", async (criadoPor) => {
-    // ⚠️ V6 P1.2 — A PERNA DE DISPONIBILIDADE É A CONTA CONTÁBIL DA CONTA BANCÁRIA QUE PAGA, lida
-    // do cadastro (fail-closed). Vinha de uma constante (1.1.1.1.2.00.00) enquanto as contas
-    // bancárias mapeiam outra (1.1.1.1.1.19.00): o pagamento saía da conta X na tesouraria e de
-    // outra conta no razão — e a conciliação de X nunca fechava. "Nenhum código no código."
-    const conta = await cliente().contaBancaria.findUnique({
-      where: { codigo: input.contaBancaria },
-      select: { codigo: true, contaContabil: { select: { codigo: true } } },
-    });
-    if (conta === null) throw new Error(`Conta bancária ${input.contaBancaria} não cadastrada. Nada foi gravado.`);
-    if (conta.contaContabil === null) {
-      throw new Error(`A conta bancária ${conta.codigo} não tem conta contábil mapeada; o pagamento não sabe de que conta do razão sai. Parametrize o mapeamento antes. Nada foi gravado.`);
-    }
     const r = await pagar(
       {
         liquidacaoId: input.liquidacaoId,
@@ -319,7 +320,7 @@ export async function registrarPagamento(input: {
       },
       roteiroPagamento({
         obrigacaoAPagar: CONTA_FORNECEDORES,
-        disponibilidade: conta.contaContabil.codigo,
+        disponibilidade: contaContabilDaConta,
       }),
       criarM05Deps(cliente()),
       // ⚠️ `undefined`, e não `{retencoes: []}`, quando não há retenção: é o que faz o
@@ -345,7 +346,9 @@ async function comporRetencoes(
     readonly tipoConsignacaoId: string;
     readonly credorConsignatario: string;
     readonly valor: string;
-  }[]
+  }[],
+  /** V6 P1.2 — a conta contábil da conta bancária que paga (a mesma perna do roteiro). */
+  contaDisponibilidade: string
 ): Promise<RetencoesDoPagamento | undefined> {
   if (pedidas.length === 0) return undefined;
 
@@ -353,7 +356,7 @@ async function comporRetencoes(
   const porId = new Map(tipos.map((t) => [t.id, t] as const));
 
   return {
-    contaDisponibilidade: CONTA_DISPONIBILIDADE,
+    contaDisponibilidade,
     retencoes: pedidas.map((r) => {
       const tipo = porId.get(r.tipoConsignacaoId);
       if (tipo === undefined) {
