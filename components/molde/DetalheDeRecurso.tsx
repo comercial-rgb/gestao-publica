@@ -126,7 +126,11 @@ export function DetalheDeRecurso({
                   <dt className="text-[11px] uppercase tracking-wide text-[color:var(--color-ink-3)]">
                     {d.rotulo}
                   </dt>
-                  <dd className="mt-0.5 text-sm text-[color:var(--color-ink)]">
+                  {/* ⚠️ `overflow-wrap:anywhere` — um sha256 tem 64 caracteres sem espaço nenhum, e
+                      sem isto ele TRANSBORDA a célula e se sobrepõe ao texto da coluna vizinha. A
+                      captura de 1366 px do detalhe da folha mostrou a colisão; o valor estava certo
+                      e ilegível, que é o pior dos dois. */}
+                  <dd className="mt-0.5 text-sm break-words [overflow-wrap:anywhere] text-[color:var(--color-ink)]">
                     {valorFormatado(d)}
                   </dd>
                   {d.nota !== undefined ? (
