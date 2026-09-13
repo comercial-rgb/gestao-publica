@@ -8,6 +8,7 @@ import { FOLHAS } from "../../../../../lib/portas/recursos/folha";
 import { verFolha } from "../../../../../lib/portas/recursos/folha-dados";
 import { folhasAction } from "../actions";
 import { Contracheques } from "./Contracheques";
+import { EmpenhosDaFolha } from "./EmpenhosDaFolha";
 
 /**
  * O DETALHE DA FOLHA: a situação derivada, o cálculo vivo com o seu sha256, as ações (calcular,
@@ -38,6 +39,7 @@ export default async function Detalhe({ params, searchParams }: { readonly param
         historico={detalhe.historico}
         acoes={<FormsDoRecurso definicao={FOLHAS} permitidas={[...permitidas]} opcoes={{}} registroId={id} action={folhasAction} modo="acoes" />}
       />
+      {consulta.aba === "dados" && detalhe.apropriacao !== null ? <EmpenhosDaFolha apropriacao={detalhe.apropriacao} /> : null}
       {consulta.aba === "dados" ? <Contracheques folhaId={id} linhas={detalhe.contracheques} /> : null}
     </div>
   );

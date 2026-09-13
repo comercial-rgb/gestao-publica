@@ -226,6 +226,7 @@ export const FOLHA: readonly RelatorioNav[] = [
   { href: "/folha/rubricas", numero: "Rubricas", rotulo: "Rubricas", descricao: "Proventos e descontos: natureza, incidências e proporcionalidade aos dias." },
   { href: "/folha/lancamentos", numero: "Lançamentos", rotulo: "Lançamentos", descricao: "Valores fixos (por vigência) e variáveis (por competência) informados por matrícula." },
   { href: "/folha/tabelas", numero: "Tabelas", rotulo: "Tabelas do ente", descricao: "Contribuição previdenciária por regime, IRRF e salário-família, vigentes por competência, com a fundamentação legal." },
+  { href: "/folha/grupos-de-empenho", numero: "Grupos de empenho", rotulo: "Grupos de empenho", descricao: "Como a folha vira despesa: quais rubricas empenham em qual ficha, e se o empenho é por servidor ou um só para o grupo." },
 ];
 
 /** PESSOAL (M32) — fonte única da landing e do submenu. */

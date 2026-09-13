@@ -304,6 +304,8 @@ export type AcaoDoSistema =
   | "REGISTRAR_CONTRATO_TRABALHO"
   | "REGISTRAR_AVALIACAO_EXPERIENCIA"
   // V6 P2.3 — M33 folha de pagamento
+  | "APROPRIAR_FOLHA"
+  | "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA"
   | "CONFIGURAR_TABELAS_DA_FOLHA"
   | "CADASTRAR_RUBRICA"
   | "LANCAR_NA_FOLHA"
@@ -718,6 +720,8 @@ export type NomeDeServico =
   | "prorrogarContratoTrabalho"
   | "registrarAvaliacaoExperiencia"
   // M33 — folha
+  | "cadastrarGrupoDeEmpenhoDaFolha"
+  | "apropriarFolha"
   | "cadastrarTabelaDeContribuicao"
   | "cadastrarTabelaIrrf"
   | "cadastrarTabelaSalarioFamilia"
@@ -1103,6 +1107,11 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // V6 P2.3 — M33 folha: as três tabelas são UM poder (parametrizar a folha pela norma vigente);
   // abrir, calcular, cancelar o cálculo e fechar são quatro atos distintos, porque quem calcula
   // não é necessariamente quem fecha (o fechamento congela e leva ao empenho).
+  // V6 P2.3b — a apropriação contábil: o ato tem crachá PRÓPRIO, e quem o exerce precisa TAMBÉM
+  // de EMPENHAR (o M05 exige a sua ação em cada empenho, dentro da transação). Apropriar não é
+  // atalho para empenhar: é o ato de dizer que aquela competência fechada vira aquela despesa.
+  cadastrarGrupoDeEmpenhoDaFolha: "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA",
+  apropriarFolha: "APROPRIAR_FOLHA",
   cadastrarTabelaDeContribuicao: "CONFIGURAR_TABELAS_DA_FOLHA",
   cadastrarTabelaIrrf: "CONFIGURAR_TABELAS_DA_FOLHA",
   cadastrarTabelaSalarioFamilia: "CONFIGURAR_TABELAS_DA_FOLHA",
@@ -1295,6 +1304,10 @@ export const ACOES_DE_ADMINISTRACAO: readonly AcaoDoSistema[] = [
  * grep-teste lê esta lista — nada sai do censo por descuido.
  */
 export const FORA_DO_CENSO: Record<string, string> = {
+  // ── V6 P2.3b — a apropriação contábil da folha ──
+  apropriacaoDaFolha:
+    "LEITURA: devolve os empenhos que a folha gerou (o elo competência × despesa) para o detalhe da folha. " +
+    "Não muta nada — quem apropria é `apropriarFolha`, e essa tem crachá próprio.",
   // ── V6 P1.1 — o vínculo solicitação × ordem ──
   alocarDentroDaTransacao:
     "composável interno: roda DENTRO da transação de `emitirOrdemDeCompra` (ordem formada a partir da solicitação) " +

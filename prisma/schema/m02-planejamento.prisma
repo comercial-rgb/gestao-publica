@@ -328,6 +328,8 @@ model FichaOrcamentaria {
   saldoDisponivel Decimal @default(0) @db.Decimal(18, 2)
 
   movimentos   MovimentoDotacao[]
+  /// back-relation V6 P2.3b — os grupos de empenho da folha que apropriam nesta ficha.
+  gruposDaFolha GrupoDeEmpenhoDaFolha[]
   reservas     ReservaDotacao[]
   empenhos     Empenho[]
   itensCredito ItemCredito[]

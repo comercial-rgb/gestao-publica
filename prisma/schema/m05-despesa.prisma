@@ -247,6 +247,8 @@ model Empenho {
   liquidacoes Liquidacao[]
   /// back-relation M08 — campo VIRTUAL, não gera coluna.
   inscricoesRestos InscricaoRestosAPagar[]
+  /// back-relation V6 P2.3b — o elo com a folha que o gerou, quando veio de uma apropriação.
+  daFolha EmpenhoDaFolha?
 
   criadoEm  DateTime @default(now())
   criadoPor String

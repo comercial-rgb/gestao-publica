@@ -195,6 +195,7 @@ model Rubrica {
 
   lancamentos LancamentoDaFolha[]
   linhas      LinhaDoContracheque[]
+  grupoDeEmpenho RubricaDoGrupoDeEmpenho?
 
   @@index([natureza])
   @@index([ordem])
@@ -250,8 +251,9 @@ model FolhaDePagamento {
   criadoEm  DateTime @default(now())
   criadoPor String
 
-  calculos   CalculoDaFolha[]
-  fechamento FechamentoDaFolha?
+  calculos    CalculoDaFolha[]
+  fechamento  FechamentoDaFolha?
+  apropriacao ApropriacaoDaFolha?
 
   @@unique([competencia, tipo])
 }
@@ -377,4 +379,119 @@ model LinhaDoContracheque {
   memoria String
 
   @@unique([contrachequeId, rubricaId])
+}
+
+// ============================================================================
+// V6 P2.3b — A APROPRIAÇÃO CONTÁBIL DA FOLHA (TR 5.12.71/72)
+//
+// A folha FECHADA vira despesa: os proventos de cada contracheque, agrupados por GRUPO DE
+// EMPENHO (quais rubricas, em qual ficha), geram empenhos pelo M05 — com o roteiro contábil de
+// sempre, o saldo da ficha conferido na transação e a fila do art. 141 alimentada.
+//
+// ⚠️ SÓ O BRUTO É EMPENHADO. Contribuição e imposto retidos do servidor NÃO são despesa
+// orçamentária: são retenções que viajam no PAGAMENTO (M05/M09 já as compõem). A parte PATRONAL
+// é despesa própria e ainda não é calculada (pendência PATRONAL-NA-MEMORIA).
+//
+// ⚠️ A NUMERAÇÃO É DETERMINÍSTICA, e é ela que dá IDEMPOTÊNCIA: o empenho da folha nasce com
+// `<série do grupo>/<competência>/<matrícula ou código do grupo>`, e o `@@unique([fichaId,
+// numero])` do M05 faz a segunda tentativa bater na constraint em vez de duplicar a despesa.
+// ============================================================================
+
+/// O grupo de empenho da folha: quais rubricas, em qual ficha, com qual credor.
+model GrupoDeEmpenhoDaFolha {
+  id String @id @default(cuid())
+
+  codigo    String @unique
+  descricao String
+
+  fichaId String
+  ficha   FichaOrcamentaria @relation(fields: [fichaId], references: [id])
+
+  /// Art. 141 da Lei 14.133/2021 — a fila em que o pagamento entra. Sem default: ver o M05.
+  categoriaOrdemCronologica CategoriaOrdemCronologica
+
+  tipoEmpenho TipoEmpenho
+
+  /// O prefixo da numeração dos empenhos deste grupo ("FP", "FOLHA"). Entra no número junto com a
+  /// competência e a matrícula — é o que torna a apropriação repetível sem duplicar.
+  serie String @db.VarChar(10)
+
+  /// ⚠️ AS DUAS PRÁTICAS DOS ENTES, e o ente escolhe: `true` = UM empenho por servidor, com o CPF
+  /// dele como credor (auditável servidor a servidor, e a fila do art. 141 fica por pessoa);
+  /// `false` = UM empenho do grupo inteiro, com o credor declarado abaixo. Escolher por dentro
+  /// seria inventar norma que o TR não fixa.
+  porServidor Boolean
+
+  /// Obrigatório quando `porServidor = false` (o CHECK impõe): quem figura como credor do empenho
+  /// único do grupo.
+  credorId String?
+  credor   Pessoa? @relation("CredorDeGrupoDaFolha", fields: [credorId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  rubricas RubricaDoGrupoDeEmpenho[]
+  empenhos EmpenhoDaFolha[]
+
+  @@index([fichaId])
+}
+
+/// A rubrica dentro de um grupo. UMA rubrica em UM grupo só — senão a mesma verba seria empenhada
+/// duas vezes, em duas fichas, e o total da folha deixaria de bater com o total empenhado.
+model RubricaDoGrupoDeEmpenho {
+  id String @id @default(cuid())
+
+  grupoId String
+  grupo   GrupoDeEmpenhoDaFolha @relation(fields: [grupoId], references: [id])
+
+  rubricaId String  @unique
+  rubrica   Rubrica @relation(fields: [rubricaId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([grupoId])
+}
+
+/// O ato de apropriar a folha fechada. UMA por folha; reexecutar CONTINUA a mesma (é retomável).
+model ApropriacaoDaFolha {
+  id String @id @default(cuid())
+
+  folhaId String           @unique
+  folha   FolhaDePagamento @relation(fields: [folhaId], references: [id])
+
+  /// A data dos empenhos — informada pelo operador, dentro do exercício aberto da ficha.
+  dataDoEmpenho DateTime
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  empenhos EmpenhoDaFolha[]
+}
+
+/// O empenho que nasceu da folha — o elo entre a competência e a despesa.
+model EmpenhoDaFolha {
+  id String @id @default(cuid())
+
+  apropriacaoId String
+  apropriacao   ApropriacaoDaFolha @relation(fields: [apropriacaoId], references: [id])
+
+  grupoId String
+  grupo   GrupoDeEmpenhoDaFolha @relation(fields: [grupoId], references: [id])
+
+  /// Presente quando o grupo empenha POR SERVIDOR; nulo no empenho único do grupo.
+  vinculoId String?
+  vinculo   Vinculo? @relation(fields: [vinculoId], references: [id])
+
+  empenhoId String  @unique
+  empenho   Empenho @relation(fields: [empenhoId], references: [id])
+
+  valor Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([apropriacaoId])
+  @@index([grupoId])
+  @@index([vinculoId])
 }

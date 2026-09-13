@@ -502,6 +502,7 @@ model Vinculo {
 
   lancamentosDaFolha LancamentoDaFolha[]
   contracheques      Contracheque[]
+  empenhosDaFolha    EmpenhoDaFolha[]
 
   eventos     HistoricoVinculo[]
   portarias   Portaria[]

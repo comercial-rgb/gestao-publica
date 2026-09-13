@@ -99,10 +99,11 @@ const ESCRITO_POR_ANINHAMENTO: Readonly<Record<string, string>> = {
   FaixaIrrf:
     "escrita por `faixas: { create: ... }` em cadastrarTabelaIrrf (modules/m33-folha/servico.ts); " +
     "LIDA pela relação `faixas` da tabela — mesma razão da faixa de contribuição",
-  LinhaDoContracheque:
-    "escrita por `linhas: { create: ... }` em calcularFolha (modules/m33-folha/servico.ts); LIDA " +
-    "pela relação `linhas` do contracheque em verContracheque — a linha é parte do contracheque " +
-    "e nasce com ele no mesmo ato; linha avulsa não tem cálculo que a explique",
+  RubricaDoGrupoDeEmpenho:
+    "escrita por `rubricas: { create: ... }` em cadastrarGrupoDeEmpenhoDaFolha " +
+    "(modules/m33-folha/apropriacao.ts); LIDA pela relação `rubricas` do grupo e pela relação " +
+    "inversa `grupoDeEmpenho` da rubrica (é ela que responde 'esta rubrica já empenha em algum " +
+    "grupo?'). A linha não existe fora do grupo que a declarou",
 };
 
 function arquivosDeSchema(): readonly string[] {

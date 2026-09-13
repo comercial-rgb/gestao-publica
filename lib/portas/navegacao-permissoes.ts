@@ -282,6 +282,8 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   REGISTRAR_AVALIACAO_EXPERIENCIA: "pessoal",
   // V6 P2.3 — M33 folha
   CONFIGURAR_TABELAS_DA_FOLHA: "folha",
+  CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA: "folha",
+  APROPRIAR_FOLHA: "folha",
   CADASTRAR_RUBRICA: "folha",
   LANCAR_NA_FOLHA: "folha",
   ABRIR_FOLHA: "folha",

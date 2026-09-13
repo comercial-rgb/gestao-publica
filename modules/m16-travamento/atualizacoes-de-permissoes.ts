@@ -350,6 +350,24 @@ export const ACOES_DA_FOLHA: readonly AcaoDoSistema[] = [
   "CONFIGURAR_TABELAS_DA_FOLHA", "CADASTRAR_RUBRICA", "LANCAR_NA_FOLHA", "ABRIR_FOLHA", "CALCULAR_FOLHA",
   "CANCELAR_CALCULO_DA_FOLHA", "FECHAR_FOLHA", "CONSULTAR_FOLHA",
 ];
+/** V6 P2.3b — a apropriação contábil, que chegou depois da v10. */
+export const ACOES_DA_APROPRIACAO: readonly AcaoDoSistema[] = ["CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA", "APROPRIAR_FOLHA"];
+export function derivarApropriacaoDaFolha(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null);
+    if (!administra) continue;
+    const jaTem = new Set(perfil.permissoes.filter((p) => p.unidadeOrcId === null).map((p) => p.acao));
+    for (const acao of ACOES_DA_APROPRIACAO) {
+      if (jaTem.has(acao)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
 export function derivarFolha(
   perfis: readonly PerfilComPermissoes[],
   _areaDaAcao: AreaDaAcao
@@ -491,6 +509,15 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "usuario (a porta recorta pela pessoa da sessao). Quem concede acao a perfil no escopo global a recebe; quem " +
       "administra cria o perfil dos servidores e a concede a eles.",
     derivar: derivarPortalDoServidor,
+  },
+  {
+    versao: 12,
+    nome: "apropriacao-da-folha",
+    descricao:
+      "A apropriacao contabil da folha (V6 P2.3b) chegou com CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA e APROPRIAR_FOLHA. Quem " +
+      "concede acao a perfil no escopo global as recebe; quem APROPRIA precisa tambem de EMPENHAR, e essa concessao " +
+      "continua sendo decisao do administrador — o M05 exige a sua acao em cada empenho.",
+    derivar: derivarApropriacaoDaFolha,
   },
 ];
 

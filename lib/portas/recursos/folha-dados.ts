@@ -1,8 +1,10 @@
 import { diaCivilBr } from "../../../packages/datas/index.js";
 import { Decimal, toMoney, sumMoney } from "../../../packages/contracts/index.js";
+import { formatarDocumento } from "../../../packages/documento/index.js";
 import type { Prisma } from "../../../prisma/generated/client/client.js";
 import { situacaoDaFolha, vigenteNaCompetencia, type SituacaoDaFolha } from "../../../modules/m33-folha/dominio.js";
 import { situacaoDoVinculo, type EventoDoVinculo } from "../../../modules/m32-pessoal/dominio.js";
+import { apropriacaoDaFolha, apropriarFolha, cadastrarGrupoDeEmpenhoDaFolha } from "../../../modules/m33-folha/apropriacao.js";
 import {
   abrirFolha,
   cadastrarRubrica,
@@ -76,10 +78,22 @@ export async function listarFolhas(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
   return { total: filtradas.length, linhas: filtradas.slice(skip, skip + take).map(({ _sit: _s, ...l }) => l) };
 }
 
+export interface EmpenhoDaFolhaLido {
+  readonly numero: string;
+  readonly ficha: number;
+  readonly grupo: string;
+  readonly matricula: string | null;
+  readonly credor: string;
+  readonly valor: string;
+  readonly empenhoId: string;
+}
+
 export interface FolhaLida extends DetalheLido {
   readonly competencia: string;
   readonly situacao: SituacaoDaFolha;
   readonly calculoVivoId: string | null;
+  /** `null` = a folha ainda não foi apropriada (ou nem está fechada). */
+  readonly apropriacao: { readonly dataDoEmpenho: string; readonly por: string; readonly total: string; readonly empenhos: readonly EmpenhoDaFolhaLido[] } | null;
   readonly contracheques: readonly { readonly vinculoId: string; readonly matricula: string; readonly servidor: string; readonly regime: string; readonly dias: number; readonly proventos: string; readonly descontos: string; readonly liquido: string }[];
 }
 
@@ -88,6 +102,7 @@ export async function verFolha(id: string): Promise<FolhaLida | null> {
   const f = await prisma.folhaDePagamento.findUnique({ where: { id }, select: SELECAO_DA_FOLHA });
   if (f === null) return null;
   const d = derivarFolha(f);
+  const apropriada = await apropriacaoDaFolha(prisma, id);
   const contracheques = d.vivo === null ? [] : await prisma.contracheque.findMany({
     where: { calculoId: d.vivo.id }, orderBy: { vinculo: { matricula: "asc" } },
     select: { vinculoId: true, regime: true, diasComputados: true, totalProventos: true, totalDescontos: true, liquido: true, vinculo: { select: { matricula: true, servidor: { select: { nomeSocial: true, pessoa: { select: { documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } } } } } } },
@@ -104,6 +119,9 @@ export async function verFolha(id: string): Promise<FolhaLida | null> {
       { rotulo: "sha256 do cálculo", valor: d.vivo.sha256, nota: "Impressão digital do conjunto (lista ordenada dos sha256 dos contracheques)." },
     ]),
     ...(f.fechamento === null ? [] : [{ rotulo: "Fechada em", valor: `${diaCivilBr(f.fechamento.criadoEm)} por ${f.fechamento.criadoPor}` }]),
+    ...(apropriada === null
+      ? f.fechamento === null ? [] : [{ rotulo: "Apropriação contábil", valor: "não apropriada", nota: "Apropriar gera os empenhos desta folha pelos grupos de empenho cadastrados." }]
+      : [{ rotulo: "Apropriação contábil", valor: `${apropriada.empenhos.length} empenho(s), ${apropriada.total.toFixed(2)} — empenhos de ${diaCivilBr(apropriada.dataDoEmpenho)}, por ${apropriada.criadoPor}`, nota: "Só o BRUTO é empenhado; as retenções viajam no pagamento." }]),
     { rotulo: "Aberta em", valor: diaCivilBr(f.criadoEm), tipo: "data" as const },
     { rotulo: "Aberta por", valor: f.criadoPor },
   ];
@@ -121,6 +139,10 @@ export async function verFolha(id: string): Promise<FolhaLida | null> {
     selos: [{ texto: ROTULO_DA_SITUACAO[d.situacao], tom: d.situacao === "FECHADA" ? "ok" : d.situacao === "CALCULADA" ? "neutro" : "alerta" }],
     dados, historico,
     competencia: f.competencia, situacao: d.situacao, calculoVivoId: d.vivo?.id ?? null,
+    apropriacao: apropriada === null ? null : {
+      dataDoEmpenho: diaCivilBr(apropriada.dataDoEmpenho), por: apropriada.criadoPor, total: apropriada.total.toFixed(2),
+      empenhos: apropriada.empenhos.map((e) => ({ numero: e.numero, ficha: e.ficha, grupo: e.grupo, matricula: e.matricula, credor: e.credor, valor: e.valor.toFixed(2), empenhoId: e.empenhoId })),
+    },
     contracheques: contracheques.map((x) => ({ vinculoId: x.vinculoId, matricula: x.vinculo.matricula, servidor: x.vinculo.servidor.nomeSocial ?? x.vinculo.servidor.pessoa.versoes[0]?.nome ?? x.vinculo.servidor.pessoa.documento, regime: x.regime, dias: x.diasComputados, proventos: toMoney(x.totalProventos).toFixed(2), descontos: toMoney(x.totalDescontos).toFixed(2), liquido: toMoney(x.liquido).toFixed(2) })),
   };
 }
@@ -148,6 +170,13 @@ export async function acaoDaFolha(acao: string, folhaId: string, c: Campos): Pro
       if (vivo === null) throw new Error("Esta folha não tem cálculo vivo para cancelar. Nada foi gravado.");
       await comEscritaAutenticada("CANCELAR_CALCULO_DA_FOLHA", (criadoPor) => cancelarCalculoDaFolha(prisma, { calculoId: vivo.id, motivo: t(c, "motivo"), criadoPor }));
       return `Cálculo nº ${vivo.numero} cancelado como fato; ele continua no histórico.`;
+    }
+    case "apropriar": {
+      const r = await comEscritaAutenticada("APROPRIAR_FOLHA", (criadoPor) => apropriarFolha(prisma, { folhaId, dataDoEmpenho: new Date(`${t(c, "dataDoEmpenho")}T12:00:00`), criadoPor }));
+      const detalhe = r.porGrupo.map((g) => `${g.codigo} (ficha ${g.ficha}): ${g.empenhos} empenho(s), ${g.valor.toFixed(2)}`).join(" · ");
+      return r.empenhados === 0 && r.jaExistiam > 0
+        ? `Nada novo a empenhar: os ${r.jaExistiam} empenho(s) desta folha já existem. ${detalhe}`
+        : `Apropriação gravada: ${r.empenhados} empenho(s) novo(s)${r.jaExistiam > 0 ? ` (${r.jaExistiam} já existiam)` : ""}, total ${r.total.toFixed(2)}. ${detalhe}`;
     }
     case "fechar": {
       const r = await comEscritaAutenticada("FECHAR_FOLHA", (criadoPor) => fecharFolha(prisma, { folhaId, criadoPor }));
@@ -480,3 +509,104 @@ export async function tabelasVigentesHoje(): Promise<readonly { readonly tipo: s
 }
 
 export { sumMoney };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GRUPOS DE EMPENHO — como a folha vira despesa
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export async function listarGruposDeEmpenho(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
+  const prisma = cliente();
+  const q = (c.filtros["q"] ?? "").trim();
+  const where: Prisma.GrupoDeEmpenhoDaFolhaWhereInput = q === "" ? {} : { OR: [{ codigo: { contains: q, mode: "insensitive" } }, { descricao: { contains: q, mode: "insensitive" } }] };
+  const [total, linhas] = await Promise.all([
+    prisma.grupoDeEmpenhoDaFolha.count({ where }),
+    prisma.grupoDeEmpenhoDaFolha.findMany({
+      where, orderBy: { codigo: c.direcao === "desc" ? "desc" : "asc" }, ...paginacao(c),
+      select: { id: true, codigo: true, descricao: true, serie: true, porServidor: true, ficha: { select: { numero: true } }, rubricas: { select: { rubrica: { select: { codigo: true } } } } },
+    }),
+  ]);
+  return {
+    total,
+    linhas: linhas.map((g) => ({
+      id: g.id, codigo: g.codigo, descricao: g.descricao, ficha: String(g.ficha.numero),
+      rubricas: g.rubricas.map((r) => r.rubrica.codigo).join(", ") || "—",
+      como: g.porServidor ? `um por servidor · série ${g.serie}` : `um só para o grupo · série ${g.serie}`,
+    })),
+  };
+}
+
+export async function verGrupoDeEmpenho(id: string): Promise<DetalheLido | null> {
+  const prisma = cliente();
+  const g = await prisma.grupoDeEmpenhoDaFolha.findUnique({
+    where: { id },
+    select: {
+      codigo: true, descricao: true, serie: true, porServidor: true, tipoEmpenho: true, categoriaOrdemCronologica: true, criadoEm: true, criadoPor: true,
+      ficha: { select: { numero: true, naturezaDespesa: { select: { codigoCompleto: true, descricao: true } }, fonte: { select: { codigo: true } }, saldoDisponivel: true } },
+      credor: { select: { documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } },
+      rubricas: { select: { rubrica: { select: { codigo: true, descricao: true } } } },
+      empenhos: { select: { id: true } },
+    },
+  });
+  if (g === null) return null;
+  return {
+    titulo: `${g.codigo} — ${g.descricao}`,
+    subtitulo: g.porServidor ? "um empenho por servidor" : `um empenho para o grupo, credor ${g.credor?.versoes[0]?.nome ?? g.credor?.documento ?? "—"}`,
+    selos: [{ texto: g.porServidor ? "POR SERVIDOR" : "EMPENHO ÚNICO", tom: "neutro" }],
+    dados: [
+      { rotulo: "Ficha orçamentária", valor: `${g.ficha.numero} — ${g.ficha.naturezaDespesa.codigoCompleto} ${g.ficha.naturezaDespesa.descricao} · fonte ${g.ficha.fonte.codigo}` },
+      { rotulo: "Saldo disponível da ficha", valor: toMoney(g.ficha.saldoDisponivel).toFixed(2), tipo: "dinheiro" },
+      { rotulo: "Série do número do empenho", valor: g.serie, nota: "O número do empenho é série/competência/matrícula — determinístico, e é o que impede a apropriação repetida de duplicar a despesa." },
+      { rotulo: "Tipo de empenho", valor: g.tipoEmpenho },
+      { rotulo: "Categoria (art. 141)", valor: g.categoriaOrdemCronologica.replace(/_/g, " ").toLowerCase() },
+      { rotulo: "Credor", valor: g.porServidor ? "o CPF de cada servidor" : `${g.credor?.versoes[0]?.nome ?? "—"} (${g.credor?.documento ?? "—"})` },
+      { rotulo: "Rubricas que este grupo empenha", valor: g.rubricas.map((r) => `${r.rubrica.codigo} — ${r.rubrica.descricao}`).join(" · ") || "—", tipo: "longo" },
+      { rotulo: "Empenhos já gerados por ele", valor: String(g.empenhos.length), tipo: "inteiro" },
+      { rotulo: "Cadastrado em", valor: diaCivilBr(g.criadoEm), tipo: "data" },
+      { rotulo: "Cadastrado por", valor: g.criadoPor },
+    ],
+    historico: [],
+  };
+}
+
+/**
+ * As opções do grupo, CHAVEADAS PELO NOME DO CAMPO (`fichaId`, `credorId`) — é assim que o guard
+ * t20 do molde confere que todo `selecao` sem opções declaradas tem quem as preencha, mesmo
+ * quando quem monta o formulário é uma ilha. As RUBRICAS saem por função própria: elas não são um
+ * `selecao` do descritor, são caixas de marcação da ilha.
+ */
+export async function opcoesDoGrupoDeEmpenho(): Promise<OpcoesDoCadastro> {
+  const prisma = cliente();
+  const [fichas, credores] = await Promise.all([
+    prisma.fichaOrcamentaria.findMany({
+      orderBy: { numero: "asc" }, take: 300,
+      select: { id: true, numero: true, saldoDisponivel: true, naturezaDespesa: { select: { codigoCompleto: true, descricao: true } }, fonte: { select: { codigo: true } } },
+    }),
+    prisma.pessoa.findMany({ orderBy: { documento: "asc" }, take: 300, select: { id: true, documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } }),
+  ]);
+  return {
+    fichaId: fichas.map((f) => ({ valor: f.id, rotulo: `${f.numero} — ${f.naturezaDespesa.codigoCompleto} ${f.naturezaDespesa.descricao} · fonte ${f.fonte.codigo} · disponível ${toMoney(f.saldoDisponivel).toFixed(2)}` })),
+    credorId: credores.map((p) => ({ valor: p.id, rotulo: `${p.versoes[0]?.nome ?? p.documento} (${formatarDocumento(p.documento)})` })),
+  };
+}
+
+/** As rubricas de PROVENTO oferecidas à ilha, dizendo qual já está em outro grupo. */
+export async function rubricasParaGrupoDeEmpenho(): Promise<readonly { readonly id: string; readonly rotulo: string; readonly jaNoGrupo: string | null }[]> {
+  const rubricas = await cliente().rubrica.findMany({ where: { tipo: "PROVENTO" }, orderBy: { ordem: "asc" }, select: { id: true, codigo: true, descricao: true, grupoDeEmpenho: { select: { grupo: { select: { codigo: true } } } } } });
+  return rubricas.map((r) => ({ id: r.id, rotulo: `${r.codigo} — ${r.descricao}`, jaNoGrupo: r.grupoDeEmpenho?.grupo.codigo ?? null }));
+}
+
+/** A ilha manda o cabeçalho e as rubricas marcadas (`rubricas.N.id`). */
+export async function criarGrupoDeEmpenho(c: Campos, rubricaIds: readonly string[]): Promise<string> {
+  return comEscritaAutenticada("CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA", async (criadoPor) => {
+    const porServidor = marcado(c, "porServidor");
+    const r = await cadastrarGrupoDeEmpenhoDaFolha(cliente(), {
+      codigo: t(c, "codigo"), descricao: t(c, "descricao"), fichaId: t(c, "fichaId"),
+      categoriaOrdemCronologica: t(c, "categoriaOrdemCronologica") as "PRESTACAO_SERVICOS",
+      tipoEmpenho: t(c, "tipoEmpenho") as "ORDINARIO", serie: t(c, "serie").toUpperCase(),
+      porServidor,
+      ...(porServidor ? {} : { credorId: t(c, "credorId") }),
+      rubricaIds: [...rubricaIds], criadoPor,
+    });
+    return r.grupoId;
+  });
+}

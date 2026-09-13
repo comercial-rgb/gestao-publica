@@ -141,6 +141,7 @@ rodar("atualização de permissões v8", "npx", ["tsx", "scripts/aplicar-atualiz
 rodar("atualização de permissões v9", "npx", ["tsx", "scripts/aplicar-atualizacao-de-permissoes.ts", "9"], /JÁ APLICADA/);
 rodar("atualização de permissões v10", "npx", ["tsx", "scripts/aplicar-atualizacao-de-permissoes.ts", "10"], /JÁ APLICADA/);
 rodar("atualização de permissões v11", "npx", ["tsx", "scripts/aplicar-atualizacao-de-permissoes.ts", "11"], /JÁ APLICADA/);
+rodar("atualização de permissões v12", "npx", ["tsx", "scripts/aplicar-atualizacao-de-permissoes.ts", "12"], /JÁ APLICADA/);
 rodar("roteiros de DEMONSTRAÇÃO do acervo (identificados como tal)", "npx", ["tsx", "prisma/seed/roteiros-demo.ts"]);
 
 console.log(

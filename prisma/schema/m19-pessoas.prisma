@@ -102,6 +102,8 @@ model Pessoa {
   termosPatrimoniais      TermoPatrimonial[]            @relation("ResponsavelDeTermo")
   /// V6 P2.1 — a ficha de servidor desta pessoa (M32), quando há. No máximo uma.
   servidor Servidor?
+  /// back-relation V6 P2.3b — os grupos de empenho da folha em que esta pessoa é o credor.
+  gruposDaFolhaComoCredor GrupoDeEmpenhoDaFolha[] @relation("CredorDeGrupoDaFolha")
   /// back-relation V3 (pacote 2) — VIRTUAL: os usuários vinculados a esta pessoa (histórico).
   usuariosVinculados VinculoUsuarioPessoa[] @relation("PessoaDoUsuario")
   /// back-relations ENT05 (M11 compras) — VIRTUAIS.

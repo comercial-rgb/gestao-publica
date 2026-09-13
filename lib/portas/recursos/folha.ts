@@ -77,6 +77,11 @@ export const FOLHAS: DefinicaoDeRecurso = definirRecurso({
       campos: [{ nome: "motivo", rotulo: "Motivo (mínimo 5 caracteres)", tipo: "texto", obrigatorio: true, largura: 4 }],
     },
     {
+      nome: "apropriar", rotulo: "Apropriar (gerar os empenhos)", acaoDoCenso: "APROPRIAR_FOLHA",
+      aviso: "Transforma a folha FECHADA em despesa: os proventos de cada contracheque, agrupados pelos grupos de empenho, viram empenhos pelo caminho de sempre (saldo da ficha, exercício aberto, fila do art. 141). Só o bruto é empenhado — as retenções viajam no pagamento. Reexecutar continua de onde parou: a numeração é determinística e não duplica.",
+      campos: [{ nome: "dataDoEmpenho", rotulo: "Data dos empenhos (dentro do exercício aberto)", tipo: "data", obrigatorio: true, largura: 1 }],
+    },
+    {
       nome: "fechar", rotulo: "Fechar a folha", acaoDoCenso: "FECHAR_FOLHA",
       aviso: "Congela o último cálculo vivo com o seu sha256. Depois disto a folha não se recalcula — é o que vai à contabilidade.",
       irreversivel: true,
@@ -190,4 +195,41 @@ export const TABELAS_DA_FOLHA: DefinicaoDeRecurso = definirRecurso({
   abas: ["dados"],
 });
 
-export const RECURSOS_DA_FOLHA: readonly DefinicaoDeRecurso[] = [FOLHAS, RUBRICAS, LANCAMENTOS_DA_FOLHA, TABELAS_DA_FOLHA];
+export const GRUPOS_DE_EMPENHO_DA_FOLHA: DefinicaoDeRecurso = definirRecurso({
+  nome: "grupos-de-empenho",
+  rotulo: "Grupos de empenho",
+  rotuloSingular: "Grupo de empenho",
+  rota: "/folha/grupos-de-empenho",
+  descricao:
+    "Como a folha vira despesa: quais rubricas de PROVENTO cada grupo empenha, em qual ficha, com qual categoria da ordem " +
+    "cronológica, e se o empenho é por servidor (credor = o CPF de cada um) ou um só para o grupo (credor declarado). " +
+    "Uma rubrica pertence a um grupo só — em dois, a mesma verba viraria despesa duas vezes.",
+  campos: [
+    { nome: "codigo", rotulo: "Código", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "FOLHA-VENC" },
+    { nome: "descricao", rotulo: "Descrição (vai no histórico do empenho)", tipo: "texto", obrigatorio: true, largura: 3 },
+    { nome: "fichaId", rotulo: "Ficha orçamentária", tipo: "selecao", obrigatorio: true, largura: 3, opcoes: [] },
+    { nome: "serie", rotulo: "Série do número do empenho (A-Z, 0-9)", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "FP" },
+    { nome: "tipoEmpenho", rotulo: "Tipo de empenho", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: [
+      { valor: "ORDINARIO", rotulo: "Ordinário" }, { valor: "GLOBAL", rotulo: "Global" }, { valor: "ESTIMATIVO", rotulo: "Estimativo" },
+    ] },
+    { nome: "categoriaOrdemCronologica", rotulo: "Categoria (art. 141)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [
+      { valor: "FORNECIMENTO_BENS", rotulo: "Fornecimento de bens" }, { valor: "LOCACAO", rotulo: "Locação" },
+      { valor: "PRESTACAO_SERVICOS", rotulo: "Prestação de serviços" }, { valor: "REALIZACAO_OBRAS", rotulo: "Realização de obras" },
+    ] },
+    { nome: "porServidor", rotulo: "Um empenho por servidor (credor = o CPF de cada um)", tipo: "booleano", largura: 2 },
+    { nome: "credorId", rotulo: "Credor do empenho único (só quando NÃO é por servidor)", tipo: "selecao", largura: 3, opcoes: [] },
+  ],
+  colunas: [
+    { nome: "codigo", cabecalho: "Código", tipo: "link", ordenavel: true },
+    { nome: "descricao", cabecalho: "Descrição", tipo: "texto" },
+    { nome: "ficha", cabecalho: "Ficha", tipo: "texto" },
+    { nome: "rubricas", cabecalho: "Rubricas", tipo: "texto" },
+    { nome: "como", cabecalho: "Empenho", tipo: "texto" },
+  ],
+  filtros: [{ nome: "q", rotulo: "Código ou descrição", tipo: "texto", largura: 2 }],
+  acoes: [],
+  permissoes: { criar: "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA" },
+  abas: ["dados"],
+});
+
+export const RECURSOS_DA_FOLHA: readonly DefinicaoDeRecurso[] = [FOLHAS, RUBRICAS, LANCAMENTOS_DA_FOLHA, TABELAS_DA_FOLHA, GRUPOS_DE_EMPENHO_DA_FOLHA];

@@ -86,6 +86,7 @@
     "test/caracterizacao/leitura-por-unidade.test.ts",
     "test/leitura-por-acao.test.ts",
     "test/acervo-pesquisa.test.ts",
+    "test/portal-do-servidor.test.ts",
     "test/ui/acoes-despachadas.test.ts",
     "test/ui/chave-de-comando.test.ts",
     "test/ui/descritores-consistentes.test.ts"

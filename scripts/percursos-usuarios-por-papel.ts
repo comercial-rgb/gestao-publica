@@ -47,10 +47,12 @@ export const PAPEIS: readonly Papel[] = [
     identificador: "contabilidade@percursos.local",
     nome: "Contador (percurso)",
     perfil: "CONTABILIDADE — PERCURSO",
-    descricao: "Empenha e liquida. Não paga, não compra.",
+    descricao: "Empenha e liquida; fecha e apropria a folha. Não paga, não compra, não cadastra pessoal.",
     acoes: ["EMPENHAR", "LIQUIDAR", "CONSULTAR_DESPESA", "CONSULTAR_LICITACOES", "CONSULTAR_PLANEJAMENTO", "CONSULTAR_CONTABILIDADE", "CONSULTAR_CADASTROS",
       // V6 P2.3 — FECHAR a folha é da contabilidade: o fechamento congela o cálculo que vira empenho.
-      "FECHAR_FOLHA", "CONSULTAR_FOLHA"],
+      // V6 P2.3b — e é ela quem APROPRIA (parametriza os grupos e gera os empenhos). EMPENHAR ela
+      // já tinha, e continua sendo exigida em cada empenho pelo M05: apropriar não a contorna.
+      "FECHAR_FOLHA", "CONSULTAR_FOLHA", "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA", "APROPRIAR_FOLHA"],
   },
   {
     identificador: "tesouraria@percursos.local",

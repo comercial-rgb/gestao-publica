@@ -439,6 +439,11 @@ enum AcaoDoSistema {
   FECHAR_FOLHA
   CONSULTAR_FOLHA
 
+  // V6 P2.3b — a apropriação contábil da folha fechada: quem a faz EMPENHA (a ação do M05 também
+  // é exigida, e é assim que a segregação continua valendo).
+  APROPRIAR_FOLHA
+  CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA
+
   // V6 P2.4 — o portal do servidor: a leitura do PRÓPRIO vínculo e dos PRÓPRIOS contracheques.
   // Não abre a folha do ente: a porta recorta pela pessoa da sessão.
   CONSULTAR_PORTAL_DO_SERVIDOR
