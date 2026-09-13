@@ -85,6 +85,7 @@ const TABELAS = [
   "TemplateDecreto",
   // M16 — autenticação e registro de operação (TR 4.55 · 6.1-6.3)
   "RegistroDeOperacao",
+  "ComandoDeBorda",
   "TentativaDeLogin",
   "SessaoRevogada",
   "SessaoAberta",

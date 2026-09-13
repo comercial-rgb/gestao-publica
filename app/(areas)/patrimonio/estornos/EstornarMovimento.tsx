@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { CampoEnvolvido, CampoTextarea } from "../../../../components/ui/Campos";
 import { CLASSE_BOTAO_PRIMARIO as BOTAO, CLASSE_CAMPO } from "../../../../components/ui/Formulario";
-import { useChaveDeComando } from "../../../../components/ui/useChaveDeComando";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 import { estornarAction, type EstadoDoEstorno } from "./actions";
 
 /**
@@ -22,12 +22,11 @@ export function EstornarMovimento({
   readonly resumo: string;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDoEstorno, FormData>(estornarAction, {});
-  const chave = useChaveDeComando(estado.sucesso);
   return (
     <form action={action} data-acao="estornar-movimento" className="grid gap-3 rounded border border-[color:var(--color-linha)] p-4 md:grid-cols-4">
       <input type="hidden" name="eixo" value={eixo} />
       <input type="hidden" name="movimentoId" value={movimentoId} />
-      <input type="hidden" name="__chave" value={chave} />
+      <ChaveDeComando />
       <p className="text-sm md:col-span-4">{resumo}</p>
       <CampoEnvolvido name="dataMovimento" rotulo="Data do estorno" required largura={1}>
         {(aria) => <input {...aria} type="date" name="dataMovimento" className={CLASSE_CAMPO} required />}

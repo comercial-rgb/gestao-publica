@@ -9,6 +9,7 @@ import {
   CLASSE_ROTULO as ROTULO,
 } from "../../../../components/ui/Formulario";
 import { arrecadarAction, type EstadoArrecadacao } from "./actions";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 /** Uma natureza prevista na LOA — o vocabulário do form. */
 export interface NaturezaParaGuia {
@@ -62,6 +63,7 @@ export function FormArrecadacao({
       action={action}
       className={CLASSE_PAINEL_FORMULARIO}
     >
+      <ChaveDeComando />
       <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">
         Registrar guia de arrecadação
       </h2>

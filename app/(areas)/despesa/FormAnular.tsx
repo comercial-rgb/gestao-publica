@@ -8,6 +8,7 @@ import {
   CLASSE_CAMPO as CAMPO,
   CLASSE_ROTULO as ROTULO,
 } from "../../../components/ui/Formulario";
+import { ChaveDeComando } from "../../../components/ui/ChaveDeComando";
 
 /**
  * ⚠️ DECLARADO AQUI, não importado de `lib/portas/anulacao`. Seria `import type` (some na
@@ -47,6 +48,7 @@ export function FormAnular({
         Anular
       </summary>
       <form action={action} className="mt-2 space-y-2 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3">
+        <ChaveDeComando />
         <input type="hidden" name="tipo" value={tipo} />
         <input type="hidden" name="id" value={id} />
         <input type="hidden" name="anulavelSaldo" value={anulavelSaldo} />

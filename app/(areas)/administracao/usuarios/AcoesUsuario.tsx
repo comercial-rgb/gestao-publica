@@ -17,6 +17,7 @@ import {
   type EstadoUsuario,
 } from "./actions";
 import type { PerfilOpcaoUI } from "./FormCriarUsuario";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 /** O usuário como esta ilha o consome — declarado aqui (o grep barra lib/portas no client). */
 export interface UsuarioLinhaUI {
@@ -63,6 +64,7 @@ export function AcoesUsuario({ usuario, perfis }: { readonly usuario: UsuarioLin
       <div className="mt-2 space-y-3 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3">
         {/* A PESSOA DO CADASTRO (V3, pacote 2) — pelo documento, nunca pelo nome; não concede permissão */}
         <form action={actVinc} className="flex flex-wrap items-end gap-2" data-acao={usuario.pessoa === null ? "vincular-pessoa" : "desvincular-pessoa"} data-usuario={usuario.identificador}>
+          <ChaveDeComando />
           <input type="hidden" name="usuarioId" value={usuario.id} />
           {usuario.pessoa === null ? (
             <>
@@ -93,6 +95,7 @@ export function AcoesUsuario({ usuario, perfis }: { readonly usuario: UsuarioLin
 
         {/* CONCEDER PERFIL */}
         <form action={actConceder} className="flex flex-wrap items-end gap-2">
+          <ChaveDeComando />
           <input type="hidden" name="usuarioId" value={usuario.id} />
           <label>
             <span className={ROTULO}>Conceder perfil</span>
@@ -111,6 +114,7 @@ export function AcoesUsuario({ usuario, perfis }: { readonly usuario: UsuarioLin
             <span className="uppercase tracking-wide text-[color:var(--color-ink-2)]">Revogar perfil:</span>
             {usuario.vinculos.map((v) => (
               <form key={v.perfilId} action={actRevogar} className="inline">
+                <ChaveDeComando />
                 <input type="hidden" name="usuarioId" value={usuario.id} />
                 <input type="hidden" name="perfilId" value={v.perfilId} />
                 <button type="submit" disabled={pendRevogar} className="h-7 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-2 text-xs hover:bg-[color:var(--color-surface)]">{v.nome} ✕</button>
@@ -122,6 +126,7 @@ export function AcoesUsuario({ usuario, perfis }: { readonly usuario: UsuarioLin
 
         {/* ATIVAR / INATIVAR */}
         <form action={actAtivo} className="flex flex-wrap items-center gap-2">
+          <ChaveDeComando />
           <input type="hidden" name="usuarioId" value={usuario.id} />
           <button type="submit" disabled={pendAtivo} className={BOTAO}>
             {usuario.ativo ? "Inativar (derruba as sessões dele)" : "Reativar"}
@@ -131,6 +136,7 @@ export function AcoesUsuario({ usuario, perfis }: { readonly usuario: UsuarioLin
 
         {/* RESETAR SENHA */}
         <form action={actReset} className="flex flex-wrap items-end gap-2">
+          <ChaveDeComando />
           <input type="hidden" name="usuarioId" value={usuario.id} />
           <label>
             <span className={ROTULO}>Nova senha temporária (mín. 12)</span>

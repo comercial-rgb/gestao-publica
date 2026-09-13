@@ -1,6 +1,6 @@
 # ADR — O registro de operação em duas fases, e a resposta verdadeira
 
-**Situação:** aceita, 2026-09-12 (orquestração V3, pacote 4.3).
+**Situação:** aceita, 2026-09-12 (orquestração V3, pacote 4.3). **Corrigida em 2026-09-13** por `ADR-contrato-de-comando-e-reserva-atomica.md` (sessão noturna V4): o replay passou a ser respondido por uma reserva atômica (`ComandoDeBorda`), a mesma chave com outro fingerprint virou conflito, o replay revalida a autorização, e sem chave o envelope recusa. As fases append-only e a resposta verdadeira continuam como decididas aqui.
 
 ## Contexto
 

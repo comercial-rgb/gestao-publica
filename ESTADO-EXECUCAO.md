@@ -6,10 +6,10 @@
 |---|---|
 | HEAD | ver `git log -1` — a seção 35 nomeia o commit de cada unidade |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | Primeiro pacote concluído (§35–§37); **segundo pacote concluído** (§38–§43: cinco unidades e o percurso das telas novas); a seguir os percursos antigos contra 3010, a liquidação de material e a reconciliação com o siafic-cg |
-| Último resultado | seção 43 (o percurso do pacote 2); §44 é a unidade parada no stash |
+| Frente em execução | **Sessão noturna V4** (`docs/lotes/V4-sessao-noturna.md`): unidade 1 (contrato de comando, §45) concluída; a seguir a competência patrimonial (§4 do pedido), documentos estáveis (§5), a liquidação de material (§6, stash preservado), CNPJ/catálogo (§7) e a cadeia planejamento→contratação→despesa (§8) |
+| Último resultado | seção 45 (contrato de comando: 804/804 rápidos, 69/69 dirigidos, tsc ×3 limpos) |
 | Pendências relevantes | seções 35.7, 36.4, 37.5, 38.5 a 43.5; as anteriores em §19 e nos `MODULO.md` |
-| Próximo passo | seção 44.3 — `git stash pop` e terminar a liquidação de material como ato único |
+| Próximo passo | seção 45.5 — a competência patrimonial (V4 §4); o stash `11b7892` continua preservado para a unidade da liquidação (V4 §6) |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -4870,6 +4870,67 @@ liquidado. Sem o port do M10 ligado, liquidar material é recusado nomeando (fai
 4. A tela de liquidação (`app/(areas)/despesa/liquidacoes`) não envia `entradasDeMaterial`: liquidar material pela tela passa a ser recusado nomeando ("SEM A ENTRADA NO ALMOXARIFADO"). Pendência `LIQUIDACAO-MATERIAL-SEM-TELA-DE-ENTRADAS` — a tela é a unidade seguinte.
 5. Verificação inteira: `tsc` ×3, rápida, e as suítes que liquidam (52 arquivos — na prática `test:tudo`), pois o gancho toca toda liquidação.
 6. `MODULO.md` do M10 e do M05, catálogo (5.18.x da entrada de material), e o fechamento de `LIQUIDACAO-MATERIAL-ALMOXARIFADO` em §19/§24.
+
+## 45. Sessão noturna V4 — unidade 1: o contrato de comando e a reserva atômica (achados A01–A03)
+
+Pedido: `docs/lotes/V4-sessao-noturna.md`, seção 3. Fundamentação: `docs/auditoria/RELATORIO-AUDITORIA-77cbcc9.md`
+(A01 concorrência, A02 replay/ato não financeiro/A→B→A/revogação, A03 fingerprint). Regime: **profundidade**
+(comando, idempotência, autorização). Decisão: `docs/adr/ADR-contrato-de-comando-e-reserva-atomica.md`.
+
+### 45.1 O que passou a funcionar
+
+- **Reserva atômica por chave** (`ComandoDeBorda`, índice único `(escopo, usuarioIdent, acao, chave)`): duas
+  requisições concorrentes com a mesma chave produzem UM efeito, com duas conexões de banco (t1 de
+  `m16-comando.test.ts`), e não só com duas Promises.
+- **Uma chave, uma intenção:** mesma chave com outro conteúdo é `ComandoEmConflitoError`; o replay do mesmo
+  comando devolve a referência TIPADA (`lancamento` ou `resultado`) — nunca o id do lançamento no lugar do id
+  do recurso — e só depois de REVALIDAR usuário ativo e ação concedida (`exigirAcaoEmAlgumEscopo`).
+- **O funil conclui a reserva na transação do fato**; um ato sem lançamento conclui com
+  `concluirComandoNaTransacao`. A reserva retomada por outra tentativa derruba a transação tardia
+  (`ComandoRetomadoError`). Erro sem commit LIBERA; queda antes do commit é "em andamento" por 15 min e
+  depois é retomável.
+- **Sem chave o envelope RECUSA** (`ComandoSemChaveError`, "recarregue e envie de novo"); chamador sem
+  formulário declara `semChave` e o motivo vai para a auditoria. `RegistroDeOperacao` ganha `REPLAY`.
+- **Fingerprint canônico**: tuplas tipadas em JSON, ordem do formulário, arquivos digeridos por sha256 dos
+  bytes (teto 32 MB, acima "não digerido" com tamanho); só `__chave` e `$ACTION*` saem.
+- **`<ChaveDeComando />` em todo formulário de ação** (75 formulários, 35 arquivos; troca a chave a cada envio
+  concluído por `useFormStatus`). O inventário é DERIVADO dos chamadores em `test/ui/chave-de-comando.test.ts`;
+  `useChaveDeComando` foi retirado. A pendência `CHAVE-DE-COMANDO-NOS-FORMULARIOS-A-MAO` fecha.
+- Rota: qualquer formulário de escrita (`/despesa/empenhos`, `/patrimonio/competencia`, cadastros do molde…);
+  a auditoria (`/administracao/auditoria`) filtra por `REPLAY`.
+
+### 45.2 Comandos executados e resultados
+
+| Comando | Resultado |
+|---|---|
+| `prisma migrate deploy` em test, dev e percursos (`20260913052848_v4_reserva_atomica_do_comando`, aditiva: enum + tabela + índices) | aplicada nos três; `migrate diff` "No difference detected"; `prisma generate` |
+| `provisionar-papel-runtime` nos três bancos (censo: `ComandoDeBorda` com UPDATE só nas colunas de estado) | ok, sem superusuário/BYPASSRLS/DDL |
+| `tsc` backend, app e scripts | limpos (o `test/ui/acoes-despachadas.test.ts` de 8e294eb estava no projeto errado — roteado para o app junto com o teste novo) |
+| `test:rapido` | **804/804** (76 arquivos; +5 fingerprint, +3 inventário da chave) |
+| dirigidos: `m16-comando` (9), `m16-operacao`, `m16-borda-*` (3), `m16-autenticacao`, `m16-censo`, `papel-runtime`, `unidade-de-trabalho` | **69/69** (`.registro-de-execucao/v4-comando-verificacao-3.txt`) |
+
+Os testes de borda passaram a emular o formulário (chave e fingerprint por comando); `m16-operacao` ganhou
+"mesma chave com outro fingerprint é CONFLITO" e "sem chave recusa; com motivo declarado executa".
+
+### 45.3 Não executado nesta unidade
+
+Percurso de navegador com as chaves novas (os smokes ganharam a espera pela chave pronta; a reexecução fica
+para o `next build` + `next start` da seção 10 do pedido, depois da unidade 2). `test:tudo`, `test:fuso`,
+portão integral.
+
+### 45.4 Pendências
+
+| Pendência | O que é |
+|---|---|
+| `CONCLUSAO-NA-TRANSACAO-DOS-CADASTROS` | os cadastros do molde concluem a reserva DEPOIS da transação; a janela nomeada do ADR (repetição só depois de 15 min, e só se a conclusão posterior falhar) |
+| `REVALIDACAO-DO-REPLAY-EM-ALGUM-ESCOPO` | a UG do fato original não é reconstruível pelo envelope; o replay revela a referência, não o dossiê |
+| `ESCOPO-DO-COMANDO-E-O-ENTE-UNICO` | `escopoDoComando()` lê `ENTE_ESCOPO`; com município/entidade cadastrados, vem da membership |
+
+### 45.5 Próximo ponto exato
+
+Unidade 2 (seção 4 do pedido): recorte temporal e vigência da competência, processamento por bem elegível com
+memória por item e conciliação com a classe e o razão, identidade de execução, análise de estorno com impacto
+verificado e desempate estável.
 
 ## 19. O próximo passo
 

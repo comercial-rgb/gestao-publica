@@ -11,8 +11,10 @@ import {
 import {
   comOperacaoRegistrada,
   criarRegistroDeOperacaoPrisma,
+  ESCOPO_DO_ENTE_UNICO,
   telemetriaNoConsole,
 } from "../../modules/m16-travamento/operacao";
+import { exigirAcaoEmAlgumEscopo } from "../../modules/m16-travamento/autorizacao";
 import { comandoDoFormulario } from "./comando";
 
 /**
@@ -121,17 +123,45 @@ export async function encerrarSessao(): Promise<void> {
  * real e registra a operação (SUCESSO/NEGADO/ERRO, fora da tx). Sessão inválida/expirada REDIRECIONA
  * para /login (fail-closed): nenhuma escrita anônima.
  */
-export async function comEscritaAutenticada<T>(acao: string, ato: (criadoPor: string) => Promise<T>): Promise<T> {
+export async function comEscritaAutenticada<T>(
+  acao: string,
+  ato: (criadoPor: string) => Promise<T>,
+  opcoes?: {
+    /** Um chamador que NÃO é formulário (job, rota) declara por que não há chave. Vai para a auditoria. */
+    readonly semChave?: string;
+  }
+): Promise<T> {
   const ident = await exigirSessao();
   const { ip, agente } = await contexto();
-  // ⚠️ A CHAVE E O FINGERPRINT VÊM DO COMANDO DO FORMULÁRIO (lib/portas/comando.ts), quando
-  // a action passou por ele; sem eles, o envelope registra em duas fases mas não faz replay.
+  // ⚠️ A CHAVE E O FINGERPRINT VÊM DO COMANDO DO FORMULÁRIO (lib/portas/comando.ts). Sem chave o
+  // envelope RECUSA (sessão noturna V4, 3) — salvo o motivo declarado em `semChave`. O ESCOPO
+  // vem daqui (do servidor), nunca do cliente; o REPLAY revalida a ação antes de revelar a referência.
   const comando = comandoDoFormulario();
   return comOperacaoRegistrada(
     criarRegistroDeOperacaoPrisma(cliente()),
-    { usuarioIdent: ident.identificador, acao, ip, agente, chave: comando?.chave ?? null, fingerprint: comando?.fingerprint ?? null },
+    {
+      usuarioIdent: ident.identificador,
+      acao,
+      ip,
+      agente,
+      escopo: escopoDoComando(),
+      chave: comando?.chave ?? null,
+      fingerprint: comando?.fingerprint ?? null,
+      semChave: opcoes?.semChave,
+      revalidar: () => exigirAcaoEmAlgumEscopo(cliente(), ident.identificador, acao),
+    },
     () => ato(ident.identificador)
   );
+}
+
+/**
+ * O ESCOPO DO COMANDO — o ente. Enquanto o ente não é cadastro, é o ente único (`ENTE_ESCOPO`
+ * do ambiente, ou o valor padrão). Quando município/entidade existirem, vêm da membership
+ * resolvida no servidor — nunca da URL, do cabeçalho ou do formulário.
+ */
+export function escopoDoComando(): string {
+  const env = process.env["ENTE_ESCOPO"]?.trim();
+  return env !== undefined && env !== "" ? env : ESCOPO_DO_ENTE_UNICO;
 }
 
 export type { Identidade };

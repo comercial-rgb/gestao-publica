@@ -10,6 +10,7 @@ import {
   type EntidadeCaptura,
 } from "../../../../lib/portas/captura";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 /**
  * TELA SAGRES CAPTURA 2.0 (M18, S3) — a MESMA massa em JSON, validada contra o schema OFICIAL, com
@@ -97,6 +98,7 @@ export default async function CapturaPage(): Promise<React.ReactElement> {
               <Badge status="erro">{p.violacoes.length} violação(ões)</Badge>
             )}
             <form action={acaoSimular} className="ml-auto">
+              <ChaveDeComando />
               <input type="hidden" name="entidade" value={p.entidade} />
               <button type="submit" disabled={p.registros === 0}
                 className="inline-flex h-10 items-center rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-4 font-semibold text-[color:var(--color-primary-fg)] hover:bg-[color:var(--color-primary-hover)] disabled:opacity-40">

@@ -16,6 +16,7 @@ import {
   type EstadoDoComunicado,
 } from "../actions";
 import { ResultadoComunicado } from "../FormComunicado";
+import { ChaveDeComando } from "../../../../../components/ui/ChaveDeComando";
 
 export interface SetorDaAcao {
   readonly id: string;
@@ -61,6 +62,7 @@ export function FormEditarRascunho({
       descricao="Editável até o envio, e nunca depois: quem já leu leu o texto que saiu. O envio carimba o hash do conteúdo, e é ele que denuncia uma alteração feita por outro caminho."
     >
       <form data-acao="editar-rascunho" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <ChaveDeComando />
         <input type="hidden" name="comunicadoId" value={comunicadoId} />
         <CampoTexto name="assunto" rotulo="Assunto" required largura={4} defaultValue={assunto} />
         <CampoTextarea name="corpo" rotulo="Corpo" required largura={4} linhas={6} defaultValue={corpo} />
@@ -105,6 +107,7 @@ export function FormEnviar({
       }
     >
       <form data-acao="enviar" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <ChaveDeComando />
         <input type="hidden" name="comunicadoId" value={comunicadoId} />
         <label className="flex flex-col gap-1 text-xs text-[color:var(--color-ink-2)] md:col-span-2">
           <span className="font-medium text-[color:var(--color-ink)]">
@@ -181,6 +184,7 @@ export function FormResponder({
       descricao="A resposta alcança apenas os setores JÁ ENVOLVIDOS. Para trazer alguém novo, use encaminhar — e o encaminhamento fica registrado como tal."
     >
       <form data-acao="responder" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <ChaveDeComando />
         <input type="hidden" name="comunicadoId" value={comunicadoId} />
         <CampoSelect
           name="setorRemetenteId"
@@ -226,6 +230,7 @@ export function FormEncaminhar({
       descricao="É o ato que INCLUI alguém novo na conversa — e por isso ele é registrado, ao contrário de uma resposta que alcançasse qualquer setor."
     >
       <form data-acao="encaminhar" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <ChaveDeComando />
         <input type="hidden" name="comunicadoId" value={comunicadoId} />
         <CampoSelect
           name="setorDestinoId"
@@ -283,18 +288,21 @@ export function FormAcoesPessoais({
     >
       <div className="flex flex-wrap gap-2">
         <form data-acao="ciencia" action={acaoCiencia}>
+          <ChaveDeComando />
           <input type="hidden" name="comunicadoId" value={comunicadoId} />
           <button type="submit" className={CLASSE_BOTAO_PRIMARIO} disabled={pendenteCiencia}>
             {pendenteCiencia ? "Registrando…" : "Registrar ciência"}
           </button>
         </form>
         <form data-acao="arquivo" action={acaoArquivo}>
+          <ChaveDeComando />
           <input type="hidden" name="comunicadoId" value={comunicadoId} />
           <button type="submit" className={CLASSE_BOTAO_PRIMARIO} disabled={pendenteArquivo}>
             {arquivado ? "Desarquivar" : "Arquivar"}
           </button>
         </form>
         <form data-acao="favorito" action={acaoFavorito}>
+          <ChaveDeComando />
           <input type="hidden" name="comunicadoId" value={comunicadoId} />
           <button type="submit" className={CLASSE_BOTAO_PRIMARIO} disabled={pendenteFavorito}>
             Favoritar
@@ -307,6 +315,7 @@ export function FormAcoesPessoais({
       <ResultadoComunicado estado={favorito} />
 
       <form data-acao="etiqueta" action={acaoEtiqueta} className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
+        <ChaveDeComando />
         <input type="hidden" name="comunicadoId" value={comunicadoId} />
         <CampoTexto name="tag" rotulo="Etiqueta" largura={2} placeholder="prazo curto" />
         <div className="md:col-span-4">

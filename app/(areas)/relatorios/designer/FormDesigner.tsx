@@ -15,6 +15,7 @@ import {
   retirarModeloAction,
   type EstadoDoDesigner,
 } from "./actions";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 export interface ColunaDisponivelDoForm {
   readonly nome: string;
@@ -97,6 +98,7 @@ export function FormNovoModelo({
 
   return (
     <form data-acao="novo-modelo" action={action} className={CLASSE_PAINEL_FORMULARIO}>
+      <ChaveDeComando />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <CampoTexto
           name="codigo"
@@ -227,6 +229,7 @@ export function FormExecutar({
   }
   return (
     <form data-acao="executar-relatorio" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+      <ChaveDeComando />
       <CampoSelect
         name="modeloId"
         rotulo="Modelo"
@@ -268,6 +271,7 @@ export function FormCopiar({ modeloId }: { readonly modeloId: string }): React.R
   );
   return (
     <form data-acao="copiar-modelo" action={action} className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
+      <ChaveDeComando />
       <input type="hidden" name="modeloId" value={modeloId} />
       <input name="novoCodigo" className={CLASSE_CAMPO} placeholder="novo_codigo" aria-label="Código da cópia" required />
       <input name="novoNome" className={CLASSE_CAMPO} placeholder="Nome da cópia" aria-label="Nome da cópia" required />
@@ -294,6 +298,7 @@ export function FormDistribuir({
   );
   return (
     <form action={action} className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
+      <ChaveDeComando />
       <input type="hidden" name="modeloId" value={modeloId} />
       <select name="unidadeOrcId" className={CLASSE_CAMPO} aria-label="Unidade de destino" required>
         <option value="">Distribuir para…</option>
@@ -320,6 +325,7 @@ export function FormRetirar({ modeloId }: { readonly modeloId: string }): React.
   );
   return (
     <form action={action} className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
+      <ChaveDeComando />
       <input type="hidden" name="modeloId" value={modeloId} />
       <input
         name="motivo"

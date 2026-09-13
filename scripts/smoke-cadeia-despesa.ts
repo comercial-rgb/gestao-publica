@@ -180,6 +180,12 @@ async function preencherEEnviar(
     await alvo.type(campo.valor, { delay: 5 });
   }
 
+  // V4: a chave de comando nasce depois da hidratação; enviar antes dela é recusado pelo servidor.
+  await page.waitForFunction(
+    (sel) => document.querySelector(sel)?.closest("form")?.querySelector('input[name="__chave"][data-chave-de-comando="pronta"]') != null,
+    { timeout: 30000 },
+    ancora
+  );
   const enviou = await page.evaluate((sel) => {
     const campo = document.querySelector(sel);
     const form = campo?.closest("form");

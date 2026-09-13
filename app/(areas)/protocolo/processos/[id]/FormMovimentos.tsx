@@ -21,6 +21,7 @@ import {
   type EstadoDoProcesso,
 } from "../actions";
 import { Resultado } from "../FormProcesso";
+import { ChaveDeComando } from "../../../../../components/ui/ChaveDeComando";
 
 /**
  * OS MOVIMENTOS DO PROCESSO, na própria tela de visualização (5.42.52).
@@ -97,6 +98,7 @@ export function FormReceber({ processoId }: { readonly processoId: string }): Re
       descricao="O prazo da etapa começa no RECEBIMENTO, não no trâmite: um processo enviado na sexta e recebido na segunda não consumiu o fim de semana de quem o recebeu."
     >
       <form action={action} data-acao="receber">
+        <ChaveDeComando />
         <input type="hidden" name="processoId" value={processoId} />
         <button type="submit" className={CLASSE_BOTAO_PRIMARIO} disabled={pendente}>
           {pendente ? "Recebendo…" : "Receber processo"}
@@ -121,6 +123,7 @@ export function FormTramitar({
   return (
     <Painel titulo="Tramitar" descricao="Os apensos vigentes vão junto, na mesma transação.">
       <form data-acao="tramitar" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <ChaveDeComando />
         <input type="hidden" name="processoId" value={processoId} />
         <CampoSelect
           name="setorDestinoId"
@@ -167,6 +170,7 @@ export function FormComplementar({
   return (
     <Painel titulo="Complementar" descricao="Acrescenta texto sem mudar de setor.">
       <form data-acao="complementar" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <ChaveDeComando />
         <input type="hidden" name="processoId" value={processoId} />
         <CampoTextarea name="texto" rotulo="Complemento" required largura={4} linhas={3} />
         <div className="md:col-span-4">
@@ -204,6 +208,7 @@ export function FormParecer({
       descricao="Pedir parecer NÃO move o processo de setor. E a resposta aponta para o pedido: dois pedidos e uma resposta não fecham os dois."
     >
       <form data-acao="solicitar-parecer" action={acaoPedir} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <ChaveDeComando />
         <input type="hidden" name="processoId" value={processoId} />
         <CampoSelect
           name="setorDestinoId"
@@ -228,6 +233,7 @@ export function FormParecer({
           action={acaoResponder}
           className="mt-4 grid grid-cols-1 gap-3 border-t border-[color:var(--color-border)] pt-4 md:grid-cols-4"
         >
+          <ChaveDeComando />
           <input type="hidden" name="processoId" value={processoId} />
           <CampoSelect
             name="solicitacaoId"
@@ -275,6 +281,7 @@ export function FormReadequacao({
       descricao="É o único movimento que o REQUERENTE produz. Ele também pode atendê-lo por fora, pela consulta pública, com o código verificador."
     >
       <form data-acao="solicitar-readequacao" action={acaoPedir} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <ChaveDeComando />
         <input type="hidden" name="processoId" value={processoId} />
         <CampoTextarea
           name="texto"
@@ -298,6 +305,7 @@ export function FormReadequacao({
           action={acaoAtender}
           className="mt-4 grid grid-cols-1 gap-3 border-t border-[color:var(--color-border)] pt-4 md:grid-cols-4"
         >
+          <ChaveDeComando />
           <input type="hidden" name="processoId" value={processoId} />
           <CampoSelect
             name="solicitacaoId"
@@ -348,6 +356,7 @@ export function FormDesfecho({
     >
       {!fechado ? (
         <form data-acao="encerrar" action={acaoEncerrar} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          <ChaveDeComando />
           <input type="hidden" name="processoId" value={processoId} />
           <CampoTextarea name="texto" rotulo="Parecer de encerramento" required largura={4} linhas={3} />
           <div className="md:col-span-4">
@@ -365,6 +374,7 @@ export function FormDesfecho({
           action={acaoArquivar}
           className="mt-4 grid grid-cols-1 gap-3 border-t border-[color:var(--color-border)] pt-4 md:grid-cols-4"
         >
+          <ChaveDeComando />
           <input type="hidden" name="processoId" value={processoId} />
           <CampoTextarea name="texto" rotulo="Despacho de arquivamento" required largura={4} linhas={2} />
           <div className="md:col-span-4">
@@ -382,6 +392,7 @@ export function FormDesfecho({
           action={acaoReabrir}
           className="mt-4 grid grid-cols-1 gap-3 border-t border-[color:var(--color-border)] pt-4 md:grid-cols-4"
         >
+          <ChaveDeComando />
           <input type="hidden" name="processoId" value={processoId} />
           <CampoTextarea name="texto" rotulo="Motivo da reabertura" required largura={4} linhas={2} />
           <div className="md:col-span-4">
@@ -421,6 +432,7 @@ export function FormApensamento({
     >
       {candidatos.length > 0 ? (
         <form data-acao="apensar" action={acaoApensar} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          <ChaveDeComando />
           <input type="hidden" name="processoId" value={processoId} />
           <CampoSelect
             name="processoApensoId"
@@ -450,6 +462,7 @@ export function FormApensamento({
           action={acaoDesapensar}
           className="mt-4 grid grid-cols-1 gap-3 border-t border-[color:var(--color-border)] pt-4 md:grid-cols-4"
         >
+          <ChaveDeComando />
           <input type="hidden" name="processoId" value={processoId} />
           <CampoSelect
             name="processoApensoId"
@@ -494,6 +507,7 @@ export function FormTornarSemEfeito({
       descricao="Isto NÃO apaga. O movimento continua no histórico, marcado, com quem o desfez e por quê — e deixa de contar para a situação e para o prazo. Só o último trâmite ou complemento."
     >
       <form data-acao="tornar-sem-efeito" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <ChaveDeComando />
         <input type="hidden" name="processoId" value={processoId} />
         <input type="hidden" name="movimentoId" value={anulavel.id} />
         <p className="text-xs text-[color:var(--color-ink-2)] md:col-span-4">
@@ -540,6 +554,7 @@ export function FormCamposAdicionais({
       descricao="Definidos pela entidade, por cadastro e por unidade gestora. Cada alteração é uma versão — o valor anterior fica no histórico."
     >
       <form data-acao="campos-adicionais" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <ChaveDeComando />
         <input type="hidden" name="processoId" value={processoId} />
         {editaveis.map((c) => {
           const nome = `campo:${c.codigo}`;

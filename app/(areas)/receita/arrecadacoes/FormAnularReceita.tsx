@@ -7,6 +7,7 @@ import {
   CLASSE_ROTULO as ROTULO,
 } from "../../../../components/ui/Formulario";
 import { anularReceitaAction, type EstadoAnulacaoReceita } from "./anular-actions";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 /**
  * FORM DE ANULAÇÃO DE ARRECADAÇÃO (TR 4.61) — ilha client, uma por linha, em `<details>` compacto.
@@ -25,6 +26,7 @@ export function FormAnularReceita({ receitaId }: { readonly receitaId: string })
         Anular
       </summary>
       <form action={action} className="mt-2 space-y-2 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3">
+        <ChaveDeComando />
         <input type="hidden" name="receitaId" value={receitaId} />
         <label className="block">
           <span className={ROTULO}>Nº da guia de anulação</span>

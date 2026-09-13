@@ -14,6 +14,7 @@ import {
   responderChamadoAction,
   type EstadoDoChamado,
 } from "./actions";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 export interface OpcaoDoChamado {
   readonly id: string;
@@ -74,6 +75,7 @@ export function FormAbrirChamado({
 
   return (
     <form ref={ref} data-acao="abrir-chamado" action={action} className={CLASSE_PAINEL_FORMULARIO}>
+      <ChaveDeComando />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <CampoSelect
           name="unidadeOrcId"
@@ -164,6 +166,7 @@ export function FormAtendimento({
       {!encerrado ? (
         <>
           <form action={acaoResponder} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+            <ChaveDeComando />
             <input type="hidden" name="chamadoId" value={chamadoId} />
             <CampoTextarea name="texto" rotulo="Resposta" required largura={4} linhas={3} />
             <div className="md:col-span-4">
@@ -178,6 +181,7 @@ export function FormAtendimento({
             action={acaoEncerrar}
             className="mt-4 grid grid-cols-1 gap-3 border-t border-[color:var(--color-border)] pt-4 md:grid-cols-4"
           >
+            <ChaveDeComando />
             <input type="hidden" name="chamadoId" value={chamadoId} />
             <CampoTextarea name="texto" rotulo="Encerramento" required largura={4} linhas={2} />
             <div className="md:col-span-4">
@@ -190,6 +194,7 @@ export function FormAtendimento({
         </>
       ) : (
         <form action={acaoReabrir} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          <ChaveDeComando />
           <input type="hidden" name="chamadoId" value={chamadoId} />
           <CampoTextarea name="texto" rotulo="Motivo da reabertura" required largura={4} linhas={2} />
           <div className="md:col-span-4">
@@ -215,6 +220,7 @@ export function FormAvaliar({ chamadoId }: { readonly chamadoId: string }): Reac
       descricao="A avaliação é de quem abriu o chamado, depois do encerramento, e não se altera."
     >
       <form action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <ChaveDeComando />
         <input type="hidden" name="chamadoId" value={chamadoId} />
         <CampoSelect
           name="nota"

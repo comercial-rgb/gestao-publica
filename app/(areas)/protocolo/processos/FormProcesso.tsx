@@ -11,6 +11,7 @@ import {
   CLASSE_PAINEL_FORMULARIO,
 } from "../../../../components/ui/Formulario";
 import { abrirProcessoAction, type EstadoDoProcesso } from "./actions";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 /**
  * ⚠️ TIPOS DECLARADOS AQUI, não importados de `lib/portas`. O grep trivalente da
@@ -80,6 +81,7 @@ export function FormAbrirProcesso({
 
   return (
     <form ref={ref} data-acao="abrir-processo" action={action} className={CLASSE_PAINEL_FORMULARIO}>
+      <ChaveDeComando />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <CampoSelect
           name="exercicio"

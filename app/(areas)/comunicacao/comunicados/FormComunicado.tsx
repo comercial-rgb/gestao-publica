@@ -7,6 +7,7 @@ import {
   CLASSE_PAINEL_FORMULARIO,
 } from "../../../../components/ui/Formulario";
 import { rascunharAction, type EstadoDoComunicado } from "./actions";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 export interface TipoDoForm {
   readonly id: string;
@@ -97,6 +98,7 @@ export function FormNovoComunicado({
 
   return (
     <form ref={ref} data-acao="novo-comunicado" action={action} className={CLASSE_PAINEL_FORMULARIO}>
+      <ChaveDeComando />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <CampoSelect
           name="exercicio"

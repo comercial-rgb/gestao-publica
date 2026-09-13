@@ -7,6 +7,7 @@ import {
   CLASSE_ROTULO,
 } from "../../../components/ui/Formulario";
 import { anexarArquivoAction, type EstadoDoAnexo } from "./actions";
+import { ChaveDeComando } from "../../../components/ui/ChaveDeComando";
 
 /**
  * O FORMULÁRIO DE ANEXO — uma ilha client, compartilhada por processo, pessoa e
@@ -63,6 +64,7 @@ export function FormAnexo({
       data-acao="anexar"
       className="flex flex-col gap-3"
     >
+      <ChaveDeComando />
       {dono.processoId !== undefined ? (
         <input type="hidden" name="processoId" value={dono.processoId} />
       ) : null}

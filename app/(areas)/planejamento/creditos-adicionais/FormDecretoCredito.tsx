@@ -17,6 +17,7 @@ import {
   type MovimentoRascunho,
   type TipoMovimento,
 } from "./rascunho";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 /**
  * CADASTRO DE DECRETO + MOVIMENTOS — ilha client CONTROLADA, Server Action autenticada (TR 4.20–4.40).
@@ -168,6 +169,7 @@ export function FormDecretoCredito({
 
   return (
     <form action={action} className={CLASSE_PAINEL_FORMULARIO} aria-label="Novo decreto de crédito adicional">
+      <ChaveDeComando />
       <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">Novo decreto de crédito adicional</h2>
 
       {/* O exercício NÃO é escolhido no form: ele é o recorte da página (a URL). Um decreto de 2025

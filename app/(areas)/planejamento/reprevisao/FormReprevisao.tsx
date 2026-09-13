@@ -9,6 +9,7 @@ import {
   CLASSE_ROTULO as ROTULO,
 } from "../../../../components/ui/Formulario";
 import { reprevisarAction, type EstadoReprevisao } from "./actions";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 /**
  * FORM de REPREVISÃO — ilha client, Server Action autenticada. O ajuste tem SINAL (+ aumenta, −
@@ -21,6 +22,7 @@ export function FormReprevisao({ exercicio }: { readonly exercicio: number }): R
 
   return (
     <form ref={ref} action={action} className={CLASSE_PAINEL_FORMULARIO}>
+      <ChaveDeComando />
       <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">Registrar reprevisão</h2>
       <input type="hidden" name="exercicio" value={exercicio} />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

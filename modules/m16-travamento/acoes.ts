@@ -1478,6 +1478,10 @@ export const FORA_DO_CENSO: Record<string, string> = {
   comOperacaoRegistrada: "porta da borda (o log do 6.1-6.3, em duas fases — V3 4.3)",
   registrarSucessoNaTransacao:
     "perna do FUNIL: grava a linha SUCESSO do registro de operação na transação do fato (V3 4.3) — a autorização é do serviço que abriu a transação",
+  // ── Sessão noturna V4 (3) — o contrato de comando ──
+  concluirComandoNaTransacao:
+    "porta da borda (conclui a reserva do comando DENTRO da transação do fato — o funil chama por todo lançamento; um ato sem lançamento chama por si)",
+  exigirAcaoEmAlgumEscopo: "guard (revalidação do replay: usuário ativo e ação ainda concedida em algum escopo)",
   // ── Os RESOLVEDORES DE ESCOPO (TR 6.5). Eles não são atos: são a pergunta "de qual
   // unidade gestora é este fato?", e a resposta sai andando até a ficha. Ver `escopo.ts`.
   ugDaFicha: "resolvedor de escopo (6.5)",

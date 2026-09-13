@@ -159,6 +159,8 @@ enum ResultadoOperacao {
   /// Gravada DEPOIS da transação: se esta linha faltar e houver SUCESSO, o fato existe e
   /// a resposta se perdeu — o replay pela chave responde sem repetir o fato.
   CONCLUIDA
+  /// V4: o mesmo comando repetido depois de concluído — respondido pela reserva, sem repetir o fato.
+  REPLAY
 }
 
 /// O REGISTRO DE OPERAÇÃO — o 6.1/6.2/6.3 completo, e ele é APPEND-ONLY.
@@ -220,4 +222,47 @@ model RegistroDeOperacao {
   @@index([resultado])
   @@index([usuarioIdent, acao, chave])
   @@index([operacaoId])
+}
+
+/// ═══ Sessão noturna V4 (3) — A RESERVA ATÔMICA DO COMANDO ═══
+/// Uma chave é UMA intenção imutável no escopo (ente, usuário, ação). A reserva é adquirida por
+/// INSERT sob índice único — duas requisições concorrentes com a mesma chave produzem UMA linha,
+/// e quem perde lê a existente. Não é auditoria (a auditoria é `RegistroDeOperacao`, append-only):
+/// é COORDENAÇÃO, e por isso é a única tabela do M16 com UPDATE no censo do papel de runtime
+/// (`prisma/papel-runtime.ts`), restrito às colunas de estado. `fingerprint` nunca muda.
+enum EstadoDoComando {
+  /// Adquirida; o ato está em execução (ou o detentor caiu — ver o prazo de abandono no envelope).
+  RESERVADO
+  /// O fato existe; `tipoDoResultado`/`resultadoRef` respondem o replay.
+  CONCLUIDO
+  /// O ato falhou SEM commit: a mesma intenção pode ser tentada de novo.
+  LIBERADO
+}
+
+model ComandoDeBorda {
+  id String @id @default(cuid())
+
+  /// O ente (município/entidade quando existirem). Vem do servidor, nunca do cliente.
+  escopo       String
+  usuarioIdent String
+  acao         String
+  chave        String
+  /// O sha256 do comando canônico (campos em ordem, arquivos digeridos). IMUTÁVEL.
+  fingerprint  String
+
+  estado EstadoDoComando
+  /// A linha INICIADA da tentativa que DETÉM a reserva. Muda na retomada.
+  operacaoId  String
+  tentativas  Int      @default(1)
+  reservadoEm DateTime
+  concluidoEm DateTime?
+  /// "lancamento" (gravado pelo funil, na tx do fato) ou "resultado" (a resposta do ato).
+  tipoDoResultado String?
+  resultadoRef    String?
+
+  criadoEm DateTime @default(now())
+
+  @@unique([escopo, usuarioIdent, acao, chave])
+  @@index([operacaoId])
+  @@index([estado, reservadoEm])
 }

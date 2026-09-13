@@ -10,6 +10,7 @@ import {
   CLASSE_ROTULO as ROTULO,
 } from "../../../../components/ui/Formulario";
 import { pagarAction, type EstadoPagamento } from "./actions";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 /** Uma liquidação pagável, como a página a passa (já com a posição que o M06 deu). */
 export interface LiquidacaoPagavel {
@@ -138,6 +139,7 @@ export function FormPagamento({
       action={action}
       className={CLASSE_PAINEL_FORMULARIO}
     >
+      <ChaveDeComando />
       <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">
         Pagar
       </h2>

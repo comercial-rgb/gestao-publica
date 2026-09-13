@@ -5,6 +5,7 @@ import { Badge } from "../../../../components/ui/Badge";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO as CAMPO, CLASSE_PAINEL_FORMULARIO, CLASSE_ROTULO as ROTULO } from "../../../../components/ui/Formulario";
 import { previaAction, confirmarAction, type EstadoImportacao } from "./actions";
 import { diaCivilBr } from "../../../../packages/datas/index";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 /**
  * IMPORTADOR — ilha client em DOIS ATOS (TR 7.10-7.11): a PRÉVIA lê e valida (nada grava); a
@@ -21,6 +22,7 @@ export function FormImportador(): React.ReactElement {
   return (
     <div className="space-y-4">
       <form action={acaoPrevia} className={CLASSE_PAINEL_FORMULARIO}>
+        <ChaveDeComando />
         <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">1 · Enviar arquivo e ver a prévia</h2>
         <div className="grid gap-4 sm:grid-cols-3">
           <label className="text-xs text-[color:var(--color-ink-2)]"><span className={ROTULO}>Tipo</span>
@@ -90,6 +92,7 @@ export function FormImportador(): React.ReactElement {
           </div>
 
           <form action={acaoConfirmar} className="mt-4">
+            <ChaveDeComando />
             <input type="hidden" name="tipo" value={previa.tipo ?? "FOLHA"} />
             <input type="hidden" name="conteudo" value={previa.conteudo ?? ""} />
             <input type="hidden" name="nomeArquivo" value={previa.nomeArquivo ?? ""} />

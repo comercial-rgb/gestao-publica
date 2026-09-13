@@ -9,6 +9,7 @@ import {
   CLASSE_ROTULO as ROTULO,
 } from "../../../../components/ui/Formulario";
 import { cadastrarPessoaAction, type EstadoPessoa } from "./actions";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 /**
  * FORM DE CADASTRO — ilha client, Server Action autenticada.
@@ -31,6 +32,7 @@ export function FormPessoa(): React.ReactElement {
 
   return (
     <form ref={ref} action={action} className={CLASSE_PAINEL_FORMULARIO}>
+      <ChaveDeComando />
       <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">
         Cadastrar pessoa
       </h2>

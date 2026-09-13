@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import "dotenv/config";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -225,7 +226,7 @@ describe("unidade de trabalho — o que a falha no meio tem de levar junto", () 
 
     await comOperacaoRegistrada(
       criarRegistroDeOperacaoPrisma(prisma),
-      { usuarioIdent: POR, acao: "PAGAR" },
+      { usuarioIdent: POR, acao: "PAGAR", chave: randomUUID(), fingerprint: randomUUID() },
       () => pagar(p.entrada, R_PAGAMENTO, deps, p.retencoes)
     );
 
@@ -249,7 +250,7 @@ describe("unidade de trabalho — o que a falha no meio tem de levar junto", () 
     await expect(
       comOperacaoRegistrada(
         criarRegistroDeOperacaoPrisma(prisma),
-        { usuarioIdent: POR, acao: "PAGAR" },
+        { usuarioIdent: POR, acao: "PAGAR", chave: randomUUID(), fingerprint: randomUUID() },
         () => pagar(p.entrada, R_PAGAMENTO, deps, p.retencoes)
       )
     ).rejects.toThrow(/cadastro diz/);
@@ -269,7 +270,7 @@ describe("unidade de trabalho — o que a falha no meio tem de levar junto", () 
     await expect(
       comOperacaoRegistrada(
         criarRegistroDeOperacaoPrisma(prisma),
-        { usuarioIdent: POR, acao: "PAGAR" },
+        { usuarioIdent: POR, acao: "PAGAR", chave: randomUUID(), fingerprint: randomUUID() },
         () => pagar(p.entrada, R_PAGAMENTO, deps, p.retencoes)
       )
     ).rejects.toThrow(/cadastro diz/);
@@ -294,7 +295,7 @@ describe("unidade de trabalho — o que a falha no meio tem de levar junto", () 
     await expect(
       comOperacaoRegistrada(
         criarRegistroDeOperacaoPrisma(prisma),
-        { usuarioIdent: POR, acao: "PAGAR" },
+        { usuarioIdent: POR, acao: "PAGAR", chave: randomUUID(), fingerprint: randomUUID() },
         () => pagar(p.entrada, R_PAGAMENTO, deps, p.retencoes)
       )
     ).rejects.toThrow(/cadastro diz/);

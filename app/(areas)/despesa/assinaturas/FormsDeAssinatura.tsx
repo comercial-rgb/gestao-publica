@@ -11,6 +11,7 @@ import {
   enviarParaAssinaturaAction,
   type EstadoAssinatura,
 } from "./actions";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 function Mensagens({ estado }: { readonly estado: EstadoAssinatura }): React.ReactElement {
   return (
@@ -59,6 +60,7 @@ export function FormEnviarAssinatura({
 
   return (
     <form action={action} data-acao="enviar-para-assinatura" className="mt-2">
+      <ChaveDeComando />
       <input type="hidden" name="tipo" value={tipo} />
       <input type="hidden" name="registroId" value={registroId} />
       <label htmlFor={idSel} className={ROTULO}>
@@ -97,6 +99,7 @@ export function FormAssinar({ filaId }: { readonly filaId: string }): React.Reac
   );
   return (
     <form action={action} data-acao="assinar-na-fila" className="mt-2">
+      <ChaveDeComando />
       <input type="hidden" name="filaId" value={filaId} />
       <Mensagens estado={estado} />
       <button type="submit" disabled={pendente} className={CLASSE_BOTAO_PRIMARIO}>

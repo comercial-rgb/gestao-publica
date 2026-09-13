@@ -8,6 +8,7 @@ import {
   CLASSE_ROTULO as ROTULO,
 } from "../../../../../components/ui/Formulario";
 import { moverPapelAction, type EstadoPessoa } from "../actions";
+import { ChaveDeComando } from "../../../../../components/ui/ChaveDeComando";
 
 const PAPEIS = [
   { valor: "CREDOR", rotulo: "Credor" },
@@ -41,6 +42,7 @@ export function FormPapel({
 
   return (
     <form action={action} className={CLASSE_PAINEL_FORMULARIO}>
+      <ChaveDeComando />
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">
         Papéis
       </h2>

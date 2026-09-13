@@ -7,11 +7,13 @@ import {
   CLASSE_ROTULO,
 } from "../../../../components/ui/Formulario";
 import { trocarSenhaAction, type EstadoSenha } from "./actions";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 export function FormSenha(): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoSenha, FormData>(trocarSenhaAction, {});
   return (
     <form action={action} className="max-w-sm space-y-4">
+      <ChaveDeComando />
       <label className="block text-xs text-[color:var(--color-ink-2)]"><span className={CLASSE_ROTULO}>Nova senha</span>
         <input name="nova" type="password" autoComplete="new-password" required className={CLASSE_CAMPO} /></label>
       <label className="block text-xs text-[color:var(--color-ink-2)]"><span className={CLASSE_ROTULO}>Confirmar</span>

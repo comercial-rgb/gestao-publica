@@ -12,6 +12,7 @@ import {
   registrarMovimentoAction,
   type EstadoMovimento,
 } from "./actions";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 /**
  * A conta como ESTE form a consome.
@@ -93,6 +94,7 @@ export function FormMovimentacao({
       data-acao="registrar-movimento-bancario"
       className={CLASSE_PAINEL_FORMULARIO}
     >
+      <ChaveDeComando />
       <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">
         Registrar movimentação bancária
       </h2>

@@ -143,6 +143,8 @@ async function preencherEEnviar(page: Page, acao: string, campos: readonly Campo
     await page.keyboard.press("Backspace");
     await alvo.type(campo.valor, { delay: 5 });
   }
+  // V4: a chave de comando nasce depois da hidratação; enviar antes dela é recusado pelo servidor.
+  await page.waitForSelector(`${form} input[name="__chave"][data-chave-de-comando="pronta"]`, { timeout: 30000 });
   const enviou = await page.evaluate((sel) => {
     const f = document.querySelector(sel);
     const botao = f?.querySelector('button[type="submit"]');

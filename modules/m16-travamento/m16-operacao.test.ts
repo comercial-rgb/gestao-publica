@@ -7,11 +7,13 @@ import { semearPcasp } from "../../prisma/seed/pcasp.js";
 import { criarM05Deps } from "../m05-despesa/adapter-prisma.js";
 import { empenhar } from "../m05-despesa/servico.js";
 import { roteiroEmpenho } from "../m01-core-contabil/roteiros.js";
-import { autorizar } from "./autorizacao.js";
+import { autorizar, exigirAcaoEmAlgumEscopo } from "./autorizacao.js";
 import { ehFalhaDeCredencial, CREDENCIAIS_INVALIDAS } from "./autenticacao.js";
 import {
   AuditoriaIndisponivelError,
+  ComandoEmConflitoError,
   ComandoJaConcluidoError,
+  ComandoSemChaveError,
   comandoCorrente,
   comOperacaoRegistrada,
   criarRegistroDeOperacaoPrisma,
@@ -90,7 +92,10 @@ function portaQueFalhaEm(fases: readonly string[]): RegistroDeOperacaoPort {
       if (fases.includes(op.resultado)) return Promise.reject(new Error(`auditoria indisponível na fase ${op.resultado}`));
       return real.registrar(op, agora);
     },
-    conclusaoAnterior: (p) => real.conclusaoAnterior(p),
+    reservar: (p, agora) => real.reservar(p, agora),
+    retomar: (p, agora) => real.retomar(p, agora),
+    concluir: (p, agora) => real.concluir(p, agora),
+    liberar: (p, agora) => real.liberar(p, agora),
   };
 }
 
@@ -141,7 +146,7 @@ describe("a resposta verdadeira — o ato conclui, o registro posterior falha", 
     try {
       await comOperacaoRegistrada(
         porta,
-        { usuarioIdent: semPerfil.identificador, acao: "PAGAR" },
+        { usuarioIdent: semPerfil.identificador, acao: "PAGAR", semChave: "teste sem formulário" },
         () => autorizar(prisma, semPerfil.identificador, "PAGAR"),
         undefined,
         captar
@@ -165,7 +170,7 @@ describe("a resposta verdadeira — o ato conclui, o registro posterior falha", 
       select: { identificador: true },
     });
     await expect(
-      comOperacaoRegistrada(porta, { usuarioIdent: semPerfil.identificador, acao: "EMPENHAR" }, () =>
+      comOperacaoRegistrada(porta, { usuarioIdent: semPerfil.identificador, acao: "EMPENHAR", semChave: "teste sem formulário" }, () =>
         prisma.$transaction(async () => {
           await autorizar(prisma, semPerfil.identificador, "EMPENHAR");
         })
@@ -178,7 +183,7 @@ describe("a resposta verdadeira — o ato conclui, o registro posterior falha", 
   it("a auditoria indisponível ANTES do ato impede o ato — e diz que é a auditoria, não a senha nem o saldo", async () => {
     const porta = portaQueFalhaEm(["INICIADA"]);
     await expect(
-      comOperacaoRegistrada(porta, { usuarioIdent: IDENT, acao: "EMPENHAR" }, empenho("NE-X"))
+      comOperacaoRegistrada(porta, { usuarioIdent: IDENT, acao: "EMPENHAR", semChave: "teste sem formulário" }, empenho("NE-X"))
     ).rejects.toThrow(AuditoriaIndisponivelError);
     expect(await prisma.empenho.count()).toBe(0);
   });
@@ -235,13 +240,15 @@ describe("o replay idempotente — chave e fingerprint no escopo do usuário e d
     };
     const r1 = await comOperacaoRegistrada(porta, { usuarioIdent: IDENT, acao: "CADASTRAR_BEM", chave: "k4", fingerprint: "f4" }, ato);
     expect(r1).toEqual({ id: "resultado-1" });
+    // A referência só é revelada depois de REVALIDAR a ação (V4) — a porta real passa `revalidar`.
+    const revalidar = (): Promise<void> => exigirAcaoEmAlgumEscopo(prisma, IDENT, "CADASTRAR_BEM");
     await expect(
-      comOperacaoRegistrada(porta, { usuarioIdent: IDENT, acao: "CADASTRAR_BEM", chave: "k4", fingerprint: "f4" }, ato)
+      comOperacaoRegistrada(porta, { usuarioIdent: IDENT, acao: "CADASTRAR_BEM", chave: "k4", fingerprint: "f4", revalidar }, ato)
     ).rejects.toThrow(/COMANDO JÁ CONCLUÍDO.*resultado-1.*Nada foi gravado de novo/s);
     expect(execucoes).toBe(1);
   });
 
-  it("mesma chave com OUTRO fingerprint é outro comando; outra ação ou outro usuário também", async () => {
+  it("mesma chave com OUTRO fingerprint é CONFLITO (V4: uma chave, uma intenção); outra ação, outro usuário ou outro escopo são outros comandos", async () => {
     const porta = criarRegistroDeOperacaoPrisma(prisma);
     let execucoes = 0;
     const ato = async (): Promise<string> => {
@@ -249,22 +256,31 @@ describe("o replay idempotente — chave e fingerprint no escopo do usuário e d
       return "ok";
     };
     await comOperacaoRegistrada(porta, { usuarioIdent: IDENT, acao: "CADASTRAR_BEM", chave: "k5", fingerprint: "f5" }, ato);
-    await comOperacaoRegistrada(porta, { usuarioIdent: IDENT, acao: "CADASTRAR_BEM", chave: "k5", fingerprint: "f5-corrigido" }, ato);
+    await expect(
+      comOperacaoRegistrada(porta, { usuarioIdent: IDENT, acao: "CADASTRAR_BEM", chave: "k5", fingerprint: "f5-corrigido" }, ato)
+    ).rejects.toThrow(ComandoEmConflitoError);
     await comOperacaoRegistrada(porta, { usuarioIdent: IDENT, acao: "CADASTRAR_CLASSE_DE_BENS", chave: "k5", fingerprint: "f5" }, ato);
     await comOperacaoRegistrada(porta, { usuarioIdent: "despesa@cg.pb.gov.br", acao: "CADASTRAR_BEM", chave: "k5", fingerprint: "f5" }, ato);
+    await comOperacaoRegistrada(porta, { usuarioIdent: IDENT, acao: "CADASTRAR_BEM", chave: "k5", fingerprint: "f5", escopo: "outro-ente" }, ato);
     expect(execucoes).toBe(4);
   });
 
-  it("sem chave não há replay: o mesmo comando executa de novo (degradação declarada)", async () => {
+  it("sem chave o envelope RECUSA nomeando; com o motivo declarado (`semChave`) executa de novo — degradação nomeada", async () => {
     const porta = criarRegistroDeOperacaoPrisma(prisma);
     let execucoes = 0;
     const ato = async (): Promise<string> => {
       execucoes += 1;
       return "ok";
     };
-    await comOperacaoRegistrada(porta, { usuarioIdent: IDENT, acao: "CADASTRAR_BEM", fingerprint: "f6" }, ato);
-    await comOperacaoRegistrada(porta, { usuarioIdent: IDENT, acao: "CADASTRAR_BEM", fingerprint: "f6" }, ato);
+    await expect(comOperacaoRegistrada(porta, { usuarioIdent: IDENT, acao: "CADASTRAR_BEM", fingerprint: "f6" }, ato)).rejects.toThrow(
+      ComandoSemChaveError
+    );
+    expect(execucoes).toBe(0);
+    await comOperacaoRegistrada(porta, { usuarioIdent: IDENT, acao: "CADASTRAR_BEM", fingerprint: "f6", semChave: "teste sem formulário" }, ato);
+    await comOperacaoRegistrada(porta, { usuarioIdent: IDENT, acao: "CADASTRAR_BEM", fingerprint: "f6", semChave: "teste sem formulário" }, ato);
     expect(execucoes).toBe(2);
+    const iniciadas = await prisma.registroDeOperacao.findMany({ where: { acao: "CADASTRAR_BEM", resultado: "INICIADA" } });
+    expect(iniciadas.map((o) => o.detalhe)).toEqual([null, "sem chave: teste sem formulário", "sem chave: teste sem formulário"]); // a recusada não declarou motivo
   });
 });
 

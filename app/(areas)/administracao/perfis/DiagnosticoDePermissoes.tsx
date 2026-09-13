@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_PAINEL_FORMULARIO } from "../../../../components/ui/Formulario";
 import { aplicarAtualizacaoAction, type EstadoPerfil } from "./actions";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 /**
  * DIAGNÓSTICO E ATUALIZAÇÃO DE PERMISSÕES (orquestração V3, 4.2) — ilha client.
@@ -73,6 +74,7 @@ export function DiagnosticoDePermissoes(p: {
               </p>
             ) : (
               <form action={action} className="mt-2 flex flex-wrap items-center gap-3" data-acao="aplicar-atualizacao">
+                <ChaveDeComando />
                 <input type="hidden" name="versao" value={a.versao} />
                 <span data-situacao="pendente">
                   Pendente — a prévia concederia {a.previa} permissão(ões) aos perfis existentes, cada uma no escopo em que o perfil já age.

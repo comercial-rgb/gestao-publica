@@ -15,6 +15,7 @@ import {
   retornoAction,
   type EstadoLote,
 } from "./actions";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 export interface ContaParaLote {
   readonly id: string;
@@ -69,6 +70,7 @@ export function FormCriarLote({
   );
   return (
     <form action={action} data-acao="criar-lote" className={CLASSE_PAINEL_FORMULARIO}>
+      <ChaveDeComando />
       <input type="hidden" name="exercicio" value={exercicio} />
       <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">
         Criar lote de pagamento
@@ -130,6 +132,7 @@ export function FormIncluir({
 
   return (
     <form action={action} data-acao="incluir-no-lote" className="mt-2">
+      <ChaveDeComando />
       <input type="hidden" name="loteId" value={loteId} />
       <label htmlFor={idSel} className={ROTULO}>
         Ordem a incluir
@@ -158,6 +161,7 @@ export function FormFechar({ loteId }: { readonly loteId: string }): React.React
   const [estado, action, pendente] = useActionState<EstadoLote, FormData>(fecharAction, {});
   return (
     <form action={action} data-acao="fechar-lote" className="mt-2">
+      <ChaveDeComando />
       <input type="hidden" name="loteId" value={loteId} />
       <Mensagens estado={estado} />
       <button type="submit" disabled={pendente} className={CLASSE_BOTAO_PRIMARIO}>
@@ -181,6 +185,7 @@ export function FormGerarBordero({
   const idSel = `signatarios-bordero-${useId()}`;
   return (
     <form action={action} data-acao="gerar-bordero" className="mt-2">
+      <ChaveDeComando />
       <input type="hidden" name="loteId" value={loteId} />
       <label htmlFor={idSel} className={ROTULO}>
         Signatários do borderô, na ordem em que assinam
@@ -234,6 +239,7 @@ export function FormRetorno({
 
   return (
     <form action={action} data-acao="processar-retorno" className="mt-2">
+      <ChaveDeComando />
       <input type="hidden" name="borderoId" value={borderoId} />
       <label htmlFor={idData} className={ROTULO}>
         Data de liquidação no banco

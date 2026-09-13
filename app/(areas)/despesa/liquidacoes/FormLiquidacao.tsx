@@ -9,6 +9,7 @@ import {
   CLASSE_ROTULO as ROTULO,
 } from "../../../../components/ui/Formulario";
 import { liquidarAction, type EstadoLiquidacao } from "./actions";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 /** O empenho liquidável, já filtrado pelo Server Component (saldo a liquidar > 0). */
 export interface EmpenhoLiquidavel {
@@ -60,6 +61,7 @@ export function FormLiquidacao({
       action={action}
       className={CLASSE_PAINEL_FORMULARIO}
     >
+      <ChaveDeComando />
       <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">
         Registrar liquidação
       </h2>

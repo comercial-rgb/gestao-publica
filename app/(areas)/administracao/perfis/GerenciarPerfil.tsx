@@ -7,6 +7,7 @@ import {
   CLASSE_ROTULO as ROTULO,
 } from "../../../../components/ui/Formulario";
 import { concederAcaoAction, revogarAcaoAction, type EstadoPerfil } from "./actions";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 /**
  * CONCEDER E REVOGAR AÇÕES DE UM PERFIL (TR 4.56 · 6.5).
@@ -104,6 +105,7 @@ export function GerenciarPerfil({
             data-acao="conceder-acao"
             data-perfil={perfilId}
           >
+            <ChaveDeComando />
             <input type="hidden" name="perfilId" value={perfilId} />
             <label>
               <span className={ROTULO}>Área</span>
@@ -174,6 +176,7 @@ export function GerenciarPerfil({
                   data-perfil={perfilId}
                   data-alvo={`${p.acao}-${p.unidadeOrcId ?? "G"}`}
                 >
+                  <ChaveDeComando />
                   <input type="hidden" name="perfilId" value={perfilId} />
                   <input type="hidden" name="acao" value={p.acao} />
                   <input type="hidden" name="unidadeOrcId" value={p.unidadeOrcId ?? ""} />

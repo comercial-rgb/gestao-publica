@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import "dotenv/config";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
@@ -306,7 +307,7 @@ describe("M16 — autenticação e registro de operação (TR 4.55 · 6.1-6.3)",
     // ── (a) o LOGIN, registrado pela borda (é ela quem conhece o IP) ──
     const sessao = await comOperacaoRegistrada(
       porta,
-      { usuarioIdent: ALICE, acao: "LOGIN", ip: "10.0.0.7", agente: "Firefox/128" },
+      { usuarioIdent: ALICE, acao: "LOGIN", ip: "10.0.0.7", agente: "Firefox/128", chave: randomUUID(), fingerprint: randomUUID() },
       () => autenticar(prisma, { identificador: ALICE, senha: SENHA, ip: "10.0.0.7" }, T0),
       T0
     );
@@ -326,7 +327,7 @@ describe("M16 — autenticação e registro de operação (TR 4.55 · 6.1-6.3)",
     await expect(
       comOperacaoRegistrada(
         porta,
-        { usuarioIdent: ALICE, acao: "PAGAR", ip: "10.0.0.7", agente: "Firefox/128" },
+        { usuarioIdent: ALICE, acao: "PAGAR", ip: "10.0.0.7", agente: "Firefox/128", chave: randomUUID(), fingerprint: randomUUID() },
         () => autorizar(prisma, ALICE, "PAGAR"),
         mais(MINUTO)
       )

@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { CLASSE_BOTAO_PRIMARIO as BOTAO } from "../../../../components/ui/Formulario";
-import { useChaveDeComando } from "../../../../components/ui/useChaveDeComando";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 import { processarCompetenciaAction, type EstadoDaCompetencia } from "./actions";
 
 /**
@@ -19,12 +19,11 @@ export function ProcessarCompetencia({
   readonly resumo: string;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaCompetencia, FormData>(processarCompetenciaAction, {});
-  const chave = useChaveDeComando(estado.sucesso);
   return (
     <form action={action} data-acao="processar-competencia" className="space-y-2">
       <input type="hidden" name="classeDeBensId" value={classeDeBensId} />
       <input type="hidden" name="competencia" value={competencia} />
-      <input type="hidden" name="__chave" value={chave} />
+      <ChaveDeComando />
       <p className="text-sm">{resumo}</p>
       <button type="submit" className={BOTAO} disabled={pendente || estado.sucesso !== undefined}>
         {pendente ? "Processando…" : "Processar competência"}

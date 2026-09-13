@@ -8,6 +8,7 @@ import {
   CLASSE_ROTULO as ROTULO,
 } from "../../../../components/ui/Formulario";
 import { criarPerfilAction, type EstadoPerfil } from "./actions";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 /**
  * CRIAR PERFIL (TR 4.56) — ilha client, ação autorizada (CRIAR_PERFIL).
@@ -24,6 +25,7 @@ export function FormCriarPerfil(): React.ReactElement {
 
   return (
     <form ref={ref} action={action} className={CLASSE_PAINEL_FORMULARIO} data-acao="criar-perfil">
+      <ChaveDeComando />
       <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">Criar perfil</h2>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="text-xs">

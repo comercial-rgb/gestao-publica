@@ -8,6 +8,7 @@ import {
   CLASSE_ROTULO as ROTULO,
 } from "../../../../components/ui/Formulario";
 import { criarUsuarioAction, type EstadoUsuario } from "./actions";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 /** Uma opção de perfil — declarada aqui (o grep trivalente barra import de lib/portas na ilha client). */
 export interface PerfilOpcaoUI {
@@ -28,6 +29,7 @@ export function FormCriarUsuario({ perfis }: { readonly perfis: readonly PerfilO
 
   return (
     <form ref={ref} action={action} className={CLASSE_PAINEL_FORMULARIO}>
+      <ChaveDeComando />
       <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">Criar usuário</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="text-xs">

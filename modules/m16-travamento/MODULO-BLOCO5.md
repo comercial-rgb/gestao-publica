@@ -106,6 +106,27 @@ sobe com o erro original. `INICIADA` impossível = ato não roda
 `ComandoJaConcluidoError`, sem repetir o fato. O login separa credencial de
 infraestrutura (`ehFalhaDeCredencial`). ADR: `docs/adr/ADR-registro-de-operacao-em-duas-fases.md`.
 
+## 6c. O contrato de comando e a reserva atômica (sessão noturna V4, 3)
+
+Corrige os achados A01–A03 da auditoria do snapshot 77cbcc9. A decisão inteira está em
+`docs/adr/ADR-contrato-de-comando-e-reserva-atomica.md`; o resumo operacional:
+
+- `ComandoDeBorda` guarda a intenção por `(escopo, usuarioIdent, acao, chave)`, adquirida por
+  INSERT sob índice único. Estados `RESERVADO` → `CONCLUIDO` | `LIBERADO`; retomada depois do
+  prazo de abandono (15 min) ou de `LIBERADO`, guardada pelo `operacaoId` lido.
+- O funil conclui a reserva na transação do lançamento; um ato sem lançamento chama
+  `concluirComandoNaTransacao(tx, "resultado", ref)`. Reserva retomada por outro → a transação
+  tardia estoura (`ComandoRetomadoError`).
+- Erros nomeados: `ComandoJaConcluidoError` (replay, referência tipada, só após `revalidar`),
+  `ComandoEmConflitoError` (mesma chave, outro conteúdo), `ComandoEmAndamentoError`,
+  `ComandoSemChaveError` (sem `__chave` e sem `semChave` declarado).
+- Fingerprint: tuplas tipadas em JSON, ordem do formulário, arquivos digeridos (`lib/portas/comando.ts`).
+- Formulários: `<ChaveDeComando />` em todo `<form action={…}>` (75 formulários, 35 arquivos);
+  o inventário é derivado em `test/ui/chave-de-comando.test.ts`. A pendência
+  `CHAVE-DE-COMANDO-NOS-FORMULARIOS-A-MAO` fecha aqui.
+- Pendência `CONCLUSAO-NA-TRANSACAO-DOS-CADASTROS`: os cadastros do molde ainda concluem a
+  reserva depois da transação (a janela nomeada no ADR).
+
 ## 7. O que este bloco NÃO fez, nomeado
 
 - `CONSOLIDADO-PARCIAL-NAO-EXPRIMIVEL` — continua recusando pedindo que escolha.

@@ -185,3 +185,33 @@ export async function autorizar(
       `  (TR 4.56 · segregação de funções 6.4/6.5). Nada foi gravado.`
   );
 }
+
+/**
+ * A REVALIDAÇÃO DO REPLAY (sessão noturna V4, 3): o usuário ainda existe, está ativo e AINDA
+ * TEM a ação em algum escopo. É o que o envelope cobra antes de revelar a referência de um
+ * comando já concluído — a sessão válida não substitui a ação, e uma permissão revogada
+ * depois do fato não pode virar leitura do resultado só porque ele já existe.
+ *
+ * ⚠️ "EM ALGUM ESCOPO", declarado: a UG do fato original não é reconstruível pelo envelope
+ * (quem a conheceu foi o serviço). O replay revela a REFERÊNCIA (um id), não o dossiê — e a
+ * leitura do dossiê continua cobrando a ação de leitura no escopo, pela porta que a serve.
+ */
+export async function exigirAcaoEmAlgumEscopo(tx: Tx, identificador: string, acao: string): Promise<void> {
+  const usuario = await exigirUsuarioAtivo(tx, identificador, `replay de ${acao}`);
+  const vinculos = await tx.vinculoUsuarioPerfil.count({ where: { usuarioId: usuario.id } });
+  if (vinculos === 0) {
+    throw new Error(
+      `ACESSO NEGADO — SEM PERFIL: o usuário "${identificador}" não tem perfil nenhum; o resultado de ${acao} ` +
+        `não é revelado a quem já não pode ${acao}. Nada foi gravado.`
+    );
+  }
+  const concedida = await tx.permissaoDePerfil.count({
+    where: { acao: acao as AcaoDoSistema, perfil: { vinculos: { some: { usuarioId: usuario.id } } } },
+  });
+  if (concedida === 0) {
+    throw new Error(
+      `ACESSO NEGADO — SEM A PERMISSÃO: o usuário "${identificador}" já não tem a ação ${acao} em perfil nenhum; ` +
+        `o resultado de um comando anterior não é revelado a quem perdeu o poder de executá-lo. Nada foi gravado.`
+    );
+  }
+}

@@ -123,6 +123,16 @@ export const ESCRITA_MUTAVEL_DO_RUNTIME: Readonly<
   // aparecer no formulário. Apagá-la levaria os valores junto, e com eles o histórico
   // de um dado que a entidade coletou de verdade.
   DefinicaoDeCampoAdicional: { update: ["ativo"], delete: false },
+
+  // ⚠️ SESSÃO NOTURNA V4 (3) — A RESERVA DO COMANDO É COORDENAÇÃO, NÃO AUDITORIA. Uma chave de
+  // comando é adquirida por INSERT sob índice único e depois CONCLUÍDA, LIBERADA ou RETOMADA —
+  // são transições de estado, não fatos. A auditoria continua em `RegistroDeOperacao`,
+  // append-only. `fingerprint`, `escopo`, `usuarioIdent`, `acao` e `chave` ficam FORA do grant:
+  // a intenção é imutável, e o banco garante.
+  ComandoDeBorda: {
+    update: ["estado", "operacaoId", "tentativas", "reservadoEm", "concluidoEm", "tipoDoResultado", "resultadoRef"],
+    delete: false,
+  },
 };
 
 /** Tabelas que o runtime NÃO lê nem escreve — controle do próprio Prisma. */

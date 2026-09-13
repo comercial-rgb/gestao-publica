@@ -15,6 +15,7 @@ import {
   pendenciaManualAction,
   type EstadoConciliacao,
 } from "./actions";
+import { ChaveDeComando } from "../../../../../components/ui/ChaveDeComando";
 
 export interface ContaParaPeriodo {
   readonly id: string;
@@ -70,6 +71,7 @@ export function FormAbrirPeriodo({
       data-acao="abrir-conciliacao"
       className={CLASSE_PAINEL_FORMULARIO}
     >
+      <ChaveDeComando />
       <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">
         Abrir período de conciliação
       </h2>
@@ -124,6 +126,7 @@ export function FormEncerrar({
   );
   return (
     <form action={action} data-acao="encerrar-conciliacao" className="mt-4">
+      <ChaveDeComando />
       <input type="hidden" name="conciliacaoId" value={conciliacaoId} />
       <Mensagens estado={estado} />
       <button type="submit" disabled={pendente} className={CLASSE_BOTAO_PRIMARIO}>
@@ -157,6 +160,7 @@ export function FormPendenciaManual({
       data-acao="registrar-pendencia-manual"
       className={CLASSE_PAINEL_FORMULARIO}
     >
+      <ChaveDeComando />
       <input type="hidden" name="conciliacaoId" value={conciliacaoId} />
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">
         Incluir pendência
@@ -230,6 +234,7 @@ export function FormJustificar({
 
   return (
     <form action={action} data-acao="justificar-pendencia" className="mt-2">
+      <ChaveDeComando />
       <input type="hidden" name="conciliacaoId" value={conciliacaoId} />
       <input type="hidden" name="lado" value={lado} />
       <input type="hidden" name="referencia" value={referencia} />

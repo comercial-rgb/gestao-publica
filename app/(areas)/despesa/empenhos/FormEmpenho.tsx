@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useRef } from "react";
-import { useChaveDeComando } from "../../../../components/ui/useChaveDeComando";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 import { CampoCpfCnpj, CampoValor } from "../../../../components/ui/Campos";
 import {
   CLASSE_BOTAO_PRIMARIO,
@@ -50,7 +50,6 @@ export function FormEmpenho({
   );
   const ref = useRef<HTMLFormElement>(null);
   if (estado.sucesso !== undefined) ref.current?.reset();
-  const chave = useChaveDeComando(estado.sucesso);
 
   if (fichas.length === 0) {
     return (
@@ -70,7 +69,7 @@ export function FormEmpenho({
       action={action}
       className={CLASSE_PAINEL_FORMULARIO}
     >
-      <input type="hidden" name="__chave" value={chave} />
+      <ChaveDeComando />
       <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">
         Emitir empenho
       </h2>

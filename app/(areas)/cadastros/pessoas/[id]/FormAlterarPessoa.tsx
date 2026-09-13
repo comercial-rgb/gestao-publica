@@ -9,6 +9,7 @@ import {
   CLASSE_ROTULO as ROTULO,
 } from "../../../../../components/ui/Formulario";
 import { alterarPessoaAction, type EstadoPessoa } from "../actions";
+import { ChaveDeComando } from "../../../../../components/ui/ChaveDeComando";
 
 /**
  * ALTERAR — que aqui significa ACRESCENTAR UMA VERSÃO.
@@ -39,6 +40,7 @@ export function FormAlterarPessoa({
 
   return (
     <form action={action} className={CLASSE_PAINEL_FORMULARIO}>
+      <ChaveDeComando />
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">
         Alterar cadastro
       </h2>

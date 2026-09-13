@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import "dotenv/config";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
@@ -31,7 +32,7 @@ const SENHA_EXEC = "SenhaDoExecutor#2026";
 const SENHA_ALVO = "SenhaDoAlvo#2026";
 
 async function comRegistro<T>(acao: string, criadoPor: string, ato: () => Promise<T>): Promise<T> {
-  return comOperacaoRegistrada(criarRegistroDeOperacaoPrisma(prisma), { usuarioIdent: criadoPor, acao }, ato);
+  return comOperacaoRegistrada(criarRegistroDeOperacaoPrisma(prisma), { usuarioIdent: criadoPor, acao, chave: randomUUID(), fingerprint: randomUUID() }, ato);
 }
 
 /** Cria um usuário vinculado a UM perfil (pelo nome) com senha — para autenticar na borda. */

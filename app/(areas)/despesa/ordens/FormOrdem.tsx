@@ -14,6 +14,7 @@ import {
   prepararOrdemAction,
   type EstadoDaOrdem,
 } from "./actions";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 /**
  * ⚠️ TIPOS DECLARADOS AQUI, não importados de `lib/portas`. O grep trivalente da
@@ -75,6 +76,7 @@ export function FormOrdem({
 
   return (
     <form ref={ref} action={action} className={CLASSE_PAINEL_FORMULARIO}>
+      <ChaveDeComando />
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">
         Preparar ordem de pagamento
       </h2>
@@ -171,6 +173,7 @@ export function FormAutorizar({ ordemId }: { readonly ordemId: string }): React.
         action={action}
         className="mt-2 space-y-2 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3"
       >
+        <ChaveDeComando />
         <input type="hidden" name="ordemId" value={ordemId} />
         <p className="text-[color:var(--color-ink-2)]">
           Autorizar é <strong>consentir com o pagamento</strong>. Quem preparou a ordem não
@@ -204,6 +207,7 @@ export function FormCancelar({ ordemId }: { readonly ordemId: string }): React.R
         action={action}
         className="mt-2 space-y-2 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3"
       >
+        <ChaveDeComando />
         <input type="hidden" name="ordemId" value={ordemId} />
         <label className="block">
           <span className={ROTULO}>Motivo (mín. 10 caracteres)</span>
