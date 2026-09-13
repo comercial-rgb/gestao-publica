@@ -371,20 +371,19 @@ describe("t4 · ⚠️ O GUARD DO ELEMENTO (TR 5.17.9) — 'impedindo'", () => {
 });
 
 describe("t5 · ⚠️ A CASCATA VAI DO EMPENHO PARA A ORDEM — decisão D12", () => {
-  it("ordem COM recurso orçamentário RECUSA estorno por si", async () => {
+  it("ordem COM ficha e SEM empenho vivo estorna — a ficha sozinha não é empenho", async () => {
     const { ordemId } = await emitirOrdemDeCompra(prisma, {
       numero: "OC-005", tipo: "ORDINARIA", fornecedorId: fornecedores[0] as string,
       dataEmissao: new Date("2026-03-10T12:00:00Z"),
-      finalidade: "Aquisição empenhável", fichaId: "ficha-30",
+      finalidade: "Aquisição empenhável ainda não empenhada", fichaId: "ficha-30",
       itens: [{ materialId, quantidade: "10", valorUnitario: "11.00" }],
       criadoPor: POR,
     });
-
-    await expect(
-      estornarOrdemDeCompra(prisma, {
-        ordemId, motivo: "cancelamento pedido pela secretaria", criadoPor: POR,
-      })
-    ).rejects.toThrow(/só se estorna PELO ESTORNO DO EMPENHO/);
+    const r = await estornarOrdemDeCompra(prisma, {
+      ordemId, motivo: "cancelamento pedido pela secretaria", criadoPor: POR,
+    });
+    expect(r.itensEstornados).toBe(1);
+    expect(await prisma.ordemDeCompra.count({ where: { id: ordemId } })).toBe(0);
   });
 
   it("ordem COM recebimento RECUSA — o material já entrou", async () => {

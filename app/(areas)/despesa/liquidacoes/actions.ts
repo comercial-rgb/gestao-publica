@@ -87,6 +87,7 @@ export async function liquidarAction(
     const responsavelAtesto = String(formData.get("atesto") ?? "").trim();
     const historico = String(formData.get("historico") ?? "").trim();
     const dataBruta = String(formData.get("data") ?? "").trim();
+    const documentoFiscalId = String(formData.get("documentoFiscalId") ?? "").trim();
 
     if (empenhoId === "") return { erro: "Escolha o empenho a liquidar." };
     if (dataBruta === "") return { erro: "A data da liquidação é obrigatória." };
@@ -104,13 +105,15 @@ export async function liquidarAction(
         data: meioDiaCivil(dataBruta),
         responsavelAtesto,
         historico,
+        ...(documentoFiscalId !== "" ? { documentoFiscalId } : {}),
         ...(entradasDeMaterial.length > 0 ? { entradasDeMaterial } : {}),
       });
       revalidatePath("/despesa/liquidacoes");
       // A fila do art. 141 nasce da liquidação — a tela dela também muda.
       revalidatePath("/despesa/pagamentos");
       revalidatePath("/despesa/empenhos");
-      return { sucesso: `Liquidação ${numero} registrada.` };
+      if (documentoFiscalId !== "") revalidatePath("/licitacoes/documentos-fiscais");
+      return { sucesso: `Liquidação ${numero} registrada no valor de ${valor}.` };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível liquidar." };
     }

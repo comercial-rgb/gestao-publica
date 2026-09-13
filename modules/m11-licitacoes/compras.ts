@@ -556,6 +556,7 @@ export const zRegistrarRecebimentoDeOrdemInput = z.object({
   ordemId: z.string().min(1),
   data: z.coerce.date(),
   notaFiscal: z.string().trim().max(60).optional(),
+  documentoFiscalId: z.string().min(1).optional(),
   responsavelRecebimento: z.string().trim().min(3),
   itens: z
     .array(
@@ -588,7 +589,7 @@ export async function registrarRecebimentoDeOrdem(
   return prisma.$transaction(async (tx) => {
     const ordem = await tx.ordemDeCompra.findUnique({
       where: { id: d.ordemId },
-      select: { id: true, numero: true, ficha: { select: { unidadeOrcId: true } } },
+      select: { id: true, numero: true, fornecedorId: true, ficha: { select: { unidadeOrcId: true } } },
     });
     if (ordem === null) throw new Error(`Ordem de compra ${d.ordemId} não existe.`);
     await autorizarNo(
@@ -597,6 +598,30 @@ export async function registrarRecebimentoDeOrdem(
       ACAO_DO_SERVICO.registrarRecebimentoDeOrdem,
       ordem.ficha === null ? "ENTE" : { ug: ordem.ficha.unidadeOrcId }
     );
+
+    let notaFiscal = d.notaFiscal ?? null;
+    if (d.documentoFiscalId !== undefined) {
+      const doc = await tx.documentoFiscalRecebido.findUnique({
+        where: { id: d.documentoFiscalId },
+        select: {
+          id: true, numero: true, serie: true, emitenteId: true, ordemId: true,
+          movimentos: { select: { tipo: true } },
+        },
+      });
+      if (doc === null) throw new Error(`Documento fiscal ${d.documentoFiscalId} não existe.`);
+      if (doc.movimentos.some((m) => m.tipo === "CANCELAMENTO" || m.tipo === "SUBSTITUICAO")) {
+        throw new Error(`Documento ${doc.numero}/${doc.serie} cancelado ou substituído não lastreia recebimento.`);
+      }
+      if (doc.ordemId !== null && doc.ordemId !== d.ordemId) {
+        throw new Error(`O documento ${doc.numero}/${doc.serie} pertence a outra ordem.`);
+      }
+      if (doc.emitenteId !== ordem.fornecedorId) {
+        throw new Error(
+          `O emitente do documento ${doc.numero}/${doc.serie} não é o fornecedor da ordem ${ordem.numero}.`
+        );
+      }
+      if (notaFiscal === null) notaFiscal = `${doc.numero}/${doc.serie}`;
+    }
 
     const saldos = await saldoDaOrdemDeCompra(tx, d.ordemId);
     const porItem = new Map(saldos.map((s) => [s.itemId, s]));
@@ -618,7 +643,8 @@ export async function registrarRecebimentoDeOrdem(
 
     const r = await tx.recebimentoDeOrdem.create({
       data: {
-        ordemId: d.ordemId, data: d.data, notaFiscal: d.notaFiscal ?? null,
+        ordemId: d.ordemId, data: d.data, notaFiscal,
+        documentoFiscalId: d.documentoFiscalId ?? null,
         responsavelRecebimento: d.responsavelRecebimento, criadoPor: d.criadoPor,
         itens: {
           create: d.itens.map((i) => ({
@@ -667,6 +693,9 @@ export async function estornarOrdemDeCompra(
         ficha: { select: { unidadeOrcId: true } },
         itens: { select: { id: true } },
         recebimentos: { select: { id: true, data: true } },
+        empenhos: {
+          select: { id: true, numero: true, estornoDeId: true, estornos: { select: { id: true } } },
+        },
       },
     });
     if (ordem === null) throw new Error(`Ordem de compra ${d.ordemId} não existe.`);
@@ -685,19 +714,12 @@ export async function estornarOrdemDeCompra(
       );
     }
 
-    // ⚠️ O EMPENHO MANDA (5.17.100). A amarração empenho x ordem ainda não existe no
-    // modelo — o `Empenho` do M05 não aponta para `OrdemDeCompra`. Enquanto ela não
-    // existir, este serviço não tem como saber se há empenho vivo, e recusar é a única
-    // resposta honesta para uma ordem que TEM ficha (isto é, que foi feita para empenhar).
-    // PENDÊNCIA NOMEADA: `EMPENHO-APONTA-PARA-ORDEM-DE-COMPRA`.
-    if (ordem.fichaId !== null) {
+    // ⚠️ O EMPENHO MANDA (5.17.100). Ordem com empenho vivo só se estorna pelo estorno do empenho.
+    const empenhosVivos = ordem.empenhos.filter((e) => e.estornoDeId === null && e.estornos.length === 0);
+    if (empenhosVivos.length > 0) {
       throw new Error(
-        `A ordem ${ordem.numero} tem recurso orçamentário declarado, e a TR 5.17.100 diz ` +
-          `que ordem empenhada só se estorna PELO ESTORNO DO EMPENHO. O vínculo ` +
-          `empenho x ordem ainda não existe no modelo (pendência ` +
-          `EMPENHO-APONTA-PARA-ORDEM-DE-COMPRA), e sem ele não há como conferir se há ` +
-          `empenho vivo. Recusar é a resposta honesta: estornar aqui deixaria a dotação ` +
-          `comprometida por uma compra cancelada.`
+        `A ordem ${ordem.numero} está empenhada (${empenhosVivos.map((e) => e.numero).join(", ")}). ` +
+          `A TR 5.17.100 diz que ordem empenhada só se estorna PELO ESTORNO DO EMPENHO.`
       );
     }
 

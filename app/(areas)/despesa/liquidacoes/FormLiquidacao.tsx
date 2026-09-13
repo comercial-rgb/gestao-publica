@@ -51,9 +51,11 @@ export interface EmpenhoLiquidavel {
 export function FormLiquidacao({
   empenhos,
   opcoesDeMaterial,
+  documentos = [],
 }: {
   readonly empenhos: readonly EmpenhoLiquidavel[];
   readonly opcoesDeMaterial: OpcoesDasEntradasDeMaterial;
+  readonly documentos?: readonly { readonly id: string; readonly rotulo: string }[];
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoLiquidacao, FormData>(
     liquidarAction,
@@ -139,6 +141,18 @@ export function FormLiquidacao({
             placeholder="quem atestou o recebimento"
             className={CAMPO}
           />
+        </label>
+
+        <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2 lg:col-span-3">
+          <span className={ROTULO}>Documento fiscal conferido (opcional)</span>
+          <select name="documentoFiscalId" defaultValue="" className={CAMPO}>
+            <option value="">— sem documento fiscal —</option>
+            {documentos.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.rotulo}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2 lg:col-span-3">

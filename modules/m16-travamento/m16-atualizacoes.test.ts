@@ -8,6 +8,7 @@ import { ACOES_DE_LEITURA, TODAS_AS_ACOES } from "./acoes.js";
 import {
   acaoDeLeituraDaArea,
   aplicarAtualizacaoDePermissoes,
+  derivarDocumentoFiscalRecebido,
   derivarLeituraPorArea,
   derivarPlanejamentoPlurianual,
   derivarPublicarRoteiro,
@@ -126,6 +127,31 @@ describe("a regra da v1 — leitura por área, no escopo em que o perfil já age
     expect(derivadas.some((d) => d.perfilId === "ja" && d.acao === "CADASTRAR_PPA")).toBe(false);
   });
 
+  it("v6: quem registra recebimento recebe registrar+conferir o documento no mesmo escopo; quem estorna recebe cancelar; emitir ordem não deriva (V5 Fila A)", () => {
+    const perfis: readonly PerfilComPermissoes[] = [
+      { id: "rec", nome: "RECEBEDOR", permissoes: [{ acao: "REGISTRAR_RECEBIMENTO_DE_ORDEM", unidadeOrcId: UG_A }] },
+      { id: "est", nome: "ESTORNA", permissoes: [{ acao: "ESTORNAR_ORDEM_DE_COMPRA", unidadeOrcId: UG_A }] },
+      { id: "emi", nome: "EMITE", permissoes: [{ acao: "EMITIR_ORDEM_DE_COMPRA", unidadeOrcId: UG_A }] },
+      {
+        id: "ja",
+        nome: "JA-TEM",
+        permissoes: [
+          { acao: "REGISTRAR_RECEBIMENTO_DE_ORDEM", unidadeOrcId: UG_A },
+          { acao: "REGISTRAR_DOCUMENTO_FISCAL", unidadeOrcId: UG_A },
+        ],
+      },
+    ];
+    const derivadas = derivarDocumentoFiscalRecebido(perfis, AREA_DA_ACAO);
+    expect(derivadas.filter((d) => d.perfilId === "rec").map((d) => d.acao).sort()).toEqual([
+      "CONFERIR_DOCUMENTO_FISCAL",
+      "REGISTRAR_DOCUMENTO_FISCAL",
+    ]);
+    expect(derivadas.filter((d) => d.perfilId === "est").map((d) => d.acao)).toEqual(["CANCELAR_DOCUMENTO_FISCAL"]);
+    expect(derivadas.some((d) => d.perfilId === "emi")).toBe(false);
+    expect(derivadas.filter((d) => d.perfilId === "ja").map((d) => d.acao)).toEqual(["CONFERIR_DOCUMENTO_FISCAL"]);
+    expect(derivadas.every((d) => d.unidadeOrcId === UG_A)).toBe(true);
+  });
+
   it("é idempotente: o que o perfil já tem não deriva de novo; leitura existente não gera leitura", () => {
     const perfis: readonly PerfilComPermissoes[] = [
       {
@@ -220,6 +246,7 @@ describe("instalação limpa e atualização — no banco", () => {
       { versao: 3, previa: 0, aplicada: false },
       { versao: 4, previa: 0, aplicada: false },
       { versao: 5, previa: 0, aplicada: false },
+      { versao: 6, previa: 0, aplicada: false },
     ]);
   });
 

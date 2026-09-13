@@ -38,7 +38,13 @@ function revalidarDono(dono: {
   readonly pessoaId?: string | undefined;
   readonly comunicadoId?: string | undefined;
   readonly termoPatrimonialId?: string | undefined;
+  readonly documentoFiscalId?: string | undefined;
 }): void {
+  if (dono.documentoFiscalId !== undefined) {
+    revalidatePath(`/licitacoes/documentos-fiscais/${dono.documentoFiscalId}`);
+    revalidatePath("/licitacoes/documentos-fiscais");
+    return;
+  }
   if (dono.termoPatrimonialId !== undefined) {
     revalidatePath(`/patrimonio/termos/${dono.termoPatrimonialId}`);
     return;
@@ -76,6 +82,7 @@ export async function anexarArquivoAction(
     const comunicadoId = texto(formData, "comunicadoId");
     const movimentoProcessoId = texto(formData, "movimentoProcessoId");
     const termoPatrimonialId = texto(formData, "termoPatrimonialId");
+    const documentoFiscalId = texto(formData, "documentoFiscalId");
 
     const dono = {
       ...(termoPatrimonialId !== "" ? { termoPatrimonialId } : {}),
@@ -83,6 +90,7 @@ export async function anexarArquivoAction(
       ...(pessoaId !== "" ? { pessoaId } : {}),
       ...(comunicadoId !== "" ? { comunicadoId } : {}),
       ...(movimentoProcessoId !== "" ? { movimentoProcessoId } : {}),
+      ...(documentoFiscalId !== "" ? { documentoFiscalId } : {}),
     };
 
     try {
@@ -95,7 +103,12 @@ export async function anexarArquivoAction(
 
       const r = await anexarNaTela({
         nomeOriginal: arquivo.name,
-        mimeType: arquivo.type,
+        mimeType:
+          arquivo.type !== ""
+            ? arquivo.type
+            : documentoFiscalId !== ""
+              ? "application/octet-stream"
+              : arquivo.type,
         conteudo: new Uint8Array(await arquivo.arrayBuffer()),
         origem,
         ...dono,

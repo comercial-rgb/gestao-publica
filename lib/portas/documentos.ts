@@ -100,7 +100,15 @@ async function leituraDoDonoDoAnexo(
 ): Promise<{ readonly acao: AcaoDeLeitura; readonly nivel: NivelDeLeitura } | null> {
   const a = await cliente().anexo.findUnique({
     where: { id: anexoId },
-    select: { processoId: true, movimentoProcessoId: true, comunicadoId: true, pessoaId: true, chamadoId: true, termoPatrimonialId: true },
+    select: {
+      processoId: true,
+      movimentoProcessoId: true,
+      comunicadoId: true,
+      pessoaId: true,
+      chamadoId: true,
+      termoPatrimonialId: true,
+      documentoFiscalId: true,
+    },
   });
   if (a === null) return null;
   if (a.processoId !== null || a.movimentoProcessoId !== null) return { acao: "CONSULTAR_PROTOCOLO", nivel: "algum" };
@@ -108,6 +116,7 @@ async function leituraDoDonoDoAnexo(
   if (a.chamadoId !== null) return { acao: "CONSULTAR_SUPORTE", nivel: "algum" };
   if (a.pessoaId !== null) return { acao: "CONSULTAR_CADASTROS", nivel: "ente" };
   if (a.termoPatrimonialId !== null) return { acao: "CONSULTAR_PATRIMONIO", nivel: "ente" };
+  if (a.documentoFiscalId !== null) return { acao: "CONSULTAR_LICITACOES", nivel: "algum" };
   return null;
 }
 
@@ -166,6 +175,7 @@ export interface AnexarNaTela {
   readonly comunicadoId?: string | undefined;
   readonly pessoaId?: string | undefined;
   readonly termoPatrimonialId?: string | undefined;
+  readonly documentoFiscalId?: string | undefined;
 }
 
 export async function anexarNaTela(

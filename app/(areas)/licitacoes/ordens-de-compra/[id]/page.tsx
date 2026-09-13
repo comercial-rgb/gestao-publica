@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FormsDoRecurso } from "../../../../../components/molde/FormsDoRecurso";
 import { DetalheDeRecurso } from "../../../../../components/molde/DetalheDeRecurso";
@@ -6,6 +7,7 @@ import type { AbaDoMolde } from "../../../../../lib/molde/tipos";
 import { acoesPermitidas, exigirLeitura } from "../../../../../lib/portas/molde";
 import { ORDENS_DE_COMPRA } from "../../../../../lib/portas/recursos/compras";
 import { verOrdem, opcoesDaOrdem } from "../../../../../lib/portas/recursos/compras-dados";
+import { documentosDaOrdemParaReceber } from "../../../../../lib/portas/recursos/documentos-fiscais-dados";
 import { ordensdecompraAction } from "../actions";
 import { FormRecebimento } from "./FormRecebimento";
 
@@ -18,7 +20,12 @@ export default async function Detalhe({ params, searchParams }: { readonly param
   await exigirLeitura("CONSULTAR_LICITACOES");
   const { id } = await params;
   const consulta = lerConsulta(ORDENS_DE_COMPRA, await searchParams);
-  const [detalhe, opcoes, permitidas] = await Promise.all([verOrdem(id), opcoesDaOrdem(), acoesPermitidas([...ORDENS_DE_COMPRA.acoes.map((a) => a.acaoDoCenso), "REGISTRAR_RECEBIMENTO_DE_ORDEM"])]);
+  const [detalhe, opcoes, permitidas, documentos] = await Promise.all([
+    verOrdem(id),
+    opcoesDaOrdem(),
+    acoesPermitidas([...ORDENS_DE_COMPRA.acoes.map((a) => a.acaoDoCenso), "REGISTRAR_RECEBIMENTO_DE_ORDEM", "EMPENHAR"]),
+    documentosDaOrdemParaReceber(id),
+  ]);
   if (detalhe === null) notFound();
   return (
     <DetalheDeRecurso
@@ -32,8 +39,32 @@ export default async function Detalhe({ params, searchParams }: { readonly param
       historico={detalhe.historico}
       acoes={
         <div className="space-y-4">
+          <div className="flex flex-wrap gap-3 text-sm">
+            <a
+              href={`/licitacoes/ordens-de-compra/espelho?id=${id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-[color:var(--color-primary)] hover:underline"
+            >
+              Emitir espelho (PDF)
+            </a>
+            {permitidas.has("EMPENHAR") ? (
+              <Link
+                href={`/despesa/empenhos?ordemId=${id}`}
+                className="font-medium text-[color:var(--color-primary)] hover:underline"
+              >
+                Empenhar esta ordem
+              </Link>
+            ) : null}
+            <Link
+              href={`/licitacoes/documentos-fiscais`}
+              className="font-medium text-[color:var(--color-primary)] hover:underline"
+            >
+              Registrar documento fiscal
+            </Link>
+          </div>
           {permitidas.has("REGISTRAR_RECEBIMENTO_DE_ORDEM") && detalhe.itensParaReceber.length > 0 ? (
-            <FormRecebimento ordemId={id} itensDaOrdem={detalhe.itensParaReceber} />
+            <FormRecebimento ordemId={id} itensDaOrdem={detalhe.itensParaReceber} documentos={documentos} />
           ) : (
             <p className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] px-3 py-2 text-xs text-[color:var(--color-ink-2)]">
               {detalhe.itensParaReceber.length === 0 ? "Nada pendente de recebimento nesta ordem." : "Você não tem a permissão REGISTRAR_RECEBIMENTO_DE_ORDEM."}

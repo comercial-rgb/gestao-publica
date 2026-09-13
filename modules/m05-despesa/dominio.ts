@@ -310,6 +310,12 @@ export const zEmpenharInput = z
      */
     contratoId: z.string().min(1).optional(),
     /**
+     * V5 — a ordem de compra da qual este empenho nasce. Ausente = empenho sem ordem
+     * (folha, diária, contrato direto). O guard vive no adapter (precisa travar a
+     * ordem e somar o empenhado contra ela).
+     */
+    ordemDeCompraId: z.string().min(1).optional(),
+    /**
      * M11/M10 (TR 4.49/5.15) — a classe de bens que este empenho vai adquirir.
      * OBRIGATÓRIA quando o empenho é de CAPITAL (grupos 4/5) E tem contrato; o
      * guard vive no adapter (precisa ler a natureza da ficha).
@@ -385,6 +391,7 @@ export const zLiquidarInput = z.object({
   notaFiscalSerie: z.string().min(1).optional(),
   notaFiscalData: z.coerce.date().optional(),
   notaFiscalValor: zValorPositivo.optional(),
+  documentoFiscalId: z.string().min(1).optional(),
   historico: z.string().min(1),
   criadoPor: z.string().min(1),
   /**

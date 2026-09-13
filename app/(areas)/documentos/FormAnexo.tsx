@@ -34,6 +34,7 @@ export interface DonoDoAnexo {
   readonly pessoaId?: string | undefined;
   readonly comunicadoId?: string | undefined;
   readonly termoPatrimonialId?: string | undefined;
+  readonly documentoFiscalId?: string | undefined;
 }
 
 export function FormAnexo({
@@ -85,6 +86,9 @@ export function FormAnexo({
       {dono.comunicadoId !== undefined ? (
         <input type="hidden" name="comunicadoId" value={dono.comunicadoId} />
       ) : null}
+      {dono.documentoFiscalId !== undefined ? (
+        <input type="hidden" name="documentoFiscalId" value={dono.documentoFiscalId} />
+      ) : null}
 
       <div>
         <label htmlFor={idArquivo} className={CLASSE_ROTULO}>
@@ -100,7 +104,8 @@ export function FormAnexo({
           className={CLASSE_CAMPO}
         />
         <p id={idAjuda} className="mt-1 text-xs text-[color:var(--color-ink-2)]">
-          Até {mb} MB. PDF, DOC, DOCX, XLS, XLSX, ODT, JPG ou PNG. O sistema calcula uma
+          Até {mb} MB. PDF, DOC, DOCX, XLS, XLSX, ODT, JPG, PNG
+          {dono.documentoFiscalId !== undefined ? " ou XML da nota" : ""}. O sistema calcula uma
           verificação (SHA-256) do arquivo no momento do envio — é ela que prova, depois,
           que o documento não foi trocado.
         </p>

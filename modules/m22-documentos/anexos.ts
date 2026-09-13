@@ -10,6 +10,7 @@ import {
   lerArquivo,
   recusaDoArquivo,
   sha256,
+  TAMANHO_MAXIMO_BYTES,
 } from "./armazenamento.js";
 
 /**
@@ -46,6 +47,7 @@ export const zAnexar = z
     ordemDePagamentoId: z.string().min(1).optional(),
     // ── V4 (§5): o termo patrimonial assinado ──
     termoPatrimonialId: z.string().min(1).optional(),
+    documentoFiscalId: z.string().min(1).optional(),
     criadoPor: z.string().min(1),
   })
   .refine(
@@ -60,13 +62,14 @@ export const zAnexar = z
         d.liquidacaoId,
         d.ordemDePagamentoId,
         d.termoPatrimonialId,
+        d.documentoFiscalId,
       ].filter((v) => v !== undefined).length === 1,
     {
       message:
         "Um anexo pertence a EXATAMENTE UM registro: processo, movimento de processo, " +
-        "comunicado, pessoa, borderô, empenho, liquidação, ordem de pagamento ou termo patrimonial. Sem " +
-        "dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual regra de acesso " +
-        "vale.",
+        "comunicado, pessoa, borderô, empenho, liquidação, ordem de pagamento, termo patrimonial " +
+        "ou documento fiscal. Sem dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual " +
+        "regra de acesso vale.",
     }
   );
 
@@ -87,12 +90,25 @@ export async function anexarArquivo(
 ): Promise<{ readonly anexoId: string; readonly sha256: string }> {
   const d = zAnexar.parse(input);
 
-  const recusa = recusaDoArquivo(d.mimeType, d.conteudo.byteLength, d.origem);
-  if (recusa !== null) throw new Error(recusa);
+  if (d.documentoFiscalId === undefined) {
+    const recusa = recusaDoArquivo(d.mimeType, d.conteudo.byteLength, d.origem);
+    if (recusa !== null) throw new Error(recusa);
+  } else if (d.conteudo.byteLength <= 0) {
+    throw new Error("Arquivo vazio: nada a anexar.");
+  } else if (d.conteudo.byteLength > TAMANHO_MAXIMO_BYTES) {
+    throw new Error(
+      `Arquivo de ${(d.conteudo.byteLength / 1024 / 1024).toFixed(1)} MB excede o limite de 25 MB.`
+    );
+  }
 
   return prisma.$transaction(async (tx) => {
     const escopo = await escopoDoDono(tx, d);
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.anexarArquivo, escopo);
+
+    if (d.documentoFiscalId !== undefined) {
+      const recusaAnexo = recusaDoAnexoDoDocumentoFiscal(d.mimeType, d.conteudo, d.origem);
+      if (recusaAnexo !== null) throw new Error(recusaAnexo);
+    }
 
     const hash = sha256(d.conteudo);
     const anexo = await tx.anexo.create({
@@ -111,6 +127,7 @@ export async function anexarArquivo(
         liquidacaoId: d.liquidacaoId ?? null,
         ordemDePagamentoId: d.ordemDePagamentoId ?? null,
         termoPatrimonialId: d.termoPatrimonialId ?? null,
+        documentoFiscalId: d.documentoFiscalId ?? null,
         criadoPor: d.criadoPor,
       },
       select: { id: true },
@@ -119,6 +136,27 @@ export async function anexarArquivo(
     await gravarArquivo(anexo.id, d.conteudo);
     return { anexoId: anexo.id, sha256: hash };
   });
+}
+
+const MIMES_XML_DO_DOCUMENTO = new Set(["application/xml", "text/xml"]);
+
+function recusaDoAnexoDoDocumentoFiscal(
+  mimeType: string,
+  conteudo: Uint8Array,
+  origem: "UPLOAD" | "DIGITALIZACAO" | "CAMERA" | "SISTEMA"
+): string | null {
+  const texto = new TextDecoder("utf-8", { fatal: false })
+    .decode(conteudo)
+    .replace(/^\uFEFF/, "")
+    .trimStart();
+  // XML da nota (importação ou anexo do original): o conteúdo manda, não o MIME do browser.
+  if (MIMES_XML_DO_DOCUMENTO.has(mimeType) || texto.startsWith("<")) {
+    if (!texto.startsWith("<")) {
+      return "O arquivo não é XML (não começa com '<'). A conferência é do conteúdo, não da extensão.";
+    }
+    return null;
+  }
+  return recusaDoArquivo(mimeType, conteudo.byteLength, origem);
 }
 
 /**
@@ -140,9 +178,24 @@ async function escopoDoDono(
     readonly liquidacaoId?: string | undefined;
     readonly ordemDePagamentoId?: string | undefined;
     readonly termoPatrimonialId?: string | undefined;
+    readonly documentoFiscalId?: string | undefined;
   }
 ): Promise<EscopoDoFato> {
   if (d.pessoaId !== undefined) return "ENTE";
+  if (d.documentoFiscalId !== undefined) {
+    const doc = await tx.documentoFiscalRecebido.findUnique({
+      where: { id: d.documentoFiscalId },
+      select: {
+        id: true,
+        empenhoId: true,
+        ordem: { select: { ficha: { select: { unidadeOrcId: true } } } },
+      },
+    });
+    if (doc === null) throw new Error(`Documento fiscal ${d.documentoFiscalId} não existe. Nada foi gravado.`);
+    if (doc.ordem?.ficha !== null && doc.ordem?.ficha !== undefined) return { ug: doc.ordem.ficha.unidadeOrcId };
+    if (doc.empenhoId !== null) return { empenho: doc.empenhoId };
+    return "ENTE";
+  }
   // V4 (§5): o termo é do ENTE (o setor é dado do termo, não recorte); o termo tem de existir.
   if (d.termoPatrimonialId !== undefined) {
     const termo = await tx.termoPatrimonial.findUnique({ where: { id: d.termoPatrimonialId }, select: { id: true } });

@@ -4,6 +4,7 @@ import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { travar } from "../../packages/locks/index.js";
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
+import { normalizarDocumento } from "../../packages/documento/index.js";
 import type { LancamentoContabil, Partida } from "../../packages/ledger/index.js";
 import {
   criarContaRepositoryPrisma,
@@ -389,6 +390,215 @@ async function guardsDoContrato(
   await exigirClasseDeBens(tx, p);
 
   return c.categoriaOrdemCronologica;
+}
+
+const TIPO_EMPENHO_DA_ORDEM = {
+  ORDINARIA: "ORDINARIO",
+  GLOBAL: "GLOBAL",
+  ESTIMATIVA: "ESTIMATIVO",
+} as const;
+
+function valorDaOrdem(
+  itens: readonly { readonly quantidade: { toFixed(n: number): string }; readonly valorUnitario: { toFixed(n: number): string } }[],
+  desconto: { toFixed(n: number): string } | null
+): Money {
+  let soma = toMoney("0");
+  for (const i of itens) {
+    const linha = toMoney(
+      toMoney(i.quantidade.toFixed(4)).times(toMoney(i.valorUnitario.toFixed(6))).toDecimalPlaces(2).toFixed(2)
+    );
+    soma = toMoney(soma.plus(linha).toFixed(2));
+  }
+  const desc = desconto === null ? toMoney("0") : toMoney(desconto.toFixed(2));
+  return toMoney(soma.minus(desc).toFixed(2));
+}
+
+/**
+ * V5 — EMPENHO A PARTIR DA ORDEM DE COMPRA.
+ *
+ * Trava a ordem DEPOIS da ficha e do contrato (postos 2 → 5 → 6). Soma o empenhado
+ * líquido contra a ordem. Ordinária: um empenho vivo, valor = total da ordem.
+ * Global/estimativa: valor ≤ residual. Fornecedor da ordem = credor. Ficha da ordem
+ * = ficha do empenho. Tipo da ordem mapeia o tipo do empenho.
+ */
+async function guardsDaOrdem(tx: Tx, p: EmpenharParams): Promise<void> {
+  if (p.ordemDeCompraId === undefined) return;
+
+  await travar(tx, "OrdemDeCompra", [p.ordemDeCompraId]);
+
+  const ordem = await tx.ordemDeCompra.findUnique({
+    where: { id: p.ordemDeCompraId },
+    select: {
+      id: true,
+      numero: true,
+      tipo: true,
+      fichaId: true,
+      desconto: true,
+      fornecedor: { select: { documento: true } },
+      itens: { select: { quantidade: true, valorUnitario: true } },
+    },
+  });
+  if (ordem === null) throw new Error(`Ordem de compra ${p.ordemDeCompraId} não existe.`);
+
+  if (ordem.fichaId === null) {
+    throw new Error(
+      `A ordem ${ordem.numero} não tem ficha orçamentária. Declare o recurso na ordem ` +
+        `antes de empenhar. Nada foi gravado.`
+    );
+  }
+  if (ordem.fichaId !== p.fichaId) {
+    throw new Error(
+      `A ordem ${ordem.numero} é da ficha ${ordem.fichaId}, e o empenho ${p.numero} ` +
+        `pediu a ficha ${p.fichaId}. Empenhar contra outra dotação deixaria a compra ` +
+        `sem o recurso que ela declarou.`
+    );
+  }
+  const tipoEsperado = TIPO_EMPENHO_DA_ORDEM[ordem.tipo];
+  if (p.tipo !== tipoEsperado) {
+    throw new Error(
+      `O tipo do empenho (${p.tipo}) não corresponde ao tipo da ordem ${ordem.numero} ` +
+        `(${ordem.tipo} → ${tipoEsperado}).`
+    );
+  }
+
+  const credorOrdem = normalizarDocumento(ordem.fornecedor.documento);
+  if (credorOrdem !== p.credorCpfCnpj) {
+    throw new Error(
+      `O credor do empenho (${p.credorCpfCnpj}) não é o fornecedor da ordem ` +
+        `${ordem.numero} (${credorOrdem}).`
+    );
+  }
+
+  const total = valorDaOrdem(ordem.itens, ordem.desconto);
+  const empenhado = await empenhadoLiquidoDaOrdem(tx, ordem.id);
+  const residual = toMoney(total.minus(empenhado).toFixed(2));
+
+  if (ordem.tipo === "ORDINARIA") {
+    if (empenhado.greaterThan(0)) {
+      throw new Error(
+        `A ordem ordinária ${ordem.numero} já tem empenho vivo ` +
+          `(${empenhado.toFixed(2)}). Ordinária admite um empenho, pelo total. ` +
+          `Anule o empenho anterior ou use ordem global/estimativa.`
+      );
+    }
+    if (!p.valor.eq(total)) {
+      throw new Error(
+        `Empenho ordinário da ordem ${ordem.numero} tem de ser o total ` +
+          `${total.toFixed(2)}, não ${p.valor.toFixed(2)}.`
+      );
+    }
+    return;
+  }
+
+  if (p.valor.greaterThan(residual)) {
+    throw new Error(
+      `SALDO DA ORDEM INSUFICIENTE (${ordem.numero}): total ${total.toFixed(2)} − ` +
+        `empenhado ${empenhado.toFixed(2)} = residual ${residual.toFixed(2)}, e o ` +
+        `empenho ${p.numero} pede ${p.valor.toFixed(2)}.`
+    );
+  }
+}
+
+async function empenhadoLiquidoDaOrdem(tx: Tx, ordemDeCompraId: string): Promise<Money> {
+  const empenhos = await tx.empenho.findMany({
+    where: { ordemDeCompraId },
+    select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true },
+  });
+  return somaLiquidaEstornaveis(
+    empenhos.map((e) => ({
+      id: e.id,
+      valor: toMoney(e.valor.toFixed(2)),
+      estornoDeId: e.estornoDeId,
+      anulacaoParcialDeId: e.anulacaoParcialDeId,
+    }))
+  );
+}
+
+async function exigirDocumentoFiscalDaLiquidacao(
+  tx: Tx,
+  p: { readonly documentoFiscalId?: string | undefined; readonly valor: Money; readonly empenhoId: string },
+  empenho: { readonly credorCpfCnpj: string; readonly ordemDeCompraId: string | null }
+): Promise<{
+  readonly notaFiscalChave: string | undefined;
+  readonly notaFiscalNum: string | undefined;
+  readonly notaFiscalSerie: string | undefined;
+  readonly notaFiscalData: Date | undefined;
+  readonly notaFiscalValor: Money | undefined;
+}> {
+  const vazio = {
+    notaFiscalChave: undefined,
+    notaFiscalNum: undefined,
+    notaFiscalSerie: undefined,
+    notaFiscalData: undefined,
+    notaFiscalValor: undefined,
+  };
+  if (p.documentoFiscalId === undefined) return vazio;
+
+  const doc = await tx.documentoFiscalRecebido.findUnique({
+    where: { id: p.documentoFiscalId },
+    select: {
+      id: true,
+      numero: true,
+      serie: true,
+      chaveAcesso: true,
+      dataEmissao: true,
+      valorTotal: true,
+      emitente: { select: { documento: true } },
+      empenhoId: true,
+      ordemId: true,
+      movimentos: { select: { tipo: true } },
+      liquidacoes: {
+        select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true },
+      },
+    },
+  });
+  if (doc === null) throw new Error(`Documento fiscal ${p.documentoFiscalId} não existe.`);
+  if (doc.movimentos.some((m) => m.tipo === "CANCELAMENTO" || m.tipo === "SUBSTITUICAO")) {
+    throw new Error(`Documento ${doc.numero}/${doc.serie} cancelado ou substituído não lastreia liquidação.`);
+  }
+  if (!doc.movimentos.some((m) => m.tipo === "CONFERENCIA")) {
+    throw new Error(
+      `Documento ${doc.numero}/${doc.serie} ainda não foi conferido. Confira a nota ` +
+        `antes de liquidar. Nada foi gravado.`
+    );
+  }
+  if (normalizarDocumento(doc.emitente.documento) !== empenho.credorCpfCnpj) {
+    throw new Error(
+      `O emitente do documento ${doc.numero}/${doc.serie} (${doc.emitente.documento}) ` +
+        `não é o credor do empenho (${empenho.credorCpfCnpj}).`
+    );
+  }
+  if (doc.empenhoId !== null && doc.empenhoId !== p.empenhoId) {
+    throw new Error(`O documento ${doc.numero}/${doc.serie} pertence a outro empenho.`);
+  }
+  if (doc.ordemId !== null && empenho.ordemDeCompraId !== null && doc.ordemId !== empenho.ordemDeCompraId) {
+    throw new Error(
+      `O documento ${doc.numero}/${doc.serie} é de outra ordem de compra que a deste empenho.`
+    );
+  }
+  const liquidado = somaLiquidaEstornaveis(
+    doc.liquidacoes.map((l) => ({
+      id: l.id,
+      valor: toMoney(l.valor.toFixed(2)),
+      estornoDeId: l.estornoDeId,
+      anulacaoParcialDeId: l.anulacaoParcialDeId,
+    }))
+  );
+  const aLiquidar = toMoney(toMoney(doc.valorTotal.toFixed(2)).minus(liquidado).toFixed(2));
+  if (p.valor.greaterThan(aLiquidar)) {
+    throw new Error(
+      `Liquidação maior que o saldo do documento ${doc.numero}/${doc.serie}: ` +
+        `total ${doc.valorTotal.toFixed(2)} − liquidado ${liquidado.toFixed(2)} = ` +
+        `${aLiquidar.toFixed(2)}, pedido ${p.valor.toFixed(2)}.`
+    );
+  }
+  return {
+    notaFiscalChave: doc.chaveAcesso ?? undefined,
+    notaFiscalNum: doc.numero,
+    notaFiscalSerie: doc.serie,
+    notaFiscalData: doc.dataEmissao,
+    notaFiscalValor: toMoney(doc.valorTotal.toFixed(2)),
+  };
 }
 
 /**
@@ -806,6 +1016,7 @@ export function criarDespesaRepositoryPrisma(
         // M11 — DENTRO da transação: vigência, saldo do contrato (com a linha
         // travada), herança da categoria, reserva×processo e classe de bens.
         const categoria = await guardsDoContrato(tx, contratos, p);
+        await guardsDaOrdem(tx, p);
 
         // M10 (TR 4.48) — o vínculo com a dívida. Roda com ou sem contrato.
         await exigirVinculoDeDivida(tx, p);
@@ -823,6 +1034,7 @@ export function criarDespesaRepositoryPrisma(
             subelementoId: p.subelementoId ?? null,
             // M11 — a dimensão contrato. A anulação copia este campo (ver abaixo).
             contratoId: p.contratoId ?? null,
+            ordemDeCompraId: p.ordemDeCompraId ?? null,
             // M11/M10 (TR 4.49) — o que este empenho promete adquirir.
             classeDeBensId: p.classeDeBensId ?? null,
             // M10 (TR 4.48) — a dívida que este empenho amortiza.
@@ -894,6 +1106,7 @@ export function criarDespesaRepositoryPrisma(
             categoriaOrdemCronologica: true,
             contratoId: true,
             obraId: true,
+            ordemDeCompraId: true,
             estornos: { select: { id: true } },
           },
         });
@@ -938,10 +1151,8 @@ export function criarDespesaRepositoryPrisma(
             // contrato veria o empenho original e NÃO veria a anulação dele — o
             // contrato ficaria eternamente empenhado, e o saldo nunca voltaria.
             contratoId: original.contratoId,
-            // ⚠️ A OBRA TAMBÉM É COPIADA — mesma razão do contrato: sem isso, a soma por
-            // OBRA veria o empenho e não veria a anulação dele, e a obra ficaria
-            // eternamente empenhada no L800.
             obraId: original.obraId,
+            ordemDeCompraId: original.ordemDeCompraId,
             lancamentoId: lancamento.id,
             estornoDeId: original.id,
             criadoPor: p.criadoPor,
@@ -993,6 +1204,7 @@ export function criarDespesaRepositoryPrisma(
             obraId: true,
             classeDeBensId: true,
             dividaId: true,
+            ordemDeCompraId: true,
             categoriaOrdemCronologica: true,
             estornoDeId: true,
             anulacaoParcialDeId: true,
@@ -1053,8 +1265,8 @@ export function criarDespesaRepositoryPrisma(
             contratoId: original.contratoId,
             classeDeBensId: original.classeDeBensId,
             dividaId: original.dividaId,
-            // M11 (TR 4.50) — idem: a redução tem de ser visível na soma por obra.
             obraId: original.obraId,
+            ordemDeCompraId: original.ordemDeCompraId,
             lancamentoId: lancamento.id,
             // ⚠️ NÃO é estornoDeId: a parcial REDUZ, não NEGA.
             anulacaoParcialDeId: original.id,
@@ -1103,6 +1315,7 @@ export function criarDespesaRepositoryPrisma(
             valor: true,
             estornoDeId: true,
             anulacaoParcialDeId: true,
+            documentoFiscalId: true,
             estornos: { select: { id: true } },
           },
         });
@@ -1153,6 +1366,7 @@ export function criarDespesaRepositoryPrisma(
             responsavelAtesto: "ANULACAO_PARCIAL",
             lancamentoId: lancamento.id,
             anulacaoParcialDeId: original.id,
+            documentoFiscalId: original.documentoFiscalId,
             criadoPor: p.criadoPor,
           },
           select: { id: true },
@@ -1364,6 +1578,7 @@ export function criarDespesaRepositoryPrisma(
               numero: true,
               valor: true,
               anulacaoParcialDeId: true,
+              documentoFiscalId: true,
               estornos: { select: { id: true } },
             },
           });
@@ -1388,6 +1603,7 @@ export function criarDespesaRepositoryPrisma(
               responsavelAtesto: "ESTORNO_ANULACAO_PARCIAL",
               lancamentoId: lancamento.id,
               estornoDeId: parcial.id,
+              documentoFiscalId: parcial.documentoFiscalId,
               criadoPor: p.criadoPor,
             },
             select: { id: true },
@@ -1599,6 +1815,8 @@ export function criarDespesaRepositoryPrisma(
             id: true,
             valor: true,
             obraId: true,
+            credorCpfCnpj: true,
+            ordemDeCompraId: true,
             estornoDeId: true,
             estornos: { select: { id: true } },
             // ⚠️ M10 (ENT06 item 2) — O ELEMENTO decide se esta liquidação é de MATERIAL, e
@@ -1655,6 +1873,8 @@ export function criarDespesaRepositoryPrisma(
           });
         }
 
+        const notaDoDocumento = await exigirDocumentoFiscalDaLiquidacao(tx, p, empenho);
+
         await criarLancamento(tx, lancamento);
 
         const liq = await tx.liquidacao.create({
@@ -1666,11 +1886,12 @@ export function criarDespesaRepositoryPrisma(
             valor: p.valor.toFixed(2),
             data: p.data,
             responsavelAtesto: p.responsavelAtesto,
-            notaFiscalChave: p.notaFiscalChave ?? null,
-            notaFiscalNum: p.notaFiscalNum ?? null,
-            notaFiscalSerie: p.notaFiscalSerie ?? null,
-            notaFiscalData: p.notaFiscalData ?? null,
-            notaFiscalValor: p.notaFiscalValor?.toFixed(2) ?? null,
+            notaFiscalChave: notaDoDocumento.notaFiscalChave ?? p.notaFiscalChave ?? null,
+            notaFiscalNum: notaDoDocumento.notaFiscalNum ?? p.notaFiscalNum ?? null,
+            notaFiscalSerie: notaDoDocumento.notaFiscalSerie ?? p.notaFiscalSerie ?? null,
+            notaFiscalData: notaDoDocumento.notaFiscalData ?? p.notaFiscalData ?? null,
+            notaFiscalValor: (notaDoDocumento.notaFiscalValor ?? p.notaFiscalValor)?.toFixed(2) ?? null,
+            documentoFiscalId: p.documentoFiscalId ?? null,
             lancamentoId: lancamento.id,
             criadoPor: p.criadoPor,
           },
@@ -1965,6 +2186,7 @@ export function criarDespesaRepositoryPrisma(
             valor: true,
             data: true,
             responsavelAtesto: true,
+            documentoFiscalId: true,
             estornos: { select: { id: true } },
           },
         });
@@ -1997,6 +2219,7 @@ export function criarDespesaRepositoryPrisma(
             responsavelAtesto: original.responsavelAtesto,
             lancamentoId: lancamento.id,
             estornoDeId: original.id,
+            documentoFiscalId: original.documentoFiscalId,
             criadoPor: p.criadoPor,
           },
           select: { id: true },

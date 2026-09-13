@@ -414,7 +414,7 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   crachás aqui inventariam uma segregação que o TR não pede, e cada um teria de ser
     //   concedido à mão em toda instalação existente.
     //   = 237 serviços, e o censo continua em 229 ações.
-    expect(nomes.length).toBe(262); // +2 (V3 4.5) propor/publicar versão de roteiro; +2 (V3 pacote 2) vincular/desvincular pessoa; +20 (V4 §8) os serviços do M02b
+    expect(nomes.length).toBe(266); // +4 (V5 Fila A) registrar/importar/conferir/cancelar documento fiscal; importar reusa REGISTRAR_DOCUMENTO_FISCAL
 
     // 97 serviços, 93 ações distintas. Os pares que compartilham ação (4: importarExtratoBb
     // REUSA IMPORTAR_EXTRATO). transferirEntreContas tem AÇÃO PRÓPRIA (não compartilha) → +1 ação.
@@ -504,11 +504,13 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   = 229.
     // 229 de mutação (uma por serviço, com as duas fusões abaixo) + 18 de LEITURA
     // (`ACOES_DE_LEITURA`, uma por área de navegação — orquestração V3, 4.1).
-    expect(TODAS_AS_ACOES.length).toBe(242 + 18); // 242 de mutação (PUBLICAR_ROTEIRO_PATRIMONIAL na V3 4.5; VINCULAR_PESSOA_AO_USUARIO e DEFINIR_PARAMETRO_DE_ATUALIZACAO no pacote 2; as dez do M02b na V4 §8)
+    expect(TODAS_AS_ACOES.length).toBe(245 + 18); // 245 de mutação (+3 V5 documento fiscal; importar reusa REGISTRAR)
     expect(ACAO_DO_SERVICO.encerrarExercicio).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.encerrarExercicioComRestos).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.importarExtrato).toBe("IMPORTAR_EXTRATO");
     expect(ACAO_DO_SERVICO.importarExtratoBb).toBe("IMPORTAR_EXTRATO");
+    expect(ACAO_DO_SERVICO.registrarDocumentoFiscal).toBe("REGISTRAR_DOCUMENTO_FISCAL");
+    expect(ACAO_DO_SERVICO.importarDocumentoFiscalDeXml).toBe("REGISTRAR_DOCUMENTO_FISCAL");
 
     // ⚠️ O LANÇAMENTO MANUAL (TR 5.95) TEM AÇÃO PRÓPRIA — é a chave-mestra do razão
     // (partidas arbitrárias, sem fato de origem), e o ente tem de poder concedê-la a UMA

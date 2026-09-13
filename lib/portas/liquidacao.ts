@@ -114,6 +114,8 @@ export async function registrarLiquidacao(input: {
   readonly data: Date;
   readonly responsavelAtesto: string;
   readonly historico: string;
+  /** V5: o documento fiscal conferido que lastreia esta liquidação. */
+  readonly documentoFiscalId?: string;
   /**
    * M10 (ENT06 item 2) — AS ENTRADAS NO ALMOXARIFADO, quando a despesa é de material.
    *

@@ -216,6 +216,7 @@ model Material {
   itensDeSolicitacao ItemDeSolicitacaoDeCompra[] @relation("ItemDeSolicitacao")
   itensDePesquisa    ItemDePesquisaDePrecos[]    @relation("ItemDePesquisa")
   itensDeOrdem       ItemDeOrdemDeCompra[]       @relation("ItemDeOrdem")
+  itensDeDocumentoFiscal ItemDeDocumentoFiscal[] @relation("ItemDeDocumentoFiscal")
 }
 
 // ----------------------------------------------------------------------------

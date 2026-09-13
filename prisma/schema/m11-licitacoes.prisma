@@ -87,6 +87,7 @@ model ProcessoLicitatorio {
   @@index([modalidade])
   /// back-relation ENT05 (M11 compras) — VIRTUAL.
   ordensDeCompra OrdemDeCompra[] @relation("OrdemDoProcesso")
+  documentosFiscais DocumentoFiscalRecebido[] @relation("DocumentoFiscalDoProcesso")
 }
 
 /// OS LIMITES DE CONTRATAÇÃO DIRETA (art. 75, I e II, da Lei 14.133/2021).
@@ -227,6 +228,7 @@ model Contrato {
   /// back-relation M05 — campo VIRTUAL, não gera coluna. É a dimensão CONTRATO do
   /// empenho: o `empenhadoLiquidoDoContrato` soma por aqui.
   empenhos   Empenho[]
+  documentosFiscais DocumentoFiscalRecebido[] @relation("DocumentoFiscalDoContrato")
 
   criadoEm  DateTime @default(now())
   criadoPor String

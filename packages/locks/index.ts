@@ -116,9 +116,16 @@ export const ORDEM_DOS_LOCKS = {
    */
   DisponibilidadeRecursoNovo: 4,
   Contrato: 5,
-  Liquidacao: 6,
-  InscricaoRestosAPagar: 7,
-  DividaConsolidada: 8,
+  /**
+   * V5 — A ORDEM DE COMPRA. Vem DEPOIS do contrato: o empenho trava a ficha, o contrato
+   * (se houver) e SÓ ENTÃO a ordem, antes de somar o empenhado contra ela. Dois empenhos
+   * concorrentes numa ordem GLOBAL/ESTIMATIVA leriam o mesmo residual e os dois
+   * passariam. Nenhum caminho trava a ordem e depois volta para a ficha ou o contrato.
+   */
+  OrdemDeCompra: 6,
+  Liquidacao: 7,
+  InscricaoRestosAPagar: 8,
+  DividaConsolidada: 9,
   /**
    * M04 — O RECONHECIMENTO (TR 5.87). Vem ANTES da dívida ativa porque o caminho natural é
    * reconhecer → arrecadar/inscrever: a arrecadação vinculada e a RECLASSIFICAÇÃO em dívida
@@ -126,12 +133,12 @@ export const ORDEM_DOS_LOCKS = {
    * trava o reconhecimento e SÓ ENTÃO move o crédito para a dívida ativa. Nenhum caminho sobe
    * a fila de volta (nada trava a dívida ativa e depois decide sobre o reconhecimento).
    */
-  ReceitaReconhecida: 9,
-  DividaAtiva: 10,
+  ReceitaReconhecida: 10,
+  DividaAtiva: 11,
   /** M10 — o almoxarifado. A ENTRADA decide sobre a LIQUIDAÇÃO primeiro. */
-  ClasseDeMaterial: 11,
+  ClasseDeMaterial: 12,
   /** M10 — as provisões. Ninguém as trava antes de nada. */
-  ProvisaoMatematica: 12,
+  ProvisaoMatematica: 13,
   /**
    * M21 — A SEQUÊNCIA DO PROTOCOLO (ENT02). Último posto: a abertura de processo não
    * trava mais nada depois dele, e nada trava um processo antes de decidir sobre a
@@ -146,7 +153,7 @@ export const ORDEM_DOS_LOCKS = {
    * O trinco é sobre o EXERCÍCIO (a fila é por exercício), não sobre o processo: o
    * processo ainda não existe quando se decide o número dele.
    */
-  SequenciaDeProtocolo: 13,
+  SequenciaDeProtocolo: 14,
   /**
    * M23 — A SEQUÊNCIA DO COMUNICADO (ENT02). Mesma corrida do protocolo, num grão
    * diferente: a numeração é por (exercício, tipo, setor remetente), então o id
@@ -156,7 +163,7 @@ export const ORDEM_DOS_LOCKS = {
    * setor passaria pela mesma fila, e a Educação esperaria a Saúde para numerar um
    * documento que não disputa numeração nenhuma com ela.
    */
-  SequenciaDeComunicado: 14,
+  SequenciaDeComunicado: 15,
   /**
    * M27 — A SEQUÊNCIA DO CHAMADO DE SUPORTE (ENT02). Único no produto inteiro, e não
    * por entidade: quem atende olha uma fila só, e dois chamados "42" de entidades
@@ -165,7 +172,7 @@ export const ORDEM_DOS_LOCKS = {
    * ⚠️ A FILA É UMA SÓ, ENTÃO O TRINCO É UM SÓ. O id travado é a constante abaixo —
    * não há eixo por onde repartir a fila sem repartir a numeração junto.
    */
-  SequenciaDeChamado: 15,
+  SequenciaDeChamado: 16,
   /**
    * M09 — A SEQUÊNCIA DO LOTE DE PAGAMENTO (ENT03). Último posto, e ele não sobe a fila:
    * compor um lote não decide sobre ficha, contrato nem liquidação — ele AGRUPA ordens que
@@ -179,7 +186,7 @@ export const ORDEM_DOS_LOCKS = {
    * O trinco é sobre o EXERCÍCIO (a fila é por exercício), não sobre o lote: o lote ainda
    * não existe quando se decide o número dele.
    */
-  SequenciaDeLoteDePagamento: 16,
+  SequenciaDeLoteDePagamento: 17,
   /**
    * M09 — A CONTA BANCÁRIA (ENT03a, TR 5.62). Último posto, e ele não sobe a fila.
    *
@@ -193,7 +200,7 @@ export const ORDEM_DOS_LOCKS = {
    * precisava antes. O pagamento trava a liquidação (6) e o resto a pagar (7) e só
    * então toca o caixa; nenhum caminho trava a conta e depois decide sobre uma ficha.
    */
-  ContaBancaria: 17,
+  ContaBancaria: 18,
   /**
    * ⚠️ ENT03b — OS TRÊS CADASTROS COM TETO PRÓPRIO. Postos 18, 19 e 20, e eles vêm DEPOIS
    * da conta bancária porque nenhum deles é tocado no caminho do pagamento.
@@ -215,9 +222,9 @@ export const ORDEM_DOS_LOCKS = {
    * trava dois deles na mesma transação. O que importa é que sejam TODOS depois de 17: um
    * pagamento de precatório trava a liquidação (6) e a conta (17) antes de chegar aqui.
    */
-  Convenio: 18,
-  Precatorio: 19,
-  ConsorcioPublico: 20,
+  Convenio: 19,
+  Precatorio: 20,
+  ConsorcioPublico: 21,
 
   /**
    * ENT05 — A POSIÇÃO FÍSICA DE ESTOQUE (material × depósito). ÚLTIMO POSTO, e ele não
@@ -229,7 +236,7 @@ export const ORDEM_DOS_LOCKS = {
    * estourou. É a lição da ficha (6fa5d4e), do contrato (e0e7e9f) e da dívida (8d71e2b),
    * num grão novo.
    *
-   * ⚠️ E ELE VEM DEPOIS DA `ClasseDeMaterial` (posto 11) DE PROPÓSITO: a saída física
+   * ⚠️ E ELE VEM DEPOIS DA `ClasseDeMaterial` (posto 12) DE PROPÓSITO: a saída física
    * compõe com o lançamento contábil, que trava a classe. Travar a posição ANTES faria a
    * chamada seguinte inverter a ordem — e o guard de ordem estouraria numa baixa de
    * cinco caixas de luva.
@@ -237,7 +244,7 @@ export const ORDEM_DOS_LOCKS = {
    * A chave é `materialId:depositoId`: travar o material inteiro serializaria depósitos
    * que não disputam nada entre si.
    */
-  PosicaoFisicaDeEstoque: 21,
+  PosicaoFisicaDeEstoque: 22,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

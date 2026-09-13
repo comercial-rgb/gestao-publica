@@ -6,6 +6,7 @@ import { RECURSOS_DOS_ROTEIROS } from "./roteiros.js";
 import { ESTRUTURA_DO_PPA, LEIS_DE_DIRETRIZES, PLANOS_PLURIANUAIS, PROGRAMAS_DO_PPA } from "./plurianual.js";
 import { CONTRATOS, PROCESSOS_LICITATORIOS } from "./contratacao.js";
 import { ORDENS_DE_COMPRA, PESQUISAS_DE_PRECOS, SOLICITACOES_DE_COMPRA } from "./compras.js";
+import { DOCUMENTOS_FISCAIS } from "./documentos-fiscais.js";
 
 /**
  * OS DESCRITORES DOS CADASTROS DO ENT03b — a prova do molde.
@@ -740,4 +741,5 @@ export const RECURSOS_DO_MOLDE: readonly DefinicaoDeRecurso[] = [
   SOLICITACOES_DE_COMPRA,
   PESQUISAS_DE_PRECOS,
   ORDENS_DE_COMPRA,
+  DOCUMENTOS_FISCAIS,
 ];

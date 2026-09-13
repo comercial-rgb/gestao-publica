@@ -77,7 +77,30 @@ export async function empenhadoLiquidoPorContrato(
   const empenhos = await prisma.empenho.findMany({
     where: {
       contratoId,
-      // Corte pela data do FATO (a emissão da nota de empenho).
+      ...(corte !== undefined ? { data: { lte: corte } } : {}),
+    },
+    select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true },
+  });
+
+  return somaLiquidaEstornaveis(
+    empenhos.map((e) => ({
+      id: e.id,
+      valor: toMoney(e.valor.toFixed(2)),
+      estornoDeId: e.estornoDeId,
+      anulacaoParcialDeId: e.anulacaoParcialDeId,
+    }))
+  );
+}
+
+/** V5 — o empenhado líquido da ORDEM DE COMPRA. A anulação tem de copiar `ordemDeCompraId`. */
+export async function empenhadoLiquidoPorOrdem(
+  prisma: Tx,
+  ordemDeCompraId: string,
+  corte?: Date
+): Promise<Money> {
+  const empenhos = await prisma.empenho.findMany({
+    where: {
+      ordemDeCompraId,
       ...(corte !== undefined ? { data: { lte: corte } } : {}),
     },
     select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true },

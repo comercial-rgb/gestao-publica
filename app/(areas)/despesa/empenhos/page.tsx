@@ -122,6 +122,8 @@ export default async function EmpenhosPage({
         }))}
         contratos={vinculos.contratos}
         reservas={vinculos.reservas}
+        ordens={vinculos.ordens}
+        ordemPadrao={typeof sp["ordemId"] === "string" ? sp["ordemId"] : ""}
       />
 
       {empenhos.length === 0 ? (

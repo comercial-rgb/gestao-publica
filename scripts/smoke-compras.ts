@@ -2,12 +2,14 @@ import "dotenv/config";
 import puppeteer, { type Browser, type Page } from "puppeteer";
 
 /**
- * SMOKE DAS COMPRAS (M11, V4 §8 — Fila A) — navegador real contra o servidor.
+ * SMOKE DAS COMPRAS (M11, V4 §8 e V5 Fila A) — navegador real contra o servidor.
  *
  * O percurso de quem compra: registra a solicitação com um item (ilha com linhas), autoriza pelo
  * detalhe (e vê a segunda autorização recusada), registra a pesquisa de preços com cotação (a
- * média aparece derivada no detalhe), emite a ordem de compra com um item, recebe PARTE pelo
- * detalhe (o pendente derivado cai) e vê o estorno da ordem recebida recusado nomeando.
+ * média aparece derivada no detalhe), emite a ordem de compra com um item, registra o documento
+ * fiscal recebido com duas linhas, recusa a duplicidade, confere, baixa os PDFs (espelho da ordem
+ * e conferência da nota, sem validade fiscal), recebe PARTE pelo detalhe apontando para a nota
+ * (o pendente derivado cai) e vê o estorno da ordem recebida recusado nomeando.
  *
  * ⚠️ ELE NÃO LIMPA O BANCO: números levam o sufixo do instante.
  */
@@ -324,9 +326,76 @@ async function main(): Promise<void> {
     const hrefOrdem = await hrefDoRegistro(page, `OC-${SUF}`);
     conferir("ordem: RECARREGADA, a lista traz total 125,00 A RECEBER", hrefOrdem !== null && listaOrdem.includes("a receber") && (listaOrdem.includes("125,00") || listaOrdem.includes("125.00")), listaOrdem.slice(0, 300));
     if (hrefOrdem === null) throw new Error("sem ordem para seguir");
+    const detAntes = await irPara(page, hrefOrdem);
+    conferir("ordem: o detalhe oferece empenhar, espelho em PDF e registrar documento fiscal", detAntes.includes("empenhar esta ordem") && detAntes.includes("emitir espelho") && detAntes.includes("registrar documento fiscal"), detAntes.slice(0, 500));
+    const pdfOrdem = await textoDoPdf(page, `${BASE}/licitacoes/ordens-de-compra/espelho?id=${hrefOrdem.split("/").pop() ?? ""}`);
+    conferir("ordem: PDF do espelho traz o número e 'sem validade fiscal'", pdfOrdem.toLowerCase().includes(`oc-${SUF}`.toLowerCase()) && pdfOrdem.toLowerCase().includes("sem validade fiscal"), pdfOrdem.slice(0, 400));
+
+    // ── 4. o documento fiscal recebido (duas linhas) e a conferência ──
+    await irPara(page, "/licitacoes/documentos-fiscais");
+    const ordemDf = await opcaoQueCasa(page, 'form[data-acao="registrar-documento-fiscal"] select[name="ordemId"]', `OC-${SUF}`);
+    conferir("documento fiscal: a ilha oferece o emitente da ordem e a ordem recém-emitida", fornecedorO !== null && ordemDf !== null, `emitente=${fornecedorO?.rotulo ?? "nenhum"} ordem=${ordemDf?.rotulo ?? "nenhuma"}`);
+    const rDoc = await preencherEEnviar(page, "registrar-documento-fiscal", [
+      ...(fornecedorO === null ? [] : [{ sel: 'select[name="emitenteId"]', valor: fornecedorO.valor, tipo: "select" as const }]),
+      { sel: 'input[name="serie"]', valor: "1" },
+      { sel: 'input[name="numero"]', valor: `DF-${SUF}` },
+      { sel: 'input[name="dataEmissao"]', valor: "2026-05-11", tipo: "data" },
+      { sel: 'input[name="dataRecebimento"]', valor: "2026-05-12", tipo: "data" },
+      ...(ordemDf === null ? [] : [{ sel: 'select[name="ordemId"]', valor: ordemDf.valor, tipo: "select" as const }]),
+      { sel: 'input[name="valorBruto"]', valor: "125,00" },
+      { sel: 'input[name="valorTotal"]', valor: "125,00" },
+      { sel: 'input[name="itens.0.descricao"]', valor: "Resma de papel A4" },
+      { sel: 'input[name="itens.0.unidade"]', valor: "UN" },
+      { sel: 'input[name="itens.0.quantidade"]', valor: "8" },
+      { sel: 'input[name="itens.0.valorUnitario"]', valor: "12,50" },
+      { sel: 'input[name="itens.0.valorTotal"]', valor: "100,00" },
+      { sel: 'input[name="itens.1.descricao"]', valor: "Toner" },
+      { sel: 'input[name="itens.1.unidade"]', valor: "UN" },
+      { sel: 'input[name="itens.1.quantidade"]', valor: "2" },
+      { sel: 'input[name="itens.1.valorUnitario"]', valor: "12,50" },
+      { sel: 'input[name="itens.1.valorTotal"]', valor: "25,00" },
+    ]);
+    conferir("documento fiscal: registrado com 2 itens, sem liquidar", rDoc.tipo === "ok" && /aguardando conferência/i.test(rDoc.texto) && /não produz/i.test(rDoc.texto), rDoc.texto);
+    await irPara(page, "/licitacoes/documentos-fiscais");
+    const rDup = await preencherEEnviar(page, "registrar-documento-fiscal", [
+      ...(fornecedorO === null ? [] : [{ sel: 'select[name="emitenteId"]', valor: fornecedorO.valor, tipo: "select" as const }]),
+      { sel: 'input[name="serie"]', valor: "1" },
+      { sel: 'input[name="numero"]', valor: `DF-${SUF}` },
+      { sel: 'input[name="dataEmissao"]', valor: "2026-05-11", tipo: "data" },
+      { sel: 'input[name="dataRecebimento"]', valor: "2026-05-12", tipo: "data" },
+      { sel: 'input[name="valorBruto"]', valor: "125,00" },
+      { sel: 'input[name="valorTotal"]', valor: "125,00" },
+      { sel: 'input[name="itens.0.descricao"]', valor: "Resma de papel A4" },
+      { sel: 'input[name="itens.0.unidade"]', valor: "UN" },
+      { sel: 'input[name="itens.0.quantidade"]', valor: "8" },
+      { sel: 'input[name="itens.0.valorUnitario"]', valor: "12,50" },
+      { sel: 'input[name="itens.0.valorTotal"]', valor: "100,00" },
+      { sel: 'input[name="itens.1.descricao"]', valor: "Toner" },
+      { sel: 'input[name="itens.1.unidade"]', valor: "UN" },
+      { sel: 'input[name="itens.1.quantidade"]', valor: "2" },
+      { sel: 'input[name="itens.1.valorUnitario"]', valor: "12,50" },
+      { sel: 'input[name="itens.1.valorTotal"]', valor: "25,00" },
+    ]);
+    conferir("documento fiscal: duplicidade da chave natural é recusada nomeando", rDup.tipo === "erro" && /já existe/i.test(rDup.texto), rDup.texto);
+    await irPara(page, `/licitacoes/documentos-fiscais?q=DF-${SUF}`);
+    const hrefDoc = await hrefDoRegistro(page, `DF-${SUF}`);
+    conferir("documento fiscal: RECARREGADO na lista como REGISTRADO", hrefDoc !== null && (await texto(page)).includes("registrado"), hrefDoc ?? "sem link");
+    if (hrefDoc === null) throw new Error("sem documento fiscal para seguir");
+    await irPara(page, hrefDoc);
+    const rConf = await preencherEEnviar(page, "conferir", [
+      { sel: 'input[name="data"]', valor: "2026-05-13", tipo: "data" },
+      { sel: 'input[name="motivo"]', valor: "Conferência com a origem (percurso)" },
+    ]);
+    conferir("documento fiscal: conferido contra a origem", rConf.tipo === "ok", rConf.texto);
+    const idDoc = hrefDoc.split("/").pop() ?? "";
+    const pdfDoc = await textoDoPdf(page, `${BASE}/licitacoes/documentos-fiscais/conferencia?id=${idDoc}`);
+    conferir("documento fiscal: PDF de conferência traz o número e declara ausência de validade fiscal", pdfDoc.toLowerCase().includes(`df-${SUF}`.toLowerCase()) && pdfDoc.toLowerCase().includes("sem validade fiscal") && !/tr\s*\d/i.test(pdfDoc), pdfDoc.slice(0, 400));
+
     await irPara(page, hrefOrdem);
     const itemOrdem = await primeiraOpcao(page, 'form[data-acao="receber-ordem"] select[name="itens.0.itemDeOrdemId"]');
     conferir("ordem: a ilha de recebimento oferece o item pendente (10.0000)", itemOrdem !== null && itemOrdem.rotulo.includes("10.0000"), itemOrdem?.rotulo ?? "nenhum");
+    const docRec = await primeiraOpcao(page, 'form[data-acao="receber-ordem"] select[name="documentoFiscalId"]');
+    conferir("ordem: o recebimento oferece o documento conferido", docRec !== null && /df-/i.test(docRec.rotulo), docRec?.rotulo ?? "nenhum");
     const rRecAcima = await preencherEEnviar(page, "receber-ordem", [
       { sel: 'input[name="data"]', valor: "2026-05-12", tipo: "data" },
       { sel: 'input[name="responsavelRecebimento"]', valor: "Almoxarife (percurso)" },
@@ -339,6 +408,7 @@ async function main(): Promise<void> {
       { sel: 'input[name="data"]', valor: "2026-05-12", tipo: "data" },
       { sel: 'input[name="notaFiscal"]', valor: `NF-${SUF}` },
       { sel: 'input[name="responsavelRecebimento"]', valor: "Almoxarife (percurso)" },
+      ...(docRec === null ? [] : [{ sel: 'select[name="documentoFiscalId"]', valor: docRec.valor, tipo: "select" as const }]),
       ...(itemOrdem === null ? [] : [{ sel: 'select[name="itens.0.itemDeOrdemId"]', valor: itemOrdem.valor, tipo: "select" as const }]),
       { sel: 'input[name="itens.0.quantidade"]', valor: "4" },
     ]);

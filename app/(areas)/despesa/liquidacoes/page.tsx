@@ -29,6 +29,7 @@ import { BotaoPdf } from "../../../../components/ui/BotaoPdf";
 import { paraCsv } from "../../../../lib/csv/csv";
 import { formatarMoeda } from "../../../../lib/format/moeda";
 import { FormLiquidacao, type EmpenhoLiquidavel } from "./FormLiquidacao";
+import { documentosConferidosParaLiquidar } from "../../../../lib/portas/recursos/documentos-fiscais-dados";
 
 /**
  * LIQUIDAÇÕES — o marco de exigibilidade (art. 141, caput), com o empenho de origem.
@@ -54,9 +55,10 @@ export default async function LiquidacoesPage({
   let liquidacoes: readonly LiquidacaoDaTela[];
   let liquidaveis: readonly EmpenhoLiquidavel[];
   let opcoesDeMaterial: OpcoesDasEntradasDeMaterial;
+  let documentos: readonly { readonly id: string; readonly rotulo: string }[];
   try {
     recorte = await recorteDePagina(sp, "CONSULTAR_DESPESA");
-    const [lista, empenhos, opcoes] = await Promise.all([
+    const [lista, empenhos, opcoes, docs] = await Promise.all([
       listarLiquidacoesDaExecucao({
         exercicio: recorte.exercicio,
         unidadeCodigo: recorte.unidadeCodigo,
@@ -66,9 +68,11 @@ export default async function LiquidacoesPage({
         unidadeCodigo: recorte.unidadeCodigo,
       }),
       opcoesDasEntradasDeMaterial(),
+      documentosConferidosParaLiquidar(),
     ]);
     liquidacoes = lista;
     opcoesDeMaterial = opcoes;
+    documentos = docs;
     // Só o que ainda tem o que liquidar — e o anulado sai fora: não há saldo num fato
     // que deixou de valer.
     liquidaveis = empenhos
@@ -122,7 +126,7 @@ export default async function LiquidacoesPage({
         patrimonial e é tratada no módulo de almoxarifado.
       </div>
 
-      <FormLiquidacao empenhos={liquidaveis} opcoesDeMaterial={opcoesDeMaterial} />
+      <FormLiquidacao empenhos={liquidaveis} opcoesDeMaterial={opcoesDeMaterial} documentos={documentos} />
 
       {liquidacoes.length === 0 ? (
         <EstadoVazio

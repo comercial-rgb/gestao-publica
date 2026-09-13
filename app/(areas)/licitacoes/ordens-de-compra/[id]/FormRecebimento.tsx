@@ -21,7 +21,15 @@ export interface OpcaoDaIlha {
  * ⚠️ LINHAS `itens.N.*`: a ilha oferece uma linha a mais; a vazia é ignorada no servidor. Quem valida
  * (material obrigatório, quantidade > 0, item repetido, saldo) é o domínio, e a recusa sobe como veio.
  */
-export function FormRecebimento({ ordemId, itensDaOrdem }: { readonly ordemId: string; readonly itensDaOrdem: readonly (OpcaoDaIlha & { readonly pendente: string })[] }): React.ReactElement {
+export function FormRecebimento({
+  ordemId,
+  itensDaOrdem,
+  documentos = [],
+}: {
+  readonly ordemId: string;
+  readonly itensDaOrdem: readonly (OpcaoDaIlha & { readonly pendente: string })[];
+  readonly documentos?: readonly OpcaoDaIlha[];
+}): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaOrdem, FormData>(receberOrdemAction, {});
   const ref = useRef<HTMLFormElement>(null);
   const [linhas, setLinhas] = useState<number>(1);
@@ -39,6 +47,15 @@ export function FormRecebimento({ ordemId, itensDaOrdem }: { readonly ordemId: s
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Nota fiscal (opcional)</span>
           <input name="notaFiscal" placeholder="NF 1234" className={CAMPO} />
+        </label>
+        <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
+          <span className={ROTULO}>Documento fiscal recebido (opcional)</span>
+          <select name="documentoFiscalId" defaultValue="" className={CAMPO}>
+            <option value="">— sem documento fiscal —</option>
+            {documentos.map((o) => (
+              <option key={o.id} value={o.id}>{o.rotulo}</option>
+            ))}
+          </select>
         </label>
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Responsável pelo recebimento</span>

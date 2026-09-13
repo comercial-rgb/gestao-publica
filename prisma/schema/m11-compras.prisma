@@ -275,6 +275,9 @@ model OrdemDeCompra {
 
   itens        ItemDeOrdemDeCompra[]
   recebimentos RecebimentoDeOrdem[]
+  /// V5 — os documentos fiscais que declararam esta ordem na origem; o empenho que nasceu dela.
+  documentosFiscais DocumentoFiscalRecebido[]
+  empenhos          Empenho[]
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -300,6 +303,7 @@ model ItemDeOrdemDeCompra {
   /// ⚠️ NÃO EXISTE `quantidadeRecebida`. O recebido é Σ dos recebimentos que apontam
   /// para este item — decisão D5, e é onde uma coluna derraparia no primeiro estorno.
   recebimentos RecebimentoDeItem[]
+  itensDeDocumentoFiscal ItemDeDocumentoFiscal[]
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -324,8 +328,12 @@ model RecebimentoDeOrdem {
   data DateTime
 
   /// A nota fiscal que acompanhou (TR 5.18.7 — "entradas por meio de informações de
-  /// notas fiscais").
+  /// notas fiscais"). Texto de apoio; a identidade é `documentoFiscalId` quando houver.
   notaFiscal String?
+
+  /// V5 — o documento fiscal recebido. Registrar a nota NÃO gera estoque nem liquidação.
+  documentoFiscalId String?
+  documentoFiscal   DocumentoFiscalRecebido? @relation(fields: [documentoFiscalId], references: [id])
 
   responsavelRecebimento String
 
@@ -335,6 +343,7 @@ model RecebimentoDeOrdem {
   criadoPor String
 
   @@index([ordemId, data])
+  @@index([documentoFiscalId])
 }
 
 model RecebimentoDeItem {
@@ -361,4 +370,146 @@ model RecebimentoDeItem {
   @@index([recebimentoId])
   @@index([itemDeOrdemId])
   @@index([movimentoFisicoId])
+}
+
+// ----------------------------------------------------------------------------
+// DocumentoFiscalRecebido — V5 Fila A. A nota do fornecedor é um FATO, não um texto
+// no recebimento. Registrar NÃO produz estoque, liquidação nem pagamento. Situação e
+// saldo a atestar/liquidar são DERIVADOS dos movimentos, recebimentos e liquidações.
+// ----------------------------------------------------------------------------
+
+enum ModeloDeDocumentoFiscal {
+  NFE
+  NFCE
+  NF_AVULSA
+  CTE
+  RPS
+  RECIBO
+  OUTRO
+}
+
+enum OrigemDoDocumentoFiscal {
+  DIGITACAO
+  XML
+}
+
+enum TipoMovimentoDoDocumentoFiscal {
+  CONFERENCIA
+  CANCELAMENTO
+  SUBSTITUICAO
+}
+
+model DocumentoFiscalRecebido {
+  id String @id @default(cuid())
+
+  emitenteId String
+  emitente   Pessoa @relation("EmitenteDoDocumentoFiscal", fields: [emitenteId], references: [id])
+
+  modelo ModeloDeDocumentoFiscal
+  serie  String @db.VarChar(12)
+  numero String @db.VarChar(20)
+
+  /// ⚠️ DATAS CIVIS. Emissão é do documento; recebimento é o ingresso no ente.
+  dataEmissao     DateTime
+  dataRecebimento DateTime
+
+  /// Chave de acesso (44 dígitos) quando o modelo a tem. NÃO é autorização da SEFAZ.
+  /// Unicidade quando preenchida: prisma/sql/uq_documento_fiscal_chave.sql.
+  chaveAcesso String? @db.VarChar(44)
+  protocoloExterno String?
+
+  ordemId String?
+  ordem   OrdemDeCompra? @relation(fields: [ordemId], references: [id])
+
+  contratoId String?
+  contrato   Contrato? @relation("DocumentoFiscalDoContrato", fields: [contratoId], references: [id])
+
+  empenhoId String?
+  empenho   Empenho? @relation("DocumentoFiscalDoEmpenho", fields: [empenhoId], references: [id])
+
+  processoId String?
+  processo   ProcessoLicitatorio? @relation("DocumentoFiscalDoProcesso", fields: [processoId], references: [id])
+
+  valorBruto      Decimal @db.Decimal(18, 2)
+  valorDescontos  Decimal @default(0) @db.Decimal(18, 2)
+  valorAcrescimos Decimal @default(0) @db.Decimal(18, 2)
+  valorTributos   Decimal @default(0) @db.Decimal(18, 2)
+  valorTotal      Decimal @db.Decimal(18, 2)
+
+  origem OrigemDoDocumentoFiscal
+
+  /// SHA-256 do arquivo original (XML/PDF). Complementa a identidade; não a substitui.
+  /// Unicidade quando preenchido: prisma/sql/uq_documento_fiscal_arquivo_hash.sql.
+  arquivoHash String? @db.VarChar(64)
+  arquivoNome String?
+
+  /// Resultado da validação ESTRUTURAL local. Consulta externa e aceitação do órgão
+  /// são outros estados — este campo não os afirma.
+  validacaoEstrutural String?
+
+  substituiId String?
+  substitui   DocumentoFiscalRecebido?  @relation("SubstituicaoFiscal", fields: [substituiId], references: [id])
+  substitutos DocumentoFiscalRecebido[] @relation("SubstituicaoFiscal")
+
+  itens           ItemDeDocumentoFiscal[]
+  movimentos      MovimentoDoDocumentoFiscal[]
+  recebimentos    RecebimentoDeOrdem[]
+  liquidacoes     Liquidacao[]
+  anexos          Anexo[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([emitenteId, modelo, serie, numero])
+  @@index([chaveAcesso])
+  @@index([ordemId])
+  @@index([contratoId])
+  @@index([empenhoId])
+  @@index([processoId])
+  @@index([dataRecebimento])
+}
+
+model ItemDeDocumentoFiscal {
+  id String @id @default(cuid())
+
+  documentoId String
+  documento   DocumentoFiscalRecebido @relation(fields: [documentoId], references: [id])
+
+  materialId String?
+  material   Material? @relation("ItemDeDocumentoFiscal", fields: [materialId], references: [id])
+
+  itemDeOrdemId String?
+  itemDeOrdem   ItemDeOrdemDeCompra? @relation(fields: [itemDeOrdemId], references: [id])
+
+  codigo        String?
+  descricao     String
+  unidade       String
+  quantidade    Decimal @db.Decimal(18, 4)
+  valorUnitario Decimal @db.Decimal(18, 6)
+  desconto      Decimal @default(0) @db.Decimal(18, 2)
+  acrescimo     Decimal @default(0) @db.Decimal(18, 2)
+  valorTotal    Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([documentoId])
+  @@index([materialId])
+  @@index([itemDeOrdemId])
+}
+
+model MovimentoDoDocumentoFiscal {
+  id String @id @default(cuid())
+
+  documentoId String
+  documento   DocumentoFiscalRecebido @relation(fields: [documentoId], references: [id])
+
+  tipo   TipoMovimentoDoDocumentoFiscal
+  data   DateTime
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([documentoId, tipo])
 }

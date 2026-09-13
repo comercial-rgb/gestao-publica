@@ -238,6 +238,18 @@ function Origem({ dossie: d }: { readonly dossie: DossieDaTela }): React.ReactEl
             ? "— (empenho sem contrato)"
             : `${o.contratoNumero}${o.contratadoNome === null ? "" : ` — ${o.contratadoNome}`}`}
         </Campo>
+        <Campo rotulo="Ordem de compra">
+          {o.ordemDeCompraId === null || o.ordemDeCompraNumero === null
+            ? "— (empenho sem ordem)"
+            : (
+              <Link
+                href={`/licitacoes/ordens-de-compra/${o.ordemDeCompraId}`}
+                className="text-[color:var(--color-primary)] hover:underline"
+              >
+                {o.ordemDeCompraNumero}
+              </Link>
+            )}
+        </Campo>
         {o.obraDescricao === null ? null : (
           <Campo rotulo="Obra">{o.obraDescricao}</Campo>
         )}

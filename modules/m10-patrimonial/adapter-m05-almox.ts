@@ -61,7 +61,7 @@ export function criarAoLiquidarMaterialPortPrisma(): AoLiquidarMaterialPort {
         );
       }
 
-      // A LIQUIDAÇÃO É TRAVADA UMA VEZ (posto 6), antes de qualquer classe (posto 11) — a ordem dos locks.
+      // A LIQUIDAÇÃO É TRAVADA UMA VEZ (posto 7), antes de qualquer classe (posto 12) — a ordem dos locks.
       await travar(tx, "Liquidacao", [p.liquidacaoId]);
       for (const e of p.entradas) {
         const { movimentoId } = await registrarEntradaAlmoxarifadoNaTx(

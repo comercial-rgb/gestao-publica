@@ -205,6 +205,9 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   EMITIR_ORDEM_DE_COMPRA: "licitacoes",
   REGISTRAR_RECEBIMENTO_DE_ORDEM: "licitacoes",
   ESTORNAR_ORDEM_DE_COMPRA: "licitacoes",
+  REGISTRAR_DOCUMENTO_FISCAL: "licitacoes",
+  CONFERIR_DOCUMENTO_FISCAL: "licitacoes",
+  CANCELAR_DOCUMENTO_FISCAL: "licitacoes",
   // M10 — patrimônio
   ADQUIRIR_BEM: "patrimonio",
   REGISTRAR_ENTRADA_AVULSA: "patrimonio",

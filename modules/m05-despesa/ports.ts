@@ -60,6 +60,8 @@ export interface EmpenharParams {
   readonly subelementoId?: string | undefined;
   /** M11 — o contrato que esta despesa executa. A anulação o COPIA. */
   readonly contratoId?: string | undefined;
+  /** V5 — a ordem de compra da qual este empenho nasce. A anulação a COPIA. */
+  readonly ordemDeCompraId?: string | undefined;
   /** M11/M10 (TR 4.49) — a classe de bens que o empenho de capital vai adquirir. */
   readonly classeDeBensId?: string | undefined;
   /** M10 (TR 4.48) — a dívida que este empenho amortiza. */
@@ -274,6 +276,8 @@ export interface LiquidarParams {
   readonly notaFiscalSerie?: string | undefined;
   readonly notaFiscalData?: Date | undefined;
   readonly notaFiscalValor?: Money | undefined;
+  /** V5 — o documento fiscal recebido que lastreia esta liquidação. A anulação o COPIA. */
+  readonly documentoFiscalId?: string | undefined;
   /** M11 (ENT03b) — a medição aprovada, quando o empenho tem obra. Ver `zLiquidarInput`. */
   readonly medicaoId?: string | undefined;
   /**

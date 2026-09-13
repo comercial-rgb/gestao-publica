@@ -213,6 +213,9 @@ export type AcaoDoSistema =
   | "EMITIR_ORDEM_DE_COMPRA"
   | "REGISTRAR_RECEBIMENTO_DE_ORDEM"
   | "ESTORNAR_ORDEM_DE_COMPRA"
+  | "REGISTRAR_DOCUMENTO_FISCAL"
+  | "CONFERIR_DOCUMENTO_FISCAL"
+  | "CANCELAR_DOCUMENTO_FISCAL"
   // ── M10 — patrimônio ──
   | "ADQUIRIR_BEM"
   | "REGISTRAR_ENTRADA_AVULSA"
@@ -606,6 +609,10 @@ export type NomeDeServico =
   | "emitirOrdemDeCompra"
   | "registrarRecebimentoDeOrdem"
   | "estornarOrdemDeCompra"
+  | "registrarDocumentoFiscal"
+  | "importarDocumentoFiscalDeXml"
+  | "conferirDocumentoFiscal"
+  | "cancelarDocumentoFiscal"
   | "cadastrarDivida"
   | "registrarAtualizacaoMonetaria"
   | "estornarMovimentoDivida"
@@ -939,6 +946,10 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   emitirOrdemDeCompra: "EMITIR_ORDEM_DE_COMPRA",
   registrarRecebimentoDeOrdem: "REGISTRAR_RECEBIMENTO_DE_ORDEM",
   estornarOrdemDeCompra: "ESTORNAR_ORDEM_DE_COMPRA",
+  registrarDocumentoFiscal: "REGISTRAR_DOCUMENTO_FISCAL",
+  importarDocumentoFiscalDeXml: "REGISTRAR_DOCUMENTO_FISCAL",
+  conferirDocumentoFiscal: "CONFERIR_DOCUMENTO_FISCAL",
+  cancelarDocumentoFiscal: "CANCELAR_DOCUMENTO_FISCAL",
 
   cadastrarDivida: "CADASTRAR_DIVIDA",
   registrarAtualizacaoMonetaria: "REGISTRAR_ATUALIZACAO_MONETARIA",
@@ -1190,7 +1201,10 @@ export const FORA_DO_CENSO: Record<string, string> = {
   // serviço público) ou `registrarSaidaFisica` (o do eixo físico), cada um a sua.
   estatisticasDaPesquisa: "leitura derivada (médio/mínimo/máximo das cotações, TR 5.17.48)",
   saldoDaOrdemDeCompra: "leitura derivada (quantidade − Σ recebido, TR 5.17.105)",
+  empenhadoLiquidoPorOrdem: "leitura derivada (Σ empenhos vivos da ordem, anulação copiando a FK)",
   situacaoDaSolicitacao: "leitura derivada dos movimentos (TR 5.17.52)",
+  situacaoDoDocumentoFiscal: "leitura derivada dos movimentos (conferência/cancelamento/substituição)",
+  saldoDoDocumentoFiscal: "leitura derivada (total − Σ liquidações vivas)",
   saldoDaConta: "leitura derivada (Σ das partidas com o sinal da natureza)",
   estadoDoBem: "leitura derivada (último movimento de cada eixo até uma data civil)",
   bensSobResponsabilidade: "leitura derivada (TR 5.19.10)",

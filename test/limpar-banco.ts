@@ -109,6 +109,9 @@ const TABELAS = [
   "LinhaDemonstrativo",
   // M10 — almoxarifado e provisões
   // ── ENT05 — M11 A COMPRA (TR 5.17) ──
+  "MovimentoDoDocumentoFiscal",
+  "ItemDeDocumentoFiscal",
+  "DocumentoFiscalRecebido",
   "RecebimentoDeItem",
   "RecebimentoDeOrdem",
   "ItemDeOrdemDeCompra",

@@ -162,6 +162,9 @@ export async function empenhar(
       ...(dados.contratoId !== undefined
         ? { contratoId: dados.contratoId }
         : {}),
+      ...(dados.ordemDeCompraId !== undefined
+        ? { ordemDeCompraId: dados.ordemDeCompraId }
+        : {}),
       ...(dados.classeDeBensId !== undefined
         ? { classeDeBensId: dados.classeDeBensId }
         : {}),

@@ -46,13 +46,16 @@ export async function receberOrdemAction(_prev: EstadoDaOrdem, formData: FormDat
     if (ordemId === "") return { erro: "Ordem não identificada. Nada foi gravado." };
     const itens = linhasDoFormulario(formData, "itens", ["itemDeOrdemId", "quantidade"]).map((l) => ({ itemDeOrdemId: l["itemDeOrdemId"] ?? "", quantidade: l["quantidade"] ?? "" }));
     try {
-      await receberOrdem(ordemId, campos, itens);
+      const r = await receberOrdem(ordemId, campos, itens);
+      revalidatePath(ORDENS_DE_COMPRA.rota);
+      revalidatePath(`${ORDENS_DE_COMPRA.rota}/${ordemId}`);
+      revalidatePath("/licitacoes/documentos-fiscais");
+      return {
+        sucesso: `Recebimento registrado: ${r.itens} item(ns). Restam R$ ${r.pendenteValor} a receber nesta ordem.`,
+      };
     } catch (e) {
       return { erro: mensagemDoErro(e, "Não foi possível registrar o recebimento. Nada foi gravado.") };
     }
-    revalidatePath(ORDENS_DE_COMPRA.rota);
-    revalidatePath(`${ORDENS_DE_COMPRA.rota}/${ordemId}`);
-    return { sucesso: `Recebimento registrado com ${itens.length} item(ns).` };
   });
 }
 

@@ -161,10 +161,14 @@ decidida pelo M05 na transação. Percurso: `scripts/smoke-contratacao.ts`.
   compra têm tela; a criação é de ilhas com linhas de item (`itens.N.*`), o recebimento é ilha no
   detalhe da ordem, a lista e as ações são do molde (`lib/portas/recursos/compras.ts`,
   `compras-dados.ts`; `scripts/smoke-compras.ts` 20/20).
-- `EMPENHO-A-PARTIR-DA-ORDEM` — o empenho não aponta para a ordem (o vínculo empenho × ordem já era
-  pendência declarada); `SOLICITACAO-SEM-VINCULO-COM-A-ORDEM` — a ordem não aponta para a solicitação.
-- `NOTA-FISCAL-RECEBIDA` — não há modelo de documento fiscal recebido (fornecedor, itens,
-  duplicidade, anexos); a liquidação registra a nota como texto.
+- ~~`EMPENHO-A-PARTIR-DA-ORDEM`~~ — **fechada (V5):** `Empenho.ordemDeCompraId`; a anulação copia
+  a FK; ordinária empenha o total da ordem; global/estimativa o residual. Estorno da ordem recusa
+  empenho vivo. Tela: select na emissão do empenho e "Empenhar esta ordem" no detalhe.
+- `SOLICITACAO-SEM-VINCULO-COM-A-ORDEM` — a ordem não aponta para a solicitação.
+- ~~`NOTA-FISCAL-RECEBIDA`~~ — **fechada (V5):** `DocumentoFiscalRecebido` com itens, conferência e
+  cancelamento como fatos, importação XML constrita (sem DTD), unicidade por emitente+modelo+série+número
+  e chave/hash parciais. Registrar **não** liquida nem dá entrada. Recebimento e liquidação apontam
+  para o documento. Telas em `/licitacoes/documentos-fiscais`.
 - `EXTRATO-DO-CONTRATO-PDF` — o extrato do contrato em PDF da origem não foi portado.
 - Reajuste/repactuação, rescisão e publicações do contrato: continuam fora (ver acima).
 
@@ -178,3 +182,5 @@ decidida pelo M05 na transação. Percurso: `scripts/smoke-contratacao.ts`.
 - `prisma/schema/m11-licitacoes.prisma`; `prisma/sql/uq_estorno_contratual_unico.sql`
   e `prisma/sql/ck_movimento_contratual_xor.sql` (⚠️ como todo SQL de `prisma/sql/`,
   precisam ser aplicados **também em dev/prod** — o Prisma não os expressa).
+- `documento-fiscal.ts`, `xml-nfe.ts`; `prisma/schema/m11-compras.prisma` (documento recebido);
+  `prisma/sql/uq_documento_fiscal_chave.sql`, `uq_documento_fiscal_arquivo_hash.sql`.

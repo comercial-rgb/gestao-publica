@@ -373,6 +373,8 @@ export async function verOrdem(id: string): Promise<(DetalheLido & { readonly it
       ficha: { select: { exercicio: true, numero: true } },
       itens: { orderBy: { criadoEm: "asc" }, select: { id: true, materialId: true, quantidade: true, valorUnitario: true, criadoEm: true, criadoPor: true, material: { select: { codigo: true, descricaoSucinta: true } } } },
       recebimentos: { orderBy: [{ data: "asc" }, { criadoEm: "asc" }], select: { id: true, data: true, notaFiscal: true, responsavelRecebimento: true, criadoEm: true, criadoPor: true, itens: { select: { quantidade: true, itemDeOrdem: { select: { material: { select: { codigo: true } } } } } } } },
+      empenhos: { where: { estornoDeId: null, anulacaoParcialDeId: null }, select: { id: true, numero: true, valor: true, data: true, criadoEm: true, criadoPor: true } },
+      documentosFiscais: { select: { id: true, numero: true, serie: true, dataRecebimento: true, criadoEm: true, criadoPor: true } },
     },
   });
   if (o === null) return null;
@@ -400,6 +402,27 @@ export async function verOrdem(id: string): Promise<(DetalheLido & { readonly it
       registradoEm: diaCivilBr(r.criadoEm),
       por: r.criadoPor,
       motivo: r.itens.map((x) => `${x.itemDeOrdem.material.codigo}: ${x.quantidade.toFixed(4)}`).join(" · "),
+    })),
+    ...o.empenhos.map((e) => ({
+      id: e.id,
+      oQue: `Empenho ${e.numero}`,
+      quando: diaCivilBr(e.data),
+      registradoEm: diaCivilBr(e.criadoEm),
+      por: e.criadoPor,
+      motivo: "Vínculo ordem → empenho",
+      valor: e.valor.toFixed(2),
+      href: `/despesa/empenhos/${e.id}`,
+      hrefRotulo: "abrir empenho",
+    })),
+    ...o.documentosFiscais.map((d) => ({
+      id: d.id,
+      oQue: `Documento fiscal ${d.numero}/${d.serie}`,
+      quando: diaCivilBr(d.dataRecebimento),
+      registradoEm: diaCivilBr(d.criadoEm),
+      por: d.criadoPor,
+      motivo: "Documento recebido vinculado a esta ordem",
+      href: `/licitacoes/documentos-fiscais/${d.id}`,
+      hrefRotulo: "abrir documento",
     })),
   ];
   return {
@@ -464,17 +487,21 @@ export interface ItemRecebidoLido {
   readonly quantidade: string;
 }
 
-export async function receberOrdem(ordemId: string, c: Campos, itens: readonly ItemRecebidoLido[]): Promise<void> {
+export async function receberOrdem(ordemId: string, c: Campos, itens: readonly ItemRecebidoLido[]): Promise<{ readonly itens: number; readonly pendenteValor: string }> {
   await comEscritaAutenticada("REGISTRAR_RECEBIMENTO_DE_ORDEM", (criadoPor) =>
     registrarRecebimentoDeOrdem(cliente(), {
       ordemId,
       data: dia(c, "data"),
       ...(t(c, "notaFiscal") !== "" ? { notaFiscal: t(c, "notaFiscal") } : {}),
+      ...(t(c, "documentoFiscalId") !== "" ? { documentoFiscalId: t(c, "documentoFiscalId") } : {}),
       responsavelRecebimento: t(c, "responsavelRecebimento"),
       itens: itens.map((i) => ({ itemDeOrdemId: i.itemDeOrdemId, quantidade: decimalDaTela(i.quantidade) })),
       criadoPor,
     })
   );
+  const saldos = await saldoDaOrdemDeCompra(cliente(), ordemId);
+  const pendente = saldos.reduce((s, x) => s.plus(x.valorPendente), toMoney("0"));
+  return { itens: itens.length, pendenteValor: pendente.toFixed(2) };
 }
 
 export async function acaoDaOrdem(acao: string, ordemId: string, c: Campos): Promise<void> {

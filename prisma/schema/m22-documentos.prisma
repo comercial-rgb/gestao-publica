@@ -146,6 +146,10 @@ model Anexo {
   termoPatrimonialId String?
   termoPatrimonial   TermoPatrimonial? @relation("AnexoDeTermoPatrimonial", fields: [termoPatrimonialId], references: [id])
 
+  /// V5 — o documento fiscal recebido (XML original, PDF, conferência).
+  documentoFiscalId String?
+  documentoFiscal   DocumentoFiscalRecebido? @relation(fields: [documentoFiscalId], references: [id])
+
   /// O relatório circunstanciado gerado a partir deste anexo (origem SISTEMA). Campo VIRTUAL.
   relatorioCircunstanciado RelatorioCircunstanciado? @relation("AnexoDoRelatorioCircunstanciado")
 
@@ -170,6 +174,7 @@ model Anexo {
   @@index([consorcioId])
   @@index([obraId])
   @@index([auditoriaId])
+  @@index([documentoFiscalId])
   @@index([sha256])
   /// back-relations ENT05 — termos de inventario de estoque. VIRTUAIS.
   termosAberturaInventarioEstoque   InventarioDeEstoque[] @relation("TermoAberturaInventarioEstoque")

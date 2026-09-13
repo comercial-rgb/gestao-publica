@@ -246,6 +246,49 @@ export function derivarPlanejamentoPlurianual(
   return saida;
 }
 
+/**
+ * A REGRA DA v6 (V5 Fila A): o documento fiscal recebido chegou com três ações.
+ * Quem já registra recebimento de ordem (o atesto físico) recebe registrar e conferir
+ * o documento, no mesmo escopo. Quem já estorna ordem recebe cancelar. A segregação
+ * quem emite a ordem × quem atesta o recebimento continua: emitir ordem não deriva
+ * estas ações.
+ */
+export function derivarDocumentoFiscalRecebido(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const jaTem = new Set(perfil.permissoes.map((p) => `${p.acao} ${p.unidadeOrcId ?? ""}`));
+    const escoposRecebimento = new Map<string, string | null>();
+    const escoposEstorno = new Map<string, string | null>();
+    for (const p of perfil.permissoes) {
+      if (p.acao === "REGISTRAR_RECEBIMENTO_DE_ORDEM") {
+        escoposRecebimento.set(p.unidadeOrcId ?? "", p.unidadeOrcId);
+      }
+      if (p.acao === "ESTORNAR_ORDEM_DE_COMPRA") {
+        escoposEstorno.set(p.unidadeOrcId ?? "", p.unidadeOrcId);
+      }
+    }
+    for (const unidadeOrcId of escoposRecebimento.values()) {
+      for (const acao of ["REGISTRAR_DOCUMENTO_FISCAL", "CONFERIR_DOCUMENTO_FISCAL"] as const) {
+        if (jaTem.has(`${acao} ${unidadeOrcId ?? ""}`)) continue;
+        saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId });
+      }
+    }
+    for (const unidadeOrcId of escoposEstorno.values()) {
+      if (jaTem.has(`CANCELAR_DOCUMENTO_FISCAL ${unidadeOrcId ?? ""}`)) continue;
+      saida.push({
+        perfilId: perfil.id,
+        perfilNome: perfil.nome,
+        acao: "CANCELAR_DOCUMENTO_FISCAL",
+        unidadeOrcId,
+      });
+    }
+  }
+  return saida;
+}
+
 export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
   {
     versao: 1,
@@ -290,6 +333,15 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "orcamentaria no escopo global recebe as dez, no escopo global; a segregacao fina fica a " +
       "cargo do administrador.",
     derivar: derivarPlanejamentoPlurianual,
+  },
+  {
+    versao: 6,
+    nome: "documento-fiscal-recebido",
+    descricao:
+      "O documento fiscal recebido (V5 Fila A) chegou com tres acoes. Quem ja registra " +
+      "recebimento de ordem recebe registrar e conferir o documento no mesmo escopo; quem ja " +
+      "estorna ordem recebe cancelar o documento no mesmo escopo.",
+    derivar: derivarDocumentoFiscalRecebido,
   },
 ];
 

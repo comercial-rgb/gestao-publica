@@ -49,12 +49,17 @@ export function FormEmpenho({
   fichas,
   contratos = [],
   reservas = [],
+  ordens = [],
+  ordemPadrao = "",
 }: {
   readonly fichas: readonly FichaParaEmpenho[];
   /** V4 (§8): contratos de processos homologados e vigentes — opcional no empenho. */
   readonly contratos?: readonly VinculoParaEmpenho[];
   /** V4 (§8): reservas de dotação vivas — opcional; a vinculada a licitação exige o contrato. */
   readonly reservas?: readonly VinculoParaEmpenho[];
+  /** V5: ordens de compra com ficha — o empenho nasce da ordem quando informado. */
+  readonly ordens?: readonly VinculoParaEmpenho[];
+  readonly ordemPadrao?: string;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoEmpenho, FormData>(
     empenharAction,
@@ -154,6 +159,16 @@ export function FormEmpenho({
         </label>
 
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
+          <span className={ROTULO}>Ordem de compra (opcional)</span>
+          <select name="ordemDeCompraId" defaultValue={ordemPadrao} className={CAMPO}>
+            <option value="">— sem ordem —</option>
+            {ordens.map((o) => (
+              <option key={o.id} value={o.id}>{o.rotulo}</option>
+            ))}
+          </select>
+        </label>
+
+        <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
           <span className={ROTULO}>Contrato (opcional)</span>
           {/* V4 (§8): o empenho informa o contrato do processo homologado; é ele que libera a reserva vinculada (TR 4.42). */}
           <select name="contratoId" defaultValue="" className={CAMPO}>
@@ -194,7 +209,7 @@ export function FormEmpenho({
         </p>
       ) : null}
       {estado.sucesso !== undefined ? (
-        <p className="mt-3 rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]">
+        <p role="status" className="mt-3 rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]">
           {estado.sucesso}
         </p>
       ) : null}

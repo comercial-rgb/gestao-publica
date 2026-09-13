@@ -211,6 +211,8 @@ export interface OrigemDoEmpenho {
   readonly saldoDisponivelHoje: Money;
   readonly contratoNumero: string | null;
   readonly contratadoNome: string | null;
+  readonly ordemDeCompraId: string | null;
+  readonly ordemDeCompraNumero: string | null;
   readonly obraDescricao: string | null;
 }
 
@@ -276,6 +278,7 @@ export async function dossieDoEmpenho(
       estornoDeId: true,
       anulacaoParcialDeId: true,
       contrato: { select: { numeroContrato: true, contratadoNome: true } },
+      ordemDeCompra: { select: { id: true, numero: true } },
       obra: { select: { descricao: true } },
       ficha: {
         select: {
@@ -560,6 +563,8 @@ export async function dossieDoEmpenho(
       saldoDisponivelHoje: toMoney(e.ficha.saldoDisponivel.toFixed(2)),
       contratoNumero: e.contrato?.numeroContrato ?? null,
       contratadoNome: e.contrato?.contratadoNome ?? null,
+      ordemDeCompraId: e.ordemDeCompra?.id ?? null,
+      ordemDeCompraNumero: e.ordemDeCompra?.numero ?? null,
       obraDescricao: e.obra?.descricao ?? null,
     },
     cadeia: cadeiaEmpenho,

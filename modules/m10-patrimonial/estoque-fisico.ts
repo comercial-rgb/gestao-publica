@@ -42,7 +42,7 @@ import {
  * `conferirAlmoxarifadoContraRazao` acusaria um defeito que ninguém cometeu.
  *
  * ═══ ⚠️ ORDEM DOS LOCKS ═══
- * `ClasseDeMaterial` (posto 11) SEMPRE antes de `PosicaoFisicaDeEstoque` (posto 21).
+ * `ClasseDeMaterial` (posto 12) SEMPRE antes de `PosicaoFisicaDeEstoque` (posto 22).
  * A inversão está documentada no cabeçalho de `registrarSaidaConsumoNaTx`.
  */
 
@@ -969,7 +969,7 @@ export async function registrarSaidaFisica(
 
     const mat = await exigirMaterial(tx, d.materialId);
 
-    // ⚠️ ORDEM: classe (posto 11) ANTES da posição física (posto 21). O composável
+    // ⚠️ ORDEM: classe (posto 12) ANTES da posição física (posto 22). O composável
     // contábil não trava — quem trava é este caso de uso. Ver almoxarifado.ts.
     await travar(tx, "ClasseDeMaterial", [mat.classeDeMaterialId]);
     await travar(tx, "PosicaoFisicaDeEstoque", [

@@ -17,7 +17,7 @@ no gate", vale o modo vigente.
 
 1. `CLAUDE.md` — as regras. Toda sessão o carrega sozinha.
 2. `ESTADO-EXECUCAO.md`, seção "O próximo passo" — onde paramos.
-3. `docs/lotes/<lote>.md` — o que o pedido vigente pede (hoje o V3).
+3. `docs/lotes/<lote>.md` — o que o pedido vigente pede (hoje o V5, `docs/lotes/V5-demonstracao-24h.md`).
 4. O `MODULO.md` de cada módulo que o lote toca. Ligar ao que existe exige ler o
    módulo ligado, não só o módulo alvo.
 5. `docs/instrucoes/` — o detalhe, quando o lote ou o `MODULO.md` não bastar.
@@ -58,6 +58,8 @@ O prompt mestre divide o produto em **frentes** ENT00 a ENT11. A execução nume
 | ENT11 | roteiro contábil do patrimônio | ENT05 / ENT03 | seção 33 |
 | ENT12 | eixo de valor do bem | ENT05 | seção 34 |
 | V3 (orquestração contínua) | pacotes por capacidade, sem gate por lote | todas — ver `docs/lotes/V3-orquestracao-continua.md` | seção 35 em diante |
+| V4 | sessão noturna: percursos sob o build e Fila A | planejamento, contratação, compras | seção 50 |
+| V5 | demonstração comercial: nota recebida e empenho×ordem | Fila A (despesa/compras); B/C fora da oferta | seção 51; `docs/lotes/V5-demonstracao-24h.md`; `docs/demo/` |
 
 As frentes ainda não abertas estão em `docs/instrucoes/GABARITO-DE-LOTE-E-FRENTES-04-11.md`:
 ENT04 pessoal, ENT05 suprimentos/patrimônio/frota, ENT06 cadastros fiscais e

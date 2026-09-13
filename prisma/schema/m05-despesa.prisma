@@ -203,6 +203,11 @@ model Empenho {
   consorcioId String?
   consorcio   ConsorcioPublico? @relation(fields: [consorcioId], references: [id])
 
+  /// V5 — a ordem de compra da qual este empenho nasceu. NULLABLE: nem todo empenho
+  /// vem de ordem. A anulação COPIA este campo, como copia o contratoId.
+  ordemDeCompraId String?
+  ordemDeCompra   OrdemDeCompra? @relation(fields: [ordemDeCompraId], references: [id])
+
   /// back-relations ENT03b — os movimentos que ESTE empenho executou. Campos VIRTUAIS.
   movimentosConvenio  MovimentoConvenio[]
   movimentosConsorcio MovimentoConsorcio[]
@@ -250,9 +255,12 @@ model Empenho {
   @@index([fichaId])
   @@index([estornoDeId])
   @@index([credorCpfCnpj])
+  @@index([ordemDeCompraId])
 
   /// M22 (ENT03a) — o documento gerado para assinatura. Campo VIRTUAL.
   anexos Anexo[]
+  /// V5 — documentos fiscais que declararam este empenho na origem.
+  documentosFiscais DocumentoFiscalRecebido[] @relation("DocumentoFiscalDoEmpenho")
 }
 
 // ----------------------------------------------------------------------------
@@ -280,12 +288,19 @@ model Liquidacao {
   data              DateTime
   responsavelAtesto String
 
-  /// Nota fiscal — opcional (nem toda liquidação tem NF).
+  /// Nota fiscal — opcional (nem toda liquidação tem NF). Quando há
+  /// `documentoFiscalId`, estes campos são COPIADOS do documento na gravação para
+  /// os leiautes de tribunal continuarem lendo a liquidação.
   notaFiscalChave  String?
   notaFiscalNum    String?
   notaFiscalSerie  String?
   notaFiscalData   DateTime?
   notaFiscalValor  Decimal?  @db.Decimal(18, 2)
+
+  /// V5 — o documento fiscal recebido que lastreia esta liquidação. Registrar a nota
+  /// NÃO liquida; liquidar aponta para a nota já conferida.
+  documentoFiscalId String?
+  documentoFiscal   DocumentoFiscalRecebido? @relation(fields: [documentoFiscalId], references: [id])
 
   lancamentoId String             @unique
   lancamento   LancamentoContabil @relation(fields: [lancamentoId], references: [id])
@@ -319,6 +334,7 @@ model Liquidacao {
   @@index([estornoDeId])
   /// A fila do art. 141 ordena por data de liquidação.
   @@index([data])
+  @@index([documentoFiscalId])
   /// back-relation M10 (TR 5.85) — a entrada no almoxarifado nasce da liquidação.
   entradasAlmoxarifado MovimentoAlmoxarifado[]
 

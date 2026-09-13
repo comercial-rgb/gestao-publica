@@ -26,6 +26,8 @@ import {
   type FiltroAtualizacoes,
 } from "../relatorios/atualizacoes-orcamentarias";
 import { ENTE } from "./ente.js";
+import { lerDocumentoFiscalParaPdf } from "../portas/recursos/documentos-fiscais-dados";
+import { verOrdem } from "../portas/recursos/compras-dados";
 
 /**
  * EMISSÃO/IMPRESSÃO das listas operacionais e dos documentos individuais (S8-b) — pelo MESMO motor
@@ -730,6 +732,123 @@ export async function montarProgramacaoFinanceira(p: { readonly exercicio: numbe
     periodo: `Exercício ${p.exercicio}`,
     secoes,
     notas,
+  };
+}
+
+/** Conferência do documento fiscal recebido. Sem validade fiscal. */
+export async function montarPdfDocumentoFiscal(p: {
+  readonly id: string;
+}): Promise<DocumentoPdf | null> {
+  const d = await lerDocumentoFiscalParaPdf(p.id);
+  if (d === null) return null;
+  const identificacao: SecaoPdf = {
+    titulo: "Identificação",
+    colunas: [{ rotulo: "Campo" }, { rotulo: "Valor" }],
+    linhas: [
+      ["Modelo", d.modelo],
+      ["Número / série", `${d.numero}/${d.serie}`],
+      ["Emitente", d.emitente],
+      ["Emissão", d.dataEmissao],
+      ["Recebimento", d.dataRecebimento],
+      ["Chave de acesso", d.chaveAcesso ?? "— (não informada)"],
+      ["Origem", d.origem],
+      ["Situação", d.situacao],
+      ["Ordem de compra", d.ordemNumero ?? "—"],
+      ["Contrato", d.contratoNumero ?? "—"],
+      ["Empenho", d.empenhoNumero ?? "—"],
+    ],
+  };
+  const itens: SecaoPdf = {
+    titulo: "Itens",
+    colunas: [
+      { rotulo: "Descrição" },
+      { rotulo: "Un." },
+      { rotulo: "Qtd.", alinhamento: "direita" },
+      { rotulo: "Unitário", alinhamento: "direita" },
+      { rotulo: "Desc.", alinhamento: "direita" },
+      { rotulo: "Acrésc.", alinhamento: "direita" },
+      { rotulo: "Total", alinhamento: "direita" },
+    ],
+    linhas: d.itens.map((i) => [
+      i.descricao,
+      i.unidade,
+      i.quantidade,
+      brl(i.valorUnitario),
+      brl(i.desconto),
+      brl(i.acrescimo),
+      brl(i.valorTotal),
+    ]),
+  };
+  const valores: SecaoPdf = {
+    titulo: "Valores",
+    colunas: [{ rotulo: "Rubrica" }, { rotulo: "Valor", alinhamento: "direita" }],
+    linhas: [
+      ["Bruto", brl(d.valorBruto)],
+      ["Descontos", brl(d.valorDescontos)],
+      ["Acréscimos", brl(d.valorAcrescimos)],
+      ["Tributos destacados", brl(d.valorTributos)],
+      ["Total", brl(d.valorTotal)],
+      ["A liquidar", brl(d.aLiquidar)],
+    ],
+  };
+  const historico: SecaoPdf = {
+    titulo: "Movimentos",
+    colunas: [{ rotulo: "Tipo" }, { rotulo: "Data" }, { rotulo: "Motivo" }, { rotulo: "Autor" }],
+    linhas:
+      d.movimentos.length === 0
+        ? [["—", "—", "Nenhum movimento ainda.", "—"]]
+        : d.movimentos.map((m) => [m.tipo, m.data, m.motivo, m.por]),
+  };
+  return {
+    ente: ENTE,
+    titulo: `Documento fiscal ${d.numero}/${d.serie}`,
+    subtitulo: "Conferência interna — documento de demonstração, sem validade fiscal",
+    periodo: `Recebido em ${d.dataRecebimento}`,
+    secoes: [identificacao, itens, valores, historico],
+    notas: [
+      d.validacaoEstrutural ?? "Digitação local. Não é autorização de órgão fiscal.",
+      "A conferência registrada aqui é ato interno. Consulta externa e aceite do órgão são estados separados.",
+      "Registrar este documento não produz estoque, liquidação nem pagamento.",
+    ],
+  };
+}
+
+/** Espelho da ordem de compra com itens e recebimentos (pendente derivado). */
+export async function montarPdfOrdemDeCompra(p: {
+  readonly id: string;
+}): Promise<DocumentoPdf | null> {
+  const o = await verOrdem(p.id);
+  if (o === null) return null;
+  const identificacao: SecaoPdf = {
+    titulo: "Identificação",
+    colunas: [{ rotulo: "Campo" }, { rotulo: "Valor" }],
+    linhas: o.dados.map((d) => [d.rotulo, d.valor]),
+  };
+  const historico: SecaoPdf = {
+    titulo: "Itens e recebimentos",
+    colunas: [
+      { rotulo: "O quê" },
+      { rotulo: "Quando" },
+      { rotulo: "Detalhe" },
+      { rotulo: "Valor", alinhamento: "direita" },
+    ],
+    linhas: o.historico.map((h) => [
+      h.oQue,
+      h.quando,
+      h.motivo ?? "—",
+      h.valor === undefined ? "—" : brl(h.valor),
+    ]),
+  };
+  return {
+    ente: ENTE,
+    titulo: o.titulo,
+    subtitulo: `${o.subtitulo} — documento de demonstração, sem validade fiscal`,
+    periodo: o.dados.find((d) => d.rotulo === "Emissão")?.valor ?? "",
+    secoes: [identificacao, historico],
+    notas: [
+      "O saldo a receber é derivado: quantidade da ordem − Σ recebimentos, item a item.",
+      "Ordem empenhada só se estorna pelo estorno do empenho. Recebimento acima do pendente é recusado.",
+    ],
   };
 }
 

@@ -105,6 +105,7 @@ model Pessoa {
   /// back-relations ENT05 (M11 compras) — VIRTUAIS.
   cotacoes      CotacaoDePreco[] @relation("FornecedorCotado")
   ordensDeCompra OrdemDeCompra[] @relation("FornecedorDaOrdem")
+  documentosFiscaisEmitidos DocumentoFiscalRecebido[] @relation("EmitenteDoDocumentoFiscal")
 }
 
 /// A VERSÃO — o estado cadastral num instante. A vigente é a de `criadoEm` mais recente.

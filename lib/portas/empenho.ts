@@ -177,14 +177,17 @@ export async function registrarEmpenho(input: {
   readonly contratoId?: string;
   /** V4 (§8): a reserva de dotação que este empenho consome. */
   readonly reservaId?: string;
+  /** V5 Fila A: a ordem de compra da qual este empenho nasce. */
+  readonly ordemDeCompraId?: string;
 }): Promise<string> {
   return comEscritaAutenticada("EMPENHAR", async (criadoPor) => {
-    const { contratoId, reservaId, ...resto } = input;
+    const { contratoId, reservaId, ordemDeCompraId, ...resto } = input;
     const r = await empenhar(
       {
         ...resto,
         ...(contratoId !== undefined ? { contratoId } : {}),
         ...(reservaId !== undefined ? { reservaId } : {}),
+        ...(ordemDeCompraId !== undefined ? { ordemDeCompraId } : {}),
         criadoPor,
       },
       roteiroEmpenho(),
@@ -208,9 +211,13 @@ export interface VinculoDaTela {
  * opções, não guard: quem recusa contrato vencido, reserva esgotada ou contrato de outro processo
  * é o M05, na transação.
  */
-export async function opcoesDeVinculoDoEmpenho(): Promise<{ readonly contratos: readonly VinculoDaTela[]; readonly reservas: readonly VinculoDaTela[] }> {
+export async function opcoesDeVinculoDoEmpenho(): Promise<{
+  readonly contratos: readonly VinculoDaTela[];
+  readonly reservas: readonly VinculoDaTela[];
+  readonly ordens: readonly VinculoDaTela[];
+}> {
   const prisma = cliente();
-  const [contratos, reservas] = await Promise.all([
+  const [contratos, reservas, ordens] = await Promise.all([
     prisma.contrato.findMany({
       orderBy: { numeroContrato: "asc" },
       take: 500,
@@ -221,6 +228,23 @@ export async function opcoesDeVinculoDoEmpenho(): Promise<{ readonly contratos: 
       orderBy: { criadoEm: "desc" },
       take: 500,
       select: { id: true, valor: true, historico: true, ficha: { select: { numero: true, exercicio: true } }, processo: { select: { numeroProcesso: true } }, empenhos: { select: { empenho: { select: { valor: true } } } } },
+    }),
+    prisma.ordemDeCompra.findMany({
+      where: { fichaId: { not: null } },
+      orderBy: { numero: "desc" },
+      take: 300,
+      select: {
+        id: true,
+        numero: true,
+        tipo: true,
+        fornecedor: {
+          select: {
+            documento: true,
+            versoes: { select: { nome: true }, orderBy: { criadoEm: "desc" }, take: 1 },
+          },
+        },
+        ficha: { select: { numero: true, exercicio: true } },
+      },
     }),
   ]);
   const hoje = new Date();
@@ -239,7 +263,11 @@ export async function opcoesDeVinculoDoEmpenho(): Promise<{ readonly contratos: 
     if (!saldo.greaterThan(0)) continue;
     reservasVivas.push({ id: r.id, rotulo: `${r.ficha.exercicio} · ficha ${r.ficha.numero} · saldo ${saldo.toFixed(2)}${r.processo === null ? "" : ` · processo ${r.processo.numeroProcesso}`} · ${r.historico}` });
   }
-  return { contratos: contratosVigentes, reservas: reservasVivas };
+  const ordensComFicha: VinculoDaTela[] = ordens.map((o) => ({
+    id: o.id,
+    rotulo: `${o.numero} · ${o.tipo} · ${o.fornecedor.versoes[0]?.nome ?? o.fornecedor.documento}${o.ficha === null ? "" : ` · ficha ${o.ficha.numero}`}`,
+  }));
+  return { contratos: contratosVigentes, reservas: reservasVivas, ordens: ordensComFicha };
 }
 
 function paraTela(e: EmpenhoNaLista): EmpenhoDaTela {
@@ -385,6 +413,8 @@ export interface OrigemDaTela {
   readonly saldoDisponivelHoje: string;
   readonly contratoNumero: string | null;
   readonly contratadoNome: string | null;
+  readonly ordemDeCompraId: string | null;
+  readonly ordemDeCompraNumero: string | null;
   readonly obraDescricao: string | null;
 }
 

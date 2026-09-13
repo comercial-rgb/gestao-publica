@@ -135,6 +135,7 @@ export const LICITACOES: readonly RelatorioNav[] = [
   { href: "/licitacoes/solicitacoes", numero: "Solicitações", rotulo: "Solicitações de compra", descricao: "A requisição ao Compras, com itens; autorizar e anular são fatos com data e motivo." },
   { href: "/licitacoes/pesquisas-de-precos", numero: "Preços", rotulo: "Pesquisas de preços", descricao: "Planilha de preços por item e fornecedor; média, mínimo e máximo derivados." },
   { href: "/licitacoes/ordens-de-compra", numero: "Ordens", rotulo: "Ordens de compra", descricao: "Ordinária, global ou estimativa, com itens; o recebimento por item e o saldo a receber derivado." },
+  { href: "/licitacoes/documentos-fiscais", numero: "Notas", rotulo: "Documentos fiscais recebidos", descricao: "Nota, recibo ou CT-e do fornecedor, com itens; conferência e cancelamento são fatos. Registrar não liquida." },
   { href: "/licitacoes/obras", numero: "Obras", rotulo: "Obras e medições", descricao: "Cadastro de obras (IN/INSS/DC 100/2003) e as medições que autorizam liquidar." },
 ];
 

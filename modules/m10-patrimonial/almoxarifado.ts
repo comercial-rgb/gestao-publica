@@ -393,8 +393,8 @@ export async function registrarEntradaAlmoxarifado(
  * (pelo port do M05) ou `registrarEntradaAlmoxarifado` (a entrada avulsa). Está no
  * `FORA_DO_CENSO` por isso, com este motivo.
  *
- * ⚠️ ELE TRAVA, e a ordem importa: `Liquidacao` (posto 6) antes de `ClasseDeMaterial`
- * (posto 11). Chamado de dentro da transação da liquidação — que não trava nada — a
+ * ⚠️ ELE TRAVA, e a ordem importa: `Liquidacao` (posto 7) antes de `ClasseDeMaterial`
+ * (posto 12). Chamado de dentro da transação da liquidação — que não trava nada — a
  * sequência continua crescente, e o guard de ordem do `packages/locks` a confere pela
  * identidade da `tx`.
  */
@@ -403,7 +403,7 @@ export async function registrarEntradaAlmoxarifadoNaTx(
   d: z.output<typeof zEntradaAlmoxarifadoInput>,
   /**
    * V4 (§6): o ato composto trava a LIQUIDAÇÃO uma vez, antes de percorrer as classes — travá-la de
-   * novo depois de uma classe (posto 11 → posto 6) seria a inversão que o guard de ordem recusa.
+   * novo depois de uma classe (posto 12 → posto 7) seria a inversão que o guard de ordem recusa.
    */
   opcoes: { readonly liquidacaoJaTravada?: boolean } = {}
 ): Promise<{ readonly movimentoId: string }> {
@@ -532,8 +532,8 @@ export async function registrarEntradaAlmoxarifadoNaTx(
  *
  * ⚠️ ELE NÃO AUTORIZA, NÃO ABRE TRANSAÇÃO E NÃO TRAVA: quem chama faz as três coisas.
  * O lock é do chamador por uma razão concreta de ORDEM — o eixo físico trava
- * `ClasseDeMaterial` (posto 11) e depois `PosicaoFisicaDeEstoque` (posto 21); se este
- * composável tornasse a travar a classe, seria uma INVERSÃO (11 depois de 21) e o guard
+ * `ClasseDeMaterial` (posto 12) e depois `PosicaoFisicaDeEstoque` (posto 22); se este
+ * composável tornasse a travar a classe, seria uma INVERSÃO (12 depois de 22) e o guard
  * de ordem estouraria na cara de quem só queria dar baixa em cinco caixas de luva.
  *
  * Está no `FORA_DO_CENSO` por isso, com este motivo.
