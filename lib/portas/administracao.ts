@@ -14,6 +14,10 @@ import {
   criarPerfil,
   revogarAcaoDoPerfil,
 } from "../../modules/m16-travamento/servico-perfis";
+import {
+  desvincularPessoaDoUsuario,
+  vincularPessoaAoUsuario,
+} from "../../modules/m16-travamento/servico-pessoa-do-usuario";
 import { TODAS_AS_ACOES } from "../../modules/m16-travamento/acoes";
 import { derivaDePerfil, type DerivaDePerfil } from "../../modules/m16-travamento/deriva-de-perfil";
 import {
@@ -44,21 +48,41 @@ export interface UsuarioAdmin {
   readonly perfis: readonly string[];
   /** Os vínculos com id — o que o botão "revogar" precisa (perfil por perfil). */
   readonly vinculos: readonly { readonly perfilId: string; readonly nome: string }[];
+  /**
+   * V3 (pacote 2) — a PESSOA do cadastro que este usuário é, ou `null` (vínculo PENDENTE).
+   * Nunca inferida: só a última linha VINCULO de `VinculoUsuarioPessoa`.
+   */
+  readonly pessoa: { readonly documento: string; readonly nome: string } | null;
 }
 
 export async function listarUsuarios(): Promise<readonly UsuarioAdmin[]> {
   const us = await cliente().usuario.findMany({
     orderBy: { identificador: "asc" },
-    select: { id: true, identificador: true, nome: true, ativo: true, vinculos: { select: { perfilId: true, perfil: { select: { nome: true } } } } },
+    select: {
+      id: true, identificador: true, nome: true, ativo: true,
+      vinculos: { select: { perfilId: true, perfil: { select: { nome: true } } } },
+      vinculosDePessoa: {
+        orderBy: { criadoEm: "desc" },
+        take: 1,
+        select: { tipo: true, pessoa: { select: { documento: true, versoes: { select: { nome: true }, orderBy: { criadoEm: "desc" }, take: 1 } } } },
+      },
+    },
   });
-  return us.map((u) => ({
-    id: u.id,
-    identificador: u.identificador,
-    nome: u.nome,
-    ativo: u.ativo,
-    perfis: u.vinculos.map((v) => v.perfil.nome),
-    vinculos: u.vinculos.map((v) => ({ perfilId: v.perfilId, nome: v.perfil.nome })),
-  }));
+  return us.map((u) => {
+    const ultimo = u.vinculosDePessoa[0];
+    return {
+      id: u.id,
+      identificador: u.identificador,
+      nome: u.nome,
+      ativo: u.ativo,
+      perfis: u.vinculos.map((v) => v.perfil.nome),
+      vinculos: u.vinculos.map((v) => ({ perfilId: v.perfilId, nome: v.perfil.nome })),
+      pessoa:
+        ultimo !== undefined && ultimo.tipo === "VINCULO"
+          ? { documento: ultimo.pessoa.documento, nome: ultimo.pessoa.versoes[0]?.nome ?? ultimo.pessoa.documento }
+          : null,
+    };
+  });
 }
 
 /** Os perfis existentes (id + nome) — o vocabulário do select de conceder/revogar. */
@@ -283,5 +307,28 @@ export async function aplicarAtualizacaoDePermissoesAdmin(
 ): Promise<{ readonly concessoes: number; readonly perfisAlcancados: number }> {
   return comEscritaAutenticada("APLICAR_ATUALIZACAO_DE_PERMISSOES", (criadoPor) =>
     aplicarAtualizacaoDePermissoes(cliente(), { versao, criadoPor, areaDaAcao: AREA_DA_ACAO })
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// O USUÁRIO É UMA PESSOA (V3, pacote 2) — vínculo explícito, auditável, sem permissão
+// ═══════════════════════════════════════════════════════════════════════════
+
+export async function vincularPessoaAoUsuarioAdmin(input: {
+  readonly usuarioId: string;
+  readonly documento: string;
+  readonly motivo: string;
+}): Promise<{ readonly nome: string }> {
+  return comEscritaAutenticada("VINCULAR_PESSOA_AO_USUARIO", (criadoPor) =>
+    vincularPessoaAoUsuario(cliente(), { ...input, criadoPor })
+  );
+}
+
+export async function desvincularPessoaDoUsuarioAdmin(input: {
+  readonly usuarioId: string;
+  readonly motivo: string;
+}): Promise<void> {
+  await comEscritaAutenticada("VINCULAR_PESSOA_AO_USUARIO", (criadoPor) =>
+    desvincularPessoaDoUsuario(cliente(), { ...input, criadoPor })
   );
 }

@@ -8,6 +8,8 @@ import {
   inativarUsuarioAdmin,
   resetarSenhaAdmin,
   revogarPerfilAdmin,
+  vincularPessoaAoUsuarioAdmin,
+  desvincularPessoaDoUsuarioAdmin,
 } from "../../../../lib/portas/administracao";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
@@ -107,6 +109,37 @@ export async function resetarSenhaAction(_prev: EstadoUsuario, formData: FormDat
       return { sucesso: `Senha redefinida — ${sessoesRevogadas} sessão(ões) do usuário derrubada(s).`, senhaParaEntregar: senhaTemporaria };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível redefinir a senha." };
+    }
+  });
+}
+
+/** V3 (pacote 2): vincula a pessoa do cadastro pelo DOCUMENTO — nunca pelo nome. */
+export async function vincularPessoaAction(_prev: EstadoUsuario, formData: FormData): Promise<EstadoUsuario> {
+  return comComandoDoFormulario(formData, async () => {
+    const usuarioId = String(formData.get("usuarioId") ?? "").trim();
+    const documento = String(formData.get("documento") ?? "").trim();
+    const motivo = String(formData.get("motivo") ?? "").trim();
+    if (documento === "") return { erro: "Informe o CPF ou CNPJ da pessoa do cadastro." };
+    try {
+      const r = await vincularPessoaAoUsuarioAdmin({ usuarioId, documento, motivo });
+      revalidatePath("/administracao/usuarios");
+      return { sucesso: `Usuário vinculado à pessoa ${r.nome}. O vínculo não concede permissão nenhuma.` };
+    } catch (e) {
+      return { erro: e instanceof Error ? e.message : "Não foi possível vincular." };
+    }
+  });
+}
+
+export async function desvincularPessoaAction(_prev: EstadoUsuario, formData: FormData): Promise<EstadoUsuario> {
+  return comComandoDoFormulario(formData, async () => {
+    const usuarioId = String(formData.get("usuarioId") ?? "").trim();
+    const motivo = String(formData.get("motivo") ?? "").trim();
+    try {
+      await desvincularPessoaDoUsuarioAdmin({ usuarioId, motivo });
+      revalidatePath("/administracao/usuarios");
+      return { sucesso: "Vínculo desfeito — a linha anterior fica no histórico." };
+    } catch (e) {
+      return { erro: e instanceof Error ? e.message : "Não foi possível desvincular." };
     }
   });
 }

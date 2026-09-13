@@ -6,10 +6,10 @@
 |---|---|
 | HEAD | ver `git log -1` — a seção 35 nomeia o commit de cada unidade |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | Primeiro pacote concluído (4.1/4.2 §35, 4.3 §36, 4.4/4.5 §37); em curso o segundo pacote — a cadeia patrimonial utilizável (seção 5 do pedido) |
-| Último resultado | seção 37 |
-| Pendências relevantes | seções 35.7, 36.4 e 37.5; as anteriores em §19 e nos `MODULO.md` |
-| Próximo passo | seção 37.6 |
+| Frente em execução | Primeiro pacote concluído (§35–§37); segundo pacote em curso — a cadeia patrimonial utilizável: unidade 1 fechada (§38), unidade 2 a seguir |
+| Último resultado | seção 38 |
+| Pendências relevantes | seções 35.7, 36.4, 37.5 e 38.5; as anteriores em §19 e nos `MODULO.md` |
+| Próximo passo | seção 38.6 |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -4464,6 +4464,67 @@ por localização/responsável/classe/situação/identificadores; vínculo Usuar
 bens"; motivo de baixa ligado ao ato; reavaliação e impairment na tela; parâmetros versionados
 de depreciação; processamento por competência com prévia e memória; alienação integrada;
 estorno com análise de dependências; termos; etiqueta imprimível verificada por decoder.
+
+## 38. Orquestração V3 — segundo pacote, unidade 1: o usuário é uma pessoa, "meus bens" e a pesquisa do acervo
+
+**Regime:** superfície (pesquisa, tela "meus bens", administração do vínculo) sobre um
+serviço de PROFUNDIDADE novo (o vínculo usuário↔pessoa: append-only, negação com motivo,
+N=2 de homônimos). Nada contábil foi tocado; nenhum lançamento, nenhum roteiro.
+
+### 38.1 · O que passou a funcionar, e a rota real
+
+| Capacidade | Onde |
+|---|---|
+| Vincular o usuário a uma pessoa do cadastro pelo CPF/CNPJ, com motivo; desvincular com motivo; coluna "Pessoa do cadastro" com "vínculo pendente" para o cadastro antigo | `/administracao/usuarios` (formulários `vincular-pessoa` e `desvincular-pessoa`; ação `VINCULAR_PESSOA_AO_USUARIO`, família de administração) |
+| "Bens sob minha responsabilidade": a pessoa da sessão e os bens pelos quais ela responde hoje, derivados do último movimento de responsável; sem vínculo, a tela diz que está pendente e quem resolve | `/patrimonio/meus-bens` (leitura `CONSULTAR_PATRIMONIO` em algum escopo; entrada de menu na área do patrimônio) |
+| A pesquisa do acervo por tombamento/código de barras/descrição, classe, localização, responsável (nome ou documento), situação (inclusive "sem registro"), estado de conservação e espécie — com as colunas Localização, Responsável e Situação ATUAIS de cada bem | `/patrimonio/bens-patrimoniais` (a lista do molde; os filtros são do descritor `acervo.ts`) |
+| Atualização versionada de permissões **v3** (`vincular-pessoa-ao-usuario`): quem tem `CRIAR_USUARIO` ganha `VINCULAR_PESSOA_AO_USUARIO` no mesmo escopo; diagnóstico e aplicação pela tela de perfis | `/administracao/perfis` · `npm run permissoes:atualizar -- 3` |
+
+### 38.2 · Decisões
+
+| Decisão | Motivo |
+|---|---|
+| O vínculo é **explícito, pelo documento**, nunca por nome | dois "João da Silva" são duas pessoas; um vínculo por nome entregaria os bens de um ao outro (`m16-pessoa-do-usuario.test.ts` t1) |
+| **Uma pessoa, um usuário** por vez; trocar é desvincular e vincular de novo, cada passo com motivo | "meus bens" de duas contas apontando para a mesma responsabilidade é a confusão que o termo de responsabilidade existe para impedir |
+| O vínculo **não concede permissão** — nada em `PermissaoDePerfil` | quem o usuário É e o que ele PODE são perguntas diferentes; o teste afirma as duas depois do vínculo |
+| Cadastro antigo fica **PENDENTE**, identificado na tela; nenhuma associação automática | letra do pedido; a aproximação por nome é exatamente o erro que o vínculo explícito evita |
+| A lista do acervo deriva o estado em **SQL parametrizado** (`DISTINCT ON (bem, tipo)`, dia civil do movimento + instante do registro, estorno anulando o original) | localização/responsável/situação não são colunas do bem; filtrar por eles pelo Prisma exigiria carregar o acervo inteiro. A regra é a mesma de `estadoDoBemEm`, e o teste confronta as duas — inclusive com dois movimentos no mesmo dia registrados fora de ordem, onde o timestamp bruto erraria |
+| Localização, responsável e classe são filtros de **texto casado no servidor**, não seletores | um `select` com centenas de pessoas é formulário bonito e inútil; o molde valida seleção contra opções estáticas |
+| Nenhum UUID ao operador: o responsável aparece como "nome (documento)", a localização como "código — descrição" | padrão de entrega da orquestração |
+
+### 38.3 · Arquivos
+
+`prisma/schema/m16-usuarios.prisma` (`VinculoUsuarioPessoa`, `TipoDeVinculoUsuarioPessoa`, `VINCULAR_PESSOA_AO_USUARIO`) · `prisma/migrations/20260912214145_v3_vinculo_usuario_pessoa` · `modules/m16-travamento/servico-pessoa-do-usuario.ts` (+ teste) · `acoes.ts` · `atualizacoes-de-permissoes.ts` (v3) · `lib/portas/administracao.ts` · `app/(areas)/administracao/usuarios/{actions.ts,AcoesUsuario.tsx,page.tsx}` · `lib/portas/recursos/meus-bens-dados.ts` · `app/(areas)/patrimonio/meus-bens/page.tsx` · `lib/navegacao.ts` · `lib/portas/navegacao-permissoes.ts` · `lib/portas/recursos/{acervo.ts,acervo-dados.ts}` · `test/acervo-pesquisa.test.ts` · `test/limpar-banco.ts` · `scripts/preparar-banco-de-percursos.ts` (v3) · `MODULO.md` do M10 e `MODULO-BLOCO5.md` do M16 · catálogo (5.19.10, 5.19.14).
+
+### 38.4 · Comandos executados e resultado real
+
+| Comando | Resultado |
+|---|---|
+| `migrate dev` (dev) · `migrate deploy` (test, percursos) · `db:papel` nos três | aplicada; `gestao_app` sem superusuário, sem BYPASSRLS, sem DDL |
+| `tsc` backend · app · scripts (um por vez, heap 2560) | **limpos** |
+| `vitest` rápida (partição sem banco, completa) | **790/790** (72 arquivos) |
+| `vitest` lenta sob o trinco (pessoa-do-usuário, acervo-pesquisa, atualizações, m10-acervo, menu contra o servidor, rollout) | **55/55** (6 arquivos) |
+| dev: `permissoes:atualizar -- 3` · `deriva:perfil` | v3 aplicada: 1 concessão em 1 perfil; **249 ações, todas concedidas** |
+| percursos: `migrate deploy` · papel · `permissoes:atualizar -- 3` | a 1ª tentativa recusou (`enum AcaoDoSistema` sem o valor — o banco dos percursos não tinha a migration); depois do deploy, v3 aplicada: 1 concessão |
+
+**Não executado:** portão integral, `test:tudo`, `test:fuso`, `next build`, percursos de
+navegador (a tela de usuários e a de "meus bens" não têm percurso ainda).
+
+### 38.5 · Pendências nomeadas
+
+| Pendência | O que é |
+|---|---|
+| `MEUS-BENS-SEM-PERCURSO` | `/patrimonio/meus-bens` e o vínculo em `/administracao/usuarios` não têm percurso de navegador; 5.19.10 continua `IMPLEMENTADO_NAO_VALIDADO` |
+| `PESQUISA-DO-ACERVO-SEM-PERCURSO` | `smoke-acervo.ts` não exercita os filtros novos; 5.19.14 sobe de `AUSENTE_CONFIRMADO` para `IMPLEMENTADO_NAO_VALIDADO` |
+| `PERCURSOS-SOB-O-BANCO-PROPRIO` (37.5) | continua |
+
+### 38.6 · Próximo ponto exato
+
+Segundo pacote, unidade 2: **motivo de baixa ligado ao ato** (tabela de motivos e FK no
+movimento, texto histórico preservado), **reavaliação e impairment** no detalhe do bem,
+**alienação integrada** com a receita escolhida pelo número (não por UUID). Depois:
+parâmetros versionados de depreciação e o processamento por competência com prévia e
+memória; estorno com análise de dependências; termos; etiquetas com decoder independente.
 
 ## 19. O próximo passo
 

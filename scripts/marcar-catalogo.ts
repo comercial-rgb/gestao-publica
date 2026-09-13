@@ -920,8 +920,8 @@ const MAPA: Readonly<Record<string, Marca>> = {
     evidencia: `${CENSO} O motor sabe o residual e PARA nele: a última parcela é o RESTO exato e a seguinte é erro (m10-competencia.test.ts t4), e a base cai com baixa e impairment (tN1, tN2) sem alterar o resto quando nada mudou (tN3, regressão). ⚠️ FALTA a CONSULTA que lista os bens que já atingiram o residual — o dado existe em \`valorContabilDoBem\`, e ninguém pergunta isso ao sistema hoje.`,
   },
   "5.19.14": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia: `${CENSO} A consulta de bens por localização, responsável e código do produto não existe porque os três campos não existem. Por tombamento e descrição o dado está no modelo, mas não há tela: a rota /patrimonio/bens é o DEMONSTRATIVO por classe, não a lista de bens.`,
+    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    evidencia: `Orquestração V3, pacote 2 (unidade 1): a lista do acervo (/patrimonio/bens-patrimoniais) pesquisa por tombamento, código de barras e descrição, classe, localização, responsável (nome ou documento), situação (inclusive "sem registro"), estado de conservação e espécie, e mostra a localização, o responsável e a situação ATUAIS de cada bem — derivados em SQL parametrizado do último movimento vivo de cada eixo, pela mesma regra de estadoDoBemEm (dia civil, depois o instante do registro; o estorno anula o original). test/acervo-pesquisa.test.ts confronta a listagem com o domínio na mesma fixture N=2, inclusive depois de um estorno e com dois movimentos no mesmo dia registrados fora de ordem. Sem percurso de navegador pelos filtros novos ainda (PESQUISA-DO-ACERVO-SEM-PERCURSO). "Código do produto" segue sem campo no modelo do bem.`,
   },
   "5.19.15": {
     situacao: "PARCIAL",
@@ -1516,7 +1516,10 @@ const MAPA: Readonly<Record<string, Marca>> = {
     situacao: "VALIDADO_LOCALMENTE",
     evidencia: `${PERCURSO_ACERVO} o tipo de incorporação é cadastrado pela tela e, na MESMA execução, aparece no select do formulário do bem e é ESCOLHIDO — que é exatamente o que a cláusula pede ao dizer "para ser usado no cadastramento dos mesmos". O rol cresce por cadastro do ente, não por enum no código: a tela de tipos e a do bem são as duas pontas do mesmo fato, e o percurso liga uma à outra sem passar pelo banco à mão.`,
   },
-  "5.19.10": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): bensSobResponsabilidade deriva os bens de uma pessoa numa data. DERIVA em vez de filtrar por coluna: 'de quem era este bem em dezembro?' e a pergunta que o termo de responsabilidade faz." },
+  "5.19.10": {
+    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    evidencia: `ENT05: bensSobResponsabilidade deriva os bens de uma pessoa numa data (deriva em vez de filtrar por coluna). Orquestração V3, pacote 2 (unidade 1): o que faltava era saber QUEM é o usuário — o vínculo Usuario↔Pessoa passou a existir (explícito, pelo CPF/CNPJ, com motivo, append-only, sem conceder permissão; m16-pessoa-do-usuario.test.ts com homônimos N=2), e a tela /patrimonio/meus-bens mostra os bens pelos quais a pessoa da sessão responde hoje; sem vínculo, diz que está pendente e quem resolve, sem adivinhar pelo nome (test/acervo-pesquisa.test.ts, bloco "meus bens"). Sem percurso de navegador ainda (MEUS-BENS-SEM-PERCURSO).`,
+  },
   "5.19.11": {
     situacao: "VALIDADO_LOCALMENTE",
     evidencia: `${PERCURSO_ACERVO} o estado de conservação é registrado PELA TELA, no detalhe do bem (ação "registrar-estado", com data do fato e motivo obrigatórios), e o histórico o traz APÓS RECARGA. A cláusula pede duas coisas — visualizar no cadastro e permitir o CONTROLE —, e controle é ato: o percurso escolhe BOM e confere o resultado, em vez de apenas constatar que o select existe. O estado ATUAL continua sendo derivado do último movimento do tipo (ENT05), e não uma coluna que alguém sobrescreve.`,

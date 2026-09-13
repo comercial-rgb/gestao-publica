@@ -250,6 +250,9 @@ export type AcaoDoSistema =
   | "CRIAR_PERFIL"
   | "CONCEDER_ACAO_A_PERFIL"
   | "REVOGAR_ACAO_DE_PERFIL"
+  // ── V3 (pacote 2) — o usuário É uma pessoa do cadastro: vínculo explícito, auditável,
+  // opcional, e que NÃO concede permissão. Família ADMINISTRACAO, como criar usuário.
+  | "VINCULAR_PESSOA_AO_USUARIO"
   // ── M21 — protocolo e processo digital (ENT02) ──
   //
   // ⚠️ UMA AÇÃO POR ATO, e não um "GERIR_PROCESSO" que agrupasse tudo. Abrir, tramitar
@@ -616,6 +619,9 @@ export type NomeDeServico =
   | "criarPerfil"
   | "concederAcaoAoPerfil"
   | "revogarAcaoDoPerfil"
+  // ── V3 (pacote 2) — usuário ↔ pessoa ──
+  | "vincularPessoaAoUsuario"
+  | "desvincularPessoaDoUsuario"
   // ── M21 — protocolo (ENT02) ──
   | "abrirProcesso"
   | "tramitar"
@@ -934,6 +940,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   criarPerfil: "CRIAR_PERFIL",
   concederAcaoAoPerfil: "CONCEDER_ACAO_A_PERFIL",
   revogarAcaoDoPerfil: "REVOGAR_ACAO_DE_PERFIL",
+  // V3 (pacote 2): vincular e desvincular são o MESMO poder (dizer quem o usuário é).
+  vincularPessoaAoUsuario: "VINCULAR_PESSOA_AO_USUARIO",
+  desvincularPessoaDoUsuario: "VINCULAR_PESSOA_AO_USUARIO",
 
   // ── M21 — protocolo e processo digital (ENT02) ──
   abrirProcesso: "ABRIR_PROCESSO",
@@ -1080,6 +1089,7 @@ export const ACOES_DE_ADMINISTRACAO: readonly AcaoDoSistema[] = [
   "CRIAR_PERFIL",
   "CONCEDER_ACAO_A_PERFIL",
   "REVOGAR_ACAO_DE_PERFIL",
+  "VINCULAR_PESSOA_AO_USUARIO",
 ];
 
 /**
@@ -1448,6 +1458,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   //
   // A porta do log da borda. Registrar não é um ato do usuário — é o sistema contando o que
   // aconteceu. Exigir permissão para logar seria permitir que alguém agisse SEM deixar rastro.
+  pessoaDoUsuario: "leitura (a pessoa vinculada ao usuário — a última linha de VinculoUsuarioPessoa, se for VINCULO)",
   versoesDoRoteiro: "leitura (as versões de um roteiro, com a vigência derivada — V3 4.5)",
   versaoVigente: "leitura (a versão PUBLICADA em vigor de um roteiro — o resolvedor do M10 a consome)",
   comOperacaoRegistrada: "porta da borda (o log do 6.1-6.3, em duas fases — V3 4.3)",

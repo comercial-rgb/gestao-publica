@@ -350,6 +350,7 @@ export const GESTAO_DO_BEM: readonly RelatorioNav[] = [
 export const ACERVO: readonly RelatorioNav[] = [
   { href: "/patrimonio/classes-de-bens", numero: "Classes", rotulo: "Classes de Bens", descricao: "Como o acervo se agrupa — móveis e imóveis — e, para cada grupo, a conta do ativo em que os bens daquela classe são registrados na contabilidade." },
   { href: "/patrimonio/bens-patrimoniais", numero: "Acervo", rotulo: "Bens Patrimoniais", descricao: "O acervo bem a bem: o que é, em que classe entra, quando foi adquirido e como entrou. O valor não se informa aqui — ele vem dos movimentos patrimoniais." },
+  { href: "/patrimonio/meus-bens", numero: "Meus bens", rotulo: "Bens sob minha responsabilidade", descricao: "Os bens pelos quais VOCÊ responde hoje — derivados do último movimento de responsável de cada bem, para o usuário vinculado a uma pessoa do cadastro." },
 ];
 
 /**

@@ -136,9 +136,49 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
     { nome: "classe", cabecalho: "Classe", tipo: "texto" },
     { nome: "incorporacao", cabecalho: "Como entrou", tipo: "texto" },
     { nome: "dataAquisicao", cabecalho: "Aquisição", tipo: "data", ordenavel: true },
+    // V3 (pacote 2): o estado ATUAL de cada bem, derivado do último movimento vivo de cada eixo.
+    { nome: "localizacao", cabecalho: "Localização", tipo: "texto" },
+    { nome: "responsavel", cabecalho: "Responsável", tipo: "texto" },
+    { nome: "situacao", cabecalho: "Situação", tipo: "situacao" },
   ],
+  // V3 (pacote 2) — A PESQUISA DO ACERVO (TR 5.19.14): por identificador, classe, localização,
+  // responsável, situação e estado. Localização, responsável e classe são TEXTO casado no
+  // servidor (código, descrição, nome ou documento): um seletor com centenas de pessoas seria
+  // um formulário bonito e inútil, e o molde valida seleção contra opções estáticas.
   filtros: [
-    { nome: "q", rotulo: "Tombamento ou descrição", tipo: "texto", largura: 2 },
+    { nome: "q", rotulo: "Tombamento, código de barras ou descrição", tipo: "texto", largura: 2 },
+    { nome: "classe", rotulo: "Classe (código ou descrição)", tipo: "texto", largura: 1 },
+    { nome: "localizacao", rotulo: "Localização (código ou descrição)", tipo: "texto", largura: 1 },
+    { nome: "responsavel", rotulo: "Responsável (nome ou CPF/CNPJ)", tipo: "texto", largura: 1 },
+    {
+      nome: "situacao",
+      rotulo: "Situação",
+      tipo: "selecao",
+      largura: 1,
+      opcoes: [
+        { valor: "EM_USO", rotulo: "Em uso" },
+        { valor: "EM_EMPRESTIMO", rotulo: "Em empréstimo" },
+        { valor: "EM_LOCACAO", rotulo: "Em locação" },
+        { valor: "EM_MANUTENCAO_PREVENTIVA", rotulo: "Em manutenção preventiva" },
+        { valor: "EM_MANUTENCAO_CORRETIVA", rotulo: "Em manutenção corretiva" },
+        { valor: "EM_DESUSO", rotulo: "Em desuso" },
+        { valor: "BAIXADO", rotulo: "Baixado" },
+        { valor: "SEM_REGISTRO", rotulo: "Sem situação registrada" },
+      ],
+    },
+    {
+      nome: "estado",
+      rotulo: "Estado de conservação",
+      tipo: "selecao",
+      largura: 1,
+      opcoes: [
+        { valor: "OTIMO", rotulo: "Ótimo" },
+        { valor: "BOM", rotulo: "Bom" },
+        { valor: "REGULAR", rotulo: "Regular" },
+        { valor: "RUIM", rotulo: "Ruim" },
+        { valor: "INSERVIVEL", rotulo: "Inservível" },
+      ],
+    },
     {
       nome: "especie",
       rotulo: "Espécie",
@@ -150,18 +190,6 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
       ],
     },
   ],
-  // ⚠️ QUATRO AÇÕES, UMA POR EIXO — e cada uma leva SÓ o campo que o seu tipo exige.
-  //
-  // O domínio tem um guard (`CAMPO_OBRIGATORIO_DO_TIPO`) que recusa movimento de LOCALIZACAO
-  // sem localização, de RESPONSAVEL sem responsável, e assim por diante — porque um movimento
-  // gravável sem o campo APAGARIA o eixo em silêncio: a derivação leria o último movimento do
-  // tipo, acharia nulo, e concluiria que o bem não está em lugar nenhum. Um formulário único
-  // com os quatro campos convidaria exatamente a essa recusa, quatro vezes em cada três.
-  //
-  // ⚠️ E OS QUATRO SÃO O MESMO CRACHÁ (`REGISTRAR_MOVIMENTO_DE_GESTAO`), de propósito: a
-  // segregação que o edital pede aqui é entre MOVER o bem e AVALIÁ-LO, não entre mover de sala
-  // e mudar de responsável. Inventar quatro ações de censo seria inventar segregação que a
-  // fonte não pede — e cada uma teria de ser concedida a mão em toda instalação existente.
   acoes: [
     {
       nome: "mover-localizacao",

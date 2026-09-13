@@ -100,6 +100,8 @@ model Pessoa {
   bensSobResponsabilidade MovimentoDeGestaoDoBem[]      @relation("ResponsavelPeloBem")
   comissoesPatrimoniais   MembroDeComissaoPatrimonial[] @relation("MembroDeComissaoPatrimonial")
   termosPatrimoniais      TermoPatrimonial[]            @relation("ResponsavelDeTermo")
+  /// back-relation V3 (pacote 2) — VIRTUAL: os usuários vinculados a esta pessoa (histórico).
+  usuariosVinculados VinculoUsuarioPessoa[] @relation("PessoaDoUsuario")
   /// back-relations ENT05 (M11 compras) — VIRTUAIS.
   cotacoes      CotacaoDePreco[] @relation("FornecedorCotado")
   ordensDeCompra OrdemDeCompra[] @relation("FornecedorDaOrdem")

@@ -167,6 +167,27 @@ export function derivarPublicarRoteiro(
   return saida;
 }
 
+/** A REGRA DA v3 (pacote 2): quem cria usuário passa a poder vincular a pessoa, no mesmo escopo. */
+export function derivarVincularPessoa(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const jaTem = new Set(perfil.permissoes.map((p) => `${p.acao} ${p.unidadeOrcId ?? ""}`));
+    const escopos = new Map<string, string | null>();
+    for (const p of perfil.permissoes) {
+      if (p.acao !== "CRIAR_USUARIO") continue;
+      if (jaTem.has(`VINCULAR_PESSOA_AO_USUARIO ${p.unidadeOrcId ?? ""}`)) continue;
+      escopos.set(p.unidadeOrcId ?? "", p.unidadeOrcId);
+    }
+    for (const unidadeOrcId of escopos.values()) {
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao: "VINCULAR_PESSOA_AO_USUARIO", unidadeOrcId });
+    }
+  }
+  return saida;
+}
+
 export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
   {
     versao: 1,
@@ -185,6 +206,14 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "Quem ja parametrizava roteiro recebe a publicacao no mesmo escopo; a segregacao entre " +
       "propor e publicar fica a cargo do administrador.",
     derivar: derivarPublicarRoteiro,
+  },
+  {
+    versao: 3,
+    nome: "vincular-pessoa-ao-usuario",
+    descricao:
+      "Vincular o usuario a uma pessoa do cadastro virou acao propria (VINCULAR_PESSOA_AO_USUARIO), " +
+      "da familia de administracao. Quem ja cria usuario recebe o vinculo no mesmo escopo.",
+    derivar: derivarVincularPessoa,
   },
 ];
 

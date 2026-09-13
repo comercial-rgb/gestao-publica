@@ -1,4 +1,4 @@
-import { diaCivilBr, inicioDoDiaCivil } from "../../../packages/datas/index.js";
+import { diaCivilBr, FUSO_DO_ENTE, inicioDoDiaCivil } from "../../../packages/datas/index.js";
 import {
   cadastrarBem,
   cadastrarClasseDeBens,
@@ -184,49 +184,160 @@ export async function criarClasseDeBens(c: Campos): Promise<void> {
 // BENS PATRIMONIAIS
 // ═══════════════════════════════════════════════════════════════════════════
 
+interface LinhaCruaDoAcervo {
+  readonly id: string;
+  readonly numeroTombamento: string;
+  readonly descricao: string;
+  readonly dataAquisicao: Date;
+  readonly classe_codigo: string;
+  readonly classe_descricao: string;
+  readonly inc_codigo: string | null;
+  readonly inc_descricao: string | null;
+  readonly loc_codigo: string | null;
+  readonly loc_descricao: string | null;
+  readonly resp_nome: string | null;
+  readonly resp_documento: string | null;
+  readonly situacao: string | null;
+  readonly estado: string | null;
+}
+
+const ROTULO_SITUACAO: Readonly<Record<string, string>> = {
+  EM_USO: "Em uso",
+  EM_EMPRESTIMO: "Em empréstimo",
+  EM_LOCACAO: "Em locação",
+  EM_MANUTENCAO_PREVENTIVA: "Em manutenção preventiva",
+  EM_MANUTENCAO_CORRETIVA: "Em manutenção corretiva",
+  EM_DESUSO: "Em desuso",
+  BAIXADO: "Baixado",
+};
+
+/**
+ * A PESQUISA DO ACERVO (V3, pacote 2; TR 5.19.14) — com o estado ATUAL de cada bem.
+ *
+ * ═══ POR QUE SQL, E NÃO O PRISMA ═══
+ * Localização, responsável, situação e estado NÃO são colunas do bem: são o último movimento
+ * VIVO de cada eixo (D4 — o estorno anula o original, e os dois saem da conta). Filtrar a
+ * lista por eles pelo Prisma exigiria carregar todos os bens e derivar em memória — o
+ * oposto de paginar. O `DISTINCT ON (bem, tipo) … ORDER BY dataMovimento DESC, criadoEm DESC`
+ * é a mesma regra de `estadoDoBemEm` (o dia CIVIL do movimento, e o desempate pelo instante
+ * do registro), escrita onde o banco pagina. `test/acervo-pesquisa.test.ts` confronta as duas contra a mesma fixture.
+ *
+ * ⚠️ TUDO PARAMETRIZADO ($1, $2…): nenhum filtro entra na string. `$queryRawUnsafe` só é
+ * "unsafe" no nome — é a forma do Prisma de aceitar SQL montado com placeholders, a mesma que
+ * `modules/m19-pessoas/consultas.ts` usa.
+ */
 export async function listarBensPatrimoniais(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
   const prisma = cliente();
-  const q = c.filtros["q"] ?? "";
-  const especie = c.filtros["especie"] ?? "";
+  const f = (k: string): string => (c.filtros[k] ?? "").trim();
 
-  const where = {
-    ...(q === ""
-      ? {}
-      : { OR: [{ numeroTombamento: texto(q) }, { descricao: texto(q) }] }),
-    ...(especie === ""
-      ? {}
-      : { classeDeBens: { especie: especie as "MOVEL" | "IMOVEL" } }),
+  // $1 é o fuso do ente: o desempate entre movimentos é pelo DIA CIVIL e depois pelo instante
+  // do registro — exatamente `estadoDoBemEm`. Ordenar pelo timestamp bruto trocaria o vencedor
+  // quando dois movimentos do mesmo dia foram registrados fora de ordem.
+  const params: unknown[] = [FUSO_DO_ENTE];
+  const condicoes: string[] = [];
+  const like = (v: string): string => {
+    params.push(`%${v}%`);
+    return `$${params.length}`;
   };
+  if (f("q") !== "") {
+    const p = like(f("q"));
+    condicoes.push(`(b."numeroTombamento" ILIKE ${p} OR b."codigoDeBarras" ILIKE ${p} OR b."descricao" ILIKE ${p})`);
+  }
+  if (f("classe") !== "") {
+    const p = like(f("classe"));
+    condicoes.push(`(c."codigo" ILIKE ${p} OR c."descricao" ILIKE ${p})`);
+  }
+  if (f("localizacao") !== "") {
+    const p = like(f("localizacao"));
+    condicoes.push(`(l."codigo" ILIKE ${p} OR l."descricao" ILIKE ${p})`);
+  }
+  if (f("responsavel") !== "") {
+    const p = like(f("responsavel"));
+    const digitos = f("responsavel").replace(/\D/g, "");
+    if (digitos.length >= 3) {
+      params.push(`%${digitos}%`);
+      condicoes.push(`(vp."nome" ILIKE ${p} OR p."documento" LIKE $${params.length})`);
+    } else {
+      condicoes.push(`vp."nome" ILIKE ${p}`);
+    }
+  }
+  if (f("situacao") === "SEM_REGISTRO") {
+    condicoes.push(`es."situacao" IS NULL`);
+  } else if (f("situacao") !== "") {
+    params.push(f("situacao"));
+    condicoes.push(`es."situacao"::text = $${params.length}`);
+  }
+  if (f("estado") !== "") {
+    params.push(f("estado"));
+    condicoes.push(`ec."estado"::text = $${params.length}`);
+  }
+  if (f("especie") !== "") {
+    params.push(f("especie"));
+    condicoes.push(`c."especie"::text = $${params.length}`);
+  }
+  const where = condicoes.length === 0 ? "" : `WHERE ${condicoes.join(" AND ")}`;
 
-  const [total, linhas] = await Promise.all([
-    prisma.bemPatrimonial.count({ where }),
-    prisma.bemPatrimonial.findMany({
-      where,
-      ...paginacao(c),
-      orderBy: c.ordem === null ? { numeroTombamento: "asc" } : { [c.ordem]: c.direcao },
-      select: {
-        id: true,
-        numeroTombamento: true,
-        descricao: true,
-        dataAquisicao: true,
-        classeDeBens: { select: { codigo: true, descricao: true } },
-        tipoDeIncorporacao: { select: { codigo: true, descricao: true } },
-      },
-    }),
+  const ordem =
+    c.ordem === "dataAquisicao"
+      ? `b."dataAquisicao" ${c.direcao === "desc" ? "DESC" : "ASC"}, b."numeroTombamento" ASC`
+      : `b."numeroTombamento" ${c.direcao === "desc" ? "DESC" : "ASC"}`;
+
+  // O estado vivo de cada eixo: o último movimento não estornado, por bem e por tipo.
+  const estado = `
+    WITH estado AS (
+      SELECT DISTINCT ON (m."bemId", m."tipo")
+        m."bemId", m."tipo", m."localizacaoId", m."responsavelId", m."situacao", m."estado"
+      FROM "MovimentoDeGestaoDoBem" m
+      WHERE m."estornoDeId" IS NULL
+        AND NOT EXISTS (SELECT 1 FROM "MovimentoDeGestaoDoBem" e WHERE e."estornoDeId" = m."id")
+        AND m."tipo" IN ('LOCALIZACAO', 'RESPONSAVEL', 'SITUACAO', 'ESTADO')
+      ORDER BY m."bemId", m."tipo", ((m."dataMovimento" AT TIME ZONE 'UTC') AT TIME ZONE $1)::date DESC, m."criadoEm" DESC
+    )`;
+  const de = `
+    FROM "BemPatrimonial" b
+    JOIN "ClasseDeBens" c ON c."id" = b."classeDeBensId"
+    LEFT JOIN "TipoDeIncorporacao" ti ON ti."id" = b."tipoDeIncorporacaoId"
+    LEFT JOIN estado el ON el."bemId" = b."id" AND el."tipo" = 'LOCALIZACAO'
+    LEFT JOIN "LocalizacaoFisica" l ON l."id" = el."localizacaoId"
+    LEFT JOIN estado er ON er."bemId" = b."id" AND er."tipo" = 'RESPONSAVEL'
+    LEFT JOIN "Pessoa" p ON p."id" = er."responsavelId"
+    LEFT JOIN LATERAL (
+      SELECT v."nome" FROM "VersaoDePessoa" v WHERE v."pessoaId" = p."id" ORDER BY v."criadoEm" DESC LIMIT 1
+    ) vp ON TRUE
+    LEFT JOIN estado es ON es."bemId" = b."id" AND es."tipo" = 'SITUACAO'
+    LEFT JOIN estado ec ON ec."bemId" = b."id" AND ec."tipo" = 'ESTADO'
+    ${where}`;
+
+  const { skip, take } = paginacao(c);
+  const [contagem, linhas] = await Promise.all([
+    prisma.$queryRawUnsafe<{ total: bigint | number }[]>(`${estado} SELECT COUNT(*)::int AS total ${de}`, ...params),
+    prisma.$queryRawUnsafe<LinhaCruaDoAcervo[]>(
+      `${estado}
+       SELECT b."id", b."numeroTombamento", b."descricao", b."dataAquisicao",
+              c."codigo" AS classe_codigo, c."descricao" AS classe_descricao,
+              ti."codigo" AS inc_codigo, ti."descricao" AS inc_descricao,
+              l."codigo" AS loc_codigo, l."descricao" AS loc_descricao,
+              vp."nome" AS resp_nome, p."documento" AS resp_documento,
+              es."situacao"::text AS situacao, ec."estado"::text AS estado
+       ${de}
+       ORDER BY ${ordem}
+       LIMIT ${take} OFFSET ${skip}`,
+      ...params
+    ),
   ]);
 
   return {
-    total,
+    total: Number(contagem[0]?.total ?? 0),
     linhas: linhas.map((x) => ({
       id: x.id,
       numeroTombamento: x.numeroTombamento,
       descricao: x.descricao,
-      classe: `${x.classeDeBens.codigo} — ${x.classeDeBens.descricao}`,
-      incorporacao:
-        x.tipoDeIncorporacao === null
-          ? "—"
-          : `${x.tipoDeIncorporacao.codigo} — ${x.tipoDeIncorporacao.descricao}`,
+      classe: `${x.classe_codigo} — ${x.classe_descricao}`,
+      incorporacao: x.inc_codigo === null ? "—" : `${x.inc_codigo} — ${x.inc_descricao ?? ""}`,
       dataAquisicao: diaCivilBr(x.dataAquisicao),
+      localizacao: x.loc_codigo === null ? "—" : `${x.loc_codigo} — ${x.loc_descricao ?? ""}`,
+      responsavel: x.resp_nome === null ? (x.resp_documento ?? "—") : `${x.resp_nome} (${x.resp_documento ?? ""})`,
+      situacao: x.situacao === null ? "Sem situação registrada" : (ROTULO_SITUACAO[x.situacao] ?? x.situacao),
     })),
   };
 }

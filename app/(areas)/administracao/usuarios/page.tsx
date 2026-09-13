@@ -62,12 +62,14 @@ function colunas(perfis: readonly PerfilOpcao[]): readonly ColunaTabela<UsuarioA
     { chave: "nome", cabecalho: "Nome", alinhamento: "esquerda", celula: (u) => u.nome },
     { chave: "ativo", cabecalho: "Estado", alinhamento: "esquerda", largura: "6rem", celula: (u) => <Badge status={u.ativo ? "ok" : "erro"}>{u.ativo ? "ativo" : "inativo"}</Badge> },
     { chave: "perfis", cabecalho: "Perfis", alinhamento: "esquerda", celula: (u) => (u.perfis.length > 0 ? u.perfis.join(", ") : "—") },
+    // V3 (pacote 2): a pessoa que o usuário É. Sem vínculo = PENDENTE, nomeado — nunca inferido do nome.
+    { chave: "pessoa", cabecalho: "Pessoa do cadastro", alinhamento: "esquerda", celula: (u) => (u.pessoa === null ? <Badge status="alerta">vínculo pendente</Badge> : <span title={u.pessoa.documento}>{u.pessoa.nome}</span>) },
     {
       chave: "acoes",
       cabecalho: "Ações",
       alinhamento: "esquerda",
       largura: "8rem",
-      celula: (u) => <AcoesUsuario usuario={{ id: u.id, identificador: u.identificador, ativo: u.ativo, vinculos: u.vinculos }} perfis={perfis} />,
+      celula: (u) => <AcoesUsuario usuario={{ id: u.id, identificador: u.identificador, ativo: u.ativo, vinculos: u.vinculos, pessoa: u.pessoa }} perfis={perfis} />,
     },
   ];
 }

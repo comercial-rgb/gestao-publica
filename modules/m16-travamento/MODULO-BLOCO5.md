@@ -125,3 +125,14 @@ infraestrutura (`ehFalhaDeCredencial`). ADR: `docs/adr/ADR-registro-de-operacao-
 usuários do pedido, banco sintético), `test/ui/leitura-exige-acao.test.ts` (grep),
 `m16-atualizacoes.test.ts` (instalação limpa, upgrade, reaplicação, concorrência,
 negação), `m16-perfis.test.ts` t12 e `m16-usuarios.test.ts` t3b (quatro olhos).
+
+## 8. Pacote 2 — o usuário é uma pessoa do cadastro (vínculo explícito)
+
+`servico-pessoa-do-usuario.ts`: `vincularPessoaAoUsuario` e `desvincularPessoaDoUsuario`
+(ação `VINCULAR_PESSOA_AO_USUARIO`, família de administração; atualização versionada v3
+deriva a concessão de quem tem `CRIAR_USUARIO`). Append-only em `VinculoUsuarioPessoa`; a
+pessoa vigente é a última linha do usuário, se for VINCULO. Pelo DOCUMENTO, nunca pelo
+nome; uma pessoa, um usuário; nada em `PermissaoDePerfil`. Cadastro antigo sem vínculo
+fica identificado como pendente em Administração > Usuários, e a tela "meus bens" diz isso
+em vez de adivinhar. Prova: `m16-pessoa-do-usuario.test.ts` (homônimos N=2, recusas
+nomeadas, executor negado, vínculo não concede) e `test/acervo-pesquisa.test.ts`.

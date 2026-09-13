@@ -279,3 +279,21 @@ nomeando. ADR: `docs/adr/ADR-versoes-de-roteiro-e-banco-de-percursos.md`. Testes
 **Pendência preservada:** `ROTEIRO-PATRIMONIAL-NAO-PARAMETRIZADO` continua sendo decisão do
 contador do ente; `seed:roteiros-demo` é configuração de DEMONSTRAÇÃO, identificada como tal
 no motivo de cada versão, para os percursos — não homologação.
+
+
+## Orquestração V3 (pacote 2, unidade 1) — a pesquisa do acervo e "meus bens"
+
+`lib/portas/recursos/acervo-dados.ts` deixou de listar pelo Prisma: a lista pesquisa por
+identificador (tombamento, código de barras, descrição), classe, localização, responsável
+(nome ou documento), situação e estado de conservação, e mostra o estado ATUAL de cada bem.
+Localização, responsável, situação e estado não são colunas do bem — são o último movimento
+vivo de cada eixo — e por isso a listagem os deriva em SQL (`DISTINCT ON (bem, tipo)`,
+ordenado pelo dia civil do movimento e pelo instante do registro, com o estorno anulando o
+original), que é a mesma regra de `estadoDoBemEm`. Tudo parametrizado; nenhum filtro entra
+na string. `test/acervo-pesquisa.test.ts` confronta o SQL com o domínio na mesma fixture,
+inclusive depois de um estorno e com dois movimentos no mesmo dia registrados fora de ordem.
+
+"Meus bens" (`/patrimonio/meus-bens`) deriva em dois passos explícitos: a PESSOA do usuário
+(`servico-pessoa-do-usuario.ts`, M16 — vínculo explícito, opcional, auditável, pelo
+documento, sem conceder permissão) e depois `bensSobResponsabilidade`. Sem vínculo, a tela
+diz que o vínculo está pendente e quem resolve; ela não procura a pessoa pelo nome.

@@ -396,6 +396,8 @@ enum AcaoDoSistema {
 
   // ── Orquestração V3 (4.5) — PUBLICAR uma versão de roteiro é ato separado de PROPOR ──
   PUBLICAR_ROTEIRO_PATRIMONIAL
+  // ── V3 (pacote 2) — vincular o usuário à pessoa do cadastro: família ADMINISTRACAO ──
+  VINCULAR_PESSOA_AO_USUARIO
 }
 
 /// O USUÁRIO. TR 4.55.
@@ -433,7 +435,42 @@ model Usuario {
   criadoPor String
   criadoEm  DateTime @default(now())
 
+  /// V3 (pacote 2) — back-relation VIRTUAL: os vínculos deste usuário com uma pessoa.
+  vinculosDePessoa VinculoUsuarioPessoa[]
+
   @@index([ativo])
+}
+
+/// V3 (pacote 2) — VÍNCULO ENTRE O USUÁRIO QUE AUTENTICA E A PESSOA DO CADASTRO, append-only.
+///
+/// Quem autentica é `Usuario`; quem responde por um bem é `Pessoa` — e nada ligava os dois
+/// (`USUARIO-SEM-PESSOA`). O vínculo é EXPLÍCITO (nunca por semelhança de nome), OPCIONAL
+/// (uma conta técnica de integração não representa pessoa física), AUDITÁVEL (cada
+/// vínculo e cada desvínculo é uma linha, com autor e motivo) e NÃO CONCEDE PERMISSÃO:
+/// ele só diz "este usuário É esta pessoa" para as consultas que dependem disso ("meus
+/// bens"). O vínculo vigente é a ÚLTIMA linha do usuário, se for VINCULO.
+enum TipoDeVinculoUsuarioPessoa {
+  VINCULO
+  DESVINCULO
+}
+
+model VinculoUsuarioPessoa {
+  id String @id @default(cuid())
+
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+
+  pessoaId String
+  pessoa   Pessoa @relation("PessoaDoUsuario", fields: [pessoaId], references: [id])
+
+  tipo   TipoDeVinculoUsuarioPessoa
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([usuarioId, criadoEm])
+  @@index([pessoaId, criadoEm])
 }
 
 /// O PERFIL — o crachá. TR 4.56.

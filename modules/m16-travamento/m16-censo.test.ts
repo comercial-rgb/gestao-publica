@@ -414,7 +414,7 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   crachás aqui inventariam uma segregação que o TR não pede, e cada um teria de ser
     //   concedido à mão em toda instalação existente.
     //   = 237 serviços, e o censo continua em 229 ações.
-    expect(nomes.length).toBe(239); // +2 (V3 4.5): propor e publicar versão de roteiro
+    expect(nomes.length).toBe(241); // +2 (V3 4.5) propor/publicar versão de roteiro; +2 (V3 pacote 2) vincular/desvincular pessoa
 
     // 97 serviços, 93 ações distintas. Os pares que compartilham ação (4: importarExtratoBb
     // REUSA IMPORTAR_EXTRATO). transferirEntreContas tem AÇÃO PRÓPRIA (não compartilha) → +1 ação.
@@ -504,7 +504,7 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   = 229.
     // 229 de mutação (uma por serviço, com as duas fusões abaixo) + 18 de LEITURA
     // (`ACOES_DE_LEITURA`, uma por área de navegação — orquestração V3, 4.1).
-    expect(TODAS_AS_ACOES.length).toBe(230 + 18); // 230 de mutação (PUBLICAR_ROTEIRO_PATRIMONIAL entrou na V3 4.5)
+    expect(TODAS_AS_ACOES.length).toBe(231 + 18); // 231 de mutação (PUBLICAR_ROTEIRO_PATRIMONIAL na V3 4.5; VINCULAR_PESSOA_AO_USUARIO no pacote 2)
     expect(ACAO_DO_SERVICO.encerrarExercicio).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.encerrarExercicioComRestos).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.importarExtrato).toBe("IMPORTAR_EXTRATO");

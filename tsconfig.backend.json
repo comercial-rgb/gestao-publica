@@ -84,6 +84,7 @@
     "doador",
     "test/ui/recorte-autorizado.test.ts",
     "test/caracterizacao/leitura-por-unidade.test.ts",
-    "test/leitura-por-acao.test.ts"
+    "test/leitura-por-acao.test.ts",
+    "test/acervo-pesquisa.test.ts"
   ]
 }
