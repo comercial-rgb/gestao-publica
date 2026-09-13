@@ -208,6 +208,53 @@ const PERCURSO_ENT11 = "scripts/smoke-roteiros.ts (17 passos, 0 falhas, 2026-09-
 const PERCURSO_ENT12 = "scripts/smoke-eixo-de-valor.ts (20 passos, 0 falhas, 2026-09-12):";
 
 const MAPA: Readonly<Record<string, Marca>> = {
+  // ═══ Sessão noturna V4 — §8 Fila A: as compras pela tela (M11), smoke-compras 20/20 ═══
+  "5.17.51": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: "ENT05 (modelo das tres secoes derrubadas): registrarSolicitacaoDeCompra com itens, justificativa e solicitante (m11-compras.test.ts). V4 §8: TELA /licitacoes/solicitacoes — ilha com linhas de item; solicitação SEM item é recusada nomeando; a lista recarregada diz PENDENTE (smoke-compras 20/20). ⚠️ A solicitação não se restringe aos itens HOMOLOGADOS de uma licitação — pede qualquer material do cadastro.",
+    rota_verificada: "papel: REGISTRAR_SOLICITACAO_DE_COMPRA · " + "contexto: banco dos percursos (DATABASE_URL_PERCURSOS), next build + next start em 3010, build 743b857, 2026-09-13 · " + "passos: /licitacoes/solicitacoes → ilha (número, setor, data, solicitante, justificativa, itens.0.material/quantidade) → lista filtrada · esperado: sem item é recusada; com item entra e aparece PENDENTE · obtido: 20/20 (scripts/smoke-compras.ts) · artefato: .registro-de-execucao/v4-percursos-3010-rodada7.txt.",
+  },
+  "5.17.52": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: "ENT05 (modelo das tres secoes derrubadas): situacaoDaSolicitacao derivada do último movimento (PENDENTE/AUTORIZADA/ANULADA). V4 §8: a lista mostra e FILTRA a situação derivada e o detalhe a exibe (smoke-compras: PENDENTE → AUTORIZADA após recarregar).",
+    rota_verificada: "papel: CONSULTAR_LICITACOES · " + "contexto: banco dos percursos (DATABASE_URL_PERCURSOS), next build + next start em 3010, build 743b857, 2026-09-13 · " + "passos: /licitacoes/solicitacoes?situacao=PENDENTE|AUTORIZADA|ANULADA · esperado: a coluna Situação e o filtro seguem o último movimento · obtido: 20/20 · artefato: rodada7.",
+  },
+  "5.17.53": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: "ENT05 (modelo das tres secoes derrubadas): movimentarSolicitacaoDeCompra grava AUTORIZACAO como fato com autor e data; autorizar duas vezes RECUSA; anular o pendente RECUSA. V4 §8: ações Autorizar e Anular no detalhe (molde); o percurso autoriza, vê a segunda autorização recusada e a situação virar AUTORIZADA (smoke-compras 20/20).",
+    rota_verificada: "papel: MOVIMENTAR_SOLICITACAO_DE_COMPRA · " + "contexto: banco dos percursos (DATABASE_URL_PERCURSOS), next build + next start em 3010, build 743b857, 2026-09-13 · " + "passos: /licitacoes/solicitacoes/{id} → Autorizar (data, motivo) → Autorizar de novo (recusado) → RECARREGADO: AUTORIZADA · obtido: 20/20 · artefato: rodada7.",
+  },
+  "5.17.56": {
+    situacao: "PARCIAL",
+    evidencia: "ENT05 (modelo das tres secoes derrubadas): a solicitacao informa os itens e, opcionalmente, o recurso orcamentario pela ficha da ordem que dela nascer. V4 §8: solicitação e ordem de compra têm tela (a ordem informa processo e ficha). ⚠️ FALTA o vínculo explícito solicitação → ordem/processo (a ordem não aponta para a solicitação que a originou).",
+  },
+  "5.17.46": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: "ENT05 (modelo das tres secoes derrubadas): PesquisaDePrecos com itens e cotacoes por fornecedor (m11-compras.test.ts). V4 §8: TELA /licitacoes/pesquisas-de-precos — ilha com item e até duas cotações por item; o detalhe mostra a estimativa pelo preço médio (Σ quantidade × média) DERIVADA (smoke-compras: média 12.500000, estimativa 125,00).",
+    rota_verificada: "papel: REGISTRAR_PESQUISA_DE_PRECOS · " + "contexto: banco dos percursos (DATABASE_URL_PERCURSOS), next build + next start em 3010, build 743b857, 2026-09-13 · " + "passos: /licitacoes/pesquisas-de-precos → ilha (número, objeto, data, itens.0.material/quantidade, itens.0.cotacoes.0.fornecedor/unitário/origem) → lista → detalhe e histórico · obtido: 20/20 · artefato: rodada7.",
+  },
+  "5.17.48": {
+    situacao: "PARCIAL",
+    evidencia: "ENT05 (modelo das tres secoes derrubadas): estatisticasDaPesquisa deriva medio, minimo e maximo das cotacoes (nunca coluna). V4 §8: o detalhe da pesquisa mostra os três por item, derivados a cada leitura (smoke-compras). ⚠️ FALTA a cotação ON-LINE pelo fornecedor (portal) — as cotações são digitadas pelo servidor.",
+  },
+  "5.17.96": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: "ENT05 (modelo das tres secoes derrubadas): OrdemDeCompra nos tres tipos (ORDINARIA, GLOBAL, ESTIMATIVA), por processo ou sem (dispensa). V4 §8: TELA /licitacoes/ordens-de-compra — ilha com tipo, fornecedor, processo (opcional), ficha (opcional), datas, finalidade e itens com unitário; a lista traz total e A RECEBER derivados (smoke-compras 20/20).",
+    rota_verificada: "papel: EMITIR_ORDEM_DE_COMPRA · " + "contexto: banco dos percursos (DATABASE_URL_PERCURSOS), next build + next start em 3010, build 743b857, 2026-09-13 · " + "passos: /licitacoes/ordens-de-compra → ilha (OC ordinária, fornecedor, emissão, finalidade, itens.0 material/quantidade/unitário) → lista filtrada: total 125,00, A RECEBER · obtido: 20/20 · artefato: rodada7.",
+  },
+  "5.17.97": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: "ENT05 (modelo das tres secoes derrubadas): a ordem registra emissao, vencimento, fornecedor, finalidade e o recurso orcamentario (ficha). V4 §8: os mesmos campos na ilha da ordem e no detalhe (smoke-compras 20/20). ⚠️ A geração do empenho A PARTIR da ordem (com parcelas) não existe: o empenho é emitido na tela de empenhos, sem apontar para a ordem (pendência declarada no M11: vínculo empenho × ordem).",
+  },
+  "5.17.100": {
+    situacao: "PARCIAL",
+    evidencia: "ENT05 (modelo das tres secoes derrubadas): estornarOrdemDeCompra e fail-closed nos dois sentidos (D12): ordem com recebimento nao se estorna; ordem empenhada so pelo estorno do empenho — e o vinculo empenho × ordem ainda nao existe, entao RECUSA. V4 §8: ação Estornar a ordem no detalhe; o percurso vê a recusa da ordem COM recebimento nomeando (smoke-compras). ⚠️ O estorno dos itens de uma ordem já empenhada e o desbloqueio do empenho não existem.",
+  },
+  "5.17.105": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: "ENT05 (modelo das tres secoes derrubadas): saldoDaOrdemDeCompra devolve quantidade, recebida, pendente e valor pendente, item a item, por soma dos recebimentos. V4 §8: o detalhe da ordem mostra, por item, recebido e pendente DERIVADOS; a ilha de recebimento oferece só os itens pendentes; receber acima do pendente é recusado; o recebimento parcial (4 de 10) deixa pendente 6.0000 após recarregar (smoke-compras 20/20).",
+    rota_verificada: "papel: REGISTRAR_RECEBIMENTO_DE_ORDEM · " + "contexto: banco dos percursos (DATABASE_URL_PERCURSOS), next build + next start em 3010, build 743b857, 2026-09-13 · " + "passos: /licitacoes/ordens-de-compra/{id} → Registrar recebimento (data, nota, responsável, itens.0 item/quantidade 11 → recusado; 4 → aceito) → ?aba=historico: pendente 6.0000 e a nota · obtido: 20/20 · artefato: rodada7.",
+  },
   // ═══ Sessão noturna V4 — §8 (Fila A: M02b e M11) e §10 (percursos sob next start) ═══
   "5.19.36": {
     situacao: "VALIDADO_LOCALMENTE",
@@ -1729,20 +1776,10 @@ const MAPA: Readonly<Record<string, Marca>> = {
   "5.17.6": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): Material.catmat opcional - nem todo material do ente tem correspondente federal, e inventar um seria pior do que nao ter." },
   "5.17.8": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): Material.ativo desabilita o cadastro obsoleto; o servico recusa movimentar material inativo E o historico fica, porque o historico sao os movimentos." },
   "5.17.9": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): MaterialElementoDespesa N-N, e emitirOrdemDeCompra RECUSA quando a ficha traz elemento nao relacionado - e o que 'impedindo' quer dizer. Material SEM relacao nenhuma PASSA, com o motivo declarado: ele nao esta sendo comprado no elemento errado, esta sendo comprado por quem ainda nao parametrizou." },
-  "5.17.46": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): PesquisaDePrecos com itens e cotacoes por fornecedor, para estimativa de novas aquisicoes." },
-  "5.17.48": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): estatisticasDaPesquisa deriva medio, minimo e maximo das cotacoes. Provado com N=3 a precos diferentes (9, 11, 13 gera min 9, max 13, medio 11): com duas cotacoes media e mediana coincidem, e uma implementacao errada passaria. Item SEM cotacao nao vira zero - ausencia nao e preco." },
-  "5.17.51": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): registrarSolicitacaoDeCompra com itens, justificativa e solicitante." },
-  "5.17.52": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): A situacao (pendente, autorizada, anulada) e DERIVADA dos movimentos. Uma coluna responderia 'autorizada' sem dizer POR QUEM e QUANDO - e e isso que o controle interno cobra quando a compra e questionada." },
-  "5.17.53": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): movimentarSolicitacaoDeCompra grava AUTORIZACAO como fato com autor e data. Autorizar duas vezes RECUSA; anular o que esta pendente RECUSA." },
   "5.17.54": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): A solicitacao e do SETOR, e a autorizacao e cobrada com escopo de setor - a mesma porta que a tramitacao de processo do M21 usa, sem inventar um segundo eixo de acesso." },
-  "5.17.56": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): A solicitacao informa os itens e, opcionalmente, o recurso orcamentario pela ficha da ordem que dela nascer." },
-  "5.17.96": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): OrdemDeCompra nos tres tipos da clausula: ORDINARIA, GLOBAL e ESTIMATIVA." },
-  "5.17.97": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): A ordem registra data de emissao e de vencimento, fornecedor, finalidade e recurso orcamentario (ficha) - os dados que a clausula pede para a geracao dos empenhos." },
   "5.17.99": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): A alteracao da ordem e possivel enquanto nao ha empenho; com recurso orcamentario declarado, o servico recusa alterar por si e aponta a cascata do empenho." },
-  "5.17.100": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): A CASCATA VAI DO EMPENHO PARA A ORDEM, e a clausula fixa essa direcao - que e o oposto do intuitivo. estornarOrdemDeCompra RECUSA quando a ordem tem recurso orcamentario declarado, porque estornar ali deixaria a dotacao comprometida por uma compra cancelada. Tambem recusa com recebimento ja feito: o material entrou. Pendencia nomeada EMPENHO-APONTA-PARA-ORDEM-DE-COMPRA para o vinculo que falta." },
   "5.17.102": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): OrdemDeCompra.desconto, com recusa quando ele passa do total - a ordem ficaria negativa e o fornecedor pagaria ao ente." },
   "5.17.103": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): OrdemDeCompra.consumoImediato marca os produtos que nao passam pela prateleira, para o lancamento de saida ja no empenhamento." },
-  "5.17.105": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): saldoDaOrdemDeCompra devolve quantidade, recebida, pendente e valor pendente, item a item, com corte por DATA CIVIL. Soma dos recebimentos, nunca coluna (decisao D5) - e receber alem do pedido RECUSA, porque o saldo negativo significaria que o ente aceitou e vai pagar mais do que contratou." },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -43,9 +43,10 @@ por `git fetch` para a referência local `refs/reconciliacao/c04ad5a` do clone `
 
 ## O que NÃO entrou, e por quê
 
-- **Compras (solicitação, pesquisa de preços, ordem, recebimento):** os serviços existem (M11) mas as
-  entradas são de MÚLTIPLOS ITENS (arrays), que o molde não monta por decisão (limite 2); exigem ilha
-  escrita à mão como a das entradas da liquidação. Pendência `COMPRAS-COM-ITENS-NA-TELA`.
+- ~~Compras~~ — entraram no commit seguinte (`743b857`): as entradas de MÚLTIPLOS ITENS são ilhas
+  escritas à mão (`FormSolicitacao`, `FormPesquisaDePrecos`, `FormOrdemDeCompra`, `FormRecebimento`),
+  lidas por `lib/portas/linhas-do-formulario.ts`; lista e ações continuam do molde. É exatamente o
+  limite 2 do molde em ação: o que não cabe, declara-se e escreve-se à mão.
 - **Nota fiscal recebida com conferência de fornecedor, itens, duplicidade e anexos** (passo 8 do
   percurso): não há modelo de documento fiscal recebido; a liquidação registra a nota como texto.
   Pendência `NOTA-FISCAL-RECEBIDA`.

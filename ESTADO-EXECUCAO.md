@@ -7,9 +7,9 @@
 | HEAD | ver `git log -1` — a seção 35 nomeia o commit de cada unidade |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
 | Frente em execução | **Sessão noturna V4** (`docs/lotes/V4-sessao-noturna.md`): unidades 1–5 (§45–§49) entregues; **§50**: percursos sob `next build`/`next start` (§10) e a Fila A (§8) — M02b (PPA/LDO) conciliado do siafic-cg e a contratação (M11) pela tela |
-| Último resultado | seção 50 — 12 smokes verdes sob o build (pacote2 33/33, plurianual 31/31, contratação 18/18, cadeia 23/23, ent02 43/43, visual 29/29…); rápida 844/844; m02b 36/36; censo/atualizações verdes; catálogo 56/57/75/140/3/1706 |
+| Último resultado | seção 50 — 14 smokes verdes sob o build (pacote2 33/33, plurianual 31/31, contratação 18/18, compras 20/20, cadeia 23/23, ent02 43/43, visual 29/29…); suíte completa 2364/2364 (7147b53); rápida 844/844; catálogo 63/60/65/140/3/1706 |
 | Pendências relevantes | seções 35.7, 36.4, 37.5, 38.5 a 43.5; as anteriores em §19 e nos `MODULO.md` |
-| Próximo passo | seção 50.6 — compras com itens na tela (solicitação → pesquisa → ordem → recebimento), nota fiscal recebida, Fila B (RH) e Fila C; `test:fuso` e o portão integral no candidato |
+| Próximo passo | seção 50.6 — nota fiscal recebida como entidade (percurso 8→10), vínculo empenho × ordem, Fila B (RH) e Fila C; `test:fuso` e o portão integral no candidato |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -5483,6 +5483,14 @@ Origem conciliada: `siafic-cg` em `c04ad5a760dfbce977ef7f28db7e42ee49d85761`, bu
   do M11. **O empenho informa contrato e reserva** (selects lidos no servidor) e a porta liga o M05 com
   `criarM05DepsComContratos` — antes, qualquer `contratoId` era recusado. Submenu de licitações, landing e busca.
 - **Erros do Zod legíveis** nas actions novas (`lib/portas/mensagem-do-erro.ts`): "campo: mensagem", não JSON.
+- **As compras pela tela (commit `743b857`, fecha `COMPRAS-COM-ITENS-NA-TELA`):** solicitação de compra
+  (`/licitacoes/solicitacoes`), pesquisa de preços (`/licitacoes/pesquisas-de-precos`) e ordem de compra
+  (`/licitacoes/ordens-de-compra`). A CRIAÇÃO é de ilhas escritas à mão com linhas de item (`itens.N.*`; a pesquisa
+  com `itens.N.cotacoes.M.*`), lidas por `lib/portas/linhas-do-formulario.ts`; a lista e as ações (autorizar/anular,
+  estornar) são do molde; o recebimento da ordem é outra ilha no detalhe, por item, oferecendo só o pendente. Situação,
+  média/mínimo/máximo e saldo a receber vêm das funções do M11. Smoke próprio: **20/20** (rodada 7, build `743b857`),
+  com as recusas nomeadas (solicitação sem item; segunda autorização; recebimento acima do pendente; estorno de ordem
+  recebida).
 
 ### 50.2 Rotas utilizáveis, por papel
 
@@ -5497,6 +5505,9 @@ Origem conciliada: `siafic-cg` em `c04ad5a760dfbce977ef7f28db7e42ee49d85761`, bu
 | RESERVAR_DOTACAO / LIBERAR_RESERVA | `/licitacoes/processos/{id}` | reserva vinculada ao processo; liberação |
 | CADASTRAR_CONTRATO / REGISTRAR_ADITIVO / ESTORNAR_MOVIMENTO_CONTRATUAL | `/licitacoes/processos/{id}`, `/licitacoes/contratos/{id}` | contrato só em processo homologado; aditivo; estorno |
 | EMPENHAR | `/despesa/empenhos` | empenho com contrato e reserva informados |
+| REGISTRAR_SOLICITACAO_DE_COMPRA / MOVIMENTAR_SOLICITACAO_DE_COMPRA | `/licitacoes/solicitacoes`, `/{id}` | solicitação com itens; autorizar/anular como fatos |
+| REGISTRAR_PESQUISA_DE_PRECOS | `/licitacoes/pesquisas-de-precos`, `/{id}` | itens e cotações; média/mín/máx e estimativa derivadas |
+| EMITIR_ORDEM_DE_COMPRA / REGISTRAR_RECEBIMENTO_DE_ORDEM / ESTORNAR_ORDEM_DE_COMPRA | `/licitacoes/ordens-de-compra`, `/{id}` | ordem com itens, processo e ficha; recebimento por item; estorno fail-closed |
 | CONSULTAR_PLANEJAMENTO / CONSULTAR_LICITACOES | as listas e detalhes acima | leitura |
 
 **Cadeia demonstrada pela interface** (smoke-contratacao, 18/18): processo → contratar antes de homologar (recusa nomeada)
@@ -5505,10 +5516,16 @@ contrato mostra o empenho; o processo mostra a reserva consumida. Cadeia PPA/LDO
 plano → programa → receita/série → ação e indicador → LDO → meta anual (recusa da primária > total) → risco → alienação
 e aplicação → dois PDFs lidos por pdf.js → 404 para anexo inexistente.
 
-**Etapas do percurso da Fila A ainda NÃO demonstráveis:** plano anual de contratação e solicitação (3), pesquisa de preços e
-processo com ITENS (4), atos da licitação/adjudicação (5 — só a homologação), ata (6), nota fiscal recebida com conferência
-de fornecedor/itens/duplicidade/anexos (8). Recebimento/atesto/liquidação e pagamento administrativo já existem
-(cadeia da despesa, 23/23) — sem o documento fiscal como entidade. Pendências em 50.4.
+**Cadeia das compras demonstrada pela interface** (smoke-compras, 20/20): solicitação com item (sem item é recusada) →
+autorizar (a segunda recusada; situação derivada AUTORIZADA) → pesquisa de preços com cotação (média 12.500000 e estimativa
+125,00 derivadas) → ordem de compra com item (lista: total 125,00, A RECEBER) → recebimento acima do pendente recusado →
+recebimento parcial 4 de 10 (pendente 6.0000 e a nota no histórico) → estorno da ordem recebida recusado nomeando.
+
+**Etapas do percurso da Fila A ainda NÃO demonstráveis:** plano anual de contratação (3, só a solicitação), o processo com
+ITENS e os atos da licitação/adjudicação (4–5 — só a homologação), ata (6), nota fiscal recebida com conferência de
+fornecedor/itens/duplicidade/anexos (8 — o recebimento da ordem registra o número da nota como texto), e o empenho A
+PARTIR da ordem (vínculo empenho × ordem). Recebimento/atesto/liquidação e pagamento administrativo já existem (cadeia da
+despesa, 23/23). Pendências em 50.4.
 
 ### 50.3 Comandos executados e resultados
 
@@ -5522,16 +5539,19 @@ de fornecedor/itens/duplicidade/anexos (8). Recebimento/atesto/liquidação e pa
 | dirigidos: `modules/m02b-plurianual` (36), `m16-censo`, `m16-atualizacoes`, `modelo-sem-caso-de-uso`, `usuarios-teste`, `test/molde`, `busca-global`, `test/ui` | **78/78** e **177/177** |
 | `test/pdf/pdf.test.ts` (fechamento ocioso do browser) | 5/5 |
 | guard `chave-de-comando` por mutação | vermelho nomeando `anular-actions.ts`; verde restaurado |
-| `marcar-catalogo --aplicar` | VALIDADO_LOCALMENTE 56, PARCIAL 57, IMPLEMENTADO_NAO_VALIDADO 75, AUSENTE_CONFIRMADO 140, DEPENDENCIA_EXTERNA 3, NAO_VERIFICADO 1706 (331 classificadas) |
+| `marcar-catalogo --aplicar` (após as compras) | VALIDADO_LOCALMENTE **63**, PARCIAL **60**, IMPLEMENTADO_NAO_VALIDADO **65**, AUSENTE_CONFIRMADO 140, DEPENDENCIA_EXTERNA 3, NAO_VERIFICADO 1706 (331 classificadas) |
+| compras (743b857): tsc app/backend/scripts, rápida 844/844, molde/busca/ui 177/177, build, smoke-compras **20/20**, visual 29/29 | `.registro-de-execucao/v4-percursos-3010-rodada7.txt` |
 
 **Não executado:** `test:fuso` (o diff não tocou `packages/datas` nem guards de período; fica para o candidato); o
 **portão integral**; `test:tudo` desta seção — ver 50.5.
 
 ### 50.4 Pendências (nomeadas)
 
-- `COMPRAS-COM-ITENS-NA-TELA` — solicitação, pesquisa de preços, ordem e recebimento têm serviço e não têm tela (entradas
-  de múltiplos itens; ilha à mão como a da liquidação).
-- `NOTA-FISCAL-RECEBIDA` — sem modelo de documento fiscal recebido.
+- ~~`COMPRAS-COM-ITENS-NA-TELA`~~ — fechada em `743b857` (ilhas de linhas).
+- `NOTA-FISCAL-RECEBIDA` — sem modelo de documento fiscal recebido; o recebimento da ordem guarda o número como texto.
+- `EMPENHO-A-PARTIR-DA-ORDEM` — o empenho não aponta para a ordem (pendência já declarada no M11); a ordem empenhada não
+  se distingue da não empenhada no estorno.
+- `SOLICITACAO-SEM-VINCULO-COM-A-ORDEM` — a ordem não aponta para a solicitação que a originou.
 - `EXTRATO-DO-CONTRATO-PDF`, `CONVENIOS-DA-ORIGEM`, `VINCULO-PPA-LOA`, `PPA-LDO-VERSOES-E-EMENDAS` (ADR e `MODULO.md` do M02b).
 - `ZOD-LEGIVEL-NAS-ACTIONS-ANTIGAS` — só as actions novas formatam o ZodError.
 - `CAPTURA-SEM-ENVELOPE` — `acaoSimular` (POC) fora do envelope de escrita autenticada.
@@ -5549,7 +5569,7 @@ de fornecedor/itens/duplicidade/anexos (8). Recebimento/atesto/liquidação e pa
 
 ### 50.6 Próximo ponto exato
 
-Compras com itens na tela (`COMPRAS-COM-ITENS-NA-TELA`): ilha `FormSolicitacaoDeCompra` com linhas de item (material,
-quantidade), depois pesquisa de preços (item × cotações), ordem de compra (itens com unitário; ficha; processo) e
-recebimento por item — ligando o recebimento à entrada física já existente (`recebimentoDeItemId` da V4 unidade 4). Em
-seguida a nota fiscal recebida como entidade (`NOTA-FISCAL-RECEBIDA`) e o percurso 8→10. Depois a Fila B.
+A nota fiscal recebida como entidade (`NOTA-FISCAL-RECEBIDA`): documento fiscal do fornecedor (número, série, chave,
+emissão, valor, itens) conferido contra a ordem/contrato (fornecedor, itens, valores, duplicidade pela chave) e anexável;
+a liquidação passa a apontar para ele e o recebimento da ordem também — o percurso 8→10 do §8. Em seguida o vínculo
+empenho × ordem (`EMPENHO-A-PARTIR-DA-ORDEM`). Depois a Fila B (RH/portal do servidor).

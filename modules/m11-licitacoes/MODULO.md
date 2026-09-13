@@ -157,9 +157,12 @@ decidida pelo M05 na transação. Percurso: `scripts/smoke-contratacao.ts`.
 
 ### Pendências nomeadas pela Fila A
 
-- `COMPRAS-COM-ITENS-NA-TELA` — solicitação, pesquisa de preços, ordem de compra e recebimento têm
-  serviço e não têm tela: as entradas são de múltiplos itens, que o molde não monta por decisão
-  (limite 2). Exigem ilha escrita à mão, como as entradas da liquidação de material.
+- ~~`COMPRAS-COM-ITENS-NA-TELA`~~ — **fechada (743b857):** solicitação, pesquisa de preços e ordem de
+  compra têm tela; a criação é de ilhas com linhas de item (`itens.N.*`), o recebimento é ilha no
+  detalhe da ordem, a lista e as ações são do molde (`lib/portas/recursos/compras.ts`,
+  `compras-dados.ts`; `scripts/smoke-compras.ts` 20/20).
+- `EMPENHO-A-PARTIR-DA-ORDEM` — o empenho não aponta para a ordem (o vínculo empenho × ordem já era
+  pendência declarada); `SOLICITACAO-SEM-VINCULO-COM-A-ORDEM` — a ordem não aponta para a solicitação.
 - `NOTA-FISCAL-RECEBIDA` — não há modelo de documento fiscal recebido (fornecedor, itens,
   duplicidade, anexos); a liquidação registra a nota como texto.
 - `EXTRATO-DO-CONTRATO-PDF` — o extrato do contrato em PDF da origem não foi portado.

@@ -9114,9 +9114,9 @@
       "frente": "ENT05",
       "candidato_reaproveitamento": "siafic-cg:M11",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "ENT05 (modelo das tres secoes derrubadas): PesquisaDePrecos com itens e cotacoes por fornecedor, para estimativa de novas aquisicoes.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "rota_verificada": "papel: REGISTRAR_PESQUISA_DE_PRECOS · contexto: banco dos percursos (DATABASE_URL_PERCURSOS), next build + next start em 3010, build 743b857, 2026-09-13 · passos: /licitacoes/pesquisas-de-precos → ilha (número, objeto, data, itens.0.material/quantidade, itens.0.cotacoes.0.fornecedor/unitário/origem) → lista → detalhe e histórico · obtido: 20/20 · artefato: rodada7.",
+      "evidencia": "ENT05 (modelo das tres secoes derrubadas): PesquisaDePrecos com itens e cotacoes por fornecedor (m11-compras.test.ts). V4 §8: TELA /licitacoes/pesquisas-de-precos — ilha com item e até duas cotações por item; o detalhe mostra a estimativa pelo preço médio (Σ quantidade × média) DERIVADA (smoke-compras: média 12.500000, estimativa 125,00).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.17.47",
@@ -9143,8 +9143,8 @@
       "candidato_reaproveitamento": "siafic-cg:M11",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "ENT05 (modelo das tres secoes derrubadas): estatisticasDaPesquisa deriva medio, minimo e maximo das cotacoes. Provado com N=3 a precos diferentes (9, 11, 13 gera min 9, max 13, medio 11): com duas cotacoes media e mediana coincidem, e uma implementacao errada passaria. Item SEM cotacao nao vira zero - ausencia nao e preco.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "evidencia": "ENT05 (modelo das tres secoes derrubadas): estatisticasDaPesquisa deriva medio, minimo e maximo das cotacoes (nunca coluna). V4 §8: o detalhe da pesquisa mostra os três por item, derivados a cada leitura (smoke-compras). ⚠️ FALTA a cotação ON-LINE pelo fornecedor (portal) — as cotações são digitadas pelo servidor.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.17.49",
@@ -9184,9 +9184,9 @@
       "frente": "ENT05",
       "candidato_reaproveitamento": "siafic-cg:M11",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "ENT05 (modelo das tres secoes derrubadas): registrarSolicitacaoDeCompra com itens, justificativa e solicitante.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "rota_verificada": "papel: REGISTRAR_SOLICITACAO_DE_COMPRA · contexto: banco dos percursos (DATABASE_URL_PERCURSOS), next build + next start em 3010, build 743b857, 2026-09-13 · passos: /licitacoes/solicitacoes → ilha (número, setor, data, solicitante, justificativa, itens.0.material/quantidade) → lista filtrada · esperado: sem item é recusada; com item entra e aparece PENDENTE · obtido: 20/20 (scripts/smoke-compras.ts) · artefato: .registro-de-execucao/v4-percursos-3010-rodada7.txt.",
+      "evidencia": "ENT05 (modelo das tres secoes derrubadas): registrarSolicitacaoDeCompra com itens, justificativa e solicitante (m11-compras.test.ts). V4 §8: TELA /licitacoes/solicitacoes — ilha com linhas de item; solicitação SEM item é recusada nomeando; a lista recarregada diz PENDENTE (smoke-compras 20/20). ⚠️ A solicitação não se restringe aos itens HOMOLOGADOS de uma licitação — pede qualquer material do cadastro.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.17.52",
@@ -9198,9 +9198,9 @@
       "frente": "ENT05",
       "candidato_reaproveitamento": "siafic-cg:M11",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "ENT05 (modelo das tres secoes derrubadas): A situacao (pendente, autorizada, anulada) e DERIVADA dos movimentos. Uma coluna responderia 'autorizada' sem dizer POR QUEM e QUANDO - e e isso que o controle interno cobra quando a compra e questionada.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "rota_verificada": "papel: CONSULTAR_LICITACOES · contexto: banco dos percursos (DATABASE_URL_PERCURSOS), next build + next start em 3010, build 743b857, 2026-09-13 · passos: /licitacoes/solicitacoes?situacao=PENDENTE|AUTORIZADA|ANULADA · esperado: a coluna Situação e o filtro seguem o último movimento · obtido: 20/20 · artefato: rodada7.",
+      "evidencia": "ENT05 (modelo das tres secoes derrubadas): situacaoDaSolicitacao derivada do último movimento (PENDENTE/AUTORIZADA/ANULADA). V4 §8: a lista mostra e FILTRA a situação derivada e o detalhe a exibe (smoke-compras: PENDENTE → AUTORIZADA após recarregar).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.17.53",
@@ -9212,9 +9212,9 @@
       "frente": "ENT05",
       "candidato_reaproveitamento": "siafic-cg:M11",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "ENT05 (modelo das tres secoes derrubadas): movimentarSolicitacaoDeCompra grava AUTORIZACAO como fato com autor e data. Autorizar duas vezes RECUSA; anular o que esta pendente RECUSA.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "rota_verificada": "papel: MOVIMENTAR_SOLICITACAO_DE_COMPRA · contexto: banco dos percursos (DATABASE_URL_PERCURSOS), next build + next start em 3010, build 743b857, 2026-09-13 · passos: /licitacoes/solicitacoes/{id} → Autorizar (data, motivo) → Autorizar de novo (recusado) → RECARREGADO: AUTORIZADA · obtido: 20/20 · artefato: rodada7.",
+      "evidencia": "ENT05 (modelo das tres secoes derrubadas): movimentarSolicitacaoDeCompra grava AUTORIZACAO como fato com autor e data; autorizar duas vezes RECUSA; anular o pendente RECUSA. V4 §8: ações Autorizar e Anular no detalhe (molde); o percurso autoriza, vê a segunda autorização recusada e a situação virar AUTORIZADA (smoke-compras 20/20).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.17.54",
@@ -9255,8 +9255,8 @@
       "candidato_reaproveitamento": "siafic-cg:M11",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "ENT05 (modelo das tres secoes derrubadas): A solicitacao informa os itens e, opcionalmente, o recurso orcamentario pela ficha da ordem que dela nascer.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "evidencia": "ENT05 (modelo das tres secoes derrubadas): a solicitacao informa os itens e, opcionalmente, o recurso orcamentario pela ficha da ordem que dela nascer. V4 §8: solicitação e ordem de compra têm tela (a ordem informa processo e ficha). ⚠️ FALTA o vínculo explícito solicitação → ordem/processo (a ordem não aponta para a solicitação que a originou).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.17.57",
@@ -9814,9 +9814,9 @@
       "frente": "ENT05",
       "candidato_reaproveitamento": "siafic-cg:M11",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "ENT05 (modelo das tres secoes derrubadas): OrdemDeCompra nos tres tipos da clausula: ORDINARIA, GLOBAL e ESTIMATIVA.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "rota_verificada": "papel: EMITIR_ORDEM_DE_COMPRA · contexto: banco dos percursos (DATABASE_URL_PERCURSOS), next build + next start em 3010, build 743b857, 2026-09-13 · passos: /licitacoes/ordens-de-compra → ilha (OC ordinária, fornecedor, emissão, finalidade, itens.0 material/quantidade/unitário) → lista filtrada: total 125,00, A RECEBER · obtido: 20/20 · artefato: rodada7.",
+      "evidencia": "ENT05 (modelo das tres secoes derrubadas): OrdemDeCompra nos tres tipos (ORDINARIA, GLOBAL, ESTIMATIVA), por processo ou sem (dispensa). V4 §8: TELA /licitacoes/ordens-de-compra — ilha com tipo, fornecedor, processo (opcional), ficha (opcional), datas, finalidade e itens com unitário; a lista traz total e A RECEBER derivados (smoke-compras 20/20).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.17.97",
@@ -9829,8 +9829,8 @@
       "candidato_reaproveitamento": "siafic-cg:M11",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "ENT05 (modelo das tres secoes derrubadas): A ordem registra data de emissao e de vencimento, fornecedor, finalidade e recurso orcamentario (ficha) - os dados que a clausula pede para a geracao dos empenhos.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "evidencia": "ENT05 (modelo das tres secoes derrubadas): a ordem registra emissao, vencimento, fornecedor, finalidade e o recurso orcamentario (ficha). V4 §8: os mesmos campos na ilha da ordem e no detalhe (smoke-compras 20/20). ⚠️ A geração do empenho A PARTIR da ordem (com parcelas) não existe: o empenho é emitido na tela de empenhos, sem apontar para a ordem (pendência declarada no M11: vínculo empenho × ordem).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.17.98",
@@ -9871,8 +9871,8 @@
       "candidato_reaproveitamento": "siafic-cg:M11",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "ENT05 (modelo das tres secoes derrubadas): A CASCATA VAI DO EMPENHO PARA A ORDEM, e a clausula fixa essa direcao - que e o oposto do intuitivo. estornarOrdemDeCompra RECUSA quando a ordem tem recurso orcamentario declarado, porque estornar ali deixaria a dotacao comprometida por uma compra cancelada. Tambem recusa com recebimento ja feito: o material entrou. Pendencia nomeada EMPENHO-APONTA-PARA-ORDEM-DE-COMPRA para o vinculo que falta.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "evidencia": "ENT05 (modelo das tres secoes derrubadas): estornarOrdemDeCompra e fail-closed nos dois sentidos (D12): ordem com recebimento nao se estorna; ordem empenhada so pelo estorno do empenho — e o vinculo empenho × ordem ainda nao existe, entao RECUSA. V4 §8: ação Estornar a ordem no detalhe; o percurso vê a recusa da ordem COM recebimento nomeando (smoke-compras). ⚠️ O estorno dos itens de uma ordem já empenhada e o desbloqueio do empenho não existem.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.17.101",
@@ -9940,9 +9940,9 @@
       "frente": "ENT05",
       "candidato_reaproveitamento": "siafic-cg:M11",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "ENT05 (modelo das tres secoes derrubadas): saldoDaOrdemDeCompra devolve quantidade, recebida, pendente e valor pendente, item a item, com corte por DATA CIVIL. Soma dos recebimentos, nunca coluna (decisao D5) - e receber alem do pedido RECUSA, porque o saldo negativo significaria que o ente aceitou e vai pagar mais do que contratou.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "rota_verificada": "papel: REGISTRAR_RECEBIMENTO_DE_ORDEM · contexto: banco dos percursos (DATABASE_URL_PERCURSOS), next build + next start em 3010, build 743b857, 2026-09-13 · passos: /licitacoes/ordens-de-compra/{id} → Registrar recebimento (data, nota, responsável, itens.0 item/quantidade 11 → recusado; 4 → aceito) → ?aba=historico: pendente 6.0000 e a nota · obtido: 20/20 · artefato: rodada7.",
+      "evidencia": "ENT05 (modelo das tres secoes derrubadas): saldoDaOrdemDeCompra devolve quantidade, recebida, pendente e valor pendente, item a item, por soma dos recebimentos. V4 §8: o detalhe da ordem mostra, por item, recebido e pendente DERIVADOS; a ilha de recebimento oferece só os itens pendentes; receber acima do pendente é recusado; o recebimento parcial (4 de 10) deixa pendente 6.0000 após recarregar (smoke-compras 20/20).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.17.106",
