@@ -6413,7 +6413,7 @@ Regime de rigor: **PROFUNDIDADE** (dinheiro, razão e saldo de ficha).
 
 | Smoke | Resultado |
 |---|---|
-| `smoke-apropriacao-da-folha.ts` | r1 9/6 (competência de janeiro, sem vínculo vivo), r2 13/2, r3 12/3, **14/14 sob `105446e`**; sob o build final `d87d07d` parou em 9/5 por uma LACUNA DO PRODUTO, abaixo |
+| `smoke-apropriacao-da-folha.ts` | r1 9/6 (competência de janeiro, sem vínculo vivo), r2 13/2, r3 12/3, 14/14 sob `105446e`; sob `d87d07d` parou em 9/5 numa LACUNA DO PRODUTO (abaixo), e **14/14 sob `616f0fc`**, já com a carga de regime pela tela nova |
 | `smoke-folha.ts` (regressão sob `d87d07d`) | **46/46** |
 | `smoke-portal-do-servidor.ts` (regressão sob `d87d07d`) | **24/24** |
 
