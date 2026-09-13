@@ -1,5 +1,5 @@
 import { cliente, PortaSemBancoError } from "./cliente";
-import { exigirSessao } from "./sessao";
+import { exigirLeituraDoEnte } from "./leitura";
 import {
   gerarCadastroContaBancaria,
   gerarDespesaExtra,
@@ -184,7 +184,7 @@ function linhasDe(arq: ArquivoGerado): string[] {
  * (via `lerFatos*`), valida os fatos, e serializa os arquivos. Nada é transmitido.
  */
 export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagres> {
-  await exigirSessao();
+  await exigirLeituraDoEnte("CONSULTAR_INTEGRACOES");
   const prisma = cliente();
   const tribunal = await tribunalDoEnte(prisma);
   // O MENSAL tem competência própria (§4.4 e §4.26); o exercício da Dotacao é o do MÊS pedido, não o
@@ -287,7 +287,7 @@ export interface PacoteParaDownload {
 
 /** Monta o ZIP do pacote para download (os 10 .txt + manifesto.json). Determinístico. */
 export async function baixarPacoteSagres(p: ParamsSagres): Promise<PacoteParaDownload> {
-  await exigirSessao();
+  await exigirLeituraDoEnte("CONSULTAR_INTEGRACOES");
   const prisma = cliente();
   const tribunal = await tribunalDoEnte(prisma);
   // Mesma normalização da prévia — o ZIP baixado TEM de ser o que a tela mostrou.
@@ -440,7 +440,7 @@ function isoDia(d: Date): string {
  * omitidos. A tela precisa dizer isso com todas as letras, e por isso a lista é atalho, não filtro.
  */
 export async function lerPeriodosComMovimento(): Promise<PeriodosComMovimento> {
-  await exigirSessao();
+  await exigirLeituraDoEnte("CONSULTAR_INTEGRACOES");
   return periodosComMovimentoDe(cliente());
 }
 

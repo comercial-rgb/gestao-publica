@@ -3,6 +3,7 @@ import { PageHeader } from "../../../../components/ui/PageHeader";
 import { lerImportacoes, PortaSemBancoError, type ImportacaoNaLista } from "../../../../lib/portas/importadores";
 import { dataBr } from "../../../../lib/recorte";
 import { FormImportador } from "./FormImportador";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
 /**
  * IMPORTADORES (M20, TR 7.10-7.11) — folha e arrecadação tributária, por arquivo com LAYOUT
@@ -12,6 +13,7 @@ import { FormImportador } from "./FormImportador";
 export const dynamic = "force-dynamic";
 
 export default async function ImportadoresPage(): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_INTEGRACOES");
   let historico: readonly ImportacaoNaLista[] = [];
   let erro: string | null = null;
   try {

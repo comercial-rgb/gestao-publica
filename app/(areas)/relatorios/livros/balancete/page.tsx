@@ -6,6 +6,7 @@ import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
 import { gerarBalancete, PortaSemBancoError, type Balancete, type LinhaDoBalancete } from "../../../../../lib/portas/livros";
 import { SeletorPeriodo } from "../SeletorPeriodo";
 import { lerPeriodo } from "../periodo";
+import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 /** Livro BALANCETE de verificação — analítico. Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
@@ -15,6 +16,7 @@ export default async function BalancetePage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
   const sp = await searchParams;
   const { desde, ate, desdeStr, ateStr } = lerPeriodo(sp);
 

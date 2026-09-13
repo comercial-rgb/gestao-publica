@@ -22,6 +22,7 @@ import {
   type RpDaFonte,
 } from "../../../../../lib/portas/rreo";
 import { SeletorBimestreRreo } from "../anexo3/SeletorBimestreRreo";
+import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 /**
  * RREO — ANEXO 8: MDE (Educação), BLOCO 1 (LDB art. 72; CF art. 212/212-A). Server Component +
@@ -39,6 +40,7 @@ export default async function RreoAnexo8Page({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
   const sp = await searchParams;
   const exercicio = lerInteiro(sp["exercicio"], ANO_PADRAO);
   const bimestreBruto = lerInteiro(sp["bimestre"], BIMESTRE_PADRAO);

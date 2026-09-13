@@ -18,6 +18,7 @@ import {
   type LinhaAtualizacao,
 } from "../../../../lib/relatorios/atualizacoes-orcamentarias";
 import { FiltroAtualizacoes } from "./FiltroAtualizacoes";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
 /**
  * RELATÓRIO DE ATUALIZAÇÕES ORÇAMENTÁRIAS (TR 4.40) — uma linha por MOVIMENTO de crédito, com
@@ -45,6 +46,7 @@ export default async function AtualizacoesOrcamentariasPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
   const sp = await searchParams;
   // ⚠️ SÓ O EXERCÍCIO. `lerDecretos({ ano })` não recebe unidade — o movimento de crédito
   // adicional é do ENTE, e a UG aparece como COLUNA do resultado, não como recorte da

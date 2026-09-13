@@ -126,10 +126,10 @@ describe("o recorte sem autorização — um chamador só", () => {
         "a AUSÊNCIA do parâmetro produz o ENTE INTEIRO. Medido em " +
         "`test/caracterizacao/leitura-por-unidade.test.ts`.\n\n" +
         "Use no lugar:\n" +
-        "  · `recorteDePagina(sp)` — telas e rotas com dimensão de UNIDADE (resolve " +
-        "identidade e escopo no servidor, e RECUSA nomeando);\n" +
-        "  · `exercicioAutorizado(sp)` — leituras do ENTE (recusa exercício ilegível, não " +
-        "toca em unidade).\n\n" +
+        "  · `recorteDePagina(sp, acao)` — telas e rotas com dimensão de UNIDADE (resolve " +
+        "identidade e o escopo DA AÇÃO DE LEITURA no servidor, e RECUSA nomeando);\n" +
+        "  · `exercicioAutorizado(sp)` + `telaExigeLeituraDoEnte(acao)` — leituras do ENTE " +
+        "(recusa exercício ilegível e exige a ação de leitura global).\n\n" +
         "Se a sua tela LÊ o recorte para declarar que NÃO o usa (o caso do art. 141), " +
         "acrescente-a a `CHAMADORES_LEGITIMOS` com o motivo escrito.\n\nInfratores:\n"
     ).toEqual([]);

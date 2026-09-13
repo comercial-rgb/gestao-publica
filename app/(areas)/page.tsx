@@ -12,6 +12,7 @@ import {
 } from "../../lib/portas/rreo";
 import { PainelDePendencias } from "./PainelDePendencias";
 import { SincronizarHome } from "./SincronizarHome";
+import { temLeituraDoEnte } from "../../lib/portas/leitura";
 
 /**
  * DASHBOARD VIVO — os cards leem o banco pelas PORTAS (read-only, force-dynamic). Cada card é
@@ -35,15 +36,22 @@ export default async function DashboardPage({
   const brutoAno = Array.isArray(sp["exercicio"]) ? sp["exercicio"][0] : sp["exercicio"];
   const exercicio = brutoAno !== undefined && !Number.isNaN(Number.parseInt(brutoAno, 10)) ? Number.parseInt(brutoAno, 10) : ANO_PADRAO;
 
+  // ⚠️ OS INDICADORES FISCAIS SÃO LEITURA DE RELATÓRIOS (orquestração V3, 4.1). Quem não
+  // tem CONSULTAR_RELATORIOS no ente não recebe os números — nem como "erro": a faixa
+  // diz que a consulta não está no acesso dele, e o painel de pendências continua.
+  const podeRelatorios = await temLeituraDoEnte("CONSULTAR_RELATORIOS");
+  const tentarSePode = <T,>(fn: () => Promise<T>): Promise<T | null> =>
+    podeRelatorios ? tentar(fn) : Promise.resolve(null);
+
   const [despesa, rcl, asps, mde] = await Promise.all([
-    tentar(async () => (await gerarRreoAnexo1({ exercicio, bimestre: BIMESTRE_PAINEL })).subtotalDespesas),
-    tentar(async () => (await gerarRreoAnexo3({ exercicio, bimestre: BIMESTRE_PAINEL })).rcl.total12m),
-    tentar(async () => {
+    tentarSePode(async () => (await gerarRreoAnexo1({ exercicio, bimestre: BIMESTRE_PAINEL })).subtotalDespesas),
+    tentarSePode(async () => (await gerarRreoAnexo3({ exercicio, bimestre: BIMESTRE_PAINEL })).rcl.total12m),
+    tentarSePode(async () => {
       const a12 = await gerarRreoAnexo12({ exercicio, bimestre: BIMESTRE_PAINEL });
       // base de cálculo (III realizada): zero = não há impostos no período → estado neutro, não "abaixo".
       return { percent: a12.percentualAplicacao, atingiu: a12.atingiuMinimo, semMovimento: ehZero(a12.baseAsps.realizada) };
     }),
-    tentar(async () => {
+    tentarSePode(async () => {
       const a8 = await gerarRreoAnexo8({ exercicio, bimestre: BIMESTRE_PAINEL });
       // base (6 — recebido do FUNDEB): zero = sem FUNDEB no período → neutro, não "abaixo".
       return { percent: a8.indicadorProfissionais, atingiu: a8.atingiuProfissionais, semMovimento: ehZero(a8.totalRecebidoFundeb) };
@@ -51,7 +59,7 @@ export default async function DashboardPage({
   ]);
 
   // pessoal (RGF): o Executivo é o limite principal (54%). Quadrimestre 3 = ano inteiro.
-  const pessoal = await tentar(async () => {
+  const pessoal = await tentarSePode(async () => {
     const rgf = await gerarRgfAnexo1({ exercicio, quadrimestre: 3 });
     const exec = rgf.poderes.find((p) => p.poder === "EXECUTIVO") ?? rgf.poderes[0];
     // base (VII — RCL ajustada): zero = sem base no período → neutro, não "abaixo".
@@ -67,6 +75,12 @@ export default async function DashboardPage({
           antes do retrato do ente. Um painel que começa pelo consolidado obriga o operador
           a procurar o próprio trabalho embaixo. A faixa some quando não há pendência. */}
       <PainelDePendencias />
+
+      {podeRelatorios ? null : (
+        <p className="mb-4 text-sm text-[color:var(--color-ink-2)]">
+          Os indicadores fiscais do painel exigem a consulta de relatórios no ente inteiro, que o seu perfil não concede. As suas pendências continuam acima.
+        </p>
+      )}
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <CardLink href="/relatorios/rreo/anexo1" rotulo="Despesa do exercício" nota="Empenhada / liquidada / paga">

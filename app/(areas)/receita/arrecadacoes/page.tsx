@@ -22,6 +22,7 @@ import { paraCsv } from "../../../../lib/csv/csv";
 import { formatarMoeda } from "../../../../lib/format/moeda";
 import { FormArrecadacao } from "./FormArrecadacao";
 import { FormAnularReceita } from "./FormAnularReceita";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
 /**
  * ARRECADAÇÃO — as guias do exercício e o total realizado LÍQUIDO (TR 4.59).
@@ -42,6 +43,7 @@ export default async function ArrecadacoesPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_RECEITA");
   const sp = await searchParams;
 
   // ⚠️ SÓ O EXERCÍCIO, SEM UNIDADE — e o subtítulo desta tela já dizia por quê: "a receita

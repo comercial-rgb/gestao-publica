@@ -10,6 +10,7 @@ import {
   type Anexo3Rgf,
 } from "../../../../../lib/portas/rreo";
 import { SeletorQuadrimestre } from "../anexo1/SeletorQuadrimestre";
+import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 /**
  * RGF — ANEXO 3: GARANTIAS E CONTRAGARANTIAS. LRF art. 55, I, "c".
@@ -29,6 +30,7 @@ export default async function RgfAnexo3Page({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
   const sp = await searchParams;
   const um = (v: string | string[] | undefined): string | undefined => (Array.isArray(v) ? v[0] : v);
   const ex = Number.parseInt(um(sp["exercicio"]) ?? "2026", 10);

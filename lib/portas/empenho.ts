@@ -1,5 +1,6 @@
 import { cliente, PortaSemBancoError } from "./cliente";
-import { comEscritaAutenticada } from "./sessao";
+import { comEscritaAutenticada, exigirSessao, type Identidade } from "./sessao";
+import { autorizarLeituraDoRegistroPara, EscopoDeLeituraError } from "./leitura";
 import {
   listarEmpenhos,
   listarFichas,
@@ -30,7 +31,7 @@ import {
  * pixel — foi exatamente o que a 7.1 se recusou a fazer.
  */
 
-export { PortaSemBancoError };
+export { PortaSemBancoError, EscopoDeLeituraError };
 
 /** O empenho como a TELA o consome — todo dinheiro em `string`, nunca `number`. */
 export interface EmpenhoDaTela {
@@ -359,10 +360,49 @@ export type ResultadoDoDossie =
   | { readonly tipo: "anulacao"; readonly empenhoOriginalId: string }
   | { readonly tipo: "inexistente" };
 
+/**
+ * O DOSSIÊ, AUTORIZADO PELO PRÓPRIO REGISTRO (orquestração V3, 4.1).
+ *
+ * ═══ ⚠️ A PENDÊNCIA `DOSSIE-SEM-ESCOPO`, FECHADA ═══
+ * Até aqui isto era `dossieDoEmpenho(cliente(), id)` — `findUnique` por id, sem exercício,
+ * unidade ou identidade. `/despesa/empenhos/<id alheio>` entregava o dossiê inteiro, e o
+ * recorte autorizado da LISTA não fechava o furo: o detalhe não passa pela lista.
+ *
+ * Agora o escopo sai do REGISTRO: a unidade da ficha do empenho é lida ANTES de qualquer
+ * outra coisa, e `CONSULTAR_DESPESA` é cobrada naquela unidade. Quem não pode recebe a
+ * recusa nomeando o escopo que TEM — nunca a unidade do empenho, que é metadado proibido.
+ *
+ * ⚠️ E O REDIRECIONAMENTO TAMBÉM É AUTORIZADO. Quando o id é de uma ANULAÇÃO, a tela leva
+ * ao empenho de origem — e a origem é da mesma ficha (a anulação aponta para o empenho
+ * pela FK), logo a mesma autorização cobre os dois. Um id relacionado só sai daqui depois
+ * de a leitura da unidade ter passado.
+ *
+ * ⚠️ `inexistente` só para o id que NÃO EXISTE. Um id que existe fora do escopo recusa,
+ * em vez de fingir que não existe: dizer "não encontrado" a quem seguiu um link válido o
+ * manda procurar um erro de digitação que não há (a decisão da ENT10). Os ids são cuids
+ * não enumeráveis; a existência de um id não é o que se protege — o conteúdo é.
+ */
 export async function lerDossieDoEmpenho(
   empenhoId: string
 ): Promise<ResultadoDoDossie> {
-  const d = await dossieDoEmpenho(cliente(), empenhoId);
+  return lerDossieDoEmpenhoPara(await exigirSessao(), empenhoId);
+}
+
+/** A mesma leitura com a identidade por parâmetro — a que a suíte exercita. */
+export async function lerDossieDoEmpenhoPara(
+  sessao: Identidade,
+  empenhoId: string
+): Promise<ResultadoDoDossie> {
+  const tx = cliente();
+  const alvo = await tx.empenho.findUnique({
+    where: { id: empenhoId },
+    select: { ficha: { select: { unidadeOrc: { select: { codigo: true } } } } },
+  });
+  if (alvo === null) return { tipo: "inexistente" };
+
+  await autorizarLeituraDoRegistroPara(sessao, "CONSULTAR_DESPESA", alvo.ficha.unidadeOrc.codigo);
+
+  const d = await dossieDoEmpenho(tx, empenhoId);
   if (d === null) return { tipo: "inexistente" };
   if ("redirecionarPara" in d) {
     return { tipo: "anulacao", empenhoOriginalId: d.redirecionarPara };

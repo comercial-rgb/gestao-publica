@@ -26,7 +26,7 @@ export default async function TiposDeIncorporacaoPage({
 }: {
   readonly searchParams: Promise<ParametrosBrutos>;
 }): Promise<React.ReactElement> {
-  await exigirLeitura();
+  await exigirLeitura("CONSULTAR_PATRIMONIO");
   const consulta = lerConsulta(TIPOS_DE_INCORPORACAO, await searchParams);
 
   try {

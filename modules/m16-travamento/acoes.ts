@@ -7,10 +7,14 @@
  * permissão que autoriza algo que o sistema não faz é uma promessa vazia; uma ação que o
  * sistema faz e ninguém classificou é uma porta sem fechadura.
  *
- * ⚠️ **LEITURAS FICAM DE FORA, NESTA FASE.** O rol cobre as MUTAÇÕES — o que muda o razão
- * ou o cadastro. A leitura segregada por unidade gestora (o outro lado do 6.4) é camada de
- * APLICAÇÃO (o `where` de cada consulta), e não uma permissão: negar `balancoOrcamentario`
- * a alguém não protege nada se ele puder ler o razão por outro caminho. PENDÊNCIA NOMEADA.
+ * ⚠️ **AS LEITURAS ENTRARAM (orquestração V3, 4.1).** Até aqui o rol cobria só as MUTAÇÕES,
+ * e a leitura era "camada de aplicação" — um `where` por consulta e nenhuma permissão. A
+ * ENT10 mediu o que isso custava: a leitura resolvia o escopo pela UNIÃO das unidades de
+ * TODAS as ações do usuário, e `exigirLeitura` só exigia sessão. Agora a leitura é
+ * permissão como qualquer outra: uma ação `CONSULTAR_<ÁREA>` por área de navegação
+ * (`ACOES_DE_LEITURA`, abaixo), concedida global ou por unidade gestora, e a política
+ * de leitura (`lib/portas/leitura.ts`) resolve o escopo DAQUELA ação — não da união.
+ * Permissão global em uma ação não concede leitura global em outra.
  *
  * ═══ ⚠️⚠️ E AQUI ESTÁ O LIMITE DO RECORD — LEIA ANTES DE CONFIAR NELE ═══
  * O `ACAO_DO_SERVICO` abaixo é exaustivo sobre `NomeDeServico`, que é uma união que EU
@@ -378,7 +382,71 @@ export type AcaoDoSistema =
   | "REGISTRAR_PROVIDENCIA"
   | "APRECIAR_PROVIDENCIA"
   | "ENCERRAR_AUDITORIA_INTERNA"
-  | "EMITIR_RELATORIO_CIRCUNSTANCIADO";
+  | "EMITIR_RELATORIO_CIRCUNSTANCIADO"
+  // ── A LEITURA (orquestração V3, 4.1) — uma ação de CONSULTA por área de navegação ──
+  //
+  // ⚠️ UMA POR ÁREA, E NÃO UMA POR CONSULTA. O sistema tem mais de cem leituras
+  // (`FORA_DO_CENSO` as lista). Uma permissão por leitura seria um rol que ninguém
+  // administra — e o administrador concederia "tudo" por atrito, que é como a
+  // segregação morre. A área é o grão que o menu já usa (`AREA_DA_ACAO`) e que o
+  // usuário reconhece: "ele pode CONSULTAR a despesa". O escopo (global ou uma unidade
+  // gestora) vale como em toda ação do censo.
+  //
+  // ⚠️ E ELAS NÃO SÃO SERVIÇOS DE MUTAÇÃO: não entram em `ACAO_DO_SERVICO`, porque não
+  // há um `export async function` que as cobre — quem as cobra são as portas de leitura
+  // (`lib/portas/leitura.ts`) e o grep-teste `test/ui/leitura-exige-acao.test.ts`.
+  | AcaoDeLeitura;
+
+/** As dezoito ações de LEITURA — uma por `SlugDeArea` de `lib/navegacao.ts`. */
+export type AcaoDeLeitura =
+  | "CONSULTAR_PLANEJAMENTO"
+  | "CONSULTAR_RECEITA"
+  | "CONSULTAR_DESPESA"
+  | "CONSULTAR_FINANCEIRO"
+  | "CONSULTAR_PATRIMONIO"
+  | "CONSULTAR_LICITACOES"
+  | "CONSULTAR_CONTABILIDADE"
+  | "CONSULTAR_RELATORIOS"
+  | "CONSULTAR_TRANSPARENCIA"
+  | "CONSULTAR_PROTOCOLO"
+  | "CONSULTAR_COMUNICACAO"
+  | "CONSULTAR_CADASTROS"
+  | "CONSULTAR_TRANSFERENCIAS"
+  | "CONSULTAR_DIVIDA"
+  | "CONSULTAR_CONTROLE_INTERNO"
+  | "CONSULTAR_ADMINISTRACAO"
+  | "CONSULTAR_INTEGRACOES"
+  | "CONSULTAR_SUPORTE";
+
+/**
+ * O rol das ações de leitura, para o bootstrap, os perfis de fixture e a política de
+ * leitura. A ordem é a das áreas em `lib/navegacao.ts`.
+ */
+export const ACOES_DE_LEITURA: readonly AcaoDeLeitura[] = [
+  "CONSULTAR_PLANEJAMENTO",
+  "CONSULTAR_RECEITA",
+  "CONSULTAR_DESPESA",
+  "CONSULTAR_FINANCEIRO",
+  "CONSULTAR_PATRIMONIO",
+  "CONSULTAR_LICITACOES",
+  "CONSULTAR_CONTABILIDADE",
+  "CONSULTAR_RELATORIOS",
+  "CONSULTAR_TRANSPARENCIA",
+  "CONSULTAR_PROTOCOLO",
+  "CONSULTAR_COMUNICACAO",
+  "CONSULTAR_CADASTROS",
+  "CONSULTAR_TRANSFERENCIAS",
+  "CONSULTAR_DIVIDA",
+  "CONSULTAR_CONTROLE_INTERNO",
+  "CONSULTAR_ADMINISTRACAO",
+  "CONSULTAR_INTEGRACOES",
+  "CONSULTAR_SUPORTE",
+];
+
+/** É uma ação de leitura? — o discriminador que a política de leitura e os testes usam. */
+export function ehAcaoDeLeitura(acao: string): acao is AcaoDeLeitura {
+  return (ACOES_DE_LEITURA as readonly string[]).includes(acao);
+}
 
 /**
  * O NOME DO SERVIÇO, exatamente como ele é exportado. É esta união que o grep-teste
@@ -970,9 +1038,17 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   emitirRelatorioCircunstanciado: "EMITIR_RELATORIO_CIRCUNSTANCIADO",
 };
 
-/** Todas as ações do rol — a lista que o seed de perfis e as mensagens de erro usam. */
+/**
+ * Todas as ações do rol — a lista que o seed de perfis e as mensagens de erro usam.
+ *
+ * ⚠️ MUTAÇÕES **E** LEITURAS. As de mutação saem do `ACAO_DO_SERVICO` (uma por serviço,
+ * cobradas pelo grep-teste do censo); as de leitura saem de `ACOES_DE_LEITURA` (uma por
+ * área, cobradas pela política de leitura). Uma lista que só tivesse as primeiras faria o
+ * bootstrap nascer sem leitura nenhuma — e o administrador da instalação abriria um
+ * sistema em que não enxerga tela alguma.
+ */
 export const TODAS_AS_ACOES: readonly AcaoDoSistema[] = [
-  ...new Set(Object.values(ACAO_DO_SERVICO)),
+  ...new Set<AcaoDoSistema>([...Object.values(ACAO_DO_SERVICO), ...ACOES_DE_LEITURA]),
 ].sort() as AcaoDoSistema[];
 
 /**
@@ -1001,6 +1077,13 @@ export const ACOES_DE_ADMINISTRACAO: readonly AcaoDoSistema[] = [
  * grep-teste lê esta lista — nada sai do censo por descuido.
  */
 export const FORA_DO_CENSO: Record<string, string> = {
+  // ── Orquestração V3 (4.1/4.2) — a política de leitura e as atualizações versionadas ──
+  escopoDaAcaoDeLeitura: "leitura (o escopo de UMA ação de leitura para uma identidade — a política de leitura, 4.1)",
+  acoesDeLeituraDoUsuario: "leitura (as ações de leitura do usuário em algum escopo — o recorte do painel)",
+  situacaoDasAtualizacoes: "leitura (a situação das atualizações versionadas de permissões, com a prévia)",
+  aplicarAtualizacaoDePermissoes:
+    "composto de concessões: cobra CONCEDER_ACAO_A_PERFIL (a MESMA ação que cada concessão individual " +
+    "cobra) e grava o registro da versão na mesma transação. Uma ação própria inventaria um poder que já existe.",
   // ── ENT05 — o composável que une o eixo FÍSICO ao CONTÁBIL do almoxarifado. ──
   //
   // ⚠️ Ele NÃO autoriza e NÃO abre transação: recebe a `tx` de quem chama, justamente para

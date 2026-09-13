@@ -1,5 +1,6 @@
 import { cliente, PortaSemBancoError } from "./cliente";
-import { comEscritaAutenticada, exigirSessao } from "./sessao";
+import { comEscritaAutenticada } from "./sessao";
+import { exigirLeituraDoEnte } from "./leitura";
 import { criarRegistroDeOperacaoPrisma } from "../../modules/m16-travamento/operacao";
 import { lerCredenciais, APP_LEITURA } from "../../modules/m17-banco-bb/config";
 import { criarClienteBb, type EventoChamadaBb, type LoggerBb } from "../../modules/m17-banco-bb/cliente-bb";
@@ -96,7 +97,7 @@ export async function importarExtratoDoBb(p: { readonly contaBancariaId: string 
 
 /** LER o extrato/saldo do BB para o painel (TR 5.72) — exige sessão (a identidade que loga a chamada). */
 export async function consultarExtratoDoBb(p: PeriodoConta): Promise<ExtratoDaTela> {
-  const ident = (await exigirSessao()).identificador;
+  const ident = (await exigirLeituraDoEnte("CONSULTAR_FINANCEIRO")).identificador;
   const bb = clienteReal(ident);
   const extrato = await bb.extratoDoPeriodo(p, Date.now());
   return {
@@ -114,7 +115,7 @@ export async function consultarExtratoDoBb(p: PeriodoConta): Promise<ExtratoDaTe
 }
 
 export async function consultarSaldoDoBb(p: { agencia: string; conta: string; desde: Date; ate: Date }): Promise<string> {
-  const ident = (await exigirSessao()).identificador;
+  const ident = (await exigirLeituraDoEnte("CONSULTAR_FINANCEIRO")).identificador;
   const bb = clienteReal(ident);
   return bb.saldoDaConta({ agencia: p.agencia, conta: p.conta }, Date.now());
 }

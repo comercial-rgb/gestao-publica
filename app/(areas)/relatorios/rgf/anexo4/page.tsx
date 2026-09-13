@@ -11,6 +11,7 @@ import {
   type LinhaAnexo4,
 } from "../../../../../lib/portas/rreo";
 import { SeletorQuadrimestre } from "../anexo1/SeletorQuadrimestre";
+import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 /**
  * RGF — ANEXO 4: OPERAÇÕES DE CRÉDITO. LRF art. 55, I, "d".
@@ -28,6 +29,7 @@ export default async function RgfAnexo4Page({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
   const sp = await searchParams;
   const um = (v: string | string[] | undefined): string | undefined => (Array.isArray(v) ? v[0] : v);
   const ex = Number.parseInt(um(sp["exercicio"]) ?? "2026", 10);

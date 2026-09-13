@@ -27,7 +27,7 @@ export default async function RoteirosDeResultadoPage({
 }: {
   readonly searchParams: Promise<ParametrosBrutos>;
 }): Promise<React.ReactElement> {
-  await exigirLeitura();
+  await exigirLeitura("CONSULTAR_PATRIMONIO");
   const consulta = lerConsulta(ROTEIROS_DE_RESULTADO, await searchParams);
 
   try {

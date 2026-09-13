@@ -26,7 +26,7 @@ export default async function Pagina({
   readonly searchParams: Promise<ParametrosBrutos>;
 }): Promise<React.ReactElement> {
   // O gate de leitura é a SESSÃO, fail-closed: o censo do M16 é o rol das MUTAÇÕES.
-  await exigirLeitura();
+  await exigirLeitura("CONSULTAR_PATRIMONIO");
   const consulta = lerConsulta(DEPOSITOS, await searchParams);
 
   try {

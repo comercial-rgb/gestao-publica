@@ -19,7 +19,7 @@ Antes de escrever código num lote novo, diga **em que módulo** o requisito ent
 
 1. Este arquivo — carregado sozinho em toda sessão.
 2. `ESTADO-EXECUCAO.md`, a seção "O próximo passo" — onde paramos.
-3. `docs/lotes/` — o pedido do lote em execução.
+3. `docs/lotes/` — o pedido em execução (hoje: `V3-orquestracao-continua.md`).
 4. O `MODULO.md` de cada módulo que o lote toca.
 5. `docs/LEIA-ME.md` — índice de todo o resto, e a precedência entre documentos.
 
@@ -154,6 +154,36 @@ negócio.
 
 ---
 
+## Modo de trabalho — construção contínua (vigente desde 2026-09-12)
+
+A orquestração V3 (`docs/lotes/V3-orquestracao-continua.md`) substituiu o regime
+"um lote, um portão, uma revisão". O regime anterior está registrado nas seções
+históricas de `ESTADO-EXECUCAO.md` e não se segue mais. Vale agora:
+
+- **Não parar para revisão** a cada cadastro, botão ou lote pequeno. Concluída uma
+  unidade coerente de mudança: commit local e seguir para a próxima dependência.
+- **Verificação direcionada durante a construção:** typecheck dos projetos afetados,
+  testes do domínio alterado, autorização positiva e negativa, prova de persistência e
+  recarga. Mudança de dinheiro, estoque, autorização, período, idempotência ou transação
+  exige os testes de integridade correspondentes. Mudança de schema exige validação e
+  aplicação em banco isolado antes de depender da estrutura. Mudança de censo de ações,
+  perfis ou bootstrap exige teste de instalação limpa e de atualização.
+- **Portão integral** (suíte completa, fuso, schema, SQL manual, permissões, build e
+  percursos de navegador) fica para o candidato de homologação/implantação, ou quando uma
+  alteração transversal ou uma falha sem origem delimitada justificar. Não se rode
+  `test:tudo` e `test:fuso` por alteração de texto, campo ou botão; registre a seleção.
+- **Nenhum teste de aceite roda contra arquivos em edição.** Árvore congelada ou worktree
+  fixada em commit, com o commit registrado antes e depois. Uma suíte pesada, um build e
+  um navegador não disputam a mesma máquina: use o trinco.
+- **Timeout ou saturação não é aprovação nem defeito.** Registre, investigue, e não marque
+  como validado o que não passou.
+- **Decisão técnica local, reversível e já delimitada pelo pedido não espera humano.**
+  Invariantes contábeis, segurança e dados continuam não negociáveis.
+- **O número ENT é lote, não percentual do sistema.** Registre lote executado e frente
+  funcional separadamente.
+
+---
+
 ## Dois regimes de rigor — declare qual no checkpoint
 
 **Profundidade** — razão contábil, tesouraria, cálculo tributário, folha,
@@ -176,11 +206,12 @@ acontecer.
 Passo `pulado` não é passo barato: é passo que não aconteceu. Leia o resultado
 contando os pulados como não executados.
 
-**Agendamento:** durante a construção, `npm run test:rapido` (~14 s). Portão
-completo só no fim do lote. `test:fuso` roda quando o diff toca `packages/datas`,
-guards de período, janelas de relatório ou arquivos que `data-civil.test.ts`
-vigia — e sempre no último portão antes de encerrar. É agendamento, não rigor:
-nada deixa de rodar antes do lote fechar.
+**Agendamento:** durante a construção, `npm run test:rapido` (~14 s) e os testes
+direcionados do domínio alterado. O portão completo fica para o candidato de
+homologação/implantação (ver "Modo de trabalho"). `test:fuso` roda quando o diff toca
+`packages/datas`, guards de período, janelas de relatório ou arquivos que
+`data-civil.test.ts` vigia — e sempre no portão do candidato. É agendamento, não rigor:
+nada deixa de rodar antes de promover um artefato.
 
 A suíte e os smokes disputam a máquina. `scripts/trinco-de-maquina.ts` serializa;
 a trava de banco é outra coisa e vale por banco.
@@ -222,16 +253,18 @@ a trava de banco é outra coisa e vale por banco.
 
 ---
 
-## Ao fechar um lote
+## Ao fechar uma unidade de trabalho
 
-Atualize `ESTADO-EXECUCAO.md` com: o que passou a funcionar e a rota real para
-chegar lá, comandos executados com resultado real, migrations e SQL aplicados,
-invariantes verificadas, contagem do catálogo separada por natureza, pendências
-reais separadas do que está bloqueado por terceiro, e o próximo lote.
+Atualize `ESTADO-EXECUCAO.md` — o resumo atual no início (HEAD, frente, último
+resultado, pendências, próximo passo) e a seção da unidade: o que passou a funcionar e a
+rota real para chegar lá, comandos executados com resultado real, migrations e SQL
+aplicados, invariantes verificadas, contagem do catálogo separada por natureza,
+pendências reais separadas do que está bloqueado por terceiro, e o próximo ponto exato.
 
-Guarde o pedido do lote em `docs/lotes/`, como veio, antes de começar.
+Guarde o pedido de cada orquestração em `docs/lotes/`, como veio, antes de começar.
 
 Pendência nomeada, nunca silenciosa. Recusa com mensagem clara é comportamento
 aceitável; silêncio não é.
 
-Pare no gate e aguarde revisão.
+Faça o commit local e siga para a próxima dependência. Se a sessão terminar, deixe
+checkpoint exato e árvore consistente; não prometa execução fora da sessão.

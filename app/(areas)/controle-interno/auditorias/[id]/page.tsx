@@ -23,7 +23,7 @@ export default async function AuditoriasDetalhePage({
   readonly params: Promise<{ readonly id: string }>;
   readonly searchParams: Promise<ParametrosBrutos>;
 }): Promise<React.ReactElement> {
-  await exigirLeitura();
+  await exigirLeitura("CONSULTAR_CONTROLE_INTERNO");
   const { id } = await params;
   const consulta = lerConsulta(AUDITORIAS, await searchParams);
 

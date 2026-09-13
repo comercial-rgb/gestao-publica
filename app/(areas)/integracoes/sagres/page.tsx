@@ -14,6 +14,7 @@ import {
 import { POC_SAGRES } from "../../../../lib/portas/sagres-poc";
 import { SeletorCompetencia } from "./SeletorCompetencia";
 import { diaCivil, inicioDoDiaCivil, janelaCivilDoMes } from "../../../../packages/datas/index";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
 /**
  * TELA SAGRES 2026 (M15, S2) — prévia monoespaçada com régua de posições, lista de validações,
@@ -180,6 +181,7 @@ export default async function SagresPage({
 }: {
   readonly searchParams: Promise<{ readonly dia?: string; readonly mes?: string }>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_INTEGRACOES");
   const { dia: diaParam, mes: mesParam } = await searchParams;
 
   // ── NORMALIZAÇÃO DOS PARÂMETROS ──

@@ -10,6 +10,7 @@ import {
   type TipoConsignacaoNaLista, type SaldoConsignatarioNaLista, type RetencaoNaLista, type DispendioNaLista,
 } from "../../../../lib/portas/extraorcamentario";
 import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
 /**
  * EXTRAORÇAMENTÁRIO (M07, TR 5.39–5.49) — dinheiro de terceiros no caixa: eventos (consignações),
@@ -23,6 +24,7 @@ export default async function ExtraorcamentarioPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_FINANCEIRO");
   const sp = await searchParams;
 
   // ⚠️ SÓ O EXERCÍCIO: o extraorçamentário é dinheiro de terceiros no caixa do ENTE, e o

@@ -2,6 +2,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { baixarPacoteSagres } from "../../../../../lib/portas/sagres";
 import { POC_SAGRES } from "../../../../../lib/portas/sagres-poc";
 import { inicioDoDiaCivil, janelaCivilDoMes } from "../../../../../packages/datas/index";
+import { exigirLeituraDoEnte } from "../../../../../lib/portas/leitura";
+import { respostaDaRecusaDeLeitura } from "../../../../../lib/rotas/recusa";
 
 /**
  * DOWNLOAD DO PACOTE SAGRES (ZIP diário/mensal + manifesto). GET autenticado — a porta chama
@@ -13,6 +15,16 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
+  // ⚠️ A AÇÃO DE LEITURA, ANTES DE QUALQUER PARSE (orquestração V3, 4.1): fail-closed
+  // responde "esta consulta não está no seu acesso" antes de opinar sobre a forma do
+  // pedido de quem não deveria estar lendo aqui. Leitura do ENTE: só a concessão GLOBAL.
+  try {
+    await exigirLeituraDoEnte("CONSULTAR_INTEGRACOES");
+  } catch (e) {
+    const recusa = respostaDaRecusaDeLeitura(e);
+    if (recusa !== null) return recusa;
+    throw e;
+  }
   const diaParam = req.nextUrl.searchParams.get("dia");
   const dia = diaParam !== null && diaParam !== "" ? inicioDoDiaCivil(diaParam) : POC_SAGRES.dia;
   if (Number.isNaN(dia.getTime())) {

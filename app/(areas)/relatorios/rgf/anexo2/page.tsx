@@ -11,6 +11,7 @@ import {
   type Anexo2Rgf,
   type ValoresDaColuna,
 } from "../../../../../lib/portas/rreo";
+import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 /**
  * RGF — ANEXO 2: DÍVIDA CONSOLIDADA LÍQUIDA. LRF art. 55, I, "b".
@@ -30,6 +31,7 @@ export default async function RgfAnexo2Page({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
   const sp = await searchParams;
   const um = (v: string | string[] | undefined): string | undefined =>
     Array.isArray(v) ? v[0] : v;

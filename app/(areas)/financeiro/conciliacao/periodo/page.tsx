@@ -15,6 +15,7 @@ import {
   FormPendenciaManual,
 } from "./FormsDoPeriodo";
 import { diaCivil } from "../../../../../packages/datas/index";
+import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 /**
  * CONCILIAÇÃO POR PERÍODO — TR 5.10.2.45/.46/.49/.52.
@@ -37,6 +38,7 @@ export default async function PeriodoDeConciliacaoPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_FINANCEIRO");
   const params = await searchParams;
   const contaParam = typeof params["conta"] === "string" ? params["conta"] : "";
   const idParam = typeof params["id"] === "string" ? params["id"] : "";

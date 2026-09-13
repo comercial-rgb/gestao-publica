@@ -3,11 +3,21 @@
 Todo documento que diz como construir o sistema, o que medir e o que já foi decidido
 está listado aqui. As regras estão em `CLAUDE.md`, na raiz — este arquivo é o mapa.
 
-## 1. Para executar um lote
+## 0. O modo de trabalho vigente
+
+Desde 2026-09-12 vale a **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`,
+resumida em `CLAUDE.md`, "Modo de trabalho"): não se para para revisão a cada lote, a
+verificação durante a construção é direcionada, e o portão integral fica para o candidato
+de homologação/implantação. O regime anterior — um lote, um portão de dez passos, uma
+revisão — está preservado como histórico nas seções do `ESTADO-EXECUCAO.md` e nos pedidos
+antigos de `docs/lotes/`; ele **não se segue mais**. Onde um documento antigo disser "pare
+no gate", vale o modo vigente.
+
+## 1. Para executar uma unidade de trabalho
 
 1. `CLAUDE.md` — as regras. Toda sessão o carrega sozinha.
 2. `ESTADO-EXECUCAO.md`, seção "O próximo passo" — onde paramos.
-3. `docs/lotes/<lote>.md` — o que o lote pede.
+3. `docs/lotes/<lote>.md` — o que o pedido vigente pede (hoje o V3).
 4. O `MODULO.md` de cada módulo que o lote toca. Ligar ao que existe exige ler o
    módulo ligado, não só o módulo alvo.
 5. `docs/instrucoes/` — o detalhe, quando o lote ou o `MODULO.md` não bastar.
@@ -39,7 +49,15 @@ O prompt mestre divide o produto em **frentes** ENT00 a ENT11. A execução nume
 | ENT03, 03a, 03b, 03c | financeiro, tesouraria, molde, censo | ENT03 | seções 11 a 17 |
 | ENT04 | seeds oficiais do PCASP, casca de navegação | ENT03 (não é a frente de pessoal) | seção 18 |
 | ENT05 | modelo das três seções: compra, almoxarifado, bem | ENT05 | seção 20 |
-| ENT06 item 0 | telas das três seções do ENT05 | ENT05 (não é a frente de arrecadação) | a registrar |
+| ENT06 item 0 | telas das três seções do ENT05 | ENT05 (não é a frente de arrecadação) | seção 21 |
+| ENT06 itens 1–3 | conceder ação a perfil; liquidação de material (parada); eixo da data | ENT05 / transversal | seções 23 a 27 |
+| ENT07 | o acervo: classe e bem | ENT05 | seção 28 |
+| ENT08 | eixo de gestão do bem | ENT05 | seção 29 |
+| ENT09 | etiqueta do bem | ENT05 | seção 31 |
+| ENT10 | autorização de leitura por unidade | transversal (M16) | seção 32 |
+| ENT11 | roteiro contábil do patrimônio | ENT05 / ENT03 | seção 33 |
+| ENT12 | eixo de valor do bem | ENT05 | seção 34 |
+| V3 (orquestração contínua) | pacotes por capacidade, sem gate por lote | todas — ver `docs/lotes/V3-orquestracao-continua.md` | seção 35 em diante |
 
 As frentes ainda não abertas estão em `docs/instrucoes/GABARITO-DE-LOTE-E-FRENTES-04-11.md`:
 ENT04 pessoal, ENT05 suprimentos/patrimônio/frota, ENT06 cadastros fiscais e

@@ -30,7 +30,7 @@ export default async function PrecatoriosPage({
   // ⚠️ O GATE DE LEITURA É A SESSÃO, fail-closed. Não há ação de censo para LER: o censo é o
   // rol dos atos que MUTAM estado, e inventar um `LER_CONVENIO` criaria uma segunda régua de
   // visibilidade ao lado do recorte por unidade gestora.
-  await exigirLeitura();
+  await exigirLeitura("CONSULTAR_DIVIDA");
   const consulta = lerConsulta(PRECATORIOS, await searchParams);
 
   try {

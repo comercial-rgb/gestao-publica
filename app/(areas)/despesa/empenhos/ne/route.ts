@@ -20,7 +20,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   // não deveria estar lendo aqui.
   let recorte: RecorteDaPagina;
   try {
-    recorte = await recorteDePagina(Object.fromEntries(req.nextUrl.searchParams));
+    recorte = await recorteDePagina(Object.fromEntries(req.nextUrl.searchParams), "CONSULTAR_DESPESA");
   } catch (e) {
     const recusa = respostaDaRecusaDeLeitura(e);
     if (recusa !== null) return recusa;

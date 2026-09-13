@@ -7,6 +7,7 @@ import {
   possiveisSignatarios,
 } from "../../../../lib/portas/assinatura-despesa";
 import { FormAssinar, FormEnviarAssinatura } from "./FormsDeAssinatura";
+import { telaExigeLeituraEmAlgumEscopo } from "../../../../lib/portas/leitura";
 
 /**
  * ASSINATURA DE EMPENHO, LIQUIDAÇÃO E ORDEM DE PAGAMENTO — ENT03a, item 4.
@@ -31,6 +32,7 @@ const ROTULO: Record<"EMPENHO" | "LIQUIDACAO" | "ORDEM", string> = {
 };
 
 export default async function AssinaturasPage(): Promise<React.ReactElement> {
+  await telaExigeLeituraEmAlgumEscopo("CONSULTAR_DESPESA");
   const cabecalho = (
     <PageHeader
       titulo="Assinatura dos documentos da despesa"

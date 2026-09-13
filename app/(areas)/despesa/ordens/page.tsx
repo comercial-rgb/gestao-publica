@@ -79,7 +79,7 @@ export default async function OrdensDePagamentoPage({
   let liquidacoes: readonly LiquidacaoParaOrdemDaTela[];
   let contas: Awaited<ReturnType<typeof lerContasBancarias>>;
   try {
-    recorte = await recorteDePagina(sp);
+    recorte = await recorteDePagina(sp, "CONSULTAR_DESPESA");
     [ordens, liquidacoes, contas] = await Promise.all([
       lerOrdensDePagamento({
         exercicio: recorte.exercicio,

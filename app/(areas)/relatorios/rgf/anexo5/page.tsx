@@ -14,6 +14,7 @@ import {
   type Anexo5,
   type LinhaAnexo5,
 } from "../../../../../lib/portas/rreo";
+import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 /**
  * RGF — ANEXO 5: DISPONIBILIDADE DE CAIXA E RESTOS A PAGAR. LRF art. 55, III, "a".
@@ -32,6 +33,7 @@ export default async function RgfAnexo5Page({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
   const sp = await searchParams;
   const um = (v: string | string[] | undefined): string | undefined =>
     Array.isArray(v) ? v[0] : v;

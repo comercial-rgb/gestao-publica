@@ -17,6 +17,7 @@ import {
   type NaturezaNaoClassificada,
 } from "../../../../../lib/portas/rreo";
 import { SeletorBimestreRreo } from "../anexo3/SeletorBimestreRreo";
+import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 /**
  * RREO — Anexo 6 · Resultado Primário e Nominal, ACIMA DA LINHA (LRF art. 53, III).
@@ -29,6 +30,7 @@ export default async function RreoAnexo6Page({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
   const sp = await searchParams;
   const exercicio = lerInteiro(sp["exercicio"], 2026);
   const b = lerInteiro(sp["bimestre"], 1);

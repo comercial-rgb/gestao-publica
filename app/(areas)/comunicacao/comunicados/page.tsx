@@ -11,6 +11,7 @@ import {
 import { lerExerciciosAbertos } from "../../../../lib/portas/protocolo";
 import { dataBr } from "../../../../lib/recorte";
 import { FormNovoComunicado } from "./FormComunicado";
+import { telaExigeLeituraEmAlgumEscopo } from "../../../../lib/portas/leitura";
 
 /**
  * AS CAIXAS DA COMUNICAÇÃO INTERNA.
@@ -35,6 +36,7 @@ export default async function ComunicadosPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraEmAlgumEscopo("CONSULTAR_COMUNICACAO");
   const sp = await searchParams;
   const bruto = typeof sp["caixa"] === "string" ? sp["caixa"] : "ENTRADA";
   const aba = ABAS.find((a) => a.chave === bruto)?.chave ?? "ENTRADA";

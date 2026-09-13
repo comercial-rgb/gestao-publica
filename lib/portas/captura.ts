@@ -1,5 +1,6 @@
 import { cliente } from "./cliente";
 import { exigirSessao } from "./sessao";
+import { exigirLeituraDoEnte } from "./leitura";
 import { POC_SAGRES } from "./sagres-poc";
 import {
   lerFatosCadastroConta,
@@ -91,7 +92,7 @@ export interface PreviewEntidadeCaptura {
 
 /** Gera o JSON de cada entidade a partir da massa POC e valida contra o schema oficial (leitura). */
 export async function montarPreviewCaptura(): Promise<readonly PreviewEntidadeCaptura[]> {
-  await exigirSessao();
+  await exigirLeituraDoEnte("CONSULTAR_INTEGRACOES");
   const saida: PreviewEntidadeCaptura[] = [];
   for (const { chave, rotulo } of ENTIDADES_UI) {
     const elementos = await elementosDaEntidade(chave);
@@ -126,7 +127,7 @@ export interface ExecucaoResumo {
 
 /** As submissões recentes — a linha do tempo/histórico da tela (leitura). */
 export async function ultimasExecucoesCaptura(limite = 10): Promise<readonly ExecucaoResumo[]> {
-  await exigirSessao();
+  await exigirLeituraDoEnte("CONSULTAR_INTEGRACOES");
   const rows = await cliente().execucaoCaptura.findMany({ orderBy: { criadoEm: "desc" }, take: limite });
   return rows.map((r) => ({
     correlationId: r.correlationId,

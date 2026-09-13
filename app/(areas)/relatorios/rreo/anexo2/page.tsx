@@ -11,6 +11,7 @@ import {
   type LinhaFuncional,
 } from "../../../../../lib/portas/rreo";
 import { SeletorBimestreRreo } from "../anexo3/SeletorBimestreRreo";
+import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 /** RREO — Anexo 2 · Despesa por Função/Subfunção (LRF art. 52, II). Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
@@ -20,6 +21,7 @@ export default async function RreoAnexo2Page({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
   const sp = await searchParams;
   const exercicio = lerInteiro(sp["exercicio"], 2026);
   const b = lerInteiro(sp["bimestre"], 1);

@@ -1,6 +1,11 @@
 import { cliente, PortaSemBancoError } from "./cliente";
 import { exigirSessao, type Identidade } from "./sessao";
-import { TODAS_AS_ACOES, type AcaoDoSistema } from "../../modules/m16-travamento/acoes.js";
+import {
+  TODAS_AS_ACOES,
+  type AcaoDeLeitura,
+  type AcaoDoSistema,
+} from "../../modules/m16-travamento/acoes.js";
+import { telaExigeLeituraDoEnte } from "./leitura";
 
 /**
  * PORTA DO MOLDE — o que a superfície padrão precisa do servidor e não pode resolver sozinha.
@@ -10,7 +15,7 @@ import { TODAS_AS_ACOES, type AcaoDoSistema } from "../../modules/m16-travamento
  *   1. **quem pode o quê** — para o molde ESCONDER o botão que seria recusado, dizendo o
  *      motivo. Quem decide continua sendo o `autorizar` do domínio, dentro da transação;
  *   2. **a soma da seleção**, em Decimal e no servidor;
- *   3. **a sessão**, fail-closed, que é o gate de leitura (ver a nota de `PermissoesDoMolde`).
+ *   3. **a leitura**, fail-closed: a sessão E a ação de leitura da área (ver `exigirLeitura`).
  *
  * ⚠️ A FONTE DA PERMISSÃO É A MESMA QUE A ESCRITA USA — `PermissaoDePerfil`, pelos vínculos
  * do usuário. Não há segunda tabela nem cache: se houvesse, o dia em que as duas divergissem
@@ -85,7 +90,20 @@ function exigirAcaoDoCenso(nome: string): AcaoDoSistema {
   return achada;
 }
 
-/** A sessão, ou o redirecionamento para /login. É o gate de leitura das telas do molde. */
-export async function exigirLeitura(): Promise<Identidade> {
-  return exigirSessao();
+/**
+ * O GATE DE LEITURA DAS TELAS DO MOLDE — exige a ação de leitura da área, no ente.
+ *
+ * ⚠️ ATÉ A ORQUESTRAÇÃO V3 ISTO ERA `return exigirSessao()`: nome de autorização, corpo de
+ * autenticação. Quarenta e seis telas abertas a qualquer identidade cadastrada. Agora a
+ * tela DECLARA a ação (`exigirLeitura("CONSULTAR_PATRIMONIO")`), e o compilador recusa a
+ * chamada sem ela — o defeito ficou inexprimível, não vigiado.
+ *
+ * ⚠️ NÍVEL ENTE, porque os recursos do molde não têm dimensão de unidade gestora
+ * (`unidadeOrcId` existe numa entidade só do sistema: a ficha). Uma classe de bens, um
+ * depósito, um convênio, uma auditoria são cadastros do ente — e a leitura do ente exige a
+ * concessão GLOBAL, como a escrita do ente exige (`autorizacao.ts`). Sem sessão, /login;
+ * com sessão e sem a ação, /sem-acesso com o motivo.
+ */
+export async function exigirLeitura(acao: AcaoDeLeitura): Promise<Identidade> {
+  return telaExigeLeituraDoEnte(acao);
 }

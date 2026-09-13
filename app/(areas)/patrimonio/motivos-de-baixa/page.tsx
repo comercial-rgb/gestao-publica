@@ -27,7 +27,7 @@ export default async function MotivosDeBaixaPage({
 }: {
   readonly searchParams: Promise<ParametrosBrutos>;
 }): Promise<React.ReactElement> {
-  await exigirLeitura();
+  await exigirLeitura("CONSULTAR_PATRIMONIO");
   const consulta = lerConsulta(MOTIVOS_DE_BAIXA, await searchParams);
 
   try {

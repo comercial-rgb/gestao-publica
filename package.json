@@ -58,7 +58,8 @@
     "smoke:perfis": "tsx scripts/trinco-de-maquina.ts 'smoke de perfis' -- npx tsx scripts/smoke-perfis.ts",
     "smoke:gestao-do-bem": "tsx scripts/trinco-de-maquina.ts 'smoke da gestao do bem' -- npx tsx scripts/smoke-gestao-do-bem.ts",
     "smoke:acervo": "tsx scripts/trinco-de-maquina.ts 'smoke do acervo' -- npx tsx scripts/smoke-acervo.ts",
-    "smoke:ent10": "tsx scripts/trinco-de-maquina.ts 'smoke da autorizacao de leitura' -- npx tsx scripts/smoke-ent10.ts"
+    "smoke:ent10": "tsx scripts/trinco-de-maquina.ts 'smoke da autorizacao de leitura' -- npx tsx scripts/smoke-ent10.ts",
+    "permissoes:atualizar": "tsx scripts/aplicar-atualizacao-de-permissoes.ts"
   },
   "keywords": [],
   "author": "",

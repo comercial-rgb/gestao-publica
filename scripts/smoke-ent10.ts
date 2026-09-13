@@ -39,8 +39,9 @@ import puppeteer, { type Browser, type Page } from "puppeteer";
  *
  * ═══ OS ATORES ═══
  *   · `admin@cg.pb.gov.br` — permissão GLOBAL (`unidadeOrcId: null`);
- *   · `operador.poc@cg.pb.gov.br` — UMA permissão, `EMPENHAR`, escopada à UG **99001**
- *     (`scripts/poc-usuario-restrito.ts`).
+ *   · `operador.poc@cg.pb.gov.br` — `EMPENHAR` e `CONSULTAR_DESPESA`, escopadas à UG **99001**
+ *     (`scripts/poc-usuario-restrito.ts`; numa instalação anterior à leitura como permissão,
+ *     `npm run permissoes:atualizar -- 1` deriva a leitura no mesmo escopo).
  *
  * ⚠️ O ESCOPO DELE ESTÁ NA UNIDADE VAZIA, DE PROPÓSITO. Os 12 empenhos do banco de
  * desenvolvimento vivem em **01001**; ele é de **99001**. Logo é recusado na unidade
@@ -348,9 +349,21 @@ async function main(): Promise<void> {
     // ⚠️ E UMA ROTA DO **ENTE**, que usa a outra metade da decisão (`exercicioAutorizado`).
     // Ela não tem dimensão de unidade — a receita é do ente —, então o que se prova aqui é
     // que o silêncio do exercício morreu também onde não há `ug` nenhuma a conferir.
-    const guiaAnoRuim = await statusDe(pRestrito, "/receita/arrecadacoes/pdf?exercicio=abc");
+    //
+    // ⚠️ ORQUESTRAÇÃO V3 (4.1): a rota do ENTE passou a cobrar CONSULTAR_RECEITA GLOBAL
+    // ANTES de qualquer parse. O operador restrito (despesa, na 99001) recebe 403 aqui —
+    // "esta consulta não está no seu acesso" vem antes de opinar sobre a forma do pedido
+    // de quem não deveria estar lendo. O 400 do exercício ilegível é provado com o ADMIN,
+    // que tem a leitura e recebe a recusa da FORMA.
+    const guiaRestrito = await statusDe(pRestrito, "/receita/arrecadacoes/pdf?exercicio=abc");
     conferir(
-      "rota do ENTE com exercício ilegível: 400 (a outra metade da decisão)",
+      "rota do ENTE, operador restrito: 403 — a leitura do ente exige a ação global, antes do parse",
+      guiaRestrito.status === 403 && guiaRestrito.corpo.includes("consultar_receita"),
+      `a rota respondeu ${guiaRestrito.status} — esperado 403 nomeando CONSULTAR_RECEITA`
+    );
+    const guiaAnoRuim = await statusDe(pAdmin, "/receita/arrecadacoes/pdf?exercicio=abc");
+    conferir(
+      "rota do ENTE, admin, exercício ilegível: 400 (a outra metade da decisão)",
       guiaAnoRuim.status === 400,
       `a rota respondeu ${guiaAnoRuim.status} — esperado 400`
     );

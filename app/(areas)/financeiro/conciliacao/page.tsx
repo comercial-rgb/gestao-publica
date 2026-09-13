@@ -7,6 +7,7 @@ import { SincronizarContexto } from "../../../../components/ui/SincronizarContex
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import { lerPainelConciliacao, PortaSemBancoError, type PainelConciliacao } from "../../../../lib/portas/conciliacao";
 import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
 /**
  * CONCILIAÇÃO BANCÁRIA (M09 bloco 3 + M17-a) — SÓ LEITURA.
@@ -35,6 +36,7 @@ export default async function ConciliacaoBancariaPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_FINANCEIRO");
   const sp = await searchParams;
 
   // ⚠️ SÓ O EXERCÍCIO: a conciliação confronta o extrato do BANCO com o razão, e conta

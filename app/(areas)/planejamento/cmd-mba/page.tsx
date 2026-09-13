@@ -17,6 +17,7 @@ import {
   type VersaoProgramacao,
 } from "../../../../lib/portas/programacao";
 import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
 /**
  * PROGRAMAÇÃO FINANCEIRA — CMD e MBA (TR 4.18/4.19/4.43/4.44 · LRF arts. 8º, 9º e 13).
@@ -49,6 +50,7 @@ export default async function CmdMbaPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
   const sp = await searchParams;
 
   // ⚠️ SÓ O EXERCÍCIO, E O SUBTÍTULO DESTA TELA JÁ DIZIA ISSO: "consolidado do ente". A

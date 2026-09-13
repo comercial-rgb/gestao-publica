@@ -9,9 +9,10 @@ import type { Identidade } from "../../modules/m16-travamento/autenticacao";
 import {
   EscopoDeLeituraError,
   ExercicioIlegivelError,
-  recorteAutorizado,
   type RecorteDaPagina,
 } from "../recorte";
+import { recorteDePaginaPara } from "./leitura";
+import type { AcaoDeLeitura } from "../../modules/m16-travamento/acoes";
 
 // ⚠️ OS DOIS ERROS SAEM PELA PORTA, e não é conveniência de import: é o idioma que ~70
 // telas já falam com `PortaSemBancoError` (e `lib/portas/tesouraria.ts` com
@@ -20,7 +21,7 @@ import {
 // a procedência do mesmo erro por dois caminhos, e o dia em que a decisão se mudasse de
 // arquivo cada tela descobriria isso por conta própria.
 export { EscopoDeLeituraError, ExercicioIlegivelError };
-export type { RecorteDaPagina };
+export type { RecorteDaPagina, AcaoDeLeitura };
 
 /**
  * PORTA — O CONTEXTO DE TRABALHO: quais EXERCÍCIOS existem e quais UNIDADES GESTORAS o usuário
@@ -216,15 +217,13 @@ export async function listarExercicios(): Promise<readonly ExercicioDisponivel[]
  * que é a mentira mais cara que esta camada pode contar.
  */
 export async function recorteDePagina(
-  pedido: Record<string, string | string[] | undefined>
+  pedido: Record<string, string | string[] | undefined>,
+  acao: AcaoDeLeitura
 ): Promise<RecorteDaPagina> {
-  const sessao = await exigirSessao();
-  const { ugs, global } = await listarUgsDoUsuario(sessao);
-  return recorteAutorizado({
-    pedido,
-    escopo: { unidades: ugs.map((u) => u.codigo), podeConsolidado: global },
-    identificador: sessao.identificador,
-  });
+  // ⚠️ O ESCOPO É O DA AÇÃO DE LEITURA, não a união das unidades do usuário (orquestração
+  // V3, 4.1). `listarUgsDoUsuario` — a união — continua servindo ao seletor do cabeçalho,
+  // e a nada mais: ela responde "onde ele trabalha?", não "ele pode CONSULTAR aqui?".
+  return recorteDePaginaPara(await exigirSessao(), pedido, acao);
 }
 
 /**

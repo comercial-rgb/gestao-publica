@@ -1,6 +1,8 @@
 import "dotenv/config";
 import { criarPrismaClient } from "../modules/m01-core-contabil/adapter-prisma.js";
 import { derivaDePerfil, explicarDeriva } from "../modules/m16-travamento/deriva-de-perfil.js";
+import { situacaoDasAtualizacoes } from "../modules/m16-travamento/atualizacoes-de-permissoes.js";
+import { AREA_DA_ACAO } from "../lib/portas/navegacao-permissoes.js";
 
 /**
  * ⚠️ RELATA, NÃO CONSERTA. Conceder permissão é ato administrativo, com autor responsável e
@@ -18,7 +20,15 @@ try {
   const linhas = await prisma.permissaoDePerfil.findMany({ select: { acao: true } });
   const d = derivaDePerfil(linhas.map((l) => String(l.acao)));
   console.log(explicarDeriva(d));
-  process.exitCode = d.semPerfil.length === 0 && d.foraDoCenso.length === 0 ? 0 : 1;
+  // ⚠️ E AS ATUALIZAÇÕES VERSIONADAS (orquestração V3, 4.2): uma pendente com prévia > 0
+  // é deriva com nome — a versão nova trouxe ações que os perfis existentes ainda não
+  // receberam no escopo deles. Aplica-se com `npm run permissoes:atualizar -- <versão>`.
+  const situacao = await situacaoDasAtualizacoes(prisma, AREA_DA_ACAO);
+  const pendentes = situacao.filter((s) => s.aplicadaEm === null && s.previa > 0);
+  for (const s of pendentes) {
+    console.log(`\n⚠️ ATUALIZAÇÃO PENDENTE: v${s.versao} (${s.nome}) — ${s.previa} concessão(ões) a aplicar: npm run permissoes:atualizar -- ${s.versao}`);
+  }
+  process.exitCode = d.semPerfil.length === 0 && d.foraDoCenso.length === 0 && pendentes.length === 0 ? 0 : 1;
 } finally {
   await prisma.$disconnect();
 }

@@ -6,6 +6,7 @@ import { TabelaDeDados, type ColunaTabela } from "../../../../components/ui/Tabe
 import { listarOperacoes, PortaSemBancoError, type OperacaoAuditada, type PaginaDeAuditoria } from "../../../../lib/portas/auditoria";
 import { FiltroAuditoria } from "./FiltroAuditoria";
 import { fimDoDiaCivil, inicioDoDiaCivil } from "../../../../packages/datas/index";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
 /** ADMINISTRAÇÃO · Auditoria (RegistroDeOperacao, TR 6.1-6.3) — leitura com filtros e paginação. */
 export const dynamic = "force-dynamic";
@@ -17,6 +18,7 @@ export default async function AuditoriaPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_ADMINISTRACAO");
   const sp = await searchParams;
   const um = (k: string): string => { const v = sp[k]; return (Array.isArray(v) ? v[0] : v) ?? ""; };
   const usuario = um("usuario"), acao = um("acao"), resultadoStr = um("resultado"), desdeStr = um("desde"), ateStr = um("ate");

@@ -24,7 +24,7 @@ export default async function ConsorciosDetalhePage({
   readonly params: Promise<{ readonly id: string }>;
   readonly searchParams: Promise<ParametrosBrutos>;
 }): Promise<React.ReactElement> {
-  await exigirLeitura();
+  await exigirLeitura("CONSULTAR_TRANSFERENCIAS");
   const { id } = await params;
   const consulta = lerConsulta(CONSORCIOS, await searchParams);
 

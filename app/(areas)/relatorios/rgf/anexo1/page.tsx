@@ -14,6 +14,7 @@ import {
   type Quadrimestre,
 } from "../../../../../lib/portas/rreo";
 import { SeletorQuadrimestre } from "./SeletorQuadrimestre";
+import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 /** RGF — Anexo 1 · Despesa com Pessoal (LRF art. 55 I "a"). Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
@@ -29,6 +30,7 @@ export default async function RgfAnexo1Page({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
   const sp = await searchParams;
   const exercicio = lerInteiro(sp["exercicio"], 2026);
   const q = lerInteiro(sp["quadrimestre"], 1);

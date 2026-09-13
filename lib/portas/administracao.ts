@@ -15,6 +15,12 @@ import {
   revogarAcaoDoPerfil,
 } from "../../modules/m16-travamento/servico-perfis";
 import { TODAS_AS_ACOES } from "../../modules/m16-travamento/acoes";
+import { derivaDePerfil, type DerivaDePerfil } from "../../modules/m16-travamento/deriva-de-perfil";
+import {
+  aplicarAtualizacaoDePermissoes,
+  situacaoDasAtualizacoes,
+  type SituacaoDaAtualizacao,
+} from "../../modules/m16-travamento/atualizacoes-de-permissoes";
 import { AREA_DA_ACAO } from "./navegacao-permissoes";
 import { AREAS } from "../navegacao";
 
@@ -247,5 +253,35 @@ export async function revogarAcaoDoPerfilAdmin(input: {
 }): Promise<void> {
   await comEscritaAutenticada("REVOGAR_ACAO_DE_PERFIL", async (criadoPor) =>
     revogarAcaoDoPerfil(cliente(), { ...input, criadoPor })
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DIAGNÓSTICO E ATUALIZAÇÃO VERSIONADA (orquestração V3, 4.2)
+//
+// ⚠️ NENHUMA FUNÇÃO DEPENDE DE INSERIR PERMISSÃO NO SQL PARA COMEÇAR A FUNCIONAR. O
+// administrador vê aqui a deriva (ações do censo que nenhum perfil concede; concessões
+// fora do censo) e as atualizações da versão instalada — e aplica a pendente pela tela,
+// com o próprio nome no autor de cada permissão.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface DiagnosticoDePermissoes {
+  readonly deriva: DerivaDePerfil;
+  readonly atualizacoes: readonly SituacaoDaAtualizacao[];
+}
+
+export async function lerDiagnosticoDePermissoes(): Promise<DiagnosticoDePermissoes> {
+  const linhas = await cliente().permissaoDePerfil.findMany({ select: { acao: true } });
+  return {
+    deriva: derivaDePerfil(linhas.map((l) => String(l.acao))),
+    atualizacoes: await situacaoDasAtualizacoes(cliente(), AREA_DA_ACAO),
+  };
+}
+
+export async function aplicarAtualizacaoDePermissoesAdmin(
+  versao: number
+): Promise<{ readonly concessoes: number; readonly perfisAlcancados: number }> {
+  return comEscritaAutenticada("APLICAR_ATUALIZACAO_DE_PERMISSOES", (criadoPor) =>
+    aplicarAtualizacaoDePermissoes(cliente(), { versao, criadoPor, areaDaAcao: AREA_DA_ACAO })
   );
 }

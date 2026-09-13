@@ -25,7 +25,7 @@ export default async function Detalhe({
   readonly params: Promise<{ readonly id: string }>;
   readonly searchParams: Promise<ParametrosBrutos>;
 }): Promise<React.ReactElement> {
-  await exigirLeitura();
+  await exigirLeitura("CONSULTAR_PATRIMONIO");
   const { id } = await params;
   const consulta = lerConsulta(BENS_PATRIMONIAIS, await searchParams);
 

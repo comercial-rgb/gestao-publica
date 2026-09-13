@@ -95,6 +95,38 @@ async function exigirUnidadeSeInformada(prisma: Tx, unidadeOrcId: string | null)
   }
 }
 
+/**
+ * ⚠️ NINGUÉM AMPLIA O PRÓPRIO CRACHÁ (orquestração V3, 4.2).
+ *
+ * Quem tem `CONCEDER_ACAO_A_PERFIL` pode ampliar qualquer perfil — inclusive o que ele
+ * mesmo usa, e aí o poder de distribuir poder vira o poder de se dar tudo, em um clique,
+ * sem que ninguém mais assine. A regra dos quatro olhos: um perfil é ampliado por um
+ * administrador que NÃO está vinculado a ele. O caminho do produto para as ações novas de
+ * uma versão — que alcançam TODOS os perfis, o do administrador incluído — é a atualização
+ * versionada (`atualizacoes-de-permissoes.ts`), registrada e auditada. Na instalação de um
+ * administrador só, é ela que o atende; para o resto, cria-se um segundo administrador.
+ */
+async function recusarAmpliacaoDoProprioCracha(
+  prisma: Tx,
+  identificador: string,
+  perfilId: string,
+  nomeDoPerfil: string
+): Promise<void> {
+  const proprio = await prisma.vinculoUsuarioPerfil.findFirst({
+    where: { perfilId, usuario: { identificador } },
+    select: { id: true },
+  });
+  if (proprio !== null) {
+    throw new Error(
+      `AMPLIAÇÃO DO PRÓPRIO CRACHÁ RECUSADA: o usuário "${identificador}" está vinculado ao ` +
+        `perfil "${nomeDoPerfil}" e por isso não pode conceder ações a ele — seria ampliar o ` +
+        `próprio escopo sem que outra pessoa assine. Quem amplia um perfil é um administrador ` +
+        `que NÃO o tem; para as ações novas de uma versão, o caminho é a atualização versionada ` +
+        `de permissões, em Administração > Perfis. Nada foi gravado.`
+    );
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CRIAR PERFIL — o crachá nasce VAZIO, e isso é a regra
 // ═══════════════════════════════════════════════════════════════════════════
@@ -170,6 +202,7 @@ export async function concederAcaoAoPerfil(
   const acao = exigirAcaoDoCenso(d.acao);
   const perfil = await exigirPerfil(prisma, d.perfilId);
   await exigirUnidadeSeInformada(prisma, d.unidadeOrcId);
+  await recusarAmpliacaoDoProprioCracha(prisma, d.criadoPor, d.perfilId, perfil.nome);
 
   // ⚠️ `findFirst`, E NÃO `findUnique` PELA CHAVE COMPOSTA. A unicidade é
   // (perfil, ação, unidade) com a unidade NULÁVEL, e o Prisma recusa `null` dentro do

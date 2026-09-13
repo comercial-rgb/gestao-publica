@@ -7,6 +7,7 @@ import { gerarRazao, PortaSemBancoError, type LinhaDoRazao, type RazaoAnalitico 
 import { SeletorPeriodo } from "../SeletorPeriodo";
 import { lerPeriodo } from "../periodo";
 import { diaCivilBr } from "../../../../../packages/datas/index";
+import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 /** Livro RAZÃO de uma conta — saldo anterior, movimentos com saldo corrente, saldo final. */
 export const dynamic = "force-dynamic";
@@ -16,6 +17,7 @@ export default async function RazaoPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
   const sp = await searchParams;
   const { desde, ate, desdeStr, ateStr } = lerPeriodo(sp);
   const conta = (Array.isArray(sp["conta"]) ? sp["conta"][0] : sp["conta"])?.trim();

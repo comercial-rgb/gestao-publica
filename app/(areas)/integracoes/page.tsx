@@ -3,6 +3,7 @@ import { Badge, type StatusBadge } from "../../../components/ui/Badge";
 import { Card } from "../../../components/ui/Card";
 import { PageHeader } from "../../../components/ui/PageHeader";
 import { montarCentralIntegracoes, type EstadoCard } from "../../../lib/portas/integracoes";
+import { telaExigeLeituraDoEnte } from "../../../lib/portas/leitura";
 
 /**
  * CENTRAL DE INTEGRAÇÕES (S6) — o hub que a Comissão vê. Quatro canais (SAGRES TXT · Captura 2.0 ·
@@ -19,6 +20,7 @@ const TOM: Record<EstadoCard, StatusBadge> = {
 };
 
 export default async function CentralIntegracoesPage(): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_INTEGRACOES");
   let cards: Awaited<ReturnType<typeof montarCentralIntegracoes>> = [];
   let erro: string | null = null;
   try {

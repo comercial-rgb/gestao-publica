@@ -16,6 +16,7 @@ import {
   FormResponder,
 } from "./FormAcoes";
 import { instanteCivilBr } from "../../../../../packages/datas/index";
+import { telaExigeLeituraEmAlgumEscopo } from "../../../../../lib/portas/leitura";
 
 /**
  * O COMUNICADO — e as ações acontecem aqui, não numa tela à parte.
@@ -37,6 +38,7 @@ export default async function ComunicadoPage({
 }: {
   readonly params: Promise<{ readonly id: string }>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraEmAlgumEscopo("CONSULTAR_COMUNICACAO");
   const { id } = await params;
 
   const c = await lerComunicado(id);

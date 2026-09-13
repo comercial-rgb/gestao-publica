@@ -1,5 +1,6 @@
 import { cliente, PortaSemBancoError } from "./cliente";
-import { comEscritaAutenticada, exigirSessao } from "./sessao";
+import { comEscritaAutenticada } from "./sessao";
+import { exigirLeituraEmAlgumEscopo } from "./leitura";
 import {
   ajudaDaRota,
   detalheDoChamado,
@@ -32,12 +33,12 @@ export async function lerAjudaDaRota(rota: string): Promise<AjudaVigente | null>
 }
 
 export async function lerChamados(): Promise<readonly LinhaDeChamado[]> {
-  const sessao = await exigirSessao();
+  const sessao = await exigirLeituraEmAlgumEscopo("CONSULTAR_SUPORTE");
   return listarChamados(cliente(), sessao.identificador);
 }
 
 export async function lerChamado(chamadoId: string): Promise<DetalheDoChamado | null> {
-  const sessao = await exigirSessao();
+  const sessao = await exigirLeituraEmAlgumEscopo("CONSULTAR_SUPORTE");
   return detalheDoChamado(cliente(), chamadoId, sessao.identificador);
 }
 

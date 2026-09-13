@@ -184,9 +184,32 @@ describe("a barra lateral e o servidor dizem a mesma coisa", () => {
     expect(TODAS_AS_ACOES.length).toBeGreaterThanOrEqual(185);
   });
 
-  it("as áreas SEM ação de mutação são só as de leitura — e estão nomeadas", () => {
-    // ⚠️ SE ESTA LISTA CRESCER, uma área de trabalho ficou sem ação classificada e passou a
-    // aparecer para todo mundo. O teste falha nomeando qual.
-    expect([...areasSemAcao()].sort()).toEqual(["transparencia"]);
+  it("não há mais área sem ação: a leitura virou permissão, e a transparência interna tem a dela", () => {
+    // ⚠️ ATÉ A ORQUESTRAÇÃO V3 esta lista era ["transparencia"]: a única área só de leitura
+    // ficava visível para QUALQUER sessão, porque leitura não era permissão. Agora cada área
+    // tem a sua CONSULTAR_<ÁREA>, e uma área sem ação nenhuma para o usuário some do menu.
+    expect([...areasSemAcao()]).toEqual([]);
   });
+
+  it("o perfil SÓ DE LEITURA vê a área que consulta — e nenhuma outra", async () => {
+    // O usuário que só CONSULTA a receita: a área "Receita" aparece; "Despesa" não.
+    const perfil = await prisma.perfil.create({
+      data: {
+        nome: "SO-LEITURA-RECEITA",
+        descricao: "consulta a receita e não escreve nada",
+        criadoPor: "TESTE",
+        permissoes: { create: [{ acao: "CONSULTAR_RECEITA", criadoPor: "TESTE" }] },
+      },
+      select: { id: true },
+    });
+    const u = await prisma.usuario.create({
+      data: { identificador: "so-leitura@cg.pb.gov.br", nome: "leitor", ativo: true, criadoPor: "TESTE" },
+      select: { id: true },
+    });
+    await prisma.vinculoUsuarioPerfil.create({ data: { usuarioId: u.id, perfilId: perfil.id, criadoPor: "TESTE" } });
+
+    const visiveis = areasVisiveis(await acoesDe("so-leitura@cg.pb.gov.br"));
+    expect(visiveis).toEqual(["receita"]);
+    expect(await servidorDeixa("so-leitura@cg.pb.gov.br", "REGISTRAR_ARRECADACAO")).toBe(false);
+  }, 30_000);
 });

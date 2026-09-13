@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { cliente } from "./cliente";
-import { exigirSessao } from "./sessao";
+import { exigirLeituraDoEnte } from "./leitura";
 import { POC_SAGRES } from "./sagres-poc";
 import { criarRegistroDeOperacaoPrisma } from "../../modules/m16-travamento/operacao";
 import { lerFatosEmpenhos } from "../../adapters/tribunais/tce-pb/sagres";
@@ -28,7 +28,7 @@ export interface ResultadoComparacaoTce {
  * consulta. É o conteúdo da tela de comparação.
  */
 export async function compararEmpenhosLocalTce(): Promise<ResultadoComparacaoTce> {
-  const ident = (await exigirSessao()).identificador;
+  const ident = (await exigirLeituraDoEnte("CONSULTAR_INTEGRACOES")).identificador;
   const prisma = cliente();
   const correlationId = randomUUID();
   const modo: ModoTce = "MOCK";

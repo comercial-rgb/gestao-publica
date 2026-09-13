@@ -27,7 +27,7 @@ export default async function DividaAtivaPage({
 }: {
   readonly searchParams: Promise<ParametrosBrutos>;
 }): Promise<React.ReactElement> {
-  await exigirLeitura();
+  await exigirLeitura("CONSULTAR_DIVIDA");
   const consulta = lerConsulta(DIVIDA_ATIVA, await searchParams);
 
   try {

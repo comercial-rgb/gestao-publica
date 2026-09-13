@@ -26,7 +26,7 @@ export default async function ObrasPage({
 }: {
   readonly searchParams: Promise<ParametrosBrutos>;
 }): Promise<React.ReactElement> {
-  await exigirLeitura();
+  await exigirLeitura("CONSULTAR_LICITACOES");
   const consulta = lerConsulta(OBRAS, await searchParams);
 
   try {

@@ -5,6 +5,7 @@ import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
 import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
 import {
+  EscopoDeLeituraError,
   lerDossieDoEmpenho,
   PortaSemBancoError,
   type DossieDaTela,
@@ -118,9 +119,11 @@ export default async function DetalheDoEmpenhoPage({
         <PageHeader titulo="Empenho" subtitulo={id} />
         <EstadoVazio
           titulo={
-            erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
-              : "Não foi possível montar o dossiê deste empenho"
+            erro instanceof EscopoDeLeituraError
+              ? "Este empenho não está no seu acesso"
+              : erro instanceof PortaSemBancoError
+                ? "Banco de dados não configurado"
+                : "Não foi possível montar o dossiê deste empenho"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />

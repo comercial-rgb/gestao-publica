@@ -23,7 +23,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   // sessão por request, e a segunda não acrescentaria garantia nenhuma.
   let recorte: RecorteDaPagina;
   try {
-    recorte = await recorteDePagina(Object.fromEntries(req.nextUrl.searchParams));
+    recorte = await recorteDePagina(Object.fromEntries(req.nextUrl.searchParams), "CONSULTAR_DESPESA");
   } catch (e) {
     const recusa = respostaDaRecusaDeLeitura(e);
     if (recusa !== null) return recusa;

@@ -56,6 +56,7 @@
     // como um config passa a divergir do que seu comentário promete.
     "test/ui/recorte-autorizado.test.ts",
     "test/caracterizacao/leitura-por-unidade.test.ts",
+    "test/leitura-por-acao.test.ts",
     "app/**/*.ts",
     "app/**/*.tsx",
     "components/**/*.ts",

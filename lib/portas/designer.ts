@@ -1,5 +1,6 @@
 import { cliente, PortaSemBancoError } from "./cliente";
-import { comEscritaAutenticada, exigirSessao } from "./sessao";
+import { comEscritaAutenticada } from "./sessao";
+import { exigirLeituraEmAlgumEscopo } from "./leitura";
 import { COLUNAS_DA_FONTE } from "../../modules/m26-designer/fontes";
 import { FUNCOES } from "../../modules/m26-designer/gramatica";
 import {
@@ -90,7 +91,7 @@ export async function lerUnidades(): Promise<readonly { readonly id: string; rea
  * o nome e a existência — e o nome de um relatório costuma dizer o que ele mede.
  */
 export async function lerModelos(): Promise<readonly ModeloDaTela[]> {
-  const sessao = await exigirSessao();
+  const sessao = await exigirLeituraEmAlgumEscopo("CONSULTAR_RELATORIOS");
   const modelos = await cliente().modeloDeRelatorio.findMany({
     where: {
       OR: [{ visibilidade: "PUBLICO" }, { criadoPor: sessao.identificador }],
@@ -143,7 +144,7 @@ export async function lerModelos(): Promise<readonly ModeloDaTela[]> {
  * sendo enfileirada, e a notificação de término é real.
  */
 export async function lerExecucoes(): Promise<readonly ExecucaoDaTela[]> {
-  const sessao = await exigirSessao();
+  const sessao = await exigirLeituraEmAlgumEscopo("CONSULTAR_RELATORIOS");
   await processarExecucoesPendentes(cliente(), 20);
 
   const execucoes = await cliente().execucaoDeRelatorio.findMany({
@@ -183,7 +184,7 @@ export async function lerExecucoes(): Promise<readonly ExecucaoDaTela[]> {
 
 /** O CSV de uma execução — só de quem a pediu. */
 export async function lerResultado(execucaoId: string): Promise<string | null> {
-  const sessao = await exigirSessao();
+  const sessao = await exigirLeituraEmAlgumEscopo("CONSULTAR_RELATORIOS");
   const e = await cliente().execucaoDeRelatorio.findUnique({
     where: { id: execucaoId },
     select: { criadoPor: true, resultado: { select: { csv: true } } },

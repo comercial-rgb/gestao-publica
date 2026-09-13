@@ -11,6 +11,7 @@ import {
 } from "../../../../lib/portas/protocolo";
 import { dataBr } from "../../../../lib/recorte";
 import { FormAbrirProcesso } from "./FormProcesso";
+import { telaExigeLeituraEmAlgumEscopo } from "../../../../lib/portas/leitura";
 
 /**
  * A CAIXA DE PROCESSOS (5.42.49/50/51).
@@ -57,6 +58,7 @@ export default async function ProcessosPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraEmAlgumEscopo("CONSULTAR_PROTOCOLO");
   const sp = await searchParams;
   const situacao = typeof sp["situacao"] === "string" ? sp["situacao"] : undefined;
 

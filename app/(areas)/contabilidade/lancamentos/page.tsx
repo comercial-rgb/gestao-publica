@@ -83,7 +83,7 @@ export default async function LancamentosPage({
   let recorte: RecorteDaPagina;
   let lancamentos: readonly LancamentoDoDiario[];
   try {
-    recorte = await recorteDePagina(sp);
+    recorte = await recorteDePagina(sp, "CONSULTAR_CONTABILIDADE");
     // ⚠️ OS FILTROS VÃO À PORTA, não a um `.filter()` depois. O `diario` do M12 os compõe no
     // `where` do SQL; filtrar em memória traria o razão inteiro do banco para descartar quase tudo.
     lancamentos = await gerarDiario({

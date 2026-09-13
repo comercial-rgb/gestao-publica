@@ -76,7 +76,7 @@ async function main(): Promise<void> {
       const p = await tx.perfil.create({
         data: {
           nome: NOME_PERFIL,
-          descricao: `Perfil de demonstração: EMPENHAR apenas na unidade ${UG_AUTORIZADA}. Sem permissões de administração.`,
+          descricao: `Perfil de demonstração: CONSULTAR a despesa e EMPENHAR apenas na unidade ${UG_AUTORIZADA}. Sem permissões de administração.`,
           criadoPor: ADMIN,
         },
         select: { id: true },
@@ -85,6 +85,12 @@ async function main(): Promise<void> {
       // demonstração de escopo (TR 6.5) perderia justamente o que ela existe para mostrar.
       await tx.permissaoDePerfil.create({
         data: { perfilId: p.id, acao: "EMPENHAR", unidadeOrcId: ug.id, criadoPor: ADMIN },
+      });
+      // ⚠️ A LEITURA É PERMISSÃO (orquestração V3, 4.1): sem CONSULTAR_DESPESA na mesma
+      // unidade, ele empenharia numa tela que não consegue abrir. O escopo é o MESMO da
+      // ação — é exatamente o que a atualização v1 deriva para os perfis existentes.
+      await tx.permissaoDePerfil.create({
+        data: { perfilId: p.id, acao: "CONSULTAR_DESPESA", unidadeOrcId: ug.id, criadoPor: ADMIN },
       });
       return p;
     });
@@ -98,7 +104,7 @@ async function main(): Promise<void> {
     await concederPerfil(prisma, { usuarioId, perfilId: perfil.id, criadoPor: ADMIN });
 
     console.log(
-      `[poc-usuario-restrito] ${IDENT} CRIADO — perfil "${NOME_PERFIL}": 1 permissão (EMPENHAR na UG ${UG_AUTORIZADA}).\n` +
+      `[poc-usuario-restrito] ${IDENT} CRIADO — perfil "${NOME_PERFIL}": 2 permissões (CONSULTAR_DESPESA e EMPENHAR na UG ${UG_AUTORIZADA}).\n` +
         `  senha inicial: ${senha}\n` +
         `  ⚠️ ele ABRE /administracao (a trava é no ATO, não na rota) — demonstre a recusa no BOTÃO.`
     );

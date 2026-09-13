@@ -502,7 +502,9 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   inventariam segregação que o TR não pede. É o par de `encerrarExercicio` /
     //   `encerrarExercicioComRestos`, que já compartilham crachá pela mesma razão.
     //   = 229.
-    expect(TODAS_AS_ACOES.length).toBe(229);
+    // 229 de mutação (uma por serviço, com as duas fusões abaixo) + 18 de LEITURA
+    // (`ACOES_DE_LEITURA`, uma por área de navegação — orquestração V3, 4.1).
+    expect(TODAS_AS_ACOES.length).toBe(229 + 18);
     expect(ACAO_DO_SERVICO.encerrarExercicio).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.encerrarExercicioComRestos).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.importarExtrato).toBe("IMPORTAR_EXTRATO");

@@ -51,7 +51,7 @@ export default async function LiquidacoesPage({
   let liquidacoes: readonly LiquidacaoDaTela[];
   let liquidaveis: readonly EmpenhoLiquidavel[];
   try {
-    recorte = await recorteDePagina(sp);
+    recorte = await recorteDePagina(sp, "CONSULTAR_DESPESA");
     const [lista, empenhos] = await Promise.all([
       listarLiquidacoesDaExecucao({
         exercicio: recorte.exercicio,

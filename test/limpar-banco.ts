@@ -63,6 +63,9 @@ const TABELAS = [
   "Assunto",
   "UsuarioDoSetor",
   "Setor",
+  // Orquestração V3 (4.2) — o registro das atualizações versionadas de permissões. Sem
+  // truncar, a v1 aplicada por um teste "já estaria aplicada" para o seguinte.
+  "AtualizacaoDePermissoes",
   // M18 — SAGRES Captura 2.0: execução de submissão
   "ExecucaoCaptura",
   // M20 — importadores: tem `arquivoHash` ÚNICO. Sem truncar, o hash de um teste vaza para o

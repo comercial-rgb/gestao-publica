@@ -27,7 +27,7 @@ export default async function LocalizacoesPage({
 }: {
   readonly searchParams: Promise<ParametrosBrutos>;
 }): Promise<React.ReactElement> {
-  await exigirLeitura();
+  await exigirLeitura("CONSULTAR_PATRIMONIO");
   const consulta = lerConsulta(LOCALIZACOES_FISICAS, await searchParams);
 
   try {

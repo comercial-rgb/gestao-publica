@@ -5,6 +5,7 @@ import { PageHeader } from "../../../../../components/ui/PageHeader";
 import { lerChamado } from "../../../../../lib/portas/suporte";
 import { FormAtendimento, FormAvaliar } from "../FormChamado";
 import { instanteCivilBr } from "../../../../../packages/datas/index";
+import { telaExigeLeituraEmAlgumEscopo } from "../../../../../lib/portas/leitura";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export default async function ChamadoPage({
 }: {
   readonly params: Promise<{ readonly id: string }>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraEmAlgumEscopo("CONSULTAR_SUPORTE");
   const { id } = await params;
   const c = await lerChamado(id);
   if (c === null) notFound();

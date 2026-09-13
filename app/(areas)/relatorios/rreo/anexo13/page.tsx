@@ -7,6 +7,7 @@ import { TabelaDeDados, type ColunaTabela } from "../../../../../components/ui/T
 import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
 import { gerarRreoAnexo13, PortaSemBancoError, type Anexo13, type LinhaContratoPPP } from "../../../../../lib/portas/rreo";
 import { SeletorBimestreRreo } from "../anexo3/SeletorBimestreRreo";
+import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 /** RREO — Anexo 13 · PPP (Lei 11.079/2004). Server Component, força-dinâmica. Esqueleto honesto. */
 export const dynamic = "force-dynamic";
@@ -16,6 +17,7 @@ export default async function RreoAnexo13Page({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
   const sp = await searchParams;
   const exercicio = lerInteiro(sp["exercicio"], 2026);
   const b = lerInteiro(sp["bimestre"], 1);

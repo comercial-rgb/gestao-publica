@@ -18,6 +18,7 @@ import {
   FormRetirar,
 } from "./FormDesigner";
 import { instanteCivilBr } from "../../../../packages/datas/index";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
 /**
  * O DESIGNER DE RELATÓRIOS.
@@ -40,6 +41,7 @@ export default async function DesignerPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
   const sp = await searchParams;
   const verId = typeof sp["ver"] === "string" ? sp["ver"] : undefined;
 

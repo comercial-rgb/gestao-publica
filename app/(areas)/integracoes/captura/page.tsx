@@ -9,6 +9,7 @@ import {
   ultimasExecucoesCaptura,
   type EntidadeCaptura,
 } from "../../../../lib/portas/captura";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
 /**
  * TELA SAGRES CAPTURA 2.0 (M18, S3) — a MESMA massa em JSON, validada contra o schema OFICIAL, com
@@ -43,6 +44,7 @@ function BannerHonesto(): React.ReactElement {
 }
 
 export default async function CapturaPage(): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_INTEGRACOES");
   let preview: Awaited<ReturnType<typeof montarPreviewCaptura>> = [];
   let execucoes: Awaited<ReturnType<typeof ultimasExecucoesCaptura>> = [];
   let erro: string | null = null;

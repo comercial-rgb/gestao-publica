@@ -22,7 +22,7 @@ export default async function ObrasDetalhePage({
   readonly params: Promise<{ readonly id: string }>;
   readonly searchParams: Promise<ParametrosBrutos>;
 }): Promise<React.ReactElement> {
-  await exigirLeitura();
+  await exigirLeitura("CONSULTAR_LICITACOES");
   const { id } = await params;
   const consulta = lerConsulta(OBRAS, await searchParams);
 

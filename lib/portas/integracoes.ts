@@ -1,5 +1,5 @@
 import { cliente } from "./cliente";
-import { exigirSessao } from "./sessao";
+import { exigirLeituraDoEnte } from "./leitura";
 import { estadoDoModoBb } from "../../modules/m17-banco-bb/modos";
 
 /**
@@ -34,7 +34,7 @@ function resumoOperacao(op: { acao: string; detalhe: string | null; criadoEm: Da
 }
 
 export async function montarCentralIntegracoes(): Promise<readonly CardIntegracao[]> {
-  await exigirSessao();
+  await exigirLeituraDoEnte("CONSULTAR_INTEGRACOES");
   const prisma = cliente();
 
   // Últimos eventos por canal (RegistroDeOperacao) + a última submissão do Captura.

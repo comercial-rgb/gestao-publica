@@ -20,6 +20,7 @@ import {
 import { mascararCpfCnpj } from "../../../../lib/format/mascaras";
 import { dataBr, descreverRecorte, recorteNaoAutorizado } from "../../../../lib/recorte";
 import { SeletorFonte } from "./SeletorFonte";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
 /**
  * ORDEM CRONOLÓGICA — O PAINEL DE CONFORMIDADE do art. 141 da Lei 14.133/2021.
@@ -85,6 +86,7 @@ export default async function OrdemCronologicaPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_DESPESA");
   const sp = await searchParams;
   // ⚠️ O recorte é LIDO mesmo sem a fila usá-lo — e é lido pelo mesmo parser das outras telas. Ele
   // não filtra nada aqui (a fila do art. 141 não se recorta por exercício/UG, ver o topo); serve

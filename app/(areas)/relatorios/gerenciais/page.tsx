@@ -78,7 +78,7 @@ export default async function RelatoriosGerenciaisPage({
   let empenhos: readonly EmpenhoDaTela[];
   let vocabulario: VocabularioDaTela;
   try {
-    recorte = await recorteDePagina(sp);
+    recorte = await recorteDePagina(sp, "CONSULTAR_DESPESA");
     // ⚠️ AS DUAS LEITURAS TÊM RECORTES DIFERENTES DE PROPÓSITO. A tabela leva o filtro; o
     // vocabulário do `select`, não — um vocabulário já filtrado colapsaria para a opção
     // escolhida e prenderia o usuário nela.

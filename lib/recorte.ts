@@ -112,11 +112,124 @@ export interface EscopoDeLeitura {
   /** Códigos SAGRES das unidades que ele pode ler. Vazio = nenhuma. */
   readonly unidades: readonly string[];
   /**
-   * Permissão GLOBAL em alguma ação. É o que autoriza o recorte CONSOLIDADO (o ente
-   * inteiro) — quem só tem unidades específicas não pode pedi-lo, porque ele conteria
-   * unidades que o usuário não pode ler.
+   * Permissão GLOBAL **na ação de leitura cobrada**. É o que autoriza o recorte
+   * CONSOLIDADO (o ente inteiro) e as leituras que são do ente por natureza — quem só tem
+   * unidades específicas não pode pedi-las, porque conteriam unidades que ele não lê.
+   *
+   * ⚠️ NA AÇÃO COBRADA, e não "em alguma ação". A ENT10 derivava isto da união das
+   * ações do usuário; a orquestração V3 (4.1) trocou pela permissão da própria ação de
+   * leitura (`CONSULTAR_<ÁREA>`): global em EMPENHAR não concede leitura global de nada.
    */
   readonly podeConsolidado: boolean;
+  /** `false` = a identidade não existe ou foi revogada. Ausente = ativa. */
+  readonly identidadeAtiva?: boolean | undefined;
+}
+
+/** A frase que nomeia a ação cobrada — vai ao fim de cada recusa, para o administrador. */
+function nomearAcao(acao: string | undefined): string {
+  return acao === undefined ? "" : ` A ação de leitura cobrada é ${acao}.`;
+}
+
+function exigirIdentidadeAtiva(p: {
+  readonly escopo: EscopoDeLeitura;
+  readonly identificador: string;
+}): void {
+  if (p.escopo.identidadeAtiva === false) {
+    throw new EscopoDeLeituraError(
+      `ACESSO NEGADO: o usuário "${p.identificador}" não existe ou teve o acesso ` +
+        `REVOGADO. Os fatos que ele criou continuam válidos; ele não consulta mais nada. ` +
+        `Quem resolve é o administrador, reativando o cadastro se for o caso.`
+    );
+  }
+}
+
+/**
+ * LEITURA DO ENTE — exige a ação de leitura em escopo GLOBAL.
+ *
+ * ═══ ⚠️ POR QUE "GLOBAL", E NÃO "EM ALGUMA UNIDADE" ═══
+ * Receita, extraorçamentário, conciliação, posição patrimonial, plano de contas, os
+ * cadastros sem dimensão de unidade, os livros e os demonstrativos são dados do ENTE:
+ * não há `where` por unidade que os recorte. Aceitar a concessão de UMA unidade aqui
+ * entregaria o ente inteiro a quem só pode uma parte dele — a mesma regra que a ESCRITA
+ * já aplica ("ato do ENTE só permissão GLOBAL", `autorizacao.ts`). Uma agregação só das
+ * unidades autorizadas seria a visão PARCIAL, e onde a tela a oferece ela passa pelo
+ * recorte (`recorteAutorizado`), nunca por esta função.
+ */
+export function exigirEscopoDoEnte(p: {
+  readonly escopo: EscopoDeLeitura;
+  readonly identificador: string;
+  readonly acao: string;
+}): void {
+  exigirIdentidadeAtiva(p);
+  if (p.escopo.podeConsolidado) return;
+  throw new EscopoDeLeituraError(
+    p.escopo.unidades.length === 0
+      ? `ACESSO NEGADO: o usuário "${p.identificador}" não tem a ação ${p.acao} em escopo ` +
+        `nenhum. Não é o endereço: é o crachá. Esta consulta é do ENTE inteiro, e por isso ` +
+        `só a concessão GLOBAL de ${p.acao} (em todas as unidades) a autoriza. Quem resolve ` +
+        `é o administrador, concedendo a ação ao perfil.`
+      : `ACESSO NEGADO: esta consulta é do ENTE inteiro, e o usuário "${p.identificador}" ` +
+        `tem ${p.acao} só em: ${nomearUnidades(p.escopo.unidades)}. Não é a ação: é o ` +
+        `ESCOPO — uma leitura do ente exige a concessão GLOBAL de ${p.acao}. Uma soma só ` +
+        `das unidades dele seria uma visão PARCIAL, e esta tela não a oferece. Quem ` +
+        `resolve é o administrador, estendendo o escopo.`
+  );
+}
+
+/**
+ * LEITURA EM ALGUM ESCOPO — a ação em qualquer unidade (ou global) basta.
+ *
+ * É o nível das CAIXAS por participação: processos, comunicados e chamados já recortam
+ * por quem participa do registro (`podeVerProcesso`, `podeVerComunicado`, `listarChamados`).
+ * A ação de leitura decide se a ÁREA existe para o usuário; o registro decide o resto.
+ */
+export function exigirAlgumEscopo(p: {
+  readonly escopo: EscopoDeLeitura;
+  readonly identificador: string;
+  readonly acao: string;
+}): void {
+  exigirIdentidadeAtiva(p);
+  if (p.escopo.podeConsolidado || p.escopo.unidades.length > 0) return;
+  throw new EscopoDeLeituraError(
+    `ACESSO NEGADO: o usuário "${p.identificador}" não tem a ação ${p.acao} em escopo ` +
+      `nenhum. Não é o endereço: é o crachá. Quem resolve é o administrador, concedendo ` +
+      `${p.acao} ao perfil — global ou numa unidade gestora.`
+  );
+}
+
+/**
+ * LEITURA DE UM REGISTRO — o escopo sai do PRÓPRIO registro (a unidade da ficha do
+ * empenho, por exemplo), nunca da URL.
+ *
+ * ⚠️ A RECUSA NÃO NOMEIA A UNIDADE DO REGISTRO. Ela nomeia o escopo que o usuário TEM.
+ * Dizer "este empenho é da Educação" a quem não pode ler a Educação entregaria um
+ * metadado do registro proibido — o pedido da orquestração V3 (4.1) é explícito: "não
+ * devolva dossiê, ID relacionado ou metadados proibidos".
+ *
+ * Registro sem unidade (`undefined`) é registro do ENTE, e cai na regra do ente.
+ */
+export function exigirEscopoDoRegistro(p: {
+  readonly escopo: EscopoDeLeitura;
+  readonly identificador: string;
+  readonly acao: string;
+  readonly unidadeCodigo: string | undefined;
+}): void {
+  if (p.unidadeCodigo === undefined) {
+    exigirEscopoDoEnte(p);
+    return;
+  }
+  exigirIdentidadeAtiva(p);
+  if (p.escopo.podeConsolidado || p.escopo.unidades.includes(p.unidadeCodigo)) return;
+  throw new EscopoDeLeituraError(
+    p.escopo.unidades.length === 0
+      ? `ACESSO NEGADO: o usuário "${p.identificador}" não tem a ação ${p.acao} em unidade ` +
+        `nenhuma, e por isso não pode ler este registro. Não é o endereço: é o crachá. ` +
+        `Quem resolve é o administrador, concedendo ${p.acao} ao perfil.`
+      : `ACESSO NEGADO: este registro pertence a uma unidade fora do escopo de leitura do ` +
+        `usuário "${p.identificador}". Ele TEM ${p.acao}, mas só em: ` +
+        `${nomearUnidades(p.escopo.unidades)}. Não é a ação: é ONDE. Quem resolve é o ` +
+        `administrador, estendendo o escopo.`
+  );
 }
 
 /**
@@ -242,8 +355,11 @@ export function recorteAutorizado(p: {
   readonly escopo: EscopoDeLeitura;
   /** Identificador do usuário — entra na recusa, como na escrita. */
   readonly identificador: string;
+  /** A ação de leitura cobrada — nomeada na recusa, para o administrador saber o que conceder. */
+  readonly acao?: string | undefined;
 }): RecorteDaPagina {
   const exercicio = exercicioAutorizado(p.pedido);
+  exigirIdentidadeAtiva(p);
 
   const ug = primeiro(p.pedido["ug"])?.trim();
   const temUg = ug !== undefined && ug !== "";
@@ -254,11 +370,13 @@ export function recorteAutorizado(p: {
         p.escopo.unidades.length === 0
           ? `ACESSO NEGADO: o usuário "${p.identificador}" não tem leitura em unidade ` +
             `nenhuma, e por isso não pode ler a unidade ${ug}. Não é o endereço: é o ` +
-            `crachá. Quem resolve é o administrador, concedendo acesso a uma unidade.`
+            `crachá. Quem resolve é o administrador, concedendo acesso a uma unidade.` +
+            nomearAcao(p.acao)
           : `ACESSO NEGADO: a unidade ${ug} não está no escopo de leitura do usuário ` +
             `"${p.identificador}". Ele TEM leitura, mas só em: ` +
             `${nomearUnidades(p.escopo.unidades)}. Não é a ação: é ONDE. Quem resolve é o ` +
-            `administrador, estendendo o escopo.`
+            `administrador, estendendo o escopo.` +
+            nomearAcao(p.acao)
       );
     }
     return { exercicio, unidadeCodigo: ug };
@@ -277,7 +395,8 @@ export function recorteAutorizado(p: {
     throw new EscopoDeLeituraError(
       `ACESSO NEGADO: o usuário "${p.identificador}" não tem leitura em unidade nenhuma. ` +
         `Não há o que consultar. Quem resolve é o administrador, concedendo acesso a uma ` +
-        `unidade (ou reativando o cadastro, se ele foi revogado).`
+        `unidade (ou reativando o cadastro, se ele foi revogado).` +
+        nomearAcao(p.acao)
     );
   }
 
@@ -285,7 +404,8 @@ export function recorteAutorizado(p: {
     `ESCOLHA A UNIDADE: o usuário "${p.identificador}" tem leitura em mais de uma ` +
       `unidade (${nomearUnidades(p.escopo.unidades)}) e não tem acesso consolidado ao ` +
       `ente. Selecione uma unidade no alto da tela — o consolidado apenas das unidades ` +
-      `dele ainda não é oferecido.`
+      `dele ainda não é oferecido.` +
+      nomearAcao(p.acao)
   );
 }
 

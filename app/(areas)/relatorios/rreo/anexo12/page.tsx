@@ -15,6 +15,7 @@ import {
   type LinhaReceitaAsps,
 } from "../../../../../lib/portas/rreo";
 import { SeletorBimestreRreo } from "../anexo3/SeletorBimestreRreo";
+import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 /**
  * RREO — ANEXO 12: ASPS (Saúde), BLOCO 1 (LC 141/2012 art. 35; MDF Tabela 12.2). Server Component
@@ -33,6 +34,7 @@ export default async function RreoAnexo12Page({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
   const sp = await searchParams;
   const exercicio = lerInteiro(sp["exercicio"], ANO_PADRAO);
   const bimestreBruto = lerInteiro(sp["bimestre"], BIMESTRE_PADRAO);

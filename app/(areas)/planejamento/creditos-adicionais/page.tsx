@@ -56,7 +56,7 @@ export default async function CreditosAdicionaisPage({
   // leitura de fichas só para o form abriria a porta a as duas discordarem.
   let fichas: readonly LinhaQdd[];
   try {
-    recorte = await recorteDePagina(sp);
+    recorte = await recorteDePagina(sp, "CONSULTAR_PLANEJAMENTO");
     [decretos, leis, fichas] = await Promise.all([
       lerDecretos({ ano: recorte.exercicio }),
       lerLeis({ ano: recorte.exercicio }),

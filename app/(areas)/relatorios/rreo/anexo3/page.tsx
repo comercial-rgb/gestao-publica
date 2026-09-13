@@ -12,6 +12,7 @@ import {
   type LinhaRcl,
 } from "../../../../../lib/portas/rreo";
 import { SeletorBimestreRreo } from "./SeletorBimestreRreo";
+import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 /**
  * RREO — ANEXO 3: DEMONSTRATIVO DA RECEITA CORRENTE LÍQUIDA (LRF art. 53, I; MDF 15ª ed.).
@@ -38,6 +39,7 @@ export default async function RreoAnexo3Page({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
   const sp = await searchParams;
   const exercicio = lerInteiro(sp["exercicio"], ANO_PADRAO);
   const bimestreBruto = lerInteiro(sp["bimestre"], BIMESTRE_PADRAO);

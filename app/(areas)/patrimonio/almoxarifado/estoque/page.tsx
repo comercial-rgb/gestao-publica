@@ -84,7 +84,7 @@ export default async function EstoquePage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
-  await exigirLeitura();
+  await exigirLeitura("CONSULTAR_PATRIMONIO");
   const params = await searchParams;
   const pedido = typeof params["deposito"] === "string" ? params["deposito"] : "";
   const emDia = typeof params["em"] === "string" ? params["em"] : "";

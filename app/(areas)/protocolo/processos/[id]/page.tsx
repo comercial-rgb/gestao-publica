@@ -28,6 +28,7 @@ import {
   FormTramitar,
 } from "./FormMovimentos";
 import { instanteCivilBr } from "../../../../../packages/datas/index";
+import { telaExigeLeituraEmAlgumEscopo } from "../../../../../lib/portas/leitura";
 
 /**
  * O DOSSIÊ DO PROCESSO — e o gerenciamento acontece AQUI (5.42.52).
@@ -67,6 +68,7 @@ export default async function ProcessoPage({
 }: {
   readonly params: Promise<{ readonly id: string }>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraEmAlgumEscopo("CONSULTAR_PROTOCOLO");
   const { id } = await params;
 
   const dossie = await lerDossieDoProcesso(id);

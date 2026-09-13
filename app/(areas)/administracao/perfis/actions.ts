@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import {
+  aplicarAtualizacaoDePermissoesAdmin,
   concederAcaoAoPerfilAdmin,
   criarPerfilAdmin,
   revogarAcaoDoPerfilAdmin,
@@ -63,5 +64,23 @@ export async function revogarAcaoAction(_prev: EstadoPerfil, formData: FormData)
     return { sucesso: `Ação ${acao} revogada.` };
   } catch (e) {
     return { erro: e instanceof Error ? e.message : "Não foi possível revogar a ação." };
+  }
+}
+
+/** Aplica uma atualização versionada de permissões (orquestração V3, 4.2). Uma vez por instalação. */
+export async function aplicarAtualizacaoAction(_prev: EstadoPerfil, formData: FormData): Promise<EstadoPerfil> {
+  const versao = Number.parseInt(String(formData.get("versao") ?? ""), 10);
+  if (!Number.isInteger(versao)) return { erro: "Escolha a versão da atualização a aplicar." };
+  try {
+    const r = await aplicarAtualizacaoDePermissoesAdmin(versao);
+    revalidatePath(ROTA);
+    return {
+      sucesso:
+        r.concessoes === 0
+          ? `Atualização ${versao} registrada: nenhum perfil precisava de concessão nova.`
+          : `Atualização ${versao} aplicada: ${r.concessoes} concessão(ões) em ${r.perfisAlcancados} perfil(is), cada uma com o seu nome no autor.`,
+    };
+  } catch (e) {
+    return { erro: e instanceof Error ? e.message : "Não foi possível aplicar a atualização." };
   }
 }

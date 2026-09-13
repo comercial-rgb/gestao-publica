@@ -7,6 +7,8 @@ import {
 } from "../../modules/m10-patrimonial/estoque-fisico-dominio.js";
 import { cliente } from "./cliente";
 import { exigirSessao } from "./sessao";
+import { ACOES_DE_LEITURA, type AcaoDeLeitura } from "../../modules/m16-travamento/acoes.js";
+import { acoesDeLeituraDoUsuario } from "../../modules/m16-travamento/leitura.js";
 
 /**
  * ⚠️ O TETO DAS CONTAGENS DERIVADAS. As faixas que precisam DERIVAR (saldo a atender, lote
@@ -332,19 +334,28 @@ async function ordensSemEntrada(): Promise<Pendencia> {
  */
 export async function pendenciasDoUsuario(): Promise<readonly Pendencia[]> {
   const sessao = await exigirSessao();
-  const resultados = await Promise.allSettled([
-    assinaturasNaFila(sessao.identificador),
-    pareceresAguardando(sessao.identificador),
-    conciliacoesAbertas(),
+  // ⚠️ CADA FAIXA DECLARA A ÁREA QUE ELA CONTA (orquestração V3, 4.1), e só entram as das
+  // áreas que o usuário pode CONSULTAR em algum escopo. Uma contagem é uma leitura: "há 7
+  // conciliações abertas" já é dado do financeiro, e mostrá-lo a quem não consulta o
+  // financeiro seria o vazamento que a política existe para fechar. As duas primeiras
+  // são pessoais (dirigidas a quem está na sessão) e não dependem de área.
+  const pode = await acoesDeLeituraDoUsuario(cliente(), sessao.identificador, ACOES_DE_LEITURA);
+  const faixas: readonly { readonly area: AcaoDeLeitura | null; readonly ler: () => Promise<Pendencia> }[] = [
+    { area: null, ler: () => assinaturasNaFila(sessao.identificador) },
+    { area: null, ler: () => pareceresAguardando(sessao.identificador) },
+    { area: "CONSULTAR_FINANCEIRO", ler: conciliacoesAbertas },
     // ⚠️ ENT06 — e cada uma continua independente: `allSettled`, não `all`. Uma faixa nova
     // que falhe some sozinha, em vez de levar junto as três que já funcionavam.
-    requisicoesComSaldo(),
-    inventariosDeEstoqueAbertos(),
-    inventariosDeBensAbertos(),
-    bensSemResponsavel(),
-    lotesVencendo(),
-    ordensSemEntrada(),
-  ]);
+    { area: "CONSULTAR_PATRIMONIO", ler: requisicoesComSaldo },
+    { area: "CONSULTAR_PATRIMONIO", ler: inventariosDeEstoqueAbertos },
+    { area: "CONSULTAR_PATRIMONIO", ler: inventariosDeBensAbertos },
+    { area: "CONSULTAR_PATRIMONIO", ler: bensSemResponsavel },
+    { area: "CONSULTAR_PATRIMONIO", ler: lotesVencendo },
+    { area: "CONSULTAR_LICITACOES", ler: ordensSemEntrada },
+  ];
+  const resultados = await Promise.allSettled(
+    faixas.filter((f) => f.area === null || pode.has(f.area)).map((f) => f.ler())
+  );
   return resultados
     .filter(
       (r): r is PromiseFulfilledResult<Pendencia> => r.status === "fulfilled"

@@ -23,7 +23,7 @@ export default async function PrecatoriosDetalhePage({
   readonly params: Promise<{ readonly id: string }>;
   readonly searchParams: Promise<ParametrosBrutos>;
 }): Promise<React.ReactElement> {
-  await exigirLeitura();
+  await exigirLeitura("CONSULTAR_DIVIDA");
   const { id } = await params;
   const consulta = lerConsulta(PRECATORIOS, await searchParams);
 

@@ -17,6 +17,7 @@ import {
   FormRetorno,
 } from "./FormsDoLote";
 import { anoCivil, diaCivil } from "../../../../packages/datas/index";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
 /**
  * LOTE DE PAGAMENTO, BORDERÔ E RETORNO — a segunda metade do primeiro percurso.
@@ -33,6 +34,7 @@ import { anoCivil, diaCivil } from "../../../../packages/datas/index";
 export const dynamic = "force-dynamic";
 
 export default async function LotesPage(): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_FINANCEIRO");
   const cabecalho = (
     <PageHeader
       titulo="Lotes de pagamento e borderô"

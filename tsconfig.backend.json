@@ -83,6 +83,7 @@
     "prisma/generated",
     "doador",
     "test/ui/recorte-autorizado.test.ts",
-    "test/caracterizacao/leitura-por-unidade.test.ts"
+    "test/caracterizacao/leitura-por-unidade.test.ts",
+    "test/leitura-por-acao.test.ts"
   ]
 }

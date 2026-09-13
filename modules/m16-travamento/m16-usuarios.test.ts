@@ -93,6 +93,16 @@ describe("M16 — administração de usuários (domínio)", () => {
     await expect(revogarPerfil(prisma, { usuarioId, perfilId: ctrl, criadoPor: ADMIN })).rejects.toThrow(/NÃO CONCEDIDO/);
   });
 
+  it("t3b (V3): ninguém se dá um perfil — a autoconcessão é recusada nomeando, e nada é gravado", async () => {
+    const ctrl = await perfilControleId();
+    const admin = await prisma.usuario.findUniqueOrThrow({ where: { identificador: ADMIN }, select: { id: true } });
+    const antes = await prisma.vinculoUsuarioPerfil.count({ where: { usuarioId: admin.id } });
+    await expect(concederPerfil(prisma, { usuarioId: admin.id, perfilId: ctrl, criadoPor: ADMIN })).rejects.toThrow(
+      /AUTOCONCESSÃO RECUSADA/
+    );
+    expect(await prisma.vinculoUsuarioPerfil.count({ where: { usuarioId: admin.id } })).toBe(antes);
+  });
+
   it("t4: inativar — revoga TODAS as sessões do alvo (o token dele deixa de validar) e não se inativa a si mesmo", async () => {
     const { usuarioId } = await criarUsuario(prisma, { nome: "Alvo", email: "alvo@cg.pb.gov.br", senhaInicial: SENHA_INI, criadoPor: ADMIN });
 

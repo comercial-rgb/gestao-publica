@@ -11,11 +11,13 @@ import {
 } from "../../../../lib/portas/administracao";
 import { FormCriarUsuario } from "./FormCriarUsuario";
 import { AcoesUsuario } from "./AcoesUsuario";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
 /** ADMINISTRAÇÃO · Usuários (TR 4.55/4.56) — leitura + escrita (7.14). Server Component. */
 export const dynamic = "force-dynamic";
 
 export default async function UsuariosPage(): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_ADMINISTRACAO");
   const cabecalho = <PageHeader titulo="Usuários" subtitulo="Identidades do sistema, estado e perfis" />;
   let usuarios: readonly UsuarioAdmin[];
   let perfis: readonly PerfilOpcao[];

@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { exigirSessao } from "../../../../../lib/portas/sessao";
 import { exercicioAutorizado } from "../../../../../lib/recorte";
 import { respostaDaRecusaDeLeitura } from "../../../../../lib/rotas/recusa";
 import { montarGuiaArrecadacao, emitir } from "../../../../../lib/pdf/operacionais";
+import { exigirLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 /**
  * EMISSÃO — GUIA DE ARRECADAÇÃO (S8-b, F3): documento individual da guia, lido do dono via porta.
@@ -13,7 +13,16 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  await exigirSessao();
+  // ⚠️ A AÇÃO DE LEITURA, ANTES DE QUALQUER PARSE (orquestração V3, 4.1): fail-closed
+  // responde "esta consulta não está no seu acesso" antes de opinar sobre a forma do
+  // pedido de quem não deveria estar lendo aqui. Leitura do ENTE: só a concessão GLOBAL.
+  try {
+    await exigirLeituraDoEnte("CONSULTAR_RECEITA");
+  } catch (e) {
+    const recusa = respostaDaRecusaDeLeitura(e);
+    if (recusa !== null) return recusa;
+    throw e;
+  }
   const id = req.nextUrl.searchParams.get("id") ?? "";
   if (id === "") return NextResponse.json({ erro: "parâmetro 'id' da guia é obrigatório." }, { status: 400 });
   // ⚠️ SÓ O EXERCÍCIO — esta rota entrega leitura do ENTE, e nenhum montador dela recebe

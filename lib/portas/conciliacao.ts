@@ -1,5 +1,5 @@
 import { cliente, PortaSemBancoError } from "./cliente";
-import { exigirSessao } from "./sessao";
+import { exigirLeituraDoEnte } from "./leitura";
 import { serializar, toMoney, type Money } from "../../packages/contracts/index.js";
 import { conciliacaoBancaria } from "../../modules/m09-tesouraria/conciliacao";
 import type { TipoInternoConciliacao } from "../../modules/m09-tesouraria/dominio";
@@ -189,7 +189,7 @@ const zero = (): Money => toMoney("0.00");
 export async function lerPainelConciliacao(p: {
   readonly exercicio: number;
 }): Promise<PainelConciliacao | null> {
-  await exigirSessao();
+  await exigirLeituraDoEnte("CONSULTAR_FINANCEIRO");
   const prisma = cliente();
 
   // O recorte do exercício é pelo FIM do período: um extrato é do ano em que ele fecha.

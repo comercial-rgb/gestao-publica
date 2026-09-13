@@ -19,6 +19,7 @@ import { FormAnexo } from "../../../documentos/FormAnexo";
 import { FormAlterarPessoa } from "./FormAlterarPessoa";
 import { FormPapel } from "./FormPapel";
 import { diaCivilBr, instanteCivilBr } from "../../../../../packages/datas/index";
+import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 /**
  * DETALHE DA PESSOA — dados, papéis, relacionados e histórico, no MESMO contexto.
@@ -56,6 +57,7 @@ export default async function DetalheDaPessoaPage({
 }: {
   readonly params: Promise<{ readonly id: string }>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_CADASTROS");
   const { id } = await params;
 
   let pessoa: Awaited<ReturnType<typeof buscarPessoaDaTela>>;

@@ -119,6 +119,18 @@ export async function concederPerfil(prisma: PrismaClient, input: VinculoPerfilI
   await autorizar(prisma, d.criadoPor, ACAO_DO_SERVICO.concederPerfil);
   await exigirUsuarioEPerfil(prisma, d.usuarioId, d.perfilId);
 
+  // ⚠️ NINGUÉM SE DÁ UM PERFIL (orquestração V3, 4.2) — a outra metade da regra dos
+  // quatro olhos de `servico-perfis.ts`: conceder-se um perfil é ampliar o próprio
+  // escopo sem que outra pessoa assine.
+  const alvo = await prisma.usuario.findUnique({ where: { id: d.usuarioId }, select: { identificador: true } });
+  if (alvo?.identificador === d.criadoPor) {
+    throw new Error(
+      `AUTOCONCESSÃO RECUSADA: o usuário "${d.criadoPor}" não pode conceder um perfil a si ` +
+        `mesmo — seria ampliar o próprio escopo sem que outra pessoa assine. Quem concede ` +
+        `perfil a um administrador é outro administrador. Nada foi gravado.`
+    );
+  }
+
   const ja = await prisma.vinculoUsuarioPerfil.findUnique({
     where: { usuarioId_perfilId: { usuarioId: d.usuarioId, perfilId: d.perfilId } },
     select: { id: true },

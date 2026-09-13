@@ -6,6 +6,7 @@ import { gerarDiario, PortaSemBancoError, type LancamentoDoDiario } from "../../
 import { SeletorPeriodo } from "../SeletorPeriodo";
 import { lerPeriodo, PADRAO_DESDE, PADRAO_ATE } from "../periodo";
 import { diaCivilBr } from "../../../../../packages/datas/index";
+import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 /** Livro DIÁRIO — todo lançamento da janela, em ordem cronológica. Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
@@ -15,6 +16,7 @@ export default async function DiarioPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
   const sp = await searchParams;
   const { desde, ate, desdeStr, ateStr } = lerPeriodo(sp);
 

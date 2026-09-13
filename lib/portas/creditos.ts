@@ -1,5 +1,6 @@
 import { cliente, PortaSemBancoError } from "./cliente";
-import { comEscritaAutenticada, exigirSessao } from "./sessao";
+import { comEscritaAutenticada } from "./sessao";
+import { exigirLeituraEmAlgumEscopo } from "./leitura";
 import { listarDecretos, listarLeis, listarQdd } from "../../modules/m03-creditos/consultas";
 import {
   criarLei,
@@ -40,7 +41,7 @@ export async function lerLeis(p: { readonly ano: number }) {
  * do M05 — a mesma função que escreve o cache da ficha. Aqui só se atravessa a borda.
  */
 export async function lerQdd(p: { readonly exercicio: number; readonly unidadeCodigo?: string | undefined }) {
-  await exigirSessao();
+  await exigirLeituraEmAlgumEscopo("CONSULTAR_PLANEJAMENTO");
   return listarQdd(cliente(), {
     exercicio: p.exercicio,
     ...(p.unidadeCodigo !== undefined ? { unidadeCodigo: p.unidadeCodigo } : {}),

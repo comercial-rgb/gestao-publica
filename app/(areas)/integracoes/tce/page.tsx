@@ -3,6 +3,7 @@ import { Card } from "../../../../components/ui/Card";
 import { PageHeader } from "../../../../components/ui/PageHeader";
 import { compararEmpenhosLocalTce, type SituacaoComparacao } from "../../../../lib/portas/tce-consulta";
 import { formatarMoeda } from "../../../../lib/format/moeda";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
 /**
  * TELA — CONSULTA API TCE (S4): comparação "dados locais × TCE" por UG/período. MODO MOCK permanente,
@@ -34,6 +35,7 @@ const TOM: Record<SituacaoComparacao, StatusBadge> = {
 };
 
 export default async function ConsultaTcePage(): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_INTEGRACOES");
   let r: Awaited<ReturnType<typeof compararEmpenhosLocalTce>> | null = null;
   let erro: string | null = null;
   try {

@@ -28,7 +28,7 @@ export default async function ClassesDeBensPage({
 }: {
   readonly searchParams: Promise<ParametrosBrutos>;
 }): Promise<React.ReactElement> {
-  await exigirLeitura();
+  await exigirLeitura("CONSULTAR_PATRIMONIO");
   const consulta = lerConsulta(CLASSES_DE_BENS, await searchParams);
 
   try {

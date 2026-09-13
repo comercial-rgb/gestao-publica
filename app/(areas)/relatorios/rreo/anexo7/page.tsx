@@ -15,6 +15,7 @@ import {
   type LinhaAnexo7,
 } from "../../../../../lib/portas/rreo";
 import { SeletorExercicioAnexo7 } from "./SeletorExercicioAnexo7";
+import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 /**
  * RREO — ANEXO 7: DEMONSTRATIVO DOS RESTOS A PAGAR POR PODER E ÓRGÃO (LRF art. 53, V; MDF Tab. 7).
@@ -34,6 +35,7 @@ export default async function RreoAnexo7Page({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
   const sp = await searchParams;
   const exercicio = lerInteiro(sp["exercicio"], ANO_PADRAO);
 

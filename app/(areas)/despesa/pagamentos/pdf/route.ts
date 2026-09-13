@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { exigirSessao } from "../../../../../lib/portas/sessao";
+import { exigirLeituraDoEnte } from "../../../../../lib/portas/leitura";
+import { respostaDaRecusaDeLeitura } from "../../../../../lib/rotas/recusa";
 import { montarPdfFilaPagamentos, emitir } from "../../../../../lib/pdf/operacionais";
 
 /**
@@ -11,7 +12,15 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(): Promise<NextResponse> {
-  await exigirSessao();
+  // ⚠️ A FILA É DO ENTE (art. 141, por fonte e categoria): leitura do ente exige a
+  // concessão GLOBAL de CONSULTAR_DESPESA (orquestração V3, 4.1). 403 com o motivo.
+  try {
+    await exigirLeituraDoEnte("CONSULTAR_DESPESA");
+  } catch (e) {
+    const recusa = respostaDaRecusaDeLeitura(e);
+    if (recusa !== null) return recusa;
+    throw e;
+  }
   const doc = await montarPdfFilaPagamentos();
   const r = await emitir(doc, "fila-pagamentos");
   return new NextResponse(Buffer.from(r.pdf), {

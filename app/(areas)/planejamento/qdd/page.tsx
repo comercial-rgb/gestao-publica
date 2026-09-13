@@ -52,7 +52,7 @@ export default async function QddPage({
   let recorte: RecorteDaPagina;
   let linhas: readonly LinhaQdd[];
   try {
-    recorte = await recorteDePagina(sp);
+    recorte = await recorteDePagina(sp, "CONSULTAR_PLANEJAMENTO");
     linhas = await lerQdd({ exercicio: recorte.exercicio, unidadeCodigo: recorte.unidadeCodigo });
   } catch (erro) {
     return (

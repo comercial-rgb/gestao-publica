@@ -19,6 +19,7 @@ import {
   type PessoaDaTela,
 } from "../../../../lib/portas/pessoas";
 import { FormPessoa } from "./FormPessoa";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
 /**
  * PESSOAS E CREDORES — o cadastro compartilhado.
@@ -108,6 +109,7 @@ export default async function PessoasPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_CADASTROS");
   const params = await searchParams;
 
   const busca = primeiroValor(params["busca"]).trim();

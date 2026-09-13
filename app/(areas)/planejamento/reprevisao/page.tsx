@@ -5,6 +5,7 @@ import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import { gerarReprevisoes, PortaSemBancoError, type ReprevisaoRegistrada } from "../../../../lib/portas/planejamento";
 import { FormReprevisao } from "./FormReprevisao";
 import { diaCivilBr } from "../../../../packages/datas/index";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
 /**
  * REPREVISÃO DE RECEITA — histórico append-only (LRF art. 12). Server Component, força-dinâmica.
@@ -18,6 +19,7 @@ export default async function ReprevisaoPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
   const sp = await searchParams;
   const bruto = Array.isArray(sp["exercicio"]) ? sp["exercicio"][0] : sp["exercicio"];
   const exercicio = bruto !== undefined && !Number.isNaN(Number.parseInt(bruto, 10)) ? Number.parseInt(bruto, 10) : 2026;

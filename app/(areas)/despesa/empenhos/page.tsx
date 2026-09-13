@@ -55,7 +55,7 @@ export default async function EmpenhosPage({
   let empenhos: readonly EmpenhoDaTela[];
   let fichas: readonly FichaDaTela[];
   try {
-    recorte = await recorteDePagina(sp);
+    recorte = await recorteDePagina(sp, "CONSULTAR_DESPESA");
     [empenhos, fichas] = await Promise.all([
       listarEmpenhosDaExecucao({
         exercicio: recorte.exercicio,

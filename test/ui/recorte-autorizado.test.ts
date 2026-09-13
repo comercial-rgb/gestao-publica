@@ -299,3 +299,128 @@ describe("o recorte autorizado — a unidade OMITIDA", () => {
     }
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════════
+// ORQUESTRAÇÃO V3 (4.1) — as três decisões novas, puras: ENTE, ALGUM ESCOPO e REGISTRO.
+//
+// ⚠️ O ESCOPO AQUI É O DA AÇÃO DE LEITURA COBRADA, não a união das ações do usuário. É a
+// porta (`lib/portas/leitura.ts`) que o resolve por ação; estas decisões só o consomem.
+// Fixture N=2 nas unidades, como acima: com uma unidade só, "aceitou a certa" é vacuidade.
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+import {
+  exigirAlgumEscopo,
+  exigirEscopoDoEnte,
+  exigirEscopoDoRegistro,
+} from "../../lib/recorte.js";
+
+const ACAO = "CONSULTAR_DESPESA";
+
+/** Identidade revogada — a porta devolve `identidadeAtiva: false` e escopo vazio. */
+const REVOGADO: EscopoDeLeitura = { unidades: [], podeConsolidado: false, identidadeAtiva: false };
+
+describe("leitura do ENTE — só a concessão GLOBAL da ação cobrada autoriza", () => {
+  it("global passa", () => {
+    expect(() => exigirEscopoDoEnte({ escopo: GLOBAL, identificador: QUEM, acao: ACAO })).not.toThrow();
+  });
+
+  it("uma unidade só é recusada NOMEANDO o escopo que ele tem e a ação — não é 'não encontrado'", () => {
+    expect(() => exigirEscopoDoEnte({ escopo: SO_SAUDE, identificador: QUEM, acao: ACAO })).toThrow(
+      EscopoDeLeituraError
+    );
+    expect(() => exigirEscopoDoEnte({ escopo: SO_SAUDE, identificador: QUEM, acao: ACAO })).toThrow(
+      /do ENTE inteiro.*só em: 01004.*concessão GLOBAL de CONSULTAR_DESPESA/s
+    );
+  });
+
+  it("duas unidades sem consolidado também recusam — soma parcial não vira consolidado", () => {
+    expect(() =>
+      exigirEscopoDoEnte({ escopo: DUAS_SEM_CONSOLIDADO, identificador: QUEM, acao: ACAO })
+    ).toThrow(/visão PARCIAL/);
+  });
+
+  it("sem escopo nenhum recusa dizendo que é o crachá, e nomeia a ação a conceder", () => {
+    expect(() => exigirEscopoDoEnte({ escopo: SEM_ESCOPO, identificador: QUEM, acao: ACAO })).toThrow(
+      /não tem a ação CONSULTAR_DESPESA em escopo nenhum.*é o crachá/s
+    );
+  });
+
+  it("identidade revogada recusa pelo motivo da revogação, antes de olhar o escopo", () => {
+    expect(() => exigirEscopoDoEnte({ escopo: REVOGADO, identificador: QUEM, acao: ACAO })).toThrow(
+      /REVOGADO/
+    );
+  });
+});
+
+describe("leitura em ALGUM escopo — a ação em qualquer unidade abre a área", () => {
+  it("uma unidade basta; global basta", () => {
+    expect(() => exigirAlgumEscopo({ escopo: SO_SAUDE, identificador: QUEM, acao: ACAO })).not.toThrow();
+    expect(() => exigirAlgumEscopo({ escopo: GLOBAL, identificador: QUEM, acao: ACAO })).not.toThrow();
+  });
+
+  it("sem escopo nenhum recusa nomeando a ação; revogado recusa pela revogação", () => {
+    expect(() => exigirAlgumEscopo({ escopo: SEM_ESCOPO, identificador: QUEM, acao: ACAO })).toThrow(
+      /CONSULTAR_DESPESA em escopo nenhum/
+    );
+    expect(() => exigirAlgumEscopo({ escopo: REVOGADO, identificador: QUEM, acao: ACAO })).toThrow(
+      /REVOGADO/
+    );
+  });
+});
+
+describe("leitura de um REGISTRO — o escopo sai do registro, e a recusa não o revela", () => {
+  it("registro da unidade dele passa; registro da outra recusa (N=2)", () => {
+    expect(() =>
+      exigirEscopoDoRegistro({ escopo: SO_SAUDE, identificador: QUEM, acao: ACAO, unidadeCodigo: SAUDE })
+    ).not.toThrow();
+    expect(() =>
+      exigirEscopoDoRegistro({ escopo: SO_SAUDE, identificador: QUEM, acao: ACAO, unidadeCodigo: EDUCACAO })
+    ).toThrow(EscopoDeLeituraError);
+  });
+
+  it("a recusa NOMEIA o escopo que ele TEM e NÃO nomeia a unidade do registro", () => {
+    let mensagem = "";
+    try {
+      exigirEscopoDoRegistro({ escopo: SO_SAUDE, identificador: QUEM, acao: ACAO, unidadeCodigo: EDUCACAO });
+    } catch (e) {
+      mensagem = e instanceof Error ? e.message : String(e);
+    }
+    // ⚠️ AFIRMA QUE A RECUSA ACONTECEU antes de negar o que ela não diz: duas negações
+    // sem afirmação são duas tautologias (a lição das cinco asserções vazias da ENT10).
+    expect(mensagem).toMatch(/fora do escopo de leitura.*só em: 01004/s);
+    expect(mensagem).not.toContain(EDUCACAO);
+    expect(mensagem).not.toMatch(/não encontrado/i);
+  });
+
+  it("global lê qualquer registro; registro SEM unidade cai na regra do ente", () => {
+    expect(() =>
+      exigirEscopoDoRegistro({ escopo: GLOBAL, identificador: QUEM, acao: ACAO, unidadeCodigo: OBRAS })
+    ).not.toThrow();
+    expect(() =>
+      exigirEscopoDoRegistro({ escopo: SO_SAUDE, identificador: QUEM, acao: ACAO, unidadeCodigo: undefined })
+    ).toThrow(/do ENTE inteiro/);
+    expect(() =>
+      exigirEscopoDoRegistro({ escopo: GLOBAL, identificador: QUEM, acao: ACAO, unidadeCodigo: undefined })
+    ).not.toThrow();
+  });
+
+  it("sem escopo nenhum recusa dizendo que é o crachá", () => {
+    expect(() =>
+      exigirEscopoDoRegistro({ escopo: SEM_ESCOPO, identificador: QUEM, acao: ACAO, unidadeCodigo: SAUDE })
+    ).toThrow(/em unidade nenhuma.*é o crachá/s);
+  });
+});
+
+describe("o recorte nomeia a ação cobrada — e a identidade revogada recusa antes do recorte", () => {
+  it("a recusa de `?ug=` alheia termina nomeando a ação", () => {
+    expect(() =>
+      recorteAutorizado({ pedido: { ug: EDUCACAO }, escopo: SO_SAUDE, identificador: QUEM, acao: ACAO })
+    ).toThrow(/A ação de leitura cobrada é CONSULTAR_DESPESA\./);
+  });
+
+  it("revogado recusa mesmo pedindo a própria unidade", () => {
+    expect(() =>
+      recorteAutorizado({ pedido: { ug: SAUDE }, escopo: REVOGADO, identificador: QUEM, acao: ACAO })
+    ).toThrow(/REVOGADO/);
+  });
+});

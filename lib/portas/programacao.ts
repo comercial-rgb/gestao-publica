@@ -1,5 +1,5 @@
 import { cliente, PortaSemBancoError } from "./cliente";
-import { exigirSessao } from "./sessao";
+import { exigirLeituraDoEnte } from "./leitura";
 import {
   bimestreDoMes,
   confrontoMba,
@@ -131,7 +131,7 @@ export async function lerCmdVigente(p: {
   readonly exercicio: number;
   readonly em?: Date | undefined;
 }): Promise<PlanoProgramacao> {
-  await exigirSessao();
+  await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
   const referencia = p.em ?? new Date();
   const db = cliente();
 
@@ -177,7 +177,7 @@ export async function lerMbaVigente(p: {
   readonly exercicio: number;
   readonly em?: Date | undefined;
 }): Promise<PlanoProgramacao> {
-  await exigirSessao();
+  await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
   const referencia = p.em ?? new Date();
   const db = cliente();
 
@@ -237,7 +237,7 @@ export async function lerConfrontoMba(p: {
   readonly ateBimestre?: number | undefined;
   readonly em?: Date | undefined;
 }): Promise<ConfrontoMbaDaTela> {
-  await exigirSessao();
+  await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
   const ateBimestre = p.ateBimestre ?? ultimoBimestreFechado(p.exercicio, p.em ?? new Date());
   if (ateBimestre <= 0) return { ateBimestre: 0, linhas: [] };
 
@@ -295,7 +295,7 @@ export async function gerarTextoDecretoCmd(p: {
   readonly dataVigencia: Date;
   readonly corpo: string;
 }): Promise<string> {
-  await exigirSessao();
+  await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
   return gerarDecretoCmd(cliente(), p);
 }
 
@@ -306,7 +306,7 @@ export async function gerarTextoDecretoMba(p: {
   readonly dataVigencia: Date;
   readonly corpo: string;
 }): Promise<string> {
-  await exigirSessao();
+  await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
   return gerarDecretoMba(cliente(), p);
 }
 

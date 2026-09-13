@@ -40,11 +40,12 @@ import { AREAS, type SlugDeArea } from "../navegacao.js";
  *
  * ═══ ⚠️ O QUE ESTE ARQUIVO **NÃO** RESOLVE, E ESTÁ NOMEADO ═══
  *
- * O censo do M16 cobre MUTAÇÕES; leitura não é permissão hoje (está dito lá, e é pendência
- * antiga). Então uma área só de leitura — `transparencia` — não tem ação nenhuma e fica
- * visível para qualquer sessão. Isso não é um menu mentindo: é o menu dizendo a verdade
- * sobre um servidor que, ali, de fato não nega. O dia em que a leitura virar permissão,
- * esta função passa a filtrá-la sem mudar de forma.
+ * ⚠️ RESOLVIDO NA ORQUESTRAÇÃO V3 (4.1): a leitura VIROU permissão. Cada área tem a sua
+ * ação `CONSULTAR_<ÁREA>` (`ACOES_DE_LEITURA` no censo), mapeada aqui para a própria área.
+ * A consequência é a que este parágrafo previa: `areasVisiveis` passou a filtrá-la sem
+ * mudar de forma — um perfil que só CONSULTA a despesa vê a área "Despesa" e nenhuma
+ * outra, e uma área sem ação nenhuma para aquele usuário some do menu, inclusive a
+ * `transparencia` interna.
  */
 
 /** A área onde a ação tem tela, ou `"transversal"` quando ela acontece dentro de outras. */
@@ -335,6 +336,25 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   APRECIAR_PROVIDENCIA: "controle-interno",
   ENCERRAR_AUDITORIA_INTERNA: "controle-interno",
   EMITIR_RELATORIO_CIRCUNSTANCIADO: "controle-interno",
+  // ── A LEITURA (orquestração V3, 4.1) — cada CONSULTAR_<ÁREA> mora na própria área ──
+  CONSULTAR_PLANEJAMENTO: "planejamento",
+  CONSULTAR_RECEITA: "receita",
+  CONSULTAR_DESPESA: "despesa",
+  CONSULTAR_FINANCEIRO: "financeiro",
+  CONSULTAR_PATRIMONIO: "patrimonio",
+  CONSULTAR_LICITACOES: "licitacoes",
+  CONSULTAR_CONTABILIDADE: "contabilidade",
+  CONSULTAR_RELATORIOS: "relatorios",
+  CONSULTAR_TRANSPARENCIA: "transparencia",
+  CONSULTAR_PROTOCOLO: "protocolo",
+  CONSULTAR_COMUNICACAO: "comunicacao",
+  CONSULTAR_CADASTROS: "cadastros",
+  CONSULTAR_TRANSFERENCIAS: "transferencias",
+  CONSULTAR_DIVIDA: "divida",
+  CONSULTAR_CONTROLE_INTERNO: "controle-interno",
+  CONSULTAR_ADMINISTRACAO: "administracao",
+  CONSULTAR_INTEGRACOES: "integracoes",
+  CONSULTAR_SUPORTE: "suporte",
 };
 
 /**

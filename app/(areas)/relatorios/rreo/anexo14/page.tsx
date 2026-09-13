@@ -13,6 +13,7 @@ import {
 } from "../../../../../lib/portas/rreo";
 import { SeletorBimestreRreo } from "../anexo3/SeletorBimestreRreo";
 import { badgeDaSituacao } from "../../simplificado-ui";
+import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 /**
  * RREO — ANEXO 14: DEMONSTRATIVO SIMPLIFICADO DO RREO. LRF art. 48 · art. 52.
@@ -28,6 +29,7 @@ export default async function RreoAnexo14Page({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
   const sp = await searchParams;
   const um = (v: string | string[] | undefined): string | undefined => (Array.isArray(v) ? v[0] : v);
   const ex = Number.parseInt(um(sp["exercicio"]) ?? "2026", 10);

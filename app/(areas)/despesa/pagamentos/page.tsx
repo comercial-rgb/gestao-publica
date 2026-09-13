@@ -88,7 +88,7 @@ export default async function PagamentosPage({
     // é por FONTE e CATEGORIA, e recortá-la por unidade a partiria em filas que a lei não
     // criou — cada pedaço com uma "posição 1" própria. Quem tem recorte são os pagamentos
     // JÁ EXECUTADOS e as ordens de pagamento, e essas duas passam a vir autorizadas.
-    recorte = await recorteDePagina(sp);
+    recorte = await recorteDePagina(sp, "CONSULTAR_DESPESA");
     [filas, contas, pagamentos, tiposDeConsignacao, ordens] = await Promise.all([
       lerFilasDePagamento(),
       lerContasBancarias(),

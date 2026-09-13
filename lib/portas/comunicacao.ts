@@ -1,5 +1,6 @@
 import { cliente, PortaSemBancoError } from "./cliente";
-import { comEscritaAutenticada, exigirSessao } from "./sessao";
+import { comEscritaAutenticada } from "./sessao";
+import { exigirLeituraEmAlgumEscopo } from "./leitura";
 import {
   integridadeDoEnvio,
   leiturasDoComunicado,
@@ -83,7 +84,7 @@ export interface DetalheDoComunicado {
 export async function lerCaixa(
   caixa: Caixa | "TODAS" = "ENTRADA"
 ): Promise<readonly LinhaDeComunicado[]> {
-  const sessao = await exigirSessao();
+  const sessao = await exigirLeituraEmAlgumEscopo("CONSULTAR_COMUNICACAO");
   return listarCaixaDeComunicados(cliente(), sessao.identificador, caixa);
 }
 
@@ -108,7 +109,7 @@ export async function lerTiposDeComunicado(): Promise<readonly OpcaoDeTipo[]> {
 }
 
 export async function lerMeusSetoresParaComunicado(): Promise<readonly OpcaoDeSetor[]> {
-  const sessao = await exigirSessao();
+  const sessao = await exigirLeituraEmAlgumEscopo("CONSULTAR_COMUNICACAO");
   const lotacoes = await cliente().usuarioDoSetor.findMany({
     where: { usuarioIdent: sessao.identificador },
     select: { setor: { select: { id: true, codigo: true, nome: true, ativo: true } } },
@@ -137,7 +138,7 @@ export async function lerSetoresParaDestino(): Promise<readonly OpcaoDeSetor[]> 
 export async function lerComunicado(
   comunicadoId: string
 ): Promise<DetalheDoComunicado | null> {
-  const sessao = await exigirSessao();
+  const sessao = await exigirLeituraEmAlgumEscopo("CONSULTAR_COMUNICACAO");
   const caixa = await listarCaixaDeComunicados(cliente(), sessao.identificador, "TODAS", 1000);
   const naCaixa = caixa.find((c) => c.id === comunicadoId);
   if (naCaixa === undefined) return null;

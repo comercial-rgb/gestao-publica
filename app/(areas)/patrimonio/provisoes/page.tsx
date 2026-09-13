@@ -27,7 +27,7 @@ export default async function ProvisoesPage({
 }: {
   readonly searchParams: Promise<ParametrosBrutos>;
 }): Promise<React.ReactElement> {
-  await exigirLeitura();
+  await exigirLeitura("CONSULTAR_PATRIMONIO");
   const consulta = lerConsulta(PROVISOES, await searchParams);
 
   try {

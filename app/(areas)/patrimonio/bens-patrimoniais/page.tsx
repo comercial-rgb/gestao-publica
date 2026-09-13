@@ -31,7 +31,7 @@ export default async function BensPatrimoniaisPage({
 }: {
   readonly searchParams: Promise<ParametrosBrutos>;
 }): Promise<React.ReactElement> {
-  await exigirLeitura();
+  await exigirLeitura("CONSULTAR_PATRIMONIO");
   const consulta = lerConsulta(BENS_PATRIMONIAIS, await searchParams);
 
   try {

@@ -17,10 +17,10 @@
 /// (`m16-censo.test.ts`) prova que os dois não divergem: um serviço novo sem ação
 /// classificada FALHA a suíte, nomeando arquivo e função.
 ///
-/// ⚠️ E as LEITURAS ficam de fora, nesta fase. A segregação de LEITURA por unidade
-/// gestora (o outro lado do 6.4) é camada de APLICAÇÃO — um `where` em cada consulta,
-/// não uma permissão. Negar um relatório a alguém não protege nada se ele lê o razão
-/// por outro caminho. PENDÊNCIA NOMEADA.
+/// ⚠️ AS LEITURAS ENTRARAM (orquestração V3, 4.1): uma ação `CONSULTAR_<ÁREA>` por área
+/// de navegação, concedida global ou por unidade gestora como qualquer outra. A política
+/// de leitura (`lib/portas/leitura.ts`) resolve o escopo DAQUELA ação — nunca a união
+/// das unidades de todas as ações do usuário, que era o defeito medido na ENT10.
 enum AcaoDoSistema {
   /// TR 5.95 — o LANÇAMENTO MANUAL. Partidas arbitrárias, sem fato de origem: é a
   /// chave-mestra do razão. Se alguma ação tem de ser rara e vigiada, é esta.
@@ -372,6 +372,27 @@ enum AcaoDoSistema {
   APRECIAR_PROVIDENCIA
   ENCERRAR_AUDITORIA_INTERNA
   EMITIR_RELATORIO_CIRCUNSTANCIADO
+
+  // ── A LEITURA (orquestração V3, 4.1) — uma ação de CONSULTA por área de navegação ──
+  // Ver `ACOES_DE_LEITURA` em `modules/m16-travamento/acoes.ts`.
+  CONSULTAR_PLANEJAMENTO
+  CONSULTAR_RECEITA
+  CONSULTAR_DESPESA
+  CONSULTAR_FINANCEIRO
+  CONSULTAR_PATRIMONIO
+  CONSULTAR_LICITACOES
+  CONSULTAR_CONTABILIDADE
+  CONSULTAR_RELATORIOS
+  CONSULTAR_TRANSPARENCIA
+  CONSULTAR_PROTOCOLO
+  CONSULTAR_COMUNICACAO
+  CONSULTAR_CADASTROS
+  CONSULTAR_TRANSFERENCIAS
+  CONSULTAR_DIVIDA
+  CONSULTAR_CONTROLE_INTERNO
+  CONSULTAR_ADMINISTRACAO
+  CONSULTAR_INTEGRACOES
+  CONSULTAR_SUPORTE
 }
 
 /// O USUÁRIO. TR 4.55.
@@ -478,4 +499,23 @@ model VinculoUsuarioPerfil {
 
   @@unique([usuarioId, perfilId])
   @@index([usuarioId])
+}
+
+/// ORQUESTRACAO V3 (4.2) - o registro de cada ATUALIZACAO VERSIONADA de permissoes
+/// aplicada nesta instalacao. Uma linha por versao, e a unicidade e a trava: a
+/// atualizacao roda uma vez, e reaplica-la e recusado nomeando quem e quando - e isso
+/// que preserva uma revogacao deliberada feita depois. Ver
+/// `modules/m16-travamento/atualizacoes-de-permissoes.ts`.
+model AtualizacaoDePermissoes {
+  id String @id @default(cuid())
+
+  versao Int    @unique
+  nome   String
+
+  aplicadaEm  DateTime @default(now())
+  aplicadaPor String
+  /// Quantas permissoes a aplicacao criou.
+  concessoes  Int
+  /// Perfil: acao @ escopo, uma por linha - a memoria do que foi concedido.
+  detalhe     String
 }

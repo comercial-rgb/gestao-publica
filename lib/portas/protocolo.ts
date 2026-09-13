@@ -1,5 +1,6 @@
 import { cliente, PortaSemBancoError } from "./cliente";
-import { comEscritaAutenticada, exigirSessao } from "./sessao";
+import { comEscritaAutenticada } from "./sessao";
+import { exigirLeituraEmAlgumEscopo } from "./leitura";
 import {
   acompanhamentoExterno,
   dossieDoProcesso,
@@ -72,14 +73,14 @@ export interface CampoAdicionalDaTela {
 export async function lerCaixaDeProcessos(
   filtros: FiltrosDaCaixa = {}
 ): Promise<readonly LinhaDaCaixa[]> {
-  const sessao = await exigirSessao();
+  const sessao = await exigirLeituraEmAlgumEscopo("CONSULTAR_PROTOCOLO");
   return listarProcessos(cliente(), sessao.identificador, filtros);
 }
 
 export async function lerDossieDoProcesso(
   processoId: string
 ): Promise<DossieDoProcesso | null> {
-  const sessao = await exigirSessao();
+  const sessao = await exigirLeituraEmAlgumEscopo("CONSULTAR_PROTOCOLO");
   return dossieDoProcesso(cliente(), processoId, sessao.identificador);
 }
 
@@ -139,7 +140,7 @@ export async function lerAssuntos(): Promise<readonly AssuntoDaTela[]> {
  * só então descobre o limite.
  */
 export async function lerMeusSetores(): Promise<readonly OpcaoSimples[]> {
-  const sessao = await exigirSessao();
+  const sessao = await exigirLeituraEmAlgumEscopo("CONSULTAR_PROTOCOLO");
   const lotacoes = await cliente().usuarioDoSetor.findMany({
     where: { usuarioIdent: sessao.identificador },
     select: { setor: { select: { id: true, codigo: true, nome: true, ativo: true } } },

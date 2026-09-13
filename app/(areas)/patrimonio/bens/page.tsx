@@ -6,6 +6,7 @@ import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import { BotaoPdf } from "../../../../components/ui/BotaoPdf";
 import { lerPosicaoPatrimonial, lerDividas, PortaSemBancoError, type DemonstrativoPatrimonial, type DividaPorTipoDaTela } from "../../../../lib/portas/patrimonio";
 import { exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
 /**
  * PATRIMÔNIO (M10, TR 5.82–5.86) — a posição patrimonial por classe (5.86: saldo anterior + ingressos
@@ -19,6 +20,7 @@ export default async function BensPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_PATRIMONIO");
   const sp = await searchParams;
 
   // ⚠️ SÓ O EXERCÍCIO. `lerPosicaoPatrimonial` e `lerDividas` recebem apenas o ano — e a

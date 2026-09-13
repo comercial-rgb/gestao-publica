@@ -18,7 +18,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   // `despesa/empenhos/pdf/route.ts` e o tradutor em `lib/rotas/recusa.ts`.
   let recorte: RecorteDaPagina;
   try {
-    recorte = await recorteDePagina(Object.fromEntries(req.nextUrl.searchParams));
+    recorte = await recorteDePagina(Object.fromEntries(req.nextUrl.searchParams), "CONSULTAR_DESPESA");
   } catch (e) {
     const recusa = respostaDaRecusaDeLeitura(e);
     if (recusa !== null) return recusa;

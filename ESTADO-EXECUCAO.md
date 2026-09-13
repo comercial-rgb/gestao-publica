@@ -1,5 +1,25 @@
 # Estado da execução
 
+## Resumo atual (orquestração V3 — atualizado a cada unidade)
+
+| Campo | Valor |
+|---|---|
+| HEAD | ver `git log -1` — a seção 35 nomeia o commit de cada unidade |
+| Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
+| Frente em execução | Primeiro pacote — correções transversais (4.1 autorização de leitura, 4.2 perfis e atualização) → em seguida 4.3 auditoria, 4.4 massa/configuração, 4.5 versionamento dos roteiros, depois a cadeia patrimonial (seção 5 do pedido) |
+| Último resultado | seção 35 |
+| Pendências relevantes | seção 35, "Pendências"; as anteriores em §19 e nos `MODULO.md` |
+| Próximo passo | seção 35, "Próximo ponto exato" |
+
+> ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
+> a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
+> registram medições e decisões reais; **não** descrevem o estado atual nem o modo de
+> trabalho vigente. O que vale hoje é o resumo acima e a seção 35 em diante.
+
+<details>
+<summary>Cabeçalho histórico (ENT00–ENT02, escrito em 2026-09-09/10)</summary>
+
+
 > Produzido por ENT00 em 2026-09-09, atualizado por **ENT01** e por **ENT02**.
 > Dados reais, medidos nesta máquina. Sem estimativa, sem percentual de
 > cobertura, sem "provavelmente".
@@ -33,6 +53,8 @@
 >
 > As pendências nomeadas estão nos `MODULO.md` de cada módulo e em
 > `components/ui/MODULO-UI.md`.
+
+</details>
 
 ## Identificação
 
@@ -4194,6 +4216,124 @@ junto"*. O motivo está junto e a saída bruta está em `.registro-de-execucao/`
 ⚠️ **MAS O PASSO NÃO PASSOU, E ISSO FICA REGISTRADO ASSIM.** Passo falhado não vira verde por
 diagnóstico. O lote está commitado com o portão em **9 de 10**; um portão verde depende de
 executar com a máquina desocupada, e isso é ato do operador, não deste lote.
+
+## 35. Orquestração V3 — primeiro pacote, 4.1 e 4.2: a leitura vira permissão
+
+> **Modo:** orquestração contínua (`docs/lotes/V3-orquestracao-continua.md`). Sem gate por
+> lote; verificação direcionada; commit local por unidade. **Natureza:** PROFUNDIDADE — é
+> guard de autorização (decisão pura provada sem banco, fixture N=2, negação que afirma o
+> motivo). **Frente:** transversal (M16); serve a todas as áreas.
+
+### 35.1 · O que passou a funcionar, e a rota real
+
+| Caminho | Antes | Agora |
+|---|---|---|
+| qualquer tela do molde (46) — `/patrimonio/bens-patrimoniais`, `/divida/fundada`, `/transferencias/convenios`… | `exigirLeitura()` = sessão | exige `CONSULTAR_<ÁREA>` **global**; sem ela, `/sem-acesso` com o motivo |
+| `/despesa/empenhos?ug=` e as rotas de PDF/NE | escopo pela **união** das ações do usuário | escopo da ação `CONSULTAR_DESPESA`: EMPENHAR na Saúde não lê a Saúde |
+| `/despesa/empenhos/<id>` | dossiê por id, sem pergunta | autoriza pela unidade da **ficha do empenho**; recusa nomeia o escopo do usuário, nunca a unidade do registro |
+| receita, extraorçamentário, conciliação, patrimônio, livros, RREO/RGF, integrações, cadastros, administração | só validavam o exercício | exigem a leitura **global** da área (tela: `/sem-acesso`; rota: 403) |
+| processos, comunicados, chamados | sessão + regra do registro | ação da área **em algum escopo** + regra do registro |
+| anexos (`/documentos/anexos/<id>`, lotes) | "usuário ativo" bastava para o anexo de pessoa | herdam a área do dono (processo, comunicado, chamado: algum escopo; pessoa: ente); "não pode" = 404, como o M22 já fazia |
+| painel inicial | indicadores fiscais a qualquer sessão; pendências de todas as áreas | indicadores só com `CONSULTAR_RELATORIOS`; pendências só das áreas consultáveis |
+| menu | "Transparência" visível a todos | some para quem não tem `CONSULTAR_TRANSPARENCIA`; perfil só de leitura vê só a área que consulta |
+| `/administracao/perfis` | conceder/revogar | + **Diagnóstico de permissões**: deriva do censo e as atualizações versionadas, com prévia e botão "Aplicar atualização 1" |
+| conceder ação/perfil | qualquer administrador, a qualquer perfil | **quatro olhos**: recusa ampliar um perfil ao qual o próprio autor está vinculado, e recusa conceder perfil a si mesmo |
+
+Dezoito ações novas no censo (`ACOES_DE_LEITURA`, uma por área; 229 → **247**), no enum do
+Prisma (migration aditiva) e no mapa do menu. A decisão é pura em `lib/recorte.ts`
+(`exigirEscopoDoEnte`, `exigirAlgumEscopo`, `exigirEscopoDoRegistro`); o escopo é do
+domínio (`modules/m16-travamento/leitura.ts`); a porta é `lib/portas/leitura.ts`. ADR:
+`docs/adr/ADR-leitura-por-acao-e-escopo.md`. Módulo: `modules/m16-travamento/MODULO-BLOCO5.md`.
+
+**A transição dos perfis existentes é explícita e versionada**
+(`modules/m16-travamento/atualizacoes-de-permissoes.ts`, tabela `AtualizacaoDePermissoes`):
+a v1 dá a cada perfil a leitura de cada área em que já age, no mesmo escopo; a área que
+nenhuma mutação alcança (transparência interna) vai, global, só para quem administra
+permissões. Aplica-se pela tela ou por `npm run permissoes:atualizar -- 1`; roda uma vez
+por instalação; `npm run deriva:perfil` acusa atualização pendente.
+
+### 35.2 · Comandos executados, com resultado real
+
+| Comando | Resultado |
+|---|---|
+| `prisma validate` · `prisma generate` · `migrate deploy` (dev e teste) | **108 migrations** nos dois bancos; enum com 247 valores medido no banco |
+| `npm run db:papel` | `gestao_app` reprovisionado nos dois bancos (a tabela nova entra com SELECT/INSERT) |
+| `SEED_IDENTIDADE=admin@… npm run permissoes:atualizar -- 1` (dev) | v1 aplicada: **18 concessões em 2 perfis** (ADMINISTRADOR 17, OPERADOR RESTRITO — POC 1: `CONSULTAR_DESPESA @ 99001`) |
+| `npm run db:conceder ADMINISTRADOR CONSULTAR_TRANSPARENCIA` (dev) | 1 concedida — a v1 ainda não tinha a regra da área sem mutação; a regra entrou depois e está provada |
+| `npm run deriva:perfil` (dev) | **censo e perfis batem: 247 ações, todas concedidas** |
+| `tsc` backend · app · scripts | **os três limpos** — cada um sozinho, em background, com `--max-old-space-size=2560`; ver 35.5 |
+| `vitest` rápida direcionada (10 arquivos) | 1ª execução **68/71**: as 3 falhas eram do grep-teste novo (regex sem parêntese aninhado; landing de integrações sem gate; painel usa o booleano da política). Corrigido; `leitura-exige-acao` + `recorte-autorizado`: **41/41** |
+| `vitest` lenta direcionada (17 arquivos, sob o trinco) | **159 de 163**: 3 falhas minhas em `m16-atualizacoes` (leituras contadas como "ação na área"; ordem do enum vs alfabética) e 1 `Hook timed out 10000ms` em `m16-borda-execucao` t2 |
+| reexecução isolada de `m16-atualizacoes` + `m16-borda-execucao` | **18/18** — o timeout era da máquina (35.5) |
+| `npx tsx scripts/marcar-catalogo.ts --aplicar` | 317/2037 verificadas; `5.8.8` com a evidência ampliada |
+
+Saída bruta: `.registro-de-execucao/v3-pacote1-testes-direcionados.txt` e `…-reexecucao.txt`.
+**Não executados nesta unidade, de propósito (modo V3):** `test:tudo`, `test:fuso`, `build`,
+percursos de navegador. O `smoke-ent10.ts` foi **ajustado** para a política (o operador
+restrito recebe 403 na rota do ente antes do parse; o 400 do exercício ilegível é provado
+com o admin) e **não foi reexecutado** — exige build + servidor + navegador, que esta
+máquina não comporta ao lado da suíte (35.5). Fica como pendência nomeada desta unidade.
+
+### 35.3 · Migrations e SQL
+
+`20260912201430_v3_acoes_de_leitura` (18 × `ALTER TYPE … ADD VALUE`) e
+`20260912203603_v3_atualizacoes_de_permissoes` (tabela nova). Aditivas, zero DROP. Nenhum
+SQL manual novo.
+
+### 35.4 · Invariantes verificadas
+
+- **6 — autorização no servidor, por ação nomeada:** agora também para LEITURA. Cada tela
+  e rota de `(areas)` declara a ação, e o grep-teste recusa a que não declara.
+- **7 — tenant e entidade resolvidos no servidor:** o detalhe por id deriva a unidade do
+  próprio registro; `?ug=` continua sem conferir permissão.
+- **8 — fail-closed:** sem escopo, recusa; ente sem global, recusa; usuário inativo, recusa
+  pela revogação antes de olhar escopo; anexo sem dono conhecido não é entregue.
+- **Append-only e censo do papel:** a nova tabela só recebe INSERT do runtime; nenhum
+  UPDATE/DELETE novo no censo de `papel-runtime.ts`.
+
+### 35.5 · A máquina, medida — e o que isso muda no procedimento
+
+8 GB de RAM, swap em **10,3 GB de 11,2 GB**, ~60 MB livres, com o editor e outros processos
+do operador ocupando o resto. O primeiro `tsc` dos três projetos em sequência **morreu com
+stack trace do Node** (não foi erro de tipo); um `tsc` sozinho levou **>10 min** com 319 MB
+residentes — quase todo o tempo em swap. Procedimento que funcionou e fica registrado:
+**um processo pesado por vez, em background, com heap limitado**, e testes de banco sob o
+trinco. O `Hook timed out 10000ms` da primeira execução lenta passou isolado — é a mesma
+classe do ENT10/ENT12, e continua não sendo defeito nem aprovação.
+
+### 35.6 · O catálogo
+
+Sem mudança de contagem (**317** verificadas; **53** `VALIDADO_LOCALMENTE`). `5.8.8`
+(controle de acesso por usuário e grupo, por ação) teve a evidência ampliada com a leitura
+como permissão e as provas desta unidade; a validação por navegador dela continua sendo o
+`smoke-ent10.ts`, pendente de reexecução.
+
+### 35.7 · Pendências nomeadas
+
+| Pendência | O que é |
+|---|---|
+| `SMOKE-ENT10-SOB-A-POLITICA` | percurso ajustado, não reexecutado (build + servidor + navegador) |
+| `SMOKE-PERFIS-DIAGNOSTICO` | o cartão de diagnóstico/atualização não tem percurso de navegador ainda |
+| `CONSOLIDADO-PARCIAL-NAO-EXPRIMIVEL` | continua: usuário com 2+ unidades e sem global escolhe uma; a soma parcial não é oferecida |
+| `LANDING-SEM-GATE-POR-DESENHO` | as páginas de navegação (cartões) não importam porta de dado e não têm gate; o grep-teste prova a propriedade, não a lista |
+| `PORTAO-INTEGRAL-PENDENTE` | `test:tudo`, `test:fuso` e `build` ficam para o candidato de homologação; a ENT12 continua com a pendência dela |
+
+**Fechadas:** `DOSSIE-SEM-ESCOPO`, `DECRETO-COM-PARSE-PROPRIO`, `DERIVA-DE-PERFIL` ganhou
+o lado das atualizações, e a "decisão devida ao operador" da §32 (exigir permissão nas
+leituras do ente) foi tomada pelo pedido V3.
+
+### 35.8 · Próximo ponto exato
+
+**4.3 — auditoria e resposta verdadeira.** Desenho já levantado: `comOperacaoRegistrada`
+grava o registro DEPOIS do ato e re-lança a falha do registro (o ato conclui, a interface
+recebe erro); `entrar` transforma qualquer erro — inclusive indisponibilidade da auditoria —
+em "usuário ou senha inválidos". Separar: (1) fato + registro autoritativo de sucesso na
+mesma transação, pelo funil `lancarNoRazao` com contexto de comando (AsyncLocalStorage),
+append-only (linha INICIADA antes, SUCESSO dentro da tx, CONCLUIDA/NEGADO/ERRO depois);
+(2) negação registrada fora da tx, preservando o erro original se o registro falhar;
+(3) telemetria posterior sem alterar o resultado; (4) chave + fingerprint de comando nos
+formulários, com replay idempotente no escopo do usuário. Depois: 4.4, 4.5 e a cadeia
+patrimonial (seção 5 do pedido).
 
 ## 19. O próximo passo
 

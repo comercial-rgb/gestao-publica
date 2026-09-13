@@ -1,5 +1,6 @@
 import { cliente, PortaSemBancoError } from "./cliente";
-import { comEscritaAutenticada, exigirSessao } from "./sessao";
+import { comEscritaAutenticada } from "./sessao";
+import { exigirLeituraDoEnte } from "./leitura";
 import { previaDaFolha, previaDeTributos } from "../../modules/m20-importador/dominio";
 import {
   confirmarImportacaoFolha,
@@ -48,12 +49,12 @@ const R_ARRECADACAO = roteiroArrecadacao({
 
 // ── PRÉVIA (pura; exige sessão porque é tela autenticada) ──────────────────────────
 export async function previewFolha(nomeArquivo: string, conteudo: string) {
-  await exigirSessao();
+  await exigirLeituraDoEnte("CONSULTAR_INTEGRACOES");
   return previaDaFolha(nomeArquivo, conteudo);
 }
 
 export async function previewTributos(nomeArquivo: string, conteudo: string) {
-  await exigirSessao();
+  await exigirLeituraDoEnte("CONSULTAR_INTEGRACOES");
   return previaDeTributos(nomeArquivo, conteudo);
 }
 
@@ -87,6 +88,6 @@ export async function confirmarTributos(p: { readonly nomeArquivo: string; reado
 
 // ── HISTÓRICO (trilha, TR 4.12.2) ──────────────────────────────────────────────────
 export async function lerImportacoes() {
-  await exigirSessao();
+  await exigirLeituraDoEnte("CONSULTAR_INTEGRACOES");
   return listarImportacoes(cliente());
 }

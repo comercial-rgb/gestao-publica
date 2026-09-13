@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { exigirSessao } from "../../../../../lib/portas/sessao";
 import { exercicioAutorizado } from "../../../../../lib/recorte";
 import { respostaDaRecusaDeLeitura } from "../../../../../lib/rotas/recusa";
 import { montarPatrimonio, emitir } from "../../../../../lib/pdf/operacionais";
+import { exigirLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 /**
  * EMISSÃO PDF — PATRIMÔNIO (TRAVA-3): posição por classe (5.86) + dívida consolidada. Autenticada.
@@ -13,7 +13,16 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  await exigirSessao();
+  // ⚠️ A AÇÃO DE LEITURA, ANTES DE QUALQUER PARSE (orquestração V3, 4.1): fail-closed
+  // responde "esta consulta não está no seu acesso" antes de opinar sobre a forma do
+  // pedido de quem não deveria estar lendo aqui. Leitura do ENTE: só a concessão GLOBAL.
+  try {
+    await exigirLeituraDoEnte("CONSULTAR_PATRIMONIO");
+  } catch (e) {
+    const recusa = respostaDaRecusaDeLeitura(e);
+    if (recusa !== null) return recusa;
+    throw e;
+  }
   // ⚠️ SÓ O EXERCÍCIO — esta rota entrega leitura do ENTE, e nenhum montador dela recebe
   // unidade. O que morre aqui é o `?exercicio=abc` virando 2026 em silêncio: um PDF, com o
   // rodapé do ente, afirmando ser de um ano que ninguém pediu. Papel emitido sobrevive à

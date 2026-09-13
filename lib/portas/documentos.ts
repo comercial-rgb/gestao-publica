@@ -1,5 +1,12 @@
 import { cliente, PortaSemBancoError } from "./cliente";
-import { comEscritaAutenticada, exigirSessao, sessaoAtual } from "./sessao";
+import { comEscritaAutenticada, sessaoAtual } from "./sessao";
+import {
+  exigirLeituraDoEnte,
+  exigirLeituraEmAlgumEscopo,
+  podeLerPara,
+  type AcaoDeLeitura,
+  type NivelDeLeitura,
+} from "./leitura";
 import { anexarArquivo, baixarAnexo } from "../../modules/m22-documentos/anexos";
 import {
   listarAnexosDaPessoa,
@@ -48,25 +55,52 @@ export { TAMANHO_MAXIMO_BYTES };
 // LEITURAS
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ⚠️ O ANEXO HERDA A ÁREA DO REGISTRO DONO (orquestração V3, 4.1). Até aqui
+// `listarAnexosDaPessoa` exigia só "usuário ativo": qualquer identidade cadastrada
+// baixava o documento de qualquer pessoa. Agora a área do dono é cobrada ANTES de o M22
+// perguntar ao registro: processo e comunicado são caixas por participação (a ação em
+// algum escopo abre a área, o registro decide), e o cadastro de pessoas é do ENTE.
+
 export async function lerAnexosDoProcesso(
   processoId: string
 ): Promise<readonly AnexoNaLista[]> {
-  const sessao = await exigirSessao();
+  const sessao = await exigirLeituraEmAlgumEscopo("CONSULTAR_PROTOCOLO");
   return listarAnexosDoProcesso(cliente(), processoId, sessao.identificador);
 }
 
 export async function lerAnexosDaPessoa(
   pessoaId: string
 ): Promise<readonly AnexoNaLista[]> {
-  const sessao = await exigirSessao();
+  const sessao = await exigirLeituraDoEnte("CONSULTAR_CADASTROS");
   return listarAnexosDaPessoa(cliente(), pessoaId, sessao.identificador);
 }
 
 export async function lerAnexosDoComunicado(
   comunicadoId: string
 ): Promise<readonly AnexoNaLista[]> {
-  const sessao = await exigirSessao();
+  const sessao = await exigirLeituraEmAlgumEscopo("CONSULTAR_COMUNICACAO");
   return listarAnexosDoComunicado(cliente(), comunicadoId, sessao.identificador);
+}
+
+/**
+ * A área que um anexo herda do dono — e o nível: caixa por participação ou ente.
+ *
+ * ⚠️ `null` para o anexo que não existe OU que não tem dono conhecido: a rota responde
+ * 404, o mesmo de "não pode". Um anexo órfão não é entregue a ninguém.
+ */
+async function leituraDoDonoDoAnexo(
+  anexoId: string
+): Promise<{ readonly acao: AcaoDeLeitura; readonly nivel: NivelDeLeitura } | null> {
+  const a = await cliente().anexo.findUnique({
+    where: { id: anexoId },
+    select: { processoId: true, movimentoProcessoId: true, comunicadoId: true, pessoaId: true, chamadoId: true },
+  });
+  if (a === null) return null;
+  if (a.processoId !== null || a.movimentoProcessoId !== null) return { acao: "CONSULTAR_PROTOCOLO", nivel: "algum" };
+  if (a.comunicadoId !== null) return { acao: "CONSULTAR_COMUNICACAO", nivel: "algum" };
+  if (a.chamadoId !== null) return { acao: "CONSULTAR_SUPORTE", nivel: "algum" };
+  if (a.pessoaId !== null) return { acao: "CONSULTAR_CADASTROS", nivel: "ente" };
+  return null;
 }
 
 /**
@@ -86,6 +120,9 @@ export async function entregarAnexo(
 ): Promise<Awaited<ReturnType<typeof baixarAnexo>>> {
   const sessao = await sessaoAtual();
   if (sessao === null) return null;
+  const dono = await leituraDoDonoDoAnexo(anexoId);
+  if (dono === null) return null;
+  if (!(await podeLerPara(sessao, dono.acao, dono.nivel))) return null;
   return baixarAnexo(cliente(), anexoId, sessao.identificador);
 }
 
@@ -94,6 +131,7 @@ export async function entregarLoteDoProcesso(
 ): Promise<LoteDeAnexos | null> {
   const sessao = await sessaoAtual();
   if (sessao === null) return null;
+  if (!(await podeLerPara(sessao, "CONSULTAR_PROTOCOLO", "algum"))) return null;
   return loteDeAnexosDoProcesso(cliente(), processoId, sessao.identificador);
 }
 
@@ -102,6 +140,7 @@ export async function entregarLoteDaPessoa(
 ): Promise<LoteDeAnexos | null> {
   const sessao = await sessaoAtual();
   if (sessao === null) return null;
+  if (!(await podeLerPara(sessao, "CONSULTAR_CADASTROS", "ente"))) return null;
   return loteDeAnexosDaPessoa(cliente(), pessoaId, sessao.identificador);
 }
 

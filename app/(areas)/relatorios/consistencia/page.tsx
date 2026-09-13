@@ -14,6 +14,7 @@ import {
 } from "../../../../lib/portas/consistencia";
 import { SeletorConsistencia } from "./SeletorConsistencia";
 import { janelaCivilDoAno } from "../../../../packages/datas/index";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
 /**
  * RELATÓRIO DE CONSISTÊNCIA (TR 5.128–5.131 · 7.27) — INTERNO, atrás do shell autenticado.
@@ -36,6 +37,7 @@ export default async function ConsistenciaPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
   const sp = await searchParams;
   const um = (v: string | string[] | undefined): string | undefined => (Array.isArray(v) ? v[0] : v);
   const ex = Number.parseInt(um(sp["exercicio"]) ?? "2026", 10);

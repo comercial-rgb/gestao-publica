@@ -31,7 +31,7 @@ export default async function RoteirosPatrimoniaisPage({
 }: {
   readonly searchParams: Promise<ParametrosBrutos>;
 }): Promise<React.ReactElement> {
-  await exigirLeitura();
+  await exigirLeitura("CONSULTAR_PATRIMONIO");
   const consulta = lerConsulta(ROTEIROS_PATRIMONIAIS, await searchParams);
 
   try {

@@ -77,7 +77,7 @@ export default async function PlanoDeContasPage({
   let contas: readonly ContaDoPlano[];
   let linhasBalancete: readonly LinhaDoBalancete[];
   try {
-    recorte = await recorteDePagina(sp);
+    recorte = await recorteDePagina(sp, "CONSULTAR_CONTABILIDADE");
     // ⚠️ A JANELA DO SALDO É O EXERCÍCIO INTEIRO do recorte — o saldo que se espera ver ao lado de
     // uma conta do plano é o acumulado do ano, não o de uma janela arbitrária. Quem quer o saldo
     // de um mês tem o Balancete, que é a tela feita para escolher a janela.

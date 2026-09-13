@@ -218,6 +218,31 @@ describe("M16 — perfis: criar, conceder ação e revogar ação", () => {
     expect(await permissoesDe(perfilId)).toHaveLength(0);
   });
 
+  it("t12 (V3): ninguém amplia o PRÓPRIO crachá — o administrador vinculado ao perfil é recusado nomeando", async () => {
+    // O ADMIN das fixtures está vinculado ao perfil ADMIN. Conceder a ESSE perfil é ampliar
+    // o próprio escopo — recusado. Conceder a um perfil que ele NÃO tem continua permitido
+    // (é o que t3, t6 e t11 provam), e um segundo administrador amplia o dele.
+    const adminId = await idDoPerfil(PERFIL_ADMIN);
+    const antes = (await permissoesDe(adminId)).length;
+    await expect(
+      concederAcaoAoPerfil(prisma, { perfilId: adminId, acao: ACAO_A, criadoPor: ADMIN })
+    ).rejects.toThrow(/AMPLIAÇÃO DO PRÓPRIO CRACHÁ RECUSADA[\s\S]*atualização versionada/);
+    expect((await permissoesDe(adminId)).length).toBe(antes);
+
+    // O segundo administrador (outro usuário com o MESMO perfil ADMIN) também está
+    // vinculado — recusado igual. Só quem não tem o perfil o amplia.
+    await usuarioComPerfil("segundo.admin@cg.pb.gov.br", PERFIL_ADMIN);
+    await expect(
+      concederAcaoAoPerfil(prisma, { perfilId: adminId, acao: ACAO_A, criadoPor: "segundo.admin@cg.pb.gov.br" })
+    ).rejects.toThrow(/PRÓPRIO CRACHÁ/);
+    // E quem tem CONCEDER_ACAO_A_PERFIL por OUTRO perfil amplia o ADMIN normalmente.
+    const { perfilId: soConcede } = await criarPerfil(prisma, { nome: "SO-CONCEDE", descricao: "distribui", criadoPor: ADMIN });
+    await concederAcaoAoPerfil(prisma, { perfilId: soConcede, acao: A_CHAVE, criadoPor: ADMIN });
+    await usuarioComPerfil("distribuidor@cg.pb.gov.br", "SO-CONCEDE");
+    await concederAcaoAoPerfil(prisma, { perfilId: adminId, acao: "CONSULTAR_DESPESA", unidadeOrcId: (await duasUnidades()).ugA, criadoPor: "distribuidor@cg.pb.gov.br" });
+    expect((await permissoesDe(adminId)).length).toBe(antes + 1);
+  });
+
   it("t11: o caso de uso FECHA a deriva que o detector acusa — é o efeito, não a papelada", async () => {
     const { perfilId } = await criarPerfil(prisma, { nome: "P-A", descricao: "A", criadoPor: ADMIN });
 

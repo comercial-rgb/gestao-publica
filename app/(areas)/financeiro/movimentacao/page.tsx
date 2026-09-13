@@ -9,6 +9,7 @@ import {
 } from "../../../../lib/portas/tesouraria";
 import { diaCivil } from "../../../../packages/datas/index";
 import { FormMovimentacao } from "./FormMovimentacao";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
 /**
  * MOVIMENTAÇÃO BANCÁRIA POR FONTE — TR 5.62 e 5.10.2.6/.18/.19.
@@ -29,6 +30,7 @@ export default async function MovimentacaoPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_FINANCEIRO");
   const params = await searchParams;
   const contaParam = typeof params["conta"] === "string" ? params["conta"] : "";
   // ⚠️ O CORTE PADRÃO É HOJE, NO DIA CIVIL DO ENTE — nunca `toISOString()`, que às 21:00

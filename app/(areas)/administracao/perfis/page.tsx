@@ -4,11 +4,15 @@ import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
 import {
   acoesDoCensoPorArea,
+  lerDiagnosticoDePermissoes,
   listarPerfis,
   listarUnidadesParaConcessao,
   PortaSemBancoError,
+  type DiagnosticoDePermissoes as Diagnostico,
   type PerfilAdmin,
 } from "../../../../lib/portas/administracao";
+import { instanteCivilBr } from "../../../../packages/datas/index";
+import { DiagnosticoDePermissoes } from "./DiagnosticoDePermissoes";
 import { acoesPermitidas, exigirLeitura } from "../../../../lib/portas/molde";
 import { FormCriarPerfil } from "./FormCriarPerfil";
 import { GerenciarPerfil } from "./GerenciarPerfil";
@@ -35,16 +39,18 @@ const CABECALHO = (
 );
 
 export default async function PerfisPage(): Promise<React.ReactElement> {
-  await exigirLeitura();
+  await exigirLeitura("CONSULTAR_ADMINISTRACAO");
 
   let perfis: readonly PerfilAdmin[];
   let unidades: readonly { id: string; codigo: string; descricao: string }[];
   let permitidas: ReadonlySet<string>;
+  let diagnostico: Diagnostico;
   try {
-    [perfis, unidades, permitidas] = await Promise.all([
+    [perfis, unidades, permitidas, diagnostico] = await Promise.all([
       listarPerfis(),
       listarUnidadesParaConcessao(),
       acoesPermitidas(["CRIAR_PERFIL", "CONCEDER_ACAO_A_PERFIL", "REVOGAR_ACAO_DE_PERFIL"]),
+      lerDiagnosticoDePermissoes(),
     ]);
   } catch (erro) {
     return (
@@ -70,6 +76,22 @@ export default async function PerfisPage(): Promise<React.ReactElement> {
   return (
     <div className="space-y-4">
       {CABECALHO}
+
+      <DiagnosticoDePermissoes
+        semPerfil={diagnostico.deriva.semPerfil}
+        foraDoCenso={diagnostico.deriva.foraDoCenso}
+        totalDoCenso={diagnostico.deriva.totalDoCenso}
+        atualizacoes={diagnostico.atualizacoes.map((a) => ({
+          versao: a.versao,
+          nome: a.nome,
+          descricao: a.descricao,
+          aplicadaEm: a.aplicadaEm === null ? null : instanteCivilBr(a.aplicadaEm),
+          aplicadaPor: a.aplicadaPor,
+          concessoes: a.concessoes,
+          previa: a.previa,
+        }))}
+        podeAplicar={podeConceder}
+      />
 
       {podeCriar ? <FormCriarPerfil /> : null}
 

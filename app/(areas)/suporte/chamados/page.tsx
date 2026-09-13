@@ -6,10 +6,12 @@ import { lerUnidades } from "../../../../lib/portas/designer";
 import { lerChamados, lerSeveridades } from "../../../../lib/portas/suporte";
 import { dataBr } from "../../../../lib/recorte";
 import { FormAbrirChamado } from "./FormChamado";
+import { telaExigeLeituraEmAlgumEscopo } from "../../../../lib/portas/leitura";
 
 export const dynamic = "force-dynamic";
 
 export default async function ChamadosPage(): Promise<React.ReactElement> {
+  await telaExigeLeituraEmAlgumEscopo("CONSULTAR_SUPORTE");
   const [chamados, severidades, unidades] = await Promise.all([
     lerChamados(),
     lerSeveridades(),

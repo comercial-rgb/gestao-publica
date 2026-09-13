@@ -12,6 +12,7 @@ import {
   type LinhaReceitaAlienacao,
 } from "../../../../../lib/portas/rreo";
 import { SeletorBimestreRreo } from "../anexo3/SeletorBimestreRreo";
+import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 /** RREO — Anexo 11 · Alienação de Ativos (LRF art. 44 e 53 §1º III). Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ export default async function RreoAnexo11Page({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
+  await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
   const sp = await searchParams;
   const exercicio = lerInteiro(sp["exercicio"], 2026);
   const b = lerInteiro(sp["bimestre"], 1);
