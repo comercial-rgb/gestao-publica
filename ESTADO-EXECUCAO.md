@@ -6,10 +6,10 @@
 |---|---|
 | HEAD | ver `git log -1` — a seção 35 nomeia o commit de cada unidade |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | **Sessão noturna V4** (`docs/lotes/V4-sessao-noturna.md`): unidades 1 (contrato de comando, §45) e 2 (competência por bem, §46) concluídas; a seguir documentos estáveis (§5), a liquidação de material (§6, stash preservado), CNPJ/catálogo (§7) e a cadeia planejamento→contratação→despesa (§8) |
-| Último resultado | seção 46 (competência por bem: 125/125 dirigidos, tsc ×3 limpos) |
+| Frente em execução | **Sessão noturna V4** (`docs/lotes/V4-sessao-noturna.md`): unidades 1 (contrato de comando, §45), 2 (competência por bem, §46) e 3 (documentos estáveis, §47) concluídas; a seguir, a liquidação de material (§6, stash preservado), CNPJ/catálogo (§7) e a cadeia planejamento→contratação→despesa (§8) |
+| Último resultado | seção 47 (documentos estáveis: 54/54 dirigidos, tsc ×3 limpos) |
 | Pendências relevantes | seções 35.7, 36.4, 37.5, 38.5 a 43.5; as anteriores em §19 e nos `MODULO.md` |
-| Próximo passo | seção 46.5 — os documentos patrimoniais estáveis (V4 §5); o stash `11b7892` continua preservado para a liquidação (V4 §6) |
+| Próximo passo | seção 47.5 — a liquidação de material como ato único (V4 §6) a partir do stash `11b7892`, ainda preservado |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -4980,6 +4980,56 @@ Percurso de navegador da competência por item (fica para o `next build` + smoke
 
 Unidade 3 (seção 5 do pedido): a emissão do termo congelada na criação (dados + modelo + sha256), a segunda
 via estável, a posição atual como outro documento, o termo assinado anexável pela tela e verificável.
+
+## 47. Sessão noturna V4 — unidade 3: documentos patrimoniais estáveis (achado A06)
+
+Pedido: `docs/lotes/V4-sessao-noturna.md`, seção 5. Regime: **superfície com prova de integridade**.
+Decisão: `docs/adr/ADR-emissao-congelada-do-termo.md`.
+
+### 47.1 O que passou a funcionar
+
+- **Emissão congelada na criação do termo** (dados + modelo `termo-patrimonial/1` + sha256 do JSON canônico +
+  `emitidoEm`), na mesma transação. A segunda via é a emissão: o bem muda de sala, é reavaliado, a pessoa muda de
+  nome — o PDF emitido não muda (t4). Emissão adulterada é recusada na leitura (t5).
+- **Posição patrimonial atual é outro documento** (`/patrimonio/termos/[id]/pdf?via=atual`): título e data
+  próprios, nota dizendo que não é o termo. Termos anteriores à V4 são compostos agora e declarados
+  `SEM_EMISSAO` (t5). A rota responde `x-documento-via`/`x-documento-sha256`/`x-documento-modelo`.
+- **Termo assinado anexável pela tela** (aba "anexos" do detalhe do termo; `Anexo.termoPatrimonialId`; escopo do
+  ente; sha256 conferido na entrega; dono único) (t7). Recortes individual/setorial/por responsável ditos no
+  documento (t6).
+- **O percurso passa a ler o TEXTO do PDF** (pdf.js, leitor independente do gerador — `pdfjs-dist` devDependency
+  instalada com lockfile e sem scripts de instalação): tombamento, responsável e declaração no emitido; título e
+  nota na posição atual.
+- Rotas: `/patrimonio/termos/[id]` (dados, histórico, anexos, relacionados com os dois PDFs), `/patrimonio/termos/[id]/pdf`.
+
+### 47.2 Comandos executados e resultados
+
+| Comando | Resultado |
+|---|---|
+| migration `20260913071500_v4_emissao_congelada_do_termo_e_anexo` (aditiva) em test, dev e percursos; `generate`; `migrate diff` | aplicada; "No difference detected"; papel reprovisionado |
+| `tsc` backend, app e scripts | limpos |
+| dirigidos: `m10-termo-documento` (7), `m10-gestao-do-bem`, `m22-documentos`, `m16-censo` | **54/54** (`.registro-de-execucao/v4-termo-verificacao-2.txt`); `papel-runtime` verde na rodada anterior |
+| `test:rapido` | 804/804 |
+
+Defeito achado e corrigido durante a unidade: o JSONB do Postgres reordena as chaves do JSON, e o sha256 do
+documento lido não batia com o gravado — o hash passou a ser do JSON CANÔNICO (chaves ordenadas).
+
+### 47.3 Não executado
+
+O percurso de navegador com a leitura do PDF (fica para o `next build` + smokes, seção 10 do pedido).
+
+### 47.4 Pendências
+
+| Pendência | O que é |
+|---|---|
+| `ASSINATURA-QUALIFICADA-DO-TERMO` | o termo assinado é digitalização anexada; a fila de assinatura do M22 sobre a emissão congelada é o passo seguinte |
+
+### 47.5 Próximo ponto exato
+
+Unidade 4 (seção 6 do pedido): a liquidação de material como ato único a partir do stash `11b7892`, com o
+gatilho pela natureza da operação (não pela existência de classe cadastrada), configuração ausente como
+pendência impeditiva, recebimento existente relacionável, restrição declarada a liquidações integralmente
+materiais, testes restantes da §44.3, tela das entradas e regressão ampliada dos consumidores.
 
 ## 19. O próximo passo
 

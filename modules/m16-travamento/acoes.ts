@@ -1467,7 +1467,9 @@ export const FORA_DO_CENSO: Record<string, string> = {
   pessoaDoUsuario: "leitura (a pessoa vinculada ao usuário — a última linha de VinculoUsuarioPessoa, se for VINCULO)",
   versoesDoRoteiro: "leitura (as versões de um roteiro, com a vigência derivada — V3 4.5)",
   versaoVigente: "leitura (a versão PUBLICADA em vigor de um roteiro — o resolvedor do M10 a consome)",
-  documentoDoTermo: "leitura (o termo patrimonial composto como dado para o PDF — valores e localizações derivados no momento — V3 pacote 2)",
+  documentoDoTermo: "leitura (o termo patrimonial para o PDF: a emissão congelada (segunda via) ou a posição atual — V3 pacote 2, V4 §5)",
+  comporTermo: "leitura (a composição do termo a partir dos dados e do acervo de agora — a emissão a congelar, ou a posição atual — V4 §5)",
+  composicaoDoTermo: "leitura (a composição de um termo existente, pela linha dele — V4 §5)",
   analisarEstornoPatrimonial: "leitura (a análise de dependências do estorno de um movimento de valor — estornarMovimentoPatrimonial a refaz na transação — V3 pacote 2)",
   analisarEstornoDeGestao: "leitura (a análise do estorno de um movimento de gestão: o par da transferência e os posteriores do eixo — V3 pacote 2)",
   parametroVigente: "leitura (o parâmetro de atualização em vigor da classe — a última versão, ou a linha legada — V3 pacote 2)",
@@ -1526,6 +1528,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   // perguntam ao registro dono ANTES de enumerar, e devolvem lista vazia a quem não pode.
   listarAnexosDoProcesso: "leitura (os anexos que ESTE usuário pode ver — pergunta ao processo dono)",
   listarAnexosDaPessoa: "leitura (os anexos de um cadastro do ente; exige usuário ativo)",
+  listarAnexosDoTermo: "leitura (os anexos de um termo patrimonial — o termo assinado; do ente, exige usuário ativo — V4 §5)",
   listarAnexosDoComunicado: "leitura (os anexos de um comunicado — pergunta ao M23 quem participa)",
   loteDeAnexosDoProcesso: "leitura (monta o zip com o que baixarAnexo entregaria um a um)",
   loteDeAnexosDaPessoa: "leitura (idem, para o cadastro de pessoas)",

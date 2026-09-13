@@ -11,6 +11,7 @@ import { anexarArquivo, baixarAnexo } from "../../modules/m22-documentos/anexos"
 import {
   listarAnexosDaPessoa,
   listarAnexosDoComunicado,
+  listarAnexosDoTermo,
   listarAnexosDoProcesso,
   loteDeAnexosDaPessoa,
   loteDeAnexosDoProcesso,
@@ -75,6 +76,12 @@ export async function lerAnexosDaPessoa(
   return listarAnexosDaPessoa(cliente(), pessoaId, sessao.identificador);
 }
 
+/** V4 (§5): os anexos (o termo assinado) de um termo patrimonial — leitura do ente. */
+export async function lerAnexosDoTermo(termoPatrimonialId: string): Promise<readonly AnexoNaLista[]> {
+  const sessao = await exigirLeituraDoEnte("CONSULTAR_PATRIMONIO");
+  return listarAnexosDoTermo(cliente(), termoPatrimonialId, sessao.identificador);
+}
+
 export async function lerAnexosDoComunicado(
   comunicadoId: string
 ): Promise<readonly AnexoNaLista[]> {
@@ -93,13 +100,14 @@ async function leituraDoDonoDoAnexo(
 ): Promise<{ readonly acao: AcaoDeLeitura; readonly nivel: NivelDeLeitura } | null> {
   const a = await cliente().anexo.findUnique({
     where: { id: anexoId },
-    select: { processoId: true, movimentoProcessoId: true, comunicadoId: true, pessoaId: true, chamadoId: true },
+    select: { processoId: true, movimentoProcessoId: true, comunicadoId: true, pessoaId: true, chamadoId: true, termoPatrimonialId: true },
   });
   if (a === null) return null;
   if (a.processoId !== null || a.movimentoProcessoId !== null) return { acao: "CONSULTAR_PROTOCOLO", nivel: "algum" };
   if (a.comunicadoId !== null) return { acao: "CONSULTAR_COMUNICACAO", nivel: "algum" };
   if (a.chamadoId !== null) return { acao: "CONSULTAR_SUPORTE", nivel: "algum" };
   if (a.pessoaId !== null) return { acao: "CONSULTAR_CADASTROS", nivel: "ente" };
+  if (a.termoPatrimonialId !== null) return { acao: "CONSULTAR_PATRIMONIO", nivel: "ente" };
   return null;
 }
 
@@ -157,6 +165,7 @@ export interface AnexarNaTela {
   readonly movimentoProcessoId?: string | undefined;
   readonly comunicadoId?: string | undefined;
   readonly pessoaId?: string | undefined;
+  readonly termoPatrimonialId?: string | undefined;
 }
 
 export async function anexarNaTela(

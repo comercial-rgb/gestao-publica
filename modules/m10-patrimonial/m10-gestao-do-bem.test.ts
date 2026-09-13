@@ -232,7 +232,7 @@ describe("t2 · o estado do bem é derivado, e a data manda", () => {
 
 describe("t3 · o termo de responsabilidade move o eixo junto", () => {
   it("emitir o termo registra o movimento — uma verdade só", async () => {
-    const r = await emitirTermoPatrimonial(prisma, {
+    const r = await emitirTermoPatrimonial(prisma, { ente: "Município de Teste",
       numero: "TR-001", tipo: "RESPONSABILIDADE", responsavelId: anaId,
       setorId: "set-01", data: new Date("2026-04-01T12:00:00Z"),
       bensId: [bemId, bem2Id], criadoPor: POR,
@@ -246,7 +246,7 @@ describe("t3 · o termo de responsabilidade move o eixo junto", () => {
 
   it("⚠️ RECUSA termo de responsabilidade SEM responsável", async () => {
     await expect(
-      emitirTermoPatrimonial(prisma, {
+      emitirTermoPatrimonial(prisma, { ente: "Município de Teste",
         numero: "TR-002", tipo: "RESPONSABILIDADE", setorId: "set-01",
         data: new Date("2026-04-01T12:00:00Z"), bensId: [bemId], criadoPor: POR,
       })
@@ -254,7 +254,7 @@ describe("t3 · o termo de responsabilidade move o eixo junto", () => {
   });
 
   it("o termo de BAIXA põe a situação em BAIXADO", async () => {
-    await emitirTermoPatrimonial(prisma, {
+    await emitirTermoPatrimonial(prisma, { ente: "Município de Teste",
       numero: "TB-001", tipo: "BAIXA", data: new Date("2026-05-01T12:00:00Z"),
       bensId: [bemId], criadoPor: POR,
     });
@@ -313,7 +313,7 @@ describe("t5 · transferência entre entidades é operação composta (TR 5.19.2
   });
 
   it("⚠️ RECUSA transferir bem BAIXADO", async () => {
-    await emitirTermoPatrimonial(prisma, {
+    await emitirTermoPatrimonial(prisma, { ente: "Município de Teste",
       numero: "TB-009", tipo: "BAIXA", data: new Date("2026-05-01T12:00:00Z"),
       bensId: [bemId], criadoPor: POR,
     });
@@ -471,7 +471,7 @@ describe("t9 · ⚠️ O EIXO DE GESTÃO NÃO TOCA O RAZÃO, e a autorização �
       bemId, tipo: "LOCALIZACAO", dataMovimento: new Date("2026-03-01T12:00:00Z"),
       localizacaoId: sala1, motivo: "alocação inicial", criadoPor: POR,
     });
-    await emitirTermoPatrimonial(prisma, {
+    await emitirTermoPatrimonial(prisma, { ente: "Município de Teste",
       numero: "TR-900", tipo: "RESPONSABILIDADE", responsavelId: anaId,
       data: new Date("2026-04-01T12:00:00Z"), bensId: [bemId], criadoPor: POR,
     });

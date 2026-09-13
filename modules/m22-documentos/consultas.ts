@@ -131,6 +131,18 @@ export async function listarAnexosDaPessoa(
   }));
 }
 
+/** V4 (§5): os anexos de um termo patrimonial (o termo assinado) — do ente; exige usuário ativo. */
+export async function listarAnexosDoTermo(prisma: PrismaClient, termoPatrimonialId: string, usuarioIdent: string): Promise<readonly AnexoNaLista[]> {
+  const u = await prisma.usuario.findUnique({ where: { identificador: usuarioIdent }, select: { ativo: true } });
+  if (u === null || !u.ativo) return [];
+  const anexos = await prisma.anexo.findMany({
+    where: { termoPatrimonialId },
+    select: { id: true, nomeOriginal: true, mimeType: true, tamanhoBytes: true, sha256: true, criadoEm: true, criadoPor: true },
+    orderBy: { criadoEm: "asc" },
+  });
+  return anexos.map((a) => ({ id: a.id, nome: a.nomeOriginal, mimeType: a.mimeType, tamanhoBytes: a.tamanhoBytes, sha256: a.sha256, criadoEm: a.criadoEm, criadoPor: a.criadoPor, origem: "PROCESSO" as const, movimento: null }));
+}
+
 /** Os anexos de um comunicado — a regra de acesso é a do M23 (`podeVerComunicado`). */
 export async function listarAnexosDoComunicado(
   prisma: PrismaClient,

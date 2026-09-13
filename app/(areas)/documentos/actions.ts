@@ -37,7 +37,12 @@ function revalidarDono(dono: {
   readonly processoId?: string | undefined;
   readonly pessoaId?: string | undefined;
   readonly comunicadoId?: string | undefined;
+  readonly termoPatrimonialId?: string | undefined;
 }): void {
+  if (dono.termoPatrimonialId !== undefined) {
+    revalidatePath(`/patrimonio/termos/${dono.termoPatrimonialId}`);
+    return;
+  }
   if (dono.processoId !== undefined) {
     revalidatePath(`/protocolo/processos/${dono.processoId}`);
     return;
@@ -70,8 +75,10 @@ export async function anexarArquivoAction(
     const pessoaId = texto(formData, "pessoaId");
     const comunicadoId = texto(formData, "comunicadoId");
     const movimentoProcessoId = texto(formData, "movimentoProcessoId");
+    const termoPatrimonialId = texto(formData, "termoPatrimonialId");
 
     const dono = {
+      ...(termoPatrimonialId !== "" ? { termoPatrimonialId } : {}),
       ...(processoId !== "" ? { processoId } : {}),
       ...(pessoaId !== "" ? { pessoaId } : {}),
       ...(comunicadoId !== "" ? { comunicadoId } : {}),

@@ -33,6 +33,7 @@ export interface DonoDoAnexo {
   readonly movimentoProcessoId?: string | undefined;
   readonly pessoaId?: string | undefined;
   readonly comunicadoId?: string | undefined;
+  readonly termoPatrimonialId?: string | undefined;
 }
 
 export function FormAnexo({
@@ -77,6 +78,9 @@ export function FormAnexo({
       ) : null}
       {dono.pessoaId !== undefined ? (
         <input type="hidden" name="pessoaId" value={dono.pessoaId} />
+      ) : null}
+      {dono.termoPatrimonialId !== undefined ? (
+        <input type="hidden" name="termoPatrimonialId" value={dono.termoPatrimonialId} />
       ) : null}
       {dono.comunicadoId !== undefined ? (
         <input type="hidden" name="comunicadoId" value={dono.comunicadoId} />

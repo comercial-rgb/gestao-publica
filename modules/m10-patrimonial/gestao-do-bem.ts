@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { comporTermo, MODELO_DO_TERMO, sha256DoDocumento } from "./termo-documento.js";
 import { randomUUID } from "node:crypto";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
@@ -8,7 +9,7 @@ import {
   diferencaEmDiasCivis,
   meioDiaCivil,
 } from "../../packages/datas/index.js";
-import type { PrismaClient } from "../../prisma/generated/client/client.js";
+import type { Prisma, PrismaClient } from "../../prisma/generated/client/client.js";
 import {
   CAMPO_OBRIGATORIO_DO_TIPO,
   TIPO_DO_ESTORNO_DE_GESTAO,
@@ -796,6 +797,8 @@ export const zEmitirTermoPatrimonialInput = z.object({
   setorId: z.string().min(1).optional(),
   data: z.coerce.date(),
   bensId: z.array(z.string().min(1)).min(1, "um termo sem bem não entrega nada a ninguém"),
+  /** V4 (§5): o nome do ente que encabeça o documento — congelado na emissão. */
+  ente: z.string().trim().min(1, "o ente encabeça o documento emitido"),
   criadoPor: z.string().min(1),
 });
 export type EmitirTermoPatrimonialInput = z.input<typeof zEmitirTermoPatrimonialInput>;
@@ -830,11 +833,26 @@ export async function emitirTermoPatrimonial(
       d.setorId === undefined ? "ENTE" : { setor: d.setorId }
     );
 
+    // ═══ V4 (§5) — A EMISSÃO É CONGELADA NA MESMA TRANSAÇÃO ═══
+    // O documento é composto AGORA (valores e localizações desta hora) e gravado com o termo:
+    // dados, modelo e sha256. A segunda via é este conteúdo; a posição atual é outro documento.
+    // Composto ANTES da linha existir porque o papel de runtime só INSERE nesta tabela.
+    const emitidoEm = new Date();
+    const emissao = await comporTermo(
+      tx,
+      { numero: d.numero, tipo: d.tipo, data: d.data, criadoEm: emitidoEm, criadoPor: d.criadoPor, setorId: d.setorId ?? null, responsavelId: d.responsavelId ?? null, bensId: d.bensId },
+      d.ente,
+      { como: "EMISSAO" }
+    );
     const termo = await tx.termoPatrimonial.create({
       data: {
         numero: d.numero, tipo: d.tipo,
         responsavelId: d.responsavelId ?? null, setorId: d.setorId ?? null,
-        data: d.data, criadoPor: d.criadoPor,
+        data: d.data, criadoEm: emitidoEm, criadoPor: d.criadoPor,
+        emissao: emissao as unknown as Prisma.InputJsonValue,
+        emissaoSha256: sha256DoDocumento(emissao),
+        modeloDaEmissao: MODELO_DO_TERMO,
+        emitidoEm,
         itens: {
           create: d.bensId.map((bemId) => ({ bemId, criadoPor: d.criadoPor })),
         },

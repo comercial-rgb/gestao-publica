@@ -8,6 +8,10 @@ import { definirRecurso, type DefinicaoDeRecurso } from "../../molde/tipos.js";
  * ações no detalhe; corrigir é emitir outro. O PDF sai pela rota autenticada, com o mesmo
  * motor e rodapé dos demonstrativos.
  *
+ * ⚠️ V4 (§5): a EMISSÃO é congelada na criação (dados, modelo, sha256) — a segunda via é ela; a
+ * posição atual é outro PDF; o termo ASSINADO é anexado na aba de anexos, com sha256 conferido
+ * na entrega.
+ *
  * ⚠️ OS BENS ENTRAM PELO TOMBAMENTO, não por seletor: um termo setorial pode relacionar
  * dezenas de bens, e um `select` múltiplo com o acervo inteiro é o formulário bonito e
  * inútil. A porta resolve os tombamentos e recusa nomeando os que não existem.
@@ -54,8 +58,10 @@ export const TERMOS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
   ],
   acoes: [],
   permissoes: { criar: "EMITIR_TERMO_PATRIMONIAL" },
-  abas: ["dados", "historico", "relacionados"],
+  abas: ["dados", "historico", "anexos", "relacionados"],
+  donoDoAnexo: "termoPatrimonialId",
   relacionados: [
-    { rotulo: "PDF do termo", href: "/patrimonio/termos/{id}/pdf", explicacao: "O papel para assinatura, com os bens, o valor contábil e a localização de cada um no momento da impressão." },
+    { rotulo: "PDF do termo emitido (segunda via)", href: "/patrimonio/termos/{id}/pdf", explicacao: "O documento como foi emitido: os bens, o valor contábil e a localização de cada um NA EMISSÃO, congelados com o termo. Reimprimir não muda nada." },
+    { rotulo: "PDF da posição patrimonial atual", href: "/patrimonio/termos/{id}/pdf?via=atual", explicacao: "Outro documento, com data própria: os mesmos bens como estão hoje. Não é o termo nem uma segunda via dele." },
   ],
 });

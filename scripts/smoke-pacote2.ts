@@ -170,6 +170,27 @@ async function preencherEEnviar(page: Page, acao: string, campos: readonly Campo
   if (resposta.tipo === "erro") console.log(`      [servidor recusou "${acao}"] ${resposta.texto.slice(0, 400)}`);
   return resposta;
 }
+/** Baixa o PDF com a sessão do navegador (base64) e extrai o texto com o pdf.js — leitor INDEPENDENTE do gerador. */
+async function textoDoPdf(page: Page, url: string): Promise<string> {
+  const b64 = await page.evaluate(async (u) => {
+    const r = await fetch(u);
+    if (r.status !== 200) return "";
+    const bytes = new Uint8Array(await r.arrayBuffer());
+    let bin = "";
+    for (const b of bytes) bin += String.fromCharCode(b);
+    return btoa(bin);
+  }, url);
+  if (b64 === "") return "";
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(Buffer.from(b64, "base64")), useSystemFonts: true }).promise;
+  const partes: string[] = [];
+  for (let i = 1; i <= doc.numPages; i += 1) {
+    const pagina = await doc.getPage(i);
+    const conteudo = await pagina.getTextContent();
+    partes.push(conteudo.items.map((it) => ("str" in it ? it.str : "")).join(" "));
+  }
+  return partes.join("\n");
+}
 async function opcaoQueCasa(page: Page, seletor: string, pedaco: string): Promise<{ readonly valor: string; readonly rotulo: string } | null> {
   return page.evaluate(
     (sel, p) => {
@@ -357,6 +378,12 @@ async function main(): Promise<void> {
         await new Promise((r) => setTimeout(r, 10000));
       }
       conferir("termo: o PDF é gerado pela rota autenticada (200, application/pdf, > 1 KB)", pdf.status === 200 && pdf.tipo.includes("application/pdf") && pdf.tamanho > 1024, JSON.stringify(pdf));
+      // V4 (§5): o CONTEÚDO do PDF, não só o status — o tombamento, o responsável e a declaração;
+      // e a posição atual é outro documento, com título próprio.
+      const textoEmitido = await textoDoPdf(page, `${BASE}${hrefTermo}/pdf`);
+      conferir("termo: o PDF emitido traz o tombamento, o responsável e a declaração", textoEmitido.includes(TOMB) && textoEmitido.includes("Declaro ter recebido") && (responsavel === null || textoEmitido.includes((responsavel.rotulo.split(" (")[0] ?? "").slice(0, 12))), textoEmitido.slice(0, 300));
+      const textoAtual = await textoDoPdf(page, `${BASE}${hrefTermo}/pdf?via=atual`);
+      conferir("termo: a posição atual é OUTRO documento, com título e nota próprios", textoAtual.includes("Posição patrimonial atual") && textoAtual.includes("NÃO é o termo"), textoAtual.slice(0, 300));
     }
     const acervoPorResponsavel = responsavel === null ? "" : await irPara(page, `/patrimonio/bens-patrimoniais?responsavel=${encodeURIComponent(responsavel.rotulo.split(" (")[0] ?? "")}`);
     conferir("acervo: a pesquisa por RESPONSÁVEL acha o bem entregue pelo termo", acervoPorResponsavel.includes(TOMB.toLowerCase()), "o bem não veio na pesquisa por responsável");

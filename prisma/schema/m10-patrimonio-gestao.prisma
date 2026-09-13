@@ -324,6 +324,17 @@ model TermoPatrimonial {
   documentoId String?
   documento   Anexo?  @relation("DocumentoDeTermoPatrimonial", fields: [documentoId], references: [id])
 
+  /// V4 (§5) — A EMISSÃO CONGELADA: o documento como foi emitido (dados e modelo), com o
+  /// sha256 do JSON canônico. A segunda via é ESTE conteúdo; a posição atual é OUTRO
+  /// documento. Nulos nos termos anteriores à V4 (a tela diz que não há emissão congelada).
+  emissao         Json?
+  emissaoSha256   String?   @db.VarChar(64)
+  modeloDaEmissao String?   @db.VarChar(40)
+  emitidoEm       DateTime?
+
+  /// V4 (§5) — o termo ASSINADO (digitalizado), anexado pela tela: `Anexo.termoPatrimonialId`.
+  anexos Anexo[] @relation("AnexoDeTermoPatrimonial")
+
   itens ItemDeTermoPatrimonial[]
 
   criadoEm  DateTime @default(now())

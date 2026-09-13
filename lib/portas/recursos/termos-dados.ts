@@ -2,7 +2,7 @@ import { diaCivilBr, inicioDoDiaCivil } from "../../../packages/datas/index.js";
 import type { Prisma } from "../../../prisma/generated/client/client.js";
 import { formatarDocumento } from "../../../packages/documento/index.js";
 import { emitirTermoPatrimonial } from "../../../modules/m10-patrimonial/gestao-do-bem.js";
-import { documentoDoTermo, type DocumentoDoTermo } from "../../../modules/m10-patrimonial/termo-documento.js";
+import { documentoDoTermo, type DocumentoDoTermoLido } from "../../../modules/m10-patrimonial/termo-documento.js";
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { TAMANHO_DE_PAGINA } from "../../molde/consulta.js";
 import { ENTE } from "../../pdf/ente.js";
@@ -88,6 +88,8 @@ export async function verTermo(id: string): Promise<DetalheLido | null> {
       responsavel: { select: { documento: true, versoes: { select: { nome: true }, orderBy: { criadoEm: "desc" }, take: 1 } } },
       setor: { select: { codigo: true, nome: true } },
       documento: { select: { id: true } },
+      emissaoSha256: true, modeloDaEmissao: true, emitidoEm: true,
+      anexos: { select: { id: true } },
       itens: {
         select: { id: true, criadoEm: true, criadoPor: true, bem: { select: { id: true, numeroTombamento: true, descricao: true, classeDeBens: { select: { codigo: true, descricao: true } } } } },
         orderBy: { criadoEm: "asc" },
@@ -101,7 +103,8 @@ export async function verTermo(id: string): Promise<DetalheLido | null> {
     selos: [
       { texto: ROTULO_DO_TIPO[x.tipo] ?? x.tipo, tom: "neutro" },
       { texto: `${x.itens.length} bem(ns)`, tom: "neutro" },
-      ...(x.documento === null ? [{ texto: "sem termo assinado anexado", tom: "alerta" as const }] : [{ texto: "termo assinado anexado", tom: "ok" as const }]),
+      ...(x.anexos.length === 0 && x.documento === null ? [{ texto: "sem termo assinado anexado", tom: "alerta" as const }] : [{ texto: "termo assinado anexado", tom: "ok" as const }]),
+      ...(x.emissaoSha256 === null ? [{ texto: "sem emissão congelada (anterior ao registro da emissão)", tom: "alerta" as const }] : [{ texto: "emissão congelada", tom: "ok" as const }]),
     ],
     dados: [
       { rotulo: "Número", valor: x.numero },
@@ -111,6 +114,9 @@ export async function verTermo(id: string): Promise<DetalheLido | null> {
       { rotulo: "Data do termo", valor: diaCivilBr(x.data), tipo: "data", nota: "A data do fato: é a data do movimento registrado em cada bem." },
       { rotulo: "Emitido em", valor: diaCivilBr(x.criadoEm), tipo: "data" },
       { rotulo: "Emitido por", valor: x.criadoPor },
+      x.emissaoSha256 === null
+        ? { rotulo: "Emissão congelada", valor: "Não há", nota: "Termo anterior ao registro da emissão: o PDF é composto agora, com valores e localizações de hoje, e diz isso." }
+        : { rotulo: "Emissão congelada", valor: `${x.modeloDaEmissao ?? ""} · sha256 ${x.emissaoSha256.slice(0, 16)}…`, nota: `Gravada em ${x.emitidoEm === null ? "—" : diaCivilBr(x.emitidoEm)} com o termo. A segunda via reproduz exatamente esta emissão; a integridade é conferida a cada leitura.` },
       {
         rotulo: "Movimento registrado",
         valor: x.tipo === "RESPONSABILIDADE" ? "Responsável, em cada bem" : "Situação BAIXADO, em cada bem",
@@ -165,15 +171,16 @@ export async function criarTermo(c: Campos): Promise<void> {
       ...(opcional(c, "setorId") !== undefined ? { setorId: t(c, "setorId") } : {}),
       data: inicioDoDiaCivil(t(c, "data")),
       bensId: [...bensId],
+      ente: ENTE,
       criadoPor,
     })
   );
 }
 
-/** O documento para o PDF — `null` quando o termo não existe. */
-export async function documentoDoTermoPara(id: string): Promise<DocumentoDoTermo | null> {
+/** O documento para o PDF — `null` quando o termo não existe. `via` "atual" = a posição de hoje. */
+export async function documentoDoTermoPara(id: string, via: "EMITIDO" | "ATUAL" = "EMITIDO"): Promise<DocumentoDoTermoLido | null> {
   try {
-    return await documentoDoTermo(cliente(), id, ENTE);
+    return await documentoDoTermo(cliente(), id, ENTE, via);
   } catch (e) {
     if (e instanceof Error && /não encontrado/.test(e.message)) return null;
     throw e;

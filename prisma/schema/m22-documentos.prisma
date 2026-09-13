@@ -141,6 +141,11 @@ model Anexo {
   auditoriaId String?
   auditoria   AuditoriaInterna? @relation(fields: [auditoriaId], references: [id])
 
+  /// V4 (§5) — O TERMO PATRIMONIAL ASSINADO. Uma coluna, como todo dono: o banco garante que o
+  /// termo existe. Escopo do ENTE (o termo é do ente; o setor é dado do termo, não recorte).
+  termoPatrimonialId String?
+  termoPatrimonial   TermoPatrimonial? @relation("AnexoDeTermoPatrimonial", fields: [termoPatrimonialId], references: [id])
+
   /// O relatório circunstanciado gerado a partir deste anexo (origem SISTEMA). Campo VIRTUAL.
   relatorioCircunstanciado RelatorioCircunstanciado? @relation("AnexoDoRelatorioCircunstanciado")
 
@@ -158,6 +163,7 @@ model Anexo {
   @@index([borderoId])
   @@index([empenhoId])
   @@index([liquidacaoId])
+  @@index([termoPatrimonialId])
   @@index([ordemDePagamentoId])
   @@index([convenioId])
   @@index([precatorioId])

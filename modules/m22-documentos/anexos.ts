@@ -44,6 +44,8 @@ export const zAnexar = z
     empenhoId: z.string().min(1).optional(),
     liquidacaoId: z.string().min(1).optional(),
     ordemDePagamentoId: z.string().min(1).optional(),
+    // ── V4 (§5): o termo patrimonial assinado ──
+    termoPatrimonialId: z.string().min(1).optional(),
     criadoPor: z.string().min(1),
   })
   .refine(
@@ -57,11 +59,12 @@ export const zAnexar = z
         d.empenhoId,
         d.liquidacaoId,
         d.ordemDePagamentoId,
+        d.termoPatrimonialId,
       ].filter((v) => v !== undefined).length === 1,
     {
       message:
         "Um anexo pertence a EXATAMENTE UM registro: processo, movimento de processo, " +
-        "comunicado, pessoa, borderô, empenho, liquidação ou ordem de pagamento. Sem " +
+        "comunicado, pessoa, borderô, empenho, liquidação, ordem de pagamento ou termo patrimonial. Sem " +
         "dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual regra de acesso " +
         "vale.",
     }
@@ -107,6 +110,7 @@ export async function anexarArquivo(
         empenhoId: d.empenhoId ?? null,
         liquidacaoId: d.liquidacaoId ?? null,
         ordemDePagamentoId: d.ordemDePagamentoId ?? null,
+        termoPatrimonialId: d.termoPatrimonialId ?? null,
         criadoPor: d.criadoPor,
       },
       select: { id: true },
@@ -135,9 +139,16 @@ async function escopoDoDono(
     readonly empenhoId?: string | undefined;
     readonly liquidacaoId?: string | undefined;
     readonly ordemDePagamentoId?: string | undefined;
+    readonly termoPatrimonialId?: string | undefined;
   }
 ): Promise<EscopoDoFato> {
   if (d.pessoaId !== undefined) return "ENTE";
+  // V4 (§5): o termo é do ENTE (o setor é dado do termo, não recorte); o termo tem de existir.
+  if (d.termoPatrimonialId !== undefined) {
+    const termo = await tx.termoPatrimonial.findUnique({ where: { id: d.termoPatrimonialId }, select: { id: true } });
+    if (termo === null) throw new Error(`Termo patrimonial ${d.termoPatrimonialId} não existe. Nada foi gravado.`);
+    return "ENTE";
+  }
 
   // ⚠️ OS DOCUMENTOS DA DESPESA SEGUEM A UG DO FATO, e NÃO viram atos do ENTE.
   //

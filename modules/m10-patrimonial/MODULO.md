@@ -437,3 +437,12 @@ Decisão inteira em `docs/adr/ADR-competencia-por-bem-corte-e-execucao.md`. O re
 - `conciliacaoDaClasse`: Σ bens + acervo sem individualização = classe (zero por construção) e a
   acumulada histórica sem bem (pendência `RECONCILIACAO-HISTORICA-DA-DEPRECIACAO-POR-CLASSE`).
 - Pendências: `INICIO-DA-ATUALIZACAO-NO-MES-SEGUINTE`, `VIRADA-DE-TODAS-AS-CLASSES`.
+
+## Sessão noturna V4 (§5) — a emissão congelada do termo, a posição atual e o termo assinado
+
+Decisão em `docs/adr/ADR-emissao-congelada-do-termo.md`. `emitirTermoPatrimonial` compõe o documento
+(`comporTermo`) e o grava com o termo (`emissao`, `modeloDaEmissao`, `emissaoSha256` do JSON canônico,
+`emitidoEm`); `documentoDoTermo(tx, id, ente, via)` devolve a segunda via (EMITIDO, conferindo o sha256),
+a posição atual (ATUAL, outro documento com data própria) ou o termo antigo composto agora (SEM_EMISSAO,
+dito na nota). O termo assinado é `Anexo.termoPatrimonialId` (aba de anexos do detalhe; sha256 conferido
+na entrega). Pendência `TERMO-ASSINADO-NAO-ANEXAVEL-PELA-TELA` fechada; nova: `ASSINATURA-QUALIFICADA-DO-TERMO`.

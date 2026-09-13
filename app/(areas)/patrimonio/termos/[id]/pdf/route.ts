@@ -12,7 +12,7 @@ import { respostaDaRecusaDeLeitura } from "../../../../../../lib/rotas/recusa";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: NextRequest, ctx: { readonly params: Promise<{ readonly id: string }> }): Promise<NextResponse> {
+export async function GET(req: NextRequest, ctx: { readonly params: Promise<{ readonly id: string }> }): Promise<NextResponse> {
   try {
     await exigirLeituraDoEnte("CONSULTAR_PATRIMONIO");
   } catch (e) {
@@ -21,11 +21,21 @@ export async function GET(_req: NextRequest, ctx: { readonly params: Promise<{ r
     throw e;
   }
   const { id } = await ctx.params;
-  const doc = await documentoDoTermoPara(id);
-  if (doc === null) return NextResponse.json({ erro: "Termo não encontrado." }, { status: 404 });
-  const r = await emitir(doc, `termo-${doc.numeroArquivo}`);
+  // `?via=atual` é a posição patrimonial de hoje — outro documento; o padrão é a emissão congelada.
+  const via = req.nextUrl.searchParams.get("via") === "atual" ? "ATUAL" : "EMITIDO";
+  const lido = await documentoDoTermoPara(id, via);
+  if (lido === null) return NextResponse.json({ erro: "Termo não encontrado." }, { status: 404 });
+  const r = await emitir(lido.documento, `termo-${lido.documento.numeroArquivo}`);
   return new NextResponse(Buffer.from(r.pdf), {
     status: 200,
-    headers: { "content-type": "application/pdf", "content-disposition": `inline; filename="${r.nomeArquivo}"`, "cache-control": "no-store" },
+    headers: {
+      "content-type": "application/pdf",
+      "content-disposition": `inline; filename="${r.nomeArquivo}"`,
+      "cache-control": "no-store",
+      // A proveniência e a prova, legíveis por quem confere: qual documento é este e o sha256 do conteúdo.
+      "x-documento-via": lido.via,
+      "x-documento-sha256": lido.sha256,
+      "x-documento-modelo": lido.modelo,
+    },
   });
 }
