@@ -14,8 +14,10 @@ import puppeteer, { type Browser, type Page } from "puppeteer";
  * ⚠️ ELE NÃO LIMPA O BANCO: códigos levam o sufixo do instante. Helpers do smoke das compras.
  */
 const BASE = process.argv[2] ?? "http://localhost:3010";
-const USUARIO = process.argv[3] ?? "admin@cg.pb.gov.br";
-const SENHA = process.argv[4] ?? process.env["SEED_ADMIN_SENHA"] ?? "";
+// O percurso é do PAPEL: o servidor do RH dos percursos (scripts/percursos-usuarios-por-papel.ts).
+// Sem o usuário de papel, passe admin e senha nos argumentos 3 e 4.
+const USUARIO = process.argv[3] ?? "rh@percursos.local";
+const SENHA = process.argv[4] ?? (USUARIO === "rh@percursos.local" ? (process.env["PERCURSOS_SENHA_PAPEIS"] ?? "Percurso#2026") : (process.env["SEED_ADMIN_SENHA"] ?? ""));
 const SUF = String(Date.now()).slice(-6);
 
 const falhas: string[] = [];
@@ -226,7 +228,19 @@ async function hrefsDoHistorico(page: Page, rotuloDoLink: string): Promise<reado
 
 const RESTRITO = "operador.poc@cg.pb.gov.br";
 const SENHA_RESTRITO = process.env["POC_SENHA_RESTRITO"] ?? "OperadorPOC#2026";
-const CPF = `${SUF.padStart(6, "0")}00191`.slice(-11); // fictício, 11 dígitos, com sufixo do instante
+/** CPF FICTÍCIO com dígitos verificadores corretos (módulo 11), derivado do instante — o M19 confere o DV. */
+function cpfFicticio(semente: string): string {
+  const base = `${semente.replace(/\D/g, "")}000000000`.slice(0, 9).split("").map(Number);
+  const dv = (ds: readonly number[], peso: number): number => {
+    const soma = ds.reduce((acc, d, i) => acc + d * (peso - i), 0);
+    const r = (soma * 10) % 11;
+    return r === 10 ? 0 : r;
+  };
+  const d1 = dv(base, 10);
+  const d2 = dv([...base, d1], 11);
+  return `${base.join("")}${d1}${d2}`;
+}
+const CPF = cpfFicticio(`${Date.now() % 1_000_000_000}`);
 
 async function sair(page: Page): Promise<void> {
   await page.goto(`${BASE}/`, { waitUntil: "networkidle2" });
@@ -240,12 +254,19 @@ async function sair(page: Page): Promise<void> {
   }
   throw new Error("sair não voltou ao login");
 }
+async function barrado(page: Page, rota: string): Promise<{ readonly barrado: boolean; readonly url: string; readonly status: number }> {
+  const r = await page.goto(`${BASE}${rota}`, { waitUntil: "networkidle2" });
+  const url = page.url();
+  const corpo = await texto(page);
+  const recusaNaTela = /acesso negado|não tem a ação|sem acesso/.test(corpo);
+  return { barrado: url.includes("/sem-acesso") || url.includes("/login") || recusaNaTela, url, status: r?.status() ?? 0 };
+}
 function dados(page: Page): Promise<string> {
   return page.evaluate(() => (document.body.innerText ?? "").replace(/\s+/g, " "));
 }
 
 async function main(): Promise<void> {
-  if (SENHA === "") throw new Error("SEED_ADMIN_SENHA ausente.");
+  if (SENHA === "") throw new Error("senha ausente (PERCURSOS_SENHA_PAPEIS ou SEED_ADMIN_SENHA).");
   let navegador: Browser | undefined;
   try {
     navegador = await puppeteer.launch({
@@ -329,7 +350,7 @@ async function main(): Promise<void> {
       { sel: 'input[name="dataAdmissao"]', valor: "2026-02-01", tipo: "data" },
       ...(cargoProf === null ? [] : [{ sel: 'select[name="cargoId"]', valor: cargoProf.valor, tipo: "select" as const }]),
       ...(lot === null ? [] : [{ sel: 'select[name="lotacaoId"]', valor: lot.valor, tipo: "select" as const }]),
-      { sel: 'form[data-acao="admitir"] input[data-mascara="valor"]', valor: "3.000,00" },
+      { sel: 'input[data-mascara="valor"]', valor: "3.000,00" },
     ]);
     conferir("3.2 admissão registrada (matrícula, cargo, lotação, salário)", rAdm.tipo === "ok" && !/acumulação/i.test(rAdm.texto), rAdm.texto.slice(0, 200));
     const det = await irPara(page, hrefServ);
@@ -346,7 +367,7 @@ async function main(): Promise<void> {
       { sel: 'select[name="tipo"]', valor: "PROMOCAO", tipo: "select" },
       { sel: 'input[name="data"]', valor: "2026-06-01", tipo: "data" },
       ...(cargoDir === null ? [] : [{ sel: 'select[name="cargoId"]', valor: cargoDir.valor, tipo: "select" as const }]),
-      { sel: 'form[data-acao="alterar-remuneracao"] input[name="salarioBase"]', valor: "5.000,00" },
+      { sel: 'input[data-mascara="valor"]', valor: "5.000,00", indice: 0 },
       { sel: 'input[name="motivo"]', valor: "Promoção por merecimento (percurso)" },
     ]);
     conferir("4.1 promoção registrada (cargo + salário)", rProm.tipo === "ok", rProm.texto.slice(0, 200));
@@ -377,7 +398,7 @@ async function main(): Promise<void> {
       { sel: 'input[name="dataAdmissao"]', valor: "2026-08-01", tipo: "data" },
       ...(cargoProf === null ? [] : [{ sel: 'select[name="cargoId"]', valor: cargoProf.valor, tipo: "select" as const }]),
       ...(lot === null ? [] : [{ sel: 'select[name="lotacaoId"]', valor: lot.valor, tipo: "select" as const }]),
-      { sel: 'form[data-acao="admitir"] input[data-mascara="valor"]', valor: "1.500,00" },
+      { sel: 'input[data-mascara="valor"]', valor: "1.500,00" },
     ]);
     conferir("6.1 a segunda matrícula da MESMA pessoa entra com ALERTA de acumulação nomeando a primeira", rAdm2.tipo === "ok" && /acumulação/i.test(rAdm2.texto) && rAdm2.texto.includes(`MAT-${SUF}-1`), rAdm2.texto.slice(0, 200));
     await irPara(page, hrefServ);
@@ -388,7 +409,7 @@ async function main(): Promise<void> {
       { sel: 'input[name="dataAdmissao"]', valor: "2026-08-01", tipo: "data" },
       ...(cargoProf === null ? [] : [{ sel: 'select[name="cargoId"]', valor: cargoProf.valor, tipo: "select" as const }]),
       ...(lot === null ? [] : [{ sel: 'select[name="lotacaoId"]', valor: lot.valor, tipo: "select" as const }]),
-      { sel: 'form[data-acao="admitir"] input[data-mascara="valor"]', valor: "1.500,00" },
+      { sel: 'input[data-mascara="valor"]', valor: "1.500,00" },
     ]);
     conferir("6.2 matrícula REPETIDA é recusada nomeando quem a usa", rAdmDup.tipo === "erro" && /MATRICULA-JA-USADA|matrícula/i.test(rAdmDup.texto), rAdmDup.texto.slice(0, 200));
 
@@ -427,7 +448,9 @@ async function main(): Promise<void> {
     const semRotulo = !/\bTR\s*\d+\.\d+/.test(await dados(page));
     conferir("8.4 nenhum identificador de cláusula na tela", semRotulo, "apareceu rótulo de catálogo");
 
-    // ── 9. o restrito não alcança o pessoal ──
+    // ── 9. o papel é fechado nos dois sentidos ──
+    const b = await barrado(page, "/despesa/empenhos");
+    conferir("9.0 NEGATIVA: o servidor do RH não abre os empenhos (sem CONSULTAR_DESPESA)", USUARIO !== "rh@percursos.local" || b.barrado, `${b.url} ${b.status}`);
     await sair(page);
     await entrar(page, RESTRITO, SENHA_RESTRITO).catch((e) => console.log(`      [restrito não entrou: ${e instanceof Error ? e.message : String(e)}]`));
     if (!page.url().includes("/login")) {

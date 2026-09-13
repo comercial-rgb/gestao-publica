@@ -172,19 +172,43 @@ do organograma não corresponde a uma unidade orçamentária", que é o caso da 
 
 ---
 
-## Arquivos deste módulo
+## Arquivos deste módulo (neste repositório — V6 P2.1/P2.2)
 
-- `prisma/schema/m22-rh.prisma` — 14 models, 11 enums
-- `prisma/migrations/20260730000000_rh_cadastro_servidor/` — tabelas, CHECKs e índices parciais
-- `prisma/migrations/20260730001000_acoes_rh/` — as 14 ações (`ALTER TYPE`, separada)
-- `prisma/migrations/20260730002000_rh_anotacoes_ficha/` — a anotação na ficha (req. 23)
-- `prisma/migrations/20260730002100_acao_anotacao/` — `REGISTRAR_ANOTACAO`
-- `modules/m22-rh/dominio.ts` — Zod + derivações **puras**
-- `modules/m22-rh/servico.ts` — 16 serviços
-- `modules/m22-rh/m22-rh.test.ts`
-- `lib/portas/pessoal.ts`
-- `app/(areas)/pessoal/**` — 21 rotas
-- `test/ui/pessoal-escrita.test.ts` · `test/ui/cpf-fora-da-area-publica.test.ts`
+A lista da origem (`m22-rh.prisma`, 21 rotas do `lib/scaffold`, `pessoal-escrita.test.ts`) NÃO vale
+aqui: o módulo entrou pelo molde, com as tabelas nomeadas por este repositório.
+
+- `prisma/schema/m32-pessoal.prisma` — 14 models e os enums; `Servidor.pessoaId` → `Pessoa` (M19);
+  `Lotacao.unidadeOrcId` → `UnidadeOrcamentaria` (M02, opcional)
+- `prisma/migrations/20260913180000_v6_acoes_pessoal/` — 16 valores no enum (15 de mutação +
+  `CONSULTAR_PESSOAL`), `ALTER TYPE` em migration separada
+- `prisma/migrations/20260913180100_v6_pessoal_cadastro/` — as 14 tabelas, os CHECKs e índices
+  parciais da origem, um a um
+- `modules/m32-pessoal/dominio.ts` — Zod + derivações puras; **datas por dia civil do ente**
+  (`packages/datas`: `diaCivil`, `anoCivil`), não UTC — a origem usava `getUTC*`/`toISOString`
+  e o guard `data-civil.test.ts` daqui acusou 17 sítios
+- `modules/m32-pessoal/servico.ts` — 17 serviços (16 da origem + `nomeDoServidor`, fora do censo
+  por ser helper de leitura dentro da transação)
+- `modules/m32-pessoal/m32-pessoal.test.ts` — os testes da origem sobre a Pessoa canônica
+  (`cenario()` cria a pessoa física antes do servidor) + `PESSOA-JURIDICA` e
+  `PESSOA-JA-E-SERVIDOR`
+- `modules/m16-travamento/atualizacoes-de-permissoes.ts` — **v9 `pessoal-m32`**: quem administra
+  perfis no escopo global recebe as 16 ações no global (aplicada em dev e percursos: 16
+  concessões em 1 perfil)
+- `lib/portas/recursos/pessoal.ts` + `pessoal-dados.ts` — três recursos do molde: servidores
+  (ações admitir, movimentar, alterar remuneração, desligar, dependente, portaria, anotação,
+  treinamento), cargos, lotações. A lista de servidores deriva a SITUAÇÃO (sem vínculo / ativo /
+  afastado / desligado) e o detalhe deriva cargo, lotação, salário e gratificações de hoje; a
+  lista de cargos deriva vagas ocupadas e "com vaga / sem vaga / extinto"
+- `app/(areas)/pessoal/{page,servidores,cargos,lotacoes}` — landing + páginas do molde;
+  `lib/navegacao.ts` área PESSOAL; menu e busca global
+- `scripts/smoke-pessoal.ts` — o percurso pelo navegador (`npm run smoke:pessoal`); usuário
+  `rh@percursos.local` em `scripts/percursos-usuarios-por-papel.ts`
+
+**Não portado da origem:** calendário RH, contrato de trabalho/prorrogação e avaliação de
+experiência têm SERVIÇO e AÇÃO (`CONFIGURAR_CALENDARIO_RH`, `REGISTRAR_CONTRATO_TRABALHO`,
+`REGISTRAR_AVALIACAO_EXPERIENCIA`) mas ainda NÃO têm tela no molde — pendência
+`PESSOAL-SEM-TELA-CALENDARIO-CONTRATO-AVALIACAO` (não se criou página vazia para aparentar). A
+baixa manual de dependente (`BAIXAR_DEPENDENTE`) idem: `PESSOAL-SEM-TELA-BAIXA-DE-DEPENDENTE`.
 
 ---
 
@@ -209,3 +233,9 @@ do organograma não corresponde a uma unidade orçamentária", que é o caso da 
 4. **Categoria do trabalhador (eSocial).** `regimeJuridico` é `String` porque o regime sai da lei
    orgânica do ente; a categoria tabelada do eSocial entra no bloco 4.
 5. **Consulta consolidada do histórico funcional por período** (parte do req. 25).
+6. **`REINTEGRACAO-DE-VINCULO`** (TR 5.12.60) — o desligamento é terminal e a matrícula é única;
+   reintegrar com a mesma matrícula pede um evento que reabra o vínculo. Decidir antes de construir.
+7. **`TROCA-DE-MATRICULA`** (TR 5.12.102) — não há serviço; a matrícula é a chave de negócio.
+8. **`PIS-SEM-DV`** — `zPis` confere só os 11 dígitos.
+9. **`PESSOAL-SEM-TELA-CALENDARIO-CONTRATO-AVALIACAO`** e **`PESSOAL-SEM-TELA-BAIXA-DE-DEPENDENTE`**
+   — serviço e ação existem; tela não (ver "Arquivos deste módulo").

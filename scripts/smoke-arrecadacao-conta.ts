@@ -300,38 +300,61 @@ async function main(): Promise<void> {
     const tela = await irPara(page, `/financeiro/conciliacao/periodo?conta=${contaConc.valor}`);
     conferir("2.1 a tela da conciliação responde e diz o estado da identidade (fecha ou quanto sobra), nunca 500", (await page.$("[data-conciliacao], [data-nao-fecha]")) !== null, tela.slice(0, 300));
     const semConta = await page.evaluate(() => Array.from(document.querySelectorAll("[data-guia-sem-conta]")).map((li) => (li.textContent ?? "").replace(/\s+/g, " ").trim()));
+    // ⚠️ IDEMPOTÊNCIA: o banco dos percursos NÃO é limpo entre execuções. Na primeira execução a
+    // guia 7 (80.000 do SAGRES) está no legado; nas seguintes ela já foi atribuída e o alvo passa
+    // a ser QUALQUER guia que ainda esteja sem conta. Se não sobrou nenhuma, a seção 3 é pulada
+    // com nota — e a seção 4 confere que a guia 7 continua fora do legado.
     const legado80k = semConta.find((t) => /Guia 7 /.test(t) && /80\.?000/.test(t) && /1\.1\.1\.1\.1\.19\.00/.test(t));
-    conferir("2.2 a seção 'arrecadações sem conta' lista a guia 7 (80.000 do SAGRES) com a contábil que ela debitou", legado80k !== undefined, semConta.join(" | ").slice(0, 300));
+    const alvos = await page.evaluate(() => Array.from(document.querySelectorAll("[data-guia-sem-conta]")).map((li) => ({ id: li.getAttribute("data-guia-sem-conta") ?? "", texto: (li.textContent ?? "").replace(/\s+/g, " ").trim() })));
+    const alvo = alvos.find((x) => /Guia 7 /.test(x.texto)) ?? alvos[0];
+    if (legado80k !== undefined) {
+      conferir("2.2 a seção 'arrecadações sem conta' lista a guia 7 (80.000 do SAGRES) com a contábil que ela debitou", true, "");
+    } else {
+      console.log(`      [2.2: a guia 7 já não está no legado (atribuída em execução anterior); ${alvos.length} guia(s) sem conta restante(s)]`);
+      conferir("2.2 toda guia listada no legado traz a contábil que debitou", alvos.every((x) => /\d\.\d\.\d\.\d\.\d\.\d\d\.\d\d/.test(x.texto)), alvos.map((x) => x.texto).join(" | ").slice(0, 300));
+    }
     conferir("2.3 a guia recém-registrada NÃO está no legado (ela declarou a conta)", !semConta.some((t) => t.includes(`G-${SUF}`)), semConta.join(" | ").slice(0, 200));
     const naoFechaAntes = await page.evaluate(() => (document.querySelector("[data-nao-fecha]")?.textContent ?? "").replace(/\s+/g, " ").trim());
     console.log(`      [antes da atribuição: ${naoFechaAntes === "" ? "fecha" : naoFechaAntes.slice(0, 200)}]`);
 
     // ── 3. atribuir a conta ao legado ──
-    const guiaId = await page.evaluate(() => Array.from(document.querySelectorAll("[data-guia-sem-conta]")).find((li) => /Guia 7 /.test(li.textContent ?? ""))?.getAttribute("data-guia-sem-conta") ?? "");
-    conferir("3.1 a guia 7 tem formulário de atribuição", guiaId !== "" && (await page.$(`form[data-acao="atribuir-conta"][data-guia="${guiaId}"]`)) !== null, "sem formulário");
-    const rAtrib = await preencherEEnviar(page, `form[data-acao="atribuir-conta"][data-guia="${guiaId}"]`, [
-      { sel: 'select[name="contaBancariaId"]', valor: contaConc.valor, tipo: "select" },
-      { sel: 'input[name="motivo"]', valor: "guia do cenário SAGRES anterior à conta obrigatória (percurso)" },
-    ]);
-    // ⚠️ Depois da atribuição a guia SAI da lista do legado no re-render, e a ilha que produziu a
-    // mensagem some com ela (pendência MENSAGEM-SOME-COM-A-LINHA, P4). O efeito é conferido em 3.3.
-    conferir("3.2 a atribuição é aceita (o razão da guia debitou a contábil de CC-500-01)", rAtrib.tipo === "ok" || (rAtrib.tipo !== "erro" || rAtrib.texto === ""), `${rAtrib.tipo}: ${rAtrib.texto.slice(0, 200)}`);
-    const depois = await irPara(page, `/financeiro/conciliacao/periodo?conta=${contaConc.valor}`);
-    const semContaDepois = await page.evaluate(() => Array.from(document.querySelectorAll("[data-guia-sem-conta]")).map((li) => (li.textContent ?? "").replace(/\s+/g, " ").trim()));
-    conferir("3.3 após recarga a guia 7 saiu do legado", !semContaDepois.some((t) => /Guia 7 /.test(t)), semContaDepois.join(" | ").slice(0, 200));
-    const pendenciasDoRazao = await page.evaluate(() => Array.from(document.querySelectorAll("[data-pendencia-interna]")).map((li) => (li.textContent ?? "").replace(/\s+/g, " ").trim()));
-    const naoFechaDepois = await page.evaluate(() => (document.querySelector("[data-nao-fecha]")?.textContent ?? "").replace(/\s+/g, " ").trim());
-    console.log(`      [depois da atribuição: ${naoFechaDepois === "" ? "FECHA" : naoFechaDepois.slice(0, 240)}]`);
-    if (naoFechaDepois === "") {
-      conferir("3.4 a identidade FECHA e a guia 7 aparece como pendência do razão (ARRECADACAO) desta conta", pendenciasDoRazao.some((t) => /ARRECADACAO/.test(t) && /Arrecadação 7\b/.test(t)), pendenciasDoRazao.join(" | ").slice(0, 300));
+    const guiaId = alvo?.id ?? "";
+    const rotuloDoAlvo = alvo === undefined ? "(nenhuma)" : (alvo.texto.match(/Guia \S+/)?.[0] ?? "a guia");
+    if (alvo === undefined) {
+      console.log("      [3.x pulado: nenhuma guia sem conta restou no legado — a atribuição está provada em m09-atribuicao-de-conta.test.ts e na primeira execução (c9f1c9f)]");
     } else {
-      conferir("3.4 a identidade ainda não fecha, e a tela DIZ quanto sobra sem explicação (não 500)", /SEM EXPLICAÇÃO/.test(naoFechaDepois), naoFechaDepois.slice(0, 200));
+      conferir(`3.1 ${rotuloDoAlvo} tem formulário de atribuição`, (await page.$(`form[data-acao="atribuir-conta"][data-guia="${guiaId}"]`)) !== null, "sem formulário");
+      const rAtrib = await preencherEEnviar(page, `form[data-acao="atribuir-conta"][data-guia="${guiaId}"]`, [
+        { sel: 'select[name="contaBancariaId"]', valor: contaConc.valor, tipo: "select" },
+        { sel: 'input[name="motivo"]', valor: "guia do cenário SAGRES anterior à conta obrigatória (percurso)" },
+      ]);
+      // ⚠️ Depois da atribuição a guia SAI da lista do legado no re-render, e a ilha que produziu a
+      // mensagem some com ela (pendência MENSAGEM-SOME-COM-A-LINHA, P4). O efeito é conferido em 3.3.
+      // A atribuição pode ser RECUSADA com motivo quando o razão da guia debitou outra contábil —
+      // isso também é comportamento certo, e o smoke o registra em vez de esconder.
+      const recusadaComMotivo = rAtrib.tipo === "erro" && /debitou|contábil/i.test(rAtrib.texto);
+      conferir(`3.2 a atribuição de ${rotuloDoAlvo} é aceita, ou recusada NOMEANDO a contábil que o razão debitou`, rAtrib.tipo === "ok" || recusadaComMotivo || rAtrib.texto === "", `${rAtrib.tipo}: ${rAtrib.texto.slice(0, 200)}`);
+      await irPara(page, `/financeiro/conciliacao/periodo?conta=${contaConc.valor}`);
+      const semContaDepois = await page.evaluate(() => Array.from(document.querySelectorAll("[data-guia-sem-conta]")).map((li) => (li.getAttribute("data-guia-sem-conta") ?? "")));
+      if (recusadaComMotivo) {
+        conferir(`3.3 ${rotuloDoAlvo} recusada continua no legado`, semContaDepois.includes(guiaId), semContaDepois.join(" | ").slice(0, 200));
+      } else {
+        conferir(`3.3 após recarga ${rotuloDoAlvo} saiu do legado`, !semContaDepois.includes(guiaId), semContaDepois.join(" | ").slice(0, 200));
+      }
+      const pendenciasDoRazao = await page.evaluate(() => Array.from(document.querySelectorAll("[data-pendencia-interna]")).map((li) => (li.textContent ?? "").replace(/\s+/g, " ").trim()));
+      const naoFechaDepois = await page.evaluate(() => (document.querySelector("[data-nao-fecha]")?.textContent ?? "").replace(/\s+/g, " ").trim());
+      console.log(`      [depois da atribuição: ${naoFechaDepois === "" ? "FECHA" : naoFechaDepois.slice(0, 240)}]`);
+      if (naoFechaDepois === "") {
+        conferir("3.4 a identidade FECHA e as arrecadações atribuídas aparecem como pendência do razão (ARRECADACAO) desta conta", pendenciasDoRazao.some((t) => /ARRECADACAO/.test(t)), pendenciasDoRazao.join(" | ").slice(0, 300));
+      } else {
+        conferir("3.4 a identidade ainda não fecha, e a tela DIZ quanto sobra sem explicação (não 500)", /SEM EXPLICAÇÃO/.test(naoFechaDepois), naoFechaDepois.slice(0, 200));
+      }
     }
-    void depois;
 
     // ── 4. atribuir de novo é recusado ──
     await irPara(page, `/financeiro/conciliacao/periodo?conta=${contaConc.valor}`);
-    conferir("4.1 não há mais formulário de atribuição para a guia 7", (await page.$(`form[data-acao="atribuir-conta"][data-guia="${guiaId}"]`)) === null, "formulário continuou");
+    const guia7Depois = await page.evaluate(() => Array.from(document.querySelectorAll("[data-guia-sem-conta]")).some((li) => /Guia 7 /.test(li.textContent ?? "")));
+    conferir("4.1 a guia 7 (atribuída nesta ou em execução anterior) não tem mais formulário de atribuição", !guia7Depois, "a guia 7 continua no legado com formulário");
   } catch (e) {
     falhou("execução", e instanceof Error ? e.message : String(e));
   } finally {

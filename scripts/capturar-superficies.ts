@@ -16,7 +16,11 @@ const USUARIO = process.argv[4] ?? "admin@cg.pb.gov.br";
 const SENHA = process.argv[5] ?? process.env["SEED_ADMIN_SENHA"] ?? "";
 const DIR = join(".registro-de-execucao", "v6-capturas", ROTULO);
 const LARGURAS = [360, 768, 1366] as const;
-const ROTAS_AUTENTICADAS = ["/", "/licitacoes/ordens-de-compra", "/administracao/perfis", "/planejamento/ppa", "/despesa/empenhos"];
+// `ROTAS` no ambiente substitui a lista autenticada (separadas por vírgula) — para capturar uma
+// área nova com o usuário do papel: ROTAS="/pessoal,/pessoal/servidores" ... rh@percursos.local senha
+const ROTAS_AUTENTICADAS = (process.env["ROTAS"] ?? "").trim() === ""
+  ? ["/", "/licitacoes/ordens-de-compra", "/administracao/perfis", "/planejamento/ppa", "/despesa/empenhos"]
+  : (process.env["ROTAS"] ?? "").split(",").map((r) => r.trim()).filter((r) => r !== "");
 const ROTAS_PUBLICAS = ["/login", "/transparencia/demonstrativos", "/consulta"];
 
 function nomeDoArquivo(rota: string, largura: number): string {

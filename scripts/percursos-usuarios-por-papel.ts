@@ -57,6 +57,13 @@ export const PAPEIS: readonly Papel[] = [
     descricao: "Paga, arrecada e concilia. Não empenha, não compra.",
     acoes: ["PAGAR", "REGISTRAR_ARRECADACAO", "VINCULAR_CONCILIACAO", "ABRIR_CONCILIACAO", "ENCERRAR_CONCILIACAO", "REGISTRAR_PENDENCIA_MANUAL", "JUSTIFICAR_PENDENCIA", "ATRIBUIR_CONTA_A_ARRECADACAO", "CONSULTAR_DESPESA", "CONSULTAR_RECEITA", "CONSULTAR_FINANCEIRO", "CONSULTAR_CADASTROS"],
   },
+  {
+    identificador: "rh@percursos.local",
+    nome: "Servidor do RH (percurso)",
+    perfil: "PESSOAL — PERCURSO",
+    descricao: "Cadastra cargos, lotações e servidores; admite, movimenta, remunera e desliga; anota a ficha. Não empenha, não paga, não compra.",
+    acoes: ["CADASTRAR_PESSOA", "CADASTRAR_SERVIDOR", "ADMITIR_SERVIDOR", "MOVIMENTAR_SERVIDOR", "ALTERAR_REMUNERACAO", "DESLIGAR_SERVIDOR", "CADASTRAR_CARGO", "CADASTRAR_LOTACAO", "GERIR_DEPENDENTE", "BAIXAR_DEPENDENTE", "REGISTRAR_PORTARIA", "REGISTRAR_ANOTACAO", "REGISTRAR_TREINAMENTO", "CONSULTAR_PESSOAL", "CONSULTAR_CADASTROS"],
+  },
 ];
 
 async function main(): Promise<void> {

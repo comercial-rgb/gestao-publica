@@ -1806,6 +1806,71 @@ const MAPA: Readonly<Record<string, Marca>> = {
     evidencia: "ENT03a: /financeiro/conciliacao/periodo mostra numa tela os saldos (extrato, contábil, diferença), as pendências do extrato e do razão, as herdadas e as declaradas. V6 P1.2: mais a seção do legado sem conta bancária com a atribuição pela própria tela e a mensagem de identidade (fecha / quanto sobra) como estado. ⚠️ FALTAM filtros (5.10.2.50) e ordenação por valor (5.10.2.51) na tela.",
   },
 
+  // ── V6 P2.1/P2.2 — pessoal (M32), bloco 1: cadastro e histórico funcional ──
+  "5.12.5": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: "V6 P2.1: a ficha do servidor (M32) aponta para a Pessoa FÍSICA canônica do cadastro único (M19) — CPF, nome, endereço e contatos vivem lá; a ficha guarda só o civil próprio (nascimento, sexo, PIS, RG, título, CTPS, filiação). Uma pessoa, uma ficha: PJ, pessoa já servidora e pessoa inexistente são recusadas nomeando (m32-pessoal.test.ts PESSOA-JURIDICA / PESSOA-JA-E-SERVIDOR). Pela tela, o select oferece só as físicas ainda sem ficha, e a recém-cadastrada some da oferta (smoke-pessoal 2.2, 2.5).",
+    rota_verificada: "papel: rh@percursos.local (perfil PESSOAL — PERCURSO, 15 ações globais; sem CONSULTAR_DESPESA) · contexto: banco dos percursos, next build + next start em 3010, build a187f89, 2026-09-13 · passos: /pessoal/cargos e /pessoal/lotacoes (criar) → /cadastros/pessoas (pessoa física) → /pessoal/servidores (ficha sobre a pessoa; a pessoa some da oferta) → detalhe: admitir, promover, afastar, segunda matrícula (alerta), matrícula repetida (recusa), desligar, anotar, dependente → aba histórico · obtido: smoke-pessoal-a187f89-r4.log, 29/29.",
+  },
+  "5.12.1": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P2.2: o vínculo (matrícula) nasce com data de admissão, tipo (efetivo, comissionado, temporário...), regime jurídico, cargo, lotação e salário base; cargo, lotação e salário de HOJE são derivados dos eventos (smoke-pessoal 3.2–3.3, 4.2; m32-pessoal.test.ts, a promoção de junho não muda maio). ⚠️ FALTAM: data de nomeação e de posse, término do contrato temporário (existe ContratoTrabalho no schema com serviço, SEM tela), horário e local de trabalho, campos adicionais sem customização.",
+    rota_verificada: "papel: rh@percursos.local (perfil PESSOAL — PERCURSO, 15 ações globais; sem CONSULTAR_DESPESA) · contexto: banco dos percursos, next build + next start em 3010, build a187f89, 2026-09-13 · passos: /pessoal/cargos e /pessoal/lotacoes (criar) → /cadastros/pessoas (pessoa física) → /pessoal/servidores (ficha sobre a pessoa; a pessoa some da oferta) → detalhe: admitir, promover, afastar, segunda matrícula (alerta), matrícula repetida (recusa), desligar, anotar, dependente → aba histórico · obtido: smoke-pessoal-a187f89-r4.log, 29/29.",
+  },
+  "5.12.6": {
+    situacao: "PARCIAL",
+    evidencia: "CPF: dígito verificador conferido no cadastro único (M19) — o smoke do pessoal foi RECUSADO com 'o dígito verificador não confere' na primeira execução (smoke-pessoal-a187f89-r1.log) e passou com CPF válido. PIS/PASEP: só formato (11 dígitos, zPis); ⚠️ o dígito verificador do PIS NÃO é conferido.",
+  },
+  "5.12.8": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P2.2: o tipo de vínculo é enum fechado (efetivo, comissionado, temporário, estagiário...) e o regime jurídico é texto livre por vínculo, como a lei do ente o nomeia. ⚠️ Não há CADASTRO de regimes com código da categoria eSocial (bloco 4 — pendência do MODULO M32).",
+  },
+  "5.12.9": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P2.2: /pessoal/servidores filtra por nome, CPF ou matrícula e por situação derivada (sem vínculo, ativo, afastado, desligado). ⚠️ Faltam os demais filtros do item (idade, RG, PIS, título, CTPS, CNH, nacionalidade, tipo sanguíneo, estado civil...) — vários desses campos nem existem na ficha.",
+  },
+  "5.12.11": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P2.2: dependente com parentesco e finalidade (salário-família / imposto de renda), com data de início e baixa automática por idade derivada (limiteIdadeAnos, invalidez permanente sem limite) — m32-pessoal.test.ts; pela tela smoke-pessoal 8.2–8.3. ⚠️ O limite de idade é informado por finalidade, não CONFIGURADO por grau de parentesco numa tabela do ente.",
+    rota_verificada: "papel: rh@percursos.local (perfil PESSOAL — PERCURSO, 15 ações globais; sem CONSULTAR_DESPESA) · contexto: banco dos percursos, next build + next start em 3010, build a187f89, 2026-09-13 · passos: /pessoal/cargos e /pessoal/lotacoes (criar) → /cadastros/pessoas (pessoa física) → /pessoal/servidores (ficha sobre a pessoa; a pessoa some da oferta) → detalhe: admitir, promover, afastar, segunda matrícula (alerta), matrícula repetida (recusa), desligar, anotar, dependente → aba histórico · obtido: smoke-pessoal-a187f89-r4.log, 29/29.",
+  },
+  "5.12.14": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P2.2: cargo com código, denominação, tipo, vagas fixadas em lei, lei de criação e publicação, carga horária, requisito de ingresso e extinção; vagas ocupadas CONTADAS dos vínculos vivos, com 'com vaga / sem vaga / extinto' derivado (smoke-pessoal 3.4). ⚠️ Faltam: enquadramento, grau de instrução, CBO, salário mensal (o salário é do vínculo), lei de extinção como campo e atribuições individuais.",
+    rota_verificada: "papel: rh@percursos.local (perfil PESSOAL — PERCURSO, 15 ações globais; sem CONSULTAR_DESPESA) · contexto: banco dos percursos, next build + next start em 3010, build a187f89, 2026-09-13 · passos: /pessoal/cargos e /pessoal/lotacoes (criar) → /cadastros/pessoas (pessoa física) → /pessoal/servidores (ficha sobre a pessoa; a pessoa some da oferta) → detalhe: admitir, promover, afastar, segunda matrícula (alerta), matrícula repetida (recusa), desligar, anotar, dependente → aba histórico · obtido: smoke-pessoal-a187f89-r4.log, 29/29.",
+  },
+  "5.12.16": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P2.2: portaria (tipo, número/ano por exercício, data, ementa) registrada pela ação do detalhe, e o evento do histórico funcional pode nomear a portaria que o fundamenta (HistoricoVinculo.portariaId; m32-pessoal.test.ts). ⚠️ A portaria NÃO é criada automaticamente a partir da movimentação; não há anexos. Sem percurso de navegador pela portaria nesta unidade.",
+  },
+  "5.12.17": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P2.2: anotação na ficha (elogio, advertência, ocorrência...) com tipo, data, título e texto, append-only, com crachá próprio REGISTRAR_ANOTACAO; aparece no histórico (smoke-pessoal 8.1, 8.3). ⚠️ Faltam: ato legal vinculado, multa com lançamento em folha (bloco 2) e anexos (sem storage de arquivos).",
+    rota_verificada: "papel: rh@percursos.local (perfil PESSOAL — PERCURSO, 15 ações globais; sem CONSULTAR_DESPESA) · contexto: banco dos percursos, next build + next start em 3010, build a187f89, 2026-09-13 · passos: /pessoal/cargos e /pessoal/lotacoes (criar) → /cadastros/pessoas (pessoa física) → /pessoal/servidores (ficha sobre a pessoa; a pessoa some da oferta) → detalhe: admitir, promover, afastar, segunda matrícula (alerta), matrícula repetida (recusa), desligar, anotar, dependente → aba histórico · obtido: smoke-pessoal-a187f89-r4.log, 29/29.",
+  },
+  "5.12.20": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P2.2: mudança de lotação como evento do vínculo (data, destino, motivo, portaria opcional) — a lotação de hoje é derivada; a lotação extinta antes do fato é recusada (m32-pessoal.test.ts). ⚠️ Faltam: tipo de transferência (local de trabalho / centro de custo), deferimento/indeferimento com responsável pela análise.",
+  },
+  "5.12.46": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P2.2: afastamento como evento do vínculo (data, motivo, portaria opcional); a situação derivada passa a AFASTADO e o retorno é outro evento (smoke-pessoal 5.1–5.2). ⚠️ Faltam: motivo tabelado, data final prevista, mês/ano de cálculo e ato legal obrigatório.",
+    rota_verificada: "papel: rh@percursos.local (perfil PESSOAL — PERCURSO, 15 ações globais; sem CONSULTAR_DESPESA) · contexto: banco dos percursos, next build + next start em 3010, build a187f89, 2026-09-13 · passos: /pessoal/cargos e /pessoal/lotacoes (criar) → /cadastros/pessoas (pessoa física) → /pessoal/servidores (ficha sobre a pessoa; a pessoa some da oferta) → detalhe: admitir, promover, afastar, segunda matrícula (alerta), matrícula repetida (recusa), desligar, anotar, dependente → aba histórico · obtido: smoke-pessoal-a187f89-r4.log, 29/29.",
+  },
+  "5.12.92": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P2.2: a segunda matrícula da mesma pessoa é aceita com ALERTA de acumulação nomeando a primeira (smoke-pessoal 6.1), e o detalhe exibe o selo 'N matrículas — confira a acumulação'. ⚠️ Não há RELATÓRIO listando os servidores com dois vínculos.",
+    rota_verificada: "papel: rh@percursos.local (perfil PESSOAL — PERCURSO, 15 ações globais; sem CONSULTAR_DESPESA) · contexto: banco dos percursos, next build + next start em 3010, build a187f89, 2026-09-13 · passos: /pessoal/cargos e /pessoal/lotacoes (criar) → /cadastros/pessoas (pessoa física) → /pessoal/servidores (ficha sobre a pessoa; a pessoa some da oferta) → detalhe: admitir, promover, afastar, segunda matrícula (alerta), matrícula repetida (recusa), desligar, anotar, dependente → aba histórico · obtido: smoke-pessoal-a187f89-r4.log, 29/29.",
+  },
+  "5.12.60": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: "V6 P2.2: o desligamento é TERMINAL (o vínculo desligado não aceita eventos e não é mais oferecido — smoke-pessoal 7.2) e a matrícula é única no ente inteiro (MATRICULA-JA-USADA, 6.2). Reintegração reutilizando a matrícula exigiria um evento REINTEGRACAO que reabra o vínculo — decisão de modelo a tomar antes de construir (pendência REINTEGRACAO-DE-VINCULO no MODULO M32).",
+  },
+  "5.12.102": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: "V6 P2.2: não há serviço de troca de matrícula; a matrícula é a chave de negócio do vínculo e é única no ente. Trocá-la exigiria histórico da matrícula anterior (pendência TROCA-DE-MATRICULA no MODULO M32).",
+  },
+
 };
 
 // ═══════════════════════════════════════════════════════════════════════════

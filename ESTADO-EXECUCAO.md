@@ -6,10 +6,10 @@
 |---|---|
 | HEAD | ver `git log -1` — a seção 51 nomeia o SHA da aplicação congelada e o do percurso |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | **V6 produto integrado** (`docs/lotes/V6-produto-integrado.md`): P0 identidade e shell ENTREGUE (seção 52); em curso P1 — vínculos solicitação×ordem e arrecadação×conta bancária. A prioridade de publicação da V5 está SUSPENSA: publicar não é tarefa desta rodada |
-| Último resultado | seção 52 — Gestão Pública como produto, apresentação do ente versionada (`/administracao/apresentacao`), entrada e shell redesenhados, Minha mesa; `next build` em `4dcd2dd`, smoke-identidade **45/45**; rápida 852/852; m16-apresentacao 10/10; censo 267 serviços / 246+18 ações; permissões v7 |
-| Pendências relevantes | `ENDERECO-DO-ENTE`; `MARCA-NOS-PDFS` (imagem só nas telas); P0.3 por família ainda parcial (ver 52.4); `SOLICITACAO-SEM-VINCULO-COM-A-ORDEM` e `ARRECADACAO-SEM-CONTA-BANCARIA` (P1); `M03-T8-TIMEOUT-SOB-SUITE`; seções 35.7, 36.4, 37.5, 38.5 a 43.5; as anteriores em §19 e nos `MODULO.md` |
-| Próximo passo | seção 52.6 — P1.1: alocação solicitação×ordem por item e quantidade (ordenado, recebido, cancelado, pendente), depois P1.2 arrecadação × conta bancária × conciliação |
+| Frente em execução | **V6 produto integrado** (`docs/lotes/V6-produto-integrado.md`): P0 identidade e shell (seção 52), P1.1 solicitação×ordem (53), P1.2 arrecadação×conta (54), P1.3 percurso por papel (55.0) e **P2.1/P2.2 pessoal — M32** (seção 55) ENTREGUES; em curso P2.3 folha (avaliação do motor doador) e P2.4 portal do servidor. A publicação da V5 está SUSPENSA |
+| Último resultado | seção 55 — M32 pessoal sobre a Pessoa canônica: cargos, lotações, ficha, vínculos e histórico DERIVADO; `next build` em `a187f89`; smoke-pessoal **29/29** (papel rh@percursos.local), smoke-cadeia-por-papel **23/23**, smoke-arrecadacao-conta 8/8 (idempotente), smoke-identidade 46/46; m32-pessoal + censo (287 serviços / 262+19 ações) + atualizações v9 + molde + data-civil verdes; rápida 852/852 (uma intermitência registrada em 55.2); permissões v9 em dev e percursos; catálogo VALIDADO 65 / PARCIAL 75 / AUSENTE 142 |
+| Pendências relevantes | `PESSOAL-SEM-TELA-CALENDARIO-CONTRATO-AVALIACAO`, `PESSOAL-SEM-TELA-BAIXA-DE-DEPENDENTE`, `REINTEGRACAO-DE-VINCULO`, `PIS-SEM-DV` (55.3); `CONTAS-BANCARIAS-COM-MESMA-CONTABIL-NOS-SEEDS` e `FICHA-DE-MATERIAL-NOS-PERCURSOS` (55.0); `MENSAGEM-SOME-COM-A-LINHA` (P4); `ENDERECO-DO-ENTE`; `MARCA-NOS-PDFS`; `M03-T8-TIMEOUT-SOB-SUITE`; seções 35.7, 36.4, 37.5, 38.5 a 43.5, 52.4, 53.3, 54.3 |
+| Próximo passo | seção 55.6 — P2.3 folha: competência → cálculo com memória → fechamento → apropriação contábil (M05), avaliando o motor doador `folha-engine` do saas-municipal SEM importar de `doador/`; depois P2.4 portal do servidor (canal `portal-do-servidor`) |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -5958,3 +5958,122 @@ CONTABILIDADE/TESOURARIA no banco dos percursos (criados pela tela de administra
 PPA/LDO → dotação → solicitação (duas linhas) → pesquisa → processo → contrato/reserva → ordem
 formada da solicitação (parcial) → nota recebida → recebimento/atesto → liquidação → pagamento
 (conta declarada) → razão e documentos, com uma negativa de negócio por papel. Depois P2 (RH).
+
+## 55. V6 P1.3 e P2.1/P2.2 — percurso por papel e o pessoal (M32)
+
+Commits: `0a447ce` (usuários por papel, smoke da cadeia por papel, docs do P1), `a187f89` (M32 pessoal,
+smoke do pessoal, correções dos smokes), e o commit desta seção (RH nos percursos, smokes
+idempotentes, capturas, catálogo, docs).
+
+### 55.0 P1.3 — a cadeia com um usuário por papel
+
+`scripts/percursos-usuarios-por-papel.ts` cria no banco dos percursos (idempotente; no-op quando já
+existe) um usuário e um perfil por papel, com ações GLOBAIS: `compras@`, `almoxarifado@`,
+`contabilidade@`, `tesouraria@` e agora `rh@percursos.local` (senha `PERCURSOS_SENHA_PAPEIS`, padrão
+`Percurso#2026`). `scripts/smoke-cadeia-por-papel.ts` percorre solicitação → ordem formada da
+solicitação → nota recebida → conferência → recebimento → empenho → liquidação → pagamento
+trocando de usuário a cada etapa, com uma NEGATIVA por papel (o comprador não empenha, o
+almoxarife não emite ordem, o contador não paga, o tesoureiro não lê a solicitação): **23/23** em
+`a187f89`. Em `0a447ce` eram 18/3: `barrado()` só olhava a URL e `/despesa/empenhos` responde
+200 com "ACESSO NEGADO" no corpo — a negativa passou a conferir URL OU recusa na tela; e o CPF/CNPJ
+do credor era lido do rótulo inteiro, não do parêntese.
+
+Pendências do banco dos percursos (dado, não código): `FICHA-DE-MATERIAL-NOS-PERCURSOS` (só há
+fichas 339039; materiais de consumo empenham direto) e `CONTAS-BANCARIAS-COM-MESMA-CONTABIL-NOS-SEEDS`
+(três contas bancárias da fonte 500 apontam para `1.1.1.1.1.19.00`, e a identidade por conta não
+fecha — Σ débitos 98.550 ≠ Σ créditos 83.335 na 19.00; precisa de reseed com uma contábil por conta).
+
+### 55.1 O que passou a funcionar (M32 — pessoal, bloco 1)
+
+Módulo: **M32 pessoal**, conciliado do `modules/m22-rh` da origem siafic-cg `c04ad5a`
+(`refs/reconciliacao/c04ad5a`), com uma diferença deliberada: `Servidor.pessoaId` aponta para a
+**Pessoa física canônica do M19** — a ficha não repete CPF, nome, endereço nem contato. PJ, pessoa
+já servidora e pessoa inexistente são recusadas nomeando.
+
+- **Cargos** (vagas fixadas em lei, lei e publicação, tipo, carga horária, requisito; extinção) e
+  **lotações** (organograma com pai; unidade orçamentária opcional; extinção). A lista de cargos
+  CONTA as vagas ocupadas dos vínculos vivos e deriva "com vaga / sem vaga / extinto".
+- **Ficha do servidor** com os dados civis próprios; **vínculos** (matrícula única no ente, tipo,
+  regime, admissão, cargo, lotação, salário) com **eventos**: admissão, promoção, mudança de cargo
+  e de lotação, remuneração (salário e gratificações), afastamento, retorno, desligamento —
+  cada um com data do fato, motivo, autor e portaria opcional. Cargo, lotação, salário,
+  gratificações e SITUAÇÃO (sem vínculo / ativo / afastado / desligado) são **derivados** dos
+  eventos até a data: a promoção de junho não muda o cargo de maio (teste 5 do módulo).
+- **Segunda matrícula** da mesma pessoa é aceita com ALERTA de acumulação nomeando a primeira;
+  matrícula repetida é recusada nomeando quem a usa; **desligamento é terminal**.
+- **Dependentes** com parentesco, finalidade (salário-família / IR), início e baixa por idade
+  derivada; **portarias** por exercício; **anotações** na ficha (append-only, crachá próprio);
+  **treinamentos**.
+- **Rota real:** área **Pessoal** no menu (`/pessoal`, `/pessoal/servidores`, `/pessoal/cargos`,
+  `/pessoal/lotacoes`); ações no detalhe do servidor (admitir, movimentar, alterar remuneração,
+  desligar, dependente, portaria, anotação, treinamento); aba histórico. Busca global e
+  `CONSULTAR_PESSOAL` como leitura da área. Permissões **v9 `pessoal-m32`**: quem administra perfis
+  no global recebe as 16 ações (aplicada em dev e percursos: 16 concessões em 1 perfil).
+- **Datas por dia civil do ente:** a origem usava `getUTC*`/`toISOString` em 17 sítios do domínio e
+  do serviço; o guard `data-civil.test.ts` acusou e tudo passou a `diaCivil`/`anoCivil`.
+
+Regime de rigor: **superfície** (cadastro e histórico — testes de caso de uso, autorização positiva
+e negativa, percurso de navegador por família). A folha (P2.3) é profundidade.
+
+### 55.2 Comandos executados e resultados
+
+| Comando | Resultado |
+|---|---|
+| migrations `20260913180000_v6_acoes_pessoal` (16 `ALTER TYPE`) e `20260913180100_v6_pessoal_cadastro` (14 tabelas, CHECKs e índices parciais da origem) | aplicadas nos três bancos; `prisma generate`; `migrate diff --exit-code` limpo; papel `gestao_app` reprovisionado |
+| tsc backend / app / scripts | limpos em `a187f89` e após as correções dos smokes |
+| `m32-pessoal.test.ts`, `data-civil`, `m16-censo` (287 serviços; 262+19 ações), `m16-atualizacoes` (v9), `molde`, `busca-global`, `menu-contra-o-servidor`, `modelo-sem-caso-de-uso`, `leitura-exige-acao`, `fronteira-ui`, `descritores-consistentes`, `rotulos-de-conformidade`, `chave-de-comando` | verdes (76 + 124 testes nas duas rodadas). Na primeira rodada: censo esperava 280 ações e são 281 (15 de mutação, não 14 — corrigido); teste 5 do M32 estourou o hook de 10 s SOB a rodada conjunta e passou isolado |
+| `test:rapido` | 852/852 na rodada final; numa rodada `inercia-do-doador` falhou por timeout (5.232 ms) sob carga e passou isolado — intermitência registrada: `INERCIA-DO-DOADOR-TIMEOUT-SOB-SUITE` |
+| permissões v9 (dev e percursos) | 16 concessões em 1 perfil, cada |
+| `next build` em `a187f89` (`NEXT_PUBLIC_BUILD_COMMIT`, `AMBIENTE_DE_EXECUCAO=demonstracao`) + `servir-percursos` em 3010 | build exit 0 |
+| `smoke-pessoal.ts` (papel rh@) | r1: 5 ok, parou no CPF sintético sem DV (o M19 recusou — comportamento certo); r2/r3: seletor do campo de dinheiro (o valor visível não tem `name`; o `name` é o hidden); **r4: 29/29** |
+| `smoke-cadeia-por-papel.ts` | **23/23** |
+| `smoke-arrecadacao-conta.ts` | r1 6/3: a guia 7 já tinha sido atribuída na execução anterior (o smoke não era idempotente); r2 **8/8** com 3.x pulado nomeando o motivo (nenhuma guia sem conta restou) |
+| `smoke-identidade.ts` | **46/46** |
+| `capturar-superficies.ts depois-a187f89-pessoal` (rh@) | 360/768/1366 px de /pessoal, servidores, detalhe, histórico, cargos, lotações em `.registro-de-execucao/v6-capturas/depois-a187f89-pessoal/`. "Antes": a área não existia em `0a447ce` (menu sem Pessoal, rota 404) |
+| `marcar-catalogo.ts --aplicar` | VALIDADO 65 (+5.10.2.8 do P1.2, +5.12.5), PARCIAL 75, AUSENTE 142 (+5.12.60, +5.12.102), IMPLEMENTADO_NAO_VALIDADO 65, DEPENDÊNCIA 3; 350/2037 verificadas |
+
+Não executados nesta unidade: `test:tudo`, `test:fuso` (o diff não toca `packages/datas`; o guard
+`data-civil` rodou), portão integral.
+
+### 55.3 Pendências (nomeadas)
+
+- `PESSOAL-SEM-TELA-CALENDARIO-CONTRATO-AVALIACAO` — calendário RH, contrato de trabalho/prorrogação
+  e avaliação de experiência têm serviço, ação e permissão, sem tela (não se criou página vazia).
+- `PESSOAL-SEM-TELA-BAIXA-DE-DEPENDENTE` — `BAIXAR_DEPENDENTE` só pelo serviço.
+- `REINTEGRACAO-DE-VINCULO` (5.12.60) e `TROCA-DE-MATRICULA` (5.12.102) — decisões de modelo antes
+  de construir; marcadas AUSENTE.
+- `PIS-SEM-DV` — o PIS/PASEP só confere formato.
+- `ALTERACAO-CADASTRAL-DO-SERVIDOR` — a ficha só se cria; mudança de dado civil precisa de
+  histórico próprio (pendência 1 do MODULO).
+- `MIGALHA-COM-ID` — a trilha de navegação do detalhe mostra o id do registro (o molde inteiro,
+  não só o pessoal).
+- `SELETOR-DE-UNIDADE-A-360` — em 360 px o seletor de unidade do cabeçalho passa da largura da
+  tela no detalhe (captura `pessoal-servidores-…@360.png`); o shell é comum a todas as áreas.
+- `INERCIA-DO-DOADOR-TIMEOUT-SOB-SUITE` — ver 55.2.
+
+Bloqueado por terceiro: nada nesta unidade.
+
+### 55.4 Catálogo por natureza
+
+Superfície (VALIDADO_LOCALMENTE): 5.12.5. Superfície parcial: 5.12.1, 5.12.6, 5.12.8, 5.12.9,
+5.12.11, 5.12.14, 5.12.16, 5.12.17, 5.12.20, 5.12.46, 5.12.92. Ausência confirmada: 5.12.60,
+5.12.102. PROD-007 em `docs/edital/PROD-melhorias.md`.
+
+### 55.5 Invariantes verificadas
+
+Autorização no servidor por ação nomeada (negativas 9.0/9.1 do smoke; `leitura-exige-acao`);
+sem UPDATE/DELETE fora do censo (`Servidor`, `Vinculo`, `HistoricoVinculo` não entram em
+`ESCRITA_MUTAVEL_DO_RUNTIME`); dinheiro `Decimal` no salário e nas gratificações; data civil do
+ente; nenhum identificador de cláusula na tela (8.4); menu pelo `PermissaoDePerfil` (a captura do
+rh@ mostra só Cadastros e Pessoal).
+
+### 55.6 Próximo ponto exato
+
+**P2.3 — folha (profundidade).** Avaliar `~/Desktop/saas-municipal/packages/folha-engine` (3,7 mil
+linhas: resolvers drizzle, calculadoras INSS/IRRF/salário-família/13º/proporcionalidade, snapshot
+sha256, eSocial; 1,7 mil linhas de teste) como DOADOR DE ALGORITMO — as calculadoras puras podem ser
+portadas para `Decimal` e testadas contra os casos de teste dele; os resolvers drizzle não. Tabelas de
+INSS/IRRF vêm de tabela do ente, fail-closed (nenhum código no código). Unidade: rubricas e tabelas →
+competência → cálculo com memória por servidor e por rubrica → fechamento (snapshot com sha256) →
+apropriação contábil pelo M05 (empenho da folha). Depois P2.4 portal do servidor (canal
+`portal-do-servidor` das apresentações; contracheque do fechamento).
