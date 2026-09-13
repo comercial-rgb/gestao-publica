@@ -67,7 +67,7 @@
     "roteiros:versionar": "tsx scripts/versionar-roteiros-existentes.ts",
     "seed:roteiros-demo": "tsx prisma/seed/roteiros-demo.ts",
     "percursos:preparar": "tsx scripts/trinco-de-maquina.ts 'preparar banco de percursos' -- npx tsx scripts/preparar-banco-de-percursos.ts",
-    "percursos:servir": "sh -c 'DATABASE_URL=\"$DATABASE_URL_PERCURSOS\" next start -p 3010'"
+    "percursos:servir": "tsx scripts/servir-percursos.ts"
   },
   "keywords": [],
   "author": "",

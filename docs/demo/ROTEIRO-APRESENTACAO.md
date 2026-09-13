@@ -10,8 +10,10 @@ de restrição.
 1. Banco em `localhost:5436`, migrations + `npm run db:sql` + `npm run db:papel`.
 2. Atualização de permissões v6: `npm run permissoes:atualizar -- 6` com `SEED_IDENTIDADE`
    de um usuário que possa `CONCEDER_ACAO_A_PERFIL`.
-3. `npx next build` no SHA congelado; `NODE_ENV=production npx next start`.
+3. `npx next build` no SHA congelado da aplicação; `NODE_ENV=production npx next start`.
    Percursos isolados: `npm run percursos:preparar` e `npm run percursos:servir` (porta 3010).
+   PDFs exigem Chromium no processo do servidor (`PUPPETEER_EXECUTABLE_PATH` se o cache
+   padrão não estiver visível). Sem binário, a rota de PDF falha nomeando, não inventa arquivo.
 4. Abrir `/login`. Identidade inicial do bootstrap: `admin@cg.pb.gov.br`.
 5. Demais papéis (planejador, compras, fiscal/recebedor, contador, tesouraria, auditor):
    criar em Administração > Usuários, com perfil e senha gerada na hora. Não versionar senha.

@@ -168,17 +168,17 @@ async function preencherEEnviar(page: Page, acao: string, campos: readonly Campo
 }
 /** Baixa o PDF com a sessão do navegador (base64) e extrai o texto com o pdf.js — leitor INDEPENDENTE do gerador. */
 async function textoDoPdf(page: Page, url: string): Promise<string> {
-  const b64 = await page.evaluate(async (u) => {
+  const obtido = await page.evaluate(async (u) => {
     const r = await fetch(u);
-    if (r.status !== 200) return "";
+    if (r.status !== 200) return { status: r.status, b64: "" };
     const bytes = new Uint8Array(await r.arrayBuffer());
     let bin = "";
     for (const b of bytes) bin += String.fromCharCode(b);
-    return btoa(bin);
+    return { status: r.status, b64: btoa(bin) };
   }, url);
-  if (b64 === "") return "";
+  if (obtido.b64 === "") return `[http ${String(obtido.status)}]`;
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const doc = await pdfjs.getDocument({ data: new Uint8Array(Buffer.from(b64, "base64")), useSystemFonts: true }).promise;
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(Buffer.from(obtido.b64, "base64")), useSystemFonts: true }).promise;
   const partes: string[] = [];
   for (let i = 1; i <= doc.numPages; i += 1) {
     const pagina = await doc.getPage(i);
@@ -335,6 +335,8 @@ async function main(): Promise<void> {
     await irPara(page, "/licitacoes/documentos-fiscais");
     const ordemDf = await opcaoQueCasa(page, 'form[data-acao="registrar-documento-fiscal"] select[name="ordemId"]', `OC-${SUF}`);
     conferir("documento fiscal: a ilha oferece o emitente da ordem e a ordem recém-emitida", fornecedorO !== null && ordemDf !== null, `emitente=${fornecedorO?.rotulo ?? "nenhum"} ordem=${ordemDf?.rotulo ?? "nenhuma"}`);
+    // CampoValor: o visível é `data-mascara="valor"` (sem name); o hidden com name recusa clique.
+    // Ordem no formulário: bruto, descontos, acréscimos, total, depois unitário/total de cada linha.
     const rDoc = await preencherEEnviar(page, "registrar-documento-fiscal", [
       ...(fornecedorO === null ? [] : [{ sel: 'select[name="emitenteId"]', valor: fornecedorO.valor, tipo: "select" as const }]),
       { sel: 'input[name="serie"]', valor: "1" },
@@ -342,18 +344,18 @@ async function main(): Promise<void> {
       { sel: 'input[name="dataEmissao"]', valor: "2026-05-11", tipo: "data" },
       { sel: 'input[name="dataRecebimento"]', valor: "2026-05-12", tipo: "data" },
       ...(ordemDf === null ? [] : [{ sel: 'select[name="ordemId"]', valor: ordemDf.valor, tipo: "select" as const }]),
-      { sel: 'input[name="valorBruto"]', valor: "125,00" },
-      { sel: 'input[name="valorTotal"]', valor: "125,00" },
+      { sel: 'input[data-mascara="valor"]', valor: "125,00", indice: 0 },
+      { sel: 'input[data-mascara="valor"]', valor: "125,00", indice: 3 },
       { sel: 'input[name="itens.0.descricao"]', valor: "Resma de papel A4" },
       { sel: 'input[name="itens.0.unidade"]', valor: "UN" },
       { sel: 'input[name="itens.0.quantidade"]', valor: "8" },
-      { sel: 'input[name="itens.0.valorUnitario"]', valor: "12,50" },
-      { sel: 'input[name="itens.0.valorTotal"]', valor: "100,00" },
+      { sel: 'input[data-mascara="valor"]', valor: "12,50", indice: 4 },
+      { sel: 'input[data-mascara="valor"]', valor: "100,00", indice: 5 },
       { sel: 'input[name="itens.1.descricao"]', valor: "Toner" },
       { sel: 'input[name="itens.1.unidade"]', valor: "UN" },
       { sel: 'input[name="itens.1.quantidade"]', valor: "2" },
-      { sel: 'input[name="itens.1.valorUnitario"]', valor: "12,50" },
-      { sel: 'input[name="itens.1.valorTotal"]', valor: "25,00" },
+      { sel: 'input[data-mascara="valor"]', valor: "12,50", indice: 6 },
+      { sel: 'input[data-mascara="valor"]', valor: "25,00", indice: 7 },
     ]);
     conferir("documento fiscal: registrado com 2 itens, sem liquidar", rDoc.tipo === "ok" && /aguardando conferência/i.test(rDoc.texto) && /não produz/i.test(rDoc.texto), rDoc.texto);
     await irPara(page, "/licitacoes/documentos-fiscais");
@@ -363,18 +365,18 @@ async function main(): Promise<void> {
       { sel: 'input[name="numero"]', valor: `DF-${SUF}` },
       { sel: 'input[name="dataEmissao"]', valor: "2026-05-11", tipo: "data" },
       { sel: 'input[name="dataRecebimento"]', valor: "2026-05-12", tipo: "data" },
-      { sel: 'input[name="valorBruto"]', valor: "125,00" },
-      { sel: 'input[name="valorTotal"]', valor: "125,00" },
+      { sel: 'input[data-mascara="valor"]', valor: "125,00", indice: 0 },
+      { sel: 'input[data-mascara="valor"]', valor: "125,00", indice: 3 },
       { sel: 'input[name="itens.0.descricao"]', valor: "Resma de papel A4" },
       { sel: 'input[name="itens.0.unidade"]', valor: "UN" },
       { sel: 'input[name="itens.0.quantidade"]', valor: "8" },
-      { sel: 'input[name="itens.0.valorUnitario"]', valor: "12,50" },
-      { sel: 'input[name="itens.0.valorTotal"]', valor: "100,00" },
+      { sel: 'input[data-mascara="valor"]', valor: "12,50", indice: 4 },
+      { sel: 'input[data-mascara="valor"]', valor: "100,00", indice: 5 },
       { sel: 'input[name="itens.1.descricao"]', valor: "Toner" },
       { sel: 'input[name="itens.1.unidade"]', valor: "UN" },
       { sel: 'input[name="itens.1.quantidade"]', valor: "2" },
-      { sel: 'input[name="itens.1.valorUnitario"]', valor: "12,50" },
-      { sel: 'input[name="itens.1.valorTotal"]', valor: "25,00" },
+      { sel: 'input[data-mascara="valor"]', valor: "12,50", indice: 6 },
+      { sel: 'input[data-mascara="valor"]', valor: "25,00", indice: 7 },
     ]);
     conferir("documento fiscal: duplicidade da chave natural é recusada nomeando", rDup.tipo === "erro" && /já existe/i.test(rDup.texto), rDup.texto);
     await irPara(page, `/licitacoes/documentos-fiscais?q=DF-${SUF}`);

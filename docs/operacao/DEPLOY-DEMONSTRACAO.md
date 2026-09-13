@@ -20,7 +20,11 @@ específica do operador, o artefato permanece local. Não há URL de acesso a in
 ## O que o artefato precisa (quando o alvo existir)
 
 1. Linux x86_64 ou aarch64, Node compatível com o `engines`/`package-lock.json`, Chromium
-   para PDF (`puppeteer` é `serverExternalPackages` em `next.config.mjs`).
+   para PDF (`puppeteer` é `serverExternalPackages` em `next.config.mjs`). Sem o binário,
+   a rota de PDF responde 500 nomeando a ausência — não devolve um PDF vazio. Aponte
+   `PUPPETEER_EXECUTABLE_PATH` (e, se o cache não for o padrão, `PUPPETEER_CACHE_DIR`)
+   no ambiente do processo `next start`. O renderizador recebe HTML por `setContent`;
+   não navega URL de usuário.
 2. PostgreSQL persistente, sem porta pública. Papel `gestao_app` (sem superusuário,
    sem `BYPASSRLS`, sem DDL) separado do papel de migration.
 3. Build reproduzível: `npm ci`, `npx prisma generate` na arquitetura-alvo,
@@ -54,7 +58,12 @@ NODE_ENV=production npx next start
 ```
 
 Banco dos percursos (isolado de dev e da suíte): `npm run percursos:preparar` e
-`npm run percursos:servir` (porta 3010).
+`npm run percursos:servir` (porta 3010). O servir carrega `.env`, aponta
+`DATABASE_URL` para `DATABASE_URL_PERCURSOS` e herda o Chromium do ambiente.
+
+Se o PDF operacional falhar com “Could not find Chrome”, instale o browser do
+puppeteer (`npx puppeteer browsers install chrome`) ou defina
+`PUPPETEER_EXECUTABLE_PATH` para o binário já presente na máquina.
 
 ## Rollback
 
