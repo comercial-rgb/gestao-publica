@@ -6231,3 +6231,51 @@ pendência `PATRONAL-NA-MEMORIA`).
 Depois: **P2.4 portal do servidor** (canal `portal-do-servidor` das apresentações; o contracheque
 do fechamento visível ao próprio servidor, com a identidade do M16) e **P3** (mesa de trabalho
 M21/M22/M23, fluxos, carta de serviços, portal e transparência).
+
+## 57. V6 P2.4 — o portal do servidor
+
+Commit: `259af64` (ação de leitura própria, porta com recorte pela pessoa da sessão, telas, teste
+de porta, smoke de três papéis), e o commit desta seção (documentação, catálogo, capturas).
+
+### 57.1 O que passou a funcionar
+
+O servidor entra com a PRÓPRIA conta em `/portal-do-servidor` e vê:
+
+- **Os seus vínculos**, com cargo, lotação, salário base, gratificações, regime previdenciário e
+  situação DERIVADOS dos eventos até hoje (as mesmas funções do M32 que a ficha do RH usa);
+- **Os seus dependentes**, com cada finalidade dizendo se VALE HOJE e, quando não vale, o motivo
+  (idade passou, baixa por fato, ainda não começou);
+- **Os seus contracheques** das folhas **já fechadas**, e cada um abre a conta de cada rubrica e a
+  impressão digital (sha256) do cálculo.
+
+**⚠️ O RECORTE É A PESSOA DA SESSÃO, NÃO UM PARÂMETRO.** Nenhuma função da porta recebe id de
+servidor ou de vínculo: ela resolve quem é o usuário pelo vínculo EXPLÍCITO usuário → pessoa
+(M16, pelo CPF, nunca pelo nome) e lê a partir dele. O contracheque recebe o id da FOLHA pela URL
+e o cruza com os vínculos da pessoa — pedir a folha certa com outra conta devolve vazio, não o
+contracheque alheio. Sem o vínculo, a tela diz que ele está pendente e quem resolve.
+
+**⚠️ SÓ FOLHA FECHADA.** Um cálculo vivo ainda pode ser cancelado e refeito; mostrá-lo ao servidor
+seria entregar como comprovante um valor que a competência ainda pode mudar.
+
+**⚠️ AÇÃO DE LEITURA PRÓPRIA** (`CONSULTAR_PORTAL_DO_SERVIDOR`, permissões **v11**): dar
+`CONSULTAR_PESSOAL` a cada servidor abriria a ficha de todo mundo. A ação abre a ÁREA; quem
+recorta é a porta. O perfil "SERVIDOR — PERCURSO" dos percursos tem essa ação e mais nenhuma.
+
+O canal `portal-do-servidor` da tela de entrada deixou de ter `href` nulo — porque agora a tela
+existe. O guard de identidade (t4) vigia isso nos dois sentidos.
+
+Regime de rigor: **superfície**, com uma exigência de profundidade no recorte — o teste de porta
+tem fixture N=2 de HOMÔNIMAS (duas "Maria Souza" com CPFs diferentes), que é exatamente o caso em
+que um vínculo por nome entregaria o contracheque de uma à outra.
+
+### 57.2 Comandos executados e resultados
+
+| Comando | Resultado |
+|---|---|
+| migration `20260913220000_v6_acao_portal_do_servidor` | aplicada nos três bancos; `generate`; `diff --exit-code` limpo |
+| tsc backend / app / scripts | limpos |
+| `test/portal-do-servidor.test.ts` | **10/10** |
+| `m16-censo` (296 serviços; 269+21 ações), `m16-atualizacoes` (v11), `leitura-exige-acao`, `fronteira-ui`, `busca-global`, `menu-contra-o-servidor`, `identidade` | verdes |
+| `test:rapido` | 852/852 |
+| permissões v11 (dev e percursos) | 1 concessão em 1 perfil, cada |
+| `percursos-usuarios-por-papel` | `servidor@percursos.local` criado com o perfil "SERVIDOR — PERCURSO" (1 permissão) |

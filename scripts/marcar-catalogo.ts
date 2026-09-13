@@ -1925,6 +1925,21 @@ const MAPA: Readonly<Record<string, Marca>> = {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: "V6 P2.3: não há cálculo de margem consignável — nem percentual configurável, nem escolha entre líquido e bruto, nem verbas que deduzem da margem, nem desconto dos empréstimos existentes (que também não existem, 5.12.37). O contracheque calcula o líquido; margem é outra conta, e inventá-la a partir de um percentual embutido seria código no código.",
   },
+
+  // ── V6 P2.4 — portal do servidor ──
+  "5.39.23": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P2.4: o servidor entra com a PRÓPRIA conta em /portal-do-servidor e vê os contracheques das folhas já FECHADAS, cada um com a conta de cada rubrica e a impressão digital (sha256) do cálculo — autoatendimento sem pedir nada ao RH. O recorte é a pessoa da sessão (vínculo explícito usuário → pessoa, pelo CPF): a porta não recebe id de servidor, e pedir a folha certa com outra conta devolve vazio (test/portal-do-servidor.test.ts, fixture N=2 com homônimas). ⚠️ FALTAM: a EMISSÃO em PDF (o contracheque é tela), e a configuração da entidade sobre o que liberar por tipo de folha e regime (5.12.108).",
+    rota_verificada: "papéis: rh@percursos.local (admite), admin@cg.pb.gov.br (cria a conta e vincula pela CPF), contabilidade@percursos.local (fecha) e servidor@percursos.local (o próprio servidor) · contexto: banco dos percursos, next build + next start em 3010, build 259af64, 2026-09-13 · passos: pessoa e ficha → admissão com regime → dependente → vínculo da conta à pessoa PELO CPF → folha calculada → ANTES do fechamento o portal não mostra contracheque → fechamento pela contabilidade → /portal-do-servidor mostra a ficha e a competência → contracheque com a conta de cada linha e o sha256 → negativas: a servidora não abre a folha nem o pessoal, e id de folha alheia responde não encontrado · obtido: ver ESTADO §57.",
+  },
+  "5.12.108": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: "V6 P2.4: o portal libera o contracheque por um critério SÓ — a folha estar FECHADA —, e esse critério é do sistema, não configurável. Não há liberação por tipo de folha e regime, nem data futura de liberação, nem liberação antes do encerramento. Marcado ausente para que a existência do portal não seja lida como atendimento desta configuração.",
+  },
+  "5.39.25": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P2.4: o portal lista os contracheques do servidor por competência, com proventos, descontos e líquido — é a ficha financeira dele, na tela. ⚠️ FALTAM o filtro por período e a IMPRESSÃO (não há PDF), que é o que o item pede.",
+  },
   "5.12.102": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: "V6 P2.2: não há serviço de troca de matrícula; a matrícula é a chave de negócio do vínculo e é única no ente. Trocá-la exigiria histórico da matrícula anterior (pendência TROCA-DE-MATRICULA no MODULO M32).",

@@ -50,7 +50,9 @@ tela `/folha/tabelas`, a partir da portaria vigente.
 - `modules/m33-folha/servico.ts` — 9 serviços, 7 ações + `CONSULTAR_FOLHA`; permissões **v10**
 - `modules/m33-folha/m33-folha.test.ts`
 - `lib/portas/recursos/folha.ts` + `folha-dados.ts`; `app/(areas)/folha/**`
-- `scripts/smoke-folha.ts`
+- `lib/portas/portal-do-servidor.ts` + `app/(areas)/portal-do-servidor/**` — o contracheque na mão
+  do próprio servidor (V6 P2.4): só folhas FECHADAS, recorte pela pessoa da sessão
+- `scripts/smoke-folha.ts`, `scripts/smoke-portal-do-servidor.ts`
 
 ## Fora de escopo aqui — pendências nomeadas
 

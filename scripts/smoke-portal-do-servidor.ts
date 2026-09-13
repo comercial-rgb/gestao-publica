@@ -405,7 +405,11 @@ async function main(): Promise<void> {
         { sel: 'input[name="documento"]', valor: CPF },
         { sel: 'input[name="motivo"]', valor: "é a servidora do quadro (percurso)" },
       ]);
-      conferir("2.2 o administrador vincula a conta à pessoa PELO CPF (nunca pelo nome)", rVinc.tipo === "ok", rVinc.texto.slice(0, 200));
+      // ⚠️ A MENSAGEM SOME COM O FORMULÁRIO: gravado o vínculo, a linha do usuário passa a
+      // oferecer DESVINCULAR, e a ilha que produziria o aviso deixa de existir (pendência
+      // MENSAGEM-SOME-COM-A-LINHA). O que não se admite é ERRO; o efeito é conferido em 2.3, por
+      // recarga — que é a prova que vale de qualquer forma.
+      conferir("2.2 o administrador vincula a conta à pessoa PELO CPF (nunca pelo nome)", rVinc.tipo !== "erro", `${rVinc.tipo}: ${rVinc.texto.slice(0, 200)}`);
     }
     const usuarios = await irPara(page, `/administracao/usuarios?q=${encodeURIComponent(SERVIDORA)}`);
     conferir("2.3 a lista de usuários mostra a pessoa vinculada", usuarios.includes(NOME.toLowerCase()), usuarios.slice(0, 300));
@@ -455,10 +459,12 @@ async function main(): Promise<void> {
 
     await sair(page);
     await entrar(page, CONTABILIDADE, SENHA_PAPEIS);
-    const rFechar = await preencherEEnviar(page, "fechar", []).catch(() => ({ tipo: "erro", texto: "não achei o formulário de fechar" }));
-    void (await irPara(page, hrefFolha));
-    const rFechar2 = rFechar.tipo === "ok" ? rFechar : await preencherEEnviar(page, "fechar", []);
-    conferir("3.6 a contabilidade fecha a folha", rFechar2.tipo === "ok", `${rFechar2.tipo}: ${rFechar2.texto.slice(0, 200)}`);
+    // ⚠️ NAVEGAR ANTES DE PREENCHER: procurar o formulário na página onde o login caiu custaria
+    // o timeout inteiro do seletor antes de falhar — dois minutos para descobrir que a tela
+    // errada não tem o botão.
+    await irPara(page, hrefFolha);
+    const rFechar = await preencherEEnviar(page, "fechar", []);
+    conferir("3.6 a contabilidade fecha a folha", rFechar.tipo === "ok", `${rFechar.tipo}: ${rFechar.texto.slice(0, 200)}`);
 
     // ── 4. a servidora vê o SEU contracheque ──
     await sair(page);
@@ -482,8 +488,16 @@ async function main(): Promise<void> {
     conferir("5.1 NEGATIVA: a servidora não abre a folha do ente", naFolha.barrado, `${naFolha.url} ${naFolha.status}`);
     const noPessoal = await barrado(page, "/pessoal/servidores");
     conferir("5.2 NEGATIVA: a servidora não abre o cadastro de pessoal", noPessoal.barrado, `${noPessoal.url} ${noPessoal.status}`);
-    const emOutraFolha = await irPara(page, "/portal-do-servidor/contracheque/inexistente-000");
-    conferir("5.3 NEGATIVA: id de folha que não é dela responde NÃO ENCONTRADO, nunca o contracheque alheio", /não encontrad|404|not found/.test(emOutraFolha), emOutraFolha.slice(0, 200));
+    // ⚠️ AQUI O 404 É O RESULTADO ESPERADO, e por isso a navegação é direta: `irPara` trata
+    // resposta fora do 2xx como falha de execução — correto em toda outra passagem, e cego
+    // justamente na que precisa ver a recusa.
+    const r404 = await page.goto(`${BASE}/portal-do-servidor/contracheque/inexistente-000`, { waitUntil: "networkidle2" });
+    const corpo404 = await texto(page);
+    conferir(
+      "5.3 NEGATIVA: id de folha que não é dela responde NÃO ENCONTRADO, nunca o contracheque alheio",
+      (r404?.status() ?? 0) === 404 && !corpo404.includes("líquido"),
+      `${r404?.status() ?? 0}: ${corpo404.slice(0, 160)}`
+    );
   } catch (e) {
     falhou("execução", e instanceof Error ? e.message : String(e));
   } finally {
