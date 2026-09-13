@@ -5567,6 +5567,14 @@ despesa, 23/23). Pendências em 50.4.
 `suite-completa-2026-09-13T14-16-09-358Z.log`). Faltam para o portão integral: `test:fuso`, o SQL manual de
 `prisma/sql/` conferido no candidato e o `deriva:perfil`.
 
+Segunda rodada, sobre `c4af2d5` (com as compras): **2362/2364** — dois vermelhos no MESMO arquivo,
+`modules/m03-creditos/m03-recurso-novo.test.ts` (não tocado nesta sessão): t8 ("dois créditos concorrentes", cinco
+rodadas) estourou o `testTimeout` de 5000 ms sob a suíte inteira em paralelo, e t5 caiu em cascata — as transações do
+t8 ainda em voo inseriram contas depois do `limparBanco` do t5 ("Unique constraint failed on codigo" em `semear`).
+Rerodado ISOLADO, como a regra da máquina manda: **8/8 em 8,9 s** (`.registro-de-execucao/v4-m03-recurso-novo-isolado.txt`).
+Timeout não é aprovação nem defeito: fica registrado como intermitência por saturação, com o motivo, e o t8 é
+candidato a `testTimeout` próprio (medido, não aumentado às cegas) — pendência `M03-T8-TIMEOUT-SOB-SUITE`.
+
 ### 50.6 Próximo ponto exato
 
 A nota fiscal recebida como entidade (`NOTA-FISCAL-RECEBIDA`): documento fiscal do fornecedor (número, série, chave,
