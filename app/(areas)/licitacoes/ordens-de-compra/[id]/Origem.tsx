@@ -33,7 +33,7 @@ export function Origem({ ordemId, itens, podeDesfazer, estornada }: { readonly o
                       <span className="tabular">{p.quantidade} desta linha · {p.recebido} recebido</span>
                       <Badge status={p.situacao === "VIVA" ? (estornada ? "erro" : "ok") : "neutro"}>{p.situacao === "VIVA" ? (estornada ? "cancelada pelo estorno" : "viva") : "desfeita"}</Badge>
                     </div>
-                    {podeDesfazer && p.situacao === "VIVA" && !estornada && p.recebido === "0.0000" ? <FormDesfazerVinculo ordemId={ordemId} alocacaoId={p.alocacaoId} /> : null}
+                    {podeDesfazer && !estornada ? <FormDesfazerVinculo ordemId={ordemId} alocacaoId={p.alocacaoId} podeDesfazer={p.situacao === "VIVA" && p.recebido === "0.0000"} /> : null}
                   </li>
                 ))}
               </ul>

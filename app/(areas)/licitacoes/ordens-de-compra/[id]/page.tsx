@@ -85,7 +85,8 @@ export default async function Detalhe({ params, searchParams }: { readonly param
               {estornada ? "Ordem estornada: não há o que receber." : detalhe.itensParaReceber.length === 0 ? "Nada pendente de recebimento nesta ordem." : "Você não tem a permissão REGISTRAR_RECEBIMENTO_DE_ORDEM."}
             </p>
           )}
-          {estornada ? null : <FormsDoRecurso definicao={ORDENS_DE_COMPRA} permitidas={[...permitidas]} opcoes={opcoes} registroId={id} action={ordensdecompraAction} modo="acoes" />}
+          {/* ⚠️ Fica montado depois do estorno para a mensagem do resultado não sumir; um segundo estorno o domínio recusa nomeando. */}
+          <FormsDoRecurso definicao={ORDENS_DE_COMPRA} permitidas={[...permitidas]} opcoes={opcoes} registroId={id} action={ordensdecompraAction} modo="acoes" />
         </div>
       }
     />

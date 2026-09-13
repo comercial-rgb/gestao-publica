@@ -269,7 +269,27 @@ async function main(): Promise<void> {
     await irPara(page, "/licitacoes/solicitacoes");
     const setor = await primeiraOpcao(page, 'form[data-acao="criar-solicitacao"] select[name="setorId"]');
     const mat1 = await primeiraOpcao(page, 'form[data-acao="criar-solicitacao"] select[name="itens.0.materialId"]');
-    const mat2 = await segundaOpcao(page, 'form[data-acao="criar-solicitacao"] select[name="itens.0.materialId"]');
+    let mat2 = await segundaOpcao(page, 'form[data-acao="criar-solicitacao"] select[name="itens.0.materialId"]');
+    if (mat1 !== null && mat2 !== null && mat2.valor === mat1.valor) {
+      // Só um material ativo no banco dos percursos: cadastra o segundo pela tela do almoxarifado.
+      await irPara(page, "/patrimonio/almoxarifado/materiais");
+      const grupo = await primeiraOpcao(page, 'form[data-acao="criar-materiais"] select[name="grupoId"]');
+      const classe = await primeiraOpcao(page, 'form[data-acao="criar-materiais"] select[name="classeDeMaterialId"]');
+      const unidade = await primeiraOpcao(page, 'form[data-acao="criar-materiais"] select[name="unidadeDeMedidaId"]');
+      const rMat = await preencherEEnviar(page, "criar-materiais", [
+        { sel: 'input[name="codigo"]', valor: `MAT-B-${SUF}` },
+        { sel: 'input[name="descricaoSucinta"]', valor: `Toner do percurso ${SUF}` },
+        { sel: 'textarea[name="descricaoDetalhada"]', valor: "Cartucho de toner preto (percurso)." },
+        ...(grupo === null ? [] : [{ sel: 'select[name="grupoId"]', valor: grupo.valor, tipo: "select" as const }]),
+        ...(classe === null ? [] : [{ sel: 'select[name="classeDeMaterialId"]', valor: classe.valor, tipo: "select" as const }]),
+        { sel: 'select[name="classificacao"]', valor: "CONSUMO", tipo: "select" },
+        { sel: 'select[name="categoria"]', valor: "ESTOCAVEL", tipo: "select" },
+        ...(unidade === null ? [] : [{ sel: 'select[name="unidadeDeMedidaId"]', valor: unidade.valor, tipo: "select" as const }]),
+      ]);
+      console.log(`      [segundo material cadastrado: ${rMat.tipo} ${rMat.texto.slice(0, 80)}]`);
+      await irPara(page, "/licitacoes/solicitacoes");
+      mat2 = await opcaoQueCasa(page, 'form[data-acao="criar-solicitacao"] select[name="itens.0.materialId"]', `MAT-B-${SUF}`);
+    }
     conferir("1.1 a ilha oferece setor e dois materiais distintos", setor !== null && mat1 !== null && mat2 !== null && mat1.valor !== mat2.valor, `setor=${setor?.rotulo ?? "-"} m1=${mat1?.rotulo ?? "-"} m2=${mat2?.rotulo ?? "-"}`);
     if (setor === null || mat1 === null || mat2 === null) throw new Error("sem opções para a solicitação");
     await page.click('form[data-acao="criar-solicitacao"] button[data-acao="mais-um-item"]');
@@ -409,7 +429,9 @@ async function main(): Promise<void> {
     const cancelados = await page.evaluate(() => Array.from(document.querySelectorAll("[data-atendimento] [data-cancelado]")).map((e) => (e.textContent ?? "").trim()));
     conferir("7.3 a solicitação volta a pendente 4 no item 1 e conta 4 cancelado", pendentes3[0] === "4.0000" && cancelados[0] === "4.0000", `pendente=${pendentes3.join(",")} cancelado=${cancelados.join(",")}`);
     await irPara(page, hrefOrdemA);
-    conferir("7.4 na ordem A, a parcela com recebimento NÃO oferece 'desfazer'; a sem recebimento oferece", (await page.$$('form[data-acao="desfazer-vinculo"]')).length === 1, `${(await page.$$('form[data-acao="desfazer-vinculo"]')).length} formulário(s)`);
+    const podem = (await page.$$('form[data-acao="desfazer-vinculo"][data-pode-desfazer="sim"]')).length;
+    const naoPodem = (await page.$$('form[data-acao="desfazer-vinculo"][data-pode-desfazer="nao"]')).length;
+    conferir("7.4 na ordem A, a parcela com recebimento NÃO oferece 'desfazer'; a sem recebimento oferece", podem === 1 && naoPodem === 1, `${podem} pode(m), ${naoPodem} não pode(m)`);
 
     // ── 8. estornar a B: fato, não delete ──
     await irPara(page, hrefOrdemB);
@@ -417,6 +439,8 @@ async function main(): Promise<void> {
     conferir("8.1 estorno da ordem B (sem recebimento, sem empenho) grava", rEst.tipo === "ok", rEst.texto);
     const detB4 = await irPara(page, hrefOrdemB);
     conferir("8.2 a ordem B continua existindo, ESTORNADA, sem receber/empenhar/vincular", (await page.$("[data-ordem-estornada]")) !== null && (await page.$('form[data-acao="receber-ordem"]')) === null && (await page.$('form[data-acao="vincular-solicitacao"]')) === null && !detB4.includes("empenhar esta ordem"), detB4.slice(0, 300));
+    const rEst2 = await preencherEEnviar(page, "estornar", [{ sel: 'input[name="motivo"]', valor: "Segundo estorno indevido (percurso)" }]);
+    conferir("8.2b estornar de novo é RECUSADO nomeando", rEst2.tipo === "erro" && /já está ESTORNADA/.test(rEst2.texto), rEst2.texto.slice(0, 200));
     await irPara(page, `/licitacoes/ordens-de-compra?q=OC-B-${SUF}&vivas=ESTORNADAS`);
     const listaEst = await texto(page);
     conferir("8.3 a lista filtra as estornadas e a B aparece como ESTORNADA", listaEst.includes(`oc-b-${SUF}`.toLowerCase()) && listaEst.includes("estornada"), listaEst.slice(0, 300));
