@@ -48,16 +48,43 @@ tela `/folha/tabelas`, a partir da portaria vigente.
 - `modules/m33-folha/dominio.ts` — faixas, contribuição, IRRF, salário-família, dias,
   contracheque, agregação por pessoa, canônico + sha256, Zod
 - `modules/m33-folha/servico.ts` — 9 serviços, 7 ações + `CONSULTAR_FOLHA`; permissões **v10**
+- `modules/m33-folha/apropriacao.ts` — o grupo de empenho e o ato de apropriar (2 ações,
+  permissões **v12**); `prisma/migrations/20260913230000_*` e `20260913230100_*`
 - `modules/m33-folha/m33-folha.test.ts`
 - `lib/portas/recursos/folha.ts` + `folha-dados.ts`; `app/(areas)/folha/**`
 - `lib/portas/portal-do-servidor.ts` + `app/(areas)/portal-do-servidor/**` — o contracheque na mão
   do próprio servidor (V6 P2.4): só folhas FECHADAS, recorte pela pessoa da sessão
 - `scripts/smoke-folha.ts`, `scripts/smoke-portal-do-servidor.ts`
 
+## A APROPRIAÇÃO CONTÁBIL (V6 P2.3b — TR 5.12.71)
+
+A folha FECHADA vira despesa: `apropriarFolha` chama o `empenhar` do M05 — mesmo roteiro
+contábil, mesma trava de ficha, mesmo exercício conferido, mesma fila do art. 141. Nada aqui
+reimplementa despesa.
+
+**O grupo de empenho** (`GrupoDeEmpenhoDaFolha`) diz QUAIS rubricas de provento, em QUAL ficha,
+com qual categoria do art. 141, e se o empenho é POR SERVIDOR (credor = o CPF de cada um) ou UM
+SÓ para o grupo (credor declarado). As duas práticas existem nos entes; escolher uma por dentro
+seria inventar norma que o TR não fixa. Uma rubrica pertence a UM grupo só.
+
+**Três decisões que o arquivo `apropriacao.ts` documenta linha a linha:**
+
+1. **Só o BRUTO é empenhado.** Contribuição e imposto retidos do servidor não são despesa
+   orçamentária — são retenções que viajam no pagamento. Empenhar o líquido esconderia da despesa
+   a parte retida; empenhar bruto + descontos a contaria duas vezes.
+2. **A numeração é determinística** (`série/competência/matrícula`) e é ela que dá IDEMPOTÊNCIA:
+   o `@@unique([fichaId, numero])` do M05 faz a segunda tentativa reconhecer o que já existe.
+3. **A apropriação NÃO é atômica entre empenhos**, e a razão é medida: `deps.despesa.empenhar`
+   abre a própria transação no adapter do M05 (é lá que a ficha é travada), e uma transação única
+   para mil empenhos manteria as fichas do ente travadas por minutos. Ela é RETOMÁVEL: diz onde
+   parou, e os empenhos gravados continuam valendo.
+
 ## Fora de escopo aqui — pendências nomeadas
 
-- `APROPRIACAO-CONTABIL-DA-FOLHA` (5.12.71/72) — o empenho/liquidação da folha pelo M05, por
-  grupo de rubrica × ficha; próxima unidade.
+- `LIQUIDACAO-DA-FOLHA` — a apropriação EMPENHA; liquidar continua sendo ato próprio, na tela da
+  despesa. O fechamento é o atesto do CÁLCULO, não o do recebimento do serviço prestado.
+- `PATRONAL-NA-MEMORIA` (5.12.72/73) — `aliquotaPatronal` existe na tabela de contribuição e a
+  memória ainda não calcula a parte patronal; sem ela não há empenho de encargos.
 - `FOLHAS-NAO-MENSAIS` (5.12.50) — 13º (1ª e 2ª parcela), férias, rescisão, complementar,
   adiantamento. O `TipoDeFolha` só tem MENSAL.
 - `FALTAS-NA-FOLHA` — faltas e suspensões como redutor de dias (hoje só admissão, desligamento e
@@ -68,5 +95,3 @@ tela `/folha/tabelas`, a partir da portaria vigente.
   informado; não há margem.
 - `ARREDONDAMENTO-DA-FOLHA` — half-even (o do razão); half-up é decisão a registrar se exigida.
 - `CONTRACHEQUE-EM-PDF` e `RESUMO-DA-FOLHA` (5.12.64, 5.12.69) — P4.
-- `PATRONAL-NA-MEMORIA` (5.12.73) — `aliquotaPatronal` existe na tabela; a memória ainda não
-  calcula a parte patronal.
