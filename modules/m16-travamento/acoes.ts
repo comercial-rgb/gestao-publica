@@ -285,6 +285,24 @@ export type AcaoDoSistema =
   // ── V6 (P1.2) — atribuir a conta bancária a uma arrecadação do LEGADO (M09): ato do tesoureiro,
   // conferido contra o razão. Família FINANCEIRO, do ente (a arrecadação é do ente).
   | "ATRIBUIR_CONTA_A_ARRECADACAO"
+  // ── V6 (P2.1/P2.2) — M32 PESSOAL (RH bloco 1, conciliado do siafic-cg c04ad5a). Catorze ações
+  // para dezessete serviços; a divisão é a da origem (ver modules/m32-pessoal/MODULO.md):
+  // criar a vaga × ocupar a vaga; cadastrar a pessoa × admitir; mover × pagar; instruir × decidir.
+  | "CADASTRAR_SERVIDOR"
+  | "ADMITIR_SERVIDOR"
+  | "MOVIMENTAR_SERVIDOR"
+  | "ALTERAR_REMUNERACAO"
+  | "DESLIGAR_SERVIDOR"
+  | "CADASTRAR_CARGO"
+  | "CADASTRAR_LOTACAO"
+  | "GERIR_DEPENDENTE"
+  | "BAIXAR_DEPENDENTE"
+  | "REGISTRAR_PORTARIA"
+  | "REGISTRAR_ANOTACAO"
+  | "REGISTRAR_TREINAMENTO"
+  | "CONFIGURAR_CALENDARIO_RH"
+  | "REGISTRAR_CONTRATO_TRABALHO"
+  | "REGISTRAR_AVALIACAO_EXPERIENCIA"
   // ── M21 — protocolo e processo digital (ENT02) ──
   //
   // ⚠️ UMA AÇÃO POR ATO, e não um "GERIR_PROCESSO" que agrupasse tudo. Abrir, tramitar
@@ -455,7 +473,8 @@ export type AcaoDeLeitura =
   | "CONSULTAR_CONTROLE_INTERNO"
   | "CONSULTAR_ADMINISTRACAO"
   | "CONSULTAR_INTEGRACOES"
-  | "CONSULTAR_SUPORTE";
+  | "CONSULTAR_SUPORTE"
+  | "CONSULTAR_PESSOAL";
 
 /**
  * O rol das ações de leitura, para o bootstrap, os perfis de fixture e a política de
@@ -480,6 +499,8 @@ export const ACOES_DE_LEITURA: readonly AcaoDeLeitura[] = [
   "CONSULTAR_ADMINISTRACAO",
   "CONSULTAR_INTEGRACOES",
   "CONSULTAR_SUPORTE",
+  // V6 P2 — a área de pessoal (M32).
+  "CONSULTAR_PESSOAL",
 ];
 
 /** É uma ação de leitura? — o discriminador que a política de leitura e os testes usam. */
@@ -666,6 +687,24 @@ export type NomeDeServico =
   | "registrarApresentacaoDoEnte"
   // ── V6 (P1.2) — a conta bancária da arrecadação do legado ──
   | "atribuirContaAArrecadacao"
+  // ── V6 (P2) — M32 pessoal ──
+  | "cadastrarCargo"
+  | "cadastrarLotacao"
+  | "cadastrarServidor"
+  | "admitirServidor"
+  | "registrarMovimentacao"
+  | "registrarAlteracaoRemuneratoria"
+  | "desligarServidor"
+  | "cadastrarDependente"
+  | "registrarFinalidadeDependente"
+  | "baixarFinalidadeDependente"
+  | "registrarPortaria"
+  | "registrarAnotacaoServidor"
+  | "registrarTreinamento"
+  | "cadastrarDiaCalendarioRh"
+  | "cadastrarContratoTrabalho"
+  | "prorrogarContratoTrabalho"
+  | "registrarAvaliacaoExperiencia"
   // ── M02b — planejamento plurianual (V4 §8) ──
   | "criarPlanoPlurianual"
   | "criarEixoEstruturante"
@@ -1020,6 +1059,25 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   registrarApresentacaoDoEnte: "CONFIGURAR_APRESENTACAO_DO_ENTE",
   // V6 (P1.2): atribuir conta a uma guia do legado é ato próprio do tesoureiro.
   atribuirContaAArrecadacao: "ATRIBUIR_CONTA_A_ARRECADACAO",
+  // V6 P2 — M32 pessoal (mapa da origem, mantido): dependente e finalidade são o mesmo poder
+  // (lançar o que o servidor entregou); contrato e prorrogação também.
+  cadastrarCargo: "CADASTRAR_CARGO",
+  cadastrarLotacao: "CADASTRAR_LOTACAO",
+  cadastrarServidor: "CADASTRAR_SERVIDOR",
+  admitirServidor: "ADMITIR_SERVIDOR",
+  registrarMovimentacao: "MOVIMENTAR_SERVIDOR",
+  registrarAlteracaoRemuneratoria: "ALTERAR_REMUNERACAO",
+  desligarServidor: "DESLIGAR_SERVIDOR",
+  cadastrarDependente: "GERIR_DEPENDENTE",
+  registrarFinalidadeDependente: "GERIR_DEPENDENTE",
+  baixarFinalidadeDependente: "BAIXAR_DEPENDENTE",
+  registrarPortaria: "REGISTRAR_PORTARIA",
+  registrarAnotacaoServidor: "REGISTRAR_ANOTACAO",
+  registrarTreinamento: "REGISTRAR_TREINAMENTO",
+  cadastrarDiaCalendarioRh: "CONFIGURAR_CALENDARIO_RH",
+  cadastrarContratoTrabalho: "REGISTRAR_CONTRATO_TRABALHO",
+  prorrogarContratoTrabalho: "REGISTRAR_CONTRATO_TRABALHO",
+  registrarAvaliacaoExperiencia: "REGISTRAR_AVALIACAO_EXPERIENCIA",
 
   // ── M02b — planejamento plurianual (V4 §8): 20 serviços, 10 ações, pelos anexos da LRF ──
   criarPlanoPlurianual: "CADASTRAR_PPA",
@@ -1210,6 +1268,8 @@ export const FORA_DO_CENSO: Record<string, string> = {
   atendimentoDaSolicitacao: "LEITURA: solicitado/ordenado/recebido/cancelado/pendente por item, derivados das alocações e recebimentos.",
   origemDaOrdem: "LEITURA: de quais solicitações cada linha da ordem veio, e quanto é 'sem origem' (compra direta ou legado).",
   ordemEstornada: "LEITURA: a ordem tem movimento ESTORNO? (o estorno virou fato — o runtime não apaga linha).",
+  // ── V6 P2 — M32 pessoal ──
+  nomeDoServidor: "LEITURA: o nome que as telas mostram (social, ou o da versão vigente da pessoa canônica).",
   // ── V6 P1.2 — a conciliação e o legado sem conta ──
   arrecadacoesSemContaDaFonte:
     "LEITURA: as guias da fonte da conta sem conta bancária declarada nem atribuída (legado), com a conta contábil que debitaram — " +

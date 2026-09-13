@@ -1,0 +1,1073 @@
+import { z } from "zod";
+import { anoCivil, diaCivil } from "../../packages/datas/index.js";
+import { Decimal, zMoney, type Money } from "../../packages/contracts/index.js";
+// ⚠️ A NORMALIZAÇÃO DO DOCUMENTO VEM DO M11 — INTEIRA, SEM CÓPIA. Ver o docblock de
+// `documento.ts:4-17`: o que mantém uma FK lógica honesta é os dois lados gravarem a MESMA
+// string. Aqui a aposta é maior que lá: o CPF é a IDENTIDADE do servidor, e é por ele que
+// SEFIP, CAGED, RAIS, DIRF e eSocial (bloco 4) vão encontrar a pessoa.
+import { documentoTemFormatoValido, normalizarDocumento } from "../m11-licitacoes/documento.js";
+
+/**
+ * M22 — RH, BLOCO 1: CADASTRO, VÍNCULO E ESTRUTURA DE CARGOS. TR item 06.
+ *
+ * ═══ ⚠️ ESTE ARQUIVO É PURO. Nenhuma linha toca o banco ═══
+ * Tudo aqui recebe dados e devolve dados. É isso que permite que o teste do cargo vigente
+ * (o defeito da projeção) rode sem Postgres, e que o serviço e a porta usem A MESMA função —
+ * duas implementações do "cargo vigente" é exatamente como a projeção e o domínio começariam a
+ * discordar sobre quem é o quê em maio.
+ *
+ * ═══ ⚠️ O DEFEITO QUE ESTE MÓDULO EXISTE PARA NÃO REPETIR ═══
+ * Na projeção da LC 131, `cargo` é coluna da PESSOA (m20-folha-transparencia.prisma:19) e
+ * `datasetFolhaPublica` o lê por join (m13-transparencia/folha.ts:35). Consequência verificável:
+ * um servidor promovido em junho tem a folha de MAIO republicada com o cargo de junho.
+ *
+ * Aqui cargo, lotação e salário são EVENTOS com data, e o vigente numa data é o último evento
+ * até ela. `cargoVigenteEm(eventos, maio)` devolve o cargo de maio depois da promoção de junho,
+ * e há teste que prova.
+ */
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// OS TIPOS DO MÓDULO
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export type SexoServidor = "MASCULINO" | "FEMININO" | "NAO_INFORMADO";
+
+export type TipoVinculoRh =
+  | "EFETIVO"
+  | "COMISSIONADO"
+  | "TEMPORARIO"
+  | "ELETIVO"
+  | "APOSENTADO"
+  | "PENSIONISTA"
+  | "ESTAGIARIO";
+
+export type TipoEventoVinculo =
+  | "ADMISSAO"
+  | "PROMOCAO"
+  | "MUDANCA_CARGO"
+  | "MUDANCA_LOTACAO"
+  | "REAJUSTE_SALARIAL"
+  | "GRATIFICACAO"
+  | "AFASTAMENTO"
+  | "RETORNO_AFASTAMENTO"
+  | "DESLIGAMENTO";
+
+export type GrauParentesco =
+  | "CONJUGE"
+  | "COMPANHEIRO"
+  | "FILHO"
+  | "ENTEADO"
+  | "TUTELADO"
+  | "PAI"
+  | "MAE"
+  | "IRMAO"
+  | "NETO"
+  | "OUTRO";
+
+export type FinalidadeDoDependente =
+  | "IMPOSTO_RENDA"
+  | "SALARIO_FAMILIA"
+  | "PLANO_SAUDE"
+  | "PENSAO_ALIMENTICIA";
+
+export type TipoCargo =
+  | "EFETIVO"
+  | "COMISSAO"
+  | "FUNCAO_GRATIFICADA"
+  | "EMPREGO_PUBLICO"
+  | "TEMPORARIO"
+  | "AGENTE_POLITICO";
+
+export type TipoPortaria =
+  | "NOMEACAO"
+  | "DESIGNACAO"
+  | "SUBSTITUICAO"
+  | "PROMOCAO"
+  | "EXONERACAO"
+  | "DEMISSAO";
+
+export type TipoDiaCalendario =
+  | "FERIADO_NACIONAL"
+  | "FERIADO_ESTADUAL"
+  | "FERIADO_MUNICIPAL"
+  | "PONTO_FACULTATIVO"
+  | "SEM_EXPEDIENTE"
+  | "EXPEDIENTE_REDUZIDO";
+
+export type PrazoContratoTrabalho = "DETERMINADO" | "INDETERMINADO";
+
+export type ResultadoAvaliacao = "EM_ANDAMENTO" | "APROVADO" | "REPROVADO" | "PRORROGADO";
+
+/** ATIVO, AFASTADO ou DESLIGADO — **derivada**, nunca coluna. */
+export type SituacaoVinculo = "ATIVO" | "AFASTADO" | "DESLIGADO";
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ⚠️ AS DERIVAÇÕES DA VIDA FUNCIONAL — o coração do módulo
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Um evento do histórico, como as derivações o enxergam.
+ *
+ * ⚠️ SÃO **DUAS** DATAS, E A SEGUNDA NÃO É DECORAÇÃO. `data` é a data de EFEITO (a promoção
+ * vale a partir de 1º de junho); `criadoEm` é a de digitação. As derivações ordenam pela
+ * primeira — mas quando dois eventos têm a MESMA data de efeito (a promoção e o reajuste que a
+ * acompanha, ambos em 1º de junho), a ordem entre eles decide qual salário vale. Sem o
+ * desempate por `criadoEm`, a resposta dependeria da ordem em que o Postgres devolvesse as
+ * linhas — que não é ordem nenhuma.
+ */
+export interface EventoDoVinculo {
+  readonly data: Date;
+  readonly criadoEm: Date;
+  readonly tipo: TipoEventoVinculo;
+  readonly cargoId: string | null;
+  readonly lotacaoId: string | null;
+  readonly salarioBase: Money | null;
+}
+
+/**
+ * Ordem estável: data de efeito, depois data de digitação. Ver `EventoDoVinculo`.
+ *
+ * ⚠️ GENÉRICA EM `T extends EventoDoVinculo` porque `gratificacoesVigentesEm` recebe eventos COM
+ * as colunas de gratificação. Uma assinatura fechada em `EventoDoVinculo` apagaria esses campos
+ * na saída, e o chamador teria de convertê-los de volta — que é onde a conversão vira hábito.
+ */
+function ordenados<T extends EventoDoVinculo>(eventos: readonly T[]): readonly T[] {
+  return [...eventos].sort((a, b) => {
+    const porData = a.data.getTime() - b.data.getTime();
+    if (porData !== 0) return porData;
+    return a.criadoEm.getTime() - b.criadoEm.getTime();
+  });
+}
+
+/**
+ * O ÚLTIMO EVENTO ATÉ `quando` que satisfaz `tem`.
+ *
+ * ⚠️ A BORDA É INCLUSIVA: um evento datado em D vale EM D. A promoção que começa em 1º de junho
+ * já produz o cargo novo no dia 1º — é o que a portaria diz, e é o que a folha daquele mês paga.
+ */
+function ultimoAte<T>(
+  eventos: readonly EventoDoVinculo[],
+  quando: Date,
+  tem: (e: EventoDoVinculo) => T | null
+): T | null {
+  let achado: T | null = null;
+  for (const e of ordenados(eventos)) {
+    if (e.data.getTime() > quando.getTime()) break;
+    const v = tem(e);
+    if (v !== null) achado = v;
+  }
+  return achado;
+}
+
+/**
+ * O CARGO VIGENTE NUMA DATA — o último evento COM cargo até ela.
+ *
+ * ⚠️ ESTA É A FUNÇÃO QUE O DEFEITO DA PROJEÇÃO PEDE. Promovido em junho, o servidor continua no
+ * cargo antigo quando se pergunta por maio. Se cargo fosse coluna do vínculo, o `UPDATE` da
+ * promoção teria reescrito o passado e não haveria pergunta a fazer.
+ *
+ * `null` = o vínculo ainda não existia naquela data (nem a admissão tinha ocorrido).
+ */
+export function cargoVigenteEm(
+  eventos: readonly EventoDoVinculo[],
+  quando: Date
+): string | null {
+  return ultimoAte(eventos, quando, (e) => e.cargoId);
+}
+
+/** A LOTAÇÃO VIGENTE NUMA DATA — mesma disciplina do cargo. */
+export function lotacaoVigenteEm(
+  eventos: readonly EventoDoVinculo[],
+  quando: Date
+): string | null {
+  return ultimoAte(eventos, quando, (e) => e.lotacaoId);
+}
+
+/**
+ * O VENCIMENTO-BASE VIGENTE NUMA DATA.
+ *
+ * ⚠️ **NÃO SOMA GRATIFICAÇÃO.** O adicional de insalubridade não muda o vencimento-base, e
+ * somá-lo aqui faria o próximo reajuste incidir sobre ele — um erro que se acumula em cascata,
+ * exercício após exercício, e que ninguém confere à mão. As gratificações vigentes saem por
+ * `gratificacoesVigentesEm`; quem as compõe com a base é o CÁLCULO, no bloco 2.
+ */
+export function salarioBaseVigenteEm(
+  eventos: readonly EventoDoVinculo[],
+  quando: Date
+): Money | null {
+  return ultimoAte(eventos, quando, (e) => e.salarioBase);
+}
+
+/**
+ * A SITUAÇÃO NUMA DATA — DESLIGADO, AFASTADO ou ATIVO, nessa ordem de precedência.
+ *
+ * ⚠️ NÃO É COLUNA, e o motivo é o mesmo do cargo com um agravante: uma coluna `situacao` teria
+ * de ser atualizada no dia em que o afastamento termina. Ninguém atualiza — e o servidor que
+ * voltou da licença em março continuaria "AFASTADO" na folha de abril, deixando de ser pago.
+ * Derivada, ela é verdade em qualquer data que se pergunte, sem job noturno nenhum.
+ *
+ * ⚠️ E O `DESLIGAMENTO` PRECEDE TUDO. Quem foi exonerado durante um afastamento está desligado,
+ * não afastado — a exoneração encerra o vínculo, e um vínculo encerrado não tem licença em curso.
+ */
+export function situacaoDoVinculo(
+  eventos: readonly EventoDoVinculo[],
+  quando: Date
+): SituacaoVinculo {
+  const ate = ordenados(eventos).filter((e) => e.data.getTime() <= quando.getTime());
+  if (ate.some((e) => e.tipo === "DESLIGAMENTO")) return "DESLIGADO";
+
+  // O último entre afastar e voltar decide. Sem RETORNO, o afastamento segue aberto.
+  let afastado = false;
+  for (const e of ate) {
+    if (e.tipo === "AFASTAMENTO") afastado = true;
+    if (e.tipo === "RETORNO_AFASTAMENTO") afastado = false;
+  }
+  return afastado ? "AFASTADO" : "ATIVO";
+}
+
+/** A data do desligamento, se houve. `null` = vínculo aberto. Derivada, nunca coluna. */
+export function dataDeDesligamento(eventos: readonly EventoDoVinculo[]): Date | null {
+  const fim = ordenados(eventos).find((e) => e.tipo === "DESLIGAMENTO");
+  return fim === undefined ? null : fim.data;
+}
+
+/**
+ * AS GRATIFICAÇÕES CONCEDIDAS ATÉ UMA DATA.
+ *
+ * ⚠️ ELAS **NÃO** SE REVOGAM POR ESTE BLOCO, e a ausência é honesta em vez de conveniente: a
+ * cessação de uma gratificação é um ato que o TR trata no cálculo (bloco 2), com o prazo e a
+ * base legal dela. Inventar aqui uma "revogação" seria criar um ato que ninguém regulamentou —
+ * a mesma razão pela qual o termo de cooperação do M21 não tem cancelamento.
+ */
+export function gratificacoesVigentesEm(
+  eventos: readonly (EventoDoVinculo & {
+    readonly gratificacaoDescricao: string | null;
+    readonly gratificacaoValor: Money | null;
+  })[],
+  quando: Date
+): readonly { readonly descricao: string; readonly valor: Money; readonly desde: Date }[] {
+  return ordenados(eventos)
+    .filter(
+      (e) =>
+        e.tipo === "GRATIFICACAO" &&
+        e.data.getTime() <= quando.getTime() &&
+        e.gratificacaoValor !== null &&
+        e.gratificacaoDescricao !== null
+    )
+    // O `filter` acima já garantiu os dois não-nulos; o `!` evita uma conversão de tipo, que é
+    // a coisa que este repositório só admite dentro da fábrica `subLista()`.
+    .map((e) => ({
+      descricao: e.gratificacaoDescricao!,
+      valor: e.gratificacaoValor!,
+      desde: e.data,
+    }));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ⚠️ A OCUPAÇÃO — TR req. 9, e ela é DERIVADA, não coluna
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Um vínculo, reduzido ao que a contagem de ocupação precisa. */
+export interface VinculoParaOcupacao {
+  readonly eventos: readonly EventoDoVinculo[];
+}
+
+/**
+ * QUANTOS VÍNCULOS OCUPAM ESTE CARGO NESTA DATA.
+ *
+ * ═══ ⚠️ AS DUAS METADES DA CONTA, E AS DUAS IMPORTAM ═══
+ *   · SITUAÇÃO ≠ DESLIGADO — sem isso o cargo pareceria lotado com gente que já saiu, e o ente
+ *     deixaria de nomear porque um exonerado de 2019 continua ocupando a vaga.
+ *   · CARGO **VIGENTE**, não o de admissão — sem isso o servidor promovido ocuparia DUAS vagas:
+ *     a antiga (onde entrou) e a nova (para onde foi).
+ *
+ * ⚠️ POR QUE ISTO NÃO É UMA COLUNA `vagasOcupadas`. É este número que responde se o ente PODE
+ * nomear mais alguém (`vagasFixadas` é o teto da lei). Uma coluna dessincronizada autorizaria uma
+ * nomeação acima do quantitativo legal com a APARÊNCIA de conformidade — e a aparência de
+ * conformidade é pior que a ausência dela, porque ninguém vai conferir.
+ */
+export function vagasOcupadasDoCargo(
+  vinculos: readonly VinculoParaOcupacao[],
+  cargoId: string,
+  quando: Date
+): number {
+  return vinculos.filter(
+    (v) =>
+      situacaoDoVinculo(v.eventos, quando) !== "DESLIGADO" &&
+      cargoVigenteEm(v.eventos, quando) === cargoId
+  ).length;
+}
+
+/** Quantos vínculos estão lotados aqui nesta data. Mesma disciplina da ocupação do cargo. */
+export function lotadosNaLotacao(
+  vinculos: readonly VinculoParaOcupacao[],
+  lotacaoId: string,
+  quando: Date
+): number {
+  return vinculos.filter(
+    (v) =>
+      situacaoDoVinculo(v.eventos, quando) !== "DESLIGADO" &&
+      lotacaoVigenteEm(v.eventos, quando) === lotacaoId
+  ).length;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ⚠️ O DEPENDENTE — a baixa por IDADE é derivada, a baixa por FATO é coluna
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * OS LIMITES DE IDADE, POR FINALIDADE, COM A BASE LEGAL.
+ *
+ * ⚠️ `null` = SEM LIMITE ETÁRIO, e não "esqueci". Plano de saúde é contrato do ente (o limite,
+ * quando existe, é o do contrato, e cada ente tem o seu); pensão alimentícia é decisão judicial,
+ * e o juiz é quem diz até quando.
+ *
+ * ⚠️ ELE NÃO É `@default` DE COLUNA, ao contrário do `Convenio.diasAlertaVencimento`. Lá o padrão
+ * é UM número para todos os convênios, e a coluna é a fonte certa. Aqui o padrão DEPENDE da
+ * finalidade — um default de coluna teria de escolher entre 14 e 21 e estaria errado no outro.
+ */
+export const LIMITE_ETARIO_LEGAL: Readonly<Record<FinalidadeDoDependente, number | null>> = {
+  /** Lei 9.250/1995 art. 35, III — 21 anos (24 se cursando ensino superior; declare 24). */
+  IMPOSTO_RENDA: 21,
+  /** Lei 8.213/1991 art. 65 — 14 anos. */
+  SALARIO_FAMILIA: 14,
+  /** Contrato de assistência do ente — não há limite LEGAL. */
+  PLANO_SAUDE: null,
+  /** Decisão judicial — o juiz diz até quando. */
+  PENSAO_ALIMENTICIA: null,
+};
+
+/**
+ * A IDADE COMPLETA em `quando`.
+ *
+ * ⚠️ ANOS COMPLETOS, e o aniversário conta NO DIA. Quem faz 14 anos hoje TEM 14 hoje — e por
+ * isso sai do salário-família hoje, não amanhã. Contar por diferença de milissegundos dividida
+ * por 365,25 erraria um dia em cada bissexto, e o dia errado é o do aniversário.
+ */
+export function idadeEm(dataNascimento: Date, quando: Date): number {
+  // Dia civil do ente, não UTC: quem nasceu 01/01 às 22:00 (hora local) nasceu em 01/01.
+  const [aq, mq, dq] = diaCivil(quando).split("-").map(Number) as [number, number, number];
+  const [an, mn, dn] = diaCivil(dataNascimento).split("-").map(Number) as [number, number, number];
+  let anos = aq - an;
+  const mes = mq - mn;
+  const dia = dq - dn;
+  if (mes < 0 || (mes === 0 && dia < 0)) anos -= 1;
+  return anos;
+}
+
+/** O que a derivação da baixa precisa saber. */
+export interface FinalidadeParaBaixa {
+  readonly dataNascimento: Date;
+  readonly invalidezPermanente: boolean;
+  readonly dataInicio: Date;
+  readonly limiteIdadeAnos: number | null;
+  readonly dataBaixa: Date | null;
+}
+
+/**
+ * ESTE DEPENDENTE VALE NESTA DATA, PARA ESTA FINALIDADE?
+ *
+ * ═══ ⚠️ TRÊS PERGUNTAS, E A TERCEIRA É A QUE NÃO TEM COLUNA ═══
+ *   1. já começou?          — `dataInicio <= quando`
+ *   2. foi baixado por FATO? — óbito, perda da guarda, decisão judicial: `dataBaixa`
+ *   3. passou da idade?      — DERIVADA, e é o requisito 7
+ *
+ * A terceira acontece SOZINHA, num dia que se sabe desde o nascimento. Materializá-la exigiria
+ * um job noturno — e no dia em que o job não rodasse, o ente pagaria salário-família de um jovem
+ * de vinte anos e nada acusaria. Derivada, ela é verdade em toda consulta.
+ *
+ * ⚠️ A INVALIDEZ PERMANENTE SUSPENDE O LIMITE (Lei 8.213/91 art. 16 §-único; Lei 9.250/95
+ * art. 35 §-único) — e não a baixa por fato: dependente inválido que morre está baixado.
+ */
+export function dependenteValeEm(f: FinalidadeParaBaixa, quando: Date): boolean {
+  if (f.dataInicio.getTime() > quando.getTime()) return false;
+  if (f.dataBaixa !== null && f.dataBaixa.getTime() <= quando.getTime()) return false;
+  if (f.invalidezPermanente) return true;
+  if (f.limiteIdadeAnos === null) return true;
+  return idadeEm(f.dataNascimento, quando) < f.limiteIdadeAnos;
+}
+
+/**
+ * POR QUE ELE NÃO VALE — a frase que a tela mostra. `null` quando vale.
+ *
+ * ⚠️ EXISTE PORQUE "inativo" NÃO INFORMA NADA. Quem olha a tela precisa saber se o dependente
+ * saiu por idade (e então não há o que fazer) ou por fato (e então há um documento a conferir).
+ */
+export function motivoDaInvalidade(f: FinalidadeParaBaixa, quando: Date): string | null {
+  if (f.dataInicio.getTime() > quando.getTime()) {
+    return `Ainda não vigente — começa em ${diaCivil(f.dataInicio)}.`;
+  }
+  if (f.dataBaixa !== null && f.dataBaixa.getTime() <= quando.getTime()) {
+    return `Baixado em ${diaCivil(f.dataBaixa)}.`;
+  }
+  if (f.invalidezPermanente || f.limiteIdadeAnos === null) return null;
+  const idade = idadeEm(f.dataNascimento, quando);
+  if (idade >= f.limiteIdadeAnos) {
+    return `Baixa automática por idade: ${idade} anos, limite ${f.limiteIdadeAnos}.`;
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// O CONTRATO DE TRABALHO — término derivado
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const MS_POR_DIA = 86_400_000;
+
+/**
+ * O TÉRMINO VIGENTE — `dataTerminoInicial + Σ dias`. `null` no prazo indeterminado.
+ *
+ * ⚠️ NÃO REUSA `vigenciaFim` DO M11, e a decisão é o CONTRÁRIO da do M21. Lá, o convênio reusou
+ * o helper porque reusou o ENUM inteiro: `TipoMovimentoContratual` tem seis valores com sinais
+ * diferentes, e o helper existe para resolver esse sinal. Aqui só há uma direção — carregar uma
+ * coluna `tipo` que admite um único valor, apenas para alcançar o helper, seria uma coluna que
+ * não informa nada, e o primeiro leitor perguntaria que outros valores ela aceita.
+ */
+export function terminoVigenteDoContrato(
+  dataTerminoInicial: Date | null,
+  prorrogacoes: readonly { readonly dias: number }[]
+): Date | null {
+  if (dataTerminoInicial === null) return null;
+  const dias = prorrogacoes.reduce((acc, p) => acc + p.dias, 0);
+  return new Date(dataTerminoInicial.getTime() + dias * MS_POR_DIA);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// A ÁRVORE DE LOTAÇÃO — o ciclo que o CHECK do banco não alcança
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * PÔR `candidatoPai` COMO PAI DE `id` FECHARIA UM CICLO?
+ *
+ * ⚠️ O CHECK `ck_lotacao_nao_e_pai_de_si` pega o ciclo de UM nó — é tudo que o SQL declarativo
+ * alcança sem recursão. O ciclo A → B → A precisa da CADEIA, e a cadeia vem do banco: quem a lê
+ * é o serviço, quem a julga é esta função pura (e é por isso que há teste sem Postgres).
+ *
+ * ⚠️ E O CICLO NÃO É TEORIA: uma árvore fechada faz `lotacoesDescendentes` girar para sempre na
+ * primeira consulta que a percorra — a tela trava sem erro, sem log, sem nada que denuncie.
+ */
+/** `ancestraisDoCandidato`: a cadeia de `candidatoPai` até a raiz, já lida do banco. */
+export function criaCicloDeLotacao(
+  id: string,
+  candidatoPai: string | null,
+  ancestraisDoCandidato: readonly string[]
+): boolean {
+  if (candidatoPai === null) return false;
+  if (candidatoPai === id) return true;
+  return ancestraisDoCandidato.includes(id);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// OS SCHEMAS DE ENTRADA
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const zTexto = (min: number, msg?: string): z.ZodString =>
+  msg !== undefined ? z.string().trim().min(min, msg) : z.string().trim().min(min);
+
+const zOpcional = (min: number): z.ZodOptional<z.ZodString> => zTexto(min).optional();
+
+/**
+ * ⚠️ TRANSFORM ANTES DE REFINE — validar o cru recusaria a máscara que o próprio formulário
+ * mostrou. É o mesmo `zDocumento` do contrato, do certame e do convênio; a diferença é que aqui
+ * ele exige **CPF**, e não "CPF ou CNPJ": servidor é pessoa física, e um CNPJ de 14 dígitos
+ * passando por aqui seria uma empresa na folha de pagamento.
+ */
+const zCpf = z
+  .string()
+  .transform(normalizarDocumento)
+  .refine((d) => documentoTemFormatoValido(d) && d.length === 11, {
+    message:
+      "CPF com 11 dígitos. A máscara é removida automaticamente — o que sobrou não tem 11 " +
+      "dígitos (CNPJ tem 14, e servidor é pessoa física).",
+  });
+
+/** ⚠️ SÓ DÍGITOS, como o CPF, e pelo mesmo motivo: a SEFIP e o eSocial casam por ele. */
+const zPis = z
+  .string()
+  .transform(normalizarDocumento)
+  .refine((d) => /^[0-9]{11}$/.test(d), { message: "PIS/PASEP/NIT tem 11 dígitos." });
+
+const zUf = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z]{2}$/, "UF com duas letras (PB, PE, RN).");
+
+/** O identificador de quem pratica o ato — é o que o `RegistroDeOperacao` carrega. */
+const zAutor = z.string().min(1);
+
+const zMotivo = zTexto(5, "O motivo precisa dizer o que fundamenta o evento");
+
+const zValorPositivo = zMoney.refine((v) => v.greaterThan(0), {
+  message: "Valor deve ser maior que zero",
+});
+
+/**
+ * UM DECIMAL DE DUAS CASAS QUE **NÃO É DINHEIRO** — horas de expediente, pontuação de avaliação.
+ *
+ * ═══ ⚠️ POR QUE NÃO `z.number()`, E POR QUE NÃO `zMoney` ═══
+ * `z.number()` traria ponto flutuante binário para dentro do domínio: 3,5 horas sobrevive, mas
+ * 0,1 + 0,2 não — e o cálculo de frequência do bloco 2 vai somar centenas dessas. A regra da casa
+ * ("nunca `number` em caminho de valor") vale aqui pela mesma física, ainda que não seja dinheiro.
+ *
+ * `zMoney` serviria tecnicamente (é Decimal de 2 casas), e é justamente por isso que não se usa:
+ * ele se chama *money*, e quem lesse `horasExpediente: zMoney` teria de parar para descobrir que
+ * horas não são dinheiro. O nome é parte do tipo.
+ *
+ * ⚠️ E ELE NÃO SERVE PARA 3 CASAS. `packages/contracts/money.ts:25` trunca em 2 casas em
+ * silêncio, e esta moldura faz o mesmo, de propósito: as duas colunas que a consomem são
+ * `Decimal(4,2)` e `Decimal(6,2)`. Campo de 3 casas usa `tres()` (M11), não isto.
+ */
+// ⚠️ O SEGUNDO PARÂMETRO DE `ZodType` É O **INPUT**, e omiti-lo o deixa `unknown` — o que faz o
+// `z.input<>` do schema aceitar qualquer coisa, inclusive o `number` que esta moldura existe para
+// recusar. Foi assim na primeira versão, e o compilador não reclamou de `horasExpediente: 4`.
+const zDecimalNaoMonetario = (max: number, oQueE: string): z.ZodType<Decimal, string> =>
+  z
+    .string()
+    .trim()
+    .regex(/^\d{1,3}([.,]\d{1,2})?$/, `${oQueE}: número com até duas casas decimais.`)
+    .transform((s) => new Decimal(s.replace(",", ".")).toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN))
+    .refine((d) => d.greaterThan(0) && d.lessThanOrEqualTo(max), {
+      message: `${oQueE}: precisa estar entre 0 (exclusive) e ${max}.`,
+    });
+
+// ── ESTRUTURA ────────────────────────────────────────────────────────────────
+
+export const zCadastrarCargoInput = z
+  .object({
+    codigo: zTexto(1),
+    denominacao: zTexto(3),
+    tipo: z.enum([
+      "EFETIVO",
+      "COMISSAO",
+      "FUNCAO_GRATIFICADA",
+      "EMPREGO_PUBLICO",
+      "TEMPORARIO",
+      "AGENTE_POLITICO",
+    ]),
+    /** ⚠️ ZERO É LEGÍTIMO: cargo criado em lei e ainda sem provimento na LOA. */
+    vagasFixadas: z.number().int().min(0, "Vagas fixadas não pode ser negativo"),
+    leiAutorizativa: zTexto(3, "Cargo público só existe por lei — informe qual"),
+    dataPublicacaoLei: z.coerce.date(),
+    requisitoIngresso: zOpcional(3),
+    cargaHorariaSemanal: z.number().int().positive().optional(),
+    dataExtincao: z.coerce.date().optional(),
+    leiExtincao: zOpcional(3),
+    criadoPor: zAutor,
+  })
+  .superRefine((v, ctx) => {
+    // ⚠️ A MESMA BICONDICIONAL DO CHECK `ck_cargo_extincao_completa`, e ela está nos dois
+    // lugares de propósito: o Zod dá a mensagem que o usuário entende, o CHECK fecha o caminho
+    // que não passa pelo Zod. Cargo só se extingue por LEI.
+    if ((v.dataExtincao === undefined) !== (v.leiExtincao === undefined)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["leiExtincao"],
+        message:
+          "EXTINÇÃO INCOMPLETA: cargo público só se extingue por lei. Informe a data E a lei, " +
+          "ou nenhuma das duas.",
+      });
+    }
+    if (v.dataExtincao !== undefined && v.dataExtincao < v.dataPublicacaoLei) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["dataExtincao"],
+        message: "O cargo não pode ser extinto antes de ter sido criado.",
+      });
+    }
+  });
+export type CadastrarCargoInput = z.input<typeof zCadastrarCargoInput>;
+
+export const zCadastrarLotacaoInput = z.object({
+  codigo: zTexto(1),
+  nome: zTexto(3),
+  paiId: z.string().min(1).optional(),
+  /**
+   * ⚠️ OPCIONAL DE PROPÓSITO. A maioria das caixas do organograma (escola, creche, posto) NÃO
+   * corresponde a uma unidade orçamentária — ver o docblock de `Lotacao` no schema. Quando
+   * corresponde, é esta FK que o bloco 2 vai usar para apropriar a despesa de pessoal.
+   */
+  unidadeOrcId: z.string().min(1).optional(),
+  dataExtincao: z.coerce.date().optional(),
+  criadoPor: zAutor,
+});
+export type CadastrarLotacaoInput = z.input<typeof zCadastrarLotacaoInput>;
+
+// ── A PESSOA ─────────────────────────────────────────────────────────────────
+
+export const zCadastrarServidorInput = z
+  .object({
+    /**
+     * ⚠️ A IDENTIDADE É A PESSOA CANÔNICA (M19) — V6 P2.1. O servidor não repete CPF, nome,
+     * endereço nem contato: aponta para a `Pessoa` FÍSICA do cadastro único, e é lá que esses
+     * dados vivem (versionados). Uma pessoa é no máximo UM servidor; um servidor tem N vínculos.
+     */
+    pessoaId: z.string().min(1),
+    /** Lei 14.164/2021 — quando presente, é ELE que as telas mostram. */
+    nomeSocial: zOpcional(2),
+    dataNascimento: z.coerce.date(),
+    sexo: z.enum(["MASCULINO", "FEMININO", "NAO_INFORMADO"]),
+    pisPasep: zPis.optional(),
+    rgNumero: zOpcional(1),
+    rgOrgaoEmissor: zOpcional(2),
+    rgUf: zUf.optional(),
+    rgDataEmissao: z.coerce.date().optional(),
+    tituloEleitor: zOpcional(1),
+    tituloZona: zOpcional(1),
+    tituloSecao: zOpcional(1),
+    ctpsNumero: zOpcional(1),
+    ctpsSerie: zOpcional(1),
+    ctpsUf: zUf.optional(),
+    nomeMae: zOpcional(3),
+    nomePai: zOpcional(3),
+    /** ⚠️ REFERÊNCIA, NUNCA BYTES — ver o docblock do model. */
+    fotoCaminho: zOpcional(1),
+    fotoTipoConteudo: zOpcional(3),
+    fotoHashSha256: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .regex(/^[0-9a-f]{64}$/, "SHA-256 em hexadecimal, 64 caracteres.")
+      .optional(),
+    criadoPor: zAutor,
+  })
+  .superRefine((v, ctx) => {
+    if (v.dataNascimento.getTime() > Date.now()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["dataNascimento"],
+        message: "Data de nascimento no futuro.",
+      });
+    }
+  });
+export type CadastrarServidorInput = z.input<typeof zCadastrarServidorInput>;
+
+// ── O VÍNCULO ────────────────────────────────────────────────────────────────
+
+/**
+ * A ADMISSÃO — cria o vínculo E o evento `ADMISSAO`, na mesma transação.
+ *
+ * ⚠️ CARGO, LOTAÇÃO E SALÁRIO SÃO OBRIGATÓRIOS AQUI, e é o CHECK
+ * `ck_historico_vinculo_admissao_completa` que os impõe no banco. Um vínculo cuja admissão não
+ * diz o cargo é um vínculo cujo `cargoVigenteEm` devolve `null` para sempre — ninguém saberia em
+ * que cargo a pessoa foi nomeada, nem a folha saberia quanto pagar.
+ */
+export const zAdmitirServidorInput = z.object({
+  servidorId: z.string().min(1),
+  matricula: zTexto(1),
+  tipo: z.enum([
+    "EFETIVO",
+    "COMISSIONADO",
+    "TEMPORARIO",
+    "ELETIVO",
+    "APOSENTADO",
+    "PENSIONISTA",
+    "ESTAGIARIO",
+  ]),
+  regimeJuridico: zTexto(3, "O regime jurídico como a lei do ente o nomeia"),
+  dataAdmissao: z.coerce.date(),
+  cargoId: z.string().min(1),
+  lotacaoId: z.string().min(1),
+  salarioBase: zValorPositivo,
+  observacao: zOpcional(3),
+  portariaId: z.string().min(1).optional(),
+  criadoPor: zAutor,
+});
+export type AdmitirServidorInput = z.input<typeof zAdmitirServidorInput>;
+
+/** Os eventos que MOVEM (onde e em quê se trabalha) — ação `MOVIMENTAR_SERVIDOR`. */
+export const TIPOS_DE_MOVIMENTACAO = [
+  "MUDANCA_CARGO",
+  "MUDANCA_LOTACAO",
+  "AFASTAMENTO",
+  "RETORNO_AFASTAMENTO",
+] as const;
+
+/** Os eventos que PAGAM (quanto se recebe) — ação `ALTERAR_REMUNERACAO`. */
+export const TIPOS_DE_ALTERACAO_REMUNERATORIA = [
+  "PROMOCAO",
+  "REAJUSTE_SALARIAL",
+  "GRATIFICACAO",
+] as const;
+
+const zEventoBase = {
+  vinculoId: z.string().min(1),
+  data: z.coerce.date(),
+  motivo: zMotivo,
+  portariaId: z.string().min(1).optional(),
+  criadoPor: zAutor,
+};
+
+export const zRegistrarMovimentacaoInput = z
+  .object({
+    ...zEventoBase,
+    tipo: z.enum(TIPOS_DE_MOVIMENTACAO),
+    cargoId: z.string().min(1).optional(),
+    lotacaoId: z.string().min(1).optional(),
+  })
+  .superRefine((v, ctx) => {
+    // ⚠️ ESPELHA `ck_historico_vinculo_cargo_exigido` E `..._lotacao_exigida`. Um evento de
+    // MUDANCA_CARGO sem cargo não move nada — `cargoVigenteEm` procura o último evento COM
+    // cargo, e este não é um. O servidor "mudou de cargo" e continuaria no antigo, sem erro.
+    if (v.tipo === "MUDANCA_CARGO" && v.cargoId === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["cargoId"],
+        message: "MUDANCA_CARGO sem cargo de destino não move nada. Informe o cargo.",
+      });
+    }
+    if (v.tipo === "MUDANCA_LOTACAO" && v.lotacaoId === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["lotacaoId"],
+        message: "MUDANCA_LOTACAO sem lotação de destino não move nada. Informe a lotação.",
+      });
+    }
+    // ⚠️ E O CONTRÁRIO TAMBÉM: afastamento não muda cargo nem lotação. Deixar passar faria a
+    // licença-maternidade mover a servidora de setor, sem que ninguém tivesse pedido.
+    if (
+      (v.tipo === "AFASTAMENTO" || v.tipo === "RETORNO_AFASTAMENTO") &&
+      (v.cargoId !== undefined || v.lotacaoId !== undefined)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["tipo"],
+        message:
+          "Afastamento e retorno não mudam cargo nem lotação — o vínculo volta para onde estava. " +
+          "Se houve remoção, ela é outro evento.",
+      });
+    }
+  });
+export type RegistrarMovimentacaoInput = z.input<typeof zRegistrarMovimentacaoInput>;
+
+export const zRegistrarAlteracaoRemuneratoriaInput = z
+  .object({
+    ...zEventoBase,
+    tipo: z.enum(TIPOS_DE_ALTERACAO_REMUNERATORIA),
+    /** PROMOCAO muda o cargo junto; REAJUSTE e GRATIFICACAO, não. */
+    cargoId: z.string().min(1).optional(),
+    salarioBase: zValorPositivo.optional(),
+    gratificacaoDescricao: zOpcional(3),
+    gratificacaoValor: zValorPositivo.optional(),
+  })
+  .superRefine((v, ctx) => {
+    if ((v.tipo === "PROMOCAO" || v.tipo === "REAJUSTE_SALARIAL") && v.salarioBase === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["salarioBase"],
+        message: `${v.tipo} sem o novo vencimento-base não altera remuneração nenhuma.`,
+      });
+    }
+    if (v.tipo === "PROMOCAO" && v.cargoId === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["cargoId"],
+        message: "PROMOCAO é progressão para OUTRO cargo. Informe o cargo de destino.",
+      });
+    }
+    // ⚠️ BICONDICIONAL, como o CHECK `ck_historico_vinculo_gratificacao`: a gratificação traz
+    // valor E descrição, e nenhum outro tipo os traz. Um reajuste que carregasse gratificação de
+    // carona a poria na folha sem ato que a fundamente.
+    const temGratificacao =
+      v.gratificacaoValor !== undefined && v.gratificacaoDescricao !== undefined;
+    if ((v.tipo === "GRATIFICACAO") !== temGratificacao) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["gratificacaoValor"],
+        message:
+          v.tipo === "GRATIFICACAO"
+            ? "GRATIFICACAO exige descrição E valor — é o que a folha vai pagar e o que o ato diz."
+            : `${v.tipo} não carrega gratificação. Conceder uma é outro evento, com o ato dela.`,
+      });
+    }
+    if (v.tipo !== "PROMOCAO" && v.cargoId !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["cargoId"],
+        message: `${v.tipo} não muda de cargo. Mudar de cargo é MUDANCA_CARGO ou PROMOCAO.`,
+      });
+    }
+    if (v.tipo === "GRATIFICACAO" && v.salarioBase !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["salarioBase"],
+        message:
+          "Gratificação é parcela ADICIONAL — ela não redefine o vencimento-base. Somá-la à base " +
+          "faria o próximo reajuste incidir sobre ela.",
+      });
+    }
+  });
+export type RegistrarAlteracaoRemuneratoriaInput = z.input<
+  typeof zRegistrarAlteracaoRemuneratoriaInput
+>;
+
+export const zDesligarServidorInput = z.object({
+  vinculoId: z.string().min(1),
+  data: z.coerce.date(),
+  motivo: zMotivo,
+  portariaId: z.string().min(1).optional(),
+  criadoPor: zAutor,
+});
+export type DesligarServidorInput = z.input<typeof zDesligarServidorInput>;
+
+// ── DEPENDENTES ──────────────────────────────────────────────────────────────
+
+const zFinalidade = z.enum([
+  "IMPOSTO_RENDA",
+  "SALARIO_FAMILIA",
+  "PLANO_SAUDE",
+  "PENSAO_ALIMENTICIA",
+]);
+
+export const zCadastrarDependenteInput = z
+  .object({
+    servidorId: z.string().min(1),
+    nome: zTexto(3),
+    /** ⚠️ OPCIONAL: recém-nascido entra na folha antes de ter CPF. */
+    cpf: zCpf.optional(),
+    dataNascimento: z.coerce.date(),
+    grauParentesco: z.enum([
+      "CONJUGE",
+      "COMPANHEIRO",
+      "FILHO",
+      "ENTEADO",
+      "TUTELADO",
+      "PAI",
+      "MAE",
+      "IRMAO",
+      "NETO",
+      "OUTRO",
+    ]),
+    invalidezPermanente: z.boolean().optional(),
+    /** A primeira finalidade — um dependente sem finalidade nenhuma não vale para nada. */
+    finalidade: zFinalidade,
+    dataInicio: z.coerce.date(),
+    /** Ausente = o limite LEGAL da finalidade (`LIMITE_ETARIO_LEGAL`). */
+    limiteIdadeAnos: z.number().int().positive().optional(),
+    criadoPor: zAutor,
+  })
+  .superRefine((v, ctx) => {
+    if (v.dataNascimento.getTime() > Date.now()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["dataNascimento"],
+        message: "Data de nascimento no futuro.",
+      });
+    }
+  });
+export type CadastrarDependenteInput = z.input<typeof zCadastrarDependenteInput>;
+
+export const zRegistrarFinalidadeDependenteInput = z.object({
+  dependenteId: z.string().min(1),
+  finalidade: zFinalidade,
+  dataInicio: z.coerce.date(),
+  limiteIdadeAnos: z.number().int().positive().optional(),
+  criadoPor: zAutor,
+});
+export type RegistrarFinalidadeDependenteInput = z.input<
+  typeof zRegistrarFinalidadeDependenteInput
+>;
+
+/**
+ * A BAIXA POR **FATO** — óbito, perda da guarda, decisão judicial.
+ *
+ * ⚠️ A BAIXA POR IDADE NÃO PASSA POR AQUI, e não existe serviço para ela: ela é derivada
+ * (`dependenteValeEm`). Um serviço de "baixar por idade" seria um job noturno com outro nome, e
+ * o dia em que não rodasse o ente pagaria salário-família de um jovem de vinte anos.
+ */
+export const zBaixarFinalidadeDependenteInput = z.object({
+  finalidadeId: z.string().min(1),
+  dataBaixa: z.coerce.date(),
+  motivoBaixa: zTexto(5, "O motivo da baixa — óbito, perda da guarda, decisão judicial"),
+  criadoPor: zAutor,
+});
+export type BaixarFinalidadeDependenteInput = z.input<typeof zBaixarFinalidadeDependenteInput>;
+
+// ── ATOS E REGISTROS ─────────────────────────────────────────────────────────
+
+export const zRegistrarPortariaInput = z
+  .object({
+    vinculoId: z.string().min(1),
+    numero: zTexto(1),
+    ano: z.number().int().min(1900, "Ano implausível").max(2200),
+    tipo: z.enum([
+      "NOMEACAO",
+      "DESIGNACAO",
+      "SUBSTITUICAO",
+      "PROMOCAO",
+      "EXONERACAO",
+      "DEMISSAO",
+    ]),
+    data: z.coerce.date(),
+    ementa: zTexto(10, "A ementa precisa dizer o que a portaria determina"),
+    dataPublicacao: z.coerce.date().optional(),
+    veiculoPublicacao: zOpcional(2),
+    criadoPor: zAutor,
+  })
+  .superRefine((v, ctx) => {
+    if (v.dataPublicacao !== undefined && v.dataPublicacao < v.data) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["dataPublicacao"],
+        message: "Portaria publicada antes de assinada.",
+      });
+    }
+    if (anoCivil(v.data) !== v.ano) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["ano"],
+        message:
+          `O ano da portaria (${v.ano}) não bate com o da data ` +
+          `(${anoCivil(v.data)}). A numeração é por exercício.`,
+      });
+    }
+  });
+export type RegistrarPortariaInput = z.input<typeof zRegistrarPortariaInput>;
+
+/**
+ * A ANOTAÇÃO NA FICHA — TR req. 23, segunda metade.
+ *
+ * ⚠️ TÍTULO E TEXTO TÊM MÍNIMO, e não é preciosismo. Anotação em branco na ficha funcional é pior
+ * que anotação nenhuma: ocupa uma linha do histórico, sugere que algo aconteceu e não diz o quê —
+ * e cinco anos depois ninguém sabe se foi erro de digitação ou informação perdida. O CHECK
+ * `ck_anotacao_servidor_conteudo` impõe o mesmo no caminho que não passa por aqui.
+ */
+export const zRegistrarAnotacaoServidorInput = z.object({
+  servidorId: z.string().min(1),
+  /** ⚠️ OPCIONAL: a anotação é da PESSOA, mas pode se referir a UMA matrícula. Ver o schema. */
+  vinculoId: z.string().min(1).optional(),
+  data: z.coerce.date(),
+  tipo: z.enum(["ELOGIO", "ADVERTENCIA", "SUSPENSAO", "OCORRENCIA", "OBSERVACAO"]),
+  titulo: zTexto(3, "O título precisa dizer do que se trata"),
+  texto: zTexto(10, "A anotação precisa dizer o que aconteceu — dez caracteres é o mínimo"),
+  portariaId: z.string().min(1).optional(),
+  criadoPor: zAutor,
+});
+export type RegistrarAnotacaoServidorInput = z.input<typeof zRegistrarAnotacaoServidorInput>;
+
+export const zRegistrarTreinamentoInput = z
+  .object({
+    servidorId: z.string().min(1),
+    descricao: zTexto(3),
+    instituicao: zOpcional(2),
+    cargaHoraria: z.number().int().positive().optional(),
+    dataInicio: z.coerce.date(),
+    dataTermino: z.coerce.date().optional(),
+    criadoPor: zAutor,
+  })
+  .superRefine((v, ctx) => {
+    if (v.dataTermino !== undefined && v.dataTermino < v.dataInicio) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["dataTermino"],
+        message: "O curso terminaria antes de começar.",
+      });
+    }
+  });
+export type RegistrarTreinamentoInput = z.input<typeof zRegistrarTreinamentoInput>;
+
+export const zCadastrarDiaCalendarioRhInput = z
+  .object({
+    data: z.coerce.date(),
+    tipo: z.enum([
+      "FERIADO_NACIONAL",
+      "FERIADO_ESTADUAL",
+      "FERIADO_MUNICIPAL",
+      "PONTO_FACULTATIVO",
+      "SEM_EXPEDIENTE",
+      "EXPEDIENTE_REDUZIDO",
+    ]),
+    descricao: zTexto(3),
+    horasExpediente: zDecimalNaoMonetario(24, "Horas do expediente").optional(),
+    lotacaoId: z.string().min(1).optional(),
+    criadoPor: zAutor,
+  })
+  .superRefine((v, ctx) => {
+    // ⚠️ BICONDICIONAL, como o CHECK `ck_calendario_rh_horas`. Sem a segunda metade, um feriado
+    // com "4 horas" seria gravado sem erro e o cálculo de frequência (bloco 2) o trataria como
+    // dia útil curto — o servidor apareceria devendo horas num dia em que ninguém trabalhou.
+    const temHoras = v.horasExpediente !== undefined;
+    if ((v.tipo === "EXPEDIENTE_REDUZIDO") !== temHoras) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["horasExpediente"],
+        message:
+          v.tipo === "EXPEDIENTE_REDUZIDO"
+            ? "Expediente reduzido exige quantas horas o dia terá."
+            : `${v.tipo} é dia sem expediente — não tem horas a informar.`,
+      });
+    }
+  });
+export type CadastrarDiaCalendarioRhInput = z.input<typeof zCadastrarDiaCalendarioRhInput>;
+
+export const zCadastrarContratoTrabalhoInput = z
+  .object({
+    vinculoId: z.string().min(1),
+    numero: zTexto(1),
+    prazo: z.enum(["DETERMINADO", "INDETERMINADO"]),
+    dataInicio: z.coerce.date(),
+    dataTerminoInicial: z.coerce.date().optional(),
+    objetoContratacao: zTexto(10, "O objeto precisa dizer para que se contratou"),
+    leiAutorizativa: zOpcional(3),
+    criadoPor: zAutor,
+  })
+  .superRefine((v, ctx) => {
+    // ⚠️ BICONDICIONAL, como o CHECK `ck_contrato_trabalho_prazo`. Contrato por tempo
+    // DETERMINADO sem término vence nunca — e "excepcional interesse público" (CF art. 37, IX)
+    // que vence nunca é contrato por prazo indeterminado com outro nome.
+    const temTermino = v.dataTerminoInicial !== undefined;
+    if ((v.prazo === "DETERMINADO") !== temTermino) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["dataTerminoInicial"],
+        message:
+          v.prazo === "DETERMINADO"
+            ? "Prazo DETERMINADO exige a data de término — sem ela o contrato vence nunca."
+            : "Prazo INDETERMINADO não tem data de término.",
+      });
+    }
+    if (v.dataTerminoInicial !== undefined && v.dataTerminoInicial <= v.dataInicio) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["dataTerminoInicial"],
+        message: "O contrato terminaria antes de começar.",
+      });
+    }
+  });
+export type CadastrarContratoTrabalhoInput = z.input<typeof zCadastrarContratoTrabalhoInput>;
+
+export const zProrrogarContratoTrabalhoInput = z.object({
+  contratoId: z.string().min(1),
+  numeroTermo: zTexto(1),
+  data: z.coerce.date(),
+  dias: z.number().int().positive("A prorrogação soma dias — o número tem de ser positivo"),
+  motivo: zMotivo,
+  criadoPor: zAutor,
+});
+export type ProrrogarContratoTrabalhoInput = z.input<typeof zProrrogarContratoTrabalhoInput>;
+
+export const zRegistrarAvaliacaoExperienciaInput = z
+  .object({
+    vinculoId: z.string().min(1),
+    etapa: z.number().int().min(1, "A etapa começa em 1"),
+    periodoInicio: z.coerce.date(),
+    periodoFim: z.coerce.date(),
+    resultado: z.enum(["EM_ANDAMENTO", "APROVADO", "REPROVADO", "PRORROGADO"]),
+    // ⚠️ NOTA, NÃO DINHEIRO — ver `zDecimalNaoMonetario`. A coluna é `Decimal(6,2)`.
+    pontuacao: zDecimalNaoMonetario(9999, "Pontuação").optional(),
+    parecer: zOpcional(5),
+    avaliadorNome: zOpcional(3),
+    criadoPor: zAutor,
+  })
+  .superRefine((v, ctx) => {
+    if (v.periodoFim <= v.periodoInicio) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["periodoFim"],
+        message: "O período de avaliação terminaria antes de começar.",
+      });
+    }
+  });
+export type RegistrarAvaliacaoExperienciaInput = z.input<
+  typeof zRegistrarAvaliacaoExperienciaInput
+>;

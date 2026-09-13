@@ -221,6 +221,10 @@ const RAIZ = resolve(import.meta.dirname, "..", "..");
  * errado — o mesmo motivo pelo qual o guard de eixo de data enumera suas fronteiras.
  */
 const PORTAS_DE_OPCOES: readonly string[] = [
+  // ⚠️ V6 P2 — a porta do pessoal (M32), declarada no mesmo commit em que nasceu: `pessoaId`,
+  // `vinculoId`, `cargoId`, `lotacaoId`, `paiId`, `unidadeOrcId` — os dois últimos já existem em
+  // outras portas, e é exatamente por isso que a fonte tem de ser declarada.
+  "lib/portas/recursos/pessoal-dados.ts",
   "lib/portas/recursos/almoxarifado-dados.ts",
   "lib/portas/recursos/dados.ts",
   // ⚠️ ENT06 — a porta da gestão do bem. Ela entrou aqui NO MESMO COMMIT em que nasceu, e a

@@ -33,7 +33,8 @@ export type SlugDeArea =
   | "controle-interno"
   | "administracao"
   | "integracoes"
-  | "suporte";
+  | "suporte"
+  | "pessoal";
 
 export interface AreaNav {
   /** O segmento da rota (`/planejamento`). */
@@ -62,6 +63,7 @@ export const AREAS: readonly AreaNav[] = [
   { slug: "administracao", rotulo: "Administração", descricao: "Usuários, perfis, permissões e registro de operações." },
   { slug: "integracoes", rotulo: "Integrações", descricao: "Central de integrações: SAGRES TXT/JSON, Banco do Brasil e API TCE-PB." },
   { slug: "suporte", rotulo: "Suporte", descricao: "Canais de atendimento e prazos de resposta contratados." },
+  { slug: "pessoal", rotulo: "Pessoal", descricao: "Servidores, vínculos e histórico funcional; cargos e lotações do quadro. Cargo, lotação e salário são derivados dos eventos." },
 ];
 
 /** Um relatório navegável (rota + rótulo + uma linha). Fonte ÚNICA da landing e do submenu. */
@@ -201,6 +203,13 @@ export const ADMINISTRACAO: readonly RelatorioNav[] = [
   { href: "/administracao/senha", numero: "Senha", rotulo: "Trocar Senha", descricao: "Troca a própria senha — revoga as sessões abertas." },
   { href: "/administracao/apresentacao", numero: "Apresentação", rotulo: "Apresentação do ente", descricao: "Nome de exibição, imagem institucional, contatos, tema e canais — versionado, com autor." },
   { href: "/administracao/sistema", numero: "Sistema", rotulo: "Sobre o sistema", descricao: "Proveniência do build, ambiente e as atualizações de permissões instaladas." },
+];
+
+/** PESSOAL (M32) — fonte única da landing e do submenu. */
+export const PESSOAL: readonly RelatorioNav[] = [
+  { href: "/pessoal/servidores", numero: "Servidores", rotulo: "Servidores", descricao: "A ficha do servidor sobre a pessoa do cadastro único; vínculos com cargo, lotação e salário derivados dos eventos." },
+  { href: "/pessoal/cargos", numero: "Cargos", rotulo: "Cargos", descricao: "O quadro: vagas fixadas em lei e vagas ocupadas contadas a cada leitura." },
+  { href: "/pessoal/lotacoes", numero: "Lotações", rotulo: "Lotações", descricao: "A árvore de lotações, com a unidade orçamentária quando houver." },
 ];
 
 /** Os CADASTROS BASE — fonte única da landing e do submenu. */

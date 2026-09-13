@@ -409,6 +409,25 @@ enum AcaoDoSistema {
   // ── V6 (P1.2) — atribuir a conta bancária a uma arrecadação do legado (M09, conciliação):
   // ato do tesoureiro, com motivo; a escrituração tem de bater com a conta atribuída. ──
   ATRIBUIR_CONTA_A_ARRECADACAO
+  // ── V6 (P2.1/P2.2) — M32 PESSOAL (RH bloco 1, conciliado do siafic-cg c04ad5a): catorze ações
+  // para dezessete serviços (criar a vaga × ocupar a vaga; cadastrar × admitir; mover × pagar;
+  // instruir × decidir — ver modules/m32-pessoal/MODULO.md) e a leitura da área. ──
+  CADASTRAR_SERVIDOR
+  ADMITIR_SERVIDOR
+  MOVIMENTAR_SERVIDOR
+  ALTERAR_REMUNERACAO
+  DESLIGAR_SERVIDOR
+  CADASTRAR_CARGO
+  CADASTRAR_LOTACAO
+  GERIR_DEPENDENTE
+  BAIXAR_DEPENDENTE
+  REGISTRAR_PORTARIA
+  REGISTRAR_ANOTACAO
+  REGISTRAR_TREINAMENTO
+  CONFIGURAR_CALENDARIO_RH
+  REGISTRAR_CONTRATO_TRABALHO
+  REGISTRAR_AVALIACAO_EXPERIENCIA
+  CONSULTAR_PESSOAL
   // ── V4 (§8, Fila A) — M02b, o planejamento PLURIANUAL (PPA e LDO): dez ações para vinte
   // serviços, agrupadas pelos ANEXOS DA LRF (ver `acoes.ts`). Conciliado do siafic-cg c04ad5a. ──
   CADASTRAR_PPA

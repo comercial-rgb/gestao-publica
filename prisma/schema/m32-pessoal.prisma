@@ -1,0 +1,876 @@
+// ============================================================================
+// M32 — PESSOAL (RH, bloco 1: cadastro de servidor, vínculo e estrutura de cargos)
+//
+// CONCILIADO do siafic-cg c04ad5a (lá era "m22-rh"; aqui o M22 é DOCUMENTOS — número igual não é
+// equivalência). Diferença deliberada (V6 P2.1): o `Servidor` NÃO repete CPF, nome, endereço nem
+// contato — aponta para a `Pessoa` canônica do M19 (`pessoaId @unique`); os dados civis que só o
+// servidor tem (nascimento, sexo, PIS, RG, título, CTPS, filiação, foto) ficam aqui.
+// Cargo, lotação, salário, situação e desligamento são DERIVADOS de `HistoricoVinculo` — nunca
+// colunas de `Vinculo` (ver modules/m32-pessoal/MODULO.md).
+// ============================================================================
+
+// ============================================================================
+// M22 — RECURSOS HUMANOS: CADASTRO DE SERVIDOR, VÍNCULO E ESTRUTURA DE CARGOS.
+// TR item 06, bloco 1 de 4. SEM cálculo de folha.
+//
+// ⚠️ ISTO É O DOMÍNIO. A FOLHA LC 131 DO M20/M13 É PROJEÇÃO DE PUBLICAÇÃO.
+// A decisão foi tomada com evidência, e a evidência está no arquivo vizinho:
+//
+//   · `ServidorTransparencia` não tem CPF (m20-folha-transparencia.prisma:14-32).
+//     SEFIP, CAGED, RAIS, DIRF e eSocial são todos chaveados por CPF — um
+//     cadastro de pessoa sem CPF não é um cadastro incompleto, é outra coisa.
+//   · Aquele servidor é SOBRESCRITO por CSV a cada importação
+//     (modules/m20-importador/folha-transparencia.ts:149-152): nome, cargo,
+//     regime, vínculo e ativo são reescritos. Isso é a assinatura de uma
+//     MATERIALIZAÇÃO, não de um registro de que alguém é dono.
+//   · `proventos`/`descontos` de lá são AGREGADOS, com CHECK
+//     `valorLiquido = proventos - descontos`. Agregado não se decompõe em
+//     rubrica: a seta só aponta para um lado.
+//
+// Por isso este módulo NÃO estende aqueles models e NÃO os toca. A importação
+// de folha continua existindo — é o caminho do ente enquanto a folha roda em
+// sistema de terceiro, e o único caminho para competências anteriores à
+// migração. Quando o bloco 2 trouxer o cálculo, `datasetFolhaPublica` ganha uma
+// SEGUNDA fonte; a primeira não morre.
+//
+// ⚠️ M22 PORQUE M21 É CONVÊNIOS. M15/M18/M19 foram para `adapters/tribunais/` e
+// o número não voltou a ficar livre; M20 é o importador.
+//
+// ⚠️ ESTADO É DERIVADO, como em todo o repositório — e aqui a regra tem um
+// motivo que se pode APONTAR COM O DEDO. Na projeção, `cargo` é coluna da
+// PESSOA, e `datasetFolhaPublica` o lê por join (m13-transparencia/folha.ts:35).
+// Consequência: um servidor promovido em junho tem a folha de MAIO republicada
+// com o cargo de junho. Aqui isso não pode acontecer, e é por isso que
+// `Vinculo` NÃO TEM coluna de cargo, de lotação, de salário, de situação nem de
+// desligamento. Tudo isso é evento em `HistoricoVinculo`, e o vigente numa data
+// é o último evento até ela:
+//
+//   · cargo vigente em D    = último evento com `cargoId` até D
+//   · lotação vigente em D  = último evento com `lotacaoId` até D
+//   · salário vigente em D  = último evento com `salarioBase` até D
+//   · situação em D         = DESLIGADO / AFASTADO / ATIVO, pelos eventos até D
+//   · vagas ocupadas        = contagem de vínculos ativos cujo cargo vigente é o
+//                             cargo em questão
+//
+// ⚠️ LGPD — ESTE É O MÓDULO COM MAIS DADO PESSOAL DO SISTEMA. CPF, RG, PIS,
+// título de eleitor, endereço, filiação, dependentes menores de idade. NADA
+// daqui é publicado: a área pública (`app/transparencia/**`) continua servindo
+// a projeção do M13, com o recorte da LC 131 — que não inclui CPF. Há um
+// grep-teste que falha se o CPF de servidor alcançar rota pública
+// (`test/ui/cpf-fora-da-area-publica.test.ts`).
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// ENUMS
+// ----------------------------------------------------------------------------
+
+/// TR req. 2 — o sexo no cadastro civil.
+///
+/// ⚠️ `NAO_INFORMADO` EXISTE DE PROPÓSITO. O cadastro é alimentado por
+/// documentos, e documento antigo vem incompleto. Sem este valor, quem digita
+/// escolhe um dos dois no chute — e o chute fica indistinguível do dado.
+enum SexoServidor {
+  MASCULINO
+  FEMININO
+  NAO_INFORMADO
+}
+
+/// A NATUREZA DO VÍNCULO — TR req. 3.
+///
+/// ⚠️ SETE VALORES, E NÃO OS DOIS DA PROJEÇÃO. `TipoVinculoTransparencia`
+/// (m20-folha-transparencia.prisma:9-12) tem EFETIVO e COMISSIONADO — o recorte
+/// que a LC 131 publica. A folha do ente PAGA muito mais que isso: temporário
+/// (CF art. 37, IX), agente político eletivo, aposentado e pensionista do RPPS,
+/// estagiário (Lei 11.788/2008).
+///
+/// ⚠️ E POR ISSO **NÃO** É O MESMO ENUM. O M21 reusou `TipoMovimentoContratual`
+/// do M11 justamente porque as duas listas eram IDÊNTICAS — e o comentário de lá
+/// diz que "duas listas iguais em módulos diferentes é onde as duas começam a
+/// divergir". Aqui as listas já nascem diferentes: uma tem 2 valores e serve à
+/// publicação, outra tem 7 e serve ao pagamento. Fundi-las obrigaria a publicar
+/// pensionista como "EFETIVO" ou a deixar o dataset da LC 131 recusar linhas.
+enum TipoVinculoRh {
+  /// Concursado, estatutário. CF art. 37, II.
+  EFETIVO
+  /// Cargo em comissão, livre nomeação e exoneração. CF art. 37, II e V.
+  COMISSIONADO
+  /// Contratação por tempo determinado, excepcional interesse público. CF art. 37, IX.
+  TEMPORARIO
+  /// Agente político: prefeito, vice, secretário, vereador.
+  ELETIVO
+  /// Inativo do RPPS — a folha o paga, e o TCE o cobra.
+  APOSENTADO
+  /// Pensão por morte do RPPS.
+  PENSIONISTA
+  /// Lei 11.788/2008 — bolsa, não remuneração; sem vínculo empregatício.
+  ESTAGIARIO
+}
+
+/// O EVENTO DA VIDA FUNCIONAL — o que o histórico registra.
+///
+/// ⚠️ ESTA É A LISTA QUE SUSTENTA TODAS AS DERIVAÇÕES. Um evento que mexe em
+/// cargo traz `cargoId`; um que mexe em lotação traz `lotacaoId`; um que mexe em
+/// remuneração traz `salarioBase`. O CHECK do banco impõe o que cada tipo tem de
+/// trazer — ver a migration.
+enum TipoEventoVinculo {
+  /// O nascimento do vínculo. Traz cargo, lotação E salário — é o único que os
+  /// traz obrigatoriamente juntos, e há exatamente UM por vínculo.
+  ADMISSAO
+  /// Progressão na carreira: muda cargo E salário.
+  PROMOCAO
+  /// Muda de cargo sem progressão (readaptação, aproveitamento).
+  MUDANCA_CARGO
+  /// Remoção, transferência entre unidades.
+  MUDANCA_LOTACAO
+  /// Revisão geral anual (CF art. 37, X) ou reenquadramento — só salário.
+  REAJUSTE_SALARIAL
+  /// Gratificação, adicional, função gratificada — parcela ADICIONAL ao salário.
+  GRATIFICACAO
+  /// Licença, cessão, suspensão. O vínculo existe e não está ativo.
+  AFASTAMENTO
+  /// O fim do afastamento — o vínculo volta a ATIVO.
+  RETORNO_AFASTAMENTO
+  /// Exoneração, demissão, aposentadoria, falecimento. Há no máximo UM por
+  /// vínculo: readmitir é outro vínculo, com outra matrícula.
+  DESLIGAMENTO
+}
+
+/// TR req. 6 — o grau de parentesco do dependente.
+enum GrauParentesco {
+  CONJUGE
+  COMPANHEIRO
+  FILHO
+  ENTEADO
+  TUTELADO
+  PAI
+  MAE
+  IRMAO
+  NETO
+  OUTRO
+}
+
+/// PARA QUE O DEPENDENTE VALE — TR req. 7.
+///
+/// ⚠️ UM DEPENDENTE PODE TER **VÁRIAS**, E OS LIMITES DE IDADE SÃO DIFERENTES
+/// EM CADA UMA. O mesmo filho de 16 anos já saiu do salário-família (14 anos,
+/// Lei 8.213/91 art. 65) e continua no imposto de renda (21, Lei 9.250/95
+/// art. 35). Por isso a finalidade é uma TABELA à parte, com a própria baixa —
+/// uma coluna no dependente daria um limite só, e o errado.
+enum FinalidadeDoDependente {
+  /// Lei 9.250/1995 art. 35 — dedução na base do IRRF.
+  IMPOSTO_RENDA
+  /// Lei 8.213/1991 art. 65 — a cota do salário-família.
+  SALARIO_FAMILIA
+  /// Contrato de assistência à saúde do ente.
+  PLANO_SAUDE
+  /// Decisão judicial — o desconto vai para o alimentando (bloco 3).
+  PENSAO_ALIMENTICIA
+}
+
+/// A NATUREZA DO CARGO — TR req. 8.
+enum TipoCargo {
+  EFETIVO
+  COMISSAO
+  FUNCAO_GRATIFICADA
+  EMPREGO_PUBLICO
+  TEMPORARIO
+  AGENTE_POLITICO
+}
+
+/// O QUE A ANOTAÇÃO REGISTRA — TR req. 23, segunda metade.
+///
+/// ⚠️ CINCO VALORES, E NENHUM DELES MOVE A VIDA FUNCIONAL. Anotação não promove, não remove, não
+/// desliga — quem faz isso é `HistoricoVinculo`, e por isso os dois não se misturam. O que a
+/// anotação faz é registrar o que ACONTECEU e ficou na ficha: um elogio que conta em progressão
+/// por merecimento, uma advertência que instrui processo disciplinar, uma ocorrência que ninguém
+/// mais lembraria em cinco anos.
+enum TipoAnotacaoServidor {
+  /// Reconhecimento formal — conta na avaliação de desempenho e na progressão por merecimento.
+  ELOGIO
+  /// Penalidade branda (Lei 8.112/90 art. 129, e as leis municipais que a espelham).
+  ADVERTENCIA
+  /// Penalidade com afastamento. ⚠️ O AFASTAMENTO EM SI é evento do histórico funcional — esta
+  /// linha registra a PENALIDADE; a ausência do servidor é `AFASTAMENTO` em `HistoricoVinculo`.
+  SUSPENSAO
+  /// Fato relevante sem juízo de valor: acidente de trabalho, incidente, sindicância instaurada.
+  OCORRENCIA
+  /// A anotação de rotina do RH — o que não cabe em nenhuma das outras.
+  OBSERVACAO
+}
+
+/// TR reqs. 22 e 23 — o ato administrativo que fundamenta o movimento.
+enum TipoPortaria {
+  NOMEACAO
+  DESIGNACAO
+  SUBSTITUICAO
+  PROMOCAO
+  EXONERACAO
+  DEMISSAO
+}
+
+/// TR req. 20 — o que o calendário do RH marca.
+enum TipoDiaCalendario {
+  FERIADO_NACIONAL
+  FERIADO_ESTADUAL
+  FERIADO_MUNICIPAL
+  PONTO_FACULTATIVO
+  SEM_EXPEDIENTE
+  /// O único que exige `horasExpediente` — o CHECK do banco impõe.
+  EXPEDIENTE_REDUZIDO
+}
+
+/// TR req. 11 — o prazo do contrato de trabalho.
+enum PrazoContratoTrabalho {
+  /// Tem término. `dataTerminoInicial` é obrigatória — CHECK.
+  DETERMINADO
+  /// Não tem. `dataTerminoInicial` é NULA — CHECK.
+  INDETERMINADO
+}
+
+/// TR req. 14 — o desfecho da avaliação de experiência / estágio probatório.
+enum ResultadoAvaliacao {
+  EM_ANDAMENTO
+  APROVADO
+  REPROVADO
+  /// Prorrogado — outra etapa entra depois desta.
+  PRORROGADO
+}
+
+// ----------------------------------------------------------------------------
+// A ESTRUTURA — cargo e lotação. Cadastros que EXISTEM ANTES do servidor.
+// ----------------------------------------------------------------------------
+
+/// O CARGO — TR reqs. 8 e 9 (quantitativo de vagas fixadas em lei).
+///
+/// ⚠️ `vagasFixadas` É COLUNA E `vagasOcupadas` **NÃO É**. A primeira vem da
+/// LEI — é um número que alguém votou, e ninguém o deriva. A segunda é a
+/// contagem de vínculos ativos cujo cargo VIGENTE é este, e materializá-la
+/// criaria a segunda verdade que o repositório recusa em toda parte: bastaria
+/// uma promoção gravada sem passar pelo serviço para o contador mentir, e o
+/// número que mente é justamente o que diz se o ente pode nomear mais alguém.
+model Cargo {
+  id String @id @default(cuid())
+
+  /// O código do cargo no plano de cargos do ente.
+  codigo      String @unique
+  denominacao String
+  tipo        TipoCargo
+
+  /// TR req. 9 — quantas vagas a LEI fixou. Zero é legítimo (cargo criado e
+  /// ainda sem vagas providas na LOA).
+  vagasFixadas Int
+
+  /// TR req. 8 — a lei que criou o cargo e a data em que foi publicada.
+  leiAutorizativa   String
+  dataPublicacaoLei DateTime
+
+  /// A lei que EXTINGUIU o cargo. Nulo = vigente. Não é `ativo Boolean`: a data
+  /// diz QUANDO, e um cargo extinto em 2019 não pode aparecer como opção para um
+  /// evento de 2018.
+  dataExtincao   DateTime?
+  leiExtincao    String?
+
+  /// A escolaridade e a carga horária exigidas (TR req. 8). Texto: cada ente
+  /// escreve o requisito como a lei dele escreveu.
+  requisitoIngresso String?
+  cargaHorariaSemanal Int?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  eventos HistoricoVinculo[]
+
+  @@index([tipo])
+  @@index([dataExtincao])
+}
+
+/// A LOTAÇÃO — a estrutura ORGANIZACIONAL, TR req. 10.
+///
+/// ═══ ⚠️ POR QUE ELA NÃO É `UnidadeOrcamentaria` ═══
+/// A tentação é grande e está errada, por três razões que se verificam no repo:
+///
+///   1. A UO é a unidade do SAGRES-PB, com código de 5 dígitos NUMÉRICOS
+///      (m02-planejamento.prisma:63-64), e o gerador do MANAD passa esse código
+///      por `numero()` (m14-exports-federais/manad/gerador.ts:1472). Uma escola
+///      municipal não tem código SAGRES, e inventar um poria dado falso no
+///      caminho de um arquivo que a Receita lê.
+///   2. `lib/portas/contexto.ts:87` lista TODAS as unidades orçamentárias para
+///      montar o escopo de quem tem permissão GLOBAL, e `plurianual.ts:584` as
+///      oferece no cadastro de ação do PPA. Cada creche cadastrada como UO
+///      apareceria nos dois seletores, do sistema inteiro.
+///   3. A UO tem DOIS níveis (órgão → unidade). Lotação tem quantos o ente
+///      quiser: Secretaria → Diretoria → Escola → Turno.
+///
+/// ⚠️ MAS A LIGAÇÃO EXISTE, E É OPCIONAL. A folha é paga por uma ficha, e a
+/// ficha tem UO. `unidadeOrcId` guarda essa correspondência QUANDO ela existe —
+/// é o que o bloco 2 vai usar para apropriar a despesa de pessoal. Nula
+/// significa "esta caixa do organograma não corresponde a uma unidade
+/// orçamentária", que é o caso da maioria das folhas do organograma.
+model Lotacao {
+  id String @id @default(cuid())
+
+  codigo String @unique
+  nome   String
+
+  /// A caixa acima no organograma. Nula na raiz. Auto-relação.
+  paiId String?
+  pai   Lotacao?  @relation("HierarquiaLotacao", fields: [paiId], references: [id])
+  filhas Lotacao[] @relation("HierarquiaLotacao")
+
+  /// A unidade orçamentária correspondente, QUANDO existe. Ver o docblock.
+  unidadeOrcId String?
+  unidadeOrc   UnidadeOrcamentaria? @relation(fields: [unidadeOrcId], references: [id])
+
+  /// Extinta em. Nula = vigente. Mesmo argumento do `Cargo.dataExtincao`.
+  dataExtincao DateTime?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  eventos        HistoricoVinculo[]
+  diasCalendario CalendarioRh[]
+
+  @@index([paiId])
+  @@index([unidadeOrcId])
+  @@index([dataExtincao])
+}
+
+// ----------------------------------------------------------------------------
+// A PESSOA
+// ----------------------------------------------------------------------------
+
+/// O SERVIDOR — TR reqs. 2, 3, 5, 12, 13. **O CPF É A IDENTIDADE.**
+///
+/// ═══ ⚠️ POR QUE CPF, E NÃO MATRÍCULA ═══
+/// SEFIP, CAGED, RAIS, DIRF e eSocial (bloco 4) são TODOS chaveados por CPF. A
+/// matrícula é chave do ENTE — ela identifica um VÍNCULO, e a mesma pessoa tem
+/// N vínculos (TR req. 4). Fazer da matrícula a identidade da pessoa faria de
+/// cada vínculo uma pessoa diferente, e a DIRF do ente declararia dois
+/// rendimentos a duas pessoas que são a mesma.
+///
+/// É exatamente o que a PROJEÇÃO faz — `ServidorTransparencia.matricula @unique`
+/// (m20-folha-transparencia.prisma:17) — e por isso ela é projeção.
+///
+/// ═══ ⚠️ NÃO HÁ `atualizadoEm` AQUI, E A AUSÊNCIA É A DECISÃO ═══
+/// A projeção tem (`ServidorTransparencia.atualizadoEm @updatedAt`), porque um
+/// CSV a sobrescreve. Este cadastro não é sobrescrito por ninguém: este bloco
+/// entrega **criação**, e a alteração cadastral (mudança de endereço, de nome
+/// por casamento, correção de digitação) é PENDÊNCIA NOMEADA — ela precisa de
+/// histórico próprio, e um `update` mudo perderia o que o campo dizia antes.
+///
+/// ⚠️ E A FOTO É REFERÊNCIA, NUNCA BYTES. Mesma decisão do `DocumentoConvenio`
+/// (m21-convenios.prisma): não há storage neste repositório. Gravar o binário
+/// numa coluna faria o Postgres carregar megabytes em cada SELECT de servidor e
+/// multiplicaria o backup. O hash existe para provar, quando o storage nascer,
+/// que o arquivo referenciado é o que foi anexado.
+model Servidor {
+  id String @id @default(cuid())
+
+  /// V6 P2.1 — A IDENTIDADE É A PESSOA CANÔNICA (M19): CPF, nome, endereço e contatos vivem lá,
+  /// versionados. Uma pessoa é no máximo UM servidor (@unique); um servidor tem N vínculos.
+  pessoaId String @unique
+  pessoa   Pessoa @relation(fields: [pessoaId], references: [id])
+
+  /// Lei 14.164/2021 e Decreto 8.727/2016 — o nome pelo qual a pessoa é
+  /// reconhecida. Quando presente, é ELE que as telas mostram.
+  nomeSocial     String?
+  dataNascimento DateTime
+  sexo           SexoServidor
+
+  /// PIS/PASEP/NIT — 11 dígitos. A SEFIP e o eSocial (bloco 4) o exigem; aqui
+  /// ele é opcional porque o cadastro nasce antes de o documento chegar.
+  pisPasep String? @db.VarChar(11)
+
+  // ── RG (TR req. 2) ────────────────────────────────────────────────────────
+  rgNumero       String?
+  rgOrgaoEmissor String?
+  rgUf           String? @db.Char(2)
+  rgDataEmissao  DateTime?
+
+  // ── Título de eleitor (TR req. 2) ─────────────────────────────────────────
+  tituloEleitor String? @db.VarChar(12)
+  tituloZona    String?
+  tituloSecao   String?
+
+  // ── CTPS (TR req. 2) ──────────────────────────────────────────────────────
+  ctpsNumero String?
+  ctpsSerie  String?
+  ctpsUf     String? @db.Char(2)
+
+  // ── Filiação (TR req. 2) — a RAIS e o eSocial pedem o nome da mãe ─────────
+  nomeMae String?
+  nomePai String?
+
+  // ── Foto: REFERÊNCIA, nunca bytes ─────────────────────────────────────────
+  /// Caminho OPACO. Nenhuma linha deste módulo o interpreta.
+  fotoCaminho      String?
+  fotoTipoConteudo String?
+  fotoHashSha256   String? @db.VarChar(64)
+
+  // ── Endereço (TR req. 2) ──────────────────────────────────────────────────
+
+  // ── Contato (TR req. 2) ───────────────────────────────────────────────────
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  vinculos     Vinculo[]
+  dependentes  Dependente[]
+  treinamentos Treinamento[]
+  anotacoes    AnotacaoServidor[]
+
+  @@index([dataNascimento])
+}
+
+// ----------------------------------------------------------------------------
+// O VÍNCULO E A VIDA FUNCIONAL
+// ----------------------------------------------------------------------------
+
+/// O VÍNCULO — TR reqs. 3 e 4. **UMA PESSOA TEM N VÍNCULOS.**
+///
+/// ═══ ⚠️ O ESCOPO DA UNICIDADE DA MATRÍCULA: **GLOBAL**, e aqui está o porquê ═══
+/// A matrícula identifica o VÍNCULO, não a pessoa — o professor com duas
+/// cadeiras tem duas matrículas, e o TR req. 4 pede exatamente que as duas
+/// apareçam. Isso resolve "por vínculo"; falta o escopo da unicidade.
+///
+/// As três candidatas eram GLOBAL, por entidade e por período. Por ENTIDADE
+/// morre na leitura: não existe entidade neste repositório (não há `tenantId`, e
+/// a regra que o proíbe é do projeto inteiro) — o que existe é órgão e unidade
+/// orçamentária, e a matrícula não é emitida por nenhum dos dois: é emitida pelo
+/// RH do ente. Por PERÍODO morre no uso: um vínculo atravessa exercícios, e uma
+/// matrícula que só é única dentro de um ano não responde "quem é a 12345".
+///
+/// Sobra GLOBAL, e há uma razão positiva para ela: a projeção da LC 131 já
+/// impõe unicidade global (`ServidorTransparencia.matricula @unique`,
+/// m20-folha-transparencia.prisma:17) e o importador resolve cada linha do CSV
+/// **só** pela matrícula (folha-transparencia.ts:143). No dia em que a folha
+/// derivar deste módulo (bloco 2), duas matrículas iguais fariam a derivação
+/// escolher UM dos vínculos em silêncio — e publicar o salário de um sob o nome
+/// do outro.
+///
+/// ⚠️ O RISCO DO REAPROVEITAMENTO É REAL E FICA NOMEADO. Ente que reaproveita
+/// matrícula de servidor desligado há vinte anos vai bater no `@unique` e
+/// receber `MATRICULA-JA-USADA`, com o nome de quem a usou. Isso é o desfecho
+/// CERTO: a alternativa (deixar entrar) é o histórico funcional de duas pessoas
+/// somado numa matrícula só, que é irreversível. A carga de base legada resolve
+/// isso na carga, não afrouxando a coluna.
+///
+/// ⚠️ NÃO HÁ COLUNA DE CARGO, DE LOTAÇÃO, DE SALÁRIO, DE SITUAÇÃO NEM DE
+/// DESLIGAMENTO. Todas são derivadas de `HistoricoVinculo` — ver o cabeçalho do
+/// arquivo, e o defeito da projeção que a regra existe para não repetir. A
+/// `dataAdmissao` fica porque é o INSTANTE DE NASCIMENTO do vínculo, não um
+/// estado que muda; é o mesmo papel de `Convenio.vigenciaInicio`.
+model Vinculo {
+  id String @id @default(cuid())
+
+  servidorId String
+  servidor   Servidor @relation(fields: [servidorId], references: [id])
+
+  /// ⚠️ ÚNICA NO ENTE INTEIRO — ver o docblock acima.
+  matricula String @unique
+
+  tipo TipoVinculoRh
+
+  /// O regime jurídico, como a lei do ente o nomeia ("Estatutário", "CLT",
+  /// "Especial"). Texto e não enum, de propósito: o regime sai da lei orgânica
+  /// municipal, e um enum escrito aqui recusaria um nome legítimo que ninguém
+  /// previu. A projeção usa `String` no mesmo campo — as duas continuam
+  /// comparáveis. A categoria do eSocial (que É tabelada) entra no bloco 4.
+  regimeJuridico String
+
+  dataAdmissao DateTime
+
+  observacao String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  eventos     HistoricoVinculo[]
+  portarias   Portaria[]
+  contratos   ContratoTrabalho[]
+  avaliacoes  AvaliacaoExperiencia[]
+  anotacoes   AnotacaoServidor[]
+
+  @@index([servidorId])
+  @@index([tipo])
+  @@index([dataAdmissao])
+}
+
+/// O HISTÓRICO FUNCIONAL — TR reqs. 17, 18 e 25. **APPEND-ONLY.**
+///
+/// ⚠️ É ELE QUE IMPEDE O DEFEITO DA PROJEÇÃO. Cargo, lotação e salário vivem
+/// AQUI, com data — e não como coluna do vínculo. A promoção de junho é uma
+/// LINHA NOVA; a de maio continua onde estava, e `cargoVigenteEm(eventos, maio)`
+/// devolve o cargo de maio. Se cargo fosse coluna, o `UPDATE` da promoção
+/// reescreveria o passado, e a folha de maio seria republicada com o cargo de
+/// junho — que é literalmente o que acontece hoje em
+/// `datasetFolhaPublica` (m13-transparencia/folha.ts:35).
+///
+/// ⚠️ NADA AQUI É APAGADO NEM ALTERADO. Errou o evento? Registra o evento que o
+/// corrige — a correção é fato, como o cancelamento do M21.
+model HistoricoVinculo {
+  id String @id @default(cuid())
+
+  vinculoId String
+  vinculo   Vinculo @relation(fields: [vinculoId], references: [id])
+
+  /// A data de EFEITO do evento — não a de digitação (essa é `criadoEm`). É por
+  /// ela que as derivações ordenam.
+  data DateTime
+
+  tipo TipoEventoVinculo
+
+  /// Presente em ADMISSAO, PROMOCAO e MUDANCA_CARGO. O CHECK impõe.
+  cargoId String?
+  cargo   Cargo?  @relation(fields: [cargoId], references: [id])
+
+  /// Presente em ADMISSAO e MUDANCA_LOTACAO. O CHECK impõe.
+  lotacaoId String?
+  lotacao   Lotacao? @relation(fields: [lotacaoId], references: [id])
+
+  /// Presente em ADMISSAO, PROMOCAO e REAJUSTE_SALARIAL. O CHECK impõe.
+  salarioBase Decimal? @db.Decimal(18, 2)
+
+  /// A GRATIFICAÇÃO é parcela ADICIONAL, e por isso tem colunas próprias em vez
+  /// de mexer em `salarioBase`: o adicional de insalubridade não muda o
+  /// vencimento-base, e somá-lo lá faria o próximo reajuste incidir sobre ele.
+  gratificacaoDescricao String?
+  gratificacaoValor     Decimal? @db.Decimal(18, 2)
+
+  /// O que fundamenta o evento — em texto, sempre exigido.
+  motivo String
+
+  /// O ATO que o fundamenta, quando há. Nulo no reajuste geral (que vem de lei,
+  /// não de portaria).
+  portariaId String?
+  portaria   Portaria? @relation(fields: [portariaId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([vinculoId, data])
+  @@index([cargoId])
+  @@index([lotacaoId])
+  @@index([tipo])
+}
+
+// ----------------------------------------------------------------------------
+// DEPENDENTES — TR reqs. 6 e 7
+// ----------------------------------------------------------------------------
+
+/// O DEPENDENTE — a PESSOA. TR req. 6.
+///
+/// ⚠️ O CPF É OPCIONAL AQUI, e é a única concessão do módulo: recém-nascido
+/// entra na folha antes de ter CPF. Quando existe, é normalizado e o CHECK o
+/// impõe, como no servidor.
+model Dependente {
+  id String @id @default(cuid())
+
+  servidorId String
+  servidor   Servidor @relation(fields: [servidorId], references: [id])
+
+  nome           String
+  cpf            String?  @db.VarChar(11)
+  dataNascimento DateTime
+  grauParentesco GrauParentesco
+
+  /// ⚠️ SUSPENDE O LIMITE DE IDADE, e por isso é fato médico declarado e não
+  /// derivação. Filho inválido permanece dependente sem limite etário
+  /// (Lei 8.213/91 art. 16 §-único; Lei 9.250/95 art. 35 §-único).
+  invalidezPermanente Boolean @default(false)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  finalidades FinalidadeDependente[]
+
+  @@index([servidorId])
+  @@index([dataNascimento])
+}
+
+/// PARA QUE ESTE DEPENDENTE VALE — TR req. 7, e a BAIXA mora aqui.
+///
+/// ═══ ⚠️ A BAIXA POR IDADE É **DERIVADA**, A BAIXA POR FATO É **COLUNA** ═══
+/// São duas coisas, e confundi-las é o erro que este desenho evita.
+///
+///   · A baixa por IDADE acontece sozinha, num dia que já se sabe desde o
+///     nascimento. Materializá-la exigiria um job noturno — e no dia em que o
+///     job não rodasse, o ente pagaria salário-família de um jovem de 20 anos e
+///     nada acusaria. Derivada, ela é verdade em toda consulta, sem job nenhum.
+///   · A baixa por FATO (óbito, decisão judicial, perda da guarda, saída do
+///     plano) tem uma data que ninguém calcula. Essa é `dataBaixa`.
+///
+/// `limiteIdadeAnos` nulo = SEM LIMITE (plano de saúde, pensão judicial,
+/// dependente inválido). O serviço o preenche a partir do limite LEGAL da
+/// finalidade quando a entrada o omite — o Record com as citações está em
+/// `modules/m22-rh/dominio.ts`.
+///
+/// ⚠️ ELE **NÃO** TEM `@default` NA COLUNA, ao contrário do
+/// `Convenio.diasAlertaVencimento`. Lá o padrão é UM número para todos os
+/// convênios, e a coluna é a fonte certa. Aqui o padrão DEPENDE da finalidade
+/// (14 no salário-família, 21 no IR) — um default de coluna teria de escolher um
+/// dos dois e estaria errado no outro.
+model FinalidadeDependente {
+  id String @id @default(cuid())
+
+  dependenteId String
+  dependente   Dependente @relation(fields: [dependenteId], references: [id])
+
+  finalidade FinalidadeDoDependente
+
+  dataInicio DateTime
+
+  /// Nulo = sem limite etário. Ver o docblock.
+  limiteIdadeAnos Int?
+
+  /// A baixa por FATO. Nula = não houve. A baixa por idade não vem daqui.
+  dataBaixa   DateTime?
+  motivoBaixa String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([dependenteId])
+  @@index([finalidade])
+}
+
+// ----------------------------------------------------------------------------
+// OS ATOS E OS REGISTROS AUXILIARES
+// ----------------------------------------------------------------------------
+
+/// A PORTARIA — TR reqs. 22 e 23.
+///
+/// ⚠️ ELA PERTENCE A UM VÍNCULO, e não ao servidor. Nomeação, exoneração e
+/// promoção são atos sobre um CARGO OCUPADO: o professor com duas matrículas
+/// pode ser exonerado de uma e continuar na outra, e uma portaria pendurada na
+/// pessoa não saberia de qual.
+model Portaria {
+  id String @id @default(cuid())
+
+  vinculoId String
+  vinculo   Vinculo @relation(fields: [vinculoId], references: [id])
+
+  numero String
+  ano    Int
+  tipo   TipoPortaria
+  data   DateTime
+
+  ementa String
+
+  /// TR req. 23 — a publicação. Nulas enquanto não publicada.
+  dataPublicacao    DateTime?
+  veiculoPublicacao String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  eventos   HistoricoVinculo[]
+  anotacoes AnotacaoServidor[]
+
+  @@unique([ano, numero])
+  @@index([vinculoId])
+  @@index([tipo])
+}
+
+/// A ANOTAÇÃO ELETRÔNICA NA FICHA — TR req. 23, segunda metade. **APPEND-ONLY.**
+///
+/// ═══ ⚠️ POR QUE ELA NÃO É `Vinculo.observacao` NEM `HistoricoVinculo.motivo` ═══
+/// As duas existiam quando este model nasceu, e nenhuma serve:
+///   · `Vinculo.observacao` é UM campo, escrito uma vez na admissão. Não é datado, não tem autor
+///     próprio e não é lista — a segunda anotação sobrescreveria a primeira.
+///   · `HistoricoVinculo.motivo` é obrigatório, mas amarrado a um EVENTO funcional. Um elogio não
+///     promove ninguém; forçá-lo ali obrigaria a inventar um tipo de evento que não move nada, e
+///     o `cargoVigenteEm` passaria a percorrer linhas que não têm o que dizer.
+///
+/// ⚠️ PENDURADA NO **SERVIDOR**, com o vínculo OPCIONAL. A ficha é da PESSOA — é o que o TR diz.
+/// Mas o professor com duas cadeiras pode ser advertido numa e não na outra, e uma anotação que
+/// não soubesse de qual matrícula fala seria inútil justamente no caso que importa. É a mesma
+/// divisão que já existe entre `Treinamento` (da pessoa) e `Portaria` (do vínculo) — aqui as duas
+/// coisas cabem, e por isso a FK é nula quando a anotação é geral.
+///
+/// ⚠️ NADA AQUI SE APAGA NEM SE ALTERA. Uma ficha funcional em que se pode apagar a advertência é
+/// uma ficha que não prova nada — e é exatamente contra isso que o TR pede para "controlar o
+/// histórico". A RETIFICAÇÃO de anotação errada é PENDÊNCIA NOMEADA (ver `MODULO.md`): ela precisa
+/// do ato que a anula, e inventar meia-retificação agora seria pior que não ter nenhuma.
+model AnotacaoServidor {
+  id String @id @default(cuid())
+
+  servidorId String
+  servidor   Servidor @relation(fields: [servidorId], references: [id])
+
+  /// A matrícula a que a anotação se refere. NULA = anotação da pessoa, não de um vínculo.
+  vinculoId String?
+  vinculo   Vinculo? @relation(fields: [vinculoId], references: [id])
+
+  /// A data do FATO anotado — não a da digitação (essa é `criadoEm`). É por ela que a ficha ordena.
+  data DateTime
+
+  tipo   TipoAnotacaoServidor
+  titulo String
+  texto  String
+
+  /// O ato que a fundamenta, quando há (a portaria da penalidade). Nula no elogio informal.
+  portariaId String?
+  portaria   Portaria? @relation(fields: [portariaId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([servidorId, data])
+  @@index([vinculoId])
+  @@index([tipo])
+}
+
+/// TREINAMENTO E CAPACITAÇÃO — TR req. 15.
+///
+/// ⚠️ PENDURADO NO SERVIDOR, não no vínculo — ao contrário da portaria. O curso
+/// é da PESSOA: o professor que fez a pós-graduação a fez uma vez, e ela conta
+/// nas duas matrículas.
+model Treinamento {
+  id String @id @default(cuid())
+
+  servidorId String
+  servidor   Servidor @relation(fields: [servidorId], references: [id])
+
+  descricao   String
+  instituicao String?
+  /// Em horas. Inteiro: nenhum certificado publica fração de hora.
+  cargaHoraria Int?
+
+  dataInicio  DateTime
+  /// Nula enquanto o curso está em andamento.
+  dataTermino DateTime?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([servidorId])
+  @@index([dataInicio])
+}
+
+/// O CALENDÁRIO DO RH — TR req. 20.
+///
+/// ⚠️ UMA LINHA POR DATA, e a data é ÚNICA. Um dia não é feriado nacional E
+/// ponto facultativo ao mesmo tempo; se o ente antecipa o feriado, isso são
+/// duas datas, cada uma com o seu tipo.
+///
+/// ⚠️ `horasExpediente` É NULA EM TUDO MENOS `EXPEDIENTE_REDUZIDO`, e o CHECK
+/// `ck_calendario_rh_horas` impõe a bicondicional. Sem ele, um feriado com "4
+/// horas" seria gravado sem erro e o cálculo de frequência (bloco 2) o trataria
+/// como dia útil curto.
+model CalendarioRh {
+  id String @id @default(cuid())
+
+  data      DateTime          @unique
+  tipo      TipoDiaCalendario
+  descricao String
+
+  /// Só em EXPEDIENTE_REDUZIDO. `Decimal`, nunca `Float` — 3,5 horas em ponto
+  /// flutuante binário não é 3,5.
+  horasExpediente Decimal? @db.Decimal(4, 2)
+
+  /// A lotação a que o dia se aplica. Nula = o ente inteiro. É como o ente
+  /// registra o recesso que vale só para a escola.
+  lotacaoId String?
+  lotacao   Lotacao? @relation(fields: [lotacaoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([tipo])
+}
+
+/// O CONTRATO DE TRABALHO — TR req. 11.
+///
+/// ⚠️ O TÉRMINO VIGENTE É DERIVADO: `dataTerminoInicial + Σ dias das
+/// prorrogações`. Mesma disciplina da vigência do contrato administrativo
+/// (M11) e do convênio (M21) — o prazo prorrogado nunca é coluna.
+model ContratoTrabalho {
+  id String @id @default(cuid())
+
+  vinculoId String
+  vinculo   Vinculo @relation(fields: [vinculoId], references: [id])
+
+  numero String @unique
+  prazo  PrazoContratoTrabalho
+
+  dataInicio DateTime
+  /// Obrigatória em DETERMINADO, NULA em INDETERMINADO. O CHECK
+  /// `ck_contrato_trabalho_prazo` impõe a bicondicional — sem ele, um contrato
+  /// por tempo determinado sem término venceria nunca.
+  dataTerminoInicial DateTime?
+
+  objetoContratacao String
+  leiAutorizativa   String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  prorrogacoes ProrrogacaoContratoTrabalho[]
+
+  @@index([vinculoId])
+}
+
+/// A PRORROGAÇÃO — TR req. 11. **APPEND-ONLY, e ela SOMA.**
+///
+/// ⚠️ NÃO REUSA `vigenciaFim` DO M11, e a decisão é o contrário da do M21. Lá,
+/// o convênio reusou o helper porque reusou o ENUM inteiro — os movimentos
+/// contratuais têm SEIS tipos com sinais diferentes (acréscimo, supressão,
+/// prorrogação e os três estornos), e o helper existe para resolver esse sinal.
+/// Aqui só há uma direção. Carregar uma coluna `tipo` que só admite um valor,
+/// apenas para alcançar o helper, seria uma coluna que não informa nada — e o
+/// primeiro leitor perguntaria que outros valores ela aceita.
+model ProrrogacaoContratoTrabalho {
+  id String @id @default(cuid())
+
+  contratoId String
+  contrato   ContratoTrabalho @relation(fields: [contratoId], references: [id])
+
+  numeroTermo String
+  data        DateTime
+  /// Positivo, sempre. O CHECK impõe.
+  dias        Int
+  motivo      String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([contratoId, numeroTermo])
+  @@index([contratoId])
+}
+
+/// A AVALIAÇÃO DE EXPERIÊNCIA / ESTÁGIO PROBATÓRIO — TR req. 14.
+///
+/// ⚠️ N ETAPAS POR VÍNCULO. O estágio probatório do efetivo é de 3 anos
+/// (CF art. 41) e se avalia por etapas; o contrato de experiência da CLT tem
+/// até duas. `@@unique([vinculoId, etapa])` impede duas avaliações da mesma
+/// etapa — que seria o mesmo período julgado duas vezes, com resultados que
+/// podem discordar.
+model AvaliacaoExperiencia {
+  id String @id @default(cuid())
+
+  vinculoId String
+  vinculo   Vinculo @relation(fields: [vinculoId], references: [id])
+
+  /// 1, 2, 3… O CHECK exige >= 1.
+  etapa Int
+
+  periodoInicio DateTime
+  periodoFim    DateTime
+
+  resultado ResultadoAvaliacao
+
+  /// A nota, quando o ente pontua. `Decimal` — nota não é dinheiro, mas também
+  /// não é `Float`.
+  pontuacao Decimal? @db.Decimal(6, 2)
+
+  parecer       String?
+  avaliadorNome String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([vinculoId, etapa])
+  @@index([vinculoId])
+  @@index([resultado])
+}

@@ -209,6 +209,21 @@ const TABELAS = [
   // M09 — tesouraria (extrato + conciliação)
   "VinculoConciliacao",
   "AtribuicaoDeContaDaArrecadacao",
+  // V6 P2 — M32 pessoal (filhas antes das mães)
+  "ProrrogacaoContratoTrabalho",
+  "ContratoTrabalho",
+  "AvaliacaoExperiencia",
+  "AnotacaoServidor",
+  "HistoricoVinculo",
+  "FinalidadeDependente",
+  "Dependente",
+  "Treinamento",
+  "Portaria",
+  "Vinculo",
+  "Servidor",
+  "CalendarioRh",
+  "Lotacao",
+  "Cargo",
   "LancamentoExtrato",
   "ExtratoBancario",
   // M07 — extraorçamentário

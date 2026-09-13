@@ -31,7 +31,7 @@ export function FormPessoa(): React.ReactElement {
   if (estado.sucesso !== undefined) ref.current?.reset();
 
   return (
-    <form ref={ref} action={action} className={CLASSE_PAINEL_FORMULARIO}>
+    <form ref={ref} action={action} data-acao="cadastrar-pessoa" className={CLASSE_PAINEL_FORMULARIO}>
       <ChaveDeComando />
       <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">
         Cadastrar pessoa

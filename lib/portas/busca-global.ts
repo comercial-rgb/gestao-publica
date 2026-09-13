@@ -24,6 +24,7 @@ import {
   CONTROLE_INTERNO,
   COMUNICACAO,
   type SlugDeArea,
+  PESSOAL,
 } from "../navegacao.js";
 import { RECURSOS_DO_MOLDE } from "./recursos/definicoes.js";
 import { filtrarPorTexto, type DestinoDaBusca } from "../busca-global.js";
@@ -65,6 +66,7 @@ const GRUPOS_DE_RELATORIO: readonly (readonly [
   ["licitacoes", "Licitações e contratos", LICITACOES],
   ["financeiro", "Financeiro", FINANCEIRO],
   ["contabilidade", "Contabilidade", CONTABILIDADE],
+  ["pessoal", "Pessoal", PESSOAL],
   ["administracao", "Administração", ADMINISTRACAO],
   ["cadastros", "Cadastros", CADASTROS],
   ["protocolo", "Protocolo", PROTOCOLO],

@@ -264,6 +264,22 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   VINCULAR_PESSOA_AO_USUARIO: "administracao",
   CONFIGURAR_APRESENTACAO_DO_ENTE: "administracao",
   ATRIBUIR_CONTA_A_ARRECADACAO: "financeiro",
+  // V6 P2 — M32 pessoal
+  CADASTRAR_SERVIDOR: "pessoal",
+  ADMITIR_SERVIDOR: "pessoal",
+  MOVIMENTAR_SERVIDOR: "pessoal",
+  ALTERAR_REMUNERACAO: "pessoal",
+  DESLIGAR_SERVIDOR: "pessoal",
+  CADASTRAR_CARGO: "pessoal",
+  CADASTRAR_LOTACAO: "pessoal",
+  GERIR_DEPENDENTE: "pessoal",
+  BAIXAR_DEPENDENTE: "pessoal",
+  REGISTRAR_PORTARIA: "pessoal",
+  REGISTRAR_ANOTACAO: "pessoal",
+  REGISTRAR_TREINAMENTO: "pessoal",
+  CONFIGURAR_CALENDARIO_RH: "pessoal",
+  REGISTRAR_CONTRATO_TRABALHO: "pessoal",
+  REGISTRAR_AVALIACAO_EXPERIENCIA: "pessoal",
   // M21 — protocolo e processo digital (ENT02)
   ABRIR_PROCESSO: "protocolo",
   TRAMITAR_PROCESSO: "protocolo",
@@ -374,6 +390,7 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   CONSULTAR_ADMINISTRACAO: "administracao",
   CONSULTAR_INTEGRACOES: "integracoes",
   CONSULTAR_SUPORTE: "suporte",
+  CONSULTAR_PESSOAL: "pessoal",
 };
 
 /**

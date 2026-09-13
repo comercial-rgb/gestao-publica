@@ -263,11 +263,17 @@ async function segundaOpcao(page: Page, seletor: string): Promise<{ readonly val
     return o === undefined ? null : { valor: o.value, rotulo: (o.textContent ?? "").trim() };
   }, seletor);
 }
-/** Abre a rota e diz se o servidor barrou (redirect para /sem-acesso ou /login) — a NEGATIVA de um papel. */
+/**
+ * Abre a rota e diz se o servidor barrou — a NEGATIVA de um papel. Duas formas legítimas: o
+ * redirecionamento para /sem-acesso (telas do ente) e o ESTADO da tela com a recusa nomeada
+ * (as telas recortadas por unidade, como a despesa, respondem 200 e dizem "ACESSO NEGADO").
+ */
 async function barrado(page: Page, rota: string): Promise<{ readonly barrado: boolean; readonly url: string; readonly status: number }> {
   const r = await page.goto(`${BASE}${rota}`, { waitUntil: "networkidle2" });
   const url = page.url();
-  return { barrado: url.includes("/sem-acesso") || url.includes("/login"), url, status: r?.status() ?? 0 };
+  const corpo = await texto(page);
+  const recusaNaTela = /acesso negado|não tem a ação|sem acesso/.test(corpo);
+  return { barrado: url.includes("/sem-acesso") || url.includes("/login") || recusaNaTela, url, status: r?.status() ?? 0 };
 }
 
 async function main(): Promise<void> {
@@ -428,7 +434,8 @@ async function main(): Promise<void> {
       return melhor?.valor ?? null;
     });
     if (ficha === null) throw new Error("sem ficha com saldo");
-    const credorDigitos = (fornecedor.rotulo.match(/\d/g) ?? []).join("");
+    // O rótulo é "Nome (documento formatado)": os dígitos do CREDOR são os do parêntese, não os do nome.
+    const credorDigitos = ((/\(([^)]*)\)\s*$/.exec(fornecedor.rotulo)?.[1] ?? fornecedor.rotulo).match(/\d/g) ?? []).join("");
     // ⚠️ A ordem formada NÃO tem ficha (o banco dos percursos só tem fichas 339039 e os materiais
     // são de consumo): o empenho é DIRETO ao credor da ordem — o vínculo ordem→empenho fica provado
     // pelos testes do M11 (pendência FICHA-DE-MATERIAL-NOS-PERCURSOS).

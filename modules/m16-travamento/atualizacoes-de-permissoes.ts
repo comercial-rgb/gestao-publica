@@ -333,6 +333,36 @@ export function derivarAtribuirContaAArrecadacao(
   return saida;
 }
 
+/**
+ * A REGRA DA v9 (V6 P2): o M32 pessoal chegou com catorze ações e a leitura da área. Nenhum perfil
+ * existente age em pessoal, então "leitura onde já age" não alcança ninguém. Quem administra
+ * permissões no global (CONCEDER_ACAO_A_PERFIL) recebe as catorze e a leitura no global — para a
+ * instalação não nascer com uma área que ninguém consegue abrir; a segregação fina (cadastrar ×
+ * admitir × desligar) fica a cargo do administrador ao montar os perfis do RH.
+ */
+export const ACOES_DO_PESSOAL: readonly AcaoDoSistema[] = [
+  "CADASTRAR_SERVIDOR", "ADMITIR_SERVIDOR", "MOVIMENTAR_SERVIDOR", "ALTERAR_REMUNERACAO", "DESLIGAR_SERVIDOR",
+  "CADASTRAR_CARGO", "CADASTRAR_LOTACAO", "GERIR_DEPENDENTE", "BAIXAR_DEPENDENTE", "REGISTRAR_PORTARIA",
+  "REGISTRAR_ANOTACAO", "REGISTRAR_TREINAMENTO", "CONFIGURAR_CALENDARIO_RH", "REGISTRAR_CONTRATO_TRABALHO",
+  "REGISTRAR_AVALIACAO_EXPERIENCIA", "CONSULTAR_PESSOAL",
+];
+export function derivarPessoal(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null);
+    if (!administra) continue;
+    const jaTem = new Set(perfil.permissoes.filter((p) => p.unidadeOrcId === null).map((p) => p.acao));
+    for (const acao of ACOES_DO_PESSOAL) {
+      if (jaTem.has(acao)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
+
 export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
   {
     versao: 1,
@@ -402,6 +432,14 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "Atribuir conta bancaria a uma arrecadacao do legado (V6 P1.2) virou acao propria (ATRIBUIR_CONTA_A_ARRECADACAO). " +
       "Quem ja vincula conciliacao no escopo global recebe-a no global; a arrecadacao e do ente.",
     derivar: derivarAtribuirContaAArrecadacao,
+  },
+  {
+    versao: 9,
+    nome: "pessoal-m32",
+    descricao:
+      "O M32 pessoal (RH bloco 1, V6 P2) chegou com catorze acoes e a leitura CONSULTAR_PESSOAL. Quem concede acao a " +
+      "perfil no escopo global recebe as quinze no global; a segregacao fina fica a cargo do administrador.",
+    derivar: derivarPessoal,
   },
 ];
 

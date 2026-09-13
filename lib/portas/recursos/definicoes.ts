@@ -7,6 +7,7 @@ import { ESTRUTURA_DO_PPA, LEIS_DE_DIRETRIZES, PLANOS_PLURIANUAIS, PROGRAMAS_DO_
 import { CONTRATOS, PROCESSOS_LICITATORIOS } from "./contratacao.js";
 import { ORDENS_DE_COMPRA, PESQUISAS_DE_PRECOS, SOLICITACOES_DE_COMPRA } from "./compras.js";
 import { DOCUMENTOS_FISCAIS } from "./documentos-fiscais.js";
+import { RECURSOS_DO_PESSOAL } from "./pessoal.js";
 
 /**
  * OS DESCRITORES DOS CADASTROS DO ENT03b — a prova do molde.
@@ -742,4 +743,6 @@ export const RECURSOS_DO_MOLDE: readonly DefinicaoDeRecurso[] = [
   PESQUISAS_DE_PRECOS,
   ORDENS_DE_COMPRA,
   DOCUMENTOS_FISCAIS,
+  // V6 P2 — M32 pessoal (servidores, cargos, lotações)
+  ...RECURSOS_DO_PESSOAL,
 ];
