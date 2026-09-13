@@ -5,6 +5,7 @@ import { RECURSOS_DO_ACERVO } from "./acervo.js";
 import { RECURSOS_DOS_ROTEIROS } from "./roteiros.js";
 import { ESTRUTURA_DO_PPA, LEIS_DE_DIRETRIZES, PLANOS_PLURIANUAIS, PROGRAMAS_DO_PPA } from "./plurianual.js";
 import { CONTRATOS, PROCESSOS_LICITATORIOS } from "./contratacao.js";
+import { ORDENS_DE_COMPRA, PESQUISAS_DE_PRECOS, SOLICITACOES_DE_COMPRA } from "./compras.js";
 
 /**
  * OS DESCRITORES DOS CADASTROS DO ENT03b — a prova do molde.
@@ -735,4 +736,8 @@ export const RECURSOS_DO_MOLDE: readonly DefinicaoDeRecurso[] = [
   // ⚠️ V4 §8 (M11) — o processo licitatório e o contrato. Pela mesma lista, pelo mesmo motivo.
   PROCESSOS_LICITATORIOS,
   CONTRATOS,
+  // ⚠️ V4 §8 (M11) — as compras: a criação é de ilhas com itens; a lista e as ações são do molde.
+  SOLICITACOES_DE_COMPRA,
+  PESQUISAS_DE_PRECOS,
+  ORDENS_DE_COMPRA,
 ];

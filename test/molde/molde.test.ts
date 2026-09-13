@@ -245,6 +245,8 @@ const PORTAS_DE_OPCOES: readonly string[] = [
   "lib/portas/recursos/plurianual-dados.ts",
   // ⚠️ V4 §8 — a porta da contratação (M11): `fichaId`, `reservaId`, `movimentoId`.
   "lib/portas/recursos/contratacao-dados.ts",
+  // ⚠️ V4 §8 — a porta das compras (M11): `setorId`, `fornecedorId`, `processoId`, `fichaId`.
+  "lib/portas/recursos/compras-dados.ts",
 ];
 
 /**
