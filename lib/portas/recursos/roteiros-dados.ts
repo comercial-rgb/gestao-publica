@@ -2,6 +2,11 @@ import { diaCivilBr } from "../../../packages/datas/index.js";
 import {
   parametrizarRoteiroPatrimonial,
   parametrizarRoteiroResultadoAlienacao,
+  proporVersaoDeRoteiro,
+  publicarVersaoDeRoteiro,
+  versoesDoRoteiro,
+  type FamiliaDeRoteiro,
+  type VersaoDeRoteiroLida,
 } from "../../../modules/m10-patrimonial/roteiros.js";
 import { TIPOS_BASE } from "../../../modules/m10-patrimonial/dominio.js";
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
@@ -95,7 +100,39 @@ const EVENTOS_PATRIMONIAIS = TIPOS_BASE.map((tipo) => ({
   rotulo: rotuloDoTipoPatrimonial(tipo),
 }));
 
+/**
+ * ⚠️ V3 (4.5): O PAR EM VIGOR É O DA VERSÃO PUBLICADA. A linha legada só responde enquanto
+ * o evento não tiver versão nenhuma — depois disso ela é origem, não configuração.
+ */
+async function vigentesPorVersao(familia: FamiliaDeRoteiro): Promise<ReadonlyMap<string, RoteiroLido>> {
+  const publicadas = await cliente().versaoDeRoteiro.findMany({
+    where: { familia, situacao: "PUBLICADA" },
+    orderBy: [{ publicadaEm: "desc" }, { numero: "desc" }],
+    select: {
+      id: true,
+      chave: true,
+      publicadaEm: true,
+      publicadaPor: true,
+      contaDebito: { select: { codigo: true, nome: true } },
+      contaCredito: { select: { codigo: true, nome: true } },
+    },
+  });
+  const mapa = new Map<string, RoteiroLido>();
+  for (const v of publicadas) {
+    if (mapa.has(v.chave)) continue; // a primeira (mais recente) é a vigente
+    mapa.set(v.chave, {
+      id: v.id,
+      contaDebito: v.contaDebito,
+      contaCredito: v.contaCredito,
+      criadoEm: v.publicadaEm ?? new Date(0),
+      criadoPor: v.publicadaPor ?? "",
+    });
+  }
+  return mapa;
+}
+
 async function gravadosPatrimoniais(): Promise<ReadonlyMap<string, RoteiroLido>> {
+  const porVersao = await vigentesPorVersao("PATRIMONIAL");
   const linhas = await cliente().roteiroPatrimonial.findMany({
     select: {
       id: true,
@@ -106,7 +143,9 @@ async function gravadosPatrimoniais(): Promise<ReadonlyMap<string, RoteiroLido>>
       contaCredito: { select: { codigo: true, nome: true } },
     },
   });
-  return new Map(linhas.map((r) => [r.tipo as string, r]));
+  const mapa = new Map<string, RoteiroLido>(linhas.map((r) => [r.tipo as string, r]));
+  for (const [chave, v] of porVersao) mapa.set(chave, v);
+  return mapa;
 }
 
 export async function listarRoteirosPatrimoniais(
@@ -123,12 +162,50 @@ export async function verRoteiroPatrimonial(tipo: string): Promise<DetalheLido |
   if (evento === undefined) return null;
 
   const r = (await gravadosPatrimoniais()).get(tipo);
-  return detalheDoRoteiro(evento.rotulo, r, {
-    semRoteiro:
-      "Enquanto este evento não tiver roteiro, o sistema RECUSA registrar qualquer " +
-      "movimento dele — e a recusa é deliberada: sem roteiro, lançar exigiria escolher uma " +
-      "conta, e o sistema não escolhe conta do PCASP por conta própria.",
-  });
+  const versoes = await versoesDoRoteiro(cliente(), "PATRIMONIAL", tipo);
+  return comVersoes(
+    detalheDoRoteiro(evento.rotulo, r, {
+      semRoteiro:
+        "Enquanto este evento não tiver roteiro, o sistema RECUSA registrar qualquer " +
+        "movimento dele — e a recusa é deliberada: sem roteiro, lançar exigiria escolher uma " +
+        "conta, e o sistema não escolhe conta do PCASP por conta própria.",
+    }),
+    versoes
+  );
+}
+
+/**
+ * O HISTÓRICO DE VERSÕES no detalhe (V3 4.5): cada versão com autor, momento, motivo,
+ * vigência derivada e quantos movimentos lançaram por ela. A proposta pendente vira selo.
+ */
+function comVersoes(detalhe: DetalheLido, versoes: readonly VersaoDeRoteiroLida[]): DetalheLido {
+  const pendentes = versoes.filter((v) => v.situacao === "PROPOSTA");
+  const vigente = versoes.find((v) => v.vigente);
+  const selos = [...detalhe.selos];
+  if (pendentes.length > 0) selos.push({ texto: `${pendentes.length} proposta(s) a publicar`, tom: "alerta" });
+  if (vigente !== undefined) selos.push({ texto: `versão ${vigente.numero} em vigor`, tom: "neutro" });
+  const dados = [...detalhe.dados];
+  if (vigente !== undefined) {
+    dados.push({ rotulo: "Motivo da versão em vigor", valor: vigente.motivo });
+    dados.push({ rotulo: "Movimentos lançados por esta versão", valor: String(vigente.movimentos) });
+  }
+  return {
+    ...detalhe,
+    selos,
+    dados,
+    historico: versoes.map((v) => ({
+      id: v.id,
+      oQue:
+        `Versão ${v.numero} — ${v.situacao === "PUBLICADA" ? "publicada" : "PROPOSTA (não vigora)"}: ` +
+        `${conta(v.contaDebito)}  ->  ${conta(v.contaCredito)}` +
+        (v.vigente ? " (em vigor)" : v.vigenciaFim !== null ? ` (vigorou até ${diaCivilBr(v.vigenciaFim)})` : "") +
+        (v.movimentos > 0 ? ` · ${v.movimentos} movimento(s) lançado(s) por ela` : ""),
+      quando: diaCivilBr(v.publicadaEm ?? v.criadoEm),
+      registradoEm: diaCivilBr(v.criadoEm),
+      por: v.publicadaPor ?? v.criadoPor,
+      motivo: v.motivo,
+    })),
+  };
 }
 
 export async function criarRoteiroPatrimonial(c: Campos): Promise<void> {
@@ -152,18 +229,46 @@ export async function acaoDoRoteiroPatrimonial(
   tipo: string,
   c: Campos
 ): Promise<void> {
-  if (acao !== "reparametrizar") {
-    throw new Error(`Ação "${acao}" não existe neste cadastro. Nada foi gravado.`);
+  if (acao === "reparametrizar") {
+    await comEscritaAutenticada("PARAMETRIZAR_ROTEIRO_PATRIMONIAL", (criadoPor) =>
+      parametrizarRoteiroPatrimonial(cliente(), {
+        tipo,
+        contaDebitoId: t(c, "contaDebitoId"),
+        contaCreditoId: t(c, "contaCreditoId"),
+        substituir: true,
+        criadoPor,
+      })
+    );
+    return;
   }
-  await comEscritaAutenticada("PARAMETRIZAR_ROTEIRO_PATRIMONIAL", (criadoPor) =>
-    parametrizarRoteiroPatrimonial(cliente(), {
-      tipo,
-      contaDebitoId: t(c, "contaDebitoId"),
-      contaCreditoId: t(c, "contaCreditoId"),
-      substituir: true,
-      criadoPor,
-    })
-  );
+  // V3 (4.5): propor (validação pelo motor) e publicar (aprovação) são atos separados.
+  if (acao === "propor") {
+    await comEscritaAutenticada("PARAMETRIZAR_ROTEIRO_PATRIMONIAL", (criadoPor) =>
+      proporVersaoDeRoteiro(cliente(), {
+        familia: "PATRIMONIAL",
+        chave: tipo,
+        contaDebitoId: t(c, "contaDebitoId"),
+        contaCreditoId: t(c, "contaCreditoId"),
+        motivo: t(c, "motivo"),
+        criadoPor,
+      })
+    );
+    return;
+  }
+  if (acao === "publicar") {
+    await comEscritaAutenticada("PUBLICAR_ROTEIRO_PATRIMONIAL", async (criadoPor) => {
+      // Publica a proposta MAIS RECENTE deste evento — o formulário não pede id.
+      const pendente = (await versoesDoRoteiro(cliente(), "PATRIMONIAL", tipo))
+        .filter((v) => v.situacao === "PROPOSTA")
+        .at(-1);
+      if (pendente === undefined) {
+        throw new Error(`Não há proposta pendente para ${tipo}. Proponha uma versão antes de publicar. Nada foi gravado.`);
+      }
+      await publicarVersaoDeRoteiro(cliente(), { versaoId: pendente.id, criadoPor });
+    });
+    return;
+  }
+  throw new Error(`Ação "${acao}" não existe neste cadastro. Nada foi gravado.`);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -176,6 +281,7 @@ const EVENTOS_DE_RESULTADO = OPCOES_DE_CHAVE.map((o) => ({
 }));
 
 async function gravadosDeResultado(): Promise<ReadonlyMap<string, RoteiroLido>> {
+  const porVersao = await vigentesPorVersao("RESULTADO_ALIENACAO");
   const linhas = await cliente().roteiroResultadoAlienacao.findMany({
     select: {
       id: true,
@@ -186,7 +292,9 @@ async function gravadosDeResultado(): Promise<ReadonlyMap<string, RoteiroLido>> 
       contaCredito: { select: { codigo: true, nome: true } },
     },
   });
-  return new Map(linhas.map((r) => [r.chave as string, r]));
+  const mapa = new Map<string, RoteiroLido>(linhas.map((r) => [r.chave as string, r]));
+  for (const [chave, v] of porVersao) mapa.set(chave, v);
+  return mapa;
 }
 
 export async function listarRoteirosDeResultado(

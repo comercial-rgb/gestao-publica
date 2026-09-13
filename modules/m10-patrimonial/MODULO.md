@@ -261,3 +261,21 @@ seria a segunda verdade sobre o mesmo código.
 nenhum** — o t7 do `m10-alienacao.test.ts` é o primeiro. A perna credora da arrecadação
 aponta para o **crédito por alienação** (a mesma conta que o roteiro do GANHO debita):
 receber o dinheiro da venda é **permutativo**, e uma VPA ali contaria o ganho duas vezes.
+
+
+## Orquestração V3 (4.5) — os roteiros são versionados
+
+`roteiros.ts` deixou de atualizar `RoteiroPatrimonial` em silêncio. Cada parametrização é
+uma linha de `VersaoDeRoteiro` (família, chave, número, par, motivo, autor e momento da
+proposta, autor e momento da publicação). `proporVersaoDeRoteiro` valida pelo motor e grava
+PROPOSTA; `publicarVersaoDeRoteiro` (ação própria, `PUBLICAR_ROTEIRO_PATRIMONIAL`) põe em
+vigor; `parametrizarRoteiroPatrimonial` continua como ato composto e por isso cobra os dois
+crachás. O resolvedor `roteiroDoTipo` lê a versão em vigor (a PUBLICADA mais recente) e só cai
+na linha legada enquanto não há versão; o movimento grava `versaoDeRoteiroId`. Vigência é
+derivada. Concorrência é do índice único `(familia, chave, numero)`; repetição é recusada
+nomeando. ADR: `docs/adr/ADR-versoes-de-roteiro-e-banco-de-percursos.md`. Testes:
+`m10-roteiros-versoes.test.ts`.
+
+**Pendência preservada:** `ROTEIRO-PATRIMONIAL-NAO-PARAMETRIZADO` continua sendo decisão do
+contador do ente; `seed:roteiros-demo` é configuração de DEMONSTRAÇÃO, identificada como tal
+no motivo de cada versão, para os percursos — não homologação.

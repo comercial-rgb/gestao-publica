@@ -1,4 +1,5 @@
 import { diaCivil } from "../../packages/datas/index.js";
+import { versaoVigente } from "./roteiros.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { randomUUID } from "node:crypto";
@@ -140,11 +141,25 @@ export async function valorContabilDoBem(
 // O NÚCLEO — registrarMovimentoPatrimonial (interno)
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** O roteiro do tipo, da TABELA. Fail-closed se não estiver parametrizado. */
+/** O roteiro resolvido, com a VERSÃO que o serviu (nula quando veio da linha legada). */
+type RoteiroResolvido = RoteiroDoTipo & { readonly versaoId: string | null };
+
+/**
+ * O roteiro do tipo — a VERSÃO PUBLICADA em vigor (V3 4.5), ou a linha legada de
+ * `RoteiroPatrimonial` quando o evento ainda não foi versionado. Fail-closed sem nenhuma.
+ *
+ * ⚠️ A VERSÃO VEM PRIMEIRO. Depois que um evento ganha versão, a linha legada deixa de ser
+ * lida: ela é a origem (a versão 1 do backfill a cita), não a configuração. E o movimento
+ * grava QUAL versão o serviu — trocar o roteiro depois não muda o que já foi lançado.
+ */
 async function roteiroDoTipo(
   tx: Tx,
   tipo: TipoMovimentoPatrimonial
-): Promise<RoteiroDoTipo> {
+): Promise<RoteiroResolvido> {
+  const vigente = await versaoVigente(tx, "PATRIMONIAL", tipo);
+  if (vigente !== null) {
+    return { contaDebito: vigente.contaDebito, contaCredito: vigente.contaCredito, versaoId: vigente.id };
+  }
   const r = await tx.roteiroPatrimonial.findUnique({
     where: { tipo },
     select: {
@@ -159,7 +174,7 @@ async function roteiroDoTipo(
         `(débito/crédito no PCASP) antes de usar este tipo.`
     );
   }
-  return { contaDebito: r.contaDebito.codigo, contaCredito: r.contaCredito.codigo };
+  return { contaDebito: r.contaDebito.codigo, contaCredito: r.contaCredito.codigo, versaoId: null };
 }
 
 /** Resolve os códigos do roteiro em contas analíticas (fail-closed). */
@@ -293,6 +308,8 @@ async function registrarMovimentoPatrimonial(
       operacaoId: d.operacaoId ?? null,
       motivo: d.motivo ?? null,
       lancamentoId,
+      // V3 (4.5): o vínculo entre o fato e a configuração que ele usou.
+      versaoDeRoteiroId: roteiro.versaoId,
       criadoPor: d.criadoPor,
     },
     select: { id: true },
@@ -933,13 +950,18 @@ export async function alienarBem(
     // Se ele faltar, a transação nem começa a gravar — nada de meia alienação.
     let roteiroResultado: RoteiroDoTipo | null = null;
     if (resultado.chave !== null) {
-      const r = await tx.roteiroResultadoAlienacao.findUnique({
-        where: { chave: resultado.chave },
-        select: {
-          contaDebito: { select: { codigo: true } },
-          contaCredito: { select: { codigo: true } },
-        },
-      });
+      // V3 (4.5): a versão publicada primeiro; a linha legada só enquanto não houver versão.
+      const v = await versaoVigente(tx, "RESULTADO_ALIENACAO", resultado.chave);
+      const r =
+        v !== null
+          ? { contaDebito: { codigo: v.contaDebito }, contaCredito: { codigo: v.contaCredito } }
+          : await tx.roteiroResultadoAlienacao.findUnique({
+              where: { chave: resultado.chave },
+              select: {
+                contaDebito: { select: { codigo: true } },
+                contaCredito: { select: { codigo: true } },
+              },
+            });
       if (r === null) {
         throw new Error(
           `ROTEIRO CONTÁBIL NÃO PARAMETRIZADO para ${resultado.chave}. O M10 não ` +

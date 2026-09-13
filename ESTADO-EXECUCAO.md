@@ -6,10 +6,10 @@
 |---|---|
 | HEAD | ver `git log -1` — a seção 35 nomeia o commit de cada unidade |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | Primeiro pacote — 4.1 e 4.2 (seção 35) e 4.3 (seção 36) concluídos; em curso 4.5 versionamento dos roteiros + 4.4 massa/configuração; depois a cadeia patrimonial (seção 5 do pedido) |
-| Último resultado | seção 36 |
-| Pendências relevantes | seções 35.7 e 36.4; as anteriores em §19 e nos `MODULO.md` |
-| Próximo passo | seção 36.5 |
+| Frente em execução | Primeiro pacote concluído (4.1/4.2 §35, 4.3 §36, 4.4/4.5 §37); em curso o segundo pacote — a cadeia patrimonial utilizável (seção 5 do pedido) |
+| Último resultado | seção 37 |
+| Pendências relevantes | seções 35.7, 36.4 e 37.5; as anteriores em §19 e nos `MODULO.md` |
+| Próximo passo | seção 37.6 |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -4391,6 +4391,79 @@ lançamentos que dependem deles. Substituí-los sem reescrever o razão exige o 
 4.5 (versão anterior, autor, momento, motivo, vigência, vínculo com os fatos) — por isso 4.5
 entra antes, e 4.4 o usa: banco de percursos separado, roteiros instrumentais supersedidos
 por configuração identificada de demonstração, sem apresentá-la como homologação contábil.
+
+## 37. Orquestração V3 — 4.5 e 4.4: roteiros versionados, e o banco dos percursos separado
+
+> **Natureza:** PROFUNDIDADE — configuração contábil, concorrência, vínculo com o razão.
+> ADR: `docs/adr/ADR-versoes-de-roteiro-e-banco-de-percursos.md`.
+
+### 37.1 · O inventário que abriu a unidade (4.4)
+
+No banco de desenvolvimento, medido antes de qualquer código:
+
+| O que | Quanto | Origem |
+|---|---|---|
+| `RoteiroPatrimonial` instrumental | 3 (AQUISICAO, AVALIACAO_INICIAL, BAIXA_ALIENACAO), todos `1.1.1.1.1.01.00 × 1.1.1.1.1.00.00` | `scripts/smoke-roteiros.ts`, "as duas primeiras analíticas do seletor", 2026-09-12, `admin@cg.pb.gov.br` |
+| movimentos dependentes | 4 (2 AVALIACAO_INICIAL, 2 BAIXA_ALIENACAO) | `smoke-eixo-de-valor.ts` |
+| lançamentos dependentes | 4 (`PATRIMONIAL_*`) de 68 | idem |
+
+Nada disso foi apagado ou reescrito. O que mudou é COMO um roteiro passa a existir.
+
+### 37.2 · O que passou a funcionar (4.5)
+
+| Capacidade | Onde |
+|---|---|
+| cada parametrização é uma VERSÃO append-only: par, motivo obrigatório, autor e momento da proposta, autor e momento da publicação | `VersaoDeRoteiro` (migration `v3_versoes_de_roteiro`) |
+| propor (validação pelo motor) ≠ publicar (aprovação, ação própria `PUBLICAR_ROTEIRO_PATRIMONIAL`) ≠ usar em fatos | `proporVersaoDeRoteiro`, `publicarVersaoDeRoteiro`; o resolvedor lê a PUBLICADA mais recente |
+| o fato aponta para a versão que usou | `MovimentoPatrimonial.versaoDeRoteiroId` |
+| vigência derivada; versão anterior preservada; nenhum lançamento reescrito | `versoesDoRoteiro` (vigenciaFim = publicação da seguinte) |
+| concorrência: índice único `(familia, chave, numero)`; repetição recusada nomeando (proposta idêntica pendente; par já vigente; publicar duas vezes) | `criarVersaoNaTx` / `publicarNaTx` |
+| a tela: aba **Histórico** com as versões, ações **Propor nova versão** e **Publicar a proposta pendente**; "trocar as contas agora" continua como ato composto e exige os dois crachás | `/patrimonio/roteiros/<evento>` |
+| tabelas legadas só-leitura como origem; backfill cria a versão 1 com autor e momento originais | `npm run roteiros:versionar` |
+| `PUBLICAR_ROTEIRO_PATRIMONIAL` chega às instalações existentes pela **atualização v2** (quem parametriza recebe a publicação no mesmo escopo) | `permissoes:atualizar -- 2` |
+
+### 37.3 · Os três bancos (4.4)
+
+`DATABASE_URL` (desenvolvimento), `DATABASE_URL_TEST` (suíte, já isolada) e o novo
+`DATABASE_URL_PERCURSOS` (percursos de navegador). `npm run percursos:preparar` cria e povoa
+o terceiro por uma sequência declarada (migrations, SQL manual, papel, plano oficial, M02,
+roteiro orçamentário, M07, exercício, bootstrap, cenário de aceite, cenário SAGRES, operador
+restrito, dívida ativa, versionamento, atualizações v1 e v2, roteiros de DEMONSTRAÇÃO), e
+recusa coincidir com os outros dois; `npm run percursos:servir` sobe o servidor em 3010 sobre
+ele. `seed:roteiros-demo` propõe e publica, pelos serviços e com autor, um par por evento do
+acervo escolhido pelo NOME de cada conta no plano oficial, com o motivo dizendo em cada versão
+que é demonstração — produção não o roda.
+
+### 37.4 · Comandos e resultados
+
+| Comando | Resultado |
+|---|---|
+| `tsc` backend · app · scripts | limpos (a primeira rodada acusou uma declaração usada antes da definição e um spread com campo duplicado — corrigidos) |
+| `vitest` rápida (censo, grep da leitura, fronteira, partição, cobertura, deriva) | **25/25** |
+| `vitest` lenta (roteiros, roteiros-versões, patrimônio, alienação, competência, balanço patrimonial, DVP, limites, atualizações, papel de runtime) | **112/112** (10 arquivos), sob o trinco |
+| dev: `migrate deploy` · `db:papel` · `permissoes:atualizar -- 2` | v2 aplicada: 1 concessão em 1 perfil; `deriva:perfil`: **248 ações, todas concedidas** |
+| dev: `roteiros:versionar` | **5 versões 1** criadas com origem preservada; 0 contas trocadas; 0 lançamentos tocados |
+| dev: `seed:roteiros-demo` | versão **2** publicada para os três instrumentais; versão 1 para DEPRECIACAO e BAIXA_DE_ATUALIZACAO_ACUMULADA |
+| dev: conferência | 4 movimentos, **0 com versão** (anteriores ao versionamento, corretamente); **68 lançamentos** antes e depois |
+| `npm run percursos:preparar` | 1ª execução parou nos roteiros da dívida ativa (o preparador semeava o plano mínimo; a dívida cita contas do plano OFICIAL — corrigido para `pcasp-oficial.ts`); 2ª parou no bootstrap (a tolerância lia `e.message`, que com `stdio: inherit` não traz o texto do filho — corrigido para ler a saída capturada); **3ª execução: pronto** — `gestao_publica_percursos` com 7.864 contas, 2 usuários, 8 versões de roteiro (3 de origem do `sagres-poc`, as de demonstração por cima), 250 permissões, v1 e v2 aplicadas, 3 fichas, 2 unidades. Saída bruta em `.registro-de-execucao/v3-pacote1-44-percursos-{2,3}.txt` |
+
+### 37.5 · Pendências nomeadas
+
+| Pendência | O que é |
+|---|---|
+| `RESULTADO-DA-ALIENACAO-SEM-DEMO` | GANHO/PERDA da alienação ficaram só com a versão 1 de origem; a demonstração não escolheu par para eles |
+| `PERCURSOS-SOB-O-BANCO-PROPRIO` | os smokes ainda não foram reexecutados contra 3010; `smoke-roteiros.ts` deve deixar de escolher "as duas primeiras analíticas" e passar a usar propor/publicar com motivo |
+| `ROTEIRO-PATRIMONIAL-NAO-PARAMETRIZADO` | continua sendo decisão do contador do ente para produção |
+
+**Fechada:** `ROTEIRO-SEM-HISTORICO-PROPRIO`.
+
+### 37.6 · Próximo ponto exato
+
+**Segundo pacote — a cadeia patrimonial utilizável** (seção 5 do pedido): pesquisa do acervo
+por localização/responsável/classe/situação/identificadores; vínculo Usuario↔Pessoa e "meus
+bens"; motivo de baixa ligado ao ato; reavaliação e impairment na tela; parâmetros versionados
+de depreciação; processamento por competência com prévia e memória; alienação integrada;
+estorno com análise de dependências; termos; etiqueta imprimível verificada por decoder.
 
 ## 19. O próximo passo
 

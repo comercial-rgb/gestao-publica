@@ -9,6 +9,7 @@ import {
   acaoDeLeituraDaArea,
   aplicarAtualizacaoDePermissoes,
   derivarLeituraPorArea,
+  derivarPublicarRoteiro,
   situacaoDasAtualizacoes,
   type PerfilComPermissoes,
 } from "./atualizacoes-de-permissoes.js";
@@ -88,6 +89,19 @@ describe("a regra da v1 — leitura por área, no escopo em que o perfil já age
       { perfilId: "adm", perfilNome: "ADM", acao: "CONSULTAR_TRANSPARENCIA", unidadeOrcId: null },
       { perfilId: "adm-ug", perfilNome: "ADM-DE-UNIDADE", acao: "CONSULTAR_ADMINISTRACAO", unidadeOrcId: UG_A },
       { perfilId: "op", perfilNome: "OPERADOR", acao: "CONSULTAR_DESPESA", unidadeOrcId: null },
+    ]);
+  });
+
+  it("v2: quem parametriza roteiro recebe PUBLICAR no MESMO escopo — e só quem parametriza", () => {
+    const perfis: readonly PerfilComPermissoes[] = [
+      { id: "cont", nome: "CONTADOR", permissoes: [{ acao: "PARAMETRIZAR_ROTEIRO_PATRIMONIAL", unidadeOrcId: null }] },
+      { id: "cont-ug", nome: "CONTADOR-UG", permissoes: [{ acao: "PARAMETRIZAR_ROTEIRO_PATRIMONIAL", unidadeOrcId: UG_A }] },
+      { id: "ja", nome: "JA-PUBLICA", permissoes: [{ acao: "PARAMETRIZAR_ROTEIRO_PATRIMONIAL", unidadeOrcId: null }, { acao: "PUBLICAR_ROTEIRO_PATRIMONIAL", unidadeOrcId: null }] },
+      { id: "op", nome: "OPERADOR", permissoes: [{ acao: "EMPENHAR", unidadeOrcId: null }] },
+    ];
+    expect(derivarPublicarRoteiro(perfis, AREA_DA_ACAO)).toEqual([
+      { perfilId: "cont", perfilNome: "CONTADOR", acao: "PUBLICAR_ROTEIRO_PATRIMONIAL", unidadeOrcId: null },
+      { perfilId: "cont-ug", perfilNome: "CONTADOR-UG", acao: "PUBLICAR_ROTEIRO_PATRIMONIAL", unidadeOrcId: UG_A },
     ]);
   });
 
@@ -181,6 +195,7 @@ describe("instalação limpa e atualização — no banco", () => {
     const situacao = await situacaoDasAtualizacoes(prisma, AREA_DA_ACAO);
     expect(situacao.map((s) => ({ versao: s.versao, previa: s.previa, aplicada: s.aplicadaEm !== null }))).toEqual([
       { versao: 1, previa: 0, aplicada: false },
+      { versao: 2, previa: 0, aplicada: false },
     ]);
   });
 
@@ -208,6 +223,13 @@ describe("instalação limpa e atualização — no banco", () => {
 
     const depois = await situacaoDasAtualizacoes(prisma, AREA_DA_ACAO);
     expect(depois[0]).toMatchObject({ versao: 1, previa: 0, aplicadaPor: admin, concessoes: 2 });
+
+    // ⚠️ A v2 EM BANCO: o legado não parametriza roteiro, o admin já publica — prévia zero,
+    // aplicação registrada com zero concessões, e reaplicar continua recusado.
+    expect(depois[1]).toMatchObject({ versao: 2, previa: 0, aplicadaEm: null });
+    const v2 = await aplicarAtualizacaoDePermissoes(prisma, { versao: 2, criadoPor: admin, areaDaAcao: AREA_DA_ACAO });
+    expect(v2).toEqual({ concessoes: 0, perfisAlcancados: 0 });
+    await expect(aplicarAtualizacaoDePermissoes(prisma, { versao: 2, criadoPor: admin, areaDaAcao: AREA_DA_ACAO })).rejects.toThrow(/JÁ APLICADA/);
   });
 
   it("reaplicar é recusado NOMEANDO — e a revogação deliberada feita depois é preservada", async () => {
@@ -263,6 +285,6 @@ describe("instalação limpa e atualização — no banco", () => {
     const admin = await instalar();
     await expect(
       aplicarAtualizacaoDePermissoes(prisma, { versao: 99, criadoPor: admin, areaDaAcao: AREA_DA_ACAO })
-    ).rejects.toThrow(/DESCONHECIDA.*1 \(leitura-por-area\)/s);
+    ).rejects.toThrow(/DESCONHECIDA.*1 \(leitura-por-area\), 2 \(publicar-roteiro\)/s);
   });
 });

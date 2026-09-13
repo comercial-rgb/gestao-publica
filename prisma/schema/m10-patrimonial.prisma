@@ -254,12 +254,20 @@ model MovimentoPatrimonial {
   lancamentoId String
   lancamento   LancamentoContabil @relation(fields: [lancamentoId], references: [id])
 
+  /// ORQUESTRAÇÃO V3 (4.5) — a VERSÃO do roteiro que este movimento usou. É o vínculo entre a
+  /// configuração e o fato: trocar o roteiro depois não muda este movimento, e ele diz qual
+  /// par de contas valia quando foi lançado. Nulo = lançado pela linha legada de
+  /// `RoteiroPatrimonial`, anterior ao versionamento.
+  versaoDeRoteiroId String?
+  versaoDeRoteiro   VersaoDeRoteiro? @relation(fields: [versaoDeRoteiroId], references: [id])
+
   motivo String?
 
   criadoEm  DateTime @default(now())
   criadoPor String
 
   @@index([classeDeBensId, tipo])
+  @@index([versaoDeRoteiroId])
   @@index([bemId])
   @@index([estornoDeId])
   @@index([liquidacaoId])
@@ -314,4 +322,64 @@ model RoteiroPatrimonial {
 
   criadoEm  DateTime @default(now())
   criadoPor String
+}
+
+/// ORQUESTRAÇÃO V3 (4.5) — a família de roteiros que uma versão parametriza.
+enum FamiliaDeRoteiro {
+  /// `RoteiroPatrimonial`: a chave é um `TipoMovimentoPatrimentario` (sem os estornos).
+  PATRIMONIAL
+  /// `RoteiroResultadoAlienacao`: a chave é GANHO_ALIENACAO ou PERDA_ALIENACAO.
+  RESULTADO_ALIENACAO
+}
+
+enum SituacaoDeVersaoDeRoteiro {
+  /// Validada pelo motor contábil, ainda NÃO em vigor. Ninguém lança por ela.
+  PROPOSTA
+  /// Em vigor desde `publicadaEm` até a publicação da versão seguinte (derivado, nunca gravado).
+  PUBLICADA
+}
+
+/// ORQUESTRAÇÃO V3 (4.5) — A VERSÃO DE UM ROTEIRO, APPEND-ONLY.
+///
+/// A tabela legada (`RoteiroPatrimonial`, `RoteiroResultadoAlienacao`) tinha UMA linha por
+/// evento e a reparametrização a atualizava em silêncio: versão anterior, autor e motivo
+/// se perdiam. Aqui cada parametrização é uma LINHA NOVA: quem propôs, quando, por quê,
+/// com que par de contas; quem publicou e quando. A vigência é DERIVADA — a versão em
+/// vigor é a PUBLICADA de `publicadaEm` mais recente, e a anterior termina onde a seguinte
+/// começa. O fato aponta para a versão que usou (`MovimentoPatrimonial.versaoDeRoteiroId`).
+///
+/// ⚠️ A ÚNICA ESCRITA DEPOIS DA CRIAÇÃO é a publicação (situacao, publicadaEm, publicadaPor),
+/// e ela está no censo de UPDATE do papel de runtime por COLUNA. As contas e o motivo não
+/// mudam: para outro par, outra versão.
+///
+/// ⚠️ A CONCORRÊNCIA É DO BANCO: `(familia, chave, numero)` é único, e o número nasce de
+/// `max + 1` na transação — duas propostas simultâneas para o mesmo evento não sobrescrevem,
+/// a segunda estoura e é recusada nomeando.
+model VersaoDeRoteiro {
+  id      String           @id @default(cuid())
+  familia FamiliaDeRoteiro
+  /// O tipo do movimento (PATRIMONIAL) ou a chave do resultado (RESULTADO_ALIENACAO).
+  chave   String           @db.VarChar(60)
+  numero  Int
+
+  contaDebitoId String
+  contaDebito   ContaPcasp @relation("DebitoDaVersao", fields: [contaDebitoId], references: [id])
+
+  contaCreditoId String
+  contaCredito   ContaPcasp @relation("CreditoDaVersao", fields: [contaCreditoId], references: [id])
+
+  /// Por que esta versão existe — obrigatório. "Ajuste" não é motivo.
+  motivo String
+
+  situacao    SituacaoDeVersaoDeRoteiro @default(PROPOSTA)
+  publicadaEm DateTime?
+  publicadaPor String?
+
+  movimentos MovimentoPatrimonial[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([familia, chave, numero])
+  @@index([familia, chave, situacao, publicadaEm])
 }

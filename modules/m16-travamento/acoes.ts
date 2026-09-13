@@ -160,6 +160,10 @@ export type AcaoDoSistema =
   // instalação existente. É o mesmo raciocínio de `REGISTRAR_MOVIMENTO_DE_GESTAO`, que
   // cobre os quatro eixos de gestão do bem com um crachá só.
   | "PARAMETRIZAR_ROTEIRO_PATRIMONIAL"
+  // ── Orquestração V3 (4.5) — PUBLICAR uma versão de roteiro é ato separado de PROPOR.
+  // Quem propõe o par de contas (validado pelo motor) não é necessariamente quem o põe em
+  // vigor: a publicação é a aprovação, e a segregação do 6.4 pede dois crachás.
+  | "PUBLICAR_ROTEIRO_PATRIMONIAL"
 
   // ── M10 — patrimônio, EIXO DE GESTÃO (ENT05, TR 5.19) ──
   | "CADASTRAR_LOCALIZACAO_FISICA"
@@ -530,6 +534,9 @@ export type NomeDeServico =
   | "alienarBem"
   | "baixarBem"
   | "registrarReavaliacao"
+  // ── V3 (4.5) — as versões de roteiro ──
+  | "proporVersaoDeRoteiro"
+  | "publicarVersaoDeRoteiro"
   | "registrarImpairment"
   | "registrarCustoSubsequente"
   | "atualizarCompetencia"
@@ -846,6 +853,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   cadastrarBem: "CADASTRAR_BEM",
   // ENT11 — os dois roteiros do eixo financeiro, sob a MESMA ação (ver a nota na união).
   parametrizarRoteiroPatrimonial: "PARAMETRIZAR_ROTEIRO_PATRIMONIAL",
+  // V3 (4.5): propor é parametrizar (validação estrutural); publicar é OUTRO crachá.
+  proporVersaoDeRoteiro: "PARAMETRIZAR_ROTEIRO_PATRIMONIAL",
+  publicarVersaoDeRoteiro: "PUBLICAR_ROTEIRO_PATRIMONIAL",
   parametrizarRoteiroResultadoAlienacao: "PARAMETRIZAR_ROTEIRO_PATRIMONIAL",
   cadastrarLocalizacaoFisica: "CADASTRAR_LOCALIZACAO_FISICA",
   cadastrarComissaoPatrimonial: "CADASTRAR_COMISSAO_PATRIMONIAL",
@@ -1438,6 +1448,8 @@ export const FORA_DO_CENSO: Record<string, string> = {
   //
   // A porta do log da borda. Registrar não é um ato do usuário — é o sistema contando o que
   // aconteceu. Exigir permissão para logar seria permitir que alguém agisse SEM deixar rastro.
+  versoesDoRoteiro: "leitura (as versões de um roteiro, com a vigência derivada — V3 4.5)",
+  versaoVigente: "leitura (a versão PUBLICADA em vigor de um roteiro — o resolvedor do M10 a consome)",
   comOperacaoRegistrada: "porta da borda (o log do 6.1-6.3, em duas fases — V3 4.3)",
   registrarSucessoNaTransacao:
     "perna do FUNIL: grava a linha SUCESSO do registro de operação na transação do fato (V3 4.3) — a autorização é do serviço que abriu a transação",

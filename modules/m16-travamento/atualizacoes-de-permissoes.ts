@@ -140,6 +140,33 @@ export function derivarLeituraPorArea(
   return saida;
 }
 
+/**
+ * A REGRA DA v2 (V3 4.5): PUBLICAR_ROTEIRO_PATRIMONIAL nasceu como ação SEPARADA de
+ * PARAMETRIZAR_ROTEIRO_PATRIMONIAL. Quem já parametrizava — e portanto já punha roteiro
+ * em vigor com um ato só — recebe a publicação NO MESMO ESCOPO, para não perder alcance na
+ * atualização. A segregação real (propor ≠ publicar) é decisão do administrador, que pode
+ * revogar uma das duas depois: a atualização preserva o que havia, não decide por ele.
+ */
+export function derivarPublicarRoteiro(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const jaTem = new Set(perfil.permissoes.map((p) => `${p.acao} ${p.unidadeOrcId ?? ""}`));
+    const escopos = new Map<string, string | null>();
+    for (const p of perfil.permissoes) {
+      if (p.acao !== "PARAMETRIZAR_ROTEIRO_PATRIMONIAL") continue;
+      if (jaTem.has(`PUBLICAR_ROTEIRO_PATRIMONIAL ${p.unidadeOrcId ?? ""}`)) continue;
+      escopos.set(p.unidadeOrcId ?? "", p.unidadeOrcId);
+    }
+    for (const unidadeOrcId of escopos.values()) {
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao: "PUBLICAR_ROTEIRO_PATRIMONIAL", unidadeOrcId });
+    }
+  }
+  return saida;
+}
+
 export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
   {
     versao: 1,
@@ -149,6 +176,15 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "area em que ja tem alguma acao, no mesmo escopo (global ou unidade). Acoes " +
       "transversais nao derivam leitura; perfis sem acao numa area nao a ganham.",
     derivar: derivarLeituraPorArea,
+  },
+  {
+    versao: 2,
+    nome: "publicar-roteiro",
+    descricao:
+      "Publicar uma versao de roteiro contabil virou acao propria (PUBLICAR_ROTEIRO_PATRIMONIAL). " +
+      "Quem ja parametrizava roteiro recebe a publicacao no mesmo escopo; a segregacao entre " +
+      "propor e publicar fica a cargo do administrador.",
+    derivar: derivarPublicarRoteiro,
   },
 ];
 

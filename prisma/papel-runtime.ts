@@ -63,6 +63,9 @@ export const ESCRITA_MUTAVEL_DO_RUNTIME: Readonly<
     delete: false,
   },
   VinculoUsuarioPerfil: { update: [], delete: true },
+  // V3 (4.5): a PUBLICAÇÃO de uma versão de roteiro é a única escrita depois da criação, e
+  // só nestas três colunas — as contas e o motivo nunca mudam (para outro par, outra versão).
+  VersaoDeRoteiro: { update: ["situacao", "publicadaEm", "publicadaPor"], delete: false },
 
   // ⚠️ ENT06 item 1 — REVOGAR UMA AÇÃO DE UM PERFIL APAGA A CONCESSÃO, e é a mesma doutrina
   // do vínculo acima: a concessão é o FATO, e a ausência dela é a revogação. Não há coluna

@@ -5,6 +5,7 @@ import { limparBanco } from "../../test/limpar-banco.js";
 import {
   parametrizarRoteiroPatrimonial,
   parametrizarRoteiroResultadoAlienacao,
+  versaoVigente,
 } from "./roteiros.js";
 
 /**
@@ -83,8 +84,18 @@ const AVALIACAO = {
   criadoPor: POR,
 };
 
+// ⚠️ V3 (4.5): a parametrização grava VERSÕES (append-only); a tabela legada fica só-leitura.
 async function quantosRoteiros(): Promise<number> {
-  return prisma.roteiroPatrimonial.count();
+  return prisma.versaoDeRoteiro.count({ where: { familia: "PATRIMONIAL" } });
+}
+async function vigente(tipo: string): Promise<{ contaDebito: string; contaCredito: string }> {
+  const v = await versaoVigente(prisma, "PATRIMONIAL", tipo);
+  if (v === null) throw new Error(`sem versão vigente para ${tipo}`);
+  const [d, c] = await Promise.all([
+    prisma.contaPcasp.findUniqueOrThrow({ where: { codigo: v.contaDebito }, select: { id: true } }),
+    prisma.contaPcasp.findUniqueOrThrow({ where: { codigo: v.contaCredito }, select: { id: true } }),
+  ]);
+  return { contaDebito: d.id, contaCredito: c.id };
 }
 
 describe("t1 · o roteiro se parametriza, e grava o par informado", () => {
@@ -92,14 +103,19 @@ describe("t1 · o roteiro se parametriza, e grava o par informado", () => {
     const { roteiroId, substituiu } = await parametrizarRoteiroPatrimonial(prisma, AVALIACAO);
     expect(substituiu).toBe(false);
 
-    const gravado = await prisma.roteiroPatrimonial.findUniqueOrThrow({
+    const gravado = await prisma.versaoDeRoteiro.findUniqueOrThrow({
       where: { id: roteiroId },
-      select: { tipo: true, contaDebitoId: true, contaCreditoId: true, criadoPor: true },
+      select: { chave: true, numero: true, contaDebitoId: true, contaCreditoId: true, criadoPor: true, situacao: true, publicadaPor: true },
     });
-    expect(gravado.tipo).toBe("AVALIACAO_INICIAL");
+    expect(gravado.chave).toBe("AVALIACAO_INICIAL");
+    expect(gravado.numero).toBe(1);
     expect(gravado.contaDebitoId).toBe("c-ativo");
     expect(gravado.contaCreditoId).toBe("c-vpa");
     expect(gravado.criadoPor).toBe(POR);
+    // O ato composto propõe E publica: a versão nasce em vigor, e o resolvedor a enxerga.
+    expect(gravado.situacao).toBe("PUBLICADA");
+    expect(gravado.publicadaPor).toBe(POR);
+    expect((await vigente("AVALIACAO_INICIAL")).contaDebito).toBe("c-ativo");
   });
 });
 
@@ -165,14 +181,12 @@ describe("t7 e t8 · substituir é ato EXPLÍCITO", () => {
     // para decidir o passo seguinte. "Já existe" sozinho mandaria a pessoa adivinhar.
     await expect(tentativa).rejects.toThrow(/JÁ TEM roteiro/);
 
-    const depois = await prisma.roteiroPatrimonial.findUniqueOrThrow({
-      where: { tipo: "AVALIACAO_INICIAL" },
-      select: { contaDebitoId: true },
-    });
-    expect(depois.contaDebitoId, "a tentativa recusada não pode ter trocado nada").toBe("c-ativo");
+    const depois = await vigente("AVALIACAO_INICIAL");
+    expect(depois.contaDebito, "a tentativa recusada não pode ter trocado nada").toBe("c-ativo");
+    expect(await quantosRoteiros()).toBe(1);
   });
 
-  it("t8: com `substituir`, as contas trocam — e continua havendo UMA linha do evento", async () => {
+  it("t8: com `substituir`, as contas trocam — e a versão anterior FICA, com autor e momento (V3 4.5)", async () => {
     await parametrizarRoteiroPatrimonial(prisma, AVALIACAO);
     const { substituiu } = await parametrizarRoteiroPatrimonial(prisma, {
       ...AVALIACAO,
@@ -181,12 +195,18 @@ describe("t7 e t8 · substituir é ato EXPLÍCITO", () => {
     });
     expect(substituiu).toBe(true);
 
-    const linhas = await prisma.roteiroPatrimonial.findMany({
-      where: { tipo: "AVALIACAO_INICIAL" },
-      select: { contaDebitoId: true },
+    // ⚠️ ANTES ISTO ERA "continua havendo UMA linha": a substituição sobrescrevia a versão
+    // anterior em silêncio. Agora são DUAS versões, e a vigente é a segunda.
+    const versoes = await prisma.versaoDeRoteiro.findMany({
+      where: { familia: "PATRIMONIAL", chave: "AVALIACAO_INICIAL" },
+      orderBy: { numero: "asc" },
+      select: { numero: true, contaDebitoId: true, situacao: true, criadoPor: true },
     });
-    expect(linhas).toHaveLength(1);
-    expect(linhas[0]?.contaDebitoId).toBe("c-ativo2");
+    expect(versoes.map((v) => [v.numero, v.contaDebitoId, v.situacao])).toEqual([
+      [1, "c-ativo", "PUBLICADA"],
+      [2, "c-ativo2", "PUBLICADA"],
+    ]);
+    expect((await vigente("AVALIACAO_INICIAL")).contaDebito).toBe("c-ativo2");
   });
 });
 
@@ -218,19 +238,14 @@ describe("t10 e t11 · N=2 — um roteiro por evento, e os eventos não se conta
       substituir: true,
     });
 
-    const avaliacao = await prisma.roteiroPatrimonial.findUniqueOrThrow({
-      where: { tipo: "AVALIACAO_INICIAL" },
-      select: { contaDebitoId: true, contaCreditoId: true },
-    });
-    const depreciacao = await prisma.roteiroPatrimonial.findUniqueOrThrow({
-      where: { tipo: "DEPRECIACAO" },
-      select: { contaDebitoId: true, contaCreditoId: true },
-    });
+    const avaliacao = await vigente("AVALIACAO_INICIAL");
+    const depreciacao = await vigente("DEPRECIACAO");
 
-    expect(avaliacao.contaDebitoId).toBe("c-ativo2");
-    expect(depreciacao.contaDebitoId, "a depreciação não foi tocada").toBe("c-vpd");
-    expect(depreciacao.contaCreditoId).toBe("c-ativo");
-    expect(await quantosRoteiros()).toBe(2);
+    expect(avaliacao.contaDebito).toBe("c-ativo2");
+    expect(depreciacao.contaDebito, "a depreciação não foi tocada").toBe("c-vpd");
+    expect(depreciacao.contaCredito).toBe("c-ativo");
+    // três versões: avaliação 1 e 2, depreciação 1 — a substituição não apaga a anterior.
+    expect(await quantosRoteiros()).toBe(3);
   });
 
   it("t11: ganho e perda da alienação são DOIS roteiros independentes", async () => {
@@ -247,14 +262,12 @@ describe("t10 e t11 · N=2 — um roteiro por evento, e os eventos não se conta
       criadoPor: POR,
     });
 
-    expect(await prisma.roteiroResultadoAlienacao.count()).toBe(2);
+    expect(await prisma.versaoDeRoteiro.count({ where: { familia: "RESULTADO_ALIENACAO" } })).toBe(2);
 
-    const ganho = await prisma.roteiroResultadoAlienacao.findUniqueOrThrow({
-      where: { chave: "GANHO_ALIENACAO" },
-      select: { contaDebitoId: true, contaCreditoId: true },
-    });
-    expect(ganho.contaDebitoId).toBe("c-ativo");
-    expect(ganho.contaCreditoId).toBe("c-vpa");
+    const ganho = await versaoVigente(prisma, "RESULTADO_ALIENACAO", "GANHO_ALIENACAO");
+    expect(ganho?.contaDebito).toBe("1.2.3.1.1.01.00"); // o código de "c-ativo" na fixture
+    const perda = await versaoVigente(prisma, "RESULTADO_ALIENACAO", "PERDA_ALIENACAO");
+    expect(perda?.contaDebito).not.toBe(ganho?.contaDebito);
   });
 
   it("t11b: o resultado da alienação usa as MESMAS recusas — sintética é negada aqui também", async () => {

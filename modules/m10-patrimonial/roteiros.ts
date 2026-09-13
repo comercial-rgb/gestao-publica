@@ -3,8 +3,320 @@ import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { toMoney } from "../../packages/contracts/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
-import { comporPartidas } from "./dominio.js";
+import { comporPartidas, TIPOS_BASE } from "./dominio.js";
 import type { TipoMovimentoPatrimonial } from "./dominio.js";
+import type { AcaoDoSistema } from "../m16-travamento/acoes.js";
+
+const zCodigoDeConta = z.string().min(1);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ORQUESTRAÇÃO V3 (4.5) — AS VERSÕES DO ROTEIRO, APPEND-ONLY
+//
+// ⚠️ O QUE ISTO CORRIGE. Até aqui `RoteiroPatrimonial` tinha UMA linha por evento, e a
+// reparametrização a atualizava em silêncio: versão anterior, autor e motivo se perdiam,
+// e um lançamento antigo não sabia dizer com que par de contas tinha sido feito. Agora
+// cada parametrização é uma LINHA NOVA em `VersaoDeRoteiro`, com motivo obrigatório;
+// PROPOR (validação estrutural pelo motor) e PUBLICAR (a aprovação, que põe em vigor)
+// são atos separados, com crachás separados; a vigência é DERIVADA (a PUBLICADA mais
+// recente vale, e a anterior termina onde a seguinte começa); e o movimento grava a
+// versão que usou (`MovimentoPatrimonial.versaoDeRoteiroId`). Nenhum lançamento
+// anterior é reescrito. As tabelas legadas ficam só-leitura, como origem.
+//
+// ⚠️ CONCORRÊNCIA E REPETIÇÃO, sem sobrescrita silenciosa: o número da versão nasce de
+// max + 1 dentro da transação e é ÚNICO por (família, chave) — duas propostas ao mesmo
+// tempo não se sobrescrevem, a segunda estoura no índice e é recusada nomeando; repetir
+// o mesmo comando (a proposta idêntica à pendente, ou o par já vigente) é recusado
+// nomeando também. Publicar é `updateMany` guardado pela situação: dois cliques no mesmo
+// "publicar" — o segundo encontra a versão já publicada e é recusado.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type FamiliaDeRoteiro = "PATRIMONIAL" | "RESULTADO_ALIENACAO";
+const zFamilia = z.enum(["PATRIMONIAL", "RESULTADO_ALIENACAO"]);
+
+/** A ação de PUBLICAR — separada de parametrizar. Constante (ver a nota no parametrizar). */
+const A_ACAO_DE_PUBLICAR: AcaoDoSistema = "PUBLICAR_ROTEIRO_PATRIMONIAL";
+
+export const zProporVersaoDeRoteiroInput = z.object({
+  familia: zFamilia,
+  chave: z.string().min(1),
+  contaDebitoId: zCodigoDeConta,
+  contaCreditoId: zCodigoDeConta,
+  motivo: z
+    .string()
+    .trim()
+    .min(8, "O motivo da versão é obrigatório e precisa dizer POR QUE as contas mudam — quem ler o histórico daqui a um ano não terá a quem perguntar."),
+  criadoPor: z.string().min(1),
+});
+export type ProporVersaoDeRoteiroInput = z.input<typeof zProporVersaoDeRoteiroInput>;
+
+export const zPublicarVersaoDeRoteiroInput = z.object({
+  versaoId: z.string().min(1),
+  criadoPor: z.string().min(1),
+});
+export type PublicarVersaoDeRoteiroInput = z.input<typeof zPublicarVersaoDeRoteiroInput>;
+
+function conferirChave(familia: FamiliaDeRoteiro, chave: string): void {
+  if (familia === "PATRIMONIAL") {
+    if (chave.startsWith("ESTORNO_")) {
+      throw new Error(
+        `${chave} é um ESTORNO, e estorno NÃO tem roteiro próprio: o lançamento contrário ` +
+          `é gerado invertendo as pernas do movimento original. Parametrize o tipo que ele ` +
+          `desfaz. Nada foi gravado.`
+      );
+    }
+    if (!(TIPOS_BASE as readonly string[]).includes(chave)) {
+      throw new Error(`${chave} não é um evento patrimonial conhecido. Nada foi gravado.`);
+    }
+    return;
+  }
+  if (chave !== "GANHO_ALIENACAO" && chave !== "PERDA_ALIENACAO") {
+    throw new Error(`${chave} não é uma chave de resultado da alienação. Nada foi gravado.`);
+  }
+}
+
+export interface VersaoVigente {
+  readonly id: string;
+  readonly numero: number;
+  readonly contaDebito: string;
+  readonly contaCredito: string;
+}
+
+/**
+ * A VERSÃO EM VIGOR de um roteiro — a PUBLICADA de `publicadaEm` mais recente. `null`
+ * quando nenhuma versão foi publicada (o resolvedor do M10 então olha a linha legada).
+ */
+export async function versaoVigente(
+  tx: Tx,
+  familia: FamiliaDeRoteiro,
+  chave: string
+): Promise<VersaoVigente | null> {
+  const v = await tx.versaoDeRoteiro.findFirst({
+    where: { familia, chave, situacao: "PUBLICADA" },
+    orderBy: [{ publicadaEm: "desc" }, { numero: "desc" }],
+    select: {
+      id: true,
+      numero: true,
+      contaDebito: { select: { codigo: true } },
+      contaCredito: { select: { codigo: true } },
+    },
+  });
+  if (v === null) return null;
+  return { id: v.id, numero: v.numero, contaDebito: v.contaDebito.codigo, contaCredito: v.contaCredito.codigo };
+}
+
+interface ParVigente {
+  readonly contaDebito: { readonly id: string; readonly codigo: string; readonly nome: string };
+  readonly contaCredito: { readonly id: string; readonly codigo: string; readonly nome: string };
+}
+
+/** O par em vigor — a versão publicada, ou a linha legada enquanto não houver versão. */
+async function vigenteOuLegado(
+  tx: Tx,
+  familia: FamiliaDeRoteiro,
+  chave: string
+): Promise<ParVigente | null> {
+  const sel = {
+    contaDebito: { select: { id: true, codigo: true, nome: true } },
+    contaCredito: { select: { id: true, codigo: true, nome: true } },
+  } as const;
+  const v = await tx.versaoDeRoteiro.findFirst({
+    where: { familia, chave, situacao: "PUBLICADA" },
+    orderBy: [{ publicadaEm: "desc" }, { numero: "desc" }],
+    select: sel,
+  });
+  if (v !== null) return v;
+  if (familia === "PATRIMONIAL") {
+    return tx.roteiroPatrimonial.findUnique({ where: { tipo: chave as TipoMovimentoPatrimonial }, select: sel });
+  }
+  return tx.roteiroResultadoAlienacao.findUnique({
+    where: { chave: chave as "GANHO_ALIENACAO" | "PERDA_ALIENACAO" },
+    select: sel,
+  });
+}
+
+/** Cria a versão (PROPOSTA), com o número seguinte — a concorrência é do índice único. */
+async function criarVersaoNaTx(
+  tx: Tx,
+  p: {
+    readonly familia: FamiliaDeRoteiro;
+    readonly chave: string;
+    readonly debito: ContaConferida;
+    readonly credito: ContaConferida;
+    readonly motivo: string;
+    readonly criadoPor: string;
+  }
+): Promise<{ readonly id: string; readonly numero: number }> {
+  const ultima = await tx.versaoDeRoteiro.aggregate({
+    where: { familia: p.familia, chave: p.chave },
+    _max: { numero: true },
+  });
+  const numero = (ultima._max.numero ?? 0) + 1;
+  try {
+    return await tx.versaoDeRoteiro.create({
+      data: {
+        familia: p.familia,
+        chave: p.chave,
+        numero,
+        contaDebitoId: p.debito.id,
+        contaCreditoId: p.credito.id,
+        motivo: p.motivo,
+        criadoPor: p.criadoPor,
+      },
+      select: { id: true, numero: true },
+    });
+  } catch (e) {
+    const codigo = (e as { code?: string }).code;
+    if (codigo === "P2002") {
+      throw new Error(
+        `CONCORRÊNCIA: outra versão do roteiro de ${p.chave} nasceu enquanto esta era ` +
+          `proposta (a versão ${numero} já existe). Nada foi sobrescrito e nada seu foi ` +
+          `gravado — recarregue, leia a versão que entrou, e proponha de novo se ainda fizer sentido.`
+      );
+    }
+    throw e;
+  }
+}
+
+/** Publica a versão — `updateMany` guardado pela situação: o segundo clique é recusado. */
+async function publicarNaTx(tx: Tx, versaoId: string, publicadaPor: string, agora = new Date()): Promise<void> {
+  const r = await tx.versaoDeRoteiro.updateMany({
+    where: { id: versaoId, situacao: "PROPOSTA" },
+    data: { situacao: "PUBLICADA", publicadaEm: agora, publicadaPor },
+  });
+  if (r.count !== 1) {
+    throw new Error(
+      `A versão ${versaoId} não está mais PROPOSTA — ou já foi publicada (o mesmo comando ` +
+        `repetido), ou não existe. Nada foi gravado de novo.`
+    );
+  }
+}
+
+/**
+ * PROPÕE uma versão: valida a chave, as contas e o par contra o MOTOR (a validação
+ * estrutural), e grava a versão como PROPOSTA. Ninguém lança por ela até a publicação.
+ */
+export async function proporVersaoDeRoteiro(
+  prisma: PrismaClient,
+  input: ProporVersaoDeRoteiroInput
+): Promise<{ readonly versaoId: string; readonly numero: number }> {
+  const d = zProporVersaoDeRoteiroInput.parse(input);
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.proporVersaoDeRoteiro, "ENTE");
+    conferirChave(d.familia, d.chave);
+
+    const [debito, credito] = await Promise.all([
+      conferirConta(tx, d.contaDebitoId, "débito"),
+      conferirConta(tx, d.contaCreditoId, "crédito"),
+    ]);
+    conferirContraOMotor(debito, credito);
+
+    // ⚠️ REPETIÇÃO DO MESMO COMANDO, recusada nomeando: o par já vigente não é uma versão
+    // nova, e uma proposta idêntica à pendente é o mesmo pedido duas vezes.
+    const vigente = await vigenteOuLegado(tx, d.familia, d.chave);
+    if (vigente !== null && vigente.contaDebito.id === debito.id && vigente.contaCredito.id === credito.id) {
+      throw new Error(
+        `As contas propostas para ${d.chave} são exatamente as já em vigor (débito ` +
+          `${debito.codigo}, crédito ${credito.codigo}). Não há o que versionar. Nada foi gravado.`
+      );
+    }
+    const pendenteIgual = await tx.versaoDeRoteiro.findFirst({
+      where: { familia: d.familia, chave: d.chave, situacao: "PROPOSTA", contaDebitoId: debito.id, contaCreditoId: credito.id },
+      select: { numero: true },
+    });
+    if (pendenteIgual !== null) {
+      throw new Error(
+        `Já há uma proposta idêntica pendente para ${d.chave} (versão ${pendenteIgual.numero}). ` +
+          `Publique-a ou proponha outro par. Nada foi gravado de novo.`
+      );
+    }
+
+    const v = await criarVersaoNaTx(tx, { familia: d.familia, chave: d.chave, debito, credito, motivo: d.motivo, criadoPor: d.criadoPor });
+    return { versaoId: v.id, numero: v.numero };
+  });
+}
+
+/**
+ * PUBLICA uma versão proposta — a aprovação. A partir daqui os movimentos FUTUROS do
+ * evento lançam por ela; os anteriores continuam apontando para a versão que usaram.
+ */
+export async function publicarVersaoDeRoteiro(
+  prisma: PrismaClient,
+  input: PublicarVersaoDeRoteiroInput
+): Promise<{ readonly versaoId: string; readonly numero: number; readonly substituiuNumero: number | null }> {
+  const d = zPublicarVersaoDeRoteiroInput.parse(input);
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.publicarVersaoDeRoteiro, "ENTE");
+
+    const v = await tx.versaoDeRoteiro.findUnique({
+      where: { id: d.versaoId },
+      select: { id: true, numero: true, familia: true, chave: true, situacao: true },
+    });
+    if (v === null) throw new Error(`Não há versão de roteiro com id "${d.versaoId}". Nada foi gravado.`);
+    const anterior = await versaoVigente(tx, v.familia, v.chave);
+    await publicarNaTx(tx, v.id, d.criadoPor);
+    return { versaoId: v.id, numero: v.numero, substituiuNumero: anterior?.numero ?? null };
+  });
+}
+
+export interface VersaoDeRoteiroLida {
+  readonly id: string;
+  readonly numero: number;
+  readonly contaDebito: { readonly codigo: string; readonly nome: string };
+  readonly contaCredito: { readonly codigo: string; readonly nome: string };
+  readonly motivo: string;
+  readonly situacao: "PROPOSTA" | "PUBLICADA";
+  readonly criadoEm: Date;
+  readonly criadoPor: string;
+  readonly publicadaEm: Date | null;
+  readonly publicadaPor: string | null;
+  /** Derivada: a publicação da versão seguinte. `null` = em vigor (ou nunca publicada). */
+  readonly vigenciaFim: Date | null;
+  readonly vigente: boolean;
+  /** Quantos movimentos lançaram por esta versão — o vínculo com os fatos. */
+  readonly movimentos: number;
+}
+
+/** As versões de um roteiro, do número 1 em diante, com a vigência DERIVADA. */
+export async function versoesDoRoteiro(
+  tx: Tx,
+  familia: FamiliaDeRoteiro,
+  chave: string
+): Promise<readonly VersaoDeRoteiroLida[]> {
+  const linhas = await tx.versaoDeRoteiro.findMany({
+    where: { familia, chave },
+    orderBy: { numero: "asc" },
+    select: {
+      id: true, numero: true, motivo: true, situacao: true, criadoEm: true, criadoPor: true,
+      publicadaEm: true, publicadaPor: true,
+      contaDebito: { select: { codigo: true, nome: true } },
+      contaCredito: { select: { codigo: true, nome: true } },
+      _count: { select: { movimentos: true } },
+    },
+  });
+  const publicadas = linhas
+    .filter((l) => l.situacao === "PUBLICADA" && l.publicadaEm !== null)
+    .sort((a, b) => a.publicadaEm!.getTime() - b.publicadaEm!.getTime());
+  const vigenteId = publicadas.at(-1)?.id ?? null;
+  return linhas.map((l) => {
+    const pos = publicadas.findIndex((p) => p.id === l.id);
+    const seguinte = pos >= 0 ? publicadas[pos + 1] : undefined;
+    return {
+      id: l.id,
+      numero: l.numero,
+      contaDebito: l.contaDebito,
+      contaCredito: l.contaCredito,
+      motivo: l.motivo,
+      situacao: l.situacao as "PROPOSTA" | "PUBLICADA",
+      criadoEm: l.criadoEm,
+      criadoPor: l.criadoPor,
+      publicadaEm: l.publicadaEm,
+      publicadaPor: l.publicadaPor,
+      vigenciaFim: seguinte?.publicadaEm ?? null,
+      vigente: l.id === vigenteId,
+      movimentos: l._count.movimentos,
+    };
+  });
+}
 
 /**
  * ═══ M10 — A PARAMETRIZAÇÃO DO ROTEIRO CONTÁBIL DO PATRIMÔNIO (TR 5.10.1.71) ═══
@@ -50,7 +362,6 @@ import type { TipoMovimentoPatrimonial } from "./dominio.js";
  * logo corrigi o passado" — é a que faz alguém deixar de emitir o lançamento de correção.
  */
 
-const zCodigoDeConta = z.string().min(1);
 
 export const zParametrizarRoteiroPatrimonialInput = z.object({
   tipo: z.string().min(1),
@@ -192,15 +503,14 @@ export async function parametrizarRoteiroPatrimonial(
     ]);
     conferirContraOMotor(debito, credito);
 
-    const vigente = await tx.roteiroPatrimonial.findUnique({
-      where: { tipo: d.tipo as TipoMovimentoPatrimonial },
-      select: {
-        id: true,
-        contaDebito: { select: { codigo: true, nome: true } },
-        contaCredito: { select: { codigo: true, nome: true } },
-      },
-    });
+    // ⚠️ V3 (4.5): PARAMETRIZAR É O ATO COMPOSTO — propõe E publica a versão, e por isso
+    // cobra TAMBÉM o crachá de publicar. Quem só propõe usa `proporVersaoDeRoteiro`; quem só
+    // aprova usa `publicarVersaoDeRoteiro`. A constante, e não o `ACAO_DO_SERVICO`, pela
+    // mesma razão de `A_CHAVE_QUE_REABRE` no M16: o grep-teste do censo trata a ação de
+    // OUTRO serviço no corpo como cópia mal-feita.
+    await autorizarNo(tx, d.criadoPor, A_ACAO_DE_PUBLICAR, "ENTE");
 
+    const vigente = await vigenteOuLegado(tx, "PATRIMONIAL", d.tipo);
     if (vigente !== null && !d.substituir) {
       throw new Error(
         `O tipo ${d.tipo} JÁ TEM roteiro: débito em ${vigente.contaDebito.codigo} — ` +
@@ -211,28 +521,16 @@ export async function parametrizarRoteiroPatrimonial(
       );
     }
 
-    if (vigente !== null) {
-      await tx.roteiroPatrimonial.update({
-        where: { id: vigente.id },
-        data: {
-          contaDebitoId: debito.id,
-          contaCreditoId: credito.id,
-          criadoPor: d.criadoPor,
-        },
-      });
-      return { roteiroId: vigente.id, substituiu: true };
-    }
-
-    const criado = await tx.roteiroPatrimonial.create({
-      data: {
-        tipo: d.tipo as TipoMovimentoPatrimonial,
-        contaDebitoId: debito.id,
-        contaCreditoId: credito.id,
-        criadoPor: d.criadoPor,
-      },
-      select: { id: true },
+    const versao = await criarVersaoNaTx(tx, {
+      familia: "PATRIMONIAL",
+      chave: d.tipo,
+      debito,
+      credito,
+      motivo: vigente === null ? "Parametrização direta (primeira versão)" : "Parametrização direta (substituição das contas)",
+      criadoPor: d.criadoPor,
     });
-    return { roteiroId: criado.id, substituiu: false };
+    await publicarNaTx(tx, versao.id, d.criadoPor);
+    return { roteiroId: versao.id, substituiu: vigente !== null };
   });
 }
 
@@ -263,45 +561,27 @@ export async function parametrizarRoteiroResultadoAlienacao(
     conferirContraOMotor(debito, credito);
 
     const chave = d.chave as "GANHO_ALIENACAO" | "PERDA_ALIENACAO";
-    const vigente = await tx.roteiroResultadoAlienacao.findUnique({
-      where: { chave },
-      select: {
-        id: true,
-        contaDebito: { select: { codigo: true, nome: true } },
-        contaCredito: { select: { codigo: true, nome: true } },
-      },
-    });
+    await autorizarNo(tx, d.criadoPor, A_ACAO_DE_PUBLICAR, "ENTE");
 
+    const vigente = await vigenteOuLegado(tx, "RESULTADO_ALIENACAO", chave);
     if (vigente !== null && !d.substituir) {
       throw new Error(
-        `${d.chave} JÁ TEM roteiro: débito em ${vigente.contaDebito.codigo} — ` +
+        `${chave} JÁ TEM roteiro: débito em ${vigente.contaDebito.codigo} — ` +
           `${vigente.contaDebito.nome}, crédito em ${vigente.contaCredito.codigo} — ` +
-          `${vigente.contaCredito.nome}. Nada foi gravado. Para trocar as contas, abra o ` +
-          `roteiro e use a reparametrização.`
+          `${vigente.contaCredito.nome}. Nada foi gravado. Para trocar as contas, use a ` +
+          `reparametrização — ela muda o resultado das alienações FUTURAS.`
       );
     }
 
-    if (vigente !== null) {
-      await tx.roteiroResultadoAlienacao.update({
-        where: { id: vigente.id },
-        data: {
-          contaDebitoId: debito.id,
-          contaCreditoId: credito.id,
-          criadoPor: d.criadoPor,
-        },
-      });
-      return { roteiroId: vigente.id, substituiu: true };
-    }
-
-    const criado = await tx.roteiroResultadoAlienacao.create({
-      data: {
-        chave,
-        contaDebitoId: debito.id,
-        contaCreditoId: credito.id,
-        criadoPor: d.criadoPor,
-      },
-      select: { id: true },
+    const versao = await criarVersaoNaTx(tx, {
+      familia: "RESULTADO_ALIENACAO",
+      chave,
+      debito,
+      credito,
+      motivo: vigente === null ? "Parametrização direta (primeira versão)" : "Parametrização direta (substituição das contas)",
+      criadoPor: d.criadoPor,
     });
-    return { roteiroId: criado.id, substituiu: false };
+    await publicarNaTx(tx, versao.id, d.criadoPor);
+    return { roteiroId: versao.id, substituiu: vigente !== null };
   });
 }

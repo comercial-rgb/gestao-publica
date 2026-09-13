@@ -98,6 +98,9 @@ model ContaPcasp {
   /// back-relations ENT05 (ITEM 3 — o repontamento) — VIRTUAIS.
   migracoesComoOrigem  MigracaoDeConta[] @relation("MigracaoOrigem")
   migracoesComoDestino MigracaoDeConta[] @relation("MigracaoDestino")
+  /// back-relations V3 (4.5) — as versões de roteiro que apontam para esta conta. VIRTUAIS.
+  versoesComoDebito  VersaoDeRoteiro[] @relation("DebitoDaVersao")
+  versoesComoCredito VersaoDeRoteiro[] @relation("CreditoDaVersao")
 }
 
 // ----------------------------------------------------------------------------

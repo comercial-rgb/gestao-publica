@@ -166,14 +166,38 @@ export const ROTEIROS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
   ],
   acoes: [
     {
-      // ⚠️ REPARAMETRIZAR É ATO À PARTE, e não o mesmo formulário com outro nome. Trocar as
-      // contas de um evento já parametrizado muda a contabilidade dos movimentos seguintes;
-      // o serviço RECUSA a substituição pelo caminho de criar, justamente para que ninguém
-      // sobrescreva um roteiro por ter digitado o tipo errado.
-      nome: "reparametrizar",
-      rotulo: "Trocar as contas deste roteiro",
+      // V3 (4.5): PROPOR é a validação estrutural — o motor confere o par, e a versão fica
+      // registrada com autor e motivo. Ela NÃO vigora: publicar é outro ato, de quem aprova.
+      nome: "propor",
+      rotulo: "Propor nova versão das contas",
       acaoDoCenso: "PARAMETRIZAR_ROTEIRO_PATRIMONIAL",
-      aviso: AVISO_DA_SUBSTITUICAO,
+      aviso:
+        "A proposta é validada pelo motor contábil e fica registrada com o seu nome e o motivo. " +
+        "Ela NÃO vigora até ser publicada — e publicar é outro ato, de quem aprova.",
+      campos: [
+        { nome: "contaDebitoId", rotulo: "Conta de débito proposta", tipo: "selecao", obrigatorio: true, largura: 3, opcoes: [] },
+        { nome: "contaCreditoId", rotulo: "Conta de crédito proposta", tipo: "selecao", obrigatorio: true, largura: 3, opcoes: [] },
+        { nome: "motivo", rotulo: "Motivo da nova versão", tipo: "texto", obrigatorio: true, largura: 4, ajuda: "Por que as contas mudam. Quem ler o histórico daqui a um ano não terá a quem perguntar." },
+      ],
+    },
+    {
+      nome: "publicar",
+      rotulo: "Publicar a proposta pendente",
+      acaoDoCenso: "PUBLICAR_ROTEIRO_PATRIMONIAL",
+      aviso:
+        "Publica a proposta mais recente deste evento: a partir de agora os movimentos FUTUROS " +
+        "lançam por ela. A versão anterior fica no histórico, e os lançamentos já feitos " +
+        "continuam apontando para a versão que usaram.",
+      campos: [],
+    },
+    {
+      // ⚠️ REPARAMETRIZAR É O ATO COMPOSTO (propor E publicar), e por isso exige os dois crachás.
+      // Continua ato à parte do criar: o serviço RECUSA a substituição pelo caminho de criar,
+      // para que ninguém sobrescreva um roteiro por ter digitado o tipo errado.
+      nome: "reparametrizar",
+      rotulo: "Trocar as contas agora (propor e publicar num ato)",
+      acaoDoCenso: "PARAMETRIZAR_ROTEIRO_PATRIMONIAL",
+      aviso: AVISO_DA_SUBSTITUICAO + " Este ato exige também o crachá de publicar.",
       campos: [
         { nome: "contaDebitoId", rotulo: "Nova conta de débito", tipo: "selecao", obrigatorio: true, largura: 3, opcoes: [] },
         { nome: "contaCreditoId", rotulo: "Nova conta de crédito", tipo: "selecao", obrigatorio: true, largura: 3, opcoes: [] },
@@ -183,10 +207,10 @@ export const ROTEIROS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
   permissoes: { criar: "PARAMETRIZAR_ROTEIRO_PATRIMONIAL" },
   classesDeConta: [...CLASSES_PATRIMONIAIS],
 
-  // ⚠️ SEM A ABA DE HISTÓRICO: a tabela do roteiro não guarda o par anterior, e uma aba de
-  // histórico vazia ensinaria que o sistema perdeu a alteração. Quem trocou e quando está
-  // em `RegistroDeOperacao` (TR 6.3). Pendência `ROTEIRO-SEM-HISTORICO-PROPRIO`.
-  abas: ["dados"],
+  // V3 (4.5): a aba de histórico mostra as VERSÕES — autor, momento, motivo, vigência derivada
+  // e quantos movimentos lançaram por cada uma. A pendência `ROTEIRO-SEM-HISTORICO-PROPRIO`
+  // fecha aqui.
+  abas: ["dados", "historico"],
 });
 
 export const ROTEIROS_DE_RESULTADO: DefinicaoDeRecurso = definirRecurso({

@@ -163,6 +163,7 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   // patrimônio que ele é procurado. A conta que ele aponta é do PCASP, mas o EVENTO é
   // patrimonial — classificá-lo pela conta mandaria o operador do bem para a área errada.
   PARAMETRIZAR_ROTEIRO_PATRIMONIAL: "patrimonio",
+  PUBLICAR_ROTEIRO_PATRIMONIAL: "patrimonio",
 
   // ENT05 — o eixo de GESTÃO do bem (TR 5.19).
   CADASTRAR_LOCALIZACAO_FISICA: "cadastros",

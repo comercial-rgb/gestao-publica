@@ -393,6 +393,9 @@ enum AcaoDoSistema {
   CONSULTAR_ADMINISTRACAO
   CONSULTAR_INTEGRACOES
   CONSULTAR_SUPORTE
+
+  // ── Orquestração V3 (4.5) — PUBLICAR uma versão de roteiro é ato separado de PROPOR ──
+  PUBLICAR_ROTEIRO_PATRIMONIAL
 }
 
 /// O USUÁRIO. TR 4.55.
