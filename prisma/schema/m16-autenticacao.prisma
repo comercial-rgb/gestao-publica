@@ -152,6 +152,13 @@ enum ResultadoOperacao {
   NEGADO
   /// Estourou por outra razão (guard de negócio, saldo, trava).
   ERRO
+  /// Orquestração V3 (4.3) — o comando FOI RECEBIDO: a linha nasce ANTES do ato, fora da
+  /// transação dele. É a tentativa, registrada mesmo que o processo morra no meio.
+  INICIADA
+  /// Orquestração V3 (4.3) — o ato terminou e a resposta foi montada (com `resultadoRef`).
+  /// Gravada DEPOIS da transação: se esta linha faltar e houver SUCESSO, o fato existe e
+  /// a resposta se perdeu — o replay pela chave responde sem repetir o fato.
+  CONCLUIDA
 }
 
 /// O REGISTRO DE OPERAÇÃO — o 6.1/6.2/6.3 completo, e ele é APPEND-ONLY.
@@ -194,9 +201,23 @@ model RegistroDeOperacao {
   /// A mensagem da negação, quando houve. É ela que responde "por quê".
   detalhe String?
 
+  // ── Orquestração V3 (4.3): o comando em DUAS fases, append-only ──
+  /// A chave de idempotência do comando (vem do formulário). Nula para atos sem chave.
+  chave String?
+  /// O sha256 do comando canônico — a mesma chave com outro fingerprint é OUTRO comando.
+  fingerprint String?
+  /// A linha INICIADA a que esta conclusão pertence (SUCESSO, CONCLUIDA, NEGADO, ERRO).
+  operacaoId String?
+  /// SUCESSO gravado pelo FUNIL, na transação do fato: o lançamento que o comando produziu.
+  lancamentoId String?
+  /// CONCLUIDA: a referência do resultado (JSON curto), para o replay responder sem repetir.
+  resultadoRef String?
+
   criadoEm DateTime @default(now())
 
   @@index([usuarioIdent, criadoEm])
   @@index([criadoEm])
   @@index([resultado])
+  @@index([usuarioIdent, acao, chave])
+  @@index([operacaoId])
 }

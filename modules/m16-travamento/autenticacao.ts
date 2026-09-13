@@ -159,7 +159,7 @@ export type AutenticarInput = z.input<typeof zAutenticarInput>;
  * bruta. A mensagem é uma só, e o TEMPO também é (ver `HASH_INEXISTENTE`) — as duas portas de
  * vazamento fecham juntas, porque fechar uma só não fecha nada.
  */
-const CREDENCIAIS_INVALIDAS =
+export const CREDENCIAIS_INVALIDAS =
   "CREDENCIAIS INVÁLIDAS: identificador ou senha incorretos. (A mensagem é a MESMA para " +
   "usuário inexistente e senha errada — de propósito: distingui-las diria a quem varre a " +
   "lista de e-mails do município quais deles têm conta.)";
@@ -424,3 +424,17 @@ export async function revogarSessoesNaTx(
 }
 
 export { exigirUsuarioAtivo };
+
+/**
+ * A FALHA DO LOGIN É DE CREDENCIAL, OU DE INFRAESTRUTURA? (orquestração V3, 4.3)
+ *
+ * A borda mostrava "usuário ou senha inválidos" para QUALQUER erro de `autenticar` —
+ * inclusive o banco fora do ar ou a auditoria da tentativa (`TentativaDeLogin`) recusando
+ * o INSERT. Um servidor com a senha certa recebia a mensagem errada e ia trocar a senha.
+ * Só duas mensagens do domínio são de credencial: as inválidas e o cadeado. O resto é o
+ * serviço indisponível, e a borda diz isso — sem detalhar o quê, que é dado de operação.
+ */
+export function ehFalhaDeCredencial(e: unknown): boolean {
+  const m = e instanceof Error ? e.message : String(e);
+  return m === CREDENCIAIS_INVALIDAS || m.startsWith("ACESSO BLOQUEADO");
+}

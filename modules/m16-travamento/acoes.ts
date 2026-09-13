@@ -1438,7 +1438,9 @@ export const FORA_DO_CENSO: Record<string, string> = {
   //
   // A porta do log da borda. Registrar não é um ato do usuário — é o sistema contando o que
   // aconteceu. Exigir permissão para logar seria permitir que alguém agisse SEM deixar rastro.
-  comOperacaoRegistrada: "porta da borda (o log do 6.1-6.3)",
+  comOperacaoRegistrada: "porta da borda (o log do 6.1-6.3, em duas fases — V3 4.3)",
+  registrarSucessoNaTransacao:
+    "perna do FUNIL: grava a linha SUCESSO do registro de operação na transação do fato (V3 4.3) — a autorização é do serviço que abriu a transação",
   // ── Os RESOLVEDORES DE ESCOPO (TR 6.5). Eles não são atos: são a pergunta "de qual
   // unidade gestora é este fato?", e a resposta sai andando até a ficha. Ver `escopo.ts`.
   ugDaFicha: "resolvedor de escopo (6.5)",

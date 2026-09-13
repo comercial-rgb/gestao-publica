@@ -83,8 +83,10 @@ describe("M16 — a separação da administração (não-herança + borda)", () 
 
     // A tentativa negada ficou auditada como NEGADO (não ERRO — a distinção que o controle filtra):
     // o TCE vê que ele TENTOU e foi barrado pela autorização.
-    const op = await prisma.registroDeOperacao.findFirstOrThrow({ where: { acao: "RESETAR_SENHA", usuarioIdent: ident } });
-    expect(op.resultado).toBe("NEGADO");
+    const ops = (await prisma.registroDeOperacao.findMany({ where: { acao: "RESETAR_SENHA", usuarioIdent: ident } })).map((o) => o.resultado);
+    expect(ops).toContain("NEGADO");
+    expect(ops).not.toContain("SUCESSO");
+    expect(ops).not.toContain("CONCLUIDA");
   });
 
   it("t3 (o admin consegue): reset autorizado — token do ALVO morre, o do ADMIN sobrevive, e fica auditado", async () => {
@@ -111,7 +113,10 @@ describe("M16 — a separação da administração (não-herança + borda)", () 
     await expect(validarSessao(prisma, sAdmin.token)).resolves.toMatchObject({ identificador: ADMIN });
 
     // Auditado como SUCESSO, com o autor certo.
-    const op = await prisma.registroDeOperacao.findFirstOrThrow({ where: { acao: "RESETAR_SENHA", usuarioIdent: ADMIN } });
-    expect(op.resultado).toBe("SUCESSO");
+    const ops = (await prisma.registroDeOperacao.findMany({ where: { acao: "RESETAR_SENHA", usuarioIdent: ADMIN } })).map((o) => o.resultado);
+    // Reset de senha não passa pelo funil (não é lançamento): INICIADA + CONCLUIDA, sem NEGADO.
+    expect(ops).toContain("CONCLUIDA");
+    expect(ops).not.toContain("NEGADO");
+    expect(ops).not.toContain("ERRO");
   });
 });

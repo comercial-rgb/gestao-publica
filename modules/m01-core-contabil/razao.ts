@@ -1,4 +1,5 @@
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
+import { registrarSucessoNaTransacao } from "../m16-travamento/operacao.js";
 import { exigirUsuarioAtivo } from "../m16-travamento/autorizacao.js";
 import { exigirCompetenciaDestravada } from "../m16-travamento/guard.js";
 import type { NaturezaLancamento } from "./adapter-prisma.js";
@@ -138,6 +139,16 @@ export async function lancarNoRazao(
     },
     select: { id: true },
   });
+
+  // ⚠️ (3) A AUDITORIA AUTORITATIVA DE SUCESSO, NA MESMA TRANSAÇÃO (orquestração V3, 4.3).
+  //
+  // Quando o fato nasce de um comando da borda, o comando corrente viaja por
+  // `AsyncLocalStorage` até aqui, e a linha `SUCESSO` do registro de operação é gravada
+  // com a MESMA `tx` do lançamento: se a transação cair, ela cai junto; se commitar, ela
+  // commita junto. É o que faz "resposta perdida" ser distinguível de "fato não gravado" —
+  // o replay pela chave encontra esta linha e recusa repetir o fato. Fora de um comando
+  // (seeds, jobs, testes que chamam o funil direto) não faz nada.
+  await registrarSucessoNaTransacao(tx, criado.id);
 
   return criado.id;
 }

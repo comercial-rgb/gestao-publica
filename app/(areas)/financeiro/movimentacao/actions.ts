@@ -5,6 +5,7 @@ import {
   estornarMovimento,
   registrarMovimento,
 } from "../../../../lib/portas/tesouraria";
+import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
 export interface EstadoMovimento {
   readonly erro?: string;
@@ -37,61 +38,65 @@ export async function registrarMovimentoAction(
   _prev: EstadoMovimento,
   formData: FormData
 ): Promise<EstadoMovimento> {
-  const contaBancariaId = String(formData.get("conta") ?? "").trim();
-  const fonteId = String(formData.get("fonte") ?? "").trim();
-  const tipoBruto = String(formData.get("tipo") ?? "");
-  const valor = String(formData.get("valor") ?? "").trim();
-  const dia = String(formData.get("dia") ?? "").trim();
-  const historico = String(formData.get("historico") ?? "").trim();
-  const contaContrapartidaId = String(formData.get("contrapartida") ?? "").trim();
+  return comComandoDoFormulario(formData, async () => {
+    const contaBancariaId = String(formData.get("conta") ?? "").trim();
+    const fonteId = String(formData.get("fonte") ?? "").trim();
+    const tipoBruto = String(formData.get("tipo") ?? "");
+    const valor = String(formData.get("valor") ?? "").trim();
+    const dia = String(formData.get("dia") ?? "").trim();
+    const historico = String(formData.get("historico") ?? "").trim();
+    const contaContrapartidaId = String(formData.get("contrapartida") ?? "").trim();
 
-  if (!ehTipo(tipoBruto)) return { erro: "Escolha o tipo do movimento." };
-  if (contaBancariaId === "") return { erro: "Escolha a conta bancária." };
-  // ⚠️ SEM DEFAULT PARA A FONTE. Desde que a conta admite várias, escolher uma por conta
-  // do operador seria acertar às vezes e carimbar recurso errado no resto.
-  if (fonteId === "") return { erro: "Escolha a fonte de recurso do movimento." };
-  if (contaContrapartidaId === "") {
-    return { erro: "Escolha a conta contábil de contrapartida." };
-  }
-  if (dia === "") return { erro: "A data do movimento é obrigatória." };
+    if (!ehTipo(tipoBruto)) return { erro: "Escolha o tipo do movimento." };
+    if (contaBancariaId === "") return { erro: "Escolha a conta bancária." };
+    // ⚠️ SEM DEFAULT PARA A FONTE. Desde que a conta admite várias, escolher uma por conta
+    // do operador seria acertar às vezes e carimbar recurso errado no resto.
+    if (fonteId === "") return { erro: "Escolha a fonte de recurso do movimento." };
+    if (contaContrapartidaId === "") {
+      return { erro: "Escolha a conta contábil de contrapartida." };
+    }
+    if (dia === "") return { erro: "A data do movimento é obrigatória." };
 
-  try {
-    await registrarMovimento({
-      contaBancariaId,
-      fonteId,
-      tipo: tipoBruto,
-      valor,
-      dia,
-      historico,
-      contaContrapartidaId,
-    });
-    revalidatePath("/financeiro/movimentacao");
-    return { sucesso: `${tipoBruto} de ${valor} registrado.` };
-  } catch (e) {
-    return {
-      erro: e instanceof Error ? e.message : "Não foi possível registrar o movimento.",
-    };
-  }
+    try {
+      await registrarMovimento({
+        contaBancariaId,
+        fonteId,
+        tipo: tipoBruto,
+        valor,
+        dia,
+        historico,
+        contaContrapartidaId,
+      });
+      revalidatePath("/financeiro/movimentacao");
+      return { sucesso: `${tipoBruto} de ${valor} registrado.` };
+    } catch (e) {
+      return {
+        erro: e instanceof Error ? e.message : "Não foi possível registrar o movimento.",
+      };
+    }
+  });
 }
 
 export async function estornarMovimentoAction(
   _prev: EstadoMovimento,
   formData: FormData
 ): Promise<EstadoMovimento> {
-  const movimentoId = String(formData.get("movimentoId") ?? "").trim();
-  const motivo = String(formData.get("motivo") ?? "").trim();
-  const dia = String(formData.get("dia") ?? "").trim();
+  return comComandoDoFormulario(formData, async () => {
+    const movimentoId = String(formData.get("movimentoId") ?? "").trim();
+    const motivo = String(formData.get("motivo") ?? "").trim();
+    const dia = String(formData.get("dia") ?? "").trim();
 
-  if (movimentoId === "") return { erro: "Movimento não informado." };
-  if (dia === "") return { erro: "A data do estorno é obrigatória." };
+    if (movimentoId === "") return { erro: "Movimento não informado." };
+    if (dia === "") return { erro: "A data do estorno é obrigatória." };
 
-  try {
-    await estornarMovimento(movimentoId, motivo, dia);
-    revalidatePath("/financeiro/movimentacao");
-    return { sucesso: "Movimento estornado." };
-  } catch (e) {
-    return {
-      erro: e instanceof Error ? e.message : "Não foi possível estornar o movimento.",
-    };
-  }
+    try {
+      await estornarMovimento(movimentoId, motivo, dia);
+      revalidatePath("/financeiro/movimentacao");
+      return { sucesso: "Movimento estornado." };
+    } catch (e) {
+      return {
+        erro: e instanceof Error ? e.message : "Não foi possível estornar o movimento.",
+      };
+    }
+  });
 }

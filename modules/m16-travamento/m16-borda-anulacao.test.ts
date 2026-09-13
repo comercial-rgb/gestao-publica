@@ -103,9 +103,10 @@ describe("M16 — a borda da ANULAÇÃO (7.12)", () => {
     expect(linha!.anulacoes.toFixed(2)).toBe("4000.00");
 
     // A operação ficou registrada com o criadoPor da SESSÃO.
-    const op = await prisma.registroDeOperacao.findFirstOrThrow({ where: { acao: "ANULAR_EMPENHO_PARCIAL" } });
-    expect(op.usuarioIdent).toBe(IDENT);
-    expect(op.resultado).toBe("SUCESSO");
+    const ops = await prisma.registroDeOperacao.findMany({ where: { acao: "ANULAR_EMPENHO_PARCIAL" } });
+    expect(ops.every((o) => o.usuarioIdent === IDENT)).toBe(true);
+    expect(ops.map((o) => o.resultado)).toContain("SUCESSO");
+    expect(ops.map((o) => o.resultado)).not.toContain("ERRO");
   });
 
   it("t2: anulação parcial ACIMA do saldo → o DOMÍNIO recusa e a mensagem atravessa", async () => {
@@ -151,8 +152,9 @@ describe("M16 — a borda da ANULAÇÃO (7.12)", () => {
       )
     );
 
-    const op = await prisma.registroDeOperacao.findFirstOrThrow({ where: { acao: "ANULAR_ARRECADACAO" } });
-    expect(op.resultado).toBe("SUCESSO");
+    const ops = (await prisma.registroDeOperacao.findMany({ where: { acao: "ANULAR_ARRECADACAO" } })).map((o) => o.resultado);
+    expect(ops).toContain("SUCESSO");
+    expect(ops).not.toContain("ERRO");
     // A guia anulada e a anulação coexistem (append-only): duas linhas, receita líquida zero.
     const linhas = await prisma.receitaArrecadada.count({ where: { naturezaReceita: { codigo: "11121101" } } });
     expect(linhas).toBe(2);

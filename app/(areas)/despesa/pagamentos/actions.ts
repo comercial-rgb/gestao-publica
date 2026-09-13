@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { ehHipotese, registrarPagamento } from "../../../../lib/portas/pagamento";
 import { desmascararValor } from "../../../../lib/format/mascaras";
 import { meioDiaCivil } from "../../../../packages/datas/index";
+import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
 export interface EstadoPagamento {
   readonly erro?: string;
@@ -31,75 +32,77 @@ export async function pagarAction(
   _prev: EstadoPagamento,
   formData: FormData
 ): Promise<EstadoPagamento> {
-  const liquidacaoId = String(formData.get("liquidacaoId") ?? "").trim();
-  const numero = String(formData.get("numero") ?? "").trim();
-  const valor = String(formData.get("valor") ?? "").trim();
-  const contaBancaria = String(formData.get("contaBancaria") ?? "").trim();
-  const fonteId = String(formData.get("fonteId") ?? "").trim();
-  const historico = String(formData.get("historico") ?? "").trim();
-  const dataBruta = String(formData.get("data") ?? "").trim();
-  // T07 — vazio = pagamento sem ordem (o caminho de sempre).
-  const ordemDePagamentoId = String(formData.get("ordemDePagamentoId") ?? "").trim();
+  return comComandoDoFormulario(formData, async () => {
+    const liquidacaoId = String(formData.get("liquidacaoId") ?? "").trim();
+    const numero = String(formData.get("numero") ?? "").trim();
+    const valor = String(formData.get("valor") ?? "").trim();
+    const contaBancaria = String(formData.get("contaBancaria") ?? "").trim();
+    const fonteId = String(formData.get("fonteId") ?? "").trim();
+    const historico = String(formData.get("historico") ?? "").trim();
+    const dataBruta = String(formData.get("data") ?? "").trim();
+    // T07 — vazio = pagamento sem ordem (o caminho de sempre).
+    const ordemDePagamentoId = String(formData.get("ordemDePagamentoId") ?? "").trim();
 
-  const retencoes = lerRetencoes(formData);
-  if (typeof retencoes === "string") return { erro: retencoes };
+    const retencoes = lerRetencoes(formData);
+    if (typeof retencoes === "string") return { erro: retencoes };
 
-  const hipoteseBruta = String(formData.get("hipotese") ?? "").trim();
-  const justificativa = String(formData.get("justificativa") ?? "").trim();
-  const autorizadoPor = String(formData.get("autorizadoPor") ?? "").trim();
+    const hipoteseBruta = String(formData.get("hipotese") ?? "").trim();
+    const justificativa = String(formData.get("justificativa") ?? "").trim();
+    const autorizadoPor = String(formData.get("autorizadoPor") ?? "").trim();
 
-  if (liquidacaoId === "") return { erro: "Escolha a liquidação a pagar." };
-  if (dataBruta === "") return { erro: "A data do pagamento é obrigatória." };
-  if (contaBancaria === "" || fonteId === "") {
-    return { erro: "Escolha a conta bancária de onde o dinheiro sai." };
-  }
+    if (liquidacaoId === "") return { erro: "Escolha a liquidação a pagar." };
+    if (dataBruta === "") return { erro: "A data do pagamento é obrigatória." };
+    if (contaBancaria === "" || fonteId === "") {
+      return { erro: "Escolha a conta bancária de onde o dinheiro sai." };
+    }
 
-  // A justificativa é OPCIONAL: ausente = pagamento da cabeça da fila. Se veio pela
-  // metade, é erro de digitação — e vale dizer isso antes de gastar a transação.
-  const querJustificar =
-    hipoteseBruta !== "" || justificativa !== "" || autorizadoPor !== "";
-  if (querJustificar && (hipoteseBruta === "" || justificativa === "" || autorizadoPor === "")) {
-    return {
-      erro:
-        "A justificativa da quebra de ordem precisa das TRÊS coisas: hipótese do §1º, " +
-        "o texto e quem autorizou. Preencha as três, ou deixe as três em branco para " +
-        "pagar a cabeça da fila.",
-    };
-  }
-  if (querJustificar && !ehHipotese(hipoteseBruta)) {
-    return { erro: "Hipótese fora do rol taxativo do art. 141, §1º." };
-  }
+    // A justificativa é OPCIONAL: ausente = pagamento da cabeça da fila. Se veio pela
+    // metade, é erro de digitação — e vale dizer isso antes de gastar a transação.
+    const querJustificar =
+      hipoteseBruta !== "" || justificativa !== "" || autorizadoPor !== "";
+    if (querJustificar && (hipoteseBruta === "" || justificativa === "" || autorizadoPor === "")) {
+      return {
+        erro:
+          "A justificativa da quebra de ordem precisa das TRÊS coisas: hipótese do §1º, " +
+          "o texto e quem autorizou. Preencha as três, ou deixe as três em branco para " +
+          "pagar a cabeça da fila.",
+      };
+    }
+    if (querJustificar && !ehHipotese(hipoteseBruta)) {
+      return { erro: "Hipótese fora do rol taxativo do art. 141, §1º." };
+    }
 
-  try {
-    await registrarPagamento({
-      liquidacaoId,
-      numero,
-      valor,
-      data: meioDiaCivil(dataBruta),
-      contaBancaria,
-      fonteId,
-      historico,
-      ...(querJustificar && ehHipotese(hipoteseBruta)
-        ? {
-            justificativaQuebraOrdem: {
-              hipotese: hipoteseBruta,
-              justificativa,
-              autorizadoPor,
-            },
-          }
-        : {}),
-      // Lista vazia vira AUSENTE na porta — o caminho sem retenção continua sendo o de
-      // sempre, partida por partida.
-      ...(retencoes.length > 0 ? { retencoes } : {}),
-      ...(ordemDePagamentoId !== "" ? { ordemDePagamentoId } : {}),
-    });
-    revalidatePath("/despesa/pagamentos");
-    revalidatePath("/despesa/liquidacoes");
-    revalidatePath("/despesa/empenhos");
-    return { sucesso: `Pagamento ${numero} registrado.` };
-  } catch (e) {
-    return { erro: e instanceof Error ? e.message : "Não foi possível pagar." };
-  }
+    try {
+      await registrarPagamento({
+        liquidacaoId,
+        numero,
+        valor,
+        data: meioDiaCivil(dataBruta),
+        contaBancaria,
+        fonteId,
+        historico,
+        ...(querJustificar && ehHipotese(hipoteseBruta)
+          ? {
+              justificativaQuebraOrdem: {
+                hipotese: hipoteseBruta,
+                justificativa,
+                autorizadoPor,
+              },
+            }
+          : {}),
+        // Lista vazia vira AUSENTE na porta — o caminho sem retenção continua sendo o de
+        // sempre, partida por partida.
+        ...(retencoes.length > 0 ? { retencoes } : {}),
+        ...(ordemDePagamentoId !== "" ? { ordemDePagamentoId } : {}),
+      });
+      revalidatePath("/despesa/pagamentos");
+      revalidatePath("/despesa/liquidacoes");
+      revalidatePath("/despesa/empenhos");
+      return { sucesso: `Pagamento ${numero} registrado.` };
+    } catch (e) {
+      return { erro: e instanceof Error ? e.message : "Não foi possível pagar." };
+    }
+  });
 }
 
 /**

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { EstadoDoMolde } from "../../../../../components/molde/FormularioDeRecurso";
 import { INVENTARIOS_DE_ESTOQUE } from "../../../../../lib/portas/recursos/almoxarifado";
 import { criarInventarioDeEstoque, acaoDoInventarioDeEstoque } from "../../../../../lib/portas/recursos/almoxarifado-dados";
+import { comComandoDoFormulario } from "../../../../../lib/portas/comando";
 
 /**
  * A Server Action deste cadastro — uma só, despachando pelo `__acao`.
@@ -19,25 +20,27 @@ export async function acaoDeInventariosAction(
   _prev: EstadoDoMolde,
   formData: FormData
 ): Promise<EstadoDoMolde> {
-  const campos: Record<string, string> = {};
-  for (const [k, v] of formData.entries()) {
-    if (typeof v === "string") campos[k] = v;
-  }
-  const acao = campos["__acao"] ?? "";
-  const id = campos["__id"] ?? "";
-
-  try {
-    if (acao === "criar") {
-      await criarInventarioDeEstoque(campos);
-    } else {
-      if (id === "") return { erro: "Registro não identificado. Nada foi gravado." };
-      await acaoDoInventarioDeEstoque(acao, id, campos);
+  return comComandoDoFormulario(formData, async () => {
+    const campos: Record<string, string> = {};
+    for (const [k, v] of formData.entries()) {
+      if (typeof v === "string") campos[k] = v;
     }
-  } catch (e) {
-    return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
-  }
+    const acao = campos["__acao"] ?? "";
+    const id = campos["__id"] ?? "";
 
-  revalidatePath(INVENTARIOS_DE_ESTOQUE.rota);
-  if (id !== "") revalidatePath(`${INVENTARIOS_DE_ESTOQUE.rota}/${id}`);
-  return { sucesso: acao === "criar" ? "Inventário aberto." : "Registrado." };
+    try {
+      if (acao === "criar") {
+        await criarInventarioDeEstoque(campos);
+      } else {
+        if (id === "") return { erro: "Registro não identificado. Nada foi gravado." };
+        await acaoDoInventarioDeEstoque(acao, id, campos);
+      }
+    } catch (e) {
+      return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
+    }
+
+    revalidatePath(INVENTARIOS_DE_ESTOQUE.rota);
+    if (id !== "") revalidatePath(`${INVENTARIOS_DE_ESTOQUE.rota}/${id}`);
+    return { sucesso: acao === "criar" ? "Inventário aberto." : "Registrado." };
+  });
 }

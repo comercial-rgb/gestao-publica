@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useId, useRef } from "react";
+import { useChaveDeComando } from "../ui/useChaveDeComando";
 import {
   CampoCpfCnpj,
   CampoNumero,
@@ -220,9 +221,11 @@ export function FormularioDeRecurso({
   const idAviso = `aviso-${useId()}`;
   // Sucesso limpa o formulário — sem isto, reenviar o mesmo conteúdo é um clique de distância.
   if (estado.sucesso !== undefined) ref.current?.reset();
+  const chave = useChaveDeComando(estado.sucesso);
 
   return (
     <form ref={ref} action={disparar} data-acao={acao} className={CLASSE_PAINEL_FORMULARIO}>
+      <input type="hidden" name="__chave" value={chave} />
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">{titulo}</h2>
       {aviso !== undefined ? (
         <p id={idAviso} className="mb-3 text-[11px] text-[color:var(--color-ink-2)]">

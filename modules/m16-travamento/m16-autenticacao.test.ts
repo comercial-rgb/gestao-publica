@@ -332,28 +332,25 @@ describe("M16 — autenticação e registro de operação (TR 4.55 · 6.1-6.3)",
       )
     ).rejects.toThrow(/ACESSO NEGADO/); // ⚠️ o envelope RE-LANÇA: ele registra, não engole
 
-    const registros = await prisma.registroDeOperacao.findMany({
-      orderBy: { criadoEm: "asc" },
-    });
-    expect(registros).toHaveLength(2);
+    // ⚠️ EM DUAS FASES (orquestração V3, 4.3): a tentativa (INICIADA) nasce antes do ato e a
+    // conclusão depois — CONCLUIDA para o login (não passa pelo funil), NEGADO para a recusa.
+    const registros = await prisma.registroDeOperacao.findMany({ orderBy: { criadoEm: "asc" } });
+    expect(registros).toHaveLength(4);
 
-    // O LOGIN: sucesso, com o LOCAL (6.3).
-    expect(registros[0]).toMatchObject({
-      usuarioIdent: ALICE,
-      acao: "LOGIN",
-      resultado: "SUCESSO",
-      ip: "10.0.0.7",
-      agente: "Firefox/128",
-    });
+    // O LOGIN: tentativa e conclusão, as duas com o LOCAL (6.3).
+    const login = registros.filter((r) => r.acao === "LOGIN");
+    expect(login.map((r) => r.resultado).sort()).toEqual(["CONCLUIDA", "INICIADA"]);
+    for (const r of login) {
+      expect(r).toMatchObject({ usuarioIdent: ALICE, ip: "10.0.0.7", agente: "Firefox/128" });
+    }
 
-    // ⚠️ A NEGAÇÃO: quem · quando · DE ONDE · o quê · e POR QUÊ.
-    expect(registros[1]).toMatchObject({
-      usuarioIdent: ALICE,
-      acao: "PAGAR",
-      resultado: "NEGADO",
-      ip: "10.0.0.7",
-    });
-    expect(registros[1]!.detalhe).toMatch(/ACESSO NEGADO — SEM PERFIL/);
+    // ⚠️ A NEGAÇÃO: quem · quando · DE ONDE · o quê · e POR QUÊ — ligada à tentativa dela.
+    const pagar = registros.filter((r) => r.acao === "PAGAR");
+    expect(pagar.map((r) => r.resultado).sort()).toEqual(["INICIADA", "NEGADO"]);
+    const negado = pagar.find((r) => r.resultado === "NEGADO")!;
+    expect(negado).toMatchObject({ usuarioIdent: ALICE, ip: "10.0.0.7" });
+    expect(negado.detalhe).toMatch(/ACESSO NEGADO — SEM PERFIL/);
+    expect(negado.operacaoId).toBe(pagar.find((r) => r.resultado === "INICIADA")!.id);
 
     // ...e NADA foi gravado pelo ato negado — o log sobrevive ao rollback do fato (é por isso
     // que ele é escrito FORA da transação do ato).

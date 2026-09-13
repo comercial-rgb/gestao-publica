@@ -8,6 +8,7 @@ import {
   type PapelDePessoa,
 } from "../../../../lib/portas/pessoas";
 import { meioDiaCivil } from "../../../../packages/datas/index";
+import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
 /**
  * Server Actions do cadastro de pessoas.
@@ -61,81 +62,87 @@ export async function cadastrarPessoaAction(
   _prev: EstadoPessoa,
   formData: FormData
 ): Promise<EstadoPessoa> {
-  const documento = String(formData.get("documento") ?? "").trim();
+  return comComandoDoFormulario(formData, async () => {
+    const documento = String(formData.get("documento") ?? "").trim();
 
-  try {
-    const id = await registrarPessoa({ documento, ...camposCadastrais(formData) });
-    revalidatePath("/cadastros/pessoas");
-    return { sucesso: `Pessoa cadastrada (${id}).` };
-  } catch (erro) {
-    return { erro: mensagem(erro) };
-  }
+    try {
+      const id = await registrarPessoa({ documento, ...camposCadastrais(formData) });
+      revalidatePath("/cadastros/pessoas");
+      return { sucesso: `Pessoa cadastrada (${id}).` };
+    } catch (erro) {
+      return { erro: mensagem(erro) };
+    }
+  });
 }
 
 export async function alterarPessoaAction(
   _prev: EstadoPessoa,
   formData: FormData
 ): Promise<EstadoPessoa> {
-  const pessoaId = String(formData.get("pessoaId") ?? "").trim();
-  const motivo = String(formData.get("motivo") ?? "").trim();
-  // A caixa desmarcada não vem no FormData — ausência é `false`, e não "não mexeu".
-  const ativa = formData.get("ativa") !== null;
+  return comComandoDoFormulario(formData, async () => {
+    const pessoaId = String(formData.get("pessoaId") ?? "").trim();
+    const motivo = String(formData.get("motivo") ?? "").trim();
+    // A caixa desmarcada não vem no FormData — ausência é `false`, e não "não mexeu".
+    const ativa = formData.get("ativa") !== null;
 
-  try {
-    await registrarAlteracaoDePessoa({
-      pessoaId,
-      ativa,
-      motivo,
-      ...camposCadastrais(formData),
-    });
-    revalidatePath("/cadastros/pessoas");
-    revalidatePath(`/cadastros/pessoas/${pessoaId}`);
-    return { sucesso: "Alteração registrada — a versão anterior continua no histórico." };
-  } catch (erro) {
-    return { erro: mensagem(erro) };
-  }
+    try {
+      await registrarAlteracaoDePessoa({
+        pessoaId,
+        ativa,
+        motivo,
+        ...camposCadastrais(formData),
+      });
+      revalidatePath("/cadastros/pessoas");
+      revalidatePath(`/cadastros/pessoas/${pessoaId}`);
+      return { sucesso: "Alteração registrada — a versão anterior continua no histórico." };
+    } catch (erro) {
+      return { erro: mensagem(erro) };
+    }
+  });
 }
 
 export async function moverPapelAction(
   _prev: EstadoPessoa,
   formData: FormData
 ): Promise<EstadoPessoa> {
-  const pessoaId = String(formData.get("pessoaId") ?? "").trim();
-  const papelBruto = String(formData.get("papel") ?? "");
-  const movimentoBruto = String(formData.get("movimento") ?? "");
-  const dataBruta = String(formData.get("data") ?? "").trim();
+  return comComandoDoFormulario(formData, async () => {
+    const pessoaId = String(formData.get("pessoaId") ?? "").trim();
+    const papelBruto = String(formData.get("papel") ?? "");
+    const movimentoBruto = String(formData.get("movimento") ?? "");
+    const dataBruta = String(formData.get("data") ?? "").trim();
 
-  if (!ehPapel(papelBruto)) {
-    return { erro: `Papel inválido: "${papelBruto}".` };
-  }
-  if (movimentoBruto !== "CONCEDIDO" && movimentoBruto !== "ENCERRADO") {
-    return { erro: `Movimento inválido: "${movimentoBruto}".` };
-  }
-  if (dataBruta === "") {
-    // ⚠️ A DATA VEM DO FORMULÁRIO, nunca de `new Date()`. É a data do ATO — conceder hoje
-    // um papel que vigora desde janeiro é uma coisa; carimbar janeiro como hoje é outra.
-    return { erro: "Informe a data do ato." };
-  }
-  const data = meioDiaCivil(dataBruta);
-  if (Number.isNaN(data.getTime())) {
-    return { erro: `Data inválida: "${dataBruta}".` };
-  }
+    if (!ehPapel(papelBruto)) {
+      return { erro: `Papel inválido: "${papelBruto}".` };
+    }
+    if (movimentoBruto !== "CONCEDIDO" && movimentoBruto !== "ENCERRADO") {
+      return { erro: `Movimento inválido: "${movimentoBruto}".` };
+    }
+    if (dataBruta === "") {
+      // ⚠️ A DATA VEM DO FORMULÁRIO, nunca de `new Date()`. É a data do ATO — conceder hoje
+      // um papel que vigora desde janeiro é uma coisa; carimbar janeiro como hoje é outra.
+      return { erro: "Informe a data do ato." };
+    }
+    const data = meioDiaCivil(dataBruta);
+    if (Number.isNaN(data.getTime())) {
+      return { erro: `Data inválida: "${dataBruta}".` };
+    }
 
-  try {
-    await registrarMovimentoDePapel({
-      pessoaId,
-      papel: papelBruto,
-      movimento: movimentoBruto,
-      data,
-      motivo: opcional(formData, "motivo"),
-    });
-    revalidatePath(`/cadastros/pessoas/${pessoaId}`);
-    revalidatePath("/cadastros/pessoas");
-    return {
-      sucesso:
-        movimentoBruto === "CONCEDIDO" ? "Papel concedido." : "Papel encerrado.",
-    };
-  } catch (erro) {
-    return { erro: mensagem(erro) };
-  }
+    try {
+      await registrarMovimentoDePapel({
+        pessoaId,
+        papel: papelBruto,
+        movimento: movimentoBruto,
+        data,
+        motivo: opcional(formData, "motivo"),
+      });
+      revalidatePath(`/cadastros/pessoas/${pessoaId}`);
+      revalidatePath("/cadastros/pessoas");
+      return {
+        sucesso:
+          movimentoBruto === "CONCEDIDO" ? "Papel concedido." : "Papel encerrado.",
+      };
+    } catch (erro) {
+      return { erro: mensagem(erro) };
+    }
+  });
 }

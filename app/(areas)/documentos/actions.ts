@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { anexarNaTela } from "../../../lib/portas/documentos";
+import { comComandoDoFormulario } from "../../../lib/portas/comando";
 
 /**
  * A AÇÃO DE ANEXAR — uma só, para todos os registros que aceitam anexo.
@@ -54,51 +55,53 @@ export async function anexarArquivoAction(
   _prev: EstadoDoAnexo,
   formData: FormData
 ): Promise<EstadoDoAnexo> {
-  const arquivo = formData.get("arquivo");
+  return comComandoDoFormulario(formData, async () => {
+    const arquivo = formData.get("arquivo");
 
-  // ⚠️ `instanceof File` E O TAMANHO ZERO, separados. Um input de arquivo vazio submete um
-  // `File` com nome "" e zero bytes — não `null`. Sem esta conferência, o domínio receberia
-  // um `Uint8Array` vazio e recusaria com "Arquivo vazio", que é verdade mas não é útil:
-  // quem esqueceu de escolher o arquivo precisa ouvir isso.
-  if (!(arquivo instanceof File) || arquivo.size === 0) {
-    return { erro: "Escolha um arquivo para anexar." };
-  }
+    // ⚠️ `instanceof File` E O TAMANHO ZERO, separados. Um input de arquivo vazio submete um
+    // `File` com nome "" e zero bytes — não `null`. Sem esta conferência, o domínio receberia
+    // um `Uint8Array` vazio e recusaria com "Arquivo vazio", que é verdade mas não é útil:
+    // quem esqueceu de escolher o arquivo precisa ouvir isso.
+    if (!(arquivo instanceof File) || arquivo.size === 0) {
+      return { erro: "Escolha um arquivo para anexar." };
+    }
 
-  const processoId = texto(formData, "processoId");
-  const pessoaId = texto(formData, "pessoaId");
-  const comunicadoId = texto(formData, "comunicadoId");
-  const movimentoProcessoId = texto(formData, "movimentoProcessoId");
+    const processoId = texto(formData, "processoId");
+    const pessoaId = texto(formData, "pessoaId");
+    const comunicadoId = texto(formData, "comunicadoId");
+    const movimentoProcessoId = texto(formData, "movimentoProcessoId");
 
-  const dono = {
-    ...(processoId !== "" ? { processoId } : {}),
-    ...(pessoaId !== "" ? { pessoaId } : {}),
-    ...(comunicadoId !== "" ? { comunicadoId } : {}),
-    ...(movimentoProcessoId !== "" ? { movimentoProcessoId } : {}),
-  };
-
-  try {
-    // ⚠️ O MIME VEM DO BROWSER, e o servidor NÃO confia nele — ele o CONFERE contra o rol
-    // em `recusaDoArquivo`. Um arquivo com `type` mentiroso é recusado pelo rol; o que o
-    // rol não pega (um .exe renomeado para .pdf com o type certo) é justamente por isso que
-    // o download responde `attachment` + `nosniff`, e nada executa.
-    const origem =
-      texto(formData, "origem") === "DIGITALIZACAO" ? "DIGITALIZACAO" : "UPLOAD";
-
-    const r = await anexarNaTela({
-      nomeOriginal: arquivo.name,
-      mimeType: arquivo.type,
-      conteudo: new Uint8Array(await arquivo.arrayBuffer()),
-      origem,
-      ...dono,
-    });
-
-    revalidarDono(dono);
-    return {
-      sucesso:
-        `"${arquivo.name}" anexado. Verificação: ${r.sha256.slice(0, 12)}… — é este ` +
-        `valor que prova, depois, que o arquivo é o mesmo.`,
+    const dono = {
+      ...(processoId !== "" ? { processoId } : {}),
+      ...(pessoaId !== "" ? { pessoaId } : {}),
+      ...(comunicadoId !== "" ? { comunicadoId } : {}),
+      ...(movimentoProcessoId !== "" ? { movimentoProcessoId } : {}),
     };
-  } catch (e) {
-    return { erro: e instanceof Error ? e.message : String(e) };
-  }
+
+    try {
+      // ⚠️ O MIME VEM DO BROWSER, e o servidor NÃO confia nele — ele o CONFERE contra o rol
+      // em `recusaDoArquivo`. Um arquivo com `type` mentiroso é recusado pelo rol; o que o
+      // rol não pega (um .exe renomeado para .pdf com o type certo) é justamente por isso que
+      // o download responde `attachment` + `nosniff`, e nada executa.
+      const origem =
+        texto(formData, "origem") === "DIGITALIZACAO" ? "DIGITALIZACAO" : "UPLOAD";
+
+      const r = await anexarNaTela({
+        nomeOriginal: arquivo.name,
+        mimeType: arquivo.type,
+        conteudo: new Uint8Array(await arquivo.arrayBuffer()),
+        origem,
+        ...dono,
+      });
+
+      revalidarDono(dono);
+      return {
+        sucesso:
+          `"${arquivo.name}" anexado. Verificação: ${r.sha256.slice(0, 12)}… — é este ` +
+          `valor que prova, depois, que o arquivo é o mesmo.`,
+      };
+    } catch (e) {
+      return { erro: e instanceof Error ? e.message : String(e) };
+    }
+  });
 }

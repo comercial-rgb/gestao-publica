@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { registrarLiquidacao } from "../../../../lib/portas/liquidacao";
 import { meioDiaCivil } from "../../../../packages/datas/index";
+import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
 export interface EstadoLiquidacao {
   readonly erro?: string;
@@ -24,31 +25,33 @@ export async function liquidarAction(
   _prev: EstadoLiquidacao,
   formData: FormData
 ): Promise<EstadoLiquidacao> {
-  const empenhoId = String(formData.get("empenhoId") ?? "").trim();
-  const numero = String(formData.get("numero") ?? "").trim();
-  const valor = String(formData.get("valor") ?? "").trim();
-  const responsavelAtesto = String(formData.get("atesto") ?? "").trim();
-  const historico = String(formData.get("historico") ?? "").trim();
-  const dataBruta = String(formData.get("data") ?? "").trim();
+  return comComandoDoFormulario(formData, async () => {
+    const empenhoId = String(formData.get("empenhoId") ?? "").trim();
+    const numero = String(formData.get("numero") ?? "").trim();
+    const valor = String(formData.get("valor") ?? "").trim();
+    const responsavelAtesto = String(formData.get("atesto") ?? "").trim();
+    const historico = String(formData.get("historico") ?? "").trim();
+    const dataBruta = String(formData.get("data") ?? "").trim();
 
-  if (empenhoId === "") return { erro: "Escolha o empenho a liquidar." };
-  if (dataBruta === "") return { erro: "A data da liquidação é obrigatória." };
+    if (empenhoId === "") return { erro: "Escolha o empenho a liquidar." };
+    if (dataBruta === "") return { erro: "A data da liquidação é obrigatória." };
 
-  try {
-    await registrarLiquidacao({
-      empenhoId,
-      numero,
-      valor,
-      data: meioDiaCivil(dataBruta),
-      responsavelAtesto,
-      historico,
-    });
-    revalidatePath("/despesa/liquidacoes");
-    // A fila do art. 141 nasce da liquidação — a tela dela também muda.
-    revalidatePath("/despesa/pagamentos");
-    revalidatePath("/despesa/empenhos");
-    return { sucesso: `Liquidação ${numero} registrada.` };
-  } catch (e) {
-    return { erro: e instanceof Error ? e.message : "Não foi possível liquidar." };
-  }
+    try {
+      await registrarLiquidacao({
+        empenhoId,
+        numero,
+        valor,
+        data: meioDiaCivil(dataBruta),
+        responsavelAtesto,
+        historico,
+      });
+      revalidatePath("/despesa/liquidacoes");
+      // A fila do art. 141 nasce da liquidação — a tela dela também muda.
+      revalidatePath("/despesa/pagamentos");
+      revalidatePath("/despesa/empenhos");
+      return { sucesso: `Liquidação ${numero} registrada.` };
+    } catch (e) {
+      return { erro: e instanceof Error ? e.message : "Não foi possível liquidar." };
+    }
+  });
 }

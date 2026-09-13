@@ -2,7 +2,7 @@ import { cliente, PortaSemBancoError } from "./cliente";
 
 /**
  * PORTA — AUDITORIA (RegistroDeOperacao, TR 6.1-6.3). Leitura do log de operações da borda: quem,
- * quando, qual ação, resultado (SUCESSO/NEGADO/ERRO) e por quê. Filtros por usuário/ação/período e
+ * quando, qual ação, resultado (INICIADA/SUCESSO/CONCLUIDA/NEGADO/ERRO — o registro em duas fases da V3 4.3) e por quê. Filtros por usuário/ação/período e
  * paginação — o log cresce, e a tela não pode trazer tudo de uma vez.
  */
 
@@ -13,7 +13,7 @@ export interface OperacaoAuditada {
   readonly usuarioIdent: string;
   readonly acao: string;
   readonly ip: string | null;
-  readonly resultado: "SUCESSO" | "NEGADO" | "ERRO";
+  readonly resultado: "SUCESSO" | "NEGADO" | "ERRO" | "INICIADA" | "CONCLUIDA";
   readonly detalhe: string | null;
   readonly criadoEm: Date;
 }
@@ -30,7 +30,7 @@ const TAMANHO = 50;
 export async function listarOperacoes(f: {
   readonly usuario?: string;
   readonly acao?: string;
-  readonly resultado?: "SUCESSO" | "NEGADO" | "ERRO";
+  readonly resultado?: "SUCESSO" | "NEGADO" | "ERRO" | "INICIADA" | "CONCLUIDA";
   readonly desde?: Date;
   readonly ate?: Date;
   readonly pagina?: number;

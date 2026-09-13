@@ -94,6 +94,18 @@ por um administrador que não o tem. Para as ações novas de uma versão — qu
 perfil do administrador também — o caminho é a atualização versionada. Numa instalação
 de um administrador só, é ela que o atende; para o resto, cria-se um segundo.
 
+## 6b. O registro de operação em duas fases (4.3)
+
+`operacao.ts` deixou de gravar uma linha depois do ato e re-lançar a falha do log. Por
+comando: `INICIADA` antes (fora da tx, com chave e fingerprint), `SUCESSO` dentro da
+transação do fato — gravada pelo funil `lancarNoRazao` com o `lancamentoId`, via
+`AsyncLocalStorage` —, `CONCLUIDA`/`NEGADO`/`ERRO` depois. A conclusão é telemetria: falhou,
+o chamador recebe o resultado assim mesmo; a negação que não conseguiu ser registrada
+sobe com o erro original. `INICIADA` impossível = ato não roda
+(`AuditoriaIndisponivelError`). Replay por (usuário, ação, chave, fingerprint):
+`ComandoJaConcluidoError`, sem repetir o fato. O login separa credencial de
+infraestrutura (`ehFalhaDeCredencial`). ADR: `docs/adr/ADR-registro-de-operacao-em-duas-fases.md`.
+
 ## 7. O que este bloco NÃO fez, nomeado
 
 - `CONSOLIDADO-PARCIAL-NAO-EXPRIMIVEL` — continua recusando pedindo que escolha.
@@ -103,6 +115,9 @@ de um administrador só, é ela que o atende; para o resto, cria-se um segundo.
   consulta a Educação). A recusa nomeia o escopo; o seletor não é fronteira de segurança.
 - A área pública de transparência (`app/transparencia`) segue por projeção própria, sem
   sessão e sem a porta interna — e sem esta política, de propósito.
+- `CHAVE-DE-COMANDO-NOS-FORMULARIOS-A-MAO`: só o molde e o formulário de empenho mandam
+  `__chave`; os outros formulários à mão passam pelo contexto do comando sem chave (sem
+  replay) até serem tocados.
 
 ## Provas
 

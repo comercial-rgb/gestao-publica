@@ -6,10 +6,10 @@
 |---|---|
 | HEAD | ver `git log -1` — a seção 35 nomeia o commit de cada unidade |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | Primeiro pacote — correções transversais (4.1 autorização de leitura, 4.2 perfis e atualização) → em seguida 4.3 auditoria, 4.4 massa/configuração, 4.5 versionamento dos roteiros, depois a cadeia patrimonial (seção 5 do pedido) |
-| Último resultado | seção 35 |
-| Pendências relevantes | seção 35, "Pendências"; as anteriores em §19 e nos `MODULO.md` |
-| Próximo passo | seção 35, "Próximo ponto exato" |
+| Frente em execução | Primeiro pacote — 4.1 e 4.2 (seção 35) e 4.3 (seção 36) concluídos; em curso 4.5 versionamento dos roteiros + 4.4 massa/configuração; depois a cadeia patrimonial (seção 5 do pedido) |
+| Último resultado | seção 36 |
+| Pendências relevantes | seções 35.7 e 36.4; as anteriores em §19 e nos `MODULO.md` |
+| Próximo passo | seção 36.5 |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -4334,6 +4334,63 @@ append-only (linha INICIADA antes, SUCESSO dentro da tx, CONCLUIDA/NEGADO/ERRO d
 (3) telemetria posterior sem alterar o resultado; (4) chave + fingerprint de comando nos
 formulários, com replay idempotente no escopo do usuário. Depois: 4.4, 4.5 e a cadeia
 patrimonial (seção 5 do pedido).
+
+## 36. Orquestração V3 — 4.3: auditoria e resposta verdadeira
+
+> **Natureza:** PROFUNDIDADE — transação, idempotência e auditoria. A falha foi
+> REPRODUZIDA em teste antes de ser fechada, como o pedido manda.
+
+### 36.1 · O defeito, reproduzido
+
+`comOperacaoRegistrada` gravava UMA linha depois do ato e re-lançava a falha do próprio
+registro: o empenho commitava, o INSERT do log falhava, a tela recebia erro e o operador
+repetia o empenho. Na negação, o erro que subia era o do log, não o "ACESSO NEGADO". No
+login, `entrar` traduzia QUALQUER erro de `autenticar` — banco fora do ar, auditoria da
+tentativa recusando o INSERT — em "usuário ou senha inválidos". Os três casos estão em
+`modules/m16-travamento/m16-operacao.test.ts`, com a descrição do defeito no nome do teste.
+
+### 36.2 · O que passou a funcionar
+
+| Separação | Como |
+|---|---|
+| fato + auditoria autoritativa de sucesso na MESMA transação real | o funil `lancarNoRazao` grava a linha `SUCESSO` (com `lancamentoId`) com a `tx` do fato; o comando corrente chega ao funil por `AsyncLocalStorage` — sem transação de fachada por fora dos adapters e sem mudar 76 assinaturas |
+| tentativa negada registrada sem desaparecer no rollback | `INICIADA` antes do ato e `NEGADO`/`ERRO` depois, fora da transação; se o registro da negação falhar, sobe o erro ORIGINAL e a falha vai para a telemetria |
+| telemetria posterior sem alterar o resultado | `CONCLUIDA` (com `resultadoRef`) depois do commit; se falhar, o chamador recebe o resultado assim mesmo |
+| auditoria indisponível antes do ato | `AuditoriaIndisponivelError`: o ato não roda — um fato sem tentativa registrada seria um fato sem rastro |
+| retry idempotente | `__chave` no formulário (gerada no cliente após a hidratação, trocada a cada sucesso) + fingerprint sha256 do comando canônico (`lib/portas/comando.ts`); as 97 Server Actions passam por `comComandoDoFormulario`; `comEscritaAutenticada` entrega chave e fingerprint ao envelope; mesmo comando repetido no escopo (usuário, ação) → `ComandoJaConcluidoError`, sem executar |
+| login | `ehFalhaDeCredencial`: só credencial inválida e cadeado viram "usuário ou senha inválidos"; o resto é "serviço indisponível"; a falha do registro de sucesso não derruba um login já feito |
+
+Append-only: nenhuma linha do registro é atualizada; o papel de runtime segue só com INSERT.
+A tela de auditoria mostra as fases. ADR: `docs/adr/ADR-registro-de-operacao-em-duas-fases.md`.
+
+### 36.3 · Comandos e resultados
+
+| Comando | Resultado |
+|---|---|
+| migration `v3_operacao_em_duas_fases` (enum + 5 colunas + 2 índices) | aplicada nos dois bancos; colunas medidas no banco |
+| `tsc` backend · app | limpos (o de scripts acusou uma chave duplicada no `marcar-catalogo.ts`, corrigida em seguida) |
+| `vitest` rápida (censo, fronteira, grep da leitura, rótulos, partição, cobertura) | **21/21** |
+| `vitest` lenta (m16-operacao, as quatro bordas, autenticação, unidade de trabalho, papel de runtime, borda de escrita, censo de ausências, isolamento) | **112/112** (11 arquivos), sob o trinco |
+
+Saída bruta em `.registro-de-execucao/v3-pacote1-43-testes-direcionados.txt`.
+
+### 36.4 · Pendências nomeadas
+
+| Pendência | O que é |
+|---|---|
+| `CHAVE-DE-COMANDO-NOS-FORMULARIOS-A-MAO` | só o molde e o formulário de empenho mandam `__chave`; os outros formulários à mão passam pelo contexto do comando sem chave (sem replay) até serem tocados |
+| `REPLAY-DE-CADASTRO-SEM-FUNIL` | um comando sem lançamento cuja `CONCLUIDA` falhou não deixa `SUCESSO`; o replay o repete. É cadastro, não dinheiro |
+| `PERCURSO-DO-REPLAY` | o replay foi provado pela porta; o percurso de navegador (reenviar o mesmo formulário) fica para a rodada de percursos |
+
+### 36.5 · Próximo ponto exato
+
+**4.4 + 4.5 juntos.** O banco de desenvolvimento tem três `RoteiroPatrimonial` instrumentais
+(AQUISICAO, AVALIACAO_INICIAL, BAIXA_ALIENACAO com 1.1.1.1.1.01.00 × 1.1.1.1.1.00.00, escolhidas
+pelo `smoke-roteiros.ts` como "as duas primeiras analíticas") e quatro movimentos com quatro
+lançamentos que dependem deles. Substituí-los sem reescrever o razão exige o versionamento de
+4.5 (versão anterior, autor, momento, motivo, vigência, vínculo com os fatos) — por isso 4.5
+entra antes, e 4.4 o usa: banco de percursos separado, roteiros instrumentais supersedidos
+por configuração identificada de demonstração, sem apresentá-la como homologação contábil.
 
 ## 19. O próximo passo
 

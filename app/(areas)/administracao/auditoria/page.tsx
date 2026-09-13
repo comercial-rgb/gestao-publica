@@ -11,7 +11,7 @@ import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 /** ADMINISTRAÇÃO · Auditoria (RegistroDeOperacao, TR 6.1-6.3) — leitura com filtros e paginação. */
 export const dynamic = "force-dynamic";
 
-const BADGE: Record<OperacaoAuditada["resultado"], StatusBadge> = { SUCESSO: "ok", NEGADO: "alerta", ERRO: "erro" };
+const BADGE: Record<OperacaoAuditada["resultado"], StatusBadge> = { INICIADA: "neutro", SUCESSO: "ok", CONCLUIDA: "ok", NEGADO: "alerta", ERRO: "erro" };
 
 export default async function AuditoriaPage({
   searchParams,
@@ -23,7 +23,7 @@ export default async function AuditoriaPage({
   const um = (k: string): string => { const v = sp[k]; return (Array.isArray(v) ? v[0] : v) ?? ""; };
   const usuario = um("usuario"), acao = um("acao"), resultadoStr = um("resultado"), desdeStr = um("desde"), ateStr = um("ate");
   const pagina = Math.max(1, Number.parseInt(um("pagina") || "1", 10) || 1);
-  const resultado = (["SUCESSO", "NEGADO", "ERRO"] as const).includes(resultadoStr as "SUCESSO") ? (resultadoStr as OperacaoAuditada["resultado"]) : undefined;
+  const resultado = (["INICIADA", "SUCESSO", "CONCLUIDA", "NEGADO", "ERRO"] as const).includes(resultadoStr as "SUCESSO") ? (resultadoStr as OperacaoAuditada["resultado"]) : undefined;
 
   const cabecalho = <PageHeader titulo="Auditoria" subtitulo="Registro de operações da borda — quem, quando, qual ação e resultado" acoes={<FiltroAuditoria usuario={usuario} acao={acao} resultado={resultadoStr} desde={desdeStr} ate={ateStr} />} />;
 

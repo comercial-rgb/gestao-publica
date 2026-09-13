@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { EstadoDoMolde } from "../../../../../components/molde/FormularioDeRecurso";
 import { DEPOSITOS } from "../../../../../lib/portas/recursos/almoxarifado";
 import { criarDeposito, acaoDoDeposito } from "../../../../../lib/portas/recursos/almoxarifado-dados";
+import { comComandoDoFormulario } from "../../../../../lib/portas/comando";
 
 /**
  * A Server Action deste cadastro — uma só, despachando pelo `__acao`.
@@ -19,25 +20,27 @@ export async function acaoDeDepositosAction(
   _prev: EstadoDoMolde,
   formData: FormData
 ): Promise<EstadoDoMolde> {
-  const campos: Record<string, string> = {};
-  for (const [k, v] of formData.entries()) {
-    if (typeof v === "string") campos[k] = v;
-  }
-  const acao = campos["__acao"] ?? "";
-  const id = campos["__id"] ?? "";
-
-  try {
-    if (acao === "criar") {
-      await criarDeposito(campos);
-    } else {
-      if (id === "") return { erro: "Registro não identificado. Nada foi gravado." };
-      await acaoDoDeposito(acao, id, campos);
+  return comComandoDoFormulario(formData, async () => {
+    const campos: Record<string, string> = {};
+    for (const [k, v] of formData.entries()) {
+      if (typeof v === "string") campos[k] = v;
     }
-  } catch (e) {
-    return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
-  }
+    const acao = campos["__acao"] ?? "";
+    const id = campos["__id"] ?? "";
 
-  revalidatePath(DEPOSITOS.rota);
-  if (id !== "") revalidatePath(`${DEPOSITOS.rota}/${id}`);
-  return { sucesso: acao === "criar" ? "Depósito cadastrado." : "Registrado." };
+    try {
+      if (acao === "criar") {
+        await criarDeposito(campos);
+      } else {
+        if (id === "") return { erro: "Registro não identificado. Nada foi gravado." };
+        await acaoDoDeposito(acao, id, campos);
+      }
+    } catch (e) {
+      return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
+    }
+
+    revalidatePath(DEPOSITOS.rota);
+    if (id !== "") revalidatePath(`${DEPOSITOS.rota}/${id}`);
+    return { sucesso: acao === "criar" ? "Depósito cadastrado." : "Registrado." };
+  });
 }

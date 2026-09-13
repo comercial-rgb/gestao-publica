@@ -165,12 +165,14 @@ describe("M16 — a borda da EXECUÇÃO (as 4 telas da 7.3)", () => {
     ]);
     expect(emp.lancamento.criadoPor).toBe(IDENT);
 
-    // E a OPERAÇÃO ficou auditada.
-    const op = await prisma.registroDeOperacao.findFirstOrThrow({
-      where: { acao: "EMPENHAR" },
-    });
-    expect(op.usuarioIdent).toBe(IDENT);
-    expect(op.resultado).toBe("SUCESSO");
+    // E a OPERAÇÃO ficou auditada — em DUAS fases (V3 4.3): a tentativa antes, o SUCESSO
+    // gravado pelo FUNIL na transação do fato (com o lançamento), a conclusão depois.
+    const ops = await prisma.registroDeOperacao.findMany({ where: { acao: "EMPENHAR" } });
+    expect(ops.every((o) => o.usuarioIdent === IDENT)).toBe(true);
+    expect(ops.map((o) => o.resultado).sort()).toEqual(["CONCLUIDA", "INICIADA", "SUCESSO"]);
+    expect(ops.find((o) => o.resultado === "SUCESSO")?.lancamentoId).toBe(emp.lancamentoId);
+    const iniciada = ops.find((o) => o.resultado === "INICIADA");
+    expect(ops.filter((o) => o.resultado !== "INICIADA").every((o) => o.operacaoId === iniciada?.id)).toBe(true);
   });
 
   it("t2: LIQUIDAÇÃO de serviço (39) — a contrapartida é a VPD que o M01 escolheu", async () => {
@@ -213,10 +215,10 @@ describe("M16 — a borda da EXECUÇÃO (as 4 telas da 7.3)", () => {
       "8.2.1.1.2.01.00",
       "8.2.1.1.3.01.00",
     ]);
-    expect(
-      (await prisma.registroDeOperacao.findFirstOrThrow({ where: { acao: "LIQUIDAR" } }))
-        .usuarioIdent
-    ).toBe(IDENT);
+    const opsLiq = await prisma.registroDeOperacao.findMany({ where: { acao: "LIQUIDAR" } });
+    expect(opsLiq.length).toBeGreaterThan(0);
+    expect(opsLiq.every((o) => o.usuarioIdent === IDENT)).toBe(true);
+    expect(opsLiq.map((o) => o.resultado)).toContain("SUCESSO");
   });
 
   it("t3: LIQUIDAÇÃO de material (30) é BLOQUEADA na porta — e o rol do M01 diz por quê", () => {
@@ -374,10 +376,10 @@ describe("M16 — a borda da EXECUÇÃO (as 4 telas da 7.3)", () => {
       "7.2.1.1.0.00.00",
       "8.2.1.1.1.00.00",
     ]);
-    expect(
-      (await prisma.registroDeOperacao.findFirstOrThrow({ where: { acao: "REGISTRAR_ARRECADACAO" } }))
-        .resultado
-    ).toBe("SUCESSO");
+    const opsArr = (await prisma.registroDeOperacao.findMany({ where: { acao: "REGISTRAR_ARRECADACAO" } })).map((o) => o.resultado);
+    expect(opsArr).toContain("SUCESSO");
+    expect(opsArr).toContain("CONCLUIDA");
+    expect(opsArr).not.toContain("ERRO");
   });
 
   it("t7: SEM SESSÃO não há criadoPor real — e um identificador forjado NÃO passa no funil", async () => {

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { cliente, PortaSemBancoError } from "./cliente";
 import {
   autenticar,
+  ehFalhaDeCredencial,
   revogarSessao,
   validarSessao,
   type Identidade,
@@ -10,7 +11,9 @@ import {
 import {
   comOperacaoRegistrada,
   criarRegistroDeOperacaoPrisma,
+  telemetriaNoConsole,
 } from "../../modules/m16-travamento/operacao";
+import { comandoDoFormulario } from "./comando";
 
 /**
  * PORTA — SESSÃO (login, validação request-scoped, logout, escrita autenticada).
@@ -23,7 +26,8 @@ import {
  * ═══ criadoPor REAL ═══
  * Toda escrita da UI passa por `comEscritaAutenticada`: exige sessão, injeta o `criadoPor` real (o
  * identificador do usuário logado — o mesmo que o funil e a autorização do M16 cobram) e registra a
- * operação (RegistroDeOperacao, TR 6.3), fora da transação do ato.
+ * operação em DUAS fases (RegistroDeOperacao, TR 6.3 — orquestração V3, 4.3): a tentativa antes do
+ * ato, o SUCESSO dentro da transação do fato (pelo funil) e a conclusão depois, como telemetria.
  */
 
 const COOKIE = "siafic_sessao";
@@ -63,15 +67,37 @@ export async function entrar(input: { readonly identificador: string; readonly s
 > {
   const { ip, agente } = await contexto();
   const registro = criarRegistroDeOperacaoPrisma(cliente());
+
+  // ⚠️ AS TRÊS SEPARAÇÕES DA ORQUESTRAÇÃO V3 (4.3), aplicadas ao login:
+  //   · credencial errada ou cadeado -> mensagem única "usuário ou senha inválidos" (o
+  //     domínio já é de timing uniforme) e a NEGAÇÃO registrada, fora de qualquer tx;
+  //   · falha de INFRAESTRUTURA (banco, auditoria da tentativa) -> NÃO vira "senha
+  //     inválida": o serviço está indisponível, e é isso que o operador lê;
+  //   · o registro de SUCESSO é telemetria: se falhar depois de o cookie existir, o login
+  //     continua válido — antes, a falha do log derrubava um login que já tinha acontecido.
+  let sessao: Awaited<ReturnType<typeof autenticar>>;
   try {
-    const sessao = await autenticar(cliente(), { identificador: input.identificador, senha: input.senha, ...(ip !== undefined ? { ip } : {}), ...(agente !== undefined ? { agente } : {}) });
-    (await cookies()).set(COOKIE, sessao.token, { httpOnly: true, secure: SECURE, sameSite: "lax", expires: sessao.expiraEm, path: "/" });
-    await registro.registrar({ usuarioIdent: input.identificador, acao: "LOGIN", ip, agente, resultado: "SUCESSO" });
-    return { ok: true };
+    sessao = await autenticar(cliente(), { identificador: input.identificador, senha: input.senha, ...(ip !== undefined ? { ip } : {}), ...(agente !== undefined ? { agente } : {}) });
   } catch (e) {
-    await registro.registrar({ usuarioIdent: input.identificador, acao: "LOGIN", ip, agente, resultado: "NEGADO", detalhe: e instanceof Error ? e.message : String(e) });
+    if (!ehFalhaDeCredencial(e)) {
+      telemetriaNoConsole({ fase: "ERRO", operacaoId: "-", usuarioIdent: input.identificador, acao: "LOGIN", causa: e });
+      return { ok: false, erro: "Não foi possível verificar as credenciais agora: o serviço está indisponível. Tente novamente em instantes." };
+    }
+    try {
+      await registro.registrar({ usuarioIdent: input.identificador, acao: "LOGIN", ip, agente, resultado: "NEGADO", detalhe: e instanceof Error ? e.message : String(e) });
+    } catch (causa) {
+      telemetriaNoConsole({ fase: "NEGADO", operacaoId: "-", usuarioIdent: input.identificador, acao: "LOGIN", causa });
+    }
     return { ok: false, erro: "Usuário ou senha inválidos." };
   }
+
+  (await cookies()).set(COOKIE, sessao.token, { httpOnly: true, secure: SECURE, sameSite: "lax", expires: sessao.expiraEm, path: "/" });
+  try {
+    await registro.registrar({ usuarioIdent: input.identificador, acao: "LOGIN", ip, agente, resultado: "SUCESSO" });
+  } catch (causa) {
+    telemetriaNoConsole({ fase: "CONCLUIDA", operacaoId: "-", usuarioIdent: input.identificador, acao: "LOGIN", causa });
+  }
+  return { ok: true };
 }
 
 /** SAIR: revoga a sessão (fato, não delete) e limpa o cookie. */
@@ -98,7 +124,14 @@ export async function encerrarSessao(): Promise<void> {
 export async function comEscritaAutenticada<T>(acao: string, ato: (criadoPor: string) => Promise<T>): Promise<T> {
   const ident = await exigirSessao();
   const { ip, agente } = await contexto();
-  return comOperacaoRegistrada(criarRegistroDeOperacaoPrisma(cliente()), { usuarioIdent: ident.identificador, acao, ip, agente }, () => ato(ident.identificador));
+  // ⚠️ A CHAVE E O FINGERPRINT VÊM DO COMANDO DO FORMULÁRIO (lib/portas/comando.ts), quando
+  // a action passou por ele; sem eles, o envelope registra em duas fases mas não faz replay.
+  const comando = comandoDoFormulario();
+  return comOperacaoRegistrada(
+    criarRegistroDeOperacaoPrisma(cliente()),
+    { usuarioIdent: ident.identificador, acao, ip, agente, chave: comando?.chave ?? null, fingerprint: comando?.fingerprint ?? null },
+    () => ato(ident.identificador)
+  );
 }
 
 export type { Identidade };

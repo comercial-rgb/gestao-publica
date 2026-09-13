@@ -7,6 +7,7 @@ import {
   criarPerfilAdmin,
   revogarAcaoDoPerfilAdmin,
 } from "../../../../lib/portas/administracao";
+import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
 /**
  * AS ESCRITAS DA TELA DE PERFIS (TR 4.56).
@@ -24,63 +25,71 @@ export interface EstadoPerfil {
 }
 
 export async function criarPerfilAction(_prev: EstadoPerfil, formData: FormData): Promise<EstadoPerfil> {
-  const nome = String(formData.get("nome") ?? "").trim();
-  const descricao = String(formData.get("descricao") ?? "").trim();
-  try {
-    await criarPerfilAdmin({ nome, descricao });
-    revalidatePath(ROTA);
-    return { sucesso: `Perfil ${nome} criado. Ele nasce sem permissão nenhuma — conceda as ações uma a uma.` };
-  } catch (e) {
-    return { erro: e instanceof Error ? e.message : "Não foi possível criar o perfil." };
-  }
+  return comComandoDoFormulario(formData, async () => {
+    const nome = String(formData.get("nome") ?? "").trim();
+    const descricao = String(formData.get("descricao") ?? "").trim();
+    try {
+      await criarPerfilAdmin({ nome, descricao });
+      revalidatePath(ROTA);
+      return { sucesso: `Perfil ${nome} criado. Ele nasce sem permissão nenhuma — conceda as ações uma a uma.` };
+    } catch (e) {
+      return { erro: e instanceof Error ? e.message : "Não foi possível criar o perfil." };
+    }
+  });
 }
 
 export async function concederAcaoAction(_prev: EstadoPerfil, formData: FormData): Promise<EstadoPerfil> {
-  const perfilId = String(formData.get("perfilId") ?? "").trim();
-  const acao = String(formData.get("acao") ?? "").trim();
-  const unidade = String(formData.get("unidadeOrcId") ?? "").trim();
-  if (acao === "") return { erro: "Escolha a ação a conceder." };
-  try {
-    await concederAcaoAoPerfilAdmin({ perfilId, acao, unidadeOrcId: unidade === "" ? null : unidade });
-    revalidatePath(ROTA);
-    return {
-      sucesso:
-        unidade === ""
-          ? `Ação ${acao} concedida em todas as unidades.`
-          : `Ação ${acao} concedida nesta unidade gestora.`,
-    };
-  } catch (e) {
-    return { erro: e instanceof Error ? e.message : "Não foi possível conceder a ação." };
-  }
+  return comComandoDoFormulario(formData, async () => {
+    const perfilId = String(formData.get("perfilId") ?? "").trim();
+    const acao = String(formData.get("acao") ?? "").trim();
+    const unidade = String(formData.get("unidadeOrcId") ?? "").trim();
+    if (acao === "") return { erro: "Escolha a ação a conceder." };
+    try {
+      await concederAcaoAoPerfilAdmin({ perfilId, acao, unidadeOrcId: unidade === "" ? null : unidade });
+      revalidatePath(ROTA);
+      return {
+        sucesso:
+          unidade === ""
+            ? `Ação ${acao} concedida em todas as unidades.`
+            : `Ação ${acao} concedida nesta unidade gestora.`,
+      };
+    } catch (e) {
+      return { erro: e instanceof Error ? e.message : "Não foi possível conceder a ação." };
+    }
+  });
 }
 
 export async function revogarAcaoAction(_prev: EstadoPerfil, formData: FormData): Promise<EstadoPerfil> {
-  const perfilId = String(formData.get("perfilId") ?? "").trim();
-  const acao = String(formData.get("acao") ?? "").trim();
-  const unidade = String(formData.get("unidadeOrcId") ?? "").trim();
-  try {
-    await revogarAcaoDoPerfilAdmin({ perfilId, acao, unidadeOrcId: unidade === "" ? null : unidade });
-    revalidatePath(ROTA);
-    return { sucesso: `Ação ${acao} revogada.` };
-  } catch (e) {
-    return { erro: e instanceof Error ? e.message : "Não foi possível revogar a ação." };
-  }
+  return comComandoDoFormulario(formData, async () => {
+    const perfilId = String(formData.get("perfilId") ?? "").trim();
+    const acao = String(formData.get("acao") ?? "").trim();
+    const unidade = String(formData.get("unidadeOrcId") ?? "").trim();
+    try {
+      await revogarAcaoDoPerfilAdmin({ perfilId, acao, unidadeOrcId: unidade === "" ? null : unidade });
+      revalidatePath(ROTA);
+      return { sucesso: `Ação ${acao} revogada.` };
+    } catch (e) {
+      return { erro: e instanceof Error ? e.message : "Não foi possível revogar a ação." };
+    }
+  });
 }
 
 /** Aplica uma atualização versionada de permissões (orquestração V3, 4.2). Uma vez por instalação. */
 export async function aplicarAtualizacaoAction(_prev: EstadoPerfil, formData: FormData): Promise<EstadoPerfil> {
-  const versao = Number.parseInt(String(formData.get("versao") ?? ""), 10);
-  if (!Number.isInteger(versao)) return { erro: "Escolha a versão da atualização a aplicar." };
-  try {
-    const r = await aplicarAtualizacaoDePermissoesAdmin(versao);
-    revalidatePath(ROTA);
-    return {
-      sucesso:
-        r.concessoes === 0
-          ? `Atualização ${versao} registrada: nenhum perfil precisava de concessão nova.`
-          : `Atualização ${versao} aplicada: ${r.concessoes} concessão(ões) em ${r.perfisAlcancados} perfil(is), cada uma com o seu nome no autor.`,
-    };
-  } catch (e) {
-    return { erro: e instanceof Error ? e.message : "Não foi possível aplicar a atualização." };
-  }
+  return comComandoDoFormulario(formData, async () => {
+    const versao = Number.parseInt(String(formData.get("versao") ?? ""), 10);
+    if (!Number.isInteger(versao)) return { erro: "Escolha a versão da atualização a aplicar." };
+    try {
+      const r = await aplicarAtualizacaoDePermissoesAdmin(versao);
+      revalidatePath(ROTA);
+      return {
+        sucesso:
+          r.concessoes === 0
+            ? `Atualização ${versao} registrada: nenhum perfil precisava de concessão nova.`
+            : `Atualização ${versao} aplicada: ${r.concessoes} concessão(ões) em ${r.perfisAlcancados} perfil(is), cada uma com o seu nome no autor.`,
+      };
+    } catch (e) {
+      return { erro: e instanceof Error ? e.message : "Não foi possível aplicar a atualização." };
+    }
+  });
 }

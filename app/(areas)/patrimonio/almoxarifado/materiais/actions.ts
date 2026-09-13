@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { EstadoDoMolde } from "../../../../../components/molde/FormularioDeRecurso";
 import { MATERIAIS } from "../../../../../lib/portas/recursos/almoxarifado";
 import { criarMaterial, acaoDoMaterial } from "../../../../../lib/portas/recursos/almoxarifado-dados";
+import { comComandoDoFormulario } from "../../../../../lib/portas/comando";
 
 /**
  * A Server Action deste cadastro — uma só, despachando pelo `__acao`.
@@ -19,25 +20,27 @@ export async function acaoDeMateriaisAction(
   _prev: EstadoDoMolde,
   formData: FormData
 ): Promise<EstadoDoMolde> {
-  const campos: Record<string, string> = {};
-  for (const [k, v] of formData.entries()) {
-    if (typeof v === "string") campos[k] = v;
-  }
-  const acao = campos["__acao"] ?? "";
-  const id = campos["__id"] ?? "";
-
-  try {
-    if (acao === "criar") {
-      await criarMaterial(campos);
-    } else {
-      if (id === "") return { erro: "Registro não identificado. Nada foi gravado." };
-      await acaoDoMaterial(acao, id, campos);
+  return comComandoDoFormulario(formData, async () => {
+    const campos: Record<string, string> = {};
+    for (const [k, v] of formData.entries()) {
+      if (typeof v === "string") campos[k] = v;
     }
-  } catch (e) {
-    return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
-  }
+    const acao = campos["__acao"] ?? "";
+    const id = campos["__id"] ?? "";
 
-  revalidatePath(MATERIAIS.rota);
-  if (id !== "") revalidatePath(`${MATERIAIS.rota}/${id}`);
-  return { sucesso: acao === "criar" ? "Material cadastrado." : "Registrado." };
+    try {
+      if (acao === "criar") {
+        await criarMaterial(campos);
+      } else {
+        if (id === "") return { erro: "Registro não identificado. Nada foi gravado." };
+        await acaoDoMaterial(acao, id, campos);
+      }
+    } catch (e) {
+      return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
+    }
+
+    revalidatePath(MATERIAIS.rota);
+    if (id !== "") revalidatePath(`${MATERIAIS.rota}/${id}`);
+    return { sucesso: acao === "criar" ? "Material cadastrado." : "Registrado." };
+  });
 }

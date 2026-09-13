@@ -7,6 +7,7 @@ import {
   acaoDoRoteiroPatrimonial,
   criarRoteiroPatrimonial,
 } from "../../../../lib/portas/recursos/roteiros-dados";
+import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
 /**
  * A Server Action do roteiro contábil — despacho FAIL-CLOSED.
@@ -20,33 +21,35 @@ export async function acaoDeRoteirosPatrimoniaisAction(
   _prev: EstadoDoMolde,
   formData: FormData
 ): Promise<EstadoDoMolde> {
-  const campos: Record<string, string> = {};
-  for (const [k, v] of formData.entries()) {
-    if (typeof v === "string") campos[k] = v;
-  }
-  const acao = campos["__acao"] ?? "";
-  const id = campos["__id"] ?? "";
-
-  try {
-    if (acao === "criar") {
-      await criarRoteiroPatrimonial(campos);
-    } else {
-      // ⚠️ O `__id` AQUI É O PRÓPRIO TIPO do evento — ver a nota da porta. Sem ele não há
-      // sujeito, e a recusa do domínio falaria de um enum vazio em vez de dizer a quem usa
-      // a tela o que fazer em seguida.
-      if (id === "") return { erro: "Evento não identificado. Nada foi gravado." };
-      await acaoDoRoteiroPatrimonial(acao, id, campos);
+  return comComandoDoFormulario(formData, async () => {
+    const campos: Record<string, string> = {};
+    for (const [k, v] of formData.entries()) {
+      if (typeof v === "string") campos[k] = v;
     }
-  } catch (e) {
-    return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
-  }
+    const acao = campos["__acao"] ?? "";
+    const id = campos["__id"] ?? "";
 
-  revalidatePath(ROTEIROS_PATRIMONIAIS.rota);
-  if (id !== "") revalidatePath(`${ROTEIROS_PATRIMONIAIS.rota}/${id}`);
-  return {
-    sucesso:
-      acao === "criar"
-        ? "Roteiro parametrizado. O evento já pode ser registrado."
-        : "Contas trocadas. Vale para os movimentos futuros deste evento.",
-  };
+    try {
+      if (acao === "criar") {
+        await criarRoteiroPatrimonial(campos);
+      } else {
+        // ⚠️ O `__id` AQUI É O PRÓPRIO TIPO do evento — ver a nota da porta. Sem ele não há
+        // sujeito, e a recusa do domínio falaria de um enum vazio em vez de dizer a quem usa
+        // a tela o que fazer em seguida.
+        if (id === "") return { erro: "Evento não identificado. Nada foi gravado." };
+        await acaoDoRoteiroPatrimonial(acao, id, campos);
+      }
+    } catch (e) {
+      return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
+    }
+
+    revalidatePath(ROTEIROS_PATRIMONIAIS.rota);
+    if (id !== "") revalidatePath(`${ROTEIROS_PATRIMONIAIS.rota}/${id}`);
+    return {
+      sucesso:
+        acao === "criar"
+          ? "Roteiro parametrizado. O evento já pode ser registrado."
+          : "Contas trocadas. Vale para os movimentos futuros deste evento.",
+    };
+  });
 }
