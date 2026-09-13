@@ -10,6 +10,21 @@ import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
  * mesma fila do art. 141. É o que separa integração de duplicação.
  */
 export function EmpenhosDaFolha({ apropriacao }: { readonly apropriacao: { readonly dataDoEmpenho: string; readonly por: string; readonly total: string; readonly empenhos: readonly { readonly numero: string; readonly ficha: number; readonly grupo: string; readonly matricula: string | null; readonly credor: string; readonly valor: string; readonly empenhoId: string }[] } }): React.ReactElement {
+  // ⚠️ ZERO EMPENHOS É UM ESTADO REAL, e a tela tem de dizer qual: a apropriação foi TENTADA e
+  // parou antes de gravar o primeiro (saldo da ficha, em geral). Uma tabela vazia com o título
+  // "empenhos gerados por esta folha" afirmaria que a folha virou despesa e não virou.
+  if (apropriacao.empenhos.length === 0) {
+    return (
+      <Card>
+        <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Apropriação contábil</h2>
+        <p className="text-xs text-[color:var(--color-ink-2)]">
+          A apropriação foi tentada em {apropriacao.dataDoEmpenho} por {apropriacao.por} e parou ANTES de gravar o primeiro
+          empenho — a causa mais comum é saldo insuficiente na ficha do grupo. Nada foi empenhado. Resolva a causa e
+          apropriar de novo continua daqui: a numeração é determinística e não duplica.
+        </p>
+      </Card>
+    );
+  }
   return (
     <Card>
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Empenhos gerados por esta folha</h2>

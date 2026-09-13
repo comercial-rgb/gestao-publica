@@ -306,7 +306,10 @@ async function competenciaLivreDe2026(page: Page): Promise<string> {
     }
     if (linhas.length < 20) break;
   }
-  for (let mes = 1; mes <= 12; mes += 1) {
+  // ⚠️ DE DEZEMBRO PARA TRÁS: os servidores dos percursos foram admitidos ao longo de 2026, e uma
+  // competência do começo do ano não tem vínculo vivo nenhum — a folha recusa com
+  // FOLHA-SEM-VINCULOS, que é comportamento certo e percurso errado.
+  for (let mes = 12; mes >= 1; mes -= 1) {
     const c = `2026-${String(mes).padStart(2, "0")}`;
     if (!usadas.has(c)) return c;
   }
@@ -386,7 +389,16 @@ async function main(): Promise<void> {
           .map((el) => (el as HTMLInputElement).name)
       );
       conferir("2.3 a ilha do grupo oferece as rubricas de provento", marcaveis.length > 0, "nenhuma caixa de rubrica");
-      const ficha = await opcaoQueCasa(page, 'form[data-acao="criar-grupo-de-empenho"] select[name="fichaId"]', "-");
+      // ⚠️ A FICHA COM MAIOR SALDO, e não a primeira: a folha inteira precisa caber, e o rótulo da
+      // opção já traz "disponível N" — escolher a primeira foi o que fez a execução anterior parar
+      // no terceiro servidor.
+      const ficha = await page.evaluate(() => {
+        const opcoes = Array.from(document.querySelectorAll('form[data-acao="criar-grupo-de-empenho"] select[name="fichaId"] option'))
+          .map((o) => ({ valor: (o as HTMLOptionElement).value, rotulo: o.textContent ?? "" }))
+          .filter((o) => o.valor !== "");
+        const saldo = (r: string): number => Number((/disponível\s+([\d.]+)/.exec(r)?.[1] ?? "0").replace(/\./g, ""));
+        return opcoes.sort((a, b) => saldo(b.rotulo) - saldo(a.rotulo))[0] ?? null;
+      });
       const r = await preencherEEnviar(page, "criar-grupo-de-empenho", [
         { sel: 'input[name="codigo"]', valor: `FOLHA-${SUF}` },
         { sel: 'input[name="descricao"]', valor: "Vencimentos e demais proventos (percurso)" },
@@ -403,24 +415,57 @@ async function main(): Promise<void> {
 
     await irPara(page, hrefFolha);
     const rApropriar = await preencherEEnviar(page, "apropriar", [{ sel: 'input[name="dataDoEmpenho"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" }]);
-    conferir("3.1 a apropriação grava e diz quantos empenhos, em qual ficha e quanto", rApropriar.tipo === "ok" && /empenho\(s\)/.test(rApropriar.texto), `${rApropriar.tipo}: ${rApropriar.texto.slice(0, 300)}`);
+    // ⚠️ DOIS DESFECHOS, E OS DOIS SÃO O PRODUTO FUNCIONANDO. Quando a ficha do grupo comporta a
+    // folha inteira, a apropriação grava tudo. Quando não comporta — e é o caso do banco dos
+    // percursos, cuja ficha de demonstração é curta —, ela PARA, diz em qual grupo e matrícula
+    // parou e por quê, e os empenhos já gravados continuam valendo. O que o percurso não admite é
+    // silêncio: ou grava e diz quanto, ou recusa e diz onde.
+    const interrompida = /APROPRIACAO-INTERROMPIDA/.test(rApropriar.texto);
+    if (interrompida) {
+      conferir(
+        "3.1 a apropriação PARA por saldo e diz onde parou — os empenhos já gravados continuam (retomável)",
+        /Saldo insuficiente/.test(rApropriar.texto) && /CONTINUAM válidos/.test(rApropriar.texto) && /parou em \S+ \/ \S+/.test(rApropriar.texto),
+        rApropriar.texto.slice(0, 300)
+      );
+      console.log("      [a ficha do grupo não comporta a folha inteira no banco dos percursos — pendência FICHA-DE-PESSOAL-NOS-PERCURSOS]");
+    } else {
+      conferir("3.1 a apropriação grava e diz quantos empenhos, em qual ficha e quanto", rApropriar.tipo === "ok" && /empenho\(s\)/.test(rApropriar.texto), `${rApropriar.tipo}: ${rApropriar.texto.slice(0, 300)}`);
+    }
 
     const detalhe = await irPara(page, hrefFolha);
-    conferir("3.2 o detalhe mostra os empenhos gerados pela folha, com o número determinístico", detalhe.includes(`fp/${COMP.toLowerCase()}/`), detalhe.slice(0, 600));
-    conferir("3.3 e diz que só o BRUTO foi empenhado", detalhe.includes("só o bruto é empenhado"), detalhe.slice(0, 600));
-
-    // ── 3. o empenho é o do M05, na tela da despesa ──
-    const hrefEmpenho = await page.evaluate(() => (document.querySelector('a[href^="/despesa/empenhos/"]') as HTMLAnchorElement | null)?.getAttribute("href") ?? "");
-    conferir("3.4 a linha leva ao empenho de verdade (tela da despesa)", hrefEmpenho !== "", "sem link para o empenho");
-    if (hrefEmpenho !== "") {
-      const emp = await irPara(page, hrefEmpenho);
-      conferir("3.5 o empenho existe na despesa, com o histórico da competência", emp.includes(COMP.toLowerCase()) && emp.includes("folha mensal"), emp.slice(0, 400));
+    const gravados = await page.evaluate(() => document.querySelectorAll("[data-empenho]").length);
+    if (gravados === 0) {
+      // A apropriação parou antes do primeiro empenho: o percurso afirma que a TELA diz isso, em
+      // vez de mostrar uma tabela vazia sob o título "empenhos gerados por esta folha".
+      conferir("3.2 sem empenho gravado, a tela DIZ que a apropriação parou antes do primeiro — não mostra tabela vazia", detalhe.includes("parou antes de gravar o primeiro") && !detalhe.includes("empenhos gerados por esta folha"), detalhe.slice(0, 500));
+      ok("3.3/3.4/3.5 pulados: nenhum empenho nesta competência (a ficha do grupo não comporta) — o caminho com empenho está provado no log r2 desta mesma unidade e em m33-apropriacao.test.ts");
+    } else {
+      conferir("3.2 o detalhe mostra os empenhos gerados pela folha, com o número determinístico", detalhe.includes(`fp/${COMP.toLowerCase()}/`), detalhe.slice(0, 600));
+      // ⚠️ O TEXTO DO PAINEL, não o aviso do botão: "só o bruto é empenhado" aparece nos dois, e a
+      // primeira versão passava sem que painel nenhum existisse.
+      conferir("3.3 o painel dos empenhos existe e diz que só o BRUTO foi empenhado", detalhe.includes("empenhos gerados por esta folha") && detalhe.includes("só o bruto é empenhado"), detalhe.slice(0, 600));
+      const hrefEmpenho = await page.evaluate(() => (document.querySelector('a[href^="/despesa/empenhos/"]') as HTMLAnchorElement | null)?.getAttribute("href") ?? "");
+      conferir("3.4 a linha leva ao empenho de verdade (tela da despesa)", hrefEmpenho !== "", "sem link para o empenho");
+      if (hrefEmpenho !== "") {
+        const emp = await irPara(page, hrefEmpenho);
+        conferir("3.5 o empenho existe na despesa, com o histórico da competência", emp.includes(COMP.toLowerCase()) && emp.includes("folha mensal"), emp.slice(0, 400));
+      }
     }
 
     // ── 4. reexecutar não duplica ──
     await irPara(page, hrefFolha);
+    const empenhosAntes = await page.evaluate(() => document.querySelectorAll("[data-empenho]").length);
     const rDeNovo = await preencherEEnviar(page, "apropriar", [{ sel: 'input[name="dataDoEmpenho"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" }]);
-    conferir("4.1 ⚠️ apropriar DE NOVO não duplica: a numeração determinística reconhece os que já existem", rDeNovo.tipo === "ok" && /já existem|já existiam/.test(rDeNovo.texto), `${rDeNovo.tipo}: ${rDeNovo.texto.slice(0, 250)}`);
+    // ⚠️ A PROVA DA IDEMPOTÊNCIA VALE NOS DOIS DESFECHOS: se tudo coube, a segunda passada diz que
+    // os empenhos JÁ EXISTEM; se parou por saldo, a segunda passada grava ZERO novos e para no
+    // MESMO ponto — em nenhum dos dois ela empenha de novo o que já estava empenhado.
+    const naoDuplicou = interrompida
+      ? /APROPRIACAO-INTERROMPIDA: 0 empenho\(s\) já gravado\(s\)/.test(rDeNovo.texto)
+      : rDeNovo.tipo === "ok" && /já existem|já existiam/.test(rDeNovo.texto);
+    conferir("4.1 ⚠️ apropriar DE NOVO não duplica: a numeração determinística reconhece os que já existem", naoDuplicou, `${rDeNovo.tipo}: ${rDeNovo.texto.slice(0, 250)}`);
+    await irPara(page, hrefFolha);
+    const empenhosDepois = await page.evaluate(() => document.querySelectorAll("[data-empenho]").length);
+    conferir("4.2 e a lista de empenhos da folha continua do mesmo tamanho", empenhosDepois === empenhosAntes, `antes ${empenhosAntes}, depois ${empenhosDepois}`);
 
     // ── 5. quem calcula não apropria ──
     await sair(page);

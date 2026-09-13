@@ -6342,3 +6342,69 @@ decidido pela leitura feita nesta sessão, e fica registrado para a próxima uni
   cálculo, mas quem liquida assume responsabilidade própria e a tela da despesa já existe.
 
 Depois: **P3** — mesa de trabalho (M21/M22/M23), fluxos de processo e carta de serviços.
+
+## 58. V6 P2.3b — a folha fechada vira despesa
+
+Commits: `935a271` (schema, domínio, serviço, telas, testes, permissões v12), `5c4fad4` (smoke),
+`9c42d37` (ADR, MODULO, PROD-011), e o commit desta seção.
+
+### 58.1 O que passou a funcionar
+
+**O grupo de empenho** (`/folha/grupos-de-empenho`) é o cadastro que diz COMO a folha vira
+despesa: quais rubricas de PROVENTO ele empenha, em qual ficha, com qual categoria do art. 141, e
+se o empenho é POR SERVIDOR (credor = o CPF de cada um) ou UM SÓ para o grupo (credor declarado).
+As duas práticas existem nos entes, e escolher uma por dentro seria inventar norma que o TR não
+fixa. Uma rubrica pertence a UM grupo só — em dois, a mesma verba viraria despesa duas vezes.
+
+**Apropriar** (ação no detalhe da folha FECHADA) chama o `empenhar` do M05: mesmo roteiro
+contábil, mesma trava de ficha, mesmo exercício conferido, mesma fila do art. 141. Nada
+reimplementa despesa — o empenho da folha é o mesmo `Empenho` que a tela da despesa mostra, e a
+lista no detalhe da folha leva até ele.
+
+As três decisões, com a razão de cada uma (`docs/adr/ADR-apropriacao-da-folha-nao-atomica.md`):
+
+1. **Só o BRUTO é empenhado.** Contribuição e imposto retidos são retenções do PAGAMENTO, não
+   despesa orçamentária. O cadastro recusa rubrica de desconto no grupo; e uma rubrica de provento
+   fora de qualquer grupo INTERROMPE a apropriação antes de empenhar, nomeando-a — empenhar menos
+   do que a folha paga seria pior do que não empenhar.
+2. **Numeração determinística** (`série/competência/matrícula`), e é ela que dá IDEMPOTÊNCIA: o
+   `@@unique([fichaId, numero])` do M05 faz a segunda tentativa reconhecer o que já existe. Não há
+   flag de "já apropriada" — há um número que não se repete.
+3. **A apropriação NÃO é atômica entre empenhos**, e a razão foi medida no código: o adapter do
+   M05 abre a própria transação por empenho (é lá que `travarFichas` roda), e uma transação única
+   para mil empenhos manteria as fichas do ente travadas por minutos. Ela é RETOMÁVEL: diz quantos
+   já foram, em qual grupo e matrícula parou e por quê, e os empenhos gravados continuam valendo.
+
+**Segregação:** `APROPRIAR_FOLHA` e `CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA` são ações próprias
+(permissões **v12**) — e quem apropria precisa TAMBÉM de `EMPENHAR`, porque o M05 exige a ação
+dele em cada empenho, dentro da transação. Apropriar não é atalho para empenhar. Nos percursos, é
+a contabilidade que apropria; o RH calcula e não vê o formulário.
+
+Regime de rigor: **PROFUNDIDADE** (dinheiro, razão e saldo de ficha).
+
+### 58.2 Comandos executados e resultados
+
+| Comando | Resultado |
+|---|---|
+| migrations `20260913230000_v6_acoes_apropriacao_da_folha` (2 `ALTER TYPE`) e `…230100_v6_apropriacao_da_folha` (4 tabelas + 3 CHECKs) | aplicadas nos três bancos; `generate`; `diff --exit-code` limpo; papel reprovisionado |
+| tsc backend / app / scripts | limpos |
+| `m33-apropriacao.test.ts` | **13/13** |
+| `m16-censo` (298 serviços; 271+21 ações), `m16-atualizacoes` (v12), `molde` (t20), `modelo-sem-caso-de-uso`, `leitura-exige-acao`, `chave-de-comando`, `fronteira-ui`, `descritores-consistentes` | verdes |
+| `test:rapido` | 852/852 |
+| permissões v12 (dev e percursos) | 2 concessões em 1 perfil, cada |
+| papéis dos percursos | `contabilidade@percursos.local` +`CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA` e `APROPRIAR_FOLHA` (11 ações) |
+
+**⚠️ DOIS TROPEÇOS DE FERRAMENTA, registrados porque custaram tempo e podem repetir:**
+
+1. **O teste do portal arrastou a porta para o alvo NodeNext.** `test/portal-do-servidor.test.ts`
+   importa `lib/portas/portal-do-servidor.ts`, e `test/**/*.ts` está no `tsconfig.backend.json`
+   (NodeNext) — a porta passou a ser compilada com outra resolução de módulos e o `tsc` do backend
+   acusou onze erros que o vitest não vê. É exatamente a armadilha que o `tsconfig.json` já
+   documentava; a correção é a mesma: nomear o arquivo no `include` do app e no `exclude` do
+   backend. Fica o aviso: **todo teste novo que importe uma porta precisa desse par**.
+2. **O primeiro `next build` desta unidade foi MORTO (exit 143)** — a máquina de 8 GB estava
+   rodando, ao mesmo tempo, uma suíte de testes de OUTRO projeto (`whataspp-saas-brain`, de outra
+   sessão). O `.next` ficou sem `BUILD_ID` e o `next start` subiu recusando servir. Não se matou o
+   processo alheio (regra da V6): o build foi refeito sozinho, com `--max-old-space-size=3072`.
+   **Um build e uma suíte pesada não cabem juntos nesta máquina** — é a mesma lição do trinco, que
+   só serializa o que é DESTE repositório.

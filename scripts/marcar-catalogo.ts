@@ -1940,6 +1940,16 @@ const MAPA: Readonly<Record<string, Marca>> = {
     situacao: "PARCIAL",
     evidencia: "V6 P2.4: o portal lista os contracheques do servidor por competência, com proventos, descontos e líquido — é a ficha financeira dele, na tela. ⚠️ FALTAM o filtro por período e a IMPRESSÃO (não há PDF), que é o que o item pede.",
   },
+
+  // ── V6 P2.3b — a apropriação contábil da folha ──
+  "5.12.71": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P2.3b: a folha FECHADA vira despesa sem digitação: o GRUPO DE EMPENHO (cadastro do ente) diz quais rubricas de provento empenham em qual ficha, com qual categoria do art. 141, e se o empenho é por servidor (credor = o CPF de cada um) ou um só para o grupo; apropriar chama o `empenhar` do M05 — mesmo roteiro contábil, mesma trava de ficha, mesmo exercício conferido, mesma fila do art. 141. Só o BRUTO é empenhado (as retenções viajam no pagamento), a numeração é determinística (série/competência/matrícula) e por isso reexecutar NÃO duplica, e a apropriação que para por falta de saldo diz onde parou sem apagar os empenhos já gravados (m33-apropriacao.test.ts, 13 testes, N=2; ADR-apropriacao-da-folha-nao-atomica.md). ⚠️ FALTAM: a LIQUIDAÇÃO automática (continua ato próprio na tela da despesa) e o empenho dos ENCARGOS PATRONAIS — a memória do cálculo ainda não os calcula (pendência PATRONAL-NA-MEMORIA).",
+  },
+  "5.12.72": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: "V6 P2.3b: o detalhe da folha mostra os empenhos gerados por grupo e por matrícula, com ficha, credor e valor — mas isso é o ELO, não a planilha contábil que o item pede: não há demonstrativo com os valores da folha E dos encargos patronais (que não são calculados — PATRONAL-NA-MEMORIA), nem quebra por natureza de despesa. Marcado ausente para que a tela dos empenhos não seja lida como atendimento da planilha.",
+  },
   "5.12.102": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: "V6 P2.2: não há serviço de troca de matrícula; a matrícula é a chave de negócio do vínculo e é única no ente. Trocá-la exigiria histórico da matrícula anterior (pendência TROCA-DE-MATRICULA no MODULO M32).",
