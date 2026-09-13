@@ -183,7 +183,8 @@ aqui: o módulo entrou pelo molde, com as tabelas nomeadas por este repositório
   `CONSULTAR_PESSOAL`), `ALTER TYPE` em migration separada
 - `prisma/migrations/20260913180100_v6_pessoal_cadastro/` — as 14 tabelas, os CHECKs e índices
   parciais da origem, um a um
-- `modules/m32-pessoal/dominio.ts` — Zod + derivações puras; **datas por dia civil do ente**
+- `modules/m32-pessoal/dominio.ts` — Zod + derivações puras (cargo, lotação, salário, gratificações,
+  situação e **regime previdenciário**, todos por data); **datas por dia civil do ente**
   (`packages/datas`: `diaCivil`, `anoCivil`), não UTC — a origem usava `getUTC*`/`toISOString`
   e o guard `data-civil.test.ts` daqui acusou 17 sítios
 - `modules/m32-pessoal/servico.ts` — 17 serviços (16 da origem + `nomeDoServidor`, fora do censo
@@ -220,6 +221,20 @@ baixa manual de dependente (`BAIXAR_DEPENDENTE`) idem: `PESSOAL-SEM-TELA-BAIXA-D
 **Bloco 4** — SEFIP, CAGED, RAIS, DIRF, SIOPE, GRRF, eSocial, contracheque, Portal do Servidor
 (reqs. 43, 50, 54, 61-66 + item 02 inteiro).
 **Ponto eletrônico** (req. 19).
+
+### O REGIME PREVIDENCIÁRIO É EVENTO (V6 P2.3) — e por quê
+
+Ele entrou como coluna de `Vinculo` no commit que abriu a folha, e saiu de lá no mesmo dia: o
+regime decide QUAL TABELA de contribuição a folha aplica, e quem migra do RGPS para o RPPS em
+junho contribuiu ao RGPS em maio. Com coluna, recalcular maio depois da migração aplicaria a
+tabela de junho — que é exatamente o defeito da projeção que este módulo existe para impedir, só
+que em dinheiro, e o recálculo é o que se faz quando alguém contesta o desconto.
+
+Hoje: `HistoricoVinculo.regimePrevidenciario` + o tipo `MUDANCA_REGIME_PREVIDENCIARIO` (dentro de
+`MOVIMENTAR_SERVIDOR`, porque migrar de regime é mover o vínculo, não pagá-lo);
+`regimeVigenteEm(eventos, naAdmissao, quando)` deriva. A coluna `Vinculo.regimePrevidenciario`
+permanece como **o regime declarado NA ADMISSÃO** e o fallback dos vínculos criados antes de o
+evento existir — não como verdade vigente. A admissão grava o regime nos DOIS lugares.
 
 ### Pendências nomeadas deste bloco
 

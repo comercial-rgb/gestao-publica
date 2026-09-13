@@ -6077,3 +6077,77 @@ INSS/IRRF vêm de tabela do ente, fail-closed (nenhum código no código). Unida
 competência → cálculo com memória por servidor e por rubrica → fechamento (snapshot com sha256) →
 apropriação contábil pelo M05 (empenho da folha). Depois P2.4 portal do servidor (canal
 `portal-do-servidor` das apresentações; contracheque do fechamento).
+
+## 56. V6 P2.3 — a folha de pagamento (M33) e o regime como fato datado
+
+Commits: `a22e9ea` (M33: schema, domínio, serviços, telas, testes, permissões v10, ADR),
+`9f3c512` (o regime previdenciário vira evento do vínculo; smoke da folha; papéis da folha nos
+percursos), e o commit desta seção (documentação, catálogo, capturas).
+
+### 56.1 O que passou a funcionar
+
+Módulo: **M33 folha**, RH bloco 2. O motor é puro e em `Decimal`; o serviço lê, escolhe a tabela
+vigente e grava. Decisão fundadora em `docs/adr/ADR-folha-tabelas-do-ente.md`.
+
+- **Nenhum código no código.** Contribuição por regime (RGPS com faixas e teto; RPPS pela lei do
+  ente), IRRF (faixas, dedução por dependente, desconto simplificado, parcela isenta de 65 anos,
+  redutor) e salário-família vêm de TABELAS DO ENTE, vigentes por competência (AAAA-MM), com
+  `fundamentacaoLegal` obrigatória. Sem tabela vigente: `TABELA-AUSENTE` nomeando tipo e
+  competência. Duas com o mesmo início: `TABELA-AMBIGUA`. Quais cenários do IRRF existem é a
+  TABELA que diz — não há data embutida no código.
+- **Rubricas parametrizadas:** natureza (de onde vem o valor), incidência na base da contribuição
+  e do IRRF, proporcionalidade aos dias e ordem no contracheque. As naturezas sistêmicas
+  (vencimento, gratificações, contribuição, IRRF, salário-família) existem UMA vez cada, e a
+  segunda é recusada nomeando a primeira.
+- **Lançamentos** fixos (por vigência) e variáveis (por competência) por matrícula, append-only.
+- **O cálculo é fato numerado:** um contracheque por vínculo vivo, com linhas, totais, a MEMÓRIA
+  canônica (JSON determinístico) e o sha256 dela; o cálculo leva o sha256 do conjunto. Recalcular
+  é o número seguinte; cancelar é um fato; fechar congela UM cálculo. Folha fechada não se
+  recalcula; cálculo fechado não se cancela. Nada é apagado ou reescrito.
+- **Quem acumula dois cargos** (TR 5.12.79): as bases RGPS se somam, o teto se aplica uma vez e o
+  resultado se rateia na proporção das bases (o centavo fica no último); o IRRF é de UMA fonte
+  pagadora e também se rateia. A memória de cada contracheque diz que o valor foi imposto pela
+  acumulação e por quê. RPPS e isento não agregam a contribuição.
+- **O REGIME PREVIDENCIÁRIO VIROU FATO DATADO** (`MUDANCA_REGIME_PREVIDENCIARIO`, dentro de
+  `MOVIMENTAR_SERVIDOR`), e a folha de cada competência aplica o regime DAQUELA competência. Ele
+  entrou como coluna no primeiro commit e saiu no mesmo dia: com coluna, recalcular maio depois de
+  uma migração ao RPPS em junho aplicaria a tabela de junho — o defeito da projeção que o M32
+  existe para impedir, agora em dinheiro, e o recálculo é justamente o que se faz quando alguém
+  contesta o desconto. A coluna `Vinculo.regimePrevidenciario` permanece como o regime DA ADMISSÃO
+  e o fallback dos vínculos legados.
+- **Rota real:** área **Folha** no menu — `/folha` (landing), `/folha/folhas` (abrir, calcular,
+  cancelar, fechar; contracheques do cálculo vivo), `/folha/folhas/[id]/contracheque/[vinculoId]`
+  (a memória legível: faixas percorridas, cenários do imposto com o motivo de cada inaplicável,
+  fundamentação de cada tabela, sha256), `/folha/rubricas`, `/folha/lancamentos`, `/folha/tabelas`
+  (ilha com as faixas em linhas e campos que mudam com o tipo). Permissões **v10 `folha-m33`**.
+
+Regime de rigor: **PROFUNDIDADE** (dinheiro e cálculo normativo) — caracterização das faixas
+conferida por implementação independente, fixture N=2 no rateio da acumulação, negações com
+motivo. As telas do módulo são superfície e têm o percurso de navegador.
+
+### 56.2 Comandos executados e resultados
+
+| Comando | Resultado |
+|---|---|
+| migrations `20260913200000_v6_acoes_folha` (8 `ALTER TYPE`), `…200100_v6_folha` (13 tabelas + 16 CHECKs próprios), `…210000_v6_evento_regime_previdenciario`, `…210100_v6_historico_regime` (coluna + 2 CHECKs) | aplicadas nos três bancos; `generate`; `migrate diff --exit-code` limpo; papel `gestao_app` reprovisionado |
+| tsc backend / app / scripts | limpos |
+| `m33-folha.test.ts` | **38/38** |
+| `m32-pessoal.test.ts` | **57/57** (com as provas do regime derivado) |
+| `m16-censo` (296 serviços; 269+20 ações), `m16-atualizacoes` (v10), `molde`, `busca-global`, `menu-contra-o-servidor`, `modelo-sem-caso-de-uso`, `leitura-exige-acao`, `chave-de-comando`, `fronteira-ui`, `descritores-consistentes`, `identidade`, `formularios-na-mesma-pagina`, `rotulos-de-conformidade`, `data-civil` | verdes |
+| `test:rapido` | 852/852 |
+| permissões v10 (dev e percursos) | 8 concessões em 1 perfil, cada |
+| papéis dos percursos | `rh@percursos.local` +7 ações da folha (parametriza, lança, calcula); `contabilidade@percursos.local` +`FECHAR_FOLHA` e `CONSULTAR_FOLHA`. O script deixou de ser inerte: perfil que já existe recebe SÓ as ações que faltam |
+| `next build` em `9f3c512` + `servir-percursos` em 3010 | build exit 0 |
+| smokes sob o build | ver 56.4 |
+
+Não executados nesta unidade: `test:tudo`, `test:fuso`, portão integral.
+
+### 56.3 Pendências (nomeadas)
+
+Todas no `MODULO.md` do M33, com a razão: `APROPRIACAO-CONTABIL-DA-FOLHA` (5.12.71/72 — o empenho
+da folha pelo M05, próxima unidade), `FOLHAS-NAO-MENSAIS` (13º, férias, rescisão, complementar),
+`FALTAS-NA-FOLHA`, `PENSAO-ALIMENTICIA-NA-FOLHA`, `CONSIGNACOES-E-MARGEM`,
+`ARREDONDAMENTO-DA-FOLHA` (half-even, o do razão), `CONTRACHEQUE-EM-PDF`, `RESUMO-DA-FOLHA`,
+`PATRONAL-NA-MEMORIA`. Do M32: `ALTERACAO-CADASTRAL-DO-SERVIDOR` e as demais da §55.3.
+
+Bloqueado por terceiro: nada nesta unidade.

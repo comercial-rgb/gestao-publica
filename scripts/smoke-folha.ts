@@ -327,11 +327,20 @@ async function main(): Promise<void> {
     // ── 1. as tabelas do ente (reusa as que já vigoram) ──
     const COMP = await competenciaLivre(page);
     console.log(`      [competência de trabalho: ${COMP}]`);
-    const listaTabelas = await irPara(page, "/folha/tabelas");
-    const jaTem = (pedaco: string): boolean => listaTabelas.includes(pedaco.toLowerCase());
-    const temRgps = jaTem("contribuição previdenciária — rgps");
-    const temIrrf = listaTabelas.includes("irrf");
-    const temSf = jaTem("salário-família");
+    // ⚠️ A EXISTÊNCIA SE LÊ NAS LINHAS DA LISTA, NUNCA NO TEXTO DA PÁGINA. A primeira versão
+    // procurava "irrf" no corpo inteiro — e o corpo tem a descrição do cadastro, o filtro e o
+    // menu. Resultado: o smoke concluiu que as três tabelas já existiam, não criou nenhuma, e o
+    // cálculo caiu no `TABELA-AUSENTE` que ele mesmo deveria ter evitado. Guarda que procura em
+    // tudo acha em tudo.
+    await irPara(page, "/folha/tabelas");
+    const linhasDaLista = async (): Promise<readonly string[]> =>
+      page.evaluate(() => Array.from(document.querySelectorAll("tbody tr")).map((tr) => (tr.textContent ?? "").replace(/\s+/g, " ").trim().toLowerCase()));
+    const linhasTabelas = await linhasDaLista();
+    const temTabela = (rotulo: string): boolean => linhasTabelas.some((l) => l.includes(rotulo.toLowerCase()) && l.includes("vigente"));
+    const temRgps = temTabela("contribuição previdenciária — rgps");
+    const temIrrf = temTabela("irrf");
+    const temSf = temTabela("salário-família");
+    console.log(`      [tabelas já vigentes: RGPS=${temRgps} IRRF=${temIrrf} salário-família=${temSf}]`);
 
     if (!temRgps) {
       const r = await preencherEEnviar(page, "criar-tabela", [
@@ -388,11 +397,15 @@ async function main(): Promise<void> {
     conferir("1.4 as três tabelas aparecem VIGENTES, com a fundamentação e o resumo das faixas", tabelasDepois.includes("vigente") && tabelasDepois.includes("faixa"), tabelasDepois.slice(0, 300));
 
     // ── 2. as rubricas ──
-    const listaRubricas = await irPara(page, "/folha/rubricas");
-    const precisa = (codigo: string): boolean => !listaRubricas.includes(codigo.toLowerCase());
-    const criarRubrica = async (campos: readonly { readonly sel: string; readonly valor: string; readonly tipo?: "select" | "marcar" }[], rotulo: string, codigo: string): Promise<void> => {
-      if (!precisa(codigo)) {
-        ok(`${rotulo} já existe (execução anterior) — reusada`);
+    // ⚠️ A EXISTÊNCIA É PELA NATUREZA, não pelo código: as sistêmicas existem UMA vez cada, e é a
+    // natureza que o servidor recusa duplicar. Duas rubricas de vencimento-base com códigos
+    // diferentes são o mesmo conflito.
+    await irPara(page, "/folha/rubricas?pagina=1");
+    const linhasRubricas = await page.evaluate(() => Array.from(document.querySelectorAll("tbody tr")).map((tr) => (tr.textContent ?? "").replace(/\s+/g, " ").trim().toLowerCase()));
+    const temNatureza = (natureza: string): boolean => linhasRubricas.some((l) => l.includes(natureza.toLowerCase()));
+    const criarRubrica = async (campos: readonly { readonly sel: string; readonly valor: string; readonly tipo?: "select" | "marcar" }[], rotulo: string, natureza: string): Promise<void> => {
+      if (temNatureza(natureza)) {
+        ok(`${rotulo} — já existe rubrica desta natureza (execução anterior), reusada`);
         return;
       }
       await irPara(page, "/folha/rubricas");
@@ -409,7 +422,7 @@ async function main(): Promise<void> {
       { sel: 'input[name="incideIrrf"]', valor: "sim", tipo: "marcar" },
       { sel: 'input[name="proporcionalAosDias"]', valor: "sim", tipo: "marcar" },
       { sel: 'input[name="fundamentacaoLegal"]', valor: "Lei do quadro de pessoal (percurso)" },
-    ], "2.1 rubrica VENC (vencimento-base, proporcional aos dias) cadastrada", "venc");
+    ], "2.1 rubrica VENC (vencimento-base, proporcional aos dias) cadastrada", "vencimento-base");
     await criarRubrica([
       { sel: 'input[name="codigo"]', valor: "HEXT" },
       { sel: 'input[name="descricao"]', valor: "Horas extras" },
@@ -420,7 +433,7 @@ async function main(): Promise<void> {
       { sel: 'input[name="incideIrrf"]', valor: "sim", tipo: "marcar" },
       { sel: 'input[name="proporcionalAosDias"]', valor: "nao", tipo: "marcar" },
       { sel: 'input[name="fundamentacaoLegal"]', valor: "Estatuto dos servidores (percurso)" },
-    ], "2.2 rubrica HEXT (valor informado) cadastrada", "hext");
+    ], "2.2 rubrica HEXT (valor informado) cadastrada", "valor informado");
     await criarRubrica([
       { sel: 'input[name="codigo"]', valor: "PREV" },
       { sel: 'input[name="descricao"]', valor: "Contribuicao previdenciaria" },
@@ -431,7 +444,7 @@ async function main(): Promise<void> {
       { sel: 'input[name="incideIrrf"]', valor: "nao", tipo: "marcar" },
       { sel: 'input[name="proporcionalAosDias"]', valor: "nao", tipo: "marcar" },
       { sel: 'input[name="fundamentacaoLegal"]', valor: "Lei 8.212/91 e tabela vigente (percurso)" },
-    ], "2.3 rubrica PREV (contribuição pela tabela) cadastrada", "prev");
+    ], "2.3 rubrica PREV (contribuição pela tabela) cadastrada", "contribuição previdenciária");
     await criarRubrica([
       { sel: 'input[name="codigo"]', valor: "IRRF" },
       { sel: 'input[name="descricao"]', valor: "Imposto de renda retido" },
@@ -445,7 +458,7 @@ async function main(): Promise<void> {
     ], "2.4 rubrica IRRF cadastrada", "irrf");
     await irPara(page, "/folha/rubricas");
     const rDup = await preencherEEnviar(page, "criar-rubricas", [
-      { sel: 'input[name="codigo"]', valor: `VENC2-${SUF}` },
+      { sel: 'input[name="codigo"]', valor: `VENC-BIS-${SUF}` },
       { sel: 'input[name="descricao"]', valor: "Outro vencimento base" },
       { sel: 'select[name="tipo"]', valor: "PROVENTO", tipo: "select" },
       { sel: 'select[name="natureza"]', valor: "VENCIMENTO_BASE", tipo: "select" },
@@ -565,8 +578,12 @@ async function main(): Promise<void> {
       if (rMov.tipo !== "ok") { falhou("5.3 correção do legado", `${matricula}: ${rMov.texto.slice(0, 160)}`); break; }
       corrigidas += 1;
     }
-    if (corrigidas === 0) ok("5.3 não restou vínculo sem regime (execução anterior já os informou) — a recusa está provada em m33-folha.test.ts");
-    else ok(`5.4 o regime informado como FATO DATADO em ${corrigidas} matrícula(s) legada(s) destravou o cálculo`);
+    // ⚠️ SÓ SE AFIRMA O QUE SE VIU: "não restou vínculo sem regime" vale quando o cálculo PASSOU.
+    // Se ele caiu por outro motivo (tabela ausente, por exemplo), o percurso não chegou a olhar
+    // para os vínculos — e dizer que estavam todos certos seria atestar pelo silêncio.
+    if (corrigidas > 0) ok(`5.4 o regime informado como FATO DATADO em ${corrigidas} matrícula(s) legada(s) destravou o cálculo`);
+    else if (rCalc.tipo === "ok") ok("5.3 não restou vínculo sem regime (execução anterior já os informou) — a recusa está provada em m33-folha.test.ts");
+    else console.log(`      [5.3/5.4 não avaliados: o cálculo parou antes dos vínculos — ${rCalc.texto.slice(0, 120)}]`);
     conferir("5.5 o cálculo grava e diz quantos contracheques e o líquido", rCalc.tipo === "ok" && /contracheque/i.test(rCalc.texto), `${rCalc.tipo}: ${rCalc.texto.slice(0, 240)}`);
 
     const detFolha = await irPara(page, hrefFolha);
