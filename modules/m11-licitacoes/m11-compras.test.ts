@@ -8,6 +8,7 @@ import {
   estatisticasDaPesquisa,
   estornarOrdemDeCompra,
   movimentarSolicitacaoDeCompra,
+  ordemEstornada,
   registrarPesquisaDePrecos,
   registrarRecebimentoDeOrdem,
   registrarSolicitacaoDeCompra,
@@ -383,7 +384,12 @@ describe("t5 · ⚠️ A CASCATA VAI DO EMPENHO PARA A ORDEM — decisão D12", 
       ordemId, motivo: "cancelamento pedido pela secretaria", criadoPor: POR,
     });
     expect(r.itensEstornados).toBe(1);
-    expect(await prisma.ordemDeCompra.count({ where: { id: ordemId } })).toBe(0);
+    // V6 P1.1: o estorno é FATO — a ordem continua existindo, ESTORNADA pelo movimento.
+    expect(await prisma.ordemDeCompra.count({ where: { id: ordemId } })).toBe(1);
+    expect(await ordemEstornada(prisma, ordemId)).toBe(true);
+    await expect(
+      estornarOrdemDeCompra(prisma, { ordemId, motivo: "segundo estorno", criadoPor: POR })
+    ).rejects.toThrow(/já está ESTORNADA/);
   });
 
   it("ordem COM recebimento RECUSA — o material já entrou", async () => {
@@ -421,7 +427,16 @@ describe("t5 · ⚠️ A CASCATA VAI DO EMPENHO PARA A ORDEM — decisão D12", 
       ordemId, motivo: "cancelamento antes de empenhar e de receber", criadoPor: POR,
     });
     expect(r.itensEstornados).toBe(1);
-    expect(await prisma.ordemDeCompra.count()).toBe(0);
+    expect(await prisma.ordemDeCompra.count()).toBe(1);
+    expect(await prisma.movimentoDaOrdemDeCompra.count({ where: { ordemId, tipo: "ESTORNO" } })).toBe(1);
+    // e a ordem estornada não recebe mais nada
+    const item = await prisma.itemDeOrdemDeCompra.findFirstOrThrow({ where: { ordemId }, select: { id: true } });
+    await expect(
+      registrarRecebimentoDeOrdem(prisma, {
+        ordemId, data: new Date("2026-03-20T12:00:00Z"), responsavelRecebimento: "Almoxarife",
+        itens: [{ itemDeOrdemId: item.id, quantidade: "1" }], criadoPor: POR,
+      })
+    ).rejects.toThrow(/ESTORNADA/);
   });
 });
 

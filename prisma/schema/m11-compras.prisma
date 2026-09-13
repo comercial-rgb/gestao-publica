@@ -127,6 +127,9 @@ model ItemDeSolicitacaoDeCompra {
 
   quantidade Decimal @db.Decimal(18, 4)
 
+  /// V6 P1.1 — as parcelas deste item já alocadas a itens de ordem (ordenado é Σ das vivas).
+  alocacoes AlocacaoDeSolicitacaoNaOrdem[]
+
   criadoEm  DateTime @default(now())
   criadoPor String
 
@@ -138,6 +141,9 @@ model ItemDeSolicitacaoDeCompra {
 enum TipoMovimentoDaSolicitacao {
   AUTORIZACAO
   ANULACAO
+  /// V6 P1.1 — INFORMATIVO: uma ordem que atendia esta solicitação foi estornada; as parcelas
+  /// alocadas voltaram a pendente. Não muda a situação (só AUTORIZACAO/ANULACAO a decidem).
+  ORDEM_ESTORNADA
 }
 
 model MovimentoDaSolicitacao {
@@ -278,6 +284,10 @@ model OrdemDeCompra {
   /// V5 — os documentos fiscais que declararam esta ordem na origem; o empenho que nasceu dela.
   documentosFiscais DocumentoFiscalRecebido[]
   empenhos          Empenho[]
+  /// V6 P1.1 — o ESTORNO da ordem é um fato (append-only), não um DELETE: o papel de
+  /// runtime não apaga linha, e a ordem estornada continua existindo para o histórico e
+  /// para as solicitações que ela atendia. "Estornada" é derivado da existência do movimento.
+  movimentos MovimentoDaOrdemDeCompra[]
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -304,12 +314,79 @@ model ItemDeOrdemDeCompra {
   /// para este item — decisão D5, e é onde uma coluna derraparia no primeiro estorno.
   recebimentos RecebimentoDeItem[]
   itensDeDocumentoFiscal ItemDeDocumentoFiscal[]
+  /// V6 P1.1 — de quais solicitações esta linha da ordem veio (o que sobra é "sem origem").
+  origens AlocacaoDeSolicitacaoNaOrdem[]
 
   criadoEm  DateTime @default(now())
   criadoPor String
 
   @@index([ordemId])
   @@index([materialId])
+}
+
+/// V6 P1.1 — os fatos posteriores à emissão da ordem. Por ora só o estorno.
+enum TipoMovimentoDaOrdemDeCompra {
+  ESTORNO
+}
+
+/// V6 P1.1 — o estorno da ordem como FATO (ver o comentário em `OrdemDeCompra.movimentos`).
+model MovimentoDaOrdemDeCompra {
+  id String @id @default(cuid())
+
+  ordemId String
+  ordem   OrdemDeCompra @relation(fields: [ordemId], references: [id])
+
+  tipo   TipoMovimentoDaOrdemDeCompra
+  data   DateTime
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([ordemId, tipo])
+}
+
+// ----------------------------------------------------------------------------
+// V6 P1.1 — O VÍNCULO SOLICITAÇÃO × ORDEM, POR ITEM E QUANTIDADE.
+//
+// Uma solicitação pode ser atendida em parte por mais de uma ordem; uma ordem pode
+// atender solicitações distintas. O vínculo é uma ALOCAÇÃO: quantidade de um item da
+// solicitação servida por um item da ordem. Ordenado, recebido, cancelado e pendente
+// são DERIVADOS (compras-alocacao.ts): ordenado = Σ alocações vivas em ordens vivas;
+// recebido = a parte dos recebimentos do item da ordem atribuída a esta alocação (por
+// ordem de criação); cancelado = Σ alocações desfeitas + Σ alocações de ordens
+// estornadas; pendente = solicitado − ordenado.
+//
+// ⚠️ APPEND-ONLY: desfazer é uma linha nova com `estornoDeId` apontando para a
+// original (@unique: um estorno por alocação). O estorno da ORDEM é um movimento da
+// ordem (não apaga nada) e grava um movimento ORDEM_ESTORNADA na solicitação para o
+// histórico dela dizer o que aconteceu.
+// ⚠️ Legado: item de ordem sem alocação é "sem origem" — nunca há match automático.
+// ----------------------------------------------------------------------------
+model AlocacaoDeSolicitacaoNaOrdem {
+  id String @id @default(cuid())
+
+  itemDeSolicitacaoId String
+  itemDeSolicitacao   ItemDeSolicitacaoDeCompra @relation(fields: [itemDeSolicitacaoId], references: [id])
+
+  itemDeOrdemId String
+  itemDeOrdem   ItemDeOrdemDeCompra @relation(fields: [itemDeOrdemId], references: [id])
+
+  /// > 0 (CHECK). Na linha de estorno, a MESMA quantidade da original.
+  quantidade Decimal @db.Decimal(18, 4)
+
+  /// Preenchido só na linha que DESFAZ: aponta para a alocação original.
+  estornoDeId String?                        @unique
+  estornoDe   AlocacaoDeSolicitacaoNaOrdem?  @relation("EstornoDaAlocacao", fields: [estornoDeId], references: [id])
+  estorno     AlocacaoDeSolicitacaoNaOrdem?  @relation("EstornoDaAlocacao")
+  /// O motivo do desfazimento (só na linha de estorno).
+  motivo String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([itemDeSolicitacaoId])
+  @@index([itemDeOrdemId])
 }
 
 /// TR 5.17.105 — o recebimento, que é o que baixa o saldo pendente da ordem.

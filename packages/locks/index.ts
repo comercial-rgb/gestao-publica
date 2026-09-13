@@ -245,6 +245,13 @@ export const ORDEM_DOS_LOCKS = {
    * que não disputam nada entre si.
    */
   PosicaoFisicaDeEstoque: 22,
+  /**
+   * V6 P1.1 — O ITEM DA SOLICITAÇÃO DE COMPRA. Duas ordens concorrentes alocando o MESMO
+   * saldo pendente de um item leriam o mesmo Σ e as duas passariam (soma-decide-grava). O
+   * vínculo trava a ordem (6) e SÓ ENTÃO os itens da solicitação; nenhum caminho trava o
+   * item e depois volta para a ordem. Último posto: nada abaixo dele é travado depois.
+   */
+  ItemDeSolicitacaoDeCompra: 23,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

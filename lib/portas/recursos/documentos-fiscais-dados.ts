@@ -78,6 +78,7 @@ export async function opcoesDoDocumentoFiscal(): Promise<OpcoesDoCadastro> {
       take: 500,
     }),
     prisma.ordemDeCompra.findMany({
+      where: { movimentos: { none: { tipo: "ESTORNO" } } },
       select: {
         id: true,
         numero: true,

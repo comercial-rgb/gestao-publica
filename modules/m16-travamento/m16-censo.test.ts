@@ -414,7 +414,7 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   crachás aqui inventariam uma segregação que o TR não pede, e cada um teria de ser
     //   concedido à mão em toda instalação existente.
     //   = 237 serviços, e o censo continua em 229 ações.
-    expect(nomes.length).toBe(267); // +4 (V5 Fila A) documento fiscal; +1 (V6 P0.1) registrarApresentacaoDoEnte
+    expect(nomes.length).toBe(269); // +4 (V5 Fila A) documento fiscal; +1 (V6 P0.1) registrarApresentacaoDoEnte; +2 (V6 P1.1) vincular/desfazer vínculo solicitação×ordem (reusam EMITIR/ESTORNAR ordem)
 
     // 97 serviços, 93 ações distintas. Os pares que compartilham ação (4: importarExtratoBb
     // REUSA IMPORTAR_EXTRATO). transferirEntreContas tem AÇÃO PRÓPRIA (não compartilha) → +1 ação.

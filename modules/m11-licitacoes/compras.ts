@@ -4,6 +4,7 @@ import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { Decimal, toMoney, type Money } from "../../packages/contracts/index.js";
 import { diaCivil } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
+import { alocarDentroDaTransacao, zLinhaDeAlocacao } from "./compras-alocacao.js";
 
 /**
  * M11 — A COMPRA (TR 5.17, o subconjunto de suprimentos).
@@ -161,14 +162,25 @@ export async function situacaoDaSolicitacao(
   tx: Tx,
   solicitacaoId: string
 ): Promise<"PENDENTE" | "AUTORIZADA" | "ANULADA"> {
+  // ⚠️ SÓ AUTORIZACAO e ANULACAO decidem; ORDEM_ESTORNADA (V6 P1.1) é informativo do histórico.
   const movimentos = await tx.movimentoDaSolicitacao.findMany({
-    where: { solicitacaoId },
+    where: { solicitacaoId, tipo: { in: ["AUTORIZACAO", "ANULACAO"] } },
     select: { tipo: true, data: true, criadoEm: true },
     orderBy: [{ data: "asc" }, { criadoEm: "asc" }],
   });
   if (movimentos.length === 0) return "PENDENTE";
   const ultimo = movimentos[movimentos.length - 1];
   return ultimo?.tipo === "ANULACAO" ? "ANULADA" : "AUTORIZADA";
+}
+
+/**
+ * A ORDEM ESTÁ ESTORNADA? (V6 P1.1) — DERIVADO da existência do movimento ESTORNO. O estorno
+ * deixou de apagar a ordem: o papel de runtime não tem DELETE, e a ordem estornada continua
+ * existindo para o histórico e para as solicitações que ela atendia.
+ */
+export async function ordemEstornada(tx: Tx, ordemId: string): Promise<boolean> {
+  const n = await tx.movimentoDaOrdemDeCompra.count({ where: { ordemId, tipo: "ESTORNO" } });
+  return n > 0;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -363,6 +375,21 @@ export async function movimentarSolicitacaoDeCompra(
           `Uma solicitação pendente simplesmente não avança.`
       );
     }
+    if (d.tipo === "ANULACAO") {
+      // ⚠️ V6 P1.1 — com parcelas VIVAS em ordens VIVAS, anular deixaria ordens apontando para um
+      // pedido que não existe mais. Desfaça os vínculos (ou estorne as ordens) antes.
+      const vivas = await tx.alocacaoDeSolicitacaoNaOrdem.findMany({
+        where: { itemDeSolicitacao: { solicitacaoId: d.solicitacaoId }, estornoDeId: null, estorno: null, itemDeOrdem: { ordem: { movimentos: { none: { tipo: "ESTORNO" } } } } },
+        select: { quantidade: true, itemDeOrdem: { select: { ordem: { select: { numero: true } } } } },
+      });
+      if (vivas.length > 0) {
+        const ordens = [...new Set(vivas.map((v) => v.itemDeOrdem.ordem.numero))].join(", ");
+        throw new Error(
+          `A solicitação ${s.numero} tem ${vivas.length} parcela(s) ligada(s) a ordem(ns) viva(s) (${ordens}). ` +
+            `Desfaça os vínculos ou estorne as ordens antes de anular. Nada foi gravado.`
+        );
+      }
+    }
 
     const m = await tx.movimentoDaSolicitacao.create({
       data: {
@@ -467,6 +494,19 @@ export const zEmitirOrdemDeCompraInput = z.object({
       })
     )
     .min(1, "uma ordem sem item não compra nada"),
+  /**
+   * V6 P1.1 — a ORIGEM: parcelas de itens de solicitações AUTORIZADAS que esta ordem atende,
+   * por índice do item da ordem. Opcional: uma ordem sem origem é compra direta (ou legado).
+   */
+  origem: z
+    .array(
+      z.object({
+        itemIndex: z.number().int().min(0),
+        itemDeSolicitacaoId: z.string().min(1),
+        quantidade: zQuantidade,
+      })
+    )
+    .optional(),
   criadoPor: z.string().min(1),
 });
 export type EmitirOrdemDeCompraInput = z.input<typeof zEmitirOrdemDeCompraInput>;
@@ -537,17 +577,32 @@ export async function emitirOrdemDeCompra(
         consumoImediato: d.consumoImediato,
         desconto: desconto === null ? null : desconto.toFixed(2),
         criadoPor: d.criadoPor,
-        itens: {
-          create: d.itens.map((i) => ({
-            materialId: i.materialId,
-            quantidade: i.quantidade.toFixed(4),
-            valorUnitario: toMoney(i.valorUnitario).toFixed(6),
-            criadoPor: d.criadoPor,
-          })),
-        },
       },
       select: { id: true },
     });
+    // ⚠️ Os itens são criados UM A UM para que o índice do item case com o id (a origem aponta por índice).
+    const idsDosItens: string[] = [];
+    for (const i of d.itens) {
+      const item = await tx.itemDeOrdemDeCompra.create({
+        data: {
+          ordemId: ordem.id,
+          materialId: i.materialId,
+          quantidade: i.quantidade.toFixed(4),
+          valorUnitario: toMoney(i.valorUnitario).toFixed(6),
+          criadoPor: d.criadoPor,
+        },
+        select: { id: true },
+      });
+      idsDosItens.push(item.id);
+    }
+    if (d.origem !== undefined && d.origem.length > 0) {
+      const linhas = d.origem.map((o) => {
+        const itemDeOrdemId = idsDosItens[o.itemIndex];
+        if (itemDeOrdemId === undefined) throw new Error(`Origem aponta para o item ${o.itemIndex}, que a ordem não tem. Nada foi gravado.`);
+        return zLinhaDeAlocacao.parse({ itemDeSolicitacaoId: o.itemDeSolicitacaoId, itemDeOrdemId, quantidade: o.quantidade.toFixed(4) });
+      });
+      await alocarDentroDaTransacao(tx, ordem.id, linhas, d.criadoPor);
+    }
     return { ordemId: ordem.id, valorTotal: total };
   });
 }
@@ -598,6 +653,9 @@ export async function registrarRecebimentoDeOrdem(
       ACAO_DO_SERVICO.registrarRecebimentoDeOrdem,
       ordem.ficha === null ? "ENTE" : { ug: ordem.ficha.unidadeOrcId }
     );
+    if (await ordemEstornada(tx, ordem.id)) {
+      throw new Error(`A ordem ${ordem.numero} está ESTORNADA: não há o que receber por ela. Nada foi gravado.`);
+    }
 
     let notaFiscal = d.notaFiscal ?? null;
     if (d.documentoFiscalId !== undefined) {
@@ -723,8 +781,37 @@ export async function estornarOrdemDeCompra(
       );
     }
 
-    await tx.itemDeOrdemDeCompra.deleteMany({ where: { ordemId: d.ordemId } });
-    await tx.ordemDeCompra.delete({ where: { id: d.ordemId } });
+    // ⚠️ V6 P1.1 — O ESTORNO É UM FATO, NÃO UM DELETE. O papel de runtime (`gestao_app`) não
+    // apaga linha em tabela nenhuma fora do censo assinado; o `delete` anterior só passava em
+    // teste porque o teste roda como dono. A ordem estornada continua existindo: "estornada" é
+    // derivado do movimento (`ordemEstornada`), e cada leitor a exclui do que é "vivo".
+    if (await ordemEstornada(tx, ordem.id)) {
+      throw new Error(`A ordem ${ordem.numero} já está ESTORNADA.`);
+    }
+    const agora = new Date();
+    await tx.movimentoDaOrdemDeCompra.create({
+      data: { ordemId: ordem.id, tipo: "ESTORNO", data: agora, motivo: d.motivo, criadoPor: d.criadoPor },
+    });
+    // As solicitações que esta ordem atendia recebem o movimento INFORMATIVO: as parcelas voltam a pendente.
+    const parcelas = await tx.alocacaoDeSolicitacaoNaOrdem.findMany({
+      where: { itemDeOrdem: { ordemId: ordem.id }, estornoDeId: null, estorno: null },
+      select: { quantidade: true, itemDeSolicitacao: { select: { solicitacaoId: true, material: { select: { codigo: true } } } } },
+    });
+    const porSolicitacao = new Map<string, string[]>();
+    for (const p of parcelas) {
+      const lista = porSolicitacao.get(p.itemDeSolicitacao.solicitacaoId) ?? [];
+      lista.push(`${p.itemDeSolicitacao.material.codigo}: ${p.quantidade.toFixed(4)}`);
+      porSolicitacao.set(p.itemDeSolicitacao.solicitacaoId, lista);
+    }
+    for (const [solicitacaoId, linhas] of porSolicitacao) {
+      await tx.movimentoDaSolicitacao.create({
+        data: {
+          solicitacaoId, tipo: "ORDEM_ESTORNADA", data: agora,
+          motivo: `Ordem ${ordem.numero} estornada (${d.motivo}); voltam a pendente: ${linhas.join(" · ")}`,
+          criadoPor: d.criadoPor,
+        },
+      });
+    }
     return { ordemId: ordem.id, itensEstornados: ordem.itens.length };
   });
 }

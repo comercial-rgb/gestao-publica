@@ -76,9 +76,6 @@ const ESCRITO_POR_ANINHAMENTO: Readonly<Record<string, string>> = {
     "escrito por `cotacoes: { create: ... }` em registrarPesquisaDePrecos " +
     "(modules/m11-licitacoes/compras.ts); LIDO em estatisticasDaPesquisa pela relação " +
     "`cotacoes` do item da pesquisa — é dela que saem médio, mínimo e máximo",
-  ItemDeSolicitacaoDeCompra:
-    "escrito por `itens: { create: ... }` em registrarSolicitacaoDeCompra " +
-    "(modules/m11-licitacoes/compras.ts) — solicitação e itens nascem no mesmo ato",
   MembroDeComissaoPatrimonial:
     "escrito por `membros: { create: ... }` em cadastrarComissaoPatrimonial " +
     "(modules/m10-patrimonial/gestao-do-bem.ts) — a comissão e seus membros nascem no " +

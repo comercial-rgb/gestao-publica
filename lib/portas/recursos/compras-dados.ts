@@ -7,6 +7,7 @@ import {
   estatisticasDaPesquisa,
   estornarOrdemDeCompra,
   movimentarSolicitacaoDeCompra,
+  ordemEstornada,
   registrarPesquisaDePrecos,
   registrarRecebimentoDeOrdem,
   registrarSolicitacaoDeCompra,
@@ -16,6 +17,12 @@ import {
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { TAMANHO_DE_PAGINA } from "../../molde/consulta.js";
 import type { LinhaDoHistorico } from "../../molde/tipos.js";
+import {
+  atendimentoDaSolicitacao,
+  desfazerVinculoDaSolicitacao,
+  origemDaOrdem,
+  vincularSolicitacaoAOrdem,
+} from "../../../modules/m11-licitacoes/compras-alocacao.js";
 import { comEscritaAutenticada } from "../sessao";
 import { cliente, PortaSemBancoError } from "../cliente";
 import type { DetalheLido, OpcoesDoCadastro, PaginaDoMolde } from "./dados";
@@ -119,7 +126,13 @@ export async function listarSolicitacoes(c: ConsultaDoMolde): Promise<PaginaDoMo
     prisma.solicitacaoDeCompra.count({ where }),
     prisma.solicitacaoDeCompra.findMany({ where, orderBy: ordem, ...paginacao(c), select: { id: true, numero: true, data: true, solicitante: true, setor: { select: { codigo: true, nome: true } }, _count: { select: { itens: true } } } }),
   ]);
-  const comSituacao = await Promise.all(linhas.map(async (s) => ({ ...s, situacao: await situacaoDaSolicitacao(prisma, s.id) })));
+  const comSituacao = await Promise.all(linhas.map(async (s) => {
+    const at = await atendimentoDaSolicitacao(prisma, s.id);
+    const solicitado = at.reduce((a, i) => a.plus(i.solicitado), toMoney("0"));
+    const pendente = at.reduce((a, i) => a.plus(i.pendente), toMoney("0"));
+    const recebido = at.reduce((a, i) => a.plus(i.recebido), toMoney("0"));
+    return { ...s, situacao: await situacaoDaSolicitacao(prisma, s.id), atendimento: `${recebido.toFixed(4)} recebido · ${pendente.toFixed(4)} pendente de ${solicitado.toFixed(4)}` };
+  }));
   const filtradas = sit === "" ? comSituacao : comSituacao.filter((s) => s.situacao === sit);
   return {
     total: sit === "" ? total : filtradas.length,
@@ -130,12 +143,61 @@ export async function listarSolicitacoes(c: ConsultaDoMolde): Promise<PaginaDoMo
       data: diaCivilBr(s.data),
       solicitante: s.solicitante,
       itens: String(s._count.itens),
+      atendimento: s.atendimento,
       situacao: s.situacao,
     })),
   };
 }
 
-export async function verSolicitacao(id: string): Promise<DetalheLido | null> {
+/** O ATENDIMENTO da solicitação como a tela o lê — tudo string, tudo derivado (V6 P1.1). */
+export interface ParcelaLida {
+  readonly alocacaoId: string;
+  readonly ordemId: string;
+  readonly ordemNumero: string;
+  readonly quantidade: string;
+  readonly recebido: string;
+  readonly situacao: "VIVA" | "DESFEITA" | "ORDEM_ESTORNADA";
+  readonly motivo: string | null;
+  readonly criadoPor: string;
+  readonly criadoEm: string;
+}
+export interface ItemDoAtendimentoLido {
+  readonly itemDeSolicitacaoId: string;
+  readonly materialId: string;
+  readonly rotulo: string;
+  readonly solicitado: string;
+  readonly ordenado: string;
+  readonly recebido: string;
+  readonly cancelado: string;
+  readonly pendente: string;
+  readonly parcelas: readonly ParcelaLida[];
+}
+export interface SolicitacaoLida extends DetalheLido {
+  readonly situacao: "PENDENTE" | "AUTORIZADA" | "ANULADA";
+  readonly atendimento: readonly ItemDoAtendimentoLido[];
+  /** Os itens com pendente > 0 — o que a ilha "formar ordem" oferece. */
+  readonly itensPendentes: readonly { readonly itemDeSolicitacaoId: string; readonly materialId: string; readonly rotulo: string; readonly pendente: string }[];
+}
+
+async function lerAtendimento(id: string): Promise<readonly ItemDoAtendimentoLido[]> {
+  const at = await atendimentoDaSolicitacao(cliente(), id);
+  return at.map((i) => ({
+    itemDeSolicitacaoId: i.itemId,
+    materialId: i.materialId,
+    rotulo: `${i.materialCodigo} — ${i.materialDescricao}`,
+    solicitado: i.solicitado.toFixed(4),
+    ordenado: i.ordenado.toFixed(4),
+    recebido: i.recebido.toFixed(4),
+    cancelado: i.cancelado.toFixed(4),
+    pendente: i.pendente.toFixed(4),
+    parcelas: i.parcelas.map((p) => ({
+      alocacaoId: p.alocacaoId, ordemId: p.ordemId, ordemNumero: p.ordemNumero, quantidade: p.quantidade.toFixed(4), recebido: p.recebido.toFixed(4),
+      situacao: p.situacao, motivo: p.motivo, criadoPor: p.criadoPor, criadoEm: diaCivilBr(p.criadoEm),
+    })),
+  }));
+}
+
+export async function verSolicitacao(id: string): Promise<SolicitacaoLida | null> {
   const prisma = cliente();
   const s = await prisma.solicitacaoDeCompra.findUnique({
     where: { id },
@@ -148,11 +210,23 @@ export async function verSolicitacao(id: string): Promise<DetalheLido | null> {
     },
   });
   if (s === null) return null;
-  const situacao = await situacaoDaSolicitacao(prisma, id);
+  const [situacao, atendimento] = await Promise.all([situacaoDaSolicitacao(prisma, id), lerAtendimento(id)]);
+  const ROTULO_DO_MOVIMENTO: Record<string, string> = { AUTORIZACAO: "Autorização", ANULACAO: "Anulação", ORDEM_ESTORNADA: "Ordem estornada — parcelas de volta a pendente" };
   const historico: LinhaDoHistorico[] = [
     ...s.itens.map((i) => ({ id: i.id, oQue: `Item: ${i.material.codigo} — ${i.material.descricaoSucinta}`, quando: diaCivilBr(s.data), registradoEm: diaCivilBr(i.criadoEm), por: i.criadoPor, motivo: `Quantidade ${i.quantidade.toFixed(4)}` })),
-    ...s.movimentos.map((m) => ({ id: m.id, oQue: m.tipo === "AUTORIZACAO" ? "Autorização" : "Anulação", quando: diaCivilBr(m.data), registradoEm: diaCivilBr(m.criadoEm), por: m.criadoPor, motivo: m.motivo })),
+    ...s.movimentos.map((m) => ({ id: m.id, oQue: ROTULO_DO_MOVIMENTO[m.tipo] ?? m.tipo, quando: diaCivilBr(m.data), registradoEm: diaCivilBr(m.criadoEm), por: m.criadoPor, motivo: m.motivo })),
+    ...atendimento.flatMap((i) => i.parcelas.map((pa) => ({
+      id: pa.alocacaoId,
+      oQue: `${pa.situacao === "VIVA" ? "Parcela na ordem" : pa.situacao === "DESFEITA" ? "Parcela DESFEITA na ordem" : "Parcela em ordem ESTORNADA"} ${pa.ordemNumero} · ${i.rotulo}`,
+      quando: pa.criadoEm, registradoEm: pa.criadoEm, por: pa.criadoPor,
+      motivo: `${pa.quantidade} ordenado · ${pa.recebido} recebido${pa.motivo !== null ? ` · ${pa.motivo}` : ""}`,
+      href: `/licitacoes/ordens-de-compra/${pa.ordemId}`, hrefRotulo: "abrir ordem",
+    }))),
   ];
+  const totalSolicitado = atendimento.reduce((a, i) => a.plus(toMoney(i.solicitado)), toMoney("0"));
+  const totalOrdenado = atendimento.reduce((a, i) => a.plus(toMoney(i.ordenado)), toMoney("0"));
+  const totalRecebido = atendimento.reduce((a, i) => a.plus(toMoney(i.recebido)), toMoney("0"));
+  const totalPendente = atendimento.reduce((a, i) => a.plus(toMoney(i.pendente)), toMoney("0"));
   return {
     titulo: `Solicitação ${s.numero}`,
     subtitulo: `${s.setor.codigo} — ${s.setor.nome} · ${s.solicitante}`,
@@ -167,12 +241,96 @@ export async function verSolicitacao(id: string): Promise<DetalheLido | null> {
       { rotulo: "Solicitante", valor: s.solicitante },
       { rotulo: "Justificativa", valor: s.justificativa, tipo: "longo" },
       { rotulo: "Situação", valor: situacao, nota: "Derivada do último movimento (autorização ou anulação)." },
+      { rotulo: "Atendimento", valor: `${totalOrdenado.toFixed(4)} ordenado · ${totalRecebido.toFixed(4)} recebido · ${totalPendente.toFixed(4)} pendente de ${totalSolicitado.toFixed(4)}`, nota: "Σ das parcelas vivas em ordens vivas; recebido é o atribuído a elas — ordenado não é atendido." },
       { rotulo: "Processo digital", valor: s.processoDigital === null ? "—" : String(s.processoDigital.numero) },
       { rotulo: "Cadastrada em", valor: diaCivilBr(s.criadoEm), tipo: "data" },
       { rotulo: "Cadastrada por", valor: s.criadoPor },
     ],
     historico,
+    situacao,
+    atendimento,
+    itensPendentes: atendimento.filter((i) => toMoney(i.pendente).greaterThan(0)).map((i) => ({ itemDeSolicitacaoId: i.itemDeSolicitacaoId, materialId: i.materialId, rotulo: i.rotulo, pendente: i.pendente })),
   };
+}
+
+export interface LinhaParaFormarOrdem {
+  readonly itemDeSolicitacaoId: string;
+  readonly materialId: string;
+  readonly quantidade: string;
+  readonly valorUnitario: string;
+}
+
+/** FORMAR UMA ORDEM A PARTIR DA SOLICITAÇÃO — os itens da ordem nascem das linhas escolhidas e a origem vai na mesma transação. */
+export async function formarOrdemDaSolicitacao(c: Campos, linhas: readonly LinhaParaFormarOrdem[]): Promise<{ readonly ordemId: string; readonly itens: number }> {
+  return comEscritaAutenticada("EMITIR_ORDEM_DE_COMPRA", async (criadoPor) => {
+    const r = await emitirOrdemDeCompra(cliente(), {
+      numero: t(c, "numero"),
+      tipo: t(c, "tipo") as "ORDINARIA" | "GLOBAL" | "ESTIMATIVA",
+      ...(t(c, "processoId") !== "" ? { processoId: t(c, "processoId") } : {}),
+      fornecedorId: t(c, "fornecedorId"),
+      dataEmissao: dia(c, "dataEmissao"),
+      ...(t(c, "dataVencimento") !== "" ? { dataVencimento: dia(c, "dataVencimento") } : {}),
+      finalidade: t(c, "finalidade"),
+      ...(t(c, "fichaId") !== "" ? { fichaId: t(c, "fichaId") } : {}),
+      consumoImediato: t(c, "consumoImediato") === "on" || t(c, "consumoImediato") === "1",
+      itens: linhas.map((l) => ({ materialId: l.materialId, quantidade: decimalDaTela(l.quantidade), valorUnitario: decimalDaTela(l.valorUnitario) })),
+      origem: linhas.map((l, i) => ({ itemIndex: i, itemDeSolicitacaoId: l.itemDeSolicitacaoId, quantidade: decimalDaTela(l.quantidade) })),
+      criadoPor,
+    });
+    return { ordemId: r.ordemId, itens: linhas.length };
+  });
+}
+
+export interface LinhaParaVincular {
+  readonly itemDeSolicitacaoId: string;
+  readonly itemDeOrdemId: string;
+  readonly quantidade: string;
+}
+
+/** VINCULAR parcelas de solicitações autorizadas a uma ordem já emitida. */
+export async function vincularNaOrdem(ordemId: string, linhas: readonly LinhaParaVincular[]): Promise<{ readonly parcelas: number; readonly quantidade: string }> {
+  return comEscritaAutenticada("EMITIR_ORDEM_DE_COMPRA", async (criadoPor) => {
+    const r = await vincularSolicitacaoAOrdem(cliente(), { ordemId, alocacoes: linhas.map((l) => ({ ...l, quantidade: decimalDaTela(l.quantidade) })), criadoPor });
+    return { parcelas: r.alocacoes, quantidade: r.quantidade.toFixed(4) };
+  });
+}
+
+/** DESFAZER uma parcela — linha nova de estorno. */
+export async function desfazerVinculo(alocacaoId: string, motivo: string): Promise<void> {
+  await comEscritaAutenticada("ESTORNAR_ORDEM_DE_COMPRA", (criadoPor) => desfazerVinculoDaSolicitacao(cliente(), { alocacaoId, motivo, criadoPor }));
+}
+
+export interface SolicitacaoParaVincular {
+  readonly id: string;
+  readonly numero: string;
+  readonly rotulo: string;
+  readonly itens: readonly { readonly itemDeSolicitacaoId: string; readonly materialId: string; readonly rotulo: string; readonly pendente: string }[];
+}
+
+/**
+ * AS SOLICITAÇÕES AUTORIZADAS COM PENDENTE do MESMO material de algum item desta ordem — o que a
+ * ilha "vincular" oferece. Recorte de 100 solicitações mais recentes; nada é casado sozinho.
+ */
+export async function solicitacoesParaVincular(ordemId: string): Promise<readonly SolicitacaoParaVincular[]> {
+  const prisma = cliente();
+  const materiaisDaOrdem = new Set((await prisma.itemDeOrdemDeCompra.findMany({ where: { ordemId }, select: { materialId: true } })).map((i) => i.materialId));
+  if (materiaisDaOrdem.size === 0) return [];
+  const candidatas = await prisma.solicitacaoDeCompra.findMany({
+    where: { itens: { some: { materialId: { in: [...materiaisDaOrdem] } } }, movimentos: { some: { tipo: "AUTORIZACAO" } } },
+    orderBy: { data: "desc" },
+    take: 100,
+    select: { id: true, numero: true, solicitante: true, setor: { select: { codigo: true } } },
+  });
+  const saida: SolicitacaoParaVincular[] = [];
+  for (const s of candidatas) {
+    if ((await situacaoDaSolicitacao(prisma, s.id)) !== "AUTORIZADA") continue;
+    const itens = (await atendimentoDaSolicitacao(prisma, s.id))
+      .filter((i) => materiaisDaOrdem.has(i.materialId) && i.pendente.greaterThan(0))
+      .map((i) => ({ itemDeSolicitacaoId: i.itemId, materialId: i.materialId, rotulo: `${i.materialCodigo} — ${i.materialDescricao}`, pendente: i.pendente.toFixed(4) }));
+    if (itens.length === 0) continue;
+    saida.push({ id: s.id, numero: s.numero, rotulo: `${s.numero} · ${s.setor.codigo} · ${s.solicitante}`, itens });
+  }
+  return saida;
 }
 
 export interface ItemDaSolicitacaoLido {
@@ -323,15 +481,25 @@ export async function listarOrdens(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
   const prisma = cliente();
   const q = (c.filtros["q"] ?? "").trim();
   const tipo = c.filtros["tipo"] ?? "";
+  const vivas = c.filtros["vivas"] ?? "";
   const where: Prisma.OrdemDeCompraWhereInput = {};
   if (q !== "") where.OR = [{ numero: { contains: q, mode: "insensitive" } }, { fornecedor: { versoes: { some: { nome: { contains: q, mode: "insensitive" } } } } }];
   if (tipo === "ORDINARIA" || tipo === "GLOBAL" || tipo === "ESTIMATIVA") where.tipo = tipo;
+  // V6 P1.1: o estorno é fato — "vivas" exclui as estornadas; "estornadas" mostra só elas.
+  if (vivas === "VIVAS") where.movimentos = { none: { tipo: "ESTORNO" } };
+  if (vivas === "ESTORNADAS") where.movimentos = { some: { tipo: "ESTORNO" } };
   const ordem: Prisma.OrdemDeCompraOrderByWithRelationInput = c.ordem === "dataEmissao" ? { dataEmissao: c.direcao } : { numero: c.direcao };
   const [total, linhas] = await Promise.all([
     prisma.ordemDeCompra.count({ where }),
     prisma.ordemDeCompra.findMany({
       where, orderBy: ordem, ...paginacao(c),
-      select: { id: true, numero: true, tipo: true, dataEmissao: true, fornecedor: { select: { documento: true, versoes: { select: { nome: true }, orderBy: { criadoEm: "desc" }, take: 1 } } }, itens: { select: { quantidade: true, valorUnitario: true } }, _count: { select: { recebimentos: true } } },
+      select: {
+        id: true, numero: true, tipo: true, dataEmissao: true,
+        fornecedor: { select: { documento: true, versoes: { select: { nome: true }, orderBy: { criadoEm: "desc" }, take: 1 } } },
+        itens: { select: { quantidade: true, valorUnitario: true, origens: { where: { estornoDeId: null, estorno: null }, select: { itemDeSolicitacao: { select: { solicitacao: { select: { numero: true } } } } } } } },
+        movimentos: { where: { tipo: "ESTORNO" }, select: { id: true } },
+        _count: { select: { recebimentos: true } },
+      },
     }),
   ]);
   const comSaldo = await Promise.all(
@@ -350,8 +518,9 @@ export async function listarOrdens(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
       fornecedor: nomeDaPessoa(o.fornecedor),
       dataEmissao: diaCivilBr(o.dataEmissao),
       total: totalDaOrdem(o.itens),
-      pendente: o.pendente.toFixed(2),
-      situacao: o.pendente.greaterThan(0) ? (o._count.recebimentos > 0 ? "RECEBIDA EM PARTE" : "A RECEBER") : "RECEBIDA",
+      pendente: o.movimentos.length > 0 ? "0.00" : o.pendente.toFixed(2),
+      origem: [...new Set(o.itens.flatMap((i) => i.origens.map((a) => a.itemDeSolicitacao.solicitacao.numero)))].join(", ") || "—",
+      situacao: o.movimentos.length > 0 ? "ESTORNADA" : o.pendente.greaterThan(0) ? (o._count.recebimentos > 0 ? "RECEBIDA EM PARTE" : "A RECEBER") : "RECEBIDA",
     })),
   };
 }
@@ -362,7 +531,32 @@ export interface ItemDaOrdemParaReceber {
   readonly pendente: string;
 }
 
-export async function verOrdem(id: string): Promise<(DetalheLido & { readonly itensParaReceber: readonly ItemDaOrdemParaReceber[] }) | null> {
+export interface ParcelaDeOrigemLida {
+  readonly alocacaoId: string;
+  readonly solicitacaoId: string;
+  readonly solicitacaoNumero: string;
+  readonly setor: string;
+  readonly solicitante: string;
+  readonly quantidade: string;
+  readonly recebido: string;
+  readonly situacao: "VIVA" | "DESFEITA";
+}
+export interface ItemDeOrigemLido {
+  readonly itemDeOrdemId: string;
+  readonly rotulo: string;
+  readonly quantidade: string;
+  readonly parcelas: readonly ParcelaDeOrigemLida[];
+  readonly semOrigem: string;
+}
+export interface OrdemLida extends DetalheLido {
+  readonly itensParaReceber: readonly ItemDaOrdemParaReceber[];
+  readonly estornada: boolean;
+  readonly origem: readonly ItemDeOrigemLido[];
+  /** Os itens da ordem com o que ainda pode ser atribuído a solicitações (quantidade − Σ parcelas vivas). */
+  readonly itensParaVincular: readonly { readonly itemDeOrdemId: string; readonly materialId: string; readonly rotulo: string; readonly disponivel: string }[];
+}
+
+export async function verOrdem(id: string): Promise<OrdemLida | null> {
   const prisma = cliente();
   const o = await prisma.ordemDeCompra.findUnique({
     where: { id },
@@ -375,9 +569,16 @@ export async function verOrdem(id: string): Promise<(DetalheLido & { readonly it
       recebimentos: { orderBy: [{ data: "asc" }, { criadoEm: "asc" }], select: { id: true, data: true, notaFiscal: true, responsavelRecebimento: true, criadoEm: true, criadoPor: true, itens: { select: { quantidade: true, itemDeOrdem: { select: { material: { select: { codigo: true } } } } } } } },
       empenhos: { where: { estornoDeId: null, anulacaoParcialDeId: null }, select: { id: true, numero: true, valor: true, data: true, criadoEm: true, criadoPor: true } },
       documentosFiscais: { select: { id: true, numero: true, serie: true, dataRecebimento: true, criadoEm: true, criadoPor: true } },
+      movimentos: { orderBy: { criadoEm: "asc" }, select: { id: true, tipo: true, data: true, motivo: true, criadoEm: true, criadoPor: true } },
     },
   });
   if (o === null) return null;
+  const estornada = await ordemEstornada(prisma, id);
+  const origemBruta = await origemDaOrdem(prisma, id);
+  const origem: ItemDeOrigemLido[] = origemBruta.map((i) => ({
+    itemDeOrdemId: i.itemId, rotulo: `${i.materialCodigo} — ${i.materialDescricao}`, quantidade: i.quantidade.toFixed(4), semOrigem: i.semOrigem.toFixed(4),
+    parcelas: i.parcelas.map((p) => ({ alocacaoId: p.alocacaoId, solicitacaoId: p.solicitacaoId, solicitacaoNumero: p.solicitacaoNumero, setor: p.setor, solicitante: p.solicitante, quantidade: p.quantidade.toFixed(4), recebido: p.recebido.toFixed(4), situacao: p.situacao })),
+  }));
   const saldos = await saldoDaOrdemDeCompra(prisma, id);
   const saldoDoItem = new Map(saldos.map((s) => [s.itemId, s]));
   const pendente = saldos.reduce((s, x) => s.plus(x.valorPendente), toMoney("0"));
@@ -424,14 +625,35 @@ export async function verOrdem(id: string): Promise<(DetalheLido & { readonly it
       href: `/licitacoes/documentos-fiscais/${d.id}`,
       hrefRotulo: "abrir documento",
     })),
+    ...o.movimentos.map((m) => ({
+      id: m.id,
+      oQue: m.tipo === "ESTORNO" ? "ESTORNO da ordem" : m.tipo,
+      quando: diaCivilBr(m.data),
+      registradoEm: diaCivilBr(m.criadoEm),
+      por: m.criadoPor,
+      motivo: m.motivo,
+    })),
+    ...origem.flatMap((i) => i.parcelas.map((pa) => ({
+      id: pa.alocacaoId,
+      oQue: `${pa.situacao === "VIVA" ? "Origem" : "Origem DESFEITA"}: solicitação ${pa.solicitacaoNumero} · ${i.rotulo}`,
+      quando: diaCivilBr(o.dataEmissao),
+      registradoEm: diaCivilBr(o.dataEmissao),
+      por: o.criadoPor,
+      motivo: `${pa.quantidade} desta linha · ${pa.recebido} recebido atribuído · ${pa.setor} · ${pa.solicitante}`,
+      href: `/licitacoes/solicitacoes/${pa.solicitacaoId}`,
+      hrefRotulo: "abrir solicitação",
+    }))),
   ];
   return {
     titulo: `Ordem de compra ${o.numero}`,
     subtitulo: `${ROTULO_DO_TIPO_DE_ORDEM[o.tipo] ?? o.tipo} · ${nomeDaPessoa(o.fornecedor)}`,
     selos: [
-      { texto: pendente.greaterThan(0) ? (o.recebimentos.length > 0 ? "RECEBIDA EM PARTE" : "A RECEBER") : "RECEBIDA", tom: pendente.greaterThan(0) ? "alerta" : "ok" },
+      estornada
+        ? { texto: "ESTORNADA", tom: "erro" }
+        : { texto: pendente.greaterThan(0) ? (o.recebimentos.length > 0 ? "RECEBIDA EM PARTE" : "A RECEBER") : "RECEBIDA", tom: pendente.greaterThan(0) ? "alerta" : "ok" },
       { texto: `${o.itens.length} item(ns)`, tom: "neutro" },
       { texto: `${o.recebimentos.length} recebimento(s)`, tom: "neutro" },
+      { texto: origem.some((i) => i.parcelas.some((pa) => pa.situacao === "VIVA")) ? `origem: ${[...new Set(origem.flatMap((i) => i.parcelas.filter((pa) => pa.situacao === "VIVA").map((pa) => pa.solicitacaoNumero)))].join(", ")}` : "sem origem (compra direta ou legado)", tom: "neutro" },
     ],
     dados: [
       { rotulo: "Número", valor: o.numero },
@@ -448,11 +670,20 @@ export async function verOrdem(id: string): Promise<(DetalheLido & { readonly it
       { rotulo: "A receber (valor)", valor: pendente.toFixed(2), tipo: "dinheiro", nota: "Σ pendente × unitário, item a item — derivado dos recebimentos." },
       { rotulo: "Emitida em", valor: diaCivilBr(o.criadoEm), tipo: "data" },
       { rotulo: "Emitida por", valor: o.criadoPor },
+      ...(estornada ? [{ rotulo: "Situação", valor: "ESTORNADA", nota: "Derivada do movimento de estorno: a ordem continua existindo para o histórico; não recebe, não empenha, não liga solicitação." }] : []),
     ],
     historico,
-    itensParaReceber: o.itens
+    estornada,
+    origem,
+    itensParaReceber: estornada ? [] : o.itens
       .map((i) => ({ id: i.id, rotulo: `${i.material.codigo} — ${i.material.descricaoSucinta}`, pendente: saldoDoItem.get(i.id)?.pendente.toFixed(4) ?? i.quantidade.toFixed(4) }))
       .filter((i) => toMoney(i.pendente).greaterThan(0)),
+    itensParaVincular: estornada ? [] : o.itens
+      .map((i) => {
+        const vivas = origem.find((x) => x.itemDeOrdemId === i.id);
+        return { itemDeOrdemId: i.id, materialId: i.materialId, rotulo: `${i.material.codigo} — ${i.material.descricaoSucinta}`, disponivel: vivas?.semOrigem ?? i.quantidade.toFixed(4) };
+      })
+      .filter((i) => toMoney(i.disponivel).greaterThan(0)),
   };
 }
 

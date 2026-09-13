@@ -64,6 +64,7 @@
     "smoke:contratacao": "tsx scripts/trinco-de-maquina.ts 'smoke da contratacao' -- npx tsx scripts/smoke-contratacao.ts",
     "smoke:compras": "tsx scripts/trinco-de-maquina.ts 'smoke das compras' -- npx tsx scripts/smoke-compras.ts",
     "smoke:identidade": "tsx scripts/trinco-de-maquina.ts 'smoke da identidade' -- npx tsx scripts/smoke-identidade.ts",
+    "smoke:solicitacao-ordem": "tsx scripts/trinco-de-maquina.ts 'smoke do vinculo solicitacao x ordem' -- npx tsx scripts/smoke-solicitacao-ordem.ts",
     "permissoes:atualizar": "tsx scripts/aplicar-atualizacao-de-permissoes.ts",
     "roteiros:versionar": "tsx scripts/versionar-roteiros-existentes.ts",
     "seed:roteiros-demo": "tsx prisma/seed/roteiros-demo.ts",

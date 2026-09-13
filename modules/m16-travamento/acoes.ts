@@ -607,6 +607,9 @@ export type NomeDeServico =
   | "relacionarMarcaAoMaterial"
   | "relacionarElementoAoMaterial"
   | "registrarSolicitacaoDeCompra"
+  // ── V6 P1.1 — o vínculo solicitação × ordem ──
+  | "vincularSolicitacaoAOrdem"
+  | "desfazerVinculoDaSolicitacao"
   | "movimentarSolicitacaoDeCompra"
   | "registrarPesquisaDePrecos"
   | "emitirOrdemDeCompra"
@@ -946,6 +949,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   relacionarMarcaAoMaterial: "RELACIONAR_MARCA_AO_MATERIAL",
   relacionarElementoAoMaterial: "RELACIONAR_ELEMENTO_AO_MATERIAL",
   registrarSolicitacaoDeCompra: "REGISTRAR_SOLICITACAO_DE_COMPRA",
+  // V6 P1.1: decidir o que a ordem atende é poder de quem a emite; desfazer, de quem a estorna.
+  vincularSolicitacaoAOrdem: "EMITIR_ORDEM_DE_COMPRA",
+  desfazerVinculoDaSolicitacao: "ESTORNAR_ORDEM_DE_COMPRA",
   movimentarSolicitacaoDeCompra: "MOVIMENTAR_SOLICITACAO_DE_COMPRA",
   registrarPesquisaDePrecos: "REGISTRAR_PESQUISA_DE_PRECOS",
   emitirOrdemDeCompra: "EMITIR_ORDEM_DE_COMPRA",
@@ -1190,6 +1196,13 @@ export const ACOES_DE_ADMINISTRACAO: readonly AcaoDoSistema[] = [
  * grep-teste lê esta lista — nada sai do censo por descuido.
  */
 export const FORA_DO_CENSO: Record<string, string> = {
+  // ── V6 P1.1 — o vínculo solicitação × ordem ──
+  alocarDentroDaTransacao:
+    "composável interno: roda DENTRO da transação de `emitirOrdemDeCompra` (ordem formada a partir da solicitação) " +
+    "ou de `vincularSolicitacaoAOrdem`, que já autorizaram e travaram a ordem. Só os controles do vínculo moram nele.",
+  atendimentoDaSolicitacao: "LEITURA: solicitado/ordenado/recebido/cancelado/pendente por item, derivados das alocações e recebimentos.",
+  origemDaOrdem: "LEITURA: de quais solicitações cada linha da ordem veio, e quanto é 'sem origem' (compra direta ou legado).",
+  ordemEstornada: "LEITURA: a ordem tem movimento ESTORNO? (o estorno virou fato — o runtime não apaga linha).",
   // ── V6 (P0.1) — a identidade PÚBLICA do ente ──
   apresentacaoVigente:
     "LEITURA PÚBLICA: a versão vigente da apresentação do ente (nome de exibição, imagem, canais) — " +

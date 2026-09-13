@@ -436,9 +436,14 @@ async function guardsDaOrdem(tx: Tx, p: EmpenharParams): Promise<void> {
       desconto: true,
       fornecedor: { select: { documento: true } },
       itens: { select: { quantidade: true, valorUnitario: true } },
+      movimentos: { where: { tipo: "ESTORNO" }, select: { id: true } },
     },
   });
   if (ordem === null) throw new Error(`Ordem de compra ${p.ordemDeCompraId} não existe.`);
+  // ⚠️ V6 P1.1 — o estorno da ordem virou FATO; uma ordem estornada não se empenha.
+  if (ordem.movimentos.length > 0) {
+    throw new Error(`A ordem ${ordem.numero} está ESTORNADA: não há compra a empenhar. Nada foi gravado.`);
+  }
 
   if (ordem.fichaId === null) {
     throw new Error(

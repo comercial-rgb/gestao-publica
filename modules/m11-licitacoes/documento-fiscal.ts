@@ -135,9 +135,12 @@ async function conferirVinculos(
   if (d.ordemId !== undefined) {
     const ordem = await tx.ordemDeCompra.findUnique({
       where: { id: d.ordemId },
-      select: { id: true, numero: true, fornecedorId: true, processoId: true },
+      select: { id: true, numero: true, fornecedorId: true, processoId: true, movimentos: { where: { tipo: "ESTORNO" }, select: { id: true } } },
     });
     if (ordem === null) throw new Error(`Ordem de compra ${d.ordemId} não existe. Nada foi gravado.`);
+    if (ordem.movimentos.length > 0) {
+      throw new Error(`A ordem ${ordem.numero} está ESTORNADA: um documento fiscal não se liga a uma compra desfeita. Nada foi gravado.`);
+    }
     if (ordem.fornecedorId !== d.emitenteId) {
       throw new Error(
         `O emitente do documento não é o fornecedor da ordem ${ordem.numero}. ` +

@@ -307,12 +307,9 @@ async function lotesVencendo(): Promise<Pendencia> {
  * faria a faixa perder o sentido operacional.
  */
 async function ordensSemEntrada(): Promise<Pendencia> {
-  // ⚠️ NÃO HÁ FILTRO DE ESTORNO AQUI, E É PORQUE NÃO HÁ O QUE FILTRAR: `estornarOrdemDeCompra`
-  // APAGA a ordem e seus itens, em vez de marcá-la. Uma ordem estornada não existe mais, e
-  // portanto não pode ser contada. Escrever `estornadaEm: null` seria pedir ao banco uma
-  // coluna que não existe — o compilador acusou a primeira versão deste arquivo.
+  // V6 P1.1: o estorno virou fato — a ordem estornada existe, e sai daqui pelo movimento.
   const quantidade = await cliente().ordemDeCompra.count({
-    where: { recebimentos: { none: {} } },
+    where: { recebimentos: { none: {} }, movimentos: { none: { tipo: "ESTORNO" } } },
   });
   return {
     chave: "ordens-sem-entrada",
@@ -320,8 +317,8 @@ async function ordensSemEntrada(): Promise<Pendencia> {
     quantidade,
     href: "/licitacoes",
     criterio:
-      "ordens emitidas que ainda não receberam NENHUMA entrega — recebimento parcial " +
-      "não conta aqui, e ordem estornada não existe mais",
+      "ordens vivas que ainda não receberam NENHUMA entrega — recebimento parcial " +
+      "não conta aqui, e ordem estornada fica de fora",
   };
 }
 

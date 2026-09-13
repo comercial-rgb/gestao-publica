@@ -6,11 +6,13 @@ import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { linhasDoFormulario } from "../../../../lib/portas/linhas-do-formulario";
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 import { SOLICITACOES_DE_COMPRA } from "../../../../lib/portas/recursos/compras";
-import { acaoDaSolicitacao, criarSolicitacao } from "../../../../lib/portas/recursos/compras-dados";
+import { acaoDaSolicitacao, criarSolicitacao, formarOrdemDaSolicitacao } from "../../../../lib/portas/recursos/compras-dados";
 
 export interface EstadoDaSolicitacao {
   readonly erro?: string;
   readonly sucesso?: string;
+  /** A ordem gerada por "formar ordem" — o resultado aponta para o registro criado. */
+  readonly ordemId?: string;
 }
 
 /**
@@ -54,5 +56,31 @@ export async function solicitacoesdecompraAction(_prev: EstadoDoMolde, formData:
     revalidatePath(SOLICITACOES_DE_COMPRA.rota);
     revalidatePath(`${SOLICITACOES_DE_COMPRA.rota}/${id}`);
     return { sucesso: "Movimento registrado na solicitação." };
+  });
+}
+
+/**
+ * FORMAR UMA ORDEM A PARTIR DA SOLICITAÇÃO (V6 P1.1) — a ilha manda o cabeçalho da ordem e as linhas
+ * `itens.N.*` (incluir, itemDeSolicitacaoId, materialId, quantidade, valorUnitario); a origem vai na
+ * MESMA transação da ordem, e a recusa (excesso, pendente, incompatível) sobe como veio.
+ */
+export async function formarOrdemAction(_prev: EstadoDaSolicitacao, formData: FormData): Promise<EstadoDaSolicitacao> {
+  return comComandoDoFormulario(formData, async () => {
+    const campos = camposDe(formData);
+    const solicitacaoId = campos["solicitacaoId"] ?? "";
+    if (solicitacaoId === "") return { erro: "Solicitação não identificada. Nada foi gravado." };
+    const linhas = linhasDoFormulario(formData, "itens", ["incluir", "itemDeSolicitacaoId", "materialId", "quantidade", "valorUnitario"])
+      .filter((l) => l["incluir"] === "on" || l["incluir"] === "1")
+      .map((l) => ({ itemDeSolicitacaoId: l["itemDeSolicitacaoId"] ?? "", materialId: l["materialId"] ?? "", quantidade: l["quantidade"] ?? "", valorUnitario: l["valorUnitario"] ?? "" }));
+    if (linhas.length === 0) return { erro: "Escolha ao menos um item pendente para formar a ordem. Nada foi gravado." };
+    try {
+      const r = await formarOrdemDaSolicitacao(campos, linhas);
+      revalidatePath(SOLICITACOES_DE_COMPRA.rota);
+      revalidatePath(`${SOLICITACOES_DE_COMPRA.rota}/${solicitacaoId}`);
+      revalidatePath("/licitacoes/ordens-de-compra");
+      return { sucesso: `Ordem ${campos["numero"] ?? ""} formada com ${r.itens} item(ns) desta solicitação. Abra em /licitacoes/ordens-de-compra/${r.ordemId}.`, ordemId: r.ordemId };
+    } catch (e) {
+      return { erro: mensagemDoErro(e, "Não foi possível formar a ordem. Nada foi gravado.") };
+    }
   });
 }

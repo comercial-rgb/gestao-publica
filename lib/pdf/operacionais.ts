@@ -26,6 +26,7 @@ import {
   type FiltroAtualizacoes,
 } from "../relatorios/atualizacoes-orcamentarias";
 import { nomeDoEnteParaDocumentos } from "./ente.js";
+import { toMoney } from "../../packages/contracts/index.js";
 import { lerDocumentoFiscalParaPdf } from "../portas/recursos/documentos-fiscais-dados";
 import { verOrdem } from "../portas/recursos/compras-dados";
 
@@ -839,15 +840,25 @@ export async function montarPdfOrdemDeCompra(p: {
       h.valor === undefined ? "—" : brl(h.valor),
     ]),
   };
+  // V6 P1.1 — a ORIGEM no documento: de quais solicitações cada linha veio, e o que é sem origem.
+  const origem: SecaoPdf = {
+    titulo: "Origem (solicitações atendidas)",
+    colunas: [{ rotulo: "Item" }, { rotulo: "Solicitação" }, { rotulo: "Setor · solicitante" }, { rotulo: "Quantidade", alinhamento: "direita" }, { rotulo: "Recebido", alinhamento: "direita" }],
+    linhas: o.origem.flatMap((i) => [
+      ...i.parcelas.filter((pa) => pa.situacao === "VIVA").map((pa) => [i.rotulo, pa.solicitacaoNumero, `${pa.setor} · ${pa.solicitante}`, pa.quantidade, pa.recebido]),
+      ...(toMoney(i.semOrigem).greaterThan(0) ? [[i.rotulo, "— sem origem (compra direta ou legado)", "—", i.semOrigem, "—"]] : []),
+    ]),
+  };
   return {
     ente: await nomeDoEnteParaDocumentos(),
     titulo: o.titulo,
     subtitulo: `${o.subtitulo} — documento de demonstração, sem validade fiscal`,
     periodo: o.dados.find((d) => d.rotulo === "Emissão")?.valor ?? "",
-    secoes: [identificacao, historico],
+    secoes: [identificacao, origem, historico],
     notas: [
       "O saldo a receber é derivado: quantidade da ordem − Σ recebimentos, item a item.",
       "Ordem empenhada só se estorna pelo estorno do empenho. Recebimento acima do pendente é recusado.",
+      "A origem liga cada linha às solicitações que ela atende; o que não tem origem nunca é casado automaticamente.",
     ],
   };
 }

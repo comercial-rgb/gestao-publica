@@ -230,7 +230,7 @@ export async function opcoesDeVinculoDoEmpenho(): Promise<{
       select: { id: true, valor: true, historico: true, ficha: { select: { numero: true, exercicio: true } }, processo: { select: { numeroProcesso: true } }, empenhos: { select: { empenho: { select: { valor: true } } } } },
     }),
     prisma.ordemDeCompra.findMany({
-      where: { fichaId: { not: null } },
+      where: { fichaId: { not: null }, movimentos: { none: { tipo: "ESTORNO" } } },
       orderBy: { numero: "desc" },
       take: 300,
       select: {

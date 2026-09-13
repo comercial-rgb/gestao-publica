@@ -43,6 +43,7 @@ export const SOLICITACOES_DE_COMPRA: DefinicaoDeRecurso = definirRecurso({
     { nome: "data", cabecalho: "Data", tipo: "data", ordenavel: true },
     { nome: "solicitante", cabecalho: "Solicitante", tipo: "texto" },
     { nome: "itens", cabecalho: "Itens", tipo: "inteiro" },
+    { nome: "atendimento", cabecalho: "Atendimento", tipo: "texto" },
     { nome: "situacao", cabecalho: "Situação", tipo: "situacao" },
   ],
   filtros: [
@@ -128,6 +129,7 @@ export const ORDENS_DE_COMPRA: DefinicaoDeRecurso = definirRecurso({
     { nome: "dataEmissao", cabecalho: "Emissão", tipo: "data", ordenavel: true },
     { nome: "total", cabecalho: "Total", tipo: "dinheiro", somavel: true },
     { nome: "pendente", cabecalho: "A receber", tipo: "dinheiro", somavel: true },
+    { nome: "origem", cabecalho: "Origem", tipo: "texto" },
     { nome: "situacao", cabecalho: "Situação", tipo: "situacao" },
   ],
   filtros: [
@@ -137,11 +139,15 @@ export const ORDENS_DE_COMPRA: DefinicaoDeRecurso = definirRecurso({
       { valor: "GLOBAL", rotulo: "Global" },
       { valor: "ESTIMATIVA", rotulo: "Estimativa" },
     ] },
+    { nome: "vivas", rotulo: "Vivas ou estornadas", tipo: "selecao", largura: 1, opcoes: [
+      { valor: "VIVAS", rotulo: "Só as vivas" },
+      { valor: "ESTORNADAS", rotulo: "Só as estornadas" },
+    ] },
   ],
   acoes: [
     {
       nome: "estornar", rotulo: "Estornar a ordem", acaoDoCenso: "ESTORNAR_ORDEM_DE_COMPRA",
-      aviso: "Ordem com recebimento não se estorna (estorne os recebimentos antes); ordem empenhada só se estorna pelo estorno do empenho.",
+      aviso: "Ordem com recebimento não se estorna (estorne os recebimentos antes); ordem empenhada só se estorna pelo estorno do empenho. O estorno é um fato: a ordem continua no histórico como ESTORNADA e as parcelas de solicitação voltam a pendente.",
       irreversivel: true,
       campos: [{ nome: "motivo", rotulo: "Motivo (mínimo 5 caracteres)", tipo: "texto", obrigatorio: true, largura: 4 }],
     },

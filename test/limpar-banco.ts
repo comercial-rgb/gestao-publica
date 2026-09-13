@@ -113,6 +113,8 @@ const TABELAS = [
   "MovimentoDoDocumentoFiscal",
   "ItemDeDocumentoFiscal",
   "DocumentoFiscalRecebido",
+  "AlocacaoDeSolicitacaoNaOrdem",
+  "MovimentoDaOrdemDeCompra",
   "RecebimentoDeItem",
   "RecebimentoDeOrdem",
   "ItemDeOrdemDeCompra",
