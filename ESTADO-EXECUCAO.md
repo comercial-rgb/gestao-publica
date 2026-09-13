@@ -6,10 +6,10 @@
 |---|---|
 | HEAD | ver `git log -1` — a seção 51 nomeia o SHA da aplicação congelada e o do percurso |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | **V5 demonstração 24h** (`docs/lotes/V5-demonstracao-24h.md`): Fila A — documento fiscal recebido e empenho a partir da ordem |
-| Último resultado | seção 51 — candidato local de demonstração: `next build` em `2e0817b`, smoke-compras **29/29** e smoke-contratacao **18/18** sob `next start :3010`; **BLOQUEADO PARA PUBLICAÇÃO** (alvo não definido); **APTO PARA DEMONSTRAÇÃO RESTRITA** na máquina |
-| Pendências relevantes | alvo de publicação; Fila B (RH) fora da oferta; `ARRECADACAO-SEM-CONTA-BANCARIA`; `M03-T8-TIMEOUT-SOB-SUITE`; seções 35.7, 36.4, 37.5, 38.5 a 43.5; as anteriores em §19 e nos `MODULO.md` |
-| Próximo passo | seção 51.6 — com alvo autorizado, publicar só este candidato; sem alvo, Fila B só quando a origem de RH estiver integrada, ou o vínculo solicitação×ordem |
+| Frente em execução | **V6 produto integrado** (`docs/lotes/V6-produto-integrado.md`): P0 identidade e shell ENTREGUE (seção 52); em curso P1 — vínculos solicitação×ordem e arrecadação×conta bancária. A prioridade de publicação da V5 está SUSPENSA: publicar não é tarefa desta rodada |
+| Último resultado | seção 52 — Gestão Pública como produto, apresentação do ente versionada (`/administracao/apresentacao`), entrada e shell redesenhados, Minha mesa; `next build` em `4dcd2dd`, smoke-identidade **45/45**; rápida 852/852; m16-apresentacao 10/10; censo 267 serviços / 246+18 ações; permissões v7 |
+| Pendências relevantes | `ENDERECO-DO-ENTE`; `MARCA-NOS-PDFS` (imagem só nas telas); P0.3 por família ainda parcial (ver 52.4); `SOLICITACAO-SEM-VINCULO-COM-A-ORDEM` e `ARRECADACAO-SEM-CONTA-BANCARIA` (P1); `M03-T8-TIMEOUT-SOB-SUITE`; seções 35.7, 36.4, 37.5, 38.5 a 43.5; as anteriores em §19 e nos `MODULO.md` |
+| Próximo passo | seção 52.6 — P1.1: alocação solicitação×ordem por item e quantidade (ordenado, recebido, cancelado, pendente), depois P1.2 arrecadação × conta bancária × conciliação |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -5685,3 +5685,138 @@ identificado como DEMONSTRAÇÃO. Sem essa autorização: continuar trabalho ind
 vínculo solicitação×ordem, ou a reconciliação de RH **quando** a origem estiver neste
 repositório como módulo. Não anunciar folha nem portal de cidadão transacional até haver
 percurso real.
+
+## 52. V6 P0 — identidade correta e experiência compartilhada
+
+Pedido: `docs/lotes/V6-produto-integrado.md` (guardado como veio). Ancestralidade preservada: `cc4a0a2`,
+`2e0817b`, `da9c8ad` e `77cbcc9` são ancestrais do HEAD; o stash `11b7892` permanece listado (já
+incorporado em `63a3040`; sem pop e sem drop). Sem reset. Sem push. Sem publicação. Os três scripts
+soltos (`scripts/fix-*.sh`, `manter-claude-cursor.sh`) continuam não executados e não commitados.
+
+O candidato `2e0817b` deixou de estar servido em `:3010` (o `next start` deste projeto foi encerrado
+de forma controlada antes do `next build` novo, para não sobrescrever o `.next` em uso). Ele
+continua reproduzível: `git worktree add <dir> 2e0817b` + `npx next build` com
+`NEXT_PUBLIC_BUILD_COMMIT=2e0817b…`. Nenhum outro serviço da máquina foi parado.
+
+### 52.1 O que passou a funcionar
+
+- **Produto, instituição e ambiente separados.** O produto se chama **Gestão Pública** (“Plataforma
+  integrada de gestão municipal”, `lib/identidade/produto.ts`, puro). A instituição vem do cadastro:
+  `VersaoDaApresentacaoDoEnte` (append-only, sobre `EnteConfig`) pela porta `lib/portas/identidade.ts`
+  — projeção PÚBLICA mínima (nome de exibição, órgão, UF, imagem, contatos, horário, sítio, tema,
+  canais ativados), sem credencial, vínculo, CNPJ de responsável ou dado pessoal. O ambiente
+  (`desenvolvimento | demonstracao | homologacao | producao`) vem do build (`AMBIENTE_DE_EXECUCAO` →
+  `NEXT_PUBLIC_AMBIENTE`). Sem `EnteConfig`, identidade NEUTRA com pendência para o administrador;
+  sem apresentação, “Ente não configurado” — nunca uma prefeitura ao acaso. O ente é o da
+  IMPLANTAÇÃO (o banco configurado no deploy): Host, query, cookie e campo não escolhem ente.
+- **Sem replace global.** `SIAFIC` continua nome do domínio contábil (Central de Integrações) e das
+  fixtures/bancos/cookies/migrations; `Campina Grande`, `cg.pb.gov.br` e `SEFIN` saíram da SUPERFÍCIE
+  (app/, components/, lib/pdf, lib/navegacao) e o guard `test/ui/identidade.test.ts` impede a volta.
+  Os seeds da POC continuam identificando o ente que identificam.
+- **Configuração administrativa** (`/administracao/apresentacao`, ação nova
+  `CONFIGURAR_APRESENTACAO_DO_ENTE`, família ADMINISTRACAO, atualização de permissões **v7**: quem
+  concede ação a perfil no global recebe-a no global): nome de exibição, órgão, assinatura do
+  fornecedor (texto, sem marca inventada), e-mail, telefone, horário, sítio (só `https:`, nunca
+  buscado pelo servidor), tema (conjunto FECHADO `PADRAO | ALTO_CONTRASTE`, CHECK no banco; o alto
+  contraste redefine tokens em `globals.css` — nada de CSS/JS do banco), imagem institucional (PNG ou
+  JPEG reconhecidos pelos BYTES, 256 KiB, CHECKs; SVG recusado nomeando), canais públicos ativados.
+  Cada gravação é uma versão com autor e instante; histórico na tela; concorrência decidida pelo
+  UNIQUE (enteId, numero) e recusada nomeando. Imagem servida por `/identidade/imagem` (pública,
+  cacheável por versão).
+- **Propagação:** entrada, `<title>`, favicon do produto (`app/icon.svg`), marca da sidebar,
+  cabeçalho (ambiente), rodapé (ente, produto/fornecedor, versão curta), `/transparencia/demonstrativos`
+  (nome, imagem, contatos) e PDFs novos (`nomeDoEnteParaDocumentos()` em `lib/pdf/*` e nos termos e
+  etiquetas). **Documento emitido não muda:** o termo patrimonial congela o texto do ente no JSON da
+  emissão (M10) — o smoke baixa a segunda via antes e depois da reconfiguração e confere o mesmo
+  sha256 e a ausência do nome novo.
+- **SHA completo fora do rodapé comum.** Rodapé: `versão 4dcd2dd` (7 caracteres) ou nada fora de build
+  versionado. Proveniência completa em `/administracao/sistema` (CONSULTAR_ADMINISTRACAO): commit,
+  ambiente, Node e as atualizações de permissões instaladas.
+- **Entrada redesenhada** (`app/login`): identificação (produto, ente ou ambiente, órgão, faixa de
+  ambiente, canais públicos existentes E ativados — Transparência e Acompanhar processo; Portal do
+  Servidor/Cidadão/Fornecedor têm `href` nulo e NÃO aparecem), título de acesso, rótulos ligados por
+  `for`/`id`, mostrar/ocultar senha com `aria-pressed`/`aria-controls`, erro POR CAMPO (`aria-invalid`
+  + `aria-describedby`) para campo vazio e mensagem única de credencial (timing uniforme preservado),
+  identificador devolvido na recusa, placeholder neutro, retorno seguro preservado. Mecanismo de
+  sessão, bootstrap, revogação e chave de comando **não** mudaram (`entrarAction` continua a exceção
+  nomeada do guard de comando).
+- **Shell responsivo:** `ShellProvider` (client, só o estado do menu), `BotaoMenu` no cabeçalho em
+  < 768 px, sidebar como painel sobreposto com `id` de `useId`, pano de fundo, fecha ao navegar; em
+  ≥ 768 px o colapso por cookie continua. Cabeçalho e rodapé quebram linha; `main` com padding por
+  largura. Testado a 360/768/1366 nas capturas e no smoke (sem rolagem horizontal na home e na entrada).
+- **Minha mesa** (home): o que espera por você (painel de pendências existente), ações que você pode
+  fazer (destinos da busca com a ação do usuário, mesma tabela de `autorizar`), processos na minha
+  lotação (M21, `somenteMeusSetores`), comunicados não lidos (M23). Cada bloco tem TRÊS estados
+  distintos — dado (ou “nada por aqui”), **sem acesso** (a política recusou) e **indisponível** (a
+  consulta falhou) — falha não é zero, falta de permissão não é lista vazia. O retrato do ente
+  (indicadores fiscais) continua abaixo, só para quem consulta relatórios.
+- **Duas abas:** o contexto (exercício/UG) é estado por aba; o smoke troca a unidade na aba B e prova
+  que a aba A mantém a seleção e que o comando pendente da aba A grava com os dados da aba A.
+
+### 52.2 Rotas utilizáveis
+
+| Quem | Rota | O que faz |
+|---|---|---|
+| (sem sessão) | `/login` | identificação do produto/ente/ambiente, canais públicos ativados, acesso |
+| (sem sessão) | `/identidade/imagem` | a imagem institucional vigente (PNG/JPEG), 404 sem imagem |
+| (sem sessão) | `/transparencia/demonstrativos` | nome, imagem e contatos do ente da apresentação |
+| qualquer sessão | `/` | Minha mesa |
+| CONSULTAR_ADMINISTRACAO | `/administracao/apresentacao` | vê a vigente, o ente semeado e o histórico |
+| CONFIGURAR_APRESENTACAO_DO_ENTE | `/administracao/apresentacao` | grava versão nova (formulário; sem a ação o botão não existe e o servidor recusa) |
+| CONSULTAR_ADMINISTRACAO | `/administracao/sistema` | proveniência técnica (SHA completo, ambiente, permissões) |
+
+### 52.3 Comandos executados e resultados
+
+| Comando | Resultado |
+|---|---|
+| Ancestralidade | `cc4a0a2`, `2e0817b`, `77cbcc9` ancestrais do HEAD; stash `11b7892` listado |
+| `prisma migrate deploy` ×3 (dev estava em 120 — as duas da V5 faltavam nele; test e percursos em 122) | 124 nos três; `migrate diff --exit-code` limpo; `prisma generate`; papel `gestao_app` reprovisionado nos três |
+| `aplicar-atualizacao-de-permissoes.ts 7` (dev e percursos, `SEED_IDENTIDADE`) | v7 aplicada: 1 concessão em 1 perfil |
+| tsc backend / app / scripts (heap 3584) | limpos em `4dcd2dd` |
+| `test:rapido` | **852/852** (81 arquivos) |
+| `m16-apresentacao` (10, com N=2 na concorrência), `m16-atualizacoes` (v7), `m16-censo` (267 serviços; 246+18 ações), `test/ui/identidade` (4), guards de comando/fronteira/leitura/área pública/rótulos, `modelo-sem-caso-de-uso`, `formularios-na-mesma-pagina` | verdes |
+| `next build` com `NEXT_PUBLIC_BUILD_COMMIT=4dcd2dd…` e `AMBIENTE_DE_EXECUCAO=demonstracao` | OK (184 rotas no manifesto) |
+| `next start :3010` (banco dos percursos) + `scripts/smoke-identidade.ts` | r1 e r2 acharam dois defeitos DO SMOKE (termo sem emissão congelada escolhido; medida de visibilidade com `position: fixed`) e um passo com clique travando o protocolo com duas abas no mesmo renderer (troca por preenchimento pelo DOM); **r4: 45/45** |
+| `scripts/capturar-superficies.ts antes-cc4a0a2` e `depois-4dcd2dd` | 24 capturas cada (3 larguras × 8 rotas) em `.registro-de-execucao/v6-capturas/` — dados sintéticos |
+| Defeitos achados pela captura e corrigidos | entrada a 360 px estourava a largura (grid item com `truncate` sem `min-w-0`); guard de `id` literal (dois lugares → `useId`); regex literal com `\/` cegava o `somenteCodigo` do `modelo-sem-caso-de-uso` (troca por `URL`) |
+| `npx puppeteer browsers install chrome@150.0.7871.24` | o cache `~/.cache/puppeteer` havia sumido às 12:43; reinstalado — sem isso nenhum smoke sobe |
+| Catálogo (`marcar-catalogo.ts --aplicar`) | 5.8.1 PARCIAL e 5.38.46 PARCIAL com rota verificada; contagem 63/62/65/140/3/1704 |
+| `test:tudo` / `test:fuso` / `portao` | **não executados** nesta unidade (P0 é superfície + M16; a rápida e as dirigidas cobrem a mudança) |
+
+### 52.4 Pendências (nomeadas)
+
+- **P0.3 por família — PARCIAL.** O molde já tem lista (filtros, ordenação, paginação, seleção,
+  totais) e detalhe (cinco abas, selos, ações). Entregue nesta unidade: shell responsivo, entrada
+  acessível, guard de identidade. Falta, por família: barra de ação contextual no detalhe, prévia
+  de impacto nas operações, resultado com links para os registros gerados, revisão de teclado/zoom
+  em tabelas extensas. Nasce com as famílias tocadas em P1–P3.
+- `ENDERECO-DO-ENTE` — a apresentação não tem endereço (5.38.46 fica PARCIAL).
+- `MARCA-NOS-PDFS` — a imagem institucional aparece nas telas; os PDFs trazem só o nome.
+- `TEMA-POR-USUARIO` — o tema é do ente; alternância por usuário (5.37.32/5.38.38) não existe.
+- `IDENTIDADE-POR-DOMINIO` — um processo, um banco, um ente. Vinculação por domínio cadastrado
+  fica para o lote de tenancy (ADR do eixo de município).
+- `CANAIS-INEXISTENTES` — Portal do Servidor, do Cidadão e Fornecedor ganham `href` e coluna de
+  ativação quando existirem (P2/P3).
+- Herdadas: `SOLICITACAO-SEM-VINCULO-COM-A-ORDEM`, `ARRECADACAO-SEM-CONTA-BANCARIA`,
+  `M03-T8-TIMEOUT-SOB-SUITE`, `ZOD-LEGIVEL-NAS-ACTIONS-ANTIGAS`, `CAPTURA-SEM-ENVELOPE`,
+  `EXTRATO-DO-CONTRATO-PDF`, `CONVENIOS-DA-ORIGEM`, `VINCULO-PPA-LOA`, `PPA-LDO-VERSOES-E-EMENDAS`.
+
+### 52.5 Invariantes verificadas
+
+Autorização no servidor por ação nomeada (t5, e o restrito pela tela); append-only (t3, versão 1
+intacta); fail-closed sem ente (t1); projeção pública sem dado sensível (t4); imagem pelos bytes e
+teto (t6); concorrência N=2 (t9); comando do formulário em toda action nova (guard t2); nenhum
+identificador de cláusula em tela (guard); GET sem transição (`/identidade/imagem` só lê).
+
+### 52.6 Próximo ponto exato
+
+**P1.1 — solicitação ligada aos itens da ordem.** Modelo de ALOCAÇÃO por item e quantidade entre
+`ItemDeSolicitacaoDeCompra` e `ItemDeOrdemDeCompra` (uma solicitação atendida por várias ordens;
+uma ordem atendendo várias solicitações), com origem, unidade, centro de custo e autor
+preservados; situação DERIVADA por item: ordenado, recebido, cancelado, pendente. Controles:
+solicitação não autorizada; item/unidade incompatível; alocação em excesso; duas ordens
+concorrentes (N=2); cancelamento/desfazimento; legado sem vínculo identificado como tal (sem match
+automático). Tela: na solicitação autorizada, "formar ordem" com os saldos pendentes; na ordem, a
+origem; consulta de atendimento nos dois sentidos e nos documentos. Depois P1.2 (arrecadação × conta
+bancária × conciliação) e P1.3 (percurso encadeado com duas linhas, atendimento parcial e uma
+negativa, com usuários por papel).

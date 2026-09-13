@@ -94,6 +94,10 @@ async function entrar(page: Page, usuario = USUARIO, senha = SENHA): Promise<voi
   throw new Error(`login não passou (ainda em ${page.url()}).`);
 }
 async function sair(page: Page): Promise<void> {
+  // O botão de sair mora no shell autenticado — uma página pública não o tem.
+  if (!page.url().startsWith(`${BASE}/`) || page.url().includes("/transparencia") || page.url().includes("/consulta")) {
+    await page.goto(`${BASE}/`, { waitUntil: "networkidle2" });
+  }
   await page.evaluate(() => {
     const f = Array.from(document.querySelectorAll("form")).find((x) => x.querySelector('button[title="Sair"]'));
     f?.requestSubmit();
@@ -124,9 +128,12 @@ async function atributo(page: Page, sel: string, attr: string | null): Promise<s
   );
 }
 async function visivel(page: Page, sel: string): Promise<boolean> {
+  // ⚠️ `offsetParent` é null para `position: fixed` (o painel do menu estreito) — a medida é a caixa.
   return page.evaluate((s) => {
     const el = document.querySelector(s);
-    return el instanceof HTMLElement && el.offsetParent !== null;
+    if (!(el instanceof HTMLElement)) return false;
+    const r = el.getBoundingClientRect();
+    return getComputedStyle(el).display !== "none" && r.width > 0 && r.height > 0;
   }, sel);
 }
 async function esperarChave(page: Page, form: string): Promise<void> {
@@ -241,13 +248,21 @@ async function main(): Promise<void> {
 
     // ── 4. UM TERMO JÁ EMITIDO: a segunda via ANTES da reconfiguração ──
     const termos = await irPara(page, "/patrimonio/termos");
-    const termoHref = await page.evaluate(() => Array.from(document.querySelectorAll('a[href^="/patrimonio/termos/"]')).map((a) => a.getAttribute("href") ?? "").find((h) => /\/patrimonio\/termos\/[^/?]+$/.test(h)) ?? null);
-    conferir("4.1 há um termo patrimonial emitido para conferir a segunda via", termoHref !== null, `status ${termos.status}, sem link de termo`);
+    const termoHrefs = await page.evaluate(() => Array.from(new Set(Array.from(document.querySelectorAll('a[href^="/patrimonio/termos/"]')).map((a) => a.getAttribute("href") ?? "").filter((h) => /\/patrimonio\/termos\/[^/?]+$/.test(h)))));
+    // ⚠️ Só um termo com EMISSÃO CONGELADA serve de prova: um termo anterior ao registro da emissão é
+    // composto na hora (e diz isso no PDF) — a segunda via dele muda por definição.
+    let termoHref: string | null = null;
     let segundaViaAntes: Awaited<ReturnType<typeof baixarPdf>> | null = null;
-    if (termoHref !== null) {
-      segundaViaAntes = await baixarPdf(page, `${termoHref}/pdf`);
-      conferir("4.2 a segunda via baixa com sha256 no cabeçalho", segundaViaAntes.status === 200 && segundaViaAntes.sha !== null, `status ${segundaViaAntes.status}`);
+    for (const h of termoHrefs) {
+      const pdf = await baixarPdf(page, `${h}/pdf`);
+      if (pdf.status === 200 && pdf.sha !== null && !pdf.texto.includes("SEM EMISSÃO CONGELADA")) {
+        termoHref = h;
+        segundaViaAntes = pdf;
+        break;
+      }
     }
+    conferir("4.1 há um termo patrimonial com emissão congelada para conferir a segunda via", termoHref !== null, `status ${termos.status}, ${termoHrefs.length} termo(s) na lista, nenhum congelado`);
+    conferir("4.2 a segunda via baixa com sha256 no cabeçalho", segundaViaAntes !== null && segundaViaAntes.sha !== null, "sem sha");
 
     // ── 5. CONFIGURAR A APRESENTAÇÃO ──
     const adm = await irPara(page, "/administracao/apresentacao");
@@ -347,30 +362,56 @@ async function main(): Promise<void> {
     conferir("9.3 o botão abre o menu (aria-expanded=true)", (await atributo(page, "[data-botao-menu]", "aria-expanded")) === "true" && (await visivel(page, "aside")), "menu não abriu");
     await Promise.all([page.waitForNavigation({ waitUntil: "networkidle2" }), page.click('aside a[href="/administracao"]')]);
     conferir("9.4 navegar pelo menu fecha o painel", !(await visivel(page, "aside[data-menu-aberto]")) || (await atributo(page, "aside", "data-menu-aberto")) === "nao", "menu continuou aberto");
+    await sair(page);
+    await irPara(page, "/login");
+    const excedentes = await page.evaluate(() => Array.from(document.querySelectorAll("body *")).filter((el) => el.getBoundingClientRect().right > window.innerWidth + 1).length);
+    conferir("9.5 em 360 px a entrada não tem elemento além da largura da tela", excedentes === 0, `${excedentes} elemento(s) além da borda`);
     await page.setViewport({ width: 1366, height: 900 });
+    await entrar(page);
 
     // ── 10. DUAS ABAS: o contexto de uma não reinterpreta o comando da outra ──
+    // ⚠️ Aba A é uma página NOVA (mesma sessão, cookies do contexto): a página usada em 360 px fica de fora.
+    await page.close();
+    const abaA = await navegador.newPage();
+    abaA.setDefaultTimeout(120000);
+    await abaA.setViewport({ width: 1366, height: 900 });
+    const page2 = abaA;
     const abaB = await navegador.newPage();
     abaB.setDefaultTimeout(120000);
     await abaB.setViewport({ width: 1366, height: 900 });
-    await page.goto(`${BASE}/administracao/apresentacao`, { waitUntil: "networkidle2" });
+    await page2.goto(`${BASE}/administracao/apresentacao`, { waitUntil: "networkidle2" });
     await abaB.goto(`${BASE}/`, { waitUntil: "networkidle2" });
-    const ugsA = await page.evaluate(() => Array.from(document.querySelectorAll('select[aria-label="Unidade gestora"] option')).map((o) => (o as HTMLOptionElement).value));
+    const ugsA = await page2.evaluate(() => Array.from(document.querySelectorAll('select[aria-label="Unidade gestora"] option')).map((o) => (o as HTMLOptionElement).value));
     const outraUg = ugsA.find((v) => v !== "CONSOLIDADO");
     if (outraUg !== undefined) {
       await abaB.select('select[aria-label="Unidade gestora"]', outraUg);
-      const ugNaA = await page.evaluate(() => (document.querySelector('select[aria-label="Unidade gestora"]') as HTMLSelectElement).value);
+      const ugNaA = await page2.evaluate(() => (document.querySelector('select[aria-label="Unidade gestora"]') as HTMLSelectElement).value);
       conferir("10.1 trocar a unidade na aba B não muda a seleção da aba A", ugNaA === "CONSOLIDADO", `A ficou em ${ugNaA}`);
     } else {
       conferir("10.1 (sem segunda unidade para trocar — passo não aplicável)", true, "");
     }
-    await page.waitForSelector(FORM, { timeout: 30000 });
-    await limparEDigitar(page, `${FORM} input[name="nomeDeExibicao"]`, `${NOME_NOVO} (aba A)`);
-    await esperarChave(page, FORM);
-    await page.click(`${FORM} button[type="submit"]`);
-    const gravouA = await respostaDoForm(page, FORM);
+    await page2.waitForSelector(FORM, { timeout: 30000 });
+    console.log("      [10: preenchendo na aba A]");
+    // Preenchimento pelo DOM (setter nativo + evento), sem clique/teclado: o que se prova aqui é o
+    // COMANDO, não a digitação — e o clique com duas abas no mesmo renderer já travou o protocolo.
+    await page2.evaluate(
+      (sel, valor) => {
+        const el = document.querySelector(sel);
+        if (!(el instanceof HTMLInputElement)) throw new Error(`${sel} ausente`);
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+        setter?.call(el, valor);
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+      },
+      `${FORM} input[name="nomeDeExibicao"]`,
+      `${NOME_NOVO} (aba A)`
+    );
+    await esperarChave(page2, FORM);
+    console.log("      [10: enviando na aba A]");
+    await page2.evaluate((sel) => (document.querySelector(`${sel} button[type="submit"]`) as HTMLButtonElement).click(), FORM);
+    const gravouA = await respostaDoForm(page2, FORM);
     conferir("10.2 o comando pendente da aba A grava com os dados da aba A", gravouA.tipo === "ok" && /versão \d+/.test(gravouA.texto), `${gravouA.tipo}: ${gravouA.texto.slice(0, 200)}`);
-    const adm3 = await irPara(page, "/administracao/apresentacao");
+    const adm3 = await irPara(page2, "/administracao/apresentacao");
     conferir("10.3 a vigente é a gravada pela aba A", adm3.texto.includes(`${NOME_NOVO.toLowerCase()} (aba a)`), adm3.texto.slice(0, 300));
     await abaB.close();
   } finally {

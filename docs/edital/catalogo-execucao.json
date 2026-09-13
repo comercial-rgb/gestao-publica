@@ -28,9 +28,9 @@
       "frente": "ENT02",
       "candidato_reaproveitamento": "siafic-cg:M16, siafic-cg:M12, packages/contracts",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: CONFIGURAR_APRESENTACAO_DO_ENTE · contexto: banco dos percursos, next build + next start em 3010, build 4dcd2dd, 2026-09-13 · passos: /administracao/apresentacao → gravar versão (nome, órgão, fornecedor, e-mail, sítio, PNG, canais) → /login, cabeçalho, rodapé, /transparencia/demonstrativos e PDF novo mostram o nome; segunda via de termo emitido inalterada (mesmo sha256) · obtido: 45/45 · artefato: smoke-identidade-4dcd2dd-r4.log.",
+      "evidencia": "V6 P0.1: a APRESENTAÇÃO do ente é configurável pela tela (/administracao/apresentacao): nome de exibição, órgão, imagem institucional (PNG/JPEG validada pelos bytes), contatos, sítio, tema (conjunto fechado PADRAO/ALTO_CONTRASTE) e canais públicos — versionada, com autor (m16-apresentacao.test.ts, 10 testes; smoke-identidade 45 passos). Relatórios personalizados: designer do M26 (5.8.12). ⚠️ FALTA: customização além da apresentação (campos de tela, fluxos) — não há editor de telas.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.8.2",
@@ -21421,8 +21421,8 @@
       "candidato_reaproveitamento": "siafic-cg:M13 (datasets, sem portal)",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V6 P0.1: /transparencia/demonstrativos (público, sem sessão) exibe o nome de exibição do ente, a imagem institucional vigente e os contatos da apresentação (smoke-identidade 6.6). ⚠️ FALTA o ENDEREÇO do ente (não há campo de endereço na apresentação — pendência ENDERECO-DO-ENTE) e o portal da transparência além dos demonstrativos (5.38).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.38.47",

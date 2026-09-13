@@ -13,11 +13,17 @@ revisão — está preservado como histórico nas seções do `ESTADO-EXECUCAO.m
 antigos de `docs/lotes/`; ele **não se segue mais**. Onde um documento antigo disser "pare
 no gate", vale o modo vigente.
 
+Desde 2026-09-13 vale também a **V6** (`docs/lotes/V6-produto-integrado.md`): ela substitui
+SOMENTE a prioridade temporal e de publicação da V5 — construção contínua do produto integrado
+(P0 identidade e shell → P1 vínculos → P2 RH/folha/portal do servidor → P3 processos e canais →
+P4 mensagens, documentos e observabilidade), sem esperar alvo de hospedagem. Regras de negócio,
+ADRs e evidências anteriores permanecem.
+
 ## 1. Para executar uma unidade de trabalho
 
 1. `CLAUDE.md` — as regras. Toda sessão o carrega sozinha.
 2. `ESTADO-EXECUCAO.md`, seção "O próximo passo" — onde paramos.
-3. `docs/lotes/<lote>.md` — o que o pedido vigente pede (hoje o V5, `docs/lotes/V5-demonstracao-24h.md`).
+3. `docs/lotes/<lote>.md` — o que o pedido vigente pede (hoje o V6, `docs/lotes/V6-produto-integrado.md`).
 4. O `MODULO.md` de cada módulo que o lote toca. Ligar ao que existe exige ler o
    módulo ligado, não só o módulo alvo.
 5. `docs/instrucoes/` — o detalhe, quando o lote ou o `MODULO.md` não bastar.
@@ -60,6 +66,7 @@ O prompt mestre divide o produto em **frentes** ENT00 a ENT11. A execução nume
 | V3 (orquestração contínua) | pacotes por capacidade, sem gate por lote | todas — ver `docs/lotes/V3-orquestracao-continua.md` | seção 35 em diante |
 | V4 | sessão noturna: percursos sob o build e Fila A | planejamento, contratação, compras | seção 50 |
 | V5 | demonstração comercial: nota recebida e empenho×ordem | Fila A (despesa/compras); B/C fora da oferta | seção 51; `docs/lotes/V5-demonstracao-24h.md`; `docs/demo/` |
+| V6 | produto integrado: identidade configurável, shell, vínculos, RH, canais | P0 transversal (M16 apresentação); P1 M11/M04/M09; P2 pessoal; P3 M21/M22/canais; P4 transversal | seção 52 em diante; `docs/lotes/V6-produto-integrado.md` |
 
 As frentes ainda não abertas estão em `docs/instrucoes/GABARITO-DE-LOTE-E-FRENTES-04-11.md`:
 ENT04 pessoal, ENT05 suprimentos/patrimônio/frota, ENT06 cadastros fiscais e

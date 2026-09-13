@@ -66,6 +66,28 @@ body {
   height: 100%;
 }
 
+/*
+  O TEMA DE APRESENTAÇÃO (V6 P0.1) é um conjunto FECHADO escolhido pelo administrador
+  (`VersaoDaApresentacaoDoEnte.tema`) e chega como `data-tema` no contêiner do shell e da
+  entrada. ALTO_CONTRASTE só REDEFINE tokens: tinta mais escura, divisórias mais fortes,
+  azul mais fechado. Nenhum CSS ou script vem do banco — só o nome do tema.
+*/
+[data-tema="ALTO_CONTRASTE"] {
+  --color-ink: #000000;
+  --color-ink-2: #1f2937;
+  --color-ink-3: #374151;
+  --color-border: #6b7280;
+  --color-border-strong: #111827;
+  --color-primary: #0b3d7a;
+  --color-primary-hover: #082c58;
+  --color-primary-soft: #dbe4f0;
+  --color-status-neutro-fg: #111827;
+  --color-status-alerta-bg: #fde68a;
+  --color-status-alerta-fg: #451a03;
+  --color-status-ok-fg: #14532d;
+  --color-status-erro-fg: #7f1d1d;
+}
+
 body {
   background-color: var(--color-canvas);
   color: var(--color-ink);

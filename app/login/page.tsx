@@ -42,7 +42,7 @@ export default async function LoginPage({
       <main className="flex flex-1 items-center justify-center p-4 sm:p-6">
         <div className="grid w-full max-w-3xl overflow-hidden rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] shadow-[var(--shadow-card)] md:grid-cols-[1.1fr_1fr]">
           {/* a instituição e o produto */}
-          <section aria-label="Identificação" className="flex flex-col gap-5 border-b border-[color:var(--color-border)] bg-[color:var(--color-canvas)] p-6 md:border-b-0 md:border-r">
+          <section aria-label="Identificação" className="flex min-w-0 flex-col gap-5 border-b border-[color:var(--color-border)] bg-[color:var(--color-canvas)] p-6 md:border-b-0 md:border-r">
             <Marca identidade={tela} tamanho="lg" />
             <div className="space-y-1">
               <p className="text-sm text-[color:var(--color-ink-2)]">{id.produto.descricao}.</p>
@@ -80,7 +80,7 @@ export default async function LoginPage({
           </section>
 
           {/* o acesso */}
-          <section aria-label="Acesso à gestão interna" className="p-6">
+          <section aria-label="Acesso à gestão interna" className="min-w-0 p-6">
             <h1 className="mb-1 text-lg font-semibold text-[color:var(--color-ink)]">Acesso à gestão interna</h1>
             <p className="mb-4 text-xs text-[color:var(--color-ink-3)]">Use o usuário e a senha do seu cadastro. Sem sessão, nada do sistema fica exposto.</p>
             <FormLogin retorno={retorno} />

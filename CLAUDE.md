@@ -19,7 +19,8 @@ Antes de escrever código num lote novo, diga **em que módulo** o requisito ent
 
 1. Este arquivo — carregado sozinho em toda sessão.
 2. `ESTADO-EXECUCAO.md`, a seção "O próximo passo" — onde paramos.
-3. `docs/lotes/` — o pedido em execução (hoje: `V3-orquestracao-continua.md`).
+3. `docs/lotes/` — o pedido em execução (hoje: `V6-produto-integrado.md`, sobre o modo de
+   trabalho de `V3-orquestracao-continua.md`).
 4. O `MODULO.md` de cada módulo que o lote toca.
 5. `docs/LEIA-ME.md` — índice de todo o resto, e a precedência entre documentos.
 
@@ -158,7 +159,14 @@ negócio.
 
 A orquestração V3 (`docs/lotes/V3-orquestracao-continua.md`) substituiu o regime
 "um lote, um portão, uma revisão". O regime anterior está registrado nas seções
-históricas de `ESTADO-EXECUCAO.md` e não se segue mais. Vale agora:
+históricas de `ESTADO-EXECUCAO.md` e não se segue mais.
+
+**Precedência desde 2026-09-13 (V6):** `docs/lotes/V6-produto-integrado.md` substitui SOMENTE a
+prioridade temporal e de publicação da V5 (candidato em 24 h, busca de hospedagem). Publicar não é
+tarefa; procurar alvo de deploy não é próximo passo. Regras de negócio, ADRs aceitos, evidências e
+o modo de trabalho da V3 permanecem. O produto se apresenta como **Gestão Pública**; a instituição
+vem do cadastro (`lib/portas/identidade.ts`), nunca de literal no código; SIAFIC continua sendo o
+nome do domínio contábil. Vale agora:
 
 - **Não parar para revisão** a cada cadastro, botão ou lote pequeno. Concluída uma
   unidade coerente de mudança: commit local e seguir para a próxima dependência.

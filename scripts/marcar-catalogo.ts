@@ -1780,6 +1780,17 @@ const MAPA: Readonly<Record<string, Marca>> = {
   "5.17.99": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): A alteracao da ordem e possivel enquanto nao ha empenho; com recurso orcamentario declarado, o servico recusa alterar por si e aponta a cascata do empenho." },
   "5.17.102": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): OrdemDeCompra.desconto, com recusa quando ele passa do total - a ordem ficaria negativa e o fornecedor pagaria ao ente." },
   "5.17.103": { situacao: "IMPLEMENTADO_NAO_VALIDADO", evidencia: "ENT05 (modelo das tres secoes derrubadas): OrdemDeCompra.consumoImediato marca os produtos que nao passam pela prateleira, para o lancamento de saida ja no empenhamento." },
+  // ── V6 P0.1 — identidade configurável do ente (apresentação versionada) ──
+  "5.8.1": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P0.1: a APRESENTAÇÃO do ente é configurável pela tela (/administracao/apresentacao): nome de exibição, órgão, imagem institucional (PNG/JPEG validada pelos bytes), contatos, sítio, tema (conjunto fechado PADRAO/ALTO_CONTRASTE) e canais públicos — versionada, com autor (m16-apresentacao.test.ts, 10 testes; smoke-identidade 45 passos). Relatórios personalizados: designer do M26 (5.8.12). ⚠️ FALTA: customização além da apresentação (campos de tela, fluxos) — não há editor de telas.",
+    rota_verificada: "papel: CONFIGURAR_APRESENTACAO_DO_ENTE · contexto: banco dos percursos, next build + next start em 3010, build 4dcd2dd, 2026-09-13 · passos: /administracao/apresentacao → gravar versão (nome, órgão, fornecedor, e-mail, sítio, PNG, canais) → /login, cabeçalho, rodapé, /transparencia/demonstrativos e PDF novo mostram o nome; segunda via de termo emitido inalterada (mesmo sha256) · obtido: 45/45 · artefato: smoke-identidade-4dcd2dd-r4.log.",
+  },
+  "5.38.46": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P0.1: /transparencia/demonstrativos (público, sem sessão) exibe o nome de exibição do ente, a imagem institucional vigente e os contatos da apresentação (smoke-identidade 6.6). ⚠️ FALTA o ENDEREÇO do ente (não há campo de endereço na apresentação — pendência ENDERECO-DO-ENTE) e o portal da transparência além dos demonstrativos (5.38).",
+  },
+
 };
 
 // ═══════════════════════════════════════════════════════════════════════════

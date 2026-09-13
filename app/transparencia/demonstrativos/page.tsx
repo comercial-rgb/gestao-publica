@@ -20,12 +20,25 @@ export default async function DemonstrativosPublicosPage(): Promise<React.ReactE
   const id = await identidadePublica();
   const ente = id.ente !== null ? `${id.ente.nomeDeExibicao}${id.ente.uf !== null ? ` — ${id.ente.uf}` : ""}` : "Ente não configurado";
   return (
-    <main className="mx-auto max-w-3xl p-6">
+    <main className="mx-auto max-w-3xl p-4 sm:p-6" data-tema={id.ente?.tema ?? "PADRAO"}>
       <header className="mb-4 border-b border-[color:var(--color-border)] pb-3">
-        <h1 className="text-xl font-semibold text-[color:var(--color-ink)]">Transparência — Demonstrativos Fiscais</h1>
-        <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">
-          {ente} · relatórios oficiais em PDF (LC 131/2009). Acesso público, sem cadastro.
-        </p>
+        <div className="flex items-start gap-3">
+          {id.ente?.imagemHref !== null && id.ente?.imagemHref !== undefined ? (
+            // eslint-disable-next-line @next/next/no-img-element -- rota própria, bytes da apresentação
+            <img src={id.ente.imagemHref} alt={id.ente.nomeDeExibicao} className="h-12 w-12 shrink-0 rounded-[var(--radius-md)] object-contain" />
+          ) : null}
+          <div className="min-w-0">
+            <h1 className="text-xl font-semibold text-[color:var(--color-ink)]">Transparência — Demonstrativos Fiscais</h1>
+            <p className="mt-1 text-sm text-[color:var(--color-ink-2)]" data-ente-publico>
+              {ente} · relatórios oficiais em PDF (LC 131/2009). Acesso público, sem cadastro.
+            </p>
+            {id.ente !== null && (id.ente.contatoEmail !== null || id.ente.contatoTelefone !== null || id.ente.horarioDeAtendimento !== null) ? (
+              <p className="mt-1 text-xs text-[color:var(--color-ink-3)]">
+                {[id.ente.contatoEmail, id.ente.contatoTelefone, id.ente.horarioDeAtendimento].filter((x) => x !== null).join(" · ")}
+              </p>
+            ) : null}
+          </div>
+        </div>
       </header>
 
       <p className="mb-4 text-xs text-[color:var(--color-ink-3)]">
