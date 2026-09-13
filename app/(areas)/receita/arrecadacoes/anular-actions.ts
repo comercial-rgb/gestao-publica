@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { anularReceita } from "../../../../lib/portas/anulacao";
 import { meioDiaCivil } from "../../../../packages/datas/index";
 
@@ -20,6 +21,12 @@ export async function anularReceitaAction(
   _prev: EstadoAnulacaoReceita,
   formData: FormData
 ): Promise<EstadoAnulacaoReceita> {
+  // V4 (§10): fora de `actions.ts`, ficou sem o comando do formulário na unidade 1 (o mesmo
+  // defeito da anulação da despesa, achado pelo percurso). O guard varre `"use server"`.
+  return comComandoDoFormulario(formData, () => anularArrecadacao(formData));
+}
+
+async function anularArrecadacao(formData: FormData): Promise<EstadoAnulacaoReceita> {
   const receitaId = String(formData.get("receitaId") ?? "").trim();
   const numero = String(formData.get("numero") ?? "").trim();
   const dataBruta = String(formData.get("data") ?? "").trim();

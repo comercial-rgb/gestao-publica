@@ -21,6 +21,16 @@ import {
  */
 
 let browserPromise: Promise<Browser> | null = null;
+/** Renderizações em voo — o browser ocioso só fecha quando não há nenhuma. */
+let emVoo = 0;
+let fechamentoOcioso: ReturnType<typeof setTimeout> | null = null;
+/**
+ * ⚠️ V4 (§10): O BROWSER OCIOSO FECHA. O singleton segue reusado entre requests próximos, mas um
+ * Chromium parado custa ~400 MB residentes — na máquina de 8 GB dos percursos era o que faltava
+ * para o navegador do smoke travar em `Runtime.callFunctionOn`. Depois de `OCIOSIDADE_MS` sem
+ * renderização, ele é encerrado; o próximo PDF paga o launch de novo (alguns segundos), nada mais.
+ */
+export const OCIOSIDADE_MS = 20_000;
 
 async function obterBrowser(): Promise<Browser> {
   if (browserPromise === null) {
@@ -29,6 +39,16 @@ async function obterBrowser(): Promise<Browser> {
     browserPromise = puppeteer.launch({ headless: true, args: ["--no-sandbox", "--disable-setuid-sandbox"] });
   }
   return browserPromise;
+}
+
+function agendarFechamentoOcioso(): void {
+  if (fechamentoOcioso !== null) clearTimeout(fechamentoOcioso);
+  fechamentoOcioso = setTimeout(() => {
+    fechamentoOcioso = null;
+    if (emVoo === 0) void fecharBrowser().catch(() => undefined);
+  }, OCIOSIDADE_MS);
+  // Não segura o processo vivo (o vitest e o `next start` encerram sem esperar por ele).
+  fechamentoOcioso.unref?.();
 }
 
 /** Encerra o browser reusado (o `afterAll` dos testes chama; a produção deixa vivo). */
@@ -60,6 +80,7 @@ export async function gerarPdfDoDemonstrativo(
   const corpo = renderizarCorpo(doc);
   const rodape = rodapeTemplate(hash, geradoEm);
 
+  emVoo += 1;
   const browser = await obterBrowser();
   const page = await browser.newPage();
   try {
@@ -77,5 +98,7 @@ export async function gerarPdfDoDemonstrativo(
     return { pdf, hash, nomeArquivo: nomeCanonico(p.nomeBase, doc.periodo) };
   } finally {
     await page.close();
+    emVoo -= 1;
+    agendarFechamentoOcioso();
   }
 }

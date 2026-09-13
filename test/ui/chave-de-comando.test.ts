@@ -58,7 +58,26 @@ export function balancoDaChave(fonte: string): { readonly formularios: number; r
 const ACOES_SEM_COMANDO: Record<string, string> = {
   "app/login/actions.ts": "entrar: autenticação, não escrita autenticada (o registro do LOGIN é próprio)",
   "app/(areas)/actions.ts": "sairAction: revoga a sessão e limpa o cookie; não passa pelo envelope",
+  "app/(areas)/integracoes/captura/page.tsx":
+    "acaoSimular: a simulação MOCK da captura chama o serviço com exigirSessao, sem o envelope de " +
+    "escrita autenticada — não consome a chave. Pendência CAPTURA-SEM-ENVELOPE.",
 };
+
+/**
+ * ⚠️ V4 (§10): A PRIMEIRA VERSÃO SÓ OLHAVA `actions.ts` — e `app/(areas)/despesa/anular-actions.ts`
+ * (e o gêmeo da receita) ficaram de fora: o percurso da cadeia da despesa acusou "COMANDO SEM
+ * CHAVE" ao anular um pagamento. A propriedade é "toda Server Action de app/", e Server Action
+ * é o que carrega a diretiva `"use server"` — no arquivo ou na função. É isso que se varre.
+ */
+export function acoesDoServidor(fonte: string): number {
+  const linhas = fonte.split("\n");
+  const primeiraNaoVazia = linhas.find((l) => l.trim() !== "" && !l.trim().startsWith("//") && !l.trim().startsWith("/*") && !l.trim().startsWith("*")) ?? "";
+  if (/^["']use server["'];?$/.test(primeiraNaoVazia.trim())) {
+    return (fonte.match(/^export async function/gm) ?? []).length;
+  }
+  // Diretiva por função: cada `"use server";` dentro de um corpo é uma action.
+  return (fonte.match(/^\s+["']use server["'];/gm) ?? []).length;
+}
 
 describe("a chave de comando cobre os chamadores", () => {
   it("t1: todo formulário de ação em app/(areas) e no molde manda <ChaveDeComando />, um por formulário", () => {
@@ -74,18 +93,29 @@ describe("a chave de comando cobre os chamadores", () => {
     ).toEqual([]);
   });
 
-  it("t2: toda Server Action de app/ passa por comComandoDoFormulario — ou declara aqui por que não", () => {
-    const fontes = arquivos(`${RAIZ}app`, (n) => n === "actions.ts");
+  it("t2: toda Server Action de app/ (todo arquivo com \"use server\") passa por comComandoDoFormulario — ou declara aqui por que não", () => {
+    const fontes = arquivos(`${RAIZ}app`, (n) => n.endsWith(".ts") || n.endsWith(".tsx")).filter((f) => /["']use server["']/.test(readFileSync(f, "utf8")));
     const faltando: string[] = [];
+    let actions = 0;
     for (const f of fontes) {
       const rel = f.slice(RAIZ.length);
       const fonte = readFileSync(f, "utf8");
-      const exportadas = (fonte.match(/^export async function/gm) ?? []).length;
+      const exportadas = acoesDoServidor(fonte);
+      actions += exportadas;
       const comandos = (fonte.match(/comComandoDoFormulario\(/g) ?? []).length;
-      if (exportadas !== comandos && ACOES_SEM_COMANDO[rel] === undefined) faltando.push(`${rel}: ${exportadas} exportada(s), ${comandos} com comando`);
+      if (exportadas !== comandos && ACOES_SEM_COMANDO[rel] === undefined) faltando.push(`${rel}: ${exportadas} action(s), ${comandos} com comando`);
     }
     expect(faltando).toEqual([]);
     expect(fontes.length).toBeGreaterThan(40);
+    // Os que estão fora de `actions.ts` são justamente os que a primeira versão não via.
+    expect(fontes.some((f) => f.endsWith("anular-actions.ts"))).toBe(true);
+    expect(actions).toBeGreaterThan(fontes.length);
+  });
+
+  it("t2b: o instrumento acusa — conta actions com diretiva de arquivo e com diretiva de função", () => {
+    expect(acoesDoServidor('"use server";\n\nexport async function a() {}\nexport async function b() {}\n')).toBe(2);
+    expect(acoesDoServidor('import x from "y";\n\nasync function a() {\n  "use server";\n}\nexport default function P() {}\n')).toBe(1);
+    expect(acoesDoServidor('// comentário\n"use server";\nexport async function a() {}\n')).toBe(1);
   });
 
   it("t3: o instrumento acusa — um formulário de ação sem a chave é apontado; um GET não conta", () => {

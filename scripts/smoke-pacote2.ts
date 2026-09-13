@@ -20,7 +20,7 @@ const BASE = process.argv[2] ?? "http://localhost:3010";
 const USUARIO = process.argv[3] ?? "admin@cg.pb.gov.br";
 const SENHA = process.argv[4] ?? process.env["SEED_ADMIN_SENHA"] ?? "";
 const SUF = String(Date.now()).slice(-6);
-const CLASSE = `1.2.3.1.1.${SUF.slice(0, 2)}`; // código da classe — único pelo sufixo
+const CLASSE = `1.2.3.1.1.${SUF}`; // código da classe — único pelo sufixo INTEIRO (dois dígitos colidiam entre rodadas no mesmo banco)
 const TOMB = `P2-${SUF}`;
 const TERMO = `TR-${SUF}`;
 
@@ -226,6 +226,18 @@ async function hrefsDoHistorico(page: Page, rotuloDoLink: string): Promise<reado
   return page.evaluate((t) => Array.from(document.querySelectorAll("a")).filter((a) => (a.textContent ?? "").trim() === t).map((a) => new URL(a.href).pathname), rotuloDoLink);
 }
 
+/**
+ * O link de análise do movimento cujo item do histórico diz `oQue` (ex.: "Avaliação inicial").
+ * V4: o item da competência POR BEM também aparece no histórico do bem e também leva a
+ * `/estornos/valor/` — escolher "o primeiro link de valor" pegava a depreciação, não a entrada.
+ */
+async function hrefDaAnaliseNoHistorico(page: Page, oQue: string): Promise<string | undefined> {
+  return page.evaluate((q) => {
+    const a = Array.from(document.querySelectorAll("li a")).find((x) => (x.textContent ?? "").trim() === "analisar estorno" && (x.closest("li")?.textContent ?? "").includes(q));
+    return a instanceof HTMLAnchorElement ? new URL(a.href).pathname : undefined;
+  }, oQue);
+}
+
 async function main(): Promise<void> {
   let navegador: Browser | undefined;
   try {
@@ -318,7 +330,8 @@ async function main(): Promise<void> {
     await irPara(page, hrefBem + "?aba=historico");
     const analises = await hrefsDoHistorico(page, "analisar estorno");
     conferir("histórico do bem: cada movimento vivo liga à análise do seu estorno", analises.length >= 1, `links: ${analises.length}`);
-    const analiseDaEntrada = analises.find((h) => h.includes("/estornos/valor/"));
+    const analiseDaEntrada = await hrefDaAnaliseNoHistorico(page, "Avaliação inicial");
+    conferir("histórico do bem: a ENTRADA (avaliação inicial) tem a sua análise, distinta do item da competência", analiseDaEntrada !== undefined && analiseDaEntrada.includes("/estornos/valor/"), `link: ${analiseDaEntrada ?? "nenhum"}`);
     if (analiseDaEntrada !== undefined) {
       const bloqueada = await irPara(page, analiseDaEntrada);
       const estado = await atributo(page, "[data-estorno]", "data-estorno");

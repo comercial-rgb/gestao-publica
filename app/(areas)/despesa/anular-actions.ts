@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { comComandoDoFormulario } from "../../../lib/portas/comando";
 import { anularExecucao, type TipoAnulavel } from "../../../lib/portas/anulacao";
 import { desmascararValor } from "../../../lib/format/mascaras";
 import { meioDiaCivil } from "../../../packages/datas/index";
@@ -32,6 +33,13 @@ export async function anularDespesaAction(
   _prev: EstadoAnulacao,
   formData: FormData
 ): Promise<EstadoAnulacao> {
+  // V4 (§10): esta action mora fora de `actions.ts` e ficou SEM o comando do formulário na
+  // unidade 1 — o percurso da cadeia da despesa acusou "COMANDO SEM CHAVE" ao anular. O guard
+  // `test/ui/chave-de-comando.test.ts` passou a varrer todo arquivo `"use server"` de `app/`.
+  return comComandoDoFormulario(formData, () => anularDespesa(formData));
+}
+
+async function anularDespesa(formData: FormData): Promise<EstadoAnulacao> {
   const tipoBruto = String(formData.get("tipo") ?? "");
   if (!ehTipo(tipoBruto)) return { erro: "Tipo de anulação inválido." };
   const tipo = tipoBruto;

@@ -122,6 +122,9 @@ rodar("cenário de aceite (ficha e dotação)", "npx", ["tsx", "prisma/seed/cena
 rodar("cenário SAGRES (UG 99001)", "npx", ["tsx", "prisma/seed/sagres-poc.ts"], /posição \d+ da fila/);
 rodar("operador restrito (percurso de dois atores)", "npx", ["tsx", "scripts/poc-usuario-restrito.ts"]);
 rodar("roteiros da dívida ativa (fonte com motivo)", "npx", ["tsx", "prisma/seed/roteiros-patrimoniais.ts"]);
+// V4 (§10): o percurso do ENT02 (protocolo) precisa dos assuntos, setores e tipos de comunicado; o seed
+// é idempotente por recusa nomeada (reusa o que já existe).
+rodar("cenário do ENT02 (protocolo, comunicação, suporte)", "npx", ["tsx", "prisma/seed/cenario-ent02.ts"]);
 
 // (5) permissões versionadas e a configuração de DEMONSTRAÇÃO dos roteiros
 rodar("versionar roteiros existentes", "npx", ["tsx", "scripts/versionar-roteiros-existentes.ts"]);
