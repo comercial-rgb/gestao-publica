@@ -438,6 +438,10 @@ enum AcaoDoSistema {
   CANCELAR_CALCULO_DA_FOLHA
   FECHAR_FOLHA
   CONSULTAR_FOLHA
+
+  // V6 P2.4 — o portal do servidor: a leitura do PRÓPRIO vínculo e dos PRÓPRIOS contracheques.
+  // Não abre a folha do ente: a porta recorta pela pessoa da sessão.
+  CONSULTAR_PORTAL_DO_SERVIDOR
   // ── V4 (§8, Fila A) — M02b, o planejamento PLURIANUAL (PPA e LDO): dez ações para vinte
   // serviços, agrupadas pelos ANEXOS DA LRF (ver `acoes.ts`). Conciliado do siafic-cg c04ad5a. ──
   CADASTRAR_PPA

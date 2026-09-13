@@ -383,6 +383,20 @@ export function derivarPessoal(
   return saida;
 }
 
+export function derivarPortalDoServidor(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null);
+    if (!administra) continue;
+    if (perfil.permissoes.some((p) => p.acao === "CONSULTAR_PORTAL_DO_SERVIDOR" && p.unidadeOrcId === null)) continue;
+    saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao: "CONSULTAR_PORTAL_DO_SERVIDOR", unidadeOrcId: null });
+  }
+  return saida;
+}
+
 export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
   {
     versao: 1,
@@ -468,6 +482,15 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "O M33 folha de pagamento (RH bloco 2, V6 P2.3) chegou com sete acoes e a leitura CONSULTAR_FOLHA. Quem concede " +
       "acao a perfil no escopo global recebe as oito no global; a segregacao (quem calcula, quem fecha) fica a cargo do administrador.",
     derivar: derivarFolha,
+  },
+  {
+    versao: 11,
+    nome: "portal-do-servidor",
+    descricao:
+      "O portal do servidor (V6 P2.4) chegou com a leitura CONSULTAR_PORTAL_DO_SERVIDOR, que abre SO o que e do proprio " +
+      "usuario (a porta recorta pela pessoa da sessao). Quem concede acao a perfil no escopo global a recebe; quem " +
+      "administra cria o perfil dos servidores e a concede a eles.",
+    derivar: derivarPortalDoServidor,
   },
 ];
 

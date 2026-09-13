@@ -80,7 +80,7 @@ export const CANAIS: readonly Canal[] = [
   { id: "gestao-interna", rotulo: "Gestão interna", descricao: "Contabilidade, orçamento, compras, patrimônio, protocolo e administração — com sessão.", href: "/login" },
   { id: "transparencia", rotulo: "Transparência", descricao: "Demonstrativos fiscais em PDF, sem cadastro.", href: "/transparencia/demonstrativos" },
   { id: "consulta-publica", rotulo: "Acompanhar processo", descricao: "Situação e movimentos pelo número e pelo código verificador.", href: "/consulta" },
-  { id: "portal-do-servidor", rotulo: "Portal do Servidor", descricao: "Vínculo, comprovantes e pedidos do servidor.", href: null },
+  { id: "portal-do-servidor", rotulo: "Portal do Servidor", descricao: "Vínculo, dependentes e contracheques — com a sua conta de servidor.", href: "/portal-do-servidor" },
   { id: "portal-do-cidadao", rotulo: "Portal do Cidadão", descricao: "Serviços publicados e protocolo pelo requerente.", href: null },
   { id: "fornecedor", rotulo: "Fornecedor", descricao: "Documentos e complementos pelo representante da empresa.", href: null },
 ];

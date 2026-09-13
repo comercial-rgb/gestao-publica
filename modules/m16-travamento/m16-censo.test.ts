@@ -504,7 +504,7 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   = 229.
     // 229 de mutação (uma por serviço, com as duas fusões abaixo) + 18 de LEITURA
     // (`ACOES_DE_LEITURA`, uma por área de navegação — orquestração V3, 4.1).
-    expect(TODAS_AS_ACOES.length).toBe(269 + 20); // 269 de mutação (+15 V6 P2 pessoal, +7 V6 P2.3 folha) + 20 de leitura (+CONSULTAR_PESSOAL, +CONSULTAR_FOLHA)
+    expect(TODAS_AS_ACOES.length).toBe(269 + 21); // 269 de mutação (+15 V6 P2 pessoal, +7 V6 P2.3 folha) + 21 de leitura (+CONSULTAR_PESSOAL, +CONSULTAR_FOLHA, +CONSULTAR_PORTAL_DO_SERVIDOR)
     expect(ACAO_DO_SERVICO.encerrarExercicio).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.encerrarExercicioComRestos).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.importarExtrato).toBe("IMPORTAR_EXTRATO");

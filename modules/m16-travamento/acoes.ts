@@ -483,7 +483,8 @@ export type AcaoDeLeitura =
   | "CONSULTAR_INTEGRACOES"
   | "CONSULTAR_SUPORTE"
   | "CONSULTAR_PESSOAL"
-  | "CONSULTAR_FOLHA";
+  | "CONSULTAR_FOLHA"
+  | "CONSULTAR_PORTAL_DO_SERVIDOR";
 
 /**
  * O rol das ações de leitura, para o bootstrap, os perfis de fixture e a política de
@@ -511,6 +512,7 @@ export const ACOES_DE_LEITURA: readonly AcaoDeLeitura[] = [
   // V6 P2 — a área de pessoal (M32).
   "CONSULTAR_PESSOAL",
   "CONSULTAR_FOLHA",
+  "CONSULTAR_PORTAL_DO_SERVIDOR",
 ];
 
 /** É uma ação de leitura? — o discriminador que a política de leitura e os testes usam. */

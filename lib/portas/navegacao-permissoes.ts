@@ -400,6 +400,7 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   CONSULTAR_SUPORTE: "suporte",
   CONSULTAR_PESSOAL: "pessoal",
   CONSULTAR_FOLHA: "folha",
+  CONSULTAR_PORTAL_DO_SERVIDOR: "portal-do-servidor",
 };
 
 /**

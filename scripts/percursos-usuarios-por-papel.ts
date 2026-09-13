@@ -69,6 +69,15 @@ export const PAPEIS: readonly Papel[] = [
       // fechamento que vai ao empenho), e essa separação é percorrida pelo smoke da folha.
       "CONFIGURAR_TABELAS_DA_FOLHA", "CADASTRAR_RUBRICA", "LANCAR_NA_FOLHA", "ABRIR_FOLHA", "CALCULAR_FOLHA", "CANCELAR_CALCULO_DA_FOLHA", "CONSULTAR_FOLHA"],
   },
+  {
+    identificador: "servidor@percursos.local",
+    nome: "Servidora do quadro (percurso)",
+    perfil: "SERVIDOR — PERCURSO",
+    descricao: "O quadro: vê a PRÓPRIA ficha e os PRÓPRIOS contracheques no portal do servidor. Não cadastra nada, não calcula folha, não abre o pessoal do ente.",
+    // ⚠️ UMA AÇÃO SÓ, e é de leitura. O recorte por pessoa é da porta (`portal-do-servidor.ts`),
+    // não da permissão: dar `CONSULTAR_PESSOAL` a cada servidor abriria a ficha de todo mundo.
+    acoes: ["CONSULTAR_PORTAL_DO_SERVIDOR"],
+  },
 ];
 
 async function main(): Promise<void> {

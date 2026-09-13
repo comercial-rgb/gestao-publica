@@ -74,7 +74,10 @@ describe("identidade — nenhum literal de entidade na superfície", () => {
   it("t4: um canal só existe com rota — os que ainda não existem têm href nulo, e nenhum menu vazio os promete", async () => {
     const { CANAIS } = await import("../../lib/identidade/produto.js");
     const semRota = CANAIS.filter((c) => c.href === null).map((c) => c.id);
-    expect(semRota).toEqual(["portal-do-servidor", "portal-do-cidadao", "fornecedor"]);
+    // ⚠️ ENCOLHE, NUNCA CRESCE SEM CÓDIGO: o portal do servidor saiu daqui em V6 P2.4, quando a
+    // rota passou a existir (`/portal-do-servidor`). Um canal que voltasse a ter `href` sem tela
+    // seria promessa na entrada — e é isto que este teste impede.
+    expect(semRota).toEqual(["portal-do-cidadao", "fornecedor"]);
     for (const c of CANAIS) if (c.href !== null) expect(c.href.startsWith("/")).toBe(true);
   });
 });

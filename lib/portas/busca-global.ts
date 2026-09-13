@@ -26,6 +26,7 @@ import {
   type SlugDeArea,
   PESSOAL,
   FOLHA,
+  PORTAL_DO_SERVIDOR,
 } from "../navegacao.js";
 import { RECURSOS_DO_MOLDE } from "./recursos/definicoes.js";
 import { filtrarPorTexto, type DestinoDaBusca } from "../busca-global.js";
@@ -69,6 +70,7 @@ const GRUPOS_DE_RELATORIO: readonly (readonly [
   ["contabilidade", "Contabilidade", CONTABILIDADE],
   ["pessoal", "Pessoal", PESSOAL],
   ["folha", "Folha", FOLHA],
+  ["portal-do-servidor", "Portal do Servidor", PORTAL_DO_SERVIDOR],
   ["administracao", "Administração", ADMINISTRACAO],
   ["cadastros", "Cadastros", CADASTROS],
   ["protocolo", "Protocolo", PROTOCOLO],

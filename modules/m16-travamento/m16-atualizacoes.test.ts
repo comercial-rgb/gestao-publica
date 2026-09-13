@@ -86,8 +86,12 @@ describe("a regra da v1 — leitura por área, no escopo em que o perfil já age
       { id: "op", nome: "OPERADOR", permissoes: [{ acao: "EMPENHAR", unidadeOrcId: null }] },
     ];
     const derivadas = derivarLeituraPorArea(perfis, AREA_DA_ACAO);
+    // ⚠️ A LISTA CRESCE QUANDO NASCE UMA ÁREA SEM MUTAÇÃO, e isso é a regra funcionando: o
+    // portal do servidor (V6 P2.4) só tem leitura, e por isso cai no mesmo caminho da
+    // transparência interna — quem administra permissões no global a recebe, e mais ninguém.
     expect(derivadas).toEqual([
       { perfilId: "adm", perfilNome: "ADM", acao: "CONSULTAR_ADMINISTRACAO", unidadeOrcId: null },
+      { perfilId: "adm", perfilNome: "ADM", acao: "CONSULTAR_PORTAL_DO_SERVIDOR", unidadeOrcId: null },
       { perfilId: "adm", perfilNome: "ADM", acao: "CONSULTAR_TRANSPARENCIA", unidadeOrcId: null },
       { perfilId: "adm-ug", perfilNome: "ADM-DE-UNIDADE", acao: "CONSULTAR_ADMINISTRACAO", unidadeOrcId: UG_A },
       { perfilId: "op", perfilNome: "OPERADOR", acao: "CONSULTAR_DESPESA", unidadeOrcId: null },
@@ -251,6 +255,7 @@ describe("instalação limpa e atualização — no banco", () => {
       { versao: 8, previa: 0, aplicada: false },
       { versao: 9, previa: 0, aplicada: false },
       { versao: 10, previa: 0, aplicada: false },
+      { versao: 11, previa: 0, aplicada: false },
     ]);
   });
 

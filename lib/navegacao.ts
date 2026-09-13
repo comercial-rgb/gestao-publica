@@ -35,7 +35,8 @@ export type SlugDeArea =
   | "integracoes"
   | "suporte"
   | "pessoal"
-  | "folha";
+  | "folha"
+  | "portal-do-servidor";
 
 export interface AreaNav {
   /** O segmento da rota (`/planejamento`). */
@@ -66,6 +67,7 @@ export const AREAS: readonly AreaNav[] = [
   { slug: "suporte", rotulo: "Suporte", descricao: "Canais de atendimento e prazos de resposta contratados." },
   { slug: "pessoal", rotulo: "Pessoal", descricao: "Servidores, vínculos e histórico funcional; cargos e lotações do quadro. Cargo, lotação e salário são derivados dos eventos." },
   { slug: "folha", rotulo: "Folha", descricao: "Folha de pagamento: tabelas do ente, rubricas, lançamentos, cálculo com memória por servidor e fechamento." },
+  { slug: "portal-do-servidor", rotulo: "Portal do Servidor", descricao: "O que é SEU: vínculos, dependentes e contracheques das folhas fechadas — recortado pela pessoa da sessão." },
 ];
 
 /** Um relatório navegável (rota + rótulo + uma linha). Fonte ÚNICA da landing e do submenu. */
@@ -205,6 +207,17 @@ export const ADMINISTRACAO: readonly RelatorioNav[] = [
   { href: "/administracao/senha", numero: "Senha", rotulo: "Trocar Senha", descricao: "Troca a própria senha — revoga as sessões abertas." },
   { href: "/administracao/apresentacao", numero: "Apresentação", rotulo: "Apresentação do ente", descricao: "Nome de exibição, imagem institucional, contatos, tema e canais — versionado, com autor." },
   { href: "/administracao/sistema", numero: "Sistema", rotulo: "Sobre o sistema", descricao: "Proveniência do build, ambiente e as atualizações de permissões instaladas." },
+];
+
+/**
+ * PORTAL DO SERVIDOR (V6 P2.4) — fonte única da landing e do submenu.
+ *
+ * ⚠️ UMA ENTRADA SÓ, e é decisão: tudo o que o servidor vê de si mesmo cabe numa página (ficha,
+ * dependentes, contracheques). Um submenu com três itens que levam a três recortes do mesmo dado
+ * seria menu para parecer sistema.
+ */
+export const PORTAL_DO_SERVIDOR: readonly RelatorioNav[] = [
+  { href: "/portal-do-servidor", numero: "Minha ficha", rotulo: "Minha ficha e meus contracheques", descricao: "Seus vínculos com cargo, lotação e situação de hoje, seus dependentes e os contracheques das folhas já fechadas." },
 ];
 
 /** FOLHA (M33) — fonte única da landing e do submenu. */
