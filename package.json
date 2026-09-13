@@ -70,6 +70,7 @@
     "smoke:pessoal": "tsx scripts/trinco-de-maquina.ts 'smoke do pessoal' -- npx tsx scripts/smoke-pessoal.ts",
     "smoke:folha": "tsx scripts/trinco-de-maquina.ts 'smoke da folha' -- npx tsx scripts/smoke-folha.ts",
     "smoke:portal-do-servidor": "tsx scripts/trinco-de-maquina.ts 'smoke do portal do servidor' -- npx tsx scripts/smoke-portal-do-servidor.ts",
+    "smoke:apropriacao-da-folha": "tsx scripts/trinco-de-maquina.ts 'smoke da apropriacao da folha' -- npx tsx scripts/smoke-apropriacao-da-folha.ts",
     "permissoes:atualizar": "tsx scripts/aplicar-atualizacao-de-permissoes.ts",
     "roteiros:versionar": "tsx scripts/versionar-roteiros-existentes.ts",
     "seed:roteiros-demo": "tsx prisma/seed/roteiros-demo.ts",
