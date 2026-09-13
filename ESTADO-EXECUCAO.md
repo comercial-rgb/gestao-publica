@@ -6,10 +6,10 @@
 |---|---|
 | HEAD | ver `git log -1` — a seção 51 nomeia o SHA da aplicação congelada e o do percurso |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | **V6 produto integrado** (`docs/lotes/V6-produto-integrado.md`): P0 identidade e shell (52), P1 vínculos (53, 54), P1.3 percurso por papel e **P2.1/P2.2 pessoal M32** (55), **P2.3 folha M33** (56) ENTREGUES; em curso P2.3b apropriação contábil da folha e P2.4 portal do servidor. A publicação da V5 está SUSPENSA |
-| Último resultado | seção 56 — M33 folha: tabelas do ente (nenhum valor normativo no código), cálculo como fato numerado com memória e sha256 por contracheque, fechamento pela contabilidade; o regime previdenciário virou FATO DATADO no M32. `next build` em `9f3c512`; smoke-folha **46/46**, smoke-pessoal 29/29, cadeia-por-papel 23/23, identidade 46/46; m33-folha 38/38, m32-pessoal 57/57, censo 296 serviços / 269+20 ações, atualizações v10, rápida 852/852; catálogo VALIDADO 67 / PARCIAL 82 / IMPLEMENTADO 67 / AUSENTE 144 (363 de 2.037 verificadas) |
+| Frente em execução | **V6 produto integrado** (`docs/lotes/V6-produto-integrado.md`): P0 identidade e shell (52), P1 vínculos (53, 54), P1.3 papéis (55), **P2.1/P2.2 pessoal M32** (55), **P2.3 folha M33** (56) e **P2.4 portal do servidor** (57) ENTREGUES; em curso P2.3b apropriação contábil da folha, depois P3. A publicação da V5 está SUSPENSA |
+| Último resultado | seção 57 — portal do servidor: a própria ficha, os próprios dependentes e os contracheques das folhas FECHADAS, recortados pela pessoa da sessão (nenhum id na entrada da porta). `next build` em `259af64`; smoke-portal **24/24**, smoke-folha 46/46, smoke-pessoal 29/29, smoke-identidade 46/46; portal-do-servidor 10/10, censo 296 serviços / 269+21 ações, atualizações v11, rápida 852/852; catálogo VALIDADO 67 / PARCIAL 84 / IMPLEMENTADO 67 / AUSENTE 145 |
 | Pendências relevantes | do M33 (56.3): `APROPRIACAO-CONTABIL-DA-FOLHA`, `FOLHAS-NAO-MENSAIS`, `FALTAS-NA-FOLHA`, `PENSAO-ALIMENTICIA-NA-FOLHA`, `CONSIGNACOES-E-MARGEM`, `ARREDONDAMENTO-DA-FOLHA`, `CONTRACHEQUE-EM-PDF`, `RESUMO-DA-FOLHA`, `PATRONAL-NA-MEMORIA`; do M32 (55.3): `PESSOAL-SEM-TELA-CALENDARIO-CONTRATO-AVALIACAO`, `REINTEGRACAO-DE-VINCULO`, `PIS-SEM-DV`, `ALTERACAO-CADASTRAL-DO-SERVIDOR`, `MIGALHA-COM-ID`, `SELETOR-DE-UNIDADE-A-360`; `CONTAS-BANCARIAS-COM-MESMA-CONTABIL-NOS-SEEDS` e `FICHA-DE-MATERIAL-NOS-PERCURSOS` (55.0); `MENSAGEM-SOME-COM-A-LINHA` (P4); `ENDERECO-DO-ENTE`; `MARCA-NOS-PDFS`; seções 35.7 a 43.5, 52.4, 53.3, 54.3 |
-| Próximo passo | seção 56.7 — P2.3b: a apropriação contábil da folha fechada (empenho e liquidação pelo M05, por grupo de rubrica x ficha), depois P2.4 portal do servidor |
+| Próximo passo | seção 57.6 — P2.3b: a folha fechada vira despesa (empenho por grupo de rubrica × ficha, numeração determinística e idempotente, retomável), depois P3 |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -6279,3 +6279,66 @@ que um vínculo por nome entregaria o contracheque de uma à outra.
 | `test:rapido` | 852/852 |
 | permissões v11 (dev e percursos) | 1 concessão em 1 perfil, cada |
 | `percursos-usuarios-por-papel` | `servidor@percursos.local` criado com o perfil "SERVIDOR — PERCURSO" (1 permissão) |
+
+### 57.3 Percursos sob o build `259af64`
+
+| Smoke | Resultado |
+|---|---|
+| `smoke-portal-do-servidor.ts` (três papéis: RH, administrador, contabilidade e a própria servidora) | r1 21/2, r2 23/1, **r3 24/24** |
+| `smoke-folha.ts` | **46/46** (regressão do M33 sob o build novo) |
+| `smoke-pessoal.ts` | **29/29** |
+| `smoke-identidade.ts` | **46/46** |
+
+O percurso do portal, no que ele prova: o RH cadastra a pessoa, abre a ficha, admite com regime e
+registra o dependente; o ADMINISTRADOR cria o vínculo da conta com a pessoa PELO CPF; o RH calcula
+a folha e, **antes do fechamento, o portal da servidora não mostra contracheque nenhum**; a
+contabilidade fecha; aí sim a competência aparece, e o contracheque abre a conta de cada linha com
+a impressão digital; e as três negativas — a servidora não abre a folha do ente, não abre o
+cadastro de pessoal, e um id de folha que não é dela responde 404 em vez do contracheque alheio.
+
+**Dois defeitos, os dois no instrumento** (nenhum no produto): a mensagem de sucesso do vínculo e
+do desvínculo SOME com o formulário que a produziu — gravado o vínculo, a linha passa a oferecer
+"Desvincular" e a ilha deixa de existir (é a pendência `MENSAGEM-SOME-COM-A-LINHA`, a mesma da
+conciliação); e o passo do 404 navegava por um helper que trata resposta fora do 2xx como falha de
+execução — correto em toda outra passagem, e cego justamente na que precisa VER a recusa.
+
+**Capturas:** `.registro-de-execucao/v6-capturas/depois-259af64-portal/` (360/768/1366 px, com a
+conta da servidora). O menu dela tem UMA área — a captura mostra isso.
+
+### 57.4 Catálogo por natureza
+
+Superfície parcial: 5.39.23 (contracheque por autoatendimento — falta a emissão em PDF e a
+configuração de liberação), 5.39.25 (ficha financeira na tela — falta filtro por período e
+impressão). Ausência confirmada: 5.12.108 (liberação configurável por tipo de folha e regime — o
+único critério é a folha estar fechada, e ele é do sistema).
+
+### 57.5 Invariantes verificadas
+
+Autorização no servidor por ação nomeada, e RECORTE por identidade além dela (a ação abre a área;
+a pessoa da sessão decide o conteúdo); nenhum id de pessoa ou de vínculo na entrada da porta;
+404 em vez de conteúdo alheio; nenhum identificador de cláusula na tela; menu pelo
+`PermissaoDePerfil`; folha aberta não vira comprovante.
+
+### 57.6 Próximo ponto exato
+
+**P2.3b — apropriação contábil da folha (TR 5.12.71/72), sobre o M05.** O desenho já está
+decidido pela leitura feita nesta sessão, e fica registrado para a próxima unidade não recomeçar:
+
+- **Grupo de empenho da folha** (cadastro do ente): quais RUBRICAS ele empenha, em qual FICHA, com
+  qual categoria da ordem cronológica, e se empenha POR SERVIDOR (credor = o CPF de cada um) ou
+  em UM empenho do grupo (credor = a pessoa declarada). As duas práticas existem nos entes, e
+  escolher uma por dentro seria inventar norma.
+- **Só o BRUTO é empenhado.** Os descontos do contracheque (contribuição, imposto) não são despesa
+  orçamentária: são retenções que viajam no PAGAMENTO (o M05/M09 já as compõe). A parte PATRONAL é
+  despesa própria e depende de `aliquotaPatronal` entrar na memória (`PATRONAL-NA-MEMORIA`).
+- **Numeração determinística**, e é o que dá idempotência: o empenho da folha nasce com
+  `numero = <série do grupo>/<competência>/<matrícula>`, e `@@unique([fichaId, numero])` do M05 faz
+  a segunda tentativa bater na constraint. Reexecutar a apropriação não duplica empenho.
+- **A apropriação NÃO é atômica entre empenhos**, e a razão é medida: `deps.despesa.empenhar` abre
+  a própria transação no adapter (`adapter-prisma.ts`), e uma transação única para mil empenhos
+  travaria as fichas por minutos. Ela é RETOMÁVEL: cada empenho gravado é um fato; a que parar por
+  falta de saldo diz em qual ficha parou, e continuar é reexecutar.
+- **A liquidação fica para depois do empenho** (`LIQUIDACAO-DA-FOLHA`): o fechamento é o atesto do
+  cálculo, mas quem liquida assume responsabilidade própria e a tela da despesa já existe.
+
+Depois: **P3** — mesa de trabalho (M21/M22/M23), fluxos de processo e carta de serviços.

@@ -398,7 +398,10 @@ async function main(): Promise<void> {
         const rDesv = await preencherEEnviar(page, `form[data-acao="desvincular-pessoa"][data-usuario="${SERVIDORA}"]`, [
           { sel: 'input[name="motivo"]', valor: `percurso ${SUF}: a conta passa a ser da servidora desta execução` },
         ]);
-        conferir("2.1 conta desvinculada da pessoa da execução anterior", rDesv.tipo === "ok", rDesv.texto.slice(0, 200));
+        // Mesma pendência MENSAGEM-SOME-COM-A-LINHA: desvinculado, o formulário volta a ser o de
+        // VINCULAR e a mensagem vai junto. O efeito é conferido pelo passo seguinte — vincular só
+        // é possível numa conta sem pessoa.
+        conferir("2.1 conta desvinculada da pessoa da execução anterior", rDesv.tipo !== "erro", `${rDesv.tipo}: ${rDesv.texto.slice(0, 200)}`);
         await irPara(page, `/administracao/usuarios?q=${encodeURIComponent(SERVIDORA)}`);
       }
       const rVinc = await preencherEEnviar(page, `form[data-acao="vincular-pessoa"][data-usuario="${SERVIDORA}"]`, [

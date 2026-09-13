@@ -6063,8 +6063,8 @@
       "candidato_reaproveitamento": "saas-municipal:packages/folha-engine (outro ORM, exige reimplementacao Decimal)",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V6 P2.4: o portal libera o contracheque por um critério SÓ — a folha estar FECHADA —, e esse critério é do sistema, não configurável. Não há liberação por tipo de folha e regime, nem data futura de liberação, nem liberação antes do encerramento. Marcado ausente para que a existência do portal não seja lida como atendimento desta configuração.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.12.109",
@@ -21896,9 +21896,9 @@
       "frente": "ENT09",
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papéis: rh@percursos.local (admite), admin@cg.pb.gov.br (cria a conta e vincula pela CPF), contabilidade@percursos.local (fecha) e servidor@percursos.local (o próprio servidor) · contexto: banco dos percursos, next build + next start em 3010, build 259af64, 2026-09-13 · passos: pessoa e ficha → admissão com regime → dependente → vínculo da conta à pessoa PELO CPF → folha calculada → ANTES do fechamento o portal não mostra contracheque → fechamento pela contabilidade → /portal-do-servidor mostra a ficha e a competência → contracheque com a conta de cada linha e o sha256 → negativas: a servidora não abre a folha nem o pessoal, e id de folha alheia responde não encontrado · obtido: ver ESTADO §57.",
+      "evidencia": "V6 P2.4: o servidor entra com a PRÓPRIA conta em /portal-do-servidor e vê os contracheques das folhas já FECHADAS, cada um com a conta de cada rubrica e a impressão digital (sha256) do cálculo — autoatendimento sem pedir nada ao RH. O recorte é a pessoa da sessão (vínculo explícito usuário → pessoa, pelo CPF): a porta não recebe id de servidor, e pedir a folha certa com outra conta devolve vazio (test/portal-do-servidor.test.ts, fixture N=2 com homônimas). ⚠️ FALTAM: a EMISSÃO em PDF (o contracheque é tela), e a configuração da entidade sobre o que liberar por tipo de folha e regime (5.12.108).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.39.24",
@@ -21925,8 +21925,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V6 P2.4: o portal lista os contracheques do servidor por competência, com proventos, descontos e líquido — é a ficha financeira dele, na tela. ⚠️ FALTAM o filtro por período e a IMPRESSÃO (não há PDF), que é o que o item pede.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.39.26",
