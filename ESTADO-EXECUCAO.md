@@ -6,10 +6,10 @@
 |---|---|
 | HEAD | ver `git log -1` — a seção 35 nomeia o commit de cada unidade |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | **Sessão noturna V4** (`docs/lotes/V4-sessao-noturna.md`): unidades 1 (contrato de comando, §45), 2 (competência por bem, §46) 3 (documentos estáveis, §47), 4 (liquidação de material, §48) e 5 (CNPJ alfanumérico e catálogo, §49) concluídas; a seguir o build com os percursos (§10) e, a liquidação de material (§6, stash preservado), CNPJ/catálogo (§7) e a cadeia planejamento→contratação→despesa (§8) |
-| Último resultado | seção 49 (CNPJ alfanumérico: 816/816 rápidos, 238/238 dirigidos, tsc ×3 limpos; catálogo 54/51/76) |
+| Frente em execução | **Sessão noturna V4** (`docs/lotes/V4-sessao-noturna.md`): unidades 1–5 (§45–§49) entregues; **§50**: percursos sob `next build`/`next start` (§10) e a Fila A (§8) — M02b (PPA/LDO) conciliado do siafic-cg e a contratação (M11) pela tela |
+| Último resultado | seção 50 — 12 smokes verdes sob o build (pacote2 33/33, plurianual 31/31, contratação 18/18, cadeia 23/23, ent02 43/43, visual 29/29…); rápida 844/844; m02b 36/36; censo/atualizações verdes; catálogo 56/57/75/140/3/1706 |
 | Pendências relevantes | seções 35.7, 36.4, 37.5, 38.5 a 43.5; as anteriores em §19 e nos `MODULO.md` |
-| Próximo passo | seção 49.5 — `next build` + `next start` e os percursos centrais (V4 §10); depois a Fila A (V4 §8) |
+| Próximo passo | seção 50.6 — compras com itens na tela (solicitação → pesquisa → ordem → recebimento), nota fiscal recebida, Fila B (RH) e Fila C; `test:fuso` e o portão integral no candidato |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -5430,3 +5430,124 @@ render mais**, porque três domínios novos consomem o lote inteiro. As três me
 contradizem: **a razão cláusulas-por-lote depende da natureza do lote.** Censo rende
 cobertura, modelo rende situação, superfície rende validação — e só a terceira é a que o
 servidor municipal enxerga.
+
+## 50. Sessão noturna V4 — §10 (percursos sob o build) e §8 Fila A (planejamento plurianual e contratação)
+
+Pedido: `docs/lotes/V4-sessao-noturna.md`, seções 8 (Fila A), 10 e 11. Decisão: `docs/adr/ADR-fila-a-planejamento-e-contratacao.md`.
+Origem conciliada: `siafic-cg` em `c04ad5a760dfbce977ef7f28db7e42ee49d85761`, buscada por `git fetch` para
+`refs/reconciliacao/c04ad5a` no clone local `~/Developer/siafic-cg` (leitura; sem push). Commits desta seção:
+`5de3af6`, `6aeaa81`, `9a47e8d`, `5d7bb39` e o commit desta seção (ver `git log`).
+
+### 50.1 O que passou a funcionar
+
+**§10 — os percursos rodaram sob `next build` + `next start` (porta 3010, banco dos percursos), e acusaram:**
+
+- **Defeito real da unidade 1 (A01/A02):** as Server Actions fora de `actions.ts` — `app/(areas)/despesa/anular-actions.ts`
+  e `app/(areas)/receita/arrecadacoes/anular-actions.ts` — não passavam por `comComandoDoFormulario`, e o servidor
+  recusava a anulação com **COMANDO SEM CHAVE** (o percurso da cadeia da despesa mostrou; `RegistroDeOperacao` gravou
+  `ANULAR_PAGAMENTO ERRO`). Corrigido; o guard `test/ui/chave-de-comando.test.ts` passou a varrer **todo arquivo com
+  `"use server"`** de `app/` (mutação provada: remover o envelope de um deles põe o teste vermelho nomeando o arquivo).
+  `acaoSimular` da captura (POC MOCK, `exigirSessao`, sem envelope) declarado com motivo — pendência `CAPTURA-SEM-ENVELOPE`.
+- **O 500 em `/financeiro/conciliacao/periodo`** (a investigação pedida em 49.5) não era o `frame.join` do `next dev`: era a
+  identidade da conciliação (`diferença == Σ linhas sem vínculo`) acusando a conta `CC-500-01` no banco dos percursos,
+  com a exceção subindo crua de uma tela de LEITURA. Medido: a fonte 500 tem uma `ReceitaArrecadada` de 80.000,00 (seed
+  do cenário SAGRES) e a arrecadação não tem conta bancária (pendência do M04) — ela entra como fato de caixa da conta
+  sem contrapartida. Agora é `ConciliacaoNaoFechaError` e a tela mostra o estado (`data-nao-fecha`) com quanto sobra.
+  **A identidade continua não fechando naquele banco**; o encerramento do período (ENT03a) é demonstrável no banco de
+  desenvolvimento, não no dos percursos. Registrado em `modules/m09-tesouraria/MODULO.md` §6.1.
+- **O Chromium do PDF** ficava vivo no servidor (~400 MB residentes) e derrubava o navegador do smoke por memória:
+  `lib/pdf/gerar.ts` fecha o browser ocioso depois de 20 s (`OCIOSIDADE_MS`), sem fechar renderização em voo.
+- **Smokes:** `smoke-pacote2` escolhia "o primeiro link de valor" do histórico — que na V4 é o item da competência POR BEM,
+  não a entrada (corrigido: escolhe pelo `oQue`); o sufixo de dois dígitos da classe colidia entre rodadas; o termo vai para a
+  pessoa já vinculada ao usuário; `smoke-cadeia` confirma o pagamento pelo FATO (o dossiê), como a anulação já fazia;
+  `smoke-visual` deixou de medir checkbox com a régua do campo de 44 px (falso positivo em 9 caixas do razão) e os dois
+  cartões de `/contabilidade/lancamentos` passaram a `p-5` (eram 16 px — defeito real de padrão).
+- **O banco dos percursos** ganhou o seed do ENT02 no preparador, o mapeamento contábil de `CC-500-01` no seed de aceite
+  (era o que o ENT03a recusava) e a atualização de permissões v5.
+- **Timeouts:** uma rodada inteira (perfis, ent03a/b/c, ent06, visual, cadeia) caiu em `Navigation timeout 30000 ms`
+  enquanto o editor da máquina (tsserver, 670 MB) compilava as edições desta sessão; medido em isolamento,
+  `networkidle0` fecha em 1 s. Rerodados com a máquina quieta, passaram. Timeout não é aprovação nem defeito — registrado.
+
+**§8 Fila A — o planejamento plurianual (M02b) e a contratação (M11):**
+
+- **M02b** entrou como módulo daqui: 20 tabelas (`prisma/schema/m02b-plurianual.prisma`, back-relations nos models do M02),
+  domínio, serviços de criação (20), consultas, anexos puros da LDO (8) e testes — tudo da origem, como estava. A migration
+  foi gerada AQUI (`20260913100100_v4_plurianual_ppa_ldo`, com os 19 CHECKs da origem) e as dez ações do censo entraram em
+  migration separada (`20260913100000_v4_acoes_plurianual`). Atualização de permissões **v5** (quem cria ficha no escopo
+  global recebe as dez). Telas do molde: `/planejamento/ppa` (plano; programa no plano, receita prevista e série histórica
+  como ações), `/planejamento/ppa/programas` (indicador e ação do plano), `/planejamento/ppa/estrutura` (eixo, área,
+  público-alvo, macroação numa listagem), `/planejamento/ldo` (trâmite; prioridade, meta anual, risco, renúncia, alienação e
+  aplicação, dívida, RPPS, margem como ações; oito anexos PDF em `/planejamento/ldo/{id}/anexos/{chave}`). Submenu e busca.
+- **M11 pela tela:** `/licitacoes/processos` (criar; homologar, reservar dotação vinculada, liberar reserva, contratar) e
+  `/licitacoes/contratos` (aditivo, estorno de aditivo), com situação, valor atualizado e vigência DERIVADOS pelas funções
+  do M11. **O empenho informa contrato e reserva** (selects lidos no servidor) e a porta liga o M05 com
+  `criarM05DepsComContratos` — antes, qualquer `contratoId` era recusado. Submenu de licitações, landing e busca.
+- **Erros do Zod legíveis** nas actions novas (`lib/portas/mensagem-do-erro.ts`): "campo: mensagem", não JSON.
+
+### 50.2 Rotas utilizáveis, por papel
+
+| Papel (ação) | Rota | O que faz |
+|---|---|---|
+| CADASTRAR_PPA | `/planejamento/ppa` | cadastra o quadriênio (cinco exercícios é recusado nomeando) |
+| CADASTRAR_PROGRAMA_PPA | `/planejamento/ppa/{id}` · `/planejamento/ppa/programas/{id}` | programa no plano; indicador; ação com meta física (6 casas) e financeira |
+| CADASTRAR_RECEITA_PPA | `/planejamento/ppa/{id}` | receita prevista por natureza/fonte/ano; série histórica anterior ao plano (dentro é recusada) |
+| CADASTRAR_ESTRUTURA_PPA | `/planejamento/ppa/estrutura` | eixo, área temática (sob o eixo), público-alvo, macroação |
+| CADASTRAR_LDO … CADASTRAR_ALIENACAO_LDO | `/planejamento/ldo`, `/planejamento/ldo/{id}` | LDO com trâmite; nove ações do detalhe; PDFs dos anexos |
+| CADASTRAR_PROCESSO / HOMOLOGAR_PROCESSO | `/licitacoes/processos`, `/{id}` | processo; homologação como fato |
+| RESERVAR_DOTACAO / LIBERAR_RESERVA | `/licitacoes/processos/{id}` | reserva vinculada ao processo; liberação |
+| CADASTRAR_CONTRATO / REGISTRAR_ADITIVO / ESTORNAR_MOVIMENTO_CONTRATUAL | `/licitacoes/processos/{id}`, `/licitacoes/contratos/{id}` | contrato só em processo homologado; aditivo; estorno |
+| EMPENHAR | `/despesa/empenhos` | empenho com contrato e reserva informados |
+| CONSULTAR_PLANEJAMENTO / CONSULTAR_LICITACOES | as listas e detalhes acima | leitura |
+
+**Cadeia demonstrada pela interface** (smoke-contratacao, 18/18): processo → contratar antes de homologar (recusa nomeada)
+→ homologar → reservar → contratar → aditivo de prazo (vigência derivada muda) → empenho com contrato e reserva → o
+contrato mostra o empenho; o processo mostra a reserva consumida. Cadeia PPA/LDO (smoke-plurianual, 31/31): estrutura →
+plano → programa → receita/série → ação e indicador → LDO → meta anual (recusa da primária > total) → risco → alienação
+e aplicação → dois PDFs lidos por pdf.js → 404 para anexo inexistente.
+
+**Etapas do percurso da Fila A ainda NÃO demonstráveis:** plano anual de contratação e solicitação (3), pesquisa de preços e
+processo com ITENS (4), atos da licitação/adjudicação (5 — só a homologação), ata (6), nota fiscal recebida com conferência
+de fornecedor/itens/duplicidade/anexos (8). Recebimento/atesto/liquidação e pagamento administrativo já existem
+(cadeia da despesa, 23/23) — sem o documento fiscal como entidade. Pendências em 50.4.
+
+### 50.3 Comandos executados e resultados
+
+| Comando | Resultado |
+|---|---|
+| `next build` ×4 (5de3af6, 6aeaa81, 5d7bb39, +FormEmpenho) | OK (`.registro-de-execucao/v4-next-build-{3..6}.txt`) |
+| smokes sob `next start` 3010 (rodadas 1–6, `.registro-de-execucao/v4-percursos-3010*.txt`) | pacote2 **33/33**; plurianual **31/31**; contratação **18/18**; cadeia da despesa **23/23**; gestão do bem OK; acervo OK; eixo de valor OK; roteiros OK; perfis OK; pessoas 9/9; ent02 **43/43**; ent03b OK; ent03c OK; ent06 OK; ent10 OK; visual **29/29**; **ent03a: 12 passos e para na conciliação que não fecha** (dado do banco dos percursos, 50.1) |
+| migrations `20260913100000_v4_acoes_plurianual`, `20260913100100_v4_plurianual_ppa_ldo` em test/dev/percursos | aplicadas; `migrate diff --exit-code` sem diferença; papel de runtime reprovisionado ×3 |
+| `tsc` app (3584 MB), backend, scripts | limpos (o app e o scripts estouraram 2560 MB — o heap subiu para 3584) |
+| `test:rapido` | **844/844** (79 arquivos; +26: m02b anexos, atualizações v5, guards) |
+| dirigidos: `modules/m02b-plurianual` (36), `m16-censo`, `m16-atualizacoes`, `modelo-sem-caso-de-uso`, `usuarios-teste`, `test/molde`, `busca-global`, `test/ui` | **78/78** e **177/177** |
+| `test/pdf/pdf.test.ts` (fechamento ocioso do browser) | 5/5 |
+| guard `chave-de-comando` por mutação | vermelho nomeando `anular-actions.ts`; verde restaurado |
+| `marcar-catalogo --aplicar` | VALIDADO_LOCALMENTE 56, PARCIAL 57, IMPLEMENTADO_NAO_VALIDADO 75, AUSENTE_CONFIRMADO 140, DEPENDENCIA_EXTERNA 3, NAO_VERIFICADO 1706 (331 classificadas) |
+
+**Não executado:** `test:fuso` (o diff não tocou `packages/datas` nem guards de período; fica para o candidato); o
+**portão integral**; `test:tudo` desta seção — ver 50.5.
+
+### 50.4 Pendências (nomeadas)
+
+- `COMPRAS-COM-ITENS-NA-TELA` — solicitação, pesquisa de preços, ordem e recebimento têm serviço e não têm tela (entradas
+  de múltiplos itens; ilha à mão como a da liquidação).
+- `NOTA-FISCAL-RECEBIDA` — sem modelo de documento fiscal recebido.
+- `EXTRATO-DO-CONTRATO-PDF`, `CONVENIOS-DA-ORIGEM`, `VINCULO-PPA-LOA`, `PPA-LDO-VERSOES-E-EMENDAS` (ADR e `MODULO.md` do M02b).
+- `ZOD-LEGIVEL-NAS-ACTIONS-ANTIGAS` — só as actions novas formatam o ZodError.
+- `CAPTURA-SEM-ENVELOPE` — `acaoSimular` (POC) fora do envelope de escrita autenticada.
+- `ARRECADACAO-SEM-CONTA-BANCARIA` (M04, já registrada no M09) — é o que impede a conciliação de `CC-500-01` no banco dos
+  percursos.
+- Fila B (RH/portal do servidor) e Fila C (processo/cidadão), §9 (usuários sintéticos por função): não iniciadas.
+- O stash `11b7892` continua listado (incorporado em `63a3040`; droppar é decisão do operador).
+
+### 50.5 Portão do candidato
+
+`test:tudo` foi executado ao fim desta seção — resultado registrado em `.registro-de-execucao/v4-test-tudo-final.txt`
+e na linha abaixo desta (acrescentada depois da execução).
+
+### 50.6 Próximo ponto exato
+
+Compras com itens na tela (`COMPRAS-COM-ITENS-NA-TELA`): ilha `FormSolicitacaoDeCompra` com linhas de item (material,
+quantidade), depois pesquisa de preços (item × cotações), ordem de compra (itens com unitário; ficha; processo) e
+recebimento por item — ligando o recebimento à entrada física já existente (`recebimentoDeItemId` da V4 unidade 4). Em
+seguida a nota fiscal recebida como entidade (`NOTA-FISCAL-RECEBIDA`) e o percurso 8→10. Depois a Fila B.

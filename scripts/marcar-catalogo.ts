@@ -208,6 +208,139 @@ const PERCURSO_ENT11 = "scripts/smoke-roteiros.ts (17 passos, 0 falhas, 2026-09-
 const PERCURSO_ENT12 = "scripts/smoke-eixo-de-valor.ts (20 passos, 0 falhas, 2026-09-12):";
 
 const MAPA: Readonly<Record<string, Marca>> = {
+  // ═══ Sessão noturna V4 — §8 (Fila A: M02b e M11) e §10 (percursos sob next start) ═══
+  "5.19.36": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia:
+      "ENT05: TermoPatrimonial (RESPONSABILIDADE), individual/setorial/por responsável; emitir registra o movimento na " +
+      "mesma transação. V3 (pacote 2, unidade 5): tela /patrimonio/termos e PDF pela rota autenticada. V4 (§5): a " +
+      "EMISSÃO É CONGELADA na criação (dados + modelo + sha256 canônico), a segunda via reproduz a emissão, a posição " +
+      "atual é outro documento e o termo ASSINADO é anexável e conferido (m10-termo-documento.test.ts t4–t7). V4 (§10): " +
+      "o percurso que LÊ o texto do PDF (pdf.js) rodou sob next build + next start: 33/33 (smoke-pacote2, rodadas 3 e 4).",
+    rota_verificada:
+      "papel: EMITIR_TERMO_PATRIMONIAL e CONSULTAR_PATRIMONIO · " + "contexto: banco dos percursos (DATABASE_URL_PERCURSOS), next build + next start em 3010, build 5d7bb39/6aeaa81, 2026-09-13 · " +
+      "passos: /patrimonio/termos → criar → detalhe → PDF emitido (/patrimonio/termos/{id}/pdf) e posição atual (?via=atual) · " +
+      "esperado: o PDF emitido traz tombamento, responsável e declaração; a posição atual tem título e nota próprios · " +
+      "obtido: 33/33 · artefato: .registro-de-execucao/v4-percursos-3010-rodada3.txt e rodada4 (smoke-pacote2).",
+  },
+  "5.9.1.6": {
+    situacao: "PARCIAL",
+    evidencia:
+      "V4 §8 (M02b, conciliado do siafic-cg c04ad5a): o programa entra no PLANO com área temática, público-alvo, " +
+      "estratégia e valor previsto; o objetivo é o do Programa (M02) e não se repete; indicadores por programa " +
+      "(situação inicial e ao fim, seis casas). m02b-plurianual.test.ts; smoke-plurianual 31/31. ⚠️ FALTAM origem, " +
+      "diretrizes, fonte de financiamento e gerente responsável — não modelados.",
+    rota_verificada:
+      "papel: CADASTRAR_PPA / CADASTRAR_PROGRAMA_PPA (escrita) e CONSULTAR_PLANEJAMENTO (leitura) · " + "contexto: banco dos percursos (DATABASE_URL_PERCURSOS), next build + next start em 3010, build 5d7bb39/6aeaa81, 2026-09-13 · " +
+      "passos: /planejamento/ppa → criar plano → detalhe → Incluir programa no plano → /planejamento/ppa/programas/{id} → " +
+      "Registrar indicador · esperado: o histórico do programa traz o indicador · obtido: 31/31 (scripts/smoke-plurianual.ts) · " +
+      "artefato: .registro-de-execucao/v4-percursos-3010-rodada4.txt e rodada5.",
+  },
+  "5.9.1.11": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia:
+      "V4 §8 (M02b): PrevisaoReceitaPpa por natureza, FONTE e ano do quadriênio (@@unique), com o ano conferido contra o " +
+      "plano no serviço (fora do quadriênio é recusado nomeando — m02b-plurianual.test.ts t1) e a série histórica anterior " +
+      "ao plano (receita realizada, recusada dentro do quadriênio). smoke-plurianual 31/31.",
+    rota_verificada:
+      "papel: CADASTRAR_RECEITA_PPA · " + "contexto: banco dos percursos (DATABASE_URL_PERCURSOS), next build + next start em 3010, build 5d7bb39/6aeaa81, 2026-09-13 · " +
+      "passos: /planejamento/ppa/{id} → Prever receita do quadriênio (natureza, fonte, ano, valor) e Registrar receita de " +
+      "exercício anterior · esperado: a série dentro do quadriênio é recusada nomeando; a anterior entra; o histórico " +
+      "recarregado traz as duas · obtido: 31/31 · artefato: .registro-de-execucao/v4-percursos-3010-rodada5.txt.",
+  },
+  "5.9.1.16": {
+    situacao: "PARCIAL",
+    evidencia:
+      "V4 §8 (M02b): AcaoPpa com produto, unidade de medida, região, META FÍSICA (Decimal 18,6) e META FINANCEIRA por " +
+      "ação do plano, com unidade executora, função e subfunção; smoke-plurianual registra a ação com meta 3,5 km. " +
+      "⚠️ FALTAM a distribuição das metas POR EXERCÍCIO do PPA (a meta é do quadriênio) e a atualização durante a " +
+      "execução — pendência VINCULO-PPA-LOA.",
+    rota_verificada:
+      "papel: CADASTRAR_PROGRAMA_PPA · " + "contexto: banco dos percursos (DATABASE_URL_PERCURSOS), next build + next start em 3010, build 5d7bb39/6aeaa81, 2026-09-13 · " +
+      "passos: /planejamento/ppa/programas/{id} → Incluir ação no programa · esperado: o histórico traz a ação com " +
+      "3.500000 km e a meta financeira · obtido: 31/31 · artefato: .registro-de-execucao/v4-percursos-3010-rodada5.txt.",
+  },
+  "5.9.2.1": {
+    situacao: "PARCIAL",
+    evidencia:
+      "V4 §8 (M02b): LeiDiretrizesOrcamentarias por exercício (@@unique) com vigência e o TRÂMITE (envio, devolução, " +
+      "protocolo, sanção) em ordem conferida por Zod e CHECK; a situação é derivada das datas. smoke-plurianual cadastra " +
+      "a LDO e a lista diz NO LEGISLATIVO. ⚠️ FALTAM o grau do plano de contas e o texto jurídico do projeto/lei.",
+    rota_verificada:
+      "papel: CADASTRAR_LDO · " + "contexto: banco dos percursos (DATABASE_URL_PERCURSOS), next build + next start em 3010, build 5d7bb39/6aeaa81, 2026-09-13 · " +
+      "passos: /planejamento/ldo → criar (exercício, vigência, envio ao Legislativo) → lista filtrada por exercício · " +
+      "esperado: a LDO com o trâmite derivado · obtido: 31/31 · artefato: .registro-de-execucao/v4-percursos-3010-rodada5.txt.",
+  },
+  "5.9.2.5": {
+    situacao: "PARCIAL",
+    evidencia:
+      "V4 §8 (M02b): as PRIORIDADES da LDO relacionam a ação (M02, opcional) com produto, unidade e meta física; as " +
+      "metas anuais, riscos, renúncia, alienação/aplicação, dívida, RPPS e margem entram pelo detalhe e saem em oito " +
+      "anexos PDF (anexos/ldo.ts, testados por fechamento). ⚠️ FALTA a importação de PPA, LDO ou LOA anteriores — " +
+      "pendência PPA-LDO-VERSOES-E-EMENDAS.",
+    rota_verificada:
+      "papel: CADASTRAR_METAS_FISCAIS_LDO, CADASTRAR_RISCOS_FISCAIS_LDO, CADASTRAR_ALIENACAO_LDO · " + "contexto: banco dos percursos (DATABASE_URL_PERCURSOS), next build + next start em 3010, build 5d7bb39/6aeaa81, 2026-09-13 · " +
+      "passos: /planejamento/ldo/{id} → meta anual (primária > total recusada nomeando; depois aceita), risco fiscal " +
+      "(passivo 99), alienação e aplicação do produto → relacionados → PDF de metas anuais e de riscos fiscais " +
+      "(/planejamento/ldo/{id}/anexos/{chave}; chave desconhecida é 404) · esperado: o PDF lido por pdf.js traz o exercício, " +
+      "o resultado primário derivado (100.000,00), o passivo e a providência · obtido: 31/31 · artefato: rodada5.",
+  },
+  "5.9.3.45": {
+    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    evidencia:
+      "V4 §8 (M02b): RenunciaReceitaLdo com descrição, valor, compensação e valor da compensação (pode ser 0,00, não nulo); " +
+      "tela na LDO (ação 'Registrar renúncia de receita') e o anexo de renúncia em PDF (anexoRenunciaReceita, fechamento " +
+      "total == Σ linhas testado em m02b-anexos-ldo.test.ts). ⚠️ O percurso de navegador não exercitou a renúncia — " +
+      "só metas, riscos e alienação. O relatório do art. 5º, II é o anexo, sem conformidade com o MDF afirmada.",
+  },
+  "5.9.1.3": { situacao: "AUSENTE_CONFIRMADO", evidencia: "V4 §8: o PPA não escolhe grau do plano de contas nem nível de orçamento da despesa — a previsão é por natureza e fonte, a ação por produto e metas. Pendência PPA-LDO-VERSOES-E-EMENDAS (modules/m02b-plurianual/MODULO.md)." },
+  "5.9.1.13": { situacao: "AUSENTE_CONFIRMADO", evidencia: "V4 §8: não há projeção de cálculo do total a arrecadar e a gastar por ano do PPA; o que existe é a linha por ano da receita prevista e o valor previsto por programa. Pendência VINCULO-PPA-LOA." },
+  "5.9.1.26": { situacao: "AUSENTE_CONFIRMADO", evidencia: "V4 §8: as metas físicas do PPA existem por ação, mas não há meta REALIZADA nem consulta por ano/ação/produto. Pendência VINCULO-PPA-LOA." },
+  "5.9.1.29": { situacao: "AUSENTE_CONFIRMADO", evidencia: "V4 §8: não há relatório de avaliação dos resultados dos programas (programação × execução física e financeira). Pendência VINCULO-PPA-LOA." },
+  "5.9.2.8": { situacao: "AUSENTE_CONFIRMADO", evidencia: "V4 §8: a prioridade da LDO tem meta física, mas não há meta realizada nem reflexo no PPA. Pendência VINCULO-PPA-LOA." },
+  "5.9.2.20": { situacao: "AUSENTE_CONFIRMADO", evidencia: "V4 §8: não há memória de cálculo da STN; os anexos da LDO são tabelares e não afirmam conformidade com o MDF (modules/m02b-plurianual/MODULO.md)." },
+  "5.9.2.21": { situacao: "AUSENTE_CONFIRMADO", evidencia: "V4 §8: idem 5.9.2.20 — sem memória de cálculo, sem relatório dela." },
+  "5.9.2.22": {
+    situacao: "PARCIAL",
+    evidencia:
+      "V4 §8 (M02b): /planejamento/ppa/programas lista os programas do plano com filtro por plano e por programa, valor " +
+      "previsto somável e o detalhe com indicadores e ações (unidade executora, função, subfunção). ⚠️ É consulta de tela, " +
+      "não relatório impresso; não há emissão por entidade nem consolidado (ente único).",
+  },
+  "5.17.14": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} O processo se registra com número único, modalidade, objeto e valor licitado (\`ProcessoLicitatorio\`), e contrato em processo NÃO HOMOLOGADO é rejeitado com NADA gravado (m11.test.ts t2). V4 §8: TELA no molde (/licitacoes/processos) com a hipótese do art. 75 para a dispensa; o percurso cadastra o pregão, tenta contratar antes de homologar e vê a recusa nomeada, homologa, reserva e contrata (smoke-contratacao 18/18). ⚠️ FALTAM a DATA do processo (só \`criadoEm\`), as requisições de compra e as planilhas de preços na tela (pendência COMPRAS-COM-ITENS-NA-TELA).`,
+    rota_verificada:
+      "papel: CADASTRAR_PROCESSO, HOMOLOGAR_PROCESSO, CADASTRAR_CONTRATO · " + "contexto: banco dos percursos (DATABASE_URL_PERCURSOS), next build + next start em 3010, build 5d7bb39/6aeaa81, 2026-09-13 · " +
+      "passos: /licitacoes/processos → criar (pregão eletrônico, objeto, valor) → lista filtrada diz EM ANDAMENTO → " +
+      "detalhe → Cadastrar contrato (recusado: PROCESSO NÃO HOMOLOGADO) → Homologar → RECARREGADO diz HOMOLOGADO → " +
+      "Cadastrar contrato · obtido: 18/18 (scripts/smoke-contratacao.ts) · artefato: .registro-de-execucao/v4-percursos-3010-rodada6.txt.",
+  },
+  "5.17.39": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} A reserva orçamentária vinculada à licitação existe e o guard é apertado: reserva VINCULADA a licitação exige contrato DAQUELE processo (TR 4.42, m11-integracao.test.ts t6), a categoria do empenho é HERDADA do contrato e divergência é erro (t4), e o saldo do contrato bloqueia (t3). V4 §8: a reserva é feita PELA TELA do processo (ficha, valor, histórico), a liberação idem, e o EMPENHO informa o contrato e a reserva (selects lidos no servidor; o M11 ligado ao M05) — o histórico do processo mostra a reserva consumida pelo empenho (smoke-contratacao 18/18). ⚠️ FALTA a liberação AUTOMÁTICA da diferença a cada compra (5.17.77): liberar é ato do operador.`,
+    rota_verificada:
+      "papel: RESERVAR_DOTACAO, LIBERAR_RESERVA, EMPENHAR · " + "contexto: banco dos percursos (DATABASE_URL_PERCURSOS), next build + next start em 3010, build 5d7bb39/6aeaa81, 2026-09-13 · " +
+      "passos: /licitacoes/processos/{id} → Reservar dotação (ficha, 1.000,00) → /despesa/empenhos → Emitir empenho com " +
+      "contrato e reserva → /licitacoes/contratos/{id}?aba=historico traz o empenho → /licitacoes/processos/{id}?aba=historico " +
+      "diz 'consumido por empenhos 1000.00' · obtido: 18/18 · artefato: rodada6.",
+  },
+  "5.17.42": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} A reserva bloqueia a dotação e o empenho a consome; dois empenhos concorrentes que estourariam o contrato gravam exatamente UM (m11-limites.test.ts t1); empenhar COM contrato sem o M11 ligado FALHA em vez de passar batido (m11-integracao.test.ts t9). V4 §8: reserva e empenho vinculado PELA TELA (smoke-contratacao 18/18). ⚠️ FALTA o desbloqueio AUTOMÁTICO do não utilizado ao finalizar o processo — a liberação é ato do operador (ação 'Liberar reserva não utilizada').`,
+  },
+  "5.17.64": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} A situação do processo é DERIVADA e nunca uma coluna — \`situacaoDoProcesso(homologadoEm(...))\`, cadastro × evento (m11-integracao.test.ts t7). V4 §8: a lista e o detalhe mostram e FILTRAM a situação derivada (EM ANDAMENTO/HOMOLOGADO), e o percurso vê a virada após homologar (smoke-contratacao 18/18). ⚠️ O ROL É DE DOIS: faltam anulada (total/parcial), deserta, fracassada, descartada, suspensa, revogada e a homologação PARCIAL.`,
+  },
+  "5.17.75": {
+    situacao: "PARCIAL",
+    evidencia: `${CENSO} Valor e prazo do contrato são DERIVADOS dos movimentos (m11.test.ts t1), o corte é pela data do FATO (t7), o XOR valor/prazo é barrado por Zod e CHECK (t4), o estorno devolve a dimensão CERTA (t5). V4 §8: TELA no molde (/licitacoes/contratos): o contrato nasce pelo processo homologado, o detalhe mostra valor atualizado e fim da vigência derivados, o aditivo de prorrogação (30 dias) muda o fim de 28/02/2027 para 30/03/2027 após recarregar, e o estorno do aditivo é ação contextual (smoke-contratacao 18/18). ⚠️ FALTAM publicações e reajuste/apostila.`,
+    rota_verificada:
+      "papel: CADASTRAR_CONTRATO, REGISTRAR_ADITIVO, ESTORNAR_MOVIMENTO_CONTRATUAL · " + "contexto: banco dos percursos (DATABASE_URL_PERCURSOS), next build + next start em 3010, build 5d7bb39/6aeaa81, 2026-09-13 · " +
+      "passos: /licitacoes/processos/{id} → Cadastrar contrato → /licitacoes/contratos/{id} (vigência até 28/02/2027) → " +
+      "Registrar aditivo (prorrogação, 30 dias) → RECARREGADO: 30/03/2027 · obtido: 18/18 · artefato: rodada6.",
+  },
   // ══ Sessão noturna V4 (§7) — a revisão pedida pela auditoria de 77cbcc9: PARCIAL onde há parte obrigatória faltante ══
   "5.19.14": {
     situacao: "PARCIAL",
@@ -226,25 +359,7 @@ const MAPA: Readonly<Record<string, Marca>> = {
       ".registro-de-execucao/v3-pacote2-percurso.txt; teste test/acervo-pesquisa.test.ts · rota dinâmica: os ids de " +
       "classe/localização vêm dos seletores da própria tela.",
   },
-  "5.19.36": {
-    situacao: "PARCIAL",
-    evidencia:
-      "ENT05: TermoPatrimonial (RESPONSABILIDADE), individual/setorial/por responsável; emitir registra o movimento na " +
-      "mesma transação. V3 (pacote 2, unidade 5): tela /patrimonio/termos e PDF pela rota autenticada. V4 (§5): a " +
-      "EMISSÃO É CONGELADA na criação (dados + modelo + sha256 canônico), a segunda via reproduz a emissão, a posição " +
-      "atual é outro documento, os recortes (individual/setorial/por responsável) são ditos no documento e o termo " +
-      "ASSINADO é anexável e conferido (m10-termo-documento.test.ts t4–t7, 7/7). ⚠️ RESSALVA: o percurso que LÊ o " +
-      "texto do PDF (pdf.js, scripts/smoke-pacote2.ts) ainda não foi reexecutado após a V4 — a validação anterior " +
-      "(30/30) conferia só status/tipo/tamanho. PARCIAL até o percurso rodar sob o build.",
-    rota_verificada:
-      "papel: EMITIR_TERMO_PATRIMONIAL (emitir) e CONSULTAR_PATRIMONIO (imprimir) · contexto: banco dos percursos, " +
-      "3010 · passos: /patrimonio/termos → criar (número, tipo, data, responsável, tombamentos) → detalhe → " +
-      "relacionados → PDF emitido (/patrimonio/termos/{id}/pdf) e posição atual (?via=atual); aba anexos → anexar o " +
-      "termo assinado · entrada: 1 bem; setor opcional · esperado: PDF com tombamento, responsável e declaração; " +
-      "cabeçalhos x-documento-via/x-documento-sha256; anexo listado com sha256 · obtido: domínio 7/7 " +
-      "(m10-termo-documento.test.ts); percurso PENDENTE · versão: 826c176 · artefato: " +
-      ".registro-de-execucao/v4-termo-verificacao-2.txt.",
-  },
+
   "5.19.39": {
     situacao: "PARCIAL",
     evidencia:
@@ -1130,10 +1245,7 @@ const MAPA: Readonly<Record<string, Marca>> = {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} Não há cadastro de comissões de licitação, nem pregoeiro, nem leiloeiro, nem o ato que os designa. Contraprova em test/censo-de-ausencias.test.ts.`,
   },
-  "5.17.14": {
-    situacao: "PARCIAL",
-    evidencia: `${CENSO} O processo se registra com número único, modalidade, objeto e valor licitado (\`ProcessoLicitatorio\`), e contrato em processo NÃO HOMOLOGADO é rejeitado com NADA gravado (m11.test.ts t2). ⚠️ FALTAM a DATA do processo — só existe \`criadoEm\`, que é o instante do registro e não o do fato — e as requisições de compra, que não existem. O ano do processo vive dentro da string do número, não como eixo.`,
-  },
+
   "5.17.15": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} O número do processo é informado pelo operador; não há sugestão sequencial por modalidade nem anual. ⚠️ O repositório JÁ SABE numerar com segurança: o M21 numera 1/2026, reinicia no exercício seguinte e duas aberturas CONCORRENTES não recebem o mesmo número (m21-protocolo.test.ts t1, t2, t3). O padrão existe e não foi aplicado aqui.`,
@@ -1230,10 +1342,7 @@ const MAPA: Readonly<Record<string, Marca>> = {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} Não há cadastro de publicações da licitação, com data e veículo. Contraprova em test/censo-de-ausencias.test.ts.`,
   },
-  "5.17.39": {
-    situacao: "PARCIAL",
-    evidencia: `${CENSO} ⚠️ ESTA É FORTE. A reserva orçamentária vinculada à licitação existe e o guard é apertado: reserva VINCULADA a licitação exige contrato DAQUELE processo (TR 4.42, m11-integracao.test.ts t6), a categoria do empenho é HERDADA do contrato e divergência é erro — nunca sobrescrita em silêncio (t4) — e o saldo do contrato bloqueia, com a anulação devolvendo por derivação e nunca por flag (t3). ⚠️ FALTA a indicação do recurso no PROCESSO antes do contrato, e falta a liberação da diferença na adjudicação (5.17.77).`,
-  },
+
   "5.17.40": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} Não há ata de registro de preços. ⚠️ É a família "naquela data" de novo, e foi nomeada na varredura do ENT03b: saldo de ata é pergunta com eixo TEMPORAL, e construí-la como coluna de saldo repetiria o erro que o contrato já não comete (lá o valor é DERIVADO dos movimentos — m11.test.ts t1). Contraprova em test/censo-de-ausencias.test.ts.`,
@@ -1242,10 +1351,7 @@ const MAPA: Readonly<Record<string, Marca>> = {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} Sem ata não há fiscal nem gestor de ata. O contrato TEM fiscal (\`fiscalNome\`, \`fiscalCpf\`, \`fiscalDesignacao\`); a ata não existe.`,
   },
-  "5.17.42": {
-    situacao: "IMPLEMENTADO_NAO_VALIDADO",
-    evidencia: `${CENSO} ⚠️ A INTEGRAÇÃO COM A CONTABILIDADE É A PARTE MAIS PROVADA DA SEÇÃO. A reserva bloqueia a dotação e o empenho a consome; dois empenhos concorrentes que estourariam o contrato gravam exatamente UM (m11-limites.test.ts t1); empenhar COM contrato sem o M11 ligado às dependências FALHA em vez de passar batido (m11-integracao.test.ts t9); e a vigência bloqueia com a borda passando, o dia seguinte não, e a prorrogação liberando (t2). Sem tela: /licitacoes é uma landing de navegação, não um cadastro.`,
-  },
+
   "5.17.43": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} Não há cópia de processo licitatório. ⚠️ O padrão existe no M26: \`copiarModeloDeRelatorio\` copia e a cópia é independente do original, com teste. Aplicá-lo ao processo é trabalho, não descoberta.`,
@@ -1302,10 +1408,7 @@ const MAPA: Readonly<Record<string, Marca>> = {
     situacao: "PARCIAL",
     evidencia: `${CENSO} A modalidade e o número da licitação VIAJAM na remessa: o leiaute SAGRES 2026v11 carrega \`modalidadeLicitacao\` e \`numLicitacao\` no registro do empenho, com validação e golden (adapters/tribunais/tce-pb/sagres/). ⚠️ O QUE FALTA são os registros PRÓPRIOS de licitação e contrato do leiaute — participantes, propostas, itens, atas — que dependem dos modelos ausentes desta seção.`,
   },
-  "5.17.64": {
-    situacao: "PARCIAL",
-    evidencia: `${CENSO} A situação do processo é DERIVADA e nunca uma coluna — \`situacaoDoProcesso(dataHomologacao)\`, e a homologação tem duas verdades confrontadas (cadastro × evento) com o duplo evento barrado (m11-integracao.test.ts t7). ⚠️ MAS O ROL É DE DOIS: aberto e homologado. Faltam anulada (total/parcial), deserta, fracassada, descartada e aguardando — e a homologação PARCIAL, que o enunciado pede, é impossível hoje: \`HomologacaoProcesso\` é do processo inteiro.`,
-  },
+
   "5.17.65": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} Não há controles de Registro de Preços do art. 40 da Lei 14.133. Contraprova em test/censo-de-ausencias.test.ts.`,
@@ -1346,10 +1449,7 @@ const MAPA: Readonly<Record<string, Marca>> = {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: `${CENSO} Sem rol de itens (5.17.11) e sem intenção (5.17.70) não há importação de um no outro. Contraprova em test/censo-de-ausencias.test.ts.`,
   },
-  "5.17.75": {
-    situacao: "IMPLEMENTADO_NAO_VALIDADO",
-    evidencia: `${CENSO} ⚠️ O NÚCLEO DA SEÇÃO, E ELE É SÓLIDO. Valor e prazo do contrato são DERIVADOS dos movimentos, nunca colunas de saldo — 115.000 e 31/03/2027 a partir dos aditivos (m11.test.ts t1) — e o corte é pela data do FATO: o aditivo de 2027 não muda o contrato de 2026 (t7). O XOR valor/prazo é barrado pelo Zod nos dois sentidos e pelo CHECK no INSERT direto (t4), o estorno devolve a dimensão CERTA e o duplo estorno é barrado pelo índice (t5). ⚠️ FALTAM publicações e reajuste/apostila. Sem tela.`,
-  },
+
   "5.17.76": {
     situacao: "IMPLEMENTADO_NAO_VALIDADO",
     evidencia: `${CENSO} ⚠️ O ALERTA É DOS COMPORTAMENTOS MAIS BEM PROVADOS DO REPOSITÓRIO. A janela é do PRÓPRIO contrato (\`diasAlertaVencimento\`) — 30 dias não alerta o que 90 alertaria — e inclui as duas bordas; VENCIDO NÃO É "A VENCER", e as duas listas são disjuntas; o alerta lê o fim DERIVADO, então prorrogar tira o contrato da janela; a contagem é em DIAS DE CALENDÁRIO e é 0 no próprio dia do vencimento, porque o contrato ainda vale nele; e a resposta NÃO depende da hora em que alguém abriu a tela nem de entrar ou sair do horário de verão (m11-vigencia-alerta.test.ts, 13 casos). Sem tela que a mostre.`,

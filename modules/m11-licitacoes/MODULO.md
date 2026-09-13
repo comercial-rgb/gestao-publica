@@ -140,6 +140,31 @@ e reempenha o resto. (O t3 prova a devolução com anulação total.)
   contratado é assunto de **relatório** (TR 5.103 compara os dois), não de bloqueio.
 - **Reajuste/repactuação e rescisão** não existem neste bloco.
 
+## Telas (sessão noturna V4, §8 — Fila A)
+
+O processo e o contrato ganharam superfície pelo **molde** (`lib/portas/recursos/contratacao.ts`,
+`contratacao-dados.ts`; rotas `/licitacoes/processos` e `/licitacoes/contratos`). O processo se
+cadastra na listagem; homologar, reservar dotação (vinculada ao processo), liberar reserva e
+cadastrar o contrato são AÇÕES do detalhe. O contrato entra pelo processo homologado; aditivo e
+estorno de aditivo são ações do detalhe do contrato. Situação, valor atualizado e fim da vigência
+continuam DERIVADOS pelas funções deste módulo — a porta não soma. As opções contextuais (a reserva
+a liberar, o aditivo a estornar) são só as do registro aberto, e o servidor confere a pertença.
+
+O **empenho** passou a oferecer o contrato (de processo homologado e vigente) e a reserva viva como
+selects opcionais, e a porta do empenho liga o M05 com `criarM05DepsComContratos` — antes, qualquer
+`contratoId` seria recusado ("módulo de contratos não foi ligado"). A TR 4.42 continua sendo
+decidida pelo M05 na transação. Percurso: `scripts/smoke-contratacao.ts`.
+
+### Pendências nomeadas pela Fila A
+
+- `COMPRAS-COM-ITENS-NA-TELA` — solicitação, pesquisa de preços, ordem de compra e recebimento têm
+  serviço e não têm tela: as entradas são de múltiplos itens, que o molde não monta por decisão
+  (limite 2). Exigem ilha escrita à mão, como as entradas da liquidação de material.
+- `NOTA-FISCAL-RECEBIDA` — não há modelo de documento fiscal recebido (fornecedor, itens,
+  duplicidade, anexos); a liquidação registra a nota como texto.
+- `EXTRATO-DO-CONTRATO-PDF` — o extrato do contrato em PDF da origem não foi portado.
+- Reajuste/repactuação, rescisão e publicações do contrato: continuam fora (ver acima).
+
 ## Arquivos
 
 - `dominio.ts` — puro: `MODALIDADES`, `SINAL_VALOR_CONTRATUAL`,

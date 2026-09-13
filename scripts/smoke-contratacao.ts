@@ -306,11 +306,13 @@ async function main(): Promise<void> {
 
     // ── 5. o empenho vinculado ao contrato e à reserva ──
     await irPara(page, "/despesa/empenhos?exercicio=2026");
-    const contratoOpcao = await opcaoQueCasa(page, 'form select[name="contratoId"]', CONTRATO);
-    const reservaOpcao = await opcaoQueCasa(page, 'form select[name="reservaId"]', `percurso ${SUF}`);
+    const contratoOpcao = await opcaoQueCasa(page, 'form[data-acao="empenhar"] select[name="contratoId"]', CONTRATO);
+    const reservaOpcao = await opcaoQueCasa(page, 'form[data-acao="empenhar"] select[name="reservaId"]', `percurso ${SUF}`);
     conferir("empenho: o formulário oferece o contrato vigente e a reserva viva", contratoOpcao !== null && reservaOpcao !== null, `contrato=${contratoOpcao?.rotulo ?? "nenhum"} reserva=${reservaOpcao?.rotulo ?? "nenhuma"}`);
-    const fichaEmp = ficha === null ? null : await opcaoQueCasa(page, 'form select[name="fichaId"]', `${ficha.rotulo.split(" · ")[1] ?? ""}`);
-    const rEmp = await preencherEEnviar(page, 'form select[name="contratoId"]', [
+    // A ficha da reserva: o rótulo do select de empenho é outro, então casa pelo NÚMERO da ficha.
+    const numeroDaFicha = ficha === null ? "" : (/ficha (\d+)/.exec(ficha.rotulo)?.[1] ?? "");
+    const fichaEmp = numeroDaFicha === "" ? null : await opcaoQueCasa(page, 'form[data-acao="empenhar"] select[name="fichaId"]', `${numeroDaFicha} — `);
+    const rEmp = await preencherEEnviar(page, "empenhar", [
       ...(fichaEmp === null ? [] : [{ sel: 'select[name="fichaId"]', valor: fichaEmp.valor, tipo: "select" as const }]),
       { sel: 'input[name="numero"]', valor: EMPENHO },
       { sel: 'input[data-mascara="cpf-cnpj"]', valor: "12345678000195" },

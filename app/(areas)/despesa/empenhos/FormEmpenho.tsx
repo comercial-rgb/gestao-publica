@@ -79,6 +79,7 @@ export function FormEmpenho({
     <form
       ref={ref}
       action={action}
+      data-acao="empenhar"
       className={CLASSE_PAINEL_FORMULARIO}
     >
       <ChaveDeComando />

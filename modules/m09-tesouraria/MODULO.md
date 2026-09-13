@@ -142,6 +142,19 @@ pago o que o banco não liquidou.
 | `LOTE-UI` | telas do lote e do borderô. Os casos de uso existem e são testados; não há superfície |
 | `CONCILIACAO-COPIA-PENDENCIAS` | cópia de pendências não baixadas para o período seguinte (2.2) |
 
+### 6.1 A conciliação que não fecha é ESTADO da tela (V4 §10)
+
+Sob o banco dos percursos, `/financeiro/conciliacao/periodo` devolvia **500**: a identidade do
+relatório (`diferença == Σ linhas sem vínculo`, o tripwire auto-executável de `conciliacao.ts`) acusou
+a conta `CC-500-01` — e a exceção subia crua. A medição explica: a FONTE 500 tem uma
+`ReceitaArrecadada` de 80.000,00 (seed do cenário SAGRES) e, como a arrecadação não tem conta
+bancária (a pendência do M04 acima), ela entra como fato de CAIXA de `CC-500-01` sem contrapartida
+na conta contábil mapeada. O erro virou `ConciliacaoNaoFechaError` e a tela o mostra como estado
+(`data-nao-fecha`), com quanto sobra sem explicação. **A identidade continua não fechando naquele
+banco** — o que fecha é o M04 ganhar a conta bancária da arrecadação. Enquanto isso, o percurso do
+ENT03a que encerra período não é demonstrável no banco dos percursos; é demonstrável no banco de
+desenvolvimento, onde a fonte 500 não tem arrecadação sem conta.
+
 ## 7. A movimentação bancária (ENT03a) — TR 5.62
 
 ### O que ela cura
