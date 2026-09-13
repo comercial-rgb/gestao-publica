@@ -481,6 +481,9 @@ export async function admitirServidor(
         cargoId: dados.cargoId,
         lotacaoId: dados.lotacaoId,
         salarioBase: dados.salarioBase.toFixed(2),
+        // V6 P2.3 — o regime entra NO EVENTO (é dele que `regimeVigenteEm` deriva); a coluna do
+        // vínculo guarda o mesmo valor como o regime DA ADMISSÃO.
+        regimePrevidenciario: dados.regimePrevidenciario ?? null,
         motivo: dados.observacao ?? "Admissão",
         portariaId: dados.portariaId ?? null,
         criadoPor: dados.criadoPor,
@@ -520,6 +523,7 @@ export async function registrarMovimentacao(
         tipo: dados.tipo,
         cargoId: dados.cargoId ?? null,
         lotacaoId: dados.lotacaoId ?? null,
+        regimePrevidenciario: dados.regimePrevidenciario ?? null,
         motivo: dados.motivo,
         portariaId: dados.portariaId ?? null,
         criadoPor: dados.criadoPor,

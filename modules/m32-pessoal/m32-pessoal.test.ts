@@ -13,6 +13,7 @@ import {
   lotacaoVigenteEm,
   lotadosNaLotacao,
   motivoDaInvalidade,
+  regimeVigenteEm,
   salarioBaseVigenteEm,
   situacaoDoVinculo,
   terminoVigenteDoContrato,
@@ -93,7 +94,7 @@ afterAll(async () => {
 const ev = (
   data: Date,
   tipo: EventoDoVinculo["tipo"],
-  extra: Partial<Pick<EventoDoVinculo, "cargoId" | "lotacaoId" | "salarioBase">> = {}
+  extra: Partial<Pick<EventoDoVinculo, "cargoId" | "lotacaoId" | "salarioBase" | "regimePrevidenciario">> = {}
 ): EventoDoVinculo => ({
   data,
   criadoEm: data,
@@ -101,6 +102,7 @@ const ev = (
   cargoId: extra.cargoId ?? null,
   lotacaoId: extra.lotacaoId ?? null,
   salarioBase: extra.salarioBase ?? null,
+  regimePrevidenciario: extra.regimePrevidenciario ?? null,
 });
 
 describe("(5) o cargo vigente é DERIVADO — a promoção de junho não muda o cargo de maio", () => {
@@ -140,6 +142,24 @@ describe("(5) o cargo vigente é DERIVADO — a promoção de junho não muda o 
 
   it("a promoção NÃO move a lotação — ela só carrega o que declarou", () => {
     expect(lotacaoVigenteEm(eventos, D(2026, 12, 31))).toBe("lot-escola");
+  });
+
+  /**
+   * ⚠️ O MESMO DEFEITO, AGORA EM DINHEIRO (V6 P2.3). O regime previdenciário decide QUAL TABELA de
+   * contribuição a folha aplica — RGPS progressivo com teto, ou a alíquota do RPPS do ente. Se ele
+   * fosse coluna do vínculo, recalcular a folha de maio depois de uma migração em junho aplicaria a
+   * tabela errada, e o recálculo é exatamente o que se faz quando alguém contesta o desconto.
+   */
+  it("⚠️ o regime previdenciário de MAIO não muda com a migração de junho — e antes da admissão é o fallback", () => {
+    const comRegime = [
+      ev(D(2026, 1, 1), "ADMISSAO", { cargoId: "cargo-professor", lotacaoId: "lot-escola", salarioBase: toMoney("3000.00"), regimePrevidenciario: "RGPS" }),
+      ev(D(2026, 6, 1), "MUDANCA_REGIME_PREVIDENCIARIO", { regimePrevidenciario: "RPPS" }),
+    ];
+    expect(regimeVigenteEm(comRegime, null, D(2026, 5, 31))).toBe("RGPS");
+    expect(regimeVigenteEm(comRegime, null, D(2026, 6, 1))).toBe("RPPS");
+    // Vínculo legado, sem evento com regime: vale o declarado na admissão (a coluna), e nada mais.
+    expect(regimeVigenteEm(eventos, "RGPS", D(2026, 12, 31))).toBe("RGPS");
+    expect(regimeVigenteEm(eventos, null, D(2026, 12, 31))).toBeNull();
   });
 
   /**
@@ -449,6 +469,29 @@ describe("(1) sem permissão, TODA escrita estoura — e nada é gravado", () =>
    * Este é o eixo mais importante do módulo. Se as duas ações fossem uma, o quantitativo do TR
    * req. 9 viraria autoatendimento — quem quisesse nomear criaria a vaga e a ocuparia.
    */
+  it("⚠️ mudança de regime SEM regime de destino é recusada; afastamento que levasse regime também (V6 P2.3)", async () => {
+    const c = await cenario();
+    const { vinculoId } = await admitirServidor(prisma, {
+      servidorId: c.servidor, matricula: "REG-1", tipo: "EFETIVO", regimeJuridico: "Estatutario",
+      regimePrevidenciario: "RGPS", dataAdmissao: D(2026, 1, 1), cargoId: c.cargoProfessor, lotacaoId: c.lotacao,
+      salarioBase: "3000.00", criadoPor: POR,
+    });
+    await expect(
+      registrarMovimentacao(prisma, { vinculoId, tipo: "MUDANCA_REGIME_PREVIDENCIARIO", data: D(2026, 6, 1), motivo: "migracao ao RPPS", criadoPor: POR })
+    ).rejects.toThrow(/regime de destino/);
+    await expect(
+      registrarMovimentacao(prisma, { vinculoId, tipo: "AFASTAMENTO", data: D(2026, 6, 1), motivo: "licenca", regimePrevidenciario: "RPPS", criadoPor: POR })
+    ).rejects.toThrow(/Só a mudança de regime previdenciário informa regime/);
+    // Nada gravado: o vínculo continua com o regime da admissão.
+    const eventos = await prisma.historicoVinculo.findMany({ where: { vinculoId }, select: { tipo: true, regimePrevidenciario: true } });
+    expect(eventos.map((e) => `${e.tipo}:${e.regimePrevidenciario ?? "-"}`)).toEqual(["ADMISSAO:RGPS"]);
+
+    // E a mudança COM regime grava o evento datado.
+    await registrarMovimentacao(prisma, { vinculoId, tipo: "MUDANCA_REGIME_PREVIDENCIARIO", data: D(2026, 6, 1), motivo: "migracao ao RPPS", regimePrevidenciario: "RPPS", criadoPor: POR });
+    const depois = await prisma.historicoVinculo.findMany({ where: { vinculoId }, orderBy: { data: "asc" }, select: { tipo: true, regimePrevidenciario: true } });
+    expect(depois.map((e) => `${e.tipo}:${e.regimePrevidenciario ?? "-"}`)).toEqual(["ADMISSAO:RGPS", "MUDANCA_REGIME_PREVIDENCIARIO:RPPS"]);
+  });
+
   it("⚠️ quem só tem CADASTRAR_CARGO não ADMITE — o limite legal não é autoatendimento", async () => {
     const perfil = await prisma.perfil.create({
       data: {

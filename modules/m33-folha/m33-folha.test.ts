@@ -419,8 +419,9 @@ describe("(9) o serviço — fail-closed, fatos numerados, fechamento", () => {
     await servidorComVinculo("11122233344", "Ana", "M-1", "3000.00", undefined);
     const { folhaId } = await abrirFolha(prisma, { competencia: "2026-05", criadoPor: POR });
     await expect(calcularFolha(prisma, { folhaId, criadoPor: POR })).rejects.toThrow(VinculoSemRegimeError);
-    // O regime é dado do vínculo; o teste o completa direto no banco (não há serviço de alteração — pendência do M32).
-    await prisma.vinculo.update({ where: { matricula: "M-1" }, data: { regimePrevidenciario: "RGPS" } });
+    // O regime do vínculo legado se informa por FATO DATADO (M32), não por UPDATE mudo.
+    const semRegime = await prisma.vinculo.findUniqueOrThrow({ where: { matricula: "M-1" }, select: { id: true } });
+    await registrarMovimentacao(prisma, { vinculoId: semRegime.id, tipo: "MUDANCA_REGIME_PREVIDENCIARIO", data: D(2026, 1, 1), motivo: "carga do regime previdenciario", regimePrevidenciario: "RGPS", criadoPor: POR });
     await servidorComVinculo("55566677788", "Bia", "M-2", "3000.00", "RPPS");
     await expect(calcularFolha(prisma, { folhaId, criadoPor: POR })).rejects.toThrow(/regime RPPS, exigido pela matrícula M-2/);
     expect(await prisma.calculoDaFolha.count()).toBe(0);
@@ -490,6 +491,33 @@ describe("(9) o serviço — fail-closed, fatos numerados, fechamento", () => {
     expect(anaJunho.diasComputados).toBe(0); // afastamento aberto atravessa junho
     expect(anaJunho.totalProventos.toFixed(2)).toBe("0.00");
   });
+  it("⚠️ a MIGRAÇÃO DE REGIME em junho não muda a folha de maio: maio contribui pelo RGPS (faixas), junho pelo RPPS (linear)", async () => {
+    await tabelasDoEnte();
+    await rubricasDoEnte();
+    const a = await servidorComVinculo("11122233344", "Ana", "M-1", "3000.00", "RGPS");
+    await registrarMovimentacao(prisma, { vinculoId: a.vinculo, tipo: "MUDANCA_REGIME_PREVIDENCIARIO", data: D(2026, 6, 1), motivo: "migracao ao regime proprio", regimePrevidenciario: "RPPS", criadoPor: POR });
+
+    const maio = await abrirFolha(prisma, { competencia: "2026-05", criadoPor: POR });
+    const cMaio = await calcularFolha(prisma, { folhaId: maio.folhaId, criadoPor: POR });
+    const contraMaio = await prisma.contracheque.findFirstOrThrow({ where: { calculoId: cMaio.calculoId } });
+    expect(contraMaio.regime).toBe("RGPS");
+    expect(contraMaio.contribuicao.toFixed(2)).toBe("255.00"); // 1000x7,5% + 2000x9%
+
+    const junho = await abrirFolha(prisma, { competencia: "2026-06", criadoPor: POR });
+    const cJunho = await calcularFolha(prisma, { folhaId: junho.folhaId, criadoPor: POR });
+    const contraJunho = await prisma.contracheque.findFirstOrThrow({ where: { calculoId: cJunho.calculoId } });
+    expect(contraJunho.regime).toBe("RPPS");
+    expect(contraJunho.contribuicao.toFixed(2)).toBe("420.00"); // 3000 x 14% linear
+
+    // ⚠️ E RECALCULAR MAIO DEPOIS DA MIGRAÇÃO CONTINUA DANDO MAIO: é o recálculo que se faz quando
+    // alguém contesta o desconto, e ele não pode aplicar a tabela de hoje ao mês de ontem.
+    const cMaio2 = await calcularFolha(prisma, { folhaId: maio.folhaId, criadoPor: POR });
+    const contraMaio2 = await prisma.contracheque.findFirstOrThrow({ where: { calculoId: cMaio2.calculoId } });
+    expect(contraMaio2.regime).toBe("RGPS");
+    expect(contraMaio2.contribuicao.toFixed(2)).toBe("255.00");
+    expect(cMaio2.sha256).toBe(cMaio.sha256);
+  });
+
   it("duas matrículas da mesma pessoa: a contribuição RGPS é agregada e rateada; a memória diz que foi imposta", async () => {
     await tabelasDoEnte();
     await rubricasDoEnte();

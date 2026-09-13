@@ -48,7 +48,9 @@ export const PAPEIS: readonly Papel[] = [
     nome: "Contador (percurso)",
     perfil: "CONTABILIDADE — PERCURSO",
     descricao: "Empenha e liquida. Não paga, não compra.",
-    acoes: ["EMPENHAR", "LIQUIDAR", "CONSULTAR_DESPESA", "CONSULTAR_LICITACOES", "CONSULTAR_PLANEJAMENTO", "CONSULTAR_CONTABILIDADE", "CONSULTAR_CADASTROS"],
+    acoes: ["EMPENHAR", "LIQUIDAR", "CONSULTAR_DESPESA", "CONSULTAR_LICITACOES", "CONSULTAR_PLANEJAMENTO", "CONSULTAR_CONTABILIDADE", "CONSULTAR_CADASTROS",
+      // V6 P2.3 — FECHAR a folha é da contabilidade: o fechamento congela o cálculo que vira empenho.
+      "FECHAR_FOLHA", "CONSULTAR_FOLHA"],
   },
   {
     identificador: "tesouraria@percursos.local",
@@ -62,7 +64,10 @@ export const PAPEIS: readonly Papel[] = [
     nome: "Servidor do RH (percurso)",
     perfil: "PESSOAL — PERCURSO",
     descricao: "Cadastra cargos, lotações e servidores; admite, movimenta, remunera e desliga; anota a ficha. Não empenha, não paga, não compra.",
-    acoes: ["CADASTRAR_PESSOA", "CADASTRAR_SERVIDOR", "ADMITIR_SERVIDOR", "MOVIMENTAR_SERVIDOR", "ALTERAR_REMUNERACAO", "DESLIGAR_SERVIDOR", "CADASTRAR_CARGO", "CADASTRAR_LOTACAO", "GERIR_DEPENDENTE", "BAIXAR_DEPENDENTE", "REGISTRAR_PORTARIA", "REGISTRAR_ANOTACAO", "REGISTRAR_TREINAMENTO", "CONSULTAR_PESSOAL", "CONSULTAR_CADASTROS"],
+    acoes: ["CADASTRAR_PESSOA", "CADASTRAR_SERVIDOR", "ADMITIR_SERVIDOR", "MOVIMENTAR_SERVIDOR", "ALTERAR_REMUNERACAO", "DESLIGAR_SERVIDOR", "CADASTRAR_CARGO", "CADASTRAR_LOTACAO", "GERIR_DEPENDENTE", "BAIXAR_DEPENDENTE", "REGISTRAR_PORTARIA", "REGISTRAR_ANOTACAO", "REGISTRAR_TREINAMENTO", "CONSULTAR_PESSOAL", "CONSULTAR_CADASTROS",
+      // V6 P2.3 — a folha: o RH parametriza, lança e CALCULA. Quem FECHA é a contabilidade (é o
+      // fechamento que vai ao empenho), e essa separação é percorrida pelo smoke da folha.
+      "CONFIGURAR_TABELAS_DA_FOLHA", "CADASTRAR_RUBRICA", "LANCAR_NA_FOLHA", "ABRIR_FOLHA", "CALCULAR_FOLHA", "CANCELAR_CALCULO_DA_FOLHA", "CONSULTAR_FOLHA"],
   },
 ];
 
@@ -74,7 +79,23 @@ async function main(): Promise<void> {
     for (const papel of PAPEIS) {
       const ja = await prisma.usuario.findUnique({ where: { identificador: papel.identificador }, select: { id: true } });
       if (ja !== null) {
-        console.log(`[papéis] ${papel.identificador} já existe — no-op.`);
+        // ⚠️ IDEMPOTENTE, MAS NÃO INERTE: quando o papel ganha ações novas (a folha chegou depois
+        // do pessoal), o perfil que já existe recebe SÓ as que faltam. Recriar o usuário perderia
+        // a senha e o histórico; deixar como estava faria o percurso falhar por permissão, e
+        // "falta de permissão" é a recusa mais fácil de confundir com defeito.
+        const perfilExistente = await prisma.perfil.findFirst({ where: { nome: papel.perfil }, select: { id: true, permissoes: { select: { acao: true } } } });
+        if (perfilExistente === null) {
+          console.log(`[papéis] ${papel.identificador} existe mas o perfil "${papel.perfil}" não — nada a fazer aqui.`);
+          continue;
+        }
+        const tem = new Set(perfilExistente.permissoes.map((x) => String(x.acao)));
+        const faltam = papel.acoes.filter((a) => !tem.has(a));
+        if (faltam.length === 0) {
+          console.log(`[papéis] ${papel.identificador} já existe com as ${papel.acoes.length} ações — no-op.`);
+          continue;
+        }
+        await prisma.permissaoDePerfil.createMany({ data: faltam.map((acao) => ({ perfilId: perfilExistente.id, acao, unidadeOrcId: null, criadoPor: ADMIN })) });
+        console.log(`[papéis] ${papel.identificador} já existia — ${faltam.length} ação(ões) acrescentada(s): ${faltam.join(", ")}.`);
         continue;
       }
       const orfao = await prisma.perfil.findFirst({ where: { nome: papel.perfil }, select: { id: true } });

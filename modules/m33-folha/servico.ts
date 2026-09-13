@@ -7,6 +7,7 @@ import {
   dataDeDesligamento,
   dependenteValeEm,
   gratificacoesVigentesEm,
+  regimeVigenteEm,
   salarioBaseVigenteEm,
   type EventoDoVinculo,
 } from "../m32-pessoal/dominio.js";
@@ -195,8 +196,8 @@ export async function abrirFolha(prisma: PrismaClient, input: AbrirFolhaInput): 
   });
 }
 
-function paraEvento(e: { readonly data: Date; readonly criadoEm: Date; readonly tipo: string; readonly cargoId: string | null; readonly lotacaoId: string | null; readonly salarioBase: Decimal | null }): EventoDoVinculo {
-  return { data: e.data, criadoEm: e.criadoEm, tipo: e.tipo as EventoDoVinculo["tipo"], cargoId: e.cargoId, lotacaoId: e.lotacaoId, salarioBase: e.salarioBase === null ? null : toMoney(e.salarioBase) };
+function paraEvento(e: { readonly data: Date; readonly criadoEm: Date; readonly tipo: string; readonly cargoId: string | null; readonly lotacaoId: string | null; readonly salarioBase: Decimal | null; readonly regimePrevidenciario?: string | null }): EventoDoVinculo {
+  return { data: e.data, criadoEm: e.criadoEm, tipo: e.tipo as EventoDoVinculo["tipo"], cargoId: e.cargoId, lotacaoId: e.lotacaoId, salarioBase: e.salarioBase === null ? null : toMoney(e.salarioBase), regimePrevidenciario: (e.regimePrevidenciario ?? null) as RegimePrevidenciario | null };
 }
 
 /** Os períodos de afastamento (AFASTAMENTO → RETORNO seguinte), na ordem dos fatos. */
@@ -281,7 +282,7 @@ export async function calcularFolha(prisma: PrismaClient, input: CalcularFolhaIn
       select: {
         id: true, matricula: true, dataAdmissao: true, regimePrevidenciario: true, servidorId: true,
         servidor: { select: { dataNascimento: true, dependentes: { select: { id: true, nome: true, dataNascimento: true, invalidezPermanente: true, finalidades: { select: { finalidade: true, dataInicio: true, limiteIdadeAnos: true, dataBaixa: true } } } } } },
-        eventos: { select: { data: true, criadoEm: true, tipo: true, cargoId: true, lotacaoId: true, salarioBase: true, gratificacaoDescricao: true, gratificacaoValor: true } },
+        eventos: { select: { data: true, criadoEm: true, tipo: true, cargoId: true, lotacaoId: true, salarioBase: true, regimePrevidenciario: true, gratificacaoDescricao: true, gratificacaoValor: true } },
         lancamentosDaFolha: { where: { competenciaInicio: { lte: competencia }, OR: [{ competenciaFim: null }, { competenciaFim: { gte: competencia } }] }, select: { id: true, rubricaId: true, tipo: true, valor: true } },
       },
       orderBy: { matricula: "asc" },
@@ -293,8 +294,10 @@ export async function calcularFolha(prisma: PrismaClient, input: CalcularFolhaIn
       const desligamento = dataDeDesligamento(eventos);
       if (diaCivil(v.dataAdmissao) > diaCivil(fim)) continue;
       if (desligamento !== null && diaCivil(desligamento) < diaCivil(inicio)) continue;
-      if (v.regimePrevidenciario === null) throw new VinculoSemRegimeError(v.matricula);
-      const regime = v.regimePrevidenciario as RegimePrevidenciario;
+      // ⚠️ O REGIME É DERIVADO NA COMPETÊNCIA, não lido da coluna: quem migrou ao RPPS em junho
+      // contribuiu ao RGPS em maio, e o recálculo de maio tem de aplicar a tabela de maio.
+      const regime = regimeVigenteEm(eventos, v.regimePrevidenciario as RegimePrevidenciario | null, fim);
+      if (regime === null) throw new VinculoSemRegimeError(v.matricula);
       if (regime !== "ISENTO" && tabelas.contribuicao[regime] === null) {
         throw new TabelaAusenteError("CONTRIBUICAO", competencia, `regime ${regime}, exigido pela matrícula ${v.matricula}`);
       }

@@ -111,17 +111,21 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
       ],
     },
     {
-      nome: "movimentar", rotulo: "Movimentar (cargo, lotação, afastamento, retorno)", acaoDoCenso: "MOVIMENTAR_SERVIDOR",
-      aviso: "Muda ONDE e EM QUE o servidor trabalha; não muda quanto recebe. Afastamento e retorno não levam cargo nem lotação.",
+      nome: "movimentar", rotulo: "Movimentar (cargo, lotação, afastamento, retorno, regime previdenciário)", acaoDoCenso: "MOVIMENTAR_SERVIDOR",
+      aviso: "Muda ONDE e EM QUE o servidor trabalha; não muda quanto recebe. Afastamento e retorno não levam cargo nem lotação. A mudança de regime previdenciário vale a partir da data do fato: a folha de cada competência aplica o regime daquela competência.",
       campos: [
         { nome: "vinculoId", rotulo: "Vínculo (matrícula)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "tipo", rotulo: "Tipo", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: [
           { valor: "MUDANCA_CARGO", rotulo: "Mudança de cargo" }, { valor: "MUDANCA_LOTACAO", rotulo: "Mudança de lotação" },
           { valor: "AFASTAMENTO", rotulo: "Afastamento" }, { valor: "RETORNO_AFASTAMENTO", rotulo: "Retorno de afastamento" },
+          { valor: "MUDANCA_REGIME_PREVIDENCIARIO", rotulo: "Mudança de regime previdenciário" },
         ] },
         { nome: "data", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
         { nome: "cargoId", rotulo: "Cargo de destino (só mudança de cargo)", tipo: "selecao", largura: 2, opcoes: [] },
         { nome: "lotacaoId", rotulo: "Lotação de destino (só mudança de lotação)", tipo: "selecao", largura: 2, opcoes: [] },
+        { nome: "regimePrevidenciario", rotulo: "Regime previdenciário (só mudança de regime)", tipo: "selecao", largura: 2, opcoes: [
+          { valor: "RGPS", rotulo: "RGPS — regime geral" }, { valor: "RPPS", rotulo: "RPPS — regime próprio" }, { valor: "ISENTO", rotulo: "Isento" },
+        ] },
         { nome: "motivo", rotulo: "Motivo / fundamento", tipo: "texto", obrigatorio: true, largura: 4 },
       ],
     },

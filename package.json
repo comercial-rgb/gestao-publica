@@ -68,6 +68,7 @@
     "smoke:arrecadacao-conta": "tsx scripts/trinco-de-maquina.ts 'smoke da arrecadacao x conta bancaria' -- npx tsx scripts/smoke-arrecadacao-conta.ts",
     "smoke:cadeia-por-papel": "tsx scripts/trinco-de-maquina.ts 'smoke da cadeia por papel' -- npx tsx scripts/smoke-cadeia-por-papel.ts",
     "smoke:pessoal": "tsx scripts/trinco-de-maquina.ts 'smoke do pessoal' -- npx tsx scripts/smoke-pessoal.ts",
+    "smoke:folha": "tsx scripts/trinco-de-maquina.ts 'smoke da folha' -- npx tsx scripts/smoke-folha.ts",
     "permissoes:atualizar": "tsx scripts/aplicar-atualizacao-de-permissoes.ts",
     "roteiros:versionar": "tsx scripts/versionar-roteiros-existentes.ts",
     "seed:roteiros-demo": "tsx prisma/seed/roteiros-demo.ts",

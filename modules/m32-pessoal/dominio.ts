@@ -50,7 +50,8 @@ export type TipoEventoVinculo =
   | "GRATIFICACAO"
   | "AFASTAMENTO"
   | "RETORNO_AFASTAMENTO"
-  | "DESLIGAMENTO";
+  | "DESLIGAMENTO"
+  | "MUDANCA_REGIME_PREVIDENCIARIO";
 
 export type GrauParentesco =
   | "CONJUGE"
@@ -122,7 +123,12 @@ export interface EventoDoVinculo {
   readonly cargoId: string | null;
   readonly lotacaoId: string | null;
   readonly salarioBase: Money | null;
+  /** V6 P2.3 — presente na admissão e na mudança de regime; ver `regimeVigenteEm`. */
+  readonly regimePrevidenciario?: RegimePrevidenciarioDoVinculo | null;
 }
+
+/** O regime previdenciário do vínculo — decide a tabela de contribuição que a folha aplica (M33). */
+export type RegimePrevidenciarioDoVinculo = "RGPS" | "RPPS" | "ISENTO";
 
 /**
  * Ordem estável: data de efeito, depois data de digitação. Ver `EventoDoVinculo`.
@@ -223,6 +229,26 @@ export function situacaoDoVinculo(
     if (e.tipo === "RETORNO_AFASTAMENTO") afastado = false;
   }
   return afastado ? "AFASTADO" : "ATIVO";
+}
+
+/**
+ * O REGIME PREVIDENCIÁRIO VIGENTE NUMA DATA — o último evento COM regime até ela.
+ *
+ * ⚠️ ESTE É O MESMO DEFEITO DO CARGO, e ele valeria dinheiro: quem migrou para o RPPS em junho
+ * contribuía ao RGPS em maio, com outra tabela e outro teto. Se o regime fosse coluna do vínculo,
+ * recalcular a folha de maio depois da migração aplicaria a tabela errada — e o recálculo é
+ * exatamente o que se faz quando alguém contesta o desconto.
+ *
+ * `naAdmissao` é o fallback dos vínculos criados ANTES de o evento existir (o campo
+ * `Vinculo.regimePrevidenciario`). `null` = o vínculo não declara regime, e a folha recusa
+ * calcular nomeando a matrícula.
+ */
+export function regimeVigenteEm(
+  eventos: readonly EventoDoVinculo[],
+  naAdmissao: RegimePrevidenciarioDoVinculo | null,
+  quando: Date
+): RegimePrevidenciarioDoVinculo | null {
+  return ultimoAte(eventos, quando, (e) => e.regimePrevidenciario ?? null) ?? naAdmissao;
 }
 
 /** A data do desligamento, se houve. `null` = vínculo aberto. Derivada, nunca coluna. */
@@ -683,6 +709,7 @@ export const TIPOS_DE_MOVIMENTACAO = [
   "MUDANCA_LOTACAO",
   "AFASTAMENTO",
   "RETORNO_AFASTAMENTO",
+  "MUDANCA_REGIME_PREVIDENCIARIO",
 ] as const;
 
 /** Os eventos que PAGAM (quanto se recebe) — ação `ALTERAR_REMUNERACAO`. */
@@ -706,6 +733,8 @@ export const zRegistrarMovimentacaoInput = z
     tipo: z.enum(TIPOS_DE_MOVIMENTACAO),
     cargoId: z.string().min(1).optional(),
     lotacaoId: z.string().min(1).optional(),
+    /** Só MUDANCA_REGIME_PREVIDENCIARIO. */
+    regimePrevidenciario: z.enum(["RGPS", "RPPS", "ISENTO"]).optional(),
   })
   .superRefine((v, ctx) => {
     // ⚠️ ESPELHA `ck_historico_vinculo_cargo_exigido` E `..._lotacao_exigida`. Um evento de
@@ -723,6 +752,22 @@ export const zRegistrarMovimentacaoInput = z
         code: "custom",
         path: ["lotacaoId"],
         message: "MUDANCA_LOTACAO sem lotação de destino não move nada. Informe a lotação.",
+      });
+    }
+    // ⚠️ MESMA DISCIPLINA DO CARGO: mudança de regime sem o regime de destino não muda nada —
+    // `regimeVigenteEm` procura o último evento COM regime, e este não seria um.
+    if (v.tipo === "MUDANCA_REGIME_PREVIDENCIARIO" && v.regimePrevidenciario === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["regimePrevidenciario"],
+        message: "MUDANCA_REGIME_PREVIDENCIARIO sem o regime de destino não muda nada. Informe RGPS, RPPS ou isento.",
+      });
+    }
+    if (v.tipo !== "MUDANCA_REGIME_PREVIDENCIARIO" && v.regimePrevidenciario !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["regimePrevidenciario"],
+        message: "Só a mudança de regime previdenciário informa regime. Um afastamento que trocasse o regime mudaria a contribuição sem que ninguém tivesse pedido.",
       });
     }
     // ⚠️ E O CONTRÁRIO TAMBÉM: afastamento não muda cargo nem lotação. Deixar passar faria a

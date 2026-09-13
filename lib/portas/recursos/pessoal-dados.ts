@@ -7,6 +7,7 @@ import {
   gratificacoesVigentesEm,
   lotacaoVigenteEm,
   lotadosNaLotacao,
+  regimeVigenteEm,
   salarioBaseVigenteEm,
   situacaoDoVinculo,
   vagasOcupadasDoCargo,
@@ -56,14 +57,14 @@ function paginacao(c: ConsultaDoMolde): { readonly skip: number; readonly take: 
 
 const ROTULO_DO_EVENTO: Readonly<Record<string, string>> = {
   ADMISSAO: "Admissão", PROMOCAO: "Promoção", MUDANCA_CARGO: "Mudança de cargo", MUDANCA_LOTACAO: "Mudança de lotação",
-  REAJUSTE_SALARIAL: "Reajuste salarial", GRATIFICACAO: "Gratificação", AFASTAMENTO: "Afastamento", RETORNO_AFASTAMENTO: "Retorno de afastamento", DESLIGAMENTO: "Desligamento",
+  REAJUSTE_SALARIAL: "Reajuste salarial", GRATIFICACAO: "Gratificação", AFASTAMENTO: "Afastamento", RETORNO_AFASTAMENTO: "Retorno de afastamento", DESLIGAMENTO: "Desligamento", MUDANCA_REGIME_PREVIDENCIARIO: "Mudança de regime previdenciário",
 };
 const ROTULO_DA_SITUACAO: Readonly<Record<SituacaoVinculo, string>> = { ATIVO: "ATIVO", AFASTADO: "AFASTADO", DESLIGADO: "DESLIGADO" };
 
 const SELECAO_DE_EVENTOS = {
   orderBy: [{ data: "asc" as const }, { criadoEm: "asc" as const }],
   select: {
-    id: true, data: true, criadoEm: true, tipo: true, cargoId: true, lotacaoId: true, salarioBase: true,
+    id: true, data: true, criadoEm: true, tipo: true, cargoId: true, lotacaoId: true, salarioBase: true, regimePrevidenciario: true,
     gratificacaoDescricao: true, gratificacaoValor: true, motivo: true, criadoPor: true,
     cargo: { select: { codigo: true, denominacao: true } }, lotacao: { select: { codigo: true, nome: true } },
     portaria: { select: { numero: true, ano: true } },
@@ -73,7 +74,7 @@ type EventoLido = Prisma.HistoricoVinculoGetPayload<{ select: (typeof SELECAO_DE
 
 function eventos(es: readonly EventoLido[]): readonly (EventoDoVinculo & { readonly gratificacaoDescricao: string | null; readonly gratificacaoValor: ReturnType<typeof toMoney> | null })[] {
   return es.map((e) => ({
-    data: e.data, criadoEm: e.criadoEm, tipo: e.tipo, cargoId: e.cargoId, lotacaoId: e.lotacaoId,
+    data: e.data, criadoEm: e.criadoEm, tipo: e.tipo, cargoId: e.cargoId, lotacaoId: e.lotacaoId, regimePrevidenciario: e.regimePrevidenciario,
     salarioBase: e.salarioBase === null ? null : toMoney(e.salarioBase.toFixed(2)),
     gratificacaoDescricao: e.gratificacaoDescricao, gratificacaoValor: e.gratificacaoValor === null ? null : toMoney(e.gratificacaoValor.toFixed(2)),
   }));
@@ -91,7 +92,7 @@ const SELECAO_DO_SERVIDOR = {
   id: true, nomeSocial: true, dataNascimento: true, sexo: true, pisPasep: true, rgNumero: true, rgOrgaoEmissor: true, rgUf: true,
   tituloEleitor: true, ctpsNumero: true, ctpsSerie: true, nomeMae: true, nomePai: true, criadoEm: true, criadoPor: true,
   pessoa: { select: { id: true, documento: true, versoes: { orderBy: { criadoEm: "desc" as const }, take: 1, select: { nome: true, email: true, telefone: true, municipio: true, uf: true } } } },
-  vinculos: { orderBy: { dataAdmissao: "asc" as const }, select: { id: true, matricula: true, tipo: true, regimeJuridico: true, dataAdmissao: true, criadoPor: true, criadoEm: true, eventos: SELECAO_DE_EVENTOS } },
+  vinculos: { orderBy: { dataAdmissao: "asc" as const }, select: { id: true, matricula: true, tipo: true, regimeJuridico: true, regimePrevidenciario: true, dataAdmissao: true, criadoPor: true, criadoEm: true, eventos: SELECAO_DE_EVENTOS } },
 };
 
 export async function listarServidores(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
@@ -160,7 +161,7 @@ export async function verServidor(id: string): Promise<ServidorLido | null> {
 
   const vinculos = s.vinculos.map((v) => {
     const evs = eventos(v.eventos);
-    return { v, evs, situacao: situacaoDoVinculo(evs, hoje), cargo: cargoDe.get(cargoVigenteEm(evs, hoje) ?? "") ?? "—", lotacao: lotacaoDe.get(lotacaoVigenteEm(evs, hoje) ?? "") ?? "—", salario: salarioBaseVigenteEm(evs, hoje), gratificacoes: gratificacoesVigentesEm(evs, hoje) };
+    return { v, evs, situacao: situacaoDoVinculo(evs, hoje), cargo: cargoDe.get(cargoVigenteEm(evs, hoje) ?? "") ?? "—", lotacao: lotacaoDe.get(lotacaoVigenteEm(evs, hoje) ?? "") ?? "—", salario: salarioBaseVigenteEm(evs, hoje), gratificacoes: gratificacoesVigentesEm(evs, hoje), regime: regimeVigenteEm(evs, v.regimePrevidenciario, hoje) };
   });
 
   const dados = [
@@ -176,8 +177,8 @@ export async function verServidor(id: string): Promise<ServidorLido | null> {
     { rotulo: "Contato (da pessoa)", valor: [versao?.email, versao?.telefone].filter((x) => x !== null && x !== undefined).join(" · ") || "—" },
     ...vinculos.map((x) => ({
       rotulo: `Vínculo ${x.v.matricula}`,
-      valor: `${x.situacao} · ${x.v.tipo} · ${x.v.regimeJuridico} · desde ${diaCivilBr(x.v.dataAdmissao)} · cargo: ${x.cargo} · lotação: ${x.lotacao} · salário base: ${x.salario?.toFixed(2) ?? "—"}${x.gratificacoes.length > 0 ? ` · gratificações: ${x.gratificacoes.map((g) => `${g.descricao} ${g.valor.toFixed(2)}`).join(", ")}` : ""}`,
-      nota: "Cargo, lotação, salário e situação derivados dos eventos até hoje.",
+      valor: `${x.situacao} · ${x.v.tipo} · ${x.v.regimeJuridico} · previdência: ${x.regime ?? "NÃO INFORMADA — a folha recusa calcular esta matrícula"} · desde ${diaCivilBr(x.v.dataAdmissao)} · cargo: ${x.cargo} · lotação: ${x.lotacao} · salário base: ${x.salario?.toFixed(2) ?? "—"}${x.gratificacoes.length > 0 ? ` · gratificações: ${x.gratificacoes.map((g) => `${g.descricao} ${g.valor.toFixed(2)}`).join(", ")}` : ""}`,
+      nota: "Cargo, lotação, salário, regime previdenciário e situação derivados dos eventos até hoje — a folha de cada competência usa os DAQUELA competência.",
     })),
     { rotulo: "Cadastrado em", valor: diaCivilBr(s.criadoEm), tipo: "data" as const },
     { rotulo: "Cadastrado por", valor: s.criadoPor },
@@ -194,6 +195,7 @@ export async function verServidor(id: string): Promise<ServidorLido | null> {
           e.cargo !== null ? `cargo ${e.cargo.codigo} — ${e.cargo.denominacao}` : null,
           e.lotacao !== null ? `lotação ${e.lotacao.codigo} — ${e.lotacao.nome}` : null,
           e.salarioBase !== null ? `salário ${e.salarioBase.toFixed(2)}` : null,
+          e.regimePrevidenciario !== null ? `previdência ${e.regimePrevidenciario}` : null,
           e.gratificacaoDescricao !== null ? `gratificação ${e.gratificacaoDescricao} ${e.gratificacaoValor?.toFixed(2) ?? ""}` : null,
           e.portaria !== null ? `portaria ${e.portaria.numero}/${e.portaria.ano}` : null,
           e.motivo,
@@ -295,10 +297,11 @@ export async function acaoDoServidor(acao: string, servidorId: string, c: Campos
         registrarMovimentacao(prisma, {
           vinculoId, tipo: t(c, "tipo") as "MUDANCA_CARGO", data: dia(c, "data"), motivo: t(c, "motivo"),
           ...(opcional(c, "cargoId") !== undefined ? { cargoId: t(c, "cargoId") } : {}),
-          ...(opcional(c, "lotacaoId") !== undefined ? { lotacaoId: t(c, "lotacaoId") } : {}), criadoPor,
+          ...(opcional(c, "lotacaoId") !== undefined ? { lotacaoId: t(c, "lotacaoId") } : {}),
+          ...(opcional(c, "regimePrevidenciario") !== undefined ? { regimePrevidenciario: t(c, "regimePrevidenciario") as "RGPS" | "RPPS" | "ISENTO" } : {}), criadoPor,
         })
       );
-      return "Movimentação registrada como evento do vínculo; cargo e lotação de hoje já refletem.";
+      return "Movimentação registrada como evento do vínculo; cargo, lotação e regime previdenciário de hoje já refletem — e o passado não muda.";
     }
     case "alterar-remuneracao": {
       const vinculoId = await exigirVinculoDoServidor();

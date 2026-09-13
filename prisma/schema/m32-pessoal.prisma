@@ -133,6 +133,10 @@ enum TipoEventoVinculo {
   /// Exoneração, demissão, aposentadoria, falecimento. Há no máximo UM por
   /// vínculo: readmitir é outro vínculo, com outra matrícula.
   DESLIGAMENTO
+
+  /// V6 P2.3 — a migração de regime previdenciário (RGPS ↔ RPPS ↔ isento) é fato DATADO: a folha
+  /// de cada competência aplica o regime vigente naquela competência, não o de hoje.
+  MUDANCA_REGIME_PREVIDENCIARIO
 }
 
 /// TR req. 6 — o grau de parentesco do dependente.
@@ -480,8 +484,15 @@ model Vinculo {
 
   dataAdmissao DateTime
 
-  /// V6 P2.3 — O REGIME PREVIDENCIÁRIO decide a tabela de contribuição da folha (M33). Nulo nos
-  /// vínculos anteriores à folha: a folha RECUSA calcular um vínculo sem regime, nomeando a matrícula.
+  /// V6 P2.3 — O REGIME PREVIDENCIÁRIO **DA ADMISSÃO** (decide a tabela de contribuição da folha,
+  /// M33). Nulo nos vínculos anteriores à folha: a folha RECUSA calcular sem regime, nomeando a
+  /// matrícula.
+  ///
+  /// ⚠️ NÃO É A VERDADE VIGENTE, e a diferença custou um defeito conhecido: quem migra do RGPS
+  /// para o RPPS em junho continuou no RGPS em maio, e a folha de maio recalculada tem de usar o
+  /// regime de maio. A verdade vigente é DERIVADA dos eventos (`regimeVigenteEm`), como cargo,
+  /// lotação e salário; este campo é o valor da admissão e o fallback dos vínculos criados antes
+  /// de o evento existir.
   regimePrevidenciario RegimePrevidenciario?
 
   observacao String?
@@ -537,6 +548,11 @@ model HistoricoVinculo {
 
   /// Presente em ADMISSAO, PROMOCAO e REAJUSTE_SALARIAL. O CHECK impõe.
   salarioBase Decimal? @db.Decimal(18, 2)
+
+  /// V6 P2.3 — o regime previdenciário que passa a valer a partir da data do evento. Presente em
+  /// ADMISSAO e MUDANCA_REGIME_PREVIDENCIARIO; o CHECK impõe. É por ele que `regimeVigenteEm`
+  /// responde qual tabela de contribuição a folha de cada competência aplica.
+  regimePrevidenciario RegimePrevidenciario?
 
   /// A GRATIFICAÇÃO é parcela ADICIONAL, e por isso tem colunas próprias em vez
   /// de mexer em `salarioBase`: o adicional de insalubridade não muda o
