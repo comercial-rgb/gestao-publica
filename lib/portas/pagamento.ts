@@ -288,6 +288,18 @@ export async function registrarPagamento(input: {
   const retencoes = await comporRetencoes(input.retencoes ?? []);
 
   return comEscritaAutenticada("PAGAR", async (criadoPor) => {
+    // ⚠️ V6 P1.2 — A PERNA DE DISPONIBILIDADE É A CONTA CONTÁBIL DA CONTA BANCÁRIA QUE PAGA, lida
+    // do cadastro (fail-closed). Vinha de uma constante (1.1.1.1.2.00.00) enquanto as contas
+    // bancárias mapeiam outra (1.1.1.1.1.19.00): o pagamento saía da conta X na tesouraria e de
+    // outra conta no razão — e a conciliação de X nunca fechava. "Nenhum código no código."
+    const conta = await cliente().contaBancaria.findUnique({
+      where: { codigo: input.contaBancaria },
+      select: { codigo: true, contaContabil: { select: { codigo: true } } },
+    });
+    if (conta === null) throw new Error(`Conta bancária ${input.contaBancaria} não cadastrada. Nada foi gravado.`);
+    if (conta.contaContabil === null) {
+      throw new Error(`A conta bancária ${conta.codigo} não tem conta contábil mapeada; o pagamento não sabe de que conta do razão sai. Parametrize o mapeamento antes. Nada foi gravado.`);
+    }
     const r = await pagar(
       {
         liquidacaoId: input.liquidacaoId,
@@ -307,7 +319,7 @@ export async function registrarPagamento(input: {
       },
       roteiroPagamento({
         obrigacaoAPagar: CONTA_FORNECEDORES,
-        disponibilidade: CONTA_DISPONIBILIDADE,
+        disponibilidade: conta.contaContabil.codigo,
       }),
       criarM05Deps(cliente()),
       // ⚠️ `undefined`, e não `{retencoes: []}`, quando não há retenção: é o que faz o
@@ -415,11 +427,11 @@ export async function lerTiposDeConsignacao(): Promise<
  * fonte); a perna patrimonial do razão credita a conta CONTÁBIL de bancos. São coisas
  * diferentes: o ente tem várias contas bancárias e uma conta de Bancos no PCASP.
  *
- * ⚠️ Enquanto o plano mínimo tiver DUAS disponibilidades (Caixa 1.1.1.1.1 e Bancos
- * 1.1.1.1.2 — a divergência M04×M05 anotada no seed), esta escolha é a do M05, que é
- * quem paga. Pendência PCASP-COMPLETO.
+ * ⚠️ V6 P1.2: a conta contábil de disponibilidade deixou de ser constante aqui — é a conta
+ * contábil mapeada da conta bancária que paga (ver `registrarPagamento`). A divergência
+ * M04×M05 do plano mínimo (Caixa 1.1.1.1.1 × Bancos 1.1.1.1.2) fica resolvida pelo cadastro
+ * da conta, que é quem diz. Pendência PCASP-COMPLETO continua para o plano em si.
  */
-const CONTA_DISPONIBILIDADE = "1.1.1.1.2.00.00";
 
 /** Centavos (BigInt) → "1234.56". Sem float em nenhum ponto. */
 function emReais(centavos: bigint): string {

@@ -72,6 +72,7 @@ export function FormArrecadacao({
     <form
       ref={ref}
       action={action}
+      data-acao="registrar-guia"
       className={CLASSE_PAINEL_FORMULARIO}
     >
       <ChaveDeComando />
