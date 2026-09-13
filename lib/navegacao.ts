@@ -34,7 +34,8 @@ export type SlugDeArea =
   | "administracao"
   | "integracoes"
   | "suporte"
-  | "pessoal";
+  | "pessoal"
+  | "folha";
 
 export interface AreaNav {
   /** O segmento da rota (`/planejamento`). */
@@ -64,6 +65,7 @@ export const AREAS: readonly AreaNav[] = [
   { slug: "integracoes", rotulo: "Integrações", descricao: "Central de integrações: SAGRES TXT/JSON, Banco do Brasil e API TCE-PB." },
   { slug: "suporte", rotulo: "Suporte", descricao: "Canais de atendimento e prazos de resposta contratados." },
   { slug: "pessoal", rotulo: "Pessoal", descricao: "Servidores, vínculos e histórico funcional; cargos e lotações do quadro. Cargo, lotação e salário são derivados dos eventos." },
+  { slug: "folha", rotulo: "Folha", descricao: "Folha de pagamento: tabelas do ente, rubricas, lançamentos, cálculo com memória por servidor e fechamento." },
 ];
 
 /** Um relatório navegável (rota + rótulo + uma linha). Fonte ÚNICA da landing e do submenu. */
@@ -203,6 +205,14 @@ export const ADMINISTRACAO: readonly RelatorioNav[] = [
   { href: "/administracao/senha", numero: "Senha", rotulo: "Trocar Senha", descricao: "Troca a própria senha — revoga as sessões abertas." },
   { href: "/administracao/apresentacao", numero: "Apresentação", rotulo: "Apresentação do ente", descricao: "Nome de exibição, imagem institucional, contatos, tema e canais — versionado, com autor." },
   { href: "/administracao/sistema", numero: "Sistema", rotulo: "Sobre o sistema", descricao: "Proveniência do build, ambiente e as atualizações de permissões instaladas." },
+];
+
+/** FOLHA (M33) — fonte única da landing e do submenu. */
+export const FOLHA: readonly RelatorioNav[] = [
+  { href: "/folha/folhas", numero: "Folhas", rotulo: "Folhas de pagamento", descricao: "A folha de cada competência: cálculo numerado com memória por servidor, cancelamento e fechamento como fatos." },
+  { href: "/folha/rubricas", numero: "Rubricas", rotulo: "Rubricas", descricao: "Proventos e descontos: natureza, incidências e proporcionalidade aos dias." },
+  { href: "/folha/lancamentos", numero: "Lançamentos", rotulo: "Lançamentos", descricao: "Valores fixos (por vigência) e variáveis (por competência) informados por matrícula." },
+  { href: "/folha/tabelas", numero: "Tabelas", rotulo: "Tabelas do ente", descricao: "Contribuição previdenciária por regime, IRRF e salário-família, vigentes por competência, com a fundamentação legal." },
 ];
 
 /** PESSOAL (M32) — fonte única da landing e do submenu. */

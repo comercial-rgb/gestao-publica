@@ -280,6 +280,14 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   CONFIGURAR_CALENDARIO_RH: "pessoal",
   REGISTRAR_CONTRATO_TRABALHO: "pessoal",
   REGISTRAR_AVALIACAO_EXPERIENCIA: "pessoal",
+  // V6 P2.3 — M33 folha
+  CONFIGURAR_TABELAS_DA_FOLHA: "folha",
+  CADASTRAR_RUBRICA: "folha",
+  LANCAR_NA_FOLHA: "folha",
+  ABRIR_FOLHA: "folha",
+  CALCULAR_FOLHA: "folha",
+  CANCELAR_CALCULO_DA_FOLHA: "folha",
+  FECHAR_FOLHA: "folha",
   // M21 — protocolo e processo digital (ENT02)
   ABRIR_PROCESSO: "protocolo",
   TRAMITAR_PROCESSO: "protocolo",
@@ -391,6 +399,7 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   CONSULTAR_INTEGRACOES: "integracoes",
   CONSULTAR_SUPORTE: "suporte",
   CONSULTAR_PESSOAL: "pessoal",
+  CONSULTAR_FOLHA: "folha",
 };
 
 /**

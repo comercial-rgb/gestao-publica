@@ -303,6 +303,14 @@ export type AcaoDoSistema =
   | "CONFIGURAR_CALENDARIO_RH"
   | "REGISTRAR_CONTRATO_TRABALHO"
   | "REGISTRAR_AVALIACAO_EXPERIENCIA"
+  // V6 P2.3 — M33 folha de pagamento
+  | "CONFIGURAR_TABELAS_DA_FOLHA"
+  | "CADASTRAR_RUBRICA"
+  | "LANCAR_NA_FOLHA"
+  | "ABRIR_FOLHA"
+  | "CALCULAR_FOLHA"
+  | "CANCELAR_CALCULO_DA_FOLHA"
+  | "FECHAR_FOLHA"
   // ── M21 — protocolo e processo digital (ENT02) ──
   //
   // ⚠️ UMA AÇÃO POR ATO, e não um "GERIR_PROCESSO" que agrupasse tudo. Abrir, tramitar
@@ -474,7 +482,8 @@ export type AcaoDeLeitura =
   | "CONSULTAR_ADMINISTRACAO"
   | "CONSULTAR_INTEGRACOES"
   | "CONSULTAR_SUPORTE"
-  | "CONSULTAR_PESSOAL";
+  | "CONSULTAR_PESSOAL"
+  | "CONSULTAR_FOLHA";
 
 /**
  * O rol das ações de leitura, para o bootstrap, os perfis de fixture e a política de
@@ -501,6 +510,7 @@ export const ACOES_DE_LEITURA: readonly AcaoDeLeitura[] = [
   "CONSULTAR_SUPORTE",
   // V6 P2 — a área de pessoal (M32).
   "CONSULTAR_PESSOAL",
+  "CONSULTAR_FOLHA",
 ];
 
 /** É uma ação de leitura? — o discriminador que a política de leitura e os testes usam. */
@@ -705,6 +715,16 @@ export type NomeDeServico =
   | "cadastrarContratoTrabalho"
   | "prorrogarContratoTrabalho"
   | "registrarAvaliacaoExperiencia"
+  // M33 — folha
+  | "cadastrarTabelaDeContribuicao"
+  | "cadastrarTabelaIrrf"
+  | "cadastrarTabelaSalarioFamilia"
+  | "cadastrarRubrica"
+  | "lancarNaFolha"
+  | "abrirFolha"
+  | "calcularFolha"
+  | "cancelarCalculoDaFolha"
+  | "fecharFolha"
   // ── M02b — planejamento plurianual (V4 §8) ──
   | "criarPlanoPlurianual"
   | "criarEixoEstruturante"
@@ -1078,6 +1098,18 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   cadastrarContratoTrabalho: "REGISTRAR_CONTRATO_TRABALHO",
   prorrogarContratoTrabalho: "REGISTRAR_CONTRATO_TRABALHO",
   registrarAvaliacaoExperiencia: "REGISTRAR_AVALIACAO_EXPERIENCIA",
+  // V6 P2.3 — M33 folha: as três tabelas são UM poder (parametrizar a folha pela norma vigente);
+  // abrir, calcular, cancelar o cálculo e fechar são quatro atos distintos, porque quem calcula
+  // não é necessariamente quem fecha (o fechamento congela e leva ao empenho).
+  cadastrarTabelaDeContribuicao: "CONFIGURAR_TABELAS_DA_FOLHA",
+  cadastrarTabelaIrrf: "CONFIGURAR_TABELAS_DA_FOLHA",
+  cadastrarTabelaSalarioFamilia: "CONFIGURAR_TABELAS_DA_FOLHA",
+  cadastrarRubrica: "CADASTRAR_RUBRICA",
+  lancarNaFolha: "LANCAR_NA_FOLHA",
+  abrirFolha: "ABRIR_FOLHA",
+  calcularFolha: "CALCULAR_FOLHA",
+  cancelarCalculoDaFolha: "CANCELAR_CALCULO_DA_FOLHA",
+  fecharFolha: "FECHAR_FOLHA",
 
   // ── M02b — planejamento plurianual (V4 §8): 20 serviços, 10 ações, pelos anexos da LRF ──
   criarPlanoPlurianual: "CADASTRAR_PPA",

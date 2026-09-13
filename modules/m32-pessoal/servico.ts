@@ -462,6 +462,7 @@ export async function admitirServidor(
         matricula: dados.matricula,
         tipo: dados.tipo,
         regimeJuridico: dados.regimeJuridico,
+        regimePrevidenciario: dados.regimePrevidenciario ?? null,
         dataAdmissao: dados.dataAdmissao,
         observacao: dados.observacao ?? null,
         criadoPor: dados.criadoPor,

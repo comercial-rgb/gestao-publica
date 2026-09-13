@@ -280,6 +280,7 @@ export async function acaoDoServidor(acao: string, servidorId: string, c: Campos
       const r = await comEscritaAutenticada("ADMITIR_SERVIDOR", (criadoPor) =>
         admitirServidor(prisma, {
           servidorId, matricula: t(c, "matricula"), tipo: t(c, "tipo") as "EFETIVO", regimeJuridico: t(c, "regimeJuridico"),
+          ...(opcional(c, "regimePrevidenciario") !== undefined ? { regimePrevidenciario: t(c, "regimePrevidenciario") as "RGPS" | "RPPS" | "ISENTO" } : {}),
           dataAdmissao: dia(c, "dataAdmissao"), cargoId: t(c, "cargoId"), lotacaoId: t(c, "lotacaoId"), salarioBase: decimalDaTela(t(c, "salarioBase")),
           ...(opcional(c, "observacao") !== undefined ? { observacao: t(c, "observacao") } : {}), criadoPor,
         })

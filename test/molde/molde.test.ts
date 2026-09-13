@@ -225,6 +225,8 @@ const PORTAS_DE_OPCOES: readonly string[] = [
   // `vinculoId`, `cargoId`, `lotacaoId`, `paiId`, `unidadeOrcId` — os dois últimos já existem em
   // outras portas, e é exatamente por isso que a fonte tem de ser declarada.
   "lib/portas/recursos/pessoal-dados.ts",
+  // V6 P2.3 — a porta da folha (M33): `vinculoId` e `rubricaId` do lançamento.
+  "lib/portas/recursos/folha-dados.ts",
   "lib/portas/recursos/almoxarifado-dados.ts",
   "lib/portas/recursos/dados.ts",
   // ⚠️ ENT06 — a porta da gestão do bem. Ela entrou aqui NO MESMO COMMIT em que nasceu, e a

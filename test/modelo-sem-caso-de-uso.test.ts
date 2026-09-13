@@ -91,6 +91,18 @@ const ESCRITO_POR_ANINHAMENTO: Readonly<Record<string, string>> = {
     "escrito por `setoresAutorizados: { create: ... }` em modules/m23-comunicacao/servico.ts",
   RequerenteAdicionalDoProcesso:
     "escrito por `requerentesAdicionais: { create: ... }` em modules/m21-protocolo/servico.ts",
+  // ── V6 P2.3 — M33 folha ──
+  FaixaDeContribuicao:
+    "escrita por `faixas: { create: ... }` em cadastrarTabelaDeContribuicao " +
+    "(modules/m33-folha/servico.ts); LIDA pela relação `faixas` da tabela em lerTabelas e na " +
+    "porta — a faixa não existe fora da tabela que a publicou, e uma faixa avulsa não tem norma",
+  FaixaIrrf:
+    "escrita por `faixas: { create: ... }` em cadastrarTabelaIrrf (modules/m33-folha/servico.ts); " +
+    "LIDA pela relação `faixas` da tabela — mesma razão da faixa de contribuição",
+  LinhaDoContracheque:
+    "escrita por `linhas: { create: ... }` em calcularFolha (modules/m33-folha/servico.ts); LIDA " +
+    "pela relação `linhas` do contracheque em verContracheque — a linha é parte do contracheque " +
+    "e nasce com ele no mesmo ato; linha avulsa não tem cálculo que a explique",
 };
 
 function arquivosDeSchema(): readonly string[] {

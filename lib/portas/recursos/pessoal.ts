@@ -98,6 +98,11 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
         { nome: "matricula", rotulo: "Matrícula (única no ente)", tipo: "texto", obrigatorio: true, largura: 1 },
         { nome: "tipo", rotulo: "Tipo de vínculo", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: OPCOES_DE_TIPO_DE_VINCULO },
         { nome: "regimeJuridico", rotulo: "Regime jurídico (como a lei do ente o nomeia)", tipo: "texto", obrigatorio: true, largura: 2 },
+        { nome: "regimePrevidenciario", rotulo: "Regime previdenciário (a folha exige)", tipo: "selecao", largura: 1, opcoes: [
+          { valor: "RGPS", rotulo: "RGPS — regime geral" },
+          { valor: "RPPS", rotulo: "RPPS — regime próprio" },
+          { valor: "ISENTO", rotulo: "Isento" },
+        ] },
         { nome: "dataAdmissao", rotulo: "Data de admissão", tipo: "data", obrigatorio: true, largura: 1 },
         { nome: "cargoId", rotulo: "Cargo", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "lotacaoId", rotulo: "Lotação", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },

@@ -1,0 +1,380 @@
+// ============================================================================
+// M33 — FOLHA DE PAGAMENTO (RH bloco 2, V6 P2.3): tabelas do ente, rubricas, lançamentos,
+// cálculo com memória por servidor e por rubrica, fechamento com sha256.
+//
+// ⚠️ NENHUM CÓDIGO NO CÓDIGO. Alíquota, faixa, teto, dedução por dependente, desconto
+// simplificado, redutor e valor do salário-família vêm DESTAS tabelas, cadastradas pelo ente
+// com a fundamentação legal, vigentes por competência. Sem tabela vigente, a folha RECUSA
+// nomeando a competência — nunca calcula com um valor embutido.
+//
+// ⚠️ O CÁLCULO É UM FATO NUMERADO, nunca UPDATE: recalcular gera `CalculoDaFolha` numero+1; o
+// cancelamento é `CancelamentoDoCalculo` (fato); o fechamento congela UM cálculo e leva o sha256
+// do conjunto. O contracheque guarda a MEMÓRIA canônica (JSON determinístico) e o seu sha256.
+//
+// Algoritmos conciliados do motor doador `folha-engine` (saas-municipal) — só a lógica pura,
+// reescrita em Decimal e sobre tabelas do ente (ver docs/adr/ADR-folha-tabelas-do-ente.md).
+// ============================================================================
+
+/// O regime previdenciário do VÍNCULO — decide qual tabela de contribuição se aplica.
+enum RegimePrevidenciario {
+  /// Regime Geral (INSS): tabela progressiva com teto, cadastrada pelo ente a partir da portaria vigente.
+  RGPS
+  /// Regime Próprio do ente: alíquota da lei municipal (uma ou mais faixas), teto opcional.
+  RPPS
+  /// Sem contribuição (estagiário, conselheiro tutelar, conforme a lei do ente).
+  ISENTO
+}
+
+/// A tabela de contribuição previdenciária, por regime e vigência. RGPS: faixas progressivas com teto.
+/// RPPS: uma faixa (linear) ou várias (progressiva), teto opcional.
+model TabelaDeContribuicao {
+  id String @id @default(cuid())
+
+  regime RegimePrevidenciario
+
+  /// Vigência por COMPETÊNCIA (AAAA-MM), inclusiva. Fim nulo = vigente até nova tabela.
+  competenciaInicio String @db.VarChar(7)
+  competenciaFim    String? @db.VarChar(7)
+
+  /// O salário de contribuição máximo. Nulo = sem teto (RPPS que contribui sobre a remuneração integral).
+  teto Decimal? @db.Decimal(18, 2)
+
+  /// Alíquota patronal (RPPS: normal + suplementar somadas; RGPS: a cota do empregador). Informativa
+  /// para a planilha contábil (5.12.72/73); não desconta do servidor.
+  aliquotaPatronal Decimal? @db.Decimal(7, 4)
+
+  /// Portaria, lei ou decreto que fixou os valores. Obrigatória: sem fonte não há tabela.
+  fundamentacaoLegal String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  faixas FaixaDeContribuicao[]
+
+  @@index([regime, competenciaInicio])
+}
+
+model FaixaDeContribuicao {
+  id String @id @default(cuid())
+
+  tabelaId String
+  tabela   TabelaDeContribuicao @relation(fields: [tabelaId], references: [id])
+
+  ordem Int
+
+  /// Limite superior INCLUSIVO da faixa. Nulo só na última (sem limite).
+  ate Decimal? @db.Decimal(18, 2)
+
+  /// Decimal: 0.0750 = 7,5%.
+  aliquota Decimal @db.Decimal(7, 4)
+
+  @@unique([tabelaId, ordem])
+}
+
+/// A tabela do imposto de renda retido na fonte, por vigência. Os parâmetros opcionais dizem
+/// quais CENÁRIOS o cálculo pode usar: desconto simplificado (quando informado) e redutor
+/// (quando os três campos vêm). O cálculo escolhe o MENOR imposto entre os cenários aplicáveis.
+model TabelaIrrf {
+  id String @id @default(cuid())
+
+  competenciaInicio String  @db.VarChar(7)
+  competenciaFim    String? @db.VarChar(7)
+
+  deducaoPorDependente Decimal @db.Decimal(18, 2)
+
+  /// Desconto simplificado mensal (substitui as deduções). Nulo = cenário indisponível nesta vigência.
+  descontoSimplificado Decimal? @db.Decimal(18, 2)
+
+  /// Parcela isenta adicional para quem tem 65 anos ou mais (aposentadoria/pensão). Nulo = não há.
+  isencaoMaior65 Decimal? @db.Decimal(18, 2)
+
+  /// Redutor: max(0, base − fator × renda), zerado acima da renda máxima. Os três juntos ou nenhum (CHECK).
+  redutorBase        Decimal? @db.Decimal(18, 2)
+  redutorFator       Decimal? @db.Decimal(12, 8)
+  redutorRendaMaxima Decimal? @db.Decimal(18, 2)
+
+  fundamentacaoLegal String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  faixas FaixaIrrf[]
+
+  @@index([competenciaInicio])
+}
+
+model FaixaIrrf {
+  id String @id @default(cuid())
+
+  tabelaId String
+  tabela   TabelaIrrf @relation(fields: [tabelaId], references: [id])
+
+  ordem Int
+
+  /// Limite superior INCLUSIVO da base. Nulo só na última.
+  ate Decimal? @db.Decimal(18, 2)
+
+  aliquota Decimal @db.Decimal(7, 4)
+
+  /// A parcela a deduzir da fórmula simplificada — usada só para CONFERIR o cálculo faixa a faixa.
+  parcelaADeduzir Decimal @default(0) @db.Decimal(18, 2)
+
+  @@unique([tabelaId, ordem])
+}
+
+/// O salário-família: pago por dependente elegível a quem ganha até a renda máxima.
+model TabelaSalarioFamilia {
+  id String @id @default(cuid())
+
+  competenciaInicio String  @db.VarChar(7)
+  competenciaFim    String? @db.VarChar(7)
+
+  rendaMaxima         Decimal @db.Decimal(18, 2)
+  valorPorDependente  Decimal @db.Decimal(18, 2)
+  /// Idade limite (exclusiva): dependente com idade < limite recebe. Inválido recebe sem limite.
+  idadeLimite Int
+
+  fundamentacaoLegal String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([competenciaInicio])
+}
+
+enum TipoDeRubrica {
+  PROVENTO
+  DESCONTO
+}
+
+/// De onde a rubrica tira o valor. As sistêmicas (vencimento, gratificações, contribuição, IRRF e
+/// salário-família) existem UMA vez cada — o serviço impõe.
+enum NaturezaDaRubrica {
+  /// O vencimento-base vigente do vínculo no último dia da competência (M32).
+  VENCIMENTO_BASE
+  /// A soma das gratificações vigentes do vínculo (M32).
+  GRATIFICACOES_DO_VINCULO
+  /// O valor vem de um lançamento fixo ou variável (`LancamentoDaFolha`).
+  VALOR_INFORMADO
+  /// `percentual` × vencimento-base.
+  PERCENTUAL_DO_VENCIMENTO
+  /// A contribuição previdenciária do servidor pela tabela do regime.
+  CONTRIBUICAO_PREVIDENCIARIA
+  /// O IRRF pela tabela vigente.
+  IMPOSTO_DE_RENDA
+  /// O salário-família pela tabela vigente e pelos dependentes com a finalidade.
+  SALARIO_FAMILIA
+}
+
+model Rubrica {
+  id String @id @default(cuid())
+
+  codigo    String @unique
+  descricao String
+
+  tipo     TipoDeRubrica
+  natureza NaturezaDaRubrica
+
+  /// Só PERCENTUAL_DO_VENCIMENTO. Decimal: 0.2000 = 20%.
+  percentual Decimal? @db.Decimal(7, 4)
+
+  /// Incidências — o ente as parametriza por rubrica (5.12.62/63).
+  incideContribuicao Boolean
+  incideIrrf         Boolean
+
+  /// Proporcional aos dias do mês fiscal (30) em que o vínculo esteve ativo e não afastado.
+  proporcionalAosDias Boolean
+
+  /// Ordem no contracheque.
+  ordem Int
+
+  fundamentacaoLegal String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  lancamentos LancamentoDaFolha[]
+  linhas      LinhaDoContracheque[]
+
+  @@index([natureza])
+  @@index([ordem])
+}
+
+enum TipoDeLancamentoDaFolha {
+  /// Vale por competências consecutivas (vigência); ex.: insalubridade, mensalidade sindical.
+  FIXO
+  /// Vale numa competência só; ex.: horas extras, adicional noturno.
+  VARIAVEL
+}
+
+/// Um valor informado para uma rubrica VALOR_INFORMADO de um vínculo. Append-only: encerrar um
+/// fixo é registrar `competenciaFim` ao criar, ou um novo lançamento; nada se apaga.
+model LancamentoDaFolha {
+  id String @id @default(cuid())
+
+  vinculoId String
+  vinculo   Vinculo @relation(fields: [vinculoId], references: [id])
+
+  rubricaId String
+  rubrica   Rubrica @relation(fields: [rubricaId], references: [id])
+
+  tipo TipoDeLancamentoDaFolha
+
+  /// FIXO: início obrigatório, fim opcional. VARIÁVEL: início = fim = a competência (CHECK).
+  competenciaInicio String  @db.VarChar(7)
+  competenciaFim    String? @db.VarChar(7)
+
+  valor Decimal @db.Decimal(18, 2)
+
+  observacao String?
+  atoLegal   String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([vinculoId, competenciaInicio])
+  @@index([rubricaId])
+}
+
+enum TipoDeFolha {
+  MENSAL
+}
+
+/// A folha de uma competência e tipo. A situação é DERIVADA: sem cálculo / calculada / fechada.
+model FolhaDePagamento {
+  id String @id @default(cuid())
+
+  competencia String      @db.VarChar(7)
+  tipo        TipoDeFolha
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  calculos   CalculoDaFolha[]
+  fechamento FechamentoDaFolha?
+
+  @@unique([competencia, tipo])
+}
+
+/// Um cálculo da folha — numerado por folha; recalcular é o próximo número, nunca UPDATE.
+model CalculoDaFolha {
+  id String @id @default(cuid())
+
+  folhaId String
+  folha   FolhaDePagamento @relation(fields: [folhaId], references: [id])
+
+  numero Int
+
+  motivo String?
+
+  /// Totais do conjunto (somas dos contracheques), guardados para a lista; a fonte é o contracheque.
+  totalProventos Decimal @db.Decimal(18, 2)
+  totalDescontos Decimal @db.Decimal(18, 2)
+  totalLiquido   Decimal @db.Decimal(18, 2)
+  contracheques  Int
+
+  /// sha256 da lista ordenada dos sha256 dos contracheques — a impressão digital do cálculo.
+  sha256 String @db.VarChar(64)
+
+  /// Versão do algoritmo que calculou (muda quando a lógica muda; o cálculo antigo continua reproduzível).
+  versaoDoMotor String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  contrachequesDoCalculo Contracheque[]
+  cancelamento           CancelamentoDoCalculo?
+  fechamento             FechamentoDaFolha?
+
+  @@unique([folhaId, numero])
+}
+
+model CancelamentoDoCalculo {
+  id String @id @default(cuid())
+
+  calculoId String         @unique
+  calculo   CalculoDaFolha @relation(fields: [calculoId], references: [id])
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// O fechamento congela UM cálculo da folha. Depois dele, calcular de novo é recusado.
+model FechamentoDaFolha {
+  id String @id @default(cuid())
+
+  folhaId String           @unique
+  folha   FolhaDePagamento @relation(fields: [folhaId], references: [id])
+
+  calculoId String         @unique
+  calculo   CalculoDaFolha @relation(fields: [calculoId], references: [id])
+
+  /// Copiado do cálculo no ato — o que foi fechado.
+  sha256 String @db.VarChar(64)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// O contracheque de um vínculo num cálculo: linhas, totais e a MEMÓRIA canônica com o sha256.
+model Contracheque {
+  id String @id @default(cuid())
+
+  calculoId String
+  calculo   CalculoDaFolha @relation(fields: [calculoId], references: [id])
+
+  vinculoId String
+  vinculo   Vinculo @relation(fields: [vinculoId], references: [id])
+
+  regime RegimePrevidenciario
+
+  /// Fator de dias aplicado às rubricas proporcionais (dias computados / 30).
+  diasComputados Int
+
+  totalProventos    Decimal @db.Decimal(18, 2)
+  totalDescontos    Decimal @db.Decimal(18, 2)
+  liquido           Decimal @db.Decimal(18, 2)
+  baseContribuicao  Decimal @db.Decimal(18, 2)
+  contribuicao      Decimal @db.Decimal(18, 2)
+  baseIrrf          Decimal @db.Decimal(18, 2)
+  irrf              Decimal @db.Decimal(18, 2)
+
+  /// A memória de cálculo canônica (JSON determinístico): tabelas usadas com fundamentação,
+  /// faixas percorridas, cenários do IRRF, dependentes considerados, dias, cada linha com fórmula.
+  memoria Json
+
+  sha256 String @db.VarChar(64)
+
+  linhas LinhaDoContracheque[]
+
+  @@unique([calculoId, vinculoId])
+  @@index([vinculoId])
+}
+
+model LinhaDoContracheque {
+  id String @id @default(cuid())
+
+  contrachequeId String
+  contracheque   Contracheque @relation(fields: [contrachequeId], references: [id])
+
+  rubricaId String
+  rubrica   Rubrica @relation(fields: [rubricaId], references: [id])
+
+  ordem Int
+  tipo  TipoDeRubrica
+
+  valorBase Decimal @db.Decimal(18, 2)
+  /// Fator aplicado (1.000000 = integral).
+  fator     Decimal @db.Decimal(10, 6)
+  valor     Decimal @db.Decimal(18, 2)
+
+  incideContribuicao Boolean
+  incideIrrf         Boolean
+
+  /// A fórmula em texto: "vencimento-base 3000.00 × 19/30 dias".
+  memoria String
+
+  @@unique([contrachequeId, rubricaId])
+}

@@ -428,6 +428,16 @@ enum AcaoDoSistema {
   REGISTRAR_CONTRATO_TRABALHO
   REGISTRAR_AVALIACAO_EXPERIENCIA
   CONSULTAR_PESSOAL
+
+  // V6 P2.3 — M33 folha de pagamento (RH bloco 2)
+  CONFIGURAR_TABELAS_DA_FOLHA
+  CADASTRAR_RUBRICA
+  LANCAR_NA_FOLHA
+  ABRIR_FOLHA
+  CALCULAR_FOLHA
+  CANCELAR_CALCULO_DA_FOLHA
+  FECHAR_FOLHA
+  CONSULTAR_FOLHA
   // ── V4 (§8, Fila A) — M02b, o planejamento PLURIANUAL (PPA e LDO): dez ações para vinte
   // serviços, agrupadas pelos ANEXOS DA LRF (ver `acoes.ts`). Conciliado do siafic-cg c04ad5a. ──
   CADASTRAR_PPA

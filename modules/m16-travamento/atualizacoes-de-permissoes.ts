@@ -346,6 +346,26 @@ export const ACOES_DO_PESSOAL: readonly AcaoDoSistema[] = [
   "REGISTRAR_ANOTACAO", "REGISTRAR_TREINAMENTO", "CONFIGURAR_CALENDARIO_RH", "REGISTRAR_CONTRATO_TRABALHO",
   "REGISTRAR_AVALIACAO_EXPERIENCIA", "CONSULTAR_PESSOAL",
 ];
+export const ACOES_DA_FOLHA: readonly AcaoDoSistema[] = [
+  "CONFIGURAR_TABELAS_DA_FOLHA", "CADASTRAR_RUBRICA", "LANCAR_NA_FOLHA", "ABRIR_FOLHA", "CALCULAR_FOLHA",
+  "CANCELAR_CALCULO_DA_FOLHA", "FECHAR_FOLHA", "CONSULTAR_FOLHA",
+];
+export function derivarFolha(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null);
+    if (!administra) continue;
+    const jaTem = new Set(perfil.permissoes.filter((p) => p.unidadeOrcId === null).map((p) => p.acao));
+    for (const acao of ACOES_DA_FOLHA) {
+      if (jaTem.has(acao)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
 export function derivarPessoal(
   perfis: readonly PerfilComPermissoes[],
   _areaDaAcao: AreaDaAcao
@@ -440,6 +460,14 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "O M32 pessoal (RH bloco 1, V6 P2) chegou com catorze acoes e a leitura CONSULTAR_PESSOAL. Quem concede acao a " +
       "perfil no escopo global recebe as quinze no global; a segregacao fina fica a cargo do administrador.",
     derivar: derivarPessoal,
+  },
+  {
+    versao: 10,
+    nome: "folha-m33",
+    descricao:
+      "O M33 folha de pagamento (RH bloco 2, V6 P2.3) chegou com sete acoes e a leitura CONSULTAR_FOLHA. Quem concede " +
+      "acao a perfil no escopo global recebe as oito no global; a segregacao (quem calcula, quem fecha) fica a cargo do administrador.",
+    derivar: derivarFolha,
   },
 ];
 

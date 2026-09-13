@@ -665,6 +665,8 @@ export const zAdmitirServidorInput = z.object({
     "ESTAGIARIO",
   ]),
   regimeJuridico: zTexto(3, "O regime jurídico como a lei do ente o nomeia"),
+  /** V6 P2.3 — decide a tabela de contribuição da folha (M33). Opcional no cadastro; a folha exige. */
+  regimePrevidenciario: z.enum(["RGPS", "RPPS", "ISENTO"]).optional(),
   dataAdmissao: z.coerce.date(),
   cargoId: z.string().min(1),
   lotacaoId: z.string().min(1),

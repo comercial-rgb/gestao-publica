@@ -414,7 +414,7 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   crachás aqui inventariam uma segregação que o TR não pede, e cada um teria de ser
     //   concedido à mão em toda instalação existente.
     //   = 237 serviços, e o censo continua em 229 ações.
-    expect(nomes.length).toBe(287); // +4 (V5) documento fiscal; +1 (V6 P0.1) apresentação; +2 (V6 P1.1) vínculo; +1 (V6 P1.2) conta da arrecadação; +17 (V6 P2) M32 pessoal
+    expect(nomes.length).toBe(296); // +4 (V5) documento fiscal; +1 (V6 P0.1) apresentação; +2 (V6 P1.1) vínculo; +1 (V6 P1.2) conta da arrecadação; +17 (V6 P2) M32 pessoal; +9 (V6 P2.3) M33 folha
 
     // 97 serviços, 93 ações distintas. Os pares que compartilham ação (4: importarExtratoBb
     // REUSA IMPORTAR_EXTRATO). transferirEntreContas tem AÇÃO PRÓPRIA (não compartilha) → +1 ação.
@@ -504,7 +504,7 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   = 229.
     // 229 de mutação (uma por serviço, com as duas fusões abaixo) + 18 de LEITURA
     // (`ACOES_DE_LEITURA`, uma por área de navegação — orquestração V3, 4.1).
-    expect(TODAS_AS_ACOES.length).toBe(262 + 19); // 262 de mutação (+15 V6 P2 pessoal) + 19 de leitura (+1 CONSULTAR_PESSOAL)
+    expect(TODAS_AS_ACOES.length).toBe(269 + 20); // 269 de mutação (+15 V6 P2 pessoal, +7 V6 P2.3 folha) + 20 de leitura (+CONSULTAR_PESSOAL, +CONSULTAR_FOLHA)
     expect(ACAO_DO_SERVICO.encerrarExercicio).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.encerrarExercicioComRestos).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.importarExtrato).toBe("IMPORTAR_EXTRATO");

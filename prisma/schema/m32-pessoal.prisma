@@ -480,10 +480,17 @@ model Vinculo {
 
   dataAdmissao DateTime
 
+  /// V6 P2.3 — O REGIME PREVIDENCIÁRIO decide a tabela de contribuição da folha (M33). Nulo nos
+  /// vínculos anteriores à folha: a folha RECUSA calcular um vínculo sem regime, nomeando a matrícula.
+  regimePrevidenciario RegimePrevidenciario?
+
   observacao String?
 
   criadoEm  DateTime @default(now())
   criadoPor String
+
+  lancamentosDaFolha LancamentoDaFolha[]
+  contracheques      Contracheque[]
 
   eventos     HistoricoVinculo[]
   portarias   Portaria[]
