@@ -254,3 +254,15 @@ evento existir — não como verdade vigente. A admissão grava o regime nos DOI
 8. **`PIS-SEM-DV`** — `zPis` confere só os 11 dígitos.
 9. **`PESSOAL-SEM-TELA-CALENDARIO-CONTRATO-AVALIACAO`** e **`PESSOAL-SEM-TELA-BAIXA-DE-DEPENDENTE`**
    — serviço e ação existem; tela não (ver "Arquivos deste módulo").
+10. **`REGIME-DE-VINCULO-DESLIGADO`** (achado pelo percurso da apropriação, V6 P2.3b) — o regime
+    previdenciário de um vínculo legado que JÁ FOI DESLIGADO não tem por onde ser informado: a
+    matrícula desligada não é oferecida às movimentações (regra certa — vínculo encerrado não
+    recebe evento novo), e a folha da competência em que ele ainda viveu um dia exige o regime
+    para saber qual tabela aplicar. O ente fica sem caminho, e a folha do mês trava.
+
+    **A decisão a tomar** (não tomada aqui de propósito, no fim de uma sessão longa): informar o
+    regime com data ANTERIOR OU IGUAL ao desligamento não é uma movimentação em vínculo
+    encerrado — é o registro de um fato que já era verdade enquanto ele vivia. Se aceita, a
+    exceção precisa ser NARROW (só `MUDANCA_REGIME_PREVIDENCIARIO`, só com data ≤ desligamento) e
+    a porta precisa oferecer a matrícula desligada apenas para esse tipo, sem reabrir o vínculo
+    para os demais eventos.

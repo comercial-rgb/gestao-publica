@@ -6,10 +6,10 @@
 |---|---|
 | HEAD | ver `git log -1` — a seção 51 nomeia o SHA da aplicação congelada e o do percurso |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | **V6 produto integrado** (`docs/lotes/V6-produto-integrado.md`): P0 identidade e shell (52), P1 vínculos (53, 54), P1.3 papéis (55), **P2.1/P2.2 pessoal M32** (55), **P2.3 folha M33** (56) e **P2.4 portal do servidor** (57) ENTREGUES; em curso P2.3b apropriação contábil da folha, depois P3. A publicação da V5 está SUSPENSA |
-| Último resultado | seção 57 — portal do servidor: a própria ficha, os próprios dependentes e os contracheques das folhas FECHADAS, recortados pela pessoa da sessão (nenhum id na entrada da porta). `next build` em `259af64`; smoke-portal **24/24**, smoke-folha 46/46, smoke-pessoal 29/29, smoke-identidade 46/46; portal-do-servidor 10/10, censo 296 serviços / 269+21 ações, atualizações v11, rápida 852/852; catálogo VALIDADO 67 / PARCIAL 84 / IMPLEMENTADO 67 / AUSENTE 145 |
-| Pendências relevantes | do M33 (56.3): `APROPRIACAO-CONTABIL-DA-FOLHA`, `FOLHAS-NAO-MENSAIS`, `FALTAS-NA-FOLHA`, `PENSAO-ALIMENTICIA-NA-FOLHA`, `CONSIGNACOES-E-MARGEM`, `ARREDONDAMENTO-DA-FOLHA`, `CONTRACHEQUE-EM-PDF`, `RESUMO-DA-FOLHA`, `PATRONAL-NA-MEMORIA`; do M32 (55.3): `PESSOAL-SEM-TELA-CALENDARIO-CONTRATO-AVALIACAO`, `REINTEGRACAO-DE-VINCULO`, `PIS-SEM-DV`, `ALTERACAO-CADASTRAL-DO-SERVIDOR`, `MIGALHA-COM-ID`, `SELETOR-DE-UNIDADE-A-360`; `CONTAS-BANCARIAS-COM-MESMA-CONTABIL-NOS-SEEDS` e `FICHA-DE-MATERIAL-NOS-PERCURSOS` (55.0); `MENSAGEM-SOME-COM-A-LINHA` (P4); `ENDERECO-DO-ENTE`; `MARCA-NOS-PDFS`; seções 35.7 a 43.5, 52.4, 53.3, 54.3 |
-| Próximo passo | seção 57.6 — P2.3b: a folha fechada vira despesa (empenho por grupo de rubrica × ficha, numeração determinística e idempotente, retomável), depois P3 |
+| Frente em execução | **V6 produto integrado**: P0 identidade e shell (52), P1 vínculos (53, 54), P1.3 papéis (55), **P2 inteiro — M32 pessoal (55), M33 folha (56), portal do servidor (57) e apropriação contábil (58)** ENTREGUES. Próxima frente: P3 (processos e serviços digitais). A publicação da V5 segue SUSPENSA |
+| Último resultado | seção 58 — a folha fechada vira despesa: grupo de empenho (rubricas × ficha), apropriação pelo `empenhar` do M05, só o BRUTO, numeração determinística que dá idempotência, e retomável com o motivo. `next build` em `d87d07d`; m33-apropriacao 13/13; smoke-apropriacao 14/14 em `105446e` (sob `d87d07d` parou na lacuna `REGIME-DE-VINCULO-DESLIGADO`, nomeada em 58.3); smoke-folha 46/46 e smoke-portal 24/24 de regressão; censo 298 serviços / 271+21 ações; permissões v12; rápida 852/852; catálogo 368 de 2.037 verificadas |
+| Pendências relevantes | **`REGIME-DE-VINCULO-DESLIGADO`** (58.3 e MODULO do M32 — a decisão está escrita, falta tomá-la); `FICHA-DE-PESSOAL-NOS-PERCURSOS` (o banco de demonstração não tem ficha 319011 com dotação para a folha); do M33: `LIQUIDACAO-DA-FOLHA`, `PATRONAL-NA-MEMORIA`, `FOLHAS-NAO-MENSAIS`, `FALTAS-NA-FOLHA`, `PENSAO-ALIMENTICIA-NA-FOLHA`, `CONSIGNACOES-E-MARGEM`, `ARREDONDAMENTO-DA-FOLHA`, `CONTRACHEQUE-EM-PDF`, `RESUMO-DA-FOLHA`; do M32 (55.3); `MENSAGEM-SOME-COM-A-LINHA` e `MIGALHA-COM-ID` (P4); `ENDERECO-DO-ENTE`; `MARCA-NOS-PDFS`; seções 35.7 a 43.5, 52.4, 53.3, 54.3 |
+| Próximo passo | seção 58.6 — decidir `REGIME-DE-VINCULO-DESLIGADO` (é o que destrava a folha de qualquer competência com desligado legado), depois a liquidação da folha e o patronal; em paralelo, P3 |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -6408,3 +6408,86 @@ Regime de rigor: **PROFUNDIDADE** (dinheiro, razão e saldo de ficha).
    processo alheio (regra da V6): o build foi refeito sozinho, com `--max-old-space-size=3072`.
    **Um build e uma suíte pesada não cabem juntos nesta máquina** — é a mesma lição do trinco, que
    só serializa o que é DESTE repositório.
+
+### 58.3 Percursos sob o build
+
+| Smoke | Resultado |
+|---|---|
+| `smoke-apropriacao-da-folha.ts` | r1 9/6 (competência de janeiro, sem vínculo vivo), r2 13/2, r3 12/3, **14/14 sob `105446e`**; sob o build final `d87d07d` parou em 9/5 por uma LACUNA DO PRODUTO, abaixo |
+| `smoke-folha.ts` (regressão sob `d87d07d`) | **46/46** |
+| `smoke-portal-do-servidor.ts` (regressão sob `d87d07d`) | **24/24** |
+
+**O que o percurso prova:** o grupo de empenho cadastrado pela ilha (rubricas em caixas, ficha com
+saldo, série); a recusa de apropriar ANTES do fechamento, nomeando o motivo; o fechamento pela
+contabilidade; a apropriação; o painel dos empenhos no detalhe da folha com o número
+determinístico; o link para o empenho DE VERDADE na tela da despesa, com o histórico da
+competência; a segunda apropriação que NÃO duplica; e o RH sem o formulário de apropriar.
+
+**⚠️ NO BANCO DOS PERCURSOS, A APROPRIAÇÃO PARA POR SALDO — e isso é dado, não código.** A única
+ficha que o grupo pôde escolher é de SERVIÇOS DE TERCEIROS (339039) com R$ 7.000 dotados, e a
+folha do mês custa cerca de R$ 27.000 de proventos. O percurso passou a afirmar os DOIS desfechos:
+quando cabe, grava e diz quanto; quando não cabe, PARA, diz em qual grupo e matrícula parou e por
+quê, e os empenhos já gravados continuam valendo — e a segunda passada grava ZERO novos, que é a
+prova da idempotência pelo outro lado. O caminho com empenhos gravados está no log
+`smoke-apropriacao-5c4fad4…-r2.log` (2 empenhos, `FP/2026-12/FOL-011562` e `FP/2026-12/FOL-266069`,
+R$ 3.000 cada) e nos 13 testes de unidade. Pendência: **`FICHA-DE-PESSOAL-NOS-PERCURSOS`** — o
+banco de demonstração precisa de uma ficha 319011 com dotação compatível.
+
+**⚠️ UMA LACUNA DO PRODUTO, ACHADA PELA REGRESSÃO E NÃO CORRIGIDA AQUI —
+`REGIME-DE-VINCULO-DESLIGADO`.** Cada execução do percurso consome uma competência de 2026, de
+dezembro para trás; ao chegar em setembro, a folha passou a incluir uma matrícula LEGADA que foi
+desligada no dia 1º daquele mês (viveu um dia, e por um dia tem de ser paga). Ela precisa de
+regime previdenciário para saber qual tabela aplicar — e a matrícula DESLIGADA não é oferecida às
+movimentações, porque vínculo encerrado não recebe evento novo, que é regra certa. Resultado: não
+há caminho pela tela para informar o regime dela, e a folha daquele mês trava.
+
+A decisão está escrita no `MODULO.md` do M32 (pendência 10) e NÃO foi tomada no fim desta sessão:
+informar o regime com data anterior ou igual ao desligamento não é movimentação em vínculo
+encerrado — é registrar um fato que já era verdade enquanto ele vivia; se aceita, a exceção tem de
+ser estreita (só esse tipo de evento, só com data ≤ desligamento). O percurso passou a NOMEAR a
+lacuna e parar, em vez de insistir oito vezes e falhar sem dizer por quê.
+
+**Dois defeitos DO PRODUTO achados pelo percurso e pela captura, os dois corrigidos:**
+
+1. **Apropriação com ZERO empenhos mostrava tabela vazia** sob o título "empenhos gerados por esta
+   folha" — afirmando que a folha virou despesa quando não virou. Agora a tela diz que a
+   apropriação foi tentada, parou antes do primeiro empenho e que apropriar de novo continua dali
+   (`105446e`).
+2. **O sha256 do cálculo transbordava a célula** do detalhe e se sobrepunha ao texto da coluna
+   vizinha — valor certo e ilegível, que é o pior dos dois. `overflow-wrap:anywhere` no valor do
+   detalhe do MOLDE, o que vale para todo detalhe do sistema (`d87d07d`). Foi a captura de 1366 px
+   que mostrou; nenhum teste de texto veria.
+
+**Capturas:** `.registro-de-execucao/v6-capturas/depois-d87d07d-apropriacao/` (grupos de empenho e
+o detalhe da folha com os empenhos, 360/768/1366 px, com a conta da contabilidade).
+
+### 58.4 Catálogo por natureza
+
+Superfície parcial: 5.12.71 (empenhamento automático — falta a liquidação e o patronal).
+Ausência confirmada: 5.12.72 (planilha contábil da folha e dos encargos). Placar: VALIDADO 67 ·
+PARCIAL 85 · IMPLEMENTADO_NAO_VALIDADO 67 · AUSENTE 146 · DEPENDÊNCIA 3 — **368 de 2.037
+verificadas (18,1%)**; 30 das 114 cláusulas do item 5.12 (pessoal e folha) já foram olhadas.
+
+### 58.5 Invariantes verificadas
+
+Dinheiro em `Decimal`; razão append-only (o empenho da folha é o `Empenho` do M05, com o mesmo
+lançamento e o mesmo movimento de dotação); saldo da ficha conferido na transação do empenho
+(é ele que interrompe a apropriação); exercício aberto conferido; autorização por ação nomeada
+em DOIS níveis (o ato da apropriação e o empenho de cada parcela); idempotência com o escopo
+dentro da chave (série + competência + matrícula); nenhum identificador de cláusula na tela.
+
+### 58.6 Próximo ponto exato
+
+1. **Decidir `REGIME-DE-VINCULO-DESLIGADO`** (58.3): é o que destrava a folha de qualquer
+   competência que inclua um desligado legado. A decisão e o seu recorte estreito já estão
+   escritos no `MODULO.md` do M32 (pendência 10) — falta tomá-la, implementar e provar com
+   fixture N=2 (um desligado com regime, um sem).
+2. **`LIQUIDACAO-DA-FOLHA`**: a apropriação empenha; liquidar continua ato próprio. O fechamento é
+   o atesto do CÁLCULO, e a liquidação em massa precisa de uma decisão sobre o responsável pelo
+   atesto — não se inventa um nome no histórico.
+3. **`PATRONAL-NA-MEMORIA`**: `aliquotaPatronal` já está na tabela de contribuição; falta o
+   cálculo na memória e o grupo de empenho dos encargos (5.12.72/73 dependem dele).
+4. **`FICHA-DE-PESSOAL-NOS-PERCURSOS`**: o banco de demonstração precisa de uma ficha 319011 com
+   dotação compatível com a folha (hoje só há 339039, e a apropriação para por saldo).
+
+Depois: **P3** — mesa de trabalho (M21/M22/M23), fluxos de processo e carta de serviços.
