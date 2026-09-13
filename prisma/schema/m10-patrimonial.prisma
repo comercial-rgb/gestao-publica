@@ -259,7 +259,15 @@ model MovimentoPatrimonial {
   /// par de contas valia quando foi lançado. Nulo = lançado pela linha legada de
   /// `RoteiroPatrimonial`, anterior ao versionamento.
   versaoDeRoteiroId String?
-  versaoDeRoteiro   VersaoDeRoteiro? @relation(fields: [versaoDeRoteiroId], references: [id])
+  /// RESTRICT é deliberado (como a migration que criou a coluna): uma versão referenciada
+  /// por movimento não se apaga, e `SET NULL` detacharia o movimento em silêncio.
+  versaoDeRoteiro   VersaoDeRoteiro? @relation(fields: [versaoDeRoteiroId], references: [id], onDelete: Restrict)
+
+  /// V3 (pacote 2) — O MOTIVO DE BAIXA DO ROL DO ENTE (TR 5.19.30), ligado ao ATO. O texto
+  /// livre em `motivo` continua sendo o histórico do movimento; esta é a classificação. Só
+  /// os tipos de baixa a preenchem; o domínio recusa motivo inativo ou inexistente.
+  motivoDeBaixaId String?
+  motivoDeBaixa   MotivoDeBaixa? @relation(fields: [motivoDeBaixaId], references: [id], onDelete: Restrict)
 
   motivo String?
 
@@ -268,6 +276,7 @@ model MovimentoPatrimonial {
 
   @@index([classeDeBensId, tipo])
   @@index([versaoDeRoteiroId])
+  @@index([motivoDeBaixaId])
   @@index([bemId])
   @@index([estornoDeId])
   @@index([liquidacaoId])

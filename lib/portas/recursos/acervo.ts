@@ -312,19 +312,92 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
       acaoDoCenso: "BAIXAR_BEM",
       aviso:
         "Reduz o valor contábil do bem e lança no razão. Não se baixa mais do que o bem vale " +
-        "— o valor atual está nos dados acima. A venda com apuração de ganho ou perda é outro " +
-        "ato, e não se faz por aqui.",
+        "— o valor atual está nos dados acima. A venda com apuração de ganho ou perda é a ação " +
+        "\"Alienar\", abaixo.",
       campos: [
         {
-          nome: "tipo", rotulo: "Tipo de baixa", tipo: "selecao", obrigatorio: true, largura: 2,
+          nome: "tipo", rotulo: "Tipo de baixa", tipo: "selecao", obrigatorio: true, largura: 1,
           opcoes: [
             { valor: "BAIXA_ALIENACAO", rotulo: "Baixa por alienação" },
             { valor: "DOACAO_REALIZADA", rotulo: "Doação realizada" },
           ],
         },
+        // V3 (pacote 2) — O MOTIVO DO ROL DO ENTE (TR 5.19.30), ligado ao ato. As opções vêm
+        // de `MotivoDeBaixa` ativos (chaveadas pelo nome do campo); o texto livre continua
+        // sendo o histórico. O domínio recusa motivo inativo ou inexistente.
+        { nome: "motivoDeBaixaId", rotulo: "Motivo de baixa (rol do ente)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "valor", rotulo: "Valor (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
         { nome: "dataMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
-        { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 3 },
+        { nome: "motivo", rotulo: "Histórico (texto livre)", tipo: "texto", obrigatorio: true, largura: 3 },
+      ],
+    },
+
+    // ═══ V3 (pacote 2) — REAVALIAÇÃO, IMPAIRMENT e ALIENAÇÃO no detalhe do bem ═══
+    //
+    // Cada uma lança no razão com crachá PRÓPRIO do censo, e nenhuma pede a classe (vem do
+    // bem). Sem roteiro contábil parametrizado para o tipo, o domínio recusa nomeando — a
+    // tela não escolhe conta.
+    {
+      nome: "reavaliar",
+      rotulo: "Reavaliar",
+      acaoDoCenso: "REGISTRAR_REAVALIACAO",
+      aviso:
+        "Lança no razão pelo roteiro de REAVALIACAO_AUMENTO ou REAVALIACAO_REDUCAO. A redução " +
+        "não passa do valor contábil da classe. Informe o valor da VARIAÇÃO, não o novo valor " +
+        "do bem.",
+      campos: [
+        {
+          nome: "sentido", rotulo: "Sentido", tipo: "selecao", obrigatorio: true, largura: 2,
+          opcoes: [
+            { valor: "AUMENTO", rotulo: "Aumento — o bem passou a valer mais" },
+            { valor: "REDUCAO", rotulo: "Redução — o bem passou a valer menos" },
+          ],
+        },
+        { nome: "valor", rotulo: "Valor da variação (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
+        { nome: "dataMovimento", rotulo: "Data do laudo", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "Motivo (laudo, comissão, base de avaliação)", tipo: "texto", obrigatorio: true, largura: 3 },
+      ],
+    },
+    {
+      nome: "registrar-impairment",
+      rotulo: "Registrar redução ao valor recuperável",
+      acaoDoCenso: "REGISTRAR_IMPAIRMENT",
+      aviso:
+        "Impairment (MCASP): o bem passou a valer menos do que os livros dizem, por dano, " +
+        "obsolescência ou desuso. Lança no razão pelo roteiro de IMPAIRMENT e não passa do " +
+        "valor contábil da classe.",
+      campos: [
+        { nome: "valor", rotulo: "Valor da redução (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
+        { nome: "dataMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "Motivo (laudo ou evidência da perda)", tipo: "texto", obrigatorio: true, largura: 3 },
+      ],
+    },
+    {
+      // ⚠️ O VALOR BRUTO E A ACUMULADA NÃO SÃO PERGUNTADOS: a porta os deriva do próprio bem
+      // (soma dos movimentos). Pedi-los ao operador seria montar a armadilha que o aviso da
+      // baixa já denuncia — ele digita, o domínio recusa, e a tela nunca disse o número certo.
+      nome: "alienar",
+      rotulo: "Alienar (venda com apuração de ganho ou perda)",
+      acaoDoCenso: "ALIENAR_BEM",
+      aviso:
+        "Operação composta, numa só transação: baixa o valor bruto do bem, baixa a depreciação " +
+        "acumulada dele e apura ganho ou perda contra o valor da venda. A receita da venda é " +
+        "identificada pela GUIA (exercício e número da arrecadação) e precisa ser uma " +
+        "arrecadação viva de alienação de bens. Precisam estar parametrizados os roteiros de " +
+        "BAIXA_ALIENACAO, BAIXA_DE_ATUALIZACAO_ACUMULADA e do resultado (ganho ou perda).",
+      campos: [
+        { nome: "valorVenda", rotulo: "Valor da venda (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
+        {
+          nome: "exercicioDaReceita", rotulo: "Exercício da receita", tipo: "inteiro", largura: 1,
+          minimo: 2000, maximo: 2100, ajuda: "Em branco: o ano da data do fato.",
+        },
+        {
+          nome: "numeroDaReceita", rotulo: "Número da receita arrecadada (guia)", tipo: "texto", largura: 2,
+          ajuda: "Em branco: a alienação é registrada sem receita vinculada, e a venda fica a conciliar.",
+        },
+        { nome: "motivoDeBaixaId", rotulo: "Motivo de baixa (rol do ente)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+        { nome: "dataMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "Histórico (edital, leilão, comprador)", tipo: "texto", obrigatorio: true, largura: 3 },
       ],
     },
   ],

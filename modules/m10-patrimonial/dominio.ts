@@ -518,6 +518,8 @@ export const zBaixarBemInput = z.object({
   classeDeBensId: z.string().min(1),
   valor: zValorPositivo,
   bemId: z.string().min(1).optional(),
+  /** V3 (pacote 2) — o motivo do rol do ente (TR 5.19.30). O texto em `motivo` é o histórico. */
+  motivoDeBaixaId: z.string().min(1).optional(),
   dataMovimento: z.coerce.date(),
   motivo: zMotivo,
   criadoPor: z.string().min(1),
@@ -576,6 +578,8 @@ export const zAlienarBemInput = z.object({
   valorVenda: zValorPositivo,
   /** TR 4.65 — a receita da alienação (M04), quando já arrecadada. */
   receitaArrecadadaId: z.string().min(1).optional(),
+  /** V3 (pacote 2) — o motivo do rol do ente (TR 5.19.30), na baixa do valor bruto. */
+  motivoDeBaixaId: z.string().min(1).optional(),
   dataMovimento: z.coerce.date(),
   motivo: zMotivo,
   criadoPor: z.string().min(1),

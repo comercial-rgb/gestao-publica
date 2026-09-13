@@ -6,10 +6,10 @@
 |---|---|
 | HEAD | ver `git log -1` — a seção 35 nomeia o commit de cada unidade |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | Primeiro pacote concluído (§35–§37); segundo pacote em curso — a cadeia patrimonial utilizável: unidade 1 fechada (§38), unidade 2 a seguir |
-| Último resultado | seção 38 |
-| Pendências relevantes | seções 35.7, 36.4, 37.5 e 38.5; as anteriores em §19 e nos `MODULO.md` |
-| Próximo passo | seção 38.6 |
+| Frente em execução | Primeiro pacote concluído (§35–§37); segundo pacote em curso — a cadeia patrimonial utilizável: unidades 1 (§38) e 2 (§39) fechadas, unidade 3 a seguir |
+| Último resultado | seção 39 |
+| Pendências relevantes | seções 35.7, 36.4, 37.5, 38.5 e 39.5; as anteriores em §19 e nos `MODULO.md` |
+| Próximo passo | seção 39.6 |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -4525,6 +4525,63 @@ movimento, texto histórico preservado), **reavaliação e impairment** no detal
 **alienação integrada** com a receita escolhida pelo número (não por UUID). Depois:
 parâmetros versionados de depreciação e o processamento por competência com prévia e
 memória; estorno com análise de dependências; termos; etiquetas com decoder independente.
+
+## 39. Orquestração V3 — segundo pacote, unidade 2: motivo de baixa no ato, reavaliação e alienação na tela
+
+**Regime:** profundidade no domínio (a baixa e a alienação lançam no razão; o motivo do rol
+entra na transação com negação nomeada e N=2), superfície nas três ações novas do detalhe do
+bem. Nenhum lançamento existente foi tocado; a migration é aditiva.
+
+### 39.1 · O que passou a funcionar, e a rota real
+
+| Capacidade | Onde |
+|---|---|
+| Baixa do bem com o **motivo do rol do ente** (TR 5.19.30) ligado ao ato, texto livre preservado como histórico; o lançamento cita o código do motivo | `/patrimonio/bens-patrimoniais/[id]`, ação "Baixar do acervo" (seletor de motivos ATIVOS + histórico) |
+| **Reavaliar** (aumento ou redução) e **Registrar redução ao valor recuperável** (impairment) no detalhe do bem, cada uma com crachá próprio | mesma tela, ações "reavaliar" e "registrar-impairment" (`REGISTRAR_REAVALIACAO`, `REGISTRAR_IMPAIRMENT`) |
+| **Alienar** integrado à receita: a guia (exercício + número da arrecadação) identifica a receita; valor bruto e acumulada derivados do próprio bem; motivo do rol; apuração de ganho/perda numa só transação | mesma tela, ação "alienar" (`ALIENAR_BEM`) |
+| O histórico do bem mostra, por movimento de valor, o texto, o motivo do rol e a guia da receita | aba de histórico do detalhe do bem |
+
+### 39.2 · Decisões
+
+| Decisão | Motivo |
+|---|---|
+| `motivoDeBaixaId` é FK **RESTRICT** para `MotivoDeBaixa`; opcional no domínio, obrigatório nas duas ações da tela | um motivo referenciado por baixa não se apaga; a baixa por classe (sem bem, uso instrumental) segue válida sem motivo do rol; a tela exige o rol porque é ali que o operador está |
+| Motivo **inativo recusa** nomeando, e nada é gravado | inativo ainda classifica as baixas antigas — por isso não se apaga — mas não classifica uma nova |
+| Na alienação o motivo vai na baixa do **bruto**; a baixa da acumulada não o carrega | a acumulada é retificadora e anda em par pelo `operacaoId`; o ato é a baixa do bruto |
+| A receita é achada pela **guia** (`uq_receita_guia`: exercício, número, ARRECADACAO); quem decide se ela sustenta a venda continua sendo `alienarBem` | padrão de entrega (nenhum UUID ao operador); uma regra, uma explicação |
+| Valor bruto e acumulada da alienação **derivados do bem** na porta, nunca digitados | pedir ao operador o número que o domínio vai recusar é armadilha |
+| `versaoDeRoteiro` e `motivoDeBaixa` declaram `onDelete: Restrict` no schema | o `migrate dev` gerou um DROP CONSTRAINT + re-ADD do FK de versão (RESTRICT na migration original, SET NULL no default do Prisma). Zero DROP é regra: a migration foi reescrita como puramente aditiva com RESTRICT, a versão gerada foi revertida à mão em dev e test (coluna vazia, minutos depois de criada, nada versionado) e o `migrate diff` confirma **"No difference detected"** |
+
+### 39.3 · Arquivos
+
+`prisma/schema/m10-patrimonial.prisma`, `m10-patrimonio-gestao.prisma` · `prisma/migrations/20260913020020_v3_motivo_de_baixa_no_ato` (aditiva) · `modules/m10-patrimonial/{dominio.ts,patrimonio.ts,receita-da-alienacao.ts,m10-baixa-motivo.test.ts,m10-alienacao.test.ts (t8, t9)}` · `modules/m16-travamento/acoes.ts` (FORA_DO_CENSO) · `lib/portas/recursos/{acervo.ts,acervo-dados.ts}` · `MODULO.md` do M10 · catálogo (5.19.26).
+
+### 39.4 · Comandos executados e resultado real
+
+| Comando | Resultado |
+|---|---|
+| `migrate dev` → reescrita aditiva → reversão manual (psql) em dev e test → `migrate deploy` nos três bancos → `db:papel` nos três → `migrate diff` | aplicada com RESTRICT nos dois FKs; **No difference detected** |
+| `tsc` backend · app · scripts (um por vez, heap 2560) | **limpos** |
+| `vitest` rápida (partição sem banco, completa) | **790/790** (72 arquivos) |
+| `vitest` lenta sob o trinco (baixa-motivo, alienação, patrimônio, competência, acervo, censo) | **64/64** (6 arquivos) |
+
+**Não executado:** portão integral, `test:tudo`, `test:fuso`, `next build`, percursos de
+navegador pelas ações novas.
+
+### 39.5 · Pendências nomeadas
+
+| Pendência | O que é |
+|---|---|
+| `VALOR-DO-BEM-SEM-PERCURSO` | reavaliar, impairment e alienar no detalhe do bem não têm percurso de navegador; 5.19.26 e 5.19.29 continuam `IMPLEMENTADO_NAO_VALIDADO` |
+| `ROTEIRO-PATRIMONIAL-NAO-PARAMETRIZADO` | REAVALIACAO_*, IMPAIRMENT e o resultado da alienação não têm par nem na demonstração; a tela recusa nomeando até o contador parametrizar |
+| `MEUS-BENS-SEM-PERCURSO`, `PESQUISA-DO-ACERVO-SEM-PERCURSO` (38.5) | continuam |
+
+### 39.6 · Próximo ponto exato
+
+Segundo pacote, unidade 3: **parâmetros versionados de depreciação** (tabela de versões com
+vigência derivada; `atualizarCompetencia` lê a vigente) e o **processamento por competência
+com prévia e memória de cálculo** (tela própria). Depois: estorno com análise de dependências;
+termos; etiquetas com decoder independente.
 
 ## 19. O próximo passo
 

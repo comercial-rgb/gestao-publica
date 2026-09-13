@@ -941,7 +941,7 @@ const MAPA: Readonly<Record<string, Marca>> = {
   },
   "5.19.26": {
     situacao: "IMPLEMENTADO_NAO_VALIDADO",
-    evidencia: `${CENSO} Depreciação e reavaliação por BEM (o movimento aceita \`bemId\`) com histórico do valor contábil: base 12.000, residual 10%, vida 24 → parcela 450,00 e contábil 11.550,00 (m10-competencia.test.ts t1). A MESMA competência duas vezes é rejeitada e o SELECT prova UM movimento (t2); estornada, ela pode ser refeita, porque quem governa é o SALDO e não uma trava (t3). A alteração a maior e a menor são tipos distintos (\`REAVALIACAO_AUMENTO\`/\`REAVALIACAO_REDUCAO\`), e a redução que estouraria o valor contábil é recusada (t9b). Sem tela.`,
+    evidencia: `${CENSO} Depreciação e reavaliação por BEM (o movimento aceita \`bemId\`) com histórico do valor contábil: base 12.000, residual 10%, vida 24 → parcela 450,00 e contábil 11.550,00 (m10-competencia.test.ts t1). A MESMA competência duas vezes é rejeitada e o SELECT prova UM movimento (t2); estornada, ela pode ser refeita, porque quem governa é o SALDO e não uma trava (t3). A alteração a maior e a menor são tipos distintos (\`REAVALIACAO_AUMENTO\`/\`REAVALIACAO_REDUCAO\`), e a redução que estouraria o valor contábil é recusada (t9b). Sem tela. ⚠️ V3 (pacote 2): a reavaliação (aumento/redução) e a redução ao valor recuperável ganharam TELA no detalhe do bem (ações 'reavaliar' e 'registrar-impairment', crachás REGISTRAR_REAVALIACAO/REGISTRAR_IMPAIRMENT, classe derivada do bem); o histórico do bem lista os movimentos de valor com motivo, motivo do rol e guia da receita. Sem percurso de navegador ainda (VALOR-DO-BEM-SEM-PERCURSO).`,
   },
   "5.19.29": {
     situacao: "IMPLEMENTADO_NAO_VALIDADO",

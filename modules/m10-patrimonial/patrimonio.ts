@@ -217,6 +217,35 @@ async function partidasParaPersistir(
   }));
 }
 
+/**
+ * O MOTIVO DE BAIXA DO ROL DO ENTE (TR 5.19.30; V3, pacote 2) — conferido DENTRO da
+ * transação, antes de qualquer escrita. Inexistente ou INATIVO recusa nomeando: um motivo
+ * desativado ainda classifica as baixas antigas (por isso não se apaga), mas não classifica
+ * uma baixa nova. Devolve o par código/descrição para compor o histórico do lançamento.
+ */
+async function exigirMotivoDeBaixa(
+  tx: Tx,
+  motivoDeBaixaId: string
+): Promise<{ readonly codigo: string; readonly descricao: string }> {
+  const m = await tx.motivoDeBaixa.findUnique({
+    where: { id: motivoDeBaixaId },
+    select: { codigo: true, descricao: true, ativo: true },
+  });
+  if (m === null) {
+    throw new Error(
+      `MOTIVO DE BAIXA INEXISTENTE: não há motivo com id "${motivoDeBaixaId}" no rol do ente. ` +
+        `Cadastre-o em Patrimônio > Motivos de Baixa. Nada foi gravado.`
+    );
+  }
+  if (!m.ativo) {
+    throw new Error(
+      `MOTIVO DE BAIXA INATIVO: "${m.codigo} — ${m.descricao}" foi desativado e não classifica ` +
+        `baixa nova (continua valendo para as antigas). Escolha um motivo ativo. Nada foi gravado.`
+    );
+  }
+  return { codigo: m.codigo, descricao: m.descricao };
+}
+
 interface DadosDoMovimento {
   readonly classeDeBensId: string;
   readonly bemId?: string | undefined;
@@ -228,6 +257,8 @@ interface DadosDoMovimento {
   readonly liquidacaoId?: string | undefined;
   /** TR 4.65 — a receita da alienação. */
   readonly receitaArrecadadaId?: string | undefined;
+  /** TR 5.19.30 — o motivo de baixa do rol do ente (V3, pacote 2). Só nos tipos de baixa. */
+  readonly motivoDeBaixaId?: string | undefined;
   /** Agrupa os movimentos de uma operação composta (alienação). */
   readonly operacaoId?: string | undefined;
   readonly motivo?: string | undefined;
@@ -305,6 +336,7 @@ async function registrarMovimentoPatrimonial(
       competencia: d.competencia ?? null,
       liquidacaoId: d.liquidacaoId ?? null,
       receitaArrecadadaId: d.receitaArrecadadaId ?? null,
+      motivoDeBaixaId: d.motivoDeBaixaId ?? null,
       operacaoId: d.operacaoId ?? null,
       motivo: d.motivo ?? null,
       lancamentoId,
@@ -509,6 +541,9 @@ export async function baixarBem(
       }
     }
 
+    const motivoDoRol =
+      dados.motivoDeBaixaId === undefined ? null : await exigirMotivoDeBaixa(tx, dados.motivoDeBaixaId);
+
     return registrarMovimentoPatrimonial(tx, {
       classeDeBensId: dados.classeDeBensId,
       ...(dados.bemId !== undefined ? { bemId: dados.bemId } : {}),
@@ -517,7 +552,11 @@ export async function baixarBem(
       dataMovimento: dados.dataMovimento,
       motivo: dados.motivo,
       criadoPor: dados.criadoPor,
-      historico: `${dados.tipo}: ${dados.motivo}`,
+      ...(dados.motivoDeBaixaId !== undefined ? { motivoDeBaixaId: dados.motivoDeBaixaId } : {}),
+      historico:
+        motivoDoRol === null
+          ? `${dados.tipo}: ${dados.motivo}`
+          : `${dados.tipo} [${motivoDoRol.codigo} — ${motivoDoRol.descricao}]: ${dados.motivo}`,
     });
   });
 }
@@ -976,6 +1015,11 @@ export async function alienarBem(
     }
 
     // (e) OS DOIS MOVIMENTOS — mesma `operacaoId`: estornar um estorna os dois.
+    // O motivo do rol (TR 5.19.30) classifica a baixa do valor BRUTO — o ato em si. A baixa da
+    // acumulada é retificadora e anda em par com ela pelo `operacaoId`.
+    const motivoDoRol =
+      dados.motivoDeBaixaId === undefined ? null : await exigirMotivoDeBaixa(tx, dados.motivoDeBaixaId);
+
     const operacaoId = randomUUID();
 
     const baixaBruto = await registrarMovimentoPatrimonial(tx, {
@@ -990,7 +1034,11 @@ export async function alienarBem(
         : {}),
       motivo: dados.motivo,
       criadoPor: dados.criadoPor,
-      historico: `Alienação (baixa do valor bruto): ${dados.motivo}`,
+      ...(dados.motivoDeBaixaId !== undefined ? { motivoDeBaixaId: dados.motivoDeBaixaId } : {}),
+      historico:
+        motivoDoRol === null
+          ? `Alienação (baixa do valor bruto): ${dados.motivo}`
+          : `Alienação (baixa do valor bruto) [${motivoDoRol.codigo} — ${motivoDoRol.descricao}]: ${dados.motivo}`,
     });
 
     // Zero NÃO vira movimento: o motor do ledger exige valor > 0, e um bem sem

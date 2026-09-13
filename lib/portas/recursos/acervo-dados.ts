@@ -1,4 +1,5 @@
-import { diaCivilBr, FUSO_DO_ENTE, inicioDoDiaCivil } from "../../../packages/datas/index.js";
+import { diaCivil, diaCivilBr, FUSO_DO_ENTE, inicioDoDiaCivil } from "../../../packages/datas/index.js";
+import { toMoney } from "../../../packages/contracts/index.js";
 import {
   cadastrarBem,
   cadastrarClasseDeBens,
@@ -8,10 +9,15 @@ import {
 // ⚠️ ENT12 — O EIXO DE VALOR. Estes DOIS lançam no razão, ao contrário dos quatro de gestão:
 // por isso vêm de `patrimonio.js` (o bloco 1 do M10) e cobram crachá próprio.
 import {
+  alienarBem,
   baixarBem,
   registrarEntradaAvulsa,
+  registrarImpairment,
+  registrarReavaliacao,
+  valorBrutoDoBem,
   valorContabilDoBem,
 } from "../../../modules/m10-patrimonial/patrimonio.js";
+import { receitaArrecadadaPorNumero } from "../../../modules/m10-patrimonial/receita-da-alienacao.js";
 import { rotuloDoTipoPatrimonial } from "./roteiros.js";
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { TAMANHO_DE_PAGINA } from "../../molde/consulta.js";
@@ -384,6 +390,9 @@ export async function verBemPatrimonial(id: string): Promise<DetalheLido | null>
           criadoEm: true,
           criadoPor: true,
           estornos: { select: { id: true } },
+          // V3 (pacote 2): o motivo do rol e a guia da venda, ao lado do texto livre.
+          motivoDeBaixa: { select: { codigo: true, descricao: true } },
+          receitaArrecadada: { select: { numeroReceita: true, exercicio: true } },
         },
         orderBy: { dataMovimento: "desc" },
         take: 200,
@@ -449,16 +458,23 @@ export async function verBemPatrimonial(id: string): Promise<DetalheLido | null>
     // nenhum, e forjar um zero ali faria o leitor achar que a mudança de sala não custou
     // nada, quando na verdade a pergunta não se aplica.
     historico: [
-      ...x.movimentos.map((m) => ({
-        id: m.id,
-        oQue: rotuloDoTipoPatrimonial(m.tipo),
-        quando: diaCivilBr(m.dataMovimento),
-        registradoEm: diaCivilBr(m.criadoEm),
-        por: m.criadoPor,
-        motivo: m.motivo,
-        valor: m.valor.toFixed(2),
-        estornado: m.estornos.length > 0,
-      })),
+      ...x.movimentos.map((m) => {
+        const partes = [
+          m.motivo,
+          m.motivoDeBaixa === null ? null : `Motivo de baixa: ${m.motivoDeBaixa.codigo} — ${m.motivoDeBaixa.descricao}`,
+          m.receitaArrecadada === null ? null : `Receita ${m.receitaArrecadada.numeroReceita}/${m.receitaArrecadada.exercicio}`,
+        ].filter((p): p is string => p !== null && p !== "");
+        return {
+          id: m.id,
+          oQue: rotuloDoTipoPatrimonial(m.tipo),
+          quando: diaCivilBr(m.dataMovimento),
+          registradoEm: diaCivilBr(m.criadoEm),
+          por: m.criadoPor,
+          motivo: partes.length === 0 ? null : partes.join(" · "),
+          valor: m.valor.toFixed(2),
+          estornado: m.estornos.length > 0,
+        };
+      }),
       ...x.movimentosDeGestao.map((m) => ({
         id: m.id,
         oQue: m.tipo.replace(/_/g, " ").toLowerCase(),
@@ -606,12 +622,71 @@ export async function acaoDoBem(acao: string, bemId: string, c: Campos): Promise
           classeDeBensId: await classeDoBem(bemId),
           bemId,
           tipo: t(c, "tipo") === "DOACAO_REALIZADA" ? "DOACAO_REALIZADA" : "BAIXA_ALIENACAO",
+          motivoDeBaixaId: t(c, "motivoDeBaixaId"),
           valor: t(c, "valor"),
           dataMovimento: dia(c, "dataMovimento"),
           motivo: t(c, "motivo"),
           criadoPor,
         })
       );
+      return;
+    // ═══ V3 (pacote 2) — reavaliação, impairment e alienação, com crachá próprio ═══
+    case "reavaliar":
+      await comEscritaAutenticada("REGISTRAR_REAVALIACAO", async (criadoPor) =>
+        registrarReavaliacao(cliente(), {
+          classeDeBensId: await classeDoBem(bemId),
+          bemId,
+          sentido: t(c, "sentido") === "REDUCAO" ? "REDUCAO" : "AUMENTO",
+          valor: t(c, "valor"),
+          dataMovimento: dia(c, "dataMovimento"),
+          motivo: t(c, "motivo"),
+          criadoPor,
+        })
+      );
+      return;
+    case "registrar-impairment":
+      await comEscritaAutenticada("REGISTRAR_IMPAIRMENT", async (criadoPor) =>
+        registrarImpairment(cliente(), {
+          classeDeBensId: await classeDoBem(bemId),
+          bemId,
+          valor: t(c, "valor"),
+          dataMovimento: dia(c, "dataMovimento"),
+          motivo: t(c, "motivo"),
+          criadoPor,
+        })
+      );
+      return;
+    case "alienar":
+      await comEscritaAutenticada("ALIENAR_BEM", async (criadoPor) => {
+        const prisma = cliente();
+        const classeDeBensId = await classeDoBem(bemId);
+        // ⚠️ O BRUTO E A ACUMULADA SÃO DO BEM, derivados da soma dos movimentos — nunca
+        // digitados. A acumulada é a diferença entre o bruto e o contábil; o domínio confere
+        // que ela não alcança o bruto (sobra o residual) e que ambos cabem na classe.
+        const [bruto, contabil] = await Promise.all([valorBrutoDoBem(prisma, bemId), valorContabilDoBem(prisma, bemId)]);
+        const dataMovimento = dia(c, "dataMovimento");
+        // A RECEITA PELA GUIA: exercício (em branco = o ano civil da data do fato) e número.
+        // Achar é aqui; decidir se ela sustenta a venda é do domínio, dentro da transação.
+        const numeroDaReceita = opcional(c, "numeroDaReceita");
+        let receitaArrecadadaId: string | undefined;
+        if (numeroDaReceita !== undefined) {
+          const ex = opcional(c, "exercicioDaReceita");
+          const exercicio = ex === undefined ? Number(diaCivil(dataMovimento).slice(0, 4)) : Number(ex);
+          receitaArrecadadaId = (await receitaArrecadadaPorNumero(prisma, { exercicio, numeroReceita: numeroDaReceita })).id;
+        }
+        return alienarBem(prisma, {
+          classeDeBensId,
+          bemId,
+          valorBrutoBaixado: bruto.toFixed(2),
+          acumuladaBaixada: toMoney(bruto.minus(contabil)).toFixed(2),
+          valorVenda: t(c, "valorVenda"),
+          ...(receitaArrecadadaId !== undefined ? { receitaArrecadadaId } : {}),
+          motivoDeBaixaId: t(c, "motivoDeBaixaId"),
+          dataMovimento,
+          motivo: t(c, "motivo"),
+          criadoPor,
+        });
+      });
       return;
     default:
       throw new Error(`Ação "${acao}" não existe neste cadastro. Nada foi gravado.`);
@@ -624,7 +699,7 @@ export async function acaoDoBem(acao: string, bemId: string, c: Campos): Promise
 
 export async function opcoesDoAcervo(): Promise<OpcoesDoCadastro> {
   const prisma = cliente();
-  const [contas, classes, tipos, localizacoes, pessoas] = await Promise.all([
+  const [contas, classes, tipos, localizacoes, pessoas, motivos] = await Promise.all([
     // ⚠️ SÓ ANALÍTICAS DA CLASSE 1, e o teto cobre a classe INTEIRA. O plano oficial tem
     // 1.404 analíticas de ativo; um teto abaixo disso truncaria em silêncio, e a conta que o
     // operador procura simplesmente não estaria na lista — sem erro, sem aviso. O ponto em
@@ -670,6 +745,12 @@ export async function opcoesDoAcervo(): Promise<OpcoesDoCadastro> {
       orderBy: { criadoEm: "desc" },
       take: 500,
     }),
+    prisma.motivoDeBaixa.findMany({
+      where: { ativo: true },
+      select: { id: true, codigo: true, descricao: true },
+      orderBy: { codigo: "asc" },
+      take: 300,
+    }),
   ]);
 
   return {
@@ -694,6 +775,11 @@ export async function opcoesDoAcervo(): Promise<OpcoesDoCadastro> {
     tipoDeIncorporacaoId: tipos.map((x) => ({
       valor: x.id,
       rotulo: `${x.codigo} — ${x.descricao}`,
+    })),
+    // V3 (pacote 2) — só os ATIVOS: um inativo classifica as baixas antigas, não uma nova.
+    motivoDeBaixaId: motivos.map((m) => ({
+      valor: m.id,
+      rotulo: `${m.codigo} — ${m.descricao}`,
     })),
   };
 }

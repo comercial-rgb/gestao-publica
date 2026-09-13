@@ -297,3 +297,29 @@ inclusive depois de um estorno e com dois movimentos no mesmo dia registrados fo
 (`servico-pessoa-do-usuario.ts`, M16 — vínculo explícito, opcional, auditável, pelo
 documento, sem conceder permissão) e depois `bensSobResponsabilidade`. Sem vínculo, a tela
 diz que o vínculo está pendente e quem resolve; ela não procura a pessoa pelo nome.
+
+
+## Orquestração V3 (pacote 2, unidade 2) — motivo de baixa no ato, reavaliação e alienação na tela
+
+**O motivo de baixa do rol (TR 5.19.30) passou a ligar-se ao ATO.** `MovimentoPatrimonial`
+ganhou `motivoDeBaixaId` (FK RESTRICT para `MotivoDeBaixa`, migration aditiva); `baixarBem` e
+`alienarBem` aceitam o motivo, conferem dentro da transação que ele existe e está ATIVO
+(inativo ainda classifica as baixas antigas, não uma nova) e citam o código no histórico do
+lançamento. O texto livre em `motivo` continua sendo o histórico — o pedido manda preservar.
+Na alienação, o motivo vai na baixa do valor BRUTO (o ato); a baixa da acumulada é
+retificadora e anda em par pelo `operacaoId`. Prova: `m10-baixa-motivo.test.ts` (N=2: ativo e
+inativo; recusa nomeada com nada gravado) e `m10-alienacao.test.ts` t9.
+
+**A alienação integra-se à receita PELA GUIA.** `receita-da-alienacao.ts` acha a arrecadação
+por (exercício, número, ARRECADACAO) — a chave única `uq_receita_guia` — e só acha: quem
+decide se ela sustenta a venda (viva, não anulada, origem 2.2) continua sendo `alienarBem`,
+dentro da transação. Nenhum UUID chega ao operador. Prova: `m10-alienacao.test.ts` t8.
+
+**No detalhe do bem** (`/patrimonio/bens-patrimoniais/[id]`): "Baixar do acervo" pede o motivo
+do rol (opções = motivos ativos) e o histórico; "Reavaliar" (aumento/redução, crachá
+`REGISTRAR_REAVALIACAO`), "Registrar redução ao valor recuperável" (`REGISTRAR_IMPAIRMENT`)
+e "Alienar" (`ALIENAR_BEM`) são ações novas. Na alienação o valor bruto e a acumulada NÃO são
+perguntados: a porta os deriva do próprio bem (`valorBrutoDoBem`, `valorContabilDoBem`) —
+pedi-los seria a armadilha que o aviso da baixa denuncia. O histórico do bem mostra o motivo
+do rol e a guia da receita ao lado do texto. Sem roteiro parametrizado para o tipo, o domínio
+recusa nomeando (`ROTEIRO-PATRIMONIAL-NAO-PARAMETRIZADO` continua sendo decisão do contador).

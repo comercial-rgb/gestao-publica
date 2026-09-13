@@ -15,6 +15,7 @@ import {
   valorContabilDaClasse,
 } from "./patrimonio.js";
 import { demonstrativoPatrimonialPorClasse } from "./demonstrativo.js";
+import { receitaArrecadadaPorNumero } from "./receita-da-alienacao.js";
 import { criarM04Deps } from "../m04-receita/adapter-prisma.js";
 import { roteiroArrecadacao } from "../m04-receita/dominio.js";
 import { registrarArrecadacao } from "../m04-receita/servico.js";
@@ -613,5 +614,55 @@ describe("M10 — demonstrativo por classe (TR 5.86)", () => {
         fim: new Date("2026-01-01T00:00:00Z"),
       })
     ).rejects.toThrow(/Período invertido/);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V3 (pacote 2) — a receita pelo NÚMERO da guia, e o motivo do rol na alienação
+// ═══════════════════════════════════════════════════════════════════════════
+describe("V3 — a alienação integrada: receita pela guia e motivo do rol", () => {
+  beforeEach(semear);
+
+  it("t8: (exercício, número) acha UMA arrecadação; exercício errado, número inexistente ou vazio recusam nomeando", async () => {
+    await classeComAcumulada();
+    const id = await arrecadar("4000.00", "GUIA-LEILAO", NAT_ALIENACAO);
+    const achada = await receitaArrecadadaPorNumero(prisma, { exercicio: 2026, numeroReceita: " GUIA-LEILAO " });
+    expect(achada.id).toBe(id);
+    expect(achada.valor).toBe("4000.00");
+    expect(achada.natureza).toBe(NAT_ALIENACAO);
+    await expect(receitaArrecadadaPorNumero(prisma, { exercicio: 2025, numeroReceita: "GUIA-LEILAO" })).rejects.toThrow(/RECEITA NÃO ENCONTRADA[\s\S]*2025/);
+    await expect(receitaArrecadadaPorNumero(prisma, { exercicio: 2026, numeroReceita: "GUIA-X" })).rejects.toThrow(/RECEITA NÃO ENCONTRADA/);
+    await expect(receitaArrecadadaPorNumero(prisma, { exercicio: 2026, numeroReceita: "  " })).rejects.toThrow(/RECEITA NÃO IDENTIFICADA/);
+    // A alienação apoiada na receita achada pela guia é a mesma do t7: ganho de 250,00.
+    const r = await alienarBem(prisma, { ...ALIENACAO, valorVenda: "4000.00", receitaArrecadadaId: achada.id });
+    expect(r.ganhoPerda.toFixed(2)).toBe("250.00");
+  });
+
+  it("t9: o motivo do rol classifica a baixa do BRUTO; o inativo recusa e nada é gravado (N=2)", async () => {
+    await classeComAcumulada();
+    const ativo = await prisma.motivoDeBaixa.create({ data: { codigo: "ALIEN", descricao: "Alienação em leilão", criadoPor: POR }, select: { id: true } });
+    const inativo = await prisma.motivoDeBaixa.create({ data: { codigo: "OBSOL", descricao: "Obsolescência", ativo: false, criadoPor: POR }, select: { id: true } });
+    const movsAntes = await prisma.movimentoPatrimonial.count();
+    const lancsAntes = await prisma.lancamentoContabil.count();
+    await expect(alienarBem(prisma, { ...ALIENACAO, valorVenda: "4000.00", motivoDeBaixaId: inativo.id })).rejects.toThrow(/MOTIVO DE BAIXA INATIVO[\s\S]*OBSOL/);
+    expect(await prisma.movimentoPatrimonial.count()).toBe(movsAntes);
+    expect(await prisma.lancamentoContabil.count()).toBe(lancsAntes);
+
+    const r = await alienarBem(prisma, { ...ALIENACAO, valorVenda: "4000.00", motivoDeBaixaId: ativo.id });
+    const bruto = await prisma.movimentoPatrimonial.findUniqueOrThrow({
+      where: { id: r.movimentoBaixaBruto },
+      select: { motivoDeBaixaId: true, motivo: true, lancamento: { select: { historico: true } } },
+    });
+    expect(bruto.motivoDeBaixaId).toBe(ativo.id);
+    expect(bruto.motivo).toBe(ALIENACAO.motivo);
+    expect(bruto.lancamento.historico).toMatch(/\[ALIEN — Alienação em leilão\]/);
+    // A baixa da acumulada é retificadora e NÃO carrega o motivo — anda em par pelo operacaoId.
+    expect(r.movimentoBaixaAcumulada).not.toBeNull();
+    const acum = await prisma.movimentoPatrimonial.findUniqueOrThrow({
+      where: { id: r.movimentoBaixaAcumulada! },
+      select: { motivoDeBaixaId: true, operacaoId: true },
+    });
+    expect(acum.motivoDeBaixaId).toBeNull();
+    expect(acum.operacaoId).toBe(r.operacaoId);
   });
 });

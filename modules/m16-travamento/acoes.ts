@@ -1461,6 +1461,8 @@ export const FORA_DO_CENSO: Record<string, string> = {
   pessoaDoUsuario: "leitura (a pessoa vinculada ao usuário — a última linha de VinculoUsuarioPessoa, se for VINCULO)",
   versoesDoRoteiro: "leitura (as versões de um roteiro, com a vigência derivada — V3 4.5)",
   versaoVigente: "leitura (a versão PUBLICADA em vigor de um roteiro — o resolvedor do M10 a consome)",
+  receitaArrecadadaPorNumero:
+    "leitura (a arrecadação pela guia — exercício e número; quem decide se ela sustenta a alienação é alienarBem — V3 pacote 2)",
   comOperacaoRegistrada: "porta da borda (o log do 6.1-6.3, em duas fases — V3 4.3)",
   registrarSucessoNaTransacao:
     "perna do FUNIL: grava a linha SUCESSO do registro de operação na transação do fato (V3 4.3) — a autorização é do serviço que abriu a transação",
