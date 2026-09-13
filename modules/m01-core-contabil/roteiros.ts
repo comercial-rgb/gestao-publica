@@ -139,6 +139,18 @@ const CONTRAPARTIDA_DA_LIQUIDACAO: Readonly<Record<string, string>> = {
   "71": CONTA_DIVIDA_FUNDADA, // Principal da Dívida Contratual Resgatado
 };
 
+/**
+ * A NATUREZA DA OPERAÇÃO, pelo rol: este elemento liquida em ESTOQUE? (sessão noturna V4, §6)
+ *
+ * ⚠️ É a NATUREZA que decide se a liquidação é de material — não a existência de uma classe
+ * de material cadastrada (a completude da parametrização é outra pergunta, e a ausência dela é
+ * pendência IMPEDITIVA, não desligamento da integração). Não lança para elemento sem regra:
+ * quem cobra o roteiro é `contrapartidaDaLiquidacao`; aqui a resposta é só "é estoque".
+ */
+export function elementoDebitaEstoque(codElemento: string): boolean {
+  return CONTRAPARTIDA_DA_LIQUIDACAO[codElemento] === CONTA_ESTOQUE;
+}
+
 /** Os elementos com regra — para o teste de exaustividade e a mensagem de erro. */
 export const ELEMENTOS_COM_ROTEIRO: readonly string[] = Object.keys(
   CONTRAPARTIDA_DA_LIQUIDACAO

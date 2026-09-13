@@ -622,6 +622,11 @@ export const zRegistrarEntradaFisicaInput = z.object({
   loteValidade: z.coerce.date().optional(),
   /** O movimento CONTÁBIL que esta entrada acompanha (quando houver). */
   movimentoAlmoxarifadoId: z.string().min(1).optional(),
+  /**
+   * V4 (§6) — o RECEBIMENTO da ordem de compra (M11) que esta entrada CONSOME. Não duplica o
+   * recebimento: a entrada é a dele, e Σ(entradas vivas do recebimento) não passa do recebido.
+   */
+  recebimentoDeItemId: z.string().min(1).optional(),
   motivo: zMotivo,
   criadoPor: z.string().min(1),
 });
@@ -645,6 +650,32 @@ export async function registrarEntradaFisica(
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.registrarEntradaFisica, {
       ug: dep.unidadeOrcId,
     });
+
+    return registrarEntradaFisicaNaTx(tx, d);
+  });
+}
+
+/**
+ * ⚠️ O CORPO TRANSACIONAL DA ENTRADA FÍSICA, SEPARADO DO SERVIÇO — pelo mesmo motivo do
+ * `registrarEntradaAlmoxarifadoNaTx`: liquidar material, registrar o movimento contábil e
+ * dar entrada no depósito são UM ato, e três transações não dão essa garantia.
+ *
+ * ⚠️ ELE NÃO AUTORIZA E NÃO ABRE TRANSAÇÃO: quem chama faz as duas coisas. Quando a entrada
+ * nasce da liquidação, o crachá cobrado é o de `liquidar`; quando é avulsa, é o de
+ * `registrarEntradaFisica`. Dar-lhe ação própria faria o ente conceder duas vezes o mesmo
+ * poder. Está no `FORA_DO_CENSO`, com este motivo.
+ *
+ * ⚠️ ELE RELÊ O DEPÓSITO em vez de recebê-lo pronto. É uma leitura a mais dentro da mesma
+ * transação, e ela paga por manter o composável fechado: quem o chamar de outro lugar não
+ * precisa saber que existe uma pré-leitura a fazer, e não há como chamá-lo com um depósito
+ * que a autorização nunca conferiu.
+ */
+export async function registrarEntradaFisicaNaTx(
+  tx: Tx,
+  d: z.output<typeof zRegistrarEntradaFisicaInput>
+): Promise<{ readonly movimentoId: string }> {
+  {
+    await exigirDeposito(tx, d.depositoId);
 
     const mat = await exigirMaterial(tx, d.materialId);
     await travar(tx, "PosicaoFisicaDeEstoque", [
@@ -682,6 +713,9 @@ export async function registrarEntradaFisica(
         valorNovo: total,
       });
     }
+    if (d.recebimentoDeItemId !== undefined) {
+      await exigirRecebimentoConsumivel(tx, { recebimentoDeItemId: d.recebimentoDeItemId, materialId: d.materialId, quantidade });
+    }
 
     const criado = await tx.movimentoFisicoDeEstoque.create({
       data: {
@@ -694,13 +728,59 @@ export async function registrarEntradaFisica(
         valorTotal: total.toFixed(2),
         dataMovimento: d.dataMovimento,
         movimentoAlmoxarifadoId: d.movimentoAlmoxarifadoId ?? null,
+        recebimentoDeItemId: d.recebimentoDeItemId ?? null,
         motivo: d.motivo,
         criadoPor: d.criadoPor,
       },
       select: { id: true },
     });
     return { movimentoId: criado.id };
+  }
+}
+
+/**
+ * V4 (§6) — O RECEBIMENTO EXISTENTE É RELACIONADO, NÃO DUPLICADO. O item recebido (M11) tem
+ * identidade e quantidade; a entrada que a liquidação produz o CONSOME: mesmo material, e a
+ * soma das entradas vivas que o citam não passa do recebido. Um recebimento que já gerou a
+ * sua entrada física pelo M11 (`movimentoFisicoId`) não é consumido de novo — a segunda
+ * entrada seria o mesmo material duas vezes na prateleira.
+ */
+async function exigirRecebimentoConsumivel(
+  tx: Tx,
+  p: { readonly recebimentoDeItemId: string; readonly materialId: string; readonly quantidade: Money }
+): Promise<void> {
+  const r = await tx.recebimentoDeItem.findUnique({
+    where: { id: p.recebimentoDeItemId },
+    select: {
+      quantidade: true,
+      movimentoFisicoId: true,
+      itemDeOrdem: { select: { materialId: true, material: { select: { codigo: true } }, ordem: { select: { numero: true } } } },
+      entradasPorLiquidacao: { where: { estornoDeId: null, estornos: { none: {} } }, select: { quantidade: true } },
+    },
   });
+  if (r === null) throw new Error(`Recebimento ${p.recebimentoDeItemId} não existe — não há o que relacionar. Nada foi gravado.`);
+  if (r.itemDeOrdem.materialId !== p.materialId) {
+    throw new Error(
+      `O recebimento da ordem ${r.itemDeOrdem.ordem.numero} é do material ${r.itemDeOrdem.material.codigo}, e a entrada é de outro ` +
+        `material. Relacionar um recebimento ao material errado poria na prateleira o que não foi recebido. Nada foi gravado.`
+    );
+  }
+  if (r.movimentoFisicoId !== null) {
+    throw new Error(
+      `O recebimento da ordem ${r.itemDeOrdem.ordem.numero} JÁ DEU ENTRADA FÍSICA pelo almoxarifado (M11). A liquidação não o ` +
+        `consome de novo — o mesmo material entraria duas vezes. Liquide sem a perna física, ou informe outro recebimento. ` +
+        `Nada foi gravado.`
+    );
+  }
+  const jaConsumido = r.entradasPorLiquidacao.reduce((a, e) => toMoney(a.plus(toMoney(e.quantidade.toFixed(4)))), toMoney("0"));
+  const recebido = toMoney(r.quantidade.toFixed(4));
+  if (toMoney(jaConsumido.plus(p.quantidade)).greaterThan(recebido)) {
+    throw new Error(
+      `RECEBIMENTO ESGOTADO: a ordem ${r.itemDeOrdem.ordem.numero} recebeu ${recebido.toFixed(4)} do material ` +
+        `${r.itemDeOrdem.material.codigo}, ${jaConsumido.toFixed(4)} já entraram por liquidação, e esta entrada traria mais ` +
+        `${p.quantidade.toFixed(4)}. Não se dá entrada em mais do que foi recebido. Nada foi gravado.`
+    );
+  }
 }
 
 /**

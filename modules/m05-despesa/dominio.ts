@@ -392,6 +392,41 @@ export const zLiquidarInput = z.object({
    * transação. Ver `exigirMedicaoAprovadaDaObra`.
    */
   medicaoId: z.string().min(1).optional(),
+  /**
+   * M10 (ENT06 item 2) — AS ENTRADAS NO ALMOXARIFADO, quando a despesa é de material.
+   *
+   * ⚠️ LISTA, porque uma nota abastece VÁRIAS classes (papel e toner são contas diferentes),
+   * e é a soma delas que tem de fechar com o valor liquidado. Com chamadas separadas — uma
+   * por classe, cada uma na sua transação — a soma exata não era exigível, e o `MODULO.md`
+   * do M10 registrava isso como furo conhecido.
+   *
+   * ⚠️ OPCIONAL AQUI E OBRIGATÓRIA NO GUARD quando o elemento é de material, como a
+   * `medicaoId`: quem sabe se é exigível é o empenho, e a leitura é do adapter, dentro da
+   * transação.
+   */
+  entradasDeMaterial: z
+    .array(
+      z.object({
+        classeDeMaterialId: z.string().min(1),
+        valor: zValorPositivo,
+        /** O eixo FÍSICO — opcional: o contábil já explica a conta de estoque. */
+        fisica: z
+          .object({
+            materialId: z.string().min(1),
+            depositoId: z.string().min(1),
+            quantidade: zValorPositivo,
+            valorUnitario: zValorPositivo,
+            unidadeDeMedidaId: z.string().min(1).optional(),
+            loteIdentificacao: z.string().trim().max(60).optional(),
+            loteValidade: z.coerce.date().optional(),
+            /** V4 (§6): o recebimento existente que esta entrada consome. */
+            recebimentoDeItemId: z.string().min(1).optional(),
+          })
+          .optional(),
+      })
+    )
+    .min(1)
+    .optional(),
 });
 
 export const zPagarInput = z.object({

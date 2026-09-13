@@ -176,7 +176,7 @@ async function semear(): Promise<void> {
   await prisma.naturezaDespesa.create({
     data: {
       id: "nd", codCategoria: "3", codNatureza: "3", codModalidade: "90",
-      codElemento: "30", codigoCompleto: "339030", descricao: "Consumo",
+      codElemento: "39", codigoCompleto: "339039", descricao: "Serviços",
     },
   });
   await prisma.naturezaReceita.create({ data: { id: "nr", codigo: NAT_RECEITA, descricao: "IPTU" } });

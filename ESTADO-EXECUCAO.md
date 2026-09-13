@@ -6,10 +6,10 @@
 |---|---|
 | HEAD | ver `git log -1` — a seção 35 nomeia o commit de cada unidade |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | **Sessão noturna V4** (`docs/lotes/V4-sessao-noturna.md`): unidades 1 (contrato de comando, §45), 2 (competência por bem, §46) e 3 (documentos estáveis, §47) concluídas; a seguir, a liquidação de material (§6, stash preservado), CNPJ/catálogo (§7) e a cadeia planejamento→contratação→despesa (§8) |
-| Último resultado | seção 47 (documentos estáveis: 54/54 dirigidos, tsc ×3 limpos) |
+| Frente em execução | **Sessão noturna V4** (`docs/lotes/V4-sessao-noturna.md`): unidades 1 (contrato de comando, §45), 2 (competência por bem, §46) 3 (documentos estáveis, §47) e 4 (liquidação de material, §48) concluídas; a seguir, a liquidação de material (§6, stash preservado), CNPJ/catálogo (§7) e a cadeia planejamento→contratação→despesa (§8) |
+| Último resultado | seção 48 (liquidação de material como ato único: suíte completa 2292/2292 após dois guards, 804/804 rápidos, tsc ×3 limpos) |
 | Pendências relevantes | seções 35.7, 36.4, 37.5, 38.5 a 43.5; as anteriores em §19 e nos `MODULO.md` |
-| Próximo passo | seção 47.5 — a liquidação de material como ato único (V4 §6) a partir do stash `11b7892`, ainda preservado |
+| Próximo passo | seção 48.5 — o CNPJ alfanumérico e a revisão do catálogo (V4 §7) |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -5030,6 +5030,59 @@ Unidade 4 (seção 6 do pedido): a liquidação de material como ato único a pa
 gatilho pela natureza da operação (não pela existência de classe cadastrada), configuração ausente como
 pendência impeditiva, recebimento existente relacionável, restrição declarada a liquidações integralmente
 materiais, testes restantes da §44.3, tela das entradas e regressão ampliada dos consumidores.
+
+## 48. Sessão noturna V4 — unidade 4: a liquidação de material como ato único (achado A08; fecha LIQUIDACAO-MATERIAL-ALMOXARIFADO)
+
+Pedido: `docs/lotes/V4-sessao-noturna.md`, seção 6. Regime: **profundidade** (razão, estoque, transação).
+Decisão: `docs/adr/ADR-liquidacao-de-material-como-ato-unico.md`. O stash `11b7892` foi aplicado com
+`git stash apply` (sem conflito) e está **incorporado** neste commit; a entrada do stash continua na
+lista por segurança — pode ser descartada pelo operador (`git stash drop`), nada mais depende dela.
+
+### 48.1 O que passou a funcionar
+
+- **Gatilho pela natureza da operação** (`elementoDebitaEstoque`, rol do M01), não pela existência de
+  classe cadastrada. Classe inexistente, inativa ou que declara outra conta é `CONFIGURAÇÃO OBRIGATÓRIA
+  AUSENTE` (recusa nomeada, nada gravado). Sem port do M10: recusa; sem entradas: recusa.
+- **Ato composto na transação:** liquidação (M05) + entrada contábil por classe + perna física opcional
+  (M10), Σ entradas = valor liquidado. Restrição declarada: uma liquidação é de um elemento só; documento
+  fiscal misto são duas liquidações.
+- **Recebimento existente é relacionado, não duplicado:** `fisica.recebimentoDeItemId` (M11) com consumo
+  derivado (`MovimentoFisicoDeEstoque.recebimentoDeItemId`); recebimento que já deu entrada física não é
+  consumido de novo.
+- **Ordem dos locks** corrigida (liquidação uma vez, antes das classes).
+- **Tela** `/despesa/liquidacoes`: quando o empenho é de material, o formulário abre as entradas (classe,
+  valor, material/depósito/quantidade/unitário/lote, recebimento a consumir).
+- **Fixtures viraram operações válidas:** M05 assinatura/consultas/anulação parcial, M09 lote e M12 superávit
+  passaram ao elemento 39 (já liquidavam com roteiro de serviço); o rollout do M16 liquida material COM a
+  entrada e prova que a UG da entrada é a da liquidação.
+
+### 48.2 Comandos executados e resultados
+
+| Comando | Resultado |
+|---|---|
+| migration `20260913080000_v4_entrada_fisica_consome_recebimento` (aditiva) em test, dev e percursos; `generate`; `migrate diff` | aplicada; "No difference detected" |
+| `tsc` backend, app e scripts | limpos |
+| dirigidos (m10-almoxarifado 12, m10-estoque-fisico, m05-anulacao-parcial, m16-rollout, m05-assinatura, m05-consultas-execucao, m09-lote, m12-superavit-fonte, m11-compras, m16-censo, m16-borda-execucao, m05-consultas) | **125/125** (`.registro-de-execucao/v4-liquidacao-verificacao-2.txt`, mais a reexecução do m10-almoxarifado após corrigir a numeração de empenhos do t2) |
+| **suíte completa** (`test:tudo`, a regressão ampliada dos consumidores da liquidação — exceção justificada) | 224 arquivos, **2290/2292** na primeira execução (530 s); as 2 falhas eram guards: o modelo `RecebimentoDeItem` passou a ser nomeado por código (saiu da lista de aninhamentos) e a ilha client importava um TIPO da porta (o tipo passou a morar na ilha). Reexecutados: 6/6; `test:rapido` 804/804 |
+
+### 48.3 Não executado
+
+Percurso de navegador da liquidação com entradas (fica para o `next build` + smokes); `test:fuso`.
+
+### 48.4 Pendências
+
+| Pendência | O que é |
+|---|---|
+| `LIQUIDACAO-MISTA-POR-DOCUMENTO` | o documento fiscal misto exige duas liquidações; repartir o documento em dois empenhos pela tela é passo seguinte |
+| `RECEBIMENTO-COM-ENTRADA-FISICA-PREVIA-NA-LIQUIDACAO` | o recebimento que já deu entrada física pelo M11 não é religado à liquidação |
+| `PERCURSO-DA-LIQUIDACAO-COM-ENTRADAS` | a tela nova não tem percurso ainda |
+
+### 48.5 Próximo ponto exato
+
+Unidade 5 (seção 7 do pedido): o CNPJ alfanumérico na cadeia inteira (pacote `documento` com os vetores
+oficiais da Receita, máscara, CHECKs, filtros, M28/M29/M30, vínculo usuário↔pessoa só por CPF, SAGRES/MANAD/
+captura com recusa nomeada do alfanumérico onde o leiaute é numérico) e a revisão do catálogo (5.19.14, 5.19.36,
+5.19.39 com `rota_verificada`).
 
 ## 19. O próximo passo
 

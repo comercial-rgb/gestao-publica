@@ -11,12 +11,25 @@ import {
 import { liquidarAction, type EstadoLiquidacao } from "./actions";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
+/**
+ * As opções das entradas de material, JÁ LIDAS pelo Server Component — a ilha client não importa
+ * porta (a porta puxa o Prisma). A forma é a mesma que a porta de liquidação devolve.
+ */
+export interface OpcoesDasEntradasDeMaterial {
+  readonly classes: readonly { readonly id: string; readonly rotulo: string; readonly contaCodigo: string }[];
+  readonly materiais: readonly { readonly id: string; readonly rotulo: string; readonly classeDeMaterialId: string; readonly controlaLote: boolean }[];
+  readonly depositos: readonly { readonly id: string; readonly rotulo: string }[];
+}
+
 /** O empenho liquidável, já filtrado pelo Server Component (saldo a liquidar > 0). */
 export interface EmpenhoLiquidavel {
   readonly id: string;
   readonly numero: string;
   readonly credorCpfCnpj: string;
   readonly saldoALiquidar: string;
+  /** V4 (§6): o elemento da natureza liquida em ESTOQUE — a liquidação leva as entradas no almoxarifado. */
+  readonly ehMaterial: boolean;
+  readonly naturezaCodigo: string;
 }
 
 /**
@@ -27,11 +40,20 @@ export interface EmpenhoLiquidavel {
  * transação. Confiar no `max` seria confiar num número que o navegador pode ignorar e
  * que já está velho quando o form é enviado — duas requisições concorrentes liquidariam
  * o mesmo saldo.
+ *
+ * ═══ V4 (§6) — AS ENTRADAS DE MATERIAL, NO MESMO ATO ═══
+ * Quando o empenho é de material (o elemento debita estoque), o formulário abre as linhas
+ * das entradas: uma por classe de material, com o valor, e a perna física (material,
+ * depósito, quantidade, unitário, lote) opcional. A soma das linhas tem de fechar com o
+ * valor liquidado — a tela mostra a diferença, e quem recusa é o domínio. Documento fiscal
+ * misto (material e serviço) são duas liquidações, uma por empenho.
  */
 export function FormLiquidacao({
   empenhos,
+  opcoesDeMaterial,
 }: {
   readonly empenhos: readonly EmpenhoLiquidavel[];
+  readonly opcoesDeMaterial: OpcoesDasEntradasDeMaterial;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoLiquidacao, FormData>(
     liquidarAction,
@@ -39,6 +61,7 @@ export function FormLiquidacao({
   );
   const ref = useRef<HTMLFormElement>(null);
   const [escolhido, setEscolhido] = useState<string>("");
+  const [linhas, setLinhas] = useState<number>(1);
   if (estado.sucesso !== undefined) ref.current?.reset();
 
   if (empenhos.length === 0) {
@@ -54,11 +77,14 @@ export function FormLiquidacao({
   }
 
   const alvo = empenhos.find((e) => e.id === escolhido);
+  const deMaterial = alvo?.ehMaterial === true;
 
   return (
     <form
       ref={ref}
       action={action}
+      data-acao="liquidar"
+      data-material={deMaterial ? "sim" : "nao"}
       className={CLASSE_PAINEL_FORMULARIO}
     >
       <ChaveDeComando />
@@ -82,6 +108,7 @@ export function FormLiquidacao({
             {empenhos.map((e) => (
               <option key={e.id} value={e.id}>
                 {e.numero} — credor {e.credorCpfCnpj} · a liquidar {e.saldoALiquidar}
+                {e.ehMaterial ? " · material de consumo" : ""}
               </option>
             ))}
           </select>
@@ -124,6 +151,82 @@ export function FormLiquidacao({
           />
         </label>
       </div>
+
+      {deMaterial ? (
+        <fieldset data-secao="entradas-de-material" className="mt-4 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">
+          <legend className="px-1 text-xs font-semibold text-[color:var(--color-ink)]">
+            Entradas no almoxarifado — liquidar material é dar entrada dele, no mesmo ato
+          </legend>
+          <p className="mb-3 text-[11px] text-[color:var(--color-ink-2)]">
+            Uma linha por classe de material; a soma dos valores tem de fechar com o valor liquidado. A perna física
+            (material, depósito, quantidade, unitário) é opcional e entra na mesma transação. Documento fiscal misto
+            (material e serviço) são duas liquidações, uma por empenho.
+            {opcoesDeMaterial.classes.length === 0 ? (
+              <strong className="block text-[color:var(--color-status-erro-fg)]">
+                Nenhuma classe de material cadastrada: sem ela, liquidar material é recusado — cadastre a classe antes.
+              </strong>
+            ) : null}
+          </p>
+          {Array.from({ length: linhas }, (_, i) => (
+            <div key={i} data-linha={i} className="mb-3 grid gap-3 rounded border border-dashed border-[color:var(--color-border)] p-2 sm:grid-cols-2 lg:grid-cols-4">
+              <label className="text-xs text-[color:var(--color-ink-2)] lg:col-span-2">
+                <span className={ROTULO}>Classe de material</span>
+                <select name={`entradas.${i}.classeDeMaterialId`} defaultValue="" className={CAMPO}>
+                  <option value="">— escolha —</option>
+                  {opcoesDeMaterial.classes.map((c) => (
+                    <option key={c.id} value={c.id}>{c.rotulo} (conta {c.contaCodigo})</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-xs text-[color:var(--color-ink-2)]">
+                <span className={ROTULO}>Valor da classe (R$)</span>
+                <CampoValor name={`entradas.${i}.valor`} placeholder="6.000,00" className={CAMPO} />
+              </label>
+              <label className="text-xs text-[color:var(--color-ink-2)]">
+                <span className={ROTULO}>Recebimento da ordem de compra (opcional)</span>
+                <input name={`entradas.${i}.recebimentoDeItemId`} placeholder="relaciona um recebimento existente" className={CAMPO} />
+              </label>
+              <label className="text-xs text-[color:var(--color-ink-2)] lg:col-span-2">
+                <span className={ROTULO}>Material (perna física, opcional)</span>
+                <select name={`entradas.${i}.materialId`} defaultValue="" className={CAMPO}>
+                  <option value="">— sem perna física —</option>
+                  {opcoesDeMaterial.materiais.map((m) => (
+                    <option key={m.id} value={m.id}>{m.rotulo}{m.controlaLote ? " (controla lote)" : ""}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-xs text-[color:var(--color-ink-2)]">
+                <span className={ROTULO}>Depósito</span>
+                <select name={`entradas.${i}.depositoId`} defaultValue="" className={CAMPO}>
+                  <option value="">—</option>
+                  {opcoesDeMaterial.depositos.map((d) => (
+                    <option key={d.id} value={d.id}>{d.rotulo}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-xs text-[color:var(--color-ink-2)]">
+                <span className={ROTULO}>Quantidade</span>
+                <input name={`entradas.${i}.quantidade`} inputMode="decimal" placeholder="100" className={CAMPO} />
+              </label>
+              <label className="text-xs text-[color:var(--color-ink-2)]">
+                <span className={ROTULO}>Valor unitário (R$)</span>
+                <input name={`entradas.${i}.valorUnitario`} inputMode="decimal" placeholder="60.00" className={CAMPO} />
+              </label>
+              <label className="text-xs text-[color:var(--color-ink-2)]">
+                <span className={ROTULO}>Lote (se o material controla)</span>
+                <input name={`entradas.${i}.loteIdentificacao`} className={CAMPO} />
+              </label>
+              <label className="text-xs text-[color:var(--color-ink-2)]">
+                <span className={ROTULO}>Validade do lote</span>
+                <input name={`entradas.${i}.loteValidade`} type="date" className={CAMPO} />
+              </label>
+            </div>
+          ))}
+          <button type="button" data-acao="mais-uma-classe" className="text-xs underline underline-offset-2" onClick={() => setLinhas((n) => n + 1)}>
+            Mais uma classe de material
+          </button>
+        </fieldset>
+      ) : null}
 
       {estado.erro !== undefined ? (
         <p

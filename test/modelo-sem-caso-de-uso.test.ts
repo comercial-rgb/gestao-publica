@@ -79,10 +79,6 @@ const ESCRITO_POR_ANINHAMENTO: Readonly<Record<string, string>> = {
   ItemDeSolicitacaoDeCompra:
     "escrito por `itens: { create: ... }` em registrarSolicitacaoDeCompra " +
     "(modules/m11-licitacoes/compras.ts) — solicitação e itens nascem no mesmo ato",
-  RecebimentoDeItem:
-    "escrito por `itens: { create: ... }` em registrarRecebimentoDeOrdem " +
-    "(modules/m11-licitacoes/compras.ts); LIDO em saldoDaOrdemDeCompra pela relação " +
-    "`recebimentos` do item da ordem",
   MembroDeComissaoPatrimonial:
     "escrito por `membros: { create: ... }` em cadastrarComissaoPatrimonial " +
     "(modules/m10-patrimonial/gestao-do-bem.ts) — a comissão e seus membros nascem no " +

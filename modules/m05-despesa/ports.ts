@@ -276,6 +276,15 @@ export interface LiquidarParams {
   readonly notaFiscalValor?: Money | undefined;
   /** M11 (ENT03b) — a medição aprovada, quando o empenho tem obra. Ver `zLiquidarInput`. */
   readonly medicaoId?: string | undefined;
+  /**
+   * M10 (ENT06 item 2) — AS ENTRADAS NO ALMOXARIFADO desta liquidação.
+   *
+   * ⚠️ OPCIONAL NO TIPO E OBRIGATÓRIA NO GUARD quando o elemento é de material. O mesmo
+   * desenho da `medicaoId`: quem sabe se ela é exigível é o EMPENHO (pela natureza da
+   * despesa), e essa leitura é do adapter, dentro da transação. Torná-la obrigatória aqui
+   * quebraria toda liquidação de serviço e de custeio, que não têm entrada nenhuma.
+   */
+  readonly entradasDeMaterial?: readonly EntradaDeMaterialDaLiquidacao[] | undefined;
   readonly criadoPor: string;
 }
 
@@ -460,6 +469,79 @@ export interface AoAnularLiquidacaoPort {
     tx: TxDaDespesa,
     liquidacaoId: string,
     liquidoPosAnulacao: Money
+  ): Promise<void>;
+}
+
+/**
+ * A ENTRADA FÍSICA que acompanha a entrada contábil — opcional dentro dela.
+ *
+ * ⚠️ O EIXO CONTÁBIL BASTA PARA FECHAR A AMARRAÇÃO; o físico é o que dá quantidade, lote e
+ * preço médio. Um ente que ainda não controla depósito liquida material com o eixo contábil
+ * só, e a conta de estoque continua explicada por um movimento. Exigir o físico aqui
+ * impediria de liquidar quem não tem almoxarifado montado.
+ */
+export interface EntradaFisicaDaLiquidacao {
+  readonly materialId: string;
+  readonly depositoId: string;
+  readonly quantidade: Money;
+  readonly valorUnitario: Money;
+  readonly unidadeDeMedidaId?: string | undefined;
+  readonly loteIdentificacao?: string | undefined;
+  readonly loteValidade?: Date | undefined;
+  /** V4 (§6): o recebimento da ordem de compra que esta entrada CONSOME (não duplica). */
+  readonly recebimentoDeItemId?: string | undefined;
+}
+
+/**
+ * UMA CLASSE de material abastecida por esta liquidação.
+ *
+ * ⚠️ É LISTA, E NÃO UM CAMPO — uma nota traz papel e traz toner, e as duas classes contábeis
+ * são diferentes. Foi a impossibilidade de exigir a SOMA EXATA com chamadas separadas (uma
+ * por classe, cada uma numa transação) que o `MODULO.md` do M10 registrou como furo
+ * conhecido: a primeira chamada de 3.000 numa liquidação de 5.000 não tinha como falhar.
+ * Com o ato composto, a soma é conferível — e é exigida.
+ */
+export interface EntradaDeMaterialDaLiquidacao {
+  readonly classeDeMaterialId: string;
+  readonly valor: Money;
+  readonly fisica?: EntradaFisicaDaLiquidacao | undefined;
+}
+
+/**
+ * A ENTRADA NO ALMOXARIFADO QUE NASCE DA LIQUIDAÇÃO — o espelho do `AoAnularLiquidacaoPort`.
+ *
+ * ═══ ⚠️ O FURO QUE ELA FECHA, E ELE ESTAVA DECLARADO COMO PENDÊNCIA ═══
+ * O rol do M01 manda o elemento 30 (material de consumo) debitar ESTOQUE: a despesa não
+ * some, vira ativo. Mas o estoque tem dono — o M10 —, e enquanto liquidar e dar entrada
+ * fossem atos SEPARADOS, liquidar material deixaria o razão com estoque que nenhum movimento
+ * explica. `conferirAlmoxarifadoContraRazao` passaria a acusar divergência para sempre.
+ *
+ * A porta recusava, com a pendência `LIQUIDACAO-MATERIAL-ALMOXARIFADO` nomeada — e recusar
+ * era o certo enquanto o ato não fosse um só. Este port é o ato virando um só: o M05 não
+ * sabe o que é um almoxarifado, e não precisa; ele avisa "esta liquidação é de material, e
+ * estas são as classes", dentro da MESMA transação.
+ *
+ * ⚠️ E AQUI ELE É FAIL-CLOSED, AO CONTRÁRIO DO PORT DA ANULAÇÃO. Lá, port ausente é
+ * fail-open e está certo: um módulo ausente não pode travar o M05, e a amarração segue como
+ * rede de fundo. Aqui, port ausente com elemento 30 significaria gravar exatamente o furo
+ * que a pendência existe para impedir. Quem liquida material sem o M10 ligado é recusado.
+ */
+export interface AoLiquidarMaterialPort {
+  /**
+   * Registra, na transação da liquidação, as entradas de almoxarifado dela.
+   *
+   * A soma das entradas TEM de igualar o valor liquidado — é a exigência que só o ato
+   * composto torna possível.
+   */
+  aoLiquidarMaterial(
+    tx: TxDaDespesa,
+    p: {
+      readonly liquidacaoId: string;
+      readonly valorDaLiquidacao: Money;
+      readonly dataMovimento: Date;
+      readonly entradas: readonly EntradaDeMaterialDaLiquidacao[];
+      readonly criadoPor: string;
+    }
   ): Promise<void>;
 }
 

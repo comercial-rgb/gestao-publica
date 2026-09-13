@@ -370,116 +370,151 @@ export async function registrarEntradaAlmoxarifado(
     // a entrada aponta para a liquidação que a pagou.
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.registrarEntradaAlmoxarifado, { liquidacao: d.liquidacaoId });
 
-    // ORDEM DOS LOCKS: LIQUIDACAO (posto 3) antes da CLASSE (posto 7).
-    await travar(tx, "Liquidacao", [d.liquidacaoId]);
-    await travarClasse(tx, d.classeDeMaterialId);
-    const classe = await exigirClasse(tx, d.classeDeMaterialId);
+    return registrarEntradaAlmoxarifadoNaTx(tx, d);
+  });
+}
 
-    const liq = await tx.liquidacao.findUnique({
-      where: { id: d.liquidacaoId },
-      select: {
-        id: true,
-        numero: true,
-        valor: true,
-        estornoDeId: true,
-        estornos: { select: { id: true } },
-        // A cadeia da classificação: liquidação -> empenho -> ficha -> natureza.
-        // É a MESMA que o Anexo 12 e o portal (M13) percorrem — não há join novo.
-        empenho: {
-          select: {
-            numero: true,
-            ficha: {
-              select: {
-                naturezaDespesa: {
-                  select: { codigoCompleto: true, codElemento: true },
-                },
+/**
+ * ⚠️ O CORPO TRANSACIONAL DA ENTRADA, SEPARADO DO SERVIÇO — E O MOTIVO É A LIQUIDAÇÃO.
+ *
+ * Liquidar material e dar entrada no almoxarifado são **um ato só** (TR 5.21 · 5.85): o rol
+ * do M01 manda o elemento 30 debitar ESTOQUE, e um estoque no razão que nenhum movimento
+ * explica faz `conferirAlmoxarifadoContraRazao` acusar divergência para sempre. Enquanto os
+ * dois fossem chamadas separadas, a porta da liquidação RECUSAVA material — pendência
+ * `LIQUIDACAO-MATERIAL-ALMOXARIFADO`, e recusar era o certo.
+ *
+ * Duas chamadas em duas transações não davam essa garantia: se a segunda falhasse, a
+ * primeira já teria gravado. Por isso o corpo virou um COMPOSÁVEL que recebe a `tx` de quem
+ * chama — e continua existindo UMA implementação, não duas que se parecem. É o mesmo desenho
+ * de `registrarSaidaConsumoNaTx`.
+ *
+ * ⚠️ ELE NÃO AUTORIZA E NÃO ABRE TRANSAÇÃO: quem chama faz as duas coisas. Dar-lhe ação
+ * própria faria o ente conceder duas vezes o mesmo poder — quem cobra o crachá é `liquidar`
+ * (pelo port do M05) ou `registrarEntradaAlmoxarifado` (a entrada avulsa). Está no
+ * `FORA_DO_CENSO` por isso, com este motivo.
+ *
+ * ⚠️ ELE TRAVA, e a ordem importa: `Liquidacao` (posto 6) antes de `ClasseDeMaterial`
+ * (posto 11). Chamado de dentro da transação da liquidação — que não trava nada — a
+ * sequência continua crescente, e o guard de ordem do `packages/locks` a confere pela
+ * identidade da `tx`.
+ */
+export async function registrarEntradaAlmoxarifadoNaTx(
+  tx: Tx,
+  d: z.output<typeof zEntradaAlmoxarifadoInput>,
+  /**
+   * V4 (§6): o ato composto trava a LIQUIDAÇÃO uma vez, antes de percorrer as classes — travá-la de
+   * novo depois de uma classe (posto 11 → posto 6) seria a inversão que o guard de ordem recusa.
+   */
+  opcoes: { readonly liquidacaoJaTravada?: boolean } = {}
+): Promise<{ readonly movimentoId: string }> {
+  if (opcoes.liquidacaoJaTravada !== true) await travar(tx, "Liquidacao", [d.liquidacaoId]);
+  await travarClasse(tx, d.classeDeMaterialId);
+  const classe = await exigirClasse(tx, d.classeDeMaterialId);
+
+  const liq = await tx.liquidacao.findUnique({
+    where: { id: d.liquidacaoId },
+    select: {
+      id: true,
+      numero: true,
+      valor: true,
+      estornoDeId: true,
+      estornos: { select: { id: true } },
+      // A cadeia da classificação: liquidação -> empenho -> ficha -> natureza.
+      // É a MESMA que o Anexo 12 e o portal (M13) percorrem — não há join novo.
+      empenho: {
+        select: {
+          numero: true,
+          ficha: {
+            select: {
+              naturezaDespesa: {
+                select: { codigoCompleto: true, codElemento: true },
               },
             },
           },
         },
       },
-    });
-    if (liq === null) {
-      throw new Error(
-        `Liquidação ${d.liquidacaoId} não existe — e a TR 5.85 exige que a entrada no ` +
-          `almoxarifado nasça do material RECEBIDO E ATESTADO.`
-      );
-    }
-    if (liq.estornoDeId !== null) {
-      throw new Error(
-        `A liquidação ${liq.numero} É uma ANULAÇÃO — não se dá entrada de material com ` +
-          `o estorno de uma liquidação.`
-      );
-    }
-    if (liq.estornos.length > 0) {
-      throw new Error(
-        `A liquidação ${liq.numero} foi ANULADA. O material não foi aceito; ele não ` +
-          `entra no almoxarifado.`
-      );
-    }
-
-    // ═══ O ELEMENTO (TR 5.85) — antes de qualquer conta ═══
-    // O rol oficial diz que o elemento EXISTE; o `ELEMENTOS_DE_ALMOXARIFADO` diz se ele
-    // vira ESTOQUE. As duas perguntas são diferentes, e as duas são fail-closed.
-    const natureza = liq.empenho.ficha.naturezaDespesa;
-    const elemento = exigirElementoOficial(natureza.codElemento);
-    if (ELEMENTOS_DE_ALMOXARIFADO[elemento.codigo] !== true) {
-      throw new Error(
-        `A liquidação ${liq.numero} nasceu do empenho ${liq.empenho.numero}, cuja ` +
-          `natureza é ${natureza.codigoCompleto} — elemento ${elemento.codigo} ` +
-          `("${elemento.nome}"). O almoxarifado guarda MATERIAL DE CONSUMO, e o rol ` +
-          `vigente é {${Object.keys(ELEMENTOS_DE_ALMOXARIFADO).join(", ")}}. Dar ` +
-          `entrada de estoque numa despesa que não comprou material infla o razão do ` +
-          `estoque com um material que não existe, e o inventário nunca mais fecha. ` +
-          `Se este elemento DEVE gerar estoque, isso é uma DECISÃO do ente — e ela ` +
-          `entra no rol, não neste erro.`
-      );
-    }
-
-    const liquidado = toMoney(liq.valor.toFixed(2));
-
-    // A SOMA das entradas daquela liquidação (com o sinal — o estorno devolve espaço).
-    const outras = await tx.movimentoAlmoxarifado.findMany({
-      where: {
-        liquidacaoId: d.liquidacaoId,
-        tipo: { in: ["ENTRADA", "ESTORNO_ENTRADA"] },
-      },
-      select: { tipo: true, valor: true },
-    });
-    let jaEntrou = toMoney("0.00");
-    for (const m of outras) {
-      const v = toMoney(m.valor.toFixed(2));
-      jaEntrou =
-        m.tipo === "ENTRADA" ? toMoney(jaEntrou.plus(v)) : toMoney(jaEntrou.minus(v));
-    }
-
-    const depois = toMoney(jaEntrou.plus(d.valor));
-    if (depois.greaterThan(liquidado)) {
-      throw new Error(
-        `ENTRADA MAIOR QUE A LIQUIDAÇÃO ${liq.numero}: ela liquidou ` +
-          `${liquidado.toFixed(2)}, já deu entrada de ${jaEntrou.toFixed(2)} em ` +
-          `almoxarifado, e agora daria mais ${d.valor.toFixed(2)} (total ` +
-          `${depois.toFixed(2)}). Uma liquidação pode abastecer VÁRIAS classes — mas ` +
-          `não mais material do que foi liquidado. Sem este limite, N classes seriam ` +
-          `abastecidas com o mesmo dinheiro.`
-      );
-    }
-
-    const criado = await tx.movimentoAlmoxarifado.create({
-      data: {
-        classeDeMaterialId: d.classeDeMaterialId,
-        tipo: "ENTRADA",
-        valor: d.valor.toFixed(2),
-        dataMovimento: d.dataMovimento,
-        liquidacaoId: d.liquidacaoId,
-        // SEM lancamentoId: quem contabiliza é o M05 (ver o cabeçalho).
-        motivo: `Entrada da liquidação ${liq.numero} na classe ${classe.codigo}`,
-        criadoPor: d.criadoPor,
-      },
-      select: { id: true },
-    });
-    return { movimentoId: criado.id };
+    },
   });
+  if (liq === null) {
+    throw new Error(
+      `Liquidação ${d.liquidacaoId} não existe — e a TR 5.85 exige que a entrada no ` +
+        `almoxarifado nasça do material RECEBIDO E ATESTADO.`
+    );
+  }
+  if (liq.estornoDeId !== null) {
+    throw new Error(
+      `A liquidação ${liq.numero} É uma ANULAÇÃO — não se dá entrada de material com ` +
+        `o estorno de uma liquidação.`
+    );
+  }
+  if (liq.estornos.length > 0) {
+    throw new Error(
+      `A liquidação ${liq.numero} foi ANULADA. O material não foi aceito; ele não ` +
+        `entra no almoxarifado.`
+    );
+  }
+
+  // ═══ O ELEMENTO (TR 5.85) — antes de qualquer conta ═══
+  // O rol oficial diz que o elemento EXISTE; o `ELEMENTOS_DE_ALMOXARIFADO` diz se ele
+  // vira ESTOQUE. As duas perguntas são diferentes, e as duas são fail-closed.
+  const natureza = liq.empenho.ficha.naturezaDespesa;
+  const elemento = exigirElementoOficial(natureza.codElemento);
+  if (ELEMENTOS_DE_ALMOXARIFADO[elemento.codigo] !== true) {
+    throw new Error(
+      `A liquidação ${liq.numero} nasceu do empenho ${liq.empenho.numero}, cuja ` +
+        `natureza é ${natureza.codigoCompleto} — elemento ${elemento.codigo} ` +
+        `("${elemento.nome}"). O almoxarifado guarda MATERIAL DE CONSUMO, e o rol ` +
+        `vigente é {${Object.keys(ELEMENTOS_DE_ALMOXARIFADO).join(", ")}}. Dar ` +
+        `entrada de estoque numa despesa que não comprou material infla o razão do ` +
+        `estoque com um material que não existe, e o inventário nunca mais fecha. ` +
+        `Se este elemento DEVE gerar estoque, isso é uma DECISÃO do ente — e ela ` +
+        `entra no rol, não neste erro.`
+    );
+  }
+
+  const liquidado = toMoney(liq.valor.toFixed(2));
+
+  // A SOMA das entradas daquela liquidação (com o sinal — o estorno devolve espaço).
+  const outras = await tx.movimentoAlmoxarifado.findMany({
+    where: {
+      liquidacaoId: d.liquidacaoId,
+      tipo: { in: ["ENTRADA", "ESTORNO_ENTRADA"] },
+    },
+    select: { tipo: true, valor: true },
+  });
+  let jaEntrou = toMoney("0.00");
+  for (const m of outras) {
+    const v = toMoney(m.valor.toFixed(2));
+    jaEntrou =
+      m.tipo === "ENTRADA" ? toMoney(jaEntrou.plus(v)) : toMoney(jaEntrou.minus(v));
+  }
+
+  const depois = toMoney(jaEntrou.plus(d.valor));
+  if (depois.greaterThan(liquidado)) {
+    throw new Error(
+      `ENTRADA MAIOR QUE A LIQUIDAÇÃO ${liq.numero}: ela liquidou ` +
+        `${liquidado.toFixed(2)}, já deu entrada de ${jaEntrou.toFixed(2)} em ` +
+        `almoxarifado, e agora daria mais ${d.valor.toFixed(2)} (total ` +
+        `${depois.toFixed(2)}). Uma liquidação pode abastecer VÁRIAS classes — mas ` +
+        `não mais material do que foi liquidado. Sem este limite, N classes seriam ` +
+        `abastecidas com o mesmo dinheiro.`
+    );
+  }
+
+  const criado = await tx.movimentoAlmoxarifado.create({
+    data: {
+      classeDeMaterialId: d.classeDeMaterialId,
+      tipo: "ENTRADA",
+      valor: d.valor.toFixed(2),
+      dataMovimento: d.dataMovimento,
+      liquidacaoId: d.liquidacaoId,
+      // SEM lancamentoId: quem contabiliza é o M05 (ver o cabeçalho).
+      motivo: `Entrada da liquidação ${liq.numero} na classe ${classe.codigo}`,
+      criadoPor: d.criadoPor,
+    },
+    select: { id: true },
+  });
+  return { movimentoId: criado.id };
 }
 
 /**

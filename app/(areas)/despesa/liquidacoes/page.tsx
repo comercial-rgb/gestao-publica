@@ -8,9 +8,12 @@ import {
 } from "../../../../components/ui/TabelaDeDados";
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import {
+  empenhoEhDeMaterial,
   listarLiquidacoesDaExecucao,
+  opcoesDasEntradasDeMaterial,
   PortaSemBancoError,
   type LiquidacaoDaTela,
+  type OpcoesDasEntradasDeMaterial,
 } from "../../../../lib/portas/liquidacao";
 import { listarEmpenhosDaExecucao } from "../../../../lib/portas/empenho";
 import { FormAnular } from "../FormAnular";
@@ -50,9 +53,10 @@ export default async function LiquidacoesPage({
   let recorte: RecorteDaPagina;
   let liquidacoes: readonly LiquidacaoDaTela[];
   let liquidaveis: readonly EmpenhoLiquidavel[];
+  let opcoesDeMaterial: OpcoesDasEntradasDeMaterial;
   try {
     recorte = await recorteDePagina(sp, "CONSULTAR_DESPESA");
-    const [lista, empenhos] = await Promise.all([
+    const [lista, empenhos, opcoes] = await Promise.all([
       listarLiquidacoesDaExecucao({
         exercicio: recorte.exercicio,
         unidadeCodigo: recorte.unidadeCodigo,
@@ -61,8 +65,10 @@ export default async function LiquidacoesPage({
         exercicio: recorte.exercicio,
         unidadeCodigo: recorte.unidadeCodigo,
       }),
+      opcoesDasEntradasDeMaterial(),
     ]);
     liquidacoes = lista;
+    opcoesDeMaterial = opcoes;
     // Só o que ainda tem o que liquidar — e o anulado sai fora: não há saldo num fato
     // que deixou de valer.
     liquidaveis = empenhos
@@ -72,6 +78,9 @@ export default async function LiquidacoesPage({
         numero: e.numero,
         credorCpfCnpj: e.credorCpfCnpj,
         saldoALiquidar: e.saldoALiquidar,
+        // V4 (§6): material de consumo (elemento que debita estoque) liquida COM as entradas no almoxarifado.
+        ehMaterial: empenhoEhDeMaterial(e.naturezaCodigo),
+        naturezaCodigo: e.naturezaCodigo,
       }));
   } catch (erro) {
     // ⚠️ A RECUSA DE ACESSO TEM TÍTULO PRÓPRIO: o genérico faria o servidor procurar
@@ -113,7 +122,7 @@ export default async function LiquidacoesPage({
         patrimonial e é tratada no módulo de almoxarifado.
       </div>
 
-      <FormLiquidacao empenhos={liquidaveis} />
+      <FormLiquidacao empenhos={liquidaveis} opcoesDeMaterial={opcoesDeMaterial} />
 
       {liquidacoes.length === 0 ? (
         <EstadoVazio

@@ -355,6 +355,13 @@ model MovimentoFisicoDeEstoque {
   movimentoAlmoxarifadoId String?
   movimentoAlmoxarifado   MovimentoAlmoxarifado? @relation(fields: [movimentoAlmoxarifadoId], references: [id])
 
+  /// V4 (§6) — O RECEBIMENTO DA ORDEM DE COMPRA (M11) que esta entrada CONSOME, quando a
+  /// liquidação relaciona um recebimento existente em vez de produzir um novo. A identidade
+  /// e o consumo dos quantitativos são derivados daqui: Σ(entradas vivas deste recebimento)
+  /// não passa do que foi recebido.
+  recebimentoDeItemId String?
+  recebimentoDeItem   RecebimentoDeItem? @relation("EntradaPorRecebimento", fields: [recebimentoDeItemId], references: [id])
+
   /// TR 5.18.9 — a saída que ATENDE um item de requisição (atendimento parcial: um
   /// item pode ser atendido por vários movimentos).
   itemDeRequisicaoId String?
@@ -382,6 +389,7 @@ model MovimentoFisicoDeEstoque {
   @@index([estornoDeId])
   @@index([operacaoId])
   @@index([movimentoAlmoxarifadoId])
+  @@index([recebimentoDeItemId])
   /// back-relation ENT05 (M11 compras) — o recebimento que gerou este movimento.
   recebimentos RecebimentoDeItem[] @relation("RecebimentoDeEstoque")
 }

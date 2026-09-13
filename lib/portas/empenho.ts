@@ -44,6 +44,7 @@ export interface EmpenhoDaTela {
   readonly unidadeCodigo: string;
   readonly unidadeNome: string;
   readonly fonteCodigo: string;
+  readonly naturezaCodigo: string;
   readonly categoria: string;
   readonly valor: string;
   readonly empenhadoLiquido: string;
@@ -192,6 +193,7 @@ function paraTela(e: EmpenhoNaLista): EmpenhoDaTela {
     unidadeCodigo: e.unidadeCodigo,
     unidadeNome: e.unidadeNome,
     fonteCodigo: e.fonteCodigo,
+    naturezaCodigo: e.naturezaCodigo,
     categoria: e.categoriaOrdemCronologica,
     valor: e.valor.toFixed(2),
     empenhadoLiquido: e.empenhadoLiquido.toFixed(2),

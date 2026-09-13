@@ -5,13 +5,15 @@ import {
   naturezaDoEmpenho,
   type LiquidacaoNaLista,
 } from "../../modules/m05-despesa/consultas";
-import { criarM05Deps } from "../../modules/m05-despesa/adapter-prisma";
+// ⚠️ A FÁBRICA COM O ALMOXARIFADO LIGADO, e não a simples. Liquidar material passou a
+// exigir o port do M10 dentro da transação (ENT06 item 2); com `criarM05Deps` puro, toda
+// liquidação de elemento de material seria recusada — fail-closed, e corretamente.
+import { criarM05DepsComAlmoxarifado } from "../../modules/m10-patrimonial/adapter-m05-almox";
 import { liquidar } from "../../modules/m05-despesa/servico-bloco2";
-import {
-  CONTA_ESTOQUE,
-  contrapartidaDaLiquidacao,
-  roteiroLiquidacao,
-} from "../../modules/m01-core-contabil/roteiros";
+// ⚠️ `CONTA_ESTOQUE` e `contrapartidaDaLiquidacao` SAÍRAM DAQUI junto com a recusa: quem
+// decide se a liquidação é de material é o adapter, dentro da transação, pela mesma régua.
+// Deixá-los importados manteria nesta porta a aparência de uma decisão que ela não toma mais.
+import { elementoDebitaEstoque, roteiroLiquidacao } from "../../modules/m01-core-contabil/roteiros";
 
 /**
  * PORTA — LIQUIDAÇÕES (TR 5.21).
@@ -112,6 +114,30 @@ export async function registrarLiquidacao(input: {
   readonly data: Date;
   readonly responsavelAtesto: string;
   readonly historico: string;
+  /**
+   * M10 (ENT06 item 2) — AS ENTRADAS NO ALMOXARIFADO, quando a despesa é de material.
+   *
+   * ⚠️ ELAS ATRAVESSAM ESTA PORTA SEM QUE ELA DECIDA NADA. Quem exige é o adapter, pelo
+   * elemento lido DENTRO da transação — a porta que decidisse por antecipação seria a
+   * recusa antiga com outro nome, e erraria no dia em que o rol de elementos mudasse.
+   *
+   * Dinheiro em `string`, como todo valor que vem da tela: a conversão para `Decimal` é do
+   * domínio (`zLiquidarInput`), nunca da interface.
+   */
+  readonly entradasDeMaterial?: readonly {
+    readonly classeDeMaterialId: string;
+    readonly valor: string;
+    readonly fisica?: {
+      readonly materialId: string;
+      readonly depositoId: string;
+      readonly quantidade: string;
+      readonly valorUnitario: string;
+      readonly unidadeDeMedidaId?: string | undefined;
+      readonly loteIdentificacao?: string | undefined;
+      readonly loteValidade?: Date | undefined;
+      readonly recebimentoDeItemId?: string | undefined;
+    } | undefined;
+  }[] | undefined;
 }): Promise<string> {
   const prisma = cliente();
 
@@ -120,24 +146,38 @@ export async function registrarLiquidacao(input: {
     throw new Error(`Empenho ${input.empenhoId} não encontrado.`);
   }
 
-  // ⚠️ ANTES da sessão e da escrita: é uma recusa de DESENHO, não de permissão. Gastar
-  // um RegistroDeOperacao com ela diria que alguém tentou fazer algo proibido, quando o
-  // que houve foi o sistema ainda não saber fazer.
-  if (contrapartidaDaLiquidacao(natureza.codElemento) === CONTA_ESTOQUE) {
-    throw new LiquidacaoDeMaterialBloqueadaError(
-      natureza.codElemento,
-      natureza.descricao
-    );
-  }
+  // ⚠️ A RECUSA DE MATERIAL CAIU NO ENT06 ITEM 2, e o que a substituiu é mais forte: a
+  // liquidação de material e a entrada no almoxarifado passaram a ser UM ato, dentro da
+  // mesma transação (`AoLiquidarMaterialPort`). Quem cobra a entrada agora é o adapter,
+  // pelo elemento lido DENTRO da transação — não esta porta, por antecipação.
+  //
+  // `LiquidacaoDeMaterialBloqueadaError` continua exportada: ela é o nome que a pendência
+  // `LIQUIDACAO-MATERIAL-ALMOXARIFADO` teve enquanto durou, e há registro que a cita.
+
+  // ⚠️ A LISTA SAI DO `input` POR DESESTRUTURAÇÃO, e não por spread condicional. Com
+  // `...input` seguido de um spread condicional, o ramo FALSO continua carregando a
+  // propriedade `readonly` do tipo original — o objeto resultante fica com a lista imutável
+  // e o schema do domínio, que recebe array mutável, recusa. Tirá-la daqui resolve na raiz.
+  const { entradasDeMaterial, ...resto } = input;
 
   return comEscritaAutenticada("LIQUIDAR", async (criadoPor) => {
     const r = await liquidar(
-      { ...input, criadoPor },
+      {
+        ...resto,
+        criadoPor,
+        // ⚠️ CÓPIA MUTÁVEL NA BORDA. O contrato desta porta é `readonly` — quem a chama não
+        // deve poder alterar a lista depois de entregá-la —, e o tipo de entrada do Zod é
+        // array mutável. Afrouxar a assinatura pública para agradar ao schema trocaria uma
+        // garantia por uma conveniência; a adaptação fica aqui, que é a fronteira.
+        ...(entradasDeMaterial !== undefined
+          ? { entradasDeMaterial: entradasDeMaterial.map((e) => ({ ...e })) }
+          : {}),
+      },
       roteiroLiquidacao({
         codElemento: natureza.codElemento,
         obrigacaoAPagar: CONTA_FORNECEDORES,
       }),
-      criarM05Deps(prisma)
+      criarM05DepsComAlmoxarifado(prisma)
     );
     return r.liquidacaoId;
   });
@@ -159,4 +199,34 @@ function paraTela(l: LiquidacaoNaLista): LiquidacaoDaTela {
     credorCpfCnpj: l.credorCpfCnpj,
     fonteCodigo: l.fonteCodigo,
   };
+}
+
+/**
+ * V4 (§6) — AS OPÇÕES DAS ENTRADAS DE MATERIAL da tela de liquidação: as classes ativas (com a
+ * conta que declaram), os materiais ativos (com a classe e se controlam lote) e os depósitos
+ * ativos. Só leitura; o domínio confere tudo de novo dentro da transação.
+ */
+export interface OpcoesDasEntradasDeMaterial {
+  readonly classes: readonly { readonly id: string; readonly rotulo: string; readonly contaCodigo: string }[];
+  readonly materiais: readonly { readonly id: string; readonly rotulo: string; readonly classeDeMaterialId: string; readonly controlaLote: boolean }[];
+  readonly depositos: readonly { readonly id: string; readonly rotulo: string }[];
+}
+
+export async function opcoesDasEntradasDeMaterial(): Promise<OpcoesDasEntradasDeMaterial> {
+  const prisma = cliente();
+  const [classes, materiais, depositos] = await Promise.all([
+    prisma.classeDeMaterial.findMany({ where: { ativa: true }, select: { id: true, codigo: true, descricao: true, contaContabil: { select: { codigo: true } } }, orderBy: { codigo: "asc" }, take: 500 }),
+    prisma.material.findMany({ where: { ativo: true }, select: { id: true, codigo: true, descricaoSucinta: true, classeDeMaterialId: true, controlaLote: true }, orderBy: { codigo: "asc" }, take: 2000 }),
+    prisma.deposito.findMany({ where: { ativo: true }, select: { id: true, codigo: true, nome: true }, orderBy: { codigo: "asc" }, take: 300 }),
+  ]);
+  return {
+    classes: classes.map((c) => ({ id: c.id, rotulo: `${c.codigo} — ${c.descricao}`, contaCodigo: c.contaContabil.codigo })),
+    materiais: materiais.map((m) => ({ id: m.id, rotulo: `${m.codigo} — ${m.descricaoSucinta}`, classeDeMaterialId: m.classeDeMaterialId, controlaLote: m.controlaLote })),
+    depositos: depositos.map((d) => ({ id: d.id, rotulo: `${d.codigo} — ${d.nome}` })),
+  };
+}
+
+/** V4 (§6): o elemento da natureza liquida em ESTOQUE? — a mesma régua do adapter, para a tela avisar antes. */
+export function empenhoEhDeMaterial(naturezaCodigo: string): boolean {
+  return elementoDebitaEstoque(naturezaCodigo.slice(-2));
 }

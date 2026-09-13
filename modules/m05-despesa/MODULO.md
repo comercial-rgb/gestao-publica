@@ -314,3 +314,13 @@ novo. Curado no M14 (o `excluirDesde` do M01), com a identidade **M5** para prov
 `ReservaDotacao` só tem `criadoEm` — a data do FATO, para ela, **é** a da criação. Declarado:
 quando a reserva ganhar data própria, ela entra no `registrarMovimentoDotacao` e o corte da
 MSC passa a segui-la.
+
+## Sessão noturna V4 (§6) — liquidar material é dar entrada dele
+
+`criarDespesaRepositoryPrisma` recebe `aoLiquidarMaterial` (o port do M10). Quando o elemento do
+empenho liquida em estoque (`elementoDebitaEstoque`, rol do M01), a liquidação exige `entradasDeMaterial`
+(uma por classe, soma = valor liquidado), confere que cada classe existe, está ativa e declara a conta
+debitada (senão `CONFIGURAÇÃO OBRIGATÓRIA AUSENTE`) e chama o port dentro da transação. Sem o port:
+`SEM O ALMOXARIFADO LIGADO`. Uma liquidação é de um elemento só: documento fiscal misto são duas
+liquidações. `lib/portas/liquidacao.ts` monta as deps com o almoxarifado ligado. Ver
+`docs/adr/ADR-liquidacao-de-material-como-ato-unico.md`.

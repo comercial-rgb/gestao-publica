@@ -107,7 +107,7 @@ async function semear(): Promise<void> {
   await prisma.programa.create({ data: { id: "lp-1", codigo: "0004", descricao: "P" } });
   await prisma.acao.create({ data: { id: "la-1", codigo: "2001", descricao: "A", tipo: "ATIVIDADE" } });
   await prisma.naturezaDespesa.create({
-    data: { id: "ln-1", codCategoria: "3", codNatureza: "3", codModalidade: "90", codElemento: "30", codigoCompleto: "339030", descricao: "Material" },
+    data: { id: "ln-1", codCategoria: "3", codNatureza: "3", codModalidade: "90", codElemento: "39", codigoCompleto: "339039", descricao: "Serviços" },
   });
   await prisma.fonteRecurso.create({
     data: { id: FONTE, codigo: "500", descricao: "Livre", codigoTce: "500" },

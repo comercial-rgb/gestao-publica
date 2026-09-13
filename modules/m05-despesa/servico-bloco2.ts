@@ -85,6 +85,12 @@ export async function liquidar(
       ...(dados.notaFiscalData !== undefined ? { notaFiscalData: dados.notaFiscalData } : {}),
       ...(dados.notaFiscalValor !== undefined ? { notaFiscalValor: dados.notaFiscalValor } : {}),
       ...(dados.medicaoId !== undefined ? { medicaoId: dados.medicaoId } : {}),
+      // ⚠️ M10 (ENT06 item 2) — as entradas de almoxarifado ATRAVESSAM o serviço sem que ele
+      // saiba o que é um almoxarifado. Quem decide se elas são exigíveis é o adapter, dentro
+      // da transação, pela natureza do empenho — a mesma disciplina da `medicaoId`.
+      ...(dados.entradasDeMaterial !== undefined
+        ? { entradasDeMaterial: dados.entradasDeMaterial }
+        : {}),
       criadoPor: dados.criadoPor,
     },
     {

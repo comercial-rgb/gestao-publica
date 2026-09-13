@@ -446,3 +446,12 @@ Decisão em `docs/adr/ADR-emissao-congelada-do-termo.md`. `emitirTermoPatrimonia
 a posição atual (ATUAL, outro documento com data própria) ou o termo antigo composto agora (SEM_EMISSAO,
 dito na nota). O termo assinado é `Anexo.termoPatrimonialId` (aba de anexos do detalhe; sha256 conferido
 na entrega). Pendência `TERMO-ASSINADO-NAO-ANEXAVEL-PELA-TELA` fechada; nova: `ASSINATURA-QUALIFICADA-DO-TERMO`.
+
+## Sessão noturna V4 (§6) — a liquidação de material como ato único (fecha LIQUIDACAO-MATERIAL-ALMOXARIFADO)
+
+Decisão em `docs/adr/ADR-liquidacao-de-material-como-ato-unico.md`. O gatilho é a NATUREZA
+(`elementoDebitaEstoque`, M01); a classe de material é configuração obrigatória e a sua ausência é
+recusa nomeada; `AoLiquidarMaterialPort` grava as entradas (contábil + física opcional, que pode
+CONSUMIR um recebimento do M11 por `recebimentoDeItemId`) na transação da liquidação; a liquidação é
+travada uma vez antes das classes. A tela de liquidação abre as entradas quando o empenho é de
+material. Pendências: `LIQUIDACAO-MISTA-POR-DOCUMENTO`, `RECEBIMENTO-COM-ENTRADA-FISICA-PREVIA-NA-LIQUIDACAO`.

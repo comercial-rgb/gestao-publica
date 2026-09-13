@@ -24,7 +24,6 @@ import { cadastrarDivida } from "../m10-patrimonial/divida.js";
 import {
   cadastrarClasseDeMaterial,
   conferirAlmoxarifadoContraRazao,
-  registrarEntradaAlmoxarifado,
   saldoDaClasseDeMaterial,
 } from "../m10-patrimonial/almoxarifado.js";
 
@@ -66,6 +65,7 @@ await exigirBanco(prisma);
 const POR = "despesa@cg.pb.gov.br";
 const FICHA = "ficha-1";
 const FICHA_AMORT = "ficha-amort";
+const FICHA_30 = "ficha-30"; // V4 (§6): a ficha de MATERIAL, só para o t6 — liquidar material é dar entrada dele
 const FONTE = "fnt-500";
 const T_INSS = "tc-inss";
 
@@ -134,7 +134,8 @@ async function semear(): Promise<void> {
   await prisma.acao.create({ data: { id: "aca", codigo: "2001", descricao: "A", tipo: "ATIVIDADE" } });
   await prisma.naturezaDespesa.createMany({
     data: [
-      { id: "nd", codCategoria: "3", codNatureza: "3", codModalidade: "90", codElemento: "30", codigoCompleto: "339030", descricao: "Material" },
+      { id: "nd", codCategoria: "3", codNatureza: "3", codModalidade: "90", codElemento: "39", codigoCompleto: "339039", descricao: "Serviços" },
+      { id: "nd30", codCategoria: "3", codNatureza: "3", codModalidade: "90", codElemento: "30", codigoCompleto: "339030", descricao: "Material" },
       { id: "nd-amort", codCategoria: "4", codNatureza: "6", codModalidade: "90", codElemento: "71", codigoCompleto: "469071", descricao: "Principal da dívida" },
     ],
   });
@@ -156,6 +157,7 @@ async function semear(): Promise<void> {
   };
   await criarFichaDeTeste(prisma, { ...base, id: FICHA, numero: 1, naturezaDespesaId: "nd" });
   await criarFichaDeTeste(prisma, { ...base, id: FICHA_AMORT, numero: 2, naturezaDespesaId: "nd-amort" });
+  await criarFichaDeTeste(prisma, { ...base, id: FICHA_30, numero: 3, naturezaDespesaId: "nd30" });
 
   await prisma.roteiroAlmoxarifado.create({
     data: {
@@ -184,13 +186,16 @@ async function liquidaDe(
   empenhoId: string,
   valor: string,
   n = "1",
-  roteiro = R_LIQUIDACAO
+  roteiro = R_LIQUIDACAO,
+  /** Liquidar MATERIAL é um ato só: as entradas no almoxarifado vão na mesma chamada (V3). */
+  entradasDeMaterial?: readonly { readonly classeDeMaterialId: string; readonly valor: string }[]
 ): Promise<string> {
   const l = await liquidar(
     {
       empenhoId, numero: `NL-${n}`, valor,
       data: new Date("2026-03-01T12:00:00Z"), responsavelAtesto: "Fulano",
       historico: "liquidação", criadoPor: POR,
+      ...(entradasDeMaterial === undefined ? {} : { entradasDeMaterial: entradasDeMaterial.map((e) => ({ ...e })) }),
     },
     roteiro,
     deps
@@ -486,18 +491,12 @@ describe("TR 5.35 — anulação parcial", () => {
       contaContabilId: "c-estoque", criadoPor: POR,
     });
 
-    const empenhoId = await empenhaDe("10000.00");
-    const liq = await liquidaDe(empenhoId, "5000.00", "1", R_LIQUIDACAO_MATERIAL);
-
-    // as DUAS entradas somam os 5.000 da liquidação
-    await registrarEntradaAlmoxarifado(prisma, {
-      classeDeMaterialId: classe.classeDeMaterialId, liquidacaoId: liq,
-      valor: "3000.00", dataMovimento: new Date("2026-03-01T12:00:00Z"), criadoPor: POR,
-    });
-    await registrarEntradaAlmoxarifado(prisma, {
-      classeDeMaterialId: classeB.classeDeMaterialId, liquidacaoId: liq,
-      valor: "2000.00", dataMovimento: new Date("2026-03-01T12:00:00Z"), criadoPor: POR,
-    });
+    const empenhoId = await empenhaDe("10000.00", "1", FICHA_30);
+    // as DUAS entradas somam os 5.000 da liquidação — e nascem NO ATO de liquidar (V3)
+    const liq = await liquidaDe(empenhoId, "5000.00", "1", R_LIQUIDACAO_MATERIAL, [
+      { classeDeMaterialId: classe.classeDeMaterialId, valor: "3000.00" },
+      { classeDeMaterialId: classeB.classeDeMaterialId, valor: "2000.00" },
+    ]);
     await conferirAlmoxarifadoContraRazao(prisma, "c-estoque");
 
     // (a) anular 1.000 deixaria a liquidação valendo 4.000 < 5.000 de material

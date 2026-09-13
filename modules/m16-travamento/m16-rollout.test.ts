@@ -28,7 +28,6 @@ import { encerrarExercicioComRestos } from "../m08-restos-a-pagar/encerramento.j
 import { liquidarRestosAPagar } from "../m08-restos-a-pagar/restos.js";
 import {
   cadastrarClasseDeMaterial,
-  registrarEntradaAlmoxarifado,
 } from "../m10-patrimonial/almoxarifado.js";
 import { criarM05DepsComAlmoxarifado } from "../m10-patrimonial/adapter-m05-almox.js";
 import { arrecadarRecebimentoDividaAtiva } from "../m10-patrimonial/adapter-m04.js";
@@ -212,9 +211,17 @@ async function semear(): Promise<void> {
   }
 
   deps = criarM05DepsComAlmoxarifado(prisma);
+
+  // ⚠️ V4 (§6): as fichas são de MATERIAL (elemento 30) e liquidar material é um ato só com dar
+  // entrada no almoxarifado — a classe que declara a conta debitada é configuração obrigatória.
+  classeDaFixture = (
+    await cadastrarClasseDeMaterial(prisma, { codigo: "30.00", descricao: "Material de consumo (fixture)", contaContabilId: "c-estoque", criadoPor: ADMIN })
+  ).classeDeMaterialId;
 }
 
-/** O fato COMPLETO, numa UG: empenha -> liquida -> (opcional) paga. */
+let classeDaFixture = "";
+
+/** O fato COMPLETO, numa UG: empenha -> liquida (com a entrada de material, no mesmo ato) -> (opcional) paga. */
 async function empenharELiquidar(
   fichaId: string,
   n: string,
@@ -236,6 +243,7 @@ async function empenharELiquidar(
       empenhoId: e.empenhoId, numero: `NL-${n}`, valor,
       data: new Date("2026-04-01T12:00:00Z"),
       responsavelAtesto: "Fulano", historico: "atesto", criadoPor,
+      entradasDeMaterial: [{ classeDeMaterialId: classeDaFixture, valor }],
     },
     R_LIQUIDACAO,
     deps
@@ -511,37 +519,39 @@ describe("M16 bloco 3 — o ROLLOUT da autorização (TR 4.56 · 6.4 · 6.5)", (
     expect(l.liquidacaoId).toBeDefined();
   });
 
-  it("t1/M10-M12: entrada de almoxarifado tem UG (vem da liquidação); contrato e linha, não", async () => {
-    const classe = await cadastrarClasseDeMaterial(prisma, {
-      codigo: "30.01", descricao: "Material de expediente",
-      contaContabilId: "c-estoque", criadoPor: ADMIN,
-    });
-    const { liquidacaoId } = await empenharELiquidar(FICHA_SAUDE, "ALM");
-
-    // ⚠️ A ENTRADA NASCE DA LIQUIDAÇÃO (TR 5.85) -> empenho -> ficha -> UNIDADE. É o único
-    // serviço do M10 com unidade derivável — e ela é derivada, não declarada.
-    await criarUsuarioCom("almox.educ@teste.gov", "ALMOX_EDUC", [
-      { acao: "REGISTRAR_ENTRADA_ALMOXARIFADO", ug: UO_EDUC },
+  it("t1/M10-M12: a entrada de almoxarifado nasce DENTRO da liquidação e tem a UG dela; contrato e linha, não", async () => {
+    // ⚠️ V4 (§6): não existe mais "liquidar e depois dar entrada" — a entrada é parte do ato de
+    // liquidar, e a UG que a autoriza é a da liquidação (ficha → unidade). Quem só pode liquidar
+    // na EDUCAÇÃO não produz entrada na SAÚDE.
+    await criarUsuarioCom("liq.educ@teste.gov", "LIQ_EDUC", [
+      { acao: "EMPENHAR", ug: UO_EDUC },
+      { acao: "LIQUIDAR", ug: UO_EDUC },
     ]);
+    const eSaude = await empenhar(
+      { fichaId: FICHA_SAUDE, numero: "NE-ALM", tipo: "ORDINARIO", valor: "1000.00", data: new Date("2026-03-01T12:00:00Z"), credorCpfCnpj: "12345678000199", historico: "material de consumo", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: ADMIN },
+      R_EMPENHO,
+      deps
+    );
     await expect(
-      registrarEntradaAlmoxarifado(prisma, {
-        classeDeMaterialId: classe.classeDeMaterialId,
-        liquidacaoId, valor: "1000.00",
-        dataMovimento: new Date("2026-04-02T12:00:00Z"),
-        criadoPor: "almox.educ@teste.gov",
-      })
-    ).rejects.toThrow(new RegExp(`REGISTRAR_ENTRADA_ALMOXARIFADO na unidade gestora ${UO_SAUDE}`));
+      liquidar(
+        { empenhoId: eSaude.empenhoId, numero: "NL-ALM", valor: "1000.00", data: new Date("2026-04-01T12:00:00Z"), responsavelAtesto: "Fulano", historico: "atesto", criadoPor: "liq.educ@teste.gov", entradasDeMaterial: [{ classeDeMaterialId: classeDaFixture, valor: "1000.00" }] },
+        R_LIQUIDACAO,
+        deps
+      )
+    ).rejects.toThrow(new RegExp(`LIQUIDAR na unidade gestora ${UO_SAUDE}`));
+    expect(await prisma.movimentoAlmoxarifado.count()).toBe(0);
 
-    await criarUsuarioCom("almox.saude@teste.gov", "ALMOX_SAUDE", [
-      { acao: "REGISTRAR_ENTRADA_ALMOXARIFADO", ug: UO_SAUDE },
+    await criarUsuarioCom("liq.saude@teste.gov", "LIQ_SAUDE", [
+      { acao: "LIQUIDAR", ug: UO_SAUDE },
     ]);
-    const mov = await registrarEntradaAlmoxarifado(prisma, {
-      classeDeMaterialId: classe.classeDeMaterialId,
-      liquidacaoId, valor: "1000.00",
-      dataMovimento: new Date("2026-04-02T12:00:00Z"),
-      criadoPor: "almox.saude@teste.gov",
-    });
-    expect(mov.movimentoId).toBeDefined();
+    const l = await liquidar(
+      { empenhoId: eSaude.empenhoId, numero: "NL-ALM", valor: "1000.00", data: new Date("2026-04-01T12:00:00Z"), responsavelAtesto: "Fulano", historico: "atesto", criadoPor: "liq.saude@teste.gov", entradasDeMaterial: [{ classeDeMaterialId: classeDaFixture, valor: "1000.00" }] },
+      R_LIQUIDACAO,
+      deps
+    );
+    const mov = await prisma.movimentoAlmoxarifado.findFirstOrThrow({ where: { liquidacaoId: l.liquidacaoId }, select: { valor: true, criadoPor: true } });
+    expect(mov.valor.toFixed(2)).toBe("1000.00");
+    expect(mov.criadoPor).toBe("liq.saude@teste.gov");
 
     // ── M11/M12: o contrato e a linha do demonstrativo NÃO têm unidade — são do ENTE ──
     await criarUsuarioCom("lic.saude@teste.gov", "LICITA_SAUDE", [
@@ -644,15 +654,8 @@ describe("M16 bloco 3 — o ROLLOUT da autorização (TR 4.56 · 6.4 · 6.5)", (
   // t3 — A CASCATA roda com a autorização DO ATO ORIGINAL.
   // ═══════════════════════════════════════════════════════════════════════════
   it("t3: anular a liquidação com ANULAR_LIQUIDACAO — a cascata do almoxarifado roda SEM permissão própria", async () => {
-    const classe = await cadastrarClasseDeMaterial(prisma, {
-      codigo: "30.02", descricao: "Material", contaContabilId: "c-estoque", criadoPor: ADMIN,
-    });
+    // V4 (§6): a entrada nasce DENTRO da liquidação — não há segundo ato.
     const { liquidacaoId } = await empenharELiquidar(FICHA_SAUDE, "CASC");
-    await registrarEntradaAlmoxarifado(prisma, {
-      classeDeMaterialId: classe.classeDeMaterialId,
-      liquidacaoId, valor: "1000.00",
-      dataMovimento: new Date("2026-04-02T12:00:00Z"), criadoPor: ADMIN,
-    });
 
     expect(await prisma.movimentoAlmoxarifado.count()).toBe(1);
 

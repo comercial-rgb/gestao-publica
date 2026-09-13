@@ -27,11 +27,10 @@ import {
 } from "./estoque-fisico.js";
 import {
   cadastrarClasseDeMaterial,
-  registrarEntradaAlmoxarifado,
   saldoDaClasseDeMaterial,
 } from "./almoxarifado.js";
 import { criarFichaDeTeste } from "../../test/ficha-teste.js";
-import { criarM05Deps } from "../m05-despesa/adapter-prisma.js";
+import { criarM05DepsComAlmoxarifado } from "./adapter-m05-almox.js";
 import { roteiroEmpenho, roteiroLiquidacao } from "../m05-despesa/dominio.js";
 import { liquidar } from "../m05-despesa/servico-bloco2.js";
 import { empenhar } from "../m05-despesa/servico.js";
@@ -103,7 +102,7 @@ let setorId: string;
 async function semear(): Promise<void> {
   await limparBanco(prisma);
 
-  deps = criarM05Deps(prisma);
+  deps = criarM05DepsComAlmoxarifado(prisma);
   sequencia = 0;
 
   await prisma.contaPcasp.createMany({
@@ -235,27 +234,30 @@ async function entradaDe(
     R_EMPENHO,
     deps
   );
+  // ⚠️ LIQUIDAR MATERIAL É UM ATO SÓ (ENT06 item 2, fechado na orquestração V3): a entrada
+  // contábil e a perna FÍSICA nascem dentro da transação da liquidação, pelo port do M10.
+  // O instante é o da liquidação (15h do dia), o mesmo que a versão em dois passos usava
+  // para as entradas — os cortes por dia civil da posição não mudam.
   const l = await liquidar(
     {
       empenhoId: e.empenhoId, numero: `NL-${n}`, valor: total,
-      data: new Date(`${dia}T12:00:00.000Z`), responsavelAtesto: "Almoxarife",
+      data: new Date(`${dia}T15:00:00.000Z`), responsavelAtesto: "Almoxarife",
       historico: "material recebido e atestado", criadoPor: POR,
+      entradasDeMaterial: [
+        {
+          classeDeMaterialId: classeId, valor: total,
+          fisica: { materialId: idDoMaterial, depositoId, quantidade, valorUnitario, ...(lote === undefined ? {} : lote) },
+        },
+      ],
     },
     R_LIQUIDACAO,
     deps
   );
-  const contabil = await registrarEntradaAlmoxarifado(prisma, {
-    classeDeMaterialId: classeId, liquidacaoId: l.liquidacaoId, valor: total,
-    dataMovimento: new Date(`${dia}T15:00:00.000Z`), criadoPor: POR,
+  const fisica = await prisma.movimentoFisicoDeEstoque.findFirstOrThrow({
+    where: { movimentoAlmoxarifado: { liquidacaoId: l.liquidacaoId } },
+    select: { id: true },
   });
-  const { movimentoId } = await registrarEntradaFisica(prisma, {
-    materialId: idDoMaterial, depositoId, quantidade, valorUnitario,
-    dataMovimento: new Date(`${dia}T15:00:00.000Z`),
-    movimentoAlmoxarifadoId: contabil.movimentoId,
-    ...(lote === undefined ? {} : lote),
-    motivo: "recebimento de material", criadoPor: POR,
-  });
-  return movimentoId;
+  return fisica.id;
 }
 
 beforeEach(semear);
@@ -793,5 +795,62 @@ describe("t9 · a amarração dos dois eixos, conferida", () => {
       "o valor da posição física divergiu do saldo contábil da classe — os dois eixos " +
         "deixaram de contar a mesma coisa, que é o defeito que a amarração existe para pegar"
     ).toBe(saldo.toFixed(2));
+  });
+});
+
+describe("V4 (§6) · a entrada da liquidação RELACIONA um recebimento existente — sem duplicá-lo", () => {
+  /** Uma ordem de compra recebida (M11), inserida direto: fornecedor, item do material, recebimento de 100. */
+  async function recebimentoDe(quantidade: string): Promise<string> {
+    const fornecedor =
+      (await prisma.pessoa.findUnique({ where: { documento: "12345678000199" }, select: { id: true } })) ??
+      (await prisma.pessoa.create({ data: { documento: "12345678000199", tipo: "JURIDICA", criadoPor: POR, versoes: { create: { nome: "Fornecedor de luvas", criadoPor: POR } } }, select: { id: true } }));
+    const ordem = await prisma.ordemDeCompra.create({
+      data: { numero: `OC-${Date.now()}`, tipo: "ORDINARIA", fornecedorId: fornecedor.id, dataEmissao: new Date("2026-02-01T12:00:00Z"), finalidade: "Luvas para a atenção básica.", criadoPor: POR },
+      select: { id: true },
+    });
+    const item = await prisma.itemDeOrdemDeCompra.create({ data: { ordemId: ordem.id, materialId, quantidade, valorUnitario: "2.500000", criadoPor: POR }, select: { id: true } });
+    const rec = await prisma.recebimentoDeOrdem.create({ data: { ordemId: ordem.id, data: new Date("2026-03-01T12:00:00Z"), responsavelRecebimento: "Almoxarife", notaFiscal: "NF 1234", criadoPor: POR }, select: { id: true } });
+    const ri = await prisma.recebimentoDeItem.create({ data: { recebimentoId: rec.id, itemDeOrdemId: item.id, quantidade, criadoPor: POR }, select: { id: true } });
+    return ri.id;
+  }
+
+  async function liquidarConsumindo(recebimentoDeItemId: string, quantidade: string, n: string, idDoMaterial = materialId): Promise<string> {
+    const total = new Decimal(quantidade).times("2.5").toFixed(2);
+    const e = await empenhar(
+      { fichaId: FICHA, numero: `NE-R${n}`, tipo: "ORDINARIO", valor: total, data: new Date("2026-01-15T12:00:00Z"), credorCpfCnpj: "12345678000199", historico: "compra de material", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR },
+      R_EMPENHO,
+      deps
+    );
+    const l = await liquidar(
+      {
+        empenhoId: e.empenhoId, numero: `NL-R${n}`, valor: total, data: new Date("2026-03-05T15:00:00.000Z"), responsavelAtesto: "Almoxarife", historico: "material recebido e atestado", criadoPor: POR,
+        entradasDeMaterial: [{ classeDeMaterialId: classeId, valor: total, fisica: { materialId: idDoMaterial, depositoId, quantidade, valorUnitario: "2.5", recebimentoDeItemId } }],
+      },
+      R_LIQUIDACAO,
+      deps
+    );
+    return l.liquidacaoId;
+  }
+
+  it("t1: a entrada consome o recebimento (identidade gravada) e o consumo não passa do recebido; recebimento já com entrada física não é consumido de novo", async () => {
+    const recebido = await recebimentoDe("100.0000");
+    // 60 + 30 cabem em 100; a terceira (20) estouraria
+    const l1 = await liquidarConsumindo(recebido, "60", "1");
+    const l2 = await liquidarConsumindo(recebido, "30", "2");
+    const entradas = await prisma.movimentoFisicoDeEstoque.findMany({ where: { recebimentoDeItemId: recebido }, select: { quantidade: true, movimentoAlmoxarifado: { select: { liquidacaoId: true } } } });
+    expect(entradas.map((x) => [x.quantidade.toFixed(4), x.movimentoAlmoxarifado?.liquidacaoId])).toEqual([["60.0000", l1], ["30.0000", l2]]);
+    const liqs = await prisma.liquidacao.count();
+    await expect(liquidarConsumindo(recebido, "20", "3")).rejects.toThrow(/RECEBIMENTO ESGOTADO[\s\S]*100\.0000[\s\S]*90\.0000/);
+    expect(await prisma.liquidacao.count()).toBe(liqs); // a transação inteira caiu
+    // 10 ainda cabem
+    await liquidarConsumindo(recebido, "10", "4");
+    // recebimento inexistente
+    await expect(liquidarConsumindo("nao-existe", "1", "5")).rejects.toThrow(/Recebimento nao-existe não existe/);
+    // recebimento que JÁ deu entrada física pelo M11: não se consome de novo
+    const outro = await recebimentoDe("5.0000");
+    const fisicaPrevia = await prisma.movimentoFisicoDeEstoque.findFirstOrThrow({ select: { id: true } });
+    const ri = await prisma.recebimentoDeItem.findUniqueOrThrow({ where: { id: outro }, select: { recebimentoId: true, itemDeOrdemId: true } });
+    const comEntrada = await prisma.recebimentoDeItem.create({ data: { recebimentoId: ri.recebimentoId, itemDeOrdemId: ri.itemDeOrdemId, quantidade: "5.0000", movimentoFisicoId: fisicaPrevia.id, criadoPor: POR }, select: { id: true } });
+    await expect(liquidarConsumindo(comEntrada.id, "5", "6")).rejects.toThrow(/JÁ DEU ENTRADA FÍSICA/);
   });
 });

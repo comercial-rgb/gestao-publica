@@ -104,7 +104,7 @@ async function semear(): Promise<void> {
   await prisma.programa.create({ data: { id: "ap-1", codigo: "0004", descricao: "P" } });
   await prisma.acao.create({ data: { id: "aa-1", codigo: "2001", descricao: "A", tipo: "ATIVIDADE" } });
   await prisma.naturezaDespesa.create({
-    data: { id: "an-1", codCategoria: "3", codNatureza: "3", codModalidade: "90", codElemento: "30", codigoCompleto: "339030", descricao: "Material de consumo" },
+    data: { id: "an-1", codCategoria: "3", codNatureza: "3", codModalidade: "90", codElemento: "39", codigoCompleto: "339039", descricao: "Outros serviços de terceiros — PJ" },
   });
   await prisma.fonteRecurso.create({
     data: { id: FONTE, codigo: "500", descricao: "Recursos Livres", codigoTce: "500" },
@@ -233,7 +233,7 @@ describe("M05 — os documentos da despesa na fila de assinaturas do ENT02", () 
     expect(texto).toContain("10/03/2026");
     expect(texto).toContain("R$ 12.345,67");
     expect(texto).toContain(CREDOR);
-    expect(texto).toContain("339030");
+    expect(texto).toContain("339039");
     expect(texto).toContain("500 — Recursos Livres");
     expect(texto).toContain("aquisição de material de expediente");
   });
@@ -250,7 +250,7 @@ describe("M05 — os documentos da despesa na fila de assinaturas do ENT02", () 
     const dados = {
       numero: "NE-9", data: new Date("2026-03-10T12:00:00Z"), tipo: "ORDINARIO",
       valor: toMoney("1234567.89"), credorCpfCnpj: CREDOR, historico: "x",
-      ficha: { numero: 1, exercicio: 2026 }, dotacao: "339030", fonte: "500",
+      ficha: { numero: 1, exercicio: 2026 }, dotacao: "339039", fonte: "500",
     };
     expect(conteudoDaNotaDeEmpenho(dados)).toBe(conteudoDaNotaDeEmpenho(dados));
 

@@ -562,6 +562,8 @@ export interface EmpenhoNaLista {
   readonly unidadeCodigo: string;
   readonly unidadeNome: string;
   readonly fonteCodigo: string;
+  /** V4 (§6): o código da natureza da despesa (6 dígitos); o elemento são os dois últimos. */
+  readonly naturezaCodigo: string;
   readonly categoriaOrdemCronologica: CategoriaOrdemCronologica;
   /** O BRUTO da nota de empenho — o valor de emissão. */
   readonly valor: Money;
@@ -740,6 +742,8 @@ export async function listarEmpenhos(
           numero: true,
           fonte: { select: { codigo: true } },
           unidadeOrc: { select: { codigo: true, descricao: true } },
+          // V4 (§6): a natureza — a tela de liquidação decide pelo elemento se abre as entradas de material.
+          naturezaDespesa: { select: { codigoCompleto: true } },
         },
       },
     },
@@ -771,6 +775,7 @@ export async function listarEmpenhos(
       unidadeCodigo: e.ficha.unidadeOrc.codigo,
       unidadeNome: e.ficha.unidadeOrc.descricao,
       fonteCodigo: e.ficha.fonte.codigo,
+      naturezaCodigo: e.ficha.naturezaDespesa.codigoCompleto,
       categoriaOrdemCronologica: e.categoriaOrdemCronologica,
       valor,
       empenhadoLiquido,

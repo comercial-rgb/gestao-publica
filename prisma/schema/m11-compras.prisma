@@ -352,6 +352,9 @@ model RecebimentoDeItem {
   movimentoFisicoId String?
   movimentoFisico   MovimentoFisicoDeEstoque? @relation("RecebimentoDeEstoque", fields: [movimentoFisicoId], references: [id])
 
+  /// V4 (§6) — as entradas físicas que a liquidação produziu CONSUMINDO este recebimento.
+  entradasPorLiquidacao MovimentoFisicoDeEstoque[] @relation("EntradaPorRecebimento")
+
   criadoEm  DateTime @default(now())
   criadoPor String
 

@@ -96,6 +96,18 @@ const R_LIQUIDACAO_MATERIAL = roteiroLiquidacao({
   creditoLiquidado: C_LIQUIDADO,
 });
 
+/**
+ * A liquidação de SERVIÇO debita uma VPD — que NENHUMA classe de material declara. É o que
+ * faz o ato composto NÃO disparar para t9/t10: o critério é a conta do débito estar na
+ * tabela de classes (ESTADO §24.3), e não o elemento nem um código fixo.
+ */
+const R_LIQUIDACAO_SERVICO = roteiroLiquidacao({
+  variacaoDiminutiva: VPD_CONSUMO,
+  obrigacaoAPagar: FORNECEDOR,
+  creditoEmpenhado: C_EMPENHADO,
+  creditoLiquidado: C_LIQUIDADO,
+});
+
 const INICIO = new Date("2026-01-01T00:00:00Z");
 const CORTE = new Date("2026-12-31T23:59:59Z");
 
@@ -104,7 +116,7 @@ let classeId: string;
 
 async function semear(): Promise<void> {
   await limparBanco(prisma);
-  deps = criarM05Deps(prisma);
+  deps = criarM05DepsComAlmoxarifado(prisma);
 
   await prisma.contaPcasp.createMany({
     data: [
@@ -183,11 +195,21 @@ async function semear(): Promise<void> {
 }
 
 /** Empenha e liquida material (a perna de débito da liquidação vai ao ESTOQUE). */
+/**
+ * ⚠️ LIQUIDAR MATERIAL É UM ATO SÓ (ENT06 item 2, fechado na orquestração V3). A ficha de
+ * material (elemento 30, roteiro que debita ESTOQUE) leva as ENTRADAS na mesma chamada —
+ * por padrão uma só, da classe da fixture, no valor inteiro; `entradas` sobrescreve (t2).
+ * As fichas 39/32 liquidam pelo roteiro de SERVIÇO e não levam entrada nenhuma.
+ */
 async function liquidarMaterial(
   valor: string,
   n: string,
-  fichaId: string = FICHA
+  fichaId: string = FICHA,
+  entradas?: readonly { readonly classeDeMaterialId: string; readonly valor: string }[] | null
 ): Promise<string> {
+  const deMaterial = fichaId === FICHA;
+  const entradasDeMaterial =
+    entradas === null ? undefined : entradas ?? (deMaterial ? [{ classeDeMaterialId: classeId, valor }] : undefined);
   const e = await empenhar(
     {
       fichaId, numero: `NE-${n}`, tipo: "ORDINARIO", valor,
@@ -203,8 +225,9 @@ async function liquidarMaterial(
       empenhoId: e.empenhoId, numero: `NL-${n}`, valor,
       data: new Date("2026-03-01T12:00:00Z"), responsavelAtesto: "Almoxarife",
       historico: "material recebido e atestado", criadoPor: POR,
+      ...(entradasDeMaterial === undefined ? {} : { entradasDeMaterial: entradasDeMaterial.map((e) => ({ ...e })) }),
     },
-    R_LIQUIDACAO_MATERIAL,
+    deMaterial ? R_LIQUIDACAO_MATERIAL : R_LIQUIDACAO_SERVICO,
     deps
   );
   return l.liquidacaoId;
@@ -244,14 +267,10 @@ describe("M10 — almoxarifado", () => {
   it("t1: o ciclo — 5.000 − 1.800 − 200 = 3.000; o razão concorda; a VPD é 2.000", async () => {
     const liq = await liquidarMaterial("5000.00", "1");
 
-    // ⚠️ A LIQUIDAÇÃO JÁ DEBITOU O ESTOQUE — antes de qualquer movimento do M10.
+    // ⚠️ A LIQUIDAÇÃO DEBITOU O ESTOQUE **E** DEU A ENTRADA, no mesmo ato: não há instante
+    // em que o razão tenha estoque que nenhum movimento explica (era o furo da pendência).
     expect(await estoqueNoRazao()).toBe(5000);
-    expect((await saldoDaClasseDeMaterial(prisma, classeId)).toFixed(2)).toBe("0.00");
-
-    await registrarEntradaAlmoxarifado(prisma, {
-      classeDeMaterialId: classeId, liquidacaoId: liq, valor: "5000.00",
-      dataMovimento: new Date("2026-03-01T12:00:00Z"), criadoPor: POR,
-    });
+    expect((await saldoDaClasseDeMaterial(prisma, classeId)).toFixed(2)).toBe("5000.00");
     // a ENTRADA não tem lançamento próprio
     const ent = await prisma.movimentoAlmoxarifado.findFirstOrThrow({
       where: { tipo: "ENTRADA" }, select: { lancamentoId: true },
@@ -292,22 +311,16 @@ describe("M10 — almoxarifado", () => {
   });
 
   // t2
-  it("t2: uma liquidação abastece VÁRIAS classes — mas não mais do que ela liquidou", async () => {
-    const liq = await liquidarMaterial("5000.00", "1");
+  it("t2: uma liquidação abastece VÁRIAS classes — mas não mais do que ela liquidou, e não menos", async () => {
     const outra = await cadastrarClasseDeMaterial(prisma, {
       codigo: "30.02", descricao: "Material de limpeza",
       contaContabilId: "c-estoque", criadoPor: POR,
     });
-
-    // 3.000 + 2.000 = 5.000 ✓
-    await registrarEntradaAlmoxarifado(prisma, {
-      classeDeMaterialId: classeId, liquidacaoId: liq, valor: "3000.00",
-      dataMovimento: new Date("2026-03-01T12:00:00Z"), criadoPor: POR,
-    });
-    await registrarEntradaAlmoxarifado(prisma, {
-      classeDeMaterialId: outra.classeDeMaterialId, liquidacaoId: liq, valor: "2000.00",
-      dataMovimento: new Date("2026-03-01T12:00:00Z"), criadoPor: POR,
-    });
+    // 3.000 + 2.000 = 5.000 ✓ — as duas entradas NO ATO de liquidar
+    const liq = await liquidarMaterial("5000.00", "1", FICHA, [
+      { classeDeMaterialId: classeId, valor: "3000.00" },
+      { classeDeMaterialId: outra.classeDeMaterialId, valor: "2000.00" },
+    ]);
     expect((await saldoDaClasseDeMaterial(prisma, classeId)).toFixed(2)).toBe("3000.00");
     expect(
       (await saldoDaClasseDeMaterial(prisma, outra.classeDeMaterialId)).toFixed(2)
@@ -315,7 +328,8 @@ describe("M10 — almoxarifado", () => {
     // as duas leituras batem: razão 5.000, movimentos 3.000 + 2.000
     await conferirAlmoxarifadoContraRazao(prisma, "c-estoque");
 
-    // ⚠️ UM CENTAVO A MAIS ESTOURA A LIQUIDAÇÃO
+    // ⚠️ UM CENTAVO A MAIS, POR ENTRADA AVULSA, ESTOURA A LIQUIDAÇÃO — o serviço avulso continua
+    // existindo (é o que a anulação e o ajuste usam) e continua conferindo o teto.
     let erro: unknown;
     try {
       await registrarEntradaAlmoxarifado(prisma, {
@@ -330,15 +344,39 @@ describe("M10 — almoxarifado", () => {
     expect(msg).toMatch(/ENTRADA MAIOR QUE A LIQUIDAÇÃO/);
     expect(msg).toMatch(/5000\.00/);
     expect(msg).toMatch(/mesmo dinheiro/);
-  });
 
+    // ⚠️ E O ATO COMPOSTO RECUSA O QUE NÃO FECHA — nem a mais, nem a menos — SEM GRAVAR NADA:
+    // nem liquidação, nem lançamento, nem movimento. É a transação inteira caindo.
+    const liqs = await prisma.liquidacao.count();
+    const lancs = await prisma.lancamentoContabil.count();
+    const movs = await prisma.movimentoAlmoxarifado.count();
+    // ⚠️ O EMPENHO do helper nasce na SUA transação e fica; só a liquidação cai — por isso cada
+    // tentativa tem número próprio (o mesmo NE-2 três vezes colidiria no empenho, não na recusa).
+    for (const [n, entradas, motivo] of [
+      ["2a", [{ classeDeMaterialId: classeId, valor: "4999.99" }], /NÃO FECHAM COM A LIQUIDAÇÃO[\s\S]*4999\.99/],
+      ["2b", [{ classeDeMaterialId: classeId, valor: "5000.01" }], /NÃO FECHAM COM A LIQUIDAÇÃO/],
+      ["2c", null, /SEM A ENTRADA NO ALMOXARIFADO/],
+    ] as const) {
+      await expect(liquidarMaterial("5000.00", n, FICHA, entradas)).rejects.toThrow(motivo);
+    }
+    expect(await prisma.liquidacao.count()).toBe(liqs);
+    // os 3 lançamentos a mais são os dos 3 EMPENHOS do helper (transação própria); nenhum de liquidação
+    expect((await prisma.lancamentoContabil.count()) - lancs).toBe(3);
+    expect(await prisma.movimentoAlmoxarifado.count()).toBe(movs);
+
+    // ⚠️ E SEM O PORT DO M10 LIGADO, liquidar material é RECUSADO — fail-closed, nomeando.
+    const semAlmoxarifado = deps;
+    deps = criarM05Deps(prisma);
+    try {
+      await expect(liquidarMaterial("5000.00", "3")).rejects.toThrow(/SEM O ALMOXARIFADO LIGADO/);
+    } finally {
+      deps = semAlmoxarifado;
+    }
+    expect(await prisma.liquidacao.count()).toBe(liqs);
+  });
   // t3
   it("t3: consumo maior que o estoque é rejeitado; IGUAL passa; +0,01 depois não", async () => {
     const liq = await liquidarMaterial("5000.00", "1");
-    await registrarEntradaAlmoxarifado(prisma, {
-      classeDeMaterialId: classeId, liquidacaoId: liq, valor: "5000.00",
-      dataMovimento: new Date("2026-03-01T12:00:00Z"), criadoPor: POR,
-    });
 
     await expect(
       registrarSaidaConsumo(prisma, {
@@ -372,10 +410,6 @@ describe("M10 — almoxarifado", () => {
     for (let i = 0; i < 5; i++) {
       await semear();
       const liq = await liquidarMaterial("3000.00", "1");
-      await registrarEntradaAlmoxarifado(prisma, {
-        classeDeMaterialId: classeId, liquidacaoId: liq, valor: "3000.00",
-        dataMovimento: new Date("2026-03-01T12:00:00Z"), criadoPor: POR,
-      });
 
       const consumir = (n: string) =>
         registrarSaidaConsumo(prisma, {
@@ -399,10 +433,6 @@ describe("M10 — almoxarifado", () => {
   // t6
   it("t6: no Anexo 14 o estoque é ATIVO (P) e a provisão é PASSIVO (P) — o superávit ignora os dois", async () => {
     const liq = await liquidarMaterial("5000.00", "1");
-    await registrarEntradaAlmoxarifado(prisma, {
-      classeDeMaterialId: classeId, liquidacaoId: liq, valor: "5000.00",
-      dataMovimento: new Date("2026-03-01T12:00:00Z"), criadoPor: POR,
-    });
 
     const { provisaoId } = await cadastrarProvisao(prisma, {
       identificador: "RPPS-2026", descricao: "Provisão matemática previdenciária do RPPS",
@@ -449,10 +479,6 @@ describe("M10 — almoxarifado", () => {
   // t7
   it("t7: o demonstrativo 5.86 ganha a seção do almoxarifado — literais e amarração", async () => {
     const liq = await liquidarMaterial("5000.00", "1");
-    await registrarEntradaAlmoxarifado(prisma, {
-      classeDeMaterialId: classeId, liquidacaoId: liq, valor: "5000.00",
-      dataMovimento: new Date("2026-03-01T12:00:00Z"), criadoPor: POR,
-    });
     await registrarSaidaConsumo(prisma, {
       classeDeMaterialId: classeId, valor: "1800.00",
       dataMovimento: new Date("2026-06-01T12:00:00Z"),
@@ -494,10 +520,6 @@ describe("M10 — almoxarifado", () => {
     deps = criarM05DepsComAlmoxarifado(prisma);
 
     const liq = await liquidarMaterial('5000.00', '1');
-    await registrarEntradaAlmoxarifado(prisma, {
-      classeDeMaterialId: classeId, liquidacaoId: liq, valor: '5000.00',
-      dataMovimento: new Date('2026-03-01T12:00:00Z'), criadoPor: POR,
-    });
     await conferirAlmoxarifadoContraRazao(prisma, 'c-estoque'); // 5.000 = 5.000
 
     // ═══ A PORTA DO ESTORNO AVULSO AGORA ESTÁ FECHADA ═══
@@ -546,10 +568,6 @@ describe("M10 — almoxarifado", () => {
     deps = criarM05DepsComAlmoxarifado(prisma);
 
     const liq = await liquidarMaterial('5000.00', '1');
-    await registrarEntradaAlmoxarifado(prisma, {
-      classeDeMaterialId: classeId, liquidacaoId: liq, valor: '5000.00',
-      dataMovimento: new Date('2026-03-01T12:00:00Z'), criadoPor: POR,
-    });
     await registrarSaidaConsumo(prisma, {
       classeDeMaterialId: classeId, valor: '5000.00',
       dataMovimento: new Date('2026-06-01T12:00:00Z'),
@@ -636,6 +654,28 @@ describe("M10 — o guard do ELEMENTO (TR 5.85)", () => {
     ).rejects.toThrow(/é uma DECISÃO do ente — e ela entra no rol, não neste erro/);
 
     expect(await prisma.movimentoAlmoxarifado.count()).toBe(0);
+  });
+
+  // t11 — V4 (§6): o gatilho é a NATUREZA; a configuração ausente é IMPEDITIVA, não desliga a integração
+  it("t11: liquidar material com classe INEXISTENTE, INATIVA ou que declara OUTRA conta é recusado nomeando a configuração — nada gravado", async () => {
+    const liqs = await prisma.liquidacao.count();
+    const movs = await prisma.movimentoAlmoxarifado.count();
+    // classe inexistente
+    await expect(liquidarMaterial("5000.00", "11a", FICHA, [{ classeDeMaterialId: "nao-existe", valor: "5000.00" }])).rejects.toThrow(
+      /CONFIGURAÇÃO OBRIGATÓRIA AUSENTE[\s\S]*não existe/
+    );
+    // classe que declara outra conta (uma VPD): a liquidação debitou o estoque, não ela
+    const outraConta = await cadastrarClasseDeMaterial(prisma, { codigo: "30.09", descricao: "Classe apontando para a VPD", contaContabilId: "c-vpd-consumo", criadoPor: POR });
+    await expect(liquidarMaterial("5000.00", "11b", FICHA, [{ classeDeMaterialId: outraConta.classeDeMaterialId, valor: "5000.00" }])).rejects.toThrow(
+      /CONFIGURAÇÃO OBRIGATÓRIA AUSENTE[\s\S]*declara a conta 3\.3\.1\.1\.1\.00\.00, mas esta liquidação debitou outra conta/
+    );
+    // e a mensagem do ato sem entrada declara a restrição: documento misto são duas liquidações
+    await expect(liquidarMaterial("5000.00", "11c", FICHA, null)).rejects.toThrow(/misto \(material e serviço\) são duas liquidações/);
+    expect(await prisma.liquidacao.count()).toBe(liqs);
+    expect(await prisma.movimentoAlmoxarifado.count()).toBe(movs);
+    // a classe certa (a conta debitada) liquida
+    const liq = await liquidarMaterial("5000.00", "11d");
+    expect((await prisma.movimentoAlmoxarifado.findFirstOrThrow({ where: { liquidacaoId: liq } })).valor.toFixed(2)).toBe("5000.00");
   });
 
   // o rol, direto

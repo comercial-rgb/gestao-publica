@@ -1,4 +1,5 @@
 import { criarAutorizacaoPortPrisma } from "../m16-travamento/porta.js";
+import { elementoDebitaEstoque } from "../m01-core-contabil/roteiros.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { travar } from "../../packages/locks/index.js";
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
@@ -66,6 +67,7 @@ import {
 import type {
   AnularEmpenhoParams,
   AoAnularLiquidacaoPort,
+  AoLiquidarMaterialPort,
   ContratoPort,
   DespesaRepositoryPort,
   EmpenharParams,
@@ -677,7 +679,16 @@ async function espelharFichaDoOriginal(
 export function criarDespesaRepositoryPrisma(
   prisma: PrismaClient,
   contratos?: ContratoPort,
-  aoAnularLiquidacao?: AoAnularLiquidacaoPort
+  aoAnularLiquidacao?: AoAnularLiquidacaoPort,
+  /**
+   * M10 (ENT06 item 2) — a entrada no almoxarifado que nasce da liquidação de material.
+   *
+   * ⚠️ AUSENTE É FAIL-CLOSED AQUI, ao contrário do port da anulação. Lá, módulo ausente não
+   * pode travar o M05 e a amarração segue como rede de fundo. Aqui, liquidar elemento de
+   * material sem o M10 ligado gravaria exatamente o furo que a pendência
+   * `LIQUIDACAO-MATERIAL-ALMOXARIFADO` existe para impedir.
+   */
+  aoLiquidarMaterial?: AoLiquidarMaterialPort
 ): DespesaRepositoryPort {
   // M05 -> M06, nunca o inverso. Quem paga é que precisa respeitar a ordem.
   const ordem = criarOrdemCronologicaPrisma(prisma);
@@ -1590,6 +1601,15 @@ export function criarDespesaRepositoryPrisma(
             obraId: true,
             estornoDeId: true,
             estornos: { select: { id: true } },
+            // ⚠️ M10 (ENT06 item 2) — O ELEMENTO decide se esta liquidação é de MATERIAL, e
+            // material não vira despesa: vira ESTOQUE. A leitura é aqui, DENTRO da
+            // transação, porque é aqui que a decisão tem de valer — a mesma disciplina da
+            // medição de obra logo abaixo.
+            ficha: {
+              select: {
+                naturezaDespesa: { select: { codElemento: true, codigoCompleto: true } },
+              },
+            },
           },
         });
         if (empenho === null) {
@@ -1656,6 +1676,86 @@ export function criarDespesaRepositoryPrisma(
           },
           select: { id: true },
         });
+
+        // ═══ ⚠️ M10 (ENT06 item 2; sessão noturna V4 §6) — LIQUIDAR MATERIAL É UM ATO SÓ ═══
+        //
+        // O rol do M01 manda o elemento de material debitar ESTOQUE: a despesa não some, vira
+        // ativo. Mas o estoque tem dono, e é o M10. Gravar a liquidação aqui e deixar a entrada
+        // para uma segunda chamada deixaria — no intervalo, ou para sempre, se a segunda
+        // falhasse — estoque no razão que NENHUM movimento explica.
+        //
+        // ⚠️ O GATILHO É A NATUREZA DA OPERAÇÃO (achado A08 da auditoria): "este elemento liquida
+        // em estoque?" — a resposta do rol do M01 (`elementoDebitaEstoque`), a MESMA que escolheu a
+        // perna de débito. Não é a existência de uma `ClasseDeMaterial` cadastrada: cadastro
+        // ausente não desliga a obrigação de integrar — vira pendência IMPEDITIVA, nomeada abaixo.
+        //
+        // ⚠️ RESTRIÇÃO DECLARADA: uma liquidação é de UM elemento (empenho → ficha → natureza), e
+        // por isso é INTEIRAMENTE de material ou não é de material. Um documento fiscal misto
+        // (material e serviço) são DUAS liquidações, uma por empenho/ficha — e as entradas de
+        // estoque fecham com a liquidação de material, nunca com o bruto do documento.
+        const codElemento = empenho.ficha.naturezaDespesa.codElemento;
+        if (elementoDebitaEstoque(codElemento)) {
+          const naturezaTexto = `${codElemento} (${empenho.ficha.naturezaDespesa.codigoCompleto})`;
+          // ⚠️ FAIL-CLOSED, e é a diferença deliberada para o port da ANULAÇÃO — lá, módulo
+          // ausente não pode travar o M05. Aqui, ausente significaria gravar o furo.
+          if (aoLiquidarMaterial === undefined) {
+            throw new Error(
+              `LIQUIDAÇÃO DE MATERIAL SEM O ALMOXARIFADO LIGADO: o empenho é do elemento ` +
+                `${naturezaTexto}, que debita ESTOQUE, e este repositório foi montado sem o port ` +
+                `do M10. Liquidar assim deixaria o razão com estoque que nenhum movimento explica. ` +
+                `Use \`criarM05DepsComAlmoxarifado\`. Nada foi gravado.`
+            );
+          }
+          if (p.entradasDeMaterial === undefined || p.entradasDeMaterial.length === 0) {
+            throw new Error(
+              `LIQUIDAÇÃO DE MATERIAL SEM A ENTRADA NO ALMOXARIFADO: o empenho é do elemento ` +
+                `${naturezaTexto}, e material de consumo vira ESTOQUE. Informe a CLASSE de material ` +
+                `de cada parcela — uma nota abastece mais de uma (papel e toner são contas ` +
+                `diferentes), e a soma delas tem de fechar com o valor liquidado. Documento fiscal ` +
+                `misto (material e serviço) são duas liquidações, uma por empenho. Nada foi gravado.`
+            );
+          }
+          // ⚠️ A CONFIGURAÇÃO OBRIGATÓRIA: cada classe informada existe, está ativa e declara a
+          // conta que ESTA liquidação debitou. Sem isso, a integração não "não se aplica": ela
+          // está IMPEDIDA por cadastro ausente, e a liquidação é recusada nomeando o que falta.
+          const contasDebitadas = new Set(lancamento.partidas.filter((x) => x.tipo === "DEBITO").map((x) => x.contaId));
+          for (const e of p.entradasDeMaterial) {
+            const classe = await tx.classeDeMaterial.findUnique({
+              where: { id: e.classeDeMaterialId },
+              select: { codigo: true, ativa: true, contaContabilId: true, contaContabil: { select: { codigo: true } } },
+            });
+            if (classe === null) {
+              throw new Error(
+                `CONFIGURAÇÃO OBRIGATÓRIA AUSENTE: a classe de material ${e.classeDeMaterialId} não existe. ` +
+                  `A liquidação do elemento ${naturezaTexto} é de material e exige uma classe cadastrada que ` +
+                  `declare a conta de estoque debitada. Cadastre a classe antes de liquidar. Nada foi gravado.`
+              );
+            }
+            if (!classe.ativa) {
+              throw new Error(
+                `CONFIGURAÇÃO OBRIGATÓRIA AUSENTE: a classe de material ${classe.codigo} está INATIVA — não ` +
+                  `recebe entrada. Reative-a ou informe outra classe. Nada foi gravado.`
+              );
+            }
+            if (!contasDebitadas.has(classe.contaContabilId)) {
+              throw new Error(
+                `CONFIGURAÇÃO OBRIGATÓRIA AUSENTE: a classe de material ${classe.codigo} declara a conta ` +
+                  `${classe.contaContabil.codigo}, mas esta liquidação debitou outra conta de estoque. ` +
+                  `A amarração razão × almoxarifado só fecha quando a classe aponta para a conta que a ` +
+                  `liquidação debita — ajuste o cadastro da classe (ou o roteiro) antes de liquidar. ` +
+                  `Nada foi gravado.`
+              );
+            }
+          }
+
+          await aoLiquidarMaterial.aoLiquidarMaterial(tx, {
+            liquidacaoId: liq.id,
+            valorDaLiquidacao: p.valor,
+            dataMovimento: p.data,
+            entradas: p.entradasDeMaterial,
+            criadoPor: p.criadoPor,
+          });
+        }
 
         return liq.id;
       });
@@ -2267,12 +2367,18 @@ async function lancamentoDoDominio(
 export function criarM05Deps(
   prisma: PrismaClient,
   contratos?: ContratoPort,
-  aoAnularLiquidacao?: AoAnularLiquidacaoPort
+  aoAnularLiquidacao?: AoAnularLiquidacaoPort,
+  aoLiquidarMaterial?: AoLiquidarMaterialPort
 ): M05Deps {
   return {
     autz: criarAutorizacaoPortPrisma(prisma),
     contas: criarContaRepositoryPrisma(prisma),
-    despesa: criarDespesaRepositoryPrisma(prisma, contratos, aoAnularLiquidacao),
+    despesa: criarDespesaRepositoryPrisma(
+      prisma,
+      contratos,
+      aoAnularLiquidacao,
+      aoLiquidarMaterial
+    ),
     ids: idsUuid,
   };
 }

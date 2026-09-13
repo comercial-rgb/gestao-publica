@@ -1404,6 +1404,15 @@ export const FORA_DO_CENSO: Record<string, string> = {
   estornarAmortizacaoDoPagamento: "composável interno",
   aoAnularLiquidacaoTotal: "composável interno (cascata do M05)",
   aoAnularLiquidacaoParcial: "composável interno (cascata do M05)",
+  // ⚠️ ENT06 item 2 — o corpo transacional da ENTRADA no almoxarifado, extraído para que a
+  // liquidação de material seja UM ato. Ele não autoriza, não abre transação e não trava:
+  // quem chama faz as três coisas, como em `registrarSaidaConsumoNaTx`. Dar-lhe ação própria
+  // faria o ente conceder DUAS vezes o mesmo poder — quem cobra o crachá é `liquidar` (o
+  // serviço público) ou `registrarEntradaAlmoxarifado` (a entrada avulsa), cada um a sua.
+  registrarEntradaAlmoxarifadoNaTx:
+    "composável interno (a entrada que nasce dentro da transação da liquidação)",
+  registrarEntradaFisicaNaTx:
+    "composável interno (o eixo FÍSICO da mesma entrada, na mesma transação)",
   ingressoNaTx: "composável interno",
   estornarIngressoNaTx: "composável interno",
   receberNaTx: "composável interno",
