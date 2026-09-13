@@ -141,6 +141,7 @@ pago o que o banco não liquidou.
 | `BORDERO-CONVENIO-BANCARIO` | transmissão real ao banco. O caso de uso RECUSA, nomeando |
 | `LOTE-UI` | telas do lote e do borderô. Os casos de uso existem e são testados; não há superfície |
 | `CONCILIACAO-COPIA-PENDENCIAS` | cópia de pendências não baixadas para o período seguinte (2.2) |
+| `CONTAS-BANCARIAS-COM-MESMA-CONTABIL-NOS-SEEDS` | nos seeds sintéticos (SAGRES POC + cenário de aceite) três contas bancárias da fonte 500 mapeiam a MESMA conta contábil `1.1.1.1.1.19.00`; o lado contábil de cada uma soma o movimento das três, e a identidade por conta só fecha quando cada conta tiver a sua contábil. É desenho de seed, não do código — corrigir exige reseedar o banco dos percursos |
 
 ### 6.1 A conciliação que não fecha é ESTADO da tela (V4 §10)
 
@@ -150,10 +151,20 @@ a conta `CC-500-01` — e a exceção subia crua. A medição explica: a FONTE 5
 `ReceitaArrecadada` de 80.000,00 (seed do cenário SAGRES) e, como a arrecadação não tem conta
 bancária (a pendência do M04 acima), ela entra como fato de CAIXA de `CC-500-01` sem contrapartida
 na conta contábil mapeada. O erro virou `ConciliacaoNaoFechaError` e a tela o mostra como estado
-(`data-nao-fecha`), com quanto sobra sem explicação. **A identidade continua não fechando naquele
-banco** — o que fecha é o M04 ganhar a conta bancária da arrecadação. Enquanto isso, o percurso do
-ENT03a que encerra período não é demonstrável no banco dos percursos; é demonstrável no banco de
-desenvolvimento, onde a fonte 500 não tem arrecadação sem conta.
+(`data-nao-fecha`), com quanto sobra sem explicação.
+
+**V6 P1.2 (`4b83b55`, `c9f1c9f`) — o M04 ganhou a conta bancária, e o lado interno mudou de eixo.**
+`fatosDeCaixaDaConta` lê as arrecadações pela CONTA (declarada em `ReceitaArrecadada.contaBancariaId`
+ou atribuída em `AtribuicaoDeContaDaArrecadacao`), não mais pela fonte: duas contas da mesma fonte não
+contam a mesma guia. O legado sem conta fica FORA da identidade e sai listado (`arrecadacoesSemConta`,
+no relatório e dentro do `ConciliacaoNaoFechaError`) com a conta contábil que debitou; o tesoureiro
+atribui a conta pela tela do período (`ATRIBUIR_CONTA_A_ARRECADACAO`, permissões v8), e o serviço só
+aceita quando o razão da guia debitou a contábil da conta. Vincular guia sem conta é recusado
+("atribua antes"). E a porta do PAGAMENTO passou a creditar a contábil da conta que paga (era a
+constante `1.1.1.1.2.00.00` — o pagamento saía de uma conta na tesouraria e de outra no razão).
+Provas: `m09-atribuicao-de-conta.test.ts` (duas contas, duas fontes, legado, N=2, anulação, corte),
+`scripts/smoke-arrecadacao-conta.ts`. O que ainda impede a identidade de `CC-500-01` fechar no banco
+dos percursos é o seed (três contas na mesma contábil — pendência acima), não o código.
 
 ## 7. A movimentação bancária (ENT03a) — TR 5.62
 

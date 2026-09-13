@@ -1791,6 +1791,21 @@ const MAPA: Readonly<Record<string, Marca>> = {
     evidencia: "V6 P0.1: /transparencia/demonstrativos (público, sem sessão) exibe o nome de exibição do ente, a imagem institucional vigente e os contatos da apresentação (smoke-identidade 6.6). ⚠️ FALTA o ENDEREÇO do ente (não há campo de endereço na apresentação — pendência ENDERECO-DO-ENTE) e o portal da transparência além dos demonstrativos (5.38).",
   },
 
+  // ── V6 P1.2 — arrecadação × conta bancária × conciliação ──
+  "5.10.2.8": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: "V6 P1.2: a guia declara a conta bancária que recebeu; o domínio recusa fonte da conta ≠ fonte da guia e contábil da conta ≠ perna debitada (m09-atribuicao-de-conta.test.ts t1; m04 pela porta). Pela tela: select da conta em /receita/arrecadacoes, recusa nomeando as duas fontes (smoke-arrecadacao-conta 1.2) e registro coerente (1.3). ⚠️ A parte 'de acordo com a Portaria vigente' (rol de naturezas oficial) continua sendo o seed de naturezas (M04 pendência).",
+    rota_verificada: "papel: REGISTRAR_ARRECADACAO · contexto: banco dos percursos, next build + next start em 3010, build c9f1c9f, 2026-09-13 · passos: /receita/arrecadacoes → natureza, fonte 540 + conta CC-500-01 (fonte 500) → recusa nomeando → fonte 500 + CC-500-01 → registrada e na lista · obtido: ver smoke-arrecadacao-conta-c9f1c9f-r1.log.",
+  },
+  "5.10.2.7": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P1.2: cada guia tem UMA conta bancária de contrapartida, coerente com o razão (perna de disponibilidade = contábil da conta). ⚠️ FALTA a inclusão de VÁRIAS receitas num só ato com a mesma contrapartida (entrada em lote); hoje é uma guia por envio.",
+  },
+  "5.10.2.43": {
+    situacao: "PARCIAL",
+    evidencia: "ENT03a: /financeiro/conciliacao/periodo mostra numa tela os saldos (extrato, contábil, diferença), as pendências do extrato e do razão, as herdadas e as declaradas. V6 P1.2: mais a seção do legado sem conta bancária com a atribuição pela própria tela e a mensagem de identidade (fecha / quanto sobra) como estado. ⚠️ FALTAM filtros (5.10.2.50) e ordenação por valor (5.10.2.51) na tela.",
+  },
+
 };
 
 // ═══════════════════════════════════════════════════════════════════════════

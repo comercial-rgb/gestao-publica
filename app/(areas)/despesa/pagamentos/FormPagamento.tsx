@@ -137,6 +137,7 @@ export function FormPagamento({
     <form
       ref={ref}
       action={action}
+      data-acao="pagar"
       className={CLASSE_PAINEL_FORMULARIO}
     >
       <ChaveDeComando />

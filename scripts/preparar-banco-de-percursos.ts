@@ -121,6 +121,8 @@ rodar("bootstrap do administrador", "npx", ["tsx", "prisma/seed/bootstrap-usuari
 rodar("cenário de aceite (ficha e dotação)", "npx", ["tsx", "prisma/seed/cenario-aceite.ts"]);
 rodar("cenário SAGRES (UG 99001)", "npx", ["tsx", "prisma/seed/sagres-poc.ts"], /posição \d+ da fila/);
 rodar("operador restrito (percurso de dois atores)", "npx", ["tsx", "scripts/poc-usuario-restrito.ts"]);
+// V6 P1.3 — quatro usuários por papel (compras, almoxarifado, contabilidade, tesouraria): nunca o admin em todos os passos.
+rodar("usuários por papel (cadeia por papel)", "npx", ["tsx", "scripts/percursos-usuarios-por-papel.ts"]);
 rodar("roteiros da dívida ativa (fonte com motivo)", "npx", ["tsx", "prisma/seed/roteiros-patrimoniais.ts"]);
 // V4 (§10): o percurso do ENT02 (protocolo) precisa dos assuntos, setores e tipos de comunicado; o seed
 // é idempotente por recusa nomeada (reusa o que já existe).

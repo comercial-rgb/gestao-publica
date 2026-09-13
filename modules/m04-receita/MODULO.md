@@ -158,7 +158,16 @@ receita.tipo == ANULACAO        => não se anula uma anulação
   `ReceitaArrecadada.naturezaReceitaId` é obrigatória. **Toda** receita já tem código
   de 8 dígitos; o parser é fail-closed contra a FORMA, não contra a ausência.
 - **O roteiro contábil vem do chamador**, não de uma tabela. A Matriz de Eventos
-  (5.91) é quem deve passar a fornecê-lo.
+  (5.91) é quem deve passar a fornecê-lo. **V6 P1.2:** a perna de DISPONIBILIDADE da guia
+  registrada pela tela deixou de ser uma constante da porta (`1.1.1.1.1.00.00`) e passou a ser a
+  conta contábil da CONTA BANCÁRIA que a guia declara (`ReceitaArrecadada.contaBancariaId`,
+  nullable para o legado). O domínio confere: fonte da conta = fonte da guia; contábil da conta =
+  perna debitada. A VPA continua constante na porta (`VPA-CONSTANTE-NA-PORTA`).
+- ~~`ARRECADACAO-SEM-CONTA-BANCARIA`~~ — **fechada (V6 P1.2, `4b83b55`):** a guia declara a conta;
+  o legado sem conta é listado pela conciliação (M09) e resolvido pelo ato
+  `atribuirContaAArrecadacao` (conferido contra o razão), nunca por UPDATE. O importador (M20) e
+  as compostas do M10 ainda registram guias SEM conta — entram como legado a atribuir
+  (`IMPORTADOR-SEM-CONTA-BANCARIA`).
 
 ## Fora de escopo aqui
 

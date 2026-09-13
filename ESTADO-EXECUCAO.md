@@ -5820,3 +5820,141 @@ automático). Tela: na solicitação autorizada, "formar ordem" com os saldos pe
 origem; consulta de atendimento nos dois sentidos e nos documentos. Depois P1.2 (arrecadação × conta
 bancária × conciliação) e P1.3 (percurso encadeado com duas linhas, atendimento parcial e uma
 negativa, com usuários por papel).
+
+## 53. V6 P1.1 — solicitação ligada aos itens da ordem
+
+Commits: `cd70495` (modelo, serviços, telas, testes), `867b962` (mensagens que não somem; smoke
+auto-suficiente). Ancestralidade e stash como na seção 52.
+
+### 53.1 O que passou a funcionar
+
+- **`AlocacaoDeSolicitacaoNaOrdem`** liga uma QUANTIDADE de um item da solicitação a um item da
+  ordem — uma solicitação atendida em parte por várias ordens; uma ordem atendendo várias
+  solicitações. Origem, unidade (setor), solicitante e autor preservados. **Tudo derivado**
+  (`modules/m11-licitacoes/compras-alocacao.ts`): ordenado = Σ parcelas vivas em ordens vivas;
+  recebido = a parte dos recebimentos do item da ordem ATRIBUÍDA à parcela, por ordem de alocação;
+  cancelado = parcelas desfeitas + parcelas de ordens estornadas; pendente = solicitado − ordenado.
+  Ordenado NÃO é atendido.
+- **Controles:** solicitação AUTORIZADA; item da solicitação e item da ordem do MESMO material;
+  excesso contra o pedido e contra a linha da ordem, recusados dizendo quanto resta; lock advisory
+  no item da solicitação (`packages/locks` posto 23) — duas ordens concorrentes disputando o mesmo
+  saldo: uma passa (t5, N=2); desfazer é linha nova com `estornoDeId` e motivo, recusado com
+  recebimento atribuído; anular solicitação com parcelas vivas recusa nomeando as ordens; legado
+  sem vínculo é "sem origem" e NUNCA é casado por descrição/valor.
+- **O estorno da ordem virou FATO** (`MovimentoDaOrdemDeCompra` ESTORNO) — ver
+  `docs/adr/ADR-estorno-da-ordem-como-fato.md`. O `delete` anterior só passava em teste porque o
+  teste roda como dono: o papel `gestao_app` não tem DELETE em `OrdemDeCompra`. Cada leitor exclui
+  a estornada (empenho M05, documento fiscal, recebimento, vínculo, painel de pendências, opções,
+  listas com filtro vivas/estornadas); a solicitação recebe o movimento informativo
+  `ORDEM_ESTORNADA` (não muda a situação dela).
+- **Telas:** na solicitação, o atendimento por item (`[data-atendimento]`) e a ilha "formar ordem"
+  (só AUTORIZADA com pendente; itens pré-preenchidos; origem na MESMA transação; resultado com link
+  para a ordem gerada); na ordem, a origem por linha (`[data-origem]`, com "sem origem"), a ilha
+  "vincular parcela" (só solicitações autorizadas com pendente do mesmo material) e "desfazer" por
+  parcela viva sem recebimento; coluna "Origem" na lista de ordens e "Atendimento" na de
+  solicitações; seção "Origem" no espelho em PDF da ordem.
+
+### 53.2 Rotas utilizáveis
+
+| Quem | Rota | O que faz |
+|---|---|---|
+| CONSULTAR_LICITACOES | `/licitacoes/solicitacoes/{id}` | atendimento por item e parcelas com link para a ordem |
+| EMITIR_ORDEM_DE_COMPRA | `/licitacoes/solicitacoes/{id}` | formar ordem a partir dos itens pendentes |
+| EMITIR_ORDEM_DE_COMPRA | `/licitacoes/ordens-de-compra/{id}` | vincular parcelas de solicitações autorizadas |
+| ESTORNAR_ORDEM_DE_COMPRA | `/licitacoes/ordens-de-compra/{id}` | desfazer parcela; estornar a ordem (fato) |
+| CONSULTAR_LICITACOES | `/licitacoes/ordens-de-compra?vivas=ESTORNADAS` | só as estornadas (ou `VIVAS`) |
+| CONSULTAR_LICITACOES | `/licitacoes/ordens-de-compra/espelho?id=` | PDF com a seção de origem |
+
+### 53.3 Comandos executados e resultados
+
+| Comando | Resultado |
+|---|---|
+| migrations `20260913150000_v6_movimento_ordem_estornada`, `…150100_v6_alocacao_solicitacao_ordem`, `…150200_v6_movimento_da_ordem` | aplicadas nos três bancos; `migrate diff --exit-code` limpo; `generate`; papel reprovisionado |
+| tsc backend / app / scripts | limpos em `867b962` |
+| `m11-alocacao` (11, N=2), `m11-compras` (t5 reescrito: a ordem continua, ESTORNADA; segundo estorno recusado; receber recusado), `m11-empenho-ordem`, `m11-documento-fiscal`, `m16-censo` (269 serviços), `modelo-sem-caso-de-uso` (ItemDeSolicitacao saiu do aninhamento) | verdes |
+| `test:rapido` | 852/852 |
+| `next build` em `cd70495` → smoke-solicitacao-ordem r1 | 31 ok / 3 falhas: (1) só um material ativo no banco dos percursos; (2)(3) a mensagem de sucesso do desfazimento e do estorno sumia com o controle (ilha desmontada pelo re-render) |
+| `next build` em `867b962` → smoke-solicitacao-ordem r1 | 17 ok, `Navigation timeout` em 5.3 (abrir a ordem B); a sonda direta abriu a mesma página em 176 ms e 335 ms com rede ociosa — saturação transitória logo após o build |
+| r2, máquina quieta | **35/35** |
+| smoke-compras no mesmo build | **29/29** (regressão) |
+
+### 53.4 Pendências (nomeadas)
+
+- `USUARIO-DE-COMPRAS-NOS-PERCURSOS` — o smoke usa o admin para os passos de compras (o
+  restrito só prova a negativa); um perfil COMPRAS sintético entra no P1.3.
+- `ESTORNO-DE-RECEBIMENTO` — recebimento não tem estorno; ordem com recebimento não se estorna.
+- Guard candidato: `test/papel-runtime.test.ts` varrer `.delete(`/`.deleteMany(` em `modules/`
+  contra o censo de DELETE do runtime (a lição do ADR).
+
+### 53.5 Próximo ponto exato
+
+P1.2 (seção 54).
+
+## 54. V6 P1.2 — arrecadação, conta bancária e conciliação
+
+Commits: `4b83b55` (M04/M09, telas, testes), `848ad06`+`c9f1c9f` (a porta do pagamento credita a
+contábil da conta que paga; o primeiro não compilava e o segundo o corrige).
+
+### 54.1 O que passou a funcionar
+
+- **Diferenciação:** reconhecimento (M04 `reconhecimento.ts`, já existia), arrecadação efetiva
+  (`ReceitaArrecadada`), retenção (só no pagamento — M07; **dedução de receita não existe**,
+  pendência `DEDUCAO-DE-RECEITA`), movimento bancário (M09). A CONTA é exigida no fato em que é
+  pertinente: a guia registrada pela tela declara a conta que recebeu; o pagamento já declarava.
+- **Coerência na transação:** a perna de disponibilidade do roteiro da guia é a conta contábil da
+  conta bancária declarada (vinha da constante `1.1.1.1.1.00.00` na porta); o domínio confere
+  fonte da conta = fonte da guia e contábil da conta = perna debitada, e recusa nomeando. A
+  anulação copia a conta. O PAGAMENTO pela tela também passou a creditar a contábil da conta que
+  paga (era a constante `1.1.1.1.2.00.00`, e as contas bancárias mapeiam `1.1.1.1.1.19.00`: o
+  dinheiro saía de uma conta na tesouraria e de outra no razão).
+- **Conciliação por conta:** o lado interno lê as arrecadações pela conta (declarada ou
+  atribuída), não mais pela fonte. O legado sem conta fica FORA da identidade e é LISTADO — no
+  relatório e dentro do `ConciliacaoNaoFechaError` — com a conta contábil que debitou. Vincular
+  guia sem conta é recusado ("atribua antes").
+- **O ato de reconciliação do legado:** `AtribuicaoDeContaDaArrecadacao` (uma por guia; motivo;
+  autor; ação `ATRIBUIR_CONTA_A_ARRECADACAO`, permissões **v8**: quem vincula conciliação no global
+  recebe). Aceito só quando o razão da guia debitou a contábil da conta escolhida; senão recusa
+  dizendo qual conta o razão debitou. Nunca UPDATE no ledger. Concorrência: UNIQUE por guia.
+- **Telas:** select "conta bancária que recebeu" na guia (`/receita/arrecadacoes`); seção
+  "arrecadações da fonte sem conta bancária (legado)" com atribuição por guia na conciliação por
+  período (`/financeiro/conciliacao/periodo`), presente tanto quando o relatório sai quanto quando
+  a identidade não fecha.
+
+### 54.2 Comandos executados e resultados
+
+| Comando | Resultado |
+|---|---|
+| migration `20260913160000_v6_acao_atribuir_conta_a_arrecadacao` | aplicada nos três bancos |
+| migration `20260913160100_v6_arrecadacao_conta_bancaria` — 1ª tentativa | o arquivo saiu com um erro de validação do schema no lugar do DDL (um `sub` do script de edição falhou antes de completar o schema) e o `migrate deploy` a registrou como FALHA, 0 passos; `prisma migrate resolve --rolled-back` nos três bancos; arquivo regenerado com o DDL certo; deploy ×3 OK; `diff --exit-code` limpo. A linha rolled-back permanece em `_prisma_migrations` (é o registro honesto do ocorrido) |
+| tsc backend / app / scripts | limpos em `c9f1c9f` (`848ad06` NÃO compilava — corrigido no commit seguinte) |
+| `m09-atribuicao-de-conta` (5), `m09-conciliacao`, `m09-vinculo`, `m09-conciliacao-periodo`, `m09-movimentacao`, `m09-transferencia`, `m04`, `m16-censo` (270 / 247+18), `m16-atualizacoes` (v8), `modelo-sem-caso-de-uso` | verdes |
+| `test:rapido` | 852/852 |
+| permissões v8 (dev e percursos) | aplicada: 1 concessão em 1 perfil |
+| `next build` em `c9f1c9f` + smoke-arrecadacao-conta, smoke-ent03a, smoke-cadeia | ver 54.4 |
+
+### 54.3 Pendências (nomeadas)
+
+- `CONTAS-BANCARIAS-COM-MESMA-CONTABIL-NOS-SEEDS` — no banco dos percursos, `CC-500-01`, `CC-POC-A`
+  e `CC-POC-B` (todas fonte 500) mapeiam a MESMA contábil `1.1.1.1.1.19.00`; o lado contábil de
+  cada conta soma o movimento das três. A identidade por conta só fecha ali quando cada conta tiver
+  a sua contábil (reseed). É desenho de seed, não do código: o teste `m09-atribuicao-de-conta` prova
+  o fechamento com duas contas em contábeis distintas.
+- `IMPORTADOR-SEM-CONTA-BANCARIA` (M20) e as compostas do M10 (dívida ativa, operação de crédito)
+  registram guias sem conta — entram como legado a atribuir.
+- `VPA-CONSTANTE-NA-PORTA` — a VPA da guia continua constante na porta; o roteiro por natureza de
+  receita ainda não vem de tabela (Matriz de Eventos, 5.91).
+- `DEDUCAO-DE-RECEITA` — não há dedução de receita (FUNDEB etc.) no M04.
+- `PAGAMENTO-CONFERE-CONTABIL-NO-DOMINIO` — a coerência conta×contábil do pagamento está na porta;
+  o domínio do M05 ainda não a confere (a da arrecadação está no domínio).
+
+### 54.4 Percursos sob o build `c9f1c9f`
+
+(preenchido ao fim da rodada — ver o log em `.registro-de-execucao/v6-capturas/`)
+
+### 54.5 Próximo ponto exato
+
+**P1.3 — o percurso encadeado com usuários por papel:** perfis sintéticos COMPRAS, ALMOXARIFADO,
+CONTABILIDADE/TESOURARIA no banco dos percursos (criados pela tela de administração), e um percurso
+PPA/LDO → dotação → solicitação (duas linhas) → pesquisa → processo → contrato/reserva → ordem
+formada da solicitação (parcial) → nota recebida → recebimento/atesto → liquidação → pagamento
+(conta declarada) → razão e documentos, com uma negativa de negócio por papel. Depois P2 (RH).

@@ -66,6 +66,7 @@
     "smoke:identidade": "tsx scripts/trinco-de-maquina.ts 'smoke da identidade' -- npx tsx scripts/smoke-identidade.ts",
     "smoke:solicitacao-ordem": "tsx scripts/trinco-de-maquina.ts 'smoke do vinculo solicitacao x ordem' -- npx tsx scripts/smoke-solicitacao-ordem.ts",
     "smoke:arrecadacao-conta": "tsx scripts/trinco-de-maquina.ts 'smoke da arrecadacao x conta bancaria' -- npx tsx scripts/smoke-arrecadacao-conta.ts",
+    "smoke:cadeia-por-papel": "tsx scripts/trinco-de-maquina.ts 'smoke da cadeia por papel' -- npx tsx scripts/smoke-cadeia-por-papel.ts",
     "permissoes:atualizar": "tsx scripts/aplicar-atualizacao-de-permissoes.ts",
     "roteiros:versionar": "tsx scripts/versionar-roteiros-existentes.ts",
     "seed:roteiros-demo": "tsx prisma/seed/roteiros-demo.ts",
