@@ -126,6 +126,10 @@ export const EXECUCAO_DESPESA: readonly RelatorioNav[] = [
  * grupo porque o usuário do planejamento os percorre na mesma sessão de trabalho.
  */
 export const PLANEJAMENTO: readonly RelatorioNav[] = [
+  // V4 §8 (M02b): as peças que vêm ANTES da LOA.
+  { href: "/planejamento/ppa", numero: "PPA", rotulo: "Plano Plurianual", descricao: "O quadriênio e a lei que o instituiu; programas, indicadores, ações e a receita do plano (CF art. 165 §1º)." },
+  { href: "/planejamento/ldo", numero: "LDO", rotulo: "Lei de Diretrizes Orçamentárias", descricao: "O trâmite da LDO, as prioridades e os anexos da LRF (metas e riscos fiscais) em PDF." },
+  { href: "/planejamento/ppa/estrutura", numero: "Estrutura", rotulo: "Estrutura temática do PPA", descricao: "Eixos, áreas temáticas, públicos-alvo e macroações — o rol do ente." },
   { href: "/planejamento/qdd", numero: "QDD", rotulo: "Quadro de Detalhamento da Despesa", descricao: "A dotação de cada ficha pela chave completa: inicial, créditos e dotação atualizada." },
   { href: "/planejamento/cmd-mba", numero: "CMD/MBA", rotulo: "Programação Financeira (CMD/MBA)", descricao: "Cronograma mensal de desembolso e metas bimestrais de arrecadação (LRF art. 8º e 13)." },
   { href: "/planejamento/creditos-adicionais", numero: "Créditos adicionais", rotulo: "Créditos Adicionais", descricao: "Decretos de suplementação e anulação, com o teto da lei." },

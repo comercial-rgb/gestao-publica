@@ -9,6 +9,7 @@ import {
   acaoDeLeituraDaArea,
   aplicarAtualizacaoDePermissoes,
   derivarLeituraPorArea,
+  derivarPlanejamentoPlurianual,
   derivarPublicarRoteiro,
   situacaoDasAtualizacoes,
   type PerfilComPermissoes,
@@ -105,6 +106,26 @@ describe("a regra da v1 — leitura por área, no escopo em que o perfil já age
     ]);
   });
 
+  it("v5: quem cria FICHA no escopo GLOBAL recebe as dez do plurianual, no global — quem só cria ficha numa UG não recebe nada (V4 §8)", () => {
+    const perfis: readonly PerfilComPermissoes[] = [
+      { id: "plan", nome: "PLANEJADOR", permissoes: [{ acao: "CRIAR_FICHA", unidadeOrcId: null }] },
+      { id: "plan-ug", nome: "PLANEJADOR-UG", permissoes: [{ acao: "CRIAR_FICHA", unidadeOrcId: UG_A }] },
+      { id: "ja", nome: "JA-TEM-PPA", permissoes: [{ acao: "CRIAR_FICHA", unidadeOrcId: null }, { acao: "CADASTRAR_PPA", unidadeOrcId: null }] },
+      { id: "op", nome: "OPERADOR", permissoes: [{ acao: "EMPENHAR", unidadeOrcId: null }] },
+    ];
+    const derivadas = derivarPlanejamentoPlurianual(perfis, AREA_DA_ACAO);
+    expect(derivadas.filter((d) => d.perfilId === "plan").map((d) => d.acao)).toEqual([
+      "CADASTRAR_PPA", "CADASTRAR_ESTRUTURA_PPA", "CADASTRAR_PROGRAMA_PPA", "CADASTRAR_RECEITA_PPA", "CADASTRAR_LDO",
+      "CADASTRAR_PRIORIDADE_LDO", "CADASTRAR_METAS_FISCAIS_LDO", "CADASTRAR_RISCOS_FISCAIS_LDO", "CADASTRAR_RENUNCIA_RECEITA_LDO", "CADASTRAR_ALIENACAO_LDO",
+    ]);
+    expect(derivadas.every((d) => d.unidadeOrcId === null)).toBe(true);
+    expect(derivadas.some((d) => d.perfilId === "plan-ug")).toBe(false);
+    expect(derivadas.some((d) => d.perfilId === "op")).toBe(false);
+    // Idempotente: o que já tem não deriva de novo — nove, e não dez.
+    expect(derivadas.filter((d) => d.perfilId === "ja")).toHaveLength(9);
+    expect(derivadas.some((d) => d.perfilId === "ja" && d.acao === "CADASTRAR_PPA")).toBe(false);
+  });
+
   it("é idempotente: o que o perfil já tem não deriva de novo; leitura existente não gera leitura", () => {
     const perfis: readonly PerfilComPermissoes[] = [
       {
@@ -198,6 +219,7 @@ describe("instalação limpa e atualização — no banco", () => {
       { versao: 2, previa: 0, aplicada: false },
       { versao: 3, previa: 0, aplicada: false },
       { versao: 4, previa: 0, aplicada: false },
+      { versao: 5, previa: 0, aplicada: false },
     ]);
   });
 
@@ -287,6 +309,6 @@ describe("instalação limpa e atualização — no banco", () => {
     const admin = await instalar();
     await expect(
       aplicarAtualizacaoDePermissoes(prisma, { versao: 99, criadoPor: admin, areaDaAcao: AREA_DA_ACAO })
-    ).rejects.toThrow(/DESCONHECIDA.*1 \(leitura-por-area\), 2 \(publicar-roteiro\), 3 \(vincular-pessoa-ao-usuario\), 4 \(parametro-de-atualizacao\)/s);
+    ).rejects.toThrow(/DESCONHECIDA.*1 \(leitura-por-area\), 2 \(publicar-roteiro\), 3 \(vincular-pessoa-ao-usuario\), 4 \(parametro-de-atualizacao\), 5 \(planejamento-plurianual\)/s);
   });
 });

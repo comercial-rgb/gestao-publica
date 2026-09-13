@@ -85,6 +85,9 @@ model UnidadeOrcamentaria {
   cnpjManad String? @db.VarChar(14)
 
   fichas FichaOrcamentaria[]
+  /// back-relation M02b (PPA) — a unidade EXECUTORA declarada na ação do plano. Campo VIRTUAL:
+  /// classificação aprovada, não escopo de autorização (o plano é ato do ente).
+  acoesPpa AcaoPpa[]
   /// back-relation M16 (permissões por unidade gestora — 6.5) — campo VIRTUAL.
   permissoesManad PermissaoDePerfil[]
   /// back-relation M21 — os SETORES (centros de custo) desta unidade. É a amarra que
@@ -116,6 +119,8 @@ model Funcao {
   nome   String
 
   fichas FichaOrcamentaria[]
+  /// back-relation M02b (PPA) — campo VIRTUAL, não gera coluna.
+  acoesPpa AcaoPpa[]
 }
 
 /// Portaria STN 42/1999.
@@ -125,6 +130,8 @@ model Subfuncao {
   nome   String
 
   fichas FichaOrcamentaria[]
+  /// back-relation M02b (PPA) — campo VIRTUAL, não gera coluna.
+  acoesPpa AcaoPpa[]
 }
 
 model Programa {
@@ -136,6 +143,12 @@ model Programa {
   tipoObjetivoMilenio String?
 
   fichas FichaOrcamentaria[]
+  /// back-relation M02b (PPA) — campo VIRTUAL, não gera coluna.
+  ///
+  /// ⚠️ O `objetivo` ACIMA É DO PROGRAMA, e é por isso que `ProgramaPpa` NÃO o repete: um
+  /// programa tem UM objetivo, e duplicá-lo por plano criaria duas respostas para a mesma
+  /// pergunta. O que varia por plano é a ESTRATÉGIA e o valor previsto — e esses vivem lá.
+  planosPpa ProgramaPpa[]
 }
 
 model Acao {
@@ -156,6 +169,9 @@ model Acao {
   tipoManad String? @db.VarChar(2)
 
   fichas FichaOrcamentaria[]
+  /// back-relations M02b (PPA e LDO) — campos VIRTUAIS, não geram coluna.
+  acoesPpa       AcaoPpa[]
+  prioridadesLdo PrioridadeLdo[]
 }
 
 /// Natureza da despesa = 4 COMPONENTES (STN / Portaria 163), não uma FK única.
@@ -223,6 +239,8 @@ model FonteRecurso {
 
   fichas            FichaOrcamentaria[]
   receitasPrevistas ReceitaPrevista[]
+  /// back-relation M02b (PPA) — campo VIRTUAL, não gera coluna.
+  previsoesPpa      PrevisaoReceitaPpa[]
   // back-relations M04/M05 — campos VIRTUAIS, não geram coluna.
   receitasArrecadadas ReceitaArrecadada[]
   pagamentos          Pagamento[]
@@ -348,6 +366,9 @@ model NaturezaReceita {
   nivelContaManad   Int?
 
   receitasPrevistas ReceitaPrevista[]
+  /// back-relations M02b (PPA) — campos VIRTUAIS, não geram coluna.
+  previsoesPpa       PrevisaoReceitaPpa[]
+  receitasAnteriores ReceitaAnteriorPpa[]
   // back-relation M04 — campo VIRTUAL, não gera coluna.
   receitasArrecadadas ReceitaArrecadada[]
 }

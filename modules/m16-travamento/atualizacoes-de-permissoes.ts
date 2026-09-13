@@ -209,6 +209,43 @@ export function derivarParametroDeAtualizacao(
   return saida;
 }
 
+/**
+ * A REGRA DA v5 (V4 §8, Fila A): o planejamento PLURIANUAL (M02b) chegou com dez ações novas.
+ * Quem já cria FICHA orçamentária no escopo GLOBAL — o crachá de quem monta a LOA do ente —
+ * recebe as dez, no escopo global (o PPA é ato do ente; não há escopo de unidade). Um perfil
+ * que só cria ficha numa UG não recebe nada: planejar o quadriênio não é atribuição de unidade.
+ * A segregação fina (metas fiscais ≠ riscos ≠ estrutura) fica a cargo do administrador.
+ */
+export const ACOES_DO_PLURIANUAL: readonly AcaoDoSistema[] = [
+  "CADASTRAR_PPA",
+  "CADASTRAR_ESTRUTURA_PPA",
+  "CADASTRAR_PROGRAMA_PPA",
+  "CADASTRAR_RECEITA_PPA",
+  "CADASTRAR_LDO",
+  "CADASTRAR_PRIORIDADE_LDO",
+  "CADASTRAR_METAS_FISCAIS_LDO",
+  "CADASTRAR_RISCOS_FISCAIS_LDO",
+  "CADASTRAR_RENUNCIA_RECEITA_LDO",
+  "CADASTRAR_ALIENACAO_LDO",
+];
+
+export function derivarPlanejamentoPlurianual(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const jaTem = new Set(perfil.permissoes.map((p) => `${p.acao} ${p.unidadeOrcId ?? ""}`));
+    const montaALoa = perfil.permissoes.some((p) => p.acao === "CRIAR_FICHA" && p.unidadeOrcId === null);
+    if (!montaALoa) continue;
+    for (const acao of ACOES_DO_PLURIANUAL) {
+      if (jaTem.has(`${acao} `)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
+
 export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
   {
     versao: 1,
@@ -244,6 +281,15 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "versionada (DEFINIR_PARAMETRO_DE_ATUALIZACAO). Quem ja parametriza roteiro contabil do " +
       "patrimonio recebe a definicao no mesmo escopo.",
     derivar: derivarParametroDeAtualizacao,
+  },
+  {
+    versao: 5,
+    nome: "planejamento-plurianual",
+    descricao:
+      "O planejamento plurianual (PPA e LDO, M02b) chegou com dez acoes novas. Quem ja cria ficha " +
+      "orcamentaria no escopo global recebe as dez, no escopo global; a segregacao fina fica a " +
+      "cargo do administrador.",
+    derivar: derivarPlanejamentoPlurianual,
   },
 ];
 

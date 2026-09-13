@@ -7,6 +7,8 @@ import { AREAS } from "../../../lib/navegacao";
  */
 
 const ITENS: readonly ItemHub[] = [
+  { titulo: "PPA — Plano Plurianual", descricao: "O quadriênio e a lei que o instituiu; cada programa no plano com estratégia, valor previsto, indicadores e ações; a receita do quadriênio e a série histórica que a instrui.", href: "/planejamento/ppa" },
+  { titulo: "LDO — Lei de Diretrizes Orçamentárias", descricao: "O trâmite (envio, devolução, sanção), as prioridades e os anexos da LRF: metas anuais, riscos fiscais, renúncia, alienação, RPPS, dívida e margem — em PDF.", href: "/planejamento/ldo" },
   { titulo: "QDD — Quadro de Detalhamento da Despesa", descricao: "A dotação de cada ficha: inicial, os créditos que a alteraram e a dotação atualizada — o teto contra o qual se empenha.", href: "/planejamento/qdd" },
   { titulo: "Programação financeira — CMD/MBA", descricao: "O cronograma mensal de desembolso (os duodécimos por fonte) e as metas bimestrais de arrecadação, com o decreto que as institui (LRF art. 8º e 13).", href: "/planejamento/cmd-mba" },
   { titulo: "Créditos adicionais", descricao: "Decretos de suplementação e anulação, com o teto da lei e a dotação atualizada de cada ficha.", href: "/planejamento/creditos-adicionais" },

@@ -400,6 +400,18 @@ enum AcaoDoSistema {
   VINCULAR_PESSOA_AO_USUARIO
   // ── V3 (pacote 2) — definir o parâmetro versionado de depreciação/amortização/exaustão ──
   DEFINIR_PARAMETRO_DE_ATUALIZACAO
+  // ── V4 (§8, Fila A) — M02b, o planejamento PLURIANUAL (PPA e LDO): dez ações para vinte
+  // serviços, agrupadas pelos ANEXOS DA LRF (ver `acoes.ts`). Conciliado do siafic-cg c04ad5a. ──
+  CADASTRAR_PPA
+  CADASTRAR_ESTRUTURA_PPA
+  CADASTRAR_PROGRAMA_PPA
+  CADASTRAR_RECEITA_PPA
+  CADASTRAR_LDO
+  CADASTRAR_PRIORIDADE_LDO
+  CADASTRAR_METAS_FISCAIS_LDO
+  CADASTRAR_RISCOS_FISCAIS_LDO
+  CADASTRAR_RENUNCIA_RECEITA_LDO
+  CADASTRAR_ALIENACAO_LDO
 }
 
 /// O USUÁRIO. TR 4.55.

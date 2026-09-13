@@ -64,6 +64,17 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   CRIAR_VERSAO_MBA: "planejamento",
   LIBERAR_PROGRAMACAO: "planejamento",
   CONFIGURAR_LIMITACAO_EMPENHO: "planejamento",
+  // M02b — planejamento plurianual (V4 §8): o PPA e a LDO moram no Planejamento
+  CADASTRAR_PPA: "planejamento",
+  CADASTRAR_ESTRUTURA_PPA: "planejamento",
+  CADASTRAR_PROGRAMA_PPA: "planejamento",
+  CADASTRAR_RECEITA_PPA: "planejamento",
+  CADASTRAR_LDO: "planejamento",
+  CADASTRAR_PRIORIDADE_LDO: "planejamento",
+  CADASTRAR_METAS_FISCAIS_LDO: "planejamento",
+  CADASTRAR_RISCOS_FISCAIS_LDO: "planejamento",
+  CADASTRAR_RENUNCIA_RECEITA_LDO: "planejamento",
+  CADASTRAR_ALIENACAO_LDO: "planejamento",
   // M03 — créditos adicionais
   CRIAR_LEI_DE_CREDITO: "planejamento",
   CRIAR_DECRETO_DE_CREDITO: "planejamento",

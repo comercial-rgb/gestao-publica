@@ -168,6 +168,25 @@ export type AcaoDoSistema =
   // VERSIONADO e tem crachá próprio: quem parametriza roteiro não é necessariamente quem
   // decide vida útil e residual (é decisão do contador sobre a NBC TSP 07).
   | "DEFINIR_PARAMETRO_DE_ATUALIZACAO"
+  // ── M02b — o planejamento PLURIANUAL (PPA e LDO), V4 §8 Fila A, conciliado do siafic-cg c04ad5a ──
+  //
+  // ⚠️ DEZ AÇÕES PARA VINTE SERVIÇOS, e não é preguiça de censo: o agrupamento segue os ANEXOS DA
+  // LRF, que é como o trabalho se divide numa prefeitura. Quem monta o Anexo de Metas Fiscais
+  // (art. 4º §1º) não é quem monta o de Riscos (art. 4º §3º), e nenhum dos dois é quem cadastra a
+  // árvore temática do PPA. Uma ação por serviço daria vinte crachás que ninguém concede
+  // separadamente — e o ente concederia todos "para simplificar", o oposto do 6.4. Uma ação só
+  // daria o crachá que abre o planejamento inteiro. Precedente: `encerrarExercicio` /
+  // `encerrarExercicioComRestos`.
+  | "CADASTRAR_PPA"
+  | "CADASTRAR_ESTRUTURA_PPA"
+  | "CADASTRAR_PROGRAMA_PPA"
+  | "CADASTRAR_RECEITA_PPA"
+  | "CADASTRAR_LDO"
+  | "CADASTRAR_PRIORIDADE_LDO"
+  | "CADASTRAR_METAS_FISCAIS_LDO"
+  | "CADASTRAR_RISCOS_FISCAIS_LDO"
+  | "CADASTRAR_RENUNCIA_RECEITA_LDO"
+  | "CADASTRAR_ALIENACAO_LDO"
 
   // ── M10 — patrimônio, EIXO DE GESTÃO (ENT05, TR 5.19) ──
   | "CADASTRAR_LOCALIZACAO_FISICA"
@@ -627,6 +646,27 @@ export type NomeDeServico =
   // ── V3 (pacote 2) — usuário ↔ pessoa ──
   | "vincularPessoaAoUsuario"
   | "desvincularPessoaDoUsuario"
+  // ── M02b — planejamento plurianual (V4 §8) ──
+  | "criarPlanoPlurianual"
+  | "criarEixoEstruturante"
+  | "criarAreaTematica"
+  | "criarPublicoAlvo"
+  | "criarMacroacao"
+  | "criarProgramaPpa"
+  | "criarIndicadorPrograma"
+  | "criarAcaoPpa"
+  | "criarPrevisaoReceitaPpa"
+  | "criarReceitaAnteriorPpa"
+  | "criarLdo"
+  | "criarPrioridadeLdo"
+  | "criarMetaAnualLdo"
+  | "criarRiscoFiscal"
+  | "criarRenunciaReceitaLdo"
+  | "criarAlienacaoBemLdo"
+  | "criarAplicacaoAlienacaoLdo"
+  | "criarDividaConsolidadaLdo"
+  | "criarProjecaoAtuarialRpps"
+  | "criarMargemExpansaoLdo"
   // ── M21 — protocolo (ENT02) ──
   | "abrirProcesso"
   | "tramitar"
@@ -950,6 +990,34 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   vincularPessoaAoUsuario: "VINCULAR_PESSOA_AO_USUARIO",
   desvincularPessoaDoUsuario: "VINCULAR_PESSOA_AO_USUARIO",
 
+  // ── M02b — planejamento plurianual (V4 §8): 20 serviços, 10 ações, pelos anexos da LRF ──
+  criarPlanoPlurianual: "CADASTRAR_PPA",
+  // A árvore temática (eixo, área, público-alvo, macroação) é UM ato: montar a estrutura do plano.
+  criarEixoEstruturante: "CADASTRAR_ESTRUTURA_PPA",
+  criarAreaTematica: "CADASTRAR_ESTRUTURA_PPA",
+  criarPublicoAlvo: "CADASTRAR_ESTRUTURA_PPA",
+  criarMacroacao: "CADASTRAR_ESTRUTURA_PPA",
+  // O programa no plano, o seu indicador e as suas ações: quem detalha o programa.
+  criarProgramaPpa: "CADASTRAR_PROGRAMA_PPA",
+  criarIndicadorPrograma: "CADASTRAR_PROGRAMA_PPA",
+  criarAcaoPpa: "CADASTRAR_PROGRAMA_PPA",
+  // A receita do quadriênio e a série histórica que a instrui.
+  criarPrevisaoReceitaPpa: "CADASTRAR_RECEITA_PPA",
+  criarReceitaAnteriorPpa: "CADASTRAR_RECEITA_PPA",
+  criarLdo: "CADASTRAR_LDO",
+  criarPrioridadeLdo: "CADASTRAR_PRIORIDADE_LDO",
+  // O Anexo de Metas Fiscais (LRF art. 4º §1º e §2º): metas anuais, dívida, RPPS e margem.
+  criarMetaAnualLdo: "CADASTRAR_METAS_FISCAIS_LDO",
+  criarDividaConsolidadaLdo: "CADASTRAR_METAS_FISCAIS_LDO",
+  criarProjecaoAtuarialRpps: "CADASTRAR_METAS_FISCAIS_LDO",
+  criarMargemExpansaoLdo: "CADASTRAR_METAS_FISCAIS_LDO",
+  // O Anexo de Riscos Fiscais (art. 4º §3º).
+  criarRiscoFiscal: "CADASTRAR_RISCOS_FISCAIS_LDO",
+  criarRenunciaReceitaLdo: "CADASTRAR_RENUNCIA_RECEITA_LDO",
+  // A alienação prevista e a aplicação do produto (art. 44) são o mesmo demonstrativo.
+  criarAlienacaoBemLdo: "CADASTRAR_ALIENACAO_LDO",
+  criarAplicacaoAlienacaoLdo: "CADASTRAR_ALIENACAO_LDO",
+
   // ── M21 — protocolo e processo digital (ENT02) ──
   abrirProcesso: "ABRIR_PROCESSO",
   tramitar: "TRAMITAR_PROCESSO",
@@ -1103,6 +1171,10 @@ export const ACOES_DE_ADMINISTRACAO: readonly AcaoDoSistema[] = [
  * grep-teste lê esta lista — nada sai do censo por descuido.
  */
 export const FORA_DO_CENSO: Record<string, string> = {
+  // ── M02b — planejamento plurianual (V4 §8) ──
+  metaFiscalDoExercicio:
+    "LEITURA: a meta fiscal declarada na LDO para um exercício (ou null com pendência nomeada). " +
+    "Insumo do RREO Anexo 6; não grava nada.",
   // ── Orquestração V3 (4.1/4.2) — a política de leitura e as atualizações versionadas ──
   escopoDaAcaoDeLeitura: "leitura (o escopo de UMA ação de leitura para uma identidade — a política de leitura, 4.1)",
   acoesDeLeituraDoUsuario: "leitura (as ações de leitura do usuário em algum escopo — o recorte do painel)",

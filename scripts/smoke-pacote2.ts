@@ -357,8 +357,15 @@ async function main(): Promise<void> {
     }
 
     // ── 4. o termo de responsabilidade e o PDF ──
+    // ⚠️ O BANCO DOS PERCURSOS NÃO É LIMPO: numa segunda rodada o usuário JÁ está vinculado a uma
+    // pessoa, e "meus bens" lista os bens DELA. O termo vai para essa pessoa quando ela existe —
+    // senão o passo final afirmaria o bem de um responsável que não é o do usuário.
+    await irPara(page, "/patrimonio/meus-bens");
+    const pessoaJaVinculada = await atributo(page, "[data-pessoa]", "data-pessoa");
     await irPara(page, "/patrimonio/termos");
-    const responsavel = await primeiraOpcao(page, 'form[data-acao="criar-termos-patrimoniais"] select[name="responsavelId"]');
+    const responsavel =
+      (pessoaJaVinculada === null ? null : await opcaoQueCasa(page, 'form[data-acao="criar-termos-patrimoniais"] select[name="responsavelId"]', pessoaJaVinculada)) ??
+      (await primeiraOpcao(page, 'form[data-acao="criar-termos-patrimoniais"] select[name="responsavelId"]'));
     conferir("termo: há pessoa no cadastro para responder", responsavel !== null, "select de responsável vazio");
     const rTermo = await preencherEEnviar(page, "criar-termos-patrimoniais", [
       { sel: 'input[name="numero"]', valor: TERMO },

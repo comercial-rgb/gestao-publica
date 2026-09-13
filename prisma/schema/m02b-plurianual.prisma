@@ -1,0 +1,661 @@
+// ============================================================================
+// M02b — PPA e LDO. O planejamento PLURIANUAL.
+//
+// ⚠️ PROCEDÊNCIA (sessão noturna V4, §8, Fila A): este schema veio do siafic-cg
+// (commit c04ad5a760dfbce977ef7f28db7e42ee49d85761, `prisma/schema/m02b-plurianual.prisma`),
+// conciliado SELETIVAMENTE: os 20 models entraram como estavam; as back-relations foram
+// acrescentadas nos models locais do M02 (`m02-planejamento.prisma`); a migration foi gerada
+// AQUI (diff do schema) e os CHECKs vieram da migration de origem, um a um. Nada do
+// `doador/` entra; a origem é o repositório siafic-cg, que este repositório absorve.
+//
+// ═══ ⚠️ POR QUE M02b E NÃO M02 ═══
+// O repositório já tinha decidido: `modules/m02-planejamento/MODULO.md:14` e
+// `:244` dizem, desde antes deste PR, que "PPA/LDO/LOA e anexos ficam no M02b".
+// O M02 é a LOA OPERACIONAL — ficha, dotação, receita prevista, o grão de
+// execução. O plurianual é outra coisa: ele não executa nada, ele PLANEJA, e o
+// horizonte dele é o quadriênio.
+//
+// ═══ ⚠️ A PROCEDÊNCIA DOS CAMPOS, DITA SEM MAQUIAGEM ═══
+// O enunciado deste PR indicou como fonte as specs SIGA/TCM-BA de números 48,
+// 49 e 76 a 82. **Nenhuma delas está transcrita neste repositório** — os 15
+// arquivos de `adapters/tribunais/tcm-ba/siga/specs/` são outros, e não há
+// nenhuma ocorrência de `ProgramaPPA`, `IndProg`, `Processo_LDO`,
+// `MetasFisicas`, `RiscosFiscais`, `RenunciaReceita`, `MetasAnuais` ou
+// `AlienacaoBem` em `adapters/`.
+//
+// As listas de campos vieram do ENUNCIADO DO PR, escritas por quem leu o manual
+// v44. Isso é fonte legítima e está registrado como tal — mas **não é spec
+// conferida**, e este arquivo NÃO afirma conformidade com o SIGA. Quando as
+// specs forem transcritas (com `origemSpec: "manual-v44-2014"`, como as outras),
+// a geometria destes models terá de ser conferida contra elas. Até lá, o que
+// existe é um modelo do TR que ANTECIPA a exportação, não um que a garante.
+//
+// ⚠️ E A NOMENCLATURA MENTIROSA DO SIGA NÃO ENTRA AQUI. Naquele leiaute,
+// `cd_SubPrograma` é o PROGRAMA e `cd_Programa` é a SUBFUNÇÃO — trap já
+// documentado em `adapters/tribunais/tcm-ba/siga/hierarquia.ts`. O schema interno
+// usa nomes honestos; a troca acontece no adapter, onde ela é visível e testada.
+//
+// ═══ ⚠️ NENHUMA ENTIDADE AQUI TEM `unidadeOrcId` ═══
+// `unidadeOrcId` existe em UMA entidade do sistema inteiro (`FichaOrcamentaria`),
+// e toda a segregação do TR 6.5 é construída sobre isso
+// (`modules/m16-travamento/escopo.ts:8-15`). Planejamento plurianual é ato do
+// ENTE por natureza: o PPA é lei municipal, não peça de unidade. Onde há
+// necessidade de recorte administrativo, usa-se `orgaoId` — precedente da `Obra`
+// (M11) e do `BemPatrimonial` (M10).
+//
+// ⚠️ DINHEIRO É `Decimal(18,2)`; ÍNDICE/PERCENTUAL É `Decimal(9,6)`. Nunca Float.
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// O PLANO — o quadriênio (TR PPA 1)
+// ----------------------------------------------------------------------------
+
+/// PLANO PLURIANUAL — o quadriênio inteiro, e a lei que o instituiu.
+///
+/// ⚠️ `anoInicio`/`anoFim` E NÃO UM ÚNICO `exercicio`: o PPA vale por QUATRO
+/// exercícios (CF art. 165 §1º), e é essa duração que o distingue da LOA. O
+/// serviço impõe `anoFim − anoInicio == 3` — exatamente três, nem mais nem
+/// menos: um "PPA" de dois anos ou de cinco não é um PPA.
+///
+/// ⚠️ SEM COLUNA `vigente`. "Qual o PPA em vigor no ano X?" é a consulta
+/// `anoInicio <= X <= anoFim` — derivação, nunca uma flag que alguém esquece de
+/// virar na passagem do quadriênio. É a mesma doutrina do `LimiteContratacao`
+/// (M11), onde o limite vigente é o de maior `vigenciaInicio <= D`.
+model PlanoPlurianual {
+  id String @id @default(cuid())
+
+  /// O primeiro exercício do quadriênio.
+  anoInicio Int
+  /// O último. `anoFim − anoInicio == 3`, imposto pelo serviço E pelo CHECK.
+  anoFim    Int
+
+  /// A lei que instituiu o plano (número/ano, como o ente a publica).
+  leiRef         String
+  dataPublicacao DateTime
+
+  programas       ProgramaPpa[]
+  previsoes       PrevisaoReceitaPpa[]
+  receitasAnteriores ReceitaAnteriorPpa[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  /// ⚠️ UM PLANO POR QUADRIÊNIO. Dois PPAs com o mesmo ano de início seriam duas
+  /// verdades sobre o mesmo período, e a consulta "o PPA vigente em X" passaria a
+  /// depender da ordem de leitura.
+  @@unique([anoInicio])
+  @@index([anoInicio, anoFim])
+}
+
+// ----------------------------------------------------------------------------
+// A ESTRUTURA TEMÁTICA (TR PPA 2-5)
+//
+// ⚠️ QUATRO CADASTROS, E NÃO UM ENUM CADA. São rol do ENTE, não da lei: cada
+// município define seus eixos e áreas temáticas no PPA que aprova. Enum forçaria
+// migration a cada plano novo — e o rol NÃO é normativo.
+// ----------------------------------------------------------------------------
+
+/// EIXO ESTRUTURANTE — o nível mais alto da árvore temática do PPA.
+model EixoEstruturante {
+  id        String @id @default(cuid())
+  codigo    String @unique
+  descricao String
+
+  areas AreaTematica[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// ÁREA TEMÁTICA — o desdobramento do eixo.
+model AreaTematica {
+  id        String @id @default(cuid())
+  codigo    String @unique
+  descricao String
+
+  eixoId String
+  eixo   EixoEstruturante @relation(fields: [eixoId], references: [id])
+
+  programas ProgramaPpa[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([eixoId])
+}
+
+/// PÚBLICO-ALVO do programa (TR PPA 4).
+model PublicoAlvo {
+  id        String @id @default(cuid())
+  codigo    String @unique
+  descricao String
+
+  programas ProgramaPpa[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// MACROAÇÃO — o agrupamento de ações do PPA (TR PPA 5).
+model Macroacao {
+  id        String @id @default(cuid())
+  codigo    String @unique
+  descricao String
+
+  acoes AcaoPpa[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+// ----------------------------------------------------------------------------
+// O PROGRAMA NO PLANO (TR PPA 6-10)
+// ----------------------------------------------------------------------------
+
+/// PROGRAMA DO PPA — o vínculo entre o `Programa` (M02) e um quadriênio.
+///
+/// ═══ ⚠️ ELE NÃO DUPLICA O `Programa` ═══
+/// O código, a descrição e o OBJETIVO do programa já vivem em
+/// `m02-planejamento.prisma:117-126` — inclusive `objetivo`, que o enunciado
+/// deste PR pedia aqui. Repeti-lo criaria duas respostas para "qual o objetivo do
+/// programa 0012", e no dia em que divergissem ninguém saberia qual vale.
+///
+/// O que É deste model: a `estrategia` (como o programa será executado NAQUELE
+/// plano) e o `valorPrevisto` do quadriênio. Um mesmo programa pode entrar em
+/// dois PPAs com estratégias e valores diferentes — e é isso que justifica a
+/// tabela de ligação em vez de colunas no `Programa`.
+model ProgramaPpa {
+  id String @id @default(cuid())
+
+  planoId String
+  plano   PlanoPlurianual @relation(fields: [planoId], references: [id])
+
+  /// O programa do M02 — REUSADO, nunca redeclarado.
+  programaId String
+  programa   Programa @relation(fields: [programaId], references: [id])
+
+  areaTematicaId String
+  areaTematica   AreaTematica @relation(fields: [areaTematicaId], references: [id])
+
+  publicoAlvoId String?
+  publicoAlvo   PublicoAlvo? @relation(fields: [publicoAlvoId], references: [id])
+
+  /// COMO o programa será executado neste plano. Distinto do `objetivo` (que é
+  /// do `Programa` e diz O QUÊ).
+  estrategia String?
+
+  /// O valor previsto para o QUADRIÊNIO inteiro.
+  ///
+  /// ⚠️ ELE NÃO É A SOMA DAS `AcaoPpa.metaFinanceira`, e não deve ser derivado
+  /// delas: o PPA aprova um teto por programa ANTES de as ações estarem todas
+  /// detalhadas, e a diferença entre o previsto e a soma das ações é justamente
+  /// o que o controle interno confere.
+  valorPrevisto Decimal @db.Decimal(18, 2)
+
+  indicadores IndicadorPrograma[]
+  acoes       AcaoPpa[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  /// Um programa entra UMA vez em cada plano.
+  @@unique([planoId, programaId])
+  @@index([areaTematicaId])
+  @@index([publicoAlvoId])
+}
+
+/// INDICADOR DO PROGRAMA (TR PPA 9) — a medida do resultado.
+///
+/// ⚠️ `situacaoInicial` E `situacaoModificada` SÃO `Decimal`, e não texto: eles
+/// são o VALOR do indicador no início e no fim do plano (o SIGA os trafega como
+/// tipo V, numérico). O que é texto é a `descricao` e a `unidadeMedida`.
+///
+/// ⚠️ `Decimal(18,6)`, NÃO `(18,2)`: indicador não é dinheiro. Uma taxa de
+/// mortalidade infantil de 12,34 por mil ou um índice de 0,7215 perderiam
+/// significado arredondados a dois decimais — e é justamente o dígito perdido
+/// que a meta persegue.
+model IndicadorPrograma {
+  id String @id @default(cuid())
+
+  programaPpaId String
+  programaPpa   ProgramaPpa @relation(fields: [programaPpaId], references: [id])
+
+  descricao     String
+  unidadeMedida String
+
+  situacaoInicial    Decimal @db.Decimal(18, 6)
+  situacaoModificada Decimal @db.Decimal(18, 6)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([programaPpaId])
+}
+
+/// AÇÃO DO PPA (TR PPA 11-14) — o produto, a meta física e a financeira.
+model AcaoPpa {
+  id String @id @default(cuid())
+
+  programaPpaId String
+  programaPpa   ProgramaPpa @relation(fields: [programaPpaId], references: [id])
+
+  /// A ação do M02 — REUSADA, nunca redeclarada.
+  acaoId String
+  acao   Acao @relation(fields: [acaoId], references: [id])
+
+  macroacaoId String?
+  macroacao   Macroacao? @relation(fields: [macroacaoId], references: [id])
+
+  /// Classificação aprovada no PPA. Não define escopo de autorização: o plano continua sendo ato do ente.
+  unidadeExecutoraId String?
+  unidadeExecutora   UnidadeOrcamentaria? @relation(fields: [unidadeExecutoraId], references: [id])
+  funcaoId           String?
+  funcao             Funcao? @relation(fields: [funcaoId], references: [id])
+  subfuncaoId        String?
+  subfuncao          Subfuncao? @relation(fields: [subfuncaoId], references: [id])
+
+  /// O bem ou serviço entregue à sociedade.
+  produto       String
+  unidadeMedida String
+  /// A região atendida (bairro, distrito, "todo o município").
+  regiaoAtendida String?
+
+  /// ⚠️ META FÍSICA É `Decimal(18,6)`, NÃO INTEIRO. "12 escolas" é inteiro, mas
+  /// "3,5 km de pavimentação" e "0,25 do sistema implantado" não são — e forçar
+  /// inteiro obrigaria o ente a arredondar a meta que ele vai prestar contas.
+  metaFisica     Decimal @db.Decimal(18, 6)
+  metaFinanceira Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([programaPpaId, acaoId])
+  @@index([macroacaoId])
+  @@index([unidadeExecutoraId])
+  @@index([funcaoId])
+  @@index([subfuncaoId])
+}
+
+// ----------------------------------------------------------------------------
+// A RECEITA NO PPA (TR PPA 17-26)
+// ----------------------------------------------------------------------------
+
+/// PREVISÃO DE RECEITA DO PPA — por natureza, fonte e ANO do quadriênio.
+///
+/// ⚠️ UMA LINHA POR ANO, e não quatro colunas. Quatro colunas (`ano1`..`ano4`)
+/// pareceriam econômicas e quebrariam no primeiro relatório que precisasse somar
+/// "por ano" — além de exigir migration se um PPA de transição tivesse duração
+/// diferente. Linha por ano é o mesmo grão do `MetaMba` (M02).
+model PrevisaoReceitaPpa {
+  id String @id @default(cuid())
+
+  planoId String
+  plano   PlanoPlurianual @relation(fields: [planoId], references: [id])
+
+  naturezaReceitaId String
+  naturezaReceita   NaturezaReceita @relation(fields: [naturezaReceitaId], references: [id])
+
+  fonteId String
+  fonte   FonteRecurso @relation(fields: [fonteId], references: [id])
+
+  /// O exercício DENTRO do quadriênio. O serviço confere que está no intervalo.
+  ano   Int
+  valor Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([planoId, naturezaReceitaId, fonteId, ano])
+  @@index([planoId, ano])
+}
+
+/// RECEITA REALIZADA EM EXERCÍCIOS ANTERIORES (TR PPA 24-26).
+///
+/// ⚠️ SEM `fonteId`, ao contrário da previsão — e a assimetria é do requisito: a
+/// série histórica que instrui o PPA é por NATUREZA, e a fonte de exercícios
+/// passados nem sempre existe na classificação vigente. Exigi-la obrigaria a
+/// mapear fontes extintas, que é inventar dado.
+///
+/// ⚠️ O `ano` AQUI É ANTERIOR AO QUADRIÊNIO — é o histórico que justifica a
+/// projeção. O serviço confere que `ano < plano.anoInicio`.
+model ReceitaAnteriorPpa {
+  id String @id @default(cuid())
+
+  planoId String
+  plano   PlanoPlurianual @relation(fields: [planoId], references: [id])
+
+  naturezaReceitaId String
+  naturezaReceita   NaturezaReceita @relation(fields: [naturezaReceitaId], references: [id])
+
+  ano   Int
+  valor Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([planoId, naturezaReceitaId, ano])
+  @@index([planoId, ano])
+}
+
+// ============================================================================
+// LDO — LEI DE DIRETRIZES ORÇAMENTÁRIAS (TR LDO 1-14)
+//
+// ⚠️ A LDO É ANUAL e faz a ponte entre o PPA (quadriênio) e a LOA (exercício):
+// ela diz quais prioridades do plano entram no próximo orçamento. Por isso ela
+// referencia `Acao` (M02) nas prioridades e vive por `exercicio`.
+// ============================================================================
+
+/// A LEI DE DIRETRIZES — e o TRÂMITE dela (TR LDO 1).
+///
+/// ⚠️ AS QUATRO DATAS DE TRÂMITE SÃO NULLABLE, e é o ciclo que manda: a LDO é
+/// cadastrada quando o Executivo a monta, ENVIADA depois, DEVOLVIDA depois, e
+/// SANCIONADA por último. Exigir a data de sanção no cadastro impediria de
+/// registrar a LDO que ainda está no Legislativo — que é justamente o estado em
+/// que ela passa a maior parte do tempo útil.
+///
+/// ⚠️ SEM COLUNA `situacao`. "Foi sancionada?" é `dataSancao != null`; "está no
+/// Legislativo?" é `dataEnvioLegislativo != null && dataDevolucaoExecutivo ==
+/// null`. Derivação, nunca flag — a mesma doutrina do `dataHomologacao` do M11.
+model LeiDiretrizesOrcamentarias {
+  id String @id @default(cuid())
+
+  /// O exercício a que a LDO se refere (ela é de N e orienta a LOA de N+1... ou
+  /// de N, conforme a lei orgânica do ente — por isso é dado, não derivação).
+  exercicio Int @unique
+
+  inicioVigencia DateTime
+  fimVigencia    DateTime
+
+  /// O TRÂMITE. Ver o docblock: nullable porque o ciclo é sequencial.
+  dataEnvioLegislativo   DateTime?
+  dataDevolucaoExecutivo DateTime?
+  numeroProtocolo        String?
+  dataSancao             DateTime?
+
+  prioridades    PrioridadeLdo[]
+  metasAnuais    MetaAnualLdo[]
+  riscos         RiscoFiscal[]
+  renuncias      RenunciaReceitaLdo[]
+  alienacoes     AlienacaoBemLdo[]
+  dividas        DividaConsolidadaLdo[]
+  projecoesRpps  ProjecaoAtuarialRpps[]
+  margens        MargemExpansaoLdo[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// PRIORIDADE DA LDO (TR LDO 2) — a meta física que entra no próximo orçamento.
+///
+/// ⚠️ `descricaoAcao` CONVIVE COM `acaoId`, e não é redundância: a LDO descreve a
+/// prioridade com as palavras DA LEI, que nem sempre são a descrição cadastral da
+/// ação. O texto sancionado é o que o TCE lê; a FK é o que amarra à execução.
+model PrioridadeLdo {
+  id String @id @default(cuid())
+
+  ldoId String
+  ldo   LeiDiretrizesOrcamentarias @relation(fields: [ldoId], references: [id])
+
+  /// A ação do M02 — REUSADA. Nullable: uma prioridade pode ser aprovada antes de
+  /// a ação existir na classificação.
+  acaoId String?
+  acao   Acao?   @relation(fields: [acaoId], references: [id])
+
+  descricaoAcao String
+  produto       String
+  unidadeMedida String
+  /// Meta FÍSICA — `Decimal(18,6)` pelo mesmo motivo da `AcaoPpa.metaFisica`.
+  meta          Decimal @db.Decimal(18, 6)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([ldoId])
+  @@index([acaoId])
+}
+
+/// METAS ANUAIS (TR LDO 3) — o Anexo de Metas Fiscais, LRF art. 4º §1º.
+///
+/// ═══ ⚠️ `resultadoPrimario` NÃO É COLUNA, E ESSA É A DECISÃO DESTE MODEL ═══
+/// Ele é `receitaPrimaria − despesaPrimaria`, e as duas parcelas estão gravadas
+/// aqui. Guardá-lo seria CACHE DE DINHEIRO — exatamente o que este repositório
+/// recusa desde o M11 ("uma coluna `valorAtual` seria um cache, e cache de
+/// dinheiro é o bug do TR 5.9 esperando acontecer"). No dia em que alguém
+/// corrigisse a receita primária e esquecesse o resultado, a LDO passaria a
+/// declarar um superávit que as próprias parcelas dela desmentem.
+///
+/// A derivação vive em `resultadoPrimario()` (dominio.ts) e é UMA. O exportador
+/// SIGA, quando existir, chama a mesma função.
+///
+/// ⚠️ `resultadoNominal` **É** COLUNA, e a assimetria é real: ele depende da
+/// variação da dívida fiscal líquida entre exercícios, e essa variação NÃO está
+/// entre os campos armazenados. Derivá-lo daqui seria inventar; guardá-lo é
+/// registrar o que o ente declarou.
+model MetaAnualLdo {
+  id String @id @default(cuid())
+
+  ldoId String
+  ldo   LeiDiretrizesOrcamentarias @relation(fields: [ldoId], references: [id])
+
+  /// O exercício projetado. A LDO traz o corrente e os dois seguintes (LRF art.
+  /// 4º §1º), por isso são VÁRIAS linhas por LDO.
+  ano Int
+
+  receitaTotal    Decimal @db.Decimal(18, 2)
+  receitaPrimaria Decimal @db.Decimal(18, 2)
+  despesaTotal    Decimal @db.Decimal(18, 2)
+  despesaPrimaria Decimal @db.Decimal(18, 2)
+
+  /// ⚠️ NÃO HÁ `resultadoPrimario` — ver o docblock. Ele é derivado.
+  resultadoNominal Decimal @db.Decimal(18, 2)
+
+  dividaPublicaConsolidada Decimal @db.Decimal(18, 2)
+  dividaConsolidadaLiquida Decimal @db.Decimal(18, 2)
+
+  /// PPP (Lei 11.079) — o impacto das parcerias nas metas.
+  receitaPrimariaPpp Decimal @db.Decimal(18, 2)
+  despesaPrimariaPpp Decimal @db.Decimal(18, 2)
+  impactoSaldoPpp    Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([ldoId, ano])
+  @@index([ldoId])
+}
+
+/// RISCO FISCAL (TR LDO 4) — o Anexo de Riscos Fiscais, LRF art. 4º §3º.
+///
+/// ⚠️ `codigoPassivo` É `VarChar(2)` COM CHECK, NÃO ENUM. O domínio (1 a 8 e 99)
+/// veio do enunciado deste PR, que o leu no manual v44 — e o manual NÃO está
+/// transcrito neste repositório. Um enum do Prisma congelaria em migration um rol
+/// que ainda não foi conferido contra a fonte; o CHECK impõe o mesmo domínio e é
+/// uma linha de SQL para corrigir quando a spec chegar.
+///
+/// ⚠️ O 99 É "OUTROS", e ele existe no rol de propósito: sem ele, um passivo
+/// contingente que não se encaixa nos oito viraria uma classificação errada — e
+/// classificação errada num anexo da LRF é pior que "outros".
+model RiscoFiscal {
+  id String @id @default(cuid())
+
+  ldoId String
+  ldo   LeiDiretrizesOrcamentarias @relation(fields: [ldoId], references: [id])
+
+  codigoPassivo     String @db.VarChar(2)
+  descricaoPassivo  String
+  valorPassivo      Decimal @db.Decimal(18, 2)
+
+  /// A PROVIDÊNCIA. ⚠️ O par (passivo, providência) anda junto porque a LRF exige
+  /// que o risco venha com a medida de contenção — um passivo sem providência é
+  /// metade do anexo.
+  descricaoProvidencia String
+  valorProvidencia     Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([ldoId])
+}
+
+/// RENÚNCIA DE RECEITA (TR LDO 5) — LRF art. 4º §2º, V.
+///
+/// ⚠️ A COMPENSAÇÃO É OBRIGATÓRIA NA LEI, mas o VALOR dela pode ser zero: há
+/// renúncias que o ente declara compensadas pelo crescimento da base, sem medida
+/// própria. Por isso `valorCompensacao` é NOT NULL (a declaração existe) e pode
+/// ser 0,00 — diferente de nulo, que significaria "não declarou".
+model RenunciaReceitaLdo {
+  id String @id @default(cuid())
+
+  ldoId String
+  ldo   LeiDiretrizesOrcamentarias @relation(fields: [ldoId], references: [id])
+
+  descricao String
+  valor     Decimal @db.Decimal(18, 2)
+
+  descricaoCompensacao String
+  valorCompensacao     Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([ldoId])
+}
+
+/// ALIENAÇÃO DE BEM PREVISTA NA LDO (TR LDO 6) — LRF art. 4º §2º, III.
+///
+/// ⚠️ ELA NÃO É O `MovimentoPatrimonial` DE ALIENAÇÃO (M10). Este é o bem que o
+/// ente PLANEJA alienar e o destino que dará ao produto; aquele é o fato
+/// consumado, com lançamento contábil. Ligar os dois exigiria que o bem já
+/// estivesse tombado no momento do planejamento — e frequentemente não está.
+model AlienacaoBemLdo {
+  id String @id @default(cuid())
+
+  ldoId String
+  ldo   LeiDiretrizesOrcamentarias @relation(fields: [ldoId], references: [id])
+
+  descricaoBem   String
+  valorAlienacao Decimal @db.Decimal(18, 2)
+  /// O laudo de avaliação que sustenta o valor. Sem ele, o valor é estimativa.
+  numeroLaudo    String?
+
+  aplicacoes AplicacaoAlienacaoLdo[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([ldoId])
+}
+
+/// APLICAÇÃO DO PRODUTO DA ALIENAÇÃO (TR LDO 7) — LRF art. 44.
+///
+/// ⚠️ O ART. 44 PROÍBE aplicar receita de capital derivada de alienação em
+/// despesa CORRENTE. É por isso que este model existe: o ente tem de DECLARAR
+/// onde vai aplicar, e a declaração é auditável.
+///
+/// ⚠️ `tipoAplicacao` é `VarChar(2)` com CHECK (domínio 1 a 5, do enunciado deste
+/// PR) — mesmo raciocínio do `codigoPassivo`: o manual não está transcrito, e
+/// enum congelaria em migration um rol não conferido.
+model AplicacaoAlienacaoLdo {
+  id String @id @default(cuid())
+
+  alienacaoId String
+  alienacao   AlienacaoBemLdo @relation(fields: [alienacaoId], references: [id])
+
+  tipoAplicacao String @db.VarChar(2)
+  /// O exercício em que a aplicação ocorrerá.
+  anoAplicacao  Int
+  descricao     String
+  valor         Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([alienacaoId])
+}
+
+/// DÍVIDA CONSOLIDADA PROJETADA NA LDO (TR LDO 10).
+///
+/// ⚠️ SEM CONTRAPARTE SIGA TRANSCRITA. Modelado pelo TR e pelo que o Anexo de
+/// Metas Fiscais da LRF pede: o estoque projetado e a relação com a RCL. Quando a
+/// spec correspondente for transcrita, a geometria terá de ser conferida.
+///
+/// ⚠️ `percentualRcl` é `Decimal(9,6)` — é ÍNDICE, não dinheiro. O limite do
+/// Senado (Resolução 40) é 1,2 da RCL para municípios, e dois decimais perderiam
+/// a casa que separa o cumprimento do descumprimento.
+model DividaConsolidadaLdo {
+  id String @id @default(cuid())
+
+  ldoId String
+  ldo   LeiDiretrizesOrcamentarias @relation(fields: [ldoId], references: [id])
+
+  ano Int
+
+  dividaConsolidada        Decimal @db.Decimal(18, 2)
+  deducoes                 Decimal @db.Decimal(18, 2)
+  /// ⚠️ NÃO é coluna derivada por acaso: `dividaConsolidada − deducoes` daria a
+  /// líquida, e ela NÃO está aqui justamente por isso — ver `dividaLiquida()` no
+  /// domínio. Esta linha existe para lembrar quem for tentado a acrescentá-la.
+  receitaCorrenteLiquida   Decimal @db.Decimal(18, 2)
+  percentualRcl            Decimal @db.Decimal(9, 6)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([ldoId, ano])
+  @@index([ldoId])
+}
+
+/// PROJEÇÃO ATUARIAL DO RPPS (TR LDO 12) — LRF art. 4º §2º, IV, "a".
+///
+/// ⚠️ SEM CONTRAPARTE SIGA TRANSCRITA — modelado pelo TR.
+/// ⚠️ O SALDO PODE SER NEGATIVO, e é o caso comum: um RPPS deficitário é
+/// exatamente o que a projeção atuarial existe para revelar. Nenhum CHECK de
+/// positividade aqui.
+model ProjecaoAtuarialRpps {
+  id String @id @default(cuid())
+
+  ldoId String
+  ldo   LeiDiretrizesOrcamentarias @relation(fields: [ldoId], references: [id])
+
+  ano Int
+
+  receitasPrevidenciarias Decimal @db.Decimal(18, 2)
+  despesasPrevidenciarias Decimal @db.Decimal(18, 2)
+  /// Saldo do exercício. Pode ser NEGATIVO — ver o docblock.
+  resultadoPrevidenciario Decimal @db.Decimal(18, 2)
+  /// O saldo acumulado do fundo ao fim do exercício. Também pode ser negativo.
+  saldoFinanceiro         Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([ldoId, ano])
+  @@index([ldoId])
+}
+
+/// MARGEM DE EXPANSÃO DAS DESPESAS OBRIGATÓRIAS DE CARÁTER CONTINUADO
+/// (TR LDO 13) — LRF art. 4º §2º, V.
+///
+/// ⚠️ SEM CONTRAPARTE SIGA TRANSCRITA — modelado pelo TR.
+/// ⚠️ A MARGEM É O SALDO: aumento permanente de receita menos redução permanente
+/// de despesa, menos os novos gastos continuados. Ela NÃO é coluna aqui pelo
+/// mesmo motivo do `resultadoPrimario` — é a diferença de parcelas gravadas, e a
+/// derivação vive no domínio.
+model MargemExpansaoLdo {
+  id String @id @default(cuid())
+
+  ldoId String
+  ldo   LeiDiretrizesOrcamentarias @relation(fields: [ldoId], references: [id])
+
+  ano Int
+
+  aumentoPermanenteReceita   Decimal @db.Decimal(18, 2)
+  reducaoPermanenteDespesa   Decimal @db.Decimal(18, 2)
+  novasDespesasObrigatorias  Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([ldoId, ano])
+  @@index([ldoId])
+}
