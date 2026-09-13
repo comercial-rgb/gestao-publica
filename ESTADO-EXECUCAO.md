@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | ver `git log -1` — a seção 35 nomeia o commit de cada unidade |
+| HEAD | ver `git log -1` — a seção 51 nomeia o SHA da aplicação congelada e o do percurso |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | **Sessão noturna V4** (`docs/lotes/V4-sessao-noturna.md`): unidades 1–5 (§45–§49) entregues; **§50**: percursos sob `next build`/`next start` (§10) e a Fila A (§8) — M02b (PPA/LDO) conciliado do siafic-cg e a contratação (M11) pela tela |
-| Último resultado | seção 50 — 14 smokes verdes sob o build (pacote2 33/33, plurianual 31/31, contratação 18/18, compras 20/20, cadeia 23/23, ent02 43/43, visual 29/29…); suíte completa 2364/2364 (7147b53); rápida 844/844; catálogo 63/60/65/140/3/1706 |
-| Pendências relevantes | seções 35.7, 36.4, 37.5, 38.5 a 43.5; as anteriores em §19 e nos `MODULO.md` |
-| Próximo passo | seção 50.6 — nota fiscal recebida como entidade (percurso 8→10), vínculo empenho × ordem, Fila B (RH) e Fila C; `test:fuso` e o portão integral no candidato |
+| Frente em execução | **V5 demonstração 24h** (`docs/lotes/V5-demonstracao-24h.md`): Fila A — documento fiscal recebido e empenho a partir da ordem |
+| Último resultado | seção 51 — candidato local de demonstração: `next build` em `2e0817b`, smoke-compras **29/29** e smoke-contratacao **18/18** sob `next start :3010`; **BLOQUEADO PARA PUBLICAÇÃO** (alvo não definido); **APTO PARA DEMONSTRAÇÃO RESTRITA** na máquina |
+| Pendências relevantes | alvo de publicação; Fila B (RH) fora da oferta; `ARRECADACAO-SEM-CONTA-BANCARIA`; `M03-T8-TIMEOUT-SOB-SUITE`; seções 35.7, 36.4, 37.5, 38.5 a 43.5; as anteriores em §19 e nos `MODULO.md` |
+| Próximo passo | seção 51.6 — com alvo autorizado, publicar só este candidato; sem alvo, Fila B só quando a origem de RH estiver integrada, ou o vínculo solicitação×ordem |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -5581,3 +5581,107 @@ A nota fiscal recebida como entidade (`NOTA-FISCAL-RECEBIDA`): documento fiscal 
 emissão, valor, itens) conferido contra a ordem/contrato (fornecedor, itens, valores, duplicidade pela chave) e anexável;
 a liquidação passa a apontar para ele e o recebimento da ordem também — o percurso 8→10 do §8. Em seguida o vínculo
 empenho × ordem (`EMPENHO-A-PARTIR-DA-ORDEM`). Depois a Fila B (RH/portal do servidor).
+
+## 51. V5 — candidato local de demonstração (nota recebida e empenho × ordem)
+
+Pedido: `docs/lotes/V5-demonstracao-24h.md`. Incremento em **M11** (documento fiscal) e **M05** (FK da
+ordem no empenho). Não se reconstruiu PPA, licitação nem patrimônio. Ancestralidade preservada:
+`da9c8ad` está em `main`; o stash `11b7892` permanece listado (já incorporado em `63a3040`; sem
+pop e sem drop). Sem reset. Sem push. Sem publicação.
+
+Classificação do artefato: **APTO PARA DEMONSTRAÇÃO RESTRITA** na máquina local, com dados
+sintéticos. **BLOQUEADO PARA PUBLICAÇÃO** — pendência única de hospedagem: alvo de publicação
+não definido. Não é produção operacional de prefeitura nem POC integral.
+
+### 51.1 O que passou a funcionar
+
+- **Documento fiscal recebido** (`DocumentoFiscalRecebido` + itens + movimentos CONFERENCIA /
+  CANCELAMENTO / SUBSTITUICAO). Rotas: `/licitacoes/documentos-fiscais` e detalhe. Digitação com
+  duas linhas; importação de XML NF-e/NFC-e (DTD/ENTITY recusados; arquivo original vira `Anexo`
+  na mesma transação). Registrar **não** produz estoque, liquidação nem pagamento. Chave natural:
+  emitente + modelo + série + número; concorrência: um ganha (P2002). Ações: `REGISTRAR_DOCUMENTO_FISCAL`,
+  `CONFERIR_DOCUMENTO_FISCAL`, `CANCELAR_DOCUMENTO_FISCAL`. Permissões v6: quem recebe ordem
+  registra e confere; quem estorna ordem cancela. PDF de conferência: **sem validade fiscal**.
+- **Empenho a partir da ordem** (`Empenho.ordemDeCompraId`). Na ordem: “Empenhar esta ordem”.
+  Ordinária: um empenho vivo pelo total dos itens menos desconto. GLOBAL/ESTIMATIVA: residual.
+  Anulação copia a FK. Estorno da ordem com empenho vivo recusa. Liquidação só com documento
+  **conferido**, emitente = credor, valor ≤ saldo (`somaLiquidaEstornaveis`).
+- **Recebimento da ordem** pode apontar para o documento conferido; o pendente continua derivado
+  item a item.
+- **Espelho PDF da ordem** (`/licitacoes/ordens-de-compra/espelho`): número, itens/recebimentos,
+  marca de demonstração sem validade fiscal. Mesmo motor de `lib/pdf`.
+- **Fila C já existente, sem tela vazia nova:** `/consulta` (200, sem sessão) e
+  `/transparencia/demonstrativos` (200). `/licitacoes/documentos-fiscais` sem sessão responde 307
+  (login). **Não** se criou `/cidadao`, `/portal-servidor` nem holerite. Fila B (RH) permanece
+  fora da oferta desta demonstração: não há base de folha integrada neste repositório.
+
+### 51.2 Rotas utilizáveis
+
+| Quem (ação) | Rota | O que faz |
+|---|---|---|
+| REGISTRAR_DOCUMENTO_FISCAL | `/licitacoes/documentos-fiscais` | digita ou importa XML; duplicidade recusada nomeando |
+| CONFERIR_DOCUMENTO_FISCAL / CANCELAR_DOCUMENTO_FISCAL | `/licitacoes/documentos-fiscais/{id}` | fatos com data e motivo; PDF em `/conferencia?id=` |
+| EMITIR_ORDEM_DE_COMPRA | `/licitacoes/ordens-de-compra` | ordem com itens; PDF em `/espelho?id=` |
+| EMPENHAR | `/despesa/empenhos?ordemId=` | empenho vinculado à ordem |
+| REGISTRAR_RECEBIMENTO_DE_ORDEM | `/licitacoes/ordens-de-compra/{id}` | recebimento por item, opcionalmente com a nota conferida |
+| LIQUIDAR | `/despesa/liquidacoes` | select de documentos conferidos |
+| (sem sessão) | `/consulta`, `/transparencia/demonstrativos`, `/login` | consulta de protocolo; demonstrativos publicados; entrada |
+
+Identidade inicial do bootstrap: `admin@cg.pb.gov.br`. Senha só de `SEED_ADMIN_SENHA` (não
+versionada, não publicada). Demais papéis: Administração > Usuários, senha gerada na hora.
+Operador restrito `operador.poc@cg.pb.gov.br` já existe no banco dos percursos. Instruções:
+`docs/demo/ROTEIRO-APRESENTACAO.md`, `docs/demo/ESCOPO-DEMONSTRAVEL.md`,
+`docs/operacao/DEPLOY-DEMONSTRACAO.md`.
+
+### 51.3 Comandos executados e resultados
+
+| Comando | Resultado |
+|---|---|
+| Ancestralidade | `da9c8ad` e `63a3040` em `main`; stash `11b7892` listado, não reaplicado |
+| Typecheck (heap 4096 MB) backend, app, scripts | limpos, na construção de `14b2daa` |
+| Dirigidos: `xml-nfe`, `m11-documento-fiscal`, `m11-empenho-ordem`, `m11-compras`, `m16-censo`, `m16-atualizacoes`, `packages/locks`, molde, busca, rotulos-de-conformidade, leitura-exige-acao, chave-de-comando, fronteira-ui | verdes (inclui N=2, duplicidade, concorrência, XML com DTD recusado, autorização) |
+| `npm run percursos:preparar` | migrations V5 + SQL das unicidades parciais + permissões **v6** (3 concessões em 1 perfil) |
+| `npx next build` com `NEXT_PUBLIC_BUILD_COMMIT=2e0817b0bbab0b491b37534d707fd1992e58979b` | OK. Rotas novas no manifesto: documentos-fiscais e espelho da ordem |
+| `next start` :3010 no banco dos percursos | Ready. Sem Chromium no cache isolado, o PDF respondia 500 nomeando a ausência |
+| `npx tsx scripts/smoke-compras.ts http://localhost:3010` (1ª) | 17 ok / 2 falhas: PDF sem Chrome no servidor; clique no hidden do `CampoValor` |
+| Correção de percurso `b062335` (sem rebuild: o script não entra no bundle) | máscara visível `data-mascara="valor"`; `scripts/servir-percursos.ts` carrega dotenv e herda o Chromium |
+| `npx tsx scripts/smoke-compras.ts http://localhost:3010` (2ª, servidor com `PUPPETEER_EXECUTABLE_PATH`) | **29/29**, 63 s. Recusas nomeadas: solicitação sem item; segunda autorização; duplicidade NFE; receber 11 de 10; estorno com recebimento |
+| `npx tsx scripts/smoke-contratacao.ts http://localhost:3010` (mesmo artefato, sem alterar o build) | **18/18**, 29 s |
+| `GET /consulta`, `/transparencia/demonstrativos`, `/login` | 200 |
+| `GET /licitacoes/documentos-fiscais` sem sessão | 307 |
+| Catálogo | **não marcado** nesta rodada (sem cláusula + evidência nova no `marcar-catalogo`) |
+| `test:tudo` / `test:fuso` / `portao` | **não executados** — não atestar suíte integral neste SHA |
+
+O `next build` **não** foi refeito depois de `b062335`. Os percursos de aceite rodaram contra o
+binário de `2e0817b`.
+
+### 51.4 Pendências (nomeadas)
+
+- **alvo de publicação não definido** — sem URL a inventar; sem DNS, sem domínio municipal, sem
+  alteração de produção. O artefato testado permanece local.
+- Fila B (RH, matrícula, folha, portal do servidor): **fora desta demonstração**. Não há módulo
+  de folha integrado; holerite fictício não será construído para preencher menu.
+- Fila C: consulta de protocolo e transparência dos demonstrativos existem. Portal do cidadão
+  transacional (`/cidadao`, autoatendimento, NFS-e) **não** foi aberto com tela vazia.
+- `SOLICITACAO-SEM-VINCULO-COM-A-ORDEM` — a ordem ainda não aponta para a solicitação.
+- `ARRECADACAO-SEM-CONTA-BANCARIA` (M04/M09) — conciliação de `CC-500-01` no banco dos percursos.
+- `M03-T8-TIMEOUT-SOB-SUITE` — intermitência sob a suíte completa (V4 §50.5).
+- `ZOD-LEGIVEL-NAS-ACTIONS-ANTIGAS`, `CAPTURA-SEM-ENVELOPE`, `EXTRATO-DO-CONTRATO-PDF`,
+  `CONVENIOS-DA-ORIGEM`, `VINCULO-PPA-LOA`, `PPA-LDO-VERSOES-E-EMENDAS`.
+- Stash `11b7892`: preservado até decisão explícita de remoção.
+- Scripts soltos `scripts/fix-*.sh` e `manter-claude-cursor.sh`: não executados, não commitados.
+
+### 51.5 Portão do candidato
+
+Este SHA **não** passou pelo portão integral. A verificação desta unidade é a dirigida da
+construção mais os dois smokes no artefato congelado. Números de `test:tudo` da V4 (`7147b53`,
+`c4af2d5`) **não** se atribuem a este HEAD.
+
+### 51.6 Próximo ponto exato
+
+Com autorização específica de hospedagem: publicar **somente** o candidato já ensaiado
+(aplicação `2e0817b`, percurso `b062335`), Chromium no servidor, dados sintéticos, ambiente
+identificado como DEMONSTRAÇÃO. Sem essa autorização: continuar trabalho independente — o
+vínculo solicitação×ordem, ou a reconciliação de RH **quando** a origem estiver neste
+repositório como módulo. Não anunciar folha nem portal de cidadão transacional até haver
+percurso real.

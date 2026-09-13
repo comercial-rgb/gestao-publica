@@ -41,5 +41,7 @@ Não usar e-mails das fixtures para enviar notificação real.
 ## Publicação
 
 Pendência única: **alvo de publicação não definido**. Sem autorização específica do
-operador, não há URL a inventar. Instruções locais: `docs/operacao/DEPLOY-DEMONSTRACAO.md`
+operador, não há URL a inventar. Classificação: **BLOQUEADO PARA PUBLICAÇÃO**;
+**APTO PARA DEMONSTRAÇÃO RESTRITA** só na máquina local, no SHA da seção 51.
+Instruções locais: `docs/operacao/DEPLOY-DEMONSTRACAO.md`
 e `docs/demo/ROTEIRO-APRESENTACAO.md`.
