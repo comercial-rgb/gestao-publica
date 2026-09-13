@@ -103,6 +103,7 @@ const TABELAS = [
   "IcExigidaPorConta",
   // M14 — MANAD (registros 0050 e 0100)
   "ManadContabilista",
+  "VersaoDaApresentacaoDoEnte",
   "ManadEmpresaGeradora",
   // M12 — mapeamento dos demonstrativos (parametrização)
   "PrefixoDaLinha",

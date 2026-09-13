@@ -1,28 +1,27 @@
+import { identidadeNeutra, type IdentidadeDaTela } from "../../lib/identidade/produto";
+
 /**
- * RODAPÉ — ente + versão real. O commit vem de `NEXT_PUBLIC_BUILD_COMMIT` (injetado no build): é o
- * que amarra a tela ao código que a gerou — quando alguém do TCE aponta um número, sabe-se de qual
- * versão ele saiu. Fora de um build versionado, o rodapé se anuncia como "ambiente de demonstração"
- * em vez de "build dev" — honesto sobre o que é, sem parecer inacabado.
+ * RODAPÉ — ente, produto, fornecedor e VERSÃO LEGÍVEL (V6 P0.1). O commit curto amarra a
+ * tela ao build; o SHA completo saiu do rodapé comum e mora na área técnica autorizada
+ * (`/administracao/sistema`) e nas evidências. Fora de um build versionado não há versão —
+ * e o AMBIENTE (desenvolvimento, demonstração) é dito no cabeçalho, não confundido com ela.
  */
-
-const ENTE = "Prefeitura Municipal de Campina Grande — SEFIN";
-
-/** O rótulo de versão: `versão <commit>` num build versionado; senão, "ambiente de demonstração". */
-export function rotuloDeVersao(): string {
-  const commit = process.env.NEXT_PUBLIC_BUILD_COMMIT;
-  return commit !== undefined && commit !== "" && commit !== "dev" ? `versão ${commit}` : "ambiente de demonstração";
-}
-
-export function Footer(): React.ReactElement {
+export function Footer({ identidade = identidadeNeutra() }: { readonly identidade?: IdentidadeDaTela }): React.ReactElement {
+  const ente = identidade.enteNome !== null
+    ? `${identidade.enteNome}${identidade.enteOrgao !== null ? ` — ${identidade.enteOrgao}` : ""}`
+    : "Ente não configurado";
+  const produto = identidade.assinaturaDoFornecedor !== null
+    ? `${identidade.produtoNome} · ${identidade.assinaturaDoFornecedor}`
+    : `${identidade.produtoNome} · ${identidade.produtoDescricao}`;
   return (
     <footer
       data-chrome
-      className="flex shrink-0 items-center justify-between gap-4 border-t border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-4 py-2 text-xs text-[color:var(--color-ink-3)]"
+      className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-4 py-2 text-xs text-[color:var(--color-ink-3)] md:px-8"
     >
-      <span>{ENTE}</span>
-      <span className="flex items-center gap-3">
-        <span>SIAFIC · Sistema de Informações de Administração Financeira, Orçamentária e Contábil</span>
-        <span className="tabular">{rotuloDeVersao()}</span>
+      <span className="truncate" data-rodape-ente>{ente}</span>
+      <span className="flex flex-wrap items-center gap-3">
+        <span className="truncate">{produto}</span>
+        {identidade.versao !== null ? <span className="tabular" data-rodape-versao>versão {identidade.versao}</span> : null}
       </span>
     </footer>
   );

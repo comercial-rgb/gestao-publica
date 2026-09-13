@@ -403,6 +403,9 @@ enum AcaoDoSistema {
   VINCULAR_PESSOA_AO_USUARIO
   // ── V3 (pacote 2) — definir o parâmetro versionado de depreciação/amortização/exaustão ──
   DEFINIR_PARAMETRO_DE_ATUALIZACAO
+  // ── V6 (P0.1) — configurar a APRESENTAÇÃO do ente (nome de exibição, imagem, contatos,
+  // tema, canais): família ADMINISTRACAO, versionada e auditada. ──
+  CONFIGURAR_APRESENTACAO_DO_ENTE
   // ── V4 (§8, Fila A) — M02b, o planejamento PLURIANUAL (PPA e LDO): dez ações para vinte
   // serviços, agrupadas pelos ANEXOS DA LRF (ver `acoes.ts`). Conciliado do siafic-cg c04ad5a. ──
   CADASTRAR_PPA

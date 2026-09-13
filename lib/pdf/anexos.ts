@@ -5,7 +5,6 @@ import type { DocumentoPdf, SecaoPdf } from "./documento";
 // `import type`, que é apagado na compilação mas cria a MESMA dependência arquitetural (a §9
 // do MODULO-SCAFFOLD, aprendida quando o `lib/scaffold/autorizacao.ts` cometeu o mesmo erro).
 import type { AnexoLdo, LinhaAnexo } from "../portas/anexos-ldo";
-import { ENTE } from "./ente";
 
 /**
  * A PONTE ANEXO → DOCUMENTO. Formatação, e só.
@@ -45,7 +44,7 @@ function celula(valor: LinhaAnexo[string] | undefined, numerica: boolean): strin
  * `totais: {}` — ver o docblock de `AnexoLdo`. Inventar a linha aqui produziria um número
  * que não existe na LRF.
  */
-export function anexoParaDocumento(anexo: AnexoLdo): DocumentoPdf {
+export function anexoParaDocumento(anexo: AnexoLdo, ente: string): DocumentoPdf {
   const numericas = new Set(
     anexo.colunas.filter((c) => c.numerica === true).map((c) => c.chave)
   );
@@ -80,7 +79,7 @@ export function anexoParaDocumento(anexo: AnexoLdo): DocumentoPdf {
   };
 
   return {
-    ente: ENTE,
+    ente,
     titulo: anexo.titulo,
     subtitulo: anexo.baseLegal,
     periodo: `Exercício ${anexo.exercicio}`,

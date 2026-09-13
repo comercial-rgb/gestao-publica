@@ -262,6 +262,7 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   CONCEDER_ACAO_A_PERFIL: "administracao",
   REVOGAR_ACAO_DE_PERFIL: "administracao",
   VINCULAR_PESSOA_AO_USUARIO: "administracao",
+  CONFIGURAR_APRESENTACAO_DO_ENTE: "administracao",
   // M21 — protocolo e processo digital (ENT02)
   ABRIR_PROCESSO: "protocolo",
   TRAMITAR_PROCESSO: "protocolo",

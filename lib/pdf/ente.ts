@@ -1,6 +1,9 @@
 /**
- * O NOME DO ENTE nos documentos emitidos. Uma fonte só — `operacionais.ts` e
- * `demonstrativos.ts` traziam a mesma string cada um; os termos e etiquetas do patrimônio
- * leem daqui. Quando o ente virar cadastro (implantação multi-ente), muda aqui.
+ * O NOME DO ENTE nos documentos NOVOS — da porta de identidade (V6 P0.1), não de uma
+ * constante. "Nome de exibição — UF" da apresentação vigente; sem apresentação, o nome oficial
+ * do `EnteConfig`; sem ente, a frase que diz isso.
+ *
+ * ⚠️ Documento EMITIDO congela o texto no seu JSON (M10 `termo-documento`): a segunda via lê
+ * de lá. Reconfigurar a apresentação muda os documentos novos, nunca os já emitidos.
  */
-export const ENTE = "Município de Campina Grande — PB";
+export { nomeDoEnteParaDocumentos } from "../portas/identidade";

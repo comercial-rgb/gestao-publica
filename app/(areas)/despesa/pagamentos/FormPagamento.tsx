@@ -395,7 +395,7 @@ function Retencoes({
                 <input
                   name="retencaoCredor"
                   required
-                  placeholder="INSS  ·  Município de Campina Grande"
+                  placeholder="INSS  ·  Município"
                   className={CAMPO}
                 />
               </label>

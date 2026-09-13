@@ -289,6 +289,30 @@ export function derivarDocumentoFiscalRecebido(
   return saida;
 }
 
+/**
+ * A REGRA DA v7 (V6 P0.1): configurar a apresentação do ente é uma ação nova da família
+ * ADMINISTRACAO. Quem já concede ação a perfil NO ESCOPO GLOBAL (o administrador de
+ * permissões) recebe-a no global. A apresentação é ato do ente — não há escopo por unidade.
+ */
+export function derivarApresentacaoDoEnte(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administraPermissoes = perfil.permissoes.some(
+      (p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null
+    );
+    if (!administraPermissoes) continue;
+    const jaTem = perfil.permissoes.some(
+      (p) => p.acao === "CONFIGURAR_APRESENTACAO_DO_ENTE" && p.unidadeOrcId === null
+    );
+    if (jaTem) continue;
+    saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao: "CONFIGURAR_APRESENTACAO_DO_ENTE", unidadeOrcId: null });
+  }
+  return saida;
+}
+
 export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
   {
     versao: 1,
@@ -342,6 +366,14 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "recebimento de ordem recebe registrar e conferir o documento no mesmo escopo; quem ja " +
       "estorna ordem recebe cancelar o documento no mesmo escopo.",
     derivar: derivarDocumentoFiscalRecebido,
+  },
+  {
+    versao: 7,
+    nome: "apresentacao-do-ente",
+    descricao:
+      "Configurar a apresentacao do ente (V6 P0.1) virou acao propria (CONFIGURAR_APRESENTACAO_DO_ENTE). " +
+      "Quem ja concede acao a perfil no escopo global recebe-a no global; e ato do ente, sem escopo por unidade.",
+    derivar: derivarApresentacaoDoEnte,
   },
 ];
 

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { identidadePublica } from "../lib/portas/identidade";
 import "./globals.css";
 
 const inter = Inter({
@@ -8,11 +9,18 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
-export const metadata: Metadata = {
-  title: "SIAFIC — Campina Grande",
-  description:
-    "Sistema de Informações de Administração Financeira, Orçamentária e Contábil — Prefeitura de Campina Grande/PB.",
-};
+/**
+ * O TÍTULO DA ABA vem da identidade (V6 P0.1): "Gestão Pública · <ente>" — ou o ambiente,
+ * quando não há ente configurado. Nunca um nome de prefeitura escrito no código.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const id = await identidadePublica();
+  const complemento = id.ente?.nomeDeExibicao ?? id.rotuloDoAmbiente ?? id.produto.descricao;
+  return {
+    title: `${id.produto.nome} · ${complemento}`,
+    description: id.ente !== null ? `${id.produto.descricao} — ${id.ente.nomeDeExibicao}.` : id.produto.descricao,
+  };
+}
 
 /**
  * LAYOUT RAIZ — só `html/body` e os estilos. O SHELL (sidebar/header) vive no layout do grupo

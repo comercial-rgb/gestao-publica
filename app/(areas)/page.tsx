@@ -11,6 +11,7 @@ import {
   gerarRreoAnexo12,
 } from "../../lib/portas/rreo";
 import { PainelDePendencias } from "./PainelDePendencias";
+import { AcoesFrequentes, ComunicadosAguardandoLeitura, ProcessosSobMinhaResponsabilidade } from "./MinhaMesa";
 import { SincronizarHome } from "./SincronizarHome";
 import { temLeituraDoEnte } from "../../lib/portas/leitura";
 
@@ -69,12 +70,22 @@ export default async function DashboardPage({
   return (
     <div>
       <SincronizarHome />
-      <PageHeader titulo="Painel" subtitulo={`Execução do exercício ${exercicio} — números reais, atualizados a cada carregamento.`} />
+      <PageHeader titulo="Minha mesa" subtitulo="O que espera por você, o que você faz com frequência e, embaixo, o retrato do ente." />
 
       {/* ⚠️ ANTES DOS INDICADORES, e de propósito: o que ESPERA por quem abriu a tela vem
           antes do retrato do ente. Um painel que começa pelo consolidado obriga o operador
           a procurar o próprio trabalho embaixo. A faixa some quando não há pendência. */}
       <PainelDePendencias />
+
+      <div className="mb-6 space-y-5">
+        <AcoesFrequentes />
+        <div className="grid gap-5 lg:grid-cols-2">
+          <ProcessosSobMinhaResponsabilidade />
+          <ComunicadosAguardandoLeitura />
+        </div>
+      </div>
+
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">Retrato do ente — exercício {exercicio}</h2>
 
       {podeRelatorios ? null : (
         <p className="mb-4 text-sm text-[color:var(--color-ink-2)]">

@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ADMINISTRACAO, AREAS, CADASTROS, CONTABILIDADE, EXECUCAO_DESPESA, EXECUCAO_RECEITA, LICITACOES, PLANEJAMENTO, RELATORIOS_GERENCIAIS, RELATORIOS_LIVROS, RELATORIOS_RGF, RELATORIOS_RREO, type RelatorioNav } from "../../lib/navegacao";
+import { identidadeNeutra, type IdentidadeDaTela } from "../../lib/identidade/produto";
+import { Marca } from "./Marca";
+import { useShell } from "./Shell";
 
 /** Os submenus por área (grupo → itens). Só aparecem na área ativa e expandida. */
 const SUBMENUS: Record<string, readonly (readonly [string, readonly RelatorioNav[]])[]> = {
@@ -34,8 +37,11 @@ export function Sidebar({
   usuario,
   sairAction,
   areasVisiveis,
+  identidade = identidadeNeutra(),
 }: {
   readonly colapsadaInicial: boolean;
+  /** A identidade da tela (produto + ente + ambiente), lida no servidor pela porta. */
+  readonly identidade?: IdentidadeDaTela;
   /** O identificador do usuário logado (real, da sessão). */
   readonly usuario?: string;
   /** Server Action de logout (form action). */
@@ -55,6 +61,9 @@ export function Sidebar({
   // O estado vive no cookie; o toggle o reescreve e força um re-render por reload leve do estado.
   // Sem useState de "aberto/fechado" no cliente além do necessário: o cookie É a verdade.
   const colapsada = colapsadaInicial;
+  // ⚠️ NA LARGURA ESTREITA (< 768 px) a sidebar vira um painel sobreposto, aberto pelo botão
+  // do cabeçalho (`BotaoMenu`) — e nunca colapsada: colapsar só faz sentido com espaço ao lado.
+  const { menuAberto, idDoMenu } = useShell();
 
   const alternar = (): void => {
     const nova = !colapsada;
@@ -66,26 +75,16 @@ export function Sidebar({
 
   return (
     <aside
+      id={idDoMenu}
       data-chrome
-      className={`flex shrink-0 flex-col border-r border-[color:var(--color-border)] bg-[color:var(--color-surface)] transition-[width] ${
-        colapsada ? "w-14" : "w-60"
+      data-menu-aberto={menuAberto ? "sim" : "nao"}
+      className={`${menuAberto ? "flex" : "hidden"} fixed inset-y-0 left-0 z-40 w-60 shrink-0 flex-col border-r border-[color:var(--color-border)] bg-[color:var(--color-surface)] transition-[width] md:static md:flex ${
+        colapsada ? "md:w-14" : "md:w-60"
       }`}
     >
-      {/* marca */}
-      <div className="flex h-14 items-center gap-2 border-b border-[color:var(--color-border)] px-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[color:var(--color-primary)] text-sm font-bold text-[color:var(--color-primary-fg)]">
-          SF
-        </div>
-        {!colapsada ? (
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold leading-tight text-[color:var(--color-ink)]">
-              SIAFIC
-            </div>
-            <div className="truncate text-xs leading-tight text-[color:var(--color-ink-3)]">
-              Campina Grande
-            </div>
-          </div>
-        ) : null}
+      {/* marca — produto + ente (ou ambiente), da porta de identidade; colapsada, só o símbolo */}
+      <div className="flex h-14 items-center border-b border-[color:var(--color-border)] px-3">
+        <Marca identidade={identidade} somenteSimbolo={colapsada && !menuAberto} />
       </div>
 
       {/* navegação */}
@@ -99,7 +98,7 @@ export function Sidebar({
             // ⚠️ Algumas áreas ganham SUBMENU (Relatórios, Administração). Só aparece quando a área
             // está ativa e a sidebar expandida — não polui as outras áreas nem o modo colapsado.
             const grupos = SUBMENUS[area.slug];
-            const temSubmenu = grupos !== undefined && ativo && !colapsada;
+            const temSubmenu = grupos !== undefined && ativo && (!colapsada || menuAberto);
             return (
               <li key={area.slug}>
                 <Link
@@ -118,7 +117,7 @@ export function Sidebar({
                       ativo ? "bg-[color:var(--color-primary)]" : "bg-[color:var(--color-ink-3)]"
                     }`}
                   />
-                  {!colapsada ? <span className="truncate">{area.rotulo}</span> : null}
+                  {!colapsada || menuAberto ? <span className="truncate">{area.rotulo}</span> : null}
                 </Link>
                 {temSubmenu && grupos !== undefined ? (
                   <div className="mb-1 ml-4 mt-0.5 border-l border-[color:var(--color-border)] pl-2">
@@ -153,7 +152,7 @@ export function Sidebar({
 
       {/* rodapé da sidebar: usuário REAL (da sessão) + sair + toggle */}
       <div className="border-t border-[color:var(--color-border)] p-2">
-        {!colapsada && usuario !== undefined ? (
+        {(!colapsada || menuAberto) && usuario !== undefined ? (
           <div className="mb-2 flex items-center gap-2 px-1.5">
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[color:var(--color-primary-soft)] text-xs font-semibold uppercase text-[color:var(--color-primary)]">
               {usuario.slice(0, 1)}
@@ -176,7 +175,7 @@ export function Sidebar({
           onClick={alternar}
           aria-expanded={!colapsada}
           aria-label={colapsada ? "Expandir menu" : "Recolher menu"}
-          className="flex w-full items-center justify-center rounded-[var(--radius-md)] border border-[color:var(--color-border)] py-1.5 text-xs text-[color:var(--color-ink-2)] hover:bg-[color:var(--color-surface-2)]"
+          className="hidden w-full items-center justify-center rounded-[var(--radius-md)] border border-[color:var(--color-border)] py-1.5 text-xs text-[color:var(--color-ink-2)] hover:bg-[color:var(--color-surface-2)] md:flex"
         >
           {colapsada ? "»" : "« Recolher"}
         </button>

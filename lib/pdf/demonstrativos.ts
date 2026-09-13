@@ -2,15 +2,14 @@ import { gerarRreoAnexo1 } from "../portas/rreo";
 import { formatarMoeda } from "../format/moeda";
 import { gerarPdfDoDemonstrativo, type ResultadoPdf } from "./gerar";
 import type { DocumentoPdf, SecaoPdf } from "./documento";
-import { ENTE } from "./ente.js";
+import { nomeDoEnteParaDocumentos } from "./ente.js";
 
 /**
  * O REGISTRO DOS DEMONSTRATIVOS PUBLICÁVEIS — cada um sabe montar o seu `DocumentoPdf` a partir do
  * MOTOR (via porta), e o motor de PDF o imprime. É a mesma leitura da tela; o PDF é a tela.
  *
- * ⚠️ O NOME DO ENTE é constante por ora — não há entidade de "identificação do ente" no schema (é
- * `IDENTIFICACAO-DO-ENTE`, pendência de dado). Campina Grande é o ente do projeto; quando o cadastro
- * existir, esta constante vira leitura.
+ * ⚠️ O NOME DO ENTE vem da apresentação vigente (V6 P0.1, `nomeDoEnteParaDocumentos`); o documento
+ * emitido congela o texto no seu conteúdo.
  *
  * ⚠️ ZONA 1 (não é porta): este arquivo lê o motor SÓ via `lib/portas/**` — nunca `modules/**`
  * direto. O grep trivalente vale para ele como para qualquer tela.
@@ -66,7 +65,7 @@ async function montarRreoAnexo1(p: { readonly exercicio: number; readonly bimest
   const resultado = a1.superavit !== "0.00" ? `Superávit orçamentário: ${brl(a1.superavit)}` : `Déficit orçamentário: ${brl(a1.deficit)}`;
 
   return {
-    ente: ENTE,
+    ente: await nomeDoEnteParaDocumentos(),
     titulo: "RREO — Anexo 1 · Balanço Orçamentário",
     subtitulo: "LRF art. 52 · regime orçamentário",
     periodo: `Exercício ${p.exercicio} · ${bimestre}º bimestre`,

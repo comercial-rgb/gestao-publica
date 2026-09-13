@@ -38,7 +38,7 @@ export function FormCriarUsuario({ perfis }: { readonly perfis: readonly PerfilO
         </label>
         <label className="text-xs">
           <span className={ROTULO}>Email (identificador)</span>
-          <input name="email" type="email" required placeholder="maria@cg.pb.gov.br" className={CAMPO} />
+          <input name="email" type="email" required placeholder="nome@dominio-do-ente" className={CAMPO} />
         </label>
         <label className="text-xs">
           <span className={ROTULO}>Senha inicial (mín. 12)</span>

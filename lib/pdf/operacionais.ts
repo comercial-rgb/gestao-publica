@@ -25,7 +25,7 @@ import {
   totaisDeAtualizacoes,
   type FiltroAtualizacoes,
 } from "../relatorios/atualizacoes-orcamentarias";
-import { ENTE } from "./ente.js";
+import { nomeDoEnteParaDocumentos } from "./ente.js";
 import { lerDocumentoFiscalParaPdf } from "../portas/recursos/documentos-fiscais-dados";
 import { verOrdem } from "../portas/recursos/compras-dados";
 
@@ -38,7 +38,7 @@ import { verOrdem } from "../portas/recursos/compras-dados";
  * ⚠️ ZONA 1 (não é porta): lê o motor SÓ via `lib/portas/**` — nunca `modules/**`. Nada de escrita,
  * nada de aritmética nova: os totais/saldos já vêm somados das portas; aqui só se formata.
  *
- * ⚠️ ENTE constante por ora (pendência de dado IDENTIFICACAO-DO-ENTE, como em demonstrativos.ts).
+ * ⚠️ O ENTE vem da apresentação vigente (V6 P0.1) — `nomeDoEnteParaDocumentos()`; o documento emitido congela o texto.
  */
 
 
@@ -61,7 +61,7 @@ export async function montarPdfArrecadacao(p: { readonly exercicio: number }): P
     ]),
   };
   return {
-    ente: ENTE,
+    ente: await nomeDoEnteParaDocumentos(),
     titulo: "Arrecadação — guias do exercício",
     subtitulo: "Execução da receita — a receita é do ente, sem unidade orçamentária",
     periodo: `Exercício ${p.exercicio}`,
@@ -89,7 +89,7 @@ export async function montarPdfEmpenhos(p: { readonly exercicio: number; readonl
     ]),
   };
   return {
-    ente: ENTE,
+    ente: await nomeDoEnteParaDocumentos(),
     titulo: "Empenhos — execução da despesa",
     subtitulo: `Empenhado, liquidado, pago e saldos${p.unidadeCodigo !== undefined ? ` · unidade ${p.unidadeCodigo}` : ""}`,
     periodo: `Exercício ${p.exercicio}`,
@@ -151,7 +151,7 @@ export async function montarPdfGerencialEmpenhos(p: {
   };
 
   return {
-    ente: ENTE,
+    ente: await nomeDoEnteParaDocumentos(),
     titulo: "Relatório gerencial — despesa por credor e fonte",
     subtitulo: `Empenhado, liquidado, pago e saldos${p.unidadeCodigo !== undefined ? ` · unidade ${p.unidadeCodigo}` : ""}`,
     periodo: p.periodo,
@@ -181,7 +181,7 @@ export async function montarPdfLiquidacoes(p: { readonly exercicio: number; read
     ]),
   };
   return {
-    ente: ENTE,
+    ente: await nomeDoEnteParaDocumentos(),
     titulo: "Liquidações — exigibilidade da despesa",
     subtitulo: `O marco que põe a despesa na fila do art. 141${p.unidadeCodigo !== undefined ? ` · unidade ${p.unidadeCodigo}` : ""}`,
     periodo: `Exercício ${p.exercicio}`,
@@ -223,7 +223,7 @@ export async function montarPdfFilaPagamentos(p: { readonly fonteCodigo?: string
     linhas: [[fonte !== undefined ? `Sem liquidações aguardando pagamento na fonte ${fonte}.` : "Sem liquidações aguardando pagamento."]],
   };
   return {
-    ente: ENTE,
+    ente: await nomeDoEnteParaDocumentos(),
     titulo: "Fila de pagamentos — ordem cronológica",
     subtitulo: `Por fonte e categoria · Lei 14.133/2021, art. 141${fonte !== undefined ? ` · fonte ${fonte}` : ""}`,
     periodo: "Posição atual da fila",
@@ -278,7 +278,7 @@ export async function montarNotaEmpenho(p: { readonly exercicio: number; readonl
     linhas: [[e.historico]],
   };
   return {
-    ente: ENTE,
+    ente: await nomeDoEnteParaDocumentos(),
     titulo: `Nota de Empenho nº ${e.numero}`,
     subtitulo: "Documento de execução da despesa",
     periodo: `Exercício ${p.exercicio}`,
@@ -314,7 +314,7 @@ export async function montarGuiaArrecadacao(p: { readonly exercicio: number; rea
     totais: [0],
   };
   return {
-    ente: ENTE,
+    ente: await nomeDoEnteParaDocumentos(),
     titulo: `Guia de arrecadação nº ${g.numeroReceita}`,
     subtitulo: "Documento da receita orçamentária",
     periodo: `Exercício ${p.exercicio}`,
@@ -373,7 +373,7 @@ export async function montarDecreto(p: { readonly ano: number; readonly id: stri
     totais: [2],
   };
   return {
-    ente: ENTE,
+    ente: await nomeDoEnteParaDocumentos(),
     titulo: `Decreto de crédito adicional nº ${d.numero}/${d.ano}`,
     subtitulo: "Créditos adicionais",
     periodo: `Exercício ${p.ano}`,
@@ -415,7 +415,7 @@ export async function montarExtraorcamentario(p: { readonly exercicio: number })
     linhas: dispendios.map((d) => [dataBr(d.data), d.tipoCodigo, d.consignatario, d.historico, brl(d.valor)]),
   };
   return {
-    ente: ENTE,
+    ente: await nomeDoEnteParaDocumentos(),
     titulo: "Extraorçamentário — consignações e retenções",
     subtitulo: "Dinheiro de terceiros no caixa",
     periodo: `Exercício ${p.exercicio}`,
@@ -447,7 +447,7 @@ export async function montarPatrimonio(p: { readonly exercicio: number }): Promi
     totais: [2],
   };
   return {
-    ente: ENTE,
+    ente: await nomeDoEnteParaDocumentos(),
     titulo: "Patrimônio — bens e dívida consolidada",
     subtitulo: "Posição patrimonial por classe",
     periodo: `Exercício ${p.exercicio}`,
@@ -512,7 +512,7 @@ export async function montarPdfAtualizacoesOrcamentarias(p: {
   ].filter((x): x is string => x !== null);
 
   return {
-    ente: ENTE,
+    ente: await nomeDoEnteParaDocumentos(),
     titulo: "Atualizações orçamentárias",
     subtitulo: "Movimentos de crédito adicional por ficha, decreto, fonte e unidade",
     periodo: `Exercício ${p.exercicio}`,
@@ -726,7 +726,7 @@ export async function montarProgramacaoFinanceira(p: { readonly exercicio: numbe
   );
 
   return {
-    ente: ENTE,
+    ente: await nomeDoEnteParaDocumentos(),
     titulo: "Programação financeira — CMD e MBA",
     subtitulo: "Cronograma Mensal de Desembolso e Metas Bimestrais de Arrecadação · LRF arts. 8º, 9º e 13",
     periodo: `Exercício ${p.exercicio}`,
@@ -800,7 +800,7 @@ export async function montarPdfDocumentoFiscal(p: {
         : d.movimentos.map((m) => [m.tipo, m.data, m.motivo, m.por]),
   };
   return {
-    ente: ENTE,
+    ente: await nomeDoEnteParaDocumentos(),
     titulo: `Documento fiscal ${d.numero}/${d.serie}`,
     subtitulo: "Conferência interna — documento de demonstração, sem validade fiscal",
     periodo: `Recebido em ${d.dataRecebimento}`,
@@ -840,7 +840,7 @@ export async function montarPdfOrdemDeCompra(p: {
     ]),
   };
   return {
-    ente: ENTE,
+    ente: await nomeDoEnteParaDocumentos(),
     titulo: o.titulo,
     subtitulo: `${o.subtitulo} — documento de demonstração, sem validade fiscal`,
     periodo: o.dados.find((d) => d.rotulo === "Emissão")?.valor ?? "",

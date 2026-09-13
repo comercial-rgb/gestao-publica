@@ -1,8 +1,10 @@
 import { cookies } from "next/headers";
 import { Footer } from "../../components/ui/Footer";
 import { Header } from "../../components/ui/Header";
+import { PanoDoMenu, ShellProvider } from "../../components/ui/Shell";
 import { Sidebar } from "../../components/ui/Sidebar";
 import { carregarContextoDoUsuario } from "../../lib/portas/contexto";
+import { identidadePublica, paraATela } from "../../lib/portas/identidade";
 import { exigirSessao } from "../../lib/portas/sessao";
 import { UiContextProvider } from "../../lib/ui-context";
 import { areasVisiveis } from "../../lib/portas/navegacao-permissoes";
@@ -12,9 +14,11 @@ import { sairAction } from "./actions";
 /**
  * O SHELL AUTENTICADO — este layout é a FRONTEIRA de sessão. Todo `/(areas)/**` passa por aqui, e
  * `exigirSessao()` REDIRECIONA para /login se não houver sessão válida (request-scoped, Prisma pela
- * borda). O usuário real vai para o rodapé da sidebar (fim do mock "Não autenticado" do UI-0).
+ * borda). O usuário real vai para o rodapé da sidebar.
  *
  * ⚠️ O ESTADO COLAPSADO DA SIDEBAR VEM DO COOKIE (sem flash — o primeiro HTML já sai certo).
+ * ⚠️ A IDENTIDADE (produto + ente + ambiente) é lida AQUI, no servidor, pela porta — e passada
+ * como dado às ilhas. O tema vigente vira `data-tema` no contêiner: configuração, não CSS livre.
  */
 export default async function AreasLayout({
   children,
@@ -25,7 +29,8 @@ export default async function AreasLayout({
   const colapsada = (await cookies()).get("sidebar_colapsada")?.value === "1";
   // ⚠️ LIDO NO SERVIDOR, injetado por PROPS. O provider é client e só guarda a SELEÇÃO — quem
   // decide QUAIS unidades ele pode oferecer é a porta, contra as permissões reais do usuário.
-  const contexto = await carregarContextoDoUsuario();
+  const [contexto, identidade] = await Promise.all([carregarContextoDoUsuario(), identidadePublica()]);
+  const tela = paraATela(identidade);
 
   // ⚠️ O RECORTE DA BUSCA É FEITO AQUI, NO SERVIDOR, e pela MESMA regra da barra lateral:
   // destino com ação exige a ação; destino de leitura herda a visibilidade da área.
@@ -40,19 +45,23 @@ export default async function AreasLayout({
       ugs={contexto.ugs}
       podeConsolidado={contexto.podeConsolidado}
     >
-      <div className="flex h-screen overflow-hidden">
-        <Sidebar
-          colapsadaInicial={colapsada}
-          usuario={ident.identificador}
-          sairAction={sairAction}
-          areasVisiveis={visiveis}
-        />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <Header destinosDaBusca={destinosDaBusca} />
-          <main className="flex-1 overflow-y-auto p-8">{children}</main>
-          <Footer />
+      <ShellProvider>
+        <div className="flex h-screen overflow-hidden" data-tema={tela.tema}>
+          <PanoDoMenu />
+          <Sidebar
+            colapsadaInicial={colapsada}
+            usuario={ident.identificador}
+            sairAction={sairAction}
+            areasVisiveis={visiveis}
+            identidade={tela}
+          />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <Header destinosDaBusca={destinosDaBusca} identidade={tela} />
+            <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
+            <Footer identidade={tela} />
+          </div>
         </div>
-      </div>
+      </ShellProvider>
     </UiContextProvider>
   );
 }

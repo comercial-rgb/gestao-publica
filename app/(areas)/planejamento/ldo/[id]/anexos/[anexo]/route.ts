@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { emitir } from "../../../../../../../lib/pdf/operacionais";
 import { anexoParaDocumento } from "../../../../../../../lib/pdf/anexos";
+import { nomeDoEnteParaDocumentos } from "../../../../../../../lib/pdf/ente";
 import { exigirLeituraDoEnte } from "../../../../../../../lib/portas/leitura";
 import { ehChaveDeAnexo, montarAnexoDaLdo } from "../../../../../../../lib/portas/anexos-ldo";
 import { respostaDaRecusaDeLeitura } from "../../../../../../../lib/rotas/recusa";
@@ -28,7 +29,7 @@ export async function GET(_req: Request, ctx: { readonly params: Promise<{ reado
   if (!ehChaveDeAnexo(anexo)) return NextResponse.json({ erro: `Anexo "${anexo}" não existe.` }, { status: 404 });
   let doc;
   try {
-    doc = anexoParaDocumento(await montarAnexoDaLdo(id, anexo));
+    doc = anexoParaDocumento(await montarAnexoDaLdo(id, anexo), await nomeDoEnteParaDocumentos());
   } catch (e) {
     return NextResponse.json({ erro: e instanceof Error ? e.message : "Não foi possível montar o anexo." }, { status: 404 });
   }

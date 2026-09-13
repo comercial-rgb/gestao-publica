@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DEMONSTRATIVOS_META } from "../../../lib/pdf/lista-publica";
+import { identidadePublica } from "../../../lib/portas/identidade";
 
 /**
  * ÁREA PÚBLICA — DEMONSTRATIVOS (LC 131/2009 · TR 7.5). FORA do shell autenticado `(areas)`: esta
@@ -15,13 +16,15 @@ export const dynamic = "force-dynamic";
 const EXERCICIOS = [2026, 2025] as const;
 const BIMESTRES = [1, 2, 3, 4, 5, 6] as const;
 
-export default function DemonstrativosPublicosPage(): React.ReactElement {
+export default async function DemonstrativosPublicosPage(): Promise<React.ReactElement> {
+  const id = await identidadePublica();
+  const ente = id.ente !== null ? `${id.ente.nomeDeExibicao}${id.ente.uf !== null ? ` — ${id.ente.uf}` : ""}` : "Ente não configurado";
   return (
     <main className="mx-auto max-w-3xl p-6">
       <header className="mb-4 border-b border-[color:var(--color-border)] pb-3">
         <h1 className="text-xl font-semibold text-[color:var(--color-ink)]">Transparência — Demonstrativos Fiscais</h1>
         <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">
-          Município de Campina Grande — PB · relatórios oficiais em PDF (LC 131/2009). Acesso público, sem cadastro.
+          {ente} · relatórios oficiais em PDF (LC 131/2009). Acesso público, sem cadastro.
         </p>
       </header>
 

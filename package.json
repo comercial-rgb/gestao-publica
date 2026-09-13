@@ -63,6 +63,7 @@
     "smoke:plurianual": "tsx scripts/trinco-de-maquina.ts 'smoke do planejamento plurianual' -- npx tsx scripts/smoke-plurianual.ts",
     "smoke:contratacao": "tsx scripts/trinco-de-maquina.ts 'smoke da contratacao' -- npx tsx scripts/smoke-contratacao.ts",
     "smoke:compras": "tsx scripts/trinco-de-maquina.ts 'smoke das compras' -- npx tsx scripts/smoke-compras.ts",
+    "smoke:identidade": "tsx scripts/trinco-de-maquina.ts 'smoke da identidade' -- npx tsx scripts/smoke-identidade.ts",
     "permissoes:atualizar": "tsx scripts/aplicar-atualizacao-de-permissoes.ts",
     "roteiros:versionar": "tsx scripts/versionar-roteiros-existentes.ts",
     "seed:roteiros-demo": "tsx prisma/seed/roteiros-demo.ts",

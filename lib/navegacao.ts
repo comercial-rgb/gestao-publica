@@ -199,6 +199,8 @@ export const ADMINISTRACAO: readonly RelatorioNav[] = [
   { href: "/administracao/perfis", numero: "Perfis", rotulo: "Perfis e Permissões", descricao: "O que cada perfil concede — o censo do M16." },
   { href: "/administracao/auditoria", numero: "Auditoria", rotulo: "Auditoria", descricao: "Registro de operações da borda." },
   { href: "/administracao/senha", numero: "Senha", rotulo: "Trocar Senha", descricao: "Troca a própria senha — revoga as sessões abertas." },
+  { href: "/administracao/apresentacao", numero: "Apresentação", rotulo: "Apresentação do ente", descricao: "Nome de exibição, imagem institucional, contatos, tema e canais — versionado, com autor." },
+  { href: "/administracao/sistema", numero: "Sistema", rotulo: "Sobre o sistema", descricao: "Proveniência do build, ambiente e as atualizações de permissões instaladas." },
 ];
 
 /** Os CADASTROS BASE — fonte única da landing e do submenu. */

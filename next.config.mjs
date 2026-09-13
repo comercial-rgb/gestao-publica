@@ -4,6 +4,9 @@ const nextConfig = {
   // O commit curto do build vai para o rodapé (via env — o build o injeta).
   env: {
     NEXT_PUBLIC_BUILD_COMMIT: process.env.NEXT_PUBLIC_BUILD_COMMIT ?? "dev",
+    // O AMBIENTE DE EXECUÇÃO (V6 P0.1): desenvolvimento | demonstracao | homologacao | producao.
+    // É apresentação ("Ambiente de demonstração" na entrada), nunca chave de acesso.
+    NEXT_PUBLIC_AMBIENTE: process.env.AMBIENTE_DE_EXECUCAO ?? "desenvolvimento",
   },
 
   // ⚠️ O puppeteer roda no servidor (a impressão de PDF dos demonstrativos, TR 7.5/5.120) e NUNCA

@@ -1,0 +1,61 @@
+// ----------------------------------------------------------------------------
+// A APRESENTAÇÃO DO ENTE — como a entidade se mostra nas telas e nos documentos
+// NOVOS (V6 P0.1).
+//
+// ⚠️ NÃO É UM SEGUNDO CADASTRO DO ENTE. Os dados de identificação fiscal (IBGE,
+// CNPJ, tribunal, ordenador, contador) continuam no `EnteConfig`, que é a fonte
+// para MSC, MANAD e SAGRES. Esta tabela guarda só a APRESENTAÇÃO: o nome de
+// exibição, o órgão, a imagem institucional, os contatos públicos, o tema e os
+// canais ativados — o que aparece ANTES do login e no shell. Credenciais,
+// vínculos, parâmetros fiscais e dados pessoais nunca entram aqui.
+//
+// ⚠️ VERSIONADA, APPEND-ONLY. Cada reconfiguração é uma versão nova com autor e
+// data; a vigente é a de maior número. Um documento EMITIDO carrega no seu JSON
+// congelado o nome do ente que valia na emissão (M10 `termo-documento`), e por
+// isso a segunda via não muda quando a apresentação é reconfigurada.
+// ----------------------------------------------------------------------------
+
+model VersaoDaApresentacaoDoEnte {
+  id     String     @id @default(cuid())
+  enteId String
+  ente   EnteConfig @relation(fields: [enteId], references: [id])
+
+  /// Sequencial por ente; a vigente é a de maior número. UNIQUE (enteId, numero)
+  /// é a trava contra duas gravações concorrentes.
+  numero Int
+
+  /// Como o ente se chama na tela: "Prefeitura Municipal de …". Não substitui
+  /// `EnteConfig.nome` (o nome oficial das remessas).
+  nomeDeExibicao String
+  /// O órgão ou secretaria que opera a implantação, quando fizer sentido mostrar.
+  orgao          String?
+  /// A assinatura comercial do fornecedor, sem inventar marca: texto livre curto.
+  assinaturaDoFornecedor String?
+
+  contatoEmail         String?
+  contatoTelefone      String?
+  horarioDeAtendimento String?
+  /// Sítio institucional — só `https://`, validado no domínio. Nunca é buscado pelo servidor.
+  sitio                String?
+
+  /// Tema de apresentação — conjunto FECHADO (CHECK na migration): PADRAO | ALTO_CONTRASTE.
+  /// É configuração, não campo para CSS/JavaScript.
+  tema String @db.VarChar(20)
+
+  /// A imagem institucional autorizada: PNG ou JPEG, até 256 KiB, validada pelos
+  /// bytes de assinatura (não pela extensão). Guardada aqui e servida por rota
+  /// própria — nenhuma URL externa é buscada pelo servidor nem pelo PDF.
+  imagemMime String? @db.VarChar(10)
+  imagem     Bytes?
+
+  /// Os canais públicos ATIVADOS. Só aparecem na entrada quando o canal existe no
+  /// código E está ativado aqui. Portal do servidor, do cidadão e do fornecedor
+  /// ganham a sua coluna quando existirem (P2/P3).
+  canalTransparencia   Boolean
+  canalConsultaPublica Boolean
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  @@unique([enteId, numero])
+}

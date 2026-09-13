@@ -279,6 +279,9 @@ export type AcaoDoSistema =
   // ── V3 (pacote 2) — o usuário É uma pessoa do cadastro: vínculo explícito, auditável,
   // opcional, e que NÃO concede permissão. Família ADMINISTRACAO, como criar usuário.
   | "VINCULAR_PESSOA_AO_USUARIO"
+  // ── V6 (P0.1) — a APRESENTAÇÃO do ente (nome de exibição, imagem, contatos, tema, canais):
+  // versionada, auditada, família ADMINISTRACAO. Não toca o `EnteConfig` fiscal.
+  | "CONFIGURAR_APRESENTACAO_DO_ENTE"
   // ── M21 — protocolo e processo digital (ENT02) ──
   //
   // ⚠️ UMA AÇÃO POR ATO, e não um "GERIR_PROCESSO" que agrupasse tudo. Abrir, tramitar
@@ -653,6 +656,8 @@ export type NomeDeServico =
   // ── V3 (pacote 2) — usuário ↔ pessoa ──
   | "vincularPessoaAoUsuario"
   | "desvincularPessoaDoUsuario"
+  // ── V6 (P0.1) — a apresentação do ente ──
+  | "registrarApresentacaoDoEnte"
   // ── M02b — planejamento plurianual (V4 §8) ──
   | "criarPlanoPlurianual"
   | "criarEixoEstruturante"
@@ -1000,6 +1005,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // V3 (pacote 2): vincular e desvincular são o MESMO poder (dizer quem o usuário é).
   vincularPessoaAoUsuario: "VINCULAR_PESSOA_AO_USUARIO",
   desvincularPessoaDoUsuario: "VINCULAR_PESSOA_AO_USUARIO",
+  // V6 (P0.1): cada reconfiguração da apresentação é uma versão nova, com autor.
+  registrarApresentacaoDoEnte: "CONFIGURAR_APRESENTACAO_DO_ENTE",
 
   // ── M02b — planejamento plurianual (V4 §8): 20 serviços, 10 ações, pelos anexos da LRF ──
   criarPlanoPlurianual: "CADASTRAR_PPA",
@@ -1175,6 +1182,7 @@ export const ACOES_DE_ADMINISTRACAO: readonly AcaoDoSistema[] = [
   "CONCEDER_ACAO_A_PERFIL",
   "REVOGAR_ACAO_DE_PERFIL",
   "VINCULAR_PESSOA_AO_USUARIO",
+  "CONFIGURAR_APRESENTACAO_DO_ENTE",
 ];
 
 /**
@@ -1182,6 +1190,12 @@ export const ACOES_DE_ADMINISTRACAO: readonly AcaoDoSistema[] = [
  * grep-teste lê esta lista — nada sai do censo por descuido.
  */
 export const FORA_DO_CENSO: Record<string, string> = {
+  // ── V6 (P0.1) — a identidade PÚBLICA do ente ──
+  apresentacaoVigente:
+    "LEITURA PÚBLICA: a versão vigente da apresentação do ente (nome de exibição, imagem, canais) — " +
+    "é o que a tela de entrada mostra ANTES do login. Não grava nada e não expõe credencial, vínculo nem dado fiscal.",
+  imagemDaApresentacaoVigente: "LEITURA PÚBLICA: os bytes da imagem institucional vigente, para a rota que a serve.",
+  historicoDaApresentacao: "LEITURA: as versões da apresentação (sem bytes) — quem mudou o quê e quando, na tela administrativa.",
   // ── M02b — planejamento plurianual (V4 §8) ──
   metaFiscalDoExercicio:
     "LEITURA: a meta fiscal declarada na LDO para um exercício (ou null com pendência nomeada). " +

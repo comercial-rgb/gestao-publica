@@ -1,5 +1,5 @@
 import { svgCode128, textoCodificavelEmCode128 } from "../../../packages/codigo-de-barras/index.js";
-import { ENTE } from "../../pdf/ente.js";
+import { nomeDoEnteParaDocumentos } from "../../pdf/ente.js";
 import { cliente, PortaSemBancoError } from "../cliente";
 
 /**
@@ -45,7 +45,8 @@ export const TETO_DO_LOTE = 200;
 
 export async function etiquetasDosBens(ids: readonly string[]): Promise<LoteDeEtiquetas> {
   const unicos = [...new Set(ids.map((s) => s.trim()).filter((s) => s !== ""))].slice(0, TETO_DO_LOTE);
-  if (unicos.length === 0) return { ente: ENTE, etiquetas: [], semCodigo: [], naoEncontrados: 0 };
+  const ente = await nomeDoEnteParaDocumentos();
+  if (unicos.length === 0) return { ente, etiquetas: [], semCodigo: [], naoEncontrados: 0 };
   const bens = await cliente().bemPatrimonial.findMany({
     where: { id: { in: unicos } },
     select: {
@@ -77,5 +78,5 @@ export async function etiquetasDosBens(ids: readonly string[]): Promise<LoteDeEt
       svg: svgCode128(b.codigoDeBarras),
     });
   }
-  return { ente: ENTE, etiquetas, semCodigo, naoEncontrados: unicos.length - bens.length };
+  return { ente, etiquetas, semCodigo, naoEncontrados: unicos.length - bens.length };
 }

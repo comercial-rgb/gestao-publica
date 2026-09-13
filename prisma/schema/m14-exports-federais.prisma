@@ -100,6 +100,9 @@ model EnteConfig {
   conferidoEm  DateTime
 
   criadoEm DateTime @default(now())
+
+  /// V6 P0.1 — as versões da apresentação (nome de exibição, imagem, canais). Ver `m16-apresentacao.prisma`.
+  apresentacoes VersaoDaApresentacaoDoEnte[]
 }
 
 // ----------------------------------------------------------------------------

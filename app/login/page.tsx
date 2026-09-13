@@ -1,11 +1,20 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Marca } from "../../components/ui/Marca";
+import { identidadePublica, paraATela } from "../../lib/portas/identidade";
 import { sessaoAtual } from "../../lib/portas/sessao";
-import { rotuloDeVersao } from "../../components/ui/Footer";
 import { FormLogin } from "./FormLogin";
 
 /**
  * /LOGIN — fora do grupo `(areas)`, então SEM shell (sidebar/header). Se já houver sessão, entra
  * direto. Força-dinâmica (lê cookie/sessão a cada request).
+ *
+ * ═══ A ENTRADA (V6 P0.1/P0.2) ═══
+ * Três coisas separadas na tela: o PRODUTO (Gestão Pública), a INSTITUIÇÃO (do cadastro, pela
+ * porta de identidade — nunca escrita aqui) e o AMBIENTE (do build). Sem ente configurado, a
+ * identidade é a neutra de desenvolvimento, e a pendência vai para o administrador — não para
+ * o público. Os CANAIS aparecem só quando existem e estão ativados; o portal público não recebe
+ * a lista de módulos privados.
  */
 export const dynamic = "force-dynamic";
 
@@ -24,23 +33,63 @@ export default async function LoginPage({
   const sp = await searchParams;
   const retornoBruto = Array.isArray(sp["retorno"]) ? sp["retorno"][0] : sp["retorno"];
   const retorno = retornoBruto !== undefined && retornoBruto.startsWith("/") && !retornoBruto.startsWith("//") ? retornoBruto : "/";
+  const id = await identidadePublica();
+  const tela = paraATela(id);
+  const canaisPublicos = id.canais.filter((c) => c.id !== "gestao-interna");
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[color:var(--color-surface-2)] p-6">
-      <div className="w-full max-w-sm rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-6 shadow-[var(--shadow-card)]">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] bg-[color:var(--color-primary)] text-sm font-bold text-[color:var(--color-primary-fg)]">SF</div>
-          <div>
-            <h1 className="text-sm font-semibold leading-tight text-[color:var(--color-ink)]">SIAFIC</h1>
-            <p className="text-xs leading-tight text-[color:var(--color-ink-3)]">Campina Grande/PB</p>
-          </div>
+    <div className="flex min-h-screen flex-col bg-[color:var(--color-surface-2)]" data-tema={tela.tema}>
+      <main className="flex flex-1 items-center justify-center p-4 sm:p-6">
+        <div className="grid w-full max-w-3xl overflow-hidden rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] shadow-[var(--shadow-card)] md:grid-cols-[1.1fr_1fr]">
+          {/* a instituição e o produto */}
+          <section aria-label="Identificação" className="flex flex-col gap-5 border-b border-[color:var(--color-border)] bg-[color:var(--color-canvas)] p-6 md:border-b-0 md:border-r">
+            <Marca identidade={tela} tamanho="lg" />
+            <div className="space-y-1">
+              <p className="text-sm text-[color:var(--color-ink-2)]">{id.produto.descricao}.</p>
+              {id.ente !== null && id.ente.orgao !== null ? (
+                <p className="text-xs text-[color:var(--color-ink-3)]">{id.ente.orgao}</p>
+              ) : null}
+              {id.rotuloDoAmbiente !== null ? (
+                <p className="inline-block rounded-[var(--radius-md)] bg-[color:var(--color-status-alerta-bg)] px-2 py-0.5 text-xs font-medium text-[color:var(--color-status-alerta-fg)]" data-ambiente>
+                  {id.rotuloDoAmbiente}
+                </p>
+              ) : null}
+            </div>
+            {canaisPublicos.length > 0 ? (
+              <nav aria-label="Canais públicos" className="mt-auto">
+                <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">Sem cadastro</h2>
+                <ul className="space-y-1">
+                  {canaisPublicos.map((c) => (
+                    <li key={c.id}>
+                      <Link href={c.href} className="text-sm font-medium text-[color:var(--color-primary)] hover:underline" data-canal={c.id}>
+                        {c.rotulo}
+                      </Link>
+                      <span className="block text-xs text-[color:var(--color-ink-3)]">{c.descricao}</span>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            ) : null}
+            {id.ente !== null && (id.ente.contatoEmail !== null || id.ente.contatoTelefone !== null || id.ente.horarioDeAtendimento !== null) ? (
+              <dl className="text-xs text-[color:var(--color-ink-3)]">
+                {id.ente.contatoEmail !== null ? <div><dt className="inline">E-mail: </dt><dd className="inline">{id.ente.contatoEmail}</dd></div> : null}
+                {id.ente.contatoTelefone !== null ? <div><dt className="inline">Telefone: </dt><dd className="inline">{id.ente.contatoTelefone}</dd></div> : null}
+                {id.ente.horarioDeAtendimento !== null ? <div><dt className="inline">Atendimento: </dt><dd className="inline">{id.ente.horarioDeAtendimento}</dd></div> : null}
+              </dl>
+            ) : null}
+          </section>
+
+          {/* o acesso */}
+          <section aria-label="Acesso à gestão interna" className="p-6">
+            <h1 className="mb-1 text-lg font-semibold text-[color:var(--color-ink)]">Acesso à gestão interna</h1>
+            <p className="mb-4 text-xs text-[color:var(--color-ink-3)]">Use o usuário e a senha do seu cadastro. Sem sessão, nada do sistema fica exposto.</p>
+            <FormLogin retorno={retorno} />
+          </section>
         </div>
-        <h2 className="mb-4 text-lg font-semibold text-[color:var(--color-ink)]">Entrar</h2>
-        <FormLogin retorno={retorno} />
-      </div>
-      <footer className="max-w-sm text-center text-[11px] leading-tight text-[color:var(--color-ink-3)]">
-        <p>Prefeitura Municipal de Campina Grande — SEFIN</p>
-        <p className="mt-0.5 tabular">SIAFIC · {rotuloDeVersao()}</p>
+      </main>
+      <footer className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-4 pb-4 text-center text-[11px] leading-tight text-[color:var(--color-ink-3)]">
+        <span>{id.assinaturaDoFornecedor !== null ? `${id.produto.nome} · ${id.assinaturaDoFornecedor}` : id.produto.nome}</span>
+        {id.versao !== null ? <span className="tabular" data-rodape-versao>versão {id.versao}</span> : null}
       </footer>
     </div>
   );

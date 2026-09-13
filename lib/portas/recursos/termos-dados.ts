@@ -5,7 +5,7 @@ import { emitirTermoPatrimonial } from "../../../modules/m10-patrimonial/gestao-
 import { documentoDoTermo, type DocumentoDoTermoLido } from "../../../modules/m10-patrimonial/termo-documento.js";
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { TAMANHO_DE_PAGINA } from "../../molde/consulta.js";
-import { ENTE } from "../../pdf/ente.js";
+import { nomeDoEnteParaDocumentos } from "../identidade";
 import { comEscritaAutenticada } from "../sessao";
 import { cliente, PortaSemBancoError } from "../cliente";
 import { opcoesDoAcervo } from "./acervo-dados.js";
@@ -163,6 +163,8 @@ async function bensPelosTombamentos(texto: string): Promise<readonly string[]> {
 export async function criarTermo(c: Campos): Promise<void> {
   const bensId = await bensPelosTombamentos(t(c, "tombamentos"));
   const tipo = t(c, "tipo") === "BAIXA" ? "BAIXA" : "RESPONSABILIDADE";
+  // ⚠️ O NOME DO ENTE É CONGELADO NA EMISSÃO (V6 P0.1): o termo guarda o texto que valia hoje.
+  const ente = await nomeDoEnteParaDocumentos();
   await comEscritaAutenticada("EMITIR_TERMO_PATRIMONIAL", (criadoPor) =>
     emitirTermoPatrimonial(cliente(), {
       numero: t(c, "numero"),
@@ -171,7 +173,7 @@ export async function criarTermo(c: Campos): Promise<void> {
       ...(opcional(c, "setorId") !== undefined ? { setorId: t(c, "setorId") } : {}),
       data: inicioDoDiaCivil(t(c, "data")),
       bensId: [...bensId],
-      ente: ENTE,
+      ente,
       criadoPor,
     })
   );
@@ -180,7 +182,7 @@ export async function criarTermo(c: Campos): Promise<void> {
 /** O documento para o PDF — `null` quando o termo não existe. `via` "atual" = a posição de hoje. */
 export async function documentoDoTermoPara(id: string, via: "EMITIDO" | "ATUAL" = "EMITIDO"): Promise<DocumentoDoTermoLido | null> {
   try {
-    return await documentoDoTermo(cliente(), id, ENTE, via);
+    return await documentoDoTermo(cliente(), id, await nomeDoEnteParaDocumentos(), via);
   } catch (e) {
     if (e instanceof Error && /não encontrado/.test(e.message)) return null;
     throw e;
