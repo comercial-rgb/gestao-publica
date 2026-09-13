@@ -21,6 +21,12 @@ import { empenharAction, type EstadoEmpenho } from "./actions";
  * Prisma vai para o browser (ou o build quebra, no melhor caso). O form declara o que
  * precisa; a página mapeia. É o mesmo padrão das outras três frentes.
  */
+/** Um vínculo (contrato ou reserva) como ESTE form o consome — declarado aqui pelo mesmo motivo da ficha. */
+export interface VinculoParaEmpenho {
+  readonly id: string;
+  readonly rotulo: string;
+}
+
 export interface FichaParaEmpenho {
   readonly id: string;
   readonly numero: number;
@@ -41,8 +47,14 @@ export interface FichaParaEmpenho {
  */
 export function FormEmpenho({
   fichas,
+  contratos = [],
+  reservas = [],
 }: {
   readonly fichas: readonly FichaParaEmpenho[];
+  /** V4 (§8): contratos de processos homologados e vigentes — opcional no empenho. */
+  readonly contratos?: readonly VinculoParaEmpenho[];
+  /** V4 (§8): reservas de dotação vivas — opcional; a vinculada a licitação exige o contrato. */
+  readonly reservas?: readonly VinculoParaEmpenho[];
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoEmpenho, FormData>(
     empenharAction,
@@ -137,6 +149,27 @@ export function FormEmpenho({
             <option value="LOCACAO">Locação</option>
             <option value="PRESTACAO_SERVICOS">Prestação de serviços</option>
             <option value="REALIZACAO_OBRAS">Realização de obras</option>
+          </select>
+        </label>
+
+        <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
+          <span className={ROTULO}>Contrato (opcional)</span>
+          {/* V4 (§8): o empenho informa o contrato do processo homologado; é ele que libera a reserva vinculada (TR 4.42). */}
+          <select name="contratoId" defaultValue="" className={CAMPO}>
+            <option value="">— sem contrato —</option>
+            {contratos.map((c) => (
+              <option key={c.id} value={c.id}>{c.rotulo}</option>
+            ))}
+          </select>
+        </label>
+
+        <label className="text-xs text-[color:var(--color-ink-2)]">
+          <span className={ROTULO}>Reserva de dotação (opcional)</span>
+          <select name="reservaId" defaultValue="" className={CAMPO}>
+            <option value="">— sem reserva —</option>
+            {reservas.map((r) => (
+              <option key={r.id} value={r.id}>{r.rotulo}</option>
+            ))}
           </select>
         </label>
 

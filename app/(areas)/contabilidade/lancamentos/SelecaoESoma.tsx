@@ -67,7 +67,7 @@ export function SelecaoESoma({
   const totais = [...porSubsistema.entries()].sort(([a], [b]) => a.localeCompare(b));
 
   return (
-    <div className="rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-4 shadow-[var(--shadow-card)]">
+    <div className="rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-5 shadow-[var(--shadow-card)]">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">
           Selecionar e somar

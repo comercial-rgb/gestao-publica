@@ -125,6 +125,16 @@ export const EXECUCAO_DESPESA: readonly RelatorioNav[] = [
  * ⚠️ QDD e CMD/MBA são LEITURA da LOA já registrada; créditos e reprevisão ESCREVEM. Ficam no mesmo
  * grupo porque o usuário do planejamento os percorre na mesma sessão de trabalho.
  */
+/**
+ * LICITAÇÕES E CONTRATOS — fonte única do submenu (V4 §8, M11). O processo e o contrato ganharam
+ * tela; a obra já tinha. O empenho vinculado ao contrato fica na Despesa.
+ */
+export const LICITACOES: readonly RelatorioNav[] = [
+  { href: "/licitacoes/processos", numero: "Processos", rotulo: "Processos licitatórios", descricao: "Número, modalidade, objeto e valor licitado; homologação, reserva de dotação e contrato no detalhe." },
+  { href: "/licitacoes/contratos", numero: "Contratos", rotulo: "Contratos e aditivos", descricao: "Valor e vigência derivados dos aditivos; estorno de aditivo; os empenhos que informaram o contrato." },
+  { href: "/licitacoes/obras", numero: "Obras", rotulo: "Obras e medições", descricao: "Cadastro de obras (IN/INSS/DC 100/2003) e as medições que autorizam liquidar." },
+];
+
 export const PLANEJAMENTO: readonly RelatorioNav[] = [
   // V4 §8 (M02b): as peças que vêm ANTES da LOA.
   { href: "/planejamento/ppa", numero: "PPA", rotulo: "Plano Plurianual", descricao: "O quadriênio e a lei que o instituiu; programas, indicadores, ações e a receita do plano (CF art. 165 §1º)." },

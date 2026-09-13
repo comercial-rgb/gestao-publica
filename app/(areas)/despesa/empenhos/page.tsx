@@ -11,6 +11,7 @@ import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import {
   listarEmpenhosDaExecucao,
   listarFichasParaEmpenho,
+  opcoesDeVinculoDoEmpenho,
   PortaSemBancoError,
   type EmpenhoDaTela,
   type FichaDaTela,
@@ -54,9 +55,10 @@ export default async function EmpenhosPage({
   let recorte: RecorteDaPagina;
   let empenhos: readonly EmpenhoDaTela[];
   let fichas: readonly FichaDaTela[];
+  let vinculos: Awaited<ReturnType<typeof opcoesDeVinculoDoEmpenho>>;
   try {
     recorte = await recorteDePagina(sp, "CONSULTAR_DESPESA");
-    [empenhos, fichas] = await Promise.all([
+    [empenhos, fichas, vinculos] = await Promise.all([
       listarEmpenhosDaExecucao({
         exercicio: recorte.exercicio,
         unidadeCodigo: recorte.unidadeCodigo,
@@ -65,6 +67,8 @@ export default async function EmpenhosPage({
         exercicio: recorte.exercicio,
         unidadeCodigo: recorte.unidadeCodigo,
       }),
+      // V4 (§8): os contratos vigentes e as reservas vivas que o empenho pode informar.
+      opcoesDeVinculoDoEmpenho(),
     ]);
   } catch (erro) {
     // ⚠️ A RECUSA DE ACESSO TEM TÍTULO PRÓPRIO, e isso não é estética. Cair no genérico
@@ -116,6 +120,8 @@ export default async function EmpenhosPage({
           naturezaDescricao: f.naturezaDescricao,
           saldoDisponivel: f.saldoDisponivel,
         }))}
+        contratos={vinculos.contratos}
+        reservas={vinculos.reservas}
       />
 
       {empenhos.length === 0 ? (

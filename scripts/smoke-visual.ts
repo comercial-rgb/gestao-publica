@@ -103,7 +103,10 @@ const SCRIPT_MEDIDA = `(() => {
   const noConteudo = (el) => !el.closest("[data-chrome]");
 
   // CAMPO DE FORMULÁRIO — o design system usa h-11 (2.75rem = 44px). Textarea é livre; fora.
-  const campos = Array.from(document.querySelectorAll("input:not([type=hidden]), select"))
+  // ⚠️ Caixa de marcação e botão de rádio NÃO são o campo de 44px do design system: são o controle
+  // nativo de 13px dentro de um rótulo (a seleção do razão, V3 T08). Medi-los com a régua do campo
+  // reprovava /contabilidade/lancamentos por 9 checkboxes — falso positivo achado na V4 §10.
+  const campos = Array.from(document.querySelectorAll("input:not([type=hidden]):not([type=checkbox]):not([type=radio]), select"))
     .filter((el) => visivel(el) && noConteudo(el))
     .map((el) => Math.round(el.getBoundingClientRect().height));
 

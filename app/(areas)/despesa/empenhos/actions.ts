@@ -50,6 +50,9 @@ export async function empenharAction(
     const dataBruta = String(formData.get("data") ?? "").trim();
     const tipoBruto = String(formData.get("tipo") ?? "");
     const categoriaBruta = String(formData.get("categoria") ?? "");
+    // V4 (§8): os vínculos da contratação — opcionais; quem os valida é o M05 com o M11 ligado.
+    const contratoId = String(formData.get("contratoId") ?? "").trim();
+    const reservaId = String(formData.get("reservaId") ?? "").trim();
 
     if (!ehTipo(tipoBruto)) return { erro: "Tipo de empenho inválido." };
     // ⚠️ SEM DEFAULT: o `zEmpenharInput` recusa empenho sem contrato e sem categoria,
@@ -74,6 +77,8 @@ export async function empenharAction(
         credorCpfCnpj,
         historico,
         categoriaOrdemCronologica: categoriaBruta,
+        ...(contratoId !== "" ? { contratoId } : {}),
+        ...(reservaId !== "" ? { reservaId } : {}),
       });
       revalidatePath("/despesa/empenhos");
       return { sucesso: `Empenho ${numero} emitido.` };

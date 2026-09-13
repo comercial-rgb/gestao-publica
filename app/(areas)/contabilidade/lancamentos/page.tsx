@@ -202,7 +202,7 @@ export default async function LancamentosPage({
         diria "fecha", e os DOIS subsistemas estariam errados.
       */}
       {totais.length === 0 ? null : (
-        <div className="rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-4 shadow-[var(--shadow-card)]">
+        <div className="rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-5 shadow-[var(--shadow-card)]">
           <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">
             Totais do recorte, por subsistema
           </h2>

@@ -2,6 +2,7 @@ import { Badge } from "../../../../../components/ui/Badge";
 import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
 import {
+  ConciliacaoNaoFechaError,
   contasComSaldo,
   listarConciliacoes,
   MapeamentoContabilAusenteError,
@@ -77,12 +78,17 @@ export default async function PeriodoDeConciliacaoPage({
     // esconde a única informação que o operador precisava ler: QUAL conta parametrizar.
     let detalhe = null;
     let semMapeamento: string | null = null;
+    // ⚠️ V4 (§10): a conciliação que NÃO FECHA também é estado da tela, não 500. O tripwire da
+    // identidade (diferença == linhas sem vínculo) acusou no banco dos percursos — e a tela
+    // devolvia 500, escondendo quanto sobra sem explicação. Agora ela diz.
+    let naoFecha: string | null = null;
     if (escolhido !== undefined) {
       try {
         detalhe = await verConciliacao(escolhido.id);
       } catch (erro) {
-        if (!(erro instanceof MapeamentoContabilAusenteError)) throw erro;
-        semMapeamento = erro.message;
+        if (erro instanceof MapeamentoContabilAusenteError) semMapeamento = erro.message;
+        else if (erro instanceof ConciliacaoNaoFechaError) naoFecha = erro.message;
+        else throw erro;
       }
     }
 
@@ -133,6 +139,17 @@ export default async function PeriodoDeConciliacaoPage({
             className="whitespace-pre-line rounded-[var(--radius-lg)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-status-alerta-bg)] p-4 text-sm text-[color:var(--color-status-alerta-fg)]"
           >
             {semMapeamento}
+          </div>
+        )}
+
+        {naoFecha === null ? null : (
+          <div
+            role="alert"
+            data-nao-fecha
+            className="whitespace-pre-line rounded-[var(--radius-lg)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-status-erro-bg)] p-4 text-sm text-[color:var(--color-status-erro-fg)]"
+          >
+            <strong className="block">A conciliação deste período não fecha.</strong>
+            {naoFecha}
           </div>
         )}
 

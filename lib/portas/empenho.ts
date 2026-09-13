@@ -1,4 +1,5 @@
 import { cliente, PortaSemBancoError } from "./cliente";
+import { toMoney } from "../../packages/contracts/index";
 import { comEscritaAutenticada, exigirSessao, type Identidade } from "./sessao";
 import { autorizarLeituraDoRegistroPara, EscopoDeLeituraError } from "./leitura";
 import {
@@ -8,7 +9,8 @@ import {
   type EmpenhoNaLista,
   type FichaNaLista,
 } from "../../modules/m05-despesa/consultas";
-import { criarM05Deps } from "../../modules/m05-despesa/adapter-prisma";
+import { criarM05DepsComContratos } from "../../modules/m11-licitacoes/adapter-m05";
+import { homologadoEm, situacaoDoProcesso, vigenciaFimDoContrato } from "../../modules/m11-licitacoes/contratos";
 import { empenhar } from "../../modules/m05-despesa/servico";
 import { roteiroEmpenho } from "../../modules/m01-core-contabil/roteiros";
 import {
@@ -171,15 +173,73 @@ export async function registrarEmpenho(input: {
     | "LOCACAO"
     | "PRESTACAO_SERVICOS"
     | "REALIZACAO_OBRAS";
+  /** V4 (§8): o contrato do processo homologado — a TR 4.42 só libera a reserva vinculada com ele informado. */
+  readonly contratoId?: string;
+  /** V4 (§8): a reserva de dotação que este empenho consome. */
+  readonly reservaId?: string;
 }): Promise<string> {
   return comEscritaAutenticada("EMPENHAR", async (criadoPor) => {
+    const { contratoId, reservaId, ...resto } = input;
     const r = await empenhar(
-      { ...input, criadoPor },
+      {
+        ...resto,
+        ...(contratoId !== undefined ? { contratoId } : {}),
+        ...(reservaId !== undefined ? { reservaId } : {}),
+        criadoPor,
+      },
       roteiroEmpenho(),
-      criarM05Deps(cliente())
+      // ⚠️ COM O M11 LIGADO: sem a port de contratos o M05 recusa qualquer `contratoId` ("módulo de
+      // contratos não foi ligado") — e com ela confere homologação, vigência e saldo do contrato.
+      criarM05DepsComContratos(cliente())
     );
     return r.empenhoId;
   });
+}
+
+/** Um vínculo oferecido ao formulário de empenho (contrato ou reserva), já rotulado. */
+export interface VinculoDaTela {
+  readonly id: string;
+  readonly rotulo: string;
+}
+
+/**
+ * OS VÍNCULOS QUE O EMPENHO PODE INFORMAR (V4 §8): os contratos de processos HOMOLOGADOS e
+ * vigentes na data de hoje, e as reservas de dotação VIVAS (não liberadas e com saldo). São
+ * opções, não guard: quem recusa contrato vencido, reserva esgotada ou contrato de outro processo
+ * é o M05, na transação.
+ */
+export async function opcoesDeVinculoDoEmpenho(): Promise<{ readonly contratos: readonly VinculoDaTela[]; readonly reservas: readonly VinculoDaTela[] }> {
+  const prisma = cliente();
+  const [contratos, reservas] = await Promise.all([
+    prisma.contrato.findMany({
+      orderBy: { numeroContrato: "asc" },
+      take: 500,
+      select: { id: true, numeroContrato: true, contratadoNome: true, processo: { select: { id: true, numeroProcesso: true } } },
+    }),
+    prisma.reservaDotacao.findMany({
+      where: { estornoDeId: null, estornos: { none: {} } },
+      orderBy: { criadoEm: "desc" },
+      take: 500,
+      select: { id: true, valor: true, historico: true, ficha: { select: { numero: true, exercicio: true } }, processo: { select: { numeroProcesso: true } }, empenhos: { select: { empenho: { select: { valor: true } } } } },
+    }),
+  ]);
+  const hoje = new Date();
+  const contratosVigentes: VinculoDaTela[] = [];
+  for (const c of contratos) {
+    const homologado = situacaoDoProcesso(await homologadoEm(prisma, c.processo.id)) === "HOMOLOGADO";
+    if (!homologado) continue;
+    const fim = await vigenciaFimDoContrato(prisma, c.id);
+    if (fim.getTime() < hoje.getTime()) continue;
+    contratosVigentes.push({ id: c.id, rotulo: `${c.numeroContrato} — ${c.contratadoNome} · processo ${c.processo.numeroProcesso}` });
+  }
+  const reservasVivas: VinculoDaTela[] = [];
+  for (const r of reservas) {
+    const consumido = r.empenhos.reduce((s, e) => s.plus(e.empenho.valor.toFixed(2)), toMoney("0"));
+    const saldo = toMoney(r.valor.toFixed(2)).minus(consumido);
+    if (!saldo.greaterThan(0)) continue;
+    reservasVivas.push({ id: r.id, rotulo: `${r.ficha.exercicio} · ficha ${r.ficha.numero} · saldo ${saldo.toFixed(2)}${r.processo === null ? "" : ` · processo ${r.processo.numeroProcesso}`} · ${r.historico}` });
+  }
+  return { contratos: contratosVigentes, reservas: reservasVivas };
 }
 
 function paraTela(e: EmpenhoNaLista): EmpenhoDaTela {

@@ -84,6 +84,21 @@ export interface ConciliacaoBancaria {
   readonly internoSemVinculo: readonly LinhaDiferencaInterna[];
 }
 
+/**
+ * ⚠️ V4 (§10): A CONCILIAÇÃO QUE NÃO FECHA É UM ESTADO, NÃO UM 500. A identidade (diferença
+ * entre saldos == soma das linhas sem vínculo) é o tripwire auto-executável deste relatório —
+ * e ele acusou, sob o banco dos percursos, uma conta cuja FONTE tem arrecadação sem conta
+ * bancária (a pendência do M04 registrada no MODULO.md). A tela do período deixava a exceção
+ * subir e o Next devolvia 500 — escondendo a única informação útil: quanto sobra sem
+ * explicação e por quê. Erro TIPADO para a tela poder dizer isso.
+ */
+export class ConciliacaoNaoFechaError extends Error {
+  constructor(readonly contaBancariaId: string, mensagem: string) {
+    super(mensagem);
+    this.name = "ConciliacaoNaoFechaError";
+  }
+}
+
 export class MapeamentoContabilAusenteError extends Error {
   constructor(readonly contaBancariaId: string, codigo: string) {
     super(
@@ -189,7 +204,8 @@ export async function conciliacaoBancaria(
   );
 
   if (!diferenca.equals(explicado)) {
-    throw new Error(
+    throw new ConciliacaoNaoFechaError(
+      conta.id,
       `CONCILIAÇÃO NÃO FECHA (conta ${conta.codigo}): a diferença entre os ` +
         `saldos é ${serializar(diferenca)} (extrato ${serializar(saldoExtrato)} ` +
         `− contábil ${serializar(saldoContabil)}), mas as linhas sem vínculo ` +

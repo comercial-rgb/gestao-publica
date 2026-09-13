@@ -4,6 +4,7 @@ import { RECURSOS_DA_GESTAO_DO_BEM } from "./gestao-do-bem.js";
 import { RECURSOS_DO_ACERVO } from "./acervo.js";
 import { RECURSOS_DOS_ROTEIROS } from "./roteiros.js";
 import { ESTRUTURA_DO_PPA, LEIS_DE_DIRETRIZES, PLANOS_PLURIANUAIS, PROGRAMAS_DO_PPA } from "./plurianual.js";
+import { CONTRATOS, PROCESSOS_LICITATORIOS } from "./contratacao.js";
 
 /**
  * OS DESCRITORES DOS CADASTROS DO ENT03b — a prova do molde.
@@ -731,4 +732,7 @@ export const RECURSOS_DO_MOLDE: readonly DefinicaoDeRecurso[] = [
   PROGRAMAS_DO_PPA,
   ESTRUTURA_DO_PPA,
   LEIS_DE_DIRETRIZES,
+  // ⚠️ V4 §8 (M11) — o processo licitatório e o contrato. Pela mesma lista, pelo mesmo motivo.
+  PROCESSOS_LICITATORIOS,
+  CONTRATOS,
 ];

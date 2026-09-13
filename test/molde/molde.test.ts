@@ -243,6 +243,8 @@ const PORTAS_DE_OPCOES: readonly string[] = [
   // nasceu, pela mesma razão das linhas acima. `programaId`, `areaTematicaId`, `acaoId`,
   // `alienacaoId`… não existem em nenhuma outra porta — e foi este guard que acusou a ausência.
   "lib/portas/recursos/plurianual-dados.ts",
+  // ⚠️ V4 §8 — a porta da contratação (M11): `fichaId`, `reservaId`, `movimentoId`.
+  "lib/portas/recursos/contratacao-dados.ts",
 ];
 
 /**

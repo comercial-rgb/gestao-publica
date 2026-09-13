@@ -25,7 +25,7 @@ import { estadoDoLote } from "../../modules/m09-tesouraria/lote";
 // ⚠️ REEXPORTADO para a tela poder DISTINGUIR "conta sem mapeamento contábil" de um erro
 // qualquer. Sem isso a página devolvia 500 — e um 500 esconde a única coisa que o
 // operador precisava ler: qual conta parametrizar.
-import { MapeamentoContabilAusenteError } from "../../modules/m09-tesouraria/conciliacao";
+import { ConciliacaoNaoFechaError, MapeamentoContabilAusenteError } from "../../modules/m09-tesouraria/conciliacao";
 import { diaCivil, diaCivilBr, fimDoDiaCivil, meioDiaCivil } from "../../packages/datas/index";
 
 /**
@@ -43,7 +43,7 @@ import { diaCivil, diaCivilBr, fimDoDiaCivil, meioDiaCivil } from "../../package
  * num lugar só, e é o `packages/datas` que a faz.
  */
 
-export { PortaSemBancoError, MapeamentoContabilAusenteError };
+export { PortaSemBancoError, MapeamentoContabilAusenteError, ConciliacaoNaoFechaError };
 
 // ═══════════════════════════════════════════════════════════════════════════
 // AS CONTAS E O SALDO POR FONTE
