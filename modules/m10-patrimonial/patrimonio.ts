@@ -1,6 +1,6 @@
-import { diaCivil } from "../../packages/datas/index.js";
+import { competenciaCivil, diaCivil, janelaCivilDoMes } from "../../packages/datas/index.js";
 import { versaoVigente } from "./roteiros.js";
-import { parametroVigente, type ParametroVigente } from "./parametros.js";
+import { parametroVigenteEm, type ParametroVigente } from "./parametros.js";
 import { analisarEstornoPatrimonial } from "./estorno.js";
 import type { CalculoDaParcela } from "./dominio.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
@@ -21,6 +21,8 @@ import {
   aplicadoNaCompetencia,
   atualizacaoAcumulada,
   calcularParcela,
+  EH_ATUALIZACAO_ACUMULADA,
+  SINAL_MOVIMENTO_PATRIMONIAL,
   calcularResultadoDaAlienacao,
   competenciaParaData,
   comporPartidas,
@@ -566,141 +568,276 @@ export async function baixarBem(
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 4) ATUALIZAÇÃO POR COMPETÊNCIA — depreciação / amortização / exaustão
+//    (V4, §4: por bem elegível, com corte temporal, vigência e identidade de execução)
 // ═══════════════════════════════════════════════════════════════════════════
 
-export interface ResultadoAtualizacao extends ResultadoMovimento {
-  readonly tipo: TipoMovimentoPatrimonial;
-  readonly base: Money;
-  readonly valorResidual: Money;
-  readonly parcelaCheia: Money;
-  readonly valorDaParcela: Money;
-  /** V3 (pacote 2): a memória de cálculo gravada na mesma transação, e a versão do parâmetro. */
-  readonly memoriaId: string;
-  readonly versaoDeParametroId: string | null;
-}
-
 /**
- * A ATUALIZAÇÃO MENSAL da classe (TR 5.84; MCASP 1.1.5).
+ * ═══ O QUE A V4 CORRIGE (achados A04 e A05 da auditoria de 77cbcc9) ═══
+ *
+ * A prévia somava TODOS os movimentos da classe, de qualquer data, e usava a ÚLTIMA versão do
+ * parâmetro: a competência de março absorvia a entrada de abril e a régua de maio por serem os
+ * dados mais recentes. E a atualização gerava UM movimento da classe (sem `bemId`), enquanto o
+ * valor de cada bem lia só os movimentos amarrados a ele — a depreciação nunca chegava ao bem.
+ *
+ * ═══ AS DEFINIÇÕES, DITAS ═══
+ *   · DATA DE NEGÓCIO (`dataMovimento`) × INSTANTE DE REGISTRO (`criadoEm`/`sequencia`): a base
+ *     de uma competência é o que tem data de negócio ATÉ O CORTE (o último instante civil do mês),
+ *     entre os movimentos VIVOS (estornado e estorno não existem — a anulação apaga o fato da
+ *     base, em qualquer data em que tenha sido registrada);
+ *   · INÍCIO DA ATUALIZAÇÃO DE UM BEM: a competência da sua primeira entrada viva. Um bem que
+ *     entra em abril NÃO é elegível em março ("entrada após o corte"); é elegível no próprio mês
+ *     da entrada (política declarada: MÊS DA ENTRADA — trocar para "mês seguinte" é decisão de
+ *     parâmetro, pendência `INICIO-DA-ATUALIZACAO-NO-MES-SEGUINTE`);
+ *   · VIGÊNCIA DO PARÂMETRO: `parametroVigenteEm(classe, competência)` — a versão cuja
+ *     `vigenteDesde` alcança a competência, não a mais recente;
+ *   · ALTERAÇÃO RETROATIVA: uma versão não alcança competência já processada
+ *     (`definirParametroDeAtualizacao` recusa); corrigir o passado é estornar a execução e
+ *     reprocessar, com a prévia mostrando o impacto;
+ *   · RASTREABILIDADE: cada item grava a memória (parâmetro, base, contábil antes, residual,
+ *     parcela, teto, corte, execução); a execução grava escopo, versão, totais e o lançamento.
+ *
+ * ═══ UMA ÚNICA ORIGEM DOS VALORES ═══
+ * Os ITENS são a origem. Um item por bem elegível (`bemId` do movimento) e, quando a classe tem
+ * movimentos sem bem (avaliação do acervo, dados anteriores à individualização), UM item do
+ * "acervo sem individualização" (`bemId` nulo) — os dois conjuntos PARTICIONAM os movimentos da
+ * classe, então Σ(itens) = classe, por construção. O LANÇAMENTO CONTÁBIL é UM por execução, com
+ * a soma dos itens; os itens o compartilham (`lancamentoId`). Nada é contabilizado duas vezes.
+ * ARREDONDAMENTO: cada item a duas casas (`calcularParcela`); o agregado é a SOMA dos itens
+ * arredondados — não se recalcula o agregado e se distribui o resto.
+ *
+ * ⚠️ O QUE NÃO SE FAZ: a depreciação da classe inteira lançada ANTES desta versão (sem `bemId`)
+ * não é distribuída por proporção aos bens. Ela fica visível em `conciliacaoDaClasse` como
+ * "acumulada sem individualização" — pendência `RECONCILIACAO-HISTORICA-DA-DEPRECIACAO-POR-CLASSE`,
+ * fluxo autorizado a definir; o razão não se reescreve.
  *
  * ═══ POR QUE A IDEMPOTÊNCIA NÃO É UM ÍNDICE ═══
- * A tentação é um índice único parcial `(classe, competencia) WHERE tipo=X AND
- * estornoDeId IS NULL`. Ele ESTARIA ERRADO: o estorno é uma linha NOVA apontando
- * para trás, e o ORIGINAL continua com `estornoDeId` NULL (append-only — o
- * original nunca é tocado). O índice, portanto, continuaria enxergando o original
- * e BLOQUEARIA a re-execução da competência depois de estornada — que é
- * exatamente o caso de uso ("errei a parcela, estorno e refaço").
- *
- * Quem governa a permissão é o SALDO DERIVADO, não uma trava: se o líquido
- * aplicado naquela competência é > 0, ela já está atualizada; se o estorno o
- * zerou, ela está livre de novo. É o mesmo padrão do vínculo do M09 (t7).
+ * O estorno é uma linha NOVA apontando para trás, e o ORIGINAL continua com `estornoDeId` NULL.
+ * Quem governa é o SALDO DERIVADO por item: se o item tem atualização VIVA naquela competência,
+ * já está atualizado; estornada a execução, os itens ficam livres de novo.
  */
+
 export type SituacaoDaCompetencia =
   | "PRONTA"
   | "SEM_PARAMETRO"
   | "PARAMETRO_INATIVO"
   | "JA_ATUALIZADA"
-  | "TOTALMENTE_ATUALIZADA";
+  | "TOTALMENTE_ATUALIZADA"
+  | "SEM_BASE";
 
-export interface PreviaDaCompetencia {
-  readonly competencia: Date;
-  readonly parametro: ParametroVigente | null;
-  readonly tipo: TipoMovimentoPatrimonial | null;
+export type SituacaoDoItem = "PRONTO" | "JA_ATUALIZADO" | "TOTALMENTE_ATUALIZADO" | "NAO_ELEGIVEL" | "SEM_VALOR";
+
+export interface ItemDaPrevia {
+  /** `null` = o acervo sem individualização (movimentos da classe sem bem). */
+  readonly bemId: string | null;
+  readonly numeroTombamento: string | null;
+  readonly descricao: string | null;
+  /** A data de negócio da primeira entrada viva do alvo — o início da atualização. */
+  readonly entradaEm: Date | null;
   readonly base: Money;
   readonly valorContabil: Money;
   readonly jaAplicado: Money;
   readonly calculo: CalculoDaParcela | null;
+  readonly situacao: SituacaoDoItem;
+  readonly nota: string | null;
+}
+
+export interface PreviaDaCompetencia {
+  readonly competencia: Date;
+  /** O último instante civil do mês — a data de corte da base. */
+  readonly corte: Date;
+  readonly escopo: "CLASSE" | "BEM";
+  readonly bemId: string | null;
+  readonly parametro: ParametroVigente | null;
+  readonly tipo: TipoMovimentoPatrimonial | null;
+  /** TOTAIS dos itens PRONTOS — o que a execução lançará. */
+  readonly base: Money;
+  readonly valorContabil: Money;
+  readonly jaAplicado: Money;
+  readonly calculo: CalculoDaParcela | null;
+  readonly itens: readonly ItemDaPrevia[];
   readonly situacao: SituacaoDaCompetencia;
   /** A recusa, nas MESMAS palavras que `atualizarCompetencia` usa — `null` quando PRONTA. */
   readonly recusa: string | null;
 }
 
+type MovimentoVivo = {
+  readonly tipo: TipoMovimentoPatrimonial;
+  readonly valor: Money;
+  readonly dataMovimento: Date;
+  readonly competencia: Date | null;
+  readonly bemId: string | null;
+};
+
+const ZERO = toMoney("0.00");
+const somar = (xs: readonly Money[]): Money => xs.reduce((a, b) => toMoney(a.plus(b)), ZERO);
+
+function itemDe(
+  alvo: { readonly bemId: string | null; readonly numeroTombamento: string | null; readonly descricao: string | null },
+  vivosDoAlvo: readonly MovimentoVivo[],
+  noCorte: readonly MovimentoVivo[],
+  competencia: Date,
+  parametro: ParametroVigente
+): ItemDaPrevia {
+  const entradas = vivosDoAlvo.filter((m) => !EH_ATUALIZACAO_ACUMULADA[m.tipo] && SINAL_MOVIMENTO_PATRIMONIAL[m.tipo] === 1);
+  const entradaEm = entradas.length === 0 ? null : entradas.reduce((a, m) => (m.dataMovimento < a ? m.dataMovimento : a), entradas[0]!.dataMovimento);
+  const base = valorBruto(noCorte);
+  const atual = valorContabil(noCorte);
+  const daCompetencia = noCorte.filter((m) => m.competencia !== null && m.competencia.getTime() === competencia.getTime());
+  const jaAplicado = aplicadoNaCompetencia(daCompetencia, parametro.metodo);
+  const comum = { ...alvo, entradaEm, base, valorContabil: atual, jaAplicado };
+  if (noCorte.length === 0) {
+    return { ...comum, calculo: null, situacao: "NAO_ELEGIVEL", nota: entradaEm === null ? "sem movimento de valor" : `entrada em ${diaCivil(entradaEm)}, depois do corte da competência` };
+  }
+  if (!base.greaterThan(0)) {
+    return { ...comum, calculo: null, situacao: "SEM_VALOR", nota: "sem valor bruto no corte (baixado ou zerado)" };
+  }
+  if (jaAplicado.greaterThan(0)) {
+    return { ...comum, calculo: null, situacao: "JA_ATUALIZADO", nota: `já atualizado nesta competência (${jaAplicado.toFixed(2)})` };
+  }
+  const calculo = calcularParcela(base, atual, { vidaUtilMeses: parametro.vidaUtilMeses, percentualResidual: parametro.percentualResidual });
+  if (!calculo.teto.greaterThan(0)) {
+    return { ...comum, calculo, situacao: "TOTALMENTE_ATUALIZADO", nota: `o valor contábil (${atual.toFixed(2)}) já alcançou o residual (${calculo.valorResidual.toFixed(2)})` };
+  }
+  return { ...comum, calculo, situacao: "PRONTO", nota: null };
+}
+
+
 /**
- * A PRÉVIA DA COMPETÊNCIA (V3, pacote 2) — a mesma leitura e a mesma aritmética da
- * atualização, SEM escrever. `atualizarCompetencia` a chama DENTRO da transação e recusa
- * com a mesma mensagem: não há duas contas, há uma conta e dois momentos de olhar para ela.
- *
- * ⚠️ O PARÂMETRO É O VIGENTE (a última versão; a linha legada só enquanto não houver versão).
- * A prévia diz de qual versão veio, e a memória gravada com o movimento repete isso — é o que
- * responde "por que 450,00?" depois que o parâmetro mudou.
+ * A PRÉVIA DA COMPETÊNCIA — a mesma leitura e a mesma aritmética da atualização, SEM escrever,
+ * item a item. `atualizarCompetencia` a chama DENTRO da transação e recusa com a mesma mensagem:
+ * não há duas contas, há uma conta e dois momentos de olhar para ela.
  */
 export async function preverCompetencia(
   tx: Tx,
-  pedido: { readonly classeDeBensId: string; readonly competencia: string }
+  pedido: { readonly classeDeBensId: string; readonly competencia: string; readonly bemId?: string | undefined }
 ): Promise<PreviaDaCompetencia> {
+  const janela = janelaCivilDoMes(pedido.competencia);
   const competencia = competenciaParaData(pedido.competencia);
-  const parametro = await parametroVigente(tx, pedido.classeDeBensId);
-  // Todos os movimentos da classe, UMA leitura. Toda soma abaixo passa pelo
-  // Record de sinal — nenhum SUM bruto.
-  const movimentos = await tx.movimentoPatrimonial.findMany({
-    where: { classeDeBensId: pedido.classeDeBensId },
-    select: { tipo: true, valor: true, competencia: true },
-  });
-  const comSinal = movimentos.map((m) => ({
-    tipo: m.tipo,
-    valor: toMoney(m.valor.toFixed(2)),
-    competencia: m.competencia,
-  }));
-  // (c) A BASE É O VALOR BRUTO (NBC TSP 07): tudo o que mexe no ativo entra —
-  // reavaliação nos DOIS sentidos, impairment, baixas —, MENOS a própria
-  // atualização acumulada (senão o método viraria exponencial).
-  const base = valorBruto(comSinal);
-  const atual = valorContabil(comSinal);
-  const zero = toMoney("0");
+  const corte = janela.fim;
+  const escopo: "CLASSE" | "BEM" = pedido.bemId === undefined ? "CLASSE" : "BEM";
+  const bemId = pedido.bemId ?? null;
+  const parametro = await parametroVigenteEm(tx, pedido.classeDeBensId, pedido.competencia);
 
-  // (a) O PARÂMETRO — sem ele não há vida útil, e o sistema NÃO inventa uma.
+  // Os movimentos VIVOS da classe, uma leitura; a base é o recorte pelo corte.
+  const crus = await tx.movimentoPatrimonial.findMany({
+    where: { classeDeBensId: pedido.classeDeBensId, estornoDeId: null, estornos: { none: {} } },
+    select: { tipo: true, valor: true, dataMovimento: true, competencia: true, bemId: true },
+    orderBy: { sequencia: "asc" },
+  });
+  const vivos: MovimentoVivo[] = crus.map((m) => ({ tipo: m.tipo, valor: toMoney(m.valor.toFixed(2)), dataMovimento: m.dataMovimento, competencia: m.competencia, bemId: m.bemId }));
+  const noCorte = vivos.filter((m) => m.dataMovimento.getTime() <= corte.getTime());
+  const valorContabilDaClasseNoCorte = valorContabil(noCorte);
+  const vazio = (situacao: SituacaoDaCompetencia, recusa: string, tipo: TipoMovimentoPatrimonial | null): PreviaDaCompetencia => ({
+    competencia, corte, escopo, bemId, parametro, tipo, base: valorBruto(noCorte), valorContabil: valorContabilDaClasseNoCorte, jaAplicado: ZERO, calculo: null, itens: [], situacao, recusa,
+  });
+
+  // (a) O PARÂMETRO VIGENTE NA COMPETÊNCIA — sem ele não há vida útil, e o sistema NÃO inventa uma.
   if (parametro === null) {
-    return {
-      competencia, parametro: null, tipo: null, base, valorContabil: atual, jaAplicado: zero, calculo: null,
-      situacao: "SEM_PARAMETRO",
-      recusa:
-        `Classe ${pedido.classeDeBensId} NÃO TEM PARÂMETRO de atualização ` +
-        `(método, vida útil, residual). O MCASP sugere, mas quem decide é o ENTE: ` +
-        `parametrize a classe antes de atualizar. Nada foi gravado.`,
-    };
+    return vazio(
+      "SEM_PARAMETRO",
+      `Classe ${pedido.classeDeBensId} NÃO TEM PARÂMETRO de atualização vigente em ${pedido.competencia} ` +
+        `(método, vida útil, residual). O MCASP sugere, mas quem decide é o ENTE: parametrize a classe, ` +
+        `com vigência que alcance esta competência, antes de atualizar. Nada foi gravado.`,
+      null
+    );
   }
   const metodo = parametro.metodo;
   const tipo = TIPO_DO_METODO[metodo];
   if (!parametro.ativo) {
-    return {
-      competencia, parametro, tipo, base, valorContabil: atual, jaAplicado: zero, calculo: null,
-      situacao: "PARAMETRO_INATIVO",
-      recusa:
-        `O parâmetro de atualização da classe ${pedido.classeDeBensId} está ` +
-        `INATIVO — a classe não é mais atualizada.`,
-    };
+    return vazio("PARAMETRO_INATIVO", `O parâmetro de atualização da classe ${pedido.classeDeBensId} está INATIVO em ${pedido.competencia} — a classe não é mais atualizada.`, tipo);
   }
-  // (b) IDEMPOTÊNCIA DERIVADA — ver a nota de `atualizarCompetencia`.
-  const daCompetencia = comSinal.filter(
-    (m) => m.competencia !== null && m.competencia.getTime() === competencia.getTime()
-  );
-  const jaAplicado = aplicadoNaCompetencia(daCompetencia, metodo);
-  if (jaAplicado.greaterThan(0)) {
+
+  // (b) OS ALVOS: cada bem da classe com movimento vivo, e o acervo sem individualização.
+  const bens = await tx.bemPatrimonial.findMany({
+    where: { classeDeBensId: pedido.classeDeBensId, ...(bemId !== null ? { id: bemId } : {}) },
+    select: { id: true, numeroTombamento: true, descricao: true },
+    orderBy: { numeroTombamento: "asc" },
+  });
+  if (bemId !== null && bens.length === 0) {
+    return vazio("SEM_BASE", `O bem ${bemId} não existe nesta classe. Nada foi gravado.`, tipo);
+  }
+  const itens: ItemDaPrevia[] = [];
+  for (const b of bens) {
+    const doBem = vivos.filter((m) => m.bemId === b.id);
+    if (doBem.length === 0) continue; // sem movimento de valor: não entra na lista
+    itens.push(itemDe({ bemId: b.id, numeroTombamento: b.numeroTombamento, descricao: b.descricao }, doBem, noCorte.filter((m) => m.bemId === b.id), competencia, parametro));
+  }
+  if (bemId === null) {
+    const semBem = vivos.filter((m) => m.bemId === null);
+    if (semBem.length > 0) {
+      itens.push(itemDe({ bemId: null, numeroTombamento: null, descricao: "Acervo sem individualização (movimentos da classe sem bem)" }, semBem, noCorte.filter((m) => m.bemId === null), competencia, parametro));
+    }
+  }
+
+  const prontos = itens.filter((i) => i.situacao === "PRONTO" && i.calculo !== null);
+  const jaAtualizados = itens.filter((i) => i.situacao === "JA_ATUALIZADO");
+  const totalmente = itens.filter((i) => i.situacao === "TOTALMENTE_ATUALIZADO");
+  const jaAplicado = somar(itens.map((i) => i.jaAplicado));
+  const base = somar(prontos.map((i) => i.base));
+  const calculo: CalculoDaParcela | null =
+    prontos.length === 0
+      ? null
+      : {
+          base,
+          valorResidual: somar(prontos.map((i) => i.calculo!.valorResidual)),
+          parcelaCheia: somar(prontos.map((i) => i.calculo!.parcelaCheia)),
+          teto: somar(prontos.map((i) => i.calculo!.teto)),
+          valorDaParcela: somar(prontos.map((i) => i.calculo!.valorDaParcela)),
+        };
+  const comum = { competencia, corte, escopo, bemId, parametro, tipo, base, valorContabil: valorContabilDaClasseNoCorte, jaAplicado, calculo, itens };
+  if (prontos.length > 0) return { ...comum, situacao: "PRONTA", recusa: null };
+  if (jaAtualizados.length > 0) {
     return {
-      competencia, parametro, tipo, base, valorContabil: atual, jaAplicado, calculo: null,
+      ...comum,
       situacao: "JA_ATUALIZADA",
       recusa:
-        `Competência ${pedido.competencia} JÁ FOI ATUALIZADA para esta classe ` +
-        `(${metodo} líquida de ${jaAplicado.toFixed(2)}). Para refazer, ESTORNE ` +
-        `o movimento da competência primeiro — o saldo é que governa, não uma ` +
-        `trava.`,
+        `Competência ${pedido.competencia} JÁ FOI ATUALIZADA para ${escopo === "BEM" ? "este bem" : "esta classe"} ` +
+        `(${metodo} líquida de ${jaAplicado.toFixed(2)} em ${jaAtualizados.length} item(ns)). Para refazer, ESTORNE ` +
+        `a execução da competência primeiro — o saldo é que governa, não uma trava.`,
     };
   }
-  // (d)(e)(f)(g) — aritmética PURA, conferida no teste contra literal.
-  const calculo = calcularParcela(base, atual, {
-    vidaUtilMeses: parametro.vidaUtilMeses,
-    percentualResidual: parametro.percentualResidual,
-  });
-  if (!calculo.teto.greaterThan(0)) {
+  if (totalmente.length > 0) {
     return {
-      competencia, parametro, tipo, base, valorContabil: atual, jaAplicado, calculo,
+      ...comum,
       situacao: "TOTALMENTE_ATUALIZADA",
       recusa:
-        `Classe TOTALMENTE ATUALIZADA: o valor contábil (${atual.toFixed(2)}) já ` +
-        `alcançou o valor residual (${calculo.valorResidual.toFixed(2)}). Não há ` +
-        `mais o que ${metodo.toLowerCase()}. Nada foi gravado.`,
+        `${escopo === "BEM" ? "Bem" : "Classe"} TOTALMENTE ATUALIZAD${escopo === "BEM" ? "O" : "A"}: o valor contábil já alcançou o ` +
+        `valor residual em todos os itens. Não há mais o que ${metodo.toLowerCase()}. Nada foi gravado.`,
     };
   }
-  return { competencia, parametro, tipo, base, valorContabil: atual, jaAplicado, calculo, situacao: "PRONTA", recusa: null };
+  return {
+    ...comum,
+    situacao: "SEM_BASE",
+    recusa:
+      `Nenhum item elegível em ${pedido.competencia}: ` +
+      (itens.length === 0 ? "a classe não tem movimento de valor" : itens.map((i) => `${i.numeroTombamento ?? "acervo"}: ${i.nota ?? i.situacao}`).join("; ")) +
+      `. Nada foi gravado.`,
+  };
+}
+
+export interface ItemAtualizado {
+  readonly movimentoId: string;
+  readonly memoriaId: string;
+  readonly bemId: string | null;
+  readonly numeroTombamento: string | null;
+  readonly base: Money;
+  readonly valorDaParcela: Money;
+}
+
+export interface ResultadoAtualizacao extends ResultadoMovimento {
+  readonly tipo: TipoMovimentoPatrimonial;
+  /** Totais da execução (a soma dos itens). */
+  readonly base: Money;
+  readonly valorResidual: Money;
+  readonly parcelaCheia: Money;
+  readonly valorDaParcela: Money;
+  /** A memória do PRIMEIRO item (compatibilidade); cada item tem a sua em `itens`. */
+  readonly memoriaId: string;
+  readonly versaoDeParametroId: string | null;
+  /** V4: a identidade da execução mensal e os itens que ela lançou. */
+  readonly execucaoId: string;
+  readonly escopo: "CLASSE" | "BEM";
+  readonly itens: readonly ItemAtualizado[];
 }
 
 export async function atualizarCompetencia(
@@ -713,62 +850,156 @@ export async function atualizarCompetencia(
     // SEM UG: a depreciação mensal é da CLASSE, em lote — não pertence a unidade nenhuma.
     await autorizarNo(tx, dados.criadoPor, ACAO_DO_SERVICO.atualizarCompetencia, "ENTE");
 
+    const classe = await tx.classeDeBens.findUnique({ where: { id: dados.classeDeBensId }, select: { id: true, codigo: true, ativa: true } });
+    if (classe === null) throw new Error(`Classe de bens ${dados.classeDeBensId} não existe.`);
+    if (!classe.ativa) throw new Error(`Classe de bens ${classe.codigo} está INATIVA — não recebe movimento novo.`);
+
     // A MESMA conta da prévia, dentro da transação — e a mesma recusa.
-    const previa = await preverCompetencia(tx, {
-      classeDeBensId: dados.classeDeBensId,
-      competencia: dados.competencia,
-    });
-    if (
-      previa.situacao !== "PRONTA" ||
-      previa.calculo === null ||
-      previa.parametro === null ||
-      previa.tipo === null
-    ) {
+    const previa = await preverCompetencia(tx, { classeDeBensId: dados.classeDeBensId, competencia: dados.competencia, bemId: dados.bemId });
+    if (previa.situacao !== "PRONTA" || previa.calculo === null || previa.parametro === null || previa.tipo === null) {
       throw new Error(previa.recusa ?? `Competência ${dados.competencia} não está pronta para processar.`);
     }
-    const { parametro, calculo, tipo, base, competencia } = previa;
+    const { parametro, calculo, tipo, competencia, corte } = previa;
     const metodo = parametro.metodo;
+    const prontos = previa.itens.filter((i) => i.situacao === "PRONTO" && i.calculo !== null);
 
-    const r = await registrarMovimentoPatrimonial(tx, {
-      classeDeBensId: dados.classeDeBensId,
-      tipo,
-      valor: calculo.valorDaParcela,
-      dataMovimento: competencia,
-      competencia,
-      criadoPor: dados.criadoPor,
+    // ═══ UM LANÇAMENTO POR EXECUÇÃO: a soma dos itens, pelo roteiro do tipo ═══
+    const roteiro = await roteiroDoTipo(tx, tipo);
+    const partidas = await partidasParaPersistir(tx, calculo.valorDaParcela, roteiro);
+    const execucaoId = randomUUID();
+    const lancamentoId = await lancarNoRazao(tx, {
+      numeroControle: `PATR-${tipo}-${diaCivil(competencia)}`,
+      dataTransacao: competencia,
       historico:
-        `${metodo} da competência ${dados.competencia} — base ` +
-        `${base.toFixed(2)}, residual ${calculo.valorResidual.toFixed(2)}, ` +
-        `${parametro.vidaUtilMeses} meses`,
+        `${metodo} da competência ${dados.competencia} — ${prontos.length} item(ns), base ${calculo.base.toFixed(2)}, ` +
+        `residual ${calculo.valorResidual.toFixed(2)}, ${parametro.vidaUtilMeses} meses` +
+        (previa.escopo === "BEM" ? ` (escopo: um bem)` : ""),
+      origemTipo: `PATRIMONIAL_${tipo}`,
+      origemId: execucaoId,
+      criadoPor: dados.criadoPor,
+      partidas: partidas.map((p) => ({
+        contaId: p.contaId,
+        tipo: p.tipo as "DEBITO" | "CREDITO",
+        subsistema: p.subsistema as "ORCAMENTARIO" | "PATRIMONIAL" | "CONTROLE",
+        valor: p.valor.toFixed(2),
+      })),
     });
-    // A MEMÓRIA DE CÁLCULO, na mesma transação: se ela não gravar, o movimento não existe.
-    const memoria = await tx.memoriaDeAtualizacao.create({
+    await tx.execucaoDeAtualizacao.create({
       data: {
-        movimentoId: r.movimentoId,
+        id: execucaoId,
+        classeDeBensId: classe.id,
+        competencia,
+        corte,
+        escopo: previa.escopo,
+        bemId: previa.bemId,
         versaoDeParametroId: parametro.versaoId,
         metodo,
-        vidaUtilMeses: parametro.vidaUtilMeses,
-        percentualResidual: parametro.percentualResidual.toFixed(6),
-        base: base.toFixed(2),
-        valorContabilAntes: previa.valorContabil.toFixed(2),
-        valorResidual: calculo.valorResidual.toFixed(2),
-        parcelaCheia: calculo.parcelaCheia.toFixed(2),
-        teto: calculo.teto.toFixed(2),
+        quantidadeDeItens: prontos.length,
+        base: calculo.base.toFixed(2),
         valorDaParcela: calculo.valorDaParcela.toFixed(2),
+        lancamentoId,
+        criadoPor: dados.criadoPor,
       },
       select: { id: true },
     });
+
+    // ═══ OS ITENS — um movimento e uma memória por alvo, na mesma transação ═══
+    const itens: ItemAtualizado[] = [];
+    for (const item of prontos) {
+      const c = item.calculo!;
+      const movimento = await tx.movimentoPatrimonial.create({
+        data: {
+          classeDeBensId: classe.id,
+          bemId: item.bemId,
+          tipo,
+          valor: c.valorDaParcela.toFixed(2),
+          dataMovimento: competencia,
+          competencia,
+          operacaoId: execucaoId,
+          lancamentoId,
+          versaoDeRoteiroId: roteiro.versaoId,
+          criadoPor: dados.criadoPor,
+        },
+        select: { id: true },
+      });
+      const memoria = await tx.memoriaDeAtualizacao.create({
+        data: {
+          movimentoId: movimento.id,
+          versaoDeParametroId: parametro.versaoId,
+          execucaoId,
+          corte,
+          metodo,
+          vidaUtilMeses: parametro.vidaUtilMeses,
+          percentualResidual: parametro.percentualResidual.toFixed(6),
+          base: item.base.toFixed(2),
+          valorContabilAntes: item.valorContabil.toFixed(2),
+          valorResidual: c.valorResidual.toFixed(2),
+          parcelaCheia: c.parcelaCheia.toFixed(2),
+          teto: c.teto.toFixed(2),
+          valorDaParcela: c.valorDaParcela.toFixed(2),
+        },
+        select: { id: true },
+      });
+      itens.push({ movimentoId: movimento.id, memoriaId: memoria.id, bemId: item.bemId, numeroTombamento: item.numeroTombamento, base: item.base, valorDaParcela: c.valorDaParcela });
+    }
+    const primeiro = itens[0]!;
     return {
-      ...r,
+      movimentoId: primeiro.movimentoId,
+      lancamentoId,
       tipo,
       base: calculo.base,
       valorResidual: calculo.valorResidual,
       parcelaCheia: calculo.parcelaCheia,
       valorDaParcela: calculo.valorDaParcela,
-      memoriaId: memoria.id,
+      memoriaId: primeiro.memoriaId,
       versaoDeParametroId: parametro.versaoId,
+      execucaoId,
+      escopo: previa.escopo,
+      itens,
     };
   });
+}
+
+export interface ConciliacaoDaClasse {
+  readonly classe: Money;
+  /** Σ do valor contábil dos bens (movimentos com `bemId`). */
+  readonly somaDosBens: Money;
+  /** O valor contábil dos movimentos SEM bem (o acervo sem individualização). */
+  readonly semIndividualizacao: Money;
+  /** classe − (bens + sem individualização): zero por construção (os conjuntos particionam). */
+  readonly diferenca: Money;
+  /** A atualização acumulada lançada pela classe inteira ANTES da V4 (sem bem e sem execução) — a reconciliação histórica a definir. */
+  readonly acumuladaHistoricaSemBem: Money;
+  readonly bens: number;
+}
+
+/**
+ * A CONCILIAÇÃO item → classe → razão (V4, §4.2). Só lê. A `diferenca` é zero por construção; o
+ * número que importa é `acumuladaHistoricaSemBem`: a depreciação lançada pela classe inteira antes
+ * de existir item por bem, que nenhum bem carrega e que só uma reconciliação autorizada resolve.
+ */
+export async function conciliacaoDaClasse(tx: Tx, classeDeBensId: string, corte?: Date): Promise<ConciliacaoDaClasse> {
+  const crus = await tx.movimentoPatrimonial.findMany({
+    where: { classeDeBensId, estornoDeId: null, estornos: { none: {} }, ...(corte !== undefined ? { dataMovimento: { lte: corte } } : {}) },
+    select: { tipo: true, valor: true, bemId: true, operacaoId: true, competencia: true },
+  });
+  const todos = crus.map((m) => ({ tipo: m.tipo, valor: toMoney(m.valor.toFixed(2)) }));
+  const comBem = crus.filter((m) => m.bemId !== null).map((m) => ({ tipo: m.tipo, valor: toMoney(m.valor.toFixed(2)) }));
+  const semBem = crus.filter((m) => m.bemId === null).map((m) => ({ tipo: m.tipo, valor: toMoney(m.valor.toFixed(2)) }));
+  const historicos = crus
+    .filter((m) => m.bemId === null && m.competencia !== null && m.operacaoId === null && EH_ATUALIZACAO_ACUMULADA[m.tipo])
+    .map((m) => ({ tipo: m.tipo, valor: toMoney(m.valor.toFixed(2)) }));
+  const classe = valorContabil(todos);
+  const somaDosBens = valorContabil(comBem);
+  const semIndividualizacao = valorContabil(semBem);
+  return {
+    classe,
+    somaDosBens,
+    semIndividualizacao,
+    diferenca: toMoney(classe.minus(somaDosBens).minus(semIndividualizacao)),
+    acumuladaHistoricaSemBem: atualizacaoAcumulada(historicos),
+    bens: new Set(crus.filter((m) => m.bemId !== null).map((m) => m.bemId)).size,
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -822,7 +1053,7 @@ export async function registrarReavaliacao(
     await autorizarNo(tx, dados.criadoPor, ACAO_DO_SERVICO.registrarReavaliacao, "ENTE");
 
     if (dados.sentido === "REDUCAO") {
-      await exigirTetoDeReducao(tx, dados.classeDeBensId, dados.valor, "reavaliação");
+      await exigirTetoDeReducao(tx, dados.classeDeBensId, dados.valor, "reavaliação", dados.bemId);
     }
     return registrarMovimentoPatrimonial(tx, {
       classeDeBensId: dados.classeDeBensId,
@@ -847,7 +1078,7 @@ export async function registrarImpairment(
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, dados.criadoPor, ACAO_DO_SERVICO.registrarImpairment, "ENTE");
 
-    await exigirTetoDeReducao(tx, dados.classeDeBensId, dados.valor, "impairment");
+    await exigirTetoDeReducao(tx, dados.classeDeBensId, dados.valor, "impairment", dados.bemId);
 
     return registrarMovimentoPatrimonial(tx, {
       classeDeBensId: dados.classeDeBensId,
@@ -867,7 +1098,8 @@ async function exigirTetoDeReducao(
   tx: Tx,
   classeDeBensId: string,
   valor: Money,
-  operacao: string
+  operacao: string,
+  bemId?: string | undefined
 ): Promise<void> {
   const atual = await valorContabilDaClasse(tx, classeDeBensId);
   if (valor.greaterThan(atual)) {
@@ -876,6 +1108,16 @@ async function exigirTetoDeReducao(
         `(${atual.toFixed(2)}). Reduzir mais do que a classe vale deixaria o ativo ` +
         `NEGATIVO.`
     );
+  }
+  // V4 (§4.3): o teto do BEM é próprio — a classe positiva não mascara um bem que já não vale isso.
+  if (bemId !== undefined) {
+    const doBem = await valorContabilDoBem(tx, bemId);
+    if (valor.greaterThan(doBem)) {
+      throw new Error(
+        `A ${operacao} de ${valor.toFixed(2)} excede o valor contábil do BEM (${doBem.toFixed(2)}), ` +
+          `ainda que a classe tenha ${atual.toFixed(2)}. O saldo da classe não mascara o bem.`
+      );
+    }
   }
 }
 
@@ -1272,7 +1514,9 @@ async function estornarLancamento(
 async function estornarUmMovimento(
   tx: Tx,
   movimentoId: string,
-  dados: { dataMovimento: Date; motivo: string; criadoPor: string }
+  dados: { dataMovimento: Date; motivo: string; criadoPor: string },
+  /** V4: os itens de uma execução compartilham o lançamento — ele é estornado UMA vez, e os estornos o reusam. */
+  estornosDeLancamento: Map<string, string> = new Map()
 ): Promise<ResultadoMovimento> {
   const original = await tx.movimentoPatrimonial.findUniqueOrThrow({
     where: { id: movimentoId },
@@ -1292,13 +1536,17 @@ async function estornarUmMovimento(
 
   const tipoEstorno = tipoDoEstorno(original.tipo);
 
-  const lancEstornoId = await estornarLancamento(tx, original.lancamentoId, {
-    data: dados.dataMovimento,
-    motivo: dados.motivo,
-    criadoPor: dados.criadoPor,
-    origemTipo: `PATRIMONIAL_${tipoEstorno}`,
-    origemId: original.id,
-  });
+  let lancEstornoId = estornosDeLancamento.get(original.lancamentoId);
+  if (lancEstornoId === undefined) {
+    lancEstornoId = await estornarLancamento(tx, original.lancamentoId, {
+      data: dados.dataMovimento,
+      motivo: dados.motivo,
+      criadoPor: dados.criadoPor,
+      origemTipo: `PATRIMONIAL_${tipoEstorno}`,
+      origemId: original.operacaoId ?? original.id,
+    });
+    estornosDeLancamento.set(original.lancamentoId, lancEstornoId);
+  }
 
   // uq_estorno_patrimonial_unico protege a devolução dupla do valor.
   const movEstorno = await tx.movimentoPatrimonial.create({
@@ -1405,16 +1653,17 @@ export async function estornarMovimentoPatrimonial(
                 estornos: { none: {} },
               },
               select: { id: true },
-              orderBy: { criadoEm: "asc" },
+              orderBy: { sequencia: "asc" },
             })
           ).map((m) => m.id);
 
     const movimentos: string[] = [];
     const lancamentos: string[] = [];
+    const estornosDeLancamento = new Map<string, string>();
     for (const alvo of alvos) {
-      const r = await estornarUmMovimento(tx, alvo, dados);
+      const r = await estornarUmMovimento(tx, alvo, dados, estornosDeLancamento);
       movimentos.push(r.movimentoId);
-      lancamentos.push(r.lancamentoId);
+      if (!lancamentos.includes(r.lancamentoId)) lancamentos.push(r.lancamentoId);
     }
 
     // O LANÇAMENTO DE RESULTADO da alienação não tem movimento próprio — ele é

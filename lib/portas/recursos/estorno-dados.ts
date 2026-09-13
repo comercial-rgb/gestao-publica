@@ -43,8 +43,8 @@ const t = (c: Campos, k: string): string => (c[k] ?? "").trim();
 
 const ROTULO_DO_PORQUE: Readonly<Record<PorqueDepende, string>> = {
   COMPETENCIA_POSTERIOR: "a parcela desta competência foi calculada sobre uma base que incluía este movimento",
-  REDUCAO_POSTERIOR: "o teto desta redução (o que a classe e o bem valiam) incluía este movimento",
-  BAIXA_DA_ACUMULADA_POSTERIOR: "a acumulada baixada foi conferida contra uma acumulada que incluía este movimento",
+  REDUCAO_POSTERIOR: "sem este movimento a redução ficaria acima do que o alvo valia (impacto verificado)",
+  BAIXA_DA_ACUMULADA_POSTERIOR: "sem este movimento a acumulada não cobriria a baixa (impacto verificado)",
 };
 
 export interface ItemDaAnalise {
@@ -68,6 +68,8 @@ export interface AnaliseLida {
   readonly numeroTombamento: string | null;
   readonly classe: string | null;
   readonly temMemoria: boolean;
+  /** V4: o movimento é item de uma execução mensal — o estorno desfaz A EXECUÇÃO da classe, não a virada. */
+  readonly execucao: { readonly competencia: string; readonly escopo: string; readonly itens: number } | null;
   readonly arrastados: readonly ItemDaAnalise[];
   readonly resultados: readonly string[];
   readonly dependentes: readonly ItemDaAnalise[];
@@ -76,7 +78,7 @@ export interface AnaliseLida {
   readonly podeEstornar: boolean;
 }
 
-function itemDeValor(m: MovimentoDaAnalise, porque: PorqueDepende | null): ItemDaAnalise {
+function itemDeValor(m: MovimentoDaAnalise, porque: PorqueDepende | null, impacto?: string): ItemDaAnalise {
   return {
     id: m.id,
     rotulo:
@@ -88,7 +90,7 @@ function itemDeValor(m: MovimentoDaAnalise, porque: PorqueDepende | null): ItemD
     por: m.criadoPor,
     motivo: m.motivo,
     valor: m.valor,
-    porque: porque === null ? null : ROTULO_DO_PORQUE[porque],
+    porque: porque === null ? null : impacto !== undefined ? `${ROTULO_DO_PORQUE[porque]}: ${impacto}` : ROTULO_DO_PORQUE[porque],
     href: rotaDoEstorno("valor", m.id),
   };
 }
@@ -123,9 +125,10 @@ export async function analiseDoEstorno(eixo: EixoDoEstorno, movimentoId: string)
         numeroTombamento: m.numeroTombamento,
         classe: m.classe,
         temMemoria: m.temMemoria,
+        execucao: a.execucao === null ? null : { competencia: a.execucao.competencia, escopo: a.execucao.escopo === "BEM" ? "um bem" : "a classe", itens: a.execucao.itens },
         arrastados: a.arrastados.map((x) => itemDeValor(x, null)),
         resultados: a.resultados.map((r) => (r.origemTipo === "PATRIMONIAL_GANHO_ALIENACAO" ? "o lançamento do GANHO na alienação" : "o lançamento da PERDA na alienação")),
-        dependentes: a.dependentes.map((d) => itemDeValor(d, d.porque)),
+        dependentes: a.dependentes.map((d) => itemDeValor(d, d.porque, d.impacto)),
         informativos: a.posterioresDoBem.map((x) => itemDeValor(x, null)),
         bloqueios: a.bloqueios,
         podeEstornar: a.podeEstornar,
@@ -142,6 +145,7 @@ export async function analiseDoEstorno(eixo: EixoDoEstorno, movimentoId: string)
       numeroTombamento: m.numeroTombamento,
       classe: null,
       temMemoria: false,
+      execucao: null,
       arrastados: a.arrastados.map(itemDeGestao),
       resultados: [],
       dependentes: [],

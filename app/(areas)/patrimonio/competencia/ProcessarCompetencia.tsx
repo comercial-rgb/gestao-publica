@@ -12,17 +12,21 @@ import { processarCompetenciaAction, type EstadoDaCompetencia } from "./actions"
 export function ProcessarCompetencia({
   classeDeBensId,
   competencia,
+  bemId,
   resumo,
 }: {
   readonly classeDeBensId: string;
   readonly competencia: string;
+  /** O escopo explícito: um bem, ou nulo = a classe (todos os itens prontos). */
+  readonly bemId: string | null;
   readonly resumo: string;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaCompetencia, FormData>(processarCompetenciaAction, {});
   return (
-    <form action={action} data-acao="processar-competencia" className="space-y-2">
+    <form action={action} data-acao="processar-competencia" data-escopo={bemId === null ? "classe" : "bem"} className="space-y-2">
       <input type="hidden" name="classeDeBensId" value={classeDeBensId} />
       <input type="hidden" name="competencia" value={competencia} />
+      {bemId !== null ? <input type="hidden" name="bemId" value={bemId} /> : null}
       <ChaveDeComando />
       <p className="text-sm">{resumo}</p>
       <button type="submit" className={BOTAO} disabled={pendente || estado.sucesso !== undefined}>

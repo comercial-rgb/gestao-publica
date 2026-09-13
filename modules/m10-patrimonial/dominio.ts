@@ -538,6 +538,8 @@ export const zAtualizarCompetenciaInput = z.object({
   classeDeBensId: z.string().min(1),
   /** 'YYYY-MM'. */
   competencia: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Use YYYY-MM."),
+  /** V4 (§4.3): o ESCOPO explícito — informado, a execução processa só este bem. */
+  bemId: z.string().min(1).optional(),
   criadoPor: z.string().min(1),
 });
 export type AtualizarCompetenciaInput = z.input<typeof zAtualizarCompetenciaInput>;

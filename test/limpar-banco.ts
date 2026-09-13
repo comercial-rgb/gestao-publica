@@ -173,6 +173,7 @@ const TABELAS = [
   "LimiteContratacao",
   // M10 — patrimonial
   "MemoriaDeAtualizacao",
+  "ExecucaoDeAtualizacao",
   "VersaoDeParametroDeAtualizacao",
   "MovimentoPatrimonial",
   "BemPatrimonial",

@@ -1,13 +1,18 @@
 import type { Tx } from "../m16-travamento/autorizacao.js";
+import { janelaCivilDoMes, competenciaCivil } from "../../packages/datas/index.js";
+import { toMoney, type Money } from "../../packages/contracts/index.js";
 import {
+  atualizacaoAcumulada,
   EH_ATUALIZACAO_ACUMULADA,
   SINAL_MOVIMENTO_PATRIMONIAL,
+  valorContabil,
   type TipoMovimentoPatrimonial,
 } from "./dominio.js";
 import type { TipoMovimentoDeGestao } from "./gestao-do-bem-dominio.js";
 
 /**
- * M10 — A ANÁLISE DE DEPENDÊNCIAS DO ESTORNO (orquestração V3, pacote 2, unidade 4).
+ * M10 — A ANÁLISE DE DEPENDÊNCIAS DO ESTORNO (V3 pacote 2, unidade 4; revista na sessão
+ * noturna V4, §4.3 — achado A07).
  *
  * ═══ A PERGUNTA ═══
  * Estornar é lançamento novo que anula o original (append-only). Mas o original pode ter
@@ -16,26 +21,33 @@ import type { TipoMovimentoDeGestao } from "./gestao-do-bem-dominio.js";
  * incluía aquela reavaliação. Anular o original em silêncio deixaria esses fatos apoiados
  * em nada — corretos quando nasceram, inválidos depois, e ninguém saberia.
  *
- * ═══ A REGRA: DEPENDE QUEM FICARIA INVÁLIDO ═══
- * Um movimento VIVO posterior (registrado depois, não estornado) D depende de M quando:
- *   (a) D é uma ATUALIZAÇÃO POR COMPETÊNCIA e M compõe a BASE (M não é atualização
- *       acumulada): a parcela de D foi calculada sobre um bruto que incluía M;
- *   (b) D é uma REDUÇÃO (baixa, doação realizada, impairment, reavaliação para menos) e M
- *       é um AUMENTO: o teto de D (classe e bem) incluía M — sem M, D pode passar do que
- *       a classe vale;
- *   (c) D é a BAIXA DA ACUMULADA de uma alienação e M é uma atualização acumulada: D foi
- *       conferida contra uma acumulada que incluía M.
- * Nesses casos o estorno é RECUSADO nomeando os dependentes: estorne primeiro, do mais
- * recente ao mais antigo. Movimentos posteriores do MESMO BEM que não caem em (a)–(c) são
+ * ═══ O QUE MUDOU NA V4: IMPACTO VERIFICADO, NÃO TIPO COMBINADO ═══
+ * A regra anterior combinava TIPOS ("redução posterior depende de aumento anterior") e era
+ * conservadora sem dizer: uma redução do bem B era declarada dependente da entrada do bem A.
+ * Agora cada posterior vivo D é REFEITO sem M, sobre o conjunto que a conferência de D usou:
+ *
+ *   (a) D é uma ATUALIZAÇÃO POR COMPETÊNCIA: depende de M se M compunha a base de D — mesmo
+ *       ALVO (o bem de D; o acervo sem individualização; ou, para a atualização antiga da
+ *       classe inteira, qualquer alvo), M não é atualização acumulada, e a data de negócio de
+ *       M está dentro do CORTE de D (movimento datado depois do corte não entrou na base);
+ *   (b) D é uma REDUÇÃO (baixa, doação realizada, impairment, reavaliação para menos): depende
+ *       de M se, retirado M, o valor contábil do ALVO de D (o bem, quando D tem bem; e a classe,
+ *       sempre) no instante do registro de D ficaria ABAIXO do valor de D — o ativo negativo;
+ *   (c) D é a BAIXA DA ACUMULADA de uma alienação: depende de M se, retirado M, a acumulada
+ *       da classe no registro de D não cobriria D.
+ * O que não fica inválido não bloqueia. Posteriores do MESMO BEM que não bloqueiam são
  * listados como INFORMAÇÃO — o operador vê a cadeia, e nada o impede.
  *
- * ⚠️ POR QUE `criadoEm`, E NÃO A DATA DO FATO: as conferências (base, teto) usaram o que
- * EXISTIA no instante do registro. Um movimento de março lançado em maio foi conferido
- * contra o acervo de maio.
+ * ⚠️ A ORDEM É A DE REGISTRO, com DESEMPATE ESTÁVEL: `sequencia` (atribuída pelo banco). Dois
+ * movimentos no mesmo milissegundo não mudam de lugar entre duas leituras. As conferências
+ * (base, teto) usaram o que EXISTIA no instante do registro — por isso a ordem de registro, e
+ * não a data do fato: um movimento de março lançado em maio foi conferido contra o acervo de maio.
  *
- * ⚠️ A OPERAÇÃO ANDA JUNTA. Os irmãos de `operacaoId` (a alienação: bruto + acumulada) não
- * são dependentes — são ARRASTADOS: `estornarMovimentoPatrimonial` os desfaz no mesmo ato,
- * com o lançamento de resultado. A análise os nomeia para que a tela diga o que o ato faz.
+ * ⚠️ A OPERAÇÃO ANDA JUNTA. Os irmãos de `operacaoId` (a alienação: bruto + acumulada; a
+ * EXECUÇÃO de uma competência: todos os itens, que compartilham UM lançamento) não são
+ * dependentes — são ARRASTADOS: `estornarMovimentoPatrimonial` os desfaz no mesmo ato. A análise
+ * os nomeia para que a tela diga o que o ato faz — e diz que é a execução DESTA classe, não a
+ * virada inteira.
  *
  * O EIXO DE GESTÃO (localização, responsável, estado, situação) não tem teto nem base: a
  * derivação lê o último movimento vivo de cada eixo. A análise mostra o par da
@@ -55,10 +67,13 @@ export interface MovimentoDaAnalise {
   readonly motivo: string | null;
   readonly criadoEm: Date;
   readonly criadoPor: string;
+  readonly sequencia: number;
 }
 
 export interface DependenteDoEstorno extends MovimentoDaAnalise {
   readonly porque: PorqueDepende;
+  /** O impacto verificado, em palavras: o que ficaria abaixo de quê. */
+  readonly impacto: string;
 }
 
 export interface AnaliseDeEstornoPatrimonial {
@@ -70,6 +85,8 @@ export interface AnaliseDeEstornoPatrimonial {
     readonly jaEstornado: boolean;
     readonly temMemoria: boolean;
   };
+  /** A execução mensal a que o movimento pertence (um item dela), quando é o caso. */
+  readonly execucao: { readonly id: string; readonly competencia: string; readonly escopo: string; readonly itens: number } | null;
   /** Os irmãos vivos da operação — desfeitos no MESMO ato. */
   readonly arrastados: readonly MovimentoDaAnalise[];
   /** Os lançamentos de resultado (ganho/perda) vivos da operação — estornados no mesmo ato. */
@@ -84,23 +101,9 @@ export interface AnaliseDeEstornoPatrimonial {
 
 const REDUCOES: ReadonlySet<TipoMovimentoPatrimonial> = new Set(
   (Object.keys(SINAL_MOVIMENTO_PATRIMONIAL) as TipoMovimentoPatrimonial[]).filter(
-    (t) => SINAL_MOVIMENTO_PATRIMONIAL[t] === -1 && !t.startsWith("ESTORNO_")
+    (t) => SINAL_MOVIMENTO_PATRIMONIAL[t] === -1 && !t.startsWith("ESTORNO_") && !EH_ATUALIZACAO_ACUMULADA[t]
   )
 );
-const AUMENTOS: ReadonlySet<TipoMovimentoPatrimonial> = new Set(
-  (Object.keys(SINAL_MOVIMENTO_PATRIMONIAL) as TipoMovimentoPatrimonial[]).filter(
-    (t) => SINAL_MOVIMENTO_PATRIMONIAL[t] === 1 && !t.startsWith("ESTORNO_") && !EH_ATUALIZACAO_ACUMULADA[t]
-  )
-);
-
-function porqueDepende(m: { readonly tipo: TipoMovimentoPatrimonial }, d: { readonly tipo: TipoMovimentoPatrimonial; readonly competencia: Date | null }): PorqueDepende | null {
-  if (d.competencia !== null && !EH_ATUALIZACAO_ACUMULADA[m.tipo]) return "COMPETENCIA_POSTERIOR";
-  if (d.tipo === "BAIXA_DE_ATUALIZACAO_ACUMULADA") {
-    return EH_ATUALIZACAO_ACUMULADA[m.tipo] ? "BAIXA_DA_ACUMULADA_POSTERIOR" : null;
-  }
-  if (REDUCOES.has(d.tipo) && AUMENTOS.has(m.tipo)) return "REDUCAO_POSTERIOR";
-  return null;
-}
 
 const SELECAO = {
   id: true,
@@ -113,6 +116,8 @@ const SELECAO = {
   motivo: true,
   criadoEm: true,
   criadoPor: true,
+  sequencia: true,
+  operacaoId: true,
 } as const;
 
 type LinhaCrua = {
@@ -126,6 +131,8 @@ type LinhaCrua = {
   readonly motivo: string | null;
   readonly criadoEm: Date;
   readonly criadoPor: string;
+  readonly sequencia: number;
+  readonly operacaoId: string | null;
 };
 
 function lida(m: LinhaCrua): MovimentoDaAnalise {
@@ -140,7 +147,73 @@ function lida(m: LinhaCrua): MovimentoDaAnalise {
     motivo: m.motivo,
     criadoEm: m.criadoEm,
     criadoPor: m.criadoPor,
+    sequencia: m.sequencia,
   };
+}
+
+const money = (l: LinhaCrua): { tipo: TipoMovimentoPatrimonial; valor: Money } => ({ tipo: l.tipo as TipoMovimentoPatrimonial, valor: toMoney(l.valor.toFixed(2)) });
+
+/** O conjunto que a conferência de D usou: os vivos registrados ANTES de D, no alvo pedido, sem M. */
+function conjuntoSemM(vivos: readonly LinhaCrua[], d: LinhaCrua, m: LinhaCrua, alvo: "BEM" | "CLASSE"): readonly LinhaCrua[] {
+  return vivos.filter((x) => x.sequencia < d.sequencia && x.id !== m.id && (alvo === "CLASSE" || x.bemId === d.bemId));
+}
+
+/**
+ * Por que D depende de M — ou `null`. `vivos` são todos os movimentos vivos da classe, em
+ * ordem de sequência; a conferência de D é refeita sobre eles sem M.
+ */
+export function porqueDepende(m: LinhaCrua, d: LinhaCrua, vivos: readonly LinhaCrua[]): { readonly porque: PorqueDepende; readonly impacto: string } | null {
+  const tipoM = m.tipo as TipoMovimentoPatrimonial;
+  const tipoD = d.tipo as TipoMovimentoPatrimonial;
+  const valorD = toMoney(d.valor.toFixed(2));
+
+  // (a) D é um item de atualização por competência.
+  if (d.competencia !== null && EH_ATUALIZACAO_ACUMULADA[tipoD] && !tipoD.startsWith("ESTORNO_")) {
+    if (EH_ATUALIZACAO_ACUMULADA[tipoM]) return null; // a acumulada não compõe a base
+    const mesmoAlvo =
+      d.bemId !== null
+        ? m.bemId === d.bemId
+        : d.operacaoId !== null
+          ? m.bemId === null // o item do acervo sem individualização (V4) só soma o que não tem bem
+          : true; // a atualização antiga da classe inteira somava tudo
+    if (!mesmoAlvo) return null;
+    const corte = janelaCivilDoMes(competenciaCivil(d.competencia)).fim;
+    if (m.dataMovimento.getTime() > corte.getTime()) return null; // não entrou na base de D
+    return {
+      porque: "COMPETENCIA_POSTERIOR",
+      impacto: `a parcela de ${competenciaCivil(d.competencia)} foi calculada sobre uma base que incluía ${m.valor.toFixed(2)} deste movimento`,
+    };
+  }
+
+  // (b) D é uma redução: refaz o teto sem M — o bem de D (se houver) e a classe.
+  if (REDUCOES.has(tipoD)) {
+    const conferencias: { alvo: "BEM" | "CLASSE"; rotulo: string }[] = [{ alvo: "CLASSE", rotulo: "a classe" }];
+    if (d.bemId !== null) conferencias.unshift({ alvo: "BEM", rotulo: `o bem ${d.bem?.numeroTombamento ?? d.bemId}` });
+    for (const c of conferencias) {
+      if (c.alvo === "BEM" && m.bemId !== d.bemId) continue;
+      const sem = valorContabil(conjuntoSemM(vivos, d, m, c.alvo).map(money));
+      if (sem.lessThan(valorD)) {
+        return {
+          porque: "REDUCAO_POSTERIOR",
+          impacto: `sem este movimento, ${c.rotulo} valeria ${sem.toFixed(2)} no registro da redução de ${valorD.toFixed(2)} — o ativo ficaria negativo`,
+        };
+      }
+    }
+    return null;
+  }
+
+  // (c) D é a baixa da acumulada de uma alienação: refaz a acumulada da classe sem M.
+  if (tipoD === "BAIXA_DE_ATUALIZACAO_ACUMULADA") {
+    if (!EH_ATUALIZACAO_ACUMULADA[tipoM]) return null;
+    const sem = atualizacaoAcumulada(conjuntoSemM(vivos, d, m, "CLASSE").map(money));
+    if (sem.lessThan(valorD)) {
+      return {
+        porque: "BAIXA_DA_ACUMULADA_POSTERIOR",
+        impacto: `sem este movimento, a acumulada da classe seria ${sem.toFixed(2)} no registro da baixa de ${valorD.toFixed(2)} — baixaria depreciação que não existiu`,
+      };
+    }
+  }
+  return null;
 }
 
 /** A análise — só lê. `estornarMovimentoPatrimonial` a chama dentro da transação e recusa pelos bloqueios. */
@@ -151,7 +224,6 @@ export async function analisarEstornoPatrimonial(tx: Tx, movimentoId: string): P
       ...SELECAO,
       classeDeBensId: true,
       classeDeBens: { select: { codigo: true, descricao: true } },
-      operacaoId: true,
       estornoDeId: true,
       estornos: { select: { id: true } },
       memoriaDeAtualizacao: { select: { id: true } },
@@ -172,7 +244,7 @@ export async function analisarEstornoPatrimonial(tx: Tx, movimentoId: string): P
       : await tx.movimentoPatrimonial.findMany({
           where: { operacaoId: m.operacaoId, id: { not: m.id }, estornoDeId: null, estornos: { none: {} } },
           select: SELECAO,
-          orderBy: { criadoEm: "asc" },
+          orderBy: { sequencia: "asc" },
         });
   const resultados =
     m.operacaoId === null
@@ -185,22 +257,30 @@ export async function analisarEstornoPatrimonial(tx: Tx, movimentoId: string): P
           },
           select: { id: true, origemTipo: true },
         });
+  const execucaoCrua =
+    m.operacaoId === null
+      ? null
+      : await tx.execucaoDeAtualizacao.findUnique({ where: { id: m.operacaoId }, select: { id: true, competencia: true, escopo: true, quantidadeDeItens: true } });
+  const execucao =
+    execucaoCrua === null
+      ? null
+      : { id: execucaoCrua.id, competencia: competenciaCivil(execucaoCrua.competencia), escopo: execucaoCrua.escopo, itens: execucaoCrua.quantidadeDeItens };
   const daOperacao = new Set([m.id, ...irmaos.map((i) => i.id)]);
 
-  // Os posteriores VIVOS da classe, do mais recente ao mais antigo.
-  const posteriores = await tx.movimentoPatrimonial.findMany({
-    where: { classeDeBensId: m.classeDeBensId, criadoEm: { gt: m.criadoEm }, estornoDeId: null, estornos: { none: {} } },
+  // TODOS os vivos da classe, em ordem de registro — a conferência de cada posterior é refeita sobre eles.
+  const vivos = await tx.movimentoPatrimonial.findMany({
+    where: { classeDeBensId: m.classeDeBensId, estornoDeId: null, estornos: { none: {} } },
     select: SELECAO,
-    orderBy: { criadoEm: "desc" },
+    orderBy: { sequencia: "asc" },
   });
+  const posteriores = vivos.filter((d) => d.sequencia > m.sequencia).sort((a, b) => b.sequencia - a.sequencia);
   const dependentes: DependenteDoEstorno[] = [];
   const posterioresDoBem: MovimentoDaAnalise[] = [];
-  const tipoM = m.tipo as TipoMovimentoPatrimonial;
   for (const d of posteriores) {
     if (daOperacao.has(d.id)) continue;
-    const porque = porqueDepende({ tipo: tipoM }, { tipo: d.tipo as TipoMovimentoPatrimonial, competencia: d.competencia });
+    const porque = porqueDepende(m, d, vivos);
     if (porque !== null) {
-      dependentes.push({ ...lida(d), porque });
+      dependentes.push({ ...lida(d), porque: porque.porque, impacto: porque.impacto });
     } else if (m.bemId !== null && d.bemId === m.bemId) {
       posterioresDoBem.push(lida(d));
     }
@@ -208,7 +288,7 @@ export async function analisarEstornoPatrimonial(tx: Tx, movimentoId: string): P
   if (dependentes.length > 0) {
     bloqueios.push(
       `DEPENDENTES VIVOS: ${dependentes.length} movimento(s) posterior(es) se apoia(m) neste — ` +
-        dependentes.map((d) => `${d.tipo} de ${d.valor} (${d.id})`).join(", ") +
+        dependentes.map((d) => `${d.tipo} de ${d.valor} (${d.id}): ${d.impacto}`).join("; ") +
         `. Estorne primeiro, do mais recente ao mais antigo. Nada foi gravado.`
     );
   }
@@ -223,6 +303,7 @@ export async function analisarEstornoPatrimonial(tx: Tx, movimentoId: string): P
       jaEstornado,
       temMemoria: m.memoriaDeAtualizacao !== null,
     },
+    execucao,
     arrastados: irmaos.map(lida),
     resultados: resultados.map((r) => ({ lancamentoId: r.id, origemTipo: r.origemTipo })),
     dependentes,

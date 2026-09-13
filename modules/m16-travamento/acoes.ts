@@ -1473,6 +1473,8 @@ export const FORA_DO_CENSO: Record<string, string> = {
   parametroVigente: "leitura (o parâmetro de atualização em vigor da classe — a última versão, ou a linha legada — V3 pacote 2)",
   versoesDoParametro: "leitura (as versões do parâmetro de uma classe, com a vigência derivada — V3 pacote 2)",
   preverCompetencia: "leitura (a prévia da competência: a mesma conta de atualizarCompetencia, sem escrever — V3 pacote 2)",
+  parametroVigenteEm: "leitura (o parâmetro cuja vigência alcança a competência pedida — V4 §4.1)",
+  conciliacaoDaClasse: "leitura (a conciliação item → classe → razão, com a acumulada histórica sem bem — V4 §4.2)",
   receitaArrecadadaPorNumero:
     "leitura (a arrecadação pela guia — exercício e número; quem decide se ela sustenta a alienação é alienarBem — V3 pacote 2)",
   comOperacaoRegistrada: "porta da borda (o log do 6.1-6.3, em duas fases — V3 4.3)",

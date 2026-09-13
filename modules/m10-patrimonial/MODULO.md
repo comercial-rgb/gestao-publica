@@ -418,3 +418,22 @@ passou a vigiar descritor × despachante (com a prova de que acusa).
 **Decisão de tela:** as actions escritas à mão (competência, estorno) NÃO chamam
 `revalidatePath`: o refresh do RSC desmontava o formulário (a prévia deixa de estar PRONTA) e
 levava a resposta junto. A tela seguinte lê o banco ao abrir (`force-dynamic`).
+
+## Sessão noturna V4 (§4) — a competência por bem, com corte, vigência e execução
+
+Decisão inteira em `docs/adr/ADR-competencia-por-bem-corte-e-execucao.md`. O resumo operacional:
+
+- `preverCompetencia(tx, {classe, competencia, bemId?})` devolve ITENS (um por bem elegível e,
+  se houver, o acervo sem individualização), o CORTE, o parâmetro VIGENTE NA COMPETÊNCIA
+  (`parametroVigenteEm`) e os totais dos prontos. Situações do item: PRONTO, JA_ATUALIZADO,
+  TOTALMENTE_ATUALIZADO, NAO_ELEGIVEL (entrada após o corte), SEM_VALOR.
+- `atualizarCompetencia` grava UMA `ExecucaoDeAtualizacao` (escopo CLASSE ou BEM), UM lançamento
+  com a soma, N movimentos (itens, `operacaoId` = execução) e N memórias (com execução e corte).
+  Estornar um item desfaz a execução da classe — o lançamento compartilhado é estornado uma vez.
+- `VersaoDeParametroDeAtualizacao.vigenteDesde`: vigência de negócio; omitida, é derivada; uma
+  vigência que alcance competência processada é recusada (retroativo é estornar e reprocessar).
+- `estorno.ts`: dependência por IMPACTO (o posterior é refeito sem o movimento), ordem por
+  `sequencia`. `exigirTetoDeReducao` cobra também o teto do bem.
+- `conciliacaoDaClasse`: Σ bens + acervo sem individualização = classe (zero por construção) e a
+  acumulada histórica sem bem (pendência `RECONCILIACAO-HISTORICA-DA-DEPRECIACAO-POR-CLASSE`).
+- Pendências: `INICIO-DA-ATUALIZACAO-NO-MES-SEGUINTE`, `VIRADA-DE-TODAS-AS-CLASSES`.

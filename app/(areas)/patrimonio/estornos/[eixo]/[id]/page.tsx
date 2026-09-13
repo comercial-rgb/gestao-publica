@@ -77,7 +77,11 @@ export default async function AnaliseDoEstornoPage({
           </p>
           {analise.arrastados.length > 0 ? (
             <>
-              <p className="text-sm">Desfeitos NO MESMO ATO, porque pertencem à mesma operação:</p>
+              <p className="text-sm">
+                {analise.execucao !== null
+                  ? `Este movimento é um item da execução de ${analise.execucao.competencia} (${analise.execucao.escopo}, ${analise.execucao.itens} item(ns), um lançamento só). O estorno desfaz ESSA execução — não a virada de todas as classes. Desfeitos no mesmo ato:`
+                  : "Desfeitos NO MESMO ATO, porque pertencem à mesma operação:"}
+              </p>
               <Itens itens={analise.arrastados} tom="neutro" />
             </>
           ) : null}

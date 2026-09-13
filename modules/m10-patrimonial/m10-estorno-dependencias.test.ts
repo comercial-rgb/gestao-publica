@@ -110,7 +110,7 @@ describe("a análise de dependências do estorno — eixo de valor", () => {
     expect(await prisma.memoriaDeAtualizacao.count()).toBe(1);
   });
 
-  it("t2: a redução posterior DEPENDE dos aumentos anteriores (o teto os incluía); um aumento não depende de outro (N=2 bens)", async () => {
+  it("t2: a redução posterior depende do aumento que a SUSTENTAVA (impacto verificado), não de todo aumento anterior; um aumento não depende de outro (N=2 bens)", async () => {
     const a = await entrada(BEM_A, "12000.00");
     const b = await entrada(BEM_B, "6000.00");
     // A entrada B veio DEPOIS de A e não depende dela: analisar A não acusa nada.
@@ -120,12 +120,15 @@ describe("a análise de dependências do estorno — eixo de valor", () => {
     expect(soA.posterioresDoBem).toEqual([]);
 
     const red = await reduzir(BEM_A, "1000.00");
-    // Agora a redução depende das DUAS entradas — o teto da classe incluía as duas.
-    for (const m of [a, b]) {
-      const an = await analisarEstornoPatrimonial(prisma, m.movimentoId);
-      expect(an.podeEstornar).toBe(false);
-      expect(an.dependentes.map((d) => [d.id, d.porque])).toEqual([[red.movimentoId, "REDUCAO_POSTERIOR"]]);
-    }
+    // V4 (A07): a redução de A depende da entrada de A (sem ela o bem A valeria 0 < 1.000) —
+    // e NÃO da entrada de B: outro bem, e a classe sem B ainda cobre a redução. Impacto, não tipo.
+    const anA = await analisarEstornoPatrimonial(prisma, a.movimentoId);
+    expect(anA.podeEstornar).toBe(false);
+    expect(anA.dependentes.map((d) => [d.id, d.porque])).toEqual([[red.movimentoId, "REDUCAO_POSTERIOR"]]);
+    expect(anA.dependentes[0]?.impacto).toMatch(/o bem TOMB-A valeria 0.00/);
+    const anB = await analisarEstornoPatrimonial(prisma, b.movimentoId);
+    expect(anB.podeEstornar).toBe(true);
+    expect(anB.dependentes).toEqual([]);
     // ...e a própria redução não tem dependente: é a última.
     const daRed = await analisarEstornoPatrimonial(prisma, red.movimentoId);
     expect(daRed.podeEstornar).toBe(true);

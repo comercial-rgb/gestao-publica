@@ -137,6 +137,7 @@ export async function verParametro(classeId: string): Promise<DetalheLido | null
     dados.push({ rotulo: "Vida útil", valor: `${vigente.vidaUtilMeses} meses`, nota: "A parcela mensal é (base − residual) ÷ vida útil; a última parcela ajusta o resto e para no residual." });
     dados.push({ rotulo: "Valor residual", valor: residualEmPorcento(vigente.percentualResidual) });
     dados.push({ rotulo: "Em vigor", valor: vigente.ativo ? "Sim — a classe é atualizada" : "Não — a atualização foi encerrada" });
+    dados.push({ rotulo: "Vigência", valor: vigente.vigenteDesde === null ? "desde o início" : `desde a competência ${diaCivilBr(vigente.vigenteDesde).slice(3)}`, nota: "A prévia de cada competência usa a versão cuja vigência a alcança — não a mais recente." });
     const v = versoes.find((x) => x.vigente);
     if (v !== undefined) {
       dados.push({ rotulo: "Motivo da versão em vigor", valor: v.motivo });
@@ -153,7 +154,8 @@ export async function verParametro(classeId: string): Promise<DetalheLido | null
       id: v.id,
       oQue:
         `Versão ${v.numero} — ${v.ativo ? `${ROTULO_DO_METODO[v.metodo] ?? v.metodo}, ${v.vidaUtilMeses} meses, residual ${residualEmPorcento(v.percentualResidual)}` : "ATUALIZAÇÃO ENCERRADA"}` +
-        (v.vigente ? " (em vigor)" : v.vigenciaFim !== null ? ` (vigorou até ${diaCivilBr(v.vigenciaFim)})` : "") +
+        (v.vigenteDesde === null ? " · desde o início" : ` · vigente desde ${v.vigenteDesde}`) +
+        (v.vigente ? " (a mais recente)" : v.vigenciaFim !== null ? ` (substituída em ${diaCivilBr(v.vigenciaFim)})` : "") +
         (v.atualizacoes > 0 ? ` · ${v.atualizacoes} competência(s) calculada(s) por ela` : ""),
       quando: diaCivilBr(v.criadoEm),
       registradoEm: diaCivilBr(v.criadoEm),
@@ -180,13 +182,16 @@ function versaoDoFormulario(c: Campos): {
   readonly vidaUtilMeses: string;
   readonly percentualResidual: string;
   readonly motivo: string;
+  readonly vigenteDesde?: string;
 } {
   const metodo = t(c, "metodo");
+  const vigenteDesde = t(c, "vigenteDesde");
   return {
     metodo: metodo === "AMORTIZACAO" ? "AMORTIZACAO" : metodo === "EXAUSTAO" ? "EXAUSTAO" : "DEPRECIACAO",
     vidaUtilMeses: t(c, "vidaUtilMeses"),
     percentualResidual: fracaoDoPorcento(t(c, "percentualResidual")),
     motivo: t(c, "motivo"),
+    ...(vigenteDesde !== "" ? { vigenteDesde } : {}),
   };
 }
 

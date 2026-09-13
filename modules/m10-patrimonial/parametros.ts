@@ -4,7 +4,8 @@ import { toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import type { Tx } from "../m16-travamento/autorizacao.js";
-import { validarParametrosDaClasse, type MetodoAtualizacao } from "./dominio.js";
+import { competenciaParaData, validarParametrosDaClasse, type MetodoAtualizacao } from "./dominio.js";
+import { competenciaCivil, janelaCivilDoMes } from "../../packages/datas/index.js";
 
 /**
  * M10 — O PARÂMETRO DE ATUALIZAÇÃO É VERSIONADO (orquestração V3, pacote 2, unidade 3).
@@ -40,6 +41,39 @@ export interface ParametroVigente {
   readonly percentualResidual: Money;
   readonly ativo: boolean;
   readonly origem: "VERSAO" | "LEGADO";
+  /** V4: a primeira competência a que a versão se aplica; `null` = desde o início. */
+  readonly vigenteDesde: Date | null;
+}
+
+/**
+ * O PARÂMETRO APLICÁVEL A UMA COMPETÊNCIA (V4, §4.1) — vigência de negócio, não ordem de gravação.
+ *
+ * Entre as versões cuja `vigenteDesde` é nula ou ≤ a competência, vale a de maior número. Uma
+ * versão que só começa DEPOIS da competência não a alcança: a prévia de março não absorve a
+ * régua de maio por ela ser a mais recente. A linha legada só serve enquanto a classe não tem
+ * versão nenhuma (é origem, não configuração). Classe com versões mas nenhuma vigente na
+ * competência: `null` — e a prévia diz "sem parâmetro vigente nesta competência".
+ */
+export async function parametroVigenteEm(tx: Tx, classeDeBensId: string, competencia: string): Promise<ParametroVigente | null> {
+  const inicio = competenciaParaData(competencia);
+  const versoes = await tx.versaoDeParametroDeAtualizacao.count({ where: { classeDeBensId } });
+  if (versoes === 0) return parametroVigente(tx, classeDeBensId);
+  const v = await tx.versaoDeParametroDeAtualizacao.findFirst({
+    where: { classeDeBensId, OR: [{ vigenteDesde: null }, { vigenteDesde: { lte: inicio } }] },
+    orderBy: { numero: "desc" },
+    select: { id: true, numero: true, metodo: true, vidaUtilMeses: true, percentualResidual: true, ativo: true, vigenteDesde: true },
+  });
+  if (v === null) return null;
+  return {
+    versaoId: v.id,
+    numero: v.numero,
+    metodo: v.metodo as MetodoAtualizacao,
+    vidaUtilMeses: v.vidaUtilMeses,
+    percentualResidual: toMoney(v.percentualResidual.toFixed(6)),
+    ativo: v.ativo,
+    origem: "VERSAO",
+    vigenteDesde: v.vigenteDesde,
+  };
 }
 
 /** O parâmetro em vigor da classe: a última versão; a linha legada só enquanto não houver versão. */
@@ -47,7 +81,7 @@ export async function parametroVigente(tx: Tx, classeDeBensId: string): Promise<
   const v = await tx.versaoDeParametroDeAtualizacao.findFirst({
     where: { classeDeBensId },
     orderBy: { numero: "desc" },
-    select: { id: true, numero: true, metodo: true, vidaUtilMeses: true, percentualResidual: true, ativo: true },
+    select: { id: true, numero: true, metodo: true, vidaUtilMeses: true, percentualResidual: true, ativo: true, vigenteDesde: true },
   });
   if (v !== null) {
     return {
@@ -58,6 +92,7 @@ export async function parametroVigente(tx: Tx, classeDeBensId: string): Promise<
       percentualResidual: toMoney(v.percentualResidual.toFixed(6)),
       ativo: v.ativo,
       origem: "VERSAO",
+      vigenteDesde: v.vigenteDesde,
     };
   }
   const legado = await tx.parametroAtualizacaoClasse.findUnique({
@@ -73,6 +108,7 @@ export async function parametroVigente(tx: Tx, classeDeBensId: string): Promise<
     percentualResidual: toMoney(legado.percentualResidual.toFixed(6)),
     ativo: legado.ativo,
     origem: "LEGADO",
+    vigenteDesde: null,
   };
 }
 
@@ -85,6 +121,8 @@ export interface VersaoDeParametroLida {
   readonly percentualResidual: string;
   readonly ativo: boolean;
   readonly motivo: string;
+  /** V4: a primeira competência ("YYYY-MM") a que a versão se aplica; `null` = desde o início. */
+  readonly vigenteDesde: string | null;
   readonly criadoEm: Date;
   readonly criadoPor: string;
   /** Derivada: o instante em que a versão seguinte entrou. `null` = em vigor. */
@@ -101,7 +139,7 @@ export async function versoesDoParametro(tx: Tx, classeDeBensId: string): Promis
     orderBy: { numero: "asc" },
     select: {
       id: true, numero: true, metodo: true, vidaUtilMeses: true, percentualResidual: true, ativo: true,
-      motivo: true, criadoEm: true, criadoPor: true,
+      motivo: true, criadoEm: true, criadoPor: true, vigenteDesde: true,
       _count: { select: { memorias: true } },
     },
   });
@@ -115,6 +153,7 @@ export async function versoesDoParametro(tx: Tx, classeDeBensId: string): Promis
       percentualResidual: v.percentualResidual.toFixed(6),
       ativo: v.ativo,
       motivo: v.motivo,
+      vigenteDesde: v.vigenteDesde === null ? null : competenciaCivil(v.vigenteDesde),
       criadoEm: v.criadoEm,
       criadoPor: v.criadoPor,
       vigenciaFim: seguinte === undefined ? null : seguinte.criadoEm,
@@ -134,6 +173,13 @@ export const zDefinirParametroDeAtualizacaoInput = z.object({
   /** `false` encerra a atualização da classe a partir desta versão. */
   ativo: z.boolean().default(true),
   motivo: z.string().trim().min(8, "O motivo é obrigatório — quem ler o histórico não terá a quem perguntar."),
+  /**
+   * V4: a primeira competência ("YYYY-MM") a que a versão se aplica. Omitida, é DERIVADA: a
+   * competência seguinte à última já processada na classe (ou "desde o início" se nada foi
+   * processado). Uma vigência que alcance competência já processada é RECUSADA — correção
+   * retroativa é outro fluxo (estornar a competência e reprocessar), com prévia e histórico.
+   */
+  vigenteDesde: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Use YYYY-MM.").optional(),
   criadoPor: z.string().min(1),
 });
 export type DefinirParametroDeAtualizacaoInput = z.input<typeof zDefinirParametroDeAtualizacaoInput>;
@@ -180,6 +226,38 @@ export async function definirParametroDeAtualizacao(
       );
     }
 
+    // ═══ V4 (§4.1) — A VIGÊNCIA NÃO ALCANÇA O QUE JÁ FOI CALCULADO ═══
+    const ultimaProcessada = await tx.movimentoPatrimonial.findFirst({
+      where: {
+        classeDeBensId: d.classeDeBensId,
+        competencia: { not: null },
+        tipo: { in: ["DEPRECIACAO", "AMORTIZACAO", "EXAUSTAO"] },
+        estornoDeId: null,
+        estornos: { none: {} },
+      },
+      orderBy: { competencia: "desc" },
+      select: { competencia: true },
+    });
+    let vigenteDesde: Date | null;
+    if (d.vigenteDesde !== undefined) {
+      vigenteDesde = competenciaParaData(d.vigenteDesde);
+      if (ultimaProcessada?.competencia != null && vigenteDesde.getTime() <= ultimaProcessada.competencia.getTime()) {
+        throw new Error(
+          `VIGÊNCIA RETROATIVA: a competência ${competenciaCivil(ultimaProcessada.competencia)} da classe ${classe.codigo} ` +
+            `já foi processada, e uma versão vigente desde ${d.vigenteDesde} a alcançaria. O que foi calculado não muda ` +
+            `em silêncio: para corrigir o passado, estorne a competência e reprocesse — a prévia mostra o impacto. Nada foi gravado.`
+        );
+      }
+    } else if (ultimaProcessada?.competencia != null) {
+      const seguinte = new Date(ultimaProcessada.competencia);
+      const c = competenciaCivil(seguinte);
+      const [ano, mes] = c.split("-").map(Number) as [number, number];
+      const proximo = mes === 12 ? `${ano + 1}-01` : `${ano}-${String(mes + 1).padStart(2, "0")}`;
+      vigenteDesde = janelaCivilDoMes(proximo).inicio;
+    } else {
+      vigenteDesde = null;
+    }
+
     const ultima = await tx.versaoDeParametroDeAtualizacao.aggregate({
       where: { classeDeBensId: d.classeDeBensId },
       _max: { numero: true },
@@ -195,6 +273,7 @@ export async function definirParametroDeAtualizacao(
           percentualResidual: d.percentualResidual.toFixed(6),
           ativo: d.ativo,
           motivo: d.motivo,
+          vigenteDesde,
           criadoPor: d.criadoPor,
         },
         select: { id: true, numero: true },

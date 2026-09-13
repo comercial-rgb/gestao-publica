@@ -6,10 +6,10 @@
 |---|---|
 | HEAD | ver `git log -1` — a seção 35 nomeia o commit de cada unidade |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | **Sessão noturna V4** (`docs/lotes/V4-sessao-noturna.md`): unidade 1 (contrato de comando, §45) concluída; a seguir a competência patrimonial (§4 do pedido), documentos estáveis (§5), a liquidação de material (§6, stash preservado), CNPJ/catálogo (§7) e a cadeia planejamento→contratação→despesa (§8) |
-| Último resultado | seção 45 (contrato de comando: 804/804 rápidos, 69/69 dirigidos, tsc ×3 limpos) |
+| Frente em execução | **Sessão noturna V4** (`docs/lotes/V4-sessao-noturna.md`): unidades 1 (contrato de comando, §45) e 2 (competência por bem, §46) concluídas; a seguir documentos estáveis (§5), a liquidação de material (§6, stash preservado), CNPJ/catálogo (§7) e a cadeia planejamento→contratação→despesa (§8) |
+| Último resultado | seção 46 (competência por bem: 125/125 dirigidos, tsc ×3 limpos) |
 | Pendências relevantes | seções 35.7, 36.4, 37.5, 38.5 a 43.5; as anteriores em §19 e nos `MODULO.md` |
-| Próximo passo | seção 45.5 — a competência patrimonial (V4 §4); o stash `11b7892` continua preservado para a unidade da liquidação (V4 §6) |
+| Próximo passo | seção 46.5 — os documentos patrimoniais estáveis (V4 §5); o stash `11b7892` continua preservado para a liquidação (V4 §6) |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -4931,6 +4931,55 @@ portão integral.
 Unidade 2 (seção 4 do pedido): recorte temporal e vigência da competência, processamento por bem elegível com
 memória por item e conciliação com a classe e o razão, identidade de execução, análise de estorno com impacto
 verificado e desempate estável.
+
+## 46. Sessão noturna V4 — unidade 2: a competência patrimonial por bem, com corte, vigência e execução (achados A04, A05, A07)
+
+Pedido: `docs/lotes/V4-sessao-noturna.md`, seção 4. Regime: **profundidade** (razão contábil, cálculo).
+Decisão: `docs/adr/ADR-competencia-por-bem-corte-e-execucao.md`.
+
+### 46.1 O que passou a funcionar
+
+- **Recorte temporal:** a base de uma competência são os movimentos vivos com data de negócio até o corte (o
+  último instante civil do mês). Março não absorve a entrada de abril. Início da atualização de um bem = mês
+  da primeira entrada viva (política declarada).
+- **Vigência do parâmetro:** `vigenteDesde` na versão; `parametroVigenteEm(classe, competência)`; omitida, a
+  vigência é derivada; vigência retroativa sobre competência processada é recusada nomeando.
+- **Por bem elegível:** itens por bem (e o acervo sem individualização), memória por item, UM lançamento com a
+  soma, identidade de execução (`ExecucaoDeAtualizacao`, escopo CLASSE ou BEM). O valor do bem passa a
+  acompanhar a depreciação. Σ itens = classe = razão (`conciliacaoDaClasse`); a depreciação histórica da classe
+  inteira fica nomeada como reconciliação a definir, não é distribuída.
+- **Estorno:** desfaz a execução da classe (itens + lançamento, uma vez), não a virada; dependência por impacto
+  verificado (a redução do bem B não depende da entrada do bem A; a do bem A depende quando A ficaria
+  negativo), ordem por `sequencia` com desempate estável; as reduções cobram o teto do bem.
+- Rotas: `/patrimonio/competencia` (prévia item a item, escopo, corte, versão vigente, conciliação, histórico de
+  execuções), `/patrimonio/parametros-de-atualizacao` (vigência no formulário e no histórico),
+  `/patrimonio/estornos/valor/[id]` (diz que desfaz a execução e o impacto verificado de cada dependente).
+
+### 46.2 Comandos executados e resultados
+
+| Comando | Resultado |
+|---|---|
+| migration `20260913063000_v4_execucao_por_bem_vigencia_e_sequencia` (aditiva: `sequencia` SERIAL, `vigenteDesde`, `ExecucaoDeAtualizacao`, `MemoriaDeAtualizacao.execucaoId/corte`) em test, dev e percursos | aplicada; `migrate diff` "No difference detected"; papel reprovisionado |
+| `tsc` backend, app e scripts | limpos |
+| dirigidos: `m10-competencia-v4` (9), `m10-competencia`, `m10-parametros-versoes`, `m10-estorno-dependencias`, `m10-alienacao`, `m10-patrimonio`, `m10-baixa-motivo`, `m10-termo-documento`, `m10-acervo`, `m10-eixo-de-data-da-entrada`, `m10-gestao-do-bem`, `m16-censo`, `papel-runtime` | **125/125** (`.registro-de-execucao/v4-competencia-testes.txt`, e a reexecução do v4 após corrigir um motivo curto da fixture) |
+
+### 46.3 Não executado
+
+Percurso de navegador da competência por item (fica para o `next build` + smokes); `test:tudo`; `test:fuso`
+(o diff toca janelas de competência: `janelaCivilDoMes` é lida, não alterada — registrar no candidato).
+
+### 46.4 Pendências
+
+| Pendência | O que é |
+|---|---|
+| `RECONCILIACAO-HISTORICA-DA-DEPRECIACAO-POR-CLASSE` | a acumulada lançada pela classe inteira antes do item por bem; fluxo autorizado a definir |
+| `INICIO-DA-ATUALIZACAO-NO-MES-SEGUINTE` | a política "mês da entrada" é declarada; a alternativa é decisão de parâmetro |
+| `VIRADA-DE-TODAS-AS-CLASSES` | a tela processa uma classe por execução; a seleção de várias classes ainda não tem tela |
+
+### 46.5 Próximo ponto exato
+
+Unidade 3 (seção 5 do pedido): a emissão do termo congelada na criação (dados + modelo + sha256), a segunda
+via estável, a posição atual como outro documento, o termo assinado anexável pela tela e verificável.
 
 ## 19. O próximo passo
 

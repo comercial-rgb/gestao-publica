@@ -38,6 +38,14 @@ const CAMPOS_DA_VERSAO: readonly CampoDoMolde[] = [
     ajuda: "A fração do valor que NÃO se deprecia. 10 = 10%. Um residual de 100% significaria que o bem nunca se deprecia.",
   },
   {
+    nome: "vigenteDesde", rotulo: "Vigente desde a competência (AAAA-MM)", tipo: "texto", largura: 2,
+    placeholder: "2026-05",
+    ajuda:
+      "A primeira competência calculada por esta versão. Em branco: a seguinte à última já processada " +
+      "(ou desde o início). Uma competência já processada não é alcançada — para corrigir o passado, " +
+      "estorne a execução e reprocesse.",
+  },
+  {
     nome: "motivo", rotulo: "Motivo da versão", tipo: "texto", obrigatorio: true, largura: 4,
     ajuda: "Por que este parâmetro. Quem ler o histórico daqui a um ano não terá a quem perguntar.",
   },
@@ -84,8 +92,8 @@ export const PARAMETROS_DE_ATUALIZACAO: DefinicaoDeRecurso = definirRecurso({
       rotulo: "Definir nova versão do parâmetro",
       acaoDoCenso: "DEFINIR_PARAMETRO_DE_ATUALIZACAO",
       aviso:
-        "A versão nova vale para as competências processadas DEPOIS dela. As já processadas " +
-        "guardam a memória de cálculo com a versão que usaram — nada do passado muda.",
+        "A versão nova vale a partir da competência que ela declara (ou da seguinte à última processada). " +
+        "As já processadas guardam a memória de cálculo com a versão que usaram — nada do passado muda.",
       campos: CAMPOS_DA_VERSAO,
     },
     {

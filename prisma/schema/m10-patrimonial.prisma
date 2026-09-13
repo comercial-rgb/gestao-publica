@@ -113,6 +113,7 @@ model ClasseDeBens {
   /// back-relation M05/M11 (TR 4.49) — campo VIRTUAL, não gera coluna.
   empenhos   Empenho[]
   parametro  ParametroAtualizacaoClasse?
+  execucoesDeAtualizacao ExecucaoDeAtualizacao[]
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -276,6 +277,11 @@ model MovimentoPatrimonial {
 
   motivo String?
 
+  /// V4 (§4.3) — A ORDEM DE REGISTRO, ESTÁVEL. `criadoEm` empata (dois movimentos no mesmo
+  /// milissegundo) e a análise de dependências precisa de um desempate que não mude entre
+  /// leituras: a sequência do banco. Só o banco a atribui.
+  sequencia Int @unique @default(autoincrement())
+
   criadoEm  DateTime @default(now())
   criadoPor String
 
@@ -425,7 +431,13 @@ model VersaoDeParametroDeAtualizacao {
   /// Por que esta versão existe. Quem ler o histórico não terá a quem perguntar.
   motivo String
 
-  memorias MemoriaDeAtualizacao[]
+  /// V4 (§4.1) — A VIGÊNCIA DE NEGÓCIO: a primeira competência (dia 1, instante civil) a que
+  /// esta versão se aplica. Nula = desde o início (a versão vale para toda competência ainda
+  /// não calculada por outra). O número da versão é ordem de GRAVAÇÃO; isto é vigência.
+  vigenteDesde DateTime?
+
+  memorias  MemoriaDeAtualizacao[]
+  execucoes ExecucaoDeAtualizacao[]
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -459,7 +471,57 @@ model MemoriaDeAtualizacao {
   teto               Decimal @db.Decimal(18, 2)
   valorDaParcela     Decimal @db.Decimal(18, 2)
 
+  /// V4 (§4.2) — a execução mensal a que este item pertence, e o CORTE (último instante da
+  /// competência): só movimentos com data de negócio até o corte compuseram a base.
+  execucaoId String?
+  execucao   ExecucaoDeAtualizacao? @relation(fields: [execucaoId], references: [id], onDelete: Restrict)
+  corte      DateTime?
+
   criadoEm DateTime @default(now())
 
   @@index([versaoDeParametroId])
+}
+
+// ----------------------------------------------------------------------------
+// ExecucaoDeAtualizacao — V4 (§4.3): A IDENTIDADE DA EXECUÇÃO MENSAL.
+//
+// Uma execução processa UMA classe numa competência, com escopo explícito (a classe
+// inteira ou um bem), sob UMA versão de parâmetro e UM lançamento contábil (a soma dos
+// itens). Os itens são os `MovimentoPatrimonial` cujo `operacaoId` é o id daqui — e por
+// isso o estorno de um item arrasta a execução inteira (o lançamento é um só), e NUNCA a
+// "virada" de todas as classes: cada classe é a sua execução.
+// ----------------------------------------------------------------------------
+model ExecucaoDeAtualizacao {
+  id String @id @default(cuid())
+
+  classeDeBensId String
+  classeDeBens   ClasseDeBens @relation(fields: [classeDeBensId], references: [id])
+
+  /// O primeiro instante civil do mês.
+  competencia DateTime
+  /// O último instante civil do mês — a data de corte da base.
+  corte       DateTime
+  /// "CLASSE" (todos os bens elegíveis e o acervo sem individualização) ou "BEM" (um só).
+  escopo String
+  bemId  String?
+
+  versaoDeParametroId String?
+  versaoDeParametro   VersaoDeParametroDeAtualizacao? @relation(fields: [versaoDeParametroId], references: [id], onDelete: Restrict)
+
+  metodo            MetodoAtualizacao
+  quantidadeDeItens Int
+  /// Somas dos itens (cada item arredondado a 2 casas; o agregado é a soma dos itens).
+  base           Decimal @db.Decimal(18, 2)
+  valorDaParcela Decimal @db.Decimal(18, 2)
+
+  /// O lançamento contábil ÚNICO da execução (os itens o compartilham).
+  lancamentoId String
+
+  memorias MemoriaDeAtualizacao[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([classeDeBensId, competencia])
+  @@index([lancamentoId])
 }
