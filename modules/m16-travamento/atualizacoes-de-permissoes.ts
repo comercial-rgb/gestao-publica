@@ -188,6 +188,27 @@ export function derivarVincularPessoa(
   return saida;
 }
 
+/** A REGRA DA v4 (pacote 2): quem parametriza roteiro do patrimônio passa a definir o parâmetro de atualização, no mesmo escopo. */
+export function derivarParametroDeAtualizacao(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const jaTem = new Set(perfil.permissoes.map((p) => `${p.acao} ${p.unidadeOrcId ?? ""}`));
+    const escopos = new Map<string, string | null>();
+    for (const p of perfil.permissoes) {
+      if (p.acao !== "PARAMETRIZAR_ROTEIRO_PATRIMONIAL") continue;
+      if (jaTem.has(`DEFINIR_PARAMETRO_DE_ATUALIZACAO ${p.unidadeOrcId ?? ""}`)) continue;
+      escopos.set(p.unidadeOrcId ?? "", p.unidadeOrcId);
+    }
+    for (const unidadeOrcId of escopos.values()) {
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao: "DEFINIR_PARAMETRO_DE_ATUALIZACAO", unidadeOrcId });
+    }
+  }
+  return saida;
+}
+
 export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
   {
     versao: 1,
@@ -214,6 +235,15 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "Vincular o usuario a uma pessoa do cadastro virou acao propria (VINCULAR_PESSOA_AO_USUARIO), " +
       "da familia de administracao. Quem ja cria usuario recebe o vinculo no mesmo escopo.",
     derivar: derivarVincularPessoa,
+  },
+  {
+    versao: 4,
+    nome: "parametro-de-atualizacao",
+    descricao:
+      "Definir o parametro de depreciacao/amortizacao/exaustao da classe virou acao propria e " +
+      "versionada (DEFINIR_PARAMETRO_DE_ATUALIZACAO). Quem ja parametriza roteiro contabil do " +
+      "patrimonio recebe a definicao no mesmo escopo.",
+    derivar: derivarParametroDeAtualizacao,
   },
 ];
 

@@ -18,6 +18,7 @@ import {
   valorContabilDoBem,
 } from "../../../modules/m10-patrimonial/patrimonio.js";
 import { receitaArrecadadaPorNumero } from "../../../modules/m10-patrimonial/receita-da-alienacao.js";
+import { rotaDoEstorno } from "./estorno-dados.js";
 import { rotuloDoTipoPatrimonial } from "./roteiros.js";
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { TAMANHO_DE_PAGINA } from "../../molde/consulta.js";
@@ -371,6 +372,7 @@ export async function verBemPatrimonial(id: string): Promise<DetalheLido | null>
           motivo: true,
           criadoEm: true,
           criadoPor: true,
+          estornoDeId: true,
           estornos: { select: { id: true } },
         },
         orderBy: { dataMovimento: "desc" },
@@ -389,6 +391,7 @@ export async function verBemPatrimonial(id: string): Promise<DetalheLido | null>
           motivo: true,
           criadoEm: true,
           criadoPor: true,
+          estornoDeId: true,
           estornos: { select: { id: true } },
           // V3 (pacote 2): o motivo do rol e a guia da venda, ao lado do texto livre.
           motivoDeBaixa: { select: { codigo: true, descricao: true } },
@@ -473,6 +476,10 @@ export async function verBemPatrimonial(id: string): Promise<DetalheLido | null>
           motivo: partes.length === 0 ? null : partes.join(" · "),
           valor: m.valor.toFixed(2),
           estornado: m.estornos.length > 0,
+          // V3 (pacote 2, unidade 4): a análise do estorno — só para o movimento VIVO e original.
+          ...(m.estornoDeId === null && m.estornos.length === 0
+            ? { href: rotaDoEstorno("valor", m.id), hrefRotulo: "analisar estorno" }
+            : {}),
         };
       }),
       ...x.movimentosDeGestao.map((m) => ({
@@ -483,6 +490,9 @@ export async function verBemPatrimonial(id: string): Promise<DetalheLido | null>
         por: m.criadoPor,
         motivo: m.motivo,
         estornado: m.estornos.length > 0,
+        ...(m.estornoDeId === null && m.estornos.length === 0
+          ? { href: rotaDoEstorno("gestao", m.id), hrefRotulo: "analisar estorno" }
+          : {}),
       })),
     ],
   };

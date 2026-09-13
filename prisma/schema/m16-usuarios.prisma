@@ -398,6 +398,8 @@ enum AcaoDoSistema {
   PUBLICAR_ROTEIRO_PATRIMONIAL
   // ── V3 (pacote 2) — vincular o usuário à pessoa do cadastro: família ADMINISTRACAO ──
   VINCULAR_PESSOA_AO_USUARIO
+  // ── V3 (pacote 2) — definir o parâmetro versionado de depreciação/amortização/exaustão ──
+  DEFINIR_PARAMETRO_DE_ATUALIZACAO
 }
 
 /// O USUÁRIO. TR 4.55.

@@ -197,6 +197,7 @@ describe("instalação limpa e atualização — no banco", () => {
       { versao: 1, previa: 0, aplicada: false },
       { versao: 2, previa: 0, aplicada: false },
       { versao: 3, previa: 0, aplicada: false },
+      { versao: 4, previa: 0, aplicada: false },
     ]);
   });
 
@@ -286,6 +287,6 @@ describe("instalação limpa e atualização — no banco", () => {
     const admin = await instalar();
     await expect(
       aplicarAtualizacaoDePermissoes(prisma, { versao: 99, criadoPor: admin, areaDaAcao: AREA_DA_ACAO })
-    ).rejects.toThrow(/DESCONHECIDA.*1 \(leitura-por-area\), 2 \(publicar-roteiro\), 3 \(vincular-pessoa-ao-usuario\)/s);
+    ).rejects.toThrow(/DESCONHECIDA.*1 \(leitura-por-area\), 2 \(publicar-roteiro\), 3 \(vincular-pessoa-ao-usuario\), 4 \(parametro-de-atualizacao\)/s);
   });
 });

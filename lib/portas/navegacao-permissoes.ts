@@ -164,6 +164,7 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   // patrimonial — classificá-lo pela conta mandaria o operador do bem para a área errada.
   PARAMETRIZAR_ROTEIRO_PATRIMONIAL: "patrimonio",
   PUBLICAR_ROTEIRO_PATRIMONIAL: "patrimonio",
+  DEFINIR_PARAMETRO_DE_ATUALIZACAO: "patrimonio",
 
   // ENT05 — o eixo de GESTÃO do bem (TR 5.19).
   CADASTRAR_LOCALIZACAO_FISICA: "cadastros",

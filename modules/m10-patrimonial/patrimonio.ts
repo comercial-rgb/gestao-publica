@@ -1,5 +1,8 @@
 import { diaCivil } from "../../packages/datas/index.js";
 import { versaoVigente } from "./roteiros.js";
+import { parametroVigente, type ParametroVigente } from "./parametros.js";
+import { analisarEstornoPatrimonial } from "./estorno.js";
+import type { CalculoDaParcela } from "./dominio.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { randomUUID } from "node:crypto";
@@ -571,6 +574,9 @@ export interface ResultadoAtualizacao extends ResultadoMovimento {
   readonly valorResidual: Money;
   readonly parcelaCheia: Money;
   readonly valorDaParcela: Money;
+  /** V3 (pacote 2): a memória de cálculo gravada na mesma transação, e a versão do parâmetro. */
+  readonly memoriaId: string;
+  readonly versaoDeParametroId: string | null;
 }
 
 /**
@@ -588,91 +594,140 @@ export interface ResultadoAtualizacao extends ResultadoMovimento {
  * aplicado naquela competência é > 0, ela já está atualizada; se o estorno o
  * zerou, ela está livre de novo. É o mesmo padrão do vínculo do M09 (t7).
  */
+export type SituacaoDaCompetencia =
+  | "PRONTA"
+  | "SEM_PARAMETRO"
+  | "PARAMETRO_INATIVO"
+  | "JA_ATUALIZADA"
+  | "TOTALMENTE_ATUALIZADA";
+
+export interface PreviaDaCompetencia {
+  readonly competencia: Date;
+  readonly parametro: ParametroVigente | null;
+  readonly tipo: TipoMovimentoPatrimonial | null;
+  readonly base: Money;
+  readonly valorContabil: Money;
+  readonly jaAplicado: Money;
+  readonly calculo: CalculoDaParcela | null;
+  readonly situacao: SituacaoDaCompetencia;
+  /** A recusa, nas MESMAS palavras que `atualizarCompetencia` usa — `null` quando PRONTA. */
+  readonly recusa: string | null;
+}
+
+/**
+ * A PRÉVIA DA COMPETÊNCIA (V3, pacote 2) — a mesma leitura e a mesma aritmética da
+ * atualização, SEM escrever. `atualizarCompetencia` a chama DENTRO da transação e recusa
+ * com a mesma mensagem: não há duas contas, há uma conta e dois momentos de olhar para ela.
+ *
+ * ⚠️ O PARÂMETRO É O VIGENTE (a última versão; a linha legada só enquanto não houver versão).
+ * A prévia diz de qual versão veio, e a memória gravada com o movimento repete isso — é o que
+ * responde "por que 450,00?" depois que o parâmetro mudou.
+ */
+export async function preverCompetencia(
+  tx: Tx,
+  pedido: { readonly classeDeBensId: string; readonly competencia: string }
+): Promise<PreviaDaCompetencia> {
+  const competencia = competenciaParaData(pedido.competencia);
+  const parametro = await parametroVigente(tx, pedido.classeDeBensId);
+  // Todos os movimentos da classe, UMA leitura. Toda soma abaixo passa pelo
+  // Record de sinal — nenhum SUM bruto.
+  const movimentos = await tx.movimentoPatrimonial.findMany({
+    where: { classeDeBensId: pedido.classeDeBensId },
+    select: { tipo: true, valor: true, competencia: true },
+  });
+  const comSinal = movimentos.map((m) => ({
+    tipo: m.tipo,
+    valor: toMoney(m.valor.toFixed(2)),
+    competencia: m.competencia,
+  }));
+  // (c) A BASE É O VALOR BRUTO (NBC TSP 07): tudo o que mexe no ativo entra —
+  // reavaliação nos DOIS sentidos, impairment, baixas —, MENOS a própria
+  // atualização acumulada (senão o método viraria exponencial).
+  const base = valorBruto(comSinal);
+  const atual = valorContabil(comSinal);
+  const zero = toMoney("0");
+
+  // (a) O PARÂMETRO — sem ele não há vida útil, e o sistema NÃO inventa uma.
+  if (parametro === null) {
+    return {
+      competencia, parametro: null, tipo: null, base, valorContabil: atual, jaAplicado: zero, calculo: null,
+      situacao: "SEM_PARAMETRO",
+      recusa:
+        `Classe ${pedido.classeDeBensId} NÃO TEM PARÂMETRO de atualização ` +
+        `(método, vida útil, residual). O MCASP sugere, mas quem decide é o ENTE: ` +
+        `parametrize a classe antes de atualizar. Nada foi gravado.`,
+    };
+  }
+  const metodo = parametro.metodo;
+  const tipo = TIPO_DO_METODO[metodo];
+  if (!parametro.ativo) {
+    return {
+      competencia, parametro, tipo, base, valorContabil: atual, jaAplicado: zero, calculo: null,
+      situacao: "PARAMETRO_INATIVO",
+      recusa:
+        `O parâmetro de atualização da classe ${pedido.classeDeBensId} está ` +
+        `INATIVO — a classe não é mais atualizada.`,
+    };
+  }
+  // (b) IDEMPOTÊNCIA DERIVADA — ver a nota de `atualizarCompetencia`.
+  const daCompetencia = comSinal.filter(
+    (m) => m.competencia !== null && m.competencia.getTime() === competencia.getTime()
+  );
+  const jaAplicado = aplicadoNaCompetencia(daCompetencia, metodo);
+  if (jaAplicado.greaterThan(0)) {
+    return {
+      competencia, parametro, tipo, base, valorContabil: atual, jaAplicado, calculo: null,
+      situacao: "JA_ATUALIZADA",
+      recusa:
+        `Competência ${pedido.competencia} JÁ FOI ATUALIZADA para esta classe ` +
+        `(${metodo} líquida de ${jaAplicado.toFixed(2)}). Para refazer, ESTORNE ` +
+        `o movimento da competência primeiro — o saldo é que governa, não uma ` +
+        `trava.`,
+    };
+  }
+  // (d)(e)(f)(g) — aritmética PURA, conferida no teste contra literal.
+  const calculo = calcularParcela(base, atual, {
+    vidaUtilMeses: parametro.vidaUtilMeses,
+    percentualResidual: parametro.percentualResidual,
+  });
+  if (!calculo.teto.greaterThan(0)) {
+    return {
+      competencia, parametro, tipo, base, valorContabil: atual, jaAplicado, calculo,
+      situacao: "TOTALMENTE_ATUALIZADA",
+      recusa:
+        `Classe TOTALMENTE ATUALIZADA: o valor contábil (${atual.toFixed(2)}) já ` +
+        `alcançou o valor residual (${calculo.valorResidual.toFixed(2)}). Não há ` +
+        `mais o que ${metodo.toLowerCase()}. Nada foi gravado.`,
+    };
+  }
+  return { competencia, parametro, tipo, base, valorContabil: atual, jaAplicado, calculo, situacao: "PRONTA", recusa: null };
+}
+
 export async function atualizarCompetencia(
   prisma: PrismaClient,
   input: AtualizarCompetenciaInput
 ): Promise<ResultadoAtualizacao> {
   const dados = zAtualizarCompetenciaInput.parse(input);
-  const competencia = competenciaParaData(dados.competencia);
 
   return prisma.$transaction(async (tx) => {
     // SEM UG: a depreciação mensal é da CLASSE, em lote — não pertence a unidade nenhuma.
     await autorizarNo(tx, dados.criadoPor, ACAO_DO_SERVICO.atualizarCompetencia, "ENTE");
 
-    // (a) O PARÂMETRO — sem ele não há vida útil, e o sistema NÃO inventa uma.
-    const parametro = await tx.parametroAtualizacaoClasse.findUnique({
-      where: { classeDeBensId: dados.classeDeBensId },
-      select: {
-        metodo: true,
-        vidaUtilMeses: true,
-        percentualResidual: true,
-        ativo: true,
-      },
+    // A MESMA conta da prévia, dentro da transação — e a mesma recusa.
+    const previa = await preverCompetencia(tx, {
+      classeDeBensId: dados.classeDeBensId,
+      competencia: dados.competencia,
     });
-    if (parametro === null) {
-      throw new Error(
-        `Classe ${dados.classeDeBensId} NÃO TEM PARÂMETRO de atualização ` +
-          `(método, vida útil, residual). O MCASP sugere, mas quem decide é o ENTE: ` +
-          `parametrize a classe antes de atualizar. Nada foi gravado.`
-      );
+    if (
+      previa.situacao !== "PRONTA" ||
+      previa.calculo === null ||
+      previa.parametro === null ||
+      previa.tipo === null
+    ) {
+      throw new Error(previa.recusa ?? `Competência ${dados.competencia} não está pronta para processar.`);
     }
-    if (!parametro.ativo) {
-      throw new Error(
-        `O parâmetro de atualização da classe ${dados.classeDeBensId} está ` +
-          `INATIVO — a classe não é mais atualizada.`
-      );
-    }
-
-    const metodo = parametro.metodo as MetodoAtualizacao;
-    const tipo = TIPO_DO_METODO[metodo];
-
-    // Todos os movimentos da classe, UMA leitura. Toda soma abaixo passa pelo
-    // Record de sinal — nenhum SUM bruto.
-    const movimentos = await tx.movimentoPatrimonial.findMany({
-      where: { classeDeBensId: dados.classeDeBensId },
-      select: { tipo: true, valor: true, competencia: true },
-    });
-    const comSinal = movimentos.map((m) => ({
-      tipo: m.tipo,
-      valor: toMoney(m.valor.toFixed(2)),
-      competencia: m.competencia,
-    }));
-
-    // (b) IDEMPOTÊNCIA DERIVADA — ver a nota acima.
-    const daCompetencia = comSinal.filter(
-      (m) =>
-        m.competencia !== null &&
-        m.competencia.getTime() === competencia.getTime()
-    );
-    const jaAplicado = aplicadoNaCompetencia(daCompetencia, metodo);
-    if (jaAplicado.greaterThan(0)) {
-      throw new Error(
-        `Competência ${dados.competencia} JÁ FOI ATUALIZADA para esta classe ` +
-          `(${metodo} líquida de ${jaAplicado.toFixed(2)}). Para refazer, ESTORNE ` +
-          `o movimento da competência primeiro — o saldo é que governa, não uma ` +
-          `trava.`
-      );
-    }
-
-    // (c) A BASE É O VALOR BRUTO (NBC TSP 07): tudo o que mexe no ativo entra —
-    // reavaliação nos DOIS sentidos, impairment, baixas —, MENOS a própria
-    // atualização acumulada (senão o método viraria exponencial).
-    const base = valorBruto(comSinal);
-    const atual = valorContabil(comSinal);
-
-    // (d)(e)(f)(g) — aritmética PURA, conferida no teste contra literal.
-    const calculo = calcularParcela(base, atual, {
-      vidaUtilMeses: parametro.vidaUtilMeses,
-      percentualResidual: toMoney(parametro.percentualResidual.toFixed(6)),
-    });
-
-    if (!calculo.teto.greaterThan(0)) {
-      throw new Error(
-        `Classe TOTALMENTE ATUALIZADA: o valor contábil (${atual.toFixed(2)}) já ` +
-          `alcançou o valor residual (${calculo.valorResidual.toFixed(2)}). Não há ` +
-          `mais o que ${metodo.toLowerCase()}. Nada foi gravado.`
-      );
-    }
+    const { parametro, calculo, tipo, base, competencia } = previa;
+    const metodo = parametro.metodo;
 
     const r = await registrarMovimentoPatrimonial(tx, {
       classeDeBensId: dados.classeDeBensId,
@@ -686,7 +741,23 @@ export async function atualizarCompetencia(
         `${base.toFixed(2)}, residual ${calculo.valorResidual.toFixed(2)}, ` +
         `${parametro.vidaUtilMeses} meses`,
     });
-
+    // A MEMÓRIA DE CÁLCULO, na mesma transação: se ela não gravar, o movimento não existe.
+    const memoria = await tx.memoriaDeAtualizacao.create({
+      data: {
+        movimentoId: r.movimentoId,
+        versaoDeParametroId: parametro.versaoId,
+        metodo,
+        vidaUtilMeses: parametro.vidaUtilMeses,
+        percentualResidual: parametro.percentualResidual.toFixed(6),
+        base: base.toFixed(2),
+        valorContabilAntes: previa.valorContabil.toFixed(2),
+        valorResidual: calculo.valorResidual.toFixed(2),
+        parcelaCheia: calculo.parcelaCheia.toFixed(2),
+        teto: calculo.teto.toFixed(2),
+        valorDaParcela: calculo.valorDaParcela.toFixed(2),
+      },
+      select: { id: true },
+    });
     return {
       ...r,
       tipo,
@@ -694,6 +765,8 @@ export async function atualizarCompetencia(
       valorResidual: calculo.valorResidual,
       parcelaCheia: calculo.parcelaCheia,
       valorDaParcela: calculo.valorDaParcela,
+      memoriaId: memoria.id,
+      versaoDeParametroId: parametro.versaoId,
     };
   });
 }
@@ -1311,7 +1384,15 @@ export async function estornarMovimentoPatrimonial(
     if (original.estornos.length > 0) {
       throw new Error(`Movimento ${dados.movimentoId} já foi estornado.`);
     }
-
+    // ═══ V3 (pacote 2, unidade 4) — A ANÁLISE DE DEPENDÊNCIAS, dentro da transação ═══
+    // Quem ficaria inválido com este estorno (a competência calculada sobre a base que
+    // incluía o movimento, a redução conferida contra um teto que o incluía) BLOQUEIA,
+    // nomeando: estorne primeiro, do mais recente ao mais antigo. A tela mostra a mesma
+    // análise antes; aqui ela é refeita porque a tela não é fronteira de segurança.
+    const analise = await analisarEstornoPatrimonial(tx, original.id);
+    if (analise.dependentes.length > 0) {
+      throw new Error(analise.bloqueios.join("\n"));
+    }
     // Os movimentos VIVOS da operação (ou só este, se não houver operação).
     const alvos =
       original.operacaoId === null

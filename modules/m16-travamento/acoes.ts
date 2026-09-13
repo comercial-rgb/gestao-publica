@@ -164,6 +164,10 @@ export type AcaoDoSistema =
   // Quem propõe o par de contas (validado pelo motor) não é necessariamente quem o põe em
   // vigor: a publicação é a aprovação, e a segregação do 6.4 pede dois crachás.
   | "PUBLICAR_ROTEIRO_PATRIMONIAL"
+  // ── V3 (pacote 2) — o parâmetro de depreciação/amortização/exaustão da classe é
+  // VERSIONADO e tem crachá próprio: quem parametriza roteiro não é necessariamente quem
+  // decide vida útil e residual (é decisão do contador sobre a NBC TSP 07).
+  | "DEFINIR_PARAMETRO_DE_ATUALIZACAO"
 
   // ── M10 — patrimônio, EIXO DE GESTÃO (ENT05, TR 5.19) ──
   | "CADASTRAR_LOCALIZACAO_FISICA"
@@ -543,6 +547,7 @@ export type NomeDeServico =
   | "registrarImpairment"
   | "registrarCustoSubsequente"
   | "atualizarCompetencia"
+  | "definirParametroDeAtualizacao"
   | "estornarMovimentoPatrimonial"
   | "cadastrarDeposito"
   | "cadastrarUnidadeDeMedida"
@@ -829,6 +834,7 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   registrarImpairment: "REGISTRAR_IMPAIRMENT",
   registrarCustoSubsequente: "REGISTRAR_CUSTO_SUBSEQUENTE",
   atualizarCompetencia: "ATUALIZAR_COMPETENCIA_PATRIMONIAL",
+  definirParametroDeAtualizacao: "DEFINIR_PARAMETRO_DE_ATUALIZACAO",
   estornarMovimentoPatrimonial: "ESTORNAR_MOVIMENTO_PATRIMONIAL",
 
   // ENT05 — o eixo FÍSICO do almoxarifado (TR 5.18). Uma ação por serviço, como sempre:
@@ -1461,6 +1467,11 @@ export const FORA_DO_CENSO: Record<string, string> = {
   pessoaDoUsuario: "leitura (a pessoa vinculada ao usuário — a última linha de VinculoUsuarioPessoa, se for VINCULO)",
   versoesDoRoteiro: "leitura (as versões de um roteiro, com a vigência derivada — V3 4.5)",
   versaoVigente: "leitura (a versão PUBLICADA em vigor de um roteiro — o resolvedor do M10 a consome)",
+  analisarEstornoPatrimonial: "leitura (a análise de dependências do estorno de um movimento de valor — estornarMovimentoPatrimonial a refaz na transação — V3 pacote 2)",
+  analisarEstornoDeGestao: "leitura (a análise do estorno de um movimento de gestão: o par da transferência e os posteriores do eixo — V3 pacote 2)",
+  parametroVigente: "leitura (o parâmetro de atualização em vigor da classe — a última versão, ou a linha legada — V3 pacote 2)",
+  versoesDoParametro: "leitura (as versões do parâmetro de uma classe, com a vigência derivada — V3 pacote 2)",
+  preverCompetencia: "leitura (a prévia da competência: a mesma conta de atualizarCompetencia, sem escrever — V3 pacote 2)",
   receitaArrecadadaPorNumero:
     "leitura (a arrecadação pela guia — exercício e número; quem decide se ela sustenta a alienação é alienarBem — V3 pacote 2)",
   comOperacaoRegistrada: "porta da borda (o log do 6.1-6.3, em duas fases — V3 4.3)",

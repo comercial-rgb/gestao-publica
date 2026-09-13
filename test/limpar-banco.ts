@@ -171,6 +171,8 @@ const TABELAS = [
   "ProcessoLicitatorio",
   "LimiteContratacao",
   // M10 — patrimonial
+  "MemoriaDeAtualizacao",
+  "VersaoDeParametroDeAtualizacao",
   "MovimentoPatrimonial",
   "BemPatrimonial",
   "RoteiroPatrimonial",

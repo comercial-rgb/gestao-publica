@@ -323,3 +323,57 @@ perguntados: a porta os deriva do próprio bem (`valorBrutoDoBem`, `valorContabi
 pedi-los seria a armadilha que o aviso da baixa denuncia. O histórico do bem mostra o motivo
 do rol e a guia da receita ao lado do texto. Sem roteiro parametrizado para o tipo, o domínio
 recusa nomeando (`ROTEIRO-PATRIMONIAL-NAO-PARAMETRIZADO` continua sendo decisão do contador).
+
+
+## Orquestração V3 (pacote 2, unidade 3) — parâmetro versionado, prévia e memória de cálculo
+
+**O parâmetro de atualização (método, vida útil, residual) é versionado.** `parametros.ts`:
+`definirParametroDeAtualizacao` (ação própria `DEFINIR_PARAMETRO_DE_ATUALIZACAO`; atualização
+de permissões v4 deriva de quem parametriza roteiro) grava `VersaoDeParametroDeAtualizacao`
+com número sequencial por classe, autor, momento e motivo; `parametroVigente` lê a última
+versão e só cai na linha legada `ParametroAtualizacaoClasse` enquanto a classe não tiver
+versão — a linha legada é origem, não configuração. Encerrar a atualização é uma versão com
+`ativo = false`. A regra do parâmetro é UMA (`validarParametrosDaClasse`, a mesma de
+`calcularParcela`): versão inválida não nasce. Concorrência é do índice único
+`(classe, numero)`; versão idêntica à vigente é recusada.
+
+**A prévia é a mesma conta da atualização, sem escrever.** `preverCompetencia` devolve
+parâmetro, base, contábil, já aplicado, cálculo e a situação (PRONTA, SEM_PARAMETRO,
+PARAMETRO_INATIVO, JA_ATUALIZADA, TOTALMENTE_ATUALIZADA) com a recusa nas mesmas palavras;
+`atualizarCompetencia` a chama dentro da transação e recusa com ela. Não há duas contas.
+
+**A memória de cálculo vai na mesma transação.** `MemoriaDeAtualizacao` (uma por movimento:
+versão do parâmetro, método, vida útil, residual, base, contábil antes, residual, parcela
+cheia, teto, parcela) é gravada com o movimento e o lançamento; se ela não gravar, nada
+existe. É o que responde "por que 450,00?" depois que o parâmetro mudou.
+
+**Telas:** `/patrimonio/parametros-de-atualizacao` (molde; todas as classes ativas,
+parametrizadas ou não; detalhe com histórico de versões; ações "definir" e "encerrar";
+residual pedido em porcento) e `/patrimonio/competencia` (prévia por GET com a memória,
+processar por POST com chave de comando, histórico do processado com a memória de cada um).
+Provas: `m10-parametros-versoes.test.ts` (N=2 versões; prévia não escreve; memória aponta
+para a versão que calculou; encerrar; origem legada; concorrência; negação nomeada) e
+`m10-competencia.test.ts` intacto (a régua não mudou de lugar).
+
+
+## Orquestração V3 (pacote 2, unidade 4) — o estorno com análise de dependências
+
+`estorno.ts`: `analisarEstornoPatrimonial` e `analisarEstornoDeGestao` (leitura). Depende
+quem FICARIA INVÁLIDO com o estorno: (a) a atualização por competência posterior, quando o
+movimento compõe a base; (b) a redução posterior (baixa, doação realizada, impairment,
+reavaliação para menos), quando o movimento é um aumento — o teto a incluía; (c) a baixa da
+acumulada de uma alienação, quando o movimento é uma atualização acumulada. Nesses casos
+`estornarMovimentoPatrimonial` — que refaz a análise DENTRO da transação — recusa nomeando
+os dependentes: estorne do mais recente ao mais antigo. Posteriores do mesmo bem que não
+caem em (a)–(c) são informação. Os irmãos da operação (alienação) e o lançamento do resultado
+são ARRASTADOS: desfeitos no mesmo ato, e a análise os nomeia. A ordem é a do REGISTRO
+(`criadoEm`), porque base e teto foram conferidos contra o que existia ao registrar. O eixo
+de gestão não tem base nem teto: a análise mostra o par da transferência e os posteriores do
+mesmo eixo; nada bloqueia.
+
+Tela: `/patrimonio/estornos/{valor|gestao}/[id]`, alcançada pelos links "analisar estorno"
+do histórico do bem (`LinhaDoHistorico.href`, V3) e da lista de competências processadas. O
+botão só aparece sem bloqueio e com o crachá do eixo; o estorno leva chave de comando. Prova:
+`m10-estorno-dependencias.test.ts` (N=2 bens; LIFO libera; bloqueios nomeados; gestão
+informativa) e `m10-alienacao.test.ts` t10 (arrastados e resultado). Os testes anteriores de
+estorno passam sem mudança: nenhum deles estornava fora de ordem.

@@ -379,11 +379,11 @@ export interface CalculoDaParcela {
  * atravessa, e o que sobra de arredondamento entra nela. Sem ele, 3 parcelas de
  * 333,33 sobre 1.000 deixariam 0,01 depreciando para sempre.
  */
-export function calcularParcela(
-  base: Money,
-  valorContabilAtual: Money,
-  p: ParametrosDaClasse
-): CalculoDaParcela {
+/**
+ * AS DUAS REGRAS DO PARÂMETRO — usadas pela aritmética E por quem DEFINE o parâmetro
+ * (`definirParametroDeAtualizacao`, V3 pacote 2), para que uma versão inválida nunca nasça.
+ */
+export function validarParametrosDaClasse(p: ParametrosDaClasse): void {
   if (!Number.isInteger(p.vidaUtilMeses) || p.vidaUtilMeses <= 0) {
     throw new Error(
       `Vida útil inválida: ${p.vidaUtilMeses} meses. Tem de ser inteiro > 0.`
@@ -397,6 +397,14 @@ export function calcularParcela(
     );
   }
 
+}
+
+export function calcularParcela(
+  base: Money,
+  valorContabilAtual: Money,
+  p: ParametrosDaClasse
+): CalculoDaParcela {
+  validarParametrosDaClasse(p);
   const valorResidual = toMoney(base.times(p.percentualResidual));
   const parcelaCheia = toMoney(
     base.minus(valorResidual).dividedBy(p.vidaUtilMeses)

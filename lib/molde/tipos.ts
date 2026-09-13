@@ -384,4 +384,7 @@ export interface LinhaDoHistorico {
   readonly motivo?: string | null;
   readonly valor?: string;
   readonly estornado?: boolean;
+  /** V3 (pacote 2): um destino por linha — a análise do estorno deste movimento, por exemplo. */
+  readonly href?: string;
+  readonly hrefRotulo?: string;
 }

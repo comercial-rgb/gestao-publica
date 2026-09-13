@@ -6,10 +6,10 @@
 |---|---|
 | HEAD | ver `git log -1` — a seção 35 nomeia o commit de cada unidade |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | Primeiro pacote concluído (§35–§37); segundo pacote em curso — a cadeia patrimonial utilizável: unidades 1 (§38) e 2 (§39) fechadas, unidade 3 a seguir |
-| Último resultado | seção 39 |
-| Pendências relevantes | seções 35.7, 36.4, 37.5, 38.5 e 39.5; as anteriores em §19 e nos `MODULO.md` |
-| Próximo passo | seção 39.6 |
+| Frente em execução | Primeiro pacote concluído (§35–§37); segundo pacote em curso — a cadeia patrimonial utilizável: unidades 1 (§38), 2 (§39), 3 (§40) e 4 (§41) fechadas, unidade 5 a seguir |
+| Último resultado | seção 41 |
+| Pendências relevantes | seções 35.7, 36.4, 37.5, 38.5, 39.5, 40.5 e 41.5; as anteriores em §19 e nos `MODULO.md` |
+| Próximo passo | seção 41.6 |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -4582,6 +4582,123 @@ Segundo pacote, unidade 3: **parâmetros versionados de depreciação** (tabela 
 vigência derivada; `atualizarCompetencia` lê a vigente) e o **processamento por competência
 com prévia e memória de cálculo** (tela própria). Depois: estorno com análise de dependências;
 termos; etiquetas com decoder independente.
+
+## 40. Orquestração V3 — segundo pacote, unidade 3: parâmetro versionado, prévia e memória de cálculo
+
+**Regime:** profundidade (a atualização por competência lança no razão; a régua ganhou
+versão, a prévia é a mesma conta sem escrever, a memória vai na mesma transação) com
+superfície nas duas telas. `m10-competencia.test.ts` passa sem mudar um literal.
+
+### 40.1 · O que passou a funcionar, e a rota real
+
+| Capacidade | Onde |
+|---|---|
+| Definir o parâmetro de depreciação/amortização/exaustão da classe em **versões** (autor, motivo, vigência derivada); encerrar a atualização de uma classe; histórico por classe; todas as classes ativas listadas, parametrizadas ou não | `/patrimonio/parametros-de-atualizacao` (molde; ações "definir" e "encerrar"; ação `DEFINIR_PARAMETRO_DE_ATUALIZACAO`) |
+| **Prévia** da competência com a memória de cálculo (parâmetro e versão, base, contábil, residual, parcela cheia, teto, parcela a lançar) e a situação (pronta, sem parâmetro, encerrada, já processada, totalmente atualizada) com a recusa nas palavras do domínio | `/patrimonio/competencia?classe=…&competencia=YYYY-MM` (GET, sem transição de estado) |
+| **Processar** a competência (POST com chave de comando, crachá `ATUALIZAR_COMPETENCIA_PATRIMONIAL`), e o histórico do processado com a memória gravada de cada um | mesma tela, formulário `processar-competencia` |
+| Atualização versionada de permissões **v4** (`parametro-de-atualizacao`): quem parametriza roteiro do patrimônio ganha a definição do parâmetro no mesmo escopo | `/administracao/perfis` · `npm run permissoes:atualizar -- 4` |
+
+### 40.2 · Decisões
+
+| Decisão | Motivo |
+|---|---|
+| `VersaoDeParametroDeAtualizacao` append-only, vigente = maior número; `ParametroAtualizacaoClasse` vira **origem** (só responde sem versão) | o molde dos roteiros (V3 4.5); nenhum backfill: a origem responde até alguém versionar, e a memória registra "sem versão" |
+| **A regra é uma:** `validarParametrosDaClasse` é chamada por quem define e por `calcularParcela` | versão inválida não nasce; não há segunda explicação para a mesma recusa |
+| **Prévia = a mesma conta.** `preverCompetencia` devolve situação + recusa; `atualizarCompetencia` a chama na transação e recusa com o mesmo texto | não há duas aritméticas para a mesma parcela |
+| **Memória na mesma transação** (`MemoriaDeAtualizacao`, uma por movimento, FK RESTRICT para a versão) | se a memória não grava, o movimento não existe; "por que 450,00?" continua respondível depois que a régua mudou |
+| Ação própria `DEFINIR_PARAMETRO_DE_ATUALIZACAO`, derivada (v4) de `PARAMETRIZAR_ROTEIRO_PATRIMONIAL` | vida útil e residual são decisão do contador sobre a NBC TSP 07, não efeito colateral de outro crachá |
+| Residual pedido em **porcento** na tela e convertido a fração de seis casas pelo `Decimal` na porta | pedir "0.100000" ao operador é pedir que ele erre; o domínio só conhece a fração |
+| Bruto e acumulada nunca são pedidos; classe sem parâmetro em vigor não aparece no seletor da competência | a tela não monta armadilha que o domínio vai recusar |
+| ADR nova: `docs/adr/ADR-parametros-versionados-e-memoria-de-calculo.md` | decisão de modelo, registrada |
+
+### 40.3 · Arquivos
+
+`prisma/schema/{m10-patrimonial,m16-usuarios}.prisma` · `prisma/migrations/20260913021912_v3_parametros_versionados_e_memoria` (aditiva, 0 DROP) · `modules/m10-patrimonial/{parametros.ts,dominio.ts,patrimonio.ts,m10-parametros-versoes.test.ts,MODULO.md}` · `modules/m16-travamento/{acoes.ts,atualizacoes-de-permissoes.ts (v4),m16-censo.test.ts,m16-atualizacoes.test.ts}` · `lib/portas/{navegacao-permissoes.ts,recursos/parametros.ts,recursos/parametros-dados.ts,recursos/competencia-dados.ts}` · `lib/navegacao.ts` · `app/(areas)/patrimonio/parametros-de-atualizacao/{page.tsx,[id]/page.tsx,actions.ts}` · `app/(areas)/patrimonio/competencia/{page.tsx,actions.ts,ProcessarCompetencia.tsx}` · `scripts/preparar-banco-de-percursos.ts` (v4) · `test/limpar-banco.ts` · `docs/adr/ADR-parametros-versionados-e-memoria-de-calculo.md` · catálogo (5.19.29).
+
+### 40.4 · Comandos executados e resultado real
+
+| Comando | Resultado |
+|---|---|
+| `migrate dev` (dev) · `migrate deploy` (test, percursos) · `db:papel` nos três | aplicada; **0 DROP** no SQL gerado; `gestao_app` sem superusuário, sem BYPASSRLS, sem DDL |
+| `prisma generate` | o `migrate dev` NÃO regenerou o cliente (o valor novo do enum não estava em `prisma/generated/client`); a 1ª tentativa de aplicar a v4 recusou por validação do cliente; regenerado à mão, aplicada |
+| `tsc` backend · app · scripts (um por vez, heap 2560) | **limpos** (a 1ª rodada do app acusou 20 erros de cliente Prisma desatualizado — regenerado; e uma linha composta sem assinatura de índice — `type` em vez de `interface`) |
+| `vitest` rápida (partição sem banco, completa) | **790/790** (72 arquivos) — a 1ª rodada acusou 1: a tela da competência passava `id` literal a dois campos; trocados por `CampoSelect`/`CampoTexto` (id do `useId`) |
+| `vitest` lenta sob o trinco (parâmetros-versões, competência, patrimônio, atualizações, censo/rollout, papel de runtime) | **88/92** na rodada conjunta: 3 do `m16-rollout` por `Hook timed out 10000ms` no `beforeEach` (máquina; **isolado: 11/11**) e o t6 novo, que supunha que o perfil EXECUCAO da fixture não tinha a ação — ele tem todas fora da administração; o teste passou a usar um perfil que só consulta (**rerodado: 6/6**) |
+| dev e percursos: `permissoes:atualizar -- 4` · `deriva:perfil` | v4 aplicada: 1 concessão em 1 perfil, nos dois bancos; **250 ações, todas concedidas** |
+
+**Não executado:** portão integral, `test:tudo`, `test:fuso`, `next build`, percursos de
+navegador pelas duas telas novas.
+
+### 40.5 · Pendências nomeadas
+
+| Pendência | O que é |
+|---|---|
+| `COMPETENCIA-SEM-PERCURSO` | `/patrimonio/competencia` e `/patrimonio/parametros-de-atualizacao` não têm percurso de navegador; 5.19.26 e 5.19.29 continuam `IMPLEMENTADO_NAO_VALIDADO` |
+| `PARAMETRO-DE-ORIGEM-SEM-VERSAO` | classes com a linha legada continuam funcionando sem versão; versionar é ato do contador pela tela (a origem aparece como "parâmetro de origem, sem versão") |
+| `GENERATE-APOS-MIGRATE-DEV` | o `migrate dev` desta máquina não regenerou o cliente; até entender a causa, `npm run db:...` deve ser seguido de `prisma generate` explícito — registrado aqui para não repetir a recusa |
+| as de 38.5 e 39.5 | continuam |
+
+### 40.6 · Próximo ponto exato
+
+Segundo pacote, unidade 4: **estorno com análise de dependências** (página própria: o que o
+estorno desfaz, o que depende do movimento — competências posteriores, baixas, memórias — e a
+recusa nomeada quando há dependente vivo). Depois: termos (emissão + PDF) e etiquetas com
+decoder independente; então o inventário dos smokes sob o banco dos percursos.
+
+## 41. Orquestração V3 — segundo pacote, unidade 4: o estorno com análise de dependências
+
+**Regime:** profundidade (o estorno lança no razão; a análise passa a ser conferida DENTRO da
+transação e recusa nomeando) com superfície na tela de análise. **Commit conjunto com a
+unidade 3** — as duas tocam `patrimonio.ts` e `acoes.ts`, e a verificação foi uma só.
+
+### 41.1 · O que passou a funcionar, e a rota real
+
+| Capacidade | Onde |
+|---|---|
+| A **análise do estorno** de um movimento de valor: o que o ato desfaz (o movimento, os arrastados da operação, o lançamento do resultado), quem depende (bloqueia, com o porquê) e os posteriores do mesmo bem (informação); o botão só sem bloqueio e com o crachá | `/patrimonio/estornos/valor/[id]` — pelos links "analisar estorno" do histórico do bem e da lista de competências processadas |
+| A análise do estorno de um movimento de **gestão** (par da transferência arrastado; posteriores do eixo como informação) | `/patrimonio/estornos/gestao/[id]` — pelo histórico do bem |
+| O serviço `estornarMovimentoPatrimonial` **recusa** estorno fora de ordem, nomeando os dependentes vivos | qualquer caminho (tela, script, API) |
+
+### 41.2 · Decisões
+
+| Decisão | Motivo |
+|---|---|
+| Depende quem **ficaria inválido**: (a) competência posterior quando o movimento compõe a base; (b) redução posterior quando o movimento é aumento (o teto o incluía); (c) baixa da acumulada posterior quando o movimento é atualização acumulada | é a definição que não bloqueia o que continua válido: estornar uma depreciação com uma redução posterior viva continua permitido (o teto só cresce), e é o que `m10-alienacao.test.ts` já exercitava |
+| Ordem pelo **instante do registro** (`criadoEm`), não pela data do fato | base e teto foram conferidos contra o que existia ao registrar |
+| Posteriores do mesmo bem fora de (a)–(c) são **informação**, não bloqueio | LIFO por bem seria regra de estética, não de validade |
+| Gestão **não bloqueia** | não há base nem teto; o estado é o último vivo do eixo — estornar um anterior reescreve o histórico, e a tela diz isso |
+| A análise é refeita **na transação** do estorno | a tela não é fronteira de segurança |
+| `LinhaDoHistorico.href` no molde, renderizado como link | uma linha de histórico com destino é genérica (roteiros, bens); não é exceção acomodada |
+
+### 41.3 · Arquivos
+
+`modules/m10-patrimonial/{estorno.ts,patrimonio.ts,m10-estorno-dependencias.test.ts,m10-alienacao.test.ts (t10),MODULO.md}` · `modules/m16-travamento/acoes.ts` (FORA_DO_CENSO) · `lib/molde/tipos.ts` · `components/molde/DetalheDeRecurso.tsx` · `lib/portas/recursos/{estorno-dados.ts,acervo-dados.ts}` · `app/(areas)/patrimonio/estornos/{actions.ts,EstornarMovimento.tsx,[eixo]/[id]/page.tsx}` · `app/(areas)/patrimonio/competencia/page.tsx` (link) · catálogo (5.19.39).
+
+### 41.4 · Comandos executados e resultado real
+
+| Comando | Resultado |
+|---|---|
+| `tsc` backend · app · scripts (um por vez, heap 2560) | **limpos** (a 1ª rodada do backend acusou 1 erro na análise — o lançamento do resultado vinha com `id` e a interface pedia `lancamentoId`; corrigido). Sob swap, o `tsc` do backend levou ~20 min nesta máquina — registrado, não é defeito |
+| `vitest` rápida (partição sem banco, completa) | **790/790** (72 arquivos) |
+| `vitest` lenta sob o trinco (estorno-dependências, alienação, patrimônio, competência, acervo, gestão do bem, censo) | **82/82** (7 arquivos, inclusive `m10-alienacao` t8–t10 e `m10-parametros-versoes` 6/6) |
+
+**Não executado:** portão integral, `test:tudo`, `test:fuso`, `next build`, percurso de
+navegador pela tela de análise.
+
+### 41.5 · Pendências nomeadas
+
+| Pendência | O que é |
+|---|---|
+| `ESTORNO-SEM-PERCURSO` | a tela de análise não tem percurso de navegador; 5.19.39 continua `PARCIAL` |
+| `ESTORNO-DE-GESTAO-SEM-BLOQUEIO` | decisão registrada: o eixo de gestão só informa; se o inventário passar a depender de um movimento de gestão, a análise ganha a regra |
+| as de 38.5, 39.5 e 40.5 | continuam |
+
+### 41.6 · Próximo ponto exato
+
+Segundo pacote, unidade 5: **termos** (responsabilidade, transferência, baixa — emissão pela
+tela e PDF pelo `packages/documento`) e **etiquetas imprimíveis** (individual e em lote, Code
+128 em SVG, com decoder independente no teste). Depois: inventário dos smokes sob o banco dos
+percursos (`PERCURSOS-SOB-O-BANCO-PROPRIO`) e os percursos das telas novas do pacote 2.
 
 ## 19. O próximo passo
 

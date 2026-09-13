@@ -103,6 +103,8 @@ model ClasseDeBens {
   /// como todo código contábil do projeto — nada é inventado no código.
   contaContabilAtivoId String
   contaContabilAtivo   ContaPcasp @relation("AtivoDaClasse", fields: [contaContabilAtivoId], references: [id])
+  /// V3 (pacote 2) — as versões do parâmetro de atualização desta classe.
+  versoesDeParametro VersaoDeParametroDeAtualizacao[] @relation("VersoesDeParametro")
 
   ativa Boolean @default(true)
 
@@ -269,6 +271,9 @@ model MovimentoPatrimonial {
   motivoDeBaixaId String?
   motivoDeBaixa   MotivoDeBaixa? @relation(fields: [motivoDeBaixaId], references: [id], onDelete: Restrict)
 
+  /// V3 (pacote 2) — a memória de cálculo, quando o movimento é uma atualização por competência.
+  memoriaDeAtualizacao MemoriaDeAtualizacao?
+
   motivo String?
 
   criadoEm  DateTime @default(now())
@@ -391,4 +396,70 @@ model VersaoDeRoteiro {
 
   @@unique([familia, chave, numero])
   @@index([familia, chave, situacao, publicadaEm])
+}
+
+// ----------------------------------------------------------------------------
+// V3 (pacote 2, unidade 3) — O PARÂMETRO DE ATUALIZAÇÃO É VERSIONADO.
+//
+// `ParametroAtualizacaoClasse` (uma linha por classe, mutável) vira ORIGEM: o resolvedor
+// lê a última versão desta tabela e só cai na linha legada enquanto a classe não tiver
+// versão nenhuma. Append-only; a vigente é a de maior número; vigência derivada.
+// ----------------------------------------------------------------------------
+model VersaoDeParametroDeAtualizacao {
+  id String @id @default(cuid())
+
+  classeDeBensId String
+  classeDeBens   ClasseDeBens @relation("VersoesDeParametro", fields: [classeDeBensId], references: [id])
+
+  /// Sequencial por classe: 1, 2, 3… A unicidade é a trava de concorrência.
+  numero Int
+
+  metodo             MetodoAtualizacao
+  /// Em MESES. > 0 (conferido no serviço — fail-closed).
+  vidaUtilMeses      Int
+  /// Fração do valor que NÃO se deprecia (0 a 1, exclusive). Decimal(9,6) — nunca float.
+  percentualResidual Decimal @db.Decimal(9, 6)
+  /// `false` = a partir desta versão a classe NÃO é mais atualizada.
+  ativo              Boolean @default(true)
+
+  /// Por que esta versão existe. Quem ler o histórico não terá a quem perguntar.
+  motivo String
+
+  memorias MemoriaDeAtualizacao[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([classeDeBensId, numero])
+}
+
+// ----------------------------------------------------------------------------
+// A MEMÓRIA DE CÁLCULO de cada atualização por competência — gravada na MESMA
+// transação do movimento e do lançamento. Sem ela, "por que 450,00?" só se responde
+// refazendo a conta com parâmetros que podem já ter mudado.
+// ----------------------------------------------------------------------------
+model MemoriaDeAtualizacao {
+  id String @id @default(cuid())
+
+  movimentoId String               @unique
+  movimento   MovimentoPatrimonial @relation(fields: [movimentoId], references: [id])
+
+  /// A versão do parâmetro que a calculou — `null` quando veio da linha legada.
+  versaoDeParametroId String?
+  versaoDeParametro   VersaoDeParametroDeAtualizacao? @relation(fields: [versaoDeParametroId], references: [id], onDelete: Restrict)
+
+  metodo             MetodoAtualizacao
+  vidaUtilMeses      Int
+  percentualResidual Decimal @db.Decimal(9, 6)
+
+  base               Decimal @db.Decimal(18, 2)
+  valorContabilAntes Decimal @db.Decimal(18, 2)
+  valorResidual      Decimal @db.Decimal(18, 2)
+  parcelaCheia       Decimal @db.Decimal(18, 2)
+  teto               Decimal @db.Decimal(18, 2)
+  valorDaParcela     Decimal @db.Decimal(18, 2)
+
+  criadoEm DateTime @default(now())
+
+  @@index([versaoDeParametroId])
 }

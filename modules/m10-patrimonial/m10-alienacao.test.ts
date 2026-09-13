@@ -16,6 +16,7 @@ import {
 } from "./patrimonio.js";
 import { demonstrativoPatrimonialPorClasse } from "./demonstrativo.js";
 import { receitaArrecadadaPorNumero } from "./receita-da-alienacao.js";
+import { analisarEstornoPatrimonial } from "./estorno.js";
 import { criarM04Deps } from "../m04-receita/adapter-prisma.js";
 import { roteiroArrecadacao } from "../m04-receita/dominio.js";
 import { registrarArrecadacao } from "../m04-receita/servico.js";
@@ -664,5 +665,22 @@ describe("V3 — a alienação integrada: receita pela guia e motivo do rol", ()
     });
     expect(acum.motivoDeBaixaId).toBeNull();
     expect(acum.operacaoId).toBe(r.operacaoId);
+  });
+});
+
+describe("V3 (pacote 2, unidade 4) — a análise do estorno de uma operação composta", () => {
+  beforeEach(semear);
+
+  it("t10: a baixa do bruto ARRASTA a baixa da acumulada e o lançamento do ganho; nada bloqueia", async () => {
+    await classeComAcumulada();
+    const r = await alienarBem(prisma, { ...ALIENACAO, valorVenda: "4000.00" });
+    const analise = await analisarEstornoPatrimonial(prisma, r.movimentoBaixaBruto);
+    expect(analise.podeEstornar).toBe(true);
+    expect(analise.movimento.operacaoId).toBe(r.operacaoId);
+    expect(analise.arrastados.map((a) => a.id)).toEqual([r.movimentoBaixaAcumulada]);
+    expect(analise.resultados.map((x) => x.origemTipo)).toEqual(["PATRIMONIAL_GANHO_ALIENACAO"]);
+    // pelo outro lado da operação, o bruto é o arrastado
+    const pelaAcumulada = await analisarEstornoPatrimonial(prisma, r.movimentoBaixaAcumulada!);
+    expect(pelaAcumulada.arrastados.map((a) => a.id)).toEqual([r.movimentoBaixaBruto]);
   });
 });

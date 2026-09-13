@@ -223,6 +223,11 @@ export function DetalheDeRecurso({
                   {h.motivo !== undefined && h.motivo !== null ? (
                     <div className="mt-1 text-[color:var(--color-ink-2)]">{h.motivo}</div>
                   ) : null}
+                  {h.href !== undefined ? (
+                    <div className="mt-1">
+                      <Link href={h.href} className="underline underline-offset-2">{h.hrefRotulo ?? "abrir"}</Link>
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ol>
