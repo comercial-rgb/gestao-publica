@@ -286,6 +286,14 @@ function dados(page: Page): Promise<string> {
 
 
 /** A competência de trabalho: a primeira de 2027 que ainda não tem folha aberta. */
+/** O último dia civil da competência (AAAA-MM) — o calendário é o mesmo em qualquer fuso. */
+function ultimoDiaDaCompetencia(competencia: string): string {
+  const [ano, mes] = competencia.split("-").map(Number) as [number, number];
+  const bissexto = (ano % 4 === 0 && ano % 100 !== 0) || ano % 400 === 0;
+  const dias = mes === 2 ? (bissexto ? 29 : 28) : [4, 6, 9, 11].includes(mes) ? 30 : 31;
+  return `${competencia}-${String(dias).padStart(2, "0")}`;
+}
+
 async function competenciaLivre(page: Page): Promise<string> {
   const usadas = new Set<string>();
   for (let pagina = 1; pagina <= 5; pagina += 1) {
@@ -293,7 +301,10 @@ async function competenciaLivre(page: Page): Promise<string> {
     const linhas = await page.evaluate(() => Array.from(document.querySelectorAll("tbody tr")).map((tr) => (tr.textContent ?? "").trim()));
     if (linhas.length === 0) break;
     for (const l of linhas) {
-      const m = /\b(20\d\d-\d\d)\b/.exec(l);
+      // ⚠️ SEM `\b` NO FIM: a célula da competência cola na seguinte ("2027-01MENSAL..."), e entre
+      // "1" e "M" não há fronteira de palavra. Com ela, a varredura não achava competência nenhuma
+      // e o smoke reabria a mesma folha da execução anterior.
+      const m = /(20\d\d-\d\d)/.exec(l);
       if (m !== null) usadas.add(m[1] as string);
     }
     if (linhas.length < 20) break;
@@ -333,10 +344,14 @@ async function main(): Promise<void> {
     // cálculo caiu no `TABELA-AUSENTE` que ele mesmo deveria ter evitado. Guarda que procura em
     // tudo acha em tudo.
     await irPara(page, "/folha/tabelas");
-    const linhasDaLista = async (): Promise<readonly string[]> =>
-      page.evaluate(() => Array.from(document.querySelectorAll("tbody tr")).map((tr) => (tr.textContent ?? "").replace(/\s+/g, " ").trim().toLowerCase()));
-    const linhasTabelas = await linhasDaLista();
-    const temTabela = (rotulo: string): boolean => linhasTabelas.some((l) => l.includes(rotulo.toLowerCase()) && l.includes("vigente"));
+    // ⚠️ E A COMPARAÇÃO É POR CÉLULA INTEIRA, não por trecho da linha: a coluna "incide em" da
+    // rubrica contém a palavra "IRRF", e procurar "irrf" na linha do VENCIMENTO dava a rubrica de
+    // imposto como existente — o cálculo depois recusava por `RUBRICA-AUSENTE`. Duas vezes o mesmo
+    // erro de forma: procurar num texto maior do que a pergunta.
+    const celulas = async (): Promise<readonly (readonly string[])[]> =>
+      page.evaluate(() => Array.from(document.querySelectorAll("tbody tr")).map((tr) => Array.from(tr.querySelectorAll("td")).map((td) => (td.textContent ?? "").replace(/\s+/g, " ").trim().toLowerCase())));
+    const linhasTabelas = await celulas();
+    const temTabela = (rotulo: string): boolean => linhasTabelas.some((cs) => cs.includes(rotulo.toLowerCase()) && cs.includes("vigente"));
     const temRgps = temTabela("contribuição previdenciária — rgps");
     const temIrrf = temTabela("irrf");
     const temSf = temTabela("salário-família");
@@ -401,8 +416,8 @@ async function main(): Promise<void> {
     // natureza que o servidor recusa duplicar. Duas rubricas de vencimento-base com códigos
     // diferentes são o mesmo conflito.
     await irPara(page, "/folha/rubricas?pagina=1");
-    const linhasRubricas = await page.evaluate(() => Array.from(document.querySelectorAll("tbody tr")).map((tr) => (tr.textContent ?? "").replace(/\s+/g, " ").trim().toLowerCase()));
-    const temNatureza = (natureza: string): boolean => linhasRubricas.some((l) => l.includes(natureza.toLowerCase()));
+    const linhasRubricas = await celulas();
+    const temNatureza = (natureza: string): boolean => linhasRubricas.some((cs) => cs.includes(natureza.toLowerCase()));
     const criarRubrica = async (campos: readonly { readonly sel: string; readonly valor: string; readonly tipo?: "select" | "marcar" }[], rotulo: string, natureza: string): Promise<void> => {
       if (temNatureza(natureza)) {
         ok(`${rotulo} — já existe rubrica desta natureza (execução anterior), reusada`);
@@ -571,7 +586,11 @@ async function main(): Promise<void> {
       const rMov = await preencherEEnviar(page, "movimentar", [
         ...(alvo === null ? [] : [{ sel: 'select[name="vinculoId"]', valor: alvo.valor, tipo: "select" as const }]),
         { sel: 'select[name="tipo"]', valor: "MUDANCA_REGIME_PREVIDENCIARIO", tipo: "select" },
-        { sel: 'input[name="data"]', valor: "2026-01-01", tipo: "data" },
+        // ⚠️ A DATA É O ÚLTIMO DIA DA COMPETÊNCIA, e não uma data antiga qualquer: o evento não
+        // pode ser anterior à admissão (o domínio recusa, e recusa certo), e precisa estar vigente
+        // no fim do mês que a folha calcula. Qualquer vínculo vivo na competência foi admitido
+        // antes desse dia.
+        { sel: 'input[name="data"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" },
         { sel: 'select[name="regimePrevidenciario"]', valor: "RGPS", tipo: "select" },
         { sel: 'input[name="motivo"]', valor: "carga do regime previdenciário do vínculo legado (percurso)" },
       ]);

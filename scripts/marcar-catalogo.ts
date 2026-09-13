@@ -1866,6 +1866,65 @@ const MAPA: Readonly<Record<string, Marca>> = {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: "V6 P2.2: o desligamento é TERMINAL (o vínculo desligado não aceita eventos e não é mais oferecido — smoke-pessoal 7.2) e a matrícula é única no ente inteiro (MATRICULA-JA-USADA, 6.2). Reintegração reutilizando a matrícula exigiria um evento REINTEGRACAO que reabra o vínculo — decisão de modelo a tomar antes de construir (pendência REINTEGRACAO-DE-VINCULO no MODULO M32).",
   },
+
+  // ── V6 P2.3 — folha de pagamento (M33), bloco 2: tabelas do ente, cálculo com memória ──
+  "5.12.51": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: "V6 P2.3: /folha/folhas/[id]/contracheque/[vinculoId] mostra o pagamento do servidor LINHA A LINHA sem imprimir nada: cada rubrica com valor-base, fator de dias, valor e a conta que a produziu; as faixas percorridas da contribuição; os três cenários do imposto com o que cada um deduziu e o motivo de cada inaplicável; o salário-família com cada dependente considerado; e o sha256 da memória. É a memória GRAVADA no cálculo, não uma recontagem da tela (m33-folha.test.ts: mesmo input, mesmo hash).",
+    rota_verificada: "papéis: rh@percursos.local (parametriza, lança e CALCULA) e contabilidade@percursos.local (FECHA) · contexto: banco dos percursos, next build + next start em 3010, build 9f3c512, 2026-09-13 · passos: /folha/tabelas (contribuição RGPS com três faixas e teto, IRRF com faixas e desconto simplificado, salário-família) → /folha/rubricas (VENC, HEXT, PREV, IRRF; a SEGUNDA de vencimento-base é recusada) → admissão com regime previdenciário → /folha/lancamentos (horas extras na competência) → /folha/folhas (abrir, calcular) → contracheque com a memória → recalcular (nº 2), cancelar, fechar pela contabilidade, recalcular recusado · obtido: smoke-folha-9f3c512-r4.log, 46/46.",
+  },
+  "5.12.52": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: "V6 P2.3: o cálculo é FATO NUMERADO por folha — recalcular é o número seguinte, e o histórico do detalhe traz cada cálculo com data, autor, motivo, contracheques, líquido e o sha256, mais o CANCELAMENTO com autor e motivo (o cálculo cancelado continua no histórico, marcado). Nada é apagado nem reescrito; a folha fechada não se recalcula e o cálculo que a fechou não se cancela (smoke-folha 7.1–7.4, 9.1–9.2). ⚠️ A hora aparece na data do registro; o relógio por extenso não é exibido.",
+    rota_verificada: "papéis: rh@percursos.local (parametriza, lança e CALCULA) e contabilidade@percursos.local (FECHA) · contexto: banco dos percursos, next build + next start em 3010, build 9f3c512, 2026-09-13 · passos: /folha/tabelas (contribuição RGPS com três faixas e teto, IRRF com faixas e desconto simplificado, salário-família) → /folha/rubricas (VENC, HEXT, PREV, IRRF; a SEGUNDA de vencimento-base é recusada) → admissão com regime previdenciário → /folha/lancamentos (horas extras na competência) → /folha/folhas (abrir, calcular) → contracheque com a memória → recalcular (nº 2), cancelar, fechar pela contabilidade, recalcular recusado · obtido: smoke-folha-9f3c512-r4.log, 46/46.",
+  },
+  "5.12.53": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P2.3: cada verba do contracheque guarda a CONTA que a produziu em texto ('vencimento-base vigente 3000.00 x 19/30 dias', 'RGPS: base 3250.00 → faixas 1000.00x0.0750 + 2000.00x0.0900 + 250.00x0.1400 = 290.00') e os valores retornados, em `LinhaDoContracheque.memoria` e na tela. ⚠️ A 'fórmula da verba' do TR é fórmula CONFIGURÁVEL pelo ente (5.12.62); aqui a conta vem da NATUREZA da rubrica, que é um conjunto fechado — não há editor de fórmula.",
+    rota_verificada: "papéis: rh@percursos.local (parametriza, lança e CALCULA) e contabilidade@percursos.local (FECHA) · contexto: banco dos percursos, next build + next start em 3010, build 9f3c512, 2026-09-13 · passos: /folha/tabelas (contribuição RGPS com três faixas e teto, IRRF com faixas e desconto simplificado, salário-família) → /folha/rubricas (VENC, HEXT, PREV, IRRF; a SEGUNDA de vencimento-base é recusada) → admissão com regime previdenciário → /folha/lancamentos (horas extras na competência) → /folha/folhas (abrir, calcular) → contracheque com a memória → recalcular (nº 2), cancelar, fechar pela contabilidade, recalcular recusado · obtido: smoke-folha-9f3c512-r4.log, 46/46.",
+  },
+  "5.12.54": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P2.3: o contracheque diz, por linha, se ela compõe a base da contribuição e a do IRRF, e mostra as duas bases consolidadas; a incidência é parametrizada na rubrica. ⚠️ FALTA a CONSULTA por folha (a lista de quais proventos e descontos sofreram incidência em cada folha calculada) — hoje só se vê contracheque a contracheque.",
+  },
+  "5.12.50": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P2.3: existe a folha MENSAL, calculada para todos os vínculos vivos na competência, com recálculo numerado e fechamento. ⚠️ FALTAM os demais tipos que o item enumera (mensal complementar, rescisão, rendimentos acumulados, férias, adiantamento e 13º, diferença de 13º, adiantamentos salariais) e o filtro de funcionários no cálculo — pendência `FOLHAS-NAO-MENSAIS` no MODULO do M33.",
+    rota_verificada: "papéis: rh@percursos.local (parametriza, lança e CALCULA) e contabilidade@percursos.local (FECHA) · contexto: banco dos percursos, next build + next start em 3010, build 9f3c512, 2026-09-13 · passos: /folha/tabelas (contribuição RGPS com três faixas e teto, IRRF com faixas e desconto simplificado, salário-família) → /folha/rubricas (VENC, HEXT, PREV, IRRF; a SEGUNDA de vencimento-base é recusada) → admissão com regime previdenciário → /folha/lancamentos (horas extras na competência) → /folha/folhas (abrir, calcular) → contracheque com a memória → recalcular (nº 2), cancelar, fechar pela contabilidade, recalcular recusado · obtido: smoke-folha-9f3c512-r4.log, 46/46.",
+  },
+  "5.12.61": {
+    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    evidencia: "V6 P2.3: o salário-família é calculado automaticamente pela tabela vigente do ente e pelos dependentes com a finalidade SALARIO_FAMILIA, com a idade medida no PRIMEIRO dia da competência (quem faz 14 anos no dia 20 recebe o mês inteiro), invalidez permanente sem limite de idade e renda máxima que zera o benefício — cada dependente com o motivo da inelegibilidade (m33-folha.test.ts, 4 testes). ⚠️ NÃO HÁ PERCURSO DE NAVEGADOR: o servidor do percurso ganha acima da renda máxima e não tem dependente com a finalidade.",
+  },
+  "5.12.62": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P2.3: cada rubrica declara se incide em IRRF e na contribuição, e de onde vem o valor (natureza), inclusive percentual do vencimento-base. ⚠️ FALTAM a FÓRMULA editável pelo ente e a diferenciação POR REGIME — a natureza é um conjunto fechado e vale para todos os regimes. Fórmula editável exigiria interpretador com universo fechado (regra do repositório: nunca `eval`).",
+  },
+  "5.12.63": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P2.3: a incidência na base da contribuição é parametrizada por rubrica, e a tabela aplicada depende do regime previdenciário do vínculo na competência. ⚠️ FALTAM o FGTS (não há base nem recolhimento) e a incidência diferenciada por previdência/regime na mesma rubrica.",
+  },
+  "5.12.65": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P2.3: lançamento VARIÁVEL por matrícula e competência, com observação, para rubricas de valor informado (/folha/lancamentos; smoke-folha 4.1–4.2, e a linha entra no contracheque somando à base). ⚠️ FALTA o lançamento COLETIVO (por lote de funcionários).",
+    rota_verificada: "papéis: rh@percursos.local (parametriza, lança e CALCULA) e contabilidade@percursos.local (FECHA) · contexto: banco dos percursos, next build + next start em 3010, build 9f3c512, 2026-09-13 · passos: /folha/tabelas (contribuição RGPS com três faixas e teto, IRRF com faixas e desconto simplificado, salário-família) → /folha/rubricas (VENC, HEXT, PREV, IRRF; a SEGUNDA de vencimento-base é recusada) → admissão com regime previdenciário → /folha/lancamentos (horas extras na competência) → /folha/folhas (abrir, calcular) → contracheque com a memória → recalcular (nº 2), cancelar, fechar pela contabilidade, recalcular recusado · obtido: smoke-folha-9f3c512-r4.log, 46/46.",
+  },
+  "5.12.66": {
+    situacao: "PARCIAL",
+    evidencia: "V6 P2.3: lançamento FIXO por vigência (competência inicial e final, esta opcional), com observação e ATO LEGAL, por matrícula. Append-only: encerrar um fixo é dizer a competência final, nunca apagar. ⚠️ FALTA o lançamento COLETIVO.",
+  },
+  "5.12.79": {
+    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    evidencia: "V6 P2.3: quem tem mais de uma matrícula no ente é UMA pessoa para a contribuição RGPS (bases somadas, teto aplicado uma vez, rateio proporcional com o centavo no último) e UMA fonte pagadora para o IRRF (rendas somadas, dependentes e deduções contados uma vez, imposto rateado pela renda). RPPS e isento não agregam a contribuição. A memória de cada contracheque diz que o valor foi IMPOSTO pela acumulação e por quê (m33-folha.test.ts, fixture N=2: duas matrículas de 5.000 pagam 477,50 + 477,50 em vez de 535 + 535). ⚠️ Sem percurso de navegador: no banco dos percursos não há servidor com duas matrículas vivas na mesma competência.",
+  },
+  "5.12.37": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: "V6 P2.3: há desconto por LANÇAMENTO informado (fixo ou variável), que serve para uma parcela avulsa, mas NÃO há cadastro de desconto parcelado nem de empréstimo consignado: nada controla número de parcelas, saldo devedor, banco ou quitação. Marcado ausente para que a presença do desconto genérico não seja lida como atendimento — pendência `CONSIGNACOES-E-MARGEM` no MODULO do M33.",
+  },
+  "5.12.83": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia: "V6 P2.3: não há cálculo de margem consignável — nem percentual configurável, nem escolha entre líquido e bruto, nem verbas que deduzem da margem, nem desconto dos empréstimos existentes (que também não existem, 5.12.37). O contracheque calcula o líquido; margem é outra conta, e inventá-la a partir de um percentual embutido seria código no código.",
+  },
   "5.12.102": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia: "V6 P2.2: não há serviço de troca de matrícula; a matrícula é a chave de negócio do vínculo e é única no ente. Trocá-la exigiria histórico da matrícula anterior (pendência TROCA-DE-MATRICULA no MODULO M32).",

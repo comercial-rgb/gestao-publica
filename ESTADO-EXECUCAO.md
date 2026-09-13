@@ -6,10 +6,10 @@
 |---|---|
 | HEAD | ver `git log -1` — a seção 51 nomeia o SHA da aplicação congelada e o do percurso |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | **V6 produto integrado** (`docs/lotes/V6-produto-integrado.md`): P0 identidade e shell (seção 52), P1.1 solicitação×ordem (53), P1.2 arrecadação×conta (54), P1.3 percurso por papel (55.0) e **P2.1/P2.2 pessoal — M32** (seção 55) ENTREGUES; em curso P2.3 folha (avaliação do motor doador) e P2.4 portal do servidor. A publicação da V5 está SUSPENSA |
-| Último resultado | seção 55 — M32 pessoal sobre a Pessoa canônica: cargos, lotações, ficha, vínculos e histórico DERIVADO; `next build` em `a187f89`; smoke-pessoal **29/29** (papel rh@percursos.local), smoke-cadeia-por-papel **23/23**, smoke-arrecadacao-conta 8/8 (idempotente), smoke-identidade 46/46; m32-pessoal + censo (287 serviços / 262+19 ações) + atualizações v9 + molde + data-civil verdes; rápida 852/852 (uma intermitência registrada em 55.2); permissões v9 em dev e percursos; catálogo VALIDADO 65 / PARCIAL 75 / AUSENTE 142 |
-| Pendências relevantes | `PESSOAL-SEM-TELA-CALENDARIO-CONTRATO-AVALIACAO`, `PESSOAL-SEM-TELA-BAIXA-DE-DEPENDENTE`, `REINTEGRACAO-DE-VINCULO`, `PIS-SEM-DV` (55.3); `CONTAS-BANCARIAS-COM-MESMA-CONTABIL-NOS-SEEDS` e `FICHA-DE-MATERIAL-NOS-PERCURSOS` (55.0); `MENSAGEM-SOME-COM-A-LINHA` (P4); `ENDERECO-DO-ENTE`; `MARCA-NOS-PDFS`; `M03-T8-TIMEOUT-SOB-SUITE`; seções 35.7, 36.4, 37.5, 38.5 a 43.5, 52.4, 53.3, 54.3 |
-| Próximo passo | seção 55.6 — P2.3 folha: competência → cálculo com memória → fechamento → apropriação contábil (M05), avaliando o motor doador `folha-engine` do saas-municipal SEM importar de `doador/`; depois P2.4 portal do servidor (canal `portal-do-servidor`) |
+| Frente em execução | **V6 produto integrado** (`docs/lotes/V6-produto-integrado.md`): P0 identidade e shell (52), P1 vínculos (53, 54), P1.3 percurso por papel e **P2.1/P2.2 pessoal M32** (55), **P2.3 folha M33** (56) ENTREGUES; em curso P2.3b apropriação contábil da folha e P2.4 portal do servidor. A publicação da V5 está SUSPENSA |
+| Último resultado | seção 56 — M33 folha: tabelas do ente (nenhum valor normativo no código), cálculo como fato numerado com memória e sha256 por contracheque, fechamento pela contabilidade; o regime previdenciário virou FATO DATADO no M32. `next build` em `9f3c512`; smoke-folha **46/46**, smoke-pessoal 29/29, cadeia-por-papel 23/23, identidade 46/46; m33-folha 38/38, m32-pessoal 57/57, censo 296 serviços / 269+20 ações, atualizações v10, rápida 852/852; catálogo VALIDADO 67 / PARCIAL 82 / IMPLEMENTADO 67 / AUSENTE 144 (363 de 2.037 verificadas) |
+| Pendências relevantes | do M33 (56.3): `APROPRIACAO-CONTABIL-DA-FOLHA`, `FOLHAS-NAO-MENSAIS`, `FALTAS-NA-FOLHA`, `PENSAO-ALIMENTICIA-NA-FOLHA`, `CONSIGNACOES-E-MARGEM`, `ARREDONDAMENTO-DA-FOLHA`, `CONTRACHEQUE-EM-PDF`, `RESUMO-DA-FOLHA`, `PATRONAL-NA-MEMORIA`; do M32 (55.3): `PESSOAL-SEM-TELA-CALENDARIO-CONTRATO-AVALIACAO`, `REINTEGRACAO-DE-VINCULO`, `PIS-SEM-DV`, `ALTERACAO-CADASTRAL-DO-SERVIDOR`, `MIGALHA-COM-ID`, `SELETOR-DE-UNIDADE-A-360`; `CONTAS-BANCARIAS-COM-MESMA-CONTABIL-NOS-SEEDS` e `FICHA-DE-MATERIAL-NOS-PERCURSOS` (55.0); `MENSAGEM-SOME-COM-A-LINHA` (P4); `ENDERECO-DO-ENTE`; `MARCA-NOS-PDFS`; seções 35.7 a 43.5, 52.4, 53.3, 54.3 |
+| Próximo passo | seção 56.7 — P2.3b: a apropriação contábil da folha fechada (empenho e liquidação pelo M05, por grupo de rubrica x ficha), depois P2.4 portal do servidor |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -6151,3 +6151,83 @@ da folha pelo M05, próxima unidade), `FOLHAS-NAO-MENSAIS` (13º, férias, resci
 `PATRONAL-NA-MEMORIA`. Do M32: `ALTERACAO-CADASTRAL-DO-SERVIDOR` e as demais da §55.3.
 
 Bloqueado por terceiro: nada nesta unidade.
+
+### 56.4 Percursos sob o build `9f3c512`
+
+| Smoke | Resultado |
+|---|---|
+| `smoke-folha.ts` (papéis rh@ e contabilidade@) | r1 2/14, r2 27/14, r3 29/12, **r4 46/46** — as três primeiras acusaram DEFEITOS DO PRÓPRIO SMOKE, abaixo |
+| `smoke-pessoal.ts` | **29/29** (regressão do M32 sob o schema novo) |
+| `smoke-cadeia-por-papel.ts` | **23/23** |
+| `smoke-identidade.ts` | **46/46** |
+
+O percurso da folha, no que ele prova: as três tabelas do ente cadastradas pela tela com faixas em
+linhas; a SEGUNDA rubrica de vencimento-base recusada nomeando a primeira; admissão com regime
+previdenciário; horas extras lançadas na competência; o cálculo RECUSANDO a matrícula legada sem
+regime e NOMEANDO-A, seguida da informação do regime por fato datado (duas matrículas destravadas
+na r3); o contracheque com vencimento 3.000,00 + horas extras 250,00, contribuição 290,00 saída
+das três faixas (1.000x7,5% + 2.000x9% + 250x14%), imposto 54,00 pelo cenário do desconto
+simplificado e líquido 2.906,00 — conferido à mão; o sha256 da memória; recálculo nº 2;
+cancelamento como fato; o RH sem o formulário de FECHAR e a contabilidade sem o de CALCULAR; o
+fechamento pela contabilidade; e as duas recusas depois dele.
+
+**⚠️ TRÊS DEFEITOS, TODOS NO INSTRUMENTO, E TODOS DA MESMA FAMÍLIA:** procurar num texto maior do
+que a pergunta.
+
+1. A existência das tabelas era lida no CORPO INTEIRO da página — e o corpo tem a descrição do
+   cadastro, o filtro e o menu. O smoke concluiu que as três já existiam, não criou nenhuma, e o
+   cálculo caiu no `TABELA-AUSENTE` que ele deveria ter evitado (r1).
+2. Corrigido para as LINHAS da lista, a rubrica de imposto passou a ser dada como existente porque
+   a coluna "incide em" da rubrica de VENCIMENTO contém a palavra "IRRF" (r2, r3). Agora a
+   comparação é por CÉLULA INTEIRA.
+3. A varredura de competências livres usava `\b(20\d\d-\d\d)\b` — e na célula colada
+   ("2027-01MENSAL...") não há fronteira de palavra entre "1" e "M". Achava zero competências
+   usadas e reabria a folha da execução anterior (r2).
+
+Um quarto ponto foi defeito do smoke contra regra CERTA do domínio: ele datava o evento de regime
+em 2026-01-01, anterior à admissão do vínculo legado, e o `EVENTO-ANTES-DA-ADMISSAO` recusou. A
+data passou a ser o último dia da competência calculada.
+
+**Capturas:** `.registro-de-execucao/v6-capturas/depois-9f3c512-folha/` — `/folha`, folhas, detalhe
+da folha, **contracheque com a memória**, rubricas, lançamentos e tabelas, em 360/768/1366 px, com
+o usuário do papel. "Antes": a área não existia em `a187f89` (menu sem Folha, rota 404).
+
+**Correção de dado no banco dos percursos (não é código):** a execução r1 gravou uma rubrica
+`VENC2-266069` de natureza VENCIMENTO_BASE (efeito do defeito 1, que impediu a recusa correta).
+Ela foi removida por `DELETE` com o papel dono, sem linhas nem lançamentos dependentes —
+registrado aqui porque banco de demonstração também é dado de alguém.
+
+### 56.5 Catálogo por natureza
+
+Superfície (VALIDADO_LOCALMENTE): 5.12.51 (consulta detalhada do pagamento sem imprimir),
+5.12.52 (histórico de cálculos e cancelamentos). Superfície parcial: 5.12.50, 5.12.53, 5.12.54,
+5.12.62, 5.12.63, 5.12.65, 5.12.66. Modelo/serviço sem percurso (IMPLEMENTADO_NAO_VALIDADO):
+5.12.61 (salário-família), 5.12.79 (acumulação de cargos). Ausência confirmada: 5.12.37
+(descontos parcelados e consignados), 5.12.83 (margem consignável).
+
+Placar do catálogo: VALIDADO 67 · PARCIAL 82 · IMPLEMENTADO_NAO_VALIDADO 67 · AUSENTE 144 ·
+DEPENDÊNCIA 3 · NÃO VERIFICADO 1.674 — **363 de 2.037 verificadas (17,8%)**.
+
+### 56.6 Invariantes verificadas
+
+Dinheiro em `Decimal` do começo ao fim (nenhum `number` no cálculo); arredondamento por faixa e
+por linha; razão da folha append-only (cálculo numerado, cancelamento e fechamento como fatos);
+autorização no servidor por ação nomeada, com as duas negativas de papel percorridas nos dois
+sentidos; período/competência conferido no caso de uso (folha fechada recusa recálculo); data por
+dia civil do ente; nenhum identificador de cláusula na tela (6.7); nenhum valor normativo no
+código (as três tabelas do percurso são do ente, com fundamentação, e o cálculo recusa sem elas).
+
+### 56.7 Próximo ponto exato
+
+**P2.3b — apropriação contábil da folha (5.12.71/72), sobre o M05.** O fechamento congela um
+cálculo com sha256; falta transformá-lo em despesa: agrupar as linhas dos contracheques por
+natureza de despesa (vencimentos, encargos patronais, consignações a recolher) e por ficha
+orçamentária, empenhar pelo M05 com o roteiro contábil, liquidar e deixar o pagamento para a
+tesouraria — com o estorno do empenho ligado ao cancelamento do cálculo. Decisões a tomar antes:
+de onde vem a ficha de cada grupo (parametrização por rubrica x ficha), e se a parte patronal
+entra neste passo (a tabela já guarda `aliquotaPatronal`, e a memória ainda não a calcula —
+pendência `PATRONAL-NA-MEMORIA`).
+
+Depois: **P2.4 portal do servidor** (canal `portal-do-servidor` das apresentações; o contracheque
+do fechamento visível ao próprio servidor, com a identidade do M16) e **P3** (mesa de trabalho
+M21/M22/M23, fluxos, carta de serviços, portal e transparência).
