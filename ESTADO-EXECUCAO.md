@@ -7,9 +7,9 @@
 | HEAD | ver `git log -1` — a seção 35 nomeia o commit de cada unidade |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
 | Frente em execução | Primeiro pacote concluído (§35–§37); **segundo pacote concluído** (§38–§43: cinco unidades e o percurso das telas novas); a seguir os percursos antigos contra 3010, a liquidação de material e a reconciliação com o siafic-cg |
-| Último resultado | seção 43 |
+| Último resultado | seção 43 (o percurso do pacote 2); §44 é a unidade parada no stash |
 | Pendências relevantes | seções 35.7, 36.4, 37.5, 38.5 a 43.5; as anteriores em §19 e nos `MODULO.md` |
-| Próximo passo | seção 43.6 |
+| Próximo passo | seção 44.3 — `git stash pop` e terminar a liquidação de material como ato único |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -4839,6 +4839,37 @@ por `smoke-gestao-do-bem` e `smoke-eixo-de-valor` (que exercitam a etiqueta e a 
 `case` restaurado). Depois: `LIQUIDACAO-MATERIAL-ALMOXARIFADO` (decisão do caso de uso
 composto, seção 5 do pedido) e a reconciliação dirigida com o siafic-cg (acervo, plurianual,
 RH, convênios, contrato/reserva/empenho).
+
+## 44. Orquestração V3 — a liquidação de material como ato único: INICIADA e guardada no stash
+
+**Parada a pedido do operador** ("pare"), com a árvore consistente: `main` em `88e4098` mais
+esta seção; o trabalho em andamento está em `git stash@{0}` (mensagem inteira no próprio
+stash). Para retomar: `git stash pop`.
+
+### 44.1 · A decisão tomada (era a devida desde §24.4)
+
+O ato composto **substitui** o ato em dois passos: liquidar material É dar entrada no
+almoxarifado, na mesma transação, e a soma das entradas tem de fechar com o valor
+liquidado. Sem o port do M10 ligado, liquidar material é recusado nomeando (fail-closed).
+
+### 44.2 · O que já está no stash
+
+| Feito | Detalhe |
+|---|---|
+| `git merge --squash lote2-liquidacao-material` (fc50f94) | mesclou limpo (9 arquivos: `lib/portas/liquidacao.ts`, `m05-despesa/{adapter-prisma,dominio,ports,servico-bloco2}.ts`, `m10-patrimonial/{adapter-m05-almox,almoxarifado,estoque-fisico}.ts`, `m16-travamento/acoes.ts`) |
+| **O critério do gancho deixou de ser o elemento** (§24.3): o ato composto dispara quando uma partida de DÉBITO da liquidação bate numa conta que alguma `ClasseDeMaterial` declara | `adapter-prisma.ts`; o import de `CONTA_ESTOQUE`/`contrapartidaDaLiquidacao` saiu. É o que poupa as suítes de M02/M09/M12/M16 que liquidam elemento 30 sem almoxarifado |
+| `m10-estoque-fisico.test.ts` migrado | `entradaDe` liquida com `entradasDeMaterial` (perna física dentro), deps com o port; a física é lida pela liquidação |
+| `m05-anulacao-parcial.test.ts` migrado | `liquidaDe` aceita as entradas; t6 liquida com as duas classes no ato |
+| `m10-almoxarifado.test.ts` **parcialmente** migrado | deps com o port; roteiro de SERVIÇO para as fichas 39/32 (débito numa VPD que nenhuma classe declara); helper `liquidarMaterial` com entradas por padrão; 8 entradas avulsas removidas; t1 e t2 reescritos (t2 ganhou as recusas do ato composto: não fecha, sem entrada, sem port — nada gravado) |
+
+### 44.3 · O que falta nesta unidade
+
+1. `m10-almoxarifado.test.ts`: t8/t8b ainda têm a entrada avulsa com aspas simples (`'5000.00'`) — remover (o helper já a faz); t9/t10 conferem: as recusas por elemento continuam nas entradas avulsas.
+2. `m16-rollout.test.ts` (linhas ~515–545): cria classe de material e usa `registrarEntradaAlmoxarifado` após liquidar — migrar para o ato composto ou trocar a ficha.
+3. `m11-compras.test.ts` cria classe em `c-estoque`: conferir se liquida por esse débito (se sim, migrar).
+4. A tela de liquidação (`app/(areas)/despesa/liquidacoes`) não envia `entradasDeMaterial`: liquidar material pela tela passa a ser recusado nomeando ("SEM A ENTRADA NO ALMOXARIFADO"). Pendência `LIQUIDACAO-MATERIAL-SEM-TELA-DE-ENTRADAS` — a tela é a unidade seguinte.
+5. Verificação inteira: `tsc` ×3, rápida, e as suítes que liquidam (52 arquivos — na prática `test:tudo`), pois o gancho toca toda liquidação.
+6. `MODULO.md` do M10 e do M05, catálogo (5.18.x da entrada de material), e o fechamento de `LIQUIDACAO-MATERIAL-ALMOXARIFADO` em §19/§24.
 
 ## 19. O próximo passo
 
