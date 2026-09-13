@@ -434,7 +434,9 @@ export async function listarEstrutura(c: ConsultaDoMolde): Promise<PaginaDoMolde
 
 export async function opcoesDaEstrutura(): Promise<OpcoesDoCadastro> {
   const eixos = await cliente().eixoEstruturante.findMany({ select: { id: true, codigo: true, descricao: true }, orderBy: { codigo: "asc" } });
-  return { eixoId: eixos.map((x) => ({ valor: x.id, rotulo: `${x.codigo} — ${x.descricao}` })) };
+  return {
+    eixoId: eixos.map((x) => ({ valor: x.id, rotulo: `${x.codigo} — ${x.descricao}` })),
+  };
 }
 
 export async function criarEstrutura(c: Campos): Promise<void> {

@@ -554,14 +554,21 @@ async function main(): Promise<void> {
     ]);
 
     const aposPagar = await texto(page);
-    conferir(
-      "pagar com retenção pela tela",
-      /Pagamento .* registrado/i.test(aposPagar),
-      `a tela não confirmou o pagamento. Texto: ${aposPagar.slice(-900)}`
-    );
 
     // ── 6. O DOSSIÊ MOSTRA O BRUTO E A SAÍDA DE CAIXA, SEPARADOS ───────────
     const dossie2 = await irPara(page, `/despesa/empenhos/${dossieId}`);
+    /*
+      ⚠️ A CONFIRMAÇÃO SE LÊ NO FATO, NÃO NA MENSAGEM — a mesma lição da anulação (abaixo). A
+      action de pagar chama `revalidatePath`, a árvore re-renderiza e a fila do art. 141 já não
+      tem a liquidação: a mensagem de sucesso some junto com o formulário. Sob o `next start`
+      (V4 §10) isso deu FALHA para um pagamento CONCLUÍDO (o registro de operação e o dossiê o
+      provaram). A mensagem, quando sobrevive, continua valendo; o dossiê é a prova que fica.
+    */
+    conferir(
+      "pagar com retenção pela tela",
+      /Pagamento .* registrado/i.test(aposPagar) || dossie2.includes(SAIDA_DE_CAIXA),
+      `nem a tela confirmou o pagamento nem o dossiê mostra a saída de caixa. Texto: ${aposPagar.slice(-600)}`
+    );
     conferir(
       "o dossiê mostra a saída de caixa de 900,00 — e não o bruto",
       dossie2.includes(SAIDA_DE_CAIXA),

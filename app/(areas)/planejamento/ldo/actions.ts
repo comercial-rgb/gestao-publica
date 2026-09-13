@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { EstadoDoMolde } from "../../../../components/molde/FormularioDeRecurso";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 import { LEIS_DE_DIRETRIZES } from "../../../../lib/portas/recursos/plurianual";
 import { criarLeiDeDiretrizes, acaoDaLdo } from "../../../../lib/portas/recursos/plurianual-dados";
 
@@ -26,7 +27,7 @@ export async function leisdediretrizesAction(_prev: EstadoDoMolde, formData: For
         await acaoDaLdo(acao, id, campos);
       }
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
+      return { erro: mensagemDoErro(e, "Falha ao gravar. Nada foi gravado.") };
     }
     revalidatePath(LEIS_DE_DIRETRIZES.rota);
     if (id !== "") revalidatePath(`${LEIS_DE_DIRETRIZES.rota}/${id}`);

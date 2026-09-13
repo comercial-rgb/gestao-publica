@@ -144,10 +144,20 @@ await prisma.fonteRecurso.upsert({
   update: { descricao: FONTE.descricao },
   create: { ...FONTE, codigoTce: FONTE.codigo },
 });
+// ⚠️ V4 (§10): A CONTA BANCÁRIA NASCE COM A CONTA CONTÁBIL MAPEADA. O percurso do ENT03a sob o
+// banco dos percursos foi recusado nomeando ("não tem CONTA CONTÁBIL mapeada"): o seed criava a
+// conta sem contrapartida no razão, e o banco de desenvolvimento só passava porque alguém a
+// mapeou à mão. A conta é a mesma que o cenário SAGRES usa (`CONTA_BANCOS`, bancos conta
+// movimento); se ela não existir no plano, o seed recusa nomeando — não inventa código.
+const CONTA_BANCOS = "1.1.1.1.1.19.00";
+const contaBancos = await prisma.contaPcasp.findUnique({ where: { codigo: CONTA_BANCOS }, select: { id: true } });
+if (contaBancos === null) {
+  throw new Error(`A conta ${CONTA_BANCOS} (bancos conta movimento) não está no plano de contas — rode o seed do PCASP oficial antes.`);
+}
 await prisma.contaBancaria.upsert({
   where: { codigo: CONTA_BANCARIA.codigo },
-  update: { descricao: CONTA_BANCARIA.descricao },
-  create: { ...CONTA_BANCARIA, fonteId: FONTE.id },
+  update: { descricao: CONTA_BANCARIA.descricao, contaContabilId: contaBancos.id },
+  create: { ...CONTA_BANCARIA, fonteId: FONTE.id, contaContabilId: contaBancos.id },
 });
 
 const funcao = await prisma.funcao.findUniqueOrThrow({ where: { codigo: "04" }, select: { id: true } });

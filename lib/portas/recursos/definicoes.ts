@@ -3,6 +3,7 @@ import { RECURSOS_DO_ALMOXARIFADO } from "./almoxarifado.js";
 import { RECURSOS_DA_GESTAO_DO_BEM } from "./gestao-do-bem.js";
 import { RECURSOS_DO_ACERVO } from "./acervo.js";
 import { RECURSOS_DOS_ROTEIROS } from "./roteiros.js";
+import { ESTRUTURA_DO_PPA, LEIS_DE_DIRETRIZES, PLANOS_PLURIANUAIS, PROGRAMAS_DO_PPA } from "./plurianual.js";
 
 /**
  * OS DESCRITORES DOS CADASTROS DO ENT03b — a prova do molde.
@@ -724,4 +725,10 @@ export const RECURSOS_DO_MOLDE: readonly DefinicaoDeRecurso[] = [
   // ações declaradas existem no censo do M16. Um cadastro que entrasse por fora ficaria
   // invisível na busca e sem a amarração da permissão.
   ...RECURSOS_DOS_ROTEIROS,
+  // ⚠️ V4 §8 (M02b) — o planejamento plurianual. Pela mesma lista, pelo mesmo motivo: busca
+  // global e a amarração das dez ações ao censo do M16.
+  PLANOS_PLURIANUAIS,
+  PROGRAMAS_DO_PPA,
+  ESTRUTURA_DO_PPA,
+  LEIS_DE_DIRETRIZES,
 ];

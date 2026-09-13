@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { EstadoDoMolde } from "../../../../components/molde/FormularioDeRecurso";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 import { PLANOS_PLURIANUAIS } from "../../../../lib/portas/recursos/plurianual";
 import { criarPlano, acaoDoPlano } from "../../../../lib/portas/recursos/plurianual-dados";
 
@@ -26,7 +27,7 @@ export async function planosplurianuaisAction(_prev: EstadoDoMolde, formData: Fo
         await acaoDoPlano(acao, id, campos);
       }
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
+      return { erro: mensagemDoErro(e, "Falha ao gravar. Nada foi gravado.") };
     }
     revalidatePath(PLANOS_PLURIANUAIS.rota);
     if (id !== "") revalidatePath(`${PLANOS_PLURIANUAIS.rota}/${id}`);

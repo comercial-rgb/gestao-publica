@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { EstadoDoMolde } from "../../../../../components/molde/FormularioDeRecurso";
 import { comComandoDoFormulario } from "../../../../../lib/portas/comando";
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 import { ESTRUTURA_DO_PPA } from "../../../../../lib/portas/recursos/plurianual";
 import { criarEstrutura } from "../../../../../lib/portas/recursos/plurianual-dados";
 
@@ -25,7 +26,7 @@ export async function estruturadoppaAction(_prev: EstadoDoMolde, formData: FormD
         return { erro: `Ação "${acao}" não existe neste cadastro. Nada foi gravado.` };
       }
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
+      return { erro: mensagemDoErro(e, "Falha ao gravar. Nada foi gravado.") };
     }
     revalidatePath(ESTRUTURA_DO_PPA.rota);
     if (id !== "") revalidatePath(`${ESTRUTURA_DO_PPA.rota}/${id}`);

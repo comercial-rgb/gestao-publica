@@ -293,19 +293,26 @@ async function main(): Promise<void> {
     ]);
     conferir("plano: o programa entrou no plano com valor previsto", rProg.tipo === "ok", rProg.texto);
     await irPara(page, hrefPlano);
+    const natureza = await primeiraOpcao(page, 'form[data-acao="previsao-de-receita"] select[name="naturezaReceitaId"]');
+    const fonte = await primeiraOpcao(page, 'form[data-acao="previsao-de-receita"] select[name="fonteId"]');
+    conferir("plano: a previsão oferece natureza de receita e fonte", natureza !== null && fonte !== null, `natureza=${natureza?.rotulo ?? "nenhuma"} fonte=${fonte?.rotulo ?? "nenhuma"}`);
     const rPrev = await preencherEEnviar(page, "previsao-de-receita", [
+      ...(natureza === null ? [] : [{ sel: 'select[name="naturezaReceitaId"]', valor: natureza.valor, tipo: "select" as const }]),
+      ...(fonte === null ? [] : [{ sel: 'select[name="fonteId"]', valor: fonte.valor, tipo: "select" as const }]),
       { sel: 'input[name="ano"]', valor: String(ANO + 1) },
       { sel: 'input[data-mascara="valor"]', valor: "500000,00" },
     ]);
     conferir("plano: a receita do quadriênio foi prevista", rPrev.tipo === "ok", rPrev.texto);
     await irPara(page, hrefPlano);
     const rHistErrado = await preencherEEnviar(page, "receita-anterior", [
+      ...(natureza === null ? [] : [{ sel: 'select[name="naturezaReceitaId"]', valor: natureza.valor, tipo: "select" as const }]),
       { sel: 'input[name="ano"]', valor: String(ANO) },
       { sel: 'input[data-mascara="valor"]', valor: "450000,00" },
     ]);
     conferir("plano: série histórica DENTRO do quadriênio é RECUSADA nomeando", rHistErrado.tipo === "erro" && /ANO NÃO É ANTERIOR AO PLANO/i.test(rHistErrado.texto), rHistErrado.texto);
     await irPara(page, hrefPlano);
     const rHist = await preencherEEnviar(page, "receita-anterior", [
+      ...(natureza === null ? [] : [{ sel: 'select[name="naturezaReceitaId"]', valor: natureza.valor, tipo: "select" as const }]),
       { sel: 'input[name="ano"]', valor: String(ANO - 1) },
       { sel: 'input[data-mascara="valor"]', valor: "450000,00" },
     ]);
