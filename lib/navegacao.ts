@@ -366,6 +366,7 @@ export const ROTEIROS_CONTABEIS: readonly RelatorioNav[] = [
   { href: "/patrimonio/roteiros", numero: "Roteiros", rotulo: "Roteiros Contábeis do Patrimônio", descricao: "Em que par de contas do PCASP cada evento do bem bate na contabilidade — aquisição, reavaliação, depreciação, baixa. Evento sem roteiro não é registrado: o sistema recusa em vez de escolher a conta." },
   { href: "/patrimonio/roteiros-de-resultado", numero: "Resultado", rotulo: "Roteiros do Resultado da Alienação", descricao: "O ganho e a perda apurados na venda do bem. Não mexem no ativo — ele já saiu pela baixa —, e por isso têm roteiro separado dos eventos do bem." },
   { href: "/patrimonio/parametros-de-atualizacao", numero: "Parâmetros", rotulo: "Parâmetros de Depreciação", descricao: "Método, vida útil e valor residual de cada classe, em versões com autor, motivo e vigência. A competência processada guarda a memória de cálculo com a versão que usou." },
+  { href: "/patrimonio/termos", numero: "Termos", rotulo: "Termos Patrimoniais", descricao: "O termo de responsabilidade (individual, setorial ou por responsável) e o de baixa. Emitir registra o movimento de cada bem; o papel sai em PDF pelo detalhe." },
   { href: "/patrimonio/competencia", numero: "Competência", rotulo: "Processamento por Competência", descricao: "A depreciação, amortização ou exaustão do mês, por classe: prévia com a memória de cálculo antes de lançar, e o histórico do que já foi processado." },
 ];
 

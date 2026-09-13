@@ -25,6 +25,7 @@ import {
   totaisDeAtualizacoes,
   type FiltroAtualizacoes,
 } from "../relatorios/atualizacoes-orcamentarias";
+import { ENTE } from "./ente.js";
 
 /**
  * EMISSÃO/IMPRESSÃO das listas operacionais e dos documentos individuais (S8-b) — pelo MESMO motor
@@ -38,7 +39,6 @@ import {
  * ⚠️ ENTE constante por ora (pendência de dado IDENTIFICACAO-DO-ENTE, como em demonstrativos.ts).
  */
 
-const ENTE = "Município de Campina Grande — PB";
 
 const brl = (v: string): string => formatarMoeda(v).texto;
 /** O valor da anulação entra com sinal − (como na coluna Valor da tela). */

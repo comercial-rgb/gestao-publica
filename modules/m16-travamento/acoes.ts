@@ -1467,6 +1467,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   pessoaDoUsuario: "leitura (a pessoa vinculada ao usuário — a última linha de VinculoUsuarioPessoa, se for VINCULO)",
   versoesDoRoteiro: "leitura (as versões de um roteiro, com a vigência derivada — V3 4.5)",
   versaoVigente: "leitura (a versão PUBLICADA em vigor de um roteiro — o resolvedor do M10 a consome)",
+  documentoDoTermo: "leitura (o termo patrimonial composto como dado para o PDF — valores e localizações derivados no momento — V3 pacote 2)",
   analisarEstornoPatrimonial: "leitura (a análise de dependências do estorno de um movimento de valor — estornarMovimentoPatrimonial a refaz na transação — V3 pacote 2)",
   analisarEstornoDeGestao: "leitura (a análise do estorno de um movimento de gestão: o par da transferência e os posteriores do eixo — V3 pacote 2)",
   parametroVigente: "leitura (o parâmetro de atualização em vigor da classe — a última versão, ou a linha legada — V3 pacote 2)",

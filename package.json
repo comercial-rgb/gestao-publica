@@ -36,6 +36,7 @@
     "smoke:visual": "tsx scripts/trinco-de-maquina.ts 'smoke visual' -- npx tsx scripts/smoke-visual.ts",
     "smoke:pessoas": "tsx scripts/trinco-de-maquina.ts 'smoke de pessoas' -- npx tsx scripts/smoke-cadastro-pessoas.ts",
     "smoke:cadeia": "tsx scripts/trinco-de-maquina.ts 'smoke da cadeia da despesa' -- npx tsx scripts/smoke-cadeia-despesa.ts",
+    "smoke:pacote2": "tsx scripts/trinco-de-maquina.ts 'smoke do pacote 2 (cadeia patrimonial)' -- npx tsx scripts/smoke-pacote2.ts http://localhost:3010",
     "typecheck:app": "tsc --noEmit -p tsconfig.json",
     "typecheck:scripts": "tsc --noEmit -p tsconfig.scripts.json",
     "dev": "next dev",
@@ -88,6 +89,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "bwip-js": "^4.11.4",
     "decimal.js": "^10.6.0",
     "next": "^15.5.20",
     "pg": "^8.22.0",

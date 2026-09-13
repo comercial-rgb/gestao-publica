@@ -2,6 +2,7 @@ import { gerarRreoAnexo1 } from "../portas/rreo";
 import { formatarMoeda } from "../format/moeda";
 import { gerarPdfDoDemonstrativo, type ResultadoPdf } from "./gerar";
 import type { DocumentoPdf, SecaoPdf } from "./documento";
+import { ENTE } from "./ente.js";
 
 /**
  * O REGISTRO DOS DEMONSTRATIVOS PUBLICÁVEIS — cada um sabe montar o seu `DocumentoPdf` a partir do
@@ -15,7 +16,6 @@ import type { DocumentoPdf, SecaoPdf } from "./documento";
  * direto. O grep trivalente vale para ele como para qualquer tela.
  */
 
-const ENTE = "Município de Campina Grande — PB";
 
 const brl = (v: string): string => formatarMoeda(v).texto;
 

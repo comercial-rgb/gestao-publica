@@ -6,10 +6,10 @@
 |---|---|
 | HEAD | ver `git log -1` — a seção 35 nomeia o commit de cada unidade |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | Primeiro pacote concluído (§35–§37); segundo pacote em curso — a cadeia patrimonial utilizável: unidades 1 (§38), 2 (§39), 3 (§40) e 4 (§41) fechadas, unidade 5 a seguir |
-| Último resultado | seção 41 |
-| Pendências relevantes | seções 35.7, 36.4, 37.5, 38.5, 39.5, 40.5 e 41.5; as anteriores em §19 e nos `MODULO.md` |
-| Próximo passo | seção 41.6 |
+| Frente em execução | Primeiro pacote concluído (§35–§37); segundo pacote em curso — a cadeia patrimonial utilizável: unidades 1 a 5 fechadas (§38–§42); a seguir os percursos das telas novas sob o banco dos percursos |
+| Último resultado | seção 42 |
+| Pendências relevantes | seções 35.7, 36.4, 37.5, 38.5 a 42.5; as anteriores em §19 e nos `MODULO.md` |
+| Próximo passo | seção 42.6 |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -4699,6 +4699,68 @@ Segundo pacote, unidade 5: **termos** (responsabilidade, transferência, baixa �
 tela e PDF pelo `packages/documento`) e **etiquetas imprimíveis** (individual e em lote, Code
 128 em SVG, com decoder independente no teste). Depois: inventário dos smokes sob o banco dos
 percursos (`PERCURSOS-SOB-O-BANCO-PROPRIO`) e os percursos das telas novas do pacote 2.
+
+## 42. Orquestração V3 — segundo pacote, unidade 5: termos com PDF e etiquetas imprimíveis
+
+**Regime:** superfície (as duas telas, a rota de PDF, a folha de etiquetas) sobre dois
+instrumentos de profundidade: o documento do termo como dado (testado contra literais) e o
+código de barras lido de volta por decodificador independente (parser contra implementação
+independente, com prova de que acusa).
+
+### 42.1 · O que passou a funcionar, e a rota real
+
+| Capacidade | Onde |
+|---|---|
+| **Termos patrimoniais** (responsabilidade individual/setorial/por responsável, e de baixa): emitir pela tela — bens pelo tombamento, resolvidos na porta com recusa nomeada; o movimento de cada bem é registrado na mesma transação (o serviço já fazia); termo imutável; lista com filtros; detalhe com os bens (cada um com link) | `/patrimonio/termos` (molde; ação `EMITIR_TERMO_PATRIMONIAL`) |
+| **PDF do termo** — cabeçalho com o responsável (nome e documento), uma linha por bem com valor contábil e localização derivados no momento da impressão, total, declaração e linhas de assinatura; mesmo motor e rodapé (hash, paginação, aviso de não assinado) dos demonstrativos | `/patrimonio/termos/[id]/pdf` (rota autenticada, leitura do ente) — pelo detalhe do termo, aba "relacionados" |
+| **Etiquetas imprimíveis** com Code 128 (SVG): individual pelo detalhe do bem, em lote pela seleção da lista do acervo; folha em grade com impressão do navegador; bem sem código gravado fica fora da folha, nomeado, com o caminho | `/patrimonio/etiquetas?bens=…` |
+
+### 42.2 · Decisões
+
+| Decisão | Motivo |
+|---|---|
+| Code 128 por **`bwip-js`** (BWIPP em JavaScript, gerador de referência) e o **decodificador próprio no teste**, escrito da especificação | parser se testa contra implementação independente; se a tabela do decodificador ou a geração desviarem do padrão, o teste acusa — e t4 prova que uma barra alargada derruba a leitura |
+| Fora do ASCII imprimível, a geração **recusa** nomeando; nada é "limpo" em silêncio | a etiqueta colada tem de dizer exatamente o que o cadastro diz |
+| **Imprimir não grava**: a folha só desenha códigos já gravados por "Gerar etiqueta" | `GET` não produz transição de estado; a reimpressão precisa sair idêntica |
+| O SVG entra na página por `dangerouslySetInnerHTML` — primeiro uso no repositório | o SVG nasce no servidor, da biblioteca, a partir de um código ASCII conferido; nenhum HTML de terceiros passa por ali; registrado aqui para o próximo leitor não achar que é brecha |
+| Bens do termo pelo **tombamento** (texto), não por seletor múltiplo | um termo setorial relaciona dezenas de bens; o molde não tem seleção múltipla e um select com o acervo inteiro seria o formulário bonito e inútil |
+| O documento do termo é **dado** no módulo (`termo-documento.ts`), estruturalmente igual ao `DocumentoPdf` de `lib/pdf` | o módulo não importa `lib/`; a rota só passa o dado ao motor |
+| Valores e localizações do termo são os de **hoje** | o termo é o fato; o papel é leitura; o arquivo congelado é o termo assinado anexado (`documentoId`) |
+| `lib/pdf/ente.ts` concentra o nome do ente | duas cópias da mesma string já existiam |
+
+### 42.3 · Arquivos
+
+`packages/codigo-de-barras/{index.ts,codigo-de-barras.test.ts}` · `package.json` (+`bwip-js` 4.11.4) · `lib/pdf/ente.ts` · `lib/portas/recursos/{etiquetas-dados.ts,termos.ts,termos-dados.ts,acervo.ts (relacionados)}` · `app/(areas)/patrimonio/etiquetas/{page.tsx,BotaoImprimir.tsx}` · `app/(areas)/patrimonio/termos/{page.tsx,[id]/page.tsx,[id]/pdf/route.ts,actions.ts}` · `app/(areas)/patrimonio/bens-patrimoniais/page.tsx` (link do lote) · `modules/m10-patrimonial/{termo-documento.ts,m10-termo-documento.test.ts,MODULO.md}` · `modules/m16-travamento/acoes.ts` (FORA_DO_CENSO) · `lib/navegacao.ts` · catálogo (5.19.2, 5.19.36, 5.19.37).
+
+### 42.4 · Comandos executados e resultado real
+
+| Comando | Resultado |
+|---|---|
+| `npm install bwip-js@4.11.4` | instalado (aviso EBADENGINE do npm sobre a versão do Node — a biblioteca roda; registrado) |
+| `tsc` backend · app · scripts (um por vez, heap 2560) | **limpos** (duas rodadas: a 1ª acusou uma inferência circular no decodificador do teste — anotada — e o `where` da lista de termos montado por spreads, que `exactOptionalPropertyTypes` não aceita como `WhereInput` — tipado por `Prisma.TermoPatrimonialWhereInput`) |
+| `vitest` rápida (partição sem banco, completa — inclui `codigo-de-barras.test.ts`) | **794/794** (73 arquivos; +4 do Code 128 — a 1ª rodada acusou o t4, cujo regex da mutação cravava a altura do SVG; corrigido para ler a altura do próprio SVG) |
+| `vitest` lenta sob o trinco (termo-documento, gestão do bem, acervo, censo/rollout) | **51/51** (5 arquivos: termo-documento, gestão do bem, acervo, pesquisa do acervo, menu contra o servidor) |
+
+**Não executado:** portão integral, `test:tudo`, `test:fuso`, `next build`, geração real do PDF
+pelo Chromium (o motor é o mesmo dos demonstrativos; o documento foi testado como dado),
+percursos de navegador pelas telas novas.
+
+### 42.5 · Pendências nomeadas
+
+| Pendência | O que é |
+|---|---|
+| `TERMOS-E-ETIQUETAS-SEM-PERCURSO` | telas novas sem percurso de navegador; 5.19.2, 5.19.36 e 5.19.37 ficam `IMPLEMENTADO_NAO_VALIDADO` |
+| `PDF-DO-TERMO-NAO-RENDERIZADO` | a rota compõe e chama o motor; o PDF real só foi produzido pelos demonstrativos até aqui |
+| `TERMO-ASSINADO-NAO-ANEXAVEL-PELA-TELA` | `documentoId` (o termo assinado) só entra por anexo; a tela do termo ainda não oferece o anexo |
+| as de 38.5 a 41.5 | continuam |
+
+### 42.6 · Próximo ponto exato
+
+Fechamento do segundo pacote: **os percursos de navegador** das telas novas sob o banco dos
+percursos (`percursos:preparar` já aplica v1–v4; falta o `smoke` de acervo/meus-bens,
+competência, estorno, termos e etiquetas) e a reexecução dos smokes existentes contra 3010
+(`PERCURSOS-SOB-O-BANCO-PROPRIO`). Depois, a decisão sobre `LIQUIDACAO-MATERIAL-ALMOXARIFADO`
+(caso de uso composto — seção 5 do pedido) e a reconciliação dirigida com o siafic-cg.
 
 ## 19. O próximo passo
 

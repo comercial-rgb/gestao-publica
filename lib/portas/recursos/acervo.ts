@@ -406,7 +406,16 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
   // ⚠️ SEM A ABA DE RELACIONADOS, pela mesma razão dos cadastros de apoio: ela exige uma
   // consulta EXISTENTE para onde apontar, e a tela de movimentos do bem ainda não existe.
   // Declarar a aba agora abriria um link para o nada.
-  abas: ["dados", "historico"],
+  abas: ["dados", "historico", "relacionados"],
+  // V3 (pacote 2, unidade 5): a folha de etiquetas deste bem. Imprimir não grava — o código
+  // vem da ação "Gerar etiqueta"; sem código, a folha diz isso e aponta o caminho.
+  relacionados: [
+    {
+      rotulo: "Etiqueta para impressão",
+      href: "/patrimonio/etiquetas?bens={id}",
+      explicacao: "A folha com o código de barras (Code 128) deste bem. Para vários bens de uma vez, marque-os na lista do acervo.",
+    },
+  ],
 });
 
 export const RECURSOS_DO_ACERVO: readonly DefinicaoDeRecurso[] = [

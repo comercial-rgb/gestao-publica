@@ -377,3 +377,26 @@ botão só aparece sem bloqueio e com o crachá do eixo; o estorno leva chave de
 `m10-estorno-dependencias.test.ts` (N=2 bens; LIFO libera; bloqueios nomeados; gestão
 informativa) e `m10-alienacao.test.ts` t10 (arrastados e resultado). Os testes anteriores de
 estorno passam sem mudança: nenhum deles estornava fora de ordem.
+
+
+## Orquestração V3 (pacote 2, unidade 5) — termos com PDF e etiquetas imprimíveis
+
+**Etiquetas (TR 5.19.2).** `packages/codigo-de-barras` gera Code 128 em SVG com `bwip-js`
+(a versão JavaScript do BWIPP, gerador de referência); o teste lê as barras de volta com um
+DECODIFICADOR PRÓPRIO escrito da especificação (tabela dos 107 símbolos, START/STOP,
+verificador mod 103, conjuntos A/B/C com trocas) — parser contra implementação
+independente, e a prova de que acusa (uma barra alargada derruba a leitura). Fora do ASCII
+imprimível a geração RECUSA nomeando: a etiqueta tem de dizer exatamente o que o cadastro
+diz. A folha (`/patrimonio/etiquetas?bens=…`) é leitura: desenha só códigos já gravados por
+"Gerar etiqueta" (idempotente); bem sem código aparece fora da folha com o caminho.
+Individual pelo detalhe do bem ("relacionados"), em lote pela seleção da lista do acervo.
+
+**Termos (TR 5.19.36, 5.19.37).** `emitirTermoPatrimonial` já registrava o movimento na mesma
+transação; ganhou tela (`/patrimonio/termos`, molde: bens pelo TOMBAMENTO, resolvidos na
+porta com recusa nomeada; termo imutável, sem ações) e PDF (`/patrimonio/termos/[id]/pdf`,
+rota autenticada com o mesmo motor e rodapé dos demonstrativos). `termo-documento.ts` compõe
+o documento como DADO — cabeçalho com o responsável (nome e documento formatado), uma linha
+por bem com valor contábil e localização DERIVADOS no momento da impressão, total somado,
+declaração e linhas de assinatura — sem conhecer PDF nem HTML. Prova:
+`m10-termo-documento.test.ts` (N=2 bens; responsabilidade e baixa; inexistente recusa) e
+`codigo-de-barras.test.ts`.
