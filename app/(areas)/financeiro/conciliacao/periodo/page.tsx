@@ -11,10 +11,13 @@ import {
 } from "../../../../../lib/portas/tesouraria";
 import {
   FormAbrirPeriodo,
+  FormAtribuirConta,
   FormEncerrar,
   FormJustificar,
   FormPendenciaManual,
 } from "./FormsDoPeriodo";
+import type { ArrecadacaoSemConta } from "../../../../../lib/portas/tesouraria";
+import { diaCivilBr } from "../../../../../packages/datas/index";
 import { diaCivil } from "../../../../../packages/datas/index";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
@@ -82,15 +85,22 @@ export default async function PeriodoDeConciliacaoPage({
     // identidade (diferença == linhas sem vínculo) acusou no banco dos percursos — e a tela
     // devolvia 500, escondendo quanto sobra sem explicação. Agora ela diz.
     let naoFecha: string | null = null;
+    // V6 P1.2: as guias da fonte SEM conta bancária (legado) — o que o tesoureiro pode resolver.
+    // Vêm no relatório quando ele sai, e no ERRO quando não fecha: é justamente aí que importam.
+    let semConta: readonly ArrecadacaoSemConta[] = [];
     if (escolhido !== undefined) {
       try {
         detalhe = await verConciliacao(escolhido.id);
+        semConta = detalhe.relatorio.arrecadacoesSemConta;
       } catch (erro) {
         if (erro instanceof MapeamentoContabilAusenteError) semMapeamento = erro.message;
-        else if (erro instanceof ConciliacaoNaoFechaError) naoFecha = erro.message;
-        else throw erro;
+        else if (erro instanceof ConciliacaoNaoFechaError) {
+          naoFecha = erro.message;
+          semConta = erro.arrecadacoesSemConta;
+        } else throw erro;
       }
     }
+    const contasParaAtribuir = contas.map((c) => ({ id: c.id, codigo: c.codigo, descricao: c.descricao }));
 
     return (
       <div className="space-y-6">
@@ -151,6 +161,33 @@ export default async function PeriodoDeConciliacaoPage({
             <strong className="block">A conciliação deste período não fecha.</strong>
             {naoFecha}
           </div>
+        )}
+
+        {semConta.length === 0 ? null : (
+          <section className="space-y-2" data-sem-conta>
+            <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">
+              Arrecadações da fonte sem conta bancária (legado)
+            </h2>
+            <p className="text-[11px] text-[color:var(--color-ink-2)]">
+              Guias registradas antes de a conta ser obrigatória, ou importadas. Ficam FORA da identidade até
+              você atribuir a conta em que entraram — e a atribuição só é aceita se o razão da guia debitou a
+              conta contábil da conta escolhida ({conta.codigo} usa {contas.find((c) => c.id === conta.id)?.contaContabil ?? "sem mapeamento"}).
+            </p>
+            <ul className="space-y-1 text-xs">
+              {semConta.map((g) => (
+                <li key={g.id} data-guia-sem-conta={g.id} className="border-t border-[color:var(--color-border)] py-2">
+                  <div className="flex flex-wrap justify-between gap-2">
+                    <span>
+                      Guia {g.numeroReceita} · {diaCivilBr(g.data)} · fonte {g.fonteCodigo} · razão debitou{" "}
+                      <span className="tabular-nums">{g.contaContabilDebitada ?? "—"}</span>
+                    </span>
+                    <span className="tabular-nums">{g.valor}</span>
+                  </div>
+                  <FormAtribuirConta receitaArrecadadaId={g.id} contaPadraoId={conta.id} contas={contasParaAtribuir} />
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
         {detalhe === null ? null : (

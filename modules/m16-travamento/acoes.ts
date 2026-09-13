@@ -282,6 +282,9 @@ export type AcaoDoSistema =
   // ── V6 (P0.1) — a APRESENTAÇÃO do ente (nome de exibição, imagem, contatos, tema, canais):
   // versionada, auditada, família ADMINISTRACAO. Não toca o `EnteConfig` fiscal.
   | "CONFIGURAR_APRESENTACAO_DO_ENTE"
+  // ── V6 (P1.2) — atribuir a conta bancária a uma arrecadação do LEGADO (M09): ato do tesoureiro,
+  // conferido contra o razão. Família FINANCEIRO, do ente (a arrecadação é do ente).
+  | "ATRIBUIR_CONTA_A_ARRECADACAO"
   // ── M21 — protocolo e processo digital (ENT02) ──
   //
   // ⚠️ UMA AÇÃO POR ATO, e não um "GERIR_PROCESSO" que agrupasse tudo. Abrir, tramitar
@@ -661,6 +664,8 @@ export type NomeDeServico =
   | "desvincularPessoaDoUsuario"
   // ── V6 (P0.1) — a apresentação do ente ──
   | "registrarApresentacaoDoEnte"
+  // ── V6 (P1.2) — a conta bancária da arrecadação do legado ──
+  | "atribuirContaAArrecadacao"
   // ── M02b — planejamento plurianual (V4 §8) ──
   | "criarPlanoPlurianual"
   | "criarEixoEstruturante"
@@ -1013,6 +1018,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   desvincularPessoaDoUsuario: "VINCULAR_PESSOA_AO_USUARIO",
   // V6 (P0.1): cada reconfiguração da apresentação é uma versão nova, com autor.
   registrarApresentacaoDoEnte: "CONFIGURAR_APRESENTACAO_DO_ENTE",
+  // V6 (P1.2): atribuir conta a uma guia do legado é ato próprio do tesoureiro.
+  atribuirContaAArrecadacao: "ATRIBUIR_CONTA_A_ARRECADACAO",
 
   // ── M02b — planejamento plurianual (V4 §8): 20 serviços, 10 ações, pelos anexos da LRF ──
   criarPlanoPlurianual: "CADASTRAR_PPA",
@@ -1203,6 +1210,10 @@ export const FORA_DO_CENSO: Record<string, string> = {
   atendimentoDaSolicitacao: "LEITURA: solicitado/ordenado/recebido/cancelado/pendente por item, derivados das alocações e recebimentos.",
   origemDaOrdem: "LEITURA: de quais solicitações cada linha da ordem veio, e quanto é 'sem origem' (compra direta ou legado).",
   ordemEstornada: "LEITURA: a ordem tem movimento ESTORNO? (o estorno virou fato — o runtime não apaga linha).",
+  // ── V6 P1.2 — a conciliação e o legado sem conta ──
+  arrecadacoesSemContaDaFonte:
+    "LEITURA: as guias da fonte da conta sem conta bancária declarada nem atribuída (legado), com a conta contábil que debitaram — " +
+    "informativas, fora da identidade da conciliação.",
   // ── V6 (P0.1) — a identidade PÚBLICA do ente ──
   apresentacaoVigente:
     "LEITURA PÚBLICA: a versão vigente da apresentação do ente (nome de exibição, imagem, canais) — " +

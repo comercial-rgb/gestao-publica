@@ -81,8 +81,26 @@ export async function lerArrecadacoes(p: {
  * no lugar errado. Chutar aqui faria o Balanço Financeiro somar dois saldos que são o
  * mesmo dinheiro. Pendência PCASP-COMPLETO.
  */
-const CONTA_DISPONIBILIDADE = "1.1.1.1.1.00.00";
+// ⚠️ A CONTA DE DISPONIBILIDADE NÃO É MAIS CONSTANTE (V6 P1.2): ela é a conta contábil da CONTA
+// BANCÁRIA que a guia declara — vem do cadastro, fail-closed. A VPA continua constante aqui
+// (pendência `VPA-CONSTANTE-NA-PORTA`: o roteiro por natureza de receita ainda não vem de tabela).
 const CONTA_VPA = "4.1.1.2.1.01.00";
+
+/** As contas bancárias que uma guia pode declarar — com a fonte e a conta contábil (a que tem). */
+export interface ContaBancariaParaGuia {
+  readonly codigo: string;
+  readonly descricao: string;
+  readonly fonteCodigo: string;
+  readonly contaContabil: string | null;
+}
+
+export async function lerContasBancariasParaGuia(): Promise<readonly ContaBancariaParaGuia[]> {
+  const contas = await cliente().contaBancaria.findMany({
+    orderBy: { codigo: "asc" },
+    select: { codigo: true, descricao: true, fonte: { select: { codigo: true } }, contaContabil: { select: { codigo: true } } },
+  });
+  return contas.map((c) => ({ codigo: c.codigo, descricao: c.descricao, fonteCodigo: c.fonte.codigo, contaContabil: c.contaContabil?.codigo ?? null }));
+}
 
 /**
  * REGISTRAR A GUIA — escrita autenticada.
@@ -102,8 +120,19 @@ export async function registrarGuia(input: {
   readonly valor: string;
   readonly dataArrecadacao: Date;
   readonly numeroReceita: string;
+  /** V6 P1.2 — o CÓDIGO da conta bancária que recebeu o dinheiro. Obrigatório pela tela. */
+  readonly contaBancaria: string;
 }): Promise<string> {
   return comEscritaAutenticada("REGISTRAR_ARRECADACAO", async (criadoPor) => {
+    // A perna de disponibilidade É a conta contábil da conta bancária declarada — do cadastro.
+    const conta = await cliente().contaBancaria.findUnique({
+      where: { codigo: input.contaBancaria },
+      select: { codigo: true, contaContabil: { select: { codigo: true } } },
+    });
+    if (conta === null) throw new Error(`Conta bancária ${input.contaBancaria} não cadastrada. Escolha a conta que recebeu o dinheiro. Nada foi gravado.`);
+    if (conta.contaContabil === null) {
+      throw new Error(`A conta bancária ${conta.codigo} não tem conta contábil mapeada; a guia não sabe em que conta do razão o dinheiro entrou. Parametrize o mapeamento antes. Nada foi gravado.`);
+    }
     const r = await registrarArrecadacao(
       {
         exercicio: input.exercicio,
@@ -114,10 +143,11 @@ export async function registrarGuia(input: {
         valor: input.valor,
         dataArrecadacao: input.dataArrecadacao,
         numeroReceita: input.numeroReceita,
+        contaBancaria: conta.codigo,
         criadoPor,
       },
       roteiroArrecadacao({
-        disponibilidade: CONTA_DISPONIBILIDADE,
+        disponibilidade: conta.contaContabil.codigo,
         variacaoAumentativa: CONTA_VPA,
       }),
       criarM04Deps(cliente())

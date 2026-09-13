@@ -82,6 +82,8 @@ export interface ConciliacaoBancaria {
   readonly noExtratoSemVinculo: readonly LinhaDiferenca[];
   /** No RAZÃO e não no banco (cheque não compensado, depósito não creditado). */
   readonly internoSemVinculo: readonly LinhaDiferencaInterna[];
+  /** V6 P1.2 — guias da fonte sem conta bancária (legado), fora da identidade, para o tesoureiro resolver. */
+  readonly arrecadacoesSemConta: readonly ArrecadacaoSemConta[];
 }
 
 /**
@@ -92,11 +94,50 @@ export interface ConciliacaoBancaria {
  * subir e o Next devolvia 500 — escondendo a única informação útil: quanto sobra sem
  * explicação e por quê. Erro TIPADO para a tela poder dizer isso.
  */
+/** V6 P1.2 — uma arrecadação da fonte da conta SEM conta bancária declarada nem atribuída. */
+export interface ArrecadacaoSemConta {
+  readonly id: string;
+  readonly numeroReceita: string;
+  readonly data: Date;
+  readonly valor: string;
+  readonly fonteCodigo: string;
+  /** A conta contábil que a guia DEBITOU no razão — o tesoureiro compara com a da conta bancária. */
+  readonly contaContabilDebitada: string | null;
+}
+
 export class ConciliacaoNaoFechaError extends Error {
-  constructor(readonly contaBancariaId: string, mensagem: string) {
+  /** V6 P1.2 — o que pode explicar a diferença: guias do legado sem conta, para o tesoureiro resolver. */
+  readonly arrecadacoesSemConta: readonly ArrecadacaoSemConta[];
+  constructor(readonly contaBancariaId: string, mensagem: string, arrecadacoesSemConta: readonly ArrecadacaoSemConta[] = []) {
     super(mensagem);
     this.name = "ConciliacaoNaoFechaError";
+    this.arrecadacoesSemConta = arrecadacoesSemConta;
   }
+}
+
+/**
+ * AS GUIAS DA FONTE DESTA CONTA QUE NÃO DIZEM EM QUE CONTA ENTRARAM (legado ou importação) —
+ * informativas: ficam FORA da identidade até o tesoureiro atribuir a conta (ato conferido contra o
+ * razão) ou justificar. Cada uma traz a conta contábil que debitou, para a comparação ser possível.
+ */
+export async function arrecadacoesSemContaDaFonte(
+  prisma: PrismaClient,
+  fonteId: string,
+  corte: Date
+): Promise<readonly ArrecadacaoSemConta[]> {
+  const guias = await prisma.receitaArrecadada.findMany({
+    where: { fonteId, tipo: "ARRECADACAO", contaBancariaId: null, atribuicaoDeConta: null, dataArrecadacao: { lte: corte }, estornoDeId: null, estornos: { none: {} } },
+    orderBy: { dataArrecadacao: "asc" },
+    select: {
+      id: true, numeroReceita: true, dataArrecadacao: true, valor: true,
+      fonte: { select: { codigo: true } },
+      lancamento: { select: { partidas: { where: { tipo: "DEBITO", subsistema: "PATRIMONIAL" }, select: { conta: { select: { codigo: true } } } } } },
+    },
+  });
+  return guias.map((g) => ({
+    id: g.id, numeroReceita: g.numeroReceita, data: g.dataArrecadacao, valor: g.valor.toFixed(2), fonteCodigo: g.fonte.codigo,
+    contaContabilDebitada: g.lancamento.partidas[0]?.conta.codigo ?? null,
+  }));
 }
 
 export class MapeamentoContabilAusenteError extends Error {
@@ -192,6 +233,9 @@ export async function conciliacaoBancaria(
 
   const internoSemVinculo = await residuaisInternos(prisma, conta, corte);
 
+  // ── (c2) O LEGADO SEM CONTA (V6 P1.2) — informativo, fora da identidade ──────
+  const arrecadacoesSemConta = await arrecadacoesSemContaDaFonte(prisma, conta.fonteId, corte);
+
   // ── (d) A AMARRAÇÃO — auto-executável ────────────────────────────────────
   const diferenca = sub(saldoExtrato, saldoContabil);
 
@@ -212,7 +256,12 @@ export async function conciliacaoBancaria(
         `explicam ${serializar(explicado)} — sobram ` +
         `${serializar(sub(diferenca, explicado))} SEM EXPLICAÇÃO. Ou falta um ` +
         `fato no relatório, ou há vínculo cruzando a data de corte. A ` +
-        `conciliação não sai enquanto a diferença não estiver toda nomeada.`
+        `conciliação não sai enquanto a diferença não estiver toda nomeada.` +
+        (arrecadacoesSemConta.length > 0
+          ? ` Há ${arrecadacoesSemConta.length} arrecadação(ões) da fonte desta conta SEM conta bancária declarada — se o razão ` +
+            `delas debitou a conta contábil ${contaContabil}, atribua a conta; se debitou outra, a escrituração é de outra conta.`
+          : ""),
+      arrecadacoesSemConta
     );
   }
 
@@ -225,6 +274,7 @@ export async function conciliacaoBancaria(
     diferenca: serializar(diferenca),
     noExtratoSemVinculo,
     internoSemVinculo,
+    arrecadacoesSemConta,
   };
 }
 

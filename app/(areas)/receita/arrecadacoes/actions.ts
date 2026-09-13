@@ -32,9 +32,11 @@ export async function arrecadarAction(
     const numeroReceita = String(formData.get("numeroReceita") ?? "").trim();
     const dataBruta = String(formData.get("data") ?? "").trim();
     const exercicioFonte = String(formData.get("exercicioFonte") ?? "1") === "2" ? 2 : 1;
+    const contaBancaria = String(formData.get("contaBancaria") ?? "").trim();
 
     if (!Number.isInteger(exBruto)) return { erro: "Exercício inválido." };
     if (dataBruta === "") return { erro: "A data de arrecadação é obrigatória." };
+    if (contaBancaria === "") return { erro: "Informe a conta bancária que recebeu o dinheiro. Nada foi gravado." };
 
     try {
       await registrarGuia({
@@ -46,6 +48,7 @@ export async function arrecadarAction(
         valor,
         dataArrecadacao: meioDiaCivil(dataBruta),
         numeroReceita,
+        contaBancaria,
       });
       revalidatePath("/receita/arrecadacoes");
       return { sucesso: `Guia ${numeroReceita} registrada.` };

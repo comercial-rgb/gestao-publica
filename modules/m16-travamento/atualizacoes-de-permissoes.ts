@@ -313,6 +313,26 @@ export function derivarApresentacaoDoEnte(
   return saida;
 }
 
+/**
+ * A REGRA DA v8 (V6 P1.2): atribuir conta bancária a uma arrecadação do legado é ato de quem
+ * concilia. Quem já VINCULA conciliação no escopo global recebe a atribuição no global; a
+ * arrecadação é do ente, então não há escopo por unidade.
+ */
+export function derivarAtribuirContaAArrecadacao(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const concilia = perfil.permissoes.some((p) => p.acao === "VINCULAR_CONCILIACAO" && p.unidadeOrcId === null);
+    if (!concilia) continue;
+    const jaTem = perfil.permissoes.some((p) => p.acao === "ATRIBUIR_CONTA_A_ARRECADACAO" && p.unidadeOrcId === null);
+    if (jaTem) continue;
+    saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao: "ATRIBUIR_CONTA_A_ARRECADACAO", unidadeOrcId: null });
+  }
+  return saida;
+}
+
 export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
   {
     versao: 1,
@@ -374,6 +394,14 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "Configurar a apresentacao do ente (V6 P0.1) virou acao propria (CONFIGURAR_APRESENTACAO_DO_ENTE). " +
       "Quem ja concede acao a perfil no escopo global recebe-a no global; e ato do ente, sem escopo por unidade.",
     derivar: derivarApresentacaoDoEnte,
+  },
+  {
+    versao: 8,
+    nome: "conta-bancaria-da-arrecadacao",
+    descricao:
+      "Atribuir conta bancaria a uma arrecadacao do legado (V6 P1.2) virou acao propria (ATRIBUIR_CONTA_A_ARRECADACAO). " +
+      "Quem ja vincula conciliacao no escopo global recebe-a no global; a arrecadacao e do ente.",
+    derivar: derivarAtribuirContaAArrecadacao,
   },
 ];
 

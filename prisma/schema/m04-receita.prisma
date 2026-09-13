@@ -52,6 +52,14 @@ model ReceitaArrecadada {
   /// Nº da receita/guia (SAGRES ReceitaOrcamentaria).
   numeroReceita   String
 
+  /// V6 P1.2 — A CONTA BANCÁRIA que recebeu o dinheiro. Obrigatória para a guia registrada pela
+  /// tela (a perna de disponibilidade do roteiro é a conta contábil DESTA conta — coerência na
+  /// transação). Nula no legado e nas arrecadações compostas que ainda não a declaram; o legado
+  /// se resolve por `AtribuicaoDeContaDaArrecadacao`, nunca por UPDATE aqui.
+  contaBancariaId String?
+  contaBancaria   ContaBancaria? @relation(fields: [contaBancariaId], references: [id])
+  atribuicaoDeConta AtribuicaoDeContaDaArrecadacao?
+
   /// A contabilização desta arrecadação. 1-1: um lançamento por receita.
   lancamentoId String             @unique
   lancamento   LancamentoContabil @relation(fields: [lancamentoId], references: [id])
@@ -86,4 +94,5 @@ model ReceitaArrecadada {
   @@index([fonteId])
   @@index([estornoDeId])
   @@index([dataArrecadacao])
+  @@index([contaBancariaId])
 }

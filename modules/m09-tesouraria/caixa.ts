@@ -120,15 +120,17 @@ export async function fatosDeCaixaDaConta(
     });
   }
 
-  // ── ARRECADAÇÕES (ENTRADA) ─────────────────────────────────────────────────
-  // ⚠️ `ReceitaArrecadada` NÃO TEM ContaBancaria no modelo (M04) — o vínculo possível é a
-  // FONTE. Se duas contas bancárias dividirem a mesma fonte, a arrecadação aparece nas
-  // duas: é a pendência registrada no MODULO.md, e o dia em que o M04 ganhar a conta ela
-  // some. Enquanto isso, o SALDO de uma dessas contas é otimista — e este comentário é o
-  // aviso de que ele é.
+  // ── ARRECADAÇÕES (ENTRADA) — pela CONTA, não pela fonte (V6 P1.2) ─────────────
+  // A guia DECLARA a conta que recebeu o dinheiro (`contaBancariaId`), e a perna de
+  // disponibilidade do razão é a conta contábil dessa conta — fato e escrituração coerentes na
+  // transação. O LEGADO sem conta entra por `AtribuicaoDeContaDaArrecadacao` (ato do tesoureiro,
+  // conferido contra o razão). O que não tem nem uma coisa nem outra fica FORA do lado interno
+  // e é listado à parte pela conciliação ("arrecadações sem conta bancária") — nunca casado por
+  // fonte: duas contas da mesma fonte contariam a mesma guia duas vezes, e uma guia que
+  // debitou outra conta contábil nunca fecharia aqui.
   const arrecadacoes = await prisma.receitaArrecadada.findMany({
     where: {
-      fonteId: conta.fonteId,
+      OR: [{ contaBancariaId: conta.id }, { contaBancariaId: null, atribuicaoDeConta: { contaBancariaId: conta.id } }],
       tipo: "ARRECADACAO",
       dataArrecadacao: { lte: corte },
       estornoDeId: null,

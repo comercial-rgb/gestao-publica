@@ -208,6 +208,7 @@ const TABELAS = [
   "ClasseDeBens",
   // M09 — tesouraria (extrato + conciliação)
   "VinculoConciliacao",
+  "AtribuicaoDeContaDaArrecadacao",
   "LancamentoExtrato",
   "ExtratoBancario",
   // M07 — extraorçamentário

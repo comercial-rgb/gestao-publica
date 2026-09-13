@@ -25,7 +25,8 @@ import { estadoDoLote } from "../../modules/m09-tesouraria/lote";
 // ⚠️ REEXPORTADO para a tela poder DISTINGUIR "conta sem mapeamento contábil" de um erro
 // qualquer. Sem isso a página devolvia 500 — e um 500 esconde a única coisa que o
 // operador precisava ler: qual conta parametrizar.
-import { ConciliacaoNaoFechaError, MapeamentoContabilAusenteError } from "../../modules/m09-tesouraria/conciliacao";
+import { ConciliacaoNaoFechaError, MapeamentoContabilAusenteError, type ArrecadacaoSemConta } from "../../modules/m09-tesouraria/conciliacao";
+import { atribuirContaAArrecadacao } from "../../modules/m09-tesouraria/atribuicao-de-conta";
 import { diaCivil, diaCivilBr, fimDoDiaCivil, meioDiaCivil } from "../../packages/datas/index";
 
 /**
@@ -305,6 +306,19 @@ export async function incluirPendenciaManual(input: {
     return r.pendenciaId;
   });
 }
+
+/** V6 P1.2 — atribuir a conta bancária a uma guia do legado (conferida contra o razão pelo domínio). */
+export async function atribuirContaDaArrecadacao(input: {
+  readonly receitaArrecadadaId: string;
+  readonly contaBancariaId: string;
+  readonly motivo: string;
+}): Promise<string> {
+  return comEscritaAutenticada("ATRIBUIR_CONTA_A_ARRECADACAO", async (criadoPor) => {
+    const r = await atribuirContaAArrecadacao(cliente(), { ...input, criadoPor });
+    return r.atribuicaoId;
+  });
+}
+export type { ArrecadacaoSemConta };
 
 export async function justificar(input: {
   readonly conciliacaoId: string;

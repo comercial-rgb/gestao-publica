@@ -154,7 +154,8 @@ async function semear(): Promise<void> {
   });
   await prisma.contaBancaria.createMany({
     data: [
-      { id: CONTA, codigo: "CC-001", descricao: "Movimento", fonteId: FONTE_500 },
+      // V6 P1.2: a guia declara CC-001, e a conta precisa da contábil mapeada (a MESMA do roteiro).
+      { id: CONTA, codigo: "CC-001", descricao: "Movimento", fonteId: FONTE_500, contaContabilId: "c-caixa" },
       { id: CONTA_2, codigo: "CC-002", descricao: "FUNDEB", fonteId: FONTE_540 },
     ],
   });
@@ -210,6 +211,7 @@ async function umaArrecadacao(valor: string, guia: string): Promise<string> {
     {
       exercicio: 2026, naturezaReceita: NAT_RECEITA, fonte: "500", valor,
       dataArrecadacao: new Date("2026-01-10T12:00:00Z"), numeroReceita: guia,
+      contaBancaria: "CC-001",
       criadoPor: POR,
     },
     R_ARRECADACAO,

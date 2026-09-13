@@ -9,6 +9,7 @@ import {
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import {
   lerArrecadacoes,
+  lerContasBancariasParaGuia,
   lerNaturezasPrevistas,
   PortaSemBancoError,
   type ArrecadacaoDaTela,
@@ -85,10 +86,12 @@ export default async function ArrecadacoesPage({
 
   let periodo: ArrecadacaoDoPeriodo;
   let naturezas: readonly NaturezaDaTela[];
+  let contas: Awaited<ReturnType<typeof lerContasBancariasParaGuia>>;
   try {
-    [periodo, naturezas] = await Promise.all([
+    [periodo, naturezas, contas] = await Promise.all([
       lerArrecadacoes({ exercicio }),
       lerNaturezasPrevistas({ exercicio }),
+      lerContasBancariasParaGuia(),
     ]);
   } catch (erro) {
     return (
@@ -128,6 +131,7 @@ export default async function ArrecadacoesPage({
           naturezaDescricao: n.naturezaDescricao,
           fonteCodigo: n.fonteCodigo,
         }))}
+        contas={contas.map((c) => ({ codigo: c.codigo, descricao: c.descricao, fonteCodigo: c.fonteCodigo, contaContabil: c.contaContabil }))}
       />
 
       {periodo.linhas.length === 0 ? (

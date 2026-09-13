@@ -159,6 +159,46 @@ export async function registrarArrecadacao(
   // 3. Contas existem e são analíticas (regra do M01).
   const partidasParaPersistir = await resolverContas(partidas, deps);
 
+  // ═══ 3a. A CONTA BANCÁRIA (V6 P1.2) — fato, vinculação e escrituração COERENTES ═══
+  // Quando a guia declara a conta que recebeu o dinheiro: (i) a fonte da conta é a da guia;
+  // (ii) a conta contábil mapeada da conta é EXATAMENTE a perna de disponibilidade do roteiro.
+  // Sem (ii) a conciliação daquela conta nunca fecharia — o fato diria "entrou em CC-X" e o razão
+  // diria "entrou em outra conta". Sem port ligado, declarar conta é recusado nomeando.
+  let contaBancariaId: string | undefined;
+  if (dados.contaBancaria !== undefined) {
+    if (deps.contasBancarias === undefined) {
+      throw new Error(
+        `A guia ${dados.numeroReceita} declara a conta bancária ${dados.contaBancaria}, mas o módulo de contas ` +
+          `bancárias não foi ligado a esta operação. Nada foi gravado.`
+      );
+    }
+    const conta = await deps.contasBancarias.buscarPorCodigo(dados.contaBancaria);
+    if (conta === null) {
+      throw new Error(`Conta bancária ${dados.contaBancaria} não cadastrada. Nada foi gravado.`);
+    }
+    if (conta.fonteCodigo !== dados.fonte) {
+      throw new Error(
+        `A conta bancária ${conta.codigo} é da fonte ${conta.fonteCodigo}, e a guia ${dados.numeroReceita} é da fonte ` +
+          `${dados.fonte}. Dinheiro de uma fonte não entra na conta de outra. Nada foi gravado.`
+      );
+    }
+    const disponibilidade = roteiro.find((p) => p.tipo === "DEBITO" && p.subsistema === "PATRIMONIAL");
+    if (conta.contaContabilCodigo === null) {
+      throw new Error(
+        `A conta bancária ${conta.codigo} não tem conta contábil mapeada; sem isso a arrecadação não pode dizer ` +
+          `em que conta do razão o dinheiro entrou. Parametrize o mapeamento antes. Nada foi gravado.`
+      );
+    }
+    if (disponibilidade === undefined || disponibilidade.conta !== conta.contaContabilCodigo) {
+      throw new Error(
+        `ESCRITURAÇÃO INCOERENTE: a guia ${dados.numeroReceita} diz que o dinheiro entrou em ${conta.codigo} ` +
+          `(conta contábil ${conta.contaContabilCodigo}), mas o roteiro debita ${disponibilidade?.conta ?? "nenhuma"}. ` +
+          `A perna de disponibilidade tem de ser a conta contábil da conta bancária declarada. Nada foi gravado.`
+      );
+    }
+    contaBancariaId = conta.id;
+  }
+
   // ═══ 3b. A ENTRADA LATERAL — TR do M10 (dívida e dívida ativa) ═══
   // Uma conta RESERVADA é gerida por um livro próprio (o saldo dela é Σ dos
   // movimentos da dívida). Uma arrecadação AVULSA que a toque mexe no RAZÃO sem
@@ -196,6 +236,7 @@ export async function registrarArrecadacao(
       valor: dados.valor,
       dataArrecadacao: dados.dataArrecadacao,
       numeroReceita: dados.numeroReceita,
+      ...(contaBancariaId !== undefined ? { contaBancariaId } : {}),
       criadoPor: dados.criadoPor,
     },
     {
@@ -297,6 +338,8 @@ export async function anularArrecadacao(
       naturezaReceitaId: original.naturezaReceitaId,
       fonteId: original.fonteId,
       ...(original.coId !== null ? { coId: original.coId } : {}),
+      // V6 P1.2 — a anulação sai da MESMA conta em que o dinheiro entrou.
+      ...(original.contaBancariaId !== null ? { contaBancariaId: original.contaBancariaId } : {}),
       exercicioFonte: original.exercicioFonte,
       tipo: "ANULACAO",
       valor: original.valor,

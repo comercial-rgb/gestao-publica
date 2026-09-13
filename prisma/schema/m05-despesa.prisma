@@ -391,6 +391,9 @@ model ContaBancaria {
   fontesPermitidas      FonteDaContaBancaria[]
   /// M09/ENT03a — as conciliações desta conta, por período. VIRTUAL.
   conciliacoes          ConciliacaoBancaria[]
+  /// V6 P1.2 — as arrecadações que declararam esta conta, e as atribuições do legado.
+  arrecadacoes             ReceitaArrecadada[]
+  atribuicoesDeArrecadacao AtribuicaoDeContaDaArrecadacao[]
 
   @@index([fonteId])
 

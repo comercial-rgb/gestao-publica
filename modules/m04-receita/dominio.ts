@@ -181,6 +181,13 @@ export const zRegistrarArrecadacaoInput = z
     }),
     dataArrecadacao: z.coerce.date(),
     numeroReceita: z.string().min(1, "Número da receita/guia é obrigatório"),
+    /**
+     * V6 P1.2 — o CÓDIGO da conta bancária que recebeu o dinheiro. Opcional no domínio (o legado
+     * importado e as compostas do M10 ainda não a declaram); a porta da tela a EXIGE. Quando vem,
+     * a fonte da conta tem de ser a da guia e a conta contábil dela tem de ser a perna de
+     * disponibilidade do roteiro — o serviço confere os dois.
+     */
+    contaBancaria: z.string().trim().min(1).optional(),
     criadoPor: z.string().min(1),
   })
   .superRefine((a, ctx) => {

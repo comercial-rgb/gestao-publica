@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import {
   abrirPeriodo,
+  atribuirContaDaArrecadacao,
   encerrarPeriodo,
   incluirPendenciaManual,
   justificar,
@@ -116,6 +117,29 @@ export async function justificarAction(
       return {
         erro: e instanceof Error ? e.message : "Não foi possível justificar a pendência.",
       };
+    }
+  });
+}
+
+/**
+ * V6 P1.2 — ATRIBUIR A CONTA BANCÁRIA a uma arrecadação do legado. O domínio confere fonte e a
+ * perna de disponibilidade do razão contra a conta contábil da conta; a recusa sobe como veio.
+ */
+export async function atribuirContaAction(
+  _prev: EstadoConciliacao,
+  formData: FormData
+): Promise<EstadoConciliacao> {
+  return comComandoDoFormulario(formData, async () => {
+    const receitaArrecadadaId = String(formData.get("receitaArrecadadaId") ?? "").trim();
+    const contaBancariaId = String(formData.get("contaBancariaId") ?? "").trim();
+    const motivo = String(formData.get("motivo") ?? "").trim();
+    if (receitaArrecadadaId === "" || contaBancariaId === "") return { erro: "Guia ou conta não identificada. Nada foi gravado." };
+    try {
+      await atribuirContaDaArrecadacao({ receitaArrecadadaId, contaBancariaId, motivo });
+      revalidatePath("/financeiro/conciliacao/periodo");
+      return { sucesso: "Conta atribuída: a guia passa a contar no lado interno desta conta. Vincule-a à linha do extrato para fechar." };
+    } catch (e) {
+      return { erro: e instanceof Error ? e.message : "Não foi possível atribuir a conta." };
     }
   });
 }

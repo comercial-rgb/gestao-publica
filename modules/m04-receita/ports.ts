@@ -52,6 +52,8 @@ export interface ArrecadacaoParaPersistir {
   readonly numeroReceita: string;
   readonly estornoDeId?: string | undefined;
   readonly criadoPor: string;
+  /** V6 P1.2 — a conta bancária declarada (a anulação copia a da original). */
+  readonly contaBancariaId?: string | undefined;
 }
 
 /** O lançamento contábil que contabiliza a arrecadação. */
@@ -86,6 +88,8 @@ export interface ArrecadacaoPersistida {
   /** DERIVADO da relação inversa — é daqui que sai "já foi anulada?". */
   readonly estornos: readonly string[];
   readonly lancamento: LancamentoContabil;
+  /** V6 P1.2 */
+  readonly contaBancariaId: string | null;
 }
 
 /** Confronto arrecadado × previsto. NÃO bloqueia — sinaliza (INVARIANTE 5). */
@@ -96,6 +100,20 @@ export interface ConfrontoPrevisao {
   /** `acumuladoAnterior` + o valor desta arrecadação. */
   readonly acumuladoComEsta: Money;
   readonly excedeuPrevisao: boolean;
+}
+
+/**
+ * V6 P1.2 — A CONTA BANCÁRIA que a guia declara. O M04 não conhece o M09: resolve por código
+ * e recebe só o que precisa conferir — a fonte e a conta contábil mapeada.
+ */
+export interface ContaBancariaResolvida {
+  readonly id: string;
+  readonly codigo: string;
+  readonly fonteCodigo: string;
+  readonly contaContabilCodigo: string | null;
+}
+export interface ContaBancariaPort {
+  buscarPorCodigo(codigo: string): Promise<ContaBancariaResolvida | null>;
 }
 
 export interface ReceitaRepositoryPort {
@@ -185,4 +203,6 @@ export interface M04Deps {
   readonly ids: IdPort;
   /** M10 — OPCIONAL. Ausente = nenhuma conta é reservada (ver o port). */
   readonly contasReservadas?: ContaReservadaPort | undefined;
+  /** V6 P1.2 — OPCIONAL. Sem ele, uma guia que DECLARE conta bancária é recusada nomeando. */
+  readonly contasBancarias?: ContaBancariaPort | undefined;
 }

@@ -23,7 +23,7 @@ import { alvoDoBanco, mesmoAlvo } from "../test/db-teste.js";
  *   3. migrations, SQL manual e papel de runtime — os mesmos passos de qualquer instalação;
  *   4. os seeds, na ordem que uma instalação usa, mais os de cenário dos percursos, todos
  *      com `DATABASE_URL` apontado para o banco dos percursos e o autor em `SEED_IDENTIDADE`;
- *   5. as atualizações versionadas de permissões (v1 a v7) e a configuração de
+ *   5. as atualizações versionadas de permissões (v1 a v8) e a configuração de
  *      DEMONSTRAÇÃO dos roteiros (`seed:roteiros-demo`) — identificada como tal.
  *
  * ⚠️ ELE NÃO TOCA NO BANCO DE DESENVOLVIMENTO. Fixture isolada não é proibida; confundir
@@ -135,6 +135,7 @@ rodar("atualização de permissões v4", "npx", ["tsx", "scripts/aplicar-atualiz
 rodar("atualização de permissões v5", "npx", ["tsx", "scripts/aplicar-atualizacao-de-permissoes.ts", "5"], /JÁ APLICADA/);
 rodar("atualização de permissões v6", "npx", ["tsx", "scripts/aplicar-atualizacao-de-permissoes.ts", "6"], /JÁ APLICADA/);
 rodar("atualização de permissões v7", "npx", ["tsx", "scripts/aplicar-atualizacao-de-permissoes.ts", "7"], /JÁ APLICADA/);
+rodar("atualização de permissões v8", "npx", ["tsx", "scripts/aplicar-atualizacao-de-permissoes.ts", "8"], /JÁ APLICADA/);
 rodar("roteiros de DEMONSTRAÇÃO do acervo (identificados como tal)", "npx", ["tsx", "prisma/seed/roteiros-demo.ts"]);
 
 console.log(

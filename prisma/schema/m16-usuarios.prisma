@@ -406,6 +406,9 @@ enum AcaoDoSistema {
   // ── V6 (P0.1) — configurar a APRESENTAÇÃO do ente (nome de exibição, imagem, contatos,
   // tema, canais): família ADMINISTRACAO, versionada e auditada. ──
   CONFIGURAR_APRESENTACAO_DO_ENTE
+  // ── V6 (P1.2) — atribuir a conta bancária a uma arrecadação do legado (M09, conciliação):
+  // ato do tesoureiro, com motivo; a escrituração tem de bater com a conta atribuída. ──
+  ATRIBUIR_CONTA_A_ARRECADACAO
   // ── V4 (§8, Fila A) — M02b, o planejamento PLURIANUAL (PPA e LDO): dez ações para vinte
   // serviços, agrupadas pelos ANEXOS DA LRF (ver `acoes.ts`). Conciliado do siafic-cg c04ad5a. ──
   CADASTRAR_PPA

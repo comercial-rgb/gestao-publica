@@ -164,7 +164,22 @@ decidida pelo M05 na transação. Percurso: `scripts/smoke-contratacao.ts`.
 - ~~`EMPENHO-A-PARTIR-DA-ORDEM`~~ — **fechada (V5):** `Empenho.ordemDeCompraId`; a anulação copia
   a FK; ordinária empenha o total da ordem; global/estimativa o residual. Estorno da ordem recusa
   empenho vivo. Tela: select na emissão do empenho e "Empenhar esta ordem" no detalhe.
-- `SOLICITACAO-SEM-VINCULO-COM-A-ORDEM` — a ordem não aponta para a solicitação.
+- ~~`SOLICITACAO-SEM-VINCULO-COM-A-ORDEM`~~ — **fechada (V6 P1.1, `cd70495`):** `AlocacaoDeSolicitacaoNaOrdem`
+  liga uma quantidade de um item da solicitação a um item da ordem (N para N, por item). Ordenado,
+  recebido (atribuído por ordem de alocação), cancelado e pendente são DERIVADOS
+  (`compras-alocacao.ts`). Controles: só AUTORIZADA; material igual; excesso contra o pedido e contra
+  a linha; lock advisory no item (N=2); desfazer é linha nova com `estornoDeId`, recusado com
+  recebimento atribuído; anular com parcelas vivas recusa; legado sem vínculo é "sem origem" e nunca
+  casa sozinho. Telas: atendimento e "formar ordem" na solicitação; origem, "vincular" e "desfazer"
+  na ordem; origem no espelho em PDF. `scripts/smoke-solicitacao-ordem.ts` (35 passos).
+- **`ESTORNO-DA-ORDEM-E-FATO` (V6 P1.1, decisão que corrige a D12):** `estornarOrdemDeCompra` NÃO
+  apaga mais a ordem nem os itens — grava `MovimentoDaOrdemDeCompra` ESTORNO. O `delete` anterior só
+  passava em teste porque o teste roda como dono: o papel de runtime (`gestao_app`) não tem DELETE em
+  `OrdemDeCompra`/`ItemDeOrdemDeCompra`, e a tela recusaria com "permission denied" no município.
+  "Estornada" é `ordemEstornada()`; cada leitor a exclui: empenho (M05), documento fiscal, recebimento,
+  vínculo, painel de pendências, opções de empenho/documento, listas (filtro vivas/estornadas). A
+  solicitação atendida recebe o movimento informativo `ORDEM_ESTORNADA` (não muda a situação dela).
+  Ver `docs/adr/ADR-estorno-da-ordem-como-fato.md`.
 - ~~`NOTA-FISCAL-RECEBIDA`~~ — **fechada (V5):** `DocumentoFiscalRecebido` com itens, conferência e
   cancelamento como fatos, importação XML constrita (sem DTD), unicidade por emitente+modelo+série+número
   e chave/hash parciais. Registrar **não** liquida nem dá entrada. Recebimento e liquidação apontam

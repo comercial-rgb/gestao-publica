@@ -180,11 +180,24 @@ async function carregarArrecadacao(
       tipo: true,
       valor: true,
       fonteId: true,
+      contaBancariaId: true,
+      atribuicaoDeConta: { select: { contaBancariaId: true } },
       estornoDeId: true,
       estornos: { select: { id: true } },
     },
   });
   if (r === null) throw new Error(`Receita arrecadada ${id} não encontrada.`);
+  // ⚠️ V6 P1.2 — A GUIA DIZ EM QUE CONTA ENTROU (declarada) ou o tesoureiro atribuiu (legado).
+  // Sem uma nem outra, ela não está no lado interno de conta nenhuma — vincular a linha do extrato
+  // a ela reduziria o residual do extrato sem fato interno correspondente, e a identidade da
+  // conciliação deixaria de fechar. Atribuir a conta vem antes.
+  const contaDaGuia = r.contaBancariaId ?? r.atribuicaoDeConta?.contaBancariaId ?? null;
+  if (contaDaGuia === null) {
+    throw new Error(
+      `A guia ${r.numeroReceita} não declara conta bancária nem foi atribuída a uma (legado). ` +
+        `Atribua a conta em que ela entrou (conciliação por período → arrecadações sem conta) antes de vincular.`
+    );
+  }
 
   // (g) ANULADA — DERIVADO da relação `estornos` (M04, invariante 2).
   if (r.estornos.length > 0) {
@@ -204,9 +217,8 @@ async function carregarArrecadacao(
     descricao: `a arrecadação ${r.numeroReceita}`,
     sentido: "ENTRADA",
     valorConciliavel: toMoney(r.valor.toFixed(2)),
-    // ⚠️ `ReceitaArrecadada` NÃO TEM ContaBancaria no modelo (M04). O que dá para
-    // conferir é a FONTE — a mesma regra do TR 5.23 que o M05 aplica no pagamento.
-    contaBancariaId: null,
+    // V6 P1.2: a conta em que a guia entrou (declarada ou atribuída) — o vínculo exige a mesma conta da linha.
+    contaBancariaId: contaDaGuia,
     fonteId: r.fonteId,
   };
 }

@@ -10,6 +10,7 @@ import {
 } from "../../../../../components/ui/Formulario";
 import {
   abrirPeriodoAction,
+  atribuirContaAction,
   encerrarPeriodoAction,
   justificarAction,
   pendenciaManualAction,
@@ -256,6 +257,45 @@ export function FormJustificar({
         </button>
       </div>
       <Mensagens estado={estado} />
+    </form>
+  );
+}
+
+/**
+ * V6 P1.2 — ATRIBUIR A CONTA a uma guia do legado (sem conta bancária). Um formulário por guia; a
+ * conta vem pré-selecionada com a conta da conciliação aberta, e o motivo é obrigatório. O servidor
+ * recusa quando o razão da guia não debitou a conta contábil da conta escolhida.
+ */
+export function FormAtribuirConta({
+  receitaArrecadadaId,
+  contaPadraoId,
+  contas,
+}: {
+  readonly receitaArrecadadaId: string;
+  readonly contaPadraoId: string;
+  readonly contas: readonly ContaParaPeriodo[];
+}): React.ReactElement {
+  const [estado, action, pendente] = useActionState<EstadoConciliacao, FormData>(atribuirContaAction, {});
+  return (
+    <form action={action} data-acao="atribuir-conta" data-guia={receitaArrecadadaId} className="mt-1 flex flex-wrap items-end gap-2">
+      <ChaveDeComando />
+      <input type="hidden" name="receitaArrecadadaId" value={receitaArrecadadaId} />
+      <label className="text-xs text-[color:var(--color-ink-2)]">
+        <span className="mb-0.5 block">Conta que recebeu</span>
+        <select name="contaBancariaId" defaultValue={contaPadraoId} className={`${CAMPO} h-8`}>
+          {contas.map((c) => (
+            <option key={c.id} value={c.id}>{c.codigo} — {c.descricao}</option>
+          ))}
+        </select>
+      </label>
+      <label className="text-xs text-[color:var(--color-ink-2)]">
+        <span className="mb-0.5 block">Motivo</span>
+        <input name="motivo" required minLength={5} placeholder="guia importada antes da conta obrigatória" className={`${CAMPO} h-8 w-72`} />
+      </label>
+      <button type="submit" disabled={pendente} className="h-8 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-2 text-xs text-[color:var(--color-ink-2)] hover:bg-[color:var(--color-surface-2)] disabled:opacity-60">
+        {pendente ? "Atribuindo…" : "Atribuir conta"}
+      </button>
+      <div className="basis-full"><Mensagens estado={estado} /></div>
     </form>
   );
 }

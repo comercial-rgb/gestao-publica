@@ -16,6 +16,7 @@ import type {
   AoAnularArrecadacaoPort,
   ArrecadacaoParaPersistir,
   ArrecadacaoPersistida,
+  ContaBancariaPort,
   ContaReservadaPort,
   LancamentoDaReceita,
   M04Deps,
@@ -35,6 +36,20 @@ import type {
  * (nada é reimplementado) e acrescenta só o CO, que a port do M02 não resolve
  * para a receita.
  */
+/** V6 P1.2 — a conta bancária por código, com o que o M04 confere (fonte e conta contábil). */
+export function criarContaBancariaPortPrisma(prisma: Tx): ContaBancariaPort {
+  return {
+    async buscarPorCodigo(codigo) {
+      const c = await prisma.contaBancaria.findUnique({
+        where: { codigo },
+        select: { id: true, codigo: true, fonte: { select: { codigo: true } }, contaContabil: { select: { codigo: true } } },
+      });
+      if (c === null) return null;
+      return { id: c.id, codigo: c.codigo, fonteCodigo: c.fonte.codigo, contaContabilCodigo: c.contaContabil?.codigo ?? null };
+    },
+  };
+}
+
 export function criarReceitaClassificacaoPrisma(
   prisma: Tx
 ): ReceitaClassificacaoPort {
@@ -152,6 +167,7 @@ export async function persistirArrecadacaoNaTx(
             numeroReceita: arrecadacao.numeroReceita,
             lancamentoId: lancamento.id,
             estornoDeId: arrecadacao.estornoDeId ?? null,
+            contaBancariaId: arrecadacao.contaBancariaId ?? null,
             criadoPor: arrecadacao.criadoPor,
           },
           select: { id: true },
@@ -195,6 +211,7 @@ function leiturasDaReceita(prisma: Tx): Omit<ReceitaRepositoryPort, "persistir">
           numeroReceita: true,
           lancamentoId: true,
           estornoDeId: true,
+          contaBancariaId: true,
           // "já foi anulada?" sai DAQUI — não de um campo mutável.
           estornos: { select: { id: true } },
           lancamento: {
@@ -254,6 +271,7 @@ function leiturasDaReceita(prisma: Tx): Omit<ReceitaRepositoryPort, "persistir">
             : {}),
           estornos: r.lancamento.estornos.map((e) => e.id),
         },
+        contaBancariaId: r.contaBancariaId,
       };
     },
 
@@ -334,6 +352,7 @@ export function criarM04DepsNaTx(tx: Tx): M04Deps {
     classificacao: criarReceitaClassificacaoPrisma(tx),
     receitas: criarReceitaRepositoryNaTx(tx),
     ids: idsUuid,
+    contasBancarias: criarContaBancariaPortPrisma(tx),
   };
 }
 
@@ -357,6 +376,7 @@ export function criarM04Deps(
     classificacao: criarReceitaClassificacaoPrisma(prisma),
     receitas: criarReceitaRepositoryPrisma(prisma, ports?.aoAnular),
     ids: idsUuid,
+    contasBancarias: criarContaBancariaPortPrisma(prisma),
     ...(ports?.contasReservadas !== undefined
       ? { contasReservadas: ports.contasReservadas }
       : {}),

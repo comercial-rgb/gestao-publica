@@ -31,12 +31,23 @@ export interface NaturezaParaGuia {
  *
  * ⚠️ SEM UNIDADE GESTORA: a receita é do ENTE (CF art. 167, IV).
  */
+/** Uma conta bancária como ESTA ilha a consome — declarada aqui porque uma ilha client não importa porta. */
+export interface ContaParaGuiaDaIlha {
+  readonly codigo: string;
+  readonly descricao: string;
+  readonly fonteCodigo: string;
+  readonly contaContabil: string | null;
+}
+
 export function FormArrecadacao({
   exercicio,
   naturezas,
+  contas = [],
 }: {
   readonly exercicio: number;
   readonly naturezas: readonly NaturezaParaGuia[];
+  /** V6 P1.2 — as contas bancárias que a guia pode declarar (a que recebeu o dinheiro). */
+  readonly contas?: readonly ContaParaGuiaDaIlha[];
 }): React.ReactElement {
   // ⚠️ O ID DO `<datalist>` VEM DO `useId`, e não é literal.
   //
@@ -93,6 +104,20 @@ export function FormArrecadacao({
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Fonte (3 dígitos)</span>
           <input name="fonte" required pattern="\d{3}" placeholder="500" className={CAMPO} />
+        </label>
+
+        <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
+          <span className={ROTULO}>Conta bancária que recebeu</span>
+          <select name="contaBancaria" required defaultValue="" className={CAMPO}>
+            <option value="" disabled>
+              Escolha a conta…
+            </option>
+            {contas.map((c) => (
+              <option key={c.codigo} value={c.codigo} disabled={c.contaContabil === null}>
+                {c.codigo} — {c.descricao} · fonte {c.fonteCodigo}{c.contaContabil === null ? " (sem conta contábil mapeada)" : ""}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label className="text-xs text-[color:var(--color-ink-2)]">

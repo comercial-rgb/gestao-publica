@@ -191,6 +191,8 @@ async function arrecadacao(valor: string, guia: string, data: string): Promise<s
     {
       exercicio: 2026, naturezaReceita: NAT_RECEITA, fonte: "500", valor,
       dataArrecadacao: new Date(data), numeroReceita: guia, criadoPor: POR,
+      // V6 P1.2: a guia DECLARA a conta — é assim que ela entra no lado interno desta conta.
+      contaBancaria: "CC-001",
     },
     R_ARRECADACAO,
     criarM04Deps(prisma)

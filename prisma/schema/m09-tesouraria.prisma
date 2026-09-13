@@ -466,3 +466,29 @@ model JustificativaDePendencia {
   /// substituir a linha inteira — e o append-only guarda a anterior pelo `criadoEm`.
   @@unique([conciliacaoId, lado, referencia])
 }
+
+// ----------------------------------------------------------------------------
+// V6 P1.2 — A ATRIBUIÇÃO DE CONTA BANCÁRIA A UMA ARRECADAÇÃO DO LEGADO.
+//
+// Uma `ReceitaArrecadada` anterior à obrigatoriedade da conta (ou importada) não tem
+// `contaBancariaId`. O razão não se corrige com UPDATE: o tesoureiro ATRIBUI a conta por
+// um ato próprio, com motivo e autor — e o serviço só aceita quando a escrituração da guia
+// de fato debitou a conta contábil daquela conta bancária (senão a conciliação não fecharia).
+// UMA por arrecadação (@unique): a segunda atribuição concorrente cai na constraint.
+// ----------------------------------------------------------------------------
+model AtribuicaoDeContaDaArrecadacao {
+  id String @id @default(cuid())
+
+  receitaArrecadadaId String            @unique
+  receitaArrecadada   ReceitaArrecadada @relation(fields: [receitaArrecadadaId], references: [id])
+
+  contaBancariaId String
+  contaBancaria   ContaBancaria @relation(fields: [contaBancariaId], references: [id])
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([contaBancariaId])
+}
