@@ -6,10 +6,10 @@
 |---|---|
 | HEAD | ver `git log -1` — a seção 35 nomeia o commit de cada unidade |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | Primeiro pacote concluído (§35–§37); segundo pacote em curso — a cadeia patrimonial utilizável: unidades 1 a 5 fechadas (§38–§42); a seguir os percursos das telas novas sob o banco dos percursos |
-| Último resultado | seção 42 |
-| Pendências relevantes | seções 35.7, 36.4, 37.5, 38.5 a 42.5; as anteriores em §19 e nos `MODULO.md` |
-| Próximo passo | seção 42.6 |
+| Frente em execução | Primeiro pacote concluído (§35–§37); **segundo pacote concluído** (§38–§43: cinco unidades e o percurso das telas novas); a seguir os percursos antigos contra 3010, a liquidação de material e a reconciliação com o siafic-cg |
+| Último resultado | seção 43 |
+| Pendências relevantes | seções 35.7, 36.4, 37.5, 38.5 a 43.5; as anteriores em §19 e nos `MODULO.md` |
+| Próximo passo | seção 43.6 |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -4761,6 +4761,73 @@ percursos (`percursos:preparar` já aplica v1–v4; falta o `smoke` de acervo/me
 competência, estorno, termos e etiquetas) e a reexecução dos smokes existentes contra 3010
 (`PERCURSOS-SOB-O-BANCO-PROPRIO`). Depois, a decisão sobre `LIQUIDACAO-MATERIAL-ALMOXARIFADO`
 (caso de uso composto — seção 5 do pedido) e a reconciliação dirigida com o siafic-cg.
+
+## 43. Orquestração V3 — segundo pacote, fechamento: o percurso das cinco unidades sob o banco dos percursos
+
+**Regime:** superfície — um percurso de navegador por família de tela nova, com recarga entre
+os passos, contra o servidor dos percursos (banco próprio, seeds declarados, v1–v4 aplicadas).
+
+### 43.1 · O que foi provado pela tela
+
+`scripts/smoke-pacote2.ts` (`npm run smoke:pacote2`), **30 passos, 0 falhas** na décima
+execução (`.registro-de-execucao/v3-pacote2-percurso.txt`; a 1ª tentativa está ao lado):
+classe e bem criados; acervo pesquisado por tombamento (situação derivada) e por responsável;
+"Gerar etiqueta" e a folha com o SVG do Code 128; parâmetro versionado gravado e relido
+(24 meses, 10%, versão 1); prévia PRONTA com 450,00 e a versão do parâmetro; processamento;
+recarga com "já processada" e a memória (base 12000.00, versão 1); histórico do bem com os
+links de análise; estorno da entrada **bloqueado** pela dependência, com o porquê na tela;
+estorno da competência pela tela de análise; a entrada liberada em seguida; termo de
+responsabilidade emitido pelo tombamento, relido, com o bem no detalhe; **PDF do termo
+renderizado** pela rota autenticada (200, `application/pdf`, > 1 KB); pesquisa por
+responsável achando o bem entregue; vínculo do administrador à pessoa pelo documento;
+"meus bens" listando o bem.
+
+### 43.2 · O que o percurso acusou, e o que mudou
+
+| Achado | O que foi feito |
+|---|---|
+| **Regressão desde o ENT12:** o `case "gerar-etiqueta"` do despachante do bem sumiu no commit bb47320 (o comentário ficou, o código não); a ação caía no `default` — "não existe neste cadastro" — em produção desde então | restaurado em `acervo-dados.ts`; `test/ui/acoes-despachadas.test.ts` vigia descritor × despachante (toda ação declarada tem `case`/`acao ===`), com a prova de que acusa |
+| As actions escritas à mão (competência, estorno) chamavam `revalidatePath`; o refresh do RSC desmontava o formulário e a resposta sumia | sem `revalidatePath` nessas duas; a tela seguinte lê o banco ao abrir (`force-dynamic`) |
+| A lista de usuários tem um formulário por usuário dentro de `<details>` fechado; o percurso digitava no do primeiro usuário e o `required` segurava o envio em silêncio | `data-usuario` nos formulários de vínculo; o percurso abre o `<details>` e mira o do administrador |
+| O `next dev` desta máquina **reinicia sozinho** ao se aproximar do teto de memória (com heap 2048: cinco reinícios numa execução; a navegação daquele instante cai com `ERR_CONNECTION_RESET`) | servidor com heap 3584 (zero reinícios na execução final); o percurso retenta a navegação e o `fetch` do PDF |
+| **500 intermitente na primeira renderização** de rota recém-compilada, com `TypeError: frame.join is not a function` no log — é o parser de stack do React server-dom (dev) mascarando o erro real; a segunda requisição responde 200 | o percurso retenta uma vez; registrado como `DEV-FRAME-JOIN-MASCARA-O-ERRO` (não reproduz em produção e não afeta os testes) |
+| A resposta da Server Action sob `next dev` e swap passa de 3 s | o percurso espera até 20 s por alerta ou "ok" |
+
+### 43.3 · Catálogo
+
+Promovidas a `VALIDADO_LOCALMENTE` (tela + percurso): **5.19.10** (meus bens), **5.19.14**
+(pesquisa do acervo), **5.19.36** (termo de responsabilidade com PDF), **5.19.39** (estorno da
+virada mensal, com a análise). Evidência ampliada, situação mantida: 5.19.2 (a folha e a
+regressão restaurada), 5.19.26 e 5.19.29 (a competência foi percorrida; reavaliação e
+impairment pela tela ainda não), 5.19.37 (termo de baixa não percorrido).
+
+### 43.4 · Comandos executados e resultado real
+
+| Comando | Resultado |
+|---|---|
+| `next dev -p 3010` sobre `DATABASE_URL_PERCURSOS` (heap 3584) + `smoke-pacote2` | **30/30**; log do servidor em `.registro-de-execucao/v3-pacote2-percurso-servidor.log` |
+| fixture do banco dos percursos | uma pessoa (CPF 111.444.777-35, "Maria Souza (fixture dos percursos)") inserida por SQL — o banco não tinha pessoa nenhuma; é fixture, identificada como tal |
+| `tsc` app · scripts · `vitest` rápida (o `case` restaurado, as actions, `AcoesUsuario`, o smoke e o teste novo) | **limpos** · **796/796** (74 arquivos; +2 do `acoes-despachadas`) |
+
+**Não executado:** portão integral, `test:tudo`, `test:fuso`, `next build`; os percursos
+antigos (ENT07–ENT12, roteiros) ainda não foram reexecutados contra 3010.
+
+### 43.5 · Pendências nomeadas
+
+| Pendência | O que é |
+|---|---|
+| `DEV-FRAME-JOIN-MASCARA-O-ERRO` | o 500 intermitente da primeira renderização sob `next dev`; investigar com `next build`/`next start` no candidato |
+| `REAVALIACAO-E-TERMO-DE-BAIXA-SEM-PERCURSO` | reavaliar, impairment, alienar e o termo de baixa pela tela ainda sem percurso (5.19.26, 5.19.29, 5.19.37) |
+| `PERCURSOS-SOB-O-BANCO-PROPRIO` | os smokes anteriores continuam a reexecutar contra 3010 |
+| fechadas nesta seção | `MEUS-BENS-SEM-PERCURSO`, `PESQUISA-DO-ACERVO-SEM-PERCURSO`, `COMPETENCIA-SEM-PERCURSO`, `ESTORNO-SEM-PERCURSO`, `TERMOS-E-ETIQUETAS-SEM-PERCURSO` (parcial: etiquetas e termo de responsabilidade), `PDF-DO-TERMO-NAO-RENDERIZADO` |
+
+### 43.6 · Próximo ponto exato
+
+Reexecutar os smokes existentes contra 3010 (`PERCURSOS-SOB-O-BANCO-PROPRIO`), começando
+por `smoke-gestao-do-bem` e `smoke-eixo-de-valor` (que exercitam a etiqueta e a baixa — o
+`case` restaurado). Depois: `LIQUIDACAO-MATERIAL-ALMOXARIFADO` (decisão do caso de uso
+composto, seção 5 do pedido) e a reconciliação dirigida com o siafic-cg (acervo, plurianual,
+RH, convênios, contrato/reserva/empenho).
 
 ## 19. O próximo passo
 

@@ -1,10 +1,14 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { processarCompetencia } from "../../../../lib/portas/recursos/competencia-dados";
 import { rotuloDoTipoPatrimonial } from "../../../../lib/portas/recursos/roteiros";
 
+/**
+ * ⚠️ SEM `revalidatePath` AQUI, de propósito: revalidar dentro da action faz o Next re-renderizar a
+ * rota, e a página passa a NÃO montar mais este formulário (a prévia deixa de estar PRONTA) — a
+ * resposta some junto com ele. A tela seguinte lê o banco ao ser aberta (`force-dynamic`).
+ */
 export interface EstadoDaCompetencia {
   readonly erro?: string;
   readonly sucesso?: string;
@@ -26,7 +30,6 @@ export async function processarCompetenciaAction(
     }
     try {
       const r = await processarCompetencia(campos);
-      revalidatePath("/patrimonio/competencia");
       return {
         sucesso:
           `Competência ${campos["competencia"] ?? ""} processada: ${rotuloDoTipoPatrimonial(r.tipo)} de ` +

@@ -62,7 +62,7 @@ export function AcoesUsuario({ usuario, perfis }: { readonly usuario: UsuarioLin
       <summary className="cursor-pointer select-none text-[color:var(--color-primary)] hover:underline">Gerenciar</summary>
       <div className="mt-2 space-y-3 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3">
         {/* A PESSOA DO CADASTRO (V3, pacote 2) — pelo documento, nunca pelo nome; não concede permissão */}
-        <form action={actVinc} className="flex flex-wrap items-end gap-2" data-acao={usuario.pessoa === null ? "vincular-pessoa" : "desvincular-pessoa"}>
+        <form action={actVinc} className="flex flex-wrap items-end gap-2" data-acao={usuario.pessoa === null ? "vincular-pessoa" : "desvincular-pessoa"} data-usuario={usuario.identificador}>
           <input type="hidden" name="usuarioId" value={usuario.id} />
           {usuario.pessoa === null ? (
             <>

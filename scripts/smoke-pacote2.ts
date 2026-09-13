@@ -63,8 +63,32 @@ async function texto(page: Page): Promise<string> {
   return bruto.toLowerCase();
 }
 async function irPara(page: Page, rota: string): Promise<string> {
-  const resposta = await page.goto(`${BASE}${rota}`, { waitUntil: "networkidle2" });
-  const status = resposta?.status() ?? 0;
+  // O `next dev` reinicia sozinho ao se aproximar do teto de memória ("Server is approaching
+  // the used memory threshold, restarting"), e a navegação daquele instante volta com
+  // ERR_CONNECTION_RESET. Três tentativas com pausa cobrem o reinício; o resto sobe.
+  let resposta = null;
+  for (let tentativa = 1; ; tentativa += 1) {
+    try {
+      resposta = await page.goto(`${BASE}${rota}`, { waitUntil: "networkidle2" });
+      break;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (tentativa >= 3 || !/ERR_CONNECTION_RESET|ERR_CONNECTION_REFUSED|ERR_EMPTY_RESPONSE/.test(msg)) throw e;
+      console.log(`      [servidor reiniciando? ${msg.slice(0, 60)} — tentativa ${tentativa + 1} em 8 s]`);
+      await new Promise((r) => setTimeout(r, 8000));
+    }
+  }
+  let status = resposta?.status() ?? 0;
+  // A PRIMEIRA renderização de uma rota recém-compilada pelo `next dev` desta máquina devolveu
+  // 500 intermitente ("frame.join is not a function" no log do servidor — o erro real fica
+  // mascarado pelo overlay do dev); a segunda requisição da mesma rota responde 200. Duas
+  // retentativas com pausa; um 500 persistente sobe como veio.
+  for (let tentativa = 1; status === 500 && tentativa <= 2; tentativa += 1) {
+    console.log(`      [${rota} respondeu 500 na renderização recém-compilada — tentativa ${tentativa + 1} em 5 s]`);
+    await new Promise((r) => setTimeout(r, 5000));
+    const denovo = await page.goto(`${BASE}${rota}`, { waitUntil: "networkidle2" });
+    status = denovo?.status() ?? 0;
+  }
   if (status !== 200) throw new Error(`${rota} respondeu ${status}`);
   if (page.url().includes("/login")) throw new Error(`${rota} devolveu ao login`);
   return texto(page);
@@ -75,8 +99,22 @@ interface CampoDoSmoke {
   readonly tipo?: "select" | "data";
 }
 async function preencherEEnviar(page: Page, acao: string, campos: readonly CampoDoSmoke[]): Promise<{ readonly tipo: string; readonly texto: string }> {
-  const form = `form[data-acao="${acao}"]`;
+  // `acao` pode ser o nome (`form[data-acao="..."]`) ou um seletor completo começando por "form[",
+  // para páginas com um formulário POR REGISTRO (a lista de usuários tem um por usuário).
+  const form = acao.startsWith("form[") ? acao : `form[data-acao="${acao}"]`;
   await page.waitForSelector(form, { timeout: 30000 });
+  // Formulário dentro de `<details>` fechado (as ações por usuário): os campos não recebem foco
+  // nem digitação, e o `required` do navegador segura o envio em silêncio. Abrir é o passo que
+  // o operador daria ("Gerenciar").
+  await page.evaluate((sel) => {
+    let el: Element | null = document.querySelector(sel);
+    while (el !== null) {
+      const d = el.closest("details");
+      if (d === null) break;
+      d.open = true;
+      el = d.parentElement;
+    }
+  }, form);
   for (const campo of campos) {
     const seletor = `${form} ${campo.sel}`;
     await page.waitForSelector(seletor, { timeout: 30000 });
@@ -113,15 +151,20 @@ async function preencherEEnviar(page: Page, acao: string, campos: readonly Campo
     return true;
   }, form);
   if (!enviou) throw new Error(`não achei o botão de envio de "${acao}"`);
-  await new Promise((r) => setTimeout(r, 3000));
-  const resposta = await page.evaluate((sel) => {
-    const f = document.querySelector(sel);
-    const alerta = f?.querySelector('[role="alert"]');
-    if (alerta !== null && alerta !== undefined) return { tipo: "erro", texto: (alerta.textContent ?? "").trim() };
-    const ps = Array.from(f?.querySelectorAll("p") ?? []);
-    const bom = ps.find((x) => x.className.includes("status-ok"));
-    return bom !== undefined ? { tipo: "ok", texto: (bom.textContent ?? "").trim() } : { tipo: "silencio", texto: "" };
-  }, form);
+  // A resposta chega quando a Server Action volta — sob `next dev` e swap isso pode passar de
+  // três segundos. Espera até 20 s por um alerta ou um "ok"; "silêncio" só depois disso.
+  let resposta = { tipo: "silencio", texto: "" };
+  for (let i = 0; i < 40 && resposta.tipo === "silencio"; i += 1) {
+    await new Promise((r) => setTimeout(r, 500));
+    resposta = await page.evaluate((sel) => {
+      const f = document.querySelector(sel);
+      const alerta = f?.querySelector('[role="alert"]');
+      if (alerta !== null && alerta !== undefined) return { tipo: "erro", texto: (alerta.textContent ?? "").trim() };
+      const ps = Array.from(f?.querySelectorAll("p") ?? []);
+      const bom = ps.find((x) => x.className.includes("status-ok"));
+      return bom !== undefined ? { tipo: "ok", texto: (bom.textContent ?? "").trim() } : { tipo: "silencio", texto: "" };
+    }, form);
+  }
   if (resposta.tipo === "erro") console.log(`      [servidor recusou "${acao}"] ${resposta.texto.slice(0, 400)}`);
   return resposta;
 }
@@ -169,7 +212,9 @@ async function main(): Promise<void> {
       args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--disable-extensions", "--disable-background-networking", "--renderer-process-limit=1", "--js-flags=--max-old-space-size=256"],
     });
     const page = await navegador.newPage();
-    page.setDefaultTimeout(60000);
+    // O servidor dos percursos pode ser o `next dev`, que compila cada rota na primeira visita.
+    page.setDefaultTimeout(120000);
+    page.setDefaultNavigationTimeout(120000);
     await entrar(page);
     ok("login");
 
@@ -229,7 +274,8 @@ async function main(): Promise<void> {
     await irPara(page, hrefBem);
     const rEntrada = await preencherEEnviar(page, "registrar-entrada-de-valor", [
       { sel: 'select[name="tipo"]', valor: "AVALIACAO_INICIAL", tipo: "select" },
-      { sel: 'input[name="valor"]', valor: "12000.00" },
+      // `CampoValor`: o visível é `data-mascara="valor"` (sem name); o hidden `name="valor"` leva o cru.
+      { sel: 'input[data-mascara="valor"]', valor: "12000,00" },
       { sel: 'input[name="dataMovimento"]', valor: "2026-01-15", tipo: "data" },
       { sel: 'input[name="motivo"]', valor: "Avaliação inicial do ônibus (percurso)." },
     ]);
@@ -292,10 +338,22 @@ async function main(): Promise<void> {
     if (hrefTermo !== null) {
       const detalhe = await irPara(page, hrefTermo + "?aba=historico");
       conferir("termo: o detalhe lista o bem", detalhe.includes(TOMB.toLowerCase()), "o bem não está no detalhe");
-      const pdf = await page.evaluate(async (u) => {
-        const r = await fetch(u);
-        return { status: r.status, tipo: r.headers.get("content-type") ?? "", tamanho: (await r.arrayBuffer()).byteLength };
-      }, `${BASE}${hrefTermo}/pdf`);
+      // O PDF abre um Chromium DENTRO do servidor; sob o `next dev` desta máquina isso pode
+      // cruzar o reinício por memória — três tentativas, como em `irPara`.
+      let pdf = { status: 0, tipo: "", tamanho: 0, erro: "" };
+      for (let tentativa = 1; tentativa <= 3; tentativa += 1) {
+        pdf = await page.evaluate(async (u) => {
+          try {
+            const r = await fetch(u);
+            return { status: r.status, tipo: r.headers.get("content-type") ?? "", tamanho: (await r.arrayBuffer()).byteLength, erro: "" };
+          } catch (e) {
+            return { status: 0, tipo: "", tamanho: 0, erro: e instanceof Error ? e.message : String(e) };
+          }
+        }, `${BASE}${hrefTermo}/pdf`);
+        if (pdf.erro === "") break;
+        console.log(`      [PDF: ${pdf.erro} — tentativa ${tentativa + 1} em 10 s]`);
+        await new Promise((r) => setTimeout(r, 10000));
+      }
       conferir("termo: o PDF é gerado pela rota autenticada (200, application/pdf, > 1 KB)", pdf.status === 200 && pdf.tipo.includes("application/pdf") && pdf.tamanho > 1024, JSON.stringify(pdf));
     }
     const acervoPorResponsavel = responsavel === null ? "" : await irPara(page, `/patrimonio/bens-patrimoniais?responsavel=${encodeURIComponent(responsavel.rotulo.split(" (")[0] ?? "")}`);
@@ -304,11 +362,21 @@ async function main(): Promise<void> {
     // ── 5. o vínculo usuário↔pessoa e "meus bens" ──
     const documento = responsavel === null ? null : /\(([^)]+)\)\s*$/.exec(responsavel.rotulo)?.[1] ?? null;
     if (documento !== null) {
-      await irPara(page, "/administracao/usuarios");
-      const rVinc = await preencherEEnviar(page, "vincular-pessoa", [
-        { sel: 'input[name="documento"]', valor: documento },
-        { sel: 'input[name="motivo"]', valor: "Vínculo do administrador à pessoa do percurso." },
-      ]);
+      // O envio pode cair no reinício do `next dev` (sem POST no log, resposta em silêncio): uma
+      // segunda tentativa depois de recarregar. Vincular é recusado nomeando se já estiver feito.
+      let rVinc = { tipo: "silencio", texto: "" };
+      for (let tentativa = 1; tentativa <= 2 && rVinc.tipo === "silencio"; tentativa += 1) {
+        await irPara(page, "/administracao/usuarios");
+        const jaVinculado = await page.evaluate((u) => document.querySelector(`form[data-acao="desvincular-pessoa"][data-usuario="${u}"]`) !== null, USUARIO);
+        if (jaVinculado) {
+          rVinc = { tipo: "ok", texto: "já vinculado (a tela oferece desvincular)" };
+          break;
+        }
+        rVinc = await preencherEEnviar(page, `form[data-acao="vincular-pessoa"][data-usuario="${USUARIO}"]`, [
+          { sel: 'input[name="documento"]', valor: documento },
+          { sel: 'input[name="motivo"]', valor: "Vínculo do administrador à pessoa do percurso." },
+        ]);
+      }
       conferir("vínculo: o servidor vinculou o usuário à pessoa pelo documento (ou já estava)", rVinc.tipo === "ok" || /JÁ VINCULADO|PESSOA JÁ VINCULADA/.test(rVinc.texto), rVinc.texto);
       const meus = await irPara(page, "/patrimonio/meus-bens");
       const pessoaNaTela = await atributo(page, "[data-pessoa]", "data-pessoa");

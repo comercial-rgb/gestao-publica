@@ -603,6 +603,15 @@ export async function acaoDoBem(acao: string, bemId: string, c: Campos): Promise
     // carrega data do fato e motivo, que os quatro movimentos de gestão exigem e a etiqueta
     // não tem. Reaproveitá-lo aqui faria a ação pedir campos que ela não usa — e o formulário
     // do molde os renderizaria, obrigatórios, sem que o domínio jamais os lesse.
+    //
+    // ⚠️ RESTAURADO (V3, pacote 2): o `case` sumiu no commit bb47320 (ENT12) e a ação passou a
+    // cair no `default` — "não existe neste cadastro" — desde então. O percurso do pacote 2
+    // acusou; `test/ui/acoes-despachadas.test.ts` passou a vigiar descritor × despachante.
+    case "gerar-etiqueta":
+      await comEscritaAutenticada("GERAR_ETIQUETA_DE_BEM", (criadoPor) =>
+        gerarEtiquetaDeBem(cliente(), { bemId, criadoPor })
+      );
+      return;
     // ═══ ENT12 — O EIXO DE VALOR, e a classe vem DO BEM ═══
     //
     // ⚠️ A CLASSE NÃO É PERGUNTADA AO FORMULÁRIO, e é derivada aqui. Os dois serviços a

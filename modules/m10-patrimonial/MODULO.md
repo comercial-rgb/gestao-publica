@@ -400,3 +400,21 @@ por bem com valor contábil e localização DERIVADOS no momento da impressão, 
 declaração e linhas de assinatura — sem conhecer PDF nem HTML. Prova:
 `m10-termo-documento.test.ts` (N=2 bens; responsabilidade e baixa; inexistente recusa) e
 `codigo-de-barras.test.ts`.
+
+
+## Orquestração V3 (pacote 2) — o percurso das cinco unidades, e o que ele acusou
+
+`scripts/smoke-pacote2.ts` (`npm run smoke:pacote2`, contra `next dev -p 3010` sobre o banco
+dos percursos): 30 passos, 0 falhas — acervo pesquisável (tombamento, responsável), etiqueta
+gerada e impressa com o SVG, parâmetro versionado, prévia/processamento/memória da
+competência, estorno bloqueado pela dependência e liberado na ordem certa, termo emitido
+com PDF renderizado pela rota autenticada, vínculo usuário↔pessoa e "meus bens".
+
+**O que o percurso acusou:** o `case "gerar-etiqueta"` do despachante do bem tinha sumido no
+commit bb47320 (ENT12) — o comentário que o explicava ficou, o código não — e a ação caía no
+`default` ("não existe neste cadastro") desde então. Restaurado; `test/ui/acoes-despachadas.test.ts`
+passou a vigiar descritor × despachante (com a prova de que acusa).
+
+**Decisão de tela:** as actions escritas à mão (competência, estorno) NÃO chamam
+`revalidatePath`: o refresh do RSC desmontava o formulário (a prévia deixa de estar PRONTA) e
+levava a resposta junto. A tela seguinte lê o banco ao abrir (`force-dynamic`).
