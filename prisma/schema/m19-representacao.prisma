@@ -68,7 +68,8 @@ model PropostaDeAlteracaoCadastral {
   /// Os campos propostos (só os que o formulário da versão permite): nome, email, telefone, endereço.
   dados Json
 
-  /// A versão do cadastro criada pela decisão de DEFERIR — nula até lá, e nula se indeferida.
+  /// ⚠️ SEM ESCRITOR desde a migration 20260914120200: a versão criada pelo deferimento é gravada na
+  /// DECISÃO (`DecisaoDaSolicitacao.versaoDoCadastroId`), por INSERT — o runtime não tem UPDATE aqui.
   versaoAplicadaId String?
 
   criadoEm  DateTime @default(now())

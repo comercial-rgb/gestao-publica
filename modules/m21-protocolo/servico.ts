@@ -1311,8 +1311,7 @@ export async function publicarVersaoDoServico(prisma: PrismaClient, input: Publi
     if (v.publicacao !== null) throw new Error(`VERSAO-JA-PUBLICADA: a versão ${v.numero} de /servicos/${v.servico.slug} já está publicada e não muda. Nada foi gravado.`);
     // ⚠️ AS ETAPAS PUBLICADAS SÃO O ROTEIRO REAL, COPIADO AGORA: o que a carta mostra é o que executa.
     const etapas = v.servico.assunto.roteiro.map((e) => ({ ordem: e.ordem, setor: `${e.setor.codigo} — ${e.setor.nome}`, prazoDias: e.prazoDias, descricao: e.descricao }));
-    await tx.versaoDoServico.update({ where: { id: d.versaoId }, data: { etapasPublicadas: etapas } });
-    const p = await tx.publicacaoDoServico.create({ data: { versaoId: d.versaoId, criadoPor: d.criadoPor }, select: { id: true } });
+    const p = await tx.publicacaoDoServico.create({ data: { versaoId: d.versaoId, etapas, criadoPor: d.criadoPor }, select: { id: true } });
     return { publicacaoId: p.id, etapas: etapas.length };
   });
 }
@@ -1561,7 +1560,7 @@ export async function decidirSolicitacao(prisma: PrismaClient, input: DecidirSol
       throw new Error("AUTODECISAO: você é o titular (ou representa o titular) desta solicitação e não pode decidi-la. Nada foi gravado.");
     }
     const versaoDoCadastro = s.proposta !== null && d.resultado === "DEFERIDA" ? await aplicarPropostaCadastral(tx, s.proposta, rotulo(p), d.fundamentoInterno, d.criadoPor) : null;
-    const decisao = await tx.decisaoDaSolicitacao.create({ data: { solicitacaoId: s.id, resultado: d.resultado, mensagemAoRequerente: d.mensagemAoRequerente, fundamentoInterno: d.fundamentoInterno, criadoPor: d.criadoPor }, select: { id: true } });
+    const decisao = await tx.decisaoDaSolicitacao.create({ data: { solicitacaoId: s.id, resultado: d.resultado, mensagemAoRequerente: d.mensagemAoRequerente, fundamentoInterno: d.fundamentoInterno, versaoDoCadastroId: versaoDoCadastro, criadoPor: d.criadoPor }, select: { id: true } });
     // O ENCERRAMENTO segue o principal e os apensos, como no encerramento interno.
     for (const alvo of await alvosDaMovimentacao(tx, p.id)) {
       await tx.movimentoDoProcesso.create({ data: { processoId: alvo, tipo: "ENCERRAMENTO", setorOrigemId: onde, texto: `Solicitação ${d.resultado === "DEFERIDA" ? "DEFERIDA" : "INDEFERIDA"}. Fundamento interno: ${d.fundamentoInterno}`, criadoPor: d.criadoPor } });
@@ -1581,7 +1580,7 @@ export async function decidirSolicitacao(prisma: PrismaClient, input: DecidirSol
  */
 async function aplicarPropostaCadastral(
   tx: Tx,
-  proposta: { readonly id: string; readonly pessoaId: string; readonly versaoBaseId: string; readonly dados: unknown },
+  proposta: { readonly pessoaId: string; readonly versaoBaseId: string; readonly dados: unknown },
   protocolo: string,
   fundamento: string,
   criadoPor: string,
@@ -1600,7 +1599,6 @@ async function aplicarPropostaCadastral(
     },
     select: { id: true },
   });
-  await tx.propostaDeAlteracaoCadastral.update({ where: { id: proposta.id }, data: { versaoAplicadaId: nova.id } });
   return nova.id;
 }
 

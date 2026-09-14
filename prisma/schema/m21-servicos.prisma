@@ -86,7 +86,9 @@ model VersaoDoServico {
   /// O formulário — vocabulário fechado, validado no cadastro: [{ nome, rotulo, tipo, obrigatorio }].
   campos Json
 
-  /// As etapas COPIADAS do roteiro do assunto na PUBLICAÇÃO (nulo no rascunho).
+  /// ⚠️ SEM ESCRITOR desde a migration 20260914120200: a cópia do roteiro mora na PUBLICAÇÃO
+  /// (`PublicacaoDoServico.etapas`), gravada por INSERT. Preenchê-la aqui exigiria UPDATE, e o papel
+  /// de runtime não o tem nesta tabela. Coluna mantida nula (migration aditiva, zero DROP).
   etapasPublicadas Json?
 
   criadoEm  DateTime @default(now())
@@ -104,6 +106,9 @@ model PublicacaoDoServico {
 
   versaoId String          @unique
   versao   VersaoDoServico @relation(fields: [versaoId], references: [id])
+
+  /// As etapas COPIADAS do roteiro real do assunto no ato da publicação: [{ ordem, setor, prazoDias, descricao }].
+  etapas Json
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -157,6 +162,9 @@ model DecisaoDaSolicitacao {
   resultado            ResultadoDaSolicitacao
   mensagemAoRequerente String
   fundamentoInterno    String
+
+  /// A versão do cadastro criada pelo DEFERIMENTO de uma atualização cadastral (nula nos demais).
+  versaoDoCadastroId String?
 
   criadoEm  DateTime @default(now())
   criadoPor String

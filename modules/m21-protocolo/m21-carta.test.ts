@@ -142,8 +142,8 @@ beforeEach(semear, 120_000);
 describe("a carta: versão, formulário e publicação", () => {
   it("t1: publicar COPIA o roteiro real; versão publicada não republica; a solicitação fica na versão em que foi feita", async () => {
     const { servicoId, versaoId } = await servico("requerimento-geral", "REQUERIMENTO_ADMINISTRATIVO", CAMPOS_DO_REQUERIMENTO);
-    const v1 = await prisma.versaoDoServico.findUniqueOrThrow({ where: { id: versaoId }, select: { etapasPublicadas: true } });
-    expect(v1.etapasPublicadas).toEqual([
+    const v1 = await prisma.publicacaoDoServico.findUniqueOrThrow({ where: { versaoId }, select: { etapas: true } });
+    expect(v1.etapas).toEqual([
       { ordem: 1, setor: "PROT — Protocolo Geral", prazoDias: 3, descricao: "Triagem" },
       { ordem: 2, setor: "JUR — Procuradoria", prazoDias: 10, descricao: "Análise" },
     ]);
@@ -309,7 +309,7 @@ describe("a atualização cadastral", () => {
     const v = await versaoAtual();
     expect(v.id).toBe(versaoDoCadastro);
     expect(v.email).toBe("ana.nova@exemplo.test");
-    expect((await prisma.propostaDeAlteracaoCadastral.findUniqueOrThrow({ where: { solicitacaoId: s.solicitacaoId }, select: { versaoAplicadaId: true } })).versaoAplicadaId).toBe(v.id);
+    expect((await prisma.decisaoDaSolicitacao.findUniqueOrThrow({ where: { solicitacaoId: s.solicitacaoId }, select: { versaoDoCadastroId: true } })).versaoDoCadastroId).toBe(v.id);
 
     const s2 = await protocolarSolicitacao(prisma, { slug: "atualizar-contato", respostas: { email: "outra@exemplo.test" }, criadoPor: CIDADA_A });
     expect((await decidirSolicitacao(prisma, { solicitacaoId: s2.solicitacaoId, resultado: "INDEFERIDA", mensagemAoRequerente: "Pedido indeferido.", fundamentoInterno: "Duplicado.", criadoPor: ADMIN })).versaoDoCadastro).toBeNull();
