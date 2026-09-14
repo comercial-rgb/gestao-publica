@@ -145,7 +145,7 @@ export async function verSolicitacaoNaMesa(sessao: Identidade, id: string): Prom
         }]),
     { rotulo: "Situação no processo", valor: e.situacaoInterna, nota: `O requerente lê: "${ROTULO_PARA_REQUERENTE[e.situacaoRequerente]}".` },
     { rotulo: "Onde está", valor: setor === null ? e.onde : `${setor.codigo} — ${setor.nome}` },
-    { rotulo: "Processo digital", valor: `${e.estado.protocolo}`, nota: `Tramitar, receber e pedir parecer: /protocolo/processos/${s.processo.id}` },
+    { rotulo: "Processo digital", valor: `${e.estado.protocolo}`, nota: "Tramitar, receber e pedir parecer pelo processo digital (link abaixo dos dados)." },
     ...campos.filter((c) => (respostas[c.nome] ?? "") !== "").map((c) => ({ rotulo: c.rotulo, valor: respostas[c.nome] ?? "", tipo: c.tipo === "textoLongo" ? ("longo" as const) : ("texto" as const) })),
   ];
   if (s.proposta !== null && atual !== undefined) {

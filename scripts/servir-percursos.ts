@@ -1,25 +1,39 @@
 import "dotenv/config";
 import { spawn } from "node:child_process";
+import { papelDoAmbiente, urlDoRuntime } from "../prisma/papel-runtime.js";
 
 /**
- * Sobe o `next start` na porta 3010 apontando para o banco dos percursos.
+ * Sobe o `next start` apontando para o banco dos percursos.
  *
  * O script `percursos:servir` do package.json não carrega `.env` sozinho: o npm
  * não exporta `DATABASE_URL_PERCURSOS`. Este arquivo lê o dotenv, recusa se a
  * URL faltar, e herda `PUPPETEER_EXECUTABLE_PATH` / `PUPPETEER_CACHE_DIR` para
  * o motor de PDF (`lib/pdf/gerar.ts`) achar o Chromium.
  *
+ * V7 M1 U6 — três parâmetros, todos por ambiente:
+ *   PERCURSO_BANCO=<nome>     o banco (descartável) da execução, no mesmo servidor da URL dos percursos;
+ *   PERCURSO_COMO_RUNTIME=1   a aplicação conecta com o PAPEL DE RUNTIME (`APP_DB_USUARIO`), não com o
+ *                             dono — é o que o produto usa, e o que os percursos precisam exercitar;
+ *   PERCURSO_PORTA=<n>        a porta (padrão 3010); o diretório de trabalho é o do artefato (worktree).
+ * Nenhuma credencial é impressa.
+ *
  * Não é publicação. Sem alvo autorizado, o artefato permanece local.
  */
 
-const url = process.env["DATABASE_URL_PERCURSOS"];
-if (url === undefined || url === "") {
+const bruta = process.env["DATABASE_URL_PERCURSOS"];
+if (bruta === undefined || bruta === "") {
   console.error("DATABASE_URL_PERCURSOS ausente. Defina no .env (não versionado).");
   process.exit(1);
 }
-process.env["DATABASE_URL"] = url;
+const u = new URL(bruta);
+const banco = process.env["PERCURSO_BANCO"];
+if (banco !== undefined && banco !== "") u.pathname = `/${banco}`;
+const comoRuntime = process.env["PERCURSO_COMO_RUNTIME"] === "1";
+process.env["DATABASE_URL"] = comoRuntime ? urlDoRuntime(u.toString(), papelDoAmbiente()) : u.toString();
+const porta = process.env["PERCURSO_PORTA"] ?? "3010";
+console.log(`[servir-percursos] banco ${u.pathname.slice(1)} · conexão ${comoRuntime ? `papel de runtime (${papelDoAmbiente().usuario})` : "dono"} · porta ${porta} · diretório ${process.cwd()}`);
 
-const child = spawn("npx", ["next", "start", "-p", "3010"], {
+const child = spawn("npx", ["next", "start", "-p", porta], {
   stdio: "inherit",
   env: process.env,
 });

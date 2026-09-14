@@ -1,3 +1,4 @@
+import { formatarMoeda } from "../../format/moeda";
 import { diaCivilBr, meioDiaCivil } from "../../../packages/datas/index.js";
 import { Decimal, toMoney, sumMoney } from "../../../packages/contracts/index.js";
 import { formatarDocumento } from "../../../packages/documento/index.js";
@@ -209,7 +210,7 @@ export async function verFolha(id: string): Promise<FolhaLida | null> {
   ];
   return {
     titulo: `Folha ${f.tipo.toLowerCase()} de ${f.competencia}`,
-    subtitulo: d.vivo === null ? "sem cálculo" : `cálculo nº ${d.vivo.numero} · líquido ${toMoney(d.vivo.totalLiquido).toFixed(2)}`,
+    subtitulo: d.vivo === null ? "sem cálculo" : `cálculo nº ${d.vivo.numero} · líquido R$ ${formatarMoeda(toMoney(d.vivo.totalLiquido).toFixed(2)).texto}`,
     selos: [{ texto: ROTULO_DA_SITUACAO[d.situacao], tom: d.situacao === "FECHADA" ? "ok" : d.situacao === "CALCULADA" ? "neutro" : "alerta" }],
     dados, historico,
     competencia: f.competencia, situacao: d.situacao, calculoVivoId: d.vivo?.id ?? null,

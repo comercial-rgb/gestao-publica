@@ -1,4 +1,5 @@
 import { baixarGuiaDeRecolhimento, cancelarGuiaDeRecolhimento, guiasEObrigacoesDaFolha, registrarGuiaDeRecolhimento, type ObrigacaoDoGrupo } from "../../../modules/m33-folha/recolhimento.js";
+import { sumMoney } from "../../../packages/contracts/index.js";
 import { formatarMoeda } from "../../format/moeda";
 import type { DocumentoPdf, SecaoPdf } from "../../pdf/documento";
 import { nomeDoEnteParaDocumentos } from "../../pdf/ente.js";
@@ -14,6 +15,11 @@ import { comEscritaAutenticada } from "../sessao";
  * vencimento. A guia real é o ARQUIVO do emissor, anexado ao cadastro.
  */
 export type ObrigacoesLidas = readonly (ObrigacaoDoGrupo & { readonly pagamentosDisponiveis: readonly { readonly valor: string; readonly rotulo: string }[] })[];
+
+/** Os totais do mapa para o painel da competência — somados em Decimal, nunca em ponto flutuante. */
+export function totaisDasObrigacoes(o: ObrigacoesLidas): { readonly liquidado: string; readonly pago: string } {
+  return { liquidado: sumMoney(o.map((g) => g.liquidado)).toFixed(2), pago: sumMoney(o.map((g) => g.pago)).toFixed(2) };
+}
 
 export async function lerObrigacoesDaFolha(folhaId: string): Promise<ObrigacoesLidas> {
   const prisma = cliente();

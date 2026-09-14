@@ -53,6 +53,11 @@ export interface DetalheDeRecursoProps {
   readonly historico?: readonly LinhaDoHistorico[];
   /** Formulários de ação e de edição — montados pela página, com Server Actions. */
   readonly acoes?: React.ReactNode;
+  /**
+   * V7 M1 U5 — o RESUMO de trabalho logo abaixo do título (situação por dimensão, próxima ação). Montado
+   * pela página a partir das mesmas leituras e da mesma disponibilidade da barra; o molde só o posiciona.
+   */
+  readonly resumo?: React.ReactNode;
 }
 
 function valorFormatado(d: DadoDoDetalhe): React.ReactNode {
@@ -76,6 +81,7 @@ export function DetalheDeRecurso({
   anexos,
   historico,
   acoes,
+  resumo,
 }: DetalheDeRecursoProps): React.ReactElement {
   const disponiveis = ABAS_DO_MOLDE.filter((a) => def.abas.includes(a));
   const base = `${def.rota}/${id}`;
@@ -93,6 +99,8 @@ export function DetalheDeRecurso({
           ))}
         </div>
       ) : null}
+
+      {resumo}
 
       {/* ⚠️ `<nav>` COM LINKS, e o `aria-current` no ativo. Abas feitas de `<button>` sem
           href não são navegáveis por teclado entre páginas nem compartilháveis. */}
@@ -134,7 +142,7 @@ export function DetalheDeRecurso({
                     {valorFormatado(d)}
                   </dd>
                   {d.nota !== undefined ? (
-                    <dd className="mt-0.5 text-[11px] text-[color:var(--color-ink-2)]">{d.nota}</dd>
+                    <dd className="mt-0.5 text-[11px] [overflow-wrap:anywhere] text-[color:var(--color-ink-2)]">{d.nota}</dd>
                   ) : null}
                 </div>
               ))}

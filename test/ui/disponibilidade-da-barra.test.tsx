@@ -101,6 +101,27 @@ describe("a barra do molde por estado", () => {
     expect(container.textContent).toContain("não tem a permissão necessária para liquidar");
   });
 
+  it("V7 U5 — SEM PERMISSÃO fica num bloco só, NO FIM da barra, depois dos atos que a pessoa pode praticar", () => {
+    const { container } = montar(POR_ESTADO, ["CERTIFICAR_FOLHA"], DISP);
+    const bloco = container.querySelector("[data-acoes-sem-permissao]");
+    expect(bloco?.querySelectorAll("li").length).toBe(1);
+    expect(bloco?.textContent).toContain("Você não tem a permissão necessária para liquidar.");
+    // O formulário disponível vem ANTES do bloco de sem-permissão na ordem do documento.
+    const form = container.querySelector('form[data-acao="devolver"]') as Element;
+    expect(form.compareDocumentPosition(bloco as Element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("V7 U5 — ÍNDICE DOS ATOS com três ou mais atos: âncoras para cada ato, travado dito como travado; com menos, sem índice", () => {
+    const tresAtos: DisponibilidadeDoRegistro = { versao: "v", porAcao: { certificar: { apresentacao: "disponivel" }, liquidar: { apresentacao: "bloqueada", motivo: "x" }, devolver: { apresentacao: "disponivel" } } };
+    const { container } = montar(POR_ESTADO, ["CERTIFICAR_FOLHA", "LIQUIDAR_FOLHA"], tresAtos);
+    const links = Array.from(container.querySelectorAll("[data-indice-dos-atos] a")).map((a) => `${a.getAttribute("href")}|${a.textContent}`);
+    expect(links).toEqual(["#ato-certificar|Certificar", "#ato-liquidar|Liquidar(travado)", "#ato-devolver|Devolver"]);
+    for (const alvo of ["ato-certificar", "ato-liquidar", "ato-devolver"]) expect(container.querySelector(`#${alvo}`)).not.toBeNull();
+    cleanup();
+    const { container: c2 } = montar(POR_ESTADO, ["CERTIFICAR_FOLHA", "LIQUIDAR_FOLHA"], DISP);
+    expect(c2.querySelector("[data-indice-dos-atos]")).toBeNull();
+  });
+
   it("CONSULTA FALHOU (null): tudo TRAVADO com motivo — nenhuma ação é liberada por fallback", () => {
     const { container } = montar(POR_ESTADO, ["CERTIFICAR_FOLHA", "LIQUIDAR_FOLHA"], null);
     expect(container.querySelectorAll("form").length).toBe(0);

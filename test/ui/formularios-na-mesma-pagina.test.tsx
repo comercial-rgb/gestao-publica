@@ -243,7 +243,10 @@ describe("dois formulários na mesma página — identidade de campo e de form",
             }
             // `id="algo"` em JSX. `data-*`, `aria-*` e `htmlFor` não entram: o primeiro não
             // é identidade de documento e os outros dois são cobertos pelos testes acima.
-            if (/(?<![-\w])id="[^"{]+"/.test(linha)) {
+            // V7 M1 U5 — A ÂNCORA DE SEÇÃO É OUTRA COISA: um alvo de `#salto` numa PÁGINA, renderizado uma vez,
+            // declarado com `data-ancora`. Ela não é campo e não tem `<label for>`; a exceção é por MARCA no
+            // elemento (e só em `page.tsx`), não por arquivo — um campo com id literal continua acusado.
+            if (/(?<![-\w])id="[^"{]+"/.test(linha) && !(rel.endsWith("/page.tsx") && /\bdata-ancora\b/.test(linha))) {
               achados.push(`${rel}:${i + 1}  ${linha.trim().slice(0, 90)}`);
             }
           });

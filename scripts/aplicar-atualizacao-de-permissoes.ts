@@ -16,6 +16,7 @@ import { AREA_DA_ACAO } from "../lib/portas/navegacao-permissoes.js";
  *
  * Uso:
  *   npm run permissoes:atualizar -- 1        aplica a versão 1
+ *   npm run permissoes:atualizar -- pendentes  aplica, em ordem, só as versões ainda não aplicadas
  *   npm run permissoes:atualizar             só mostra a situação (nada grava)
  */
 const url = process.env["DATABASE_URL"];
@@ -35,8 +36,6 @@ try {
     );
   }
   if (versaoBruta !== undefined) {
-    const versao = Number.parseInt(versaoBruta, 10);
-    if (!Number.isInteger(versao)) throw new Error(`Versão ilegível: "${versaoBruta}".`);
     const quem = (process.env["SEED_IDENTIDADE"] ?? "").trim();
     if (quem === "") {
       throw new Error(
@@ -44,8 +43,23 @@ try {
           "precisa de autor — a permissão fica gravada com o nome de quem a concedeu. Nada foi gravado."
       );
     }
-    const r = await aplicarAtualizacaoDePermissoes(prisma, { versao, criadoPor: quem, areaDaAcao: AREA_DA_ACAO });
-    console.log(`\nv${versao} APLICADA por ${quem}: ${r.concessoes} concessão(ões) em ${r.perfisAlcancados} perfil(is).`);
+    // V7 M1 U6 — `pendentes`: o provisionamento/upgrade aplica, em ordem, SÓ as versões ainda não
+    // aplicadas. Versão já aplicada é estado reconhecido (pulada e registrada), não instalação quebrada.
+    const versoes =
+      versaoBruta === "pendentes"
+        ? situacao.filter((s) => s.aplicadaEm === null).map((s) => s.versao)
+        : [Number.parseInt(versaoBruta, 10)];
+    if (versoes.some((v) => !Number.isInteger(v))) throw new Error(`Versão ilegível: "${versaoBruta}".`);
+    if (versaoBruta === "pendentes" && versoes.length === 0) console.log("\nNenhuma atualização pendente: todas as versões conhecidas já estão aplicadas nesta instalação.");
+    for (const versao of versoes) {
+      const ja = situacao.find((s) => s.versao === versao && s.aplicadaEm !== null);
+      if (ja !== undefined) {
+        console.log(`\nv${versao} JÁ APLICADA em ${ja.aplicadaEm?.toISOString()} por ${ja.aplicadaPor}: nada a conceder de novo (estado reconhecido).`);
+        continue;
+      }
+      const r = await aplicarAtualizacaoDePermissoes(prisma, { versao, criadoPor: quem, areaDaAcao: AREA_DA_ACAO });
+      console.log(`\nv${versao} APLICADA por ${quem}: ${r.concessoes} concessão(ões) em ${r.perfisAlcancados} perfil(is).`);
+    }
   }
 } finally {
   await prisma.$disconnect();

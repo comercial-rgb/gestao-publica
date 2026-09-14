@@ -186,18 +186,27 @@ export function FormsDoRecurso({
 
   // ⚠️ SEM PERMISSÃO, NENHUM MOTIVO DE ESTADO: quem não pode praticar o ato não precisa saber por
   // que ele não caberia — e o motivo pode carregar dado do registro.
+  // V7 M1 U5 — o que o perfil NÃO pode fazer vira UM bloco compacto no fim da barra (uma frase por
+  // ato, a mesma de antes), em vez de uma faixa por ato entre os formulários que a pessoa usa.
   const naoAplicaveis: { readonly acao: AcaoDoMolde; readonly disp: DisponibilidadeDaAcao }[] = [];
+  const semPermissao: AcaoDoMolde[] = [];
+  const indice: { readonly acao: AcaoDoMolde; readonly apresentacao: DisponibilidadeDaAcao["apresentacao"] }[] = [];
   const renderizadas = new Set<string>();
   const barra = d.acoes.map((a) => {
-    if (!pode.has(a.acaoDoCenso)) return <SemPermissao key={a.nome} o_que={a.rotulo.toLowerCase()} />;
+    if (!pode.has(a.acaoDoCenso)) {
+      semPermissao.push(a);
+      return null;
+    }
     const disp = disponibilidadeDe(d, a, disponibilidade);
     if (disp.apresentacao === "nao-aplicavel") {
       naoAplicaveis.push({ acao: a, disp });
       return null;
     }
-    if (disp.apresentacao !== "disponivel") return <AcaoIndisponivel key={a.nome} acao={a} disp={disp} />;
+    indice.push({ acao: a, apresentacao: disp.apresentacao });
+    if (disp.apresentacao !== "disponivel") return <div key={a.nome} id={`ato-${a.nome}`} className="scroll-mt-24"><AcaoIndisponivel acao={a} disp={disp} /></div>;
     renderizadas.add(a.nome);
     return (
+      <div key={a.nome} id={`ato-${a.nome}`} className="scroll-mt-24">
       <FormularioDeRecurso
         key={a.nome}
         acao={a.nome}
@@ -213,6 +222,7 @@ export function FormsDoRecurso({
         {...(a.aviso !== undefined ? { aviso: a.aviso } : {})}
         {...(a.irreversivel === true ? { irreversivel: true } : {})}
       />
+      </div>
     );
   });
   const rotuloDoUltimo = ultimo === null ? "" : (d.acoes.find((a) => a.nome === ultimo.acao)?.rotulo ?? ultimo.acao);
@@ -230,7 +240,35 @@ export function FormsDoRecurso({
           </p>
         )
       ) : null}
+      {indice.length >= 3 ? (
+        // O ÍNDICE DOS ATOS: com três ou mais atos na barra, a pessoa vê de uma vez o que pode fazer (e o
+        // que está travado) e salta para o formulário, em vez de rolar por todos. Âncoras, sem estado.
+        <nav aria-label="Atos deste registro" data-indice-dos-atos className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-4 py-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">Atos deste registro</h2>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {indice.map(({ acao, apresentacao }) => (
+              <li key={acao.nome}>
+                <a href={`#ato-${acao.nome}`} className="inline-flex min-h-9 items-center gap-2 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-3 text-xs text-[color:var(--color-ink)] hover:border-[color:var(--color-primary)]">
+                  {acao.rotulo}
+                  {apresentacao !== "disponivel" ? <span className="text-[color:var(--color-ink-3)]">({apresentacao === "em-processamento" ? "em processamento" : "travado"})</span> : null}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      ) : null}
       {barra}
+      {semPermissao.length > 0 ? (
+        <div data-acoes-sem-permissao className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] px-4 py-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">Fora do seu perfil</h2>
+          <ul className="mt-2 space-y-1">
+            {semPermissao.map((a) => (
+              <li key={a.nome} className="text-xs text-[color:var(--color-ink-2)]">Você não tem a permissão necessária para {a.rotulo.toLowerCase()}.</li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-[color:var(--color-ink-3)]">Peça ao administrador do sistema — a concessão é por ação, e é registrada.</p>
+        </div>
+      ) : null}
       {naoAplicaveis.length > 0 ? (
         <div data-acoes-nao-aplicaveis className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] px-4 py-3">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">Atos que não cabem mais neste registro</h2>

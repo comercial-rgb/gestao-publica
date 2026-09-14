@@ -29,6 +29,26 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
     <div className="space-y-4">
       <PageHeader titulo={`Solicitação ${s.protocolo}`} subtitulo={`${s.servico} (versão ${s.versao}) · em nome de ${s.titular}${s.viaRepresentacao ? " por representação" : ""}`} acoes={<Link href="/meus-servicos" className="text-sm text-[color:var(--color-primary)] underline">Minhas solicitações</Link>} />
 
+      {/* V7 M1 U5 — O QUE FALTA, no topo: a providência que cabe ao requerente agora, com o salto para o
+          formulário. As condições são as mesmas que decidem se cada formulário aparece abaixo. */}
+      <section aria-label="O que falta" data-o-que-falta className="rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-4 shadow-[var(--shadow-card)]">
+        <h2 className="text-sm font-semibold">O que falta</h2>
+        {(() => {
+          const passos: { readonly texto: string; readonly href: string }[] = [];
+          if (permitidas.has("SOLICITAR_SERVICO") && pendente !== undefined && s.podeResponder.pode) passos.push({ texto: "Responder a exigência do setor", href: "#exigencias" });
+          if (permitidas.has("SOLICITAR_SERVICO") && s.podeAnexar && pendente !== undefined) passos.push({ texto: "Enviar o documento pedido", href: "#enviar-documento" });
+          if (permitidas.has("SOLICITAR_SERVICO") && avaliacao !== null && avaliacao.escala !== null && avaliacao.ultima === null) passos.push({ texto: "Avaliar o atendimento (opcional)", href: "#avaliacao" });
+          if (passos.length === 0) {
+            return <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">{s.decisao !== null ? "Nada a fazer por você: a solicitação foi decidida." : "Nada a fazer por você agora: a solicitação está com o setor responsável. Você será avisado se houver exigência."}</p>;
+          }
+          return (
+            <ul className="mt-2 flex flex-wrap gap-2">
+              {passos.map((p) => <li key={p.href}><a href={p.href} className="inline-flex min-h-11 items-center rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-4 text-sm font-semibold text-[color:var(--color-primary-fg)]">{p.texto}</a></li>)}
+            </ul>
+          );
+        })()}
+      </section>
+
       <Card>
         <p className="text-sm" data-situacao-do-requerente={s.situacao}><strong>Situação:</strong> {s.rotuloDaSituacao}</p>
         <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">
@@ -43,6 +63,7 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
       </Card>
 
       {s.decisao !== null ? (
+        <div id="avaliacao" data-ancora className="scroll-mt-24">
         <Card>
           <h2 className="mb-1 text-sm font-semibold">Avalie o atendimento</h2>
           {avaliacao?.escala === null || avaliacao === null ? (
@@ -58,9 +79,11 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
             </>
           )}
         </Card>
+        </div>
       ) : null}
 
       {s.exigencias.length > 0 ? (
+        <div id="exigencias" data-ancora className="scroll-mt-24">
         <Card>
           <h2 className="mb-2 text-sm font-semibold">Exigências</h2>
           <ul className="space-y-3" data-exigencias>
@@ -73,8 +96,10 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
             ))}
           </ul>
         </Card>
+        </div>
       ) : null}
 
+      {permitidas.has("SOLICITAR_SERVICO") && s.podeAnexar ? <div id="enviar-documento" data-ancora className="scroll-mt-24" /> : null}
       {permitidas.has("SOLICITAR_SERVICO") && s.podeAnexar ? <FormDocumentoDoRequerente solicitacaoId={s.id} accept={ACEITE_DO_DOCUMENTO} tamanhoMaximoBytes={TETO_DO_DOCUMENTO} /> : null}
       {permitidas.has("SOLICITAR_SERVICO") ? <FormResponderExigencia solicitacaoId={s.id} pendente={pendente !== undefined} motivo={s.podeResponder.pode ? null : s.podeResponder.motivo} /> : null}
 
