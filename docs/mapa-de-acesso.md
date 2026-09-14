@@ -10,7 +10,7 @@ o guard `leitura-exige-acao` cobra. `SEM-PORTAO-DECLARADO` é achado, não lacun
 Este mapa **não** diz quais CAMPOS cada rota expõe: projeção pública por allowlist de campos é
 frente própria (`PROJECAO-PUBLICA-POR-CAMPO`), e afirmá-la aqui seria inventar cobertura.
 
-Rotas encontradas: **202** (180 páginas, 22 rotas HTTP).
+Rotas encontradas: **220** (195 páginas, 25 rotas HTTP).
 
 ## Resumo por categoria
 
@@ -20,14 +20,16 @@ Rotas encontradas: **202** (180 páginas, 22 rotas HTTP).
 | OPERADOR:CONSULTAR_RELATORIOS (ente) | 23 |
 | LANDING (só navegação; o menu é recortado no servidor) | 19 |
 | OPERADOR:CONSULTAR_LICITACOES | 16 |
-| OPERADOR:CONSULTAR_FOLHA | 13 |
+| OPERADOR:CONSULTAR_FOLHA | 15 |
 | OPERADOR:CONSULTAR_DESPESA (por unidade) | 9 |
-| OPERADOR:CONSULTAR_PLANEJAMENTO | 7 |
-| PUBLICA | 6 |
+| OPERADOR:CONSULTAR_PLANEJAMENTO | 9 |
+| PUBLICA | 8 |
 | OPERADOR:CONSULTAR_DIVIDA | 6 |
 | OPERADOR:CONSULTAR_FINANCEIRO (ente) | 6 |
 | OPERADOR:CONSULTAR_INTEGRACOES (ente) | 6 |
+| TITULAR | 6 |
 | OPERADOR:CONSULTAR_PESSOAL | 6 |
+| OPERADOR:CONSULTAR_PROTOCOLO (algum escopo) | 6 |
 | OPERADOR:CONSULTAR_PLANEJAMENTO (ente) | 5 |
 | POR-REGISTRO-DONO | 4 |
 | OPERADOR:CONSULTAR_TRANSFERENCIAS | 4 |
@@ -37,16 +39,17 @@ Rotas encontradas: **202** (180 páginas, 22 rotas HTTP).
 | OPERADOR:CONSULTAR_RECEITA (ente) | 3 |
 | OPERADOR:CONSULTAR_ADMINISTRACAO (ente) | 2 |
 | OPERADOR:CONSULTAR_CADASTROS (ente) | 2 |
+| OPERADOR:CONSULTAR_CADASTROS | 2 |
 | OPERADOR:CONSULTAR_COMUNICACAO (algum escopo) | 2 |
 | OPERADOR:CONSULTAR_CONTABILIDADE (por unidade) | 2 |
 | OPERADOR:CONSULTAR_CONTROLE_INTERNO | 2 |
 | OPERADOR:CONSULTAR_PLANEJAMENTO (por unidade) | 2 |
-| TITULAR | 2 |
-| OPERADOR:CONSULTAR_PROTOCOLO (algum escopo) | 2 |
 | OPERADOR:CONSULTAR_SUPORTE (algum escopo) | 2 |
 | MESA (cada bloco pergunta se pode, e some se não) | 1 |
 | AUTOSSERVICO DA PROPRIA CONTA | 1 |
 | OPERADOR:CONSULTAR_DESPESA (algum escopo) | 1 |
+| OPERADOR:CONSULTAR_FOLHA (ente) | 1 |
+| OPERADOR:leitura do catálogo pedido (algum escopo) | 1 |
 | OPERADOR:CONSULTAR_PATRIMONIO (algum escopo) | 1 |
 
 ## As rotas PÚBLICAS — o que um visitante sem sessão alcança
@@ -57,6 +60,8 @@ Rotas encontradas: **202** (180 páginas, 22 rotas HTTP).
 | `/fumaca` | `app/fumaca/page.tsx` |
 | `/identidade/imagem` | `app/identidade/imagem/route.ts` |
 | `/login` | `app/login/page.tsx` |
+| `/servicos` | `app/servicos/page.tsx` |
+| `/servicos/[slug]` | `app/servicos/[slug]/page.tsx` |
 | `/transparencia/demonstrativos` | `app/transparencia/demonstrativos/page.tsx` |
 | `/transparencia/demonstrativos/pdf` | `app/transparencia/demonstrativos/pdf/route.ts` |
 
@@ -75,6 +80,8 @@ Rotas encontradas: **202** (180 páginas, 22 rotas HTTP).
 | `/cadastros` | pagina | LANDING (só navegação; o menu é recortado no servidor) |
 | `/cadastros/pessoas` | pagina | OPERADOR:CONSULTAR_CADASTROS (ente) |
 | `/cadastros/pessoas/[id]` | pagina | OPERADOR:CONSULTAR_CADASTROS (ente) |
+| `/cadastros/representacoes` | pagina | OPERADOR:CONSULTAR_CADASTROS |
+| `/cadastros/representacoes/[id]` | pagina | OPERADOR:CONSULTAR_CADASTROS |
 | `/comunicacao` | pagina | LANDING (só navegação; o menu é recortado no servidor) |
 | `/comunicacao/comunicados` | pagina | OPERADOR:CONSULTAR_COMUNICACAO (algum escopo) |
 | `/comunicacao/comunicados/[id]` | pagina | OPERADOR:CONSULTAR_COMUNICACAO (algum escopo) |
@@ -117,9 +124,12 @@ Rotas encontradas: **202** (180 páginas, 22 rotas HTTP).
 | `/folha` | pagina | LANDING (só navegação; o menu é recortado no servidor) |
 | `/folha/designacoes` | pagina | OPERADOR:CONSULTAR_FOLHA |
 | `/folha/designacoes/[id]` | pagina | OPERADOR:CONSULTAR_FOLHA |
+| `/folha/encargos` | pagina | OPERADOR:CONSULTAR_FOLHA |
+| `/folha/encargos/[id]` | pagina | OPERADOR:CONSULTAR_FOLHA |
 | `/folha/folhas` | pagina | OPERADOR:CONSULTAR_FOLHA |
 | `/folha/folhas/[id]` | pagina | OPERADOR:CONSULTAR_FOLHA |
 | `/folha/folhas/[id]/contracheque/[vinculoId]` | pagina | OPERADOR:CONSULTAR_FOLHA |
+| `/folha/folhas/[id]/resumo` | rota-http | OPERADOR:CONSULTAR_FOLHA (ente) |
 | `/folha/grupos-de-empenho` | pagina | OPERADOR:CONSULTAR_FOLHA |
 | `/folha/grupos-de-empenho/[id]` | pagina | OPERADOR:CONSULTAR_FOLHA |
 | `/folha/lancamentos` | pagina | OPERADOR:CONSULTAR_FOLHA |
@@ -154,6 +164,11 @@ Rotas encontradas: **202** (180 páginas, 22 rotas HTTP).
 | `/licitacoes/solicitacoes` | pagina | OPERADOR:CONSULTAR_LICITACOES |
 | `/licitacoes/solicitacoes/[id]` | pagina | OPERADOR:CONSULTAR_LICITACOES |
 | `/login` | pagina | PUBLICA |
+| `/meus-servicos` | pagina | TITULAR |
+| `/meus-servicos/[id]` | pagina | TITULAR |
+| `/meus-servicos/[id]/documentos/[anexo]` | rota-http | TITULAR |
+| `/meus-servicos/solicitar/[slug]` | pagina | TITULAR |
+| `/opcoes/[catalogo]` | rota-http | OPERADOR:leitura do catálogo pedido (algum escopo) |
 | `/patrimonio` | pagina | LANDING (só navegação; o menu é recortado no servidor) |
 | `/patrimonio/almoxarifado/classes` | pagina | OPERADOR:CONSULTAR_PATRIMONIO |
 | `/patrimonio/almoxarifado/classes/[id]` | pagina | OPERADOR:CONSULTAR_PATRIMONIO |
@@ -209,6 +224,8 @@ Rotas encontradas: **202** (180 páginas, 22 rotas HTTP).
 | `/planejamento/cmd-mba/pdf` | rota-http | OPERADOR:CONSULTAR_PLANEJAMENTO (ente) |
 | `/planejamento/creditos-adicionais` | pagina | OPERADOR:CONSULTAR_PLANEJAMENTO (por unidade) |
 | `/planejamento/creditos-adicionais/decreto` | rota-http | OPERADOR:CONSULTAR_PLANEJAMENTO (ente) |
+| `/planejamento/fichas` | pagina | OPERADOR:CONSULTAR_PLANEJAMENTO |
+| `/planejamento/fichas/[id]` | pagina | OPERADOR:CONSULTAR_PLANEJAMENTO |
 | `/planejamento/ldo` | pagina | OPERADOR:CONSULTAR_PLANEJAMENTO |
 | `/planejamento/ldo/[id]` | pagina | OPERADOR:CONSULTAR_PLANEJAMENTO |
 | `/planejamento/ldo/[id]/anexos/[anexo]` | rota-http | OPERADOR:CONSULTAR_PLANEJAMENTO (ente) |
@@ -224,6 +241,10 @@ Rotas encontradas: **202** (180 páginas, 22 rotas HTTP).
 | `/protocolo` | pagina | LANDING (só navegação; o menu é recortado no servidor) |
 | `/protocolo/processos` | pagina | OPERADOR:CONSULTAR_PROTOCOLO (algum escopo) |
 | `/protocolo/processos/[id]` | pagina | OPERADOR:CONSULTAR_PROTOCOLO (algum escopo) |
+| `/protocolo/servicos` | pagina | OPERADOR:CONSULTAR_PROTOCOLO (algum escopo) |
+| `/protocolo/servicos/[id]` | pagina | OPERADOR:CONSULTAR_PROTOCOLO (algum escopo) |
+| `/protocolo/solicitacoes` | pagina | OPERADOR:CONSULTAR_PROTOCOLO (algum escopo) |
+| `/protocolo/solicitacoes/[id]` | pagina | OPERADOR:CONSULTAR_PROTOCOLO (algum escopo) |
 | `/receita` | pagina | LANDING (só navegação; o menu é recortado no servidor) |
 | `/receita/arrecadacoes` | pagina | OPERADOR:CONSULTAR_RECEITA (ente) |
 | `/receita/arrecadacoes/guia` | rota-http | OPERADOR:CONSULTAR_RECEITA (ente) |
@@ -255,6 +276,8 @@ Rotas encontradas: **202** (180 páginas, 22 rotas HTTP).
 | `/relatorios/rreo/anexo7` | pagina | OPERADOR:CONSULTAR_RELATORIOS (ente) |
 | `/relatorios/rreo/anexo8` | pagina | OPERADOR:CONSULTAR_RELATORIOS (ente) |
 | `/sem-acesso` | pagina | POR-REGISTRO-DONO |
+| `/servicos` | pagina | PUBLICA |
+| `/servicos/[slug]` | pagina | PUBLICA |
 | `/suporte` | pagina | LANDING (só navegação; o menu é recortado no servidor) |
 | `/suporte/chamados` | pagina | OPERADOR:CONSULTAR_SUPORTE (algum escopo) |
 | `/suporte/chamados/[id]` | pagina | OPERADOR:CONSULTAR_SUPORTE (algum escopo) |

@@ -12,8 +12,9 @@ import { join, relative, sep } from "node:path";
  *
  * ⚠️ E ELE NÃO INVENTA CATEGORIA. Cada rota cai numa destas, pelo que o arquivo diz:
  *   · PUBLICA          — fora de `(areas)`, sem portão; qualquer visitante alcança;
- *   · TITULAR          — portão `CONSULTAR_PORTAL_DO_SERVIDOR`: a porta recorta pela PESSOA da
- *                        sessão, e nenhuma função dela recebe id de servidor ou de vínculo;
+ *   · TITULAR          — portão `CONSULTAR_PORTAL_DO_SERVIDOR` ou `CONSULTAR_MEUS_SERVICOS` (V6.2 P3):
+ *                        a porta recorta pela PESSOA da sessão (e, nos serviços, pelas representações
+ *                        vigentes hoje); nenhuma função dela recebe id de pessoa;
  *   · OPERADOR:<ACAO>  — portão de leitura por ação nomeada;
  *   · SEM-PORTAO-DECLARADO — dentro de `(areas)` e sem chamada literal. É ACHADO, não omissão do
  *                        script: ou a página tem o portão noutro lugar (e o guard reprova), ou ela
@@ -54,13 +55,15 @@ function rotaDe(arquivo: string): string {
   return `/${partes.join("/")}`.replace(/\/$/, "") || "/";
 }
 
+const DO_TITULAR = new Set(["CONSULTAR_PORTAL_DO_SERVIDOR", "CONSULTAR_MEUS_SERVICOS"]);
+
 function categoriaDe(arquivo: string, fonte: string): string {
   const leitura = /exigirLeitura\(\s*"([A-Z_]+)"/.exec(fonte);
   if (leitura !== null) {
-    return leitura[1] === "CONSULTAR_PORTAL_DO_SERVIDOR" ? "TITULAR" : `OPERADOR:${leitura[1] as string}`;
+    return DO_TITULAR.has(leitura[1] as string) ? "TITULAR" : `OPERADOR:${leitura[1] as string}`;
   }
   const doEnte = /telaExigeLeituraDoEnte\(\s*"([A-Z_]+)"/.exec(fonte);
-  if (doEnte !== null) return doEnte[1] === "CONSULTAR_PORTAL_DO_SERVIDOR" ? "TITULAR" : `OPERADOR:${doEnte[1] as string} (ente)`;
+  if (doEnte !== null) return DO_TITULAR.has(doEnte[1] as string) ? "TITULAR" : `OPERADOR:${doEnte[1] as string} (ente)`;
   const algum = /exigirLeituraEmAlgumEscopo\(\s*"([A-Z_]+)"/.exec(fonte);
   if (algum !== null) return `OPERADOR:${algum[1] as string} (algum escopo)`;
   // ⚠️ AQUI A AÇÃO É O SEGUNDO ARGUMENTO — `recorteDePagina(sp, "CONSULTAR_X")`. A primeira
@@ -75,7 +78,7 @@ function categoriaDe(arquivo: string, fonte: string): string {
   const exercicio = /exercicioAutorizado\([\s\S]{0,240}?"([A-Z_]+)"/.exec(fonte);
   if (exercicio !== null) return `OPERADOR:${exercicio[1] as string} (ente)`;
   const doEnteDireto = /exigirLeituraDoEnte\(\s*"([A-Z_]+)"/.exec(fonte);
-  if (doEnteDireto !== null) return `OPERADOR:${doEnteDireto[1] as string} (ente)`;
+  if (doEnteDireto !== null) return DO_TITULAR.has(doEnteDireto[1] as string) ? "TITULAR" : `OPERADOR:${doEnteDireto[1] as string} (ente)`;
   const emAlgum = /telaExigeLeituraEmAlgumEscopo\(\s*"([A-Z_]+)"/.exec(fonte);
   if (emAlgum !== null) return `OPERADOR:${emAlgum[1] as string} (algum escopo)`;
   // ⚠️ AUTORIZAÇÃO PELO REGISTRO DONO — o download de anexo não tem ação de ÁREA: quem manda é a
@@ -85,6 +88,10 @@ function categoriaDe(arquivo: string, fonte: string): string {
   // A porta é que resolve a autorização pelo REGISTRO, e a página só a chama: `lerDossieDoEmpenho`
   // (M05) devolve `EscopoDeLeituraError` quando a unidade do empenho não é a do usuário.
   if (/lerDossieDoEmpenho|EscopoDeLeituraError/.test(fonte) && /lib\/portas\//.test(fonte)) return "POR-REGISTRO-DONO";
+  // ⚠️ O SELETOR REFERENCIADO (V6.2) cobra a leitura DO CATÁLOGO pedido — a ação sai de
+  // `leituraDoCatalogo(catalogo)` e vai a `exigirLeituraEmAlgumEscopoPara` antes de ler parâmetro.
+  // A ação é variável, e por isso as regex de ação literal acima não a veem.
+  if (/leituraDoCatalogo\(/.test(fonte) && /exigirLeituraEmAlgumEscopoPara\(/.test(fonte)) return "OPERADOR:leitura do catálogo pedido (algum escopo)";
   const naoAutorizado = /recorteNaoAutorizado\(/.test(fonte);
   if (naoAutorizado) return "RECORTE-NAO-AUTORIZADO (declarado)";
   // ⚠️ A MESA PERGUNTA ANTES DE MOSTRAR. `temLeituraDoEnte` não recusa: ele responde "pode?" por
