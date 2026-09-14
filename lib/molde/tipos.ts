@@ -37,7 +37,9 @@ export type TipoDeCampoDoMolde =
   | "data"
   | "selecao"
   | "booleano"
-  | "cpfCnpj";
+  | "cpfCnpj"
+  /** V6.2 — seletor com pesquisa no servidor, paginado e recortado pela sessão (`CampoReferenciado`). */
+  | "referencia";
 
 export interface OpcaoDoMolde {
   readonly valor: string;
@@ -56,6 +58,10 @@ export interface CampoDoMolde {
   readonly largura?: 1 | 2 | 3 | 4;
   /** Só para `selecao`. Vazio ⇒ o campo aparece desabilitado dizendo o motivo. */
   readonly opcoes?: readonly OpcaoDoMolde[];
+  /** Só para `referencia`: o catálogo de `lib/portas/opcoes-referenciadas.ts`. */
+  readonly catalogo?: string;
+  /** Só para `referencia`: campos do mesmo formulário que entram na consulta e disparam revalidação. */
+  readonly contexto?: readonly string[];
   /** Só para `inteiro`. */
   readonly minimo?: number;
   readonly maximo?: number;
@@ -344,6 +350,12 @@ export function verificarDefinicao(d: DefinicaoDeRecurso): readonly string[] {
       e.push(`o campo "${campo.nome}" declara opções e não é de seleção`);
     }
     if (campo.rotulo.trim() === "") e.push(`o campo "${campo.nome}" está sem rótulo`);
+    if (campo.tipo === "referencia" && (campo.catalogo === undefined || campo.catalogo.trim() === "")) {
+      e.push(`o campo "${campo.nome}" é referência e não diz de qual catálogo vêm as opções`);
+    }
+    if (campo.tipo !== "referencia" && (campo.catalogo !== undefined || campo.contexto !== undefined)) {
+      e.push(`o campo "${campo.nome}" declara catálogo/contexto e não é referência`);
+    }
   }
 
   const nomesDeAcao = new Set<string>();

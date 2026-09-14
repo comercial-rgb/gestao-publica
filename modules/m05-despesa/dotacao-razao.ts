@@ -1,3 +1,4 @@
+import { toMoney } from "../../packages/contracts/index.js";
 import { randomUUID } from "node:crypto";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import type { TipoMovimentoDotacao } from "./dominio.js";
@@ -130,6 +131,18 @@ export async function registrarMovimentoDotacao(
   });
 
   if (!LANCA_PELO_ROTEIRO_ORCAMENTARIO[p.tipo]) {
+    return { movimentoId: mov.id };
+  }
+
+  // ⚠️ V6.2 — A DOTAÇÃO INICIAL ZERO NÃO TEM PERNA NO RAZÃO.
+  // A ficha criada DURANTE a execução nasce sem crédito: a dotação dela vem por crédito adicional
+  // especial (Lei 4.320, arts. 41, II, e 42), com lei e decreto, e é ESSE movimento que lança. O
+  // movimento zero existe para preservar a invariante "ficha ⇒ exatamente uma DOTACAO_INICIAL"
+  // (`uq_dotacao_inicial_unica`); duas partidas de valor zero não são fato contábil, só ruído no
+  // balancete. A exceção é SÓ deste tipo — `test/ficha-pela-tela.test.ts` conta as partidas de um
+  // crédito adicional zero para provar que ela não se alargou. ⚠️ MEDIDO: o funil do razão não recusa
+  // partida zero (a validação de valor mora nos chamadores); pendência `MOVIMENTO-DE-DOTACAO-ZERO-NO-RAZAO`.
+  if (p.tipo === "DOTACAO_INICIAL" && toMoney(p.valor).isZero()) {
     return { movimentoId: mov.id };
   }
 

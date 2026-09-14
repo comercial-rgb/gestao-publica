@@ -1,5 +1,5 @@
 import type { Tx } from "./autorizacao.js";
-import type { AcaoDeLeitura } from "./acoes.js";
+import type { AcaoDeLeitura, AcaoDoSistema } from "./acoes.js";
 
 /**
  * M16 — O ESCOPO DE UMA AÇÃO DE LEITURA (orquestração V3, 4.1).
@@ -35,7 +35,12 @@ export interface EscopoDaAcaoDeLeitura {
 export async function escopoDaAcaoDeLeitura(
   tx: Tx,
   identificador: string,
-  acao: AcaoDeLeitura
+  /**
+   * V6.2 — aceita também ação de ESCRITA: o seletor da UO de uma ficha nova pergunta "onde ele tem
+   * CRIAR_FICHA?", e a resposta é a mesma consulta à mesma tabela. Uma segunda função com o mesmo
+   * corpo seria a segunda régua que o cabeçalho deste arquivo proíbe.
+   */
+  acao: AcaoDeLeitura | AcaoDoSistema
 ): Promise<EscopoDaAcaoDeLeitura> {
   const usuario = await tx.usuario.findUnique({
     where: { identificador },

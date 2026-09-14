@@ -2,6 +2,7 @@
 
 import { useActionState, useId, useRef } from "react";
 import { ChaveDeComando } from "../ui/ChaveDeComando";
+import { CampoReferenciado } from "../ui/CampoReferenciado";
 import {
   CampoCpfCnpj,
   CampoNumero,
@@ -89,6 +90,19 @@ function Campo({
   } as const;
 
   switch (campo.tipo) {
+    case "referencia":
+      return (
+        <CampoReferenciado
+          name={campo.nome}
+          rotulo={campo.rotulo}
+          catalogo={campo.catalogo ?? ""}
+          largura={campo.largura ?? 2}
+          {...(campo.obrigatorio === true ? { obrigatorio: true } : {})}
+          {...(campo.ajuda !== undefined ? { ajuda: campo.ajuda } : {})}
+          {...(campo.placeholder !== undefined ? { placeholder: campo.placeholder } : {})}
+          {...(campo.contexto !== undefined ? { contexto: campo.contexto } : {})}
+        />
+      );
     case "textoLongo":
       return <CampoTextarea {...comum} />;
     case "inteiro":

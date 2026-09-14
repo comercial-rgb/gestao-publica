@@ -62,6 +62,8 @@
     "test/ui/acoes-despachadas.test.ts",
     "test/ui/chave-de-comando.test.ts",
     "test/ui/descritores-consistentes.test.ts",
+    // V6.2 — importa `lib/portas/opcoes-referenciadas` (resolução bundler); mesma troca medida acima.
+    "test/ficha-pela-tela.test.ts",
     "app/**/*.ts",
     "app/**/*.tsx",
     "components/**/*.ts",
