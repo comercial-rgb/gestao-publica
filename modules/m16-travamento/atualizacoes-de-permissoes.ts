@@ -368,6 +368,40 @@ export function derivarApropriacaoDaFolha(
   }
   return saida;
 }
+/**
+ * A REGRA DA v13 (V6.1): o atesto da folha e a sua liquidação.
+ *
+ * ⚠️ ELA CONCEDE **UMA** DAS TRÊS AÇÕES, e a omissão é a regra, não o esquecimento.
+ * `DESIGNAR_NA_FOLHA` é ato de ADMINISTRAÇÃO — quem já administra permissões no global passa a
+ * poder cadastrar quem o ente designou para atestar, com o ato e a vigência. Já `CERTIFICAR_FOLHA`
+ * e `LIQUIDAR_FOLHA` são justamente os atos que a segregação separa: espalhá-los pelo perfil
+ * administrador faria a instalação nascer com quem prepara podendo certificar, e com quem
+ * certifica podendo liquidar — o oposto do que esta entrega existe para representar. Quem
+ * administra as concede, aos perfis que o ente definir, com o ato administrativo na mão.
+ *
+ * ⚠️ E O CRACHÁ SOZINHO NÃO CERTIFICA: o serviço exige, além da ação, uma DESIGNAÇÃO vigente no
+ * dia do ato para aquele usuário. Conceder `CERTIFICAR_FOLHA` a alguém sem designação não lhe dá
+ * poder nenhum — ele continua sendo recusado, nomeando o que falta.
+ */
+export const ACOES_DO_ATESTO_DA_FOLHA: readonly AcaoDoSistema[] = ["DESIGNAR_NA_FOLHA"];
+/** As DUAS que a v13 deliberadamente NÃO concede — a segregação por padrão. */
+export const ACOES_SEGREGADAS_DA_FOLHA: readonly AcaoDoSistema[] = ["CERTIFICAR_FOLHA", "LIQUIDAR_FOLHA"];
+export function derivarAtestoDaFolha(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null);
+    if (!administra) continue;
+    const jaTem = new Set(perfil.permissoes.filter((p) => p.unidadeOrcId === null).map((p) => p.acao));
+    for (const acao of ACOES_DO_ATESTO_DA_FOLHA) {
+      if (jaTem.has(acao)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
 export function derivarFolha(
   perfis: readonly PerfilComPermissoes[],
   _areaDaAcao: AreaDaAcao
@@ -518,6 +552,17 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "concede acao a perfil no escopo global as recebe; quem APROPRIA precisa tambem de EMPENHAR, e essa concessao " +
       "continua sendo decisao do administrador — o M05 exige a sua acao em cada empenho.",
     derivar: derivarApropriacaoDaFolha,
+  },
+  {
+    versao: 13,
+    nome: "atesto-da-folha",
+    descricao:
+      "O atesto da folha e a sua liquidacao (V6.1) chegaram com DESIGNAR_NA_FOLHA, CERTIFICAR_FOLHA e LIQUIDAR_FOLHA. " +
+      "Esta atualizacao concede SO a primeira, a quem ja administra permissoes no global: designar e ato de " +
+      "administracao. CERTIFICAR_FOLHA e LIQUIDAR_FOLHA sao os atos que a segregacao separa — conceder os tres ao mesmo " +
+      "perfil faria a instalacao nascer com quem prepara podendo certificar. E o cracha sozinho nao certifica: o servico " +
+      "exige tambem uma designacao vigente no dia do ato, com o ato administrativo do ente.",
+    derivar: derivarAtestoDaFolha,
   },
 ];
 

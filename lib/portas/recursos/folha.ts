@@ -203,7 +203,8 @@ export const GRUPOS_DE_EMPENHO_DA_FOLHA: DefinicaoDeRecurso = definirRecurso({
   descricao:
     "Como a folha vira despesa: quais rubricas de PROVENTO cada grupo empenha, em qual ficha, com qual categoria da ordem " +
     "cronológica, e se o empenho é por servidor (credor = o CPF de cada um) ou um só para o grupo (credor declarado). " +
-    "Uma rubrica pertence a um grupo só — em dois, a mesma verba viraria despesa duas vezes.",
+    "Uma rubrica pertence a um grupo só — em dois, a mesma verba viraria despesa duas vezes. O grupo também declara as " +
+    "duas contas patrimoniais da liquidação: a VPD de pessoal que ela debita e a obrigação de pessoal que ela credita.",
   campos: [
     { nome: "codigo", rotulo: "Código", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "FOLHA-VENC" },
     { nome: "descricao", rotulo: "Descrição (vai no histórico do empenho)", tipo: "texto", obrigatorio: true, largura: 3 },
@@ -218,6 +219,11 @@ export const GRUPOS_DE_EMPENHO_DA_FOLHA: DefinicaoDeRecurso = definirRecurso({
     ] },
     { nome: "porServidor", rotulo: "Um empenho por servidor (credor = o CPF de cada um)", tipo: "booleano", largura: 2 },
     { nome: "credorId", rotulo: "Credor do empenho único (só quando NÃO é por servidor)", tipo: "selecao", largura: 3, opcoes: [] },
+    // ⚠️ AS DUAS CONTAS DA LIQUIDAÇÃO. O rol elemento→conta do plano cobre material, serviço e
+    // amortização — não a folha —, e a VPD dele é de serviços de terceiros. Quem sabe qual conta
+    // é qual é o contador do ente. O recorte (3.1 e 2.1.1, analíticas) é do descritor.
+    { nome: "contaVariacaoId", rotulo: "VPD que a liquidação debita (3.1 — pessoal)", tipo: "selecao", obrigatorio: true, largura: 3, opcoes: [] },
+    { nome: "contaObrigacaoId", rotulo: "Obrigação que a liquidação credita (2.1.1 — pessoal a pagar)", tipo: "selecao", obrigatorio: true, largura: 3, opcoes: [] },
   ],
   colunas: [
     { nome: "codigo", cabecalho: "Código", tipo: "link", ordenavel: true },

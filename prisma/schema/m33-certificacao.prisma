@@ -1,0 +1,170 @@
+// ============================================================================
+// M33 — A CERTIFICAÇÃO (ATESTO) DA FOLHA E A SUA LIQUIDAÇÃO (V6.1 §3; TR 5.12.63-73)
+//
+// A apropriação EMPENHA. Liquidar é ato PRÓPRIO, e a Lei 4.320 (arts. 62-63) diz o que ele
+// exige: a verificação do direito adquirido pelo credor, com base nos títulos e documentos
+// COMPROBATÓRIOS. Na despesa de fornecimento, o título é a nota fiscal conferida. Na folha,
+// NÃO EXISTE nota fiscal — o título é a folha FECHADA e a CERTIFICAÇÃO de quem o ente designou
+// para atestá-la.
+//
+// ⚠️ E O ENTE É QUEM DESIGNA. Nenhuma lei nacional nomeia "o diretor de RH" como atestador da
+// folha: isso é ato administrativo do município (portaria, decreto, delegação). Por isso não
+// há cargo embutido no código — há uma DESIGNAÇÃO cadastrada, com o ato que a fundamenta, a
+// vigência e a pessoa. Sem designação vigente, o ato de certificar RECUSA e diz o que falta;
+// consultar, calcular e fechar continuam livres.
+//
+// ⚠️ A SEGREGAÇÃO É O PADRÃO, não o enfeite: preparar (calcular/fechar), certificar, liquidar
+// e pagar são quatro atos de quatro sujeitos. O serviço RECUSA a autocertificação e a
+// autoliquidação nomeando quem fez o quê. Uma eventual concentração autorizada num ente
+// pequeno é decisão dele, fundamentada e registrada — não um atalho silencioso daqui.
+// ============================================================================
+
+/// A atribuição que a designação confere. ROL — e ele importa: quem certifica a folha não é
+/// automaticamente quem certifica os encargos patronais (que são obrigação do ENTE, não
+/// remuneração do servidor), e uma atribuição só serve ao ato que a nomeia.
+enum AtribuicaoNaFolha {
+  /// Atestar que a folha fechada corresponde ao que os servidores têm direito a receber.
+  CERTIFICAR_FOLHA
+}
+
+/// A DESIGNAÇÃO — quem o ente pôs para certificar, por qual ato, de quando até quando.
+///
+/// ⚠️ PESSOA **E** USUÁRIO, e os dois conferidos: a `Pessoa` é quem responde (é ela que vai no
+/// documento e no histórico); o `Usuario` é quem entra no sistema. Designar um usuário que não
+/// É aquela pessoa — pelo `VinculoUsuarioPessoa`, explícito e auditável — deixaria o atesto
+/// assinado por um nome e praticado por outro. O serviço exige o vínculo vigente.
+model DesignacaoNaFolha {
+  id String @id @default(cuid())
+
+  atribuicao AtribuicaoNaFolha
+
+  pessoaId String
+  pessoa   Pessoa @relation("DesignadoNaFolha", fields: [pessoaId], references: [id])
+
+  usuarioId String
+  usuario   Usuario @relation("DesignacaoNaFolha", fields: [usuarioId], references: [id])
+
+  /// O ato que designou: "Portaria 45/2026", "Decreto 12/2026, art. 3º". TEXTO DO ENTE — o
+  /// sistema não inventa fundamento, e um campo vazio aqui seria um atesto sem lastro.
+  atoDesignacao String
+
+  /// ⚠️ DATAS CIVIS do ente. "Havia designação vigente no dia do atesto?" é a pergunta que o
+  /// controle interno faz, e é ela que decide se aquela certificação valia.
+  vigenciaInicio DateTime
+  vigenciaFim    DateTime?
+
+  /// O titular de quem esta designação é SUBSTITUTA, quando for o caso. Nulo = designação
+  /// própria. O substituto certifica com o seu próprio nome e o seu próprio ato — não
+  /// "em nome de", o que apagaria quem praticou.
+  substitutoDeId String?
+  substitutoDe   DesignacaoNaFolha?  @relation("SubstitutoNaFolha", fields: [substitutoDeId], references: [id])
+  substitutos    DesignacaoNaFolha[] @relation("SubstitutoNaFolha")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  revogacao     RevogacaoDeDesignacao?
+  certificacoes CertificacaoDaFolha[]
+
+  @@index([atribuicao, vigenciaInicio])
+  @@index([usuarioId])
+  @@index([pessoaId])
+}
+
+/// A REVOGAÇÃO — fato próprio, nunca UPDATE na designação.
+///
+/// ⚠️ APPEND-ONLY POR MOTIVO MEDIDO: apagar a vigência reescreveria o passado. A certificação
+/// de março foi praticada sob a designação que valia em março; revogar em maio não pode fazer
+/// o atesto de março passar a não ter lastro. A vigência é DERIVADA (início ≤ dia ≤ fim, e sem
+/// revogação com efeito até o dia), como o regime previdenciário do vínculo no M32.
+model RevogacaoDeDesignacao {
+  id String @id @default(cuid())
+
+  designacaoId String            @unique
+  designacao   DesignacaoNaFolha @relation(fields: [designacaoId], references: [id])
+
+  /// O dia civil a partir do qual a designação deixa de valer.
+  dataEfeito DateTime
+  motivo     String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// Certificar é atestar; devolver é recusar com motivo. Os dois são FATOS na mesma trilha — o
+/// estado atual é o ÚLTIMO fato daquele cálculo, derivado, nunca uma coluna `situacao`.
+enum TipoDeCertificacao {
+  CERTIFICACAO
+  DEVOLUCAO
+}
+
+/// A CERTIFICAÇÃO DA FOLHA — o atesto, com o seu manifesto e a sua impressão digital.
+///
+/// ⚠️ ELA SE PRENDE AO `calculoId`, não à folha. Certificar é dizer "conferi ESTES servidores,
+/// com ESTES valores". Um cálculo novo é outro objeto: a certificação anterior não o alcança,
+/// e é o schema que garante isso — não um aviso na tela.
+///
+/// ⚠️ O MANIFESTO é o que foi conferido, em forma canônica, com o sha256 do conjunto: entidade,
+/// competência, tipo, número e sha do cálculo, vínculos, totais e as fichas por grupo. Ele é a
+/// evidência de que a certificação não mudou de objeto no meio do caminho.
+model CertificacaoDaFolha {
+  id String @id @default(cuid())
+
+  folhaId String
+  folha   FolhaDePagamento @relation(fields: [folhaId], references: [id])
+
+  calculoId String
+  calculo   CalculoDaFolha @relation(fields: [calculoId], references: [id])
+
+  designacaoId String
+  designacao   DesignacaoNaFolha @relation(fields: [designacaoId], references: [id])
+
+  tipo TipoDeCertificacao
+
+  /// Obrigatório na DEVOLUÇÃO (o CHECK impõe): devolver sem dizer o quê é devolver nada.
+  motivo String?
+
+  /// O que foi certificado, canônico, e o seu sha256.
+  manifesto Json
+  sha256    String @db.VarChar(64)
+
+  vinculos       Int
+  totalProventos Decimal @db.Decimal(18, 2)
+  totalDescontos Decimal @db.Decimal(18, 2)
+  totalLiquido   Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  liquidacoes LiquidacaoDaFolha[]
+
+  @@index([folhaId, criadoEm])
+  @@index([calculoId, criadoEm])
+}
+
+/// O ELO entre o empenho da folha e a liquidação do M05.
+///
+/// ⚠️ O `@@unique` NO EMPENHO É A IDEMPOTÊNCIA REAL. A numeração determinística ajuda a
+/// reconhecer o que já existe, mas quem IMPEDE a segunda liquidação do mesmo empenho é esta
+/// constraint mais o `@@unique([empenhoId, numero])` do M05 — duas execuções concorrentes
+/// batem no banco, não na leitura.
+model LiquidacaoDaFolha {
+  id String @id @default(cuid())
+
+  empenhoDaFolhaId String         @unique
+  empenhoDaFolha   EmpenhoDaFolha @relation(fields: [empenhoDaFolhaId], references: [id])
+
+  /// A certificação que lastreou o ato — o "título e documento comprobatório" do art. 63.
+  certificacaoId String
+  certificacao   CertificacaoDaFolha @relation(fields: [certificacaoId], references: [id])
+
+  liquidacaoId String      @unique
+  liquidacao   Liquidacao  @relation(fields: [liquidacaoId], references: [id])
+
+  valor Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([certificacaoId])
+}

@@ -70,6 +70,9 @@ async function semear(): Promise<void> {
       { id: "c-emp", codigo: "6.2.2.1.3.01.00", nome: "Crédito empenhado a liquidar", naturezaSaldo: "CREDORA", nivel: 5, analitica: true },
       { id: "c-ddr", codigo: "8.2.1.1.1.00.00", nome: "DDR disponível", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: true },
       { id: "c-ddr-emp", codigo: "8.2.1.1.2.01.00", nome: "DDR comprometida por empenho", naturezaSaldo: "CREDORA", nivel: 5, analitica: true },
+      // V6.1 — as duas contas patrimoniais que o GRUPO declara para a sua liquidação.
+      { id: "c-vpd-pessoal", codigo: "3.1.1.1.1.01.00", nome: "Vencimentos e vantagens fixas - pessoal civil", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: true },
+      { id: "c-pessoal-pagar", codigo: "2.1.1.1.1.01.01", nome: "Salarios, remuneracoes e beneficios", naturezaSaldo: "CREDORA", nivel: 5, analitica: true },
     ],
   });
   await prisma.orgao.create({ data: { id: "org-01", codigo: "01", nome: "Prefeitura" } });
@@ -123,7 +126,7 @@ async function grupoPorServidor(fichaId = FICHA): Promise<string> {
     await cadastrarGrupoDeEmpenhoDaFolha(prisma, {
       codigo: "FOLHA-VENC", descricao: "Vencimentos e vantagens fixas", fichaId,
       categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FP",
-      porServidor: true, rubricaIds: [rubricaVenc, rubricaGrat], criadoPor: POR,
+      porServidor: true, contaVariacaoId: "c-vpd-pessoal", contaObrigacaoId: "c-pessoal-pagar", rubricaIds: [rubricaVenc, rubricaGrat], criadoPor: POR,
     })
   ).grupoId;
 }
@@ -133,7 +136,7 @@ beforeEach(semear);
 describe("(1) o cadastro do grupo — o que ele recusa, e por quê", () => {
   it("recusa rubrica de DESCONTO: desconto é retenção do pagamento, não despesa orçamentária", async () => {
     await expect(
-      cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "X", descricao: "Errado", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FP", porServidor: true, rubricaIds: [rubricaVenc, rubricaPrev], criadoPor: POR })
+      cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "X", descricao: "Errado", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FP", porServidor: true, contaVariacaoId: "c-vpd-pessoal", contaObrigacaoId: "c-pessoal-pagar", rubricaIds: [rubricaVenc, rubricaPrev], criadoPor: POR })
     ).rejects.toThrow(/RUBRICA-DE-DESCONTO-NO-GRUPO: PREV/);
     expect(await prisma.grupoDeEmpenhoDaFolha.count()).toBe(0);
   });
@@ -141,16 +144,16 @@ describe("(1) o cadastro do grupo — o que ele recusa, e por quê", () => {
   it("recusa a rubrica que JÁ está em outro grupo, nomeando o grupo — em dois, a verba viraria despesa duas vezes", async () => {
     await grupoPorServidor();
     await expect(
-      cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "OUTRO", descricao: "Outro", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FQ", porServidor: true, rubricaIds: [rubricaVenc], criadoPor: POR })
+      cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "OUTRO", descricao: "Outro", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FQ", porServidor: true, contaVariacaoId: "c-vpd-pessoal", contaObrigacaoId: "c-pessoal-pagar", rubricaIds: [rubricaVenc], criadoPor: POR })
     ).rejects.toThrow(/RUBRICA-JA-EM-OUTRO-GRUPO: VENC \(no grupo FOLHA-VENC\)/);
   });
 
   it("empenho único EXIGE credor, e empenho por servidor o PROÍBE — ignorar em silêncio seria pior", async () => {
     await expect(
-      cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "U", descricao: "Único sem credor", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "GLOBAL", serie: "FU", porServidor: false, rubricaIds: [rubricaVenc], criadoPor: POR })
+      cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "U", descricao: "Único sem credor", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "GLOBAL", serie: "FU", porServidor: false, contaVariacaoId: "c-vpd-pessoal", contaObrigacaoId: "c-pessoal-pagar", rubricaIds: [rubricaVenc], criadoPor: POR })
     ).rejects.toThrow(/precisa de um credor declarado/);
     await expect(
-      cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "S", descricao: "Por servidor com credor", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FS", porServidor: true, credorId, rubricaIds: [rubricaVenc], criadoPor: POR })
+      cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "S", descricao: "Por servidor com credor", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FS", porServidor: true, credorId, contaVariacaoId: "c-vpd-pessoal", contaObrigacaoId: "c-pessoal-pagar", rubricaIds: [rubricaVenc], criadoPor: POR })
     ).rejects.toThrow(/o credor é o CPF de cada servidor/);
   });
 
@@ -159,7 +162,7 @@ describe("(1) o cadastro do grupo — o que ele recusa, e por quê", () => {
     await expect(
       // ⚠️ A ENTRADA É VÁLIDA DE PROPÓSITO: com `descricao: "Z"` quem recusaria seria o Zod, e o
       // teste passaria sem nunca ter exercitado a permissão — verde por outro motivo.
-      cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "Z", descricao: "Grupo do estagiario", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FZ", porServidor: true, rubricaIds: [rubricaVenc], criadoPor: SEM_PODER })
+      cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "Z", descricao: "Grupo do estagiario", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FZ", porServidor: true, contaVariacaoId: "c-vpd-pessoal", contaObrigacaoId: "c-pessoal-pagar", rubricaIds: [rubricaVenc], criadoPor: SEM_PODER })
     ).rejects.toThrow(/CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA/);
     expect(await prisma.grupoDeEmpenhoDaFolha.count()).toBe(0);
   });
@@ -183,7 +186,7 @@ describe("(2) apropriar — a folha fechada vira despesa", () => {
   it("⚠️ empenha o BRUTO, um por servidor, com o CPF de cada um e o número determinístico", async () => {
     await fecharFolha(prisma, { folhaId, criadoPor: POR });
     const grupo = await grupoPorServidor();
-    await cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "FOLHA-HEXT", descricao: "Horas extras", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FH", porServidor: true, rubricaIds: [rubricaHext], criadoPor: POR });
+    await cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "FOLHA-HEXT", descricao: "Horas extras", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FH", porServidor: true, contaVariacaoId: "c-vpd-pessoal", contaObrigacaoId: "c-pessoal-pagar", rubricaIds: [rubricaHext], criadoPor: POR });
 
     const r = await apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: POR });
     expect(r.empenhados).toBe(3); // VENC de A e de B, HEXT de A
@@ -215,7 +218,7 @@ describe("(2) apropriar — a folha fechada vira despesa", () => {
   it("⚠️ REEXECUTAR NÃO DUPLICA: a numeração determinística reconhece os que já existem", async () => {
     await fecharFolha(prisma, { folhaId, criadoPor: POR });
     await grupoPorServidor();
-    await cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "FOLHA-HEXT", descricao: "Horas extras", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FH", porServidor: true, rubricaIds: [rubricaHext], criadoPor: POR });
+    await cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "FOLHA-HEXT", descricao: "Horas extras", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FH", porServidor: true, contaVariacaoId: "c-vpd-pessoal", contaObrigacaoId: "c-pessoal-pagar", rubricaIds: [rubricaHext], criadoPor: POR });
     const primeira = await apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: POR });
     const segunda = await apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: POR });
     expect(primeira.empenhados).toBe(3);
@@ -230,7 +233,7 @@ describe("(2) apropriar — a folha fechada vira despesa", () => {
 
   it("grupo de empenho ÚNICO: um empenho para todos, com o credor declarado e a soma dos proventos", async () => {
     await fecharFolha(prisma, { folhaId, criadoPor: POR });
-    await cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "FOLHA-UNICA", descricao: "Folha do mês", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "GLOBAL", serie: "FG", porServidor: false, credorId, rubricaIds: [rubricaVenc, rubricaGrat, rubricaHext], criadoPor: POR });
+    await cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "FOLHA-UNICA", descricao: "Folha do mês", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "GLOBAL", serie: "FG", porServidor: false, credorId, contaVariacaoId: "c-vpd-pessoal", contaObrigacaoId: "c-pessoal-pagar", rubricaIds: [rubricaVenc, rubricaGrat, rubricaHext], criadoPor: POR });
     const r = await apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: POR });
     expect(r.empenhados).toBe(1);
     const e = await prisma.empenho.findFirstOrThrow({ select: { numero: true, valor: true, credorCpfCnpj: true, tipo: true } });
@@ -243,8 +246,8 @@ describe("(2) apropriar — a folha fechada vira despesa", () => {
   it("⚠️ SEM SALDO: a apropriação para, DIZ onde parou, e os empenhos que já deram certo continuam", async () => {
     await fecharFolha(prisma, { folhaId, criadoPor: POR });
     // A ficha minguada tem 100,00 — o primeiro empenho (MAT-A, 3.000) já não cabe.
-    await cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "FOLHA-VENC", descricao: "Vencimentos", fichaId: FICHA_MINGUADA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FP", porServidor: true, rubricaIds: [rubricaVenc, rubricaGrat], criadoPor: POR });
-    await cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "A-HEXT", descricao: "Horas extras", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FH", porServidor: true, rubricaIds: [rubricaHext], criadoPor: POR });
+    await cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "FOLHA-VENC", descricao: "Vencimentos", fichaId: FICHA_MINGUADA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FP", porServidor: true, contaVariacaoId: "c-vpd-pessoal", contaObrigacaoId: "c-pessoal-pagar", rubricaIds: [rubricaVenc, rubricaGrat], criadoPor: POR });
+    await cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "A-HEXT", descricao: "Horas extras", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FH", porServidor: true, contaVariacaoId: "c-vpd-pessoal", contaObrigacaoId: "c-pessoal-pagar", rubricaIds: [rubricaHext], criadoPor: POR });
 
     const erro = await apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: POR }).catch((e: unknown) => e);
     expect(erro).toBeInstanceOf(ApropriacaoInterrompidaError);
@@ -272,7 +275,7 @@ describe("(2) apropriar — a folha fechada vira despesa", () => {
 
   it("o total apropriado é o BRUTO da folha, e não o líquido — a diferença é a retenção", async () => {
     await fecharFolha(prisma, { folhaId, criadoPor: POR });
-    await cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "FOLHA-UNICA", descricao: "Folha do mês", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "GLOBAL", serie: "FG", porServidor: false, credorId, rubricaIds: [rubricaVenc, rubricaGrat, rubricaHext], criadoPor: POR });
+    await cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "FOLHA-UNICA", descricao: "Folha do mês", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "GLOBAL", serie: "FG", porServidor: false, credorId, contaVariacaoId: "c-vpd-pessoal", contaObrigacaoId: "c-pessoal-pagar", rubricaIds: [rubricaVenc, rubricaGrat, rubricaHext], criadoPor: POR });
     const r = await apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: POR });
     const calculo = await prisma.calculoDaFolha.findFirstOrThrow({ where: { folhaId }, select: { totalProventos: true, totalLiquido: true } });
     expect(r.total.toFixed(2)).toBe(toMoney(calculo.totalProventos).toFixed(2));

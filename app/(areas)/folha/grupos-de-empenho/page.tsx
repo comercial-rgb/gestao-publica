@@ -39,7 +39,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
         selecionados={consulta.selecionados}
         somaDaSelecao={somarSelecionadas(pagina.linhas, consulta.selecionados, GRUPOS_DE_EMPENHO_DA_FOLHA.colunas.filter((c) => c.somavel === true).map((c) => c.nome))}
         {...(podeCriar
-          ? { formulario: <FormGrupoDeEmpenho fichas={(opcoes["fichaId"] ?? []).map((o) => ({ id: o.valor, rotulo: o.rotulo }))} credores={(opcoes["credorId"] ?? []).map((o) => ({ id: o.valor, rotulo: o.rotulo }))} rubricas={rubricas} /> }
+          ? { formulario: <FormGrupoDeEmpenho fichas={(opcoes["fichaId"] ?? []).map((o) => ({ id: o.valor, rotulo: o.rotulo }))} credores={(opcoes["credorId"] ?? []).map((o) => ({ id: o.valor, rotulo: o.rotulo }))} rubricas={rubricas} contasDeVariacao={(opcoes["contaVariacaoId"] ?? []).map((o) => ({ id: o.valor, rotulo: o.rotulo }))} contasDeObrigacao={(opcoes["contaObrigacaoId"] ?? []).map((o) => ({ id: o.valor, rotulo: o.rotulo }))} /> }
           : { motivoSemCriar: "Você não tem a permissão CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA. Peça ao administrador — a concessão é por ação, e é registrada." })}
       />
     );

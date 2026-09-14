@@ -444,6 +444,15 @@ enum AcaoDoSistema {
   APROPRIAR_FOLHA
   CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA
 
+  // V6.1 — a certificação (atesto) da folha e a sua liquidação. TRÊS ações, porque são TRÊS
+  // sujeitos: quem administra as designações do ente, quem certifica (e só com designação
+  // vigente) e quem liquida (que precisa TAMBÉM de LIQUIDAR, exigida pelo M05 na unidade da
+  // ficha). Concentrá-las num crachá só apagaria a segregação que o ato de liquidar existe para
+  // representar.
+  DESIGNAR_NA_FOLHA
+  CERTIFICAR_FOLHA
+  LIQUIDAR_FOLHA
+
   // V6 P2.4 — o portal do servidor: a leitura do PRÓPRIO vínculo e dos PRÓPRIOS contracheques.
   // Não abre a folha do ente: a porta recorta pela pessoa da sessão.
   CONSULTAR_PORTAL_DO_SERVIDOR
@@ -498,6 +507,9 @@ model Usuario {
 
   /// V3 (pacote 2) — back-relation VIRTUAL: os vínculos deste usuário com uma pessoa.
   vinculosDePessoa VinculoUsuarioPessoa[]
+
+  /// V6.1 — back-relation VIRTUAL: as designações de certificação da folha deste usuário.
+  designacoesNaFolha DesignacaoNaFolha[] @relation("DesignacaoNaFolha")
 
   @@index([ativo])
 }

@@ -214,6 +214,11 @@ const TABELAS = [
   "ContratoTrabalho",
   "AvaliacaoExperiencia",
   // M33 folha (V6 P2.3) — filhas antes das mães
+  // V6.1 — a certificação (atesto) e a liquidação da folha
+  "LiquidacaoDaFolha",
+  "CertificacaoDaFolha",
+  "RevogacaoDeDesignacao",
+  "DesignacaoNaFolha",
   "EmpenhoDaFolha",
   "ApropriacaoDaFolha",
   "RubricaDoGrupoDeEmpenho",

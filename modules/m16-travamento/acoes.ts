@@ -305,6 +305,10 @@ export type AcaoDoSistema =
   | "REGISTRAR_AVALIACAO_EXPERIENCIA"
   // V6 P2.3 — M33 folha de pagamento
   | "APROPRIAR_FOLHA"
+  // V6.1 — o atesto da folha e a sua liquidação: designar, certificar, liquidar.
+  | "DESIGNAR_NA_FOLHA"
+  | "CERTIFICAR_FOLHA"
+  | "LIQUIDAR_FOLHA"
   | "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA"
   | "CONFIGURAR_TABELAS_DA_FOLHA"
   | "CADASTRAR_RUBRICA"
@@ -731,6 +735,12 @@ export type NomeDeServico =
   | "calcularFolha"
   | "cancelarCalculoDaFolha"
   | "fecharFolha"
+  // M33 — a certificação (atesto) da folha e a sua liquidação (V6.1)
+  | "designarNaFolha"
+  | "revogarDesignacaoNaFolha"
+  | "certificarFolha"
+  | "devolverFolhaParaCorrecao"
+  | "liquidarFolha"
   // ── M02b — planejamento plurianual (V4 §8) ──
   | "criarPlanoPlurianual"
   | "criarEixoEstruturante"
@@ -1122,6 +1132,17 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   cancelarCalculoDaFolha: "CANCELAR_CALCULO_DA_FOLHA",
   fecharFolha: "FECHAR_FOLHA",
 
+  // V6.1 — o atesto da folha e a sua liquidação. TRÊS crachás para CINCO serviços, porque são
+  // três PODERES: administrar as designações do ente (criar e revogar é o mesmo poder — quem põe
+  // tira), certificar (que inclui devolver para correção: recusar é o outro lado de atestar) e
+  // liquidar. Quem liquida precisa TAMBÉM de LIQUIDAR, exigida pelo M05 na unidade da ficha,
+  // dentro da transação de cada liquidação — LIQUIDAR_FOLHA não é atalho para liquidar.
+  designarNaFolha: "DESIGNAR_NA_FOLHA",
+  revogarDesignacaoNaFolha: "DESIGNAR_NA_FOLHA",
+  certificarFolha: "CERTIFICAR_FOLHA",
+  devolverFolhaParaCorrecao: "CERTIFICAR_FOLHA",
+  liquidarFolha: "LIQUIDAR_FOLHA",
+
   // ── M02b — planejamento plurianual (V4 §8): 20 serviços, 10 ações, pelos anexos da LRF ──
   criarPlanoPlurianual: "CADASTRAR_PPA",
   // A árvore temática (eixo, área, público-alvo, macroação) é UM ato: montar a estrutura do plano.
@@ -1304,6 +1325,20 @@ export const ACOES_DE_ADMINISTRACAO: readonly AcaoDoSistema[] = [
  * grep-teste lê esta lista — nada sai do censo por descuido.
  */
 export const FORA_DO_CENSO: Record<string, string> = {
+  // ── V6.1 — o atesto da folha e a sua liquidação ──
+  parcelasDoCalculo:
+    "LEITURA e AGRUPAMENTO puro de banco: diz quem empenha o quê, em qual ficha, por quem. É a ÚNICA verdade " +
+    "do agrupamento — a apropriação empenha parcela a parcela e a certificação soma por grupo, para que o atesto " +
+    "não descreva uma distribuição e a despesa faça outra. Não muta nada.",
+  objetoParaCertificar:
+    "LEITURA: monta o manifesto do que se vai certificar (entidade, competência, cálculo, vínculos, alocações) e o " +
+    "seu sha256. A tela usa a MESMA função para MOSTRAR o que será atestado. Quem grava o fato é `certificarFolha`.",
+  certificacaoDaFolha:
+    "LEITURA: a trilha do atesto (certificações e devoluções) e a situação DERIVADA do último fato daquele cálculo.",
+  liquidacaoDaFolha:
+    "LEITURA: separa empenho liquidado de empenho pendente, para que a folha pela metade nunca apareça como liquidada.",
+  designacoesNaFolha:
+    "LEITURA: as designações do ente com a vigência DERIVADA (início, fim e revogação) no dia perguntado.",
   // ── V6 P2.3b — a apropriação contábil da folha ──
   apropriacaoDaFolha:
     "LEITURA: devolve os empenhos que a folha gerou (o elo competência × despesa) para o detalhe da folha. " +

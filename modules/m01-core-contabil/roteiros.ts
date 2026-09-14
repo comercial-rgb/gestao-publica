@@ -256,6 +256,53 @@ export function roteiroLiquidacao(p: {
 }
 
 /**
+ * LIQUIDAÇÃO DA FOLHA (M33, V6.1) — as MESMAS seis pernas, com o par PATRIMONIAL declarado.
+ *
+ * ⚠️ POR QUE ELA EXISTE, e por que não é `roteiroLiquidacao` com um elemento a mais no rol.
+ * `contrapartidaDaLiquidacao` responde "a despesa incorrida virou o quê?" por ELEMENTO, e o rol
+ * cobre 30, 39 e 71. O elemento 11 (vencimentos e vantagens fixas) não está lá, e a conta que o
+ * rol chama de VPD é `3.3.2.1.1.01.00` — VPD de SERVIÇOS DE TERCEIROS. Acrescentar "11" apontando
+ * para ela lançaria a remuneração dos servidores como serviço contratado, e o lançamento
+ * FECHARIA: ΣD = ΣC em cada subsistema, e ninguém veria.
+ *
+ * ⚠️ E UM MAPA POR ELEMENTO NÃO RESOLVERIA NEM COM A CONTA CERTA: vencimento, 13º e férias
+ * dividem o elemento e creditam contas de "pessoal a pagar" distintas no PCASP. O par certo é
+ * decisão do ENTE, por grupo de empenho — e é de lá que ele vem (`GrupoDeEmpenhoDaFolha`),
+ * fail-closed. Aqui só o ORÇAMENTÁRIO e o CONTROLE permanecem canônicos, porque esses NÃO variam:
+ * a DDR tem de sair de "comprometida por empenho" para "comprometida por liquidação", ou o
+ * pagamento debitaria um comprometido que nunca foi creditado.
+ */
+export function roteiroLiquidacaoDaFolha(p: {
+  readonly variacaoDiminutiva: string;
+  readonly obrigacaoAPagar: string;
+}): RoteiroContabil {
+  return [
+    { conta: p.variacaoDiminutiva, tipo: "DEBITO", subsistema: "PATRIMONIAL" },
+    { conta: p.obrigacaoAPagar, tipo: "CREDITO", subsistema: "PATRIMONIAL" },
+    {
+      conta: CONTA_CREDITO_EMPENHADO_A_LIQUIDAR,
+      tipo: "DEBITO",
+      subsistema: "ORCAMENTARIO",
+    },
+    {
+      conta: CONTA_CREDITO_LIQUIDADO_A_PAGAR,
+      tipo: "CREDITO",
+      subsistema: "ORCAMENTARIO",
+    },
+    {
+      conta: CONTA_DDR_COMPROMETIDA_EMPENHO,
+      tipo: "DEBITO",
+      subsistema: "CONTROLE",
+    },
+    {
+      conta: CONTA_DDR_COMPROMETIDA_LIQUIDACAO,
+      tipo: "CREDITO",
+      subsistema: "CONTROLE",
+    },
+  ];
+}
+
+/**
  * PAGAMENTO — a obrigação é extinta e o dinheiro sai do caixa.
  *
  * PATRIMONIAL:  D obrigação a pagar          / C disponibilidade

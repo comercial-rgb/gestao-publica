@@ -31,7 +31,13 @@ export interface RubricaDaIlha extends OpcaoDaIlha {
  * faria o operador procurar o que não some da lista dele; oferecê-la faria o servidor recusar
  * depois de preencher tudo.
  */
-export function FormGrupoDeEmpenho({ fichas, credores, rubricas }: { readonly fichas: readonly OpcaoDaIlha[]; readonly credores: readonly OpcaoDaIlha[]; readonly rubricas: readonly RubricaDaIlha[] }): React.ReactElement {
+export function FormGrupoDeEmpenho({ fichas, credores, rubricas, contasDeVariacao, contasDeObrigacao }: {
+  readonly fichas: readonly OpcaoDaIlha[];
+  readonly credores: readonly OpcaoDaIlha[];
+  readonly rubricas: readonly RubricaDaIlha[];
+  readonly contasDeVariacao: readonly OpcaoDaIlha[];
+  readonly contasDeObrigacao: readonly OpcaoDaIlha[];
+}): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDoGrupo, FormData>(criarGrupoAction, {});
   const ref = useRef<HTMLFormElement>(null);
   const [porServidor, setPorServidor] = useState<boolean>(true);
@@ -101,6 +107,36 @@ export function FormGrupoDeEmpenho({ fichas, credores, rubricas }: { readonly fi
           </label>
         )}
       </div>
+
+      <fieldset data-secao="contas" className="mt-4 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">
+        <legend className="px-1 text-xs font-semibold text-[color:var(--color-ink)]">Contas da liquidação deste grupo</legend>
+        <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
+          Quando a folha certificada for liquidada, a obrigação nasce nestas duas contas. O plano de contas mapeia
+          contrapartida por elemento para material, serviço e amortização — não para folha —, e a variação de serviços de
+          terceiros lançaria a remuneração dos servidores como serviço contratado. Quais contas usar é decisão do contador
+          do ente.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="text-xs text-[color:var(--color-ink-2)]">
+            <span className={ROTULO}>Variação patrimonial diminutiva (debitada)</span>
+            <select name="contaVariacaoId" required defaultValue="" className={CAMPO}>
+              <option value="">— escolha —</option>
+              {contasDeVariacao.map((c) => (
+                <option key={c.id} value={c.id}>{c.rotulo}</option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs text-[color:var(--color-ink-2)]">
+            <span className={ROTULO}>Obrigação de pessoal a pagar (creditada)</span>
+            <select name="contaObrigacaoId" required defaultValue="" className={CAMPO}>
+              <option value="">— escolha —</option>
+              {contasDeObrigacao.map((c) => (
+                <option key={c.id} value={c.id}>{c.rotulo}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </fieldset>
 
       <fieldset data-secao="rubricas" className="mt-4 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">
         <legend className="px-1 text-xs font-semibold text-[color:var(--color-ink)]">Rubricas de provento deste grupo</legend>

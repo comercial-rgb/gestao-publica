@@ -255,6 +255,9 @@ model FolhaDePagamento {
   fechamento  FechamentoDaFolha?
   apropriacao ApropriacaoDaFolha?
 
+  /// V6.1 — a trilha de certificação (atesto e devolução). Estado atual = último fato.
+  certificacoes CertificacaoDaFolha[]
+
   @@unique([competencia, tipo])
 }
 
@@ -280,6 +283,9 @@ model CalculoDaFolha {
 
   /// Versão do algoritmo que calculou (muda quando a lógica muda; o cálculo antigo continua reproduzível).
   versaoDoMotor String
+
+  /// V6.1 — as certificações DESTE cálculo. Certificar prende-se ao objeto conferido.
+  certificacoes CertificacaoDaFolha[]
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -427,6 +433,30 @@ model GrupoDeEmpenhoDaFolha {
   credorId String?
   credor   Pessoa? @relation("CredorDeGrupoDaFolha", fields: [credorId], references: [id])
 
+  // ── V6.1 — AS DUAS CONTAS PATRIMONIAIS DA LIQUIDAÇÃO, declaradas pelo ENTE ──
+  //
+  // ⚠️ E ELAS NÃO PODIAM VIR DO ROL DO M01. `contrapartidaDaLiquidacao` mapeia ELEMENTO → conta
+  // e cobre 30, 39 e 71 (pendência MAPA-ELEMENTO-CONTA); o elemento 11 — vencimentos e vantagens
+  // fixas — não está lá, e o `CONTA_VPD` do rol é `3.3.2.1.1.01.00`, VPD de SERVIÇOS DE
+  // TERCEIROS. Liquidar a folha por ele lançaria a remuneração dos servidores como serviço
+  // contratado, e o lançamento FECHARIA — ninguém veria.
+  //
+  // ⚠️ E UM MAPA GLOBAL POR ELEMENTO TAMBÉM NÃO SERVIRIA: 13º, férias e vencimento compartilham
+  // o elemento e creditam contas de "pessoal a pagar" DIFERENTES. Quem sabe é o grupo — que já é,
+  // exatamente, "quais rubricas, em qual ficha".
+  //
+  // ⚠️ NULLABLE NA COLUNA, OBRIGATÓRIAS NO CADASTRO E NO ATO. O NOT NULL invalidaria os grupos já
+  // gravados sem inventar conta para eles; o fail-closed vive na LIQUIDAÇÃO, que recusa nomeando
+  // o grupo e as duas contas que faltam.
+
+  /// A VPD que a liquidação DEBITA: a remuneração é riqueza que diminuiu (3.1.x no PCASP).
+  contaVariacaoId String?
+  contaVariacao   ContaPcasp? @relation("VariacaoDeGrupoDaFolha", fields: [contaVariacaoId], references: [id])
+
+  /// A obrigação que a liquidação CREDITA: pessoal a pagar (2.1.1.1.x no PCASP).
+  contaObrigacaoId String?
+  contaObrigacao   ContaPcasp? @relation("ObrigacaoDeGrupoDaFolha", fields: [contaObrigacaoId], references: [id])
+
   criadoEm  DateTime @default(now())
   criadoPor String
 
@@ -490,6 +520,9 @@ model EmpenhoDaFolha {
 
   criadoEm  DateTime @default(now())
   criadoPor String
+
+  /// V6.1 — a liquidação deste empenho, quando houver. UMA — o `@@unique` do outro lado.
+  liquidacaoDaFolha LiquidacaoDaFolha?
 
   @@index([apropriacaoId])
   @@index([grupoId])

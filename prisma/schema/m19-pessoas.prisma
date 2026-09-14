@@ -104,6 +104,9 @@ model Pessoa {
   servidor Servidor?
   /// back-relation V6 P2.3b — os grupos de empenho da folha em que esta pessoa é o credor.
   gruposDaFolhaComoCredor GrupoDeEmpenhoDaFolha[] @relation("CredorDeGrupoDaFolha")
+
+  /// V6.1 — back-relation VIRTUAL: as designações de certificação da folha desta pessoa.
+  designacoesNaFolha DesignacaoNaFolha[] @relation("DesignadoNaFolha")
   /// back-relation V3 (pacote 2) — VIRTUAL: os usuários vinculados a esta pessoa (histórico).
   usuariosVinculados VinculoUsuarioPessoa[] @relation("PessoaDoUsuario")
   /// back-relations ENT05 (M11 compras) — VIRTUAIS.

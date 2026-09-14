@@ -576,16 +576,23 @@ export async function verGrupoDeEmpenho(id: string): Promise<DetalheLido | null>
  */
 export async function opcoesDoGrupoDeEmpenho(): Promise<OpcoesDoCadastro> {
   const prisma = cliente();
-  const [fichas, credores] = await Promise.all([
+  const [fichas, credores, vpds, obrigacoes] = await Promise.all([
     prisma.fichaOrcamentaria.findMany({
       orderBy: { numero: "asc" }, take: 300,
       select: { id: true, numero: true, saldoDisponivel: true, naturezaDespesa: { select: { codigoCompleto: true, descricao: true } }, fonte: { select: { codigo: true } } },
     }),
     prisma.pessoa.findMany({ orderBy: { documento: "asc" }, take: 300, select: { id: true, documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } }),
+    // ⚠️ O RECORTE É DO DESCRITOR, não uma lista de 500 contas ordenadas por código. A VPD de
+    // pessoal vive em 3.1 e a obrigação de pessoal em 2.1.1 — oferecer o plano inteiro seria um
+    // formulário bonito e inútil, e a primeira opção da lista mudaria o efeito contábil.
+    prisma.contaPcasp.findMany({ where: { codigo: { startsWith: "3.1." }, analitica: true }, orderBy: { codigo: "asc" }, take: 300, select: { id: true, codigo: true, nome: true } }),
+    prisma.contaPcasp.findMany({ where: { codigo: { startsWith: "2.1.1." }, analitica: true }, orderBy: { codigo: "asc" }, take: 300, select: { id: true, codigo: true, nome: true } }),
   ]);
   return {
     fichaId: fichas.map((f) => ({ valor: f.id, rotulo: `${f.numero} — ${f.naturezaDespesa.codigoCompleto} ${f.naturezaDespesa.descricao} · fonte ${f.fonte.codigo} · disponível ${toMoney(f.saldoDisponivel).toFixed(2)}` })),
     credorId: credores.map((p) => ({ valor: p.id, rotulo: `${p.versoes[0]?.nome ?? p.documento} (${formatarDocumento(p.documento)})` })),
+    contaVariacaoId: vpds.map((c) => ({ valor: c.id, rotulo: `${c.codigo} — ${c.nome}` })),
+    contaObrigacaoId: obrigacoes.map((c) => ({ valor: c.id, rotulo: `${c.codigo} — ${c.nome}` })),
   };
 }
 
@@ -605,6 +612,7 @@ export async function criarGrupoDeEmpenho(c: Campos, rubricaIds: readonly string
       tipoEmpenho: t(c, "tipoEmpenho") as "ORDINARIO", serie: t(c, "serie").toUpperCase(),
       porServidor,
       ...(porServidor ? {} : { credorId: t(c, "credorId") }),
+      contaVariacaoId: t(c, "contaVariacaoId"), contaObrigacaoId: t(c, "contaObrigacaoId"),
       rubricaIds: [...rubricaIds], criadoPor,
     });
     return r.grupoId;

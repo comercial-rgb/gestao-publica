@@ -342,6 +342,9 @@ model Liquidacao {
 
   /// M22 (ENT03a) — o documento gerado para assinatura. Campo VIRTUAL.
   anexos Anexo[]
+
+  /// M33 (V6.1) — o elo com o empenho da folha, quando esta liquidação nasceu da folha. VIRTUAL.
+  liquidacaoDaFolha LiquidacaoDaFolha?
 }
 
 /// Conta bancária do ente. Existe para que a TR 5.23 seja VERIFICÁVEL: sem
