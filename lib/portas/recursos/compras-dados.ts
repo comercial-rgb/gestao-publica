@@ -16,7 +16,9 @@ import {
 } from "../../../modules/m11-licitacoes/compras.js";
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { TAMANHO_DE_PAGINA } from "../../molde/consulta.js";
-import type { LinhaDoHistorico } from "../../molde/tipos.js";
+import type { DisponibilidadeDoRegistro, LinhaDoHistorico } from "../../molde/tipos.js";
+import { elegibilidadeParaEmpenharOrdem, elegibilidadeParaEstornarOrdem, elegibilidadeParaReceberOrdem, type EstadoDaOrdemParaAtos } from "../../../modules/m11-licitacoes/elegibilidade.js";
+import { apresentar, RegistroMudouError, versaoDoEstado } from "../disponibilidade";
 import {
   atendimentoDaSolicitacao,
   desfazerVinculoDaSolicitacao,
@@ -735,7 +737,53 @@ export async function receberOrdem(ordemId: string, c: Campos, itens: readonly I
   return { itens: itens.length, pendenteValor: pendente.toFixed(2) };
 }
 
+async function estadoDosAtosDaOrdem(ordemId: string): Promise<{ readonly estado: EstadoDaOrdemParaAtos; readonly versao: string } | null> {
+  const prisma = cliente();
+  const o = await prisma.ordemDeCompra.findUnique({
+    where: { id: ordemId },
+    select: {
+      numero: true,
+      recebimentos: { select: { id: true } },
+      movimentos: { select: { id: true } },
+      empenhos: { select: { id: true, numero: true, estornoDeId: true, estornos: { select: { id: true } } } },
+    },
+  });
+  if (o === null) return null;
+  const [estornada, saldos] = await Promise.all([ordemEstornada(prisma, ordemId), saldoDaOrdemDeCompra(prisma, ordemId)]);
+  const estado: EstadoDaOrdemParaAtos = {
+    numero: o.numero,
+    estornada,
+    recebimentos: o.recebimentos.length,
+    empenhosVivos: o.empenhos.filter((e) => e.estornoDeId === null && e.estornos.length === 0).map((e) => e.numero),
+    itensPendentes: saldos.filter((x) => x.pendente.greaterThan(0)).length,
+  };
+  return { estado, versao: versaoDoEstado([o.movimentos.map((m) => m.id).sort(), o.recebimentos.map((r) => r.id).sort(), o.empenhos.map((e) => [e.id, e.estornos.length])]) };
+}
+
+/**
+ * V6.2 U0 — estornar (barra do molde), receber (ilha) e empenhar (atalho) projetados do predicado do
+ * domínio. Receber e empenhar não são ações do molde, mas a página lê a MESMA projeção em vez de
+ * repetir `estornada ? … : …` à mão.
+ */
+export async function disponibilidadeDaOrdem(ordemId: string): Promise<DisponibilidadeDoRegistro | null> {
+  const lido = await estadoDosAtosDaOrdem(ordemId);
+  if (lido === null) return null;
+  return {
+    versao: lido.versao,
+    porAcao: {
+      estornar: apresentar(elegibilidadeParaEstornarOrdem(lido.estado)),
+      receber: apresentar(elegibilidadeParaReceberOrdem(lido.estado)),
+      empenhar: apresentar(elegibilidadeParaEmpenharOrdem(lido.estado)),
+    },
+  };
+}
+
 export async function acaoDaOrdem(acao: string, ordemId: string, c: Campos): Promise<void> {
   if (acao !== "estornar") throw new Error(`Ação "${acao}" não existe neste cadastro. Nada foi gravado.`);
+  const versaoDoFormulario = (c["__versao"] ?? "").trim();
+  if (versaoDoFormulario !== "") {
+    const atual = await estadoDosAtosDaOrdem(ordemId);
+    if (atual !== null && atual.versao !== versaoDoFormulario) throw new RegistroMudouError("Esta ordem de compra");
+  }
   await comEscritaAutenticada("ESTORNAR_ORDEM_DE_COMPRA", (criadoPor) => estornarOrdemDeCompra(cliente(), { ordemId, motivo: t(c, "motivo"), criadoPor }));
 }

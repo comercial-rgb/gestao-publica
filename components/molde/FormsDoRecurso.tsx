@@ -4,7 +4,15 @@ import {
   FormularioDeRecurso,
   type EstadoDoMolde,
 } from "./FormularioDeRecurso";
-import type { CampoDoMolde, DefinicaoDeRecurso, OpcaoDoMolde } from "../../lib/molde/tipos";
+import { useId } from "react";
+import type {
+  AcaoDoMolde,
+  CampoDoMolde,
+  DefinicaoDeRecurso,
+  DisponibilidadeDaAcao,
+  DisponibilidadeDoRegistro,
+  OpcaoDoMolde,
+} from "../../lib/molde/tipos";
 
 /**
  * OS FORMULÁRIOS DE UM RECURSO — criação e barra de ações, montados do descritor.
@@ -36,6 +44,74 @@ export interface FormsDoRecursoProps {
   ) => EstadoDoMolde | Promise<EstadoDoMolde>;
   /** `true` na listagem (só o formulário de criar); `false` no detalhe (só as ações). */
   readonly modo: "criar" | "acoes";
+  /**
+   * V6.2 — a disponibilidade projetada pela porta. Obrigatória em recurso `acoesPorEstado`;
+   * `null` = a consulta falhou, e nada é oferecido (fail-closed).
+   */
+  readonly disponibilidade?: DisponibilidadeDoRegistro | null;
+}
+
+/** O que a barra mostra quando não sabe: travar, nunca liberar. */
+const SEM_CONFERENCIA: DisponibilidadeDaAcao = {
+  apresentacao: "bloqueada",
+  motivo: "Não foi possível conferir se este ato cabe agora neste registro.",
+  providencia: "Recarregue a página. Enquanto a conferência não voltar, o ato não é oferecido.",
+};
+
+function disponibilidadeDe(
+  d: DefinicaoDeRecurso,
+  a: AcaoDoMolde,
+  disp: DisponibilidadeDoRegistro | null | undefined
+): DisponibilidadeDaAcao {
+  if (d.acoesPorEstado !== true) return { apresentacao: "disponivel" };
+  if (disp === undefined || disp === null) return SEM_CONFERENCIA;
+  return disp.porAcao[a.nome] ?? SEM_CONFERENCIA;
+}
+
+/**
+ * A AÇÃO TRAVADA. Não é `<form>`: não há o que enviar, e um formulário com o botão desabilitado
+ * ainda submete pelo Enter de um campo.
+ *
+ * ⚠️ `aria-disabled`, E NÃO `disabled`, com o handler neutralizado. O botão `disabled` sai da ordem
+ * de tabulação e quem navega por teclado nunca chega ao motivo; `aria-disabled` sozinho não impede
+ * o clique — por isso não há action nenhuma para ele disparar. O motivo é TEXTO VISÍVEL associado
+ * por `aria-describedby`, não um tooltip que o leitor de tela e o toque não alcançam.
+ */
+function AcaoIndisponivel({
+  acao,
+  disp,
+}: {
+  readonly acao: AcaoDoMolde;
+  readonly disp: DisponibilidadeDaAcao;
+}): React.ReactElement {
+  const idMotivo = `motivo-${useId()}`;
+  const emCurso = disp.apresentacao === "em-processamento";
+  return (
+    <section
+      data-acao={acao.nome}
+      data-acao-estado={disp.apresentacao}
+      aria-labelledby={`${idMotivo}-t`}
+      className="rounded-[var(--radius-md)] border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] px-4 py-3"
+    >
+      <h2 id={`${idMotivo}-t`} className="text-sm font-semibold text-[color:var(--color-ink-2)]">{acao.rotulo}</h2>
+      <p id={idMotivo} role={emCurso ? "status" : undefined} className="mt-1 text-xs text-[color:var(--color-ink-2)]">
+        {disp.motivo ?? (emCurso ? "Há uma execução em curso sobre este registro." : "Este ato não está disponível agora.")}
+        {disp.providencia !== undefined ? <span className="block">{disp.providencia}</span> : null}
+      </p>
+      {disp.providenciaHref !== undefined ? (
+        <a href={disp.providenciaHref} className="mt-1 inline-block text-xs underline underline-offset-2">Ir para onde se resolve</a>
+      ) : null}
+      <button
+        type="button"
+        aria-disabled="true"
+        aria-describedby={idMotivo}
+        onClick={(ev) => ev.preventDefault()}
+        className="mt-3 cursor-not-allowed rounded-[var(--radius-md)] border border-[color:var(--color-border)] px-3 py-1.5 text-sm text-[color:var(--color-ink-3)]"
+      >
+        {emCurso ? "Em processamento…" : acao.rotulo}
+      </button>
+    </section>
+  );
 }
 
 function comOpcoes(
@@ -65,6 +141,7 @@ export function FormsDoRecurso({
   registroId,
   action,
   modo,
+  disponibilidade,
 }: FormsDoRecursoProps): React.ReactElement {
   const pode = new Set(permitidas);
 
@@ -88,25 +165,51 @@ export function FormsDoRecurso({
     );
   }
 
+  // ⚠️ SEM PERMISSÃO, NENHUM MOTIVO DE ESTADO: quem não pode praticar o ato não precisa saber por
+  // que ele não caberia — e o motivo pode carregar dado do registro.
+  const naoAplicaveis: { readonly acao: AcaoDoMolde; readonly disp: DisponibilidadeDaAcao }[] = [];
+  const barra = d.acoes.map((a) => {
+    if (!pode.has(a.acaoDoCenso)) return <SemPermissao key={a.nome} o_que={a.rotulo.toLowerCase()} />;
+    const disp = disponibilidadeDe(d, a, disponibilidade);
+    if (disp.apresentacao === "nao-aplicavel") {
+      naoAplicaveis.push({ acao: a, disp });
+      return null;
+    }
+    if (disp.apresentacao !== "disponivel") return <AcaoIndisponivel key={a.nome} acao={a} disp={disp} />;
+    return (
+      <FormularioDeRecurso
+        key={a.nome}
+        acao={a.nome}
+        titulo={a.rotulo}
+        campos={comOpcoes(a.campos ?? [], opcoes)}
+        action={action}
+        rotuloEnviar={a.rotulo}
+        ocultos={{
+          __acao: a.nome,
+          ...(registroId !== undefined ? { __id: registroId } : {}),
+          ...(d.acoesPorEstado === true && disponibilidade !== undefined && disponibilidade !== null ? { __versao: disponibilidade.versao } : {}),
+        }}
+        {...(a.aviso !== undefined ? { aviso: a.aviso } : {})}
+        {...(a.irreversivel === true ? { irreversivel: true } : {})}
+      />
+    );
+  });
+
   return (
     <div className="space-y-4">
-      {d.acoes.map((a) =>
-        pode.has(a.acaoDoCenso) ? (
-          <FormularioDeRecurso
-            key={a.nome}
-            acao={a.nome}
-            titulo={a.rotulo}
-            campos={comOpcoes(a.campos ?? [], opcoes)}
-            action={action}
-            rotuloEnviar={a.rotulo}
-            ocultos={{ __acao: a.nome, ...(registroId !== undefined ? { __id: registroId } : {}) }}
-            {...(a.aviso !== undefined ? { aviso: a.aviso } : {})}
-            {...(a.irreversivel === true ? { irreversivel: true } : {})}
-          />
-        ) : (
-          <SemPermissao key={a.nome} o_que={a.rotulo.toLowerCase()} />
-        )
-      )}
+      {barra}
+      {naoAplicaveis.length > 0 ? (
+        <div data-acoes-nao-aplicaveis className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] px-4 py-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">Atos que não cabem mais neste registro</h2>
+          <ul className="mt-2 space-y-1">
+            {naoAplicaveis.map(({ acao, disp }) => (
+              <li key={acao.nome} data-acao-estado="nao-aplicavel" data-acao-nome={acao.nome} className="text-xs text-[color:var(--color-ink-2)]">
+                <span className="font-medium text-[color:var(--color-ink)]">{acao.rotulo}:</span> {disp.motivo ?? "já praticado ou fora do estado do registro."}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </div>
   );
 }

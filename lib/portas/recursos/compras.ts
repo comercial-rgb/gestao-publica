@@ -144,6 +144,7 @@ export const ORDENS_DE_COMPRA: DefinicaoDeRecurso = definirRecurso({
       { valor: "ESTORNADAS", rotulo: "Só as estornadas" },
     ] },
   ],
+  acoesPorEstado: true,
   acoes: [
     {
       nome: "estornar", rotulo: "Estornar a ordem", acaoDoCenso: "ESTORNAR_ORDEM_DE_COMPRA",

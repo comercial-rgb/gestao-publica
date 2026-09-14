@@ -6,7 +6,7 @@ import { lerConsulta, type ParametrosBrutos } from "../../../../../lib/molde/con
 import type { AbaDoMolde } from "../../../../../lib/molde/tipos";
 import { acoesPermitidas, exigirLeitura } from "../../../../../lib/portas/molde";
 import { ORDENS_DE_COMPRA } from "../../../../../lib/portas/recursos/compras";
-import { verOrdem, opcoesDaOrdem, solicitacoesParaVincular } from "../../../../../lib/portas/recursos/compras-dados";
+import { disponibilidadeDaOrdem, verOrdem, opcoesDaOrdem, solicitacoesParaVincular } from "../../../../../lib/portas/recursos/compras-dados";
 import { documentosDaOrdemParaReceber } from "../../../../../lib/portas/recursos/documentos-fiscais-dados";
 import { ordensdecompraAction } from "../actions";
 import { FormRecebimento } from "./FormRecebimento";
@@ -33,6 +33,11 @@ export default async function Detalhe({ params, searchParams }: { readonly param
   ]);
   if (detalhe === null) notFound();
   const estornada = detalhe.estornada;
+  // ⚠️ RECEBER E EMPENHAR LEEM A MESMA PROJEÇÃO QUE A BARRA — o predicado é do domínio. Falhar a
+  // consulta trava os dois (fail-closed), em vez de oferecer o que talvez não caiba.
+  const disponibilidade = await disponibilidadeDaOrdem(id).catch(() => null);
+  const receber = disponibilidade?.porAcao["receber"] ?? { apresentacao: "bloqueada" as const, motivo: "Não foi possível conferir se cabe receber agora. Recarregue a página." };
+  const empenhar = disponibilidade?.porAcao["empenhar"] ?? { apresentacao: "bloqueada" as const, motivo: "Não foi possível conferir se cabe empenhar agora." };
   return (
     <DetalheDeRecurso
       definicao={ORDENS_DE_COMPRA}
@@ -59,7 +64,7 @@ export default async function Detalhe({ params, searchParams }: { readonly param
             >
               Emitir espelho (PDF)
             </a>
-            {permitidas.has("EMPENHAR") && !estornada ? (
+            {permitidas.has("EMPENHAR") && empenhar.apresentacao === "disponivel" ? (
               <Link
                 href={`/despesa/empenhos?ordemId=${id}`}
                 className="font-medium text-[color:var(--color-primary)] hover:underline"
@@ -78,15 +83,19 @@ export default async function Detalhe({ params, searchParams }: { readonly param
           {permitidas.has("EMITIR_ORDEM_DE_COMPRA") && !estornada && detalhe.itensParaVincular.length > 0 ? (
             <FormVincularSolicitacao ordemId={id} itensDaOrdem={detalhe.itensParaVincular} solicitacoes={solicitacoes} />
           ) : null}
-          {permitidas.has("REGISTRAR_RECEBIMENTO_DE_ORDEM") && detalhe.itensParaReceber.length > 0 ? (
+          {!permitidas.has("REGISTRAR_RECEBIMENTO_DE_ORDEM") ? (
+            <p className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] px-3 py-2 text-xs text-[color:var(--color-ink-2)]">
+              Você não tem a permissão necessária para registrar recebimento. Peça ao administrador do sistema — a concessão é por ação, e é registrada.
+            </p>
+          ) : receber.apresentacao === "disponivel" && detalhe.itensParaReceber.length > 0 ? (
             <FormRecebimento ordemId={id} itensDaOrdem={detalhe.itensParaReceber} documentos={documentos} />
           ) : (
-            <p className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] px-3 py-2 text-xs text-[color:var(--color-ink-2)]">
-              {estornada ? "Ordem estornada: não há o que receber." : detalhe.itensParaReceber.length === 0 ? "Nada pendente de recebimento nesta ordem." : "Você não tem a permissão REGISTRAR_RECEBIMENTO_DE_ORDEM."}
+            <p data-acao="receber" data-acao-estado={receber.apresentacao} className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] px-3 py-2 text-xs text-[color:var(--color-ink-2)]">
+              {receber.motivo ?? "Nada pendente de recebimento nesta ordem."}
             </p>
           )}
           {/* ⚠️ Fica montado depois do estorno para a mensagem do resultado não sumir; um segundo estorno o domínio recusa nomeando. */}
-          <FormsDoRecurso definicao={ORDENS_DE_COMPRA} permitidas={[...permitidas]} opcoes={opcoes} registroId={id} action={ordensdecompraAction} modo="acoes" />
+          <FormsDoRecurso definicao={ORDENS_DE_COMPRA} permitidas={[...permitidas]} opcoes={opcoes} registroId={id} action={ordensdecompraAction} modo="acoes" disponibilidade={disponibilidade} />
         </div>
       }
     />

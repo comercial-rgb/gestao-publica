@@ -118,6 +118,45 @@ export interface AcaoDoMolde {
 }
 
 /**
+ * ═══ A DISPONIBILIDADE DE UMA AÇÃO NESTE REGISTRO, AGORA (V6.2 U0) ═══
+ *
+ * Permissão diz se a pessoa PODE praticar o ato em algum lugar. Disponibilidade diz se o ato CABE
+ * neste registro, neste estado, para este ator. São perguntas diferentes, e a barra de ações que
+ * só fazia a primeira oferecia "Certificar" sobre folha já certificada.
+ *
+ *   · `disponivel`       — o formulário aparece;
+ *   · `bloqueada`        — falta pré-condição que alguém pode providenciar: aparece travada, com o
+ *                          motivo associado ao botão (não em tooltip) e a providência;
+ *   · `nao-aplicavel`    — o ato já aconteceu ou não cabe mais: SAI da barra e aparece como estado;
+ *   · `em-processamento` — há execução em curso sobre o registro: travada até terminar.
+ *
+ * ⚠️ QUEM CALCULA É A PORTA, A PARTIR DO PREDICADO DO DOMÍNIO (`packages/contracts/elegibilidade.ts`).
+ * O descritor continua dado puro e o componente não conhece regra de negócio nenhuma.
+ *
+ * ⚠️ DISPONÍVEL NÃO É AUTORIZAÇÃO NEM TRAVA. Outra aba pode mudar o registro depois da leitura; a
+ * transação refaz tudo. A `versao` viaja no formulário para a porta recusar, nomeando, o envio feito
+ * sobre uma tela velha — antes de chamar o caso de uso, que recusaria de qualquer forma.
+ */
+export type ApresentacaoDaAcao = "disponivel" | "bloqueada" | "nao-aplicavel" | "em-processamento";
+
+export interface DisponibilidadeDaAcao {
+  readonly apresentacao: ApresentacaoDaAcao;
+  /** Prosa de negócio, sem dado protegido — só chega a quem já tem a permissão da ação. */
+  readonly motivo?: string;
+  /** O que fazer para destravar. */
+  readonly providencia?: string;
+  /** Atalho para a providência, quando a sessão pode segui-lo. */
+  readonly providenciaHref?: string;
+}
+
+export interface DisponibilidadeDoRegistro {
+  /** Impressão do estado lido. Muda quando qualquer fato que decide a disponibilidade muda. */
+  readonly versao: string;
+  /** Por `AcaoDoMolde.nome`. Ação ausente num recurso `acoesPorEstado` = BLOQUEADA (fail-closed). */
+  readonly porAcao: Readonly<Record<string, DisponibilidadeDaAcao>>;
+}
+
+/**
  * As cinco abas FIXAS do detalhe. São fixas de propósito: um cadastro em que "histórico"
  * fica num lugar e "anexos" em outro obriga quem usa o sistema a reaprender cada tela.
  */
@@ -178,6 +217,13 @@ export interface DefinicaoDeRecurso {
   readonly filtros: readonly FiltroDoMolde[];
   readonly acoes: readonly AcaoDoMolde[];
   readonly permissoes: PermissoesDoMolde;
+
+  /**
+   * As ações do detalhe DEPENDEM DO ESTADO do registro (V6.2 U0). Declarado, o detalhe exige a
+   * `disponibilidade` projetada pela porta, e a ação sem entrada nela aparece BLOQUEADA — falhar a
+   * consulta de elegibilidade nunca libera todas as ações.
+   */
+  readonly acoesPorEstado?: boolean;
 
   /**
    * As abas que este recurso realmente tem. As ausentes NÃO aparecem.
@@ -324,6 +370,9 @@ export function verificarDefinicao(d: DefinicaoDeRecurso): readonly string[] {
   }
   if (d.abas.includes("anexos") && d.permissoes.anexar === undefined) {
     e.push("declara a aba de anexos e não declara a ação do censo para anexar");
+  }
+  if (d.acoesPorEstado === true && d.acoes.length === 0) {
+    e.push("declara ações dependentes do estado e não tem ação nenhuma");
   }
   if (d.acoes.length === 0 && d.permissoes.criar === undefined) {
     e.push(

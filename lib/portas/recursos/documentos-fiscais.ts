@@ -66,6 +66,7 @@ export const DOCUMENTOS_FISCAIS: DefinicaoDeRecurso = definirRecurso({
     { nome: "situacao", rotulo: "Situação", tipo: "selecao", largura: 1, opcoes: OPCOES_DE_SITUACAO },
     { nome: "modelo", rotulo: "Modelo", tipo: "selecao", largura: 1, opcoes: OPCOES_DE_MODELO },
   ],
+  acoesPorEstado: true,
   acoes: [
     {
       nome: "conferir",

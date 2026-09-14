@@ -1,14 +1,22 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO, type AcaoDoSistema } from "../m16-travamento/acoes.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
-import { Decimal, toMoney, sumMoney, type Money } from "../../packages/contracts/index.js";
+import { AtoInelegivelError, Decimal, toMoney, sumMoney, type Elegibilidade, type Money } from "../../packages/contracts/index.js";
 import { diaCivil, diaCivilBr } from "../../packages/datas/index.js";
 import { liquidar } from "../m05-despesa/servico-bloco2.js";
 import { roteiroLiquidacaoDaFolha } from "../m01-core-contabil/roteiros.js";
 import { criarM05DepsComContratos } from "../m11-licitacoes/adapter-m05.js";
 import { sha256Canonico } from "./dominio.js";
 import { FolhaNaoFechadaError, parcelasDoCalculo } from "./apropriacao.js";
+import {
+  elegibilidadeParaCertificar,
+  elegibilidadeParaDevolver,
+  elegibilidadeParaLiquidar,
+  type AtorNaFolha,
+  type EstadoDaFolhaParaAtos,
+} from "./elegibilidade.js";
 
 /**
  * ═══ M33 — A CERTIFICAÇÃO (ATESTO) DA FOLHA E A SUA LIQUIDAÇÃO (V6.1 §3) ═══
@@ -468,6 +476,57 @@ async function designacaoVigenteDe(
 }
 
 /**
+ * A designação que sustenta um ato NOVO: vigente no dia do ato E no instante do servidor.
+ *
+ * ⚠️ A SEGUNDA CONDIÇÃO É O QUE FECHA O RETROATIVO. Sem ela, a pessoa revogada em 5 de junho
+ * registra em setembro um atesto "de 2 de junho" e ele passa — o histórico da designação
+ * sustentaria um ato praticado depois de ela deixar de valer. O atesto de junho REGISTRADO em
+ * junho continua sustentado para sempre; o que se recusa é o ato novo. Data de negócio e
+ * instante de registro são duas coisas, e as duas ficam gravadas.
+ */
+export async function designacaoVigenteParaOAto(
+  tx: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">,
+  usuarioIdentificador: string,
+  dataDoAto: Date
+): Promise<{ readonly id: string; readonly atoDesignacao: string; readonly nomeDaPessoa: string } | null> {
+  const noDia = await designacaoVigenteDe(tx, usuarioIdentificador, dataDoAto);
+  if (noDia === null) return null;
+  const hoje = await designacaoVigenteDe(tx, usuarioIdentificador, new Date());
+  return hoje === null ? null : noDia;
+}
+
+/** Converte a elegibilidade negativa na RECUSA NOMEADA que o módulo já tinha (os testes pegam a classe). */
+function recusarSeInelegivel(
+  e: Elegibilidade,
+  ctx: {
+    readonly competencia: string;
+    readonly usuario: string;
+    readonly data: Date;
+    readonly situacao: SituacaoDaCertificacao | null;
+    readonly motivoDaDevolucao: string | null;
+    readonly fechou: boolean;
+  }
+): void {
+  if (e.situacao === "ELEGIVEL") return;
+  switch (e.codigo) {
+    case "FOLHA-NAO-FECHADA":
+      throw new FolhaNaoFechadaError(ctx.competencia);
+    case "SEM-DESIGNACAO-VIGENTE":
+      throw new SemDesignacaoVigenteError(ctx.usuario, ctx.data);
+    case "AUTOCERTIFICACAO-DA-FOLHA":
+      throw new AutocertificacaoError(ctx.usuario, ctx.fechou ? "fechou esta folha" : "calculou esta folha");
+    case "AUTOLIQUIDACAO-DA-FOLHA":
+      throw new AutoliquidacaoError(ctx.usuario);
+    case "FOLHA-NAO-CERTIFICADA":
+      throw new FolhaNaoCertificadaError(ctx.competencia, ctx.situacao ?? "PENDENTE", ctx.motivoDaDevolucao);
+    case "FOLHA-NAO-APROPRIADA":
+      throw new FolhaNaoApropriadaError(ctx.competencia);
+    default:
+      throw new AtoInelegivelError(e);
+  }
+}
+
+/**
  * ⚠️ A AÇÃO É PARÂMETRO, e não escolhida aqui dentro por um `switch` sobre o tipo. É a lição
  * escrita no censo (t6b): quem lê `certificarFolha` tem de ver, ali, qual crachá ela exige.
  * Certificar e devolver são o MESMO corpo — montar o objeto, conferir designação, conferir que
@@ -488,9 +547,6 @@ async function registrarFatoDaCertificacao(
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, acao, "ENTE");
 
-    const designacao = await designacaoVigenteDe(tx, d.criadoPor, d.data);
-    if (designacao === null) throw new SemDesignacaoVigenteError(d.criadoPor, d.data);
-
     const folha = await tx.folhaDePagamento.findUnique({
       where: { id: d.folhaId },
       select: {
@@ -500,38 +556,37 @@ async function registrarFatoDaCertificacao(
       },
     });
     if (folha === null) throw new Error(`Folha ${d.folhaId} não existe. Nada foi gravado.`);
-    if (folha.fechamento === null) throw new FolhaNaoFechadaError(folha.competencia);
-    if (folha.fechamento.calculoId !== objeto.calculoId) {
+    if (folha.fechamento !== null && folha.fechamento.calculoId !== objeto.calculoId) {
       throw new Error(
         `OBJETO-MUDOU-NO-ATO: o cálculo fechado de ${folha.competencia} não é mais o que foi conferido. ` +
           `Certificar assim atestaria dados que não foram examinados. Reveja a folha e refaça o atesto. Nada foi gravado.`
       );
     }
 
-    // ⚠️ SEGREGAÇÃO, e ela é conferida AQUI, dentro da transação — não na tela.
-    if (tipo === "CERTIFICACAO") {
-      if (objeto.fechadoPor === d.criadoPor) throw new AutocertificacaoError(d.criadoPor, "fechou esta folha");
-      if (objeto.calculadoPor === d.criadoPor) throw new AutocertificacaoError(d.criadoPor, "calculou esta folha");
-    }
+    // ⚠️ A DESIGNAÇÃO NAS DUAS DATAS. O dia do ato sustenta o atesto; HOJE (instante do servidor)
+    // impede que uma revogação já registrada seja contornada datando o comando novo de antes dela.
+    const designacao = await designacaoVigenteParaOAto(tx, d.criadoPor, d.data);
 
-    const situacao = situacaoDaCertificacao(folha.certificacoes, folha.fechamento.calculoId);
-    if (tipo === "CERTIFICACAO" && situacao === "CERTIFICADA") {
-      throw new Error(`FOLHA-JA-CERTIFICADA: a folha de ${folha.competencia} já está certificada. Nada foi gravado.`);
-    }
-    if (tipo === "DEVOLUCAO" && situacao === "DEVOLVIDA") {
-      throw new Error(`FOLHA-JA-DEVOLVIDA: a folha de ${folha.competencia} já foi devolvida para correção. Nada foi gravado.`);
-    }
-    // ⚠️ DEVOLVER O QUE JÁ FOI LIQUIDADO NÃO DESFAZ A LIQUIDAÇÃO — e fingir que desfaz seria
-    // pior do que recusar. Desfazer é ato próprio do M05 (anulação), com o seu lançamento.
-    if (tipo === "DEVOLUCAO") {
-      const liquidadas = await tx.liquidacaoDaFolha.count({ where: { empenhoDaFolha: { apropriacao: { folhaId: d.folhaId } } } });
-      if (liquidadas > 0) {
-        throw new Error(
-          `FOLHA-JA-LIQUIDADA: ${liquidadas} liquidação(ões) desta folha já existe(m), e devolver o atesto não as desfaz. ` +
-            `Desfazer obrigação liquidada é anulação pelo M05, com lançamento próprio. Nada foi gravado.`
-        );
-      }
-    }
+    const liquidadas = folha.fechamento === null ? 0 : await tx.liquidacaoDaFolha.count({ where: { empenhoDaFolha: { apropriacao: { folhaId: d.folhaId } } } });
+    const estado: EstadoDaFolhaParaAtos = {
+      competencia: folha.competencia,
+      fechada: folha.fechamento !== null,
+      temCalculoVivo: true,
+      certificacao: folha.fechamento === null ? null : situacaoDaCertificacao(folha.certificacoes, folha.fechamento.calculoId),
+      empenhosGravados: 0,
+      empenhosEsperados: null,
+      empenhosLiquidados: liquidadas,
+    };
+    const ator: AtorNaFolha = {
+      fechou: objeto.fechadoPor === d.criadoPor,
+      calculouOFechado: objeto.calculadoPor === d.criadoPor,
+      certificou: false,
+      designado: designacao !== null,
+    };
+    // ⚠️ O MESMO PREDICADO QUE A TELA PROJETA (`elegibilidade.ts`), sobre o estado lido AQUI.
+    const e = tipo === "CERTIFICACAO" ? elegibilidadeParaCertificar(estado, ator) : elegibilidadeParaDevolver(estado, ator);
+    recusarSeInelegivel(e, { competencia: folha.competencia, usuario: d.criadoPor, data: d.data, situacao: estado.certificacao, motivoDaDevolucao: null, fechou: ator.fechou });
+    if (designacao === null) throw new SemDesignacaoVigenteError(d.criadoPor, d.data);
 
     const c = await tx.certificacaoDaFolha.create({
       data: {
@@ -601,21 +656,22 @@ export async function liquidarFolha(prisma: PrismaClient, input: LiquidarFolhaIn
     },
   });
   if (folha === null) throw new Error(`Folha ${d.folhaId} não existe. Nada foi gravado.`);
-  if (folha.fechamento === null) throw new FolhaNaoFechadaError(folha.competencia);
 
-  const situacao = situacaoDaCertificacao(folha.certificacoes, folha.fechamento.calculoId);
-  if (situacao !== "CERTIFICADA") {
-    const ultima = [...folha.certificacoes].reverse()[0];
-    throw new FolhaNaoCertificadaError(folha.competencia, situacao, ultima?.motivo ?? null);
-  }
-  const certificacao = [...folha.certificacoes].reverse().find((c) => c.tipo === "CERTIFICACAO" && c.calculoId === folha.fechamento?.calculoId);
-  if (certificacao === undefined) throw new FolhaNaoCertificadaError(folha.competencia, situacao, null);
-
-  // ⚠️ QUEM CERTIFICOU NÃO LIQUIDA. Atestar é dizer que o valor é devido; liquidar é reconhecer a
-  // obrigação COM BASE nesse atesto. Na mesma mão, o segundo ato não confere nada.
-  if (certificacao.criadoPor === d.criadoPor) throw new AutoliquidacaoError(d.criadoPor);
-
-  if (folha.apropriacao === null) throw new FolhaNaoApropriadaError(folha.competencia);
+  const situacao = folha.fechamento === null ? null : situacaoDaCertificacao(folha.certificacoes, folha.fechamento.calculoId);
+  const certificacao = folha.fechamento === null ? undefined : [...folha.certificacoes].reverse().find((c) => c.tipo === "CERTIFICACAO" && c.calculoId === folha.fechamento?.calculoId);
+  const contagem = folha.apropriacao === null
+    ? { gravados: 0 }
+    : { gravados: await prisma.empenhoDaFolha.count({ where: { apropriacaoId: folha.apropriacao.id } }) };
+  // ⚠️ O MESMO PREDICADO QUE A TELA PROJETA. "Já liquidada por inteiro" continua NÃO sendo recusa
+  // aqui: reexecutar é idempotente e devolve `jaExistiam` — a tela deixa de oferecer, o serviço
+  // não precisa gritar com quem chegou segundo.
+  const e = elegibilidadeParaLiquidar(
+    { competencia: folha.competencia, fechada: folha.fechamento !== null, temCalculoVivo: true, certificacao: situacao, empenhosGravados: contagem.gravados, empenhosEsperados: null, empenhosLiquidados: 0 },
+    { fechou: false, calculouOFechado: false, certificou: certificacao?.criadoPor === d.criadoPor, designado: null }
+  );
+  const ultima = [...folha.certificacoes].reverse()[0];
+  recusarSeInelegivel(e, { competencia: folha.competencia, usuario: d.criadoPor, data: d.data, situacao, motivoDaDevolucao: ultima?.motivo ?? null, fechou: false });
+  if (certificacao === undefined || folha.apropriacao === null) throw new FolhaNaoCertificadaError(folha.competencia, situacao ?? "PENDENTE", null);
 
   // A autorização do ATO (a de LIQUIDAR é exigida de novo, por liquidação, dentro do M05).
   await prisma.$transaction(async (tx) => {
@@ -712,6 +768,82 @@ export async function liquidarFolha(prisma: PrismaClient, input: LiquidarFolhaIn
     jaExistiam,
     pendentes: empenhos.length - liquidadas - jaExistiam,
     total,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// O RETRATO DOS ATOS (V6.2 U0) — o estado que os predicados de `elegibilidade.ts` leem
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface RetratoDosAtosDaFolha {
+  readonly estado: EstadoDaFolhaParaAtos;
+  readonly ator: AtorNaFolha;
+  /** Impressão dos fatos que decidem os atos. Muda quando qualquer um deles muda. */
+  readonly versao: string;
+}
+
+/**
+ * LEITURA PURA do estado de uma folha para decidir quais atos cabem, e para quem.
+ *
+ * ⚠️ É O MESMO RETRATO NA TELA E NO TESTE DE PARIDADE. A porta projeta a barra a partir dele; o
+ * `m33-elegibilidade.test.ts` o monta sobre folhas reais e confere que o caso de uso recusa com o
+ * MESMO código que o predicado anunciou.
+ */
+export async function retratoDosAtosDaFolha(
+  prisma: PrismaClient,
+  folhaId: string,
+  usuarioIdentificador: string,
+  opcoes: { readonly consultarDesignacao: boolean; readonly lerDistribuicao: boolean }
+): Promise<RetratoDosAtosDaFolha | null> {
+  const f = await prisma.folhaDePagamento.findUnique({
+    where: { id: folhaId },
+    select: {
+      competencia: true,
+      fechamento: { select: { id: true, calculoId: true, criadoPor: true, calculo: { select: { criadoPor: true } } } },
+      calculos: { select: { id: true, cancelamento: { select: { id: true } } } },
+      certificacoes: { select: { id: true, tipo: true, calculoId: true, criadoEm: true, criadoPor: true } },
+      apropriacao: { select: { id: true, _count: { select: { empenhos: true } } } },
+    },
+  });
+  if (f === null) return null;
+  const liquidados = f.apropriacao === null ? 0 : await prisma.liquidacaoDaFolha.count({ where: { empenhoDaFolha: { apropriacaoId: f.apropriacao.id } } });
+  const certificacao = f.fechamento === null ? null : situacaoDaCertificacao(f.certificacoes, f.fechamento.calculoId);
+  let esperados: number | null = null;
+  if (opcoes.lerDistribuicao && f.fechamento !== null && f.apropriacao !== null) {
+    // Parar a apropriação no meio é estado real; saber se ela COMPLETOU pede a distribuição do
+    // cálculo fechado. Falhar aqui não trava a retomada — quem decide é o serviço.
+    esperados = await parcelasDoCalculo(prisma, f.fechamento.calculoId).then((p) => p.parcelas.length, () => null);
+  }
+  const doFechado = f.fechamento === null ? [] : f.certificacoes.filter((c) => c.calculoId === f.fechamento!.calculoId).sort((a, b) => a.criadoEm.getTime() - b.criadoEm.getTime());
+  const ultimo = doFechado[doFechado.length - 1];
+  const designado = opcoes.consultarDesignacao ? (await designacaoVigenteParaOAto(prisma, usuarioIdentificador, new Date())) !== null : null;
+  const versao = createHash("sha256")
+    .update(JSON.stringify([
+      f.fechamento?.id ?? null,
+      f.calculos.map((c) => [c.id, c.cancelamento?.id ?? null]).sort(),
+      f.certificacoes.map((c) => c.id).sort(),
+      f.apropriacao?._count.empenhos ?? null,
+      liquidados,
+    ]))
+    .digest("hex")
+    .slice(0, 16);
+  return {
+    estado: {
+      competencia: f.competencia,
+      fechada: f.fechamento !== null,
+      temCalculoVivo: f.calculos.some((c) => c.cancelamento === null),
+      certificacao,
+      empenhosGravados: f.apropriacao?._count.empenhos ?? 0,
+      empenhosEsperados: esperados,
+      empenhosLiquidados: liquidados,
+    },
+    ator: {
+      fechou: f.fechamento?.criadoPor === usuarioIdentificador,
+      calculouOFechado: f.fechamento?.calculo.criadoPor === usuarioIdentificador,
+      certificou: ultimo?.tipo === "CERTIFICACAO" && ultimo.criadoPor === usuarioIdentificador,
+      designado,
+    },
+    versao,
   };
 }
 

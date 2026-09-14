@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { toMoney } from "../../packages/contracts/index.js";
 import { meioDiaCivil } from "../../packages/datas/index.js";
 import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
@@ -25,10 +25,12 @@ import {
   liquidacaoDaFolha,
   liquidarFolha,
   objetoParaCertificar,
+  retratoDosAtosDaFolha,
   revogarDesignacaoNaFolha,
   situacaoDaCertificacao,
 } from "./certificacao.js";
 import { FolhaNaoFechadaError } from "./apropriacao.js";
+import { elegibilidadeDosAtosDaFolha, type AcaoDaFolha } from "./elegibilidade.js";
 
 /**
  * ═══ O ATESTO DA FOLHA E A SUA LIQUIDAÇÃO (V6.1 §3) — PROFUNDIDADE ═══
@@ -313,11 +315,19 @@ describe("(4) certificar — o atesto, com designação vigente e segregação",
   it("recusa com a designação VENCIDA no dia do ato — e aceita no último dia dela", async () => {
     await ateAApropriacao();
     await designarAtestador({ inicio: D(2026, 1, 1), fim: D(2026, 6, 1) });
-    await expect(certificarFolha(prisma, { folhaId, data: DATA_ATESTO, criadoPor: ATESTADOR })).rejects.toThrow(SemDesignacaoVigenteError);
-    // ⚠️ A MESMA DESIGNAÇÃO, UM DIA ANTES: se este segundo ramo não passasse, o teste acima
-    // estaria verde por a folha não certificar NUNCA — e não por causa da vigência.
-    const ok = await certificarFolha(prisma, { folhaId, data: D(2026, 6, 1), criadoPor: ATESTADOR });
-    expect(ok.certificacaoId).not.toBe("");
+    // ⚠️ O RELÓGIO DO SERVIDOR NO ÚLTIMO DIA DA DESIGNAÇÃO (V6.2): desde que o ato novo exige a
+    // designação vigente também HOJE, o "aceita no último dia" só se prova com hoje dentro dela.
+    // Só `Date` é falseado — o banco e os timers seguem reais.
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date(D(2026, 6, 1).getTime() + 3 * 3600_000) });
+    try {
+      await expect(certificarFolha(prisma, { folhaId, data: DATA_ATESTO, criadoPor: ATESTADOR })).rejects.toThrow(SemDesignacaoVigenteError);
+      // ⚠️ A MESMA DESIGNAÇÃO, UM DIA ANTES: se este segundo ramo não passasse, o teste acima
+      // estaria verde por a folha não certificar NUNCA — e não por causa da vigência.
+      const ok = await certificarFolha(prisma, { folhaId, data: D(2026, 6, 1), criadoPor: ATESTADOR });
+      expect(ok.certificacaoId).not.toBe("");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("recusa com a designação REVOGADA antes do ato", async () => {
@@ -375,6 +385,125 @@ describe("(4) certificar — o atesto, com designação vigente e segregação",
     await certificarFolha(prisma, { folhaId, data: DATA_ATESTO, criadoPor: ATESTADOR });
     await expect(certificarFolha(prisma, { folhaId, data: DATA_ATESTO, criadoPor: ATESTADOR })).rejects.toThrow(/FOLHA-JA-CERTIFICADA/);
     expect(await prisma.certificacaoDaFolha.count()).toBe(1);
+  });
+});
+
+describe("(4b) o ato NOVO não se apoia em designação que já deixou de valer (V6.2)", () => {
+  it("revogada em 5/6 e registrada DEPOIS: o atesto datado de 2/6 é RECUSADO — sem retroativo", async () => {
+    await ateAApropriacao();
+    const id = await designarAtestador();
+    await revogarDesignacaoNaFolha(prisma, { designacaoId: id, dataEfeito: D(2026, 6, 5), motivo: "exoneracao", criadoPor: PREPARADOR });
+    // A data do ato (2/6) está DENTRO da vigência; hoje (relógio real, depois de 5/6) não está.
+    await expect(certificarFolha(prisma, { folhaId, data: DATA_ATESTO, criadoPor: ATESTADOR })).rejects.toThrow(SemDesignacaoVigenteError);
+    expect(await prisma.certificacaoDaFolha.count()).toBe(0);
+  });
+
+  it("a contraprova: com o relógio em 3/6 (antes do efeito), o MESMO ato passa", async () => {
+    await ateAApropriacao();
+    const id = await designarAtestador();
+    await revogarDesignacaoNaFolha(prisma, { designacaoId: id, dataEfeito: D(2026, 6, 5), motivo: "exoneracao", criadoPor: PREPARADOR });
+    vi.useFakeTimers({ toFake: ["Date"], now: D(2026, 6, 3) });
+    try {
+      const ok = await certificarFolha(prisma, { folhaId, data: DATA_ATESTO, criadoPor: ATESTADOR });
+      expect(ok.certificacaoId).not.toBe("");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+/**
+ * ⚠️ PARIDADE ENTRE A BARRA DE AÇÕES E O CASO DE USO (V6.2 U0). Para cada estado real e cada ato,
+ * o predicado anuncia ELEGÍVEL ou um código; o serviço é chamado de verdade e tem de concordar —
+ * recusar com a mensagem começando pelo MESMO código, ou não recusar pelo estado. Um predicado que
+ * dissesse "disponível" onde o serviço recusa (ou o contrário) é a tela prometendo o que não fará.
+ */
+describe("(4c) paridade: o que a tela anuncia é o que o serviço faz", () => {
+  const CODIGO_DAS_CLASSES: Readonly<Record<string, string>> = {
+    FolhaNaoFechadaError: "FOLHA-NAO-FECHADA",
+    SemDesignacaoVigenteError: "SEM-DESIGNACAO-VIGENTE",
+    AutocertificacaoError: "AUTOCERTIFICACAO-DA-FOLHA",
+    AutoliquidacaoError: "AUTOLIQUIDACAO-DA-FOLHA",
+    FolhaNaoCertificadaError: "FOLHA-NAO-CERTIFICADA",
+    FolhaNaoApropriadaError: "FOLHA-NAO-APROPRIADA",
+  };
+
+  async function praticar(acao: AcaoDaFolha, quem: string): Promise<string | null> {
+    try {
+      if (acao === "certificar") await certificarFolha(prisma, { folhaId, data: DATA_ATESTO, criadoPor: quem });
+      else if (acao === "devolver") await devolverFolhaParaCorrecao(prisma, { folhaId, data: DATA_ATESTO, motivo: "paridade", criadoPor: quem });
+      else if (acao === "liquidar") await liquidarFolha(prisma, { folhaId, data: DATA_LIQUIDACAO, criadoPor: quem });
+      else if (acao === "fechar") await fecharFolha(prisma, { folhaId, criadoPor: quem });
+      else if (acao === "calcular") await calcularFolha(prisma, { folhaId, criadoPor: quem });
+      return null;
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e);
+      return CODIGO_DAS_CLASSES[(e as Error).name] ?? m.split(":")[0] ?? m;
+    }
+  }
+
+  /** Confere um ato num estado — e desfaz nada: cada `it` parte da semente. */
+  async function conferirParidade(acao: AcaoDaFolha, quem: string, esperado: string): Promise<void> {
+    const r = await retratoDosAtosDaFolha(prisma, folhaId, quem, { consultarDesignacao: true, lerDistribuicao: true });
+    if (r === null) throw new Error("folha sumiu");
+    const e = elegibilidadeDosAtosDaFolha(r.estado, r.ator)[acao];
+    const anunciado = e.situacao === "ELEGIVEL" ? "ELEGIVEL" : e.codigo;
+    // O esperado é escrito à mão — não sai do predicado nem do serviço.
+    expect(`${acao}/${quem}: ${anunciado}`).toBe(`${acao}/${quem}: ${esperado}`);
+    const recusa = await praticar(acao, quem);
+    if (esperado === "ELEGIVEL") expect(`${acao}: ${recusa ?? "praticado"}`).toBe(`${acao}: praticado`);
+    else expect(`${acao}: ${recusa}`).toBe(`${acao}: ${esperado}`);
+  }
+
+  it("folha ABERTA: certificar e liquidar pedem o fechamento", async () => {
+    await designarAtestador();
+    await conferirParidade("certificar", ATESTADOR, "FOLHA-NAO-FECHADA");
+    await conferirParidade("liquidar", LIQUIDANTE, "FOLHA-NAO-FECHADA");
+  });
+
+  it("FECHADA e pendente: sem designação trava; quem fechou trava por segregação; o designado pratica", async () => {
+    await ateAApropriacao();
+    await conferirParidade("certificar", ATESTADOR, "SEM-DESIGNACAO-VIGENTE");
+    await conferirParidade("certificar", PREPARADOR, "AUTOCERTIFICACAO-DA-FOLHA");
+    await conferirParidade("liquidar", LIQUIDANTE, "FOLHA-NAO-CERTIFICADA");
+    await conferirParidade("fechar", PREPARADOR, "FOLHA-JA-FECHADA");
+    await conferirParidade("calcular", PREPARADOR, "FOLHA-FECHADA");
+    await designarAtestador();
+    await conferirParidade("certificar", ATESTADOR, "ELEGIVEL");
+  });
+
+  it("CERTIFICADA: certificar não se aplica mais (mesmo para quem não é designado); quem certificou não liquida", async () => {
+    await ateAApropriacao();
+    await designarAtestador();
+    await certificarFolha(prisma, { folhaId, data: DATA_ATESTO, criadoPor: ATESTADOR });
+    await conferirParidade("certificar", ATESTADOR, "FOLHA-JA-CERTIFICADA");
+    await conferirParidade("liquidar", ATESTADOR, "AUTOLIQUIDACAO-DA-FOLHA");
+    await conferirParidade("liquidar", LIQUIDANTE, "ELEGIVEL");
+    // Depois de liquidada: devolver não se aplica — e o serviço recusa pelo mesmo código.
+    await conferirParidade("devolver", ATESTADOR, "FOLHA-JA-LIQUIDADA");
+  });
+
+  it("a versão do retrato MUDA quando um fato decisivo acontece — e não muda quando nada aconteceu", async () => {
+    await ateAApropriacao();
+    await designarAtestador();
+    const a = await retratoDosAtosDaFolha(prisma, folhaId, ATESTADOR, { consultarDesignacao: false, lerDistribuicao: false });
+    const b = await retratoDosAtosDaFolha(prisma, folhaId, LIQUIDANTE, { consultarDesignacao: false, lerDistribuicao: false });
+    expect(b?.versao).toBe(a?.versao);
+    await certificarFolha(prisma, { folhaId, data: DATA_ATESTO, criadoPor: ATESTADOR });
+    const c = await retratoDosAtosDaFolha(prisma, folhaId, ATESTADOR, { consultarDesignacao: false, lerDistribuicao: false });
+    expect(c?.versao).not.toBe(a?.versao);
+  });
+
+  it("apropriação COMPLETA não se oferece de novo; retrato sem a distribuição continua oferecendo (a retomada é segura)", async () => {
+    await ateAApropriacao();
+    const completo = await retratoDosAtosDaFolha(prisma, folhaId, PREPARADOR, { consultarDesignacao: false, lerDistribuicao: true });
+    expect(completo?.estado.empenhosEsperados).toBe(3);
+    const e = elegibilidadeDosAtosDaFolha(completo!.estado, completo!.ator).apropriar;
+    expect(e.situacao === "ELEGIVEL" ? "ELEGIVEL" : e.codigo).toBe("FOLHA-JA-APROPRIADA");
+    // O serviço concorda do jeito dele: reexecutar não grava nada novo.
+    const r = await apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: PREPARADOR });
+    expect(r.empenhados).toBe(0);
+    expect(r.jaExistiam).toBe(3);
   });
 });
 

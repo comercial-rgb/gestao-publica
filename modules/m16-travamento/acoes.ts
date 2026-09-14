@@ -1344,6 +1344,13 @@ export const FORA_DO_CENSO: Record<string, string> = {
     "LEITURA: separa empenho liquidado de empenho pendente, para que a folha pela metade nunca apareça como liquidada.",
   designacoesNaFolha:
     "LEITURA: as designações do ente com a vigência DERIVADA (início, fim e revogação) no dia perguntado.",
+  // ── V6.2 U0 — disponibilidade dos atos (leituras que alimentam o predicado de elegibilidade) ──
+  designacaoVigenteParaOAto:
+    "LEITURA: a designação vigente no dia do ato E no instante do servidor — a segunda data impede que uma " +
+    "revogação já registrada seja contornada datando o comando novo de antes dela. Não muta nada.",
+  retratoDosAtosDaFolha:
+    "LEITURA: o retrato do estado da folha que os predicados de `elegibilidade.ts` leem, com a versão dos fatos. " +
+    "A tela projeta a barra de ações a partir dele; quem decide é o caso de uso, dentro da transação.",
   // ── V6 P2.3b — a apropriação contábil da folha ──
   apropriacaoDaFolha:
     "LEITURA: devolve os empenhos que a folha gerou (o elo competência × despesa) para o detalhe da folha. " +

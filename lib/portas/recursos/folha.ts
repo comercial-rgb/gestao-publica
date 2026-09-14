@@ -65,6 +65,8 @@ export const FOLHAS: DefinicaoDeRecurso = definirRecurso({
       { valor: "FECHADA", rotulo: "Fechada" },
     ] },
   ],
+  // V6.2 U0 — a barra de ações da folha é projetada do estado (`disponibilidadeDaFolha`).
+  acoesPorEstado: true,
   acoes: [
     {
       nome: "calcular", rotulo: "Calcular a folha", acaoDoCenso: "CALCULAR_FOLHA",

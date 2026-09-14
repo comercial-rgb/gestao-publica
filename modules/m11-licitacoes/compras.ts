@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
-import { Decimal, toMoney, type Money } from "../../packages/contracts/index.js";
+import { Decimal, exigirElegivel, toMoney, type Money } from "../../packages/contracts/index.js";
+import { elegibilidadeParaEstornarOrdem, elegibilidadeParaReceberOrdem } from "./elegibilidade.js";
 import { diaCivil } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { alocarDentroDaTransacao, zLinhaDeAlocacao } from "./compras-alocacao.js";
@@ -653,9 +654,7 @@ export async function registrarRecebimentoDeOrdem(
       ACAO_DO_SERVICO.registrarRecebimentoDeOrdem,
       ordem.ficha === null ? "ENTE" : { ug: ordem.ficha.unidadeOrcId }
     );
-    if (await ordemEstornada(tx, ordem.id)) {
-      throw new Error(`A ordem ${ordem.numero} está ESTORNADA: não há o que receber por ela. Nada foi gravado.`);
-    }
+    exigirElegivel(elegibilidadeParaReceberOrdem({ numero: ordem.numero, estornada: await ordemEstornada(tx, ordem.id), recebimentos: 0, empenhosVivos: [], itensPendentes: null }));
 
     let notaFiscal = d.notaFiscal ?? null;
     if (d.documentoFiscalId !== undefined) {
@@ -764,30 +763,15 @@ export async function estornarOrdemDeCompra(
       ordem.ficha === null ? "ENTE" : { ug: ordem.ficha.unidadeOrcId }
     );
 
-    if (ordem.recebimentos.length > 0) {
-      throw new Error(
-        `A ordem ${ordem.numero} tem ${ordem.recebimentos.length} recebimento(s) — o ` +
-          `material JÁ ENTROU. Desfazer a ordem deixaria a prateleira com material que ` +
-          `documento nenhum explica. Estorne os recebimentos primeiro.`
-      );
-    }
-
-    // ⚠️ O EMPENHO MANDA (5.17.100). Ordem com empenho vivo só se estorna pelo estorno do empenho.
-    const empenhosVivos = ordem.empenhos.filter((e) => e.estornoDeId === null && e.estornos.length === 0);
-    if (empenhosVivos.length > 0) {
-      throw new Error(
-        `A ordem ${ordem.numero} está empenhada (${empenhosVivos.map((e) => e.numero).join(", ")}). ` +
-          `A TR 5.17.100 diz que ordem empenhada só se estorna PELO ESTORNO DO EMPENHO.`
-      );
-    }
-
-    // ⚠️ V6 P1.1 — O ESTORNO É UM FATO, NÃO UM DELETE. O papel de runtime (`gestao_app`) não
-    // apaga linha em tabela nenhuma fora do censo assinado; o `delete` anterior só passava em
-    // teste porque o teste roda como dono. A ordem estornada continua existindo: "estornada" é
-    // derivado do movimento (`ordemEstornada`), e cada leitor a exclui do que é "vivo".
-    if (await ordemEstornada(tx, ordem.id)) {
-      throw new Error(`A ordem ${ordem.numero} já está ESTORNADA.`);
-    }
+    // V6.2 U0 — o MESMO predicado que a barra de ações projeta. TR 5.17.100: o EMPENHO manda —
+    // ordem empenhada só se estorna pelo estorno do empenho. E o estorno é FATO, não DELETE (V6 P1.1).
+    exigirElegivel(elegibilidadeParaEstornarOrdem({
+      numero: ordem.numero,
+      estornada: await ordemEstornada(tx, ordem.id),
+      recebimentos: ordem.recebimentos.length,
+      empenhosVivos: ordem.empenhos.filter((e) => e.estornoDeId === null && e.estornos.length === 0).map((e) => e.numero),
+      itensPendentes: null,
+    }));
     const agora = new Date();
     await tx.movimentoDaOrdemDeCompra.create({
       data: { ordemId: ordem.id, tipo: "ESTORNO", data: agora, motivo: d.motivo, criadoPor: d.criadoPor },

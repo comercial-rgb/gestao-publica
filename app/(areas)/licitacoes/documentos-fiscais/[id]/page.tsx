@@ -10,6 +10,7 @@ import { acoesPermitidas, exigirLeitura } from "../../../../../lib/portas/molde"
 import { EXTENSOES_ACEITAS, TAMANHO_MAXIMO_BYTES } from "../../../../../lib/portas/documentos";
 import { DOCUMENTOS_FISCAIS } from "../../../../../lib/portas/recursos/documentos-fiscais";
 import {
+  disponibilidadeDoDocumentoFiscal,
   opcoesDoDocumentoFiscal,
   verDocumentoFiscal,
 } from "../../../../../lib/portas/recursos/documentos-fiscais-dados";
@@ -41,6 +42,7 @@ export default async function Detalhe({
     ]),
   ]);
   if (detalhe === null) notFound();
+  const disponibilidade = await disponibilidadeDoDocumentoFiscal(id).catch(() => null);
   const podeAnexar = permitidas.has("ANEXAR_ARQUIVO");
   return (
     <DetalheDeRecurso
@@ -108,6 +110,7 @@ export default async function Detalhe({
             registroId={id}
             action={documentosfiscaisAction}
             modo="acoes"
+            disponibilidade={disponibilidade}
           />
         </div>
       }

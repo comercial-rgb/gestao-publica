@@ -5,7 +5,7 @@ import { lerConsulta, type ParametrosBrutos } from "../../../../../lib/molde/con
 import type { AbaDoMolde } from "../../../../../lib/molde/tipos";
 import { acoesPermitidas, exigirLeitura } from "../../../../../lib/portas/molde";
 import { FOLHAS } from "../../../../../lib/portas/recursos/folha";
-import { verFolha } from "../../../../../lib/portas/recursos/folha-dados";
+import { disponibilidadeDaFolha, verFolha } from "../../../../../lib/portas/recursos/folha-dados";
 import { folhasAction } from "../actions";
 import { CertificacaoDaFolha } from "./CertificacaoDaFolha";
 import { Contracheques } from "./Contracheques";
@@ -30,8 +30,10 @@ export default async function Detalhe({ params, searchParams }: { readonly param
   await exigirLeitura("CONSULTAR_FOLHA");
   const { id } = await params;
   const consulta = lerConsulta(FOLHAS, await searchParams);
-  const [detalhe, permitidas] = await Promise.all([verFolha(id), acoesPermitidas(FOLHAS.acoes.map((a) => a.acaoDoCenso))]);
+  const [detalhe, permitidas] = await Promise.all([verFolha(id), acoesPermitidas([...FOLHAS.acoes.map((a) => a.acaoDoCenso), "DESIGNAR_NA_FOLHA"])]);
   if (detalhe === null) notFound();
+  // ⚠️ FALHAR A CONFERÊNCIA NÃO LIBERA A BARRA: `null` faz o molde travar cada ato com o motivo.
+  const disponibilidade = await disponibilidadeDaFolha(id, permitidas).catch(() => null);
   return (
     <div className="space-y-4">
       <DetalheDeRecurso
@@ -43,7 +45,7 @@ export default async function Detalhe({ params, searchParams }: { readonly param
         abaAtiva={consulta.aba as AbaDoMolde}
         dados={detalhe.dados}
         historico={detalhe.historico}
-        acoes={<FormsDoRecurso definicao={FOLHAS} permitidas={[...permitidas]} opcoes={{}} registroId={id} action={folhasAction} modo="acoes" />}
+        acoes={<FormsDoRecurso definicao={FOLHAS} permitidas={[...permitidas]} opcoes={{}} registroId={id} action={folhasAction} modo="acoes" disponibilidade={disponibilidade} />}
       />
       {consulta.aba === "dados" && detalhe.certificacao !== null ? <CertificacaoDaFolha situacao={detalhe.certificacao.situacao} fatos={detalhe.certificacao.fatos} /> : null}
       {consulta.aba === "dados" && detalhe.apropriacao !== null ? <EmpenhosDaFolha apropriacao={detalhe.apropriacao} liquidacoes={detalhe.liquidacao?.porEmpenho ?? {}} /> : null}

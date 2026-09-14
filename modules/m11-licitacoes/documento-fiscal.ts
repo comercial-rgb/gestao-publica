@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
-import { Decimal, toMoney, type Money } from "../../packages/contracts/index.js";
+import { Decimal, exigirElegivel, toMoney, type Money } from "../../packages/contracts/index.js";
+import { elegibilidadeParaCancelarDocumento, elegibilidadeParaConferirDocumento } from "./elegibilidade.js";
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import { normalizarDocumento } from "../../packages/documento/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
@@ -516,15 +517,15 @@ export async function conferirDocumentoFiscal(
         ? { ug: doc.ordem.ficha.unidadeOrcId }
         : await escopoDoDocumento(tx, { ...(doc.empenhoId !== null ? { empenhoId: doc.empenhoId } : {}), ...(doc.ordemId !== null ? { ordemId: doc.ordemId } : {}) })
     );
-    if (doc.movimentos.some((m) => m.tipo === "CANCELAMENTO" || m.tipo === "SUBSTITUICAO")) {
-      throw new Error(`Documento ${doc.numero}/${doc.serie} cancelado ou substituído não se confere.`);
-    }
-    if (doc.movimentos.some((m) => m.tipo === "CONFERENCIA")) {
-      throw new Error(`Documento ${doc.numero}/${doc.serie} já foi conferido.`);
-    }
-    if (doc.ordem !== null && doc.ordem.fornecedorId !== doc.emitenteId) {
-      throw new Error(`O emitente deixou de coincidir com o fornecedor da ordem ${doc.ordem.numero}.`);
-    }
+    // V6.2 U0 — o MESMO predicado que a barra de ações projeta (`elegibilidade.ts`).
+    exigirElegivel(elegibilidadeParaConferirDocumento({
+      rotulo: `${doc.numero}/${doc.serie}`,
+      movimentos: doc.movimentos.map((m) => m.tipo),
+      emitenteConfereComOrdem: doc.ordem === null || doc.ordem.fornecedorId === doc.emitenteId,
+      ordemNumero: doc.ordem?.numero ?? null,
+      recebimentos: 0,
+      liquidacoesVivas: 0,
+    }));
     await tx.movimentoDoDocumentoFiscal.create({
       data: {
         documentoId: doc.id, tipo: "CONFERENCIA", data: d.data, motivo: d.motivo, criadoPor: d.criadoPor,
@@ -567,22 +568,14 @@ export async function cancelarDocumentoFiscal(
         ? { ug: doc.ordem.ficha.unidadeOrcId }
         : await escopoDoDocumento(tx, { ...(doc.empenhoId !== null ? { empenhoId: doc.empenhoId } : {}), ...(doc.ordemId !== null ? { ordemId: doc.ordemId } : {}) })
     );
-    if (doc.movimentos.some((m) => m.tipo === "CANCELAMENTO" || m.tipo === "SUBSTITUICAO")) {
-      throw new Error(`Documento ${doc.numero}/${doc.serie} já foi cancelado ou substituído.`);
-    }
-    if (doc.recebimentos.length > 0) {
-      throw new Error(
-        `Não foi possível cancelar: o documento ${doc.numero}/${doc.serie} já lastreia ` +
-          `${doc.recebimentos.length} recebimento(s). Estorne os recebimentos primeiro.`
-      );
-    }
-    const liqsVivas = doc.liquidacoes.filter((l) => l.estornoDeId === null && l.estornos.length === 0);
-    if (liqsVivas.length > 0) {
-      throw new Error(
-        `Não foi possível cancelar: a parcela do documento ${doc.numero}/${doc.serie} já foi ` +
-          `utilizada em ${liqsVivas.length} liquidação(ões). Anule a liquidação primeiro.`
-      );
-    }
+    exigirElegivel(elegibilidadeParaCancelarDocumento({
+      rotulo: `${doc.numero}/${doc.serie}`,
+      movimentos: doc.movimentos.map((m) => m.tipo),
+      emitenteConfereComOrdem: true,
+      ordemNumero: null,
+      recebimentos: doc.recebimentos.length,
+      liquidacoesVivas: doc.liquidacoes.filter((l) => l.estornoDeId === null && l.estornos.length === 0).length,
+    }));
     await tx.movimentoDoDocumentoFiscal.create({
       data: {
         documentoId: doc.id, tipo: "CANCELAMENTO", data: d.data, motivo: d.motivo, criadoPor: d.criadoPor,

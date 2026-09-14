@@ -5,10 +5,12 @@ import type { Prisma } from "../../../prisma/generated/client/client.js";
 import { situacaoDaFolha, vigenteNaCompetencia, type SituacaoDaFolha } from "../../../modules/m33-folha/dominio.js";
 import { situacaoDoVinculo, type EventoDoVinculo } from "../../../modules/m32-pessoal/dominio.js";
 import { apropriacaoDaFolha, apropriarFolha, cadastrarGrupoDeEmpenhoDaFolha, definirContasDaLiquidacaoDoGrupo } from "../../../modules/m33-folha/apropriacao.js";
+import { elegibilidadeDosAtosDaFolha } from "../../../modules/m33-folha/elegibilidade.js";
 import {
   certificacaoDaFolha,
   certificarFolha,
   designacaoVigenteEm,
+  retratoDosAtosDaFolha,
   designarNaFolha,
   devolverFolhaParaCorrecao,
   liquidacaoDaFolha,
@@ -29,8 +31,9 @@ import {
 } from "../../../modules/m33-folha/servico.js";
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { TAMANHO_DE_PAGINA } from "../../molde/consulta.js";
-import type { DadoDoDetalhe, LinhaDoHistorico } from "../../molde/tipos.js";
-import { comEscritaAutenticada } from "../sessao";
+import type { DadoDoDetalhe, DisponibilidadeDoRegistro, LinhaDoHistorico } from "../../molde/tipos.js";
+import { apresentar, RegistroMudouError } from "../disponibilidade";
+import { comEscritaAutenticada, exigirSessao } from "../sessao";
 import { cliente, PortaSemBancoError } from "../cliente";
 import type { DetalheLido, OpcoesDoCadastro, PaginaDoMolde } from "./dados";
 import { decimalDaTela } from "./pessoal-dados";
@@ -232,6 +235,28 @@ export async function verFolha(id: string): Promise<FolhaLida | null> {
   };
 }
 
+/**
+ * V6.2 U0 — O QUE A BARRA DA FOLHA OFERECE, para quem está olhando, AGORA.
+ *
+ * ⚠️ O RETRATO E O PREDICADO SÃO DO DOMÍNIO (`retratoDosAtosDaFolha` + `elegibilidadeDosAtosDaFolha`),
+ * os mesmos que `certificacao.ts` usa dentro da transação. Aqui só se traduz a resposta.
+ *
+ * ⚠️ LEITURA PURA: não reserva número, não cria comando, não registra ciência. A designação é
+ * consultada só para quem tem a permissão de certificar — ninguém mais precisa dela na tela.
+ */
+export async function disponibilidadeDaFolha(folhaId: string, permitidas: ReadonlySet<string>): Promise<DisponibilidadeDoRegistro | null> {
+  const sessao = await exigirSessao();
+  const r = await retratoDosAtosDaFolha(cliente(), folhaId, sessao.identificador, { consultarDesignacao: permitidas.has("CERTIFICAR_FOLHA"), lerDistribuicao: true });
+  if (r === null) return null;
+  const porAto = elegibilidadeDosAtosDaFolha(r.estado, r.ator);
+  return {
+    versao: r.versao,
+    porAcao: Object.fromEntries(
+      Object.entries(porAto).map(([acao, e]) => [acao, apresentar(e, e.situacao === "PRE_CONDICAO" && e.codigo === "SEM-DESIGNACAO-VIGENTE" && permitidas.has("DESIGNAR_NA_FOLHA") ? "/folha/designacoes" : undefined)])
+    ),
+  };
+}
+
 export async function opcoesDaFolha(): Promise<OpcoesDoCadastro> {
   return {};
 }
@@ -245,6 +270,14 @@ export async function criarFolha(c: Campos): Promise<string> {
 
 export async function acaoDaFolha(acao: string, folhaId: string, c: Campos): Promise<string> {
   const prisma = cliente();
+  // ⚠️ A TELA VELHA É RECUSADA ANTES DO CASO DE USO — que recusaria de qualquer forma, mas com o
+  // motivo do estado novo, e o operador não saberia que outra aba agiu. Envio sem versão (chamada
+  // direta, script) segue direto para o caso de uso: a versão é conveniência, não autorização.
+  const versaoDoFormulario = opcional(c, "__versao");
+  if (versaoDoFormulario !== undefined) {
+    const atual = await retratoDosAtosDaFolha(prisma, folhaId, "", { consultarDesignacao: false, lerDistribuicao: false });
+    if (atual !== null && atual.versao !== versaoDoFormulario) throw new RegistroMudouError("Esta folha");
+  }
   switch (acao) {
     case "calcular": {
       const r = await comEscritaAutenticada("CALCULAR_FOLHA", (criadoPor) => calcularFolha(prisma, { folhaId, ...(opcional(c, "motivo") !== undefined ? { motivo: t(c, "motivo") } : {}), criadoPor }));

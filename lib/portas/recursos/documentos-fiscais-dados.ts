@@ -12,7 +12,9 @@ import {
 } from "../../../modules/m11-licitacoes/documento-fiscal.js";
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { TAMANHO_DE_PAGINA } from "../../molde/consulta.js";
-import type { LinhaDoHistorico } from "../../molde/tipos.js";
+import type { DisponibilidadeDoRegistro, LinhaDoHistorico } from "../../molde/tipos.js";
+import { elegibilidadeParaCancelarDocumento, elegibilidadeParaConferirDocumento, type EstadoDoDocumentoParaAtos } from "../../../modules/m11-licitacoes/elegibilidade.js";
+import { apresentar, RegistroMudouError, versaoDoEstado } from "../disponibilidade";
 import { comEscritaAutenticada } from "../sessao";
 import { cliente, PortaSemBancoError } from "../cliente";
 import type { DetalheLido, OpcoesDoCadastro, PaginaDoMolde } from "./dados";
@@ -571,11 +573,52 @@ export async function importarDocumentoFiscal(
   });
 }
 
+async function estadoDosAtosDoDocumento(documentoId: string): Promise<{ readonly estado: EstadoDoDocumentoParaAtos; readonly versao: string } | null> {
+  const doc = await cliente().documentoFiscalRecebido.findUnique({
+    where: { id: documentoId },
+    select: {
+      numero: true, serie: true, emitenteId: true,
+      ordem: { select: { numero: true, fornecedorId: true } },
+      movimentos: { select: { id: true, tipo: true } },
+      recebimentos: { select: { id: true } },
+      liquidacoes: { select: { id: true, estornoDeId: true, estornos: { select: { id: true } } } },
+    },
+  });
+  if (doc === null) return null;
+  const estado: EstadoDoDocumentoParaAtos = {
+    rotulo: `${doc.numero}/${doc.serie}`,
+    movimentos: doc.movimentos.map((m) => m.tipo),
+    emitenteConfereComOrdem: doc.ordem === null || doc.ordem.fornecedorId === doc.emitenteId,
+    ordemNumero: doc.ordem?.numero ?? null,
+    recebimentos: doc.recebimentos.length,
+    liquidacoesVivas: doc.liquidacoes.filter((l) => l.estornoDeId === null && l.estornos.length === 0).length,
+  };
+  return { estado, versao: versaoDoEstado([doc.movimentos.map((m) => m.id).sort(), doc.recebimentos.length, doc.liquidacoes.map((l) => [l.id, l.estornos.length]), doc.ordem?.fornecedorId ?? null, doc.emitenteId]) };
+}
+
+/** V6.2 U0 — conferir/cancelar projetados do predicado do domínio. Leitura pura. */
+export async function disponibilidadeDoDocumentoFiscal(documentoId: string): Promise<DisponibilidadeDoRegistro | null> {
+  const lido = await estadoDosAtosDoDocumento(documentoId);
+  if (lido === null) return null;
+  return {
+    versao: lido.versao,
+    porAcao: {
+      conferir: apresentar(elegibilidadeParaConferirDocumento(lido.estado)),
+      cancelar: apresentar(elegibilidadeParaCancelarDocumento(lido.estado)),
+    },
+  };
+}
+
 export async function acaoDoDocumentoFiscal(
   acao: string,
   documentoId: string,
   c: Campos
 ): Promise<void> {
+  const versaoDoFormulario = (c["__versao"] ?? "").trim();
+  if (versaoDoFormulario !== "") {
+    const atual = await estadoDosAtosDoDocumento(documentoId);
+    if (atual !== null && atual.versao !== versaoDoFormulario) throw new RegistroMudouError("Este documento fiscal");
+  }
   if (acao === "conferir") {
     await comEscritaAutenticada("CONFERIR_DOCUMENTO_FISCAL", (criadoPor) =>
       conferirDocumentoFiscal(cliente(), {
