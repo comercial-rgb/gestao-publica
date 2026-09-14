@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import puppeteer from "puppeteer";
+import puppeteer, { type Browser } from "puppeteer";
 
 /**
  * PREFLIGHT DO NAVEGADOR — o mesmo para os percursos e para o gerador de PDF (V7 M1 U0).
@@ -47,14 +47,16 @@ export async function preflightDoNavegador(): Promise<ResultadoDoPreflight> {
     return { ok: false, versaoEsperada, executavel, diagnostico: `NAVEGADOR AUSENTE: ${executavel} não existe. Nenhum percurso foi iniciado. Reposição: ${REPOSICAO}` };
   }
   const inicio = Date.now();
-  const navegador = await puppeteer.launch({ headless: true, args: ["--no-sandbox", "--disable-setuid-sandbox"] }).catch((e: unknown) => e);
-  if (navegador instanceof Error || navegador === undefined || typeof (navegador as { newPage?: unknown }).newPage !== "function") {
-    return { ok: false, versaoEsperada, executavel, diagnostico: `o navegador existe e NÃO INICIOU: ${navegador instanceof Error ? navegador.message : String(navegador)}` };
+  let navegador: Browser;
+  try {
+    navegador = await puppeteer.launch({ headless: true, args: ["--no-sandbox", "--disable-setuid-sandbox"] });
+  } catch (e) {
+    return { ok: false, versaoEsperada, executavel, diagnostico: `o navegador existe e NÃO INICIOU: ${e instanceof Error ? e.message : String(e)}` };
   }
   try {
     const page = await navegador.newPage();
     await page.setContent("<!doctype html><html><body><h1>preflight</h1><p>Gestão Pública</p></body></html>", { waitUntil: "load" });
-    const titulo = await page.$eval("h1", (h) => h.textContent ?? "");
+    const titulo = await page.$eval("h1", (h: Element) => h.textContent ?? "");
     if (titulo !== "preflight") return { ok: false, versaoEsperada, executavel, diagnostico: `a página local não carregou (h1 = "${titulo}")` };
     const pdf = await page.pdf({ format: "A4" });
     const cabecalho = Buffer.from(pdf.subarray(0, 4)).toString("latin1");
