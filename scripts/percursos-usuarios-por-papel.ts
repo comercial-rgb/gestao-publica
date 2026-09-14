@@ -57,7 +57,9 @@ export const PAPEIS: readonly Papel[] = [
       // V6 P2.3 — FECHAR a folha é da contabilidade: o fechamento congela o cálculo que vira empenho.
       // V6 P2.3b — e é ela quem APROPRIA (parametriza os grupos e gera os empenhos). EMPENHAR ela
       // já tinha, e continua sendo exigida em cada empenho pelo M05: apropriar não a contorna.
-      "FECHAR_FOLHA", "CONSULTAR_FOLHA", "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA", "APROPRIAR_FOLHA"],
+      "FECHAR_FOLHA", "CONSULTAR_FOLHA", "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA", "APROPRIAR_FOLHA",
+      // V6.2 — e APURA os encargos do empregador sobre a folha fechada (não os certifica).
+      "APURAR_ENCARGOS_DA_FOLHA"],
   },
   {
     identificador: "tesouraria@percursos.local",
@@ -84,7 +86,9 @@ export const PAPEIS: readonly Papel[] = [
     // ⚠️ UMA AÇÃO DE ESCRITA, e ela NÃO BASTA: certificar exige também uma DESIGNAÇÃO vigente no
     // dia do ato. É de propósito que este papel não tenha CALCULAR_FOLHA nem FECHAR_FOLHA — quem
     // prepara não certifica, e o percurso prova a recusa nas duas pontas.
-    acoes: ["CERTIFICAR_FOLHA", "CONSULTAR_FOLHA", "CONSULTAR_PESSOAL", "CONSULTAR_CADASTROS"],
+    acoes: ["CERTIFICAR_FOLHA", "CONSULTAR_FOLHA", "CONSULTAR_PESSOAL", "CONSULTAR_CADASTROS",
+      // V6.2 — certificar os ENCARGOS é ação própria, e exige designação com a atribuição própria.
+      "CERTIFICAR_ENCARGOS_DA_FOLHA"],
   },
   {
     identificador: "liquidante@percursos.local",
@@ -94,6 +98,13 @@ export const PAPEIS: readonly Papel[] = [
     // ⚠️ AS DUAS AÇÕES, e não uma: LIQUIDAR_FOLHA autoriza o ATO sobre a folha, e LIQUIDAR é
     // exigida pelo M05 em CADA liquidação, na unidade da ficha. LIQUIDAR_FOLHA não contorna o M05.
     acoes: ["LIQUIDAR_FOLHA", "LIQUIDAR", "CONSULTAR_FOLHA", "CONSULTAR_DESPESA", "CONSULTAR_CADASTROS"],
+  },
+  {
+    identificador: "aprovador-encargos@percursos.local",
+    nome: "Conferente dos parâmetros de encargos (percurso)",
+    perfil: "APROVACAO DE ENCARGOS — PERCURSO",
+    descricao: "Aprova as versões de parâmetro dos encargos do empregador cadastradas por outra pessoa. Não cadastra, não apura, não certifica.",
+    acoes: ["APROVAR_ENCARGO_DA_FOLHA", "CONSULTAR_FOLHA", "CONSULTAR_CADASTROS"],
   },
   {
     identificador: "planejamento@percursos.local",
