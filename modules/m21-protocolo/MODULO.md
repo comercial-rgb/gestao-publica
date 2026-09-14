@@ -214,11 +214,57 @@ decidir). Rotas: `/servicos`, `/servicos/[slug]` (públicas), `/meus-servicos/**
 Testes: `m21-carta.test.ts` (13), `test/carta-de-servicos.test.ts` (5); percurso
 `scripts/smoke-carta-de-servicos.ts`.
 
-Pendências: `CARTA-SEM-SERVICO-ANONIMO` (serviço sem login e reCAPTCHA, 5.39.102),
-`AVALIACAO-DO-SERVICO` (5.39.105), `CANAL-DA-CARTA-SEM-ATIVACAO-NA-APRESENTACAO` (a entrada não
+Pendências: ~~`CARTA-SEM-SERVICO-ANONIMO`~~ (a manifestação sem conta chegou em V7 M1 U4, §7.1; o
+reCAPTCHA continua ausente: `ANTIABUSO-EXTERNO-NAO-CONECTADO`), ~~`AVALIACAO-DO-SERVICO`~~ (V7 M1 U4,
+§7.2), `CANAL-DA-CARTA-SEM-ATIVACAO-NA-APRESENTACAO` (a entrada não
 oferece o link), ~~`GESTOR-POR-QUALQUER-PERMISSAO-GLOBAL`~~ (resolvida em V7 M1 U1, §2), `ALTERACAO-CADASTRAL-CONCORRENTE-SEM-TRINCO`
 (`alterarPessoa` não trava; a conferência da versão base fecha a janela só entre leituras),
 `NOTIFICACAO-EXTERNA-AO-REQUERENTE` (as notificações são registradas no sistema; nada sai por e-mail).
+
+### 7.1 A manifestação de ouvidoria sem conta — V7 M1 U4
+
+**A entrada é da natureza do serviço.** `MANIFESTACAO_ANONIMA` é o único tipo com
+`exigeAutenticacao = false`, e só sobre assunto que aceita anônimo E é sigiloso por padrão
+(`ASSUNTO-INADEQUADO-PARA-OUVIDORIA`); os outros tipos continuam exigindo conta, e o protocolo
+autenticado recusa o serviço anônimo.
+
+- **Nenhuma Pessoa fictícia.** `registrarManifestacaoAnonima` cria o processo sem requerente, SIGILOSO
+  pelo ato (mesmo que o assunto seja rebaixado depois), no setor de entrada da versão; autor técnico
+  `OUVIDORIA-SEM-CONTA`. Contato é opcional e só a ouvidoria vê.
+- **Segredo por hash.** 20 caracteres de 32 bytes aleatórios, mostrados uma vez; o banco guarda o sha256.
+  `acompanharManifestacao(protocolo, segredo)` devolve só situação e respostas liberadas; protocolo ou
+  segredo errados respondem `null`, igual. A tela consulta por POST (nunca na URL) e declara
+  `referrer: no-referrer`.
+- **Quota local.** `EnvioPublicoSemConta` com chave sha256(dia civil + origem + finalidade), 5 por hora.
+  Nenhum captcha está conectado, e a tela diz isso.
+- **Triagem e resposta** (`TRIAR_MANIFESTACAO_DE_OUVIDORIA`) exigem lotação no setor em que a
+  manifestação está (sigilosa: a ação no ente não dispensa lotação). Uma triagem por manifestação
+  (anotação interna); resposta exige triagem; a conclusiva encerra o processo e os apensos. Trinco
+  `ManifestacaoDeOuvidoria` (posto 25) ANTES de ler — sem ele, duas conclusivas simultâneas passaram.
+- **Escopo.** A consulta do protocolo no ente não lê manifestação (`SIGILO-PREVALECE`).
+
+### 7.2 A avaliação dos serviços — V7 M1 U4 (`avaliacao.ts`)
+
+- **Metodologia versionada** (`CONFIGURAR_CARTA_DE_SERVICOS`): escala com rótulo em todo ponto, método
+  descrito e período em meses. A vigente é a de maior versão.
+- **Duas origens que não se somam.** `ATENDIMENTO_COMPROVADO`: solicitação DECIDIDA, pela conta do
+  titular ou de quem o representa hoje (`SOLICITAR_SERVICO`). `OPINIAO_GERAL`: sem conta, token httpOnly
+  do navegador guardado por sha256, quota de 10 por hora por origem.
+- **Revisar é linha nova** (`revisaoDeId` único); a raiz é única por (serviço, avaliador) em índice
+  parcial. O resultado conta só a última da cadeia.
+- **Resultado público** (`resultadoPublicoDasAvaliacoes`): por origem, número de respostas, média de
+  satisfação, atendimento e prazos com uma casa (inteiros, meio-para-cima), período, método, removidas e
+  quantas ficaram de fora por serem de outra versão da escala. Sem autor, sem descrição.
+- **Moderação** (`MODERAR_AVALIACAO_DE_SERVICO`): remoção por abuso ou dado pessoal, com justificativa.
+
+Rotas: `/ouvidoria`, `/ouvidoria/[slug]`, `/ouvidoria/acompanhar` (públicas), resultado e opinião em
+`/servicos/[slug]`, avaliação do atendimento em `/meus-servicos/[id]`, `/protocolo/ouvidoria`,
+`/protocolo/avaliacoes`. Permissões v17. Testes: `test/ouvidoria-e-avaliacao.test.ts` (10).
+
+Pendências: `ANTIABUSO-EXTERNO-NAO-CONECTADO`, `OUVIDORIA-ENCAMINHAMENTO-A-OUTRO-SETOR` (a
+triagem registra; o trâmite a outro setor é o do processo, sem projeção própria ao manifestante),
+`OUVIDORIA-REENVIO-DUPLICA` (ato público sem o envelope da chave de comando: duplo envio antes da resposta registra duas manifestações; a quota limita), `AVALIACAO-SEM-LIMIAR-DE-PUBLICACAO` (com poucas respostas a média é publicada assim mesmo, com o
+número de respostas ao lado).
 
 ## 8. Onde olhar
 

@@ -61,6 +61,10 @@ const ACOES_SEM_COMANDO: Record<string, string> = {
   "app/(areas)/integracoes/captura/page.tsx":
     "acaoSimular: a simulação MOCK da captura chama o serviço com exigirSessao, sem o envelope de " +
     "escrita autenticada — não consome a chave. Pendência CAPTURA-SEM-ENVELOPE.",
+  "app/ouvidoria/actions.ts":
+    "atos PÚBLICOS sem conta (manifestação, acompanhamento, opinião): não há sessão para o envelope de escrita " +
+    "autenticada. A defesa contra repetição é do domínio — quota por origem, uma raiz de opinião por token, " +
+    "acompanhamento só lê. Pendência OUVIDORIA-REENVIO-DUPLICA (um duplo envio antes da resposta registra duas manifestações).",
 };
 
 /**

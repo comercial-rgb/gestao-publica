@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useActionState, useId, useRef } from "react";
 import { ChaveDeComando } from "../../../components/ui/ChaveDeComando";
 import { CLASSE_AREA_TEXTO, CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO, CLASSE_PAINEL_FORMULARIO, CLASSE_ROTULO } from "../../../components/ui/Formulario";
-import { anexarDoRequerenteAction, protocolarAction, responderExigenciaAction, type EstadoDoRequerente } from "./actions";
+import { CamposDaAvaliacao, type EscalaDaTela } from "../../ouvidoria/FormulariosDaOuvidoria";
+import { anexarDoRequerenteAction, avaliarAtendimentoAction, protocolarAction, responderExigenciaAction, type EstadoDoRequerente } from "./actions";
 
 /**
  * AS ILHAS DO REQUERENTE — o formulário do serviço (os campos vêm da VERSÃO publicada, por prop), a
@@ -129,6 +130,21 @@ export function FormDocumentoDoRequerente({ solicitacaoId, accept, tamanhoMaximo
       <p id={`${id}-ajuda`} className="mt-1 text-xs text-[color:var(--color-ink-2)]">Até {(tamanhoMaximoBytes / 1024 / 1024).toFixed(0)} MB. PDF, DOC, DOCX, XLS, XLSX, ODT, JPG ou PNG. O arquivo fica ligado à sua solicitação com a verificação SHA-256 calculada no envio.</p>
       <Mensagens estado={estado} />
       <button type="submit" disabled={pendente} className={`mt-3 ${CLASSE_BOTAO_PRIMARIO}`}>{pendente ? "Enviando…" : "Enviar documento"}</button>
+    </form>
+  );
+}
+
+/** V7 M1 U4 — a avaliação do atendimento, depois da decisão. Avaliar de novo revisa a anterior. */
+export function FormAvaliarAtendimento({ solicitacaoId, escala, jaAvaliou }: { readonly solicitacaoId: string; readonly escala: EscalaDaTela; readonly jaAvaliou: boolean }): React.ReactElement {
+  const [estado, disparar, pendente] = useActionState<EstadoDoRequerente, FormData>(avaliarAtendimentoAction, {});
+  const id = useId();
+  return (
+    <form action={disparar} data-acao="avaliar-atendimento" className={CLASSE_PAINEL_FORMULARIO}>
+      <ChaveDeComando />
+      <input type="hidden" name="__id" value={solicitacaoId} />
+      <CamposDaAvaliacao escala={escala} idBase={id} />
+      <Mensagens estado={estado} />
+      <button type="submit" disabled={pendente} className={`mt-3 ${CLASSE_BOTAO_PRIMARIO}`}>{pendente ? "Enviando…" : jaAvaliou ? "Revisar avaliação" : "Enviar avaliação"}</button>
     </form>
   );
 }

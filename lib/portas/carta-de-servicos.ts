@@ -46,6 +46,7 @@ const ROTULO_DO_TIPO: Readonly<Record<string, string>> = {
   REQUERIMENTO_ADMINISTRATIVO: "Requerimento administrativo",
   ATUALIZACAO_CADASTRAL: "Atualização cadastral",
   COMPLEMENTO_DE_FORNECEDOR: "Complemento documental de fornecedor",
+  MANIFESTACAO_ANONIMA: "Ouvidoria — manifestação sem conta",
 };
 
 export interface EtapaPublicada {

@@ -255,6 +255,8 @@ export const PESSOAL: readonly RelatorioNav[] = [
 export const PROTOCOLO: readonly RelatorioNav[] = [
   { href: "/protocolo/processos", numero: "Processos", rotulo: "Processos digitais", descricao: "Abertura, tramitação entre setores, parecer, readequação, encerramento e arquivamento — com a situação derivada dos movimentos." },
   { href: "/protocolo/solicitacoes", numero: "Solicitações", rotulo: "Mesa das solicitações", descricao: "Os pedidos que chegaram pela carta de serviços: quantos aguardam recebimento, análise, resposta do requerente e decisão, por setor." },
+  { href: "/protocolo/ouvidoria", numero: "Ouvidoria", rotulo: "Mesa da ouvidoria", descricao: "Manifestações recebidas sem conta: triagem interna, resposta ao manifestante pelo código de acompanhamento e encerramento. Sigilosas." },
+  { href: "/protocolo/avaliacoes", numero: "Avaliações", rotulo: "Avaliação dos serviços", descricao: "A escala e o método em versões, e a moderação das avaliações por abuso ou dado pessoal, com motivo." },
   { href: "/protocolo/servicos", numero: "Carta", rotulo: "Carta de serviços", descricao: "O que o ente oferece ao público: serviço, versão do formulário, prazo com fundamento e as etapas copiadas do roteiro real." },
   { href: "/consulta", numero: "Consulta", rotulo: "Acompanhar processo", descricao: "Consulta pelo número e pelo código verificador, SEM SENHA — fora da área autenticada, porque quem a usa é o requerente." },
 ];

@@ -1,6 +1,6 @@
 import { diaCivilBr, instanteCivilBr } from "../../../packages/datas/index.js";
 import { ELEGIVEL, naoAplicavel } from "../../../packages/contracts/index.js";
-import { CAMPOS_DO_CADASTRO, TIPOS_DE_CAMPO, type CampoDoFormulario } from "../../../modules/m21-protocolo/carta.js";
+import { CAMPOS_DO_CADASTRO, exigeContaPorNatureza, TIPOS_DE_CAMPO, type CampoDoFormulario } from "../../../modules/m21-protocolo/carta.js";
 import { cadastrarServicoDaCarta, cadastrarVersaoDoServico, publicarVersaoDoServico } from "../../../modules/m21-protocolo/servico.js";
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { TAMANHO_DE_PAGINA } from "../../molde/consulta.js";
@@ -159,13 +159,16 @@ export async function criarVersaoDoServicoDaCarta(servicoId: string, c: Campos, 
     .filter((l) => l.nome.trim() !== "" || l.rotulo.trim() !== "")
     .map((l) => ({ nome: l.nome.trim(), rotulo: l.rotulo.trim(), tipo: l.tipo, obrigatorio: l.obrigatorio === "sim" }));
   const prazo = t(c, "prazoDias");
+  // A ENTRADA SAI DA NATUREZA DO SERVIÇO (V7 M1 U4), não de um campo da tela: o caso de uso confere de novo.
+  const natureza = await cliente().servicoDaCarta.findUnique({ where: { id: servicoId }, select: { tipo: true } });
+  const exigeAutenticacao = natureza === null ? true : exigeContaPorNatureza(natureza.tipo);
   const r = await comEscritaAutenticada("CONFIGURAR_CARTA_DE_SERVICOS", (criadoPor) =>
     cadastrarVersaoDoServico(cliente(), {
       servicoId, descricao: t(c, "descricao"), requisitos: t(c, "requisitos"),
       documentos: t(c, "documentos").split("\n").map((x) => x.trim()).filter((x) => x !== ""),
       canais: t(c, "canais"), ...(t(c, "custo") !== "" ? { custo: t(c, "custo") } : {}),
       ...(prazo !== "" ? { prazoDias: Number.parseInt(prazo, 10) } : {}), ...(t(c, "fundamentoDoPrazo") !== "" ? { fundamentoDoPrazo: t(c, "fundamentoDoPrazo") } : {}),
-      exigeAutenticacao: t(c, "exigeAutenticacao") !== "nao", setorDeEntradaId: t(c, "setorDeEntradaId"), campos, criadoPor,
+      exigeAutenticacao, setorDeEntradaId: t(c, "setorDeEntradaId"), campos, criadoPor,
     })
   );
   return r.numero;

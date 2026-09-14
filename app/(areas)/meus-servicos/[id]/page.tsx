@@ -5,7 +5,8 @@ import { PageHeader } from "../../../../components/ui/PageHeader";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { acoesPermitidas } from "../../../../lib/portas/molde";
 import { ACEITE_DO_DOCUMENTO, minhaSolicitacaoPara, TETO_DO_DOCUMENTO } from "../../../../lib/portas/carta-de-servicos";
-import { FormDocumentoDoRequerente, FormResponderExigencia } from "../FormulariosDoRequerente";
+import { avaliacaoDoAtendimento } from "../../../../lib/portas/ouvidoria";
+import { FormAvaliarAtendimento, FormDocumentoDoRequerente, FormResponderExigencia } from "../FormulariosDoRequerente";
 
 /**
  * O ACOMPANHAMENTO DE UMA SOLICITAÇÃO (V6.2 P3) — a projeção do REQUERENTE.
@@ -22,6 +23,8 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
   const [s, permitidas] = await Promise.all([minhaSolicitacaoPara(sessao, id), acoesPermitidas(["SOLICITAR_SERVICO"])]);
   if (s === null) notFound();
   const pendente = s.exigencias.find((e) => e.resposta === null);
+  // A solicitação já foi conferida contra a sessão acima; a avaliação é lida só depois disso.
+  const avaliacao = s.decisao !== null ? await avaliacaoDoAtendimento(s.id) : null;
   return (
     <div className="space-y-4">
       <PageHeader titulo={`Solicitação ${s.protocolo}`} subtitulo={`${s.servico} (versão ${s.versao}) · em nome de ${s.titular}${s.viaRepresentacao ? " por representação" : ""}`} acoes={<Link href="/meus-servicos" className="text-sm text-[color:var(--color-primary)] underline">Minhas solicitações</Link>} />
@@ -38,6 +41,24 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
           </div>
         ) : null}
       </Card>
+
+      {s.decisao !== null ? (
+        <Card>
+          <h2 className="mb-1 text-sm font-semibold">Avalie o atendimento</h2>
+          {avaliacao?.escala === null || avaliacao === null ? (
+            <p className="text-sm text-[color:var(--color-ink-2)]" data-avaliacao="fechada">A avaliação dos serviços ainda não foi aberta pelo ente.</p>
+          ) : (
+            <>
+              <p className="mb-3 text-xs text-[color:var(--color-ink-2)]" data-avaliacao={avaliacao.ultima === null ? "pendente" : "feita"}>
+                {avaliacao.ultima === null
+                  ? "Satisfação, atendimento e cumprimento de prazos. A média publicada não mostra quem avaliou."
+                  : `Sua avaliação mais recente (${avaliacao.ultima.em}): satisfação ${avaliacao.ultima.satisfacao}, atendimento ${avaliacao.ultima.atendimento}, prazos ${avaliacao.ultima.prazos}${avaliacao.ultima.removida ? " — removida pela moderação" : ""}. Enviar de novo revisa esta.`}
+              </p>
+              {permitidas.has("SOLICITAR_SERVICO") ? <FormAvaliarAtendimento solicitacaoId={s.id} escala={avaliacao.escala} jaAvaliou={avaliacao.ultima !== null} /> : null}
+            </>
+          )}
+        </Card>
+      ) : null}
 
       {s.exigencias.length > 0 ? (
         <Card>

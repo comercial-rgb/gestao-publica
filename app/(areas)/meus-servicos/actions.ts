@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { comComandoDoFormulario } from "../../../lib/portas/comando";
 import { mensagemDoErro } from "../../../lib/portas/mensagem-do-erro";
 import { anexarNaSolicitacaoNaTela, protocolarNaTela, responderExigenciaNaTela } from "../../../lib/portas/carta-de-servicos";
+import { avaliarAtendimentoNaTela } from "../../../lib/portas/ouvidoria";
 
 /**
  * AS AÇÕES DO REQUERENTE — protocolar, responder exigência e enviar documento.
@@ -67,5 +68,20 @@ export async function anexarDoRequerenteAction(_prev: EstadoDoRequerente, formDa
     }
     revalidatePath(`/meus-servicos/${solicitacaoId}`);
     return { sucesso: `Documento "${arquivo.name}" enviado e ligado à sua solicitação.` };
+  });
+}
+
+/** V7 M1 U4 — avaliar o atendimento recebido. Titularidade, decisão e escala são conferidas na transação. */
+export async function avaliarAtendimentoAction(_prev: EstadoDoRequerente, formData: FormData): Promise<EstadoDoRequerente> {
+  return comComandoDoFormulario(formData, async () => {
+    const solicitacaoId = texto(formData, "__id");
+    const nota = (k: string): number => Number.parseInt(texto(formData, k), 10);
+    try {
+      const r = await avaliarAtendimentoNaTela({ solicitacaoId, satisfacao: nota("satisfacao"), atendimento: nota("atendimento"), prazos: nota("prazos"), descricao: texto(formData, "descricao") });
+      revalidatePath(`/meus-servicos/${solicitacaoId}`);
+      return { sucesso: r.revisao ? "Avaliação revisada. Só a mais recente conta no resultado do serviço." : "Avaliação registrada. Obrigado." };
+    } catch (e) {
+      return { erro: mensagemDoErro(e, "Não foi possível registrar a avaliação. Nada foi gravado.") };
+    }
   });
 }
