@@ -1,0 +1,189 @@
+// ============================================================================
+// M21 — A CARTA DE SERVIÇOS E AS SOLICITAÇÕES DO REQUERENTE (V6.2 U2 — P3)
+//
+// O protocolo (M21) já é o motor: processo numerado, código verificador, roteiro de etapas
+// copiado na abertura, tramitação, parecer, readequação, encerramento, anexos (M22) e
+// notificação (M24). Este arquivo NÃO é outro engine: ele diz O QUE o ente oferece ao público
+// (a carta), com uma VERSÃO publicada do formulário e das regras, e liga cada solicitação
+// protocolada ao processo que a executa — e à versão de origem, que não muda depois.
+//
+// ⚠️ O QUE A CARTA MOSTRA É O QUE EXECUTA. As etapas publicadas são a CÓPIA do roteiro do assunto
+// no ato da publicação; o processo, por sua vez, copia o roteiro na abertura. Não há desenho de
+// fluxo que não corresponda a um roteiro real, nem suporte BPMN/DMN alegado.
+//
+// ⚠️ O FORMULÁRIO É VOCABULÁRIO FECHADO (texto, texto longo, data, e-mail, telefone) — nunca
+// expressão avaliada. Condição, prazo e custo só aparecem com fundamento declarado.
+//
+// ⚠️ QUEM PEDE É UMA PESSOA DO CADASTRO ÚNICO (M19), por um usuário VINCULADO a ela (M16) ou por
+// uma REPRESENTAÇÃO explícita e vigente (M19). CPF ou CNPJ digitado não identifica ninguém.
+// ============================================================================
+
+enum TipoDeServicoDaCarta {
+  /// Requerimento administrativo com anexo, exigência, complemento e resposta.
+  REQUERIMENTO_ADMINISTRATIVO
+  /// Proposta de alteração do cadastro da pessoa — analisada; só a decisão altera o cadastro.
+  ATUALIZACAO_CADASTRAL
+  /// Complemento documental de fornecedor — só por representação vigente da pessoa jurídica.
+  COMPLEMENTO_DE_FORNECEDOR
+}
+
+enum PublicoDoServico {
+  CIDADAO
+  FORNECEDOR
+  SERVIDOR
+}
+
+/// Um serviço da carta — a identidade estável; o conteúdo vive nas versões.
+model ServicoDaCarta {
+  id String @id @default(cuid())
+
+  /// O endereço público (/servicos/<slug>). Estável entre versões.
+  slug      String @unique
+  titulo    String
+  categoria String
+  publico   PublicoDoServico
+  tipo      TipoDeServicoDaCarta
+
+  /// O assunto do protocolo que EXECUTA o serviço: roteiro, sigilo e termo vêm dele.
+  assuntoId String
+  assunto   Assunto @relation("ServicoDoAssunto", fields: [assuntoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  versoes VersaoDoServico[]
+
+  @@index([assuntoId])
+}
+
+/// Uma versão do conteúdo e do formulário. Rascunho até a publicação; publicada, não muda.
+model VersaoDoServico {
+  id String @id @default(cuid())
+
+  servicoId String
+  servico   ServicoDaCarta @relation(fields: [servicoId], references: [id])
+
+  numero Int
+
+  descricao  String
+  requisitos String
+  /// Os documentos que o requerente deve anexar, em texto de negócio — lista.
+  documentos String[]
+  /// Onde e como o serviço é atendido (portal, balcão, telefone) — texto do ente.
+  canais     String
+  /// Custo, quando houver, com a regra — nulo = sem custo declarado (não se presume gratuidade).
+  custo      String?
+  /// Prazo em dias corridos e o FUNDAMENTO. Os dois ou nenhum (CHECK): prazo sem fundamento é inventado.
+  prazoDias         Int?
+  fundamentoDoPrazo String?
+
+  exigeAutenticacao Boolean
+
+  /// O setor que recebe a solicitação protocolada (o setor de abertura do processo).
+  setorDeEntradaId String
+  setorDeEntrada   Setor @relation("EntradaDoServico", fields: [setorDeEntradaId], references: [id])
+
+  /// O formulário — vocabulário fechado, validado no cadastro: [{ nome, rotulo, tipo, obrigatorio }].
+  campos Json
+
+  /// As etapas COPIADAS do roteiro do assunto na PUBLICAÇÃO (nulo no rascunho).
+  etapasPublicadas Json?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  publicacao   PublicacaoDoServico?
+  solicitacoes SolicitacaoDeServico[]
+
+  @@unique([servicoId, numero])
+}
+
+/// A publicação de uma versão — fato próprio. A carta mostra a ÚLTIMA versão publicada.
+model PublicacaoDoServico {
+  id String @id @default(cuid())
+
+  versaoId String          @unique
+  versao   VersaoDoServico @relation(fields: [versaoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// A SOLICITAÇÃO PROTOCOLADA — o elo entre a versão do serviço, o titular e o processo do M21.
+model SolicitacaoDeServico {
+  id String @id @default(cuid())
+
+  versaoId String
+  versao   VersaoDoServico @relation(fields: [versaoId], references: [id])
+
+  processoId String   @unique
+  processo   Processo @relation("SolicitacaoDoProcesso", fields: [processoId], references: [id])
+
+  /// A pessoa em nome de quem se pede (o requerente do processo).
+  titularId String
+  titular   Pessoa @relation("TitularDaSolicitacao", fields: [titularId], references: [id])
+
+  /// Presente quando quem pediu atuava por REPRESENTAÇÃO — e fica gravado no ato.
+  representacaoId String?
+  representacao   RepresentacaoDePessoa? @relation(fields: [representacaoId], references: [id])
+
+  /// As respostas do formulário, validadas contra os campos da versão.
+  respostas Json
+
+  criadoEm  DateTime @default(now())
+  /// O usuário que protocolou (o titular vinculado ou o representante).
+  criadoPor String
+
+  decisao   DecisaoDaSolicitacao?
+  anexos    AnexoDaSolicitacao[]
+  proposta  PropostaDeAlteracaoCadastral?
+
+  @@index([titularId])
+  @@index([versaoId])
+}
+
+enum ResultadoDaSolicitacao {
+  DEFERIDA
+  INDEFERIDA
+}
+
+/// A decisão — com a MENSAGEM AO REQUERENTE (visível a ele) separada do fundamento interno.
+model DecisaoDaSolicitacao {
+  id String @id @default(cuid())
+
+  solicitacaoId String               @unique
+  solicitacao   SolicitacaoDeServico @relation(fields: [solicitacaoId], references: [id])
+
+  resultado            ResultadoDaSolicitacao
+  mensagemAoRequerente String
+  fundamentoInterno    String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+enum OrigemDoAnexoDaSolicitacao {
+  /// Enviado pelo requerente (na abertura ou num complemento).
+  REQUERENTE
+  /// Documento de RESPOSTA disponibilizado pelo ente ao requerente.
+  RESPOSTA
+}
+
+/// Os anexos que o REQUERENTE pode ver: os que ele enviou e as respostas liberadas. Anexo interno
+/// do processo que não está aqui NÃO é visível a ele — o balcão não vira arquivo público.
+model AnexoDaSolicitacao {
+  id String @id @default(cuid())
+
+  anexoId String @unique
+  anexo   Anexo  @relation("AnexoDaSolicitacao", fields: [anexoId], references: [id])
+
+  solicitacaoId String
+  solicitacao   SolicitacaoDeServico @relation(fields: [solicitacaoId], references: [id])
+
+  origem OrigemDoAnexoDaSolicitacao
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([solicitacaoId])
+}

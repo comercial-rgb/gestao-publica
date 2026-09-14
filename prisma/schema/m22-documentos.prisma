@@ -183,6 +183,8 @@ model Anexo {
   termosAberturaInventarioBens   InventarioDeBens[] @relation("TermoAberturaInventarioBens")
   termosFechamentoInventarioBens InventarioDeBens[] @relation("TermoFechamentoInventarioBens")
   documentosDeTermoPatrimonial   TermoPatrimonial[] @relation("DocumentoDeTermoPatrimonial")
+  /// V6.2 — a marca de anexo VISÍVEL ao requerente de uma solicitação da carta. VIRTUAL.
+  daSolicitacao AnexoDaSolicitacao? @relation("AnexoDaSolicitacao")
 }
 
 /// OS MODOS DA LEI 14.063/2020, e eles NÃO são intercambiáveis.

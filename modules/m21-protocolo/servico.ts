@@ -1,4 +1,21 @@
 import { randomBytes } from "node:crypto";
+import { z } from "zod";
+import { AtoInelegivelError, exigirElegivel } from "../../packages/contracts/index.js";
+import { diaCivil } from "../../packages/datas/index.js";
+import { pessoaDoUsuario } from "../m16-travamento/servico-pessoa-do-usuario.js";
+import { zAlterarPessoa } from "../m19-pessoas/dominio.js";
+import { representacaoVigenteEm, representacoesVigentesDoUsuario } from "../m19-pessoas/representacao.js";
+import { gravarArquivo, recusaDoArquivo, sha256 as sha256DoArquivo } from "../m22-documentos/armazenamento.js";
+import {
+  elegibilidadeParaDecidir,
+  elegibilidadeParaEmitirExigencia,
+  elegibilidadeParaResponderExigencia,
+  errosDosCampos,
+  textoDeAbertura,
+  validarRespostas,
+  type CampoDoFormulario,
+  type EstadoDaSolicitacao as EstadoDaSolicitacaoDaCarta,
+} from "./carta.js";
 import { travar } from "../../packages/locks/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
@@ -10,6 +27,7 @@ import {
   codigoVerificador,
   descreverSituacao,
   estaFechado,
+  movimentosVigentes,
   principalDoApenso,
   situacaoDaTaxa,
   situacaoDoProcesso,
@@ -301,6 +319,149 @@ export interface ProcessoAberto {
 }
 
 /**
+ * A CRIAÇÃO DO PROCESSO dentro de uma transação já AUTORIZADA — o corpo comum da abertura interna
+ * (`abrirProcesso`, que exige a ação e a lotação no setor) e do protocolo da carta de serviços
+ * (`protocolarSolicitacao`, que exige a titularidade do requerente). Privada: não é ato por si.
+ */
+async function criarProcessoNaTransacao(tx: Tx, d: ReturnType<typeof zAbrirProcesso.parse>): Promise<ProcessoAberto> {
+  const exercicio = await tx.exercicio.findUnique({
+    where: { ano: d.exercicio },
+    select: { id: true, encerramento: { select: { id: true } } },
+  });
+  if (exercicio === null) {
+    throw new Error(
+      `Exercício ${d.exercicio} não cadastrado. A numeração do protocolo reinicia por ` +
+        `exercício, e um exercício inexistente não tem fila. Nada foi gravado.`
+    );
+  }
+  if (exercicio.encerramento !== null) {
+    throw new Error(
+      `O exercício ${d.exercicio} está ENCERRADO e não recebe processo novo. Abra no ` +
+        `exercício corrente. Nada foi gravado.`
+    );
+  }
+
+  const assunto = await tx.assunto.findUnique({
+    where: { id: d.assuntoId },
+    select: {
+      id: true,
+      codigo: true,
+      nome: true,
+      ativo: true,
+      permiteAnonimo: true,
+      sigiloPadrao: true,
+      termoDeAceite: true,
+      roteiro: {
+        select: { ordem: true, setorId: true, prazoDias: true, descricao: true },
+        orderBy: { ordem: "asc" },
+      },
+    },
+  });
+  if (assunto === null || !assunto.ativo) {
+    throw new Error(
+      `Assunto ${d.assuntoId} não existe ou está desativado. Nada foi gravado.`
+    );
+  }
+
+  if (d.requerenteId === undefined && !assunto.permiteAnonimo) {
+    throw new Error(
+      `O assunto "${assunto.nome}" NÃO aceita requerente anônimo. Informe o requerente ` +
+        `do cadastro único. Nada foi gravado.`
+    );
+  }
+  if (assunto.termoDeAceite !== null && !d.aceitouTermo) {
+    throw new Error(
+      `O assunto "${assunto.nome}" exige o ACEITE DO TERMO para a abertura, e o aceite ` +
+        `não veio. Um termo que a tela mostra e o servidor não cobra é um termo que ` +
+        `ninguém aceitou. Nada foi gravado.`
+    );
+  }
+
+  if (d.subassuntoId !== undefined) {
+    const sub = await tx.subassunto.findUnique({
+      where: { id: d.subassuntoId },
+      select: { assuntoId: true, ativo: true, nome: true },
+    });
+    if (sub === null || !sub.ativo || sub.assuntoId !== assunto.id) {
+      throw new Error(
+        `Subassunto ${d.subassuntoId} não pertence ao assunto "${assunto.nome}" ou está ` +
+          `desativado. Nada foi gravado.`
+      );
+    }
+  }
+
+  if (d.requerenteId !== undefined) {
+    const pessoa = await tx.pessoa.findUnique({
+      where: { id: d.requerenteId },
+      select: { id: true },
+    });
+    if (pessoa === null) {
+      throw new Error(
+        `Requerente ${d.requerenteId} não está no cadastro único. Cadastre a pessoa ` +
+          `antes de abrir o processo em nome dela. Nada foi gravado.`
+      );
+    }
+  }
+
+  // ⚠️ O TRINCO ANTES DA SOMA. Ver `packages/locks` — travar depois de ler o MAX é
+  // travar um número que já está velho.
+  await travar(tx, "SequenciaDeProtocolo", [exercicio.id]);
+
+  const ultimo = await tx.processo.findFirst({
+    where: { exercicioId: exercicio.id },
+    select: { numero: true },
+    orderBy: { numero: "desc" },
+  });
+  const numero = (ultimo?.numero ?? 0) + 1;
+
+  const verificador = codigoVerificador(randomBytes(16));
+
+  const processo = await tx.processo.create({
+    data: {
+      exercicioId: exercicio.id,
+      numero,
+      codigoVerificador: verificador,
+      assuntoId: assunto.id,
+      subassuntoId: d.subassuntoId ?? null,
+      requerenteId: d.requerenteId ?? null,
+      contatoAnonimo: d.contatoAnonimo ?? null,
+      finalidade: d.finalidade,
+      prioridade: d.prioridade,
+      // ⚠️ O SIGILO DO ASSUNTO É PISO, NÃO TETO: quem abre pode elevar, nunca
+      // rebaixar. Um assunto declarado sigiloso pela entidade não deixa de sê-lo
+      // porque quem preencheu o formulário desmarcou a caixa.
+      sigiloso: assunto.sigiloPadrao || d.sigiloso,
+      documentacaoFisica: d.documentacaoFisica,
+      textoAbertura: d.textoAbertura,
+      setorAberturaId: d.setorAberturaId,
+      criadoPor: d.criadoPor,
+      etapas: {
+        create: assunto.roteiro.map((e) => ({
+          ordem: e.ordem,
+          setorId: e.setorId,
+          prazoDias: e.prazoDias,
+          descricao: e.descricao,
+        })),
+      },
+      requerentesAdicionais: {
+        create: [...new Set(d.requerentesAdicionais)].map((pessoaId) => ({
+          pessoaId,
+          criadoPor: d.criadoPor,
+        })),
+      },
+    },
+    select: { id: true, numero: true, codigoVerificador: true },
+  });
+
+  return {
+    processoId: processo.id,
+    numero: processo.numero,
+    ano: d.exercicio,
+    codigoVerificador: processo.codigoVerificador,
+  };
+}
+
+/**
  * ABRE O PROCESSO — e o número sai de dentro do trinco.
  *
  * ⚠️ O ROTEIRO DO ASSUNTO É COPIADO AQUI, e não referenciado. Ver o cabeçalho do
@@ -322,141 +483,7 @@ export async function abrirProcesso(
     });
     await exigirLotacao(tx, d.criadoPor, d.setorAberturaId, "abrir processo aqui");
 
-    const exercicio = await tx.exercicio.findUnique({
-      where: { ano: d.exercicio },
-      select: { id: true, encerramento: { select: { id: true } } },
-    });
-    if (exercicio === null) {
-      throw new Error(
-        `Exercício ${d.exercicio} não cadastrado. A numeração do protocolo reinicia por ` +
-          `exercício, e um exercício inexistente não tem fila. Nada foi gravado.`
-      );
-    }
-    if (exercicio.encerramento !== null) {
-      throw new Error(
-        `O exercício ${d.exercicio} está ENCERRADO e não recebe processo novo. Abra no ` +
-          `exercício corrente. Nada foi gravado.`
-      );
-    }
-
-    const assunto = await tx.assunto.findUnique({
-      where: { id: d.assuntoId },
-      select: {
-        id: true,
-        codigo: true,
-        nome: true,
-        ativo: true,
-        permiteAnonimo: true,
-        sigiloPadrao: true,
-        termoDeAceite: true,
-        roteiro: {
-          select: { ordem: true, setorId: true, prazoDias: true, descricao: true },
-          orderBy: { ordem: "asc" },
-        },
-      },
-    });
-    if (assunto === null || !assunto.ativo) {
-      throw new Error(
-        `Assunto ${d.assuntoId} não existe ou está desativado. Nada foi gravado.`
-      );
-    }
-
-    if (d.requerenteId === undefined && !assunto.permiteAnonimo) {
-      throw new Error(
-        `O assunto "${assunto.nome}" NÃO aceita requerente anônimo. Informe o requerente ` +
-          `do cadastro único. Nada foi gravado.`
-      );
-    }
-    if (assunto.termoDeAceite !== null && !d.aceitouTermo) {
-      throw new Error(
-        `O assunto "${assunto.nome}" exige o ACEITE DO TERMO para a abertura, e o aceite ` +
-          `não veio. Um termo que a tela mostra e o servidor não cobra é um termo que ` +
-          `ninguém aceitou. Nada foi gravado.`
-      );
-    }
-
-    if (d.subassuntoId !== undefined) {
-      const sub = await tx.subassunto.findUnique({
-        where: { id: d.subassuntoId },
-        select: { assuntoId: true, ativo: true, nome: true },
-      });
-      if (sub === null || !sub.ativo || sub.assuntoId !== assunto.id) {
-        throw new Error(
-          `Subassunto ${d.subassuntoId} não pertence ao assunto "${assunto.nome}" ou está ` +
-            `desativado. Nada foi gravado.`
-        );
-      }
-    }
-
-    if (d.requerenteId !== undefined) {
-      const pessoa = await tx.pessoa.findUnique({
-        where: { id: d.requerenteId },
-        select: { id: true },
-      });
-      if (pessoa === null) {
-        throw new Error(
-          `Requerente ${d.requerenteId} não está no cadastro único. Cadastre a pessoa ` +
-            `antes de abrir o processo em nome dela. Nada foi gravado.`
-        );
-      }
-    }
-
-    // ⚠️ O TRINCO ANTES DA SOMA. Ver `packages/locks` — travar depois de ler o MAX é
-    // travar um número que já está velho.
-    await travar(tx, "SequenciaDeProtocolo", [exercicio.id]);
-
-    const ultimo = await tx.processo.findFirst({
-      where: { exercicioId: exercicio.id },
-      select: { numero: true },
-      orderBy: { numero: "desc" },
-    });
-    const numero = (ultimo?.numero ?? 0) + 1;
-
-    const verificador = codigoVerificador(randomBytes(16));
-
-    const processo = await tx.processo.create({
-      data: {
-        exercicioId: exercicio.id,
-        numero,
-        codigoVerificador: verificador,
-        assuntoId: assunto.id,
-        subassuntoId: d.subassuntoId ?? null,
-        requerenteId: d.requerenteId ?? null,
-        contatoAnonimo: d.contatoAnonimo ?? null,
-        finalidade: d.finalidade,
-        prioridade: d.prioridade,
-        // ⚠️ O SIGILO DO ASSUNTO É PISO, NÃO TETO: quem abre pode elevar, nunca
-        // rebaixar. Um assunto declarado sigiloso pela entidade não deixa de sê-lo
-        // porque quem preencheu o formulário desmarcou a caixa.
-        sigiloso: assunto.sigiloPadrao || d.sigiloso,
-        documentacaoFisica: d.documentacaoFisica,
-        textoAbertura: d.textoAbertura,
-        setorAberturaId: d.setorAberturaId,
-        criadoPor: d.criadoPor,
-        etapas: {
-          create: assunto.roteiro.map((e) => ({
-            ordem: e.ordem,
-            setorId: e.setorId,
-            prazoDias: e.prazoDias,
-            descricao: e.descricao,
-          })),
-        },
-        requerentesAdicionais: {
-          create: [...new Set(d.requerentesAdicionais)].map((pessoaId) => ({
-            pessoaId,
-            criadoPor: d.criadoPor,
-          })),
-        },
-      },
-      select: { id: true, numero: true, codigoVerificador: true },
-    });
-
-    return {
-      processoId: processo.id,
-      numero: processo.numero,
-      ano: d.exercicio,
-      codigoVerificador: processo.codigoVerificador,
-    };
+    return criarProcessoNaTransacao(tx, d);
   });
 }
 
@@ -1191,4 +1218,406 @@ export async function tornarMovimentoSemEfeito(
     });
     return { movimentoId: m.id };
   });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V6.2 — P3: A CARTA DE SERVIÇOS E AS SOLICITAÇÕES DO REQUERENTE
+//
+// ⚠️ NÃO É OUTRO ENGINE. O serviço da carta aponta para um ASSUNTO do protocolo (roteiro, sigilo,
+// termo); a solicitação protocolada É um processo do M21, aberto pela mesma criação da abertura
+// interna, e a exigência, o complemento e o encerramento são movimentos do mesmo processo. O que
+// este bloco acrescenta é o que o requerente pode fazer e ver — e a versão do formulário que valeu.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const zCadastrarServicoDaCarta = z.object({
+  slug: z.string().trim().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "o endereço público: minúsculas, dígitos e hífen"),
+  titulo: z.string().trim().min(5),
+  categoria: z.string().trim().min(3),
+  publico: z.enum(["CIDADAO", "FORNECEDOR", "SERVIDOR"]),
+  tipo: z.enum(["REQUERIMENTO_ADMINISTRATIVO", "ATUALIZACAO_CADASTRAL", "COMPLEMENTO_DE_FORNECEDOR"]),
+  assuntoId: z.string().min(1),
+  criadoPor: z.string().min(1),
+});
+export type CadastrarServicoDaCartaInput = z.input<typeof zCadastrarServicoDaCarta>;
+
+export async function cadastrarServicoDaCarta(prisma: PrismaClient, input: CadastrarServicoDaCartaInput): Promise<{ readonly servicoId: string }> {
+  const d = zCadastrarServicoDaCarta.parse(input);
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.cadastrarServicoDaCarta, "ENTE");
+    const assunto = await tx.assunto.findUnique({ where: { id: d.assuntoId }, select: { ativo: true, permiteAnonimo: true, nome: true } });
+    if (assunto === null || !assunto.ativo) throw new Error(`Assunto ${d.assuntoId} não existe ou está desativado. Nada foi gravado.`);
+    if ((await tx.servicoDaCarta.findUnique({ where: { slug: d.slug }, select: { id: true } })) !== null) throw new Error(`SERVICO-REPETIDO: já existe serviço no endereço /servicos/${d.slug}. Nada foi gravado.`);
+    const s = await tx.servicoDaCarta.create({ data: { slug: d.slug, titulo: d.titulo, categoria: d.categoria, publico: d.publico, tipo: d.tipo, assuntoId: d.assuntoId, criadoPor: d.criadoPor }, select: { id: true } });
+    return { servicoId: s.id };
+  });
+}
+
+export const zCadastrarVersaoDoServico = z
+  .object({
+    servicoId: z.string().min(1),
+    descricao: z.string().trim().min(10),
+    requisitos: z.string().trim().min(5),
+    documentos: z.array(z.string().trim().min(3)).max(20),
+    canais: z.string().trim().min(5),
+    custo: z.string().trim().min(3).optional(),
+    prazoDias: z.number().int().positive().optional(),
+    fundamentoDoPrazo: z.string().trim().min(5).optional(),
+    exigeAutenticacao: z.boolean(),
+    setorDeEntradaId: z.string().min(1),
+    campos: z.unknown(),
+    criadoPor: z.string().min(1),
+  })
+  .refine((d) => (d.prazoDias === undefined) === (d.fundamentoDoPrazo === undefined), { message: "prazo e fundamento do prazo vêm juntos — prazo sem fundamento é prazo inventado" });
+export type CadastrarVersaoDoServicoInput = z.input<typeof zCadastrarVersaoDoServico>;
+
+export async function cadastrarVersaoDoServico(prisma: PrismaClient, input: CadastrarVersaoDoServicoInput): Promise<{ readonly versaoId: string; readonly numero: number }> {
+  const d = zCadastrarVersaoDoServico.parse(input);
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.cadastrarVersaoDoServico, "ENTE");
+    const servico = await tx.servicoDaCarta.findUnique({ where: { id: d.servicoId }, select: { tipo: true, slug: true, versoes: { orderBy: { numero: "desc" }, take: 1, select: { numero: true } } } });
+    if (servico === null) throw new Error(`Serviço ${d.servicoId} não existe. Nada foi gravado.`);
+    const erros = errosDosCampos(servico.tipo, d.campos);
+    if (erros.length > 0) throw new Error(`FORMULARIO-INVALIDO: ${erros.join("; ")}. Nada foi gravado.`);
+    await exigirSetorAtivo(tx, d.setorDeEntradaId);
+    if (!d.exigeAutenticacao) {
+      // ⚠️ SEM AUTENTICAÇÃO NÃO HÁ TITULAR, e os três serviços desta entrega agem em nome de uma pessoa.
+      throw new Error("SERVICO-SEM-AUTENTICACAO: os serviços da carta desta versão protocolam em nome de uma pessoa do cadastro, e isso exige entrar. A leitura da carta continua pública. Nada foi gravado.");
+    }
+    const numero = (servico.versoes[0]?.numero ?? 0) + 1;
+    const v = await tx.versaoDoServico.create({
+      data: {
+        servicoId: d.servicoId, numero, descricao: d.descricao, requisitos: d.requisitos, documentos: d.documentos, canais: d.canais,
+        custo: d.custo ?? null, prazoDias: d.prazoDias ?? null, fundamentoDoPrazo: d.fundamentoDoPrazo ?? null,
+        exigeAutenticacao: d.exigeAutenticacao, setorDeEntradaId: d.setorDeEntradaId, campos: d.campos as object, criadoPor: d.criadoPor,
+      },
+      select: { id: true },
+    });
+    return { versaoId: v.id, numero };
+  });
+}
+
+export const zPublicarVersaoDoServico = z.object({ versaoId: z.string().min(1), criadoPor: z.string().min(1) });
+export type PublicarVersaoDoServicoInput = z.input<typeof zPublicarVersaoDoServico>;
+
+export async function publicarVersaoDoServico(prisma: PrismaClient, input: PublicarVersaoDoServicoInput): Promise<{ readonly publicacaoId: string; readonly etapas: number }> {
+  const d = zPublicarVersaoDoServico.parse(input);
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.publicarVersaoDoServico, "ENTE");
+    const v = await tx.versaoDoServico.findUnique({
+      where: { id: d.versaoId },
+      select: { numero: true, publicacao: { select: { id: true } }, servico: { select: { slug: true, assunto: { select: { roteiro: { orderBy: { ordem: "asc" }, select: { ordem: true, prazoDias: true, descricao: true, setor: { select: { codigo: true, nome: true } } } } } } } } },
+    });
+    if (v === null) throw new Error(`Versão ${d.versaoId} não existe. Nada foi gravado.`);
+    if (v.publicacao !== null) throw new Error(`VERSAO-JA-PUBLICADA: a versão ${v.numero} de /servicos/${v.servico.slug} já está publicada e não muda. Nada foi gravado.`);
+    // ⚠️ AS ETAPAS PUBLICADAS SÃO O ROTEIRO REAL, COPIADO AGORA: o que a carta mostra é o que executa.
+    const etapas = v.servico.assunto.roteiro.map((e) => ({ ordem: e.ordem, setor: `${e.setor.codigo} — ${e.setor.nome}`, prazoDias: e.prazoDias, descricao: e.descricao }));
+    await tx.versaoDoServico.update({ where: { id: d.versaoId }, data: { etapasPublicadas: etapas } });
+    const p = await tx.publicacaoDoServico.create({ data: { versaoId: d.versaoId, criadoPor: d.criadoPor }, select: { id: true } });
+    return { publicacaoId: p.id, etapas: etapas.length };
+  });
+}
+
+/** Em nome de quem este usuário pode agir sobre a pessoa — por si, ou por representação vigente. */
+async function titularidade(tx: Tx, usuario: string, titularId: string, quando: Date): Promise<{ readonly via: "PROPRIO" } | { readonly via: "REPRESENTACAO"; readonly representacaoId: string } | null> {
+  const propria = await pessoaDoUsuario(tx, usuario);
+  if (propria !== null && propria.pessoaId === titularId) return { via: "PROPRIO" };
+  const r = (await representacoesVigentesDoUsuario(tx, usuario, quando)).find((x) => x.representadaId === titularId);
+  return r === undefined ? null : { via: "REPRESENTACAO", representacaoId: r.id };
+}
+
+export const zProtocolarSolicitacao = z.object({
+  slug: z.string().min(1),
+  /** Ausente = por si (a pessoa vinculada à conta). Presente = a pessoa REPRESENTADA. */
+  representadaId: z.string().min(1).optional(),
+  respostas: z.record(z.string(), z.string()),
+  aceitouTermo: z.boolean().default(false),
+  criadoPor: z.string().min(1),
+});
+export type ProtocolarSolicitacaoInput = z.input<typeof zProtocolarSolicitacao>;
+
+export interface SolicitacaoProtocolada {
+  readonly solicitacaoId: string;
+  readonly processoId: string;
+  readonly protocolo: string;
+  readonly versao: number;
+  readonly titular: string;
+  readonly viaRepresentacao: boolean;
+}
+
+export async function protocolarSolicitacao(prisma: PrismaClient, input: ProtocolarSolicitacaoInput): Promise<SolicitacaoProtocolada> {
+  const d = zProtocolarSolicitacao.parse(input);
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.protocolarSolicitacao, "ENTE");
+    const servico = await tx.servicoDaCarta.findUnique({
+      where: { slug: d.slug },
+      select: { titulo: true, tipo: true, assuntoId: true, versoes: { where: { publicacao: { isNot: null } }, orderBy: { numero: "desc" }, take: 1, select: { id: true, numero: true, campos: true, setorDeEntradaId: true } } },
+    });
+    const versao = servico?.versoes[0];
+    if (servico === null || versao === undefined) throw new Error(`SERVICO-NAO-PUBLICADO: não há versão publicada de /servicos/${d.slug}. Nada foi protocolado.`);
+
+    // ⚠️ O TITULAR SAI DA CONTA, NUNCA DO FORMULÁRIO. Por si: a pessoa vinculada à conta. Por
+    // representação: a pessoa representada, com representação VIGENTE HOJE. Um CPF digitado não entra.
+    const propria = await pessoaDoUsuario(tx, d.criadoPor);
+    let titularId: string;
+    let representacaoId: string | null = null;
+    if (d.representadaId === undefined) {
+      if (propria === null) throw new Error("CONTA-SEM-PESSOA: sua conta não está vinculada a uma pessoa do cadastro, e o pedido precisa de um titular. Procure o atendimento para o vínculo. Nada foi protocolado.");
+      titularId = propria.pessoaId;
+    } else {
+      const t = await titularidade(tx, d.criadoPor, d.representadaId, new Date());
+      if (t === null || t.via !== "REPRESENTACAO") throw new Error("SEM-REPRESENTACAO-VIGENTE: você não tem representação vigente dessa pessoa. Nada foi protocolado.");
+      titularId = d.representadaId;
+      representacaoId = t.representacaoId;
+    }
+    const titular = await tx.pessoa.findUnique({ where: { id: titularId }, select: { tipo: true, documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { id: true, nome: true } } } });
+    if (titular === null) throw new Error("Titular inexistente. Nada foi protocolado.");
+    if (servico.tipo === "COMPLEMENTO_DE_FORNECEDOR" && (representacaoId === null || titular.tipo !== "JURIDICA")) {
+      throw new Error("COMPLEMENTO-SO-POR-REPRESENTACAO: o complemento documental de fornecedor é feito em nome da pessoa jurídica, por representação vigente. Escolha a empresa que você representa. Nada foi protocolado.");
+    }
+
+    const campos = (versao.campos as unknown as CampoDoFormulario[]) ?? [];
+    const r = validarRespostas(campos, d.respostas);
+    if ("erros" in r) throw new Error(`FORMULARIO-INCOMPLETO: ${r.erros.join("; ")}. Nada foi protocolado.`);
+
+    const ano = Number(diaCivil(new Date()).slice(0, 4));
+    const processo = await criarProcessoNaTransacao(tx, zAbrirProcesso.parse({
+      exercicio: ano, assuntoId: servico.assuntoId, requerenteId: titularId, finalidade: "ATENDIMENTO_AO_PUBLICO",
+      textoAbertura: textoDeAbertura(servico.titulo, versao.numero, campos, r.ok), setorAberturaId: versao.setorDeEntradaId,
+      aceitouTermo: d.aceitouTermo, criadoPor: d.criadoPor,
+    }));
+    const s = await tx.solicitacaoDeServico.create({
+      data: { versaoId: versao.id, processoId: processo.processoId, titularId, representacaoId, respostas: r.ok, criadoPor: d.criadoPor },
+      select: { id: true },
+    });
+    if (servico.tipo === "ATUALIZACAO_CADASTRAL") {
+      const base = await tx.versaoDePessoa.findFirst({ where: { pessoaId: titularId }, orderBy: { criadoEm: "desc" }, select: { id: true, nome: true, nomeFantasia: true, email: true, telefone: true, logradouro: true, numero: true, complemento: true, bairro: true, municipio: true, uf: true, cep: true, ativa: true } });
+      if (base === null) throw new Error("CADASTRO-SEM-VERSAO: a pessoa não tem versão de cadastro para alterar. Nada foi protocolado.");
+      dadosDaVersaoProposta(base, titularId, r.ok, "conferência da proposta", d.criadoPor);
+      // ⚠️ A PROPOSTA GUARDA A VERSÃO QUE O REQUERENTE VIU. Nada no cadastro muda aqui.
+      await tx.propostaDeAlteracaoCadastral.create({ data: { solicitacaoId: s.id, pessoaId: titularId, versaoBaseId: base.id, dados: r.ok, criadoPor: d.criadoPor } });
+    }
+    await notificarVarios(tx, await interessados(tx, versao.setorDeEntradaId), {
+      evento: "SOLICITACAO_PROTOCOLADA",
+      titulo: `Nova solicitação ${processo.numero}/${processo.ano}: ${servico.titulo}`,
+      corpo: `Protocolada pela carta de serviços${representacaoId === null ? "" : " por representação"}.`,
+      rota: `/protocolo/processos/${processo.processoId}`,
+    });
+    return { solicitacaoId: s.id, processoId: processo.processoId, protocolo: `${processo.numero}/${processo.ano}`, versao: versao.numero, titular: titular.versoes[0]?.nome ?? titular.documento, viaRepresentacao: representacaoId !== null };
+  });
+}
+
+/** O estado da solicitação para os predicados de `carta.ts`, lido dentro da transação. */
+async function estadoDaSolicitacao(tx: Tx, solicitacaoId: string) {
+  await travar(tx, "SolicitacaoDeServico", [solicitacaoId]);
+  const s = await tx.solicitacaoDeServico.findUnique({
+    where: { id: solicitacaoId },
+    select: { id: true, titularId: true, processoId: true, versao: { select: { servico: { select: { tipo: true, titulo: true } } } }, decisao: { select: { id: true } }, proposta: { select: { id: true, pessoaId: true, versaoBaseId: true, dados: true } } },
+  });
+  if (s === null) throw new Error(`Solicitação ${solicitacaoId} não existe. Nada foi gravado.`);
+  const p = await carregar(tx, s.processoId);
+  const vigentes = movimentosVigentes(p.movimentos);
+  const pendentesDe = (pedido: string, resposta: string) => {
+    const respondidos = new Set(vigentes.filter((m) => m.tipo === resposta).map((m) => m.respondeAId));
+    return vigentes.filter((m) => m.tipo === pedido && !respondidos.has(m.id)).map((m) => m.id);
+  };
+  const pendentes = pendentesDe("READEQUACAO_SOLICITADA", "READEQUACAO_ATENDIDA");
+  const situacao = situacaoDoProcesso(p.movimentos);
+  const estado: EstadoDaSolicitacaoDaCarta = {
+    protocolo: rotulo(p), fechado: estaFechado(situacao), decidida: s.decisao !== null, exigenciasPendentes: pendentes.length,
+    emTramite: situacao === "EM_TRAMITE", pareceresPendentes: pendentesDe("PARECER_SOLICITADO", "PARECER_RESPONDIDO").length,
+  };
+  return { s, p, estado, pendentes };
+}
+
+export const zEmitirExigencia = z.object({ solicitacaoId: z.string().min(1), mensagemAoRequerente: z.string().trim().min(10), criadoPor: z.string().min(1) });
+export type EmitirExigenciaInput = z.input<typeof zEmitirExigencia>;
+
+export async function emitirExigenciaDaSolicitacao(prisma: PrismaClient, input: EmitirExigenciaInput): Promise<{ readonly movimentoId: string }> {
+  const d = zEmitirExigencia.parse(input);
+  return prisma.$transaction(async (tx) => {
+    const { s, p, estado } = await estadoDaSolicitacao(tx, d.solicitacaoId);
+    const onde = setorAtual(p.setorAberturaId, p.movimentos);
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.emitirExigenciaDaSolicitacao, { setor: onde });
+    await exigirLotacao(tx, d.criadoPor, onde, "emitir exigência nesta solicitação");
+    exigirElegivel(elegibilidadeParaEmitirExigencia(estado));
+    // A exigência É o pedido de readequação do M21 — o texto é a MENSAGEM AO REQUERENTE.
+    const m = await tx.movimentoDoProcesso.create({ data: { processoId: p.id, tipo: "READEQUACAO_SOLICITADA", setorOrigemId: onde, texto: d.mensagemAoRequerente, criadoPor: d.criadoPor }, select: { id: true } });
+    await notificarVarios(tx, await contasDoTitular(tx, s.titularId), {
+      evento: "EXIGENCIA_NA_SOLICITACAO",
+      titulo: `Sua solicitação ${rotulo(p)} tem uma exigência`,
+      corpo: d.mensagemAoRequerente,
+      rota: `/meus-servicos/${s.id}`,
+    });
+    return { movimentoId: m.id };
+  });
+}
+
+/** As contas que agem pelo titular hoje: a vinculada à pessoa e os representantes vigentes. */
+async function contasDoTitular(tx: Tx, titularId: string): Promise<readonly string[]> {
+  const vinculos = await tx.vinculoUsuarioPessoa.findMany({ where: { pessoaId: titularId }, orderBy: { criadoEm: "desc" }, select: { usuarioId: true, tipo: true, usuario: { select: { identificador: true } } } });
+  const vistos = new Set<string>();
+  const contas: string[] = [];
+  for (const v of vinculos) {
+    if (vistos.has(v.usuarioId)) continue;
+    vistos.add(v.usuarioId);
+    const atual = await pessoaDoUsuario(tx, v.usuario.identificador);
+    if (atual?.pessoaId === titularId) contas.push(v.usuario.identificador);
+  }
+  const reps = await tx.representacaoDePessoa.findMany({ where: { representadaId: titularId }, select: { vigenciaInicio: true, vigenciaFim: true, revogacao: { select: { dataEfeito: true } }, representanteUsuario: { select: { identificador: true, ativo: true } } } });
+  for (const r of reps) if (r.representanteUsuario.ativo && representacaoVigenteEm(r, new Date())) contas.push(r.representanteUsuario.identificador);
+  return contas;
+}
+
+export const zResponderExigencia = z.object({ solicitacaoId: z.string().min(1), texto: z.string().trim().min(5), criadoPor: z.string().min(1) });
+export type ResponderExigenciaInput = z.input<typeof zResponderExigencia>;
+
+export async function responderExigenciaDaSolicitacao(prisma: PrismaClient, input: ResponderExigenciaInput): Promise<{ readonly movimentoId: string }> {
+  const d = zResponderExigencia.parse(input);
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.responderExigenciaDaSolicitacao, "ENTE");
+    const { s, p, estado, pendentes } = await estadoDaSolicitacao(tx, d.solicitacaoId);
+    // ⚠️ A TITULARIDADE É CONFERIDA HOJE: representação revogada não responde mais.
+    if ((await titularidade(tx, d.criadoPor, s.titularId, new Date())) === null) throw new Error("SEM-ACESSO-A-SOLICITACAO: esta solicitação não é sua nem de quem você representa hoje. Nada foi gravado.");
+    exigirElegivel(elegibilidadeParaResponderExigencia(estado));
+    const m = await tx.movimentoDoProcesso.create({ data: { processoId: p.id, tipo: "READEQUACAO_ATENDIDA", respondeAId: pendentes[0] as string, texto: d.texto, criadoPor: d.criadoPor }, select: { id: true } });
+    await notificarVarios(tx, await interessados(tx, setorAtual(p.setorAberturaId, p.movimentos)), {
+      evento: "EXIGENCIA_RESPONDIDA",
+      titulo: `Exigência respondida na solicitação ${rotulo(p)}`,
+      corpo: d.texto,
+      rota: `/protocolo/processos/${p.id}`,
+    });
+    return { movimentoId: m.id };
+  });
+}
+
+export const zAnexarNaSolicitacao = z.object({
+  solicitacaoId: z.string().min(1),
+  nomeOriginal: z.string().trim().min(1).max(200),
+  mimeType: z.string().min(1),
+  conteudo: z.instanceof(Uint8Array),
+  criadoPor: z.string().min(1),
+});
+export type AnexarNaSolicitacaoInput = z.input<typeof zAnexarNaSolicitacao>;
+
+/** O REQUERENTE anexa (na solicitação aberta). O anexo nasce visível a ele — e só a ele e ao processo. */
+export async function anexarDoRequerente(prisma: PrismaClient, input: AnexarNaSolicitacaoInput): Promise<{ readonly anexoId: string }> {
+  const d = zAnexarNaSolicitacao.parse(input);
+  const recusa = recusaDoArquivo(d.mimeType, d.conteudo.byteLength, "UPLOAD");
+  if (recusa !== null) throw new Error(recusa);
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.anexarDoRequerente, "ENTE");
+    const { s, estado } = await estadoDaSolicitacao(tx, d.solicitacaoId);
+    if ((await titularidade(tx, d.criadoPor, s.titularId, new Date())) === null) throw new Error("SEM-ACESSO-A-SOLICITACAO: esta solicitação não é sua nem de quem você representa hoje. Nada foi gravado.");
+    if (estado.decidida || estado.fechado) throw new AtoInelegivelError({ situacao: "NAO_APLICAVEL", codigo: "SOLICITACAO-ENCERRADA", motivo: `A solicitação ${estado.protocolo} já foi decidida ou encerrada.` });
+    return { anexoId: await gravarAnexoDaSolicitacao(tx, s.id, s.processoId, d, "REQUERENTE") };
+  });
+}
+
+/** O ENTE disponibiliza um documento de RESPOSTA ao requerente. */
+export async function disponibilizarRespostaDaSolicitacao(prisma: PrismaClient, input: AnexarNaSolicitacaoInput): Promise<{ readonly anexoId: string }> {
+  const d = zAnexarNaSolicitacao.parse(input);
+  const recusa = recusaDoArquivo(d.mimeType, d.conteudo.byteLength, "UPLOAD");
+  if (recusa !== null) throw new Error(recusa);
+  return prisma.$transaction(async (tx) => {
+    const { s, p } = await estadoDaSolicitacao(tx, d.solicitacaoId);
+    const onde = setorAtual(p.setorAberturaId, p.movimentos);
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.disponibilizarRespostaDaSolicitacao, { setor: onde });
+    await exigirLotacao(tx, d.criadoPor, onde, "disponibilizar resposta nesta solicitação");
+    const anexoId = await gravarAnexoDaSolicitacao(tx, s.id, s.processoId, d, "RESPOSTA");
+    await notificarVarios(tx, await contasDoTitular(tx, s.titularId), { evento: "RESPOSTA_DISPONIVEL", titulo: `Documento disponível na solicitação ${rotulo(p)}`, corpo: d.nomeOriginal, rota: `/meus-servicos/${s.id}` });
+    return { anexoId };
+  });
+}
+
+async function gravarAnexoDaSolicitacao(tx: Tx, solicitacaoId: string, processoId: string, d: z.output<typeof zAnexarNaSolicitacao>, origem: "REQUERENTE" | "RESPOSTA"): Promise<string> {
+  const a = await tx.anexo.create({
+    data: { nomeOriginal: d.nomeOriginal, mimeType: d.mimeType, tamanhoBytes: d.conteudo.byteLength, sha256: sha256DoArquivo(d.conteudo), origem: "UPLOAD", processoId, criadoPor: d.criadoPor },
+    select: { id: true },
+  });
+  await tx.anexoDaSolicitacao.create({ data: { anexoId: a.id, solicitacaoId, origem, criadoPor: d.criadoPor } });
+  await gravarArquivo(a.id, d.conteudo);
+  return a.id;
+}
+
+export const zDecidirSolicitacao = z.object({
+  solicitacaoId: z.string().min(1),
+  resultado: z.enum(["DEFERIDA", "INDEFERIDA"]),
+  mensagemAoRequerente: z.string().trim().min(10),
+  fundamentoInterno: z.string().trim().min(5),
+  criadoPor: z.string().min(1),
+});
+export type DecidirSolicitacaoInput = z.input<typeof zDecidirSolicitacao>;
+
+export async function decidirSolicitacao(prisma: PrismaClient, input: DecidirSolicitacaoInput): Promise<{ readonly decisaoId: string; readonly versaoDoCadastro: string | null }> {
+  const d = zDecidirSolicitacao.parse(input);
+  return prisma.$transaction(async (tx) => {
+    const { s, p, estado } = await estadoDaSolicitacao(tx, d.solicitacaoId);
+    const onde = setorAtual(p.setorAberturaId, p.movimentos);
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.decidirSolicitacao, { setor: onde });
+    await exigirLotacao(tx, d.criadoPor, onde, "decidir esta solicitação");
+    exigirElegivel(elegibilidadeParaDecidir(estado));
+    // ⚠️ SEGREGAÇÃO MÍNIMA: quem pediu não decide o próprio pedido.
+    if ((await titularidade(tx, d.criadoPor, s.titularId, new Date())) !== null) {
+      throw new Error("AUTODECISAO: você é o titular (ou representa o titular) desta solicitação e não pode decidi-la. Nada foi gravado.");
+    }
+    const versaoDoCadastro = s.proposta !== null && d.resultado === "DEFERIDA" ? await aplicarPropostaCadastral(tx, s.proposta, rotulo(p), d.fundamentoInterno, d.criadoPor) : null;
+    const decisao = await tx.decisaoDaSolicitacao.create({ data: { solicitacaoId: s.id, resultado: d.resultado, mensagemAoRequerente: d.mensagemAoRequerente, fundamentoInterno: d.fundamentoInterno, criadoPor: d.criadoPor }, select: { id: true } });
+    // O ENCERRAMENTO segue o principal e os apensos, como no encerramento interno.
+    for (const alvo of await alvosDaMovimentacao(tx, p.id)) {
+      await tx.movimentoDoProcesso.create({ data: { processoId: alvo, tipo: "ENCERRAMENTO", setorOrigemId: onde, texto: `Solicitação ${d.resultado === "DEFERIDA" ? "DEFERIDA" : "INDEFERIDA"}. Fundamento interno: ${d.fundamentoInterno}`, criadoPor: d.criadoPor } });
+    }
+    await notificarVarios(tx, await contasDoTitular(tx, s.titularId), { evento: "SOLICITACAO_DECIDIDA", titulo: `Sua solicitação ${rotulo(p)} foi ${d.resultado === "DEFERIDA" ? "deferida" : "indeferida"}`, corpo: d.mensagemAoRequerente, rota: `/meus-servicos/${s.id}` });
+    return { decisaoId: decisao.id, versaoDoCadastro };
+  });
+}
+
+/**
+ * DEFERIR A ATUALIZAÇÃO CADASTRAL cria a versão nova da pessoa — o mesmo ato de alterar o cadastro,
+ * e por isso cobra TAMBÉM a ação de alterar pessoa: decidir a solicitação não é atalho para editar o
+ * cadastro de ninguém.
+ *
+ * ⚠️ SÓ SE O CADASTRO NÃO MUDOU desde a proposta. Senão o deferimento sobrescreveria uma alteração que
+ * o requerente não viu.
+ */
+async function aplicarPropostaCadastral(
+  tx: Tx,
+  proposta: { readonly id: string; readonly pessoaId: string; readonly versaoBaseId: string; readonly dados: unknown },
+  protocolo: string,
+  fundamento: string,
+  criadoPor: string,
+): Promise<string> {
+  await autorizarNo(tx, criadoPor, ACAO_DO_SERVICO.alterarPessoa, "ENTE");
+  const atual = await tx.versaoDePessoa.findFirst({ where: { pessoaId: proposta.pessoaId }, orderBy: { criadoEm: "desc" }, select: { id: true, nome: true, nomeFantasia: true, email: true, telefone: true, logradouro: true, numero: true, complemento: true, bairro: true, municipio: true, uf: true, cep: true, ativa: true } });
+  if (atual === null || atual.id !== proposta.versaoBaseId) {
+    throw new Error("CADASTRO-MUDOU-DESDE-A-PROPOSTA: o cadastro da pessoa foi alterado depois do pedido. Deferir agora sobrescreveria uma alteração que o requerente não viu — emita exigência para ele confirmar. Nada foi gravado.");
+  }
+  const v = dadosDaVersaoProposta(atual, proposta.pessoaId, proposta.dados as Readonly<Record<string, string>>, `Atualização cadastral deferida na solicitação ${protocolo}: ${fundamento}`, criadoPor);
+  const nova = await tx.versaoDePessoa.create({
+    data: {
+      pessoaId: v.pessoaId, nome: v.nome, nomeFantasia: v.nomeFantasia ?? null, email: v.email ?? null, telefone: v.telefone ?? null,
+      logradouro: v.logradouro ?? null, numero: v.numero ?? null, complemento: v.complemento ?? null, bairro: v.bairro ?? null,
+      municipio: v.municipio ?? null, uf: v.uf ?? null, cep: v.cep ?? null, ativa: v.ativa, motivo: v.motivo, criadoPor: v.criadoPor,
+    },
+    select: { id: true },
+  });
+  await tx.propostaDeAlteracaoCadastral.update({ where: { id: proposta.id }, data: { versaoAplicadaId: nova.id } });
+  return nova.id;
+}
+
+type VersaoCadastralAtual = { readonly nome: string } & { readonly [K in "nomeFantasia" | "email" | "telefone" | "logradouro" | "numero" | "complemento" | "bairro" | "municipio" | "uf" | "cep"]: string | null } & { readonly ativa: boolean };
+
+/**
+ * A versão que a proposta produziria — a atual com os campos propostos por cima, validada pela MESMA
+ * regra do cadastro (`zAlterarPessoa`: e-mail, UF, CEP). Roda no protocolo (o requerente vê o erro na
+ * hora) e de novo na decisão.
+ */
+function dadosDaVersaoProposta(atual: VersaoCadastralAtual, pessoaId: string, dados: Readonly<Record<string, string>>, motivo: string, criadoPor: string) {
+  const campo = (k: keyof VersaoCadastralAtual & string): string | undefined => dados[k] ?? (atual[k] as string | null) ?? undefined;
+  const r = zAlterarPessoa.safeParse({
+    pessoaId, nome: campo("nome"), nomeFantasia: campo("nomeFantasia"), email: campo("email"), telefone: campo("telefone"), logradouro: campo("logradouro"),
+    numero: campo("numero"), complemento: campo("complemento"), bairro: campo("bairro"), municipio: campo("municipio"), uf: campo("uf"), cep: campo("cep"),
+    ativa: atual.ativa, motivo, criadoPor,
+  });
+  if (!r.success) throw new Error(`PROPOSTA-CADASTRAL-INVALIDA: ${r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}. Nada foi gravado.`);
+  return r.data;
 }

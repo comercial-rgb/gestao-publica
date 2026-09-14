@@ -25,7 +25,8 @@ describe("v14 — encargos da folha", () => {
     expect(ACOES_DOS_ENCARGOS_DA_FOLHA.some((a) => ACOES_SEGREGADAS_DOS_ENCARGOS.includes(a))).toBe(false);
   });
 
-  it("é a versão 14, a última, depois do atesto da folha", () => {
-    expect(ATUALIZACOES.map((a) => a.versao).slice(-2)).toEqual([13, 14]);
+  it("é a versão 14, depois do atesto da folha", () => {
+    const versoes = ATUALIZACOES.map((a) => a.versao);
+    expect(versoes.slice(versoes.indexOf(13), versoes.indexOf(13) + 2)).toEqual([13, 14]);
   });
 });

@@ -1,0 +1,78 @@
+// ============================================================================
+// M19 — REPRESENTAÇÃO DE PESSOA E PROPOSTA DE ALTERAÇÃO CADASTRAL (V6.2 U2 — P3)
+//
+// ⚠️ REPRESENTAR É UM FATO COM FUNDAMENTO, PERÍODO E REVOGAÇÃO. O papel `REPRESENTANTE` da pessoa
+// diz que alguém PODE representar; ele não diz QUEM, POR QUAL ato, nem ATÉ QUANDO. A representação
+// liga a conta de uma pessoa física (pelo vínculo usuário↔pessoa do M16) à pessoa representada,
+// com o documento que a fundamenta, e a revogação é fato próprio: o que foi protocolado sob a
+// representação continua com lastro; consultas e downloads NOVOS param no dia do efeito.
+//
+// ⚠️ A PROPOSTA NÃO É O CADASTRO. O pedido de atualização cadastral grava o que o requerente quer
+// mudar e a VERSÃO do cadastro que ele viu; só a DECISÃO de deferir chama o caso de uso de Pessoa,
+// e recusa se o cadastro mudou desde a proposta.
+// ============================================================================
+
+model RepresentacaoDePessoa {
+  id String @id @default(cuid())
+
+  /// A pessoa representada (em regra, jurídica).
+  representadaId String
+  representada   Pessoa @relation("PessoaRepresentada", fields: [representadaId], references: [id])
+
+  /// A conta de quem representa — conferida contra o vínculo usuário↔pessoa no cadastro.
+  representanteUsuarioId String
+  representanteUsuario   Usuario @relation("RepresentanteDePessoa", fields: [representanteUsuarioId], references: [id])
+
+  /// Procuração, contrato social, ata — o texto do documento que fundamenta.
+  fundamento String
+
+  vigenciaInicio DateTime
+  vigenciaFim    DateTime?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  revogacao    RevogacaoDeRepresentacao?
+  solicitacoes SolicitacaoDeServico[]
+
+  @@index([representadaId])
+  @@index([representanteUsuarioId])
+}
+
+model RevogacaoDeRepresentacao {
+  id String @id @default(cuid())
+
+  representacaoId String                @unique
+  representacao   RepresentacaoDePessoa @relation(fields: [representacaoId], references: [id])
+
+  dataEfeito DateTime
+  motivo     String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// O que o requerente propõe mudar no cadastro — nunca aplicado no envio.
+model PropostaDeAlteracaoCadastral {
+  id String @id @default(cuid())
+
+  solicitacaoId String               @unique
+  solicitacao   SolicitacaoDeServico @relation(fields: [solicitacaoId], references: [id])
+
+  pessoaId String
+  pessoa   Pessoa @relation("PropostaCadastral", fields: [pessoaId], references: [id])
+
+  /// A versão do cadastro que estava vigente quando a proposta foi feita.
+  versaoBaseId String
+
+  /// Os campos propostos (só os que o formulário da versão permite): nome, email, telefone, endereço.
+  dados Json
+
+  /// A versão do cadastro criada pela decisão de DEFERIR — nula até lá, e nula se indeferida.
+  versaoAplicadaId String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([pessoaId])
+}

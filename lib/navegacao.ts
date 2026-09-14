@@ -36,7 +36,8 @@ export type SlugDeArea =
   | "suporte"
   | "pessoal"
   | "folha"
-  | "portal-do-servidor";
+  | "portal-do-servidor"
+  | "meus-servicos";
 
 export interface AreaNav {
   /** O segmento da rota (`/planejamento`). */
@@ -68,6 +69,7 @@ export const AREAS: readonly AreaNav[] = [
   { slug: "pessoal", rotulo: "Pessoal", descricao: "Servidores, vínculos e histórico funcional; cargos e lotações do quadro. Cargo, lotação e salário são derivados dos eventos." },
   { slug: "folha", rotulo: "Folha", descricao: "Folha de pagamento: tabelas do ente, rubricas, lançamentos, cálculo com memória por servidor e fechamento." },
   { slug: "portal-do-servidor", rotulo: "Portal do Servidor", descricao: "O que é SEU: vínculos, dependentes e contracheques das folhas fechadas — recortado pela pessoa da sessão." },
+  { slug: "meus-servicos", rotulo: "Meus serviços", descricao: "O que você pediu pela carta de serviços — por si ou pela empresa que representa: situação, exigências, documentos e decisão." },
 ];
 
 /** Um relatório navegável (rota + rótulo + uma linha). Fonte ÚNICA da landing e do submenu. */
@@ -221,6 +223,15 @@ export const PORTAL_DO_SERVIDOR: readonly RelatorioNav[] = [
   { href: "/portal-do-servidor", numero: "Minha ficha", rotulo: "Minha ficha e meus contracheques", descricao: "Seus vínculos com cargo, lotação e situação de hoje, seus dependentes e os contracheques das folhas já fechadas." },
 ];
 
+/**
+ * MEUS SERVIÇOS (V6.2 P3) — o acompanhamento do requerente. A carta em si é pública (`/servicos`),
+ * fora da área autenticada; aqui mora só o que é da pessoa da sessão ou de quem ela representa hoje.
+ */
+export const MEUS_SERVICOS: readonly RelatorioNav[] = [
+  { href: "/meus-servicos", numero: "Solicitações", rotulo: "Minhas solicitações", descricao: "Os pedidos protocolados por você ou pela empresa que você representa, com a situação, as exigências e a decisão." },
+  { href: "/servicos", numero: "Carta", rotulo: "Carta de serviços", descricao: "Os serviços que o ente oferece, com requisitos, documentos, prazo e fundamento — e o formulário para pedir." },
+];
+
 /** FOLHA (M33) — fonte única da landing e do submenu. */
 export const FOLHA: readonly RelatorioNav[] = [
   { href: "/folha/folhas", numero: "Folhas", rotulo: "Folhas de pagamento", descricao: "A folha de cada competência: cálculo numerado com memória por servidor, cancelamento e fechamento como fatos." },
@@ -243,6 +254,8 @@ export const PESSOAL: readonly RelatorioNav[] = [
 /** O PROTOCOLO — fonte única da landing e do submenu. */
 export const PROTOCOLO: readonly RelatorioNav[] = [
   { href: "/protocolo/processos", numero: "Processos", rotulo: "Processos digitais", descricao: "Abertura, tramitação entre setores, parecer, readequação, encerramento e arquivamento — com a situação derivada dos movimentos." },
+  { href: "/protocolo/solicitacoes", numero: "Solicitações", rotulo: "Mesa das solicitações", descricao: "Os pedidos que chegaram pela carta de serviços: quantos aguardam recebimento, análise, resposta do requerente e decisão, por setor." },
+  { href: "/protocolo/servicos", numero: "Carta", rotulo: "Carta de serviços", descricao: "O que o ente oferece ao público: serviço, versão do formulário, prazo com fundamento e as etapas copiadas do roteiro real." },
   { href: "/consulta", numero: "Consulta", rotulo: "Acompanhar processo", descricao: "Consulta pelo número e pelo código verificador, SEM SENHA — fora da área autenticada, porque quem a usa é o requerente." },
 ];
 
@@ -253,6 +266,7 @@ export const COMUNICACAO: readonly RelatorioNav[] = [
 
 export const CADASTROS: readonly RelatorioNav[] = [
   { href: "/cadastros/pessoas", numero: "Pessoas", rotulo: "Pessoas e Credores", descricao: "Uma pessoa, vários papéis. Cadastro append-only: alterar cria versão, e o histórico fica." },
+  { href: "/cadastros/representacoes", numero: "Representações", rotulo: "Representações", descricao: "Quem age em nome de uma pessoa jurídica: a conta de uma pessoa física, o documento que fundamenta, a vigência e a revogação." },
 ];
 
 /**

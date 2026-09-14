@@ -291,6 +291,10 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   APROVAR_ENCARGO_DA_FOLHA: "folha",
   APURAR_ENCARGOS_DA_FOLHA: "folha",
   CERTIFICAR_ENCARGOS_DA_FOLHA: "folha",
+  CONFIGURAR_CARTA_DE_SERVICOS: "protocolo",
+  DECIDIR_SOLICITACAO_DE_SERVICO: "protocolo",
+  SOLICITAR_SERVICO: "meus-servicos",
+  REGISTRAR_REPRESENTACAO: "cadastros",
   CADASTRAR_RUBRICA: "folha",
   LANCAR_NA_FOLHA: "folha",
   ABRIR_FOLHA: "folha",
@@ -410,6 +414,7 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   CONSULTAR_PESSOAL: "pessoal",
   CONSULTAR_FOLHA: "folha",
   CONSULTAR_PORTAL_DO_SERVIDOR: "portal-do-servidor",
+  CONSULTAR_MEUS_SERVICOS: "meus-servicos",
 };
 
 /**

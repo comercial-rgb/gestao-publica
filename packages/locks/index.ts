@@ -252,6 +252,13 @@ export const ORDEM_DOS_LOCKS = {
    * item e depois volta para a ordem. Último posto: nada abaixo dele é travado depois.
    */
   ItemDeSolicitacaoDeCompra: 23,
+  /**
+   * V6.2 P3 — A SOLICITAÇÃO DA CARTA DE SERVIÇOS. A corrida é ler-decidir-gravar sobre o ESTADO
+   * da solicitação: duas exigências simultâneas leriam "nenhuma pendente" e as duas gravariam;
+   * uma decisão e uma resposta do requerente se cruzariam. O protocolo (14) só é travado na
+   * abertura, quando a solicitação ainda não existe; os atos sobre ela travam só este posto.
+   */
+  SolicitacaoDeServico: 24,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

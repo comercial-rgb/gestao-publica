@@ -430,6 +430,31 @@ export function derivarEncargosDaFolha(
   }
   return saida;
 }
+/**
+ * V6.2 P3 — a carta de serviços. Quem administra recebe CONFIGURAR a carta, REGISTRAR representação e a
+ * leitura CONSULTAR_MEUS_SERVICOS. PEDIR (SOLICITAR_SERVICO) e DECIDIR (DECIDIR_SOLICITACAO_DE_SERVICO)
+ * ficam fora: são os lados que a mesa separa, e quem os recebe (o perfil do requerente, o perfil da mesa
+ * de um setor) é decisão do administrador — a instalação não nasce com a mesma conta pedindo e decidindo.
+ */
+export const ACOES_DA_CARTA_DE_SERVICOS: readonly AcaoDoSistema[] = ["CONFIGURAR_CARTA_DE_SERVICOS", "REGISTRAR_REPRESENTACAO", "CONSULTAR_MEUS_SERVICOS"];
+
+export function derivarCartaDeServicos(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null);
+    if (!administra) continue;
+    const jaTem = new Set(perfil.permissoes.filter((p) => p.unidadeOrcId === null).map((p) => p.acao));
+    for (const acao of ACOES_DA_CARTA_DE_SERVICOS) {
+      if (jaTem.has(acao)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
+
 export function derivarFolha(
   perfis: readonly PerfilComPermissoes[],
   _areaDaAcao: AreaDaAcao
@@ -602,6 +627,17 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "quem cadastra a aliquota nao a aprova, e quem apura nao atesta. O atesto dos encargos exige tambem designacao " +
       "vigente com a atribuicao propria; a designacao para certificar a folha salarial nao a supre.",
     derivar: derivarEncargosDaFolha,
+  },
+  {
+    versao: 15,
+    nome: "carta-de-servicos",
+    descricao:
+      "A carta de servicos e as solicitacoes do requerente (V6.2 P3) chegaram com CONFIGURAR_CARTA_DE_SERVICOS, " +
+      "SOLICITAR_SERVICO, DECIDIR_SOLICITACAO_DE_SERVICO, REGISTRAR_REPRESENTACAO e a leitura CONSULTAR_MEUS_SERVICOS. " +
+      "Esta atualizacao concede configurar a carta, registrar representacao e a leitura a quem ja administra permissoes " +
+      "no global. Pedir e decidir sao os lados que a mesa separa: o administrador cria o perfil do requerente e o da " +
+      "mesa. Ainda assim o servico recusa a decisao por quem e titular ou representa o titular.",
+    derivar: derivarCartaDeServicos,
   },
 ];
 

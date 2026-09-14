@@ -58,6 +58,8 @@ model Setor {
   criadoPor String
 
   etapasDeRoteiro EtapaDoRoteiro[]
+  /// V6.2 — as versões de serviço da carta que entram por este setor. VIRTUAL.
+  servicosDeEntrada VersaoDoServico[] @relation("EntradaDoServico")
   etapasDeProcesso EtapaDoProcesso[]
   processosAbertos Processo[]         @relation("SetorDeAbertura")
   movimentosOrigem MovimentoDoProcesso[] @relation("SetorOrigem")
@@ -146,6 +148,8 @@ model Assunto {
   subassuntos Subassunto[]
   roteiro     EtapaDoRoteiro[]
   processos   Processo[]
+  /// V6.2 — os serviços da carta que este assunto executa. VIRTUAL.
+  servicos    ServicoDaCarta[] @relation("ServicoDoAssunto")
 }
 
 model Subassunto {
@@ -286,6 +290,8 @@ model Processo {
   @@index([exercicioId, criadoEm])
   /// back-relation ENT05 (M11 compras) — VIRTUAL.
   solicitacoesDeCompra SolicitacaoDeCompra[] @relation("ProcessoDaSolicitacao")
+  /// V6.2 — a solicitação da carta que este processo executa, quando houver. VIRTUAL.
+  solicitacaoDeServico SolicitacaoDeServico? @relation("SolicitacaoDoProcesso")
 }
 
 /// A CÓPIA do roteiro no instante da abertura. Ver o cabeçalho do arquivo.

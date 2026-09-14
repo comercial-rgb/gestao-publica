@@ -315,6 +315,11 @@ export type AcaoDoSistema =
   | "APROVAR_ENCARGO_DA_FOLHA"
   | "APURAR_ENCARGOS_DA_FOLHA"
   | "CERTIFICAR_ENCARGOS_DA_FOLHA"
+  // V6.2 P3 — a carta de serviços e a representação
+  | "CONFIGURAR_CARTA_DE_SERVICOS"
+  | "SOLICITAR_SERVICO"
+  | "DECIDIR_SOLICITACAO_DE_SERVICO"
+  | "REGISTRAR_REPRESENTACAO"
   | "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA"
   | "CONFIGURAR_TABELAS_DA_FOLHA"
   | "CADASTRAR_RUBRICA"
@@ -496,7 +501,8 @@ export type AcaoDeLeitura =
   | "CONSULTAR_SUPORTE"
   | "CONSULTAR_PESSOAL"
   | "CONSULTAR_FOLHA"
-  | "CONSULTAR_PORTAL_DO_SERVIDOR";
+  | "CONSULTAR_PORTAL_DO_SERVIDOR"
+  | "CONSULTAR_MEUS_SERVICOS";
 
 /**
  * O rol das ações de leitura, para o bootstrap, os perfis de fixture e a política de
@@ -525,6 +531,8 @@ export const ACOES_DE_LEITURA: readonly AcaoDeLeitura[] = [
   "CONSULTAR_PESSOAL",
   "CONSULTAR_FOLHA",
   "CONSULTAR_PORTAL_DO_SERVIDOR",
+  // V6.2 P3 — o que o requerente pediu, recortado pela pessoa da sessão e pelas representações vigentes.
+  "CONSULTAR_MEUS_SERVICOS",
 ];
 
 /** É uma ação de leitura? — o discriminador que a política de leitura e os testes usam. */
@@ -758,6 +766,18 @@ export type NomeDeServico =
   | "cadastrarGrupoDosEncargos"
   | "apropriarEncargosDaFolha"
   | "liquidarEncargosDaFolha"
+  // M21/M19 — a carta de serviços, as solicitações do requerente e a representação (V6.2 P3)
+  | "cadastrarServicoDaCarta"
+  | "cadastrarVersaoDoServico"
+  | "publicarVersaoDoServico"
+  | "protocolarSolicitacao"
+  | "responderExigenciaDaSolicitacao"
+  | "anexarDoRequerente"
+  | "emitirExigenciaDaSolicitacao"
+  | "decidirSolicitacao"
+  | "disponibilizarRespostaDaSolicitacao"
+  | "registrarRepresentacao"
+  | "revogarRepresentacao"
   // ── M02b — planejamento plurianual (V4 §8) ──
   | "criarPlanoPlurianual"
   | "criarEixoEstruturante"
@@ -1173,6 +1193,20 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   cadastrarGrupoDosEncargos: "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA",
   apropriarEncargosDaFolha: "APROPRIAR_FOLHA",
   liquidarEncargosDaFolha: "LIQUIDAR_FOLHA",
+  // V6.2 P3 — a carta de serviços. Configurar a carta é um ato; pedir (protocolar, responder,
+  // anexar) é o ato do REQUERENTE, conferido contra a titularidade na transação; decidir (exigir,
+  // decidir, disponibilizar resposta) é o ato da mesa, no setor em que o processo está.
+  cadastrarServicoDaCarta: "CONFIGURAR_CARTA_DE_SERVICOS",
+  cadastrarVersaoDoServico: "CONFIGURAR_CARTA_DE_SERVICOS",
+  publicarVersaoDoServico: "CONFIGURAR_CARTA_DE_SERVICOS",
+  protocolarSolicitacao: "SOLICITAR_SERVICO",
+  responderExigenciaDaSolicitacao: "SOLICITAR_SERVICO",
+  anexarDoRequerente: "SOLICITAR_SERVICO",
+  emitirExigenciaDaSolicitacao: "DECIDIR_SOLICITACAO_DE_SERVICO",
+  decidirSolicitacao: "DECIDIR_SOLICITACAO_DE_SERVICO",
+  disponibilizarRespostaDaSolicitacao: "DECIDIR_SOLICITACAO_DE_SERVICO",
+  registrarRepresentacao: "REGISTRAR_REPRESENTACAO",
+  revogarRepresentacao: "REGISTRAR_REPRESENTACAO",
 
   // ── M02b — planejamento plurianual (V4 §8): 20 serviços, 10 ações, pelos anexos da LRF ──
   criarPlanoPlurianual: "CADASTRAR_PPA",
@@ -1377,6 +1411,9 @@ export const FORA_DO_CENSO: Record<string, string> = {
   retratoDosEncargos:
     "LEITURA: o retrato do estado dos encargos (apuração vigente, atesto, empenhos, liquidações) que os predicados de " +
     "`encargos.ts` leem. A tela projeta a barra; quem decide é o caso de uso.",
+  representacoesVigentesDoUsuario:
+    "LEITURA: as representações que a conta exerce no dia perguntado, com a vigência DERIVADA (início, fim e revogação). " +
+    "É a pergunta que o protocolo da solicitação, a resposta à exigência e o download fazem dentro da própria transação.",
   encargosDaFolha:
     "LEITURA: as apurações dos encargos com o comparativo entre versões, os atestos, os empenhos e as liquidações.",
   retratoDosAtosDaFolha:

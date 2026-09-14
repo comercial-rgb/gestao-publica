@@ -462,6 +462,15 @@ enum AcaoDoSistema {
   APURAR_ENCARGOS_DA_FOLHA
   CERTIFICAR_ENCARGOS_DA_FOLHA
 
+  // V6.2 — P3: a carta de serviços e as solicitações do requerente. Configurar/publicar a carta, pedir
+  // um serviço (o titular ou o representante), decidir a solicitação e registrar representação são
+  // quatro sujeitos diferentes; a leitura da área do requerente é CONSULTAR_MEUS_SERVICOS.
+  CONFIGURAR_CARTA_DE_SERVICOS
+  SOLICITAR_SERVICO
+  DECIDIR_SOLICITACAO_DE_SERVICO
+  REGISTRAR_REPRESENTACAO
+  CONSULTAR_MEUS_SERVICOS
+
   // V6 P2.4 — o portal do servidor: a leitura do PRÓPRIO vínculo e dos PRÓPRIOS contracheques.
   // Não abre a folha do ente: a porta recorta pela pessoa da sessão.
   CONSULTAR_PORTAL_DO_SERVIDOR
@@ -521,6 +530,8 @@ model Usuario {
   designacoesNaFolha DesignacaoNaFolha[] @relation("DesignacaoNaFolha")
 
   @@index([ativo])
+  /// V6.2 — as representações de pessoa que esta conta exerce. VIRTUAL.
+  representacoesExercidas RepresentacaoDePessoa[] @relation("RepresentanteDePessoa")
 }
 
 /// V3 (pacote 2) — VÍNCULO ENTRE O USUÁRIO QUE AUTENTICA E A PESSOA DO CADASTRO, append-only.
