@@ -131,6 +131,42 @@ export const PAPEIS: readonly Papel[] = [
     // não da permissão: dar `CONSULTAR_PESSOAL` a cada servidor abriria a ficha de todo mundo.
     acoes: ["CONSULTAR_PORTAL_DO_SERVIDOR"],
   },
+  // ── V6.2 P3 — a carta de serviços ──
+  {
+    identificador: "carta@percursos.local",
+    nome: "Gestor da carta de serviços (percurso)",
+    perfil: "CARTA DE SERVIÇOS — PERCURSO",
+    descricao: "Configura e publica os serviços da carta e registra representações. Não decide solicitação nem pede serviço.",
+    acoes: ["CONFIGURAR_CARTA_DE_SERVICOS", "REGISTRAR_REPRESENTACAO", "CONSULTAR_PROTOCOLO", "CONSULTAR_CADASTROS"],
+  },
+  {
+    identificador: "mesa@percursos.local",
+    nome: "Servidor da mesa de solicitações (percurso)",
+    perfil: "MESA DE SOLICITAÇÕES — PERCURSO",
+    descricao: "Recebe, emite exigência, decide e libera resposta às solicitações da carta. Deferir atualização cadastral exige também alterar pessoa.",
+    acoes: ["CONSULTAR_PROTOCOLO", "DECIDIR_SOLICITACAO_DE_SERVICO", "RECEBER_PROCESSO", "TRAMITAR_PROCESSO", "ALTERAR_PESSOA", "CONSULTAR_CADASTROS"],
+  },
+  {
+    identificador: "cidada-a@percursos.local",
+    nome: "Cidadã A (percurso)",
+    perfil: "REQUERENTE — PERCURSO",
+    descricao: "Pede serviços da carta e acompanha os próprios pedidos. Não vê o protocolo do ente.",
+    acoes: ["SOLICITAR_SERVICO", "CONSULTAR_MEUS_SERVICOS"],
+  },
+  {
+    identificador: "cidada-b@percursos.local",
+    nome: "Cidadã B (percurso)",
+    perfil: "REQUERENTE B — PERCURSO",
+    descricao: "A segunda requerente: prova que uma não alcança o pedido da outra.",
+    acoes: ["SOLICITAR_SERVICO", "CONSULTAR_MEUS_SERVICOS"],
+  },
+  {
+    identificador: "representante@percursos.local",
+    nome: "Representante de fornecedor (percurso)",
+    perfil: "REPRESENTANTE — PERCURSO",
+    descricao: "Pede o complemento documental em nome da empresa enquanto a representação estiver vigente.",
+    acoes: ["SOLICITAR_SERVICO", "CONSULTAR_MEUS_SERVICOS"],
+  },
 ];
 
 async function main(): Promise<void> {

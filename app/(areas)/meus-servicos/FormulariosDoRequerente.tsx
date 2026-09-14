@@ -43,7 +43,8 @@ export function FormSolicitar({ slug, campos, titulares, termoDeAceite }: {
   if (estado.solicitacaoId !== undefined) {
     return (
       <div className={CLASSE_PAINEL_FORMULARIO} data-protocolada={estado.solicitacaoId}>
-        <Mensagens estado={estado} />
+        {/* O formulário sai de cena com o protocolo: o resultado fica no marcador que a barra do molde usa. */}
+        <p role="status" data-resultado-da-acao="protocolar-solicitacao" data-resultado-seq="1" className="whitespace-pre-line rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]">{estado.sucesso}</p>
         <p className="mt-3 text-sm"><Link href={`/meus-servicos/${estado.solicitacaoId}`} className="text-[color:var(--color-primary)] underline">Acompanhar esta solicitação</Link></p>
       </div>
     );
