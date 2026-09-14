@@ -55,9 +55,7 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
       ) : null}
 
       {permitidas.has("SOLICITAR_SERVICO") && s.podeAnexar ? <FormDocumentoDoRequerente solicitacaoId={s.id} accept={ACEITE_DO_DOCUMENTO} tamanhoMaximoBytes={TETO_DO_DOCUMENTO} /> : null}
-      {pendente !== undefined && permitidas.has("SOLICITAR_SERVICO") ? (
-        s.podeResponder.pode ? <FormResponderExigencia solicitacaoId={s.id} /> : <p className="text-sm">{s.podeResponder.motivo}</p>
-      ) : null}
+      {permitidas.has("SOLICITAR_SERVICO") ? <FormResponderExigencia solicitacaoId={s.id} pendente={pendente !== undefined} motivo={s.podeResponder.pode ? null : s.podeResponder.motivo} /> : null}
 
       <Card>
         <h2 className="mb-2 text-sm font-semibold">Documentos</h2>

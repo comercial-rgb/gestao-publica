@@ -86,11 +86,22 @@ export function FormSolicitar({ slug, campos, titulares, termoDeAceite }: {
   );
 }
 
-export function FormResponderExigencia({ solicitacaoId }: { readonly solicitacaoId: string }): React.ReactElement {
-  const [estado, disparar, pendente] = useActionState<EstadoDoRequerente, FormData>(responderExigenciaAction, {});
+/**
+ * ⚠️ A ILHA FICA MONTADA MESMO SEM EXIGÊNCIA PENDENTE. Respondida a exigência, a página recarrega e não
+ * há mais o que responder; se a página trocasse a ilha por nada, o aviso de "resposta enviada" sumiria
+ * junto (o percurso P3 leu silêncio assim). Quem decide se o formulário aparece é esta ilha, pelo
+ * `pendente` que o servidor projetou — o estado da ação sobrevive à recarga.
+ */
+export function FormResponderExigencia({ solicitacaoId, pendente, motivo }: { readonly solicitacaoId: string; readonly pendente: boolean; readonly motivo: string | null }): React.ReactElement | null {
+  const [estado, disparar, carregando] = useActionState<EstadoDoRequerente, FormData>(responderExigenciaAction, {});
   const id = useId();
   const ref = useRef<HTMLFormElement>(null);
   if (estado.sucesso !== undefined) ref.current?.reset();
+  if (!pendente) {
+    if (estado.sucesso === undefined) return null;
+    return <p role="status" data-resultado-da-acao="responder-exigencia" data-resultado-seq="1" className="rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]">{estado.sucesso}</p>;
+  }
+  if (motivo !== null) return <p className="text-sm">{motivo}</p>;
   return (
     <form ref={ref} action={disparar} data-acao="responder-exigencia" className={CLASSE_PAINEL_FORMULARIO}>
       <ChaveDeComando />
@@ -99,7 +110,7 @@ export function FormResponderExigencia({ solicitacaoId }: { readonly solicitacao
       <textarea id={id} name="texto" required minLength={5} className={CLASSE_AREA_TEXTO} />
       <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">Se a exigência pede documento, envie o arquivo abaixo antes de responder.</p>
       <Mensagens estado={estado} />
-      <button type="submit" disabled={pendente} className={`mt-3 ${CLASSE_BOTAO_PRIMARIO}`}>{pendente ? "Enviando…" : "Enviar resposta"}</button>
+      <button type="submit" disabled={carregando} className={`mt-3 ${CLASSE_BOTAO_PRIMARIO}`}>{carregando ? "Enviando…" : "Enviar resposta"}</button>
     </form>
   );
 }
