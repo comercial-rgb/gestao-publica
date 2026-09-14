@@ -46,8 +46,8 @@ export default async function Pagina(): Promise<React.ReactElement> {
                     {m.respostas.map((r, i) => <li key={i}><span className="text-xs text-[color:var(--color-ink-3)]">{r.em}{r.conclusiva ? " · conclusiva" : ""}</span><p className="whitespace-pre-line">{r.texto}</p></li>)}
                   </ol>
                 ) : null}
-                <FormTriagem manifestacaoId={m.id} tipos={OPCOES_DE_TIPO_DE_MANIFESTACAO} tipoInformado={valorDoTipo.get(m.tipo) ?? "DENUNCIA"} motivo={m.triar.pode ? null : m.triar.motivo} />
-                <FormRespostaDaOuvidoria manifestacaoId={m.id} motivo={m.responder.pode ? null : m.responder.motivo} />
+                <FormTriagem manifestacaoId={m.id} protocolo={m.protocolo} tipos={OPCOES_DE_TIPO_DE_MANIFESTACAO} tipoInformado={valorDoTipo.get(m.tipo) ?? "DENUNCIA"} motivo={m.triar.pode ? null : m.triar.motivo} />
+                <FormRespostaDaOuvidoria manifestacaoId={m.id} protocolo={m.protocolo} motivo={m.responder.pode ? null : m.responder.motivo} />
               </li>
             ))}
           </ul>

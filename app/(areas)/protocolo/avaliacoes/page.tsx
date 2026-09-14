@@ -64,9 +64,8 @@ export default async function Pagina(): Promise<React.ReactElement> {
                   {a.descricao !== null ? <p className="mt-1 whitespace-pre-line">{a.descricao}</p> : null}
                   {a.remocao !== null ? (
                     <p className="mt-1 text-xs" data-removida><Badge status="alerta">removida</Badge> {a.remocao.motivo} em {a.remocao.em}: {a.remocao.justificativa}</p>
-                  ) : (
-                    <FormRemoverAvaliacao avaliacaoId={a.id} />
-                  )}
+                  ) : null}
+                  <FormRemoverAvaliacao avaliacaoId={a.id} removida={a.remocao !== null} />
                 </li>
               ))}
             </ul>

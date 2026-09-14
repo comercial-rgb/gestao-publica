@@ -2,9 +2,9 @@ import "dotenv/config";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import puppeteer, { type Browser, type Page } from "puppeteer";
+import type { Browser, Page } from "puppeteer";
 import { diaCivil } from "../packages/datas/index.js";
-import { barrado, buscarJson, entrar, irPara, preencherEEnviar, registroDePassos, sair, texto, type Navegador } from "./percursos-navegador.js";
+import { barrado, buscarJson, entrar, irPara, lancarNavegadorDoPercurso, preencherEEnviar, registroDePassos, sair, texto, type Navegador } from "./percursos-navegador.js";
 
 /**
  * PERCURSO — A CARTA DE SERVIÇOS DE PONTA A PONTA (M21/M19, V6.2 P3), POR SEIS PAPÉIS.
@@ -33,7 +33,7 @@ const B = "cidada-b@percursos.local";
 const REP = "representante@percursos.local";
 const SUF = String(Date.now()).slice(-6);
 const R = registroDePassos();
-const CAPTURAS = join(process.cwd(), ".registro-de-execucao", "pacote-v6-2", "capturas");
+const CAPTURAS = process.env["PERCURSO_CAPTURAS"] ?? join(process.cwd(), ".registro-de-execucao", "pacote-v6-2", "capturas");
 const FUNDAMENTO_INTERNO = `Fundamento interno reservado ${SUF}`;
 const MENSAGEM_DECISAO = `Seu pedido foi deferido: o lançamento será revisto (${SUF}).`;
 
@@ -109,9 +109,9 @@ async function vincularConta(page: Page, conta: string, documento: string, nome:
   R.conferir(`1.v conta ${conta} vinculada à pessoa pelo CPF`, r.tipo !== "erro" && depois.includes(nome.toLowerCase()), `${r.tipo}: ${r.texto.slice(0, 160)}`);
 }
 
-async function criarServico(page: Page, slug: string, titulo: string, tipo: string, publico: string): Promise<string> {
+async function criarServico(page: Page, slug: string, titulo: string, tipo: string, publico: string, codigoDoAssunto = "REQ"): Promise<string> {
   await irPara(N, page, "/protocolo/servicos");
-  const assunto = await opcaoQueComeca(page, 'form[data-acao="criar-servicos-da-carta"] select[name="assuntoId"]', "REQ");
+  const assunto = await opcaoQueComeca(page, 'form[data-acao="criar-servicos-da-carta"] select[name="assuntoId"]', codigoDoAssunto);
   const r = await preencherEEnviar(page, "criar-servicos-da-carta", [
     { sel: 'input[name="titulo"]', valor: titulo },
     { sel: 'input[name="slug"]', valor: slug },
@@ -124,9 +124,9 @@ async function criarServico(page: Page, slug: string, titulo: string, tipo: stri
   return idDoSucesso(r.texto, "/protocolo/servicos");
 }
 
-async function cadastrarVersao(page: Page, servicoId: string, campos: readonly { nome: string; rotulo: string; tipo: string; obrigatorio: boolean }[]): Promise<{ tipo: string; texto: string }> {
+async function cadastrarVersao(page: Page, servicoId: string, campos: readonly { nome: string; rotulo: string; tipo: string; obrigatorio: boolean }[], codigoDoSetor = "PROT"): Promise<{ tipo: string; texto: string }> {
   await irPara(N, page, `/protocolo/servicos/${servicoId}`);
-  const setor = await opcaoQueComeca(page, 'form[data-acao="nova-versao-do-servico"] select[name="setorDeEntradaId"]', "PROT");
+  const setor = await opcaoQueComeca(page, 'form[data-acao="nova-versao-do-servico"] select[name="setorDeEntradaId"]', codigoDoSetor);
   for (let i = 3; i < campos.length; i += 1) await page.evaluate(() => (Array.from(document.querySelectorAll('form[data-acao="nova-versao-do-servico"] button[type="button"]')).at(-1) as HTMLButtonElement | undefined)?.click());
   return preencherEEnviar(page, "nova-versao-do-servico", [
     { sel: 'textarea[name="descricao"]', valor: `Serviço do percurso ${SUF}: descrição ao público.` },
@@ -161,7 +161,7 @@ async function main(): Promise<void> {
   writeFileSync(pdf, `%PDF-1.4\n% comprovante do percurso ${SUF}\n%%EOF\n`);
   writeFileSync(resposta, `%PDF-1.4\n% resposta do ente ${SUF}\n%%EOF\n`);
   try {
-    navegador = await puppeteer.launch({ headless: true, protocolTimeout: 180000, args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"] });
+    navegador = await lancarNavegadorDoPercurso({ headless: true, protocolTimeout: 180000, args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"] });
     const page = await navegador.newPage();
     page.setDefaultTimeout(120000);
     await page.setViewport({ width: 1366, height: 900 });
@@ -191,6 +191,7 @@ async function main(): Promise<void> {
     const slugCad = `atualizar-contato-${SUF}`;
     const slugComp = `complemento-fornecedor-${SUF}`;
     const slugRasc = `rascunho-${SUF}`;
+    const slugOuv = `ouvidoria-${SUF}`;
     const req = await criarServico(page, slugReq, `Revisão de lançamento ${SUF}`, "REQUERIMENTO_ADMINISTRATIVO", "CIDADAO");
     const rv = await cadastrarVersao(page, req, [{ nome: "assunto", rotulo: "Assunto do pedido", tipo: "texto", obrigatorio: true }, { nome: "detalhes", rotulo: "Detalhes", tipo: "textoLongo", obrigatorio: true }]);
     R.conferir("2.1 versão do requerimento cadastrada em RASCUNHO pela ilha", rv.tipo === "ok" && rv.texto.includes("RASCUNHO"), `${rv.tipo}: ${rv.texto.slice(0, 200)}`);
@@ -221,6 +222,17 @@ async function main(): Promise<void> {
     R.conferir("2.4 representação registrada com seletores referenciados de pessoa e conta", rRep.tipo === "ok", `${rRep.tipo}: ${rRep.texto.slice(0, 200)}`);
     const representacaoId = await idDoSucesso(rRep.texto, "/cadastros/representacoes");
     R.conferir("2.5 o gestor da carta NÃO decide solicitação", (await barrado(N, page, "/meus-servicos")).barrado, "abriu a área do requerente");
+
+    // V7 M1 U4 — o canal de ouvidoria sem conta (assunto OUV: anônimo e sigiloso; entrada no GAB) e a metodologia.
+    const ouv = await criarServico(page, slugOuv, `Ouvidoria ${SUF}`, "MANIFESTACAO_ANONIMA", "CIDADAO", "OUV");
+    const ov = await cadastrarVersao(page, ouv, [{ nome: "relato", rotulo: "Relato", tipo: "textoLongo", obrigatorio: true }], "GAB");
+    R.conferir("2.6 versão da ouvidoria sem conta cadastrada — a exigência de conta sai da natureza do serviço", ov.tipo === "ok", `${ov.tipo}: ${ov.texto.slice(0, 200)}`);
+    await publicar(page, ouv);
+    await irPara(N, page, "/protocolo/avaliacoes");
+    const met = await preencherEEnviar(page, "cadastrar-metodologia", []);
+    R.conferir("2.7 metodologia da avaliação gravada pela tela (versão vigente, escala com rótulos)", met.tipo === "ok" && /Metodologia versão \d+ gravada/.test(met.texto), `${met.tipo}: ${met.texto.slice(0, 200)}`);
+    await irPara(N, page, "/protocolo/avaliacoes");
+    R.conferir("2.8 NEGATIVA: o gestor da carta não tem a moderação — as descrições privadas não aparecem", (await page.$('[data-moderacao="sem-permissao"]')) !== null, "a lista de moderação apareceu");
     await sair(N, page);
 
     // ══ 3. o visitante lê a carta ══
@@ -328,6 +340,80 @@ async function main(): Promise<void> {
     await entrar(N, page, B, SENHA);
     R.conferir("9.5 NEGATIVA: B com a URL exata do documento de A recebe 404", (await buscarJson(page, `${N.base}${hrefResposta}`)).status === 404, "B baixou o documento de A");
     await sair(N, page);
+
+    // ══ 9b. V7 M1 U4 — A avalia o atendimento; o visitante opina; o resultado sai por origem ══
+    await entrar(N, page, A, SENHA);
+    await irPara(N, page, `/meus-servicos/${idA}`);
+    const notas = (s: number, a: number, p: number) => [
+      { sel: `input[name="satisfacao"][value="${s}"]`, valor: "sim", tipo: "marcar" as const },
+      { sel: `input[name="atendimento"][value="${a}"]`, valor: "sim", tipo: "marcar" as const },
+      { sel: `input[name="prazos"][value="${p}"]`, valor: "sim", tipo: "marcar" as const },
+    ];
+    const av1 = await preencherEEnviar(page, "avaliar-atendimento", [...notas(5, 4, 3), { sel: 'textarea[name="descricao"]', valor: `Descrição privada ${SUF}` }]);
+    R.conferir("9.6 A avalia o atendimento da solicitação decidida (satisfação, atendimento, prazos e descrição)", av1.tipo === "ok" && /Avaliação registrada/.test(av1.texto), `${av1.tipo}: ${av1.texto.slice(0, 200)}`);
+    await irPara(N, page, `/meus-servicos/${idA}`);
+    const av2 = await preencherEEnviar(page, "avaliar-atendimento", notas(4, 4, 4));
+    R.conferir("9.7 avaliar de novo é REVISÃO (não segundo voto)", av2.tipo === "ok" && /revisada/.test(av2.texto), `${av2.tipo}: ${av2.texto.slice(0, 200)}`);
+    await capturar(page, "requerente-avaliacao");
+    await sair(N, page);
+    await irPara(N, page, `/servicos/${slugReq}`);
+    const op = await preencherEEnviar(page, "opinar-sobre-servico", [...notas(1, 2, 1), { sel: 'textarea[name="descricao"]', valor: `Opinião abusiva ${SUF}` }]);
+    R.conferir("9.8 o visitante SEM CONTA dá opinião geral sobre o serviço", op.tipo === "ok", `${op.tipo}: ${op.texto.slice(0, 200)}`);
+    const resultado = await irPara(N, page, `/servicos/${slugReq}`);
+    R.conferir("9.9 o resultado público separa quem foi atendido (1 resposta, satisfação 4,0) da opinião geral (1), sem a descrição privada", (await page.$('[data-avaliacoes="publicado"]')) !== null && /de quem foi atendido\s*respostas\s*1\s*satisfação\s*4,0/.test(resultado) && /opinião geral, sem conta\s*respostas\s*1/.test(resultado) && !resultado.includes(`descrição privada ${SUF}`), resultado.slice(resultado.indexOf("avaliações"), resultado.indexOf("avaliações") + 500));
+    await capturar(page, "servico-resultado-avaliacoes");
+    await entrar(N, page, ADMIN, SENHA_ADMIN);
+    await irPara(N, page, "/protocolo/avaliacoes");
+    const idOpiniao = await page.evaluate((t) => Array.from(document.querySelectorAll("[data-avaliacao]")).find((li) => (li.textContent ?? "").includes(t))?.getAttribute("data-avaliacao") ?? "", `Opinião abusiva ${SUF}`);
+    const rem = idOpiniao === "" ? { tipo: "silencio", texto: "opinião não listada na moderação" } : await preencherEEnviar(page, `form[data-acao="remover-avaliacao"][data-avaliacao-alvo="${idOpiniao}"]`, [{ sel: 'input[name="justificativa"]', valor: `Ofensa a servidor (percurso ${SUF})` }]);
+    R.conferir("9.10 a moderação (admin) remove a opinião abusiva com motivo e justificativa", rem.tipo === "ok", `${rem.tipo}: ${rem.texto.slice(0, 200)}`);
+    await sair(N, page);
+    const depois = await irPara(N, page, `/servicos/${slugReq}`);
+    R.conferir("9.11 o resultado público informa a remoção e a opinião sai da média", /1 avaliação\(ões\) removida/.test(depois) && /opinião geral, sem conta\s*ainda sem avaliações no período/.test(depois), depois.slice(depois.indexOf("avaliações"), depois.indexOf("avaliações") + 500));
+
+    // ══ 9c. V7 M1 U4 — a manifestação sem conta: registro, acompanhamento limitado, sigilo, triagem e resposta ══
+    R.conferir("9.12 /ouvidoria responde sem sessão e lista o canal publicado", (await status(page, "/ouvidoria")) === 200 && (await texto(page)).includes(`ouvidoria ${SUF}`), "o canal não apareceu");
+    R.conferir("9.13 NEGATIVA: um serviço autenticado não abre como ouvidoria (404)", (await status(page, `/ouvidoria/${slugReq}`)) === 404, "o requerimento abriu como ouvidoria");
+    await irPara(N, page, `/ouvidoria/${slugOuv}`);
+    const referrer = await page.$eval('meta[name="referrer"]', (m) => m.getAttribute("content")).catch(() => "");
+    const RELATO = `Relato do percurso ${SUF}: cobrança indevida no balcão`;
+    const man = await preencherEEnviar(page, "registrar-manifestacao", [{ sel: 'textarea[name="resposta.relato"]', valor: RELATO }]);
+    const protocoloOuv = (await page.$eval("[data-protocolo-da-manifestacao]", (el) => el.textContent ?? "").catch(() => "")).trim();
+    const segredo = (await page.$eval("[data-segredo-da-manifestacao]", (el) => el.textContent ?? "").catch(() => "")).trim();
+    R.conferir("9.14 a manifestação é registrada sem conta: protocolo e código mostrados uma vez, fora da URL, página sem referer", man.tipo === "ok" && protocoloOuv !== "" && segredo.length >= 20 && !page.url().includes(segredo) && referrer === "no-referrer", `${man.tipo} ${man.texto.slice(0, 120)} url=${page.url()} referrer=${referrer}`);
+    await capturar(page, "ouvidoria-registrada");
+    await irPara(N, page, "/ouvidoria/acompanhar");
+    const consultar = async (cod: string): Promise<string> => {
+      await irPara(N, page, "/ouvidoria/acompanhar");
+      await page.type('form[data-acao="acompanhar-manifestacao"] input[name="protocolo"]', protocoloOuv);
+      await page.type('form[data-acao="acompanhar-manifestacao"] input[name="segredo"]', cod);
+      await page.click('form[data-acao="acompanhar-manifestacao"] button[type="submit"]');
+      await page.waitForSelector("[data-acompanhamento], [data-manifestacao-nao-encontrada]", { timeout: 30000 });
+      return texto(page);
+    };
+    const errada = await consultar("AAAAA-AAAAA-AAAAA-AAAAA");
+    R.conferir("9.15 NEGATIVA: código errado não mostra nada (a mesma resposta de protocolo inexistente)", errada.includes("nenhuma manifestação com esse protocolo e esse código") && !errada.includes(RELATO.toLowerCase()), errada.slice(0, 200));
+    const recebida = await consultar(segredo);
+    R.conferir("9.16 com o código: situação 'recebida', sem o relato, e o código não foi para a URL", (await page.$('[data-acompanhamento="RECEBIDA"]')) !== null && !recebida.includes(RELATO.toLowerCase()) && !page.url().includes(segredo), `${page.url()} ${recebida.slice(0, 200)}`);
+    await entrar(N, page, MESA, SENHA);
+    const mesaOuv = await irPara(N, page, "/protocolo/ouvidoria");
+    R.conferir("9.17 NEGATIVA: a mesa (consulta do protocolo no ente, sem lotação no setor da ouvidoria) não vê a manifestação sigilosa", !mesaOuv.includes(RELATO.toLowerCase()) && (await page.$(`[data-manifestacao="${protocoloOuv}"]`)) === null, mesaOuv.slice(0, 300));
+    await sair(N, page);
+    await entrar(N, page, ADMIN, SENHA_ADMIN);
+    const mesaAdmin = await irPara(N, page, "/protocolo/ouvidoria");
+    R.conferir("9.18 a ouvidoria (lotada no setor de entrada) vê o relato e o contato não informado", mesaAdmin.includes(RELATO.toLowerCase()) && (await page.$(`[data-manifestacao="${protocoloOuv}"]`)) !== null, mesaAdmin.slice(0, 300));
+    const ANOTACAO = `Anotação interna ${SUF}: encaminhar ao controle interno`;
+    const tri = await preencherEEnviar(page, `form[data-acao="triar-manifestacao"][data-manifestacao-alvo="${protocoloOuv}"]`, [{ sel: 'textarea[name="anotacaoInterna"]', valor: ANOTACAO }]);
+    R.conferir("9.19 triagem registrada (anotação interna)", tri.tipo === "ok", `${tri.tipo}: ${tri.texto.slice(0, 200)}`);
+    await irPara(N, page, "/protocolo/ouvidoria");
+    const RESPOSTA = `Resposta da ouvidoria ${SUF}: apuração concluída e providências adotadas.`;
+    const res = await preencherEEnviar(page, `form[data-acao="responder-manifestacao"][data-manifestacao-alvo="${protocoloOuv}"]`, [{ sel: 'textarea[name="texto"]', valor: RESPOSTA }, { sel: 'input[name="conclusiva"]', valor: "sim", tipo: "marcar" }]);
+    R.conferir("9.20 resposta conclusiva registrada — o processo é encerrado", res.tipo === "ok" && /conclusiva/.test(res.texto), `${res.tipo}: ${res.texto.slice(0, 200)}`);
+    await capturar(page, "ouvidoria-mesa");
+    await sair(N, page);
+    const concluida = await consultar(segredo);
+    R.conferir("9.21 o manifestante lê a resposta pelo código — concluída, sem a anotação interna nem o relato", (await page.$('[data-acompanhamento="CONCLUIDA"]')) !== null && concluida.includes(RESPOSTA.toLowerCase()) && !concluida.includes(ANOTACAO.toLowerCase()), concluida.slice(0, 300));
+    await capturar(page, "ouvidoria-acompanhamento");
 
     // ══ 10. o representante pede pela empresa; revogada a representação, perde o acesso ══
     await entrar(N, page, REP, SENHA);

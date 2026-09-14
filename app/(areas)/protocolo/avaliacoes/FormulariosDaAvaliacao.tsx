@@ -39,11 +39,16 @@ export function FormMetodologia(): React.ReactElement {
   );
 }
 
-export function FormRemoverAvaliacao({ avaliacaoId }: { readonly avaliacaoId: string }): React.ReactElement {
+/**
+ * ⚠️ A ILHA FICA MONTADA DEPOIS DA REMOÇÃO: removida, a página recarrega e o formulário não tem mais o que
+ * fazer — mas o aviso de sucesso precisa sobreviver (silêncio não é resultado). Quem decide é a ilha.
+ */
+export function FormRemoverAvaliacao({ avaliacaoId, removida }: { readonly avaliacaoId: string; readonly removida: boolean }): React.ReactElement | null {
   const [estado, disparar, pendente] = useActionState<EstadoDaAvaliacao, FormData>(removerAction, {});
   const id = useId();
+  if (removida) return estado.sucesso !== undefined ? <Mensagens estado={estado} acao="remover-avaliacao" /> : null;
   return (
-    <form action={disparar} data-acao="remover-avaliacao" className="mt-2 grid gap-2 sm:grid-cols-[10rem_1fr_auto] sm:items-end">
+    <form action={disparar} data-acao="remover-avaliacao" data-avaliacao-alvo={avaliacaoId} className="mt-2 grid gap-2 sm:grid-cols-[10rem_1fr_auto] sm:items-end">
       <ChaveDeComando />
       <input type="hidden" name="__id" value={avaliacaoId} />
       <label htmlFor={`${id}-motivo`} className="text-xs"><span className={CLASSE_ROTULO}>Motivo</span>

@@ -16,8 +16,9 @@ function Mensagens({ estado, acao }: { readonly estado: EstadoDaOuvidoria; reado
   );
 }
 
-export function FormTriagem({ manifestacaoId, tipos, tipoInformado, motivo }: {
+export function FormTriagem({ manifestacaoId, protocolo, tipos, tipoInformado, motivo }: {
   readonly manifestacaoId: string;
+  readonly protocolo: string;
   readonly tipos: readonly { readonly valor: string; readonly rotulo: string }[];
   readonly tipoInformado: string;
   readonly motivo: string | null;
@@ -26,7 +27,7 @@ export function FormTriagem({ manifestacaoId, tipos, tipoInformado, motivo }: {
   const id = useId();
   if (motivo !== null) return estado.sucesso !== undefined ? <Mensagens estado={estado} acao="triar-manifestacao" /> : <p className="text-xs text-[color:var(--color-ink-2)]" data-motivo-da-triagem>Triagem: {motivo}</p>;
   return (
-    <form action={disparar} data-acao="triar-manifestacao" className="mt-3 grid gap-3 border-t border-[color:var(--color-border)] pt-3">
+    <form action={disparar} data-acao="triar-manifestacao" data-manifestacao-alvo={protocolo} className="mt-3 grid gap-3 border-t border-[color:var(--color-border)] pt-3">
       <ChaveDeComando />
       <input type="hidden" name="__id" value={manifestacaoId} />
       <label htmlFor={`${id}-tipo`} className="text-xs">
@@ -45,12 +46,12 @@ export function FormTriagem({ manifestacaoId, tipos, tipoInformado, motivo }: {
   );
 }
 
-export function FormRespostaDaOuvidoria({ manifestacaoId, motivo }: { readonly manifestacaoId: string; readonly motivo: string | null }): React.ReactElement {
+export function FormRespostaDaOuvidoria({ manifestacaoId, protocolo, motivo }: { readonly manifestacaoId: string; readonly protocolo: string; readonly motivo: string | null }): React.ReactElement {
   const [estado, disparar, pendente] = useActionState<EstadoDaOuvidoria, FormData>(responderAction, {});
   const id = useId();
   if (motivo !== null) return estado.sucesso !== undefined ? <Mensagens estado={estado} acao="responder-manifestacao" /> : <p className="text-xs text-[color:var(--color-ink-2)]" data-motivo-da-resposta>Resposta: {motivo}</p>;
   return (
-    <form action={disparar} data-acao="responder-manifestacao" className="mt-3 grid gap-3 border-t border-[color:var(--color-border)] pt-3">
+    <form action={disparar} data-acao="responder-manifestacao" data-manifestacao-alvo={protocolo} className="mt-3 grid gap-3 border-t border-[color:var(--color-border)] pt-3">
       <ChaveDeComando />
       <input type="hidden" name="__id" value={manifestacaoId} />
       <label htmlFor={`${id}-texto`} className="text-xs">
