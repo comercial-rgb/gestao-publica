@@ -130,6 +130,32 @@ colunas nasceram nullable (migration aditiva), e sem este caminho os grupos cada
 V6.1 nunca liquidariam. Ficha, série, credor e `porServidor` continuam fora do grant — trocar a
 ficha de um grupo já empenhado moveria a despesa de dotação sem tocar num lançamento.
 
+## Os encargos do empregador — V6.2 (`encargos.ts`, `encargos-servico.ts`)
+
+O que o ENTE deve sobre a folha (previdência patronal, RAT, outras entidades, suplementar, FGTS) é
+outra natureza que o desconto do servidor, e mora em modelo próprio: **o contracheque não muda**.
+
+- **Parâmetro versionado e aprovado por outra pessoa.** `ComponenteDeEncargo` (regime) com
+  `VersaoDoEncargo` (alíquota em fração, teto, rubricas da base, vigência por competência,
+  fundamento, flag `sintetica` para perfil de teste). Só versão APROVADA entra; quem cadastrou não
+  aprova (`AUTOAPROVACAO`).
+- **Apuração numerada sobre o cálculo fechado.** `ApuracaoDeEncargos` por cálculo, com `sha256`,
+  `completa` e a situação por linha: `CALCULADO`, `ZERO_CALCULADO`, `NAO_APLICAVEL` (regime de
+  outro contracheque) e `PARAMETRO_AUSENTE` (sem versão aprovada — nunca zero silencioso). Apurar de
+  novo sem mudança recusa (`APURACAO-SEM-MUDANCA`); duas apurações concorrentes, uma passa.
+- **Folha fechada é preservada.** A apuração lê o cálculo congelado; nada reescreve contracheque.
+- **Atesto próprio.** `CERTIFICAR_ENCARGOS_DA_FOLHA`, com designação de atribuição própria — a
+  designação para certificar a folha salarial não a supre.
+- **Empenho só da diferença; liquidação pelo M05.** `apropriarEncargosDaFolha` empenha por grupo o
+  que a apuração vigente tem acima do já empenhado (`${serie}/${competencia}/${grupo}-E${n}`),
+  recusa redução sobre empenhado (`REDUCAO-DE-ENCARGO-EMPENHADO`) e, interrompido, diz onde parou
+  (`EmpenhoDosEncargosInterrompidoError`) e retoma sem duplicar. `liquidarEncargosDaFolha` chama o
+  `liquidar` do M05 com as contas do grupo.
+- **Resumo da folha** (CSV/PDF) por regime × lotação: vínculos, bruto, descontos, líquido e patronal.
+
+Testes: `m33-encargos-motor.test.ts` (16), `m33-encargos.test.ts` (12, N=2, mutações da diferença e da
+atribuição acusadas), `test/ui/resumo-da-folha.test.ts` (4, PDF lido por pdf.js). Permissões v14.
+
 ## Fora de escopo aqui — pendências nomeadas
 
 - `RETIFICACAO-DA-FOLHA` — devolver para correção é fato e BLOQUEIA a liquidação, mas não reabre o
@@ -143,8 +169,12 @@ ficha de um grupo já empenhado moveria a despesa de dotação sem tocar num lan
   escopo por entidade, e a folha em si ainda é única por competência.
 - `ORDENAR-E-PAGAR-A-FOLHA` — depois de liquidada, a folha entra na fila do art. 141 como qualquer
   obrigação; ordenar o pagamento e pagar continuam nos atos do M05/M09, sem atalho pela folha.
-- `PATRONAL-NA-MEMORIA` (5.12.72/73) — `aliquotaPatronal` existe na tabela de contribuição e a
-  memória ainda não calcula a parte patronal; sem ela não há empenho de encargos.
+- ~~`PATRONAL-NA-MEMORIA`~~ — resolvida em V6.2 pelos encargos do empregador (seção acima).
+- `ANULACAO-DOS-ENCARGOS` — apuração que diminui sobre valor já empenhado é recusada; a anulação
+  parcial do empenho dos encargos não existe.
+- `ENCARGO-POR-TIPO-DE-VINCULO` — o componente é por REGIME; alíquota distinta por tipo de vínculo
+  (temporário, comissionado) exigiria recorte próprio.
+- `RECOLHIMENTO-DOS-ENCARGOS` — guia, recolhimento e retido × patronal por contribuição (5.12.73).
 - `FOLHAS-NAO-MENSAIS` (5.12.50) — 13º (1ª e 2ª parcela), férias, rescisão, complementar,
   adiantamento. O `TipoDeFolha` só tem MENSAL.
 - `FALTAS-NA-FOLHA` — faltas e suspensões como redutor de dias (hoje só admissão, desligamento e
@@ -154,4 +184,5 @@ ficha de um grupo já empenhado moveria a despesa de dotação sem tocar num lan
 - `CONSIGNACOES-E-MARGEM` (5.12.37–5.12.39, 5.12.83) — o consignado entra como desconto
   informado; não há margem.
 - `ARREDONDAMENTO-DA-FOLHA` — half-even (o do razão); half-up é decisão a registrar se exigida.
-- `CONTRACHEQUE-EM-PDF` e `RESUMO-DA-FOLHA` (5.12.64, 5.12.69) — P4.
+- `CONTRACHEQUE-EM-PDF` (5.12.64) — P4. O `RESUMO-DA-FOLHA` ganhou CSV/PDF em V6.2 (por regime ×
+  lotação); a quebra por natureza de despesa continua pendente.

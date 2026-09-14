@@ -163,7 +163,48 @@ Nenhuma delas foi contornada com um substituto que pareça pronto.
 
 ---
 
-## 7. Onde olhar
+## 7. A carta de serviços e as solicitações do requerente — V6.2 P3
+
+**Não é outro engine.** `ServicoDaCarta` aponta para um `Assunto`; a solicitação protocolada É um
+processo deste módulo, criado pela mesma `criarProcessoNaTransacao` da abertura interna; exigência,
+resposta e encerramento são `READEQUACAO_SOLICITADA`, `READEQUACAO_ATENDIDA` e `ENCERRAMENTO`.
+
+- **Versão publicada, imutável.** O conteúdo (descrição, requisitos, documentos, canais, custo, prazo
+  só com fundamento) e o formulário (vocabulário fechado: texto, texto longo, data, e-mail, telefone)
+  vivem em `VersaoDoServico`; a publicação (`PublicacaoDoServico.etapas`) COPIA o roteiro real. A
+  solicitação guarda a versão em que foi feita. Todo serviço desta versão exige login.
+- **Titular pela conta.** Por si: a pessoa vinculada à conta (M16). Por outra pessoa: representação
+  VIGENTE hoje (M19). CPF/CNPJ digitado não identifica ninguém. Complemento de fornecedor só por
+  representação de pessoa jurídica.
+- **Três tipos.** Requerimento administrativo; atualização cadastral (a proposta grava a versão base;
+  só DEFERIR cria a versão nova do cadastro, cobra `ALTERAR_PESSOA`, valida por `zAlterarPessoa` e
+  recusa `CADASTRO-MUDOU-DESDE-A-PROPOSTA`); complemento documental de fornecedor.
+- **Predicados em `carta.ts`, na tela e na transação.** Exigência pendente trava decisão e nova
+  exigência; em trâmite não recebido trava; parecer pendente trava decidir. Trinco
+  `SolicitacaoDeServico` (posto 24). Quem é titular ou representa o titular não decide (`AUTODECISAO`).
+- **O requerente vê projeção, não processo.** Situação derivada, exigências e as próprias respostas,
+  documentos em `AnexoDaSolicitacao` (enviados por ele e respostas liberadas) e a mensagem da decisão.
+  Fundamento interno, parecer, despacho e anexos internos NÃO chegam. Outra pessoa ou representação
+  revogada: 404 igual a id inexistente.
+- **Append-only para o runtime.** Etapas e versão deferida gravadas por INSERT (migration
+  `20260914120200`); as colunas antigas ficaram sem escritor.
+
+Ações: `CONFIGURAR_CARTA_DE_SERVICOS`, `SOLICITAR_SERVICO`, `DECIDIR_SOLICITACAO_DE_SERVICO`,
+`REGISTRAR_REPRESENTACAO` e a leitura `CONSULTAR_MEUS_SERVICOS` (permissões v15 não concede pedir nem
+decidir). Rotas: `/servicos`, `/servicos/[slug]` (públicas), `/meus-servicos/**`,
+`/protocolo/solicitacoes/**`, `/protocolo/servicos/**`, `/cadastros/representacoes/**`.
+Testes: `m21-carta.test.ts` (13), `test/carta-de-servicos.test.ts` (5); percurso
+`scripts/smoke-carta-de-servicos.ts`.
+
+Pendências: `CARTA-SEM-SERVICO-ANONIMO` (serviço sem login e reCAPTCHA, 5.39.102),
+`AVALIACAO-DO-SERVICO` (5.39.105), `CANAL-DA-CARTA-SEM-ATIVACAO-NA-APRESENTACAO` (a entrada não
+oferece o link), `GESTOR-POR-QUALQUER-PERMISSAO-GLOBAL` (`podeVerProcesso` e `exigirLotacao` tratam
+como gestor quem tem QUALQUER permissão global — o requerente só não alcança o processo porque toda
+leitura do protocolo exige `CONSULTAR_PROTOCOLO` antes), `ALTERACAO-CADASTRAL-CONCORRENTE-SEM-TRINCO`
+(`alterarPessoa` não trava; a conferência da versão base fecha a janela só entre leituras),
+`NOTIFICACAO-EXTERNA-AO-REQUERENTE` (as notificações são registradas no sistema; nada sai por e-mail).
+
+## 8. Onde olhar
 
 | Arquivo | O que é |
 |---|---|

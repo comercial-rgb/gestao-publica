@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | ver `git log -1` — a seção 51 nomeia o SHA da aplicação congelada e o do percurso |
+| HEAD | ver `git log -1` — binário do aceite `bec8349` (seção 60); depois dele só documentação |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | **V6 produto integrado + adendo V6.1**: P0 identidade e shell (52), P1 vínculos (53, 54), P1.3 papéis (55), P2 inteiro — M32 pessoal (55), M33 folha (56), portal do servidor (57), apropriação contábil (58) — e **V6.1: o atesto da folha e a sua liquidação (59)** ENTREGUES. Próxima frente: P3 (mesa de trabalho, fluxos, carta de serviços). A publicação da V5 segue SUSPENSA |
-| Último resultado | seção 59 — a folha CERTIFICADA vira obrigação liquidada: designação configurada do ente (pessoa + conta conferida + ato + vigência, revogação como fato), atesto com manifesto canônico e sha256 do objeto, liquidação pelo `liquidar` do M05, segregação preparar × certificar × liquidar conferida na transação. `next build` em `af292c2`; m33-certificacao 37/37; smoke-atesto 37/37 e smoke-apropriacao 16/16 (esta agora percorre o caminho COMPLETO); folha 46/46, portal 24/24, cadeia 23/23, pessoal 29/29, identidade 46/46; censo 304 serviços / 274+21 ações; permissões v13; rápida 852/852; mapa de acesso derivado de 202 rotas com ZERO sem portão; catálogo 368 de 2.037 verificadas, sem promoção |
-| Pendências relevantes | **`FICHA-DE-PESSOAL-NOS-PERCURSOS` foi RESOLVIDA nesta sessão (59.7)**. Do M33: `PATRONAL-NA-MEMORIA` (o próximo passo), `RETIFICACAO-DA-FOLHA`, `CONCENTRACAO-DE-FUNCOES-NA-FOLHA`, `DESIGNACAO-POR-ENTIDADE`, `ORDENAR-E-PAGAR-A-FOLHA`, `FOLHAS-NAO-MENSAIS`, `FALTAS-NA-FOLHA`, `PENSAO-ALIMENTICIA-NA-FOLHA`, `CONSIGNACOES-E-MARGEM`, `ARREDONDAMENTO-DA-FOLHA`, `CONTRACHEQUE-EM-PDF`, `RESUMO-DA-FOLHA`; **novas**: `ACAO-FORA-DO-ESTADO-NO-MOLDE` (PROD-015), `PROJECAO-PUBLICA-POR-CAMPO`, `CRIAR-FICHA-SEM-TELA`; do M32 (55.3) e as telas sem superfície; `MENSAGEM-SOME-COM-A-LINHA` e `MIGALHA-COM-ID` (P4); `ENDERECO-DO-ENTE`; `MARCA-NOS-PDFS`; seções 35.7 a 43.5, 52.4, 53.3, 54.3 |
-| Próximo passo | seção 59.8 — `PATRONAL-NA-MEMORIA` (os encargos do empregador no motor e no fluxo financeiro, sem subtrair do líquido do servidor e sem mutar folha fechada), e em seguida **P3**: mesa de trabalho (M21/M22/M23), fluxos versionados e carta de serviços |
+| Frente em execução | **V6.2 (adendo ao V6/V6.1)**: PROD-015 (disponibilidade de ação), CRIAR_FICHA pela tela, os encargos do empregador (PATRONAL-NA-MEMORIA) e o **P3** — carta de serviços pública, requerimento administrativo, atualização cadastral e complemento de fornecedor, com mesa interna, acompanhamento do requerente e representação — ENTREGUES (seção 60). A publicação segue SUSPENSA |
+| Último resultado | seção 60 — binário final `bec8349`: carta-de-serviços 61/0; binário `2ddb109`: carta-de-serviços 61/0, ficha-pela-tela 23/0, folha 46/0, identidade 46/0, portal 24/0; encargos 25/2 (3.7/3.8 por estado residual da execução anterior na mesma competência — não aprovado); m21-carta 13, carta-de-servicos 5, m33-encargos 12 + motor 16, m33-certificacao 45; censo 324 serviços / 282+22 ações; permissões v15; instalação limpa e atualização ensaiadas; mapa de acesso com 0 sem portão; catálogo 371 de 2.037 verificadas (5.39.103 validada; 5.39.104, 5.12.72, 5.12.73 parciais) |
+| Pendências relevantes | seção 60.6 — `CARTA-SEM-SERVICO-ANONIMO`, `AVALIACAO-DO-SERVICO`, `GESTOR-POR-QUALQUER-PERMISSAO-GLOBAL`, `ALTERACAO-CADASTRAL-CONCORRENTE-SEM-TRINCO`, `ANULACAO-DOS-ENCARGOS`, `RECOLHIMENTO-DOS-ENCARGOS`, `LEI-DE-CREDITO-SEM-TELA`, `DEPENDENTE-BAIXA-EXIGE-UPDATE-SEM-GRANT` (achado, não corrigido), `PERCURSO-ENCARGOS-NAO-REEXECUTAVEL`; mantidas do M32/M33 e seções 35.7–59 |
+| Próximo passo | seção 60.8 |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -6667,3 +6667,145 @@ não pela interface. É lacuna do planejamento (P1), não desta unidade, e não 
 alterado, censo, permissões, molde, papel de runtime, rápida e sete percursos de navegador), como
 o modo de trabalho da V3 prevê fora do candidato de homologação. Nada aqui está marcado como
 validado por eles.
+
+## 60. V6.2 — PROD-015, a ficha pela tela, os encargos do empregador e o P3 (carta de serviços)
+
+Pedido: `docs/lotes/V6-2-patronal-e-p3.md` (commit `43554f7`), adendo ao V6/V6.1. Base local
+confirmada `0e412f2`; `af292c2` foi usado só como referência de aceite anterior, nada retrocedeu.
+M32/M33, as designações, a certificação e a liquidação salarial NÃO foram refeitas. Stash `11b7892`
+preservado; `scripts/fix-claude-cli.sh`, `scripts/fix-cursor-extensao.sh` e
+`scripts/manter-claude-cursor.sh` continuam não rastreados e não executados. Staging por caminho
+exato em todos os commits. Sem push, deploy, mensagem real, pagamento ou transmissão.
+
+Regime: **profundidade** nos encargos (dinheiro, empenho, liquidação, concorrência, N=2, mutação) e
+na autorização do requerente (negação com motivo, N=2, mutação); **superfície** nas telas de
+configuração da carta e das representações (caso de uso + autorização + percurso).
+
+Commits: `d206c0e` (PROD-015 no molde), `31f50a9` (ficha pela tela), `092b241`/`43c0bf5`/`5e19994`
+(percursos e o resultado da barra), `4db023b` (atesto: a MESMA designação no dia do ato e hoje),
+`c6b670a`/`714ee9a`/`47a7f5a` (encargos), `a943f97`/`4d0da1d` (P3 domínio), `6e31879`/`db0e5b5`/
+`2ddb109` (P3 telas e percurso), `e2ede10` (mapa de acesso), `e5933ea` (catálogo) `bec8349` (composável de anexo no M22) e o commit desta seção.
+
+### 60.1 PROD-015 — disponibilidade de ação (U0)
+
+Contrato `Elegibilidade` (`packages/contracts/elegibilidade.ts`: ELEGÍVEL / NÃO APLICÁVEL /
+PRÉ-CONDIÇÃO com código, motivo e providência). O MESMO predicado é chamado pela porta (projeção da
+barra) e pelo caso de uso dentro da transação: folha (`modules/m33-folha/elegibilidade.ts`), documento
+fiscal e ordem de compra (`modules/m11-licitacoes/elegibilidade.ts`), encargos, carta de serviços
+(`modules/m21-protocolo/carta.ts`), representação e publicação.
+
+Diferença de comportamento na barra (`components/molde/FormsDoRecurso.tsx`):
+- **permissão ausente** → a ação não aparece (motivo de permissão), como antes;
+- **pré-condição** → aparece TRAVADA: `<section data-acao-estado="bloqueada">`, botão focável com
+  `aria-disabled` e o motivo associado por `aria-describedby`, sem formulário;
+- **não aplicável** → sai da barra e aparece como estado (`data-acao-estado="nao-aplicavel"`);
+- **projeção falhou** → fail-closed: travada com "não foi possível conferir";
+- **tela velha** → `__versao` oculto; divergindo, `REGISTRO-MUDOU` antes do caso de uso;
+- o resultado do ato que tira a ação da barra fica em `[data-resultado-da-acao][data-resultado-seq]`
+  (capturado na própria action — o efeito do formulário nunca rodava no navegador, `5e19994`).
+
+Defeito real achado pelo percurso: o atesto aceitava designação não vigente hoje quando OUTRA cobria
+hoje (`4db023b`, teste "DUAS designações" vermelho na versão anterior).
+
+### 60.2 CRIAR_FICHA pela tela (U0) — resolve `CRIAR-FICHA-SEM-TELA`
+
+`/planejamento/fichas` (+`[id]`): ficha nasce com dotação ZERO (sem campo de valor, sem crédito
+artificial), seletores referenciados (`/opcoes/[catalogo]`, leitura por catálogo, 401/403/404,
+no-store, recorte da UO pelo escopo de `CRIAR_FICHA`). Crédito continua sendo crédito adicional.
+`test/ficha-pela-tela.test.ts` 11; `test/ui/campo-referenciado.test.tsx` 6; percurso
+`smoke-ficha-pela-tela` 23/23 (r4, u1-r1, u2-r1).
+
+### 60.3 Encargos do empregador (U1) — resolve `PATRONAL-NA-MEMORIA`
+
+Ver `modules/m33-folha/MODULO.md`, seção "Os encargos do empregador". Desconto do servidor e encargo
+do ente em modelos separados (o contracheque não muda; folha fechada preservada). Situações
+CALCULADO / ZERO_CALCULADO / NÃO_APLICÁVEL / PARÂMETRO_AUSENTE. Parâmetro aprovado por outra pessoa;
+apuração numerada com sha256 e retomada; atesto com atribuição própria; empenho só da diferença, com
+interrupção nomeada e retomada sem duplicar; liquidação pelo M05. Permissões v14 (só cadastrar e
+apurar). `m33-encargos-motor` 16, `m33-encargos` 12 (N=2; mutações da diferença e da atribuição
+acusadas), `resumo-da-folha` 4 (PDF lido por pdf.js).
+
+Percurso `smoke-encargos-da-folha` (seis papéis, folha 2026-12 legada): U1 25 ok / 2 falhas (2.1, a
+aprovação desmontava a barra — silêncio; corrigido em `47a7f5a`). No binário final (`2ddb109`) o 2.1
+PASSOU; os passos 3.7/3.8 falharam por ESTADO RESIDUAL da execução U1 na mesma competência (o grupo
+`ENC-B-RAT-48549` da execução anterior, sem crédito, é o primeiro da fila): o ato recusou nomeando o
+grupo, que é o comportamento; o percurso é que não é reexecutável na mesma competência
+(`PERCURSO-ENCARGOS-NAO-REEXECUTAVEL`). Não marcado como aprovado.
+
+### 60.4 P3 — carta de serviços, requerente, mesa e representação (U2)
+
+Ver `modules/m21-protocolo/MODULO.md` §7 e `modules/m19-pessoas/MODULO.md`.
+
+**Rotas reais por papel** (mapa em `docs/mapa-de-acesso.md`, 0 sem portão):
+
+| Papel | Rotas | Campos que vê |
+|---|---|---|
+| visitante (sem sessão) | `/servicos`, `/servicos/[slug]` | versão publicada: descrição, requisitos, documentos, canais, custo/prazo com fundamento ou "não declarado", etapas copiadas do roteiro, rótulos do formulário. Sem id interno; rascunho = 404 |
+| requerente (`SOLICITAR_SERVICO` + `CONSULTAR_MEUS_SERVICOS`) | `/meus-servicos`, `/meus-servicos/solicitar/[slug]`, `/meus-servicos/[id]`, `/meus-servicos/[id]/documentos/[anexo]` | situação derivada, exigências dirigidas a ele e as próprias respostas, documentos que enviou e respostas liberadas, mensagem da decisão, código verificador. NÃO: fundamento interno, parecer, despacho, anexo interno, nome de quem analisa |
+| representante (idem + representação vigente) | as mesmas, em nome da empresa enquanto vigente | idem; revogada, 404 |
+| mesa (`CONSULTAR_PROTOCOLO` + `DECIDIR_SOLICITACAO_DE_SERVICO`) | `/protocolo/solicitacoes`, `/protocolo/solicitacoes/[id]` | contagem por situação, respostas, representação usada e vigência, proposta cadastral com o valor atual ao lado, documentos (pela rota de anexos do processo), decisão com fundamento interno, histórico interno |
+| gestor da carta (`CONFIGURAR_CARTA_DE_SERVICOS`, `REGISTRAR_REPRESENTACAO`) | `/protocolo/servicos/**`, `/cadastros/representacoes/**` | versões, rascunhos, publicação, representações com vigência derivada |
+
+**Testes:** `m21-carta.test.ts` 13 (N=2; t8 concorrência vermelho sem o trinco, por mutação);
+`test/carta-de-servicos.test.ts` 5 (t2/t4 vermelhos sem o recorte de titular, por mutação);
+`m16-v15-carta.test.ts` 3; censo 324 serviços / 282+22 ações; permissões v15.
+
+**Percurso** `scripts/smoke-carta-de-servicos.ts` (administrador, gestor da carta, visitante, cidadã
+A, cidadã B, mesa, representante), tudo pela tela: r1 21/4 (o percurso não abria o `<details>` do
+vínculo), r2 59/2 contra `db0e5b5` — **defeito real**: a resposta à exigência desmontava a ilha e o
+aviso sumia (silêncio); corrigido em `2ddb109` — e a busca de pessoa do próprio percurso; **r3 61/0
+contra `2ddb109`**. Capturas: `.registro-de-execucao/pacote-v6-2/capturas/p3-*.png`.
+
+**Defeitos reais achados no caminho:** UPDATE em `VersaoDoServico`/`PropostaDeAlteracaoCadastral` que
+o papel de runtime não tem (a suíte roda como dono e não acusaria) → gravação por INSERT, migration
+aditiva `20260914120200` (`4d0da1d`); o grep t15 do M22 acusou `tx.anexo.create` fora do módulo — o
+meu (servico.ts) e um PRÉ-EXISTENTE desde `14b2daa` (XML do documento fiscal, V5) → composável
+`gravarAnexoNaTransacao` no M22 usado pelos dois (`bec8349`; m22/m21/censo/carta 84/84, m11 documento fiscal 24/24).
+
+**Binário final `bec8349`** (rebuild após o composável de anexo, `next build` exit 0): percurso da carta
+de serviços **61/0** (r4, com envio e download de documento passando pelo M22). Os percursos
+`smoke-compras` e `smoke-identidade` NÃO executaram neste binário: o Chrome do Puppeteer
+(`~/.cache/puppeteer`) sumiu da máquina entre as execuções, por agente externo a esta sessão
+("Could not find Chrome 150.0.7871.24"); não foi reinstalado sem autorização
+(`npx puppeteer browsers install chrome` restaura). Os demais números de 60.3/60.4 são do binário
+`2ddb109`, que difere de `bec8349` só no composável de anexo.
+
+### 60.5 Instalação limpa e atualização
+
+`.registro-de-execucao/pacote-v6-2/build/instalacao-limpa-u2.log`: banco novo
+`gestao_publica_instalacao_v62_u2` — 146 migrations, 26 SQL manuais, deriva vazia, papel `gestao_app`
+sem superusuário/BYPASSRLS/DDL, bootstrap com 304 permissões, v12–v15 com prévia 0. Atualização
+(banco dos percursos v62): as 3 migrations do P3 aplicadas; v15 prévia 3 → aplicada (3 concessões
+em 1 perfil) → reaplicar RECUSADO (`ATUALIZAÇÃO JÁ APLICADA`).
+
+### 60.6 Pendências nomeadas (novas ou mantidas)
+
+Produto: `CARTA-SEM-SERVICO-ANONIMO`, `AVALIACAO-DO-SERVICO`, `CANAL-DA-CARTA-SEM-ATIVACAO-NA-APRESENTACAO`,
+`GESTOR-POR-QUALQUER-PERMISSAO-GLOBAL`, `ALTERACAO-CADASTRAL-CONCORRENTE-SEM-TRINCO`,
+`NOTIFICACAO-EXTERNA-AO-REQUERENTE`, `REPRESENTACAO-POR-ESCOPO`, `REPRESENTACAO-ANEXO-DO-FUNDAMENTO`,
+`ANULACAO-DOS-ENCARGOS`, `ENCARGO-POR-TIPO-DE-VINCULO`, `RECOLHIMENTO-DOS-ENCARGOS`,
+`DESIGNACAO-POR-ENTIDADE`, `MOVIMENTO-DE-DOTACAO-ZERO-NO-RAZAO`, `LEI-DE-CREDITO-SEM-TELA`,
+`CARGA-DA-LOA-PELA-TELA`, `REVOGACAO-COM-EFEITO-FUTURO-NAO-SE-ANTECIPA`.
+Achado fora do escopo, NÃO corrigido: `DEPENDENTE-BAIXA-EXIGE-UPDATE-SEM-GRANT` — `m32-pessoal/servico.ts`
+dá `finalidadeDependente.update` e `FinalidadeDependente` não está em `prisma/papel-runtime.ts`; sob o
+papel de runtime a baixa do dependente falharia.
+Percursos: `PERCURSO-ENCARGOS-NAO-REEXECUTAVEL`; atesto u1-r1 38/2 (4.2/4.3, premissa de revogação
+com efeito futuro) não reexecutado no binário final; `smoke-apropriacao-da-folha` não reexecutado
+(competências 2026 esgotadas no banco dos percursos); `PREPARADOR-INSTALACAO-LIMPA` (o preparador de
+percursos cai no roteiro orçamentário da sintética 5.2.2.1.1.00.00 do plano oficial; o banco v62 foi
+clonado por TEMPLATE).
+
+### 60.7 O que NÃO foi executado
+
+`test:tudo`, `test:fuso` e o portão integral **não rodaram**. Nenhuma publicação — a pergunta sobre
+24 horas não a autoriza. O verde de `af292c2` não foi carregado para os binários novos.
+
+### 60.8 Próximo ponto exato
+
+1. Restaurar o Chrome do Puppeteer e reexecutar compras e identidade no binário `bec8349`; rodar `test:tudo` e `test:fuso` sob o trinco (não rodaram nesta unidade) e decidir
+   `DEPENDENTE-BAIXA-EXIGE-UPDATE-SEM-GRANT` (grant por coluna assinado ou baixa como fato).
+2. Tornar o percurso dos encargos reexecutável (competência própria ou folha nova por execução) e
+   reexecutar atesto e apropriação num banco de percursos com competência livre.
+3. P3 restante: serviço sem login com reCAPTCHA, avaliação do serviço (Lei 13.460), link da carta na
+   entrada ativável pela apresentação, e o recorte de "gestor" do M21 por ação em vez de qualquer
+   permissão global.
