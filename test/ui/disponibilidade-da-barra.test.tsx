@@ -116,22 +116,33 @@ describe("a barra do molde por estado", () => {
     expect(container.querySelector('form[data-acao="devolver"]')).not.toBeNull();
   });
 
-  it("O RESULTADO SOBREVIVE À SAÍDA DO FORMULÁRIO: o ato que se torna não aplicável deixa a mensagem na barra", async () => {
-    const feito = vi.fn(async () => ({ sucesso: "Folha DEVOLVIDA para correção." }));
+  it("O RESULTADO SOBREVIVE À SAÍDA DO FORMULÁRIO — mesmo quando a árvore nova chega ANTES da resposta", async () => {
+    // ⚠️ A ORDEM DO NAVEGADOR: a Server Action devolve o resultado JUNTO com a árvore revalidada, e o
+    // formulário do ato que deixou de caber é desmontado nessa mesma transição. Aqui a árvore nova
+    // (devolver → não aplicável) é aplicada DENTRO da ação, antes de ela responder. Um aviso por efeito
+    // do formulário nunca roda nessa ordem — foi o que o percurso do atesto acusou.
+    const depois: DisponibilidadeDoRegistro = { versao: "v-124", porAcao: { ...DISP.porAcao, devolver: { apresentacao: "nao-aplicavel", motivo: "já devolvida" } } };
+    let aplicarArvoreNova: () => void = () => undefined;
+    const feito = vi.fn(async () => {
+      aplicarArvoreNova();
+      await new Promise((r) => setTimeout(r, 5));
+      return { sucesso: "Folha DEVOLVIDA para correção." };
+    });
     const { container, rerender } = render(
       <FormsDoRecurso definicao={POR_ESTADO} permitidas={["CERTIFICAR_FOLHA", "LIQUIDAR_FOLHA"]} opcoes={{}} registroId="r1" action={feito} modo="acoes" disponibilidade={DISP} />
     );
+    aplicarArvoreNova = () =>
+      rerender(<FormsDoRecurso definicao={POR_ESTADO} permitidas={["CERTIFICAR_FOLHA", "LIQUIDAR_FOLHA"]} opcoes={{}} registroId="r1" action={feito} modo="acoes" disponibilidade={depois} />);
     const form = container.querySelector('form[data-acao="devolver"]') as HTMLFormElement;
-    // o campo de dados obrigatório não existe nesta ação; enviar direto
     await act(async () => {
       form.requestSubmit();
-      await new Promise((r) => setTimeout(r, 20));
+      await new Promise((r) => setTimeout(r, 40));
     });
     expect(feito).toHaveBeenCalled();
-    const depois: DisponibilidadeDoRegistro = { versao: "v-124", porAcao: { ...DISP.porAcao, devolver: { apresentacao: "nao-aplicavel", motivo: "já devolvida" } } };
-    rerender(<FormsDoRecurso definicao={POR_ESTADO} permitidas={["CERTIFICAR_FOLHA", "LIQUIDAR_FOLHA"]} opcoes={{}} registroId="r1" action={feito} modo="acoes" disponibilidade={depois} />);
     expect(container.querySelector('form[data-acao="devolver"]')).toBeNull();
-    expect(container.querySelector('[data-resultado-da-acao="devolver"][role="status"]')?.textContent).toContain("Folha DEVOLVIDA para correção.");
+    const aviso = container.querySelector('[data-resultado-da-acao="devolver"][role="status"]');
+    expect(aviso?.textContent).toContain("Folha DEVOLVIDA para correção.");
+    expect(aviso?.getAttribute("data-resultado-seq")).toBe("1");
   });
 
   it("CONTRAPROVA: recurso sem `acoesPorEstado` segue oferecendo o formulário por permissão", () => {

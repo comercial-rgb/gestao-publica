@@ -148,8 +148,21 @@ export function FormsDoRecurso({
   // da barra (vira "já fechada"); sem isto, a mensagem autoritativa — o que foi feito, sobre qual
   // cálculo — desapareceria junto com o formulário que a mostrava, e a tela só mudaria de estado
   // sem dizer por quê. O estado mora aqui porque este componente sobrevive à renderização nova.
-  const [ultimo, setUltimo] = useState<{ readonly acao: string; readonly erro?: string; readonly sucesso?: string } | null>(null);
-  const aoResultadoDe = useCallback((acao: string) => (e: EstadoDoMolde) => setUltimo({ acao, ...e }), []);
+  //
+  // ⚠️ E O RESULTADO É CAPTURADO NA PRÓPRIA AÇÃO, não num efeito do formulário. A resposta da Server
+  // Action chega junto com a árvore nova, na MESMA transição: o formulário que sai da barra é
+  // desmontado antes de qualquer efeito dele rodar. A primeira versão (efeito) passou no teste de
+  // unidade e ficou muda no navegador — o percurso do atesto leu silêncio depois de certificar.
+  const [ultimo, setUltimo] = useState<{ readonly acao: string; readonly seq: number; readonly erro?: string; readonly sucesso?: string } | null>(null);
+  const comAviso = useCallback(
+    (acao: string) =>
+      async (estado: EstadoDoMolde, dados: FormData): Promise<EstadoDoMolde> => {
+        const r = await action(estado, dados);
+        setUltimo((u) => ({ acao, seq: (u?.seq ?? 0) + 1, ...r }));
+        return r;
+      },
+    [action]
+  );
 
   if (modo === "criar") {
     if (d.permissoes.criar === undefined) {
@@ -190,7 +203,7 @@ export function FormsDoRecurso({
         acao={a.nome}
         titulo={a.rotulo}
         campos={comOpcoes(a.campos ?? [], opcoes)}
-        action={action}
+        action={comAviso(a.nome)}
         rotuloEnviar={a.rotulo}
         ocultos={{
           __acao: a.nome,
@@ -199,7 +212,6 @@ export function FormsDoRecurso({
         }}
         {...(a.aviso !== undefined ? { aviso: a.aviso } : {})}
         {...(a.irreversivel === true ? { irreversivel: true } : {})}
-        aoResultado={aoResultadoDe(a.nome)}
       />
     );
   });
@@ -209,11 +221,11 @@ export function FormsDoRecurso({
     <div className="space-y-4">
       {ultimo !== null && !renderizadas.has(ultimo.acao) ? (
         ultimo.erro !== undefined ? (
-          <p role="alert" data-resultado-da-acao={ultimo.acao} className="whitespace-pre-line rounded-[var(--radius-md)] bg-[color:var(--color-status-erro-bg)] px-3 py-2 text-sm text-[color:var(--color-status-erro-fg)]">
+          <p role="alert" data-resultado-da-acao={ultimo.acao} data-resultado-seq={ultimo.seq} className="whitespace-pre-line rounded-[var(--radius-md)] bg-[color:var(--color-status-erro-bg)] px-3 py-2 text-sm text-[color:var(--color-status-erro-fg)]">
             {rotuloDoUltimo}: {ultimo.erro}
           </p>
         ) : (
-          <p role="status" data-resultado-da-acao={ultimo.acao} className="rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]">
+          <p role="status" data-resultado-da-acao={ultimo.acao} data-resultado-seq={ultimo.seq} className="rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]">
             {rotuloDoUltimo}: {ultimo.sucesso}
           </p>
         )

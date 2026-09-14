@@ -166,6 +166,12 @@ async function preencherEEnviar(page: Page, acao: string, campos: readonly Campo
   }
   // V4: a chave de comando nasce depois da hidratação; enviar antes dela é recusado pelo servidor.
   await page.waitForSelector(`${form} input[name="__chave"][data-chave-de-comando="pronta"]`, { timeout: 30000 });
+  // V6.2 — o resultado de um ato que sai da barra fica em `[data-resultado-da-acao]`, com um número de
+  // sequência. Guardar o número ANTES do clique impede ler o resultado do envio anterior como deste.
+  const seqAntes = await page.evaluate((sel) => {
+    const nome = /data-acao="([^"]+)"/.exec(sel)?.[1] ?? "";
+    return document.querySelector(`[data-resultado-da-acao="${nome}"]`)?.getAttribute("data-resultado-seq") ?? "";
+  }, form);
   const enviou = await page.evaluate((sel) => {
     const f = document.querySelector(sel);
     const botao = f?.querySelector('button[type="submit"]');
@@ -179,14 +185,14 @@ async function preencherEEnviar(page: Page, acao: string, campos: readonly Campo
   let resposta = { tipo: "silencio", texto: "" };
   for (let i = 0; i < 40 && resposta.tipo === "silencio"; i += 1) {
     await new Promise((r) => setTimeout(r, 500));
-    resposta = await page.evaluate((sel) => {
+    resposta = await page.evaluate((sel, antes) => {
       const f = document.querySelector(sel);
       // V6.2 (PROD-015) — o ato que se torna não aplicável SAI da barra, e o resultado dele fica em
       // `[data-resultado-da-acao]`. Sem este ramo, "fechar" gravaria e o percurso leria silêncio.
       if (f === null) {
         const nome = /data-acao="([^"]+)"/.exec(sel)?.[1] ?? "";
         const r = document.querySelector(`[data-resultado-da-acao="${nome}"]`);
-        if (r !== null) return { tipo: r.getAttribute("role") === "alert" ? "erro" : "ok", texto: (r.textContent ?? "").trim() };
+        if (r !== null && r.getAttribute("data-resultado-seq") !== antes) return { tipo: r.getAttribute("role") === "alert" ? "erro" : "ok", texto: (r.textContent ?? "").trim() };
         return { tipo: "silencio", texto: "" };
       }
       const alerta = f?.querySelector('[role="alert"]');
@@ -194,7 +200,7 @@ async function preencherEEnviar(page: Page, acao: string, campos: readonly Campo
       const ps = Array.from(f?.querySelectorAll("p") ?? []);
       const bom = ps.find((x) => x.className.includes("status-ok"));
       return bom !== undefined ? { tipo: "ok", texto: (bom.textContent ?? "").trim() } : { tipo: "silencio", texto: "" };
-    }, form);
+    }, form, seqAntes);
   }
   if (resposta.tipo === "erro") console.log(`      [servidor recusou "${acao}"] ${resposta.texto.slice(0, 400)}`);
   return resposta;
@@ -407,6 +413,29 @@ async function main(): Promise<void> {
       );
       return cpf;
     })();
+
+    // ══ 1b. A PREMISSA "SEM DESIGNAÇÃO" É GARANTIDA, NÃO SUPOSTA (V6.2) ══
+    // Uma execução anterior revogou a designação dela com efeito numa data que ainda não chegou — e a
+    // designação continua VIGENTE HOJE. A tela passou a projetar isso (certificar aparece disponível),
+    // e o passo 4 leria o produto certo como falha. O administrador revoga, com efeito HOJE, o que ainda
+    // vale para a conta do atestador — é o ato que ele praticaria.
+    {
+      const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza" }).format(new Date());
+      for (let volta = 0; volta < 5; volta += 1) {
+        await irPara(page, `/folha/designacoes?q=${encodeURIComponent(ATESTADOR)}`);
+        const href = await page.evaluate(() => {
+          const linha = Array.from(document.querySelectorAll("tbody tr")).find((tr) => /\bvigente\b/i.test(tr.textContent ?? "") && !/não vigente/i.test(tr.textContent ?? ""));
+          return (linha?.querySelector('a[href^="/folha/designacoes/"]') as HTMLAnchorElement | null)?.getAttribute("href") ?? "";
+        });
+        if (href === "") break;
+        await irPara(page, href);
+        const r = await preencherEEnviar(page, "revogar", [
+          { sel: 'input[name="dataEfeito"]', valor: hoje, tipo: "data" },
+          { sel: 'input[name="motivo"]', valor: "preparação do percurso: a conta do atestador começa sem designação vigente" },
+        ]);
+        console.log(`      [1b designação ainda vigente de execução anterior revogada com efeito ${hoje}: ${r.tipo}]`);
+      }
+    }
 
     // ══ 2. O RH abre e calcula a folha ══
     await sair(page);

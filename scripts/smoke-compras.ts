@@ -142,6 +142,12 @@ async function preencherEEnviar(page: Page, acao: string, campos: readonly Campo
   }
   // V4: a chave de comando nasce depois da hidratação; enviar antes dela é recusado pelo servidor.
   await page.waitForSelector(`${form} input[name="__chave"][data-chave-de-comando="pronta"]`, { timeout: 30000 });
+  // V6.2 — o resultado de um ato que sai da barra fica em `[data-resultado-da-acao]`, com um número de
+  // sequência. Guardar o número ANTES do clique impede ler o resultado do envio anterior como deste.
+  const seqAntes = await page.evaluate((sel) => {
+    const nome = /data-acao="([^"]+)"/.exec(sel)?.[1] ?? "";
+    return document.querySelector(`[data-resultado-da-acao="${nome}"]`)?.getAttribute("data-resultado-seq") ?? "";
+  }, form);
   const enviou = await page.evaluate((sel) => {
     const f = document.querySelector(sel);
     const botao = f?.querySelector('button[type="submit"]');
@@ -155,14 +161,14 @@ async function preencherEEnviar(page: Page, acao: string, campos: readonly Campo
   let resposta = { tipo: "silencio", texto: "" };
   for (let i = 0; i < 40 && resposta.tipo === "silencio"; i += 1) {
     await new Promise((r) => setTimeout(r, 500));
-    resposta = await page.evaluate((sel) => {
+    resposta = await page.evaluate((sel, antes) => {
       const f = document.querySelector(sel);
       // V6.2 (PROD-015) — o ato que se torna não aplicável SAI da barra, e o resultado dele fica em
       // `[data-resultado-da-acao]`. Sem este ramo, "fechar" gravaria e o percurso leria silêncio.
       if (f === null) {
         const nome = /data-acao="([^"]+)"/.exec(sel)?.[1] ?? "";
         const r = document.querySelector(`[data-resultado-da-acao="${nome}"]`);
-        if (r !== null) return { tipo: r.getAttribute("role") === "alert" ? "erro" : "ok", texto: (r.textContent ?? "").trim() };
+        if (r !== null && r.getAttribute("data-resultado-seq") !== antes) return { tipo: r.getAttribute("role") === "alert" ? "erro" : "ok", texto: (r.textContent ?? "").trim() };
         return { tipo: "silencio", texto: "" };
       }
       const alerta = f?.querySelector('[role="alert"]');
@@ -170,7 +176,7 @@ async function preencherEEnviar(page: Page, acao: string, campos: readonly Campo
       const ps = Array.from(f?.querySelectorAll("p") ?? []);
       const bom = ps.find((x) => x.className.includes("status-ok"));
       return bom !== undefined ? { tipo: "ok", texto: (bom.textContent ?? "").trim() } : { tipo: "silencio", texto: "" };
-    }, form);
+    }, form, seqAntes);
   }
   if (resposta.tipo === "erro") console.log(`      [servidor recusou "${acao}"] ${resposta.texto.slice(0, 400)}`);
   return resposta;
