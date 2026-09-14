@@ -1,7 +1,9 @@
 import "dotenv/config";
-import puppeteer, { type Browser, type Page } from "puppeteer";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import type { Browser, Page } from "puppeteer";
 import { apresentacaoDoAto } from "./percursos-disponibilidade.js";
-import { buscarJson, entrar, hrefDoRegistro, irPara, preencherEEnviar, registroDePassos, sair, texto, type Navegador } from "./percursos-navegador.js";
+import { buscarJson, entrar, hrefDoRegistro, irPara, lancarNavegadorDoPercurso, preencherEEnviar, registroDePassos, sair, texto, type Navegador } from "./percursos-navegador.js";
 
 /**
  * PERCURSO — OS ENCARGOS DO EMPREGADOR SOBRE UMA FOLHA JÁ FECHADA E ATESTADA (M33, V6.2 U1).
@@ -22,6 +24,17 @@ import { buscarJson, entrar, hrefDoRegistro, irPara, preencherEEnviar, registroD
  *    VPD 3.1.2.2.1.01.00 (contribuições previdenciárias — RGPS) para a cota patronal, 3.1.2.2.1.03.00
  *    (seguro de acidente no trabalho) para o RAT, obrigação 2.1.1.4.1.01.01 (contribuições ao RGPS
  *    sobre salários). No ente de verdade quem escolhe é o contador.
+ * ═══ V7 M1 U0 §2.2 — DOIS CENÁRIOS SEPARADOS, CADA UM NUM BANCO DESCARTÁVEL PRÓPRIO ═══
+ *   ENCARGOS_CENARIO=fila  (padrão): o grupo B aponta para a ficha SEM crédito. O empenho PARA nomeando
+ *     o grupo (negativa legítima da fila), e REPETIR o mesmo ato na MESMA competência não empenha de
+ *     novo o grupo A (idempotência) — continua um empenho só, e a mesma recusa.
+ *   ENCARGOS_CENARIO=limpo: os dois grupos na ficha com crédito. Empenha os dois, a barra deixa de
+ *     oferecer empenhar (repetição sem efeito), certifica, liquida; depois a REDUÇÃO (nova versão do
+ *     RAT aprovada, reapuração, certificação e AJUSTE pela tela, anulando liquidação e empenho pelo
+ *     M05), a GUIA do emissor registrada com o arquivo e o DEMONSTRATIVO INTERNO (PDF, conteúdo lido).
+ * Um cenário não é repetido "noutro mês" para passar: cada execução usa o próprio banco clonado, com a
+ * identidade registrada na saída (`PERCURSO_BANCO`), e a mesma competência.
+ *
  * ⚠️ O QUE ELE NÃO PROVA: a ficha sem crédito recebendo crédito pela tela. A única lei de crédito do
  *    banco dos percursos está com o teto esgotado e a LEI não tem tela (pendência anterior). A retomada
  *    depois do crédito está provada em m33-encargos.test.ts ("RETOMADA POR GRUPO").
@@ -37,6 +50,8 @@ const LIQUIDANTE = "liquidante@percursos.local";
 const SERVIDOR = "servidor@percursos.local";
 const COMP = process.env["ENCARGOS_COMPETENCIA"] ?? "2026-12";
 const FICHA_SEM_CREDITO = process.env["ENCARGOS_FICHA_SEM_CREDITO"] ?? "32260";
+const CENARIO = process.env["ENCARGOS_CENARIO"] === "limpo" ? "limpo" : "fila";
+const CAPTURAS = process.env["PERCURSO_CAPTURAS"] ?? join(process.cwd(), ".registro-de-execucao", "pacote-v7-m1", "capturas");
 const SUF = String(Date.now()).slice(-5);
 const PATR = `PATR-${SUF}`;
 const RAT = `RAT-${SUF}`;
@@ -66,12 +81,116 @@ async function marcarRubricas(page: Page, form: string, codigos: readonly string
   }, form, codigos);
 }
 
+async function capturar(page: Page, nome: string): Promise<void> {
+  mkdirSync(CAPTURAS, { recursive: true });
+  await page.screenshot({ path: join(CAPTURAS, `${nome}.png`), fullPage: true });
+}
+
+/**
+ * O CENÁRIO LIMPO DEPOIS DA LIQUIDAÇÃO: a redução com efeitos posteriores, a guia do emissor e o
+ * demonstrativo interno. Cada papel faz o seu ato; nada é semeado.
+ */
+async function reducaoGuiaEDemonstrativo(page: Page, hrefFolha: string, hrefRat: string): Promise<void> {
+  const idFolha = hrefFolha.split("/").pop() ?? "";
+  // ══ 7. a redução: nova versão do RAT (0,05%) cadastrada pelo admin e aprovada por outra pessoa ══
+  await sair(N, page);
+  await entrar(N, page, ADMIN, SENHA_ADMIN);
+  await irPara(N, page, hrefRat);
+  const marcadas = await marcarRubricas(page, 'form[data-acao="nova-versao-do-encargo"]', ["VENC", "HEXT"]);
+  const rVer = await preencherEEnviar(page, "nova-versao-do-encargo", [
+    { sel: 'input[name="competenciaInicio"]', valor: COMP },
+    { sel: 'input[name="percentual"]', valor: "0,05" },
+    { sel: 'input[name="fundamentacaoLegal"]', valor: "Perfil SINTÉTICO do percurso — correção para baixo" },
+    { sel: 'input[name="sintetica"]', valor: "sim", tipo: "marcar" },
+  ]);
+  R.conferir("7.1 nova versão do RAT (0,05% a partir da competência) cadastrada — aguardando aprovação", marcadas === 2 && rVer.tipo === "ok", `${rVer.tipo}: ${rVer.texto.slice(0, 200)}`);
+  await sair(N, page);
+  await entrar(N, page, APROVADOR, SENHA);
+  await irPara(N, page, hrefRat);
+  const versao = await page.$eval('form[data-acao="aprovar-versao"] select[name="versaoId"]', (s) => Array.from((s as HTMLSelectElement).options).find((o) => o.value !== "")?.value ?? "");
+  const rApr = await preencherEEnviar(page, "aprovar-versao", [{ sel: 'select[name="versaoId"]', valor: versao, tipo: "select" }, { sel: 'input[name="motivo"]', valor: "correção do perfil sintético para baixo" }]);
+  R.conferir("7.2 o aprovador aprova a versão menor", rApr.tipo === "ok" && /APROVADA/.test(rApr.texto), `${rApr.tipo}: ${rApr.texto.slice(0, 200)}`);
+
+  await sair(N, page);
+  await entrar(N, page, CONTABILIDADE, SENHA);
+  await irPara(N, page, hrefFolha);
+  const rReap = await preencherEEnviar(page, "apurar-encargos", [{ sel: 'input[name="motivo"]', valor: `RAT corrigido para baixo (${SUF})` }]);
+  R.conferir("7.3 a contabilidade REAPURA: nova apuração numerada, a anterior preservada", rReap.tipo === "ok", `${rReap.tipo}: ${rReap.texto.slice(0, 300)}`);
+  const antesDoAjuste = await apresentacaoDoAto(page, "ajustar-encargos");
+  R.conferir("7.4 NEGATIVA: antes de certificar a nova apuração, AJUSTAR não aparece como formulário", antesDoAjuste.estado !== "formulario", JSON.stringify(antesDoAjuste));
+
+  await sair(N, page);
+  await entrar(N, page, ATESTADOR, SENHA);
+  await irPara(N, page, hrefFolha);
+  const rCert2 = await preencherEEnviar(page, "certificar-encargos", [{ sel: 'input[name="data"]', valor: hoje(), tipo: "data" }]);
+  R.conferir("7.5 a atestadora certifica a apuração reduzida", rCert2.tipo === "ok" && /sha256/.test(rCert2.texto), `${rCert2.tipo}: ${rCert2.texto.slice(0, 300)}`);
+
+  await sair(N, page);
+  await entrar(N, page, CONTABILIDADE, SENHA);
+  await irPara(N, page, hrefFolha);
+  const empenharNaReducao = await apresentacaoDoAto(page, "apropriar-encargos");
+  R.conferir("7.6 com a apuração MENOR, empenhar não se oferece (não há diferença positiva) — e AJUSTAR se oferece", empenharNaReducao.estado !== "formulario" && (await apresentacaoDoAto(page, "ajustar-encargos")).estado === "formulario", JSON.stringify(empenharNaReducao));
+  const rAj = await preencherEEnviar(page, "ajustar-encargos", [{ sel: 'input[name="data"]', valor: hoje(), tipo: "data" }, { sel: 'input[name="motivo"]', valor: `Portaria sintética ${SUF} que corrigiu o RAT` }]);
+  R.conferir("7.7 AJUSTAR pela tela: anula pelo M05 a parte liquidada e a do empenho do grupo do RAT, nomeando os valores", rAj.tipo === "ok" && /Ajuste para baixo da apuração/.test(rAj.texto) && rAj.texto.includes(`ENC-B-${RAT}`) && /anulado da liquidação (?!0\.00)\d/.test(rAj.texto), `${rAj.tipo}: ${rAj.texto.slice(0, 400)}`);
+  await irPara(N, page, hrefFolha);
+  const ajustarDeNovo = await apresentacaoDoAto(page, "ajustar-encargos");
+  R.conferir("7.8 recarregada: ajustar de novo não se oferece (nada a reduzir) — repetir não anula duas vezes", ajustarDeNovo.estado !== "formulario", JSON.stringify(ajustarDeNovo));
+  await capturar(page, "encargos-limpo-ajustado");
+
+  // ══ 8. a guia do emissor (admin) e o demonstrativo interno ══
+  await sair(N, page);
+  await entrar(N, page, ADMIN, SENHA_ADMIN);
+  await irPara(N, page, hrefFolha);
+  const grupo = await opcaoPorTexto(page, 'form[data-acao="registrar-guia"] select[name="grupoId"]', `ENC-A-${PATR}`);
+  const liquidadoA = await page.evaluate((c) => {
+    const sec = Array.from(document.querySelectorAll("[data-obrigacao]")).find((x) => (x.getAttribute("data-obrigacao") ?? "").includes(c));
+    return (sec?.querySelector("[data-liquidado]")?.textContent ?? "").replace(/[^0-9,]/g, "");
+  }, `ENC-A-${PATR}`);
+  const pdf = join(CAPTURAS, `guia-sintetica-${SUF}.pdf`);
+  mkdirSync(CAPTURAS, { recursive: true });
+  writeFileSync(pdf, "%PDF-1.4\n% guia SINTÉTICA do percurso — sem validade\n%%EOF\n");
+  if (grupo === null || liquidadoA === "") {
+    R.falhou("8.1 guia", `sem grupo (${grupo}) ou sem valor liquidado (${liquidadoA}) no mapa de obrigações`);
+    return;
+  }
+  const rGuia = await preencherEEnviar(page, "registrar-guia", [
+    { sel: 'select[name="grupoId"]', valor: grupo, tipo: "select" },
+    { sel: 'input[name="identificador"]', valor: `GPS-SINT-${SUF}` },
+    { sel: 'input[name="natureza"]', valor: "Contribuição patronal — RGPS (guia sintética do percurso)" },
+    { sel: 'input[name="principal"]', valor: liquidadoA },
+    { sel: 'input[name="total"]', valor: liquidadoA },
+    { sel: 'input[name="arquivo"]', valor: pdf, tipo: "arquivo" },
+  ]);
+  R.conferir("8.1 a guia do emissor é registrada com o arquivo, pelo valor liquidado da obrigação", rGuia.tipo === "ok", `${rGuia.tipo}: ${rGuia.texto.slice(0, 300)}`);
+  await irPara(N, page, hrefFolha);
+  R.conferir("8.2 recarregada: a guia aparece RECEBIDA — receber não pagou nada (pago continua zero)", (await page.$(`[data-guia="GPS-SINT-${SUF}"][data-situacao="RECEBIDA"]`)) !== null, "guia não refletida");
+  const rDup = await preencherEEnviar(page, "registrar-guia", [
+    { sel: 'select[name="grupoId"]', valor: grupo, tipo: "select" },
+    { sel: 'input[name="identificador"]', valor: `GPS-SINT-${SUF}` },
+    { sel: 'input[name="natureza"]', valor: "Contribuição patronal — RGPS (duplicada)" },
+    { sel: 'input[name="principal"]', valor: liquidadoA },
+    { sel: 'input[name="total"]', valor: liquidadoA },
+    { sel: 'input[name="arquivo"]', valor: pdf, tipo: "arquivo" },
+  ]);
+  R.conferir("8.3 NEGATIVA: a mesma guia duas vezes é recusada nomeando a duplicidade", rDup.tipo === "erro" && /GUIA-DUPLICADA/.test(rDup.texto), `${rDup.tipo}: ${rDup.texto.slice(0, 200)}`);
+  const demo = await page.evaluate(async (u) => {
+    const r = await fetch(u);
+    const b = new Uint8Array(await r.arrayBuffer());
+    return { status: r.status, tipo: r.headers.get("content-type") ?? "", inicio: String.fromCharCode(...b.slice(0, 5)), tamanho: b.length, cache: r.headers.get("cache-control") ?? "" };
+  }, `${N.base}/folha/folhas/${idFolha}/obrigacoes?formato=pdf`);
+  R.conferir("8.4 o DEMONSTRATIVO INTERNO sai em PDF de verdade (assinatura %PDF), sem cache", demo.status === 200 && demo.tipo.includes("pdf") && demo.inicio === "%PDF-" && demo.tamanho > 1000 && /no-store/.test(demo.cache), JSON.stringify(demo));
+  const csvObr = await page.evaluate(async (u) => (await fetch(u)).text(), `${N.base}/folha/folhas/${idFolha}/obrigacoes?formato=csv`);
+  R.conferir("8.5 o CSV das obrigações traz os dois grupos com liquidado, pago e restituição", csvObr.includes("Liquidado (obrigação)") && csvObr.includes(`ENC-A-${PATR}`) && csvObr.includes(`ENC-B-${RAT}`), csvObr.slice(0, 300));
+  await capturar(page, "encargos-limpo-guia");
+}
+
 async function main(): Promise<void> {
   let navegador: Browser | undefined;
   try {
-    navegador = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
+    navegador = await lancarNavegadorDoPercurso({ headless: true, args: ["--no-sandbox"] });
     const page = await navegador.newPage();
     await page.setViewport({ width: 1366, height: 900 });
+    console.log(`      [cenário ${CENARIO} · banco ${process.env["PERCURSO_BANCO"] ?? "não declarado"} · competência ${COMP}]`);
 
     // ══ 1. o administrador cadastra os componentes e as versões ══
     await entrar(N, page, ADMIN, SENHA_ADMIN);
@@ -130,7 +249,8 @@ async function main(): Promise<void> {
     await sair(N, page);
     await entrar(N, page, CONTABILIDADE, SENHA);
     const fichaComCredito = "3102 —";
-    for (const [codigo, ficha, vpd] of [[`ENC-A-${PATR}`, fichaComCredito, "3.1.2.2.1.01.00"], [`ENC-B-${RAT}`, `${FICHA_SEM_CREDITO} —`, "3.1.2.2.1.03.00"]] as const) {
+    const fichaDoB = CENARIO === "limpo" ? fichaComCredito : `${FICHA_SEM_CREDITO} —`;
+    for (const [codigo, ficha, vpd] of [[`ENC-A-${PATR}`, fichaComCredito, "3.1.2.2.1.01.00"], [`ENC-B-${RAT}`, fichaDoB, "3.1.2.2.1.03.00"]] as const) {
       await irPara(N, page, "/folha/grupos-de-empenho");
       const form = 'form[data-acao="criar-grupo-dos-encargos"]';
       const [fichaId, vpdId, obrId, credorId] = await Promise.all([
@@ -178,12 +298,26 @@ async function main(): Promise<void> {
     const csv = await page.evaluate(async (u) => (await fetch(u)).text(), `${N.base}/folha/folhas/${idFolha}/resumo?formato=csv`);
     R.conferir("3.6 o resumo CSV da mesma folha traz bruto, descontos, líquido e patronal lado a lado, com o total", csv.includes("Bruto;Descontos;Líquido;Patronal (ente)") && /TOTAL;;\d+;[\d.]+,\d{2};[\d.]+,\d{2};[\d.]+,\d{2};[\d.]+,\d{2}/.test(csv), csv.slice(0, 300));
 
-    if (!incompleta) {
+    if (!incompleta && CENARIO === "fila") {
       await irPara(N, page, hrefFolha);
       const rEmp = await preencherEEnviar(page, "apropriar-encargos", [{ sel: 'input[name="dataDoEmpenho"]', valor: hoje(), tipo: "data" }]);
       R.conferir("3.7 empenhar: o grupo com crédito é empenhado e o grupo da ficha SEM CRÉDITO (criada pela tela) PARA, dizendo onde e por quê", rEmp.tipo === "erro" && /EMPENHO-DOS-ENCARGOS-INTERROMPIDO: 1 empenho/.test(rEmp.texto) && rEmp.texto.includes(`ENC-B-${RAT}`) && /[Ss]aldo/.test(rEmp.texto), `${rEmp.tipo}: ${rEmp.texto.slice(0, 400)}`);
       const depoisEmp = await irPara(N, page, hrefFolha);
       R.conferir("3.8 recarregada: UM empenho de encargos, com link para a despesa, e o empenhar continua OFERECIDO (há grupo pendente)", (await page.$$("[data-empenho-dos-encargos]")).length === 1 && (await apresentacaoDoAto(page, "apropriar-encargos")).estado === "formulario", depoisEmp.slice(0, 600));
+      // REPETIÇÃO DO MESMO ATO NA MESMA COMPETÊNCIA: não empenha de novo o grupo A e para no mesmo lugar.
+      const rRep = await preencherEEnviar(page, "apropriar-encargos", [{ sel: 'input[name="dataDoEmpenho"]', valor: hoje(), tipo: "data" }]);
+      R.conferir("3.9 REPETIR na mesma competência: nenhum empenho novo do grupo A e a mesma recusa nomeando o grupo B", rRep.tipo === "erro" && /EMPENHO-DOS-ENCARGOS-INTERROMPIDO: 0 empenho/.test(rRep.texto) && rRep.texto.includes(`ENC-B-${RAT}`), `${rRep.tipo}: ${rRep.texto.slice(0, 400)}`);
+      await irPara(N, page, hrefFolha);
+      R.conferir("3.10 recarregada: continua UM empenho de encargos", (await page.$$("[data-empenho-dos-encargos]")).length === 1, "a repetição criou empenho");
+    }
+    if (!incompleta && CENARIO === "limpo") {
+      await irPara(N, page, hrefFolha);
+      const rEmp = await preencherEEnviar(page, "apropriar-encargos", [{ sel: 'input[name="dataDoEmpenho"]', valor: hoje(), tipo: "data" }]);
+      R.conferir("3.7 empenhar (limpo): os dois grupos são empenhados — a mensagem diz 2 empenhos e que nenhuma retenção do servidor foi empenhada", rEmp.tipo === "ok" && /2 empenho\(s\) novo\(s\)/.test(rEmp.texto) && /Nenhuma contribuição retida/.test(rEmp.texto), `${rEmp.tipo}: ${rEmp.texto.slice(0, 400)}`);
+      await irPara(N, page, hrefFolha);
+      const empenhar = await apresentacaoDoAto(page, "apropriar-encargos");
+      R.conferir("3.8 recarregada: DOIS empenhos de encargos, e empenhar SAI da barra (repetir não tem o que fazer)", (await page.$$("[data-empenho-dos-encargos]")).length === 2 && empenhar.estado !== "formulario", JSON.stringify(empenhar));
+      await capturar(page, "encargos-limpo-empenhados");
     }
 
     // ══ 4. o atesto dos encargos: travado sem a designação PRÓPRIA; o admin designa; o atestador certifica ══
@@ -229,9 +363,10 @@ async function main(): Promise<void> {
       await entrar(N, page, LIQUIDANTE, SENHA);
       await irPara(N, page, hrefFolha);
       const rLiq = await preencherEEnviar(page, "liquidar-encargos", [{ sel: 'input[name="data"]', valor: hoje(), tipo: "data" }]);
-      R.conferir("5.1 o liquidante LIQUIDA o empenho dos encargos — e a mensagem diz que liquidar não é recolher", rLiq.tipo === "ok" && /1 liquidação\(ões\) de encargos/.test(rLiq.texto) && /não é recolher/.test(rLiq.texto), `${rLiq.tipo}: ${rLiq.texto.slice(0, 300)}`);
+      R.conferir("5.1 o liquidante LIQUIDA o empenho dos encargos — e a mensagem diz que liquidar não é recolher", rLiq.tipo === "ok" && new RegExp(`${CENARIO === "limpo" ? 2 : 1} liquidação\\(ões\\) de encargos`).test(rLiq.texto) && /não é recolher/.test(rLiq.texto), `${rLiq.tipo}: ${rLiq.texto.slice(0, 300)}`);
       await irPara(N, page, hrefFolha);
       R.conferir("5.2 recarregada: o empenho dos encargos aparece LIQUIDADO, e liquidar sai da barra", (await page.$('[data-empenho-dos-encargos][data-liquidacao="liquidado"]')) !== null && (await apresentacaoDoAto(page, "liquidar-encargos")).estado === "nao-aplicavel", "liquidação não refletida");
+      if (CENARIO === "limpo") await reducaoGuiaEDemonstrativo(page, hrefFolha, hrefs[RAT] as string);
     }
 
     // ══ 6. negativas de acesso ══
