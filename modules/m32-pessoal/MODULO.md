@@ -252,8 +252,21 @@ evento existir — não como verdade vigente. A admissão grava o regime nos DOI
    reintegrar com a mesma matrícula pede um evento que reabra o vínculo. Decidir antes de construir.
 7. **`TROCA-DE-MATRICULA`** (TR 5.12.102) — não há serviço; a matrícula é a chave de negócio.
 8. **`PIS-SEM-DV`** — `zPis` confere só os 11 dígitos.
-9. **`PESSOAL-SEM-TELA-CALENDARIO-CONTRATO-AVALIACAO`** e **`PESSOAL-SEM-TELA-BAIXA-DE-DEPENDENTE`**
-   — serviço e ação existem; tela não (ver "Arquivos deste módulo").
+9. **`PESSOAL-SEM-TELA-CALENDARIO-CONTRATO-AVALIACAO`** — serviço e ação existem; tela não.
+   ~~`PESSOAL-SEM-TELA-BAIXA-DE-DEPENDENTE`~~ — resolvida em V7 M1 U2 (abaixo).
+
+### O ENCERRAMENTO DA FINALIDADE DO DEPENDENTE É FATO (V7 M1 U2)
+
+A baixa fazia `finalidadeDependente.update` — e `FinalidadeDependente` não está no censo de UPDATE do
+papel de runtime: sob `gestao_app` ela falhava (achado `DEPENDENTE-BAIXA-EXIGE-UPDATE-SEM-GRANT`,
+reproduzido pela conexão real). A decisão foi do MODELO, não do GRANT: o encerramento é
+`EncerramentoDeFinalidadeDependente` (uma linha por finalidade, `finalidadeId` único, data de efeito,
+motivo ≥ 5, autor), gravado por INSERT. `baixaEfetiva(f)` = data do encerramento, ou a `dataBaixa`
+legada; a folha, o portal e a ficha leem por ela, então "quem era dependente em cada competência"
+continua respondível. Concorrência: dois encerramentos → um `P2002` → `FinalidadeJaBaixadaError`.
+Folha já fechada não é recalculada: o retorno informa as competências fechadas atingidas, que pedem
+retificação (`RETROATIVO-DE-DEPENDENTE-EXIGE-RETIFICACAO`). Tela: ação "Encerrar finalidade de
+dependente" no detalhe do servidor. Testes: `m32-pessoal.test.ts`, `test/runtime/contrato-runtime-m32.test.ts` (8).
 10. **`REGIME-DE-VINCULO-DESLIGADO` — RESOLVIDA na mesma sessão (V6 P2.3b).** O percurso da
     apropriação achou o caminho sem saída: a matrícula legada DESLIGADA no dia 1º de um mês viveu
     um dia, tem de ser paga por ele, precisa de regime previdenciário para a folha saber qual

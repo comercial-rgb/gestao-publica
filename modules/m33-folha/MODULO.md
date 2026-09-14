@@ -156,6 +156,35 @@ outra natureza que o desconto do servidor, e mora em modelo próprio: **o contra
 Testes: `m33-encargos-motor.test.ts` (16), `m33-encargos.test.ts` (12, N=2, mutações da diferença e da
 atribuição acusadas), `test/ui/resumo-da-folha.test.ts` (4, PDF lido por pdf.js). Permissões v14.
 
+### O ajuste para baixo e a guia de recolhimento — V7 M1 U3 (`encargos-servico.ts`, `recolhimento.ts`)
+
+- **O alvo é o LÍQUIDO.** `posicaoDosGrupos` lê, por grupo, empenhado, liquidado e pago líquidos das
+  anulações parciais e estornos; `planoDoGrupo` decide `EMPENHAR` (só a diferença positiva), `NADA` ou
+  `REDUZIR` (anular liquidação não paga, anular empenho não liquidado, registrar RESTITUIÇÃO do que já
+  foi pago — nada se "desanula" em dinheiro).
+- **`ajustarEncargosDaFolha`** (`APROPRIAR_FOLHA`, ação "Ajustar os encargos para baixo" na barra):
+  anula pelo M05 (`anularLiquidacaoParcial`, `anularEmpenhoParcial`), grava o fato
+  `AjusteDosEncargos` com chave única por ato (retomar não anula duas vezes; resposta perdida é
+  reconhecida por `reconhecerAnulacoesSemRastro`), exercício encerrado recusa sem abrir período.
+  Aumento depois de redução empenha só o que falta sobre o líquido. Apuração anterior e contracheque
+  intactos.
+- **Quatro objetos separados:** apuração → obrigação (liquidação do grupo) → GUIA (documento real do
+  emissor, `GuiaDeRecolhimento`, com arquivo pelo M22, principal + componentes = total, vencimento só
+  com fundamento, destinatário = credor do grupo; `GUIA-DUPLICADA`) → PAGAMENTO do M05 (`BaixaDaGuia`
+  liga a guia a um pagamento da mesma obrigação e informa a divergência). Cancelar só guia não baixada.
+  `GERIR_GUIA_DE_RECOLHIMENTO`, permissões v16.
+- **Demonstrativo interno** (`/folha/folhas/[id]/obrigacoes?formato=pdf|csv`): titulado "DEMONSTRATIVO
+  INTERNO — NÃO É GUIA DE RECOLHIMENTO", sem código de barras, PIX ou autenticação; o teste lê o PDF e
+  confere que não há sequência de 44–48 dígitos.
+- **Painel da competência** (V7 M1 U5) no detalhe da folha: cálculo, atesto, empenho/liquidação,
+  encargos e obrigações/guias separados, com a próxima ação lida da disponibilidade da barra.
+
+Testes: `m33-encargos.test.ts` (6) ajuste 7 e (7) guia 3, (8) ajuste e guia pelo papel de runtime 2;
+`test/ui/demonstrativo-das-obrigacoes.test.ts`. Percurso `smoke-encargos-da-folha.ts` com
+`ENCARGOS_CENARIO=fila|limpo`. Pendências: `RETORNO-BANCARIO-DA-GUIA` (nenhum transporte externo;
+a baixa é por pagamento já registrado), `RESTITUICAO-DOS-ENCARGOS-SEM-ATO` (a restituição fica
+registrada como providência; o ato de restituir/compensar não existe), `VENCIMENTO-LEGAL-SEM-TABELA`.
+
 ## Fora de escopo aqui — pendências nomeadas
 
 - `RETIFICACAO-DA-FOLHA` — devolver para correção é fato e BLOQUEIA a liquidação, mas não reabre o
@@ -170,8 +199,7 @@ atribuição acusadas), `test/ui/resumo-da-folha.test.ts` (4, PDF lido por pdf.j
 - `ORDENAR-E-PAGAR-A-FOLHA` — depois de liquidada, a folha entra na fila do art. 141 como qualquer
   obrigação; ordenar o pagamento e pagar continuam nos atos do M05/M09, sem atalho pela folha.
 - ~~`PATRONAL-NA-MEMORIA`~~ — resolvida em V6.2 pelos encargos do empregador (seção acima).
-- `ANULACAO-DOS-ENCARGOS` — apuração que diminui sobre valor já empenhado é recusada; a anulação
-  parcial do empenho dos encargos não existe.
+- ~~`ANULACAO-DOS-ENCARGOS`~~ — resolvida em V7 M1 U3 (ajuste para baixo, seção acima).
 - `ENCARGO-POR-TIPO-DE-VINCULO` — o componente é por REGIME; alíquota distinta por tipo de vínculo
   (temporário, comissionado) exigiria recorte próprio.
 - `RECOLHIMENTO-DOS-ENCARGOS` — guia, recolhimento e retido × patronal por contribuição (5.12.73).
