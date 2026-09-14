@@ -21,6 +21,7 @@ export const OPCOES_DE_TIPO_DE_SERVICO = [
   { valor: "REQUERIMENTO_ADMINISTRATIVO", rotulo: "Requerimento administrativo" },
   { valor: "ATUALIZACAO_CADASTRAL", rotulo: "Atualização cadastral (só campos do cadastro de pessoa)" },
   { valor: "COMPLEMENTO_DE_FORNECEDOR", rotulo: "Complemento documental de fornecedor (só por representação)" },
+  { valor: "MANIFESTACAO_ANONIMA", rotulo: "Manifestação de ouvidoria sem conta (assunto anônimo e sigiloso)" },
 ] as const;
 
 export const SERVICOS_DA_CARTA: DefinicaoDeRecurso = definirRecurso({

@@ -316,6 +316,8 @@ export type AcaoDoSistema =
   | "APURAR_ENCARGOS_DA_FOLHA"
   | "CERTIFICAR_ENCARGOS_DA_FOLHA"
   | "GERIR_GUIA_DE_RECOLHIMENTO"
+  | "TRIAR_MANIFESTACAO_DE_OUVIDORIA"
+  | "MODERAR_AVALIACAO_DE_SERVICO"
   // V6.2 P3 — a carta de serviços e a representação
   | "CONFIGURAR_CARTA_DE_SERVICOS"
   | "SOLICITAR_SERVICO"
@@ -771,6 +773,11 @@ export type NomeDeServico =
   | "registrarGuiaDeRecolhimento"
   | "baixarGuiaDeRecolhimento"
   | "cancelarGuiaDeRecolhimento"
+  | "triarManifestacao"
+  | "responderManifestacao"
+  | "cadastrarMetodologiaDeAvaliacao"
+  | "avaliarAtendimento"
+  | "removerAvaliacao"
   // M21/M19 — a carta de serviços, as solicitações do requerente e a representação (V6.2 P3)
   | "cadastrarServicoDaCarta"
   | "cadastrarVersaoDoServico"
@@ -1206,6 +1213,14 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   registrarGuiaDeRecolhimento: "GERIR_GUIA_DE_RECOLHIMENTO",
   baixarGuiaDeRecolhimento: "GERIR_GUIA_DE_RECOLHIMENTO",
   cancelarGuiaDeRecolhimento: "GERIR_GUIA_DE_RECOLHIMENTO",
+  // V7 M1 U4 — a ouvidoria triagem e responde no setor em que a manifestação está (lotação; sigilosa).
+  triarManifestacao: "TRIAR_MANIFESTACAO_DE_OUVIDORIA",
+  responderManifestacao: "TRIAR_MANIFESTACAO_DE_OUVIDORIA",
+  // A avaliação: a metodologia é configuração da carta; avaliar o atendimento é ato do requerente;
+  // remover por abuso é moderação, com motivo.
+  cadastrarMetodologiaDeAvaliacao: "CONFIGURAR_CARTA_DE_SERVICOS",
+  avaliarAtendimento: "SOLICITAR_SERVICO",
+  removerAvaliacao: "MODERAR_AVALIACAO_DE_SERVICO",
   // V6.2 P3 — a carta de serviços. Configurar a carta é um ato; pedir (protocolar, responder,
   // anexar) é o ato do REQUERENTE, conferido contra a titularidade na transação; decidir (exigir,
   // decidir, disponibilizar resposta) é o ato da mesa, no setor em que o processo está.
@@ -1424,6 +1439,17 @@ export const FORA_DO_CENSO: Record<string, string> = {
   retratoDosEncargos:
     "LEITURA: o retrato do estado dos encargos (apuração vigente, atesto, empenhos, liquidações) que os predicados de " +
     "`encargos.ts` leem. A tela projeta a barra; quem decide é o caso de uso.",
+  registrarManifestacaoAnonima:
+    "ATO PÚBLICO SEM CONTA (ouvidoria anônima, TR 5.39.6): não há usuário a autorizar. As defesas são outras e estão no " +
+    "corpo: serviço publicado da natureza MANIFESTACAO_ANONIMA, formulário da versão, quota por chave de origem, processo " +
+    "SIGILOSO sem requerente e segredo guardado só por hash.",
+  opinarSobreServico:
+    "ATO PÚBLICO SEM CONTA (opinião geral sobre serviço da carta, Lei 13.460): sem usuário a autorizar; serviço publicado, " +
+    "metodologia vigente, quota por chave de origem e uma raiz por token (revisão encadeada).",
+  acompanharManifestacao:
+    "LEITURA PÚBLICA pelo protocolo e pelo segredo (hash): projeção limitada à situação e às respostas liberadas.",
+  resultadoPublicoDasAvaliacoes:
+    "LEITURA PÚBLICA agregada: período, respostas, método e média por dimensão, por origem; sem autor nem comentário.",
   guiasEObrigacoesDaFolha:
     "LEITURA: o mapa das obrigações dos encargos por grupo (apurado, empenhado, liquidado, pago, restituição) e as guias " +
     "registradas com a situação derivada (recebida, baixada, cancelada). Não muta nada.",

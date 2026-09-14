@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { AtoInelegivelError, exigirElegivel } from "../../packages/contracts/index.js";
 import { diaCivil } from "../../packages/datas/index.js";
@@ -12,6 +12,7 @@ import {
   elegibilidadeParaEmitirExigencia,
   elegibilidadeParaResponderExigencia,
   errosDosCampos,
+  exigeContaPorNatureza,
   textoDeAbertura,
   validarRespostas,
   type CampoDoFormulario,
@@ -1215,7 +1216,7 @@ export const zCadastrarServicoDaCarta = z.object({
   titulo: z.string().trim().min(5),
   categoria: z.string().trim().min(3),
   publico: z.enum(["CIDADAO", "FORNECEDOR", "SERVIDOR"]),
-  tipo: z.enum(["REQUERIMENTO_ADMINISTRATIVO", "ATUALIZACAO_CADASTRAL", "COMPLEMENTO_DE_FORNECEDOR"]),
+  tipo: z.enum(["REQUERIMENTO_ADMINISTRATIVO", "ATUALIZACAO_CADASTRAL", "COMPLEMENTO_DE_FORNECEDOR", "MANIFESTACAO_ANONIMA"]),
   assuntoId: z.string().min(1),
   criadoPor: z.string().min(1),
 });
@@ -1255,14 +1256,23 @@ export async function cadastrarVersaoDoServico(prisma: PrismaClient, input: Cada
   const d = zCadastrarVersaoDoServico.parse(input);
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.cadastrarVersaoDoServico, "ENTE");
-    const servico = await tx.servicoDaCarta.findUnique({ where: { id: d.servicoId }, select: { tipo: true, slug: true, versoes: { orderBy: { numero: "desc" }, take: 1, select: { numero: true } } } });
+    const servico = await tx.servicoDaCarta.findUnique({ where: { id: d.servicoId }, select: { tipo: true, slug: true, assunto: { select: { nome: true, permiteAnonimo: true, sigiloPadrao: true } }, versoes: { orderBy: { numero: "desc" }, take: 1, select: { numero: true } } } });
     if (servico === null) throw new Error(`Serviço ${d.servicoId} não existe. Nada foi gravado.`);
     const erros = errosDosCampos(servico.tipo, d.campos);
     if (erros.length > 0) throw new Error(`FORMULARIO-INVALIDO: ${erros.join("; ")}. Nada foi gravado.`);
     await exigirSetorAtivo(tx, d.setorDeEntradaId);
-    if (!d.exigeAutenticacao) {
-      // ⚠️ SEM AUTENTICAÇÃO NÃO HÁ TITULAR, e os três serviços desta entrega agem em nome de uma pessoa.
-      throw new Error("SERVICO-SEM-AUTENTICACAO: os serviços da carta desta versão protocolam em nome de uma pessoa do cadastro, e isso exige entrar. A leitura da carta continua pública. Nada foi gravado.");
+    // ⚠️ V7 M1 U4 — A ENTRADA É DA NATUREZA DO SERVIÇO, não uma caixa livre: quem age em nome de uma pessoa
+    // exige conta; a manifestação de ouvidoria anônima não exige, e só existe sobre assunto que aceita
+    // anônimo E é sigiloso (quem a lê é a ouvidoria, não a unidade inteira).
+    if (d.exigeAutenticacao !== exigeContaPorNatureza(servico.tipo)) {
+      throw new Error(
+        exigeContaPorNatureza(servico.tipo)
+          ? "SERVICO-SEM-AUTENTICACAO: este serviço protocola em nome de uma pessoa do cadastro, e isso exige entrar. A leitura da carta continua pública. Nada foi gravado."
+          : "MANIFESTACAO-ANONIMA-SEM-CONTA: a manifestação de ouvidoria anônima não exige conta — exigir entrada contradiria a natureza do serviço. Nada foi gravado."
+      );
+    }
+    if (servico.tipo === "MANIFESTACAO_ANONIMA" && (!servico.assunto.permiteAnonimo || !servico.assunto.sigiloPadrao)) {
+      throw new Error(`ASSUNTO-INADEQUADO-PARA-OUVIDORIA: o assunto "${servico.assunto.nome}" precisa aceitar requerente anônimo e ser sigiloso por padrão. Nada foi gravado.`);
     }
     const numero = (servico.versoes[0]?.numero ?? 0) + 1;
     const v = await tx.versaoDoServico.create({
@@ -1298,6 +1308,7 @@ export async function publicarVersaoDoServico(prisma: PrismaClient, input: Publi
 }
 
 /** Em nome de quem este usuário pode agir sobre a pessoa — por si, ou por representação vigente. */
+export const titularidadeDoUsuario = (tx: Tx, usuario: string, titularId: string, quando: Date) => titularidade(tx, usuario, titularId, quando);
 async function titularidade(tx: Tx, usuario: string, titularId: string, quando: Date): Promise<{ readonly via: "PROPRIO" } | { readonly via: "REPRESENTACAO"; readonly representacaoId: string } | null> {
   const propria = await pessoaDoUsuario(tx, usuario);
   if (propria !== null && propria.pessoaId === titularId) return { via: "PROPRIO" };
@@ -1334,6 +1345,7 @@ export async function protocolarSolicitacao(prisma: PrismaClient, input: Protoco
     });
     const versao = servico?.versoes[0];
     if (servico === null || versao === undefined) throw new Error(`SERVICO-NAO-PUBLICADO: não há versão publicada de /servicos/${d.slug}. Nada foi protocolado.`);
+    if (servico.tipo === "MANIFESTACAO_ANONIMA") throw new Error("SERVICO-DE-OUVIDORIA-ANONIMA: este serviço recebe manifestação sem conta, pela página da ouvidoria. Nada foi protocolado.");
 
     // ⚠️ O TITULAR SAI DA CONTA, NUNCA DO FORMULÁRIO. Por si: a pessoa vinculada à conta. Por
     // representação: a pessoa representada, com representação VIGENTE HOJE. Um CPF digitado não entra.
@@ -1596,4 +1608,163 @@ function dadosDaVersaoProposta(atual: VersaoCadastralAtual, pessoaId: string, da
   });
   if (!r.success) throw new Error(`PROPOSTA-CADASTRAL-INVALIDA: ${r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}. Nada foi gravado.`);
   return r.data;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V7 M1 U4 — A MANIFESTAÇÃO DE OUVIDORIA SEM CONTA
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Quantos envios públicos sem conta a mesma chave (dia × origem × finalidade) pode fazer por hora. */
+export const QUOTA_DE_ENVIOS_SEM_CONTA_POR_HORA = 5;
+
+const hashDoSegredo = (segredo: string): string => createHash("sha256").update(`ouvidoria:${segredo.trim().toUpperCase()}`).digest("hex");
+
+/** O segredo: 20 caracteres do alfabeto do verificador (sem ambíguos), de 32 bytes aleatórios. */
+function novoSegredo(): string {
+  const bytes = randomBytes(32);
+  const alfabeto = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let s = "";
+  for (let i = 0; i < 20; i += 1) s += alfabeto[bytes[i]! % alfabeto.length];
+  return `${s.slice(0, 5)}-${s.slice(5, 10)}-${s.slice(10, 15)}-${s.slice(15, 20)}`;
+}
+
+export const zRegistrarManifestacaoAnonima = z.object({
+  slug: z.string().min(1),
+  tipo: z.enum(["DENUNCIA", "DUVIDA", "SUGESTAO", "RECLAMACAO", "ELOGIO"]),
+  respostas: z.record(z.string(), z.string()),
+  /** Opcional: só se o manifestante QUIS informar como ser contatado. */
+  contato: z.string().trim().min(5).max(200).optional(),
+  aceitouTermo: z.boolean().default(false),
+  /** sha256(dia + origem + finalidade), calculada pela borda; o IP em claro não chega aqui. */
+  chaveDeQuota: z.string().regex(/^[0-9a-f]{64}$/),
+});
+export type RegistrarManifestacaoAnonimaInput = z.input<typeof zRegistrarManifestacaoAnonima>;
+
+/**
+ * REGISTRA A MANIFESTAÇÃO SEM CONTA — o ATO PÚBLICO da ouvidoria.
+ *
+ * ⚠️ NÃO HÁ AUTOR NEM PESSOA: o processo nasce sem requerente (nenhuma Pessoa fictícia), SIGILOSO, no
+ * setor de entrada da versão publicada; quem o alcança é quem está lotado na ouvidoria. O autor técnico
+ * gravado é a constante `OUVIDORIA-SEM-CONTA`.
+ * ⚠️ QUOTA LOCAL, dita como tal: a mesma chave não passa de `QUOTA_DE_ENVIOS_SEM_CONTA_POR_HORA` por hora.
+ * Nenhum captcha/antiabuso externo está conectado.
+ * ⚠️ O SEGREDO VOLTA UMA VEZ, aqui. O banco guarda o sha256; quem perdeu o segredo não acompanha — e isso
+ * é a proteção, não defeito.
+ */
+export async function registrarManifestacaoAnonima(prisma: PrismaClient, input: RegistrarManifestacaoAnonimaInput): Promise<{ readonly protocolo: string; readonly segredo: string }> {
+  const d = zRegistrarManifestacaoAnonima.parse(input);
+  return prisma.$transaction(async (tx) => {
+    const recentes = await tx.envioPublicoSemConta.count({ where: { chave: d.chaveDeQuota, criadoEm: { gte: new Date(Date.now() - 3600_000) } } });
+    if (recentes >= QUOTA_DE_ENVIOS_SEM_CONTA_POR_HORA) {
+      throw new Error("QUOTA-DE-ENVIOS: muitos envios desta origem na última hora. Tente mais tarde — a leitura da carta e da ouvidoria continua livre.");
+    }
+    const servico = await tx.servicoDaCarta.findUnique({
+      where: { slug: d.slug },
+      select: { titulo: true, tipo: true, assuntoId: true, versoes: { where: { publicacao: { isNot: null } }, orderBy: { numero: "desc" }, take: 1, select: { numero: true, campos: true, setorDeEntradaId: true } } },
+    });
+    const versao = servico?.versoes[0];
+    if (servico === null || versao === undefined || servico.tipo !== "MANIFESTACAO_ANONIMA") throw new Error("OUVIDORIA-NAO-PUBLICADA: não há serviço de ouvidoria sem conta publicado neste endereço. Nada foi registrado.");
+    const campos = (versao.campos as unknown as CampoDoFormulario[]) ?? [];
+    const r = validarRespostas(campos, d.respostas);
+    if ("erros" in r) throw new Error(`FORMULARIO-INCOMPLETO: ${r.erros.join("; ")}. Nada foi registrado.`);
+    const ano = Number(diaCivil(new Date()).slice(0, 4));
+    const processo = await criarProcessoNaTransacao(tx, {
+      exercicio: ano, assuntoId: servico.assuntoId, finalidade: "ATENDIMENTO_AO_PUBLICO", prioridade: "NORMAL", sigiloso: true, documentacaoFisica: false,
+      textoAbertura: `Manifestação de ouvidoria (${d.tipo.toLowerCase()}) sem conta.\n${textoDeAbertura(servico.titulo, versao.numero, campos, r.ok)}`,
+      setorAberturaId: versao.setorDeEntradaId, requerentesAdicionais: [], aceitouTermo: d.aceitouTermo, criadoPor: "OUVIDORIA-SEM-CONTA",
+      // Sem requerente e sem contato obrigatório: o canal de retorno é o protocolo com o segredo. O
+      // refinamento "requerente OU contato" da abertura interna não se aplica a este ato público.
+      contatoAnonimo: d.contato,
+    } as ReturnType<typeof zAbrirProcesso.parse>);
+    const segredo = novoSegredo();
+    await tx.manifestacaoDeOuvidoria.create({ data: { processoId: processo.processoId, tipo: d.tipo, hashDoSegredo: hashDoSegredo(segredo), contato: d.contato ?? null } });
+    await tx.envioPublicoSemConta.create({ data: { chave: d.chaveDeQuota, finalidade: "MANIFESTACAO" } });
+    await notificarVarios(tx, await interessados(tx, versao.setorDeEntradaId), {
+      evento: "MANIFESTACAO_DE_OUVIDORIA",
+      titulo: `Nova manifestação de ouvidoria ${processo.numero}/${processo.ano}`,
+      corpo: "Manifestação sem conta aguardando triagem.",
+      rota: `/protocolo/ouvidoria`,
+    });
+    return { protocolo: `${processo.numero}/${processo.ano}`, segredo };
+  });
+}
+
+export interface AcompanhamentoDaManifestacao {
+  readonly protocolo: string;
+  readonly situacao: "RECEBIDA" | "EM_TRIAGEM" | "RESPONDIDA" | "CONCLUIDA";
+  readonly recebidaEm: Date;
+  readonly respostas: readonly { readonly texto: string; readonly em: Date; readonly conclusiva: boolean }[];
+}
+
+/**
+ * ACOMPANHA PELO PROTOCOLO E PELO SEGREDO — a projeção LIMITADA: situação e respostas liberadas. Sem texto
+ * original, sem triagem, sem setor, sem anexo. Protocolo ou segredo errado respondem `null`, igual.
+ */
+export async function acompanharManifestacao(prisma: PrismaClient, protocolo: string, segredo: string): Promise<AcompanhamentoDaManifestacao | null> {
+  const m = /^(\d{1,8})\/(\d{4})$/.exec(protocolo.trim());
+  if (m === null || segredo.trim().length < 20) return null;
+  const achada = await prisma.manifestacaoDeOuvidoria.findUnique({
+    where: { hashDoSegredo: hashDoSegredo(segredo) },
+    select: { criadoEm: true, processo: { select: { numero: true, exercicio: { select: { ano: true } } } }, triagem: { select: { id: true } }, respostas: { orderBy: { criadoEm: "asc" }, select: { texto: true, criadoEm: true, conclusiva: true } } },
+  });
+  if (achada === null || achada.processo.numero !== Number(m[1]) || achada.processo.exercicio.ano !== Number(m[2])) return null;
+  const situacao = achada.respostas.some((r) => r.conclusiva) ? "CONCLUIDA" : achada.respostas.length > 0 ? "RESPONDIDA" : achada.triagem !== null ? "EM_TRIAGEM" : "RECEBIDA";
+  return { protocolo: `${achada.processo.numero}/${achada.processo.exercicio.ano}`, situacao, recebidaEm: achada.criadoEm, respostas: achada.respostas.map((r) => ({ texto: r.texto, em: r.criadoEm, conclusiva: r.conclusiva })) };
+}
+
+/** Trava a manifestação ANTES de ler — ler e depois travar decidiria sobre um estado já velho. */
+async function manifestacaoParaOAto(tx: Tx, manifestacaoId: string) {
+  await travar(tx, "ManifestacaoDeOuvidoria", [manifestacaoId]);
+  const mf = await tx.manifestacaoDeOuvidoria.findUnique({ where: { id: manifestacaoId }, select: { id: true, processoId: true, triagem: { select: { id: true } }, respostas: { select: { conclusiva: true } } } });
+  if (mf === null) throw new Error(`Manifestação ${manifestacaoId} não existe. Nada foi gravado.`);
+  const p = await carregar(tx, mf.processoId);
+  return { mf, p, onde: setorAtual(p.setorAberturaId, p.movimentos) };
+}
+
+export const zTriarManifestacao = z.object({ manifestacaoId: z.string().min(1), tipoConfirmado: z.enum(["DENUNCIA", "DUVIDA", "SUGESTAO", "RECLAMACAO", "ELOGIO"]), anotacaoInterna: z.string().trim().min(5), criadoPor: z.string().min(1) });
+export type TriarManifestacaoInput = z.input<typeof zTriarManifestacao>;
+
+/** A TRIAGEM — tipo confirmado e anotação INTERNA (não vai ao manifestante). Uma por manifestação. */
+export async function triarManifestacao(prisma: PrismaClient, input: TriarManifestacaoInput): Promise<{ readonly triagemId: string }> {
+  const d = zTriarManifestacao.parse(input);
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const { mf, p, onde } = await manifestacaoParaOAto(tx, d.manifestacaoId);
+      await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.triarManifestacao, { setor: onde });
+      await exigirLotacao(tx, d.criadoPor, onde, "triar esta manifestação", ACAO_DO_SERVICO.triarManifestacao, p.sigiloso);
+      exigirAberto(p, "triagem");
+      if (mf.triagem !== null) throw new Error("MANIFESTACAO-JA-TRIADA: a triagem desta manifestação já foi registrada. Nada foi gravado.");
+      return { triagemId: (await tx.triagemDaManifestacao.create({ data: { manifestacaoId: mf.id, tipoConfirmado: d.tipoConfirmado, anotacaoInterna: d.anotacaoInterna, criadoPor: d.criadoPor }, select: { id: true } })).id };
+    });
+  } catch (e) {
+    if ((e as { code?: string }).code === "P2002") throw new Error("MANIFESTACAO-JA-TRIADA: outra triagem foi registrada no mesmo instante. Nada foi gravado.");
+    throw e;
+  }
+}
+
+export const zResponderManifestacao = z.object({ manifestacaoId: z.string().min(1), texto: z.string().trim().min(10), conclusiva: z.boolean(), criadoPor: z.string().min(1) });
+export type ResponderManifestacaoInput = z.input<typeof zResponderManifestacao>;
+
+/** A RESPOSTA liberada ao manifestante; a conclusiva encerra o processo (e o apenso, se houver). */
+export async function responderManifestacao(prisma: PrismaClient, input: ResponderManifestacaoInput): Promise<{ readonly respostaId: string }> {
+  const d = zResponderManifestacao.parse(input);
+  return prisma.$transaction(async (tx) => {
+    const { mf, p, onde } = await manifestacaoParaOAto(tx, d.manifestacaoId);
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.responderManifestacao, { setor: onde });
+    await exigirLotacao(tx, d.criadoPor, onde, "responder esta manifestação", ACAO_DO_SERVICO.responderManifestacao, p.sigiloso);
+    exigirAberto(p, "resposta");
+    if (mf.triagem === null) throw new Error("MANIFESTACAO-SEM-TRIAGEM: registre a triagem antes de responder. Nada foi gravado.");
+    if (mf.respostas.some((r) => r.conclusiva)) throw new Error("MANIFESTACAO-CONCLUIDA: já há resposta conclusiva. Nada foi gravado.");
+    const situacao = situacaoDoProcesso(p.movimentos);
+    if (d.conclusiva && (situacao === "AGUARDANDO_PARECER" || situacao === "AGUARDANDO_READEQUACAO")) {
+      throw new Error(`MANIFESTACAO-COM-PENDENCIA: o processo ${rotulo(p)} está ${descreverSituacao(situacao).toLowerCase()}; resolva a pendência antes da resposta conclusiva. Nada foi gravado.`);
+    }
+    const r = await tx.respostaDaOuvidoria.create({ data: { manifestacaoId: mf.id, texto: d.texto, conclusiva: d.conclusiva, criadoPor: d.criadoPor }, select: { id: true } });
+    if (d.conclusiva) {
+      for (const alvo of await alvosDaMovimentacao(tx, p.id)) {
+        await tx.movimentoDoProcesso.create({ data: { processoId: alvo, tipo: "ENCERRAMENTO", setorOrigemId: onde, texto: "Manifestação respondida de forma conclusiva pela ouvidoria.", criadoPor: d.criadoPor } });
+      }
+    }
+    return { respostaId: r.id };
+  });
 }

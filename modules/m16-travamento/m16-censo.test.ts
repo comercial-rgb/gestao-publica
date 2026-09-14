@@ -423,7 +423,7 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   crachás aqui inventariam uma segregação que o TR não pede, e cada um teria de ser
     //   concedido à mão em toda instalação existente.
     //   = 237 serviços, e o censo continua em 229 ações.
-    expect(nomes.length).toBe(328); // +3 (V7 M1 U3.2) guia de recolhimento; // +1 (V7 M1 U3) ajuste para baixo dos encargos; +11 (V6.2 P3) carta de servicos e representacao; +9 (V6.2) encargos do empregador; +4 (V5) documento fiscal; +1 (V6 P0.1) apresentação; +2 (V6 P1.1) vínculo; +1 (V6 P1.2) conta da arrecadação; +17 (V6 P2) M32 pessoal; +9 (V6 P2.3) M33 folha; +2 (V6 P2.3b) apropriação; +6 (V6.1) atesto, liquidação e as contas do grupo
+    expect(nomes.length).toBe(333); // +5 (V7 M1 U4) triar e responder a manifestacao, metodologia, avaliar atendimento, remover avaliacao (os atos publicos sem conta estao em FORA_DO_CENSO); +3 (V7 M1 U3.2) guia de recolhimento; // +1 (V7 M1 U3) ajuste para baixo dos encargos; +11 (V6.2 P3) carta de servicos e representacao; +9 (V6.2) encargos do empregador; +4 (V5) documento fiscal; +1 (V6 P0.1) apresentação; +2 (V6 P1.1) vínculo; +1 (V6 P1.2) conta da arrecadação; +17 (V6 P2) M32 pessoal; +9 (V6 P2.3) M33 folha; +2 (V6 P2.3b) apropriação; +6 (V6.1) atesto, liquidação e as contas do grupo
 
     // 97 serviços, 93 ações distintas. Os pares que compartilham ação (4: importarExtratoBb
     // REUSA IMPORTAR_EXTRATO). transferirEntreContas tem AÇÃO PRÓPRIA (não compartilha) → +1 ação.
@@ -513,7 +513,7 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   = 229.
     // 229 de mutação (uma por serviço, com as duas fusões abaixo) + 18 de LEITURA
     // (`ACOES_DE_LEITURA`, uma por área de navegação — orquestração V3, 4.1).
-    expect(TODAS_AS_ACOES.length).toBe(283 + 22); // +1 V7 M1 GERIR_GUIA_DE_RECOLHIMENTO; // +4 V6.2 P3 (configurar a carta, solicitar, decidir, registrar representacao) e a leitura CONSULTAR_MEUS_SERVICOS; +4 V6.2 encargos (cadastrar, aprovar, apurar, certificar os encargos); 271 de mutação (+15 V6 P2 pessoal, +7 V6 P2.3 folha, +2 V6 P2.3b apropriação, +3 V6.1 atesto/liquidação da folha) + 21 de leitura (+CONSULTAR_PESSOAL, +CONSULTAR_FOLHA, +CONSULTAR_PORTAL_DO_SERVIDOR)
+    expect(TODAS_AS_ACOES.length).toBe(285 + 22); // +2 V7 M1 U4 TRIAR_MANIFESTACAO_DE_OUVIDORIA e MODERAR_AVALIACAO_DE_SERVICO; +1 V7 M1 GERIR_GUIA_DE_RECOLHIMENTO; // +4 V6.2 P3 (configurar a carta, solicitar, decidir, registrar representacao) e a leitura CONSULTAR_MEUS_SERVICOS; +4 V6.2 encargos (cadastrar, aprovar, apurar, certificar os encargos); 271 de mutação (+15 V6 P2 pessoal, +7 V6 P2.3 folha, +2 V6 P2.3b apropriação, +3 V6.1 atesto/liquidação da folha) + 21 de leitura (+CONSULTAR_PESSOAL, +CONSULTAR_FOLHA, +CONSULTAR_PORTAL_DO_SERVIDOR)
     expect(ACAO_DO_SERVICO.encerrarExercicio).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.encerrarExercicioComRestos).toBe("ENCERRAR_EXERCICIO");
     expect(ACAO_DO_SERVICO.importarExtrato).toBe("IMPORTAR_EXTRATO");

@@ -25,6 +25,9 @@ enum TipoDeServicoDaCarta {
   ATUALIZACAO_CADASTRAL
   /// Complemento documental de fornecedor — só por representação vigente da pessoa jurídica.
   COMPLEMENTO_DE_FORNECEDOR
+  /// V7 M1 U4 — manifestação de ouvidoria SEM CONTA (denúncia, dúvida, sugestão, reclamação, elogio),
+  /// em assunto que aceita anônimo e é sigiloso; acompanhamento pelo segredo entregue uma vez.
+  MANIFESTACAO_ANONIMA
 }
 
 enum PublicoDoServico {
@@ -51,7 +54,8 @@ model ServicoDaCarta {
   criadoEm  DateTime @default(now())
   criadoPor String
 
-  versoes VersaoDoServico[]
+  versoes    VersaoDoServico[]
+  avaliacoes AvaliacaoDeServico[] @relation("AvaliacoesDoServico")
 
   @@index([assuntoId])
 }
@@ -139,9 +143,10 @@ model SolicitacaoDeServico {
   /// O usuário que protocolou (o titular vinculado ou o representante).
   criadoPor String
 
-  decisao   DecisaoDaSolicitacao?
-  anexos    AnexoDaSolicitacao[]
-  proposta  PropostaDeAlteracaoCadastral?
+  decisao    DecisaoDaSolicitacao?
+  anexos     AnexoDaSolicitacao[]
+  proposta   PropostaDeAlteracaoCadastral?
+  avaliacoes AvaliacaoDeServico[]          @relation("AvaliacoesDaSolicitacao")
 
   @@index([titularId])
   @@index([versaoId])

@@ -259,6 +259,12 @@ export const ORDEM_DOS_LOCKS = {
    * abertura, quando a solicitação ainda não existe; os atos sobre ela travam só este posto.
    */
   SolicitacaoDeServico: 24,
+  /**
+   * V7 M1 U4 — A MANIFESTAÇÃO DE OUVIDORIA. Duas respostas conclusivas simultâneas leriam "nenhuma
+   * conclusiva" e as duas encerrariam. Os atos sobre ela travam só este posto (a abertura trava o
+   * protocolo, 14, antes de a manifestação existir).
+   */
+  ManifestacaoDeOuvidoria: 25,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

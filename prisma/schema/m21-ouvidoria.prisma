@@ -1,0 +1,176 @@
+// ============================================================================
+// M21 — OUVIDORIA ANÔNIMA E AVALIAÇÃO DOS SERVIÇOS (V7 M1 U4)
+//
+// ⚠️ NÃO É OUTRO ENGINE. A manifestação anônima É um processo do M21 (assunto de ouvidoria que
+// permite anônimo, setor de ouvidoria, SIGILOSO): quem a vê é quem está lotado na ouvidoria, pela
+// regra de escopo do protocolo. Não se cria Pessoa fictícia: o processo nasce sem requerente.
+//
+// ⚠️ O SEGREDO DE ACOMPANHAMENTO NÃO É GUARDADO EM CLARO. Ele aparece UMA vez ao manifestante; o
+// banco guarda o sha256. A consulta é por formulário POST (nunca na URL: não vaza em log de acesso,
+// histórico nem referer) e mostra só a projeção limitada (situação e resposta liberada).
+//
+// ⚠️ AVALIAÇÃO: escala e método VERSIONADOS; atendimento comprovado (solicitação) e opinião geral são
+// origens SEPARADAS e não se somam na mesma métrica; revisão é nova linha encadeada, não segundo voto.
+// ============================================================================
+
+/// Os tipos de manifestação (TR: denúncias, dúvidas e sugestões; Lei 13.460/2017, art. 2º, V:
+/// reclamações, denúncias, sugestões e elogios).
+enum TipoDeManifestacao {
+  DENUNCIA
+  DUVIDA
+  SUGESTAO
+  RECLAMACAO
+  ELOGIO
+}
+
+model ManifestacaoDeOuvidoria {
+  id String @id @default(cuid())
+
+  processoId String   @unique
+  processo   Processo @relation("ManifestacaoDoProcesso", fields: [processoId], references: [id])
+
+  tipo TipoDeManifestacao
+
+  /// sha256 do segredo de acompanhamento (o segredo em claro não é gravado em lugar nenhum).
+  hashDoSegredo String @unique
+
+  /// Contato OPCIONAL, só se o manifestante quis informar. Anônimo não é obrigado a nada.
+  contato String?
+
+  criadoEm DateTime @default(now())
+
+  triagem   TriagemDaManifestacao?
+  respostas RespostaDaOuvidoria[]
+}
+
+/// A TRIAGEM da ouvidoria: tipo confirmado, anotação interna (não vai ao manifestante), encaminhamento.
+model TriagemDaManifestacao {
+  id String @id @default(cuid())
+
+  manifestacaoId String                  @unique
+  manifestacao   ManifestacaoDeOuvidoria @relation(fields: [manifestacaoId], references: [id])
+
+  tipoConfirmado  TipoDeManifestacao
+  anotacaoInterna String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// A RESPOSTA liberada ao manifestante — o único texto interno que a consulta pelo segredo mostra.
+model RespostaDaOuvidoria {
+  id String @id @default(cuid())
+
+  manifestacaoId String
+  manifestacao   ManifestacaoDeOuvidoria @relation(fields: [manifestacaoId], references: [id])
+
+  texto String
+  /// `true` = a resposta conclusiva (encerra o processo).
+  conclusiva Boolean
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([manifestacaoId])
+}
+
+/// A QUOTA DOS ATOS PÚBLICOS SEM CONTA: uma linha por envio, com a CHAVE = sha256(dia + IP + finalidade).
+/// Nem o IP nem o dia ficam em claro; a quota conta linhas recentes da mesma chave. Não é antiabuso
+/// externo (nenhum captcha está conectado) — é o limite local, e ele é dito assim.
+model EnvioPublicoSemConta {
+  id String @id @default(cuid())
+
+  chave      String
+  finalidade String
+
+  criadoEm DateTime @default(now())
+
+  @@index([chave, criadoEm])
+}
+
+/// A METODOLOGIA DA AVALIAÇÃO — versionada; a vigente é a de maior versão.
+model MetodologiaDeAvaliacao {
+  id String @id @default(cuid())
+
+  versao Int @unique
+
+  escalaMinima Int
+  escalaMaxima Int
+  /// O rótulo de cada ponto da escala: [{ nota, rotulo }].
+  rotulos Json
+  /// Como o resultado é calculado e publicado (média por dimensão, período, o que é excluído).
+  descricaoDoMetodo String
+  /// A janela do resultado público, em meses contados da consulta.
+  periodoMeses Int
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  avaliacoes AvaliacaoDeServico[]
+}
+
+enum OrigemDaAvaliacao {
+  /// Quem foi atendido: ligada a uma solicitação decidida, pela conta do titular.
+  ATENDIMENTO_COMPROVADO
+  /// Opinião sobre o serviço da carta, sem conta — contada à parte.
+  OPINIAO_GERAL
+}
+
+/// UMA AVALIAÇÃO — as três dimensões do TR com nota na escala da metodologia e a descrição (PRIVADA:
+/// não é publicada). Revisar = nova linha com `revisaoDeId`; o resultado usa só a última da cadeia.
+model AvaliacaoDeServico {
+  id String @id @default(cuid())
+
+  servicoId String
+  servico   ServicoDaCarta @relation("AvaliacoesDoServico", fields: [servicoId], references: [id])
+
+  metodologiaId String
+  metodologia   MetodologiaDeAvaliacao @relation(fields: [metodologiaId], references: [id])
+
+  origem OrigemDaAvaliacao
+
+  /// Presente no atendimento comprovado.
+  solicitacaoId String?
+  solicitacao   SolicitacaoDeServico? @relation("AvaliacoesDaSolicitacao", fields: [solicitacaoId], references: [id])
+
+  /// Quem avalia, sem identificar: `sol:<solicitacaoId>` ou o sha256 do token do navegador.
+  chaveDoAvaliador String
+
+  revisaoDeId String?             @unique
+  revisaoDe   AvaliacaoDeServico? @relation("RevisaoDaAvaliacao", fields: [revisaoDeId], references: [id])
+  revisadaPor AvaliacaoDeServico? @relation("RevisaoDaAvaliacao")
+
+  satisfacao  Int
+  atendimento Int
+  prazos      Int
+  descricao   String?
+
+  criadoEm  DateTime @default(now())
+  /// A conta, no atendimento comprovado; nulo na opinião geral.
+  criadoPor String?
+
+  remocao RemocaoDeAvaliacao?
+
+  @@index([servicoId, origem])
+  @@index([chaveDoAvaliador])
+}
+
+enum MotivoDeRemocaoDaAvaliacao {
+  ABUSO
+  DADOS_PESSOAIS
+}
+
+/// A REMOÇÃO de uma avaliação por abuso ou dado pessoal — com motivo e autor. O resultado público
+/// informa quantas foram removidas; discordância não é motivo.
+model RemocaoDeAvaliacao {
+  id String @id @default(cuid())
+
+  avaliacaoId String             @unique
+  avaliacao   AvaliacaoDeServico @relation(fields: [avaliacaoId], references: [id])
+
+  motivo        MotivoDeRemocaoDaAvaliacao
+  justificativa String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

@@ -292,6 +292,8 @@ model Processo {
   solicitacoesDeCompra SolicitacaoDeCompra[] @relation("ProcessoDaSolicitacao")
   /// V6.2 — a solicitação da carta que este processo executa, quando houver. VIRTUAL.
   solicitacaoDeServico SolicitacaoDeServico? @relation("SolicitacaoDoProcesso")
+  /// V7 M1 U4 — a manifestação de ouvidoria anônima que este processo executa. VIRTUAL.
+  manifestacaoDeOuvidoria ManifestacaoDeOuvidoria? @relation("ManifestacaoDoProcesso")
 }
 
 /// A CÓPIA do roteiro no instante da abertura. Ver o cabeçalho do arquivo.

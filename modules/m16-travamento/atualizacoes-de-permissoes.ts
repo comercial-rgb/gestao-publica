@@ -472,6 +472,26 @@ export function derivarGuiaDeRecolhimento(
   return saida;
 }
 
+/** V7 M1 U4 — a ouvidoria (triagem e resposta, com lotação) e a moderação das avaliações. */
+export const ACOES_DA_OUVIDORIA_E_AVALIACAO: readonly AcaoDoSistema[] = ["TRIAR_MANIFESTACAO_DE_OUVIDORIA", "MODERAR_AVALIACAO_DE_SERVICO"];
+
+export function derivarOuvidoriaEAvaliacao(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null);
+    if (!administra) continue;
+    const jaTem = new Set(perfil.permissoes.filter((p) => p.unidadeOrcId === null).map((p) => p.acao));
+    for (const acao of ACOES_DA_OUVIDORIA_E_AVALIACAO) {
+      if (jaTem.has(acao)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
+
 export function derivarFolha(
   perfis: readonly PerfilComPermissoes[],
   _areaDaAcao: AreaDaAcao
@@ -664,6 +684,15 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "pelo emissor (com o arquivo), baixa-la por um pagamento que ja existe e cancela-la. Quem administra permissoes no " +
       "global a recebe. Registrar guia nao paga nada e o sistema nao gera codigo de pagamento.",
     derivar: derivarGuiaDeRecolhimento,
+  },
+  {
+    versao: 17,
+    nome: "ouvidoria-e-avaliacao",
+    descricao:
+      "A ouvidoria sem conta e a avaliacao dos servicos (V7 M1) chegaram com TRIAR_MANIFESTACAO_DE_OUVIDORIA e " +
+      "MODERAR_AVALIACAO_DE_SERVICO. Quem administra permissoes no global recebe as duas, como na instalacao limpa. " +
+      "Triar e responder continuam exigindo lotacao no setor em que a manifestacao sigilosa esta.",
+    derivar: derivarOuvidoriaEAvaliacao,
   },
 ];
 

@@ -32,7 +32,10 @@ export type CampoDoFormulario = z.infer<typeof zCampoDoFormulario>;
 /** Os campos que uma proposta cadastral pode carregar — os que o caso de uso de Pessoa versiona. */
 export const CAMPOS_DO_CADASTRO = ["nome", "nomeFantasia", "email", "telefone", "logradouro", "numero", "complemento", "bairro", "municipio", "uf", "cep"] as const;
 
-export type TipoDeServico = "REQUERIMENTO_ADMINISTRATIVO" | "ATUALIZACAO_CADASTRAL" | "COMPLEMENTO_DE_FORNECEDOR";
+export type TipoDeServico = "REQUERIMENTO_ADMINISTRATIVO" | "ATUALIZACAO_CADASTRAL" | "COMPLEMENTO_DE_FORNECEDOR" | "MANIFESTACAO_ANONIMA";
+
+/** A NATUREZA do serviço decide a entrada: autenticada (age em nome de uma pessoa) ou sem conta (ouvidoria anônima). */
+export const exigeContaPorNatureza = (tipo: TipoDeServico): boolean => tipo !== "MANIFESTACAO_ANONIMA";
 
 /** Os problemas da definição do formulário. Vazio = consistente. */
 export function errosDosCampos(tipo: TipoDeServico, campos: unknown): readonly string[] {

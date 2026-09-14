@@ -50,6 +50,14 @@ const TABELAS = [
   "AssinaturaDeDocumento",
   "SignatarioDaFila",
   "FilaDeAssinatura",
+  // ── V7 M1 U4 — a ouvidoria sem conta e a avaliação dos serviços ──
+  "RemocaoDeAvaliacao",
+  "AvaliacaoDeServico",
+  "MetodologiaDeAvaliacao",
+  "EnvioPublicoSemConta",
+  "RespostaDaOuvidoria",
+  "TriagemDaManifestacao",
+  "ManifestacaoDeOuvidoria",
   // ── V6.2 P3 — a carta de serviços, as solicitações e a representação ──
   "AnexoDaSolicitacao",
   "DecisaoDaSolicitacao",
@@ -226,6 +234,11 @@ const TABELAS = [
   // M33 folha (V6 P2.3) — filhas antes das mães
   // V6.1 — a certificação (atesto) e a liquidação da folha
   // V6.2 — os encargos do empregador
+  // V7 M1 U3 — o ajuste para baixo e a guia de recolhimento
+  "CancelamentoDaGuia",
+  "BaixaDaGuia",
+  "GuiaDeRecolhimento",
+  "AjusteDosEncargos",
   "LiquidacaoDosEncargos",
   "EmpenhoDosEncargos",
   "CertificacaoDosEncargos",
@@ -258,6 +271,7 @@ const TABELAS = [
   "TabelaSalarioFamilia",
   "AnotacaoServidor",
   "HistoricoVinculo",
+  "EncerramentoDeFinalidadeDependente",
   "FinalidadeDependente",
   "Dependente",
   "Treinamento",
