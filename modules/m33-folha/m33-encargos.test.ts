@@ -2,7 +2,7 @@ import "dotenv/config";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { toMoney } from "../../packages/contracts/index.js";
 import { meioDiaCivil } from "../../packages/datas/index.js";
-import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
+import { criarPrismaDeTeste, criarPrismaDoPapelDeRuntime, exigirBanco } from "../../test/banco.js";
 import { criarFichaDeTeste } from "../../test/ficha-teste.js";
 import { limparBanco } from "../../test/limpar-banco.js";
 import { registrarMovimentoDotacao } from "../m05-despesa/dotacao-razao.js";
@@ -561,5 +561,54 @@ describe("(7) guia de recolhimento: apuração, obrigação, guia e pagamento se
     const pg = await pagar({ liquidacaoId, numero: "PG-ENC-2", valor: "100.00", data: D(2026, 6, 5), contaBancaria: "CC-ENC", fonteId: "fonte-500", historico: "Parcial (fixture)", criadoPor: RH }, R_PAG, criarM05DepsComContratos(prisma));
     await expect(baixarGuiaDeRecolhimento(prisma, { guiaId: g.guiaId, pagamentoId: pg.pagamentoId, observacao: "Tentativa", criadoPor: RH })).rejects.toThrow(/GUIA-CANCELADA/);
     expect((await guiasEObrigacoesDaFolha(prisma, folhaId))[0]?.guias[0]?.situacao).toBe("CANCELADA");
+  });
+});
+
+/**
+ * (8) O AJUSTE PARA BAIXO E A GUIA PELA CONEXÃO `gestao_app` (V7 M1 U0 §2.3). O dono semeia e prepara a
+ * folha até a liquidação; cada ato NOVO desta entrega roda pelo papel de runtime — anular liquidação e
+ * empenho pelo M05, registrar o fato do ajuste, gravar a guia com o arquivo, baixar e cancelar.
+ */
+describe("(8) ajuste e guia pelo papel de runtime", () => {
+  const app = criarPrismaDoPapelDeRuntime();
+  afterAll(async () => { await app.$disconnect(); });
+  const R_PAG = roteiroPagamento({ obrigacaoAPagar: "2.1.1.4.1.01.00", disponibilidade: "1.1.1.1.2.00.00" });
+  const PDF = new TextEncoder().encode("%PDF-1.4 guia do emissor (runtime)");
+
+  async function liquidado(): Promise<{ grupoId: string; liquidacaoId: string }> {
+    await versaoAprovada(compPatr, "0.20");
+    await versaoAprovada(compRat, "0.015");
+    await apurarEncargosDaFolha(app, { folhaId, criadoPor: RH });
+    await designarParaEncargos();
+    const grupoId = await grupoUnico();
+    await apropriarEncargosDaFolha(app, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: RH });
+    await certificarEncargosDaFolha(app, { folhaId, data: DATA_ATESTO, criadoPor: ATESTADOR });
+    await liquidarEncargosDaFolha(app, { folhaId, data: DATA_ATESTO, criadoPor: LIQUIDANTE });
+    return { grupoId, liquidacaoId: (await prisma.liquidacaoDosEncargos.findFirstOrThrow({ select: { liquidacaoId: true } })).liquidacaoId };
+  }
+
+  it("LIQUIDADO NÃO PAGO reduzido: a anulação da liquidação e do empenho e o fato do ajuste gravam pelo runtime", async () => {
+    await liquidado();
+    await versaoAprovada(compRat, "0.005", "2026-05");
+    await apurarEncargosDaFolha(app, { folhaId, motivo: "RAT corrigido", criadoPor: RH });
+    await certificarEncargosDaFolha(app, { folhaId, data: DATA_ATESTO, criadoPor: ATESTADOR });
+    const r = await ajustarEncargosDaFolha(app, { folhaId, data: DATA_ATESTO, motivo: "Portaria que corrigiu o RAT de maio", criadoPor: RH });
+    expect(r.porGrupo[0]).toMatchObject({ anuladoDeLiquidacao: "58.00", anuladoDeEmpenho: "58.00" });
+    expect((await prisma.fichaOrcamentaria.findUniqueOrThrow({ where: { id: "ficha-encargos" }, select: { saldoEmpenhado: true } })).saldoEmpenhado.toFixed(2)).toBe("1189.00");
+    // E o runtime não reescreve o fato do ajuste.
+    const ajuste = await prisma.ajusteDosEncargos.findFirstOrThrow({ select: { id: true } });
+    await expect(app.$executeRawUnsafe(`UPDATE "AjusteDosEncargos" SET "valor" = 0 WHERE "id" = $1`, ajuste.id)).rejects.toThrow(/permission denied|permissão negada/i);
+  });
+
+  it("guia: registrar com o arquivo, baixar pelo pagamento e cancelar outra — tudo pelo runtime; o runtime não apaga a baixa", async () => {
+    const { grupoId, liquidacaoId } = await liquidado();
+    const g = await registrarGuiaDeRecolhimento(app, { folhaId, grupoId, destinatarioId: instituto, natureza: "Contribuição patronal e RAT — RGPS", identificador: "GPS-RT-0001", principal: "1247.00", componentes: [], total: "1247.00", arquivo: { nomeOriginal: "guia.pdf", mimeType: "application/pdf", conteudo: PDF }, criadoPor: RH });
+    const pg = await pagar({ liquidacaoId, numero: "PG-ENC-RT", valor: "1247.00", data: D(2026, 6, 5), contaBancaria: "CC-ENC", fonteId: "fonte-500", historico: "Recolhimento (runtime)", criadoPor: RH }, R_PAG, criarM05DepsComContratos(prisma));
+    const b = await baixarGuiaDeRecolhimento(app, { guiaId: g.guiaId, pagamentoId: pg.pagamentoId, observacao: "Pago no dia 05/06", criadoPor: RH });
+    expect(b.divergencia.toFixed(2)).toBe("0.00");
+    const outra = await registrarGuiaDeRecolhimento(app, { folhaId, grupoId, destinatarioId: instituto, natureza: "Complemento — RGPS", identificador: "GPS-RT-0002", principal: "1247.00", componentes: [], total: "1247.00", arquivo: { nomeOriginal: "guia2.pdf", mimeType: "application/pdf", conteudo: PDF }, criadoPor: RH });
+    await cancelarGuiaDeRecolhimento(app, { guiaId: outra.guiaId, motivo: "Emitida em duplicidade pelo emissor", criadoPor: RH });
+    expect((await guiasEObrigacoesDaFolha(app, folhaId))[0]?.guias.map((x) => x.situacao).sort()).toEqual(["BAIXADA", "CANCELADA"]);
+    await expect(app.$executeRawUnsafe(`DELETE FROM "BaixaDaGuia"`)).rejects.toThrow(/permission denied|permissão negada/i);
   });
 });
