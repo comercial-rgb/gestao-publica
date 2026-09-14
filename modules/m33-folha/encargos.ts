@@ -233,6 +233,16 @@ export interface AtorNosEncargos {
   readonly designado: boolean | null;
 }
 
+/**
+ * APROVAR UMA VERSÃO do parâmetro: há versão aguardando, e alguma foi cadastrada por OUTRA pessoa.
+ * O código da trava é o mesmo da recusa do caso de uso (`AUTOAPROVACAO-DO-ENCARGO`).
+ */
+export function elegibilidadeParaAprovarVersao(e: { readonly pendentes: number; readonly pendentesDeOutros: number }): Elegibilidade {
+  if (e.pendentes === 0) return naoAplicavel("SEM-VERSAO-PENDENTE", "Nenhuma versão deste componente aguarda aprovação.");
+  if (e.pendentesDeOutros === 0) return preCondicao("AUTOAPROVACAO-DO-ENCARGO", "Você cadastrou as versões que aguardam aprovação e não pode aprová-las.", "Outra pessoa com a permissão de aprovar confere alíquota, base e fundamento.");
+  return ELEGIVEL;
+}
+
 export function elegibilidadeParaApurarEncargos(e: EstadoDosEncargos): Elegibilidade {
   if (!e.fechada) return preCondicao("FOLHA-NAO-FECHADA", `A folha de ${e.competencia} ainda não foi fechada; os encargos se apuram sobre o cálculo congelado.`, "Feche a folha antes.");
   return ELEGIVEL;

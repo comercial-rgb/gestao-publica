@@ -60,6 +60,8 @@ export const ENCARGOS_DA_FOLHA: DefinicaoDeRecurso = definirRecurso({
       ],
     },
   ],
+  // V6.2 — aprovar depende de haver versão pendente cadastrada por outra pessoa.
+  acoesPorEstado: true,
   permissoes: { criar: "CADASTRAR_ENCARGO_DA_FOLHA" },
   abas: ["dados", "historico"],
 });

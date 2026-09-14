@@ -9,6 +9,7 @@ import {
   retratoDosEncargos,
 } from "../../../modules/m33-folha/encargos-servico.js";
 import {
+  elegibilidadeParaAprovarVersao,
   elegibilidadeParaApropriarEncargos,
   elegibilidadeParaApurarEncargos,
   elegibilidadeParaCertificarEncargos,
@@ -93,6 +94,15 @@ export async function verComponenteDeEncargo(id: string): Promise<(DetalheLido &
     dados,
     historico,
     versoes: k.versoes.map((v) => ({ id: v.id, rotulo: `desde ${v.competenciaInicio} — ${pct(v.aliquota)}`, aprovada: v.aprovacao !== null })),
+  };
+}
+
+/** V6.2 — a disponibilidade de "aprovar-versao" para a sessão: há pendente de OUTRA pessoa? */
+export async function disponibilidadeDoComponenteDeEncargo(componenteId: string, identificador: string): Promise<{ readonly versao: string; readonly porAcao: Readonly<Record<string, DisponibilidadeDaAcao>> }> {
+  const vs = await cliente().versaoDoEncargo.findMany({ where: { componenteId, aprovacao: null }, select: { id: true, criadoPor: true } });
+  return {
+    versao: vs.map((v) => v.id).sort().join(",") || "sem-pendentes",
+    porAcao: { "aprovar-versao": apresentar(elegibilidadeParaAprovarVersao({ pendentes: vs.length, pendentesDeOutros: vs.filter((v) => v.criadoPor !== identificador).length })) },
   };
 }
 
