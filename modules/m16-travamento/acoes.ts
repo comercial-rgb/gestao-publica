@@ -1411,6 +1411,10 @@ export const FORA_DO_CENSO: Record<string, string> = {
   retratoDosEncargos:
     "LEITURA: o retrato do estado dos encargos (apuração vigente, atesto, empenhos, liquidações) que os predicados de " +
     "`encargos.ts` leem. A tela projeta a barra; quem decide é o caso de uso.",
+  gravarAnexoNaTransacao:
+    "composável interno: grava a linha e o arquivo do anexo DENTRO da transação de um ato que já cobrou a própria ação " +
+    "(o XML do documento fiscal, os documentos da solicitação da carta), com o mesmo Zod de dono único e a mesma recusa " +
+    "de tipo e tamanho de `anexarArquivo`.",
   representacoesVigentesDoUsuario:
     "LEITURA: as representações que a conta exerce no dia perguntado, com a vigência DERIVADA (início, fim e revogação). " +
     "É a pergunta que o protocolo da solicitação, a resposta à exigência e o download fazem dentro da própria transação.",

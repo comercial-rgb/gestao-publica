@@ -5,7 +5,8 @@ import { diaCivil } from "../../packages/datas/index.js";
 import { pessoaDoUsuario } from "../m16-travamento/servico-pessoa-do-usuario.js";
 import { zAlterarPessoa } from "../m19-pessoas/dominio.js";
 import { representacaoVigenteEm, representacoesVigentesDoUsuario } from "../m19-pessoas/representacao.js";
-import { gravarArquivo, recusaDoArquivo, sha256 as sha256DoArquivo } from "../m22-documentos/armazenamento.js";
+import { gravarAnexoNaTransacao } from "../m22-documentos/anexos.js";
+import { recusaDoArquivo } from "../m22-documentos/armazenamento.js";
 import {
   elegibilidadeParaDecidir,
   elegibilidadeParaEmitirExigencia,
@@ -1529,13 +1530,10 @@ export async function disponibilizarRespostaDaSolicitacao(prisma: PrismaClient, 
 }
 
 async function gravarAnexoDaSolicitacao(tx: Tx, solicitacaoId: string, processoId: string, d: z.output<typeof zAnexarNaSolicitacao>, origem: "REQUERENTE" | "RESPOSTA"): Promise<string> {
-  const a = await tx.anexo.create({
-    data: { nomeOriginal: d.nomeOriginal, mimeType: d.mimeType, tamanhoBytes: d.conteudo.byteLength, sha256: sha256DoArquivo(d.conteudo), origem: "UPLOAD", processoId, criadoPor: d.criadoPor },
-    select: { id: true },
-  });
-  await tx.anexoDaSolicitacao.create({ data: { anexoId: a.id, solicitacaoId, origem, criadoPor: d.criadoPor } });
-  await gravarArquivo(a.id, d.conteudo);
-  return a.id;
+  // O anexo pertence ao PROCESSO (a visão da mesa é a do M21); a ligação diz o que o requerente vê.
+  const { anexoId } = await gravarAnexoNaTransacao(tx, { nomeOriginal: d.nomeOriginal, mimeType: d.mimeType, conteudo: d.conteudo, origem: "UPLOAD", processoId, criadoPor: d.criadoPor });
+  await tx.anexoDaSolicitacao.create({ data: { anexoId, solicitacaoId, origem, criadoPor: d.criadoPor } });
+  return anexoId;
 }
 
 export const zDecidirSolicitacao = z.object({

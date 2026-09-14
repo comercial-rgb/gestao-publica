@@ -7,7 +7,7 @@ import { elegibilidadeParaCancelarDocumento, elegibilidadeParaConferirDocumento 
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import { normalizarDocumento } from "../../packages/documento/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
-import { gravarArquivo, sha256 } from "../m22-documentos/armazenamento.js";
+import { gravarAnexoNaTransacao } from "../m22-documentos/anexos.js";
 import { extrairNfe } from "./xml-nfe.js";
 
 /**
@@ -425,20 +425,14 @@ export async function importarDocumentoFiscalDeXml(
     // O XML original fica no cofre de anexos NA MESMA TRANSAÇÃO: linha primeiro,
     // arquivo depois. Se o disco falhar, o documento não fica sem o original nem
     // o original fica órfão. Não afirma autorização da SEFAZ.
-    const conteudo = new TextEncoder().encode(d.xml);
-    const anexo = await tx.anexo.create({
-      data: {
-        nomeOriginal: d.nomeArquivo,
-        mimeType: "application/xml",
-        tamanhoBytes: conteudo.byteLength,
-        sha256: sha256(conteudo),
-        origem: "SISTEMA",
-        documentoFiscalId: doc.documentoId,
-        criadoPor: d.criadoPor,
-      },
-      select: { id: true },
+    await gravarAnexoNaTransacao(tx, {
+      nomeOriginal: d.nomeArquivo,
+      mimeType: "application/xml",
+      conteudo: new TextEncoder().encode(d.xml),
+      origem: "SISTEMA",
+      documentoFiscalId: doc.documentoId,
+      criadoPor: d.criadoPor,
     });
-    await gravarArquivo(anexo.id, conteudo);
     return doc;
   });
 }

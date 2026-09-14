@@ -75,6 +75,43 @@ export const zAnexar = z
 
 export type AnexarInput = z.input<typeof zAnexar>;
 
+/** Tipo, tamanho e vazio — a mesma régua para o anexo avulso e o gravado dentro de outro ato. */
+function recusaDoConteudo(d: z.output<typeof zAnexar>): string | null {
+  if (d.documentoFiscalId === undefined) return recusaDoArquivo(d.mimeType, d.conteudo.byteLength, d.origem);
+  if (d.conteudo.byteLength <= 0) return "Arquivo vazio: nada a anexar.";
+  if (d.conteudo.byteLength > TAMANHO_MAXIMO_BYTES) return `Arquivo de ${(d.conteudo.byteLength / 1024 / 1024).toFixed(1)} MB excede o limite de 25 MB.`;
+  return null;
+}
+
+/**
+ * GRAVA UM ANEXO DENTRO DA TRANSAÇÃO DE OUTRO ATO — linha primeiro, arquivo depois, com o mesmo Zod de
+ * dono único, a mesma recusa de tipo e tamanho e o mesmo hash de `anexarArquivo`.
+ *
+ * ⚠️ NÃO AUTORIZA, E É POR ISSO QUE EXISTE. Quem chama é um caso de uso que já cobrou a PRÓPRIA ação na
+ * mesma transação — o XML original do documento fiscal (M11) e os documentos da solicitação da carta
+ * (M21, requerente ou resposta do ente). Cobrar aqui `ANEXAR_ARQUIVO` exigiria dar ao requerente uma
+ * ação que abre anexo em qualquer registro. Um `tx.anexo.create` avulso no módulo chamador pularia a
+ * validação — o grep t15 do M22 recusa isso.
+ */
+export async function gravarAnexoNaTransacao(tx: Tx, input: AnexarInput): Promise<{ readonly anexoId: string; readonly sha256: string }> {
+  const d = zAnexar.parse(input);
+  const recusa = recusaDoConteudo(d);
+  if (recusa !== null) throw new Error(recusa);
+  const hash = sha256(d.conteudo);
+  const anexo = await tx.anexo.create({
+    data: {
+      nomeOriginal: d.nomeOriginal, mimeType: d.mimeType, tamanhoBytes: d.conteudo.byteLength, sha256: hash, origem: d.origem,
+      processoId: d.processoId ?? null, movimentoProcessoId: d.movimentoProcessoId ?? null, comunicadoId: d.comunicadoId ?? null,
+      pessoaId: d.pessoaId ?? null, borderoId: d.borderoId ?? null, empenhoId: d.empenhoId ?? null, liquidacaoId: d.liquidacaoId ?? null,
+      ordemDePagamentoId: d.ordemDePagamentoId ?? null, termoPatrimonialId: d.termoPatrimonialId ?? null, documentoFiscalId: d.documentoFiscalId ?? null,
+      criadoPor: d.criadoPor,
+    },
+    select: { id: true },
+  });
+  await gravarArquivo(anexo.id, d.conteudo);
+  return { anexoId: anexo.id, sha256: hash };
+}
+
 /**
  * ANEXA — validando tipo e tamanho NO SERVIDOR, calculando o hash e gravando fora de
  * qualquer pasta pública.
