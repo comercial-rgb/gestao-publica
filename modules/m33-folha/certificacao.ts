@@ -449,32 +449,6 @@ export const zDevolverFolhaInput = zCertificarFolhaInput.extend({
 });
 export type DevolverFolhaInput = z.input<typeof zDevolverFolhaInput>;
 
-/** A designação vigente do usuário para a atribuição, no dia — ou `null`. */
-async function designacaoVigenteDe(
-  tx: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">,
-  usuarioIdentificador: string,
-  quando: Date
-): Promise<{ readonly id: string; readonly atoDesignacao: string; readonly nomeDaPessoa: string } | null> {
-  const candidatas = await tx.designacaoNaFolha.findMany({
-    where: { atribuicao: "CERTIFICAR_FOLHA", usuario: { identificador: usuarioIdentificador, ativo: true } },
-    orderBy: { vigenciaInicio: "desc" },
-    select: {
-      id: true, atoDesignacao: true, vigenciaInicio: true, vigenciaFim: true,
-      revogacao: { select: { dataEfeito: true } },
-      pessoa: { select: { documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } },
-    },
-  });
-  // ⚠️ A MAIS RECENTE ENTRE AS VIGENTES, e não "a única". Renovar uma designação antes de a
-  // anterior terminar é o caso normal, e recusar por ambiguidade travaria o ente numa data de
-  // borda. Qual foi usada FICA GRAVADA na certificação — não se decide de novo depois.
-  for (const c of candidatas) {
-    if (designacaoVigenteEm({ vigenciaInicio: c.vigenciaInicio, vigenciaFim: c.vigenciaFim, revogacao: c.revogacao }, quando)) {
-      return { id: c.id, atoDesignacao: c.atoDesignacao, nomeDaPessoa: c.pessoa.versoes[0]?.nome ?? c.pessoa.documento };
-    }
-  }
-  return null;
-}
-
 /**
  * A designação que sustenta um ato NOVO: vigente no dia do ato E no instante do servidor.
  *
@@ -489,10 +463,18 @@ export async function designacaoVigenteParaOAto(
   usuarioIdentificador: string,
   dataDoAto: Date
 ): Promise<{ readonly id: string; readonly atoDesignacao: string; readonly nomeDaPessoa: string } | null> {
-  const noDia = await designacaoVigenteDe(tx, usuarioIdentificador, dataDoAto);
-  if (noDia === null) return null;
-  const hoje = await designacaoVigenteDe(tx, usuarioIdentificador, new Date());
-  return hoje === null ? null : noDia;
+  // ⚠️ A MESMA DESIGNAÇÃO NAS DUAS DATAS. A primeira versão perguntava "há alguma vigente no dia do
+  // ato?" e "há alguma vigente hoje?" separadamente — e aceitava o atesto sob a designação que só
+  // COMEÇA no futuro (cobre o dia do ato, não cobre hoje), porque OUTRA, já quase vencida, cobria
+  // hoje. O percurso do atesto achou: o manifesto saiu com o ato de uma portaria ainda não vigente.
+  const agora = new Date();
+  const candidatas = await tx.designacaoNaFolha.findMany({
+    where: { atribuicao: "CERTIFICAR_FOLHA", usuario: { identificador: usuarioIdentificador, ativo: true } },
+    orderBy: { vigenciaInicio: "desc" },
+    select: { id: true, atoDesignacao: true, vigenciaInicio: true, vigenciaFim: true, revogacao: { select: { dataEfeito: true } }, pessoa: { select: { documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } } },
+  });
+  const c = candidatas.find((x) => designacaoVigenteEm(x, dataDoAto) && designacaoVigenteEm(x, agora));
+  return c === undefined ? null : { id: c.id, atoDesignacao: c.atoDesignacao, nomeDaPessoa: c.pessoa.versoes[0]?.nome ?? c.pessoa.documento };
 }
 
 /** Converte a elegibilidade negativa na RECUSA NOMEADA que o módulo já tinha (os testes pegam a classe). */

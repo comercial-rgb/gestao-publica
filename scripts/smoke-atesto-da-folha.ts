@@ -424,7 +424,9 @@ async function main(): Promise<void> {
       for (let volta = 0; volta < 5; volta += 1) {
         await irPara(page, `/folha/designacoes?q=${encodeURIComponent(ATESTADOR)}`);
         const href = await page.evaluate(() => {
-          const linha = Array.from(document.querySelectorAll("tbody tr")).find((tr) => /\bvigente\b/i.test(tr.textContent ?? "") && !/não vigente/i.test(tr.textContent ?? ""));
+          // ⚠️ A CÉLULA "HOJE", e não o texto da linha: as células colam ("sem prazoVIGENTE") e um
+          // `\bvigente\b` sobre a linha inteira nunca casava — a primeira versão deste passo não revogou nada.
+          const linha = Array.from(document.querySelectorAll("tbody tr")).find((tr) => (tr.lastElementChild?.textContent ?? "").trim().toUpperCase() === "VIGENTE");
           return (linha?.querySelector('a[href^="/folha/designacoes/"]') as HTMLAnchorElement | null)?.getAttribute("href") ?? "";
         });
         if (href === "") break;
@@ -630,7 +632,10 @@ async function main(): Promise<void> {
       ...(pessoaOpcao === null ? [] : [{ sel: 'select[name="pessoaId"]', valor: pessoaOpcao.valor, tipo: "select" as const }]),
       ...(contaOpcao === null ? [] : [{ sel: 'select[name="usuarioIdentificador"]', valor: contaOpcao.valor, tipo: "select" as const }]),
       { sel: 'input[name="atoDesignacao"]', valor: ATO },
-      { sel: 'input[name="vigenciaInicio"]', valor: `${COMP}-01`, tipo: "data" },
+      // ⚠️ O INÍCIO É O MENOR entre o 1º dia da competência e HOJE: o ato novo exige a designação vigente
+      // também no instante do servidor, e uma competência futura do banco dos percursos (2026-12 em
+      // setembro) daria uma designação que ainda não começou — a trava certa, o percurso errado.
+      { sel: 'input[name="vigenciaInicio"]', valor: [`${COMP}-01`, new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza" }).format(new Date())].sort()[0] as string, tipo: "data" },
     ]);
     conferir(
       "5.2 designação cadastrada — e a mensagem diz que ela NÃO concede poder sozinha",
@@ -732,7 +737,9 @@ async function main(): Promise<void> {
     if (hrefDesignacao !== "") {
       await irPara(page, hrefDesignacao);
       const rRevogar = await preencherEEnviar(page, "revogar", [
-        { sel: 'input[name="dataEfeito"]', valor: `${COMP}-28`, tipo: "data" },
+        // o MENOR entre o dia 28 da competência e hoje: um efeito futuro deixaria a designação vigente
+        // hoje — foi assim que uma execução antiga deixou a premissa do passo 4 falsa.
+        { sel: 'input[name="dataEfeito"]', valor: [`${COMP}-28`, new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza" }).format(new Date())].sort()[0] as string, tipo: "data" },
         { sel: 'input[name="motivo"]', valor: "fim da designação do percurso (sintético)" },
       ]);
       conferir("8.1 revogar é FATO: a designação continua no histórico e os atestos praticados sob ela continuam com lastro", rRevogar.tipo === "ok" && /continuam com lastro/i.test(rRevogar.texto), `${rRevogar.tipo}: ${rRevogar.texto.slice(0, 250)}`);

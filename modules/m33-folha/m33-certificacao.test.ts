@@ -398,6 +398,20 @@ describe("(4b) o ato NOVO não se apoia em designação que já deixou de valer 
     expect(await prisma.certificacaoDaFolha.count()).toBe(0);
   });
 
+  it("DUAS designações, nenhuma cobrindo as duas datas: a futura cobre o dia do ato, a vencendo cobre hoje — RECUSA", async () => {
+    await ateAApropriacao();
+    // relógio em 3/6; ato datado de 12/6. A: começa 10/6 (não vale hoje). B: vale até 5/6 (não vale no ato).
+    await designarAtestador({ inicio: D(2026, 6, 10) });
+    await designarAtestador({ inicio: D(2026, 1, 1), fim: D(2026, 6, 5) });
+    vi.useFakeTimers({ toFake: ["Date"], now: D(2026, 6, 3) });
+    try {
+      await expect(certificarFolha(prisma, { folhaId, data: D(2026, 6, 12), criadoPor: ATESTADOR })).rejects.toThrow(SemDesignacaoVigenteError);
+      expect(await prisma.certificacaoDaFolha.count()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("a contraprova: com o relógio em 3/6 (antes do efeito), o MESMO ato passa", async () => {
     await ateAApropriacao();
     const id = await designarAtestador();
