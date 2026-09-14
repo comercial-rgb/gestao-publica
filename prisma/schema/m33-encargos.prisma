@@ -133,6 +133,7 @@ model ApuracaoDeEncargos {
 
   certificacoes CertificacaoDosEncargos[]
   empenhos      EmpenhoDosEncargos[]
+  ajustes       AjusteDosEncargos[]      @relation("AjustesDaApuracao")
 
   @@unique([calculoId, numero])
   @@index([folhaId])
@@ -221,4 +222,129 @@ model LiquidacaoDosEncargos {
   criadoPor String
 
   @@index([certificacaoId])
+}
+
+/// V7 M1 U3 — O TIPO DE ATO DO AJUSTE PARA BAIXO dos encargos.
+enum TipoDeAjusteDosEncargos {
+  /// Anulação parcial de uma LIQUIDAÇÃO não paga, feita pelo M05 (o lançamento é dele).
+  ANULACAO_DE_LIQUIDACAO
+  /// Anulação parcial de um EMPENHO na parte não liquidada, feita pelo M05.
+  ANULACAO_DE_EMPENHO
+  /// Valor JÁ PAGO acima do devido: nada foi anulado; fica a necessidade de restituição/compensação.
+  RESTITUICAO_A_PROVIDENCIAR
+}
+
+/// O RASTRO DE CADA ATO DO AJUSTE PARA BAIXO — uma linha por ato, com a chave determinística que torna
+/// a retomada idempotente (a resposta perdida depois do commit do M05 é reconhecida, não refeita).
+///
+/// ⚠️ O VALOR É SEMPRE POSITIVO: é o quanto o ato reduziu (ou o quanto falta restituir). Não há
+/// empenho negativo, e a apuração anterior continua na memória como estava.
+model AjusteDosEncargos {
+  id String @id @default(cuid())
+
+  /// `${apuracaoId}:${grupoId}:${tipo}:${documento ou sequência}` — a unicidade da retomada.
+  chave String @unique
+
+  apuracaoId String
+  apuracao   ApuracaoDeEncargos @relation("AjustesDaApuracao", fields: [apuracaoId], references: [id])
+
+  grupoId String
+  grupo   GrupoDeEmpenhoDaFolha @relation("AjustesDosEncargos", fields: [grupoId], references: [id])
+
+  tipo  TipoDeAjusteDosEncargos
+  valor Decimal @db.Decimal(18, 2)
+
+  /// O registro de anulação parcial do M05 (a linha de Empenho/Liquidacao com anulacaoParcialDeId).
+  anulacaoDeEmpenhoId    String?     @unique
+  anulacaoDeEmpenho      Empenho?    @relation("AnulacaoDeEmpenhoDosEncargos", fields: [anulacaoDeEmpenhoId], references: [id])
+  anulacaoDeLiquidacaoId String?     @unique
+  anulacaoDeLiquidacao   Liquidacao? @relation("AnulacaoDeLiquidacaoDosEncargos", fields: [anulacaoDeLiquidacaoId], references: [id])
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([apuracaoId])
+  @@index([grupoId])
+}
+
+/// ═══ V7 M1 U3 — A GUIA DE RECOLHIMENTO: documento do EMISSOR, não da prefeitura ═══
+///
+/// Quatro objetos separados: a APURAÇÃO (o que o ente deve, calculado), a OBRIGAÇÃO (a liquidação
+/// dos encargos, derivada — `lib/portas/recursos/obrigacoes-dos-encargos.ts`), a GUIA (o documento que
+/// o arrecadador emite, com o arquivo dele anexado) e o PAGAMENTO (ato do M05/M09, fora daqui).
+///
+/// ⚠️ ESTE CADASTRO NÃO GERA GUIA. Não há código de barras, PIX nem autenticação produzidos pelo
+/// sistema: o que se registra é a guia REAL recebida, com o arquivo, e "anexada" não é "validada pelo
+/// emissor". Vencimento só com fundamento; sem ele, fica nulo e dito "não informado".
+/// ⚠️ RECEBER A GUIA NÃO PAGA NADA. A baixa liga a guia a um PAGAMENTO do M05 que já aconteceu.
+model GuiaDeRecolhimento {
+  id String @id @default(cuid())
+
+  folhaId String
+  folha   FolhaDePagamento @relation("GuiasDaFolha", fields: [folhaId], references: [id])
+
+  /// A obrigação é por grupo de empenho dos encargos (destinatário e natureza vêm dele).
+  grupoId String
+  grupo   GrupoDeEmpenhoDaFolha @relation("GuiasDoGrupo", fields: [grupoId], references: [id])
+
+  /// O arrecadador/destinatário como consta na guia — conferido contra o credor do grupo.
+  destinatarioId String
+  destinatario   Pessoa @relation("DestinatarioDaGuia", fields: [destinatarioId], references: [id])
+
+  /// Regime ou natureza como consta na guia (ex.: "Contribuição patronal RGPS").
+  natureza String
+
+  /// O número/identificador do documento como impresso pelo emissor.
+  identificador String
+
+  vencimento             DateTime?
+  fundamentoDoVencimento String?
+
+  principal   Decimal @db.Decimal(18, 2)
+  /// Os demais componentes que a guia discrimina: [{ rotulo, valor }] (atualização, juros, multa).
+  componentes Json
+  total       Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  anexos       Anexo[]              @relation("AnexoDaGuiaDeRecolhimento")
+  baixa        BaixaDaGuia?
+  cancelamento CancelamentoDaGuia?
+
+  /// Duplicidade: o mesmo documento do mesmo emissor não entra duas vezes.
+  @@unique([destinatarioId, identificador])
+  @@index([folhaId])
+  @@index([grupoId])
+}
+
+/// A BAIXA: a guia foi paga pelo PAGAMENTO indicado (M05), que já existe. Uma por guia.
+model BaixaDaGuia {
+  id String @id @default(cuid())
+
+  guiaId String             @unique
+  guia   GuiaDeRecolhimento @relation(fields: [guiaId], references: [id])
+
+  pagamentoId String    @unique
+  pagamento   Pagamento @relation("BaixaDeGuiaDeRecolhimento", fields: [pagamentoId], references: [id])
+
+  observacao String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// O CANCELAMENTO da guia (emitida errada, substituída pelo emissor). Uma por guia; guia baixada não cancela.
+model CancelamentoDaGuia {
+  id String @id @default(cuid())
+
+  guiaId String             @unique
+  guia   GuiaDeRecolhimento @relation(fields: [guiaId], references: [id])
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
 }

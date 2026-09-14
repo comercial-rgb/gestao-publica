@@ -210,6 +210,59 @@ export function diferencaAEmpenhar(pedido: Money, jaEmpenhado: Money): { readonl
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// O AJUSTE PARA BAIXO — quando a apuração nova pede MENOS do que a despesa já reconhece (V7 M1 U3)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface PosicaoDoGrupo {
+  /** O que a apuração VIGENTE pede para o grupo. */
+  readonly apurado: Money;
+  /** Empenhado LÍQUIDO (originais − anulações parciais − estornos), não a soma das linhas originais. */
+  readonly empenhado: Money;
+  readonly liquidado: Money;
+  readonly pago: Money;
+}
+
+export type PlanoDoGrupo =
+  | { readonly tipo: "NADA" }
+  | { readonly tipo: "EMPENHAR"; readonly valor: Money }
+  | {
+      readonly tipo: "REDUZIR";
+      readonly reducao: Money;
+      /** 1º: a parte ainda NÃO liquidada do empenho — anulação parcial do empenho pelo M05. */
+      readonly anularEmpenho: Money;
+      /** 2º: a parte liquidada e NÃO paga — anulação parcial da liquidação pelo M05, e depois do empenho. */
+      readonly anularLiquidacao: Money;
+      /** 3º: a parte JÁ PAGA — não se anula dinheiro que saiu: fica registrada para restituição/compensação. */
+      readonly restituir: Money;
+    };
+
+/**
+ * O PLANO DE UM GRUPO — puro, e a ordem é a da cadeia `pago ≤ liquidado ≤ empenhado`:
+ *
+ *   · apurado > empenhado líquido → EMPENHAR a diferença (o caminho de sempre);
+ *   · apurado = empenhado líquido → NADA;
+ *   · apurado < empenhado líquido → REDUZIR, consumindo primeiro o saldo a liquidar, depois o
+ *     liquidado não pago; o que sobra é valor JÁ PAGO, que vira necessidade de restituição — nunca
+ *     um clamp silencioso a zero, nunca um empenho negativo.
+ *
+ * ⚠️ O ALVO É O EMPENHADO LÍQUIDO: depois de uma redução e de um novo aumento, empenha-se só o que
+ * falta sobre o que CONTINUA valendo — nunca de novo o que foi anulado nem o que ficou.
+ */
+export function planoDoGrupo(g: PosicaoDoGrupo): PlanoDoGrupo {
+  const d = toMoney(g.apurado.minus(g.empenhado));
+  if (d.isZero()) return { tipo: "NADA" };
+  if (d.gt(0)) return { tipo: "EMPENHAR", valor: d };
+  const reducao = toMoney(d.negated());
+  const aLiquidar = Decimal.max(toMoney(g.empenhado.minus(g.liquidado)), toMoney(0));
+  const naoPago = Decimal.max(toMoney(g.liquidado.minus(g.pago)), toMoney(0));
+  const anularEmpenho = toMoney(Decimal.min(reducao, aLiquidar));
+  const resto = toMoney(reducao.minus(anularEmpenho));
+  const anularLiquidacao = toMoney(Decimal.min(resto, naoPago));
+  const restituir = toMoney(resto.minus(anularLiquidacao));
+  return { tipo: "REDUZIR", reducao, anularEmpenho: toMoney(anularEmpenho.plus(anularLiquidacao)), anularLiquidacao, restituir };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // QUAIS ATOS SOBRE OS ENCARGOS CABEM AGORA — o mesmo predicado na tela e na transação
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -225,6 +278,8 @@ export interface EstadoDosEncargos {
   readonly componentesSemGrupo: readonly string[];
   readonly empenhosDaApuracao: number;
   readonly liquidados: number;
+  /** V7 M1 U3 — grupos cuja despesa líquida está ACIMA do que a apuração vigente pede, com ato a praticar. */
+  readonly gruposComReducao?: number;
 }
 
 export interface AtorNosEncargos {
@@ -271,5 +326,19 @@ export function elegibilidadeParaLiquidarEncargos(e: EstadoDosEncargos, a: AtorN
   if (e.empenhosDaApuracao === 0) return preCondicao("ENCARGOS-NAO-EMPENHADOS", `A apuração nº ${e.apuracao.numero} não tem empenho.`, "Empenhe os encargos antes de liquidar.");
   if (e.liquidados >= e.empenhosDaApuracao) return naoAplicavel("ENCARGOS-JA-LIQUIDADOS", `Os ${e.empenhosDaApuracao} empenho(s) dos encargos já estão liquidados.`);
   if (a.certificou) return preCondicao("AUTOLIQUIDACAO-DOS-ENCARGOS", "Você certificou estes encargos e não pode liquidá-los.", "Outra pessoa com a permissão de liquidar pratica o ato.");
+  return ELEGIVEL;
+}
+
+/**
+ * AJUSTAR OS ENCARGOS PARA BAIXO (V7 M1 U3): há grupo com despesa líquida acima do apurado, a apuração
+ * vigente está completa e CERTIFICADA (reduzir despesa também é ato sobre o objeto conferido), e quem
+ * certificou não ajusta.
+ */
+export function elegibilidadeParaAjustarEncargos(e: EstadoDosEncargos, a: AtorNosEncargos): Elegibilidade {
+  if (e.apuracao === null) return preCondicao("ENCARGOS-NAO-APURADOS", `Os encargos de ${e.competencia} ainda não foram apurados.`);
+  if ((e.gruposComReducao ?? 0) === 0) return naoAplicavel("SEM-REDUCAO-A-AJUSTAR", `Nenhum grupo dos encargos de ${e.competencia} tem despesa acima da apuração nº ${e.apuracao.numero}.`);
+  if (!e.apuracao.completa) return preCondicao("APURACAO-INCOMPLETA", `A apuração nº ${e.apuracao.numero} tem componente sem parâmetro aprovado; reduzir por ela seria afirmar o todo.`, "Aprove a versão que falta e apure de novo.");
+  if (e.certificacao !== "CERTIFICADA") return preCondicao("ENCARGOS-NAO-CERTIFICADOS", `A apuração nº ${e.apuracao.numero}, que reduz os encargos, ainda não foi certificada.`, "Quem o ente designou certifica a apuração antes de a despesa ser reduzida.");
+  if (a.certificou) return preCondicao("AUTOAJUSTE-DOS-ENCARGOS", "Você certificou esta apuração e não pode praticar o ajuste.", "Outra pessoa com a permissão pratica o ato.");
   return ELEGIVEL;
 }

@@ -255,6 +255,7 @@ model FolhaDePagamento {
 
   calculos    CalculoDaFolha[]
   fechamento  FechamentoDaFolha?
+  guiasDeRecolhimento GuiaDeRecolhimento[] @relation("GuiasDaFolha")
   apropriacao ApropriacaoDaFolha?
 
   /// V6.1 — a trilha de certificação (atesto e devolução). Estado atual = último fato.
@@ -470,6 +471,8 @@ model GrupoDeEmpenhoDaFolha {
   /// V6.2 — um grupo de ENCARGOS tem componentes, e não rubricas (o serviço impõe um ou outro).
   componentes         ComponenteDoGrupoDeEmpenho[] @relation("ComponentesDoGrupo")
   empenhosDosEncargos EmpenhoDosEncargos[]         @relation("EmpenhosDosEncargos")
+  ajustesDosEncargos  AjusteDosEncargos[]          @relation("AjustesDosEncargos")
+  guiasDeRecolhimento GuiaDeRecolhimento[]         @relation("GuiasDoGrupo")
 
   @@index([fichaId])
 }

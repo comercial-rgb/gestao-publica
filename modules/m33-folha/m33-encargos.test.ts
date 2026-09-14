@@ -10,7 +10,12 @@ import { admitirServidor, cadastrarCargo, cadastrarLotacao, cadastrarServidor } 
 import { abrirFolha, cadastrarRubrica, cadastrarTabelaDeContribuicao, cadastrarTabelaIrrf, calcularFolha, fecharFolha, lancarNaFolha } from "./servico.js";
 import { apropriarFolha, cadastrarGrupoDeEmpenhoDaFolha } from "./apropriacao.js";
 import { certificarFolha, designarNaFolha } from "./certificacao.js";
+import { anularEmpenhoParcial } from "../m05-despesa/anulacao-parcial.js";
+import { pagar } from "../m05-despesa/servico-bloco2.js";
+import { roteiroPagamento } from "../m01-core-contabil/roteiros.js";
+import { criarM05DepsComContratos } from "../m11-licitacoes/adapter-m05.js";
 import {
+  ajustarEncargosDaFolha,
   apropriarEncargosDaFolha,
   apurarEncargosDaFolha,
   aprovarVersaoDoEncargo,
@@ -22,7 +27,7 @@ import {
   liquidarEncargosDaFolha,
   retratoDosEncargos,
 } from "./encargos-servico.js";
-import { elegibilidadeParaApropriarEncargos, elegibilidadeParaCertificarEncargos, elegibilidadeParaLiquidarEncargos } from "./encargos.js";
+import { elegibilidadeParaAjustarEncargos, elegibilidadeParaApropriarEncargos, elegibilidadeParaCertificarEncargos, elegibilidadeParaLiquidarEncargos } from "./encargos.js";
 
 /**
  * ═══ OS ENCARGOS DO EMPREGADOR, CONTRA O BANCO — PROFUNDIDADE ═══
@@ -85,6 +90,10 @@ async function semear(): Promise<void> {
       { id: "c-vpd-encargos", codigo: "3.1.2.1.1.01.00", nome: "Encargos patronais (fixture)", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: true },
       { id: "c-encargos-pagar", codigo: "2.1.1.4.1.01.00", nome: "Encargos sociais a pagar (fixture)", naturezaSaldo: "CREDORA", nivel: 5, analitica: true },
       { id: "c-sintetica", codigo: "3.1.2.0.0.00.00", nome: "Sintetica (fixture)", naturezaSaldo: "DEVEDORA", nivel: 1, analitica: false },
+      // V7 M1 U3 — o pagamento dos encargos (para provar o "já pago" do ajuste para baixo).
+      { id: "c-pago", codigo: "6.2.2.1.3.04.00", nome: "Credito pago", naturezaSaldo: "CREDORA", nivel: 5, analitica: true },
+      { id: "c-ddr-uti", codigo: "8.2.1.1.4.01.00", nome: "DDR utilizada", naturezaSaldo: "CREDORA", nivel: 5, analitica: true },
+      { id: "c-banco", codigo: "1.1.1.1.2.00.00", nome: "Bancos (fixture)", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: true },
     ],
   });
   await prisma.orgao.create({ data: { id: "org-01", codigo: "01", nome: "Prefeitura" } });
@@ -100,6 +109,7 @@ async function semear(): Promise<void> {
     ],
   });
   await prisma.fonteRecurso.create({ data: { id: "fonte-500", codigo: "500", descricao: "Livre", codigoTce: "500" } });
+  await prisma.contaBancaria.create({ data: { id: "cb-1", codigo: "CC-ENC", descricao: "Movimento (fixture)", fonteId: "fonte-500" } });
   const base = { exercicio: 2026, orgaoId: "org-01", unidadeOrcId: "uo-01", funcaoId: "fun-04", subfuncaoId: "sub-122", programaId: "prg", acaoId: "aca", fonteId: "fonte-500" };
   await criarFichaDeTeste(prisma, { ...base, id: "ficha-venc", numero: 1, naturezaDespesaId: "nd-11", valorDotado: "500000.00" });
   await criarFichaDeTeste(prisma, { ...base, id: "ficha-encargos", numero: 2, naturezaDespesaId: "nd-13", valorDotado: "500000.00" });
@@ -308,7 +318,8 @@ describe("(3) atesto, empenho e liquidação dos encargos", () => {
     // e a REDUÇÃO: o RAT corrigido para 0,5% a partir de maio
     await versaoAprovada(compRat, "0.005", "2026-05"); // RAT 0,5%: 17,50 + 11,50 = 29,00 → total 1305,00 < 1363,00
     await apurarEncargosDaFolha(prisma, { folhaId, criadoPor: RH });
-    await expect(apropriarEncargosDaFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: RH })).rejects.toThrow(/REDUCAO-DE-ENCARGO-EMPENHADO: ENCARGOS \(empenhado 1363.00, apurado 1305.00\)/);
+    // V7 M1 U3: a redução NÃO é empenho negativo — apropriar diz que não há o que empenhar, e o ato é o ajuste.
+    await expect(apropriarEncargosDaFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: RH })).rejects.toThrow(/ENCARGOS-JA-EMPENHADOS/);
     expect(await prisma.empenhoDosEncargos.count()).toBe(2);
   });
 
@@ -355,5 +366,132 @@ describe("(3) atesto, empenho e liquidação dos encargos", () => {
     r = await retratoDosEncargos(prisma, folhaId, LIQUIDANTE, { consultarDesignacao: false });
     expect(r!.versao).not.toBe(antesDoAtesto);
     expect(cod(elegibilidadeParaLiquidarEncargos(r!.estado, r!.ator))).toBe("ELEGIVEL");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// (6) V7 M1 U3 — O AJUSTE PARA BAIXO, com os fatos posteriores
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("(6) ajuste para baixo: empenhado, liquidado não pago e já pago", () => {
+  const R_PAG = roteiroPagamento({ obrigacaoAPagar: "2.1.1.4.1.01.00", disponibilidade: "1.1.1.1.2.00.00" });
+  const MOTIVO = "Portaria que corrigiu o RAT de maio";
+
+  async function empenhado1247(): Promise<void> {
+    await versaoAprovada(compPatr, "0.20");
+    await versaoAprovada(compRat, "0.015");
+    await apurarEncargosDaFolha(prisma, { folhaId, criadoPor: RH });
+    await designarParaEncargos();
+    await grupoUnico();
+    await apropriarEncargosDaFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: RH });
+    await certificarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, criadoPor: ATESTADOR });
+  }
+  /** RAT 0,5% a partir de maio: 17,50 + 11,50 = 29,00 → total 1189,00 (redução de 58,00). */
+  async function reduzirRat(): Promise<void> {
+    await versaoAprovada(compRat, "0.005", "2026-05");
+    await apurarEncargosDaFolha(prisma, { folhaId, motivo: "RAT corrigido", criadoPor: RH });
+    await certificarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, criadoPor: ATESTADOR });
+  }
+  const liquidoDaFicha = async () => (await prisma.fichaOrcamentaria.findUniqueOrThrow({ where: { id: "ficha-encargos" }, select: { saldoEmpenhado: true } })).saldoEmpenhado.toFixed(2);
+
+  it("EMPENHADO NÃO LIQUIDADO: anula pelo M05 só o excedente; retomar não anula de novo; novo AUMENTO empenha só o que falta sobre o LÍQUIDO", async () => {
+    await empenhado1247();
+    await reduzirRat();
+    const r = await ajustarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, motivo: MOTIVO, criadoPor: RH });
+    expect(r.porGrupo).toEqual([{ codigo: "ENCARGOS", apurado: "1189.00", empenhadoAntes: "1247.00", anuladoDeLiquidacao: "0.00", anuladoDeEmpenho: "58.00", restituicaoRegistrada: "0.00" }]);
+    expect(await liquidoDaFicha()).toBe("1189.00");
+    const anul = await prisma.empenho.findMany({ where: { anulacaoParcialDeId: { not: null } }, select: { valor: true, lancamentoId: true } });
+    expect(anul.map((a) => a.valor.toFixed(2))).toEqual(["58.00"]);
+    expect(anul[0]?.lancamentoId).not.toBeNull();
+    // A memória da apuração anterior continua como estava.
+    expect((await prisma.apuracaoDeEncargos.findMany({ orderBy: { numero: "asc" }, select: { total: true } })).map((a) => a.total.toFixed(2))).toEqual(["1247.00", "1189.00"]);
+    // RETOMADA: ajustar de novo não tem o que fazer — e diz.
+    await expect(ajustarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, motivo: MOTIVO, criadoPor: RH })).rejects.toThrow(/SEM-REDUCAO-A-AJUSTAR/);
+    expect(await prisma.empenho.count({ where: { anulacaoParcialDeId: { not: null } } })).toBe(1);
+    // NOVO AUMENTO: patronal 22% → 1276 + 29 = 1305; empenha 116,00 sobre 1189 (não 58 + 116, não 1305).
+    await versaoAprovada(compPatr, "0.22", "2026-05");
+    await apurarEncargosDaFolha(prisma, { folhaId, motivo: "patronal corrigido", criadoPor: RH });
+    const e = await apropriarEncargosDaFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: RH });
+    expect(e.porGrupo).toEqual([{ codigo: "ENCARGOS", pedido: "1305.00", jaEmpenhado: "1189.00", empenhado: "116.00" }]);
+    expect(await liquidoDaFicha()).toBe("1305.00");
+  });
+
+  it("LIQUIDADO NÃO PAGO: anula a liquidação pelo M05 e depois o empenho; o liquidado e o empenhado líquidos batem com a apuração", async () => {
+    await empenhado1247();
+    await liquidarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, criadoPor: LIQUIDANTE });
+    await reduzirRat();
+    const r = await ajustarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, motivo: MOTIVO, criadoPor: RH });
+    expect(r.porGrupo[0]).toMatchObject({ anuladoDeLiquidacao: "58.00", anuladoDeEmpenho: "58.00", restituicaoRegistrada: "0.00" });
+    expect((await prisma.ajusteDosEncargos.findMany({ orderBy: { tipo: "asc" }, select: { tipo: true, valor: true } })).map((a) => `${a.tipo}=${a.valor.toFixed(2)}`)).toEqual(["ANULACAO_DE_LIQUIDACAO=58.00", "ANULACAO_DE_EMPENHO=58.00"]);
+    expect(await liquidoDaFicha()).toBe("1189.00");
+    // A liquidação original continua lá (a anulação é fato novo), valendo menos.
+    expect(await prisma.liquidacao.count({ where: { anulacaoParcialDeId: { not: null } } })).toBe(1);
+  });
+
+  it("JÁ PAGO: nada se anula; fica a RESTITUIÇÃO A PROVIDENCIAR — uma só, mesmo repetindo", async () => {
+    await empenhado1247();
+    await liquidarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, criadoPor: LIQUIDANTE });
+    const liq = await prisma.liquidacaoDosEncargos.findFirstOrThrow({ select: { liquidacaoId: true } });
+    await pagar({ liquidacaoId: liq.liquidacaoId, numero: "PG-ENC-1", valor: "1247.00", data: D(2026, 6, 5), contaBancaria: "CC-ENC", fonteId: "fonte-500", historico: "Recolhimento dos encargos (fixture)", criadoPor: RH }, R_PAG, criarM05DepsComContratos(prisma));
+    await reduzirRat();
+    const r = await ajustarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, motivo: MOTIVO, criadoPor: RH });
+    expect(r.porGrupo[0]).toMatchObject({ anuladoDeLiquidacao: "0.00", anuladoDeEmpenho: "0.00", restituicaoRegistrada: "58.00" });
+    expect(await prisma.empenho.count({ where: { anulacaoParcialDeId: { not: null } } })).toBe(0);
+    expect(await prisma.liquidacao.count({ where: { anulacaoParcialDeId: { not: null } } })).toBe(0);
+    const r2 = await ajustarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, motivo: MOTIVO, criadoPor: RH });
+    expect([r2.atos, r2.reconhecidos]).toEqual([0, 1]);
+    expect(await prisma.ajusteDosEncargos.count({ where: { tipo: "RESTITUICAO_A_PROVIDENCIAR" } })).toBe(1);
+  });
+
+  it("CONCORRÊNCIA: dois ajustes simultâneos produzem UMA anulação e UM rastro", async () => {
+    await empenhado1247();
+    await reduzirRat();
+    const rs = await Promise.allSettled([1, 2].map(() => ajustarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, motivo: MOTIVO, criadoPor: RH })));
+    expect(rs.some((x) => x.status === "fulfilled")).toBe(true);
+    expect(await prisma.empenho.count({ where: { anulacaoParcialDeId: { not: null } } })).toBe(1);
+    expect(await prisma.ajusteDosEncargos.count()).toBe(1);
+    expect(await liquidoDaFicha()).toBe("1189.00");
+  });
+
+  it("RESPOSTA PERDIDA: a anulação do M05 foi gravada e o rastro não — o ajuste RECONHECE e não anula de novo", async () => {
+    await empenhado1247();
+    await reduzirRat();
+    const elo = await prisma.empenhoDosEncargos.findFirstOrThrow({ select: { empenhoId: true } });
+    const apuracao = await prisma.apuracaoDeEncargos.findFirstOrThrow({ orderBy: { numero: "desc" }, select: { numero: true } });
+    // o "primeiro envio": o M05 comitou a anulação com o número determinístico, e a resposta se perdeu
+    await anularEmpenhoParcial({ originalId: elo.empenhoId, numero: `FE/2026-05/ENCARGOS-AE${apuracao.numero}-${elo.empenhoId.slice(-6)}`, valor: "58.00", data: DATA_ATESTO, motivo: "primeiro envio sem resposta", criadoPor: RH }, criarM05DepsComContratos(prisma));
+    const r = await ajustarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, motivo: MOTIVO, criadoPor: RH });
+    // o reenvio: RECONHECE o ato já gravado (rastro com a anulação) e não anula de novo.
+    expect([r.atos, r.reconhecidos]).toEqual([0, 1]);
+    expect(await prisma.empenho.count({ where: { anulacaoParcialDeId: { not: null } } })).toBe(1);
+    expect((await prisma.ajusteDosEncargos.findFirstOrThrow({ select: { tipo: true, valor: true, anulacaoDeEmpenhoId: true } }))).toMatchObject({ tipo: "ANULACAO_DE_EMPENHO", anulacaoDeEmpenhoId: expect.any(String) });
+    // e um terceiro envio não tem o que fazer — e diz.
+    await expect(ajustarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, motivo: MOTIVO, criadoPor: RH })).rejects.toThrow(/SEM-REDUCAO-A-AJUSTAR/);
+    expect(await liquidoDaFicha()).toBe("1189.00");
+  });
+
+  it("EXERCÍCIO ENCERRADO: o M05 recusa nomeando; nada é anulado e a folha não é dada como corrigida", async () => {
+    await empenhado1247();
+    await reduzirRat();
+    const ex = await prisma.exercicio.findUniqueOrThrow({ where: { ano: 2026 }, select: { id: true } });
+    await prisma.encerramentoExercicio.create({ data: { exercicioId: ex.id, encerradoPor: "TESTE" } });
+    await expect(ajustarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, motivo: MOTIVO, criadoPor: RH })).rejects.toThrow(/AJUSTE-DOS-ENCARGOS-INTERROMPIDO: 0 ato.*ENCARGOS.*ENCERRADO.*NÃO está corrigida/s);
+    expect(await prisma.empenho.count({ where: { anulacaoParcialDeId: { not: null } } })).toBe(0);
+    expect(await prisma.ajusteDosEncargos.count()).toBe(0);
+  });
+
+  it("PARIDADE E SEGREGAÇÃO: a barra projeta o ajuste; quem certificou não ajusta; sem certificação da apuração nova, trava", async () => {
+    await empenhado1247();
+    await versaoAprovada(compRat, "0.005", "2026-05");
+    await apurarEncargosDaFolha(prisma, { folhaId, motivo: "RAT corrigido", criadoPor: RH });
+    let r = await retratoDosEncargos(prisma, folhaId, RH, { consultarDesignacao: false });
+    const cod = (e: { situacao: string; codigo?: string }) => (e.situacao === "ELEGIVEL" ? "ELEGIVEL" : e.codigo);
+    expect(cod(elegibilidadeParaAjustarEncargos(r!.estado, r!.ator))).toBe("ENCARGOS-NAO-CERTIFICADOS");
+    await expect(ajustarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, motivo: MOTIVO, criadoPor: RH })).rejects.toThrow(/ENCARGOS-NAO-CERTIFICADOS/);
+    await certificarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, criadoPor: ATESTADOR });
+    r = await retratoDosEncargos(prisma, folhaId, ATESTADOR, { consultarDesignacao: false });
+    expect(cod(elegibilidadeParaAjustarEncargos(r!.estado, r!.ator))).toBe("AUTOAJUSTE-DOS-ENCARGOS");
+    r = await retratoDosEncargos(prisma, folhaId, RH, { consultarDesignacao: false });
+    expect(cod(elegibilidadeParaAjustarEncargos(r!.estado, r!.ator))).toBe("ELEGIVEL");
   });
 });

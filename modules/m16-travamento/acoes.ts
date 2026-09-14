@@ -766,6 +766,7 @@ export type NomeDeServico =
   | "cadastrarGrupoDosEncargos"
   | "apropriarEncargosDaFolha"
   | "liquidarEncargosDaFolha"
+  | "ajustarEncargosDaFolha"
   // M21/M19 — a carta de serviços, as solicitações do requerente e a representação (V6.2 P3)
   | "cadastrarServicoDaCarta"
   | "cadastrarVersaoDoServico"
@@ -1193,6 +1194,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   cadastrarGrupoDosEncargos: "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA",
   apropriarEncargosDaFolha: "APROPRIAR_FOLHA",
   liquidarEncargosDaFolha: "LIQUIDAR_FOLHA",
+  // V7 M1 U3 — reduzir a despesa dos encargos é da mesma mão que a apropria; cada anulação do M05
+  // cobra DENTRO dela a sua ação (ANULAR_LIQUIDACAO_PARCIAL / ANULAR_EMPENHO_PARCIAL).
+  ajustarEncargosDaFolha: "APROPRIAR_FOLHA",
   // V6.2 P3 — a carta de serviços. Configurar a carta é um ato; pedir (protocolar, responder,
   // anexar) é o ato do REQUERENTE, conferido contra a titularidade na transação; decidir (exigir,
   // decidir, disponibilizar resposta) é o ato da mesa, no setor em que o processo está.

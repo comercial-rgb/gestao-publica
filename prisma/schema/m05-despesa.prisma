@@ -251,6 +251,8 @@ model Empenho {
   daFolha EmpenhoDaFolha?
   /// V6.2 — o elo com a apuração dos encargos da folha. VIRTUAL.
   dosEncargos EmpenhoDosEncargos? @relation("EmpenhoDosEncargos")
+  /// V7 M1 U3 — o rastro do ajuste para baixo dos encargos quando ESTA linha é a anulação parcial. VIRTUAL.
+  ajusteDosEncargos AjusteDosEncargos? @relation("AnulacaoDeEmpenhoDosEncargos")
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -349,6 +351,8 @@ model Liquidacao {
   liquidacaoDaFolha LiquidacaoDaFolha?
   /// V6.2 — o elo com a liquidação dos encargos da folha. VIRTUAL.
   liquidacaoDosEncargos LiquidacaoDosEncargos? @relation("LiquidacaoDosEncargos")
+  /// V7 M1 U3 — o rastro do ajuste para baixo quando ESTA linha é a anulação parcial. VIRTUAL.
+  ajusteDosEncargos     AjusteDosEncargos?     @relation("AnulacaoDeLiquidacaoDosEncargos")
 }
 
 /// Conta bancária do ente. Existe para que a TR 5.23 seja VERIFICÁVEL: sem
@@ -458,6 +462,8 @@ model Pagamento {
   movimentosDivida MovimentoDivida[]
   /// ENT03b — o precatório que este pagamento quitou. Campo VIRTUAL.
   movimentosPrecatorio MovimentoPrecatorio[]
+  /// V7 M1 U3 — a guia de recolhimento que este pagamento baixou. Campo VIRTUAL.
+  baixaDeGuia BaixaDaGuia? @relation("BaixaDeGuiaDeRecolhimento")
 
   criadoEm  DateTime @default(now())
   criadoPor String

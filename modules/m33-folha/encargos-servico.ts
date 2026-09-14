@@ -4,8 +4,10 @@ import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO, type AcaoDoSistema } from "../m16-travamento/acoes.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { AtoInelegivelError, Decimal, exigirElegivel, sumMoney, toMoney, type Money } from "../../packages/contracts/index.js";
+import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import { diaCivil } from "../../packages/datas/index.js";
 import { empenhar } from "../m05-despesa/servico.js";
+import { anularEmpenhoParcial, anularLiquidacaoParcial } from "../m05-despesa/anulacao-parcial.js";
 import { liquidar } from "../m05-despesa/servico-bloco2.js";
 import { roteiroEmpenho, roteiroLiquidacaoDaFolha, elementoDebitaEstoque } from "../m01-core-contabil/roteiros.js";
 import { criarM05DepsComContratos } from "../m11-licitacoes/adapter-m05.js";
@@ -14,6 +16,9 @@ import { situacaoDaCertificacao, designacaoVigenteEm, type SituacaoDaCertificaca
 import {
   apurarEncargos,
   diferencaAEmpenhar,
+  elegibilidadeParaAjustarEncargos,
+  planoDoGrupo,
+  type PosicaoDoGrupo,
   elegibilidadeParaApropriarEncargos,
   elegibilidadeParaCertificarEncargos,
   elegibilidadeParaLiquidarEncargos,
@@ -227,32 +232,79 @@ export async function apurarEncargosDaFolha(prisma: PrismaClient, input: ApurarE
 // O RETRATO DOS ATOS SOBRE OS ENCARGOS — o mesmo na tela e no caso de uso
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/** Por grupo: o valor da apuração vigente, o já empenhado pela folha e se esta apuração já empenhou. */
-async function planoDeEmpenho(tx: Tx, folhaId: string, apuracao: { readonly id: string; readonly porComponente: readonly ResumoDoComponente[] }) {
-  const comValor = apuracao.porComponente.filter((p) => new Decimal(p.total).gt(0));
-  const vinculos = await tx.componenteDoGrupoDeEmpenho.findMany({
-    where: { componente: { codigo: { in: comValor.map((p) => p.codigo) } } },
-    select: { componente: { select: { codigo: true } }, grupo: { select: { id: true, codigo: true, descricao: true, serie: true, fichaId: true, porServidor: true, credorId: true, credor: { select: { documento: true } }, tipoEmpenho: true, categoriaOrdemCronologica: true, contaVariacao: { select: { codigo: true } }, contaObrigacao: { select: { codigo: true } } } } },
-  });
+const SELECAO_DO_GRUPO = { id: true, codigo: true, descricao: true, serie: true, fichaId: true, porServidor: true, credorId: true, credor: { select: { documento: true } }, tipoEmpenho: true, categoriaOrdemCronologica: true, contaVariacao: { select: { codigo: true } }, contaObrigacao: { select: { codigo: true } } } as const;
+
+const linhaEstornavel = (l: { id: string; valor: { toFixed(n: number): string }; estornoDeId: string | null; anulacaoParcialDeId: string | null }) => ({ id: l.id, valor: toMoney(l.valor.toFixed(2)), estornoDeId: l.estornoDeId, anulacaoParcialDeId: l.anulacaoParcialDeId });
+
+/**
+ * A POSIÇÃO DE CADA GRUPO DOS ENCARGOS DA FOLHA — o que a apuração vigente pede e o que a despesa já
+ * reconhece, LÍQUIDO das anulações parciais e estornos do M05 (V7 M1 U3).
+ *
+ * ⚠️ INCLUI O GRUPO QUE A APURAÇÃO ZEROU: quem já tem empenho entra com pedido zero — senão a redução
+ * a zero sumiria do plano e o empenho antigo ficaria valendo em silêncio.
+ * ⚠️ O EMPENHADO É O LÍQUIDO do M05, não a soma das linhas originais de `EmpenhoDosEncargos`: depois
+ * de uma anulação, o novo aumento empenha só o que falta sobre o que CONTINUA valendo.
+ */
+async function posicaoDosGrupos(tx: Tx, folhaId: string, apuracao: { readonly id: string; readonly porComponente: readonly ResumoDoComponente[] }) {
+  const codigos = apuracao.porComponente.map((p) => p.codigo);
+  const vinculos = await tx.componenteDoGrupoDeEmpenho.findMany({ where: { componente: { codigo: { in: codigos } } }, select: { componente: { select: { codigo: true } }, grupo: { select: SELECAO_DO_GRUPO } } });
   const grupoDe = new Map(vinculos.map((v) => [v.componente.codigo, v.grupo]));
-  const semGrupo = comValor.filter((p) => !grupoDe.has(p.codigo)).map((p) => p.codigo);
+  const semGrupo = apuracao.porComponente.filter((p) => new Decimal(p.total).gt(0) && !grupoDe.has(p.codigo)).map((p) => p.codigo);
+  const empenhosDaFolha = await tx.empenhoDosEncargos.findMany({ where: { apuracao: { folhaId } }, select: { id: true, apuracaoId: true, empenhoId: true, valor: true, grupo: { select: SELECAO_DO_GRUPO }, liquidacao: { select: { id: true } } } });
   const porGrupo = new Map<string, { grupo: (typeof vinculos)[number]["grupo"]; pedido: Money }>();
-  for (const p of comValor) {
+  for (const p of apuracao.porComponente) {
     const g = grupoDe.get(p.codigo);
     if (g === undefined) continue;
     const acc = porGrupo.get(g.id) ?? { grupo: g, pedido: toMoney(0) };
     acc.pedido = toMoney(acc.pedido.plus(new Decimal(p.total)));
     porGrupo.set(g.id, acc);
   }
-  const empenhados = await tx.empenhoDosEncargos.findMany({ where: { apuracao: { folhaId } }, select: { apuracaoId: true, grupoId: true, valor: true } });
-  const plano = [...porGrupo.values()]
+  for (const e of empenhosDaFolha) if (!porGrupo.has(e.grupo.id)) porGrupo.set(e.grupo.id, { grupo: e.grupo, pedido: toMoney(0) });
+
+  const idsDeEmpenho = empenhosDaFolha.map((e) => e.empenhoId);
+  const [linhasDeEmpenho, linhasDeLiquidacao] = await Promise.all([
+    tx.empenho.findMany({ where: { OR: [{ id: { in: idsDeEmpenho } }, { anulacaoParcialDeId: { in: idsDeEmpenho } }, { estornoDeId: { in: idsDeEmpenho } }] }, select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } }),
+    tx.liquidacao.findMany({ where: { empenhoId: { in: idsDeEmpenho } }, select: { id: true, empenhoId: true, numero: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } }),
+  ]);
+  const linhasDePagamento = await tx.pagamento.findMany({ where: { liquidacaoId: { in: linhasDeLiquidacao.map((l) => l.id) } }, select: { id: true, liquidacaoId: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } });
+
+  const detalheDoEmpenho = (empenhoId: string) => {
+    const doEmpenho = linhasDeEmpenho.filter((l) => l.id === empenhoId || l.anulacaoParcialDeId === empenhoId || l.estornoDeId === empenhoId);
+    const liqs = linhasDeLiquidacao.filter((l) => l.empenhoId === empenhoId);
+    const originais = liqs.filter((l) => l.estornoDeId === null && l.anulacaoParcialDeId === null);
+    const liquidacoes = originais.map((o) => {
+      const liquido = somaLiquidaEstornaveis(liqs.filter((l) => l.id === o.id || l.anulacaoParcialDeId === o.id || l.estornoDeId === o.id).map(linhaEstornavel));
+      const pago = somaLiquidaEstornaveis(linhasDePagamento.filter((pg) => pg.liquidacaoId === o.id).map(linhaEstornavel));
+      return { id: o.id, numero: o.numero, liquido, pago };
+    });
+    return {
+      empenhado: somaLiquidaEstornaveis(doEmpenho.map(linhaEstornavel)),
+      liquidado: somaLiquidaEstornaveis(liqs.map(linhaEstornavel)),
+      pago: sumMoney(liquidacoes.map((l) => l.pago)),
+      liquidacoes,
+    };
+  };
+
+  const posicoes = [...porGrupo.values()]
     .sort((a, b) => a.grupo.codigo.localeCompare(b.grupo.codigo))
     .map((x) => {
-      const jaEmpenhado = sumMoney(empenhados.filter((e) => e.grupoId === x.grupo.id).map((e) => toMoney(e.valor)));
-      const destaApuracao = empenhados.some((e) => e.grupoId === x.grupo.id && e.apuracaoId === apuracao.id);
-      return { ...x, jaEmpenhado, destaApuracao, diferenca: diferencaAEmpenhar(x.pedido, jaEmpenhado) };
+      const empenhos = empenhosDaFolha.filter((e) => e.grupo.id === x.grupo.id).map((e) => ({ ...e, ...detalheDoEmpenho(e.empenhoId) }));
+      const posicao: PosicaoDoGrupo = {
+        apurado: x.pedido,
+        empenhado: sumMoney(empenhos.map((e) => e.empenhado)),
+        liquidado: sumMoney(empenhos.map((e) => e.liquidado)),
+        pago: sumMoney(empenhos.map((e) => e.pago)),
+      };
+      return { grupo: x.grupo, pedido: x.pedido, empenhos, posicao, plano: planoDoGrupo(posicao), destaApuracao: empenhosDaFolha.some((e) => e.grupo.id === x.grupo.id && e.apuracaoId === apuracao.id) };
     });
-  return { plano, semGrupo };
+  return { posicoes, semGrupo };
+}
+
+/** Por grupo: o valor da apuração vigente, o empenhado LÍQUIDO e o que falta — o caminho do AUMENTO. */
+async function planoDeEmpenho(tx: Tx, folhaId: string, apuracao: { readonly id: string; readonly porComponente: readonly ResumoDoComponente[] }) {
+  const { posicoes, semGrupo } = await posicaoDosGrupos(tx, folhaId, apuracao);
+  const plano = posicoes.map((p) => ({ grupo: p.grupo, pedido: p.pedido, jaEmpenhado: p.posicao.empenhado, destaApuracao: p.destaApuracao, diferenca: diferencaAEmpenhar(p.pedido, p.posicao.empenhado), plano: p.plano }));
+  return { plano, semGrupo, posicoes };
 }
 
 async function apuracaoVigente(tx: Tx, folhaId: string) {
@@ -286,10 +338,11 @@ export async function retratoDosEncargos(prisma: PrismaClient, folhaId: string, 
     fechada: folha.fechamento !== null,
     apuracao: a === null ? null : { numero: a.numero, completa: a.completa, apuradaPor: a.criadoPor },
     certificacao: a === null ? null : a.situacao,
-    gruposPendentesDeEmpenho: plano === null ? 0 : plano.plano.filter((p) => p.diferenca.tipo !== "NADA" && !p.destaApuracao).length,
+    gruposPendentesDeEmpenho: plano === null ? 0 : plano.plano.filter((p) => p.diferenca.tipo === "EMPENHAR" && !p.destaApuracao).length,
+    gruposComReducao: plano === null ? 0 : plano.plano.filter((p) => p.plano.tipo === "REDUZIR" && (p.plano.anularEmpenho.gt(0) || !p.plano.restituir.isZero())).length,
     componentesSemGrupo: plano?.semGrupo ?? [],
     empenhosDaApuracao: empenhosDaApuracao.length,
-    liquidados: empenhosDaApuracao.filter((e) => e.liquidacao !== null).length,
+    liquidados: plano === null ? 0 : plano.posicoes.flatMap((p) => p.empenhos).filter((e) => e.liquidacao !== null || e.empenhado.lte(e.liquidado)).length,
   };
   const ultima = a?.certificacoes.slice().sort((x, y) => y.criadoEm.getTime() - x.criadoEm.getTime())[0];
   const versao = createHash("sha256").update(JSON.stringify([a?.id ?? null, a?.certificacoes.map((c) => c.id).sort() ?? [], estado.empenhosDaApuracao, estado.liquidados])).digest("hex").slice(0, 16);
@@ -395,7 +448,8 @@ export async function apropriarEncargosDaFolha(prisma: PrismaClient, input: Apro
     competencia: folha.competencia, fechada: folha.fechamento !== null,
     apuracao: a === null ? null : { numero: a.numero, completa: a.completa, apuradaPor: a.criadoPor },
     certificacao: a?.situacao ?? null,
-    gruposPendentesDeEmpenho: plano.filter((p) => p.diferenca.tipo !== "NADA" && !p.destaApuracao).length,
+    gruposPendentesDeEmpenho: plano.filter((p) => p.diferenca.tipo === "EMPENHAR" && !p.destaApuracao).length,
+    gruposComReducao: 0,
     componentesSemGrupo: semGrupo,
     empenhosDaApuracao: 0, liquidados: 0,
   }));
@@ -406,7 +460,7 @@ export async function apropriarEncargosDaFolha(prisma: PrismaClient, input: Apro
   if (reducoes.length > 0) {
     throw new Error(
       `REDUCAO-DE-ENCARGO-EMPENHADO: ${reducoes.map((p) => `${p.grupo.codigo} (empenhado ${p.jaEmpenhado.toFixed(2)}, apurado ${p.pedido.toFixed(2)})`).join("; ")}. ` +
-        `A apuração nova pede MENOS do que já foi empenhado; desfazer despesa é anulação parcial pelo M05, com o seu lançamento — não um empenho negativo. Nada foi gravado.`
+        `A apuração nova pede MENOS do que a despesa líquida já reconhece; use "Ajustar os encargos para baixo", que anula pelo M05 o que ainda cabe anular e registra o que já foi pago — não um empenho negativo. Nada foi gravado.`
     );
   }
   const incoerentes = plano.filter((p) => p.grupo.porServidor || p.grupo.credorId === null);
@@ -535,17 +589,25 @@ export async function liquidarEncargosDaFolha(prisma: PrismaClient, input: Liqui
   const semContas = [...new Set(empenhos.filter((e) => e.liquidacao === null && (e.grupo.contaVariacao === null || e.grupo.contaObrigacao === null)).map((e) => e.grupo.codigo))];
   if (semContas.length > 0) throw new Error(`GRUPO-SEM-CONTAS-DA-LIQUIDACAO: ${semContas.join(", ")} não declara(m) as contas da liquidação dos encargos. Nada foi gravado.`);
   const responsavelAtesto = `${certificacao.designacao.pessoa.versoes[0]?.nome ?? certificacao.designacao.pessoa.documento} (${certificacao.designacao.atoDesignacao})`;
+  // ⚠️ V7 M1 U3: liquida-se o EMPENHADO LÍQUIDO ainda não liquidado — um empenho reduzido antes da
+  // liquidação não se liquida pelo valor original (o M05 recusaria, e com razão).
+  const liquidoPorElo = new Map((await posicaoDosGrupos(prisma, d.folhaId, a)).posicoes.flatMap((p) => p.empenhos.map((e) => [e.id, toMoney(e.empenhado.minus(e.liquidado))] as const)));
   const deps = criarM05DepsComContratos(prisma);
   let liquidadas = 0;
   let jaExistiam = 0;
   let total = toMoney(0);
   for (const e of empenhos) {
-    const valor = toMoney(e.valor);
-    total = toMoney(total.plus(valor));
+    const valor = liquidoPorElo.get(e.id) ?? toMoney(e.valor);
     if (e.liquidacao !== null) {
       jaExistiam += 1;
+      total = toMoney(total.plus(toMoney(e.valor)));
       continue;
     }
+    if (valor.lte(0)) {
+      jaExistiam += 1; // anulado por inteiro antes de liquidar: não há o que liquidar
+      continue;
+    }
+    total = toMoney(total.plus(valor));
     const numero = e.empenho.numero;
     try {
       const ja = await prisma.liquidacao.findUnique({ where: { empenhoId_numero: { empenhoId: e.empenhoId, numero } }, select: { id: true } });
@@ -569,6 +631,185 @@ export async function liquidarEncargosDaFolha(prisma: PrismaClient, input: Liqui
     }
   }
   return { competencia: folha.competencia, liquidadas, jaExistiam, pendentes: empenhos.length - liquidadas - jaExistiam, total };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// O AJUSTE PARA BAIXO — V7 M1 U3
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const zAjustarEncargosInput = z.object({ folhaId: z.string().min(1), data: z.coerce.date(), motivo: z.string().trim().min(10), criadoPor: z.string().min(1) });
+export type AjustarEncargosInput = z.input<typeof zAjustarEncargosInput>;
+
+export interface ResultadoDoAjusteDosEncargos {
+  readonly competencia: string;
+  readonly apuracao: number;
+  readonly porGrupo: readonly {
+    readonly codigo: string;
+    readonly apurado: string;
+    readonly empenhadoAntes: string;
+    readonly anuladoDeLiquidacao: string;
+    readonly anuladoDeEmpenho: string;
+    readonly restituicaoRegistrada: string;
+  }[];
+  readonly atos: number;
+  readonly reconhecidos: number;
+}
+
+export class AjusteDosEncargosInterrompidoError extends Error {
+  constructor(readonly feitos: number, readonly ondeParou: string, readonly motivo: string) {
+    super(
+      `AJUSTE-DOS-ENCARGOS-INTERROMPIDO: ${feitos} ato(s) de ajuste já gravado(s); parou no grupo ${ondeParou}. Motivo: ${motivo} ` +
+        `Os atos gravados CONTINUAM válidos e a folha NÃO está corrigida por inteiro. Resolva a causa e ajustar de novo continua de onde parou — sem anular duas vezes.`
+    );
+    this.name = "AjusteDosEncargosInterrompidoError";
+  }
+}
+
+/**
+ * AJUSTA OS ENCARGOS PARA BAIXO quando a apuração vigente pede menos do que a despesa líquida.
+ *
+ * Por grupo, na ordem da cadeia (`planoDoGrupo`): anula pelo M05 a parte liquidada e NÃO paga
+ * (`anularLiquidacaoParcial`, que confere o saldo não pago e a cascata), depois a parte do empenho
+ * ainda não liquidada (`anularEmpenhoParcial`, que devolve o saldo à ficha) — cada ato com o lançamento
+ * DO M05, no exercício e na competência que o M05 exige (período fechado recusa nomeando; nada abre
+ * período). O que já foi PAGO não se anula: vira `RESTITUICAO_A_PROVIDENCIAR`.
+ *
+ * ⚠️ IDEMPOTENTE E RETOMÁVEL. O número de cada anulação é determinístico por apuração × grupo ×
+ * documento; antes de chamar o M05 procura-se a anulação com esse número (a resposta perdida depois do
+ * commit) e o rastro `AjusteDosEncargos` tem chave única. Rodar de novo recalcula a posição LÍQUIDA e
+ * faz só o que falta. Uma falha no meio NÃO rotula a folha como corrigida.
+ */
+/** As anulações parciais do M05 com número do ajuste (`…-AL{n}-…` / `…-AE{n}-…`) que ainda não têm rastro. */
+async function reconhecerAnulacoesSemRastro(prisma: PrismaClient, folhaId: string, competencia: string, motivo: string, criadoPor: string): Promise<number> {
+  const elos = await prisma.empenhoDosEncargos.findMany({ where: { apuracao: { folhaId } }, select: { empenhoId: true, grupo: { select: { id: true, serie: true, codigo: true } } } });
+  const apuracoes = new Map((await prisma.apuracaoDeEncargos.findMany({ where: { folhaId }, select: { id: true, numero: true } })).map((x) => [x.numero, x.id]));
+  let n = 0;
+  for (const e of elos) {
+    const prefixo = `${e.grupo.serie}/${competencia}/${e.grupo.codigo}`;
+    const [anulEmp, anulLiq] = await Promise.all([
+      prisma.empenho.findMany({ where: { anulacaoParcialDeId: e.empenhoId, numero: { startsWith: `${prefixo}-AE` }, ajusteDosEncargos: null }, select: { id: true, numero: true, valor: true } }),
+      prisma.liquidacao.findMany({ where: { empenhoId: e.empenhoId, anulacaoParcialDeId: { not: null }, numero: { startsWith: `${prefixo}-AL` }, ajusteDosEncargos: null }, select: { id: true, numero: true, valor: true } }),
+    ]);
+    for (const [tipo, linhas, sigla] of [["ANULACAO_DE_EMPENHO", anulEmp, "AE"], ["ANULACAO_DE_LIQUIDACAO", anulLiq, "AL"]] as const) {
+      for (const l of linhas) {
+        const numeroDaApuracao = Number(new RegExp(`-${sigla}(\\d+)-`).exec(l.numero)?.[1] ?? "0");
+        const apuracaoId = apuracoes.get(numeroDaApuracao);
+        if (apuracaoId === undefined) continue;
+        try {
+          await prisma.ajusteDosEncargos.create({
+            data: {
+              chave: `${apuracaoId}:${e.grupo.id}:${sigla}:${l.id}`, apuracaoId, grupoId: e.grupo.id, tipo, valor: l.valor.toFixed(2),
+              anulacaoDeEmpenhoId: tipo === "ANULACAO_DE_EMPENHO" ? l.id : null, anulacaoDeLiquidacaoId: tipo === "ANULACAO_DE_LIQUIDACAO" ? l.id : null,
+              motivo: `${motivo} (ato reconhecido: a anulação ${l.numero} já estava gravada no M05)`, criadoPor,
+            },
+          });
+          n += 1;
+        } catch (err) {
+          if ((err as { code?: string }).code !== "P2002") throw err;
+        }
+      }
+    }
+  }
+  return n;
+}
+
+export async function ajustarEncargosDaFolha(prisma: PrismaClient, input: AjustarEncargosInput): Promise<ResultadoDoAjusteDosEncargos> {
+  const d = zAjustarEncargosInput.parse(input);
+  const folha = await prisma.folhaDePagamento.findUnique({ where: { id: d.folhaId }, select: { competencia: true, tipo: true, fechamento: { select: { id: true } } } });
+  if (folha === null) throw new Error(`Folha ${d.folhaId} não existe. Nada foi gravado.`);
+  await prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.ajustarEncargosDaFolha, "ENTE");
+  });
+  const a = await apuracaoVigente(prisma, d.folhaId);
+  // ⚠️ RECONHECER ANTES DE DECIDIR: uma anulação do M05 com o número determinístico do ajuste que ficou
+  // sem rastro (a resposta se perdeu depois do commit) é registrada agora — senão o reenvio veria "nada
+  // a reduzir" e o ato já praticado ficaria sem autor de negócio no rastro.
+  const reconhecidosAntes = a === null ? 0 : await reconhecerAnulacoesSemRastro(prisma, d.folhaId, folha.competencia, d.motivo, d.criadoPor);
+  const inicial = a === null ? null : await posicaoDosGrupos(prisma, d.folhaId, a);
+  if (reconhecidosAntes > 0 && inicial !== null && !inicial.posicoes.some((p) => p.plano.tipo === "REDUZIR" && (p.plano.anularEmpenho.gt(0) || p.plano.restituir.gt(0)))) {
+    return { competencia: folha.competencia, apuracao: a?.numero ?? 0, porGrupo: [], atos: 0, reconhecidos: reconhecidosAntes };
+  }
+  exigirElegivel(elegibilidadeParaAjustarEncargos(
+    {
+      competencia: folha.competencia, fechada: folha.fechamento !== null,
+      apuracao: a === null ? null : { numero: a.numero, completa: a.completa, apuradaPor: a.criadoPor },
+      certificacao: a?.situacao ?? null, gruposPendentesDeEmpenho: 0, componentesSemGrupo: [], empenhosDaApuracao: 0, liquidados: 0,
+      gruposComReducao: inicial === null ? 0 : inicial.posicoes.filter((p) => p.plano.tipo === "REDUZIR").length,
+    },
+    { apurou: a?.criadoPor === d.criadoPor, certificou: a?.ultimaCertificacao?.criadoPor === d.criadoPor, designado: null }
+  ));
+  if (a === null || inicial === null) throw new Error("estado inconsistente");
+
+  const deps = criarM05DepsComContratos(prisma);
+  let atos = 0;
+  let reconhecidos = 0;
+  const porGrupo: ResultadoDoAjusteDosEncargos["porGrupo"][number][] = [];
+
+  const registrar = async (chave: string, dados: { grupoId: string; tipo: "ANULACAO_DE_LIQUIDACAO" | "ANULACAO_DE_EMPENHO" | "RESTITUICAO_A_PROVIDENCIAR"; valor: Money; anulacaoDeEmpenhoId?: string; anulacaoDeLiquidacaoId?: string }): Promise<void> => {
+    try {
+      await prisma.ajusteDosEncargos.create({
+        data: { chave, apuracaoId: a.id, grupoId: dados.grupoId, tipo: dados.tipo, valor: dados.valor.toFixed(2), anulacaoDeEmpenhoId: dados.anulacaoDeEmpenhoId ?? null, anulacaoDeLiquidacaoId: dados.anulacaoDeLiquidacaoId ?? null, motivo: d.motivo, criadoPor: d.criadoPor },
+      });
+      atos += 1;
+    } catch (e) {
+      if ((e as { code?: string }).code !== "P2002") throw e;
+      reconhecidos += 1; // outra execução (ou a anterior, que perdeu a resposta) já registrou
+    }
+  };
+
+  for (const inicio of inicial.posicoes) {
+    if (inicio.plano.tipo !== "REDUZIR") continue;
+    const g = inicio.grupo;
+    const prefixo = `${g.serie}/${folha.competencia}/${g.codigo}`;
+    const linha = { codigo: g.codigo, apurado: inicio.posicao.apurado.toFixed(2), empenhadoAntes: inicio.posicao.empenhado.toFixed(2), anuladoDeLiquidacao: "0.00", anuladoDeEmpenho: "0.00", restituicaoRegistrada: "0.00" };
+    try {
+      // 1) A LIQUIDAÇÃO NÃO PAGA — da mais recente para a mais antiga.
+      let faltaLiq = inicio.plano.anularLiquidacao;
+      for (const e of [...inicio.empenhos].reverse()) {
+        for (const l of [...e.liquidacoes].reverse()) {
+          if (faltaLiq.isZero()) break;
+          const naoPago = toMoney(l.liquido.minus(l.pago));
+          if (naoPago.lte(0)) continue;
+          const valor = toMoney(Decimal.min(faltaLiq, naoPago));
+          const numero = `${prefixo}-AL${a.numero}-${l.numero}`.slice(0, 60);
+          const ja = await prisma.liquidacao.findUnique({ where: { empenhoId_numero: { empenhoId: e.empenhoId, numero } }, select: { id: true, valor: true } });
+          const anulacaoId = ja?.id ?? (await anularLiquidacaoParcial({ originalId: l.id, numero, valor: valor.toFixed(2), data: d.data, motivo: `Ajuste para baixo dos encargos (apuração nº ${a.numero}): ${d.motivo}`, criadoPor: d.criadoPor }, deps)).anulacaoId;
+          const aplicado = ja === null ? valor : toMoney(ja.valor);
+          await registrar(`${a.id}:${g.id}:AL:${anulacaoId}`, { grupoId: g.id, tipo: "ANULACAO_DE_LIQUIDACAO", valor: aplicado, anulacaoDeLiquidacaoId: anulacaoId });
+          faltaLiq = toMoney(Decimal.max(faltaLiq.minus(aplicado), toMoney(0)));
+          linha.anuladoDeLiquidacao = toMoney(new Decimal(linha.anuladoDeLiquidacao).plus(aplicado)).toFixed(2);
+        }
+      }
+      // 2) O EMPENHO — recalculado depois das anulações de liquidação (o saldo a liquidar mudou).
+      const agora = (await posicaoDosGrupos(prisma, d.folhaId, a)).posicoes.find((p) => p.grupo.id === g.id);
+      if (agora !== undefined && agora.plano.tipo === "REDUZIR") {
+        let faltaEmp = toMoney(Decimal.min(agora.plano.anularEmpenho, agora.plano.reducao));
+        for (const e of [...agora.empenhos].reverse()) {
+          if (faltaEmp.isZero()) break;
+          const aLiquidar = toMoney(e.empenhado.minus(e.liquidado));
+          if (aLiquidar.lte(0)) continue;
+          const valor = toMoney(Decimal.min(faltaEmp, aLiquidar));
+          const numero = `${prefixo}-AE${a.numero}-${e.empenhoId.slice(-6)}`;
+          const ja = await prisma.empenho.findUnique({ where: { fichaId_numero: { fichaId: g.fichaId, numero } }, select: { id: true, valor: true } });
+          const anulacaoId = ja?.id ?? (await anularEmpenhoParcial({ originalId: e.empenhoId, numero, valor: valor.toFixed(2), data: d.data, motivo: `Ajuste para baixo dos encargos (apuração nº ${a.numero}): ${d.motivo}`, criadoPor: d.criadoPor }, deps)).anulacaoId;
+          const aplicado = ja === null ? valor : toMoney(ja.valor);
+          await registrar(`${a.id}:${g.id}:AE:${anulacaoId}`, { grupoId: g.id, tipo: "ANULACAO_DE_EMPENHO", valor: aplicado, anulacaoDeEmpenhoId: anulacaoId });
+          faltaEmp = toMoney(Decimal.max(faltaEmp.minus(aplicado), toMoney(0)));
+          linha.anuladoDeEmpenho = toMoney(new Decimal(linha.anuladoDeEmpenho).plus(aplicado)).toFixed(2);
+        }
+      }
+      // 3) O JÁ PAGO — nada se anula; registra-se a necessidade (uma por apuração × grupo).
+      const final = (await posicaoDosGrupos(prisma, d.folhaId, a)).posicoes.find((p) => p.grupo.id === g.id);
+      if (final !== undefined && final.plano.tipo === "REDUZIR" && final.plano.anularEmpenho.isZero() && final.plano.restituir.gt(0)) {
+        await registrar(`${a.id}:${g.id}:RESTITUIR`, { grupoId: g.id, tipo: "RESTITUICAO_A_PROVIDENCIAR", valor: final.plano.restituir });
+        linha.restituicaoRegistrada = final.plano.restituir.toFixed(2);
+      }
+    } catch (e) {
+      throw new AjusteDosEncargosInterrompidoError(atos, g.codigo, e instanceof Error ? e.message : String(e));
+    }
+    porGrupo.push(linha);
+  }
+  return { competencia: folha.competencia, apuracao: a.numero, porGrupo, atos, reconhecidos };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
