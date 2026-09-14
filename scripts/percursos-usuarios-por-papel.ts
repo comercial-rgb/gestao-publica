@@ -7,7 +7,7 @@ import type { AcaoDoSistema } from "../modules/m16-travamento/acoes.js";
 /**
  * USUÁRIOS SINTÉTICOS POR PAPEL — banco dos PERCURSOS (V6 P1.3 / V4 §9).
  *
- * Cria, se não existirem, quatro perfis e quatro usuários com o recorte de cada função — nunca o
+ * Cria, se não existirem, um perfil e um usuário por função, com o recorte de cada uma — nunca o
  * admin universal em todos os passos. A leitura é permissão (V3 4.1): cada perfil recebe o
  * CONSULTAR_<ÁREA> das áreas em que age. Concessões GLOBAIS (o ente): os smokes exercitam o ente
  * inteiro; a segregação por unidade continua provada pelo `operador.poc` (ENT10).
@@ -70,6 +70,25 @@ export const PAPEIS: readonly Papel[] = [
       // V6 P2.3 — a folha: o RH parametriza, lança e CALCULA. Quem FECHA é a contabilidade (é o
       // fechamento que vai ao empenho), e essa separação é percorrida pelo smoke da folha.
       "CONFIGURAR_TABELAS_DA_FOLHA", "CADASTRAR_RUBRICA", "LANCAR_NA_FOLHA", "ABRIR_FOLHA", "CALCULAR_FOLHA", "CANCELAR_CALCULO_DA_FOLHA", "CONSULTAR_FOLHA"],
+  },
+  {
+    identificador: "atestador@percursos.local",
+    nome: "Responsavel designado para o atesto da folha (percurso)",
+    perfil: "ATESTO DA FOLHA — PERCURSO",
+    descricao: "CERTIFICA a folha fechada — e só com designação vigente do ente. Não calcula, não fecha, não empenha, não liquida, não paga.",
+    // ⚠️ UMA AÇÃO DE ESCRITA, e ela NÃO BASTA: certificar exige também uma DESIGNAÇÃO vigente no
+    // dia do ato. É de propósito que este papel não tenha CALCULAR_FOLHA nem FECHAR_FOLHA — quem
+    // prepara não certifica, e o percurso prova a recusa nas duas pontas.
+    acoes: ["CERTIFICAR_FOLHA", "CONSULTAR_FOLHA", "CONSULTAR_PESSOAL", "CONSULTAR_CADASTROS"],
+  },
+  {
+    identificador: "liquidante@percursos.local",
+    nome: "Agente autorizado a liquidar a folha (percurso)",
+    perfil: "LIQUIDACAO DA FOLHA — PERCURSO",
+    descricao: "Reconhece a obrigação da folha CERTIFICADA pelo caminho da despesa. Não certifica, não fecha, não paga.",
+    // ⚠️ AS DUAS AÇÕES, e não uma: LIQUIDAR_FOLHA autoriza o ATO sobre a folha, e LIQUIDAR é
+    // exigida pelo M05 em CADA liquidação, na unidade da ficha. LIQUIDAR_FOLHA não contorna o M05.
+    acoes: ["LIQUIDAR_FOLHA", "LIQUIDAR", "CONSULTAR_FOLHA", "CONSULTAR_DESPESA", "CONSULTAR_CADASTROS"],
   },
   {
     identificador: "servidor@percursos.local",

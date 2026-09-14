@@ -172,6 +172,46 @@ export async function cadastrarGrupoDeEmpenhoDaFolha(prisma: PrismaClient, input
   });
 }
 
+export const zDefinirContasDaLiquidacaoInput = z.object({
+  grupoId: z.string().min(1),
+  contaVariacaoId: z.string().min(1),
+  contaObrigacaoId: z.string().min(1),
+  criadoPor: z.string().min(1),
+});
+export type DefinirContasDaLiquidacaoInput = z.input<typeof zDefinirContasDaLiquidacaoInput>;
+
+/**
+ * DEFINE (OU TROCA) AS DUAS CONTAS PATRIMONIAIS DA LIQUIDAÇÃO DESTE GRUPO.
+ *
+ * ⚠️ É O ÚNICO UPDATE DO M33, e ele existe por uma razão medida: as colunas nasceram NULLABLE
+ * (migration aditiva, sem inventar conta para grupo já gravado), e sem este ato os grupos
+ * cadastrados antes desta entrega ficariam para sempre sem caminho pela tela — a liquidação
+ * recusaria e não haveria como resolver. Criar um grupo novo também não serviria: uma rubrica
+ * pertence a um grupo só, e mudá-la de grupo exigiria DELETE.
+ *
+ * ⚠️ O PASSADO NÃO MUDA. As liquidações já gravadas têm o seu lançamento no razão, com as contas
+ * que valiam no ato; trocar aqui vale para as PRÓXIMAS. É a mesma doutrina da tabela do ente:
+ * parâmetro novo não recalcula competência fechada.
+ *
+ * O grant é por COLUNA (`prisma/papel-runtime.ts`): o runtime não alcança ficha, série, credor
+ * nem `porServidor` — trocar a ficha de um grupo já empenhado moveria a despesa de dotação.
+ */
+export async function definirContasDaLiquidacaoDoGrupo(prisma: PrismaClient, input: DefinirContasDaLiquidacaoInput): Promise<{ readonly grupoId: string }> {
+  const d = zDefinirContasDaLiquidacaoInput.parse(input);
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.definirContasDaLiquidacaoDoGrupo, "ENTE");
+    const g = await tx.grupoDeEmpenhoDaFolha.findUnique({ where: { id: d.grupoId }, select: { id: true, codigo: true } });
+    if (g === null) throw new Error(`Grupo de empenho ${d.grupoId} não existe. Nada foi gravado.`);
+    for (const [campo, id] of [["contaVariacaoId", d.contaVariacaoId], ["contaObrigacaoId", d.contaObrigacaoId]] as const) {
+      if ((await tx.contaPcasp.findUnique({ where: { id }, select: { id: true } })) === null) {
+        throw new Error(`Conta do plano ${id} (${campo}) não existe. Nada foi gravado.`);
+      }
+    }
+    await tx.grupoDeEmpenhoDaFolha.update({ where: { id: g.id }, data: { contaVariacaoId: d.contaVariacaoId, contaObrigacaoId: d.contaObrigacaoId } });
+    return { grupoId: g.id };
+  });
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // O ATO — a folha fechada vira despesa
 // ═══════════════════════════════════════════════════════════════════════════════

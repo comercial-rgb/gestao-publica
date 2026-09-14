@@ -4,7 +4,7 @@ import { formatarDocumento } from "../../../packages/documento/index.js";
 import type { Prisma } from "../../../prisma/generated/client/client.js";
 import { situacaoDaFolha, vigenteNaCompetencia, type SituacaoDaFolha } from "../../../modules/m33-folha/dominio.js";
 import { situacaoDoVinculo, type EventoDoVinculo } from "../../../modules/m32-pessoal/dominio.js";
-import { apropriacaoDaFolha, apropriarFolha, cadastrarGrupoDeEmpenhoDaFolha } from "../../../modules/m33-folha/apropriacao.js";
+import { apropriacaoDaFolha, apropriarFolha, cadastrarGrupoDeEmpenhoDaFolha, definirContasDaLiquidacaoDoGrupo } from "../../../modules/m33-folha/apropriacao.js";
 import {
   certificacaoDaFolha,
   certificarFolha,
@@ -700,6 +700,14 @@ export async function opcoesDoGrupoDeEmpenho(): Promise<OpcoesDoCadastro> {
 export async function rubricasParaGrupoDeEmpenho(): Promise<readonly { readonly id: string; readonly rotulo: string; readonly jaNoGrupo: string | null }[]> {
   const rubricas = await cliente().rubrica.findMany({ where: { tipo: "PROVENTO" }, orderBy: { ordem: "asc" }, select: { id: true, codigo: true, descricao: true, grupoDeEmpenho: { select: { grupo: { select: { codigo: true } } } } } });
   return rubricas.map((r) => ({ id: r.id, rotulo: `${r.codigo} — ${r.descricao}`, jaNoGrupo: r.grupoDeEmpenho?.grupo.codigo ?? null }));
+}
+
+export async function acaoDoGrupoDeEmpenho(acao: string, grupoId: string, c: Campos): Promise<string> {
+  if (acao !== "definir-contas") throw new Error(`Ação desconhecida: ${acao}`);
+  await comEscritaAutenticada("CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA", (criadoPor) =>
+    definirContasDaLiquidacaoDoGrupo(cliente(), { grupoId, contaVariacaoId: t(c, "contaVariacaoId"), contaObrigacaoId: t(c, "contaObrigacaoId"), criadoPor })
+  );
+  return "Contas da liquidação definidas para este grupo. As liquidações já gravadas não mudam — elas têm o lançamento com as contas que valiam no ato.";
 }
 
 /** A ilha manda o cabeçalho e as rubricas marcadas (`rubricas.N.id`). */

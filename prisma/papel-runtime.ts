@@ -63,6 +63,21 @@ export const ESCRITA_MUTAVEL_DO_RUNTIME: Readonly<
     delete: false,
   },
   VinculoUsuarioPerfil: { update: [], delete: true },
+
+  // ⚠️ V6.1 — AS DUAS CONTAS DA LIQUIDAÇÃO DO GRUPO DA FOLHA, e NADA MAIS desta tabela.
+  // As colunas nasceram NULLABLE (migration aditiva, sem inventar conta para grupo já gravado), e
+  // sem poder defini-las depois os grupos cadastrados antes desta entrega ficariam sem caminho
+  // pela tela: a liquidação recusaria nomeando o grupo e não haveria como resolver. Criar um
+  // grupo novo não serviria — uma rubrica pertence a um grupo só, e movê-la exigiria DELETE.
+  //
+  // ⚠️ POR COLUNA, e é aqui que está a proteção: `GRANT UPDATE ON "GrupoDeEmpenhoDaFolha"`
+  // deixaria o runtime trocar `fichaId` de um grupo JÁ EMPENHADO — moveria a despesa de dotação
+  // sem tocar num lançamento. `serie` reescreveria a numeração determinística; `porServidor`
+  // trocaria o credor de todos os próximos empenhos. Nenhuma dessas colunas está no grant.
+  //
+  // As liquidações já gravadas não mudam: elas têm o seu lançamento no razão com as contas que
+  // valiam no ato. Trocar aqui vale para as PRÓXIMAS.
+  GrupoDeEmpenhoDaFolha: { update: ["contaVariacaoId", "contaObrigacaoId"], delete: false },
   // V3 (4.5): a PUBLICAÇÃO de uma versão de roteiro é a única escrita depois da criação, e
   // só nestas três colunas — as contas e o motivo nunca mudam (para outro par, outra versão).
   VersaoDeRoteiro: { update: ["situacao", "publicadaEm", "publicadaPor"], delete: false },

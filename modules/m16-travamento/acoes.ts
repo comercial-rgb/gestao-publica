@@ -725,6 +725,7 @@ export type NomeDeServico =
   | "registrarAvaliacaoExperiencia"
   // M33 — folha
   | "cadastrarGrupoDeEmpenhoDaFolha"
+  | "definirContasDaLiquidacaoDoGrupo"
   | "apropriarFolha"
   | "cadastrarTabelaDeContribuicao"
   | "cadastrarTabelaIrrf"
@@ -1121,6 +1122,10 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // de EMPENHAR (o M05 exige a sua ação em cada empenho, dentro da transação). Apropriar não é
   // atalho para empenhar: é o ato de dizer que aquela competência fechada vira aquela despesa.
   cadastrarGrupoDeEmpenhoDaFolha: "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA",
+  // V6.1 — definir as duas contas patrimoniais da liquidação é o MESMO poder de parametrizar o
+  // grupo (quais rubricas, em qual ficha, para quem): quem monta o grupo diz onde a obrigação
+  // nasce. Um crachá à parte não separaria ninguém de nada.
+  definirContasDaLiquidacaoDoGrupo: "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA",
   apropriarFolha: "APROPRIAR_FOLHA",
   cadastrarTabelaDeContribuicao: "CONFIGURAR_TABELAS_DA_FOLHA",
   cadastrarTabelaIrrf: "CONFIGURAR_TABELAS_DA_FOLHA",

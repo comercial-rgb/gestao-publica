@@ -5,7 +5,8 @@ import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { linhasDoFormulario } from "../../../../lib/portas/linhas-do-formulario";
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 import { GRUPOS_DE_EMPENHO_DA_FOLHA } from "../../../../lib/portas/recursos/folha";
-import { criarGrupoDeEmpenho } from "../../../../lib/portas/recursos/folha-dados";
+import { acaoDoGrupoDeEmpenho, criarGrupoDeEmpenho } from "../../../../lib/portas/recursos/folha-dados";
+import type { EstadoDoMolde } from "../../../../components/molde/FormularioDeRecurso";
 
 export interface EstadoDoGrupo {
   readonly erro?: string;
@@ -33,5 +34,33 @@ export async function criarGrupoAction(_prev: EstadoDoGrupo, formData: FormData)
     }
     revalidatePath(GRUPOS_DE_EMPENHO_DA_FOLHA.rota);
     return { sucesso: `Grupo ${campos["codigo"] ?? ""} cadastrado com ${rubricas.length} rubrica(s).` };
+  });
+}
+
+/**
+ * A SERVER ACTION DAS AÇÕES DO GRUPO — hoje uma só: definir as duas contas da liquidação.
+ *
+ * ⚠️ ELA EXISTE PORQUE AS COLUNAS NASCERAM NULLABLE. Sem este caminho, os grupos cadastrados
+ * antes desta entrega ficariam sem as contas para sempre, e a liquidação recusaria nomeando o
+ * grupo sem que houvesse o que fazer pela tela.
+ */
+export async function grupoDeEmpenhoAction(_prev: EstadoDoMolde, formData: FormData): Promise<EstadoDoMolde> {
+  return comComandoDoFormulario(formData, async () => {
+    const campos: Record<string, string> = {};
+    for (const [k, v] of formData.entries()) {
+      if (typeof v === "string") campos[k] = v;
+    }
+    const acao = campos["__acao"] ?? "";
+    const id = campos["__id"] ?? "";
+    if (id === "") return { erro: "Ação sem registro de destino. Nada foi gravado." };
+    let mensagem = "";
+    try {
+      mensagem = await acaoDoGrupoDeEmpenho(acao, id, campos);
+    } catch (e) {
+      return { erro: mensagemDoErro(e, "Falha ao gravar. Nada foi gravado.") };
+    }
+    revalidatePath(GRUPOS_DE_EMPENHO_DA_FOLHA.rota);
+    revalidatePath(`${GRUPOS_DE_EMPENHO_DA_FOLHA.rota}/${id}`);
+    return { sucesso: mensagem };
   });
 }

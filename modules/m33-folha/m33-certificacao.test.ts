@@ -7,7 +7,7 @@ import { criarFichaDeTeste } from "../../test/ficha-teste.js";
 import { limparBanco } from "../../test/limpar-banco.js";
 import { admitirServidor, cadastrarCargo, cadastrarLotacao, cadastrarServidor } from "../m32-pessoal/servico.js";
 import { abrirFolha, cadastrarRubrica, cadastrarTabelaDeContribuicao, cadastrarTabelaIrrf, calcularFolha, fecharFolha, lancarNaFolha } from "./servico.js";
-import { apropriarFolha, cadastrarGrupoDeEmpenhoDaFolha } from "./apropriacao.js";
+import { apropriarFolha, cadastrarGrupoDeEmpenhoDaFolha, definirContasDaLiquidacaoDoGrupo } from "./apropriacao.js";
 import {
   AutocertificacaoError,
   AutoliquidacaoError,
@@ -583,7 +583,34 @@ describe("(7) liquidar — a obrigação reconhecida pelo M05", () => {
   });
 });
 
-describe("(8) o gancho de estoque não dispara em folha", () => {
+describe("(8) definir as contas de um grupo antigo — o caminho que a coluna nullable exigiu", () => {
+  it("o grupo sem contas recusa a liquidação; definidas as contas, ela passa — e o passado não muda", async () => {
+    await ateAApropriacao();
+    const grupo = await prisma.grupoDeEmpenhoDaFolha.findFirstOrThrow({ where: { codigo: "FOLHA-GRAT" }, select: { id: true } });
+    await prisma.grupoDeEmpenhoDaFolha.update({ where: { id: grupo.id }, data: { contaVariacaoId: null, contaObrigacaoId: null } });
+    await designarAtestador();
+    await certificarFolha(prisma, { folhaId, data: DATA_ATESTO, criadoPor: ATESTADOR });
+    await expect(liquidarFolha(prisma, { folhaId, data: DATA_LIQUIDACAO, criadoPor: LIQUIDANTE })).rejects.toThrow(GrupoSemContasDaLiquidacaoError);
+    expect(await prisma.liquidacao.count()).toBe(0);
+
+    await definirContasDaLiquidacaoDoGrupo(prisma, { grupoId: grupo.id, ...CONTAS, criadoPor: PREPARADOR });
+    const r = await liquidarFolha(prisma, { folhaId, data: DATA_LIQUIDACAO, criadoPor: LIQUIDANTE });
+    expect(r.liquidadas).toBe(3);
+    expect(r.pendentes).toBe(0);
+  });
+
+  it("recusa conta inexistente, e sem a ação não define — nada é gravado nas duas", async () => {
+    await grupoPorServidor();
+    const grupo = await prisma.grupoDeEmpenhoDaFolha.findFirstOrThrow({ select: { id: true } });
+    await expect(definirContasDaLiquidacaoDoGrupo(prisma, { grupoId: grupo.id, contaVariacaoId: "c-nao-existe", contaObrigacaoId: "c-pessoal-pagar", criadoPor: PREPARADOR })).rejects.toThrow(/c-nao-existe/);
+    await prisma.usuario.upsert({ where: { identificador: SEM_PODER }, update: {}, create: { identificador: SEM_PODER, nome: "Estagiario", criadoPor: "TESTE" } });
+    await expect(definirContasDaLiquidacaoDoGrupo(prisma, { grupoId: grupo.id, ...CONTAS, criadoPor: SEM_PODER })).rejects.toThrow(/CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA/);
+    const depois = await prisma.grupoDeEmpenhoDaFolha.findUniqueOrThrow({ where: { id: grupo.id }, select: { contaVariacaoId: true } });
+    expect(depois.contaVariacaoId).toBe("c-vpd-pessoal");
+  });
+});
+
+describe("(9) o gancho de estoque não dispara em folha", () => {
   it("recusa o grupo apontado para ficha de MATERIAL no CADASTRO, e não na liquidação", async () => {
     await prisma.naturezaDespesa.create({ data: { id: "nd-30", codCategoria: "3", codNatureza: "3", codModalidade: "90", codElemento: "30", codigoCompleto: "339030", descricao: "Material de consumo" } });
     await criarFichaDeTeste(prisma, {

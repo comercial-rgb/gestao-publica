@@ -260,7 +260,19 @@ export const GRUPOS_DE_EMPENHO_DA_FOLHA: DefinicaoDeRecurso = definirRecurso({
     { nome: "como", cabecalho: "Empenho", tipo: "texto" },
   ],
   filtros: [{ nome: "q", rotulo: "Código ou descrição", tipo: "texto", largura: 2 }],
-  acoes: [],
+  acoes: [
+    {
+      nome: "definir-contas", rotulo: "Definir as contas da liquidação", acaoDoCenso: "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA",
+      aviso:
+        "A VPD que a liquidação debita e a obrigação de pessoal que ela credita. Sem as duas, a folha certificada não " +
+        "liquida — e a recusa nomeia este grupo. As liquidações JÁ gravadas não mudam: elas têm o seu lançamento com as " +
+        "contas que valiam no ato; o que se define aqui vale para as próximas.",
+      campos: [
+        { nome: "contaVariacaoId", rotulo: "VPD que a liquidação debita (3.1 — pessoal)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+        { nome: "contaObrigacaoId", rotulo: "Obrigação que a liquidação credita (2.1.1 — pessoal a pagar)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+      ],
+    },
+  ],
   permissoes: { criar: "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA" },
   abas: ["dados"],
 });

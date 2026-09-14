@@ -420,7 +420,7 @@ describe("M16 — o CENSO das ações (TR 4.55/4.56)", () => {
     //   crachás aqui inventariam uma segregação que o TR não pede, e cada um teria de ser
     //   concedido à mão em toda instalação existente.
     //   = 237 serviços, e o censo continua em 229 ações.
-    expect(nomes.length).toBe(303); // +4 (V5) documento fiscal; +1 (V6 P0.1) apresentação; +2 (V6 P1.1) vínculo; +1 (V6 P1.2) conta da arrecadação; +17 (V6 P2) M32 pessoal; +9 (V6 P2.3) M33 folha; +2 (V6 P2.3b) apropriação; +5 (V6.1) atesto e liquidação da folha
+    expect(nomes.length).toBe(304); // +4 (V5) documento fiscal; +1 (V6 P0.1) apresentação; +2 (V6 P1.1) vínculo; +1 (V6 P1.2) conta da arrecadação; +17 (V6 P2) M32 pessoal; +9 (V6 P2.3) M33 folha; +2 (V6 P2.3b) apropriação; +6 (V6.1) atesto, liquidação e as contas do grupo
 
     // 97 serviços, 93 ações distintas. Os pares que compartilham ação (4: importarExtratoBb
     // REUSA IMPORTAR_EXTRATO). transferirEntreContas tem AÇÃO PRÓPRIA (não compartilha) → +1 ação.
