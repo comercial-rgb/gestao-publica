@@ -1,5 +1,6 @@
 import "dotenv/config";
 import puppeteer, { type Browser, type Page } from "puppeteer";
+import { apresentacaoDoAto } from "./percursos-disponibilidade.js";
 
 /**
  * SMOKE DO VÍNCULO SOLICITAÇÃO × ORDEM (M11, V6 P1.1) — navegador real contra o servidor.
@@ -439,8 +440,9 @@ async function main(): Promise<void> {
     conferir("8.1 estorno da ordem B (sem recebimento, sem empenho) grava", rEst.tipo === "ok", rEst.texto);
     const detB4 = await irPara(page, hrefOrdemB);
     conferir("8.2 a ordem B continua existindo, ESTORNADA, sem receber/empenhar/vincular", (await page.$("[data-ordem-estornada]")) !== null && (await page.$('form[data-acao="receber-ordem"]')) === null && (await page.$('form[data-acao="vincular-solicitacao"]')) === null && !detB4.includes("empenhar esta ordem"), detB4.slice(0, 300));
-    const rEst2 = await preencherEEnviar(page, "estornar", [{ sel: 'input[name="motivo"]', valor: "Segundo estorno indevido (percurso)" }]);
-    conferir("8.2b estornar de novo é RECUSADO nomeando", rEst2.tipo === "erro" && /já está ESTORNADA/.test(rEst2.texto), rEst2.texto.slice(0, 200));
+    // ⚠️ V6.2 (PROD-015): estornada, ESTORNAR sai da barra; a recusa do caso de uso está em m11-compras.
+    const est2 = await apresentacaoDoAto(page, "estornar");
+    conferir("8.2b estornada, ESTORNAR sai da barra e aparece como estado ('já está ESTORNADA')", est2.estado === "nao-aplicavel" && /já está ESTORNADA/i.test(est2.texto), JSON.stringify(est2));
     await irPara(page, `/licitacoes/ordens-de-compra?q=OC-B-${SUF}&vivas=ESTORNADAS`);
     const listaEst = await texto(page);
     conferir("8.3 a lista filtra as estornadas e a B aparece como ESTORNADA", listaEst.includes(`oc-b-${SUF}`.toLowerCase()) && listaEst.includes("estornada"), listaEst.slice(0, 300));

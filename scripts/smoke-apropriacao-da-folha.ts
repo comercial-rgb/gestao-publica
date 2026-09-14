@@ -1,5 +1,6 @@
 import "dotenv/config";
 import puppeteer, { type Browser, type Page } from "puppeteer";
+import { apresentacaoDoAto, retirarVersao } from "./percursos-disponibilidade.js";
 
 /**
  * SMOKE DA APROPRIAÇÃO CONTÁBIL DA FOLHA (M33, V6 P2.3b; TR 5.12.71) — navegador real.
@@ -390,8 +391,10 @@ async function main(): Promise<void> {
     await entrar(page, CONTABILIDADE, SENHA_PAPEIS);
     ok("2.0 contabilidade entra");
     await irPara(page, hrefFolha);
-    const rAntes = await preencherEEnviar(page, "apropriar", [{ sel: 'input[name="dataDoEmpenho"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" }]);
-    conferir("2.1 NEGATIVA: apropriar a folha ABERTA é recusado nomeando o motivo", rAntes.tipo === "erro" && /FOLHA-NAO-FECHADA/.test(rAntes.texto), `${rAntes.tipo}: ${rAntes.texto.slice(0, 200)}`);
+    // ⚠️ V6.2 (PROD-015): com a folha aberta, APROPRIAR aparece TRAVADO — sem formulário — dizendo
+    // que falta o fechamento. A recusa do caso de uso para a chamada direta está em m33-apropriacao.
+    const aAntes = await apresentacaoDoAto(page, "apropriar");
+    conferir("2.1 NEGATIVA: com a folha ABERTA, APROPRIAR aparece TRAVADO, sem formulário, dizendo que falta fechar", aAntes.estado === "bloqueada" && /não foi fechada/i.test(aAntes.texto) && /feche a folha/i.test(aAntes.texto), JSON.stringify(aAntes));
 
     // ── 2. a contabilidade fecha, cadastra o grupo e apropria ──
     await irPara(page, hrefFolha);
@@ -434,6 +437,10 @@ async function main(): Promise<void> {
     }
 
     await irPara(page, hrefFolha);
+    // A aba aberta ANTES da apropriação — a chamada direta do passo 4.
+    const abaVelha = await navegador.newPage();
+    await abaVelha.setViewport({ width: 1366, height: 900 });
+    await irPara(abaVelha, hrefFolha);
     const rApropriar = await preencherEEnviar(page, "apropriar", [{ sel: 'input[name="dataDoEmpenho"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" }]);
     // ⚠️ DOIS DESFECHOS, E OS DOIS SÃO O PRODUTO FUNCIONANDO. Quando a ficha do grupo comporta a
     // folha inteira, a apropriação grava tudo. Quando não comporta — e é o caso do banco dos
@@ -475,14 +482,19 @@ async function main(): Promise<void> {
     // ── 4. reexecutar não duplica ──
     await irPara(page, hrefFolha);
     const empenhosAntes = await page.evaluate(() => document.querySelectorAll("[data-empenho]").length);
-    const rDeNovo = await preencherEEnviar(page, "apropriar", [{ sel: 'input[name="dataDoEmpenho"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" }]);
-    // ⚠️ A PROVA DA IDEMPOTÊNCIA VALE NOS DOIS DESFECHOS: se tudo coube, a segunda passada diz que
-    // os empenhos JÁ EXISTEM; se parou por saldo, a segunda passada grava ZERO novos e para no
-    // MESMO ponto — em nenhum dos dois ela empenha de novo o que já estava empenhado.
+    // ⚠️ V6.2: COMPLETA, a apropriação SAI DA BARRA; INTERROMPIDA, continua oferecida (a retomada é o
+    // próprio ato). Nos dois casos a prova da idempotência é o CASO DE USO, chamado pela aba velha
+    // com a versão retirada: ele reconhece os empenhos que já existem e não empenha de novo.
+    const naBarra = await apresentacaoDoAto(page, "apropriar");
+    if (!interrompida) conferir("4.0 completa, APROPRIAR sai da barra e aparece como estado", naBarra.estado === "nao-aplicavel" && /já existem/i.test(naBarra.texto), JSON.stringify(naBarra));
+    else conferir("4.0 interrompida, APROPRIAR continua oferecido — retomar é o próprio ato", naBarra.estado === "formulario", JSON.stringify(naBarra));
+    await retirarVersao(abaVelha, "apropriar");
+    const rDeNovo = await preencherEEnviar(abaVelha, "apropriar", [{ sel: 'input[name="dataDoEmpenho"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" }]);
+    await abaVelha.close();
     const naoDuplicou = interrompida
       ? /APROPRIACAO-INTERROMPIDA: 0 empenho\(s\) já gravado\(s\)/.test(rDeNovo.texto)
       : rDeNovo.tipo === "ok" && /já existem|já existiam/.test(rDeNovo.texto);
-    conferir("4.1 ⚠️ apropriar DE NOVO não duplica: a numeração determinística reconhece os que já existem", naoDuplicou, `${rDeNovo.tipo}: ${rDeNovo.texto.slice(0, 250)}`);
+    conferir("4.1 ⚠️ CHAMADA DIRETA sem versão: apropriar DE NOVO não duplica — o caso de uso reconhece os que já existem", naoDuplicou, `${rDeNovo.tipo}: ${rDeNovo.texto.slice(0, 250)}`);
     await irPara(page, hrefFolha);
     const empenhosDepois = await page.evaluate(() => document.querySelectorAll("[data-empenho]").length);
     conferir("4.2 e a lista de empenhos da folha continua do mesmo tamanho", empenhosDepois === empenhosAntes, `antes ${empenhosAntes}, depois ${empenhosDepois}`);

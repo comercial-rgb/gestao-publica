@@ -1,5 +1,6 @@
 import "dotenv/config";
 import puppeteer, { type Browser, type Page } from "puppeteer";
+import { apresentacaoDoAto, retirarVersao } from "./percursos-disponibilidade.js";
 
 /**
  * SMOKE DO ATESTO E DA LIQUIDAÇÃO DA FOLHA (M33, V6.1) — navegador real, CINCO papéis.
@@ -535,16 +536,26 @@ async function main(): Promise<void> {
       telaAntes.includes("certificação (atesto)") && telaAntes.includes("pendente de atesto") && telaAntes.includes("designação") && telaAntes.includes("ato administrativo"),
       telaAntes.slice(0, 700)
     );
-    const rSemDesignacao = await preencherEEnviar(page, "certificar", [{ sel: 'input[name="data"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" }]);
+    // ⚠️ V6.2 (PROD-015): SEM DESIGNAÇÃO, CERTIFICAR APARECE TRAVADO — sem formulário para enviar —,
+    // com o motivo como texto e a providência. A recusa do SERVIDOR para quem não tem designação
+    // continua provada em m33-certificacao (4) e (4c, paridade).
+    const semDesignacao = await apresentacaoDoAto(page, "certificar");
     conferir(
-      "4.2 ⚠️ NEGATIVA CENTRAL: certificar SEM designação vigente é recusado, nomeando o que falta ao administrador",
-      rSemDesignacao.tipo === "erro" && /SEM-DESIGNACAO-VIGENTE/.test(rSemDesignacao.texto) && /ato administrativo/i.test(rSemDesignacao.texto),
-      `${rSemDesignacao.tipo}: ${rSemDesignacao.texto.slice(0, 300)}`
+      "4.2 ⚠️ NEGATIVA CENTRAL: sem designação vigente, CERTIFICAR aparece TRAVADO, sem formulário, dizendo o que falta e quem providencia",
+      semDesignacao.estado === "bloqueada" && /designação vigente/i.test(semDesignacao.texto) && /administrador cadastra a designação/i.test(semDesignacao.texto),
+      JSON.stringify(semDesignacao)
     );
-    // ⚠️ E O CRACHÁ ESTAVA LÁ: o formulário apareceu (ele TEM CERTIFICAR_FOLHA). A recusa veio da
-    // designação, não da permissão — se o formulário não existisse, o passo acima estaria verde
-    // pelo motivo errado.
-    conferir("4.3 e o formulário de certificar EXISTE para ele — a recusa foi da designação, não da permissão", (await page.$('form[data-acao="certificar"]')) !== null, "o formulário não apareceu: a recusa acima seria de permissão");
+    // ⚠️ E O CRACHÁ ESTAVA LÁ: sem CERTIFICAR_FOLHA a tela diria "não tem a permissão" e não mostraria
+    // motivo de estado nenhum. A trava veio da designação, não da permissão.
+    conferir(
+      "4.3 e a trava é da DESIGNAÇÃO, não da permissão — o botão existe, focável, com aria-disabled e o motivo associado",
+      (await page.evaluate(() => {
+        const b = document.querySelector('section[data-acao="certificar"] button');
+        const d = b?.getAttribute("aria-describedby") ?? "";
+        return b !== null && b.getAttribute("aria-disabled") === "true" && !(b as HTMLButtonElement).disabled && d !== "" && (document.getElementById(d)?.textContent ?? "").length > 20;
+      })) && !(await texto(page)).includes("não tem a permissão necessária para certificar"),
+      "o botão travado não está acessível, ou a tela disse falta de permissão"
+    );
     const atestadorVeLiquidar = (await page.$('form[data-acao="liquidar"]')) !== null;
     conferir("4.4 NEGATIVA: o atestador não vê LIQUIDAR — quem certifica não liquida", !atestadorVeLiquidar, "o formulário de liquidar apareceu para o atestador");
 
@@ -575,6 +586,12 @@ async function main(): Promise<void> {
     await sair(page);
     await entrar(page, ATESTADOR, SENHA_PAPEIS);
     await irPara(page, hrefFolha);
+    // ⚠️ A SEGUNDA ABA, aberta ANTES do atesto e com o formulário de certificar na tela. Ela é a
+    // prova do "registro alterado em outra aba" e da chamada direta, no passo 6.4.
+    const abaVelha = await navegador.newPage();
+    await abaVelha.setViewport({ width: 1366, height: 900 });
+    await irPara(abaVelha, hrefFolha);
+    conferir("6.0 designado, CERTIFICAR passa a aparecer como formulário (a mesma tela do passo 4, agora disponível)", (await apresentacaoDoAto(page, "certificar")).estado === "formulario", JSON.stringify(await apresentacaoDoAto(page, "certificar")));
     const rCertificar = await preencherEEnviar(page, "certificar", [{ sel: 'input[name="data"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" }]);
     conferir(
       "6.1 o designado CERTIFICA, e a mensagem traz o sha256 do manifesto e o próximo passo",
@@ -585,24 +602,35 @@ async function main(): Promise<void> {
     conferir("6.2 o detalhe mostra a certificação DERIVADA e separada da apropriação e da liquidação", telaDepois.includes("certificação (derivada)") && telaDepois.includes("certificada"), telaDepois.slice(0, 800));
     const shaNaTela = await page.evaluate(() => /sha256 do manifesto: ([0-9a-f]{64})/.exec(document.body.innerText)?.[1] ?? "");
     conferir("6.3 o painel do atesto traz o manifesto com o sha256 INTEIRO e o responsável designado", shaNaTela.length === 64 && telaDepois.includes(NOME_ATESTADOR.toLowerCase()) && telaDepois.includes(ATO.toLowerCase()), `sha="${shaNaTela}"`);
-    const rDeNovo = await preencherEEnviar(page, "certificar", [{ sel: 'input[name="data"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" }]);
-    conferir("6.4 certificar DE NOVO é recusado — o atesto é um, não uma pilha", rDeNovo.tipo === "erro" && /FOLHA-JA-CERTIFICADA/.test(rDeNovo.texto), `${rDeNovo.tipo}: ${rDeNovo.texto.slice(0, 220)}`);
+    const depoisDoAtesto = await apresentacaoDoAto(page, "certificar");
+    conferir("6.4 ⚠️ certificada, CERTIFICAR SAI DA BARRA e aparece como estado ('já está certificada') — sem botão", depoisDoAtesto.estado === "nao-aplicavel" && /já está certificada/i.test(depoisDoAtesto.texto), JSON.stringify(depoisDoAtesto));
+    const rAbaVelha = await preencherEEnviar(abaVelha, "certificar", [{ sel: 'input[name="data"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" }]);
+    conferir("6.5 a ABA VELHA envia o formulário antigo: a porta recusa dizendo que a folha MUDOU em outra aba", rAbaVelha.tipo === "erro" && /REGISTRO-MUDOU/.test(rAbaVelha.texto) && /outra aba/i.test(rAbaVelha.texto), `${rAbaVelha.tipo}: ${rAbaVelha.texto.slice(0, 260)}`);
+    // ⚠️ A CHAMADA DIRETA: o MESMO formulário da aba velha, SEM a versão — a forma de um comando que
+    // não veio da tela lida. Agora quem responde é o caso de uso, pelo estado, e nada é gravado.
+    const retirou = await retirarVersao(abaVelha, "certificar");
+    const rDireta = await preencherEEnviar(abaVelha, "certificar", [{ sel: 'input[name="data"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" }]);
+    conferir("6.6 ⚠️ CHAMADA DIRETA sem versão: o caso de uso recusa FOLHA-JA-CERTIFICADA — a guarda do servidor não depende da tela", retirou && rDireta.tipo === "erro" && /FOLHA-JA-CERTIFICADA/.test(rDireta.texto), `retirou=${String(retirou)} ${rDireta.tipo}: ${rDireta.texto.slice(0, 220)}`);
+    const historicoDoAtesto = await irPara(abaVelha, `${hrefFolha}?aba=historico`);
+    conferir("6.7 e o histórico tem UMA certificação — as duas tentativas não gravaram nada", (historicoDoAtesto.match(/certificação por/g) ?? []).length === 1, historicoDoAtesto.slice(0, 600));
+    await abaVelha.close();
 
     // ══ 7. O liquidante LIQUIDA ══
     await sair(page);
     await entrar(page, LIQUIDANTE, SENHA_PAPEIS);
     ok("7.0 o liquidante entra");
     const antesDeLiquidar = await irPara(page, hrefFolha);
-    const liquidarVisivel = (await page.$('form[data-acao="liquidar"]')) !== null;
-    conferir("7.1 o liquidante vê LIQUIDAR — e NÃO vê certificar", liquidarVisivel && (await page.$('form[data-acao="certificar"]')) === null, `liquidar=${String(liquidarVisivel)}`);
-    if (empenhosGravados > 0) {
-      conferir("7.2 antes do ato, a tabela dos empenhos diz PENDENTE em cada linha", (await page.evaluate(() => document.querySelectorAll('[data-liquidacao="pendente"]').length)) === empenhosGravados, antesDeLiquidar.slice(0, 400));
-    }
-    const rLiquidar = await preencherEEnviar(page, "liquidar", [{ sel: 'input[name="data"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" }]);
+    const abaDoLiquidante = await navegador.newPage();
+    await abaDoLiquidante.setViewport({ width: 1366, height: 900 });
+    await irPara(abaDoLiquidante, hrefFolha);
+    const liquidarNaTela = await apresentacaoDoAto(page, "liquidar");
     if (empenhosGravados === 0) {
-      conferir("7.3 sem empenho, liquidar é recusado nomeando o motivo — não se reconhece obrigação sem crédito", rLiquidar.tipo === "erro" && /FOLHA-NAO-APROPRIADA/.test(rLiquidar.texto), `${rLiquidar.tipo}: ${rLiquidar.texto.slice(0, 250)}`);
-      console.log("      [7.4/7.5/7.6 não se aplicam: nenhum empenho nesta competência — o caminho com liquidação está provado em m33-certificacao.test.ts]");
+      conferir("7.1 sem empenho, LIQUIDAR aparece TRAVADO dizendo que falta a apropriação — não se reconhece obrigação sem crédito", liquidarNaTela.estado === "bloqueada" && /não tem empenho nenhum/i.test(liquidarNaTela.texto) && /aproprie a folha/i.test(liquidarNaTela.texto), JSON.stringify(liquidarNaTela));
+      console.log("      [7.2+ não se aplicam: nenhum empenho nesta competência — o caminho com liquidação está provado em m33-certificacao.test.ts]");
     } else {
+      conferir("7.1 o liquidante vê LIQUIDAR como formulário — e NÃO vê certificar", liquidarNaTela.estado === "formulario" && (await apresentacaoDoAto(page, "certificar")).estado !== "formulario", JSON.stringify(liquidarNaTela));
+      conferir("7.2 antes do ato, a tabela dos empenhos diz PENDENTE em cada linha", (await page.evaluate(() => document.querySelectorAll('[data-liquidacao="pendente"]').length)) === empenhosGravados, antesDeLiquidar.slice(0, 400));
+      const rLiquidar = await preencherEEnviar(page, "liquidar", [{ sel: 'input[name="data"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" }]);
       conferir(
         "7.3 a folha CERTIFICADA é liquidada, e a mensagem separa liquidada de PAGA",
         rLiquidar.tipo === "ok" && /liquidação\(ões\)/.test(rLiquidar.texto) && /não é paga/i.test(rLiquidar.texto),
@@ -612,16 +640,24 @@ async function main(): Promise<void> {
       const liquidadas = await page.evaluate(() => document.querySelectorAll('[data-liquidacao="liquidado"]').length);
       conferir("7.4 cada empenho passa a mostrar a liquidação com a data e o RESPONSÁVEL PELO ATESTO", liquidadas === empenhosGravados && depoisDeLiquidar.includes(`atesto: ${NOME_ATESTADOR.toLowerCase()}`), `${liquidadas} de ${empenhosGravados} linha(s) liquidada(s)`);
       conferir("7.5 e o detalhe mostra a liquidação como dimensão PRÓPRIA, com a ressalva de que liquidada não é paga", depoisDeLiquidar.includes("liquidação (derivada)") && depoisDeLiquidar.includes("liquidada não é paga"), depoisDeLiquidar.slice(0, 900));
-      const rLiquidarDeNovo = await preencherEEnviar(page, "liquidar", [{ sel: 'input[name="data"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" }]);
+      const liquidada = await apresentacaoDoAto(page, "liquidar");
+      conferir("7.6 liquidada por inteiro, LIQUIDAR sai da barra e aparece como estado", liquidada.estado === "nao-aplicavel" && /já estão liquidados/i.test(liquidada.texto), JSON.stringify(liquidada));
+      const rVelha = await preencherEEnviar(abaDoLiquidante, "liquidar", [{ sel: 'input[name="data"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" }]);
+      conferir("7.7 a aba aberta ANTES envia: a porta recusa REGISTRO-MUDOU — o envio não chegou a ser executado", rVelha.tipo === "erro" && /REGISTRO-MUDOU/.test(rVelha.texto), `${rVelha.tipo}: ${rVelha.texto.slice(0, 220)}`);
+      // ⚠️ A CHAMADA DIRETA: o mesmo formulário SEM a versão. É o caso de uso quem responde, e ele é
+      // IDEMPOTENTE — reconhece as liquidações que já existem e não grava nenhuma.
+      const retirouV = await retirarVersao(abaDoLiquidante, "liquidar");
+      const rDiretaLiq = await preencherEEnviar(abaDoLiquidante, "liquidar", [{ sel: 'input[name="data"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" }]);
       conferir(
-        "7.6 ⚠️ liquidar DE NOVO não duplica: a segunda passada reconhece as que já existem",
-        rLiquidarDeNovo.tipo === "ok" && /já existiam/.test(rLiquidarDeNovo.texto) && /0 liquidação\(ões\) nova\(s\)/.test(rLiquidarDeNovo.texto),
-        `${rLiquidarDeNovo.tipo}: ${rLiquidarDeNovo.texto.slice(0, 260)}`
+        "7.8 ⚠️ CHAMADA DIRETA sem versão: o caso de uso NÃO duplica — reconhece as que já existem e grava zero",
+        retirouV && rDiretaLiq.tipo === "ok" && /já existiam/.test(rDiretaLiq.texto) && /0 liquidação\(ões\) nova\(s\)/.test(rDiretaLiq.texto),
+        `retirou=${String(retirouV)} ${rDiretaLiq.tipo}: ${rDiretaLiq.texto.slice(0, 260)}`
       );
       await irPara(page, hrefFolha);
       const depoisDaSegunda = await page.evaluate(() => document.querySelectorAll('[data-liquidacao="liquidado"]').length);
-      conferir("7.7 e a tabela continua do mesmo tamanho", depoisDaSegunda === liquidadas, `antes ${liquidadas}, depois ${depoisDaSegunda}`);
+      conferir("7.9 e a tabela continua do mesmo tamanho — nenhuma liquidação a mais", depoisDaSegunda === liquidadas, `antes ${liquidadas}, depois ${depoisDaSegunda}`);
     }
+    await abaDoLiquidante.close();
 
     // ══ 8. A revogação é fato, e o atesto já praticado continua com lastro ══
     await sair(page);

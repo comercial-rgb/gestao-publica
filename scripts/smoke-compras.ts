@@ -1,5 +1,6 @@
 import "dotenv/config";
 import puppeteer, { type Browser, type Page } from "puppeteer";
+import { apresentacaoDoAto } from "./percursos-disponibilidade.js";
 
 /**
  * SMOKE DAS COMPRAS (M11, V4 §8 e V5 Fila A) — navegador real contra o servidor.
@@ -418,8 +419,10 @@ async function main(): Promise<void> {
     const detOrdem = await irPara(page, `${hrefOrdem}?aba=historico`);
     conferir("ordem: RECARREGADA, o pendente derivado é 6.0000 e o recebimento traz a nota", detOrdem.includes("pendente 6.0000") && detOrdem.includes(`nf-${SUF}`.toLowerCase()), detOrdem.slice(0, 500));
     await irPara(page, hrefOrdem);
-    const rEst = await preencherEEnviar(page, "estornar", [{ sel: 'input[name="motivo"]', valor: "Tentativa de estorno com recebimento (percurso)" }]);
-    conferir("ordem: estornar ordem COM recebimento é recusado nomeando", rEst.tipo === "erro" && /recebimento/i.test(rEst.texto), rEst.texto);
+    // ⚠️ V6.2 (PROD-015): com recebimento, ESTORNAR aparece TRAVADO, com o motivo e a providência.
+    // A recusa do caso de uso ("o material JÁ ENTROU") para a chamada direta está em m11-compras.
+    const est = await apresentacaoDoAto(page, "estornar");
+    conferir("ordem: estornar ordem COM recebimento aparece TRAVADO, nomeando o recebimento e a providência", est.estado === "bloqueada" && /recebimento/i.test(est.texto) && /estorne os recebimentos/i.test(est.texto), JSON.stringify(est));
   } catch (e) {
     falhou("execução", e instanceof Error ? e.message : String(e));
   } finally {

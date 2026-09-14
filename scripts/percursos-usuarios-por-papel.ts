@@ -26,6 +26,11 @@ interface Papel {
   readonly perfil: string;
   readonly descricao: string;
   readonly acoes: readonly AcaoDoSistema[];
+  /**
+   * V6.2 — ações concedidas SÓ numa unidade (código da UO), e não globalmente. É o que o percurso
+   * precisa para provar que o seletor e o caso de uso recortam pela unidade do ato.
+   */
+  readonly naUnidade?: { readonly codigo: string; readonly acoes: readonly AcaoDoSistema[] };
 }
 
 export const PAPEIS: readonly Papel[] = [
@@ -91,6 +96,22 @@ export const PAPEIS: readonly Papel[] = [
     acoes: ["LIQUIDAR_FOLHA", "LIQUIDAR", "CONSULTAR_FOLHA", "CONSULTAR_DESPESA", "CONSULTAR_CADASTROS"],
   },
   {
+    identificador: "planejamento@percursos.local",
+    nome: "Servidor do Planejamento (percurso)",
+    perfil: "PLANEJAMENTO — PERCURSO",
+    descricao: "Cria fichas orçamentárias (sem crédito) e executa decretos de crédito adicional. Não empenha, não liquida, não paga.",
+    // V6.2 U0 — CRIAR_FICHA ganhou tela. A ficha nasce sem dotação; o crédito vem do decreto.
+    acoes: ["CRIAR_FICHA", "CRIAR_DECRETO_DE_CREDITO", "EXECUTAR_CREDITO", "CONSULTAR_PLANEJAMENTO", "CONSULTAR_CADASTROS"],
+  },
+  {
+    identificador: "planejamento-ug@percursos.local",
+    nome: "Planejamento de uma unidade só (percurso)",
+    perfil: "PLANEJAMENTO DE UMA UNIDADE — PERCURSO",
+    descricao: "Lê o planejamento do ente e cria ficha SÓ na unidade 99001. Prova o recorte do seletor e do caso de uso.",
+    acoes: ["CONSULTAR_PLANEJAMENTO", "CONSULTAR_CADASTROS"],
+    naUnidade: { codigo: "99001", acoes: ["CRIAR_FICHA"] },
+  },
+  {
     identificador: "servidor@percursos.local",
     nome: "Servidora do quadro (percurso)",
     perfil: "SERVIDOR — PERCURSO",
@@ -138,6 +159,11 @@ async function main(): Promise<void> {
       const perfil = await prisma.$transaction(async (tx) => {
         const p = await tx.perfil.create({ data: { nome: papel.perfil, descricao: papel.descricao, criadoPor: ADMIN }, select: { id: true } });
         await tx.permissaoDePerfil.createMany({ data: papel.acoes.map((acao) => ({ perfilId: p.id, acao, unidadeOrcId: null, criadoPor: ADMIN })) });
+        if (papel.naUnidade !== undefined) {
+          const uo = await tx.unidadeOrcamentaria.findUnique({ where: { codigo: papel.naUnidade.codigo }, select: { id: true } });
+          if (uo === null) throw new Error(`a unidade ${papel.naUnidade.codigo} do papel ${papel.identificador} não existe neste banco`);
+          await tx.permissaoDePerfil.createMany({ data: papel.naUnidade.acoes.map((acao) => ({ perfilId: p.id, acao, unidadeOrcId: uo.id, criadoPor: ADMIN })) });
+        }
         return p;
       });
       const { usuarioId } = await criarUsuario(prisma, { nome: papel.nome, email: papel.identificador, senhaInicial: SENHA, criadoPor: ADMIN });

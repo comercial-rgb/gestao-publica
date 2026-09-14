@@ -1,5 +1,6 @@
 import "dotenv/config";
 import puppeteer, { type Browser, type Page } from "puppeteer";
+import { apresentacaoDoAto } from "./percursos-disponibilidade.js";
 
 /**
  * SMOKE DA FOLHA DE PAGAMENTO (M33, V6 P2.3) — navegador real contra o servidor.
@@ -664,10 +665,13 @@ async function main(): Promise<void> {
     await sair(page);
     await entrar(page);
     await irPara(page, hrefFolha);
-    const rDepois = await preencherEEnviar(page, "calcular", [{ sel: 'input[name="motivo"]', valor: "tentativa após o fechamento" }]);
-    conferir("9.1 NEGATIVA: recalcular a folha FECHADA é recusado nomeando o cálculo que a fechou", rDepois.tipo === "erro" && /FOLHA-FECHADA/.test(rDepois.texto), `${rDepois.tipo}: ${rDepois.texto.slice(0, 200)}`);
-    const rCancelDepois = await preencherEEnviar(page, "cancelar-calculo", [{ sel: 'input[name="motivo"]', valor: "tentativa após o fechamento" }]);
-    conferir("9.2 NEGATIVA: o cálculo que fechou a folha não se cancela", rCancelDepois.tipo === "erro" && /CALCULO-FECHADO/.test(rCancelDepois.texto), `${rCancelDepois.tipo}: ${rCancelDepois.texto.slice(0, 200)}`);
+    // ⚠️ V6.2 (PROD-015): fechada, CALCULAR e CANCELAR O CÁLCULO saem da barra e aparecem como estado.
+    // A recusa do caso de uso (FOLHA-FECHADA, CALCULO-FECHADO) para a chamada direta está em
+    // m33-certificacao (4c, paridade) e m33-folha.
+    const calcularFechada = await apresentacaoDoAto(page, "calcular");
+    conferir("9.1 NEGATIVA: fechada, RECALCULAR sai da barra e a tela diz que não se recalcula", calcularFechada.estado === "nao-aplicavel" && /está fechada; não se recalcula/i.test(calcularFechada.texto), JSON.stringify(calcularFechada));
+    const cancelarFechada = await apresentacaoDoAto(page, "cancelar-calculo");
+    conferir("9.2 NEGATIVA: o cálculo que fechou a folha não se cancela — a ação sai da barra dizendo por quê", cancelarFechada.estado === "nao-aplicavel" && /não se cancela/i.test(cancelarFechada.texto), JSON.stringify(cancelarFechada));
 
     // ── 10. o operador restrito não alcança a folha ──
     await sair(page);

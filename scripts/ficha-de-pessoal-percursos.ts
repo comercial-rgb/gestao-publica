@@ -88,7 +88,7 @@ async function main(): Promise<void> {
         {
           exercicio: EXERCICIO,
           numero: f.numero,
-          exercicioFonte: modelo.exercicioFonte,
+          exercicioFonte: modelo.exercicioFonte === 2 ? 2 : 1,
           valorDotado: f.valorDotado,
           criadoPor: POR,
           classificacao: {
