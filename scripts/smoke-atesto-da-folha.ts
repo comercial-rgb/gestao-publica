@@ -327,8 +327,14 @@ async function competenciaLivreDe2026(page: Page): Promise<string> {
 
 
 
-/** O nome do designado deste percurso — sintético, e identificado como tal. */
-const NOME_ATESTADOR = `Atestadora do Percurso ${SUF}`;
+/**
+ * O nome do designado deste percurso — sintético, e identificado como tal.
+ *
+ * ⚠️ MUTÁVEL porque a execução pode REUSAR a pessoa já vinculada de uma execução anterior. A
+ * primeira versão comparava a tela com o nome de HOJE e falhava na segunda execução — o percurso
+ * afirmava uma coisa e o banco tinha outra, e o defeito era do percurso, não do produto.
+ */
+let NOME_ATESTADOR = `Atestadora do Percurso ${SUF}`;
 const ATO = `Portaria ${SUF}/2026 (percurso sintético)`;
 
 async function main(): Promise<void> {
@@ -355,23 +361,41 @@ async function main(): Promise<void> {
         return f?.getAttribute("data-acao") === "desvincular-pessoa" ? (f.textContent ?? "") : "";
       }, ATESTADOR);
       if (ja !== "") {
-        const doc = /\(([\d.\-/]{11,18})\)/.exec(ja.replace(/\s+/g, " "));
-        ok(`1.1 a conta do atestador já está vinculada a uma pessoa (execução anterior) — reusada`);
+        const limpo = ja.replace(/\s+/g, " ");
+        const doc = /\(([\d.\-/]{11,18})\)/.exec(limpo);
+        const nome = /Pessoa vinculada:\s*(.+?)\s*\(/.exec(limpo);
+        if (nome !== null) NOME_ATESTADOR = (nome[1] as string).trim();
+        ok(`1.1 a conta do atestador já está vinculada a "${NOME_ATESTADOR}" (execução anterior) — reusada`);
         return (doc?.[1] ?? "").replace(/\D/g, "");
       }
       const cpf = cpfFicticio(`${(Date.now() + 7919) % 1_000_000_000}`);
       await irPara(page, "/cadastros/pessoas");
       const rPessoa = await preencherEEnviar(page, "cadastrar-pessoa", [
-        { sel: 'input[name="documento"]', valor: cpf },
+        // ⚠️ O CAMPO VISÍVEL DO CPF NÃO TEM `name`: ele é mascarado, e quem carrega o `name` é um
+        // input HIDDEN (não clicável, não digitável). O percurso digita onde o operador digita.
+        { sel: 'input[data-mascara="cpf-cnpj"]', valor: cpf },
         { sel: 'input[name="nome"]', valor: NOME_ATESTADOR },
       ]);
       conferir("1.1 o administrador cadastra a pessoa do designado", rPessoa.tipo === "ok", `${rPessoa.tipo}: ${rPessoa.texto.slice(0, 200)}`);
       await irPara(page, "/administracao/usuarios");
-      const rVinc = await preencherEEnviar(page, `form[data-acao="vincular-pessoa"][data-usuario="${ATESTADOR}"]`, [
+      // ⚠️ A RESPOSTA DESTE FORMULÁRIO NÃO VEM PELO AVISO, e isso é o produto certo: ao vincular,
+      // a tela RE-RENDERIZA e o formulário vira "desvincular-pessoa" — o seletor do envio deixa de
+      // casar, e o helper leria "silêncio". A prova aqui é a PERSISTÊNCIA: recarregar e ver a
+      // pessoa vinculada. Um toast que some não provaria que gravou.
+      await preencherEEnviar(page, `form[data-acao="vincular-pessoa"][data-usuario="${ATESTADOR}"]`, [
         { sel: 'input[name="documento"]', valor: cpf },
         { sel: 'input[name="motivo"]', valor: "e a pessoa designada para o atesto da folha (percurso)" },
       ]);
-      conferir("1.2 a conta do atestador passa a APONTAR para essa pessoa, e o aviso diz que isso NÃO concede permissão", rVinc.tipo === "ok" && /não concede permissão/i.test(rVinc.texto), `${rVinc.tipo}: ${rVinc.texto.slice(0, 220)}`);
+      await irPara(page, "/administracao/usuarios");
+      const vinculado = await page.evaluate((ident) => {
+        const f = Array.from(document.querySelectorAll("form[data-usuario]")).find((x) => x.getAttribute("data-usuario") === ident);
+        return { acao: f?.getAttribute("data-acao") ?? "", texto: (f?.textContent ?? "").replace(/\s+/g, " ") };
+      }, ATESTADOR);
+      conferir(
+        "1.2 a conta do atestador passa a APONTAR para essa pessoa — conferido por RECARGA, não por aviso",
+        vinculado.acao === "desvincular-pessoa" && vinculado.texto.includes(NOME_ATESTADOR),
+        `acao=${vinculado.acao} texto=${vinculado.texto.slice(0, 200)}`
+      );
       return cpf;
     })();
 
@@ -389,9 +413,37 @@ async function main(): Promise<void> {
     await irPara(page, `/folha/folhas?q=${COMP}`);
     const hrefFolha = await hrefDoRegistro(page, COMP);
     if (hrefFolha === null) throw new Error("sem folha para seguir");
-    await irPara(page, hrefFolha);
-    const rCalc = await preencherEEnviar(page, "calcular", [{ sel: 'input[name="motivo"]', valor: `folha do percurso do atesto ${SUF}` }]);
-    conferir("2.2 o RH calcula a folha", rCalc.tipo === "ok", `${rCalc.tipo}: ${rCalc.texto.slice(0, 250)}`);
+    // ⚠️ O LAÇO DA CARGA DO REGIME é condição REAL do banco dos percursos, não enfeite: os vínculos
+    // legados foram importados sem regime previdenciário, e o cálculo RECUSA nomeando a matrícula
+    // (comportamento certo). O RH informa o regime pela tela e tenta de novo — é o que ele faria.
+    let rCalc = { tipo: "silencio", texto: "" };
+    for (let tentativa = 0; tentativa < 8; tentativa += 1) {
+      await irPara(page, hrefFolha);
+      rCalc = await preencherEEnviar(page, "calcular", [{ sel: 'input[name="motivo"]', valor: `folha do percurso do atesto ${SUF}` }]);
+      const semRegime = /VINCULO-SEM-REGIME-PREVIDENCIARIO: a matrícula (\S+)/.exec(rCalc.texto);
+      if (semRegime === null) break;
+      const matricula = semRegime[1] as string;
+      await irPara(page, `/pessoal/servidores?q=${encodeURIComponent(matricula)}`);
+      const href = await page.evaluate(() => (document.querySelector('tbody a[href^="/pessoal/servidores/"]') as HTMLAnchorElement | null)?.getAttribute("href") ?? "");
+      if (href === "") break;
+      await irPara(page, href);
+      const alvo = await opcaoQueCasa(page, 'form[data-acao="informar-regime"] select[name="vinculoRegimeId"]', matricula);
+      if (alvo === null) {
+        falhou("2.2 o RH calcula a folha", `a matrícula ${matricula} não aparece na lista da carga do regime — nada a fazer pela tela.`);
+        break;
+      }
+      for (const data of [ultimoDiaDaCompetencia(COMP), `${COMP}-01`]) {
+        const r = await preencherEEnviar(page, "informar-regime", [
+          { sel: 'select[name="vinculoRegimeId"]', valor: alvo.valor, tipo: "select" },
+          { sel: 'input[name="data"]', valor: data, tipo: "data" },
+          { sel: 'select[name="regimePrevidenciario"]', valor: "RGPS", tipo: "select" },
+          { sel: 'input[name="motivo"]', valor: "carga do regime previdenciário do vínculo legado (percurso)" },
+        ]);
+        if (r.tipo === "ok") break;
+        await irPara(page, href);
+      }
+    }
+    if (!falhas.some((f) => f.startsWith("2.2"))) conferir("2.2 o RH calcula a folha", rCalc.tipo === "ok", `${rCalc.tipo}: ${rCalc.texto.slice(0, 250)}`);
     if (rCalc.tipo !== "ok") throw new Error("cálculo da folha não passou — sem cálculo não há fechamento, atesto nem liquidação");
 
     // ⚠️ NEGATIVA DO RH, ANTES DE TUDO: ele não vê certificar nem liquidar.
@@ -575,7 +627,14 @@ async function main(): Promise<void> {
     await sair(page);
     await entrar(page);
     await irPara(page, "/folha/designacoes");
-    const hrefDesignacao = await page.evaluate(() => (document.querySelector('tbody a[href^="/folha/designacoes/"]') as HTMLAnchorElement | null)?.getAttribute("href") ?? "");
+    // ⚠️ A DESIGNAÇÃO **DESTA EXECUÇÃO**, achada pelo ATO — e não a primeira da lista. A primeira
+    // versão pegava a primeira linha e caía em DESIGNACAO-JA-REVOGADA: era a designação da
+    // execução ANTERIOR, já revogada. O defeito era do percurso, e a recusa do produto estava
+    // certa — que é exatamente o tipo de falso vermelho que se investiga antes de "corrigir" código.
+    const hrefDesignacao = await page.evaluate((ato) => {
+      const linha = Array.from(document.querySelectorAll("tbody tr")).find((tr) => (tr.textContent ?? "").includes(ato));
+      return (linha?.querySelector('a[href^="/folha/designacoes/"]') as HTMLAnchorElement | null)?.getAttribute("href") ?? "";
+    }, ATO);
     if (hrefDesignacao !== "") {
       await irPara(page, hrefDesignacao);
       const rRevogar = await preencherEEnviar(page, "revogar", [

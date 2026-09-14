@@ -421,19 +421,27 @@ async function main(): Promise<void> {
     const negContab = await barrado(page, "/financeiro/conciliacao/periodo");
     conferir("3.1 NEGATIVA: CONTABILIDADE não abre o financeiro (sem CONSULTAR_FINANCEIRO)", negContab.barrado, `${negContab.url} ${negContab.status}`);
     await irPara(page, `/despesa/empenhos?exercicio=${EXERCICIO}`);
+    // ⚠️ A FICHA TEM DE SER DA NATUREZA CERTA, e não só "a que tem mais saldo". Quando o banco dos
+    // percursos ganhou a ficha de PESSOAL (319011, para a folha), ela passou a ser a de maior
+    // saldo — e a liquidação caiu com "SEM ROTEIRO PARA O ELEMENTO 11", corretamente: não se
+    // compra serviço de terceiro em ficha de vencimentos. O percurso escolhe entre as que TÊM
+    // roteiro de liquidação (elemento 39 — outros serviços de terceiros), que é o que esta cadeia
+    // de COMPRA exercita.
     const ficha = await page.evaluate(() => {
       const s = document.querySelector('form[data-acao="empenhar"] select[name="fichaId"]');
       if (!(s instanceof HTMLSelectElement)) return null;
       let melhor: { valor: string; saldo: number } | null = null;
       for (const o of Array.from(s.options)) {
         if (o.value === "" || o.disabled) continue;
-        const m = /disponível\s+(-?[\d]+\.\d{2})\s*$/.exec((o.textContent ?? "").trim());
+        const rotulo = (o.textContent ?? "").trim();
+        if (!/\b3\d9039\b|\b339039\b/.test(rotulo)) continue;
+        const m = /disponível\s+(-?[\d]+\.\d{2})\s*$/.exec(rotulo);
         const saldo = m === null ? 0 : Number(m[1]);
         if (melhor === null || saldo > melhor.saldo) melhor = { valor: o.value, saldo };
       }
       return melhor?.valor ?? null;
     });
-    if (ficha === null) throw new Error("sem ficha com saldo");
+    if (ficha === null) throw new Error("sem ficha de serviços de terceiros (339039) com saldo — esta cadeia é de COMPRA");
     // O rótulo é "Nome (documento formatado)": os dígitos do CREDOR são os do parêntese, não os do nome.
     const credorDigitos = ((/\(([^)]*)\)\s*$/.exec(fornecedor.rotulo)?.[1] ?? fornecedor.rotulo).match(/\d/g) ?? []).join("");
     // ⚠️ A ordem formada NÃO tem ficha (o banco dos percursos só tem fichas 339039 e os materiais
