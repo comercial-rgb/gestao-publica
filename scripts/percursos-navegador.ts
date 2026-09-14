@@ -1,4 +1,5 @@
-import type { Page } from "puppeteer";
+import puppeteer, { type Browser, type LaunchOptions, type Page } from "puppeteer";
+import { preflightDoNavegador } from "./preflight-navegador.js";
 
 /**
  * OS AJUDANTES DE NAVEGADOR DOS PERCURSOS NOVOS (V6.2) — um lugar só.
@@ -11,6 +12,20 @@ import type { Page } from "puppeteer";
  * O corpo é o do `smoke-atesto-da-folha.ts` (o mais recente e o que já passou pelos cinco papéis),
  * com a base como parâmetro e o campo referenciado (`CampoReferenciado`) acrescentado.
  */
+
+/**
+ * LANÇA O NAVEGADOR DO PERCURSO SÓ DEPOIS DO PREFLIGHT. Binário ausente para o percurso ANTES do
+ * primeiro clique, com o diagnóstico e o comando de reposição — nunca como falha de um passo.
+ */
+export async function lancarNavegadorDoPercurso(opcoes: LaunchOptions = {}): Promise<Browser> {
+  const r = await preflightDoNavegador();
+  if (!r.ok) {
+    console.error(`[navegador] BLOQUEADO POR AMBIENTE — ${r.diagnostico}`);
+    process.exit(3);
+  }
+  console.log(`[navegador] ${r.versaoEsperada} em ${r.executavel}`);
+  return puppeteer.launch({ headless: true, protocolTimeout: 180000, args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"], ...opcoes });
+}
 
 export interface Navegador {
   readonly base: string;
