@@ -953,12 +953,15 @@ describe("dependentes, contra o banco", () => {
       criadoPor: POR,
     });
 
+    // V7 M1 U2: a baixa é o FATO de encerramento; a coluna legada da finalidade não é mais escrita.
     const f = await prisma.finalidadeDependente.findUniqueOrThrow({
       where: { id: finalidadeId },
-      select: { dataBaixa: true, motivoBaixa: true },
+      select: { dataBaixa: true, encerramento: { select: { dataEfeito: true, motivo: true, criadoPor: true } } },
     });
-    expect(f.dataBaixa?.toISOString().slice(0, 10)).toBe("2026-05-01");
-    expect(f.motivoBaixa).toMatch(/Saida do plano/);
+    expect(f.dataBaixa).toBeNull();
+    expect(f.encerramento?.dataEfeito.toISOString().slice(0, 10)).toBe("2026-05-01");
+    expect(f.encerramento?.motivo).toMatch(/Saida do plano/);
+    expect(f.encerramento?.criadoPor).toBe(POR);
 
     await expect(
       baixarFinalidadeDependente(prisma, {

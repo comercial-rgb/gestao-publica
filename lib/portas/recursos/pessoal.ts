@@ -180,6 +180,15 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
       ],
     },
     {
+      nome: "encerrar-finalidade", rotulo: "Encerrar finalidade de dependente", acaoDoCenso: "BAIXAR_DEPENDENTE", irreversivel: true,
+      aviso: "Óbito, perda da guarda, decisão judicial, saída do plano: o encerramento é FATO com data de efeito, motivo e autor. Folha já fechada não é recalculada — se o efeito alcançar competências fechadas, elas são nomeadas para retificação. Reativar é cadastrar finalidade nova.",
+      campos: [
+        { nome: "finalidadeId", rotulo: "Dependente e finalidade vigente", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+        { nome: "dataEfeito", rotulo: "Data de efeito", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "Motivo (óbito, decisão judicial, saída do plano...)", tipo: "texto", obrigatorio: true, largura: 4 },
+      ],
+    },
+    {
       nome: "portaria", rotulo: "Registrar portaria", acaoDoCenso: "REGISTRAR_PORTARIA",
       campos: [
         { nome: "vinculoId", rotulo: "Vínculo (matrícula)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },

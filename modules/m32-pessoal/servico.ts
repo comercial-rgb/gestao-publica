@@ -3,6 +3,7 @@ import { diaCivil } from "../../packages/datas/index.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import {
+  baixaEfetiva,
   LIMITE_ETARIO_LEGAL,
   criaCicloDeLotacao,
   dataDeDesligamento,
@@ -715,36 +716,36 @@ export async function registrarFinalidadeDependente(
 }
 
 /**
- * A BAIXA POR **FATO** — óbito, perda da guarda, decisão judicial.
+ * ENCERRA UMA FINALIDADE DE DEPENDENTE POR FATO — óbito, perda da guarda, decisão judicial, saída do plano.
  *
- * ═══ ⚠️ A ÚNICA ESCRITA NÃO-APPEND-ONLY DO MÓDULO, E O QUE SE PERDE ═══
- * Ela grava `dataBaixa`/`motivoBaixa` na linha existente. O que se perde é a possibilidade de
- * dizer "quem baixou e quando digitou" — o `criadoPor` da linha continua sendo o de quem a
- * criou. A alternativa (uma tabela de baixas) daria isso, e custaria um join em toda consulta de
- * folha do bloco 2 para responder "este dependente vale hoje?" — que é a pergunta mais frequente
- * do módulo inteiro.
+ * ═══ V7 M1 U2: O ENCERRAMENTO É FATO, NÃO UPDATE ═══
+ * Até V6.2 este serviço gravava `dataBaixa`/`motivoBaixa` na linha da finalidade — e o papel de runtime
+ * não tem UPDATE nessa tabela: a baixa falhava na aplicação (`test/runtime/contrato-runtime-m32.test.ts`).
+ * Agora grava `EncerramentoDeFinalidadeDependente` (INSERT), com data de efeito, motivo e autor. A
+ * unicidade por finalidade decide a corrida entre duas baixas simultâneas.
  *
- * O registro de QUEM baixou não se perde de verdade: `comEscritaDoScaffold` grava a operação na
- * borda, com identificador e IP, fora da transação. É lá que a auditoria olha.
+ * ⚠️ FOLHA FECHADA NÃO É REESCRITA. O cálculo congelado guarda os dependentes que considerou. Se o
+ * efeito é anterior a competências já fechadas deste servidor, o encerramento é gravado (o fato
+ * aconteceu) e o retorno NOMEIA essas competências — corrigi-las é retificação, não recálculo.
  *
- * ⚠️ E A BAIXA POR IDADE NÃO PASSA POR AQUI: ela é DERIVADA (`dependenteValeEm`). Um serviço
- * para ela seria um job noturno com outro nome.
+ * ⚠️ E A BAIXA POR IDADE NÃO PASSA POR AQUI: ela é DERIVADA (`dependenteValeEm`).
  */
 export async function baixarFinalidadeDependente(
   prisma: PrismaClient,
   input: BaixarFinalidadeDependenteInput
-): Promise<void> {
+): Promise<{ readonly encerramentoId: string; readonly competenciasFechadasAtingidas: readonly string[] }> {
   const dados = zBaixarFinalidadeDependenteInput.parse(input);
 
-  await prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, dados.criadoPor, ACAO_DO_SERVICO.baixarFinalidadeDependente, "ENTE");
 
     const f = await tx.finalidadeDependente.findUnique({
       where: { id: dados.finalidadeId },
-      select: { dataInicio: true, dataBaixa: true },
+      select: { dataInicio: true, dataBaixa: true, encerramento: { select: { dataEfeito: true } }, dependente: { select: { servidorId: true } } },
     });
     if (f === null) throw new Error(`Finalidade ${dados.finalidadeId} não existe.`);
-    if (f.dataBaixa !== null) throw new FinalidadeJaBaixadaError(f.dataBaixa);
+    const jaBaixada = baixaEfetiva(f);
+    if (jaBaixada !== null) throw new FinalidadeJaBaixadaError(jaBaixada);
     if (dados.dataBaixa.getTime() < f.dataInicio.getTime()) {
       throw new Error(
         `BAIXA-ANTES-DO-INICIO: a finalidade começou em ` +
@@ -753,10 +754,28 @@ export async function baixarFinalidadeDependente(
       );
     }
 
-    await tx.finalidadeDependente.update({
-      where: { id: dados.finalidadeId },
-      data: { dataBaixa: dados.dataBaixa, motivoBaixa: dados.motivoBaixa },
+    let encerramentoId: string;
+    try {
+      encerramentoId = (await tx.encerramentoDeFinalidadeDependente.create({
+        data: { finalidadeId: dados.finalidadeId, dataEfeito: dados.dataBaixa, motivo: dados.motivoBaixa, criadoPor: dados.criadoPor },
+        select: { id: true },
+      })).id;
+    } catch (e) {
+      // A corrida: outra baixa gravou entre a leitura e o INSERT. A unicidade decidiu.
+      if ((e as { code?: string }).code === "P2002") throw new FinalidadeJaBaixadaError(dados.dataBaixa);
+      throw e;
+    }
+
+    const competenciaDoEfeito = diaCivil(dados.dataBaixa).slice(0, 7);
+    const fechadas = await tx.folhaDePagamento.findMany({
+      where: {
+        competencia: { gte: competenciaDoEfeito },
+        fechamento: { calculo: { contrachequesDoCalculo: { some: { vinculo: { servidorId: f.dependente.servidorId } } } } },
+      },
+      orderBy: { competencia: "asc" },
+      select: { competencia: true },
     });
+    return { encerramentoId, competenciasFechadasAtingidas: fechadas.map((x) => x.competencia) };
   });
 }
 

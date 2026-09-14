@@ -3,6 +3,7 @@ import { toMoney } from "../../packages/contracts/index.js";
 import { formatarDocumento } from "../../packages/documento/index.js";
 import {
   cargoVigenteEm,
+  baixaEfetiva,
   dependenteValeEm,
   gratificacoesVigentesEm,
   lotacaoVigenteEm,
@@ -114,7 +115,7 @@ export async function minhaFichaPara(sessao: Identidade): Promise<MinhaFicha> {
       },
       dependentes: {
         orderBy: { dataNascimento: "asc" },
-        select: { id: true, nome: true, grauParentesco: true, dataNascimento: true, invalidezPermanente: true, finalidades: { select: { finalidade: true, dataInicio: true, limiteIdadeAnos: true, dataBaixa: true } } },
+        select: { id: true, nome: true, grauParentesco: true, dataNascimento: true, invalidezPermanente: true, finalidades: { select: { finalidade: true, dataInicio: true, limiteIdadeAnos: true, dataBaixa: true, encerramento: { select: { dataEfeito: true } } } } },
       },
     },
   });
@@ -152,7 +153,7 @@ export async function minhaFichaPara(sessao: Identidade): Promise<MinhaFicha> {
   const dependentes: DependenteDoServidor[] = servidor.dependentes.map((d) => ({
     id: d.id, nome: d.nome, parentesco: d.grauParentesco, nascimento: diaCivilBr(d.dataNascimento),
     finalidades: d.finalidades.map((f) => {
-      const forma = { dataNascimento: d.dataNascimento, invalidezPermanente: d.invalidezPermanente, dataInicio: f.dataInicio, limiteIdadeAnos: f.limiteIdadeAnos, dataBaixa: f.dataBaixa };
+      const forma = { dataNascimento: d.dataNascimento, invalidezPermanente: d.invalidezPermanente, dataInicio: f.dataInicio, limiteIdadeAnos: f.limiteIdadeAnos, dataBaixa: baixaEfetiva(f) };
       return { finalidade: f.finalidade, vale: dependenteValeEm(forma, hoje), motivo: motivoDaInvalidade(forma, hoje) };
     }),
   }));

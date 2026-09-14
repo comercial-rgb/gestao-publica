@@ -647,15 +647,42 @@ model FinalidadeDependente {
   /// Nulo = sem limite etário. Ver o docblock.
   limiteIdadeAnos Int?
 
-  /// A baixa por FATO. Nula = não houve. A baixa por idade não vem daqui.
+  /// ⚠️ LEGADO (até V6.2): a baixa por FATO gravada por UPDATE nesta linha — o papel de runtime não
+  /// tem esse grant, e a baixa falhava na aplicação. Desde V7 M1 a baixa é o FATO
+  /// `EncerramentoDeFinalidadeDependente` (INSERT). Os leitores usam `baixaEfetiva()`: o encerramento,
+  /// ou esta coluna para linhas antigas. Nenhum escritor novo.
   dataBaixa   DateTime?
   motivoBaixa String?
 
   criadoEm  DateTime @default(now())
   criadoPor String
 
+  encerramento EncerramentoDeFinalidadeDependente?
+
   @@index([dependenteId])
   @@index([finalidade])
+}
+
+/// O ENCERRAMENTO DE UMA FINALIDADE DE DEPENDENTE — fato com data de efeito, motivo e autor (V7 M1 U2).
+///
+/// ⚠️ UM POR FINALIDADE (`@unique`): duas baixas concorrentes não produzem dois encerramentos
+/// incompatíveis — a segunda cai na unicidade e o serviço a traduz em FINALIDADE-JA-BAIXADA.
+/// ⚠️ NÃO REESCREVE FOLHA FECHADA: o cálculo congelado guarda os dependentes que considerou. Um
+/// encerramento com efeito anterior a uma competência já fechada é aceito (o fato aconteceu) e o
+/// serviço devolve quais folhas fechadas ele atinge — a correção delas é retificação, não reescrita.
+/// Reativar = registrar finalidade NOVA; o período sem direito continua no histórico.
+model EncerramentoDeFinalidadeDependente {
+  id String @id @default(cuid())
+
+  finalidadeId String               @unique
+  finalidade   FinalidadeDependente @relation(fields: [finalidadeId], references: [id])
+
+  /// O dia a partir do qual a finalidade deixa de valer.
+  dataEfeito DateTime
+  motivo     String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
 }
 
 // ----------------------------------------------------------------------------

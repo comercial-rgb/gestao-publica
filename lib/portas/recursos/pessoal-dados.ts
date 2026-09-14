@@ -10,6 +10,7 @@ import {
   regimeVigenteEm,
   salarioBaseVigenteEm,
   situacaoDoVinculo,
+  baixaEfetiva,
   vagasOcupadasDoCargo,
   type EventoDoVinculo,
   type SituacaoVinculo,
@@ -18,6 +19,7 @@ import {
   admitirServidor,
   cadastrarCargo,
   cadastrarDependente,
+  baixarFinalidadeDependente,
   cadastrarLotacao,
   cadastrarServidor,
   desligarServidor,
@@ -143,7 +145,7 @@ export async function verServidor(id: string): Promise<ServidorLido | null> {
     where: { id },
     select: {
       ...SELECAO_DO_SERVIDOR,
-      dependentes: { orderBy: { criadoEm: "asc" }, select: { id: true, nome: true, dataNascimento: true, grauParentesco: true, criadoEm: true, criadoPor: true, finalidades: { select: { finalidade: true, dataInicio: true, dataBaixa: true, limiteIdadeAnos: true } } } },
+      dependentes: { orderBy: { criadoEm: "asc" }, select: { id: true, nome: true, dataNascimento: true, grauParentesco: true, criadoEm: true, criadoPor: true, finalidades: { select: { finalidade: true, dataInicio: true, dataBaixa: true, limiteIdadeAnos: true, encerramento: { select: { id: true, dataEfeito: true, motivo: true, criadoEm: true, criadoPor: true } } } } } },
       anotacoes: { orderBy: { data: "asc" }, select: { id: true, data: true, tipo: true, titulo: true, texto: true, criadoEm: true, criadoPor: true } },
       treinamentos: { orderBy: { dataInicio: "asc" }, select: { id: true, descricao: true, instituicao: true, cargaHoraria: true, dataInicio: true, dataTermino: true, criadoEm: true, criadoPor: true } },
     },
@@ -203,7 +205,8 @@ export async function verServidor(id: string): Promise<ServidorLido | null> {
         ...(e.salarioBase !== null ? { valor: e.salarioBase.toFixed(2) } : {}),
       })),
     ]),
-    ...s.dependentes.map((d) => ({ id: d.id, oQue: `Dependente: ${d.nome} (${d.grauParentesco})`, quando: diaCivilBr(d.dataNascimento), registradoEm: diaCivilBr(d.criadoEm), por: d.criadoPor, motivo: d.finalidades.map((f) => `${f.finalidade} desde ${diaCivilBr(f.dataInicio)}${f.dataBaixa !== null ? ` (baixa ${diaCivilBr(f.dataBaixa)})` : f.limiteIdadeAnos !== null ? ` (até ${f.limiteIdadeAnos} anos)` : ""}`).join(" · ") })),
+    ...s.dependentes.map((d) => ({ id: d.id, oQue: `Dependente: ${d.nome} (${d.grauParentesco})`, quando: diaCivilBr(d.dataNascimento), registradoEm: diaCivilBr(d.criadoEm), por: d.criadoPor, motivo: d.finalidades.map((f) => { const b = baixaEfetiva(f); return `${f.finalidade} desde ${diaCivilBr(f.dataInicio)}${b !== null ? ` (encerrada em ${diaCivilBr(b)})` : f.limiteIdadeAnos !== null ? ` (até ${f.limiteIdadeAnos} anos)` : ""}`; }).join(" · ") })),
+    ...s.dependentes.flatMap((d) => d.finalidades.flatMap((f) => (f.encerramento === null ? [] : [{ id: f.encerramento.id, oQue: `Finalidade ${f.finalidade} de ${d.nome} ENCERRADA`, quando: diaCivilBr(f.encerramento.dataEfeito), registradoEm: diaCivilBr(f.encerramento.criadoEm), por: f.encerramento.criadoPor, motivo: f.encerramento.motivo }]))),
     ...s.anotacoes.map((a) => ({ id: a.id, oQue: `Anotação: ${a.tipo} — ${a.titulo}`, quando: diaCivilBr(a.data), registradoEm: diaCivilBr(a.criadoEm), por: a.criadoPor, motivo: a.texto })),
     ...s.treinamentos.map((tr) => ({ id: tr.id, oQue: `Treinamento: ${tr.descricao}`, quando: diaCivilBr(tr.dataInicio), registradoEm: diaCivilBr(tr.criadoEm), por: tr.criadoPor, motivo: [tr.instituicao, tr.cargaHoraria !== null ? `${tr.cargaHoraria} h` : null, tr.dataTermino !== null ? `até ${diaCivilBr(tr.dataTermino)}` : null].filter((p) => p !== null).join(" · ") })),
   ];
@@ -225,7 +228,7 @@ export async function verServidor(id: string): Promise<ServidorLido | null> {
 /** As opções das telas do servidor. Com `servidorId`, as matrículas oferecidas são SÓ as dele (vivas). */
 export async function opcoesDoServidor(servidorId?: string): Promise<OpcoesDoCadastro> {
   const prisma = cliente();
-  const [pessoas, cargos, lotacoes, vinculos] = await Promise.all([
+  const [pessoas, cargos, lotacoes, vinculos, finalidades] = await Promise.all([
     prisma.pessoa.findMany({
       where: { tipo: "FISICA", servidor: null },
       orderBy: { documento: "asc" }, take: 500,
@@ -234,12 +237,15 @@ export async function opcoesDoServidor(servidorId?: string): Promise<OpcoesDoCad
     prisma.cargo.findMany({ where: { dataExtincao: null }, orderBy: { codigo: "asc" }, select: { id: true, codigo: true, denominacao: true } }),
     prisma.lotacao.findMany({ where: { dataExtincao: null }, orderBy: { codigo: "asc" }, select: { id: true, codigo: true, nome: true } }),
     servidorId === undefined ? Promise.resolve([]) : prisma.vinculo.findMany({ where: { servidorId }, orderBy: { dataAdmissao: "asc" }, select: { id: true, matricula: true, tipo: true, regimePrevidenciario: true, eventos: SELECAO_DE_EVENTOS } }),
+    // Só as finalidades SEM encerramento (nem legado): as encerradas são histórico, não ato possível.
+    servidorId === undefined ? Promise.resolve([]) : prisma.finalidadeDependente.findMany({ where: { dependente: { servidorId }, dataBaixa: null, encerramento: null }, orderBy: { dataInicio: "asc" }, select: { id: true, finalidade: true, dataInicio: true, dependente: { select: { nome: true } } } }),
   ]);
   const hoje = new Date();
   return {
     pessoaId: pessoas.map((p) => ({ valor: p.id, rotulo: `${p.versoes[0]?.nome ?? p.documento} (${formatarDocumento(p.documento)})` })),
     cargoId: cargos.map((c) => ({ valor: c.id, rotulo: `${c.codigo} — ${c.denominacao}` })),
     lotacaoId: lotacoes.map((l) => ({ valor: l.id, rotulo: `${l.codigo} — ${l.nome}` })),
+    finalidadeId: finalidades.map((f) => ({ valor: f.id, rotulo: `${f.dependente.nome} · ${f.finalidade} desde ${diaCivilBr(f.dataInicio)}` })),
     vinculoId: vinculos
       .map((v) => ({ v, situacao: situacaoDoVinculo(eventos(v.eventos), hoje) }))
       .filter((x) => x.situacao !== "DESLIGADO")
@@ -351,6 +357,16 @@ export async function acaoDoServidor(acao: string, servidorId: string, c: Campos
         })
       );
       return "Dependente cadastrado com a finalidade; a baixa por idade é derivada do limite legal.";
+    }
+    case "encerrar-finalidade": {
+      const f = await prisma.finalidadeDependente.findUnique({ where: { id: t(c, "finalidadeId") }, select: { dependente: { select: { servidorId: true } } } });
+      if (f === null || f.dependente.servidorId !== servidorId) throw new Error("A finalidade informada não é de dependente deste servidor. Nada foi gravado.");
+      const r = await comEscritaAutenticada("BAIXAR_DEPENDENTE", (criadoPor) =>
+        baixarFinalidadeDependente(prisma, { finalidadeId: t(c, "finalidadeId"), dataBaixa: dia(c, "dataEfeito"), motivoBaixa: t(c, "motivo"), criadoPor })
+      );
+      return r.competenciasFechadasAtingidas.length === 0
+        ? "Finalidade encerrada. Ela deixa de valer a partir da data de efeito; nenhuma folha fechada é alcançada."
+        : `Finalidade encerrada. ATENÇÃO: o efeito alcança folha(s) JÁ FECHADA(S) — ${r.competenciasFechadasAtingidas.join(", ")} — que NÃO foram recalculadas; a correção delas é retificação.`;
     }
     case "portaria": {
       const vinculoId = await exigirVinculoDoServidor();

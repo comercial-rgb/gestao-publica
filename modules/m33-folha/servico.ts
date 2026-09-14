@@ -5,6 +5,7 @@ import { Decimal, toMoney, sumMoney, type Money } from "../../packages/contracts
 import { diaCivil } from "../../packages/datas/index.js";
 import {
   dataDeDesligamento,
+  baixaEfetiva,
   dependenteValeEm,
   gratificacoesVigentesEm,
   regimeVigenteEm,
@@ -281,7 +282,7 @@ export async function calcularFolha(prisma: PrismaClient, input: CalcularFolhaIn
     const vinculos = await tx.vinculo.findMany({
       select: {
         id: true, matricula: true, dataAdmissao: true, regimePrevidenciario: true, servidorId: true,
-        servidor: { select: { dataNascimento: true, dependentes: { select: { id: true, nome: true, dataNascimento: true, invalidezPermanente: true, finalidades: { select: { finalidade: true, dataInicio: true, limiteIdadeAnos: true, dataBaixa: true } } } } } },
+        servidor: { select: { dataNascimento: true, dependentes: { select: { id: true, nome: true, dataNascimento: true, invalidezPermanente: true, finalidades: { select: { finalidade: true, dataInicio: true, limiteIdadeAnos: true, dataBaixa: true, encerramento: { select: { dataEfeito: true } } } } } } } },
         eventos: { select: { data: true, criadoEm: true, tipo: true, cargoId: true, lotacaoId: true, salarioBase: true, regimePrevidenciario: true, gratificacaoDescricao: true, gratificacaoValor: true } },
         lancamentosDaFolha: { where: { competenciaInicio: { lte: competencia }, OR: [{ competenciaFim: null }, { competenciaFim: { gte: competencia } }] }, select: { id: true, rubricaId: true, tipo: true, valor: true } },
       },
@@ -303,9 +304,9 @@ export async function calcularFolha(prisma: PrismaClient, input: CalcularFolhaIn
       }
       const dependentesSf: DependenteParaSalarioFamilia[] = v.servidor.dependentes.map((dep) => ({
         id: dep.id, nome: dep.nome, dataNascimento: dep.dataNascimento, invalidezPermanente: dep.invalidezPermanente,
-        finalidadeVigente: dep.finalidades.some((f) => f.finalidade === "SALARIO_FAMILIA" && f.dataInicio.getTime() <= fim.getTime() && (f.dataBaixa === null || f.dataBaixa.getTime() > inicio.getTime())),
+        finalidadeVigente: dep.finalidades.some((f) => f.finalidade === "SALARIO_FAMILIA" && f.dataInicio.getTime() <= fim.getTime() && (baixaEfetiva(f) === null || (baixaEfetiva(f) as Date).getTime() > inicio.getTime())),
       })).filter((dep) => v.servidor.dependentes.find((x) => x.id === dep.id)?.finalidades.some((f) => f.finalidade === "SALARIO_FAMILIA") === true);
-      const dependentesIr = v.servidor.dependentes.filter((dep) => dep.finalidades.some((f) => f.finalidade === "IMPOSTO_RENDA" && dependenteValeEm({ dataNascimento: dep.dataNascimento, invalidezPermanente: dep.invalidezPermanente, dataInicio: f.dataInicio, limiteIdadeAnos: f.limiteIdadeAnos, dataBaixa: f.dataBaixa }, fim))).length;
+      const dependentesIr = v.servidor.dependentes.filter((dep) => dep.finalidades.some((f) => f.finalidade === "IMPOSTO_RENDA" && dependenteValeEm({ dataNascimento: dep.dataNascimento, invalidezPermanente: dep.invalidezPermanente, dataInicio: f.dataInicio, limiteIdadeAnos: f.limiteIdadeAnos, dataBaixa: baixaEfetiva(f) }, fim))).length;
       entradas.push({
         competencia,
         vinculo: { id: v.id, matricula: v.matricula, regime, dataNascimento: v.servidor.dataNascimento },

@@ -916,6 +916,14 @@ export type RegistrarFinalidadeDependenteInput = z.input<
 >;
 
 /**
+ * A BAIXA POR FATO EFETIVA de uma finalidade — o ENCERRAMENTO (fato, V7 M1) ou, para linha anterior a
+ * ele, a coluna legada gravada por UPDATE. Todo leitor passa por aqui; ninguém lê `dataBaixa` cru.
+ */
+export function baixaEfetiva(f: { readonly dataBaixa: Date | null; readonly encerramento?: { readonly dataEfeito: Date } | null }): Date | null {
+  return f.encerramento?.dataEfeito ?? f.dataBaixa;
+}
+
+/**
  * A BAIXA POR **FATO** — óbito, perda da guarda, decisão judicial.
  *
  * ⚠️ A BAIXA POR IDADE NÃO PASSA POR AQUI, e não existe serviço para ela: ela é derivada
