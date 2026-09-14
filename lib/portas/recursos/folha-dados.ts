@@ -1,10 +1,21 @@
-import { diaCivilBr } from "../../../packages/datas/index.js";
+import { diaCivilBr, meioDiaCivil } from "../../../packages/datas/index.js";
 import { Decimal, toMoney, sumMoney } from "../../../packages/contracts/index.js";
 import { formatarDocumento } from "../../../packages/documento/index.js";
 import type { Prisma } from "../../../prisma/generated/client/client.js";
 import { situacaoDaFolha, vigenteNaCompetencia, type SituacaoDaFolha } from "../../../modules/m33-folha/dominio.js";
 import { situacaoDoVinculo, type EventoDoVinculo } from "../../../modules/m32-pessoal/dominio.js";
 import { apropriacaoDaFolha, apropriarFolha, cadastrarGrupoDeEmpenhoDaFolha } from "../../../modules/m33-folha/apropriacao.js";
+import {
+  certificacaoDaFolha,
+  certificarFolha,
+  designacaoVigenteEm,
+  designarNaFolha,
+  devolverFolhaParaCorrecao,
+  liquidacaoDaFolha,
+  liquidarFolha,
+  revogarDesignacaoNaFolha,
+  type SituacaoDaCertificacao,
+} from "../../../modules/m33-folha/certificacao.js";
 import {
   abrirFolha,
   cadastrarRubrica,
@@ -41,6 +52,22 @@ function paginacao(c: ConsultaDoMolde): { readonly skip: number; readonly take: 
 }
 const competenciaDeHoje = (): string => diaCivilBr(new Date()).split("/").reverse().slice(0, 2).join("-");
 const ROTULO_DA_SITUACAO: Readonly<Record<SituacaoDaFolha, string>> = { SEM_CALCULO: "SEM CÁLCULO", CALCULADA: "CALCULADA", FECHADA: "FECHADA" };
+const ROTULO_DA_CERTIFICACAO: Readonly<Record<SituacaoDaCertificacao, string>> = {
+  PENDENTE: "PENDENTE DE ATESTO",
+  CERTIFICADA: "CERTIFICADA",
+  DEVOLVIDA: "DEVOLVIDA PARA CORREÇÃO",
+  SUPERADA: "SUPERADA (o atesto é de outro cálculo)",
+};
+
+/**
+ * O DIA CIVIL DO ENTE a partir do campo `data` do formulário (`AAAA-MM-DD`).
+ *
+ * ⚠️ MEIO-DIA, e não meia-noite: `new Date("2026-06-02")` é UTC, e às 21h de Campina Grande a
+ * data do ato viraria o dia seguinte. O meio-dia civil sobrevive a qualquer fuso do Brasil.
+ */
+function diaDoCampo(c: Campos, nome: string): Date {
+  return meioDiaCivil(t(c, nome));
+}
 const ROTULO_DA_NATUREZA: Readonly<Record<string, string>> = {
   VENCIMENTO_BASE: "Vencimento-base", GRATIFICACOES_DO_VINCULO: "Gratificações do vínculo", VALOR_INFORMADO: "Valor informado", PERCENTUAL_DO_VENCIMENTO: "Percentual do vencimento",
   CONTRIBUICAO_PREVIDENCIARIA: "Contribuição previdenciária", IMPOSTO_DE_RENDA: "IRRF", SALARIO_FAMILIA: "Salário-família",
@@ -94,6 +121,23 @@ export interface FolhaLida extends DetalheLido {
   readonly calculoVivoId: string | null;
   /** `null` = a folha ainda não foi apropriada (ou nem está fechada). */
   readonly apropriacao: { readonly dataDoEmpenho: string; readonly por: string; readonly total: string; readonly empenhos: readonly EmpenhoDaFolhaLido[] } | null;
+  /**
+   * ⚠️ AS DIMENSÕES SÃO SEPARADAS, e é de propósito: cálculo, certificação, apropriação e
+   * liquidação são fatos distintos, e uma coluna única que os misturasse faria a tela dizer
+   * "liquidada" sobre uma folha que ninguém atestou. `null` = a folha nem está fechada.
+   */
+  readonly certificacao: {
+    readonly situacao: SituacaoDaCertificacao;
+    readonly fatos: readonly { readonly id: string; readonly tipo: string; readonly motivo: string | null; readonly sha256: string; readonly vinculos: number; readonly totalLiquido: string; readonly ato: string; readonly responsavel: string; readonly criadoPor: string; readonly quando: string }[];
+  } | null;
+  /** `null` = a folha não foi apropriada; sem empenho não há o que liquidar. */
+  readonly liquidacao: {
+    readonly liquidadas: number;
+    readonly pendentes: number;
+    readonly total: string;
+    /** Por número de empenho — a tela dos empenhos mostra qual já virou obrigação. */
+    readonly porEmpenho: Readonly<Record<string, { readonly numero: string; readonly responsavelAtesto: string; readonly data: string }>>;
+  } | null;
   readonly contracheques: readonly { readonly vinculoId: string; readonly matricula: string; readonly servidor: string; readonly regime: string; readonly dias: number; readonly proventos: string; readonly descontos: string; readonly liquido: string }[];
 }
 
@@ -103,6 +147,7 @@ export async function verFolha(id: string): Promise<FolhaLida | null> {
   if (f === null) return null;
   const d = derivarFolha(f);
   const apropriada = await apropriacaoDaFolha(prisma, id);
+  const [certificada, liquidada] = await Promise.all([certificacaoDaFolha(prisma, id), liquidacaoDaFolha(prisma, id)]);
   const contracheques = d.vivo === null ? [] : await prisma.contracheque.findMany({
     where: { calculoId: d.vivo.id }, orderBy: { vinculo: { matricula: "asc" } },
     select: { vinculoId: true, regime: true, diasComputados: true, totalProventos: true, totalDescontos: true, liquido: true, vinculo: { select: { matricula: true, servidor: { select: { nomeSocial: true, pessoa: { select: { documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } } } } } } },
@@ -122,6 +167,23 @@ export async function verFolha(id: string): Promise<FolhaLida | null> {
     ...(apropriada === null
       ? f.fechamento === null ? [] : [{ rotulo: "Apropriação contábil", valor: "não apropriada", nota: "Apropriar gera os empenhos desta folha pelos grupos de empenho cadastrados." }]
       : [{ rotulo: "Apropriação contábil", valor: `${apropriada.empenhos.length} empenho(s), ${apropriada.total.toFixed(2)} — empenhos de ${diaCivilBr(apropriada.dataDoEmpenho)}, por ${apropriada.criadoPor}`, nota: "Só o BRUTO é empenhado; as retenções viajam no pagamento." }]),
+    ...(certificada === null
+      ? []
+      : [{
+          rotulo: "Certificação (derivada)",
+          valor: ROTULO_DA_CERTIFICACAO[certificada.situacao],
+          nota: "O atesto de quem o ente designou, preso ao CÁLCULO conferido. Pendente / certificada / devolvida para correção / superada por outro cálculo.",
+        }]),
+    ...(liquidada === null
+      ? []
+      : [{
+          rotulo: "Liquidação (derivada)",
+          valor:
+            liquidada.pendentes === 0
+              ? `${liquidada.liquidadas} de ${liquidada.liquidadas} empenho(s), ${liquidada.total.toFixed(2)}`
+              : `${liquidada.liquidadas} de ${liquidada.liquidadas + liquidada.pendentes} empenho(s) — ${liquidada.pendentes} pendente(s)`,
+          nota: "Empenhar, liquidar e pagar são três fatos. Liquidada não é paga: o dinheiro sai no pagamento.",
+        }]),
     { rotulo: "Aberta em", valor: diaCivilBr(f.criadoEm), tipo: "data" as const },
     { rotulo: "Aberta por", valor: f.criadoPor },
   ];
@@ -131,6 +193,13 @@ export async function verFolha(id: string): Promise<FolhaLida | null> {
       { id: c.id, oQue: `Cálculo nº ${c.numero} · ${c.contracheques} contracheque(s)`, quando: diaCivilBr(c.criadoEm), registradoEm: diaCivilBr(c.criadoEm), por: c.criadoPor, motivo: [c.motivo, `sha256 ${c.sha256.slice(0, 12)}…`].filter((x) => x !== null).join(" · "), valor: toMoney(c.totalLiquido).toFixed(2), ...(c.cancelamento !== null ? { estornado: true } : {}) },
       ...(c.cancelamento === null ? [] : [{ id: c.cancelamento.id, oQue: `Cancelamento do cálculo nº ${c.numero}`, quando: diaCivilBr(c.cancelamento.criadoEm), registradoEm: diaCivilBr(c.cancelamento.criadoEm), por: c.cancelamento.criadoPor, motivo: c.cancelamento.motivo }]),
     ]),
+    ...(certificada?.fatos ?? []).map((c) => ({
+      id: c.id,
+      oQue: c.tipo === "CERTIFICACAO" ? `Certificação por ${c.responsavel} (${c.ato})` : `Devolvida para correção por ${c.responsavel} (${c.ato})`,
+      quando: diaCivilBr(c.criadoEm), registradoEm: diaCivilBr(c.criadoEm), por: c.criadoPor,
+      motivo: [c.motivo, `${c.vinculos} vínculo(s) · sha256 ${c.sha256.slice(0, 12)}…`].filter((x) => x !== null).join(" · "),
+      valor: c.totalLiquido.toFixed(2),
+    })),
     ...(f.fechamento === null ? [] : [{ id: f.fechamento.id, oQue: `Fechamento sobre o cálculo nº ${f.fechamento.calculo.numero}`, quando: diaCivilBr(f.fechamento.criadoEm), registradoEm: diaCivilBr(f.fechamento.criadoEm), por: f.fechamento.criadoPor, motivo: `sha256 ${f.fechamento.sha256.slice(0, 12)}…` }]),
   ];
   return {
@@ -139,6 +208,22 @@ export async function verFolha(id: string): Promise<FolhaLida | null> {
     selos: [{ texto: ROTULO_DA_SITUACAO[d.situacao], tom: d.situacao === "FECHADA" ? "ok" : d.situacao === "CALCULADA" ? "neutro" : "alerta" }],
     dados, historico,
     competencia: f.competencia, situacao: d.situacao, calculoVivoId: d.vivo?.id ?? null,
+    certificacao: certificada === null ? null : {
+      situacao: certificada.situacao,
+      fatos: certificada.fatos.map((c) => ({
+        id: c.id, tipo: c.tipo, motivo: c.motivo, sha256: c.sha256, vinculos: c.vinculos,
+        totalLiquido: c.totalLiquido.toFixed(2), ato: c.ato, responsavel: c.responsavel,
+        criadoPor: c.criadoPor, quando: diaCivilBr(c.criadoEm),
+      })),
+    },
+    liquidacao: liquidada === null ? null : {
+      liquidadas: liquidada.liquidadas, pendentes: liquidada.pendentes, total: liquidada.total.toFixed(2),
+      porEmpenho: Object.fromEntries(
+        liquidada.linhas
+          .filter((l) => l.numero !== null && l.data !== null)
+          .map((l) => [l.empenho, { numero: l.numero as string, responsavelAtesto: l.responsavelAtesto ?? "", data: diaCivilBr(l.data as Date) }])
+      ),
+    },
     apropriacao: apropriada === null ? null : {
       dataDoEmpenho: diaCivilBr(apropriada.dataDoEmpenho), por: apropriada.criadoPor, total: apropriada.total.toFixed(2),
       empenhos: apropriada.empenhos.map((e) => ({ numero: e.numero, ficha: e.ficha, grupo: e.grupo, matricula: e.matricula, credor: e.credor, valor: e.valor.toFixed(2), empenhoId: e.empenhoId })),
@@ -177,6 +262,21 @@ export async function acaoDaFolha(acao: string, folhaId: string, c: Campos): Pro
       return r.empenhados === 0 && r.jaExistiam > 0
         ? `Nada novo a empenhar: os ${r.jaExistiam} empenho(s) desta folha já existem. ${detalhe}`
         : `Apropriação gravada: ${r.empenhados} empenho(s) novo(s)${r.jaExistiam > 0 ? ` (${r.jaExistiam} já existiam)` : ""}, total ${r.total.toFixed(2)}. ${detalhe}`;
+    }
+    case "certificar": {
+      const r = await comEscritaAutenticada("CERTIFICAR_FOLHA", (criadoPor) => certificarFolha(prisma, { folhaId, data: diaDoCampo(c, "data"), criadoPor }));
+      return `Folha de ${r.competencia} CERTIFICADA. Manifesto do que foi conferido gravado com sha256 ${r.sha256.slice(0, 12)}…. Próximo passo: liquidar — e quem certificou não liquida.`;
+    }
+    case "devolver": {
+      const r = await comEscritaAutenticada("CERTIFICAR_FOLHA", (criadoPor) => devolverFolhaParaCorrecao(prisma, { folhaId, data: diaDoCampo(c, "data"), motivo: t(c, "motivo"), criadoPor }));
+      return `Folha de ${r.competencia} DEVOLVIDA para correção, com o motivo no histórico. O cálculo fechado NÃO foi reaberto: corrigir é retificação ou folha complementar.`;
+    }
+    case "liquidar": {
+      const r = await comEscritaAutenticada("LIQUIDAR_FOLHA", (criadoPor) => liquidarFolha(prisma, { folhaId, data: diaDoCampo(c, "data"), criadoPor }));
+      const resumo = `${r.liquidadas} liquidação(ões) nova(s)${r.jaExistiam > 0 ? ` (${r.jaExistiam} já existiam)` : ""}, total ${r.total.toFixed(2)}`;
+      return r.pendentes > 0
+        ? `${resumo}. ATENÇÃO: ${r.pendentes} empenho(s) desta folha continuam SEM liquidação — ela não está liquidada por inteiro.`
+        : `${resumo}. Todos os empenhos desta folha estão liquidados. Liquidada não é paga: o dinheiro sai no pagamento.`;
     }
     case "fechar": {
       const r = await comEscritaAutenticada("FECHAR_FOLHA", (criadoPor) => fecharFolha(prisma, { folhaId, criadoPor }));
@@ -617,4 +717,137 @@ export async function criarGrupoDeEmpenho(c: Campos, rubricaIds: readonly string
     });
     return r.grupoId;
   });
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AS DESIGNAÇÕES PARA O ATESTO (V6.1)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const SELECAO_DA_DESIGNACAO = {
+  id: true, atribuicao: true, atoDesignacao: true, vigenciaInicio: true, vigenciaFim: true, criadoEm: true, criadoPor: true,
+  revogacao: { select: { id: true, dataEfeito: true, motivo: true, criadoEm: true, criadoPor: true } },
+  usuario: { select: { identificador: true, nome: true, ativo: true } },
+  pessoa: { select: { documento: true, versoes: { orderBy: { criadoEm: "desc" as const }, take: 1, select: { nome: true } } } },
+  substitutoDe: { select: { atoDesignacao: true, pessoa: { select: { documento: true, versoes: { orderBy: { criadoEm: "desc" as const }, take: 1, select: { nome: true } } } } } },
+} as const;
+
+const nomeDaPessoa = (p: { readonly documento: string; readonly versoes: readonly { readonly nome: string }[] }): string => p.versoes[0]?.nome ?? formatarDocumento(p.documento);
+
+const vigenciaEmTexto = (d: { readonly vigenciaInicio: Date; readonly vigenciaFim: Date | null; readonly revogacao: { readonly dataEfeito: Date } | null }): string =>
+  `${diaCivilBr(d.vigenciaInicio)} → ${d.vigenciaFim === null ? "sem prazo" : diaCivilBr(d.vigenciaFim)}` +
+  (d.revogacao === null ? "" : ` · revogada a partir de ${diaCivilBr(d.revogacao.dataEfeito)}`);
+
+export async function listarDesignacoes(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
+  const prisma = cliente();
+  const q = (c.filtros["q"] ?? "").trim();
+  const situacao = c.filtros["situacao"] ?? "";
+  const where = q === "" ? {} : {
+    OR: [
+      { atoDesignacao: { contains: q, mode: "insensitive" as const } },
+      { usuario: { identificador: { contains: q, mode: "insensitive" as const } } },
+      { pessoa: { versoes: { some: { nome: { contains: q, mode: "insensitive" as const } } } } },
+    ],
+  };
+  // ⚠️ O FILTRO "HOJE" É APLICADO SOBRE A DERIVAÇÃO, não por SQL. Vigência aqui é início, fim E
+  // revogação lidos pelo dia civil do ente — traduzir isso para `where` criaria uma segunda
+  // definição de "vigente", e um dia as duas discordariam numa data de borda.
+  const todas = await prisma.designacaoNaFolha.findMany({ where, orderBy: { vigenciaInicio: "desc" }, select: SELECAO_DA_DESIGNACAO });
+  const hoje = new Date();
+  const comVigencia = todas.map((d) => ({ d, vigente: designacaoVigenteEm({ vigenciaInicio: d.vigenciaInicio, vigenciaFim: d.vigenciaFim, revogacao: d.revogacao }, hoje) }));
+  const filtradas = situacao === "" ? comVigencia : comVigencia.filter((x) => (situacao === "VIGENTE" ? x.vigente : !x.vigente));
+  const pagina = filtradas.slice((c.pagina - 1) * TAMANHO_DE_PAGINA, c.pagina * TAMANHO_DE_PAGINA);
+  return {
+    total: filtradas.length,
+    linhas: pagina.map(({ d, vigente }) => ({
+      id: d.id,
+      responsavel: nomeDaPessoa(d.pessoa),
+      usuario: d.usuario.identificador,
+      atoDesignacao: d.atoDesignacao,
+      vigencia: vigenciaEmTexto(d),
+      situacao: vigente ? "VIGENTE" : "NÃO VIGENTE",
+    })),
+  };
+}
+
+export async function verDesignacao(id: string): Promise<DetalheLido | null> {
+  const d = await cliente().designacaoNaFolha.findUnique({ where: { id }, select: SELECAO_DA_DESIGNACAO });
+  if (d === null) return null;
+  const vigente = designacaoVigenteEm({ vigenciaInicio: d.vigenciaInicio, vigenciaFim: d.vigenciaFim, revogacao: d.revogacao }, new Date());
+  const dados: DadoDoDetalhe[] = [
+    { rotulo: "Atribuição", valor: "Certificar (atestar) a folha" },
+    { rotulo: "Responsável", valor: nomeDaPessoa(d.pessoa), nota: "A pessoa do cadastro único — é o nome que vai no atesto e no responsável pelo atesto da liquidação." },
+    { rotulo: "Documento", valor: formatarDocumento(d.pessoa.documento) },
+    { rotulo: "Conta de acesso", valor: `${d.usuario.identificador}${d.usuario.ativo ? "" : " (DESATIVADA)"}`, nota: "O vínculo usuário↔pessoa é explícito e foi conferido no cadastro: o atesto não fica assinado por um nome e praticado por outro." },
+    { rotulo: "Ato que designou", valor: d.atoDesignacao, nota: "Ato administrativo do ente. O sistema não inventa fundamento." },
+    { rotulo: "Vigência", valor: vigenciaEmTexto(d) },
+    { rotulo: "Vigente hoje (derivada)", valor: vigente ? "sim" : "não", nota: "Início ≤ dia ≤ fim, e sem revogação com efeito até o dia. Pelo dia civil do ente, nunca UTC." },
+    ...(d.substitutoDe === null ? [] : [{ rotulo: "Substitui", valor: `${nomeDaPessoa(d.substitutoDe.pessoa)} (${d.substitutoDe.atoDesignacao})`, nota: "O substituto certifica com o PRÓPRIO nome e o PRÓPRIO ato — não 'em nome de'." }]),
+    { rotulo: "Cadastrada em", valor: diaCivilBr(d.criadoEm), tipo: "data" as const },
+    { rotulo: "Cadastrada por", valor: d.criadoPor },
+  ];
+  const historico: LinhaDoHistorico[] = [
+    { id: `cadastro-${d.id}`, oQue: `Designação pelo ato ${d.atoDesignacao}`, quando: diaCivilBr(d.vigenciaInicio), registradoEm: diaCivilBr(d.criadoEm), por: d.criadoPor },
+    ...(d.revogacao === null ? [] : [{ id: d.revogacao.id, oQue: "Revogação", quando: diaCivilBr(d.revogacao.dataEfeito), registradoEm: diaCivilBr(d.revogacao.criadoEm), por: d.revogacao.criadoPor, motivo: d.revogacao.motivo }]),
+  ];
+  return {
+    titulo: nomeDaPessoa(d.pessoa),
+    subtitulo: `${d.atoDesignacao} · ${vigenciaEmTexto(d)}`,
+    selos: [{ texto: vigente ? "VIGENTE" : "NÃO VIGENTE", tom: vigente ? "ok" : "alerta" }],
+    dados, historico,
+  };
+}
+
+/**
+ * As opções do cadastro da designação.
+ *
+ * ⚠️ O RECORTE É O QUE TORNA O FORMULÁRIO UTILIZÁVEL: só PESSOAS FÍSICAS com vínculo VIGENTE a
+ * um usuário ATIVO aparecem, e a conta é oferecida junto do nome. Oferecer as 40 mil pessoas do
+ * cadastro seria um `select` bonito e inútil — e o serviço recusaria depois de tudo preenchido.
+ */
+export async function opcoesDaDesignacao(): Promise<OpcoesDoCadastro> {
+  const prisma = cliente();
+  const [vinculos, titulares] = await Promise.all([
+    prisma.vinculoUsuarioPessoa.findMany({
+      orderBy: { criadoEm: "desc" }, take: 600,
+      select: { tipo: true, usuarioId: true, pessoaId: true, usuario: { select: { identificador: true, ativo: true } }, pessoa: { select: { documento: true, tipo: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } } },
+    }),
+    prisma.designacaoNaFolha.findMany({ orderBy: { vigenciaInicio: "desc" }, take: 200, select: { id: true, atoDesignacao: true, pessoa: { select: { documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } } } }),
+  ]);
+  // O vigente é a ÚLTIMA linha de cada usuário, se for VINCULO — a mesma leitura do serviço.
+  const ultimoDoUsuario = new Map<string, (typeof vinculos)[number]>();
+  for (const v of vinculos) if (!ultimoDoUsuario.has(v.usuarioId)) ultimoDoUsuario.set(v.usuarioId, v);
+  const elegiveis = [...ultimoDoUsuario.values()].filter((v) => v.tipo === "VINCULO" && v.usuario.ativo && v.pessoa.tipo === "FISICA");
+  return {
+    atribuicao: [{ valor: "CERTIFICAR_FOLHA", rotulo: "Certificar (atestar) a folha" }],
+    pessoaId: elegiveis.map((v) => ({ valor: v.pessoaId, rotulo: `${nomeDaPessoa(v.pessoa)} (${formatarDocumento(v.pessoa.documento)})` })),
+    usuarioIdentificador: elegiveis.map((v) => ({ valor: v.usuario.identificador, rotulo: `${v.usuario.identificador} — ${nomeDaPessoa(v.pessoa)}` })),
+    substitutoDeId: titulares.map((t2) => ({ valor: t2.id, rotulo: `${nomeDaPessoa(t2.pessoa)} (${t2.atoDesignacao})` })),
+  };
+}
+
+export async function criarDesignacao(c: Campos): Promise<string> {
+  return comEscritaAutenticada("DESIGNAR_NA_FOLHA", async (criadoPor) => {
+    const fim = opcional(c, "vigenciaFim");
+    const substituto = opcional(c, "substitutoDeId");
+    const r = await designarNaFolha(cliente(), {
+      atribuicao: "CERTIFICAR_FOLHA",
+      pessoaId: t(c, "pessoaId"),
+      usuarioIdentificador: t(c, "usuarioIdentificador"),
+      atoDesignacao: t(c, "atoDesignacao"),
+      vigenciaInicio: diaDoCampo(c, "vigenciaInicio"),
+      ...(fim === undefined || fim === "" ? {} : { vigenciaFim: meioDiaCivil(fim) }),
+      ...(substituto === undefined || substituto === "" ? {} : { substitutoDeId: substituto }),
+      criadoPor,
+    });
+    return r.designacaoId;
+  });
+}
+
+export async function acaoDaDesignacao(acao: string, designacaoId: string, c: Campos): Promise<string> {
+  if (acao !== "revogar") throw new Error(`Ação desconhecida: ${acao}`);
+  await comEscritaAutenticada("DESIGNAR_NA_FOLHA", (criadoPor) =>
+    revogarDesignacaoNaFolha(cliente(), { designacaoId, dataEfeito: diaDoCampo(c, "dataEfeito"), motivo: t(c, "motivo"), criadoPor })
+  );
+  return `Designação revogada a partir de ${diaCivilBr(diaDoCampo(c, "dataEfeito"))}. Ela continua no histórico, e os atestos praticados sob ela continuam com lastro.`;
 }

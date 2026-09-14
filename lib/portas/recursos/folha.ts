@@ -82,6 +82,33 @@ export const FOLHAS: DefinicaoDeRecurso = definirRecurso({
       campos: [{ nome: "dataDoEmpenho", rotulo: "Data dos empenhos (dentro do exercício aberto)", tipo: "data", obrigatorio: true, largura: 1 }],
     },
     {
+      nome: "certificar", rotulo: "Certificar (atestar) a folha", acaoDoCenso: "CERTIFICAR_FOLHA",
+      aviso:
+        "O atesto do art. 63 da Lei 4.320: quem o ente DESIGNOU confere a folha fechada e responde por ela. Exige designação " +
+        "vigente no dia do ato — o crachá sozinho não basta. Quem calculou ou fechou esta folha não a certifica. Grava o " +
+        "manifesto do que foi conferido (entidade, competência, cálculo, vínculos e alocações) com o seu sha256.",
+      campos: [{ nome: "data", rotulo: "Data do ato (a designação precisa estar vigente nela)", tipo: "data", obrigatorio: true, largura: 1 }],
+    },
+    {
+      nome: "devolver", rotulo: "Devolver para correção", acaoDoCenso: "CERTIFICAR_FOLHA",
+      aviso:
+        "Recusar é o outro lado de atestar, e exige a mesma designação. A devolução é um FATO com motivo; ela NÃO reabre o " +
+        "cálculo fechado — corrigir é retificação ou folha complementar. Folha já liquidada não se devolve: desfazer " +
+        "obrigação liquidada é anulação pelo caminho da despesa.",
+      campos: [
+        { nome: "data", rotulo: "Data do ato", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "O que RH precisa corrigir (mínimo 3 caracteres)", tipo: "texto", obrigatorio: true, largura: 3 },
+      ],
+    },
+    {
+      nome: "liquidar", rotulo: "Liquidar a folha certificada", acaoDoCenso: "LIQUIDAR_FOLHA",
+      aviso:
+        "Reconhece a obrigação de cada empenho desta folha pelo caminho de sempre da despesa, com o certificador no " +
+        "responsável pelo atesto. Exige a folha CERTIFICADA e APROPRIADA, e quem certificou não liquida. Nenhuma nota " +
+        "fiscal é inventada: a folha não tem nota. Reexecutar continua de onde parou e não duplica.",
+      campos: [{ nome: "data", rotulo: "Data das liquidações", tipo: "data", obrigatorio: true, largura: 1 }],
+    },
+    {
       nome: "fechar", rotulo: "Fechar a folha", acaoDoCenso: "FECHAR_FOLHA",
       aviso: "Congela o último cálculo vivo com o seu sha256. Depois disto a folha não se recalcula — é o que vai à contabilidade.",
       irreversivel: true,
@@ -238,4 +265,63 @@ export const GRUPOS_DE_EMPENHO_DA_FOLHA: DefinicaoDeRecurso = definirRecurso({
   abas: ["dados"],
 });
 
-export const RECURSOS_DA_FOLHA: readonly DefinicaoDeRecurso[] = [FOLHAS, RUBRICAS, LANCAMENTOS_DA_FOLHA, TABELAS_DA_FOLHA, GRUPOS_DE_EMPENHO_DA_FOLHA];
+/**
+ * ═══ AS DESIGNAÇÕES DA FOLHA (V6.1) — quem o ente pôs para atestar ═══
+ *
+ * ⚠️ ESTE CADASTRO NÃO CONCEDE PODER SOZINHO, e o texto da tela diz isso. Ele registra o ATO
+ * ADMINISTRATIVO do ente (portaria, decreto, delegação) que nomeia o responsável. Certificar
+ * exige as DUAS coisas: a ação CERTIFICAR_FOLHA no perfil e uma designação vigente no dia.
+ *
+ * ⚠️ E NÃO HÁ EDIÇÃO. Revogar é FATO com data de efeito e motivo — alterar a vigência reescreveria
+ * o passado, e os atestos praticados sob ela ficariam sem lastro.
+ */
+export const DESIGNACOES_DA_FOLHA: DefinicaoDeRecurso = definirRecurso({
+  nome: "designacoes",
+  rotulo: "Designações para o atesto",
+  rotuloSingular: "Designação",
+  rota: "/folha/designacoes",
+  descricao:
+    "Quem o ente designou para CERTIFICAR a folha, por qual ato administrativo e de quando até quando. Nenhuma norma " +
+    "nacional nomeia um cargo para isso: a atribuição é do município, e o sistema não a escolhe. Sem designação vigente " +
+    "no dia, o ato de certificar recusa dizendo o que falta — consultar, calcular e fechar continuam liberados.",
+  campos: [
+    { nome: "atribuicao", rotulo: "Atribuição", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [{ valor: "CERTIFICAR_FOLHA", rotulo: "Certificar (atestar) a folha" }] },
+    { nome: "pessoaId", rotulo: "Responsável (pessoa do cadastro)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+    { nome: "usuarioIdentificador", rotulo: "Conta que ele usa para entrar (tem de ser a MESMA pessoa)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+    { nome: "atoDesignacao", rotulo: "Ato que designou (portaria, decreto, delegação)", tipo: "texto", obrigatorio: true, largura: 2, placeholder: "Portaria 45/2026" },
+    { nome: "vigenciaInicio", rotulo: "Vigência — início", tipo: "data", obrigatorio: true, largura: 1 },
+    { nome: "vigenciaFim", rotulo: "Vigência — fim (vazio = sem prazo)", tipo: "data", largura: 1 },
+    { nome: "substitutoDeId", rotulo: "Substitui a designação de (opcional)", tipo: "selecao", largura: 2, opcoes: [] },
+  ],
+  colunas: [
+    { nome: "responsavel", cabecalho: "Responsável", tipo: "link", ordenavel: true },
+    { nome: "usuario", cabecalho: "Conta", tipo: "texto" },
+    { nome: "atoDesignacao", cabecalho: "Ato", tipo: "texto" },
+    { nome: "vigencia", cabecalho: "Vigência", tipo: "texto" },
+    { nome: "situacao", cabecalho: "Hoje", tipo: "situacao" },
+  ],
+  filtros: [
+    { nome: "q", rotulo: "Responsável, conta ou ato", tipo: "texto", largura: 2 },
+    { nome: "situacao", rotulo: "Hoje", tipo: "selecao", largura: 1, opcoes: [
+      { valor: "VIGENTE", rotulo: "Vigente" },
+      { valor: "NAO_VIGENTE", rotulo: "Não vigente" },
+    ] },
+  ],
+  acoes: [
+    {
+      nome: "revogar", rotulo: "Revogar a designação", acaoDoCenso: "DESIGNAR_NA_FOLHA",
+      aviso:
+        "A revogação é um FATO com data de efeito: a designação continua no histórico, e os atestos praticados sob ela " +
+        "continuam com lastro. A partir do dia do efeito, ela deixa de autorizar novos atestos.",
+      irreversivel: true,
+      campos: [
+        { nome: "dataEfeito", rotulo: "A partir de que dia deixa de valer", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "Motivo (exoneração, fim da substituição, novo ato)", tipo: "texto", obrigatorio: true, largura: 3 },
+      ],
+    },
+  ],
+  permissoes: { criar: "DESIGNAR_NA_FOLHA" },
+  abas: ["dados", "historico"],
+});
+
+export const RECURSOS_DA_FOLHA: readonly DefinicaoDeRecurso[] = [FOLHAS, RUBRICAS, LANCAMENTOS_DA_FOLHA, TABELAS_DA_FOLHA, GRUPOS_DE_EMPENHO_DA_FOLHA, DESIGNACOES_DA_FOLHA];
