@@ -76,8 +76,9 @@ describe("identidade — nenhum literal de entidade na superfície", () => {
     const semRota = CANAIS.filter((c) => c.href === null).map((c) => c.id);
     // ⚠️ ENCOLHE, NUNCA CRESCE SEM CÓDIGO: o portal do servidor saiu daqui em V6 P2.4, quando a
     // rota passou a existir (`/portal-do-servidor`). Um canal que voltasse a ter `href` sem tela
-    // seria promessa na entrada — e é isto que este teste impede.
-    expect(semRota).toEqual(["portal-do-cidadao", "fornecedor"]);
+    // seria promessa na entrada — e é isto que este teste impede. A carta de serviços e o canal do
+    // fornecedor saíram em V6.2 P3, com `/servicos` e o acompanhamento em `/meus-servicos`.
+    expect(semRota).toEqual([]);
     for (const c of CANAIS) if (c.href !== null) expect(c.href.startsWith("/")).toBe(true);
   });
 });

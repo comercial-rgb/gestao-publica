@@ -1,4 +1,6 @@
 import { escopoDaAcaoDeLeitura } from "../../modules/m16-travamento/leitura.js";
+import { pessoaDoUsuario } from "../../modules/m16-travamento/servico-pessoa-do-usuario.js";
+import { formatarDocumento } from "../../packages/documento/index.js";
 import type { AcaoDeLeitura } from "../../modules/m16-travamento/acoes.js";
 import type { Prisma } from "../../prisma/generated/client/client.js";
 import { cliente } from "./cliente";
@@ -120,6 +122,40 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
   },
   fontes: porCodigo("CONSULTAR_PLANEJAMENTO", async (w, s, t) =>
     (await cliente().fonteRecurso.findMany({ where: onde(w, "descricao"), orderBy: { codigo: "asc" }, skip: s, take: t, select: { codigo: true, descricao: true } })).map((x) => ({ codigo: x.codigo, texto: x.descricao }))),
+  /**
+   * V6.2 P3 — a PESSOA representada: busca por documento (dígitos) ou nome da versão vigente. O valor é
+   * o id interno, que o caso de uso resolve de novo.
+   */
+  pessoas: {
+    leitura: "CONSULTAR_CADASTROS",
+    async buscar(_s, p) {
+      const digitos = p.q.replace(/\D/g, "");
+      const where = p.valor !== undefined ? { id: p.valor } : p.q === "" ? {} : { OR: [...(digitos.length >= 3 ? [{ documento: { startsWith: digitos } }] : []), { versoes: { some: { nome: contem(p.q) } } }] };
+      const linhas = await cliente().pessoa.findMany({ where, orderBy: { documento: "asc" }, skip: skip(p), take, select: { id: true, documento: true, tipo: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } });
+      const r = pagina(linhas, p);
+      return { opcoes: r.linhas.map((x) => ({ valor: x.id, rotulo: `${x.versoes[0]?.nome ?? ""} — ${formatarDocumento(x.documento)}`, detalhe: x.tipo === "JURIDICA" ? "pessoa jurídica" : "pessoa física" })), temMais: r.temMais };
+    },
+  },
+  /**
+   * V6.2 P3 — a CONTA de quem representa: só contas ativas vinculadas HOJE a uma pessoa física (o vínculo
+   * vigente é a última linha do usuário). O caso de uso confere as duas coisas de novo.
+   */
+  "contas-com-pessoa-fisica": {
+    leitura: "CONSULTAR_CADASTROS",
+    async buscar(_s, p) {
+      const prisma = cliente();
+      const where = p.valor !== undefined ? { identificador: p.valor, ativo: true } : { ativo: true, vinculosDePessoa: { some: {} }, ...(p.q === "" ? {} : { OR: [{ identificador: contem(p.q) }, { nome: contem(p.q) }] }) };
+      const contas = await prisma.usuario.findMany({ where, orderBy: { identificador: "asc" }, skip: skip(p), take, select: { identificador: true, nome: true } });
+      const r = pagina(contas, p);
+      const opcoes: OpcaoReferenciada[] = [];
+      for (const u of r.linhas) {
+        const pessoa = await pessoaDoUsuario(prisma, u.identificador);
+        if (pessoa === null || pessoa.documento.length !== 11) continue;
+        opcoes.push({ valor: u.identificador, rotulo: `${u.nome} (${u.identificador})`, detalhe: `${pessoa.nome} — ${formatarDocumento(pessoa.documento)}` });
+      }
+      return { opcoes, temMais: r.temMais };
+    },
+  },
   "codigos-de-acompanhamento": porCodigo("CONSULTAR_PLANEJAMENTO", async (w, s, t) =>
     (await cliente().codigoAcompanhamento.findMany({ where: onde(w, "descricao"), orderBy: { codigo: "asc" }, skip: s, take: t, select: { codigo: true, descricao: true } })).map((x) => ({ codigo: x.codigo, texto: x.descricao }))),
 };

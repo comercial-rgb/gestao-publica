@@ -81,8 +81,8 @@ export const CANAIS: readonly Canal[] = [
   { id: "transparencia", rotulo: "Transparência", descricao: "Demonstrativos fiscais em PDF, sem cadastro.", href: "/transparencia/demonstrativos" },
   { id: "consulta-publica", rotulo: "Acompanhar processo", descricao: "Situação e movimentos pelo número e pelo código verificador.", href: "/consulta" },
   { id: "portal-do-servidor", rotulo: "Portal do Servidor", descricao: "Vínculo, dependentes e contracheques — com a sua conta de servidor.", href: "/portal-do-servidor" },
-  { id: "portal-do-cidadao", rotulo: "Portal do Cidadão", descricao: "Serviços publicados e protocolo pelo requerente.", href: null },
-  { id: "fornecedor", rotulo: "Fornecedor", descricao: "Documentos e complementos pelo representante da empresa.", href: null },
+  { id: "portal-do-cidadao", rotulo: "Carta de serviços", descricao: "Serviços publicados, pedido pela internet e acompanhamento do requerente.", href: "/servicos" },
+  { id: "fornecedor", rotulo: "Fornecedor", descricao: "Complemento documental pelo representante da empresa, com representação registrada.", href: "/servicos?publico=FORNECEDOR" },
 ];
 
 /**

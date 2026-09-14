@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ADMINISTRACAO, AREAS, CADASTROS, CONTABILIDADE, EXECUCAO_DESPESA, EXECUCAO_RECEITA, LICITACOES, PESSOAL, FOLHA, PORTAL_DO_SERVIDOR, PLANEJAMENTO, RELATORIOS_GERENCIAIS, RELATORIOS_LIVROS, RELATORIOS_RGF, RELATORIOS_RREO, type RelatorioNav } from "../../lib/navegacao";
+import { ADMINISTRACAO, AREAS, CADASTROS, CONTABILIDADE, EXECUCAO_DESPESA, EXECUCAO_RECEITA, LICITACOES, MEUS_SERVICOS, PESSOAL, FOLHA, PORTAL_DO_SERVIDOR, PLANEJAMENTO, RELATORIOS_GERENCIAIS, RELATORIOS_LIVROS, RELATORIOS_RGF, RELATORIOS_RREO, type RelatorioNav } from "../../lib/navegacao";
 import { identidadeNeutra, type IdentidadeDaTela } from "../../lib/identidade/produto";
 import { Marca } from "./Marca";
 import { useShell } from "./Shell";
@@ -20,6 +20,7 @@ const SUBMENUS: Record<string, readonly (readonly [string, readonly RelatorioNav
   pessoal: [["Pessoal", PESSOAL]],
   folha: [["Folha", FOLHA]],
   "portal-do-servidor": [["Portal do Servidor", PORTAL_DO_SERVIDOR]],
+  "meus-servicos": [["Meus serviços", MEUS_SERVICOS]],
 };
 
 /**

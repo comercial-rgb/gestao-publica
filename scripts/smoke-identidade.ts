@@ -330,7 +330,7 @@ async function main(): Promise<void> {
     const entrada2 = await irPara(page, "/login");
     conferir("7.1 a entrada mostra o novo ente", ((await atributo(page, "[data-marca-ente]", null)) ?? "") === NOME_NOVO, `ente: ${await atributo(page, "[data-marca-ente]", null)}`);
     conferir("7.2 os canais públicos ativados ganham link (transparência e consulta)", (await page.$('[data-canal="transparencia"]')) !== null && (await page.$('[data-canal="consulta-publica"]')) !== null, "canais ausentes");
-    conferir("7.3 nenhum canal inexistente é prometido", (await page.$('[data-canal="portal-do-servidor"]')) === null && (await page.$('[data-canal="portal-do-cidadao"]')) === null, "canal sem rota apareceu");
+    conferir("7.3 nenhum canal NÃO ATIVADO na apresentação é prometido", (await page.$('[data-canal="portal-do-servidor"]')) === null && (await page.$('[data-canal="portal-do-cidadao"]')) === null, "canal não ativado apareceu");
     conferir("7.4 a assinatura do fornecedor aparece no rodapé da entrada", entrada2.texto.includes("fornecido pela equipe de demonstração"), entrada2.texto.slice(-200));
 
     // ── 8. QUEM NÃO CONFIGURA: vê e não altera ──

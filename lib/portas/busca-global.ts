@@ -27,6 +27,7 @@ import {
   PESSOAL,
   FOLHA,
   PORTAL_DO_SERVIDOR,
+  MEUS_SERVICOS,
 } from "../navegacao.js";
 import { RECURSOS_DO_MOLDE } from "./recursos/definicoes.js";
 import { filtrarPorTexto, type DestinoDaBusca } from "../busca-global.js";
@@ -71,6 +72,7 @@ const GRUPOS_DE_RELATORIO: readonly (readonly [
   ["pessoal", "Pessoal", PESSOAL],
   ["folha", "Folha", FOLHA],
   ["portal-do-servidor", "Portal do Servidor", PORTAL_DO_SERVIDOR],
+  ["meus-servicos", "Meus serviços", MEUS_SERVICOS],
   ["administracao", "Administração", ADMINISTRACAO],
   ["cadastros", "Cadastros", CADASTROS],
   ["protocolo", "Protocolo", PROTOCOLO],
