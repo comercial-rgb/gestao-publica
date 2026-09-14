@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useId, useRef } from "react";
+import { useActionState, useEffect, useId, useRef } from "react";
 import { ChaveDeComando } from "../ui/ChaveDeComando";
 import { CampoReferenciado } from "../ui/CampoReferenciado";
 import {
@@ -70,6 +70,11 @@ export interface FormularioDeRecursoProps {
   readonly valores?: Readonly<Record<string, string>>;
   readonly aviso?: string;
   readonly irreversivel?: boolean;
+  /**
+   * V6.2 — avisa quem monta a barra do resultado do ato. Um ato que muda o estado costuma TIRAR o
+   * próprio formulário da barra (certificar → "já certificada"), e a mensagem morreria com ele.
+   */
+  readonly aoResultado?: (estado: EstadoDoMolde) => void;
 }
 
 function Campo({
@@ -229,8 +234,16 @@ export function FormularioDeRecurso({
   valores,
   aviso,
   irreversivel,
+  aoResultado,
 }: FormularioDeRecursoProps): React.ReactElement {
   const [estado, disparar, pendente] = useActionState<EstadoDoMolde, FormData>(action, {});
+  // ⚠️ O AVISO DISPARA POR RESULTADO NOVO, e não por renderização: o callback chega recriado a cada
+  // render da barra, e depender dele faria o efeito rodar em laço.
+  const avisar = useRef(aoResultado);
+  avisar.current = aoResultado;
+  useEffect(() => {
+    if (estado.erro !== undefined || estado.sucesso !== undefined) avisar.current?.(estado);
+  }, [estado]);
   const ref = useRef<HTMLFormElement>(null);
   const idAviso = `aviso-${useId()}`;
   // Sucesso limpa o formulário — sem isto, reenviar o mesmo conteúdo é um clique de distância.

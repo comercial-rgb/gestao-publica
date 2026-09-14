@@ -181,6 +181,14 @@ async function preencherEEnviar(page: Page, acao: string, campos: readonly Campo
     await new Promise((r) => setTimeout(r, 500));
     resposta = await page.evaluate((sel) => {
       const f = document.querySelector(sel);
+      // V6.2 (PROD-015) — o ato que se torna não aplicável SAI da barra, e o resultado dele fica em
+      // `[data-resultado-da-acao]`. Sem este ramo, "fechar" gravaria e o percurso leria silêncio.
+      if (f === null) {
+        const nome = /data-acao="([^"]+)"/.exec(sel)?.[1] ?? "";
+        const r = document.querySelector(`[data-resultado-da-acao="${nome}"]`);
+        if (r !== null) return { tipo: r.getAttribute("role") === "alert" ? "erro" : "ok", texto: (r.textContent ?? "").trim() };
+        return { tipo: "silencio", texto: "" };
+      }
       const alerta = f?.querySelector('[role="alert"]');
       if (alerta !== null && alerta !== undefined) return { tipo: "erro", texto: (alerta.textContent ?? "").trim() };
       const ps = Array.from(f?.querySelectorAll("p") ?? []);
@@ -404,19 +412,31 @@ async function main(): Promise<void> {
     await sair(page);
     await entrar(page, RH, SENHA_PAPEIS);
     ok("2.0 o RH entra");
-    const COMP = await competenciaLivreDe2026(page);
+    // ⚠️ RETOMADA DECLARADA (V6.2): o banco dos percursos esgotou as competências livres de 2026 (o único
+    // exercício aberto com dotação). `ATESTO_COMPETENCIA=AAAA-MM` retoma uma folha já preparada: os passos
+    // que ela já cumpriu são REGISTRADOS como retomados — não como verdes — e o resto corre inteiro.
+    const RETOMAR = process.env["ATESTO_COMPETENCIA"];
+    const COMP = RETOMAR ?? (await competenciaLivreDe2026(page));
     console.log(`      [competência ${COMP} · empenhos e liquidações a partir de ${ultimoDiaDaCompetencia(COMP)}]`);
+    if (RETOMAR === undefined) {
     const rAbrir = await preencherEEnviar(page, "criar-folhas", [
       { sel: 'input[name="competencia"]', valor: COMP },
       { sel: 'select[name="tipo"]', valor: "MENSAL", tipo: "select" },
     ]);
     conferir(`2.1 folha ${COMP} aberta`, rAbrir.tipo === "ok", rAbrir.texto.slice(0, 200));
+    } else {
+      console.log(`      [RETOMADA de ${COMP}: 2.1 (abrir) não executado nesta passada — a folha já existe]`);
+    }
     await irPara(page, `/folha/folhas?q=${COMP}`);
     const hrefFolha = await hrefDoRegistro(page, COMP);
     if (hrefFolha === null) throw new Error("sem folha para seguir");
     // ⚠️ O LAÇO DA CARGA DO REGIME é condição REAL do banco dos percursos, não enfeite: os vínculos
     // legados foram importados sem regime previdenciário, e o cálculo RECUSA nomeando a matrícula
     // (comportamento certo). O RH informa o regime pela tela e tenta de novo — é o que ele faria.
+    await irPara(page, hrefFolha);
+    const jaFechada = RETOMAR !== undefined && (await apresentacaoDoAto(page, "calcular")).estado === "nao-aplicavel";
+    if (jaFechada) console.log(`      [RETOMADA: 2.2 (calcular) não executado nesta passada — a folha já está fechada]`);
+    else {
     let rCalc = { tipo: "silencio", texto: "" };
     for (let tentativa = 0; tentativa < 8; tentativa += 1) {
       await irPara(page, hrefFolha);
@@ -447,6 +467,7 @@ async function main(): Promise<void> {
     if (!falhas.some((f) => f.startsWith("2.2"))) conferir("2.2 o RH calcula a folha", rCalc.tipo === "ok", `${rCalc.tipo}: ${rCalc.texto.slice(0, 250)}`);
     if (rCalc.tipo !== "ok") throw new Error("cálculo da folha não passou — sem cálculo não há fechamento, atesto nem liquidação");
 
+    }
     // ⚠️ NEGATIVA DO RH, ANTES DE TUDO: ele não vê certificar nem liquidar.
     await irPara(page, hrefFolha);
     const rhVeCertificar = (await page.$('form[data-acao="certificar"]')) !== null;
@@ -458,8 +479,11 @@ async function main(): Promise<void> {
     await entrar(page, CONTABILIDADE, SENHA_PAPEIS);
     ok("3.0 a contabilidade entra");
     await irPara(page, hrefFolha);
-    const rFechar = await preencherEEnviar(page, "fechar", []);
-    conferir("3.1 a contabilidade fecha a folha", rFechar.tipo === "ok", `${rFechar.tipo}: ${rFechar.texto.slice(0, 200)}`);
+    if (jaFechada) console.log("      [RETOMADA: 3.1 (fechar) não executado nesta passada]");
+    else {
+      const rFechar = await preencherEEnviar(page, "fechar", []);
+      conferir("3.1 a contabilidade fecha a folha — e o resultado continua na tela depois de FECHAR sair da barra", rFechar.tipo === "ok" && /fechada sobre o cálculo/i.test(rFechar.texto), `${rFechar.tipo}: ${rFechar.texto.slice(0, 200)}`);
+    }
 
     // O grupo de empenho: reusa o que existir; se ele não tiver as contas da liquidação, define-as
     // pela tela — é o caminho dos grupos cadastrados antes desta entrega.
@@ -509,9 +533,14 @@ async function main(): Promise<void> {
     }
 
     await irPara(page, hrefFolha);
-    const rApropriar = await preencherEEnviar(page, "apropriar", [{ sel: 'input[name="dataDoEmpenho"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" }]);
+    const apropriarNaTela = await apresentacaoDoAto(page, "apropriar");
+    const rApropriar = RETOMAR !== undefined && apropriarNaTela.estado === "nao-aplicavel"
+      ? { tipo: "retomada", texto: "" }
+      : await preencherEEnviar(page, "apropriar", [{ sel: 'input[name="dataDoEmpenho"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" }]);
     const interrompida = /APROPRIACAO-INTERROMPIDA/.test(rApropriar.texto);
-    if (interrompida) {
+    if (rApropriar.tipo === "retomada") {
+      console.log("      [RETOMADA: 3.4 (apropriar) não executado nesta passada — os empenhos já existem]");
+    } else if (interrompida) {
       conferir("3.4 a apropriação PARA por saldo e diz onde parou — retomável", /CONTINUAM válidos/.test(rApropriar.texto), rApropriar.texto.slice(0, 300));
       console.log("      [a ficha do grupo não comporta a folha inteira no banco dos percursos — pendência FICHA-DE-PESSOAL-NOS-PERCURSOS]");
     } else {

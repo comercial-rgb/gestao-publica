@@ -16,7 +16,7 @@
  * oferecendo o formulário — senão os testes acima passariam com uma barra que esconde tudo.
  */
 
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FormsDoRecurso } from "../../components/molde/FormsDoRecurso";
 import { definirRecurso, type DefinicaoDeRecurso, type DisponibilidadeDoRegistro } from "../../lib/molde/tipos";
@@ -114,6 +114,24 @@ describe("a barra do molde por estado", () => {
     expect(container.querySelector('form[data-acao="certificar"]')).toBeNull();
     expect(container.querySelector('section[data-acao="certificar"][data-acao-estado="bloqueada"]')).not.toBeNull();
     expect(container.querySelector('form[data-acao="devolver"]')).not.toBeNull();
+  });
+
+  it("O RESULTADO SOBREVIVE À SAÍDA DO FORMULÁRIO: o ato que se torna não aplicável deixa a mensagem na barra", async () => {
+    const feito = vi.fn(async () => ({ sucesso: "Folha DEVOLVIDA para correção." }));
+    const { container, rerender } = render(
+      <FormsDoRecurso definicao={POR_ESTADO} permitidas={["CERTIFICAR_FOLHA", "LIQUIDAR_FOLHA"]} opcoes={{}} registroId="r1" action={feito} modo="acoes" disponibilidade={DISP} />
+    );
+    const form = container.querySelector('form[data-acao="devolver"]') as HTMLFormElement;
+    // o campo de dados obrigatório não existe nesta ação; enviar direto
+    await act(async () => {
+      form.requestSubmit();
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    expect(feito).toHaveBeenCalled();
+    const depois: DisponibilidadeDoRegistro = { versao: "v-124", porAcao: { ...DISP.porAcao, devolver: { apresentacao: "nao-aplicavel", motivo: "já devolvida" } } };
+    rerender(<FormsDoRecurso definicao={POR_ESTADO} permitidas={["CERTIFICAR_FOLHA", "LIQUIDAR_FOLHA"]} opcoes={{}} registroId="r1" action={feito} modo="acoes" disponibilidade={depois} />);
+    expect(container.querySelector('form[data-acao="devolver"]')).toBeNull();
+    expect(container.querySelector('[data-resultado-da-acao="devolver"][role="status"]')?.textContent).toContain("Folha DEVOLVIDA para correção.");
   });
 
   it("CONTRAPROVA: recurso sem `acoesPorEstado` segue oferecendo o formulário por permissão", () => {

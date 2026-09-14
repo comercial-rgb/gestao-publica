@@ -65,22 +65,44 @@ async function main(): Promise<void> {
     R.conferir("1.5 o exercício só oferece os ABERTOS", exercicio.length >= 1 && exercicio.every((a) => /^\d{4}$/.test(a)), JSON.stringify(exercicio));
     const ano = exercicio[0] ?? "2026";
 
-    const criar = async (numero: number, natureza: string, busca: string, fonteValor: string, acao = "2") =>
+    // O banco dos percursos tem um programa, uma ação e uma fonte — mas 111 subfunções. A chave livre
+    // varia a SUBFUNÇÃO (e a ação, quando houver mais de uma).
+    const acoesDoPlano = (await opcoes(page, "acoes")).opcoes;
+    const subfuncoes = (await opcoes(page, "subfuncoes", "1")).opcoes;
+    const criar = async (numero: number, natureza: string, acao: string, subfuncao = "") =>
       preencherEEnviar(page, "criar-fichas", [
         { sel: 'select[name="exercicio"]', valor: ano, tipo: "select" },
         { sel: 'input[name="numero"]', valor: String(numero) },
         { sel: "unidadeOrc", valor: uo.valor, tipo: "referencia" },
         { sel: "funcao", valor: "", tipo: "referencia" },
-        { sel: "subfuncao", valor: "", tipo: "referencia" },
+        { sel: "subfuncao", valor: subfuncao, tipo: "referencia", busca: subfuncao },
         { sel: "programa", valor: "", tipo: "referencia" },
-        { sel: "acao", valor: "", tipo: "referencia", busca: acao },
-        { sel: "naturezaDespesa", valor: natureza, tipo: "referencia", busca },
-        { sel: "fonte", valor: fonteValor, tipo: "referencia" },
+        { sel: "acao", valor: acao, tipo: "referencia", busca: acao },
+        { sel: "naturezaDespesa", valor: natureza, tipo: "referencia", busca: natureza },
+        { sel: "fonte", valor: fonte.valor, tipo: "referencia" },
         { sel: 'select[name="exercicioFonte"]', valor: "1", tipo: "select" },
       ]);
+    /**
+     * ⚠️ A CHAVE LIVRE É PROCURADA, NÃO SUPOSTA: uma execução anterior deste percurso já criou a ficha
+     * na primeira combinação, e a unicidade `uq_ficha_sagres` recusaria de novo. Anda pelas combinações
+     * até a primeira que o banco aceita — e a recusa de duplicidade no caminho é o próprio produto.
+     */
+    const criarLivre = async (numero: number, natureza: string): Promise<{ readonly r: { tipo: string; texto: string }; readonly acao: string; readonly subfuncao: string }> => {
+      let ultima = { r: { tipo: "silencio", texto: "sem combinação livre" }, acao: "", subfuncao: "" };
+      for (const a of acoesDoPlano) {
+        for (const sf of subfuncoes.slice(0, 20)) {
+          await irPara(N, page, "/planejamento/fichas");
+          const r = await criar(numero, natureza, a.valor, sf.valor);
+          ultima = { r, acao: a.valor, subfuncao: sf.valor };
+          if (!(r.tipo === "erro" && /Ficha duplicada/.test(r.texto))) return ultima;
+        }
+      }
+      return ultima;
+    };
 
-    const NUM_VENC = 5000 + SUF;
-    const rVenc = await criar(NUM_VENC, "319011", "319011", fonte.valor);
+    const NUM_VENC = 20000 + SUF;
+    const venc = await criarLivre(NUM_VENC, "319011");
+    const rVenc = venc.r;
     R.conferir("1.6 ficha de VENCIMENTOS criada pela tela — e a mensagem diz SEM crédito e de onde vem a dotação", rVenc.tipo === "ok" && /SEM crédito/.test(rVenc.texto) && /crédito adicional/.test(rVenc.texto), `${rVenc.tipo}: ${rVenc.texto.slice(0, 300)}`);
 
     await irPara(N, page, `/planejamento/fichas?q=${NUM_VENC}`);
@@ -94,17 +116,17 @@ async function main(): Promise<void> {
     }
 
     // ══ 2. a ficha de OBRIGAÇÕES PATRONAIS — a que o percurso dos encargos vai usar ══
-    const NUM_PATR = 6000 + SUF;
-    const rPatr = await criar(NUM_PATR, "319013", "319013", fonte.valor);
-    R.conferir("2.1 ficha de OBRIGAÇÕES PATRONAIS (319013) criada pela tela, também sem crédito", rPatr.tipo === "ok" && /SEM crédito/.test(rPatr.texto), `${rPatr.tipo}: ${rPatr.texto.slice(0, 300)}`);
-    console.log(`      [fichas do percurso: ${NUM_VENC} (319011) e ${NUM_PATR} (319013), fonte ${fonte.valor}, UO ${uo.valor}, exercício ${ano}]`);
+    const NUM_PATR = 30000 + SUF;
+    const patr = await criarLivre(NUM_PATR, "319013");
+    R.conferir("2.1 ficha de OBRIGAÇÕES PATRONAIS (319013) criada pela tela, também sem crédito", patr.r.tipo === "ok" && /SEM crédito/.test(patr.r.texto), `${patr.r.tipo}: ${patr.r.texto.slice(0, 300)}`);
+    console.log(`      [fichas do percurso: ${NUM_VENC} (319011, ação ${venc.acao}, subfunção ${venc.subfuncao}) e ${NUM_PATR} (319013, ação ${patr.acao}), fonte ${fonte.valor}, UO ${uo.valor}, exercício ${ano}]`);
 
     // ══ 3. as recusas, cada uma com o motivo ══
     await irPara(N, page, "/planejamento/fichas");
-    const rDup = await criar(7000 + SUF, "319011", "319011", fonte.valor);
+    const rDup = await criar(40000 + SUF, "319011", venc.acao, venc.subfuncao);
     R.conferir("3.1 NEGATIVA: a MESMA classificação com outro número é recusada como duplicada, nomeando a chave", rDup.tipo === "erro" && /Ficha duplicada/.test(rDup.texto), `${rDup.tipo}: ${rDup.texto.slice(0, 250)}`);
     await irPara(N, page, "/planejamento/fichas");
-    const rNum = await criar(NUM_VENC, "339039", "339039", fonte.valor, "");
+    const rNum = await criar(NUM_VENC, "339039", venc.acao, venc.subfuncao);
     R.conferir("3.2 NEGATIVA: o MESMO número no exercício é recusado", rNum.tipo === "erro" && /duplicada/i.test(rNum.texto), `${rNum.tipo}: ${rNum.texto.slice(0, 250)}`);
     // O exercício que a tela NÃO oferece, forçado no DOM — a forma de uma chamada que não veio da tela.
     await irPara(N, page, "/planejamento/fichas");
@@ -118,7 +140,7 @@ async function main(): Promise<void> {
     });
     const rEx = await preencherEEnviar(page, "criar-fichas", [
       { sel: 'select[name="exercicio"]', valor: "2031", tipo: "select" },
-      { sel: 'input[name="numero"]', valor: String(8000 + SUF) },
+      { sel: 'input[name="numero"]', valor: String(50000 + SUF) },
       { sel: "unidadeOrc", valor: uo.valor, tipo: "referencia" },
       { sel: "funcao", valor: "", tipo: "referencia" },
       { sel: "subfuncao", valor: "", tipo: "referencia" },
@@ -126,16 +148,18 @@ async function main(): Promise<void> {
       { sel: "acao", valor: "", tipo: "referencia" },
       { sel: "naturezaDespesa", valor: "319011", tipo: "referencia", busca: "319011" },
       { sel: "fonte", valor: fonte.valor, tipo: "referencia" },
+      { sel: 'select[name="exercicioFonte"]', valor: "1", tipo: "select" },
     ]);
     R.conferir("3.3 NEGATIVA: exercício que a tela não oferece (2031), forçado, é recusado pelo caso de uso nomeando o ano", rEx.tipo === "erro" && /2031/.test(rEx.texto), `${rEx.tipo}: ${rEx.texto.slice(0, 250)}`);
     await irPara(N, page, "/planejamento/fichas");
     const rVazio = await preencherEEnviar(page, "criar-fichas", [
       { sel: 'select[name="exercicio"]', valor: ano, tipo: "select" },
-      { sel: 'input[name="numero"]', valor: String(9000 + SUF) },
+      { sel: 'input[name="numero"]', valor: String(60000 + SUF) },
+      { sel: 'select[name="exercicioFonte"]', valor: "1", tipo: "select" },
     ]);
     R.conferir("3.4 NEGATIVA: sem escolher na lista, o texto não vale — a recusa nomeia o que falta escolher", rVazio.tipo === "erro" && /Escolha na lista/.test(rVazio.texto) && /unidade orçamentária/.test(rVazio.texto), `${rVazio.tipo}: ${rVazio.texto.slice(0, 250)}`);
-    await irPara(N, page, `/planejamento/fichas?q=${7000 + SUF}`);
-    R.conferir("3.5 e nenhuma das recusas gravou ficha", (await hrefDoRegistro(page, String(7000 + SUF))) === null, "a ficha duplicada apareceu na lista");
+    await irPara(N, page, `/planejamento/fichas?q=${40000 + SUF}`);
+    R.conferir("3.5 e nenhuma das recusas gravou ficha", (await hrefDoRegistro(page, String(40000 + SUF))) === null, "a ficha duplicada apareceu na lista");
 
     // ══ 4. o recorte da UO e a falta de direito ══
     await sair(N, page);
@@ -155,7 +179,7 @@ async function main(): Promise<void> {
     await sair(N, page);
     await entrar(N, page, SERVIDOR, SENHA);
     const semLeitura = await opcoes(page, "naturezas-de-despesa", "3190");
-    R.conferir("4.5 NEGATIVA: a servidora do quadro (sem leitura do planejamento) recebe 403 COM o motivo — não lista vazia", semLeitura.status === 403 && /não está no seu acesso/i.test(semLeitura.erro), JSON.stringify(semLeitura));
+    R.conferir("4.5 NEGATIVA: a servidora do quadro (sem leitura do planejamento) recebe 403 COM o motivo — não lista vazia", semLeitura.status === 403 && /ACESSO NEGADO/.test(semLeitura.erro) && /CONSULTAR_PLANEJAMENTO/.test(semLeitura.erro), JSON.stringify(semLeitura));
     await sair(N, page);
     const anonimo = await buscarJson(page, `${N.base}/opcoes/naturezas-de-despesa?q=3190`);
     R.conferir("4.6 NEGATIVA: sem sessão, 401 — e nenhum dado", anonimo.status === 401 && JSON.stringify(anonimo.corpo).includes("Sessão encerrada") && !JSON.stringify(anonimo.corpo).includes("319011"), JSON.stringify(anonimo));

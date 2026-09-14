@@ -4,7 +4,7 @@ import {
   FormularioDeRecurso,
   type EstadoDoMolde,
 } from "./FormularioDeRecurso";
-import { useId } from "react";
+import { useCallback, useId, useState } from "react";
 import type {
   AcaoDoMolde,
   CampoDoMolde,
@@ -144,6 +144,12 @@ export function FormsDoRecurso({
   disponibilidade,
 }: FormsDoRecursoProps): React.ReactElement {
   const pode = new Set(permitidas);
+  // ⚠️ O RESULTADO DO ÚLTIMO ATO FICA NA BARRA, e não só no formulário. Fechar a folha tira "Fechar"
+  // da barra (vira "já fechada"); sem isto, a mensagem autoritativa — o que foi feito, sobre qual
+  // cálculo — desapareceria junto com o formulário que a mostrava, e a tela só mudaria de estado
+  // sem dizer por quê. O estado mora aqui porque este componente sobrevive à renderização nova.
+  const [ultimo, setUltimo] = useState<{ readonly acao: string; readonly erro?: string; readonly sucesso?: string } | null>(null);
+  const aoResultadoDe = useCallback((acao: string) => (e: EstadoDoMolde) => setUltimo({ acao, ...e }), []);
 
   if (modo === "criar") {
     if (d.permissoes.criar === undefined) {
@@ -168,6 +174,7 @@ export function FormsDoRecurso({
   // ⚠️ SEM PERMISSÃO, NENHUM MOTIVO DE ESTADO: quem não pode praticar o ato não precisa saber por
   // que ele não caberia — e o motivo pode carregar dado do registro.
   const naoAplicaveis: { readonly acao: AcaoDoMolde; readonly disp: DisponibilidadeDaAcao }[] = [];
+  const renderizadas = new Set<string>();
   const barra = d.acoes.map((a) => {
     if (!pode.has(a.acaoDoCenso)) return <SemPermissao key={a.nome} o_que={a.rotulo.toLowerCase()} />;
     const disp = disponibilidadeDe(d, a, disponibilidade);
@@ -176,6 +183,7 @@ export function FormsDoRecurso({
       return null;
     }
     if (disp.apresentacao !== "disponivel") return <AcaoIndisponivel key={a.nome} acao={a} disp={disp} />;
+    renderizadas.add(a.nome);
     return (
       <FormularioDeRecurso
         key={a.nome}
@@ -191,12 +199,25 @@ export function FormsDoRecurso({
         }}
         {...(a.aviso !== undefined ? { aviso: a.aviso } : {})}
         {...(a.irreversivel === true ? { irreversivel: true } : {})}
+        aoResultado={aoResultadoDe(a.nome)}
       />
     );
   });
+  const rotuloDoUltimo = ultimo === null ? "" : (d.acoes.find((a) => a.nome === ultimo.acao)?.rotulo ?? ultimo.acao);
 
   return (
     <div className="space-y-4">
+      {ultimo !== null && !renderizadas.has(ultimo.acao) ? (
+        ultimo.erro !== undefined ? (
+          <p role="alert" data-resultado-da-acao={ultimo.acao} className="whitespace-pre-line rounded-[var(--radius-md)] bg-[color:var(--color-status-erro-bg)] px-3 py-2 text-sm text-[color:var(--color-status-erro-fg)]">
+            {rotuloDoUltimo}: {ultimo.erro}
+          </p>
+        ) : (
+          <p role="status" data-resultado-da-acao={ultimo.acao} className="rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]">
+            {rotuloDoUltimo}: {ultimo.sucesso}
+          </p>
+        )
+      ) : null}
       {barra}
       {naoAplicaveis.length > 0 ? (
         <div data-acoes-nao-aplicaveis className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] px-4 py-3">

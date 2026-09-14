@@ -20,15 +20,17 @@ import type { Page } from "puppeteer";
 export type EstadoDoAtoNaTela = "formulario" | "bloqueada" | "nao-aplicavel" | "em-processamento" | "sem-permissao" | "ausente";
 
 export async function apresentacaoDoAto(page: Page, nome: string): Promise<{ readonly estado: EstadoDoAtoNaTela; readonly texto: string }> {
+  // ⚠️ NENHUMA FUNÇÃO NOMEADA DENTRO DO `evaluate`: o tsx (esbuild com keepNames) embrulha
+  // `const f = () => …` em `__name(f)`, e o `__name` não existe no navegador — o primeiro percurso
+  // caiu com "__name is not defined". Por isso o texto é limpo em linha.
   return page.evaluate((n) => {
-    const limpo = (el: Element | null): string => (el?.textContent ?? "").replace(/\s+/g, " ").trim();
     if (document.querySelector(`form[data-acao="${n}"]`) !== null) return { estado: "formulario" as const, texto: "" };
     const secao = document.querySelector(`section[data-acao="${n}"][data-acao-estado]`);
-    if (secao !== null) return { estado: (secao.getAttribute("data-acao-estado") ?? "ausente") as "bloqueada", texto: limpo(secao) };
+    if (secao !== null) return { estado: (secao.getAttribute("data-acao-estado") ?? "ausente") as "bloqueada", texto: (secao.textContent ?? "").replace(/\s+/g, " ").trim() };
     const item = document.querySelector(`[data-acao-estado="nao-aplicavel"][data-acao-nome="${n}"]`);
-    if (item !== null) return { estado: "nao-aplicavel" as const, texto: limpo(item) };
+    if (item !== null) return { estado: "nao-aplicavel" as const, texto: (item.textContent ?? "").replace(/\s+/g, " ").trim() };
     const receber = document.querySelector(`p[data-acao="${n}"][data-acao-estado]`);
-    if (receber !== null) return { estado: (receber.getAttribute("data-acao-estado") ?? "ausente") as "bloqueada", texto: limpo(receber) };
+    if (receber !== null) return { estado: (receber.getAttribute("data-acao-estado") ?? "ausente") as "bloqueada", texto: (receber.textContent ?? "").replace(/\s+/g, " ").trim() };
     return { estado: "ausente" as const, texto: "" };
   }, nome);
 }

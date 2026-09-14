@@ -174,6 +174,14 @@ async function preencherEEnviar(page: Page, acao: string, campos: readonly Campo
     await new Promise((r) => setTimeout(r, 500));
     resposta = await page.evaluate((sel) => {
       const f = document.querySelector(sel);
+      // V6.2 (PROD-015) — o ato que se torna não aplicável SAI da barra, e o resultado dele fica em
+      // `[data-resultado-da-acao]`. Sem este ramo, "fechar" gravaria e o percurso leria silêncio.
+      if (f === null) {
+        const nome = /data-acao="([^"]+)"/.exec(sel)?.[1] ?? "";
+        const r = document.querySelector(`[data-resultado-da-acao="${nome}"]`);
+        if (r !== null) return { tipo: r.getAttribute("role") === "alert" ? "erro" : "ok", texto: (r.textContent ?? "").trim() };
+        return { tipo: "silencio", texto: "" };
+      }
       const alerta = f?.querySelector('[role="alert"]');
       if (alerta !== null && alerta !== undefined) return { tipo: "erro", texto: (alerta.textContent ?? "").trim() };
       const ps = Array.from(f?.querySelectorAll("p") ?? []);

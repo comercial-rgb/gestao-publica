@@ -202,6 +202,12 @@ export async function preencherEEnviar(page: Page, acao: string, campos: readonl
     await espera(500);
     resposta = await page.evaluate((sel) => {
       const f = document.querySelector(sel);
+      if (f === null) {
+        const nome = /data-acao="([^"]+)"/.exec(sel)?.[1] ?? "";
+        const r = document.querySelector(`[data-resultado-da-acao="${nome}"]`);
+        if (r !== null) return { tipo: r.getAttribute("role") === "alert" ? ("erro" as const) : ("ok" as const), texto: (r.textContent ?? "").trim() };
+        return { tipo: "silencio" as const, texto: "" };
+      }
       const alerta = f?.querySelector('[role="alert"]');
       if (alerta !== null && alerta !== undefined && (alerta.textContent ?? "").trim() !== "") return { tipo: "erro" as const, texto: (alerta.textContent ?? "").trim() };
       const ps = Array.from(f?.querySelectorAll("p") ?? []);
