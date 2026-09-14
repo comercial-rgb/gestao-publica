@@ -249,6 +249,8 @@ model Empenho {
   inscricoesRestos InscricaoRestosAPagar[]
   /// back-relation V6 P2.3b — o elo com a folha que o gerou, quando veio de uma apropriação.
   daFolha EmpenhoDaFolha?
+  /// V6.2 — o elo com a apuração dos encargos da folha. VIRTUAL.
+  dosEncargos EmpenhoDosEncargos? @relation("EmpenhoDosEncargos")
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -345,6 +347,8 @@ model Liquidacao {
 
   /// M33 (V6.1) — o elo com o empenho da folha, quando esta liquidação nasceu da folha. VIRTUAL.
   liquidacaoDaFolha LiquidacaoDaFolha?
+  /// V6.2 — o elo com a liquidação dos encargos da folha. VIRTUAL.
+  liquidacaoDosEncargos LiquidacaoDosEncargos? @relation("LiquidacaoDosEncargos")
 }
 
 /// Conta bancária do ente. Existe para que a TR 5.23 seja VERIFICÁVEL: sem

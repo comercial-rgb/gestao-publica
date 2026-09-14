@@ -1,0 +1,224 @@
+// ============================================================================
+// M33 — OS ENCARGOS DO EMPREGADOR SOBRE A FOLHA (V6.2 U1 — PATRONAL-NA-MEMORIA; TR 5.12.72/73)
+//
+// O encargo patronal é obrigação do ENTE. Ele não desconta do servidor, não entra no
+// contracheque e não reduz o líquido; e a contribuição RETIDA do servidor, que já está no
+// bruto, não vira despesa nova. Aqui mora o que o ente deve sobre a folha FECHADA.
+//
+// ⚠️ NENHUMA ALÍQUOTA NO CÓDIGO. O componente (previdência patronal, suplementar do RPPS, risco
+// ambiental do trabalho, outras entidades, FGTS…) é cadastrado pelo ente, por regime, com
+// VERSÕES vigentes por competência: alíquota, teto opcional, as rubricas que compõem a base e a
+// fundamentação. A versão só vale depois de APROVADA por outra pessoa, e a marcada SINTÉTICA é
+// perfil de teste, dito na memória.
+//
+// ⚠️ A FOLHA FECHADA NÃO MUDA. A APURAÇÃO DOS ENCARGOS é fato PRÓPRIO, numerado, preso ao cálculo
+// fechado — nunca um campo novo no contracheque nem uma linha acrescentada à memória já
+// certificada. A primeira apuração de uma folha cujo atesto salarial é ANTERIOR a ela é
+// identificada como COMPLEMENTAR; uma nova apuração do mesmo cálculo (parâmetro corrigido) é
+// VERSÃO nova, com comparativo, e o que já foi empenhado não se empenha de novo.
+// ============================================================================
+
+enum TipoDeEncargoDaFolha {
+  PREVIDENCIA_PATRONAL
+  PREVIDENCIA_SUPLEMENTAR
+  RISCO_AMBIENTAL_DO_TRABALHO
+  OUTRAS_ENTIDADES
+  FGTS
+  OUTRO
+}
+
+/// O componente de encargo do ente, por regime previdenciário.
+model ComponenteDeEncargo {
+  id String @id @default(cuid())
+
+  codigo    String @unique
+  descricao String
+
+  tipo   TipoDeEncargoDaFolha
+  /// O regime do CONTRACHEQUE a que se aplica. Contracheque de outro regime = NÃO APLICÁVEL.
+  regime RegimePrevidenciario
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  versoes        VersaoDoEncargo[]
+  grupoDeEmpenho ComponenteDoGrupoDeEmpenho?
+}
+
+/// Uma versão dos parâmetros de um componente, vigente por competência (AAAA-MM, inclusiva).
+model VersaoDoEncargo {
+  id String @id @default(cuid())
+
+  componenteId String
+  componente   ComponenteDeEncargo @relation(fields: [componenteId], references: [id])
+
+  competenciaInicio String  @db.VarChar(7)
+  competenciaFim    String? @db.VarChar(7)
+
+  /// 0.2000 = 20%. CHECK em [0, 1].
+  aliquota Decimal @db.Decimal(7, 4)
+  /// Base máxima, quando o fundamento a fixa. Nulo = sem teto.
+  teto     Decimal? @db.Decimal(18, 2)
+
+  fundamentacaoLegal String
+
+  /// ⚠️ PERFIL DE TESTE. Uma versão sintética calcula igual, e a memória e a tela dizem que ela não
+  /// tem validade normativa. Existe para ambiente de demonstração — não para esconder o que é.
+  sintetica Boolean
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  incidencias IncidenciaDoEncargo[]
+  aprovacao   AprovacaoDoEncargo?
+
+  @@index([componenteId, competenciaInicio])
+}
+
+/// As rubricas de provento que compõem a base da versão.
+model IncidenciaDoEncargo {
+  id String @id @default(cuid())
+
+  versaoId String
+  versao   VersaoDoEncargo @relation(fields: [versaoId], references: [id])
+
+  rubricaId String
+  rubrica   Rubrica @relation(fields: [rubricaId], references: [id])
+
+  @@unique([versaoId, rubricaId])
+  @@index([rubricaId])
+}
+
+/// A aprovação de uma versão — fato próprio, de outra pessoa que não a que cadastrou.
+model AprovacaoDoEncargo {
+  id String @id @default(cuid())
+
+  versaoId String          @unique
+  versao   VersaoDoEncargo @relation(fields: [versaoId], references: [id])
+
+  motivo String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// A APURAÇÃO DOS ENCARGOS de um cálculo fechado — numerada por cálculo, nunca UPDATE.
+model ApuracaoDeEncargos {
+  id String @id @default(cuid())
+
+  folhaId String
+  folha   FolhaDePagamento @relation(fields: [folhaId], references: [id])
+
+  calculoId String
+  calculo   CalculoDaFolha @relation(fields: [calculoId], references: [id])
+
+  numero Int
+
+  /// ⚠️ COMPLEMENTAR: a folha já tinha atesto salarial quando os encargos foram apurados. Fica
+  /// gravado no ato — a tela e o documento dizem que o atesto salarial NÃO alcança estes encargos.
+  complementar Boolean
+
+  motivo String?
+
+  /// A memória canônica (vínculo × componente, situação, base, alíquota, fundamento) e o sha256.
+  memoria Json
+  sha256  String @db.VarChar(64)
+
+  total      Decimal @db.Decimal(18, 2)
+  completa   Boolean
+  esperados  Int
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  certificacoes CertificacaoDosEncargos[]
+  empenhos      EmpenhoDosEncargos[]
+
+  @@unique([calculoId, numero])
+  @@index([folhaId])
+}
+
+/// O atesto dos ENCARGOS — objeto próprio. O atesto da folha salarial não é o atesto destes.
+model CertificacaoDosEncargos {
+  id String @id @default(cuid())
+
+  apuracaoId String
+  apuracao   ApuracaoDeEncargos @relation(fields: [apuracaoId], references: [id])
+
+  designacaoId String
+  designacao   DesignacaoNaFolha @relation("CertificacaoDosEncargos", fields: [designacaoId], references: [id])
+
+  tipo   TipoDeCertificacao
+  motivo String?
+
+  /// O sha256 da apuração conferida — copiado no ato.
+  sha256 String  @db.VarChar(64)
+  total  Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  liquidacoes LiquidacaoDosEncargos[]
+
+  @@index([apuracaoId, criadoEm])
+}
+
+/// O componente dentro de um grupo de empenho. UM componente em UM grupo só.
+model ComponenteDoGrupoDeEmpenho {
+  id String @id @default(cuid())
+
+  grupoId String
+  grupo   GrupoDeEmpenhoDaFolha @relation("ComponentesDoGrupo", fields: [grupoId], references: [id])
+
+  componenteId String              @unique
+  componente   ComponenteDeEncargo @relation(fields: [componenteId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([grupoId])
+}
+
+/// O empenho dos encargos de UMA apuração num grupo — só a DIFERENÇA ainda não empenhada.
+model EmpenhoDosEncargos {
+  id String @id @default(cuid())
+
+  apuracaoId String
+  apuracao   ApuracaoDeEncargos @relation(fields: [apuracaoId], references: [id])
+
+  grupoId String
+  grupo   GrupoDeEmpenhoDaFolha @relation("EmpenhosDosEncargos", fields: [grupoId], references: [id])
+
+  empenhoId String  @unique
+  empenho   Empenho @relation("EmpenhoDosEncargos", fields: [empenhoId], references: [id])
+
+  valor Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  liquidacao LiquidacaoDosEncargos?
+
+  @@unique([apuracaoId, grupoId])
+}
+
+/// O elo entre o empenho dos encargos e a liquidação do M05.
+model LiquidacaoDosEncargos {
+  id String @id @default(cuid())
+
+  empenhoDosEncargosId String             @unique
+  empenhoDosEncargos   EmpenhoDosEncargos @relation(fields: [empenhoDosEncargosId], references: [id])
+
+  certificacaoId String
+  certificacao   CertificacaoDosEncargos @relation(fields: [certificacaoId], references: [id])
+
+  liquidacaoId String     @unique
+  liquidacao   Liquidacao @relation("LiquidacaoDosEncargos", fields: [liquidacaoId], references: [id])
+
+  valor Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([certificacaoId])
+}

@@ -90,6 +90,7 @@
     "test/ui/acoes-despachadas.test.ts",
     "test/ui/chave-de-comando.test.ts",
     "test/ui/descritores-consistentes.test.ts",
-    "test/ficha-pela-tela.test.ts"
+    "test/ficha-pela-tela.test.ts",
+    "test/ui/resumo-da-folha.test.ts"
   ]
 }

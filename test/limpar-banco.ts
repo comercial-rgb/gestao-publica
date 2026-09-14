@@ -215,6 +215,16 @@ const TABELAS = [
   "AvaliacaoExperiencia",
   // M33 folha (V6 P2.3) — filhas antes das mães
   // V6.1 — a certificação (atesto) e a liquidação da folha
+  // V6.2 — os encargos do empregador
+  "LiquidacaoDosEncargos",
+  "EmpenhoDosEncargos",
+  "CertificacaoDosEncargos",
+  "ApuracaoDeEncargos",
+  "ComponenteDoGrupoDeEmpenho",
+  "AprovacaoDoEncargo",
+  "IncidenciaDoEncargo",
+  "VersaoDoEncargo",
+  "ComponenteDeEncargo",
   "LiquidacaoDaFolha",
   "CertificacaoDaFolha",
   "RevogacaoDeDesignacao",

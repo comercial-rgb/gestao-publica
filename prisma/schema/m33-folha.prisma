@@ -196,6 +196,8 @@ model Rubrica {
   lancamentos LancamentoDaFolha[]
   linhas      LinhaDoContracheque[]
   grupoDeEmpenho RubricaDoGrupoDeEmpenho?
+  /// V6.2 — as versões de encargo em que esta rubrica compõe a base.
+  incidenciasDeEncargo IncidenciaDoEncargo[]
 
   @@index([natureza])
   @@index([ordem])
@@ -257,6 +259,8 @@ model FolhaDePagamento {
 
   /// V6.1 — a trilha de certificação (atesto e devolução). Estado atual = último fato.
   certificacoes CertificacaoDaFolha[]
+  /// V6.2 — as apurações dos encargos do empregador (fatos próprios, numerados por cálculo).
+  apuracoesDeEncargos ApuracaoDeEncargos[]
 
   @@unique([competencia, tipo])
 }
@@ -293,6 +297,7 @@ model CalculoDaFolha {
   contrachequesDoCalculo Contracheque[]
   cancelamento           CancelamentoDoCalculo?
   fechamento             FechamentoDaFolha?
+  apuracoesDeEncargos    ApuracaoDeEncargos[]
 
   @@unique([folhaId, numero])
 }
@@ -462,6 +467,9 @@ model GrupoDeEmpenhoDaFolha {
 
   rubricas RubricaDoGrupoDeEmpenho[]
   empenhos EmpenhoDaFolha[]
+  /// V6.2 — um grupo de ENCARGOS tem componentes, e não rubricas (o serviço impõe um ou outro).
+  componentes         ComponenteDoGrupoDeEmpenho[] @relation("ComponentesDoGrupo")
+  empenhosDosEncargos EmpenhoDosEncargos[]         @relation("EmpenhosDosEncargos")
 
   @@index([fichaId])
 }

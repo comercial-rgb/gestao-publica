@@ -213,7 +213,7 @@ export class LiquidacaoInterrompidaError extends Error {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const zDesignarNaFolhaInput = z.object({
-  atribuicao: z.enum(["CERTIFICAR_FOLHA"]),
+  atribuicao: z.enum(["CERTIFICAR_FOLHA", "CERTIFICAR_ENCARGOS_DA_FOLHA"]),
   pessoaId: z.string().min(1),
   usuarioIdentificador: z.string().trim().min(1),
   atoDesignacao: z.string().trim().min(3, "o ato que designou (portaria, decreto) é o fundamento do atesto"),

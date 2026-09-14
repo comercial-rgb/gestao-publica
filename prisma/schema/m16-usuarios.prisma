@@ -453,6 +453,15 @@ enum AcaoDoSistema {
   CERTIFICAR_FOLHA
   LIQUIDAR_FOLHA
 
+  // V6.2 — os encargos do empregador sobre a folha. QUATRO ações, e a segregação é a razão de
+  // serem quatro: quem cadastra a versão do parâmetro não a aprova; quem apura não certifica. O
+  // empenho e a liquidação dos encargos usam APROPRIAR_FOLHA e LIQUIDAR_FOLHA (e o M05 exige as
+  // suas próprias ações em cada ato).
+  CADASTRAR_ENCARGO_DA_FOLHA
+  APROVAR_ENCARGO_DA_FOLHA
+  APURAR_ENCARGOS_DA_FOLHA
+  CERTIFICAR_ENCARGOS_DA_FOLHA
+
   // V6 P2.4 — o portal do servidor: a leitura do PRÓPRIO vínculo e dos PRÓPRIOS contracheques.
   // Não abre a folha do ente: a porta recorta pela pessoa da sessão.
   CONSULTAR_PORTAL_DO_SERVIDOR

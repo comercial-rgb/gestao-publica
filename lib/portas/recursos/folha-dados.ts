@@ -33,6 +33,8 @@ import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { TAMANHO_DE_PAGINA } from "../../molde/consulta.js";
 import type { DadoDoDetalhe, DisponibilidadeDoRegistro, LinhaDoHistorico } from "../../molde/tipos.js";
 import { apresentar, RegistroMudouError } from "../disponibilidade";
+import { disponibilidadeDosEncargos } from "./encargos-dados";
+import { apropriarEncargosDaFolha, apurarEncargosDaFolha, certificarEncargosDaFolha, liquidarEncargosDaFolha, retratoDosEncargos } from "../../../modules/m33-folha/encargos-servico.js";
 import { comEscritaAutenticada, exigirSessao } from "../sessao";
 import { cliente, PortaSemBancoError } from "../cliente";
 import type { DetalheLido, OpcoesDoCadastro, PaginaDoMolde } from "./dados";
@@ -249,11 +251,16 @@ export async function disponibilidadeDaFolha(folhaId: string, permitidas: Readon
   const r = await retratoDosAtosDaFolha(cliente(), folhaId, sessao.identificador, { consultarDesignacao: permitidas.has("CERTIFICAR_FOLHA"), lerDistribuicao: true });
   if (r === null) return null;
   const porAto = elegibilidadeDosAtosDaFolha(r.estado, r.ator);
+  // V6.2 — os quatro atos dos encargos, pelo retrato e pelos predicados de `encargos.ts`.
+  const encargos = await disponibilidadeDosEncargos(folhaId, sessao.identificador, permitidas);
   return {
-    versao: r.versao,
-    porAcao: Object.fromEntries(
-      Object.entries(porAto).map(([acao, e]) => [acao, apresentar(e, e.situacao === "PRE_CONDICAO" && e.codigo === "SEM-DESIGNACAO-VIGENTE" && permitidas.has("DESIGNAR_NA_FOLHA") ? "/folha/designacoes" : undefined)])
-    ),
+    versao: `${r.versao}.${encargos?.versao ?? "-"}`,
+    porAcao: {
+      ...Object.fromEntries(
+        Object.entries(porAto).map(([acao, e]) => [acao, apresentar(e, e.situacao === "PRE_CONDICAO" && e.codigo === "SEM-DESIGNACAO-VIGENTE" && permitidas.has("DESIGNAR_NA_FOLHA") ? "/folha/designacoes" : undefined)])
+      ),
+      ...(encargos?.porAcao ?? {}),
+    },
   };
 }
 
@@ -276,7 +283,8 @@ export async function acaoDaFolha(acao: string, folhaId: string, c: Campos): Pro
   const versaoDoFormulario = opcional(c, "__versao");
   if (versaoDoFormulario !== undefined) {
     const atual = await retratoDosAtosDaFolha(prisma, folhaId, "", { consultarDesignacao: false, lerDistribuicao: false });
-    if (atual !== null && atual.versao !== versaoDoFormulario) throw new RegistroMudouError("Esta folha");
+    const atualDosEncargos = await retratoDosEncargos(prisma, folhaId, "", { consultarDesignacao: false });
+    if (atual !== null && `${atual.versao}.${atualDosEncargos?.versao ?? "-"}` !== versaoDoFormulario) throw new RegistroMudouError("Esta folha");
   }
   switch (acao) {
     case "calcular": {
@@ -310,6 +318,24 @@ export async function acaoDaFolha(acao: string, folhaId: string, c: Campos): Pro
       return r.pendentes > 0
         ? `${resumo}. ATENÇÃO: ${r.pendentes} empenho(s) desta folha continuam SEM liquidação — ela não está liquidada por inteiro.`
         : `${resumo}. Todos os empenhos desta folha estão liquidados. Liquidada não é paga: o dinheiro sai no pagamento.`;
+    }
+    case "apurar-encargos": {
+      const r = await comEscritaAutenticada("APURAR_ENCARGOS_DA_FOLHA", (criadoPor) => apurarEncargosDaFolha(prisma, { folhaId, ...(opcional(c, "motivo") !== undefined ? { motivo: t(c, "motivo") } : {}), criadoPor }));
+      const partes = r.porComponente.map((p) => `${p.codigo} ${p.total}${p.ausentes > 0 ? ` (${p.ausentes} SEM PARÂMETRO)` : ""}`).join(" · ");
+      return `Apuração nº ${r.numero} dos encargos de ${r.competencia}${r.complementar ? " — COMPLEMENTAR (a folha já tinha atesto salarial, que não alcança estes encargos)" : ""}: total ${r.total.toFixed(2)}${r.completa ? "" : " — INCOMPLETA: há componente sem parâmetro aprovado, e ela não se certifica nem se empenha"}. ${partes}. O contracheque não mudou.`;
+    }
+    case "certificar-encargos": {
+      const r = await comEscritaAutenticada("CERTIFICAR_ENCARGOS_DA_FOLHA", (criadoPor) => certificarEncargosDaFolha(prisma, { folhaId, data: diaDoCampo(c, "data"), criadoPor }));
+      return `Encargos de ${r.competencia} (apuração nº ${r.numero}) CERTIFICADOS por ${r.responsavel}, presos ao sha256 ${r.sha256.slice(0, 12)}…. Quem certificou não liquida.`;
+    }
+    case "apropriar-encargos": {
+      const r = await comEscritaAutenticada("APROPRIAR_FOLHA", (criadoPor) => apropriarEncargosDaFolha(prisma, { folhaId, dataDoEmpenho: diaDoCampo(c, "dataDoEmpenho"), criadoPor }));
+      const partes = r.porGrupo.map((g) => `${g.codigo}: apurado ${g.pedido}, já empenhado ${g.jaEmpenhado}, empenhado agora ${g.empenhado}`).join(" · ");
+      return `Encargos da apuração nº ${r.apuracao}: ${r.empenhados} empenho(s) novo(s), total ${r.total.toFixed(2)}${r.jaExistiam > 0 ? ` (${r.jaExistiam} já existiam)` : ""}. ${partes}. Nenhuma contribuição retida do servidor foi empenhada.`;
+    }
+    case "liquidar-encargos": {
+      const r = await comEscritaAutenticada("LIQUIDAR_FOLHA", (criadoPor) => liquidarEncargosDaFolha(prisma, { folhaId, data: diaDoCampo(c, "data"), criadoPor }));
+      return `${r.liquidadas} liquidação(ões) de encargos nova(s)${r.jaExistiam > 0 ? ` (${r.jaExistiam} já existiam)` : ""}, total ${r.total.toFixed(2)}${r.pendentes > 0 ? ` — ATENÇÃO: ${r.pendentes} continuam pendentes` : ""}. Liquidar não é recolher: a guia e o pagamento são atos próprios.`;
     }
     case "fechar": {
       const r = await comEscritaAutenticada("FECHAR_FOLHA", (criadoPor) => fecharFolha(prisma, { folhaId, criadoPor }));
@@ -816,7 +842,7 @@ export async function verDesignacao(id: string): Promise<DetalheLido | null> {
   if (d === null) return null;
   const vigente = designacaoVigenteEm({ vigenciaInicio: d.vigenciaInicio, vigenciaFim: d.vigenciaFim, revogacao: d.revogacao }, new Date());
   const dados: DadoDoDetalhe[] = [
-    { rotulo: "Atribuição", valor: "Certificar (atestar) a folha" },
+    { rotulo: "Atribuição", valor: d.atribuicao === "CERTIFICAR_ENCARGOS_DA_FOLHA" ? "Certificar (atestar) os encargos do empregador" : "Certificar (atestar) a folha" },
     { rotulo: "Responsável", valor: nomeDaPessoa(d.pessoa), nota: "A pessoa do cadastro único — é o nome que vai no atesto e no responsável pelo atesto da liquidação." },
     { rotulo: "Documento", valor: formatarDocumento(d.pessoa.documento) },
     { rotulo: "Conta de acesso", valor: `${d.usuario.identificador}${d.usuario.ativo ? "" : " (DESATIVADA)"}`, nota: "O vínculo usuário↔pessoa é explícito e foi conferido no cadastro: o atesto não fica assinado por um nome e praticado por outro." },
@@ -860,7 +886,7 @@ export async function opcoesDaDesignacao(): Promise<OpcoesDoCadastro> {
   for (const v of vinculos) if (!ultimoDoUsuario.has(v.usuarioId)) ultimoDoUsuario.set(v.usuarioId, v);
   const elegiveis = [...ultimoDoUsuario.values()].filter((v) => v.tipo === "VINCULO" && v.usuario.ativo && v.pessoa.tipo === "FISICA");
   return {
-    atribuicao: [{ valor: "CERTIFICAR_FOLHA", rotulo: "Certificar (atestar) a folha" }],
+    atribuicao: [{ valor: "CERTIFICAR_FOLHA", rotulo: "Certificar (atestar) a folha" }, { valor: "CERTIFICAR_ENCARGOS_DA_FOLHA", rotulo: "Certificar (atestar) os encargos do empregador" }],
     pessoaId: elegiveis.map((v) => ({ valor: v.pessoaId, rotulo: `${nomeDaPessoa(v.pessoa)} (${formatarDocumento(v.pessoa.documento)})` })),
     usuarioIdentificador: elegiveis.map((v) => ({ valor: v.usuario.identificador, rotulo: `${v.usuario.identificador} — ${nomeDaPessoa(v.pessoa)}` })),
     substitutoDeId: titulares.map((t2) => ({ valor: t2.id, rotulo: `${nomeDaPessoa(t2.pessoa)} (${t2.atoDesignacao})` })),
@@ -872,7 +898,7 @@ export async function criarDesignacao(c: Campos): Promise<string> {
     const fim = opcional(c, "vigenciaFim");
     const substituto = opcional(c, "substitutoDeId");
     const r = await designarNaFolha(cliente(), {
-      atribuicao: "CERTIFICAR_FOLHA",
+      atribuicao: t(c, "atribuicao") === "CERTIFICAR_ENCARGOS_DA_FOLHA" ? "CERTIFICAR_ENCARGOS_DA_FOLHA" : "CERTIFICAR_FOLHA",
       pessoaId: t(c, "pessoaId"),
       usuarioIdentificador: t(c, "usuarioIdentificador"),
       atoDesignacao: t(c, "atoDesignacao"),

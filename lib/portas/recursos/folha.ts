@@ -116,6 +116,37 @@ export const FOLHAS: DefinicaoDeRecurso = definirRecurso({
       irreversivel: true,
       campos: [],
     },
+    // ── V6.2 — os ENCARGOS DO EMPREGADOR sobre a folha fechada: apurar, certificar, empenhar, liquidar ──
+    {
+      nome: "apurar-encargos", rotulo: "Apurar os encargos do empregador", acaoDoCenso: "APURAR_ENCARGOS_DA_FOLHA",
+      aviso:
+        "Calcula, sobre o cálculo FECHADO, o que o ENTE deve por componente (previdência patronal, RAT, outras entidades…), " +
+        "com as versões APROVADAS vigentes na competência. Não muda contracheque nem líquido. Componente sem parâmetro " +
+        "aprovado fica AUSENTE — nunca zero — e a apuração fica incompleta. Apurar de novo, depois de corrigir um " +
+        "parâmetro, é uma nova versão com comparativo.",
+      campos: [{ nome: "motivo", rotulo: "Motivo (opcional — ex.: portaria corrigida)", tipo: "texto", largura: 4 }],
+    },
+    {
+      nome: "certificar-encargos", rotulo: "Certificar (atestar) os encargos", acaoDoCenso: "CERTIFICAR_ENCARGOS_DA_FOLHA",
+      aviso:
+        "O atesto dos ENCARGOS é outro objeto: o da folha salarial não alcança encargos apurados depois dele. Exige designação " +
+        "vigente com a atribuição de certificar os encargos, no dia do ato e hoje. Quem apurou não certifica.",
+      campos: [{ nome: "data", rotulo: "Data do ato", tipo: "data", obrigatorio: true, largura: 1 }],
+    },
+    {
+      nome: "apropriar-encargos", rotulo: "Empenhar os encargos", acaoDoCenso: "APROPRIAR_FOLHA",
+      aviso:
+        "Empenha, por grupo de empenho dos encargos, o que a apuração vigente pede MENOS o que já foi empenhado para esta " +
+        "folha. Nunca empenha a contribuição retida do servidor. Reexecutar continua de onde parou; redução exige anulação.",
+      campos: [{ nome: "dataDoEmpenho", rotulo: "Data dos empenhos", tipo: "data", obrigatorio: true, largura: 1 }],
+    },
+    {
+      nome: "liquidar-encargos", rotulo: "Liquidar os encargos certificados", acaoDoCenso: "LIQUIDAR_FOLHA",
+      aviso:
+        "Reconhece a obrigação dos empenhos dos encargos com as contas do grupo (VPD de encargos e encargos a recolher). " +
+        "Liquidar não é recolher: a guia e o pagamento são atos próprios. Quem certificou não liquida.",
+      campos: [{ nome: "data", rotulo: "Data das liquidações", tipo: "data", obrigatorio: true, largura: 1 }],
+    },
   ],
   permissoes: { criar: "ABRIR_FOLHA" },
   abas: ["dados", "historico"],
@@ -299,7 +330,7 @@ export const DESIGNACOES_DA_FOLHA: DefinicaoDeRecurso = definirRecurso({
     "nacional nomeia um cargo para isso: a atribuição é do município, e o sistema não a escolhe. Sem designação vigente " +
     "no dia, o ato de certificar recusa dizendo o que falta — consultar, calcular e fechar continuam liberados.",
   campos: [
-    { nome: "atribuicao", rotulo: "Atribuição", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [{ valor: "CERTIFICAR_FOLHA", rotulo: "Certificar (atestar) a folha" }] },
+    { nome: "atribuicao", rotulo: "Atribuição", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [{ valor: "CERTIFICAR_FOLHA", rotulo: "Certificar (atestar) a folha" }, { valor: "CERTIFICAR_ENCARGOS_DA_FOLHA", rotulo: "Certificar (atestar) os encargos do empregador" }] },
     { nome: "pessoaId", rotulo: "Responsável (pessoa do cadastro)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
     { nome: "usuarioIdentificador", rotulo: "Conta que ele usa para entrar (tem de ser a MESMA pessoa)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
     { nome: "atoDesignacao", rotulo: "Ato que designou (portaria, decreto, delegação)", tipo: "texto", obrigatorio: true, largura: 2, placeholder: "Portaria 45/2026" },

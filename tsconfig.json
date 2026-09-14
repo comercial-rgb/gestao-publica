@@ -64,6 +64,8 @@
     "test/ui/descritores-consistentes.test.ts",
     // V6.2 — importa `lib/portas/opcoes-referenciadas` (resolução bundler); mesma troca medida acima.
     "test/ficha-pela-tela.test.ts",
+    "test/ui/resumo-da-folha.test.ts",
+    "test/ui/portal-sem-encargos.test.ts",
     "app/**/*.ts",
     "app/**/*.tsx",
     "components/**/*.ts",

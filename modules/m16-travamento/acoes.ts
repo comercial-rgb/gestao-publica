@@ -309,6 +309,12 @@ export type AcaoDoSistema =
   | "DESIGNAR_NA_FOLHA"
   | "CERTIFICAR_FOLHA"
   | "LIQUIDAR_FOLHA"
+  // V6.2 — os encargos do empregador: cadastrar e aprovar o parâmetro são sujeitos diferentes; apurar e
+  // certificar também. Empenho e liquidação dos encargos usam APROPRIAR_FOLHA e LIQUIDAR_FOLHA.
+  | "CADASTRAR_ENCARGO_DA_FOLHA"
+  | "APROVAR_ENCARGO_DA_FOLHA"
+  | "APURAR_ENCARGOS_DA_FOLHA"
+  | "CERTIFICAR_ENCARGOS_DA_FOLHA"
   | "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA"
   | "CONFIGURAR_TABELAS_DA_FOLHA"
   | "CADASTRAR_RUBRICA"
@@ -742,6 +748,16 @@ export type NomeDeServico =
   | "certificarFolha"
   | "devolverFolhaParaCorrecao"
   | "liquidarFolha"
+  // M33 — os encargos do empregador (V6.2)
+  | "cadastrarComponenteDeEncargo"
+  | "cadastrarVersaoDoEncargo"
+  | "aprovarVersaoDoEncargo"
+  | "apurarEncargosDaFolha"
+  | "certificarEncargosDaFolha"
+  | "devolverEncargosDaFolha"
+  | "cadastrarGrupoDosEncargos"
+  | "apropriarEncargosDaFolha"
+  | "liquidarEncargosDaFolha"
   // ── M02b — planejamento plurianual (V4 §8) ──
   | "criarPlanoPlurianual"
   | "criarEixoEstruturante"
@@ -1147,6 +1163,16 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   certificarFolha: "CERTIFICAR_FOLHA",
   devolverFolhaParaCorrecao: "CERTIFICAR_FOLHA",
   liquidarFolha: "LIQUIDAR_FOLHA",
+  // V6.2 — os encargos do empregador
+  cadastrarComponenteDeEncargo: "CADASTRAR_ENCARGO_DA_FOLHA",
+  cadastrarVersaoDoEncargo: "CADASTRAR_ENCARGO_DA_FOLHA",
+  aprovarVersaoDoEncargo: "APROVAR_ENCARGO_DA_FOLHA",
+  apurarEncargosDaFolha: "APURAR_ENCARGOS_DA_FOLHA",
+  certificarEncargosDaFolha: "CERTIFICAR_ENCARGOS_DA_FOLHA",
+  devolverEncargosDaFolha: "CERTIFICAR_ENCARGOS_DA_FOLHA",
+  cadastrarGrupoDosEncargos: "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA",
+  apropriarEncargosDaFolha: "APROPRIAR_FOLHA",
+  liquidarEncargosDaFolha: "LIQUIDAR_FOLHA",
 
   // ── M02b — planejamento plurianual (V4 §8): 20 serviços, 10 ações, pelos anexos da LRF ──
   criarPlanoPlurianual: "CADASTRAR_PPA",
@@ -1348,6 +1374,11 @@ export const FORA_DO_CENSO: Record<string, string> = {
   designacaoVigenteParaOAto:
     "LEITURA: a designação vigente no dia do ato E no instante do servidor — a segunda data impede que uma " +
     "revogação já registrada seja contornada datando o comando novo de antes dela. Não muta nada.",
+  retratoDosEncargos:
+    "LEITURA: o retrato do estado dos encargos (apuração vigente, atesto, empenhos, liquidações) que os predicados de " +
+    "`encargos.ts` leem. A tela projeta a barra; quem decide é o caso de uso.",
+  encargosDaFolha:
+    "LEITURA: as apurações dos encargos com o comparativo entre versões, os atestos, os empenhos e as liquidações.",
   retratoDosAtosDaFolha:
     "LEITURA: o retrato do estado da folha que os predicados de `elegibilidade.ts` leem, com a versão dos fatos. " +
     "A tela projeta a barra de ações a partir dele; quem decide é o caso de uso, dentro da transação.",

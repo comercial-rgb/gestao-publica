@@ -25,6 +25,8 @@
 enum AtribuicaoNaFolha {
   /// Atestar que a folha fechada corresponde ao que os servidores têm direito a receber.
   CERTIFICAR_FOLHA
+  /// V6.2 — atestar a apuração dos ENCARGOS do empregador sobre uma folha fechada.
+  CERTIFICAR_ENCARGOS_DA_FOLHA
 }
 
 /// A DESIGNAÇÃO — quem o ente pôs para certificar, por qual ato, de quando até quando.
@@ -65,6 +67,7 @@ model DesignacaoNaFolha {
 
   revogacao     RevogacaoDeDesignacao?
   certificacoes CertificacaoDaFolha[]
+  certificacoesDosEncargos CertificacaoDosEncargos[] @relation("CertificacaoDosEncargos")
 
   @@index([atribuicao, vigenciaInicio])
   @@index([usuarioId])

@@ -402,6 +402,34 @@ export function derivarAtestoDaFolha(
   }
   return saida;
 }
+/**
+ * A REGRA DA v14 (V6.2): os encargos do empregador sobre a folha.
+ *
+ * ⚠️ DUAS DAS QUATRO, pela mesma razão da v13. `CADASTRAR_ENCARGO_DA_FOLHA` (componente e versão do
+ * parâmetro) e `APURAR_ENCARGOS_DA_FOLHA` (a apuração sobre o cálculo fechado) vão a quem administra
+ * no global — sem elas a instalação não teria como começar. `APROVAR_ENCARGO_DA_FOLHA` e
+ * `CERTIFICAR_ENCARGOS_DA_FOLHA` são os atos que a segregação separa: quem cadastra a alíquota não a
+ * aprova, e quem apura não atesta. O serviço recusa as duas autoconcentrações de qualquer forma; não
+ * concedê-las aqui é para a instalação não NASCER concentrada.
+ */
+export const ACOES_DOS_ENCARGOS_DA_FOLHA: readonly AcaoDoSistema[] = ["CADASTRAR_ENCARGO_DA_FOLHA", "APURAR_ENCARGOS_DA_FOLHA"];
+export const ACOES_SEGREGADAS_DOS_ENCARGOS: readonly AcaoDoSistema[] = ["APROVAR_ENCARGO_DA_FOLHA", "CERTIFICAR_ENCARGOS_DA_FOLHA"];
+export function derivarEncargosDaFolha(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null);
+    if (!administra) continue;
+    const jaTem = new Set(perfil.permissoes.filter((p) => p.unidadeOrcId === null).map((p) => p.acao));
+    for (const acao of ACOES_DOS_ENCARGOS_DA_FOLHA) {
+      if (jaTem.has(acao)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
 export function derivarFolha(
   perfis: readonly PerfilComPermissoes[],
   _areaDaAcao: AreaDaAcao
@@ -563,6 +591,17 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "perfil faria a instalacao nascer com quem prepara podendo certificar. E o cracha sozinho nao certifica: o servico " +
       "exige tambem uma designacao vigente no dia do ato, com o ato administrativo do ente.",
     derivar: derivarAtestoDaFolha,
+  },
+  {
+    versao: 14,
+    nome: "encargos-da-folha",
+    descricao:
+      "Os encargos do empregador sobre a folha (V6.2) chegaram com CADASTRAR_ENCARGO_DA_FOLHA, APROVAR_ENCARGO_DA_FOLHA, " +
+      "APURAR_ENCARGOS_DA_FOLHA e CERTIFICAR_ENCARGOS_DA_FOLHA. Esta atualizacao concede SO cadastrar e apurar, a quem ja " +
+      "administra permissoes no global. Aprovar o parametro e certificar a apuracao sao os atos que a segregacao separa — " +
+      "quem cadastra a aliquota nao a aprova, e quem apura nao atesta. O atesto dos encargos exige tambem designacao " +
+      "vigente com a atribuicao propria; a designacao para certificar a folha salarial nao a supre.",
+    derivar: derivarEncargosDaFolha,
   },
 ];
 
