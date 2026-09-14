@@ -67,6 +67,7 @@
     "test/ui/resumo-da-folha.test.ts",
     "test/ui/portal-sem-encargos.test.ts",
     "test/carta-de-servicos.test.ts",
+    "test/ui/demonstrativo-das-obrigacoes.test.ts",
     "app/**/*.ts",
     "app/**/*.tsx",
     "components/**/*.ts",

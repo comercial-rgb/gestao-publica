@@ -315,6 +315,7 @@ export type AcaoDoSistema =
   | "APROVAR_ENCARGO_DA_FOLHA"
   | "APURAR_ENCARGOS_DA_FOLHA"
   | "CERTIFICAR_ENCARGOS_DA_FOLHA"
+  | "GERIR_GUIA_DE_RECOLHIMENTO"
   // V6.2 P3 — a carta de serviços e a representação
   | "CONFIGURAR_CARTA_DE_SERVICOS"
   | "SOLICITAR_SERVICO"
@@ -767,6 +768,9 @@ export type NomeDeServico =
   | "apropriarEncargosDaFolha"
   | "liquidarEncargosDaFolha"
   | "ajustarEncargosDaFolha"
+  | "registrarGuiaDeRecolhimento"
+  | "baixarGuiaDeRecolhimento"
+  | "cancelarGuiaDeRecolhimento"
   // M21/M19 — a carta de serviços, as solicitações do requerente e a representação (V6.2 P3)
   | "cadastrarServicoDaCarta"
   | "cadastrarVersaoDoServico"
@@ -1197,6 +1201,11 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // V7 M1 U3 — reduzir a despesa dos encargos é da mesma mão que a apropria; cada anulação do M05
   // cobra DENTRO dela a sua ação (ANULAR_LIQUIDACAO_PARCIAL / ANULAR_EMPENHO_PARCIAL).
   ajustarEncargosDaFolha: "APROPRIAR_FOLHA",
+  // V7 M1 U3.2 — a guia do emissor: registrar o documento recebido, baixá-la por um pagamento que já
+  // aconteceu e cancelá-la. Nenhum dos três paga nada.
+  registrarGuiaDeRecolhimento: "GERIR_GUIA_DE_RECOLHIMENTO",
+  baixarGuiaDeRecolhimento: "GERIR_GUIA_DE_RECOLHIMENTO",
+  cancelarGuiaDeRecolhimento: "GERIR_GUIA_DE_RECOLHIMENTO",
   // V6.2 P3 — a carta de serviços. Configurar a carta é um ato; pedir (protocolar, responder,
   // anexar) é o ato do REQUERENTE, conferido contra a titularidade na transação; decidir (exigir,
   // decidir, disponibilizar resposta) é o ato da mesa, no setor em que o processo está.
@@ -1415,6 +1424,9 @@ export const FORA_DO_CENSO: Record<string, string> = {
   retratoDosEncargos:
     "LEITURA: o retrato do estado dos encargos (apuração vigente, atesto, empenhos, liquidações) que os predicados de " +
     "`encargos.ts` leem. A tela projeta a barra; quem decide é o caso de uso.",
+  guiasEObrigacoesDaFolha:
+    "LEITURA: o mapa das obrigações dos encargos por grupo (apurado, empenhado, liquidado, pago, restituição) e as guias " +
+    "registradas com a situação derivada (recebida, baixada, cancelada). Não muta nada.",
   escopoDoProtocolo:
     "LEITURA: o escopo da consulta do protocolo (CONSULTAR_PROTOCOLO no ente e por unidade gestora) e as lotações — " +
     "a entrada da decisão de visibilidade do M21. Não muta nada.",

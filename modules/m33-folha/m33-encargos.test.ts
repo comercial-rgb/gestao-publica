@@ -11,6 +11,7 @@ import { abrirFolha, cadastrarRubrica, cadastrarTabelaDeContribuicao, cadastrarT
 import { apropriarFolha, cadastrarGrupoDeEmpenhoDaFolha } from "./apropriacao.js";
 import { certificarFolha, designarNaFolha } from "./certificacao.js";
 import { anularEmpenhoParcial } from "../m05-despesa/anulacao-parcial.js";
+import { baixarGuiaDeRecolhimento, cancelarGuiaDeRecolhimento, guiasEObrigacoesDaFolha, registrarGuiaDeRecolhimento } from "./recolhimento.js";
 import { pagar } from "../m05-despesa/servico-bloco2.js";
 import { roteiroPagamento } from "../m01-core-contabil/roteiros.js";
 import { criarM05DepsComContratos } from "../m11-licitacoes/adapter-m05.js";
@@ -493,5 +494,72 @@ describe("(6) ajuste para baixo: empenhado, liquidado não pago e já pago", () 
     expect(cod(elegibilidadeParaAjustarEncargos(r!.estado, r!.ator))).toBe("AUTOAJUSTE-DOS-ENCARGOS");
     r = await retratoDosEncargos(prisma, folhaId, RH, { consultarDesignacao: false });
     expect(cod(elegibilidadeParaAjustarEncargos(r!.estado, r!.ator))).toBe("ELEGIVEL");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// (7) V7 M1 U3.2 — A GUIA DE RECOLHIMENTO: documento do emissor, registrado e baixado
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("(7) guia de recolhimento: apuração, obrigação, guia e pagamento separados", () => {
+  const R_PAG = roteiroPagamento({ obrigacaoAPagar: "2.1.1.4.1.01.00", disponibilidade: "1.1.1.1.2.00.00" });
+  const PDF = new TextEncoder().encode("%PDF-1.4 guia do emissor (fixture)");
+  async function liquidado(): Promise<{ grupoId: string; liquidacaoId: string }> {
+    await versaoAprovada(compPatr, "0.20");
+    await versaoAprovada(compRat, "0.015");
+    await apurarEncargosDaFolha(prisma, { folhaId, criadoPor: RH });
+    await designarParaEncargos();
+    const grupoId = await grupoUnico();
+    await apropriarEncargosDaFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: RH });
+    await certificarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, criadoPor: ATESTADOR });
+    await liquidarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, criadoPor: LIQUIDANTE });
+    return { grupoId, liquidacaoId: (await prisma.liquidacaoDosEncargos.findFirstOrThrow({ select: { liquidacaoId: true } })).liquidacaoId };
+  }
+  const guia = (grupoId: string, extra: Record<string, unknown> = {}) => ({
+    folhaId, grupoId, destinatarioId: instituto, natureza: "Contribuição patronal e RAT — RGPS", identificador: "GPS-2026-05-0001",
+    principal: "1247.00", componentes: [], total: "1247.00", arquivo: { nomeOriginal: "guia.pdf", mimeType: "application/pdf", conteudo: PDF }, criadoPor: RH, ...extra,
+  });
+
+  it("antes da liquidação não há obrigação; total divergente, vencimento sem fundamento e destinatário alheio recusam", async () => {
+    await versaoAprovada(compPatr, "0.20");
+    await versaoAprovada(compRat, "0.015");
+    await apurarEncargosDaFolha(prisma, { folhaId, criadoPor: RH });
+    const grupoId = await grupoUnico();
+    await expect(registrarGuiaDeRecolhimento(prisma, guia(grupoId))).rejects.toThrow(/SEM-OBRIGACAO-LIQUIDADA/);
+    await expect(registrarGuiaDeRecolhimento(prisma, guia(grupoId, { componentes: [{ rotulo: "Juros", valor: "10.00" }] }))).rejects.toThrow(/GUIA-TOTAL-DIVERGENTE/);
+    await expect(registrarGuiaDeRecolhimento(prisma, guia(grupoId, { vencimento: "2026-06-20" }))).rejects.toThrow(/vencimento e fundamento do vencimento vêm juntos/);
+    const outro = await pessoa("11444777000161", "Outro fundo (fixture)", "JURIDICA");
+    await expect(registrarGuiaDeRecolhimento(prisma, guia(grupoId, { destinatarioId: outro }))).rejects.toThrow(/GUIA-DE-OUTRO-DESTINATARIO|SEM-OBRIGACAO-LIQUIDADA/);
+    expect(await prisma.guiaDeRecolhimento.count()).toBe(0);
+  });
+
+  it("registrada com o arquivo do emissor; duplicada recusa; a baixa liga ao PAGAMENTO do M05; baixada não cancela; o mapa separa os quatro", async () => {
+    const { grupoId, liquidacaoId } = await liquidado();
+    const g = await registrarGuiaDeRecolhimento(prisma, guia(grupoId, { componentes: [{ rotulo: "Atualização", valor: "3.00" }], total: "1250.00", vencimento: "2026-06-20", fundamentoDoVencimento: "Guia do emissor, campo vencimento" }));
+    expect((await prisma.anexo.findUniqueOrThrow({ where: { id: g.anexoId }, select: { guiaDeRecolhimentoId: true } })).guiaDeRecolhimentoId).toBe(g.guiaId);
+    await expect(registrarGuiaDeRecolhimento(prisma, guia(grupoId))).rejects.toThrow(/GUIA-DUPLICADA/);
+    // Receber a guia não pagou nada.
+    let mapa = await guiasEObrigacoesDaFolha(prisma, folhaId);
+    expect(mapa[0]).toMatchObject({ grupo: "ENCARGOS", liquidado: "1247.00", pago: "0.00" });
+    expect(mapa[0]?.guias[0]).toMatchObject({ situacao: "RECEBIDA", total: "1250.00", vencimento: "2026-06-20" });
+    await expect(baixarGuiaDeRecolhimento(prisma, { guiaId: g.guiaId, pagamentoId: "nao-existe", observacao: "Tentativa", criadoPor: RH })).rejects.toThrow(/PAGAMENTO-DE-OUTRA-OBRIGACAO/);
+    const pg = await pagar({ liquidacaoId, numero: "PG-ENC-1", valor: "1247.00", data: D(2026, 6, 5), contaBancaria: "CC-ENC", fonteId: "fonte-500", historico: "Recolhimento dos encargos (fixture)", criadoPor: RH }, R_PAG, criarM05DepsComContratos(prisma));
+    const b = await baixarGuiaDeRecolhimento(prisma, { guiaId: g.guiaId, pagamentoId: pg.pagamentoId, observacao: "Pago pela ordem do dia 05/06", criadoPor: RH });
+    expect(b.divergencia.toFixed(2)).toBe("3.00");
+    await expect(baixarGuiaDeRecolhimento(prisma, { guiaId: g.guiaId, pagamentoId: pg.pagamentoId, observacao: "De novo", criadoPor: RH })).rejects.toThrow(/GUIA-JA-BAIXADA|BAIXA-DUPLICADA/);
+    await expect(cancelarGuiaDeRecolhimento(prisma, { guiaId: g.guiaId, motivo: "Guia substituída pelo emissor", criadoPor: RH })).rejects.toThrow(/GUIA-BAIXADA-NAO-CANCELA/);
+    mapa = await guiasEObrigacoesDaFolha(prisma, folhaId);
+    expect(mapa[0]).toMatchObject({ liquidado: "1247.00", pago: "1247.00" });
+    expect(mapa[0]?.guias[0]?.situacao).toBe("BAIXADA");
+  });
+
+  it("guia recebida pode ser cancelada — uma vez; cancelada não baixa", async () => {
+    const { grupoId, liquidacaoId } = await liquidado();
+    const g = await registrarGuiaDeRecolhimento(prisma, guia(grupoId));
+    await cancelarGuiaDeRecolhimento(prisma, { guiaId: g.guiaId, motivo: "Emitida com competência errada", criadoPor: RH });
+    await expect(cancelarGuiaDeRecolhimento(prisma, { guiaId: g.guiaId, motivo: "Segunda vez sem sentido", criadoPor: RH })).rejects.toThrow(/GUIA-JA-CANCELADA/);
+    const pg = await pagar({ liquidacaoId, numero: "PG-ENC-2", valor: "100.00", data: D(2026, 6, 5), contaBancaria: "CC-ENC", fonteId: "fonte-500", historico: "Parcial (fixture)", criadoPor: RH }, R_PAG, criarM05DepsComContratos(prisma));
+    await expect(baixarGuiaDeRecolhimento(prisma, { guiaId: g.guiaId, pagamentoId: pg.pagamentoId, observacao: "Tentativa", criadoPor: RH })).rejects.toThrow(/GUIA-CANCELADA/);
+    expect((await guiasEObrigacoesDaFolha(prisma, folhaId))[0]?.guias[0]?.situacao).toBe("CANCELADA");
   });
 });

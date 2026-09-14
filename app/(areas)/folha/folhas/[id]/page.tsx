@@ -10,6 +10,8 @@ import { folhasAction } from "../actions";
 import { lerEncargosDaFolha } from "../../../../../lib/portas/recursos/encargos-dados";
 import { CertificacaoDaFolha } from "./CertificacaoDaFolha";
 import { EncargosDaFolha } from "./EncargosDaFolha";
+import { ObrigacoesDaFolha } from "./ObrigacoesDaFolha";
+import { lerObrigacoesDaFolha } from "../../../../../lib/portas/recursos/obrigacoes-dos-encargos";
 import { Contracheques } from "./Contracheques";
 import { EmpenhosDaFolha } from "./EmpenhosDaFolha";
 
@@ -32,7 +34,7 @@ export default async function Detalhe({ params, searchParams }: { readonly param
   await exigirLeitura("CONSULTAR_FOLHA");
   const { id } = await params;
   const consulta = lerConsulta(FOLHAS, await searchParams);
-  const [detalhe, permitidas] = await Promise.all([verFolha(id), acoesPermitidas([...FOLHAS.acoes.map((a) => a.acaoDoCenso), "DESIGNAR_NA_FOLHA", "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA"])]);
+  const [detalhe, permitidas] = await Promise.all([verFolha(id), acoesPermitidas([...FOLHAS.acoes.map((a) => a.acaoDoCenso), "DESIGNAR_NA_FOLHA", "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA", "GERIR_GUIA_DE_RECOLHIMENTO"])]);
   if (detalhe === null) notFound();
   // ⚠️ FALHAR A CONFERÊNCIA NÃO LIBERA A BARRA: `null` faz o molde travar cada ato com o motivo.
   const disponibilidade = await disponibilidadeDaFolha(id, permitidas).catch(() => null);
@@ -52,6 +54,7 @@ export default async function Detalhe({ params, searchParams }: { readonly param
       {consulta.aba === "dados" && detalhe.certificacao !== null ? <CertificacaoDaFolha situacao={detalhe.certificacao.situacao} fatos={detalhe.certificacao.fatos} /> : null}
       {consulta.aba === "dados" && detalhe.apropriacao !== null ? <EmpenhosDaFolha apropriacao={detalhe.apropriacao} liquidacoes={detalhe.liquidacao?.porEmpenho ?? {}} /> : null}
       {consulta.aba === "dados" ? <EncargosDaFolha encargos={await lerEncargosDaFolha(id)} /> : null}
+      {consulta.aba === "dados" && detalhe.situacao === "FECHADA" ? <ObrigacoesDaFolha folhaId={id} obrigacoes={await lerObrigacoesDaFolha(id)} podeGerir={permitidas.has("GERIR_GUIA_DE_RECOLHIMENTO")} /> : null}
       {consulta.aba === "dados" && detalhe.situacao === "FECHADA" ? (
         <p data-resumo-da-folha className="flex flex-wrap gap-3 text-sm">
           <a href={`/folha/folhas/${id}/resumo?formato=pdf`} target="_blank" rel="noopener noreferrer" className="font-medium text-[color:var(--color-primary)] hover:underline">Resumo da folha (PDF): bruto, descontos, líquido e patronal</a>

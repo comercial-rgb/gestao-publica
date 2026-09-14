@@ -32,7 +32,8 @@ describe("v15 — carta de serviços", () => {
     expect(ACOES_DA_CARTA_DE_SERVICOS).not.toContain("DECIDIR_SOLICITACAO_DE_SERVICO");
   });
 
-  it("é a versão 15, a última, depois dos encargos", () => {
-    expect(ATUALIZACOES.map((a) => a.versao).slice(-2)).toEqual([14, 15]);
+  it("é a versão 15, depois dos encargos", () => {
+    const versoes = ATUALIZACOES.map((a) => a.versao);
+    expect(versoes.slice(versoes.indexOf(14), versoes.indexOf(14) + 2)).toEqual([14, 15]);
   });
 });

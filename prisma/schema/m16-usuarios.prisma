@@ -461,6 +461,8 @@ enum AcaoDoSistema {
   APROVAR_ENCARGO_DA_FOLHA
   APURAR_ENCARGOS_DA_FOLHA
   CERTIFICAR_ENCARGOS_DA_FOLHA
+  /// V7 M1 U3.2 — a guia de recolhimento do emissor: registrar, baixar (pelo pagamento do M05) e cancelar.
+  GERIR_GUIA_DE_RECOLHIMENTO
 
   // V6.2 — P3: a carta de serviços e as solicitações do requerente. Configurar/publicar a carta, pedir
   // um serviço (o titular ou o representante), decidir a solicitação e registrar representação são

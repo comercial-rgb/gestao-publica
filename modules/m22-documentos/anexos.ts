@@ -48,6 +48,8 @@ export const zAnexar = z
     // ── V4 (§5): o termo patrimonial assinado ──
     termoPatrimonialId: z.string().min(1).optional(),
     documentoFiscalId: z.string().min(1).optional(),
+    // ── V7 M1 U3.2: a guia de recolhimento fornecida pelo emissor ──
+    guiaDeRecolhimentoId: z.string().min(1).optional(),
     criadoPor: z.string().min(1),
   })
   .refine(
@@ -63,12 +65,13 @@ export const zAnexar = z
         d.ordemDePagamentoId,
         d.termoPatrimonialId,
         d.documentoFiscalId,
+        d.guiaDeRecolhimentoId,
       ].filter((v) => v !== undefined).length === 1,
     {
       message:
         "Um anexo pertence a EXATAMENTE UM registro: processo, movimento de processo, " +
-        "comunicado, pessoa, borderô, empenho, liquidação, ordem de pagamento, termo patrimonial " +
-        "ou documento fiscal. Sem dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual " +
+        "comunicado, pessoa, borderô, empenho, liquidação, ordem de pagamento, termo patrimonial, " +
+        "documento fiscal ou guia de recolhimento. Sem dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual " +
         "regra de acesso vale.",
     }
   );
@@ -103,7 +106,7 @@ export async function gravarAnexoNaTransacao(tx: Tx, input: AnexarInput): Promis
       nomeOriginal: d.nomeOriginal, mimeType: d.mimeType, tamanhoBytes: d.conteudo.byteLength, sha256: hash, origem: d.origem,
       processoId: d.processoId ?? null, movimentoProcessoId: d.movimentoProcessoId ?? null, comunicadoId: d.comunicadoId ?? null,
       pessoaId: d.pessoaId ?? null, borderoId: d.borderoId ?? null, empenhoId: d.empenhoId ?? null, liquidacaoId: d.liquidacaoId ?? null,
-      ordemDePagamentoId: d.ordemDePagamentoId ?? null, termoPatrimonialId: d.termoPatrimonialId ?? null, documentoFiscalId: d.documentoFiscalId ?? null,
+      ordemDePagamentoId: d.ordemDePagamentoId ?? null, termoPatrimonialId: d.termoPatrimonialId ?? null, documentoFiscalId: d.documentoFiscalId ?? null, guiaDeRecolhimentoId: d.guiaDeRecolhimentoId ?? null,
       criadoPor: d.criadoPor,
     },
     select: { id: true },

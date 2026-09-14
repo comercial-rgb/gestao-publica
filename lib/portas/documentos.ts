@@ -108,6 +108,7 @@ async function leituraDoDonoDoAnexo(
       chamadoId: true,
       termoPatrimonialId: true,
       documentoFiscalId: true,
+      guiaDeRecolhimentoId: true,
     },
   });
   if (a === null) return null;
@@ -117,6 +118,7 @@ async function leituraDoDonoDoAnexo(
   if (a.pessoaId !== null) return { acao: "CONSULTAR_CADASTROS", nivel: "ente" };
   if (a.termoPatrimonialId !== null) return { acao: "CONSULTAR_PATRIMONIO", nivel: "ente" };
   if (a.documentoFiscalId !== null) return { acao: "CONSULTAR_LICITACOES", nivel: "algum" };
+  if (a.guiaDeRecolhimentoId !== null) return { acao: "CONSULTAR_FOLHA", nivel: "ente" };
   return null;
 }
 

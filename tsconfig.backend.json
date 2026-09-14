@@ -92,6 +92,7 @@
     "test/ui/descritores-consistentes.test.ts",
     "test/ficha-pela-tela.test.ts",
     "test/ui/resumo-da-folha.test.ts",
-    "test/carta-de-servicos.test.ts"
+    "test/carta-de-servicos.test.ts",
+    "test/ui/demonstrativo-das-obrigacoes.test.ts"
   ]
 }

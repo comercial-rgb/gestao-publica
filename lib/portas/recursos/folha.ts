@@ -147,6 +147,17 @@ export const FOLHAS: DefinicaoDeRecurso = definirRecurso({
         "Liquidar não é recolher: a guia e o pagamento são atos próprios. Quem certificou não liquida.",
       campos: [{ nome: "data", rotulo: "Data das liquidações", tipo: "data", obrigatorio: true, largura: 1 }],
     },
+    {
+      nome: "ajustar-encargos", rotulo: "Ajustar os encargos para baixo", acaoDoCenso: "APROPRIAR_FOLHA", irreversivel: true,
+      aviso:
+        "Quando a apuração vigente (certificada) pede MENOS do que a despesa já reconhece: anula pelo M05 a parte liquidada e " +
+        "não paga, depois a parte do empenho não liquidada; o que já foi PAGO não se anula e fica registrado para restituição. " +
+        "A apuração anterior e o contracheque não mudam. Reexecutar continua de onde parou, sem anular duas vezes.",
+      campos: [
+        { nome: "data", rotulo: "Data das anulações", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "Motivo (o ato que corrigiu o parâmetro)", tipo: "texto", obrigatorio: true, largura: 3 },
+      ],
+    },
   ],
   permissoes: { criar: "ABRIR_FOLHA" },
   abas: ["dados", "historico"],

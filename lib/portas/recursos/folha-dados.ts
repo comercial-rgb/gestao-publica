@@ -34,7 +34,7 @@ import { TAMANHO_DE_PAGINA } from "../../molde/consulta.js";
 import type { DadoDoDetalhe, DisponibilidadeDoRegistro, LinhaDoHistorico } from "../../molde/tipos.js";
 import { apresentar, RegistroMudouError } from "../disponibilidade";
 import { disponibilidadeDosEncargos } from "./encargos-dados";
-import { apropriarEncargosDaFolha, apurarEncargosDaFolha, certificarEncargosDaFolha, liquidarEncargosDaFolha, retratoDosEncargos } from "../../../modules/m33-folha/encargos-servico.js";
+import { ajustarEncargosDaFolha, apropriarEncargosDaFolha, apurarEncargosDaFolha, certificarEncargosDaFolha, liquidarEncargosDaFolha, retratoDosEncargos } from "../../../modules/m33-folha/encargos-servico.js";
 import { comEscritaAutenticada, exigirSessao } from "../sessao";
 import { cliente, PortaSemBancoError } from "../cliente";
 import type { DetalheLido, OpcoesDoCadastro, PaginaDoMolde } from "./dados";
@@ -336,6 +336,12 @@ export async function acaoDaFolha(acao: string, folhaId: string, c: Campos): Pro
     case "liquidar-encargos": {
       const r = await comEscritaAutenticada("LIQUIDAR_FOLHA", (criadoPor) => liquidarEncargosDaFolha(prisma, { folhaId, data: diaDoCampo(c, "data"), criadoPor }));
       return `${r.liquidadas} liquidação(ões) de encargos nova(s)${r.jaExistiam > 0 ? ` (${r.jaExistiam} já existiam)` : ""}, total ${r.total.toFixed(2)}${r.pendentes > 0 ? ` — ATENÇÃO: ${r.pendentes} continuam pendentes` : ""}. Liquidar não é recolher: a guia e o pagamento são atos próprios.`;
+    }
+    case "ajustar-encargos": {
+      const r = await comEscritaAutenticada("APROPRIAR_FOLHA", (criadoPor) => ajustarEncargosDaFolha(prisma, { folhaId, data: diaDoCampo(c, "data"), motivo: (c["motivo"] ?? "").trim(), criadoPor }));
+      if (r.porGrupo.length === 0) return `Nada a reduzir além do que já estava gravado: ${r.reconhecidos} ato(s) de ajuste reconhecido(s) e registrado(s) no rastro.`;
+      const partes = r.porGrupo.map((g) => `${g.codigo}: apurado ${g.apurado}, empenhado antes ${g.empenhadoAntes}, anulado da liquidação ${g.anuladoDeLiquidacao}, anulado do empenho ${g.anuladoDeEmpenho}${g.restituicaoRegistrada !== "0.00" ? `, JÁ PAGO acima do devido ${g.restituicaoRegistrada} (restituição a providenciar)` : ""}`).join(" · ");
+      return `Ajuste para baixo da apuração nº ${r.apuracao}: ${r.atos} ato(s) novo(s)${r.reconhecidos > 0 ? `, ${r.reconhecidos} reconhecido(s)` : ""}. ${partes}.`;
     }
     case "fechar": {
       const r = await comEscritaAutenticada("FECHAR_FOLHA", (criadoPor) => fecharFolha(prisma, { folhaId, criadoPor }));

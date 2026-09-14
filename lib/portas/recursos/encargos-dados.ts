@@ -10,6 +10,7 @@ import {
 } from "../../../modules/m33-folha/encargos-servico.js";
 import {
   elegibilidadeParaAprovarVersao,
+  elegibilidadeParaAjustarEncargos,
   elegibilidadeParaApropriarEncargos,
   elegibilidadeParaApurarEncargos,
   elegibilidadeParaCertificarEncargos,
@@ -188,6 +189,7 @@ export async function disponibilidadeDosEncargos(folhaId: string, identificador:
       "certificar-encargos": apresentar(cert, cert.situacao === "PRE_CONDICAO" && cert.codigo === "SEM-DESIGNACAO-VIGENTE" ? hrefDesignacao : undefined),
       "apropriar-encargos": apresentar(apr, apr.situacao === "PRE_CONDICAO" && apr.codigo === "COMPONENTE-SEM-GRUPO-DE-EMPENHO" && permitidas.has("CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA") ? "/folha/grupos-de-empenho" : undefined),
       "liquidar-encargos": apresentar(elegibilidadeParaLiquidarEncargos(r.estado, r.ator)),
+      "ajustar-encargos": apresentar(elegibilidadeParaAjustarEncargos(r.estado, r.ator)),
     },
   };
 }

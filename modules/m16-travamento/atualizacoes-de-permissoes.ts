@@ -455,6 +455,23 @@ export function derivarCartaDeServicos(
   return saida;
 }
 
+/** V7 M1 U3.2 — a guia de recolhimento: quem administra no global a recebe (registrar documento não paga nada). */
+export const ACOES_DA_GUIA_DE_RECOLHIMENTO: readonly AcaoDoSistema[] = ["GERIR_GUIA_DE_RECOLHIMENTO"];
+
+export function derivarGuiaDeRecolhimento(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null);
+    if (!administra) continue;
+    if (perfil.permissoes.some((p) => p.acao === "GERIR_GUIA_DE_RECOLHIMENTO" && p.unidadeOrcId === null)) continue;
+    saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao: "GERIR_GUIA_DE_RECOLHIMENTO", unidadeOrcId: null });
+  }
+  return saida;
+}
+
 export function derivarFolha(
   perfis: readonly PerfilComPermissoes[],
   _areaDaAcao: AreaDaAcao
@@ -638,6 +655,15 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "no global. Pedir e decidir sao os lados que a mesa separa: o administrador cria o perfil do requerente e o da " +
       "mesa. Ainda assim o servico recusa a decisao por quem e titular ou representa o titular.",
     derivar: derivarCartaDeServicos,
+  },
+  {
+    versao: 16,
+    nome: "guia-de-recolhimento",
+    descricao:
+      "A guia de recolhimento dos encargos (V7 M1) chegou com GERIR_GUIA_DE_RECOLHIMENTO: registrar a guia real fornecida " +
+      "pelo emissor (com o arquivo), baixa-la por um pagamento que ja existe e cancela-la. Quem administra permissoes no " +
+      "global a recebe. Registrar guia nao paga nada e o sistema nao gera codigo de pagamento.",
+    derivar: derivarGuiaDeRecolhimento,
   },
 ];
 

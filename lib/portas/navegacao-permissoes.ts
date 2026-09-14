@@ -291,6 +291,7 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   APROVAR_ENCARGO_DA_FOLHA: "folha",
   APURAR_ENCARGOS_DA_FOLHA: "folha",
   CERTIFICAR_ENCARGOS_DA_FOLHA: "folha",
+  GERIR_GUIA_DE_RECOLHIMENTO: "folha",
   CONFIGURAR_CARTA_DE_SERVICOS: "protocolo",
   DECIDIR_SOLICITACAO_DE_SERVICO: "protocolo",
   SOLICITAR_SERVICO: "meus-servicos",
