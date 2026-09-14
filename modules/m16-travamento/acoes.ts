@@ -1411,6 +1411,12 @@ export const FORA_DO_CENSO: Record<string, string> = {
   retratoDosEncargos:
     "LEITURA: o retrato do estado dos encargos (apuração vigente, atesto, empenhos, liquidações) que os predicados de " +
     "`encargos.ts` leem. A tela projeta a barra; quem decide é o caso de uso.",
+  escopoDoProtocolo:
+    "LEITURA: o escopo da consulta do protocolo (CONSULTAR_PROTOCOLO no ente e por unidade gestora) e as lotações — " +
+    "a entrada da decisão de visibilidade do M21. Não muta nada.",
+  podeAgirNoSetor:
+    "LEITURA/GUARD: lotação no setor, ou a própria ação do ato concedida no ente sobre processo não sigiloso. " +
+    "Chamada dentro da transação de cada ato do M21 (via `exigirLotacao`) e pela projeção da mesa.",
   gravarAnexoNaTransacao:
     "composável interno: grava a linha e o arquivo do anexo DENTRO da transação de um ato que já cobrou a própria ação " +
     "(o XML do documento fiscal, os documentos da solicitação da carta), com o mesmo Zod de dono único e a mesma recusa " +

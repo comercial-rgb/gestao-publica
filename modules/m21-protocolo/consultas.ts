@@ -1,4 +1,5 @@
 import type { Tx } from "../m16-travamento/autorizacao.js";
+import { decidirVisibilidade, escopoDoProtocolo, recorteDaCaixa, temConsulta, type CodigoDeVisibilidade } from "./escopo-do-protocolo.js";
 import {
   descreverSituacao,
   inicioDaContagem,
@@ -69,25 +70,30 @@ export interface VisibilidadeDoProcesso {
 }
 
 /**
- * ESTE USUÁRIO PODE VER ESTE PROCESSO?
+ * ESTE USUÁRIO PODE VER ESTE PROCESSO? — a decisão de `escopo-do-protocolo.ts` (V7 M1 U1):
+ * consulta do protocolo em algum escopo → participação → sigilo → escopo da consulta.
  *
- * A regra, em ordem:
- *   1. GESTOR (permissão global) vê tudo — é o 5.42.54/55, reusando o mecanismo do M16;
- *   2. ENVOLVIDO vê: quem abriu, quem movimentou, quem está lotado num setor por onde
- *      o processo passou, e o requerente quando ele é usuário do sistema;
- *   3. SIGILOSO para quem não é envolvido: NÃO. Fim da linha, sem exceção;
- *   4. não sigiloso: quem trabalha na MESMA unidade gestora pode consultar.
+ * ⚠️ PERMISSÃO GLOBAL DE OUTRA ÁREA NÃO É GESTOR. Até V6.2 qualquer permissão global fazia do usuário
+ * gestor do protocolo, e o gestor via até o sigiloso.
  *
- * ⚠️ FAIL-CLOSED: qualquer coisa que não caia nos casos acima devolve `false`. Um
- * processo que não existe também devolve `false` — e a mensagem NÃO diz "não existe":
- * distinguir "não existe" de "você não pode ver" entrega, a quem tenta ids ao acaso, a
- * informação de quais existem.
+ * ⚠️ FAIL-CLOSED e a MESMA resposta para "não existe" e "não pode" — distinguir entregaria, a quem
+ * tenta ids ao acaso, a lista de quais existem.
  */
 export async function podeVerProcesso(
   tx: Tx,
   processoId: string,
   usuarioIdent: string
-): Promise<VisibilidadeDoProcesso> {
+): Promise<VisibilidadeDoProcesso & { readonly codigo: CodigoDeVisibilidade | "INEXISTENTE" }> {
+  const negado = {
+    pode: false,
+    codigo: "INEXISTENTE" as const,
+    motivo:
+      "Processo inexistente ou fora do seu alcance. A mensagem é a mesma nos dois " +
+      "casos de propósito: distingui-los entregaria, a quem tenta identificadores ao " +
+      "acaso, a lista de quais existem.",
+  };
+  const escopo = await escopoDoProtocolo(tx, usuarioIdent);
+  if (!temConsulta(escopo)) return { ...negado, codigo: "SEM-CONSULTA-DO-PROTOCOLO" };
   const p = await tx.processo.findUnique({
     where: { id: processoId },
     select: {
@@ -95,72 +101,18 @@ export async function podeVerProcesso(
       criadoPor: true,
       setorAberturaId: true,
       setorAbertura: { select: { unidadeOrcId: true } },
-      requerente: { select: { documento: true } },
       movimentos: MOVIMENTO_PARA_DERIVAR,
     },
   });
-  const negado = {
-    pode: false,
-    motivo:
-      "Processo inexistente ou fora do seu alcance. A mensagem é a mesma nos dois " +
-      "casos de propósito: distingui-los entregaria, a quem tenta identificadores ao " +
-      "acaso, a lista de quais existem.",
-  };
   if (p === null) return negado;
-
-  const usuario = await tx.usuario.findUnique({
-    where: { identificador: usuarioIdent },
-    select: {
-      vinculos: {
-        select: { perfil: { select: { permissoes: { select: { unidadeOrcId: true } } } } },
-      },
-    },
+  const movimentou = p.criadoPor === usuarioIdent || (await tx.movimentoDoProcesso.findFirst({ where: { processoId, criadoPor: usuarioIdent }, select: { id: true } })) !== null;
+  const d = decidirVisibilidade(escopo, {
+    sigiloso: p.sigiloso,
+    ugDeAbertura: p.setorAbertura.unidadeOrcId,
+    setoresEnvolvidos: setoresEnvolvidos(p.setorAberturaId, p.movimentos),
+    participouComoAutor: movimentou,
   });
-  if (usuario === null) return negado;
-
-  const gestor = usuario.vinculos.some((v) =>
-    v.perfil.permissoes.some((perm) => perm.unidadeOrcId === null)
-  );
-  if (gestor) return { pode: true, motivo: "Gestor: permissão global." };
-
-  if (p.criadoPor === usuarioIdent) {
-    return { pode: true, motivo: "Abriu o processo." };
-  }
-  const movimentou = await tx.movimentoDoProcesso.findFirst({
-    where: { processoId, criadoPor: usuarioIdent },
-    select: { id: true },
-  });
-  if (movimentou !== null) {
-    return { pode: true, motivo: "Movimentou o processo." };
-  }
-
-  const lotacoes = await tx.usuarioDoSetor.findMany({
-    where: { usuarioIdent },
-    select: { setorId: true, setor: { select: { unidadeOrcId: true } } },
-  });
-  const envolvidos = new Set(setoresEnvolvidos(p.setorAberturaId, p.movimentos));
-  if (lotacoes.some((l) => envolvidos.has(l.setorId))) {
-    return {
-      pode: true,
-      motivo: "Lotado em setor por onde o processo passou.",
-    };
-  }
-
-  if (p.sigiloso) {
-    return {
-      pode: false,
-      motivo:
-        "Processo SIGILOSO: visível apenas a quem está envolvido nele. Estar na mesma " +
-        "unidade gestora não basta — é essa exatamente a diferença que o sigilo faz.",
-    };
-  }
-
-  const mesmaUg = lotacoes.some(
-    (l) => l.setor.unidadeOrcId === p.setorAbertura.unidadeOrcId
-  );
-  return mesmaUg
-    ? { pode: true, motivo: "Lotado na mesma unidade gestora." }
-    : negado;
+  return d.pode ? d : { ...negado, codigo: d.codigo };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -214,53 +166,10 @@ export async function listarProcessos(
   filtros: FiltrosDaCaixa = {},
   limite = 200
 ): Promise<readonly LinhaDaCaixa[]> {
-  const usuario = await tx.usuario.findUnique({
-    where: { identificador: usuarioIdent },
-    select: {
-      vinculos: {
-        select: { perfil: { select: { permissoes: { select: { unidadeOrcId: true } } } } },
-      },
-    },
-  });
-  if (usuario === null) return [];
-
-  const gestor = usuario.vinculos.some((v) =>
-    v.perfil.permissoes.some((perm) => perm.unidadeOrcId === null)
-  );
-
-  const lotacoes = await tx.usuarioDoSetor.findMany({
-    where: { usuarioIdent },
-    select: { setorId: true, setor: { select: { unidadeOrcId: true } } },
-  });
-  const meusSetores = lotacoes.map((l) => l.setorId);
-  const minhasUgs = [...new Set(lotacoes.map((l) => l.setor.unidadeOrcId))];
-
-  // ⚠️ SEM LOTAÇÃO E SEM PERMISSÃO GLOBAL: LISTA VAZIA. Nunca "todas". É o mesmo
-  // fail-closed do seletor de unidades (lib/portas/contexto.ts) — o reflexo de tratar
-  // vazio como "não filtrei nada, mostre tudo" é o que transforma quem não tem crachá
-  // no usuário mais poderoso do sistema.
-  if (!gestor && meusSetores.length === 0) return [];
-
-  const recorte = gestor
-    ? {}
-    : {
-        OR: [
-          { criadoPor: usuarioIdent },
-          { setorAberturaId: { in: meusSetores } },
-          { movimentos: { some: { setorOrigemId: { in: meusSetores } } } },
-          { movimentos: { some: { setorDestinoId: { in: meusSetores } } } },
-          { movimentos: { some: { criadoPor: usuarioIdent } } },
-          // Os não sigilosos da minha unidade gestora — e SÓ os não sigilosos.
-          ...(filtros.somenteMeusSetores === true
-            ? []
-            : [
-                {
-                  sigiloso: false,
-                  setorAbertura: { unidadeOrcId: { in: minhasUgs } },
-                },
-              ]),
-        ],
-      };
+  // ⚠️ O RECORTE É A MESMA DECISÃO DE `podeVerProcesso`, no `where` e antes da paginação.
+  const escopo = await escopoDoProtocolo(tx, usuarioIdent);
+  const recorte = recorteDaCaixa(escopo, usuarioIdent, filtros.somenteMeusSetores === true);
+  if (recorte === null) return [];
 
   const processos = await tx.processo.findMany({
     where: {

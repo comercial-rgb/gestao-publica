@@ -75,8 +75,26 @@ segregada é camada de APLICAÇÃO"). Um sistema que só perguntasse a primeira 
 servidor do Almoxarifado despachar um processo parado no Gabinete: as duas salas são da
 mesma unidade gestora.
 
-**Quem tem permissão global é gestor** e enxerga todos os setores (5.42.54/55), reusando
-o mecanismo que já existe em vez de inventar um crachá que ninguém saberia conceder.
+**V7 M1 U1 — "gestor" deixou de ser qualquer permissão global.** Até V6.2, uma conta com
+`EMPENHAR` no ente enxergava todos os processos (os sigilosos inclusive) e despachava sem lotação.
+A decisão agora é explícita, em `escopo-do-protocolo.ts`, e é a MESMA para caixa, detalhe, anexo,
+lote, mesa e contagens (`podeVerProcesso` / `recorteDaCaixa`):
+
+| Ordem | Regra | Código |
+|---|---|---|
+| 1 | Sem `CONSULTAR_PROTOCOLO` em escopo nenhum → não alcança (nem o processo que abriu pela carta) | `SEM-CONSULTA-DO-PROTOCOLO` |
+| 2 | Abriu, movimentou ou está lotado em setor por onde passou → alcança, sigiloso inclusive | `PARTICIPANTE` |
+| 3 | Sigiloso sem participação → não alcança, **também o gestor** | `SIGILO-PREVALECE` |
+| 4a | `CONSULTAR_PROTOCOLO` no ente → não sigilosos do ente | `CONSULTA-NO-ENTE` |
+| 4b | `CONSULTAR_PROTOCOLO` na UG → não sigilosos abertos por setor da UG | `CONSULTA-NA-UG` |
+| 5 | Qualquer outra coisa | `FORA-DO-ESCOPO` |
+
+**Agir sem lotação** exige a PRÓPRIA ação do ato concedida no ente e processo não sigiloso
+(`podeAgirNoSetor`, chamado por `exigirLotacao` em cada ato e pela projeção da mesa). Prova:
+`m21-escopo.test.ts` (7 cenários com alvo existente; mutações "qualquer global é gestor" e "gestor
+levanta sigilo" acusadas). Pendência: `ACESSO-ESPECIAL-A-SIGILOSO` (concessão nominal a quem não
+participa) não existe; `GESTOR-NO-COMUNICADO` — `podeVerComunicado` (M22/M23) ainda trata qualquer
+permissão global como gestor.
 
 > ⚠️ **Armadilha da fixture, e ela já mordeu.** `semearUsuariosDeTeste` dá ADMIN — com
 > permissão GLOBAL — a todas as identidades das fixtures. Como global é gestor, um teste
@@ -198,9 +216,7 @@ Testes: `m21-carta.test.ts` (13), `test/carta-de-servicos.test.ts` (5); percurso
 
 Pendências: `CARTA-SEM-SERVICO-ANONIMO` (serviço sem login e reCAPTCHA, 5.39.102),
 `AVALIACAO-DO-SERVICO` (5.39.105), `CANAL-DA-CARTA-SEM-ATIVACAO-NA-APRESENTACAO` (a entrada não
-oferece o link), `GESTOR-POR-QUALQUER-PERMISSAO-GLOBAL` (`podeVerProcesso` e `exigirLotacao` tratam
-como gestor quem tem QUALQUER permissão global — o requerente só não alcança o processo porque toda
-leitura do protocolo exige `CONSULTAR_PROTOCOLO` antes), `ALTERACAO-CADASTRAL-CONCORRENTE-SEM-TRINCO`
+oferece o link), ~~`GESTOR-POR-QUALQUER-PERMISSAO-GLOBAL`~~ (resolvida em V7 M1 U1, §2), `ALTERACAO-CADASTRAL-CONCORRENTE-SEM-TRINCO`
 (`alterarPessoa` não trava; a conferência da versão base fecha a janela só entre leituras),
 `NOTIFICACAO-EXTERNA-AO-REQUERENTE` (as notificações são registradas no sistema; nada sai por e-mail).
 

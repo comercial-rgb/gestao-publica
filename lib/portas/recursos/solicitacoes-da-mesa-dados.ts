@@ -12,6 +12,7 @@ import {
   type EstadoDaSolicitacao,
 } from "../../../modules/m21-protocolo/carta.js";
 import { podeVerProcesso } from "../../../modules/m21-protocolo/consultas.js";
+import { podeAgirNoSetor } from "../../../modules/m21-protocolo/escopo-do-protocolo.js";
 import { descreverSituacao, estaFechado, movimentosVigentes, setorAtual, situacaoDoProcesso } from "../../../modules/m21-protocolo/dominio.js";
 import { decidirSolicitacao, disponibilizarRespostaDaSolicitacao, emitirExigenciaDaSolicitacao } from "../../../modules/m21-protocolo/servico.js";
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
@@ -47,7 +48,7 @@ const SELECAO = {
   anexos: { orderBy: { criadoEm: "asc" as const }, select: { origem: true, criadoEm: true, criadoPor: true, anexo: { select: { id: true, nomeOriginal: true, tamanhoBytes: true } } } },
   processo: {
     select: {
-      id: true, numero: true, setorAberturaId: true, exercicio: { select: { ano: true } },
+      id: true, numero: true, sigiloso: true, setorAberturaId: true, exercicio: { select: { ano: true } },
       movimentos: { orderBy: { criadoEm: "asc" as const }, select: { id: true, tipo: true, setorOrigemId: true, setorDestinoId: true, respondeAId: true, tornaSemEfeitoId: true, criadoEm: true, criadoPor: true, texto: true } },
     },
   },
@@ -192,14 +193,6 @@ const ROTULO_DO_MOVIMENTO: Readonly<Record<string, string>> = {
   ENCERRAMENTO: "Encerrado (decisão)", ARQUIVAMENTO: "Arquivado", REABERTURA: "Reaberto", CANCELAMENTO: "Cancelado", ALTERACAO: "Alterado", TORNADO_SEM_EFEITO: "Movimento tornado sem efeito",
 };
 
-/** A lotação no setor em que o processo está — ou gestor (permissão global), a mesma régua do M21. */
-async function lotadoOuGestor(identificador: string, setorId: string): Promise<boolean> {
-  const prisma = cliente();
-  if ((await prisma.usuarioDoSetor.findUnique({ where: { usuarioIdent_setorId: { usuarioIdent: identificador, setorId } }, select: { id: true } })) !== null) return true;
-  const u = await prisma.usuario.findUnique({ where: { identificador }, select: { vinculos: { select: { perfil: { select: { permissoes: { where: { unidadeOrcId: null }, select: { id: true }, take: 1 } } } } } } });
-  return u?.vinculos.some((v) => v.perfil.permissoes.length > 0) ?? false;
-}
-
 async function ehTitularOuRepresentante(identificador: string, titularId: string): Promise<boolean> {
   const prisma = cliente();
   const [p, reps] = await Promise.all([pessoaDoUsuario(prisma, identificador), representacoesVigentesDoUsuario(prisma, identificador)]);
@@ -214,10 +207,10 @@ export async function disponibilidadeDaSolicitacao(sessao: Identidade, id: strin
   const s = await lerUma(id);
   if (s === null) return null;
   const e = estadoDe(s);
-  const [lotado, titular] = await Promise.all([lotadoOuGestor(sessao.identificador, e.onde), ehTitularOuRepresentante(sessao.identificador, s.titularId)]);
+  const [lotado, titular] = await Promise.all([podeAgirNoSetor(cliente(), sessao.identificador, e.onde, "DECIDIR_SOLICITACAO_DE_SERVICO", s.processo.sigiloso), ehTitularOuRepresentante(sessao.identificador, s.titularId)]);
   const comAtor = (base: Elegibilidade, ato: string): Elegibilidade => {
     if (base.situacao !== "ELEGIVEL") return base;
-    if (!lotado) return preCondicao("SEM-LOTACAO-NO-SETOR", `O processo desta solicitação está em outro setor e você não está lotado nele.`, `Quem ${ato} é quem trabalha no setor em que o processo está; peça a lotação ou encaminhe pelo processo digital.`);
+    if (!lotado) return preCondicao("SEM-LOTACAO-NO-SETOR", `O processo desta solicitação está em outro setor e você não está lotado nele (nem tem o ato concedido no ente para processo não sigiloso).`, `Quem ${ato} é quem trabalha no setor em que o processo está; peça a lotação ou encaminhe pelo processo digital.`);
     return base;
   };
   const decidir = comAtor(elegibilidadeParaDecidir(e.estado), "decide");

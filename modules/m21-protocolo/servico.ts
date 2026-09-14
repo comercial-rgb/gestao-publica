@@ -19,7 +19,8 @@ import {
 } from "./carta.js";
 import { travar } from "../../packages/locks/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
-import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
+import { ACAO_DO_SERVICO, type AcaoDoSistema } from "../m16-travamento/acoes.js";
+import { podeAgirNoSetor } from "./escopo-do-protocolo.js";
 import type { Tx } from "../m16-travamento/autorizacao.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { notificarVarios } from "../m24-notificacoes/notificacoes.js";
@@ -160,24 +161,6 @@ function exigirAberto(p: ProcessoCarregado, oQue: string): void {
   );
 }
 
-/** Este usuário tem alguma permissão GLOBAL? É o que o catálogo chama de gestor. */
-async function ehGestor(tx: Tx, identificador: string): Promise<boolean> {
-  const u = await tx.usuario.findUnique({
-    where: { identificador },
-    select: {
-      vinculos: {
-        select: {
-          perfil: { select: { permissoes: { select: { unidadeOrcId: true } } } },
-        },
-      },
-    },
-  });
-  if (u === null) return false;
-  return u.vinculos.some((v) =>
-    v.perfil.permissoes.some((perm) => perm.unidadeOrcId === null)
-  );
-}
-
 /**
  * O USUÁRIO ESTÁ LOTADO NESTE SETOR? — a pergunta "de qual mesa ele despacha".
  *
@@ -190,15 +173,12 @@ async function exigirLotacao(
   tx: Tx,
   identificador: string,
   setorId: string,
-  oQue: string
+  oQue: string,
+  /** A ação DO ATO: só ela, concedida no ente, dispensa a lotação — e nunca sobre sigiloso. */
+  acao: AcaoDoSistema,
+  sigiloso = false
 ): Promise<void> {
-  const lotado = await tx.usuarioDoSetor.findUnique({
-    where: { usuarioIdent_setorId: { usuarioIdent: identificador, setorId } },
-    select: { id: true },
-  });
-  if (lotado !== null) return;
-
-  if (await ehGestor(tx, identificador)) return;
+  if (await podeAgirNoSetor(tx, identificador, setorId, acao, sigiloso)) return;
 
   const setor = await tx.setor.findUnique({
     where: { id: setorId },
@@ -482,7 +462,7 @@ export async function abrirProcesso(
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.abrirProcesso, {
       setor: d.setorAberturaId,
     });
-    await exigirLotacao(tx, d.criadoPor, d.setorAberturaId, "abrir processo aqui");
+    await exigirLotacao(tx, d.criadoPor, d.setorAberturaId, "abrir processo aqui", ACAO_DO_SERVICO.abrirProcesso);
 
     return criarProcessoNaTransacao(tx, d);
   });
@@ -510,7 +490,7 @@ export async function tramitar(
     const origem = setorAtual(p.setorAberturaId, p.movimentos);
 
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.tramitar, { setor: origem });
-    await exigirLotacao(tx, d.criadoPor, origem, "tramitar este processo");
+    await exigirLotacao(tx, d.criadoPor, origem, "tramitar este processo", ACAO_DO_SERVICO.tramitar, p.sigiloso);
 
     exigirAberto(p, "trâmite");
     await exigirTaxasEmDia(tx, p);
@@ -578,7 +558,7 @@ export async function receberProcesso(
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.receberProcesso, {
       setor: destino,
     });
-    await exigirLotacao(tx, d.criadoPor, destino, "receber este processo");
+    await exigirLotacao(tx, d.criadoPor, destino, "receber este processo", ACAO_DO_SERVICO.receberProcesso, p.sigiloso);
 
     exigirAberto(p, "recebimento");
 
@@ -623,7 +603,7 @@ export async function complementarProcesso(
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.complementarProcesso, {
       setor: onde,
     });
-    await exigirLotacao(tx, d.criadoPor, onde, "complementar este processo");
+    await exigirLotacao(tx, d.criadoPor, onde, "complementar este processo", ACAO_DO_SERVICO.complementarProcesso, p.sigiloso);
     exigirAberto(p, "complemento");
 
     const m = await tx.movimentoDoProcesso.create({
@@ -658,7 +638,7 @@ export async function solicitarParecer(
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.solicitarParecer, {
       setor: onde,
     });
-    await exigirLotacao(tx, d.criadoPor, onde, "pedir parecer neste processo");
+    await exigirLotacao(tx, d.criadoPor, onde, "pedir parecer neste processo", ACAO_DO_SERVICO.solicitarParecer, p.sigiloso);
     exigirAberto(p, "pedido de parecer");
     await exigirSetorAtivo(tx, d.setorDestinoId);
 
@@ -727,7 +707,7 @@ export async function responderParecer(
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.responderParecer, {
       setor: setorDoParecer,
     });
-    await exigirLotacao(tx, d.criadoPor, setorDoParecer, "responder este parecer");
+    await exigirLotacao(tx, d.criadoPor, setorDoParecer, "responder este parecer", ACAO_DO_SERVICO.responderParecer, p.sigiloso);
     exigirAberto(p, "parecer");
 
     if (pedido.respostas.length > 0) {
@@ -770,7 +750,7 @@ export async function solicitarReadequacao(
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.solicitarReadequacao, {
       setor: onde,
     });
-    await exigirLotacao(tx, d.criadoPor, onde, "pedir readequação neste processo");
+    await exigirLotacao(tx, d.criadoPor, onde, "pedir readequação neste processo", ACAO_DO_SERVICO.solicitarReadequacao, p.sigiloso);
     exigirAberto(p, "pedido de readequação");
 
     const m = await tx.movimentoDoProcesso.create({
@@ -831,7 +811,7 @@ export async function atenderReadequacao(
       await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.atenderReadequacao, {
         setor: onde,
       });
-      await exigirLotacao(tx, d.criadoPor, onde, "atender a readequação por dentro");
+      await exigirLotacao(tx, d.criadoPor, onde, "atender a readequação por dentro", ACAO_DO_SERVICO.atenderReadequacao, p.sigiloso);
     }
 
     exigirAberto(p, "readequação");
@@ -901,7 +881,7 @@ export async function encerrarProcesso(
     const onde = setorAtual(p.setorAberturaId, p.movimentos);
 
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.encerrarProcesso, { setor: onde });
-    await exigirLotacao(tx, d.criadoPor, onde, "encerrar este processo");
+    await exigirLotacao(tx, d.criadoPor, onde, "encerrar este processo", ACAO_DO_SERVICO.encerrarProcesso, p.sigiloso);
     exigirAberto(p, "encerramento");
 
     // ⚠️ PENDÊNCIA ABERTA IMPEDE O ENCERRAMENTO. Encerrar com um parecer pedido e não
@@ -947,7 +927,7 @@ export async function arquivarProcesso(
     const onde = setorAtual(p.setorAberturaId, p.movimentos);
 
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.arquivarProcesso, { setor: onde });
-    await exigirLotacao(tx, d.criadoPor, onde, "arquivar este processo");
+    await exigirLotacao(tx, d.criadoPor, onde, "arquivar este processo", ACAO_DO_SERVICO.arquivarProcesso, p.sigiloso);
 
     // ⚠️ ARQUIVAR EXIGE ENCERRADO. São dois atos, e não um: encerrar é a decisão sobre
     // o MÉRITO ("está resolvido"); arquivar é a decisão sobre a GUARDA ("sai da mesa").
@@ -992,7 +972,7 @@ export async function reabrirProcesso(
     const onde = setorAtual(p.setorAberturaId, p.movimentos);
 
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.reabrirProcesso, { setor: onde });
-    await exigirLotacao(tx, d.criadoPor, onde, "reabrir este processo");
+    await exigirLotacao(tx, d.criadoPor, onde, "reabrir este processo", ACAO_DO_SERVICO.reabrirProcesso, p.sigiloso);
 
     const situacao = situacaoDoProcesso(p.movimentos);
     if (!estaFechado(situacao)) {
@@ -1042,7 +1022,7 @@ export async function apensarProcesso(
     const onde = setorAtual(principal.setorAberturaId, principal.movimentos);
 
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.apensarProcesso, { setor: onde });
-    await exigirLotacao(tx, d.criadoPor, onde, "apensar processos aqui");
+    await exigirLotacao(tx, d.criadoPor, onde, "apensar processos aqui", ACAO_DO_SERVICO.apensarProcesso, principal.sigiloso);
 
     exigirAberto(principal, "apensamento");
     exigirAberto(apenso, "apensamento");
@@ -1114,7 +1094,7 @@ export async function desapensarProcesso(
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.desapensarProcesso, {
       setor: onde,
     });
-    await exigirLotacao(tx, d.criadoPor, onde, "desapensar processos aqui");
+    await exigirLotacao(tx, d.criadoPor, onde, "desapensar processos aqui", ACAO_DO_SERVICO.desapensarProcesso, principal.sigiloso);
 
     const movimentos = await tx.movimentoDeApensamento.findMany({
       where: { processoApensoId: d.processoApensoId },
@@ -1177,7 +1157,7 @@ export async function tornarMovimentoSemEfeito(
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.tornarMovimentoSemEfeito, {
       setor: onde,
     });
-    await exigirLotacao(tx, d.criadoPor, onde, "tornar movimento sem efeito aqui");
+    await exigirLotacao(tx, d.criadoPor, onde, "tornar movimento sem efeito aqui", ACAO_DO_SERVICO.tornarMovimentoSemEfeito, p.sigiloso);
     exigirAberto(p, "anulação de movimento");
 
     const alvo = p.movimentos.find((m) => m.id === d.movimentoId);
@@ -1438,7 +1418,7 @@ export async function emitirExigenciaDaSolicitacao(prisma: PrismaClient, input: 
     const { s, p, estado } = await estadoDaSolicitacao(tx, d.solicitacaoId);
     const onde = setorAtual(p.setorAberturaId, p.movimentos);
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.emitirExigenciaDaSolicitacao, { setor: onde });
-    await exigirLotacao(tx, d.criadoPor, onde, "emitir exigência nesta solicitação");
+    await exigirLotacao(tx, d.criadoPor, onde, "emitir exigência nesta solicitação", ACAO_DO_SERVICO.emitirExigenciaDaSolicitacao, p.sigiloso);
     exigirElegivel(elegibilidadeParaEmitirExigencia(estado));
     // A exigência É o pedido de readequação do M21 — o texto é a MENSAGEM AO REQUERENTE.
     const m = await tx.movimentoDoProcesso.create({ data: { processoId: p.id, tipo: "READEQUACAO_SOLICITADA", setorOrigemId: onde, texto: d.mensagemAoRequerente, criadoPor: d.criadoPor }, select: { id: true } });
@@ -1522,7 +1502,7 @@ export async function disponibilizarRespostaDaSolicitacao(prisma: PrismaClient, 
     const { s, p } = await estadoDaSolicitacao(tx, d.solicitacaoId);
     const onde = setorAtual(p.setorAberturaId, p.movimentos);
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.disponibilizarRespostaDaSolicitacao, { setor: onde });
-    await exigirLotacao(tx, d.criadoPor, onde, "disponibilizar resposta nesta solicitação");
+    await exigirLotacao(tx, d.criadoPor, onde, "disponibilizar resposta nesta solicitação", ACAO_DO_SERVICO.disponibilizarRespostaDaSolicitacao, p.sigiloso);
     const anexoId = await gravarAnexoDaSolicitacao(tx, s.id, s.processoId, d, "RESPOSTA");
     await notificarVarios(tx, await contasDoTitular(tx, s.titularId), { evento: "RESPOSTA_DISPONIVEL", titulo: `Documento disponível na solicitação ${rotulo(p)}`, corpo: d.nomeOriginal, rota: `/meus-servicos/${s.id}` });
     return { anexoId };
@@ -1551,7 +1531,7 @@ export async function decidirSolicitacao(prisma: PrismaClient, input: DecidirSol
     const { s, p, estado } = await estadoDaSolicitacao(tx, d.solicitacaoId);
     const onde = setorAtual(p.setorAberturaId, p.movimentos);
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.decidirSolicitacao, { setor: onde });
-    await exigirLotacao(tx, d.criadoPor, onde, "decidir esta solicitação");
+    await exigirLotacao(tx, d.criadoPor, onde, "decidir esta solicitação", ACAO_DO_SERVICO.decidirSolicitacao, p.sigiloso);
     exigirElegivel(elegibilidadeParaDecidir(estado));
     // ⚠️ SEGREGAÇÃO MÍNIMA: quem pediu não decide o próprio pedido.
     if ((await titularidade(tx, d.criadoPor, s.titularId, new Date())) !== null) {
