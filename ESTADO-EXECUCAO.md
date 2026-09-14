@@ -6,10 +6,10 @@
 |---|---|
 | HEAD | ver `git log -1` — a seção 51 nomeia o SHA da aplicação congelada e o do percurso |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | **V6 produto integrado**: P0 identidade e shell (52), P1 vínculos (53, 54), P1.3 papéis (55), **P2 inteiro — M32 pessoal (55), M33 folha (56), portal do servidor (57) e apropriação contábil (58)** ENTREGUES. Próxima frente: P3 (processos e serviços digitais). A publicação da V5 segue SUSPENSA |
-| Último resultado | seção 58 — a folha fechada vira despesa: grupo de empenho (rubricas × ficha), apropriação pelo `empenhar` do M05, só o BRUTO, numeração determinística que dá idempotência, e retomável com o motivo. `next build` em `d87d07d`; m33-apropriacao 13/13; smoke-apropriacao 14/14 em `105446e` (sob `d87d07d` parou na lacuna `REGIME-DE-VINCULO-DESLIGADO`, nomeada em 58.3); smoke-folha 46/46 e smoke-portal 24/24 de regressão; censo 298 serviços / 271+21 ações; permissões v12; rápida 852/852; catálogo 368 de 2.037 verificadas |
-| Pendências relevantes | `FICHA-DE-PESSOAL-NOS-PERCURSOS` (o banco de demonstração não tem ficha 319011 com dotação para a folha); do M33: `LIQUIDACAO-DA-FOLHA`, `PATRONAL-NA-MEMORIA`, `FOLHAS-NAO-MENSAIS`, `FALTAS-NA-FOLHA`, `PENSAO-ALIMENTICIA-NA-FOLHA`, `CONSIGNACOES-E-MARGEM`, `ARREDONDAMENTO-DA-FOLHA`, `CONTRACHEQUE-EM-PDF`, `RESUMO-DA-FOLHA`; do M32 (55.3) e as telas sem superfície; `MENSAGEM-SOME-COM-A-LINHA` e `MIGALHA-COM-ID` (P4); `ENDERECO-DO-ENTE`; `MARCA-NOS-PDFS`; seções 35.7 a 43.5, 52.4, 53.3, 54.3. **`REGIME-DE-VINCULO-DESLIGADO` foi RESOLVIDA nesta sessão (58.7)** |
-| Próximo passo | seção 58.8 — a liquidação da folha (decisão sobre o responsável pelo atesto), o patronal na memória, e a ficha de pessoal nos percursos; em paralelo, P3 (processos e serviços digitais) |
+| Frente em execução | **V6 produto integrado + adendo V6.1**: P0 identidade e shell (52), P1 vínculos (53, 54), P1.3 papéis (55), P2 inteiro — M32 pessoal (55), M33 folha (56), portal do servidor (57), apropriação contábil (58) — e **V6.1: o atesto da folha e a sua liquidação (59)** ENTREGUES. Próxima frente: P3 (mesa de trabalho, fluxos, carta de serviços). A publicação da V5 segue SUSPENSA |
+| Último resultado | seção 59 — a folha CERTIFICADA vira obrigação liquidada: designação configurada do ente (pessoa + conta conferida + ato + vigência, revogação como fato), atesto com manifesto canônico e sha256 do objeto, liquidação pelo `liquidar` do M05, segregação preparar × certificar × liquidar conferida na transação. `next build` em `af292c2`; m33-certificacao 37/37; smoke-atesto 37/37 e smoke-apropriacao 16/16 (esta agora percorre o caminho COMPLETO); folha 46/46, portal 24/24, cadeia 23/23, pessoal 29/29, identidade 46/46; censo 304 serviços / 274+21 ações; permissões v13; rápida 852/852; mapa de acesso derivado de 202 rotas com ZERO sem portão; catálogo 368 de 2.037 verificadas, sem promoção |
+| Pendências relevantes | **`FICHA-DE-PESSOAL-NOS-PERCURSOS` foi RESOLVIDA nesta sessão (59.7)**. Do M33: `PATRONAL-NA-MEMORIA` (o próximo passo), `RETIFICACAO-DA-FOLHA`, `CONCENTRACAO-DE-FUNCOES-NA-FOLHA`, `DESIGNACAO-POR-ENTIDADE`, `ORDENAR-E-PAGAR-A-FOLHA`, `FOLHAS-NAO-MENSAIS`, `FALTAS-NA-FOLHA`, `PENSAO-ALIMENTICIA-NA-FOLHA`, `CONSIGNACOES-E-MARGEM`, `ARREDONDAMENTO-DA-FOLHA`, `CONTRACHEQUE-EM-PDF`, `RESUMO-DA-FOLHA`; **novas**: `ACAO-FORA-DO-ESTADO-NO-MOLDE` (PROD-015), `PROJECAO-PUBLICA-POR-CAMPO`, `CRIAR-FICHA-SEM-TELA`; do M32 (55.3) e as telas sem superfície; `MENSAGEM-SOME-COM-A-LINHA` e `MIGALHA-COM-ID` (P4); `ENDERECO-DO-ENTE`; `MARCA-NOS-PDFS`; seções 35.7 a 43.5, 52.4, 53.3, 54.3 |
+| Próximo passo | seção 59.8 — `PATRONAL-NA-MEMORIA` (os encargos do empregador no motor e no fluxo financeiro, sem subtrair do líquido do servidor e sem mutar folha fechada), e em seguida **P3**: mesa de trabalho (M21/M22/M23), fluxos versionados e carta de serviços |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -6507,3 +6507,163 @@ desligado, o primeiro.
    dotação compatível com a folha (hoje só há 339039, e a apropriação para por saldo).
 
 Depois: **P3** — mesa de trabalho (M21/M22/M23), fluxos de processo e carta de serviços.
+
+## 59. V6.1 — a folha certificada vira obrigação liquidada
+
+Commits: `eace37e` (o pedido guardado), `2640edf` (schema, domínio, serviços, testes, permissões
+v13), `d26d258` (telas: designações, dimensões separadas, painel do atesto), `4e048c1` (as contas
+da liquidação do grupo antigo), `af292c2` (percurso e MODULO), `6c7cee0`
+(`FICHA-DE-PESSOAL-NOS-PERCURSOS` resolvida), `0752ba2` (mapa de acesso, catálogo, PROD), e o
+commit desta seção.
+
+### 59.1 A decisão que destravou o atesto
+
+A apropriação (§58) EMPENHA. Liquidar continua ato próprio, e o art. 63 da Lei 4.320 manda
+verificar o direito adquirido pelo credor "tendo por base os títulos e documentos comprobatórios".
+Na compra, o título é a nota fiscal conferida. **Na folha não há nota fiscal**, e fabricar uma
+para satisfazer o validador seria mentir no documento. O título passou a ser a folha FECHADA mais
+a CERTIFICAÇÃO de quem o ente designou.
+
+**Quem atesta é quem o ente designou, e o sistema não sabe quem é.** Nenhuma norma nacional nomeia
+"o diretor de RH" como atestador da folha — isso é ato administrativo do município. Não há cargo
+embutido no código: há `DesignacaoNaFolha`, com a `Pessoa`, o `Usuario` ativo (conferido pelo
+`VinculoUsuarioPessoa`, explícito — designar um usuário que não É aquela pessoa deixaria o atesto
+assinado por um nome e praticado por outro), o ato que a fundamenta, a vigência e o substituto. A
+**revogação é fato próprio**, nunca UPDATE: o atesto de março foi praticado sob a designação que
+valia em março, e revogar em maio não pode apagar isso. A vigência é DERIVADA, por dia civil do
+ente, e o percurso prova as duas bordas (último dia válido, dia do efeito já inválido).
+
+### 59.2 A parede real: as duas contas patrimoniais
+
+`contrapartidaDaLiquidacao` (M01) mapeia ELEMENTO → conta e cobre 30, 39 e 71. O elemento **11**
+(vencimentos e vantagens fixas) não está lá, e o `CONTA_VPD` do rol é `3.3.2.1.1.01.00` — VPD de
+**serviços de terceiros**. Liquidar a folha por ele lançaria a remuneração dos servidores como
+serviço contratado, e o lançamento FECHARIA (ΣD = ΣC em cada subsistema): ninguém veria.
+
+Um mapa por elemento também não resolveria — vencimento, 13º e férias dividem o elemento e
+creditam contas de "pessoal a pagar" diferentes. Quem declara as duas é o **grupo de empenho**,
+que já é exatamente "quais rubricas, em qual ficha". A liquidação recusa nomeando o grupo quando
+faltam, **antes de gravar a primeira**; `roteiroLiquidacaoDaFolha` mantém canônicas as pernas de
+ORÇAMENTÁRIO e CONTROLE, porque essas não variam (a DDR tem de sair de "comprometida por empenho"
+para "comprometida por liquidação", ou o pagamento debitaria um comprometido nunca creditado).
+
+### 59.3 A segregação é o padrão, conferida na transação
+
+Quem calculou ou fechou não certifica (`AUTOCERTIFICACAO-DA-FOLHA`, nomeando o que fez); quem
+certificou não liquida (`AUTOLIQUIDACAO-DA-FOLHA`). A v13 das permissões concede **só**
+`DESIGNAR_NA_FOLHA` a quem administra — espalhar `CERTIFICAR_FOLHA` e `LIQUIDAR_FOLHA` pelo perfil
+administrador faria a instalação nascer com quem prepara podendo certificar, o oposto do que esta
+entrega representa. E o crachá sozinho não certifica: o percurso prova isso no passo 4.3, afirmando
+que o FORMULÁRIO de certificar EXISTE para quem foi recusado — sem essa contraprova, o passo 4.2
+estaria verde por falta de permissão, o motivo errado.
+
+### 59.4 Comandos executados e resultados
+
+| Comando | Resultado |
+|---|---|
+| `prisma migrate deploy` ×3 (dev, test, percursos) | 3 migrations aditivas aplicadas; zero DROP |
+| `prisma migrate diff --exit-code` | **sem diferença** nos três bancos |
+| `provisionar-papel-runtime` ×3 | ok — sem superusuário, sem BYPASSRLS, sem DDL |
+| `tsc -p tsconfig.backend.json` e `tsc` (frontend) | **limpos** |
+| `vitest run modules/m33-folha/m33-certificacao.test.ts` | **37/37** |
+| `vitest run modules/m33-folha/m33-apropriacao.test.ts` | **13/13** (após a extração de `parcelasDoCalculo`) |
+| `vitest run modules/m33-folha/m33-folha.test.ts` | **38/38** |
+| `vitest run modules/m16-travamento` | **19/19** (censo 304 serviços, 274+21 ações; atualizações v13) |
+| `vitest run test/molde test/papel-runtime …` | **223/223** |
+| `npm run test:rapido` | **852/852** (81 arquivos) |
+| `next build` | **exit 0** em `af292c2` — o binário servido |
+| `scripts/mapa-de-acesso.ts` | 202 rotas; 6 públicas; **0 sem portão declarado** |
+
+**Percursos sob o build `af292c2`** (banco dos percursos, `next start -p 3010`):
+
+| Percurso | Resultado |
+|---|---|
+| `smoke-atesto-da-folha` (NOVO, cinco papéis) | **37/37** |
+| `smoke-apropriacao-da-folha` | **16/16** — agora o caminho COMPLETO (era 14/14 com três passos pulados) |
+| `smoke-folha` | **46/46** |
+| `smoke-portal-do-servidor` | **24/24** |
+| `smoke-cadeia-por-papel` | **23/23** |
+| `smoke-pessoal` | **29/29** |
+| `smoke-identidade` | **46/46** |
+
+⚠️ **`app_sha` ≠ `runner_sha`, e a diferença é só de script.** O binário servido é `af292c2`; o
+HEAD ao fim da sessão traz commits posteriores que tocam **apenas** `scripts/` e `docs/`. Conferido
+com `git diff --stat af292c2 HEAD -- app lib components modules prisma packages`: **vazio**.
+
+### 59.5 Invariantes verificadas
+
+- **Dinheiro é `Decimal`** em todo o caminho novo; nenhum `number` entra em valor.
+- **Append-only**: certificação e devolução são fatos na mesma trilha; a revogação da designação é
+  fato; a situação é DERIVADA do último fato daquele cálculo, nunca coluna.
+- **Balanceamento por subsistema**: o teste afirma as 18 partidas das três liquidações e confere
+  ΣD = ΣC em PATRIMONIAL, ORÇAMENTÁRIO e CONTROLE, **e** que o débito patrimonial é
+  `3.1.1.1.1.01.00` — não a VPD de serviços.
+- **Idempotência com o escopo na chave**: `@@unique` de `LiquidacaoDaFolha` sobre o empenho +
+  `@@unique([empenhoId, numero])` do M05. O teste apaga o elo para simular a morte do processo
+  entre o M05 e a gravação, e afirma que a retomada RECONHECE a liquidação em vez de criar a quarta.
+- **Autorização no servidor por ação nomeada**, e o percurso prova as negativas por papel.
+- **Efeito colateral antes da guarda**: a conferência das contas de TODOS os grupos acontece antes
+  de gravar a primeira liquidação — o teste afirma `liquidacao.count() === 0` na recusa.
+
+### 59.6 Achados
+
+1. **O manifesto descrevia uma distribuição que a apropriação não fazia.** Com o filtro de parcela
+   zerada só dentro de `apropriarFolha`, o manifesto do atestador listava "grupo X, 1 empenho,
+   0,00" que nunca virava empenho. O filtro desceu para `parcelasDoCalculo`, extraída para ser a
+   única verdade do agrupamento. Achado pelo próprio teste novo.
+2. **O guard t6 do censo recusou o atalho certo.** `certificarFolha` e `devolverFolhaParaCorrecao`
+   delegam a um helper que abre a transação, e a ação passou a ser PARÂMETRO do helper — a lição
+   que o próprio censo já tinha escrito, aplicada de novo.
+3. **A identidade `LOA` não existia no banco de demonstração**, e por isso NENHUMA ficha nascia
+   ali: o adapter do M02 assina a `DOTACAO_INICIAL` como "quem dota é a LEI", e o funil do M16
+   exige que todo autor de fato exista. Recusa correta, cenário incompleto.
+4. **Dois defeitos DENTRO do instrumento do mapa de acesso** (a ação de `recorteDePagina` é o
+   segundo argumento; `[^)]*?` parava no `)` de `Object.fromEntries(...)`): 54 rotas apareciam sem
+   portão tendo portão. Instrumento que acusa errado manda consertar o que não está quebrado.
+5. **Três defeitos do percurso, nenhum do produto**: o campo visível de CPF é mascarado e não
+   carrega `name`; o formulário de vincular pessoa RE-RENDERIZA e o seletor deixa de casar (a
+   prova virou a recarga, que é melhor que um aviso); e a designação da execução anterior já estava
+   revogada — a recusa `DESIGNACAO-JA-REVOGADA` estava certa.
+6. **Defeito de produto nomeado e NÃO corrigido**: o molde filtra ações por PERMISSÃO e não por
+   ESTADO, e a folha já certificada continua exibindo "Certificar" e "Devolver". O servidor recusa
+   e nomeia o motivo — não há furo de integridade —, mas a tela promete o que não fará. Pendência
+   `ACAO-FORA-DO-ESTADO-NO-MOLDE`, transversal ao molde, registrada como PROD-015 com a captura.
+
+### 59.7 `FICHA-DE-PESSOAL-NOS-PERCURSOS` — resolvida
+
+O banco de demonstração nasceu só com fichas de 339039, e a que o grupo usava tinha 1.000,00
+disponíveis: a apropriação parava por saldo no primeiro servidor e os percursos nunca alcançavam
+a liquidação. `scripts/ficha-de-pessoal-percursos.ts` cria as fichas 319011 e 319013 **pelo caso
+de uso `criarFicha` do M02** — mesma autorização, mesma dotação inicial, mesma perna no razão; e
+`scripts/repontar-grupo-da-folha-percursos.ts` reaponta o grupo, como DONO do banco, porque o
+produto proíbe isso em runtime de propósito (`fichaId` está fora do grant: trocar a ficha de um
+grupo já empenhado moveria a despesa de dotação sem tocar num lançamento). Reponta em vez de
+apagar — os empenhos já gerados são fatos e ficam com a ficha que era a deles.
+
+⚠️ **E a semente achou uma regressão real**: a cadeia por papel escolhia "a ficha com mais saldo",
+que passou a ser a de PESSOAL, e a liquidação caiu com `SEM ROTEIRO PARA O ELEMENTO 11` —
+corretamente, porque não se compra serviço de terceiro em ficha de vencimentos. O percurso passou
+a escolher entre as fichas que TÊM roteiro de liquidação.
+
+⚠️ **Pendência nova nomeada no caminho**: `CRIAR-FICHA-SEM-TELA` — a ação `CRIAR_FICHA` está no
+censo e **não tem superfície** (o QDD é só leitura). Foi por isso que a ficha nasceu por script e
+não pela interface. É lacuna do planejamento (P1), não desta unidade, e não foi escondida.
+
+### 59.8 Próximo ponto exato
+
+1. **`PATRONAL-NA-MEMORIA`** — os encargos do empregador no motor e na memória, parametrizados por
+   entidade, regime, incidência de rubrica e vigência (`aliquotaPatronal` já está na tabela).
+   Regras que o adendo fixa e que valem como critério: o custo patronal **não** vira dedução
+   pessoal; a dedução do empregado **não** vira segunda despesa; folha já fechada **não** é mutada
+   (complemento versionado ou retificação, com comparativo). 5.12.72/73 dependem disso, e o
+   empenho dos encargos fecha o que falta de 5.12.71.
+2. Depois: **P3** — mesa de trabalho (M21/M22/M23), fluxos e formulários versionados, carta de
+   serviços, e os três serviços já escolhidos no V6 (atualização cadastral sujeita a análise;
+   requerimento com anexo, exigência e resposta; complemento de documentação de fornecedor).
+
+### 59.9 O que NÃO foi executado nesta unidade
+
+`test:tudo`, `test:fuso` e o portão integral **não rodaram**. A seleção foi direcionada (domínio
+alterado, censo, permissões, molde, papel de runtime, rápida e sete percursos de navegador), como
+o modo de trabalho da V3 prevê fora do candidato de homologação. Nada aqui está marcado como
+validado por eles.
