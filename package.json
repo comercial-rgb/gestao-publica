@@ -48,6 +48,7 @@
     "smoke:ent03a": "tsx scripts/trinco-de-maquina.ts 'smoke do ENT03a' -- npx tsx scripts/smoke-ent03a.ts",
     "pesado": "tsx scripts/trinco-de-maquina.ts",
     "navegador:preflight": "tsx scripts/preflight-navegador.ts",
+    "test:runtime": "tsx scripts/trinco-de-maquina.ts 'contrato do papel de runtime' -- npx vitest run test/runtime test/papel-runtime.test.ts",
     "test:tudo": "tsx scripts/trinco-de-maquina.ts 'suite completa' -- npx vitest run",
     "test:rapido": "vitest run -c vitest.rapido.config.ts",
     "smoke:ent03b": "tsx scripts/trinco-de-maquina.ts 'smoke do ENT03b' -- npx tsx scripts/smoke-ent03b.ts",
