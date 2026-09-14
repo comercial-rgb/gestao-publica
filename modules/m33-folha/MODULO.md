@@ -79,10 +79,70 @@ seria inventar norma que o TR não fixa. Uma rubrica pertence a UM grupo só.
    para mil empenhos manteria as fichas do ente travadas por minutos. Ela é RETOMÁVEL: diz onde
    parou, e os empenhos gravados continuam valendo.
 
+## A certificação (atesto) e a liquidação — V6.1 (`certificacao.ts`)
+
+A apropriação empenha. **Liquidar é ato próprio**, e o art. 63 da Lei 4.320 manda verificar o
+direito adquirido pelo credor "tendo por base os títulos e documentos comprobatórios". Na compra,
+o título é a nota fiscal conferida. **Na folha não há nota fiscal**, e fabricar uma para satisfazer
+o validador seria mentir no documento: o título é a folha FECHADA mais a CERTIFICAÇÃO de quem o
+ente designou.
+
+**Quem atesta é quem o ente designou, e o sistema não sabe quem é.** Nenhuma norma nacional nomeia
+"o diretor de RH" como atestador da folha — isso é ato administrativo do município. Não há cargo
+embutido no código: há `DesignacaoNaFolha`, com a `Pessoa`, o `Usuario` ativo (conferido pelo
+`VinculoUsuarioPessoa`, explícito), o ato que a fundamenta, a vigência e o substituto. A
+**revogação é fato próprio**, nunca UPDATE — o atesto de março foi praticado sob a designação que
+valia em março, e revogar em maio não pode apagar isso. A vigência é DERIVADA, por dia civil.
+
+**A segregação é o padrão**, conferida dentro da transação: quem calculou ou fechou não certifica
+(`AUTOCERTIFICACAO-DA-FOLHA`); quem certificou não liquida (`AUTOLIQUIDACAO-DA-FOLHA`). A
+atualização de permissões v13 concede **só** `DESIGNAR_NA_FOLHA` a quem administra — espalhar
+`CERTIFICAR_FOLHA` e `LIQUIDAR_FOLHA` pelo perfil administrador faria a instalação nascer com quem
+prepara podendo certificar. E o crachá sozinho não certifica: falta a designação.
+
+**O atesto se prende ao CÁLCULO**, não à folha, e leva um manifesto canônico com o sha256 do
+OBJETO (entidade, competência, cálculo, totais, os vínculos e as alocações). O autor, a designação
+e o instante ficam FORA do hash: assim duas certificações do mesmo conjunto têm a mesma impressão
+digital, e qualquer mudança de valor, pessoa ou alocação a muda. Sem CPF e sem dado bancário — o
+manifesto circula entre contabilidade e controle interno.
+
+**As duas contas patrimoniais vêm do ente, e essa foi a parede real.**
+`contrapartidaDaLiquidacao` (M01) mapeia ELEMENTO → conta e cobre 30, 39 e 71; o elemento 11
+(vencimentos) não está lá, e o `CONTA_VPD` do rol é `3.3.2.1.1.01.00` — VPD de **serviços de
+terceiros**. Liquidar a folha por ele lançaria a remuneração dos servidores como serviço
+contratado, e o lançamento FECHARIA (ΣD = ΣC em cada subsistema): ninguém veria. Um mapa por
+elemento também não resolveria — vencimento, 13º e férias dividem o elemento e creditam contas de
+"pessoal a pagar" diferentes. Quem declara as duas é o **grupo de empenho**, que já é "quais
+rubricas, em qual ficha"; a liquidação recusa nomeando o grupo quando faltam, **antes de gravar a
+primeira**. `roteiroLiquidacaoDaFolha` mantém canônicas as pernas de ORÇAMENTÁRIO e CONTROLE (a
+DDR tem de sair de "comprometida por empenho" para "comprometida por liquidação").
+
+**O gancho de estoque não dispara em folha**, e a recusa mudou de lugar: um grupo apontado para
+ficha de material é recusado no CADASTRO — não na liquidação, com metade dos empenhos já feitos.
+
+**Retomável sem duplicar:** o `@@unique` de `LiquidacaoDaFolha` sobre o empenho e o
+`@@unique([empenhoId, numero])` do M05 são a idempotência real; a numeração determinística só
+ajuda a reconhecer. A janela entre o `liquidar` do M05 (transação própria) e a gravação do elo é
+recuperada procurando a liquidação pelo par (empenho, número) e só amarrando o elo.
+
+**O único UPDATE do módulo** é `definirContasDaLiquidacaoDoGrupo`, e o grant é por coluna: as duas
+colunas nasceram nullable (migration aditiva), e sem este caminho os grupos cadastrados antes do
+V6.1 nunca liquidariam. Ficha, série, credor e `porServidor` continuam fora do grant — trocar a
+ficha de um grupo já empenhado moveria a despesa de dotação sem tocar num lançamento.
+
 ## Fora de escopo aqui — pendências nomeadas
 
-- `LIQUIDACAO-DA-FOLHA` — a apropriação EMPENHA; liquidar continua sendo ato próprio, na tela da
-  despesa. O fechamento é o atesto do CÁLCULO, não o do recebimento do serviço prestado.
+- `RETIFICACAO-DA-FOLHA` — devolver para correção é fato e BLOQUEIA a liquidação, mas não reabre o
+  cálculo fechado. Corrigir exige retificação ou folha complementar, com a análise dos efeitos
+  posteriores. A derivação `SUPERADA` de `situacaoDaCertificacao` já existe escrita para o dia em
+  que houver mais de um cálculo fechado por folha.
+- `CONCENTRACAO-DE-FUNCOES-NA-FOLHA` — num ente pequeno, a mesma pessoa pode acumular preparar e
+  certificar. Hoje o serviço RECUSA, sempre. Permitir isso é decisão fundamentada do ente, com
+  registro próprio — não um parâmetro solto.
+- `DESIGNACAO-POR-ENTIDADE` — a designação é do ENTE. Uma autarquia com folha própria precisaria de
+  escopo por entidade, e a folha em si ainda é única por competência.
+- `ORDENAR-E-PAGAR-A-FOLHA` — depois de liquidada, a folha entra na fila do art. 141 como qualquer
+  obrigação; ordenar o pagamento e pagar continuam nos atos do M05/M09, sem atalho pela folha.
 - `PATRONAL-NA-MEMORIA` (5.12.72/73) — `aliquotaPatronal` existe na tabela de contribuição e a
   memória ainda não calcula a parte patronal; sem ela não há empenho de encargos.
 - `FOLHAS-NAO-MENSAIS` (5.12.50) — 13º (1ª e 2ª parcela), férias, rescisão, complementar,
