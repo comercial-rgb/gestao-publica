@@ -330,6 +330,37 @@ Pendências nomeadas da ponte: `ME06-ADITIVO-ENTRE-EMISSAO-E-MEDICAO` (depende d
 pagamento), `PRAZO-DE-RECEBIMENTO-SEM-CONFIGURACAO`, `PORTAL-DO-FORNECEDOR`, `ASSINATURA-QUALIFICADA-DOS-TERMOS`,
 `XLSX-DA-EXECUCAO` (PDF só).
 
+### U5 — o aditivo por itens (`aditivo-por-itens.ts`, `versoes-dos-itens.ts`) — PARCIAL
+
+O termo que muda quantidade e/ou unitário de itens, ou inclui item, a partir de uma vigência. **Não é outro cadastro de
+aditivo**: a variação de valor é um `MovimentoContratual` gravado pelo mesmo corpo do `registrarAditivo`
+(`gravarAditivoNaTransacao` — supressão abaixo do empenhado e teto da dispensa), na mesma transação, e o valor atualizado,
+os relatórios e as remessas continuam lendo só o movimento. As versões (`AlteracaoDeItemPorAditivo`) guardam anterior e
+novo; `ItemDoContrato` nunca é reescrito (item incluído nasce com original 0).
+
+| Regra | Onde | Recusa |
+|---|---|---|
+| variação conferida por item: (Q' − M)·P' − (Q − M)·P, M = medido em períodos inteiramente anteriores à vigência, arredondada uma vez por item | `comporNaTransacao` | `VARIACAO-DO-TERMO-DIVERGENTE` com a composição |
+| versão nova só depois da última do item | idem | `VERSAO-POSTERIOR-JA-REGISTRADA` |
+| novo unitário não alcança período já medido | idem | `ADITIVO-RETROAGE-SOBRE-MEDICAO` |
+| quantidade nova não abaixo do comprometido (ordens emitidas − cancelado + medido sem ordem) | idem | `SUPRESSAO-ABAIXO-DO-COMPROMETIDO` |
+| valor do mesmo termo já lançado no cadastro avulso | `registrarAditivoPorItens` | `VALOR-DO-TERMO-JA-REGISTRADO` |
+| o valor do aditivo por itens não se estorna avulso | `estornarMovimentoContratual` | `MOVIMENTO-DE-ADITIVO-POR-ITENS` |
+| estorno só do último do item e só enquanto nada o usou (ordem criada/emitida, medição) | `estornarAditivoPorItens` | `ADITIVO-JA-UTILIZADO`, `ADITIVO-POSTERIOR-SOBRE-O-ITEM`, `ESTORNO-ABAIXO-DO-EMPENHADO` |
+
+Consumidores das versões (a única leitura do "vigente num dia"): o rascunho da ordem copia o unitário vigente no início
+previsto; a emissão recusa rascunho com preço desatualizado (`PRECO-DA-ORDEM-DESATUALIZADO`) e confere o saldo pela MENOR
+quantidade de hoje em diante (supressão com vigência futura já limita); a medição da ordem e a medição por itens valoram
+pelo unitário do primeiro dia do período e recusam período que atravessa novo preço (`PERIODO-ATRAVESSA-NOVO-PRECO`) — é
+o ME06; o cadastro de item soma o original mais as variações dos aditivos vivos; dossiê, execução e projeção pública
+mostram original, contratado hoje e unitário hoje, e a lista de termos.
+
+Tela: seção "Aditivos por itens" em `/licitacoes/contratos/[id]` (lista com antes/depois, estorno, formulário com
+"Conferir composição" sem gravar e "Registrar aditivo"); `/transparencia/contratos/[id]` mostra as alterações. Teste:
+`test/aditivo-por-itens.test.ts` (AD01–AD07). Percurso: `scripts/smoke-aditivo-por-itens.ts` (conta
+`contratos-aditivos@percursos.local`). Fora deste incremento: limites do art. 125 (pendência antiga), apostilamento e
+reajuste por índice (`REAJUSTE-POR-INDICE`), aditivo que altera o prazo da ordem já emitida, PDF do termo registrado.
+
 ## Arquivos
 
 - `dominio.ts` — puro: `MODALIDADES`, `SINAL_VALOR_CONTRATUAL`,

@@ -4,6 +4,7 @@ import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import type { VisaoDoContrato } from "./fiscalizacao.js";
 import { elegivelDoItemMedido } from "./ordem-de-servico.js";
 import { consumoDasParcelas } from "./parcelas-da-liquidacao.js";
+import { aditivosPorItensDoContrato, historicosDosItens, quantidadeParaComprometerDesde, versaoNoDia } from "./versoes-dos-itens.js";
 
 /**
  * ═══ M11 — A EXECUÇÃO DO CONTRATO: ordens, medições, recebimentos e saldos (V7 M2 U1/U2) ═══
@@ -94,7 +95,12 @@ export interface OrdemNaTela {
 
 export interface ExecucaoDoContrato {
   readonly visao: VisaoDoContrato;
-  readonly itensDoContrato: readonly { readonly id: string; readonly numero: number; readonly descricao: string; readonly unidade: string; readonly valorUnitario: string; readonly contratado: string; readonly autorizadoEmOrdens: string; readonly medidoSemOrdem: string; readonly aAutorizar: string }[];
+  /**
+   * `contratado` e `valorUnitario` são os VIGENTES HOJE (versões dos aditivos por itens); `original` é o do contrato
+   * assinado; `aAutorizar` desconta a menor quantidade já registrada para o futuro (supressão com vigência adiante).
+   */
+  readonly itensDoContrato: readonly { readonly id: string; readonly numero: number; readonly descricao: string; readonly unidade: string; readonly valorUnitario: string; readonly original: string; readonly contratado: string; readonly autorizadoEmOrdens: string; readonly medidoSemOrdem: string; readonly aAutorizar: string }[];
+  readonly aditivosPorItens: Awaited<ReturnType<typeof aditivosPorItensDoContrato>>;
   readonly ordens: readonly OrdemNaTela[];
   readonly totais: { readonly autorizado: string; readonly medido: string; readonly recebido: string; readonly liquidado: string };
 }
@@ -104,6 +110,8 @@ const PESSOA = { select: { atoDesignacao: true, pessoa: { select: { documento: t
 
 export async function execucaoDoContrato(prisma: Tx, contratoId: string, visao: VisaoDoContrato): Promise<ExecucaoDoContrato> {
   const fiscalizacao = visao === "FISCALIZACAO";
+  const hoje = diaCivil(new Date());
+  const [historicos, aditivosPorItens] = await Promise.all([historicosDosItens(prisma, { contratoId }), aditivosPorItensDoContrato(prisma, contratoId)]);
   const [itensDoContrato, ordens] = await Promise.all([
     prisma.itemDoContrato.findMany({
       where: { contratoId },
@@ -216,8 +224,11 @@ export async function execucaoDoContrato(prisma: Tx, contratoId: string, visao: 
     itensDoContrato: itensDoContrato.map((i) => {
       const autorizadoEmOrdens = i.itensDeOrdemDeServico.reduce((t, o) => t.plus(o.quantidade.toFixed(4)).minus(o.cancelamentos.reduce((u, c) => u.plus(c.quantidade.toFixed(4)), new Decimal(0))), new Decimal(0));
       const medidoSemOrdem = i.medidos.reduce((t, m) => t.plus(m.quantidade.toFixed(4)), new Decimal(0));
-      return { id: i.id, numero: i.numero, descricao: i.descricao, unidade: i.unidade, valorUnitario: q(i.valorUnitario.toFixed(4)), contratado: q(i.quantidade.toFixed(4)), autorizadoEmOrdens: q(autorizadoEmOrdens), medidoSemOrdem: q(medidoSemOrdem), aAutorizar: q(new Decimal(i.quantidade.toFixed(4)).minus(autorizadoEmOrdens).minus(medidoSemOrdem)) };
+      const h = historicos.get(i.id)!;
+      const v = versaoNoDia(h, hoje);
+      return { id: i.id, numero: i.numero, descricao: i.descricao, unidade: i.unidade, valorUnitario: q(v.valorUnitario), original: q(h.versoes[0]!.quantidade), contratado: q(v.quantidade), autorizadoEmOrdens: q(autorizadoEmOrdens), medidoSemOrdem: q(medidoSemOrdem), aAutorizar: q(quantidadeParaComprometerDesde(h, hoje).minus(autorizadoEmOrdens).minus(medidoSemOrdem)) };
     }),
+    aditivosPorItens,
     ordens: saidaOrdens,
     totais: {
       autorizado: sumMoney(saidaOrdens.map((o) => o.valores.autorizado)).toFixed(2),

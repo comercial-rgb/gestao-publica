@@ -10,6 +10,7 @@ import {
   movimentarExecucaoDaOrdemDeServico, registrarMedicaoDaOrdem, registrarRecebimentoDefinitivo, registrarRecebimentoProvisorio,
 } from "../../modules/m11-licitacoes/ordem-de-servico.js";
 import { execucaoDoContrato } from "../../modules/m11-licitacoes/execucao-do-contrato.js";
+import { estornarAditivoPorItens, preverAditivoPorItens, registrarAditivoPorItens } from "../../modules/m11-licitacoes/aditivo-por-itens.js";
 
 /**
  * ═══ A ORDEM DE SERVIÇO E OS RECEBIMENTOS PELO PAPEL DE RUNTIME (V7 M2 U1/U2 — RT02) ═══
@@ -37,7 +38,7 @@ let fiscal = "";
 beforeAll(async () => {
   await limparBanco(dono);
   const contas: [string, string[], string | null][] = [
-    [ADMIN, ["DESIGNAR_NO_CONTRATO", "CADASTRAR_ITEM_DO_CONTRATO"], null],
+    [ADMIN, ["DESIGNAR_NO_CONTRATO", "CADASTRAR_ITEM_DO_CONTRATO", "REGISTRAR_ADITIVO", "ESTORNAR_MOVIMENTO_CONTRATUAL"], null],
     [GESTORA, ["EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO"], "11144477735"],
     [FISCAL, ["REGISTRAR_MEDICAO_DE_OBRA", "REGISTRAR_RECEBIMENTO_PROVISORIO"], "52998224725"],
     [RECEBEDOR, ["REGISTRAR_RECEBIMENTO_DEFINITIVO"], "86288366757"],
@@ -94,6 +95,24 @@ describe("ordem de serviço e recebimentos pelo papel de runtime", () => {
       `UPDATE "RecebimentoDefinitivo" SET "conclusao" = 'apagada'`,
       `UPDATE "CancelamentoDeSaldoDaOrdem" SET "quantidade" = 1`,
       `DELETE FROM "MovimentoDeExecucaoDaOrdem"`,
+    ]) {
+      await expect(app.$executeRawUnsafe(sql), sql).rejects.toThrow(negado);
+    }
+  });
+
+  it("V7 M2 U5 — o aditivo por itens (prévia, registro com movimento, inclusão e estorno) pela conexão gestao_app, sem reescrita", async () => {
+    // Item 2 de 20 para 24 horas a R$ 50,00 (nada medido depois da vigência): +R$ 200,00; item incluído 2 × R$ 30,00 = R$ 60,00.
+    const termo = { contratoId: "ctr", numeroAditivo: "RT-1", dataAssinatura: dia(0), vigenciaInicio: dia(0), fundamento: "Lei 14.133/2021, art. 124, I, b", motivo: "Aditivo pelo papel de runtime", alteracoes: [{ itemDoContratoId: itemB, quantidade: "24", valorUnitario: "50" }], inclusoes: [{ descricao: "Relatório final", unidade: "relatório", quantidade: "2", valorUnitario: "30" }], criadoPor: ADMIN };
+    expect((await preverAditivoPorItens(app, termo)).variacao).toBe("260.00");
+    const r = await registrarAditivoPorItens(app, { ...termo, variacaoDoTermo: "260.00" });
+    expect(r.movimentoId).not.toBeNull();
+    const e = await estornarAditivoPorItens(app, { aditivoId: r.aditivoId, data: dia(0), motivo: "Estorno pelo papel de runtime", criadoPor: ADMIN });
+    expect(e.movimentoEstornoId).not.toBeNull();
+    for (const sql of [
+      `UPDATE "AditivoPorItensDoContrato" SET "variacao" = 1`,
+      `DELETE FROM "AlteracaoDeItemPorAditivo"`,
+      `DELETE FROM "EstornoDeAditivoPorItens"`,
+      `UPDATE "ItemDoContrato" SET "quantidade" = 99`,
     ]) {
       await expect(app.$executeRawUnsafe(sql), sql).rejects.toThrow(negado);
     }

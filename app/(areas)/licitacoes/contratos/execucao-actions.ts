@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import {
-  cancelarSaldoNaTela, decidirNaTela, definitivoNaTela, descartarNaTela, emitirNaTela, liquidarParcelaNaTela, medirOrdemNaTela, movimentarNaTela, provisorioNaTela, rascunhoNaTela,
+  aditivoNaTela, cancelarSaldoNaTela, decidirNaTela, definitivoNaTela, descartarNaTela, emitirNaTela, estornarAditivoNaTela, liquidarParcelaNaTela, medirOrdemNaTela, movimentarNaTela, previaDoAditivoNaTela, provisorioNaTela, rascunhoNaTela,
 } from "../../../../lib/portas/execucao-do-contrato";
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 
@@ -15,6 +15,8 @@ import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 export interface EstadoDaExecucao {
   readonly erro?: string;
   readonly sucesso?: string;
+  /** O ato que produziu o estado — a prévia do aditivo não limpa o formulário. */
+  readonly acao?: string;
 }
 
 const ATOS: Readonly<Record<string, (contratoId: string, c: Record<string, string>) => Promise<string>>> = {
@@ -28,6 +30,9 @@ const ATOS: Readonly<Record<string, (contratoId: string, c: Record<string, strin
   decidir: (_id, c) => decidirNaTela(c),
   definitivo: (_id, c) => definitivoNaTela(c),
   liquidar: (_id, c) => liquidarParcelaNaTela(c),
+  preverAditivo: (id, c) => previaDoAditivoNaTela(id, c),
+  aditivo: (id, c) => aditivoNaTela(id, c),
+  estornarAditivo: (_id, c) => estornarAditivoNaTela(c),
 };
 
 export async function execucaoAction(_prev: EstadoDaExecucao, formData: FormData): Promise<EstadoDaExecucao> {
@@ -43,9 +48,9 @@ export async function execucaoAction(_prev: EstadoDaExecucao, formData: FormData
     try {
       sucesso = await ato(id, campos);
     } catch (e) {
-      return { erro: mensagemDoErro(e, "Falha ao gravar. Nada foi gravado.") };
+      return { erro: mensagemDoErro(e, "Falha ao gravar. Nada foi gravado."), acao };
     }
-    revalidatePath(`/licitacoes/contratos/${id}`, "layout");
-    return { sucesso };
+    if (acao !== "preverAditivo") revalidatePath(`/licitacoes/contratos/${id}`, "layout");
+    return { sucesso, acao };
   });
 }

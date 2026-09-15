@@ -41,6 +41,23 @@ export default async function ContratoPublicoPage({ params }: { readonly params:
       {c.aditivos.length === 0 ? <p className="mb-4 text-sm text-[color:var(--color-ink-2)]">Nenhum aditivo.</p> : (
         <ul className="mb-4 list-disc pl-5 text-sm">{c.aditivos.map((a, i) => <li key={i}>{a.numero ?? "sem número"} · {TIPO[a.tipo] ?? a.tipo} · {a.data}{a.valor === null ? "" : ` · R$ ${num(a.valor)}`}{a.dias === null ? "" : ` · ${a.dias} dia(s)`}</li>)}</ul>
       )}
+      {c.aditivosPorItens.length === 0 ? null : (
+        <section className="mb-4" data-publico-aditivos-por-itens>
+          <h2 className="mb-1 text-sm font-semibold">Alterações de itens por aditivo</h2>
+          {c.aditivosPorItens.map((a) => (
+            <div key={a.numero} className="mb-3">
+              <p className="text-sm">Termo nº {a.numero} · assinado em {a.assinatura} · vale a partir de {a.vigenciaInicio} · variação <ValorMonetario valor={a.variacao} comSimbolo />{a.estornado ? " · estornado" : ""}</p>
+              <p className="text-xs text-[color:var(--color-ink-2)] [overflow-wrap:anywhere]">{a.fundamento}</p>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[32rem] text-left text-sm">
+                  <thead><tr className="text-xs text-[color:var(--color-ink-2)]"><th className="py-1 pr-3">Item</th><th className="py-1 pr-3 text-right">Quantidade</th><th className="py-1 text-right">Unitário</th></tr></thead>
+                  <tbody>{a.itens.map((x) => <tr key={x.item} className="border-t border-[color:var(--color-border)]"><td className="py-2 pr-3">{x.item} — {x.descricao}</td><td className="py-2 pr-3 text-right">{num(x.quantidadeAnterior)} → {num(x.quantidade)} {x.unidade}</td><td className="py-2 text-right"><ValorMonetario valor={x.valorUnitarioAnterior} /> → <ValorMonetario valor={x.valorUnitario} /></td></tr>)}</tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
       <h2 className="mb-1 text-sm font-semibold">Execução física (medições aprovadas)</h2>
       {c.execucaoFisica.length === 0 ? <p className="text-sm text-[color:var(--color-ink-2)]">Sem itens publicados.</p> : (
         <div className="overflow-x-auto">

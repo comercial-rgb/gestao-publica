@@ -346,3 +346,83 @@ export function FormLiquidarParcelas({ contratoId, parcelas, empenhos, documento
     </form>
   );
 }
+
+// ═══ O ADITIVO POR ITENS (V7 M2 U5) ═══
+
+/**
+ * O termo aditivo por itens. "Conferir composição" pede ao servidor a variação por item (nada é gravado e o formulário
+ * não se limpa); "Registrar" grava se a variação informada for igual à conferida. Os campos vêm com a quantidade e o
+ * unitário vigentes hoje; só o item alterado entra no termo.
+ */
+export function FormAditivoPorItens({ contratoId, itens, hoje }: {
+  readonly contratoId: string;
+  readonly itens: readonly { readonly id: string; readonly numero: number; readonly descricao: string; readonly unidade: string; readonly contratado: string; readonly valorUnitario: string }[];
+  readonly hoje: string;
+}): React.ReactElement {
+  const [estado, disparar, pendente] = useActionState<EstadoDaExecucao, FormData>(execucaoAction, {});
+  const ref = useRef<HTMLFormElement>(null);
+  const id = useId();
+  if (estado.sucesso !== undefined && estado.acao === "aditivo") ref.current?.reset();
+  return (
+    <form ref={ref} action={disparar} data-acao="aditivo-por-itens" className={CLASSE_PAINEL_FORMULARIO}>
+      <ChaveDeComando />
+      <input type="hidden" name="__id" value={contratoId} />
+      <h3 className="mb-1 text-sm font-semibold">Aditivo por itens</h3>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">Registre o termo assinado: novas quantidades, novos unitários ou item incluído, a partir da vigência. A variação de valor entra no contrato; ordens emitidas e períodos já medidos mantêm o preço deles.</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Campo id={id} nome="numeroAditivo" rotulo="Número do termo aditivo" />
+        <Campo id={id} nome="dataAssinatura" rotulo="Assinado em" tipo="date" defaultValue={hoje} max={hoje} />
+        <Campo id={id} nome="vigenciaInicio" rotulo="Vale a partir de" tipo="date" defaultValue={hoje} />
+        <Campo id={id} nome="fundamento" rotulo="Fundamento indicado no termo" placeholder="Ex.: dispositivo legal e cláusula do contrato" />
+        <Texto id={id} nome="motivo" rotulo="Motivo" />
+      </div>
+      <fieldset className="mt-3 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">
+        <legend className="px-1 text-xs font-semibold">Itens (mantenha o valor atual no item que não muda)</legend>
+        <div className="space-y-2">
+          {itens.map((i) => (
+            <div key={i.id} className="grid gap-2 sm:grid-cols-2" data-item-do-aditivo={i.numero}>
+              <Campo id={id} nome={`aditivoQtd.${i.id}`} rotulo={`Item ${i.numero} — ${i.descricao}: quantidade (${i.unidade})`} inputMode="decimal" defaultValue={qtdBr(i.contratado)} />
+              <Campo id={id} nome={`aditivoUnit.${i.id}`} rotulo={`Item ${i.numero}: unitário em R$`} inputMode="decimal" defaultValue={qtdBr(i.valorUnitario)} />
+            </div>
+          ))}
+        </div>
+      </fieldset>
+      <fieldset className="mt-3 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">
+        <legend className="px-1 text-xs font-semibold">Item incluído pelo termo (opcional)</legend>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Campo id={id} nome="incluirDescricao" rotulo="Descrição" obrigatorio={false} />
+          <Campo id={id} nome="incluirUnidade" rotulo="Unidade" obrigatorio={false} />
+          <Campo id={id} nome="incluirQuantidade" rotulo="Quantidade" obrigatorio={false} inputMode="decimal" />
+          <Campo id={id} nome="incluirUnitario" rotulo="Unitário em R$" obrigatorio={false} inputMode="decimal" />
+        </div>
+      </fieldset>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <Campo id={id} nome="variacaoDoTermo" rotulo="Variação do valor escrita no termo, em R$ (negativa para redução)" obrigatorio={false} inputMode="decimal" placeholder="0,00" />
+      </div>
+      {estado.erro !== undefined ? <p role="alert" className="mt-2 whitespace-pre-line rounded-[var(--radius-md)] bg-[color:var(--color-status-erro-bg)] px-3 py-2 text-sm text-[color:var(--color-status-erro-fg)]">{estado.erro}</p> : null}
+      {estado.sucesso !== undefined ? <p role="status" data-resultado-da-acao={estado.acao === "aditivo" ? "aditivo-por-itens" : "previa-do-aditivo"} className="mt-2 rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]">{estado.sucesso}</p> : null}
+      <div className="flex flex-wrap gap-2">
+        <button type="submit" name="__acao" value="preverAditivo" disabled={pendente} formNoValidate className="mt-3 rounded-[var(--radius-md)] border border-[color:var(--color-border)] px-3 py-2 text-sm font-medium">{pendente ? "Conferindo…" : "Conferir composição"}</button>
+        <button type="submit" name="__acao" value="aditivo" disabled={pendente} className={`mt-3 ${CLASSE_BOTAO_PRIMARIO}`}>{pendente ? "Gravando…" : "Registrar aditivo"}</button>
+      </div>
+    </form>
+  );
+}
+
+export function FormEstornarAditivo({ contratoId, aditivoId, numero, hoje }: { readonly contratoId: string; readonly aditivoId: string; readonly numero: string; readonly hoje: string }): React.ReactElement {
+  const a = useAto();
+  return (
+    <form ref={a.ref} action={a.disparar} data-acao="estornar-aditivo-por-itens" className={CLASSE_PAINEL_FORMULARIO}>
+      <ChaveDeComando />
+      <Ocultos contratoId={contratoId} acao="estornarAditivo" extra={{ aditivoId }} />
+      <h4 className="mb-1 text-sm font-semibold">Estornar o aditivo nº {numero}</h4>
+      <p className="mb-2 text-xs text-[color:var(--color-ink-2)]">Só enquanto nenhuma ordem ou medição usou os itens dele. Itens e valor são desfeitos juntos; o registro fica no histórico.</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Campo id={a.id} nome="data" rotulo="Data do estorno" tipo="date" defaultValue={hoje} max={hoje} />
+        <Texto id={a.id} nome="motivo" rotulo="Motivo do estorno" />
+      </div>
+      <Mensagens estado={a.estado} acao="estornar-aditivo-por-itens" />
+      <Enviar pendente={a.pendente} rotulo="Estornar aditivo" />
+    </form>
+  );
+}

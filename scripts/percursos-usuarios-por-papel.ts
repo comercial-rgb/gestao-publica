@@ -203,6 +203,14 @@ export const PAPEIS: readonly Papel[] = [
     descricao: "Decide a controvérsia e recebe em definitivo nos contratos em que for designado recebedor.",
     acoes: ["CONSULTAR_LICITACOES", "REGISTRAR_RECEBIMENTO_DEFINITIVO"],
   },
+  // ── V7 M2 U5 — a área de contratos registra o aditivo por itens (ato do ente, sem designação no contrato) ──
+  {
+    identificador: "contratos-aditivos@percursos.local",
+    nome: "Contratos — aditivos (percurso)",
+    perfil: "CONTRATOS — ADITIVOS — PERCURSO",
+    descricao: "Registra e estorna aditivos dos contratos, inclusive por itens.",
+    acoes: ["CONSULTAR_LICITACOES", "REGISTRAR_ADITIVO", "ESTORNAR_MOVIMENTO_CONTRATUAL"],
+  },
 ];
 
 async function main(): Promise<void> {

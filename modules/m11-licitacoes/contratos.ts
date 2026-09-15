@@ -404,7 +404,20 @@ export async function registrarAditivo(
 
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, dados.criadoPor, ACAO_DO_SERVICO.registrarAditivo, "ENTE");
+    return gravarAditivoNaTransacao(tx, dados);
+  });
+}
 
+/**
+ * O CORPO DO REGISTRO DE ADITIVO, dentro de uma transação já autorizada — a supressão abaixo do empenhado e o teto da
+ * dispensa valem igual para o aditivo por itens (V7 M2, `aditivo-por-itens.ts`), que o chama na própria transação
+ * em vez de ter uma segunda cópia destas guardas.
+ */
+export async function gravarAditivoNaTransacao(
+  tx: Tx,
+  dados: ReturnType<typeof zRegistrarAditivoInput.parse>
+): Promise<{ readonly movimentoId: string }> {
+  {
     const contrato = await exigirContrato(tx, dados.contratoId);
 
     if (dados.tipo === "SUPRESSAO_VALOR") {
@@ -472,7 +485,7 @@ export async function registrarAditivo(
       select: { id: true },
     });
     return { movimentoId: criado.id };
-  });
+  }
 }
 
 /**
@@ -502,10 +515,21 @@ export async function estornarMovimentoContratual(
         numeroAditivo: true,
         // "Já estornado?" é DERIVADO — nunca uma flag.
         estornos: { select: { id: true } },
+        aditivoPorItens: { select: { numeroAditivo: true } },
+        estornoDeAditivoPorItens: { select: { id: true } },
       },
     });
     if (original === null) {
       throw new Error(`Movimento contratual ${dados.movimentoId} não existe.`);
+    }
+
+    // V7 M2 U5 — o valor de um aditivo por itens não se estorna sozinho: as versões dos itens continuariam valendo com
+    // o contrato sem o valor delas. Estorna-se o aditivo por itens inteiro (`estornarAditivoPorItens`).
+    if (original.aditivoPorItens !== null || original.estornoDeAditivoPorItens !== null) {
+      throw new Error(
+        `MOVIMENTO-DE-ADITIVO-POR-ITENS: o movimento ${original.id} é o valor do aditivo por itens nº ${original.numeroAditivo}. ` +
+          `Estorne o aditivo por itens, que desfaz itens e valor juntos. Nada foi gravado.`
+      );
     }
 
     // Estorno de estorno: o Record devolve null e a função lança.

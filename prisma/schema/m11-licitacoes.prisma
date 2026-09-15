@@ -236,6 +236,8 @@ model Contrato {
   regimesDeMedicao     RegimeDeMedicaoDoContrato[] @relation("RegimesDeMedicao")
   /// V7 M2 U1 — as ordens de serviço (autorização de execução ao contratado). VIRTUAL.
   ordensDeServico      OrdemDeServicoDoContrato[] @relation("OrdensDeServico")
+  /// V7 M2 U5 — os aditivos que alteram itens (quantidade/preço com vigência). VIRTUAL.
+  aditivosPorItens     AditivoPorItensDoContrato[] @relation("AditivosPorItens")
   ordensDeFiscalizacao OrdemDeFiscalizacao[]      @relation("OrdensDeFiscalizacao")
   ocorrencias          OcorrenciaDeFiscalizacao[] @relation("OcorrenciasDoContrato")
 
@@ -290,6 +292,11 @@ model MovimentoContratual {
   estornoDeId String?
   estornoDe   MovimentoContratual?  @relation("EstornoContratual", fields: [estornoDeId], references: [id])
   estornos    MovimentoContratual[] @relation("EstornoContratual")
+
+  /// V7 M2 U5 — o movimento de VALOR que um aditivo por itens gerou, e o estorno dele. VIRTUAIS: quando existem, o
+  /// estorno avulso deste movimento é recusado (o aditivo por itens se estorna inteiro, itens e valor).
+  aditivoPorItens       AditivoPorItensDoContrato? @relation("MovimentoDoAditivoPorItens")
+  estornoDeAditivoPorItens EstornoDeAditivoPorItens? @relation("MovimentoDoEstornoDeAditivoPorItens")
 
   motivo String
 

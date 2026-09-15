@@ -10,6 +10,7 @@ import { designacaoVigenteEm } from "../m33-folha/certificacao.js";
 import { contratoTravado, exigirContratoVigente, exigirDesignacao } from "./fiscalizacao.js";
 import { periodosSeSobrepoem } from "./medicoes.js";
 import { conferenciaDoPeriodoPorItens } from "./regime-de-medicao.js";
+import { historicosDosItens, novoPrecoDentroDoPeriodo, quantidadeParaComprometerDesde, versaoNoDia } from "./versoes-dos-itens.js";
 
 /**
  * ═══ M11 — A ORDEM DE SERVIÇO DO CONTRATO, A MEDIÇÃO DA ORDEM E OS RECEBIMENTOS POR PARCELA (V7 M2 U1/U2) ═══
@@ -65,7 +66,7 @@ async function nomeEAto(tx: Tx, designacaoId: string): Promise<{ readonly nome: 
 }
 
 /** A quantidade já comprometida de cada item do contrato: autorizada em ordens emitidas e medida sem ordem. */
-async function comprometidoPorItemDoContrato(tx: Tx, contratoId: string, excetoOrdemId: string | null): Promise<Map<string, Decimal>> {
+export async function comprometidoPorItemDoContrato(tx: Tx, contratoId: string, excetoOrdemId: string | null): Promise<Map<string, Decimal>> {
   const [itensDeOrdens, medidosSemOrdem] = await Promise.all([
     tx.itemDaOrdemDeServico.findMany({
       where: { ordem: { contratoId, emissao: { isNot: null }, ...(excetoOrdemId === null ? {} : { id: { not: excetoOrdemId } }) } },
@@ -123,7 +124,9 @@ export async function criarRascunhoDeOrdemDeServico(prisma: PrismaClient, input:
       if (e === null || e.contratoId !== c.id) throw new Error(`EMPENHO-DE-OUTRO-CONTRATO: o empenho indicado não informou o contrato ${c.numeroContrato}. Nada foi gravado.`);
       if (e.estornoDeId !== null || e.estornos.length > 0) throw new Error(`EMPENHO-ANULADO: o empenho ${e.numero} está anulado (ou é uma anulação) e não suporta a ordem. Nada foi gravado.`);
     }
-    const itens = await tx.itemDoContrato.findMany({ where: { id: { in: ids } }, select: { id: true, contratoId: true, numero: true, quantidade: true, valorUnitario: true } });
+    const itens = await tx.itemDoContrato.findMany({ where: { id: { in: ids } }, select: { id: true, contratoId: true, numero: true } });
+    // V7 M2 U5 — o unitário é o da versão do item vigente no início previsto (aditivo por itens), nunca o original às cegas.
+    const historicos = await historicosDosItens(tx, { ids });
     for (const pedido of d.itens) {
       const item = itens.find((i) => i.id === pedido.itemDoContratoId);
       if (item === undefined || item.contratoId !== c.id) throw new Error(`ITEM-DE-OUTRO-CONTRATO: o item ${pedido.itemDoContratoId} não é do contrato ${c.numeroContrato}. Nada foi gravado.`);
@@ -133,7 +136,8 @@ export async function criarRascunhoDeOrdemDeServico(prisma: PrismaClient, input:
     const ano = anoCivil(new Date());
     const linhas = d.itens.map((p) => {
       const item = itens.find((i) => i.id === p.itemDoContratoId)!;
-      return { itemDoContratoId: item.id, quantidade: p.quantidade, valorUnitario: item.valorUnitario.toFixed(4), valor: toMoney(new Decimal(p.quantidade).times(item.valorUnitario.toFixed(4))) };
+      const unit = versaoNoDia(historicos.get(item.id)!, d.inicioPrevisto).valorUnitario;
+      return { itemDoContratoId: item.id, quantidade: p.quantidade, valorUnitario: unit.toFixed(4), valor: toMoney(new Decimal(p.quantidade).times(unit)) };
     });
     const r = await tx.ordemDeServicoDoContrato.create({
       data: {
@@ -172,7 +176,7 @@ export async function emitirOrdemDeServico(prisma: PrismaClient, input: EmitirOr
           empenho: { select: { numero: true, estornoDeId: true, estornos: { select: { id: true } } } },
           fiscalDesignacao: { select: { vigenciaInicio: true, vigenciaFim: true, revogacao: { select: { dataEfeito: true } } } },
           contrato: { select: { numeroContrato: true, contratadoNome: true, contratadoDocumento: true } },
-          itens: { orderBy: { criadoEm: "asc" }, select: { id: true, quantidade: true, valorUnitario: true, itemDoContrato: { select: { id: true, numero: true, descricao: true, unidade: true, quantidade: true } } } },
+          itens: { orderBy: { criadoEm: "asc" }, select: { id: true, quantidade: true, valorUnitario: true, itemDoContrato: { select: { id: true, numero: true, descricao: true, unidade: true } } } },
         },
       });
       if (o.emissao !== null) throw new Error(`ORDEM-JA-EMITIDA: a ordem de serviço nº ${o.numero}/${o.ano} já foi emitida. Nada foi gravado.`);
@@ -187,12 +191,24 @@ export async function emitirOrdemDeServico(prisma: PrismaClient, input: EmitirOr
       if (!designacaoVigenteEm(o.fiscalDesignacao, new Date())) throw new Error(`FISCAL-DA-ORDEM-SEM-VIGENCIA: a designação do fiscal indicado na ordem nº ${o.numero} não está vigente hoje. Indique outro fiscal num novo rascunho. Nada foi gravado.`);
       if (o.empenho !== null && (o.empenho.estornoDeId !== null || o.empenho.estornos.length > 0)) throw new Error(`EMPENHO-ANULADO: o empenho ${o.empenho.numero} indicado na ordem foi anulado depois do rascunho. Nada foi gravado.`);
       const comprometido = await comprometidoPorItemDoContrato(tx, c.id, o.id);
+      const historicos = await historicosDosItens(tx, { ids: o.itens.map((i) => i.itemDoContrato.id) });
       for (const i of o.itens) {
+        const h = historicos.get(i.itemDoContrato.id)!;
+        // V7 M2 U5 — o preço do rascunho tem de ser o da versão vigente no início autorizado; aditivo registrado depois
+        // do rascunho não é aplicado em silêncio, nem ignorado.
+        const unitVigente = versaoNoDia(h, d.inicioAutorizado).valorUnitario;
+        if (!unitVigente.eq(i.valorUnitario.toFixed(4))) {
+          throw new Error(
+            `PRECO-DA-ORDEM-DESATUALIZADO: o item ${i.itemDoContrato.numero} (${i.itemDoContrato.descricao}) está no rascunho a R$ ${q4(i.valorUnitario.toFixed(4))}, e o unitário vigente em ${br(d.inicioAutorizado)} é R$ ${q4(unitVigente)} por aditivo. ` +
+              `Descarte o rascunho e crie outro. Nada foi gravado.`
+          );
+        }
         const ja = comprometido.get(i.itemDoContrato.id) ?? new Decimal(0);
-        const disponivel = new Decimal(i.itemDoContrato.quantidade.toFixed(4)).minus(ja);
+        const contratado = quantidadeParaComprometerDesde(h, hoje());
+        const disponivel = contratado.minus(ja);
         if (new Decimal(i.quantidade.toFixed(4)).gt(disponivel)) {
           throw new Error(
-            `SALDO-DO-ITEM-INSUFICIENTE: o item ${i.itemDoContrato.numero} (${i.itemDoContrato.descricao}) tem ${q4(i.itemDoContrato.quantidade.toFixed(4))} contratado(s), ${q4(ja)} já comprometido(s) em ordens emitidas ou medições, e esta ordem pede ${q4(i.quantidade.toFixed(4))}. ` +
+            `SALDO-DO-ITEM-INSUFICIENTE: o item ${i.itemDoContrato.numero} (${i.itemDoContrato.descricao}) tem ${q4(contratado)} contratado(s) vigente(s) de hoje em diante, ${q4(ja)} já comprometido(s) em ordens emitidas ou medições, e esta ordem pede ${q4(i.quantidade.toFixed(4))}. ` +
               `Nada foi gravado — a quantidade acima do contratado exige aditivo antes.`
           );
         }
@@ -372,7 +388,7 @@ export async function registrarMedicaoDaOrdem(prisma: PrismaClient, input: Regis
       select: {
         numero: true, ano: true, fimPrevisto: true, emissao: { select: { inicioAutorizado: true } }, descarte: { select: { id: true } },
         movimentos: { select: { tipo: true, data: true } },
-        itens: { select: { id: true, quantidade: true, valorUnitario: true, itemDoContrato: { select: { numero: true, descricao: true, unidade: true } }, cancelamentos: { select: { quantidade: true } }, medidos: { select: { quantidade: true } } } },
+        itens: { select: { id: true, quantidade: true, itemDoContrato: { select: { id: true, numero: true, descricao: true, unidade: true } }, cancelamentos: { select: { quantidade: true } }, medidos: { select: { quantidade: true } } } },
         medicoes: { orderBy: { numero: "desc" }, take: 1, select: { numero: true } },
       },
     });
@@ -397,9 +413,21 @@ export async function registrarMedicaoDaOrdem(prisma: PrismaClient, input: Regis
         throw new Error(`PERÍODO SOBREPOSTO no contrato ${c.numeroContrato} (${periodo.fundamento}): o período ${br(d.diaInicio)} a ${br(d.diaFim)} invade a medição nº ${conflito.numero} da ordem nº ${conflito.ordem.numero} (${diaCivilBr(conflito.periodoInicio)} a ${diaCivilBr(conflito.periodoFim)}). Nada foi gravado.`);
       }
     }
+    const historicos = await historicosDosItens(tx, { ids: o.itens.map((i) => i.itemDoContrato.id) });
     const linhas = d.itens.map((p) => {
       const i = o.itens.find((x) => x.id === p.itemDaOrdemId);
       if (i === undefined) throw new Error(`ITEM-DE-OUTRA-ORDEM: o item ${p.itemDaOrdemId} não é da ordem nº ${o.numero}. Nada foi gravado.`);
+      // V7 M2 U5 (ME06) — o unitário da medição é o da versão do item vigente no PRIMEIRO dia do período; o da ordem é o
+      // da autorização e não muda. Um novo unitário começando dentro do período obriga a dividir a medição.
+      const h = historicos.get(i.itemDoContrato.id)!;
+      const novoPreco = novoPrecoDentroDoPeriodo(h, d.diaInicio, d.diaFim);
+      if (novoPreco !== null) {
+        throw new Error(
+          `PERIODO-ATRAVESSA-NOVO-PRECO: o item ${i.itemDoContrato.numero} (${i.itemDoContrato.descricao}) passa a R$ ${q4(novoPreco.valorUnitario)} em ${br(novoPreco.desde!)} pelo aditivo nº ${novoPreco.numeroAditivo}, dentro do período ${br(d.diaInicio)} a ${br(d.diaFim)}. ` +
+            `Meça em dois períodos, antes e a partir dessa data. Nada foi gravado.`
+        );
+      }
+      const unit = versaoNoDia(h, d.diaInicio).valorUnitario;
       const autorizado = new Decimal(i.quantidade.toFixed(4)).minus(i.cancelamentos.reduce((t, x) => t.plus(x.quantidade.toFixed(4)), new Decimal(0)));
       const medido = i.medidos.reduce((t, x) => t.plus(x.quantidade.toFixed(4)), new Decimal(0));
       if (medido.plus(p.quantidade).gt(autorizado)) {
@@ -408,7 +436,7 @@ export async function registrarMedicaoDaOrdem(prisma: PrismaClient, input: Regis
             `A mesma parcela não se mede duas vezes; execução além do autorizado exige nova ordem. Nada foi gravado.`
         );
       }
-      return { itemDaOrdemId: i.id, item: i.itemDoContrato.numero, quantidade: p.quantidade, valorUnitario: i.valorUnitario.toFixed(4), valor: toMoney(new Decimal(p.quantidade).times(i.valorUnitario.toFixed(4))), restante: autorizado.minus(medido).minus(p.quantidade) };
+      return { itemDaOrdemId: i.id, item: i.itemDoContrato.numero, quantidade: p.quantidade, valorUnitario: unit.toFixed(4), valor: toMoney(new Decimal(p.quantidade).times(unit)), restante: autorizado.minus(medido).minus(p.quantidade) };
     });
     const numero = (o.medicoes[0]?.numero ?? 0) + 1;
     const r = await tx.medicaoDaOrdemDeServico.create({

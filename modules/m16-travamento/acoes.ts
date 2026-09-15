@@ -803,6 +803,9 @@ export type NomeDeServico =
   | "decidirControversia"
   | "registrarRecebimentoDefinitivo"
   | "liquidarParcelasDoContrato"
+  | "preverAditivoPorItens"
+  | "registrarAditivoPorItens"
+  | "estornarAditivoPorItens"
   | "cadastrarItemDoContrato"
   | "programarFiscalizacao"
   | "registrarOcorrencia"
@@ -1271,6 +1274,11 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   registrarRecebimentoDefinitivo: "REGISTRAR_RECEBIMENTO_DEFINITIVO",
   // V7 M2 U3 — liquidar a parcela recebida é LIQUIDAR (a mesma ação, na UG do empenho); o M05 cobra de novo por dentro.
   liquidarParcelasDoContrato: "LIQUIDAR",
+  // V7 M2 U5 — o aditivo por itens é o MESMO ato de registrar aditivo (a variação vira movimento contratual), com a
+  // prévia cobrada pela mesma ação; o estorno é o do movimento contratual.
+  preverAditivoPorItens: "REGISTRAR_ADITIVO",
+  registrarAditivoPorItens: "REGISTRAR_ADITIVO",
+  estornarAditivoPorItens: "ESTORNAR_MOVIMENTO_CONTRATUAL",
   cadastrarItemDoContrato: "CADASTRAR_ITEM_DO_CONTRATO",
   programarFiscalizacao: "PROGRAMAR_FISCALIZACAO_DO_CONTRATO",
   registrarOcorrencia: "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO",
@@ -1542,6 +1550,18 @@ export const FORA_DO_CENSO: Record<string, string> = {
     "do contrato, antes de gravar: soma, documento de cobrança, empenho e credor, elegível.",
   gravarAlocacoesDaLiquidacao:
     "composável interno: grava as alocações da liquidação nas parcelas, no mesmo commit da liquidação do M05.",
+  gravarAditivoNaTransacao:
+    "composável interno: o corpo do registro de aditivo (supressão abaixo do empenhado, teto da dispensa, movimento) " +
+    "dentro da transação de `registrarAditivo` ou de `registrarAditivoPorItens`, que já cobraram REGISTRAR_ADITIVO.",
+  comprometidoPorItemDoContrato:
+    "LEITURA/GUARD: a quantidade comprometida por item do contrato (ordens emitidas menos cancelado, medido sem ordem), " +
+    "dentro da transação da emissão da ordem ou do aditivo por itens, que já cobraram a própria ação.",
+  historicosDosItens:
+    "LEITURA: as versões de quantidade e unitário de cada item pelos aditivos por itens vivos — dentro da transação dos " +
+    "atos do contrato (que já cobraram a ação) e pelas leituras do dossiê já filtradas pelo alcance.",
+  aditivosPorItensDoContrato:
+    "LEITURA PÚBLICA: os aditivos por itens do contrato (termo, vigência, fundamento, variação, itens antes e depois) — " +
+    "publicidade da alteração contratual; usada pela projeção pública e pelo dossiê.",
   nomeDoEnteNosDocumentos:
     "LEITURA PÚBLICA: o nome do ente para documentos (apresentação vigente, ou o nome oficial) — congelado no manifesto " +
     "dos documentos emitidos e usado pela impressão dos novos.",

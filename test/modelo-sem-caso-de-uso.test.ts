@@ -108,10 +108,6 @@ const ESCRITO_POR_ANINHAMENTO: Readonly<Record<string, string>> = {
     "escrita por `itens: { create: ... }` em registrarRecebimentoDefinitivo (modules/m11-licitacoes/ordem-de-servico.ts, " +
     "V7 M2 U2); LIDA pelas relações `recebidos` do item medido (o elegível ao definitivo) e `itens` do recebimento (o valor " +
     "do termo). A linha não existe fora do recebimento que a declarou",
-  ItemMedido:
-    "escrita por `itens: { create: ... }` em registrarMedicaoPorItens (modules/m11-licitacoes/fiscalizacao.ts, V7 M2.1); " +
-    "LIDA pela relação `medidos` do item do contrato (o acumulado por item, o físico do dossiê e a execução física da " +
-    "projeção pública). A quantidade medida não existe fora da medição por itens que a registrou",
 };
 
 function arquivosDeSchema(): readonly string[] {

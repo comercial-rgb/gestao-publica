@@ -18,10 +18,12 @@ import {
   registrarRecebimentoDefinitivo,
   registrarRecebimentoProvisorio,
 } from "../../modules/m11-licitacoes/ordem-de-servico.js";
+import { estornarAditivoPorItens, preverAditivoPorItens, registrarAditivoPorItens, type ComposicaoDoAditivo } from "../../modules/m11-licitacoes/aditivo-por-itens.js";
+import { historicosDosItens, versaoNoDia } from "../../modules/m11-licitacoes/versoes-dos-itens.js";
 import { designacaoVigenteEm } from "../../modules/m33-folha/certificacao.js";
 import { cliente } from "./cliente";
 import { acoesPermitidas } from "./molde";
-import { comEscritaAutenticada, type Identidade } from "./sessao";
+import { comEscritaAutenticada, exigirSessao, type Identidade } from "./sessao";
 
 /**
  * ═══ A EXECUÇÃO DO CONTRATO NA TELA (V7 M2 U4) — ordens, medições, recebimentos e a liquidação da parcela ═══
@@ -46,8 +48,11 @@ export interface PapeisNaExecucao {
   readonly podeReceberProvisorio: boolean;
   readonly podeReceberDefinitivo: boolean;
   readonly podeLiquidar: boolean;
+  /** V7 M2 U5 — registrar (e prever) aditivo por itens: ato do ente, pela ação de registrar aditivo; estornar, pela do movimento. */
+  readonly podeRegistrarAditivo: boolean;
+  readonly podeEstornarAditivo: boolean;
   /** A frase que explica a quem não recebe um formulário por que ele não aparece. */
-  readonly motivos: { readonly emitir: string; readonly medir: string; readonly provisorio: string; readonly definitivo: string; readonly liquidar: string };
+  readonly motivos: { readonly emitir: string; readonly medir: string; readonly provisorio: string; readonly definitivo: string; readonly liquidar: string; readonly aditivo: string };
 }
 
 export interface OpcoesDaExecucao {
@@ -74,7 +79,7 @@ export async function execucaoDoContratoPara(sessao: Identidade, contratoId: str
   if (contrato === null) return null;
   const [base, permitidas, minhas, fiscais, empenhos, documentos] = await Promise.all([
     execucaoDoContrato(prisma, contratoId, alcance.fiscalizacao ? "FISCALIZACAO" : "FINANCEIRA"),
-    acoesPermitidas(["EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO", "REGISTRAR_MEDICAO_DE_OBRA", "REGISTRAR_RECEBIMENTO_PROVISORIO", "REGISTRAR_RECEBIMENTO_DEFINITIVO", "LIQUIDAR"]),
+    acoesPermitidas(["EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO", "REGISTRAR_MEDICAO_DE_OBRA", "REGISTRAR_RECEBIMENTO_PROVISORIO", "REGISTRAR_RECEBIMENTO_DEFINITIVO", "LIQUIDAR", "REGISTRAR_ADITIVO", "ESTORNAR_MOVIMENTO_CONTRATUAL"]),
     prisma.designacaoNoContrato.findMany({ where: { contratoId, usuario: { identificador: sessao.identificador } }, select: { papel: true, vigenciaInicio: true, vigenciaFim: true, revogacao: { select: { dataEfeito: true } } } }),
     prisma.designacaoNoContrato.findMany({ where: { contratoId, papel: "FISCAL" }, select: { id: true, atoDesignacao: true, vigenciaInicio: true, vigenciaFim: true, revogacao: { select: { dataEfeito: true } }, pessoa: { select: { documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } } } }),
     prisma.empenho.findMany({ where: { contratoId, estornoDeId: null, estornos: { none: {} } }, orderBy: { data: "desc" }, take: 100, select: { id: true, numero: true, valor: true, ficha: { select: { naturezaDespesa: { select: { codElemento: true, codigoCompleto: true } } } } } }),
@@ -103,7 +108,10 @@ export async function execucaoDoContratoPara(sessao: Identidade, contratoId: str
       podeReceberProvisorio: fiscal && permitidas.has("REGISTRAR_RECEBIMENTO_PROVISORIO"),
       podeReceberDefinitivo: recebedor && permitidas.has("REGISTRAR_RECEBIMENTO_DEFINITIVO"),
       podeLiquidar,
+      podeRegistrarAditivo: permitidas.has("REGISTRAR_ADITIVO"),
+      podeEstornarAditivo: permitidas.has("ESTORNAR_MOVIMENTO_CONTRATUAL"),
       motivos: {
+        aditivo: "Registrar aditivo é da área de contratos (a ação de registrar aditivo no seu perfil).",
         emitir: gestor ? "Seu perfil não tem a ação de emitir ordem de serviço." : "Criar, emitir, suspender e cancelar saldo de ordem é do GESTOR designado e vigente neste contrato.",
         medir: fiscal ? "Seu perfil não tem a ação de registrar medição." : "Medir a ordem é do FISCAL designado e vigente neste contrato.",
         provisorio: fiscal ? "Seu perfil não tem a ação de registrar o recebimento provisório." : "O recebimento provisório é do FISCAL designado e vigente (art. 140, I, a).",
@@ -220,4 +228,50 @@ export async function liquidarParcelaNaTela(c: Campos): Promise<string> {
   return r.jaExistia
     ? `Esta liquidação já estava gravada (${r.numero}, R$ ${brl(r.valor)}): nada foi lançado de novo.`
     : `Liquidação ${r.numero} registrada no M05: R$ ${brl(r.valor)} em ${parcelas.length} parcela(s) recebida(s). O pagamento segue pela despesa.`;
+}
+
+// ── V7 M2 U5 — o aditivo por itens ──
+
+const qtd = (v: string): string => v.replace(/\.?0+$/, "").replace(".", ",");
+const sinal = (v: string): string => (v.startsWith("-") ? `−R$ ${brl(v.slice(1))}` : `R$ ${brl(v)}`);
+
+function naturezaNaFrase(c: ComposicaoDoAditivo): string {
+  return c.natureza === "ACRESCIMO" ? `acréscimo de R$ ${brl(c.variacao)}` : c.natureza === "SUPRESSAO" ? `supressão de R$ ${brl(c.variacao.slice(1))}` : "sem variação de valor";
+}
+
+function linhasNaFrase(c: ComposicaoDoAditivo): string {
+  return c.linhas.map((l) => `item ${l.item}${l.incluido ? " (incluído)" : ""}: ${qtd(l.quantidadeAnterior)} → ${qtd(l.quantidade)} ${l.unidade}, R$ ${brl(l.valorUnitarioAnterior)} → R$ ${brl(l.valorUnitario)}${l.medidoAntes !== "0.0000" ? ` (${qtd(l.medidoAntes)} medido antes da vigência fica ao preço anterior)` : ""}, ${sinal(l.variacao)}`).join("; ");
+}
+
+/** O termo digitado na tela: só os itens cujo campo difere da versão vigente no início da vigência, e a inclusão se houver descrição. */
+async function termoDaTela(contratoId: string, c: Campos) {
+  const vigenciaInicio = t(c, "vigenciaInicio");
+  const historicos = await historicosDosItens(cliente(), { contratoId });
+  const alteracoes = porItem(c, "aditivoQtd").flatMap((x) => {
+    const h = historicos.get(x.id);
+    if (h === undefined) return [{ itemDoContratoId: x.id, quantidade: decimal(x.valor), valorUnitario: decimal(t(c, `aditivoUnit.${x.id}`)) }];
+    const v = versaoNoDia(h, /^\d{4}-\d{2}-\d{2}$/.test(vigenciaInicio) ? vigenciaInicio : diaCivil(new Date()));
+    const quantidade = decimal(x.valor);
+    const valorUnitario = decimal(t(c, `aditivoUnit.${x.id}`) || v.valorUnitario.toFixed(4));
+    return v.quantidade.eq(quantidade) && v.valorUnitario.eq(valorUnitario) ? [] : [{ itemDoContratoId: x.id, quantidade, valorUnitario }];
+  });
+  const inclusoes = t(c, "incluirDescricao") === "" ? [] : [{ descricao: t(c, "incluirDescricao"), unidade: t(c, "incluirUnidade"), quantidade: decimal(t(c, "incluirQuantidade")), valorUnitario: decimal(t(c, "incluirUnitario")) }];
+  return { contratoId, numeroAditivo: t(c, "numeroAditivo"), dataAssinatura: t(c, "dataAssinatura"), vigenciaInicio, fundamento: t(c, "fundamento"), motivo: t(c, "motivo"), alteracoes, inclusoes };
+}
+
+export async function previaDoAditivoNaTela(contratoId: string, c: Campos): Promise<string> {
+  const sessao = await exigirSessao();
+  const r = await preverAditivoPorItens(cliente(), { ...(await termoDaTela(contratoId, c)), criadoPor: sessao.identificador });
+  return `Composição conferida, nada foi gravado: ${naturezaNaFrase(r)} — ${linhasNaFrase(r)}. Confira com o termo assinado e informe a variação dele para registrar.`;
+}
+
+export async function aditivoNaTela(contratoId: string, c: Campos): Promise<string> {
+  const termo = await termoDaTela(contratoId, c);
+  const r = await comEscritaAutenticada("REGISTRAR_ADITIVO", (criadoPor) => registrarAditivoPorItens(cliente(), { ...termo, variacaoDoTermo: decimal(t(c, "variacaoDoTermo")), criadoPor }));
+  return `Aditivo nº ${termo.numeroAditivo} registrado: ${naturezaNaFrase(r.composicao)} no valor do contrato, com ${r.composicao.linhas.length} item(ns) em nova versão a partir de ${br(termo.vigenciaInicio)}. Ordens já emitidas e períodos já medidos mantêm o preço deles.`;
+}
+
+export async function estornarAditivoNaTela(c: Campos): Promise<string> {
+  const r = await comEscritaAutenticada("ESTORNAR_MOVIMENTO_CONTRATUAL", (criadoPor) => estornarAditivoPorItens(cliente(), { aditivoId: t(c, "aditivoId"), data: t(c, "data"), motivo: t(c, "motivo"), criadoPor }));
+  return `Aditivo estornado: as versões dos itens deixaram de valer${r.movimentoEstornoId === null ? "" : " e a variação de valor foi estornada no contrato"}. O registro original continua no histórico.`;
 }

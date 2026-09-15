@@ -12,6 +12,7 @@ import { designacaoVigenteEm } from "../m33-folha/certificacao.js";
 import { estaVigente, valorAtualizado, vigenciaFim, diasAteVencimento, type MovimentoDoContrato } from "./dominio.js";
 import { gravarMedicaoNaTransacao } from "./medicoes.js";
 import { conferenciaDoPeriodoPorItens } from "./regime-de-medicao.js";
+import { aditivosPorItensDoContrato, historicosDosItens, novoPrecoDentroDoPeriodo, quantidadeParaComprometerDesde, versaoNoDia } from "./versoes-dos-itens.js";
 
 /**
  * ═══ M11 — O CONTRATO ACOMPANHADO (V7 M2.1; Lei 14.133/2021, arts. 117 e 140) ═══
@@ -196,8 +197,11 @@ export async function cadastrarItemDoContrato(prisma: PrismaClient, input: Cadas
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.cadastrarItemDoContrato, "ENTE");
     const c = await contratoTravado(tx, d.contratoId);
-    const itens = await tx.itemDoContrato.findMany({ where: { contratoId: c.id }, select: { numero: true, quantidade: true, valorUnitario: true } });
-    const totalItens = sumMoney([...itens.map((i) => toMoney(new Decimal(i.quantidade.toFixed(4)).times(i.valorUnitario.toFixed(4)))), toMoney(new Decimal(d.quantidade).times(d.valorUnitario))]);
+    const itens = await tx.itemDoContrato.findMany({ where: { contratoId: c.id }, select: { numero: true, quantidade: true, valorUnitario: true, alteracoesPorAditivo: { where: { inclusao: true }, select: { id: true } } } });
+    // V7 M2 U5 — o valor dos itens é o original MAIS as variações dos aditivos por itens vivos: a mesma grandeza que o
+    // valor vigente do contrato recebeu pelos movimentos desses aditivos.
+    const aditivos = await tx.aditivoPorItensDoContrato.findMany({ where: { contratoId: c.id, estorno: { is: null } }, select: { variacao: true } });
+    const totalItens = sumMoney([...itens.filter((i) => i.alteracoesPorAditivo.length === 0).map((i) => toMoney(new Decimal(i.quantidade.toFixed(4)).times(i.valorUnitario.toFixed(4)))), ...aditivos.map((a) => toMoney(a.variacao.toFixed(2))), toMoney(new Decimal(d.quantidade).times(d.valorUnitario))]);
     if (totalItens.gt(c.valorVigente)) {
       throw new Error(`ITENS-ACIMA-DO-CONTRATO: os itens somariam ${totalItens.toFixed(2)} contra o valor vigente de ${c.valorVigente.toFixed(2)} do contrato ${c.numeroContrato}. Nada foi gravado.`);
     }
@@ -344,10 +348,11 @@ export async function registrarMedicaoPorItens(prisma: PrismaClient, input: Regi
     const fiscal = await exigirDesignacao(tx, c, d.criadoPor, "FISCAL", hoje());
     exigirContratoVigente(c, d.diaInicio, "o início da medição");
     exigirContratoVigente(c, d.diaFim, "o fim da medição");
+    const historicos = await historicosDosItens(tx, { ids });
     const itens = await tx.itemDoContrato.findMany({
       where: { id: { in: ids } },
       select: {
-        id: true, numero: true, contratoId: true, descricao: true, quantidade: true, valorUnitario: true, medidos: { select: { quantidade: true } },
+        id: true, numero: true, contratoId: true, descricao: true, medidos: { select: { quantidade: true } },
         // V7 M2 U1 — o autorizado nas ordens de serviço emitidas também compromete o item: os dois caminhos não consomem o
         // mesmo saldo.
         itensDeOrdemDeServico: { where: { ordem: { emissao: { isNot: null } } }, select: { quantidade: true, cancelamentos: { select: { quantidade: true } } } },
@@ -359,13 +364,20 @@ export async function registrarMedicaoPorItens(prisma: PrismaClient, input: Regi
       const autorizadoEmOrdens = item.itensDeOrdemDeServico.reduce((t, o) => t.plus(o.quantidade.toFixed(4)).minus(o.cancelamentos.reduce((u, x) => u.plus(x.quantidade.toFixed(4)), new Decimal(0))), new Decimal(0));
       const jaMedido = item.medidos.reduce((t, m) => t.plus(m.quantidade.toFixed(4)), new Decimal(0)).plus(autorizadoEmOrdens);
       const novo = jaMedido.plus(pedido.quantidade);
-      if (novo.gt(item.quantidade.toFixed(4))) {
+      // V7 M2 U5 — contratado e unitário pelas versões do item (aditivo por itens), como na medição da ordem.
+      const h = historicos.get(item.id)!;
+      const contratado = quantidadeParaComprometerDesde(h, d.diaInicio);
+      const novoPreco = novoPrecoDentroDoPeriodo(h, d.diaInicio, d.diaFim);
+      if (novoPreco !== null) {
+        throw new Error(`PERIODO-ATRAVESSA-NOVO-PRECO: o item ${item.numero} (${item.descricao}) passa a R$ ${novoPreco.valorUnitario.toFixed(4)} em ${novoPreco.desde!.split("-").reverse().join("/")} pelo aditivo nº ${novoPreco.numeroAditivo}, dentro do período medido. Meça em dois períodos. Nada foi gravado.`);
+      }
+      if (novo.gt(contratado)) {
         throw new Error(
-          `ITEM-ACIMA-DO-CONTRATADO: o item ${item.numero} (${item.descricao}) tem ${item.quantidade.toFixed(4)} contratado(s), já comprometeu ${jaMedido.toFixed(4)} (medido ou autorizado em ordem de serviço) e esta medição levaria a ${novo.toFixed(4)}. ` +
+          `ITEM-ACIMA-DO-CONTRATADO: o item ${item.numero} (${item.descricao}) tem ${contratado.toFixed(4)} contratado(s), já comprometeu ${jaMedido.toFixed(4)} (medido ou autorizado em ordem de serviço) e esta medição levaria a ${novo.toFixed(4)}. ` +
             `Quantidade acima do contratado exige aditivo antes. Nada foi gravado.`
         );
       }
-      return { itemId: item.id, quantidade: pedido.quantidade, valor: toMoney(new Decimal(pedido.quantidade).times(item.valorUnitario.toFixed(4))) };
+      return { itemId: item.id, quantidade: pedido.quantidade, valor: toMoney(new Decimal(pedido.quantidade).times(versaoNoDia(h, d.diaInicio).valorUnitario)) };
     });
     const valorMedido = sumMoney(linhas.map((l) => l.valor));
     const periodo = await conferenciaDoPeriodoPorItens(tx, c.id, d.diaInicio);
@@ -461,9 +473,12 @@ export async function acompanhamentoDoContrato(prisma: Tx, contratoId: string, v
       ? prisma.ocorrenciaDeFiscalizacao.findMany({ where: { contratoId: c.id }, orderBy: { numero: "desc" }, select: { id: true, numero: true, data: true, tipo: true, descricao: true, encaminhamento: true, ordem: { select: { numero: true } }, designacao: { select: { usuario: { select: { identificador: true } } } }, evidencias: { select: { id: true, nomeOriginal: true } }, resolucao: { select: { texto: true, criadoEm: true, designacao: { select: { usuario: { select: { identificador: true } } } } } } } })
       : Promise.resolve([]),
   ]);
+  // V7 M2 U5 — quantidade e unitário VIGENTES HOJE, pelas versões dos aditivos por itens.
+  const historicos = await historicosDosItens(prisma, { contratoId: c.id });
   const itens = c.itens.map((i) => {
     const medido = i.medidos.reduce((t, m) => t.plus(m.quantidade.toFixed(4)), new Decimal(0));
-    return { id: i.id, numero: i.numero, descricao: i.descricao, unidade: i.unidade, quantidade: i.quantidade.toFixed(4), valorUnitario: i.valorUnitario.toFixed(4), medido: medido.toFixed(4), aMedir: new Decimal(i.quantidade.toFixed(4)).minus(medido).toFixed(4), percentualFisico: pct1(medido, new Decimal(i.quantidade.toFixed(4))) };
+    const v = versaoNoDia(historicos.get(i.id)!, hoje());
+    return { id: i.id, numero: i.numero, descricao: i.descricao, unidade: i.unidade, quantidade: v.quantidade.toFixed(4), valorUnitario: v.valorUnitario.toFixed(4), medido: medido.toFixed(4), aMedir: v.quantidade.minus(medido).toFixed(4), percentualFisico: pct1(medido, v.quantidade) };
   });
   return {
     visao,
@@ -493,6 +508,11 @@ export interface ProjecaoPublicaDoContrato {
   readonly valorInicial: string;
   readonly valorVigente: string;
   readonly aditivos: readonly { readonly numero: string | null; readonly tipo: string; readonly data: string; readonly valor: string | null; readonly dias: number | null }[];
+  /** V7 M2 U5 — os aditivos por itens: termo, vigência, fundamento, variação e as quantidades/unitários antes e depois. */
+  readonly aditivosPorItens: readonly {
+    readonly numero: string; readonly assinatura: string; readonly vigenciaInicio: string; readonly fundamento: string; readonly variacao: string; readonly estornado: boolean;
+    readonly itens: readonly { readonly item: number; readonly descricao: string; readonly unidade: string; readonly quantidadeAnterior: string; readonly quantidade: string; readonly valorUnitarioAnterior: string; readonly valorUnitario: string; readonly variacao: string }[];
+  }[];
   readonly responsaveis: readonly { readonly papel: "GESTOR" | "FISCAL" | "RECEBEDOR_DEFINITIVO"; readonly nome: string; readonly ato: string; readonly desde: string }[];
   readonly execucaoFisica: readonly { readonly item: number; readonly descricao: string; readonly unidade: string; readonly contratado: string; readonly medidoAprovado: string; readonly percentual: string }[];
   readonly medicoesAprovadas: { readonly quantidade: number; readonly valor: string };
@@ -515,7 +535,7 @@ export async function projecaoPublicaDoContrato(prisma: Tx, contratoId: string):
       numeroContrato: true, objeto: true, contratadoNome: true, valorInicial: true, vigenciaInicio: true, vigenciaFimInicial: true,
       movimentos: { orderBy: { data: "asc" }, select: { tipo: true, valor: true, dias: true, data: true, numeroAditivo: true } },
       designacoes: { select: { papel: true, atoDesignacao: true, vigenciaInicio: true, vigenciaFim: true, revogacao: { select: { dataEfeito: true } }, pessoa: { select: { versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } } } },
-      itens: { orderBy: { numero: "asc" }, select: { numero: true, descricao: true, unidade: true, quantidade: true, medidos: { where: { medicaoPorItens: { medicao: { OR: [{ aprovadaEm: { not: null } }, { aprovacao: { isNot: null } }] } } }, select: { quantidade: true } } } },
+      itens: { orderBy: { numero: "asc" }, select: { id: true, numero: true, descricao: true, unidade: true, quantidade: true, medidos: { where: { medicaoPorItens: { medicao: { OR: [{ aprovadaEm: { not: null } }, { aprovacao: { isNot: null } }] } } }, select: { quantidade: true } } } },
       medicoes: { where: { OR: [{ aprovadaEm: { not: null } }, { aprovacao: { isNot: null } }] }, select: { valorMedido: true } },
       ordensDeServico: {
         where: { emissao: { isNot: null }, descarte: null },
@@ -531,15 +551,22 @@ export async function projecaoPublicaDoContrato(prisma: Tx, contratoId: string):
   if (c === null) return null;
   const movs = c.movimentos.map((m) => ({ tipo: m.tipo, valor: m.valor === null ? null : toMoney(m.valor.toFixed(2)), dias: m.dias })) as readonly MovimentoDoContrato[];
   const agora = new Date();
+  const historicos = await historicosDosItens(prisma, { contratoId });
+  const aditivosPorItens = (await aditivosPorItensDoContrato(prisma, contratoId)).map((a) => ({
+    numero: a.numeroAditivo, assinatura: a.dataAssinatura.split("-").reverse().join("/"), vigenciaInicio: a.vigenciaInicio.split("-").reverse().join("/"), fundamento: a.fundamento,
+    variacao: a.variacao, estornado: a.estornado !== null, itens: a.itens,
+  }));
   return {
     numero: c.numeroContrato, objeto: c.objeto, contratado: c.contratadoNome,
+    aditivosPorItens,
     vigencia: { inicio: diaCivilBr(c.vigenciaInicio), fim: diaCivilBr(vigenciaFim(c.vigenciaFimInicial, movs)) },
     valorInicial: c.valorInicial.toFixed(2), valorVigente: valorAtualizado(toMoney(c.valorInicial.toFixed(2)), movs).toFixed(2),
     aditivos: c.movimentos.map((m) => ({ numero: m.numeroAditivo, tipo: m.tipo, data: diaCivilBr(m.data), valor: m.valor === null ? null : m.valor.toFixed(2), dias: m.dias })),
     responsaveis: c.designacoes.filter((d) => designacaoVigenteEm(d, agora)).map((d) => ({ papel: d.papel, nome: d.pessoa.versoes[0]?.nome ?? "não informado", ato: d.atoDesignacao, desde: diaCivilBr(d.vigenciaInicio) })),
     execucaoFisica: c.itens.map((i) => {
       const medido = i.medidos.reduce((t, m) => t.plus(m.quantidade.toFixed(4)), new Decimal(0));
-      return { item: i.numero, descricao: i.descricao, unidade: i.unidade, contratado: i.quantidade.toFixed(4), medidoAprovado: medido.toFixed(4), percentual: pct1(medido, new Decimal(i.quantidade.toFixed(4))) };
+      const contratado = versaoNoDia(historicos.get(i.id)!, hoje()).quantidade;
+      return { item: i.numero, descricao: i.descricao, unidade: i.unidade, contratado: contratado.toFixed(4), medidoAprovado: medido.toFixed(4), percentual: pct1(medido, contratado) };
     }),
     medicoesAprovadas: { quantidade: c.medicoes.length, valor: sumMoney(c.medicoes.map((m) => m.valorMedido.toFixed(2))).toFixed(2) },
     execucaoPorOrdens: (() => {
