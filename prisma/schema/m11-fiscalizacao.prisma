@@ -355,7 +355,7 @@ model OrdemDeServicoDoContrato {
   /// O empenho do contrato que vai suportar a liquidação — opcional; conferido (mesmo contrato, não anulado).
   /// Emitir a ordem NÃO empenha nem reserva: o empenho é ato do M05.
   empenhoId String?
-  empenho   Empenho? @relation("EmpenhoDaOrdemDeServico", fields: [empenhoId], references: [id])
+  empenho   Empenho? @relation("EmpenhoDaOrdemDeServico", fields: [empenhoId], references: [id], onDelete: Restrict)
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -673,6 +673,8 @@ model AlocacaoDaLiquidacaoNaParcela {
   criadoEm  DateTime @default(now())
   criadoPor String
 
-  @@unique([liquidacaoId, recebimentoDefinitivoId])
+  /// O nome é o que o PostgreSQL gravou (63 bytes, truncado) na migration 20260917090700 — declarado para a deriva
+  /// não o recriar.
+  @@unique([liquidacaoId, recebimentoDefinitivoId], map: "AlocacaoDaLiquidacaoNaParcela_liquidacaoId_recebimentoDefinitiv")
   @@index([recebimentoDefinitivoId])
 }
