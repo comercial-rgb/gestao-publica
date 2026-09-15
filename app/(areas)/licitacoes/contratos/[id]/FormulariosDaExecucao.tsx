@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useId, useRef, useState } from "react";
+import { createContext, useActionState, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
 import { ChaveDeComando } from "../../../../../components/ui/ChaveDeComando";
 import { CLASSE_AREA_TEXTO, CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO, CLASSE_PAINEL_FORMULARIO, CLASSE_ROTULO } from "../../../../../components/ui/Formulario";
 import { qtdBr } from "../../../../../lib/format/quantidade";
@@ -21,6 +21,54 @@ const numero = (v: string): number => {
 };
 const brl = (n: number): string => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+// ═══ O RESULTADO QUE SOBREVIVE AO FORMULÁRIO ═══
+// Emitir, receber, decidir e liquidar mudam a página: o formulário do ato deixa de ser oferecido na recarga e, com ele,
+// sumiria a mensagem do que foi gravado. Cada formulário (a instância) se registra no provedor, acima dos formulários e
+// que a recarga não desmonta, e publica o resultado quando a action responde; o aviso aparece no topo SÓ quando aquela
+// instância não está mais na página — enquanto está, a mensagem fica junto dos campos.
+
+interface AvisoDoAto { readonly acao: string; readonly instancia: string; readonly tipo: "ok" | "erro"; readonly texto: string; readonly seq: number }
+interface Resultados {
+  readonly publicar: (acao: string, instancia: string, tipo: "ok" | "erro", texto: string) => void;
+  readonly montar: (instancia: string) => () => void;
+  readonly avisos: readonly AvisoDoAto[];
+  readonly montados: Readonly<Record<string, number>>;
+}
+const ContextoDosResultados = createContext<Resultados | null>(null);
+
+export function ResultadosDaExecucao({ children }: { readonly children: React.ReactNode }): React.ReactElement {
+  const [avisos, setAvisos] = useState<readonly AvisoDoAto[]>([]);
+  const [montados, setMontados] = useState<Readonly<Record<string, number>>>({});
+  const seq = useRef(0);
+  const acoes = useMemo(() => ({
+    publicar: (acao: string, instancia: string, tipo: "ok" | "erro", texto: string) => {
+      seq.current += 1;
+      const n = seq.current;
+      setAvisos((xs) => [...xs.filter((x) => x.acao !== acao), { acao, instancia, tipo, texto, seq: n }]);
+    },
+    montar: (instancia: string) => {
+      setMontados((m) => ({ ...m, [instancia]: 1 }));
+      return () => setMontados((m) => ({ ...m, [instancia]: 0 }));
+    },
+  }), []);
+  return <ContextoDosResultados.Provider value={{ ...acoes, avisos, montados }}>{children}</ContextoDosResultados.Provider>;
+}
+
+export function AvisosDaExecucao(): React.ReactElement | null {
+  const ctx = useContext(ContextoDosResultados);
+  const visiveis = (ctx?.avisos ?? []).filter((a) => (ctx?.montados[a.instancia] ?? 0) === 0);
+  return (
+    <div aria-live="polite" data-avisos-da-execucao className={visiveis.length === 0 ? "hidden" : "space-y-2"}>
+      {visiveis.map((a) => (
+        <p key={a.acao} role={a.tipo === "erro" ? "alert" : "status"} data-resultado-da-acao={a.acao} data-resultado-seq={a.seq}
+          className={a.tipo === "erro" ? "whitespace-pre-line rounded-[var(--radius-md)] bg-[color:var(--color-status-erro-bg)] px-3 py-2 text-sm text-[color:var(--color-status-erro-fg)]" : "rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]"}>
+          {a.texto}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 function Mensagens({ estado, acao }: { readonly estado: EstadoDaExecucao; readonly acao: string }): React.ReactElement {
   return (
     <>
@@ -30,8 +78,19 @@ function Mensagens({ estado, acao }: { readonly estado: EstadoDaExecucao; readon
   );
 }
 
-function useAto() {
-  const [estado, disparar, pendente] = useActionState<EstadoDaExecucao, FormData>(execucaoAction, {});
+function useAto(acao: string) {
+  const ctx = useContext(ContextoDosResultados);
+  const publicar = ctx?.publicar;
+  const montar = ctx?.montar;
+  const instancia = useId();
+  useEffect(() => montar?.(instancia), [montar, instancia]);
+  // O resultado é publicado quando a action RESPONDE — antes de a recarga decidir se este formulário continua na página.
+  const [estado, disparar, pendente] = useActionState<EstadoDaExecucao, FormData>(async (anterior, dados) => {
+    const r = await execucaoAction(anterior, dados);
+    if (r.erro !== undefined) publicar?.(acao, instancia, "erro", r.erro);
+    else if (r.sucesso !== undefined) publicar?.(acao, instancia, "ok", r.sucesso);
+    return r;
+  }, {});
   const ref = useRef<HTMLFormElement>(null);
   if (estado.sucesso !== undefined) ref.current?.reset();
   return { estado, disparar, pendente, ref, id: useId() };
@@ -90,7 +149,7 @@ export function FormNovaOrdem({ contratoId, itens, fiscais, empenhos, hoje }: {
   readonly empenhos: readonly Opcao[];
   readonly hoje: string;
 }): React.ReactElement {
-  const a = useAto();
+  const a = useAto("criar-ordem-de-servico");
   return (
     <form ref={a.ref} action={a.disparar} data-acao="criar-ordem-de-servico" className={CLASSE_PAINEL_FORMULARIO}>
       <ChaveDeComando />
@@ -126,7 +185,7 @@ export function FormEmitirOrdem({ contratoId, ordemId, previsto, inicio, impacto
   readonly inicio: string;
   readonly impacto: readonly { readonly item: string; readonly pedido: string; readonly disponivel: string; readonly depois: string; readonly unidade: string; readonly cabe: boolean }[];
 }): React.ReactElement {
-  const a = useAto();
+  const a = useAto("emitir-ordem-de-servico");
   const cabeTudo = impacto.every((x) => x.cabe);
   return (
     <form ref={a.ref} action={a.disparar} data-acao="emitir-ordem-de-servico" className={CLASSE_PAINEL_FORMULARIO}>
@@ -156,7 +215,7 @@ export function FormEmitirOrdem({ contratoId, ordemId, previsto, inicio, impacto
 }
 
 export function FormDescartarOrdem({ contratoId, ordemId }: { readonly contratoId: string; readonly ordemId: string }): React.ReactElement {
-  const a = useAto();
+  const a = useAto("descartar-ordem-de-servico");
   return (
     <form ref={a.ref} action={a.disparar} data-acao="descartar-ordem-de-servico" className={CLASSE_PAINEL_FORMULARIO}>
       <ChaveDeComando />
@@ -170,8 +229,8 @@ export function FormDescartarOrdem({ contratoId, ordemId }: { readonly contratoI
 }
 
 export function FormMovimentarOrdem({ contratoId, ordemId, tipo, hoje }: { readonly contratoId: string; readonly ordemId: string; readonly tipo: "SUSPENSAO" | "RETOMADA"; readonly hoje: string }): React.ReactElement {
-  const a = useAto();
   const nome = tipo === "SUSPENSAO" ? "suspender-ordem-de-servico" : "retomar-ordem-de-servico";
+  const a = useAto(nome);
   return (
     <form ref={a.ref} action={a.disparar} data-acao={nome} className={CLASSE_PAINEL_FORMULARIO}>
       <ChaveDeComando />
@@ -188,7 +247,7 @@ export function FormMovimentarOrdem({ contratoId, ordemId, tipo, hoje }: { reado
 }
 
 export function FormCancelarSaldo({ contratoId, ordemId, itens, hoje }: { readonly contratoId: string; readonly ordemId: string; readonly itens: readonly { readonly id: string; readonly rotulo: string; readonly aExecutar: string; readonly unidade: string }[]; readonly hoje: string }): React.ReactElement {
-  const a = useAto();
+  const a = useAto("cancelar-saldo-da-ordem");
   return (
     <form ref={a.ref} action={a.disparar} data-acao="cancelar-saldo-da-ordem" className={CLASSE_PAINEL_FORMULARIO}>
       <ChaveDeComando />
@@ -209,7 +268,7 @@ export function FormCancelarSaldo({ contratoId, ordemId, itens, hoje }: { readon
 // ═══ A MEDIÇÃO E OS RECEBIMENTOS ═══
 
 export function FormMedirOrdem({ contratoId, ordemId, itens, hoje }: { readonly contratoId: string; readonly ordemId: string; readonly itens: readonly { readonly id: string; readonly rotulo: string; readonly aExecutar: string; readonly unidade: string }[]; readonly hoje: string }): React.ReactElement {
-  const a = useAto();
+  const a = useAto("medir-ordem-de-servico");
   return (
     <form ref={a.ref} action={a.disparar} data-acao="medir-ordem-de-servico" className={CLASSE_PAINEL_FORMULARIO}>
       <ChaveDeComando />
@@ -234,7 +293,7 @@ export function FormMedirOrdem({ contratoId, ordemId, itens, hoje }: { readonly 
 }
 
 export function FormRecebimentoProvisorio({ contratoId, medicaoId, itens, hoje }: { readonly contratoId: string; readonly medicaoId: string; readonly itens: readonly { readonly id: string; readonly rotulo: string; readonly medido: string; readonly unidade: string }[]; readonly hoje: string }): React.ReactElement {
-  const a = useAto();
+  const a = useAto("receber-provisoriamente");
   return (
     <form ref={a.ref} action={a.disparar} data-acao="receber-provisoriamente" className={CLASSE_PAINEL_FORMULARIO}>
       <ChaveDeComando />
@@ -264,7 +323,7 @@ export function FormRecebimentoProvisorio({ contratoId, medicaoId, itens, hoje }
 }
 
 export function FormDecidirControversia({ contratoId, conferenciaId, rotulo, hoje }: { readonly contratoId: string; readonly conferenciaId: string; readonly rotulo: string; readonly hoje: string }): React.ReactElement {
-  const a = useAto();
+  const a = useAto("decidir-controversia");
   return (
     <form ref={a.ref} action={a.disparar} data-acao="decidir-controversia" data-conferencia={conferenciaId} className={CLASSE_PAINEL_FORMULARIO}>
       <ChaveDeComando />
@@ -282,7 +341,7 @@ export function FormDecidirControversia({ contratoId, conferenciaId, rotulo, hoj
 }
 
 export function FormRecebimentoDefinitivo({ contratoId, medicaoId, itens, hoje }: { readonly contratoId: string; readonly medicaoId: string; readonly itens: readonly { readonly id: string; readonly rotulo: string; readonly elegivel: string; readonly pendente: string; readonly unidade: string }[]; readonly hoje: string }): React.ReactElement {
-  const a = useAto();
+  const a = useAto("receber-definitivamente");
   return (
     <form ref={a.ref} action={a.disparar} data-acao="receber-definitivamente" className={CLASSE_PAINEL_FORMULARIO}>
       <ChaveDeComando />
@@ -311,7 +370,7 @@ export function FormLiquidarParcelas({ contratoId, parcelas, empenhos, documento
   readonly documentos: readonly (Opcao & { readonly aLiquidar: string })[];
   readonly hoje: string;
 }): React.ReactElement {
-  const a = useAto();
+  const a = useAto("liquidar-parcelas-do-contrato");
   const [valores, setValores] = useState<Readonly<Record<string, string>>>({});
   const [doc, setDoc] = useState("");
   const soma = Object.values(valores).reduce((t, v) => t + numero(v), 0);
@@ -410,7 +469,7 @@ export function FormAditivoPorItens({ contratoId, itens, hoje }: {
 }
 
 export function FormEstornarAditivo({ contratoId, aditivoId, numero, hoje }: { readonly contratoId: string; readonly aditivoId: string; readonly numero: string; readonly hoje: string }): React.ReactElement {
-  const a = useAto();
+  const a = useAto("estornar-aditivo-por-itens");
   return (
     <form ref={a.ref} action={a.disparar} data-acao="estornar-aditivo-por-itens" className={CLASSE_PAINEL_FORMULARIO}>
       <ChaveDeComando />
