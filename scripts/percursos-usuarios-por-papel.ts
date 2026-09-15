@@ -175,21 +175,33 @@ export const PAPEIS: readonly Papel[] = [
     nome: "Gestora de contrato (percurso)",
     perfil: "GESTÃO DE CONTRATO — PERCURSO",
     descricao: "Programa a fiscalização e resolve ocorrências nos contratos em que for designada gestora.",
-    acoes: ["CONSULTAR_LICITACOES", "PROGRAMAR_FISCALIZACAO_DO_CONTRATO", "RESOLVER_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_MEDICAO_DE_OBRA"],
+    acoes: ["CONSULTAR_LICITACOES", "PROGRAMAR_FISCALIZACAO_DO_CONTRATO", "RESOLVER_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_MEDICAO_DE_OBRA",
+      // V7 M2 — a ordem de serviço é ato do gestor designado; e o recebimento provisório, do fiscal (o mesmo perfil).
+      "EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO", "REGISTRAR_RECEBIMENTO_PROVISORIO"],
   },
   {
     identificador: "fiscal-contrato@percursos.local",
     nome: "Fiscal de contrato (percurso)",
     perfil: "FISCALIZAÇÃO DE CONTRATO — PERCURSO",
     descricao: "Registra ocorrência com evidência e mede por itens nos contratos em que for designado fiscal.",
-    acoes: ["CONSULTAR_LICITACOES", "PROGRAMAR_FISCALIZACAO_DO_CONTRATO", "RESOLVER_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_MEDICAO_DE_OBRA"],
+    acoes: ["CONSULTAR_LICITACOES", "PROGRAMAR_FISCALIZACAO_DO_CONTRATO", "RESOLVER_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_MEDICAO_DE_OBRA",
+      "EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO", "REGISTRAR_RECEBIMENTO_PROVISORIO"],
   },
   {
     identificador: "outro-setor-contrato@percursos.local",
     nome: "Servidor de outro setor (percurso)",
     perfil: "OUTRO SETOR — CONTRATOS — PERCURSO",
     descricao: "As mesmas ações de gestor e fiscal, sem designação em contrato nenhum: prova que o perfil não basta.",
-    acoes: ["CONSULTAR_LICITACOES", "PROGRAMAR_FISCALIZACAO_DO_CONTRATO", "RESOLVER_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_MEDICAO_DE_OBRA"],
+    acoes: ["CONSULTAR_LICITACOES", "PROGRAMAR_FISCALIZACAO_DO_CONTRATO", "RESOLVER_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_MEDICAO_DE_OBRA",
+      "EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO", "REGISTRAR_RECEBIMENTO_PROVISORIO", "REGISTRAR_RECEBIMENTO_DEFINITIVO"],
+  },
+  // ── V7 M2 — o recebedor definitivo (art. 140, I, b): papel próprio, designado no contrato ──
+  {
+    identificador: "recebedor-contrato@percursos.local",
+    nome: "Recebedor definitivo (percurso)",
+    perfil: "RECEBIMENTO DEFINITIVO — PERCURSO",
+    descricao: "Decide a controvérsia e recebe em definitivo nos contratos em que for designado recebedor.",
+    acoes: ["CONSULTAR_LICITACOES", "REGISTRAR_RECEBIMENTO_DEFINITIVO"],
   },
 ];
 

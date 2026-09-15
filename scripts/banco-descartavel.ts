@@ -19,7 +19,7 @@ import pg from "pg";
  * ⚠️ Nenhuma credencial é impressa. A saída traz banco, servidor, porta, versão e dono.
  */
 
-const PADRAO = /^gestao_publica_(percursos|capturas|instalacao)_v7m1_[a-z0-9_]{1,40}$/;
+const PADRAO = /^gestao_publica_(percursos|capturas|instalacao)_v7m[12]_[a-z0-9_]{1,40}$/;
 
 function base(): URL {
   const bruta = process.env["DATABASE_URL_PERCURSOS"] ?? process.env["DATABASE_URL"];
