@@ -396,6 +396,48 @@ Ação `GERIR_PLANILHA_DA_OBRA` (atualização de permissões v20 para quem admi
 `PLANILHA-ACIMA-DE-1-MB-PELA-TELA`), `.ods`, planilha com várias abas somadas, composição analítica (insumos), BDI
 diferenciado por item, exportação da versão.
 
+### U7 — a medição da ordem pela planilha da obra (`medicao-pela-planilha.ts`) — PARCIAL
+
+**Não é outra medição.** A quantidade do SERVIÇO da versão aplicável vira a quantidade do item medido da ORDEM
+(`gravarMedicaoDaOrdemNaTransacao`, o núcleo extraído de `registrarMedicaoDaOrdem`): autorizado da ordem, vigência,
+suspensão, regime de período e unitário do contrato no primeiro dia (ME06) continuam valendo, e o caminho segue igual —
+recebimento provisório, decisão, definitivo (U2) e liquidação da parcela pelo M05 (U3).
+
+| Regra | Onde | Recusa |
+|---|---|---|
+| versão APLICÁVEL: a última com vigência até o primeiro dia; a pessoa escolhe e o servidor confere | `medirOrdemPelaPlanilha` | `VERSAO-NAO-APLICAVEL`, `SEM-VERSAO-VIGENTE-NO-PERIODO` |
+| o período não alcança a vigência da versão seguinte | idem | `PERIODO-ATRAVESSA-NOVA-VERSAO` |
+| a versão declara o contrato da ordem | idem | `PLANILHA-DE-OUTRO-CONTRATO` |
+| conciliação (pura, a mesma da tela): serviço (não grupo), UM vínculo vivo, item do contrato sem outro serviço na versão, MESMA unidade, item autorizado na ordem | `conciliarServico` | `MEDICAO-DE-GRUPO`, `SERVICO-SEM-VINCULO`, `VINCULO-AMBIGUO`, `UNIDADE-NAO-CONCILIADA`, `ITEM-FORA-DA-ORDEM` |
+| acumulado do CÓDIGO na obra (todas as versões, sem estornadas) + a medição ≤ previsto da versão | idem | `ACIMA-DO-PREVISTO-NA-PLANILHA` |
+| item do contrato com vínculo vivo NÃO se mede avulso | `registrarMedicaoDaOrdem` | `MEDICAO-PELA-PLANILHA` |
+| estorno só sem recebimento provisório; a medição estornada não se recebe | `estornarMedicaoDaOrdem`, `registrarRecebimentoProvisorio` | `MEDICAO-COM-RECEBIMENTO` (nomeia provisório, definitivos e se já liquidado), `MEDICAO-JA-ESTORNADA`, `MEDICAO-ESTORNADA` |
+
+**O valor.** O que se recebe e liquida é o do CONTRATO (quantidade × unitário vigente do item). O da planilha é
+referência de orçamento e fica ao lado, na memória; nenhum fator (desconto, BDI, reajuste) é calculado entre os dois.
+**A memória** (`MedicaoDaOrdemNaPlanilha`, manifesto + sha256, impressa em PDF pelo tipo `memoria`) guarda versão,
+data-base e referência de preços, previsto/anterior/atual/acumulado/saldo por serviço, os dois preços, o vínculo usado,
+o arredondamento e as evidências — e **nenhuma versão ou aditivo posterior a reescreve**. As evidências são anexos do
+M22 (`Anexo.medicaoDaOrdemId`), lidas só pelo alcance da FISCALIZAÇÃO; a memória, também pela FINANCEIRA (lastreia o
+valor liquidado); nunca pela projeção pública.
+
+**O estorno da medição** (`EstornoDeMedicaoDaOrdem`) é fato novo: a medição fica no histórico marcada, sai das somas
+(a executar na ordem, acumulado da planilha, composição do aditivo) e a quantidade volta a executar.
+
+Telas: formulário "Registrar medição pela planilha da obra" na página da ordem (versão com a vigência, serviço a
+serviço com previsto, anterior, esta medição, acumulado e saldo; o serviço que não concilia aparece com o motivo e sem
+campo), o estorno da medição, o link da memória e das evidências; "Andamento da obra por serviço" na página da versão
+da planilha. Ações: as mesmas `REGISTRAR_MEDICAO_DE_OBRA` (medir e estornar) — nenhuma ação nova no censo.
+Testes: `test/medicao-pela-planilha.test.ts` (MP01–MP08: percurso do valor, duas parcelas no mesmo dia, excesso na
+planilha e na ordem, conciliação, ME06 com aditivo e nova versão, designação e escopo de UG, concorrência, estorno com
+dependente, envelope do comando; cinco mutações acusadas), `test/liquidacao-da-parcela.test.ts` LI07 (900 + 100 pelo
+M05), `test/ui/termos-do-contrato.test.ts` DO01/DO02 da memória (70 serviços, multipágina, os dois totais
+independentes), `test/runtime/contrato-runtime-ordem-de-servico.test.ts` (medir, evidência e estornar por `gestao_app`,
+com as negativas de UPDATE/DELETE). Percurso: `scripts/smoke-medicao-pela-planilha.ts`.
+Fora deste incremento: estorno do RECEBIMENTO (`ESTORNO-DE-RECEBIMENTO`), medição por planilha sem ordem de serviço,
+conversão de unidades, rateio de um serviço entre itens do contrato, reajuste/BDI entre o preço da planilha e o do
+contrato, exportação XLSX da medição.
+
 ## Arquivos
 
 - `dominio.ts` — puro: `MODALIDADES`, `SINAL_VALOR_CONTRATUAL`,

@@ -66,6 +66,12 @@ export interface MedicaoDaOrdemNaTela {
   readonly provisorio: { readonly id: string; readonly data: string; readonly por: string; readonly sha256: string; readonly verificacoes: string | null } | null;
   readonly definitivos: readonly { readonly id: string; readonly numero: number; readonly data: string; readonly por: string; readonly valor: string; readonly liquidado: string; readonly aLiquidar: string; readonly sha256: string }[];
   readonly valores: { readonly medido: string; readonly conforme: string; readonly emControversia: string; readonly aceito: string; readonly glosado: string; readonly recebido: string; readonly liquidado: string };
+  /** V7 M2 U7 — medida pela planilha da obra: a versão usada e o sha256 da memória. */
+  readonly pelaPlanilha: { readonly obraId: string; readonly obra: string; readonly planilhaId: string; readonly versao: number; readonly sha256: string } | null;
+  /** V7 M2 U7 — estornada: fica no histórico e fora das somas. O motivo só na visão de fiscalização. */
+  readonly estorno: { readonly data: string; readonly por: string; readonly motivo: string | null } | null;
+  /** V7 M2 U7 — as evidências (anexos) só na visão de fiscalização; na financeira, lista vazia. */
+  readonly evidencias: readonly { readonly id: string; readonly nome: string }[];
 }
 
 export interface OrdemNaTela {
@@ -128,11 +134,15 @@ export async function execucaoDoContrato(prisma: Tx, contratoId: string, visao: 
         emissao: { select: { data: true, inicioAutorizado: true, sha256: true } },
         descarte: { select: { id: true } },
         movimentos: { orderBy: [{ data: "asc" }, { criadoEm: "asc" }], select: { tipo: true, data: true, motivo: true } },
-        itens: { orderBy: { itemDoContrato: { numero: "asc" } }, select: { id: true, quantidade: true, valorUnitario: true, itemDoContrato: { select: { numero: true, descricao: true, unidade: true } }, cancelamentos: { orderBy: { criadoEm: "asc" }, select: { quantidade: true, data: true, motivo: true } }, medidos: { select: { quantidade: true } } } },
+        itens: { orderBy: { itemDoContrato: { numero: "asc" } }, select: { id: true, quantidade: true, valorUnitario: true, itemDoContrato: { select: { numero: true, descricao: true, unidade: true } }, cancelamentos: { orderBy: { criadoEm: "asc" }, select: { quantidade: true, data: true, motivo: true } }, medidos: { where: { medicao: { estorno: null } }, select: { quantidade: true } } } },
         medicoes: {
           orderBy: { numero: "desc" },
           select: {
             id: true, numero: true, periodoInicio: true, periodoFim: true, designacao: PESSOA,
+            // V7 M2 U7 — a origem pela planilha (versão e memória), o estorno e as evidências (só na fiscalização).
+            naPlanilha: { select: { sha256: true, planilha: { select: { id: true, versao: true, obra: { select: { id: true, identificador: true } } } } } },
+            estorno: { select: { criadoEm: true, motivo: true, designacao: PESSOA } },
+            evidencias: { orderBy: { criadoEm: "asc" }, select: { id: true, nomeOriginal: true } },
             itens: {
               orderBy: { itemDaOrdem: { itemDoContrato: { numero: "asc" } } },
               select: {
@@ -184,6 +194,9 @@ export async function execucaoDoContrato(prisma: Tx, contratoId: string, visao: 
       const recebido = sumMoney(m.recebimentosDefinitivos.flatMap((r) => r.itens.map((x) => x.valor.toFixed(2))));
       return {
         id: m.id, numero: m.numero, periodo: `${diaCivilBr(m.periodoInicio)} a ${diaCivilBr(m.periodoFim)}`, fiscal: nome(m.designacao),
+        pelaPlanilha: m.naPlanilha === null ? null : { obraId: m.naPlanilha.planilha.obra.id, obra: m.naPlanilha.planilha.obra.identificador, planilhaId: m.naPlanilha.planilha.id, versao: m.naPlanilha.planilha.versao, sha256: m.naPlanilha.sha256 },
+        estorno: m.estorno === null ? null : { data: diaCivilBr(m.estorno.criadoEm), por: nome(m.estorno.designacao), motivo: fiscalizacao ? m.estorno.motivo : null },
+        evidencias: fiscalizacao ? m.evidencias.map((a) => ({ id: a.id, nome: a.nomeOriginal })) : [],
         itens: its.map((x) => x.linha),
         provisorio: m.recebimentoProvisorio === null ? null : { id: m.recebimentoProvisorio.id, data: diaCivilBr(m.recebimentoProvisorio.data), por: nome(m.recebimentoProvisorio.designacao), sha256: m.recebimentoProvisorio.sha256, verificacoes: fiscalizacao ? m.recebimentoProvisorio.verificacoes : null },
         definitivos: m.recebimentosDefinitivos.map((r) => {
@@ -215,7 +228,7 @@ export async function execucaoDoContrato(prisma: Tx, contratoId: string, visao: 
       itens, medicoes,
       movimentos: o.movimentos.map((x) => ({ tipo: x.tipo, data: diaCivilBr(x.data), motivo: x.motivo })),
       cancelamentos: o.itens.flatMap((i) => i.cancelamentos.map((c) => ({ item: i.itemDoContrato.numero, quantidade: q(c.quantidade.toFixed(4)), data: diaCivil(c.data).split("-").reverse().join("/"), motivo: c.motivo }))),
-      valores: { previsto: previsto.toFixed(2), autorizado: autorizado.toFixed(2), medido: sumMoney(medicoes.map((m) => m.valores.medido)).toFixed(2), recebido: sumMoney(medicoes.map((m) => m.valores.recebido)).toFixed(2), liquidado: sumMoney(medicoes.map((m) => m.valores.liquidado)).toFixed(2) },
+      valores: { previsto: previsto.toFixed(2), autorizado: autorizado.toFixed(2), medido: sumMoney(medicoes.filter((m) => m.estorno === null).map((m) => m.valores.medido)).toFixed(2), recebido: sumMoney(medicoes.map((m) => m.valores.recebido)).toFixed(2), liquidado: sumMoney(medicoes.map((m) => m.valores.liquidado)).toFixed(2) },
     };
   });
 

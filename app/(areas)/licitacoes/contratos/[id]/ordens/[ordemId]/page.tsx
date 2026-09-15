@@ -4,11 +4,11 @@ import { Badge } from "../../../../../../../components/ui/Badge";
 import { Card } from "../../../../../../../components/ui/Card";
 import { ValorMonetario } from "../../../../../../../components/ui/ValorMonetario";
 import { qtdBr } from "../../../../../../../lib/format/quantidade";
-import { execucaoDoContratoPara, ordemDaExecucao } from "../../../../../../../lib/portas/execucao-do-contrato";
+import { execucaoDoContratoPara, medicaoPelaPlanilhaParaTela, ordemDaExecucao } from "../../../../../../../lib/portas/execucao-do-contrato";
 import { exigirSessao } from "../../../../../../../lib/portas/sessao";
 import { SITUACAO } from "../../ExecucaoDoContrato";
 import {
-  FormCancelarSaldo, FormDecidirControversia, FormDescartarOrdem, FormEmitirOrdem, FormLiquidarParcelas, FormMedirOrdem, FormMovimentarOrdem, FormRecebimentoDefinitivo, FormRecebimentoProvisorio,
+  FormCancelarSaldo, FormDecidirControversia, FormDescartarOrdem, FormEmitirOrdem, FormEstornarMedicao, FormLiquidarParcelas, FormMedirOrdem, FormMedirPelaPlanilha, FormMovimentarOrdem, FormRecebimentoDefinitivo, FormRecebimentoProvisorio,
 } from "../../FormulariosDaExecucao";
 import { AvisosDosAtos, ResultadosDosAtos } from "../../../../../../../components/ui/ResultadosDosAtos";
 
@@ -35,6 +35,8 @@ export default async function OrdemDeServico({ params }: { readonly params: Prom
   const o = ordemDaExecucao(e, ordemId);
   if (o === null) notFound();
   const p = e.papeis;
+  const planilha = await medicaoPelaPlanilhaParaTela(e, o.id);
+  const ativas = o.medicoes.filter((m) => m.estorno === null);
   const emitida = o.situacao === "EMITIDA" || o.situacao === "SUSPENSA";
   const itemDoContrato = new Map(e.itensDoContrato.map((i) => [i.numero, i]));
   const impacto = o.itens.map((i) => {
@@ -47,7 +49,7 @@ export default async function OrdemDeServico({ params }: { readonly params: Prom
   const proximas = [
     o.situacao === "RASCUNHO" ? (p.podeEmitir ? "Revisar e emitir a ordem" : "A ordem é rascunho: aguarda a emissão pelo gestor") : null,
     emitida && o.itens.some((i) => Number(i.aExecutar) > 0) ? (p.podeMedir ? "Registrar a medição do que foi executado" : "Há quantidade a executar: a medição é do fiscal") : null,
-    o.medicoes.some((m) => m.provisorio === null) ? (p.podeReceberProvisorio ? "Conferir e receber provisoriamente a medição pendente" : "Medição aguardando o recebimento provisório do fiscal") : null,
+    ativas.some((m) => m.provisorio === null) ? (p.podeReceberProvisorio ? "Conferir e receber provisoriamente a medição pendente" : "Medição aguardando o recebimento provisório do fiscal") : null,
     o.medicoes.some((m) => m.itens.some((i) => Number(i.pendenteDeDecisao) > 0)) ? (p.podeReceberDefinitivo ? "Decidir a controvérsia pendente" : "Controvérsia aguardando a decisão do recebedor definitivo") : null,
     o.medicoes.some((m) => m.provisorio !== null && m.itens.some((i) => Number(i.elegivel) > 0)) ? (p.podeReceberDefinitivo ? "Receber em definitivo o que é elegível" : "Parcela elegível aguardando o recebimento definitivo") : null,
     aLiquidar.length > 0 ? (p.podeLiquidar ? "Liquidar as parcelas recebidas" : "Parcela recebida aguardando a liquidação pela área financeira") : null,
@@ -116,7 +118,10 @@ export default async function OrdemDeServico({ params }: { readonly params: Prom
           <ol className="space-y-4">
             {o.medicoes.map((m) => (
               <li key={m.id} data-medicao-da-ordem={m.numero} className="border-t border-[color:var(--color-border)] pt-3">
-                <p className="text-sm"><strong>Medição nº {m.numero}</strong> · {m.periodo} · {m.fiscal}</p>
+                <p className="text-sm"><strong>Medição nº {m.numero}</strong> · {m.periodo} · {m.fiscal}{m.estorno === null ? null : <> <Badge status="neutro">estornada em {m.estorno.data}</Badge></>}</p>
+                {m.estorno === null ? null : <p className="text-xs text-[color:var(--color-ink-2)] [overflow-wrap:anywhere]" data-estorno-da-medicao={m.numero}>Estornada por {m.estorno.por}{m.estorno.motivo === null ? "" : `: ${m.estorno.motivo}`}. Fica no histórico e fora das somas.</p>}
+                {m.pelaPlanilha === null ? null : <p className="text-xs" data-medicao-pela-planilha={m.pelaPlanilha.versao}>Medida pela planilha da obra <Link href={`/licitacoes/obras/${m.pelaPlanilha.obraId}/planilha/versoes/${m.pelaPlanilha.planilhaId}`} className="text-[color:var(--color-primary)] underline underline-offset-2">{m.pelaPlanilha.obra}, versão {m.pelaPlanilha.versao}</Link> · <a href={DOC(id, "memoria", m.id)} data-documento="memoria" className="text-[color:var(--color-primary)] underline underline-offset-2">memória da medição (PDF)</a></p>}
+                {m.evidencias.length === 0 ? null : <p className="text-xs" data-evidencias-da-medicao>Evidências: {m.evidencias.map((ev, k) => <span key={ev.id}>{k > 0 ? ", " : ""}<a href={`/documentos/anexos/${ev.id}`} className="text-[color:var(--color-primary)] underline underline-offset-2">{ev.nome}</a></span>)}</p>}
                 <div className="mt-2 overflow-x-auto">
                   <table className="w-full min-w-[52rem] text-left text-xs" data-conferencia-da-medicao>
                     <thead><tr className="text-[color:var(--color-ink-2)]"><th className="py-1 pr-2">Item</th><th className="py-1 pr-2 text-right">Medido</th><th className="py-1 pr-2 text-right">Conforme</th><th className="py-1 pr-2 text-right">Em controvérsia</th><th className="py-1 pr-2">Decisão</th><th className="py-1 pr-2 text-right">Recebido</th><th className="py-1 text-right">Elegível</th></tr></thead>
@@ -143,7 +148,8 @@ export default async function OrdemDeServico({ params }: { readonly params: Prom
                   {m.definitivos.map((d) => <li key={d.id}>Recebimento definitivo nº {d.numero} em {d.data} por {d.por}: <ValorMonetario valor={d.valor} comSimbolo /> (liquidado <ValorMonetario valor={d.liquidado} comSimbolo />) · <a href={DOC(id, "definitivo", d.id)} data-documento="definitivo" className="text-[color:var(--color-primary)] underline underline-offset-2">termo (PDF)</a></li>)}
                   {e.visao === "FISCALIZACAO" ? m.itens.filter((i) => i.decisao !== null && i.conferenciaId !== null).map((i) => <li key={`dec-${i.id}`}>Decisão do item {i.item} · <a href={DOC(id, "decisao", i.id)} data-documento="decisao" className="text-[color:var(--color-primary)] underline underline-offset-2">documento (PDF)</a></li>) : null}
                 </ul>
-                {m.provisorio === null && p.podeReceberProvisorio ? <FormRecebimentoProvisorio contratoId={id} medicaoId={m.id} itens={m.itens.map((i) => ({ id: i.id, rotulo: `${i.item} — ${i.descricao}`, medido: i.medido, unidade: i.unidade }))} hoje={e.hoje} /> : null}
+                {m.estorno === null && m.provisorio === null && p.podeMedir ? <FormEstornarMedicao contratoId={id} medicaoId={m.id} numero={m.numero} /> : null}
+                {m.estorno === null && m.provisorio === null && p.podeReceberProvisorio ? <FormRecebimentoProvisorio contratoId={id} medicaoId={m.id} itens={m.itens.map((i) => ({ id: i.id, rotulo: `${i.item} — ${i.descricao}`, medido: i.medido, unidade: i.unidade }))} hoje={e.hoje} /> : null}
                 {p.podeReceberDefinitivo ? m.itens.filter((i) => Number(i.pendenteDeDecisao) > 0 && i.conferenciaId !== null).map((i) => <FormDecidirControversia key={i.id} contratoId={id} conferenciaId={i.conferenciaId!} rotulo={`item ${i.item}, ${qtdBr(i.pendenteDeDecisao)} ${i.unidade}`} hoje={e.hoje} />) : null}
                 {m.provisorio !== null && p.podeReceberDefinitivo && m.itens.some((i) => Number(i.elegivel) > 0) ? <FormRecebimentoDefinitivo contratoId={id} medicaoId={m.id} itens={m.itens.map((i) => ({ id: i.id, rotulo: `${i.item} — ${i.descricao}`, elegivel: i.elegivel, pendente: i.pendenteDeDecisao, unidade: i.unidade }))} hoje={e.hoje} /> : null}
               </li>
@@ -153,7 +159,9 @@ export default async function OrdemDeServico({ params }: { readonly params: Prom
         {!p.podeMedir ? <p className="mt-2 text-xs text-[color:var(--color-ink-2)]" data-motivo-da-medicao>{p.motivos.medir}</p> : null}
         {!p.podeReceberDefinitivo ? <p className="mt-1 text-xs text-[color:var(--color-ink-2)]" data-motivo-do-definitivo>{p.motivos.definitivo}</p> : null}
       </Card>
-      {p.podeMedir && emitida && o.itens.some((i) => Number(i.aExecutar) > 0) ? <FormMedirOrdem contratoId={id} ordemId={o.id} itens={o.itens.filter((i) => Number(i.aExecutar) > 0).map((i) => ({ id: i.id, rotulo: `${i.item} — ${i.descricao}`, aExecutar: i.aExecutar, unidade: i.unidade }))} hoje={e.hoje} /> : null}
+      {p.podeMedir && emitida && planilha.versoes.length > 0 ? <FormMedirPelaPlanilha contratoId={id} ordemId={o.id} versoes={planilha.versoes} hoje={e.hoje} /> : null}
+      {p.podeMedir && emitida && planilha.itensDaPlanilha.length > 0 ? <p className="text-xs text-[color:var(--color-ink-2)]" data-itens-pela-planilha>Os itens {planilha.itensDaPlanilha.join(", ")} estão vinculados à planilha da obra e se medem pela planilha.</p> : null}
+      {p.podeMedir && emitida && o.itens.some((i) => Number(i.aExecutar) > 0 && !planilha.itensDaPlanilha.includes(i.item)) ? <FormMedirOrdem contratoId={id} ordemId={o.id} itens={o.itens.filter((i) => Number(i.aExecutar) > 0 && !planilha.itensDaPlanilha.includes(i.item)).map((i) => ({ id: i.id, rotulo: `${i.item} — ${i.descricao}`, aExecutar: i.aExecutar, unidade: i.unidade }))} hoje={e.hoje} /> : null}
 
       <Card>
         <h2 className="mb-2 text-sm font-semibold">Liquidação das parcelas recebidas</h2>

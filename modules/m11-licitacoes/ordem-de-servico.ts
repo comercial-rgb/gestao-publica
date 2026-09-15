@@ -60,7 +60,7 @@ export function manifestoCanonico(valor: unknown): { readonly manifesto: unknown
   return { manifesto, sha256: createHash("sha256").update(JSON.stringify(manifesto), "utf8").digest("hex") };
 }
 
-async function nomeEAto(tx: Tx, designacaoId: string): Promise<{ readonly nome: string; readonly ato: string; readonly usuario: string }> {
+export async function nomeEAto(tx: Tx, designacaoId: string): Promise<{ readonly nome: string; readonly ato: string; readonly usuario: string }> {
   const d = await tx.designacaoNoContrato.findUniqueOrThrow({ where: { id: designacaoId }, select: { atoDesignacao: true, usuario: { select: { identificador: true } }, pessoa: { select: { documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } } } });
   return { nome: d.pessoa.versoes[0]?.nome ?? d.pessoa.documento, ato: d.atoDesignacao, usuario: d.usuario.identificador };
 }
@@ -291,7 +291,7 @@ export async function cancelarSaldoDaOrdemDeServico(prisma: PrismaClient, input:
     const gestor = await exigirDesignacao(tx, c, d.criadoPor, "GESTOR", hoje());
     const o = await tx.ordemDeServicoDoContrato.findUniqueOrThrow({
       where: { id: d.ordemId },
-      select: { numero: true, emissao: { select: { id: true } }, empenho: { select: { numero: true } }, itens: { select: { id: true, quantidade: true, itemDoContrato: { select: { numero: true, descricao: true } }, cancelamentos: { select: { quantidade: true } }, medidos: { select: { quantidade: true } } } } },
+      select: { numero: true, emissao: { select: { id: true } }, empenho: { select: { numero: true } }, itens: { select: { id: true, quantidade: true, itemDoContrato: { select: { numero: true, descricao: true } }, cancelamentos: { select: { quantidade: true } }, medidos: { where: { medicao: { estorno: null } }, select: { quantidade: true } } } } },
     });
     if (o.emissao === null) throw new Error(`ORDEM-NAO-EMITIDA: a ordem nº ${o.numero} é rascunho; rascunho se descarta, não se cancela saldo. Nada foi gravado.`);
     const ids = d.itens.map((i) => i.itemDaOrdemId);
@@ -372,82 +372,165 @@ function intervalosSuspensos(movs: readonly { readonly tipo: string; readonly da
  */
 export async function registrarMedicaoDaOrdem(prisma: PrismaClient, input: RegistrarMedicaoDaOrdemInput): Promise<{ readonly medicaoId: string; readonly numero: number; readonly valor: string; readonly aExecutar: readonly { readonly item: number; readonly quantidade: string }[] }> {
   const d = zRegistrarMedicaoDaOrdem.parse(input);
-  if (d.diaFim < d.diaInicio) throw new Error("PERIODO-INVERTIDO: o fim do período é anterior ao início. Nada foi gravado.");
-  if (d.diaFim > hoje()) throw new Error("PERIODO-FUTURO: não se mede execução que ainda não aconteceu. Nada foi gravado.");
-  const ids = d.itens.map((i) => i.itemDaOrdemId);
-  if (new Set(ids).size !== ids.length) throw new Error("ITEM-REPETIDO: cada item entra uma vez na medição. Nada foi gravado.");
-  if (d.itens.some((i) => new Decimal(i.quantidade).lte(0))) throw new Error("QUANTIDADE-INVALIDA: a quantidade medida precisa ser maior que zero. Nada foi gravado.");
+  preCondicoesDaMedicaoDaOrdem(d, d.itens.map((i) => i.itemDaOrdemId));
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.registrarMedicaoDaOrdem, "ENTE");
     const alvo = await tx.ordemDeServicoDoContrato.findUnique({ where: { id: d.ordemId }, select: { contratoId: true } });
     if (alvo === null) throw new Error(`Ordem de serviço ${d.ordemId} não existe. Nada foi gravado.`);
     const c = await contratoTravado(tx, alvo.contratoId);
     const fiscal = await exigirDesignacao(tx, c, d.criadoPor, "FISCAL", hoje());
-    const o = await tx.ordemDeServicoDoContrato.findUniqueOrThrow({
-      where: { id: d.ordemId },
-      select: {
-        numero: true, ano: true, fimPrevisto: true, emissao: { select: { inicioAutorizado: true } }, descarte: { select: { id: true } },
-        movimentos: { select: { tipo: true, data: true } },
-        itens: { select: { id: true, quantidade: true, itemDoContrato: { select: { id: true, numero: true, descricao: true, unidade: true } }, cancelamentos: { select: { quantidade: true } }, medidos: { select: { quantidade: true } } } },
-        medicoes: { orderBy: { numero: "desc" }, take: 1, select: { numero: true } },
-      },
+    // V7 M2 U7 — o item do contrato ligado a um serviço da planilha da obra mede-se PELA planilha: medi-lo avulso deixaria
+    // o andamento da obra por serviço incompleto, sem que ninguém percebesse.
+    const ligados = await tx.vinculoDeItemDaPlanilhaAoContrato.findMany({
+      where: { revogacao: null, itemDoContrato: { itensDeOrdemDeServico: { some: { id: { in: d.itens.map((i) => i.itemDaOrdemId) }, ordemId: d.ordemId } } } },
+      select: { itemDoContrato: { select: { numero: true, descricao: true } }, itemDaPlanilha: { select: { codigo: true, planilha: { select: { versao: true, obra: { select: { identificador: true } } } } } } },
     });
-    if (o.emissao === null || o.descarte !== null) throw new Error(`ORDEM-NAO-EMITIDA: a ordem nº ${o.numero}/${o.ano} não está emitida; sem autorização de execução não há o que medir. Nada foi gravado.`);
-    const inicioAutorizado = diaCivil(o.emissao.inicioAutorizado);
-    const fimPrevisto = diaCivil(o.fimPrevisto);
-    if (d.diaInicio < inicioAutorizado || d.diaFim > fimPrevisto) {
-      throw new Error(`PERIODO-FORA-DA-ORDEM: a ordem nº ${o.numero}/${o.ano} autoriza execução de ${br(inicioAutorizado)} a ${br(fimPrevisto)}; o período ${br(d.diaInicio)} a ${br(d.diaFim)} sai dela. Nada foi gravado.`);
+    if (ligados.length > 0) {
+      const v = ligados[0]!;
+      throw new Error(
+        `MEDICAO-PELA-PLANILHA: o item ${v.itemDoContrato.numero} (${v.itemDoContrato.descricao}) está vinculado ao serviço ${v.itemDaPlanilha.codigo} da planilha da obra ${v.itemDaPlanilha.planilha.obra.identificador} (versão ${v.itemDaPlanilha.planilha.versao}). ` +
+          `Meça pela planilha, para que o andamento por serviço registre a quantidade. Nada foi gravado.`
+      );
     }
-    exigirContratoVigente(c, d.diaInicio, "o início do período medido");
-    exigirContratoVigente(c, d.diaFim, "o fim do período medido");
-    const suspensa = intervalosSuspensos(o.movimentos).find((s) => s.de <= d.diaFim && d.diaInicio < (s.ate ?? "9999-12-31"));
-    if (suspensa !== undefined) {
-      throw new Error(`EXECUCAO-SUSPENSA: a ordem nº ${o.numero} esteve suspensa de ${br(suspensa.de)}${suspensa.ate === null ? " até hoje" : ` a ${br(suspensa.ate)} (retomada)`}, e o período medido cai nela. Nada foi gravado.`);
-    }
-    const periodo = await conferenciaDoPeriodoPorItens(tx, c.id, d.diaInicio);
-    if (periodo.conferir) {
-      const outras = await tx.medicaoDaOrdemDeServico.findMany({ where: { ordem: { contratoId: c.id } }, select: { numero: true, periodoInicio: true, periodoFim: true, ordem: { select: { numero: true } } } });
-      const novo = { numero: -1, inicio: inicioDoDiaCivil(d.diaInicio), fim: fimDoDiaCivil(d.diaFim) };
-      const conflito = outras.find((m) => periodosSeSobrepoem(novo, { numero: m.numero, inicio: m.periodoInicio, fim: m.periodoFim }));
-      if (conflito !== undefined) {
-        throw new Error(`PERÍODO SOBREPOSTO no contrato ${c.numeroContrato} (${periodo.fundamento}): o período ${br(d.diaInicio)} a ${br(d.diaFim)} invade a medição nº ${conflito.numero} da ordem nº ${conflito.ordem.numero} (${diaCivilBr(conflito.periodoInicio)} a ${diaCivilBr(conflito.periodoFim)}). Nada foi gravado.`);
-      }
-    }
-    const historicos = await historicosDosItens(tx, { ids: o.itens.map((i) => i.itemDoContrato.id) });
-    const linhas = d.itens.map((p) => {
-      const i = o.itens.find((x) => x.id === p.itemDaOrdemId);
-      if (i === undefined) throw new Error(`ITEM-DE-OUTRA-ORDEM: o item ${p.itemDaOrdemId} não é da ordem nº ${o.numero}. Nada foi gravado.`);
-      // V7 M2 U5 (ME06) — o unitário da medição é o da versão do item vigente no PRIMEIRO dia do período; o da ordem é o
-      // da autorização e não muda. Um novo unitário começando dentro do período obriga a dividir a medição.
-      const h = historicos.get(i.itemDoContrato.id)!;
-      const novoPreco = novoPrecoDentroDoPeriodo(h, d.diaInicio, d.diaFim);
-      if (novoPreco !== null) {
-        throw new Error(
-          `PERIODO-ATRAVESSA-NOVO-PRECO: o item ${i.itemDoContrato.numero} (${i.itemDoContrato.descricao}) passa a R$ ${q4(novoPreco.valorUnitario)} em ${br(novoPreco.desde!)} pelo aditivo nº ${novoPreco.numeroAditivo}, dentro do período ${br(d.diaInicio)} a ${br(d.diaFim)}. ` +
-            `Meça em dois períodos, antes e a partir dessa data. Nada foi gravado.`
-        );
-      }
-      const unit = versaoNoDia(h, d.diaInicio).valorUnitario;
-      const autorizado = new Decimal(i.quantidade.toFixed(4)).minus(i.cancelamentos.reduce((t, x) => t.plus(x.quantidade.toFixed(4)), new Decimal(0)));
-      const medido = i.medidos.reduce((t, x) => t.plus(x.quantidade.toFixed(4)), new Decimal(0));
-      if (medido.plus(p.quantidade).gt(autorizado)) {
-        throw new Error(
-          `ITEM-ACIMA-DO-AUTORIZADO-NA-ORDEM: o item ${i.itemDoContrato.numero} (${i.itemDoContrato.descricao}) tem ${q4(autorizado)} ${i.itemDoContrato.unidade} autorizado(s) na ordem nº ${o.numero}, já mediu ${q4(medido)} e esta medição levaria a ${q4(medido.plus(p.quantidade))}. ` +
-            `A mesma parcela não se mede duas vezes; execução além do autorizado exige nova ordem. Nada foi gravado.`
-        );
-      }
-      return { itemDaOrdemId: i.id, item: i.itemDoContrato.numero, quantidade: p.quantidade, valorUnitario: unit.toFixed(4), valor: toMoney(new Decimal(p.quantidade).times(unit)), restante: autorizado.minus(medido).minus(p.quantidade) };
-    });
-    const numero = (o.medicoes[0]?.numero ?? 0) + 1;
-    const r = await tx.medicaoDaOrdemDeServico.create({
-      data: {
-        ordemId: d.ordemId, numero, periodoInicio: inicioDoDiaCivil(d.diaInicio), periodoFim: fimDoDiaCivil(d.diaFim), designacaoId: fiscal.id, observacao: d.observacao ?? null, criadoPor: d.criadoPor,
-        itens: { create: linhas.map((l) => ({ itemDaOrdemId: l.itemDaOrdemId, quantidade: l.quantidade, valorUnitario: l.valorUnitario, valor: l.valor.toFixed(2) })) },
-      },
-      select: { id: true },
-    });
-    return { medicaoId: r.id, numero, valor: sumMoney(linhas.map((l) => l.valor)).toFixed(2), aExecutar: linhas.map((l) => ({ item: l.item, quantidade: q4(l.restante) })) };
+    const r = await gravarMedicaoDaOrdemNaTransacao(tx, c, fiscal, d);
+    return { medicaoId: r.medicaoId, numero: r.numero, valor: r.valor, aExecutar: r.linhas.map((l) => ({ item: l.item, quantidade: l.restante })) };
   });
+}
+
+/** As pré-condições que não dependem do banco — as mesmas para a medição avulsa e pela planilha. */
+export function preCondicoesDaMedicaoDaOrdem(d: { readonly diaInicio: string; readonly diaFim: string; readonly itens: readonly { readonly quantidade: string }[] }, ids: readonly string[]): void {
+  if (d.diaFim < d.diaInicio) throw new Error("PERIODO-INVERTIDO: o fim do período é anterior ao início. Nada foi gravado.");
+  if (d.diaFim > hoje()) throw new Error("PERIODO-FUTURO: não se mede execução que ainda não aconteceu. Nada foi gravado.");
+  if (new Set(ids).size !== ids.length) throw new Error("ITEM-REPETIDO: cada item entra uma vez na medição. Nada foi gravado.");
+  if (d.itens.some((i) => new Decimal(i.quantidade).lte(0))) throw new Error("QUANTIDADE-INVALIDA: a quantidade medida precisa ser maior que zero. Nada foi gravado.");
+}
+
+export interface LinhaGravadaDaMedicao { readonly itemDaOrdemId: string; readonly itemMedidoId: string; readonly item: number; readonly descricao: string; readonly unidade: string; readonly quantidade: string; readonly valorUnitario: string; readonly valor: string; readonly autorizado: string; readonly anterior: string; readonly restante: string }
+
+/**
+ * O NÚCLEO DA MEDIÇÃO DA ORDEM, dentro da transação de quem já cobrou a ação, travou o contrato e conferiu a designação
+ * de FISCAL vigente — a medição avulsa (`registrarMedicaoDaOrdem`) e a medição pela planilha (U7) passam pelo mesmo
+ * corpo: período dentro do autorizado, vigência, suspensão, regime de período, unitário vigente no primeiro dia (ME06)
+ * e o acumulado ≤ autorizado (ME03). A medição ESTORNADA não conta no acumulado nem no regime de período.
+ */
+export async function gravarMedicaoDaOrdemNaTransacao(
+  tx: Tx,
+  c: Awaited<ReturnType<typeof contratoTravado>>,
+  fiscal: { readonly id: string },
+  d: { readonly ordemId: string; readonly diaInicio: string; readonly diaFim: string; readonly observacao?: string | undefined; readonly itens: readonly { readonly itemDaOrdemId: string; readonly quantidade: string }[]; readonly criadoPor: string }
+): Promise<{ readonly medicaoId: string; readonly numero: number; readonly valor: string; readonly linhas: readonly LinhaGravadaDaMedicao[] }> {
+  const o = await tx.ordemDeServicoDoContrato.findUniqueOrThrow({
+    where: { id: d.ordemId },
+    select: {
+      numero: true, ano: true, contratoId: true, fimPrevisto: true, emissao: { select: { inicioAutorizado: true } }, descarte: { select: { id: true } },
+      movimentos: { select: { tipo: true, data: true } },
+      itens: { select: { id: true, quantidade: true, itemDoContrato: { select: { id: true, numero: true, descricao: true, unidade: true } }, cancelamentos: { select: { quantidade: true } }, medidos: { where: { medicao: { estorno: null } }, select: { quantidade: true } } } },
+      medicoes: { orderBy: { numero: "desc" }, take: 1, select: { numero: true } },
+    },
+  });
+  if (o.contratoId !== c.id) throw new Error(`ORDEM-DE-OUTRO-CONTRATO: a ordem nº ${o.numero}/${o.ano} não é do contrato ${c.numeroContrato}. Nada foi gravado.`);
+  if (o.emissao === null || o.descarte !== null) throw new Error(`ORDEM-NAO-EMITIDA: a ordem nº ${o.numero}/${o.ano} não está emitida; sem autorização de execução não há o que medir. Nada foi gravado.`);
+  const inicioAutorizado = diaCivil(o.emissao.inicioAutorizado);
+  const fimPrevisto = diaCivil(o.fimPrevisto);
+  if (d.diaInicio < inicioAutorizado || d.diaFim > fimPrevisto) {
+    throw new Error(`PERIODO-FORA-DA-ORDEM: a ordem nº ${o.numero}/${o.ano} autoriza execução de ${br(inicioAutorizado)} a ${br(fimPrevisto)}; o período ${br(d.diaInicio)} a ${br(d.diaFim)} sai dela. Nada foi gravado.`);
+  }
+  exigirContratoVigente(c, d.diaInicio, "o início do período medido");
+  exigirContratoVigente(c, d.diaFim, "o fim do período medido");
+  const suspensa = intervalosSuspensos(o.movimentos).find((s) => s.de <= d.diaFim && d.diaInicio < (s.ate ?? "9999-12-31"));
+  if (suspensa !== undefined) {
+    throw new Error(`EXECUCAO-SUSPENSA: a ordem nº ${o.numero} esteve suspensa de ${br(suspensa.de)}${suspensa.ate === null ? " até hoje" : ` a ${br(suspensa.ate)} (retomada)`}, e o período medido cai nela. Nada foi gravado.`);
+  }
+  const periodo = await conferenciaDoPeriodoPorItens(tx, c.id, d.diaInicio);
+  if (periodo.conferir) {
+    const outras = await tx.medicaoDaOrdemDeServico.findMany({ where: { ordem: { contratoId: c.id }, estorno: null }, select: { numero: true, periodoInicio: true, periodoFim: true, ordem: { select: { numero: true } } } });
+    const novo = { numero: -1, inicio: inicioDoDiaCivil(d.diaInicio), fim: fimDoDiaCivil(d.diaFim) };
+    const conflito = outras.find((m) => periodosSeSobrepoem(novo, { numero: m.numero, inicio: m.periodoInicio, fim: m.periodoFim }));
+    if (conflito !== undefined) {
+      throw new Error(`PERÍODO SOBREPOSTO no contrato ${c.numeroContrato} (${periodo.fundamento}): o período ${br(d.diaInicio)} a ${br(d.diaFim)} invade a medição nº ${conflito.numero} da ordem nº ${conflito.ordem.numero} (${diaCivilBr(conflito.periodoInicio)} a ${diaCivilBr(conflito.periodoFim)}). Nada foi gravado.`);
+    }
+  }
+  const historicos = await historicosDosItens(tx, { ids: o.itens.map((i) => i.itemDoContrato.id) });
+  const linhas = d.itens.map((p) => {
+    const i = o.itens.find((x) => x.id === p.itemDaOrdemId);
+    if (i === undefined) throw new Error(`ITEM-DE-OUTRA-ORDEM: o item ${p.itemDaOrdemId} não é da ordem nº ${o.numero}. Nada foi gravado.`);
+    // V7 M2 U5 (ME06) — o unitário da medição é o da versão do item vigente no PRIMEIRO dia do período; o da ordem é o
+    // da autorização e não muda. Um novo unitário começando dentro do período obriga a dividir a medição.
+    const h = historicos.get(i.itemDoContrato.id)!;
+    const novoPreco = novoPrecoDentroDoPeriodo(h, d.diaInicio, d.diaFim);
+    if (novoPreco !== null) {
+      throw new Error(
+        `PERIODO-ATRAVESSA-NOVO-PRECO: o item ${i.itemDoContrato.numero} (${i.itemDoContrato.descricao}) passa a R$ ${q4(novoPreco.valorUnitario)} em ${br(novoPreco.desde!)} pelo aditivo nº ${novoPreco.numeroAditivo}, dentro do período ${br(d.diaInicio)} a ${br(d.diaFim)}. ` +
+          `Meça em dois períodos, antes e a partir dessa data. Nada foi gravado.`
+      );
+    }
+    const unit = versaoNoDia(h, d.diaInicio).valorUnitario;
+    const autorizado = new Decimal(i.quantidade.toFixed(4)).minus(i.cancelamentos.reduce((t, x) => t.plus(x.quantidade.toFixed(4)), new Decimal(0)));
+    const medido = i.medidos.reduce((t, x) => t.plus(x.quantidade.toFixed(4)), new Decimal(0));
+    if (medido.plus(p.quantidade).gt(autorizado)) {
+      throw new Error(
+        `ITEM-ACIMA-DO-AUTORIZADO-NA-ORDEM: o item ${i.itemDoContrato.numero} (${i.itemDoContrato.descricao}) tem ${q4(autorizado)} ${i.itemDoContrato.unidade} autorizado(s) na ordem nº ${o.numero}, já mediu ${q4(medido)} e esta medição levaria a ${q4(medido.plus(p.quantidade))}. ` +
+          `A mesma parcela não se mede duas vezes; execução além do autorizado exige nova ordem. Nada foi gravado.`
+      );
+    }
+    return { itemDaOrdemId: i.id, item: i.itemDoContrato.numero, descricao: i.itemDoContrato.descricao, unidade: i.itemDoContrato.unidade, quantidade: p.quantidade, valorUnitario: unit.toFixed(4), valor: toMoney(new Decimal(p.quantidade).times(unit)), autorizado, anterior: medido, restante: autorizado.minus(medido).minus(p.quantidade) };
+  });
+  const numero = (o.medicoes[0]?.numero ?? 0) + 1;
+  const r = await tx.medicaoDaOrdemDeServico.create({
+    data: {
+      ordemId: d.ordemId, numero, periodoInicio: inicioDoDiaCivil(d.diaInicio), periodoFim: fimDoDiaCivil(d.diaFim), designacaoId: fiscal.id, observacao: d.observacao ?? null, criadoPor: d.criadoPor,
+      itens: { create: linhas.map((l) => ({ itemDaOrdemId: l.itemDaOrdemId, quantidade: l.quantidade, valorUnitario: l.valorUnitario, valor: l.valor.toFixed(2) })) },
+    },
+    select: { id: true, itens: { select: { id: true, itemDaOrdemId: true } } },
+  });
+  return {
+    medicaoId: r.id,
+    numero,
+    valor: sumMoney(linhas.map((l) => l.valor)).toFixed(2),
+    linhas: linhas.map((l) => ({ itemDaOrdemId: l.itemDaOrdemId, itemMedidoId: r.itens.find((x) => x.itemDaOrdemId === l.itemDaOrdemId)!.id, item: l.item, descricao: l.descricao, unidade: l.unidade, quantidade: q4(l.quantidade), valorUnitario: q4(l.valorUnitario), valor: l.valor.toFixed(2), autorizado: q4(l.autorizado), anterior: q4(l.anterior), restante: q4(l.restante) })),
+  };
+}
+
+export const zEstornarMedicaoDaOrdem = z.object({ medicaoId: z.string().min(1), motivo: z.string().trim().min(10, "Diga por que a medição é estornada (pelo menos 10 caracteres)."), criadoPor: z.string().min(1) }).strict();
+export type EstornarMedicaoDaOrdemInput = z.input<typeof zEstornarMedicaoDaOrdem>;
+
+/**
+ * ESTORNAR A MEDIÇÃO DA ORDEM (V7 M2 U7) — o fiscal vigente hoje, enquanto NADA depende dela: sem recebimento
+ * provisório (e, portanto, sem decisão, definitivo ou liquidação). A medição fica no histórico, marcada; a quantidade
+ * volta a executar e sai do acumulado da planilha. Com dependente, a recusa nomeia cada um: a medição recebida não se
+ * desfaz por aqui (o estorno do recebimento não existe nesta versão — `ESTORNO-DE-RECEBIMENTO`).
+ */
+export async function estornarMedicaoDaOrdem(prisma: PrismaClient, input: EstornarMedicaoDaOrdemInput): Promise<{ readonly estornoId: string; readonly numero: number; readonly valor: string }> {
+  const d = zEstornarMedicaoDaOrdem.parse(input);
+  try {
+    return await prisma.$transaction(async (tx) => {
+      await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.estornarMedicaoDaOrdem, "ENTE");
+      const alvo = await tx.medicaoDaOrdemDeServico.findUnique({ where: { id: d.medicaoId }, select: { ordem: { select: { contratoId: true } } } });
+      if (alvo === null) throw new Error(`Medição ${d.medicaoId} não existe. Nada foi gravado.`);
+      const c = await contratoTravado(tx, alvo.ordem.contratoId);
+      const fiscal = await exigirDesignacao(tx, c, d.criadoPor, "FISCAL", hoje());
+      const m = await tx.medicaoDaOrdemDeServico.findUniqueOrThrow({
+        where: { id: d.medicaoId },
+        select: { numero: true, ordem: { select: { numero: true, ano: true } }, estorno: { select: { id: true } }, itens: { select: { valor: true } }, recebimentoProvisorio: { select: { data: true } }, recebimentosDefinitivos: { select: { numero: true, alocacoes: { select: { id: true } } } } },
+      });
+      if (m.estorno !== null) throw new Error(`MEDICAO-JA-ESTORNADA: a medição nº ${m.numero} da ordem nº ${m.ordem.numero}/${m.ordem.ano} já foi estornada. Nada foi gravado.`);
+      if (m.recebimentoProvisorio !== null) {
+        const dependentes = [
+          `recebimento provisório de ${diaCivilBr(m.recebimentoProvisorio.data)}`,
+          ...m.recebimentosDefinitivos.map((r) => `recebimento definitivo nº ${r.numero}${r.alocacoes.length > 0 ? " (já liquidado)" : ""}`),
+        ];
+        throw new Error(
+          `MEDICAO-COM-RECEBIMENTO: a medição nº ${m.numero} da ordem nº ${m.ordem.numero}/${m.ordem.ano} já tem ${dependentes.join(", ")}. ` +
+            `Medição recebida não se estorna: o que está errado se trata na conferência (controvérsia, decisão) e, depois de liquidada, pelo estorno da liquidação no M05. Nada foi gravado.`
+        );
+      }
+      const r = await tx.estornoDeMedicaoDaOrdem.create({ data: { medicaoId: d.medicaoId, designacaoId: fiscal.id, motivo: d.motivo, criadoPor: d.criadoPor }, select: { id: true } });
+      return { estornoId: r.id, numero: m.numero, valor: sumMoney(m.itens.map((i) => i.valor.toFixed(2))).toFixed(2) };
+    });
+  } catch (e) {
+    if ((e as { code?: string }).code === "P2002") throw new Error("MEDICAO-JA-ESTORNADA: outro estorno desta medição foi gravado no mesmo instante. Nada foi gravado.");
+    throw e;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -471,6 +554,7 @@ interface MedicaoComContexto {
   }[];
   readonly recebimentoProvisorio: { readonly id: string; readonly data: Date; readonly criadoPor: string } | null;
   readonly recebimentosDefinitivos: readonly { readonly numero: number }[];
+  readonly estorno: { readonly id: string } | null;
 }
 
 async function medicaoComContexto(tx: Tx, medicaoId: string): Promise<MedicaoComContexto> {
@@ -482,6 +566,7 @@ async function medicaoComContexto(tx: Tx, medicaoId: string): Promise<MedicaoCom
       itens: { orderBy: { itemDaOrdem: { itemDoContrato: { numero: "asc" } } }, select: { id: true, quantidade: true, valorUnitario: true, itemDaOrdem: { select: { itemDoContrato: { select: { numero: true, descricao: true, unidade: true } } } }, conferencia: { select: { id: true, quantidadeConforme: true, quantidadeEmControversia: true, motivo: true, decisao: { select: { resultado: true } } } }, recebidos: { select: { quantidade: true } } } },
       recebimentoProvisorio: { select: { id: true, data: true, criadoPor: true } },
       recebimentosDefinitivos: { orderBy: { numero: "desc" }, take: 1, select: { numero: true } },
+      estorno: { select: { id: true } },
     },
   });
   if (m === null) throw new Error(`Medição ${medicaoId} não existe. Nada foi gravado.`);
@@ -531,6 +616,7 @@ export async function registrarRecebimentoProvisorio(prisma: PrismaClient, input
       const c = await contratoTravado(tx, alvo.ordem.contratoId);
       const fiscal = await exigirDesignacao(tx, c, d.criadoPor, "FISCAL", hoje());
       const m = await medicaoComContexto(tx, d.medicaoId);
+      if (m.estorno !== null) throw new Error(`MEDICAO-ESTORNADA: a medição nº ${m.numero} da ordem nº ${m.ordem.numero} foi estornada e não se recebe. Nada foi gravado.`);
       if (m.recebimentoProvisorio !== null) throw new Error(`RECEBIMENTO-PROVISORIO-JA-REGISTRADO: a medição nº ${m.numero} da ordem nº ${m.ordem.numero} já foi recebida provisoriamente. Nada foi gravado.`);
       if (d.data < diaCivil(m.periodoFim)) throw new Error(`RECEBIMENTO-ANTES-DA-EXECUCAO: a medição termina em ${diaCivilBr(m.periodoFim)}; não se recebe antes. Nada foi gravado.`);
       const pedidos = new Map(d.itens.map((i) => [i.itemMedidoId, i]));

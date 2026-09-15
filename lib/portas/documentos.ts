@@ -115,6 +115,7 @@ async function leituraDoDonoDoAnexo(anexoId: string): Promise<LeituraDoDono | nu
       guiaDeRecolhimentoId: true,
       ocorrenciaDeFiscalizacaoId: true,
       ocorrenciaDeFiscalizacao: { select: { contratoId: true } },
+      medicaoDaOrdem: { select: { ordem: { select: { contratoId: true } } } },
     },
   });
   if (a === null) return null;
@@ -129,6 +130,8 @@ async function leituraDoDonoDoAnexo(anexoId: string): Promise<LeituraDoDono | nu
   // ⚠️ V7 M2 U0.1 — e também não vai a quem só lê licitações: a evidência é da visão de FISCALIZAÇÃO (designado
   // vigente no contrato ou administrador da fiscalização). Antes, `CONSULTAR_LICITACOES` baixava qualquer uma.
   if (a.ocorrenciaDeFiscalizacao !== null) return { fiscalizacaoDoContrato: a.ocorrenciaDeFiscalizacao.contratoId };
+  // V7 M2 U7 — a evidência da medição da ordem é interna da fiscalização, como a da ocorrência.
+  if (a.medicaoDaOrdem !== null) return { fiscalizacaoDoContrato: a.medicaoDaOrdem.ordem.contratoId };
   return null;
 }
 

@@ -7,7 +7,7 @@ import { vincularPessoaAoUsuario } from "../../modules/m16-travamento/servico-pe
 import { cadastrarItemDoContrato, designarNoContrato } from "../../modules/m11-licitacoes/fiscalizacao.js";
 import {
   cancelarSaldoDaOrdemDeServico, criarRascunhoDeOrdemDeServico, decidirControversia, descartarRascunhoDeOrdemDeServico, emitirOrdemDeServico,
-  movimentarExecucaoDaOrdemDeServico, registrarMedicaoDaOrdem, registrarRecebimentoDefinitivo, registrarRecebimentoProvisorio,
+  estornarMedicaoDaOrdem, movimentarExecucaoDaOrdemDeServico, registrarMedicaoDaOrdem, registrarRecebimentoDefinitivo, registrarRecebimentoProvisorio,
 } from "../../modules/m11-licitacoes/ordem-de-servico.js";
 import { execucaoDoContrato } from "../../modules/m11-licitacoes/execucao-do-contrato.js";
 import { estornarAditivoPorItens, preverAditivoPorItens, registrarAditivoPorItens } from "../../modules/m11-licitacoes/aditivo-por-itens.js";
@@ -117,4 +117,35 @@ describe("ordem de serviço e recebimentos pelo papel de runtime", () => {
       await expect(app.$executeRawUnsafe(sql), sql).rejects.toThrow(negado);
     }
   });
+
+  it("V7 M2 U7 — a medição pela planilha da obra, a evidência e o estorno da medição pela conexão gestao_app, sem reescrita", async () => {
+    const { confirmarPreviaDePlanilha, gerarPreviaDePlanilha, vincularItemDaPlanilhaAoContrato } = await import("../../modules/m11-licitacoes/planilha-orcamentaria.js");
+    const { medirOrdemPelaPlanilha } = await import("../../modules/m11-licitacoes/medicao-pela-planilha.js");
+    const { xlsxDeTeste } = await import("../fixtures/planilhas.js");
+    const ENG = "engenharia.rt-os@teste.local";
+    const pe = await dono.perfil.create({ data: { nome: "RT-eng-os", descricao: "rt", criadoPor: "SEED", permissoes: { create: [{ acao: "GERIR_PLANILHA_DA_OBRA", criadoPor: "SEED" }] } }, select: { id: true } });
+    const ue = await dono.usuario.create({ data: { identificador: ENG, nome: ENG, criadoPor: "SEED" }, select: { id: true } });
+    await dono.vinculoUsuarioPerfil.create({ data: { usuarioId: ue.id, perfilId: pe.id, criadoPor: "SEED" } });
+    await dono.obra.create({ data: { id: "obra-rt-os", identificador: "OBRA-RT-OS", descricao: "Obra do runtime", tipoObraServico: "EDIFICACOES_EM_GERAL", criadoPor: "SEED" } as never });
+    // 1.1 visita 8 × 95,00 = 760,00 (a planilha é orçamento; o contrato paga 100,00 por visita).
+    const previa = await gerarPreviaDePlanilha(app, { obraId: "obra-rt-os", nomeDoArquivo: "o.xlsx", conteudo: xlsxDeTeste("Orçamento", [["Item", "Descrição", "Unidade", "Quantidade", "Preço unitário", "Total"], ["1", "SERVIÇOS", null, null, null, 760], ["1.1", "Visita técnica", "visita", 8, 95, 760]]), criadoPor: ENG });
+    const versao = await confirmarPreviaDePlanilha(app, { previaId: previa.previaId, descricao: "Orçamento do runtime", dataBaseDosPrecos: dia(-90), referenciaDePrecos: "Tabela sintética", vigenciaInicio: dia(-40), motivo: "Projeto aprovado", numeroDoContrato: "CT-RT-OS", cienteDasDivergencias: true, criadoPor: ENG });
+    const servico = await dono.itemDaPlanilhaOrcamentaria.findFirstOrThrow({ where: { planilhaId: versao.planilhaId, codigo: "1.1" }, select: { id: true } });
+    await vincularItemDaPlanilhaAoContrato(app, { itemDaPlanilhaId: servico.id, itemDoContratoId: itemA, motivo: "Correspondência conferida pela engenharia", criadoPor: ENG });
+    const r = await criarRascunhoDeOrdemDeServico(app, { contratoId: "ctr", finalidade: "Acompanhamento da obra pelo runtime", inicioPrevisto: dia(-20), fimPrevisto: dia(20), condicoesDeRecebimento: "Relatório assinado", fiscalDesignacaoId: fiscal, itens: [{ itemDoContratoId: itemA, quantidade: "2" }], criadoPor: GESTORA });
+    await emitirOrdemDeServico(app, { ordemId: r.ordemId, inicioAutorizado: dia(-15), criadoPor: GESTORA });
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
+    const m = await medirOrdemPelaPlanilha(app, { ordemId: r.ordemId, planilhaId: versao.planilhaId, diaInicio: dia(-10), diaFim: dia(-9), itens: [{ itemDaPlanilhaId: servico.id, quantidade: "2" }], evidencias: [{ nomeOriginal: "foto.png", mimeType: "image/png", conteudo: png }], criadoPor: FISCAL });
+    expect(m).toMatchObject({ valor: "200.00", valorNaPlanilha: "190.00", evidencias: 1 });
+    expect((await estornarMedicaoDaOrdem(app, { medicaoId: m.medicaoId, motivo: "Estorno da medição pelo papel de runtime", criadoPor: FISCAL })).valor).toBe("200.00");
+    for (const sql of [
+      `UPDATE "MedicaoDaOrdemNaPlanilha" SET "sha256" = 'x'`,
+      `UPDATE "ItemMedidoDaOrdemNaPlanilha" SET "quantidade" = 99`,
+      `DELETE FROM "ItemMedidoDaOrdemNaPlanilha"`,
+      `UPDATE "EstornoDeMedicaoDaOrdem" SET "motivo" = 'apagado'`,
+      `DELETE FROM "EstornoDeMedicaoDaOrdem"`,
+    ]) {
+      await expect(app.$executeRawUnsafe(sql), sql).rejects.toThrow(negado);
+    }
+  }, 180_000);
 });

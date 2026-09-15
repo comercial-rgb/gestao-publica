@@ -13,11 +13,13 @@ import {
   decidirControversia,
   descartarRascunhoDeOrdemDeServico,
   emitirOrdemDeServico,
+  estornarMedicaoDaOrdem,
   movimentarExecucaoDaOrdemDeServico,
   registrarMedicaoDaOrdem,
   registrarRecebimentoDefinitivo,
   registrarRecebimentoProvisorio,
 } from "../../modules/m11-licitacoes/ordem-de-servico.js";
+import { medirOrdemPelaPlanilha, versoesParaMedirAOrdem, type VersaoParaMedir } from "../../modules/m11-licitacoes/medicao-pela-planilha.js";
 import { estornarAditivoPorItens, preverAditivoPorItens, registrarAditivoPorItens, type ComposicaoDoAditivo } from "../../modules/m11-licitacoes/aditivo-por-itens.js";
 import { historicosDosItens, versaoNoDia } from "../../modules/m11-licitacoes/versoes-dos-itens.js";
 import { designacaoVigenteEm } from "../../modules/m33-folha/certificacao.js";
@@ -128,6 +130,21 @@ export async function execucaoDoContratoPara(sessao: Identidade, contratoId: str
   };
 }
 
+/**
+ * V7 M2 U7 — a medição da ordem PELA PLANILHA na página da ordem: as versões de planilha do contrato com a conciliação de
+ * cada serviço (a mesma do ato) e os itens da ordem com vínculo vivo à planilha (que não se medem avulsos). Só para quem
+ * pode medir; os outros não recebem as versões.
+ */
+export async function medicaoPelaPlanilhaParaTela(e: ExecucaoParaTela, ordemId: string): Promise<{ readonly versoes: readonly VersaoParaMedir[]; readonly itensDaPlanilha: readonly number[] }> {
+  if (!e.papeis.podeMedir) return { versoes: [], itensDaPlanilha: [] };
+  const prisma = cliente();
+  const [versoes, ligados] = await Promise.all([
+    versoesParaMedirAOrdem(prisma, ordemId),
+    prisma.vinculoDeItemDaPlanilhaAoContrato.findMany({ where: { revogacao: null, itemDoContrato: { itensDeOrdemDeServico: { some: { ordemId } } } }, select: { itemDoContrato: { select: { numero: true } } } }),
+  ]);
+  return { versoes, itensDaPlanilha: [...new Set(ligados.map((l) => l.itemDoContrato.numero))].sort((a, b) => a - b) };
+}
+
 /** A ORDEM na execução do contrato — `null` se não é deste contrato (a página responde 404). */
 export function ordemDaExecucao(e: ExecucaoParaTela, ordemId: string): OrdemNaTela | null {
   return e.ordens.find((o) => o.id === ordemId) ?? null;
@@ -188,6 +205,24 @@ export async function medirOrdemNaTela(c: Campos): Promise<string> {
   );
   const falta = r.aExecutar.filter((x) => x.quantidade !== "0.0000");
   return `Medição nº ${r.numero} registrada: R$ ${brl(r.valor)} em ${itens.length} item(ns).${falta.length === 0 ? " Nada mais a executar nesses itens." : ` Ainda a executar: ${falta.map((x) => `item ${x.item}, ${x.quantidade.replace(/\.?0+$/, "").replace(".", ",")}`).join("; ")}.`} Ela precisa do recebimento provisório do fiscal.`;
+}
+
+/** V7 M2 U7 — medir a ordem pelos serviços da versão escolhida; as evidências vão pelo M22 na mesma transação. */
+export async function medirPelaPlanilhaNaTela(c: Campos, arquivos: readonly File[]): Promise<string> {
+  const itens = porItem(c, "planilha").map((x) => ({ itemDaPlanilhaId: x.id, quantidade: decimal(x.valor) })).filter((x) => x.quantidade !== "" && Number(x.quantidade) !== 0);
+  if (itens.length === 0) throw new Error("Informe a quantidade medida de ao menos um serviço. Nada foi gravado.");
+  const evidencias = await Promise.all(arquivos.filter((a) => a.size > 0).map(async (a) => ({ nomeOriginal: a.name, mimeType: a.type, conteudo: new Uint8Array(await a.arrayBuffer()) })));
+  const r = await comEscritaAutenticada("REGISTRAR_MEDICAO_DE_OBRA", (criadoPor) =>
+    medirOrdemPelaPlanilha(cliente(), { ordemId: t(c, "ordemId"), planilhaId: t(c, "planilhaId"), diaInicio: t(c, "diaInicio"), diaFim: t(c, "diaFim"), ...(t(c, "observacao") !== "" ? { observacao: t(c, "observacao") } : {}), itens, evidencias, criadoPor })
+  );
+  const saldos = r.itens.map((i) => `serviço ${i.codigo}: acumulado ${qtd(i.acumulado)}, saldo na planilha ${qtd(i.saldoNaPlanilha)}`).join("; ");
+  return `Medição nº ${r.numero} registrada pela versão ${r.versao} da planilha: R$ ${brl(r.valor)} no contrato (R$ ${brl(r.valorNaPlanilha)} a preços da planilha), ${r.evidencias} evidência(s). ${saldos}. Ela precisa do recebimento provisório do fiscal.`;
+}
+
+/** V7 M2 U7 — estornar a medição que ainda não foi recebida. */
+export async function estornarMedicaoNaTela(c: Campos): Promise<string> {
+  const r = await comEscritaAutenticada("REGISTRAR_MEDICAO_DE_OBRA", (criadoPor) => estornarMedicaoDaOrdem(cliente(), { medicaoId: t(c, "medicaoId"), motivo: t(c, "motivo"), criadoPor }));
+  return `Medição nº ${r.numero} estornada (R$ ${brl(r.valor)}): continua no histórico, e as quantidades voltam a executar.`;
 }
 
 export async function provisorioNaTela(c: Campos): Promise<string> {

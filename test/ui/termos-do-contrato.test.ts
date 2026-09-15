@@ -79,3 +79,67 @@ describe("termo de recebimento definitivo em PDF", () => {
     expect(hashDoDocumento(documentoDoManifesto("definitivo", alterado.manifesto, alterado.sha256))).not.toBe(hashDoDocumento(primeira));
   });
 });
+
+/**
+ * V7 M2 U7 — A MEMÓRIA DA MEDIÇÃO PELA PLANILHA em PDF: 70 serviços com descrição longa e acentos — várias páginas, o
+ * último serviço presente, os DOIS totais (no contrato e na planilha) conferidos contra somas INDEPENDENTES em centavos
+ * inteiros, a versão da planilha e a referência de preços impressas; e a segunda via idêntica.
+ */
+function memoriaCom70Servicos() {
+  const itens = Array.from({ length: 70 }, (_, k) => {
+    const q = (k % 5) + 1;
+    const unitContrato = 100 + k; // centavos inteiros: (100 + k) reais
+    const precoPlanilha = 90 + k;
+    return {
+      codigo: `2.${k + 1}`, descricao: `${DESCRICAO_LONGA} (serviço ${k + 1})`, unidade: "visita",
+      previstoNaVersao: "10.0000", anteriorNaObra: "0.0000", atual: `${q}.0000`, acumulado: `${q}.0000`, saldoNaPlanilha: `${10 - q}.0000`,
+      precoDaPlanilha: `${precoPlanilha}.0000`, valorNaPlanilha: `${q * precoPlanilha}.00`,
+      itemDoContrato: { numero: k + 1, descricao: `Item contratual ${k + 1}`, unidade: "visita" }, vinculo: { motivo: "Correspondência conferida pela engenharia" },
+      autorizadoNaOrdem: "10.0000", anteriorNaOrdem: "0.0000", aExecutarNaOrdem: `${10 - q}.0000`, unitarioDoContrato: `${unitContrato}.0000`, valorNoContrato: `${q * unitContrato}.00`,
+    };
+  });
+  const centavos = (campo: "valorNoContrato" | "valorNaPlanilha") => itens.reduce((t, i) => t + Number(i[campo].replace(".", "")), 0);
+  const fmt = (c: number) => `${Math.floor(c / 100)}.${String(c % 100).padStart(2, "0")}`;
+  const totalContrato = fmt(centavos("valorNoContrato"));
+  const totalPlanilha = fmt(centavos("valorNaPlanilha"));
+  const bruto = {
+    documento: "MEMORIA_DA_MEDICAO", ente: "Município de São João do Açaí — PB (sintético)",
+    contrato: { numero: "CT-2026/0077", contratado: "Construções Ação & Cia. Ltda. (sintética)", documentoDoContratado: "12345678000199" },
+    ordem: { numero: 4, ano: 2026, finalidade: "Reforma da unidade básica de saúde" }, obra: { identificador: "OBRA-2026-003", descricao: "Reforma da UBS Conceição" },
+    planilha: { versao: 2, descricao: "Orçamento revisado", vigenciaInicio: "2026-08-01", dataBaseDosPrecos: "2026-06-01", referenciaDePrecos: "Tabela sintética de orçamento, 06/2026", sha256: "a".repeat(64) },
+    medicao: { numero: 3, periodo: { inicio: "2026-08-01", fim: "2026-08-31" }, registradaEm: "2026-09-02" },
+    responsavel: { nome: "Conceição Araújo", ato: "Portaria nº 321/2026", papel: "FISCAL" }, observacao: null,
+    itens, totais: { contrato: totalContrato, planilha: totalPlanilha }, arredondamento: "valor por linha arredondado uma vez aos centavos", evidencias: [{ nome: "relatório-de-campo.pdf", sha256: "b".repeat(64) }],
+  };
+  return { ...manifestoCanonico(bruto), totalContrato, totalPlanilha };
+}
+
+const emReais = (v: string): string => `R$ ${v.split(".")[0]!.replace(/\B(?=(\d{3})+(?!\d))/g, ".")},${v.split(".")[1]}`;
+
+describe("memória da medição pela planilha em PDF", () => {
+  it("DO01 (memória): 70 serviços — várias páginas, último serviço, os dois totais independentes, versão e referência de preços", async () => {
+    const t = memoriaCom70Servicos();
+    const doc = documentoDoManifesto("memoria", t.manifesto, t.sha256);
+    const r = await gerarPdfDoDemonstrativo(doc, { nomeBase: "memoria-da-medicao", geradoEm: new Date("2026-09-15T12:00:00Z") });
+    const { paginas, texto } = await textoDoPdf(r.pdf);
+    expect(paginas).toBeGreaterThan(1);
+    expect(texto).toContain("MEMÓRIA DA MEDIÇÃO Nº 3 DA ORDEM DE SERVIÇO Nº 4/2026");
+    expect(texto).toContain("(serviço 70)");
+    expect(texto).toContain("versão 2 — Orçamento revisado");
+    expect(texto).toContain("Tabela sintética de orçamento, 06/2026");
+    expect(texto).toContain("relatório-de-campo.pdf");
+    expect(texto).toContain(emReais(t.totalContrato));
+    expect(texto).toContain(emReais(t.totalPlanilha));
+    expect(t.totalContrato).not.toBe(t.totalPlanilha);
+    expect(texto).toContain(t.sha256);
+    expect(texto).toMatch(/Página \d+ de \d+/);
+  }, 120_000);
+
+  it("DO02 (memória): a segunda via é o mesmo documento; outra memória muda o hash", () => {
+    const t = memoriaCom70Servicos();
+    const primeira = documentoDoManifesto("memoria", t.manifesto, t.sha256);
+    expect(hashDoDocumento(documentoDoManifesto("memoria", JSON.parse(JSON.stringify(t.manifesto)), t.sha256))).toBe(hashDoDocumento(primeira));
+    const alterado = manifestoCanonico({ ...(t.manifesto as object), totais: { contrato: "1.00", planilha: "1.00" } });
+    expect(hashDoDocumento(documentoDoManifesto("memoria", alterado.manifesto, alterado.sha256))).not.toBe(hashDoDocumento(primeira));
+  });
+});

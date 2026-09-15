@@ -1,5 +1,6 @@
 import { confirmarPreviaDePlanilha, gerarPreviaDePlanilha, planilhaOrcamentaria, planilhasDaObra, previaDePlanilha, revogarVinculoDaPlanilha, TAMANHO_MAXIMO_DA_PLANILHA, vincularItemDaPlanilhaAoContrato } from "../../modules/m11-licitacoes/planilha-orcamentaria.js";
 import { mapeamentoEmLetras } from "../../modules/m11-licitacoes/analise-da-planilha.js";
+import { andamentoDaPlanilha } from "../../modules/m11-licitacoes/medicao-pela-planilha.js";
 import { cliente } from "./cliente";
 import { acoesPermitidas } from "./molde";
 import { comEscritaAutenticada } from "./sessao";
@@ -39,8 +40,8 @@ export async function planilhaParaTela(obraId: string, planilhaId: string) {
   const prisma = cliente();
   const v = await planilhaOrcamentaria(prisma, planilhaId);
   if (v === null || v.obraId !== obraId) return null;
-  const permitidas = await acoesPermitidas(["GERIR_PLANILHA_DA_OBRA"]);
-  return { ...v, podeGerir: permitidas.has("GERIR_PLANILHA_DA_OBRA") };
+  const [permitidas, andamento] = await Promise.all([acoesPermitidas(["GERIR_PLANILHA_DA_OBRA"]), andamentoDaPlanilha(prisma, planilhaId)]);
+  return { ...v, podeGerir: permitidas.has("GERIR_PLANILHA_DA_OBRA"), andamento };
 }
 
 type Campos = Readonly<Record<string, string>>;

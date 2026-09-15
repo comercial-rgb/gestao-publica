@@ -12,6 +12,7 @@ import { AvisosDosAtos, ResultadosDosAtos } from "../../../../../../../../compon
 export const dynamic = "force-dynamic";
 
 const br = (dia: string): string => dia.split("-").reverse().join("/");
+const SITUACAO_DA_MEDICAO: Readonly<Record<string, string>> = { ESTORNADA: "estornada", AGUARDANDO_PROVISORIO: "aguardando o recebimento provisório", RECEBIDA_PROVISORIAMENTE: "recebida provisoriamente", COM_RECEBIMENTO_DEFINITIVO: "com recebimento definitivo" };
 
 export default async function VersaoDaPlanilhaPage({ params }: { readonly params: Promise<{ readonly id: string; readonly planilhaId: string }> }): Promise<React.ReactElement> {
   await exigirLeitura("CONSULTAR_LICITACOES");
@@ -74,6 +75,36 @@ export default async function VersaoDaPlanilhaPage({ params }: { readonly params
           </table>
         </div>
       </Card>
+      {v.andamento === null ? null : (
+        <Card>
+          <h2 className="mb-1 text-sm font-semibold">Andamento da obra por serviço</h2>
+          <p className="mb-2 text-xs text-[color:var(--color-ink-2)]">Medido: soma das medições de ordem de serviço feitas pela planilha desta obra (todas as versões, pelo código do serviço), sem as estornadas. Previsto e saldo são desta versão. Recebido e liquidado estão na página de cada ordem.</p>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[40rem] text-left text-sm" data-andamento-da-planilha>
+              <thead><tr className="text-xs text-[color:var(--color-ink-2)]"><th className="py-1 pr-2">Serviço</th><th className="py-1 pr-2">Unidade</th><th className="py-1 pr-2 text-right">Previsto</th><th className="py-1 pr-2 text-right">Medido</th><th className="py-1 pr-2 text-right">Saldo</th><th className="py-1 text-right">Medido a preços da planilha</th></tr></thead>
+              <tbody>
+                {v.andamento.servicos.map((x) => (
+                  <tr key={x.codigo} data-andamento-do-servico={x.codigo} className="border-t border-[color:var(--color-border)]">
+                    <td className="py-1 pr-2 [overflow-wrap:anywhere]">{x.codigo} — {x.descricao}</td><td className="py-1 pr-2">{x.unidade}</td>
+                    <td className="py-1 pr-2 text-right tabular-nums">{qtdBr(x.previsto)}</td><td className="py-1 pr-2 text-right tabular-nums">{qtdBr(x.medido)}</td>
+                    <td className="py-1 pr-2 text-right tabular-nums">{qtdBr(x.saldo)}</td><td className="py-1 text-right"><ValorMonetario valor={x.valorMedidoNaPlanilha} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <h3 className="mt-3 text-xs font-semibold">Medições pela planilha</h3>
+          {v.andamento.medicoes.length === 0 ? <p className="text-xs text-[color:var(--color-ink-2)]" data-sem-medicao-pela-planilha>Nenhuma medição de ordem de serviço feita pela planilha desta obra.</p> : (
+            <ul className="mt-1 space-y-1 text-xs" data-medicoes-pela-planilha>
+              {v.andamento.medicoes.map((m) => (
+                <li key={m.medicaoId}>
+                  <Link href={`/licitacoes/contratos/${m.contratoId}/ordens/${m.ordemId}`} className="text-[color:var(--color-primary)] underline underline-offset-2">Ordem nº {m.ordem}, medição nº {m.numero}</Link> · versão {m.versao} · {m.periodo} · <ValorMonetario valor={m.valorNoContrato} comSimbolo /> no contrato (<ValorMonetario valor={m.valorNaPlanilha} comSimbolo /> na planilha) · {SITUACAO_DA_MEDICAO[m.situacao]}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
     </div>
     </ResultadosDosAtos>
   );

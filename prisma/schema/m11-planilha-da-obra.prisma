@@ -85,6 +85,8 @@ model PlanilhaOrcamentariaDaObra {
   criadoPor String
 
   itens ItemDaPlanilhaOrcamentaria[]
+  /// V7 M2 U7 — as medições de ordem feitas por esta versão. VIRTUAL.
+  medicoesDeOrdem MedicaoDaOrdemNaPlanilha[] @relation("MedicoesDeOrdemNaPlanilha")
 
   @@unique([obraId, versao])
   @@index([contratoId])
@@ -112,6 +114,8 @@ model ItemDaPlanilhaOrcamentaria {
   linhaDoArquivo Int
 
   vinculos VinculoDeItemDaPlanilhaAoContrato[]
+  /// V7 M2 U7 — as quantidades medidas em ordens por este serviço. VIRTUAL.
+  medidosEmOrdens ItemMedidoDaOrdemNaPlanilha[] @relation("MedidoEmOrdemPelaPlanilha")
 
   @@unique([planilhaId, codigo])
   @@index([planilhaId, ordem])
@@ -133,6 +137,8 @@ model VinculoDeItemDaPlanilhaAoContrato {
   criadoPor String
 
   revogacao RevogacaoDeVinculoDaPlanilha?
+  /// V7 M2 U7 — as medições que usaram este vínculo. VIRTUAL.
+  usosEmMedicoes ItemMedidoDaOrdemNaPlanilha[] @relation("UsadoEmMedicao")
 
   @@index([itemDaPlanilhaId])
   @@index([itemDoContratoId])

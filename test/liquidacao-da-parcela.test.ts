@@ -15,6 +15,9 @@ import { cadastrarItemDoContrato, designarNoContrato } from "../modules/m11-lici
 import { criarRascunhoDeOrdemDeServico, decidirControversia, emitirOrdemDeServico, registrarMedicaoDaOrdem, registrarRecebimentoDefinitivo, registrarRecebimentoProvisorio } from "../modules/m11-licitacoes/ordem-de-servico.js";
 import { liquidarParcelasDoContrato, numeroDaLiquidacaoDaParcela } from "../modules/m11-licitacoes/liquidacao-da-parcela.js";
 import { travar } from "../packages/locks/index.js";
+import { xlsxDeTeste } from "./fixtures/planilhas.js";
+import { medirOrdemPelaPlanilha } from "../modules/m11-licitacoes/medicao-pela-planilha.js";
+import { confirmarPreviaDePlanilha, gerarPreviaDePlanilha, vincularItemDaPlanilhaAoContrato } from "../modules/m11-licitacoes/planilha-orcamentaria.js";
 
 /**
  * ═══ A PONTE PARA A LIQUIDAÇÃO — A PARCELA RECEBIDA VIRA LIQUIDAÇÃO NO M05 (V7 M2 U3 — LI01 a LI06, ES01, ES02) ═══
@@ -271,4 +274,51 @@ describe("a parcela recebida vira liquidação no M05", () => {
     await expect(anularLiquidacao({ liquidacaoId: r2.liquidacaoId, numero: "NLA-7002", data: inicioDoDiaCivil(HOJE), historico: "Tentativa depois de pago", criadoPor: POR }, deps)).rejects.toThrow(/pag/i);
     await expect(liquidarP(await nota("7003", "900.00"), [{ recebimentoDefinitivoId: receb900, valor: "900.00" }])).rejects.toThrow(/PARCELA-JA-LIQUIDADA/);
   });
+
+  it("LI07 (V7 M2 U7): a parcela medida PELA PLANILHA da obra liquida pelo mesmo caminho — R$ 900,00 e, aceita a controvérsia, R$ 100,00", async () => {
+    // Contrato B com a mesma fixture: 2 itens, ordem de R$ 1.100,00; a planilha da obra (preços de orçamento diferentes)
+    // declara o contrato B e liga 1.1 → visita e 1.2 → hora. A medição pela planilha (6 visitas + 8 horas) vale R$ 1.000,00
+    // no contrato; o recebimento separa R$ 900,00 regulares e R$ 100,00 em controvérsia.
+    const ENG = "engenharia.liq@teste.local";
+    const pe = await prisma.perfil.create({ data: { nome: "P-eng-liq", descricao: "t", criadoPor: "SEED", permissoes: { create: [{ acao: "GERIR_PLANILHA_DA_OBRA", criadoPor: "SEED" }] } }, select: { id: true } });
+    const ue = await prisma.usuario.create({ data: { identificador: ENG, nome: ENG, criadoPor: "SEED" }, select: { id: true } });
+    await prisma.vinculoUsuarioPerfil.create({ data: { usuarioId: ue.id, perfilId: pe.id, criadoPor: "SEED" } });
+    const a = (await cadastrarItemDoContrato(prisma, { contratoId: "ctr-b", descricao: "Visita técnica", unidade: "visita", quantidade: "10", valorUnitario: "100", criadoPor: ADMIN })).itemId;
+    const b = (await cadastrarItemDoContrato(prisma, { contratoId: "ctr-b", descricao: "Hora técnica", unidade: "hora", quantidade: "20", valorUnitario: "50", criadoPor: ADMIN })).itemId;
+    await designarNoContrato(prisma, { contratoId: "ctr-b", papel: "GESTOR", usuarioIdentificador: GESTORA, atoDesignacao: "Portaria G-B", vigenciaInicio: dia(-30), criadoPor: ADMIN });
+    const f = (await designarNoContrato(prisma, { contratoId: "ctr-b", papel: "FISCAL", usuarioIdentificador: FISCAL, atoDesignacao: "Portaria F-B", vigenciaInicio: dia(-30), criadoPor: ADMIN })).designacaoId;
+    await designarNoContrato(prisma, { contratoId: "ctr-b", papel: "RECEBEDOR_DEFINITIVO", usuarioIdentificador: RECEBEDOR, atoDesignacao: "Portaria R-B", vigenciaInicio: dia(-30), criadoPor: ADMIN });
+    const empB = (await empenhar({ fichaId: "ficha-39", numero: "2026NE000200", tipo: "GLOBAL", valor: "1100.00", data: inicioDoDiaCivil(dia(-20)), credorCpfCnpj: CNPJ, historico: "Serviços técnicos do contrato B", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", contratoId: "ctr-b", criadoPor: POR }, R_EMPENHO, deps)).empenhoId;
+    await prisma.obra.create({ data: { id: "obra-liq", identificador: "OBRA-LIQ", descricao: "Obra sintética da liquidação", tipoObraServico: "EDIFICACOES_EM_GERAL", criadoPor: "SEED" } as never });
+    const previa = await gerarPreviaDePlanilha(prisma, { obraId: "obra-liq", nomeDoArquivo: "o.xlsx", conteudo: xlsxDeTeste("Orçamento", [["Item", "Descrição", "Unidade", "Quantidade", "Preço unitário", "Total"], ["1", "SERVIÇOS", null, null, null, 1720], ["1.1", "Visita técnica", "visita", 8, 95, 760], ["1.2", "Hora técnica", "hora", 20, 48, 960]]), criadoPor: ENG });
+    const versao = await confirmarPreviaDePlanilha(prisma, { previaId: previa.previaId, descricao: "Orçamento", dataBaseDosPrecos: dia(-90), referenciaDePrecos: "Tabela sintética", vigenciaInicio: dia(-40), motivo: "Projeto aprovado", numeroDoContrato: "CT-B", cienteDasDivergencias: true, criadoPor: ENG });
+    const servicos = await prisma.itemDaPlanilhaOrcamentaria.findMany({ where: { planilhaId: versao.planilhaId }, select: { id: true, codigo: true } });
+    const s = (c: string) => servicos.find((x) => x.codigo === c)!.id;
+    await vincularItemDaPlanilhaAoContrato(prisma, { itemDaPlanilhaId: s("1.1"), itemDoContratoId: a, motivo: "Correspondência conferida pela engenharia", criadoPor: ENG });
+    await vincularItemDaPlanilhaAoContrato(prisma, { itemDaPlanilhaId: s("1.2"), itemDoContratoId: b, motivo: "Correspondência conferida pela engenharia", criadoPor: ENG });
+    const r = await criarRascunhoDeOrdemDeServico(prisma, { contratoId: "ctr-b", finalidade: "Acompanhamento técnico da obra", inicioPrevisto: dia(-20), fimPrevisto: dia(20), condicoesDeRecebimento: "Relatório assinado", fiscalDesignacaoId: f, itens: [{ itemDoContratoId: a, quantidade: "6" }, { itemDoContratoId: b, quantidade: "10" }], criadoPor: GESTORA });
+    await emitirOrdemDeServico(prisma, { ordemId: r.ordemId, inicioAutorizado: dia(-15), criadoPor: GESTORA });
+    const m = await medirOrdemPelaPlanilha(prisma, { ordemId: r.ordemId, planilhaId: versao.planilhaId, diaInicio: dia(-10), diaFim: dia(-3), itens: [{ itemDaPlanilhaId: s("1.1"), quantidade: "6" }, { itemDaPlanilhaId: s("1.2"), quantidade: "8" }], criadoPor: FISCAL });
+    expect([m.valor, m.valorNaPlanilha]).toEqual(["1000.00", "954.00"]);
+    const med = await prisma.itemMedidoNaOrdem.findMany({ where: { medicaoId: m.medicaoId }, select: { id: true, origemNaPlanilha: { select: { codigo: true } } } });
+    const ma = med.find((x) => x.origemNaPlanilha?.codigo === "1.1")!.id;
+    const mb = med.find((x) => x.origemNaPlanilha?.codigo === "1.2")!.id;
+    await registrarRecebimentoProvisorio(prisma, { medicaoId: m.medicaoId, data: dia(-2), verificacoes: "Relatórios conferidos", itens: [{ itemMedidoId: ma, quantidadeConforme: "5", quantidadeEmControversia: "1", motivo: "Visita sem assinatura" }, { itemMedidoId: mb, quantidadeConforme: "8", quantidadeEmControversia: "0" }], criadoPor: FISCAL });
+    const r900 = (await registrarRecebimentoDefinitivo(prisma, { medicaoId: m.medicaoId, data: dia(-1), conclusao: "Parte regular", itens: [{ itemMedidoId: ma, quantidade: "5" }, { itemMedidoId: mb, quantidade: "8" }], criadoPor: RECEBEDOR })).recebimentoId;
+    const { documentoId: nfB } = await registrarDocumentoFiscal(prisma, { emitenteId, modelo: "NF_AVULSA", serie: "1", numero: "7000", dataEmissao: inicioDoDiaCivil(dia(-1)), dataRecebimento: inicioDoDiaCivil(dia(-1)), contratoId: "ctr-b", valorBruto: "1000.00", valorTotal: "1000.00", itens: [{ descricao: "Serviços medidos pela planilha", unidade: "SV", quantidade: "1", valorUnitario: "1000.00", valorTotal: "1000.00" }], criadoPor: POR });
+    await conferirDocumentoFiscal(prisma, { documentoId: nfB, data: inicioDoDiaCivil(dia(-1)), motivo: "Nota conferida com o recebimento", criadoPor: POR });
+    await expect(liquidarP(nfB, [{ recebimentoDefinitivoId: r900, valor: "1000.00" }], empB)).rejects.toThrow(/PARCELA-ACIMA-DO-ELEGIVEL/);
+    await expect(liquidarP(nfB, [{ recebimentoDefinitivoId: r900, valor: "900.00" }], empB)).resolves.toMatchObject({ valor: "900.00" });
+    const conf = await prisma.conferenciaDoItemMedido.findUniqueOrThrow({ where: { itemMedidoId: ma }, select: { id: true } });
+    await decidirControversia(prisma, { conferenciaId: conf.id, resultado: "ACEITA", fundamento: "Assinatura apresentada", data: HOJE, criadoPor: RECEBEDOR });
+    const r100 = (await registrarRecebimentoDefinitivo(prisma, { medicaoId: m.medicaoId, data: HOJE, conclusao: "Complemento aceito", itens: [{ itemMedidoId: ma, quantidade: "1" }], criadoPor: RECEBEDOR })).recebimentoId;
+    await expect(liquidarP(nfB, [{ recebimentoDefinitivoId: r100, valor: "100.00" }], empB)).resolves.toMatchObject({ valor: "100.00" });
+    const { execucaoDoContrato } = await import("../modules/m11-licitacoes/execucao-do-contrato.js");
+    const o = (await execucaoDoContrato(prisma, "ctr-b", "FINANCEIRA")).ordens[0]!;
+    expect(o.valores).toMatchObject({ autorizado: "1100.00", medido: "1000.00", recebido: "1000.00", liquidado: "1000.00" });
+    // As 2 horas não executadas não viram crédito: continuam a executar na ordem, e o empenho tem R$ 100,00 não liquidados.
+    expect(o.itens.map((i) => i.aExecutar)).toEqual(["0.0000", "2.0000"]);
+    const liqB = await prisma.liquidacao.findMany({ where: { empenhoId: empB, estornoDeId: null }, select: { valor: true } });
+    expect(liqB.map((l) => l.valor.toFixed(2)).sort()).toEqual(["100.00", "900.00"]);
+  }, 180_000);
 });

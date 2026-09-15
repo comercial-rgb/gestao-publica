@@ -812,6 +812,8 @@ export type NomeDeServico =
   | "confirmarPreviaDePlanilha"
   | "vincularItemDaPlanilhaAoContrato"
   | "revogarVinculoDaPlanilha"
+  | "medirOrdemPelaPlanilha"
+  | "estornarMedicaoDaOrdem"
   | "cadastrarItemDoContrato"
   | "programarFiscalizacao"
   | "registrarOcorrencia"
@@ -1290,6 +1292,10 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   confirmarPreviaDePlanilha: "GERIR_PLANILHA_DA_OBRA",
   vincularItemDaPlanilhaAoContrato: "GERIR_PLANILHA_DA_OBRA",
   revogarVinculoDaPlanilha: "GERIR_PLANILHA_DA_OBRA",
+  // V7 M2 U7 — medir a ordem pela planilha é a MESMA ação de medir (a designação de fiscal é a outra condição); o estorno
+  // da medição sem recebimento é do fiscal, pela mesma ação — desfaz o próprio ato antes de qualquer dependente.
+  medirOrdemPelaPlanilha: "REGISTRAR_MEDICAO_DE_OBRA",
+  estornarMedicaoDaOrdem: "REGISTRAR_MEDICAO_DE_OBRA",
   cadastrarItemDoContrato: "CADASTRAR_ITEM_DO_CONTRATO",
   programarFiscalizacao: "PROGRAMAR_FISCALIZACAO_DO_CONTRATO",
   registrarOcorrencia: "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO",
@@ -1577,6 +1583,20 @@ export const FORA_DO_CENSO: Record<string, string> = {
     "LEITURA: as versões da planilha orçamentária de uma obra — sob a leitura de licitações e contratos.",
   planilhaOrcamentaria:
     "LEITURA: uma versão da planilha orçamentária com itens e vínculos — sob a leitura de licitações e contratos.",
+  versoesParaMedirAOrdem:
+    "LEITURA: as versões de planilha do contrato da ordem com a conciliação de cada serviço — a página da ordem, sob o " +
+    "alcance do contrato; o formulário só aparece ao fiscal designado, e o ato cobra de novo.",
+  andamentoDaPlanilha:
+    "LEITURA: o andamento físico da obra por serviço e as medições de ordem feitas pelas versões — sob a leitura de licitações e contratos.",
+  gravarMedicaoDaOrdemNaTransacao:
+    "composável interno: o núcleo da medição da ordem (período, vigência, suspensão, regime, ME06, autorizado) dentro da " +
+    "transação de `registrarMedicaoDaOrdem` ou de `medirOrdemPelaPlanilha`, que já cobraram REGISTRAR_MEDICAO_DE_OBRA.",
+  preCondicoesDaMedicaoDaOrdem:
+    "PURA: pré-condições sem banco (período, repetição, quantidade positiva) da medição da ordem.",
+  conciliarServico:
+    "PURA: a conciliação de um serviço da planilha com o item do contrato e a ordem (vínculo único, unidade, item autorizado).",
+  nomeEAto:
+    "LEITURA: nome e ato da designação, dentro da transação dos atos da ordem que já cobraram a própria ação.",
   aditivosPorItensDoContrato:
     "LEITURA PÚBLICA: os aditivos por itens do contrato (termo, vigência, fundamento, variação, itens antes e depois) — " +
     "publicidade da alteração contratual; usada pela projeção pública e pelo dossiê.",

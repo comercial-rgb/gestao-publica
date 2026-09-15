@@ -241,7 +241,7 @@ export async function programarFiscalizacao(prisma: PrismaClient, input: Program
   });
 }
 
-const zEvidencia = z.object({ nomeOriginal: z.string().min(1), mimeType: z.string().min(1), conteudo: z.instanceof(Uint8Array) });
+export const zEvidencia = z.object({ nomeOriginal: z.string().min(1), mimeType: z.string().min(1), conteudo: z.instanceof(Uint8Array) });
 
 export const zRegistrarOcorrencia = z.object({
   contratoId: z.string().min(1),

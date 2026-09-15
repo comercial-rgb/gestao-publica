@@ -95,7 +95,7 @@ interface ComposicaoInterna extends ComposicaoDoAditivo {
 async function medidoPorItem(tx: Tx, itemIds: readonly string[], dia: string): Promise<Map<string, { antes: Decimal; aPartir: string[] }>> {
   const limite = inicioDoDiaCivil(dia);
   const [naOrdem, porItens] = await Promise.all([
-    tx.itemMedidoNaOrdem.findMany({ where: { itemDaOrdem: { itemDoContratoId: { in: [...itemIds] } } }, select: { quantidade: true, itemDaOrdem: { select: { itemDoContratoId: true, ordem: { select: { numero: true, ano: true } } } }, medicao: { select: { numero: true, periodoInicio: true, periodoFim: true } } } }),
+    tx.itemMedidoNaOrdem.findMany({ where: { itemDaOrdem: { itemDoContratoId: { in: [...itemIds] } }, medicao: { estorno: null } }, select: { quantidade: true, itemDaOrdem: { select: { itemDoContratoId: true, ordem: { select: { numero: true, ano: true } } } }, medicao: { select: { numero: true, periodoInicio: true, periodoFim: true } } } }),
     tx.itemMedido.findMany({ where: { itemId: { in: [...itemIds] } }, select: { quantidade: true, itemId: true, medicaoPorItens: { select: { medicao: { select: { numero: true, periodoInicio: true, periodoFim: true } } } } } }),
   ]);
   const m = new Map<string, { antes: Decimal; aPartir: string[] }>();

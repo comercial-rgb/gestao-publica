@@ -1,0 +1,83 @@
+// ═══ M11 — A MEDIÇÃO DA ORDEM DE SERVIÇO PELA PLANILHA ORÇAMENTÁRIA DA OBRA (V7 M2 U7) ═══
+//
+// Não é outra medição. O fato que mede, recebe e liquida continua sendo a `MedicaoDaOrdemDeServico` (U2) com os seus
+// `ItemMedidoNaOrdem`: saldo autorizado da ordem, unitário do contrato vigente no primeiro dia do período (ME06),
+// recebimentos provisório e definitivo, liquidação da parcela pelo M05 (U3). O que esta frente acrescenta é a ORIGEM
+// da quantidade: o serviço da VERSÃO aplicável da planilha, pelo VÍNCULO explícito com o item do contrato, e a
+// MEMÓRIA do cálculo (manifesto + sha256) que nenhuma versão ou aditivo posterior reescreve.
+//
+// E o ESTORNO da medição da ordem — fato novo, só enquanto nada depende dela (sem recebimento provisório). A medição
+// estornada continua no histórico e sai das somas (autorizado a executar, acumulado na planilha, composição do aditivo).
+
+/// A medição da ordem feita pela planilha: qual versão, e a memória do cálculo como foi gravada.
+model MedicaoDaOrdemNaPlanilha {
+  id String @id @default(cuid())
+
+  medicaoId String                  @unique
+  medicao   MedicaoDaOrdemDeServico @relation("MedicaoDaOrdemPelaPlanilha", fields: [medicaoId], references: [id])
+
+  /// A versão APLICÁVEL ao período (a última com vigência até o primeiro dia; o período não atravessa a seguinte).
+  planilhaId String
+  planilha   PlanilhaOrcamentariaDaObra @relation("MedicoesDeOrdemNaPlanilha", fields: [planilhaId], references: [id])
+
+  /// A memória: versão, data-base e referência de preços, quantidades (previsto, anterior, atual, acumulado, saldo),
+  /// preço da planilha e unitário do contrato, vínculo usado, arredondamento e evidências.
+  manifesto Json
+  sha256    String @db.VarChar(64)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  itens ItemMedidoDaOrdemNaPlanilha[]
+
+  @@index([planilhaId])
+}
+
+/// Um serviço da planilha medido: de onde veio a quantidade do item medido da ordem.
+model ItemMedidoDaOrdemNaPlanilha {
+  id String @id @default(cuid())
+
+  medicaoNaPlanilhaId String
+  medicaoNaPlanilha   MedicaoDaOrdemNaPlanilha @relation(fields: [medicaoNaPlanilhaId], references: [id])
+
+  /// O item medido da ordem que esta linha originou (um serviço por item da ordem na mesma medição).
+  itemMedidoId String            @unique
+  itemMedido   ItemMedidoNaOrdem @relation("OrigemNaPlanilha", fields: [itemMedidoId], references: [id])
+
+  itemDaPlanilhaId String
+  itemDaPlanilha   ItemDaPlanilhaOrcamentaria @relation("MedidoEmOrdemPelaPlanilha", fields: [itemDaPlanilhaId], references: [id])
+
+  /// O vínculo VIVO usado no momento da medição (revogar depois não reescreve esta linha).
+  vinculoId String
+  vinculo   VinculoDeItemDaPlanilhaAoContrato @relation("UsadoEmMedicao", fields: [vinculoId], references: [id])
+
+  /// O código do serviço — o acumulado da obra atravessa as versões pelo código.
+  codigo          String
+  quantidade      Decimal @db.Decimal(18, 4)
+  /// O preço unitário da VERSÃO da planilha (referência de orçamento) e o valor calculado com ele. O valor a receber e
+  /// a liquidar é o do item medido da ordem (unitário do contrato); os dois ficam lado a lado na memória.
+  precoDaPlanilha Decimal @db.Decimal(18, 4)
+  valorNaPlanilha Decimal @db.Decimal(18, 2)
+
+  @@unique([medicaoNaPlanilhaId, itemDaPlanilhaId], map: "ItemMedidoDaOrdemNaPlanilha_medicaoNaPlanilhaId_itemDaPlani_key")
+  @@index([itemDaPlanilhaId])
+  @@index([codigo])
+  @@index([vinculoId])
+}
+
+/// O ESTORNO da medição da ordem — só sem recebimento provisório. Fato novo; a medição não é apagada.
+model EstornoDeMedicaoDaOrdem {
+  id String @id @default(cuid())
+
+  medicaoId String                  @unique
+  medicao   MedicaoDaOrdemDeServico @relation("EstornoDaMedicaoDaOrdem", fields: [medicaoId], references: [id])
+
+  /// A designação de FISCAL vigente com que foi praticado.
+  designacaoId String
+  designacao   DesignacaoNoContrato @relation("EstornosDeMedicaoDaOrdem", fields: [designacaoId], references: [id])
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

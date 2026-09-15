@@ -138,7 +138,7 @@ export function FormConfirmarPrevia({ obraId, previaId, divergencias, hoje }: { 
 export function FormVincular({ obraId, itemDaPlanilhaId, codigo, itensDoContrato }: { readonly obraId: string; readonly itemDaPlanilhaId: string; readonly codigo: string; readonly itensDoContrato: readonly { readonly id: string; readonly numero: number; readonly descricao: string; readonly unidade: string }[] }): React.ReactElement {
   const a = useAto("vincular-item-da-planilha", obraId);
   return (
-    <form ref={a.ref} action={a.disparar} data-acao="vincular-item-da-planilha" className="mt-2 grid gap-2 sm:grid-cols-3">
+    <form ref={a.ref} action={a.disparar} data-acao="vincular-item-da-planilha" data-servico={codigo} className="mt-2 grid gap-2 sm:grid-cols-3">
       <ChaveDeComando />
       <Ocultos obraId={obraId} acao="vincular" extra={{ itemDaPlanilhaId }} />
       <label htmlFor={`${a.id}-item`} className="text-xs text-[color:var(--color-ink-2)]">

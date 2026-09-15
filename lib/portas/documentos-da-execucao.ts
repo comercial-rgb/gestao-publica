@@ -19,7 +19,8 @@ export async function documentoDaExecucaoParaImprimir(contratoId: string, tipo: 
   const t = tipo as TipoDoDocumentoDoContrato;
   const prisma = cliente();
   const alcance = await alcanceNoContrato(prisma, sessao.identificador, contratoId);
-  const permitido = t === "ordem" || t === "definitivo" ? alcance.fiscalizacao || alcance.financeira : alcance.fiscalizacao;
+  // V7 M2 U7 — a MEMÓRIA da medição lastreia o valor recebido e liquidado: fiscalização e financeira (as evidências dela, não).
+  const permitido = t === "ordem" || t === "definitivo" || t === "memoria" ? alcance.fiscalizacao || alcance.financeira : alcance.fiscalizacao;
   if (!permitido) return null;
   const lido =
     t === "ordem"
@@ -28,7 +29,10 @@ export async function documentoDaExecucaoParaImprimir(contratoId: string, tipo: 
         ? await prisma.recebimentoProvisorio.findFirst({ where: { id: docId, medicao: { ordem: { contratoId } } }, select: { manifesto: true, sha256: true } })
         : t === "definitivo"
           ? await prisma.recebimentoDefinitivo.findFirst({ where: { id: docId, medicao: { ordem: { contratoId } } }, select: { manifesto: true, sha256: true } })
-          : // A decisão é endereçada pelo ITEM MEDIDO (uma decisão por conferência, uma conferência por item medido).
+          : t === "memoria"
+            ? // A memória é endereçada pela MEDIÇÃO da ordem (uma memória por medição feita pela planilha).
+              await prisma.medicaoDaOrdemNaPlanilha.findFirst({ where: { medicaoId: docId, medicao: { ordem: { contratoId } } }, select: { manifesto: true, sha256: true } })
+            : // A decisão é endereçada pelo ITEM MEDIDO (uma decisão por conferência, uma conferência por item medido).
             await prisma.decisaoDeControversia.findFirst({ where: { conferencia: { itemMedidoId: docId, medido: { medicao: { ordem: { contratoId } } } } }, select: { manifesto: true, sha256: true } });
   if (lido === null) return null;
   return { documento: documentoDoManifesto(t, lido.manifesto, lido.sha256), nomeBase: `${NOME_DO_TIPO[t]}-${lido.sha256.slice(0, 8)}` };

@@ -247,6 +247,114 @@ export function FormMedirOrdem({ contratoId, ordemId, itens, hoje }: { readonly 
   );
 }
 
+/**
+ * O que a porta entrega sobre cada versão (`versoesParaMedirAOrdem`). ⚠️ DECLARADO AQUI, não importado: o grep da fronteira
+ * é textual e barra `from ".../lib/portas/"` numa ilha cliente, mesmo `import type`; o tsc da página confere a forma.
+ */
+interface VersaoParaMedir {
+  readonly planilhaId: string;
+  readonly obra: string;
+  readonly versao: number;
+  readonly vigenciaInicio: string;
+  readonly ateAntesDe: string | null;
+  readonly linhas: readonly {
+    readonly itemDaPlanilhaId: string; readonly codigo: string; readonly descricao: string; readonly unidade: string; readonly previsto: string; readonly anterior: string; readonly saldo: string;
+    readonly conciliacao: { readonly apto: true; readonly itemDoContrato: string; readonly aExecutarNaOrdem: string } | { readonly apto: false; readonly recusa: string; readonly motivo: string };
+  }[];
+}
+
+/**
+ * V7 M2 U7 — MEDIR PELA PLANILHA DA OBRA. A pessoa escolhe a versão (a tela mostra de quando a quando ela vale); cada
+ * serviço mostra previsto, anterior na obra, esta medição, acumulado e saldo — o acumulado e o saldo daqui são só a soma do
+ * que foi digitado, para orientar. O serviço que não concilia (sem vínculo, ambíguo, unidade diferente, item fora da
+ * ordem) aparece com o motivo e sem campo. Quem confere tudo, inclusive se a versão vale no período, é o servidor.
+ */
+export function FormMedirPelaPlanilha({ contratoId, ordemId, versoes, hoje }: { readonly contratoId: string; readonly ordemId: string; readonly versoes: readonly VersaoParaMedir[]; readonly hoje: string }): React.ReactElement {
+  const a = useAto("medir-pela-planilha");
+  const [planilhaId, setPlanilhaId] = useState(versoes[versoes.length - 1]?.planilhaId ?? "");
+  const [digitado, setDigitado] = useState<Readonly<Record<string, string>>>({});
+  const v = versoes.find((x) => x.planilhaId === planilhaId) ?? versoes[0];
+  if (v === undefined) return <></>;
+  const br = (d: string): string => d.split("-").reverse().join("/");
+  return (
+    <form ref={a.ref} action={a.disparar} data-acao="medir-pela-planilha" className={CLASSE_PAINEL_FORMULARIO} encType="multipart/form-data">
+      <ChaveDeComando />
+      <Ocultos contratoId={contratoId} acao="medirPelaPlanilha" extra={{ ordemId }} />
+      <h3 className="mb-1 text-sm font-semibold">Registrar medição pela planilha da obra (fiscal)</h3>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">A quantidade de cada serviço vira a quantidade do item vinculado da ordem, valorada pelo unitário do contrato. A versão precisa valer no primeiro dia do período, e o período não pode alcançar a versão seguinte.</p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <label htmlFor={`${a.id}-planilhaId`} className="text-xs text-[color:var(--color-ink-2)]">
+          <span className={CLASSE_ROTULO}>Versão da planilha</span>
+          <select id={`${a.id}-planilhaId`} name="planilhaId" required value={planilhaId} onChange={(ev) => { setPlanilhaId(ev.currentTarget.value); setDigitado({}); }} className={CLASSE_CAMPO}>
+            {versoes.map((x) => <option key={x.planilhaId} value={x.planilhaId}>{x.obra} — versão {x.versao} (vale desde {br(x.vigenciaInicio)}{x.ateAntesDe === null ? "" : `, até antes de ${br(x.ateAntesDe)}`})</option>)}
+          </select>
+        </label>
+        <Campo id={a.id} nome="diaInicio" rotulo="Período — início" tipo="date" max={hoje} min={v.vigenciaInicio} />
+        <Campo id={a.id} nome="diaFim" rotulo="Período — fim" tipo="date" max={hoje} />
+      </div>
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full min-w-[56rem] text-left text-xs" data-servicos-para-medir={v.versao}>
+          <caption className="sr-only">Serviços da versão {v.versao}: previsto, anterior, esta medição, acumulado e saldo</caption>
+          <thead><tr className="text-[color:var(--color-ink-2)]"><th className="py-1 pr-2">Serviço</th><th className="py-1 pr-2">Item do contrato</th><th className="py-1 pr-2 text-right">Previsto</th><th className="py-1 pr-2 text-right">Anterior na obra</th><th className="py-1 pr-2">Esta medição</th><th className="py-1 pr-2 text-right">Acumulado</th><th className="py-1 text-right">Saldo</th></tr></thead>
+          <tbody>
+            {v.linhas.map((l) => {
+              const atual = numero(digitado[l.itemDaPlanilhaId] ?? "");
+              const acumulado = Number(l.anterior) + atual;
+              const saldo = Number(l.previsto) - acumulado;
+              return (
+                <tr key={l.itemDaPlanilhaId} data-servico={l.codigo} className="border-t border-[color:var(--color-border)] align-top">
+                  <td className="py-1 pr-2 [overflow-wrap:anywhere]">{l.codigo} — {l.descricao} ({l.unidade})</td>
+                  <td className="py-1 pr-2 [overflow-wrap:anywhere]">{l.conciliacao.apto ? <>{l.conciliacao.itemDoContrato}<span className="block text-[color:var(--color-ink-2)]">a executar na ordem: {qtdBr(l.conciliacao.aExecutarNaOrdem)}</span></> : <span data-motivo-do-servico={l.conciliacao.recusa}>Não se mede por aqui: {l.conciliacao.motivo}.</span>}</td>
+                  <td className="py-1 pr-2 text-right tabular-nums">{qtdBr(l.previsto)}</td>
+                  <td className="py-1 pr-2 text-right tabular-nums">{qtdBr(l.anterior)}</td>
+                  <td className="py-1 pr-2">
+                    {l.conciliacao.apto ? (
+                      <label htmlFor={`${a.id}-planilha-${l.itemDaPlanilhaId}`} className="block">
+                        <span className="sr-only">Quantidade medida do serviço {l.codigo}</span>
+                        <input id={`${a.id}-planilha-${l.itemDaPlanilhaId}`} name={`planilha.${l.itemDaPlanilhaId}`} inputMode="decimal" placeholder="0" className={CLASSE_CAMPO} onChange={(ev) => { const valor = ev.currentTarget.value; setDigitado((d) => ({ ...d, [l.itemDaPlanilhaId]: valor })); }} />
+                      </label>
+                    ) : "—"}
+                  </td>
+                  <td className="py-1 pr-2 text-right tabular-nums">{qtdBr(acumulado.toFixed(4))}</td>
+                  <td className={`py-1 text-right tabular-nums ${saldo < 0 ? "font-semibold text-[color:var(--color-status-erro-fg)]" : ""}`}>{qtdBr(saldo.toFixed(4))}{saldo < 0 ? " (acima do previsto)" : ""}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <Texto id={a.id} nome="observacao" rotulo="Observações (opcional)" obrigatorio={false} />
+        <label htmlFor={`${a.id}-evidencias`} className="text-xs text-[color:var(--color-ink-2)]"><span className={CLASSE_ROTULO}>Evidências (fotos, PDF; opcional)</span>
+          <input id={`${a.id}-evidencias`} name="evidencias" type="file" multiple accept="application/pdf,image/png,image/jpeg" className={CLASSE_CAMPO} />
+        </label>
+      </div>
+      <Mensagens estado={a.estado} acao="medir-pela-planilha" />
+      <Enviar pendente={a.pendente} rotulo="Registrar medição" />
+    </form>
+  );
+}
+
+/** V7 M2 U7 — o estorno da medição ainda não recebida (o servidor recusa se houver recebimento). */
+export function FormEstornarMedicao({ contratoId, medicaoId, numero }: { readonly contratoId: string; readonly medicaoId: string; readonly numero: number }): React.ReactElement {
+  const a = useAto(`estornar-medicao-${numero}`);
+  return (
+    <details className="mt-2 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-2">
+      <summary className="cursor-pointer text-xs font-semibold">Estornar a medição nº {numero}</summary>
+      <form ref={a.ref} action={a.disparar} data-acao={`estornar-medicao-${numero}`} className="mt-2">
+        <ChaveDeComando />
+        <Ocultos contratoId={contratoId} acao="estornarMedicao" extra={{ medicaoId }} />
+        <p className="text-xs text-[color:var(--color-ink-2)]">Só enquanto não houver recebimento provisório. A medição fica no histórico, marcada como estornada, e as quantidades voltam a executar.</p>
+        <label htmlFor={`${a.id}-motivo`} className="mt-2 block text-xs text-[color:var(--color-ink-2)]"><span className={CLASSE_ROTULO}>Motivo do estorno</span>
+          <textarea id={`${a.id}-motivo`} name="motivo" required minLength={10} rows={2} className={CLASSE_AREA_TEXTO} />
+        </label>
+        <Mensagens estado={a.estado} acao={`estornar-medicao-${numero}`} />
+        <Enviar pendente={a.pendente} rotulo="Estornar medição" />
+      </form>
+    </details>
+  );
+}
+
 export function FormRecebimentoProvisorio({ contratoId, medicaoId, itens, hoje }: { readonly contratoId: string; readonly medicaoId: string; readonly itens: readonly { readonly id: string; readonly rotulo: string; readonly medido: string; readonly unidade: string }[]; readonly hoje: string }): React.ReactElement {
   const a = useAto("receber-provisoriamente");
   return (

@@ -63,6 +63,8 @@ model DesignacaoNoContrato {
   recebimentosProvisorios      RecebimentoProvisorio[]
   recebimentosDefinitivos      RecebimentoDefinitivo[]
   decisoesDeControversia       DecisaoDeControversia[]
+  // V7 M2 U7 — estornos de medição da ordem praticados sob esta designação. VIRTUAL.
+  estornosDeMedicaoDaOrdem     EstornoDeMedicaoDaOrdem[]    @relation("EstornosDeMedicaoDaOrdem")
 
   @@index([contratoId, papel])
   @@index([usuarioId])
@@ -606,6 +608,10 @@ model MedicaoDaOrdemDeServico {
   itens                   ItemMedidoNaOrdem[]
   recebimentoProvisorio   RecebimentoProvisorio?
   recebimentosDefinitivos RecebimentoDefinitivo[]
+  // V7 M2 U7 — a origem pela planilha, o estorno e as evidências. VIRTUAIS.
+  naPlanilha              MedicaoDaOrdemNaPlanilha? @relation("MedicaoDaOrdemPelaPlanilha")
+  estorno                 EstornoDeMedicaoDaOrdem?  @relation("EstornoDaMedicaoDaOrdem")
+  evidencias              Anexo[]                   @relation("EvidenciaDaMedicaoDaOrdem")
 
   @@unique([ordemId, numero])
 }
@@ -626,6 +632,8 @@ model ItemMedidoNaOrdem {
 
   conferencia        ConferenciaDoItemMedido?
   recebidos          ItemRecebidoDefinitivamente[]
+  /// V7 M2 U7 — o serviço da planilha de que veio a quantidade (quando medido pela planilha). VIRTUAL.
+  origemNaPlanilha   ItemMedidoDaOrdemNaPlanilha? @relation("OrigemNaPlanilha")
 
   @@unique([medicaoId, itemDaOrdemId])
   @@index([itemDaOrdemId])

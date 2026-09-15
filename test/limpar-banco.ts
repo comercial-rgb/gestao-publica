@@ -51,6 +51,10 @@ const TABELAS = [
   "SignatarioDaFila",
   "FilaDeAssinatura",
   // ── V7 M2 (ponte contratual) ──
+  // U7 — a medição da ordem pela planilha e o estorno da medição (antes do vínculo, do item da planilha e da medição).
+  "ItemMedidoDaOrdemNaPlanilha",
+  "MedicaoDaOrdemNaPlanilha",
+  "EstornoDeMedicaoDaOrdem",
   "RevogacaoDeVinculoDaPlanilha",
   "VinculoDeItemDaPlanilhaAoContrato",
   "ItemDaPlanilhaOrcamentaria",
