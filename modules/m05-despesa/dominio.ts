@@ -438,6 +438,17 @@ export const zLiquidarInput = z.object({
     )
     .min(1)
     .optional(),
+  /**
+   * V7 M2 U3 — AS PARCELAS RECEBIDAS DO CONTRATO que esta liquidação consome (recebimento definitivo e valor).
+   *
+   * ⚠️ OPCIONAL, como a `medicaoId` e as entradas de material: a liquidação de custeio, de folha e de encargos não tem
+   * parcela de contrato. Quando vem, o adapter confere as parcelas DENTRO da transação, sob o trinco do contrato, antes
+   * de gravar, e grava as alocações no mesmo commit (`modules/m11-licitacoes/parcelas-da-liquidacao.ts`).
+   */
+  parcelasDoContrato: z
+    .array(z.object({ recebimentoDefinitivoId: z.string().min(1), valor: zValorPositivo }))
+    .min(1)
+    .optional(),
 });
 
 export const zPagarInput = z.object({

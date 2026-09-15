@@ -92,6 +92,8 @@ export async function liquidar(
       ...(dados.entradasDeMaterial !== undefined
         ? { entradasDeMaterial: dados.entradasDeMaterial }
         : {}),
+      // V7 M2 U3 — as parcelas do contrato atravessam o serviço; quem confere é o adapter, na transação.
+      ...(dados.parcelasDoContrato !== undefined ? { parcelasDoContrato: dados.parcelasDoContrato } : {}),
       criadoPor: dados.criadoPor,
     },
     {

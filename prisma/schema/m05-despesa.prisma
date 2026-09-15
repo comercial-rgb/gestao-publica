@@ -355,6 +355,8 @@ model Liquidacao {
   liquidacaoDosEncargos LiquidacaoDosEncargos? @relation("LiquidacaoDosEncargos")
   /// V7 M1 U3 — o rastro do ajuste para baixo quando ESTA linha é a anulação parcial. VIRTUAL.
   ajusteDosEncargos     AjusteDosEncargos?     @relation("AnulacaoDeLiquidacaoDosEncargos")
+  /// V7 M2 U3 — as parcelas recebidas do contrato que esta liquidação consumiu. VIRTUAL.
+  alocacoesNaParcela    AlocacaoDaLiquidacaoNaParcela[] @relation("AlocacoesDaLiquidacao")
 }
 
 /// Conta bancária do ente. Existe para que a TR 5.23 seja VERIFICÁVEL: sem

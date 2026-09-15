@@ -634,6 +634,8 @@ model RecebimentoDefinitivo {
   criadoPor String
 
   itens ItemRecebidoDefinitivamente[]
+  /// V7 M2 U3 — as alocações das liquidações que consumiram este recebimento. VIRTUAL.
+  alocacoes AlocacaoDaLiquidacaoNaParcela[]
 
   @@unique([medicaoId, numero])
 }
@@ -652,4 +654,25 @@ model ItemRecebidoDefinitivamente {
 
   @@unique([recebimentoId, itemMedidoId])
   @@index([itemMedidoId])
+}
+
+/// V7 M2 U3 — A ALOCAÇÃO DA LIQUIDAÇÃO NA PARCELA RECEBIDA. Uma liquidação do M05 pode consumir mais de um recebimento
+/// definitivo (o regular e o complemento na mesma nota), e um recebimento pode ser consumido por mais de uma liquidação.
+/// Gravada na transação da liquidação, sob o trinco do contrato; o consumido é DERIVADO (estorno da liquidação libera).
+model AlocacaoDaLiquidacaoNaParcela {
+  id String @id @default(cuid())
+
+  liquidacaoId String
+  liquidacao   Liquidacao @relation("AlocacoesDaLiquidacao", fields: [liquidacaoId], references: [id])
+
+  recebimentoDefinitivoId String
+  recebimentoDefinitivo   RecebimentoDefinitivo @relation(fields: [recebimentoDefinitivoId], references: [id])
+
+  valor Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([liquidacaoId, recebimentoDefinitivoId])
+  @@index([recebimentoDefinitivoId])
 }

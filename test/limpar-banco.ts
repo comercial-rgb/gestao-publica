@@ -51,6 +51,7 @@ const TABELAS = [
   "SignatarioDaFila",
   "FilaDeAssinatura",
   // ── V7 M2 (ponte contratual) ──
+  "AlocacaoDaLiquidacaoNaParcela",
   "ItemRecebidoDefinitivamente",
   "RecebimentoDefinitivo",
   "DecisaoDeControversia",

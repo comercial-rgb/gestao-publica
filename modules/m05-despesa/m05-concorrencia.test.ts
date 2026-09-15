@@ -244,6 +244,28 @@ describe("M05 — concorrência no saldo da ficha", () => {
     }
   }, 60_000);
 
+  // t5 — V7 M2 U3: achado da mutação do trinco da parcela. Com o trinco do contrato retirado, duas liquidações
+  // concorrentes de 900 passaram num empenho de 1.100: o `liquidar` somava o já liquidado sem trinco nenhum.
+  it("t5: duas liquidações concorrentes de 700 contra um empenho de 1.000 — UMA só grava", async () => {
+    for (let i = 0; i < RODADAS; i++) {
+      await semear();
+      const e = await empenhar(empenho("NE-1", "1000.00"), R_EMPENHO, deps);
+      const liquidacao = (numero: string) =>
+        liquidar(
+          { empenhoId: e.empenhoId, numero, valor: "700.00", data: new Date("2026-02-10T12:00:00Z"), responsavelAtesto: "Fulano", historico: "liquidação concorrente", criadoPor: POR },
+          R_LIQUIDACAO,
+          deps
+        );
+      const r = await Promise.allSettled([liquidacao("NL-A"), liquidacao("NL-B")]);
+      // ⚠️ EXATAMENTE UMA. Sem o trinco, as duas leem "já liquidado = 0", as duas veem que 700 cabe em 1.000, e as
+      // duas gravam: 1.400 de obrigação reconhecida sobre 1.000 empenhados.
+      expect(r.filter((x) => x.status === "fulfilled")).toHaveLength(1);
+      expect(String((r.find((x) => x.status === "rejected") as PromiseRejectedResult).reason)).toMatch(/Liquidação excede o empenho/);
+      const liquidadas = await prisma.liquidacao.findMany({ where: { empenhoId: e.empenhoId, estornoDeId: null }, select: { valor: true } });
+      expect(liquidadas.reduce((a, l) => a + Number(l.valor), 0)).toBe(700);
+    }
+  }, 60_000);
+
   // t3
   it("t3: FICHA + CONTRATO — os dois locks, na ordem documentada, sem deadlock", async () => {
     for (let i = 0; i < RODADAS; i++) {

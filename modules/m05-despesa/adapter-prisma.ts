@@ -47,6 +47,7 @@ import { exigirOrdemAutorizada } from "./ordem-pagamento.js";
 // `lancamentoContabil.create` fora dele.
 import { lancarNoRazao } from "../m01-core-contabil/razao.js";
 import { exigirMedicaoAprovadaDaObra } from "../m11-licitacoes/medicoes.js";
+import { conferirParcelasDaLiquidacao, gravarAlocacoesDaLiquidacao } from "../m11-licitacoes/parcelas-da-liquidacao.js";
 import {
   baixarPrecatorioNoPagamento,
   exigirOrdemDoArt100,
@@ -1818,8 +1819,10 @@ export function criarDespesaRepositoryPrisma(
           where: { id: p.empenhoId },
           select: {
             id: true,
+            fichaId: true,
             valor: true,
             obraId: true,
+            contratoId: true,
             credorCpfCnpj: true,
             ordemDeCompraId: true,
             estornoDeId: true,
@@ -1845,9 +1848,29 @@ export function criarDespesaRepositoryPrisma(
           throw new Error(`Empenho ${p.empenhoId} É uma anulação — não se liquida.`);
         }
 
+        // ⚠️ LOCK: a FICHA do empenho (posto 2), ANTES de somar o já liquidado. Achado de V7 M2 U3 (m05-concorrencia t5):
+        // duas liquidações concorrentes de 700 num empenho de 1.000 liam "já liquidado = 0" e gravavam as duas. É a
+        // mesma primitiva do empenho sobre a ficha; os trincos posteriores desta transação (o contrato da parcela, a
+        // classe de material) têm posto maior.
+        await travarFichas(tx, [empenho.fichaId]);
+
         // M08 — empenho de exercício encerrado saiu do orçamento corrente:
         // ele se liquida por liquidarRestosAPagar(), não aqui.
         await exigirLiquidacaoCorrente(tx, p.empenhoId);
+
+        // ⚠️ V7 M2 U3 — A PARCELA RECEBIDA DO CONTRATO, conferida PRIMEIRO e antes de gravar: soma, documento de
+        // cobrança, empenho do contrato e credor, elegível não consumido — sob o trinco do contrato (posto 5; nada foi
+        // travado antes nesta transação). Vem antes do limite do empenho e do saldo da nota para que a recusa de uma
+        // parcela já consumida diga ISSO (e não "excede o empenho"). As alocações vão no mesmo commit, depois da liquidação.
+        if (p.parcelasDoContrato !== undefined) {
+          await conferirParcelasDaLiquidacao(tx, {
+            empenho: { id: empenho.id, contratoId: empenho.contratoId, credorCpfCnpj: empenho.credorCpfCnpj, debitaEstoque: elementoDebitaEstoque(empenho.ficha.naturezaDespesa.codElemento) },
+            documentoFiscalId: p.documentoFiscalId,
+            valor: p.valor,
+            data: p.data,
+            parcelas: p.parcelasDoContrato,
+          });
+        }
 
         // INVARIANTE 3: limite lido do SUM REAL, dentro da transação.
         const empenhado = toMoney(empenho.valor.toFixed(2));
@@ -1902,6 +1925,8 @@ export function criarDespesaRepositoryPrisma(
           },
           select: { id: true },
         });
+
+        if (p.parcelasDoContrato !== undefined) await gravarAlocacoesDaLiquidacao(tx, liq.id, p.parcelasDoContrato, p.criadoPor);
 
         // ═══ ⚠️ M10 (ENT06 item 2; sessão noturna V4 §6) — LIQUIDAR MATERIAL É UM ATO SÓ ═══
         //

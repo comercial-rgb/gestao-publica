@@ -802,6 +802,7 @@ export type NomeDeServico =
   | "registrarRecebimentoProvisorio"
   | "decidirControversia"
   | "registrarRecebimentoDefinitivo"
+  | "liquidarParcelasDoContrato"
   | "cadastrarItemDoContrato"
   | "programarFiscalizacao"
   | "registrarOcorrencia"
@@ -1268,6 +1269,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   registrarRecebimentoProvisorio: "REGISTRAR_RECEBIMENTO_PROVISORIO",
   decidirControversia: "REGISTRAR_RECEBIMENTO_DEFINITIVO",
   registrarRecebimentoDefinitivo: "REGISTRAR_RECEBIMENTO_DEFINITIVO",
+  // V7 M2 U3 — liquidar a parcela recebida é LIQUIDAR (a mesma ação, na UG do empenho); o M05 cobra de novo por dentro.
+  liquidarParcelasDoContrato: "LIQUIDAR",
   cadastrarItemDoContrato: "CADASTRAR_ITEM_DO_CONTRATO",
   programarFiscalizacao: "PROGRAMAR_FISCALIZACAO_DO_CONTRATO",
   registrarOcorrencia: "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO",
@@ -1531,6 +1534,14 @@ export const FORA_DO_CENSO: Record<string, string> = {
   exigirDesignacao:
     "GUARD: a designação do usuário no papel (gestor, fiscal, recebedor definitivo), vigente no dia do ato e hoje, dentro da " +
     "transação de um ato que já cobrou a própria ação.",
+  consumoDasParcelas:
+    "LEITURA/GUARD: quanto de cada recebimento definitivo as liquidações vivas consumiram (estorno libera; anulação parcial " +
+    "com várias parcelas não libera). Lida dentro da transação da liquidação e pela projeção.",
+  conferirParcelasDaLiquidacao:
+    "GUARD: confere as parcelas do contrato DENTRO da transação da liquidação do M05 (que já cobrou LIQUIDAR), sob o trinco " +
+    "do contrato, antes de gravar: soma, documento de cobrança, empenho e credor, elegível.",
+  gravarAlocacoesDaLiquidacao:
+    "composável interno: grava as alocações da liquidação nas parcelas, no mesmo commit da liquidação do M05.",
   execucaoDoContrato:
     "LEITURA: as ordens de serviço do contrato com itens, saldos, medições, recebimentos e termos — na visão pedida " +
     "(fiscalização ou financeira), decidida antes pelo alcance.",

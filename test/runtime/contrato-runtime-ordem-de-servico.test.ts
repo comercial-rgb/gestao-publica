@@ -82,7 +82,7 @@ describe("ordem de serviço e recebimentos pelo papel de runtime", () => {
     await decidirControversia(app, { conferenciaId: conf.id, resultado: "ACEITA", fundamento: "Assinatura apresentada", data: dia(0), criadoPor: RECEBEDOR });
     expect((await registrarRecebimentoDefinitivo(app, { medicaoId: m.medicaoId, data: dia(0), conclusao: "Complemento pelo runtime", itens: [{ itemMedidoId: ma, quantidade: "1" }], criadoPor: RECEBEDOR })).valor).toBe("100.00");
     await cancelarSaldoDaOrdemDeServico(app, { ordemId: r.ordemId, data: dia(0), motivo: "Horas não serão executadas", itens: [{ itemDaOrdemId: ob, quantidade: "2" }], criadoPor: GESTORA });
-    expect((await execucaoDoContrato(app, "ctr", "FINANCEIRA")).ordens.find((o) => o.id === r.ordemId)?.valores).toEqual({ previsto: "1100.00", autorizado: "1000.00", medido: "1000.00", recebido: "1000.00" });
+    expect((await execucaoDoContrato(app, "ctr", "FINANCEIRA")).ordens.find((o) => o.id === r.ordemId)?.valores).toEqual({ previsto: "1100.00", autorizado: "1000.00", medido: "1000.00", recebido: "1000.00", liquidado: "0.00" });
 
     for (const sql of [
       `UPDATE "ItemDaOrdemDeServico" SET "valorUnitario" = 1`,

@@ -3,6 +3,7 @@ import { diaCivil, diaCivilBr } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import type { VisaoDoContrato } from "./fiscalizacao.js";
 import { elegivelDoItemMedido } from "./ordem-de-servico.js";
+import { consumoDasParcelas } from "./parcelas-da-liquidacao.js";
 
 /**
  * ═══ M11 — A EXECUÇÃO DO CONTRATO: ordens, medições, recebimentos e saldos (V7 M2 U1/U2) ═══
@@ -13,7 +14,8 @@ import { elegivelDoItemMedido } from "./ordem-de-servico.js";
  *
  * ⚠️ NENHUM NÚMERO É SOMADO ENTRE UNIDADES DIFERENTES. Quantidades ficam por item; os totais são de VALOR.
  * ⚠️ Cada valor tem a sua definição: AUTORIZADO (ordens emitidas, líquido de cancelamentos, × unitário da ordem),
- * MEDIDO (medições da ordem), RECEBIDO (recebimentos definitivos). Nenhum é derivado do outro, e nenhum é pagamento.
+ * MEDIDO (medições da ordem), RECEBIDO (recebimentos definitivos), LIQUIDADO (o que as liquidações vivas do M05
+ * consumiram das parcelas recebidas). Nenhum é derivado do outro, e nenhum é pagamento.
  */
 
 type Tx = Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">;
@@ -61,8 +63,8 @@ export interface MedicaoDaOrdemNaTela {
   readonly fiscal: string;
   readonly itens: readonly ItemMedidoNaTela[];
   readonly provisorio: { readonly id: string; readonly data: string; readonly por: string; readonly sha256: string; readonly verificacoes: string | null } | null;
-  readonly definitivos: readonly { readonly id: string; readonly numero: number; readonly data: string; readonly por: string; readonly valor: string; readonly sha256: string }[];
-  readonly valores: { readonly medido: string; readonly conforme: string; readonly emControversia: string; readonly aceito: string; readonly glosado: string; readonly recebido: string };
+  readonly definitivos: readonly { readonly id: string; readonly numero: number; readonly data: string; readonly por: string; readonly valor: string; readonly liquidado: string; readonly aLiquidar: string; readonly sha256: string }[];
+  readonly valores: { readonly medido: string; readonly conforme: string; readonly emControversia: string; readonly aceito: string; readonly glosado: string; readonly recebido: string; readonly liquidado: string };
 }
 
 export interface OrdemNaTela {
@@ -87,14 +89,14 @@ export interface OrdemNaTela {
   readonly medicoes: readonly MedicaoDaOrdemNaTela[];
   readonly movimentos: readonly { readonly tipo: "SUSPENSAO" | "RETOMADA"; readonly data: string; readonly motivo: string }[];
   readonly cancelamentos: readonly { readonly item: number; readonly quantidade: string; readonly data: string; readonly motivo: string }[];
-  readonly valores: { readonly previsto: string; readonly autorizado: string; readonly medido: string; readonly recebido: string };
+  readonly valores: { readonly previsto: string; readonly autorizado: string; readonly medido: string; readonly recebido: string; readonly liquidado: string };
 }
 
 export interface ExecucaoDoContrato {
   readonly visao: VisaoDoContrato;
   readonly itensDoContrato: readonly { readonly id: string; readonly numero: number; readonly descricao: string; readonly unidade: string; readonly valorUnitario: string; readonly contratado: string; readonly autorizadoEmOrdens: string; readonly medidoSemOrdem: string; readonly aAutorizar: string }[];
   readonly ordens: readonly OrdemNaTela[];
-  readonly totais: { readonly autorizado: string; readonly medido: string; readonly recebido: string };
+  readonly totais: { readonly autorizado: string; readonly medido: string; readonly recebido: string; readonly liquidado: string };
 }
 
 const nome = (d: { readonly atoDesignacao: string; readonly pessoa: { readonly documento: string; readonly versoes: readonly { readonly nome: string }[] } }): string => `${d.pessoa.versoes[0]?.nome ?? d.pessoa.documento} (${d.atoDesignacao})`;
@@ -140,6 +142,7 @@ export async function execucaoDoContrato(prisma: Tx, contratoId: string, visao: 
     }),
   ]);
 
+  const consumo = await consumoDasParcelas(prisma, ordens.flatMap((o) => o.medicoes.flatMap((m) => m.recebimentosDefinitivos.map((r) => r.id))));
   const saidaOrdens: OrdemNaTela[] = ordens.map((o) => {
     const itens = o.itens.map((i) => {
       const cancelado = i.cancelamentos.reduce((t, c) => t.plus(c.quantidade.toFixed(4)), new Decimal(0));
@@ -175,7 +178,11 @@ export async function execucaoDoContrato(prisma: Tx, contratoId: string, visao: 
         id: m.id, numero: m.numero, periodo: `${diaCivilBr(m.periodoInicio)} a ${diaCivilBr(m.periodoFim)}`, fiscal: nome(m.designacao),
         itens: its.map((x) => x.linha),
         provisorio: m.recebimentoProvisorio === null ? null : { id: m.recebimentoProvisorio.id, data: diaCivilBr(m.recebimentoProvisorio.data), por: nome(m.recebimentoProvisorio.designacao), sha256: m.recebimentoProvisorio.sha256, verificacoes: fiscalizacao ? m.recebimentoProvisorio.verificacoes : null },
-        definitivos: m.recebimentosDefinitivos.map((r) => ({ id: r.id, numero: r.numero, data: diaCivilBr(r.data), por: nome(r.designacao), valor: sumMoney(r.itens.map((x) => x.valor.toFixed(2))).toFixed(2), sha256: r.sha256 })),
+        definitivos: m.recebimentosDefinitivos.map((r) => {
+          const valor = sumMoney(r.itens.map((x) => x.valor.toFixed(2)));
+          const liquidado = toMoney((consumo.get(r.id) ?? new Decimal(0)).toFixed(2));
+          return { id: r.id, numero: r.numero, data: diaCivilBr(r.data), por: nome(r.designacao), valor: valor.toFixed(2), liquidado: liquidado.toFixed(2), aLiquidar: toMoney(valor.minus(liquidado)).toFixed(2), sha256: r.sha256 };
+        }),
         valores: {
           medido: sumMoney(its.map((x) => x.valores.medido)).toFixed(2),
           conforme: sumMoney(its.map((x) => x.valores.conforme)).toFixed(2),
@@ -183,6 +190,7 @@ export async function execucaoDoContrato(prisma: Tx, contratoId: string, visao: 
           aceito: sumMoney(its.map((x) => x.valores.aceito)).toFixed(2),
           glosado: sumMoney(its.map((x) => x.valores.glosado)).toFixed(2),
           recebido: recebido.toFixed(2),
+          liquidado: sumMoney(m.recebimentosDefinitivos.map((r) => toMoney((consumo.get(r.id) ?? new Decimal(0)).toFixed(2)))).toFixed(2),
         },
       };
     });
@@ -199,7 +207,7 @@ export async function execucaoDoContrato(prisma: Tx, contratoId: string, visao: 
       itens, medicoes,
       movimentos: o.movimentos.map((x) => ({ tipo: x.tipo, data: diaCivilBr(x.data), motivo: x.motivo })),
       cancelamentos: o.itens.flatMap((i) => i.cancelamentos.map((c) => ({ item: i.itemDoContrato.numero, quantidade: q(c.quantidade.toFixed(4)), data: diaCivil(c.data).split("-").reverse().join("/"), motivo: c.motivo }))),
-      valores: { previsto: previsto.toFixed(2), autorizado: autorizado.toFixed(2), medido: sumMoney(medicoes.map((m) => m.valores.medido)).toFixed(2), recebido: sumMoney(medicoes.map((m) => m.valores.recebido)).toFixed(2) },
+      valores: { previsto: previsto.toFixed(2), autorizado: autorizado.toFixed(2), medido: sumMoney(medicoes.map((m) => m.valores.medido)).toFixed(2), recebido: sumMoney(medicoes.map((m) => m.valores.recebido)).toFixed(2), liquidado: sumMoney(medicoes.map((m) => m.valores.liquidado)).toFixed(2) },
     };
   });
 
@@ -215,6 +223,7 @@ export async function execucaoDoContrato(prisma: Tx, contratoId: string, visao: 
       autorizado: sumMoney(saidaOrdens.map((o) => o.valores.autorizado)).toFixed(2),
       medido: sumMoney(saidaOrdens.map((o) => o.valores.medido)).toFixed(2),
       recebido: sumMoney(saidaOrdens.map((o) => o.valores.recebido)).toFixed(2),
+      liquidado: sumMoney(saidaOrdens.map((o) => o.valores.liquidado)).toFixed(2),
     },
   };
 }

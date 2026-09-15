@@ -289,6 +289,8 @@ export interface LiquidarParams {
    * quebraria toda liquidação de serviço e de custeio, que não têm entrada nenhuma.
    */
   readonly entradasDeMaterial?: readonly EntradaDeMaterialDaLiquidacao[] | undefined;
+  /** V7 M2 U3 — as parcelas recebidas do contrato que esta liquidação consome. Ver `zLiquidarInput`. */
+  readonly parcelasDoContrato?: readonly { readonly recebimentoDefinitivoId: string; readonly valor: Money }[] | undefined;
   readonly criadoPor: string;
 }
 

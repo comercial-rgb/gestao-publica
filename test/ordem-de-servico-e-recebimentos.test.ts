@@ -116,7 +116,7 @@ describe("U1 — a ordem de serviço", () => {
     expect(e.valor).toBe("1100.00");
     const x = await execucaoDoContrato(prisma, "ctr-a", "FISCALIZACAO");
     expect(x.itensDoContrato.map((i) => [i.aAutorizar, i.valorUnitario])).toEqual([["4.0000", "100.0000"], ["10.0000", "50.0000"]]);
-    expect(x.ordens[0]).toMatchObject({ numero: 1, situacao: "EMITIDA", valores: { previsto: "1100.00", autorizado: "1100.00", medido: "0.00", recebido: "0.00" }, sha256: e.sha256 });
+    expect(x.ordens[0]).toMatchObject({ numero: 1, situacao: "EMITIDA", valores: { previsto: "1100.00", autorizado: "1100.00", medido: "0.00", recebido: "0.00", liquidado: "0.00" }, sha256: e.sha256 });
     const emissao = await prisma.emissaoDaOrdemDeServico.findUniqueOrThrow({ where: { ordemId: r.ordemId }, select: { manifesto: true, sha256: true } });
     expect(manifestoCanonico(emissao.manifesto).sha256).toBe(emissao.sha256);
     expect(emissao.manifesto).toMatchObject({ contrato: { contratado: "Serviços Técnicos Beta", documentoDoContratado: "12345678000199" }, total: "1100.00" });
@@ -206,7 +206,7 @@ describe("U2 — a medição da ordem e os recebimentos", () => {
     const c = await medicaoConferida();
     let x = await execucaoDoContrato(prisma, "ctr-a", "FISCALIZACAO");
     const med = x.ordens[0]!.medicoes[0]!;
-    expect(med.valores).toEqual({ medido: "1000.00", conforme: "900.00", emControversia: "100.00", aceito: "0.00", glosado: "0.00", recebido: "0.00" });
+    expect(med.valores).toEqual({ medido: "1000.00", conforme: "900.00", emControversia: "100.00", aceito: "0.00", glosado: "0.00", recebido: "0.00", liquidado: "0.00" });
     expect(med.itens.map((i) => [i.item, i.conforme, i.emControversia, i.elegivel, i.pendenteDeDecisao])).toEqual([[1, "5.0000", "1.0000", "5.0000", "1.0000"], [2, "8.0000", "0.0000", "8.0000", "0.0000"]]);
     expect(med.itens[0]!.motivo).toMatch(/sem assinatura/);
     // A projeção financeira não leva o motivo nem as verificações.
@@ -224,7 +224,7 @@ describe("U2 — a medição da ordem e os recebimentos", () => {
     const d = await registrarRecebimentoDefinitivo(prisma, { medicaoId: c.medicaoId, data: HOJE, conclusao: "Visitas e horas conferidas com relatórios assinados", itens: [{ itemMedidoId: c.mA, quantidade: "5" }, { itemMedidoId: c.mB, quantidade: "8" }], criadoPor: RECEBEDOR });
     expect(d).toMatchObject({ numero: 1, valor: "900.00", pendencias: ["item 1: 1.0000 visita em controvérsia aguardando decisão"] });
     x = await execucaoDoContrato(prisma, "ctr-a", "FISCALIZACAO");
-    expect(x.ordens[0]!.valores).toEqual({ previsto: "1100.00", autorizado: "1100.00", medido: "1000.00", recebido: "900.00" });
+    expect(x.ordens[0]!.valores).toEqual({ previsto: "1100.00", autorizado: "1100.00", medido: "1000.00", recebido: "900.00", liquidado: "0.00" });
     // As 2 horas não executadas continuam a executar NA ORDEM, e o contrato tem 4 visitas e 10 horas a autorizar (R$ 900,00).
     expect(x.ordens[0]!.itens.map((i) => i.aExecutar)).toEqual(["0.0000", "2.0000"]);
     expect(x.itensDoContrato.map((i) => i.aAutorizar)).toEqual(["4.0000", "10.0000"]);
