@@ -20,7 +20,9 @@ const numero = (v: string): number => {
   const n = Number(v.trim().replace(/\./g, "").replace(",", "."));
   return Number.isFinite(n) ? n : 0;
 };
-const brl = (n: number): string => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+// Número, não data: formatador explícito de moeda (a guarda da data civil vigia `toLocaleString`, que também imprime datas pelo relógio do hospedeiro).
+const FORMATO_BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const brl = (n: number): string => FORMATO_BRL.format(n);
 
 // ═══ O RESULTADO QUE SOBREVIVE AO FORMULÁRIO ═══
 // Emitir, receber, decidir e liquidar mudam a página: o formulário do ato deixa de ser oferecido na recarga e, com ele,
