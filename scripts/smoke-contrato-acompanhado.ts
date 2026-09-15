@@ -28,7 +28,6 @@ const SUF = String(Date.now()).slice(-6);
 const R = registroDePassos();
 const CAPTURAS = process.env["PERCURSO_CAPTURAS"] ?? join(process.cwd(), ".registro-de-execucao", "pacote-v7-m2", "capturas");
 const HOJE = diaCivil(new Date());
-const ONTEM = diaCivil(new Date(Date.now() - 86_400_000));
 const DESCRICAO_OCORRENCIA = `Base com espessura abaixo do projeto no trecho ${SUF}`;
 
 function dv11(ds: readonly number[], pesos: readonly number[]): number {
@@ -156,13 +155,25 @@ async function main(): Promise<void> {
     const temObra = (await page.$('form[data-acao="medir-por-itens"] select[name="obraId"] option:not([value=""])')) !== null;
     if (temObra) {
       const obra = await page.$eval('form[data-acao="medir-por-itens"] select[name="obraId"]', (s) => Array.from((s as HTMLSelectElement).options).map((o) => o.value).find((v) => v !== "") ?? "");
-      const primeiroItem = await page.$eval('form[data-acao="medir-por-itens"] input[name^="item."]', (i) => (i as HTMLInputElement).name);
-      const med = await preencherEEnviar(page, "medir-por-itens", [
-        { sel: 'select[name="obraId"]', valor: obra, tipo: "select" },
-        { sel: 'input[name="diaInicio"]', valor: ONTEM, tipo: "data" }, { sel: 'input[name="diaFim"]', valor: ONTEM, tipo: "data" },
-        { sel: 'input[name="responsavelTecnico"]', valor: "Eng. Marta Nunes (percurso)" }, { sel: 'input[name="registroProfissional"]', valor: "CREA-PB 000000 (sintético)" },
-        { sel: `input[name="${primeiroItem}"]`, valor: "1" },
-      ]);
+      /**
+       * ⚠️ O PERÍODO LIVRE É PROCURADO, NÃO SUPOSTO: uma execução anterior deste percurso no mesmo banco já mediu "ontem"
+       * nesta obra, e o produto recusa, com razão, o período sobreposto (achado da reexecução sobre 2d7a9cd). Anda um dia
+       * para trás a cada recusa de sobreposição — a recusa no caminho é o próprio produto; qualquer outra recusa para.
+       */
+      let med = { tipo: "silencio", texto: "sem dia livre nos últimos 30" };
+      for (let k = 1; k <= 30; k++) {
+        const dia = diaCivil(new Date(Date.now() - k * 86_400_000));
+        await irPara(N, page, hrefContrato);
+        const primeiroItem = await page.$eval('form[data-acao="medir-por-itens"] input[name^="item."]', (i) => (i as HTMLInputElement).name);
+        med = await preencherEEnviar(page, "medir-por-itens", [
+          { sel: 'select[name="obraId"]', valor: obra, tipo: "select" },
+          { sel: 'input[name="diaInicio"]', valor: dia, tipo: "data" }, { sel: 'input[name="diaFim"]', valor: dia, tipo: "data" },
+          { sel: 'input[name="responsavelTecnico"]', valor: "Eng. Marta Nunes (percurso)" }, { sel: 'input[name="registroProfissional"]', valor: "CREA-PB 000000 (sintético)" },
+          { sel: `input[name="${primeiroItem}"]`, valor: "1" },
+        ]);
+        if (!(med.tipo === "erro" && /PERÍODO SOBREPOSTO/.test(med.texto))) break;
+        console.log(`      [${dia} já medido nesta obra por execução anterior — recusado por sobreposição; tenta o dia anterior]`);
+      }
       R.conferir("3.3 o fiscal mede por itens uma parcela PARCIAL (1 de 2) — e a mensagem diz que falta aprovação", med.tipo === "ok" && /precisa ser APROVADA/.test(med.texto), `${med.tipo}: ${med.texto.slice(0, 300)}`);
       await irPara(N, page, hrefContrato);
       const fisico = await page.$eval("[data-itens-do-contrato] tbody tr:last-child [data-percentual-fisico]", (e) => e.textContent ?? "").catch(() => "");
