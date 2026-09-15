@@ -109,6 +109,7 @@ async function leituraDoDonoDoAnexo(
       termoPatrimonialId: true,
       documentoFiscalId: true,
       guiaDeRecolhimentoId: true,
+      ocorrenciaDeFiscalizacaoId: true,
     },
   });
   if (a === null) return null;
@@ -119,6 +120,8 @@ async function leituraDoDonoDoAnexo(
   if (a.termoPatrimonialId !== null) return { acao: "CONSULTAR_PATRIMONIO", nivel: "ente" };
   if (a.documentoFiscalId !== null) return { acao: "CONSULTAR_LICITACOES", nivel: "algum" };
   if (a.guiaDeRecolhimentoId !== null) return { acao: "CONSULTAR_FOLHA", nivel: "ente" };
+  // V7 M2.1 — evidência de fiscalização é documento INTERNO do contrato: nunca vai à projeção pública.
+  if (a.ocorrenciaDeFiscalizacaoId !== null) return { acao: "CONSULTAR_LICITACOES", nivel: "algum" };
   return null;
 }
 

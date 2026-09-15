@@ -153,6 +153,9 @@ model Anexo {
   /// V7 M1 U3 — a GUIA DE RECOLHIMENTO fornecida pelo emissor, anexada ao cadastro da guia. Leitura: CONSULTAR_FOLHA.
   guiaDeRecolhimentoId String?
   guiaDeRecolhimento   GuiaDeRecolhimento? @relation("AnexoDaGuiaDeRecolhimento", fields: [guiaDeRecolhimentoId], references: [id])
+  /// V7 M2.1 — evidência de ocorrência de fiscalização do contrato.
+  ocorrenciaDeFiscalizacaoId String?
+  ocorrenciaDeFiscalizacao   OcorrenciaDeFiscalizacao? @relation("EvidenciaDaOcorrencia", fields: [ocorrenciaDeFiscalizacaoId], references: [id])
 
   /// O relatório circunstanciado gerado a partir deste anexo (origem SISTEMA). Campo VIRTUAL.
   relatorioCircunstanciado RelatorioCircunstanciado? @relation("AnexoDoRelatorioCircunstanciado")
@@ -180,6 +183,7 @@ model Anexo {
   @@index([auditoriaId])
   @@index([documentoFiscalId])
   @@index([guiaDeRecolhimentoId])
+  @@index([ocorrenciaDeFiscalizacaoId])
   @@index([sha256])
   /// back-relations ENT05 — termos de inventario de estoque. VIRTUAIS.
   termosAberturaInventarioEstoque   InventarioDeEstoque[] @relation("TermoAberturaInventarioEstoque")

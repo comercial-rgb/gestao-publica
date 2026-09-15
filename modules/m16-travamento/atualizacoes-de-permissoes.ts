@@ -492,6 +492,30 @@ export function derivarOuvidoriaEAvaliacao(
   return saida;
 }
 
+/**
+ * V7 M2.1 — o contrato acompanhado. Quem administra no global recebe DESIGNAR e CADASTRAR ITEM (configuração
+ * do contrato). Programar, registrar ocorrência e resolver NÃO saem da derivação: sem designação no contrato
+ * elas não praticam nada, e concedê-las ao administrador só faria a barra oferecer atos que o servidor recusa.
+ */
+export const ACOES_DO_CONTRATO_ACOMPANHADO: readonly AcaoDoSistema[] = ["DESIGNAR_NO_CONTRATO", "CADASTRAR_ITEM_DO_CONTRATO"];
+
+export function derivarContratoAcompanhado(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null);
+    if (!administra) continue;
+    const jaTem = new Set(perfil.permissoes.filter((p) => p.unidadeOrcId === null).map((p) => p.acao));
+    for (const acao of ACOES_DO_CONTRATO_ACOMPANHADO) {
+      if (jaTem.has(acao)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
+
 export function derivarFolha(
   perfis: readonly PerfilComPermissoes[],
   _areaDaAcao: AreaDaAcao
@@ -693,6 +717,16 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "MODERAR_AVALIACAO_DE_SERVICO. Quem administra permissoes no global recebe as duas, como na instalacao limpa. " +
       "Triar e responder continuam exigindo lotacao no setor em que a manifestacao sigilosa esta.",
     derivar: derivarOuvidoriaEAvaliacao,
+  },
+  {
+    versao: 18,
+    nome: "contrato-acompanhado",
+    descricao:
+      "O contrato acompanhado (V7 M2.1) chegou com DESIGNAR_NO_CONTRATO, CADASTRAR_ITEM_DO_CONTRATO, " +
+      "PROGRAMAR_FISCALIZACAO_DO_CONTRATO, REGISTRAR_OCORRENCIA_DE_FISCALIZACAO e RESOLVER_OCORRENCIA_DE_FISCALIZACAO. " +
+      "Quem administra permissoes no global recebe designar e cadastrar item. Os atos de gestor e fiscal exigem, alem " +
+      "da acao, a designacao vigente no contrato — o administrador cria os perfis de gestor e de fiscal.",
+    derivar: derivarContratoAcompanhado,
   },
 ];
 

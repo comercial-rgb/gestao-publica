@@ -1,0 +1,225 @@
+// ============================================================================
+// M11 — O CONTRATO ACOMPANHADO: gestor, fiscal, itens, agenda, ocorrências e medição por itens
+// (V7 M2.1 — Lei 14.133/2021, arts. 117 e 140)
+//
+// ⚠️ NÃO É OUTRO CADASTRO DE CONTRATO. Tudo aqui pendura no `Contrato` do M11; o valor vigente, a
+// vigência derivada, o empenhado e o saldo continuam sendo as derivações de `contratos.ts`. O fiscal
+// antigo em texto (`Contrato.fiscalNome/fiscalCpf/fiscalDesignacao`) segue como carga histórica
+// declarada; a designação que AUTORIZA ato é esta, com pessoa, usuário, ato e vigência.
+//
+// ⚠️ APPEND-ONLY. Revogar designação, resolver ocorrência e medir são fatos novos; nada aqui recebe
+// UPDATE do papel de runtime.
+// ============================================================================
+
+enum PapelNoContrato {
+  /// Art. 117 — quem gere o contrato: programa a fiscalização e dá o encaminhamento das ocorrências.
+  GESTOR
+  /// Art. 117 — quem acompanha a execução: registra ocorrência, evidência e mede.
+  FISCAL
+}
+
+/// A DESIGNAÇÃO NO CONTRATO — pessoa E usuário conferidos pelo vínculo do M16, ato e vigência.
+/// A vigência é DERIVADA (início ≤ dia ≤ fim, sem revogação com efeito até o dia), como a da folha.
+model DesignacaoNoContrato {
+  id String @id @default(cuid())
+
+  contratoId String
+  contrato   Contrato @relation("DesignacoesDoContrato", fields: [contratoId], references: [id])
+
+  papel PapelNoContrato
+
+  pessoaId String
+  pessoa   Pessoa @relation("DesignadoNoContrato", fields: [pessoaId], references: [id])
+
+  usuarioId String
+  usuario   Usuario @relation("DesignacaoNoContrato", fields: [usuarioId], references: [id])
+
+  /// "Portaria 45/2026" — texto do ente; sem ele o nome é alegação.
+  atoDesignacao String
+
+  vigenciaInicio DateTime
+  vigenciaFim    DateTime?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  revogacao         RevogacaoDeDesignacaoNoContrato?
+  ordensEmitidas    OrdemDeFiscalizacao[]      @relation("OrdemEmitidaPeloGestor")
+  ordensRecebidas   OrdemDeFiscalizacao[]      @relation("OrdemParaOFiscal")
+  ocorrencias       OcorrenciaDeFiscalizacao[]
+  resolucoes        ResolucaoDeOcorrencia[]
+  medicoesPorItens  MedicaoPorItens[]
+
+  @@index([contratoId, papel])
+  @@index([usuarioId])
+  @@index([pessoaId])
+}
+
+model RevogacaoDeDesignacaoNoContrato {
+  id String @id @default(cuid())
+
+  designacaoId String               @unique
+  designacao   DesignacaoNoContrato @relation(fields: [designacaoId], references: [id])
+
+  dataEfeito DateTime
+  motivo     String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// UM ITEM (LINHA) DO CONTRATO — quantidade e preço unitário contratados. A quantidade vigente e o
+/// valor de cada item não mudam aqui: aditivo de item é pendência nomeada (`ADITIVO-POR-ITEM`).
+model ItemDoContrato {
+  id String @id @default(cuid())
+
+  contratoId String
+  contrato   Contrato @relation("ItensDoContrato", fields: [contratoId], references: [id])
+
+  numero        Int
+  descricao     String
+  unidade       String
+  quantidade    Decimal @db.Decimal(18, 4)
+  valorUnitario Decimal @db.Decimal(18, 4)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  medidos ItemMedido[]
+
+  @@unique([contratoId, numero])
+}
+
+/// A ORDEM (AGENDA) DE FISCALIZAÇÃO — o gestor programa, para um fiscal designado, o quê e quando.
+model OrdemDeFiscalizacao {
+  id String @id @default(cuid())
+
+  contratoId String
+  contrato   Contrato @relation("OrdensDeFiscalizacao", fields: [contratoId], references: [id])
+
+  numero       Int
+  dataPrevista DateTime
+  objetivo     String
+
+  gestorDesignacaoId String
+  gestorDesignacao   DesignacaoNoContrato @relation("OrdemEmitidaPeloGestor", fields: [gestorDesignacaoId], references: [id])
+  fiscalDesignacaoId String
+  fiscalDesignacao   DesignacaoNoContrato @relation("OrdemParaOFiscal", fields: [fiscalDesignacaoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  ocorrencias OcorrenciaDeFiscalizacao[]
+
+  @@unique([contratoId, numero])
+}
+
+enum TipoDeOcorrencia {
+  CONFORMIDADE
+  NAO_CONFORMIDADE
+  ATRASO
+  IMPEDIMENTO
+  OUTRO
+}
+
+enum EncaminhamentoDaOcorrencia {
+  /// Registro, sem providência de outra pessoa.
+  NENHUM
+  /// Vai ao gestor, que dá a resolução.
+  GESTOR
+}
+
+/// A OCORRÊNCIA — o que o fiscal viu, na data do fato, com evidências (anexos do M22).
+model OcorrenciaDeFiscalizacao {
+  id String @id @default(cuid())
+
+  contratoId String
+  contrato   Contrato @relation("OcorrenciasDoContrato", fields: [contratoId], references: [id])
+
+  numero Int
+
+  ordemId String?
+  ordem   OrdemDeFiscalizacao? @relation(fields: [ordemId], references: [id])
+
+  /// A designação de FISCAL vigente com que foi registrada.
+  designacaoId String
+  designacao   DesignacaoNoContrato @relation(fields: [designacaoId], references: [id])
+
+  data           DateTime
+  tipo           TipoDeOcorrencia
+  descricao      String
+  encaminhamento EncaminhamentoDaOcorrencia
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  evidencias Anexo[]                @relation("EvidenciaDaOcorrencia")
+  resolucao  ResolucaoDeOcorrencia?
+
+  @@unique([contratoId, numero])
+  @@index([ordemId])
+}
+
+/// A RESOLUÇÃO — o encaminhamento do gestor, uma por ocorrência.
+model ResolucaoDeOcorrencia {
+  id String @id @default(cuid())
+
+  ocorrenciaId String                   @unique
+  ocorrencia   OcorrenciaDeFiscalizacao @relation(fields: [ocorrenciaId], references: [id])
+
+  designacaoId String
+  designacao   DesignacaoNoContrato @relation(fields: [designacaoId], references: [id])
+
+  texto String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// A MEDIÇÃO POR ITENS — a medição de obra (M11) com as QUANTIDADES por item que a compõem, feita
+/// pelo fiscal designado. O `valorMedido` da medição é a soma dos itens (quantidade × unitário).
+model MedicaoPorItens {
+  id String @id @default(cuid())
+
+  medicaoId String        @unique
+  medicao   MedicaoDeObra @relation("ItensDaMedicao", fields: [medicaoId], references: [id])
+
+  designacaoId String
+  designacao   DesignacaoNoContrato @relation(fields: [designacaoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  itens ItemMedido[]
+}
+
+model ItemMedido {
+  id String @id @default(cuid())
+
+  medicaoPorItensId String
+  medicaoPorItens   MedicaoPorItens @relation(fields: [medicaoPorItensId], references: [id])
+
+  itemId String
+  item   ItemDoContrato @relation(fields: [itemId], references: [id])
+
+  quantidade Decimal @db.Decimal(18, 4)
+  valor      Decimal @db.Decimal(18, 2)
+
+  @@unique([medicaoPorItensId, itemId])
+  @@index([itemId])
+}
+
+/// A APROVAÇÃO DA MEDIÇÃO — fato próprio, uma por medição (V7 M2.1). Achado do contrato de runtime: o
+/// `aprovarMedicao` gravava por UPDATE em `MedicaoDeObra`, fora do censo de UPDATE do `gestao_app`.
+model AprovacaoDeMedicao {
+  id String @id @default(cuid())
+
+  medicaoId String        @unique
+  medicao   MedicaoDeObra @relation("AprovacaoDaMedicao", fields: [medicaoId], references: [id])
+
+  /// O dia civil da aprovação.
+  data DateTime
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

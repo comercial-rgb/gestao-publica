@@ -187,6 +187,47 @@ decidida pelo M05 na transação. Percurso: `scripts/smoke-contratacao.ts`.
 - `EXTRATO-DO-CONTRATO-PDF` — o extrato do contrato em PDF da origem não foi portado.
 - Reajuste/repactuação, rescisão e publicações do contrato: continuam fora (ver acima).
 
+## O contrato acompanhado — V7 M2.1 (`fiscalizacao.ts`, `m11-fiscalizacao.prisma`)
+
+**Gestor e fiscal são DESIGNAÇÕES do contrato, não permissões.** `DesignacaoNoContrato` (papel, pessoa e
+usuário conferidos pelo vínculo do M16, ato, vigência derivada com `designacaoVigenteEm` da folha) e
+`RevogacaoDeDesignacaoNoContrato` (fato). A ação do perfil é condição necessária; o ato de GESTOR exige a
+designação de gestor vigente naquele contrato (hoje), o de FISCAL a de fiscal vigente no dia do fato E hoje.
+Outro setor com as mesmas ações recebe `SEM-DESIGNACAO-DE-FISCAL`/`-GESTOR`. Quem gere não fiscaliza o
+mesmo contrato em período sobreposto (`ACUMULO-DE-GESTOR-E-FISCAL`). Os campos texto antigos
+(`fiscalNome/fiscalCpf/fiscalDesignacao`) ficam como carga histórica e não autorizam nada.
+
+- **Itens** (`ItemDoContrato`, `CADASTRAR_ITEM_DO_CONTRATO`): quantidade e unitário em Decimal; a soma não
+  passa do valor vigente (`ITENS-ACIMA-DO-CONTRATO`).
+- **Agenda** (`OrdemDeFiscalizacao`, `PROGRAMAR_FISCALIZACAO_DO_CONTRATO`): gestor vigente programa para um
+  fiscal DESTE contrato vigente na data; contrato vigente na data prevista.
+- **Ocorrência** (`OcorrenciaDeFiscalizacao`, `REGISTRAR_OCORRENCIA_DE_FISCALIZACAO`): fiscal vigente, data
+  não futura, contrato vigente no dia, ordem deste contrato e deste fiscal; evidências pelo M22 na mesma
+  transação (`Anexo.ocorrenciaDeFiscalizacaoId`, leitura `CONSULTAR_LICITACOES`); encaminhamento ao gestor.
+- **Resolução** (`ResolucaoDeOcorrencia`, `RESOLVER_OCORRENCIA_DE_FISCALIZACAO`): gestor vigente, só
+  ocorrência encaminhada, uma por ocorrência.
+- **Medição por itens** (`MedicaoPorItens`/`ItemMedido`, `REGISTRAR_MEDICAO_DE_OBRA`): fiscal vigente;
+  contrato vigente no início e no fim do período; valor = Σ quantidade × unitário (centavos por item); por
+  item o acumulado não passa do contratado (`ITEM-ACIMA-DO-CONTRATADO`, sob o trinco do contrato — duas
+  simultâneas, uma recusa); no conjunto, os guards de sempre em `gravarMedicaoNaTransacao` (o mesmo corpo
+  de `registrarMedicao`). A aprovação continua sendo de OUTRA pessoa, e só ela libera a liquidação.
+- **Físico não é financeiro.** `acompanhamentoDoContrato` mostra lado a lado e separados o físico por item
+  (medido, a medir, %) e o financeiro do M05 (empenhado líquido, liquidado, pago).
+- **Projeção pública** (`projecaoPublicaDoContrato`, `/transparencia/contratos/[id]`): identificação,
+  vigência derivada, valores, aditivos, responsáveis VIGENTES por nome e ato, execução física das medições
+  APROVADAS. Sem ocorrência, evidência, agenda, conta ou documento de pessoa.
+
+Telas: dossiê abaixo dos dados em `/licitacoes/contratos/[id]` (formulários só a quem pode; motivo a quem
+não é designado), `/transparencia/contratos`. Permissões v18 (designar e cadastrar item ao administrador;
+os atos de gestor e fiscal não são derivados). Testes: `test/contrato-acompanhado.test.ts` (N=2 itens,
+contrato vigente e vencido, outro setor, concorrência, revogação, projeção pública). Percurso
+`scripts/smoke-contrato-acompanhado.ts`.
+
+Pendências: `ADITIVO-POR-ITEM` (acréscimo/supressão de quantidade de item), `ORDEM-DE-SERVICO-DO-CONTRATO`
+(ordem de início/fornecimento ao contratado), `MEDICAO-POR-ITENS-SEM-OBRA` (a medição é de obra; serviço
+contínuo sem obra ainda não mede por itens), `PRAZO-DE-RESOLUCAO-DA-OCORRENCIA`, `NOTIFICACAO-AO-CONTRATADO`,
+`RECEBIMENTO-PROVISORIO-E-DEFINITIVO`.
+
 ## Arquivos
 
 - `dominio.ts` — puro: `MODALIDADES`, `SINAL_VALOR_CONTRATUAL`,

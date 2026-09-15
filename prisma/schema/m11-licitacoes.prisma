@@ -229,6 +229,11 @@ model Contrato {
   /// empenho: o `empenhadoLiquidoDoContrato` soma por aqui.
   empenhos   Empenho[]
   documentosFiscais DocumentoFiscalRecebido[] @relation("DocumentoFiscalDoContrato")
+  /// back-relations V7 M2.1 (`m11-fiscalizacao.prisma`) — campos VIRTUAIS.
+  designacoes          DesignacaoNoContrato[]     @relation("DesignacoesDoContrato")
+  itens                ItemDoContrato[]           @relation("ItensDoContrato")
+  ordensDeFiscalizacao OrdemDeFiscalizacao[]      @relation("OrdensDeFiscalizacao")
+  ocorrencias          OcorrenciaDeFiscalizacao[] @relation("OcorrenciasDoContrato")
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -544,6 +549,11 @@ model MedicaoDeObra {
 
   /// As liquidações que esta medição autorizou. back-relation — campo VIRTUAL.
   liquidacoes Liquidacao[]
+  /// V7 M2.1 — as quantidades por item, quando a medição foi feita por itens. VIRTUAL.
+  porItens    MedicaoPorItens? @relation("ItensDaMedicao")
+  /// V7 M2.1 — a APROVAÇÃO como fato (o UPDATE de `aprovadaEm/aprovadaPor` não existe no papel de runtime:
+  /// aprovar falhava em produção). As colunas antigas ficam como carga histórica, lidas como fallback.
+  aprovacao   AprovacaoDeMedicao? @relation("AprovacaoDaMedicao")
 
   criadoEm  DateTime @default(now())
   criadoPor String

@@ -50,6 +50,16 @@ const TABELAS = [
   "AssinaturaDeDocumento",
   "SignatarioDaFila",
   "FilaDeAssinatura",
+  // ── V7 M2.1 — o contrato acompanhado ──
+  "AprovacaoDeMedicao",
+  "ItemMedido",
+  "MedicaoPorItens",
+  "ResolucaoDeOcorrencia",
+  "OcorrenciaDeFiscalizacao",
+  "OrdemDeFiscalizacao",
+  "ItemDoContrato",
+  "RevogacaoDeDesignacaoNoContrato",
+  "DesignacaoNoContrato",
   // ── V7 M1 U4 — a ouvidoria sem conta e a avaliação dos serviços ──
   "RemocaoDeAvaliacao",
   "AvaliacaoDeServico",

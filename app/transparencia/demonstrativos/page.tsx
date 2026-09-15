@@ -41,6 +41,14 @@ export default async function DemonstrativosPublicosPage(): Promise<React.ReactE
         </div>
       </header>
 
+      {/* V7 — os outros canais públicos do ente: a consulta de contratos e a ouvidoria (cadastro e consulta). */}
+      <nav aria-label="Outros canais públicos" data-canais-publicos className="mb-4 flex flex-wrap gap-2 text-sm">
+        <Link href="/transparencia/contratos" className="rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-3 py-1.5 text-[color:var(--color-primary)]">Contratos</Link>
+        <Link href="/ouvidoria" className="rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-3 py-1.5 text-[color:var(--color-primary)]">Ouvidoria — registrar manifestação</Link>
+        <Link href="/ouvidoria/acompanhar" className="rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-3 py-1.5 text-[color:var(--color-primary)]">Ouvidoria — acompanhar</Link>
+        <Link href="/servicos" className="rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-3 py-1.5 text-[color:var(--color-primary)]">Carta de serviços</Link>
+      </nav>
+
       <p className="mb-4 text-xs text-[color:var(--color-ink-3)]">
         Escolha o exercício e o período — o PDF é gerado sob demanda, com hash SHA-256 do conteúdo no rodapé.
         ⚠️ Os documentos ainda <strong>não são assinados digitalmente</strong> (certificado ICP-Brasil pendente).

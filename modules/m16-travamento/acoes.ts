@@ -318,6 +318,11 @@ export type AcaoDoSistema =
   | "GERIR_GUIA_DE_RECOLHIMENTO"
   | "TRIAR_MANIFESTACAO_DE_OUVIDORIA"
   | "MODERAR_AVALIACAO_DE_SERVICO"
+  | "DESIGNAR_NO_CONTRATO"
+  | "CADASTRAR_ITEM_DO_CONTRATO"
+  | "PROGRAMAR_FISCALIZACAO_DO_CONTRATO"
+  | "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO"
+  | "RESOLVER_OCORRENCIA_DE_FISCALIZACAO"
   // V6.2 P3 — a carta de serviços e a representação
   | "CONFIGURAR_CARTA_DE_SERVICOS"
   | "SOLICITAR_SERVICO"
@@ -778,6 +783,13 @@ export type NomeDeServico =
   | "cadastrarMetodologiaDeAvaliacao"
   | "avaliarAtendimento"
   | "removerAvaliacao"
+  | "designarNoContrato"
+  | "revogarDesignacaoNoContrato"
+  | "cadastrarItemDoContrato"
+  | "programarFiscalizacao"
+  | "registrarOcorrencia"
+  | "resolverOcorrencia"
+  | "registrarMedicaoPorItens"
   // M21/M19 — a carta de serviços, as solicitações do requerente e a representação (V6.2 P3)
   | "cadastrarServicoDaCarta"
   | "cadastrarVersaoDoServico"
@@ -1221,6 +1233,15 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   cadastrarMetodologiaDeAvaliacao: "CONFIGURAR_CARTA_DE_SERVICOS",
   avaliarAtendimento: "SOLICITAR_SERVICO",
   removerAvaliacao: "MODERAR_AVALIACAO_DE_SERVICO",
+  // V7 M2.1 — o contrato acompanhado. A ação do perfil é condição; a DESIGNAÇÃO no contrato (gestor ou
+  // fiscal, vigente) é conferida dentro de cada ato. Designar e revogar são a mesma ação.
+  designarNoContrato: "DESIGNAR_NO_CONTRATO",
+  revogarDesignacaoNoContrato: "DESIGNAR_NO_CONTRATO",
+  cadastrarItemDoContrato: "CADASTRAR_ITEM_DO_CONTRATO",
+  programarFiscalizacao: "PROGRAMAR_FISCALIZACAO_DO_CONTRATO",
+  registrarOcorrencia: "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO",
+  resolverOcorrencia: "RESOLVER_OCORRENCIA_DE_FISCALIZACAO",
+  registrarMedicaoPorItens: "REGISTRAR_MEDICAO_DE_OBRA",
   // V6.2 P3 — a carta de serviços. Configurar a carta é um ato; pedir (protocolar, responder,
   // anexar) é o ato do REQUERENTE, conferido contra a titularidade na transação; decidir (exigir,
   // decidir, disponibilizar resposta) é o ato da mesa, no setor em que o processo está.
@@ -1459,6 +1480,16 @@ export const FORA_DO_CENSO: Record<string, string> = {
   podeAgirNoSetor:
     "LEITURA/GUARD: lotação no setor, ou a própria ação do ato concedida no ente sobre processo não sigiloso. " +
     "Chamada dentro da transação de cada ato do M21 (via `exigirLotacao`) e pela projeção da mesa.",
+  gravarMedicaoNaTransacao:
+    "composável interno: o corpo da medição de obra (período sem sobreposição, teto do valor vigente, trinco do contrato) " +
+    "DENTRO da transação de um ato que já cobrou a ação — `registrarMedicao` e `registrarMedicaoPorItens` (que exige também " +
+    "a designação de fiscal).",
+  acompanhamentoDoContrato:
+    "LEITURA: o dossiê interno do contrato — vigência, financeiro do M05, físico por item, designações, agenda, ocorrências " +
+    "e medições. Quem lê é decidido pela porta (CONSULTAR_LICITACOES).",
+  projecaoPublicaDoContrato:
+    "LEITURA PÚBLICA: identificação, vigência, valores, aditivos, responsáveis vigentes (nome e ato) e execução física pelas " +
+    "medições aprovadas. Sem ocorrência, evidência, conta ou documento de pessoa.",
   gravarAnexoNaTransacao:
     "composável interno: grava a linha e o arquivo do anexo DENTRO da transação de um ato que já cobrou a própria ação " +
     "(o XML do documento fiscal, os documentos da solicitação da carta), com o mesmo Zod de dono único e a mesma recusa " +

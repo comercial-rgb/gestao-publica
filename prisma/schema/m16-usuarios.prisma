@@ -466,6 +466,11 @@ enum AcaoDoSistema {
   /// V7 M1 U4 — a triagem e a resposta da ouvidoria; a moderação das avaliações.
   TRIAR_MANIFESTACAO_DE_OUVIDORIA
   MODERAR_AVALIACAO_DE_SERVICO
+  DESIGNAR_NO_CONTRATO
+  CADASTRAR_ITEM_DO_CONTRATO
+  PROGRAMAR_FISCALIZACAO_DO_CONTRATO
+  REGISTRAR_OCORRENCIA_DE_FISCALIZACAO
+  RESOLVER_OCORRENCIA_DE_FISCALIZACAO
 
   // V6.2 — P3: a carta de serviços e as solicitações do requerente. Configurar/publicar a carta, pedir
   // um serviço (o titular ou o representante), decidir a solicitação e registrar representação são
@@ -533,6 +538,7 @@ model Usuario {
 
   /// V6.1 — back-relation VIRTUAL: as designações de certificação da folha deste usuário.
   designacoesNaFolha DesignacaoNaFolha[] @relation("DesignacaoNaFolha")
+  designacoesNoContrato DesignacaoNoContrato[] @relation("DesignacaoNoContrato")
 
   @@index([ativo])
   /// V6.2 — as representações de pessoa que esta conta exerce. VIRTUAL.

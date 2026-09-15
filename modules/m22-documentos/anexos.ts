@@ -50,6 +50,8 @@ export const zAnexar = z
     documentoFiscalId: z.string().min(1).optional(),
     // ── V7 M1 U3.2: a guia de recolhimento fornecida pelo emissor ──
     guiaDeRecolhimentoId: z.string().min(1).optional(),
+    // ── V7 M2.1: a evidência de ocorrência de fiscalização do contrato ──
+    ocorrenciaDeFiscalizacaoId: z.string().min(1).optional(),
     criadoPor: z.string().min(1),
   })
   .refine(
@@ -66,12 +68,13 @@ export const zAnexar = z
         d.termoPatrimonialId,
         d.documentoFiscalId,
         d.guiaDeRecolhimentoId,
+        d.ocorrenciaDeFiscalizacaoId,
       ].filter((v) => v !== undefined).length === 1,
     {
       message:
         "Um anexo pertence a EXATAMENTE UM registro: processo, movimento de processo, " +
         "comunicado, pessoa, borderô, empenho, liquidação, ordem de pagamento, termo patrimonial, " +
-        "documento fiscal ou guia de recolhimento. Sem dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual " +
+        "documento fiscal, guia de recolhimento ou ocorrência de fiscalização. Sem dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual " +
         "regra de acesso vale.",
     }
   );
@@ -107,6 +110,7 @@ export async function gravarAnexoNaTransacao(tx: Tx, input: AnexarInput): Promis
       processoId: d.processoId ?? null, movimentoProcessoId: d.movimentoProcessoId ?? null, comunicadoId: d.comunicadoId ?? null,
       pessoaId: d.pessoaId ?? null, borderoId: d.borderoId ?? null, empenhoId: d.empenhoId ?? null, liquidacaoId: d.liquidacaoId ?? null,
       ordemDePagamentoId: d.ordemDePagamentoId ?? null, termoPatrimonialId: d.termoPatrimonialId ?? null, documentoFiscalId: d.documentoFiscalId ?? null, guiaDeRecolhimentoId: d.guiaDeRecolhimentoId ?? null,
+      ocorrenciaDeFiscalizacaoId: d.ocorrenciaDeFiscalizacaoId ?? null,
       criadoPor: d.criadoPor,
     },
     select: { id: true },

@@ -178,6 +178,8 @@ describe("M11 — a medição de obra", () => {
       where: { id: medicaoId }, select: { aprovadaEm: true },
     });
     expect(m.aprovadaEm).toBeNull();
+    // V7 M2.1 — a aprovação é fato próprio: a recusa não pode ter deixado aprovação nenhuma.
+    expect(await prisma.aprovacaoDeMedicao.count({ where: { medicaoId } })).toBe(0);
   });
 
   it("t3b: aprovar DUAS VEZES é recusado — a segunda apagaria quem aprovou primeiro", async () => {

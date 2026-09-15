@@ -97,6 +97,21 @@ export async function registrarMedicao(
   input: RegistrarMedicaoInput
 ): Promise<{ readonly medicaoId: string; readonly acumulado: string }> {
   const d = zRegistrarMedicaoInput.parse(input);
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.registrarMedicao, "ENTE");
+    return gravarMedicaoNaTransacao(tx, d);
+  });
+}
+
+/**
+ * O CORPO DA MEDIÇÃO dentro de uma transação JÁ AUTORIZADA — o de `registrarMedicao` (ação de medir) e o
+ * da medição por itens do fiscal designado (V7 M2.1). Os dois guards (período e teto do contrato) moram
+ * aqui, uma vez só. Não é ato por si: não cobra ação.
+ */
+export async function gravarMedicaoNaTransacao(
+  tx: Tx,
+  d: z.output<typeof zRegistrarMedicaoInput>
+): Promise<{ readonly medicaoId: string; readonly acumulado: string }> {
   const inicio = inicioDoDiaCivil(d.diaInicio);
   const fim = fimDoDiaCivil(d.diaFim);
   if (fim < inicio) {
@@ -105,97 +120,93 @@ export async function registrarMedicao(
         `(${d.diaInicio}). Nada foi gravado.`
     );
   }
+  // ⚠️ O LOCK É DO CONTRATO (posto 5), e não da obra: é contra o valor DELE que o acumulado
+  // é conferido, e duas medições concorrentes do mesmo contrato leem o mesmo acumulado.
+  await travar(tx, "Contrato", [d.contratoId]);
 
-  return prisma.$transaction(async (tx) => {
-    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.registrarMedicao, "ENTE");
-    // ⚠️ O LOCK É DO CONTRATO (posto 5), e não da obra: é contra o valor DELE que o acumulado
-    // é conferido, e duas medições concorrentes do mesmo contrato leem o mesmo acumulado.
-    await travar(tx, "Contrato", [d.contratoId]);
-
-    const contrato = await tx.contrato.findUnique({
-      where: { id: d.contratoId },
-      select: {
-        id: true,
-        numeroContrato: true,
-        valorInicial: true,
-        movimentos: { select: { tipo: true, valor: true, dias: true } },
-      },
-    });
-    if (contrato === null) {
-      throw new Error(`Contrato ${d.contratoId} não encontrado. Nada foi gravado.`);
-    }
-    const obra = await tx.obra.findUnique({
-      where: { id: d.obraId },
-      select: { id: true, identificador: true, ativa: true },
-    });
-    if (obra === null) {
-      throw new Error(`Obra ${d.obraId} não encontrada. Nada foi gravado.`);
-    }
-    if (!obra.ativa) {
-      throw new Error(
-        `A obra ${obra.identificador} está ENCERRADA. Medir uma obra encerrada faria a ` +
-          `liquidação de um serviço que o ente já declarou concluído. Nada foi gravado.`
-      );
-    }
-
-    const existentes = await tx.medicaoDeObra.findMany({
-      where: { obraId: d.obraId },
-      select: { numero: true, periodoInicio: true, periodoFim: true, valorMedido: true },
-    });
-
-    const conflito = sobreposicao(
-      { numero: d.numero, inicio, fim },
-      existentes.map((m) => ({
-        numero: m.numero,
-        inicio: m.periodoInicio,
-        fim: m.periodoFim,
-      }))
-    );
-    if (conflito !== null) {
-      throw new Error(
-        `PERÍODO SOBREPOSTO na obra ${obra.identificador}: a medição ${d.numero} ` +
-          `(${d.diaInicio} a ${d.diaFim}) invade a medição ${conflito.numero} ` +
-          `(${diaCivil(conflito.inicio)} a ${diaCivil(conflito.fim)}). Medir o mesmo ` +
-          `intervalo duas vezes é medir o mesmo serviço duas vezes — o acumulado fecharia ` +
-          `certo contando errado. ⚠️ As bordas são INCLUSIVAS: uma medição que acaba em X e a ` +
-          `seguinte que começa em X se sobrepõem naquele dia. Nada foi gravado.`
-      );
-    }
-
-    const vigente = valorAtualizado(
-      toMoney(contrato.valorInicial.toFixed(2)),
-      contrato.movimentos as readonly MovimentoDoContrato[]
-    );
-    let acumulado = toMoney("0.00");
-    for (const m of existentes) acumulado = toMoney(acumulado.plus(m.valorMedido.toFixed(2)));
-    const novoAcumulado = toMoney(acumulado.plus(d.valorMedido));
-
-    if (novoAcumulado.gt(vigente)) {
-      throw new Error(
-        `MEDIÇÃO ACIMA DO CONTRATADO no contrato ${contrato.numeroContrato}: acumulado ficaria ` +
-          `${novoAcumulado.toFixed(2)} contra o valor vigente de ${vigente.toFixed(2)} ` +
-          `(já medido ${acumulado.toFixed(2)}, esta medição ${d.valorMedido.toFixed(2)}). ` +
-          `Execução acima do contratado, se legítima, exige ADITIVO ANTES — não medição ` +
-          `depois. Nada foi gravado.`
-      );
-    }
-
-    const criada = await tx.medicaoDeObra.create({
-      data: {
-        obraId: d.obraId,
-        contratoId: d.contratoId,
-        numero: d.numero,
-        periodoInicio: inicio,
-        periodoFim: fim,
-        valorMedido: d.valorMedido.toFixed(2),
-        responsavelTecnico: d.responsavelTecnico,
-        registroProfissional: d.registroProfissional,
-        criadoPor: d.criadoPor,
-      },
-      select: { id: true },
-    });
-    return { medicaoId: criada.id, acumulado: novoAcumulado.toFixed(2) };
+  const contrato = await tx.contrato.findUnique({
+    where: { id: d.contratoId },
+    select: {
+      id: true,
+      numeroContrato: true,
+      valorInicial: true,
+      movimentos: { select: { tipo: true, valor: true, dias: true } },
+    },
   });
+  if (contrato === null) {
+    throw new Error(`Contrato ${d.contratoId} não encontrado. Nada foi gravado.`);
+  }
+  const obra = await tx.obra.findUnique({
+    where: { id: d.obraId },
+    select: { id: true, identificador: true, ativa: true },
+  });
+  if (obra === null) {
+    throw new Error(`Obra ${d.obraId} não encontrada. Nada foi gravado.`);
+  }
+  if (!obra.ativa) {
+    throw new Error(
+      `A obra ${obra.identificador} está ENCERRADA. Medir uma obra encerrada faria a ` +
+        `liquidação de um serviço que o ente já declarou concluído. Nada foi gravado.`
+    );
+  }
+
+  const existentes = await tx.medicaoDeObra.findMany({
+    where: { obraId: d.obraId },
+    select: { numero: true, periodoInicio: true, periodoFim: true, valorMedido: true },
+  });
+
+  const conflito = sobreposicao(
+    { numero: d.numero, inicio, fim },
+    existentes.map((m) => ({
+      numero: m.numero,
+      inicio: m.periodoInicio,
+      fim: m.periodoFim,
+    }))
+  );
+  if (conflito !== null) {
+    throw new Error(
+      `PERÍODO SOBREPOSTO na obra ${obra.identificador}: a medição ${d.numero} ` +
+        `(${d.diaInicio} a ${d.diaFim}) invade a medição ${conflito.numero} ` +
+        `(${diaCivil(conflito.inicio)} a ${diaCivil(conflito.fim)}). Medir o mesmo ` +
+        `intervalo duas vezes é medir o mesmo serviço duas vezes — o acumulado fecharia ` +
+        `certo contando errado. ⚠️ As bordas são INCLUSIVAS: uma medição que acaba em X e a ` +
+        `seguinte que começa em X se sobrepõem naquele dia. Nada foi gravado.`
+    );
+  }
+
+  const vigente = valorAtualizado(
+    toMoney(contrato.valorInicial.toFixed(2)),
+    contrato.movimentos as readonly MovimentoDoContrato[]
+  );
+  let acumulado = toMoney("0.00");
+  for (const m of existentes) acumulado = toMoney(acumulado.plus(m.valorMedido.toFixed(2)));
+  const novoAcumulado = toMoney(acumulado.plus(d.valorMedido));
+
+  if (novoAcumulado.gt(vigente)) {
+    throw new Error(
+      `MEDIÇÃO ACIMA DO CONTRATADO no contrato ${contrato.numeroContrato}: acumulado ficaria ` +
+        `${novoAcumulado.toFixed(2)} contra o valor vigente de ${vigente.toFixed(2)} ` +
+        `(já medido ${acumulado.toFixed(2)}, esta medição ${d.valorMedido.toFixed(2)}). ` +
+        `Execução acima do contratado, se legítima, exige ADITIVO ANTES — não medição ` +
+        `depois. Nada foi gravado.`
+    );
+  }
+
+  const criada = await tx.medicaoDeObra.create({
+    data: {
+      obraId: d.obraId,
+      contratoId: d.contratoId,
+      numero: d.numero,
+      periodoInicio: inicio,
+      periodoFim: fim,
+      valorMedido: d.valorMedido.toFixed(2),
+      responsavelTecnico: d.responsavelTecnico,
+      registroProfissional: d.registroProfissional,
+      criadoPor: d.criadoPor,
+    },
+    select: { id: true },
+  });
+  return { medicaoId: criada.id, acumulado: novoAcumulado.toFixed(2) };
 }
 
 /**
@@ -224,6 +235,7 @@ export async function aprovarMedicao(
         contratoId: true,
         aprovadaEm: true,
         aprovadaPor: true,
+        aprovacao: { select: { data: true, criadoPor: true } },
         criadoPor: true,
         obra: { select: { identificador: true } },
       },
@@ -233,10 +245,11 @@ export async function aprovarMedicao(
     }
     await travar(tx, "Contrato", [m.contratoId]);
 
-    if (m.aprovadaEm !== null) {
+    const jaAprovada = m.aprovacao !== null ? { em: m.aprovacao.data, por: m.aprovacao.criadoPor } : m.aprovadaEm !== null ? { em: m.aprovadaEm, por: m.aprovadaPor } : null;
+    if (jaAprovada !== null) {
       throw new Error(
         `A medição ${m.numero} da obra ${m.obra.identificador} JÁ FOI APROVADA em ` +
-          `${diaCivil(m.aprovadaEm)} por ${m.aprovadaPor}. Aprovar de novo sobrescreveria ` +
+          `${diaCivil(jaAprovada.em)} por ${jaAprovada.por}. Aprovar de novo sobrescreveria ` +
           `quem aprovou primeiro — e é justamente essa a informação que o controle interno ` +
           `vai querer. Nada foi gravado.`
       );
@@ -250,10 +263,14 @@ export async function aprovarMedicao(
       );
     }
 
-    await tx.medicaoDeObra.update({
-      where: { id: d.medicaoId },
-      data: { aprovadaEm: inicioDoDiaCivil(d.diaAprovacao), aprovadaPor: d.criadoPor },
-    });
+    // ⚠️ FATO, NÃO UPDATE (V7 M2.1): o índice único em `medicaoId` sustenta "uma aprovação por medição"
+    // contra a corrida; o guard acima dá a mensagem.
+    try {
+      await tx.aprovacaoDeMedicao.create({ data: { medicaoId: m.id, data: inicioDoDiaCivil(d.diaAprovacao), criadoPor: d.criadoPor } });
+    } catch (e) {
+      if ((e as { code?: string }).code === "P2002") throw new Error(`A medição ${m.numero} da obra ${m.obra.identificador} JÁ FOI APROVADA por outra aprovação no mesmo instante. Nada foi gravado.`);
+      throw e;
+    }
     return { medicaoId: m.id };
   });
 }
@@ -289,6 +306,7 @@ export async function exigirMedicaoAprovadaDaObra(
       obraId: true,
       valorMedido: true,
       aprovadaEm: true,
+      aprovacao: { select: { id: true } },
       obra: { select: { identificador: true } },
     },
   });
@@ -301,7 +319,7 @@ export async function exigirMedicaoAprovadaDaObra(
         `Aceitá-la faria o acumulado de uma obra pagar serviço de outra. Nada foi gravado.`
     );
   }
-  if (m.aprovadaEm === null) {
+  if (m.aprovadaEm === null && m.aprovacao === null) {
     throw new Error(
       `A medição ${m.numero} da obra ${m.obra.identificador} NÃO FOI APROVADA. A aprovação é ` +
         `o que libera a liquidação — liquidar sobre medição pendente é pagar o que ninguém ` +

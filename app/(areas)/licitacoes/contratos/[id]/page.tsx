@@ -7,6 +7,8 @@ import { acoesPermitidas, exigirLeitura } from "../../../../../lib/portas/molde"
 import { CONTRATOS } from "../../../../../lib/portas/recursos/contratacao";
 import { verContrato, opcoesDoContrato } from "../../../../../lib/portas/recursos/contratacao-dados";
 import { contratosAction } from "../actions";
+import { dossieDoContratoPara, hojeCivil } from "../../../../../lib/portas/contrato-acompanhado";
+import { DossieDoContrato } from "./DossieDoContrato";
 
 /**
  * O DETALHE DO CONTRATO: valor e vigência derivados dos aditivos, os empenhos que o informaram, e as ações. Os aditivos oferecidos ao estorno são SÓ os vivos deste contrato.
@@ -15,12 +17,14 @@ import { contratosAction } from "../actions";
 export const dynamic = "force-dynamic";
 
 export default async function Detalhe({ params, searchParams }: { readonly params: Promise<{ readonly id: string }>; readonly searchParams: Promise<ParametrosBrutos> }): Promise<React.ReactElement> {
-  await exigirLeitura("CONSULTAR_LICITACOES");
+  const sessao = await exigirLeitura("CONSULTAR_LICITACOES");
   const { id } = await params;
   const consulta = lerConsulta(CONTRATOS, await searchParams);
   const [detalhe, opcoes, permitidas] = await Promise.all([verContrato(id), opcoesDoContrato(id), acoesPermitidas(CONTRATOS.acoes.map((a) => a.acaoDoCenso))]);
   if (detalhe === null) notFound();
+  const dossie = consulta.aba === "dados" ? await dossieDoContratoPara(sessao, id) : null;
   return (
+    <div className="space-y-4">
     <DetalheDeRecurso
       definicao={CONTRATOS}
       id={id}
@@ -32,5 +36,7 @@ export default async function Detalhe({ params, searchParams }: { readonly param
       historico={detalhe.historico}
       acoes={<FormsDoRecurso definicao={CONTRATOS} permitidas={[...permitidas]} opcoes={opcoes} registroId={id} action={contratosAction} modo="acoes" />}
     />
+    {dossie !== null ? <DossieDoContrato d={dossie} hoje={hojeCivil()} /> : null}
+    </div>
   );
 }

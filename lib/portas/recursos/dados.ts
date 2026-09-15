@@ -1419,7 +1419,7 @@ export async function listarObras(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
       orderBy: c.ordem === null ? { identificador: "asc" } : { [c.ordem]: c.direcao },
       select: {
         id: true, identificador: true, descricao: true, tipoObraServico: true, ativa: true,
-        medicoes: { select: { valorMedido: true, aprovadaEm: true } },
+        medicoes: { select: { valorMedido: true, aprovadaEm: true, aprovacao: { select: { id: true } } } },
       },
     }),
   ]);
@@ -1431,7 +1431,7 @@ export async function listarObras(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
       let aprovado = new Decimal("0.00");
       for (const m of o.medicoes) {
         medido = medido.plus(new Decimal(m.valorMedido.toFixed(2)));
-        if (m.aprovadaEm !== null) aprovado = aprovado.plus(new Decimal(m.valorMedido.toFixed(2)));
+        if (m.aprovadaEm !== null || m.aprovacao !== null) aprovado = aprovado.plus(new Decimal(m.valorMedido.toFixed(2)));
       }
       return {
         id: o.id,
@@ -1466,7 +1466,7 @@ export async function verObra(id: string): Promise<DetalheLido | null> {
         select: {
           id: true, numero: true, valorMedido: true, periodoInicio: true, periodoFim: true,
           responsavelTecnico: true, registroProfissional: true,
-          aprovadaEm: true, aprovadaPor: true, criadoEm: true, criadoPor: true,
+          aprovadaEm: true, aprovadaPor: true, aprovacao: { select: { criadoPor: true } }, criadoEm: true, criadoPor: true,
           contrato: { select: { numeroContrato: true } },
         },
         orderBy: { numero: "desc" },
@@ -1479,9 +1479,9 @@ export async function verObra(id: string): Promise<DetalheLido | null> {
   let aprovado = new Decimal("0.00");
   for (const m of o.medicoes) {
     medido = medido.plus(new Decimal(m.valorMedido.toFixed(2)));
-    if (m.aprovadaEm !== null) aprovado = aprovado.plus(new Decimal(m.valorMedido.toFixed(2)));
+    if (m.aprovadaEm !== null || m.aprovacao !== null) aprovado = aprovado.plus(new Decimal(m.valorMedido.toFixed(2)));
   }
-  const pendentes = o.medicoes.filter((m) => m.aprovadaEm === null).length;
+  const pendentes = o.medicoes.filter((m) => m.aprovadaEm === null && m.aprovacao === null).length;
 
   return {
     titulo: `Obra ${o.identificador}`,
@@ -1514,7 +1514,7 @@ export async function verObra(id: string): Promise<DetalheLido | null> {
         `Medição ${m.numero} (contrato ${m.contrato.numeroContrato}) — ` +
         `${diaCivilBr(m.periodoInicio)} a ${diaCivilBr(m.periodoFim)} · ` +
         `${m.responsavelTecnico}${m.registroProfissional === null ? "" : ` (${m.registroProfissional})`}` +
-        (m.aprovadaEm === null ? " · AGUARDANDO APROVAÇÃO" : ` · aprovada por ${m.aprovadaPor ?? ""}`),
+        (m.aprovadaEm === null && m.aprovacao === null ? " · AGUARDANDO APROVAÇÃO" : ` · aprovada por ${m.aprovacao?.criadoPor ?? m.aprovadaPor ?? ""}`),
       quando: diaCivilBr(m.periodoFim),
       registradoEm: diaCivilBr(m.criadoEm),
       por: m.criadoPor,
@@ -1744,7 +1744,7 @@ export async function opcoesDoCadastro(
           // ⚠️ SÓ AS NÃO APROVADAS: aprovar duas vezes é recusado no servidor porque a
           // segunda apagaria quem aprovou primeiro (t3b). Oferecer a já aprovada seria
           // convidar para uma recusa.
-          where: { obraId: p.obraId, aprovadaEm: null },
+          where: { obraId: p.obraId, aprovadaEm: null, aprovacao: { is: null } },
           select: { id: true, numero: true, valorMedido: true, periodoFim: true },
           orderBy: { numero: "asc" },
         }),
