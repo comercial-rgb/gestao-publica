@@ -5,6 +5,7 @@ import { ValorMonetario } from "../../../../../../components/ui/ValorMonetario";
 import { exigirLeitura } from "../../../../../../lib/portas/molde";
 import { planilhasDaObraParaTela } from "../../../../../../lib/portas/planilha-da-obra";
 import { FormImportarPlanilha } from "./FormulariosDaPlanilha";
+import { AvisosDosAtos, ResultadosDosAtos } from "../../../../../../components/ui/ResultadosDosAtos";
 
 /** A PLANILHA ORÇAMENTÁRIA DA OBRA (V7 M2 U6) — as versões confirmadas, as prévias em aberto e a importação. */
 export const dynamic = "force-dynamic";
@@ -17,7 +18,9 @@ export default async function PlanilhaDaObraPage({ params }: { readonly params: 
   const t = await planilhasDaObraParaTela(id);
   if (t === null) notFound();
   return (
+    <ResultadosDosAtos>
     <div className="space-y-4" data-planilha-da-obra={t.obra.identificador}>
+      <AvisosDosAtos />
       <nav aria-label="Trilha" className="text-xs text-[color:var(--color-ink-2)]">
         <Link href="/licitacoes/obras" className="underline underline-offset-2">Obras</Link> / <Link href={`/licitacoes/obras/${id}`} className="underline underline-offset-2">{t.obra.identificador}</Link> / Planilha orçamentária
       </nav>
@@ -59,5 +62,6 @@ export default async function PlanilhaDaObraPage({ params }: { readonly params: 
       )}
       {t.podeGerir ? <FormImportarPlanilha obraId={id} /> : <p className="text-xs text-[color:var(--color-ink-2)]" data-motivo-da-planilha>Importar e confirmar a planilha é da engenharia de obras (a ação de gerir a planilha da obra no seu perfil).</p>}
     </div>
+    </ResultadosDosAtos>
   );
 }

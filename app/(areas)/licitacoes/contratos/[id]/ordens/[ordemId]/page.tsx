@@ -9,8 +9,8 @@ import { exigirSessao } from "../../../../../../../lib/portas/sessao";
 import { SITUACAO } from "../../ExecucaoDoContrato";
 import {
   FormCancelarSaldo, FormDecidirControversia, FormDescartarOrdem, FormEmitirOrdem, FormLiquidarParcelas, FormMedirOrdem, FormMovimentarOrdem, FormRecebimentoDefinitivo, FormRecebimentoProvisorio,
-  AvisosDaExecucao, ResultadosDaExecucao,
 } from "../../FormulariosDaExecucao";
+import { AvisosDosAtos, ResultadosDosAtos } from "../../../../../../../components/ui/ResultadosDosAtos";
 
 /**
  * A ORDEM DE SERVIÇO — página de trabalho (V7 M2 U4): resumo e próximas ações, itens e saldos, os atos do gestor com a
@@ -54,7 +54,7 @@ export default async function OrdemDeServico({ params }: { readonly params: Prom
   ].filter((x): x is string => x !== null);
 
   return (
-    <ResultadosDaExecucao>
+    <ResultadosDosAtos>
     <div className="space-y-4" data-ordem-de-servico-pagina={`${o.numero}/${o.ano}`}>
       <nav aria-label="Trilha" className="text-xs text-[color:var(--color-ink-2)]">
         <Link href="/licitacoes/contratos" className="underline underline-offset-2">Contratos</Link> / <Link href={`/licitacoes/contratos/${id}`} className="underline underline-offset-2">Contrato</Link> / Ordem de serviço
@@ -63,7 +63,7 @@ export default async function OrdemDeServico({ params }: { readonly params: Prom
         <h1 className="text-xl font-semibold">Ordem de serviço nº {o.numero}/{o.ano} <Badge status={SITUACAO[o.situacao]?.tom ?? "neutro"}>{SITUACAO[o.situacao]?.texto ?? o.situacao}</Badge></h1>
         <p className="mt-1 text-sm text-[color:var(--color-ink-2)] [overflow-wrap:anywhere]">{o.finalidade}</p>
       </header>
-      <AvisosDaExecucao />
+      <AvisosDosAtos />
 
       <Card>
         <h2 className="text-sm font-semibold">Situação da ordem</h2>
@@ -163,6 +163,6 @@ export default async function OrdemDeServico({ params }: { readonly params: Prom
       </Card>
       {p.podeLiquidar && aLiquidar.length > 0 && e.opcoes.documentos.length > 0 && e.opcoes.empenhos.length > 0 ? <FormLiquidarParcelas contratoId={id} parcelas={aLiquidar} empenhos={e.opcoes.empenhos} documentos={e.opcoes.documentos} hoje={e.hoje} /> : null}
     </div>
-    </ResultadosDaExecucao>
+    </ResultadosDosAtos>
   );
 }

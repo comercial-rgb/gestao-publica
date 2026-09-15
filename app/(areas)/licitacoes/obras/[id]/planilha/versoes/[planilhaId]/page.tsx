@@ -6,6 +6,7 @@ import { qtdBr } from "../../../../../../../../lib/format/quantidade";
 import { exigirLeitura } from "../../../../../../../../lib/portas/molde";
 import { planilhaParaTela } from "../../../../../../../../lib/portas/planilha-da-obra";
 import { FormRevogarVinculo, FormVincular } from "../../FormulariosDaPlanilha";
+import { AvisosDosAtos, ResultadosDosAtos } from "../../../../../../../../components/ui/ResultadosDosAtos";
 
 /** UMA VERSÃO DA PLANILHA ORÇAMENTÁRIA (V7 M2 U6) — itens, grupos, totais e os vínculos com o contrato. */
 export const dynamic = "force-dynamic";
@@ -18,7 +19,9 @@ export default async function VersaoDaPlanilhaPage({ params }: { readonly params
   const v = await planilhaParaTela(id, planilhaId);
   if (v === null) notFound();
   return (
+    <ResultadosDosAtos>
     <div className="space-y-4" data-versao-da-planilha={v.versao}>
+      <AvisosDosAtos />
       <nav aria-label="Trilha" className="text-xs text-[color:var(--color-ink-2)]">
         <Link href="/licitacoes/obras" className="underline underline-offset-2">Obras</Link> / <Link href={`/licitacoes/obras/${id}/planilha`} className="underline underline-offset-2">Planilha orçamentária</Link> / Versão {v.versao}
       </nav>
@@ -72,5 +75,6 @@ export default async function VersaoDaPlanilhaPage({ params }: { readonly params
         </div>
       </Card>
     </div>
+    </ResultadosDosAtos>
   );
 }

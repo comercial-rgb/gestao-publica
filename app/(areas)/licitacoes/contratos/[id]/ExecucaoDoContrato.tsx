@@ -4,7 +4,8 @@ import { Card } from "../../../../../components/ui/Card";
 import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
 import type { ExecucaoParaTela } from "../../../../../lib/portas/execucao-do-contrato";
 import { qtdBr } from "../../../../../lib/format/quantidade";
-import { AvisosDaExecucao, FormAditivoPorItens, FormEstornarAditivo, FormNovaOrdem, ResultadosDaExecucao } from "./FormulariosDaExecucao";
+import { AvisosDosAtos, ResultadosDosAtos } from "../../../../../components/ui/ResultadosDosAtos";
+import { FormAditivoPorItens, FormEstornarAditivo, FormNovaOrdem } from "./FormulariosDaExecucao";
 
 const dataBr = (dia: string): string => dia.split("-").reverse().join("/");
 
@@ -35,9 +36,9 @@ function Valor({ rotulo, valor, definicao, dado }: { readonly rotulo: string; re
 
 export function ExecucaoDoContrato({ e, contratoId }: { readonly e: ExecucaoParaTela; readonly contratoId: string }): React.ReactElement {
   return (
-    <ResultadosDaExecucao>
+    <ResultadosDosAtos>
     <section aria-label="Execução do contrato" className="space-y-4" data-execucao-do-contrato={e.visao}>
-      <AvisosDaExecucao />
+      <AvisosDosAtos />
       <Card>
         <h2 className="text-sm font-semibold">Execução por ordens de serviço</h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -132,6 +133,6 @@ export function ExecucaoDoContrato({ e, contratoId }: { readonly e: ExecucaoPara
       </Card>
       {e.papeis.podeEmitir && e.itensDoContrato.length > 0 ? <FormNovaOrdem contratoId={contratoId} itens={e.opcoes.itensDoContrato} fiscais={e.opcoes.fiscais} empenhos={e.opcoes.empenhos} hoje={e.hoje} /> : null}
     </section>
-    </ResultadosDaExecucao>
+    </ResultadosDosAtos>
   );
 }

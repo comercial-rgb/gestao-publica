@@ -8,6 +8,7 @@ import { qtdBr } from "../../../../../../../../lib/format/quantidade";
 import { exigirLeitura } from "../../../../../../../../lib/portas/molde";
 import { previaParaTela } from "../../../../../../../../lib/portas/planilha-da-obra";
 import { FormConfirmarPrevia } from "../../FormulariosDaPlanilha";
+import { AvisosDosAtos, ResultadosDosAtos } from "../../../../../../../../components/ui/ResultadosDosAtos";
 
 /** A PRÉVIA DA IMPORTAÇÃO (V7 M2 U6) — colunas reconhecidas, linhas, erros, divergências e o que foi ignorado. */
 export const dynamic = "force-dynamic";
@@ -21,7 +22,9 @@ export default async function PreviaDaPlanilhaPage({ params }: { readonly params
   if (p === null) notFound();
   const a = p.analise;
   return (
+    <ResultadosDosAtos>
     <div className="space-y-4" data-previa-da-planilha={p.id}>
+      <AvisosDosAtos />
       <nav aria-label="Trilha" className="text-xs text-[color:var(--color-ink-2)]">
         <Link href="/licitacoes/obras" className="underline underline-offset-2">Obras</Link> / <Link href={`/licitacoes/obras/${id}/planilha`} className="underline underline-offset-2">Planilha orçamentária</Link> / Prévia
       </nav>
@@ -83,5 +86,6 @@ export default async function PreviaDaPlanilhaPage({ params }: { readonly params
           : p.podeGerir ? <FormConfirmarPrevia obraId={id} previaId={p.id} divergencias={a.divergencias.length} hoje={diaCivil(new Date())} />
             : <p className="text-xs text-[color:var(--color-ink-2)]">Confirmar a prévia é da engenharia de obras (a ação de gerir a planilha da obra no seu perfil).</p>}
     </div>
+    </ResultadosDosAtos>
   );
 }

@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useActionState, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useActionState, useId, useState } from "react";
 import { ChaveDeComando } from "../../../../../components/ui/ChaveDeComando";
+import { useResultadoDoAto } from "../../../../../components/ui/ResultadosDosAtos";
 import { useRestaurarAposEnvio } from "../../../../../components/ui/useRestaurarAposEnvio";
 import { CLASSE_AREA_TEXTO, CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO, CLASSE_PAINEL_FORMULARIO, CLASSE_ROTULO } from "../../../../../components/ui/Formulario";
 import { qtdBr } from "../../../../../lib/format/quantidade";
@@ -24,54 +25,6 @@ const numero = (v: string): number => {
 const FORMATO_BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const brl = (n: number): string => FORMATO_BRL.format(n);
 
-// ═══ O RESULTADO QUE SOBREVIVE AO FORMULÁRIO ═══
-// Emitir, receber, decidir e liquidar mudam a página: o formulário do ato deixa de ser oferecido na recarga e, com ele,
-// sumiria a mensagem do que foi gravado. Cada formulário (a instância) se registra no provedor, acima dos formulários e
-// que a recarga não desmonta, e publica o resultado quando a action responde; o aviso aparece no topo SÓ quando aquela
-// instância não está mais na página — enquanto está, a mensagem fica junto dos campos.
-
-interface AvisoDoAto { readonly acao: string; readonly instancia: string; readonly tipo: "ok" | "erro"; readonly texto: string; readonly seq: number }
-interface Resultados {
-  readonly publicar: (acao: string, instancia: string, tipo: "ok" | "erro", texto: string) => void;
-  readonly montar: (instancia: string) => () => void;
-  readonly avisos: readonly AvisoDoAto[];
-  readonly montados: Readonly<Record<string, number>>;
-}
-const ContextoDosResultados = createContext<Resultados | null>(null);
-
-export function ResultadosDaExecucao({ children }: { readonly children: React.ReactNode }): React.ReactElement {
-  const [avisos, setAvisos] = useState<readonly AvisoDoAto[]>([]);
-  const [montados, setMontados] = useState<Readonly<Record<string, number>>>({});
-  const seq = useRef(0);
-  const acoes = useMemo(() => ({
-    publicar: (acao: string, instancia: string, tipo: "ok" | "erro", texto: string) => {
-      seq.current += 1;
-      const n = seq.current;
-      setAvisos((xs) => [...xs.filter((x) => x.acao !== acao), { acao, instancia, tipo, texto, seq: n }]);
-    },
-    montar: (instancia: string) => {
-      setMontados((m) => ({ ...m, [instancia]: 1 }));
-      return () => setMontados((m) => ({ ...m, [instancia]: 0 }));
-    },
-  }), []);
-  return <ContextoDosResultados.Provider value={{ ...acoes, avisos, montados }}>{children}</ContextoDosResultados.Provider>;
-}
-
-export function AvisosDaExecucao(): React.ReactElement | null {
-  const ctx = useContext(ContextoDosResultados);
-  const visiveis = (ctx?.avisos ?? []).filter((a) => (ctx?.montados[a.instancia] ?? 0) === 0);
-  return (
-    <div aria-live="polite" data-avisos-da-execucao className={visiveis.length === 0 ? "hidden" : "space-y-2"}>
-      {visiveis.map((a) => (
-        <p key={a.acao} role={a.tipo === "erro" ? "alert" : "status"} data-resultado-da-acao={a.acao} data-resultado-seq={a.seq}
-          className={a.tipo === "erro" ? "whitespace-pre-line rounded-[var(--radius-md)] bg-[color:var(--color-status-erro-bg)] px-3 py-2 text-sm text-[color:var(--color-status-erro-fg)]" : "rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]"}>
-          {a.texto}
-        </p>
-      ))}
-    </div>
-  );
-}
-
 function Mensagens({ estado, acao }: { readonly estado: EstadoDaExecucao; readonly acao: string }): React.ReactElement {
   return (
     <>
@@ -82,18 +35,14 @@ function Mensagens({ estado, acao }: { readonly estado: EstadoDaExecucao; readon
 }
 
 function useAto(acao: string) {
-  const ctx = useContext(ContextoDosResultados);
-  const publicar = ctx?.publicar;
-  const montar = ctx?.montar;
-  const instancia = useId();
-  useEffect(() => montar?.(instancia), [montar, instancia]);
+  const publicar = useResultadoDoAto(acao);
   // O resultado é publicado quando a action RESPONDE — antes de a recarga decidir se este formulário continua na página.
   let guardar: (dados: FormData) => void = () => undefined;
   const [estado, disparar, pendente] = useActionState<EstadoDaExecucao, FormData>(async (anterior, dados) => {
     guardar(dados);
     const r = await execucaoAction(anterior, dados);
-    if (r.erro !== undefined) publicar?.(acao, instancia, "erro", r.erro);
-    else if (r.sucesso !== undefined) publicar?.(acao, instancia, "ok", r.sucesso);
+    if (r.erro !== undefined) publicar("erro", r.erro);
+    else if (r.sucesso !== undefined) publicar("ok", r.sucesso);
     return r;
   }, {});
   // Gravou: o formulário volta limpo. Recusou: volta com o que foi digitado.

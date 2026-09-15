@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useId, useState } from "react";
 import { ChaveDeComando } from "../../../../../../components/ui/ChaveDeComando";
 import { CLASSE_AREA_TEXTO, CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO, CLASSE_PAINEL_FORMULARIO, CLASSE_ROTULO } from "../../../../../../components/ui/Formulario";
+import { useResultadoDoAto } from "../../../../../../components/ui/ResultadosDosAtos";
 import { useRestaurarAposEnvio } from "../../../../../../components/ui/useRestaurarAposEnvio";
 import { planilhaAction, type EstadoDaPlanilha } from "../../planilha-actions";
 
@@ -15,9 +16,18 @@ import { planilhaAction, type EstadoDaPlanilha } from "../../planilha-actions";
 
 const LIMITE_DO_ENVIO_BYTES = 1024 * 1024;
 
-function useAto() {
+function useAto(acao: string, obraId: string) {
+  const publicar = useResultadoDoAto(acao);
   let guardar: (d: FormData) => void = () => undefined;
-  const [estado, disparar, pendente] = useActionState<EstadoDaPlanilha, FormData>(async (anterior, dados) => { guardar(dados); return planilhaAction(anterior, dados); }, {});
+  // O resultado vai também ao provedor da página: confirmar a prévia, vincular e revogar mudam a página, e o formulário
+  // que os disparou pode não voltar na recarga (a prévia confirmada não oferece mais a confirmação).
+  const [estado, disparar, pendente] = useActionState<EstadoDaPlanilha, FormData>(async (anterior, dados) => {
+    guardar(dados);
+    const r = await planilhaAction(anterior, dados);
+    if (r.erro !== undefined) publicar("erro", r.erro);
+    else if (r.sucesso !== undefined) publicar("ok", r.sucesso, r.previaId === undefined ? undefined : { href: `/licitacoes/obras/${obraId}/planilha/previas/${r.previaId}`, rotulo: "Abrir a prévia" });
+    return r;
+  }, {});
   const r = useRestaurarAposEnvio(estado, (e) => e.erro !== undefined);
   guardar = r.guardar;
   return { estado, disparar, pendente, ref: r.ref, id: useId() };
@@ -64,7 +74,7 @@ const Ocultos = ({ obraId, acao, extra = {} }: { readonly obraId: string; readon
 );
 
 export function FormImportarPlanilha({ obraId }: { readonly obraId: string }): React.ReactElement {
-  const a = useAto();
+  const a = useAto("previa-da-planilha", obraId);
   const [aviso, setAviso] = useState<string | null>(null);
   return (
     <form ref={a.ref} action={a.disparar} data-acao="previa-da-planilha" className={CLASSE_PAINEL_FORMULARIO}
@@ -98,7 +108,7 @@ export function FormImportarPlanilha({ obraId }: { readonly obraId: string }): R
 }
 
 export function FormConfirmarPrevia({ obraId, previaId, divergencias, hoje }: { readonly obraId: string; readonly previaId: string; readonly divergencias: number; readonly hoje: string }): React.ReactElement {
-  const a = useAto();
+  const a = useAto("confirmar-planilha", obraId);
   return (
     <form ref={a.ref} action={a.disparar} data-acao="confirmar-planilha" className={CLASSE_PAINEL_FORMULARIO}>
       <ChaveDeComando />
@@ -126,7 +136,7 @@ export function FormConfirmarPrevia({ obraId, previaId, divergencias, hoje }: { 
 }
 
 export function FormVincular({ obraId, itemDaPlanilhaId, codigo, itensDoContrato }: { readonly obraId: string; readonly itemDaPlanilhaId: string; readonly codigo: string; readonly itensDoContrato: readonly { readonly id: string; readonly numero: number; readonly descricao: string; readonly unidade: string }[] }): React.ReactElement {
-  const a = useAto();
+  const a = useAto("vincular-item-da-planilha", obraId);
   return (
     <form ref={a.ref} action={a.disparar} data-acao="vincular-item-da-planilha" className="mt-2 grid gap-2 sm:grid-cols-3">
       <ChaveDeComando />
@@ -146,7 +156,7 @@ export function FormVincular({ obraId, itemDaPlanilhaId, codigo, itensDoContrato
 }
 
 export function FormRevogarVinculo({ obraId, vinculoId }: { readonly obraId: string; readonly vinculoId: string }): React.ReactElement {
-  const a = useAto();
+  const a = useAto("revogar-vinculo-da-planilha", obraId);
   return (
     <form ref={a.ref} action={a.disparar} data-acao="revogar-vinculo-da-planilha" className="mt-1 flex flex-wrap items-end gap-2">
       <ChaveDeComando />
