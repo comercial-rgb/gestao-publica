@@ -108,6 +108,7 @@ model Pessoa {
   /// V6.1 — back-relation VIRTUAL: as designações de certificação da folha desta pessoa.
   designacoesNaFolha DesignacaoNaFolha[] @relation("DesignadoNaFolha")
   designacoesNoContrato DesignacaoNoContrato[] @relation("DesignadoNoContrato")
+  administracoesDaFiscalizacao AdministradorDaFiscalizacao[] @relation("AdministradorDaFiscalizacao")
   /// back-relation V3 (pacote 2) — VIRTUAL: os usuários vinculados a esta pessoa (histórico).
   usuariosVinculados VinculoUsuarioPessoa[] @relation("PessoaDoUsuario")
   /// V6.2 — P3: as solicitações em nome desta pessoa, as representações dela e as propostas cadastrais. VIRTUAL.

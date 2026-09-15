@@ -139,6 +139,7 @@ export const EXECUCAO_DESPESA: readonly RelatorioNav[] = [
  */
 export const LICITACOES: readonly RelatorioNav[] = [
   { href: "/licitacoes/processos", numero: "Processos", rotulo: "Processos licitatórios", descricao: "Número, modalidade, objeto e valor licitado; homologação, reserva de dotação e contrato no detalhe." },
+  { href: "/licitacoes/fiscalizacao", numero: "Fiscalização", rotulo: "Fiscalização de contratos", descricao: "Os contratos em que você é gestor, fiscal ou recebedor designado; os administradores da fiscalização." },
   { href: "/licitacoes/contratos", numero: "Contratos", rotulo: "Contratos e aditivos", descricao: "Valor e vigência derivados dos aditivos; estorno de aditivo; os empenhos que informaram o contrato." },
   { href: "/licitacoes/solicitacoes", numero: "Solicitações", rotulo: "Solicitações de compra", descricao: "A requisição ao Compras, com itens; autorizar e anular são fatos com data e motivo." },
   { href: "/licitacoes/pesquisas-de-precos", numero: "Preços", rotulo: "Pesquisas de preços", descricao: "Planilha de preços por item e fornecedor; média, mínimo e máximo derivados." },

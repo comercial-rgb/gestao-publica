@@ -50,6 +50,9 @@ const TABELAS = [
   "AssinaturaDeDocumento",
   "SignatarioDaFila",
   "FilaDeAssinatura",
+  // ── V7 M2 (ponte contratual) ──
+  "RevogacaoDeAdministradorDaFiscalizacao",
+  "AdministradorDaFiscalizacao",
   // ── V7 M2.1 — o contrato acompanhado ──
   "AprovacaoDeMedicao",
   "ItemMedido",

@@ -64,9 +64,9 @@ export function FormDesignar({ contratoId, usuarios }: { readonly contratoId: st
     <form ref={a.ref} action={a.disparar} data-acao="designar-no-contrato" className={CLASSE_PAINEL_FORMULARIO}>
       <ChaveDeComando />
       <Ocultos contratoId={contratoId} acao="designar" />
-      <h3 className="mb-3 text-sm font-semibold">Designar gestor ou fiscal</h3>
+      <h3 className="mb-3 text-sm font-semibold">Designar gestor, fiscal ou recebedor definitivo</h3>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Selecao id={a.id} nome="papel" rotulo="Papel" opcoes={[{ valor: "GESTOR", rotulo: "Gestor do contrato" }, { valor: "FISCAL", rotulo: "Fiscal do contrato" }]} />
+        <Selecao id={a.id} nome="papel" rotulo="Papel" opcoes={[{ valor: "GESTOR", rotulo: "Gestor do contrato" }, { valor: "FISCAL", rotulo: "Fiscal do contrato" }, { valor: "RECEBEDOR_DEFINITIVO", rotulo: "Recebedor definitivo (servidor ou membro da comissão)" }]} />
         <Selecao id={a.id} nome="usuario" rotulo="Conta (com pessoa vinculada)" opcoes={usuarios} />
         <Campo id={a.id} nome="ato" rotulo="Ato de designação" placeholder="Portaria 45/2026" minLength={3} />
         <Campo id={a.id} nome="inicio" rotulo="Início" tipo="date" />

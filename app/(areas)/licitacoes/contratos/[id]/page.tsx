@@ -3,22 +3,29 @@ import { FormsDoRecurso } from "../../../../../components/molde/FormsDoRecurso";
 import { DetalheDeRecurso } from "../../../../../components/molde/DetalheDeRecurso";
 import { lerConsulta, type ParametrosBrutos } from "../../../../../lib/molde/consulta";
 import type { AbaDoMolde } from "../../../../../lib/molde/tipos";
-import { acoesPermitidas, exigirLeitura } from "../../../../../lib/portas/molde";
+import { acoesPermitidas } from "../../../../../lib/portas/molde";
+import { podeLerPara } from "../../../../../lib/portas/leitura";
+import { exigirSessao } from "../../../../../lib/portas/sessao";
 import { CONTRATOS } from "../../../../../lib/portas/recursos/contratacao";
 import { verContrato, opcoesDoContrato } from "../../../../../lib/portas/recursos/contratacao-dados";
 import { contratosAction } from "../actions";
-import { dossieDoContratoPara, hojeCivil } from "../../../../../lib/portas/contrato-acompanhado";
+import { alcanceDaSessaoNoContrato, dossieDoContratoPara, hojeCivil } from "../../../../../lib/portas/contrato-acompanhado";
 import { DossieDoContrato } from "./DossieDoContrato";
 
 /**
  * O DETALHE DO CONTRATO: valor e vigência derivados dos aditivos, os empenhos que o informaram, e as ações. Os aditivos oferecidos ao estorno são SÓ os vivos deste contrato.
- * ⚠️ A ABA VEM DA URL (`?aba=historico`). Ato do ENTE: a leitura é a das licitações.
+ * ⚠️ A ABA VEM DA URL (`?aba=historico`).
+ * ⚠️ QUEM ENTRA (V7 M2 U0.1): quem lê licitações no ente (projeção financeira) OU quem alcança a fiscalização DESTE
+ * contrato (designação vigente ou administrador da fiscalização). Qualquer outro recebe 404 — a mesma resposta de
+ * contrato inexistente. O dossiê abaixo decide a projeção pelo mesmo alcance.
  */
 export const dynamic = "force-dynamic";
 
 export default async function Detalhe({ params, searchParams }: { readonly params: Promise<{ readonly id: string }>; readonly searchParams: Promise<ParametrosBrutos> }): Promise<React.ReactElement> {
-  const sessao = await exigirLeitura("CONSULTAR_LICITACOES");
+  const sessao = await exigirSessao();
   const { id } = await params;
+  const [leLicitacoes, alcance] = await Promise.all([podeLerPara(sessao, "CONSULTAR_LICITACOES", "ente"), alcanceDaSessaoNoContrato(sessao, id)]);
+  if (!leLicitacoes && !alcance.fiscalizacao) notFound();
   const consulta = lerConsulta(CONTRATOS, await searchParams);
   const [detalhe, opcoes, permitidas] = await Promise.all([verContrato(id), opcoesDoContrato(id), acoesPermitidas(CONTRATOS.acoes.map((a) => a.acaoDoCenso))]);
   if (detalhe === null) notFound();

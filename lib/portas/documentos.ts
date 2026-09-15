@@ -8,6 +8,7 @@ import {
   type NivelDeLeitura,
 } from "./leitura";
 import { anexarArquivo, baixarAnexo } from "../../modules/m22-documentos/anexos";
+import { alcanceNoContrato } from "../../modules/m11-licitacoes/acesso-da-fiscalizacao";
 import {
   listarAnexosDaPessoa,
   listarAnexosDoComunicado,
@@ -95,9 +96,12 @@ export async function lerAnexosDoComunicado(
  * ⚠️ `null` para o anexo que não existe OU que não tem dono conhecido: a rota responde
  * 404, o mesmo de "não pode". Um anexo órfão não é entregue a ninguém.
  */
-async function leituraDoDonoDoAnexo(
-  anexoId: string
-): Promise<{ readonly acao: AcaoDeLeitura; readonly nivel: NivelDeLeitura } | null> {
+type LeituraDoDono =
+  | { readonly acao: AcaoDeLeitura; readonly nivel: NivelDeLeitura }
+  /** V7 M2 U0.1 — documento INTERNO da fiscalização: só quem alcança a fiscalização daquele contrato. */
+  | { readonly fiscalizacaoDoContrato: string };
+
+async function leituraDoDonoDoAnexo(anexoId: string): Promise<LeituraDoDono | null> {
   const a = await cliente().anexo.findUnique({
     where: { id: anexoId },
     select: {
@@ -110,6 +114,7 @@ async function leituraDoDonoDoAnexo(
       documentoFiscalId: true,
       guiaDeRecolhimentoId: true,
       ocorrenciaDeFiscalizacaoId: true,
+      ocorrenciaDeFiscalizacao: { select: { contratoId: true } },
     },
   });
   if (a === null) return null;
@@ -121,7 +126,9 @@ async function leituraDoDonoDoAnexo(
   if (a.documentoFiscalId !== null) return { acao: "CONSULTAR_LICITACOES", nivel: "algum" };
   if (a.guiaDeRecolhimentoId !== null) return { acao: "CONSULTAR_FOLHA", nivel: "ente" };
   // V7 M2.1 — evidência de fiscalização é documento INTERNO do contrato: nunca vai à projeção pública.
-  if (a.ocorrenciaDeFiscalizacaoId !== null) return { acao: "CONSULTAR_LICITACOES", nivel: "algum" };
+  // ⚠️ V7 M2 U0.1 — e também não vai a quem só lê licitações: a evidência é da visão de FISCALIZAÇÃO (designado
+  // vigente no contrato ou administrador da fiscalização). Antes, `CONSULTAR_LICITACOES` baixava qualquer uma.
+  if (a.ocorrenciaDeFiscalizacao !== null) return { fiscalizacaoDoContrato: a.ocorrenciaDeFiscalizacao.contratoId };
   return null;
 }
 
@@ -144,7 +151,9 @@ export async function entregarAnexo(
   if (sessao === null) return null;
   const dono = await leituraDoDonoDoAnexo(anexoId);
   if (dono === null) return null;
-  if (!(await podeLerPara(sessao, dono.acao, dono.nivel))) return null;
+  if ("fiscalizacaoDoContrato" in dono) {
+    if (!(await alcanceNoContrato(cliente(), sessao.identificador, dono.fiscalizacaoDoContrato)).fiscalizacao) return null;
+  } else if (!(await podeLerPara(sessao, dono.acao, dono.nivel))) return null;
   return baixarAnexo(cliente(), anexoId, sessao.identificador);
 }
 

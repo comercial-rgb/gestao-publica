@@ -16,6 +16,9 @@ enum PapelNoContrato {
   GESTOR
   /// Art. 117 — quem acompanha a execução: registra ocorrência, evidência e mede.
   FISCAL
+  /// Art. 140, I, b e II, b — o servidor (ou membro da comissão) designado para o recebimento DEFINITIVO.
+  /// Não é o gestor genérico nem a designação da folha: é papel próprio, com ato e vigência.
+  RECEBEDOR_DEFINITIVO
 }
 
 /// A DESIGNAÇÃO NO CONTRATO — pessoa E usuário conferidos pelo vínculo do M16, ato e vigência.
@@ -219,6 +222,46 @@ model AprovacaoDeMedicao {
 
   /// O dia civil da aprovação.
   data DateTime
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// V7 M2 U0.1 — O ADMINISTRADOR DA FISCALIZAÇÃO (5.21.17: "administradores do sistema de Fiscalização de
+/// Contratos, estes administradores poderão acessar qualquer contrato"). É DEFINIÇÃO com pessoa, usuário, ato e
+/// vigência — não uma ação do perfil: quem tem o poder de DEFINIR (a ação) não ganha o alcance por isso, e o
+/// administrador da plataforma só alcança a visão de fiscalização se for definido (fato com autor).
+model AdministradorDaFiscalizacao {
+  id String @id @default(cuid())
+
+  usuarioId String
+  usuario   Usuario @relation("AdministradorDaFiscalizacao", fields: [usuarioId], references: [id])
+
+  pessoaId String
+  pessoa   Pessoa  @relation("AdministradorDaFiscalizacao", fields: [pessoaId], references: [id])
+
+  atoDesignacao String
+
+  vigenciaInicio DateTime
+  vigenciaFim    DateTime?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  revogacao RevogacaoDeAdministradorDaFiscalizacao?
+
+  @@index([usuarioId])
+  @@index([pessoaId])
+}
+
+model RevogacaoDeAdministradorDaFiscalizacao {
+  id String @id @default(cuid())
+
+  administradorId String                      @unique
+  administrador   AdministradorDaFiscalizacao @relation(fields: [administradorId], references: [id])
+
+  dataEfeito DateTime
+  motivo     String
 
   criadoEm  DateTime @default(now())
   criadoPor String

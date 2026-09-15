@@ -499,6 +499,26 @@ export function derivarOuvidoriaEAvaliacao(
  */
 export const ACOES_DO_CONTRATO_ACOMPANHADO: readonly AcaoDoSistema[] = ["DESIGNAR_NO_CONTRATO", "CADASTRAR_ITEM_DO_CONTRATO"];
 
+/** V7 M2 (ponte contratual) — o poder de DEFINIR administrador da fiscalização vai a quem administra permissões. */
+export const ACOES_DA_ADMINISTRACAO_DA_FISCALIZACAO: readonly AcaoDoSistema[] = ["DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO"];
+
+export function derivarAdministracaoDaFiscalizacao(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null);
+    if (!administra) continue;
+    const jaTem = new Set(perfil.permissoes.filter((p) => p.unidadeOrcId === null).map((p) => p.acao));
+    for (const acao of ACOES_DA_ADMINISTRACAO_DA_FISCALIZACAO) {
+      if (jaTem.has(acao)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
+
 export function derivarContratoAcompanhado(
   perfis: readonly PerfilComPermissoes[],
   _areaDaAcao: AreaDaAcao
@@ -727,6 +747,15 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "Quem administra permissoes no global recebe designar e cadastrar item. Os atos de gestor e fiscal exigem, alem " +
       "da acao, a designacao vigente no contrato — o administrador cria os perfis de gestor e de fiscal.",
     derivar: derivarContratoAcompanhado,
+  },
+  {
+    versao: 19,
+    nome: "administracao-da-fiscalizacao",
+    descricao:
+      "A definicao do administrador da fiscalizacao de contratos (V7 M2) chegou com DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO. " +
+      "Quem administra permissoes no global recebe o poder de DEFINIR. Ter a acao nao da o alcance: a visao de fiscalizacao " +
+      "de um contrato continua exigindo designacao vigente nele ou uma definicao vigente de administrador, com ato.",
+    derivar: derivarAdministracaoDaFiscalizacao,
   },
 ];
 

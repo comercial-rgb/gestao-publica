@@ -467,6 +467,7 @@ enum AcaoDoSistema {
   TRIAR_MANIFESTACAO_DE_OUVIDORIA
   MODERAR_AVALIACAO_DE_SERVICO
   DESIGNAR_NO_CONTRATO
+  DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO
   CADASTRAR_ITEM_DO_CONTRATO
   PROGRAMAR_FISCALIZACAO_DO_CONTRATO
   REGISTRAR_OCORRENCIA_DE_FISCALIZACAO
@@ -539,6 +540,7 @@ model Usuario {
   /// V6.1 — back-relation VIRTUAL: as designações de certificação da folha deste usuário.
   designacoesNaFolha DesignacaoNaFolha[] @relation("DesignacaoNaFolha")
   designacoesNoContrato DesignacaoNoContrato[] @relation("DesignacaoNoContrato")
+  administracoesDaFiscalizacao AdministradorDaFiscalizacao[] @relation("AdministradorDaFiscalizacao")
 
   @@index([ativo])
   /// V6.2 — as representações de pessoa que esta conta exerce. VIRTUAL.

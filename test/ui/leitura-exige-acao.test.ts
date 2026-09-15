@@ -51,6 +51,13 @@ const GATES = [
   /\bentregar(Anexo|LoteDoProcesso|LoteDaPessoa)\(/,
   // ⚠️ A TELA DE RECUSA recalcula a decisão a partir da sessão — ela É a política, exposta.
   /\bexigirLeitura(DoEnte|EmAlgumEscopo)Para\(/,
+  // ⚠️ O DETALHE DO CONTRATO (V7 M2 U0.1) aceita DUAS entradas e responde 404 fora delas: a leitura das licitações
+  // no ente (`podeLerPara` com a ação literal) OU o alcance da fiscalização daquele contrato. As duas perguntas estão
+  // na página, antes de qualquer leitura de dado.
+  /\bpodeLerPara\([^,]+,\s*"CONSULTAR_[A-Z_]+"/,
+  // ⚠️ A LISTA DA FISCALIZAÇÃO (V7 M2 U0.1) não é leitura de área: é o recorte por DESIGNAÇÃO vigente (ou definição de
+  // administrador), decidido no domínio a partir da sessão — quem não tem nenhuma recebe a lista vazia, não a de outros.
+  /\bfiscalizacoesDaSessao\(/,
 ];
 
 /** Portas que uma página de NAVEGAÇÃO pode importar sem ter gate: não entregam dado. */

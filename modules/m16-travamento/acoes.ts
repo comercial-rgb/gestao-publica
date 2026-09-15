@@ -319,6 +319,7 @@ export type AcaoDoSistema =
   | "TRIAR_MANIFESTACAO_DE_OUVIDORIA"
   | "MODERAR_AVALIACAO_DE_SERVICO"
   | "DESIGNAR_NO_CONTRATO"
+  | "DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO"
   | "CADASTRAR_ITEM_DO_CONTRATO"
   | "PROGRAMAR_FISCALIZACAO_DO_CONTRATO"
   | "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO"
@@ -785,6 +786,8 @@ export type NomeDeServico =
   | "removerAvaliacao"
   | "designarNoContrato"
   | "revogarDesignacaoNoContrato"
+  | "definirAdministradorDaFiscalizacao"
+  | "revogarAdministradorDaFiscalizacao"
   | "cadastrarItemDoContrato"
   | "programarFiscalizacao"
   | "registrarOcorrencia"
@@ -1237,6 +1240,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // fiscal, vigente) é conferida dentro de cada ato. Designar e revogar são a mesma ação.
   designarNoContrato: "DESIGNAR_NO_CONTRATO",
   revogarDesignacaoNoContrato: "DESIGNAR_NO_CONTRATO",
+  definirAdministradorDaFiscalizacao: "DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO",
+  revogarAdministradorDaFiscalizacao: "DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO",
   cadastrarItemDoContrato: "CADASTRAR_ITEM_DO_CONTRATO",
   programarFiscalizacao: "PROGRAMAR_FISCALIZACAO_DO_CONTRATO",
   registrarOcorrencia: "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO",
@@ -1486,7 +1491,14 @@ export const FORA_DO_CENSO: Record<string, string> = {
     "a designação de fiscal).",
   acompanhamentoDoContrato:
     "LEITURA: o dossiê interno do contrato — vigência, financeiro do M05, físico por item, designações, agenda, ocorrências " +
-    "e medições. Quem lê é decidido pela porta (CONSULTAR_LICITACOES).",
+    "e medições. Quem lê é decidido pelo alcance (`alcanceNoContrato`): a visão de fiscalização só para designado ou " +
+    "administrador da fiscalização; a financeira sem agenda, ocorrência nem evidência.",
+  alcanceNoContrato:
+    "LEITURA/GUARD: quem alcança o contrato e em qual projeção (fiscalização por designação vigente ou administrador da " +
+    "fiscalização; financeira por leitura de licitações/despesa ou ato da despesa). Usada pela página, pelo anexo e pelos atos.",
+  contratosNoAlcanceDaFiscalizacao:
+    "LEITURA: o recorte da lista de fiscalizações do usuário — contratos de designação vigente, ou todos para o administrador " +
+    "da fiscalização vigente.",
   projecaoPublicaDoContrato:
     "LEITURA PÚBLICA: identificação, vigência, valores, aditivos, responsáveis vigentes (nome e ato) e execução física pelas " +
     "medições aprovadas. Sem ocorrência, evidência, conta ou documento de pessoa.",

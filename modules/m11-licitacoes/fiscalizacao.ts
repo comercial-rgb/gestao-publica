@@ -89,7 +89,7 @@ async function exigirDesignacao(tx: Tx, contrato: ContratoLido, usuario: string,
 
 export const zDesignarNoContrato = z.object({
   contratoId: z.string().min(1),
-  papel: z.enum(["GESTOR", "FISCAL"]),
+  papel: z.enum(["GESTOR", "FISCAL", "RECEBEDOR_DEFINITIVO"]),
   usuarioIdentificador: z.string().min(1),
   atoDesignacao: z.string().trim().min(3),
   vigenciaInicio: zDia,
@@ -114,20 +114,28 @@ export async function designarNoContrato(prisma: PrismaClient, input: DesignarNo
     if (diaCivil(c.fim) < d.vigenciaInicio || (d.vigenciaFim ?? diaCivil(c.fim)) < diaCivil(c.inicio)) {
       throw new Error(`DESIGNACAO-FORA-DA-VIGENCIA-DO-CONTRATO: o contrato ${c.numeroContrato} vigora de ${diaCivilBr(c.inicio)} a ${diaCivilBr(c.fim)}; a designação não encontra dia dentro dela. Nada foi gravado.`);
     }
-    // ⚠️ SEGREGAÇÃO: quem gere não fiscaliza o mesmo contrato no mesmo período — o gestor resolve o que o
-    // fiscal registra, e as duas mãos na mesma pessoa apagariam o controle.
-    const outroPapel = d.papel === "GESTOR" ? "FISCAL" : "GESTOR";
+    // ⚠️ SEGREGAÇÃO, nos dois sentidos e no período que se sobrepõe:
+    //   · GESTOR × FISCAL — o gestor resolve o que o fiscal registra; as duas mãos na mesma pessoa apagariam o controle;
+    //   · FISCAL × RECEBEDOR DEFINITIVO — o art. 140 separa quem recebe provisoriamente (quem acompanha e fiscaliza)
+    //     de quem recebe definitivamente (servidor ou comissão designada). Gestor e recebedor podem acumular: a lei
+    //     não os separa.
+    const conflitantes: readonly ("GESTOR" | "FISCAL" | "RECEBEDOR_DEFINITIVO")[] =
+      d.papel === "GESTOR" ? ["FISCAL"] : d.papel === "FISCAL" ? ["GESTOR", "RECEBEDOR_DEFINITIVO"] : ["FISCAL"];
     const doOutro = await tx.designacaoNoContrato.findMany({
-      where: { contratoId: c.id, papel: outroPapel, usuarioId: usuario.id },
-      select: { vigenciaInicio: true, vigenciaFim: true, revogacao: { select: { dataEfeito: true } } },
+      where: { contratoId: c.id, papel: { in: [...conflitantes] }, usuarioId: usuario.id },
+      select: { papel: true, vigenciaInicio: true, vigenciaFim: true, revogacao: { select: { dataEfeito: true } } },
     });
     const fimNovo = d.vigenciaFim ?? "9999-12-31";
-    const sobrepoe = doOutro.some((o) => {
+    const conflito = doOutro.find((o) => {
       const fimO = o.revogacao !== null ? diaCivil(new Date(o.revogacao.dataEfeito.getTime() - 86_400_000)) : o.vigenciaFim === null ? "9999-12-31" : diaCivil(o.vigenciaFim);
       return diaCivil(o.vigenciaInicio) <= fimNovo && d.vigenciaInicio <= fimO;
     });
-    if (sobrepoe) {
-      throw new Error(`ACUMULO-DE-GESTOR-E-FISCAL: ${d.usuarioIdentificador} já é ${outroPapel} do contrato ${c.numeroContrato} em período que se sobrepõe. Quem gere não fiscaliza o mesmo contrato. Nada foi gravado.`);
+    if (conflito !== undefined) {
+      const par = [d.papel, conflito.papel].sort().join("-");
+      if (par === "FISCAL-RECEBEDOR_DEFINITIVO") {
+        throw new Error(`ACUMULO-DE-FISCAL-E-RECEBEDOR: ${d.usuarioIdentificador} já é ${conflito.papel === "FISCAL" ? "FISCAL" : "RECEBEDOR DEFINITIVO"} do contrato ${c.numeroContrato} em período que se sobrepõe. Quem recebe provisoriamente não recebe definitivamente o mesmo objeto (art. 140, I). Nada foi gravado.`);
+      }
+      throw new Error(`ACUMULO-DE-GESTOR-E-FISCAL: ${d.usuarioIdentificador} já é ${conflito.papel} do contrato ${c.numeroContrato} em período que se sobrepõe. Quem gere não fiscaliza o mesmo contrato. Nada foi gravado.`);
     }
     const r = await tx.designacaoNoContrato.create({
       data: {
@@ -382,7 +390,7 @@ export interface ItemAcompanhado {
 
 export interface DesignacaoAcompanhada {
   readonly id: string;
-  readonly papel: "GESTOR" | "FISCAL";
+  readonly papel: "GESTOR" | "FISCAL" | "RECEBEDOR_DEFINITIVO";
   readonly nome: string;
   readonly usuario: string;
   readonly ato: string;
@@ -392,7 +400,11 @@ export interface DesignacaoAcompanhada {
   readonly vigenteHoje: boolean;
 }
 
+export type VisaoDoContrato = "FISCALIZACAO" | "FINANCEIRA";
+
 export interface AcompanhamentoDoContrato {
+  /** Qual projeção foi lida. Na FINANCEIRA, agenda e ocorrências nem são consultadas (listas vazias). */
+  readonly visao: VisaoDoContrato;
   readonly contrato: { readonly id: string; readonly numero: string; readonly objeto: string | null; readonly contratado: string; readonly inicio: string; readonly fim: string; readonly diasAteOFim: number; readonly vigenteHoje: boolean };
   readonly financeiro: { readonly valorVigente: string; readonly empenhado: string; readonly saldoAEmpenhar: string; readonly liquidado: string; readonly pago: string };
   readonly fisico: { readonly itens: readonly ItemAcompanhado[]; readonly medidoTotal: string };
@@ -404,8 +416,12 @@ export interface AcompanhamentoDoContrato {
 
 const pct1 = (parte: Decimal, todo: Decimal): string => (todo.isZero() ? "0,0" : parte.times(100).dividedBy(todo).toDecimalPlaces(1, Decimal.ROUND_HALF_UP).toFixed(1).replace(".", ","));
 
-/** O DOSSIÊ INTERNO — leitura; quem pode ler é decidido pela porta (CONSULTAR_LICITACOES). */
-export async function acompanhamentoDoContrato(prisma: Tx, contratoId: string): Promise<AcompanhamentoDoContrato | null> {
+/**
+ * O DOSSIÊ INTERNO — leitura. QUEM lê e EM QUAL VISÃO é decidido antes, por `alcanceNoContrato`
+ * (acesso-da-fiscalizacao.ts). Na visão FINANCEIRA a agenda e as ocorrências (com as evidências) NÃO são lidas do
+ * banco: a projeção não depende de a tela esquecer de mostrar.
+ */
+export async function acompanhamentoDoContrato(prisma: Tx, contratoId: string, visao: VisaoDoContrato): Promise<AcompanhamentoDoContrato | null> {
   const c = await prisma.contrato.findUnique({
     where: { id: contratoId },
     select: {
@@ -413,8 +429,6 @@ export async function acompanhamentoDoContrato(prisma: Tx, contratoId: string): 
       movimentos: { select: { tipo: true, valor: true, dias: true } },
       itens: { orderBy: { numero: "asc" }, select: { id: true, numero: true, descricao: true, unidade: true, quantidade: true, valorUnitario: true, medidos: { select: { quantidade: true } } } },
       designacoes: { orderBy: [{ papel: "asc" }, { vigenciaInicio: "asc" }], select: { id: true, papel: true, atoDesignacao: true, vigenciaInicio: true, vigenciaFim: true, revogacao: { select: { dataEfeito: true } }, usuario: { select: { identificador: true } }, pessoa: { select: { documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } } } },
-      ordensDeFiscalizacao: { orderBy: { numero: "desc" }, select: { id: true, numero: true, dataPrevista: true, objetivo: true, fiscalDesignacao: { select: { usuario: { select: { identificador: true } } } }, _count: { select: { ocorrencias: true } } } },
-      ocorrencias: { orderBy: { numero: "desc" }, select: { id: true, numero: true, data: true, tipo: true, descricao: true, encaminhamento: true, ordem: { select: { numero: true } }, designacao: { select: { usuario: { select: { identificador: true } } } }, evidencias: { select: { id: true, nomeOriginal: true } }, resolucao: { select: { texto: true, criadoEm: true, designacao: { select: { usuario: { select: { identificador: true } } } } } } } },
       medicoes: { orderBy: { criadoEm: "desc" }, select: { id: true, numero: true, periodoInicio: true, periodoFim: true, valorMedido: true, aprovadaEm: true, aprovacao: { select: { id: true } }, obra: { select: { identificador: true } }, porItens: { select: { id: true } } } },
     },
   });
@@ -423,12 +437,23 @@ export async function acompanhamentoDoContrato(prisma: Tx, contratoId: string): 
   const valorVigente = valorAtualizado(toMoney(c.valorInicial.toFixed(2)), movs);
   const fim = vigenciaFim(c.vigenciaFimInicial, movs);
   const agora = new Date();
-  const [empenhado, execucao] = await Promise.all([empenhadoLiquidoPorContrato(prisma, c.id), execucaoPorContrato(prisma, c.id)]);
+  const fiscalizacao = visao === "FISCALIZACAO";
+  const [empenhado, execucao, ordensDeFiscalizacao, ocorrencias] = await Promise.all([
+    empenhadoLiquidoPorContrato(prisma, c.id),
+    execucaoPorContrato(prisma, c.id),
+    fiscalizacao
+      ? prisma.ordemDeFiscalizacao.findMany({ where: { contratoId: c.id }, orderBy: { numero: "desc" }, select: { id: true, numero: true, dataPrevista: true, objetivo: true, fiscalDesignacao: { select: { usuario: { select: { identificador: true } } } }, _count: { select: { ocorrencias: true } } } })
+      : Promise.resolve([]),
+    fiscalizacao
+      ? prisma.ocorrenciaDeFiscalizacao.findMany({ where: { contratoId: c.id }, orderBy: { numero: "desc" }, select: { id: true, numero: true, data: true, tipo: true, descricao: true, encaminhamento: true, ordem: { select: { numero: true } }, designacao: { select: { usuario: { select: { identificador: true } } } }, evidencias: { select: { id: true, nomeOriginal: true } }, resolucao: { select: { texto: true, criadoEm: true, designacao: { select: { usuario: { select: { identificador: true } } } } } } } })
+      : Promise.resolve([]),
+  ]);
   const itens = c.itens.map((i) => {
     const medido = i.medidos.reduce((t, m) => t.plus(m.quantidade.toFixed(4)), new Decimal(0));
     return { id: i.id, numero: i.numero, descricao: i.descricao, unidade: i.unidade, quantidade: i.quantidade.toFixed(4), valorUnitario: i.valorUnitario.toFixed(4), medido: medido.toFixed(4), aMedir: new Decimal(i.quantidade.toFixed(4)).minus(medido).toFixed(4), percentualFisico: pct1(medido, new Decimal(i.quantidade.toFixed(4))) };
   });
   return {
+    visao,
     contrato: { id: c.id, numero: c.numeroContrato, objeto: c.objeto, contratado: c.contratadoNome, inicio: diaCivilBr(c.vigenciaInicio), fim: diaCivilBr(fim), diasAteOFim: diasAteVencimento(fim, agora), vigenteHoje: estaVigente(c.vigenciaInicio, fim, agora) },
     financeiro: { valorVigente: valorVigente.toFixed(2), empenhado: empenhado.toFixed(2), saldoAEmpenhar: toMoney(valorVigente.minus(empenhado)).toFixed(2), liquidado: execucao.liquidado.toFixed(2), pago: execucao.pago.toFixed(2) },
     fisico: { itens, medidoTotal: sumMoney(c.medicoes.map((m) => m.valorMedido.toFixed(2))).toFixed(2) },
@@ -436,8 +461,8 @@ export async function acompanhamentoDoContrato(prisma: Tx, contratoId: string): 
       id: d.id, papel: d.papel, nome: d.pessoa.versoes[0]?.nome ?? d.pessoa.documento, usuario: d.usuario.identificador, ato: d.atoDesignacao,
       inicio: diaCivilBr(d.vigenciaInicio), fim: d.vigenciaFim === null ? null : diaCivilBr(d.vigenciaFim), revogadaEm: d.revogacao === null ? null : diaCivilBr(d.revogacao.dataEfeito), vigenteHoje: designacaoVigenteEm(d, agora),
     })),
-    ordens: c.ordensDeFiscalizacao.map((o) => ({ id: o.id, numero: o.numero, dataPrevista: diaCivilBr(o.dataPrevista), objetivo: o.objetivo, fiscal: o.fiscalDesignacao.usuario.identificador, ocorrencias: o._count.ocorrencias })),
-    ocorrencias: c.ocorrencias.map((o) => ({
+    ordens: ordensDeFiscalizacao.map((o) => ({ id: o.id, numero: o.numero, dataPrevista: diaCivilBr(o.dataPrevista), objetivo: o.objetivo, fiscal: o.fiscalDesignacao.usuario.identificador, ocorrencias: o._count.ocorrencias })),
+    ocorrencias: ocorrencias.map((o) => ({
       id: o.id, numero: o.numero, data: diaCivilBr(o.data), tipo: o.tipo, descricao: o.descricao, encaminhamento: o.encaminhamento, fiscal: o.designacao.usuario.identificador, ordem: o.ordem?.numero ?? null,
       evidencias: o.evidencias.map((e) => ({ id: e.id, nome: e.nomeOriginal })),
       resolucao: o.resolucao === null ? null : { texto: o.resolucao.texto, gestor: o.resolucao.designacao.usuario.identificador, em: diaCivilBr(o.resolucao.criadoEm) },
@@ -454,7 +479,7 @@ export interface ProjecaoPublicaDoContrato {
   readonly valorInicial: string;
   readonly valorVigente: string;
   readonly aditivos: readonly { readonly numero: string | null; readonly tipo: string; readonly data: string; readonly valor: string | null; readonly dias: number | null }[];
-  readonly responsaveis: readonly { readonly papel: "GESTOR" | "FISCAL"; readonly nome: string; readonly ato: string; readonly desde: string }[];
+  readonly responsaveis: readonly { readonly papel: "GESTOR" | "FISCAL" | "RECEBEDOR_DEFINITIVO"; readonly nome: string; readonly ato: string; readonly desde: string }[];
   readonly execucaoFisica: readonly { readonly item: number; readonly descricao: string; readonly unidade: string; readonly contratado: string; readonly medidoAprovado: string; readonly percentual: string }[];
   readonly medicoesAprovadas: { readonly quantidade: number; readonly valor: string };
 }

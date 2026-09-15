@@ -107,7 +107,7 @@ describe("gestor e fiscal", () => {
     await expect(resolverOcorrencia(prisma, { ocorrenciaId: oc.ocorrenciaId, texto: "Notificada a contratada para refazer o trecho 1", criadoPor: FISCAL })).rejects.toThrow(/SEM-DESIGNACAO-DE-GESTOR/);
     await resolverOcorrencia(prisma, { ocorrenciaId: oc.ocorrenciaId, texto: "Notificada a contratada para refazer o trecho 1", criadoPor: GESTORA });
     await expect(resolverOcorrencia(prisma, { ocorrenciaId: oc.ocorrenciaId, texto: "Segunda resolução sem sentido nenhum", criadoPor: GESTORA })).rejects.toThrow(/OCORRENCIA-JA-RESOLVIDA/);
-    const dossie = await acompanhamentoDoContrato(prisma, "ctr-vigente");
+    const dossie = await acompanhamentoDoContrato(prisma, "ctr-vigente", "FISCALIZACAO");
     expect(dossie?.ocorrencias[0]).toMatchObject({ numero: 1, ordem: 1, fiscal: FISCAL, evidencias: [{ nome: "foto-trecho-1.png" }], resolucao: { gestor: GESTORA } });
     expect(dossie?.ordens[0]).toMatchObject({ numero: 1, ocorrencias: 1 });
   });
@@ -135,7 +135,7 @@ describe("gestor e fiscal", () => {
     await revogarDesignacaoNoContrato(prisma, { designacaoId: designacao.fiscal, dataEfeito: HOJE, motivo: "Fiscal removido da função", criadoPor: ADMIN });
     await expect(registrarOcorrencia(prisma, { contratoId: "ctr-vigente", data: dia(-1), tipo: "OUTRO", descricao: "Registro depois da revogação com data anterior", encaminhamento: "NENHUM", criadoPor: FISCAL })).rejects.toThrow(/SEM-DESIGNACAO-DE-FISCAL/);
     await expect(revogarDesignacaoNoContrato(prisma, { designacaoId: designacao.fiscal, dataEfeito: HOJE, motivo: "Revogar de novo", criadoPor: ADMIN })).rejects.toThrow(/DESIGNACAO-JA-REVOGADA/);
-    const dossie = await acompanhamentoDoContrato(prisma, "ctr-vigente");
+    const dossie = await acompanhamentoDoContrato(prisma, "ctr-vigente", "FISCALIZACAO");
     expect(dossie?.ocorrencias).toHaveLength(1);
     expect(dossie?.designacoes.find((d) => d.papel === "FISCAL")).toMatchObject({ vigenteHoje: false, revogadaEm: HOJE.split("-").reverse().join("/") });
   });
@@ -148,7 +148,7 @@ describe("medição por itens", () => {
     expect(m.valorMedido).toBe("22505.25");
     await expect(medir(2, dia(-30), dia(-21), [{ itemId: itens.a, quantidade: "60.0001" }])).rejects.toThrow(/ITEM-ACIMA-DO-CONTRATADO: o item 1 .*100\.0000 contratado\(s\), já mediu 40\.0000 .*100\.0001/);
     await expect(medir(2, dia(-30), dia(-21), [{ itemId: itens.a, quantidade: "60" }])).resolves.toMatchObject({ valorMedido: "18000.00" });
-    const dossie = await acompanhamentoDoContrato(prisma, "ctr-vigente");
+    const dossie = await acompanhamentoDoContrato(prisma, "ctr-vigente", "FISCALIZACAO");
     expect(dossie?.fisico.itens.map((i) => `${i.numero}:${i.medido}:${i.percentualFisico}`)).toEqual(["1:100.0000:100,0", "2:10.5000:21,0"]);
     expect(dossie?.fisico.medidoTotal).toBe("40505.25");
     // Financeiro é do M05 e continua zero: medir não empenha, não liquida, não paga.
@@ -163,7 +163,7 @@ describe("medição por itens", () => {
     ]);
     expect(r.filter((x) => x.status === "fulfilled")).toHaveLength(1);
     expect(String((r.find((x) => x.status === "rejected") as PromiseRejectedResult).reason)).toMatch(/ITEM-ACIMA-DO-CONTRATADO/);
-    expect((await acompanhamentoDoContrato(prisma, "ctr-vigente"))?.fisico.itens[1]?.medido).toBe("30.0000");
+    expect((await acompanhamentoDoContrato(prisma, "ctr-vigente", "FISCALIZACAO"))?.fisico.itens[1]?.medido).toBe("30.0000");
   });
 
   it("m3: medição com fim depois do fim da vigência recusa; a pública só conta medição APROVADA e não leva ocorrência nem conta", async () => {

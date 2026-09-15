@@ -12,6 +12,7 @@ import { FormDesignar, FormItem, FormMedicaoPorItens, FormOcorrencia, FormProgra
  * não é gestor ou fiscal designado vê o motivo em vez do formulário. Nenhum valor é recalculado aqui.
  */
 
+const PAPEL: Readonly<Record<string, string>> = { GESTOR: "Gestor", FISCAL: "Fiscal", RECEBEDOR_DEFINITIVO: "Recebedor definitivo" };
 const TIPO: Readonly<Record<string, string>> = { CONFORMIDADE: "Conformidade", NAO_CONFORMIDADE: "Não conformidade", ATRASO: "Atraso", IMPEDIMENTO: "Impedimento", OUTRO: "Outro" };
 const num = (v: string): string => v.replace(/\.?0+$/, "").replace(".", ",");
 
@@ -50,12 +51,12 @@ export function DossieDoContrato({ d, hoje }: { readonly d: DossieParaTela; read
       </section>
 
       <Card>
-        <h2 className="mb-2 text-sm font-semibold">Gestor e fiscais</h2>
+        <h2 className="mb-2 text-sm font-semibold">Gestor, fiscais e recebedores</h2>
         {d.designacoes.length === 0 ? <p className="text-sm text-[color:var(--color-ink-2)]">Nenhuma designação. Sem gestor e fiscal designados, agenda, ocorrência e medição por itens não se praticam.</p> : (
           <ul className="space-y-3" data-designacoes>
             {d.designacoes.map((x) => (
               <li key={x.id} data-designacao={x.papel} className="text-sm">
-                <p><strong>{x.papel === "GESTOR" ? "Gestor" : "Fiscal"}:</strong> {x.nome} <span className="text-xs text-[color:var(--color-ink-2)]">· {x.usuario} · {x.ato} · desde {x.inicio}{x.fim === null ? "" : ` até ${x.fim}`}{x.revogadaEm === null ? "" : ` · revogada com efeito em ${x.revogadaEm}`}</span> <Badge status={x.vigenteHoje ? "ok" : "neutro"}>{x.vigenteHoje ? "vigente" : "sem vigência hoje"}</Badge></p>
+                <p><strong>{PAPEL[x.papel] ?? x.papel}:</strong> {x.nome} <span className="text-xs text-[color:var(--color-ink-2)]">· {x.usuario} · {x.ato} · desde {x.inicio}{x.fim === null ? "" : ` até ${x.fim}`}{x.revogadaEm === null ? "" : ` · revogada com efeito em ${x.revogadaEm}`}</span> <Badge status={x.vigenteHoje ? "ok" : "neutro"}>{x.vigenteHoje ? "vigente" : "sem vigência hoje"}</Badge></p>
                 {d.papeis.designar ? <FormRevogar contratoId={alvo} designacaoId={x.id} nome={x.nome} feito={x.revogadaEm !== null} /> : null}
               </li>
             ))}
@@ -85,6 +86,13 @@ export function DossieDoContrato({ d, hoje }: { readonly d: DossieParaTela; read
       </Card>
       {d.papeis.cadastrarItem ? <FormItem contratoId={alvo} /> : null}
 
+      {d.visao === "FINANCEIRA" ? (
+        <Card>
+          <h2 className="mb-2 text-sm font-semibold">Fiscalização</h2>
+          <p className="text-sm text-[color:var(--color-ink-2)]" data-fiscalizacao-restrita>{d.alcance.motivo} A agenda, as ocorrências e as evidências não fazem parte desta projeção.</p>
+        </Card>
+      ) : null}
+      {d.visao === "FISCALIZACAO" ? (<>
       <Card>
         <h2 className="mb-2 text-sm font-semibold">Agenda de fiscalização</h2>
         {d.ordens.length === 0 ? <p className="text-sm text-[color:var(--color-ink-2)]">Nenhuma fiscalização programada.</p> : (
@@ -114,6 +122,7 @@ export function DossieDoContrato({ d, hoje }: { readonly d: DossieParaTela; read
         {d.papeis.podeRegistrarOcorrencia ? null : <Motivo texto={d.papeis.fiscal ? "Seu perfil não tem a ação de registrar ocorrência." : "Registrar ocorrência é do FISCAL designado e vigente neste contrato."} />}
       </Card>
       {d.papeis.podeRegistrarOcorrencia ? <FormOcorrencia contratoId={alvo} ordens={d.opcoes.minhasOrdens} hoje={hoje} /> : null}
+      </>) : null}
 
       <Card>
         <h2 className="mb-2 text-sm font-semibold">Medições</h2>
