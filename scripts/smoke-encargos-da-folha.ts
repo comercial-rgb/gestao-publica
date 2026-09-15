@@ -201,8 +201,14 @@ async function main(): Promise<void> {
     const empenhosSalariaisAntes = await page.evaluate(() => document.querySelectorAll("[data-empenho]").length);
     // ⚠️ A PREMISSA É LIDA, NÃO SUPOSTA: num banco a folha já tem o atesto salarial (a apuração nasce COMPLEMENTAR), noutro
     // não. O percurso registra qual é e confere a mensagem correspondente — sem trocar de competência.
-    const atestada = /\bcertificada\b/i.test(await page.$eval('[data-etapa="Atesto salarial"]', (e) => e.textContent ?? "").catch(() => ""));
-    console.log(`      [premissa: folha ${COMP} ${atestada ? "COM" : "SEM"} atesto salarial antes dos encargos]`);
+    // ⚠️ LÊ O SELO DA ETAPA, NÃO O TEXTO DO CARTÃO. O `textContent` do cartão chega colado ("Atesto salarialcertificadaVer a
+    // seção") e `\bcertificada\b` nunca casava: o detector respondia SEM atesto em qualquer banco (achado da r2 da fila
+    // sobre 5937f41, em que o servidor apurou COMPLEMENTAR). `ENCARGOS_SO_PREMISSA=1` imprime a leitura e sai — é a prova
+    // do instrumento nos dois sentidos, num banco com e noutro sem o atesto.
+    const seloDoAtesto = (await page.$eval('[data-etapa="Atesto salarial"] p:nth-of-type(2)', (e) => e.textContent ?? "").catch(() => "")).trim().toLowerCase();
+    const atestada = seloDoAtesto === "certificada";
+    console.log(`      [premissa: folha ${COMP} ${atestada ? "COM" : "SEM"} atesto salarial antes dos encargos · selo "${seloDoAtesto}"]`);
+    if (process.env["ENCARGOS_SO_PREMISSA"] === "1") return;
     R.conferir("1.0 a folha de partida está fechada e apropriada (o legado do pedido)", antesSalario.includes("fechada") && antesSalario.includes("certificação (derivada)") && empenhosSalariaisAntes > 0, antesSalario.slice(0, 400));
 
     for (const [codigo, tipo, descricao] of [[PATR, "PREVIDENCIA_PATRONAL", "Cota patronal RGPS (percurso SINTÉTICO)"], [RAT, "RISCO_AMBIENTAL_DO_TRABALHO", "RAT (percurso SINTÉTICO)"]] as const) {
