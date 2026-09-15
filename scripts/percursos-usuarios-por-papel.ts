@@ -59,7 +59,9 @@ export const PAPEIS: readonly Papel[] = [
       // já tinha, e continua sendo exigida em cada empenho pelo M05: apropriar não a contorna.
       "FECHAR_FOLHA", "CONSULTAR_FOLHA", "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA", "APROPRIAR_FOLHA",
       // V6.2 — e APURA os encargos do empregador sobre a folha fechada (não os certifica).
-      "APURAR_ENCARGOS_DA_FOLHA"],
+      "APURAR_ENCARGOS_DA_FOLHA",
+      // V7 M1 — o AJUSTE para baixo dos encargos anula pela despesa, e cada anulação cobra a própria ação.
+      "ANULAR_LIQUIDACAO_PARCIAL", "ANULAR_EMPENHO_PARCIAL"],
   },
   {
     identificador: "tesouraria@percursos.local",
@@ -166,6 +168,28 @@ export const PAPEIS: readonly Papel[] = [
     perfil: "REPRESENTANTE — PERCURSO",
     descricao: "Pede o complemento documental em nome da empresa enquanto a representação estiver vigente.",
     acoes: ["SOLICITAR_SERVICO", "CONSULTAR_MEUS_SERVICOS"],
+  },
+  // ── V7 M2.1 — o contrato acompanhado: três contas com AS MESMAS ações; só a designação no contrato as distingue ──
+  {
+    identificador: "gestora-contrato@percursos.local",
+    nome: "Gestora de contrato (percurso)",
+    perfil: "GESTÃO DE CONTRATO — PERCURSO",
+    descricao: "Programa a fiscalização e resolve ocorrências nos contratos em que for designada gestora.",
+    acoes: ["CONSULTAR_LICITACOES", "PROGRAMAR_FISCALIZACAO_DO_CONTRATO", "RESOLVER_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_MEDICAO_DE_OBRA"],
+  },
+  {
+    identificador: "fiscal-contrato@percursos.local",
+    nome: "Fiscal de contrato (percurso)",
+    perfil: "FISCALIZAÇÃO DE CONTRATO — PERCURSO",
+    descricao: "Registra ocorrência com evidência e mede por itens nos contratos em que for designado fiscal.",
+    acoes: ["CONSULTAR_LICITACOES", "PROGRAMAR_FISCALIZACAO_DO_CONTRATO", "RESOLVER_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_MEDICAO_DE_OBRA"],
+  },
+  {
+    identificador: "outro-setor-contrato@percursos.local",
+    nome: "Servidor de outro setor (percurso)",
+    perfil: "OUTRO SETOR — CONTRATOS — PERCURSO",
+    descricao: "As mesmas ações de gestor e fiscal, sem designação em contrato nenhum: prova que o perfil não basta.",
+    acoes: ["CONSULTAR_LICITACOES", "PROGRAMAR_FISCALIZACAO_DO_CONTRATO", "RESOLVER_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_MEDICAO_DE_OBRA"],
   },
 ];
 

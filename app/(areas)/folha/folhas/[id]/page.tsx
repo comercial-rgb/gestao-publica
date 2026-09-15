@@ -36,7 +36,7 @@ export default async function Detalhe({ params, searchParams }: { readonly param
   await exigirLeitura("CONSULTAR_FOLHA");
   const { id } = await params;
   const consulta = lerConsulta(FOLHAS, await searchParams);
-  const [detalhe, permitidas] = await Promise.all([verFolha(id), acoesPermitidas([...FOLHAS.acoes.map((a) => a.acaoDoCenso), "DESIGNAR_NA_FOLHA", "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA", "GERIR_GUIA_DE_RECOLHIMENTO"])]);
+  const [detalhe, permitidas] = await Promise.all([verFolha(id), acoesPermitidas([...FOLHAS.acoes.map((a) => a.acaoDoCenso), "DESIGNAR_NA_FOLHA", "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA", "GERIR_GUIA_DE_RECOLHIMENTO", "ANULAR_LIQUIDACAO_PARCIAL", "ANULAR_EMPENHO_PARCIAL"])]);
   if (detalhe === null) notFound();
   // ⚠️ FALHAR A CONFERÊNCIA NÃO LIBERA A BARRA: `null` faz o molde travar cada ato com o motivo.
   const disponibilidade = await disponibilidadeDaFolha(id, permitidas).catch(() => null);

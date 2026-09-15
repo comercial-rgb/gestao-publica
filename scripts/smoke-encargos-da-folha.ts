@@ -199,7 +199,11 @@ async function main(): Promise<void> {
     if (hrefFolha === null) throw new Error(`a folha ${COMP} não existe no banco dos percursos`);
     const antesSalario = await irPara(N, page, hrefFolha);
     const empenhosSalariaisAntes = await page.evaluate(() => document.querySelectorAll("[data-empenho]").length);
-    R.conferir("1.0 a folha de partida está fechada e com o atesto salarial — o legado do pedido", antesSalario.includes("fechada") && antesSalario.includes("certificação (derivada)") && empenhosSalariaisAntes > 0, antesSalario.slice(0, 400));
+    // ⚠️ A PREMISSA É LIDA, NÃO SUPOSTA: num banco a folha já tem o atesto salarial (a apuração nasce COMPLEMENTAR), noutro
+    // não. O percurso registra qual é e confere a mensagem correspondente — sem trocar de competência.
+    const atestada = /\bcertificada\b/i.test(await page.$eval('[data-etapa="Atesto salarial"]', (e) => e.textContent ?? "").catch(() => ""));
+    console.log(`      [premissa: folha ${COMP} ${atestada ? "COM" : "SEM"} atesto salarial antes dos encargos]`);
+    R.conferir("1.0 a folha de partida está fechada e apropriada (o legado do pedido)", antesSalario.includes("fechada") && antesSalario.includes("certificação (derivada)") && empenhosSalariaisAntes > 0, antesSalario.slice(0, 400));
 
     for (const [codigo, tipo, descricao] of [[PATR, "PREVIDENCIA_PATRONAL", "Cota patronal RGPS (percurso SINTÉTICO)"], [RAT, "RISCO_AMBIENTAL_DO_TRABALHO", "RAT (percurso SINTÉTICO)"]] as const) {
       await irPara(N, page, "/folha/encargos");
@@ -285,10 +289,10 @@ async function main(): Promise<void> {
 
     await irPara(N, page, hrefFolha);
     const rApurar = await preencherEEnviar(page, "apurar-encargos", [{ sel: 'input[name="motivo"]', valor: `apuração complementar do percurso ${SUF}` }]);
-    R.conferir("3.2 a contabilidade APURA: a mensagem diz COMPLEMENTAR e que o contracheque não mudou", rApurar.tipo === "ok" && /COMPLEMENTAR/.test(rApurar.texto) && /contracheque não mudou/.test(rApurar.texto), `${rApurar.tipo}: ${rApurar.texto.slice(0, 400)}`);
+    R.conferir("3.2 a contabilidade APURA: COMPLEMENTAR se (e só se) a folha já tinha atesto salarial, e o contracheque não mudou", rApurar.tipo === "ok" && (atestada ? /COMPLEMENTAR/.test(rApurar.texto) : !/COMPLEMENTAR/.test(rApurar.texto)) && /contracheque não mudou/.test(rApurar.texto), `${rApurar.tipo}: ${rApurar.texto.slice(0, 400)}`);
     const painel = await irPara(N, page, hrefFolha);
     const nApuracao = /encargos do empregador — apuração nº (\d+)/.exec(painel)?.[1] ?? "?";
-    R.conferir("3.3 o painel mostra a apuração COMPLEMENTAR, com universo, componentes e o aviso SINTÉTICA", (await page.$('[data-encargos="apurados"][data-complementar="sim"]')) !== null && (await page.$(`[data-componente="${PATR}"]`)) !== null && painel.includes("universo esperado") && painel.includes("sintética"), painel.slice(0, 900));
+    R.conferir("3.3 o painel mostra a apuração (complementar conforme a premissa), com universo, componentes e o aviso SINTÉTICA", (await page.$(`[data-encargos="apurados"][data-complementar="${atestada ? "sim" : "nao"}"]`)) !== null && (await page.$(`[data-componente="${PATR}"]`)) !== null && painel.includes("universo esperado") && painel.includes("sintética"), painel.slice(0, 900));
     const incompleta = (await page.$('[data-encargos="apurados"][data-completa="nao"]')) !== null;
     if (incompleta) console.log("      [a apuração ficou INCOMPLETA: há componente de execução anterior sem versão aprovada — o percurso segue e prova a trava]");
     R.conferir("3.4 a folha salarial NÃO mudou: os mesmos empenhos salariais e o atesto salarial continua", (await page.evaluate(() => document.querySelectorAll("[data-empenho]").length)) === empenhosSalariaisAntes && painel.includes("certificação (derivada)"), "a folha salarial mudou");

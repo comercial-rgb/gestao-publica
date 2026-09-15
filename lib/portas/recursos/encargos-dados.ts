@@ -1,4 +1,4 @@
-import { Decimal, toMoney } from "../../../packages/contracts/index.js";
+import { Decimal, preCondicao, toMoney } from "../../../packages/contracts/index.js";
 import { diaCivilBr } from "../../../packages/datas/index.js";
 import {
   aprovarVersaoDoEncargo,
@@ -189,7 +189,16 @@ export async function disponibilidadeDosEncargos(folhaId: string, identificador:
       "certificar-encargos": apresentar(cert, cert.situacao === "PRE_CONDICAO" && cert.codigo === "SEM-DESIGNACAO-VIGENTE" ? hrefDesignacao : undefined),
       "apropriar-encargos": apresentar(apr, apr.situacao === "PRE_CONDICAO" && apr.codigo === "COMPONENTE-SEM-GRUPO-DE-EMPENHO" && permitidas.has("CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA") ? "/folha/grupos-de-empenho" : undefined),
       "liquidar-encargos": apresentar(elegibilidadeParaLiquidarEncargos(r.estado, r.ator)),
-      "ajustar-encargos": apresentar(elegibilidadeParaAjustarEncargos(r.estado, r.ator)),
+      // ⚠️ O AJUSTE É ATO COMPOSTO: ele anula pelo M05, e cada anulação cobra a PRÓPRIA ação (achado do percurso
+      // de V7 U6: a barra ofereceu o formulário e o servidor recusou "ANULAR_LIQUIDACAO_PARCIAL"). A tela diz
+      // antes, pelo mesmo contrato de elegibilidade; o servidor continua recusando se a concessão faltar na UG.
+      "ajustar-encargos": apresentar(((): ReturnType<typeof elegibilidadeParaAjustarEncargos> => {
+        const e = elegibilidadeParaAjustarEncargos(r.estado, r.ator);
+        const faltam = ["ANULAR_LIQUIDACAO_PARCIAL", "ANULAR_EMPENHO_PARCIAL"].filter((x) => !permitidas.has(x));
+        return e.situacao === "ELEGIVEL" && faltam.length > 0
+          ? preCondicao("AJUSTE-EXIGE-ANULACAO-DO-M05", `O ajuste anula liquidação e empenho pela despesa, e seu perfil não tem ${faltam.join(" e ")}.`, "Peça ao administrador as ações de anulação parcial da despesa, ou outra pessoa que as tenha pratica o ajuste.")
+          : e;
+      })()),
     },
   };
 }
