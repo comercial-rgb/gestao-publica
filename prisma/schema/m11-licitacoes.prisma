@@ -234,6 +234,8 @@ model Contrato {
   itens                ItemDoContrato[]           @relation("ItensDoContrato")
   /// V7 M2 U0.2 — o regime de período das medições, versionado com fundamento. VIRTUAL.
   regimesDeMedicao     RegimeDeMedicaoDoContrato[] @relation("RegimesDeMedicao")
+  /// V7 M2 U1 — as ordens de serviço (autorização de execução ao contratado). VIRTUAL.
+  ordensDeServico      OrdemDeServicoDoContrato[] @relation("OrdensDeServico")
   ordensDeFiscalizacao OrdemDeFiscalizacao[]      @relation("OrdensDeFiscalizacao")
   ocorrencias          OcorrenciaDeFiscalizacao[] @relation("OcorrenciasDoContrato")
 

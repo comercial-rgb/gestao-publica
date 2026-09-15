@@ -52,6 +52,17 @@ model DesignacaoNoContrato {
   ocorrencias       OcorrenciaDeFiscalizacao[]
   resolucoes        ResolucaoDeOcorrencia[]
   medicoesPorItens  MedicaoPorItens[]
+  // V7 M2 U1 — a ordem de serviço: quem gere, quem fiscaliza, quem emitiu, cancelou ou suspendeu. VIRTUAIS.
+  ordensDeServicoGeridas       OrdemDeServicoDoContrato[]   @relation("GestorDaOrdemDeServico")
+  ordensDeServicoFiscalizadas  OrdemDeServicoDoContrato[]   @relation("FiscalDaOrdemDeServico")
+  emissoesDeOrdemDeServico     EmissaoDaOrdemDeServico[]
+  cancelamentosDeSaldoDaOrdem  CancelamentoDeSaldoDaOrdem[]
+  movimentosDeExecucaoDaOrdem  MovimentoDeExecucaoDaOrdem[]
+  // V7 M2 U2 — medições da ordem, recebimentos e decisões praticados sob esta designação. VIRTUAIS.
+  medicoesDaOrdem              MedicaoDaOrdemDeServico[]
+  recebimentosProvisorios      RecebimentoProvisorio[]
+  recebimentosDefinitivos      RecebimentoDefinitivo[]
+  decisoesDeControversia       DecisaoDeControversia[]
 
   @@index([contratoId, papel])
   @@index([usuarioId])
@@ -89,6 +100,8 @@ model ItemDoContrato {
   criadoPor String
 
   medidos ItemMedido[]
+  /// V7 M2 U1 — as linhas das ordens de serviço que autorizam este item. VIRTUAL.
+  itensDeOrdemDeServico ItemDaOrdemDeServico[]
 
   @@unique([contratoId, numero])
 }
@@ -299,4 +312,344 @@ model RegimeDeMedicaoDoContrato {
   criadoPor String
 
   @@index([contratoId, vigenciaInicio])
+}
+
+// ============================================================================
+// V7 M2 U1 — A ORDEM DE SERVIÇO DO CONTRATO
+//
+// ⚠️ NÃO É A ORDEM DE COMPRA. `OrdemDeCompra` (m11-compras) autoriza fornecimento de MATERIAL, sem contrato, com
+// saldo por item de material; `OrdemDeFiscalizacao` é a agenda do fiscal. Esta é a autorização de EXECUÇÃO ao
+// contratado sobre os ITENS DO CONTRATO — o único objeto que compromete o saldo do item do contrato. Nenhuma das três
+// compromete o saldo da outra, e nenhuma é empenho nem ordem de pagamento.
+//
+// ⚠️ SITUAÇÃO E SALDO SÃO DERIVADOS: rascunho (sem emissão), descartada, emitida, suspensa (último movimento),
+// autorizado = quantidade − cancelado, a executar = autorizado − medido.
+// ============================================================================
+
+model OrdemDeServicoDoContrato {
+  id String @id @default(cuid())
+
+  contratoId String
+  contrato   Contrato @relation("OrdensDeServico", fields: [contratoId], references: [id])
+
+  /// Sequencial por contrato, atribuído sob o trinco do contrato na criação do rascunho.
+  numero Int
+  ano    Int
+
+  finalidade         String
+  local              String?
+  unidadeSolicitante String?
+
+  /// Período planejado (dias civis do ente).
+  inicioPrevisto DateTime
+  fimPrevisto    DateTime
+
+  /// O que o recebimento vai exigir (documentos, verificações) — texto do ente, impresso no espelho e nos termos.
+  condicoesDeRecebimento String
+
+  gestorDesignacaoId String
+  gestorDesignacao   DesignacaoNoContrato @relation("GestorDaOrdemDeServico", fields: [gestorDesignacaoId], references: [id])
+  fiscalDesignacaoId String
+  fiscalDesignacao   DesignacaoNoContrato @relation("FiscalDaOrdemDeServico", fields: [fiscalDesignacaoId], references: [id])
+
+  /// O empenho do contrato que vai suportar a liquidação — opcional; conferido (mesmo contrato, não anulado).
+  /// Emitir a ordem NÃO empenha nem reserva: o empenho é ato do M05.
+  empenhoId String?
+  empenho   Empenho? @relation("EmpenhoDaOrdemDeServico", fields: [empenhoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  itens         ItemDaOrdemDeServico[]
+  emissao       EmissaoDaOrdemDeServico?
+  descarte      DescarteDaOrdemDeServico?
+  cancelamentos CancelamentoDeSaldoDaOrdem[]
+  movimentos    MovimentoDeExecucaoDaOrdem[]
+  medicoes      MedicaoDaOrdemDeServico[]
+
+  @@unique([contratoId, numero])
+  @@index([empenhoId])
+}
+
+model ItemDaOrdemDeServico {
+  id String @id @default(cuid())
+
+  ordemId String
+  ordem   OrdemDeServicoDoContrato @relation(fields: [ordemId], references: [id])
+
+  itemDoContratoId String
+  itemDoContrato   ItemDoContrato @relation(fields: [itemDoContratoId], references: [id])
+
+  quantidade Decimal @db.Decimal(18, 4)
+  /// COPIADO do item do contrato na criação — nunca informado pela tela. Alteração posterior do contrato não
+  /// reescreve a ordem (o aditivo por item, quando existir, versiona o preço).
+  valorUnitario Decimal @db.Decimal(18, 4)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  cancelamentos CancelamentoDeSaldoDaOrdem[]
+  medidos       ItemMedidoNaOrdem[]
+
+  @@unique([ordemId, itemDoContratoId])
+  @@index([itemDoContratoId])
+}
+
+/// A EMISSÃO — o fato que compromete o saldo dos itens do contrato. Guarda o MANIFESTO canônico (o espelho) e o
+/// sha256: a segunda via se imprime dele, não do cadastro vivo.
+model EmissaoDaOrdemDeServico {
+  id String @id @default(cuid())
+
+  ordemId String                   @unique
+  ordem   OrdemDeServicoDoContrato @relation(fields: [ordemId], references: [id])
+
+  data             DateTime
+  inicioAutorizado DateTime
+
+  designacaoId String
+  designacao   DesignacaoNoContrato @relation(fields: [designacaoId], references: [id])
+
+  manifesto Json
+  sha256    String @db.VarChar(64)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// O DESCARTE de um rascunho que não será emitido — o rascunho continua existindo para o histórico.
+model DescarteDaOrdemDeServico {
+  id String @id @default(cuid())
+
+  ordemId String                   @unique
+  ordem   OrdemDeServicoDoContrato @relation(fields: [ordemId], references: [id])
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// CANCELAR SALDO — só do que ainda não foi executado; o medido continua comprometido.
+model CancelamentoDeSaldoDaOrdem {
+  id String @id @default(cuid())
+
+  ordemId String
+  ordem   OrdemDeServicoDoContrato @relation(fields: [ordemId], references: [id])
+
+  itemDaOrdemId String
+  itemDaOrdem   ItemDaOrdemDeServico @relation(fields: [itemDaOrdemId], references: [id])
+
+  quantidade Decimal  @db.Decimal(18, 4)
+  data       DateTime
+  motivo     String
+
+  designacaoId String
+  designacao   DesignacaoNoContrato @relation(fields: [designacaoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([ordemId])
+  @@index([itemDaOrdemId])
+}
+
+enum TipoDoMovimentoDeExecucao {
+  SUSPENSAO
+  RETOMADA
+}
+
+/// SUSPENDER e RETOMAR a execução, com marco e motivo. A situação é o último movimento.
+model MovimentoDeExecucaoDaOrdem {
+  id String @id @default(cuid())
+
+  ordemId String
+  ordem   OrdemDeServicoDoContrato @relation(fields: [ordemId], references: [id])
+
+  tipo   TipoDoMovimentoDeExecucao
+  data   DateTime
+  motivo String
+
+  designacaoId String
+  designacao   DesignacaoNoContrato @relation(fields: [designacaoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([ordemId, data])
+}
+
+// ============================================================================
+// V7 M2 U2 — A MEDIÇÃO DA ORDEM E OS RECEBIMENTOS POR PARCELA (Lei 14.133, art. 140)
+//
+// Fatos SEPARADOS, cada um com autor, designação usada e data:
+//   medição (o que o fiscal informa ter sido executado, por item e período) →
+//   recebimento PROVISÓRIO (art. 140, I, a — o fiscal, com a conferência por item: conforme e em controvérsia) →
+//   decisão da controvérsia (aceita: a quantidade fica elegível; rejeitada: glosa confirmada, o registro fica) →
+//   recebimento DEFINITIVO (art. 140, I, b — o recebedor designado, do que é elegível; pode haver o complemento).
+// Receber uma parcela não encerra a ordem nem o contrato. Nenhum destes fatos liquida nem paga.
+// ============================================================================
+
+model MedicaoDaOrdemDeServico {
+  id String @id @default(cuid())
+
+  ordemId String
+  ordem   OrdemDeServicoDoContrato @relation(fields: [ordemId], references: [id])
+
+  /// Sequencial por ordem, atribuído sob o trinco do contrato.
+  numero Int
+
+  periodoInicio DateTime
+  periodoFim    DateTime
+
+  /// A designação de FISCAL vigente com que foi registrada (pode ser o sucessor do fiscal indicado na ordem).
+  designacaoId String
+  designacao   DesignacaoNoContrato @relation(fields: [designacaoId], references: [id])
+
+  observacao String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  itens                   ItemMedidoNaOrdem[]
+  recebimentoProvisorio   RecebimentoProvisorio?
+  recebimentosDefinitivos RecebimentoDefinitivo[]
+
+  @@unique([ordemId, numero])
+}
+
+model ItemMedidoNaOrdem {
+  id String @id @default(cuid())
+
+  medicaoId String
+  medicao   MedicaoDaOrdemDeServico @relation(fields: [medicaoId], references: [id])
+
+  itemDaOrdemId String
+  itemDaOrdem   ItemDaOrdemDeServico @relation(fields: [itemDaOrdemId], references: [id])
+
+  quantidade    Decimal @db.Decimal(18, 4)
+  /// O unitário DA ORDEM (copiado dela), não o do contrato vivo.
+  valorUnitario Decimal @db.Decimal(18, 4)
+  valor         Decimal @db.Decimal(18, 2)
+
+  conferencia        ConferenciaDoItemMedido?
+  recebidos          ItemRecebidoDefinitivamente[]
+
+  @@unique([medicaoId, itemDaOrdemId])
+  @@index([itemDaOrdemId])
+}
+
+/// O RECEBIMENTO PROVISÓRIO — um por medição, pelo fiscal, "mediante termo detalhado" (manifesto + sha256).
+model RecebimentoProvisorio {
+  id String @id @default(cuid())
+
+  medicaoId String                  @unique
+  medicao   MedicaoDaOrdemDeServico @relation(fields: [medicaoId], references: [id])
+
+  data DateTime
+
+  designacaoId String
+  designacao   DesignacaoNoContrato @relation(fields: [designacaoId], references: [id])
+
+  /// O que foi verificado (exigências de caráter técnico).
+  verificacoes String
+
+  manifesto Json
+  sha256    String @db.VarChar(64)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  conferencias ConferenciaDoItemMedido[]
+}
+
+/// A CONFERÊNCIA DE UM ITEM MEDIDO — conforme + em controvérsia = medido (conferido no caso de uso). A controvérsia
+/// exige motivo; ela não é glosa, retenção nem multa: é quantidade cuja aceitação ainda não foi decidida.
+model ConferenciaDoItemMedido {
+  id String @id @default(cuid())
+
+  recebimentoProvisorioId String
+  recebimentoProvisorio   RecebimentoProvisorio @relation(fields: [recebimentoProvisorioId], references: [id])
+
+  itemMedidoId String            @unique
+  medido       ItemMedidoNaOrdem @relation(fields: [itemMedidoId], references: [id])
+
+  quantidadeConforme       Decimal @db.Decimal(18, 4)
+  quantidadeEmControversia Decimal @db.Decimal(18, 4)
+  motivo                   String?
+
+  decisao DecisaoDeControversia?
+
+  @@index([recebimentoProvisorioId])
+}
+
+enum ResultadoDaControversia {
+  /// A quantidade em controvérsia foi aceita: fica elegível ao recebimento definitivo (o complemento).
+  ACEITA
+  /// Rejeitada: glosa confirmada. A quantidade não se recebe; o registro da divergência permanece.
+  REJEITADA
+}
+
+model DecisaoDeControversia {
+  id String @id @default(cuid())
+
+  conferenciaId String                  @unique
+  conferencia   ConferenciaDoItemMedido @relation(fields: [conferenciaId], references: [id])
+
+  resultado  ResultadoDaControversia
+  fundamento String
+  data       DateTime
+
+  designacaoId String
+  designacao   DesignacaoNoContrato @relation(fields: [designacaoId], references: [id])
+
+  manifesto Json
+  sha256    String @db.VarChar(64)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// O RECEBIMENTO DEFINITIVO — do que é elegível na medição (conforme + controvérsia aceita − já recebido). Pode haver
+/// mais de um por medição: o regular primeiro, o complemento depois da decisão.
+model RecebimentoDefinitivo {
+  id String @id @default(cuid())
+
+  medicaoId String
+  medicao   MedicaoDaOrdemDeServico @relation(fields: [medicaoId], references: [id])
+
+  numero Int
+
+  data DateTime
+
+  designacaoId String
+  designacao   DesignacaoNoContrato @relation(fields: [designacaoId], references: [id])
+
+  /// "Termo detalhado que comprove o atendimento das exigências contratuais".
+  conclusao String
+
+  manifesto Json
+  sha256    String @db.VarChar(64)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  itens ItemRecebidoDefinitivamente[]
+
+  @@unique([medicaoId, numero])
+}
+
+model ItemRecebidoDefinitivamente {
+  id String @id @default(cuid())
+
+  recebimentoId String
+  recebimento   RecebimentoDefinitivo @relation(fields: [recebimentoId], references: [id])
+
+  itemMedidoId String
+  medido       ItemMedidoNaOrdem @relation(fields: [itemMedidoId], references: [id])
+
+  quantidade Decimal @db.Decimal(18, 4)
+  valor      Decimal @db.Decimal(18, 2)
+
+  @@unique([recebimentoId, itemMedidoId])
+  @@index([itemMedidoId])
 }

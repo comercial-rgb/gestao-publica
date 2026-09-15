@@ -146,7 +146,7 @@ describe("medição por itens", () => {
     // item A 40 × 300 = 12.000,00; item B 10,5 × 1000,5 = 10.505,25 → 22.505,25
     const m = await medir(1, dia(-40), dia(-31), [{ itemId: itens.a, quantidade: "40" }, { itemId: itens.b, quantidade: "10.5" }]);
     expect(m.valorMedido).toBe("22505.25");
-    await expect(medir(2, dia(-30), dia(-21), [{ itemId: itens.a, quantidade: "60.0001" }])).rejects.toThrow(/ITEM-ACIMA-DO-CONTRATADO: o item 1 .*100\.0000 contratado\(s\), já mediu 40\.0000 .*100\.0001/);
+    await expect(medir(2, dia(-30), dia(-21), [{ itemId: itens.a, quantidade: "60.0001" }])).rejects.toThrow(/ITEM-ACIMA-DO-CONTRATADO: o item 1 .*100\.0000 contratado\(s\), já comprometeu 40\.0000 \(medido ou autorizado em ordem de serviço\) .*100\.0001/);
     await expect(medir(2, dia(-30), dia(-21), [{ itemId: itens.a, quantidade: "60" }])).resolves.toMatchObject({ valorMedido: "18000.00" });
     const dossie = await acompanhamentoDoContrato(prisma, "ctr-vigente", "FISCALIZACAO");
     expect(dossie?.fisico.itens.map((i) => `${i.numero}:${i.medido}:${i.percentualFisico}`)).toEqual(["1:100.0000:100,0", "2:10.5000:21,0"]);

@@ -267,6 +267,8 @@ model Empenho {
   anexos Anexo[]
   /// V5 — documentos fiscais que declararam este empenho na origem.
   documentosFiscais DocumentoFiscalRecebido[] @relation("DocumentoFiscalDoEmpenho")
+  /// V7 M2 U1 — as ordens de serviço do contrato que indicaram este empenho. VIRTUAL.
+  ordensDeServicoDoContrato OrdemDeServicoDoContrato[] @relation("EmpenhoDaOrdemDeServico")
 }
 
 // ----------------------------------------------------------------------------

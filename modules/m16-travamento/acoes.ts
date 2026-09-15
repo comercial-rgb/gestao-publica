@@ -321,6 +321,9 @@ export type AcaoDoSistema =
   | "DESIGNAR_NO_CONTRATO"
   | "DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO"
   | "CONFIGURAR_EXECUCAO_DO_CONTRATO"
+  | "EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO"
+  | "REGISTRAR_RECEBIMENTO_PROVISORIO"
+  | "REGISTRAR_RECEBIMENTO_DEFINITIVO"
   | "CADASTRAR_ITEM_DO_CONTRATO"
   | "PROGRAMAR_FISCALIZACAO_DO_CONTRATO"
   | "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO"
@@ -790,6 +793,15 @@ export type NomeDeServico =
   | "definirAdministradorDaFiscalizacao"
   | "revogarAdministradorDaFiscalizacao"
   | "configurarRegimeDeMedicao"
+  | "criarRascunhoDeOrdemDeServico"
+  | "emitirOrdemDeServico"
+  | "descartarRascunhoDeOrdemDeServico"
+  | "cancelarSaldoDaOrdemDeServico"
+  | "movimentarExecucaoDaOrdemDeServico"
+  | "registrarMedicaoDaOrdem"
+  | "registrarRecebimentoProvisorio"
+  | "decidirControversia"
+  | "registrarRecebimentoDefinitivo"
   | "cadastrarItemDoContrato"
   | "programarFiscalizacao"
   | "registrarOcorrencia"
@@ -1245,6 +1257,17 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   definirAdministradorDaFiscalizacao: "DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO",
   revogarAdministradorDaFiscalizacao: "DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO",
   configurarRegimeDeMedicao: "CONFIGURAR_EXECUCAO_DO_CONTRATO",
+  // V7 M2 U1/U2 — a ordem de serviço é ato do GESTOR designado (a ação é condição necessária, a designação a outra);
+  // medir a ordem é a mesma ação de medir; o provisório é do FISCAL, a decisão e o definitivo do RECEBEDOR designado.
+  criarRascunhoDeOrdemDeServico: "EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO",
+  emitirOrdemDeServico: "EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO",
+  descartarRascunhoDeOrdemDeServico: "EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO",
+  cancelarSaldoDaOrdemDeServico: "EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO",
+  movimentarExecucaoDaOrdemDeServico: "EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO",
+  registrarMedicaoDaOrdem: "REGISTRAR_MEDICAO_DE_OBRA",
+  registrarRecebimentoProvisorio: "REGISTRAR_RECEBIMENTO_PROVISORIO",
+  decidirControversia: "REGISTRAR_RECEBIMENTO_DEFINITIVO",
+  registrarRecebimentoDefinitivo: "REGISTRAR_RECEBIMENTO_DEFINITIVO",
   cadastrarItemDoContrato: "CADASTRAR_ITEM_DO_CONTRATO",
   programarFiscalizacao: "PROGRAMAR_FISCALIZACAO_DO_CONTRATO",
   registrarOcorrencia: "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO",
@@ -1502,6 +1525,15 @@ export const FORA_DO_CENSO: Record<string, string> = {
   conferenciaDoPeriodoPorItens:
     "LEITURA/GUARD: o regime de período vigente no início da medição por itens (sem configuração, não confere: a " +
     "identidade é o saldo). Chamada dentro da transação da medição, que já cobrou a ação.",
+  contratoTravado:
+    "LEITURA/GUARD: o contrato sob o trinco (posto 5), com valor vigente e fim de vigência derivados — dentro da transação " +
+    "de um ato do contrato acompanhado ou da ordem de serviço, que já cobrou a própria ação.",
+  exigirDesignacao:
+    "GUARD: a designação do usuário no papel (gestor, fiscal, recebedor definitivo), vigente no dia do ato e hoje, dentro da " +
+    "transação de um ato que já cobrou a própria ação.",
+  execucaoDoContrato:
+    "LEITURA: as ordens de serviço do contrato com itens, saldos, medições, recebimentos e termos — na visão pedida " +
+    "(fiscalização ou financeira), decidida antes pelo alcance.",
   contratosNoAlcanceDaFiscalizacao:
     "LEITURA: o recorte da lista de fiscalizações do usuário — contratos de designação vigente, ou todos para o administrador " +
     "da fiscalização vigente.",

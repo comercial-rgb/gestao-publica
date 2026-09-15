@@ -754,7 +754,9 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
     descricao:
       "A ponte contratual-financeira (V7 M2) chegou com DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO e CONFIGURAR_EXECUCAO_DO_CONTRATO. " +
       "Quem administra permissoes no global recebe as duas. Ter a acao de definir nao da o alcance: a visao de fiscalizacao " +
-      "de um contrato continua exigindo designacao vigente nele ou uma definicao vigente de administrador, com ato.",
+      "de um contrato continua exigindo designacao vigente nele ou uma definicao vigente de administrador, com ato. " +
+      "EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO, REGISTRAR_RECEBIMENTO_PROVISORIO e REGISTRAR_RECEBIMENTO_DEFINITIVO nao sao " +
+      "derivadas: sao atos de gestor, fiscal e recebedor designados, e o administrador as concede aos perfis desses papeis.",
     derivar: derivarAdministracaoDaFiscalizacao,
   },
 ];

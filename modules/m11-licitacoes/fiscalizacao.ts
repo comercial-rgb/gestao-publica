@@ -39,7 +39,7 @@ type Tx = Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction"
 const zDia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "A data é um DIA civil AAAA-MM-DD.");
 const hoje = (): string => diaCivil(new Date());
 
-interface ContratoLido {
+export interface ContratoLido {
   readonly id: string;
   readonly numeroContrato: string;
   readonly valorVigente: Decimal;
@@ -47,7 +47,8 @@ interface ContratoLido {
   readonly fim: Date;
 }
 
-async function contratoTravado(tx: Tx, contratoId: string): Promise<ContratoLido> {
+/** O contrato sob o trinco (posto 5), com valor vigente e fim de vigência derivados. Reusado pela ordem de serviço. */
+export async function contratoTravado(tx: Tx, contratoId: string): Promise<ContratoLido> {
   await travar(tx, "Contrato", [contratoId]);
   const c = await tx.contrato.findUnique({
     where: { id: contratoId },
@@ -58,7 +59,7 @@ async function contratoTravado(tx: Tx, contratoId: string): Promise<ContratoLido
   return { id: c.id, numeroContrato: c.numeroContrato, valorVigente: valorAtualizado(toMoney(c.valorInicial.toFixed(2)), movs), inicio: c.vigenciaInicio, fim: vigenciaFim(c.vigenciaFimInicial, movs) };
 }
 
-function exigirContratoVigente(c: ContratoLido, dia: string, oQue: string): void {
+export function exigirContratoVigente(c: ContratoLido, dia: string, oQue: string): void {
   if (!estaVigente(c.inicio, c.fim, inicioDoDiaCivil(dia))) {
     throw new Error(
       `CONTRATO-FORA-DE-VIGENCIA: o contrato ${c.numeroContrato} vigora de ${diaCivilBr(c.inicio)} a ${diaCivilBr(c.fim)}, e ${oQue} em ${dia.split("-").reverse().join("/")} ` +
@@ -68,7 +69,7 @@ function exigirContratoVigente(c: ContratoLido, dia: string, oQue: string): void
 }
 
 /** A designação do USUÁRIO neste contrato, no papel, vigente no dia — ou a recusa nomeada. */
-async function exigirDesignacao(tx: Tx, contrato: ContratoLido, usuario: string, papel: "GESTOR" | "FISCAL", dia: string): Promise<{ readonly id: string }> {
+export async function exigirDesignacao(tx: Tx, contrato: Pick<ContratoLido, "id" | "numeroContrato">, usuario: string, papel: "GESTOR" | "FISCAL" | "RECEBEDOR_DEFINITIVO", dia: string): Promise<{ readonly id: string }> {
   const ds = await tx.designacaoNoContrato.findMany({
     where: { contratoId: contrato.id, papel, usuario: { identificador: usuario } },
     select: { id: true, vigenciaInicio: true, vigenciaFim: true, revogacao: { select: { dataEfeito: true } } },
@@ -77,7 +78,7 @@ async function exigirDesignacao(tx: Tx, contrato: ContratoLido, usuario: string,
   const vigente = ds.find((d) => designacaoVigenteEm(d, quando) && designacaoVigenteEm(d, inicioDoDiaCivil(hoje())));
   if (vigente === undefined) {
     throw new Error(
-      `SEM-DESIGNACAO-DE-${papel}: ${usuario} não tem designação de ${papel === "GESTOR" ? "GESTOR" : "FISCAL"} vigente no contrato ${contrato.numeroContrato} ` +
+      `SEM-DESIGNACAO-DE-${papel}: ${usuario} não tem designação de ${papel === "RECEBEDOR_DEFINITIVO" ? "RECEBEDOR DEFINITIVO" : papel} vigente no contrato ${contrato.numeroContrato} ` +
         `(no dia do ato e hoje). A permissão do perfil não basta: o art. 117 pede quem foi especialmente designado para ESTE contrato. Nada foi gravado.`
     );
   }
@@ -345,16 +346,22 @@ export async function registrarMedicaoPorItens(prisma: PrismaClient, input: Regi
     exigirContratoVigente(c, d.diaFim, "o fim da medição");
     const itens = await tx.itemDoContrato.findMany({
       where: { id: { in: ids } },
-      select: { id: true, numero: true, contratoId: true, descricao: true, quantidade: true, valorUnitario: true, medidos: { select: { quantidade: true } } },
+      select: {
+        id: true, numero: true, contratoId: true, descricao: true, quantidade: true, valorUnitario: true, medidos: { select: { quantidade: true } },
+        // V7 M2 U1 — o autorizado nas ordens de serviço emitidas também compromete o item: os dois caminhos não consomem o
+        // mesmo saldo.
+        itensDeOrdemDeServico: { where: { ordem: { emissao: { isNot: null } } }, select: { quantidade: true, cancelamentos: { select: { quantidade: true } } } },
+      },
     });
     const linhas = d.itens.map((pedido) => {
       const item = itens.find((i) => i.id === pedido.itemId);
       if (item === undefined || item.contratoId !== c.id) throw new Error(`ITEM-DE-OUTRO-CONTRATO: o item ${pedido.itemId} não é do contrato ${c.numeroContrato}. Nada foi gravado.`);
-      const jaMedido = item.medidos.reduce((t, m) => t.plus(m.quantidade.toFixed(4)), new Decimal(0));
+      const autorizadoEmOrdens = item.itensDeOrdemDeServico.reduce((t, o) => t.plus(o.quantidade.toFixed(4)).minus(o.cancelamentos.reduce((u, x) => u.plus(x.quantidade.toFixed(4)), new Decimal(0))), new Decimal(0));
+      const jaMedido = item.medidos.reduce((t, m) => t.plus(m.quantidade.toFixed(4)), new Decimal(0)).plus(autorizadoEmOrdens);
       const novo = jaMedido.plus(pedido.quantidade);
       if (novo.gt(item.quantidade.toFixed(4))) {
         throw new Error(
-          `ITEM-ACIMA-DO-CONTRATADO: o item ${item.numero} (${item.descricao}) tem ${item.quantidade.toFixed(4)} contratado(s), já mediu ${jaMedido.toFixed(4)} e esta medição levaria a ${novo.toFixed(4)}. ` +
+          `ITEM-ACIMA-DO-CONTRATADO: o item ${item.numero} (${item.descricao}) tem ${item.quantidade.toFixed(4)} contratado(s), já comprometeu ${jaMedido.toFixed(4)} (medido ou autorizado em ordem de serviço) e esta medição levaria a ${novo.toFixed(4)}. ` +
             `Quantidade acima do contratado exige aditivo antes. Nada foi gravado.`
         );
       }

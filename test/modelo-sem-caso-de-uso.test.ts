@@ -104,6 +104,10 @@ const ESCRITO_POR_ANINHAMENTO: Readonly<Record<string, string>> = {
     "(modules/m33-folha/apropriacao.ts); LIDA pela relação `rubricas` do grupo e pela relação " +
     "inversa `grupoDeEmpenho` da rubrica (é ela que responde 'esta rubrica já empenha em algum " +
     "grupo?'). A linha não existe fora do grupo que a declarou",
+  ItemRecebidoDefinitivamente:
+    "escrita por `itens: { create: ... }` em registrarRecebimentoDefinitivo (modules/m11-licitacoes/ordem-de-servico.ts, " +
+    "V7 M2 U2); LIDA pelas relações `recebidos` do item medido (o elegível ao definitivo) e `itens` do recebimento (o valor " +
+    "do termo). A linha não existe fora do recebimento que a declarou",
   ItemMedido:
     "escrita por `itens: { create: ... }` em registrarMedicaoPorItens (modules/m11-licitacoes/fiscalizacao.ts, V7 M2.1); " +
     "LIDA pela relação `medidos` do item do contrato (o acumulado por item, o físico do dossiê e a execução física da " +
