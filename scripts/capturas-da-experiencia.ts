@@ -17,6 +17,10 @@ import { entrar, hrefDoRegistro, lancarNavegadorDoPercurso, sair, type Navegador
  *     visível e não ficar coberto por cabeçalho fixo (o centro do elemento é ele mesmo no elementFromPoint).
  * A saída é um JSON por rótulo, com o SHA do artefato informado pelo rodapé, e as capturas em PNG.
  * Dados SINTÉTICOS do banco descartável; nenhuma credencial é gravada.
+ *
+ * V7 M2 — `CAPTURAS_TELAS` (JSON: [{ nome, papel, rota }]) substitui o roteiro fixo: as telas da execução do contrato
+ * dependem dos identificadores que a preparação de cada execução criou, e quem chama os informa. `papel` é "visitante",
+ * "admin" ou a conta de percurso (senha dos papéis).
  */
 
 const N: Navegador = { base: process.argv[2] ?? "http://localhost:3011" };
@@ -29,12 +33,12 @@ const LARGURAS = [360, 768, 1366, 1440] as const;
 
 interface Tela {
   readonly nome: string;
-  readonly papel: "visitante" | "admin" | "cidada-a@percursos.local";
+  readonly papel: string;
   /** Rota fixa, ou a descoberta a partir de uma lista (primeiro link cujo texto contém o trecho). */
   readonly rota: string | { readonly lista: string; readonly trecho: string };
 }
 
-const TELAS: readonly Tela[] = [
+const TELAS_FIXAS: readonly Tela[] = [
   { nome: "folha-lista", papel: "admin", rota: "/folha/folhas" },
   { nome: "folha-detalhe", papel: "admin", rota: { lista: "/folha/folhas?q=2026-12", trecho: "2026-12" } },
   { nome: "encargos-lista", papel: "admin", rota: "/folha/encargos" },
@@ -48,6 +52,8 @@ const TELAS: readonly Tela[] = [
   { nome: "requerente-lista", papel: "cidada-a@percursos.local", rota: "/meus-servicos" },
   { nome: "requerente-detalhe", papel: "cidada-a@percursos.local", rota: { lista: "/meus-servicos", trecho: "" } },
 ];
+
+const TELAS: readonly Tela[] = process.env["CAPTURAS_TELAS"] === undefined ? TELAS_FIXAS : (JSON.parse(process.env["CAPTURAS_TELAS"]) as Tela[]);
 
 interface Medida {
   readonly largura: number;
