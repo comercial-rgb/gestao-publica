@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | ver `git log -1` — binário do aceite `bec8349` (seção 60); depois dele só documentação |
+| HEAD | ver `git log -1` — app aceito `5937f41` (V7 M1 + M2.1) e candidato de telas `2d7a9cd`; runners `acbae82`, `a699f8a`, `5b40af8`; depois deles só documentação (seção 61) |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | **V6.2 (adendo ao V6/V6.1)**: PROD-015 (disponibilidade de ação), CRIAR_FICHA pela tela, os encargos do empregador (PATRONAL-NA-MEMORIA) e o **P3** — carta de serviços pública, requerimento administrativo, atualização cadastral e complemento de fornecedor, com mesa interna, acompanhamento do requerente e representação — ENTREGUES (seção 60). A publicação segue SUSPENSA |
-| Último resultado | seção 60 — binário final `bec8349`: carta-de-serviços 61/0; binário `2ddb109`: carta-de-serviços 61/0, ficha-pela-tela 23/0, folha 46/0, identidade 46/0, portal 24/0; encargos 25/2 (3.7/3.8 por estado residual da execução anterior na mesma competência — não aprovado); m21-carta 13, carta-de-servicos 5, m33-encargos 12 + motor 16, m33-certificacao 45; censo 324 serviços / 282+22 ações; permissões v15; instalação limpa e atualização ensaiadas; mapa de acesso com 0 sem portão; catálogo 371 de 2.037 verificadas (5.39.103 validada; 5.39.104, 5.12.72, 5.12.73 parciais) |
-| Pendências relevantes | seção 60.6 — `CARTA-SEM-SERVICO-ANONIMO`, `AVALIACAO-DO-SERVICO`, `GESTOR-POR-QUALQUER-PERMISSAO-GLOBAL`, `ALTERACAO-CADASTRAL-CONCORRENTE-SEM-TRINCO`, `ANULACAO-DOS-ENCARGOS`, `RECOLHIMENTO-DOS-ENCARGOS`, `LEI-DE-CREDITO-SEM-TELA`, `DEPENDENTE-BAIXA-EXIGE-UPDATE-SEM-GRANT` (achado, não corrigido), `PERCURSO-ENCARGOS-NAO-REEXECUTAVEL`; mantidas do M32/M33 e seções 35.7–59 |
-| Próximo passo | seção 60.8 |
+| Frente em execução | **V7 M1** (consolidação de P2/P3: escopo do M21, dependentes como fato, ajuste e guia dos encargos, ouvidoria sem conta e avaliação dos serviços, primeira passada de experiência) e **M2.1** (contrato acompanhado: gestor e fiscal designados, itens, agenda, ocorrência com evidência, medição por itens, projeção pública) — seção 61. Publicação SUSPENSA |
+| Último resultado | seção 61.3/61.7 — `5937f41`/`acbae82`: runtime 34/34, suíte 2731/2731, fuso 2731/2731, deriva 0, build; percursos carta 83/0, encargos limpo 40/0, fila 29/0 (r3, premissa pela ficha criada na tela), pessoal 29/0, folha 47/0, portal 24/0, atesto 43/0, compras 29/0, identidade 46/0, contrato acompanhado 25/0; capturas depois 0 transbordo em 48 medidas; `2d7a9cd`: carta 84/0 (9.12b provado), identidade 46/0, contrato 25/0 (r2), instalação limpa 156 migrations/312 permissões/v18; catálogo 379 de 2.037 |
+| Pendências relevantes | seção 61.6 — `ANTIABUSO-EXTERNO-NAO-CONECTADO`, `OUVIDORIA-ENCAMINHAMENTO-A-OUTRO-SETOR`, `RETORNO-BANCARIO-DA-GUIA`, `RESTITUICAO-DOS-ENCARGOS-SEM-ATO`, `ADITIVO-POR-ITEM`, `RECEBIMENTO-PROVISORIO-E-DEFINITIVO`, `MEDICAO-POR-ITENS-SEM-OBRA`, `PERCURSO-ENCARGOS-FILA-EXIGE-FICHA-PELA-TELA`, `M03-T8-INTERMITENTE-SOB-CARGA`; mantidas das seções 35.7–60 |
+| Próximo passo | seção 61.8 |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -6809,3 +6809,201 @@ clonado por TEMPLATE).
 3. P3 restante: serviço sem login com reCAPTCHA, avaliação do serviço (Lei 13.460), link da carta na
    entrada ativável pela apresentação, e o recorte de "gestor" do M21 por ação em vez de qualquer
    permissão global.
+
+## 61. V7 M1 — consolidação (U0–U6) e M2.1 — o contrato acompanhado
+
+Pedido: `docs/lotes/V7-M1-consolidacao.md` (com o plano mestre e o padrão de experiência, guardados
+como vieram em `e98a4da`). Frente funcional: consolidação de P2/P3 (M21, M32, M33) e o primeiro
+incremento de M2 (M11). Regime: **profundidade** para autorização do M21, dependentes sob o papel de
+runtime, ajuste dos encargos e medição por itens; **superfície** para telas, carta, ouvidoria e dossiê.
+Publicação, hospedagem e meta de 24 h: não retomadas.
+
+### 61.1 Referências confirmadas
+
+- `c2123b9` é ancestral de HEAD; nenhum reset, nenhuma branch restaurada. O binário `bec8349` da
+  seção 60 não foi reaproveitado como aceite: cada candidato abaixo tem o próprio build.
+- Stash `11b7892` intacto (não aplicado, não removido). Um stash acidental de `prisma/schema`
+  (`4a43eb0`, desta sessão) foi aplicado por SHA e removido pelo rótulo, sem tocar no `11b7892`.
+- `scripts/fix-claude-cli.sh`, `fix-cursor-extensao.sh`, `manter-claude-cursor.sh`: não executados,
+  não incluídos em commit (continuam não rastreados).
+- SHAs: **app `5937f41`** (V7 M1 + M2.1), **runner `acbae82`** (só `test/modelo-sem-caso-de-uso.test.ts`
+  muda), **runner `a699f8a`** (só o detector da premissa do percurso dos encargos), **candidato de
+  telas `2d7a9cd`** (61.7).
+
+### 61.2 O que passou a funcionar (rotas reais)
+
+- **U0 — ambiente de prova.** Chrome for Testing 150.0.7871.24 (revisão do puppeteer instalado) em
+  `.cache-puppeteer/`, lido por `.puppeteerrc.cjs`; `scripts/preflight-navegador.ts` confere
+  executável, página local e PDF, e sai com código 3 antes do primeiro clique
+  (`docs/operacao/NAVEGADOR-DOS-PERCURSOS.md`). Banco descartável por TEMPLATE com identidade
+  conferida (`scripts/banco-descartavel.ts`, só nomes `gestao_publica_(percursos|capturas|instalacao)_v7m1_*`),
+  servidor dos percursos pelo papel `gestao_app` (`scripts/servir-percursos.ts`), candidato em
+  worktree fixada em commit (`../gestao-publica-candidatos/candidato-<sha>`).
+- **U1 — escopo do M21 por capacidade** (`17b9314`). Permissão global de outra área não faz gestor
+  do protocolo: sem `CONSULTAR_PROTOCOLO` não alcança; participação alcança inclusive sigiloso; o
+  sigilo prevalece sobre o gestor; agir sem lotação exige a ação do ato no ente e processo não
+  sigiloso. Mesma decisão para caixa, detalhe, anexo, lote e mesa (`m21-escopo.test.ts`, 7 cenários,
+  mutações acusadas). Resolve `GESTOR-POR-QUALQUER-PERMISSAO-GLOBAL`.
+- **U2 — dependentes** (`a21b1e2`). Reproduzido com `gestao_app`: a baixa fazia UPDATE sem grant. Agora
+  `EncerramentoDeFinalidadeDependente` (fato, data de efeito, motivo, único por finalidade); cálculo,
+  portal e ficha leem `baixaEfetiva()`; folha fechada não se recalcula e o retroativo nomeia as
+  competências atingidas. Nenhum grant novo (`contrato-runtime-m32.test.ts`, 8). Resolve
+  `DEPENDENTE-BAIXA-EXIGE-UPDATE-SEM-GRANT`.
+- **U3 — encargos para baixo e guia** (`4249fbe`, `8a03367`, `a5fa882`). Diferença positiva empenha;
+  negativa anula pelo M05 na ordem da cadeia (liquidação não paga, depois empenho não liquidado); o
+  já pago vira `RESTITUICAO_A_PROVIDENCIAR`; nenhuma despesa nova, nenhum valor negativo, líquido e
+  contracheque intactos. Guia de recolhimento é documento do EMISSOR, registrada com arquivo (M22),
+  conferida contra obrigação liquidada e baixada só contra pagamento existente; o sistema emite apenas
+  o **demonstrativo interno** (PDF/CSV), que diz não ser guia — sem código de barras, PIX ou
+  autenticação. Rota: `/folha/folhas/[id]` (painel da competência → Ajustar os encargos para baixo;
+  Obrigações e guias). O ajuste só se oferece a quem tem `ANULAR_LIQUIDACAO_PARCIAL` e
+  `ANULAR_EMPENHO_PARCIAL` (`AJUSTE-EXIGE-ANULACAO-DO-M05`). Resolve `ANULACAO-DOS-ENCARGOS`
+  e `RECOLHIMENTO-DOS-ENCARGOS` (este sem retorno bancário).
+- **U4 — sem login e avaliação** (`a644915`, `be10905`, `4f8cf5a`). `/ouvidoria` (natureza
+  `MANIFESTACAO_ANONIMA`, processo sigiloso sem requerente, código mostrado uma vez e guardado por
+  sha256, sem referer, cota local por origem), `/ouvidoria/acompanhar`, `/protocolo/ouvidoria`
+  (triagem e resposta com lotação), `/servicos/[slug]` (resultado por origem, opinião sem conta),
+  `/meus-servicos/[id]` (avaliação do atendimento decidido, revisão encadeada), `/protocolo/avaliacoes`
+  (metodologia versionada, moderação com motivo). Janela da avaliação por dia civil do ente.
+  Resolve `CARTA-SEM-SERVICO-ANONIMO` e `AVALIACAO-DO-SERVICO`.
+- **U5 — primeira passada de experiência** (`9f89832`). Barra do molde com índice dos atos e o que o
+  perfil não pode num bloco único; painel da competência no topo da folha com a próxima ação lida da
+  mesma disponibilidade; "o que falta" no topo do requerente; trilha sem id técnico; nota da mesa sem
+  caminho cru. Nenhum design system, RBAC ou ledger novo.
+- **M2.1 — contrato acompanhado** (`5937f41`, `acbae82`). No `Contrato` do M11: designação de GESTOR e
+  FISCAL (pessoa e usuário do vínculo, ato, vigência derivada, revogação como fato, sem acúmulo no
+  mesmo contrato); itens com quantidade e unitário (Σ até o valor vigente); agenda do gestor para o
+  fiscal; ocorrência com evidência (M22) e encaminhamento; resolução do gestor; **medição por itens**
+  pelo fiscal vigente (valor = Σ quantidade × unitário, acumulado por item sob o trinco do contrato);
+  aprovação da medição como **fato** `AprovacaoDeMedicao` (achado do contrato de runtime: o
+  `aprovarMedicao` fazia UPDATE em `MedicaoDeObra`, fora do censo). Físico e financeiro separados.
+  Rotas: `/licitacoes/contratos/[id]` (dossiê e formulários por papel), `/transparencia/contratos` e
+  `/transparencia/contratos/[id]` (projeção sem ocorrência, evidência, conta ou CPF; só medição aprovada).
+  Ações novas no censo: `DESIGNAR_NO_CONTRATO`, `CADASTRAR_ITEM_DO_CONTRATO`,
+  `PROGRAMAR_FISCALIZACAO_DO_CONTRATO`, `REGISTRAR_OCORRENCIA_DE_FISCALIZACAO`,
+  `RESOLVER_OCORRENCIA_DE_FISCALIZACAO`; permissões v18.
+
+### 61.3 Resultados integrados — cada um com o SHA em que rodou
+
+Saída bruta em `.registro-de-execucao/pacote-v7-m1/u6-<sha>/` (ignorado; credenciais sanitizadas).
+
+| Verificação | `4f8cf5a` | `5937f41` (app) / `acbae82` (runner) |
+|---|---|---|
+| tsc backend / app | passou / passou | passou / passou (5937f41); backend passou (acbae82) |
+| prisma validate | passou | passou / passou |
+| deriva do schema (banco de teste) | falhou por ambiente (vitest da árvore principal migrou o banco com M2.1) | 0 / 0 |
+| contrato do papel de runtime | 33/33 | 34/34 / 34/34 |
+| suíte completa | 2722/2722 | 2729/2731 (guarda `ItemMedido`; m03 t8 timeout sob carga) / **2731/2731** |
+| suíte sob TZ=Pacific/Kiritimati | 2722/2722 | 2730/2731 / **2731/2731** |
+| next build (SHA completo) | passou (SHA curto → identidade 3.2) | passou |
+
+- m03 t8 em `5937f41`: timeout só na suíte completa sob carga; isolado passou 3 de 3
+  (`07b-m03-isolado-r1..r3.log`) e passou no fuso e no runner `acbae82`. Classificado como intermitência
+  sob carga, com o nome do teste e a saída bruta; timeout não foi alterado.
+- `9f89832` (candidato anterior): falhas reais que viraram `4f8cf5a` — `data-civil` (UTC na janela da
+  avaliação) e a mensagem da ordem empenhada no m11. Duas paradas do Postgres por ociosidade da máquina
+  deram resultados **bloqueados por ambiente**, arquivados em `u6/falhas-por-ambiente` e não somados.
+
+**Percursos centrais sobre o build `5937f41`** (papel `gestao_app`, porta 3012):
+
+| Percurso | Banco | Resultado |
+|---|---|---|
+| carta de serviços (P3 identificado, anônimo, representação, avaliação, ouvidoria) | `v7m1_m21` | 83/0 |
+| encargos — cenário limpo (redução, ajuste, guia, demonstrativo PDF lido) | `v7m1_m21` | 40/0 (em `4f8cf5a` era 36/4 → `a5fa882`) |
+| pessoal | `v7m1_m21` | 29/0 |
+| folha | `v7m1_m21` | 47/0 |
+| portal do servidor | `v7m1_m21` | 24/0 |
+| atesto da folha | `v7m1_m21` | 43/0 |
+| compras / documento / ordem | `v7m1_m21` | 29/0 |
+| identidade | `v7m1_m21` | 46/0 |
+| **contrato acompanhado** (gestora, fiscal, outro setor, visitante, revogação) | `v7m1_m21` | **25/0** |
+| encargos — fila, r1 | `v7m1_fila` (origem original) | 16/2 — **não executado de fato**: a ficha sem crédito 32260 não existe nessa origem (erro do procedimento) |
+| encargos — fila, r2 | `v7m1_fila62` (origem v62) | 22/7 — **bloqueado pela premissa**: resíduo da V6.2 em 2026-12 (grupos, empenhos e designação) e detector da premissa defeituoso |
+| ficha pela tela (cria a ficha sem crédito 37450) | `v7m1_fila3` | 23/0 |
+| **encargos — fila, r3** (runner `a699f8a`, app `5937f41`) | `v7m1_fila3` (origem original + ficha pela tela) | **29/0** |
+
+Achado de instrumento (r2): o detector da premissa usava `\bcertificada\b` sobre o `textContent` colado
+do cartão e nunca respondia COM atesto. Corrigido em `a699f8a` para ler o selo; provado nos dois
+sentidos — `v7m1_fila62` → "COM · selo certificada" (`31-prova-da-premissa.log`), `v7m1_fila3` → "SEM ·
+selo pendente", ambos confirmados pela mensagem do servidor na apuração.
+
+**Capturas antes/depois** (`scripts/capturas-da-experiencia.ts`, 12 telas × 360/768/1366/1440, instrumento
+provado por mutação a cada execução): antes — mesa-detalhe a 768 px transbordava 26 px; depois (build
+`5937f41`, `capturas_v7m1_depois`) — 0 px de transbordo, 0 foco invisível e 0 coberto nas 48 medidas.
+Capturas dos percursos do contrato: `u6-5937f41/capturas/contrato-{gestora,fiscal,publico}.png`.
+
+### 61.4 Instalação limpa e atualização
+
+- Instalação limpa em `4f8cf5a` (`u6-4f8cf5a/10-instalacao-e-atualizacao.log`): 153 migrations, 26 SQL
+  manuais, deriva vazia, `gestao_app` sem superusuário/BYPASSRLS/DDL, bootstrap com 307 permissões,
+  v7–v17 reconhecidas.
+- Atualização em `5937f41` sobre três cópias isoladas (`u6-5937f41/10-atualizacao-dos-bancos.log`,
+  `11-…fila62.log`, `12-…fila3.log`): banco original dos percursos (v13) → 156 migrations, deriva 0,
+  v14–v18 aplicadas uma vez; **reexecução reconhece** ("Nenhuma atualização pendente") e continua;
+  contas dos papéis provisionadas sem conceder ações a mais. Banco v62 → as 10 migrations da V7, v16–v18.
+- Ações deliberadamente não concedidas (as novas do M2.1 só vão aos administradores globais em v18)
+  não viraram erro resolvido por grant universal.
+
+### 61.5 Catálogo (por natureza)
+
+`scripts/marcar-catalogo.ts --aplicar`: **379 de 2.037 verificadas** (eram 371). Superfície com percurso →
+`VALIDADO_LOCALMENTE`: 5.39.6 (ouvidoria sem conta), 5.39.105 (avaliação nas três dimensões e descrição),
+5.21.22 (ocorrência de fiscalização). Modelo com lacuna declarada → `PARCIAL`: 5.21.3 (sem horário e sem
+calendário), 5.21.16 (atos restritos à designação; leitura não), 5.21.19 (sem vínculo a compra), 5.21.23
+(tipo fixo, sem cópia de anexos da fiscalização), 5.17.83 (sem designação por aditivo), 5.21.29 (quantitativo
+dos itens do contrato, não planilha da obra). Ausência de provedor → `DEPENDENCIA_EXTERNA`: 5.39.102
+(reCAPTCHA; a cota local não é declarada como antiabuso). 5.39.104 `PARCIAL` → `VALIDADO_LOCALMENTE` pelo
+percurso 9.12b no candidato `2d7a9cd` (61.7). 5.38.56 não marcada: o link existe, mas nenhum percurso o afirma.
+Contagem: VALIDADO_LOCALMENTE 72, PARCIAL 92, IMPLEMENTADO_NAO_VALIDADO 66, AUSENTE_CONFIRMADO 145,
+DEPENDENCIA_EXTERNA 4, NAO_VERIFICADO 1.658.
+
+### 61.6 Pendências nomeadas
+
+Produto: `ACESSO-ESPECIAL-A-SIGILOSO`, `GESTOR-NO-COMUNICADO`, `ANTIABUSO-EXTERNO-NAO-CONECTADO`,
+`OUVIDORIA-REENVIO-DUPLICA`, `OUVIDORIA-ENCAMINHAMENTO-A-OUTRO-SETOR`, `AVALIACAO-SEM-LIMIAR-DE-PUBLICACAO`,
+`RETORNO-BANCARIO-DA-GUIA`, `RESTITUICAO-DOS-ENCARGOS-SEM-ATO`, `VENCIMENTO-LEGAL-SEM-TABELA`,
+`RETROATIVO-DE-DEPENDENTE-EXIGE-RETIFICACAO`, `ADITIVO-POR-ITEM`, `DESIGNACAO-POR-ADITIVO`,
+`ORDEM-DE-SERVICO-DO-CONTRATO`, `MEDICAO-POR-ITENS-SEM-OBRA`, `PRAZO-DE-RESOLUCAO-DA-OCORRENCIA`,
+`NOTIFICACAO-AO-CONTRATADO`, `RECEBIMENTO-PROVISORIO-E-DEFINITIVO`, `AGENDA-SEM-HORARIO-E-CALENDARIO`,
+`LEITURA-DO-CONTRATO-NAO-RESTRITA-A-DESIGNADOS`, `CANAL-DA-CARTA-SEM-ATIVACAO-NA-APRESENTACAO`,
+`LEI-DE-CREDITO-SEM-TELA`; mantidas das seções 35.7–60.
+Percursos/ambiente: `PERCURSO-ENCARGOS-FILA-EXIGE-FICHA-PELA-TELA` (a fila só tem premissa limpa com a
+ficha sem crédito criada pela tela no mesmo clone — o banco v62 carrega resíduo da V6.2);
+`M03-T8-INTERMITENTE-SOB-CARGA`; `POSTGRES-PARA-EM-OCIOSIDADE` (o contêiner saiu duas vezes com a máquina
+ociosa). Não executados nesta seção: `smoke-apropriacao-da-folha`; suíte completa e fuso sobre `2d7a9cd` (a
+diferença para `acbae82` é de leitura de tela, uma asserção em `carta-de-servicos.test.ts` e percursos —
+verificação direcionada abaixo, não portão integral).
+
+### 61.7 Candidato de telas `2d7a9cd` (achados das capturas sobre `5937f41`)
+
+- `/servicos` dizia a todos que "pedir exige entrar com a sua conta" — falso desde a ouvidoria sem conta;
+  agora cada serviço mostra "Pedido com a sua conta" ou "Sem conta nem identificação" (`data-exige-conta`).
+- `/licitacoes/contratos/[id]` mostrava "Fiscal do contrato: (não designado)" com o fiscal designado logo
+  abaixo; o campo antigo virou "Fiscal em texto (registro anterior)" e aponta para "Gestor e fiscais".
+- O selo VIGENTE/ENCERRADO do contrato comparava instantes; passa a comparar o dia civil do ente.
+
+Verificação: tsc app 0; `carta-de-servicos`, `molde`, `data-civil` 28/28 (sob o trinco); tsc backend e
+scripts 0. Build do SHA completo passou. Percursos (papel `gestao_app`, `v7m1_m21`):
+
+| Percurso | App | Runner | Resultado |
+|---|---|---|---|
+| carta — prova do passo novo 9.12b | `5937f41` | `2d7a9cd` | 83/1 — **acusou** (`ausente`), como devia |
+| carta | `2d7a9cd` | `2d7a9cd` | 84/0 |
+| identidade | `2d7a9cd` | `2d7a9cd` | 46/0 |
+| contrato acompanhado, r1 | `2d7a9cd` | `2d7a9cd` | 24/1 — 3.3 recusado por PERÍODO SOBREPOSTO com a medição da execução anterior no mesmo banco: produto certo, percurso não reexecutável |
+| contrato acompanhado, r2 | `2d7a9cd` | `5b40af8` (procura o dia livre) | **25/0** |
+
+Instalação limpa em `2d7a9cd` (`u6-2d7a9cd/10-instalacao-limpa.log`): 156 migrations, 26 SQL manuais, deriva
+vazia, `gestao_app` sem superusuário/BYPASSRLS/DDL, bootstrap com 312 permissões, v5–v18 reconhecidas e a
+reexecução responde "Nenhuma atualização pendente".
+
+### 61.8 Próximo ponto exato
+
+1. M2.1 restante, por dependência: `ORDEM-DE-SERVICO-DO-CONTRATO` e `RECEBIMENTO-PROVISORIO-E-DEFINITIVO`
+   (o efeito do fiscal na liquidação), `DESIGNACAO-POR-ADITIVO`, `AGENDA-SEM-HORARIO-E-CALENDARIO`,
+   `LEITURA-DO-CONTRATO-NAO-RESTRITA-A-DESIGNADOS` — com a projeção pública da obra.
+2. Portão integral (suíte e fuso) no próximo candidato que tocar domínio; `smoke-apropriacao-da-folha` num
+   clone com competência livre.
+3. Depois, F07/F08 conforme `docs/lotes/V7-plano-mestre-ecossistema.md`. P3, folha e M11 **não** estão
+   completos: as pendências de 61.6 continuam abertas.
+

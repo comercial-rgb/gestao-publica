@@ -19,7 +19,7 @@ Antes de escrever código num lote novo, diga **em que módulo** o requisito ent
 
 1. Este arquivo — carregado sozinho em toda sessão.
 2. `ESTADO-EXECUCAO.md`, a seção "O próximo passo" — onde paramos.
-3. `docs/lotes/` — o pedido em execução (hoje: `V6-produto-integrado.md`, sobre o modo de
+3. `docs/lotes/` — o pedido em execução (hoje: `V7-M1-consolidacao.md` e `V7-plano-mestre-ecossistema.md`, sobre o modo de
    trabalho de `V3-orquestracao-continua.md`).
 4. O `MODULO.md` de cada módulo que o lote toca.
 5. `docs/LEIA-ME.md` — índice de todo o resto, e a precedência entre documentos.

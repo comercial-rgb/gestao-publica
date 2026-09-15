@@ -863,8 +863,8 @@ const MAPA: Readonly<Record<string, Marca>> = {
 
   // ── 5.21.29 · MEDIÇÃO DE OBRA (M11, ENT03b) ─────────────────────────────
   "5.21.29": {
-    situacao: "IMPLEMENTADO_NAO_VALIDADO",
-    evidencia: `\`MedicaoDeObra\` com período (dias CIVIS do ente — 31/01 termina às 23:59:59 DELE, e não às 20:59:59), valor medido NO PERÍODO (o acumulado é derivado), responsável técnico e REGISTRO PROFISSIONAL obrigatório. Dois guards distintos: períodos NÃO se sobrepõem, com bordas INCLUSIVAS (m11-medicoes.test.ts t2 — acabar em X e começar em X sobrepõe, que é o caso mais comum), e Σ das medições não passa do valor VIGENTE do contrato (m11-medicoes-integracao.test.ts t1). ⚠️ LIQUIDAR OBRA EXIGE MEDIÇÃO APROVADA, dentro da transação da liquidação: sem medição, com medição pendente, acima do medido ou de OUTRA obra, a liquidação INTEIRA aborta (t4–t6b). Quem mede NÃO aprova (t3). Sem tela.`,
+    situacao: "PARCIAL",
+    evidencia: "V7 M2.1: além da MedicaoDeObra (período em dia civil, sem sobreposição, responsável técnico e registro), a MEDIÇÃO POR ITENS registra, pelo fiscal designado e vigente, as quantidades medidas em cada item do contrato; o valor é Σ quantidade × unitário, o acumulado por item não passa do contratado (sob o trinco do contrato — duas medições simultâneas: uma passa, a outra recusa), físico e financeiro são valores separados, e a aprovação é fato próprio por outra pessoa. Testes: test/contrato-acompanhado.test.ts m1–m3; test/runtime/contrato-runtime-fiscalizacao.test.ts; percurso smoke-contrato-acompanhado 3.3–3.4 (parcela parcial, 1 de 2 itens). ⚠️ PARCIAL: o quantitativo previsto é o dos ITENS DO CONTRATO, não uma planilha orçamentária da obra (MEDICAO-POR-ITENS-SEM-OBRA).",
   },
 
   // ── 5.38.37 · TRANSPARÊNCIA (consulta de convênios) ─────────────────────
@@ -1527,7 +1527,7 @@ const MAPA: Readonly<Record<string, Marca>> = {
   },
   "5.17.83": {
     situacao: "PARCIAL",
-    evidencia: `${CENSO} O contrato tem fiscal com nome, CPF e designação (\`fiscalNome\`, \`fiscalCpf\`, \`fiscalDesignacao\`), e a segregação que o fiscal encarna está provada na medição: quem mede NÃO aprova, e aprovar duas vezes é recusado porque a segunda apagaria quem aprovou primeiro (m11-medicoes-integracao.test.ts t3, t3b). ⚠️ FALTA o GESTOR (papel distinto do fiscal) e falta a definição nos ADITIVOS, que o enunciado pede — o fiscal é um por contrato, não um por instrumento.`,
+    evidencia: "V7 M2.1: DesignacaoNoContrato define GESTOR e FISCAL por pessoa e usuário conferidos, ato e vigência derivada, com revogação como fato; quem gere não fiscaliza o mesmo contrato (ACUMULO-DE-GESTOR-E-FISCAL); a designação é o que autoriza os atos do acompanhamento. O campo em texto antigo do fiscal segue como carga anterior. Testes: test/contrato-acompanhado.test.ts d1, f2, f4; percurso smoke-contrato-acompanhado 1.2, 1.3, 7.1, 7.2 (25/0 sobre 5937f41). ⚠️ PARCIAL: a designação é por contrato, não por ADITIVO, que o enunciado também pede.",
   },
   "5.17.84": {
     situacao: "AUSENTE_CONFIRMADO",
@@ -1961,9 +1961,46 @@ const MAPA: Readonly<Record<string, Marca>> = {
     rota_verificada: "papéis: carta@percursos.local (configura) e visitante sem sessão · contexto: banco dos percursos v62, next build + next start em 3010, build 2ddb109, 2026-09-14 · passos: criar serviço pelo molde → versão pela ilha (a de atualização cadastral com campo 'renda' é recusada nomeando) → publicar pela barra (a barra passa a dizer que não há rascunho) → sem sessão /servicos lista os publicados e não o rascunho → /servicos/[slug] com prazo, fundamento e etapas → rascunho 404 · obtido: smoke-carta-de-servicos 61 passos, 0 falhas (passos 2.x e 3.x).",
   },
   "5.39.104": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: "V6.2 P3 + V7 M1 U4/U6: a carta de serviços é PÚBLICA (/servicos, filtro por público) e carrega todos os serviços com versão publicada; cada serviço diz, lido da versão publicada (cuja exigência de conta sai da natureza do serviço), se o pedido é 'com a sua conta' ou 'sem conta nem identificação', com acesso direto — /meus-servicos/solicitar/[slug] (sem sessão leva ao login e volta) ou /ouvidoria/[slug] para a manifestação sem conta. Testes: m21-carta.test.ts, carta-de-servicos.test.ts t1 (exigeAutenticacao na lista), ouvidoria-e-avaliacao.test.ts. O passo 9.12b nasceu com a prova de que acusa: no build anterior, sem a indicação, falhou ('ausente'); no candidato, passou.",
+    rota_verificada: "papéis: visitante sem sessão, cidada-a@percursos.local, mesa@percursos.local, representante@percursos.local · contexto: cópia isolada do banco dos percursos atualizada (gestao_publica_percursos_v7m1_m21), next build do SHA completo 2d7a9cd servido pelo papel de runtime gestao_app na porta 3012, 2026-09-15 · passos: /servicos sem sessão → a ouvidoria marcada 'sem conta' e o requerimento 'com a sua conta' → pedido pela tela → /ouvidoria registra sem conta · obtido: smoke-carta-de-servicos 84 passos, 0 falhas (build 5937f41 com o mesmo runner: 83/1, só 9.12b).",
+  },
+
+  // ── V7 M1 U4 e M2.1 · ouvidoria sem conta, avaliação dos serviços, contrato acompanhado ──
+  "5.39.6": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: "V7 M1 U4: serviço da carta de natureza MANIFESTACAO_ANONIMA (a exigência de conta sai da natureza, e a versão só se publica com assunto que permite anônimo e é sigiloso por padrão). /ouvidoria/[slug] registra sem conta: processo sigiloso sem requerente, entrada no setor da ouvidoria, protocolo e código de acompanhamento mostrados uma vez (só o sha256 fica no banco, fora da URL, página sem referer), cota por hora por origem. A mesa da ouvidoria (TRIAR_MANIFESTACAO_DE_OUVIDORIA) vê só com lotação no setor; triagem é anotação interna; resposta conclusiva encerra o processo. Testes: test/ouvidoria-e-avaliacao.test.ts (10), test/runtime/contrato-runtime-ouvidoria.test.ts. ⚠️ Não há encaminhamento a outro setor (OUVIDORIA-ENCAMINHAMENTO-A-OUTRO-SETOR) nem antiabuso externo (5.39.102).",
+    rota_verificada: "papéis: visitante sem sessão, mesa@percursos.local (consulta do protocolo sem lotação), administrador lotado no setor de entrada · contexto: cópia isolada do banco dos percursos atualizada para o candidato 5937f41 (gestao_publica_percursos_v7m1_m21), next build do SHA completo servido pelo papel de runtime gestao_app na porta 3012, 2026-09-15 · passos: /ouvidoria sem sessão lista o canal → registrar sem conta → código errado não mostra nada → com o código: 'recebida', sem relato → a mesa sem lotação não vê → a ouvidoria vê, tria e responde → o manifestante lê a resposta pelo código · obtido: smoke-carta-de-servicos 83 passos, 0 falhas (9.12–9.21).",
+  },
+  "5.39.105": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: "V7 M1 U4: metodologia de avaliação versionada (escala com rótulos, período, descrição do método); o requerente avalia o ATENDIMENTO de solicitação decidida, e só enquanto é titular (avaliar de novo é revisão encadeada, não segundo voto); o visitante sem conta dá OPINIÃO GERAL sobre o serviço (cookie de avaliador, cota por hora). As três dimensões pedidas — satisfação com o serviço, qualidade do atendimento, cumprimento de prazos — com nota e a descrição opcional. O resultado público separa atendimento comprovado de opinião geral, na janela da metodologia por dia civil do ente, sem a descrição (privada) e declarando as removidas pela moderação (MODERAR_AVALIACAO_DE_SERVICO, com motivo ABUSO ou DADOS_PESSOAIS). Testes: test/ouvidoria-e-avaliacao.test.ts (a1–a5, borda de dia civil). ⚠️ Sem limiar mínimo de respostas para publicar a média (AVALIACAO-SEM-LIMIAR-DE-PUBLICACAO).",
+    rota_verificada: "papéis: carta@percursos.local (metodologia), cidada-a@percursos.local (atendida), visitante sem sessão (opinião), administrador (moderação) · contexto: cópia isolada do banco dos percursos atualizada para o candidato 5937f41 (gestao_publica_percursos_v7m1_m21), next build do SHA completo servido pelo papel de runtime gestao_app na porta 3012, 2026-09-15 · passos: metodologia pela tela → A avalia a solicitação decidida nas três dimensões e descrição → avaliar de novo é revisão → visitante opina → resultado público separado, sem descrição → moderação remove com motivo → o resultado informa a remoção · obtido: smoke-carta-de-servicos 83 passos, 0 falhas (2.7, 2.8, 9.6–9.11).",
+  },
+  "5.39.102": {
+    situacao: "DEPENDENCIA_EXTERNA",
+    evidencia: "V7 M1 U4: os atos sem login (manifestação de ouvidoria e opinião sobre o serviço) têm COTA LOCAL por hora por origem (EnvioPublicoSemConta; 5 manifestações e 10 opiniões) — isso é limitação de volume, NÃO reCAPTCHA. O reCAPTCHA depende de chave do provedor, que este ambiente não tem, e nada no sistema declara a verificação como conectada. Pendência ANTIABUSO-EXTERNO-NAO-CONECTADO.",
+  },
+  "5.21.22": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: "V7 M2.1: OcorrenciaDeFiscalizacao registrada pelo FISCAL designado e vigente no contrato (na data do fato e hoje), com tipo (conformidade, não conformidade, atraso, impedimento, outro), descrição, data não futura, vínculo opcional à ordem de fiscalização, evidências pelo M22 e encaminhamento ao gestor; o gestor designado dá a resolução, uma por ocorrência. Outro setor com as mesmas ações de perfil e sem designação é recusado nomeando a designação; contrato fora de vigência recusa. Tudo append-only para o papel de runtime. Testes: test/contrato-acompanhado.test.ts (f1–f4), test/runtime/contrato-runtime-fiscalizacao.test.ts.",
+    rota_verificada: "papéis: gestora-contrato@, fiscal-contrato@, outro-setor-contrato@percursos.local, administrador e visitante · contexto: cópia isolada do banco dos percursos atualizada para o candidato 5937f41 (gestao_publica_percursos_v7m1_m21), next build do SHA completo servido pelo papel de runtime gestao_app na porta 3012, 2026-09-15 · passos: designar gestora e fiscal pela tela → a gestora programa → o fiscal registra ocorrência com evidência e encaminha → recarregada aparece aguardando o gestor → outro setor não recebe formulário e lê o motivo → a gestora resolve → a projeção pública não leva a ocorrência → revogado, o fiscal perde o formulário · obtido: smoke-contrato-acompanhado 25 passos, 0 falhas.",
+  },
+  "5.21.23": {
     situacao: "PARCIAL",
-    evidencia: "V6.2 P3: a carta de serviços é PÚBLICA (/servicos, filtro por público), cada serviço com a versão publicada e o acesso direto ao pedido (/meus-servicos/solicitar/[slug]) — sem sessão, o link leva ao login e volta; o requerente acompanha em /meus-servicos, recortado pela pessoa da conta e pelas representações vigentes. Testes: m21-carta.test.ts (13), carta-de-servicos.test.ts (5). ⚠️ PARCIAL: nesta versão TODO serviço exige login (a versão sem autenticação é recusada: SERVICO-SEM-AUTENTICACAO), então a carta não distingue 'com' e 'sem' login; a avaliação do serviço (Lei 13.460, 5.39.105) e o reCAPTCHA (5.39.102) não existem.",
-    rota_verificada: "papéis: visitante sem sessão, cidada-a@percursos.local, cidada-b@percursos.local, mesa@percursos.local, representante@percursos.local · contexto: banco dos percursos v62, build 2ddb109, 2026-09-14 · passos: /servicos sem sessão → pedido pela tela → B com a URL do pedido e do documento de A recebe 404 → exigência pela mesa com a decisão travada → resposta e documento do requerente → decisão com fundamento interno que o requerente NÃO vê → download da resposta → atualização cadastral deferida vira versão do cadastro → representante pede pela empresa e perde o acesso na revogação · obtido: smoke-carta-de-servicos 61 passos, 0 falhas.",
+    evidencia: "V7 M2.1: a ocorrência informa o tipo, descreve o ocorrido e anexa documentos e imagens pelo M22 (evidência baixável só por quem consulta licitações; o visitante não baixa). ⚠️ PARCIAL: o tipo é uma lista fechada do sistema, não um cadastro prévio do ente; e não há 'copiar os anexos da fiscalização' — a ordem de fiscalização não tem anexos próprios. Testes: test/contrato-acompanhado.test.ts f1; percurso smoke-contrato-acompanhado 3.1–3.2 e 6.3.",
+  },
+  "5.21.3": {
+    situacao: "PARCIAL",
+    evidencia: "V7 M2.1: o gestor designado programa a fiscalização (OrdemDeFiscalizacao) para um fiscal designado do contrato, com a data prevista e o objetivo; a data precisa cair na vigência do fiscal e do contrato. A agenda aparece no dossiê do contrato. ⚠️ PARCIAL: sem HORÁRIO e sem as visões de calendário mensal, semanal e diária. Testes: test/contrato-acompanhado.test.ts f1, f3; percurso smoke-contrato-acompanhado 2.1.",
+  },
+  "5.21.16": {
+    situacao: "PARCIAL",
+    evidencia: "V7 M2.1: os ATOS de acompanhamento (programar, registrar ocorrência, resolver, medir por itens) exigem, além da ação no perfil, a designação vigente de gestor ou fiscal NAQUELE contrato — outro setor com as mesmas ações é recusado nomeando a designação, e o formulário não aparece. ⚠️ PARCIAL: a LEITURA do contrato continua pela ação de consulta de licitações, não restrita a quem é designado. Testes: test/contrato-acompanhado.test.ts f2, f4; percurso smoke-contrato-acompanhado 4.1 e 7.2.",
+  },
+  "5.21.19": {
+    situacao: "PARCIAL",
+    evidencia: "V7 M2.1: o fiscal designado registra o que verificou como ocorrência vinculada ao contrato (e, opcionalmente, à ordem de fiscalização). ⚠️ PARCIAL: não há vínculo a uma COMPRA (ordem de fornecimento) do contrato para acompanhar entrega de material. Testes: test/contrato-acompanhado.test.ts f1; percurso smoke-contrato-acompanhado 3.1.",
   },
   "5.12.102": {
     situacao: "AUSENTE_CONFIRMADO",
