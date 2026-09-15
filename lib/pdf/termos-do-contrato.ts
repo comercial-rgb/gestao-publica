@@ -1,4 +1,4 @@
-import type { DocumentoPdf, SecaoPdf } from "./documento";
+import type { DocumentoPdf, SecaoPdf } from "./documento.js";
 
 /**
  * ═══ OS DOCUMENTOS DA EXECUÇÃO DO CONTRATO EM PDF (V7 M2 U4) — a impressão do MANIFESTO gravado no ato ═══
