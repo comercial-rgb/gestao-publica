@@ -211,6 +211,14 @@ export const PAPEIS: readonly Papel[] = [
     descricao: "Registra e estorna aditivos dos contratos, inclusive por itens.",
     acoes: ["CONSULTAR_LICITACOES", "REGISTRAR_ADITIVO", "ESTORNAR_MOVIMENTO_CONTRATUAL"],
   },
+  // ── V7 M2 U6 — a engenharia de obras importa e confirma a planilha orçamentária ──
+  {
+    identificador: "engenharia-obras@percursos.local",
+    nome: "Engenharia de obras (percurso)",
+    perfil: "ENGENHARIA DE OBRAS — PERCURSO",
+    descricao: "Importa com prévia, confirma versões e vincula a planilha orçamentária da obra.",
+    acoes: ["CONSULTAR_LICITACOES", "GERIR_PLANILHA_DA_OBRA"],
+  },
 ];
 
 async function main(): Promise<void> {
