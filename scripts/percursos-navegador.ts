@@ -160,6 +160,17 @@ async function escolherReferencia(page: Page, form: string, campo: CampoDoPercur
 export async function preencherEEnviar(page: Page, acao: string, campos: readonly CampoDoPercurso[]): Promise<Resposta> {
   const form = acao.startsWith("form[") ? acao : `form[data-acao="${acao}"]`;
   await page.waitForSelector(form, { timeout: 30000 });
+  // ⚠️ O formulário pode estar dentro de um <details> FECHADO (divulgação progressiva: "Estornar a medição nº 2").
+  // Fechado, o Chrome não renderiza o conteúdo, e o clique do puppeteer não chega ao campo — o envio não acontece e o
+  // percurso lê "silêncio", como se a tela não tivesse respondido. Abrir o detalhe é o que a pessoa faz ao clicar no
+  // resumo. Medido em V7 M2 U7 (percurso da medição pela planilha, passo 3.5).
+  await page.evaluate((sel) => {
+    let n: HTMLElement | null = document.querySelector(sel);
+    while (n !== null) {
+      if (n instanceof HTMLDetailsElement) n.open = true;
+      n = n.parentElement;
+    }
+  }, form);
   for (const campo of campos) {
     if (campo.tipo === "referencia") {
       await escolherReferencia(page, form, campo);
