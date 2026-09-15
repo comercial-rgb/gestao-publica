@@ -37,7 +37,7 @@ export default async function CartaDeServicosPage({ searchParams }: { readonly s
         <h1 className="text-xl font-semibold text-[color:var(--color-ink)]">Carta de serviços</h1>
         <p className="mt-1 text-sm text-[color:var(--color-ink-2)]" data-ente-publico>
           {id.ente?.nomeDeExibicao ?? "Ente não configurado"} · o que você pode pedir pela internet, com requisitos, documentos e prazo. Ler não exige
-          cadastro; pedir exige entrar com a sua conta.
+          cadastro; cada serviço diz se o pedido exige entrar com a sua conta.
         </p>
       </header>
 
@@ -68,6 +68,9 @@ export default async function CartaDeServicosPage({ searchParams }: { readonly s
                   <Link href={`/servicos/${s.slug}`} className="text-sm font-medium text-[color:var(--color-primary)] hover:underline">{s.titulo}</Link>
                   <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">{s.resumo}</p>
                   <p className="mt-1 text-xs text-[color:var(--color-ink-3)]">{s.publico} · {s.tipo} · prazo: {s.prazo ?? "não declarado"}</p>
+                  <p className="mt-1 text-xs font-medium text-[color:var(--color-ink-2)]" data-exige-conta={s.exigeAutenticacao ? "sim" : "nao"}>
+                    {s.exigeAutenticacao ? "Pedido com a sua conta" : "Sem conta nem identificação"}
+                  </p>
                 </li>
               ))}
             </ul>

@@ -64,6 +64,8 @@ export interface ServicoNaCarta {
   readonly tipo: string;
   readonly resumo: string;
   readonly prazo: string | null;
+  /** Da versão PUBLICADA (que a regra de versão amarra à natureza do serviço): a carta diz, por serviço, se pede conta. */
+  readonly exigeAutenticacao: boolean;
 }
 
 export interface ServicoPublicado extends ServicoNaCarta {
@@ -105,7 +107,7 @@ export async function lerCartaPublica(filtro: { readonly publico?: string } = {}
   return ss.flatMap((s) => {
     const v = s.versoes[0];
     if (v === undefined) return [];
-    return [{ slug: s.slug, titulo: s.titulo, categoria: s.categoria, publico: ROTULO_DO_PUBLICO[s.publico] ?? s.publico, tipo: ROTULO_DO_TIPO[s.tipo] ?? s.tipo, resumo: v.descricao.length > 180 ? `${v.descricao.slice(0, 177)}...` : v.descricao, prazo: prazoDe(v) }];
+    return [{ slug: s.slug, titulo: s.titulo, categoria: s.categoria, publico: ROTULO_DO_PUBLICO[s.publico] ?? s.publico, tipo: ROTULO_DO_TIPO[s.tipo] ?? s.tipo, resumo: v.descricao.length > 180 ? `${v.descricao.slice(0, 177)}...` : v.descricao, prazo: prazoDe(v), exigeAutenticacao: v.exigeAutenticacao }];
   });
 }
 

@@ -373,6 +373,11 @@ async function main(): Promise<void> {
 
     // ══ 9c. V7 M1 U4 — a manifestação sem conta: registro, acompanhamento limitado, sigilo, triagem e resposta ══
     R.conferir("9.12 /ouvidoria responde sem sessão e lista o canal publicado", (await status(page, "/ouvidoria")) === 200 && (await texto(page)).includes(`ouvidoria ${SUF}`), "o canal não apareceu");
+    // A carta diz, POR SERVIÇO, se o pedido exige conta — lido do atributo que vem da versão publicada, não do texto geral.
+    await irPara(N, page, "/servicos");
+    const exigeConta = async (slug: string): Promise<string> => page.$eval(`[data-servico="${slug}"] [data-exige-conta]`, (e) => `${e.getAttribute("data-exige-conta")}|${e.textContent ?? ""}`).catch(() => "ausente");
+    const [naOuv, noReq] = [await exigeConta(slugOuv), await exigeConta(slugReq)];
+    R.conferir("9.12b a carta indica por serviço quem exige conta: a ouvidoria 'sem conta', o requerimento 'com a sua conta'", naOuv.startsWith("nao|") && /sem conta/i.test(naOuv) && noReq.startsWith("sim|") && /com a sua conta/i.test(noReq), `ouvidoria=${naOuv} requerimento=${noReq}`);
     R.conferir("9.13 NEGATIVA: um serviço autenticado não abre como ouvidoria (404)", (await status(page, `/ouvidoria/${slugReq}`)) === 404, "o requerimento abriu como ouvidoria");
     await irPara(N, page, `/ouvidoria/${slugOuv}`);
     const referrer = await page.$eval('meta[name="referrer"]', (m) => m.getAttribute("content")).catch(() => "");

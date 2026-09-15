@@ -1,4 +1,4 @@
-import { diaCivilBr, meioDiaCivil } from "../../../packages/datas/index.js";
+import { diaCivil, diaCivilBr, meioDiaCivil } from "../../../packages/datas/index.js";
 import { toMoney, type Money } from "../../../packages/contracts/index.js";
 import { normalizarDocumento, formatarDocumento } from "../../../packages/documento/index.js";
 import type { Prisma } from "../../../prisma/generated/client/client.js";
@@ -339,7 +339,8 @@ export async function verContrato(id: string): Promise<DetalheLido | null> {
   });
   if (x === null) return null;
   const [atualizado, fim] = await Promise.all([valorAtualizadoDoContrato(prisma, id), vigenciaFimDoContrato(prisma, id)]);
-  const vigente = fim.getTime() >= Date.now();
+  // Dia civil do ente: no último dia da vigência o contrato continua vigente até o fim DELE, não até o instante gravado.
+  const vigente = diaCivil(fim) >= diaCivil(new Date());
   const empenhado = x.empenhos.reduce((s, e) => s.plus(e.valor.toFixed(2)), toMoney("0"));
   return {
     titulo: `Contrato ${x.numeroContrato}`,
@@ -359,7 +360,9 @@ export async function verContrato(id: string): Promise<DetalheLido | null> {
       { rotulo: "Vigência inicial", valor: `${diaCivilBr(x.vigenciaInicio)} a ${diaCivilBr(x.vigenciaFimInicial)}` },
       { rotulo: "Fim da vigência atualizado", valor: diaCivilBr(fim), tipo: "data", nota: "Derivado das prorrogações vivas." },
       { rotulo: "Categoria (art. 141)", valor: x.categoriaOrdemCronologica },
-      { rotulo: "Fiscal do contrato", valor: x.fiscalNome === null ? "— (não designado)" : `${x.fiscalNome}${x.fiscalCpf === null ? "" : ` · ${formatarDocumento(x.fiscalCpf)}`}${x.fiscalDesignacao === null ? "" : ` · ${x.fiscalDesignacao}`}` },
+      // ⚠️ O campo em texto é carga anterior (V7 M2.1). Com o rótulo "Fiscal do contrato" e "(não designado)", a tela
+      // contradizia a designação vigente mostrada no acompanhamento — achado da captura do percurso sobre 5937f41.
+      { rotulo: "Fiscal em texto (registro anterior)", valor: x.fiscalNome === null ? "— (sem registro em texto)" : `${x.fiscalNome}${x.fiscalCpf === null ? "" : ` · ${formatarDocumento(x.fiscalCpf)}`}${x.fiscalDesignacao === null ? "" : ` · ${x.fiscalDesignacao}`}`, nota: "Quem gere e fiscaliza, com ato e vigência, está em “Gestor e fiscais”, no acompanhamento abaixo." },
       { rotulo: "Cadastrado em", valor: diaCivilBr(x.criadoEm), tipo: "data" },
       { rotulo: "Cadastrado por", valor: x.criadoPor },
     ],

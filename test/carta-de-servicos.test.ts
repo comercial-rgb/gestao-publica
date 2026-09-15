@@ -104,6 +104,8 @@ describe("a carta pública", () => {
   it("t1: só o publicado aparece; o rascunho responde nulo; nenhum id interno viaja", async () => {
     const carta = await lerCartaPublica();
     expect(carta.map((s) => s.slug).sort()).toEqual(["complemento", "requerimento"]);
+    // A lista diz, por serviço, se o pedido exige conta — da versão publicada (o lado sem conta está no percurso, 9.12b).
+    expect(carta.map((s) => s.exigeAutenticacao)).toEqual([true, true]);
     expect(await lerServicoPublicado("rascunho")).toBeNull();
     const s = await lerServicoPublicado("requerimento");
     expect(s?.etapas).toEqual([{ ordem: 1, setor: "PROT — Protocolo Geral", prazoDias: 5, descricao: "Triagem" }]);
