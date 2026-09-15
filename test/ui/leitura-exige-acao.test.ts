@@ -58,6 +58,12 @@ const GATES = [
   // ⚠️ A LISTA DA FISCALIZAÇÃO (V7 M2 U0.1) não é leitura de área: é o recorte por DESIGNAÇÃO vigente (ou definição de
   // administrador), decidido no domínio a partir da sessão — quem não tem nenhuma recebe a lista vazia, não a de outros.
   /\bfiscalizacoesDaSessao\(/,
+  // ⚠️ OS DOCUMENTOS DA EXECUÇÃO DO CONTRATO (V7 M2 U4): a rota de PDF decide o alcance DENTRO da porta (sessão +
+  // `alcanceNoContrato` por tipo de documento + o documento ser do contrato), e responde 404 fora dele.
+  /\bdocumentoDaExecucaoParaImprimir\(/,
+  // ⚠️ A PÁGINA DA ORDEM DE SERVIÇO (V7 M2 U4): a porta decide o alcance do contrato (fiscalização ou financeira, esta
+  // incluindo a leitura de licitações) e devolve `null` fora dele; a página responde 404.
+  /\bexecucaoDoContratoPara\(/,
 ];
 
 /** Portas que uma página de NAVEGAÇÃO pode importar sem ter gate: não entregam dado. */

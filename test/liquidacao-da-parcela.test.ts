@@ -176,6 +176,12 @@ describe("a parcela recebida vira liquidação no M05", () => {
     const { execucaoDoContrato } = await import("../modules/m11-licitacoes/execucao-do-contrato.js");
     const def = (await execucaoDoContrato(prisma, "ctr-a", "FINANCEIRA")).ordens[0]!.medicoes[0]!.definitivos;
     expect(def.map((d) => [d.valor, d.liquidado, d.aLiquidar])).toEqual([["900.00", "900.00", "0.00"], ["100.00", "0.00", "100.00"]]);
+    // A projeção PÚBLICA leva ordem, período e valores — não o motivo da controvérsia nem as verificações do termo.
+    const { projecaoPublicaDoContrato } = await import("../modules/m11-licitacoes/fiscalizacao.js");
+    const pub = await projecaoPublicaDoContrato(prisma, "ctr-a");
+    expect(pub?.execucaoPorOrdens).toMatchObject({ autorizado: "1100.00", recebido: "1000.00", ordens: [{ numero: expect.stringMatching(/^1\//), autorizado: "1100.00", recebido: "1000.00" }] });
+    // (Nome e ato dos responsáveis vigentes são públicos, como os do gestor e do fiscal; conta e CPF, não.)
+    expect(JSON.stringify(pub)).not.toMatch(/Visita sem assinatura|Relatórios conferidos|@teste\.local|52998224725|86288366757/);
     // O complemento de R$ 100,00 segue elegível; os R$ 900,00 não.
     await expect(liquidarP(nf, [{ recebimentoDefinitivoId: receb900, valor: "0.01" }])).rejects.toThrow(/PARCELA-JA-LIQUIDADA/);
     await expect(liquidarP(nf, [{ recebimentoDefinitivoId: receb100, valor: "100.00" }])).resolves.toMatchObject({ valor: "100.00" });

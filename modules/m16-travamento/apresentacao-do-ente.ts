@@ -226,3 +226,17 @@ export async function historicoDaApresentacao(
   });
   return versoes.map((v) => ({ numero: v.numero, nomeDeExibicao: v.nomeDeExibicao, tema: v.tema, temImagem: v.imagemMime !== null, criadoPor: v.criadoPor, criadoEm: v.criadoEm }));
 }
+
+/**
+ * O NOME DO ENTE NOS DOCUMENTOS — "Nome de exibição — UF" da apresentação vigente; sem apresentação, o nome oficial do
+ * `EnteConfig`; sem ente, a frase que diz isso. É a regra que a porta de identidade aplica na impressão, trazida ao
+ * domínio para que os documentos EMITIDOS (ordem de serviço, termos) a congelem no manifesto: a segunda via não muda
+ * quando a apresentação é reconfigurada.
+ */
+export async function nomeDoEnteNosDocumentos(prisma: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">): Promise<string> {
+  const vigente = await apresentacaoVigente(prisma as PrismaClient);
+  if (vigente !== null) return vigente.ente.uf !== null ? `${vigente.nomeDeExibicao} — ${vigente.ente.uf}` : vigente.nomeDeExibicao;
+  const ente = await prisma.enteConfig.findUnique({ where: { id: ID_DO_ENTE_UNICO }, select: { nome: true, uf: true } });
+  if (ente !== null) return ente.uf !== null ? `${ente.nome} — ${ente.uf}` : ente.nome;
+  return "Ente não configurado";
+}

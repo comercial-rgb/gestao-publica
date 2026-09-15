@@ -50,7 +50,16 @@ export default async function ContratoPublicoPage({ params }: { readonly params:
           </table>
         </div>
       )}
-      <p className="mt-4 text-xs text-[color:var(--color-ink-3)]">Execução física é a medida aprovada; não é pagamento. Pagamentos seguem pela despesa do ente.</p>
+      <h2 className="mb-1 mt-4 text-sm font-semibold">Execução por ordens de serviço</h2>
+      {c.execucaoPorOrdens.ordens.length === 0 ? <p className="text-sm text-[color:var(--color-ink-2)]" data-publico-sem-ordens>Nenhuma ordem de serviço emitida.</p> : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[28rem] text-left text-sm" data-publico-ordens>
+            <thead><tr className="text-xs text-[color:var(--color-ink-2)]"><th className="py-1 pr-3">Ordem</th><th className="py-1 pr-3">Período autorizado</th><th className="py-1 pr-3 text-right">Autorizado</th><th className="py-1 text-right">Recebido em definitivo</th></tr></thead>
+            <tbody>{c.execucaoPorOrdens.ordens.map((o) => <tr key={o.numero} className="border-t border-[color:var(--color-border)]"><td className="py-2 pr-3">nº {o.numero}</td><td className="py-2 pr-3">{o.periodo}</td><td className="py-2 pr-3 text-right"><ValorMonetario valor={o.autorizado} comSimbolo /></td><td className="py-2 text-right"><ValorMonetario valor={o.recebido} comSimbolo /></td></tr>)}</tbody>
+          </table>
+        </div>
+      )}
+      <p className="mt-4 text-xs text-[color:var(--color-ink-3)]">Execução física é a medida aprovada ou recebida; não é pagamento. Pagamentos seguem pela despesa do ente.</p>
     </main>
   );
 }

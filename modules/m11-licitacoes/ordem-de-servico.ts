@@ -4,6 +4,7 @@ import { Decimal, sumMoney, toMoney } from "../../packages/contracts/index.js";
 import { anoCivil, diaCivil, diaCivilBr, fimDoDiaCivil, inicioDoDiaCivil } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
+import { nomeDoEnteNosDocumentos } from "../m16-travamento/apresentacao-do-ente.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { designacaoVigenteEm } from "../m33-folha/certificacao.js";
 import { contratoTravado, exigirContratoVigente, exigirDesignacao } from "./fiscalizacao.js";
@@ -201,6 +202,7 @@ export async function emitirOrdemDeServico(prisma: PrismaClient, input: EmitirOr
       const total = sumMoney(linhas.map((l) => l.valor)).toFixed(2);
       const { manifesto, sha256 } = manifestoCanonico({
         documento: "ORDEM_DE_SERVICO",
+        ente: await nomeDoEnteNosDocumentos(tx),
         contrato: { numero: o.contrato.numeroContrato, contratado: o.contrato.contratadoNome, documentoDoContratado: o.contrato.contratadoDocumento },
         ordem: { numero: o.numero, ano: o.ano, finalidade: o.finalidade, local: o.local, unidadeSolicitante: o.unidadeSolicitante, inicioPrevisto: ini, fimPrevisto: fim, inicioAutorizado: d.inicioAutorizado, emitidaEm: hoje(), condicoesDeRecebimento: o.condicoesDeRecebimento },
         gestor: { nome: g.nome, ato: g.ato },
@@ -528,6 +530,7 @@ export async function registrarRecebimentoProvisorio(prisma: PrismaClient, input
       const f = await nomeEAto(tx, fiscal.id);
       const { manifesto, sha256 } = manifestoCanonico({
         documento: "TERMO_DE_RECEBIMENTO_PROVISORIO",
+        ente: await nomeDoEnteNosDocumentos(tx),
         fundamento: "Lei 14.133/2021, art. 140, I, a",
         contrato: { numero: m.ordem.contrato.numeroContrato, contratado: m.ordem.contrato.contratadoNome, documentoDoContratado: m.ordem.contrato.contratadoDocumento },
         ordem: { numero: m.ordem.numero, ano: m.ordem.ano, condicoesDeRecebimento: m.ordem.condicoesDeRecebimento },
@@ -580,6 +583,7 @@ export async function decidirControversia(prisma: PrismaClient, input: DecidirCo
       const who = await nomeEAto(tx, recebedor.id);
       const { manifesto, sha256 } = manifestoCanonico({
         documento: d.resultado === "ACEITA" ? "DECISAO_DE_ACEITACAO" : "TERMO_DE_RECUSA",
+        ente: await nomeDoEnteNosDocumentos(tx),
         fundamento: "Lei 14.133/2021, art. 140, § 1º e art. 143",
         contrato: conf.medido.medicao.ordem.contrato.numeroContrato,
         ordem: { numero: conf.medido.medicao.ordem.numero, ano: conf.medido.medicao.ordem.ano },
@@ -663,6 +667,7 @@ export async function registrarRecebimentoDefinitivo(prisma: PrismaClient, input
       const who = await nomeEAto(tx, recebedor.id);
       const { manifesto, sha256 } = manifestoCanonico({
         documento: "TERMO_DE_RECEBIMENTO_DEFINITIVO",
+        ente: await nomeDoEnteNosDocumentos(tx),
         fundamento: "Lei 14.133/2021, art. 140, I, b",
         contrato: { numero: m.ordem.contrato.numeroContrato, contratado: m.ordem.contrato.contratadoNome, documentoDoContratado: m.ordem.contrato.contratadoDocumento },
         ordem: { numero: m.ordem.numero, ano: m.ordem.ano },

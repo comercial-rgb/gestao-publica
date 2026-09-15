@@ -8,6 +8,7 @@ import {
   type ApresentacaoInput,
   type ApresentacaoVigente,
   type Tema,
+  nomeDoEnteNosDocumentos,
 } from "../../modules/m16-travamento/apresentacao-do-ente.js";
 
 export { TEMAS };
@@ -123,12 +124,7 @@ export async function identidadePublica(): Promise<IdentidadePublica> {
  * via lê o JSON, não esta função. Reconfigurar a apresentação não reescreve o que já saiu.
  */
 export async function nomeDoEnteParaDocumentos(): Promise<string> {
-  const prisma = cliente();
-  const vigente = await apresentacaoVigente(prisma);
-  if (vigente !== null) return vigente.ente.uf !== null ? `${vigente.nomeDeExibicao} — ${vigente.ente.uf}` : vigente.nomeDeExibicao;
-  const ente = await prisma.enteConfig.findUnique({ where: { id: ID_DO_ENTE_UNICO }, select: { nome: true, uf: true } });
-  if (ente !== null) return ente.uf !== null ? `${ente.nome} — ${ente.uf}` : ente.nome;
-  return "Ente não configurado";
+  return nomeDoEnteNosDocumentos(cliente());
 }
 
 /** A imagem vigente, para `app/identidade/imagem/route.ts`. Pública. */

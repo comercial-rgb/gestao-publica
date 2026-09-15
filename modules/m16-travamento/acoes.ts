@@ -1542,6 +1542,9 @@ export const FORA_DO_CENSO: Record<string, string> = {
     "do contrato, antes de gravar: soma, documento de cobrança, empenho e credor, elegível.",
   gravarAlocacoesDaLiquidacao:
     "composável interno: grava as alocações da liquidação nas parcelas, no mesmo commit da liquidação do M05.",
+  nomeDoEnteNosDocumentos:
+    "LEITURA PÚBLICA: o nome do ente para documentos (apresentação vigente, ou o nome oficial) — congelado no manifesto " +
+    "dos documentos emitidos e usado pela impressão dos novos.",
   execucaoDoContrato:
     "LEITURA: as ordens de serviço do contrato com itens, saldos, medições, recebimentos e termos — na visão pedida " +
     "(fiscalização ou financeira), decidida antes pelo alcance.",

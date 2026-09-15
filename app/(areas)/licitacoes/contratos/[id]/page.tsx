@@ -11,12 +11,15 @@ import { verContrato, opcoesDoContrato } from "../../../../../lib/portas/recurso
 import { contratosAction } from "../actions";
 import { alcanceDaSessaoNoContrato, dossieDoContratoPara, hojeCivil } from "../../../../../lib/portas/contrato-acompanhado";
 import { DossieDoContrato } from "./DossieDoContrato";
+import { ExecucaoDoContrato } from "./ExecucaoDoContrato";
+import { execucaoDoContratoPara } from "../../../../../lib/portas/execucao-do-contrato";
 
 /**
  * O DETALHE DO CONTRATO: valor e vigência derivados dos aditivos, os empenhos que o informaram, e as ações. Os aditivos oferecidos ao estorno são SÓ os vivos deste contrato.
  * ⚠️ A ABA VEM DA URL (`?aba=historico`).
  * ⚠️ QUEM ENTRA (V7 M2 U0.1): quem lê licitações no ente (projeção financeira) OU quem alcança a fiscalização DESTE
- * contrato (designação vigente ou administrador da fiscalização). Qualquer outro recebe 404 — a mesma resposta de
+ * contrato (designação vigente ou administrador da fiscalização) ou a projeção financeira (quem liquida ou lê a despesa).
+ * Qualquer outro recebe 404 — a mesma resposta de
  * contrato inexistente. O dossiê abaixo decide a projeção pelo mesmo alcance.
  */
 export const dynamic = "force-dynamic";
@@ -25,11 +28,11 @@ export default async function Detalhe({ params, searchParams }: { readonly param
   const sessao = await exigirSessao();
   const { id } = await params;
   const [leLicitacoes, alcance] = await Promise.all([podeLerPara(sessao, "CONSULTAR_LICITACOES", "ente"), alcanceDaSessaoNoContrato(sessao, id)]);
-  if (!leLicitacoes && !alcance.fiscalizacao) notFound();
+  if (!leLicitacoes && !alcance.fiscalizacao && !alcance.financeira) notFound();
   const consulta = lerConsulta(CONTRATOS, await searchParams);
   const [detalhe, opcoes, permitidas] = await Promise.all([verContrato(id), opcoesDoContrato(id), acoesPermitidas(CONTRATOS.acoes.map((a) => a.acaoDoCenso))]);
   if (detalhe === null) notFound();
-  const dossie = consulta.aba === "dados" ? await dossieDoContratoPara(sessao, id) : null;
+  const [dossie, execucao] = consulta.aba === "dados" ? await Promise.all([dossieDoContratoPara(sessao, id), execucaoDoContratoPara(sessao, id)]) : [null, null];
   return (
     <div className="space-y-4">
     <DetalheDeRecurso
@@ -44,6 +47,7 @@ export default async function Detalhe({ params, searchParams }: { readonly param
       acoes={<FormsDoRecurso definicao={CONTRATOS} permitidas={[...permitidas]} opcoes={opcoes} registroId={id} action={contratosAction} modo="acoes" />}
     />
     {dossie !== null ? <DossieDoContrato d={dossie} hoje={hojeCivil()} /> : null}
+    {execucao !== null ? <ExecucaoDoContrato e={execucao} contratoId={id} /> : null}
     </div>
   );
 }

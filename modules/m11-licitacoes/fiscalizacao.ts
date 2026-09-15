@@ -496,6 +496,11 @@ export interface ProjecaoPublicaDoContrato {
   readonly responsaveis: readonly { readonly papel: "GESTOR" | "FISCAL" | "RECEBEDOR_DEFINITIVO"; readonly nome: string; readonly ato: string; readonly desde: string }[];
   readonly execucaoFisica: readonly { readonly item: number; readonly descricao: string; readonly unidade: string; readonly contratado: string; readonly medidoAprovado: string; readonly percentual: string }[];
   readonly medicoesAprovadas: { readonly quantidade: number; readonly valor: string };
+  /**
+   * V7 M2 U4 — a execução por ordens de serviço EMITIDAS: número, período autorizado, valor autorizado e o recebido em
+   * definitivo. Não sai: rascunho, medição não recebida, controvérsia, verificações, termos, conta ou documento de pessoa.
+   */
+  readonly execucaoPorOrdens: { readonly ordens: readonly { readonly numero: string; readonly periodo: string; readonly autorizado: string; readonly recebido: string }[]; readonly autorizado: string; readonly recebido: string };
 }
 
 /**
@@ -512,6 +517,15 @@ export async function projecaoPublicaDoContrato(prisma: Tx, contratoId: string):
       designacoes: { select: { papel: true, atoDesignacao: true, vigenciaInicio: true, vigenciaFim: true, revogacao: { select: { dataEfeito: true } }, pessoa: { select: { versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } } } },
       itens: { orderBy: { numero: "asc" }, select: { numero: true, descricao: true, unidade: true, quantidade: true, medidos: { where: { medicaoPorItens: { medicao: { OR: [{ aprovadaEm: { not: null } }, { aprovacao: { isNot: null } }] } } }, select: { quantidade: true } } } },
       medicoes: { where: { OR: [{ aprovadaEm: { not: null } }, { aprovacao: { isNot: null } }] }, select: { valorMedido: true } },
+      ordensDeServico: {
+        where: { emissao: { isNot: null }, descarte: null },
+        orderBy: { numero: "asc" },
+        select: {
+          numero: true, ano: true, fimPrevisto: true, emissao: { select: { inicioAutorizado: true } },
+          itens: { select: { quantidade: true, valorUnitario: true, cancelamentos: { select: { quantidade: true } } } },
+          medicoes: { select: { recebimentosDefinitivos: { select: { itens: { select: { valor: true } } } } } },
+        },
+      },
     },
   });
   if (c === null) return null;
@@ -528,5 +542,13 @@ export async function projecaoPublicaDoContrato(prisma: Tx, contratoId: string):
       return { item: i.numero, descricao: i.descricao, unidade: i.unidade, contratado: i.quantidade.toFixed(4), medidoAprovado: medido.toFixed(4), percentual: pct1(medido, new Decimal(i.quantidade.toFixed(4))) };
     }),
     medicoesAprovadas: { quantidade: c.medicoes.length, valor: sumMoney(c.medicoes.map((m) => m.valorMedido.toFixed(2))).toFixed(2) },
+    execucaoPorOrdens: (() => {
+      const ordens = c.ordensDeServico.map((o) => {
+        const autorizado = sumMoney(o.itens.map((i) => toMoney(new Decimal(i.quantidade.toFixed(4)).minus(i.cancelamentos.reduce((t, x) => t.plus(x.quantidade.toFixed(4)), new Decimal(0))).times(i.valorUnitario.toFixed(4)))));
+        const recebido = sumMoney(o.medicoes.flatMap((m) => m.recebimentosDefinitivos.flatMap((r) => r.itens.map((x) => x.valor.toFixed(2)))));
+        return { numero: `${o.numero}/${o.ano}`, periodo: `${o.emissao === null ? "" : diaCivilBr(o.emissao.inicioAutorizado)} a ${diaCivilBr(o.fimPrevisto)}`, autorizado: autorizado.toFixed(2), recebido: recebido.toFixed(2) };
+      });
+      return { ordens, autorizado: sumMoney(ordens.map((o) => o.autorizado)).toFixed(2), recebido: sumMoney(ordens.map((o) => o.recebido)).toFixed(2) };
+    })(),
   };
 }
