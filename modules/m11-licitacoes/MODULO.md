@@ -280,6 +280,56 @@ unidade, medição por valor); mutações "confere sempre", "ignora o indivisív
 parcela no mesmo dia (3.3b). `ME06` (alteração contratual entre emissão e medição) depende do aditivo por item — não
 executado.
 
+### U1/U2 — a ordem de serviço, a medição da ordem e os recebimentos (`ordem-de-servico.ts`)
+
+**Reconciliação.** `OrdemDeCompra` (m11-compras) autoriza fornecimento de MATERIAL, sem contrato; `OrdemDeFiscalizacao`
+é a agenda do fiscal; `OrdemDeServicoDoContrato` é a autorização de EXECUÇÃO ao contratado sobre os itens do contrato,
+e é o único dos três que compromete o saldo do item do contrato. Nenhum é empenho nem ordem de pagamento.
+
+| Ato | Quem | O que confere | O que NÃO faz |
+|---|---|---|---|
+| rascunho (`criarRascunhoDeOrdemDeServico`) | gestor designado vigente (`EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO`) | itens do contrato, fiscal vigente do contrato, empenho do contrato não anulado; schema estrito (preço e fornecedor saem do contrato) | não compromete saldo |
+| emissão | gestor vigente | contrato vigente hoje, no início autorizado e no fim previsto; saldo por item sob o trinco (ordens emitidas + medição sem ordem); manifesto + sha256 | não reserva, não empenha, não paga |
+| descarte / cancelamento de saldo / suspensão e retomada | gestor vigente | rascunho só se descarta; cancelar só o não executado (o medido continua comprometido); marcos alternados, sem data futura | não anula o empenho indicado |
+| medição da ordem (`registrarMedicaoDaOrdem`) | fiscal vigente hoje (o sucessor mede) | período dentro do autorizado, fora de suspensão, dentro da vigência na data do fato; acumulado ≤ autorizado; período só se o regime for indivisível | não recebe |
+| recebimento provisório | fiscal vigente (art. 140, I, a) | todo item conferido: conforme + controvérsia = medido; controvérsia com motivo; data ≥ fim do período | não aceita em definitivo, não é glosa |
+| decisão da controvérsia | recebedor definitivo vigente, ≠ quem recebeu provisoriamente | uma por conferência | ACEITA não recebe; REJEITADA não libera saldo |
+| recebimento definitivo | recebedor vigente, ≠ quem mediu e ≠ quem recebeu provisoriamente (art. 140, I, b) | só o elegível (conforme + aceito − recebido); controvérsia pendente bloqueia só o item; pendências no termo | não liquida |
+
+Cenário de referência em `test/ordem-de-servico-e-recebimentos.test.ts`: ordem R$ 1.100,00; medição R$ 1.000,00;
+definitivo R$ 900,00; complemento R$ 100,00 (OS01–OS05, ME03/ME04 na ordem, RE01–RE07, AC07; quatro mutações acusadas).
+`test/runtime/contrato-runtime-ordem-de-servico.test.ts`: todos os atos pela conexão `gestao_app` e as negativas de
+UPDATE/DELETE. AC07 usa uma ordem EMITIDA durante a vigência como carga histórica declarada na fixture.
+
+### U3 — a parcela recebida vira liquidação (`parcelas-da-liquidacao.ts`, `liquidacao-da-parcela.ts`)
+
+Composição, não outra contabilidade: `liquidarParcelasDoContrato` (LIQUIDAR) chama o `liquidar` do M05 com
+`parcelasDoContrato`; o adapter confere dentro da transação (ver o MODULO do M05) e grava as alocações no mesmo
+commit. Número determinístico por pedido; a retomada acha a liquidação VIVA com as mesmas alocações (LI04); anulada, o
+pedido refeito recebe `-2`. Consumido derivado: estorno libera; anulação parcial com várias parcelas não libera
+(`ANULACAO-PARCIAL-COM-VARIAS-PARCELAS`). `test/liquidacao-da-parcela.test.ts` (LI01–LI06, ES01/ES02, prova
+determinística do trinco do contrato). Achado corrigido no M05: liquidações concorrentes passavam do empenho.
+
+### U4 — telas, documentos e projeção pública
+
+- `/licitacoes/contratos/[id]`: execução por ordens (autorizado, medido, recebido, liquidado, cada um com a definição);
+  saldo por item; nova ordem para o gestor.
+- `/licitacoes/contratos/[id]/ordens/[ordemId]`: página de trabalho — situação e próximas ações, itens, emissão com
+  prévia do efeito, conferência por item, decisão, definitivo, termos em PDF e a preparação da liquidação (documento
+  conferido do contratado com saldo, empenho vivo do contrato que não seja de material, prévia da soma).
+- `/licitacoes/contratos/[id]/documentos/[tipo]/[id]`: ordem, termo provisório, decisão e termo definitivo impressos do
+  MANIFESTO (segunda via idêntica; ente congelado na emissão por `nomeDoEnteNosDocumentos`). Provisório e decisão só na
+  visão de fiscalização; 404 fora do alcance. `test/ui/termos-do-contrato.test.ts` (DO01, DO02).
+- `/transparencia/contratos/[id]`: ordens emitidas com período, autorizado e recebido em definitivo; sem motivo,
+  verificações, termo, conta ou CPF.
+- Percurso por papéis: `scripts/smoke-ponte-contratual.ts`, com a preparação declarada `scripts/preparar-ponte-contratual.ts`.
+
+Pendências nomeadas da ponte: `ME06-ADITIVO-ENTRE-EMISSAO-E-MEDICAO` (depende do aditivo por item),
+`GLOSA-LIBERACAO-DE-SALDO`, `COMISSAO-COM-QUORUM`, `ORDEM-DE-SERVICO-DE-MATERIAL`, `ANULACAO-PARCIAL-COM-VARIAS-PARCELAS`,
+`EMPENHO-POR-PARCELA-DA-ORDEM` (subempenho da parcela), `RETENCOES-NA-LIQUIDACAO-DA-PARCELA` (usa as parametrizadas no
+pagamento), `PRAZO-DE-RECEBIMENTO-SEM-CONFIGURACAO`, `PORTAL-DO-FORNECEDOR`, `ASSINATURA-QUALIFICADA-DOS-TERMOS`,
+`XLSX-DA-EXECUCAO` (PDF só).
+
 ## Arquivos
 
 - `dominio.ts` — puro: `MODALIDADES`, `SINAL_VALOR_CONTRATUAL`,

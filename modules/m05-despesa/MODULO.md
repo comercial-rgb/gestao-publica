@@ -324,3 +324,23 @@ debitada (senão `CONFIGURAÇÃO OBRIGATÓRIA AUSENTE`) e chama o port dentro da
 `SEM O ALMOXARIFADO LIGADO`. Uma liquidação é de um elemento só: documento fiscal misto são duas
 liquidações. `lib/portas/liquidacao.ts` monta as deps com o almoxarifado ligado. Ver
 `docs/adr/ADR-liquidacao-de-material-como-ato-unico.md`.
+
+## V7 M2 — a parcela do contrato na liquidação e o trinco que faltava
+
+### A liquidação somava o já liquidado SEM trinco (achado, corrigido)
+
+A mutação do trinco da parcela (V7 M2 U3) mostrou que duas liquidações concorrentes num mesmo empenho liam "já
+liquidado = 0" e gravavam as duas: 700 + 700 sobre um empenho de 1.000. O `liquidar` do adapter passou a travar a
+FICHA do empenho (posto 2, `travarFichas`) antes de somar — a mesma primitiva do empenho sobre a ficha. Os trincos
+posteriores da mesma transação (o contrato da parcela, posto 5; a classe de material, posto 12) têm posto maior.
+`m05-concorrencia.test.ts` t5: vermelho antes da correção (as duas gravavam), verde depois; a regressão dos
+consumidores do `liquidar` (M05, M07, M08, M10, M11, M33 e o papel de runtime) passou com o trinco novo.
+
+### `parcelasDoContrato` — a origem contratual atravessa o serviço
+
+Como a `medicaoId` e as `entradasDeMaterial`, a lista das parcelas recebidas (recebimento definitivo e valor) é
+OPCIONAL no `zLiquidarInput` e conferida pelo adapter dentro da transação, ANTES de qualquer gravação
+(`modules/m11-licitacoes/parcelas-da-liquidacao.ts`): soma igual ao valor; documento de cobrança obrigatório e do
+mesmo contrato; empenho do contrato com credor = contratado; empenho que não seja de material; empenho indicado na
+ordem; elegível não consumido — sob o trinco do contrato. As alocações (`AlocacaoDaLiquidacaoNaParcela`) são gravadas
+no mesmo commit da liquidação. Liquidação de custeio, folha e encargos não passam parcela e não mudam.
