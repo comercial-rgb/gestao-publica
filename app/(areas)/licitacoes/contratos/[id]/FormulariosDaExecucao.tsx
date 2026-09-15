@@ -2,6 +2,7 @@
 
 import { createContext, useActionState, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
 import { ChaveDeComando } from "../../../../../components/ui/ChaveDeComando";
+import { useRestaurarAposEnvio } from "../../../../../components/ui/useRestaurarAposEnvio";
 import { CLASSE_AREA_TEXTO, CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO, CLASSE_PAINEL_FORMULARIO, CLASSE_ROTULO } from "../../../../../components/ui/Formulario";
 import { qtdBr } from "../../../../../lib/format/quantidade";
 import { execucaoAction, type EstadoDaExecucao } from "../execucao-actions";
@@ -85,15 +86,18 @@ function useAto(acao: string) {
   const instancia = useId();
   useEffect(() => montar?.(instancia), [montar, instancia]);
   // O resultado é publicado quando a action RESPONDE — antes de a recarga decidir se este formulário continua na página.
+  let guardar: (dados: FormData) => void = () => undefined;
   const [estado, disparar, pendente] = useActionState<EstadoDaExecucao, FormData>(async (anterior, dados) => {
+    guardar(dados);
     const r = await execucaoAction(anterior, dados);
     if (r.erro !== undefined) publicar?.(acao, instancia, "erro", r.erro);
     else if (r.sucesso !== undefined) publicar?.(acao, instancia, "ok", r.sucesso);
     return r;
   }, {});
-  const ref = useRef<HTMLFormElement>(null);
-  if (estado.sucesso !== undefined) ref.current?.reset();
-  return { estado, disparar, pendente, ref, id: useId() };
+  // Gravou: o formulário volta limpo. Recusou: volta com o que foi digitado.
+  const restauracao = useRestaurarAposEnvio(estado, (e) => e.erro !== undefined);
+  guardar = restauracao.guardar;
+  return { estado, disparar, pendente, ref: restauracao.ref, id: useId() };
 }
 
 function Campo({ id, nome, rotulo, tipo = "text", obrigatorio = true, ...resto }: { readonly id: string; readonly nome: string; readonly rotulo: string; readonly tipo?: string; readonly obrigatorio?: boolean } & React.InputHTMLAttributes<HTMLInputElement>): React.ReactElement {
@@ -418,10 +422,15 @@ export function FormAditivoPorItens({ contratoId, itens, hoje }: {
   readonly itens: readonly { readonly id: string; readonly numero: number; readonly descricao: string; readonly unidade: string; readonly contratado: string; readonly valorUnitario: string }[];
   readonly hoje: string;
 }): React.ReactElement {
-  const [estado, disparar, pendente] = useActionState<EstadoDaExecucao, FormData>(execucaoAction, {});
-  const ref = useRef<HTMLFormElement>(null);
+  let guardar: (dados: FormData) => void = () => undefined;
+  const [estado, disparar, pendente] = useActionState<EstadoDaExecucao, FormData>(async (anterior, dados) => {
+    guardar(dados);
+    return execucaoAction(anterior, dados);
+  }, {});
+  // A prévia e a recusa não gravam: os campos voltam como estavam. Só o registro limpa o formulário.
+  const { ref, guardar: g } = useRestaurarAposEnvio(estado, (e) => e.erro !== undefined || e.acao === "preverAditivo");
+  guardar = g;
   const id = useId();
-  if (estado.sucesso !== undefined && estado.acao === "aditivo") ref.current?.reset();
   return (
     <form ref={ref} action={disparar} data-acao="aditivo-por-itens" className={CLASSE_PAINEL_FORMULARIO}>
       <ChaveDeComando />
