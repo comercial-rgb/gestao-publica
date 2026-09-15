@@ -212,3 +212,25 @@ export function FormMedicaoPorItens({ contratoId, obras, itens, proximoNumero }:
     </form>
   );
 }
+
+export function FormRegimeDeMedicao({ contratoId, hoje }: { readonly contratoId: string; readonly hoje: string }): React.ReactElement {
+  const a = useAto();
+  return (
+    <form ref={a.ref} action={a.disparar} data-acao="configurar-regime-de-medicao" className={CLASSE_PAINEL_FORMULARIO}>
+      <ChaveDeComando />
+      <Ocultos contratoId={contratoId} acao="regime" />
+      <h3 className="mb-1 text-sm font-semibold">Configurar o regime de período das medições</h3>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">Sem configuração, duas medições no mesmo período passam se forem parcelas distintas: o que impede medir duas vezes é o saldo de cada item. Período indivisível só com fundamento no contrato ou em regulamento.</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Selecao id={a.id} nome="regime" rotulo="Regime" opcoes={[{ valor: "PERIODO_LIVRE", rotulo: "Período livre (a parcela é o saldo por item)" }, { valor: "PERIODO_INDIVISIVEL", rotulo: "Período indivisível (sem sobreposição)" }]} />
+        <Campo id={a.id} nome="inicio" rotulo="Vale para medições que começam a partir de" tipo="date" defaultValue={hoje} />
+        <label htmlFor={`${a.id}-fundamento`} className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
+          <span className={CLASSE_ROTULO}>Fundamento (cláusula do contrato ou regulamento)</span>
+          <textarea id={`${a.id}-fundamento`} name="fundamento" required minLength={5} rows={2} className={CLASSE_AREA_TEXTO} />
+        </label>
+      </div>
+      <Mensagens estado={a.estado} acao="configurar-regime-de-medicao" />
+      <button type="submit" disabled={a.pendente} className={`mt-3 ${CLASSE_BOTAO_PRIMARIO}`}>{a.pendente ? "Gravando…" : "Configurar"}</button>
+    </form>
+  );
+}

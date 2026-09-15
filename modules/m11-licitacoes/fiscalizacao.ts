@@ -11,6 +11,7 @@ import { gravarAnexoNaTransacao } from "../m22-documentos/anexos.js";
 import { designacaoVigenteEm } from "../m33-folha/certificacao.js";
 import { estaVigente, valorAtualizado, vigenciaFim, diasAteVencimento, type MovimentoDoContrato } from "./dominio.js";
 import { gravarMedicaoNaTransacao } from "./medicoes.js";
+import { conferenciaDoPeriodoPorItens } from "./regime-de-medicao.js";
 
 /**
  * ═══ M11 — O CONTRATO ACOMPANHADO (V7 M2.1; Lei 14.133/2021, arts. 117 e 140) ═══
@@ -324,8 +325,9 @@ export type RegistrarMedicaoPorItensInput = z.input<typeof zRegistrarMedicaoPorI
 /**
  * MEDIR POR ITENS — o fiscal designado informa QUANTIDADES; o valor sai de quantidade × unitário
  * contratado (em Decimal, arredondado a centavos por item). Por item, o acumulado medido não passa da
- * quantidade contratada; no conjunto, a medição passa pelos guards de sempre (período sem sobreposição e
- * teto do valor vigente). Uma parcela PARCIAL de um item é permitida — o resto continua a medir.
+ * quantidade contratada — é ESSA a identidade da parcela: repetir a mesma parcela esgota o saldo e é recusado por
+ * ele. O período só é conferido se o contrato configurar regime indivisível (V7 M2 U0.2, `regime-de-medicao.ts`);
+ * o teto do valor vigente vale sempre. Uma parcela PARCIAL de um item é permitida — o resto continua a medir.
  */
 export async function registrarMedicaoPorItens(prisma: PrismaClient, input: RegistrarMedicaoPorItensInput): Promise<{ readonly medicaoId: string; readonly valorMedido: string; readonly acumulado: string }> {
   const d = zRegistrarMedicaoPorItens.parse(input);
@@ -359,10 +361,11 @@ export async function registrarMedicaoPorItens(prisma: PrismaClient, input: Regi
       return { itemId: item.id, quantidade: pedido.quantidade, valor: toMoney(new Decimal(pedido.quantidade).times(item.valorUnitario.toFixed(4))) };
     });
     const valorMedido = sumMoney(linhas.map((l) => l.valor));
+    const periodo = await conferenciaDoPeriodoPorItens(tx, c.id, d.diaInicio);
     const m = await gravarMedicaoNaTransacao(tx, {
       obraId: d.obraId, contratoId: d.contratoId, numero: d.numero, diaInicio: d.diaInicio, diaFim: d.diaFim,
       valorMedido: zMoney.parse(valorMedido.toFixed(2)), responsavelTecnico: d.responsavelTecnico, registroProfissional: d.registroProfissional, criadoPor: d.criadoPor,
-    });
+    }, periodo);
     await tx.medicaoPorItens.create({
       data: { medicaoId: m.medicaoId, designacaoId: fiscal.id, criadoPor: d.criadoPor, itens: { create: linhas.map((l) => ({ itemId: l.itemId, quantidade: l.quantidade, valor: l.valor.toFixed(2) })) } },
     });
@@ -412,6 +415,8 @@ export interface AcompanhamentoDoContrato {
   readonly ordens: readonly { readonly id: string; readonly numero: number; readonly dataPrevista: string; readonly objetivo: string; readonly fiscal: string; readonly ocorrencias: number }[];
   readonly ocorrencias: readonly { readonly id: string; readonly numero: number; readonly data: string; readonly tipo: string; readonly descricao: string; readonly encaminhamento: string; readonly fiscal: string; readonly ordem: number | null; readonly evidencias: readonly { readonly id: string; readonly nome: string }[]; readonly resolucao: { readonly texto: string; readonly gestor: string; readonly em: string } | null }[];
   readonly medicoes: readonly { readonly id: string; readonly numero: number; readonly obra: string; readonly periodo: string; readonly valor: string; readonly aprovada: boolean; readonly porItens: boolean }[];
+  /** V7 M2 U0.2 — o regime de período das medições por itens, com fundamento (mais recente primeiro). */
+  readonly regimesDeMedicao: readonly { readonly regime: "PERIODO_LIVRE" | "PERIODO_INDIVISIVEL"; readonly fundamento: string; readonly desde: string; readonly por: string }[];
 }
 
 const pct1 = (parte: Decimal, todo: Decimal): string => (todo.isZero() ? "0,0" : parte.times(100).dividedBy(todo).toDecimalPlaces(1, Decimal.ROUND_HALF_UP).toFixed(1).replace(".", ","));
@@ -430,6 +435,7 @@ export async function acompanhamentoDoContrato(prisma: Tx, contratoId: string, v
       itens: { orderBy: { numero: "asc" }, select: { id: true, numero: true, descricao: true, unidade: true, quantidade: true, valorUnitario: true, medidos: { select: { quantidade: true } } } },
       designacoes: { orderBy: [{ papel: "asc" }, { vigenciaInicio: "asc" }], select: { id: true, papel: true, atoDesignacao: true, vigenciaInicio: true, vigenciaFim: true, revogacao: { select: { dataEfeito: true } }, usuario: { select: { identificador: true } }, pessoa: { select: { documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } } } },
       medicoes: { orderBy: { criadoEm: "desc" }, select: { id: true, numero: true, periodoInicio: true, periodoFim: true, valorMedido: true, aprovadaEm: true, aprovacao: { select: { id: true } }, obra: { select: { identificador: true } }, porItens: { select: { id: true } } } },
+      regimesDeMedicao: { orderBy: { vigenciaInicio: "desc" }, select: { regime: true, fundamento: true, vigenciaInicio: true, criadoPor: true } },
     },
   });
   if (c === null) return null;
@@ -468,6 +474,7 @@ export async function acompanhamentoDoContrato(prisma: Tx, contratoId: string, v
       resolucao: o.resolucao === null ? null : { texto: o.resolucao.texto, gestor: o.resolucao.designacao.usuario.identificador, em: diaCivilBr(o.resolucao.criadoEm) },
     })),
     medicoes: c.medicoes.map((m) => ({ id: m.id, numero: m.numero, obra: m.obra.identificador, periodo: `${diaCivilBr(m.periodoInicio)} a ${diaCivilBr(m.periodoFim)}`, valor: m.valorMedido.toFixed(2), aprovada: m.aprovadaEm !== null || m.aprovacao !== null, porItens: m.porItens !== null })),
+    regimesDeMedicao: c.regimesDeMedicao.map((r) => ({ regime: r.regime, fundamento: r.fundamento, desde: diaCivilBr(r.vigenciaInicio), por: r.criadoPor })),
   };
 }
 

@@ -203,7 +203,7 @@ mesmo contrato em período sobreposto (`ACUMULO-DE-GESTOR-E-FISCAL`). Os campos 
   fiscal DESTE contrato vigente na data; contrato vigente na data prevista.
 - **Ocorrência** (`OcorrenciaDeFiscalizacao`, `REGISTRAR_OCORRENCIA_DE_FISCALIZACAO`): fiscal vigente, data
   não futura, contrato vigente no dia, ordem deste contrato e deste fiscal; evidências pelo M22 na mesma
-  transação (`Anexo.ocorrenciaDeFiscalizacaoId`, leitura `CONSULTAR_LICITACOES`); encaminhamento ao gestor.
+  transação (`Anexo.ocorrenciaDeFiscalizacaoId`; leitura pelo alcance da FISCALIZAÇÃO desde V7 M2 U0.1); encaminhamento ao gestor.
 - **Resolução** (`ResolucaoDeOcorrencia`, `RESOLVER_OCORRENCIA_DE_FISCALIZACAO`): gestor vigente, só
   ocorrência encaminhada, uma por ocorrência.
 - **Medição por itens** (`MedicaoPorItens`/`ItemMedido`, `REGISTRAR_MEDICAO_DE_OBRA`): fiscal vigente;
@@ -227,6 +227,58 @@ Pendências: `ADITIVO-POR-ITEM` (acréscimo/supressão de quantidade de item), `
 (ordem de início/fornecimento ao contratado), `MEDICAO-POR-ITENS-SEM-OBRA` (a medição é de obra; serviço
 contínuo sem obra ainda não mede por itens), `PRAZO-DE-RESOLUCAO-DA-OCORRENCIA`, `NOTIFICACAO-AO-CONTRATADO`,
 `RECEBIMENTO-PROVISORIO-E-DEFINITIVO`.
+
+## A ponte contratual — V7 M2 (`docs/lotes/V7-M2-execucao-contratual.md`)
+
+### U0.1 — quem alcança o contrato (`acesso-da-fiscalizacao.ts`)
+
+Três projeções, e uma não herda a regra da outra (`decidirAlcance`, pura; `alcanceNoContrato` lê os fatos):
+
+| Projeção | Quem alcança | O que leva | Onde vale |
+|---|---|---|---|
+| FISCALIZAÇÃO | designação VIGENTE HOJE no contrato (gestor, fiscal, recebedor definitivo) ou definição vigente de `AdministradorDaFiscalizacao` (5.21.17) | agenda, ocorrências, evidências, conferências e termos | dossiê em `/licitacoes/contratos/[id]`, download da evidência (`entregarAnexo`), lista `/licitacoes/fiscalizacao`, e os atos (que exigem a designação na transação) |
+| FINANCEIRA | `CONSULTAR_LICITACOES`, `CONSULTAR_DESPESA`, `EMPENHAR`, `LIQUIDAR` ou `PAGAR` | contrato, itens e saldos, valores medidos/aceitos/liquidados | dossiê (agenda e ocorrências nem são lidas do banco) |
+| PÚBLICA | sem sessão | `projecaoPublicaDoContrato`, campo a campo | `/transparencia/contratos/[id]` |
+
+- Permissão global de outra área não é administração da fiscalização (AC02). A ação
+  `DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO` dá o poder de DEFINIR, não o alcance: o administrador da plataforma que
+  precisa do dossiê define a si mesmo, com ato, e isso fica registrado (AC03).
+- Revogação tira o alcance atual; os atos anteriores continuam com autor e designação usada; o sucessor designado vê
+  o histórico (o alcance é do contrato, não do autor). Backdating não recupera poder: o ato exige a designação no dia
+  do fato E hoje (AC06).
+- O detalhe do contrato responde 404 a quem não lê licitações nem alcança a fiscalização daquele contrato.
+- `RECEBEDOR_DEFINITIVO` é papel próprio (art. 140, I, b), segregado do FISCAL nos dois sentidos
+  (`ACUMULO-DE-FISCAL-E-RECEBEDOR`); com o gestor pode acumular.
+
+Testes: `test/acesso-da-fiscalizacao.test.ts` (AC01–AC04, AC06, segregação; mutações "administrador sem vigência" e
+"financeira lendo ocorrências" acusadas). Permissões v19 (`ponte-contratual`).
+
+### U0.2 — a unicidade da medição (`regime-de-medicao.ts`)
+
+**Achado:** a medição por itens recusava qualquer sobreposição de período na obra — regra herdada da medição por
+valor — e o percurso passou a procurar "o dia livre". O fundamento declarado ("medir o mesmo intervalo duas vezes é
+medir o mesmo serviço duas vezes") só vale quando o período é a única identidade da parcela.
+
+| Situação | Quem decide | Resultado |
+|---|---|---|
+| mesma chave e mesmo conteúdo (ME01) | envelope da borda (`comOperacaoRegistrada`) | replay, um efeito, também concorrente |
+| mesma chave e outro conteúdo (ME02) | envelope | `COMANDO EM CONFLITO` |
+| mesma parcela com outra chave (ME03) | saldo por item (contratado; na ordem de serviço, o autorizado) | `ITEM-ACIMA-DO-CONTRATADO` |
+| duas parcelas distintas no mesmo dia (ME04) | — | passam; saldo por item correto |
+| contrato com período indivisível configurado (ME05) | `RegimeDeMedicaoDoContrato` (regime, fundamento, vigência) | sobreposição recusada citando o fundamento, só naquele contrato |
+| medição só por valor | `gravarMedicaoNaTransacao` com `FUNDAMENTO_DA_MEDICAO_POR_VALOR` | período conferido sempre, agora na obra DENTRO do contrato |
+
+Sem configuração, o regime é `PERIODO_LIVRE`: nenhum regime é inventado. A configuração é fato novo
+(`CONFIGURAR_EXECUCAO_DO_CONTRATO`), com vigência; a anterior continua valendo antes dela (art. 140, § 3º).
+
+**Achado lateral corrigido:** o teto "Σ das medições ≤ valor vigente do contrato" somava só as medições da OBRA; um
+contrato com duas obras media acima do valor vigente. Soma agora o contrato inteiro.
+
+Testes: `test/unicidade-da-medicao.test.ts` (ME01, ME02, ME03 pelo saldo, ME04, ME05, concorrência pela última
+unidade, medição por valor); mutações "confere sempre", "ignora o indivisível" e "teto por obra" acusadas. O percurso
+`smoke-contrato-acompanhado.ts` deixou de procurar dia livre: mede ontem os itens da própria execução e a segunda
+parcela no mesmo dia (3.3b). `ME06` (alteração contratual entre emissão e medição) depende do aditivo por item — não
+executado.
 
 ## Arquivos
 

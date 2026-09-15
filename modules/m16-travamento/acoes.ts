@@ -320,6 +320,7 @@ export type AcaoDoSistema =
   | "MODERAR_AVALIACAO_DE_SERVICO"
   | "DESIGNAR_NO_CONTRATO"
   | "DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO"
+  | "CONFIGURAR_EXECUCAO_DO_CONTRATO"
   | "CADASTRAR_ITEM_DO_CONTRATO"
   | "PROGRAMAR_FISCALIZACAO_DO_CONTRATO"
   | "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO"
@@ -788,6 +789,7 @@ export type NomeDeServico =
   | "revogarDesignacaoNoContrato"
   | "definirAdministradorDaFiscalizacao"
   | "revogarAdministradorDaFiscalizacao"
+  | "configurarRegimeDeMedicao"
   | "cadastrarItemDoContrato"
   | "programarFiscalizacao"
   | "registrarOcorrencia"
@@ -1242,6 +1244,7 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   revogarDesignacaoNoContrato: "DESIGNAR_NO_CONTRATO",
   definirAdministradorDaFiscalizacao: "DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO",
   revogarAdministradorDaFiscalizacao: "DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO",
+  configurarRegimeDeMedicao: "CONFIGURAR_EXECUCAO_DO_CONTRATO",
   cadastrarItemDoContrato: "CADASTRAR_ITEM_DO_CONTRATO",
   programarFiscalizacao: "PROGRAMAR_FISCALIZACAO_DO_CONTRATO",
   registrarOcorrencia: "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO",
@@ -1496,6 +1499,9 @@ export const FORA_DO_CENSO: Record<string, string> = {
   alcanceNoContrato:
     "LEITURA/GUARD: quem alcança o contrato e em qual projeção (fiscalização por designação vigente ou administrador da " +
     "fiscalização; financeira por leitura de licitações/despesa ou ato da despesa). Usada pela página, pelo anexo e pelos atos.",
+  conferenciaDoPeriodoPorItens:
+    "LEITURA/GUARD: o regime de período vigente no início da medição por itens (sem configuração, não confere: a " +
+    "identidade é o saldo). Chamada dentro da transação da medição, que já cobrou a ação.",
   contratosNoAlcanceDaFiscalizacao:
     "LEITURA: o recorte da lista de fiscalizações do usuário — contratos de designação vigente, ou todos para o administrador " +
     "da fiscalização vigente.",

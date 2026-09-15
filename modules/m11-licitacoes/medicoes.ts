@@ -16,8 +16,11 @@ import { valorAtualizado, type MovimentoDoContrato } from "./dominio.js";
  * M11 — A MEDIÇÃO DE OBRA (Lei 14.133/2021, art. 140).
  *
  * ═══ ⚠️ DUAS REGRAS DISTINTAS, E AS DUAS SÃO GUARD ═══
- *   1. **os períodos não se sobrepõem** — medir o mesmo intervalo duas vezes é medir o mesmo
- *      serviço duas vezes, e o acumulado fecharia certo contando errado;
+ *   1. **os períodos não se sobrepõem** — NA MEDIÇÃO SÓ POR VALOR, em que o período é a única identidade da
+ *      parcela: medir o mesmo intervalo duas vezes é medir o mesmo serviço duas vezes, e o acumulado fecharia certo
+ *      contando errado. O escopo é a OBRA NO CONTRATO (V7 M2 U0.2): o contrato de supervisão mede outro serviço na
+ *      mesma obra, no mesmo período. A medição POR ITENS só confere o período quando o contrato configura regime
+ *      indivisível (`RegimeDeMedicaoDoContrato`); sem isso, a identidade dela é o saldo por item;
  *   2. **Σ das medições não passa do valor VIGENTE do contrato** — execução acima do
  *      contratado, se legítima, exige ADITIVO ANTES, não medição depois.
  *
@@ -99,9 +102,15 @@ export async function registrarMedicao(
   const d = zRegistrarMedicaoInput.parse(input);
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.registrarMedicao, "ENTE");
-    return gravarMedicaoNaTransacao(tx, d);
+    return gravarMedicaoNaTransacao(tx, d, { conferir: true, fundamento: FUNDAMENTO_DA_MEDICAO_POR_VALOR });
   });
 }
+
+/** Por que a medição só por valor confere o período: não há outra identidade para a parcela. */
+export const FUNDAMENTO_DA_MEDICAO_POR_VALOR = "medição só por valor: sem itens, o período é a única identidade da parcela";
+
+/** A conferência de período que o chamador decidiu — com o fundamento que a recusa vai nomear. */
+export type ConferenciaDoPeriodo = { readonly conferir: false } | { readonly conferir: true; readonly fundamento: string };
 
 /**
  * O CORPO DA MEDIÇÃO dentro de uma transação JÁ AUTORIZADA — o de `registrarMedicao` (ação de medir) e o
@@ -110,7 +119,8 @@ export async function registrarMedicao(
  */
 export async function gravarMedicaoNaTransacao(
   tx: Tx,
-  d: z.output<typeof zRegistrarMedicaoInput>
+  d: z.output<typeof zRegistrarMedicaoInput>,
+  periodo: ConferenciaDoPeriodo
 ): Promise<{ readonly medicaoId: string; readonly acumulado: string }> {
   const inicio = inicioDoDiaCivil(d.diaInicio);
   const fim = fimDoDiaCivil(d.diaFim);
@@ -150,12 +160,14 @@ export async function gravarMedicaoNaTransacao(
     );
   }
 
-  const existentes = await tx.medicaoDeObra.findMany({
-    where: { obraId: d.obraId },
-    select: { numero: true, periodoInicio: true, periodoFim: true, valorMedido: true },
+  // O teto é do CONTRATO (todas as medições dele, em qualquer obra); o período, da OBRA NO CONTRATO.
+  const doContrato = await tx.medicaoDeObra.findMany({
+    where: { contratoId: d.contratoId },
+    select: { numero: true, obraId: true, periodoInicio: true, periodoFim: true, valorMedido: true },
   });
+  const existentes = doContrato.filter((m) => m.obraId === d.obraId);
 
-  const conflito = sobreposicao(
+  const conflito = !periodo.conferir ? null : sobreposicao(
     { numero: d.numero, inicio, fim },
     existentes.map((m) => ({
       numero: m.numero,
@@ -163,9 +175,9 @@ export async function gravarMedicaoNaTransacao(
       fim: m.periodoFim,
     }))
   );
-  if (conflito !== null) {
+  if (conflito !== null && periodo.conferir) {
     throw new Error(
-      `PERÍODO SOBREPOSTO na obra ${obra.identificador}: a medição ${d.numero} ` +
+      `PERÍODO SOBREPOSTO na obra ${obra.identificador} (${periodo.fundamento}): a medição ${d.numero} ` +
         `(${d.diaInicio} a ${d.diaFim}) invade a medição ${conflito.numero} ` +
         `(${diaCivil(conflito.inicio)} a ${diaCivil(conflito.fim)}). Medir o mesmo ` +
         `intervalo duas vezes é medir o mesmo serviço duas vezes — o acumulado fecharia ` +
@@ -179,7 +191,7 @@ export async function gravarMedicaoNaTransacao(
     contrato.movimentos as readonly MovimentoDoContrato[]
   );
   let acumulado = toMoney("0.00");
-  for (const m of existentes) acumulado = toMoney(acumulado.plus(m.valorMedido.toFixed(2)));
+  for (const m of doContrato) acumulado = toMoney(acumulado.plus(m.valorMedido.toFixed(2)));
   const novoAcumulado = toMoney(acumulado.plus(d.valorMedido));
 
   if (novoAcumulado.gt(vigente)) {

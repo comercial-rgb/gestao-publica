@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
-import { designarNaTela, itemNaTela, medirNaTela, ocorrenciaNaTela, programarNaTela, resolverNaTela, revogarNaTela } from "../../../../lib/portas/contrato-acompanhado";
+import { designarNaTela, itemNaTela, medirNaTela, ocorrenciaNaTela, programarNaTela, regimeNaTela, resolverNaTela, revogarNaTela } from "../../../../lib/portas/contrato-acompanhado";
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 
 /**
@@ -21,6 +21,7 @@ const ATOS = {
   programar: (id: string, c: Record<string, string>) => programarNaTela(id, c),
   resolver: (_id: string, c: Record<string, string>) => resolverNaTela(c),
   medir: (id: string, c: Record<string, string>) => medirNaTela(id, c),
+  regime: (id: string, c: Record<string, string>) => regimeNaTela(id, c),
 } as const;
 
 export async function acompanhamentoAction(_prev: EstadoDoAcompanhamento, formData: FormData): Promise<EstadoDoAcompanhamento> {

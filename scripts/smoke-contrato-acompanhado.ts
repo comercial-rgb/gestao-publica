@@ -156,25 +156,31 @@ async function main(): Promise<void> {
     if (temObra) {
       const obra = await page.$eval('form[data-acao="medir-por-itens"] select[name="obraId"]', (s) => Array.from((s as HTMLSelectElement).options).map((o) => o.value).find((v) => v !== "") ?? "");
       /**
-       * ⚠️ O PERÍODO LIVRE É PROCURADO, NÃO SUPOSTO: uma execução anterior deste percurso no mesmo banco já mediu "ontem"
-       * nesta obra, e o produto recusa, com razão, o período sobreposto (achado da reexecução sobre 2d7a9cd). Anda um dia
-       * para trás a cada recusa de sobreposição — a recusa no caminho é o próprio produto; qualquer outra recusa para.
+       * ⚠️ O PERÍODO NÃO É PROCURADO (V7 M2 U0.2). A versão anterior andava um dia para trás a cada recusa de
+       * sobreposição — o que escondia a pergunta: a identidade da parcela é o SALDO por item, não a data. Cada execução
+       * cadastra os PRÓPRIOS itens (com o sufixo), e por isso mede "ontem" de novo no mesmo banco sem colidir; e mede
+       * a SEGUNDA parcela, de outro item, no MESMO dia (3.3b), que também passa.
        */
-      let med = { tipo: "silencio", texto: "sem dia livre nos últimos 30" };
-      for (let k = 1; k <= 30; k++) {
-        const dia = diaCivil(new Date(Date.now() - k * 86_400_000));
+      const ONTEM = diaCivil(new Date(Date.now() - 86_400_000));
+      // O campo do item DESTA execução é achado pelo rótulo (descrição com o sufixo), nunca pela posição na lista.
+      const medirItem = async (descricao: string): Promise<{ tipo: string; texto: string }> => {
         await irPara(N, page, hrefContrato);
-        const primeiroItem = await page.$eval('form[data-acao="medir-por-itens"] input[name^="item."]', (i) => (i as HTMLInputElement).name);
-        med = await preencherEEnviar(page, "medir-por-itens", [
+        const nome = await page.$$eval('form[data-acao="medir-por-itens"] label', (ls, d) => {
+          const l = ls.find((x) => (x.textContent ?? "").includes(d as string));
+          return (l?.querySelector('input[name^="item."]') as HTMLInputElement | null)?.name ?? "";
+        }, descricao);
+        if (nome === "") return { tipo: "erro", texto: `campo do item "${descricao}" não encontrado no formulário` };
+        return preencherEEnviar(page, "medir-por-itens", [
           { sel: 'select[name="obraId"]', valor: obra, tipo: "select" },
-          { sel: 'input[name="diaInicio"]', valor: dia, tipo: "data" }, { sel: 'input[name="diaFim"]', valor: dia, tipo: "data" },
+          { sel: 'input[name="diaInicio"]', valor: ONTEM, tipo: "data" }, { sel: 'input[name="diaFim"]', valor: ONTEM, tipo: "data" },
           { sel: 'input[name="responsavelTecnico"]', valor: "Eng. Marta Nunes (percurso)" }, { sel: 'input[name="registroProfissional"]', valor: "CREA-PB 000000 (sintético)" },
-          { sel: `input[name="${primeiroItem}"]`, valor: "1" },
+          { sel: `input[name="${nome}"]`, valor: "1" },
         ]);
-        if (!(med.tipo === "erro" && /PERÍODO SOBREPOSTO/.test(med.texto))) break;
-        console.log(`      [${dia} já medido nesta obra por execução anterior — recusado por sobreposição; tenta o dia anterior]`);
-      }
+      };
+      const med = await medirItem(`Base de brita ${SUF}`);
       R.conferir("3.3 o fiscal mede por itens uma parcela PARCIAL (1 de 2) — e a mensagem diz que falta aprovação", med.tipo === "ok" && /precisa ser APROVADA/.test(med.texto), `${med.tipo}: ${med.texto.slice(0, 300)}`);
+      const med2 = await medirItem(`Revestimento ${SUF}`);
+      R.conferir("3.3b a SEGUNDA parcela, de outro item, no MESMO dia, também é aceita — a data não é a identidade da parcela", med2.tipo === "ok" && /precisa ser APROVADA/.test(med2.texto), `${med2.tipo}: ${med2.texto.slice(0, 300)}`);
       await irPara(N, page, hrefContrato);
       const fisico = await page.$eval("[data-itens-do-contrato] tbody tr:last-child [data-percentual-fisico]", (e) => e.textContent ?? "").catch(() => "");
       R.conferir("3.4 recarregada: o físico do item medido aparece em percentual, e o financeiro não mudou por medir", /%$/.test(fisico) && (await page.$("[data-medicao]")) !== null, `físico=${fisico}`);

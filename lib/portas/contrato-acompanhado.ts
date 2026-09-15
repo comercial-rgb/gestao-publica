@@ -13,6 +13,7 @@ import {
   type ProjecaoPublicaDoContrato,
 } from "../../modules/m11-licitacoes/fiscalizacao.js";
 import { designacaoVigenteEm } from "../../modules/m33-folha/certificacao.js";
+import { configurarRegimeDeMedicao } from "../../modules/m11-licitacoes/regime-de-medicao.js";
 import { alcanceNoContrato, contratosNoAlcanceDaFiscalizacao, definirAdministradorDaFiscalizacao, revogarAdministradorDaFiscalizacao, type AlcanceNoContrato } from "../../modules/m11-licitacoes/acesso-da-fiscalizacao.js";
 import { cliente, PortaSemBancoError } from "./cliente";
 import { acoesPermitidas } from "./molde";
@@ -43,6 +44,7 @@ export interface PapeisDaSessao {
   readonly podeRegistrarOcorrencia: boolean;
   readonly podeResolver: boolean;
   readonly podeMedir: boolean;
+  readonly configurarExecucao: boolean;
 }
 
 export interface DossieParaTela extends AcompanhamentoDoContrato {
@@ -73,7 +75,7 @@ export async function dossieDoContratoPara(sessao: Identidade, contratoId: strin
   const base = await acompanhamentoDoContrato(prisma, contratoId, alcance.fiscalizacao ? "FISCALIZACAO" : "FINANCEIRA");
   if (base === null) return null;
   const [permitidas, minhas, usuarios, obras, ultimaMedicao] = await Promise.all([
-    acoesPermitidas(["DESIGNAR_NO_CONTRATO", "CADASTRAR_ITEM_DO_CONTRATO", "PROGRAMAR_FISCALIZACAO_DO_CONTRATO", "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO", "RESOLVER_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_MEDICAO_DE_OBRA"]),
+    acoesPermitidas(["CONFIGURAR_EXECUCAO_DO_CONTRATO", "DESIGNAR_NO_CONTRATO", "CADASTRAR_ITEM_DO_CONTRATO", "PROGRAMAR_FISCALIZACAO_DO_CONTRATO", "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO", "RESOLVER_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_MEDICAO_DE_OBRA"]),
     prisma.designacaoNoContrato.findMany({ where: { contratoId, usuario: { identificador: sessao.identificador } }, select: { papel: true, vigenciaInicio: true, vigenciaFim: true, revogacao: { select: { dataEfeito: true } } } }),
     // Só contas ATIVAS com pessoa vinculada podem ser designadas; o recorte é do servidor, e o domínio confere de novo.
     prisma.usuario.findMany({ where: { ativo: true, vinculosDePessoa: { some: {} } }, orderBy: { identificador: "asc" }, take: 500, select: { identificador: true, nome: true } }),
@@ -96,6 +98,7 @@ export async function dossieDoContratoPara(sessao: Identidade, contratoId: strin
       podeRegistrarOcorrencia: fiscal && permitidas.has("REGISTRAR_OCORRENCIA_DE_FISCALIZACAO"),
       podeResolver: gestor && permitidas.has("RESOLVER_OCORRENCIA_DE_FISCALIZACAO"),
       podeMedir: fiscal && permitidas.has("REGISTRAR_MEDICAO_DE_OBRA"),
+      configurarExecucao: permitidas.has("CONFIGURAR_EXECUCAO_DO_CONTRATO"),
     },
     opcoes: {
       usuarios: usuarios.map((u) => ({ valor: u.identificador, rotulo: `${u.identificador} — ${u.nome}` })),
@@ -141,6 +144,14 @@ export async function ocorrenciaNaTela(contratoId: string, c: Readonly<Record<st
     })
   );
   return `Ocorrência nº ${r.numero} registrada com ${r.evidencias} evidência(s)${t(c, "encaminhamento") === "GESTOR" ? ", encaminhada ao gestor" : ""}.`;
+}
+
+export async function regimeNaTela(contratoId: string, c: Readonly<Record<string, string>>): Promise<string> {
+  const regime = t(c, "regime") === "PERIODO_INDIVISIVEL" ? "PERIODO_INDIVISIVEL" : "PERIODO_LIVRE";
+  await comEscritaAutenticada("CONFIGURAR_EXECUCAO_DO_CONTRATO", (criadoPor) => configurarRegimeDeMedicao(cliente(), { contratoId, regime, fundamento: t(c, "fundamento"), vigenciaInicio: t(c, "inicio"), criadoPor }));
+  return regime === "PERIODO_INDIVISIVEL"
+    ? `Regime de período indivisível configurado a partir de ${t(c, "inicio").split("-").reverse().join("/")}: medições por itens com período sobreposto neste contrato serão recusadas citando o fundamento.`
+    : `Regime de período livre configurado a partir de ${t(c, "inicio").split("-").reverse().join("/")}: a parcela é identificada pelo saldo de cada item, não pela data.`;
 }
 
 export async function resolverNaTela(c: Readonly<Record<string, string>>): Promise<string> {

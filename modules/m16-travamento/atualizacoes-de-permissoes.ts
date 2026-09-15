@@ -500,7 +500,7 @@ export function derivarOuvidoriaEAvaliacao(
 export const ACOES_DO_CONTRATO_ACOMPANHADO: readonly AcaoDoSistema[] = ["DESIGNAR_NO_CONTRATO", "CADASTRAR_ITEM_DO_CONTRATO"];
 
 /** V7 M2 (ponte contratual) — o poder de DEFINIR administrador da fiscalização vai a quem administra permissões. */
-export const ACOES_DA_ADMINISTRACAO_DA_FISCALIZACAO: readonly AcaoDoSistema[] = ["DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO"];
+export const ACOES_DA_ADMINISTRACAO_DA_FISCALIZACAO: readonly AcaoDoSistema[] = ["DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO", "CONFIGURAR_EXECUCAO_DO_CONTRATO"];
 
 export function derivarAdministracaoDaFiscalizacao(
   perfis: readonly PerfilComPermissoes[],
@@ -750,10 +750,10 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
   },
   {
     versao: 19,
-    nome: "administracao-da-fiscalizacao",
+    nome: "ponte-contratual",
     descricao:
-      "A definicao do administrador da fiscalizacao de contratos (V7 M2) chegou com DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO. " +
-      "Quem administra permissoes no global recebe o poder de DEFINIR. Ter a acao nao da o alcance: a visao de fiscalizacao " +
+      "A ponte contratual-financeira (V7 M2) chegou com DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO e CONFIGURAR_EXECUCAO_DO_CONTRATO. " +
+      "Quem administra permissoes no global recebe as duas. Ter a acao de definir nao da o alcance: a visao de fiscalizacao " +
       "de um contrato continua exigindo designacao vigente nele ou uma definicao vigente de administrador, com ato.",
     derivar: derivarAdministracaoDaFiscalizacao,
   },

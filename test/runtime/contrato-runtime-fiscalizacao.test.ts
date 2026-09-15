@@ -9,6 +9,7 @@ import {
   acompanhamentoDoContrato, cadastrarItemDoContrato, designarNoContrato, programarFiscalizacao, projecaoPublicaDoContrato,
   registrarMedicaoPorItens, registrarOcorrencia, resolverOcorrencia, revogarDesignacaoNoContrato,
 } from "../../modules/m11-licitacoes/fiscalizacao.js";
+import { configurarRegimeDeMedicao } from "../../modules/m11-licitacoes/regime-de-medicao.js";
 import { alcanceNoContrato, definirAdministradorDaFiscalizacao, revogarAdministradorDaFiscalizacao } from "../../modules/m11-licitacoes/acesso-da-fiscalizacao.js";
 
 /**
@@ -34,7 +35,7 @@ const negado = /permission denied|permissão negada/i;
 beforeAll(async () => {
   await limparBanco(dono);
   const contas: [string, string[], string | null][] = [
-    [ADMIN, ["DESIGNAR_NO_CONTRATO", "CADASTRAR_ITEM_DO_CONTRATO", "DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO"], "86288366757"],
+    [ADMIN, ["DESIGNAR_NO_CONTRATO", "CADASTRAR_ITEM_DO_CONTRATO", "DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO", "CONFIGURAR_EXECUCAO_DO_CONTRATO"], "86288366757"],
     [GESTORA, ["PROGRAMAR_FISCALIZACAO_DO_CONTRATO", "RESOLVER_OCORRENCIA_DE_FISCALIZACAO"], "11144477735"],
     [FISCAL, ["REGISTRAR_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_MEDICAO_DE_OBRA"], "52998224725"],
     [APROVA, ["APROVAR_MEDICAO_DE_OBRA"], null],
@@ -83,5 +84,10 @@ describe("contrato acompanhado pelo papel de runtime", () => {
     expect((await alcanceNoContrato(app, ADMIN, "ctr")).fiscalizacao).toBe(false);
     await expect(app.$executeRawUnsafe(`UPDATE "AdministradorDaFiscalizacao" SET "vigenciaFim" = NULL`)).rejects.toThrow(negado);
     await expect(app.$executeRawUnsafe(`DELETE FROM "RevogacaoDeAdministradorDaFiscalizacao"`)).rejects.toThrow(negado);
+  });
+
+  it("V7 M2 U0.2 — configurar o regime de medição pelo runtime; o regime não se reescreve", async () => {
+    await configurarRegimeDeMedicao(app, { contratoId: "ctr", regime: "PERIODO_INDIVISIVEL", fundamento: "Cláusula RT de medição fechada", vigenciaInicio: dia(1), criadoPor: ADMIN });
+    await expect(app.$executeRawUnsafe(`UPDATE "RegimeDeMedicaoDoContrato" SET "regime" = 'PERIODO_LIVRE'`)).rejects.toThrow(negado);
   });
 });

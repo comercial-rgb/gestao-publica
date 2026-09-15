@@ -45,9 +45,9 @@ export default async function Fiscalizacao(): Promise<React.ReactElement> {
         )}
       </Card>
       {administracao === null ? null : (
-        <section aria-labelledby="administradores" className="space-y-3">
+        <section aria-label="Administradores da fiscalização" className="space-y-3">
           <Card>
-            <h2 id="administradores" className="mb-2 text-sm font-semibold">Administradores da fiscalização</h2>
+            <h2 className="mb-2 text-sm font-semibold">Administradores da fiscalização</h2>
             {administracao.lista.length === 0 ? <p className="text-sm text-[color:var(--color-ink-2)]">Nenhuma definição.</p> : (
               <ul className="space-y-3" data-administradores>
                 {administracao.lista.map((a) => (

@@ -2,7 +2,7 @@ import { Badge } from "../../../../../components/ui/Badge";
 import { Card } from "../../../../../components/ui/Card";
 import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
 import type { DossieParaTela } from "../../../../../lib/portas/contrato-acompanhado";
-import { FormDesignar, FormItem, FormMedicaoPorItens, FormOcorrencia, FormProgramar, FormResolver, FormRevogar } from "./FormulariosDoAcompanhamento";
+import { FormDesignar, FormItem, FormMedicaoPorItens, FormOcorrencia, FormProgramar, FormRegimeDeMedicao, FormResolver, FormRevogar } from "./FormulariosDoAcompanhamento";
 
 /**
  * O DOSSIÊ DO CONTRATO ACOMPANHADO (V7 M2.1) — abaixo dos dados do molde.
@@ -131,8 +131,14 @@ export function DossieDoContrato({ d, hoje }: { readonly d: DossieParaTela; read
             {d.medicoes.map((m) => <li key={m.id} data-medicao={m.numero}>Obra {m.obra} · nº {m.numero} · {m.periodo} · <ValorMonetario valor={m.valor} comSimbolo /> · {m.porItens ? "por itens" : "por valor"} <Badge status={m.aprovada ? "ok" : "alerta"}>{m.aprovada ? "aprovada" : "aguardando aprovação"}</Badge></li>)}
           </ul>
         )}
+        <p className="mt-2 text-xs text-[color:var(--color-ink-2)]" data-regime-de-medicao={d.regimesDeMedicao[0]?.regime ?? "PERIODO_LIVRE"}>
+          {d.regimesDeMedicao[0] === undefined
+            ? "Regime de período: livre (sem configuração). Duas parcelas distintas no mesmo período passam; o saldo de cada item impede medir duas vezes."
+            : `Regime de período desde ${d.regimesDeMedicao[0].desde}: ${d.regimesDeMedicao[0].regime === "PERIODO_INDIVISIVEL" ? "indivisível" : "livre"} — ${d.regimesDeMedicao[0].fundamento}.`}
+        </p>
         {d.papeis.podeMedir ? null : <Motivo texto={d.papeis.fiscal ? "Seu perfil não tem a ação de registrar medição." : "Medir por itens é do FISCAL designado e vigente neste contrato."} />}
       </Card>
+      {d.papeis.configurarExecucao ? <FormRegimeDeMedicao contratoId={alvo} hoje={hoje} /> : null}
       {d.papeis.podeMedir && d.fisico.itens.length > 0 ? (
         <FormMedicaoPorItens contratoId={alvo} obras={d.opcoes.obras} proximoNumero={d.opcoes.proximaMedicao} itens={d.fisico.itens.map((i) => ({ id: i.id, numero: i.numero, descricao: i.descricao, unidade: i.unidade, saldo: num(i.aMedir) }))} />
       ) : null}

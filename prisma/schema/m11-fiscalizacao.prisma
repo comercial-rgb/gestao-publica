@@ -266,3 +266,37 @@ model RevogacaoDeAdministradorDaFiscalizacao {
   criadoEm  DateTime @default(now())
   criadoPor String
 }
+
+/// V7 M2 U0.2 — O REGIME DE PERÍODO DA MEDIÇÃO. Achado: a medição por itens recusava QUALQUER sobreposição de período
+/// na obra (herdada da medição por valor), e o percurso passou a procurar "o dia livre". O TR pede período e
+/// quantidades por item, não uma medição por dia. Aqui:
+///   · PERIODO_LIVRE (o default, sem configuração) — a identidade da parcela é o SALDO por item (e, na ordem de
+///     serviço, o autorizado dela): duas medições distintas no mesmo período passam; repetir a mesma parcela esgota o
+///     saldo e é recusado por ele;
+///   · PERIODO_INDIVISIVEL — o contrato (ou o regulamento) mede por período fechado: sobreposição recusada, NOMEANDO o
+///     fundamento configurado, só naquele contrato.
+/// A medição de obra só por valor continua conferindo o período sempre: sem itens, o período é a única identidade dela.
+enum RegimeDePeriodoDaMedicao {
+  PERIODO_LIVRE
+  PERIODO_INDIVISIVEL
+}
+
+model RegimeDeMedicaoDoContrato {
+  id String @id @default(cuid())
+
+  contratoId String
+  contrato   Contrato @relation("RegimesDeMedicao", fields: [contratoId], references: [id])
+
+  regime RegimeDePeriodoDaMedicao
+
+  /// De onde vem o regime: cláusula do contrato, regulamento, termo de referência da contratação.
+  fundamento String
+
+  /// Vale para as medições cujo período começa a partir deste dia; a versão anterior continua valendo antes dele.
+  vigenciaInicio DateTime
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([contratoId, vigenciaInicio])
+}
