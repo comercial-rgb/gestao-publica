@@ -11970,8 +11970,8 @@
       "frente": "ENT05",
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V7 M2.1: os ATOS de acompanhamento (programar, registrar ocorrência, resolver, medir por itens) exigem, além da ação no perfil, a designação vigente de gestor ou fiscal NAQUELE contrato — outro setor com as mesmas ações é recusado nomeando a designação, e o formulário não aparece. ⚠️ PARCIAL: a LEITURA do contrato continua pela ação de consulta de licitações, não restrita a quem é designado. Testes: test/contrato-acompanhado.test.ts f2, f4; percurso smoke-contrato-acompanhado 4.1 e 7.2.",
+      "rota_verificada": "papéis: gestora-contrato@, fiscal-contrato@, recebedor-contrato@, outro-setor-contrato@percursos.local, contabilidade@ e visitante · contexto: clone descartável gestao_publica_percursos_v7m2_reparo, next build do SHA completo d167c02 servido pelo papel de runtime na porta 3012, 2026-09-15 · passos: a gestora emite a ordem → o fiscal mede e recebe provisoriamente → o fiscal NÃO recebe em definitivo (motivo) → outro setor com a ação e sem designação não recebe o formulário → outro setor (lê licitações) vê a projeção financeira sem agenda, ocorrência nem motivo → pela URL direta não baixa o termo provisório (404) → o visitante não baixa o termo definitivo · obtido: 28 passos, 0 falhas (logs em .registro-de-execucao/pacote-v7-m2/c-d167c02/20-percurso-ponte.log).",
+      "evidencia": "V7 M2 U0.1 (acesso-da-fiscalizacao.ts): a visão de FISCALIZAÇÃO do contrato (agenda, ocorrências, evidências, termos provisórios, decisões, motivos) só alcança quem tem designação vigente HOJE naquele contrato (gestor, fiscal, recebedor definitivo) ou definição vigente de administrador da fiscalização; permissão global de outra área não concede; revogada a designação, o alcance cai e os atos anteriores continuam com autor. Os ATOS exigem a designação na transação (outro setor com as mesmas ações recebe SEM-DESIGNACAO-*). Testes: test/acesso-da-fiscalizacao.test.ts (AC01–AC04, AC06; duas mutações acusadas), test/ordem-de-servico-e-recebimentos.test.ts. Percurso smoke-ponte-contratual no candidato 8ed0806 (28/0) e d167c02 (28/0): 4.2, 5.0, 9.1–9.3 e 10.2 negativos. ⚠️ PARCIAL por decisão registrada: os DADOS do contrato (itens, saldos, valores medidos, recebidos e liquidados, termos que lastreiam a liquidação) continuam lidos pela projeção FINANCEIRA (leitura de licitações/despesa ou ato de empenhar/liquidar/pagar), que a execução financeira precisa; o literal 'apenas fiscais e gestores' vale para a fiscalização, não para o cadastro contratual.",
       "situacao": "PARCIAL"
     },
     {
@@ -11985,8 +11985,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V7 M2 U0.1: AdministradorDaFiscalizacao — definição e revogação como fatos com ato e vigência (DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO); o administrador vigente alcança a visão de fiscalização de QUALQUER contrato e a lista /licitacoes/fiscalizacao mostra todos; a ação dá o poder de definir, não o alcance (o administrador da plataforma define a si mesmo, com registro). Testes: test/acesso-da-fiscalizacao.test.ts AC03 (e a mutação 'administrador sem vigência' acusada). ⚠️ Nenhum percurso de navegador exercitou a definição do administrador pela tela.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.21.18",
@@ -11999,8 +11999,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V7 M2 U4/U5: quem alcança o contrato vê em /licitacoes/contratos/[id] os dados cadastrais, os itens com original, contratado hoje e unitário vigente, os aditivos (movimentos e aditivos por itens com antes e depois), as ordens de serviço emitidas com autorizado, medido, recebido e liquidado, e os termos em PDF; na fiscalização, as evidências das ocorrências e das medições. Testes: test/ordem-de-servico-e-recebimentos.test.ts, test/aditivo-por-itens.test.ts; percursos smoke-ponte-contratual (1.1, 7.2, 10.1) e smoke-aditivo-por-itens (4.1) em d167c02. ⚠️ PARCIAL: o contrato não tem anexos PRÓPRIOS (instrumento assinado, garantias) na tela, e as COMPRAS (ordens de compra) não se ligam ao contrato — a ordem de compra do M11 compras não informa contrato (ORDEM-DE-SERVICO-DE-MATERIAL).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.21.19",
@@ -12111,8 +12111,8 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V7 M2 U6: a planilha orçamentária da OBRA é cadastrada por importação com prévia, confirmada em versões com vigência, data-base e referência de preços declaradas, e opcionalmente declara o contrato de execução; cada serviço se liga explicitamente a um item do contrato. Testes: test/planilha-orcamentaria.test.ts (PL01–PL07), test/runtime/contrato-runtime-planilha.test.ts; percurso smoke-planilha-da-obra em d167c02 (9/0). ⚠️ PARCIAL: o controle dos quantitativos EXECUTADOS pela planilha (medição da ordem pelos serviços) está em construção (V7 M2 U7) e ainda sem percurso de navegador.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.21.27",
@@ -12124,9 +12124,9 @@
       "frente": "ENT05",
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papéis: engenharia-obras@percursos.local e gestora-contrato@percursos.local · contexto: clone descartável gestao_publica_percursos_v7m2_reparo, next build do SHA completo d167c02 servido pelo papel de runtime na porta 3012, 2026-09-15 · passos: a engenharia importa o .xlsx → a prévia mostra 4 serviços, 2 divergências e as linhas → confirmar sem ciência é recusado mantendo o digitado → com ciência a versão 1 é confirmada (6 linhas, R$ 5.102,89) → a versão mostra total, grupos e as divergências cientes → a gestora vê as versões sem o formulário · obtido: smoke-planilha-da-obra 9 passos, 0 falhas; capturas da lista, prévia e versão em 360/768/1366/1440 sem transbordo (c-d167c02/23-capturas-da-planilha.log).",
+      "evidencia": "V7 M2 U6: a versão da planilha guarda grupos (hierarquia pelo código) e serviços com descrição, unidade, quantidade (4 casas), preço unitário e total calculado uma vez por linha (grupo = soma dos serviços); o total declarado no arquivo fica ao lado, e divergências exigem ciência expressa. Testes: test/planilha-orcamentaria.test.ts PL01 (grupos, serviços, fórmula sem execução, totais e divergências contra valores calculados à mão), PL02 (erros por linha), packages/planilha/xls.test.ts. Candidato 8ed0806: o passo 2.2 falhou por mensagem ausente (versão gravada; 3.1 a mostrou) — corrigido em d167c02.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.21.28",
@@ -12138,9 +12138,9 @@
       "frente": "ENT05",
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: engenharia-obras@percursos.local · contexto: clone descartável gestao_publica_percursos_v7m2_reparo, next build do SHA completo d167c02 pelo papel de runtime, 2026-09-15 · passos: importa orcamento.xlsx → prévia R$ 5.102,89 → confirma → importa orcamento.xls do mesmo orçamento → a prévia dá o mesmo total e as mesmas divergências → um arquivo que não é planilha é recusado nomeando o motivo · obtido: smoke-planilha-da-obra 1.2, 3.2 e 4.1 ok (9/0).",
+      "evidencia": "V7 M2 U6: importação de .xlsx (lerXlsxDetalhado) e de .xls Excel 97-2003 (lerXls: OLE2/CFB + BIFF8) reconhecidos pela assinatura do conteúdo, com todos os grupos e serviços, sem digitação; fórmulas não executadas (vale o valor gravado), macros só reportadas; Excel 5/95, arquivo protegido e não-planilha recusados nomeando o motivo. O leitor .xls é testado contra um gravador independente. Testes: packages/planilha/xls.test.ts (XL01–XL03), test/planilha-orcamentaria.test.ts PL01 (o mesmo orçamento em .xlsx e .xls dá a mesma análise). ⚠️ Limite pela tela: 1 MB (PLANILHA-ACIMA-DE-1-MB-PELA-TELA); o domínio aceita 5 MB.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.21.29",
@@ -12153,7 +12153,7 @@
       "candidato_reaproveitamento": "",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "V7 M2.1: além da MedicaoDeObra (período em dia civil, sem sobreposição, responsável técnico e registro), a MEDIÇÃO POR ITENS registra, pelo fiscal designado e vigente, as quantidades medidas em cada item do contrato; o valor é Σ quantidade × unitário, o acumulado por item não passa do contratado (sob o trinco do contrato — duas medições simultâneas: uma passa, a outra recusa), físico e financeiro são valores separados, e a aprovação é fato próprio por outra pessoa. Testes: test/contrato-acompanhado.test.ts m1–m3; test/runtime/contrato-runtime-fiscalizacao.test.ts; percurso smoke-contrato-acompanhado 3.3–3.4 (parcela parcial, 1 de 2 itens). ⚠️ PARCIAL: o quantitativo previsto é o dos ITENS DO CONTRATO, não uma planilha orçamentária da obra (MEDICAO-POR-ITENS-SEM-OBRA).",
+      "evidencia": "V7 M2.1: além da MedicaoDeObra (período em dia civil, sem sobreposição, responsável técnico e registro), a MEDIÇÃO POR ITENS registra, pelo fiscal designado e vigente, as quantidades medidas em cada item do contrato; V7 M2 U1/U2: a medição da ORDEM DE SERVIÇO registra período e quantidades por item autorizado, segue para os recebimentos e para a liquidação (percurso smoke-ponte-contratual 28/0 em d167c02). V7 M2 U6: a planilha orçamentária da obra existe em versões (smoke-planilha-da-obra 9/0 em d167c02). ⚠️ PARCIAL: a medição do andamento REFERENTE AO QUANTITATIVO DA PLANILHA (a ordem medida pelos serviços da versão aplicável, com acumulado e saldo por serviço) está em construção em V7 M2 U7, ainda sem percurso de navegador; não se marca completa antes dele.",
       "situacao": "PARCIAL"
     },
     {
@@ -20833,8 +20833,8 @@
       "candidato_reaproveitamento": "siafic-cg:M13 (datasets, sem portal)",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V7 M2.1/U4/U5: /transparencia/contratos e /transparencia/contratos/[id] publicam, sem sessão e campo a campo, identificação, vigência derivada, valores, aditivos (inclusive por itens, com antes e depois), responsáveis vigentes por nome e ato, ordens de serviço emitidas com período, autorizado e recebido em definitivo e a execução física aprovada — sem ocorrência, motivo, verificação, termo, conta ou CPF. Testes: test/contrato-acompanhado.test.ts (projeção pública), test/acesso-da-fiscalizacao.test.ts AC05; percursos smoke-ponte-contratual 9.4/10.2 e smoke-aditivo-por-itens 5.1 em d167c02. ⚠️ PARCIAL: convênios (TRANSPARENCIA-CONVENIOS, 5.38.37), compras diretas, licitações, entradas e saídas de estoque, bens patrimoniais e frota NÃO têm consulta pública.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.38.5",
