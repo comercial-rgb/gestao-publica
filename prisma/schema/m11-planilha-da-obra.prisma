@@ -1,0 +1,151 @@
+// ═══ M11 — A PLANILHA ORÇAMENTÁRIA DA OBRA (V7 M2 U6) ═══
+//
+// Importada de .xlsx ou .xls com PRÉVIA: o arquivo original fica guardado na prévia (bytes e sha256), a análise mostra
+// erros por linha e divergências de conciliação, e só a CONFIRMAÇÃO cria uma VERSÃO. Versões não se reescrevem: a
+// seguinte aponta a anterior e vale a partir da própria vigência. Fórmula e macro do arquivo nunca se executam.
+// A planilha não é o contrato: o vínculo entre item de planilha e item de contrato é ato explícito, revogável por fato.
+
+enum FormatoDePlanilha {
+  XLSX
+  XLS
+}
+
+enum TipoDoItemDaPlanilha {
+  GRUPO
+  SERVICO
+}
+
+/// A PRÉVIA — o arquivo como chegou e a análise dele. Não é versão: nenhum item existe fora dela até a confirmação.
+model PreviaDePlanilhaOrcamentaria {
+  id String @id @default(cuid())
+
+  obraId String
+  obra   Obra   @relation("PreviasDePlanilha", fields: [obraId], references: [id])
+
+  nomeDoArquivo String
+  formato       FormatoDePlanilha
+  /// O arquivo original, byte a byte — a confirmação reanalisa DELE, não do JSON da prévia.
+  conteudo      Bytes
+  sha256        String            @db.VarChar(64)
+  tamanhoBytes  Int
+
+  aba              String
+  /// 1 = primeira linha, como a pessoa vê no programa de planilha.
+  linhaDoCabecalho Int
+  /// Coluna (0-based) de cada campo reconhecido ou informado.
+  mapeamento       Json
+  /// A análise inteira (itens, erros, divergências, ignoradas, totais) — o que a tela mostra.
+  analise          Json
+  erros            Int
+  divergencias     Int
+  totalCalculado   Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  planilha PlanilhaOrcamentariaDaObra?
+
+  @@index([obraId])
+}
+
+/// UMA VERSÃO da planilha orçamentária da obra.
+model PlanilhaOrcamentariaDaObra {
+  id String @id @default(cuid())
+
+  obraId String
+  obra   Obra   @relation("PlanilhasOrcamentarias", fields: [obraId], references: [id])
+  versao Int
+
+  /// O contrato de execução a que a planilha se refere, quando informado. Não liga item a item (ver o vínculo).
+  contratoId String?
+  contrato   Contrato? @relation("PlanilhasDoContrato", fields: [contratoId], references: [id], onDelete: Restrict)
+
+  previaId String                       @unique
+  previa   PreviaDePlanilhaOrcamentaria @relation(fields: [previaId], references: [id])
+
+  versaoAnteriorId String?                     @unique
+  versaoAnterior   PlanilhaOrcamentariaDaObra? @relation("VersoesDaPlanilha", fields: [versaoAnteriorId], references: [id], onDelete: Restrict)
+  versaoSeguinte   PlanilhaOrcamentariaDaObra? @relation("VersoesDaPlanilha")
+
+  descricao          String
+  /// A data-base e a referência de preços DECLARADAS pelo ente (ex.: tabela e mês) — o sistema não escolhe tabela.
+  dataBaseDosPrecos  DateTime
+  referenciaDePrecos String
+  /// Primeiro dia em que esta versão vale para medir.
+  vigenciaInicio     DateTime
+  motivo             String
+
+  valorTotal            Decimal @db.Decimal(18, 2)
+  /// Quantas divergências de conciliação havia e foram confirmadas com ciência expressa (0 = nenhuma).
+  divergenciasCientes   Int
+  /// sha256 do manifesto canônico dos itens desta versão.
+  sha256                String  @db.VarChar(64)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  itens ItemDaPlanilhaOrcamentaria[]
+
+  @@unique([obraId, versao])
+  @@index([contratoId])
+}
+
+model ItemDaPlanilhaOrcamentaria {
+  id String @id @default(cuid())
+
+  planilhaId String
+  planilha   PlanilhaOrcamentariaDaObra @relation(fields: [planilhaId], references: [id])
+
+  ordem          Int
+  codigo         String
+  codigoDoPai    String?
+  nivel          Int
+  tipo           TipoDoItemDaPlanilha
+  referencia     String?
+  descricao      String
+  unidade        String?
+  quantidade     Decimal? @db.Decimal(18, 4)
+  precoUnitario  Decimal? @db.Decimal(18, 4)
+  /// Serviço: quantidade × preço unitário (uma vez por linha). Grupo: soma dos serviços abaixo.
+  valor          Decimal  @db.Decimal(18, 2)
+  valorNoArquivo Decimal? @db.Decimal(18, 2)
+  linhaDoArquivo Int
+
+  vinculos VinculoDeItemDaPlanilhaAoContrato[]
+
+  @@unique([planilhaId, codigo])
+  @@index([planilhaId, ordem])
+}
+
+/// O VÍNCULO explícito entre um serviço da planilha e um item do contrato — correspondência declarada, com motivo.
+model VinculoDeItemDaPlanilhaAoContrato {
+  id String @id @default(cuid())
+
+  itemDaPlanilhaId String
+  itemDaPlanilha   ItemDaPlanilhaOrcamentaria @relation(fields: [itemDaPlanilhaId], references: [id])
+
+  itemDoContratoId String
+  itemDoContrato   ItemDoContrato @relation("VinculosComAPlanilha", fields: [itemDoContratoId], references: [id])
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  revogacao RevogacaoDeVinculoDaPlanilha?
+
+  @@index([itemDaPlanilhaId])
+  @@index([itemDoContratoId])
+}
+
+model RevogacaoDeVinculoDaPlanilha {
+  id String @id @default(cuid())
+
+  vinculoId String                            @unique
+  vinculo   VinculoDeItemDaPlanilhaAoContrato @relation(fields: [vinculoId], references: [id])
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

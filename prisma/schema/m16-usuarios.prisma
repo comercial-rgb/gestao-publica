@@ -209,6 +209,8 @@ enum AcaoDoSistema {
   MOVER_PAPEL_DE_PESSOA
   CADASTRAR_CONTRATO
   REGISTRAR_ADITIVO
+  /// V7 M2 U6 — importar (prévia e confirmação) a planilha orçamentária da obra e vincular itens ao contrato.
+  GERIR_PLANILHA_DA_OBRA
   ESTORNAR_MOVIMENTO_CONTRATUAL
   CADASTRAR_LIMITE
   CADASTRAR_OBRA

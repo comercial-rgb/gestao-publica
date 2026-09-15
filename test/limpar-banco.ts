@@ -51,6 +51,13 @@ const TABELAS = [
   "SignatarioDaFila",
   "FilaDeAssinatura",
   // ── V7 M2 (ponte contratual) ──
+  "RevogacaoDeVinculoDaPlanilha",
+  "VinculoDeItemDaPlanilhaAoContrato",
+  "ItemDaPlanilhaOrcamentaria",
+  "PlanilhaOrcamentariaDaObra",
+  "PreviaDePlanilhaOrcamentaria",
+  // A obra sem órgão escapava da limpeza (só caía pela cascata do Orgao): a planilha cria obra sem órgão.
+  "Obra",
   "EstornoDeAditivoPorItens",
   "AlteracaoDeItemPorAditivo",
   "AditivoPorItensDoContrato",

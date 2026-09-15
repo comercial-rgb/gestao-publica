@@ -248,6 +248,8 @@ export type AcaoDoSistema =
   | "CADASTRAR_CONTRATO"
   | "REGISTRAR_ADITIVO"
   | "ESTORNAR_MOVIMENTO_CONTRATUAL"
+  // V7 M2 U6 — a planilha orçamentária da obra (prévia, versão e vínculo com o contrato)
+  | "GERIR_PLANILHA_DA_OBRA"
   | "CADASTRAR_LIMITE"
   | "CADASTRAR_OBRA"
   // ── M12 — relatórios (parametrização) ──
@@ -806,6 +808,10 @@ export type NomeDeServico =
   | "preverAditivoPorItens"
   | "registrarAditivoPorItens"
   | "estornarAditivoPorItens"
+  | "gerarPreviaDePlanilha"
+  | "confirmarPreviaDePlanilha"
+  | "vincularItemDaPlanilhaAoContrato"
+  | "revogarVinculoDaPlanilha"
   | "cadastrarItemDoContrato"
   | "programarFiscalizacao"
   | "registrarOcorrencia"
@@ -1279,6 +1285,11 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   preverAditivoPorItens: "REGISTRAR_ADITIVO",
   registrarAditivoPorItens: "REGISTRAR_ADITIVO",
   estornarAditivoPorItens: "ESTORNAR_MOVIMENTO_CONTRATUAL",
+  // V7 M2 U6 — a planilha orçamentária da obra: prévia, confirmação da versão e o vínculo com o contrato.
+  gerarPreviaDePlanilha: "GERIR_PLANILHA_DA_OBRA",
+  confirmarPreviaDePlanilha: "GERIR_PLANILHA_DA_OBRA",
+  vincularItemDaPlanilhaAoContrato: "GERIR_PLANILHA_DA_OBRA",
+  revogarVinculoDaPlanilha: "GERIR_PLANILHA_DA_OBRA",
   cadastrarItemDoContrato: "CADASTRAR_ITEM_DO_CONTRATO",
   programarFiscalizacao: "PROGRAMAR_FISCALIZACAO_DO_CONTRATO",
   registrarOcorrencia: "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO",
@@ -1559,6 +1570,13 @@ export const FORA_DO_CENSO: Record<string, string> = {
   historicosDosItens:
     "LEITURA: as versões de quantidade e unitário de cada item pelos aditivos por itens vivos — dentro da transação dos " +
     "atos do contrato (que já cobraram a ação) e pelas leituras do dossiê já filtradas pelo alcance.",
+  previaDePlanilha:
+    "LEITURA: a prévia de importação da planilha orçamentária (análise, erros e divergências, sem o arquivo) — a página " +
+    "que a mostra exige a leitura de licitações e contratos.",
+  planilhasDaObra:
+    "LEITURA: as versões da planilha orçamentária de uma obra — sob a leitura de licitações e contratos.",
+  planilhaOrcamentaria:
+    "LEITURA: uma versão da planilha orçamentária com itens e vínculos — sob a leitura de licitações e contratos.",
   aditivosPorItensDoContrato:
     "LEITURA PÚBLICA: os aditivos por itens do contrato (termo, vigência, fundamento, variação, itens antes e depois) — " +
     "publicidade da alteração contratual; usada pela projeção pública e pelo dossiê.",

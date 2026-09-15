@@ -1,4 +1,8 @@
 import { lerEntradasDoZip } from "../zip/index.js";
+import type { AbaLida, CelulaLida, PastaLida } from "./xls.js";
+
+export type { AbaLida, CelulaLida, PastaLida } from "./xls.js";
+export { lerXls } from "./xls.js";
 
 /**
  * ═══ LER UM .XLSX — SÓ O NECESSÁRIO PARA O CORPUS OFICIAL ═══
@@ -149,4 +153,48 @@ export function lerPlanilha(conteudo: Buffer): ReadonlyMap<string, readonly Linh
 export function primeiraAba(conteudo: Buffer): readonly LinhaDaPlanilha[] {
   const planilha = lerPlanilha(conteudo);
   return [...planilha.values()][0] ?? [];
+}
+
+// ═══ V7 M2 — a leitura DETALHADA, para a importação de planilha orçamentária ═══
+
+
+/**
+ * O `.xlsx` na mesma forma do `.xls`: por aba, as células com o valor GRAVADO e a marca de fórmula. ⚠️ Fórmula não se
+ * executa: sai o `<v>` que o arquivo guardou; fórmula sem valor guardado sai vazia (a prévia acusa). ⚠️ `vbaProject.bin`
+ * presente vira `macros: true` — só reportado, nunca lido.
+ */
+export function lerXlsxDetalhado(conteudo: Buffer): PastaLida {
+  const entradas = lerEntradasDoZip(conteudo);
+  const textos = tabelaDeTextos(entradas);
+  const macros = [...entradas.keys()].some((k) => /vbaProject\.bin$/i.test(k));
+  const saida: AbaLida[] = [];
+  for (const { nome, alvo } of abas(entradas)) {
+    const xml = entradas.get(alvo)?.toString("utf8");
+    if (xml === undefined) continue;
+    const linhas = new Map<number, Map<number, CelulaLida>>();
+    for (const linha of xml.matchAll(/<row\b([^>]*)>([\s\S]*?)<\/row>/g)) {
+      for (const c of (linha[2] ?? "").matchAll(/<c\b([^>]*)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+        const atributos = c[1] ?? "";
+        const corpo = c[2] ?? "";
+        const ref = /r="([A-Z]+)(\d+)"/.exec(atributos);
+        if (ref === null) continue;
+        const tipo = /t="([^"]+)"/.exec(atributos)?.[1];
+        const formula = /<f\b/.test(corpo);
+        let valor = "";
+        if (tipo === "inlineStr") valor = textoDe(corpo);
+        else {
+          const v = /<v>([\s\S]*?)<\/v>/.exec(corpo)?.[1];
+          if (v === undefined && !formula) continue;
+          valor = v === undefined ? "" : tipo === "s" ? (textos[Number(v)] ?? "") : desescapar(v);
+        }
+        const l = Number(ref[2]) - 1;
+        const m = linhas.get(l) ?? new Map<number, CelulaLida>();
+        m.set(indiceDaColuna(ref[1]!), { valor: valor.trim(), formula });
+        linhas.set(l, m);
+      }
+    }
+    saida.push({ nome, linhas });
+  }
+  if (saida.length === 0) throw new Error("A planilha não tem nenhuma aba legível. O arquivo pode ser .xls (binário) enviado com a extensão .xlsx.");
+  return { abas: saida, macros };
 }

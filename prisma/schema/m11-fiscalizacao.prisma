@@ -106,6 +106,8 @@ model ItemDoContrato {
   itensDeOrdemDeServico ItemDaOrdemDeServico[]
   /// V7 M2 U5 — as versões do item por aditivo. VIRTUAL.
   alteracoesPorAditivo AlteracaoDeItemPorAditivo[]
+  /// V7 M2 U6 — os serviços de planilha de obra vinculados a este item. VIRTUAL.
+  vinculosComAPlanilha VinculoDeItemDaPlanilhaAoContrato[] @relation("VinculosComAPlanilha")
 
   @@unique([contratoId, numero])
 }

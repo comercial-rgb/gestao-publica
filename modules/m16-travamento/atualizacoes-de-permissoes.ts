@@ -519,6 +519,25 @@ export function derivarAdministracaoDaFiscalizacao(
   return saida;
 }
 
+export const ACOES_DA_PLANILHA_DA_OBRA: readonly AcaoDoSistema[] = ["GERIR_PLANILHA_DA_OBRA"];
+
+export function derivarPlanilhaDaObra(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null);
+    if (!administra) continue;
+    const jaTem = new Set(perfil.permissoes.filter((p) => p.unidadeOrcId === null).map((p) => p.acao));
+    for (const acao of ACOES_DA_PLANILHA_DA_OBRA) {
+      if (jaTem.has(acao)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
+
 export function derivarContratoAcompanhado(
   perfis: readonly PerfilComPermissoes[],
   _areaDaAcao: AreaDaAcao
@@ -758,6 +777,15 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO, REGISTRAR_RECEBIMENTO_PROVISORIO e REGISTRAR_RECEBIMENTO_DEFINITIVO nao sao " +
       "derivadas: sao atos de gestor, fiscal e recebedor designados, e o administrador as concede aos perfis desses papeis.",
     derivar: derivarAdministracaoDaFiscalizacao,
+  },
+  {
+    versao: 20,
+    nome: "planilha-da-obra",
+    descricao:
+      "A planilha orcamentaria da obra (V7 M2) chegou com GERIR_PLANILHA_DA_OBRA: importar com previa, confirmar a versao e " +
+      "vincular servicos da planilha a itens do contrato. Quem administra permissoes no global recebe a acao, e a concede " +
+      "aos perfis da engenharia e da fiscalizacao de obras.",
+    derivar: derivarPlanilhaDaObra,
   },
 ];
 

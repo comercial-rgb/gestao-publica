@@ -361,6 +361,41 @@ Tela: seção "Aditivos por itens" em `/licitacoes/contratos/[id]` (lista com an
 `contratos-aditivos@percursos.local`). Fora deste incremento: limites do art. 125 (pendência antiga), apostilamento e
 reajuste por índice (`REAJUSTE-POR-INDICE`), aditivo que altera o prazo da ordem já emitida, PDF do termo registrado.
 
+### U6 — a planilha orçamentária da obra (`analise-da-planilha.ts`, `planilha-orcamentaria.ts`) — PARCIAL
+
+**Leitura do arquivo** (`packages/planilha`): `.xlsx` por `lerXlsxDetalhado` e `.xls` (Excel 97-2003, contêiner OLE2 +
+BIFF8) por `lerXls`, os dois devolvendo por célula o VALOR GRAVADO e a marca de fórmula. Fórmula nunca se executa (vale
+o resultado que o arquivo salvou; fórmula sem valor gravado é erro da linha); macro nunca se lê (só é reportada). O
+formato é reconhecido pela assinatura do conteúdo, não pela extensão. Recusas nomeadas: não é planilha, Excel 5/95,
+protegida por senha, cadeia de setores corrompida. O leitor de `.xls` é testado contra um gravador independente escrito a
+partir da especificação (`test/fixtures/planilhas.ts`; `packages/planilha/xls.test.ts`: mini-fluxo, dois setores de FAT,
+texto do SST partido entre registros em 8/16 bits, RK ×100, MULRK, fórmula numérica e de texto).
+
+**Análise** (pura): cabeçalho detectado nas primeiras 40 linhas (item, referência, descrição, unidade, quantidade, preço
+unitário — preferindo a coluna "com BDI" — e total) ou informado pela pessoa (linha e letras). Hierarquia pelo código
+("1.2.3" pertence a "1.2", que precisa vir antes como grupo). Valor do serviço = quantidade × preço unitário, arredondado
+uma vez por linha; valor do grupo = soma dos serviços abaixo. **Erros por linha** (bloqueiam): serviço sem unidade,
+quantidade ou preço inválidos, mais de 4 casas, código repetido, grupo pai ausente, serviço com subitens, grupo sem
+serviço, fórmula sem valor gravado. **Divergências de conciliação** (exigem ciência expressa): total da linha, do grupo
+ou total geral do arquivo diferente do calculado — um arquivo que trunca aparece com os dois valores, nada é "corrigido".
+
+**Fatos**: `PreviaDePlanilhaOrcamentaria` guarda o arquivo (bytes, sha256), o mapeamento e a análise. A confirmação
+(`confirmarPreviaDePlanilha`) reanalisa OS BYTES e recusa se a análise mudou (`PREVIA-DESATUALIZADA`), com erro
+(`PREVIA-COM-ERROS`) ou divergência sem ciência (`DIVERGENCIAS-SEM-CIENCIA`); cria a versão seguinte da obra
+(`PlanilhaOrcamentariaDaObra`, única por obra+versão e por prévia), que aponta a anterior e não vale antes dela
+(`VIGENCIA-ANTERIOR-A-VERSAO-VIGENTE`). A referência de preços e a data-base são as declaradas. O contrato é opcional
+(pelo número). `VinculoDeItemDaPlanilhaAoContrato` liga um SERVIÇO a um item do contrato declarado — correspondência
+explícita com motivo, revogável por fato; nada é somado, copiado ou identificado entre os dois.
+
+Tela: `/licitacoes/obras/[id]/planilha` (versões, prévias em aberto, importação), `/planilha/previas/[previaId]` (colunas,
+linhas, erros, divergências, ignoradas, confirmação com ciência), `/planilha/versoes/[planilhaId]` (itens e vínculos).
+Ação `GERIR_PLANILHA_DA_OBRA` (atualização de permissões v20 para quem administra no global). Testes:
+`test/planilha-orcamentaria.test.ts` (PL01–PL07; o mesmo orçamento em .xlsx e .xls dá a mesma análise),
+`test/runtime/contrato-runtime-planilha.test.ts`. Fora deste incremento: planilha por digitação
+(`PLANILHA-POR-DIGITACAO`), arquivo acima de 1 MB pela tela (o corpo das ações do Next; o domínio aceita 5 MB,
+`PLANILHA-ACIMA-DE-1-MB-PELA-TELA`), `.ods`, planilha com várias abas somadas, composição analítica (insumos), BDI
+diferenciado por item, exportação da versão.
+
 ## Arquivos
 
 - `dominio.ts` — puro: `MODALIDADES`, `SINAL_VALOR_CONTRATUAL`,

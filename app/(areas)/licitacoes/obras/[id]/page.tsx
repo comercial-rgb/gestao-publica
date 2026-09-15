@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FormsDoRecurso } from "../../../../../components/molde/FormsDoRecurso";
 import { DetalheDeRecurso } from "../../../../../components/molde/DetalheDeRecurso";
@@ -44,6 +45,8 @@ export default async function ObrasDetalhePage({
       dados={detalhe.dados}
       historico={detalhe.historico}
       acoes={
+        <>
+        <p className="mb-3 text-sm"><Link href={`/licitacoes/obras/${id}/planilha`} className="font-semibold text-[color:var(--color-primary)] underline underline-offset-2" data-link-planilha-da-obra>Planilha orçamentária da obra</Link></p>
         <FormsDoRecurso
           definicao={OBRAS}
           permitidas={[...permitidas]}
@@ -52,6 +55,7 @@ export default async function ObrasDetalhePage({
           action={acaoDeObraAction}
           modo="acoes"
         />
+        </>
       }
     />
   );

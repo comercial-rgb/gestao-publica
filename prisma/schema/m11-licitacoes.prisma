@@ -238,6 +238,8 @@ model Contrato {
   ordensDeServico      OrdemDeServicoDoContrato[] @relation("OrdensDeServico")
   /// V7 M2 U5 — os aditivos que alteram itens (quantidade/preço com vigência). VIRTUAL.
   aditivosPorItens     AditivoPorItensDoContrato[] @relation("AditivosPorItens")
+  /// V7 M2 U6 — as planilhas orçamentárias que declararam este contrato. VIRTUAL.
+  planilhasOrcamentarias PlanilhaOrcamentariaDaObra[] @relation("PlanilhasDoContrato")
   ordensDeFiscalizacao OrdemDeFiscalizacao[]      @relation("OrdensDeFiscalizacao")
   ocorrencias          OcorrenciaDeFiscalizacao[] @relation("OcorrenciasDoContrato")
 
@@ -499,6 +501,9 @@ model Obra {
   empenhos Empenho[]
   /// back-relation M11 (ENT03b) — campo VIRTUAL.
   medicoes MedicaoDeObra[]
+  /// back-relations V7 M2 U6 — a planilha orçamentária. VIRTUAIS.
+  previasDePlanilha      PreviaDePlanilhaOrcamentaria[] @relation("PreviasDePlanilha")
+  planilhasOrcamentarias PlanilhaOrcamentariaDaObra[]   @relation("PlanilhasOrcamentarias")
   /// back-relations M22/M25 (ENT03b) — campos VIRTUAIS.
   anexos          Anexo[]
   camposAdicionais ValorDeCampoAdicional[] @relation("CampoAdicionalDeObra")
