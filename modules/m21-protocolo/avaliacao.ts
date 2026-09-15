@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
+import { diaCivil, inicioDoDiaCivil } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import type { Tx } from "../m16-travamento/autorizacao.js";
@@ -208,15 +209,18 @@ export function mediaComUmaCasa(soma: number, n: number): string | null {
   return `${Math.floor(decimos / 10)},${decimos % 10}`;
 }
 
-/** Início da janela: `meses` meses antes de `agora`, no mesmo dia (limitado ao fim do mês). */
+/**
+ * Início da janela: o DIA CIVIL do ente `meses` meses antes do dia civil de `agora` (limitado ao fim do mês),
+ * às 00:00 do ente. ⚠️ Por dia civil, não por UTC: a avaliação das 22h do último dia do mês é daquele mês
+ * para o ente, e a janela não pode deixá-la de fora por Greenwich (achado do `data-civil.test.ts`).
+ */
 export function inicioDaJanela(agora: Date, meses: number): Date {
-  const d = new Date(agora);
-  const dia = d.getUTCDate();
-  d.setUTCDate(1);
-  d.setUTCMonth(d.getUTCMonth() - meses);
-  const fim = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
-  d.setUTCDate(Math.min(dia, fim));
-  return d;
+  const [ano, mes, dia] = diaCivil(agora).split("-").map(Number) as [number, number, number];
+  const total = ano * 12 + (mes - 1) - meses;
+  const a = Math.floor(total / 12);
+  const m = (total % 12) + 1;
+  const ultimo = [31, (a % 4 === 0 && a % 100 !== 0) || a % 400 === 0 ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1] as number;
+  return inicioDoDiaCivil(`${a}-${String(m).padStart(2, "0")}-${String(Math.min(dia, ultimo)).padStart(2, "0")}`);
 }
 
 /**

@@ -143,7 +143,7 @@ describe("empenho a partir da ordem de compra", () => {
 
     await expect(
       estornarOrdemDeCompra(prisma, { ordemId, motivo: "tenta estornar empenhada", criadoPor: POR })
-    ).rejects.toThrow(/só se estorna PELO ESTORNO DO EMPENHO/);
+    ).rejects.toThrow(/ORDEM-EMPENHADA: .*só se estorna pelo estorno do empenho/);
 
     await anularEmpenho({
       empenhoId: r.empenhoId, numero: "2026NE000101A", data: new Date("2026-03-12T12:00:00Z"),

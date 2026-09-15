@@ -333,7 +333,9 @@ describe("a avaliação dos serviços", () => {
     expect(mediaComUmaCasa(11, 3)).toBe("3,7");
     expect(mediaComUmaCasa(1, 20)).toBe("0,1"); // 0,05 sobe
     expect(mediaComUmaCasa(0, 0)).toBeNull();
-    expect(inicioDaJanela(new Date(Date.UTC(2026, 2, 31, 15)), 1).toISOString()).toBe("2026-02-28T15:00:00.000Z");
-    expect(inicioDaJanela(new Date(Date.UTC(2026, 0, 15, 15)), 12).toISOString()).toBe("2025-01-15T15:00:00.000Z");
+    // Por DIA CIVIL do ente: 31/03 às 23:30 de Fortaleza já é 01/04 em UTC — a janela de 1 mês começa em 28/02.
+    expect(diaCivil(inicioDaJanela(new Date("2026-04-01T02:30:00Z"), 1))).toBe("2026-02-28");
+    expect(diaCivil(inicioDaJanela(new Date("2026-01-15T15:00:00Z"), 12))).toBe("2025-01-15");
+    expect(diaCivil(inicioDaJanela(new Date("2024-03-31T15:00:00Z"), 1))).toBe("2024-02-29");
   });
 });
