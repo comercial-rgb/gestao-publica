@@ -4,6 +4,8 @@ import { join } from "node:path";
 import type { Browser, Page } from "puppeteer";
 import { diaCivil } from "../packages/datas/index.js";
 import { xlsxDeTeste, type CelulaDeTeste } from "../test/fixtures/planilhas.js";
+import { criarPrismaClient } from "../modules/m01-core-contabil/adapter-prisma.js";
+import type { PrismaClient } from "../prisma/generated/client/client.js";
 import { entrar, irPara, lancarNavegadorDoPercurso, preencherEEnviar, registroDePassos, sair, texto, type Navegador } from "./percursos-navegador.js";
 
 /**
@@ -42,7 +44,8 @@ const HOJE = dia(0);
 
 interface Ponte { readonly sufixo: string; readonly contratoId: string; readonly contrato: string; readonly cnpj: string; readonly empenho: string }
 const PONTE: Ponte = JSON.parse(process.env["PONTE_JSON"] ?? "null") as Ponte;
-const OBRA_ID = process.env["OBRA_ID"] ?? "";
+let OBRA_ID = process.env["OBRA_ID"] ?? "";
+const DESCARTAVEL = /^gestao_publica_(percursos|capturas|instalacao)_v7m[12]_[a-z0-9_]{1,40}$/;
 const MOTIVO_VINCULO = "Correspondência conferida pela engenharia com o termo de referência do contrato";
 
 const ORCAMENTO: CelulaDeTeste[][] = [
@@ -83,12 +86,28 @@ async function campoDoServico(page: Page, codigo: string): Promise<string> {
   return page.$eval(`form[data-acao="medir-pela-planilha"] tr[data-servico="${codigo}"] input`, (i) => (i as HTMLInputElement).name).catch(() => "");
 }
 
+/** A OBRA da preparação, num banco exclusivamente descartável — a planilha, a ordem e a medição são todas pela tela. */
+async function prepararObra(): Promise<string> {
+  const url = process.env["DATABASE_URL"];
+  if (url === undefined || url === "") throw new Error("DATABASE_URL não definida.");
+  const prisma = criarPrismaClient(url) as unknown as PrismaClient;
+  try {
+    const [{ banco }] = (await prisma.$queryRawUnsafe(`SELECT current_database() AS banco`)) as [{ banco: string }];
+    if (!DESCARTAVEL.test(banco)) throw new Error(`"${banco}" não é banco descartável do percurso. Nada foi feito.`);
+    const o = await prisma.obra.create({ data: { identificador: `OBRA-MEDICAO-${PONTE.sufixo}`, descricao: `Obra sintética do percurso ${PONTE.sufixo}`, tipoObraServico: "EDIFICACOES_EM_GERAL", criadoPor: "preparacao-do-percurso" }, select: { id: true } });
+    return o.id;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
 async function main(): Promise<void> {
-  if (PONTE === null || OBRA_ID === "") {
-    R.falhou("preparação", "PONTE_JSON ou OBRA_ID ausente: rode a preparação da ponte e crie a obra no banco descartável antes");
+  if (PONTE === null) {
+    R.falhou("preparação", "PONTE_JSON ausente: rode scripts/preparar-ponte-contratual.ts no banco descartável antes");
     R.encerrar();
     return;
   }
+  if (OBRA_ID === "") OBRA_ID = await prepararObra();
   let navegador: Browser | undefined;
   const SUF = PONTE.sufixo;
   const hrefContrato = `/licitacoes/contratos/${PONTE.contratoId}`;
