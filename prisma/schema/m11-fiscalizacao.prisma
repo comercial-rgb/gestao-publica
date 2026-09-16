@@ -65,6 +65,10 @@ model DesignacaoNoContrato {
   decisoesDeControversia       DecisaoDeControversia[]
   // V7 M2 U7 — estornos de medição da ordem praticados sob esta designação. VIRTUAL.
   estornosDeMedicaoDaOrdem     EstornoDeMedicaoDaOrdem[]    @relation("EstornosDeMedicaoDaOrdem")
+  // V7 M2 U8 — reagendamentos, cancelamentos e realizações praticados sob esta designação. VIRTUAIS.
+  reagendamentosDeFiscalizacao ReagendamentoDeFiscalizacao[] @relation("ReagendamentosDeFiscalizacao")
+  cancelamentosDeFiscalizacao  CancelamentoDeFiscalizacao[]  @relation("CancelamentosDeFiscalizacao")
+  realizacoesDeFiscalizacao    RealizacaoDeFiscalizacao[]    @relation("RealizacoesDeFiscalizacao")
 
   @@index([contratoId, papel])
   @@index([usuarioId])
@@ -211,6 +215,11 @@ model OrdemDeFiscalizacao {
   numero       Int
   dataPrevista DateTime
   objetivo     String
+  // V7 M2 U8 — horário, duração e local do compromisso (opcionais: os compromissos anteriores não tinham).
+  /// "HH:MM" no relógio do ente.
+  horaInicio     String? @db.VarChar(5)
+  duracaoMinutos Int?
+  local          String?
 
   gestorDesignacaoId String
   gestorDesignacao   DesignacaoNoContrato @relation("OrdemEmitidaPeloGestor", fields: [gestorDesignacaoId], references: [id])
@@ -221,6 +230,10 @@ model OrdemDeFiscalizacao {
   criadoPor String
 
   ocorrencias OcorrenciaDeFiscalizacao[]
+  // V7 M2 U8 — os fatos que mudam a vida do compromisso. VIRTUAIS.
+  reagendamentos ReagendamentoDeFiscalizacao[] @relation("ReagendamentosDaOrdem")
+  cancelamento   CancelamentoDeFiscalizacao?   @relation("CancelamentoDaOrdem")
+  realizacao     RealizacaoDeFiscalizacao?     @relation("RealizacaoDaOrdem")
 
   @@unique([contratoId, numero])
 }
@@ -260,12 +273,17 @@ model OcorrenciaDeFiscalizacao {
   tipo           TipoDeOcorrencia
   descricao      String
   encaminhamento EncaminhamentoDaOcorrencia
+  // V7 M2 U8 — o tipo configurado pelo ente, na VERSÃO usada, e a gravidade quando a versão a exige.
+  versaoDoTipoId String?
+  versaoDoTipo   VersaoDoTipoDeOcorrencia? @relation("VersaoDoTipoNaOcorrencia", fields: [versaoDoTipoId], references: [id], onDelete: Restrict)
+  gravidade      GravidadeDaOcorrencia?
 
   criadoEm  DateTime @default(now())
   criadoPor String
 
   evidencias Anexo[]                @relation("EvidenciaDaOcorrencia")
   resolucao  ResolucaoDeOcorrencia?
+  respostas  RespostaDoFormularioDeOcorrencia[] @relation("RespostasDaOcorrencia")
 
   @@unique([contratoId, numero])
   @@index([ordemId])

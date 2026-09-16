@@ -1,0 +1,179 @@
+// ═══ M11 — A AGENDA DA FISCALIZAÇÃO E OS FORMULÁRIOS DE OCORRÊNCIA (V7 M2 U8) ═══
+//
+// O compromisso continua sendo a `OrdemDeFiscalizacao` (o gestor programa para um fiscal designado). O que esta frente
+// acrescenta: HORÁRIO, duração e local no compromisso, e os FATOS que mudam a sua vida — reagendamento motivado,
+// cancelamento e realização. Nada é reescrito: o compromisso vigente é o último reagendamento, e a agenda diária,
+// semanal e mensal projeta esses fatos no calendário do ente.
+//
+// E o TIPO DE OCORRÊNCIA vira cadastro do ente, VERSIONADO, com o formulário de perguntas que o fiscal responde. A
+// ocorrência guarda a VERSÃO usada: publicar outra versão ou desativar o tipo não reinterpreta o que já foi respondido.
+
+/// O REAGENDAMENTO — fato do gestor. O compromisso vigente é o último; os anteriores continuam no histórico.
+model ReagendamentoDeFiscalizacao {
+  id String @id @default(cuid())
+
+  ordemId String
+  ordem   OrdemDeFiscalizacao @relation("ReagendamentosDaOrdem", fields: [ordemId], references: [id])
+
+  dataPrevista   DateTime
+  /// "HH:MM" no relógio do ente (a data civil é a régua; nada de UTC no domínio).
+  horaInicio     String?  @db.VarChar(5)
+  duracaoMinutos Int?
+  local          String?
+
+  motivo String
+
+  designacaoId String
+  designacao   DesignacaoNoContrato @relation("ReagendamentosDeFiscalizacao", fields: [designacaoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([ordemId])
+}
+
+/// O CANCELAMENTO — um por compromisso, pelo gestor designado.
+model CancelamentoDeFiscalizacao {
+  id String @id @default(cuid())
+
+  ordemId String              @unique
+  ordem   OrdemDeFiscalizacao @relation("CancelamentoDaOrdem", fields: [ordemId], references: [id])
+
+  motivo String
+
+  designacaoId String
+  designacao   DesignacaoNoContrato @relation("CancelamentosDeFiscalizacao", fields: [designacaoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// A REALIZAÇÃO — o fiscal registra que esteve lá, quando e o que relatou. Uma por compromisso.
+model RealizacaoDeFiscalizacao {
+  id String @id @default(cuid())
+
+  ordemId String              @unique
+  ordem   OrdemDeFiscalizacao @relation("RealizacaoDaOrdem", fields: [ordemId], references: [id])
+
+  data      DateTime
+  horaInicio String? @db.VarChar(5)
+  horaFim    String? @db.VarChar(5)
+  relato    String
+
+  designacaoId String
+  designacao   DesignacaoNoContrato @relation("RealizacoesDeFiscalizacao", fields: [designacaoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+enum TipoDeRespostaDoFormulario {
+  TEXTO
+  NUMERO
+  DATA
+  OPCAO
+  SIM_NAO
+}
+
+enum GravidadeDaOcorrencia {
+  BAIXA
+  MEDIA
+  ALTA
+}
+
+/// O TIPO DE OCORRÊNCIA DO ENTE — cadastro próprio ("descumprimento do contrato", "demora no serviço"), com versões.
+model TipoDeOcorrenciaDoEnte {
+  id String @id @default(cuid())
+
+  codigo String @unique
+  nome   String
+  /// A natureza equivalente no vocabulário fixo do sistema (o `TipoDeOcorrencia` da ocorrência continua existindo).
+  natureza TipoDeOcorrencia
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  versoes  VersaoDoTipoDeOcorrencia[]
+  mudancas MudancaDeSituacaoDoTipoDeOcorrencia[]
+}
+
+/// A VERSÃO do tipo: o formulário como ele era quando a ocorrência foi preenchida.
+model VersaoDoTipoDeOcorrencia {
+  id String @id @default(cuid())
+
+  tipoId String
+  tipo   TipoDeOcorrenciaDoEnte @relation(fields: [tipoId], references: [id])
+
+  versao Int
+
+  exigeGravidade        Boolean
+  encaminhamentoPadrao  EncaminhamentoDaOcorrencia
+  /// Primeiro dia em que esta versão vale para preencher.
+  vigenciaInicio        DateTime
+  motivo                String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  perguntas   PerguntaDoFormularioDeOcorrencia[]
+  ocorrencias OcorrenciaDeFiscalizacao[]         @relation("VersaoDoTipoNaOcorrencia")
+
+  @@unique([tipoId, versao])
+}
+
+/// A MUDANÇA DE SITUAÇÃO — ativar ou desativar o tipo é fato com motivo; a vigente é a última.
+model MudancaDeSituacaoDoTipoDeOcorrencia {
+  id String @id @default(cuid())
+
+  tipoId String
+  tipo   TipoDeOcorrenciaDoEnte @relation(fields: [tipoId], references: [id])
+
+  ativo  Boolean
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([tipoId])
+}
+
+/// UMA PERGUNTA do formulário daquela versão.
+model PerguntaDoFormularioDeOcorrencia {
+  id String @id @default(cuid())
+
+  versaoId String
+  versao   VersaoDoTipoDeOcorrencia @relation(fields: [versaoId], references: [id])
+
+  ordem       Int
+  codigo      String
+  rotulo      String
+  tipoDeResposta TipoDeRespostaDoFormulario
+  obrigatoria Boolean
+  /// Só para OPCAO: as opções admitidas, na ordem em que aparecem.
+  opcoes      String[]
+
+  respostas RespostaDoFormularioDeOcorrencia[]
+
+  @@unique([versaoId, codigo])
+  @@index([versaoId, ordem])
+}
+
+/// A RESPOSTA — presa à pergunta daquela versão; o conteúdo não se reinterpreta quando o formulário muda.
+model RespostaDoFormularioDeOcorrencia {
+  id String @id @default(cuid())
+
+  ocorrenciaId String
+  ocorrencia   OcorrenciaDeFiscalizacao @relation("RespostasDaOcorrencia", fields: [ocorrenciaId], references: [id])
+
+  perguntaId String
+  pergunta   PerguntaDoFormularioDeOcorrencia @relation(fields: [perguntaId], references: [id])
+
+  /// O valor como foi respondido (texto; número e data em formato canônico), conferido pelo caso de uso.
+  valor String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([ocorrenciaId, perguntaId])
+  @@index([perguntaId])
+}

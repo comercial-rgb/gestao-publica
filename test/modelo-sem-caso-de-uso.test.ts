@@ -91,6 +91,15 @@ const ESCRITO_POR_ANINHAMENTO: Readonly<Record<string, string>> = {
     "escrito por `setoresAutorizados: { create: ... }` em modules/m23-comunicacao/servico.ts",
   RequerenteAdicionalDoProcesso:
     "escrito por `requerentesAdicionais: { create: ... }` em modules/m21-protocolo/servico.ts",
+  // ── V7 M2 U8 — a agenda e os formulários da fiscalização ──
+  PerguntaDoFormularioDeOcorrencia:
+    "escrita por `perguntas: { create: ... }` em publicarVersaoDoTipoDeOcorrencia " +
+    "(modules/m11-licitacoes/formularios-de-ocorrencia.ts); LIDA pela relação `perguntas` da versão em " +
+    "tiposDeOcorrenciaDoEnte e em conferirFormularioDaOcorrencia — a pergunta não existe fora da versão que a publicou",
+  RespostaDoFormularioDeOcorrencia:
+    "escrita por `respostas: { create: ... }` em registrarOcorrencia (modules/m11-licitacoes/fiscalizacao.ts), depois de " +
+    "conferida por conferirFormularioDaOcorrencia; LIDA pela relação `respostas` da ocorrência — a resposta não existe " +
+    "fora da ocorrência que a respondeu",
   // ── V6 P2.3 — M33 folha ──
   FaixaDeContribuicao:
     "escrita por `faixas: { create: ... }` em cadastrarTabelaDeContribuicao " +

@@ -22,6 +22,10 @@ export default async function Fiscalizacao(): Promise<React.ReactElement> {
       <header>
         <h1 className="text-xl font-semibold">Fiscalização de contratos</h1>
         <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">Os contratos em que você está designado hoje{minhas.administrador ? " — e, como administrador da fiscalização, todos os contratos" : ""}.</p>
+        <p className="mt-2 flex flex-wrap gap-3 text-sm">
+          <Link href="/licitacoes/fiscalizacao/agenda" className="text-[color:var(--color-primary)] underline underline-offset-2" data-link-agenda>Agenda de fiscalização (dia, semana e mês)</Link>
+          <Link href="/licitacoes/fiscalizacao/tipos-de-ocorrencia" className="text-[color:var(--color-primary)] underline underline-offset-2" data-link-tipos>Tipos de ocorrência e formulários</Link>
+        </p>
       </header>
       <Card>
         {minhas.contratos.length === 0 ? (

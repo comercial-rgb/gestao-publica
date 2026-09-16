@@ -94,7 +94,7 @@ export function DossieDoContrato({ d, hoje }: { readonly d: DossieParaTela; read
       ) : null}
       {d.visao === "FISCALIZACAO" ? (<>
       <Card>
-        <h2 className="mb-2 text-sm font-semibold">Agenda de fiscalização</h2>
+        <h2 className="mb-2 text-sm font-semibold">Agenda de fiscalização <a href="/licitacoes/fiscalizacao/agenda" className="text-xs font-normal text-[color:var(--color-primary)] underline underline-offset-2" data-link-da-agenda>ver no calendário</a></h2>
         {d.ordens.length === 0 ? <p className="text-sm text-[color:var(--color-ink-2)]">Nenhuma fiscalização programada.</p> : (
           <ul className="space-y-1 text-sm" data-ordens>
             {d.ordens.map((o) => <li key={o.id} data-ordem={o.numero}>Ordem nº {o.numero} · {o.dataPrevista} · {o.fiscal} · {o.objetivo} <span className="text-xs text-[color:var(--color-ink-2)]">({o.ocorrencias} ocorrência(s))</span></li>)}
@@ -121,7 +121,7 @@ export function DossieDoContrato({ d, hoje }: { readonly d: DossieParaTela; read
         )}
         {d.papeis.podeRegistrarOcorrencia ? null : <Motivo texto={d.papeis.fiscal ? "Seu perfil não tem a ação de registrar ocorrência." : "Registrar ocorrência é do FISCAL designado e vigente neste contrato."} />}
       </Card>
-      {d.papeis.podeRegistrarOcorrencia ? <FormOcorrencia contratoId={alvo} ordens={d.opcoes.minhasOrdens} hoje={hoje} /> : null}
+      {d.papeis.podeRegistrarOcorrencia ? <FormOcorrencia contratoId={alvo} ordens={d.opcoes.minhasOrdens} hoje={hoje} tipos={d.opcoes.tiposDeOcorrencia} /> : null}
       </>) : null}
 
       <Card>

@@ -438,6 +438,46 @@ Fora deste incremento: estorno do RECEBIMENTO (`ESTORNO-DE-RECEBIMENTO`), mediç
 conversão de unidades, rateio de um serviço entre itens do contrato, reajuste/BDI entre o preço da planilha e o do
 contrato, exportação XLSX da medição.
 
+### U8 — a agenda da fiscalização e os formulários de ocorrência (`agenda-da-fiscalizacao.ts`, `formularios-de-ocorrencia.ts`) — PARCIAL
+
+**A agenda é o mesmo compromisso.** `OrdemDeFiscalizacao` ganhou HORÁRIO ("HH:MM" do relógio do ente), duração e local
+(colunas opcionais), e três fatos novos: `ReagendamentoDeFiscalizacao` (motivado; o vigente é o último),
+`CancelamentoDeFiscalizacao` e `RealizacaoDeFiscalizacao` (data, horas e relato). A situação é DERIVADA —
+PROGRAMADA → REAGENDADA → CANCELADA | REALIZADA, as duas últimas finais — e nada é reescrito.
+
+| Ato | Quem | Recusa |
+|---|---|---|
+| programar (com horário, duração e local) | gestor designado vigente (`PROGRAMAR_FISCALIZACAO_DO_CONTRATO`) | fiscal de outro contrato, fiscal sem vigência na data, contrato fora de vigência |
+| reagendar | gestor designado vigente | `FISCALIZACAO-CANCELADA`, `FISCALIZACAO-JA-REALIZADA`, `FISCAL-SEM-VIGENCIA-NA-DATA` |
+| cancelar | gestor designado vigente | `FISCALIZACAO-JA-CANCELADA`, `FISCALIZACAO-JA-REALIZADA` |
+| registrar realização | o FISCAL DAQUELE compromisso (`REGISTRAR_OCORRENCIA_DE_FISCALIZACAO`) | `FISCALIZACAO-DE-OUTRO-FISCAL`, `FISCALIZACAO-CANCELADA`, `FISCALIZACAO-JA-REALIZADA`, data futura |
+
+`agendaDaFiscalizacao` é UMA leitura: dia, semana e mês são períodos diferentes dela, em dia civil, com filtros por
+contrato, fiscal e situação, e o recorte do servidor (só os contratos que a pessoa alcança; o administrador da
+fiscalização alcança todos). **Sobreposição não é proibida**: a agenda APONTA o conflito (mesmo fiscal, mesmo dia,
+horários que se cruzam) e quem programa decide — nenhuma norma dá ao sistema essa regra (`CONFLITO-DE-AGENDA-SEM-REGRA`).
+
+**Os tipos de ocorrência são cadastro do ente, versionado.** `TipoDeOcorrenciaDoEnte` (código, nome, natureza
+equivalente no vocabulário fixo) com `MudancaDeSituacaoDoTipoDeOcorrencia` (ativar/desativar é fato com motivo) e
+`VersaoDoTipoDeOcorrencia` (vigência, exige gravidade, encaminhamento sugerido) com
+`PerguntaDoFormularioDeOcorrencia` (texto, número, data, lista de opções, sim/não; obrigatória ou não). A ocorrência
+guarda `versaoDoTipoId`, a gravidade quando a versão exige, e as `RespostaDoFormularioDeOcorrencia` presas às perguntas
+daquela versão: **publicar outra versão ou desativar o tipo não reinterpreta o que já foi respondido**. Recusas:
+`TIPO-JA-CADASTRADO`, `VIGENCIA-ANTERIOR-A-VERSAO-VIGENTE`, `PERGUNTA-REPETIDA`, `PERGUNTA-SEM-OPCOES`,
+`OPCAO-REPETIDA`, `OPCOES-EM-PERGUNTA-QUE-NAO-E-LISTA`, `SITUACAO-JA-E-ESSA`, `TIPO-DESATIVADO`,
+`VERSAO-DO-FORMULARIO-NAO-VIGENTE`, `SEM-VERSAO-VIGENTE-NO-DIA`, `GRAVIDADE-EXIGIDA`, `GRAVIDADE-NAO-APLICAVEL`,
+`PERGUNTA-DE-OUTRA-VERSAO`, `PERGUNTA-OBRIGATORIA-SEM-RESPOSTA`, `RESPOSTA-INVALIDA`, `RESPOSTA-REPETIDA`,
+`RESPOSTA-SEM-FORMULARIO`.
+
+Telas: `/licitacoes/fiscalizacao/agenda` (dia, semana, mês, filtros, reagendar, cancelar e realizar em cada
+compromisso), `/licitacoes/fiscalizacao/tipos-de-ocorrencia` (cadastro, versões com perguntas, ativar/desativar) e, no
+dossiê do contrato, o formulário do tipo escolhido dentro da ocorrência. Ação nova: `GERIR_TIPOS_DE_OCORRENCIA`
+(atualização de permissões v21; reagendar, cancelar e realizar NÃO são ações novas). Migrations
+`20260920090000_v7_m2_8_enum_dos_tipos_de_ocorrencia` e `20260920090100_v7_m2_8_agenda_e_formularios` (8 CHECKs).
+Testes: `test/agenda-e-formularios.test.ts` (AG01–AG03, FO01–FO02). Fora deste incremento: notificação ao fiscal
+(`NOTIFICACAO-DA-AGENDA`), compromisso recorrente, anexos na realização, exportação da agenda e a regra de
+sobreposição (não existe fonte).
+
 ## Arquivos
 
 - `dominio.ts` — puro: `MODALIDADES`, `SINAL_VALOR_CONTRATUAL`,

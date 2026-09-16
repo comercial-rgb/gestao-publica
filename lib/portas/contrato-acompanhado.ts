@@ -15,6 +15,7 @@ import {
 import { designacaoVigenteEm } from "../../modules/m33-folha/certificacao.js";
 import { configurarRegimeDeMedicao } from "../../modules/m11-licitacoes/regime-de-medicao.js";
 import { alcanceNoContrato, contratosNoAlcanceDaFiscalizacao, definirAdministradorDaFiscalizacao, revogarAdministradorDaFiscalizacao, type AlcanceNoContrato } from "../../modules/m11-licitacoes/acesso-da-fiscalizacao.js";
+import { tiposParaPreencher } from "./agenda-da-fiscalizacao";
 import { cliente, PortaSemBancoError } from "./cliente";
 import { acoesPermitidas } from "./molde";
 import { comEscritaAutenticada, type Identidade } from "./sessao";
@@ -56,6 +57,8 @@ export interface DossieParaTela extends AcompanhamentoDoContrato {
     readonly obras: readonly { readonly valor: string; readonly rotulo: string }[];
     readonly minhasOrdens: readonly { readonly valor: string; readonly rotulo: string }[];
     readonly proximaMedicao: number;
+    /** V7 M2 U8 — os tipos de ocorrência ATIVOS do ente, com a versão vigente hoje e as perguntas dela. */
+    readonly tiposDeOcorrencia: Awaited<ReturnType<typeof tiposParaPreencher>>;
   };
 }
 
@@ -74,13 +77,15 @@ export async function dossieDoContratoPara(sessao: Identidade, contratoId: strin
   if (!alcance.fiscalizacao && !alcance.financeira) return null;
   const base = await acompanhamentoDoContrato(prisma, contratoId, alcance.fiscalizacao ? "FISCALIZACAO" : "FINANCEIRA");
   if (base === null) return null;
-  const [permitidas, minhas, usuarios, obras, ultimaMedicao] = await Promise.all([
+  const [permitidas, minhas, usuarios, obras, ultimaMedicao, tiposDeOcorrencia] = await Promise.all([
     acoesPermitidas(["CONFIGURAR_EXECUCAO_DO_CONTRATO", "DESIGNAR_NO_CONTRATO", "CADASTRAR_ITEM_DO_CONTRATO", "PROGRAMAR_FISCALIZACAO_DO_CONTRATO", "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO", "RESOLVER_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_MEDICAO_DE_OBRA"]),
     prisma.designacaoNoContrato.findMany({ where: { contratoId, usuario: { identificador: sessao.identificador } }, select: { papel: true, vigenciaInicio: true, vigenciaFim: true, revogacao: { select: { dataEfeito: true } } } }),
     // Só contas ATIVAS com pessoa vinculada podem ser designadas; o recorte é do servidor, e o domínio confere de novo.
     prisma.usuario.findMany({ where: { ativo: true, vinculosDePessoa: { some: {} } }, orderBy: { identificador: "asc" }, take: 500, select: { identificador: true, nome: true } }),
     prisma.obra.findMany({ where: { ativa: true, OR: [{ medicoes: { some: { contratoId } } }, { empenhos: { some: { contratoId } } }] }, orderBy: { identificador: "asc" }, select: { id: true, identificador: true, descricao: true } }),
     prisma.medicaoDeObra.findFirst({ where: { contratoId }, orderBy: { numero: "desc" }, select: { numero: true } }),
+    // V7 M2 U8 — os tipos ATIVOS do ente com a versão vigente hoje: é o que o formulário da ocorrência oferece.
+    tiposParaPreencher(),
   ]);
   const agora = new Date();
   const gestor = minhas.some((d) => d.papel === "GESTOR" && designacaoVigenteEm(d, agora));
@@ -105,6 +110,8 @@ export async function dossieDoContratoPara(sessao: Identidade, contratoId: strin
       fiscais: base.designacoes.filter((d) => d.papel === "FISCAL" && d.vigenteHoje).map((d) => ({ valor: d.id, rotulo: `${d.nome} (${d.ato})` })),
       obras: obrasDaTela.map((o) => ({ valor: o.id, rotulo: `${o.identificador} — ${o.descricao}` })),
       minhasOrdens: base.ordens.filter((o) => o.fiscal === sessao.identificador).map((o) => ({ valor: o.id, rotulo: `Ordem nº ${o.numero} — ${o.dataPrevista}` })),
+      // V7 M2 U8 — os tipos ATIVOS do ente com a versão vigente hoje: é o que o formulário da ocorrência oferece.
+      tiposDeOcorrencia,
       proximaMedicao: (ultimaMedicao?.numero ?? 0) + 1,
     },
   };
@@ -131,19 +138,32 @@ export async function itemNaTela(contratoId: string, c: Readonly<Record<string, 
 }
 
 export async function programarNaTela(contratoId: string, c: Readonly<Record<string, string>>): Promise<string> {
-  const r = await comEscritaAutenticada("PROGRAMAR_FISCALIZACAO_DO_CONTRATO", (criadoPor) => programarFiscalizacao(cliente(), { contratoId, fiscalDesignacaoId: t(c, "fiscalDesignacaoId"), dataPrevista: t(c, "dataPrevista"), objetivo: t(c, "objetivo"), criadoPor }));
-  return `Ordem de fiscalização nº ${r.numero} programada para o fiscal escolhido.`;
+  // V7 M2 U8 — horário, duração e local são opcionais: quem programa só pelo dia continua programando.
+  const duracao = t(c, "duracaoMinutos") === "" ? undefined : Number(t(c, "duracaoMinutos").replace(/\D/g, ""));
+  const r = await comEscritaAutenticada("PROGRAMAR_FISCALIZACAO_DO_CONTRATO", (criadoPor) =>
+    programarFiscalizacao(cliente(), {
+      contratoId, fiscalDesignacaoId: t(c, "fiscalDesignacaoId"), dataPrevista: t(c, "dataPrevista"), objetivo: t(c, "objetivo"), criadoPor,
+      ...(t(c, "horaInicio") === "" ? {} : { horaInicio: t(c, "horaInicio") }),
+      ...(duracao === undefined || Number.isNaN(duracao) ? {} : { duracaoMinutos: duracao }),
+      ...(t(c, "local") === "" ? {} : { local: t(c, "local") }),
+    })
+  );
+  return `Ordem de fiscalização nº ${r.numero} programada para o fiscal escolhido${t(c, "horaInicio") === "" ? "" : `, às ${t(c, "horaInicio")}`}. Ela aparece na agenda de fiscalização.`;
 }
 
 export async function ocorrenciaNaTela(contratoId: string, c: Readonly<Record<string, string>>, arquivos: readonly File[]): Promise<string> {
   const evidencias = await Promise.all(arquivos.filter((a) => a.size > 0).map(async (a) => ({ nomeOriginal: a.name, mimeType: a.type, conteudo: new Uint8Array(await a.arrayBuffer()) })));
+  // V7 M2 U8 — as respostas chegam como `resposta.<perguntaId>`; a versão do formulário vem oculta no formulário do tipo.
+  const respostas = Object.entries(c).filter(([k]) => k.startsWith("resposta.")).map(([k, v]) => ({ perguntaId: k.slice("resposta.".length), valor: v }));
   const r = await comEscritaAutenticada("REGISTRAR_OCORRENCIA_DE_FISCALIZACAO", (criadoPor) =>
     registrarOcorrencia(cliente(), {
       contratoId, ...(t(c, "ordemId") !== "" ? { ordemId: t(c, "ordemId") } : {}), data: t(c, "data"), tipo: t(c, "tipo") as "OUTRO", descricao: t(c, "descricao"),
       encaminhamento: t(c, "encaminhamento") === "GESTOR" ? "GESTOR" : "NENHUM", evidencias, criadoPor,
+      ...(t(c, "versaoDoTipoId") === "" ? {} : { versaoDoTipoId: t(c, "versaoDoTipoId"), respostas }),
+      ...(t(c, "gravidade") === "" ? {} : { gravidade: t(c, "gravidade") as "BAIXA" }),
     })
   );
-  return `Ocorrência nº ${r.numero} registrada com ${r.evidencias} evidência(s)${t(c, "encaminhamento") === "GESTOR" ? ", encaminhada ao gestor" : ""}.`;
+  return `Ocorrência nº ${r.numero} registrada com ${r.evidencias} evidência(s)${r.respostas > 0 ? ` e ${r.respostas} resposta(s) do formulário` : ""}${t(c, "encaminhamento") === "GESTOR" ? ", encaminhada ao gestor" : ""}.`;
 }
 
 export async function regimeNaTela(contratoId: string, c: Readonly<Record<string, string>>): Promise<string> {

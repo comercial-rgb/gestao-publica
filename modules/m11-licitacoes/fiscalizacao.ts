@@ -4,6 +4,7 @@ import { diaCivil, diaCivilBr, inicioDoDiaCivil } from "../../packages/datas/ind
 import { travar } from "../../packages/locks/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { execucaoPorContrato, empenhadoLiquidoPorContrato } from "../m05-despesa/consultas.js";
+import { conferirFormularioDaOcorrencia } from "./formularios-de-ocorrencia.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { pessoaDoUsuario } from "../m16-travamento/servico-pessoa-do-usuario.js";
@@ -220,6 +221,10 @@ export const zProgramarFiscalizacao = z.object({
   fiscalDesignacaoId: z.string().min(1),
   dataPrevista: zDia,
   objetivo: z.string().trim().min(10),
+  // V7 M2 U8 — horário, duração e local do compromisso (opcionais: quem não os usa continua programando pelo dia).
+  horaInicio: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "A hora é HH:MM no relógio do ente.").optional(),
+  duracaoMinutos: z.number().int().min(1).max(1440).optional(),
+  local: z.string().trim().min(1).optional(),
   criadoPor: z.string().min(1),
 });
 export type ProgramarFiscalizacaoInput = z.input<typeof zProgramarFiscalizacao>;
@@ -236,7 +241,7 @@ export async function programarFiscalizacao(prisma: PrismaClient, input: Program
     if (!designacaoVigenteEm(fiscal, inicioDoDiaCivil(d.dataPrevista))) throw new Error("FISCAL-SEM-VIGENCIA-NA-DATA: a designação do fiscal não estará vigente na data prevista. Nada foi gravado.");
     const ultima = await tx.ordemDeFiscalizacao.findFirst({ where: { contratoId: c.id }, orderBy: { numero: "desc" }, select: { numero: true } });
     const numero = (ultima?.numero ?? 0) + 1;
-    const r = await tx.ordemDeFiscalizacao.create({ data: { contratoId: c.id, numero, dataPrevista: inicioDoDiaCivil(d.dataPrevista), objetivo: d.objetivo, gestorDesignacaoId: gestor.id, fiscalDesignacaoId: fiscal.id, criadoPor: d.criadoPor }, select: { id: true } });
+    const r = await tx.ordemDeFiscalizacao.create({ data: { contratoId: c.id, numero, dataPrevista: inicioDoDiaCivil(d.dataPrevista), objetivo: d.objetivo, horaInicio: d.horaInicio ?? null, duracaoMinutos: d.duracaoMinutos ?? null, local: d.local ?? null, gestorDesignacaoId: gestor.id, fiscalDesignacaoId: fiscal.id, criadoPor: d.criadoPor }, select: { id: true } });
     return { ordemId: r.id, numero };
   });
 }
@@ -251,6 +256,11 @@ export const zRegistrarOcorrencia = z.object({
   descricao: z.string().trim().min(10),
   encaminhamento: z.enum(["NENHUM", "GESTOR"]),
   evidencias: z.array(zEvidencia).max(10).default([]),
+  // V7 M2 U8 — o tipo configurado pelo ente, na VERSÃO vigente no dia do fato, com as respostas do formulário e a
+  // gravidade quando a versão a exige. Sem ele, a ocorrência continua sendo a do vocabulário fixo.
+  versaoDoTipoId: z.string().min(1).optional(),
+  gravidade: z.enum(["BAIXA", "MEDIA", "ALTA"]).optional(),
+  respostas: z.array(z.object({ perguntaId: z.string().min(1), valor: z.string() }).strict()).max(40).default([]),
   criadoPor: z.string().min(1),
 });
 export type RegistrarOcorrenciaInput = z.input<typeof zRegistrarOcorrencia>;
@@ -260,7 +270,7 @@ export type RegistrarOcorrenciaInput = z.input<typeof zRegistrarOcorrencia>;
  * contrato vigente no dia, ordem (se houver) deste contrato e deste fiscal. As evidências gravam pelo
  * M22 na mesma transação: se um arquivo for recusado, a ocorrência não fica sem ele.
  */
-export async function registrarOcorrencia(prisma: PrismaClient, input: RegistrarOcorrenciaInput): Promise<{ readonly ocorrenciaId: string; readonly numero: number; readonly evidencias: number }> {
+export async function registrarOcorrencia(prisma: PrismaClient, input: RegistrarOcorrenciaInput): Promise<{ readonly ocorrenciaId: string; readonly numero: number; readonly evidencias: number; readonly respostas: number }> {
   const d = zRegistrarOcorrencia.parse(input);
   if (d.data > hoje()) throw new Error("OCORRENCIA-NO-FUTURO: a ocorrência registra o que o fiscal viu; a data não pode ser posterior a hoje. Nada foi gravado.");
   return prisma.$transaction(async (tx) => {
@@ -275,14 +285,23 @@ export async function registrarOcorrencia(prisma: PrismaClient, input: Registrar
     }
     const ultima = await tx.ocorrenciaDeFiscalizacao.findFirst({ where: { contratoId: c.id }, orderBy: { numero: "desc" }, select: { numero: true } });
     const numero = (ultima?.numero ?? 0) + 1;
+    // V7 M2 U8 — com tipo configurado, o formulário da VERSÃO vigente no dia é conferido antes de gravar.
+    const formulario = d.versaoDoTipoId === undefined ? null : await conferirFormularioDaOcorrencia(tx, d.versaoDoTipoId, d.data, d.respostas, d.gravidade ?? null);
+    if (formulario === null && (d.respostas.length > 0 || d.gravidade !== undefined)) {
+      throw new Error("RESPOSTA-SEM-FORMULARIO: respostas e gravidade só existem com o tipo de ocorrência configurado pelo ente. Nada foi gravado.");
+    }
     const r = await tx.ocorrenciaDeFiscalizacao.create({
-      data: { contratoId: c.id, numero, ordemId: d.ordemId ?? null, designacaoId: fiscal.id, data: inicioDoDiaCivil(d.data), tipo: d.tipo, descricao: d.descricao, encaminhamento: d.encaminhamento, criadoPor: d.criadoPor },
+      data: {
+        contratoId: c.id, numero, ordemId: d.ordemId ?? null, designacaoId: fiscal.id, data: inicioDoDiaCivil(d.data), tipo: d.tipo, descricao: d.descricao, encaminhamento: d.encaminhamento, criadoPor: d.criadoPor,
+        versaoDoTipoId: d.versaoDoTipoId ?? null, gravidade: d.gravidade ?? null,
+        ...(formulario === null ? {} : { respostas: { create: formulario.linhas.map((l) => ({ perguntaId: l.perguntaId, valor: l.valor, criadoPor: d.criadoPor })) } }),
+      },
       select: { id: true },
     });
     for (const ev of d.evidencias) {
       await gravarAnexoNaTransacao(tx, { nomeOriginal: ev.nomeOriginal, mimeType: ev.mimeType, conteudo: ev.conteudo, origem: "UPLOAD", ocorrenciaDeFiscalizacaoId: r.id, criadoPor: d.criadoPor });
     }
-    return { ocorrenciaId: r.id, numero, evidencias: d.evidencias.length };
+    return { ocorrenciaId: r.id, numero, evidencias: d.evidencias.length, respostas: formulario?.linhas.length ?? 0 };
   });
 }
 

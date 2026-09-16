@@ -250,6 +250,8 @@ export type AcaoDoSistema =
   | "ESTORNAR_MOVIMENTO_CONTRATUAL"
   // V7 M2 U6 — a planilha orçamentária da obra (prévia, versão e vínculo com o contrato)
   | "GERIR_PLANILHA_DA_OBRA"
+  // V7 M2 U8 — os tipos de ocorrência do ente e os formulários versionados da fiscalização
+  | "GERIR_TIPOS_DE_OCORRENCIA"
   | "CADASTRAR_LIMITE"
   | "CADASTRAR_OBRA"
   // ── M12 — relatórios (parametrização) ──
@@ -814,6 +816,12 @@ export type NomeDeServico =
   | "revogarVinculoDaPlanilha"
   | "medirOrdemPelaPlanilha"
   | "estornarMedicaoDaOrdem"
+  | "cadastrarTipoDeOcorrencia"
+  | "publicarVersaoDoTipoDeOcorrencia"
+  | "mudarSituacaoDoTipoDeOcorrencia"
+  | "reagendarFiscalizacao"
+  | "cancelarFiscalizacao"
+  | "registrarRealizacaoDaFiscalizacao"
   | "cadastrarItemDoContrato"
   | "programarFiscalizacao"
   | "registrarOcorrencia"
@@ -1296,6 +1304,15 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // da medição sem recebimento é do fiscal, pela mesma ação — desfaz o próprio ato antes de qualquer dependente.
   medirOrdemPelaPlanilha: "REGISTRAR_MEDICAO_DE_OBRA",
   estornarMedicaoDaOrdem: "REGISTRAR_MEDICAO_DE_OBRA",
+  // V7 M2 U8 — o cadastro dos tipos de ocorrência e dos formulários é ato de ADMINISTRAÇÃO do ente (não do contrato);
+  // reagendar e cancelar o compromisso são do mesmo ato de programar (gestor designado), e registrar a realização é do
+  // FISCAL designado — a mesma ação da ocorrência que ele registra.
+  cadastrarTipoDeOcorrencia: "GERIR_TIPOS_DE_OCORRENCIA",
+  publicarVersaoDoTipoDeOcorrencia: "GERIR_TIPOS_DE_OCORRENCIA",
+  mudarSituacaoDoTipoDeOcorrencia: "GERIR_TIPOS_DE_OCORRENCIA",
+  reagendarFiscalizacao: "PROGRAMAR_FISCALIZACAO_DO_CONTRATO",
+  cancelarFiscalizacao: "PROGRAMAR_FISCALIZACAO_DO_CONTRATO",
+  registrarRealizacaoDaFiscalizacao: "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO",
   cadastrarItemDoContrato: "CADASTRAR_ITEM_DO_CONTRATO",
   programarFiscalizacao: "PROGRAMAR_FISCALIZACAO_DO_CONTRATO",
   registrarOcorrencia: "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO",
@@ -1583,6 +1600,15 @@ export const FORA_DO_CENSO: Record<string, string> = {
     "LEITURA: as versões da planilha orçamentária de uma obra — sob a leitura de licitações e contratos.",
   planilhaOrcamentaria:
     "LEITURA: uma versão da planilha orçamentária com itens e vínculos — sob a leitura de licitações e contratos.",
+  tiposDeOcorrenciaDoEnte:
+    "LEITURA: os tipos de ocorrência do ente com a versão vigente do formulário — a tela de configuração e o formulário " +
+    "da ocorrência, sob a leitura de licitações e o alcance do contrato.",
+  agendaDaFiscalizacao:
+    "LEITURA: os compromissos de fiscalização do período, com situação derivada, histórico e conflitos de horário — a " +
+    "porta entrega só os contratos que a pessoa alcança.",
+  conferirFormularioDaOcorrencia:
+    "composável interno: confere tipo ativo, versão vigente, obrigatórias e formato das respostas dentro da transação de " +
+    "`registrarOcorrencia`, que já cobrou REGISTRAR_OCORRENCIA_DE_FISCALIZACAO e a designação de fiscal.",
   versoesParaMedirAOrdem:
     "LEITURA: as versões de planilha do contrato da ordem com a conciliação de cada serviço — a página da ordem, sob o " +
     "alcance do contrato; o formulário só aparece ao fiscal designado, e o ato cobra de novo.",

@@ -519,6 +519,25 @@ export function derivarAdministracaoDaFiscalizacao(
   return saida;
 }
 
+export const ACOES_DOS_TIPOS_DE_OCORRENCIA: readonly AcaoDoSistema[] = ["GERIR_TIPOS_DE_OCORRENCIA"];
+
+export function derivarTiposDeOcorrencia(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null);
+    if (!administra) continue;
+    const jaTem = new Set(perfil.permissoes.filter((p) => p.unidadeOrcId === null).map((p) => p.acao));
+    for (const acao of ACOES_DOS_TIPOS_DE_OCORRENCIA) {
+      if (jaTem.has(acao)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
+
 export const ACOES_DA_PLANILHA_DA_OBRA: readonly AcaoDoSistema[] = ["GERIR_PLANILHA_DA_OBRA"];
 
 export function derivarPlanilhaDaObra(
@@ -786,6 +805,16 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "vincular servicos da planilha a itens do contrato. Quem administra permissoes no global recebe a acao, e a concede " +
       "aos perfis da engenharia e da fiscalizacao de obras.",
     derivar: derivarPlanilhaDaObra,
+  },
+  {
+    versao: 21,
+    nome: "tipos-de-ocorrencia",
+    descricao:
+      "A agenda da fiscalizacao e os formularios versionados (V7 M2 U8) chegaram com GERIR_TIPOS_DE_OCORRENCIA: cadastrar " +
+      "tipos de ocorrencia do ente, publicar versoes do formulario e ativar ou desativar tipos. Quem administra permissoes " +
+      "no global recebe a acao e a concede aos perfis da fiscalizacao. Reagendar, cancelar e registrar a realizacao NAO sao " +
+      "acoes novas: sao os mesmos atos de programar (gestor designado) e de registrar ocorrencia (fiscal designado).",
+    derivar: derivarTiposDeOcorrencia,
   },
 ];
 

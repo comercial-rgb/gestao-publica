@@ -50,6 +50,13 @@ const TABELAS = [
   "AssinaturaDeDocumento",
   "SignatarioDaFila",
   "FilaDeAssinatura",
+  // ── V7 M2 U8 (agenda e formulários da fiscalização) ──
+  "RespostaDoFormularioDeOcorrencia",
+  "PerguntaDoFormularioDeOcorrencia",
+  "MudancaDeSituacaoDoTipoDeOcorrencia",
+  "RealizacaoDeFiscalizacao",
+  "CancelamentoDeFiscalizacao",
+  "ReagendamentoDeFiscalizacao",
   // ── V7 M2 (ponte contratual) ──
   // U7 — a medição da ordem pela planilha e o estorno da medição (antes do vínculo, do item da planilha e da medição).
   "ItemMedidoDaOrdemNaPlanilha",
@@ -89,6 +96,8 @@ const TABELAS = [
   "ResolucaoDeOcorrencia",
   "OcorrenciaDeFiscalizacao",
   "OrdemDeFiscalizacao",
+  "VersaoDoTipoDeOcorrencia",
+  "TipoDeOcorrenciaDoEnte",
   "ItemDoContrato",
   "RevogacaoDeDesignacaoNoContrato",
   "DesignacaoNoContrato",

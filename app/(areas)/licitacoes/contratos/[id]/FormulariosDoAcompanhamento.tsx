@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useId, useRef } from "react";
+import { useActionState, useId, useRef, useState } from "react";
 import { ChaveDeComando } from "../../../../../components/ui/ChaveDeComando";
 import { CLASSE_AREA_TEXTO, CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO, CLASSE_PAINEL_FORMULARIO, CLASSE_ROTULO } from "../../../../../components/ui/Formulario";
 import { acompanhamentoAction, type EstadoDoAcompanhamento } from "../fiscalizacao-actions";
@@ -125,6 +125,11 @@ export function FormProgramar({ contratoId, fiscais }: { readonly contratoId: st
         <Selecao id={a.id} nome="fiscalDesignacaoId" rotulo="Fiscal designado" opcoes={fiscais} />
         <Campo id={a.id} nome="dataPrevista" rotulo="Data prevista" tipo="date" />
       </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <Campo id={a.id} nome="horaInicio" rotulo="Horário (opcional)" tipo="time" obrigatorio={false} />
+        <Campo id={a.id} nome="duracaoMinutos" rotulo="Duração em minutos (opcional)" obrigatorio={false} inputMode="numeric" />
+        <Campo id={a.id} nome="local" rotulo="Local (opcional)" obrigatorio={false} />
+      </div>
       <label htmlFor={`${a.id}-objetivo`} className="mt-3 block text-xs"><span className={CLASSE_ROTULO}>O que verificar</span>
         <textarea id={`${a.id}-objetivo`} name="objetivo" required minLength={10} className={CLASSE_AREA_TEXTO} />
       </label>
@@ -134,8 +139,23 @@ export function FormProgramar({ contratoId, fiscais }: { readonly contratoId: st
   );
 }
 
-export function FormOcorrencia({ contratoId, ordens, hoje }: { readonly contratoId: string; readonly ordens: readonly Opcao[]; readonly hoje: string }): React.ReactElement {
+/** V7 M2 U8 — o formulário do tipo configurado: as perguntas da versão VIGENTE, respondidas na própria ocorrência. */
+export interface TipoConfigurado {
+  readonly tipoId: string;
+  readonly codigo: string;
+  readonly nome: string;
+  readonly natureza: string;
+  readonly versaoVigente: {
+    readonly id: string; readonly versao: number; readonly exigeGravidade: boolean; readonly encaminhamentoPadrao: "NENHUM" | "GESTOR";
+    readonly perguntas: readonly { readonly id: string; readonly codigo: string; readonly rotulo: string; readonly tipoDeResposta: string; readonly obrigatoria: boolean; readonly opcoes: readonly string[] }[];
+  } | null;
+}
+
+export function FormOcorrencia({ contratoId, ordens, hoje, tipos = [] }: { readonly contratoId: string; readonly ordens: readonly Opcao[]; readonly hoje: string; readonly tipos?: readonly TipoConfigurado[] }): React.ReactElement {
   const a = useAto();
+  const comFormulario = tipos.filter((t) => t.versaoVigente !== null);
+  const [tipoId, setTipoId] = useState("");
+  const escolhido = comFormulario.find((t) => t.tipoId === tipoId) ?? null;
   return (
     <form ref={a.ref} action={a.disparar} data-acao="registrar-ocorrencia" className={CLASSE_PAINEL_FORMULARIO}>
       <ChaveDeComando />
@@ -155,6 +175,52 @@ export function FormOcorrencia({ contratoId, ordens, hoje }: { readonly contrato
           <input id={`${a.id}-evidencias`} name="evidencias" type="file" multiple accept="application/pdf,image/png,image/jpeg" className={CLASSE_CAMPO} />
         </label>
       </div>
+      {comFormulario.length === 0 ? (
+        <p className="mt-3 text-xs text-[color:var(--color-ink-2)]" data-sem-tipo-configurado>Nenhum tipo de ocorrência do ente com formulário publicado: a ocorrência fica só com o tipo do sistema.</p>
+      ) : (
+        <div className="mt-3 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3" data-formulario-do-tipo={escolhido?.codigo ?? "nenhum"}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label htmlFor={`${a.id}-tipoConfigurado`} className="text-xs"><span className={CLASSE_ROTULO}>Tipo de ocorrência do ente (opcional)</span>
+              <select id={`${a.id}-tipoConfigurado`} name="tipoConfigurado" value={tipoId} onChange={(ev) => setTipoId(ev.currentTarget.value)} className={CLASSE_CAMPO}>
+                <option value="">Sem formulário</option>
+                {comFormulario.map((t) => <option key={t.tipoId} value={t.tipoId}>{t.codigo} — {t.nome} (versão {t.versaoVigente!.versao})</option>)}
+              </select>
+            </label>
+            {escolhido?.versaoVigente?.exigeGravidade === true ? (
+              <label htmlFor={`${a.id}-gravidade`} className="text-xs"><span className={CLASSE_ROTULO}>Gravidade</span>
+                <select id={`${a.id}-gravidade`} name="gravidade" required defaultValue="" className={CLASSE_CAMPO}>
+                  <option value="" disabled>Escolha…</option>
+                  <option value="BAIXA">Baixa</option><option value="MEDIA">Média</option><option value="ALTA">Alta</option>
+                </select>
+              </label>
+            ) : null}
+          </div>
+          {escolhido === null ? null : (
+            <>
+              <input type="hidden" name="versaoDoTipoId" value={escolhido.versaoVigente!.id} />
+              <div className="mt-3 grid gap-3 sm:grid-cols-2" data-perguntas-do-formulario={escolhido.versaoVigente!.perguntas.length}>
+                {escolhido.versaoVigente!.perguntas.map((p) => (
+                  <label key={p.id} htmlFor={`${a.id}-resposta-${p.id}`} className="text-xs" data-pergunta={p.codigo}>
+                    <span className={CLASSE_ROTULO}>{p.rotulo}{p.obrigatoria ? " (obrigatória)" : ""}</span>
+                    {p.tipoDeResposta === "OPCAO" ? (
+                      <select id={`${a.id}-resposta-${p.id}`} name={`resposta.${p.id}`} required={p.obrigatoria} defaultValue="" className={CLASSE_CAMPO}>
+                        <option value="">Escolha…</option>
+                        {p.opcoes.map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    ) : p.tipoDeResposta === "SIM_NAO" ? (
+                      <select id={`${a.id}-resposta-${p.id}`} name={`resposta.${p.id}`} required={p.obrigatoria} defaultValue="" className={CLASSE_CAMPO}>
+                        <option value="">Escolha…</option><option value="SIM">Sim</option><option value="NAO">Não</option>
+                      </select>
+                    ) : (
+                      <input id={`${a.id}-resposta-${p.id}`} name={`resposta.${p.id}`} required={p.obrigatoria} type={p.tipoDeResposta === "DATA" ? "date" : "text"} inputMode={p.tipoDeResposta === "NUMERO" ? "decimal" : undefined} className={CLASSE_CAMPO} />
+                    )}
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
       <Mensagens estado={a.estado} acao="registrar-ocorrencia" />
       <button type="submit" disabled={a.pendente} className={`mt-3 ${CLASSE_BOTAO_PRIMARIO}`}>{a.pendente ? "Gravando…" : "Registrar ocorrência"}</button>
     </form>

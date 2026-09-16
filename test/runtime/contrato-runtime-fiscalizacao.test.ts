@@ -35,7 +35,7 @@ const negado = /permission denied|permissão negada/i;
 beforeAll(async () => {
   await limparBanco(dono);
   const contas: [string, string[], string | null][] = [
-    [ADMIN, ["DESIGNAR_NO_CONTRATO", "CADASTRAR_ITEM_DO_CONTRATO", "DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO", "CONFIGURAR_EXECUCAO_DO_CONTRATO"], "86288366757"],
+    [ADMIN, ["DESIGNAR_NO_CONTRATO", "CADASTRAR_ITEM_DO_CONTRATO", "DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO", "CONFIGURAR_EXECUCAO_DO_CONTRATO", "GERIR_TIPOS_DE_OCORRENCIA"], "86288366757"],
     [GESTORA, ["PROGRAMAR_FISCALIZACAO_DO_CONTRATO", "RESOLVER_OCORRENCIA_DE_FISCALIZACAO"], "11144477735"],
     [FISCAL, ["REGISTRAR_OCORRENCIA_DE_FISCALIZACAO", "REGISTRAR_MEDICAO_DE_OBRA"], "52998224725"],
     [APROVA, ["APROVAR_MEDICAO_DE_OBRA"], null],
@@ -90,4 +90,39 @@ describe("contrato acompanhado pelo papel de runtime", () => {
     await configurarRegimeDeMedicao(app, { contratoId: "ctr", regime: "PERIODO_INDIVISIVEL", fundamento: "Cláusula RT de medição fechada", vigenciaInicio: dia(1), criadoPor: ADMIN });
     await expect(app.$executeRawUnsafe(`UPDATE "RegimeDeMedicaoDoContrato" SET "regime" = 'PERIODO_LIVRE'`)).rejects.toThrow(negado);
   });
+
+  it("V7 M2 U8 — agenda (programar com horário, reagendar, cancelar, realizar) e formulários versionados pelo runtime, sem reescrita", async () => {
+    const { programarFiscalizacao, registrarOcorrencia } = await import("../../modules/m11-licitacoes/fiscalizacao.js");
+    const { cancelarFiscalizacao, reagendarFiscalizacao, registrarRealizacaoDaFiscalizacao, agendaDaFiscalizacao } = await import("../../modules/m11-licitacoes/agenda-da-fiscalizacao.js");
+    const { cadastrarTipoDeOcorrencia, publicarVersaoDoTipoDeOcorrencia, mudarSituacaoDoTipoDeOcorrencia, tiposDeOcorrenciaDoEnte } = await import("../../modules/m11-licitacoes/formularios-de-ocorrencia.js");
+    // O teste anterior REVOGOU as designações: a agenda precisa de designações vigentes, e designar de novo é fato novo.
+    await designarNoContrato(app, { contratoId: "ctr", papel: "GESTOR", usuarioIdentificador: GESTORA, atoDesignacao: "Portaria RT-G2", vigenciaInicio: dia(-1), criadoPor: ADMIN });
+    const fiscalD = await designarNoContrato(app, { contratoId: "ctr", papel: "FISCAL", usuarioIdentificador: FISCAL, atoDesignacao: "Portaria RT-F2", vigenciaInicio: dia(-1), criadoPor: ADMIN });
+    const a = await programarFiscalizacao(app, { contratoId: "ctr", fiscalDesignacaoId: fiscalD.designacaoId, dataPrevista: dia(1), objetivo: "Visita programada pelo runtime", horaInicio: "08:30", duracaoMinutos: 60, local: "Canteiro de obras", criadoPor: GESTORA });
+    const ordem = await dono.ordemDeFiscalizacao.findFirstOrThrow({ where: { numero: a.numero, contratoId: "ctr" }, select: { id: true } });
+    await reagendarFiscalizacao(app, { ordemId: ordem.id, dataPrevista: dia(2), horaInicio: "10:00", motivo: "Chuva no canteiro", criadoPor: GESTORA });
+    await registrarRealizacaoDaFiscalizacao(app, { ordemId: ordem.id, data: dia(0), horaInicio: "10:05", horaFim: "11:00", relato: "Visita feita com o encarregado da obra", criadoPor: FISCAL });
+    const agenda = await agendaDaFiscalizacao(app, { de: dia(2), ate: dia(2), contratoIds: ["ctr"] });
+    expect(agenda.map((c) => [c.numero, c.horaInicio, c.situacao])).toEqual([[a.numero, "10:00", "REALIZADA"]]);
+    // O tipo do ente com formulário, e a ocorrência respondendo por ele — tudo pela conexão gestao_app.
+    const { tipoId } = await cadastrarTipoDeOcorrencia(app, { codigo: "RT-ATRASO", nome: "Atraso (runtime)", natureza: "ATRASO", criadoPor: ADMIN });
+    const v = await publicarVersaoDoTipoDeOcorrencia(app, { tipoId, exigeGravidade: true, encaminhamentoPadrao: "GESTOR", vigenciaInicio: dia(-1), motivo: "Formulário do runtime", perguntas: [{ codigo: "onde", rotulo: "Onde foi constatado", tipoDeResposta: "TEXTO", obrigatoria: true, opcoes: [] }], criadoPor: ADMIN });
+    const pergunta = (await tiposDeOcorrenciaDoEnte(app, { apenasAtivos: true }))[0]!.versaoVigente!.perguntas[0]!;
+    const oc = await registrarOcorrencia(app, { contratoId: "ctr", data: dia(0), tipo: "ATRASO", descricao: "Serviço parado no canteiro", encaminhamento: "GESTOR", versaoDoTipoId: v.versaoId, gravidade: "ALTA", respostas: [{ perguntaId: pergunta.id, valor: "Canteiro norte" }], criadoPor: FISCAL });
+    expect(oc.respostas).toBe(1);
+    await mudarSituacaoDoTipoDeOcorrencia(app, { tipoId, ativo: false, motivo: "Tipo desativado pelo runtime", criadoPor: ADMIN });
+    // Cancelar a realizada é recusado pelo domínio, não pelo banco.
+    await expect(cancelarFiscalizacao(app, { ordemId: ordem.id, motivo: "Tentativa depois da realização", criadoPor: GESTORA })).rejects.toThrow(/FISCALIZACAO-JA-REALIZADA/);
+    for (const sql of [
+      `UPDATE "ReagendamentoDeFiscalizacao" SET "motivo" = 'x'`,
+      `DELETE FROM "ReagendamentoDeFiscalizacao"`,
+      `UPDATE "RealizacaoDeFiscalizacao" SET "relato" = 'apagado'`,
+      `UPDATE "VersaoDoTipoDeOcorrencia" SET "exigeGravidade" = false`,
+      `UPDATE "PerguntaDoFormularioDeOcorrencia" SET "rotulo" = 'outra pergunta'`,
+      `UPDATE "RespostaDoFormularioDeOcorrencia" SET "valor" = 'outro valor'`,
+      `DELETE FROM "MudancaDeSituacaoDoTipoDeOcorrencia"`,
+    ]) {
+      await expect(app.$executeRawUnsafe(sql), sql).rejects.toThrow(negado);
+    }
+  }, 180_000);
 });

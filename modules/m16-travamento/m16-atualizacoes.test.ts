@@ -265,6 +265,7 @@ describe("instalação limpa e atualização — no banco", () => {
       { versao: 18, previa: 0, aplicada: false },
       { versao: 19, previa: 0, aplicada: false },
       { versao: 20, previa: 0, aplicada: false },
+      { versao: 21, previa: 0, aplicada: false },
     ]);
   });
 

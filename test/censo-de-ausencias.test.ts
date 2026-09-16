@@ -216,7 +216,9 @@ const AUSENCIAS: readonly Ausencia[] = [
   {
     clausulas: ["5.11.7", "5.11.12"],
     oQue: "evento e agendamento de auditoria, com notificação e cancelamento",
-    padrao: /AgendamentoDeAuditoria|EventoDeControleInterno|agendamentoId/,
+    // ⚠️ `\b` antes de `agendamentoId`: sem ele, o `reagendamentoId` da AGENDA DA FISCALIZAÇÃO (V7 M2 U8) casava
+    // aqui e o censo dizia que a ausência da auditoria tinha sido preenchida — por uma substring de outro domínio.
+    padrao: /AgendamentoDeAuditoria|EventoDeControleInterno|\bagendamentoId\b/,
   },
 ];
 

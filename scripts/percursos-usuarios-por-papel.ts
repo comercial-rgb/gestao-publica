@@ -219,6 +219,14 @@ export const PAPEIS: readonly Papel[] = [
     descricao: "Importa com prévia, confirma versões e vincula a planilha orçamentária da obra.",
     acoes: ["CONSULTAR_LICITACOES", "GERIR_PLANILHA_DA_OBRA"],
   },
+  {
+    // V7 M2 U8 — quem configura os tipos de ocorrência e os formulários do ente (não fiscaliza contrato nenhum).
+    identificador: "configuracao-fiscalizacao@percursos.local",
+    nome: "Configuração da fiscalização (percurso)",
+    perfil: "CONFIGURAÇÃO DA FISCALIZAÇÃO — PERCURSO",
+    descricao: "Cadastra tipos de ocorrência do ente e publica as versões dos formulários.",
+    acoes: ["CONSULTAR_LICITACOES", "GERIR_TIPOS_DE_OCORRENCIA"],
+  },
 ];
 
 async function main(): Promise<void> {
