@@ -5,6 +5,7 @@ import { Card } from "../../../../../components/ui/Card";
 import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
 import { AvisosDosAtos, ResultadosDosAtos } from "../../../../../components/ui/ResultadosDosAtos";
 import { imovelParaTela, simularNaTela } from "../../../../../lib/portas/cadastro-imobiliario";
+import { qtdBr } from "../../../../../lib/format/quantidade";
 import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 import { exigirLeitura } from "../../../../../lib/portas/molde";
 import { FormEncerrarVinculo, FormNovaVersao, FormVincularPessoa } from "../FormulariosDoImovel";
@@ -67,8 +68,8 @@ export default async function ImovelPage({ params, searchParams }: { readonly pa
                     <td className="py-2 pr-2">{br(v.vigenciaInicio)}</td>
                     <td className="py-2 pr-2 [overflow-wrap:anywhere]">{v.endereco} — {v.bairro}</td>
                     <td className="py-2 pr-2">{USO[v.uso] ?? v.uso}</td>
-                    <td className="py-2 pr-2 text-right tabular-nums">{Number(v.areaDoTerreno).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 4 })}</td>
-                    <td className="py-2 pr-2 text-right tabular-nums">{Number(v.areaConstruida).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 4 })}</td>
+                    <td className="py-2 pr-2 text-right tabular-nums">{qtdBr(v.areaDoTerreno)}</td>
+                    <td className="py-2 pr-2 text-right tabular-nums">{qtdBr(v.areaConstruida)}</td>
                     <td className="py-2 text-xs [overflow-wrap:anywhere]">{v.atributos.length === 0 ? "" : <span className="block">{v.atributos.map((a) => `${a.chave} = ${a.valor}`).join(" · ")}</span>}{v.motivo}</td>
                   </tr>
                 ))}

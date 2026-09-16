@@ -102,6 +102,24 @@ const EXCECOES: Readonly<Record<string, string>> = {
     "arquivo: nada compara, soma ou corta período por ele, e a ida e a volta usam a MESMA " +
     "âncora — provado em `m25-campos-adicionais.test.ts`",
 
+  // ═══ ⚠️ ARITMÉTICA DE CALENDÁRIO SOBRE "AAAA-MM-DD" NÃO É INSTANTE (V7 M2 U8) ═══
+  //
+  // Os três abaixo recebem um DIA CIVIL já resolvido, como texto ("2026-09-15"), e precisam de
+  // uma calculadora de calendário: somar dias, achar o domingo da semana, saber o último dia do
+  // mês, dizer o nome do dia. `Date.UTC(a, m - 1, d)` seguido de `getUTC*` é o idioma SEGURO
+  // para isso — ele nunca lê o relógio, nunca vê fuso nenhum, e a ida e a volta usam a mesma
+  // âncora. É a mesma decisão já registrada para `m25-campos-adicionais`.
+  //
+  // ⚠️ E O QUE TORNARIA ISTO ERRADO, dito para quem reler: o dia de ENTRADA. Se algum deles
+  // passasse a derivar o dia de um `new Date()` em vez de recebê-lo pronto, a exceção cai — e
+  // é essa a linha a reler antes de acrescentar a quarta.
+  "lib/portas/agenda-da-fiscalizacao.ts":
+    "aritmética de calendário sobre dia civil em texto (somar dias, domingo da semana, último " +
+    "dia do mês). `Date.UTC`+`getUTC*` é a calculadora; o dia civil vem resolvido de fora",
+  "app/(areas)/licitacoes/fiscalizacao/agenda/page.tsx":
+    "mesma calculadora de calendário da porta da agenda: nome do dia e navegação por dias, " +
+    "sobre o dia civil que a porta já resolveu",
+
 };
 
 function fontes(dir: string): readonly string[] {
@@ -197,10 +215,20 @@ describe("data civil do ente", () => {
         inuteis.push(`${rel} (arquivo não existe mais)`);
         continue;
       }
-      const temCodigo = fonte
-        .split("\n")
-        .some((l) => PADRAO.test(l.replace(/\/\/.*$/, "").replace(/^\s*\*.*$/, "")));
-      if (!temCodigo) inuteis.push(`${rel} (já não usa UTC — remova a exceção)`);
+      // ⚠️ OS MESMOS TRÊS PADRÕES DA VARREDURA, e isto foi um defeito real (V9 N1).
+      //
+      // Esta metade conferia só `PADRAO` (o `getUTC*`), enquanto a varredura acima acusa por
+      // TRÊS padrões. O efeito: um arquivo que tropeçava só em `PADRAO_HOSPEDEIRO`
+      // (`toLocaleString`) era acusado pela primeira metade e, ao ser declarado em `EXCECOES`,
+      // era reprovado pela segunda como "exceção desnecessária" — **não havia como declarar
+      // aquela exceção**, e as duas metades ficavam vermelhas ao mesmo tempo, uma contradizendo
+      // a outra. Medido em 16/09/2026.
+      const acusa = (l: string): boolean => {
+        const c = l.replace(/\/\/.*$/, "").replace(/^\s*\*.*$/, "");
+        return PADRAO.test(c) || PADRAO_HOSPEDEIRO.test(c) || PADRAO_LITERAL_Z.test(c);
+      };
+      const temCodigo = fonte.split("\n").some(acusa);
+      if (!temCodigo) inuteis.push(`${rel} (já não usa UTC nem fuso do hospedeiro — remova a exceção)`);
     }
     expect(inuteis, "\n\nExceções que já não são necessárias:\n").toEqual([]);
   });

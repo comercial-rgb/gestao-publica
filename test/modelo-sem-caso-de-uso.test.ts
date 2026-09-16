@@ -100,6 +100,20 @@ const ESCRITO_POR_ANINHAMENTO: Readonly<Record<string, string>> = {
     "escrita por `respostas: { create: ... }` em registrarOcorrencia (modules/m11-licitacoes/fiscalizacao.ts), depois de " +
     "conferida por conferirFormularioDaOcorrencia; LIDA pela relação `respostas` da ocorrência — a resposta não existe " +
     "fora da ocorrência que a respondeu",
+  // ── V7 B1 — o cadastro imobiliário e os parâmetros do tributo ──
+  AtributoDaVersaoDoImovel:
+    "escrito por `atributos: { create: ... }` em cadastrarImovel e publicarVersaoDoImovel " +
+    "(modules/m34-tributario/cadastro-imobiliario.ts); LIDO pela relação `atributos` da versão em " +
+    "montarVariaveis (simulacao.ts) — é de lá que saem as variáveis do ente para a fórmula. O " +
+    "atributo não existe fora da versão que o declarou: uma versão do cadastro é uma fotografia, " +
+    "e um atributo avulso não pertenceria a fotografia nenhuma",
+  ParametroTributario:
+    "escrito por `parametros: { create: ... }` em publicarTabelaDoTributo " +
+    "(modules/m34-tributario/simulacao.ts); LIDO pela relação `parametros` da tabela em " +
+    "tabelaVigente, que é o que a simulação consome. O parâmetro vale POR VIGÊNCIA, e fora da " +
+    "tabela que o publicou ele não tem fundamento nem data — que é exatamente o que a regra " +
+    "\"nenhum código no código\" exige dele",
+
   // ── V6 P2.3 — M33 folha ──
   FaixaDeContribuicao:
     "escrita por `faixas: { create: ... }` em cadastrarTabelaDeContribuicao " +
