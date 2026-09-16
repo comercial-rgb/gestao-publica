@@ -2,7 +2,15 @@ import { Decimal, toMoney, serializar } from "../../packages/contracts/index.js"
 import { diaCivilBr, fimDoDiaCivil, inicioDoDiaCivil } from "../../packages/datas/index.js";
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import { tipoDeDocumento } from "../../packages/documento/index.js";
-import { cliente, PortaSemBancoError } from "./cliente";
+import { cliente, PortaSemBancoError } from "./cliente.js";
+import {
+  derivadasDe,
+  ehFase,
+  idsDaPagina,
+  totaisDerivados,
+  type FaseDaDespesa,
+  type FiltrosDerivados,
+} from "./despesas-derivadas.js";
 
 export { PortaSemBancoError };
 
@@ -108,24 +116,16 @@ export interface PaginaDeDespesasPublicas {
    * ⚠️ OS TOTAIS SÃO DO RECORTE INTEIRO, não da página — e são TRÊS NÚMEROS SEPARADOS, nunca um
    * "total da despesa" que some os estágios.
    *
-   * ⚠️ E ELES PODEM SER `null`, DE PROPÓSITO. Calcular o líquido de anulações totais e parciais
-   * exige carregar a cadeia de cada empenho; acima de `TETO_DOS_TOTAIS` isso é um recorte que não
-   * carrega — e a página de um município com dezenas de milhares de empenhos ficaria em branco.
-   * Acima do teto os totais vêm ausentes COM O MOTIVO, em vez de virem errados ou de a página
-   * morrer: um número ausente e explicado é honesto; um número parcial apresentado como total, não.
+   * ⚠️ E ELES DEIXARAM DE PODER SER `null` (V10 T3). Até aqui, acima de dois mil empenhos o
+   * rodapé desistia e dizia "estreite a busca" — e o total do exercício é exatamente o número
+   * que o cidadão foi buscar. Agora a soma é AGREGADA NO BANCO
+   * (`lib/portas/despesas-derivadas.ts`), sobre o recorte inteiro, sem teto e sem carregar
+   * cadeia nenhuma em memória.
    */
-  readonly totais: { readonly empenhado: string; readonly liquidado: string; readonly pago: string } | null;
-  /** Por que os totais não vieram, quando não vieram. */
-  readonly totaisAusentes: string | null;
+  readonly totais: { readonly empenhado: string; readonly liquidado: string; readonly pago: string };
 }
 
 export const PADRAO_POR_PAGINA_DESPESA = 25;
-
-/**
- * Acima disto, os totais do recorte não são calculados. Medido pelo custo: cada empenho traz a
- * cadeia de liquidações e pagamentos com os respectivos estornos e anulações parciais.
- */
-export const TETO_DOS_TOTAIS = 2000;
 
 /**
  * O DOCUMENTO DO CREDOR PARA O PÚBLICO. CNPJ inteiro (é público); CPF com só os seis dígitos do
@@ -140,15 +140,24 @@ export function documentoPublicavelDoCredor(bruto: string): string {
   return `***.${d.slice(3, 6)}.${d.slice(6, 9)}-**`;
 }
 
-interface LinhaDaCadeia {
+export interface LinhaDaCadeia {
   readonly id: string;
   readonly valor: { toFixed(n: number): string };
   readonly estornoDeId: string | null;
   readonly anulacaoParcialDeId: string | null;
 }
 
-/** Soma líquida de uma cadeia do M05 (empenhos, liquidações ou pagamentos). */
-function liquido(linhas: readonly LinhaDaCadeia[]): Decimal {
+/**
+ * Soma líquida de uma cadeia do M05 (empenhos, liquidações ou pagamentos).
+ *
+ * ⚠️ ELA DEIXOU DE SER USADA PELA CONSULTA (V10 T3) — quem calcula agora é o SQL de
+ * `despesas-derivadas.ts`, para que filtro, contagem, paginação, totais e exportação falem do
+ * mesmo conjunto. E ela continua EXPORTADA de propósito: é a implementação INDEPENDENTE contra
+ * a qual o SQL é conferido em `test/despesas-derivadas.test.ts`. "Parser se testa contra
+ * implementação independente" — usar o próprio SQL para conferir o próprio SQL passaria com
+ * qualquer interpretação errada consistente.
+ */
+export function liquido(linhas: readonly LinhaDaCadeia[]): Decimal {
   return somaLiquidaEstornaveis(linhas.map((l) => ({ id: l.id, valor: toMoney(l.valor.toFixed(2)), estornoDeId: l.estornoDeId, anulacaoParcialDeId: l.anulacaoParcialDeId })));
 }
 
@@ -157,55 +166,50 @@ export async function listarDespesasPublicas(f: FiltrosDasDespesasPublicas = {})
   const porPagina = Math.min(100, Math.max(1, f.porPagina ?? PADRAO_POR_PAGINA_DESPESA));
   const pagina = Math.max(1, f.pagina ?? 1);
 
-  // ⚠️ SÓ OS EMPENHOS ORIGINAIS ENTRAM NA LISTA. Anulação total e anulação parcial são LINHAS de
-  // empenho no M05 — listá-las mostraria "empenhos" que na verdade são correções de outros, e o
-  // leitor contaria a mesma despesa duas vezes. Elas aparecem na COLUNA "anulado" do original.
-  const where: Record<string, unknown> = { estornoDeId: null, anulacaoParcialDeId: null };
-  const q = (f.q ?? "").trim();
-  if (q !== "") {
-    where["OR"] = [
-      { numero: { contains: q, mode: "insensitive" } },
-      { historico: { contains: q, mode: "insensitive" } },
-      { credorCpfCnpj: { contains: q.replace(/[^0-9A-Za-z]/g, "") } },
-    ];
-  }
-  const exercicio = Number.parseInt((f.exercicio ?? "").trim(), 10);
-  if (Number.isInteger(exercicio)) where["ficha"] = { exercicio };
-  if ((f.unidade ?? "").trim() !== "") {
-    where["ficha"] = { ...((where["ficha"] as object) ?? {}), unidadeOrcId: (f.unidade ?? "").trim() };
-  }
   /**
-   * ⚠️ AS BORDAS DO PERÍODO SÃO DO DIA CIVIL DO ENTE, e a primeira versão deste arquivo as
-   * escreveu com `T00:00:00Z`/`T23:59:59Z` — o guard `data-civil` a pegou no mesmo dia.
+   * ⚠️ O FILTRO INTEIRO VAI PARA O BANCO (V10 T3), INCLUSIVE A FASE.
    *
-   * O estrago seria silencioso e enviesado: com o ente em UTC−3, `31/03T23:59:59Z` é 20:59:59 do
-   * dia 31 no relógio local, e todo empenho registrado depois das 21h do último dia do mês ficaria
-   * FORA da consulta daquele mês; `01/03T00:00:00Z` é 21h do dia 28, e traria de volta parte do dia
-   * anterior. O total de março sairia errado nas duas pontas — e bateria com o total de abril,
-   * porque o mesmo viés se repete.
+   * A fase é DERIVADA da cadeia (empenhado/liquidado/pago líquidos), e até aqui ela era aplicada
+   * sobre a PÁGINA já carregada. O efeito: a contagem falava do conjunto sem fase, o número de
+   * páginas também, o CSV baixava outra coisa, e a tela tinha de explicar a diferença ao cidadão.
+   * Agora a derivação acontece em SQL e o predicado vale para o conjunto inteiro — contagem,
+   * páginas, totais, lista e exportação passam a falar do MESMO recorte.
+   *
+   * ⚠️ AS BORDAS DO PERÍODO SÃO DO DIA CIVIL DO ENTE. A primeira versão deste arquivo as escreveu
+   * com `T00:00:00Z`/`T23:59:59Z` e o guard `data-civil` a pegou no mesmo dia: com o ente em
+   * UTC−3, todo empenho depois das 21h do último dia ficaria FORA do mês, e parte do dia anterior
+   * entraria. Elas são resolvidas AQUI e chegam ao SQL como instantes.
    */
-  const periodo: Record<string, Date> = {};
-  if ((f.de ?? "").trim() !== "") periodo["gte"] = inicioDoDiaCivil((f.de ?? "").trim());
-  if ((f.ate ?? "").trim() !== "") periodo["lte"] = fimDoDiaCivil((f.ate ?? "").trim());
-  if (Object.keys(periodo).length > 0) where["data"] = periodo;
+  const exercicioNumero = Number.parseInt((f.exercicio ?? "").trim(), 10);
+  const faseBruta = (f.fase ?? "").trim();
+  const filtros: FiltrosDerivados = {
+    ...((f.q ?? "").trim() !== "" ? { q: (f.q ?? "").trim() } : {}),
+    ...(Number.isInteger(exercicioNumero) ? { exercicio: exercicioNumero } : {}),
+    ...((f.unidade ?? "").trim() !== "" ? { unidadeOrcId: (f.unidade ?? "").trim() } : {}),
+    ...((f.de ?? "").trim() !== "" ? { de: inicioDoDiaCivil((f.de ?? "").trim()) } : {}),
+    ...((f.ate ?? "").trim() !== "" ? { ate: fimDoDiaCivil((f.ate ?? "").trim()) } : {}),
+    ...(ehFase(faseBruta) ? { fase: faseBruta as FaseDaDespesa } : {}),
+  };
 
-  const ordem =
-    f.ordem === "valor" ? { valor: f.direcao === "asc" ? ("asc" as const) : ("desc" as const) }
-      : f.ordem === "numero" ? { numero: f.direcao === "asc" ? ("asc" as const) : ("desc" as const) }
-        : { data: f.direcao === "asc" ? ("asc" as const) : ("desc" as const) };
+  const ordem: "data" | "numero" | "valor" = f.ordem === "valor" ? "valor" : f.ordem === "numero" ? "numero" : "data";
+  const direcao: "asc" | "desc" = f.direcao === "asc" ? "asc" : "desc";
+
+  const [agregado, ids, exercicios, unidades] = await Promise.all([
+    totaisDerivados(prisma, filtros),
+    idsDaPagina(prisma, filtros, ordem, direcao, (pagina - 1) * porPagina, porPagina),
+    prisma.fichaOrcamentaria.findMany({ distinct: ["exercicio"], select: { exercicio: true }, orderBy: { exercicio: "desc" } }),
+    prisma.unidadeOrcamentaria.findMany({ select: { id: true, codigo: true, descricao: true }, orderBy: { codigo: "asc" } }),
+  ]);
 
   /**
    * ⚠️ ESTE OBJETO NÃO É CONFERIDO PELO COMPILADOR, e isso custou uma execução: `funcao: { select:
    * { descricao: true } }` compilou e só quebrou em runtime (o campo é `nome`). Um `select`
    * extraído para uma constante com `as const` perde a checagem que o Prisma faz quando ele é
-   * escrito inline. Ele continua extraído — porque a lista e os totais TÊM de usar o mesmo, ou os
-   * números do rodapé deixam de bater com as linhas — e o que cobre a lacuna é o teste que roda a
-   * consulta de verdade contra o banco.
+   * escrito inline. O que cobre a lacuna é o teste que roda a consulta de verdade contra o banco.
    */
   const SELECAO = {
     id: true, numero: true, data: true, valor: true, credorCpfCnpj: true, historico: true,
     estornoDeId: true, anulacaoParcialDeId: true,
-    // As anulações DESTE empenho — é delas que sai a coluna "anulado".
     estornos: { select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } },
     anulacoesParciais: { select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } },
     contrato: { select: { numeroContrato: true } },
@@ -218,49 +222,38 @@ export async function listarDespesasPublicas(f: FiltrosDasDespesasPublicas = {})
         fonte: { select: { codigo: true, descricao: true } },
       },
     },
-    liquidacoes: {
-      select: {
-        id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true,
-        estornos: { select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } },
-        anulacoesParciais: { select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } },
-        pagamentos: {
-          select: {
-            id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true,
-            estornos: { select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } },
-            anulacoesParciais: { select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } },
-          },
-        },
-      },
-    },
   } as const;
 
-  const [total, linhas, exercicios, unidades] = await Promise.all([
-    prisma.empenho.count({ where }),
-    prisma.empenho.findMany({ where, orderBy: ordem, skip: (pagina - 1) * porPagina, take: porPagina, select: SELECAO }),
-    prisma.fichaOrcamentaria.findMany({ distinct: ["exercicio"], select: { exercicio: true }, orderBy: { exercicio: "desc" } }),
-    prisma.unidadeOrcamentaria.findMany({ select: { id: true, codigo: true, descricao: true }, orderBy: { codigo: "asc" } }),
-  ]);
+  // ⚠️ SEM TERNÁRIO AQUI. `ids.length === 0 ? [] : await …` faz a inferência do Prisma colapsar
+  // para `any` — e aí `credorNome`, `unidade` e o resto deixam de ser conferidos pelo
+  // compilador, em silêncio. `in: []` é consulta válida e devolve vazio.
+  const linhas = await prisma.empenho.findMany({ where: { id: { in: [...ids] } }, select: SELECAO });
+
+  // ⚠️ A ORDEM É A DO SQL, e não a do `findMany`: um `IN` não promete ordem nenhuma. Reordenar
+  // pela lista de ids é o que mantém a página igual à que foi contada e paginada.
+  const porId = new Map(linhas.map((e) => [e.id, e]));
+  const naOrdem = ids.map((id) => porId.get(id)).filter((e): e is (typeof linhas)[number] => e !== undefined);
 
   // Os nomes dos credores, resolvidos pela Pessoa canônica — numa consulta só.
-  const documentos = [...new Set(linhas.map((e) => e.credorCpfCnpj.replace(/[^0-9A-Za-z]/g, "")))];
+  const documentos = [...new Set(naOrdem.map((e) => e.credorCpfCnpj.replace(/[^0-9A-Za-z]/g, "")))];
   const pessoas = await prisma.pessoa.findMany({
     where: { documento: { in: documentos } },
     select: { documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } },
   });
   const nomePorDocumento = new Map(pessoas.map((p) => [p.documento, p.versoes[0]?.nome ?? ""]));
 
+  // ⚠️ O ESTADO DERIVADO DA LINHA VEM DO MESMO SQL que contou, paginou e somou. Recalculá-lo aqui
+  // seria a segunda aritmética "mais rápida" que faz o rodapé deixar de bater com as linhas — e
+  // ninguém descobre, porque conferir exige somar à mão.
+  const derivadas = await derivadasDe(prisma, ids);
+
   type Bruta = (typeof linhas)[number];
   const projetar = (e: Bruta): DespesaPublicaNaLista => {
-    const cadeiaDoEmpenho = [
-      { id: e.id, valor: e.valor, estornoDeId: e.estornoDeId, anulacaoParcialDeId: e.anulacaoParcialDeId },
-      ...e.estornos, ...e.anulacoesParciais,
-    ];
-    const empenhado = liquido(cadeiaDoEmpenho);
+    const d = derivadas.get(e.id) ?? { empenhado: "0", liquidado: "0", pago: "0" };
+    const empenhado = toMoney(new Decimal(d.empenhado));
+    const liq = toMoney(new Decimal(d.liquidado));
+    const pg = toMoney(new Decimal(d.pago));
     const original = new Decimal(e.valor.toFixed(2));
-    const liquidacoes = e.liquidacoes.flatMap((l) => [{ id: l.id, valor: l.valor, estornoDeId: l.estornoDeId, anulacaoParcialDeId: l.anulacaoParcialDeId }, ...l.estornos, ...l.anulacoesParciais]);
-    const pagamentos = e.liquidacoes.flatMap((l) => l.pagamentos.flatMap((p) => [{ id: p.id, valor: p.valor, estornoDeId: p.estornoDeId, anulacaoParcialDeId: p.anulacaoParcialDeId }, ...p.estornos, ...p.anulacoesParciais]));
-    const liq = liquido(liquidacoes);
-    const pg = liquido(pagamentos);
     const doc = e.credorCpfCnpj.replace(/[^0-9A-Za-z]/g, "");
     return {
       id: e.id,
@@ -275,48 +268,31 @@ export async function listarDespesasPublicas(f: FiltrosDasDespesasPublicas = {})
       credorDocumento: documentoPublicavelDoCredor(doc),
       historico: e.historico,
       contrato: e.contrato?.numeroContrato ?? null,
-      empenhado: serializar(toMoney(empenhado)),
+      empenhado: serializar(empenhado),
       empenhadoOriginal: serializar(toMoney(original)),
       anulado: serializar(toMoney(original.minus(empenhado))),
-      liquidado: serializar(toMoney(liq)),
-      pago: serializar(toMoney(pg)),
+      liquidado: serializar(liq),
+      pago: serializar(pg),
       // ⚠️ A FASE É O ESTÁGIO ALCANÇADO, não um somatório: "Paga" não quer dizer que o valor pago
-      // seja o empenhado — pagamento parcial existe, e as três colunas continuam ao lado.
+      // seja o empenhado — pagamento parcial existe, e as três colunas continuam ao lado. A MESMA
+      // árvore de decisão está em `predicadoDaFase`, no SQL, e o teste D5 confere as duas.
       fase: empenhado.lte(0) ? "Anulada" : pg.gt(0) ? "Paga" : liq.gt(0) ? "Liquidada" : "Empenhada",
     };
   };
 
-  const projetadas = linhas.map(projetar);
-
-  // ⚠️ OS TOTAIS DO RECORTE INTEIRO, não da página — quem consulta um exercício quer o total do
-  // exercício, e somar a página daria um número que não é total de nada.
-  //
-  // ⚠️ E ELES PASSAM PELA MESMA PROJEÇÃO DA LISTA. Uma segunda aritmética, "mais rápida", para o
-  // rodapé é como o total deixa de bater com as linhas que estão acima dele — e ninguém descobre,
-  // porque conferir exige somar a mão.
-  let totais: PaginaDeDespesasPublicas["totais"] = null;
-  let totaisAusentes: string | null = null;
-  if (total > TETO_DOS_TOTAIS) {
-    totaisAusentes =
-      `Este recorte tem ${total} empenhos. Os totais são calculados até ${TETO_DOS_TOTAIS}: ` +
-      `estreite por exercício, período ou unidade para vê-los.`;
-  } else {
-    const todos = await prisma.empenho.findMany({ where, select: SELECAO });
-    const projetadasTodas = todos.map(projetar);
-    const somar = (f2: (x: DespesaPublicaNaLista) => string): string =>
-      serializar(toMoney(projetadasTodas.reduce((t, x) => t.plus(f2(x)), new Decimal(0))));
-    totais = { empenhado: somar((x) => x.empenhado), liquidado: somar((x) => x.liquidado), pago: somar((x) => x.pago) };
-  }
-
   return {
-    linhas: projetadas,
-    total,
+    linhas: naOrdem.map(projetar),
+    total: agregado.total,
     pagina,
     porPagina,
-    paginas: Math.max(1, Math.ceil(total / porPagina)),
+    paginas: Math.max(1, Math.ceil(agregado.total / porPagina)),
     exerciciosDisponiveis: exercicios.map((x) => x.exercicio),
     unidadesDisponiveis: unidades.map((u) => ({ valor: u.id, rotulo: `${u.codigo} — ${u.descricao}` })),
-    totais,
-    totaisAusentes,
+    totais: {
+      empenhado: serializar(toMoney(new Decimal(agregado.empenhado))),
+      liquidado: serializar(toMoney(new Decimal(agregado.liquidado))),
+      pago: serializar(toMoney(new Decimal(agregado.pago))),
+    },
   };
+
 }

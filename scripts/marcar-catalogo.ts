@@ -2034,6 +2034,42 @@ const MAPA: Readonly<Record<string, Marca>> = {
     evidencia: "V6 P2.2: não há serviço de troca de matrícula; a matrícula é a chave de negócio do vínculo e é única no ente. Trocá-la exigiria histórico da matrícula anterior (pendência TROCA-DE-MATRICULA no MODULO M32).",
   },
 
+  // ═══ V10 T2 (N5) — O LANÇAMENTO TRIBUTÁRIO E A CERTIDÃO ═══
+  //
+  // ⚠️ AS CINCO SÃO `PARCIAL`, E NENHUMA SOBE DISSO. Cada cláusula desta seção pede várias
+  // coisas; o que existe é uma parte de cada uma, e a evidência diz qual é qual. Marcar
+  // `IMPLEMENTADO_NAO_VALIDADO` esconderia o que falta, que é o oposto do que o catálogo serve.
+  "5.29.23": {
+    situacao: "PARCIAL",
+    evidencia:
+      "V10 T2: a solicitação, a análise e a emissão das TRÊS espécies (negativa, positiva e positiva com efeito de negativa) existem, com decisão humana registrada, validade vinda de configuração versionada e emissão CONGELADA (conteúdo + sha256). Testes: test/certidao.test.ts C3–C4 (21/21). Telas: /receita/certidoes. " +
+      "⚠️ PARCIAL, e por três motivos nomeados: (1) NÃO há documento PDF — a emissão congela o conteúdo e a conferência é pela chave, sem arquivo (CERTIDAO-SEM-DOCUMENTO-PDF); (2) a COBERTURA da base fiscal é incompleta: dívida ativa, parcelamento e cadastro econômico/ISS estão FORA DO ALCANCE, e por isso o sistema NÃO emite negativa sozinho — exige declaração escrita de quem assina (DIVIDA-ATIVA-SEM-PESSOA); (3) a exigibilidade suspensa (art. 206 do CTN) não é modelada: quem escolhe 'positiva com efeito de negativa' é a pessoa que analisa.",
+  },
+  "5.29.22": {
+    situacao: "PARCIAL",
+    evidencia:
+      "V10 T2: existe configuração VERSIONADA de certidão, com validade em dias corridos e fundamento legal obrigatório, e sem ela a emissão é RECUSADA (nada de prazo padrão no código). Teste: test/certidao.test.ts C4 'SEM CONFIGURAÇÃO de validade'. Tela: /receita/certidoes. " +
+      "⚠️ PARCIAL, e o que falta é a maior parte do enunciado: não há cadastro de FINALIDADES de certidão, não há validade POR ESPÉCIE (a configuração é uma só, global), não há controle de visibilidade no portal do cidadão nem de restrição por finalidade, e não há cadastro de formulários exibidos no ato da emissão.",
+  },
+  "5.29.24": {
+    situacao: "PARCIAL",
+    evidencia:
+      "V10 T2: a consulta de todas as solicitações e certidões emitidas existe, com situação, espécie, validade, titular e a cobertura de cada base consultada. Tela: /receita/certidoes. " +
+      "⚠️ PARCIAL: não há ativar/desativar uma certidão emitida, e não há reimpressão de documento (não há documento — ver 5.29.23). Decidir duas vezes o mesmo pedido é RECUSADO, e o caminho para uma situação nova é um pedido novo (test/certidao.test.ts C4 'decidir duas vezes').",
+  },
+  "5.29.25": {
+    situacao: "PARCIAL",
+    evidencia:
+      "V10 T2: há serviço público de consulta de autenticidade — /consulta/certidao, SEM sessão —, com chave de 64 hex de randomBytes (não enumerável), devolvendo só protocolo, espécie, titular com documento MASCARADO, emissão, validade e vigência; nunca o extrato de débitos. Chave inválida e chave inexistente respondem IGUAL. Testes: test/certidao.test.ts C5 (5 casos). " +
+      "⚠️ PARCIAL: não há QR Code, porque não há documento impresso onde imprimi-lo (CERTIDAO-SEM-DOCUMENTO-PDF). A chave é digitada, não lida por câmera.",
+  },
+  "5.29.50": {
+    situacao: "PARCIAL",
+    evidencia:
+      "V10 T2: cada lançamento tributário congela a MEMÓRIA do cálculo — a fórmula do ente, o fundamento, a versão do cadastro, a versão da tabela e cada variável com o seu valor e a sua ORIGEM (cadastro, atributo do imóvel ou parâmetro da tabela) — e a tela a mostra, com a impressão digital (sha256) do que foi congelado. Atualizar a tabela depois NÃO muda o lançamento: test/lancamento-tributario.test.ts B1 'a memória é CONGELADA'. Tela: /receita/lancamentos/[loteId]. " +
+      "⚠️ PARCIAL: não há impressão da memória em documento, e correção monetária, multa e juros por parcela NÃO são modelados — o que se depura é o cálculo do lançamento, não o da parcela vencida.",
+  },
+
 };
 
 // ═══════════════════════════════════════════════════════════════════════════

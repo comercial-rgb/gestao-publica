@@ -1,0 +1,355 @@
+// ═══ M34 — B2: O LANÇAMENTO TRIBUTÁRIO E A CERTIDÃO (V10 T2 · N5) ═══
+//
+// A unidade B1 cadastrou o imóvel, publicou a tabela do ente e SIMULOU com memória — sem
+// gravar nada. Esta unidade fecha a cadeia: PREPARAR o lançamento, CONSTITUIR o crédito,
+// CORRIGIR o que estiver errado e responder à CERTIDÃO.
+//
+// ⚠️ O CRÉDITO CANÔNICO JÁ EXISTE, E NÃO É ESTE MODELO. É `ReceitaReconhecida` (M04): ela
+// nasce no FATO GERADOR, debita o crédito a receber e credita a VPA, tem roteiro contábil por
+// origem da receita, tem vínculo com a arrecadação, tem inscrição em dívida ativa e tem
+// cancelamento por VPD. Ela até já reservou a chave de idempotência da integração tributária
+// (`referenciaExterna @unique`), com o comentário dizendo, em 2026, que a integração viria em
+// lote. **É esta a integração.** Criar aqui um segundo crédito seria o segundo ledger que a
+// ordem V10 proíbe em uma linha.
+//
+// O que ESTE arquivo guarda é a PREPARAÇÃO — o ato administrativo tributário: qual imóvel,
+// qual versão do cadastro, qual tabela, qual fórmula, que memória, que vencimentos, que
+// inconsistências. A constituição é a ponte entre ela e o `ReceitaReconhecida`.
+//
+// ⚠️ PREPARAR NÃO É SIMULAR. Simular continua sendo LEITURA e não grava (B1). Preparar grava,
+// por comando explícito, e é o que congela a memória — depois disso, atualizar o cadastro do
+// imóvel não muda o que foi lançado.
+
+enum SituacaoDoLancamentoTributario {
+  /// Preparado e revisável. Não constitui crédito, não entra no ledger.
+  PREPARADO
+  /// O crédito foi constituído: existe `ReceitaReconhecida` amarrada.
+  CONSTITUIDO
+  /// Cancelado por ato motivado. O registro fica; o crédito, se havia, foi cancelado no M04.
+  CANCELADO
+  /// Retificado: um lançamento NOVO o substitui, e este fica como histórico.
+  RETIFICADO
+}
+
+enum TipoDeCorrecaoDoLancamento {
+  RETIFICACAO
+  CANCELAMENTO
+}
+
+/// O LOTE — a preparação acontece em conjunto, e é assim que o ente trabalha: "o IPTU de 2026".
+///
+/// ⚠️ O LOTE É O GRÃO DA REVISÃO, não da constituição. Constituir é por lançamento, um a um,
+/// com idempotência própria: um lote de 30 mil imóveis em que o 17.000º falha não pode deixar
+/// os 16.999 anteriores num estado que ninguém sabe descrever.
+model LoteDeLancamentoTributario {
+  id String @id @default(cuid())
+
+  /// O identificador do lote no ente ("IPTU/2026/001").
+  numero String @unique
+
+  tributo   TributoMunicipal
+  exercicio Int
+
+  /// ⚠️ O FATO GERADOR, em DIA CIVIL do ente ("AAAA-MM-DD") e como TEXTO. É a data que decide
+  /// QUAL versão do cadastro e QUAL tabela valem, e é a competência com que o crédito entra no
+  /// M04 (`ReceitaReconhecida.dataFatoGerador`). Texto porque "AAAA-MM-DD" ordena igual à
+  /// ordem cronológica e não tem fuso para errar — o mesmo motivo do licenciamento (M35).
+  fatoGerador String @db.VarChar(10)
+
+  descricao String
+
+  /// ⚠️ A CLASSIFICAÇÃO DA RECEITA, DECLARADA PELO ENTE AO ABRIR O LOTE — nunca um padrão no
+  /// código. A natureza de 8 dígitos e a fonte de recurso são o que o crédito leva ao M04
+  /// (`ReceitaReconhecida`), e é a ORIGEM derivada da natureza que escolhe o roteiro contábil.
+  /// Cravar "1112..." aqui seria inventar a classificação orçamentária de um município dentro
+  /// de um `if` — exatamente o que a frente tributária existe para não fazer.
+  naturezaCodigo String
+
+  fonteId String
+  fonte   FonteRecurso @relation(fields: [fonteId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  lancamentos LancamentoTributario[]
+
+  @@index([tributo, exercicio])
+}
+
+/// O LANÇAMENTO PREPARADO de um imóvel. A memória congelada é o dado; o resto é referência.
+model LancamentoTributario {
+  id String @id @default(cuid())
+
+  loteId String
+  lote   LoteDeLancamentoTributario @relation(fields: [loteId], references: [id])
+
+  imovelId String
+  imovel   Imovel @relation(fields: [imovelId], references: [id])
+
+  /// ⚠️ A VERSÃO DO CADASTRO E A TABELA QUE VALIAM NO FATO GERADOR, amarradas por FK. Sem
+  /// elas, "por que deu este valor?" só teria como resposta o valor. Com elas, a pergunta se
+  /// responde apontando o cadastro e a norma — que é o que um contribuinte pede em recurso.
+  versaoDoImovelId String
+  versaoDoImovel   VersaoDoImovel @relation(fields: [versaoDoImovelId], references: [id])
+
+  tabelaId String
+  tabela   TabelaDeParametrosTributarios @relation(fields: [tabelaId], references: [id])
+
+  tributo     TributoMunicipal
+  exercicio   Int
+  fatoGerador String @db.VarChar(10)
+
+  valor Decimal @db.Decimal(18, 2)
+
+  /// ⚠️ A MEMÓRIA CONGELADA — cada variável com o seu valor e a sua origem, a fórmula, o
+  /// fundamento e a versão de tudo. É o mesmo padrão da emissão congelada do termo
+  /// patrimonial (M10): o documento repete ISTO, não recalcula. Atualizar o cadastro do imóvel
+  /// hoje não muda o que foi lançado em janeiro — e é essa a diferença entre um lançamento e
+  /// uma consulta.
+  memoria Json
+  /// sha256 do JSON canônico da memória. É o que a constituição referencia e o que a segunda
+  /// via confere.
+  memoriaSha256 String @db.VarChar(64)
+
+  /// ⚠️ O QUE A PREPARAÇÃO ACHOU DE ERRADO, guardado como dado e não como texto solto: imóvel
+  /// sem responsável vigente, fração que não fecha, atributo faltando. A revisão do lote é
+  /// justamente ler isto — e a constituição de um lançamento inconsistente é RECUSADA.
+  inconsistencias Json
+
+  situacao SituacaoDoLancamentoTributario @default(PREPARADO)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  responsaveis ResponsavelPeloLancamento[]
+  vencimentos  VencimentoDoLancamento[]
+  constituicao ConstituicaoDoLancamento?
+
+  /// As correções SOFRIDAS por este lançamento (append-only).
+  correcoes CorrecaoDoLancamento[] @relation("CorrecaoDoLancamento")
+  /// A correção que CRIOU este lançamento, quando ele é o substituto de uma retificação.
+  substituiu CorrecaoDoLancamento?  @relation("SubstitutoDaCorrecao")
+
+  /// ⚠️ UM LANÇAMENTO POR IMÓVEL POR LOTE. É a trava contra o lote reprocessado gerar o
+  /// crédito duas vezes — e ela é do BANCO, não de um `findFirst` antes do `create`.
+  @@unique([loteId, imovelId])
+  @@index([imovelId, exercicio])
+  @@index([situacao])
+}
+
+/// QUEM RESPONDE pelo lançamento, congelado com a fração que valia no fato gerador.
+///
+/// ⚠️ CONGELADO, e não derivado na leitura: o vínculo do imóvel muda (venda, inventário), e o
+/// lançamento de janeiro continua sendo de quem era responsável em janeiro. Derivar na hora de
+/// ler faria o lançamento trocar de devedor sozinho.
+model ResponsavelPeloLancamento {
+  id String @id @default(cuid())
+
+  lancamentoId String
+  lancamento   LancamentoTributario @relation(fields: [lancamentoId], references: [id])
+
+  pessoaId String
+  pessoa   Pessoa @relation("ResponsavelPorLancamentoTributario", fields: [pessoaId], references: [id])
+
+  papel  PapelNoImovel
+  fracao Decimal @db.Decimal(9, 6)
+  /// A parte do valor que cabe a este responsável (fração × valor). Informativa: a
+  /// solidariedade tributária do art. 124 do CTN não divide a dívida, e a tela diz isso.
+  valorProporcional Decimal @db.Decimal(18, 2)
+
+  @@unique([lancamentoId, pessoaId, papel])
+  @@index([pessoaId])
+}
+
+/// UM VENCIMENTO (a cota única, ou cada parcela do carnê).
+model VencimentoDoLancamento {
+  id String @id @default(cuid())
+
+  lancamentoId String
+  lancamento   LancamentoTributario @relation(fields: [lancamentoId], references: [id])
+
+  numero     Int
+  /// Dia civil do ente, "AAAA-MM-DD".
+  vencimento String  @db.VarChar(10)
+  valor      Decimal @db.Decimal(18, 2)
+
+  @@unique([lancamentoId, numero])
+}
+
+/// A PONTE COM O CRÉDITO CANÔNICO — 1:1 com `ReceitaReconhecida` (M04).
+///
+/// ⚠️ ELA NÃO GUARDA VALOR NEM DATA. Os dois já estão no reconhecimento, e uma segunda cópia
+/// seria a que diverge. O que esta tabela guarda é a AMARRA e a chave de idempotência.
+model ConstituicaoDoLancamento {
+  id String @id @default(cuid())
+
+  lancamentoId String               @unique
+  lancamento   LancamentoTributario @relation(fields: [lancamentoId], references: [id])
+
+  reconhecimentoId String             @unique
+  reconhecimento   ReceitaReconhecida @relation(fields: [reconhecimentoId], references: [id])
+
+  /// ⚠️ A CHAVE, COM O ESCOPO DENTRO DELA (invariante 5): lote + imóvel + sha256 da memória.
+  /// Repetir o mesmo ato colide no índice e o serviço responde "já constituído"; um lançamento
+  /// RETIFICADO tem outra memória, outro sha256 e outra chave — e constitui de novo, como
+  /// fato novo. É a mesma chave que vai no `referenciaExterna` do reconhecimento.
+  chave String @unique
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// A CORREÇÃO — retificação ou cancelamento, por ato motivado, sem apagar o original.
+model CorrecaoDoLancamento {
+  id String @id @default(cuid())
+
+  lancamentoId String
+  lancamento   LancamentoTributario @relation("CorrecaoDoLancamento", fields: [lancamentoId], references: [id])
+
+  tipo   TipoDeCorrecaoDoLancamento
+  motivo String
+
+  /// Na RETIFICAÇÃO, o lançamento novo que passa a valer. O antigo vira `RETIFICADO` e fica.
+  substitutoId String?               @unique
+  substituto   LancamentoTributario? @relation("SubstitutoDaCorrecao", fields: [substitutoId], references: [id])
+
+  /// Quando havia crédito constituído, o CANCELAMENTO dele no M04 — VPD, não estorno: o
+  /// crédito existiu e morreu, e é essa a renúncia que o controle externo procura.
+  cancelamentoDeReconhecimentoId String?                       @unique
+  cancelamentoDeReconhecimento   CancelamentoDeReconhecimento? @relation(fields: [cancelamentoDeReconhecimentoId], references: [id])
+
+  chave String @unique
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([lancamentoId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A CERTIDÃO
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum TipoDeCertidao {
+  NEGATIVA
+  POSITIVA
+  POSITIVA_COM_EFEITO_DE_NEGATIVA
+}
+
+enum SituacaoDaSolicitacaoDeCertidao {
+  EM_ANALISE
+  EMITIDA
+  INDEFERIDA
+  CANCELADA
+}
+
+enum SituacaoDaBaseConsultada {
+  SEM_PENDENCIA
+  COM_PENDENCIA
+  /// ⚠️ O terceiro estado é o que impede a negativa falsa: a base existe e NÃO respondeu.
+  INDISPONIVEL
+  /// A base existe no ente e este sistema não a cobre. Declarado, nunca omitido.
+  FORA_DO_ALCANCE
+}
+
+/// A CONFIGURAÇÃO DA CERTIDÃO — validade, fundamento e observação, versionados por vigência.
+///
+/// ⚠️ SEM ELA, A EMISSÃO É RECUSADA, e é deliberado. "90 dias" é o prazo de muitos municípios e
+/// não é o de todos; cravá-lo no código seria inventar prazo de um ente que não o declarou. O
+/// pedido e a análise funcionam sem esta configuração — o que fica impedido é EMITIR.
+model VersaoDaConfiguracaoDaCertidao {
+  id String @id @default(cuid())
+
+  versao         Int    @unique
+  /// Dia civil do ente, "AAAA-MM-DD".
+  vigenciaInicio String @db.VarChar(10)
+
+  /// Dias corridos de validade, contados do dia da emissão.
+  validadeEmDias Int
+  /// A base legal declarada pelo ente (lei, decreto, artigo). Sem ela, o prazo não tem norma.
+  fundamento     String
+  /// O texto que o município quer no corpo da certidão. Nunca literal no código.
+  observacao     String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// A SOLICITAÇÃO DE CERTIDÃO — pedido, análise, emissão ou indeferimento.
+///
+/// ⚠️ NENHUMA NEGATIVA AUTOMÁTICA. "Não achei dívida" e "não olhei" são a mesma coisa para
+/// quem lê o resultado, e opostas para quem responde por ele. Se qualquer base da cobertura
+/// estiver `INDISPONIVEL` ou `FORA_DO_ALCANCE`, a solicitação fica `EM_ANALISE` com a
+/// pendência nomeada — nunca vira negativa.
+model SolicitacaoDeCertidao {
+  id String @id @default(cuid())
+
+  protocolo String @unique
+
+  /// De quem é a certidão. Sempre uma Pessoa do cadastro canônico (M19).
+  pessoaId String
+  pessoa   Pessoa @relation("SolicitacaoDeCertidao", fields: [pessoaId], references: [id])
+
+  /// Quando a certidão é de um IMÓVEL específico (certidão de quitação do imóvel).
+  imovelId String?
+  imovel   Imovel? @relation(fields: [imovelId], references: [id])
+
+  situacao SituacaoDaSolicitacaoDeCertidao @default(EM_ANALISE)
+  tipo     TipoDeCertidao?
+
+  /// ⚠️ A CHAVE DE AUTENTICIDADE — 32 hex de `randomBytes`, NÃO ENUMERÁVEL. O protocolo é
+  /// sequencial e serve ao balcão; a chave é o que um terceiro usa para conferir o documento,
+  /// e por isso ela não pode ser adivinhada nem varrida. E a conferência devolve só o
+  /// mínimo: existe, de quem é (com o documento mascarado), quando, até quando. Nunca o
+  /// extrato de débitos.
+  chaveDeAutenticidade String @unique @db.VarChar(64)
+
+  /// Dia civil do ente, "AAAA-MM-DD".
+  validadeAte String? @db.VarChar(10)
+
+  /// O que falta para decidir, quando falta. Vazio na emitida.
+  pendencia String?
+  /// O fundamento do indeferimento, quando indeferida.
+  motivo    String?
+
+  /// ⚠️ A EMISSÃO CONGELADA — o mesmo padrão do termo patrimonial (M10): a segunda via repete
+  /// ESTE conteúdo, não recalcula. Uma certidão emitida ontem não pode mudar porque um débito
+  /// entrou hoje; o que muda é a validade dela.
+  emissao         Json?
+  emissaoSha256   String?   @db.VarChar(64)
+  modeloDaEmissao String?   @db.VarChar(40)
+  emitidaEm       DateTime?
+  emitidaPor      String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  cobertura BaseConsultadaNaCertidao[]
+
+  @@index([pessoaId, criadoEm])
+  @@index([situacao])
+}
+
+/// ⚠️ A COBERTURA — a prova de QUE BASES foram consultadas, uma linha por base.
+///
+/// "Ausência de dívida no novo M34 não comprova ausência em todo o ente" (ordem V10, §5). Esta
+/// tabela é como essa frase vira dado: cada base do ente aparece, com a situação em que ela
+/// respondeu. A certidão emitida carrega a lista na emissão congelada, e quem a lê sabe
+/// exatamente o que foi olhado.
+model BaseConsultadaNaCertidao {
+  id String @id @default(cuid())
+
+  solicitacaoId String
+  solicitacao   SolicitacaoDeCertidao @relation(fields: [solicitacaoId], references: [id])
+
+  /// O identificador da base ("LANCAMENTO_TRIBUTARIO", "DIVIDA_ATIVA", "RECEITA_RECONHECIDA").
+  base     String                   @db.VarChar(60)
+  situacao SituacaoDaBaseConsultada
+  /// O que se achou, em linguagem do ente. Nunca um stack trace.
+  detalhe  String
+
+  /// Quantos débitos vivos a base acusou. `null` quando ela não respondeu.
+  pendencias Int?
+
+  @@unique([solicitacaoId, base])
+}

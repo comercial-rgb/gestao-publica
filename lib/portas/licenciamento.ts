@@ -1,4 +1,4 @@
-import { cliente, PortaSemBancoError } from "./cliente";
+import { cliente, PortaSemBancoError } from "./cliente.js";
 import { ID_DO_ENTE_UNICO } from "../../modules/m01-core-contabil/contexto-do-ente.js";
 import type { AcaoDoSistema } from "../../modules/m16-travamento/acoes.js";
 import {

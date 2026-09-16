@@ -253,6 +253,8 @@ model FonteRecurso {
   contasPermitidas    FonteDaContaBancaria[]
   /// M09/ENT03a — os movimentos bancários desta fonte. Campo VIRTUAL.
   movimentosBancarios MovimentoBancario[]
+  /// V10 T2 — os lotes de lançamento tributário classificados nesta fonte. VIRTUAL.
+  lotesDeLancamentoTributario LoteDeLancamentoTributario[]
   /// ENT03b — os cadastros com fonte vinculada. Campos VIRTUAIS.
   convenios           Convenio[]
   consorcios          ConsorcioPublico[]

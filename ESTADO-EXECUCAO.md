@@ -7539,3 +7539,101 @@ Antes de integrar qualquer uma, rodar os testes do domínio alterado e a autoriz
 negativa. O portão integral (suíte completa, **fuso**, instalação limpa, percursos em sequência)
 fica para o candidato de homologação — e o `test:fuso` é **obrigatório** no próximo, porque o diff
 desta rodada tocou filtros de período.
+
+## 64. V10 — a habilitação comercial, o B2 tributário, as consultas que eram parciais e o aceite que aprovava sem conferir
+
+> Ordem: `docs/lotes/V10-conclusao-das-frentes-e-homologacao.md`, guardada como veio (a ordem
+> chegou com a codificação corrompida; o texto foi restaurado, sem uma palavra a mais ou a
+> menos). Base: HEAD `22b8dc3`, com o stash `11b7892` intacto e os três scripts de terceiros
+> não tocados. Regime: **profundidade** para o gate de licenciamento, a constituição do crédito,
+> a cobertura da certidão e a aritmética das despesas; **superfície** para as telas.
+
+### 64.1 O que passou a funcionar, e a rota real
+
+| Capacidade | Como se chega |
+|---|---|
+| **Contrato comercial e módulos habilitados** | `/licenciamento` — só quem tem `CONSULTAR_LICENCIAMENTO`, que é ação RESERVADA. Registrar contrato, habilitar módulo, programar vigência, suspender, reativar, com motivo e histórico |
+| **Gate de licenciamento** | invisível por desenho: toda escrita passa por `comEscritaAutenticada` e toda leitura protegida por `escopoDeLeitura`. Módulo não contratado recusa nos dois; suspenso recusa a escrita e **deixa a leitura passar** |
+| **Preparar o lançamento tributário** | `/receita/lancamentos` → escolher imóveis, natureza, fonte, fato gerador e vencimentos → **Preparar**. Não constitui crédito nenhum |
+| **Revisar e constituir** | `/receita/lancamentos/[loteId]` → memória do cálculo, responsáveis congelados, vencimentos, inconsistências → **Constituir o crédito** (um a um) |
+| **Retificar / cancelar** | na mesma tela, com motivo. Cancelar baixa por VPD; retificar prepara um substituto **PREPARADO** |
+| **Pedir e decidir certidão** | `/receita/certidoes` → pedido com a cobertura base a base → decisão humana, com declaração do que foi conferido fora do sistema |
+| **Conferir uma certidão** | `/consulta/certidao`, **sem sessão**, pela chave de 64 hex |
+| **Despesas públicas com filtro de fase que vale** | `/transparencia/despesas?fase=Paga` — contagem, páginas, totais e CSV falam do mesmo conjunto |
+| **Totais de despesa sem teto** | o rodapé deixou de desistir acima de dois mil empenhos |
+| **Valor do bem na lista pública** | `/transparencia/bens` — valor contábil e data de referência na lista e no CSV |
+| **Mudar a divulgação de uma localização** | `/patrimonio/localizacoes/[id]` → motivo obrigatório, histórico com autor |
+| **Identidade do que está no ar** | `GET /release` — o candidato que a instalação declara |
+
+### 64.2 Migrations e SQL aplicados
+
+| Migration | O que é |
+|---|---|
+| `20260924090000_v10_t1_licenciamento` | três enums, três tabelas (contrato, habilitação, evento) |
+| `20260924090100_v10_t1_acoes_do_fornecedor` | sete valores de enum — as ações RESERVADAS |
+| `20260924090200_v10_t2_acoes_tributarias` | seis valores de enum |
+| `20260925090000_v10_t2_lancamento_e_certidao` | cinco enums, nove tabelas |
+| `20260926090000_v10_t3_acao_divulgacao` | um valor de enum |
+| `20260926090100_v10_t3_historico_da_divulgacao` | uma tabela |
+
+Zero `DROP`, zero backfill, zero alteração de coluna existente. Aplicadas em `gestao_publica` e
+`gestao_publica_test`. **Nenhum SQL manual novo.**
+
+⚠️ **Papel de runtime — quatro tabelas entraram no censo assinado**, e cada uma com o recorte por
+coluna: `ContratoComercial` (só `situacao`), `HabilitacaoDeModulo` (situação, vigência, motivo),
+`LancamentoTributario` (**só** `situacao` — `memoria`, `memoriaSha256` e `valor` ficam fora, e é
+isso que faz a memória ser congelada de verdade), `SolicitacaoDeCertidao` (só o que a decisão
+muda) e `LocalizacaoFisica` (só `publicavelNaTransparencia`). Os históricos append-only —
+`EventoDeLicenciamento` e `MudancaDaDivulgacaoDaLocalizacao` — **não** recebem `UPDATE`.
+
+### 64.3 As decisões que valem a pena registrar
+
+**O município não concede a si próprio a habilitação comercial.** `ACOES_DO_FORNECEDOR` é o único
+bloco reservado do censo: a tela de permissões do ente as recusa, e o bootstrap passou a conceder
+`ACOES_DO_ENTE` (o censo **menos** elas) — antes concedia `TODAS_AS_ACOES`, e teria dado a
+habilitação de carona ao administrador municipal no dia em que ela nascesse. O que isso **não**
+promete está escrito no código: quem tem o shell do servidor provisiona o que quiser; a fronteira
+é a aplicação.
+
+**Suspender não apaga.** Módulo suspenso bloqueia operação NOVA e **preserva a leitura** do que
+foi escriturado — o ente segue obrigado a prestar contas. Só `NAO_CONTRATADO` fecha os dois
+lados. A transparência pública não passa pelo gate: `app/(publico)/` não tem sessão, por desenho.
+
+**O crédito tributário canônico já existia.** É `ReceitaReconhecida` (M04), que desde 2026
+reservava `referenciaExterna @unique` "para a integração tributária, que virá em lote".
+`ConstituicaoDoLancamento` é a ponte 1-1 — não um segundo ledger.
+
+**A certidão não emite negativa sozinha.** Três bases estão fora do alcance (dívida ativa por
+pessoa, parcelamento, cadastro econômico/ISS) e o sistema diz isso, base a base. Emitir negativa
+exige a declaração escrita de quem assina, que vai congelada no documento.
+
+**O filtro de fase e os totais eram o mesmo problema:** o estado derivado só existia em
+TypeScript. Ele foi para o banco, e agora filtrar, contar, paginar, somar e exportar falam do
+mesmo conjunto.
+
+### 64.4 Defeitos achados de carona — e quem os achou
+
+| Defeito | Quem achou | Efeito que teria |
+|---|---|---|
+| Os `ALTER TYPE` do enum sumiram da migration ao ela ser regerada | o banco de TESTE, ao aplicar do zero | em dev tudo funcionava; a instalação limpa quebrava em `semearUsuariosDeTeste`, longe dali |
+| A projeção de despesas não via os estornos DAS PARCIAIS | a segunda implementação, em SQL | anulação parcial estornada continuava subtraindo do empenho |
+| `tsc` com heap de 4096 morre nesta máquina | a execução | a VM do Docker reserva 3 GB dos 8; o sintoma é SIGABRT sem erro de tipo |
+| O resolvedor de mentira do teste do aceite escrevia `\n` literal | o próprio teste | todos os casos caíam em DNS_PENDENTE — inclusive o positivo |
+| Um servidor só para HTTP e HTTPS no teste do aceite | o próprio teste | o caso da identidade ausente reprovava por exposição indevida |
+| A versão de SEIS linhas do teste de paginação estável passava com o defeito presente | a mutação | só com 400 linhas iguais o plano vira top-N heapsort e o defeito aparece |
+| `ids.length === 0 ? [] : await prisma…` colapsa a inferência para `any` | o typecheck | `credorNome` e o resto deixariam de ser conferidos, em silêncio |
+
+### 64.5 A AWS — preflight repetido, e o estado não mudou
+
+Somente leitura. `aws configure list-profiles` devolve apenas `default` (de outro produto), e
+`AWS_PROFILE=gestao-publica aws sts get-caller-identity` responde "config profile could not be
+found". **Não há perfil, nem chave, nem sessão** para a identidade `gestao-publica`. O `default`
+**não foi usado** e nenhuma chave nova foi criada. Nenhum recurso criado, alterado ou removido;
+nenhum custo novo.
+
+O texto do preflight foi **corrigido**: credencial temporária por `aws login` é o caminho
+preferido e a chave de longa duração é a alternativa — o inverso do que estava escrito. E a
+política sugerida deixou de ser chamada de "mínima": ela é mínima em **ações**, e o
+`Resource: "*"` alcança recursos de outro produto nesta conta.
+
+`AWS_PREPARADA`: **não**. `PUBLICADA_VALIDADA`: **não**.

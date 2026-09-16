@@ -441,6 +441,16 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   SUSPENDER_MODULO_CONTRATADO: "licenciamento",
   REATIVAR_MODULO_CONTRATADO: "licenciamento",
   CONSULTAR_LICENCIAMENTO: "licenciamento",
+  // ── M34 B2 — o lançamento tributário e a certidão (V10 T2). Moram na Receita, com o
+  // cadastro imobiliário e os parâmetros que os sustentam ──
+  PREPARAR_LANCAMENTO_TRIBUTARIO: "receita",
+  CONSTITUIR_CREDITO_TRIBUTARIO: "receita",
+  RETIFICAR_LANCAMENTO_TRIBUTARIO: "receita",
+  CANCELAR_LANCAMENTO_TRIBUTARIO: "receita",
+  SOLICITAR_CERTIDAO: "receita",
+  DECIDIR_CERTIDAO: "receita",
+  // V10 T3 — a política de divulgação mora no Patrimônio, junto do cadastro de localizações.
+  DEFINIR_DIVULGACAO_DA_LOCALIZACAO: "patrimonio",
 };
 
 /**

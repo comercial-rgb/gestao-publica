@@ -934,7 +934,7 @@ describe("M16 bloco 3 — o ROLLOUT da autorização (TR 4.56 · 6.4 · 6.5)", (
     // ⚠️ O EFEITO, e não a contagem: nenhuma ação reservada chegou ao perfil do administrador.
     expect(
       await prisma.permissaoDePerfil.count({
-        where: { perfilId: r.perfilId, acao: { in: ACOES_DO_FORNECEDOR as string[] } },
+        where: { perfilId: r.perfilId, acao: { in: [...ACOES_DO_FORNECEDOR] } },
       })
     ).toBe(0);
 

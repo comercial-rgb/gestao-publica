@@ -1,6 +1,6 @@
 import { diaCivilBr, FUSO_DO_ENTE } from "../../packages/datas/index.js";
-import { serializar, toMoney } from "../../packages/contracts/index.js";
-import { valorContabil } from "../../modules/m10-patrimonial/dominio.js";
+import { Decimal, serializar, toMoney } from "../../packages/contracts/index.js";
+import { SINAL_MOVIMENTO_PATRIMONIAL, valorContabil } from "../../modules/m10-patrimonial/dominio.js";
 import { cliente, PortaSemBancoError } from "./cliente";
 
 export { PortaSemBancoError };
@@ -55,6 +55,13 @@ export const CAMPOS_PUBLICOS = [
   "estado",
   "localizacao",
   "localizacaoDivulgada",
+  // ⚠️ V10 T3 — O VALOR ENTROU NA LISTA. Ele existia só no detalhe, e um acervo público sem
+  // valor não responde a pergunta que o cidadão faz ("quanto vale o patrimônio do município?"):
+  // obrigá-lo a abrir bem por bem é a mesma coisa que não publicar. Vem com a DATA DE
+  // REFERÊNCIA ao lado — um valor sem data não é conferível, porque depreciação e reavaliação o
+  // mudam com o tempo.
+  "valorContabil",
+  "dataDeReferencia",
 ] as const;
 
 /**
@@ -93,6 +100,15 @@ export interface BemPublicoNaLista {
   /** `null` quando a localização não é publicável — e `localizacaoDivulgada` diz por quê. */
   readonly localizacao: string | null;
   readonly localizacaoDivulgada: boolean;
+  /**
+   * ⚠️ O VALOR CONTÁBIL, COM A DATA AO LADO (V10 T3). String decimal do domínio — quem formata
+   * é a tela. `null` quando o bem não tem movimento patrimonial nenhum: um bem cadastrado e
+   * ainda não incorporado não vale zero, ele não tem valor registrado, e as duas coisas se leem
+   * diferente.
+   */
+  readonly valorContabil: string | null;
+  /** O dia civil do ente a que o valor se refere. Um valor sem data não é conferível. */
+  readonly dataDeReferencia: string;
 }
 
 export interface FiltrosDosBensPublicos {
@@ -169,9 +185,39 @@ interface LinhaCrua {
   readonly loc_publicavel: boolean | null;
   readonly situacao: string | null;
   readonly estado: string | null;
+  /** V10 T3 — a soma dos movimentos vivos, agregada no banco. `null` sem movimento. */
+  readonly valor_contabil: string | null;
 }
 
-function linhaPublica(x: LinhaCrua): BemPublicoNaLista {
+/**
+ * ⚠️ O VALOR AGREGADO NO BANCO, COM O SINAL VINDO DO DOMÍNIO (V10 T3).
+ *
+ * A lista pagina; carregar os movimentos de cada bem para somar em memória é o oposto de
+ * paginar. Mas a REGRA de qual movimento soma e qual subtrai é do M10
+ * (`SINAL_MOVIMENTO_PATRIMONIAL`) — e escrevê-la à mão aqui criaria a segunda tabela de sinais
+ * que diverge no dia em que um tipo novo nascer.
+ *
+ * Então o SQL é GERADO a partir da constante do domínio: os tipos positivos viajam como
+ * parâmetro, e tudo o que não está entre eles subtrai. Um tipo novo entra pelo domínio e chega
+ * aqui sozinho.
+ *
+ * ⚠️ E O PAR ESTORNO/ORIGINAL SAI DA CONTA — os dois, como no detalhe e como no resto do M10.
+ */
+const TIPOS_QUE_SOMAM: readonly string[] = Object.entries(SINAL_MOVIMENTO_PATRIMONIAL)
+  .filter(([, sinal]) => sinal === 1)
+  .map(([tipo]) => tipo);
+
+const VALOR_DOS_MOVIMENTOS = `
+  valor AS (
+    SELECT m."bemId",
+           SUM(CASE WHEN m."tipo"::text = ANY($2) THEN m."valor" ELSE -m."valor" END) AS total
+    FROM "MovimentoPatrimonial" m
+    WHERE m."estornoDeId" IS NULL
+      AND NOT EXISTS (SELECT 1 FROM "MovimentoPatrimonial" e WHERE e."estornoDeId" = m."id")
+    GROUP BY m."bemId"
+  )`;
+
+function linhaPublica(x: LinhaCrua, hoje: string): BemPublicoNaLista {
   const podeDivulgar = x.loc_publicavel === true && x.loc_descricao !== null;
   return {
     id: x.id,
@@ -186,6 +232,8 @@ function linhaPublica(x: LinhaCrua): BemPublicoNaLista {
     estado: x.estado === null ? null : (ROTULO_ESTADO[x.estado] ?? x.estado),
     localizacao: podeDivulgar ? x.loc_descricao : null,
     localizacaoDivulgada: podeDivulgar,
+    valorContabil: x.valor_contabil === null ? null : serializar(toMoney(new Decimal(x.valor_contabil))),
+    dataDeReferencia: hoje,
   };
 }
 
@@ -194,7 +242,8 @@ export async function listarBensPublicos(f: FiltrosDosBensPublicos = {}): Promis
   const porPagina = Math.min(TETO_POR_PAGINA, Math.max(1, f.porPagina ?? PADRAO_POR_PAGINA));
   const pagina = Math.max(1, f.pagina ?? 1);
 
-  const params: unknown[] = [FUSO_DO_ENTE];
+  // ⚠️ $1 é o fuso (a CTE de estado o usa) e $2 são os tipos que SOMAM. Os filtros começam em $3.
+  const params: unknown[] = [FUSO_DO_ENTE, TIPOS_QUE_SOMAM];
   const cond: string[] = [];
   const texto = (v: string): string => {
     params.push(`%${v}%`);
@@ -247,17 +296,19 @@ export async function listarBensPublicos(f: FiltrosDosBensPublicos = {}): Promis
     LEFT JOIN "LocalizacaoFisica" l ON l."id" = el."localizacaoId"
     LEFT JOIN estado es ON es."bemId" = b."id" AND es."tipo" = 'SITUACAO'
     LEFT JOIN estado ec ON ec."bemId" = b."id" AND ec."tipo" = 'ESTADO'
+    LEFT JOIN valor v ON v."bemId" = b."id"
     ${where}`;
 
   const [contagem, linhas, anos] = await Promise.all([
-    prisma.$queryRawUnsafe<{ total: number }[]>(`${ESTADO_VIVO} SELECT COUNT(*)::int AS total ${de}`, ...params),
+    prisma.$queryRawUnsafe<{ total: number }[]>(`${ESTADO_VIVO}, ${VALOR_DOS_MOVIMENTOS} SELECT COUNT(*)::int AS total ${de}`, ...params),
     prisma.$queryRawUnsafe<LinhaCrua[]>(
-      `${ESTADO_VIVO}
+      `${ESTADO_VIVO}, ${VALOR_DOS_MOVIMENTOS}
        SELECT b."id", b."numeroTombamento", b."descricao", b."dataAquisicao",
               c."codigo" AS classe_codigo, c."descricao" AS classe_descricao, c."especie"::text AS especie,
               ti."descricao" AS inc_descricao,
               l."descricao" AS loc_descricao, l."publicavelNaTransparencia" AS loc_publicavel,
-              es."situacao"::text AS situacao, ec."estado"::text AS estado
+              es."situacao"::text AS situacao, ec."estado"::text AS estado,
+              v."total"::text AS valor_contabil
        ${de}
        ORDER BY ${ordem}
        LIMIT ${porPagina} OFFSET ${(pagina - 1) * porPagina}`,
@@ -271,8 +322,9 @@ export async function listarBensPublicos(f: FiltrosDosBensPublicos = {}): Promis
   ]);
 
   const total = Number(contagem[0]?.total ?? 0);
+  const hoje = diaCivilBr(new Date());
   return {
-    linhas: linhas.map(linhaPublica),
+    linhas: linhas.map((x) => linhaPublica(x, hoje)),
     total,
     pagina,
     porPagina,
@@ -295,9 +347,6 @@ export interface MovimentoPublicoDoBem {
 }
 
 export interface BemPublicoEmDetalhe extends BemPublicoNaLista {
-  /** O valor contábil na data de referência, como string decimal. `null` sem movimento. */
-  readonly valorContabil: string | null;
-  readonly dataDeReferencia: string;
   readonly movimentos: readonly MovimentoPublicoDoBem[];
 }
 
@@ -318,12 +367,13 @@ const ROTULO_MOVIMENTO: Readonly<Record<string, string>> = {
 export async function bemPublico(id: string): Promise<BemPublicoEmDetalhe | null> {
   const prisma = cliente();
   const linhas = await prisma.$queryRawUnsafe<LinhaCrua[]>(
-    `${ESTADO_VIVO}
+    `${ESTADO_VIVO}, ${VALOR_DOS_MOVIMENTOS}
      SELECT b."id", b."numeroTombamento", b."descricao", b."dataAquisicao",
             c."codigo" AS classe_codigo, c."descricao" AS classe_descricao, c."especie"::text AS especie,
             ti."descricao" AS inc_descricao,
             l."descricao" AS loc_descricao, l."publicavelNaTransparencia" AS loc_publicavel,
-            es."situacao"::text AS situacao, ec."estado"::text AS estado
+            es."situacao"::text AS situacao, ec."estado"::text AS estado,
+            v."total"::text AS valor_contabil
      FROM "BemPatrimonial" b
      JOIN "ClasseDeBens" c ON c."id" = b."classeDeBensId"
      LEFT JOIN "TipoDeIncorporacao" ti ON ti."id" = b."tipoDeIncorporacaoId"
@@ -331,8 +381,10 @@ export async function bemPublico(id: string): Promise<BemPublicoEmDetalhe | null
      LEFT JOIN "LocalizacaoFisica" l ON l."id" = el."localizacaoId"
      LEFT JOIN estado es ON es."bemId" = b."id" AND es."tipo" = 'SITUACAO'
      LEFT JOIN estado ec ON ec."bemId" = b."id" AND ec."tipo" = 'ESTADO'
-     WHERE b."id" = $2`,
+     LEFT JOIN valor v ON v."bemId" = b."id"
+     WHERE b."id" = $3`,
     FUSO_DO_ENTE,
+    TIPOS_QUE_SOMAM,
     id
   );
   const crua = linhas[0];
@@ -358,7 +410,10 @@ export async function bemPublico(id: string): Promise<BemPublicoEmDetalhe | null
       : serializar(valorContabil(movimentos.map((m) => ({ tipo: m.tipo, valor: toMoney(m.valor) }))));
 
   return {
-    ...linhaPublica(crua),
+    ...linhaPublica(crua, diaCivilBr(agora)),
+    // ⚠️ O DETALHE CONTINUA SOMANDO PELO DOMÍNIO (`valorContabil`), e a lista soma no BANCO.
+    // São duas implementações da mesma regra, de propósito: o teste `B7` confronta as duas no
+    // mesmo bem, e é essa confrontação que impede uma delas de envelhecer sozinha.
     valorContabil: valor,
     dataDeReferencia: diaCivilBr(agora),
     movimentos: movimentos.map((m) => ({

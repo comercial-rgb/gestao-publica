@@ -508,6 +508,26 @@ export type AcaoDoSistema =
   | "PROGRAMAR_VIGENCIA_DE_MODULO"
   | "SUSPENDER_MODULO_CONTRATADO"
   | "REATIVAR_MODULO_CONTRATADO"
+  // ── M34 B2 — O LANÇAMENTO TRIBUTÁRIO E A CERTIDÃO (V10 T2 · N5) ──
+  //
+  // ⚠️ QUATRO ATOS, QUATRO AÇÕES, e a separação é a do CTN: PREPARAR é trabalho de cadastro
+  // (o lote sai revisável e não constitui nada); CONSTITUIR é o ato que faz nascer o crédito
+  // contra o contribuinte e mexe no razão; RETIFICAR e CANCELAR desfazem o que já foi
+  // constituído. Uma ação só daria a quem monta o lote o poder de constituir trinta mil
+  // créditos — e a revisão, que é o ponto do lote, perderia a razão de existir.
+  | "PREPARAR_LANCAMENTO_TRIBUTARIO"
+  | "CONSTITUIR_CREDITO_TRIBUTARIO"
+  | "RETIFICAR_LANCAMENTO_TRIBUTARIO"
+  | "CANCELAR_LANCAMENTO_TRIBUTARIO"
+  // A certidão: pedir é do balcão, decidir é de quem responde pela base fiscal.
+  | "SOLICITAR_CERTIDAO"
+  | "DECIDIR_CERTIDAO"
+  // ── M10 — a POLÍTICA DE DIVULGAÇÃO de uma localização física (V10 T3 · N2) ──
+  //
+  // ⚠️ AÇÃO PRÓPRIA, e não `CADASTRAR_LOCALIZACAO_FISICA`. Quem cadastra o depósito não é
+  // necessariamente quem decide o que vai ao portal público do município — e pendurar as duas
+  // na mesma ação daria o poder de publicar endereço a todo mundo que mexe no cadastro.
+  | "DEFINIR_DIVULGACAO_DA_LOCALIZACAO"
   // ── A LEITURA (orquestração V3, 4.1) — uma ação de CONSULTA por área de navegação ──
   //
   // ⚠️ UMA POR ÁREA, E NÃO UMA POR CONSULTA. O sistema tem mais de cem leituras
@@ -999,7 +1019,18 @@ export type NomeDeServico =
   | "habilitarModuloContratado"
   | "programarVigenciaDeModulo"
   | "suspenderModuloContratado"
-  | "reativarModuloContratado";
+  | "reativarModuloContratado"
+  // M34 B2 — o lançamento tributário e a certidão (V10 T2).
+  | "prepararLoteDeLancamento"
+  | "prepararLancamentoTributario"
+  | "constituirCreditoTributario"
+  | "retificarLancamentoTributario"
+  | "cancelarLancamentoTributario"
+  | "solicitarCertidao"
+  | "decidirCertidao"
+  | "configurarCertidao"
+  // M10 — a política de divulgação da localização (V10 T3).
+  | "definirDivulgacaoDaLocalizacao";
 
 /**
  * ⚠️ O RECORD EXAUSTIVO — serviço → ação.
@@ -1530,6 +1561,25 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   programarVigenciaDeModulo: "PROGRAMAR_VIGENCIA_DE_MODULO",
   suspenderModuloContratado: "SUSPENDER_MODULO_CONTRATADO",
   reativarModuloContratado: "REATIVAR_MODULO_CONTRATADO",
+  // M34 B2 — o lançamento tributário e a certidão (V10 T2).
+  //
+  // ⚠️ `prepararLoteDeLancamento` e `prepararLancamentoTributario` COMPARTILHAM a ação, como
+  // `importarExtrato`/`importarExtratoBb` e `encerrarExercicio`/`encerrarExercicioComRestos`:
+  // preparar um lote inteiro e preparar um caso avulso são o MESMO ato administrativo, feito
+  // em escalas diferentes. Duas ações inventariam uma segregação que o CTN não tem.
+  prepararLoteDeLancamento: "PREPARAR_LANCAMENTO_TRIBUTARIO",
+  prepararLancamentoTributario: "PREPARAR_LANCAMENTO_TRIBUTARIO",
+  constituirCreditoTributario: "CONSTITUIR_CREDITO_TRIBUTARIO",
+  retificarLancamentoTributario: "RETIFICAR_LANCAMENTO_TRIBUTARIO",
+  cancelarLancamentoTributario: "CANCELAR_LANCAMENTO_TRIBUTARIO",
+  solicitarCertidao: "SOLICITAR_CERTIDAO",
+  decidirCertidao: "DECIDIR_CERTIDAO",
+  // ⚠️ A CONFIGURAÇÃO DA CERTIDÃO (validade e fundamento) COMPARTILHA a ação da tabela do
+  // tributo, e não ganha uma própria: as duas são parâmetro normativo do ente, publicado por
+  // quem responde pela norma municipal. Uma ação a mais inventaria uma segregação que o ente
+  // não tem — e o censo existe para não inventar.
+  configurarCertidao: "GERIR_PARAMETROS_TRIBUTARIOS",
+  definirDivulgacaoDaLocalizacao: "DEFINIR_DIVULGACAO_DA_LOCALIZACAO",
 };
 
 /**
@@ -2306,6 +2356,21 @@ export const FORA_DO_CENSO: Record<string, string> = {
   licenciamentoInstalado:
     "LEITURA de contagem: 'esta implantação tem contrato?'. É o que distingue 'não instalado' " +
     "de 'não contratado' na mensagem que o operador lê.",
+  // ── M34 B2 — as leituras do lançamento tributário e da certidão (V10 T2) ──
+  historicoDaDivulgacao:
+    "LEITURA do histórico da política de divulgação de uma localização. Não muta nada; a tela " +
+    "que a serve cobra CONSULTAR_PATRIMONIO.",
+  lotesDeLancamento: "LEITURA dos lotes com o placar de cada um. Não muta nada; a tela cobra CONSULTAR_RECEITA.",
+  lancamentosDoLote: "LEITURA dos lançamentos de um lote, com memória, responsáveis e vencimentos. Não muta nada.",
+  lancamentosVivosDoImovel: "LEITURA da ficha tributária do imóvel — os lançamentos ainda em aberto. Não muta nada.",
+  levantarCobertura:
+    "LEITURA que consulta cada base fiscal e diz como ela respondeu. É o insumo da certidão e " +
+    "não grava: quem grava é `solicitarCertidao`, que a chama.",
+  configuracaoVigente: "LEITURA da configuração de certidão que vale num dia. Não muta nada.",
+  conferirAutenticidade:
+    "LEITURA PÚBLICA e mínima, pela chave não enumerável. Não muta nada e não cobra sessão por " +
+    "desenho — o que a protege é devolver só protocolo, tipo, titular com documento mascarado e " +
+    "validade, nunca o extrato de débitos.",
   instalarLicenciamento:
     "ATO DE INSTALAÇÃO, como o bootstrap do primeiro usuário: roda fora da aplicação, por quem " +
     "opera o servidor, e é inerte quando já existe contrato. Não há sessão para autorizar — o " +

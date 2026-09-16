@@ -3,10 +3,13 @@ import {
   cadastrarLocalizacaoFisica,
   cadastrarMotivoDeBaixa,
   cadastrarTipoDeIncorporacao,
+  definirDivulgacaoDaLocalizacao,
+  historicoDaDivulgacao,
 } from "../../../modules/m10-patrimonial/gestao-do-bem.js";
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { TAMANHO_DE_PAGINA } from "../../molde/consulta.js";
 import { comEscritaAutenticada } from "../sessao";
+import { acoesPermitidas } from "../molde";
 import { cliente, PortaSemBancoError } from "../cliente";
 import type { DetalheLido, OpcoesDoCadastro, PaginaDoMolde } from "./dados";
 
@@ -148,6 +151,70 @@ export async function verLocalizacao(id: string): Promise<DetalheLido | null> {
       estornado: false,
     })),
   };
+}
+
+/**
+ * A POLÍTICA DE DIVULGAÇÃO de uma localização já cadastrada, e o histórico dela (V10 T3 · N2).
+ *
+ * ⚠️ FECHA `LOCALIZACAO-PUBLICAVEL-SO-NA-CRIACAO`. A política só podia ser escolhida no
+ * cadastro: um município com o acervo já cadastrado não tinha caminho nenhum para publicar a
+ * localização de uma escola, nem para RETIRAR do portal um depósito que nunca deveria ter
+ * entrado. A regra (ação própria, motivo obrigatório, histórico append-only, repetição
+ * recusada) é do domínio — `modules/m10-patrimonial/gestao-do-bem.ts`.
+ */
+export interface DivulgacaoDaLocalizacaoNaTela {
+  readonly id: string;
+  readonly descricao: string;
+  readonly divulgada: boolean;
+  readonly podeDefinir: boolean;
+  readonly historico: readonly {
+    readonly de: boolean;
+    readonly para: boolean;
+    readonly motivo: string;
+    readonly quando: string;
+    readonly por: string;
+  }[];
+}
+
+export async function divulgacaoDaLocalizacao(id: string): Promise<DivulgacaoDaLocalizacaoNaTela | null> {
+  const prisma = cliente();
+  const [loc, historico, permitidas] = await Promise.all([
+    prisma.localizacaoFisica.findUnique({
+      where: { id },
+      select: { id: true, descricao: true, publicavelNaTransparencia: true },
+    }),
+    historicoDaDivulgacao(prisma, id),
+    acoesPermitidas(["DEFINIR_DIVULGACAO_DA_LOCALIZACAO"]),
+  ]);
+  if (loc === null) return null;
+  return {
+    id: loc.id,
+    descricao: loc.descricao,
+    divulgada: loc.publicavelNaTransparencia,
+    podeDefinir: permitidas.has("DEFINIR_DIVULGACAO_DA_LOCALIZACAO"),
+    historico: historico.map((h) => ({
+      de: h.de,
+      para: h.para,
+      motivo: h.motivo,
+      quando: diaCivilBr(h.criadoEm),
+      por: h.criadoPor,
+    })),
+  };
+}
+
+export async function definirDivulgacaoNaTela(c: Campos): Promise<string> {
+  const publicavel = t(c, "publicavel") === "sim";
+  const r = await comEscritaAutenticada("DEFINIR_DIVULGACAO_DA_LOCALIZACAO", (criadoPor) =>
+    definirDivulgacaoDaLocalizacao(cliente(), {
+      localizacaoId: t(c, "__localizacao"),
+      publicavel,
+      motivo: t(c, "motivo"),
+      criadoPor,
+    })
+  );
+  return r.para
+    ? "Localização passou a ser DIVULGADA na consulta pública de bens. Os bens guardados aqui já apareciam; o que passa a aparecer é o LUGAR."
+    : "Localização passou a ser RESERVADA. Os bens continuam na consulta pública — o que deixa de aparecer é o LUGAR.";
 }
 
 export async function criarLocalizacao(c: Campos): Promise<void> {

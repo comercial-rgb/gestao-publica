@@ -256,12 +256,15 @@ export async function versaoDoImovelNoDia(prisma: Tx, imovelId: string, dia: str
 }
 
 /** Quem responde pelo imóvel num dia, por papel: vínculos vigentes (não encerrados antes do dia). */
-export async function vinculosDoImovelNoDia(prisma: Tx, imovelId: string, dia: string): Promise<readonly { readonly papel: string; readonly fracao: string; readonly documento: string; readonly nome: string }[]> {
+export async function vinculosDoImovelNoDia(prisma: Tx, imovelId: string, dia: string): Promise<readonly { readonly pessoaId: string; readonly papel: string; readonly fracao: string; readonly documento: string; readonly nome: string }[]> {
   const quando = inicioDoDiaCivil(dia);
   const vs = await prisma.vinculoDePessoaComImovel.findMany({
     where: { imovelId, vigenciaInicio: { lte: quando }, OR: [{ encerramento: { is: null } }, { encerramento: { dataEfeito: { gt: quando } } }] },
     orderBy: [{ papel: "asc" }, { vigenciaInicio: "asc" }],
-    select: { papel: true, fracao: true, pessoa: { select: { documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } } },
+    // ⚠️ O `pessoaId` ENTROU NA V10 T2 e é o que o lançamento CONGELA. Sem ele, o responsável
+    // do lançamento teria de ser reencontrado pelo documento na hora de ler — e o lançamento de
+    // janeiro trocaria de devedor sozinho quando o imóvel fosse vendido em março.
+    select: { pessoaId: true, papel: true, fracao: true, pessoa: { select: { documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } } },
   });
-  return vs.map((v) => ({ papel: v.papel, fracao: v.fracao.toFixed(6), documento: v.pessoa.documento, nome: v.pessoa.versoes[0]?.nome ?? v.pessoa.documento }));
+  return vs.map((v) => ({ pessoaId: v.pessoaId, papel: v.papel, fracao: v.fracao.toFixed(6), documento: v.pessoa.documento, nome: v.pessoa.versoes[0]?.nome ?? v.pessoa.documento }));
 }

@@ -176,6 +176,18 @@ const TABELAS = [
   "Usuario",
   // M05 — roteiro do subsistema orçamentário
   "RoteiroOrcamentario",
+  // ── M10 — o histórico da política de divulgação de localização (V10 T3) ──
+  "MudancaDaDivulgacaoDaLocalizacao",
+  // ── M34 B2 — lançamento tributário e certidão (V10 T2) ──
+  "BaseConsultadaNaCertidao",
+  "SolicitacaoDeCertidao",
+  "VersaoDaConfiguracaoDaCertidao",
+  "CorrecaoDoLancamento",
+  "ConstituicaoDoLancamento",
+  "VencimentoDoLancamento",
+  "ResponsavelPeloLancamento",
+  "LancamentoTributario",
+  "LoteDeLancamentoTributario",
   // ── M35 — licenciamento comercial (V10 T1). Antes do EnteConfig na lista por clareza; a
   // ordem é irrelevante (TRUNCATE CASCADE resolve o grafo), a COMPLETUDE não é. ──
   "EventoDeLicenciamento",

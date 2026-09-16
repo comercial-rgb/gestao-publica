@@ -1,4 +1,4 @@
-import { criarPrismaClient } from "../../modules/m01-core-contabil/adapter-prisma";
+import { criarPrismaClient } from "../../modules/m01-core-contabil/adapter-prisma.js";
 
 /**
  * O CLIENT PRISMA das portas — singleton preguiçoso (um por processo do servidor), COMPARTILHADO

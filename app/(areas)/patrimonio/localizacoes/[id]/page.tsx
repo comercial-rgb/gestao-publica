@@ -6,9 +6,11 @@ import type { AbaDoMolde } from "../../../../../lib/molde/tipos";
 import { acoesPermitidas, exigirLeitura } from "../../../../../lib/portas/molde";
 import { LOCALIZACOES_FISICAS } from "../../../../../lib/portas/recursos/gestao-do-bem";
 import {
+  divulgacaoDaLocalizacao,
   opcoesDaGestaoDoBem,
   verLocalizacao,
 } from "../../../../../lib/portas/recursos/gestao-do-bem-dados";
+import { FormDivulgacao } from "./FormDivulgacao";
 import { acaoDeLocalizacoesAction } from "../actions";
 
 /**
@@ -32,10 +34,11 @@ export default async function Detalhe({
   const { id } = await params;
   const consulta = lerConsulta(LOCALIZACOES_FISICAS, await searchParams);
 
-  const [detalhe, opcoes, permitidas] = await Promise.all([
+  const [detalhe, opcoes, permitidas, divulgacao] = await Promise.all([
     verLocalizacao(id),
     opcoesDaGestaoDoBem(),
     acoesPermitidas(LOCALIZACOES_FISICAS.acoes.map((a) => a.acaoDoCenso)),
+    divulgacaoDaLocalizacao(id),
   ]);
   if (detalhe === null) notFound();
 
@@ -50,14 +53,21 @@ export default async function Detalhe({
       dados={detalhe.dados}
       historico={detalhe.historico}
       acoes={
-        <FormsDoRecurso
+        <>
+          {/* ⚠️ V10 T3 — A POLÍTICA DE DIVULGAÇÃO, FORA DO MOLDE. O molde monta formulário a
+              partir do descritor do recurso, e este ato não é "editar um campo do cadastro": é
+              uma decisão com motivo obrigatório e histórico próprio, com ação própria. Espremê-lo
+              num campo do formulário de cadastro faria a decisão passar sem motivo e sem autor. */}
+          {divulgacao === null ? null : <FormDivulgacao d={divulgacao} />}
+          <FormsDoRecurso
           definicao={LOCALIZACOES_FISICAS}
           permitidas={[...permitidas]}
           opcoes={opcoes}
           registroId={id}
           action={acaoDeLocalizacoesAction}
-          modo="acoes"
-        />
+            modo="acoes"
+          />
+        </>
       }
     />
   );

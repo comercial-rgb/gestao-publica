@@ -19,11 +19,19 @@ SOMENTE a prioridade temporal e de publicação da V5 — construção contínua
 P4 mensagens, documentos e observabilidade), sem esperar alvo de hospedagem. Regras de negócio,
 ADRs e evidências anteriores permanecem.
 
+Desde 2026-09-16 vale a **V10** (`docs/lotes/V10-conclusao-das-frentes-e-homologacao.md`),
+continuação da **V9** (`docs/lotes/V9-noturna-ecossistema-aws-engine.md`). Ela não reinicia o
+projeto: conclui as frentes internas (habilitação comercial de módulos, B2 tributário e
+certidões), corrige as consultas públicas que eram parciais e conserta o aceite de implantação.
+O que ela mantém: repositório único, ledger único, cadastro canônico de Pessoa, **arquitetura
+mono-ente por implantação**, Prisma, `Decimal`, e os comandos e componentes existentes.
+
 ## 1. Para executar uma unidade de trabalho
 
 1. `CLAUDE.md` — as regras. Toda sessão o carrega sozinha.
 2. `ESTADO-EXECUCAO.md`, seção "O próximo passo" — onde paramos.
-3. `docs/lotes/<lote>.md` — o que o pedido vigente pede (hoje o V6, `docs/lotes/V6-produto-integrado.md`).
+3. `docs/lotes/<lote>.md` — o que o pedido vigente pede (hoje o **V10**,
+   `docs/lotes/V10-conclusao-das-frentes-e-homologacao.md`).
 4. O `MODULO.md` de cada módulo que o lote toca. Ligar ao que existe exige ler o
    módulo ligado, não só o módulo alvo.
 5. `docs/instrucoes/` — o detalhe, quando o lote ou o `MODULO.md` não bastar.
@@ -98,6 +106,16 @@ Junto do código, porque se leem antes dele: `modules/*/MODULO*.md`,
 ENT00 a ENT03 e ENT06 item 0. **Faltam** ENT03a, ENT03b, ENT03c, ENT04 e ENT05: foram
 escritos no chat e não chegaram a arquivo. O resultado de cada um está no
 `ESTADO-EXECUCAO.md`; o pedido, não.
+
+### Como implantar — `docs/operacao/`
+
+| Arquivo | O que é |
+|---|---|
+| `IMPLANTACAO-LIGHTSAIL.md` | o roteiro, e **o que dele foi executado**. Passos 4 a 6 viraram dois scripts (`empacotar-candidato.sh`, `instalar-no-servidor.sh`) para poderem ser revisados e repetidos |
+| `ENSAIO-DA-INSTALACAO.md` | o que foi ensaiado em Linux, caso a caso, e o que **não** foi |
+| `AWS-PREFLIGHT-V9-N7.md` | o bloqueio de acesso, com o conserto exato e o preflight repetido |
+| `DNS-GODADDY-gestao.md` | os registros para a GoDaddy — o DNS é ato do usuário |
+| `DEPLOY-DEMONSTRACAO.md`, `NAVEGADOR-DOS-PERCURSOS.md` | demonstração local e o navegador dos percursos |
 
 ### A medida — `docs/edital/`
 

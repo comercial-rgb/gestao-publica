@@ -49,6 +49,9 @@ model Imovel {
 
   versoes  VersaoDoImovel[]
   vinculos VinculoDePessoaComImovel[]
+  // V10 T2 (B2) — back-relations VIRTUAIS: nenhuma coluna nova neste modelo.
+  lancamentos LancamentoTributario[]
+  certidoes   SolicitacaoDeCertidao[]
 }
 
 /// UMA VERSÃO DO CADASTRO — vale a partir de `vigenciaInicio`; a anterior continua valendo antes dela.
@@ -78,6 +81,9 @@ model VersaoDoImovel {
   criadoPor String
 
   atributos AtributoDaVersaoDoImovel[]
+
+  /// V10 T2 — os lançamentos que congelaram ESTA versão do cadastro. VIRTUAL.
+  lancamentos LancamentoTributario[]
 
   @@unique([imovelId, versao])
   @@index([imovelId, vigenciaInicio])
@@ -158,6 +164,9 @@ model TabelaDeParametrosTributarios {
   criadoPor String
 
   parametros ParametroTributario[]
+
+  /// V10 T2 — os lançamentos que usaram ESTA versão da tabela. VIRTUAL.
+  lancamentos LancamentoTributario[]
 
   @@unique([tributo, exercicio, versao])
   @@index([tributo, exercicio, vigenciaInicio])

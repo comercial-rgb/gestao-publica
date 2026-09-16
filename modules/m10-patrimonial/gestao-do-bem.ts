@@ -175,6 +175,100 @@ export async function cadastrarLocalizacaoFisica(
   });
 }
 
+export const zDefinirDivulgacaoDaLocalizacaoInput = z.object({
+  localizacaoId: z.string().min(1),
+  publicavel: z.boolean(),
+  motivo: z
+    .string()
+    .trim()
+    .min(10, "Diga por que este lugar passa (ou deixa) de aparecer no portal público: ao menos 10 caracteres."),
+  criadoPor: z.string().min(1),
+});
+export type DefinirDivulgacaoDaLocalizacaoInput = z.input<typeof zDefinirDivulgacaoDaLocalizacaoInput>;
+
+/**
+ * DEFINE se uma localização JÁ CADASTRADA aparece na consulta pública de bens (V10 T3 · N2).
+ *
+ * ═══ ⚠️ A PENDÊNCIA QUE ISTO FECHA ═══
+ * `LOCALIZACAO-PUBLICAVEL-SO-NA-CRIACAO`: a política só podia ser escolhida no cadastro. Na
+ * prática, isso significava que um município com o acervo já cadastrado não tinha caminho
+ * nenhum para publicar a localização de uma escola — nem para RETIRAR do portal um depósito
+ * que nunca deveria ter entrado. Corrigir pelo banco não é caminho: ninguém audita um `UPDATE`.
+ *
+ * ═══ ⚠️ AÇÃO PRÓPRIA, E NÃO A DE CADASTRAR ═══
+ * Quem cadastra o depósito não é necessariamente quem decide o que vai ao portal do município.
+ * Pendurar esta decisão em `CADASTRAR_LOCALIZACAO_FISICA` daria o poder de publicar endereço a
+ * todo mundo que mexe no cadastro patrimonial — em silêncio, no dia em que a funcionalidade
+ * nascesse.
+ *
+ * ═══ ⚠️ E O FATO FICA, mesmo quando o valor não muda ═══
+ * Repetir a mesma política é recusado nomeando: um "sucesso" que não gravou nada esconderia de
+ * quem clicou que a decisão dele não teve efeito. Ligar e desligar são dois fatos, e os dois
+ * ficam no histórico — com autor, data e motivo.
+ */
+export async function definirDivulgacaoDaLocalizacao(
+  prisma: PrismaClient,
+  input: DefinirDivulgacaoDaLocalizacaoInput
+): Promise<{ readonly mudancaId: string; readonly de: boolean; readonly para: boolean }> {
+  const d = zDefinirDivulgacaoDaLocalizacaoInput.parse(input);
+  return prisma.$transaction(async (tx) => {
+    const atual = await tx.localizacaoFisica.findUnique({
+      where: { id: d.localizacaoId },
+      select: { id: true, descricao: true, setorId: true, publicavelNaTransparencia: true },
+    });
+    if (atual === null) {
+      throw new Error(
+        `LOCALIZACAO-INEXISTENTE: não há localização com id "${d.localizacaoId}". Nada foi gravado.`
+      );
+    }
+    // ⚠️ O ESCOPO É O DO SETOR da localização, como no cadastro: a segregação por unidade vale
+    // para a decisão de publicar tanto quanto para a de criar.
+    await autorizarNo(
+      tx,
+      d.criadoPor,
+      ACAO_DO_SERVICO.definirDivulgacaoDaLocalizacao,
+      atual.setorId === null ? "ENTE" : { setor: atual.setorId }
+    );
+
+    if (atual.publicavelNaTransparencia === d.publicavel) {
+      throw new Error(
+        `DIVULGACAO-JA-NESSE-ESTADO: a localização "${atual.descricao}" já está ` +
+          `${d.publicavel ? "DIVULGÁVEL" : "RESERVADA"}. Gravar de novo criaria um fato que não ` +
+          `aconteceu, e um aviso de sucesso faria quem clicou acreditar que mudou alguma coisa. ` +
+          `Nada foi gravado.`
+      );
+    }
+
+    const mudanca = await tx.mudancaDaDivulgacaoDaLocalizacao.create({
+      data: {
+        localizacaoId: d.localizacaoId,
+        de: atual.publicavelNaTransparencia,
+        para: d.publicavel,
+        motivo: d.motivo,
+        criadoPor: d.criadoPor,
+      },
+      select: { id: true },
+    });
+    await tx.localizacaoFisica.update({
+      where: { id: d.localizacaoId },
+      data: { publicavelNaTransparencia: d.publicavel },
+    });
+    return { mudancaId: mudanca.id, de: atual.publicavelNaTransparencia, para: d.publicavel };
+  });
+}
+
+/** O histórico da política de divulgação de uma localização. LEITURA. */
+export async function historicoDaDivulgacao(
+  prisma: PrismaClient,
+  localizacaoId: string
+): Promise<readonly { readonly de: boolean; readonly para: boolean; readonly motivo: string; readonly criadoEm: Date; readonly criadoPor: string }[]> {
+  return prisma.mudancaDaDivulgacaoDaLocalizacao.findMany({
+    where: { localizacaoId },
+    orderBy: { criadoEm: "desc" },
+    select: { de: true, para: true, motivo: true, criadoEm: true, criadoPor: true },
+  });
+}
+
 export const zCadastrarComissaoPatrimonialInput = z.object({
   codigo: z.string().trim().min(1).max(20),
   descricao: z.string().trim().min(3),

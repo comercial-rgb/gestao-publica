@@ -1,6 +1,6 @@
 import { paraCsv } from "../../../../../lib/csv/csv";
 import { formatarMoeda } from "../../../../../lib/format/moeda";
-import { listarDespesasPublicas, PortaSemBancoError, TETO_DOS_TOTAIS } from "../../../../../lib/portas/despesas-publicas";
+import { listarDespesasPublicas, PortaSemBancoError } from "../../../../../lib/portas/despesas-publicas";
 
 /**
  * O CSV DA CONSULTA PÚBLICA DE DESPESAS (V9 N2).
@@ -24,6 +24,11 @@ export async function GET(req: Request): Promise<Response> {
   try {
     dados = await listarDespesasPublicas({
       q: p("q"), exercicio: p("exercicio"), unidade: p("unidade"), de: p("de"), ate: p("ate"),
+      // ⚠️ A FASE VAI PARA A PORTA (V10 T3). Ela era filtrada AQUI, depois de a consulta trazer
+      // as primeiras 5.000 linhas — e então o arquivo trazia "as primeiras 5.000 de todas as
+      // fases, filtradas depois", que não é o mesmo recorte que a tela mostrava nem o que o
+      // rodapé somava. Agora o filtro é o mesmo em toda parte.
+      fase: p("fase"),
       ordem: (["data", "valor", "numero"] as const).find((o) => o === p("ordem")) ?? "data",
       direcao: p("direcao") === "asc" ? "asc" : "desc",
       pagina: 1, porPagina: TETO_DE_LINHAS,
@@ -33,8 +38,7 @@ export async function GET(req: Request): Promise<Response> {
     return new Response("A consulta esta indisponivel agora: o banco de dados nao respondeu.", { status: 503, headers: { "content-type": "text/plain; charset=utf-8" } });
   }
 
-  const fase = p("fase");
-  const linhas = (fase === "" ? dados.linhas : dados.linhas.filter((l) => l.fase === fase)).map((d) => [
+  const linhas = dados.linhas.map((d) => [
     d.numero, d.data, String(d.exercicio), d.unidade, d.funcao, d.naturezaDespesa, d.fonte,
     d.credorNome, d.credorDocumento, d.historico, d.contrato ?? "",
     formatarMoeda(d.empenhadoOriginal).texto, formatarMoeda(d.anulado).texto, formatarMoeda(d.empenhado).texto,
@@ -54,7 +58,10 @@ export async function GET(req: Request): Promise<Response> {
     // ⚠️ O RODAPÉ DIZ O QUE NÃO SOMAR. Uma planilha aberta por quem não acompanhou a decisão é
     // exatamente onde as três fases viram três despesas.
     `\r\n"As colunas Empenhado, Liquidado e Pago sao ESTAGIOS da mesma despesa: somar as tres conta a mesma despesa tres vezes."\r\n` +
-    (dados.totais === null ? `"Totais do recorte nao calculados: acima de ${TETO_DOS_TOTAIS} empenhos."\r\n` : `"Totais do recorte: empenhado ${formatarMoeda(dados.totais.empenhado).texto}; liquidado ${formatarMoeda(dados.totais.liquidado).texto}; pago ${formatarMoeda(dados.totais.pago).texto}."\r\n`);
+    // ⚠️ OS TOTAIS DO RECORTE INTEIRO — inclusive quando o ARQUIVO foi truncado. São coisas
+    // diferentes: o arquivo traz as primeiras N linhas, e o rodapé diz quanto vale o recorte
+    // todo. Somar as linhas do arquivo truncado daria outro número, menor, sem aviso.
+    `"Totais do recorte: empenhado ${formatarMoeda(dados.totais.empenhado).texto}; liquidado ${formatarMoeda(dados.totais.liquidado).texto}; pago ${formatarMoeda(dados.totais.pago).texto}."\r\n`;
 
   return new Response(corpo, {
     headers: {

@@ -104,6 +104,9 @@ model ReceitaReconhecida {
   inscricoes   InscricaoDeReconhecimento[]
   cancelamentos CancelamentoDeReconhecimento[]
 
+  /// V10 T2 — a amarra com o lançamento tributário que o constituiu (M34). 1-1, VIRTUAL.
+  constituicaoTributaria ConstituicaoDoLancamento?
+
   criadoPor String
   criadoEm  DateTime @default(now())
 
@@ -241,6 +244,9 @@ model CancelamentoDeReconhecimento {
 
   lancamentoId String             @unique
   lancamento   LancamentoContabil @relation(fields: [lancamentoId], references: [id])
+
+  /// V10 T2 — a correção do lançamento tributário (M34) que produziu este cancelamento. VIRTUAL.
+  correcaoTributaria CorrecaoDoLancamento?
 
   criadoPor String
   criadoEm  DateTime @default(now())

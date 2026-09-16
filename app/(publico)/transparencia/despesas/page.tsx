@@ -67,11 +67,12 @@ export default async function DespesasPublicasPage({
     semBanco = true;
   }
 
-  // ⚠️ O FILTRO DE FASE É APLICADO NA PÁGINA, e isto está dito em voz alta: a fase é DERIVADA da
-  // cadeia (liquidações e pagamentos vivos), não uma coluna do empenho, e filtrá-la no banco
-  // exigiria materializá-la. Enquanto for assim, o contador diz quantas linhas da PÁGINA
-  // sobraram — e não finge ser o total do recorte.
-  const linhas = faseEscolhida === "" ? (pagina?.linhas ?? []) : (pagina?.linhas ?? []).filter((l) => l.fase === faseEscolhida);
+  // ⚠️ O FILTRO DE FASE VIVE NO SERVIDOR (V10 T3). Ele era aplicado AQUI, sobre a página já
+  // carregada — e então a contagem, o número de páginas e o CSV falavam de conjuntos diferentes
+  // do que a tela mostrava. Agora a fase é derivada em SQL (`lib/portas/despesas-derivadas.ts`)
+  // e o predicado vale para o recorte inteiro: o que se conta é o que se lista, o que se soma e
+  // o que se exporta.
+  const linhas = pagina?.linhas ?? [];
 
   const csv = (() => {
     const q = new URLSearchParams();
@@ -140,7 +141,7 @@ export default async function DespesasPublicasPage({
       ) : (
         <>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs text-[color:var(--color-ink-2)]">
-            <p data-despesas-total>{pagina.total} empenho(s) · página {pagina.pagina} de {pagina.paginas}{faseEscolhida === "" ? "" : ` · ${linhas.length} nesta página na fase "${faseEscolhida}"`}</p>
+            <p data-despesas-total>{pagina.total} empenho(s){faseEscolhida === "" ? "" : ` na fase "${faseEscolhida}"`} · página {pagina.pagina} de {pagina.paginas}</p>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <span>Ordenar por:</span>
               {([["data", "Data"], ["valor", "Valor"], ["numero", "Número"]] as const).map(([v, r]) => (
@@ -151,12 +152,11 @@ export default async function DespesasPublicasPage({
             </div>
           </div>
 
-          {/* ⚠️ TRÊS NÚMEROS, NUNCA UM. E, quando o recorte é grande demais para somar, a ausência
-              vem com o motivo em vez de um número parcial apresentado como total. */}
+          {/* ⚠️ TRÊS NÚMEROS, NUNCA UM — e agora SEMPRE, sobre o recorte inteiro. O rodapé que
+              desistia acima de dois mil empenhos dizia ao cidadão "estreite a busca", e o total
+              do exercício é justamente o número que ele veio buscar (V10 T3). */}
           <div className="mb-3 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-3 text-sm" data-totais-do-recorte>
-            {pagina.totais === null ? (
-              <p className="text-xs text-[color:var(--color-ink-2)]">{pagina.totaisAusentes}</p>
-            ) : (
+            {(
               <dl className="grid gap-2 sm:grid-cols-3">
                 {([["Empenhado", pagina.totais.empenhado], ["Liquidado", pagina.totais.liquidado], ["Pago", pagina.totais.pago]] as const).map(([r, v]) => (
                   <div key={r}>

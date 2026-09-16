@@ -1,4 +1,5 @@
 import { paraCsv } from "../../../../../lib/csv/csv";
+import { formatarMoeda } from "../../../../../lib/format/moeda";
 import { listarBensPublicos, PortaSemBancoError } from "../../../../../lib/portas/bens-publicos";
 
 /**
@@ -54,6 +55,11 @@ export async function GET(req: Request): Promise<Response> {
     "Tipo de incorporação",
     "Situação",
     "Estado de conservação",
+    // ⚠️ V10 T3 — O VALOR E A DATA DE REFERÊNCIA entraram no arquivo junto com a tela. O CSV é a
+    // tela, e uma coluna que existe numa e não na outra é a que alguém descobre faltando depois
+    // de montar a planilha.
+    "Valor contábil",
+    "Data de referência do valor",
     "Localização",
   ];
   const linhas = dados.linhas.map((b) => [
@@ -66,6 +72,9 @@ export async function GET(req: Request): Promise<Response> {
     b.tipoDeIncorporacao ?? "",
     b.situacao ?? "",
     b.estado ?? "",
+    // ⚠️ "sem movimento registrado" NÃO é zero, e a célula vazia se leria como zero na planilha.
+    b.valorContabil === null ? "sem movimento registrado" : formatarMoeda(b.valorContabil).texto,
+    b.dataDeReferencia,
     // ⚠️ A MESMA REGRA DA TELA, e escrita uma vez só na porta: localização não divulgável não
     // vira célula vazia (que se lê como "não tem"), vira a frase que diz o que houve.
     b.localizacaoDivulgada ? (b.localizacao ?? "") : "não divulgada",

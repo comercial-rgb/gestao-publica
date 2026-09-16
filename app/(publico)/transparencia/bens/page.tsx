@@ -240,6 +240,11 @@ export default async function BensPublicosPage({
                   <th scope="col" className="px-3 py-2">Classe</th>
                   <th scope="col" className="px-3 py-2">Aquisição</th>
                   <th scope="col" className="px-3 py-2">Situação</th>
+                  {/* ⚠️ O VALOR ENTROU NA LISTA (V10 T3). Sem ele, "quanto vale o patrimônio do
+                      município?" só se responde abrindo bem por bem — que é o mesmo que não
+                      publicar. A DATA de referência vai no rodapé, porque é a mesma para a
+                      página inteira: um valor sem data não é conferível. */}
+                  <th scope="col" className="px-3 py-2 text-right">Valor contábil</th>
                   <th scope="col" className="px-3 py-2">Localização</th>
                 </tr>
               </thead>
@@ -260,6 +265,13 @@ export default async function BensPublicosPage({
                     </td>
                     <td className="px-3 py-2">{b.dataAquisicao}</td>
                     <td className="px-3 py-2">{b.situacao ?? "—"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums" data-valor-contabil>
+                      {b.valorContabil === null ? (
+                        <span className="text-xs text-[color:var(--color-ink-3)]">sem movimento registrado</span>
+                      ) : (
+                        `R$ ${formatarMoeda(b.valorContabil).texto}`
+                      )}
+                    </td>
                     <td className="px-3 py-2 text-xs">
                       {b.localizacaoDivulgada ? b.localizacao : <span className="text-[color:var(--color-ink-3)]">não divulgada</span>}
                     </td>
@@ -285,6 +297,15 @@ export default async function BensPublicosPage({
               <span className="text-[color:var(--color-ink-3)]">Próxima página</span>
             )}
           </nav>
+
+          <p className="mt-3 text-xs text-[color:var(--color-ink-2)]" data-data-de-referencia>
+            Valores contábeis apurados em {pagina.linhas[0]?.dataDeReferencia ?? "—"}: são a soma dos
+            movimentos patrimoniais registrados até esta data (aquisição, custo subsequente e
+            reavaliação somam; depreciação, redução ao valor recuperável e baixa subtraem).
+            Depreciação e reavaliação mudam o número com o tempo — por isso a data vai junto.
+            &quot;Sem movimento registrado&quot; não é o mesmo que zero: é um bem cadastrado cujo
+            valor ainda não foi lançado.
+          </p>
 
           <p className="mt-4 text-xs text-[color:var(--color-ink-3)]">
             A localização de um bem só aparece quando o ente a declara divulgável. Bens em locais de

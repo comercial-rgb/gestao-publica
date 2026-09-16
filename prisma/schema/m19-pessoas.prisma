@@ -100,6 +100,11 @@ model Pessoa {
   bensSobResponsabilidade MovimentoDeGestaoDoBem[]      @relation("ResponsavelPeloBem")
   comissoesPatrimoniais   MembroDeComissaoPatrimonial[] @relation("MembroDeComissaoPatrimonial")
   termosPatrimoniais      TermoPatrimonial[]            @relation("ResponsavelDeTermo")
+
+  // V10 T2 — responsabilidade congelada em lançamento tributário e pedidos de certidão. VIRTUAIS.
+  responsabilidadesTributarias ResponsavelPeloLancamento[] @relation("ResponsavelPorLancamentoTributario")
+  solicitacoesDeCertidao       SolicitacaoDeCertidao[]     @relation("SolicitacaoDeCertidao")
+
   // V7 B1 — os vínculos com imóveis do cadastro imobiliário (proprietário, possuidor, responsável tributário). VIRTUAL.
   vinculosComImovel       VinculoDePessoaComImovel[]    @relation("VinculosComImovel")
   /// V6 P2.1 — a ficha de servidor desta pessoa (M32), quando há. No máximo uma.

@@ -493,6 +493,21 @@ enum AcaoDoSistema {
   SUSPENDER_MODULO_CONTRATADO
   REATIVAR_MODULO_CONTRATADO
   CONSULTAR_LICENCIAMENTO
+
+  // ── V10 T2 (N5) — M34 B2: o lancamento tributario e a certidao. Quatro atos, quatro acoes:
+  // preparar e revisar nao constitui nada; constituir faz nascer o credito e mexe no razao;
+  // retificar e cancelar desfazem o que ja foi constituido. ──
+  PREPARAR_LANCAMENTO_TRIBUTARIO
+  CONSTITUIR_CREDITO_TRIBUTARIO
+  RETIFICAR_LANCAMENTO_TRIBUTARIO
+  CANCELAR_LANCAMENTO_TRIBUTARIO
+  SOLICITAR_CERTIDAO
+  DECIDIR_CERTIDAO
+
+  // ── V10 T3 (N2) — a politica de DIVULGACAO de uma localizacao fisica. Acao PROPRIA, e nao a
+  // de cadastrar: quem cadastra o deposito nao e necessariamente quem decide o que vai ao
+  // portal publico do municipio. ──
+  DEFINIR_DIVULGACAO_DA_LOCALIZACAO
   CADASTRAR_ITEM_DO_CONTRATO
   PROGRAMAR_FISCALIZACAO_DO_CONTRATO
   REGISTRAR_OCORRENCIA_DE_FISCALIZACAO

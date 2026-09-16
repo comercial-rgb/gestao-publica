@@ -165,6 +165,31 @@ export const ESCRITA_MUTAVEL_DO_RUNTIME: Readonly<
     update: ["ativa", "inicio", "fim", "motivo", "atualizadoPor", "atualizadoEm"],
     delete: false,
   },
+
+  // ⚠️ V10 T2 — O LANÇAMENTO TRIBUTÁRIO. Muda UMA coluna: a situação. `valor`, `memoria`,
+  // `memoriaSha256`, `fatoGerador`, `versaoDoImovelId` e `tabelaId` ficam FORA do grant, e é
+  // isso que faz a memória ser CONGELADA de verdade: um `GRANT UPDATE` na tabela inteira
+  // deixaria o runtime reescrever o valor de um crédito já constituído sem deixar rastro, e a
+  // certidão emitida sobre ele passaria a mentir.
+  LancamentoTributario: { update: ["situacao"], delete: false },
+
+  // ⚠️ A CERTIDÃO muda ao ser DECIDIDA, e só nisso. `protocolo`, `pessoaId`, `imovelId` e
+  // `chaveDeAutenticidade` ficam fora: trocar a chave de uma certidão emitida quebraria toda
+  // conferência já feita, e trocar o titular transformaria o documento em outro documento.
+  // ⚠️ V10 T3 — A POLÍTICA DE DIVULGAÇÃO de uma localização. UMA coluna, e nada mais:
+  // `GRANT UPDATE ON "LocalizacaoFisica"` deixaria o runtime trocar `descricao`, `setorId` ou
+  // `paiId` de um lugar que já aparece em movimentos de bens — reescrevendo, em silêncio, para
+  // onde o acervo foi. O histórico (`MudancaDaDivulgacaoDaLocalizacao`) fica FORA daqui: ele é
+  // append-only, e é o que torna a decisão auditável.
+  LocalizacaoFisica: { update: ["publicavelNaTransparencia"], delete: false },
+
+  SolicitacaoDeCertidao: {
+    update: [
+      "situacao", "tipo", "validadeAte", "pendencia", "motivo",
+      "emissao", "emissaoSha256", "modeloDaEmissao", "emitidaEm", "emitidaPor",
+    ],
+    delete: false,
+  },
 };
 
 /** Tabelas que o runtime NÃO lê nem escreve — controle do próprio Prisma. */

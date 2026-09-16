@@ -56,6 +56,9 @@ model LocalizacaoFisica {
   /// e a tela diz "não divulgada" em vez de fingir que o bem não existe.
   publicavelNaTransparencia Boolean @default(false)
 
+  /// V10 T3 — o HISTÓRICO das mudanças dessa política. Ver `MudancaDaDivulgacaoDaLocalizacao`.
+  mudancasDaDivulgacao MudancaDaDivulgacaoDaLocalizacao[]
+
   criadoEm  DateTime @default(now())
   criadoPor String
 
@@ -438,4 +441,33 @@ model FormulaDeAvaliacao {
 
   criadoEm  DateTime @default(now())
   criadoPor String
+}
+
+/// A MUDANÇA DA POLÍTICA DE DIVULGAÇÃO de uma localização (V10 T3 · N2).
+///
+/// ⚠️ POR QUE UM FATO, E NÃO SÓ O `UPDATE` DA COLUNA. Marcar uma localização como divulgável é
+/// decidir que "sala do cofre da tesouraria" ou "abrigo da rede de proteção" passa a aparecer
+/// num portal público. Uma coluna booleana sozinha responde "está divulgável hoje" e nada mais:
+/// quem decidiu, quando, e por quê ficam de fora — e são exatamente as três perguntas que se faz
+/// depois de um vazamento.
+///
+/// ⚠️ APPEND-ONLY. Ligar e desligar são dois fatos, e os dois ficam. `de` e `para` guardam o
+/// estado antes e depois, para que o histórico se leia sem reconstruir nada.
+model MudancaDaDivulgacaoDaLocalizacao {
+  id String @id @default(cuid())
+
+  localizacaoId String
+  localizacao   LocalizacaoFisica @relation(fields: [localizacaoId], references: [id])
+
+  de   Boolean
+  para Boolean
+
+  /// Obrigatório (Zod, mín. 10). É o que alguém vai ler quando perguntarem por que este lugar
+  /// está — ou deixou de estar — no portal.
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([localizacaoId, criadoEm])
 }
