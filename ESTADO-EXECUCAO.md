@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | `9286cd2` (V7 M2 U8) — o M2 vem de `3deaf37`; app medido: `bc152d6` (U7, percurso 20/0) e `9286cd2` (candidato integrado, seção 62.9) |
-| Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato integrado |
-| Frente em execução | **V7 M2** — a execução contratual: U0 acesso e unicidade, U1/U2 ordem de serviço e recebimentos, U3 liquidação da parcela, U4 telas e termos, U5 aditivo por itens, U6 planilha orçamentária da obra, **U7 medição da ordem pela planilha**, **U8 agenda e formulários de ocorrência** (seção 62). Publicação SUSPENSA |
-| Último resultado | seção 62.3/62.5/62.7 — `8ed0806`: suíte 2788/2788, fuso 2788/2788, instalação 167 migrations/318 permissões, 14 percursos verdes e 1 falha de produto corrigida em `d167c02` (planilha 9/0); `bc152d6`: 290/290 no incremento, deriva 0, percurso da medição pela planilha 20/0; `9286cd2`: U8 com 5 testes e 6 mutações acusadas, runtime verde, candidato integrado em 62.9 |
-| Pendências relevantes | seção 62.10 — ME06 da obra fechada por U7; abertas: `ESTORNO-DE-RECEBIMENTO`, `CONFLITO-DE-AGENDA-SEM-REGRA`, `NOTIFICACAO-DA-AGENDA`, `GLOSA-LIBERACAO-DE-SALDO`, `COMISSAO-COM-QUORUM`, `ORDEM-DE-SERVICO-DE-MATERIAL`, `ANULACAO-PARCIAL-COM-VARIAS-PARCELAS`, `EMPENHO-POR-PARCELA-DA-ORDEM`, `RETENCOES-NA-LIQUIDACAO-DA-PARCELA`, `PRAZO-DE-RECEBIMENTO-SEM-CONFIGURACAO`, `PORTAL-DO-FORNECEDOR`, `ASSINATURA-QUALIFICADA-DOS-TERMOS`, `XLSX-DA-EXECUCAO`, limites do art. 125, `REAJUSTE-POR-INDICE`, `PLANILHA-POR-DIGITACAO`, `PLANILHA-ACIMA-DE-1-MB-PELA-TELA`, `FORMULARIOS-LIMPOS-APOS-RECUSA` (59 telas fora da execução), `M03-T6-T8-SOB-CARGA`, `FUSO-3288B9B-CASCATA-APOS-TIMEOUT-DE-HOOK`, antiabuso, restituição, retorno bancário e encaminhamento de ouvidoria |
-| Próximo passo | seção 62.10 |
+| HEAD | `3f4d52c` (V9 N7 docs) — candidato medido: `c174a1d+8d34b68f45db` (o SHA sozinho não identifica: a árvore tem alterações) |
+| Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V9** (`docs/lotes/V9-noturna-ecossistema-aws-engine.md`) |
+| Frente em execução | **V9 N0–N8** — instrumentos (N0), identidade Engine e portais (N1), transparência (N2), AWS (N7). Ver seção 63 |
+| Último resultado | seção 63 — `test:rapido` **934/934** (93 arquivos, o primeiro verde desde o V7); tsc do app APROVADO com prova amarrada ao conteúdo; candidato `c174a1d+8d34b68f45db` buildado em 20.358 ms com os tipos de rota RECONFERIDOS depois do build; percurso da transparência pública **31/0** pela tela, contra `next start` no banco dos percursos; 14 capturas em duas larguras |
+| Pendências relevantes | seção 63.6 — **N7 bloqueado por acesso** (`gestao-publica` sem chave de acesso, senha de console com troca obrigatória, e sem permissão de Lightsail); N3, N4, N5 e N6 **não iniciados**; famílias Despesas, Receitas e Pessoal da transparência declaradas como não publicadas na própria tela; as pendências do V7 M2 continuam abertas |
+| Próximo passo | seção 63.7 |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -7319,10 +7319,13 @@ como cadastro do ente com formulário (U8); a mensagem que sumia na confirmaçã
    Passou: generate e tsc backend. Logs em `c-integrado/`. Refazê-la no commit final (`bce712c`) quando a máquina
    estiver livre — e, pelo pedido do usuário, **sem portão gigante**: rodar por partes (tsc, build, percursos) e deixar
    suíte completa e fuso para uma janela combinada.
-2. **B1** (plano de orquestração, F07/M3): cadastro imobiliário com histórico, vínculo com Pessoa, parâmetros por
-   vigência e simulação com memória — módulo novo do tributário, consumindo `m19-pessoas` e `m04-receita`, **sem
-   escrever no ledger e sem constituir dívida** (isso é B2). O levantamento está no quadro de 62.4: hoje não existe
-   cadastro imobiliário nem lançamento tributário no repositório.
+2. ~~**B1**~~ — **FEITO em `bce712c`; a descrição está em 62.11.** ⚠️ Este item dizia "hoje não existe cadastro
+   imobiliário nem lançamento tributário no repositório", o que era verdade quando 62.4 foi escrito e deixou de ser no
+   mesmo dia. A frase ficou aqui contradizendo 62.11 por uma sessão inteira: **o próximo passo é o lugar onde uma
+   afirmação vencida mais atrapalha**, porque é o que a sessão seguinte lê primeiro. O cadastro imobiliário com
+   histórico, o vínculo com Pessoa, os parâmetros por vigência e a simulação com memória existem, **sem escrever no
+   ledger e sem constituir dívida** — isso continua sendo B2, e continua não feito. O que resta de B1: o percurso de
+   navegador (`B1-SEM-PERCURSO`).
 3. Só depois, os subcasos de F07 e a dívida ativa (já modelada em `prisma/schema/m10-divida-ativa.prisma`).
 
 ### 62.11 B1 — o cadastro imobiliário e a simulação tributária (primeira unidade de F07)
@@ -7361,3 +7364,127 @@ formulário (`exactOptionalPropertyTypes`), corrigidos no mesmo commit e **sem r
 o executor foi mandado parar); rodar `tsc -p tsconfig.json` é o primeiro passo da próxima sessão. Sem percurso de
 navegador (as telas existem, mas nenhum smoke as exercitou — `B1-SEM-PERCURSO`); planta de valores como cadastro próprio (hoje é parâmetro da tabela); isenções e
 imunidades por regra declarada; cadastro econômico (ISS) e ITBI por transmissão; e toda a efetivação financeira (B2).
+
+
+---
+
+## 63. V9 — instrumentos, a casca pública com a marca Engine, a consulta de bens e o preflight da AWS
+
+> Ordem: `docs/lotes/V9-noturna-ecossistema-aws-engine.md`, guardada como veio. Regime: **superfície**
+> para as telas públicas e os cadastros; **profundidade** para o contrato de publicação (o que pode
+> sair ao público é dado pessoal se errar) e para os instrumentos.
+
+### 63.1 O que passou a funcionar, e a rota real para chegar lá
+
+| Capacidade | Como se chega |
+|---|---|
+| Portal público da transparência | `/transparencia`, **sem sessão**. Cartões para as famílias abertas e uma lista separada, sem link, das que ainda não abriram |
+| Consulta pública de bens | `/transparencia/bens` → filtros (tombamento/descrição, ano de aquisição, espécie, situação, classe) → **Consultar** → a consulta fica no endereço → clicar no tombamento abre o detalhe em abas Geral / Localização / Movimentações → **Bens patrimoniais** na trilha volta com o filtro → **Baixar CSV** entrega o mesmo recorte |
+| Marcar uma localização como divulgável | `/patrimonio/localizacoes` → formulário → **Divulgar esta localização na consulta pública de bens** → a lista passa a mostrar "Divulgada", e o bem que estiver lá mostra o lugar ao público |
+| Landing interna da transparência | `/administracao/transparencia` (era `/transparencia`, que agora é do cidadão) |
+| Conferência de tipos com prova | `npm run tipos:conferir` grava a aprovação pelo digesto do conteúdo; `npm run release:candidato` recusa buildar sem ela e **reconfere os tipos de rota depois do build** |
+| Percurso e capturas | `npm run smoke:transparencia-publica` e `npm run capturas:transparencia` |
+
+### 63.2 Comandos executados, com resultado real
+
+| Comando | Resultado |
+|---|---|
+| `npm run tipos:conferir` | **APROVADO**. 201.951 ms na primeira execução do dia (fria), 4.127 ms nas incrementais. Heap dimensionado pela memória: 5.324 MB de 8.192 |
+| `npm run release:candidato` | **BUILD OK** 20.358 ms · artefato `bd9527cd3075`, 1.429 arquivos · candidato `c174a1d+8d34b68f45db` |
+| `npm run test:rapido` | **934/934, 93 arquivos.** Primeiro verde desde o V7 |
+| `npx vitest run test/bens-publicos-contrato.test.ts` | 10/10 |
+| `npx tsc -p tsconfig.backend.json` (heap 5.324 MB) | exit 0 |
+| `npx tsc -p tsconfig.scripts.json` (heap 5.324 MB) | exit 0 |
+| `npx tsx scripts/smoke-transparencia-publica.ts` | **31 passos, 0 falhas**, contra `next start` no banco `gestao_publica_percursos` com o papel de runtime |
+| `npx tsx scripts/capturas-da-transparencia-publica.ts` | 14 imagens, celular (390) e desktop (1280), em `.registro-de-execucao/capturas-v9/` |
+| `bash scripts/pos-dns.sh` | **exit 10** — "o nome ainda não resolve", que é o estado correto de hoje |
+| `aws sts get-caller-identity`, `iam get-user`, `lightsail get-instances` | somente leitura; ver 63.5 |
+
+⚠️ **O `B1-TSC-APP-NAO-REEXECUTADO` do V7 está FECHADO**: o typecheck do app rodou e passou, agora
+com prova amarrada ao conteúdo exato.
+
+### 63.3 Migrations e SQL aplicados
+
+`20260922090000_v9_n2_localizacao_publicavel` — uma coluna, `LocalizacaoFisica.publicavelNaTransparencia`,
+`BOOLEAN NOT NULL DEFAULT false`. **Aditiva, zero DROP, sem backfill.** Aplicada em
+`gestao_publica` e em `gestao_publica_percursos` por `prisma migrate deploy`; o banco de teste a
+recebe pelo `global-setup`. Nenhum SQL manual novo.
+
+⚠️ **O `DEFAULT false` é a decisão, não timidez.** Toda localização já cadastrada passou a ser não
+publicável, e o ente marca uma a uma. O contrário — publicar tudo e esconder depois — só se percebe
+quando o endereço do depósito de provas já está num CSV baixado.
+
+### 63.4 Invariantes verificadas
+
+- **Autorização no servidor.** A consulta pública não tem sessão por desenho; o que a protege é o
+  CONTRATO DE CAMPOS (`CAMPOS_PUBLICOS` em `lib/portas/bens-publicos.ts`), conferido campo a campo
+  por teste. Campo novo no modelo interno **não** entra na projeção pública por tabela.
+- **Negação com motivo.** O teste não afirma "a tela não mostra": afirma que o nome e o CPF do
+  responsável **não estão no objeto que a porta devolve**, nem em nenhuma string dele, nem no HTML
+  entregue ao anônimo, nem no CSV.
+- **Fixture N=2** em tudo que só se manifesta em conjunto: dois bens, duas localizações (uma
+  divulgável, uma reservada), duas páginas na paginação. Com um bem só, "a reservada não aparece"
+  passaria por vacuidade.
+- **Instrumento provado por mutação, nas duas direções.** Nove mutações acusadas ao todo: 128 cravado
+  no trinco (1 falha), rodapé do registro fora do disco (2), localização sempre pública (2),
+  responsável na projeção (4), busca pelo código de barras (1), origem do rename ignorada (3).
+- **Data civil do ente.** O filtro de ano usa o dia civil (`AT TIME ZONE`), não o ano UTC: um bem
+  adquirido em 31/12 às 22h local cairia no ano seguinte pelo UTC.
+- **Dinheiro é `Decimal`.** A porta pública devolve string decimal do domínio (`serializar`); quem
+  formata é a tela.
+
+### 63.5 A AWS — o bloqueio, medido
+
+Está inteiro em `docs/operacao/AWS-PREFLIGHT-V9-N7.md`. Em uma linha: **não é "falta o DNS"**.
+
+1. **Autenticação.** O usuário `gestao-publica` existe (conta `441778933745`) e tem **zero chaves de
+   acesso**. A senha de console tem `PasswordResetRequired: true` — o primeiro acesso obriga troca no
+   navegador, e `aws login` não atravessa isso. O CSV entregue é de console, não de chave, e não está
+   nesta máquina.
+2. **Autorização.** Mesmo com credencial falharia: as políticas de `gestao-publica` não alcançam
+   Lightsail (EC2 e Lightsail são serviços distintos).
+
+O perfil `default` desta máquina é `whats-saas`, com `AdministratorAccess`. **Não foi usado para
+provisionar**, e nenhuma chave nova foi criada para contornar. Nenhum recurso foi criado, alterado ou
+removido; **não há custo novo nesta conta por causa desta rodada**. `enginesistemas.com.br` continua
+intacto (conferido por leitura: A `76.76.21.21`, MX do Google, NS da GoDaddy).
+
+`AWS_PREPARADA`: **não**. `PUBLICADA`: **não**. São estados diferentes, e os dois estão declarados
+como não atingidos. `http://localhost:3010` no Mac **não é URL hospedada**.
+
+### 63.6 Pendências reais, separadas do que depende de terceiro
+
+**Depende de Winner (duas ações, em `AWS-PREFLIGHT-V9-N7.md`):** anexar permissão de Lightsail ao
+usuário `gestao-publica` e entregar uma credencial programática dessa identidade. Depois disso, o
+roteiro de `IMPLANTACAO-LIGHTSAIL.md` é executável de ponta a ponta, e o registro `A` da GoDaddy sai
+com valor real.
+
+**Interno, não começado:** N3 (atendimento ao cidadão até a resposta), N4 (estorno de recebimento e
+glosa), N5 (B2 tributário e certidões), N6 (Master Engine). **Nenhum deles foi tocado** — e nenhum
+está bloqueado por terceiro.
+
+**Interno, declarado na própria tela:** as famílias Despesas, Receitas/contas públicas e Pessoal da
+transparência aparecem em `/transparencia` numa lista sem link, dizendo o que falta em cada uma. Foi
+escolha: seis cartões apontando para páginas vazias é pior que três apontando para consultas de
+verdade.
+
+**Novas desta rodada:** `BENS-PUBLICOS-SEM-VALOR-NA-LISTA` (o valor contábil está no detalhe, não na
+coluna da lista — somá-lo por linha exigiria um agregado por bem na consulta paginada);
+`LOCALIZACAO-PUBLICAVEL-SO-NA-CRIACAO` (o cadastro do molde declara `criar`; marcar uma localização
+JÁ existente como divulgável ainda não tem tela — hoje é decisão do momento do cadastro).
+
+As pendências do V7 M2 (`ESTORNO-DE-RECEBIMENTO`, `GLOSA-LIBERACAO-DE-SALDO`, as demais) continuam
+abertas, sem alteração.
+
+### 63.7 O próximo passo, exato
+
+**N3 — a jornada do cidadão até a resposta**, reusando M21, M22, Pessoa e a carta de serviços:
+encontrar serviço → ler requisitos → preencher → anexar → protocolo → acompanhar exigência →
+responder → decisão → avaliar; e o encaminhamento da ouvidoria entre setores, que já está nomeado
+como pendência desde o V7. É a frente de maior efeito entre as não iniciadas, e não depende de
+nenhum acesso externo.
+
+Antes de integrar, rodar os testes do domínio alterado e a autorização positiva e negativa. O portão
+integral (suíte completa, fuso, instalação limpa, percursos em sequência) fica para o candidato de
+homologação — e `test:fuso` passa a ser obrigatório quando o diff tocar `packages/datas` ou os guards
+de período, com o agendamento agora sabendo ler renomeação.
