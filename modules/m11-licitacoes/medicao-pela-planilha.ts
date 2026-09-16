@@ -7,7 +7,7 @@ import { nomeDoEnteNosDocumentos } from "../m16-travamento/apresentacao-do-ente.
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { gravarAnexoNaTransacao } from "../m22-documentos/anexos.js";
 import { contratoTravado, exigirDesignacao, zEvidencia } from "./fiscalizacao.js";
-import { gravarMedicaoDaOrdemNaTransacao, manifestoCanonico, nomeEAto, preCondicoesDaMedicaoDaOrdem } from "./ordem-de-servico.js";
+import { gravarMedicaoDaOrdemNaTransacao, manifestoCanonico, medidoLiquido, nomeEAto, preCondicoesDaMedicaoDaOrdem, SELECAO_DO_MEDIDO } from "./ordem-de-servico.js";
 
 /**
  * ═══ M11 — A MEDIÇÃO DA ORDEM DE SERVIÇO PELA PLANILHA ORÇAMENTÁRIA DA OBRA (V7 M2 U7) ═══
@@ -293,7 +293,7 @@ export interface VersaoParaMedir {
 export async function versoesParaMedirAOrdem(prisma: Tx, ordemId: string): Promise<readonly VersaoParaMedir[]> {
   const ordem = await prisma.ordemDeServicoDoContrato.findUnique({
     where: { id: ordemId },
-    select: { numero: true, ano: true, contratoId: true, itens: { select: { id: true, itemDoContratoId: true, quantidade: true, cancelamentos: { select: { quantidade: true } }, medidos: { where: { medicao: { estorno: null } }, select: { quantidade: true } } } } },
+    select: { numero: true, ano: true, contratoId: true, itens: { select: { id: true, itemDoContratoId: true, quantidade: true, cancelamentos: { select: { quantidade: true } }, medidosNaOrdem: SELECAO_DO_MEDIDO } } },
   });
   if (ordem === null) return [];
   const versoes = await prisma.planilhaOrcamentariaDaObra.findMany({
@@ -303,7 +303,9 @@ export async function versoesParaMedirAOrdem(prisma: Tx, ordemId: string): Promi
   });
   const todasDasObras = await prisma.planilhaOrcamentariaDaObra.findMany({ where: { obraId: { in: [...new Set(versoes.map((v) => v.obraId))] } }, select: { obraId: true, versao: true, vigenciaInicio: true } });
   const itensDaOrdem = new Map(ordem.itens.map((i) => [i.itemDoContratoId, i.id]));
-  const aExecutar = new Map(ordem.itens.map((i) => [i.id, new Decimal(i.quantidade.toFixed(4)).minus(i.cancelamentos.reduce((t, x) => t.plus(x.quantidade.toFixed(4)), new Decimal(0))).minus(i.medidos.reduce((t, x) => t.plus(x.quantidade.toFixed(4)), new Decimal(0)))]));
+  // ⚠️ `medidoLiquido` (V9 N4): a quantidade glosada devolve saldo, aqui como no guard da medição
+  // pela tela. Somar o bruto aqui faria a planilha e a tela discordarem sobre o mesmo item.
+  const aExecutar = new Map(ordem.itens.map((i) => [i.id, new Decimal(i.quantidade.toFixed(4)).minus(i.cancelamentos.reduce((t, x) => t.plus(x.quantidade.toFixed(4)), new Decimal(0))).minus(medidoLiquido(i.medidosNaOrdem))]));
   const saida: VersaoParaMedir[] = [];
   for (const v of versoes) {
     const acumulado = await acumuladoPorCodigo(prisma, v.obraId, v.itens.map((s) => s.codigo));

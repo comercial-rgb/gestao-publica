@@ -502,7 +502,21 @@ model ItemDaOrdemDeServico {
   criadoPor String
 
   cancelamentos CancelamentoDeSaldoDaOrdem[]
-  medidos       ItemMedidoNaOrdem[]
+
+  /// ⚠️ O NOME É `medidosNaOrdem`, E NÃO `medidos`, DE PROPÓSITO (V9 N4).
+  ///
+  /// `ItemDoContrato.medidos` é OUTRA relação — `ItemMedido[]`, a medição feita direto no
+  /// contrato, sem ordem de serviço. As duas se escreviam `.medidos` e se somavam igual, e só
+  /// uma delas tem conferência, controvérsia e glosa.
+  ///
+  /// O efeito prático disso apareceu ao implementar a liberação de saldo pela glosa: um guard
+  /// que procurasse `.medidos.reduce(` não conseguia distinguir os quatro leitores que PRECISAM
+  /// descontar a glosa dos quatro que não têm glosa nenhuma para descontar. Com nomes distintos,
+  /// a regra vira exata — e é ela que `test/medido-liquido-sem-atalho.test.ts` afirma.
+  ///
+  /// ⚠️ RENOMEAR UM CAMPO DE RELAÇÃO NÃO É MIGRATION: a chave estrangeira mora do outro lado
+  /// (`ItemMedidoNaOrdem.itemDaOrdemId`), e este campo não tem coluna. O banco não muda.
+  medidosNaOrdem ItemMedidoNaOrdem[]
 
   @@unique([ordemId, itemDoContratoId])
   @@index([itemDoContratoId])

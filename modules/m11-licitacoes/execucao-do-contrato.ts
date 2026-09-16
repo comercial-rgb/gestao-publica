@@ -2,7 +2,7 @@ import { Decimal, sumMoney, toMoney } from "../../packages/contracts/index.js";
 import { diaCivil, diaCivilBr } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import type { VisaoDoContrato } from "./fiscalizacao.js";
-import { elegivelDoItemMedido } from "./ordem-de-servico.js";
+import { elegivelDoItemMedido, glosadoDoItemDaOrdem, medidoLiquido, SELECAO_DO_MEDIDO } from "./ordem-de-servico.js";
 import { consumoDasParcelas } from "./parcelas-da-liquidacao.js";
 import { aditivosPorItensDoContrato, historicosDosItens, quantidadeParaComprometerDesde, versaoNoDia } from "./versoes-dos-itens.js";
 
@@ -34,7 +34,16 @@ export interface ItemDaOrdemNaTela {
   readonly quantidade: string;
   readonly cancelado: string;
   readonly autorizado: string;
+  /** MEDIDO LÍQUIDO: o bruto menos o glosado. É este que consome a autorização. */
   readonly medido: string;
+  /**
+   * A quantidade GLOSADA (controvérsia decidida como rejeitada), que voltou a executar.
+   *
+   * ⚠️ ELA APARECE NA TELA de propósito. Sem a coluna, "medido" cairia de 6 para 4 sem nenhuma
+   * explicação visível — e um número que muda sozinho é o que faz alguém desconfiar do sistema
+   * inteiro. Com ela, a conta fecha à vista: autorizado − (medido − glosado) = a executar.
+   */
+  readonly glosado: string;
   readonly aExecutar: string;
 }
 
@@ -134,7 +143,7 @@ export async function execucaoDoContrato(prisma: Tx, contratoId: string, visao: 
         emissao: { select: { data: true, inicioAutorizado: true, sha256: true } },
         descarte: { select: { id: true } },
         movimentos: { orderBy: [{ data: "asc" }, { criadoEm: "asc" }], select: { tipo: true, data: true, motivo: true } },
-        itens: { orderBy: { itemDoContrato: { numero: "asc" } }, select: { id: true, quantidade: true, valorUnitario: true, itemDoContrato: { select: { numero: true, descricao: true, unidade: true } }, cancelamentos: { orderBy: { criadoEm: "asc" }, select: { quantidade: true, data: true, motivo: true } }, medidos: { where: { medicao: { estorno: null } }, select: { quantidade: true } } } },
+        itens: { orderBy: { itemDoContrato: { numero: "asc" } }, select: { id: true, quantidade: true, valorUnitario: true, itemDoContrato: { select: { numero: true, descricao: true, unidade: true } }, cancelamentos: { orderBy: { criadoEm: "asc" }, select: { quantidade: true, data: true, motivo: true } }, medidosNaOrdem: SELECAO_DO_MEDIDO } },
         medicoes: {
           orderBy: { numero: "desc" },
           select: {
@@ -164,9 +173,12 @@ export async function execucaoDoContrato(prisma: Tx, contratoId: string, visao: 
   const saidaOrdens: OrdemNaTela[] = ordens.map((o) => {
     const itens = o.itens.map((i) => {
       const cancelado = i.cancelamentos.reduce((t, c) => t.plus(c.quantidade.toFixed(4)), new Decimal(0));
-      const medido = i.medidos.reduce((t, m) => t.plus(m.quantidade.toFixed(4)), new Decimal(0));
+      // ⚠️ MEDIDO LÍQUIDO (V9 N4): o glosado sai da conta e volta a executar. A coluna `glosado`
+      // existe ao lado para que o número não mude sem explicação na tela de quem acompanha.
+      const medido = medidoLiquido(i.medidosNaOrdem);
+      const glosado = glosadoDoItemDaOrdem(i.medidosNaOrdem);
       const autorizado = new Decimal(i.quantidade.toFixed(4)).minus(cancelado);
-      return { id: i.id, item: i.itemDoContrato.numero, descricao: i.itemDoContrato.descricao, unidade: i.itemDoContrato.unidade, valorUnitario: q(i.valorUnitario.toFixed(4)), quantidade: q(i.quantidade.toFixed(4)), cancelado: q(cancelado), autorizado: q(autorizado), medido: q(medido), aExecutar: q(autorizado.minus(medido)) };
+      return { id: i.id, item: i.itemDoContrato.numero, descricao: i.itemDoContrato.descricao, unidade: i.itemDoContrato.unidade, valorUnitario: q(i.valorUnitario.toFixed(4)), quantidade: q(i.quantidade.toFixed(4)), cancelado: q(cancelado), autorizado: q(autorizado), medido: q(medido), glosado: q(glosado), aExecutar: q(autorizado.minus(medido)) };
     });
     const medicoes: MedicaoDaOrdemNaTela[] = o.medicoes.map((m) => {
       const its = m.itens.map((i) => {

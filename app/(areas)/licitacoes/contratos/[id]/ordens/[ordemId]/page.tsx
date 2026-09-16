@@ -91,13 +91,19 @@ export default async function OrdemDeServico({ params }: { readonly params: Prom
         <h2 className="mb-2 text-sm font-semibold">Itens da ordem</h2>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[44rem] text-left text-sm" data-itens-da-ordem>
-            <thead><tr className="text-xs text-[color:var(--color-ink-2)]"><th className="py-1 pr-2">Item</th><th className="py-1 pr-2">Unidade</th><th className="py-1 pr-2 text-right">Unitário</th><th className="py-1 pr-2 text-right">Na ordem</th><th className="py-1 pr-2 text-right">Cancelado</th><th className="py-1 pr-2 text-right">Autorizado</th><th className="py-1 pr-2 text-right">Medido</th><th className="py-1 text-right">A executar</th></tr></thead>
+            <thead><tr className="text-xs text-[color:var(--color-ink-2)]"><th className="py-1 pr-2">Item</th><th className="py-1 pr-2">Unidade</th><th className="py-1 pr-2 text-right">Unitário</th><th className="py-1 pr-2 text-right">Na ordem</th><th className="py-1 pr-2 text-right">Cancelado</th><th className="py-1 pr-2 text-right">Autorizado</th><th className="py-1 pr-2 text-right">Medido</th><th className="py-1 pr-2 text-right">Glosado</th><th className="py-1 text-right">A executar</th></tr></thead>
             <tbody>
               {o.itens.map((i) => (
                 <tr key={i.id} data-item-da-ordem={i.item} className="border-t border-[color:var(--color-border)]">
                   <td className="py-2 pr-2">{i.item} — {i.descricao}</td><td className="py-2 pr-2">{i.unidade}</td><td className="py-2 pr-2 text-right"><ValorMonetario valor={Number(i.valorUnitario).toFixed(2)} /></td>
                   <td className="py-2 pr-2 text-right tabular-nums">{qtdBr(i.quantidade)}</td><td className="py-2 pr-2 text-right tabular-nums">{qtdBr(i.cancelado)}</td><td className="py-2 pr-2 text-right tabular-nums">{qtdBr(i.autorizado)}</td>
-                  <td className="py-2 pr-2 text-right tabular-nums">{qtdBr(i.medido)}</td><td className="py-2 text-right tabular-nums" data-a-executar>{qtdBr(i.aExecutar)}</td>
+                  {/* ⚠️ A COLUNA "GLOSADO" EXISTE PARA O NÚMERO NÃO MUDAR SOZINHO (V9 N4). O medido
+                      é LÍQUIDO: quando uma controvérsia é decidida como rejeitada, ele CAI, e o "a
+                      executar" sobe. Sem a coluna ao lado, quem acompanha veria dois números se
+                      mexerem sem causa visível — e a conta deixa de fechar à vista. */}
+                  <td className="py-2 pr-2 text-right tabular-nums">{qtdBr(i.medido)}</td>
+                  <td className="py-2 pr-2 text-right tabular-nums" data-glosado title={Number(i.glosado) > 0 ? "Quantidade recusada na decisão da controvérsia: voltou a executar dentro desta mesma ordem." : undefined}>{qtdBr(i.glosado)}</td>
+                  <td className="py-2 text-right tabular-nums" data-a-executar>{qtdBr(i.aExecutar)}</td>
                 </tr>
               ))}
             </tbody>

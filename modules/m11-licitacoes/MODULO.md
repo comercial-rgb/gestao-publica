@@ -324,8 +324,43 @@ determinística do trinco do contrato). Achado corrigido no M05: liquidações c
   verificações, termo, conta ou CPF.
 - Percurso por papéis: `scripts/smoke-ponte-contratual.ts`, com a preparação declarada `scripts/preparar-ponte-contratual.ts`.
 
+### A glosa devolve saldo à ordem (V9 N4 — `GLOSA-LIBERACAO-DE-SALDO`, FECHADA)
+
+**Caracterização de 16/09/2026, antes de mudar qualquer linha:** ordem com 6 visitas autorizadas,
+6 medidas, conferência aceita 4 e aponta 2 em controvérsia, decisão **REJEITADA** →
+`autorizado 6,0000 · medido 6,0000 · a executar 0,0000`, e a nova medição das 2 recusadas batia em
+`ITEM-ACIMA-DO-AUTORIZADO-NA-ORDEM`. A quantidade recusada **consumia a autorização para sempre**;
+refazer o serviço — que é o que o art. 140, § 1º impõe ao contratado — exigiria emitir outra ordem,
+isto é, autorizar despesa nova por causa de um serviço já autorizado e apenas malfeito.
+
+Agora o que consome a autorização é o **medido líquido** (`medidoLiquido`): bruto menos a
+quantidade com decisão `REJEITADA`.
+
+- **O evento é a DECISÃO, e ela é única por conferência** (`@unique` + `CONTROVERSIA-JA-DECIDIDA`).
+  Como a liberação é DERIVADA dela, e não um lançamento de crédito, **não existe caminho para
+  aplicá-la duas vezes**. Uma tabela `LiberacaoDeSaldoPorGlosa` teria criado esse caminho.
+- **Controvérsia pendente não libera** — liberar antes da decisão permitiria remedir o que ainda
+  pode ser aceito, e a mesma parcela seria medida duas vezes.
+- **Saldo de EXECUÇÃO, não de pagamento.** O elegível ao recebimento definitivo continua sendo
+  conforme + aceito: `GLOSA-CONFIRMADA` segue recusando receber o recusado.
+- **É saldo de verdade:** o gestor pode CANCELAR o que a glosa devolveu, se o ente decidir não
+  exigir a repetição.
+- **A tela ganhou a coluna "Glosado"**, para o medido não cair sem explicação visível.
+
+⚠️ **A relação passou a se chamar `ItemDaOrdemDeServico.medidosNaOrdem`** (renomear campo de
+relação não é migration: a FK mora do outro lado). Enquanto ela e `ItemDoContrato.medidos` — a
+medição SEM ordem, que não tem conferência nenhuma — se escreviam igual, nenhuma regra textual
+separava os quatro leitores que precisam descontar a glosa dos quatro que não têm o que descontar.
+**E eram quatro, não três:** `cancelarSaldoDaOrdemDeServico` passou despercebido na leitura do
+código e só apareceu porque um teste de comportamento o exercitou.
+`test/medido-liquido-sem-atalho.test.ts` é o guard que impede o próximo leitor de somar o bruto.
+
+Testes: `test/glosa-liberacao-de-saldo.test.ts` (G1–G6 + a derivação pura, 9) e o guard (4). Três
+mutações acusadas: o guard da medição somando o bruto, a controvérsia pendente liberando, e a tela
+descontando enquanto o cancelamento não.
+
 Pendências nomeadas da ponte: `ME06-ADITIVO-ENTRE-EMISSAO-E-MEDICAO` (depende do aditivo por item),
-`GLOSA-LIBERACAO-DE-SALDO`, `COMISSAO-COM-QUORUM`, `ORDEM-DE-SERVICO-DE-MATERIAL`, `ANULACAO-PARCIAL-COM-VARIAS-PARCELAS`,
+`COMISSAO-COM-QUORUM`, `ORDEM-DE-SERVICO-DE-MATERIAL`, `ANULACAO-PARCIAL-COM-VARIAS-PARCELAS`,
 `EMPENHO-POR-PARCELA-DA-ORDEM` (subempenho da parcela), `RETENCOES-NA-LIQUIDACAO-DA-PARCELA` (usa as parametrizadas no
 pagamento), `PRAZO-DE-RECEBIMENTO-SEM-CONFIGURACAO`, `PORTAL-DO-FORNECEDOR`, `ASSINATURA-QUALIFICADA-DOS-TERMOS`,
 `XLSX-DA-EXECUCAO` (PDF só).
@@ -434,7 +469,7 @@ dependente, envelope do comando; cinco mutações acusadas), `test/liquidacao-da
 M05), `test/ui/termos-do-contrato.test.ts` DO01/DO02 da memória (70 serviços, multipágina, os dois totais
 independentes), `test/runtime/contrato-runtime-ordem-de-servico.test.ts` (medir, evidência e estornar por `gestao_app`,
 com as negativas de UPDATE/DELETE). Percurso: `scripts/smoke-medicao-pela-planilha.ts`.
-Fora deste incremento: estorno do RECEBIMENTO (`ESTORNO-DE-RECEBIMENTO`), medição por planilha sem ordem de serviço,
+Fora deste incremento: estorno do RECEBIMENTO (`ESTORNO-DE-RECEBIMENTO`, ainda aberta), medição por planilha sem ordem de serviço,
 conversão de unidades, rateio de um serviço entre itens do contrato, reajuste/BDI entre o preço da planilha e o do
 contrato, exportação XLSX da medição.
 

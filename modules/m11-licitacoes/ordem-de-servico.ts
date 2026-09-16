@@ -65,6 +65,69 @@ export async function nomeEAto(tx: Tx, designacaoId: string): Promise<{ readonly
   return { nome: d.pessoa.versoes[0]?.nome ?? d.pessoa.documento, ato: d.atoDesignacao, usuario: d.usuario.identificador };
 }
 
+/**
+ * ═══ O MEDIDO LÍQUIDO DE UM ITEM DA ORDEM — E POR QUE A GLOSA DEVOLVE SALDO (V9 N4) ═══
+ *
+ * ⚠️ O QUE ACONTECIA ATÉ AQUI, MEDIDO EM 16/09/2026 (caracterização em
+ * `test/glosa-liberacao-de-saldo.test.ts`). Ordem com 6 visitas autorizadas; medidas 6; a
+ * conferência aceita 4 e aponta 2 em controvérsia; o recebedor definitivo decide **REJEITADA** —
+ * glosa confirmada, o serviço não foi aceito e não será pago.
+ *
+ *     autorizado 6,0000 · medido 6,0000 · a executar 0,0000
+ *     nova medição das 2 glosadas → ITEM-ACIMA-DO-AUTORIZADO-NA-ORDEM
+ *
+ * Ou seja: **a quantidade rejeitada continuava consumindo a autorização para sempre.** O
+ * contratado não podia refazer o serviço dentro da mesma ordem, e o ente não podia receber o que
+ * exigiu. Para destravar, só emitindo outra ordem — o que é uma autorização nova de despesa por
+ * causa de um serviço que já estava autorizado e apenas foi malfeito.
+ *
+ * ⚠️ O SALDO VOLTA NO EVENTO CERTO, E UMA VEZ SÓ — e isso não precisou de registro novo. Quem
+ * libera é a DECISÃO `REJEITADA`, que já é única por conferência (`@unique` em `itemMedidoId` e a
+ * guarda `CONTROVERSIA-JA-DECIDIDA`). Como a liberação é DERIVADA dessa decisão, e não um
+ * lançamento de crédito, **não existe o caminho em que ela é aplicada duas vezes**: não há o que
+ * duplicar. Uma tabela `LiberacaoDeSaldoPorGlosa` teria criado exatamente esse caminho.
+ *
+ * ⚠️ E A CONTROVÉRSIA AINDA SEM DECISÃO **NÃO** LIBERA NADA. Enquanto pende, a quantidade continua
+ * consumindo o autorizado: liberar antes da decisão permitiria medir de novo o que ainda pode ser
+ * aceito, e aí a mesma parcela seria medida duas vezes.
+ */
+export interface MedidoParaLiquido {
+  readonly quantidade: { toFixed(n: number): string };
+  readonly conferencia: {
+    readonly quantidadeEmControversia: { toFixed(n: number): string };
+    readonly decisao: { readonly resultado: string } | null;
+  } | null;
+}
+
+/**
+ * A SELEÇÃO que todo leitor do medido de um item da ordem precisa usar. Ela está aqui, num lugar
+ * só, porque é o `select` que carrega a decisão — um leitor que peça apenas `quantidade` lê o
+ * bruto e volta a ignorar a glosa **sem erro nenhum de compilação**.
+ */
+export const SELECAO_DO_MEDIDO = {
+  where: { medicao: { estorno: null } },
+  select: { quantidade: true, conferencia: { select: { quantidadeEmControversia: true, decisao: { select: { resultado: true } } } } },
+} as const;
+
+/** Medido − glosado. É esta a quantidade que consome a autorização da ordem. */
+export function medidoLiquido(medidos: readonly MedidoParaLiquido[]): Decimal {
+  return medidos.reduce((t, x) => {
+    const glosado =
+      x.conferencia?.decisao?.resultado === "REJEITADA"
+        ? new Decimal(x.conferencia.quantidadeEmControversia.toFixed(4))
+        : new Decimal(0);
+    return t.plus(x.quantidade.toFixed(4)).minus(glosado);
+  }, new Decimal(0));
+}
+
+/** Só a parte glosada — para a tela dizer quanto voltou a executar, e por quê. */
+export function glosadoDoItemDaOrdem(medidos: readonly MedidoParaLiquido[]): Decimal {
+  return medidos.reduce(
+    (t, x) => (x.conferencia?.decisao?.resultado === "REJEITADA" ? t.plus(x.conferencia.quantidadeEmControversia.toFixed(4)) : t),
+    new Decimal(0)
+  );
+}
+
 /** A quantidade já comprometida de cada item do contrato: autorizada em ordens emitidas e medida sem ordem. */
 export async function comprometidoPorItemDoContrato(tx: Tx, contratoId: string, excetoOrdemId: string | null): Promise<Map<string, Decimal>> {
   const [itensDeOrdens, medidosSemOrdem] = await Promise.all([
@@ -291,7 +354,7 @@ export async function cancelarSaldoDaOrdemDeServico(prisma: PrismaClient, input:
     const gestor = await exigirDesignacao(tx, c, d.criadoPor, "GESTOR", hoje());
     const o = await tx.ordemDeServicoDoContrato.findUniqueOrThrow({
       where: { id: d.ordemId },
-      select: { numero: true, emissao: { select: { id: true } }, empenho: { select: { numero: true } }, itens: { select: { id: true, quantidade: true, itemDoContrato: { select: { numero: true, descricao: true } }, cancelamentos: { select: { quantidade: true } }, medidos: { where: { medicao: { estorno: null } }, select: { quantidade: true } } } } },
+      select: { numero: true, emissao: { select: { id: true } }, empenho: { select: { numero: true } }, itens: { select: { id: true, quantidade: true, itemDoContrato: { select: { numero: true, descricao: true } }, cancelamentos: { select: { quantidade: true } }, medidosNaOrdem: SELECAO_DO_MEDIDO } } },
     });
     if (o.emissao === null) throw new Error(`ORDEM-NAO-EMITIDA: a ordem nº ${o.numero} é rascunho; rascunho se descarta, não se cancela saldo. Nada foi gravado.`);
     const ids = d.itens.map((i) => i.itemDaOrdemId);
@@ -300,7 +363,11 @@ export async function cancelarSaldoDaOrdemDeServico(prisma: PrismaClient, input:
       const i = o.itens.find((x) => x.id === p.itemDaOrdemId);
       if (i === undefined) throw new Error(`ITEM-DE-OUTRA-ORDEM: o item ${p.itemDaOrdemId} não é da ordem nº ${o.numero}. Nada foi gravado.`);
       const cancelado = i.cancelamentos.reduce((t, x) => t.plus(x.quantidade.toFixed(4)), new Decimal(0));
-      const medido = i.medidos.reduce((t, x) => t.plus(x.quantidade.toFixed(4)), new Decimal(0));
+      // ⚠️ LÍQUIDO (V9 N4). O saldo devolvido pela glosa é saldo DE VERDADE: o ente pode desistir
+      // de exigir a repetição do serviço recusado e cancelá-lo. Se este leitor somasse o bruto,
+      // a tela mostraria "a executar 2" e o cancelamento recusaria com "só 0.0000" — dois
+      // números do mesmo saldo, discordando.
+      const medido = medidoLiquido(i.medidosNaOrdem);
       const aExecutar = new Decimal(i.quantidade.toFixed(4)).minus(cancelado).minus(medido);
       if (new Decimal(p.quantidade).lte(0) || new Decimal(p.quantidade).gt(aExecutar)) {
         throw new Error(
@@ -424,7 +491,7 @@ export async function gravarMedicaoDaOrdemNaTransacao(
     select: {
       numero: true, ano: true, contratoId: true, fimPrevisto: true, emissao: { select: { inicioAutorizado: true } }, descarte: { select: { id: true } },
       movimentos: { select: { tipo: true, data: true } },
-      itens: { select: { id: true, quantidade: true, itemDoContrato: { select: { id: true, numero: true, descricao: true, unidade: true } }, cancelamentos: { select: { quantidade: true } }, medidos: { where: { medicao: { estorno: null } }, select: { quantidade: true } } } },
+      itens: { select: { id: true, quantidade: true, itemDoContrato: { select: { id: true, numero: true, descricao: true, unidade: true } }, cancelamentos: { select: { quantidade: true } }, medidosNaOrdem: SELECAO_DO_MEDIDO } },
       medicoes: { orderBy: { numero: "desc" }, take: 1, select: { numero: true } },
     },
   });
@@ -466,7 +533,9 @@ export async function gravarMedicaoDaOrdemNaTransacao(
     }
     const unit = versaoNoDia(h, d.diaInicio).valorUnitario;
     const autorizado = new Decimal(i.quantidade.toFixed(4)).minus(i.cancelamentos.reduce((t, x) => t.plus(x.quantidade.toFixed(4)), new Decimal(0)));
-    const medido = i.medidos.reduce((t, x) => t.plus(x.quantidade.toFixed(4)), new Decimal(0));
+    // ⚠️ LÍQUIDO, NÃO BRUTO: a quantidade GLOSADA (controvérsia decidida como REJEITADA) devolve
+    // saldo à ordem — o serviço não foi aceito, e refazê-lo cabe dentro da mesma autorização.
+    const medido = medidoLiquido(i.medidosNaOrdem);
     if (medido.plus(p.quantidade).gt(autorizado)) {
       throw new Error(
         `ITEM-ACIMA-DO-AUTORIZADO-NA-ORDEM: o item ${i.itemDoContrato.numero} (${i.itemDoContrato.descricao}) tem ${q4(autorizado)} ${i.itemDoContrato.unidade} autorizado(s) na ordem nº ${o.numero}, já mediu ${q4(medido)} e esta medição levaria a ${q4(medido.plus(p.quantidade))}. ` +

@@ -255,8 +255,28 @@ describe("U2 — a medição da ordem e os recebimentos", () => {
     const x2 = (await execucaoDoContrato(prisma, "ctr-b", "FISCALIZACAO")).ordens[0]!.medicoes[0]!;
     expect(x2.valores).toMatchObject({ glosado: "100.00", conforme: "200.00" });
     expect(x2.itens[0]!.decisao).toMatchObject({ resultado: "REJEITADA" });
-    // A glosa não libera saldo por efeito da decisão: as 3 visitas continuam medidas na ordem.
-    expect((await execucaoDoContrato(prisma, "ctr-b", "FINANCEIRA")).ordens[0]!.itens[0]!.aExecutar).toBe("0.0000");
+    // ═══ ⚠️ MUDANÇA DELIBERADA DE COMPORTAMENTO (V9 N4) — leia antes de "corrigir" ═══
+    //
+    // Até 16/09/2026 esta linha afirmava o contrário: `aExecutar` ficava em `0.0000`, com o
+    // comentário "a glosa não libera saldo por efeito da decisão". Era a decisão do V7 M2, e a
+    // pendência que ela deixou chamava-se `GLOSA-LIBERACAO-DE-SALDO`.
+    //
+    // O efeito dela, medido: a visita REJEITADA continuava consumindo a autorização para sempre.
+    // O contratado não podia refazer o serviço dentro da mesma ordem — e refazer é justamente o
+    // que a lei lhe impõe quando a execução é recusada (Lei 14.133/2021, art. 140, § 1º) — e o
+    // único caminho para destravar era emitir OUTRA ordem, isto é, autorizar despesa nova por
+    // causa de um serviço que já estava autorizado e apenas foi malfeito.
+    //
+    // Agora a decisão REJEITADA devolve a quantidade ao saldo: 3 autorizadas − (3 medidas − 1
+    // glosada) = 1 a executar. A liberação é DERIVADA da decisão, que é única por conferência —
+    // não há lançamento de crédito para acontecer duas vezes.
+    //
+    // ⚠️ E ELA NÃO AUTORIZA PAGAMENTO NENHUM: o elegível do recebimento definitivo continua em
+    // 2.0000 (a asserção `GLOSA-CONFIRMADA` acima), o recebido não muda, e nada foi liquidado.
+    const bGlosada = (await execucaoDoContrato(prisma, "ctr-b", "FINANCEIRA")).ordens[0]!.itens[0]!;
+    expect(bGlosada.medido, "o medido passa a ser LÍQUIDO — 3 medidas menos 1 glosada").toBe("2.0000");
+    expect(bGlosada.glosado, "e a tela mostra quanto foi glosado, para o número não mudar sem explicação").toBe("1.0000");
+    expect(bGlosada.aExecutar, "a visita rejeitada voltou a executar dentro da MESMA ordem").toBe("1.0000");
   });
 
   it("RE06: resolver ocorrência não recebe, não aceita controvérsia e não mexe no elegível", async () => {
