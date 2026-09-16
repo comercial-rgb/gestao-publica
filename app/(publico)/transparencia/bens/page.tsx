@@ -205,7 +205,11 @@ export default async function BensPublicosPage({
             <p data-bens-total>
               {pagina.total} {pagina.total === 1 ? "bem" : "bens"} · página {pagina.pagina} de {pagina.paginas}
             </p>
-            <div className="flex items-center gap-2">
+            {/* ⚠️ `flex-wrap` MEDIDO, não preventivo. Sem ele, a 390 px esta linha ficava 7 px
+                mais larga que a tela e a PÁGINA inteira rolava de lado — e só com `direcao=desc`,
+                porque "decrescente" tem duas letras a mais que "crescente". A tabela pode
+                transbordar (ela tem o próprio `overflow-x-auto`); a página, não. */}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <span>Ordenar por:</span>
               {ORDENS.map((o) => (
                 <Link

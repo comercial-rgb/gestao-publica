@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p tsconfig.backend.json",
+    "typecheck": "node --max-old-space-size=5324 ./node_modules/typescript/bin/tsc --noEmit -p tsconfig.backend.json",
     "prisma:validate": "prisma validate",
     "prisma:generate": "prisma generate",
     "seed:m02": "tsx prisma/seed/m02-seed-oficial.ts",
@@ -38,7 +38,7 @@
     "smoke:cadeia": "tsx scripts/trinco-de-maquina.ts 'smoke da cadeia da despesa' -- npx tsx scripts/smoke-cadeia-despesa.ts",
     "smoke:pacote2": "tsx scripts/trinco-de-maquina.ts 'smoke do pacote 2 (cadeia patrimonial)' -- npx tsx scripts/smoke-pacote2.ts http://localhost:3010",
     "typecheck:app": "tsc --noEmit -p tsconfig.json",
-    "typecheck:scripts": "tsc --noEmit -p tsconfig.scripts.json",
+    "typecheck:scripts": "node --max-old-space-size=5324 ./node_modules/typescript/bin/tsc --noEmit -p tsconfig.scripts.json",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -81,7 +81,9 @@
     "tipos:conferir": "node scripts/conferencia-de-tipos.mjs conferir",
     "tipos:exigir": "node scripts/conferencia-de-tipos.mjs exigir",
     "tipos:digesto": "node scripts/conferencia-de-tipos.mjs digesto",
-    "release:candidato": "tsx scripts/trinco-de-maquina.ts 'release do candidato' -- node scripts/release-do-candidato.mjs"
+    "release:candidato": "tsx scripts/trinco-de-maquina.ts 'release do candidato' -- node scripts/release-do-candidato.mjs",
+    "smoke:transparencia-publica": "tsx scripts/trinco-de-maquina.ts 'percurso da transparencia publica' -- npx tsx scripts/smoke-transparencia-publica.ts",
+    "capturas:transparencia": "tsx scripts/trinco-de-maquina.ts 'capturas da transparencia publica' -- npx tsx scripts/capturas-da-transparencia-publica.ts"
   },
   "keywords": [],
   "author": "",
