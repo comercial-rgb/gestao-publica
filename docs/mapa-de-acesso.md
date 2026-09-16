@@ -10,7 +10,7 @@ o guard `leitura-exige-acao` cobra. `SEM-PORTAO-DECLARADO` é achado, não lacun
 Este mapa **não** diz quais CAMPOS cada rota expõe: projeção pública por allowlist de campos é
 frente própria (`PROJECAO-PUBLICA-POR-CAMPO`), e afirmá-la aqui seria inventar cobertura.
 
-Rotas encontradas: **236** (209 páginas, 27 rotas HTTP).
+Rotas encontradas: **245** (216 páginas, 29 rotas HTTP).
 
 ## Resumo por categoria
 
@@ -20,8 +20,8 @@ Rotas encontradas: **236** (209 páginas, 27 rotas HTTP).
 | OPERADOR:CONSULTAR_RELATORIOS (ente) | 23 |
 | OPERADOR:CONSULTAR_LICITACOES | 20 |
 | LANDING (só navegação; o menu é recortado no servidor) | 19 |
+| PUBLICA | 19 |
 | OPERADOR:CONSULTAR_FOLHA | 15 |
-| PUBLICA | 13 |
 | OPERADOR:CONSULTAR_DESPESA (por unidade) | 9 |
 | OPERADOR:CONSULTAR_PLANEJAMENTO | 9 |
 | OPERADOR:CONSULTAR_PROTOCOLO (algum escopo) | 8 |
@@ -38,6 +38,7 @@ Rotas encontradas: **236** (209 páginas, 27 rotas HTTP).
 | OPERADOR:CONSULTAR_DESPESA (ente) | 3 |
 | OPERADOR:CONSULTAR_PATRIMONIO (ente) | 3 |
 | OPERADOR:CONSULTAR_RECEITA (ente) | 3 |
+| OPERADOR:CONSULTAR_RECEITA | 3 |
 | OPERADOR:CONSULTAR_ADMINISTRACAO (ente) | 2 |
 | OPERADOR:CONSULTAR_CADASTROS (ente) | 2 |
 | OPERADOR:CONSULTAR_CADASTROS | 2 |
@@ -57,19 +58,25 @@ Rotas encontradas: **236** (209 páginas, 27 rotas HTTP).
 
 | Rota | Arquivo |
 |---|---|
-| `/consulta` | `app/consulta/page.tsx` |
+| `/consulta` | `app/(publico)/consulta/page.tsx` |
 | `/fumaca` | `app/fumaca/page.tsx` |
 | `/identidade/imagem` | `app/identidade/imagem/route.ts` |
 | `/login` | `app/login/page.tsx` |
-| `/ouvidoria` | `app/ouvidoria/page.tsx` |
-| `/ouvidoria/[slug]` | `app/ouvidoria/[slug]/page.tsx` |
-| `/ouvidoria/acompanhar` | `app/ouvidoria/acompanhar/page.tsx` |
-| `/servicos` | `app/servicos/page.tsx` |
-| `/servicos/[slug]` | `app/servicos/[slug]/page.tsx` |
-| `/transparencia/contratos` | `app/transparencia/contratos/page.tsx` |
-| `/transparencia/contratos/[id]` | `app/transparencia/contratos/[id]/page.tsx` |
-| `/transparencia/demonstrativos` | `app/transparencia/demonstrativos/page.tsx` |
-| `/transparencia/demonstrativos/pdf` | `app/transparencia/demonstrativos/pdf/route.ts` |
+| `/ouvidoria` | `app/(publico)/ouvidoria/page.tsx` |
+| `/ouvidoria/[slug]` | `app/(publico)/ouvidoria/[slug]/page.tsx` |
+| `/ouvidoria/acompanhar` | `app/(publico)/ouvidoria/acompanhar/page.tsx` |
+| `/servicos` | `app/(publico)/servicos/page.tsx` |
+| `/servicos/[slug]` | `app/(publico)/servicos/[slug]/page.tsx` |
+| `/transparencia` | `app/(publico)/transparencia/page.tsx` |
+| `/transparencia/bens` | `app/(publico)/transparencia/bens/page.tsx` |
+| `/transparencia/bens/[id]` | `app/(publico)/transparencia/bens/[id]/page.tsx` |
+| `/transparencia/bens/csv` | `app/(publico)/transparencia/bens/csv/route.ts` |
+| `/transparencia/contratos` | `app/(publico)/transparencia/contratos/page.tsx` |
+| `/transparencia/contratos/[id]` | `app/(publico)/transparencia/contratos/[id]/page.tsx` |
+| `/transparencia/demonstrativos` | `app/(publico)/transparencia/demonstrativos/page.tsx` |
+| `/transparencia/demonstrativos/pdf` | `app/(publico)/transparencia/demonstrativos/pdf/route.ts` |
+| `/transparencia/despesas` | `app/(publico)/transparencia/despesas/page.tsx` |
+| `/transparencia/despesas/csv` | `app/(publico)/transparencia/despesas/csv/route.ts` |
 
 ## ⚠️ Sob `(areas)` e SEM portão declarado
 
@@ -94,6 +101,7 @@ a página está aberta a qualquer sessão autenticada.
 | `/administracao/perfis` | pagina | OPERADOR:CONSULTAR_ADMINISTRACAO |
 | `/administracao/senha` | pagina | AUTOSSERVICO DA PROPRIA CONTA |
 | `/administracao/sistema` | pagina | OPERADOR:CONSULTAR_ADMINISTRACAO |
+| `/administracao/transparencia` | pagina | LANDING (só navegação; o menu é recortado no servidor) |
 | `/administracao/usuarios` | pagina | OPERADOR:CONSULTAR_ADMINISTRACAO (ente) |
 | `/cadastros` | pagina | LANDING (só navegação; o menu é recortado no servidor) |
 | `/cadastros/pessoas` | pagina | OPERADOR:CONSULTAR_CADASTROS (ente) |
@@ -281,6 +289,9 @@ a página está aberta a qualquer sessão autenticada.
 | `/receita/arrecadacoes` | pagina | OPERADOR:CONSULTAR_RECEITA (ente) |
 | `/receita/arrecadacoes/guia` | rota-http | OPERADOR:CONSULTAR_RECEITA (ente) |
 | `/receita/arrecadacoes/pdf` | rota-http | OPERADOR:CONSULTAR_RECEITA (ente) |
+| `/receita/imoveis` | pagina | OPERADOR:CONSULTAR_RECEITA |
+| `/receita/imoveis/[inscricao]` | pagina | OPERADOR:CONSULTAR_RECEITA |
+| `/receita/parametros-tributarios` | pagina | OPERADOR:CONSULTAR_RECEITA |
 | `/relatorios` | pagina | LANDING (só navegação; o menu é recortado no servidor) |
 | `/relatorios/atualizacoes-orcamentarias` | pagina | OPERADOR:CONSULTAR_RELATORIOS (ente) |
 | `/relatorios/atualizacoes-orcamentarias/pdf` | rota-http | OPERADOR:CONSULTAR_RELATORIOS (ente) |
@@ -318,8 +329,13 @@ a página está aberta a qualquer sessão autenticada.
 | `/transferencias/consorcios/[id]` | pagina | OPERADOR:CONSULTAR_TRANSFERENCIAS |
 | `/transferencias/convenios` | pagina | OPERADOR:CONSULTAR_TRANSFERENCIAS |
 | `/transferencias/convenios/[id]` | pagina | OPERADOR:CONSULTAR_TRANSFERENCIAS |
-| `/transparencia` | pagina | LANDING (só navegação; o menu é recortado no servidor) |
+| `/transparencia` | pagina | PUBLICA |
+| `/transparencia/bens` | pagina | PUBLICA |
+| `/transparencia/bens/[id]` | pagina | PUBLICA |
+| `/transparencia/bens/csv` | rota-http | PUBLICA |
 | `/transparencia/contratos` | pagina | PUBLICA |
 | `/transparencia/contratos/[id]` | pagina | PUBLICA |
 | `/transparencia/demonstrativos` | pagina | PUBLICA |
 | `/transparencia/demonstrativos/pdf` | rota-http | PUBLICA |
+| `/transparencia/despesas` | pagina | PUBLICA |
+| `/transparencia/despesas/csv` | rota-http | PUBLICA |
