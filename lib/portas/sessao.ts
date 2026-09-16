@@ -16,6 +16,7 @@ import {
 } from "../../modules/m16-travamento/operacao";
 import { exigirAcaoEmAlgumEscopo } from "../../modules/m16-travamento/autorizacao";
 import { comandoDoFormulario } from "./comando";
+import { exigirModuloParaEscrita } from "./licenciamento";
 
 /**
  * PORTA — SESSÃO (login, validação request-scoped, logout, escrita autenticada).
@@ -132,6 +133,19 @@ export async function comEscritaAutenticada<T>(
   }
 ): Promise<T> {
   const ident = await exigirSessao();
+
+  // ⚠️ O GATE DE LICENCIAMENTO, ANTES DO ATO E ANTES DO REGISTRO DE TENTATIVA (V10 T1).
+  //
+  // Ele é a QUARTA pergunta, anterior às outras três (permissão, escopo, período): "este
+  // módulo foi contratado por esta implantação?". Mora aqui, no funil único de escrita, e não
+  // em cada tela, porque a enumeração de sítios é o defeito que este repositório já pagou
+  // para aprender — "uma estimativa de dez virou cinquenta e sete".
+  //
+  // ⚠️ E ELE NÃO CONFUNDE LICENÇA COM BANCO FORA: a recusa comercial e a indisponibilidade são
+  // erros de classes diferentes (`lib/portas/licenciamento.ts`), porque pedem providências
+  // diferentes — uma é do comercial, a outra é do suporte técnico.
+  await exigirModuloParaEscrita(acao);
+
   const { ip, agente } = await contexto();
   // ⚠️ A CHAVE E O FINGERPRINT VÊM DO COMANDO DO FORMULÁRIO (lib/portas/comando.ts). Sem chave o
   // envelope RECUSA (sessão noturna V4, 3) — salvo o motivo declarado em `semChave`. O ESCOPO

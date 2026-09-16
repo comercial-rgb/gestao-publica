@@ -64,6 +64,11 @@ const GATES = [
   // ⚠️ A PÁGINA DA ORDEM DE SERVIÇO (V7 M2 U4): a porta decide o alcance do contrato (fiscalização ou financeira, esta
   // incluindo a leitura de licitações) e devolve `null` fora dele; a página responde 404.
   /\bexecucaoDoContratoPara\(/,
+  // ⚠️ A TELA DO FORNECEDOR (V10 T1): o gate está DENTRO da porta
+  // (`lerLicenciamentoDaTela` chama `exigirLeitura("CONSULTAR_LICENCIAMENTO")`), e não na
+  // página, porque a mesma porta serve a tela e o que vier depois dela. `test/licenciamento-gate.test.ts`
+  // afirma o efeito: sem a ação, a porta recusa.
+  /\blerLicenciamentoDaTela\(/,
 ];
 
 /** Portas que uma página de NAVEGAÇÃO pode importar sem ter gate: não entregam dado. */

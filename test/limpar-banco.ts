@@ -1,5 +1,6 @@
 import type { PrismaClient } from "../prisma/generated/client/client.js";
 import { semearUsuariosDeTeste } from "./usuarios-teste.js";
+import { semearLicenciamentoDeTeste } from "./licenciamento-teste.js";
 
 /**
  * Limpeza do banco de TESTE, compartilhada por toda a suíte de integração.
@@ -175,6 +176,11 @@ const TABELAS = [
   "Usuario",
   // M05 — roteiro do subsistema orçamentário
   "RoteiroOrcamentario",
+  // ── M35 — licenciamento comercial (V10 T1). Antes do EnteConfig na lista por clareza; a
+  // ordem é irrelevante (TRUNCATE CASCADE resolve o grafo), a COMPLETUDE não é. ──
+  "EventoDeLicenciamento",
+  "HabilitacaoDeModulo",
+  "ContratoComercial",
   // M14 — exports federais (config do ente e matriz de ICs exigidas)
   "EnteConfig",
   "IcExigidaPorConta",
@@ -483,4 +489,15 @@ export async function limparBanco(prisma: PrismaClient): Promise<void> {
   // É o MESMO argumento do `semearRoteiroOrcamentario` dentro do `criarFichaDeTeste`: o
   // seed roda de dentro do helper que TODA fixture já chama. Ver `usuarios-teste.ts`.
   await semearUsuariosDeTeste(prisma);
+
+  // ⚠️ E O LICENCIAMENTO TAMBÉM (V10 T1), pelo MESMO argumento e pelo MESMO caminho oficial.
+  //
+  // O gate de licenciamento é fail-closed: sem contrato, nenhum módulo contratável opera. A
+  // suíte exercita as portas de leitura e o funil de escrita, e sem isto centenas de testes
+  // falhariam por um motivo que não é o deles. O estado nasce por `instalarLicenciamento` — o
+  // mesmo caminho da instalação real —, não por `create` à mão: fixture que monta o estado por
+  // dentro prova o teste e não prova o produto.
+  //
+  // Quem precisa do estado "não instalado" o produz com `apagarLicenciamentoDeTeste`.
+  await semearLicenciamentoDeTeste(prisma);
 }

@@ -433,6 +433,14 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   CONSULTAR_FOLHA: "folha",
   CONSULTAR_PORTAL_DO_SERVIDOR: "portal-do-servidor",
   CONSULTAR_MEUS_SERVICOS: "meus-servicos",
+  // ── M35 — o licenciamento comercial (V10 T1). Área própria: ela não pertence ao ente ──
+  REGISTRAR_CONTRATO_COMERCIAL: "licenciamento",
+  ENCERRAR_CONTRATO_COMERCIAL: "licenciamento",
+  HABILITAR_MODULO_CONTRATADO: "licenciamento",
+  PROGRAMAR_VIGENCIA_DE_MODULO: "licenciamento",
+  SUSPENDER_MODULO_CONTRATADO: "licenciamento",
+  REATIVAR_MODULO_CONTRATADO: "licenciamento",
+  CONSULTAR_LICENCIAMENTO: "licenciamento",
 };
 
 /**

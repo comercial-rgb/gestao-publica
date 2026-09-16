@@ -37,7 +37,8 @@ export type SlugDeArea =
   | "pessoal"
   | "folha"
   | "portal-do-servidor"
-  | "meus-servicos";
+  | "meus-servicos"
+  | "licenciamento";
 
 export interface AreaNav {
   /** O segmento da rota (`/planejamento`). */
@@ -99,6 +100,10 @@ export const AREAS: readonly AreaNav[] = [
   { slug: "folha", rotulo: "Folha", descricao: "Folha de pagamento: tabelas do ente, rubricas, lançamentos, cálculo com memória por servidor e fechamento." },
   { slug: "portal-do-servidor", rotulo: "Portal do Servidor", descricao: "O que é SEU: vínculos, dependentes e contracheques das folhas fechadas — recortado pela pessoa da sessão." },
   { slug: "meus-servicos", rotulo: "Meus serviços", descricao: "O que você pediu pela carta de serviços — por si ou pela empresa que representa: situação, exigências, documentos e decisão." },
+  // ⚠️ V10 T1 — A ÁREA DO FORNECEDOR. Ela aparece no menu de quem tem `CONSULTAR_LICENCIAMENTO`,
+  // e ninguém do município tem: a ação é reservada (`ACOES_DO_FORNECEDOR`, M16). Está em AREAS
+  // porque o menu deriva daqui — uma tela fora do mapa seria uma rota que a navegação não conhece.
+  { slug: "licenciamento", rotulo: "Contrato e módulos", descricao: "O contrato comercial desta implantação: módulos habilitados, vigências, suspensões e o histórico de cada mudança." },
 ];
 
 /** Um relatório navegável (rota + rótulo + uma linha). Fonte ÚNICA da landing e do submenu. */

@@ -4,7 +4,7 @@ import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
 import { limparBanco } from "../../test/limpar-banco.js";
 import { AREA_DA_ACAO } from "../../lib/portas/navegacao-permissoes.js";
 import { bootstrapUsuario } from "../../prisma/seed/bootstrap-usuario.js";
-import { ACOES_DE_LEITURA, TODAS_AS_ACOES } from "./acoes.js";
+import { ACOES_DE_LEITURA, ACOES_DO_ENTE, TODAS_AS_ACOES, ehAcaoDoFornecedor } from "./acoes.js";
 import {
   acaoDeLeituraDaArea,
   aplicarAtualizacaoDePermissoes,
@@ -233,15 +233,22 @@ describe("instalação limpa e atualização — no banco", () => {
     return ps.map((p) => `${p.acao} ${p.unidadeOrcId ?? "G"}`);
   }
 
-  it("instalação limpa: o bootstrap concede o censo inteiro, com as 18 leituras globais", async () => {
+  it("instalação limpa: o bootstrap concede o censo DO ENTE, com as leituras globais dele", async () => {
     await instalar();
     const adm = await prisma.perfil.findUniqueOrThrow({ where: { nome: "ADMINISTRADOR" }, select: { id: true } });
     // ⚠️ ORDENADO EM JS DOS DOIS LADOS: o Prisma ordena um enum pela ORDEM DE DECLARAÇÃO,
     // não alfabeticamente — a primeira execução comparou duas listas iguais em ordens
     // diferentes e falhou por isso.
+    //
+    // ⚠️ E O CENSO AQUI É O DO ENTE (V10 T1): `CONSULTAR_LICENCIAMENTO` é a leitura da tela do
+    // FORNECEDOR e NÃO chega ao administrador municipal. Antes desta mudança o bootstrap
+    // concedia `TODAS_AS_ACOES`, e a leitura do contrato comercial teria nascido no crachá de
+    // quem administra o município.
     const leituras = [...(await leiturasDe(adm.id))].sort();
-    expect(leituras).toEqual([...ACOES_DE_LEITURA].sort().map((a) => `${a} G`));
-    expect(await prisma.permissaoDePerfil.count({ where: { perfilId: adm.id } })).toBe(TODAS_AS_ACOES.length);
+    expect(leituras).toEqual(
+      [...ACOES_DE_LEITURA].filter((a) => !ehAcaoDoFornecedor(a)).sort().map((a) => `${a} G`)
+    );
+    expect(await prisma.permissaoDePerfil.count({ where: { perfilId: adm.id } })).toBe(ACOES_DO_ENTE.length);
     // Nada pendente: a instalação limpa já nasce com a v1 satisfeita para o admin.
     const situacao = await situacaoDasAtualizacoes(prisma, AREA_DA_ACAO);
     expect(situacao.map((s) => ({ versao: s.versao, previa: s.previa, aplicada: s.aplicadaEm !== null }))).toEqual([

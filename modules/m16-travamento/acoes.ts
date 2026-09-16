@@ -494,6 +494,20 @@ export type AcaoDoSistema =
   | "APRECIAR_PROVIDENCIA"
   | "ENCERRAR_AUDITORIA_INTERNA"
   | "EMITIR_RELATORIO_CIRCUNSTANCIADO"
+  // ── M35 — AS AÇÕES DO FORNECEDOR (V10 T1 · N6.1) ──
+  //
+  // ⚠️ ELAS SÃO RESERVADAS, e é o único bloco do censo que é. `concederAcaoAoPerfil` — a tela
+  // de permissões do ENTE — as RECUSA nomeando: o município não concede a si próprio a
+  // habilitação comercial do software que ele contratou. Quem as recebe é o operador do
+  // fornecedor, provisionado por ato explícito de instalação
+  // (`scripts/provisionar-operador-engine.ts`), nunca por um perfil municipal chamado "admin",
+  // nunca por e-mail e nunca por nome de perfil. Ver `ACOES_DO_FORNECEDOR`, abaixo.
+  | "REGISTRAR_CONTRATO_COMERCIAL"
+  | "ENCERRAR_CONTRATO_COMERCIAL"
+  | "HABILITAR_MODULO_CONTRATADO"
+  | "PROGRAMAR_VIGENCIA_DE_MODULO"
+  | "SUSPENDER_MODULO_CONTRATADO"
+  | "REATIVAR_MODULO_CONTRATADO"
   // ── A LEITURA (orquestração V3, 4.1) — uma ação de CONSULTA por área de navegação ──
   //
   // ⚠️ UMA POR ÁREA, E NÃO UMA POR CONSULTA. O sistema tem mais de cem leituras
@@ -531,7 +545,9 @@ export type AcaoDeLeitura =
   | "CONSULTAR_PESSOAL"
   | "CONSULTAR_FOLHA"
   | "CONSULTAR_PORTAL_DO_SERVIDOR"
-  | "CONSULTAR_MEUS_SERVICOS";
+  | "CONSULTAR_MEUS_SERVICOS"
+  // V10 T1 — a leitura do LICENCIAMENTO. Reservada ao fornecedor, como as mutações dele.
+  | "CONSULTAR_LICENCIAMENTO";
 
 /**
  * O rol das ações de leitura, para o bootstrap, os perfis de fixture e a política de
@@ -562,6 +578,8 @@ export const ACOES_DE_LEITURA: readonly AcaoDeLeitura[] = [
   "CONSULTAR_PORTAL_DO_SERVIDOR",
   // V6.2 P3 — o que o requerente pediu, recortado pela pessoa da sessão e pelas representações vigentes.
   "CONSULTAR_MEUS_SERVICOS",
+  // V10 T1 — o contrato comercial e os módulos habilitados. RESERVADA ao fornecedor.
+  "CONSULTAR_LICENCIAMENTO",
 ];
 
 /** É uma ação de leitura? — o discriminador que a política de leitura e os testes usam. */
@@ -974,7 +992,14 @@ export type NomeDeServico =
   | "emitirRelatorioCircunstanciado"
   // ENT11 — o eixo financeiro do patrimônio.
   | "parametrizarRoteiroPatrimonial"
-  | "parametrizarRoteiroResultadoAlienacao";
+  | "parametrizarRoteiroResultadoAlienacao"
+  // M35 — o contrato comercial e a habilitação de módulos (V10 T1).
+  | "registrarContratoComercial"
+  | "encerrarContratoComercial"
+  | "habilitarModuloContratado"
+  | "programarVigenciaDeModulo"
+  | "suspenderModuloContratado"
+  | "reativarModuloContratado";
 
 /**
  * ⚠️ O RECORD EXAUSTIVO — serviço → ação.
@@ -1498,6 +1523,13 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   apreciarProvidencia: "APRECIAR_PROVIDENCIA",
   encerrarAuditoria: "ENCERRAR_AUDITORIA_INTERNA",
   emitirRelatorioCircunstanciado: "EMITIR_RELATORIO_CIRCUNSTANCIADO",
+  // M35 — o licenciamento comercial (V10 T1). Uma ação por serviço, como todo o resto.
+  registrarContratoComercial: "REGISTRAR_CONTRATO_COMERCIAL",
+  encerrarContratoComercial: "ENCERRAR_CONTRATO_COMERCIAL",
+  habilitarModuloContratado: "HABILITAR_MODULO_CONTRATADO",
+  programarVigenciaDeModulo: "PROGRAMAR_VIGENCIA_DE_MODULO",
+  suspenderModuloContratado: "SUSPENDER_MODULO_CONTRATADO",
+  reativarModuloContratado: "REATIVAR_MODULO_CONTRATADO",
 };
 
 /**
@@ -1535,6 +1567,54 @@ export const ACOES_DE_ADMINISTRACAO: readonly AcaoDoSistema[] = [
   "VINCULAR_PESSOA_AO_USUARIO",
   "CONFIGURAR_APRESENTACAO_DO_ENTE",
 ];
+
+/**
+ * ═══ ⚠️ AS AÇÕES DO FORNECEDOR — O ÚNICO BLOCO RESERVADO DO CENSO (V10 T1 · N6.1) ═══
+ *
+ * A habilitação comercial não é poder do ENTE: é do FORNECEDOR. A distinção não é
+ * hierárquica ("o fornecedor é mais forte"), é de OBJETO — o administrador do município
+ * decide quem, dentro do município, pode empenhar; o fornecedor declara o que o CONTRATO
+ * alcança. Se as duas coubessem na mesma tela, quem administra permissões se concederia a
+ * habilitação e o contrato viraria enfeite.
+ *
+ * ⚠️ TRÊS CONSEQUÊNCIAS, e cada uma tem teste:
+ *   1. `concederAcaoAoPerfil` RECUSA qualquer ação desta lista, nomeando o motivo;
+ *   2. o BOOTSTRAP de instalação concede `ACOES_DO_ENTE` (o censo MENOS estas) ao
+ *      administrador municipal — antes ele recebia `TODAS_AS_ACOES`, e teria recebido estas
+ *      de carona no dia em que nascessem;
+ *   3. nenhuma atualização versionada de permissões as deriva — a v1 deriva leitura por
+ *      área a partir de mutações que o perfil já tem, e um perfil municipal nunca tem estas.
+ *
+ * ⚠️ O QUE ISTO **NÃO** RESOLVE, e está declarado: quem tem acesso ao shell do servidor e ao
+ * banco pode provisionar o que quiser. A fronteira aqui é a APLICAÇÃO — nenhuma tela, rota
+ * ou ação do sistema concede estas seis. Quem as concede é um ato de instalação, com autor
+ * registrado. Prometer mais do que isso seria mentir sobre o que software consegue impedir.
+ */
+export const ACOES_DO_FORNECEDOR: readonly AcaoDoSistema[] = [
+  "REGISTRAR_CONTRATO_COMERCIAL",
+  "ENCERRAR_CONTRATO_COMERCIAL",
+  "HABILITAR_MODULO_CONTRATADO",
+  "PROGRAMAR_VIGENCIA_DE_MODULO",
+  "SUSPENDER_MODULO_CONTRATADO",
+  "REATIVAR_MODULO_CONTRATADO",
+  "CONSULTAR_LICENCIAMENTO",
+];
+
+/** É ação reservada ao fornecedor? — o discriminador que a tela de permissões cobra. */
+export function ehAcaoDoFornecedor(acao: string): boolean {
+  return (ACOES_DO_FORNECEDOR as readonly string[]).includes(acao);
+}
+
+/**
+ * O CENSO DO ENTE — tudo menos o que é do fornecedor. É o que o bootstrap concede.
+ *
+ * ⚠️ DERIVADO, e não uma segunda lista escrita à mão: uma ação nova do censo entra aqui
+ * sozinha, e uma ação nova do fornecedor sai daqui sozinha. Duas listas paralelas divergem —
+ * e a divergência, aqui, seria o administrador municipal nascendo com a chave do contrato.
+ */
+export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
+  (a) => !ehAcaoDoFornecedor(a)
+);
 
 /**
  * ⚠️ OS SERVIÇOS QUE O CENSO **NÃO** COBRE, E POR QUÊ. Cada exclusão é uma DECISÃO, e o
@@ -2214,4 +2294,20 @@ export const FORA_DO_CENSO: Record<string, string> = {
   liquidarDe2026: "helper de fixture",
   pagarDe2026: "helper de fixture",
   empenharELiquidar: "helper de fixture",
+
+  // ── M35 — o licenciamento comercial (V10 T1) ──
+  lerLicenciamento:
+    "LEITURA do contrato desta implantação, das habilitações e do histórico. Não muta nada. " +
+    "A porta que a serve cobra CONSULTAR_LICENCIAMENTO, ação reservada ao fornecedor.",
+  situacaoDoModuloNaImplantacao:
+    "LEITURA de uma linha — é o GATE. Ele não pode cobrar permissão: é chamado ANTES de saber " +
+    "qual ação está sendo tentada, dentro do envelope de escrita e da política de leitura. " +
+    "Cobrar autorização aqui seria recursão.",
+  licenciamentoInstalado:
+    "LEITURA de contagem: 'esta implantação tem contrato?'. É o que distingue 'não instalado' " +
+    "de 'não contratado' na mensagem que o operador lê.",
+  instalarLicenciamento:
+    "ATO DE INSTALAÇÃO, como o bootstrap do primeiro usuário: roda fora da aplicação, por quem " +
+    "opera o servidor, e é inerte quando já existe contrato. Não há sessão para autorizar — o " +
+    "gate que ele instala é justamente o que ainda não existe quando ele roda.",
 };

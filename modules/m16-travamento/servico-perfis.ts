@@ -1,6 +1,12 @@
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { z } from "zod";
-import { ACAO_DO_SERVICO, TODAS_AS_ACOES, type AcaoDoSistema } from "./acoes.js";
+import {
+  ACAO_DO_SERVICO,
+  ACOES_DO_FORNECEDOR,
+  TODAS_AS_ACOES,
+  ehAcaoDoFornecedor,
+  type AcaoDoSistema,
+} from "./acoes.js";
 import { autorizar } from "./autorizacao.js";
 
 /**
@@ -69,6 +75,35 @@ function exigirAcaoDoCenso(nome: string): AcaoDoSistema {
     );
   }
   return achada;
+}
+
+/**
+ * ⚠️ O MUNICÍPIO NÃO CONCEDE A SI PRÓPRIO A HABILITAÇÃO COMERCIAL (V10 T1 · N6.1).
+ *
+ * Esta é a tela de permissões do ENTE: ela distribui, dentro do município, o poder de
+ * empenhar, liquidar, pagar, protocolar. As ações de `ACOES_DO_FORNECEDOR` são de outra
+ * natureza — elas declaram o que o CONTRATO alcança. Se coubessem aqui, quem administra
+ * permissões se concederia a habilitação num clique e o contrato viraria enfeite.
+ *
+ * ⚠️ A RECUSA É POR CENSO DECLARADO, e não por prefixo de nome ("tudo que começa com
+ * HABILITAR_"). Guarda que enumera FORMAS acha só aquelas formas; o que se afirma aqui é a
+ * PROPRIEDADE — a ação pertence ao censo reservado, e o censo é uma constante única que o
+ * bootstrap, esta recusa e o teste leem.
+ *
+ * ⚠️ E O QUE ISTO NÃO PROMETE: quem tem o shell do servidor e o banco provisiona o que
+ * quiser. A fronteira é a APLICAÇÃO — nenhuma tela, rota ou ação do sistema concede estas.
+ */
+function recusarAcaoDoFornecedor(acao: AcaoDoSistema): void {
+  if (!ehAcaoDoFornecedor(acao)) return;
+  throw new Error(
+    `AÇÃO RESERVADA AO FORNECEDOR: "${acao}" não é concedida por esta tela. Ela pertence ao ` +
+      `CONTRATO COMERCIAL desta implantação — quais módulos foram contratados, desde quando e ` +
+      `até quando — e não à distribuição de poderes dentro do município. Se coubesse aqui, ` +
+      `quem administra permissões se concederia a própria habilitação, e o contrato deixaria ` +
+      `de significar alguma coisa.\n` +
+      `  as reservadas são: ${ACOES_DO_FORNECEDOR.join(", ")}.\n` +
+      `  quem resolve: o fornecedor, pela tela de contrato e módulos. Nada foi gravado.`
+  );
 }
 
 async function exigirPerfil(prisma: Tx, perfilId: string): Promise<{ readonly nome: string }> {
@@ -200,6 +235,7 @@ export async function concederAcaoAoPerfil(
   await autorizar(prisma, d.criadoPor, ACAO_DO_SERVICO.concederAcaoAoPerfil);
 
   const acao = exigirAcaoDoCenso(d.acao);
+  recusarAcaoDoFornecedor(acao);
   const perfil = await exigirPerfil(prisma, d.perfilId);
   await exigirUnidadeSeInformada(prisma, d.unidadeOrcId);
   await recusarAmpliacaoDoProprioCracha(prisma, d.criadoPor, d.perfilId, perfil.nome);

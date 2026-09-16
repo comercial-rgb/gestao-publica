@@ -11,6 +11,7 @@ import {
   acoesDeLeituraDoUsuario,
   escopoDaAcaoDeLeitura,
 } from "../../modules/m16-travamento/leitura";
+import { exigirModuloParaLeitura } from "./licenciamento";
 import {
   EscopoDeLeituraError,
   ExercicioIlegivelError,
@@ -76,6 +77,17 @@ export async function escopoDeLeitura(
   sessao: Identidade,
   acao: AcaoDeLeitura
 ): Promise<EscopoDeLeitura> {
+  // ⚠️ O GATE DE LICENCIAMENTO DA LEITURA (V10 T1), no ponto por onde TODAS as decisões de
+  // leitura passam — `exigirLeituraDoEntePara`, `exigirLeituraEmAlgumEscopoPara`,
+  // `autorizarLeituraDoRegistroPara` e `recorteDePaginaPara` chamam esta função.
+  //
+  // ⚠️ ELE É MAIS FROUXO QUE O DA ESCRITA, e de propósito: só `NAO_CONTRATADO` fecha a
+  // leitura. Módulo SUSPENSO ou fora de vigência continua sendo LIDO — suspender não apaga o
+  // empenho, o processo nem o documento, e o ente segue obrigado a prestar contas do que já
+  // fez. Fechar a leitura junto transformaria pendência comercial em apagamento de
+  // escrituração pública.
+  await exigirModuloParaLeitura(acao);
+
   const e = await escopoDaAcaoDeLeitura(cliente(), sessao.identificador, acao);
   return {
     unidades: e.unidades.map((u) => u.codigo),

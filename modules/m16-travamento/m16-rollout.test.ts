@@ -7,7 +7,7 @@ import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
 import { criarFichaDeTeste } from "../../test/ficha-teste.js";
 import { limparBanco } from "../../test/limpar-banco.js";
 import { PERFIL_ADMIN } from "../../test/usuarios-teste.js";
-import { TODAS_AS_ACOES } from "./acoes.js";
+import { ACOES_DO_ENTE, ACOES_DO_FORNECEDOR, TODAS_AS_ACOES } from "./acoes.js";
 import { criarM02Deps } from "../m02-planejamento/adapter-prisma.js";
 import { criarFicha } from "../m02-planejamento/servico.js";
 import { criarM03Deps } from "../m03-creditos/adapter-prisma.js";
@@ -917,13 +917,26 @@ describe("M16 bloco 3 — o ROLLOUT da autorização (TR 4.56 · 6.4 · 6.5)", (
     expect(await prisma.perfil.count()).toBe(1);
     // O perfil é PRÓPRIO — não é o ONIPOTENTE das fixtures.
     expect(await prisma.perfil.count({ where: { nome: PERFIL_ADMIN } })).toBe(0);
-    // Vem do CENSO: ação nova = o admin passa a poder concedê-la.
-    expect(r.permissoesConcedidas).toBe(TODAS_AS_ACOES.length);
+    // Vem do CENSO DO ENTE: ação nova = o admin passa a poder concedê-la.
+    //
+    // ⚠️ MUDOU NA V10 T1, e a mudança é deliberada: era `TODAS_AS_ACOES`, e passou a ser
+    // `ACOES_DO_ENTE` — o censo MENOS `ACOES_DO_FORNECEDOR`. O administrador MUNICIPAL
+    // administra o ENTE; a habilitação comercial dos módulos é do fornecedor, e teria chegado
+    // a ele de carona no dia em que nascesse. As duas asserções abaixo são a prova de que a
+    // separação é real no banco, não só no código.
+    expect(r.permissoesConcedidas).toBe(ACOES_DO_ENTE.length);
     expect(
       await prisma.permissaoDePerfil.count({
         where: { perfilId: r.perfilId, unidadeOrcId: null },
       })
-    ).toBe(TODAS_AS_ACOES.length);
+    ).toBe(ACOES_DO_ENTE.length);
+    expect(ACOES_DO_ENTE.length).toBe(TODAS_AS_ACOES.length - ACOES_DO_FORNECEDOR.length);
+    // ⚠️ O EFEITO, e não a contagem: nenhuma ação reservada chegou ao perfil do administrador.
+    expect(
+      await prisma.permissaoDePerfil.count({
+        where: { perfilId: r.perfilId, acao: { in: ACOES_DO_FORNECEDOR as string[] } },
+      })
+    ).toBe(0);
 
     // A senha existe como EVENTO de credencial, e o hash não mora no usuário.
     expect(await prisma.credencialDeUsuario.count({ where: { usuarioId: r.usuarioId } })).toBe(1);

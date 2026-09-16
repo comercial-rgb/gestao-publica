@@ -482,6 +482,17 @@ enum AcaoDoSistema {
   REGISTRAR_RECEBIMENTO_DEFINITIVO
   /// V9 N4 — desfazer um recebimento definitivo assinado. Acao propria: desfazer nao e receber.
   ESTORNAR_RECEBIMENTO_DEFINITIVO
+
+  // ── V10 T1 (N6.1) — AS ACOES DO FORNECEDOR. Reservadas: `concederAcaoAoPerfil` as recusa,
+  // porque o municipio nao concede a si proprio a habilitacao comercial do software. Quem as
+  // recebe e o operador do fornecedor, provisionado por ato explicito de instalacao. ──
+  REGISTRAR_CONTRATO_COMERCIAL
+  ENCERRAR_CONTRATO_COMERCIAL
+  HABILITAR_MODULO_CONTRATADO
+  PROGRAMAR_VIGENCIA_DE_MODULO
+  SUSPENDER_MODULO_CONTRATADO
+  REATIVAR_MODULO_CONTRATADO
+  CONSULTAR_LICENCIAMENTO
   CADASTRAR_ITEM_DO_CONTRATO
   PROGRAMAR_FISCALIZACAO_DO_CONTRATO
   REGISTRAR_OCORRENCIA_DE_FISCALIZACAO

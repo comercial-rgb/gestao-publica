@@ -148,6 +148,23 @@ export const ESCRITA_MUTAVEL_DO_RUNTIME: Readonly<
     update: ["estado", "operacaoId", "tentativas", "reservadoEm", "concluidoEm", "tipoDoResultado", "resultadoRef"],
     delete: false,
   },
+
+  // ⚠️ V10 T1 — O LICENCIAMENTO COMERCIAL. Duas tabelas com estado corrente, e o histórico
+  // (`EventoDeLicenciamento`) FORA daqui: ele é append-only e não recebe UPDATE nenhum, que é o
+  // que faz "suspender" ser um fato registrado em vez de uma linha reescrita.
+  //
+  // ⚠️ E O GRANT É POR COLUNA, com as de identidade de fora. `GRANT UPDATE ON
+  // "ContratoComercial"` deixaria o runtime trocar `numero`, `cliente`, `inicio` ou
+  // `demonstracao` de um contrato já assinado — reescrever o instrumento pela aplicação. Só
+  // `situacao` muda, e só por `encerrarContratoComercial`.
+  ContratoComercial: { update: ["situacao"], delete: false },
+  // De `HabilitacaoDeModulo` mudam a situação, a vigência e o motivo — nunca `contratoId` nem
+  // `modulo`: mover uma habilitação de contrato ou trocar o módulo dela apagaria, em silêncio, o
+  // que o histórico diz ter acontecido.
+  HabilitacaoDeModulo: {
+    update: ["ativa", "inicio", "fim", "motivo", "atualizadoPor", "atualizadoEm"],
+    delete: false,
+  },
 };
 
 /** Tabelas que o runtime NÃO lê nem escreve — controle do próprio Prisma. */

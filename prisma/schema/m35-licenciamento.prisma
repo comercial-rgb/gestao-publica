@@ -1,0 +1,152 @@
+// ----------------------------------------------------------------------------
+// M35 — O CONTRATO COMERCIAL E A HABILITAÇÃO DE MÓDULOS (V10 T1 · N6.1).
+//
+// ⚠️ O QUE ISTO **NÃO** É. Não é multitenancy: o sistema continua MONO-ENTE POR
+// IMPLANTAÇÃO — um banco, um ente, escolhido pelo `DATABASE_URL` do processo.
+// Não há aqui uma lista de municípios, e não deve haver: num banco que tem um
+// ente, uma tela "selecione o município" não teria o que listar.
+//
+// O que existe aqui é o CONTRATO DESTA IMPLANTAÇÃO: quais módulos o cliente
+// contratou, desde quando, até quando, e o histórico de cada mudança.
+//
+// ⚠️ TRÊS PODERES SEPARADOS, e confundi-los é o defeito que este módulo evita:
+//   · PERMISSÃO  — o administrador do ENTE decide quem pode o quê (M16);
+//   · EXERCÍCIO  — o contador decide que competência está aberta (M16 travamento);
+//   · HABILITAÇÃO— o FORNECEDOR decide que módulo o contrato alcança (aqui).
+// O município não concede a si próprio a habilitação: as ações deste módulo são
+// recusadas pela tela de permissões do ente (`ACOES_DO_FORNECEDOR`, M16).
+//
+// ⚠️ APPEND-ONLY NO HISTÓRICO. `HabilitacaoDeModulo` é o estado corrente (uma
+// linha por módulo do contrato) e `EventoDeLicenciamento` é o que aconteceu —
+// nunca reescrito, nunca apagado. Suspender é um evento, não um DELETE.
+// ----------------------------------------------------------------------------
+
+enum ModuloComercial {
+  PLATAFORMA
+  NUCLEO_CONTABIL
+  TRIBUTOS_E_ARRECADACAO
+  PATRIMONIO_E_ALMOXARIFADO
+  COMPRAS_E_CONTRATOS
+  PESSOAL_E_FOLHA
+  ATENDIMENTO_AO_CIDADAO
+  TRANSPARENCIA_E_CONTROLE
+  INTEGRACOES_E_PRESTACAO_DE_CONTAS
+}
+
+enum SituacaoDoContratoComercial {
+  ATIVO
+  ENCERRADO
+}
+
+enum TipoDeEventoDeLicenciamento {
+  CONTRATO_REGISTRADO
+  CONTRATO_ENCERRADO
+  MODULO_HABILITADO
+  VIGENCIA_PROGRAMADA
+  MODULO_SUSPENSO
+  MODULO_REATIVADO
+}
+
+model ContratoComercial {
+  id String @id @default(cuid())
+
+  /// ⚠️ O ENTE DA IMPLANTAÇÃO, COMO TEXTO E SEM FK PARA `EnteConfig` — e a razão é de ORDEM,
+  /// não de preguiça. `EnteConfig` é o cadastro FISCAL (IBGE, CNPJ, tribunal, ordenador), e ele
+  /// é semeado DEPOIS, por quem responde por esses dados; a identidade pública do sistema já
+  /// prevê o estado "ente não semeado". Uma FK aqui tornaria impossível licenciar uma
+  /// instalação antes de alguém preencher o código do IBGE — e é exatamente nessa janela que a
+  /// instalação acontece. O valor é `ID_DO_ENTE_UNICO`, resolvido no servidor pelo
+  /// `DATABASE_URL` do processo; nunca por URL, cabeçalho ou formulário.
+  enteId String
+
+  /// O identificador comercial do contrato, como ele aparece no instrumento.
+  numero String @unique
+
+  /// Como o cliente se identifica no contrato. NÃO substitui o cadastro do ente
+  /// (`EnteConfig.nome`): é o nome da parte contratante, que pode ser o consórcio,
+  /// a autarquia ou a própria prefeitura.
+  cliente String
+
+  situacao SituacaoDoContratoComercial @default(ATIVO)
+
+  /// ⚠️ VIGÊNCIA EM DIA CIVIL DO ENTE, "AAAA-MM-DD", como TEXTO — e não `DateTime`.
+  /// "AAAA-MM-DD" ordena lexicograficamente igual à ordem cronológica e não tem
+  /// fuso para errar. Guardar instante e comparar com `new Date()` é o defeito
+  /// que o guard `data-civil` deste repositório já acusou: às 21h do último dia,
+  /// em UTC, o contrato venceria para um ente que ainda está no dia anterior.
+  inicio String  @db.VarChar(10)
+  fim    String? @db.VarChar(10)
+
+  /// Por que este contrato existe / o que o instrumento registra. Texto livre curto.
+  observacao String?
+
+  /// ⚠️ O CONTRATO DE DEMONSTRAÇÃO se declara. Um ambiente de avaliação com um
+  /// contrato indistinguível do real é um convite a tratá-lo como real.
+  demonstracao Boolean @default(false)
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  habilitacoes HabilitacaoDeModulo[]
+  eventos      EventoDeLicenciamento[]
+
+  @@index([enteId, situacao])
+}
+
+model HabilitacaoDeModulo {
+  id         String            @id @default(cuid())
+  contratoId String
+  contrato   ContratoComercial @relation(fields: [contratoId], references: [id])
+
+  modulo ModuloComercial
+
+  /// `true` enquanto o fornecedor não suspendeu. A VIGÊNCIA é outra pergunta, e as
+  /// duas se somam: suspenso OU fora de vigência bloqueia operação nova.
+  ativa Boolean @default(true)
+
+  /// Dia civil do ente, "AAAA-MM-DD". Ver a nota do contrato.
+  inicio String  @db.VarChar(10)
+  fim    String? @db.VarChar(10)
+
+  /// O motivo da última mudança de estado — o que a tela mostra ao lado do módulo.
+  motivo String
+
+  atualizadoPor String
+  atualizadoEm  DateTime @updatedAt
+  criadoPor     String
+  criadoEm      DateTime @default(now())
+
+  /// ⚠️ UMA LINHA POR MÓDULO POR CONTRATO. É esta unicidade que faz "habilitar duas
+  /// vezes" ser um no-op em vez de duas habilitações concorrentes.
+  @@unique([contratoId, modulo])
+}
+
+model EventoDeLicenciamento {
+  id         String            @id @default(cuid())
+  contratoId String
+  contrato   ContratoComercial @relation(fields: [contratoId], references: [id])
+
+  /// `null` quando o evento é do contrato inteiro (registro, encerramento).
+  modulo ModuloComercial?
+
+  tipo TipoDeEventoDeLicenciamento
+
+  motivo  String
+  detalhe String
+
+  /// A vigência que o evento estabeleceu, quando estabeleceu alguma.
+  vigenciaInicio String? @db.VarChar(10)
+  vigenciaFim    String? @db.VarChar(10)
+
+  /// ⚠️ A IDEMPOTÊNCIA, COM O ESCOPO DENTRO DA CHAVE (invariante 5). A chave é
+  /// derivada de contrato + módulo + tipo + vigência: repetir a MESMA operação
+  /// colide no índice e o serviço responde "já aplicado", sem gravar um segundo
+  /// evento. Uma operação DIFERENTE (outra vigência, outro motivo) tem outra chave
+  /// e entra como fato novo — que é o correto: o histórico registra as duas.
+  chave String @unique
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  @@index([contratoId, criadoEm])
+}

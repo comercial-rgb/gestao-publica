@@ -27,6 +27,8 @@
     "seed:poc-fila": "tsx prisma/seed/poc-fila.ts",
     "db:papel": "tsx scripts/provisionar-papel-runtime.ts",
     "db:conceder": "tsx scripts/conceder-acoes-ao-perfil.ts",
+    "licenciamento:instalar": "tsx scripts/instalar-licenciamento.ts",
+    "engine:operador": "tsx scripts/provisionar-operador-engine.ts",
     "bb:smoke": "tsx scripts/bb-smoke.ts",
     "poc:contingencia": "tsx scripts/poc-contingencia.ts",
     "poc:conferir": "tsx scripts/poc-conferir.ts",

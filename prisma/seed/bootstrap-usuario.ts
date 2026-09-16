@@ -2,7 +2,7 @@ import "dotenv/config";
 import { criarPrismaClient } from "../../modules/m01-core-contabil/adapter-prisma.js";
 import { definirSenha } from "../../modules/m16-travamento/autenticacao.js";
 import { COMPRIMENTO_MINIMO_DA_SENHA } from "../../modules/m16-travamento/credenciais.js";
-import { TODAS_AS_ACOES } from "../../modules/m16-travamento/acoes.js";
+import { ACOES_DO_ENTE } from "../../modules/m16-travamento/acoes.js";
 
 /**
  * BOOTSTRAP DE PRIMEIRO ACESSO — o ovo e a galinha da borda autenticada.
@@ -86,9 +86,18 @@ export function exigirSenhaDoAmbiente(
 /**
  * Cria o PRIMEIRO usuário de uma instalação. Uma vez, e só uma.
  *
- * ⚠️ O PERFIL VEM DO CENSO (`TODAS_AS_ACOES`), não de uma lista à mão: uma ação nova
+ * ⚠️ O PERFIL VEM DO CENSO DO ENTE (`ACOES_DO_ENTE`), não de uma lista à mão: uma ação nova
  * nasce no censo e o admin passa a poder concedê-la. Sem isso, o primeiro serviço do
  * próximo bloco ficaria negado até para quem deveria distribuí-lo.
+ *
+ * ⚠️ E ELE NÃO RECEBE `ACOES_DO_FORNECEDOR` (V10 T1). Até aqui o bootstrap concedia
+ * `TODAS_AS_ACOES` — e no dia em que a habilitação comercial nascesse, o administrador
+ * MUNICIPAL a receberia de carona, sem ninguém decidir isso. O administrador do ente
+ * administra o ENTE; o contrato comercial é do fornecedor, e o operador dele é provisionado
+ * por ato próprio (`scripts/provisionar-operador-engine.ts`). Quais são as reservadas está
+ * em `ACOES_DO_FORNECEDOR`, e `ACOES_DO_ENTE` é DERIVADO dela — uma segunda lista escrita à
+ * mão aqui divergiria, e a divergência seria justamente o administrador municipal nascendo
+ * com a chave do contrato.
  *
  * ⚠️ `unidadeOrcId: null` = TODAS as unidades — a concessão EXPLÍCITA que o schema
  * descreve. O admin de instalação é do ENTE, não de uma secretaria.
@@ -122,7 +131,7 @@ export async function bootstrapUsuario(
   });
 
   await prisma.permissaoDePerfil.createMany({
-    data: TODAS_AS_ACOES.map((acao) => ({
+    data: ACOES_DO_ENTE.map((acao) => ({
       perfilId: perfil.id,
       acao,
       criadoPor: IDENT_ADMIN,
@@ -167,7 +176,7 @@ export async function bootstrapUsuario(
     usuarioId: usuario.id,
     perfilId: perfil.id,
     identificador: IDENT_ADMIN,
-    permissoesConcedidas: TODAS_AS_ACOES.length,
+    permissoesConcedidas: ACOES_DO_ENTE.length,
   };
 }
 
