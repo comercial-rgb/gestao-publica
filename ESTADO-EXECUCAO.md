@@ -7314,9 +7314,50 @@ como cadastro do ente com formulário (U8); a mensagem que sumia na confirmaçã
 
 **Próximo ponto exato:**
 
-1. Ler o candidato integrado `9286cd2` (seção 62.9) e tratar o que ele acusar.
+1. **O candidato integrado NÃO existe ainda.** A cadeia `v7m2-integrado.sh` foi iniciada em `9286cd2` e
+   **interrompida pelo executor** com a máquina em swap (carga 27; o typecheck do app levou 50 min sem terminar).
+   Passou: generate e tsc backend. Logs em `c-integrado/`. Refazê-la no commit final (`bce712c`) quando a máquina
+   estiver livre — e, pelo pedido do usuário, **sem portão gigante**: rodar por partes (tsc, build, percursos) e deixar
+   suíte completa e fuso para uma janela combinada.
 2. **B1** (plano de orquestração, F07/M3): cadastro imobiliário com histórico, vínculo com Pessoa, parâmetros por
    vigência e simulação com memória — módulo novo do tributário, consumindo `m19-pessoas` e `m04-receita`, **sem
    escrever no ledger e sem constituir dívida** (isso é B2). O levantamento está no quadro de 62.4: hoje não existe
    cadastro imobiliário nem lançamento tributário no repositório.
 3. Só depois, os subcasos de F07 e a dívida ativa (já modelada em `prisma/schema/m10-divida-ativa.prisma`).
+
+### 62.11 B1 — o cadastro imobiliário e a simulação tributária (primeira unidade de F07)
+
+**O que passou a funcionar.** `/receita/imoveis` lista e busca imóveis; `/receita/imoveis/[inscricao]` mostra as
+VERSÕES do cadastro (cada uma com vigência, motivo e os atributos declarados), as pessoas vinculadas por papel e
+fração, e a **simulação**: escolhe-se tributo, exercício e dia, e a tela devolve o valor com a MEMÓRIA — cada variável
+usada, o seu valor e a origem (cadastro, atributo do imóvel ou parâmetro da tabela) —, o fundamento e a fórmula, e o
+rateio informativo por responsável. `/receita/parametros-tributarios` publica a tabela do ente por exercício e
+vigência.
+
+**A conta é do ente.** A fórmula é interpretada por `packages/formula` num **universo fechado** (números, variáveis
+declaradas, `+ − * /`, comparações, parênteses e `min`, `max`, `arredondar`, `teto`, `piso`, `se`): nunca `eval`,
+`new Function` ou lista negra — `this.constructor.constructor(...)`, `process`, `require` e `[]` sequer chegam a ser
+avaliados. Na publicação, a fórmula é analisada antes de gravar: variável sem origem recusa (`VARIAVEL-SEM-ORIGEM`).
+Sem tabela publicada, a simulação recusa (`SEM-TABELA-PUBLICADA`) — nenhuma alíquota nacional é inventada.
+
+**O que esta unidade NÃO faz, por decisão:** não lança tributo, não emite guia, não constitui dívida, não escreve no
+ledger e não altera o cadastro ao simular (o teste conta as linhas antes e depois). Isso é B2.
+
+**Estrutura.** `prisma/schema/m34-tributario.prisma` (7 modelos, 3 enums), migrations
+`20260921090000_v7_b1_enums_do_tributario` (2 valores de enum de ação) e `20260921090100_v7_b1_cadastro_imobiliario`
+(5 CHECKs; zero DROP). `modules/m34-tributario/{cadastro-imobiliario,simulacao}.ts` e `MODULO.md`,
+`packages/formula/index.ts`, `lib/portas/cadastro-imobiliario.ts`, as três telas e `lib/navegacao.ts`.
+Ações novas: `GERIR_CADASTRO_IMOBILIARIO` e `GERIR_PARAMETROS_TRIBUTARIOS` (atualização de permissões **v22**);
+simular é leitura sob `CONSULTAR_RECEITA`. Censo: 373 serviços, 295 + 26 ações.
+
+**Provas (banco de construção).** `packages/formula/formula.test.ts` (FM01–FM05) e
+`test/cadastro-imobiliario-e-simulacao.test.ts` (CI01, CI02, SI01–SI03): 9/9. Valores esperados calculados à mão e
+escritos no teste (1.260,00; 1.740,00; 1.512,00; 2.520,00; 264,00), independentes do motor. Cinco mutações acusadas:
+universo da fórmula aberto; variável ausente virando zero; versão do cadastro mais nova em vez da vigente no dia;
+fração do papel sem teto; publicação sem conferir a origem das variáveis.
+
+**Pendências desta frente:** `B1-TSC-APP-NAO-REEXECUTADO` — o typecheck do app acusou dois tipos opcionais na ilha do
+formulário (`exactOptionalPropertyTypes`), corrigidos no mesmo commit e **sem reexecução** (a máquina estava saturada e
+o executor foi mandado parar); rodar `tsc -p tsconfig.json` é o primeiro passo da próxima sessão. Sem percurso de
+navegador (as telas existem, mas nenhum smoke as exercitou — `B1-SEM-PERCURSO`); planta de valores como cadastro próprio (hoje é parâmetro da tabela); isenções e
+imunidades por regra declarada; cadastro econômico (ISS) e ITBI por transmissão; e toda a efetivação financeira (B2).
