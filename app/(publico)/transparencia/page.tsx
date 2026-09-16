@@ -31,6 +31,12 @@ const ABERTAS: readonly Familia[] = [
     href: "/transparencia/bens",
   },
   {
+    titulo: "Despesas",
+    descricao:
+      "Empenhos do ente, com credor, histórico, contrato vinculado e os valores empenhado, anulado, liquidado e pago. Uma linha por empenho: as fases são colunas dele, não despesas distintas.",
+    href: "/transparencia/despesas",
+  },
+  {
     titulo: "Contratos",
     descricao:
       "Os contratos do ente, com objeto, contratado, vigência, valores, aditivos e a execução física já aprovada.",
@@ -68,11 +74,6 @@ const ABERTAS: readonly Familia[] = [
  * princípio do catálogo do repositório: "marcar ausência vale tanto quanto marcar presença".
  */
 const AINDA_NAO_PUBLICADAS: readonly { readonly titulo: string; readonly falta: string }[] = [
-  {
-    titulo: "Despesas (empenho, liquidação e pagamento)",
-    falta:
-      "A execução está registrada no sistema; falta a projeção pública que separe valor original, anulado e vigente sem somar as fases como despesas distintas.",
-  },
   {
     titulo: "Receitas e contas públicas",
     falta:

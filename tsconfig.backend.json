@@ -96,6 +96,7 @@
     "test/ouvidoria-e-avaliacao.test.ts",
     "test/ui/demonstrativo-das-obrigacoes.test.ts",
     "test/bens-publicos-contrato.test.ts",
-    "test/csv-injecao.test.ts"
+    "test/csv-injecao.test.ts",
+    "test/despesas-publicas-contrato.test.ts"
   ]
 }

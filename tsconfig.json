@@ -74,6 +74,7 @@
     // alvo medida acima, nomeada um a um.
     "test/bens-publicos-contrato.test.ts",
     "test/csv-injecao.test.ts",
+    "test/despesas-publicas-contrato.test.ts",
     "app/**/*.ts",
     "app/**/*.tsx",
     "components/**/*.ts",
