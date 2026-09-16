@@ -4,6 +4,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -146,6 +147,92 @@ describe("registro bruto da execução pesada", () => {
     // Uma linha verde não é falha — o filtro não pode inventar investigação.
     expect(linhas.join("\n")).not.toContain("tudo bem");
   });
+});
+
+/**
+ * ═══ COMO O FILHO MORREU TAMBÉM É SAÍDA BRUTA ═══
+ *
+ * ⚠️ O CASO REAL, 15/09/2026 (V8 I0). Três `next build` seguidos morreram no passo de
+ * conferência de tipos. O wrapper saía com **128** — o mesmo número para SIGABRT de OOM,
+ * SIGKILL do sistema e Ctrl+C — e o registro terminava sem uma linha dizendo qual deles
+ * foi. A frase que resolveu a investigação (`… exited with code: null and signal:
+ * SIGABRT`) só existiu porque o worker do Next a imprimiu por conta própria; se o morto
+ * fosse o processo do topo, não haveria frase nenhuma.
+ *
+ * Estes testes fixam a propriedade: **o desfecho vai para o arquivo, com o nome do
+ * sinal**, e o código de saída distingue as mortes.
+ */
+describe("o desfecho do processo pesado", () => {
+  function registroMaisRecente(): string {
+    const fs = registrosDaProva()
+      .map((f) => ({ f, t: statSync(f).mtimeMs }))
+      .sort((a, b) => b.t - a.t);
+    expect(fs.length, "nenhum registro desta prova foi escrito").toBeGreaterThan(0);
+    return readFileSync((fs[0] as { f: string }).f, "utf8");
+  }
+
+  it("morte por sinal: o NOME do sinal fica no registro e o código é 128 + sinal", () => {
+    // `process.abort()` levanta SIGABRT — o mesmo sinal com que o worker do Next morreu
+    // por falta de heap. É a morte que se quer distinguir, reproduzida barata: um processo
+    // curto, sem estourar a memória desta máquina de propósito.
+    const r = rodar(`process.stderr.write("vou abortar\\n"); process.abort()`);
+
+    expect(
+      r.codigo,
+      "morte por SIGABRT saiu com um código que não a distingue de Ctrl+C (130) nem de " +
+        "SIGKILL (137). Era o 128 cravado do wrapper antigo."
+    ).toBe(134);
+
+    const bruto = registroMaisRecente();
+    expect(
+      bruto,
+      "o registro não diz COMO o processo morreu. Sem o nome do sinal, 'estourou a " +
+        "memória' e 'alguém apertou Ctrl+C' são o mesmo log — e mandam a investigação " +
+        "para lados opostos."
+    ).toContain("MORTO POR SINAL SIGABRT");
+    expect(bruto).toContain("# sinal ...... SIGABRT");
+  }, 60_000);
+
+  it("término normal: o rodapé registra o código e diz que não houve sinal", () => {
+    const r = rodar(`process.exit(3)`);
+    expect(r.codigo).toBe(3);
+
+    const bruto = registroMaisRecente();
+    expect(bruto).toContain("# codigo ..... 3");
+    expect(
+      bruto,
+      "um término normal ficou marcado como morte por sinal — o rodapé passaria a " +
+        "acusar OOM onde houve apenas teste vermelho"
+    ).toContain("# sinal ...... (nenhum)");
+    expect(bruto).not.toContain("MORTO POR SINAL");
+  }, 60_000);
+
+  it("comando que não existe não sobe como exceção muda", () => {
+    // ⚠️ `error` do spawn NÃO dispara `close`. Antes, o evento subia como exceção não
+    // tratada e o registro acabava sem uma linha explicando por quê — o mesmo silêncio
+    // que este arquivo inteiro existe para impedir.
+    const saida = (() => {
+      try {
+        execFileSync(
+          "npx",
+          [
+            "tsx",
+            "scripts/trinco-de-maquina.ts",
+            TAREFA,
+            "--",
+            "comando-que-nao-existe-em-lugar-nenhum",
+          ],
+          { cwd: RAIZ, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
+        );
+        return { codigo: 0 };
+      } catch (e) {
+        return { codigo: (e as { status?: number }).status ?? -1 };
+      }
+    })();
+
+    expect(saida.codigo, "127 é 'comando não encontrado'").toBe(127);
+    expect(registroMaisRecente()).toContain("o comando nao pode ser iniciado");
+  }, 60_000);
 });
 
 /**

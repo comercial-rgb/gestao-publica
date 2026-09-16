@@ -235,6 +235,27 @@ export function travarAMaquina(tarefa: string): TrincoDeMaquina {
  * ⚠️ E O AVISO DO CAMINHO VAI PARA `stderr`. Se fosse para `stdout`, o mesmo `| grep` que
  * causou o problema esconderia a única pista de como recuperá-lo.
  */
+/**
+ * OS NÚMEROS DOS SINAIS QUE APARECEM AQUI. O Node entrega o NOME (`"SIGABRT"`), e a
+ * convenção do shell para "morreu por sinal" é `128 + numero`. Só os que esta máquina
+ * produz de verdade estão na tabela; um sinal fora dela cai em `128`, que é o
+ * comportamento antigo, e o NOME continua no rodapé do registro de qualquer jeito.
+ */
+const SINAIS: Readonly<Record<string, number>> = {
+  SIGHUP: 1,
+  SIGINT: 2,
+  SIGQUIT: 3,
+  SIGILL: 4,
+  SIGABRT: 6,
+  SIGBUS: 10,
+  SIGFPE: 8,
+  SIGKILL: 9,
+  SIGSEGV: 11,
+  SIGPIPE: 13,
+  SIGALRM: 14,
+  SIGTERM: 15,
+};
+
 const RAIZ_DO_REPO = fileURLToPath(new URL("..", import.meta.url));
 const PASTA_DE_REGISTRO = join(RAIZ_DO_REPO, ".registro-de-execucao");
 
@@ -316,9 +337,53 @@ if (process.argv[1]?.endsWith("trinco-de-maquina.ts") === true) {
   if (filho.stdout !== null) encaminhar(filho.stdout, process.stdout);
   if (filho.stderr !== null) encaminhar(filho.stderr, process.stderr);
 
-  const codigo = await new Promise<number>((resolve) => {
-    filho.on("close", (c, sinal) => resolve(c ?? (sinal !== null ? 128 : 1)));
-  });
+  /**
+   * ═══ ⚠️ O DESFECHO DO FILHO TAMBÉM É SAÍDA BRUTA — E ELE SE PERDIA ═══
+   *
+   * ⚠️ O CASO REAL, 15/09/2026 (V8 I0). Três `next build` seguidos morreram no passo de
+   * conferência de tipos. O que o terminal mostrava era o despejo do V8 e nada mais; o
+   * wrapper saía com **128**, um número que não diz NADA sobre o que aconteceu. A frase que
+   * explicava tudo — `Next.js build worker exited with code: null and signal: SIGABRT` — só
+   * apareceu porque o worker do Next, por conta própria, a imprimiu. Se o morto fosse o
+   * processo do topo, o registro terminaria mudo.
+   *
+   * **Um registro que guarda o que o filho disse mas não guarda COMO ELE MORREU é meio
+   * registro.** O nome do sinal é a diferença entre "estourou a memória" (SIGABRT/SIGKILL
+   * atrás de um OOM) e "alguém apertou Ctrl+C" (SIGINT) — e essas duas leituras mandam a
+   * investigação para lados opostos.
+   *
+   * ⚠️ E O CÓDIGO DE SAÍDA PASSA A SER `128 + sinal`, a convenção do shell, em vez do 128
+   * cravado. Com o 128 fixo, morte por SIGABRT (134), por SIGKILL do OOM killer (137) e por
+   * SIGINT (130) eram o MESMO número para quem automatiza em cima. Nada no repositório
+   * dependia do 128 — foi conferido antes de mudar.
+   */
+  const desfecho = await new Promise<{ codigo: number; sinal: NodeJS.Signals | null }>(
+    (resolve) => {
+      // ⚠️ `error` COBRE O QUE `close` NÃO COBRE: comando inexistente (ENOENT) e permissão
+      // negada não geram `close`. Sem isto, o evento subia como exceção não tratada e o
+      // registro terminava sem uma linha dizendo por quê.
+      filho.on("error", (e) => {
+        const texto = `\n[trinco] o comando nao pode ser iniciado: ${e.message}\n`;
+        arquivo.write(texto);
+        process.stderr.write(texto);
+        resolve({ codigo: 127, sinal: null });
+      });
+      filho.on("close", (c, sinal) => {
+        if (sinal !== null) resolve({ codigo: 128 + (SINAIS[sinal] ?? 0), sinal });
+        else resolve({ codigo: c ?? 1, sinal: null });
+      });
+    }
+  );
+
+  // O RODAPÉ VAI PARA O ARQUIVO ANTES DE FECHÁ-LO. Quem abrir o log meses depois lê o
+  // desfecho no mesmo lugar em que lê o cabeçalho, sem precisar do terminal que já sumiu.
+  const rodape =
+    `\n# ─────────────────────────────────────────────\n` +
+    `# desfecho ... ${desfecho.sinal !== null ? `MORTO POR SINAL ${desfecho.sinal}` : desfecho.codigo === 0 ? "terminou com codigo 0" : `terminou com codigo ${desfecho.codigo}`}\n` +
+    `# codigo ..... ${desfecho.codigo}\n` +
+    `# sinal ...... ${desfecho.sinal ?? "(nenhum)"}\n` +
+    `# fim ........ ${new Date().toISOString()}\n`;
+  arquivo.write(rodape);
 
   await new Promise<void>((resolve) => arquivo.end(() => resolve()));
   trinco.liberar();
@@ -329,7 +394,18 @@ if (process.argv[1]?.endsWith("trinco-de-maquina.ts") === true) {
     console.error(`\n[registro] o que falhou, extraido do que foi gravado:`);
     for (const l of falhas) console.error(`  ${l}`);
   }
+  // ⚠️ DITO EM VOZ ALTA NO TERMINAL, e não só no arquivo: morte por sinal não é reprovação
+  // de teste nem aprovação de nada. É execução que NÃO ACONTECEU, e a regra do repositório
+  // manda registrar e investigar, nunca marcar como validado.
+  if (desfecho.sinal !== null) {
+    console.error(
+      `\n[registro] ⚠️ O PROCESSO FOI MORTO PELO SINAL ${desfecho.sinal} ` +
+        `(codigo ${desfecho.codigo}). Isto NAO e aprovacao nem reprovacao: e execucao que ` +
+        `nao terminou. SIGABRT/SIGKILL aqui costumam ser memoria (esta maquina tem 8 GB); ` +
+        `SIGINT e interrupcao humana.`
+    );
+  }
   console.error(`[registro] saida bruta preservada em ${registro}`);
 
-  process.exit(codigo);
+  process.exit(desfecho.codigo);
 }

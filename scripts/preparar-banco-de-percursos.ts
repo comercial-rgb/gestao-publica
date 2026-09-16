@@ -130,18 +130,30 @@ rodar("cenário do ENT02 (protocolo, comunicação, suporte)", "npx", ["tsx", "p
 
 // (5) permissões versionadas e a configuração de DEMONSTRAÇÃO dos roteiros
 rodar("versionar roteiros existentes", "npx", ["tsx", "scripts/versionar-roteiros-existentes.ts"]);
-rodar("atualização de permissões v1", "npx", ["tsx", "scripts/aplicar-atualizacao-de-permissoes.ts", "1"], /JÁ APLICADA/);
-rodar("atualização de permissões v2", "npx", ["tsx", "scripts/aplicar-atualizacao-de-permissoes.ts", "2"], /JÁ APLICADA/);
-rodar("atualização de permissões v3", "npx", ["tsx", "scripts/aplicar-atualizacao-de-permissoes.ts", "3"], /JÁ APLICADA/);
-rodar("atualização de permissões v4", "npx", ["tsx", "scripts/aplicar-atualizacao-de-permissoes.ts", "4"], /JÁ APLICADA/);
-rodar("atualização de permissões v5", "npx", ["tsx", "scripts/aplicar-atualizacao-de-permissoes.ts", "5"], /JÁ APLICADA/);
-rodar("atualização de permissões v6", "npx", ["tsx", "scripts/aplicar-atualizacao-de-permissoes.ts", "6"], /JÁ APLICADA/);
-rodar("atualização de permissões v7", "npx", ["tsx", "scripts/aplicar-atualizacao-de-permissoes.ts", "7"], /JÁ APLICADA/);
-rodar("atualização de permissões v8", "npx", ["tsx", "scripts/aplicar-atualizacao-de-permissoes.ts", "8"], /JÁ APLICADA/);
-rodar("atualização de permissões v9", "npx", ["tsx", "scripts/aplicar-atualizacao-de-permissoes.ts", "9"], /JÁ APLICADA/);
-rodar("atualização de permissões v10", "npx", ["tsx", "scripts/aplicar-atualizacao-de-permissoes.ts", "10"], /JÁ APLICADA/);
-rodar("atualização de permissões v11", "npx", ["tsx", "scripts/aplicar-atualizacao-de-permissoes.ts", "11"], /JÁ APLICADA/);
-rodar("atualização de permissões v12", "npx", ["tsx", "scripts/aplicar-atualizacao-de-permissoes.ts", "12"], /JÁ APLICADA/);
+/**
+ * ⚠️ AS ATUALIZAÇÕES VÊM DO REGISTRO, EM UMA CHAMADA — NÃO DE UMA LISTA ESCRITA AQUI.
+ *
+ * Até 15/09/2026 este trecho ENUMERAVA as versões: `v1` a `v12`, doze linhas escritas à mão. O
+ * registro, nesse dia, já tinha VINTE E DUAS — a ponte contratual (v19), a planilha (v20), os tipos
+ * de ocorrência (v21) e o cadastro imobiliário (v22) entre elas. Quem preparasse o banco dos
+ * percursos ganhava um sistema onde a agenda, a medição pela planilha e o cadastro de imóveis
+ * existiam no código e **ninguém tinha permissão para usá-los** — e o sintoma seria "a tela não
+ * abre", que manda procurar o defeito na tela.
+ *
+ * É a regra "propriedade, não padrão" do repositório: uma lista escrita à mão acha só o que estava
+ * escrito nela no dia em que foi escrita.
+ *
+ * ⚠️ E O MODO É `pendentes`, O MESMO DA INSTALAÇÃO E DO UPGRADE. Um laço que dispara `tsx` uma vez
+ * por versão custa 22 processos para aplicar, quase sempre, zero atualização — e, pior, seria um
+ * SEGUNDO caminho de provisionamento, diferente do que a implantação usa. `pendentes` já é ordenado,
+ * idempotente (versão aplicada é estado reconhecido, não erro) e deriva do registro: o banco dos
+ * percursos passa a ser provisionado exatamente como o servidor será.
+ */
+rodar("atualizações de permissões pendentes (o mesmo caminho da instalação)", "npx", [
+  "tsx",
+  "scripts/aplicar-atualizacao-de-permissoes.ts",
+  "pendentes",
+]);
 rodar("roteiros de DEMONSTRAÇÃO do acervo (identificados como tal)", "npx", ["tsx", "prisma/seed/roteiros-demo.ts"]);
 
 console.log(
