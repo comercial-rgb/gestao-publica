@@ -259,10 +259,44 @@ autenticado recusa o serviço anônimo.
 
 Rotas: `/ouvidoria`, `/ouvidoria/[slug]`, `/ouvidoria/acompanhar` (públicas), resultado e opinião em
 `/servicos/[slug]`, avaliação do atendimento em `/meus-servicos/[id]`, `/protocolo/ouvidoria`,
-`/protocolo/avaliacoes`. Permissões v17. Testes: `test/ouvidoria-e-avaliacao.test.ts` (10).
+`/protocolo/avaliacoes`. Permissões v17 (o encaminhamento reusa `TRAMITAR_PROCESSO` e
+`RECEBER_PROCESSO`, que já existiam — nenhuma ação nova). Testes: `test/ouvidoria-e-avaliacao.test.ts` (10)
+e `test/ouvidoria-encaminhamento.test.ts` (6).
 
-Pendências: `ANTIABUSO-EXTERNO-NAO-CONECTADO`, `OUVIDORIA-ENCAMINHAMENTO-A-OUTRO-SETOR` (a
-triagem registra; o trâmite a outro setor é o do processo, sem projeção própria ao manifestante),
+### O encaminhamento da manifestação a outro setor (V9 N3)
+
+A ouvidoria recebe e tria, mas **a maioria dos casos não é dela** — é da saúde, da obra, da
+fiscalização. Sem encaminhar, a mesa é uma caixa de entrada que só acumula.
+
+⚠️ **O ENCAMINHAMENTO É O TRÂMITE CANÔNICO (`tramitar`), NÃO UMA FILA PRÓPRIA.** A alternativa
+óbvia era uma tabela `EncaminhamentoDeManifestacao` com setor, prazo e responsável. Ela teria
+perdido, de graça: o número de protocolo, os anexos, o apensamento, a contagem de prazo pela etapa
+do roteiro, o histórico, a notificação interna e o recebimento no destino. Tudo isso já existe no
+trâmite — e a versão nova não teria os casos que a antiga aprendeu.
+
+- **O que a mesa passou a mostrar:** onde a manifestação está, se aguarda recebimento, e o
+  histórico movimento a movimento (de que setor, para qual, para quem, com que motivo). Sem os
+  dois, quem encaminha não sabe que encaminhou e quem recebe não sabe por quê — era isso, e não o
+  trâmite, que faltava.
+- **O motivo é obrigatório.** É o texto do movimento: é o que o destino lê para saber o que se
+  espera dele, e o que responde, meses depois, por que o caso foi parar ali.
+- **O agente designado é opcional.** Encaminhar ao SETOR é o caso normal; nomear alguém restringe a
+  notificação, e fazer disso o padrão faria manifestação parar na caixa de quem entrou de férias.
+- **O prazo não é inventado no encaminhamento.** Vem da etapa do roteiro do assunto e conta do
+  RECEBIMENTO. Um prazo cravado aqui prometeria data sem base na configuração do ente.
+- **Quem envia não recebe.** Receber é ato de quem está no destino; o contrário daria por entregue
+  o que ninguém abriu, e o prazo correria contra quem não sabe que tem o caso.
+- **O sigilo atravessa.** O destino alcança porque passou a ser o setor DELE — não porque alguém o
+  listou numa tela. Quem tem a ação no ente inteiro e não está lotado no caminho continua fora.
+- **O despacho é interno.** O motivo do encaminhamento e a anotação da triagem NÃO aparecem no
+  acompanhamento público; o que vai ao manifestante é a resposta, e só ela. O segredo do anônimo
+  continua valendo depois do encaminhamento — ele é a única identidade que essa pessoa tem.
+
+Testes: `test/ouvidoria-encaminhamento.test.ts` (6, com as mutações de recebimento sem lotação e de
+sigilo acusadas). Percurso: `npm run smoke:encaminhamento-da-ouvidoria` (19 passos, 0 falhas),
+com a fixture preparada pelo próprio script em banco de percurso.
+
+Pendências: `ANTIABUSO-EXTERNO-NAO-CONECTADO`,
 `OUVIDORIA-REENVIO-DUPLICA` (ato público sem o envelope da chave de comando: duplo envio antes da resposta registra duas manifestações; a quota limita), `AVALIACAO-SEM-LIMIAR-DE-PUBLICACAO` (com poucas respostas a média é publicada assim mesmo, com o
 número de respostas ao lado).
 

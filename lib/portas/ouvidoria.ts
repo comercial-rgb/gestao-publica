@@ -5,8 +5,10 @@ import { escopoDoProtocolo, podeAgirNoSetor, recorteDaCaixa } from "../../module
 import { descreverSituacao, estaFechado, setorAtual, situacaoDoProcesso } from "../../modules/m21-protocolo/dominio.js";
 import {
   acompanharManifestacao,
+  receberProcesso,
   registrarManifestacaoAnonima,
   responderManifestacao,
+  tramitar,
   triarManifestacao,
   type AcompanhamentoDaManifestacao,
 } from "../../modules/m21-protocolo/servico.js";
@@ -186,6 +188,18 @@ export async function avaliarAtendimentoNaTela(input: { readonly solicitacaoId: 
 // A OUVIDORIA — a mesa das manifestações, recortada pelo escopo do protocolo
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/** "Pode" ou "não pode, e por quê" — o motivo vai para a tela, nunca um botão que some. */
+export type Podendo = { readonly pode: true } | { readonly pode: false; readonly motivo: string };
+
+export interface PassoDaManifestacao {
+  readonly em: string;
+  readonly oQue: string;
+  readonly de: string | null;
+  readonly para: string | null;
+  readonly paraPessoa: string | null;
+  readonly texto: string;
+}
+
 export interface ManifestacaoNaMesa {
   readonly id: string;
   readonly protocolo: string;
@@ -199,8 +213,23 @@ export interface ManifestacaoNaMesa {
   readonly anotacaoInterna: string | null;
   readonly respostas: readonly { readonly texto: string; readonly em: string; readonly conclusiva: boolean }[];
   readonly processoId: string;
-  readonly triar: { readonly pode: true } | { readonly pode: false; readonly motivo: string };
-  readonly responder: { readonly pode: true } | { readonly pode: false; readonly motivo: string };
+  /**
+   * ═══ V9 N3 — ONDE A MANIFESTAÇÃO ESTÁ, E O CAMINHO QUE ELA FEZ ═══
+   *
+   * ⚠️ A MESA NÃO MOSTRAVA NENHUM DOS DOIS, e isso é o que tornava o encaminhamento
+   * inutilizável mesmo com o trâmite existindo no protocolo desde sempre: quem encaminhava não
+   * tinha como saber se tinha encaminhado, para onde, nem se o destino recebeu. O caso ficava
+   * "enviado" na cabeça de uma pessoa e "não chegou" na de outra.
+   */
+  readonly setorAtual: { readonly id: string; readonly rotulo: string } | null;
+  readonly aguardandoRecebimento: boolean;
+  readonly historico: readonly PassoDaManifestacao[];
+  readonly triar: Podendo;
+  readonly responder: Podendo;
+  /** Encaminhar para outro setor — é o TRÂMITE canônico do protocolo, não uma fila paralela. */
+  readonly encaminhar: Podendo;
+  /** Receber no setor de destino — é o recebimento que inicia a contagem do prazo da etapa. */
+  readonly receber: Podendo;
 }
 
 /**
@@ -221,12 +250,20 @@ export async function manifestacoesDaOuvidoriaPara(sessao: Identidade): Promise<
         id: true, tipo: true, contato: true, criadoEm: true,
         triagem: { select: { tipoConfirmado: true, anotacaoInterna: true } },
         respostas: { orderBy: { criadoEm: "asc" }, select: { texto: true, criadoEm: true, conclusiva: true } },
-        processo: { select: { id: true, numero: true, sigiloso: true, textoAbertura: true, setorAberturaId: true, exercicio: { select: { ano: true } }, movimentos: { orderBy: { criadoEm: "asc" }, select: { id: true, tipo: true, setorOrigemId: true, setorDestinoId: true, respondeAId: true, tornaSemEfeitoId: true, criadoEm: true } } } },
+        processo: { select: { id: true, numero: true, sigiloso: true, textoAbertura: true, setorAberturaId: true, exercicio: { select: { ano: true } }, movimentos: { orderBy: { criadoEm: "asc" }, select: { id: true, tipo: true, setorOrigemId: true, setorDestinoId: true, usuarioDestino: true, texto: true, respondeAId: true, tornaSemEfeitoId: true, criadoEm: true } } } },
       },
     }),
-    acoesPermitidas(["TRIAR_MANIFESTACAO_DE_OUVIDORIA"]),
+    acoesPermitidas(["TRIAR_MANIFESTACAO_DE_OUVIDORIA", "TRAMITAR_PROCESSO", "RECEBER_PROCESSO"]),
   ]);
   const podeTriarAlgures = permitidas.has("TRIAR_MANIFESTACAO_DE_OUVIDORIA");
+  const podeTramitarAlgures = permitidas.has("TRAMITAR_PROCESSO");
+  const podeReceberAlgures = permitidas.has("RECEBER_PROCESSO");
+  // Os nomes dos setores, de uma vez — um `findUnique` por movimento transformaria uma mesa de
+  // vinte manifestações em dezenas de idas ao banco.
+  const setores = new Map(
+    (await prisma.setor.findMany({ select: { id: true, codigo: true, nome: true } })).map((x) => [x.id, `${x.codigo} — ${x.nome}`])
+  );
+  const nomeDoSetor = (id: string | null): string | null => (id === null ? null : (setores.get(id) ?? "(setor removido)"));
   return Promise.all(
     lidas.map(async (m) => {
       const situacao = situacaoDoProcesso(m.processo.movimentos);
@@ -235,6 +272,49 @@ export async function manifestacoesDaOuvidoriaPara(sessao: Identidade): Promise<
       const agir = podeTriarAlgures && (await podeAgirNoSetor(prisma, sessao.identificador, onde, "TRIAR_MANIFESTACAO_DE_OUVIDORIA", m.processo.sigiloso));
       const concluida = m.respostas.some((r) => r.conclusiva);
       const semAcao = !podeTriarAlgures ? "Seu perfil não tem a triagem da ouvidoria." : "Você não está lotado no setor em que a manifestação está.";
+
+      // ⚠️ AS DUAS CAPACIDADES NOVAS SÃO CONFERIDAS NO SERVIDOR, com a MESMA regra do protocolo:
+      // ação nomeada + lotação no setor onde o processo está + sigilo. Nada disso depende de a
+      // tela desenhar ou não o formulário — botão oculto não é proteção.
+      const podeAquiTramitar = podeTramitarAlgures && (await podeAgirNoSetor(prisma, sessao.identificador, onde, "TRAMITAR_PROCESSO", m.processo.sigiloso));
+      const podeAquiReceber = podeReceberAlgures && (await podeAgirNoSetor(prisma, sessao.identificador, onde, "RECEBER_PROCESSO", m.processo.sigiloso));
+      const emTramite = situacao === "EM_TRAMITE";
+
+      const encaminhar: Podendo = fechada
+        ? { pode: false, motivo: `O processo está ${descreverSituacao(situacao).toLowerCase()}.` }
+        : !podeTramitarAlgures
+          ? { pode: false, motivo: "Seu perfil não tem o encaminhamento de processo." }
+          : !podeAquiTramitar
+            ? { pode: false, motivo: `Você não está lotado em ${nomeDoSetor(onde) ?? "no setor atual"}, que é onde a manifestação está.` }
+            : emTramite
+              ? { pode: false, motivo: "A manifestação já foi encaminhada e aguarda recebimento no destino." }
+              : { pode: true };
+
+      const receber: Podendo = !emTramite
+        ? { pode: false, motivo: "Não há encaminhamento aguardando recebimento." }
+        : !podeReceberAlgures
+          ? { pode: false, motivo: "Seu perfil não tem o recebimento de processo." }
+          : !podeAquiReceber
+            ? // ⚠️ RECEBER É ATO DE QUEM ESTÁ NO DESTINO. Quem enviou não recebe em nome do
+              // destinatário: seria dar por entregue o que ninguém abriu, e o prazo passaria a
+              // correr contra quem não sabe que o tem.
+              { pode: false, motivo: `Só quem está lotado em ${nomeDoSetor(onde) ?? "no setor de destino"} pode receber.` }
+            : { pode: true };
+
+      const ROTULO_DO_MOVIMENTO: Readonly<Record<string, string>> = {
+        ABERTURA: "Aberta",
+        TRAMITE: "Encaminhada",
+        RECEBIMENTO: "Recebida no setor",
+        COMPLEMENTO: "Complemento",
+        PARECER_SOLICITADO: "Parecer solicitado",
+        PARECER: "Parecer",
+        READEQUACAO_SOLICITADA: "Readequação solicitada",
+        READEQUACAO: "Readequação atendida",
+        ENCERRAMENTO: "Encerrada",
+        ARQUIVAMENTO: "Arquivada",
+        REABERTURA: "Reaberta",
+        SEM_EFEITO: "Movimento tornado sem efeito",
+      };
       const triar: ManifestacaoNaMesa["triar"] = !agir ? { pode: false, motivo: semAcao } : fechada ? { pode: false, motivo: `O processo está ${descreverSituacao(situacao).toLowerCase()}.` } : m.triagem !== null ? { pode: false, motivo: "A triagem já foi registrada." } : { pode: true };
       const responder: ManifestacaoNaMesa["responder"] = !agir ? { pode: false, motivo: semAcao } : fechada || concluida ? { pode: false, motivo: "A manifestação já tem resposta conclusiva ou o processo está fechado." } : m.triagem === null ? { pode: false, motivo: "Registre a triagem antes de responder." } : { pode: true };
       return {
@@ -250,8 +330,20 @@ export async function manifestacoesDaOuvidoriaPara(sessao: Identidade): Promise<
         anotacaoInterna: m.triagem?.anotacaoInterna ?? null,
         respostas: m.respostas.map((r) => ({ texto: r.texto, em: instanteCivilBr(r.criadoEm), conclusiva: r.conclusiva })),
         processoId: m.processo.id,
+        setorAtual: onde === null ? null : { id: onde, rotulo: nomeDoSetor(onde) ?? onde },
+        aguardandoRecebimento: emTramite,
+        historico: m.processo.movimentos.map((mv) => ({
+          em: instanteCivilBr(mv.criadoEm),
+          oQue: ROTULO_DO_MOVIMENTO[mv.tipo] ?? mv.tipo,
+          de: nomeDoSetor(mv.setorOrigemId),
+          para: nomeDoSetor(mv.setorDestinoId),
+          paraPessoa: mv.usuarioDestino,
+          texto: mv.texto,
+        })),
         triar,
         responder,
+        encaminhar,
+        receber,
       };
     })
   );
@@ -263,6 +355,46 @@ export async function triarNaTela(input: { readonly manifestacaoId: string; read
 
 export async function responderNaTela(input: { readonly manifestacaoId: string; readonly texto: string; readonly conclusiva: boolean }): Promise<void> {
   await comEscritaAutenticada("TRIAR_MANIFESTACAO_DE_OUVIDORIA", (criadoPor) => responderManifestacao(cliente(), { ...input, criadoPor }));
+}
+
+/**
+ * ═══ ENCAMINHAR A MANIFESTAÇÃO A OUTRO SETOR (V9 N3) ═══
+ *
+ * ⚠️ É O TRÂMITE CANÔNICO DO PROTOCOLO, e isso é a decisão inteira. A tentação era uma fila
+ * própria da ouvidoria — uma tabela `EncaminhamentoDeManifestacao` com setor, prazo e responsável.
+ * Ela teria perdido, de graça: o número de protocolo, os anexos, o apensamento, a contagem de
+ * prazo pela etapa do roteiro, o histórico, a notificação interna e o recebimento no destino. Tudo
+ * isso já existe em `tramitar`, e tudo isso teria de ser reescrito — pior, reescrito ERRADO, porque
+ * a versão nova não teria os casos que a antiga aprendeu.
+ *
+ * ⚠️ O PRAZO NÃO É INVENTADO AQUI. Ele vem da etapa do roteiro do assunto e começa a contar no
+ * RECEBIMENTO, não no envio. Um prazo cravado no encaminhamento prometeria data ao manifestante
+ * sem base na configuração do ente — que é exatamente o que a ordem proíbe.
+ *
+ * ⚠️ E O SIGILO ATRAVESSA O ENCAMINHAMENTO. O processo da manifestação é sigiloso; `tramitar`
+ * autoriza pelo setor com `exigirLotacao(..., p.sigiloso)`, então o setor de destino só alcança o
+ * caso porque passou a ser o setor DELE — não porque alguém o listou numa tela.
+ */
+export async function encaminharManifestacaoNaTela(input: {
+  readonly processoId: string;
+  readonly setorDestinoId: string;
+  readonly usuarioDestino?: string | undefined;
+  readonly motivo: string;
+}): Promise<{ readonly alvos: number }> {
+  return comEscritaAutenticada("TRAMITAR_PROCESSO", (criadoPor) =>
+    tramitar(cliente(), {
+      processoId: input.processoId,
+      setorDestinoId: input.setorDestinoId,
+      ...(input.usuarioDestino !== undefined && input.usuarioDestino !== "" ? { usuarioDestino: input.usuarioDestino } : {}),
+      texto: input.motivo,
+      criadoPor,
+    })
+  );
+}
+
+/** RECEBER no destino — é este ato que inicia a contagem do prazo da etapa. */
+export async function receberManifestacaoNaTela(processoId: string): Promise<void> {
+  await comEscritaAutenticada("RECEBER_PROCESSO", (criadoPor) => receberProcesso(cliente(), { processoId, criadoPor }));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
