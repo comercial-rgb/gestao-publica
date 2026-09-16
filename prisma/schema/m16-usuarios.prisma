@@ -213,6 +213,10 @@ enum AcaoDoSistema {
   GERIR_PLANILHA_DA_OBRA
   /// V7 M2 U8 — cadastrar tipos de ocorrência do ente, publicar versões dos formulários e ativar ou desativar tipos.
   GERIR_TIPOS_DE_OCORRENCIA
+  /// V7 B1 — cadastrar imóveis, publicar versões do cadastro e vincular pessoas (o cadastro imobiliário é histórico).
+  GERIR_CADASTRO_IMOBILIARIO
+  /// V7 B1 — publicar a tabela de parâmetros do tributo (fórmula do ente, fundamento e valores por vigência).
+  GERIR_PARAMETROS_TRIBUTARIOS
   ESTORNAR_MOVIMENTO_CONTRATUAL
   CADASTRAR_LIMITE
   CADASTRAR_OBRA

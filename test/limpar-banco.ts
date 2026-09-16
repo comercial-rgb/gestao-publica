@@ -50,6 +50,14 @@ const TABELAS = [
   "AssinaturaDeDocumento",
   "SignatarioDaFila",
   "FilaDeAssinatura",
+  // ── V7 B1 (cadastro imobiliário e parâmetros do tributo) ──
+  "ParametroTributario",
+  "TabelaDeParametrosTributarios",
+  "EncerramentoDoVinculoComImovel",
+  "VinculoDePessoaComImovel",
+  "AtributoDaVersaoDoImovel",
+  "VersaoDoImovel",
+  "Imovel",
   // ── V7 M2 U8 (agenda e formulários da fiscalização) ──
   "RespostaDoFormularioDeOcorrencia",
   "PerguntaDoFormularioDeOcorrencia",

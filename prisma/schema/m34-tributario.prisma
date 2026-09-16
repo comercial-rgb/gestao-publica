@@ -1,0 +1,178 @@
+// ═══ M34 — O CADASTRO IMOBILIÁRIO E OS PARÂMETROS TRIBUTÁRIOS (V7 B1) ═══
+//
+// Primeira unidade da frente tributária (F07 do plano mestre): CADASTRAR → resolver o PARÂMETRO aplicável → SIMULAR
+// com memória. **Não lança, não constitui dívida e não escreve no ledger** — isso é B2, por contrato próprio com o
+// núcleo contábil existente.
+//
+// ⚠️ O CADASTRO É HISTÓRICO. O imóvel é a identidade (a inscrição); o que muda — área, uso, padrão, endereço — é uma
+// VERSÃO com vigência e motivo. Nenhuma versão é reescrita: a simulação de um exercício anterior continua achando o
+// cadastro como ele era.
+//
+// ⚠️ O QUE ENTRA NA CONTA VEM DE TABELA. A fórmula do tributo e os seus parâmetros (valor do m², fatores, alíquotas,
+// limites) são dados do ente, versionados por vigência, interpretados por `packages/formula` num universo fechado.
+// Nenhuma alíquota, fator ou fórmula nasce no código: inventar norma municipal dentro de um `if` é o que esta frente
+// existe para não fazer.
+
+enum UsoDoImovel {
+  RESIDENCIAL
+  COMERCIAL
+  INDUSTRIAL
+  TERRITORIAL
+  MISTO
+  OUTRO
+}
+
+enum PapelNoImovel {
+  PROPRIETARIO
+  COMPROMISSARIO
+  POSSUIDOR
+  /// Quem responde pelo tributo quando não é o proprietário (art. 34 do CTN: proprietário, titular do domínio útil ou possuidor).
+  RESPONSAVEL_TRIBUTARIO
+}
+
+enum TributoMunicipal {
+  IPTU
+  ITBI
+  ISS
+  TAXA
+}
+
+/// O IMÓVEL — a identidade cadastral. O que muda mora nas versões.
+model Imovel {
+  id String @id @default(cuid())
+
+  /// A inscrição imobiliária do município (texto: cada ente tem o seu formato).
+  inscricao String @unique
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  versoes  VersaoDoImovel[]
+  vinculos VinculoDePessoaComImovel[]
+}
+
+/// UMA VERSÃO DO CADASTRO — vale a partir de `vigenciaInicio`; a anterior continua valendo antes dela.
+model VersaoDoImovel {
+  id String @id @default(cuid())
+
+  imovelId String
+  imovel   Imovel @relation(fields: [imovelId], references: [id])
+
+  versao         Int
+  vigenciaInicio DateTime
+  motivo         String
+
+  logradouro String
+  numero     String
+  bairro     String
+  /// Zona, setor ou quadra do município — nome do ente, não classificação inventada aqui.
+  zona       String?
+
+  uso                UsoDoImovel
+  padraoConstrutivo  String?
+  areaDoTerreno      Decimal  @db.Decimal(18, 4)
+  areaConstruida     Decimal  @db.Decimal(18, 4)
+  fracaoIdeal        Decimal? @db.Decimal(9, 6)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  atributos AtributoDaVersaoDoImovel[]
+
+  @@unique([imovelId, versao])
+  @@index([imovelId, vigenciaInicio])
+}
+
+/// UM DADO NUMÉRICO DECLARADO PELO ENTE nesta versão (testada, pavimentos, idade aparente…). É o que a fórmula pode
+/// usar sem migration nova — e o que ela NÃO encontrar é recusa nomeada, nunca zero em silêncio.
+model AtributoDaVersaoDoImovel {
+  id String @id @default(cuid())
+
+  versaoId String
+  versao   VersaoDoImovel @relation(fields: [versaoId], references: [id])
+
+  chave     String
+  valor     Decimal @db.Decimal(18, 6)
+  descricao String?
+
+  @@unique([versaoId, chave])
+}
+
+/// O VÍNCULO da Pessoa canônica (M19) com o imóvel, por papel e fração ideal, com vigência.
+model VinculoDePessoaComImovel {
+  id String @id @default(cuid())
+
+  imovelId String
+  imovel   Imovel @relation(fields: [imovelId], references: [id])
+
+  pessoaId String
+  pessoa   Pessoa @relation("VinculosComImovel", fields: [pessoaId], references: [id])
+
+  papel  PapelNoImovel
+  /// Fração ideal do papel neste imóvel (1 = 100%). A soma dos vigentes por papel não passa de 1.
+  fracao Decimal @db.Decimal(9, 6)
+
+  vigenciaInicio DateTime
+  motivo         String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  encerramento EncerramentoDoVinculoComImovel?
+
+  @@index([imovelId, papel])
+  @@index([pessoaId])
+}
+
+/// O ENCERRAMENTO do vínculo — fato com data de efeito; o vínculo anterior continua no histórico.
+model EncerramentoDoVinculoComImovel {
+  id String @id @default(cuid())
+
+  vinculoId String                   @unique
+  vinculo   VinculoDePessoaComImovel @relation(fields: [vinculoId], references: [id])
+
+  dataEfeito DateTime
+  motivo     String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// A TABELA DE PARÂMETROS de um tributo, por exercício e vigência: a FÓRMULA do ente e os valores que ela usa.
+model TabelaDeParametrosTributarios {
+  id String @id @default(cuid())
+
+  tributo   TributoMunicipal
+  exercicio Int
+  versao    Int
+
+  vigenciaInicio DateTime
+  /// A base legal declarada pelo ente (lei, decreto, artigo). Sem ela, o número não tem norma.
+  fundamento     String
+  motivo         String
+
+  /// A expressão interpretada por `packages/formula` (universo fechado; nunca `eval`).
+  formula String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  parametros ParametroTributario[]
+
+  @@unique([tributo, exercicio, versao])
+  @@index([tributo, exercicio, vigenciaInicio])
+}
+
+/// UM PARÂMETRO da tabela — o valor que a fórmula chama pelo nome.
+model ParametroTributario {
+  id String @id @default(cuid())
+
+  tabelaId String
+  tabela   TabelaDeParametrosTributarios @relation(fields: [tabelaId], references: [id])
+
+  chave     String
+  valor     Decimal @db.Decimal(18, 6)
+  descricao String
+
+  @@unique([tabelaId, chave])
+}

@@ -252,6 +252,9 @@ export type AcaoDoSistema =
   | "GERIR_PLANILHA_DA_OBRA"
   // V7 M2 U8 — os tipos de ocorrência do ente e os formulários versionados da fiscalização
   | "GERIR_TIPOS_DE_OCORRENCIA"
+  // V7 B1 — o cadastro imobiliário e os parâmetros do tributo (a simulação é leitura, não entra aqui)
+  | "GERIR_CADASTRO_IMOBILIARIO"
+  | "GERIR_PARAMETROS_TRIBUTARIOS"
   | "CADASTRAR_LIMITE"
   | "CADASTRAR_OBRA"
   // ── M12 — relatórios (parametrização) ──
@@ -816,6 +819,11 @@ export type NomeDeServico =
   | "revogarVinculoDaPlanilha"
   | "medirOrdemPelaPlanilha"
   | "estornarMedicaoDaOrdem"
+  | "cadastrarImovel"
+  | "novaVersaoDoImovel"
+  | "vincularPessoaAoImovel"
+  | "encerrarVinculoComImovel"
+  | "publicarTabelaDeParametros"
   | "cadastrarTipoDeOcorrencia"
   | "publicarVersaoDoTipoDeOcorrencia"
   | "mudarSituacaoDoTipoDeOcorrencia"
@@ -1307,6 +1315,13 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // V7 M2 U8 — o cadastro dos tipos de ocorrência e dos formulários é ato de ADMINISTRAÇÃO do ente (não do contrato);
   // reagendar e cancelar o compromisso são do mesmo ato de programar (gestor designado), e registrar a realização é do
   // FISCAL designado — a mesma ação da ocorrência que ele registra.
+  // V7 B1 — o cadastro imobiliário é ato do cadastro do ente; a tabela de parâmetros (fórmula, fundamento e valores) é
+  // ato da administração tributária. SIMULAR não está aqui: é leitura, não cria fato nem dívida.
+  cadastrarImovel: "GERIR_CADASTRO_IMOBILIARIO",
+  novaVersaoDoImovel: "GERIR_CADASTRO_IMOBILIARIO",
+  vincularPessoaAoImovel: "GERIR_CADASTRO_IMOBILIARIO",
+  encerrarVinculoComImovel: "GERIR_CADASTRO_IMOBILIARIO",
+  publicarTabelaDeParametros: "GERIR_PARAMETROS_TRIBUTARIOS",
   cadastrarTipoDeOcorrencia: "GERIR_TIPOS_DE_OCORRENCIA",
   publicarVersaoDoTipoDeOcorrencia: "GERIR_TIPOS_DE_OCORRENCIA",
   mudarSituacaoDoTipoDeOcorrencia: "GERIR_TIPOS_DE_OCORRENCIA",
@@ -1600,6 +1615,17 @@ export const FORA_DO_CENSO: Record<string, string> = {
     "LEITURA: as versões da planilha orçamentária de uma obra — sob a leitura de licitações e contratos.",
   planilhaOrcamentaria:
     "LEITURA: uma versão da planilha orçamentária com itens e vínculos — sob a leitura de licitações e contratos.",
+  simularTributo:
+    "LEITURA PURA: resolve a versão do cadastro e a tabela vigentes no dia e calcula com a memória — não grava, não " +
+    "lança, não constitui dívida e não escreve no ledger; a página exige a leitura da receita.",
+  imovelPorInscricao:
+    "LEITURA: o imóvel com as versões do cadastro e os vínculos — sob a leitura da receita.",
+  versaoDoImovelNoDia:
+    "LEITURA: a versão do cadastro que vale num dia — usada pela simulação e pela tela do imóvel.",
+  vinculosDoImovelNoDia:
+    "LEITURA: os vínculos de pessoa vigentes num dia, por papel e fração — usados pela simulação.",
+  tabelaVigente:
+    "LEITURA: a tabela de parâmetros do tributo que vale num dia (fórmula, fundamento e valores).",
   tiposDeOcorrenciaDoEnte:
     "LEITURA: os tipos de ocorrência do ente com a versão vigente do formulário — a tela de configuração e o formulário " +
     "da ocorrência, sob a leitura de licitações e o alcance do contrato.",

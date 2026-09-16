@@ -519,6 +519,25 @@ export function derivarAdministracaoDaFiscalizacao(
   return saida;
 }
 
+export const ACOES_DO_TRIBUTARIO: readonly AcaoDoSistema[] = ["GERIR_CADASTRO_IMOBILIARIO", "GERIR_PARAMETROS_TRIBUTARIOS"];
+
+export function derivarTributario(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null);
+    if (!administra) continue;
+    const jaTem = new Set(perfil.permissoes.filter((p) => p.unidadeOrcId === null).map((p) => p.acao));
+    for (const acao of ACOES_DO_TRIBUTARIO) {
+      if (jaTem.has(acao)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
+
 export const ACOES_DOS_TIPOS_DE_OCORRENCIA: readonly AcaoDoSistema[] = ["GERIR_TIPOS_DE_OCORRENCIA"];
 
 export function derivarTiposDeOcorrencia(
@@ -815,6 +834,16 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "no global recebe a acao e a concede aos perfis da fiscalizacao. Reagendar, cancelar e registrar a realizacao NAO sao " +
       "acoes novas: sao os mesmos atos de programar (gestor designado) e de registrar ocorrencia (fiscal designado).",
     derivar: derivarTiposDeOcorrencia,
+  },
+  {
+    versao: 22,
+    nome: "cadastro-imobiliario",
+    descricao:
+      "A primeira unidade tributaria (V7 B1) chegou com GERIR_CADASTRO_IMOBILIARIO (cadastrar imoveis, publicar versoes do " +
+      "cadastro e vincular pessoas) e GERIR_PARAMETROS_TRIBUTARIOS (publicar a tabela do tributo: formula do ente, " +
+      "fundamento e valores por vigencia). Quem administra permissoes no global recebe as duas e as concede aos perfis do " +
+      "cadastro imobiliario e da administracao tributaria. SIMULAR nao e acao: e leitura, e nao cria fato nem divida.",
+    derivar: derivarTributario,
   },
 ];
 

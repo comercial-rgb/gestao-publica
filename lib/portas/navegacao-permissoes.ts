@@ -300,6 +300,8 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO: "licitacoes",
   GERIR_PLANILHA_DA_OBRA: "licitacoes",
   GERIR_TIPOS_DE_OCORRENCIA: "licitacoes",
+  GERIR_CADASTRO_IMOBILIARIO: "receita",
+  GERIR_PARAMETROS_TRIBUTARIOS: "receita",
   REGISTRAR_RECEBIMENTO_PROVISORIO: "licitacoes",
   REGISTRAR_RECEBIMENTO_DEFINITIVO: "licitacoes",
   CADASTRAR_ITEM_DO_CONTRATO: "licitacoes",

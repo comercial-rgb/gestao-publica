@@ -100,6 +100,8 @@ model Pessoa {
   bensSobResponsabilidade MovimentoDeGestaoDoBem[]      @relation("ResponsavelPeloBem")
   comissoesPatrimoniais   MembroDeComissaoPatrimonial[] @relation("MembroDeComissaoPatrimonial")
   termosPatrimoniais      TermoPatrimonial[]            @relation("ResponsavelDeTermo")
+  // V7 B1 — os vínculos com imóveis do cadastro imobiliário (proprietário, possuidor, responsável tributário). VIRTUAL.
+  vinculosComImovel       VinculoDePessoaComImovel[]    @relation("VinculosComImovel")
   /// V6 P2.1 — a ficha de servidor desta pessoa (M32), quando há. No máximo uma.
   servidor Servidor?
   /// back-relation V6 P2.3b — os grupos de empenho da folha em que esta pessoa é o credor.

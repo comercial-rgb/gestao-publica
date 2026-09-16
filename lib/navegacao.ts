@@ -201,6 +201,9 @@ export const RELATORIOS_GERENCIAIS: readonly RelatorioNav[] = [
 /** A EXECUÇÃO DA RECEITA — fonte única da landing de /receita e do submenu. */
 export const EXECUCAO_RECEITA: readonly RelatorioNav[] = [
   { href: "/receita/arrecadacoes", numero: "Arrecadação", rotulo: "Arrecadação", descricao: "Guias do exercício e receita realizada líquida." },
+  // V7 B1 — a primeira unidade tributária: cadastrar, parametrizar e SIMULAR (sem lançar nem constituir dívida).
+  { href: "/receita/imoveis", numero: "Imóveis", rotulo: "Cadastro imobiliário", descricao: "Imóveis com histórico de cadastro, pessoas vinculadas e simulação com memória." },
+  { href: "/receita/parametros-tributarios", numero: "Parâmetros", rotulo: "Parâmetros do tributo", descricao: "A fórmula e os valores do município, por exercício e vigência, com fundamento." },
 ];
 
 /** As páginas de ADMINISTRAÇÃO — fonte única da landing e do submenu. */
