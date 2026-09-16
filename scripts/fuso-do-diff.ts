@@ -192,11 +192,36 @@ export function unirCaminhos(diffNomes: string, statusPorcelain: string): readon
     const t = l.trim();
     if (t !== "") arquivos.add(t);
   }
-  for (const reg of statusPorcelain.split("\0")) {
-    // Cada registro é `XY <caminho>`; os dois primeiros chars são o estado e o terceiro o
-    // espaço. Um registro curto demais é lixo de borda e não um caminho.
-    if (reg.length < 4) continue;
+  // ═══ ⚠️ RENOMEAÇÃO OCUPA DOIS CAMPOS, E ISSO ERA UM DEFEITO AQUI (V9 N1) ═══
+  //
+  // Com `-z`, um registro comum é `XY <caminho>` NUL. Mas quando `X` é `R` (renomeado) ou `C`
+  // (copiado), o git emite **dois** campos: `R? <destino>` NUL `<origem>` NUL — a origem vem
+  // SOZINHA no campo seguinte, sem os três caracteres de estado.
+  //
+  // ⚠️ O QUE ACONTECIA. O laço tratava esse segundo campo como um registro e cortava três
+  // caracteres dele. Mover `app/transparencia/page.tsx` produzia o caminho fantasma
+  // `transparencia/page.tsx` sem o `app/` — ou, no caso medido em 16/09/2026,
+  // `/(areas)/transparencia/page.tsx`, com barra inicial. Dois estragos, e o segundo é o grave:
+  //
+  //   1. o caminho fantasma não bate com nenhum padrão de leitura de relógio;
+  //   2. e o caminho de ORIGEM, o que de fato saiu do lugar, sumia da lista.
+  //
+  // Ou seja: **mover um arquivo que lê relógio deixaria o `test:fuso` fora do agendamento** —
+  // uma guarda que falha para o lado de NÃO rodar, que é o lado errado. Este arquivo inteiro
+  // existe para decidir quando o fuso roda; decidir por um caminho inventado é pior que não
+  // decidir.
+  const campos = statusPorcelain.split("\0");
+  for (let i = 0; i < campos.length; i += 1) {
+    const reg = campos[i];
+    if (reg === undefined || reg.length < 4) continue;
     arquivos.add(reg.slice(3));
+    // Renomeado/copiado: o PRÓXIMO campo é a origem, crua. Ela entra como está — e o índice
+    // avança, para que ela não seja lida de novo como se fosse um registro com estado.
+    if (reg.startsWith("R") || reg.startsWith("C")) {
+      const origem = campos[i + 1];
+      if (origem !== undefined && origem !== "") arquivos.add(origem);
+      i += 1;
+    }
   }
   return [...arquivos].sort();
 }

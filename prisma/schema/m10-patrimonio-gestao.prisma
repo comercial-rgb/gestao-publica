@@ -44,6 +44,18 @@ model LocalizacaoFisica {
 
   ativa Boolean @default(true)
 
+  /// V9 N2 — ESTA LOCALIZAÇÃO PODE APARECER NA CONSULTA PÚBLICA DE BENS?
+  ///
+  /// ⚠️ O PADRÃO É `false`, E ISSO É A REGRA, NÃO TIMIDEZ. A consulta pública de bens mostra
+  /// onde cada bem está; e "onde" inclui a sala do cofre da tesouraria, o depósito de provas,
+  /// o abrigo sigiloso e a casa funcional de um servidor. Publicar tudo por omissão vaza essas
+  /// quatro junto com as escolas — e o vazamento só é descoberto depois de publicado.
+  ///
+  /// Fail-closed: a localização só aparece ao público depois de alguém do ente DIZER que pode.
+  /// O bem continua na lista pública (o patrimônio é público); o que fica reservado é o LUGAR,
+  /// e a tela diz "não divulgada" em vez de fingir que o bem não existe.
+  publicavelNaTransparencia Boolean @default(false)
+
   criadoEm  DateTime @default(now())
   criadoPor String
 

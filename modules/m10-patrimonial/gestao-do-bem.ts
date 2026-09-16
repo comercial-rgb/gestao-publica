@@ -134,6 +134,15 @@ export const zCadastrarLocalizacaoFisicaInput = z.object({
   descricao: z.string().trim().min(3),
   paiId: z.string().min(1).optional(),
   setorId: z.string().min(1).optional(),
+  /**
+   * V9 N2 — esta localização pode aparecer na consulta pública de bens?
+   *
+   * ⚠️ O PADRÃO É `false`, E A OMISSÃO TEM DE SIGNIFICAR "NÃO". Quem cadastra uma sala às
+   * pressas não responde a pergunta; se a ausência de resposta virasse "sim", a próxima
+   * localização criada num dia corrido publicaria o endereço do depósito de provas. A
+   * divulgação é ato POSITIVO de alguém, não o efeito de não ter marcado nada.
+   */
+  publicavelNaTransparencia: z.coerce.boolean().optional(),
   criadoPor: z.string().min(1),
 });
 export type CadastrarLocalizacaoFisicaInput = z.input<
@@ -156,7 +165,9 @@ export async function cadastrarLocalizacaoFisica(
     const criada = await tx.localizacaoFisica.create({
       data: {
         codigo: d.codigo, descricao: d.descricao,
-        paiId: d.paiId ?? null, setorId: d.setorId ?? null, criadoPor: d.criadoPor,
+        paiId: d.paiId ?? null, setorId: d.setorId ?? null,
+        publicavelNaTransparencia: d.publicavelNaTransparencia === true,
+        criadoPor: d.criadoPor,
       },
       select: { id: true },
     });

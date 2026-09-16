@@ -61,6 +61,7 @@ export async function listarLocalizacoes(c: ConsultaDoMolde): Promise<PaginaDoMo
         codigo: true,
         descricao: true,
         ativa: true,
+        publicavelNaTransparencia: true,
         pai: { select: { codigo: true, descricao: true } },
         setor: { select: { codigo: true, nome: true } },
       },
@@ -75,6 +76,7 @@ export async function listarLocalizacoes(c: ConsultaDoMolde): Promise<PaginaDoMo
       descricao: x.descricao,
       pai: x.pai === null ? "—" : `${x.pai.codigo} — ${x.pai.descricao}`,
       setor: x.setor === null ? "—" : `${x.setor.codigo} — ${x.setor.nome}`,
+      publicacao: x.publicavelNaTransparencia ? "Divulgada" : "Não divulgada",
       situacao: x.ativa ? "Ativa" : "Inativa",
     })),
   };
@@ -88,6 +90,7 @@ export async function verLocalizacao(id: string): Promise<DetalheLido | null> {
       codigo: true,
       descricao: true,
       ativa: true,
+      publicavelNaTransparencia: true,
       criadoEm: true,
       criadoPor: true,
       pai: { select: { codigo: true, descricao: true } },
@@ -114,6 +117,14 @@ export async function verLocalizacao(id: string): Promise<DetalheLido | null> {
         rotulo: "Setor responsável",
         valor: x.setor === null ? "—" : `${x.setor.codigo} — ${x.setor.nome}`,
         nota: "Quem responde pelo que está guardado aqui. O bem continua sendo do ente; o setor é a guarda.",
+      },
+      {
+        rotulo: "Consulta pública de bens",
+        valor: x.publicavelNaTransparencia ? "Localização divulgada" : "Localização não divulgada",
+        nota:
+          "Quando não divulgada, os bens guardados aqui continuam na consulta pública — o que " +
+          "não aparece é o LUGAR. É assim que um depósito de acesso restrito fica de fora sem " +
+          "sumir com o patrimônio.",
       },
       { rotulo: "Sublocalizações", valor: String(x.filhos.length), tipo: "inteiro" },
       {
@@ -146,6 +157,9 @@ export async function criarLocalizacao(c: Campos): Promise<void> {
       descricao: t(c, "descricao"),
       ...(opcional(c, "paiId") !== undefined ? { paiId: t(c, "paiId") } : {}),
       ...(opcional(c, "setorId") !== undefined ? { setorId: t(c, "setorId") } : {}),
+      // ⚠️ O checkbox do molde chega como "on"/ausente. `=== "on"` (e não "truthy") para que
+      // um campo vazio, que é o caso comum, não vire divulgação por acidente.
+      publicavelNaTransparencia: t(c, "publicavelNaTransparencia") === "on",
       criadoPor,
     })
   );

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ADMINISTRACAO, AREAS, CADASTROS, CONTABILIDADE, EXECUCAO_DESPESA, EXECUCAO_RECEITA, LICITACOES, MEUS_SERVICOS, PESSOAL, FOLHA, PORTAL_DO_SERVIDOR, PLANEJAMENTO, RELATORIOS_GERENCIAIS, RELATORIOS_LIVROS, RELATORIOS_RGF, RELATORIOS_RREO, type RelatorioNav } from "../../lib/navegacao";
+import { ADMINISTRACAO, AREAS, CADASTROS, CONTABILIDADE, EXECUCAO_DESPESA, EXECUCAO_RECEITA, LICITACOES, MEUS_SERVICOS, PESSOAL, FOLHA, PORTAL_DO_SERVIDOR, PLANEJAMENTO, RELATORIOS_GERENCIAIS, RELATORIOS_LIVROS, RELATORIOS_RGF, RELATORIOS_RREO, rotaDaArea, type RelatorioNav } from "../../lib/navegacao";
 import { identidadeNeutra, type IdentidadeDaTela } from "../../lib/identidade/produto";
 import { Marca } from "./Marca";
 import { useShell } from "./Shell";
@@ -97,7 +97,7 @@ export function Sidebar({
           {AREAS.filter(
             (a) => areasVisiveis === undefined || areasVisiveis.includes(a.slug)
           ).map((area) => {
-            const href = `/${area.slug}`;
+            const href = rotaDaArea(area);
             const ativo = pathname === href || pathname.startsWith(`${href}/`);
             // ⚠️ Algumas áreas ganham SUBMENU (Relatórios, Administração). Só aparece quando a área
             // está ativa e a sidebar expandida — não polui as outras áreas nem o modo colapsado.

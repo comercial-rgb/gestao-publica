@@ -29,6 +29,30 @@
   --color-primary-fg: #ffffff; /* texto sobre o azul */
   --color-primary-soft: #e8eef6; /* fundo de item ativo na sidebar */
 
+  /* ── A MARCA DO FORNECEDOR (Engine Sistemas) — SEPARADA DA DO ENTE, de propósito ──
+
+     ⚠️ O AZUL ACIMA É DO ENTE. Ele é a cor institucional de quem publica o ato: sóbria,
+     de sistema contábil governamental, e ela NÃO vira laranja porque o fornecedor é
+     laranja. A marca Engine aparece onde o fornecedor assina — a entrada do produto, o
+     rodapé, o favicon — e não repinta a aplicação do município.
+
+     ⚠️ E O LARANJA DA MARCA NÃO SERVE COM TEXTO BRANCO. Medido (WCAG 2.1, relação de
+     contraste):
+
+         branco sobre #FE6902 .......... 2,90:1  → REPROVA até em texto grande (3,0)
+         grafite #1A1A1A sobre #FE6902 .. 6,00:1  → aprova
+         branco sobre #C24F00 ........... 4,76:1  → aprova em texto normal (4,5)
+         #FE6902 sobre o escuro #16161A . 6,22:1  → aprova
+
+     Por isso são três tokens e não um: `engine` é a cor da MARCA (superfície, filete,
+     símbolo), `engine-forte` é a única que aceita texto branco por cima, e `engine-tinta`
+     é o que se escreve SOBRE a cor da marca. Presumir "branco sobre laranja" faria um
+     botão com 2,9:1 — que é o defeito de acessibilidade mais comum em manual de marca. */
+  --color-engine: #fe6902; /* laranja oficial da marca */
+  --color-engine-forte: #c24f00; /* o único que aceita texto branco (4,76:1) */
+  --color-engine-tinta: #1a1a1a; /* grafite da marca: o que se escreve sobre o laranja */
+  --color-engine-suave: #fff3e8; /* fundo de realce da marca */
+
   /* ── SEMÂNTICA CONTÁBIL — verde/vermelho SÓ para sinal de valor ── */
   --color-positivo: #15803d; /* superávit, saldo credor favorável (green-700) */
   --color-negativo: #b91c1c; /* déficit, valor negativo contábil (red-700) */

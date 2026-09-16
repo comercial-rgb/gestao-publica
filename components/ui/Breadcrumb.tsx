@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { areaDaRota, rotuloDaRota } from "../../lib/navegacao";
+import { areaDaRota, rotaDaArea, rotuloDaRota } from "../../lib/navegacao";
 
 /**
  * BREADCRUMB — derivado da rota (client: `usePathname`). Início › Área › (sub).
@@ -30,7 +30,7 @@ export function Breadcrumb(): React.ReactElement {
             ›
           </span>
           <Link
-            href={`/${area.slug}`}
+            href={rotaDaArea(area)}
             className="font-medium text-[color:var(--color-ink)] hover:text-[color:var(--color-primary)]"
           >
             {area.rotulo}

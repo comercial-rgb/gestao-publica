@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState, useId, useRef } from "react";
 import { ChaveDeComando } from "../../../components/ui/ChaveDeComando";
 import { CLASSE_AREA_TEXTO, CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO, CLASSE_PAINEL_FORMULARIO, CLASSE_ROTULO } from "../../../components/ui/Formulario";
-import { CamposDaAvaliacao, type EscalaDaTela } from "../../ouvidoria/FormulariosDaOuvidoria";
+import { CamposDaAvaliacao, type EscalaDaTela } from "../../(publico)/ouvidoria/FormulariosDaOuvidoria";
 import { anexarDoRequerenteAction, avaliarAtendimentoAction, protocolarAction, responderExigenciaAction, type EstadoDoRequerente } from "./actions";
 
 /**

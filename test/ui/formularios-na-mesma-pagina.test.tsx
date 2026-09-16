@@ -245,8 +245,16 @@ describe("dois formulários na mesma página — identidade de campo e de form",
             // é identidade de documento e os outros dois são cobertos pelos testes acima.
             // V7 M1 U5 — A ÂNCORA DE SEÇÃO É OUTRA COISA: um alvo de `#salto` numa PÁGINA, renderizado uma vez,
             // declarado com `data-ancora`. Ela não é campo e não tem `<label for>`; a exceção é por MARCA no
-            // elemento (e só em `page.tsx`), não por arquivo — um campo com id literal continua acusado.
-            if (/(?<![-\w])id="[^"{]+"/.test(linha) && !(rel.endsWith("/page.tsx") && /\bdata-ancora\b/.test(linha))) {
+            // elemento, não por arquivo — um campo com id literal continua acusado.
+            //
+            // ⚠️ V9 N1 — `layout.tsx` ENTROU NA EXCEÇÃO, e pelo mesmo raciocínio que já valia para
+            // `page.tsx`: um layout também renderiza UMA VEZ por requisição. O caso concreto é o
+            // salto "ir para o conteúdo" da casca pública, que precisa de um alvo `#conteudo`
+            // estável — um id de `useId()` muda a cada render e o link do teclado apontaria para
+            // o nada. Componente (`components/**`) continua fora da exceção: é ele que pode ser
+            // renderizado duas vezes na mesma tela, que é o defeito original.
+            const arquivoDeUmRenderSo = rel.endsWith("/page.tsx") || rel.endsWith("/layout.tsx");
+            if (/(?<![-\w])id="[^"{]+"/.test(linha) && !(arquivoDeUmRenderSo && /\bdata-ancora\b/.test(linha))) {
               achados.push(`${rel}:${i + 1}  ${linha.trim().slice(0, 90)}`);
             }
           });

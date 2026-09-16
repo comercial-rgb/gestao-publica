@@ -94,6 +94,8 @@
     "test/ui/resumo-da-folha.test.ts",
     "test/carta-de-servicos.test.ts",
     "test/ouvidoria-e-avaliacao.test.ts",
-    "test/ui/demonstrativo-das-obrigacoes.test.ts"
+    "test/ui/demonstrativo-das-obrigacoes.test.ts",
+    "test/bens-publicos-contrato.test.ts",
+    "test/csv-injecao.test.ts"
   ]
 }

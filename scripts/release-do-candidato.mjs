@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { conferenciaAprovada, digestoDeTipos, explicarRecusa, inventarioDeRotas } from "./conferencia-de-tipos.mjs";
+import { conferenciaAprovada, conferir, digestoDeTipos, explicarRecusa, inventarioDeRotas } from "./conferencia-de-tipos.mjs";
 
 /**
  * ═══ O CANDIDATO DE RELEASE, IDENTIFICADO PELO CONTEÚDO (V9 N0.4) ═══
@@ -87,7 +87,39 @@ if (r.status !== 0) {
   process.exit(r.status ?? 1);
 }
 
-// (3) O REGISTRO DO CANDIDATO.
+/**
+ * ═══ (3) OS TIPOS DE ROTA, CONFERIDOS CONTRA AS ROTAS FINAIS (V9 N0.4) ═══
+ *
+ * ⚠️ AQUI HAVIA UMA COBRA MORDENDO O RABO, e ela precisa ficar escrita. `.next/types/**` está no
+ * `include` do `tsconfig.json` e é **gerado pelo próprio build**. Então:
+ *
+ *   · conferir os tipos ANTES do build confere os tipos de rota do build ANTERIOR;
+ *   · e pôr `.next/types` no digesto faria o build que gera os tipos invalidar a aprovação que
+ *     autoriza o build.
+ *
+ * Foi exatamente o que apareceu em 16/09/2026, ao mover as páginas públicas para um grupo de
+ * rotas: o `tsc` acusou vinte e dois erros em `.next/types/**` apontando para caminhos de rota
+ * que já não existiam. Os erros eram do artefato velho, não do código — mas um deles NÃO era:
+ * um import de verdade tinha quebrado na mudança, e ele estava no meio dos outros.
+ *
+ * A saída é a ordem: o digesto cobre os ARQUIVOS DE ROTA (que estão sob `app/`, um a um), o
+ * build regenera `.next/types`, e então o `tsc` roda **de novo** — agora contra as rotas finais.
+ * O conteúdo não mudou, então o digesto é o mesmo e a aprovação continua sendo a mesma; o que
+ * esta segunda passagem acrescenta é a única coisa que faltava: a certeza de que os tipos de
+ * rota conferidos são os do artefato que está sendo promovido.
+ */
+console.error(`[release] reconferindo os tipos contra os tipos de rota recem-gerados...`);
+const codigoDaReconferencia = conferir();
+if (codigoDaReconferencia !== 0) {
+  console.error(
+    `\n[release] ⚠️ O BUILD PASSOU E OS TIPOS DE ROTA NAO. O artefato existe em disco e NAO foi ` +
+      `promovido: as rotas finais nao casam com o que foi conferido antes do build. Nenhum ` +
+      `candidato gravado.`
+  );
+  process.exit(codigoDaReconferencia);
+}
+
+// (4) O REGISTRO DO CANDIDATO.
 const artefato = digestoDoArtefato(join(RAIZ, ".next"));
 mkdirSync(PASTA, { recursive: true });
 const registro = {
@@ -101,6 +133,7 @@ const registro = {
   buildMs: duracaoMs,
   tiposAprovadosEm: prova.quando,
   tiposEm: prova.duracaoMs,
+  tiposDeRotaReconferidosAposOBuild: true,
   node: process.version,
   rotas: inventarioDeRotas(),
   // ⚠️ O QUE ESTE REGISTRO **NAO** DIZ, escrito aqui para nao ser lido como se dissesse:

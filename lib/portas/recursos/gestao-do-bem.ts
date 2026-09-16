@@ -57,12 +57,23 @@ export const LOCALIZACOES_FISICAS: DefinicaoDeRecurso = definirRecurso({
       opcoes: [],
       ajuda: "Opcional. O setor responde pelo que está guardado aqui.",
     },
+    {
+      nome: "publicavelNaTransparencia",
+      rotulo: "Divulgar esta localização na consulta pública de bens",
+      tipo: "booleano",
+      largura: 4,
+      ajuda:
+        "Desmarcado, os bens guardados aqui continuam aparecendo na consulta pública — o que " +
+        "não aparece é o lugar. Deixe desmarcado para depósitos, cofres e locais de acesso " +
+        "restrito.",
+    },
   ],
   colunas: [
     { nome: "codigo", cabecalho: "Código", tipo: "link", ordenavel: true },
     { nome: "descricao", cabecalho: "Descrição", tipo: "texto" },
     { nome: "pai", cabecalho: "Localização superior", tipo: "texto" },
     { nome: "setor", cabecalho: "Setor", tipo: "texto" },
+    { nome: "publicacao", cabecalho: "Consulta pública", tipo: "texto" },
     { nome: "situacao", cabecalho: "Situação", tipo: "situacao" },
   ],
   filtros: [{ nome: "q", rotulo: "Código ou descrição", tipo: "texto", largura: 2 }],

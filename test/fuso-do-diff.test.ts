@@ -161,6 +161,38 @@ describe("o diff que o agendamento lê", () => {
     expect(unirCaminhos("", porcelain)).toEqual(["app/(areas)/orçamento/página.tsx"]);
   });
 
+  it("renomeação entrega DESTINO e ORIGEM — e nenhum caminho fantasma", () => {
+    // ⚠️ O DEFEITO QUE ISTO ACUSA, MEDIDO EM 16/09/2026. Com `-z`, um rename ocupa DOIS campos:
+    // `R? <destino>` NUL `<origem>` NUL. O laço antigo tratava a origem como um registro e
+    // cortava três caracteres dela — `app/transparencia/page.tsx` virava
+    // `/(areas)/transparencia/page.tsx`, com barra inicial e sem relação com arquivo nenhum.
+    //
+    // ⚠️ E O ESTRAGO FALHAVA PARA O LADO ERRADO: o caminho inventado não bate com padrão de
+    // leitura de relógio, e a ORIGEM sumia da lista. Mover um arquivo que lê relógio deixaria o
+    // `test:fuso` FORA do agendamento — uma guarda que decide "não rodar" por um caminho que
+    // ela mesma inventou.
+    const porcelain =
+      "RM app/(publico)/transparencia/page.tsx\0app/transparencia/page.tsx\0 M lib/navegacao.ts\0";
+    const r = unirCaminhos("", porcelain);
+
+    expect(r, "o destino da renomeação sumiu").toContain("app/(publico)/transparencia/page.tsx");
+    expect(
+      r,
+      "a ORIGEM da renomeação sumiu da lista — é ela que diz que um arquivo que lia relógio saiu do lugar"
+    ).toContain("app/transparencia/page.tsx");
+    expect(r, "o arquivo vizinho, que nem foi renomeado, se perdeu junto").toContain("lib/navegacao.ts");
+    expect(
+      r.filter((a) => a.startsWith("/")),
+      "caminho fantasma com barra inicial: é a origem do rename lida como se tivesse estado"
+    ).toEqual([]);
+    expect(r).toHaveLength(3);
+  });
+
+  it("uma cópia (C) segue a mesma regra do rename", () => {
+    const r = unirCaminhos("", "C  app/(publico)/novo.tsx\0app/velho.tsx\0");
+    expect(r).toEqual(["app/(publico)/novo.tsx", "app/velho.tsx"]);
+  });
+
   it("sem a marca do último portão verde, o diff é DESCONHECIDO e o fuso roda", () => {
     const e = diffDoRepositorio(process.cwd(), "/caminho/que/nao/existe/marca", false);
     expect(e.diffConhecido).toBe(false);
