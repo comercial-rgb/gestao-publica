@@ -99,25 +99,66 @@ provisionamento desta demonstração usa, e nada além:
 > propósito**. Nada nesta entrega apaga recurso, e uma permissão de destruição concedida "por via
 > das dúvidas" é a que um erro futuro usa.
 
-### Ação 2 — entregar uma credencial programática desta identidade
+### Ação 2 — dar a esta identidade uma credencial que a CLI consiga usar
 
-Uma das duas, não as duas:
+⚠️ **CORRIGIDO NA V10 T5.** A redação anterior tratava a chave de acesso como o caminho e a
+sessão de console como alternativa. É o contrário: **credencial temporária é o caminho
+preferido**, e a chave de longa duração é a alternativa — uma chave criada hoje continua válida
+por anos, viaja em arquivo, e não expira sozinha quando alguém deixa o projeto.
 
-- **Chave de acesso** (mais simples de automatizar): console IAM → `gestao-publica` → Credenciais
-  de segurança → Criar chave de acesso → *Command Line Interface*. Depois, **nesta máquina**:
+**Caminho preferido — sessão de console, credencial temporária:**
 
-  ```sh
-  aws configure --profile gestao-publica     # regiao: sa-east-1 · saida: json
-  export AWS_PROFILE=gestao-publica
-  aws sts get-caller-identity                # tem de devolver .../user/gestao-publica
-  ```
+1. Winner faz o primeiro login no console com o CSV entregue e **completa a troca obrigatória de
+   senha** (é no navegador; `aws login` não atravessa essa troca);
+2. um administrador autorizado concede a `gestao-publica`, além da permissão do serviço (Ação 1),
+   o acesso que o fluxo de login da CLI exige (`SignInLocalDevelopmentAccess`);
+3. então, **nesta máquina**:
 
-  ⚠️ **Perfil nomeado, nunca o `default`.** O `default` desta máquina é de outro produto e
-  continua sendo dele.
+   ```sh
+   aws login --profile gestao-publica         # negocia a sessao; regiao sa-east-1
+   AWS_PROFILE=gestao-publica aws sts get-caller-identity   # tem de devolver .../user/gestao-publica
+   ```
 
-- **Sessão de console** (sem chave de longa duração): fazer o primeiro login no navegador com o
-  CSV entregue, **trocar a senha obrigatória**, e só então `aws login` passa a poder negociar
-  credenciais temporárias para esta identidade.
+   A CLI instalada aqui é a **2.34.63**, acima do mínimo documentado (2.32) para esse fluxo.
+
+   ⚠️ **Credencial temporária EXPIRA.** O provisionamento inteiro (instância, IP estático, portas)
+   leva minutos, e cabe numa sessão — mas quem for executá-lo deve confirmar a validade restante
+   antes de começar, e renovar em vez de emendar. **Nenhum segredo, e nenhum prazo de sessão, é
+   copiado para relatório algum.**
+
+**Alternativa — chave de acesso de longa duração:** console IAM → `gestao-publica` → Credenciais
+de segurança → Criar chave de acesso → *Command Line Interface*; depois `aws configure --profile
+gestao-publica`. Vale quando a sessão de console não for possível; e, se for esse o caminho,
+revogue a chave assim que a implantação estiver de pé.
+
+⚠️ **Perfil NOMEADO nos dois casos, nunca o `default`.** O `default` desta máquina é de outro
+produto e continua sendo dele. E isto é sobre **acesso e auditoria**, não sobre faturamento: a
+conta é a mesma, e a separação de custo se faz por tag, inventário e orçamento — não por
+credencial.
+
+### Sobre chamar a política acima de "mínima"
+
+⚠️ **Ela é mínima em AÇÕES, e não em RECURSOS.** O `Resource: "*"` alcança qualquer recurso de
+Lightsail desta conta — e nesta conta há recursos de outro produto (`receptor-rastreadores`,
+`ip-receptor`). Restringir por ARN exigiria conferir, ação a ação, quais operações de Lightsail
+suportam recurso e condição, e isso **não foi verificado**. Até que seja, o texto honesto é este:
+a lista de ações é o recorte; o recorte por recurso está em aberto.
+
+## Preflight repetido em 2026-09-16 (V10 T5)
+
+Somente leitura, e o resultado é: **o acesso NÃO mudou.**
+
+```
+$ aws configure list-profiles
+default
+
+$ AWS_PROFILE=gestao-publica aws sts get-caller-identity
+aws: [ERROR]: The config profile (gestao-publica) could not be found
+```
+
+Não existe perfil `gestao-publica` nesta máquina — nem chave, nem sessão. O `default` (de outro
+produto) **não foi usado**, e nenhuma chave nova foi criada. As duas ações acima continuam
+pendentes, e são de Winner.
 
 ## O que continua verdadeiro enquanto isso não acontece
 

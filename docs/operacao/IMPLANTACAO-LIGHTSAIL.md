@@ -3,11 +3,17 @@
 > **Escopo:** ambiente de **avaliação** da Gestão Pública em `gestao.enginesistemas.com.br`.
 > Não é produção municipal. Não há dado produtivo, mensagem real, pagamento nem transmissão fiscal.
 >
-> ⚠️ **O QUE FOI EXECUTADO DESTE ROTEIRO, EM 2026-09-16: apenas os passos de LEITURA do passo 0.**
-> Nenhum recurso foi criado, alterado ou removido; não há custo novo nesta conta por causa desta
-> rodada. O bloqueio, com o conserto exato, está em [`AWS-PREFLIGHT-V9-N7.md`](AWS-PREFLIGHT-V9-N7.md).
-> Os comandos de mutação abaixo estão escritos e revisados, **não executados** — e este documento
-> diz isso em vez de deixar parecer que estão.
+> ⚠️ **O QUE FOI EXECUTADO DESTE ROTEIRO: apenas os passos de LEITURA do passo 0 (V9 N7), e o
+> ENSAIO EM LINUX das pré-condições do passo 3 (V10 T5 — ver "O que foi ensaiado", no fim).**
+> Nenhum recurso de nuvem foi criado, alterado ou removido; não há custo novo nesta conta por
+> causa destas rodadas. O bloqueio, com o conserto exato, está em
+> [`AWS-PREFLIGHT-V9-N7.md`](AWS-PREFLIGHT-V9-N7.md). Os comandos de mutação abaixo estão
+> escritos e revisados, **não executados** — e este documento diz isso em vez de deixar parecer
+> que estão.
+>
+> ⚠️ **NÃO ESCREVA "PONTA A PONTA" SOBRE ESTE ROTEIRO.** Ele tem `<IP>` e `<bundleId>` por
+> preencher, e a parte de nuvem nunca rodou. O que existe de executável e revisável são os dois
+> scripts do passo 3 em diante.
 
 ## Passo 0 — a identidade certa (executado, somente leitura)
 
@@ -68,106 +74,164 @@ numa máquina varrida por bot em horas.
 pelo `localhost` da mesma máquina. Não há RDS, NAT nem balanceador: seriam cobranças recorrentes
 para uma avaliação de um processo só.
 
-## Passo 3 — a máquina
+## Passo 3 — a máquina, e as versões que o candidato exige
+
+⚠️ **O ROTEIRO ANTERIOR PEDIA `apt-get install -y postgresql`, e isso não é escolher versão.**
+A distribuição entrega o que tiver no dia; o candidato foi construído e medido contra o
+PostgreSQL **18** e o Node **22**. Um banco de outra linha pode aceitar as migrations e divergir
+em detalhe de ordenação, de tipo ou de plano — e a divergência aparece em produção, não aqui.
 
 ```sh
-ssh -i ~/.ssh/lightsail-gestao-publica.pem ubuntu@<IP>
-sudo apt-get update && sudo apt-get install -y postgresql nginx certbot python3-certbot-nginx \
-  ca-certificates curl gnupg
-# Node na MESMA linha do package-lock (v22 nesta máquina de desenvolvimento)
+# Node 22 — a MESMA linha em que o candidato foi construído e testado.
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt-get install -y nodejs
-# Chromium para o PDF. O puppeteer é serverExternalPackages: o binário é do sistema.
+
+# PostgreSQL 18 — do repositório oficial do PGDG, com a versão ESCOLHIDA, não a que vier.
+sudo apt-get install -y ca-certificates curl gnupg
+sudo install -d /usr/share/postgresql-common/pgdg
+sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+  --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
+  https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+  | sudo tee /etc/apt/sources.list.d/pgdg.list
+sudo apt-get update && sudo apt-get install -y postgresql-18
+
+# Chromium e fontes para o PDF. O puppeteer é `serverExternalPackages`: o binário é do sistema.
 sudo apt-get install -y chromium-browser fonts-liberation
+
+# nginx e certbot
+sudo apt-get install -y nginx certbot python3-certbot-nginx
 ```
 
-## Passo 4 — o banco, com os dois papéis separados
+⚠️ **Existir não é renderizar.** Chromium instalado e fonte ausente produz PDF com caixas no
+lugar das letras — e isso só aparece olhando o arquivo. O `scripts/instalar-no-servidor.sh` roda
+`preflight-navegador.ts` **neste servidor** antes de subir o serviço, e recusa se o PDF não sair.
 
-O repositório já distingue o dono (migrations, DDL) do papel de runtime (`gestao_app`, sem
-superusuário, sem `BYPASSRLS`, sem posse de tabela, sem DDL). `scripts/provisionar-papel-runtime.ts`
-é quem o cria; `prisma/papel-runtime.ts` é quem monta a URL dele.
+## Passo 4 — o pacote, com uma cadeia de proveniência só
+
+⚠️ **O ROTEIRO ANTERIOR MISTURAVA DUAS PROVENIÊNCIAS.** Ele empacotava com `git archive HEAD` e
+depois falava do candidato pelo nome `<sha>+<digesto>` — e os dois não descrevem a mesma coisa:
+`git archive` traz o conteúdo **rastreado** do commit (e ignora o que estiver solto na árvore),
+enquanto o digesto daquele nome era do `.next` construído **no Mac**, que não é o build que roda
+no servidor.
+
+Agora a cadeia é uma só, e cada elo é verificável:
+
+| Elo | Quem produz | O que prova |
+|---|---|---|
+| manifesto do fonte | `scripts/empacotar-candidato.sh` | sha256 de **cada arquivo rastreado** do commit |
+| digesto do fonte | o sha256 do manifesto | um arquivo alterado muda o digesto |
+| pacote `.tgz` | o mesmo script | o conteúdo que viaja |
+| sha256 do pacote | conferido **no servidor**, depois do `scp` | que chegou o que saiu |
+| build | `next build` **no servidor** | a arquitetura de lá |
+| identidade no ar | `GET /release` | que o processo que atende é o candidato instalado |
 
 ```sh
-sudo -u postgres createuser --pwprompt gestao          # dono: migrations
-sudo -u postgres createdb  --owner=gestao gestao_publica
-# O papel de runtime vem do script do repositório, não de um GRANT escrito à mão:
-npm run db:papel
+# Na máquina de desenvolvimento, com a árvore RASTREADA limpa (o script recusa se não estiver):
+scripts/empacotar-candidato.sh /tmp
+scp -i ~/.ssh/lightsail-gestao-publica.pem \
+  /tmp/gestao-publica-<candidato>.tgz /tmp/gestao-publica-<candidato>.manifesto ubuntu@<IP>:/tmp/
 ```
 
-⚠️ **Senha de implantação ≠ senha de desenvolvimento.** E o `.env` do Mac **não** é transportado:
-o servidor recebe um `.env` próprio, com `DATABASE_URL`, `APP_DB_USUARIO`, `APP_DB_SENHA`,
-`ANEXOS_DIR`, `SEED_IDENTIDADE` e `NEXT_PUBLIC_BUILD_COMMIT`. Nada de `.env` versionado.
+⚠️ **O que o manifesto NÃO cobre está escrito dentro dele**: `node_modules` (vem do `npm ci`
+contra o `package-lock` do pacote), `prisma/generated` (gerado na arquitetura do servidor),
+`.next` (construído lá), Chromium e fontes (pacotes do sistema, com versão conferida) e o `.env`
+(configuração e segredo, que **nunca** viajam no pacote). Um hash de `.next` não inventaria nada
+disso — por isso o digesto é do FONTE.
 
-## Passo 5 — o artefato
+## Passo 5 — a instalação, por script idempotente
 
-⚠️ **Push continua sem autorização.** O pacote vai por `scp`, a partir de um commit local
-identificado — e o candidato tem nome próprio `<sha curto>+<digesto>`, porque com árvore alterada
-o SHA sozinho não identifica conteúdo nenhum (ver `scripts/release-do-candidato.mjs`).
+⚠️ **O ROTEIRO ANTERIOR TINHA A ORDEM ERRADA**: mandava rodar `npm run db:papel` antes de as
+dependências existirem — e `db:papel` é `tsx`, que vem do `npm ci`. Também não criava usuário do
+serviço, não ajustava permissão de diretório e deixava a unit **sem `User=`**, o que faz o
+systemd rodar a aplicação inteira como **root**.
 
 ```sh
-# Na máquina de desenvolvimento, com a árvore congelada:
-git archive --format=tar.gz -o /tmp/gestao-publica-<candidato>.tgz HEAD
-scp -i ~/.ssh/lightsail-gestao-publica.pem /tmp/gestao-publica-<candidato>.tgz ubuntu@<IP>:/tmp/
+# No servidor. `--conferir` roda só as pré-condições e não instala nada:
+scripts/instalar-no-servidor.sh --pacote /tmp/gestao-publica-<cand>.tgz \
+  --manifesto /tmp/gestao-publica-<cand>.manifesto --conferir
 
-# No servidor — o build acontece LÁ, na arquitetura de lá:
-tar xzf /tmp/gestao-publica-<candidato>.tgz -C /opt/gestao-publica
-cd /opt/gestao-publica
-npm ci
-npx prisma generate                 # ⚠️ na arquitetura do servidor; o cliente do Mac não serve
-npx prisma migrate deploy
-npm run db:sql                      # índices parciais e checks que o Prisma não representa
-npm run permissoes:atualizar -- pendentes   # o MESMO caminho do banco dos percursos
-NEXT_PUBLIC_BUILD_COMMIT=<sha> npx next build
+# E então, para valer:
+scripts/instalar-no-servidor.sh --pacote /tmp/gestao-publica-<cand>.tgz \
+  --manifesto /tmp/gestao-publica-<cand>.manifesto
 ```
 
-⚠️ **`npm run permissoes:atualizar -- pendentes` é o mesmo comando que o banco dos percursos usa.**
-Foi unificado nesta rodada justamente para que instalação, atualização e percurso não tenham três
-caminhos de provisionamento diferentes — era assim que uma versão nova de permissão ficava de fora
-de um deles e a tela "não abria".
+O que ele faz, na ordem: confere versões → confere a integridade do pacote → confere o `.env` →
+cria o usuário de sistema `gestao-publica` (sem shell) e os diretórios com permissão → extrai →
+`npm ci` → `prisma generate` → `migrate deploy` → papel de runtime → SQL manual → permissões
+pendentes → licenciamento comercial → `next build` → **preflight do PDF** → unit com `User=`,
+`ProtectSystem=strict` e `IDENTIDADE_DO_CANDIDATO` vindo do manifesto.
 
-⚠️ **O build não pode disputar a máquina com o processo que atende.** Numa instância de 8 GB,
-buildar enquanto o site responde derruba o site. Buildar **antes** de subir o serviço, ou numa
-janela declarada.
+⚠️ **O Next escuta em `127.0.0.1`**, e não em `0.0.0.0`. Sem `-H 127.0.0.1`, a porta 3000 fica
+acessível de fora e contorna o proxy e o TLS.
 
-## Passo 6 — o serviço e o proxy
+⚠️ **Duas identidades de banco, e a prova de que a segunda é menor.** O dono aplica migrations
+(DDL); o runtime (`gestao_app`) só lê e escreve, sem DDL, sem superusuário e sem `BYPASSRLS`.
+Quem afirma isso não é este documento: é `npm run test:runtime`, contra o banco.
 
-```ini
-# /etc/systemd/system/gestao-publica.service
-[Service]
-WorkingDirectory=/opt/gestao-publica
-EnvironmentFile=/opt/gestao-publica/.env
-ExecStart=/usr/bin/npx next start -p 3000
-Restart=always
-RestartSec=5
-```
+## Passo 6 — o proxy
 
-O nginx faz `proxy_pass` para `127.0.0.1:3000`. Enquanto o DNS não apontar, o `server_name` é o IP,
-e o ensaio é por túnel SSH (`ssh -L 8080:127.0.0.1:3000`) ou por `--resolve` no curl — **nunca**
+O nginx faz `proxy_pass` para `127.0.0.1:3000`. **Antes do HTTPS, só devem responder em claro**
+`/.well-known/acme-challenge/` e o redirecionamento para HTTPS — nada mais.
+
+⚠️ **O roteiro anterior afirmava que o login estava protegido e não conferia.** Agora
+`scripts/pos-dns.sh` REPROVA (`EXPOSICAO_INDEVIDA`, saída 17) se `/login` responder 200 em HTTP
+claro, e o teste `test/pos-dns.test.ts` (caso C7) prova que ele reprova.
+
+Enquanto o DNS não apontar, o ensaio é por túnel SSH (`ssh -L 8080:127.0.0.1:3000`) — **nunca**
 expondo tela de login por HTTP público.
 
-## Passo 7 — backup, e o que ele cobre
+## Passo 7 — backup: destino, credencial, retenção, tarefa e restauração
 
-| Item | Proposta |
+⚠️ **A TABELA ANTERIOR ERA UMA PROPOSTA, E PROPOSTA NÃO É BACKUP.** Um backup só existe quando
+tem destino real, credencial própria, tarefa que roda e restauração ensaiada. Enquanto os cinco
+não existirem, o estado honesto é **não há backup** — e é isso que está escrito aqui.
+
+| Item | O que falta decidir/executar |
 |---|---|
-| Banco | `pg_dump` diário, retenção de 7 dias, fora da instância |
-| Anexos (`ANEXOS_DIR`) | cópia diária, mesma retenção |
-| Antes de cada migration | snapshot adicional, nomeado com o candidato |
-| Restauração | **ensaiada em banco descartável** antes de valer como backup |
+| Destino externo | **NÃO DEFINIDO.** Lightsail tem *object storage* próprio, cobrado à parte; S3 é outro serviço. **A política de Lightsail não concede acesso a nenhum dos dois** — o destino escolhido entra no quadro de custo e no de permissão |
+| Credencial | mínima **para o destino escolhido**, e só para ele |
+| Retenção | 7 dias para o banco e para `ANEXOS_DIR` |
+| Tarefa | unit `systemd` com timer, e não `cron` solto sem log |
+| Restauração | **ensaiada em banco descartável** antes de o backup valer como backup |
 
-⚠️ **Isto é proposta operacional de demonstração, e não cumpre SLA/RPO de edital.** Dizer que
-cumpre seria exatamente o tipo de afirmação que esta entrega não faz. E a limpeza remove **só
-cópias vencidas pela política** — nunca histórico de negócio.
+⚠️ **Sobre "política mínima".** A política sugerida no preflight usa `Resource: '*'` — e nesta
+conta há recursos de outro produto. `'*'` alcança todos eles. Chamá-la de "mínima por projeto"
+sem conferir quais ações do Lightsail suportam recurso e condição seria afirmar um recorte que
+não foi verificado. Ver [`AWS-PREFLIGHT-V9-N7.md`](AWS-PREFLIGHT-V9-N7.md).
 
-## Passo 8 — depois do DNS
+## Passo 8 — depois do DNS, o aceite
 
-`scripts/pos-dns.sh` (neste repositório) é idempotente e não fica em laço esperando ninguém:
-confere a resolução, confere o HTTP, e só então conclui o TLS. Ver
-[`DNS-GODADDY-gestao.md`](DNS-GODADDY-gestao.md).
+```sh
+scripts/pos-dns.sh --nome gestao.enginesistemas.com.br --ip <IP-ESTATICO> --candidato <candidato>
+```
+
+⚠️ **Ele reprova quando a evidência falta.** A versão anterior aceitava não achar o identificador
+do build e ainda assim dizia cobrir o aceite `PUBLICADA`. Os estados, e o código de saída de cada
+um, estão no cabeçalho do script: `DNS_PENDENTE` (10), `DNS_INESPERADO` (11), `APLICACAO_MUDA`
+(12), `TLS_PENDENTE` (13), `ROTAS_FALHARAM` (14), `IDENTIDADE_AUSENTE` (15),
+`IDENTIDADE_DIFERENTE` (16), `EXPOSICAO_INDEVIDA` (17), `PUBLICADA_VALIDADA` (0).
+
+**Conferir e emitir são separados.** Sem `--emitir`, ele não pede certificado nenhum; com
+`--emitir`, exige `ACME_EMAIL` (a conta é de alguém, e os termos são aceitos por esse alguém) e
+só funciona **na máquina que serve o nome** — o desafio HTTP-01 chega na porta 80 de lá.
+
+Ver [`DNS-GODADDY-gestao.md`](DNS-GODADDY-gestao.md).
+
+## O que foi ensaiado, e o que não foi
+
+| Item | Ensaiado? | Como |
+|---|---|---|
+| `scripts/pos-dns.sh` | **sim**, 13 casos | `test/pos-dns.test.ts`: DNS ausente, destino errado, múltiplos endereços, 404, 500, rota autenticada aberta, login em claro, identidade ausente, identidade diferente — e o caso positivo. Sem emitir certificado público nem tocar em ambiente de terceiro |
+| Pré-condições do passo 3 (versões de Node e Postgres, Chromium, fontes) | **sim**, em Linux | container descartável; ver `docs/operacao/ENSAIO-DA-INSTALACAO.md` |
+| Instalação completa (passos 4–6) | **não** | depende de servidor com o banco provisionado; os scripts estão escritos e revisados |
+| Backup e restauração | **não** | o destino ainda não foi decidido — ver o passo 7 |
+| Provisionamento na AWS (passos 0–2) | **não** | bloqueado por acesso; ver `AWS-PREFLIGHT-V9-N7.md` |
 
 ## Os dois estados, que não se confundem
 
 | Estado | O que exige | Hoje |
 |---|---|---|
 | `AWS_PREPARADA` | recurso identificado, IP estático real, aplicação instalada, banco e anexos persistentes, restauração e checagens executadas | **NÃO.** Bloqueado na autenticação e na permissão de Lightsail |
-| `PUBLICADA` | resolução pública, HTTPS válido, jornadas externas e digest conferidos | **NÃO.** Depende do anterior e do DNS |
+| `PUBLICADA_VALIDADA` | resolução para o destino desta implantação, HTTPS válido, rotas públicas abrindo, rotas autenticadas fechando, nada autenticado em claro e a identidade do candidato conferida | **NÃO.** Depende do anterior e do DNS |
 
 `http://localhost:3010` no Mac **não é URL hospedada**, e não é citado como se fosse.
