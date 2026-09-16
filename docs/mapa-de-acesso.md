@@ -10,7 +10,7 @@ o guard `leitura-exige-acao` cobra. `SEM-PORTAO-DECLARADO` é achado, não lacun
 Este mapa **não** diz quais CAMPOS cada rota expõe: projeção pública por allowlist de campos é
 frente própria (`PROJECAO-PUBLICA-POR-CAMPO`), e afirmá-la aqui seria inventar cobertura.
 
-Rotas encontradas: **220** (195 páginas, 25 rotas HTTP).
+Rotas encontradas: **236** (209 páginas, 27 rotas HTTP).
 
 ## Resumo por categoria
 
@@ -18,20 +18,21 @@ Rotas encontradas: **220** (195 páginas, 25 rotas HTTP).
 |---|---|
 | OPERADOR:CONSULTAR_PATRIMONIO | 38 |
 | OPERADOR:CONSULTAR_RELATORIOS (ente) | 23 |
+| OPERADOR:CONSULTAR_LICITACOES | 20 |
 | LANDING (só navegação; o menu é recortado no servidor) | 19 |
-| OPERADOR:CONSULTAR_LICITACOES | 16 |
 | OPERADOR:CONSULTAR_FOLHA | 15 |
+| PUBLICA | 13 |
 | OPERADOR:CONSULTAR_DESPESA (por unidade) | 9 |
 | OPERADOR:CONSULTAR_PLANEJAMENTO | 9 |
-| PUBLICA | 8 |
+| OPERADOR:CONSULTAR_PROTOCOLO (algum escopo) | 8 |
 | OPERADOR:CONSULTAR_DIVIDA | 6 |
 | OPERADOR:CONSULTAR_FINANCEIRO (ente) | 6 |
 | OPERADOR:CONSULTAR_INTEGRACOES (ente) | 6 |
 | TITULAR | 6 |
 | OPERADOR:CONSULTAR_PESSOAL | 6 |
-| OPERADOR:CONSULTAR_PROTOCOLO (algum escopo) | 6 |
 | OPERADOR:CONSULTAR_PLANEJAMENTO (ente) | 5 |
 | POR-REGISTRO-DONO | 4 |
+| SEM-PORTAO-DECLARADO | 4 |
 | OPERADOR:CONSULTAR_TRANSFERENCIAS | 4 |
 | OPERADOR:CONSULTAR_ADMINISTRACAO | 3 |
 | OPERADOR:CONSULTAR_DESPESA (ente) | 3 |
@@ -43,12 +44,12 @@ Rotas encontradas: **220** (195 páginas, 25 rotas HTTP).
 | OPERADOR:CONSULTAR_COMUNICACAO (algum escopo) | 2 |
 | OPERADOR:CONSULTAR_CONTABILIDADE (por unidade) | 2 |
 | OPERADOR:CONSULTAR_CONTROLE_INTERNO | 2 |
+| OPERADOR:CONSULTAR_FOLHA (ente) | 2 |
 | OPERADOR:CONSULTAR_PLANEJAMENTO (por unidade) | 2 |
 | OPERADOR:CONSULTAR_SUPORTE (algum escopo) | 2 |
 | MESA (cada bloco pergunta se pode, e some se não) | 1 |
 | AUTOSSERVICO DA PROPRIA CONTA | 1 |
 | OPERADOR:CONSULTAR_DESPESA (algum escopo) | 1 |
-| OPERADOR:CONSULTAR_FOLHA (ente) | 1 |
 | OPERADOR:leitura do catálogo pedido (algum escopo) | 1 |
 | OPERADOR:CONSULTAR_PATRIMONIO (algum escopo) | 1 |
 
@@ -60,10 +61,27 @@ Rotas encontradas: **220** (195 páginas, 25 rotas HTTP).
 | `/fumaca` | `app/fumaca/page.tsx` |
 | `/identidade/imagem` | `app/identidade/imagem/route.ts` |
 | `/login` | `app/login/page.tsx` |
+| `/ouvidoria` | `app/ouvidoria/page.tsx` |
+| `/ouvidoria/[slug]` | `app/ouvidoria/[slug]/page.tsx` |
+| `/ouvidoria/acompanhar` | `app/ouvidoria/acompanhar/page.tsx` |
 | `/servicos` | `app/servicos/page.tsx` |
 | `/servicos/[slug]` | `app/servicos/[slug]/page.tsx` |
+| `/transparencia/contratos` | `app/transparencia/contratos/page.tsx` |
+| `/transparencia/contratos/[id]` | `app/transparencia/contratos/[id]/page.tsx` |
 | `/transparencia/demonstrativos` | `app/transparencia/demonstrativos/page.tsx` |
 | `/transparencia/demonstrativos/pdf` | `app/transparencia/demonstrativos/pdf/route.ts` |
+
+## ⚠️ Sob `(areas)` e SEM portão declarado
+
+Cada uma destas é uma pergunta aberta: ou o portão está noutro lugar (e o guard reprova), ou
+a página está aberta a qualquer sessão autenticada.
+
+| Rota | Arquivo |
+|---|---|
+| `/licitacoes/contratos/[id]` | `app/(areas)/licitacoes/contratos/[id]/page.tsx` |
+| `/licitacoes/contratos/[id]/documentos/[tipo]/[docId]` | `app/(areas)/licitacoes/contratos/[id]/documentos/[tipo]/[docId]/route.ts` |
+| `/licitacoes/contratos/[id]/ordens/[ordemId]` | `app/(areas)/licitacoes/contratos/[id]/ordens/[ordemId]/page.tsx` |
+| `/licitacoes/fiscalizacao` | `app/(areas)/licitacoes/fiscalizacao/page.tsx` |
 
 ## Todas as rotas
 
@@ -129,6 +147,7 @@ Rotas encontradas: **220** (195 páginas, 25 rotas HTTP).
 | `/folha/folhas` | pagina | OPERADOR:CONSULTAR_FOLHA |
 | `/folha/folhas/[id]` | pagina | OPERADOR:CONSULTAR_FOLHA |
 | `/folha/folhas/[id]/contracheque/[vinculoId]` | pagina | OPERADOR:CONSULTAR_FOLHA |
+| `/folha/folhas/[id]/obrigacoes` | rota-http | OPERADOR:CONSULTAR_FOLHA (ente) |
 | `/folha/folhas/[id]/resumo` | rota-http | OPERADOR:CONSULTAR_FOLHA (ente) |
 | `/folha/grupos-de-empenho` | pagina | OPERADOR:CONSULTAR_FOLHA |
 | `/folha/grupos-de-empenho/[id]` | pagina | OPERADOR:CONSULTAR_FOLHA |
@@ -148,12 +167,20 @@ Rotas encontradas: **220** (195 páginas, 25 rotas HTTP).
 | `/integracoes/tce` | pagina | OPERADOR:CONSULTAR_INTEGRACOES (ente) |
 | `/licitacoes` | pagina | LANDING (só navegação; o menu é recortado no servidor) |
 | `/licitacoes/contratos` | pagina | OPERADOR:CONSULTAR_LICITACOES |
-| `/licitacoes/contratos/[id]` | pagina | OPERADOR:CONSULTAR_LICITACOES |
+| `/licitacoes/contratos/[id]` | pagina | SEM-PORTAO-DECLARADO |
+| `/licitacoes/contratos/[id]/documentos/[tipo]/[docId]` | rota-http | SEM-PORTAO-DECLARADO |
+| `/licitacoes/contratos/[id]/ordens/[ordemId]` | pagina | SEM-PORTAO-DECLARADO |
 | `/licitacoes/documentos-fiscais` | pagina | OPERADOR:CONSULTAR_LICITACOES |
 | `/licitacoes/documentos-fiscais/[id]` | pagina | OPERADOR:CONSULTAR_LICITACOES |
 | `/licitacoes/documentos-fiscais/conferencia` | rota-http | OPERADOR:CONSULTAR_LICITACOES |
+| `/licitacoes/fiscalizacao` | pagina | SEM-PORTAO-DECLARADO |
+| `/licitacoes/fiscalizacao/agenda` | pagina | OPERADOR:CONSULTAR_LICITACOES |
+| `/licitacoes/fiscalizacao/tipos-de-ocorrencia` | pagina | OPERADOR:CONSULTAR_LICITACOES |
 | `/licitacoes/obras` | pagina | OPERADOR:CONSULTAR_LICITACOES |
 | `/licitacoes/obras/[id]` | pagina | OPERADOR:CONSULTAR_LICITACOES |
+| `/licitacoes/obras/[id]/planilha` | pagina | OPERADOR:CONSULTAR_LICITACOES |
+| `/licitacoes/obras/[id]/planilha/previas/[previaId]` | pagina | OPERADOR:CONSULTAR_LICITACOES |
+| `/licitacoes/obras/[id]/planilha/versoes/[planilhaId]` | pagina | OPERADOR:CONSULTAR_LICITACOES |
 | `/licitacoes/ordens-de-compra` | pagina | OPERADOR:CONSULTAR_LICITACOES |
 | `/licitacoes/ordens-de-compra/[id]` | pagina | OPERADOR:CONSULTAR_LICITACOES |
 | `/licitacoes/ordens-de-compra/espelho` | rota-http | OPERADOR:CONSULTAR_LICITACOES |
@@ -169,6 +196,9 @@ Rotas encontradas: **220** (195 páginas, 25 rotas HTTP).
 | `/meus-servicos/[id]/documentos/[anexo]` | rota-http | TITULAR |
 | `/meus-servicos/solicitar/[slug]` | pagina | TITULAR |
 | `/opcoes/[catalogo]` | rota-http | OPERADOR:leitura do catálogo pedido (algum escopo) |
+| `/ouvidoria` | pagina | PUBLICA |
+| `/ouvidoria/[slug]` | pagina | PUBLICA |
+| `/ouvidoria/acompanhar` | pagina | PUBLICA |
 | `/patrimonio` | pagina | LANDING (só navegação; o menu é recortado no servidor) |
 | `/patrimonio/almoxarifado/classes` | pagina | OPERADOR:CONSULTAR_PATRIMONIO |
 | `/patrimonio/almoxarifado/classes/[id]` | pagina | OPERADOR:CONSULTAR_PATRIMONIO |
@@ -239,6 +269,8 @@ Rotas encontradas: **220** (195 páginas, 25 rotas HTTP).
 | `/portal-do-servidor` | pagina | TITULAR |
 | `/portal-do-servidor/contracheque/[folhaId]` | pagina | TITULAR |
 | `/protocolo` | pagina | LANDING (só navegação; o menu é recortado no servidor) |
+| `/protocolo/avaliacoes` | pagina | OPERADOR:CONSULTAR_PROTOCOLO (algum escopo) |
+| `/protocolo/ouvidoria` | pagina | OPERADOR:CONSULTAR_PROTOCOLO (algum escopo) |
 | `/protocolo/processos` | pagina | OPERADOR:CONSULTAR_PROTOCOLO (algum escopo) |
 | `/protocolo/processos/[id]` | pagina | OPERADOR:CONSULTAR_PROTOCOLO (algum escopo) |
 | `/protocolo/servicos` | pagina | OPERADOR:CONSULTAR_PROTOCOLO (algum escopo) |
@@ -287,5 +319,7 @@ Rotas encontradas: **220** (195 páginas, 25 rotas HTTP).
 | `/transferencias/convenios` | pagina | OPERADOR:CONSULTAR_TRANSFERENCIAS |
 | `/transferencias/convenios/[id]` | pagina | OPERADOR:CONSULTAR_TRANSFERENCIAS |
 | `/transparencia` | pagina | LANDING (só navegação; o menu é recortado no servidor) |
+| `/transparencia/contratos` | pagina | PUBLICA |
+| `/transparencia/contratos/[id]` | pagina | PUBLICA |
 | `/transparencia/demonstrativos` | pagina | PUBLICA |
 | `/transparencia/demonstrativos/pdf` | rota-http | PUBLICA |

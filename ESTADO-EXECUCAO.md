@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | ver `git log -1` — app aceito `5937f41` (V7 M1 + M2.1) e candidato de telas `2d7a9cd`; runners `acbae82`, `a699f8a`, `5b40af8`; depois deles só documentação (seção 61) |
-| Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato de homologação |
-| Frente em execução | **V7 M1** (consolidação de P2/P3: escopo do M21, dependentes como fato, ajuste e guia dos encargos, ouvidoria sem conta e avaliação dos serviços, primeira passada de experiência) e **M2.1** (contrato acompanhado: gestor e fiscal designados, itens, agenda, ocorrência com evidência, medição por itens, projeção pública) — seção 61. Publicação SUSPENSA |
-| Último resultado | seção 61.3/61.7 — `5937f41`/`acbae82`: runtime 34/34, suíte 2731/2731, fuso 2731/2731, deriva 0, build; percursos carta 83/0, encargos limpo 40/0, fila 29/0 (r3, premissa pela ficha criada na tela), pessoal 29/0, folha 47/0, portal 24/0, atesto 43/0, compras 29/0, identidade 46/0, contrato acompanhado 25/0; capturas depois 0 transbordo em 48 medidas; `2d7a9cd`: carta 84/0 (9.12b provado), identidade 46/0, contrato 25/0 (r2), instalação limpa 156 migrations/312 permissões/v18; catálogo 379 de 2.037 |
-| Pendências relevantes | seção 61.6 — `ANTIABUSO-EXTERNO-NAO-CONECTADO`, `OUVIDORIA-ENCAMINHAMENTO-A-OUTRO-SETOR`, `RETORNO-BANCARIO-DA-GUIA`, `RESTITUICAO-DOS-ENCARGOS-SEM-ATO`, `ADITIVO-POR-ITEM`, `RECEBIMENTO-PROVISORIO-E-DEFINITIVO`, `MEDICAO-POR-ITENS-SEM-OBRA`, `PERCURSO-ENCARGOS-FILA-EXIGE-FICHA-PELA-TELA`, `M03-T8-INTERMITENTE-SOB-CARGA`; mantidas das seções 35.7–60 |
-| Próximo passo | seção 61.8 |
+| HEAD | `9286cd2` (V7 M2 U8) — o M2 vem de `3deaf37`; app medido: `bc152d6` (U7, percurso 20/0) e `9286cd2` (candidato integrado, seção 62.9) |
+| Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`): sem gate por lote; portão integral só no candidato integrado |
+| Frente em execução | **V7 M2** — a execução contratual: U0 acesso e unicidade, U1/U2 ordem de serviço e recebimentos, U3 liquidação da parcela, U4 telas e termos, U5 aditivo por itens, U6 planilha orçamentária da obra, **U7 medição da ordem pela planilha**, **U8 agenda e formulários de ocorrência** (seção 62). Publicação SUSPENSA |
+| Último resultado | seção 62.3/62.5/62.7 — `8ed0806`: suíte 2788/2788, fuso 2788/2788, instalação 167 migrations/318 permissões, 14 percursos verdes e 1 falha de produto corrigida em `d167c02` (planilha 9/0); `bc152d6`: 290/290 no incremento, deriva 0, percurso da medição pela planilha 20/0; `9286cd2`: U8 com 5 testes e 6 mutações acusadas, runtime verde, candidato integrado em 62.9 |
+| Pendências relevantes | seção 62.10 — ME06 da obra fechada por U7; abertas: `ESTORNO-DE-RECEBIMENTO`, `CONFLITO-DE-AGENDA-SEM-REGRA`, `NOTIFICACAO-DA-AGENDA`, `GLOSA-LIBERACAO-DE-SALDO`, `COMISSAO-COM-QUORUM`, `ORDEM-DE-SERVICO-DE-MATERIAL`, `ANULACAO-PARCIAL-COM-VARIAS-PARCELAS`, `EMPENHO-POR-PARCELA-DA-ORDEM`, `RETENCOES-NA-LIQUIDACAO-DA-PARCELA`, `PRAZO-DE-RECEBIMENTO-SEM-CONFIGURACAO`, `PORTAL-DO-FORNECEDOR`, `ASSINATURA-QUALIFICADA-DOS-TERMOS`, `XLSX-DA-EXECUCAO`, limites do art. 125, `REAJUSTE-POR-INDICE`, `PLANILHA-POR-DIGITACAO`, `PLANILHA-ACIMA-DE-1-MB-PELA-TELA`, `FORMULARIOS-LIMPOS-APOS-RECUSA` (59 telas fora da execução), `M03-T6-T8-SOB-CARGA`, `FUSO-3288B9B-CASCATA-APOS-TIMEOUT-DE-HOOK`, antiabuso, restituição, retorno bancário e encaminhamento de ouvidoria |
+| Próximo passo | seção 62.10 |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -7007,3 +7007,316 @@ reexecução responde "Nenhuma atualização pendente".
 3. Depois, F07/F08 conforme `docs/lotes/V7-plano-mestre-ecossistema.md`. P3, folha e M11 **não** estão
    completos: as pendências de 61.6 continuam abertas.
 
+
+## 62. V7 M2 — a ponte contratual (U0–U6), o candidato `8ed0806` e a continuidade U7/U8/B1
+
+Pedidos: `docs/lotes/V7-M2-execucao-contratual.md` e `docs/lotes/V7-M2-criterios-de-aceite.md` (U0–U6);
+`docs/lotes/V7-M2-fechamento-u7-u8.md` (fechamento, U7, U8, B1). Regime: **profundidade** para saldo, recebimento,
+liquidação, idempotência e concorrência; **superfície** para as telas e documentos. Executor único (A) na fila
+fechamento → U7 → U8 → B1; nenhuma frente paralela simulada.
+
+### 62.1 Referências confirmadas
+
+| Item | Valor |
+|---|---|
+| Base do M2 | `3deaf37` (fim do M1) |
+| Commits locais `3deaf37..8ed0806` | 17 — 6 de funcionalidade (U0.1, U0.2, U1/U2, U3, U4, U5, U6 = `b5c40a9`, `064a9f1`, `4d1a787`, `b2c1c10`, `85056f6`, `8930b90`, `a86ac38`), 6 correções achadas pelos candidatos (`10c9324`, `208246f`, `c75a72f`, `3288b9b`, `d4d2278` e o provedor de `d167c02`), 3 de percurso/instrumento (`eef260a`, `2a07593`, `8ed0806`), 2 de documento (`e5e81f2`, `3574ed6`) |
+| Depois de `8ed0806` | `b5ef015` (pedido guardado), `d167c02` (correção do passo 2.2 da planilha) |
+| Stash `11b7892` | intacto, não aplicado |
+| Scripts de terceiros | `scripts/fix-claude-cli.sh`, `fix-cursor-extensao.sh`, `manter-claude-cursor.sh`: fora dos commits, não executados |
+| Push, deploy, mensagem, pagamento, transmissão | nenhum |
+
+### 62.2 O que passou a funcionar (rotas reais)
+
+- **Acesso da fiscalização (U0.1)** — três projeções decididas no servidor (`acesso-da-fiscalizacao.ts`):
+  FISCALIZAÇÃO por designação vigente hoje (gestor, fiscal, recebedor definitivo) ou `AdministradorDaFiscalizacao`
+  vigente; FINANCEIRA por leitura de licitações/despesa ou ato de empenhar/liquidar/pagar, sem agenda, ocorrência,
+  motivo nem termo provisório; PÚBLICA campo a campo. Rotas: `/licitacoes/contratos/[id]`, `/licitacoes/fiscalizacao`,
+  `/transparencia/contratos/[id]`, download de evidência e termos (404 fora do alcance). Detalhe no MODULO do M11.
+- **Unicidade da medição (U0.2)** — a identidade da parcela é o SALDO por item (contratado; na ordem, o autorizado),
+  não o dia: mesma chave e conteúdo = replay (ME01); mesma chave e outro conteúdo = conflito (ME02); mesma parcela com
+  outra chave = `ITEM-ACIMA-DO-AUTORIZADO-NA-ORDEM`/`-CONTRATADO` (ME03); duas parcelas no mesmo dia passam (ME04);
+  período indivisível só com `RegimeDeMedicaoDoContrato` configurado, com fundamento e vigência (ME05). Fundamento:
+  sem configuração não se inventa regime; o período só identifica a parcela quando o contrato assim declara
+  (art. 140, § 3º remete a regulamento ou contrato).
+- **Ordem de serviço, medição da ordem e recebimentos (U1/U2)** — `/licitacoes/contratos/[id]/ordens/[ordemId]`:
+  rascunho → emissão (compromete saldo, manifesto + sha256) → medição do fiscal → recebimento provisório com
+  controvérsia → decisão do recebedor → recebimento definitivo do elegível → complemento.
+- **Liquidação da parcela (U3)** — pelo `liquidar` do M05 com alocação na parcela no mesmo commit.
+  Fixture de referência e valores esperados calculados à mão: ordem 1.100,00; medido 1.000,00; conforme 900,00 e
+  controvérsia 100,00; definitivo 900,00 → liquidado 900,00; controvérsia aceita → complemento 100,00 → liquidado
+  total 1.000,00, e os 900,00 anteriores permanecem. Os 100,00 não executados da ordem não viram crédito.
+- **Telas, termos em PDF e projeção pública (U4)**; **aditivo por itens com vigência (U5)** em
+  `/licitacoes/contratos/[id]` (seção de aditivos) e na projeção pública; **planilha orçamentária da obra (U6)** em
+  `/licitacoes/obras/[id]/planilha`, `/planilha/previas/[previaId]`, `/planilha/versoes/[planilhaId]`.
+
+Migrations do M2 (aditivas, zero `DROP`): `20260917090000`…`20260917090700` (acesso, regime, ordem, medição e
+recebimentos, alocação), `20260918090000_v7_m2_5_aditivo_por_itens`, `20260918090100/090200` (planilha). Nenhum SQL
+manual novo em `prisma/sql/`. Permissões: atualizações v19 (`ponte-contratual`) e v20 (`planilha-da-obra`), só para
+quem administra no global; nenhum grant novo ao papel `gestao_app` além do censo de tabelas (INSERT/SELECT; nenhum
+UPDATE/DELETE nas tabelas novas).
+
+### 62.3 Candidato `8ed0806` — resultado por etapa
+
+app_sha = runner_sha = `8ed0806b0e7467f16e7b1519a582edcd8bbe98ed` (worktree
+`gestao-publica-candidatos/candidato-8ed0806`, build com `NEXT_PUBLIC_BUILD_COMMIT` do SHA completo). Cadeia
+`gestao-publica-candidatos/v7m2-final-8ed0806.sh`, 2026-09-15 19:27:40Z → 21:25:46Z. Logs sanitizados em
+`.registro-de-execucao/pacote-v7-m2/c-8ed0806/` (um arquivo por etapa, `exit N` na última linha); saída bruta das
+suítes em `candidato-8ed0806/.registro-de-execucao/`. Ambiente sintético: bancos descartáveis
+`gestao_publica_instalacao_v7m2_limpa`, `gestao_publica_percursos_v7m2_{ponte,apropriacao,centrais,fila}` clonados de
+`gestao_publica_percursos`; servidor `next start` na porta 3012 com o papel de runtime; contas `@percursos.local`.
+
+| Etapa (log) | Início (UTC) | Resultado real | Classificação |
+|---|---|---|---|
+| 01 prisma generate | 19:27:40 | exit 0 | PASSOU |
+| 02 tsc backend | 19:27:46 | exit 0 | PASSOU |
+| 03 tsc app | 19:32:08 | exit 0 | PASSOU |
+| 04 tsc scripts | 19:48:59 | exit 0 | PASSOU |
+| 05 prisma validate | 19:51:30 | exit 0 | PASSOU |
+| 09 next build | 19:51:32 | exit 0 | PASSOU |
+| 30 runtime (`test/runtime`, papel) | 20:24:01 | 39/39 | PASSOU |
+| 31 deriva do banco de teste | 20:24:43 | "No difference detected" | PASSOU |
+| 32 suíte completa | 20:24:46 | 2788/2788, 1024 s | PASSOU |
+| 33 suíte sob `TZ=Pacific/Kiritimati` | 20:41:53 | 2788/2788, 992 s | PASSOU |
+| 40 instalação limpa | 20:58:26 | 167 migrations, deriva 0, 318 permissões, v19/v20 aplicadas, reexecução sem pendência | PASSOU |
+| 41–44 atualização dos quatro clones | 20:58:57… | deriva 0 em cada; reexecução sem pendência; papéis de percurso criados | PASSOU |
+| 11/12 preparação da ponte e do aditivo | 20:59:07 | contratos sintéticos `CT-PONTE-165907`/`-170115` | PASSOU (preparação) |
+| 20 percurso da ponte | 20:59:08 | 28/0 | PASSOU |
+| 21 percurso do aditivo | 21:01:15 | 8/0 | PASSOU |
+| 22 percurso da planilha | 21:01:30 | 8 ok, 1 falha: **2.2** "com ciência: versão 1 confirmada" — `silencio` | **FALHOU (produto)** |
+| 23 capturas das telas novas (6 telas × 360/768/1366/1440) | 21:02:08 | 24 medidas, transbordo 0, foco invisível 0, coberto 0; prova do instrumento acusou (1656 px, 11) | PASSOU (só mede transbordo e foco) |
+| 59 apropriação da folha (clone próprio) | 21:03:01 | 17/0 | PASSOU |
+| 50 carta de serviços | 21:04:05 | 84/0 | PASSOU |
+| 51 encargos limpo | 21:12:36 | 40/0 | PASSOU |
+| 52 pessoal | 21:13:59 | 29/0 | PASSOU |
+| 53 folha | 21:14:49 | 47/0 | PASSOU |
+| 54 portal do servidor | 21:15:49 | 24/0 | PASSOU |
+| 55 atesto da folha | 21:17:06 | 43/0 | PASSOU |
+| 56 compras | 21:18:38 | 29/0 | PASSOU |
+| 57 identidade | 21:19:52 | 46/0 | PASSOU |
+| 58 contrato acompanhado | 21:20:32 | 26/0 | PASSOU |
+| 60 ficha pela tela (clone da fila) | 21:24:11 | 23/0 | PASSOU |
+| 61 encargos fila | 21:24:48 | 29/0 | PASSOU |
+
+Etapas 06–08 e 10 não existem nesta cadeia (numeração herdada); nenhuma etapa ficou NÃO_EXECUTADA nem
+BLOQUEADA_POR_AMBIENTE.
+
+**A falha 2.2 (produto, causa demonstrada).** 3.1 do mesmo percurso abre a versão 1 recarregada com o total e as
+divergências cientes — o ato gravou. A mensagem sumia: a prévia confirmada deixa de oferecer o formulário de
+confirmação (`p.confirmada !== null`), e a mensagem morava dentro dele; o instrumento
+(`percursos-navegador.ts`, `preencherEEnviar`) só encontra resultado fora do formulário por `[data-resultado-da-acao]`
+com sequência nova. Mesmo defeito corrigido na execução do contrato em `c75a72f`. Correção em `d167c02`: o provedor
+vira `components/ui/ResultadosDosAtos.tsx`, as três páginas da planilha o usam, e `test/ui/resultados-dos-atos.test.tsx`
+(3 casos) acusou as duas mutações ("mostra sempre", "não publica"). Reprodução delimitada em 62.5.
+
+**M03 t6 em `8ed0806`.** Passou nas duas rodadas (limite de 5 s preservado; o repórter padrão não grava a duração
+por teste). Em `3288b9b` estourou uma vez (5725 ms, suíte completa) e passou isolado. Medição dedicada com o repórter
+detalhado: 62.5.
+
+**O fuso em massa de `3288b9b` (17 falhas), conferido no log bruto.** Mecanismo demonstrado pelo próprio log: seis
+`Hook timed out in 10000ms` em `beforeEach` de limpeza/semeadura; o timeout do vitest não cancela a consulta em
+andamento, e o trabalho órfão colide com o `TRUNCATE` do teste seguinte — `40P01 deadlock detected` em
+`truncarTudo` (`test/limpar-banco.ts:434`) e `Unique constraint failed on (nome)`/`(codigo)` (a colisão que o
+comentário de `limpar-banco.ts` descreve). O que disparou a lentidão **não foi demonstrado**; os mesmos arquivos
+isolados sob o mesmo `TZ` passaram (60/61, só a guarda da data civil, corrigida em `d4d2278`) e a suíte inteira sob
+o mesmo fuso passou em `8ed0806` (2788/2788). Registro: `FUSO-3288B9B-CASCATA-APOS-TIMEOUT-DE-HOOK`, não
+reproduzida, causa inicial em aberto; o timeout não foi aumentado.
+
+Candidatos anteriores do M2 (os números não se somam a `8ed0806`): `eef260a` tsc backend recusou (import sem
+extensão → `10c9324`); `10c9324` interrompido pela deriva (→ `208246f`); `208246f` ponte 21 ok/7 silêncio (→
+`c75a72f`); `c75a72f` ponte 28/0, aditivo 2 ok/6 falhas (formulário limpo após prévia/recusa → `3288b9b`);
+`3288b9b` suíte 2775/2777 (data civil → `d4d2278`; M03 t6 5725 ms), fuso 2760/2777 (acima), instalação 165
+migrations/317 permissões, percursos centrais todos verdes, apropriação 1 falha de PREPARAÇÃO (as 12 competências de
+2026 do clone compartilhado já tinham folha — em `8ed0806` rodou em clone próprio: 17/0).
+
+### 62.4 Quadro de execução (registrado antes de cada unidade)
+
+| Unidade | Responsável | Base | Módulo | Escrita (arquivos) | Contratos consumidos / alterados | Resultado utilizável | Testes selecionados | Integração |
+|---|---|---|---|---|---|---|---|---|
+| Fechamento `8ed0806` | A | `8ed0806` | transversal | `components/ui/ResultadosDosAtos.tsx`, páginas e formulários da planilha e da execução, `ESTADO-EXECUCAO.md`, catálogo por `scripts/marcar-catalogo.ts`, `.registro-de-execucao/pacote-v7-m2/LEIA-ME.md` | provedor do resultado do ato (novo componente, mesma semântica de `c75a72f`) | a confirmação da prévia volta com mensagem | `test/ui/resultados-dos-atos.test.tsx` + 2 mutações; tsc app; build; percursos ponte, aditivo e planilha num clone novo (`c-d167c02`) | commit `d167c02`; catálogo só depois do percurso da planilha inteiro |
+| U7 medição da obra pela planilha | A (integrador do schema, das migrations e do censo: A) | `d167c02` | M11 (obras/fiscalização/execução), M22 (anexo e documento) | `prisma/schema/m11-planilha-da-obra.prisma` e `m11-fiscalizacao.prisma` (modelos novos, só aditivos), `m22-documentos.prisma` (`Anexo.medicaoDaOrdemId`), migration `20260919090000_v7_m2_7_*`, `modules/m11-licitacoes/medicao-pela-planilha.ts` (novo), `ordem-de-servico.ts` (núcleo da medição reutilizado, estorno, recusa da medição avulsa de item vinculado), `execucao-do-contrato.ts` e `aditivo-por-itens.ts` (medição estornada fora das somas), `modules/m22-documentos/anexos.ts`, `lib/portas/documentos.ts`, `lib/portas/documentos-da-execucao.ts`, `lib/pdf/termos-do-contrato.ts` (memória), `lib/portas/execucao-do-contrato.ts`, `app/(areas)/licitacoes/contratos/execucao-actions.ts`, página da ordem e da versão da planilha, `modules/m16-travamento/acoes.ts` (serviços no censo, sem ação nova), `test/limpar-banco.ts`, testes e percurso próprios | consome U6 (versões, vínculo explícito), U5 (unitário vigente, ME06), U1/U2 (ordem, recebimentos), U3 (liquidação da parcela sem alteração); altera `registrarMedicaoDaOrdem` (extrai o núcleo; recusa item com vínculo vivo à planilha) | o fiscal mede a ORDEM pelos serviços da versão aplicável; a medição segue para os recebimentos e a liquidação já existentes; memória em PDF; estorno antes do recebimento | `test/medicao-pela-planilha.test.ts` (versão, vínculo, excesso, duplicidade, concorrência, designação, escopo, ME06 com aditivo, estorno com dependente, envelope ME01/ME02), caso na `test/liquidacao-da-parcela.test.ts` (900 + 100), DO01 da memória, runtime da planilha, suítes vizinhas (ordem de serviço, aditivo, unicidade, planilha, liquidação, censo, modelo sem caso de uso, data civil) + mutações | commit local por caminhos exatos; percurso de navegador no próximo candidato integrado |
+| U8 agenda, ocorrências e formulários | A, depois de U7 | `ebaa468` | M11 (fiscalização), M16 (ação nova) | `prisma/schema/m11-agenda-e-formularios.prisma` e colunas opcionais em `m11-fiscalizacao.prisma`/`m16-usuarios.prisma`, migrations `20260920090000/090100`, `modules/m11-licitacoes/agenda-da-fiscalizacao.ts` e `formularios-de-ocorrencia.ts` (novos), `fiscalizacao.ts` (programar com horário; ocorrência com versão, gravidade e respostas), `modules/m16-travamento/{acoes,atualizacoes-de-permissoes}.ts`, `lib/portas/{agenda-da-fiscalizacao,contrato-acompanhado}.ts`, `app/(areas)/licitacoes/fiscalizacao/{agenda,tipos-de-ocorrencia,agenda-actions.ts}`, dossiê e formulários do contrato, `test/limpar-banco.ts`, testes e percurso próprios | consome designações, o alcance da fiscalização (U0.1), o calendário civil do ente e o M22; altera `OrdemDeFiscalizacao` (colunas opcionais) e `OcorrenciaDeFiscalizacao` (versão do tipo, gravidade, respostas) | agenda em dia, semana e mês com horário, local, reagendamento motivado, cancelamento e realização; tipos de ocorrência do ente com formulários versionados respondidos na ocorrência | `test/agenda-e-formularios.test.ts` (AG01–AG03, FO01–FO02) + mutações, censo e atualizações de permissões, regressão do contrato acompanhado e do runtime | commit local por caminhos exatos; percurso `scripts/smoke-agenda-da-fiscalizacao.ts` no próximo candidato |
+| B1 cadastro imobiliário e simulação | A, depois de U8 (nenhum segundo executor real nesta sessão) | commit de U8 | **levantado**: não existe cadastro imobiliário nem lançamento tributário no repositório; entra em módulo novo do tributário | consome `modules/m19-pessoas` (Pessoa canônica), `modules/m04-receita` (natureza e arrecadação), `prisma/schema/m10-divida-ativa.prisma` (dívida já modelada) e o M25 (campos adicionais); NENHUMA escrita no ledger e nenhuma constituição de dívida — isso é B2 | cadastro imobiliário com histórico, vínculo com Pessoa, parâmetros por vigência e simulação com memória (resultado esperado independente do motor) | a definir na abertura da unidade | não iniciada nesta sessão (ver 62.10) |
+
+Frentes C–F do pedido: sem executor independente nesta sessão. C (experiência e documentos) acompanha U7/U8 dentro da
+própria unidade; D, E e F permanecem como tarefas nomeadas em 62.8, sem execução pesada aberta para ocupá-las.
+
+### 62.5 Reparo delimitado `d167c02` (o passo 2.2 da planilha)
+
+app_sha = runner_sha = `d167c02633d09aa855b03d4a91860e2232ed9b34` (worktree `candidato-d167c02`, build com o SHA
+completo). Cadeia `gestao-publica-candidatos/v7m2-reparo-d167c02.sh`, 21:51:39Z → 22:16:59Z. Só o que o diff toca
+(componente cliente e as páginas que o usam): suíte e fuso não reexecutados, pela regra de agendamento — o diff não toca
+domínio, datas nem guardas. Banco novo `gestao_publica_percursos_v7m2_reparo` clonado de `gestao_publica_percursos`
+(167 migrations, deriva 0). Logs em `.registro-de-execucao/pacote-v7-m2/c-d167c02/`.
+
+| Etapa | Início (UTC) | Resultado | Classificação |
+|---|---|---|---|
+| 01 generate, 03 tsc app | 21:51:39 | exit 0 | PASSOU |
+| 06 `test/ui/resultados-dos-atos.test.tsx` | 21:54:50 | 3/3 (as duas mutações acusaram antes, na construção: `construcao/r1-mutacao-*.log`) | PASSOU |
+| 09 next build | 21:54:54 | exit 0 | PASSOU |
+| 41 atualização do clone | 22:13:02 | deriva 0, v19/v20 sem pendência | PASSOU |
+| 20 percurso da ponte (usa o provedor movido) | 22:13:29 | 28/0 | PASSOU |
+| 21 percurso do aditivo (usa o provedor movido) | 22:15:52 | 8/0 | PASSOU |
+| 22 percurso da planilha | 22:16:09 | **9/0** — 2.2 "versão 1 confirmada, 6 linhas, R$ 5.102,89" | PASSOU |
+| 23 capturas: lista, prévia e versão da planilha × 4 larguras | 22:16:29 | 12 medidas, transbordo 0, foco invisível 0; prova do instrumento acusou | PASSOU (só transbordo e foco) |
+
+A falha 2.2 de `8ed0806` fica registrada como falha de PRODUTO corrigida em `d167c02`; o resultado de `8ed0806`
+não foi reescrito.
+
+**M03 t6.** Não houve recorrência em `8ed0806` (suíte e fuso). Ele segue como `M03-T6-T8-SOB-CARGA` com a única
+medição acima do limite (5725 ms, `3288b9b`, suíte completa com carga 7–8) e a execução isolada verde; o limite não foi
+alterado. A duração por teste não é gravada pelo repórter padrão da cadeia — a próxima cadeia integrada grava o
+repórter detalhado desse arquivo.
+
+### 62.6 Catálogo (commit `603edea`, pelo `scripts/marcar-catalogo.ts`)
+
+| Cláusula | Antes | Agora | Prova |
+|---|---|---|---|
+| 5.21.16 | PARCIAL | PARCIAL (evidência nova) | AC01–AC06; negativas do percurso da ponte 28/0 em `d167c02`; a leitura financeira do cadastro contratual continua por decisão |
+| 5.21.17 | NAO_VERIFICADO | IMPLEMENTADO_NAO_VALIDADO | AC03 + mutação; sem percurso da definição do administrador |
+| 5.21.18 | NAO_VERIFICADO | PARCIAL | dossiê com dados, itens, aditivos, ordens e termos; sem anexos próprios do contrato nem compras ligadas |
+| 5.21.26 | NAO_VERIFICADO | PARCIAL | planilha importada e versionada com contrato; executado pela planilha (U7) sem percurso |
+| 5.21.27 | NAO_VERIFICADO | VALIDADO_LOCALMENTE | PL01/PL02 + percurso da planilha 9/0 e capturas em `d167c02` |
+| 5.21.28 | NAO_VERIFICADO | VALIDADO_LOCALMENTE | XL01–XL03, PL01 (.xlsx = .xls) + percurso 1.2/3.2/4.1 em `d167c02` |
+| 5.21.29 | PARCIAL | PARCIAL (evidência nova) | não se completa antes do percurso de U7 |
+| 5.38.4 | NAO_VERIFICADO | PARCIAL | transparência de contratos; ausentes convênios, compras diretas, licitações, estoque, bens e frota |
+| 5.17.96–106 | — | sem alteração | cláusulas da ordem de compra (M11 compras); a ordem de serviço do contrato não as atende nem as altera |
+
+Placar por natureza depois da marcação: VALIDADO_LOCALMENTE 74, IMPLEMENTADO_NAO_VALIDADO 67, PARCIAL 95,
+AUSENTE_CONFIRMADO 145, DEPENDENCIA_EXTERNA 4, NAO_VERIFICADO 1652 (385 de 2.037 verificadas).
+
+### 62.7 U7 — a medição da ordem pela planilha da obra (`b680477`, percurso em `ebaa468`)
+
+**O que passou a funcionar.** Na página da ordem (`/licitacoes/contratos/[id]/ordens/[ordemId]`), o fiscal designado
+mede pelos SERVIÇOS da versão aplicável da planilha da obra: escolhe a versão (a tela diz de quando a quando ela vale),
+vê por serviço previsto, anterior na obra, esta medição, acumulado e saldo, e o que não concilia aparece com o motivo e
+sem campo. A quantidade vira a do item medido da ordem, valorada pelo unitário do CONTRATO — daí para a frente é o
+caminho de sempre: recebimento provisório com controvérsia, decisão, definitivo e liquidação da parcela pelo M05.
+A memória da medição (versão, data-base, referência de preços, quantidades, os dois preços lado a lado, vínculo,
+arredondamento e evidências) sai em PDF; as evidências são anexos do M22 só para a fiscalização. A versão da planilha
+ganhou "Andamento da obra por serviço". O item do contrato vinculado não se mede avulso, e a medição sem recebimento
+se estorna (fica no histórico, fora das somas).
+
+**Regras novas, e o que cada recusa diz:** `VERSAO-NAO-APLICAVEL`, `SEM-VERSAO-VIGENTE-NO-PERIODO`,
+`PERIODO-ATRAVESSA-NOVA-VERSAO`, `PLANILHA-DE-OUTRO-CONTRATO`, `SERVICO-SEM-VINCULO`, `VINCULO-AMBIGUO` (dos dois
+lados), `UNIDADE-NAO-CONCILIADA`, `ITEM-FORA-DA-ORDEM`, `MEDICAO-DE-GRUPO`, `ACIMA-DO-PREVISTO-NA-PLANILHA`,
+`MEDICAO-PELA-PLANILHA` (no avulso), `MEDICAO-COM-RECEBIMENTO`, `MEDICAO-JA-ESTORNADA`, `MEDICAO-ESTORNADA`.
+
+**Arquivos e estrutura.** `modules/m11-licitacoes/medicao-pela-planilha.ts` (novo; `conciliarServico` é pura e serve à
+tela e ao ato), `ordem-de-servico.ts` (núcleo `gravarMedicaoDaOrdemNaTransacao` extraído, estorno, recusa do avulso),
+`execucao-do-contrato.ts` e `aditivo-por-itens.ts` (estornada fora das somas), `lib/pdf/termos-do-contrato.ts` (tipo
+`memoria`), `lib/portas/{execucao-do-contrato,planilha-da-obra,documentos,documentos-da-execucao}.ts`, a action e as
+telas da ordem e da versão. Schema `prisma/schema/m11-medicao-pela-planilha.prisma` e migration
+`20260919090000_v7_m2_7_medicao_da_ordem_pela_planilha` (3 tabelas, `Anexo.medicaoDaOrdemId`, 4 CHECKs; zero DROP).
+**Nenhuma ação nova no censo**: medir e estornar são `REGISTRAR_MEDICAO_DE_OBRA` (a designação de fiscal é a outra
+condição). Censo: 362 serviços.
+
+**Provas (banco de construção `gestao_publica_instalacao_v7m2_construcao`).**
+
+| Prova | Resultado |
+|---|---|
+| `test/medicao-pela-planilha.test.ts` (MP01–MP08) | 9/9 |
+| mutações: previsto da planilha ignorado; ambiguidade do item ignorada; versão aplicável ignorada; medição estornada contando; avulso liberado | 5/5 acusadas |
+| `test/liquidacao-da-parcela.test.ts` LI07 (900 + 100 pelo M05, empenho com R$ 100,00 não liquidados, 2 horas a executar) | passou (13 casos no arquivo) |
+| `test/ui/termos-do-contrato.test.ts` DO01/DO02 da memória (70 serviços, multipágina, dois totais somados em centavos inteiros) | passou; mutação "total da planilha sumido" acusada |
+| `test/runtime/contrato-runtime-ordem-de-servico.test.ts` (medir, evidência e estornar por `gestao_app`; UPDATE/DELETE negados nas 3 tabelas novas) | 4/4 com o runtime da planilha |
+| regressão direcionada (M11, M16, M22, `test/ui`, `test/runtime`, censo, guardas) | 43 arquivos; 2 falhas de instrumento corrigidas: contagem do censo e a fronteira UI↔domínio (o tipo da ilha passou a ser declarado nela) |
+| tsc backend e app na árvore de construção | exit 0 |
+
+Percurso `scripts/smoke-medicao-pela-planilha.ts` (engenharia importa e vincula → gestora emite → fiscal mede pela
+planilha com evidência, repete e é recusado mantendo o digitado, baixa a memória, mede e estorna → recebimentos →
+nota → liquidação 900 → controvérsia aceita → complemento 100 → andamento por serviço): candidato `ebaa468`, cadeia
+`v7m2-u7.sh`, logs em `.registro-de-execucao/pacote-v7-m2/c-u7/`.
+
+### 62.8 U8 — a agenda da fiscalização e os formulários de ocorrência
+
+**O que passou a funcionar.** `/licitacoes/fiscalizacao/agenda` mostra os compromissos em DIA, SEMANA e MÊS — a mesma
+leitura com períodos diferentes, no calendário do ente —, com horário, duração, local, contrato, fiscal e situação, e
+filtros por contrato, fiscal e situação. O recorte é do servidor: só os contratos que a pessoa alcança pela
+fiscalização (o administrador alcança todos); quem não alcança nenhum vê a agenda vazia com o motivo. Em cada
+compromisso vivo, o gestor designado reagenda (com motivo, guardando o histórico) ou cancela, e o fiscal DAQUELE
+compromisso registra a realização (data, horas e relato). A situação é derivada — PROGRAMADA → REAGENDADA →
+CANCELADA | REALIZADA, as duas últimas finais.
+`/licitacoes/fiscalizacao/tipos-de-ocorrencia` é o cadastro do ente: tipo (código, nome, natureza), versões do
+formulário com perguntas (texto, número, data, lista de opções, sim/não; obrigatórias ou não), exigência de gravidade,
+encaminhamento sugerido, e ativar/desativar como fato com motivo. No dossiê do contrato, a ocorrência do fiscal passa a
+oferecer o tipo do ente e as perguntas da versão VIGENTE; a resposta fica presa à pergunta daquela versão.
+
+**Sobreposição não é proibida** — nenhuma fonte dá essa regra ao sistema. A agenda APONTA o conflito (mesmo fiscal,
+mesmo dia, horários que se cruzam) e quem programa decide: pendência `CONFLITO-DE-AGENDA-SEM-REGRA`.
+
+**Estrutura.** `prisma/schema/m11-agenda-e-formularios.prisma` (7 modelos e 2 enums novos), colunas opcionais
+`horaInicio`, `duracaoMinutos` e `local` em `OrdemDeFiscalizacao` e `versaoDoTipoId`/`gravidade` em
+`OcorrenciaDeFiscalizacao`; migrations `20260920090000_v7_m2_8_enum_dos_tipos_de_ocorrencia` (valor de enum em
+migration própria) e `20260920090100_v7_m2_8_agenda_e_formularios` (8 CHECKs, zero DROP). Módulos
+`agenda-da-fiscalizacao.ts` e `formularios-de-ocorrencia.ts` (separados para não haver import circular com
+`fiscalizacao.ts`). Ação nova `GERIR_TIPOS_DE_OCORRENCIA` com a atualização de permissões **v21**; reagendar e cancelar
+usam `PROGRAMAR_FISCALIZACAO_DO_CONTRATO` e a realização usa `REGISTRAR_OCORRENCIA_DE_FISCALIZACAO` — não são ações
+novas. Censo: 368 serviços, 295 + 24 ações.
+
+**Provas (banco de construção).**
+
+| Prova | Resultado |
+|---|---|
+| `test/agenda-e-formularios.test.ts` (AG01–AG03, FO01–FO02) | 5/5 |
+| mutações: data do reagendamento ignorada; conflito nunca apontado; reagendar a realizada liberado; versão não vigente aceita; obrigatórias não cobradas | 5/5 acusadas |
+| runtime `gestao_app` (programar, reagendar, realizar, tipo, versão, ocorrência com resposta; 7 negativas de UPDATE/DELETE) | acrescentado a `test/runtime/contrato-runtime-fiscalizacao.test.ts` |
+
+Percurso `scripts/smoke-agenda-da-fiscalizacao.ts` (configuração cadastra o tipo e publica a versão 1 → a gestora
+programa duas com horário e vê o conflito → dia, semana e mês → reagenda e cancela → o fiscal realiza e registra a
+ocorrência com o formulário, com a obrigatória cobrada → versão 2 e desativação não reinterpretam o histórico →
+negativas de papel e de alcance) com o papel `configuracao-fiscalizacao@percursos.local`.
+
+**Resultado do candidato de U7** (app_sha = runner_sha `bc152d6`; a árvore congelada foi movida de `ebaa468` para
+`bc152d6`, cujo diff é só o instrumento de percurso — nenhum arquivo de `app/`, `lib/` ou `modules/`, e o build de
+`ebaa468` continua válido; cadeia `v7m2-u7.sh`, logs em `c-u7/`):
+
+| Etapa | Resultado | Classificação |
+|---|---|---|
+| 01 generate, 02 tsc backend, 03 tsc app, 04 tsc scripts, 05 prisma validate | exit 0 | PASSOU |
+| 07 testes do incremento (41 arquivos: M11, M16, `test/ui`, `test/runtime`, censo) | 290/290 | PASSOU |
+| 08 deriva do banco de teste | "No difference detected" | PASSOU |
+| 09 next build (SHA completo) | exit 0 | PASSOU |
+| 41 clone e atualização do banco dos percursos + 11 preparação da ponte | deriva 0; contrato sintético | PASSOU (preparação) |
+| 24 percurso da medição pela planilha | **20 passos, 0 falhas** | PASSOU |
+| 25 capturas (ordem e versão da planilha × 4 larguras) | transbordo 0, foco invisível 0 | PASSOU (só transbordo e foco) |
+
+Na primeira rodada o percurso deu 13 ok / 5 falhas, e a causa foi do INSTRUMENTO, não do produto: os formulários de
+estorno moram num `<details>` recolhido, e o clique do puppeteer não chega ao conteúdo de um detalhe fechado — o envio
+não acontecia e o registro dizia "silêncio". Corrigido em `bc152d6` (o instrumento abre o detalhe, como a pessoa faz ao
+clicar no resumo) e a rodada seguinte fechou 20/0. A primeira rodada fica registrada.
+
+### 62.10 Pendências nomeadas e o próximo ponto exato
+
+**Fechadas nesta sessão:** `ME06` para obras (a medição pela planilha aplica a versão e o preço do primeiro dia do
+período e recusa o período que atravessa os dois — U7); `AGENDA-SEM-HORARIO-E-CALENDARIO` (U8); o tipo de ocorrência
+como cadastro do ente com formulário (U8); a mensagem que sumia na confirmação da prévia (`d167c02`).
+
+**Abertas, por frente:**
+
+- **Execução contratual:** `ESTORNO-DE-RECEBIMENTO` (a medição recebida só se corrige pela conferência e, depois de
+  liquidada, pelo estorno no M05), `GLOSA-LIBERACAO-DE-SALDO`, `COMISSAO-COM-QUORUM`, `ORDEM-DE-SERVICO-DE-MATERIAL`,
+  `ANULACAO-PARCIAL-COM-VARIAS-PARCELAS`, `EMPENHO-POR-PARCELA-DA-ORDEM`, `RETENCOES-NA-LIQUIDACAO-DA-PARCELA`,
+  `PRAZO-DE-RECEBIMENTO-SEM-CONFIGURACAO`, `PORTAL-DO-FORNECEDOR`, `ASSINATURA-QUALIFICADA-DOS-TERMOS`,
+  `XLSX-DA-EXECUCAO`.
+- **Aditivo e planilha:** limites do art. 125 (não se inventa percentual), `REAJUSTE-POR-INDICE`,
+  `PLANILHA-POR-DIGITACAO`, `PLANILHA-ACIMA-DE-1-MB-PELA-TELA` (o corpo das ações do Next; o domínio aceita 5 MB),
+  `.ods`, composição analítica, BDI por item, exportação da versão, e a medição por planilha **sem** ordem de serviço.
+- **Agenda e formulários (U8):** `CONFLITO-DE-AGENDA-SEM-REGRA` (a sobreposição é apontada, não proibida — nenhuma
+  fonte dá a regra), `NOTIFICACAO-DA-AGENDA` (nenhuma notificação sai do sistema), compromisso recorrente, anexos na
+  realização, exportação da agenda.
+- **Transversais:** `FORMULARIOS-LIMPOS-APOS-RECUSA` — o `useRestaurarAposEnvio` e o provedor de resultado estão nas
+  famílias da execução do contrato, da planilha e da agenda; **as outras ~59 telas com `useActionState` continuam sem
+  eles**, e o inventário por componente ainda não foi feito. `M03-T6-T8-SOB-CARGA` (mede-se, não se aumenta o timeout).
+  `FUSO-3288B9B-CASCATA-APOS-TIMEOUT-DE-HOOK` (mecanismo demonstrado, gatilho não).
+- **Backlog anterior:** antiabuso externo, restituição dos encargos sem ato, retorno bancário da guia, encaminhamento
+  de ouvidoria a outro setor.
+
+**Próximo ponto exato:**
+
+1. Ler o candidato integrado `9286cd2` (seção 62.9) e tratar o que ele acusar.
+2. **B1** (plano de orquestração, F07/M3): cadastro imobiliário com histórico, vínculo com Pessoa, parâmetros por
+   vigência e simulação com memória — módulo novo do tributário, consumindo `m19-pessoas` e `m04-receita`, **sem
+   escrever no ledger e sem constituir dívida** (isso é B2). O levantamento está no quadro de 62.4: hoje não existe
+   cadastro imobiliário nem lançamento tributário no repositório.
+3. Só depois, os subcasos de F07 e a dívida ativa (já modelada em `prisma/schema/m10-divida-ativa.prisma`).
