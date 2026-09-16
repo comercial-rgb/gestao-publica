@@ -331,6 +331,15 @@ export type AcaoDoSistema =
   | "EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO"
   | "REGISTRAR_RECEBIMENTO_PROVISORIO"
   | "REGISTRAR_RECEBIMENTO_DEFINITIVO"
+  /**
+   * V9 N4 — DESFAZER um recebimento definitivo já assinado.
+   *
+   * ⚠️ AÇÃO PRÓPRIA, E NÃO A MESMA DE RECEBER. Receber é o ato ordinário do recebedor designado;
+   * desfazer um termo assinado é excepcional, deixa rastro público e reabre quantidade que já
+   * estava fechada. Pendurá-lo em `REGISTRAR_RECEBIMENTO_DEFINITIVO` daria o poder de desfazer a
+   * todo mundo que pode receber, em silêncio, no dia em que a funcionalidade entrasse.
+   */
+  | "ESTORNAR_RECEBIMENTO_DEFINITIVO"
   | "CADASTRAR_ITEM_DO_CONTRATO"
   | "PROGRAMAR_FISCALIZACAO_DO_CONTRATO"
   | "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO"
@@ -809,6 +818,7 @@ export type NomeDeServico =
   | "registrarRecebimentoProvisorio"
   | "decidirControversia"
   | "registrarRecebimentoDefinitivo"
+  | "estornarRecebimentoDefinitivo"
   | "liquidarParcelasDoContrato"
   | "preverAditivoPorItens"
   | "registrarAditivoPorItens"
@@ -1296,6 +1306,7 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   registrarRecebimentoProvisorio: "REGISTRAR_RECEBIMENTO_PROVISORIO",
   decidirControversia: "REGISTRAR_RECEBIMENTO_DEFINITIVO",
   registrarRecebimentoDefinitivo: "REGISTRAR_RECEBIMENTO_DEFINITIVO",
+  estornarRecebimentoDefinitivo: "ESTORNAR_RECEBIMENTO_DEFINITIVO",
   // V7 M2 U3 — liquidar a parcela recebida é LIQUIDAR (a mesma ação, na UG do empenho); o M05 cobra de novo por dentro.
   liquidarParcelasDoContrato: "LIQUIDAR",
   // V7 M2 U5 — o aditivo por itens é o MESMO ato de registrar aditivo (a variação vira movimento contratual), com a

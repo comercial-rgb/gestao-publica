@@ -14,6 +14,7 @@ import {
   descartarRascunhoDeOrdemDeServico,
   emitirOrdemDeServico,
   estornarMedicaoDaOrdem,
+  estornarRecebimentoDefinitivo,
   movimentarExecucaoDaOrdemDeServico,
   registrarMedicaoDaOrdem,
   registrarRecebimentoDefinitivo,
@@ -49,6 +50,12 @@ export interface PapeisNaExecucao {
   readonly podeMedir: boolean;
   readonly podeReceberProvisorio: boolean;
   readonly podeReceberDefinitivo: boolean;
+  /**
+   * V9 N4 — desfazer um termo definitivo já assinado. Ação PRÓPRIA e autoridade de recebedor:
+   * receber é ordinário, desfazer é excepcional. Um só interruptor para as duas coisas daria o
+   * poder de desfazer a todo mundo que pode receber, no dia em que a funcionalidade entrasse.
+   */
+  readonly podeEstornarRecebimento: boolean;
   readonly podeLiquidar: boolean;
   /** V7 M2 U5 — registrar (e prever) aditivo por itens: ato do ente, pela ação de registrar aditivo; estornar, pela do movimento. */
   readonly podeRegistrarAditivo: boolean;
@@ -81,7 +88,7 @@ export async function execucaoDoContratoPara(sessao: Identidade, contratoId: str
   if (contrato === null) return null;
   const [base, permitidas, minhas, fiscais, empenhos, documentos] = await Promise.all([
     execucaoDoContrato(prisma, contratoId, alcance.fiscalizacao ? "FISCALIZACAO" : "FINANCEIRA"),
-    acoesPermitidas(["EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO", "REGISTRAR_MEDICAO_DE_OBRA", "REGISTRAR_RECEBIMENTO_PROVISORIO", "REGISTRAR_RECEBIMENTO_DEFINITIVO", "LIQUIDAR", "REGISTRAR_ADITIVO", "ESTORNAR_MOVIMENTO_CONTRATUAL"]),
+    acoesPermitidas(["EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO", "REGISTRAR_MEDICAO_DE_OBRA", "REGISTRAR_RECEBIMENTO_PROVISORIO", "REGISTRAR_RECEBIMENTO_DEFINITIVO", "ESTORNAR_RECEBIMENTO_DEFINITIVO", "LIQUIDAR", "REGISTRAR_ADITIVO", "ESTORNAR_MOVIMENTO_CONTRATUAL"]),
     prisma.designacaoNoContrato.findMany({ where: { contratoId, usuario: { identificador: sessao.identificador } }, select: { papel: true, vigenciaInicio: true, vigenciaFim: true, revogacao: { select: { dataEfeito: true } } } }),
     prisma.designacaoNoContrato.findMany({ where: { contratoId, papel: "FISCAL" }, select: { id: true, atoDesignacao: true, vigenciaInicio: true, vigenciaFim: true, revogacao: { select: { dataEfeito: true } }, pessoa: { select: { documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } } } }),
     prisma.empenho.findMany({ where: { contratoId, estornoDeId: null, estornos: { none: {} } }, orderBy: { data: "desc" }, take: 100, select: { id: true, numero: true, valor: true, ficha: { select: { naturezaDespesa: { select: { codElemento: true, codigoCompleto: true } } } } } }),
@@ -109,6 +116,7 @@ export async function execucaoDoContratoPara(sessao: Identidade, contratoId: str
       podeMedir: fiscal && permitidas.has("REGISTRAR_MEDICAO_DE_OBRA"),
       podeReceberProvisorio: fiscal && permitidas.has("REGISTRAR_RECEBIMENTO_PROVISORIO"),
       podeReceberDefinitivo: recebedor && permitidas.has("REGISTRAR_RECEBIMENTO_DEFINITIVO"),
+      podeEstornarRecebimento: recebedor && permitidas.has("ESTORNAR_RECEBIMENTO_DEFINITIVO"),
       podeLiquidar,
       podeRegistrarAditivo: permitidas.has("REGISTRAR_ADITIVO"),
       podeEstornarAditivo: permitidas.has("ESTORNAR_MOVIMENTO_CONTRATUAL"),
@@ -249,6 +257,24 @@ export async function definitivoNaTela(c: Campos): Promise<string> {
   const itens = porItem(c, "receber").filter((x) => Number(decimal(x.valor)) > 0).map((x) => ({ itemMedidoId: x.id, quantidade: decimal(x.valor) }));
   const r = await comEscritaAutenticada("REGISTRAR_RECEBIMENTO_DEFINITIVO", (criadoPor) => registrarRecebimentoDefinitivo(cliente(), { medicaoId: t(c, "medicaoId"), data: t(c, "data"), conclusao: t(c, "conclusao"), itens, criadoPor }));
   return `Recebimento definitivo nº ${r.numero} registrado: R$ ${brl(r.valor)}.${r.pendencias.length === 0 ? " Sem pendência nesta medição." : ` Pendências: ${r.pendencias.join("; ")}.`} Receber não liquida: a liquidação é da área financeira.`;
+}
+
+/**
+ * V9 N4 — ESTORNAR O RECEBIMENTO DEFINITIVO. Ação PRÓPRIA (`ESTORNAR_RECEBIMENTO_DEFINITIVO`), e
+ * não a de receber: desfazer um termo assinado é excepcional e reabre quantidade já fechada.
+ *
+ * ⚠️ A FRASE DIZ O EFEITO, porque o efeito é invisível na linha do recebimento: o termo continua
+ * lá, com o seu número e o seu valor, e o que mudou foi o ELEGÍVEL da medição.
+ */
+export async function estornarRecebimentoNaTela(c: Campos): Promise<string> {
+  const r = await comEscritaAutenticada("ESTORNAR_RECEBIMENTO_DEFINITIVO", (criadoPor) =>
+    estornarRecebimentoDefinitivo(cliente(), { recebimentoId: t(c, "recebimentoId"), data: t(c, "data"), motivo: t(c, "motivo"), criadoPor })
+  );
+  return (
+    `Recebimento definitivo nº ${r.numero} (R$ ${brl(r.valor)}) estornado. O termo original continua no histórico, ` +
+    `com o seu documento; a quantidade volta a ser elegível e o recebimento corrigido pode ser registrado. ` +
+    `O termo do estorno tem documento próprio.`
+  );
 }
 
 export async function liquidarParcelaNaTela(c: Campos): Promise<string> {

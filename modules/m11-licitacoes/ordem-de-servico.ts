@@ -9,6 +9,7 @@ import { autorizarNo } from "../m16-travamento/escopo.js";
 import { designacaoVigenteEm } from "../m33-folha/certificacao.js";
 import { contratoTravado, exigirContratoVigente, exigirDesignacao } from "./fiscalizacao.js";
 import { periodosSeSobrepoem } from "./medicoes.js";
+import { consumoDasParcelas } from "./parcelas-da-liquidacao.js";
 import { conferenciaDoPeriodoPorItens } from "./regime-de-medicao.js";
 import { historicosDosItens, novoPrecoDentroDoPeriodo, quantidadeParaComprometerDesde, versaoNoDia } from "./versoes-dos-itens.js";
 
@@ -64,6 +65,18 @@ export async function nomeEAto(tx: Tx, designacaoId: string): Promise<{ readonly
   const d = await tx.designacaoNoContrato.findUniqueOrThrow({ where: { id: designacaoId }, select: { atoDesignacao: true, usuario: { select: { identificador: true } }, pessoa: { select: { documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } } } });
   return { nome: d.pessoa.versoes[0]?.nome ?? d.pessoa.documento, ato: d.atoDesignacao, usuario: d.usuario.identificador };
 }
+
+/**
+ * A SELEÇÃO dos recebimentos de um item medido — **sem os estornados** (V9 N4).
+ *
+ * ⚠️ O FILTRO MORA AQUI, num lugar só, pelo mesmo motivo de `SELECAO_DO_MEDIDO`: um leitor que
+ * peça apenas `quantidade` soma também o que foi desfeito, e a quantidade estornada continua
+ * bloqueando o recebimento correto — sem erro de compilação nenhum.
+ */
+export const SELECAO_DOS_RECEBIDOS = {
+  where: { recebimento: { estorno: null } },
+  select: { quantidade: true },
+} as const;
 
 /**
  * ═══ O MEDIDO LÍQUIDO DE UM ITEM DA ORDEM — E POR QUE A GLOSA DEVOLVE SALDO (V9 N4) ═══
@@ -632,7 +645,7 @@ async function medicaoComContexto(tx: Tx, medicaoId: string): Promise<MedicaoCom
     select: {
       id: true, numero: true, periodoInicio: true, periodoFim: true, criadoPor: true,
       ordem: { select: { id: true, numero: true, ano: true, contratoId: true, condicoesDeRecebimento: true, contrato: { select: { numeroContrato: true, contratadoNome: true, contratadoDocumento: true } } } },
-      itens: { orderBy: { itemDaOrdem: { itemDoContrato: { numero: "asc" } } }, select: { id: true, quantidade: true, valorUnitario: true, itemDaOrdem: { select: { itemDoContrato: { select: { numero: true, descricao: true, unidade: true } } } }, conferencia: { select: { id: true, quantidadeConforme: true, quantidadeEmControversia: true, motivo: true, decisao: { select: { resultado: true } } } }, recebidos: { select: { quantidade: true } } } },
+      itens: { orderBy: { itemDaOrdem: { itemDoContrato: { numero: "asc" } } }, select: { id: true, quantidade: true, valorUnitario: true, itemDaOrdem: { select: { itemDoContrato: { select: { numero: true, descricao: true, unidade: true } } } }, conferencia: { select: { id: true, quantidadeConforme: true, quantidadeEmControversia: true, motivo: true, decisao: { select: { resultado: true } } } }, recebidos: SELECAO_DOS_RECEBIDOS } },
       recebimentoProvisorio: { select: { id: true, data: true, criadoPor: true } },
       recebimentosDefinitivos: { orderBy: { numero: "desc" }, take: 1, select: { numero: true } },
       estorno: { select: { id: true } },
@@ -782,6 +795,121 @@ export async function decidirControversia(prisma: PrismaClient, input: DecidirCo
     });
   } catch (e) {
     if ((e as { code?: string }).code === "P2002") throw new Error("CONTROVERSIA-JA-DECIDIDA: outra decisão foi gravada no mesmo instante. Nada foi gravado.");
+    throw e;
+  }
+}
+
+export const zEstornarRecebimentoDefinitivo = z
+  .object({
+    recebimentoId: z.string().min(1),
+    data: zDia,
+    motivo: z.string().trim().min(10, "Diga por que o recebimento é desfeito (pelo menos 10 caracteres)."),
+    criadoPor: z.string().min(1),
+  })
+  .strict();
+export type EstornarRecebimentoDefinitivoInput = z.input<typeof zEstornarRecebimentoDefinitivo>;
+
+/**
+ * ═══ ESTORNAR O RECEBIMENTO DEFINITIVO (V9 N4 — `ESTORNO-DE-RECEBIMENTO`) ═══
+ *
+ * ⚠️ O QUE NÃO EXISTIA. `estornarMedicaoDaOrdem` recusava medição com recebimento
+ * (`MEDICAO-COM-RECEBIMENTO`) e mandava "tratar na conferência" — mas a conferência acontece
+ * ANTES do definitivo. Depois dele não sobrava caminho nenhum: um termo assinado com a quantidade
+ * errada ficava no sistema para sempre, e a única saída era liquidar o errado e anular no M05, ou
+ * seja, resolver no DINHEIRO um erro que é de RECEBIMENTO.
+ *
+ * ⚠️ O ORIGINAL NÃO É APAGADO NEM REESCRITO. O termo continua no histórico, com o seu sha256, e
+ * este ato registra que foi desfeito, por quem, quando e por quê — com termo próprio, porque um
+ * ato que desfaz um documento assinado precisa de documento, ou some do papel. O efeito (a
+ * quantidade voltar a ser elegível) é DERIVADO da existência do estorno: `SELECAO_DOS_RECEBIDOS`
+ * não conta itens de recebimento estornado.
+ *
+ * ⚠️ E ELE NÃO ALCANÇA RECEBIMENTO COM LIQUIDAÇÃO VIVA. A recusa NOMEIA a liquidação e manda ao
+ * estorno dela no M05 — desfazer o recebimento por baixo de uma liquidação deixaria a despesa sem
+ * o documento que a lastreia, e nenhuma tela mostraria isso. É a ordem inversa da cadeia: primeiro
+ * o dinheiro volta, depois o recebimento se desfaz.
+ *
+ * ⚠️ AS PRÉ-CONDIÇÕES SÃO CONFERIDAS ANTES DE GRAVAR, e a regra do repositório diz por quê: um
+ * efeito colateral antes da guarda envenena a tentativa seguinte.
+ *
+ * A TABELA DE TRANSIÇÕES está no `MODULO.md` do M11.
+ */
+export async function estornarRecebimentoDefinitivo(
+  prisma: PrismaClient,
+  input: EstornarRecebimentoDefinitivoInput
+): Promise<{ readonly estornoId: string; readonly sha256: string; readonly numero: number; readonly valor: string }> {
+  const d = zEstornarRecebimentoDefinitivo.parse(input);
+  if (d.data > hoje()) throw new Error("DATA-FUTURA: o estorno tem a data de hoje ou anterior. Nada foi gravado.");
+  try {
+    return await prisma.$transaction(async (tx) => {
+      await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.estornarRecebimentoDefinitivo, "ENTE");
+      const alvo = await tx.recebimentoDefinitivo.findUnique({
+        where: { id: d.recebimentoId },
+        select: { medicao: { select: { ordem: { select: { contratoId: true } } } } },
+      });
+      if (alvo === null) throw new Error(`Recebimento definitivo ${d.recebimentoId} não existe. Nada foi gravado.`);
+      const c = await contratoTravado(tx, alvo.medicao.ordem.contratoId);
+      const recebedor = await exigirDesignacao(tx, c, d.criadoPor, "RECEBEDOR_DEFINITIVO", hoje());
+
+      const r = await tx.recebimentoDefinitivo.findUniqueOrThrow({
+        where: { id: d.recebimentoId },
+        select: {
+          numero: true, data: true, conclusao: true, sha256: true,
+          estorno: { select: { id: true } },
+          itens: { select: { quantidade: true, valor: true, medido: { select: { itemDaOrdem: { select: { itemDoContrato: { select: { numero: true, descricao: true, unidade: true } } } } } } } },
+          medicao: { select: { numero: true, ordem: { select: { numero: true, ano: true, contrato: { select: { numeroContrato: true, contratadoNome: true, contratadoDocumento: true } } } } } },
+        },
+      });
+      const rotulo = `recebimento definitivo nº ${r.numero} da medição nº ${r.medicao.numero} da ordem nº ${r.medicao.ordem.numero}/${r.medicao.ordem.ano}`;
+      if (r.estorno !== null) throw new Error(`RECEBIMENTO-JA-ESTORNADO: o ${rotulo} já foi estornado. Nada foi gravado.`);
+      if (d.data < diaCivil(r.data)) throw new Error(`ESTORNO-ANTES-DO-RECEBIMENTO: o ${rotulo} é de ${diaCivilBr(r.data)}; o estorno não pode ser anterior a ele. Nada foi gravado.`);
+
+      // ⚠️ A LIQUIDAÇÃO VIVA BLOQUEIA, E A RECUSA DIZ O QUE FAZER. `consumoDasParcelas` já sabe
+      // que liquidação estornada não consome — então um recebimento cuja liquidação foi estornada
+      // no M05 volta a ser estornável aqui, sem nenhuma regra nova.
+      const consumo = await consumoDasParcelas(tx, [d.recebimentoId]);
+      const liquidado = consumo.get(d.recebimentoId) ?? new Decimal(0);
+      if (liquidado.gt(0)) {
+        throw new Error(
+          `RECEBIMENTO-LIQUIDADO: o ${rotulo} lastreia R$ ${liquidado.toFixed(2)} já liquidados. ` +
+            `Desfazê-lo agora deixaria a despesa sem o documento que a comprova. Estorne primeiro a ` +
+            `liquidação (Despesa › Liquidações), e o estorno do recebimento fica liberado. Nada foi gravado.`
+        );
+      }
+
+      const who = await nomeEAto(tx, recebedor.id);
+      const { manifesto, sha256 } = manifestoCanonico({
+        documento: "TERMO_DE_ESTORNO_DE_RECEBIMENTO_DEFINITIVO",
+        ente: await nomeDoEnteNosDocumentos(tx),
+        fundamento: "Lei 14.133/2021, art. 140",
+        contrato: { numero: r.medicao.ordem.contrato.numeroContrato, contratado: r.medicao.ordem.contrato.contratadoNome, documentoDoContratado: r.medicao.ordem.contrato.contratadoDocumento },
+        ordem: { numero: r.medicao.ordem.numero, ano: r.medicao.ordem.ano },
+        medicao: r.medicao.numero,
+        // ⚠️ O TERMO DESFEITO É IDENTIFICADO PELO SEU PRÓPRIO sha256: sem isso, a segunda via do
+        // estorno não diria QUAL documento foi desfeito, e dois termos da mesma medição são
+        // indistinguíveis pelo número.
+        recebimentoEstornado: { numero: r.numero, data: diaCivil(r.data), sha256: r.sha256, conclusao: r.conclusao },
+        itens: r.itens.map((i) => ({
+          numero: i.medido.itemDaOrdem.itemDoContrato.numero,
+          descricao: i.medido.itemDaOrdem.itemDoContrato.descricao,
+          unidade: i.medido.itemDaOrdem.itemDoContrato.unidade,
+          quantidade: q4(i.quantidade.toFixed(4)),
+          valor: i.valor.toFixed(2),
+        })),
+        valor: sumMoney(r.itens.map((i) => i.valor.toFixed(2))).toFixed(2),
+        data: d.data,
+        motivo: d.motivo,
+        responsavel: { nome: who.nome, ato: who.ato, papel: "RECEBEDOR_DEFINITIVO" },
+      });
+
+      const e = await tx.estornoDeRecebimentoDefinitivo.create({
+        data: { recebimentoId: d.recebimentoId, designacaoId: recebedor.id, data: inicioDoDiaCivil(d.data), motivo: d.motivo, manifesto: manifesto as object, sha256, criadoPor: d.criadoPor },
+        select: { id: true },
+      });
+      return { estornoId: e.id, sha256, numero: r.numero, valor: sumMoney(r.itens.map((i) => i.valor.toFixed(2))).toFixed(2) };
+    });
+  } catch (e) {
+    if ((e as { code?: string }).code === "P2002") throw new Error("RECEBIMENTO-JA-ESTORNADO: outro estorno deste recebimento foi gravado no mesmo instante. Nada foi gravado.");
     throw e;
   }
 }

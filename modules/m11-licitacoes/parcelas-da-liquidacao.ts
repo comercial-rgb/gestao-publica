@@ -84,10 +84,22 @@ export async function conferirParcelasDaLiquidacao(
   }
   const recebimentos = await tx.recebimentoDefinitivo.findMany({
     where: { id: { in: ids } },
-    select: { id: true, numero: true, data: true, itens: { select: { valor: true } }, medicao: { select: { numero: true, ordem: { select: { numero: true, ano: true, contratoId: true, empenhoId: true, contrato: { select: { numeroContrato: true, contratadoDocumento: true } } } } } } },
+    select: { id: true, numero: true, data: true, estorno: { select: { data: true, motivo: true } }, itens: { select: { valor: true } }, medicao: { select: { numero: true, ordem: { select: { numero: true, ano: true, contratoId: true, empenhoId: true, contrato: { select: { numeroContrato: true, contratadoDocumento: true } } } } } } },
   });
   const faltante = ids.find((id) => !recebimentos.some((r) => r.id === id));
   if (faltante !== undefined) throw new Error(`RECEBIMENTO-INEXISTENTE: o recebimento ${faltante} não existe. Nada foi gravado.`);
+  // ⚠️ V9 N4 — RECEBIMENTO ESTORNADO NÃO LASTREIA LIQUIDAÇÃO. Sem esta guarda, a ordem inversa da
+  // cadeia (estornar o recebimento e liquidá-lo depois) produziria despesa sem documento que a
+  // comprove — e a tela não mostraria nada de errado, porque o termo original continua no
+  // histórico. A recusa vem ANTES de qualquer escrita.
+  const estornado = recebimentos.find((r) => r.estorno !== null);
+  if (estornado !== undefined) {
+    throw new Error(
+      `RECEBIMENTO-ESTORNADO: o recebimento definitivo nº ${estornado.numero} da medição nº ${estornado.medicao.numero} da ordem nº ` +
+        `${estornado.medicao.ordem.numero}/${estornado.medicao.ordem.ano} foi estornado em ${diaCivil(estornado.estorno!.data)} e não lastreia liquidação. ` +
+        `Registre o recebimento corrigido e liquide por ele. Nada foi gravado.`
+    );
+  }
   const contratos = [...new Set(recebimentos.map((r) => r.medicao.ordem.contratoId))];
   if (contratos.length !== 1) throw new Error("PARCELAS-DE-CONTRATOS-DIFERENTES: uma liquidação consome parcelas de um contrato só. Nada foi gravado.");
   const contratoId = contratos[0]!;

@@ -355,6 +355,57 @@ export function FormEstornarMedicao({ contratoId, medicaoId, numero }: { readonl
   );
 }
 
+/**
+ * V9 N4 — O ESTORNO DO RECEBIMENTO DEFINITIVO.
+ *
+ * ⚠️ A PRÉVIA DA CONSEQUÊNCIA VEM ESCRITA NO FORMULÁRIO, e não é enfeite: o efeito do estorno é
+ * INVISÍVEL na linha do recebimento — o termo continua lá, com o número e o valor. O que muda é o
+ * ELEGÍVEL da medição, que está noutra tabela da mesma página. Sem dizer isso antes, quem clica não
+ * tem como saber o que vai acontecer.
+ *
+ * ⚠️ E O QUE BLOQUEIA ESTÁ DITO ANTES DO CLIQUE: com liquidação viva, o servidor recusa e manda ao
+ * estorno da liquidação. Deixar a pessoa descobrir isso pelo erro é gastar o tempo dela.
+ */
+export function FormEstornarRecebimento({ contratoId, recebimentoId, numero, valor, liquidado, hoje }: {
+  readonly contratoId: string;
+  readonly recebimentoId: string;
+  readonly numero: number;
+  readonly valor: string;
+  readonly liquidado: string;
+  readonly hoje: string;
+}): React.ReactElement {
+  const a = useAto(`estornar-recebimento-${numero}`);
+  const temLiquidacao = Number(liquidado) > 0;
+  return (
+    <details className="mt-2 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-2">
+      <summary className="cursor-pointer text-xs font-semibold">Estornar o recebimento definitivo nº {numero}</summary>
+      <form ref={a.ref} action={a.disparar} data-acao={`estornar-recebimento-${numero}`} className="mt-2">
+        <ChaveDeComando />
+        <Ocultos contratoId={contratoId} acao="estornarRecebimento" extra={{ recebimentoId }} />
+        <p className="text-xs text-[color:var(--color-ink-2)]">
+          O termo nº {numero} (R$ {valor}) continua no histórico, com o seu documento — ele não é apagado
+          nem reescrito. O que volta é a <strong>quantidade elegível</strong> da medição, para que o
+          recebimento corrigido possa ser registrado. O estorno gera termo próprio.
+        </p>
+        {temLiquidacao ? (
+          <p role="status" className="mt-2 rounded-[var(--radius-md)] bg-[color:var(--color-status-alerta-bg)] px-2 py-1.5 text-xs text-[color:var(--color-status-alerta-fg)]" data-bloqueio-do-estorno>
+            Este recebimento lastreia R$ {liquidado} já liquidados. O estorno será recusado enquanto a
+            liquidação estiver viva: estorne-a primeiro, em Despesa › Liquidações.
+          </p>
+        ) : null}
+        <label htmlFor={`${a.id}-data`} className="mt-2 block text-xs text-[color:var(--color-ink-2)]"><span className={CLASSE_ROTULO}>Data do estorno</span>
+          <input id={`${a.id}-data`} name="data" type="date" required defaultValue={hoje} max={hoje} className={CLASSE_CAMPO} />
+        </label>
+        <label htmlFor={`${a.id}-motivo`} className="mt-2 block text-xs text-[color:var(--color-ink-2)]"><span className={CLASSE_ROTULO}>Motivo do estorno</span>
+          <textarea id={`${a.id}-motivo`} name="motivo" required minLength={10} rows={2} className={CLASSE_AREA_TEXTO} />
+        </label>
+        <Mensagens estado={a.estado} acao={`estornar-recebimento-${numero}`} />
+        <Enviar pendente={a.pendente} rotulo="Estornar recebimento" />
+      </form>
+    </details>
+  );
+}
+
 export function FormRecebimentoProvisorio({ contratoId, medicaoId, itens, hoje }: { readonly contratoId: string; readonly medicaoId: string; readonly itens: readonly { readonly id: string; readonly rotulo: string; readonly medido: string; readonly unidade: string }[]; readonly hoje: string }): React.ReactElement {
   const a = useAto("receber-provisoriamente");
   return (

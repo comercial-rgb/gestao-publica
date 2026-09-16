@@ -11,6 +11,7 @@ import {
   decidirControversia,
   descartarRascunhoDeOrdemDeServico,
   emitirOrdemDeServico,
+  estornarRecebimentoDefinitivo,
   manifestoCanonico,
   movimentarExecucaoDaOrdemDeServico,
   registrarMedicaoDaOrdem,
@@ -45,7 +46,7 @@ const RECEBEDOR = "recebedor.os@teste.local";
 const OUTRO = "outro.setor.os@teste.local";
 const dia = (d: number): string => diaCivil(new Date(Date.now() + d * 86_400_000));
 const HOJE = dia(0);
-const TODAS = ["EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO", "REGISTRAR_MEDICAO_DE_OBRA", "REGISTRAR_RECEBIMENTO_PROVISORIO", "REGISTRAR_RECEBIMENTO_DEFINITIVO", "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO", "RESOLVER_OCORRENCIA_DE_FISCALIZACAO"];
+const TODAS = ["EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO", "REGISTRAR_MEDICAO_DE_OBRA", "REGISTRAR_RECEBIMENTO_PROVISORIO", "REGISTRAR_RECEBIMENTO_DEFINITIVO", "ESTORNAR_RECEBIMENTO_DEFINITIVO", "REGISTRAR_OCORRENCIA_DE_FISCALIZACAO", "RESOLVER_OCORRENCIA_DE_FISCALIZACAO"];
 
 async function conta(identificador: string, acoes: readonly string[], documento?: string): Promise<void> {
   const p = await prisma.perfil.create({ data: { nome: `P-${identificador}`, descricao: "teste", criadoPor: "SEED", permissoes: { create: acoes.map((acao) => ({ acao: acao as never, criadoPor: "SEED" })) } }, select: { id: true } });
@@ -277,6 +278,69 @@ describe("U2 — a medição da ordem e os recebimentos", () => {
     expect(bGlosada.medido, "o medido passa a ser LÍQUIDO — 3 medidas menos 1 glosada").toBe("2.0000");
     expect(bGlosada.glosado, "e a tela mostra quanto foi glosado, para o número não mudar sem explicação").toBe("1.0000");
     expect(bGlosada.aExecutar, "a visita rejeitada voltou a executar dentro da MESMA ordem").toBe("1.0000");
+  });
+
+  it("ER04: o estorno do recebimento exige autoridade de recebedor, não se repete e não é anterior ao termo", async () => {
+    const c = await medicaoConferida();
+    const r = await registrarRecebimentoDefinitivo(prisma, { medicaoId: c.medicaoId, data: HOJE, conclusao: "Parte regular conferida", itens: [{ itemMedidoId: c.mA, quantidade: "5" }, { itemMedidoId: c.mB, quantidade: "8" }], criadoPor: RECEBEDOR });
+
+    // ⚠️ AUTORIDADE. `OUTRO` tem as MESMAS ações e nenhuma designação neste contrato — o que o
+    // separa do recebedor é o ato de designação, não o perfil.
+    await expect(
+      estornarRecebimentoDefinitivo(prisma, { recebimentoId: r.recebimentoId, data: HOJE, motivo: "Tentativa de quem não é recebedor designado", criadoPor: OUTRO })
+    ).rejects.toThrow(/SEM-DESIGNACAO-DE-RECEBEDOR_DEFINITIVO/);
+    expect(await prisma.estornoDeRecebimentoDefinitivo.count()).toBe(0);
+
+    // ⚠️ DATA. O estorno não antecede o termo que desfaz — um documento que desfaz outro antes de
+    // ele existir é a linha do tempo quebrada no papel.
+    await expect(
+      estornarRecebimentoDefinitivo(prisma, { recebimentoId: r.recebimentoId, data: dia(-5), motivo: "Estorno com data anterior ao termo", criadoPor: RECEBEDOR })
+    ).rejects.toThrow(/ESTORNO-ANTES-DO-RECEBIMENTO/);
+
+    const e = await estornarRecebimentoDefinitivo(prisma, { recebimentoId: r.recebimentoId, data: HOJE, motivo: "Quantidade conferida a maior no termo assinado", criadoPor: RECEBEDOR });
+    expect(e).toMatchObject({ numero: 1, valor: "900.00" });
+
+    // ⚠️ UMA VEZ SÓ, pelo `@unique` — não há coluna "estornado" para sair de sincronia com o fato.
+    await expect(
+      estornarRecebimentoDefinitivo(prisma, { recebimentoId: r.recebimentoId, data: HOJE, motivo: "Segunda tentativa sobre o mesmo termo", criadoPor: RECEBEDOR })
+    ).rejects.toThrow(/RECEBIMENTO-JA-ESTORNADO/);
+    expect(await prisma.estornoDeRecebimentoDefinitivo.count()).toBe(1);
+  });
+
+  it("ER05: estornado, o elegível volta ao que era e o termo original permanece com o seu sha256", async () => {
+    const c = await medicaoConferida();
+    const r = await registrarRecebimentoDefinitivo(prisma, { medicaoId: c.medicaoId, data: HOJE, conclusao: "Parte regular conferida", itens: [{ itemMedidoId: c.mA, quantidade: "5" }, { itemMedidoId: c.mB, quantidade: "8" }], criadoPor: RECEBEDOR });
+    const original = await prisma.recebimentoDefinitivo.findUniqueOrThrow({ where: { id: r.recebimentoId }, select: { sha256: true, conclusao: true } });
+
+    const antes = (await execucaoDoContrato(prisma, "ctr-a", "FISCALIZACAO")).ordens[0]!.medicoes[0]!.itens.map((i) => [i.item, i.recebido, i.elegivel]);
+    expect(antes).toEqual([[1, "5.0000", "0.0000"], [2, "8.0000", "0.0000"]]);
+
+    await estornarRecebimentoDefinitivo(prisma, { recebimentoId: r.recebimentoId, data: HOJE, motivo: "Quantidade conferida a maior no termo assinado", criadoPor: RECEBEDOR });
+
+    const depois = (await execucaoDoContrato(prisma, "ctr-a", "FISCALIZACAO")).ordens[0]!.medicoes[0]!.itens.map((i) => [i.item, i.recebido, i.elegivel]);
+    expect(depois, "o elegível não voltou — a quantidade estornada continua bloqueando o termo correto").toEqual([[1, "0.0000", "5.0000"], [2, "0.0000", "8.0000"]]);
+
+    // ⚠️ APPEND-ONLY: o termo original NÃO foi apagado nem reescrito. O sha256 é o mesmo, e é por
+    // ele que a segunda via continua conferindo.
+    const depoisDoEstorno = await prisma.recebimentoDefinitivo.findUniqueOrThrow({ where: { id: r.recebimentoId }, select: { sha256: true, conclusao: true } });
+    expect(depoisDoEstorno).toEqual(original);
+  });
+
+  it("ER06: o termo do estorno identifica o documento desfeito pelo sha256 dele", async () => {
+    const c = await medicaoConferida();
+    const r = await registrarRecebimentoDefinitivo(prisma, { medicaoId: c.medicaoId, data: HOJE, conclusao: "Parte regular conferida", itens: [{ itemMedidoId: c.mA, quantidade: "5" }, { itemMedidoId: c.mB, quantidade: "8" }], criadoPor: RECEBEDOR });
+    await estornarRecebimentoDefinitivo(prisma, { recebimentoId: r.recebimentoId, data: HOJE, motivo: "Quantidade conferida a maior no termo assinado", criadoPor: RECEBEDOR });
+
+    const e = await prisma.estornoDeRecebimentoDefinitivo.findFirstOrThrow({ select: { manifesto: true, sha256: true } });
+    const m = e.manifesto as { documento: string; recebimentoEstornado: { sha256: string; numero: number }; valor: string; motivo: string };
+    expect(m.documento).toBe("TERMO_DE_ESTORNO_DE_RECEBIMENTO_DEFINITIVO");
+    // ⚠️ Sem o sha256 do termo desfeito, a segunda via do estorno não diria QUAL documento foi
+    // desfeito: dois termos da mesma medição não se distinguem pelo número.
+    expect(m.recebimentoEstornado.sha256).toBe(r.sha256);
+    expect(m.valor).toBe("900.00");
+    expect(m.motivo).toContain("conferida a maior");
+    // E o estorno recalcula o seu próprio manifesto: o sha do estorno não é o do termo desfeito.
+    expect(e.sha256).not.toBe(r.sha256);
   });
 
   it("RE06: resolver ocorrência não recebe, não aceita controvérsia e não mexe no elegível", async () => {

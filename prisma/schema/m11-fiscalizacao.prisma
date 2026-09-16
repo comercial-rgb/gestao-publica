@@ -65,6 +65,8 @@ model DesignacaoNoContrato {
   decisoesDeControversia       DecisaoDeControversia[]
   // V7 M2 U7 — estornos de medição da ordem praticados sob esta designação. VIRTUAL.
   estornosDeMedicaoDaOrdem     EstornoDeMedicaoDaOrdem[]    @relation("EstornosDeMedicaoDaOrdem")
+  // V9 N4 — estornos de recebimento definitivo praticados sob esta designação. VIRTUAL.
+  estornosDeRecebimento        EstornoDeRecebimentoDefinitivo[] @relation("EstornosDeRecebimentoDefinitivo")
   // V7 M2 U8 — reagendamentos, cancelamentos e realizações praticados sob esta designação. VIRTUAIS.
   reagendamentosDeFiscalizacao ReagendamentoDeFiscalizacao[] @relation("ReagendamentosDeFiscalizacao")
   cancelamentosDeFiscalizacao  CancelamentoDeFiscalizacao[]  @relation("CancelamentosDeFiscalizacao")
@@ -769,6 +771,8 @@ model RecebimentoDefinitivo {
   itens ItemRecebidoDefinitivamente[]
   /// V7 M2 U3 — as alocações das liquidações que consumiram este recebimento. VIRTUAL.
   alocacoes AlocacaoDaLiquidacaoNaParcela[]
+  /// V9 N4 — o estorno deste recebimento, quando houver. VIRTUAL.
+  estorno   EstornoDeRecebimentoDefinitivo? @relation("EstornoDoRecebimentoDefinitivo")
 
   @@unique([medicaoId, numero])
 }

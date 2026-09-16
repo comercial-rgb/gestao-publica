@@ -2,7 +2,7 @@ import { Decimal, sumMoney, toMoney } from "../../packages/contracts/index.js";
 import { diaCivil, diaCivilBr } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import type { VisaoDoContrato } from "./fiscalizacao.js";
-import { elegivelDoItemMedido, glosadoDoItemDaOrdem, medidoLiquido, SELECAO_DO_MEDIDO } from "./ordem-de-servico.js";
+import { elegivelDoItemMedido, glosadoDoItemDaOrdem, medidoLiquido, SELECAO_DO_MEDIDO, SELECAO_DOS_RECEBIDOS } from "./ordem-de-servico.js";
 import { consumoDasParcelas } from "./parcelas-da-liquidacao.js";
 import { aditivosPorItensDoContrato, historicosDosItens, quantidadeParaComprometerDesde, versaoNoDia } from "./versoes-dos-itens.js";
 
@@ -73,7 +73,21 @@ export interface MedicaoDaOrdemNaTela {
   readonly fiscal: string;
   readonly itens: readonly ItemMedidoNaTela[];
   readonly provisorio: { readonly id: string; readonly data: string; readonly por: string; readonly sha256: string; readonly verificacoes: string | null } | null;
-  readonly definitivos: readonly { readonly id: string; readonly numero: number; readonly data: string; readonly por: string; readonly valor: string; readonly liquidado: string; readonly aLiquidar: string; readonly sha256: string }[];
+  readonly definitivos: readonly {
+    readonly id: string;
+    readonly numero: number;
+    readonly data: string;
+    readonly por: string;
+    readonly valor: string;
+    readonly liquidado: string;
+    readonly aLiquidar: string;
+    readonly sha256: string;
+    /**
+     * V9 N4 — ESTORNADO: o termo fica no histórico, com o seu sha256, e a quantidade volta a ser
+     * elegível. O motivo só na visão de fiscalização, como no estorno da medição.
+     */
+    readonly estorno: { readonly data: string; readonly por: string; readonly motivo: string | null; readonly sha256: string } | null;
+  }[];
   readonly valores: { readonly medido: string; readonly conforme: string; readonly emControversia: string; readonly aceito: string; readonly glosado: string; readonly recebido: string; readonly liquidado: string };
   /** V7 M2 U7 — medida pela planilha da obra: a versão usada e o sha256 da memória. */
   readonly pelaPlanilha: { readonly obraId: string; readonly obra: string; readonly planilhaId: string; readonly versao: number; readonly sha256: string } | null;
@@ -158,11 +172,12 @@ export async function execucaoDoContrato(prisma: Tx, contratoId: string, visao: 
                 id: true, quantidade: true, valorUnitario: true, valor: true,
                 itemDaOrdem: { select: { itemDoContrato: { select: { numero: true, descricao: true, unidade: true } } } },
                 conferencia: { select: { id: true, quantidadeConforme: true, quantidadeEmControversia: true, motivo: true, decisao: { select: { resultado: true, fundamento: true, data: true, sha256: true } } } },
-                recebidos: { select: { quantidade: true } },
+                // ⚠️ V9 N4: sem os estornados — ver `SELECAO_DOS_RECEBIDOS`.
+                recebidos: SELECAO_DOS_RECEBIDOS,
               },
             },
             recebimentoProvisorio: { select: { id: true, data: true, sha256: true, verificacoes: true, designacao: PESSOA } },
-            recebimentosDefinitivos: { orderBy: { numero: "asc" }, select: { id: true, numero: true, data: true, sha256: true, designacao: PESSOA, itens: { select: { valor: true } } } },
+            recebimentosDefinitivos: { orderBy: { numero: "asc" }, select: { id: true, numero: true, data: true, sha256: true, designacao: PESSOA, itens: { select: { valor: true } }, estorno: { select: { data: true, motivo: true, sha256: true, designacao: PESSOA } } } },
           },
         },
       },
@@ -214,7 +229,11 @@ export async function execucaoDoContrato(prisma: Tx, contratoId: string, visao: 
         definitivos: m.recebimentosDefinitivos.map((r) => {
           const valor = sumMoney(r.itens.map((x) => x.valor.toFixed(2)));
           const liquidado = toMoney((consumo.get(r.id) ?? new Decimal(0)).toFixed(2));
-          return { id: r.id, numero: r.numero, data: diaCivilBr(r.data), por: nome(r.designacao), valor: valor.toFixed(2), liquidado: liquidado.toFixed(2), aLiquidar: toMoney(valor.minus(liquidado)).toFixed(2), sha256: r.sha256 };
+          return {
+            id: r.id, numero: r.numero, data: diaCivilBr(r.data), por: nome(r.designacao),
+            valor: valor.toFixed(2), liquidado: liquidado.toFixed(2), aLiquidar: toMoney(valor.minus(liquidado)).toFixed(2), sha256: r.sha256,
+            estorno: r.estorno === null ? null : { data: diaCivilBr(r.estorno.data), por: nome(r.estorno.designacao), motivo: fiscalizacao ? r.estorno.motivo : null, sha256: r.estorno.sha256 },
+          };
         }),
         valores: {
           medido: sumMoney(its.map((x) => x.valores.medido)).toFixed(2),

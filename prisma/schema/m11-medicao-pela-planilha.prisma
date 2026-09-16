@@ -81,3 +81,43 @@ model EstornoDeMedicaoDaOrdem {
   criadoEm  DateTime @default(now())
   criadoPor String
 }
+
+/// ═══ O ESTORNO DO RECEBIMENTO DEFINITIVO (V9 N4 — `ESTORNO-DE-RECEBIMENTO`) ═══
+///
+/// ⚠️ ATÉ AQUI O RECEBIMENTO NÃO SE DESFAZIA DE JEITO NENHUM. `estornarMedicaoDaOrdem` recusava
+/// medição com recebimento (`MEDICAO-COM-RECEBIMENTO`) e mandava "tratar na conferência" — mas a
+/// conferência acontece ANTES do definitivo, e depois dele não sobrava caminho nenhum. Um termo
+/// assinado com a quantidade errada ficava no sistema para sempre, e a única saída era liquidar o
+/// errado e anular no M05 — ou seja, resolver no dinheiro um erro que é de recebimento.
+///
+/// ⚠️ APPEND-ONLY, COMO TODO ESTORNO DESTE REPOSITÓRIO. O recebimento original NÃO é apagado nem
+/// reescrito: ele continua no histórico, com o seu termo e o seu sha256, e este registro diz que
+/// foi desfeito, por quem, quando e por quê. O efeito — a quantidade voltar a ser elegível — é
+/// DERIVADO da existência desta linha, nunca de um UPDATE no recebimento.
+///
+/// ⚠️ E ELE NÃO ALCANÇA RECEBIMENTO JÁ LIQUIDADO. Com liquidação viva, o estorno é recusado
+/// nomeando-a: desfazer o recebimento por baixo de uma liquidação deixaria a despesa sem o
+/// documento que a lastreia. O caminho é o estorno da liquidação no M05, e depois este.
+model EstornoDeRecebimentoDefinitivo {
+  id String @id @default(cuid())
+
+  /// `@unique`: um recebimento se estorna UMA vez. É daqui que sai a idempotência — não há
+  /// contador nem coluna "estornado" para ficar fora de sincronia com o fato.
+  recebimentoId String                @unique
+  recebimento   RecebimentoDefinitivo @relation("EstornoDoRecebimentoDefinitivo", fields: [recebimentoId], references: [id])
+
+  /// A designação de RECEBEDOR_DEFINITIVO vigente com que foi praticado — a autoridade do ato.
+  designacaoId String
+  designacao   DesignacaoNoContrato @relation("EstornosDeRecebimentoDefinitivo", fields: [designacaoId], references: [id])
+
+  data   DateTime
+  motivo String
+
+  /// O TERMO DE ESTORNO, canônico, com o seu próprio sha256 — um ato que desfaz um documento
+  /// assinado precisa de documento próprio, ou some do papel.
+  manifesto Json
+  sha256    String @db.VarChar(64)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

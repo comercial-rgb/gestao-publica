@@ -538,6 +538,37 @@ export function derivarTributario(
   return saida;
 }
 
+export const ACOES_DO_ESTORNO_DE_RECEBIMENTO: readonly AcaoDoSistema[] = ["ESTORNAR_RECEBIMENTO_DEFINITIVO"];
+
+/**
+ * V9 N4 — o estorno do recebimento definitivo.
+ *
+ * ⚠️ QUEM ADMINISTRA PERMISSOES RECEBE A ACAO; NINGUEM MAIS. Ela NAO e derivada para quem ja tem
+ * REGISTRAR_RECEBIMENTO_DEFINITIVO, e a distincao e o ponto: receber e o ato ordinario do recebedor
+ * designado; desfazer um termo assinado e excepcional, reabre quantidade ja fechada e deixa rastro
+ * publico. Concede-la por tabela daria o poder de desfazer a todo mundo que pode receber, em
+ * silencio, no dia da atualizacao — e ninguem teria decidido isso.
+ *
+ * O administrador a concede aos perfis que respondem pelo recebimento definitivo, e o ato continua
+ * exigindo a designacao vigente de RECEBEDOR_DEFINITIVO no contrato.
+ */
+export function derivarEstornoDeRecebimento(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null);
+    if (!administra) continue;
+    const jaTem = new Set(perfil.permissoes.filter((p) => p.unidadeOrcId === null).map((p) => p.acao));
+    for (const acao of ACOES_DO_ESTORNO_DE_RECEBIMENTO) {
+      if (jaTem.has(acao)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
+
 export const ACOES_DOS_TIPOS_DE_OCORRENCIA: readonly AcaoDoSistema[] = ["GERIR_TIPOS_DE_OCORRENCIA"];
 
 export function derivarTiposDeOcorrencia(
@@ -844,6 +875,17 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "fundamento e valores por vigencia). Quem administra permissoes no global recebe as duas e as concede aos perfis do " +
       "cadastro imobiliario e da administracao tributaria. SIMULAR nao e acao: e leitura, e nao cria fato nem divida.",
     derivar: derivarTributario,
+  },
+  {
+    versao: 23,
+    nome: "estorno-de-recebimento",
+    descricao:
+      "O estorno do recebimento definitivo (V9 N4) chegou com ESTORNAR_RECEBIMENTO_DEFINITIVO. Quem administra " +
+      "permissoes no global recebe a acao e a concede aos perfis que respondem pelo recebimento definitivo. ⚠️ Ela NAO " +
+      "e derivada para quem ja tem REGISTRAR_RECEBIMENTO_DEFINITIVO: receber e ordinario, desfazer um termo assinado e " +
+      "excepcional. O ato continua exigindo designacao vigente de RECEBEDOR_DEFINITIVO no contrato, e e recusado " +
+      "enquanto houver liquidacao viva lastreada pelo recebimento.",
+    derivar: derivarEstornoDeRecebimento,
   },
 ];
 

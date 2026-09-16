@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import {
-  aditivoNaTela, cancelarSaldoNaTela, decidirNaTela, definitivoNaTela, descartarNaTela, emitirNaTela, estornarAditivoNaTela, estornarMedicaoNaTela, liquidarParcelaNaTela, medirOrdemNaTela, medirPelaPlanilhaNaTela, movimentarNaTela, previaDoAditivoNaTela, provisorioNaTela, rascunhoNaTela,
+  aditivoNaTela, cancelarSaldoNaTela, decidirNaTela, definitivoNaTela, descartarNaTela, emitirNaTela, estornarAditivoNaTela, estornarMedicaoNaTela, estornarRecebimentoNaTela, liquidarParcelaNaTela, medirOrdemNaTela, medirPelaPlanilhaNaTela, movimentarNaTela, previaDoAditivoNaTela, provisorioNaTela, rascunhoNaTela,
 } from "../../../../lib/portas/execucao-do-contrato";
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 
@@ -28,6 +28,7 @@ const ATOS: Readonly<Record<string, (contratoId: string, c: Record<string, strin
   medir: (_id, c) => medirOrdemNaTela(c),
   medirPelaPlanilha: (_id, c, arquivos) => medirPelaPlanilhaNaTela(c, arquivos),
   estornarMedicao: (_id, c) => estornarMedicaoNaTela(c),
+  estornarRecebimento: (_id, c) => estornarRecebimentoNaTela(c),
   provisorio: (_id, c) => provisorioNaTela(c),
   decidir: (_id, c) => decidirNaTela(c),
   definitivo: (_id, c) => definitivoNaTela(c),

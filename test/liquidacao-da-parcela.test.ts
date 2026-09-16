@@ -12,7 +12,7 @@ import { anularLiquidacao, pagar } from "../modules/m05-despesa/servico-bloco2.j
 import type { M05Deps } from "../modules/m05-despesa/ports.js";
 import { conferirDocumentoFiscal, registrarDocumentoFiscal } from "../modules/m11-licitacoes/documento-fiscal.js";
 import { cadastrarItemDoContrato, designarNoContrato } from "../modules/m11-licitacoes/fiscalizacao.js";
-import { criarRascunhoDeOrdemDeServico, decidirControversia, emitirOrdemDeServico, registrarMedicaoDaOrdem, registrarRecebimentoDefinitivo, registrarRecebimentoProvisorio } from "../modules/m11-licitacoes/ordem-de-servico.js";
+import { criarRascunhoDeOrdemDeServico, decidirControversia, emitirOrdemDeServico, estornarRecebimentoDefinitivo, registrarMedicaoDaOrdem, registrarRecebimentoDefinitivo, registrarRecebimentoProvisorio } from "../modules/m11-licitacoes/ordem-de-servico.js";
 import { liquidarParcelasDoContrato, numeroDaLiquidacaoDaParcela } from "../modules/m11-licitacoes/liquidacao-da-parcela.js";
 import { travar } from "../packages/locks/index.js";
 import { xlsxDeTeste } from "./fixtures/planilhas.js";
@@ -69,6 +69,7 @@ let outroEmitenteId = "";
 let empenhoServico = "";
 let empenhoMaterial = "";
 let receb900 = "";
+let medicaoDaFixture = "";
 let receb100 = "";
 
 async function conta(identificador: string, acoes: readonly string[], documento: string): Promise<void> {
@@ -116,7 +117,7 @@ beforeEach(async () => {
 
   await conta(GESTORA, ["EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO"], "11144477735");
   await conta(FISCAL, ["REGISTRAR_MEDICAO_DE_OBRA", "REGISTRAR_RECEBIMENTO_PROVISORIO"], "52998224725");
-  await conta(RECEBEDOR, ["REGISTRAR_RECEBIMENTO_DEFINITIVO"], "86288366757");
+  await conta(RECEBEDOR, ["REGISTRAR_RECEBIMENTO_DEFINITIVO", "ESTORNAR_RECEBIMENTO_DEFINITIVO"], "86288366757");
   const adm = await prisma.perfil.create({ data: { nome: "P-adm", descricao: "t", criadoPor: "SEED", permissoes: { create: ["DESIGNAR_NO_CONTRATO", "CADASTRAR_ITEM_DO_CONTRATO"].map((acao) => ({ acao: acao as never, criadoPor: "SEED" })) } }, select: { id: true } });
   const ua = await prisma.usuario.create({ data: { identificador: ADMIN, nome: ADMIN, criadoPor: "SEED" }, select: { id: true } });
   await prisma.vinculoUsuarioPerfil.create({ data: { usuarioId: ua.id, perfilId: adm.id, criadoPor: "SEED" } });
@@ -145,6 +146,7 @@ beforeEach(async () => {
   const ma = med.find((x) => x.itemDaOrdemId === oa)!.id;
   const mb = med.find((x) => x.itemDaOrdemId === ob)!.id;
   await registrarRecebimentoProvisorio(prisma, { medicaoId: m.medicaoId, data: dia(-2), verificacoes: "Relatórios conferidos", itens: [{ itemMedidoId: ma, quantidadeConforme: "5", quantidadeEmControversia: "1", motivo: "Visita sem assinatura" }, { itemMedidoId: mb, quantidadeConforme: "8", quantidadeEmControversia: "0" }], criadoPor: FISCAL });
+  medicaoDaFixture = m.medicaoId;
   receb900 = (await registrarRecebimentoDefinitivo(prisma, { medicaoId: m.medicaoId, data: dia(-1), conclusao: "Parte regular conferida", itens: [{ itemMedidoId: ma, quantidade: "5" }, { itemMedidoId: mb, quantidade: "8" }], criadoPor: RECEBEDOR })).recebimentoId;
   const conf = await prisma.conferenciaDoItemMedido.findUniqueOrThrow({ where: { itemMedidoId: ma }, select: { id: true } });
   await decidirControversia(prisma, { conferenciaId: conf.id, resultado: "ACEITA", fundamento: "Assinatura apresentada", data: dia(-1), criadoPor: RECEBEDOR });
@@ -188,6 +190,61 @@ describe("a parcela recebida vira liquidação no M05", () => {
     // O complemento de R$ 100,00 segue elegível; os R$ 900,00 não.
     await expect(liquidarP(nf, [{ recebimentoDefinitivoId: receb900, valor: "0.01" }])).rejects.toThrow(/PARCELA-JA-LIQUIDADA/);
     await expect(liquidarP(nf, [{ recebimentoDefinitivoId: receb100, valor: "100.00" }])).resolves.toMatchObject({ valor: "100.00" });
+  });
+
+  it("ER01: recebimento com liquidação VIVA não se estorna — a recusa nomeia o valor e manda ao M05", async () => {
+    // ⚠️ A ORDEM DA CADEIA É UMA SÓ: primeiro o dinheiro volta, depois o recebimento se desfaz.
+    // Desfazer o recebimento por baixo de uma liquidação deixaria a despesa sem o documento que a
+    // comprova — e nenhuma tela mostraria isso, porque o termo original continua no histórico.
+    await liquidarP(await nota("7001", "900.00"), [{ recebimentoDefinitivoId: receb900, valor: "900.00" }]);
+
+    await expect(
+      estornarRecebimentoDefinitivo(prisma, { recebimentoId: receb900, data: HOJE, motivo: "Quantidade conferida a maior no termo", criadoPor: RECEBEDOR })
+    ).rejects.toThrow(/RECEBIMENTO-LIQUIDADO: .* lastreia R\$ 900\.00 já liquidados/);
+
+    expect(await prisma.estornoDeRecebimentoDefinitivo.count(), "a recusa gravou estorno").toBe(0);
+  });
+
+  it("ER02: anulada a liquidação, o estorno do recebimento LIBERA — e a ordem inversa é recusada", async () => {
+    const r = await liquidarP(await nota("7002", "900.00"), [{ recebimentoDefinitivoId: receb900, valor: "900.00" }]);
+    await anularLiquidacao({ liquidacaoId: r.liquidacaoId, numero: "NLA-ER02", data: inicioDoDiaCivil(HOJE), historico: "Termo de recebimento com quantidade a maior", criadoPor: POR }, deps);
+
+    // ⚠️ `consumoDasParcelas` JÁ SABIA que liquidação estornada não consome. O estorno do
+    // recebimento não precisou de regra nova: ele reusa a mesma leitura.
+    const e = await estornarRecebimentoDefinitivo(prisma, { recebimentoId: receb900, data: HOJE, motivo: "Termo com quantidade conferida a maior; será refeito", criadoPor: RECEBEDOR });
+    expect(e).toMatchObject({ numero: 1, valor: "900.00" });
+    expect(e.sha256, "o estorno tem termo próprio — um ato que desfaz documento assinado precisa de documento").toMatch(/^[0-9a-f]{64}$/);
+
+    // ⚠️ E A ORDEM INVERSA É RECUSADA: liquidar um recebimento estornado produziria despesa sem
+    // documento que a comprove.
+    await expect(
+      liquidarP(await nota("7003", "900.00"), [{ recebimentoDefinitivoId: receb900, valor: "900.00" }])
+    ).rejects.toThrow(/RECEBIMENTO-ESTORNADO: .* foi estornado em .* e não lastreia liquidação/);
+  });
+
+  it("ER03: estornado, o elegível volta e o recebimento CORRIGIDO se registra e se liquida", async () => {
+    await estornarRecebimentoDefinitivo(prisma, { recebimentoId: receb900, data: HOJE, motivo: "Termo com quantidade conferida a maior; será refeito", criadoPor: RECEBEDOR });
+
+    const med = await prisma.itemMedidoNaOrdem.findMany({ where: { medicaoId: medicaoDaFixture }, orderBy: { itemDaOrdem: { itemDoContrato: { numero: "asc" } } }, select: { id: true } });
+    const [ma, mb] = [med[0]!.id, med[1]!.id];
+
+    // A quantidade do termo desfeito voltou a ser elegível — o complemento de 1 visita já foi
+    // recebido em `receb100`, então o elegível de A é 5 de novo.
+    const corrigido = await registrarRecebimentoDefinitivo(prisma, {
+      medicaoId: medicaoDaFixture, data: HOJE, conclusao: "Termo refeito com a quantidade correta",
+      itens: [{ itemMedidoId: ma, quantidade: "4" }, { itemMedidoId: mb, quantidade: "8" }], criadoPor: RECEBEDOR,
+    });
+    expect(corrigido.valor, "4 visitas × 100 + 8 horas × 50").toBe("800.00");
+
+    await expect(liquidarP(await nota("7004", "800.00"), [{ recebimentoDefinitivoId: corrigido.recebimentoId, valor: "800.00" }])).resolves.toMatchObject({ valor: "800.00" });
+
+    // ⚠️ O ORIGINAL CONTINUA NO HISTÓRICO, marcado — não foi apagado nem reescrito.
+    const { execucaoDoContrato } = await import("../modules/m11-licitacoes/execucao-do-contrato.js");
+    const defs = (await execucaoDoContrato(prisma, "ctr-a", "FISCALIZACAO")).ordens[0]!.medicoes[0]!.definitivos;
+    const original = defs.find((x) => x.id === receb900)!;
+    expect(original.valor, "o termo desfeito continua valendo o que valia no papel").toBe("900.00");
+    expect(original.estorno).toMatchObject({ motivo: "Termo com quantidade conferida a maior; será refeito" });
+    expect(defs.find((x) => x.id === corrigido.recebimentoId)?.estorno, "o termo novo não nasce estornado").toBeNull();
   });
 
   it("LI02: nota não conferida, de outro fornecedor, de outro contrato ou sem nota — recusa com o motivo e nenhuma linha", async () => {

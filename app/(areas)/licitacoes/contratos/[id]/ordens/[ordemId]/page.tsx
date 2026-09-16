@@ -8,7 +8,7 @@ import { execucaoDoContratoPara, medicaoPelaPlanilhaParaTela, ordemDaExecucao } 
 import { exigirSessao } from "../../../../../../../lib/portas/sessao";
 import { SITUACAO } from "../../ExecucaoDoContrato";
 import {
-  FormCancelarSaldo, FormDecidirControversia, FormDescartarOrdem, FormEmitirOrdem, FormEstornarMedicao, FormLiquidarParcelas, FormMedirOrdem, FormMedirPelaPlanilha, FormMovimentarOrdem, FormRecebimentoDefinitivo, FormRecebimentoProvisorio,
+  FormCancelarSaldo, FormDecidirControversia, FormDescartarOrdem, FormEmitirOrdem, FormEstornarMedicao, FormEstornarRecebimento, FormLiquidarParcelas, FormMedirOrdem, FormMedirPelaPlanilha, FormMovimentarOrdem, FormRecebimentoDefinitivo, FormRecebimentoProvisorio,
 } from "../../FormulariosDaExecucao";
 import { AvisosDosAtos, ResultadosDosAtos } from "../../../../../../../components/ui/ResultadosDosAtos";
 
@@ -151,7 +151,23 @@ export default async function OrdemDeServico({ params }: { readonly params: Prom
                 </p>
                 <ul className="mt-1 space-y-1 text-xs" data-termos-da-medicao>
                   {m.provisorio === null ? <li>Recebimento provisório: pendente.</li> : <li>Recebimento provisório em {m.provisorio.data} por {m.provisorio.por}{e.visao === "FISCALIZACAO" ? <> · <a href={DOC(id, "provisorio", m.provisorio.id)} data-documento="provisorio" className="text-[color:var(--color-primary)] underline underline-offset-2">termo (PDF)</a></> : null}</li>}
-                  {m.definitivos.map((d) => <li key={d.id}>Recebimento definitivo nº {d.numero} em {d.data} por {d.por}: <ValorMonetario valor={d.valor} comSimbolo /> (liquidado <ValorMonetario valor={d.liquidado} comSimbolo />) · <a href={DOC(id, "definitivo", d.id)} data-documento="definitivo" className="text-[color:var(--color-primary)] underline underline-offset-2">termo (PDF)</a></li>)}
+                  {m.definitivos.map((d) => (
+                    <li key={d.id} data-recebimento-definitivo={d.numero}>
+                      Recebimento definitivo nº {d.numero} em {d.data} por {d.por}: <ValorMonetario valor={d.valor} comSimbolo /> (liquidado <ValorMonetario valor={d.liquidado} comSimbolo />) ·{" "}
+                      <a href={DOC(id, "definitivo", d.id)} data-documento="definitivo" className="text-[color:var(--color-primary)] underline underline-offset-2">termo (PDF)</a>
+                      {/* ⚠️ V9 N4 — ESTORNADO: o termo continua aqui, com o valor que tinha no papel. O
+                          que mudou é o elegível da medição, na tabela acima; por isso o selo diz o que
+                          aconteceu em vez de simplesmente sumir com a linha. */}
+                      {d.estorno !== null ? (
+                        <span className="ml-1 rounded-[var(--radius-sm)] bg-[color:var(--color-status-alerta-bg)] px-1.5 py-0.5 text-xs text-[color:var(--color-status-alerta-fg)]" data-recebimento-estornado>
+                          estornado em {d.estorno.data} por {d.estorno.por}
+                          {d.estorno.motivo === null ? "" : ` — ${d.estorno.motivo}`}
+                        </span>
+                      ) : p.podeEstornarRecebimento ? (
+                        <FormEstornarRecebimento contratoId={id} recebimentoId={d.id} numero={d.numero} valor={d.valor} liquidado={d.liquidado} hoje={e.hoje} />
+                      ) : null}
+                    </li>
+                  ))}
                   {e.visao === "FISCALIZACAO" ? m.itens.filter((i) => i.decisao !== null && i.conferenciaId !== null).map((i) => <li key={`dec-${i.id}`}>Decisão do item {i.item} · <a href={DOC(id, "decisao", i.id)} data-documento="decisao" className="text-[color:var(--color-primary)] underline underline-offset-2">documento (PDF)</a></li>) : null}
                 </ul>
                 {m.estorno === null && m.provisorio === null && p.podeMedir ? <FormEstornarMedicao contratoId={id} medicaoId={m.id} numero={m.numero} /> : null}

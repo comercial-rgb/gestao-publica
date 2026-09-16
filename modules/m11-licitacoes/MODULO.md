@@ -359,6 +359,48 @@ Testes: `test/glosa-liberacao-de-saldo.test.ts` (G1–G6 + a derivação pura, 9
 mutações acusadas: o guard da medição somando o bruto, a controvérsia pendente liberando, e a tela
 descontando enquanto o cancelamento não.
 
+### O estorno do recebimento definitivo (V9 N4 — `ESTORNO-DE-RECEBIMENTO`, FECHADA)
+
+**O que não existia.** `estornarMedicaoDaOrdem` recusava medição com recebimento
+(`MEDICAO-COM-RECEBIMENTO`) e mandava "tratar na conferência" — mas a conferência acontece ANTES do
+definitivo. Depois dele não sobrava caminho nenhum: um termo assinado com a quantidade errada ficava
+no sistema para sempre, e a única saída era liquidar o errado e anular no M05, isto é, **resolver no
+dinheiro um erro que é de recebimento**.
+
+**A tabela de transições do recebimento definitivo:**
+
+| Estado | Como se chega | O que pode acontecer |
+|---|---|---|
+| (inexistente) | — | `registrarRecebimentoDefinitivo`, até o elegível (conforme + aceito − já recebido) |
+| **Vigente, não liquidado** | registrado | liquidar (M05, pela parcela) · **estornar** |
+| **Vigente, liquidado** | liquidação viva o consome | **estorno RECUSADO** (`RECEBIMENTO-LIQUIDADO`, nomeando o valor) — estornar a liquidação no M05 devolve este recebimento ao estado acima |
+| **Estornado** | `estornarRecebimentoDefinitivo` | nada: não se reestorna (`RECEBIMENTO-JA-ESTORNADO`), não lastreia liquidação (`RECEBIMENTO-ESTORNADO`). O elegível volta, e o termo **corrigido** é um recebimento NOVO |
+
+- **Append-only.** O termo original não é apagado nem reescrito: continua no histórico com o seu
+  `sha256`, e é por ele que a segunda via confere. O efeito — a quantidade voltar a ser elegível —
+  é DERIVADO da existência do estorno (`SELECAO_DOS_RECEBIDOS`), nunca de um `UPDATE`.
+- **Documento próprio.** Um ato que desfaz um documento assinado precisa de documento, ou some do
+  papel. O termo de estorno identifica o desfeito **pelo `sha256` dele** — dois termos da mesma
+  medição não se distinguem pelo número.
+- **Autoridade e ação próprias.** `ESTORNAR_RECEBIMENTO_DEFINITIVO` (permissões **v23**), mais a
+  designação vigente de `RECEBEDOR_DEFINITIVO`. A ação **não** é derivada para quem já tem
+  `REGISTRAR_RECEBIMENTO_DEFINITIVO`: receber é ordinário, desfazer é excepcional — concedê-la por
+  tabela daria o poder de desfazer a todo mundo que pode receber, em silêncio, no dia da
+  atualização.
+- **Uma vez só**, pelo `@unique` em `recebimentoId`. Não há coluna "estornado" para sair de
+  sincronia com o fato.
+- **A ordem da cadeia é uma só:** primeiro o dinheiro volta, depois o recebimento se desfaz.
+  `consumoDasParcelas` já sabia que liquidação estornada não consome — o estorno do recebimento
+  reusa essa leitura e não precisou de regra nova.
+- **Na tela**, a prévia da consequência vem escrita antes do clique (o efeito é invisível na linha
+  do recebimento: o que muda é o elegível, noutra tabela da mesma página), e o bloqueio por
+  liquidação viva é anunciado em vez de descoberto pelo erro.
+
+Testes: ER01–ER03 em `test/liquidacao-da-parcela.test.ts` (a cadeia com dinheiro) e ER04–ER06 em
+`test/ordem-de-servico-e-recebimentos.test.ts` (autoridade, repetição, data, elegível, manifesto).
+Três mutações acusadas: o estorno sem conferir liquidação viva, os recebidos voltando a incluir os
+estornados, e a liquidação aceitando recebimento estornado.
+
 Pendências nomeadas da ponte: `ME06-ADITIVO-ENTRE-EMISSAO-E-MEDICAO` (depende do aditivo por item),
 `COMISSAO-COM-QUORUM`, `ORDEM-DE-SERVICO-DE-MATERIAL`, `ANULACAO-PARCIAL-COM-VARIAS-PARCELAS`,
 `EMPENHO-POR-PARCELA-DA-ORDEM` (subempenho da parcela), `RETENCOES-NA-LIQUIDACAO-DA-PARCELA` (usa as parametrizadas no
@@ -469,7 +511,7 @@ dependente, envelope do comando; cinco mutações acusadas), `test/liquidacao-da
 M05), `test/ui/termos-do-contrato.test.ts` DO01/DO02 da memória (70 serviços, multipágina, os dois totais
 independentes), `test/runtime/contrato-runtime-ordem-de-servico.test.ts` (medir, evidência e estornar por `gestao_app`,
 com as negativas de UPDATE/DELETE). Percurso: `scripts/smoke-medicao-pela-planilha.ts`.
-Fora deste incremento: estorno do RECEBIMENTO (`ESTORNO-DE-RECEBIMENTO`, ainda aberta), medição por planilha sem ordem de serviço,
+Fora deste incremento: medição por planilha sem ordem de serviço,
 conversão de unidades, rateio de um serviço entre itens do contrato, reajuste/BDI entre o preço da planilha e o do
 contrato, exportação XLSX da medição.
 

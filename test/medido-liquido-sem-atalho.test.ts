@@ -110,6 +110,29 @@ describe("o medido de um item da ordem passa sempre pela derivação única", ()
     ).toEqual([]);
   });
 
+  it("nenhum leitor seleciona `recebidos` sem excluir os recebimentos ESTORNADOS", () => {
+    // ⚠️ MESMA ANATOMIA DA GLOSA, outro campo (V9 N4). `recebidos: { select: { quantidade: true } }`
+    // compila e soma também o que foi desfeito — e a quantidade estornada continua bloqueando o
+    // recebimento correto, em silêncio. A derivação é `SELECAO_DOS_RECEBIDOS`.
+    const achados: string[] = [];
+    for (const p of fontes(MODULO)) {
+      const rel = p.slice(RAIZ.length).replace(/^\//, "");
+      if (rel in EXCECOES) continue;
+      for (const m of codigo(p).matchAll(/recebidos:\s*\{[^}]*\}/g)) {
+        const trecho = m[0].replace(/\s+/g, " ");
+        if (trecho.includes("estorno")) continue;
+        achados.push(`${rel}: ${trecho.slice(0, 120)}`);
+      }
+    }
+    expect(
+      achados,
+      "\n\n⚠️ SELEÇÃO DE `recebidos` SEM EXCLUIR OS ESTORNADOS.\n\n" +
+        "Use `SELECAO_DOS_RECEBIDOS` (modules/m11-licitacoes/ordem-de-servico.ts). Sem o filtro, " +
+        "a quantidade de um termo DESFEITO continua contando como recebida, e o recebimento " +
+        "corrigido é recusado por 'acima do elegível'.\n\nSítios:\n"
+    ).toEqual([]);
+  });
+
   it("a relação continua se chamando `medidosNaOrdem` — é o nome que torna o guard exato", () => {
     // ⚠️ Renomeá-la de volta para `medidos` deixaria os dois testes acima verdes (nenhuma
     // ocorrência a encontrar) com a regra inteira desligada. É a mesma armadilha de um guard que
@@ -124,6 +147,7 @@ describe("o medido de um item da ordem passa sempre pela derivação única", ()
     const fonte = readFileSync(join(MODULO, ONDE_A_DERIVACAO_MORA), "utf8");
     expect(fonte).toContain("export function medidoLiquido");
     expect(fonte).toContain("export const SELECAO_DO_MEDIDO");
+    expect(fonte).toContain("export const SELECAO_DOS_RECEBIDOS");
     expect(fonte).toMatch(/REJEITADA/);
   });
 });
