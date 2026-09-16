@@ -225,6 +225,9 @@ export const FINANCEIRO: readonly RelatorioNav[] = [
 export const CONTABILIDADE: readonly RelatorioNav[] = [
   { href: "/contabilidade/plano-de-contas", numero: "Plano de contas", rotulo: "Plano de Contas PCASP", descricao: "As contas por classe, com natureza do saldo e a posição de cada uma (STN/PCASP)." },
   { href: "/contabilidade/lancamentos", numero: "Lançamentos", rotulo: "Lançamentos Contábeis", descricao: "As partidas dobradas, com nº de controle, histórico e o caminho até o documento de origem." },
+  // V11 V3.1 — o número que autoriza crédito adicional por superávit existia só dentro da recusa
+  // do guard; aqui ele pode ser perguntado ANTES de o decreto ser escrito.
+  { href: "/contabilidade/superavit", numero: "Superávit", rotulo: "Superávit financeiro por fonte", descricao: "O apurado nos fatos, o declarado, o já utilizado em créditos e o que ainda cabe, fonte a fonte." },
 ];
 
 /** Os relatórios GERENCIAIS — consulta livre com export aberto (TR 7.48). */

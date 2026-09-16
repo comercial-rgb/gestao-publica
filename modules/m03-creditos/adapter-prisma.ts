@@ -37,7 +37,7 @@ import type {
  * SUM — nunca incrementado.
  */
 
-interface ItemBruto {
+export interface ItemBruto {
   readonly id: string;
   readonly tipo: "SUPLEMENTACAO" | "ANULACAO";
   readonly valor: { toFixed(n: number): string };
@@ -64,7 +64,12 @@ interface ItemBruto {
  * SUPLEMENTACAO, e entra o estorno **de** uma SUPLEMENTACAO (seja qual for o tipo
  * dele). Aí o `packages/estornaveis` — a soma única, abaixo de todos — faz o resto.
  */
-function suplementacaoLiquida(itens: readonly ItemBruto[]): Money {
+/**
+ * ⚠️ EXPORTADA (V11 V3.1) para a CONSULTA do superávit. A consulta mostra o mesmo
+ * "utilizado" que o guard subtrai; recalculá-lo lá criaria a segunda verdade que este
+ * comentário inteiro existe para impedir.
+ */
+export function suplementacaoLiquida(itens: readonly ItemBruto[]): Money {
   const porId = new Map(itens.map((i) => [i.id, i]));
   const relevantes = itens.filter((i) =>
     i.estornoDeId === null
@@ -110,7 +115,7 @@ async function consumido(tx: Tx, leiId: string): Promise<Money> {
  * contra a declaração de OUTRO — e o uso de 2026 consumia o superávit de 2027. O
  * superávit é uma foto do encerramento de UM exercício; ele não atravessa anos.
  */
-async function usadoDaDisponibilidade(
+export async function usadoDaDisponibilidade(
   tx: Tx,
   fonteId: string,
   origem: string,

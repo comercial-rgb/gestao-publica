@@ -7,6 +7,7 @@ import { criarM04Deps } from "../m04-receita/adapter-prisma.js";
 import { roteiroArrecadacao } from "../m04-receita/dominio.js";
 import { registrarArrecadacao } from "../m04-receita/servico.js";
 import { abrirExercicio, encerrarExercicio } from "../m08-restos-a-pagar/exercicio.js";
+import { consultaDoSuperavit } from "../m12-relatorios/consulta-do-superavit.js";
 import { criarM03DepsAmarrado } from "../m12-relatorios/adapter-m03.js";
 import { criarM03Deps } from "./adapter-prisma.js";
 import {
@@ -427,5 +428,120 @@ describe("M03 — o fail-open, e o que ele custa", () => {
       suplementar(comPort, await decreto(comPort, leiCom, "D-COM"), "15000.00")
     ).rejects.toThrow(/SUPERAVIT_FINANCEIRO INSUFICIENTE/);
     expect(await prisma.itemCredito.count()).toBe(0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V11 V3.1 — A CONSULTA: APURADO, DECLARADO, UTILIZADO E DISPONÍVEL
+//
+// ⚠️ O NÚMERO JÁ EXISTIA, E SÓ DENTRO DA RECUSA. O guard acima calcula tudo isto dentro
+// da transação que grava o decreto — mas um servidor que quisesse saber ANTES quanto
+// ainda cabia não tinha onde perguntar: a resposta chegava como erro, depois do decreto
+// escrito. Estes casos provam que a consulta diz o MESMO que o guard cobra.
+//
+// A fixture serve de propósito: a fonte 500 tem declaração INFLADA (20.000 declarados
+// contra 10.000 de fatos), e é exatamente o caso em que os dois tetos divergem.
+// ═══════════════════════════════════════════════════════════════════════════
+describe("V11 V3.1 — a consulta do superávit", () => {
+  let deps: M03Deps;
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  it("v1: mostra os DOIS tetos e diz qual está limitando — aqui, os fatos", async () => {
+    await semear(true);
+    const c = await consultaDoSuperavit(prisma, 2026);
+
+    expect(c.exercicioApurado).toBe(2025);
+    expect(c.exercicioAnteriorEncerrado).toBe(true);
+
+    const f500 = c.linhas.find((l) => l.fonteCodigo === "500");
+    expect(f500).toBeDefined();
+    // À MÃO: arrecadou 10.000 em 2025 e não pagou nada -> caixa 10.000, superávit 10.000.
+    expect(f500?.apurado).toBe("10000.00");
+    expect(f500?.declarado).toBe("20000.00");
+    expect(f500?.utilizado).toBe("0.00");
+    // Disponível é o MENOR teto menos o usado: min(10.000, 20.000) − 0.
+    expect(f500?.disponivel).toBe("10000.00");
+    expect(f500?.tetoQueLimita).toBe("FATOS");
+    expect(f500?.situacao).toContain("A declaração precisa ser corrigida");
+  });
+
+  it("v2: o que a consulta diz DISPONÍVEL é exatamente o que o guard ainda aceita", async () => {
+    await semear(true);
+    deps = criarM03DepsAmarrado(prisma);
+    const antes = await consultaDoSuperavit(prisma, 2026);
+    const disponivel = antes.linhas.find((l) => l.fonteCodigo === "500")?.disponivel;
+    expect(disponivel).toBe("10000.00");
+
+    // ⚠️ A AMARRAÇÃO QUE IMPORTA: gastar EXATAMENTE o disponível passa, e um centavo a
+    // mais é recusado. Se a consulta e o guard divergissem, um dos dois falharia aqui.
+    const leiId = await lei(deps);
+    await suplementar(deps, await decreto(deps, leiId, "D-CONSULTA"), "10000.00");
+
+    const depois = await consultaDoSuperavit(prisma, 2026);
+    const f500 = depois.linhas.find((l) => l.fonteCodigo === "500");
+    expect(f500?.utilizado).toBe("10000.00");
+    expect(f500?.disponivel).toBe("0.00");
+    // E o decreto aparece rastreado na linha.
+    expect(f500?.decretos.map((d) => d.identificacao)).toEqual(["D-CONSULTA/2026"]);
+    expect(f500?.decretos[0]?.liquido).toBe("10000.00");
+
+    await expect(
+      suplementar(deps, await decreto(deps, leiId, "D-ESTOURO"), "0.01")
+    ).rejects.toThrow(/SUPERAVIT_FINANCEIRO INSUFICIENTE/);
+  });
+
+  it("v3: exercício anterior NÃO encerrado é dado ausente, não superávit zero", async () => {
+    await semear(false);
+    const c = await consultaDoSuperavit(prisma, 2026);
+
+    expect(c.exercicioAnteriorEncerrado).toBe(false);
+    expect(c.totalApurado).toBeNull();
+    expect(c.totalDisponivel).toBeNull();
+    const f500 = c.linhas.find((l) => l.fonteCodigo === "500");
+    // ⚠️ NULO, E NÃO "0.00". Zero diria "não há lastro"; o que há é um exercício aberto.
+    expect(f500?.apurado).toBeNull();
+    expect(f500?.disponivel).toBeNull();
+    expect(f500?.tetoQueLimita).toBe("SEM_TETO");
+    expect(f500?.situacao).toContain("não foi encerrado");
+  });
+
+  it("v4 (N=2): duas fontes, e a 540 sem fatos tem superávit ZERO — que é resposta, não ausência", async () => {
+    await semear(true);
+    const c = await consultaDoSuperavit(prisma, 2026);
+
+    expect(c.linhas.map((l) => l.fonteCodigo)).toEqual(["500", "540"]);
+    const f540 = c.linhas.find((l) => l.fonteCodigo === "540");
+    // A 540 não arrecadou nada em 2025: apurado zero, declarado 5.000.
+    expect(f540?.apurado).toBe("0.00");
+    expect(f540?.declarado).toBe("5000.00");
+    expect(f540?.disponivel).toBe("0.00");
+    expect(f540?.tetoQueLimita).toBe("FATOS");
+    // ⚠️ O TOTAL NÃO SOMA A DECLARAÇÃO INFLADA: 10.000 + 0, e não 20.000 + 5.000.
+    expect(c.totalApurado).toBe("10000.00");
+    expect(c.totalDisponivel).toBe("10000.00");
+  });
+
+  it("v5: anular o decreto DEVOLVE a disponibilidade, e a consulta enxerga a devolução", async () => {
+    await semear(true);
+    deps = criarM03DepsAmarrado(prisma);
+    const leiId = await lei(deps);
+    const decId = await decreto(deps, leiId, "D-ANULAR");
+    await suplementar(deps, decId, "6000.00");
+
+    expect((await consultaDoSuperavit(prisma, 2026)).linhas.find((l) => l.fonteCodigo === "500")?.disponivel).toBe("4000.00");
+
+    await anularCredito({ decretoId: decId, data: new Date("2026-06-01T12:00:00Z"), motivo: "Anulado por erro de digitação no valor suplementado.", criadoPor: POR }, deps);
+
+    const depois = await consultaDoSuperavit(prisma, 2026);
+    const f500 = depois.linhas.find((l) => l.fonteCodigo === "500");
+    expect(f500?.utilizado).toBe("0.00");
+    expect(f500?.disponivel).toBe("10000.00");
+    // ⚠️ O DECRETO CONTINUA NA LISTA, com líquido ZERO. Sumir com ele apagaria a história:
+    // o decreto existiu, consumiu e foi anulado, e é isso que a linha diz.
+    expect(f500?.decretos.map((d) => d.identificacao)).toEqual(["D-ANULAR/2026"]);
+    expect(f500?.decretos[0]?.liquido).toBe("0.00");
   });
 });
