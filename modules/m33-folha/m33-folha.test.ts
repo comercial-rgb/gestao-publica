@@ -80,7 +80,9 @@ const PARCELA: Readonly<Record<number, string>> = { 1: "0", 2: "300.00", 3: "675
 const SF: TabelaSalarioFamiliaLida = { id: "t-sf", competenciaInicio: "2026-01", competenciaFim: null, rendaMaxima: $("2000.00"), valorPorDependente: $("60.00"), idadeLimite: 14, fundamentacaoLegal: "FIXTURE de teste" };
 
 const rubrica = (r: Partial<RubricaLida> & { readonly codigo: string; readonly natureza: RubricaLida["natureza"]; readonly tipo: RubricaLida["tipo"] }): RubricaLida => ({
-  id: `r-${r.codigo}`, descricao: r.codigo, percentual: null, incideContribuicao: r.tipo === "PROVENTO", incideIrrf: r.tipo === "PROVENTO", proporcionalAosDias: false, ordem: 10, fundamentacaoLegal: "fixture", ...r,
+  id: `r-${r.codigo}`, descricao: r.codigo, percentual: null, incideContribuicao: r.tipo === "PROVENTO", incideIrrf: r.tipo === "PROVENTO", proporcionalAosDias: false, ordem: 10, fundamentacaoLegal: "fixture",
+  // V11 V1.1 — a versão é a autoridade do cálculo; nas fixtures deste arquivo é sempre a 1.
+  versao: 1, formula: null, casasDecimais: 2, ...r,
 });
 const RUBRICAS: readonly RubricaLida[] = [
   rubrica({ codigo: "VENC", natureza: "VENCIMENTO_BASE", tipo: "PROVENTO", ordem: 1, proporcionalAosDias: true }),

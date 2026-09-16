@@ -56,6 +56,76 @@ tela `/folha/tabelas`, a partir da portaria vigente.
   do próprio servidor (V6 P2.4): só folhas FECHADAS, recorte pela pessoa da sessão
 - `scripts/smoke-folha.ts`, `scripts/smoke-portal-do-servidor.ts`
 
+## A RUBRICA VERSIONADA E A FÓRMULA DO ENTE (V11 V1.1)
+
+O cadastro anterior tinha sete naturezas fechadas e **nenhuma vigência**. Duas consequências:
+
+1. **Mudar o percentual de uma gratificação reescrevia o passado.** A folha lia a linha atual da
+   `Rubrica`; recalcular março em setembro usava o percentual de setembro, e a memória congelada
+   do contracheque discordava do cadastro sem que nada explicasse a diferença.
+2. **Tudo que não fosse "percentual do vencimento" virava lançamento digitado à mão**, porque não
+   havia como o ente escrever a conta dele.
+
+`VersaoDaRubrica` é agora **a autoridade do cálculo**: percentual, incidências,
+proporcionalidade, arredondamento, regime aplicável, fundamentação e fórmula pertencem a ela,
+com vigência por competência. `Rubrica` ficou sendo a identidade (código, descrição, tipo,
+natureza, ordem). As colunas antigas continuam na tabela — migration é aditiva, zero `DROP` — e
+**não são mais lidas pelo motor**; elas registram como a rubrica nasceu. A migration de dados
+`20260927090100_v11_v1_rubrica_versionada` criou a versão 1 de cada rubrica existente copiando
+exatamente aquelas colunas, com vigência desde `1900-01`, para que toda folha já fechada
+continue reproduzível.
+
+### A fórmula
+
+A natureza `FORMULA` avalia a expressão da versão por `packages/formula` — **universo fechado**,
+nunca `eval`, nunca `new Function`, nunca lista negra (`this.constructor.constructor("…")()`
+atravessa qualquer lista de palavras). Ela enxerga apenas:
+
+- `vencimento_base`, `gratificacoes`, `dias`, `fator_dias`, `dependentes_ir`;
+- as outras rubricas, por `rubrica.CODIGO`.
+
+Não existe `salario_minimo` nem `teto_do_rgps` nessa lista, e a ausência é deliberada: são
+valores normativos que mudam por portaria, e entram por tabela do ente ou por rubrica própria —
+nunca como constante nacional embutida no motor.
+
+### O grafo
+
+`ordemDeCalculo` é topológica, com desempate pela ordem do contracheque e depois pelo código —
+determinística, para que a mesma folha produza a mesma memória e o mesmo sha256. Ela recusa três
+coisas **com mensagens diferentes**, porque são problemas diferentes:
+
+| Recusa | Quando | Por quê |
+|---|---|---|
+| `CICLO-DE-RUBRICAS` | A cita B cita A (ou A cita A) | Não existe ordem de cálculo possível. A mensagem traz o caminho. |
+| `DEPENDENCIA-INEXISTENTE` | cita um código que não é rubrica vigente | Referência morta, provavelmente erro de digitação. |
+| `DEPENDENCIA-POSTERIOR` | cita contribuição, IRRF ou salário-família | Elas são calculadas **depois** dos proventos, sobre a base que inclui esta linha. O valor não existe ainda. |
+
+### Os três atos
+
+`CADASTRAR_VERSAO_DE_RUBRICA`, `APROVAR_VERSAO_DE_RUBRICA` e `REVOGAR_VERSAO_DE_RUBRICA`.
+**Quem escreve não aprova** — a mesma segregação da certificação da folha. A versão nasce
+`RASCUNHO` e não calcula nada; aprovar a sucessora **fecha a vigência** da antecessora sem
+apagá-la (ela continua `APROVADA`, porque as folhas que calculou precisam dela para serem
+explicadas); revogar é fato com motivo e autor.
+
+**Uma rubrica de natureza `FORMULA` nasce sem versão.** Isto foi um defeito real, achado pelo
+caso d3: criar a versão 1 automaticamente também para ela produzia uma versão `APROVADA` com
+`formula` nula, e o motor recusava a folha **inteira** nomeando a rubrica.
+
+O papel de runtime só concede `UPDATE` de `situacao`, autoria da aprovação/revogação e
+`competenciaFim`. O conteúdo é congelado: versão errada se revoga e se substitui, não se edita.
+
+### Onde isso se opera
+
+`/folha/rubricas/<id>` — o painel de versões fica **fora do molde**, como a política de
+divulgação do M10: escrever uma versão não é editar um campo do cadastro.
+
+### Provado em
+
+`m33-rubrica-versionada.test.ts` (17, domínio puro) e `m33-versao-da-rubrica.test.ts` (11, com
+banco). Três mutações, três acusações: ciclo não detectado, vigência que não filtra por
+competência, e autor aprovando a própria versão.
+
 ## A APROPRIAÇÃO CONTÁBIL (V6 P2.3b — TR 5.12.71)
 
 A folha FECHADA vira despesa: `apropriarFolha` chama o `empenhar` do M05 — mesmo roteiro

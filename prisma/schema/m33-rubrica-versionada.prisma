@@ -1,0 +1,112 @@
+// ============================================================================
+// M33 — A RUBRICA VERSIONADA, COM FÓRMULA DO ENTE (V11 V1.1)
+//
+// O cadastro anterior tinha SETE naturezas fechadas e nenhuma vigência: mudar o percentual de
+// uma gratificação reescrevia o passado, porque a folha lia a linha atual da `Rubrica`. Uma
+// folha de março recalculada em setembro passava a usar o percentual de setembro — e a memória
+// congelada do contracheque discordava do cadastro sem que nada explicasse a diferença.
+//
+// ⚠️ A VERSÃO É A AUTORIDADE DO CÁLCULO. `Rubrica` passa a ser só a IDENTIDADE (código,
+// descrição, tipo, natureza, ordem). Percentual, incidências, proporcionalidade, fundamentação,
+// arredondamento, regime aplicável e fórmula vivem AQUI, com vigência por competência.
+//
+// ⚠️ AS COLUNAS ANTIGAS DE `Rubrica` CONTINUAM NA TABELA e NÃO SÃO MAIS LIDAS PELO MOTOR.
+// Migration é aditiva, zero DROP — apagá-las exigiria reescrever a história. A migration de
+// dados cria a VERSÃO 1 de cada rubrica existente copiando exatamente aquelas colunas, com
+// vigência desde `1900-01`, de modo que toda folha já calculada continua reproduzível. O
+// serviço de cadastro segue preenchendo as colunas antigas no INSERT (elas são NOT NULL) e
+// nunca mais as atualiza: elas registram como a rubrica nasceu, não como ela está.
+//
+// ⚠️ A FÓRMULA NÃO É TEXTO EXECUTADO. Ela é interpretada por `packages/formula`, universo
+// fechado: números, variáveis declaradas, + − × ÷, parênteses, `min`, `max`, `arredondar`,
+// `teto`, `piso` e `se`. Nunca `eval`, nunca `new Function`, nunca lista negra — 
+// `this.constructor.constructor("…")()` atravessa qualquer lista de palavras proibidas.
+// ============================================================================
+
+/// A quem a versão se aplica. O regime é do VÍNCULO (M32), não da pessoa: a mesma pessoa pode
+/// ter uma matrícula estatutária e um contrato temporário celetista, e a regra de um não é a do
+/// outro. `TODOS` é escolha explícita de quem aprova, não o silêncio de um campo não preenchido.
+enum AplicabilidadeDeRegime {
+  TODOS
+  RGPS
+  RPPS
+  ISENTO
+}
+
+/// RASCUNHO não calcula nada: a versão existe, é conferível e não afeta folha nenhuma.
+/// APROVADA é a única que o motor lê. REVOGADA é fato, não apagamento — a folha que a usou
+/// continua explicável.
+enum SituacaoDaVersaoDaRubrica {
+  RASCUNHO
+  APROVADA
+  REVOGADA
+}
+
+model VersaoDaRubrica {
+  id String @id @default(cuid())
+
+  rubricaId String
+  rubrica   Rubrica @relation(fields: [rubricaId], references: [id])
+
+  /// Sequencial por rubrica, começando em 1. É o que a memória do contracheque cita.
+  versao Int
+
+  /// Vigência por competência AAAA-MM. `fim` nulo = aberta. Duas versões APROVADAS da mesma
+  /// rubrica não podem valer na mesma competência — o serviço fecha a anterior ao aprovar.
+  competenciaInicio String  @db.VarChar(7)
+  competenciaFim    String? @db.VarChar(7)
+
+  /// A expressão, quando a natureza é FORMULA. Nas outras naturezas é nula: o vencimento-base
+  /// não é fórmula do ente, é o salário vigente do vínculo.
+  formula String?
+
+  /// Só PERCENTUAL_DO_VENCIMENTO. Decimal: 0.2000 = 20%.
+  percentual Decimal? @db.Decimal(7, 4)
+
+  incideContribuicao  Boolean
+  incideIrrf          Boolean
+  proporcionalAosDias Boolean
+
+  /// Casas decimais do arredondamento do valor da linha. Dinheiro é 2; a versão declara para que
+  /// a memória possa dizer qual arredondamento foi aplicado, em vez de o leitor supor.
+  casasDecimais Int @default(2)
+
+  regime AplicabilidadeDeRegime @default(TODOS)
+
+  fundamentacaoLegal String
+
+  situacao SituacaoDaVersaoDaRubrica @default(RASCUNHO)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  /// Quem aprovou e quando. Nulos enquanto RASCUNHO. A revogação guarda o seu próprio autor.
+  aprovadoEm  DateTime?
+  aprovadoPor String?
+  revogadoEm  DateTime?
+  revogadoPor String?
+  motivoDaRevogacao String?
+
+  dependencias DependenciaDaVersaoDaRubrica[]
+
+  @@unique([rubricaId, versao])
+  @@index([rubricaId, competenciaInicio])
+  @@index([situacao])
+}
+
+/// As rubricas que a fórmula desta versão referencia, uma por linha — extraídas da expressão
+/// pelo interpretador, nunca digitadas à parte. É o que permite recusar CICLO e REFERÊNCIA
+/// INEXISTENTE antes de calcular, e explicar o grafo na tela.
+model DependenciaDaVersaoDaRubrica {
+  id String @id @default(cuid())
+
+  versaoId String
+  versao   VersaoDaRubrica @relation(fields: [versaoId], references: [id], onDelete: Cascade)
+
+  /// O CÓDIGO da rubrica referenciada (e não o id): a fórmula é escrita pelo ente em termos de
+  /// código, que é o que ele vê na tela e no contracheque.
+  codigoDaDependencia String
+
+  @@unique([versaoId, codigoDaDependencia])
+  @@index([codigoDaDependencia])
+}

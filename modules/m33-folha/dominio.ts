@@ -3,6 +3,8 @@ import { z } from "zod";
 import { Decimal, toMoney, sumMoney, type Money } from "../../packages/contracts/index.js";
 import { diaCivil, meioDiaCivil } from "../../packages/datas/index.js";
 import { idadeEm } from "../m32-pessoal/dominio.js";
+import { FormulaDaRubricaInvalidaError, NATUREZAS_CITAVEIS, analisarFormulaDaRubrica, ordemDeCalculo, PREFIXO_DE_RUBRICA, type NoDoGrafo } from "./rubrica-versionada.js";
+import { calcular as calcularFormula } from "../../packages/formula/index.js";
 
 /**
  * ═══ M33 — FOLHA DE PAGAMENTO: O DOMÍNIO PURO (V6 P2.3, RH bloco 2) ═══
@@ -25,7 +27,8 @@ import { idadeEm } from "../m32-pessoal/dominio.js";
  * (pendência `ARREDONDAMENTO-DA-FOLHA` no MODULO), não um número a trocar aqui.
  */
 
-export const VERSAO_DO_MOTOR = "m33-folha-1.0.0";
+/** 1.1.0 — a memória passou a citar a VERSÃO da rubrica e os passos da fórmula (V11 V1.1). */
+export const VERSAO_DO_MOTOR = "m33-folha-1.1.0";
 export const DIAS_DO_MES_FISCAL = 30;
 
 export type RegimePrevidenciario = "RGPS" | "RPPS" | "ISENTO";
@@ -37,7 +40,9 @@ export type NaturezaDaRubrica =
   | "PERCENTUAL_DO_VENCIMENTO"
   | "CONTRIBUICAO_PREVIDENCIARIA"
   | "IMPOSTO_DE_RENDA"
-  | "SALARIO_FAMILIA";
+  | "SALARIO_FAMILIA"
+  /** V11 V1.1 — o valor sai da FÓRMULA da versão vigente, em universo fechado. */
+  | "FORMULA";
 
 /** As naturezas que existem UMA vez: o serviço recusa a segunda rubrica com a mesma. */
 export const NATUREZAS_SISTEMICAS: readonly NaturezaDaRubrica[] = [
@@ -466,6 +471,12 @@ export interface RubricaLida {
   readonly proporcionalAosDias: boolean;
   readonly ordem: number;
   readonly fundamentacaoLegal: string;
+  /** V11 V1.1 — a VERSÃO de onde vieram percentual, incidências, proporcionalidade e fórmula. */
+  readonly versao: number;
+  /** A expressão, só quando a natureza é FORMULA. */
+  readonly formula: string | null;
+  /** Casas do arredondamento da linha, declaradas pela versão. */
+  readonly casasDecimais: number;
 }
 
 export interface LancamentoLido {
@@ -579,14 +590,44 @@ export function calcularContracheque(e: EntradaDoContracheque): ContrachequeCalc
   const vencimento = e.vencimentoBase;
   const fator = fatorDeDias(e.dias.dias);
   const linhas: LinhaCalculada[] = [];
+  /**
+   * ⚠️ O VALOR DE CADA RUBRICA, PELO CÓDIGO — é o que uma fórmula enxerga quando cita
+   * `rubrica.CODIGO`. Toda rubrica citável nasce aqui valendo ZERO, e o zero é verdadeiro: uma
+   * rubrica de valor informado SEM lançamento nesta competência não gera linha e vale zero.
+   * Isso NÃO é o "zero em silêncio" que o interpretador recusa — aquele é a variável que não
+   * existe no cadastro, e essa continua sendo recusa nomeada.
+   */
+  const valorPorCodigo = new Map<string, Money>();
+  for (const r of rubricas) if (NATUREZAS_CITAVEIS.includes(r.natureza)) valorPorCodigo.set(r.codigo, toMoney(0));
   const linha = (r: RubricaLida, valorBase: Money, memoria: string, proporcional = r.proporcionalAosDias): void => {
     const f = proporcional ? fator : new Decimal(1);
     const valor = toMoney(valorBase.times(f));
     linhas.push({ rubricaId: r.id, codigo: r.codigo, descricao: r.descricao, tipo: r.tipo, natureza: r.natureza, ordem: r.ordem, valorBase, fator: f, valor, incideContribuicao: r.incideContribuicao, incideIrrf: r.incideIrrf, memoria: proporcional ? `${memoria} × ${e.dias.explicacao}` : memoria });
+    valorPorCodigo.set(r.codigo, valor);
   };
 
-  // 1. proventos e descontos informados
-  for (const r of rubricas) {
+  /**
+   * 1. PROVENTOS E DESCONTOS, NA ORDEM DO GRAFO (V11 V1.1).
+   *
+   * ⚠️ ISTO ERA UM `for` NA ORDEM DO CONTRACHEQUE. Com fórmula, uma rubrica pode CITAR outra, e
+   * citar exige que a citada já tenha valor. `ordemDeCalculo` é topológica com desempate pela
+   * ordem do contracheque e depois pelo código — então um cadastro SEM nenhuma fórmula produz
+   * exatamente a sequência de antes, e a memória de uma folha antiga continua reproduzível.
+   *
+   * ⚠️ TODAS as rubricas entram no grafo, inclusive contribuição, IRRF e salário-família, que
+   * são calculadas nos passos 2 a 4. Deixá-las de fora faria uma fórmula que cita a contribuição
+   * ser recusada como "dependência inexistente" — quando o problema verdadeiro é outro: ela
+   * existe, mas é calculada DEPOIS, sobre a base que inclui esta linha.
+   */
+  const grafo: readonly NoDoGrafo[] = rubricas.map((r) => ({
+    codigo: r.codigo,
+    natureza: r.natureza,
+    ordem: r.ordem,
+    dependencias: r.natureza === "FORMULA" && r.formula !== null ? analisarFormulaDaRubrica(r.codigo, r.formula).dependencias : [],
+  }));
+  const porCodigoDaRubrica = new Map(rubricas.map((r) => [r.codigo, r]));
+  for (const noDoGrafo of ordemDeCalculo(grafo)) {
+    const r = porCodigoDaRubrica.get(noDoGrafo.codigo)!;
     switch (r.natureza) {
       case "VENCIMENTO_BASE":
         linha(r, vencimento, `vencimento-base vigente ${m(vencimento)}`);
@@ -606,6 +647,26 @@ export function calcularContracheque(e: EntradaDoContracheque): ContrachequeCalc
         if (dos.length === 0) break;
         const total = sumMoney(dos.map((l) => l.valor));
         linha(r, total, `lançamento(s) ${dos.map((l) => `${l.tipo.toLowerCase()} ${m(l.valor)}`).join(" + ")}`);
+        break;
+      }
+      case "FORMULA": {
+        if (r.formula === null) throw new FormulaDaRubricaInvalidaError(r.codigo, `a versão ${r.versao} é FORMULA e não tem expressão gravada. Nada foi calculado.`);
+        // ⚠️ PROPORCIONALIDADE NÃO SE APLICA DUAS VEZES. Quem escreve a fórmula tem `fator_dias`
+        // à mão; se o motor ainda multiplicasse pelo fator, meio mês viraria um quarto sem que
+        // nada na tela dissesse isso. A versão que pede as duas coisas é recusa, não escolha.
+        if (r.proporcionalAosDias) throw new FormulaDaRubricaInvalidaError(r.codigo, `a versão ${r.versao} é FORMULA e está marcada como proporcional aos dias. A proporcionalidade se escreve na própria fórmula, com a variável fator_dias — aplicar as duas contaria os dias duas vezes. Nada foi calculado.`);
+        const variaveis: Record<string, Decimal> = {
+          vencimento_base: vencimento,
+          gratificacoes: sumMoney(e.gratificacoes.map((g) => g.valor)),
+          dias: new Decimal(e.dias.dias),
+          fator_dias: fator,
+          dependentes_ir: new Decimal(e.dependentesIr),
+        };
+        for (const [codigo, valor] of valorPorCodigo) variaveis[`${PREFIXO_DE_RUBRICA}${codigo}`] = valor;
+        const avaliada = calcularFormula(r.formula, variaveis);
+        const arredondado = toMoney(avaliada.valor.toDecimalPlaces(r.casasDecimais, Decimal.ROUND_HALF_EVEN));
+        const usadas = avaliada.memoria.map((passo) => `${passo.expressao}=${passo.valor}`).join(", ");
+        linha(r, arredondado, `fórmula da versão ${r.versao}: ${r.formula} — com ${usadas === "" ? "nenhuma variável" : usadas} = ${m(avaliada.valor)}, arredondado a ${r.casasDecimais} casa(s) half-even = ${m(arredondado)}`, false);
         break;
       }
       default:
@@ -654,7 +715,7 @@ export function calcularContracheque(e: EntradaDoContracheque): ContrachequeCalc
     vinculo: { id: e.vinculo.id, matricula: e.vinculo.matricula, regime: e.vinculo.regime },
     dias: e.dias,
     vencimentoBase: m(vencimento),
-    linhas: ordenadas.map((l) => ({ codigo: l.codigo, descricao: l.descricao, tipo: l.tipo, natureza: l.natureza, valorBase: m(l.valorBase), fator: l.fator.toFixed(6), valor: m(l.valor), incideContribuicao: l.incideContribuicao, incideIrrf: l.incideIrrf, memoria: l.memoria, fundamentacao: rubricas.find((r) => r.id === l.rubricaId)?.fundamentacaoLegal ?? "" })),
+    linhas: ordenadas.map((l) => ({ codigo: l.codigo, descricao: l.descricao, tipo: l.tipo, natureza: l.natureza, valorBase: m(l.valorBase), fator: l.fator.toFixed(6), valor: m(l.valor), incideContribuicao: l.incideContribuicao, incideIrrf: l.incideIrrf, memoria: l.memoria, versaoDaRubrica: rubricas.find((r) => r.id === l.rubricaId)?.versao ?? 0, fundamentacao: rubricas.find((r) => r.id === l.rubricaId)?.fundamentacaoLegal ?? "" })),
     contribuicao: { regime: contribuicaoCalculada.regime, base: m(contribuicaoCalculada.base), baseAntesDoTeto: m(contribuicaoCalculada.baseAntesDoTeto), tetoAplicado: contribuicaoCalculada.tetoAplicado, calculada: m(contribuicaoCalculada.valor), aplicada: m(contribuicao), faixas: faixasParaMemoria(contribuicaoCalculada.faixas), tabela: contribuicaoCalculada.tabelaId, fundamentacao: contribuicaoCalculada.fundamentacao, ...(e.imposicoes?.contribuicao !== undefined ? { imposta: e.imposicoes.contribuicao.explicacao } : {}) },
     irrf: { rendaTributavel: m(rendaTributavel), base: m(irrfCalculado.base), calculado: m(irrfCalculado.valor), aplicado: m(irrf), cenario: irrfCalculado.cenario, maior65, dependentes: e.dependentesIr, cenarios: irrfCalculado.cenarios.map((c) => ({ nome: c.nome, aplicavel: c.aplicavel, ...(c.motivo !== undefined ? { motivo: c.motivo } : {}), base: m(c.base), valor: m(c.valor), deducoes: c.deducoes.map((d) => ({ tipo: d.tipo, valor: m(d.valor) })), faixas: faixasParaMemoria(c.faixas) })), tabela: irrfCalculado.tabelaId, fundamentacao: irrfCalculado.fundamentacao, ...(e.imposicoes?.irrf !== undefined ? { imposto: e.imposicoes.irrf.explicacao } : {}) },
     salarioFamilia: salarioFamilia === null ? null : { rendaBruta: m(salarioFamilia.rendaBruta), rendaMaxima: m(salarioFamilia.rendaMaxima), valorPorDependente: m(salarioFamilia.valorPorDependente), elegiveis: salarioFamilia.elegiveis, valor: m(salarioFamilia.valor), considerados: salarioFamilia.considerados, tabela: salarioFamilia.tabelaId, fundamentacao: salarioFamilia.fundamentacao },
@@ -781,7 +842,7 @@ export const zCadastrarRubricaInput = z
     codigo: z.string().trim().min(1).max(20),
     descricao: z.string().trim().min(3),
     tipo: z.enum(["PROVENTO", "DESCONTO"]),
-    natureza: z.enum(["VENCIMENTO_BASE", "GRATIFICACOES_DO_VINCULO", "VALOR_INFORMADO", "PERCENTUAL_DO_VENCIMENTO", "CONTRIBUICAO_PREVIDENCIARIA", "IMPOSTO_DE_RENDA", "SALARIO_FAMILIA"]),
+    natureza: z.enum(["VENCIMENTO_BASE", "GRATIFICACOES_DO_VINCULO", "VALOR_INFORMADO", "PERCENTUAL_DO_VENCIMENTO", "CONTRIBUICAO_PREVIDENCIARIA", "IMPOSTO_DE_RENDA", "SALARIO_FAMILIA", "FORMULA"]),
     percentual: zAliquota.nullable().optional(),
     incideContribuicao: z.boolean(),
     incideIrrf: z.boolean(),

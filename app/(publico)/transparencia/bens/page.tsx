@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listarBensPublicos, PADRAO_POR_PAGINA, PortaSemBancoError, type PaginaDeBensPublicos } from "../../../../lib/portas/bens-publicos";
 import { identidadePublica } from "../../../../lib/portas/identidade";
+import { formatarMoeda } from "../../../../lib/format/moeda";
 
 /**
  * CONSULTA PÚBLICA DE BENS (V9 N2, família Patrimônio).

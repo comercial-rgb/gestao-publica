@@ -314,6 +314,10 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   SOLICITAR_SERVICO: "meus-servicos",
   REGISTRAR_REPRESENTACAO: "cadastros",
   CADASTRAR_RUBRICA: "folha",
+  // V11 V1.1 — as versões se operam no detalhe da rubrica, dentro da área da folha.
+  CADASTRAR_VERSAO_DE_RUBRICA: "folha",
+  APROVAR_VERSAO_DE_RUBRICA: "folha",
+  REVOGAR_VERSAO_DE_RUBRICA: "folha",
   LANCAR_NA_FOLHA: "folha",
   ABRIR_FOLHA: "folha",
   CALCULAR_FOLHA: "folha",

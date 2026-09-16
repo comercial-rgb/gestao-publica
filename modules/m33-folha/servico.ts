@@ -52,6 +52,7 @@ import {
   type TabelaIrrfLida,
   type TabelaSalarioFamiliaLida,
 } from "./dominio.js";
+import { escolherVersaoVigente, type VersaoLida } from "./rubrica-versionada.js";
 
 /**
  * ═══ M33 — OS SERVIÇOS DA FOLHA (V6 P2.3) ═══
@@ -153,6 +154,34 @@ export async function cadastrarRubrica(prisma: PrismaClient, input: CadastrarRub
         percentual: d.percentual === null || d.percentual === undefined ? null : d.percentual.toFixed(4),
         incideContribuicao: d.incideContribuicao, incideIrrf: d.incideIrrf, proporcionalAosDias: d.proporcionalAosDias,
         ordem: d.ordem, fundamentacaoLegal: d.fundamentacaoLegal, criadoPor: d.criadoPor,
+      },
+      select: { id: true },
+    });
+    /**
+     * ⚠️ A VERSÃO 1 NASCE COM A RUBRICA (V11 V1.1). A versão é a autoridade do cálculo; uma
+     * rubrica sem versão vigente não participa de contracheque nenhum — e se for sistêmica, a
+     * folha inteira recusa. Criar a rubrica e deixar a versão para "depois" produziria um
+     * cadastro que existe na tela e não calcula nada, que é exatamente o defeito que a
+     * migração de dados desta mesma entrega precisou consertar para as rubricas antigas.
+     *
+     * Ela nasce APROVADA e vigente desde `1900-01` porque é o que o cadastro anterior queria
+     * dizer: a rubrica vale desde sempre, até que alguém escreva uma versão nova. O aprovador é
+     * quem cadastrou — é o registro verdadeiro, não uma assinatura inventada.
+     */
+    //
+    // ⚠️ EXCEÇÃO: A RUBRICA DE FÓRMULA NASCE SEM VERSÃO, e isto foi um defeito real achado pelo
+    // teste d3. Criar a versão 1 automaticamente também para ela produzia uma versão APROVADA
+    // com `formula` nula — e o motor, ao encontrá-la, recusava a folha INTEIRA nomeando a
+    // rubrica. Uma rubrica de fórmula só passa a existir para o cálculo quando alguém escreve a
+    // expressão e OUTRA pessoa a aprova, que é exatamente o ponto de ela ser versionada.
+    if (d.natureza !== "FORMULA") await tx.versaoDaRubrica.create({
+      data: {
+        rubricaId: r.id, versao: 1, competenciaInicio: "1900-01", competenciaFim: null, formula: null,
+        percentual: d.percentual === null || d.percentual === undefined ? null : d.percentual.toFixed(4),
+        incideContribuicao: d.incideContribuicao, incideIrrf: d.incideIrrf,
+        proporcionalAosDias: d.proporcionalAosDias, casasDecimais: 2, regime: "TODOS",
+        fundamentacaoLegal: d.fundamentacaoLegal, situacao: "APROVADA",
+        criadoPor: d.criadoPor, aprovadoPor: d.criadoPor, aprovadoEm: new Date(),
       },
       select: { id: true },
     });
@@ -276,8 +305,37 @@ export async function calcularFolha(prisma: PrismaClient, input: CalcularFolhaIn
     const { inicio, fim } = bordasDaCompetencia(competencia);
 
     const tabelas = await lerTabelas(tx, competencia);
-    const rubricasBrutas = await tx.rubrica.findMany({ select: { id: true, codigo: true, descricao: true, tipo: true, natureza: true, percentual: true, incideContribuicao: true, incideIrrf: true, proporcionalAosDias: true, ordem: true, fundamentacaoLegal: true } });
-    const rubricas: RubricaLida[] = rubricasBrutas.map((r) => ({ ...r, tipo: r.tipo as RubricaLida["tipo"], natureza: r.natureza as RubricaLida["natureza"], percentual: r.percentual === null ? null : new Decimal(r.percentual) }));
+    /**
+     * ⚠️ AS RUBRICAS SÃO RESOLVIDAS POR COMPETÊNCIA E POR REGIME (V11 V1.1), e por isso não são
+     * mais uma lista só para a folha inteira. Percentual, incidências, proporcionalidade,
+     * fundamentação e fórmula vêm da VERSÃO vigente — as colunas antigas da `Rubrica` registram
+     * como ela nasceu e não são mais lidas. Sem versão vigente para o regime do vínculo, a
+     * rubrica simplesmente não participa daquele contracheque; se a que falta for sistêmica, o
+     * motor recusa nomeando-a.
+     */
+    const rubricasBrutas = await tx.rubrica.findMany({
+      select: {
+        id: true, codigo: true, descricao: true, tipo: true, natureza: true, ordem: true,
+        versoes: { select: { id: true, versao: true, competenciaInicio: true, competenciaFim: true, formula: true, percentual: true, incideContribuicao: true, incideIrrf: true, proporcionalAosDias: true, casasDecimais: true, regime: true, fundamentacaoLegal: true, situacao: true } },
+      },
+    });
+    const rubricasDoRegime = (regime: RegimePrevidenciario): readonly RubricaLida[] => {
+      const saida: RubricaLida[] = [];
+      for (const r of rubricasBrutas) {
+        const versoes: VersaoLida[] = r.versoes.map((v) => ({ ...v, percentual: v.percentual === null ? null : new Decimal(v.percentual), regime: v.regime as VersaoLida["regime"], situacao: v.situacao as VersaoLida["situacao"] }));
+        const vigente = escolherVersaoVigente(r.codigo, versoes, competencia, regime);
+        if (vigente === null) continue;
+        saida.push({
+          id: r.id, codigo: r.codigo, descricao: r.descricao, ordem: r.ordem,
+          tipo: r.tipo as RubricaLida["tipo"], natureza: r.natureza as RubricaLida["natureza"],
+          percentual: vigente.percentual, incideContribuicao: vigente.incideContribuicao,
+          incideIrrf: vigente.incideIrrf, proporcionalAosDias: vigente.proporcionalAosDias,
+          fundamentacaoLegal: vigente.fundamentacaoLegal, versao: vigente.versao,
+          formula: vigente.formula, casasDecimais: vigente.casasDecimais,
+        });
+      }
+      return saida;
+    };
 
     const vinculos = await tx.vinculo.findMany({
       select: {
@@ -317,7 +375,7 @@ export async function calcularFolha(prisma: PrismaClient, input: CalcularFolhaIn
         dependentesSalarioFamilia: dependentesSf,
         dependentesIr,
         pensaoAlimenticia: toMoney(0),
-        rubricas,
+        rubricas: rubricasDoRegime(regime),
         tabelas: { contribuicao: regime === "ISENTO" ? null : tabelas.contribuicao[regime], irrf: tabelas.irrf, salarioFamilia: tabelas.salarioFamilia },
       });
     }

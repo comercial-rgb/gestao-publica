@@ -164,6 +164,9 @@ enum NaturezaDaRubrica {
   IMPOSTO_DE_RENDA
   /// O salário-família pela tabela vigente e pelos dependentes com a finalidade.
   SALARIO_FAMILIA
+  /// V11 V1.1 — o valor vem da FÓRMULA da versão vigente, interpretada em universo fechado
+  /// (`packages/formula`). As variáveis são as do contracheque e as OUTRAS rubricas, por código.
+  FORMULA
 }
 
 model Rubrica {
@@ -198,6 +201,9 @@ model Rubrica {
   grupoDeEmpenho RubricaDoGrupoDeEmpenho?
   /// V6.2 — as versões de encargo em que esta rubrica compõe a base.
   incidenciasDeEncargo IncidenciaDoEncargo[]
+  /// V11 V1.1 — as versões vigentes por competência. A VERSÃO é a autoridade do cálculo; as
+  /// colunas acima registram como a rubrica nasceu e não são mais lidas pelo motor.
+  versoes VersaoDaRubrica[]
 
   @@index([natureza])
   @@index([ordem])

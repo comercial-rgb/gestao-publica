@@ -64,6 +64,20 @@ export const ESCRITA_MUTAVEL_DO_RUNTIME: Readonly<
   },
   VinculoUsuarioPerfil: { update: [], delete: true },
 
+  // ⚠️ V11 V1.1 — A VERSÃO DA RUBRICA MUDA DE SITUAÇÃO, E SÓ ISSO.
+  // Aprovar, revogar e fechar a vigência são atos; o CONTEÚDO da versão é congelado. Se o
+  // runtime pudesse atualizar `formula`, `percentual`, `incideIrrf` ou `fundamentacaoLegal`,
+  // versionar não serviria para nada: a folha de março passaria a ser explicada por uma fórmula
+  // escrita em setembro, e a memória congelada do contracheque discordaria do cadastro sem que
+  // nada registrasse a troca. Versão errada se REVOGA e se substitui por outra — não se edita.
+  //
+  // `competenciaFim` entra porque aprovar a versão n+1 fecha a vigência da n. É o único caminho
+  // pela tela para suceder uma versão sem apagar a anterior.
+  VersaoDaRubrica: {
+    update: ["situacao", "aprovadoEm", "aprovadoPor", "revogadoEm", "revogadoPor", "motivoDaRevogacao", "competenciaFim"],
+    delete: false,
+  },
+
   // ⚠️ V6.1 — AS DUAS CONTAS DA LIQUIDAÇÃO DO GRUPO DA FOLHA, e NADA MAIS desta tabela.
   // As colunas nasceram NULLABLE (migration aditiva, sem inventar conta para grupo já gravado), e
   // sem poder defini-las depois os grupos cadastrados antes desta entrega ficariam sem caminho

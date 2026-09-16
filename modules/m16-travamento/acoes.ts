@@ -352,6 +352,15 @@ export type AcaoDoSistema =
   | "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA"
   | "CONFIGURAR_TABELAS_DA_FOLHA"
   | "CADASTRAR_RUBRICA"
+  // ── M33 V11 V1.1 — A RUBRICA VERSIONADA ──
+  //
+  // ⚠️ ESCREVER A VERSÃO E APROVÁ-LA SÃO ATOS SEPARADOS, pela mesma razão que separa preparar de
+  // constituir no M34: quem digita a fórmula de um adicional não é necessariamente quem responde
+  // por ela valer na folha de três mil servidores. Uma ação só faria da revisão um passo
+  // decorativo — o aprovador existiria no banco e não significaria nada.
+  | "CADASTRAR_VERSAO_DE_RUBRICA"
+  | "APROVAR_VERSAO_DE_RUBRICA"
+  | "REVOGAR_VERSAO_DE_RUBRICA"
   | "LANCAR_NA_FOLHA"
   | "ABRIR_FOLHA"
   | "CALCULAR_FOLHA"
@@ -812,6 +821,10 @@ export type NomeDeServico =
   | "cadastrarTabelaIrrf"
   | "cadastrarTabelaSalarioFamilia"
   | "cadastrarRubrica"
+  // M33 V11 V1.1 — a rubrica versionada.
+  | "criarVersaoDaRubrica"
+  | "aprovarVersaoDaRubrica"
+  | "revogarVersaoDaRubrica"
   | "lancarNaFolha"
   | "abrirFolha"
   | "calcularFolha"
@@ -1302,6 +1315,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   cadastrarTabelaIrrf: "CONFIGURAR_TABELAS_DA_FOLHA",
   cadastrarTabelaSalarioFamilia: "CONFIGURAR_TABELAS_DA_FOLHA",
   cadastrarRubrica: "CADASTRAR_RUBRICA",
+  criarVersaoDaRubrica: "CADASTRAR_VERSAO_DE_RUBRICA",
+  aprovarVersaoDaRubrica: "APROVAR_VERSAO_DE_RUBRICA",
+  revogarVersaoDaRubrica: "REVOGAR_VERSAO_DE_RUBRICA",
   lancarNaFolha: "LANCAR_NA_FOLHA",
   abrirFolha: "ABRIR_FOLHA",
   calcularFolha: "CALCULAR_FOLHA",

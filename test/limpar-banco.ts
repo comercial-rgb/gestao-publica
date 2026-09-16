@@ -340,6 +340,9 @@ const TABELAS = [
   "CalculoDaFolha",
   "FolhaDePagamento",
   "LancamentoDaFolha",
+  // V11 V1.1 — as versões e as dependências vêm antes da rubrica (FK).
+  "DependenciaDaVersaoDaRubrica",
+  "VersaoDaRubrica",
   "Rubrica",
   "FaixaIrrf",
   "TabelaIrrf",

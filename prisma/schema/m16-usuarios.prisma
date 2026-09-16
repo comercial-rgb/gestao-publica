@@ -440,6 +440,10 @@ enum AcaoDoSistema {
   // V6 P2.3 — M33 folha de pagamento (RH bloco 2)
   CONFIGURAR_TABELAS_DA_FOLHA
   CADASTRAR_RUBRICA
+  /// V11 V1.1 — a rubrica versionada. Escrever a versao e aprova-la sao atos separados.
+  CADASTRAR_VERSAO_DE_RUBRICA
+  APROVAR_VERSAO_DE_RUBRICA
+  REVOGAR_VERSAO_DE_RUBRICA
   LANCAR_NA_FOLHA
   ABRIR_FOLHA
   CALCULAR_FOLHA
