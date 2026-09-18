@@ -37,7 +37,10 @@ const aplicar = process.argv.slice(2).includes("--aplicar");
 const prisma = criarPrismaClient(url);
 try {
   const jaTem = await prisma.permissaoDePerfil.findMany({
-    where: { acao: { in: ACOES_DO_FORNECEDOR as string[] } },
+    // ⚠️ SEM `as string[]` (V11 V5.2). O cast transformava o filtro em `string[]`, que o cliente
+    // gerado não aceita — e o erro de tipo do `where` fazia o `select` inteiro deixar de estreitar,
+    // produzindo mais dois erros em `p.perfil` que pareciam outro defeito. Eram o mesmo, em cascata.
+    where: { acao: { in: [...ACOES_DO_FORNECEDOR] } },
     select: { acao: true, perfil: { select: { nome: true } } },
   });
   console.log(`Ações reservadas ao fornecedor: ${ACOES_DO_FORNECEDOR.length}`);
