@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | `19b5319` (V11 V2.1 registro do leiaute do eSocial) — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
+| HEAD | `66d97c1` (V11 V5 — acesso à informação, o conserto do estorno na projeção pública e os roteiros de glosa) — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
-| Frente em execução | **V11** — V0 preservação, V1.1 rubrica versionada, V3.1 consulta do superávit, V4.1 receitas públicas, V4.2 pessoal público (seção 65) e **V2.1 registro do leiaute do eSocial** (seção 66). V5 (atendimento) não iniciado; V6 (AWS) bloqueado |
-| Último resultado | seção 66 — V2.1 commitado (`19b5319`); typecheck do backend e do app em **exit 0**; **20/20** no domínio do leiaute, **6/6** provas de CHECK no banco isolado nas duas direções, **138/138** (M16), **46/46** (M14), **18/18** (papel de runtime), **222/222** (M33+M32); **sete mutações, sete acusações** — e o tripwire `e19` acusou na primeira execução, contra um código escrito no comentário do próprio domínio |
-| Pendências relevantes | seção 66.9 — **`LEIAUTE-ESOCIAL-NAO-OBTIDO`**: o leiaute do eSocial não está no repositório e o portal responde **HTTP 403** a download automatizado (medido em 2026-09-18); geração de XML, validação XSD, lotes e estados do protocolo dependem dele. **Assinatura A1 e transporte** são pendência distinta, do certificado do ente. **V6 (AWS) bloqueado na AUTENTICAÇÃO** (seção 65.6). **V5 (atendimento) não iniciado**. **Nenhum percurso de navegador** — banco de dev recriado vazio. Intermitência não explicada no R8 das receitas. Linha **ENT12 do Windows** por reconciliar |
-| Próximo passo | seção 66.10 |
+| Frente em execução | **V11** — V1.1, V3.1, V4.1, V4.2 (seção 65), V2.1 eSocial (seção 66) e **V5.1 acesso à informação + V5.2 o estorno na projeção pública** (seção 67). Guichê não iniciado; V6 (AWS) bloqueado |
+| Último resultado | seção 67 — cinco commits (`0adaf12`, `65f19e1`, `3804004`, `43f8842`, `66d97c1`); typecheck do backend, do app **e de scripts** em **exit 0** (o de scripts estava vermelho e passou a passar); **18/18** acesso à informação, **8/8** o guard do estorno, **138/138** (M16), **53/53** (execução contratual), **15/15** (autorização); **sete mutações, sete acusações**. Achado maior: o recebimento **estornado somava dinheiro na projeção PÚBLICA** do contrato, e o guard que devia impedir isso vigiava nomes em vez de propriedade |
+| Pendências relevantes | seção 67.8 — **`PREPARADOR-INSTALACAO-LIMPA`** é a que mais trava: o preparador de percursos para no roteiro `DOTACAO_INICIAL`, cuja conta é sintética no plano oficial, e sem ele **nenhum** percurso de navegador roda; é decisão de fonte oficial, não trabalho. **`LEIAUTE-ESOCIAL-NAO-OBTIDO`** (66.9) e **certificado A1** são insumos externos distintos. **V6 (AWS) na autenticação** (65.6). Escopo pendente: os fatos do pedido de acesso à informação, e o **guichê** inteiro. Intermitência não explicada no R8 das receitas. Linha **ENT12 do Windows** por reconciliar |
+| Próximo passo | seção 67.9 |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -7891,3 +7891,155 @@ fazer, como foi o do V2.
 Alternativa de igual valor: semear o quadro de pessoal no banco de desenvolvimento e executar os
 percursos de navegador pendentes das telas do V11 — que hoje é a lacuna de verificação mais antiga
 da ordem.
+
+---
+
+## 67. V11 V5 — a orquestração com dois agentes: o que o inventário derrubou e o que os instrumentos pegaram
+
+### 67.1 O modo de trabalho desta unidade
+
+Dois agentes, um integrador. **Auxiliar** e **engenheiro de reconhecimento** varreram em paralelo,
+somente leitura, duas frentes disjuntas: a cadeia medição→glosa→estorno mais o guichê, e o e-SIC
+sobre M21/M22 mais o custo da semeadura. Depois, um **engenheiro** construtor sobre a frente já
+mapeada, e o integrador conferindo, medindo e commitando.
+
+O inventário-antes-de-construir **mudou as duas frentes**, e é por isso que ele vem primeiro.
+
+### 67.2 O que o inventário derrubou
+
+**Glosa e estorno não precisavam de código.** Motor (`decidirControversia`, `estornarMedicaoDaOrdem`,
+`estornarRecebimentoDefinitivo`), tela (`FormDecidirControversia`, `FormEstornarMedicao`,
+`FormEstornarRecebimento`), testes (G1–G6, ER01–ER06) e **dado semeado**
+(`scripts/preparar-ponte-contratual.ts`) já existiam. Faltava só o percurso: o smoke vizinho decidia
+a controvérsia como ACEITA e nunca exercitava REJEITADA nem estorno nenhum.
+
+**A premissa do guichê estava errada no próprio pedido.** A ordem manda "reutilizar os componentes
+da agenda U8". A agenda U8 **não é motor de reserva**, por decisão explícita
+(`modules/m11-licitacoes/agenda-da-fiscalizacao.ts:20-23`): sobreposição não é proibida ali, o campo
+`conflitos` é informativo e calculado em memória depois do `findMany`, não há capacidade, não há
+vaga, não há `travar()`, não há transação. Reusá-la como motor de vaga seria reusar exatamente a
+peça que não trava. Reaproveitável é o **desenho** — fato append-only com vigente = último, dia civil
+mais `"HH:MM"` como texto em vez de instante UTC — e os componentes de tela. O guichê precisa de
+posto próprio em `ORDEM_DOS_LOCKS` (que **recusa em runtime** recurso não declarado) e de índice
+único **parcial**, porque `@@unique` do Prisma não trava coluna anulável: dois `NULL` são distintos
+no Postgres.
+
+**A ouvidoria não tem prazo.** A ordem manda "não reutilizar cegamente prazo da ouvidoria". Não há o
+que reutilizar: os três modelos dela têm só `criadoEm`. O prazo que ela aparenta ter é
+`EtapaDoRoteiro.prazoDias` — de ETAPA, do setor, contado do recebimento, sem fundamento legal — e os
+"20 dias" do repositório estão num seed de demonstração. O molde certo era outro:
+`VersaoDaConfiguracaoDaCertidao` (M34), prazo **com fundamento**, versionado por vigência, ausente
+⇒ recusa nomeada.
+
+### 67.3 O que foi entregue
+
+| Commit | O quê |
+|---|---|
+| `0adaf12` | Mapa de acesso regenerado — 245 → 258 rotas, defasado desde antes do V10 T1 |
+| `65f19e1` | **V5.2** — o recebimento estornado somava dinheiro, inclusive na projeção pública; e o guard que devia impedir isso |
+| `3804004` | **V5.1** — a configuração do acesso à informação: prazo, prorrogação, recurso e as duas normas |
+| `43f8842` | Os roteiros de navegador da glosa e dos dois estornos — escritos, tipados, **não executados** |
+| `66d97c1` | `typecheck:scripts` estava vermelho; os três erros eram um só, em cascata |
+
+### 67.4 O defeito que mais importa, e ele é público
+
+`projecaoPublicaDoContrato` selecionava `medicoes → recebimentosDefinitivos → itens.valor` **sem
+filtro de estorno em nenhum dos dois níveis**, e `execucaoDoContrato` somava o mesmo por medição. Uma
+medição estornada e um termo de recebimento desfeito continuavam somando no valor que a primeira
+**publica no portal do cidadão**. No cenário do ER03 — 900 estornado, mais 100, mais 800 corrigido —
+a tela dizia "Recebido 1.800,00" com 900,00 efetivamente recebidos.
+
+A assimetria é o que escondia: a **quantidade** já excluía o estornado, por `SELECAO_DOS_RECEBIDOS`;
+o **valor** não.
+
+**E o guard que existe para impedir isso não pegou.** `test/medido-liquido-sem-atalho.test.ts`
+vigiava dois nomes — `recebidos` e `medidosNaOrdem`. Este caminho passa por
+`recebimentosDefinitivos`. É a regra do CLAUDE.md em uma linha, *"guarda que enumera formas acha só
+aquelas formas"*, mordendo dentro do arquivo escrito para impedi-la.
+
+A enumeração virou **propriedade derivada do schema**: o teste lê os `.prisma` do M11, acha todo
+modelo com relação `estorno`, acha toda relação que aponta para eles, e varre os leitores que somam
+valor ou quantidade. Relação nova entra na varredura sozinha.
+
+Na primeira execução ele acusou dois sítios **corretos** de `Contrato.medicoes`: o mesmo nome de
+relação aponta para `MedicaoDeObra` quando sai de `Contrato` — que não tem estorno — e para
+`MedicaoDaOrdemDeServico` quando sai de `OrdemDeServico`. A exceção é por **sítio**, com motivo, não
+por arquivo: excluir `fiscalizacao.ts` inteiro desligaria o guard justamente onde o defeito morava.
+E vem com **âncora** — um caso afirma que `MedicaoDeObra` continua não sendo estornável, para que a
+exceção não envelheça em silêncio.
+
+### 67.5 Os dois instrumentos que pegaram a própria prosa
+
+**O tripwire do prazo (`a12`)** varre a FORMA de um prazo cravado, não uma lista de números. Acusou
+na primeira execução, contra o comentário do próprio domínio, que citava "20 dias" como exemplo do
+que não deveria estar lá. **Segunda vez nesta sessão** — a primeira foi o tripwire do eSocial, na
+seção 66.
+
+**E o teste de propriedade `a9` passava com a aritmética errada.** A mutação que troca
+`somarDiasCivis` por `getTime() + n*86400000` passou 18/18. A primeira versão corria 366 dias de 2026
+ancorados ao **meio-dia** — e o Brasil não tem horário de verão desde 2019, então não havia virada a
+atravessar, e meio-dia é a hora mais segura do dia. A segunda versão, em 2018 às 23:30, **também**
+mediu zero divergência: a âncora andava por `getTime() + i*86400000` e derivava junto com a virada.
+Só a terceira, montando cada dia civil do zero, separou as implementações.
+
+O caso agora traz uma asserção de **antivacuidade**: ele exige que a corrida contenha ao menos um dia
+em que a aritmética errada discordaria, e falha por vacuidade em vez de passar por ela. Um teste de
+propriedade que não distingue as duas implementações não afirma propriedade — descreve o resultado
+que as duas dão.
+
+### 67.6 Comandos, com o exit code que o próprio comando escreveu
+
+| Comando | Resultado |
+|---|---|
+| `prisma validate` · `migrate deploy` (teste e dev) · `generate` | válido, aplicadas, `exit=0` |
+| `tsc -p tsconfig.backend.json` | **`backend exit=0`** |
+| `tsc -p tsconfig.json` | **`app exit=0`** |
+| `tsc -p tsconfig.scripts.json` | de `exit=2` para **`exit=0`** |
+| `vitest modules/m21-protocolo/m21-acesso-a-informacao.test.ts` | **18/18** |
+| `vitest test/medido-liquido-sem-atalho.test.ts` | **8/8** |
+| `vitest modules/m16-travamento` | **138/138** (censo: 396 serviços, 302 ações) |
+| `vitest` glosa + ordem + liquidação + contrato + planilha | **53/53** |
+| `vitest test/leitura-por-acao.test.ts test/menu-contra-o-servidor.test.ts` | **15/15** |
+| 7 mutações | **7 acusações**, cada uma pelo caso certo |
+
+As 7 mutações: menor versão → `a2`/`a2b`/`a3`; vigência futura → `a3`/`a3b`; regulamentação ausente
+zerando o prazo → `a4`; prorrogação sem limite → `a11`; milissegundos no lugar de dias civis → `a9`;
+filtro de estorno removido da projeção pública → o guard; detecção de modelos estornáveis desligada →
+a âncora.
+
+### 67.7 O bloqueio que impediu os percursos, e ele é de ambiente
+
+Os três bancos estão **vazios** — o container do Postgres não tem volume — e a recriação documentada
+**está quebrada**: `preparar-banco-de-percursos` semeia o PCASP oficial (7.864 contas) e **para**,
+porque `CONTA_DOTACAO_INICIAL` (`5.2.2.1.1.00.00`) é **sintética** no plano oficial e analítica no
+plano mínimo. É a pendência `PREPARADOR-INSTALACAO-LIMPA`, e o contorno de antes — clonar por
+TEMPLATE um banco que funcionava — **não existe mais**, porque não há banco povoado para clonar.
+
+Apontar o roteiro para a analítica (`5.2.2.1.1.01.00`) destravaria a execução e seria **decidir
+roteiro contábil sem a fonte oficial**, para destravar. Não foi feito.
+
+`GLOSA-SEM-PERCURSO` e `ESTORNO-DE-RECEBIMENTO-SEM-PERCURSO` continuam **abertas**: falta ambiente,
+não código. O worktree `gestao-publica-candidatos/percurso-glosa-0adaf12` ficou pronto para a
+retomada.
+
+### 67.8 Pendências, separadas por natureza
+
+**Bloqueado por decisão de fonte oficial (uma decisão, não uma execução):**
+`PREPARADOR-INSTALACAO-LIMPA` — qual conta analítica o roteiro `DOTACAO_INICIAL` usa sob o plano
+oficial. Ela trava **todo** percurso de navegador, não só os dois desta seção.
+
+**Bloqueado por insumo externo:** `LEIAUTE-ESOCIAL-NAO-OBTIDO` (seção 66.9); certificado A1;
+**V6 (AWS) na autenticação** (seção 65.6). São três pendências distintas e não viram uma genérica.
+
+**Escopo pendente (trabalho, não bloqueio):** o pedido, a prorrogação e o recurso do acesso à
+informação como FATOS sobre o `Processo` do M21 — esta entrega é a régua e a norma que ela obedece.
+O **guichê** inteiro: motor, modelo, tela, dado e percurso, com posto próprio em `ORDEM_DOS_LOCKS` e
+índice único parcial. Linha **ENT12 do Windows** por reconciliar.
+
+### 67.9 O próximo ponto exato
+
+**Decidir `PREPARADOR-INSTALACAO-LIMPA` pela fonte oficial do plano de contas.** Ela destrava os dois
+percursos já escritos, os percursos pendentes das telas do V11 e a semeadura inteira — é a única
+pendência desta lista que desbloqueia várias outras, e é decisão, não trabalho.
+
+Depois dela: os fatos do pedido de acesso à informação sobre o `Processo`, ou o guichê.
