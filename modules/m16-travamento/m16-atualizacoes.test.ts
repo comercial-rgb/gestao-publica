@@ -87,12 +87,22 @@ describe("a regra da v1 — leitura por área, no escopo em que o perfil já age
     ];
     const derivadas = derivarLeituraPorArea(perfis, AREA_DA_ACAO);
     // ⚠️ A LISTA CRESCE QUANDO NASCE UMA ÁREA SEM MUTAÇÃO, e isso é a regra funcionando: o
-    // portal do servidor (V6 P2.4) só tem leitura, e por isso cai no mesmo caminho da
-    // transparência interna — quem administra permissões no global a recebe, e mais ninguém.
+    // portal do servidor (V6 P2.4) só tem leitura, e por isso cai no mesmo caminho — quem
+    // administra permissões no global a recebe, e mais ninguém.
+    //
+    // ⚠️ E ELA ENCOLHE QUANDO UMA ÁREA GANHA MUTAÇÃO — foi o que aconteceu com a TRANSPARÊNCIA
+    // no V11 V4.2. Ela deixou de ser área só de leitura ao ganhar a política de publicação de
+    // pessoal (cadastrar, aprovar, revogar), e por isso saiu desta lista: a partir daí vale a
+    // regra normal, quem tem a mutação recebe a leitura da área.
+    //
+    // Quem administra permissões PAROU de receber `CONSULTAR_TRANSPARENCIA` por derivação, e
+    // isso é correto — administrar permissões nunca foi título para ler as telas internas de
+    // uma área; era um socorro para áreas que ninguém alcançaria de outro jeito. O caminho
+    // passou a ser explícito: conceda uma das três ações da política, ou `CONSULTAR_TRANSPARENCIA`
+    // diretamente. O bootstrap concede `ACOES_DO_ENTE` e já cobre a instalação limpa.
     expect(derivadas).toEqual([
       { perfilId: "adm", perfilNome: "ADM", acao: "CONSULTAR_ADMINISTRACAO", unidadeOrcId: null },
       { perfilId: "adm", perfilNome: "ADM", acao: "CONSULTAR_PORTAL_DO_SERVIDOR", unidadeOrcId: null },
-      { perfilId: "adm", perfilNome: "ADM", acao: "CONSULTAR_TRANSPARENCIA", unidadeOrcId: null },
       { perfilId: "adm-ug", perfilNome: "ADM-DE-UNIDADE", acao: "CONSULTAR_ADMINISTRACAO", unidadeOrcId: UG_A },
       { perfilId: "op", perfilNome: "OPERADOR", acao: "CONSULTAR_DESPESA", unidadeOrcId: null },
     ]);

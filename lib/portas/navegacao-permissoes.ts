@@ -316,6 +316,10 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   CADASTRAR_RUBRICA: "folha",
   // V11 V1.1 — as versões se operam no detalhe da rubrica, dentro da área da folha.
   CADASTRAR_VERSAO_DE_RUBRICA: "folha",
+  // V11 V4.2 — a política de publicação de pessoal se opera na área de transparência.
+  CADASTRAR_POLITICA_DE_PESSOAL: "transparencia",
+  APROVAR_POLITICA_DE_PESSOAL: "transparencia",
+  REVOGAR_POLITICA_DE_PESSOAL: "transparencia",
   APROVAR_VERSAO_DE_RUBRICA: "folha",
   REVOGAR_VERSAO_DE_RUBRICA: "folha",
   LANCAR_NA_FOLHA: "folha",

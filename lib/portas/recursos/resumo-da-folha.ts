@@ -1,4 +1,4 @@
-import { Decimal, sumMoney, toMoney } from "../../../packages/contracts/index.js";
+import { Decimal, toMoney } from "../../../packages/contracts/index.js";
 import { lotacaoVigenteEm } from "../../../modules/m32-pessoal/dominio.js";
 import { bordasDaCompetencia } from "../../../modules/m33-folha/dominio.js";
 import { encargosDaFolha } from "../../../modules/m33-folha/encargos-servico.js";
@@ -21,46 +21,17 @@ import { cliente } from "../cliente";
  * ⚠️ O PATRONAL É O DA APURAÇÃO VIGENTE. Sem apuração, a coluna diz "não apurado" — nunca zero.
  */
 
-export interface LinhaParaResumo {
-  readonly regime: string;
-  readonly lotacao: string;
-  readonly bruto: string;
-  readonly descontos: string;
-  readonly liquido: string;
-  /** Nulo = encargos não apurados para este vínculo. */
-  readonly patronal: string | null;
-}
-
-export interface GrupoDoResumo {
-  readonly regime: string;
-  readonly lotacao: string;
-  readonly vinculos: number;
-  readonly bruto: string;
-  readonly descontos: string;
-  readonly liquido: string;
-  readonly patronal: string | null;
-}
-
-/** Agrega por regime × lotação, somando em Decimal. PURA — é o que o teste confere contra contas à mão. */
-export function agregarResumoDaFolha(linhas: readonly LinhaParaResumo[]): { readonly grupos: readonly GrupoDoResumo[]; readonly total: GrupoDoResumo; readonly custoDoEnte: string | null } {
-  const mapa = new Map<string, LinhaParaResumo[]>();
-  for (const l of linhas) {
-    const k = `${l.regime} ${l.lotacao}`;
-    mapa.set(k, [...(mapa.get(k) ?? []), l]);
-  }
-  const somar = (ls: readonly LinhaParaResumo[], regime: string, lotacao: string): GrupoDoResumo => ({
-    regime,
-    lotacao,
-    vinculos: ls.length,
-    bruto: sumMoney(ls.map((l) => toMoney(l.bruto))).toFixed(2),
-    descontos: sumMoney(ls.map((l) => toMoney(l.descontos))).toFixed(2),
-    liquido: sumMoney(ls.map((l) => toMoney(l.liquido))).toFixed(2),
-    patronal: ls.some((l) => l.patronal === null) ? null : sumMoney(ls.map((l) => toMoney(l.patronal as string))).toFixed(2),
-  });
-  const grupos = [...mapa.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, ls]) => somar(ls, ls[0]?.regime ?? "", ls[0]?.lotacao ?? ""));
-  const total = somar(linhas, "TOTAL", "");
-  return { grupos, total, custoDoEnte: total.patronal === null ? null : toMoney(new Decimal(total.bruto).plus(total.patronal)).toFixed(2) };
-}
+/**
+ * ⚠️ A AGREGAÇÃO SAIU DAQUI NO V11 V4.2 e mora em `modules/m33-folha/resumo.ts`. Ela é pura, e
+ * ficar neste arquivo — que também lê banco e monta PDF — obrigava quem só precisasse da
+ * aritmética a arrastar `lib/pdf/` inteiro junto. O demonstrativo público de pessoal usa a MESMA
+ * função, para que o portal e esta tela nunca divirjam; o reexport abaixo mantém os consumidores
+ * antigos intactos.
+ */
+// ⚠️ IMPORTA E REEXPORTA. Um `export … from` sozinho reexporta sem VINCULAR o nome neste
+// módulo — e este arquivo continua usando os três mais abaixo. O compilador do app cobrou.
+import { agregarResumoDaFolha, type GrupoDoResumo, type LinhaParaResumo } from "../../../modules/m33-folha/resumo.js";
+export { agregarResumoDaFolha, type GrupoDoResumo, type LinhaParaResumo };
 
 export interface ResumoDaFolha {
   readonly competencia: string;

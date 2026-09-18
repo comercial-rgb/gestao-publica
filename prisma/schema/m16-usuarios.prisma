@@ -442,6 +442,11 @@ enum AcaoDoSistema {
   CADASTRAR_RUBRICA
   /// V11 V1.1 — a rubrica versionada. Escrever a versao e aprova-la sao atos separados.
   CADASTRAR_VERSAO_DE_RUBRICA
+  /// V11 V4.2 — a politica de publicacao de pessoal. Redigir e aprovar sao atos separados:
+  /// quem escreve a regra de exposicao de dado pessoal nao e quem responde por ela valer.
+  CADASTRAR_POLITICA_DE_PESSOAL
+  APROVAR_POLITICA_DE_PESSOAL
+  REVOGAR_POLITICA_DE_PESSOAL
   APROVAR_VERSAO_DE_RUBRICA
   REVOGAR_VERSAO_DE_RUBRICA
   LANCAR_NA_FOLHA

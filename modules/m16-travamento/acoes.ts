@@ -358,6 +358,14 @@ export type AcaoDoSistema =
   // constituir no M34: quem digita a fórmula de um adicional não é necessariamente quem responde
   // por ela valer na folha de três mil servidores. Uma ação só faria da revisão um passo
   // decorativo — o aprovador existiria no banco e não significaria nada.
+  // ── M13 V11 V4.2 — A POLÍTICA DE PUBLICAÇÃO DE PESSOAL ──
+  //
+  // ⚠️ REDIGIR E APROVAR SÃO ATOS SEPARADOS, e aqui a razão é mais forte do que na rubrica: o que
+  // esta política autoriza é a EXPOSIÇÃO DE DADO PESSOAL de cada servidor no portal aberto. Uma
+  // ação só faria de quem redige o texto o autor da decisão de expor — e o aprovador, um campo.
+  | "CADASTRAR_POLITICA_DE_PESSOAL"
+  | "APROVAR_POLITICA_DE_PESSOAL"
+  | "REVOGAR_POLITICA_DE_PESSOAL"
   | "CADASTRAR_VERSAO_DE_RUBRICA"
   | "APROVAR_VERSAO_DE_RUBRICA"
   | "REVOGAR_VERSAO_DE_RUBRICA"
@@ -822,6 +830,10 @@ export type NomeDeServico =
   | "cadastrarTabelaSalarioFamilia"
   | "cadastrarRubrica"
   // M33 V11 V1.1 — a rubrica versionada.
+  // M13 V11 V4.2 — a política de publicação de pessoal.
+  | "cadastrarPoliticaDePessoal"
+  | "aprovarPoliticaDePessoal"
+  | "revogarPoliticaDePessoal"
   | "criarVersaoDaRubrica"
   | "aprovarVersaoDaRubrica"
   | "revogarVersaoDaRubrica"
@@ -1315,6 +1327,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   cadastrarTabelaIrrf: "CONFIGURAR_TABELAS_DA_FOLHA",
   cadastrarTabelaSalarioFamilia: "CONFIGURAR_TABELAS_DA_FOLHA",
   cadastrarRubrica: "CADASTRAR_RUBRICA",
+  cadastrarPoliticaDePessoal: "CADASTRAR_POLITICA_DE_PESSOAL",
+  aprovarPoliticaDePessoal: "APROVAR_POLITICA_DE_PESSOAL",
+  revogarPoliticaDePessoal: "REVOGAR_POLITICA_DE_PESSOAL",
   criarVersaoDaRubrica: "CADASTRAR_VERSAO_DE_RUBRICA",
   aprovarVersaoDaRubrica: "APROVAR_VERSAO_DE_RUBRICA",
   revogarVersaoDaRubrica: "REVOGAR_VERSAO_DE_RUBRICA",
@@ -1687,6 +1702,23 @@ export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
  * grep-teste lê esta lista — nada sai do censo por descuido.
  */
 export const FORA_DO_CENSO: Record<string, string> = {
+  // ── V11 V3.1 — a consulta do superávit (as três são LEITURA; nenhuma grava nada) ──
+  //
+  // ⚠️ ELAS FORAM EXPORTADAS PARA NÃO HAVER SEGUNDA ARITMÉTICA. `usadoDaDisponibilidade` já
+  // existia como função interna do guard do M03; a consulta precisa do MESMO número que o guard
+  // subtrai, e recalculá-lo na tela produziria um portal que diz um valor e um guard que recusa
+  // por outro. Exportar uma leitura não a transforma em serviço de mutação — e é por isso que
+  // elas entram aqui, com o motivo, em vez de ganharem ação no censo.
+  usadoDaDisponibilidade:
+    "LEITURA: soma LÍQUIDA (via `packages/estornaveis`) do quanto de uma disponibilidade de recurso novo já foi " +
+    "consumido por decretos daquele exercício. É a mesma função que o guard do M03 subtrai dentro da transação " +
+    "que grava o crédito; a consulta a reusa para mostrar o mesmo número antes do decreto ser escrito.",
+  usosDoRecursoNovo:
+    "LEITURA: as disponibilidades declaradas de uma origem num exercício, com o utilizado e os decretos que " +
+    "consumiram cada fonte. Compõe as duas leituras acima; não grava nada.",
+  consultaDoSuperavit:
+    "LEITURA: compõe o apurado dos FATOS (M12) com o declarado e o utilizado (M03) e devolve o disponível por " +
+    "fonte, dizendo qual dos dois tetos limita. Nenhuma escrita.",
   // ── V6.1 — o atesto da folha e a sua liquidação ──
   parcelasDoCalculo:
     "LEITURA e AGRUPAMENTO puro de banco: diz quem empenha o quê, em qual ficha, por quem. É a ÚNICA verdade " +

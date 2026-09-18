@@ -43,6 +43,12 @@ const ABERTAS: readonly Familia[] = [
     href: "/transparencia/receitas",
   },
   {
+    titulo: "Pessoal",
+    descricao:
+      "Totais de folha por unidade e regime, e — quando o ente aprova a política que a autoriza — a linha por servidor com as colunas desse ato. Publica apenas folhas fechadas, e nunca dependente, plano de saúde, pensão ou imposto individual.",
+    href: "/transparencia/pessoal",
+  },
+  {
     titulo: "Contratos",
     descricao:
       "Os contratos do ente, com objeto, contratado, vigência, valores, aditivos e a execução física já aprovada.",
@@ -83,13 +89,7 @@ const ABERTAS: readonly Familia[] = [
  * ausente depois de publicada faria o portal mentir na direção oposta: subestimando o que ele
  * já entrega. Pessoal continua aqui, e o motivo é o mesmo de sempre.
  */
-const AINDA_NAO_PUBLICADAS: readonly { readonly titulo: string; readonly falta: string }[] = [
-  {
-    titulo: "Pessoal",
-    falta:
-      "Vínculo, cargo, lotação e remuneração por competência dependem de uma regra de publicação explícita do ente — sem ela, a projeção exporia colunas que não podem ser abertas.",
-  },
-];
+const AINDA_NAO_PUBLICADAS: readonly { readonly titulo: string; readonly falta: string }[] = [];
 
 export default async function PortalDaTransparenciaPage(): Promise<React.ReactElement> {
   const id = await identidadePublica();
@@ -124,6 +124,10 @@ export default async function PortalDaTransparenciaPage(): Promise<React.ReactEl
         </ul>
       </section>
 
+      {/* ⚠️ A SEÇÃO SOME QUANDO NÃO HÁ PENDÊNCIA. Um título "Ainda não publicadas" seguido de
+          nada é pior que a ausência dele: quem lê fica procurando o que faltou. Ela volta sozinha
+          no dia em que uma família nova for declarada e ainda não existir. */}
+      {AINDA_NAO_PUBLICADAS.length === 0 ? null : (
       <section aria-labelledby="pendentes" className="mt-8">
         <h2 id="pendentes" data-ancora className="text-sm font-semibold uppercase tracking-wide text-[color:var(--color-ink-2)]">
           Ainda não publicadas
@@ -145,6 +149,7 @@ export default async function PortalDaTransparenciaPage(): Promise<React.ReactEl
           ))}
         </ul>
       </section>
+      )}
     </main>
   );
 }

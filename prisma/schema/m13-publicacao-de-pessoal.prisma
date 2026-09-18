@@ -1,0 +1,97 @@
+// ============================================================================
+// M13 — A POLÍTICA DE PUBLICAÇÃO DE PESSOAL (V11 V4.2)
+//
+// ⚠️ FAIL-CLOSED POR CONSTRUÇÃO, E ISSO É O ARQUIVO INTEIRO. Sem política APROVADA vigente na
+// competência, o demonstrativo individual NÃO PUBLICA NADA — nem um nome, nem um valor. O portal
+// diz que a regra não foi declarada e nomeia o que falta. Publicar por omissão é o modo de falha
+// que este desenho existe para impedir: remuneração nominal é dado pessoal, e expô-la sem ato do
+// ente que a fundamente é decisão que ninguém tomou.
+//
+// ⚠️ O QUE NÃO PODE SER PUBLICADO NÃO ESTÁ NO ENUM. `ColunaDoDemonstrativoDePessoal` é o universo
+// FECHADO do que uma política pode sequer declarar. Dependente, plano de saúde, pensão
+// alimentícia, CPF, endereço, RG, título, CTPS, filiação, foto, anotação funcional (advertência,
+// suspensão, acidente), motivo de afastamento, base e valor de contribuição e de IRRF individuais
+// e a MEMÓRIA de cálculo não aparecem aqui — logo nenhuma política, nenhum administrador e nenhum
+// erro de configuração consegue ligá-los. A proibição é do tipo, não de um `if`.
+//
+// ⚠️ A MEMÓRIA SE RECONSTRÓI, NÃO SE FILTRA. `Contracheque.memoria` carrega os dependentes
+// NOMINADOS do salário-família, a contagem de dependentes do IRRF, o marcador de maior de 65 anos
+// e as deduções de pensão alimentícia. Publicar "a memória menos alguns campos" é o antipadrão que
+// `lib/portas/bens-publicos.ts` já nomeia: o campo novo entra em silêncio na próxima migration.
+// O demonstrativo público NÃO tem memória.
+//
+// ⚠️ VERSIONADA COM APROVADOR, como as versões de rubrica do M33 (V11 V1.1): quem redige a
+// política de exposição não é quem responde por ela valer. Vigência por competência; aprovar a
+// sucessora fecha a anterior sem apagá-la, porque a competência já publicada precisa continuar
+// explicável.
+// ============================================================================
+
+/// O universo FECHADO do que uma política pode declarar publicável. Acrescentar um valor aqui é
+/// decisão de exposição de dado pessoal — e ela quebra a compilação até alguém escrever o
+/// fundamento em `COLUNAS_DO_DEMONSTRATIVO`, no domínio do M13.
+enum ColunaDoDemonstrativoDePessoal {
+  /// O nome civil do servidor. A coluna mais sensível do conjunto, e por isso a primeira.
+  NOME
+  /// A matrícula funcional. Identifica sem nomear.
+  MATRICULA
+  CARGO
+  LOTACAO
+  TIPO_DE_VINCULO
+  REGIME_PREVIDENCIARIO
+  /// A soma dos proventos do contracheque. Nunca a rubrica a rubrica.
+  PROVENTOS
+  /// A soma dos descontos, AGREGADA. Nunca a rubrica a rubrica — ali moram pensão alimentícia,
+  /// plano de saúde e consignações, que são vida privada.
+  DESCONTOS
+  LIQUIDO
+}
+
+enum SituacaoDaPoliticaDePessoal {
+  RASCUNHO
+  APROVADA
+  REVOGADA
+}
+
+model PoliticaDePublicacaoDePessoal {
+  id String @id @default(cuid())
+
+  /// Sequencial, começando em 1. É o que o demonstrativo cita ao dizer sob que regra publicou.
+  versao Int @unique
+
+  /// Vigência por competência AAAA-MM. `fim` nulo = aberta.
+  competenciaInicio String  @db.VarChar(7)
+  competenciaFim    String? @db.VarChar(7)
+
+  /// ⚠️ OBRIGATÓRIA, e não é formalidade: é o ato do ente que autoriza a exposição. Sem ela a
+  /// publicação seria a captura de tela de um portal vizinho tratada como autorização.
+  fundamentacaoLegal String
+
+  situacao SituacaoDaPoliticaDePessoal @default(RASCUNHO)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  aprovadoEm  DateTime?
+  aprovadoPor String?
+  revogadoEm  DateTime?
+  revogadoPor String?
+  motivoDaRevogacao String?
+
+  colunas ColunaPublicadaDePessoal[]
+
+  @@index([competenciaInicio])
+  @@index([situacao])
+}
+
+/// Uma coluna que ESTA política declara publicável. A ausência de linha é a negação — nada é
+/// publicado por padrão.
+model ColunaPublicadaDePessoal {
+  id String @id @default(cuid())
+
+  politicaId String
+  politica   PoliticaDePublicacaoDePessoal @relation(fields: [politicaId], references: [id], onDelete: Cascade)
+
+  coluna ColunaDoDemonstrativoDePessoal
+
+  @@unique([politicaId, coluna])
+}

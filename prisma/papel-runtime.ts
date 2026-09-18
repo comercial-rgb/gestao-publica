@@ -78,6 +78,18 @@ export const ESCRITA_MUTAVEL_DO_RUNTIME: Readonly<
     delete: false,
   },
 
+  // ⚠️ V11 V4.2 — A POLÍTICA DE PUBLICAÇÃO DE PESSOAL MUDA DE SITUAÇÃO, E SÓ ISSO.
+  // `fundamentacaoLegal` e `competenciaInicio` ficam FORA do grant, e as COLUNAS declaradas
+  // também (a tabela `ColunaPublicadaDePessoal` não aparece aqui: sem UPDATE e sem DELETE).
+  // Se o runtime pudesse acrescentar uma coluna a uma política já APROVADA, a exposição de dado
+  // pessoal cresceria sem ato novo e sem aprovador — exatamente o que o versionamento existe
+  // para impedir. Ampliar o que se publica exige política NOVA, redigida e aprovada por outra
+  // pessoa. `competenciaFim` entra porque aprovar a sucessora fecha a anterior.
+  PoliticaDePublicacaoDePessoal: {
+    update: ["situacao", "aprovadoEm", "aprovadoPor", "revogadoEm", "revogadoPor", "motivoDaRevogacao", "competenciaFim"],
+    delete: false,
+  },
+
   // ⚠️ V6.1 — AS DUAS CONTAS DA LIQUIDAÇÃO DO GRUPO DA FOLHA, e NADA MAIS desta tabela.
   // As colunas nasceram NULLABLE (migration aditiva, sem inventar conta para grupo já gravado), e
   // sem poder defini-las depois os grupos cadastrados antes desta entrega ficariam sem caminho
