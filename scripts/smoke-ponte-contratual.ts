@@ -26,6 +26,26 @@ import { entrar, irPara, lancarNavegadorDoPercurso, preencherEEnviar, registroDe
  *      liquida os R$ 100,00 com a mesma nota — liquidado R$ 1.000,00.
  * O passo 12 dos critérios (apropriação da folha) é o percurso próprio, `smoke-apropriacao-da-folha.ts`, na mesma
  * cadeia do candidato.
+ *
+ * ═══ A GLOSA E OS DOIS ESTORNOS (V9 N4 — fecha `GLOSA-SEM-PERCURSO` e `ESTORNO-DE-RECEBIMENTO-SEM-PERCURSO`) ═══
+ *
+ *  12. A GLOSA. O fiscal mede as 2 horas que faltavam (medição nº 2, R$ 100,00) e recebe provisoriamente com 1 hora
+ *      em controvérsia; o recebedor decide REJEITADA. Pela TELA e depois de RECARREGAR: a coluna "Glosado" do item 2
+ *      deixa de ser zero, o saldo de EXECUÇÃO volta (o item volta a "a executar" na MESMA ordem) e o saldo de
+ *      PAGAMENTO não volta (o elegível continua sem a hora glosada). Receber a medição inteira RECUSA nomeando
+ *      `GLOSA-CONFIRMADA`; a parte regular (R$ 50,00) segue.
+ *  13. O ESTORNO DA MEDIÇÃO. Medição nº 3 sem dependente: estorna, e as quantidades voltam a executar. Duas negativas
+ *      pelo servidor: estornar de novo (`MEDICAO-JA-ESTORNADA`) e estornar a medição nº 4, que ganhou recebimento
+ *      provisório (`MEDICAO-COM-RECEBIMENTO`, com o dependente nomeado).
+ *  14. O ESTORNO DO RECEBIMENTO DEFINITIVO. O termo nº 1 da medição nº 1 lastreia R$ 900,00 liquidados: a tela avisa
+ *      ANTES do clique e o servidor RECUSA com `RECEBIMENTO-LIQUIDADO` — primeiro o dinheiro volta, depois o
+ *      recebimento se desfaz. O termo nº 1 da medição nº 2 (R$ 50,00, sem liquidação) estorna: o termo continua no
+ *      histórico, marcado, e o elegível volta. Estornar de novo RECUSA (`RECEBIMENTO-JA-ESTORNADO`).
+ *
+ * ⚠️ POR QUE DUAS ABAS NAS NEGATIVAS DE 13 E 14. A página ESCONDE o formulário assim que a pré-condição cai (medição
+ * já estornada, medição com recebimento, recebimento já estornado). Pela interface, o único caminho até a guarda do
+ * SERVIDOR é a tela VELHA — duas abas, ou duas pessoas na mesma ordem —, que é exatamente o caso para o qual a guarda
+ * existe ("botão oculto não é proteção"). A aba B é carregada ANTES do ato que muda o estado e enviada DEPOIS dele.
  */
 const N: Navegador = { base: process.argv[2] ?? "http://localhost:3010" };
 const SENHA = process.env["PERCURSOS_SENHA_PAPEIS"] ?? "Percurso#2026";
@@ -43,7 +63,17 @@ const HOJE = dia(0);
 interface Ponte { readonly sufixo: string; readonly contratoId: string; readonly contrato: string; readonly cnpj: string; readonly empenho: string }
 const PONTE: Ponte = JSON.parse(process.env["PONTE_JSON"] ?? "null") as Ponte;
 const MOTIVO = `Visita à unidade sem assinatura do responsável (percurso ${PONTE?.sufixo ?? ""})`;
+const MOTIVO_GLOSA = `Hora técnica sem registro de entrada e saída na unidade (percurso ${PONTE?.sufixo ?? ""})`;
 const VERIFICACOES = `Relatórios de visita e planilha de horas conferidos (percurso ${PONTE?.sufixo ?? ""})`;
+
+/**
+ * O FORMULÁRIO DO ESTORNO DE UM RECEBIMENTO, RECORTADO PELA MEDIÇÃO.
+ *
+ * ⚠️ `data-acao="estornar-recebimento-N"` NÃO É ÚNICO NA PÁGINA: `N` é o número do recebimento DENTRO da medição, e
+ * uma ordem com duas medições tem dois "nº 1". Sem o recorte, o percurso enviaria o formulário de outra medição.
+ */
+const formEstornoDoRecebimento = (medicao: number, recibo: number): string =>
+  `form[data-acao="estornar-recebimento-${recibo}"]:is(li[data-medicao-da-ordem="${medicao}"] *)`;
 
 async function capturar(page: Page, nome: string): Promise<void> {
   mkdirSync(CAPTURAS, { recursive: true });
@@ -56,6 +86,11 @@ async function campoPeloRotulo(page: Page, form: string, trecho: string): Promis
     const l = ls.find((x) => (x.textContent ?? "").includes(t as string));
     return (l?.querySelector("input, select, textarea") as HTMLInputElement | null)?.name ?? "";
   }, trecho);
+}
+
+/** O texto de um elemento — por `textContent`, que enxerga dentro de `<details>` fechado (o `innerText` seria vazio). */
+async function conteudo(page: Page, sel: string): Promise<string> {
+  return page.$eval(sel, (e) => (e.textContent ?? "").replace(/\s+/g, " ").trim()).catch(() => "");
 }
 
 /** O valor da opção cujo texto contém o trecho. */
@@ -258,6 +293,192 @@ async function main(): Promise<void> {
     const cards = await page.$eval("[data-execucao-do-contrato]", (e) => e.textContent ?? "");
     R.conferir("11.4 no contrato: recebido R$ 1.000,00 e liquidado R$ 1.000,00, e os R$ 900,00 da primeira liquidação continuam lá", /Recebido em definitivo\s*R\$\s*1\.000,00/.test(cards) && /Liquidado pelas parcelas\s*R\$\s*1\.000,00/.test(cards), cards.slice(0, 400));
     await capturar(page, "contrato-execucao");
+    await sair(N, page);
+
+    // ══ 12. A GLOSA: a controvérsia REJEITADA devolve o saldo de EXECUÇÃO e não devolve o de PAGAMENTO ══
+    await entrar(N, page, FISCAL, SENHA);
+    await irPara(N, page, hrefOrdem);
+    const mH2 = await campoPeloRotulo(page, formMedir, `Hora técnica ${SUF}`);
+    const med2 = await preencherEEnviar(page, "medir-ordem-de-servico", [
+      { sel: 'input[name="diaInicio"]', valor: HOJE, tipo: "data" }, { sel: 'input[name="diaFim"]', valor: HOJE, tipo: "data" },
+      { sel: `input[name="${mH2}"]`, valor: "2" },
+    ]);
+    R.conferir("12.1 o fiscal mede as 2 horas que faltavam: medição nº 2 de R$ 100,00", med2.tipo === "ok" && /Medição nº 2 registrada: R\$ 100,00/.test(med2.texto), `${med2.tipo}: ${med2.texto.slice(0, 240)}`);
+    await irPara(N, page, hrefOrdem);
+    const horaId2 = await page.$$eval(`${formProv} fieldset`, (fs, t) => (fs.find((f) => (f.textContent ?? "").includes(t as string))?.querySelector('input[name^="conforme."]') as HTMLInputElement | null)?.name.slice("conforme.".length) ?? "", `Hora técnica ${SUF}`);
+    const prov2 = await preencherEEnviar(page, "receber-provisoriamente", [
+      { sel: `input[name="conforme.${horaId2}"]`, valor: "1" }, { sel: `input[name="controversia.${horaId2}"]`, valor: "1" }, { sel: `input[name="motivo.${horaId2}"]`, valor: MOTIVO_GLOSA },
+      { sel: 'textarea[name="verificacoes"]', valor: VERIFICACOES },
+    ]);
+    R.conferir("12.2 o fiscal recebe provisoriamente a medição nº 2: R$ 50,00 conforme e R$ 50,00 em controvérsia", prov2.tipo === "ok" && /R\$ 50,00 conforme; R\$ 50,00 em controvérsia/.test(prov2.texto), `${prov2.tipo}: ${prov2.texto.slice(0, 240)} (campo ${horaId2 === "" ? "não achado" : "achado"})`);
+    await sair(N, page);
+
+    await entrar(N, page, RECEBEDOR, SENHA);
+    await irPara(N, page, hrefOrdem);
+    const dec2 = await preencherEEnviar(page, "decidir-controversia", [
+      { sel: 'select[name="resultado"]', valor: "REJEITADA", tipo: "select" },
+      { sel: 'textarea[name="fundamento"]', valor: `A hora apontada não tem registro de entrada e saída na unidade (percurso ${SUF})` },
+    ]);
+    R.conferir("12.3 o recebedor REJEITA a controvérsia: glosa confirmada de R$ 50,00", dec2.tipo === "ok" && /Controvérsia rejeitada: glosa confirmada de R\$ 50,00/.test(dec2.texto), `${dec2.tipo}: ${dec2.texto.slice(0, 240)}`);
+    await irPara(N, page, hrefOrdem);
+    const item2 = await page.$eval('tr[data-item-da-ordem="2"]', (tr) => {
+      const g = tr.querySelector("td[data-glosado]");
+      return {
+        medido: (g?.previousElementSibling?.textContent ?? "").trim(),
+        glosado: (g?.textContent ?? "").trim(),
+        aExecutar: (tr.querySelector("td[data-a-executar]")?.textContent ?? "").trim(),
+      };
+    });
+    R.conferir(
+      "12.4 recarregada, a ordem mostra o GLOSADO do item 2 (1) e o saldo de EXECUÇÃO de volta na MESMA ordem: medido 9, a executar 1",
+      item2.glosado === "1" && item2.aExecutar === "1" && item2.medido === "9",
+      `medido=${item2.medido} glosado=${item2.glosado} aExecutar=${item2.aExecutar}`
+    );
+    const eleg2 = await conteudo(page, 'li[data-medicao-da-ordem="2"] tr[data-item-medido="2"] td[data-elegivel]');
+    const valoresMed2 = await conteudo(page, 'li[data-medicao-da-ordem="2"] [data-valores-da-medicao]');
+    R.conferir(
+      "12.4b o saldo de PAGAMENTO não voltou: o elegível da medição nº 2 continua 1 (só o conforme) e a tela separa glosado R$ 50,00 de conforme R$ 50,00",
+      eleg2 === "1" && /glosado\s*R\$\s*50,00/.test(valoresMed2) && /conforme\s*R\$\s*50,00/.test(valoresMed2),
+      `elegivel=${eleg2} · ${valoresMed2}`
+    );
+    const formDef = 'form[data-acao="receber-definitivamente"]';
+    const campoReceber = await page.$$eval(`${formDef} input[name^="receber."]`, (is) => (is[0] as HTMLInputElement | undefined)?.name ?? "");
+    const negGlosa = await preencherEEnviar(page, "receber-definitivamente", [
+      { sel: `input[name="${campoReceber}"]`, valor: "2" },
+      { sel: 'textarea[name="conclusao"]', valor: `Tentativa de receber a medição inteira, com a hora glosada (percurso ${SUF})` },
+    ]);
+    R.conferir(
+      "12.5 NEGATIVA: receber em definitivo a hora REJEITADA recusa, e a recusa diz GLOSA-CONFIRMADA com o glosado e o elegível",
+      negGlosa.tipo === "erro" && /GLOSA-CONFIRMADA/.test(negGlosa.texto) && /1\.0000 hora foram rejeitados/.test(negGlosa.texto) && /elegível 1\.0000/.test(negGlosa.texto),
+      `${negGlosa.tipo}: ${negGlosa.texto.slice(0, 300)}`
+    );
+    const def2 = await preencherEEnviar(page, "receber-definitivamente", [
+      { sel: `input[name="${campoReceber}"]`, valor: "1" },
+      { sel: 'textarea[name="conclusao"]', valor: `Parte regular da medição nº 2, sem a hora glosada (percurso ${SUF})` },
+    ]);
+    R.conferir("12.6 a parte regular segue: recebimento definitivo de R$ 50,00 na medição nº 2 — não os R$ 100,00 medidos", def2.tipo === "ok" && /nº 1 registrado: R\$ 50,00/.test(def2.texto), `${def2.tipo}: ${def2.texto.slice(0, 260)}`);
+    await irPara(N, page, hrefOrdem);
+    const linhaDec2 = await conteudo(page, 'li[data-medicao-da-ordem="2"] tr[data-item-medido="2"]');
+    const valoresMed2b = await conteudo(page, 'li[data-medicao-da-ordem="2"] [data-valores-da-medicao]');
+    R.conferir(
+      "12.7 recarregada, a decisão persiste como 'rejeitada (glosa)' e a medição nº 2 fica com glosado R$ 50,00 e recebido R$ 50,00",
+      /rejeitada \(glosa\)/.test(linhaDec2) && /glosado\s*R\$\s*50,00/.test(valoresMed2b) && /recebido\s*R\$\s*50,00/.test(valoresMed2b),
+      `${linhaDec2.slice(0, 200)} || ${valoresMed2b}`
+    );
+    await capturar(page, "ordem-glosa");
+    await sair(N, page);
+
+    // ══ 13. O ESTORNO DA MEDIÇÃO — o que funciona, e as duas recusas com o motivo nomeado ══
+    await entrar(N, page, FISCAL, SENHA);
+    await irPara(N, page, hrefOrdem);
+    const mH3 = await campoPeloRotulo(page, formMedir, `Hora técnica ${SUF}`);
+    const med3 = await preencherEEnviar(page, "medir-ordem-de-servico", [
+      { sel: 'input[name="diaInicio"]', valor: HOJE, tipo: "data" }, { sel: 'input[name="diaFim"]', valor: HOJE, tipo: "data" },
+      { sel: `input[name="${mH3}"]`, valor: "1" },
+    ]);
+    R.conferir("13.1 o fiscal remede a hora glosada dentro da MESMA ordem: medição nº 3 de R$ 50,00", med3.tipo === "ok" && /Medição nº 3 registrada: R\$ 50,00/.test(med3.texto), `${med3.tipo}: ${med3.texto.slice(0, 240)}`);
+    await irPara(N, page, hrefOrdem);
+    // A aba B abre com a tela de AGORA e só envia depois do ato da aba A — é a tela velha de quem ficou com a página aberta.
+    const abaB = await navegador.newPage();
+    abaB.setDefaultTimeout(120000);
+    await abaB.setViewport({ width: 1366, height: 900 });
+    await irPara(N, abaB, hrefOrdem);
+    R.conferir("13.2 as duas abas do fiscal oferecem o estorno da medição nº 3 (ainda sem recebimento)", (await page.$('form[data-acao="estornar-medicao-3"]')) !== null && (await abaB.$('form[data-acao="estornar-medicao-3"]')) !== null, "o formulário do estorno não apareceu nas duas abas");
+    const est3 = await preencherEEnviar(page, "estornar-medicao-3", [{ sel: 'textarea[name="motivo"]', valor: `Período lançado em duplicidade pelo fiscal (percurso ${SUF})` }]);
+    R.conferir("13.3 a medição sem dependente estorna: R$ 50,00, com o histórico preservado", est3.tipo === "ok" && /Medição nº 3 estornada \(R\$ 50,00\)/.test(est3.texto), `${est3.tipo}: ${est3.texto.slice(0, 240)}`);
+    await irPara(N, page, hrefOrdem);
+    const estorno3 = await conteudo(page, '[data-estorno-da-medicao="3"]');
+    const item2Dep = await page.$eval('tr[data-item-da-ordem="2"]', (tr) => ({ medido: (tr.querySelector("td[data-glosado]")?.previousElementSibling?.textContent ?? "").trim(), aExecutar: (tr.querySelector("td[data-a-executar]")?.textContent ?? "").trim() }));
+    R.conferir(
+      "13.4 recarregada, a medição nº 3 está no histórico marcada como estornada e a quantidade voltou a executar (medido 9, a executar 1)",
+      estorno3.includes("Fica no histórico e fora das somas") && item2Dep.medido === "9" && item2Dep.aExecutar === "1",
+      `${estorno3.slice(0, 160)} || medido=${item2Dep.medido} aExecutar=${item2Dep.aExecutar}`
+    );
+    const neg3 = await preencherEEnviar(abaB, "estornar-medicao-3", [{ sel: 'textarea[name="motivo"]', valor: `Segundo estorno da mesma medição, pela tela velha (percurso ${SUF})` }]);
+    R.conferir(
+      "13.5 NEGATIVA: estornar a mesma medição duas vezes (aba com a tela velha) recusa dizendo MEDICAO-JA-ESTORNADA",
+      neg3.tipo === "erro" && /MEDICAO-JA-ESTORNADA/.test(neg3.texto) && /medição nº 3/.test(neg3.texto),
+      `${neg3.tipo}: ${neg3.texto.slice(0, 300)}`
+    );
+    const mH4 = await campoPeloRotulo(page, formMedir, `Hora técnica ${SUF}`);
+    const med4 = await preencherEEnviar(page, "medir-ordem-de-servico", [
+      { sel: 'input[name="diaInicio"]', valor: HOJE, tipo: "data" }, { sel: 'input[name="diaFim"]', valor: HOJE, tipo: "data" },
+      { sel: `input[name="${mH4}"]`, valor: "1" },
+    ]);
+    R.conferir("13.6 o fiscal remede a hora: medição nº 4 de R$ 50,00", med4.tipo === "ok" && /Medição nº 4 registrada: R\$ 50,00/.test(med4.texto), `${med4.tipo}: ${med4.texto.slice(0, 240)}`);
+    await irPara(N, page, hrefOrdem);
+    await irPara(N, abaB, hrefOrdem);
+    R.conferir("13.7 a aba B carrega a ordem com o estorno da medição nº 4 ainda oferecido", (await abaB.$('form[data-acao="estornar-medicao-4"]')) !== null, "o formulário do estorno da medição nº 4 não apareceu na aba B");
+    const horaId4 = await page.$$eval(`${formProv} fieldset`, (fs, t) => (fs.find((f) => (f.textContent ?? "").includes(t as string))?.querySelector('input[name^="conforme."]') as HTMLInputElement | null)?.name.slice("conforme.".length) ?? "", `Hora técnica ${SUF}`);
+    const prov4 = await preencherEEnviar(page, "receber-provisoriamente", [
+      { sel: `input[name="conforme.${horaId4}"]`, valor: "1" }, { sel: `input[name="controversia.${horaId4}"]`, valor: "0" },
+      { sel: 'textarea[name="verificacoes"]', valor: VERIFICACOES },
+    ]);
+    R.conferir("13.8 o fiscal recebe provisoriamente a medição nº 4: R$ 50,00 conforme, sem controvérsia", prov4.tipo === "ok" && /R\$ 50,00 conforme, sem controvérsia/.test(prov4.texto), `${prov4.tipo}: ${prov4.texto.slice(0, 240)}`);
+    const neg4 = await preencherEEnviar(abaB, "estornar-medicao-4", [{ sel: 'textarea[name="motivo"]', valor: `Estorno pedido depois do recebimento, pela tela velha (percurso ${SUF})` }]);
+    R.conferir(
+      "13.9 NEGATIVA: a medição com recebimento pendurado recusa dizendo MEDICAO-COM-RECEBIMENTO e nomeando o dependente",
+      neg4.tipo === "erro" && /MEDICAO-COM-RECEBIMENTO/.test(neg4.texto) && /medição nº 4/.test(neg4.texto) && /já tem recebimento provisório de \d{2}\/\d{2}\/\d{4}/.test(neg4.texto) && /Nada foi gravado/.test(neg4.texto),
+      `${neg4.tipo}: ${neg4.texto.slice(0, 340)}`
+    );
+    await capturar(page, "ordem-estorno-de-medicao");
+    await abaB.close();
+    await sair(N, page);
+
+    // ══ 14. O ESTORNO DO RECEBIMENTO DEFINITIVO — a ordem da cadeia: o dinheiro volta primeiro ══
+    await entrar(N, page, RECEBEDOR, SENHA);
+    await irPara(N, page, hrefOrdem);
+    const bloqueio = await conteudo(page, `${formEstornoDoRecebimento(1, 1)} [data-bloqueio-do-estorno]`);
+    R.conferir(
+      "14.1 a tela AVISA antes do clique: o termo nº 1 da medição nº 1 lastreia R$ 900,00 liquidados e o estorno será recusado até a liquidação ser estornada",
+      /lastreia R\$\s*900[.,]00 já liquidados/.test(bloqueio) && /estorne-a primeiro/i.test(bloqueio),
+      bloqueio === "" ? "o aviso do bloqueio não está na tela" : bloqueio.slice(0, 240)
+    );
+    const negLiq = await preencherEEnviar(page, formEstornoDoRecebimento(1, 1), [
+      { sel: 'input[name="data"]', valor: HOJE, tipo: "data" },
+      { sel: 'textarea[name="motivo"]', valor: `Tentativa de desfazer o termo que lastreia a liquidação (percurso ${SUF})` },
+    ]);
+    R.conferir(
+      "14.2 NEGATIVA: o recebimento já liquidado não se estorna, e a recusa diz RECEBIMENTO-LIQUIDADO, o valor e onde se estorna a liquidação",
+      negLiq.tipo === "erro" && /RECEBIMENTO-LIQUIDADO/.test(negLiq.texto) && /lastreia R\$ 900\.00 já liquidados/.test(negLiq.texto) && /Despesa › Liquidações/.test(negLiq.texto) && /Nada foi gravado/.test(negLiq.texto),
+      `${negLiq.tipo}: ${negLiq.texto.slice(0, 340)}`
+    );
+    const abaC = await navegador.newPage();
+    abaC.setDefaultTimeout(120000);
+    await abaC.setViewport({ width: 1366, height: 900 });
+    await irPara(N, abaC, hrefOrdem);
+    const estRec = await preencherEEnviar(page, formEstornoDoRecebimento(2, 1), [
+      { sel: 'input[name="data"]', valor: HOJE, tipo: "data" },
+      { sel: 'textarea[name="motivo"]', valor: `Termo com quantidade conferida a maior; será refeito (percurso ${SUF})` },
+    ]);
+    R.conferir(
+      "14.3 o recebimento SEM liquidação estorna: R$ 50,00, com termo próprio, e o original continua no histórico",
+      estRec.tipo === "ok" && /Recebimento definitivo nº 1 \(R\$ 50,00\) estornado/.test(estRec.texto) && /continua no histórico/.test(estRec.texto),
+      `${estRec.tipo}: ${estRec.texto.slice(0, 300)}`
+    );
+    await irPara(N, page, hrefOrdem);
+    const selo = await conteudo(page, 'li[data-medicao-da-ordem="2"] [data-recebimento-estornado]');
+    const linhaRec2 = await conteudo(page, 'li[data-medicao-da-ordem="2"] li[data-recebimento-definitivo="1"]');
+    const elegDepois = await conteudo(page, 'li[data-medicao-da-ordem="2"] tr[data-item-medido="2"] td[data-elegivel]');
+    R.conferir(
+      "14.4 recarregada, o termo nº 1 da medição nº 2 aparece estornado (com autor e motivo), continua valendo R$ 50,00 no papel, e o ELEGÍVEL voltou a 1",
+      selo.startsWith("estornado em") && /R\$\s*50,00/.test(linhaRec2) && elegDepois === "1",
+      `selo=${selo.slice(0, 160)} · linha=${linhaRec2.slice(0, 160)} · elegivel=${elegDepois}`
+    );
+    const negRec = await preencherEEnviar(abaC, formEstornoDoRecebimento(2, 1), [
+      { sel: 'input[name="data"]', valor: HOJE, tipo: "data" },
+      { sel: 'textarea[name="motivo"]', valor: `Segundo estorno do mesmo termo, pela tela velha (percurso ${SUF})` },
+    ]);
+    R.conferir(
+      "14.5 NEGATIVA: estornar o mesmo recebimento duas vezes (aba com a tela velha) recusa dizendo RECEBIMENTO-JA-ESTORNADO",
+      negRec.tipo === "erro" && /RECEBIMENTO-JA-ESTORNADO/.test(negRec.texto) && /recebimento definitivo nº 1 da medição nº 2/.test(negRec.texto),
+      `${negRec.tipo}: ${negRec.texto.slice(0, 340)}`
+    );
+    // Medições que o percurso deixa para a leitura da evidência bruta (não são afirmações de passo).
+    console.log(`      [após o estorno do termo · valores da ordem: ${await conteudo(page, "[data-valores-da-ordem]")}]`);
+    console.log(`      [após o estorno do termo · parcelas oferecidas à liquidação: ${(await page.$eval("[data-parcelas-a-liquidar]", (e) => e.getAttribute("data-parcelas-a-liquidar")).catch(() => "nenhuma"))}]`);
+    await capturar(page, "ordem-estorno-de-recebimento");
+    await abaC.close();
     await sair(N, page);
   } catch (e) {
     R.falhou("execução", e instanceof Error ? `${e.message}\n${e.stack ?? ""}` : String(e));

@@ -200,8 +200,10 @@ export const PAPEIS: readonly Papel[] = [
     identificador: "recebedor-contrato@percursos.local",
     nome: "Recebedor definitivo (percurso)",
     perfil: "RECEBIMENTO DEFINITIVO — PERCURSO",
-    descricao: "Decide a controvérsia e recebe em definitivo nos contratos em que for designado recebedor.",
-    acoes: ["CONSULTAR_LICITACOES", "REGISTRAR_RECEBIMENTO_DEFINITIVO"],
+    descricao: "Decide a controvérsia, recebe em definitivo e desfaz o próprio termo nos contratos em que for designado recebedor.",
+    // V9 N4 — ESTORNAR_RECEBIMENTO_DEFINITIVO é ação PRÓPRIA (receber é ordinário, desfazer é excepcional): sem ela o
+    // percurso da ponte não alcança o formulário do estorno, que a página só oferece a quem tem a ação e a designação.
+    acoes: ["CONSULTAR_LICITACOES", "REGISTRAR_RECEBIMENTO_DEFINITIVO", "ESTORNAR_RECEBIMENTO_DEFINITIVO"],
   },
   // ── V7 M2 U5 — a área de contratos registra o aditivo por itens (ato do ente, sem designação no contrato) ──
   {
