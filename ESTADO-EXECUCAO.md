@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | `35586f9` (V11 V4.2 pessoal público) — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
+| HEAD | `19b5319` (V11 V2.1 registro do leiaute do eSocial) — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
-| Frente em execução | **V11** — V0 preservação, V1.1 rubrica versionada, V3.1 consulta do superávit, V4.1 receitas públicas, V4.2 pessoal público. V2 (eSocial), V5 (atendimento) e V6 (AWS) não iniciados. Ver seção 65 |
-| Último resultado | seção 65 — cinco unidades commitadas (`1ef405d`, `01de24c`, `11cbcff`, `e51d182`, `35586f9`); typecheck do backend e do app em **exit 0**; testes dirigidos **9/9** (pessoal), **8/8** (receitas), **11/11** (superávit), **28/28** (rubrica versionada), **138/138** (M16), **18/18** (papel de runtime); **catorze mutações, catorze acusações** |
-| Pendências relevantes | seção 65.6 — **V6 (AWS) bloqueado na AUTENTICAÇÃO**: não existe perfil `gestao-publica` nesta máquina, e o `default` é de outro produto e não foi usado. **V2 (eSocial) e V5 (atendimento) não iniciados** — escopo pendente, não bloqueio. Nenhum percurso de navegador executado nesta rodada. Uma intermitência não explicada no caso R8 das receitas. Linha **ENT12 do Windows** (4 commits, base 148 commits atrás) por reconciliar |
-| Próximo passo | seção 65.7 |
+| Frente em execução | **V11** — V0 preservação, V1.1 rubrica versionada, V3.1 consulta do superávit, V4.1 receitas públicas, V4.2 pessoal público (seção 65) e **V2.1 registro do leiaute do eSocial** (seção 66). V5 (atendimento) não iniciado; V6 (AWS) bloqueado |
+| Último resultado | seção 66 — V2.1 commitado (`19b5319`); typecheck do backend e do app em **exit 0**; **20/20** no domínio do leiaute, **6/6** provas de CHECK no banco isolado nas duas direções, **138/138** (M16), **46/46** (M14), **18/18** (papel de runtime), **222/222** (M33+M32); **sete mutações, sete acusações** — e o tripwire `e19` acusou na primeira execução, contra um código escrito no comentário do próprio domínio |
+| Pendências relevantes | seção 66.9 — **`LEIAUTE-ESOCIAL-NAO-OBTIDO`**: o leiaute do eSocial não está no repositório e o portal responde **HTTP 403** a download automatizado (medido em 2026-09-18); geração de XML, validação XSD, lotes e estados do protocolo dependem dele. **Assinatura A1 e transporte** são pendência distinta, do certificado do ente. **V6 (AWS) bloqueado na AUTENTICAÇÃO** (seção 65.6). **V5 (atendimento) não iniciado**. **Nenhum percurso de navegador** — banco de dev recriado vazio. Intermitência não explicada no R8 das receitas. Linha **ENT12 do Windows** por reconciliar |
+| Próximo passo | seção 66.10 |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -7722,3 +7722,172 @@ do Mac. Sem push, não chegaram aqui.
 
 V2 (eSocial) ou V5 (atendimento), pela fila da ordem V11 — ambos com inventário ainda por fazer. A
 reconciliação do ENT12 depende de os commits alcançarem esta máquina.
+
+---
+
+## 66. V11 V2.1 — o registro do leiaute do eSocial, e a decisão de não ter gerador
+
+### 66.1 O que passou a funcionar, e a rota real para chegar lá
+
+`/folha/esocial` — **Consistência para o eSocial**, no submenu de Folha, sob `CONSULTAR_FOLHA`.
+Escolhe-se o ambiente (produção / produção restrita) e a data de referência; a tela confronta o
+leiaute **registrado** com o cadastro do ente e lista, por pessoa, qual campo está vazio, por que
+o leiaute o pede, e a rota para corrigir.
+
+**Hoje ela recusa, nomeando o motivo — e esse é o estado correto.** Nenhum pacote de leiaute está
+registrado, porque nenhum foi obtido.
+
+### 66.2 O inventário que decidiu o desenho
+
+Antes de escrever, medi o que existia. O resultado mudou a unidade inteira:
+
+- Nenhum arquivo, tabela, módulo ou função de eSocial no núcleo. As 60 ocorrências do termo são
+  comentário de schema (`SEFIP/CAGED/RAIS/DIRF/eSocial são chaveados por CPF`), documento, ou
+  `doador/saas-municipal/` — de onde nada se importa.
+- `FonteIntegracao.ESOCIAL` existe em `_base.prisma` desde o ENT00, sem um único leitor.
+- **Zero arquivos `.xsd` na árvore.**
+- `docs/dependencias-externas.md` já registrava `AUSENTE` com a próxima ação "obter leiaute
+  vigente do eSocial".
+- E a medição nova: em **2026-09-18**, `https://www.gov.br/esocial/pt-br/documentacao-tecnica`
+  respondeu **HTTP 403** a requisição automatizada desta máquina.
+
+### 66.3 A decisão, e por que ela não é preguiça
+
+A ordem V11 §5 manda "selecionar os códigos no leiaute vigente". O leiaute vigente não está aqui.
+Escrever os códigos de evento, a lista de campos e a tabela de categoria de trabalhador dentro de
+um `.ts` seria **inventar norma federal** — o que o CLAUDE.md proíbe em uma linha, e o que
+`IcExigidaPorConta` já resolveu nascendo vazia em vez de trazer o Anexo II da MSC de memória.
+
+A diferença entre os dois casos é só de grau, e ela pesa **para o lado do eSocial**. A MSC sai
+mesmo assim, com a dimensão faltante virando pendência nomeada, porque um ente sem MSC não
+entrega nada. Um XML de eSocial montado com código inventado não tem esse consolo: ele **passa no
+validador de estrutura** e a Receita o interpreta como outra coisa. Arquivo plausível e errado é
+pior que arquivo nenhum.
+
+Então entregou-se a **máquina**, sem o conteúdo — e ela é a metade que independe do leiaute.
+
+### 66.4 O que foi construído
+
+| Peça | Arquivo | O que faz |
+|---|---|---|
+| O registro | `prisma/schema/m14-esocial.prisma` | `LeiauteDoESocial` (versão, ambiente, fonte, `sha256`, arquivo, publicação, conferente), `EventoDoLeiaute` (vigência **própria**, XSD nome+digest), `CampoDoEvento` (caminho, origem, obrigatoriedade, condição e regra transcritas) |
+| A migration | `20260929090000_v11_v21_registro_do_leiaute_esocial` | Aditiva: três enums, três tabelas, sete CHECKs. **Zero `DROP`, zero seed** |
+| A máquina | `modules/m14-exports-federais/esocial/leiaute.ts` | `escolherLeiauteVigente`, `eventosVigentes`, `camposVigentes`, `conferirEvento`, `conferirConsistencia`, `EXTRATOR`, `DESCRICAO_DA_ORIGEM` |
+| A porta | `lib/portas/esocial.ts` | Só o client e as duas consultas. Sem pacote registrado, **não lê vínculo nenhum** |
+| A tela | `app/(areas)/folha/esocial/page.tsx` | Pessoa, evento/campo, erro, sugestão, rota da origem |
+
+E quatro decisões que já são as armadilhas conhecidas do domínio:
+
+**A data de publicação da nota não é o início das regras que ela publica.** A vigência mora no
+evento (obrigatória) e no campo (opcional, herdando a do evento), nunca no pacote. Uma nota técnica
+publica de uma vez regras que entram em produção em dias diferentes.
+
+**Os dois ambientes não caem um no outro.** Sem pacote para a produção restrita, a resposta é
+`null` — nunca o pacote da produção. A restrita costuma receber a versão mais nova, e trocar uma
+pela outra montaria, em produção, um evento pela regra que ainda não entrou lá.
+
+**`CONDICIONAL` não vira erro.** A condição é texto do leiaute e o sistema **não a avalia** —
+avaliar uma regra que não se tem é inventá-la. Sai como `CONFERIR`, com a condição ao lado.
+
+**A origem é universo fechado.** `OrigemDoCampoDoESocial` (enum do banco) mais `DESCRICAO_DA_ORIGEM`
+(Record exaustivo) — o desenho de `ColunaDoDemonstrativoDePessoal` do V4.2. Um leiaute registrado
+não pode apontar para uma origem que o código não resolve.
+
+### 66.5 Comandos executados, com resultado real
+
+| Comando | Resultado |
+|---|---|
+| `curl -I https://www.gov.br/esocial/pt-br/documentacao-tecnica` | **HTTP 403** |
+| `npx prisma validate --schema prisma/schema` | válido |
+| `DATABASE_URL=$DATABASE_URL_TEST npx prisma migrate deploy` | aplicada, `exit=0` |
+| `npx prisma migrate deploy` (dev) | aplicada, `exit=0` |
+| `npx prisma generate` | cliente 7.8.0 regenerado |
+| 6 provas de CHECK por `psql` no banco isolado | **6/6 nas duas direções** |
+| `npx vitest run .../m14-esocial-leiaute.test.ts` | **20/20**, `exit=0` |
+| 7 mutações no domínio | **7 acusações**, cada uma pelo caso certo |
+| `tsc -p tsconfig.backend.json --noEmit` | `backend exit=0` |
+| `tsc -p tsconfig.json --noEmit` | `app exit=0` |
+| `npx vitest run modules/m16-travamento` | **138/138**, `exit=0` |
+| `npx vitest run modules/m14-exports-federais` | **46/46**, `exit=0` |
+| `npx vitest run test/papel-runtime.test.ts` | **18/18**, `exit=0` |
+| `npx vitest run modules/m33-folha modules/m32-pessoal` | **222/222**, `exit=0` |
+
+⚠️ Os `exit=` desta tabela são os que **o próprio comando escreveu** no arquivo de saída, não os da
+notificação de tarefa — que carrega o código do invólucro de shell e já disse `0` sobre `exit=2`
+três vezes nesta sessão.
+
+**As 6 provas de CHECK**, nas duas direções: `sha256` fora do formato recusa / no formato aceita;
+nome de XSD sem o digest dele recusa / evento sem XSD aceita; `CONDICIONAL` sem a condição recusa /
+com a condição aceita.
+
+**As 7 mutações e o que cada uma acusou:** queda de ambiente → `e2`; filtro de publicação → `e3` e
+`e4`; empate na publicação resolvido pelo índice do array → `e5`; vigência própria do campo
+ignorada → `e14`; `CONDICIONAL` tratado como `FACULTATIVO` → `e10`; `trim` removido → `e16` e
+`e13`; recusa nomeada trocada por lista vazia → `e1`. Revertidas, 20/20 de novo.
+
+### 66.6 O defeito achado, e ele foi achado pelo próprio instrumento
+
+O `e19` é um tripwire: ele varre o domínio procurando a **forma** do código de evento do eSocial
+(letra, hífen, quatro dígitos), não uma lista de códigos conhecidos — porque guarda que enumera
+formas acha só aquelas formas.
+
+**Ele falhou na primeira execução.** O que ele pegou foi um código escrito no comentário de
+cabeçalho do próprio domínio, no trecho que dizia que aquele código não deveria estar lá. Um
+tripwire que consultasse uma lista teria passado; um que fosse escrito depois do código teria sido
+calibrado para deixar o caso passar. O comentário foi reescrito sem o literal, o instrumento ficou
+como está, e o caso está registrado dentro do próprio teste.
+
+### 66.7 Invariantes verificadas
+
+- **Migration aditiva**, zero `DROP`, e sem seed — o vazio é o estado de partida correto.
+- **Fail-closed**: sem pacote registrado, `escolherLeiauteVigente` devolve `null`, a porta não lê
+  vínculo nenhum e a tela recusa **nomeando o motivo**. `SEM_LEIAUTE` e `SEM_EVENTO_VIGENTE` são
+  mensagens distintas — confundir "zero pendências" com "não há leiaute" levaria alguém a
+  transmitir achando que o ente estava em ordem.
+- **Autorização no servidor**, por ação nomeada (`CONSULTAR_FOLHA`), no `exigirLeitura` da página.
+- **Fixture N=2**, com faltas **diferentes** entre as duas pessoas: com uma só, "achou a pendência"
+  não distingue "achou a daquela pessoa" de "achou uma qualquer".
+- **Data civil do ente** em toda comparação de vigência, por `compararPorDiaCivil`.
+- **Nada publicado**: esta consulta é da área autenticada. O portal do cidadão tem porta e política
+  próprias e não foi tocado.
+- **Censo de ações**: `consistenciaDoESocial` entrou no `FORA_DO_CENSO` com o motivo; M16 138/138.
+- **Papel de runtime**: as três tabelas são só `INSERT`, não entram em `ESCRITA_MUTAVEL_DO_RUNTIME`;
+  18/18 confirmam que não sobrou nem faltou grant.
+- **`test/limpar-banco.ts`** ganhou as três tabelas: um pacote deixado por um arquivo de teste faria
+  o seguinte medir consistência contra um leiaute que ele não registrou.
+
+### 66.8 Catálogo
+
+Nenhuma cláusula marcada. O que existe é **máquina sem conteúdo normativo**: marcar atendimento de
+cláusula de eSocial com o leiaute ausente seria exatamente a marcação por papelada que o CLAUDE.md
+proíbe. A marcação de **ausência** cabe quando o catálogo for revisitado com a pendência
+`LEIAUTE-ESOCIAL-NAO-OBTIDO` na mão.
+
+### 66.9 Pendências, separadas por natureza
+
+**Bloqueado por insumo externo:**
+
+| Pendência | Depende de |
+|---|---|
+| `LEIAUTE-ESOCIAL-NAO-OBTIDO` | Download **manual** do pacote de leiaute e do pacote de XSD no portal do eSocial (o automatizado recebe 403), e `INSERT` com o `sha256` de cada arquivo |
+| Assinatura A1 e transporte | Certificado digital do ente e autorização de ambiente. **É pendência distinta** da anterior — não se resolvem juntas e não viram uma pendência genérica |
+
+**Escopo pendente (trabalho, não bloqueio) — mas cada item depende do primeiro bloqueio acima:**
+geração de XML e prévia legível; validação XSD; lotes, chave de idempotência e os estados do
+protocolo (gerado, validado, assinado, aguardando envio, enviado, recebido, aceito, rejeitado);
+recepção idempotente de retorno e retificação.
+
+**Escopo pendente independente:** V5 (atendimento) não iniciado. **Nenhum percurso de navegador** —
+o banco de desenvolvimento foi recriado vazio depois da atualização do macOS, e a tela precisa de
+quadro de pessoal semeado para mostrar mais do que a recusa. V6 (AWS) segue bloqueado na
+autenticação, como na seção 65.6. Linha **ENT12 do Windows** por reconciliar.
+
+### 66.10 O próximo ponto exato
+
+**V5 (atendimento)** — a única frente da V11 que não depende de insumo externo nenhum: percursos de
+glosa e estorno sobre motores que já existem, e-SIC sobre M21/M22, e o guichê. Inventário ainda por
+fazer, como foi o do V2.
+
+Alternativa de igual valor: semear o quadro de pessoal no banco de desenvolvimento e executar os
+percursos de navegador pendentes das telas do V11 — que hoje é a lacuna de verificação mais antiga
+da ordem.
