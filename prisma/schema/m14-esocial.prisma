@@ -1,0 +1,186 @@
+// ============================================================================
+// M14 — eSocial: O REGISTRO DO LEIAUTE (V11 V2.1).
+//
+// ⚠️ AS TRÊS TABELAS NASCEM VAZIAS, E ISSO É O DESENHO — não uma etapa faltando.
+// O leiaute do eSocial é dado oficial da União. Ele NÃO está neste repositório e não
+// foi obtido (`docs/dependencias-externas.md` registra `AUSENTE` desde o levantamento;
+// em 2026-09-18 o portal recusou o download automatizado com HTTP 403). Escrever
+// "S-1200" e a lista de campos dentro do código seria inventar norma federal dentro de
+// um arquivo .ts — exatamente o que `IcExigidaPorConta`, ao lado, se recusa a fazer com
+// o Anexo II da MSC, e pelo mesmo motivo: uma exigência que ninguém escreveu, publicada
+// com a autoridade de quem a escreveu.
+//
+// Vazio, o sistema não gera evento nenhum e a tela de consistência DIZ o que falta,
+// nomeando o ambiente e o dia para os quais não há leiaute registrado. É fail-closed:
+// a ausência do insumo oficial produz recusa nomeada, nunca um XML plausível.
+//
+// ⚠️ POPULADAS POR INSERT, com sha256 do arquivo oficial e o nome de quem conferiu — o
+// mesmo caminho dos roteiros contábeis e do Anexo II. Não há tela de cadastro: quem
+// registra um leiaute está transcrevendo um documento da União, e esse ato tem de deixar
+// a impressão digital do arquivo transcrito.
+// ============================================================================
+
+/// ⚠️ OS DOIS AMBIENTES SÃO MUNDOS SEPARADOS, e o leiaute de um NÃO vale no outro.
+/// A produção restrita costuma receber uma versão antes da produção — tratar os dois
+/// como um só faria o ente transmitir, em produção, um evento montado pela regra que
+/// ainda não entrou lá.
+enum AmbienteDoESocial {
+  PRODUCAO
+  PRODUCAO_RESTRITA
+}
+
+/// DE ONDE O CAMPO SAI — universo FECHADO do que este sistema sabe ler hoje.
+///
+/// ⚠️ É O MESMO DESENHO DE `ColunaDoDemonstrativoDePessoal` (M13, V4.2): um leiaute
+/// registrado NÃO pode apontar para uma origem que o código não resolve. Se o leiaute
+/// exigir um campo que o sistema não tem de onde tirar, o registro daquele campo
+/// RECUSA — e a lacuna aparece como pendência de cadastro, com nome, em vez de virar
+/// um campo vazio no XML. Origem nova exige código novo e revisão; não se declara por
+/// dado.
+enum OrigemDoCampoDoESocial {
+  /// `Pessoa.documento` — CPF, 11 dígitos, só dígitos.
+  CPF_DO_TRABALHADOR
+  /// A versão vigente do nome em `VersaoDePessoa`.
+  NOME_DO_TRABALHADOR
+  /// `Servidor.nomeSocial`.
+  NOME_SOCIAL_DO_TRABALHADOR
+  /// `Servidor.dataNascimento`.
+  DATA_DE_NASCIMENTO
+  /// `Servidor.sexo`.
+  SEXO
+  /// `Servidor.pisPasep` — PIS/PASEP/NIT, 11 dígitos.
+  NIS_DO_TRABALHADOR
+  /// `Servidor.nomeMae`.
+  NOME_DA_MAE
+  /// `Servidor.nomePai`.
+  NOME_DO_PAI
+  /// `Vinculo.matricula`.
+  MATRICULA_DO_VINCULO
+  /// `Vinculo.dataAdmissao`.
+  DATA_DE_ADMISSAO
+  /// `Vinculo.tipo` — efetivo, comissionado, temporário.
+  TIPO_DE_VINCULO
+  /// `Vinculo.regimeJuridico` — texto da lei orgânica do ente.
+  REGIME_JURIDICO
+  /// `Vinculo.regimePrevidenciario` — RGPS, RPPS, isento.
+  REGIME_PREVIDENCIARIO
+  /// `EnteConfig.cnpj`.
+  CNPJ_DO_ENTE
+}
+
+/// ⚠️ `CONDICIONAL` NÃO VIRA ERRO. A condição é texto do leiaute, e este sistema não a
+/// avalia — avaliar uma regra que não se tem é inventá-la. Campo condicional ausente
+/// entra na consistência como CONFERIR, com a condição transcrita ao lado, para um
+/// humano decidir. Marcá-lo como erro encheria a tela de falso positivo até ninguém
+/// mais ler; marcá-lo como ok esconderia a omissão real.
+enum ObrigatoriedadeDoCampoDoESocial {
+  OBRIGATORIO
+  CONDICIONAL
+  FACULTATIVO
+}
+
+/// O PACOTE DE LEIAUTE OBTIDO — a procedência do que o sistema vai obedecer.
+///
+/// ⚠️ `sha256` E `fonte` SÃO OBRIGATÓRIOS porque a pergunta que o controle interno faz
+/// não é "qual versão?" e sim "qual ARQUIVO?". Duas publicações da mesma versão S-1.3
+/// diferem, e a diferença entra no XML. Sem a impressão digital do arquivo transcrito,
+/// a transcrição não é conferível por ninguém depois.
+model LeiauteDoESocial {
+  id String @id @default(cuid())
+
+  /// A versão como o documento oficial a nomeia: "S-1.3", "S-1.2". TEXTO DA FONTE.
+  versao String
+
+  ambiente AmbienteDoESocial
+
+  /// URL de onde o arquivo foi obtido.
+  fonte String
+
+  /// sha256 do arquivo oficial transcrito (manual, pacote de XSD, nota técnica).
+  sha256 String @db.VarChar(64)
+
+  /// O nome do arquivo, como baixado.
+  arquivo String
+
+  /// A data de PUBLICAÇÃO do pacote. ⚠️ NÃO é a vigência de nada: cada evento entra em
+  /// produção no seu próprio dia, e a nota técnica que publica o pacote traz entradas
+  /// futuras. A vigência mora no evento, não aqui.
+  publicadoEm DateTime
+
+  observacao String?
+
+  /// Quem transcreveu, e quando. Um dado que vai para a União tem de ter um humano atrás.
+  conferidoPor String
+  conferidoEm  DateTime
+
+  criadoEm DateTime @default(now())
+
+  eventos EventoDoLeiaute[]
+
+  @@unique([versao, ambiente, sha256])
+  @@index([ambiente, publicadoEm])
+}
+
+/// UM EVENTO DO LEIAUTE — com a SUA vigência, que não é a do pacote.
+model EventoDoLeiaute {
+  id String @id @default(cuid())
+
+  leiauteId String
+  leiaute   LeiauteDoESocial @relation(fields: [leiauteId], references: [id])
+
+  /// O código como o leiaute o escreve: "S-1200", "S-2200". TEXTO DA FONTE.
+  codigo String
+  nome   String
+
+  /// O XSD daquele evento, e o sha256 dele. Sem o arquivo não há validação possível —
+  /// e um "validado" sem XSD seria a pior forma de aprovação.
+  xsdArquivo String?
+  xsdSha256  String? @db.VarChar(64)
+
+  /// ⚠️ O DIA CIVIL em que ESTE evento passa a valer NESTE ambiente. Obrigatório: a
+  /// data de publicação da nota não é o início das regras que ela publica.
+  vigenciaInicio DateTime
+  vigenciaFim    DateTime?
+
+  criadoEm DateTime @default(now())
+
+  campos CampoDoEvento[]
+
+  @@unique([leiauteId, codigo])
+  @@index([codigo, vigenciaInicio])
+}
+
+/// UM CAMPO DO EVENTO — o caminho no XML, a origem no sistema e a obrigatoriedade.
+model CampoDoEvento {
+  id String @id @default(cuid())
+
+  eventoId String
+  evento   EventoDoLeiaute @relation(fields: [eventoId], references: [id])
+
+  /// O caminho no XML, como o leiaute o escreve: "evtRemun/ideTrabalhador/cpfTrab".
+  caminho String
+  /// O rótulo legível, para a tela de consistência.
+  rotulo  String
+
+  origem OrigemDoCampoDoESocial
+
+  obrigatoriedade ObrigatoriedadeDoCampoDoESocial
+
+  /// A condição, TRANSCRITA do leiaute. Obrigatória quando `CONDICIONAL` (o CHECK impõe):
+  /// um campo condicional sem a condição não diz nada a quem for conferir.
+  condicao String?
+
+  /// A regra de validação do leiaute, transcrita. Este sistema NÃO a avalia — ela aparece
+  /// ao lado da pendência para quem decide.
+  regra String?
+
+  /// Vigência PRÓPRIA do campo, quando a nota técnica a dá separada da do evento.
+  /// Nula = vale a vigência do evento.
+  vigenciaInicio DateTime?
+  vigenciaFim    DateTime?
+
+  criadoEm DateTime @default(now())
+
+  @@unique([eventoId, caminho])
+  @@index([eventoId, origem])
+}

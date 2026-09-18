@@ -573,3 +573,89 @@ o nome da obra. É a "terceira via" do M14: quem publica, avisa.
 - **Serviços sujeitos à retenção SEM obra** (o tipo **01** do rol, avulso — tipicamente no
   elemento 39). Eles precisam de um **rol próprio (ASTEC)** e de um gatilho que não é o elemento
   51. É território de M15 — **não é escopo deste bloco**, e o L800 não os cobre.
+
+---
+
+# eSocial — o REGISTRO do leiaute, e por que não há gerador (V11 V2.1)
+
+## O estado, em uma frase
+
+Este módulo **não gera evento nenhum do eSocial**, e isso não é uma etapa que faltou fazer: é
+a consequência de o leiaute não existir no repositório.
+
+## O que foi medido
+
+Em **2026-09-18**, `https://www.gov.br/esocial/pt-br/documentacao-tecnica` respondeu **HTTP 403**
+a requisição automatizada desta máquina. O pacote de leiaute e o pacote de XSD **não foram
+obtidos**. `docs/dependencias-externas.md` já registrava `AUSENTE` desde o levantamento inicial;
+agora registra também a medição.
+
+## A decisão
+
+Escrever os códigos de evento, a lista de campos e a tabela de categoria de trabalhador dentro
+de um `.ts` seria **inventar norma federal** — a proibição que este repositório já aplicou ao
+Anexo II da MSC, e pelo mesmo motivo: `IcExigidaPorConta` nasce vazia porque uma exigência que
+ninguém escreveu, publicada com a autoridade de quem a escreveu, é pior que uma lacuna nomeada.
+
+A diferença entre as duas situações é só de grau. A MSC **sai mesmo assim**, com a dimensão
+faltante virando pendência nomeada, porque um ente sem MSC não entrega nada. Um XML de eSocial
+montado com código inventado **não** tem esse consolo: ele passa no validador de estrutura e a
+Receita o interpreta como outra coisa. Arquivo plausível e errado é pior que arquivo nenhum.
+
+## O que existe, então
+
+A **máquina**, sem o conteúdo:
+
+| Peça | Onde | O que faz |
+|---|---|---|
+| `LeiauteDoESocial` | `prisma/schema/m14-esocial.prisma` | O pacote obtido: versão, ambiente, fonte, `sha256`, arquivo, data de publicação, conferente |
+| `EventoDoLeiaute` | idem | Um evento, com **vigência própria** e o XSD (nome + `sha256`, os dois ou nenhum) |
+| `CampoDoEvento` | idem | Caminho no XML, origem no sistema, obrigatoriedade, condição e regra **transcritas** |
+| `escolherLeiauteVigente` | `esocial/leiaute.ts` | Publicação mais recente não futura, por ambiente. Sem cair de volta entre ambientes |
+| `eventosVigentes` / `camposVigentes` | idem | A vigência **de cada evento e de cada campo**, não a do pacote |
+| `conferirConsistencia` | idem | Confronta o leiaute registrado com a origem de M32/M19/M14 e devolve pendências |
+| `/folha/esocial` | `app/(areas)/folha/esocial/` | A tela: pessoa, evento/campo, erro, sugestão e rota da origem |
+
+As três tabelas **nascem vazias**. Vazias, `escolherLeiauteVigente` devolve `null` e a tela diz
+o que falta, nomeando o ambiente e o dia. Fail-closed: a ausência do insumo oficial produz
+recusa nomeada, nunca um XML plausível.
+
+## As armadilhas que este bloco já pisou
+
+**A data de publicação da nota não é o início das regras que ela publica.** Uma nota técnica
+publica de uma vez regras que entram em produção em dias diferentes. Por isso a vigência mora no
+**evento** (obrigatória) e no **campo** (opcional, herdando a do evento), não no pacote. O `e6`
+prova: pacote publicado, evento com entrada futura, evento não entra.
+
+**Os dois ambientes não caem um no outro.** Sem pacote registrado para a produção restrita, a
+resposta é `null` — nunca o pacote da produção. A restrita costuma receber a versão mais nova, e
+trocar uma pela outra montaria, em produção, um evento pela regra que ainda não entrou lá. `e2`.
+
+**`CONDICIONAL` não vira erro.** A condição é texto do leiaute e este sistema **não a avalia** —
+avaliar uma regra que não se tem é inventá-la. Campo condicional vazio entra como `CONFERIR`, com
+a condição transcrita ao lado. Fundi-lo com `AUSENTE` encheria a tela de falso positivo até
+ninguém mais ler nenhuma linha. `e10`.
+
+**A origem é universo fechado.** `OrigemDoCampoDoESocial` (enum do banco) e `DESCRICAO_DA_ORIGEM`
+(Record exaustivo) são o mesmo desenho de `ColunaDoDemonstrativoDePessoal` no M13: um leiaute
+registrado **não pode** apontar para uma origem que o código não resolve. Origem nova exige
+código novo e revisão; não se declara por dado.
+
+**A consistência confere presença, não mapeia.** Ela diz "este vínculo não tem NIS". Ela **não**
+diz qual código de categoria do eSocial corresponde a `TipoVinculoRh.COMISSIONADO` — essa
+correspondência é tabela oficial e não foi obtida.
+
+**E o tripwire acusou na primeira execução.** O `e19` roda o grep contra a **forma** do código
+de evento (letra, hífen, quatro dígitos), não contra uma lista — e pegou um código escrito no
+comentário do próprio domínio, no exemplo que dizia que o código não deveria estar lá. Enumerar
+códigos conhecidos teria achado só os enumerados.
+
+## O que falta, e o que cada coisa depende
+
+| Pendência | Depende de |
+|---|---|
+| `LEIAUTE-ESOCIAL-NAO-OBTIDO` | Download manual do pacote e dos XSD no portal; INSERT com `sha256` por arquivo |
+| Geração do XML, validação XSD, prévia legível | O leiaute registrado. Não de mais uma tela |
+| Lotes, estados do protocolo, retentativa | O leiaute registrado — os estados são do protocolo, que vem com ele |
+| Assinatura A1 e transporte | Certificado digital do ente, e autorização de ambiente. **São pendências distintas** da anterior |
+| Recepção e correlação de retorno | Transporte, e o formato de retorno do protocolo |

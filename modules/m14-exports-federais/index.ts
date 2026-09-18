@@ -52,3 +52,35 @@ export {
   TIP_ORIG_RECURSO,
 } from "./manad/dominio.js";
 export type { LinhaManad } from "./manad/dominio.js";
+
+// ═══ eSocial (V11 V2.1) — o REGISTRO do leiaute e a consistência derivada dele ═══
+// ⚠️ Nenhum código de evento do eSocial mora aqui: o leiaute é documento oficial, entra por
+// INSERT com fonte e sha256, e sem ele a consistência recusa nomeando o que falta.
+export {
+  camposVigentes,
+  conferirConsistencia,
+  conferirEvento,
+  DESCRICAO_DA_ORIGEM,
+  escolherLeiauteVigente,
+  eventosVigentes,
+  EXTRATOR,
+  idDoAlvo,
+  LeiauteAmbiguoError,
+  rotaDeCorrecao,
+  SEM_EVENTO_VIGENTE,
+  SEM_LEIAUTE,
+  TODAS_AS_ORIGENS,
+} from "./esocial/leiaute.js";
+export type {
+  Ambiente,
+  CampoLido,
+  DescricaoDaOrigem,
+  EventoLido,
+  LeiauteLido,
+  LinhaDeOrigem,
+  Obrigatoriedade,
+  OrigemDoCampo,
+  PendenciaDeConsistencia,
+  ResultadoDaConsistencia,
+  TipoDePendencia,
+} from "./esocial/leiaute.js";

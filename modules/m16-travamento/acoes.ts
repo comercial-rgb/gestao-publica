@@ -1719,6 +1719,11 @@ export const FORA_DO_CENSO: Record<string, string> = {
   consultaDoSuperavit:
     "LEITURA: compõe o apurado dos FATOS (M12) com o declarado e o utilizado (M03) e devolve o disponível por " +
     "fonte, dizendo qual dos dois tetos limita. Nenhuma escrita.",
+  // ── V11 V2.1 — a consistência da origem para o eSocial ──
+  consistenciaDoESocial:
+    "LEITURA: confronta o leiaute do eSocial REGISTRADO (fonte, sha256, conferente) com a origem de M32/M19/M14 e " +
+    "devolve as pendências de cadastro. Não escreve, não corrige fato funcional e não gera arquivo nenhum — sem " +
+    "pacote de leiaute registrado, devolve recusa nomeada.",
   // ── V6.1 — o atesto da folha e a sua liquidação ──
   parcelasDoCalculo:
     "LEITURA e AGRUPAMENTO puro de banco: diz quem empenha o quê, em qual ficha, por quem. É a ÚNICA verdade " +

@@ -282,6 +282,7 @@ export const FOLHA: readonly RelatorioNav[] = [
   { href: "/folha/grupos-de-empenho", numero: "Grupos de empenho", rotulo: "Grupos de empenho", descricao: "Como a folha vira despesa: quais rubricas empenham em qual ficha, e se o empenho é por servidor ou um só para o grupo." },
   { href: "/folha/encargos", numero: "Encargos", rotulo: "Encargos do empregador", descricao: "Os encargos que o ente deve sobre a folha, por regime: versões com alíquota, base, teto e fundamento, aprovadas por outra pessoa." },
   { href: "/folha/designacoes", numero: "Designações", rotulo: "Designações para o atesto", descricao: "Quem o ente designou para certificar a folha, por qual ato administrativo e até quando. Sem designação vigente, o atesto recusa." },
+  { href: "/folha/esocial", numero: "eSocial", rotulo: "Consistência para o eSocial", descricao: "O que o cadastro ainda não tem para atender o leiaute registrado do eSocial. Não gera, não assina e não transmite arquivo: sem o leiaute oficial obtido, a consulta recusa e diz o que falta." },
 ];
 
 /** PESSOAL (M32) — fonte única da landing e do submenu. */

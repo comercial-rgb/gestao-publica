@@ -196,6 +196,12 @@ const TABELAS = [
   // M14 — exports federais (config do ente e matriz de ICs exigidas)
   "EnteConfig",
   "IcExigidaPorConta",
+  // M14 — eSocial (V11 V2.1): o REGISTRO do leiaute. Nascem vazias em produção e é assim que os
+  // testes têm de encontrá-las — um pacote deixado por um arquivo de teste faria o seguinte medir
+  // consistência contra um leiaute que ele não registrou.
+  "LeiauteDoESocial",
+  "EventoDoLeiaute",
+  "CampoDoEvento",
   // M14 — MANAD (registros 0050 e 0100)
   "ManadContabilista",
   "VersaoDaApresentacaoDoEnte",
