@@ -37,6 +37,12 @@ const ABERTAS: readonly Familia[] = [
     href: "/transparencia/despesas",
   },
   {
+    titulo: "Receitas",
+    descricao:
+      "As guias de arrecadação do ente, com natureza, fonte, arrecadado, anulado e líquido, mais a previsão da LOA, as reprevisões e a execução do exercício. O crédito constituído aparece à parte: ele não se soma à arrecadação — é o mesmo dinheiro em dois momentos.",
+    href: "/transparencia/receitas",
+  },
+  {
     titulo: "Contratos",
     descricao:
       "Os contratos do ente, com objeto, contratado, vigência, valores, aditivos e a execução física já aprovada.",
@@ -69,16 +75,15 @@ const ABERTAS: readonly Familia[] = [
 ];
 
 /**
- * ⚠️ O QUE FALTA, DITO EM VOZ ALTA. A ordem V9 pede seis famílias de consulta; três delas
- * dependem de projeção pública que ainda não existe no servidor. Declarar a lacuna é o mesmo
- * princípio do catálogo do repositório: "marcar ausência vale tanto quanto marcar presença".
+ * ⚠️ O QUE FALTA, DITO EM VOZ ALTA. Declarar a lacuna é o mesmo princípio do catálogo do
+ * repositório: "marcar ausência vale tanto quanto marcar presença".
+ *
+ * ⚠️ RECEITAS SAIU DAQUI NO V11 V4, quando a consulta passou a existir de verdade — com guia,
+ * natureza, fonte, líquido, previsão e execução. Uma família que continuasse listada como
+ * ausente depois de publicada faria o portal mentir na direção oposta: subestimando o que ele
+ * já entrega. Pessoal continua aqui, e o motivo é o mesmo de sempre.
  */
 const AINDA_NAO_PUBLICADAS: readonly { readonly titulo: string; readonly falta: string }[] = [
-  {
-    titulo: "Receitas e contas públicas",
-    falta:
-      "Previsto e arrecadado por exercício, natureza e fonte. Os demonstrativos fiscais já publicados cobrem parte disso; a consulta detalhada ainda não existe.",
-  },
   {
     titulo: "Pessoal",
     falta:
