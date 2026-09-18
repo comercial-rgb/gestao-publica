@@ -151,3 +151,137 @@ describe("o medido de um item da ordem passa sempre pela derivação única", ()
     expect(fonte).toMatch(/REJEITADA/);
   });
 });
+
+/**
+ * ═══ A PROPRIEDADE DERIVADA DO SCHEMA (V11 V5.2) — porque os dois guards acima não bastaram ═══
+ *
+ * ⚠️ O DEFEITO QUE ESTE BLOCO EXISTE PARA NÃO DEIXAR VOLTAR, e ele é do próprio instrumento. Os
+ * dois guards acima vigiam DOIS NOMES: `recebidos` e `medidosNaOrdem`. Em 2026-09-18, ao escrever
+ * o percurso da glosa, apareceu um terceiro caminho que nenhum dos dois alcança:
+ *
+ *     modules/m11-licitacoes/fiscalizacao.ts — projecaoPublicaDoContrato
+ *     medicoes: { select: { recebimentosDefinitivos: { select: { itens: { select: { valor: true } } } } } }
+ *
+ * Sem filtro de estorno em NENHUM dos dois níveis. Efeito: uma medição estornada e um termo de
+ * recebimento desfeito continuavam somando no "recebido" que essa função PUBLICA no portal do
+ * cidadão. É o modo de falha que o CLAUDE.md nomeia em uma linha — "guarda que enumera formas acha
+ * só aquelas formas" — e ele mordeu dentro do arquivo escrito para impedi-lo.
+ *
+ * ⚠️ POR ISSO A LISTA DE RELAÇÕES VIGIADAS É DERIVADA DO SCHEMA, não escrita aqui. O teste lê os
+ * `.prisma` do M11, acha TODO modelo que declara uma relação `estorno`, e daí acha TODA relação que
+ * aponta para esses modelos. Uma relação nova para um modelo estornável entra na varredura sozinha,
+ * no dia em que nascer — sem ninguém lembrar de acrescentá-la.
+ */
+describe("o filtro de estorno, derivado do schema", () => {
+  const SCHEMAS = ["m11-fiscalizacao.prisma", "m11-medicao-pela-planilha.prisma"];
+
+  /** Os modelos do M11 que declaram uma relação `estorno` — logo, cujo registro pode ser desfeito. */
+  function modelosEstornaveis(): readonly string[] {
+    const achados = new Set<string>();
+    for (const arq of SCHEMAS) {
+      const texto = readFileSync(join(RAIZ, "prisma", "schema", arq), "utf8");
+      for (const m of texto.matchAll(/^model\s+(\w+)\s*\{([\s\S]*?)^\}/gm)) {
+        if (/^\s*estorno\s+\w+\?/m.test(m[2]!)) achados.add(m[1]!);
+      }
+    }
+    return [...achados].sort();
+  }
+
+  /** As relações (em qualquer modelo do M11) que apontam para um modelo estornável. */
+  function relacoesVigiadas(): readonly string[] {
+    const estornaveis = new Set(modelosEstornaveis());
+    const achados = new Set<string>();
+    for (const arq of SCHEMAS) {
+      const texto = readFileSync(join(RAIZ, "prisma", "schema", arq), "utf8");
+      for (const linha of texto.split("\n")) {
+        const m = /^\s*(\w+)\s+(\w+)\[\]/.exec(linha);
+        if (m !== null && estornaveis.has(m[2]!)) achados.add(m[1]!);
+      }
+    }
+    return [...achados].sort();
+  }
+
+  /**
+   * ⚠️ O MESMO NOME DE RELAÇÃO APONTA PARA MODELOS DIFERENTES, e a primeira versão deste bloco não
+   * sabia disso. `medicoes` é `MedicaoDaOrdemDeServico` quando sai de `OrdemDeServico` — estornável —
+   * e `MedicaoDeObra` quando sai de `Contrato` — que NÃO tem estorno. O guard, casando só pelo nome,
+   * acusou dois sítios corretos de `Contrato.medicoes`. Um guard que grita onde não há defeito é
+   * tão inútil quanto um que se cala onde há: o segundo esconde, o primeiro ensina a ignorar.
+   *
+   * ⚠️ A EXCEÇÃO É POR SÍTIO, COM MOTIVO, E COM ÂNCORA. Não se exclui o arquivo — `fiscalizacao.ts`
+   * é justamente onde o defeito real morava. Exclui-se o trecho que seleciona `valorMedido`, que é
+   * campo de `MedicaoDeObra`. E o teste seguinte ANCORA a premissa: no dia em que `MedicaoDeObra`
+   * ganhar estorno, ele fica vermelho e obriga a rever esta exceção, em vez de deixá-la
+   * silenciosamente errada.
+   */
+  const CONFERIDOS: readonly { readonly arquivo: string; readonly contem: string; readonly motivo: string }[] = [
+    {
+      arquivo: "modules/m11-licitacoes/fiscalizacao.ts",
+      contem: "valorMedido: true",
+      motivo:
+        "`Contrato.medicoes` aponta para `MedicaoDeObra` (a medição só por valor), que não tem relação `estorno` — " +
+        "o que se desfaz é a medição DA ORDEM. `valorMedido` é campo exclusivo dela e distingue os dois sítios.",
+    },
+  ];
+
+  it("a premissa da exceção continua verdadeira: MedicaoDeObra NÃO é estornável", () => {
+    // ⚠️ SEM ESTA ÂNCORA a exceção acima envelheceria em silêncio. No dia em que a medição só por
+    // valor ganhar estorno, o `contem: "valorMedido"` passaria a esconder um defeito real.
+    expect(modelosEstornaveis()).not.toContain("MedicaoDeObra");
+  });
+
+  it("o schema ainda declara modelos estornáveis e relações para eles — senão a regra está desligada", () => {
+    // ⚠️ SEM ESTA ÂNCORA, renomear `estorno` no schema deixaria o teste seguinte verde com zero
+    // relações a varrer: a regra inteira desligada, e nenhum vermelho para avisar. É a mesma
+    // armadilha do guard que procura um símbolo que deixou de existir.
+    expect(modelosEstornaveis().length).toBeGreaterThan(0);
+    expect(relacoesVigiadas().length).toBeGreaterThan(0);
+    expect(modelosEstornaveis()).toContain("MedicaoDaOrdemDeServico");
+    expect(modelosEstornaveis()).toContain("RecebimentoDefinitivo");
+  });
+
+  it("nenhum leitor do M11 seleciona uma relação ESTORNÁVEL sem filtrar o estorno", () => {
+    const relacoes = relacoesVigiadas();
+    const achados: string[] = [];
+
+    for (const p of fontes(MODULO)) {
+      const rel = p.slice(RAIZ.length).replace(/^\//, "");
+      if (rel in EXCECOES) continue;
+      const fonte = codigo(p);
+      for (const nome of relacoes) {
+        // O `select`/`include` daquela relação, com o seu bloco balanceado até o `select:` interno.
+        for (const m of fonte.matchAll(new RegExp(`\\b${nome}:\\s*\\{`, "g"))) {
+          const inicio = m.index!;
+          let nivel = 0;
+          let fim = inicio;
+          for (let i = inicio + m[0].length - 1; i < fonte.length; i += 1) {
+            if (fonte[i] === "{") nivel += 1;
+            else if (fonte[i] === "}") {
+              nivel -= 1;
+              if (nivel === 0) { fim = i + 1; break; }
+            }
+          }
+          const trecho = fonte.slice(inicio, fim).replace(/\s+/g, " ");
+          // Uma relação só precisa do filtro quando o leitor SOMA alguma coisa dela. Selecionar
+          // apenas `id` para conferir existência (as guardas de dependente fazem isso) não infla
+          // número nenhum — e exigir o filtro ali obrigaria a guarda a ignorar o que ela procura.
+          const soma = /\b(valor|quantidade|valorMedido|valorRecebido)\b/.test(trecho);
+          if (!soma) continue;
+          if (trecho.includes("estorno")) continue;
+          if (CONFERIDOS.some((c) => rel === c.arquivo && trecho.includes(c.contem))) continue;
+          const linha = fonte.slice(0, inicio).split("\n").length;
+          achados.push(`${rel}:${linha}  ${trecho.slice(0, 130)}`);
+        }
+      }
+    }
+
+    expect(
+      achados,
+      "\n\n⚠️ SELEÇÃO DE RELAÇÃO ESTORNÁVEL, COM VALOR OU QUANTIDADE, SEM FILTRAR O ESTORNO.\n\n" +
+        "Um registro DESFEITO continua somando. Quando o leitor é uma projeção pública, o número " +
+        "errado sai para o portal do cidadão — foi o que aconteceu em `projecaoPublicaDoContrato` " +
+        "e o que este bloco existe para impedir.\n\nAcrescente `where: { estorno: null }` no nível " +
+        "da relação, ou declare a exceção com o motivo em `EXCECOES`.\n\nSítios:\n"
+    ).toEqual([]);
+  });
+});

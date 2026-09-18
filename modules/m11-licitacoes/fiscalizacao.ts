@@ -562,7 +562,15 @@ export async function projecaoPublicaDoContrato(prisma: Tx, contratoId: string):
         select: {
           numero: true, ano: true, fimPrevisto: true, emissao: { select: { inicioAutorizado: true } },
           itens: { select: { quantidade: true, valorUnitario: true, cancelamentos: { select: { quantidade: true } } } },
-          medicoes: { select: { recebimentosDefinitivos: { select: { itens: { select: { valor: true } } } } } },
+          // ⚠️ OS DOIS FILTROS DE ESTORNO SÃO O CONSERTO DE UM DEFEITO MEDIDO (V11 V5.2). Sem eles,
+          // uma medição estornada e um termo de recebimento desfeito continuavam somando no
+          // "recebido" que esta projeção PUBLICA. O guard `medido-liquido-sem-atalho` não pegou
+          // porque vigiava os nomes `recebidos` e `medidosNaOrdem`, e este caminho passa por
+          // `recebimentosDefinitivos` — guarda que enumera formas acha só aquelas formas.
+          medicoes: {
+            where: { estorno: null },
+            select: { recebimentosDefinitivos: { where: { estorno: null }, select: { itens: { select: { valor: true } } } } },
+          },
         },
       },
     },

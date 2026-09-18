@@ -45,7 +45,11 @@ export default async function OrdemDeServico({ params }: { readonly params: Prom
     const depois = disponivel - Number(i.quantidade);
     return { item: `${i.item} — ${i.descricao}`, pedido: i.quantidade, disponivel: c?.aAutorizar ?? "0.0000", depois: depois.toFixed(4), unidade: i.unidade, cabe: depois >= 0 };
   });
-  const aLiquidar = o.medicoes.flatMap((m) => m.definitivos.filter((d) => Number(d.aLiquidar) > 0).map((d) => ({ id: d.id, rotulo: `Medição nº ${m.numero}, recebimento definitivo nº ${d.numero} (${d.data})`, aLiquidar: d.aLiquidar })));
+  // ⚠️ `d.estorno === null` É O CONSERTO DE UM DEFEITO MEDIDO (V11 V5.2). Um recebimento estornado
+  // tem `liquidado = 0`, logo `aLiquidar = valor`, e voltava a aparecer como "parcela recebida com
+  // saldo a liquidar". O domínio recusa (`RECEBIMENTO-ESTORNADO`), então não havia risco ao dado —
+  // mas a tela convidava a um ato que sempre recusa, que é a forma mais cara de fail-closed.
+  const aLiquidar = o.medicoes.flatMap((m) => m.definitivos.filter((d) => d.estorno === null && Number(d.aLiquidar) > 0).map((d) => ({ id: d.id, rotulo: `Medição nº ${m.numero}, recebimento definitivo nº ${d.numero} (${d.data})`, aLiquidar: d.aLiquidar })));
   const proximas = [
     o.situacao === "RASCUNHO" ? (p.podeEmitir ? "Revisar e emitir a ordem" : "A ordem é rascunho: aguarda a emissão pelo gestor") : null,
     emitida && o.itens.some((i) => Number(i.aExecutar) > 0) ? (p.podeMedir ? "Registrar a medição do que foi executado" : "Há quantidade a executar: a medição é do fiscal") : null,

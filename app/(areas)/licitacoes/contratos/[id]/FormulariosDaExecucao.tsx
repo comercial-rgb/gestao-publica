@@ -5,6 +5,7 @@ import { ChaveDeComando } from "../../../../../components/ui/ChaveDeComando";
 import { useResultadoDoAto } from "../../../../../components/ui/ResultadosDosAtos";
 import { useRestaurarAposEnvio } from "../../../../../components/ui/useRestaurarAposEnvio";
 import { CLASSE_AREA_TEXTO, CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO, CLASSE_PAINEL_FORMULARIO, CLASSE_ROTULO } from "../../../../../components/ui/Formulario";
+import { formatarMoeda } from "../../../../../lib/format/moeda";
 import { qtdBr } from "../../../../../lib/format/quantidade";
 import { execucaoAction, type EstadoDaExecucao } from "../execucao-actions";
 
@@ -374,22 +375,26 @@ export function FormEstornarRecebimento({ contratoId, recebimentoId, numero, val
   readonly liquidado: string;
   readonly hoje: string;
 }): React.ReactElement {
-  const a = useAto(`estornar-recebimento-${numero}`);
+  // ⚠️ A CHAVE É O `recebimentoId`, NÃO O NÚMERO (V11 V5.2). `numero` é o número do recebimento
+  // DENTRO da medição: uma ordem com duas medições tem dois "nº 1", e os dois formulários ficavam
+  // com o mesmo `data-acao`. `AvisosDosAtos` deduplica por ação, então o aviso de um aparecia pelo
+  // outro — a pessoa lia o resultado do estorno que não pediu.
+  const a = useAto(`estornar-recebimento-${recebimentoId}`);
   const temLiquidacao = Number(liquidado) > 0;
   return (
     <details className="mt-2 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-2">
       <summary className="cursor-pointer text-xs font-semibold">Estornar o recebimento definitivo nº {numero}</summary>
-      <form ref={a.ref} action={a.disparar} data-acao={`estornar-recebimento-${numero}`} className="mt-2">
+      <form ref={a.ref} action={a.disparar} data-acao={`estornar-recebimento-${recebimentoId}`} className="mt-2">
         <ChaveDeComando />
         <Ocultos contratoId={contratoId} acao="estornarRecebimento" extra={{ recebimentoId }} />
         <p className="text-xs text-[color:var(--color-ink-2)]">
-          O termo nº {numero} (R$ {valor}) continua no histórico, com o seu documento — ele não é apagado
+          O termo nº {numero} ({`R$ ${formatarMoeda(valor).texto}`}) continua no histórico, com o seu documento — ele não é apagado
           nem reescrito. O que volta é a <strong>quantidade elegível</strong> da medição, para que o
           recebimento corrigido possa ser registrado. O estorno gera termo próprio.
         </p>
         {temLiquidacao ? (
           <p role="status" className="mt-2 rounded-[var(--radius-md)] bg-[color:var(--color-status-alerta-bg)] px-2 py-1.5 text-xs text-[color:var(--color-status-alerta-fg)]" data-bloqueio-do-estorno>
-            Este recebimento lastreia R$ {liquidado} já liquidados. O estorno será recusado enquanto a
+            Este recebimento lastreia {`R$ ${formatarMoeda(liquidado).texto}`} já liquidados. O estorno será recusado enquanto a
             liquidação estiver viva: estorne-a primeiro, em Despesa › Liquidações.
           </p>
         ) : null}
@@ -399,7 +404,7 @@ export function FormEstornarRecebimento({ contratoId, recebimentoId, numero, val
         <label htmlFor={`${a.id}-motivo`} className="mt-2 block text-xs text-[color:var(--color-ink-2)]"><span className={CLASSE_ROTULO}>Motivo do estorno</span>
           <textarea id={`${a.id}-motivo`} name="motivo" required minLength={10} rows={2} className={CLASSE_AREA_TEXTO} />
         </label>
-        <Mensagens estado={a.estado} acao={`estornar-recebimento-${numero}`} />
+        <Mensagens estado={a.estado} acao={`estornar-recebimento-${recebimentoId}`} />
         <Enviar pendente={a.pendente} rotulo="Estornar recebimento" />
       </form>
     </details>

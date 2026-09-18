@@ -218,7 +218,12 @@ export async function execucaoDoContrato(prisma: Tx, contratoId: string, visao: 
           },
         };
       });
-      const recebido = sumMoney(m.recebimentosDefinitivos.flatMap((r) => r.itens.map((x) => x.valor.toFixed(2))));
+      // ⚠️ SEM ESTORNADO (V11 V5.2). Um termo desfeito continuava somando aqui, e o "Recebido" da
+      // medição dizia mais do que o ente recebeu. A quantidade já excluía o estornado
+      // (`SELECAO_DOS_RECEBIDOS`); o VALOR não — a assimetria é que deixava o defeito invisível.
+      const recebido = sumMoney(
+        m.recebimentosDefinitivos.filter((r) => r.estorno === null).flatMap((r) => r.itens.map((x) => x.valor.toFixed(2))),
+      );
       return {
         id: m.id, numero: m.numero, periodo: `${diaCivilBr(m.periodoInicio)} a ${diaCivilBr(m.periodoFim)}`, fiscal: nome(m.designacao),
         pelaPlanilha: m.naPlanilha === null ? null : { obraId: m.naPlanilha.planilha.obra.id, obra: m.naPlanilha.planilha.obra.identificador, planilhaId: m.naPlanilha.planilha.id, versao: m.naPlanilha.planilha.versao, sha256: m.naPlanilha.sha256 },
