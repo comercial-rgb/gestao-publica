@@ -346,6 +346,7 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   CRIAR_SETOR: "protocolo",
   LOTAR_USUARIO_NO_SETOR: "protocolo",
   CRIAR_ASSUNTO: "protocolo",
+  PUBLICAR_CONFIGURACAO_DO_ACESSO_A_INFORMACAO: "protocolo",
   REGISTRAR_TAXA_DO_PROCESSO: "protocolo",
   BAIXAR_TAXA_DO_PROCESSO: "protocolo",
   // M22 — anexos e assinatura (ENT02)

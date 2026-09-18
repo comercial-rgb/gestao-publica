@@ -1,0 +1,79 @@
+// ============================================================================
+// M21 — ACESSO À INFORMAÇÃO: o prazo que vem da NORMA, não do costume (V11 V5.1).
+//
+// ⚠️ A ARMADILHA QUE ESTE ARQUIVO EXISTE PARA NÃO PISAR. O pedido do lote manda "não
+// reutilizar cegamente prazo da ouvidoria". O inventário mostrou algo pior que um prazo
+// mal reaproveitado: **a ouvidoria não tem prazo nenhum**. `ManifestacaoDeOuvidoria`,
+// `TriagemDaManifestacao` e `RespostaDaOuvidoria` têm só `criadoEm`. O que existe é
+// `EtapaDoRoteiro.prazoDias` — prazo de ETAPA, do setor, sem fundamento legal — e um
+// "20 dias" escrito à mão num seed de demonstração (`prisma/seed/cenario-ent02.ts`).
+//
+// Um prazo de acesso à informação é do PEDIDO, não da etapa; nasce de lei; admite
+// prorrogação motivada e recurso por instância. Nada disso cabe em `EtapaDoRoteiro`, e
+// cravá-lo em código seria inventar norma — federal e municipal de uma vez.
+//
+// ⚠️ O MOLDE É `VersaoDaConfiguracaoDaCertidao` (M34), e a doutrina é a mesma, palavra por
+// palavra: "90 dias é o prazo de muitos municípios e não é o de todos". Aqui: 20 dias é o
+// prazo que muita gente cita de cabeça, e este arquivo não é a fonte disso — a configuração
+// publicada pelo ente é.
+//
+// ⚠️ NASCE VAZIA. Sem configuração vigente, o pedido continua sendo recebido e instruído — o
+// que fica impedido é PROMETER DATA e PRORROGAR. Recusar o pedido do cidadão porque o ente
+// não se configurou puniria quem tem o direito pelo que o ente não fez.
+// ============================================================================
+
+/// A CONFIGURAÇÃO DO ACESSO À INFORMAÇÃO — versionada por vigência, com as duas normas.
+///
+/// ⚠️ DUAS NORMAS, E ELAS NÃO SÃO A MESMA COISA. A federal fixa o direito e o teto do prazo;
+/// a regulamentação local diz como o ente o cumpre. O lote pede as duas com publicação e
+/// vigência — e pede que a ausência da LOCAL vire **pendência tratável**, não bloqueio. Por
+/// isso a federal é obrigatória e a local é anulável: sem a local, o prazo federal continua
+/// valendo e o sistema DIZ que o ente ainda não regulamentou. Zerar o prazo por falta da
+/// regulamentação local seria transformar uma omissão administrativa em negativa de direito.
+model VersaoDaConfiguracaoDoAcessoAInformacao {
+  id String @id @default(cuid())
+
+  /// ⚠️ A VERSÃO É @unique e é ela que desempata. Duas configurações podem começar a valer
+  /// no mesmo dia (retificação publicada no mesmo diário); a de MAIOR versão é a que vale.
+  /// Sem esse critério, "a vigente" dependeria da ordem em que o banco devolvesse as linhas.
+  versao Int @unique
+
+  /// Dia civil do ente, "AAAA-MM-DD". Dia civil, nunca instante UTC.
+  vigenciaInicio String @db.VarChar(10)
+
+  /// Dias CORRIDOS para responder, contados do protocolo do pedido.
+  prazoDeRespostaEmDias Int
+
+  /// Dias CORRIDOS que cada prorrogação acrescenta.
+  prazoDeProrrogacaoEmDias Int
+
+  /// ⚠️ QUANTAS prorrogações a norma admite. É DADO, não constante: "uma só" é a regra de
+  /// muita norma e não é a de todas, e travá-la no código faria deste arquivo a fonte de um
+  /// limite que ninguém conferiu contra a lei do ente.
+  prorrogacoesPermitidas Int
+
+  /// Quantas instâncias de recurso a norma prevê. Zero é resposta válida e declarada.
+  instanciasDeRecurso Int
+
+  /// Dias CORRIDOS para interpor recurso, contados da resposta.
+  prazoDeRecursoEmDias Int
+
+  /// A norma FEDERAL que fixa o direito — texto do ente, com a citação. Obrigatória.
+  normaFederal String
+  /// Quando ela foi publicada. ⚠️ Publicação NÃO é vigência: a vigência desta configuração é
+  /// o `vigenciaInicio` acima, e as duas se separam de propósito.
+  normaFederalPublicadaEm DateTime
+
+  /// A regulamentação LOCAL (decreto, lei municipal). Anulável — a ausência é pendência
+  /// tratável, nomeada, e não impede o pedido. O CHECK exige texto e data juntos: uma norma
+  /// citada sem data de publicação não é conferível por quem for auditar.
+  regulamentacaoLocal            String?
+  regulamentacaoLocalPublicadaEm DateTime?
+
+  observacao String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([vigenciaInicio])
+}

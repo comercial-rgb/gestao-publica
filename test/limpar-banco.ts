@@ -196,6 +196,10 @@ const TABELAS = [
   // M14 — exports federais (config do ente e matriz de ICs exigidas)
   "EnteConfig",
   "IcExigidaPorConta",
+  // M21 — a configuracao do acesso a informacao (V11 V5.1). Nasce vazia em producao, e e assim que
+  // os testes tem de encontra-la: uma configuracao deixada por um arquivo de teste faria o seguinte
+  // medir prazo contra uma norma que ele nao publicou.
+  "VersaoDaConfiguracaoDoAcessoAInformacao",
   // M14 — eSocial (V11 V2.1): o REGISTRO do leiaute. Nascem vazias em produção e é assim que os
   // testes têm de encontrá-las — um pacote deixado por um arquivo de teste faria o seguinte medir
   // consistência contra um leiaute que ele não registrou.

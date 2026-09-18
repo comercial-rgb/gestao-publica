@@ -402,6 +402,12 @@ export type AcaoDoSistema =
   | "CRIAR_SETOR"
   | "LOTAR_USUARIO_NO_SETOR"
   | "CRIAR_ASSUNTO"
+  // ⚠️ AÇÃO PRÓPRIA, e a decisão precisa aparecer aqui em vez de acontecer. `CRIAR_ASSUNTO`, acima,
+  // já fixa prazo — mas prazo de ETAPA, interno, do setor. Este ato declara, com citação de lei, a
+  // data que o ente promete a um cidadão que tem direito subjetivo à informação, e o quanto ela
+  // pode ser prorrogada. Quem desenha o fluxo interno de um assunto não é necessariamente quem
+  // responde por uma norma: juntar os dois daria o segundo poder a quem precisa do primeiro.
+  | "PUBLICAR_CONFIGURACAO_DO_ACESSO_A_INFORMACAO"
   | "REGISTRAR_TAXA_DO_PROCESSO"
   | "BAIXAR_TAXA_DO_PROCESSO"
   // ── M22 — anexos e assinatura (ENT02) ──
@@ -960,6 +966,7 @@ export type NomeDeServico =
   | "criarSetor"
   | "lotarUsuarioNoSetor"
   | "criarAssunto"
+  | "publicarConfiguracaoDoAcesso"
   | "registrarTaxaDoProcesso"
   | "baixarTaxaDoProcesso"
   // ── M22 — anexos e assinatura (ENT02) ──
@@ -1494,6 +1501,7 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   criarSetor: "CRIAR_SETOR",
   lotarUsuarioNoSetor: "LOTAR_USUARIO_NO_SETOR",
   criarAssunto: "CRIAR_ASSUNTO",
+  publicarConfiguracaoDoAcesso: "PUBLICAR_CONFIGURACAO_DO_ACESSO_A_INFORMACAO",
   registrarTaxaDoProcesso: "REGISTRAR_TAXA_DO_PROCESSO",
   baixarTaxaDoProcesso: "BAIXAR_TAXA_DO_PROCESSO",
 
@@ -1719,6 +1727,13 @@ export const FORA_DO_CENSO: Record<string, string> = {
   consultaDoSuperavit:
     "LEITURA: compõe o apurado dos FATOS (M12) com o declarado e o utilizado (M03) e devolve o disponível por " +
     "fonte, dizendo qual dos dois tetos limita. Nenhuma escrita.",
+  // ── V11 V5.1 — a configuração do acesso à informação ──
+  versoesDaConfiguracaoDoAcesso:
+    "LEITURA: o histórico das versões publicadas da configuração do acesso à informação. Append-only; " +
+    "nenhuma escrita.",
+  configuracaoDoAcessoVigente:
+    "LEITURA: resolve qual versão da configuração vale no dia civil informado. `null` é resposta — " +
+    "sem configuração o sistema não promete data, e quem chama traduz isso em pendência nomeada.",
   // ── V11 V2.1 — a consistência da origem para o eSocial ──
   consistenciaDoESocial:
     "LEITURA: confronta o leiaute do eSocial REGISTRADO (fonte, sha256, conferente) com a origem de M32/M19/M14 e " +
