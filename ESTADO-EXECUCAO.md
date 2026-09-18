@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | `f49279c` (V9 N2 despesas) — candidato medido: `2590048+3424d989f3c1` (o SHA sozinho não identifica: a árvore tem alterações não commitadas de terceiros) |
-| Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V9** (`docs/lotes/V9-noturna-ecossistema-aws-engine.md`) |
-| Frente em execução | **V9** — N0 instrumentos, N1 identidade Engine e portais, N2 transparência (bens e despesas), N3 encaminhamento da ouvidoria, N4 glosa e estorno de recebimento, N7 AWS (bloqueado). Ver seção 63 |
-| Último resultado | seção 63 — `test:rapido` **939/939** (94 arquivos); tsc do app e dos scripts aprovados com prova amarrada ao conteúdo; candidato `2590048+3424d989f3c1` buildado em 21.159 ms; dois percursos de navegador verdes (transparência pública 31/0, encaminhamento da ouvidoria 19/0); 16 capturas em duas larguras |
-| Pendências relevantes | seção 63.8 — **N7 bloqueado por acesso** (sem chave de acesso para `gestao-publica`, senha de console com troca obrigatória, e sem permissão de Lightsail); **N5 e N6 não iniciados**; famílias Receitas e Pessoal da transparência declaradas como não publicadas na própria tela; pendências do V7 M2 remanescentes |
-| Próximo passo | seção 63.9 |
+| HEAD | `35586f9` (V11 V4.2 pessoal público) — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
+| Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
+| Frente em execução | **V11** — V0 preservação, V1.1 rubrica versionada, V3.1 consulta do superávit, V4.1 receitas públicas, V4.2 pessoal público. V2 (eSocial), V5 (atendimento) e V6 (AWS) não iniciados. Ver seção 65 |
+| Último resultado | seção 65 — cinco unidades commitadas (`1ef405d`, `01de24c`, `11cbcff`, `e51d182`, `35586f9`); typecheck do backend e do app em **exit 0**; testes dirigidos **9/9** (pessoal), **8/8** (receitas), **11/11** (superávit), **28/28** (rubrica versionada), **138/138** (M16), **18/18** (papel de runtime); **catorze mutações, catorze acusações** |
+| Pendências relevantes | seção 65.6 — **V6 (AWS) bloqueado na AUTENTICAÇÃO**: não existe perfil `gestao-publica` nesta máquina, e o `default` é de outro produto e não foi usado. **V2 (eSocial) e V5 (atendimento) não iniciados** — escopo pendente, não bloqueio. Nenhum percurso de navegador executado nesta rodada. Uma intermitência não explicada no caso R8 das receitas. Linha **ENT12 do Windows** (4 commits, base 148 commits atrás) por reconciliar |
+| Próximo passo | seção 65.7 |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -7637,3 +7637,88 @@ política sugerida deixou de ser chamada de "mínima": ela é mínima em **açõ
 `Resource: "*"` alcança recursos de outro produto nesta conta.
 
 `AWS_PREPARADA`: **não**. `PUBLICADA_VALIDADA`: **não**.
+
+---
+
+## 65. V11 — a rubrica versionada, a consulta do superávit e as duas famílias públicas que faltavam
+
+Rodada executada na linha do Mac (`main`), sob `docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`.
+Por instrução do operador, **portão, `test:tudo` e `test:fuso` não foram executados** — e por isso
+nada aqui é declarado homologado.
+
+### 65.1 O ambiente foi reconstruído antes de qualquer medição
+
+O macOS foi atualizado entre sessões e **o container do Postgres desapareceu** — `docker ps -a` não
+listava nenhum, nem parado. Não há `docker-compose.yml` nem volume nomeado: os dados de dev se
+perderam. O `ENT00` documenta o `docker run`, mas **não** a criação dos outros dois bancos, que o
+container não cria. A receita completa ficou registrada na memória do projeto.
+
+### 65.2 V1.1 — a rubrica versionada e a fórmula do ente (`1ef405d`)
+
+O cadastro tinha sete naturezas fechadas e nenhuma vigência: mudar o percentual de uma gratificação
+em setembro **reescrevia a folha de março**. `VersaoDaRubrica` passou a ser a autoridade do cálculo,
+com vigência por competência, regime aplicável, fundamento e aprovador. A fórmula roda em
+`packages/formula` — o interpretador de universo fechado que **já existia**, reaproveitado.
+
+O grafo recusa três coisas com três mensagens diferentes: ciclo (com o caminho), dependência
+inexistente, e **dependência posterior** — citar a contribuição é erro porque ela é calculada depois,
+sobre a base que inclui a própria linha.
+
+**Defeito achado pelo teste d3:** `cadastrarRubrica` criava a versão 1 automaticamente mesmo para a
+natureza FORMULA, produzindo uma versão APROVADA sem expressão que derrubava a folha inteira.
+Corrigido o serviço, não o teste.
+
+### 65.3 V3.1 — a consulta do superávit (`01de24c`)
+
+O inventário mudou o incremento: o superávit por fonte **já existia e bem feito** — três amarrações,
+lock antes da soma, guard transacional. A exigência da ordem sobre concorrência já estava atendida.
+A lacuna era que o número **só existia dentro da mensagem de recusa**. A consulta reusa
+`usadoDaDisponibilidade` e `suplementacaoLiquida` — as mesmas funções do guard — e mostra os **dois
+tetos**, dizendo qual limita.
+
+### 65.4 V4.1 — as receitas no portal (`e51d182`)
+
+O erro gêmeo ao da despesa: somar **constituição** com **arrecadação**. São o mesmo dinheiro em dois
+momentos; a arrecadação baixa o crédito. Painéis separados, aviso colado no número, nenhum total os
+junta. Previsão em três números (inicial, reprevisões com sinal, atualizada), com a dedução
+subtraindo.
+
+**O guard que não vigiava:** a mutação "tire o desempate por `id`" **não acusou** com 20 linhas — o
+Postgres ordenava tudo por acidente. Elevado para 400 linhas (o volume em que o planejador troca
+para top-N heapsort), passou a acusar em 2 de 2. **Intermitência registrada e não explicada:** a
+primeira execução do R8 com 400 linhas falhou e a saída bruta se perdeu num cano; as cinco seguintes
+passaram.
+
+### 65.5 V4.2 — o pessoal no portal (`35586f9`)
+
+**Fail-closed por construção.** Sem política aprovada vigente, zero linhas por servidor. O que não
+pode ser publicado **não está no tipo**: `ColunaDoDemonstrativo` tem nove valores, e dependente,
+saúde, pensão, CPF, memória e tributação individual não aparecem lá. A projeção **reconstrói**, não
+filtra. Dois níveis: agregado por unidade (sem dado pessoal, sempre público) e individual (só com
+política aprovada por outra pessoa).
+
+**Correção de desenho de carona:** `agregarResumoDaFolha` saiu da porta para o domínio. Ela é pura,
+mas morava num arquivo que também monta PDF — importá-la arrastou `lib/pdf/` para o projeto backend,
+com catorze erros de tipo em código pré-existente. Mover foi mais barato que remendar quatro
+extensões e continuar a cascata.
+
+**Falha de método minha, achada aqui:** o censo acusou três funções exportadas no V3.1 que são
+leitura e não estavam em `FORA_DO_CENSO`. Eu havia commitado o V3.1 **sem reexecutar o censo**.
+
+### 65.6 Pendências, separadas por natureza
+
+**Bloqueio externo (um só):** V6 (AWS) parado na **autenticação** — não existe perfil
+`gestao-publica` nesta máquina; o `default` é de outro produto e não foi usado. Não é DNS, não é
+certificado, não é IAM.
+
+**Escopo pendente (trabalho, não bloqueio):** V2 (eSocial) e V5 (atendimento) não iniciados; nenhum
+percurso de navegador nesta rodada; portão, suíte completa e fuso não executados por instrução.
+
+**Por reconciliar:** a linha **ENT12 do Windows** — quatro commits (`c4d2140`, `512d2ce`, `65c80da`,
+`b12664e`) que **não existem nesta máquina** e nasceram de `688c062`, uma base **148 commits atrás**
+do Mac. Sem push, não chegaram aqui.
+
+### 65.7 O próximo ponto exato
+
+V2 (eSocial) ou V5 (atendimento), pela fila da ordem V11 — ambos com inventário ainda por fazer. A
+reconciliação do ENT12 depende de os commits alcançarem esta máquina.
