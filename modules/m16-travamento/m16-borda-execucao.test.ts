@@ -18,6 +18,7 @@ import {
   roteiroLiquidacao,
   roteiroPagamento,
   CONTA_ESTOQUE,
+  CONTA_DDR_DISPONIVEL,
 } from "../m01-core-contabil/roteiros.js";
 import { semearPcasp } from "../../prisma/seed/pcasp.js";
 
@@ -161,7 +162,9 @@ describe("M16 — a borda da EXECUÇÃO (as 4 telas da 7.3)", () => {
       "6.2.2.1.1.00.00",
       "6.2.2.1.3.01.00",
       // A DDR: comprometer crédito e comprometer dinheiro são fatos distintos.
-      "8.2.1.1.1.00.00",
+      // ⚠️ V11 V6.2 — a analítica do exercício. O pai `8.2.1.1.1.00.00` é SINTÉTICO no PCASP
+      // oficial e o empenho recusava em instalação limpa.
+      CONTA_DDR_DISPONIVEL,
       "8.2.1.1.2.01.00",
     ]);
     expect(emp.lancamento.criadoPor).toBe(IDENT);
@@ -375,7 +378,7 @@ describe("M16 — a borda da EXECUÇÃO (as 4 telas da 7.3)", () => {
       // ⚠️ A ÚNICA perna de classe 7 do sistema: é a arrecadação que traz dinheiro NOVO
       // sob controle (D 7.2.1.1 / C 8.2.1.1.1). Daí em diante ele só muda de estado.
       "7.2.1.1.0.00.00",
-      "8.2.1.1.1.00.00",
+      CONTA_DDR_DISPONIVEL,
     ]);
     const opsArr = (await prisma.registroDeOperacao.findMany({ where: { acao: "REGISTRAR_ARRECADACAO" } })).map((o) => o.resultado);
     expect(opsArr).toContain("SUCESSO");

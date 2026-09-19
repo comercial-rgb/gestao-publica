@@ -391,6 +391,19 @@ describe("caracterização · geração de lançamento por evento", () => {
     //   · `EventoFiscalOutbox` (base) — a fila de saída das integrações, com
     //     `@@unique([destino, chaveIdemp])`. É idempotência de transmissão, não roteiro.
     //
+    // ⚠️ TRÊS APARECERAM DEPOIS, E A DECISÃO ESTÁ AQUI — que é exatamente o que este teste
+    // cobra. NENHUMA delas é tabela de roteiro contábil:
+    //
+    //   · `EventoDoLeiaute` e `CampoDoEvento` (M14, V11 V2.1) — o REGISTRO do leiaute do
+    //     eSocial: quais eventos o leiaute publicado tem, quais campos cada um exige e desde
+    //     quando. "Evento" ali é vocabulário do normativo externo (S-1200 e afins), não um
+    //     gatilho que escolhe partida. Elas nascem VAZIAS e nenhuma linha delas vira
+    //     lançamento — o que elas produzem é pendência de consistência;
+    //   · `EventoDeLicenciamento` (M35, V10 T1) — a trilha do contrato comercial: habilitou,
+    //     suspendeu, reativou. É controle de MÓDULO, e não toca no razão.
+    //
+    // O que este desenho recusa continua recusado: nenhuma delas mapeia "evento → roteiro".
+    //
     // A asserção é sobre o CONJUNTO exato: se aparecer uma terceira, este teste falha e
     // alguém decide se ela é (ou não) a tabela de roteiros que este desenho recusa.
     const tabelas = await prisma.$queryRawUnsafe<{ table_name: string }[]>(
@@ -399,6 +412,9 @@ describe("caracterização · geração de lançamento por evento", () => {
         ORDER BY table_name`
     );
     expect(tabelas.map((t) => t.table_name)).toEqual([
+      "CampoDoEvento",
+      "EventoDeLicenciamento",
+      "EventoDoLeiaute",
       "EventoFiscalOutbox",
       "EventoLimitacaoEmpenho",
     ]);

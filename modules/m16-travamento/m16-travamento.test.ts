@@ -10,6 +10,7 @@ import { roteiroArrecadacao } from "../m04-receita/dominio.js";
 import { registrarArrecadacao } from "../m04-receita/servico.js";
 import { criarM05Deps } from "../m05-despesa/adapter-prisma.js";
 import { roteiroEmpenho } from "../m05-despesa/dominio.js";
+import { CONTA_DOTACAO_INICIAL } from "../m01-core-contabil/roteiros.js";
 import { anularEmpenho, empenhar } from "../m05-despesa/servico.js";
 import { apurarResultadoDoExercicio } from "../m08-restos-a-pagar/apuracao.js";
 import { encerrarControlesOrcamentarios } from "../m08-restos-a-pagar/encerramento-controles.js";
@@ -302,7 +303,10 @@ describe("M16 — travamento de competência (TR 4.52/4.53/4.54)", () => {
     // O encerramento dos controles (cbb6d0f) — também ENCERRAMENTO, também em 31/12.
     await prisma.contaNaVirada.createMany({
       data: await Promise.all(
-        ["5.2.2.1.1.00.00", C_DISPONIVEL, R_A_REALIZAR, R_REALIZADA].map(async (codigo) => {
+        // ⚠️ V11 V6.2 — a dotação inicial vem da CONSTANTE. O literal `5.2.2.1.1.00.00` era o nó
+    // SINTÉTICO do PCASP; o roteiro desceu para a analítica de crédito inicial, e a fixture
+    // passou a semear só ela. Um literal aqui cita conta que este banco não tem.
+    [CONTA_DOTACAO_INICIAL, C_DISPONIVEL, R_A_REALIZAR, R_REALIZADA].map(async (codigo) => {
           const c = await prisma.contaPcasp.findUniqueOrThrow({
             where: { codigo },
             select: { id: true },

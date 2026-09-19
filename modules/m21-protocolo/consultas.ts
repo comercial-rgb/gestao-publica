@@ -567,6 +567,9 @@ export async function acompanhamentoExterno(
   numero: number,
   verificador: string
 ): Promise<{
+  /** ⚠️ NÃO VAI À TELA. Existe para a página buscar o que este processo EXECUTA (um pedido de
+   * acesso à informação, por exemplo) sem conferir o código verificador uma segunda vez. */
+  readonly processoId: string;
   readonly numero: number;
   readonly ano: number;
   readonly assunto: string;
@@ -581,6 +584,7 @@ export async function acompanhamentoExterno(
   const p = await tx.processo.findFirst({
     where: { numero, exercicio: { ano: exercicio } },
     select: {
+      id: true,
       numero: true,
       codigoVerificador: true,
       criadoEm: true,
@@ -614,6 +618,7 @@ export async function acompanhamentoExterno(
   const nome = new Map(setores.map((s) => [s.id, `${s.codigo} — ${s.nome}`]));
 
   return {
+    processoId: p.id,
     numero: p.numero,
     ano: p.exercicio.ano,
     assunto: p.assunto.nome,

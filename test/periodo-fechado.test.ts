@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it } from "vitest";
 import { criarPrismaDeTeste, exigirBanco } from "./banco.js";
 import { limparBanco } from "./limpar-banco.js";
+import { CONTA_FORNECEDORES_A_PAGAR } from "../modules/m01-core-contabil/roteiros.js";
 import { semearSagresPoc } from "../prisma/seed/sagres-poc.js";
 import { travar, destravar } from "../modules/m16-travamento/servico.js";
 import { criarM05Deps } from "../modules/m05-despesa/adapter-prisma.js";
@@ -175,7 +176,11 @@ describe("período fechado — as três rotas", () => {
           criadoPor: POR,
           partidas: [
             { conta: "1.1.1.1.1.19.00", tipo: "DEBITO", subsistema: "PATRIMONIAL", valor: "10.00" },
-            { conta: "2.1.3.1.1.00.00", tipo: "CREDITO", subsistema: "PATRIMONIAL", valor: "10.00" },
+            // ⚠️ V11 V6.3 — a conta vem da CONSTANTE, não de um literal. O cenário SAGRES que
+            // este teste semeia desceu para a analítica de fornecedores, e um literal aqui
+            // passaria a citar conta que o plano semeado não tem: a recusa viria por conta
+            // inexistente e o teste do PERÍODO fechado passaria a provar outra coisa.
+            { conta: CONTA_FORNECEDORES_A_PAGAR, tipo: "CREDITO", subsistema: "PATRIMONIAL", valor: "10.00" },
           ],
         },
         criarM01Deps(prisma)

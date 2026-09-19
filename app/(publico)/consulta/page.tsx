@@ -1,4 +1,5 @@
 import { lerAcompanhamentoExterno } from "../../../lib/portas/protocolo";
+import { pedidoDoProcessoParaRequerente } from "../../../lib/portas/pedido-de-acesso";
 import { instanteCivilBr } from "../../../packages/datas/index";
 
 /**
@@ -46,6 +47,13 @@ export default async function ConsultaPublicaPage({
     pediu && Number.isInteger(exercicio) && Number.isInteger(numero)
       ? await lerAcompanhamentoExterno(exercicio, numero, verificador)
       : null;
+
+  // ⚠️ V11 V5.3 — QUANDO O PROCESSO EXECUTA UM PEDIDO DE ACESSO À INFORMAÇÃO, o requerente tem
+  // direito a mais do que "por onde passou": ele tem direito à DATA, à norma que a fixa, às
+  // prorrogações que a esticaram e à resposta. Isso vem de `visaoDoSolicitante`, que é outra
+  // função — não este objeto com campos escondidos. O fundamento interno, a prévia, o autor de
+  // cada ato e o setor não existem lá dentro.
+  const acesso = resultado === null ? null : await pedidoDoProcessoParaRequerente(resultado.processoId);
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 p-6">
@@ -149,6 +157,62 @@ export default async function ConsultaPublicaPage({
                 </li>
               ))}
             </ol>
+          )}
+
+          {acesso === null ? null : (
+            <div className="mt-4 border-t border-[color:var(--color-border)] pt-4" data-pedido-de-acesso>
+              <h3 className="text-sm font-medium text-[color:var(--color-ink)]">
+                Seu pedido de acesso à informação
+              </h3>
+              <p className="mt-1 text-sm" data-situacao-do-acesso>
+                <strong>Situação:</strong> {acesso.rotulo}
+              </p>
+              <p className="mt-1 text-sm" data-prazo-do-acesso>
+                <strong>Prazo para resposta:</strong>{" "}
+                {acesso.limite ?? "ainda sem data informada"}
+                {acesso.normaFederal === null ? "" : ` — ${acesso.normaFederal}`}
+              </p>
+              {acesso.avisos.length === 0 ? null : (
+                <ul className="mt-2 text-xs text-[color:var(--color-ink-2)]" data-avisos-do-acesso>
+                  {acesso.avisos.map((a) => (
+                    <li key={a}>{a}</li>
+                  ))}
+                </ul>
+              )}
+              {acesso.prorrogacoes.length === 0 ? null : (
+                <ol className="mt-2 text-sm" data-prorrogacoes-do-acesso>
+                  {acesso.prorrogacoes.map((x) => (
+                    <li key={x.em} className="border-b border-[color:var(--color-border)] py-1 last:border-0">
+                      {x.em}: {x.mensagem}
+                    </li>
+                  ))}
+                </ol>
+              )}
+              {acesso.resposta === null ? (
+                <p className="mt-2 text-sm text-[color:var(--color-ink-2)]" data-sem-resposta-do-acesso>
+                  Nenhuma resposta foi entregue até aqui.
+                </p>
+              ) : (
+                <p className="mt-2 text-sm" data-resposta-do-acesso>
+                  <strong>Resposta em {acesso.resposta.em}:</strong> {acesso.resposta.mensagem}
+                </p>
+              )}
+              {acesso.recursos.length === 0 ? null : (
+                <ol className="mt-2 text-sm" data-recursos-do-acesso>
+                  {acesso.recursos.map((rc) => (
+                    <li key={rc.instancia} className="border-b border-[color:var(--color-border)] py-1 last:border-0">
+                      Recurso de {rc.instancia}ª instância, em {rc.interpostoEm}
+                      {rc.decisao === null ? " — aguardando decisão" : `: ${rc.decisao.mensagem}`}
+                    </li>
+                  ))}
+                </ol>
+              )}
+              {acesso.prazoParaRecorrer === null ? null : (
+                <p className="mt-2 text-xs text-[color:var(--color-ink-2)]" data-prazo-de-recurso>
+                  Se discordar, o prazo para recorrer vai até {acesso.prazoParaRecorrer}.
+                </p>
+              )}
+            </div>
           )}
 
           <p className="mt-4 text-xs text-[color:var(--color-ink-2)]">

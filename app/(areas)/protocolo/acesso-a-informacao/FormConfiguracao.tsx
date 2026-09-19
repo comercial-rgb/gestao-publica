@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useId } from "react";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO as CAMPO, CLASSE_ROTULO as ROTULO } from "../../../../components/ui/Formulario";
 import { configuracaoDoAcessoAction, type EstadoDaConfiguracao } from "./actions";
@@ -15,7 +15,11 @@ import { configuracaoDoAcessoAction, type EstadoDaConfiguracao } from "./actions
  * ⚠️ RÓTULO EM TODO CAMPO — campo sem rótulo é caixa muda para leitor de tela.
  */
 export function FormConfiguracao(): React.ReactElement {
+  const uid = useId();
   const [estado, action, pendente] = useActionState<EstadoDaConfiguracao, FormData>(configuracaoDoAcessoAction, {});
+  // ⚠️ O ID VEM DO `useId`, NÃO DE UM LITERAL (corrigido em V11 V5.3). Dois formulários na
+  // mesma página com `id={`${uid}-vigenciaInicio`}` fazem o rótulo de um apontar para o campo do outro:
+  // quem usa leitor de tela é levado ao campo errado, e o clique no rótulo foca o errado.
 
   return (
     <section data-papel="form-configuracao-do-acesso" className="space-y-4">
@@ -41,34 +45,34 @@ export function FormConfiguracao(): React.ReactElement {
         <ChaveDeComando />
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className={ROTULO} htmlFor="vigenciaInicio">
+          <label className={ROTULO} htmlFor={`${uid}-vigenciaInicio`}>
             Esta configuração passa a valer em
-            <input id="vigenciaInicio" name="vigenciaInicio" type="date" required className={CAMPO} />
+            <input id={`${uid}-vigenciaInicio`} name="vigenciaInicio" type="date" required className={CAMPO} />
           </label>
         </div>
 
         <fieldset className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">
           <legend className="px-1 text-xs font-semibold text-[color:var(--color-ink)]">Prazos, em dias corridos</legend>
           <div className="grid gap-3 sm:grid-cols-3">
-            <label className={ROTULO} htmlFor="prazoDeRespostaEmDias">
+            <label className={ROTULO} htmlFor={`${uid}-prazoDeRespostaEmDias`}>
               Prazo para responder, contado do protocolo
-              <input id="prazoDeRespostaEmDias" name="prazoDeRespostaEmDias" type="number" min={1} max={3650} required className={CAMPO} />
+              <input id={`${uid}-prazoDeRespostaEmDias`} name="prazoDeRespostaEmDias" type="number" min={1} max={3650} required className={CAMPO} />
             </label>
-            <label className={ROTULO} htmlFor="prazoDeProrrogacaoEmDias">
+            <label className={ROTULO} htmlFor={`${uid}-prazoDeProrrogacaoEmDias`}>
               Dias que cada prorrogação acrescenta
-              <input id="prazoDeProrrogacaoEmDias" name="prazoDeProrrogacaoEmDias" type="number" min={1} max={3650} required className={CAMPO} />
+              <input id={`${uid}-prazoDeProrrogacaoEmDias`} name="prazoDeProrrogacaoEmDias" type="number" min={1} max={3650} required className={CAMPO} />
             </label>
-            <label className={ROTULO} htmlFor="prorrogacoesPermitidas">
+            <label className={ROTULO} htmlFor={`${uid}-prorrogacoesPermitidas`}>
               Quantas prorrogações a norma admite
-              <input id="prorrogacoesPermitidas" name="prorrogacoesPermitidas" type="number" min={0} max={10} required className={CAMPO} />
+              <input id={`${uid}-prorrogacoesPermitidas`} name="prorrogacoesPermitidas" type="number" min={0} max={10} required className={CAMPO} />
             </label>
-            <label className={ROTULO} htmlFor="instanciasDeRecurso">
+            <label className={ROTULO} htmlFor={`${uid}-instanciasDeRecurso`}>
               Instâncias de recurso previstas
-              <input id="instanciasDeRecurso" name="instanciasDeRecurso" type="number" min={0} max={10} required className={CAMPO} />
+              <input id={`${uid}-instanciasDeRecurso`} name="instanciasDeRecurso" type="number" min={0} max={10} required className={CAMPO} />
             </label>
-            <label className={ROTULO} htmlFor="prazoDeRecursoEmDias">
+            <label className={ROTULO} htmlFor={`${uid}-prazoDeRecursoEmDias`}>
               Prazo para recorrer, contado da resposta
-              <input id="prazoDeRecursoEmDias" name="prazoDeRecursoEmDias" type="number" min={1} max={3650} required className={CAMPO} />
+              <input id={`${uid}-prazoDeRecursoEmDias`} name="prazoDeRecursoEmDias" type="number" min={1} max={3650} required className={CAMPO} />
             </label>
           </div>
           <p className="mt-2 text-xs text-[color:var(--color-ink-3)]">
@@ -80,21 +84,21 @@ export function FormConfiguracao(): React.ReactElement {
         <fieldset className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">
           <legend className="px-1 text-xs font-semibold text-[color:var(--color-ink)]">As normas</legend>
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className={ROTULO} htmlFor="normaFederal">
+            <label className={ROTULO} htmlFor={`${uid}-normaFederal`}>
               Norma federal que fixa o prazo, com o artigo
-              <input id="normaFederal" name="normaFederal" type="text" required minLength={5} maxLength={400} className={CAMPO} />
+              <input id={`${uid}-normaFederal`} name="normaFederal" type="text" required minLength={5} maxLength={400} className={CAMPO} />
             </label>
-            <label className={ROTULO} htmlFor="normaFederalPublicadaEm">
+            <label className={ROTULO} htmlFor={`${uid}-normaFederalPublicadaEm`}>
               Data de publicação da norma federal
-              <input id="normaFederalPublicadaEm" name="normaFederalPublicadaEm" type="date" required className={CAMPO} />
+              <input id={`${uid}-normaFederalPublicadaEm`} name="normaFederalPublicadaEm" type="date" required className={CAMPO} />
             </label>
-            <label className={ROTULO} htmlFor="regulamentacaoLocal">
+            <label className={ROTULO} htmlFor={`${uid}-regulamentacaoLocal`}>
               Regulamentação local, com o artigo (deixe vazio se ainda não houver)
-              <input id="regulamentacaoLocal" name="regulamentacaoLocal" type="text" maxLength={400} className={CAMPO} />
+              <input id={`${uid}-regulamentacaoLocal`} name="regulamentacaoLocal" type="text" maxLength={400} className={CAMPO} />
             </label>
-            <label className={ROTULO} htmlFor="regulamentacaoLocalPublicadaEm">
+            <label className={ROTULO} htmlFor={`${uid}-regulamentacaoLocalPublicadaEm`}>
               Data de publicação da regulamentação local
-              <input id="regulamentacaoLocalPublicadaEm" name="regulamentacaoLocalPublicadaEm" type="date" className={CAMPO} />
+              <input id={`${uid}-regulamentacaoLocalPublicadaEm`} name="regulamentacaoLocalPublicadaEm" type="date" className={CAMPO} />
             </label>
           </div>
           <p className="mt-2 text-xs text-[color:var(--color-ink-3)]">
@@ -104,9 +108,9 @@ export function FormConfiguracao(): React.ReactElement {
           </p>
         </fieldset>
 
-        <label className={ROTULO} htmlFor="observacao">
+        <label className={ROTULO} htmlFor={`${uid}-observacao`}>
           Observação (opcional)
-          <textarea id="observacao" name="observacao" rows={3} maxLength={2000} className={CAMPO} />
+          <textarea id={`${uid}-observacao`} name="observacao" rows={3} maxLength={2000} className={CAMPO} />
         </label>
 
         <button type="submit" disabled={pendente} className={CLASSE_BOTAO_PRIMARIO}>
