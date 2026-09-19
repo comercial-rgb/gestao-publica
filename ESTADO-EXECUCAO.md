@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | `66d97c1` (V11 V5 — acesso à informação, o conserto do estorno na projeção pública e os roteiros de glosa) — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
+| HEAD | `4c192d7` (V11 V6 — a instalação limpa consertada e a jornada do acesso à informação de ponta a ponta) — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
-| Frente em execução | **V11** — V1.1, V3.1, V4.1, V4.2 (seção 65), V2.1 eSocial (seção 66) e **V5.1 acesso à informação + V5.2 o estorno na projeção pública** (seção 67). Guichê não iniciado; V6 (AWS) bloqueado |
-| Último resultado | seção 67 — cinco commits (`0adaf12`, `65f19e1`, `3804004`, `43f8842`, `66d97c1`); typecheck do backend, do app **e de scripts** em **exit 0** (o de scripts estava vermelho e passou a passar); **18/18** acesso à informação, **8/8** o guard do estorno, **138/138** (M16), **53/53** (execução contratual), **15/15** (autorização); **sete mutações, sete acusações**. Achado maior: o recebimento **estornado somava dinheiro na projeção PÚBLICA** do contrato, e o guard que devia impedir isso vigiava nomes em vez de propriedade |
-| Pendências relevantes | seção 67.8 — **`PREPARADOR-INSTALACAO-LIMPA`** é a que mais trava: o preparador de percursos para no roteiro `DOTACAO_INICIAL`, cuja conta é sintética no plano oficial, e sem ele **nenhum** percurso de navegador roda; é decisão de fonte oficial, não trabalho. **`LEIAUTE-ESOCIAL-NAO-OBTIDO`** (66.9) e **certificado A1** são insumos externos distintos. **V6 (AWS) na autenticação** (65.6). Escopo pendente: os fatos do pedido de acesso à informação, e o **guichê** inteiro. Intermitência não explicada no R8 das receitas. Linha **ENT12 do Windows** por reconciliar |
-| Próximo passo | seção 67.9 |
+| Frente em execução | **V11** — V1.1, V3.1, V4.1, V4.2 (seção 65), V2.1 eSocial (seção 66), V5.1/V5.2 (seção 67) e **V6: a instalação limpa e a jornada completa do acesso à informação** (seção 68). Guichê não iniciado; V6 (AWS) bloqueado |
+| Último resultado | seção 68 — oito commits (`047e6d2`, `aae55e0`, `d94ab75`, `e774d63`, `82564e9`, `9f71589`, `d1681ea`, `4c192d7`). **`PREPARADOR-INSTALACAO-LIMPA` resolvido**: instalação limpa em banco criado do zero, `exit=0`, 21 passos, UMA tolerância nomeada. **Percurso da ponte contratual: 50 passos, 0 falhas** (glosa e os dois estornos, escritos em 43f8842 e nunca executados). **Percurso do acesso à informação: 22 passos, 0 falhas**. tsc app/backend/scripts `exit=0`; bateria ampla 1063/1068 em 124 arquivos, com as 4 restantes medidas como vermelhas **na base** `af32666`. Sete mutações no instrumento das contas, sete acusações |
+| Pendências relevantes | seção 68.6 — **`ROTEIRO-CREDITO-ADICIONAL-POR-TIPO`** é a que mais custa: instalação limpa **não faz crédito adicional**, e destravar é decisão de MODELO. **`CONTROLE-DDR-POR-NATUREZA-DA-FONTE`**: não há **arrecadação** em instalação limpa. Quatro guards **vermelhos herdados** (`modelo-sem-caso-de-uso` com 7 modelos órfãos, `fronteira-ui`, `id` literal no eSocial, `data-civil`), medidos em worktree na base. **`LEIAUTE-ESOCIAL-NAO-OBTIDO`**, **certificado A1** e **V6 (AWS)** são três insumos externos distintos. Escopo pendente: o **guichê**. Linha **ENT12 do Windows** por reconciliar — esta main não incorporou os commits do Windows |
+| Próximo passo | seção 68.7 |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -8043,3 +8043,159 @@ percursos já escritos, os percursos pendentes das telas do V11 e a semeadura in
 pendência desta lista que desbloqueia várias outras, e é decisão, não trabalho.
 
 Depois dela: os fatos do pedido de acesso à informação sobre o `Processo`, ou o guichê.
+
+---
+
+## 68. V11 V6 — a instalação limpa que ninguém tinha rodado, e a jornada do acesso à informação de ponta a ponta
+
+Base: `af32666`. Sete commits: `047e6d2`, `aae55e0`, `d94ab75`, `e774d63`, `82564e9`, `9f71589`,
+`d1681ea`, `4c192d7`. Sem push.
+
+### 68.1 O banco tinha sumido de novo — e a receita estava pela metade
+
+Segunda ocorrência do mesmo modo de falha: o Postgres de desenvolvimento roda num container criado
+à mão, **sem volume nomeado**, e não sobrevive a uma queda do daemon. Os seis bancos foram junto.
+
+O `ENT00` traz o `docker run` e **para aí**: ele não diz que o container só cria o PRIMEIRO banco e
+que os outros dois precisam ser criados à mão, nem que `migrate deploy` toca só `DATABASE_URL`, nem
+que `npm run db:sql` é obrigatório em ambiente novo. A receita completa está na memória do projeto.
+Recriado: três bancos, migrations, 27 arquivos de SQL manual, cliente regenerado.
+
+### 68.2 `PREPARADOR-INSTALACAO-LIMPA` não era uma conta — era uma classe, e ela tinha três camadas
+
+A seção 67 registrou a pendência como "decidir qual conta analítica o roteiro `DOTACAO_INICIAL` usa".
+Era menos do que o problema. Medido em banco novo e exclusivo, três vezes:
+
+| Camada | O que estava errado | Onde |
+|---|---|---|
+| Seeds | 15 contas exigidas analíticas; 3 sintéticas no núcleo, 6 em demonstração | `prisma/seed/` |
+| Roteiros de execução | 4 das 18 constantes de `roteiros.ts` sintéticas no plano oficial | `modules/m01-core-contabil/` |
+| Portas | `2.1.3.1.1.00.00` escrita **cinco vezes** como constante local | `lib/portas/`, `prisma/seed/poc-fila.ts` |
+
+**O que foi corrigido, com a fonte:** `CONTA_DOTACAO_INICIAL` → `5.2.2.1.1.01.00` (CREDITO
+INICIAL); `CONTA_DDR_DISPONIVEL` → `8.2.1.1.1.01.00` (RECURSOS DISPONÍVEIS PARA O EXERCÍCIO);
+`CONTA_FORNECEDORES_A_PAGAR` → `2.1.3.1.1.01.01` (FORNECEDORES NÃO PARCELADOS A PAGAR), agora **uma**
+constante em vez de cinco. As três saíram da partição do `Pcasp_2025.xlsx` do TCE-PB — o mesmo
+arquivo que `seed:pcasp-oficial` carrega —, não de semelhança de nome. A da DDR teve duas medições
+fechando a escolha: as outras três pernas do circuito já apontavam para a analítica do ramo, e o
+único CRÉDITO àquela conta em todo o sistema é `roteiroArrecadacao`.
+
+**O que NÃO foi escolhido, e por quê:**
+
+- `ROTEIRO-CREDITO-ADICIONAL-POR-TIPO` — o PCASP particiona a dotação adicional **por tipo de
+  crédito** (7 analíticas) e `RoteiroOrcamentario.tipo` tem UM lugar. Apontar para a suplementar
+  lançaria especial e extraordinário como suplementar. **Consequência declarada: instalação limpa
+  não faz crédito adicional.**
+- `CONTROLE-DDR-POR-NATUREZA-DA-FONTE` — `7.2.1.1` se parte pela natureza da fonte (ordinários,
+  vinculados, extraorçamentários, compensação). O sistema conhece a fonte; o roteiro tem perna fixa.
+  **Consequência declarada: não há arrecadação em instalação limpa.**
+- `ROTEIRO-RESERVA-SEM-CONTA`, `CONSIGNACAO-CONTA-SINTETICA`,
+  `OBRIGACAO-A-PAGAR-POR-NATUREZA-DO-CREDOR`, `DDR-DISPONIVEL-SALDO-A-REPONTAR`,
+  `FORNECEDORES-SALDO-A-REPONTAR`.
+
+**O plano MÍNIMO mentia, e a mentira era o que escondia tudo.** `prisma/seed/pcasp.ts` marcava
+`5.2.2.1.1.00.00` e `8.2.1.1.1.00.00` como analíticas. Como os bancos de trabalho nasciam clonados,
+nada quebrava — e o defeito só aparecia em instalação nova, que ninguém fazia.
+
+**Resultado:** `preparar-banco-de-percursos` **exit=0** em banco criado do zero, 21 passos, **uma**
+tolerância — a do crédito adicional, nomeada por expressão que só casa com ela. A V6.1 tolerava
+qualquer "Conta sintética", uma rede que perdoava defeito de digitação junto com decisão pendente.
+
+### 68.3 Os instrumentos, e os defeitos que eles tinham dentro
+
+`test/contas-do-seed-analiticas.test.ts` classifica todo arquivo de `prisma/seed/`.
+`test/contas-contra-o-plano-oficial.test.ts` ganhou a medição que faltava: a **perna de partida**.
+
+Ele nasceu com três defeitos próprios, e quem os pegou foi ele mesmo:
+
+1. usava `somenteCodigo`, que **esvazia literal de string** — colheu ZERO pernas, e o teste de
+   vacuidade acusou;
+2. conhecia só a chave `conta:` e perdeu as cinco pernas do roteiro orçamentário inteiro — quem
+   acusou foi a lista de pendências órfãs;
+3. resolvia constante por nome **global**, e `CONTA_BANCOS` existe com dois valores — uma perna real
+   era resolvida para a conta errada.
+
+E a lição do CLAUDE.md que eu repeti: enumerar forma acha só aquelas formas. A chave
+`obrigacaoAPagar:` passou despercebida, e foi por ela que o nó sintético entrou em cinco arquivos.
+A correção não foi mais uma chave: foi **classificar toda constante de conta** — ou o código aparece
+numa perna colhida, ou está em `NAO_E_PERNA` com motivo, ou em `PERNA_INDIRETA`, que não é licença.
+
+Sete mutações no total, todas acusando, todas revertidas em verde.
+
+### 68.4 O percurso da ponte contratual: escrito em 43f8842, executado agora
+
+Ele nunca tinha rodado, e não rodava por duas causas, nenhuma delas no domínio:
+
+- **a aba em segundo plano.** O percurso abre uma segunda aba de propósito e depois age na primeira.
+  O Chrome não entrega `IntersectionObserver` a aba oculta, e é dele que o `elementHandle.click`
+  depende. Medido com `protocolTimeout` de 20 s: primeiro plano 0,0 s · segundo plano 20,0 s e ERRO
+  · com `bringToFront` 0,6 s. Timeout se mede, não se aumenta;
+- **o roteiro nasceu contra um nome que já não existia:** procurava
+  `data-acao="estornar-recebimento-<numero>"`, e a V5.2 trocara a chave para o ID. Tipagem não pega
+  isso: é string.
+
+**50 passos, 0 falhas.** A glosa (12.1–12.7), o estorno da medição (13.1–13.9) e o estorno do
+recebimento (14.1–14.5). O dinheiro, medido no banco: três termos definitivos, um estornado,
+**recebido efetivo 1.000,00** — 1.050,00 se o termo desfeito contasse. E na tela, no passo 7.2, a
+ordem separa Autorizado 1.100,00, Medido 1.000,00, **Recebido 900,00** e Liquidado 900,00.
+
+### 68.5 O acesso à informação: domínio, schema, serviço, telas e navegador
+
+- **Fase A** (`aae55e0`) — domínio puro, 25 casos, sem Prisma e sem relógio.
+- **Fase B** (`9f71589`) — schema, 2 migrations aditivas (zero DROP), 6 CHECKs, **5 índices únicos
+  parciais**, 5 ações de censo, 2 postos de trinco, o serviço e 9 casos contra banco.
+- **Fase C** (`d1681ea`) — a tela interna, e a projeção do requerente **na consulta pública que já
+  existia**, por número e código verificador, sem sessão.
+- **Fase D** (`4c192d7`) — **22 passos, 0 falhas** no navegador.
+
+O pedido **não tem jornada própria**: ele é executado por um `Processo` do M21. Distribuir é
+tramitar, receber é receber — e os dois acontecem na MESMA transação do fato do rito, porque
+`tramitar` e `receberProcesso` viraram cascas sobre corpos extraídos e exportados.
+
+As duas projeções são montadas por **funções diferentes**, não por filtro: `visaoDoSolicitante` não
+lê o fundamento interno, o ator nem o setor. Vincular ao Processo não tornou o pedido público.
+
+**Um defeito da V5.1 consertado junto:** `publicarConfiguracaoDoAcesso` lia `MAX(versao)` sem travar.
+O `@unique` fazia a segunda falhar — fail-closed, mas com violação de índice em vez de motivo.
+Pendência registrada: `CONFIGURACAO-DA-CERTIDAO-SEM-TRINCO` (o M34 tem o mesmo desenho).
+
+**Atualização de permissões v24** — sem ela a instalação EXISTENTE não ganha as cinco ações, e foi
+assim que a primeira execução do percurso parou. Verificados os dois caminhos: instalação limpa
+(bootstrap concede as 5) e atualização (v24 concede 5 em 1 perfil).
+
+### 68.6 O que este lote NÃO entregou, e o que ficou vermelho
+
+**Vermelhos HERDADOS — medidos em worktree na base `af32666`, não supostos:**
+
+| Guard | O que acusa | De onde vem |
+|---|---|---|
+| `modelo-sem-caso-de-uso` | 7 modelos órfãos | V2.1, V4.2, V1.1, V10 T2 |
+| `fronteira-ui` (3) | 2 ilhas client importando porta | V4.2, V1.1 |
+| `formularios-na-mesma-pagina` t6 | 2 `id` literais na tela do eSocial | V2.1 |
+| `data-civil` | comparação por UTC fora da lista | anterior a esta sessão |
+
+Nenhum deles é desta sessão, e nenhum foi corrigido aqui — exceto os 11 `id` literais de
+`FormConfiguracao`, que eram da tela irmã da unidade em execução.
+
+**Do que era meu e eu não tinha visto:** quatro testes citavam conta por LITERAL e quebraram com as
+unidades V6.2/V6.3. Rodei só testes dirigidos naquelas unidades; a bateria ampla é que achou. Todos
+passaram a citar a CONSTANTE.
+
+**Bloqueado por insumo externo, sem mudança:** `LEIAUTE-ESOCIAL-NAO-OBTIDO`, certificado A1,
+**V6 (AWS)**. Três pendências distintas.
+
+**Escopo pendente:** o **guichê** inteiro. `CONFIRMACAO-DE-ATO-QUE-SAI-DA-TELA`. Linha **ENT12 do
+Windows** por reconciliar — esta main **não** incorporou os commits do Windows, e a reconciliação
+não foi iniciada nesta rodada, por ordem.
+
+**Não executado nesta rodada, por ordem:** suíte completa, `test:fuso`, portão integral, campanha de
+mutações geral.
+
+### 68.7 O próximo ponto exato
+
+**`ROTEIRO-CREDITO-ADICIONAL-POR-TIPO`** — é a única pendência cuja consequência é um caso de uso
+inteiro indisponível em instalação limpa (crédito adicional), e destravá-la é decisão de MODELO:
+`RoteiroOrcamentario` resolvido pelo tipo do crédito. Ela leva junto a `CONTROLE-DDR-POR-NATUREZA-DA-FONTE`,
+que é a mesma forma de problema (perna fixa para um dado que o sistema conhece).
+
+Depois dela: o guichê, ou os 7 modelos órfãos que o `modelo-sem-caso-de-uso` acusa desde `af32666`.
