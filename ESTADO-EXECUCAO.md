@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | `4c192d7` (V11 V6 — a instalação limpa consertada e a jornada do acesso à informação de ponta a ponta) — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
+| HEAD | `2e096fb` (V11 V7 — o crédito adicional na conta do seu tipo, e o percurso que o abre no navegador) — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
-| Frente em execução | **V11** — V1.1, V3.1, V4.1, V4.2 (seção 65), V2.1 eSocial (seção 66), V5.1/V5.2 (seção 67) e **V6: a instalação limpa e a jornada completa do acesso à informação** (seção 68). Guichê não iniciado; V6 (AWS) bloqueado |
-| Último resultado | seção 68 — oito commits (`047e6d2`, `aae55e0`, `d94ab75`, `e774d63`, `82564e9`, `9f71589`, `d1681ea`, `4c192d7`). **`PREPARADOR-INSTALACAO-LIMPA` resolvido**: instalação limpa em banco criado do zero, `exit=0`, 21 passos, UMA tolerância nomeada. **Percurso da ponte contratual: 50 passos, 0 falhas** (glosa e os dois estornos, escritos em 43f8842 e nunca executados). **Percurso do acesso à informação: 22 passos, 0 falhas**. tsc app/backend/scripts `exit=0`; bateria ampla 1063/1068 em 124 arquivos, com as 4 restantes medidas como vermelhas **na base** `af32666`. Sete mutações no instrumento das contas, sete acusações |
-| Pendências relevantes | seção 68.6 — **`ROTEIRO-CREDITO-ADICIONAL-POR-TIPO`** é a que mais custa: instalação limpa **não faz crédito adicional**, e destravar é decisão de MODELO. **`CONTROLE-DDR-POR-NATUREZA-DA-FONTE`**: não há **arrecadação** em instalação limpa. Quatro guards **vermelhos herdados** (`modelo-sem-caso-de-uso` com 7 modelos órfãos, `fronteira-ui`, `id` literal no eSocial, `data-civil`), medidos em worktree na base. **`LEIAUTE-ESOCIAL-NAO-OBTIDO`**, **certificado A1** e **V6 (AWS)** são três insumos externos distintos. Escopo pendente: o **guichê**. Linha **ENT12 do Windows** por reconciliar — esta main não incorporou os commits do Windows |
-| Próximo passo | seção 68.7 |
+| Frente em execução | **V11** — V1.1, V3.1, V4.1, V4.2 (seção 65), V2.1 eSocial (seção 66), V5.1/V5.2 (seção 67), V6 (seção 68) e **V7: o crédito adicional por tipo de crédito, e o percurso que o abre** (seção 69). Guichê não iniciado; V6 (AWS) bloqueado |
+| Último resultado | seção 69 — três commits (`d5deb9d`, `eed4114`, `2e096fb`). **`ROTEIRO-CREDITO-ADICIONAL-POR-TIPO` resolvido**: `RoteiroOrcamentario` passou a ser chaveado pelo par (movimento, tipo de crédito), e o crédito adicional SUPLEMENTAR entra na analítica do plano. Instalação limpa do zero `exit=0`, 21 passos, UMA tolerância — e ela encolheu para a perna de ANULAÇÃO. **Percurso do crédito adicional: 18 passos, 0 falhas**, com a partida conferida em `5.2.2.1.2.01.00` contra o plano oficial. Dois defeitos de tela medidos no percurso (decreto que gravava sem dizer nada; data que não chegava a campo controlado, no helper de TODOS os percursos). tsc app/backend/scripts `exit=0`; **suíte inteira 3125/3130 em 299 arquivos**, com as 5 restantes medidas como vermelhas HERDADAS |
+| Pendências relevantes | seção 69.2 — **`CREDITO-ESPECIAL-ABERTO-OU-REABERTO`** (falta um FATO, não uma conta: aberto ou reaberto, CF art. 167 § 2º), **`ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`** (duas analíticas com nome IDÊNTICO em ramos diferentes) e **`DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`** (duas visões irmãs do mesmo fato). `ROTEIRO-RESERVA-SEM-CONTA` e `CONSIGNACAO-CONTA-SINTETICA` seguem — e a segunda tem uma consequência nova: o percurso da cadeia da despesa **não atravessa** em instalação limpa (sem tipo de consignação, a tela de pagamento não oferece retenção). `MARCAR-EM-CAMPO-CONTROLADO` e `DISPONIBILIDADE-DE-RECURSO-NOVO-SEM-TELA` nascem aqui. **CINCO** guards vermelhos herdados (o quinto, `m13` t8, é da V4.2 e só apareceu agora). **`LEIAUTE-ESOCIAL-NAO-OBTIDO`**, **certificado A1** e **V6 (AWS)** são três insumos externos distintos. Escopo pendente: o **guichê**. Linha **ENT12 do Windows** por reconciliar |
+| Próximo passo | seção 69.8 |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -8199,3 +8199,174 @@ inteiro indisponível em instalação limpa (crédito adicional), e destravá-la
 que é a mesma forma de problema (perna fixa para um dado que o sistema conhece).
 
 Depois dela: o guichê, ou os 7 modelos órfãos que o `modelo-sem-caso-de-uso` acusa desde `af32666`.
+
+## 69. V11 V7 — o crédito adicional entra na conta do SEU tipo, e abre no navegador
+
+> Três commits: `d5deb9d` (os treze testes que eu não tinha visto), `eed4114` (V7.1 — o roteiro
+> por tipo de crédito), `2e096fb` (V7.2 — o percurso, e dois defeitos de tela medidos nele).
+
+### 69.1 `ROTEIRO-CREDITO-ADICIONAL-POR-TIPO` — resolvida, e o que ela era de verdade
+
+A pendência estava escrita como "falta escolher uma conta". Não era. O nome da sintética no
+`Pcasp_2025.xlsx` do TCE-PB (sha256 `52ae7c73...17ffb`) diz o que ela é:
+
+```
+5.2.2.1.2.00.00  DOTAÇÃO ADICIONAL POR TIPO DE CREDITO
+  .01.00  CREDITO ADICIONAL - SUPLEMENTAR          ← analítica ÚNICA
+  .02.00  CREDITO ADICIONAL - ESPECIAL             (sintética, três filhas)
+  .03.00  CREDITO ADICIONAL - EXTRAORDINÁRIO       (sintética, três filhas)
+```
+
+O sistema **conhece** o tipo (`LeiCredito.tipoCredito`), mas `RoteiroOrcamentario.tipo` era
+`@unique` por `TipoMovimentoDotacao` e `CREDITO_ADICIONAL` é **um** tipo de movimento: havia lugar
+para um roteiro só. Era decisão de **modelo**, não de digitação.
+
+⚠️ **E isso não dava teste vermelho por um motivo incômodo:** um lançamento na conta errada
+**fecha igual** ao certo — mesmo subsistema, mesmas somas. Quem enxerga a diferença é quem compara
+a partida com a classificação do **ato** que a originou.
+
+**O modelo.** `RoteiroOrcamentario` ganhou `tipoCredito TipoCredito?`, e a chave virou o par. Três
+guardas, em camadas diferentes, porque nenhuma fecha sozinha:
+
+| Guarda | Onde | O que ela pega |
+|---|---|---|
+| `@@unique([tipo, tipoCredito])` | schema | o par preenchido |
+| `uq_roteiro_sem_tipo_de_credito` | `prisma/sql/` | o caso NULL — no Postgres dois NULL são **distintos** |
+| `ck_roteiro_tipo_de_credito` | migration | preenchido **se e somente se** `tipo = CREDITO_ADICIONAL` |
+
+O tipo **não** virou coluna de `MovimentoDotacao`: o `ItemCredito` já liga 1-1 o movimento ao
+decreto e o decreto à lei — é o caminho que o MANAD (M14) já percorre. Gravar de novo seria a
+segunda verdade sobre o mesmo crédito.
+
+**A migration tem um `DROP`, e ele é de ÍNDICE.** `RoteiroOrcamentario_tipo_key` deu lugar a uma
+restrição mais larga; nenhuma linha some. Toda linha existente nasce com `tipoCredito` NULL, e o
+índice parcial recria sobre elas exatamente a unicidade que havia — não há janela em que dois
+`DOTACAO_INICIAL` caibam.
+
+### 69.2 O que ficou decidido, e o que ficou registrado sem escolher
+
+**Decidido pela fonte:** `SUPLEMENTAR` → `5.2.2.1.2.01.00`, analítica única sob a sintética.
+
+**Registrado sem escolher** — escolher seria inventar norma:
+
+- **`CREDITO-ESPECIAL-ABERTO-OU-REABERTO`** — especial e extraordinário têm TRÊS analíticas cada
+  (ABERTOS / REABERTOS / REABERTOS - SUPLEMENTAÇÃO, CF art. 167 § 2º). O que as separa é se o
+  crédito foi aberto neste exercício ou é a reabertura do saldo do anterior, e
+  `LeiCredito`/`DecretoCredito` não registram esse vínculo. **Falta um FATO, não uma conta.**
+- **`ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`** — redução de dotação não mora em
+  `5.2.2.1.2`, e as candidatas são DUAS com o nome **idêntico**: `5.2.2.1.3.09.00` (sob DOTAÇÃO
+  ADICIONAL POR FONTE) e `5.2.2.1.9.04.00` (sob CANCELAMENTO/REMANEJAMENTO), ambas
+  "(-) CANCELAMENTO DE DOTAÇÕES", ambas CREDORAS e analíticas. Decidir por semelhança de nome é
+  escolher entre nomes iguais.
+- **`DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`** — `5.2.2.1.2` (por tipo) e `5.2.2.1.3` (por fonte)
+  são **irmãs** sob `5.2.2.1`. Lançar nas duas dobraria o total; lançar só numa deixa a outra
+  visão vazia em qualquer demonstrativo que a leia. Este sistema hoje lança só na `.2`.
+
+O seed passou a imprimir, para a anulação, uma **ressalva**: as analíticas sob o código recusado
+são do ramo **errado**, e candidata errada é pior que candidata nenhuma para quem vai decidir.
+
+### 69.3 A instalação limpa — o que passou a caber nela
+
+`preparar-banco-de-percursos` em banco criado do zero: **exit=0, 21 passos, UMA tolerância**, e ela
+**encolheu**. A POC do SAGRES agora atravessa a perna de suplementação contra o plano oficial
+(razão incluso) e para **um passo adiante**, na perna de anulação.
+
+> **Instalação limpa passa a fazer crédito adicional SUPLEMENTAR por recurso novo** (superávit
+> financeiro, excesso de arrecadação, operação de crédito). Por **anulação**, não — e nem especial
+> nem extraordinário.
+
+### 69.4 O percurso — 18 passos, 0 falhas
+
+A fatia que faltava era a **lei**: a própria tela vinha dizendo que o cadastro de leis não tinha
+formulário e que a lei entrava por seed. Honesto e inútil — sem lei não há decreto, e sem decreto o
+crédito adicional inteiro ficava fora do alcance de quem só tem a tela.
+
+| Passo | O que ele afirma |
+|---|---|
+| 1.x | a LEI entra pela tela e o ato **confirma** |
+| 2.x | o DECRETO e a perna de suplementação entram pela tela |
+| 3.x | o dinheiro chega na ficha: dotação autorizada 10.000 → **17.500** |
+| **4.1** | **a partida debita `5.2.2.1.2.01.00`** — contra o plano OFICIAL |
+| 5.x | repetir o MESMO número é recusado com motivo, e nada duplica |
+| 6.x | a tela oferece o formulário a quem não tem a ação, e o **servidor** recusa nomeando `CRIAR_LEI_DE_CREDITO` |
+
+⚠️ **4.1 é a única conferência que não se faz pela tela, e não por desleixo:** a conta do PCASP não
+aparece em tela nenhuma do crédito adicional, e um lançamento na conta errada fecha igual ao certo.
+
+### 69.5 Dois defeitos medidos ao escrever o percurso
+
+1. **O decreto gravava e a tela não dizia nada.** A confirmação só existia no ramo FECHADO do
+   painel, e o painel ficava ABERTO depois de gravar, com os campos preenchidos. Quem enviasse
+   leria silêncio e reenviaria, colidindo na unique `[ano, numero]`. Agora o painel fecha, limpa os
+   campos, e a confirmação fica FORA do formulário com `role="status"` e `data-resultado-da-acao` —
+   o mecanismo da V6.2 para ato que sai da tela, com `data-resultado-seq` como **contador**.
+
+2. **O preenchimento de data não chegava a campo controlado — no helper de TODOS os percursos.**
+   `el.value = x` grava por cima do setter que o React instala; o React compara `x` com `x`,
+   conclui que nada mudou e não chama o `onChange`. MEDIDO: o form do decreto (controlado) ficava
+   com `data=""`; o form da lei (não-controlado), ao lado, recebia a data — o que fazia o defeito
+   parecer **da tela**. A cura é chamar o setter do protótipo.
+
+   ⚠️ **O ramo `marcar` NÃO foi "corrigido junto".** A mesma armadilha existe em tese, mas a
+   correção equivalente precisa de um `click` sintético que pode acionar a ativação padrão e
+   **inverter** o que acabou de ser marcado — o percurso passaria a desmarcar em silêncio. Sete
+   percursos usam esse ramo e nenhum acusa problema. Pendência `MARCAR-EM-CAMPO-CONTROLADO`.
+
+O percurso ganhou `porQueNaoEnviou`: quando o envio sai em silêncio, ele lê da tela o estado do
+botão, os erros de forma e o valor de CADA campo. Foi ele que achou o `data=""` na primeira
+execução.
+
+### 69.6 O erro que era meu, e a medição que o escondia
+
+**Treze testes em três arquivos estavam vermelhos desde esta mesma rodada**, procurando contas que
+o repontamento tinha aposentado:
+
+| Arquivo | Testes | Vermelho desde |
+|---|---|---|
+| `m08-encerramento-controles.test.ts` | 8 | `047e6d2` (V6.1) |
+| `m14-msc.test.ts` | 4 | `047e6d2` (V6.1) |
+| `m20-importador.test.ts` | 2* | `e774d63` (V6.3) |
+
+\* os dois do M20 caíam por `2.1.3.1.1.00.00`, da V6.3.
+
+⚠️ **O erro foi de MEDIÇÃO, não de digitação.** Na V6.3 eu disse que quatro arquivos tinham o mesmo
+defeito e que a bateria ampla os tinha achado. A bateria que rodei alcançou **124 arquivos**; a
+suíte inteira tem **299**. Estes três estavam fora do recorte, e o relatório daquela rodada ficou
+incompleto. Todos passaram a citar a CONSTANTE.
+
+### 69.7 O que foi medido, e o que continua vermelho
+
+- tsc app / backend / scripts: `exit=0`
+- **suíte inteira: 3125/3130 em 299 arquivos**
+- oito mutações entre os dois instrumentos novos, oito acusações, verde após restaurar
+- instalação limpa do zero: `exit=0`, 21 passos
+- percurso do crédito adicional: **18/0**; regressão no percurso da cadeia da despesa: os três
+  preenchimentos de data seguem passando
+
+**Vermelhos HERDADOS — cinco, e o quinto só apareceu agora:**
+
+| Guard | De onde vem |
+|---|---|
+| `modelo-sem-caso-de-uso` (7 modelos órfãos) | V2.1, V4.2, V1.1, V10 T2 |
+| `fronteira-ui` (3) | V4.2, V1.1 |
+| `formularios-na-mesma-pagina` t6 (eSocial) | V2.1 |
+| `data-civil` | anterior |
+| `m13` t8 — escrita em `servico-politica-de-pessoal.ts` | **V4.2** (`35586f9`) |
+
+O quinto não é novo: ele nunca tinha sido alcançado por uma bateria minha, pelo mesmo recorte
+estreito da 69.6.
+
+**Achado de borda:** o percurso da cadeia da despesa **não atravessa** em instalação limpa — a tela
+de pagamento não oferece retenção porque nenhum tipo de consignação é semeado. É a segunda
+consequência de `CONSIGNACAO-CONTA-SINTETICA`, e ela não estava registrada.
+
+### 69.8 O próximo ponto exato
+
+**`DISPONIBILIDADE-DE-RECURSO-NOVO-SEM-TELA`** — a tela agora nomeia a última coisa que falta para
+o crédito por recurso novo caber inteiro na interface: a disponibilidade apurada (superávit
+financeiro, excesso de arrecadação, operação de crédito) ainda entra por seed, e sem ela o decreto
+é recusado nomeando a fonte. É uma fatia de superfície sobre domínio que já existe
+(`DisponibilidadeRecursoNovo`, com a amarração do TR 4.37 contra o **derivado dos fatos**).
+
+Depois dela: o **guichê**, ou os 7 modelos órfãos que o `modelo-sem-caso-de-uso` acusa desde
+`af32666`.
