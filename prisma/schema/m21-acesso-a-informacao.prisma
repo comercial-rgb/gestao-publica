@@ -77,3 +77,128 @@ model VersaoDaConfiguracaoDoAcessoAInformacao {
 
   @@index([vigenciaInicio])
 }
+
+// ============================================================================
+// O PEDIDO E OS SEUS FATOS (V11 V5.3 — Fase B)
+//
+// ⚠️ O PEDIDO NÃO TEM JORNADA PRÓPRIA. Ele é executado por um `Processo` do M21: a
+// distribuição, a tramitação entre setores e os anexos são os do processo, e não há uma
+// segunda máquina de estados ao lado. O que este par acrescenta é o que o processo não
+// sabe: sob QUE norma o pedido nasceu, e quais fatos do rito do acesso aconteceram.
+//
+// ⚠️ A VERSÃO DA CONFIGURAÇÃO É CONGELADA NO PEDIDO, e repetida em cada fato. Publicar uma
+// versão nova não reescreve o prazo de quem já pediu — e um fato gravado sob outra versão
+// seria a norma nova entrando por fora do congelamento. `configuracaoVersao` nula é estado
+// legítimo: o ente ainda não publicou, o pedido corre, e o que falta é a DATA.
+//
+// ⚠️ VINCULAR AO PROCESSO NÃO TORNA O PEDIDO PÚBLICO. A projeção do requerente e a interna
+// são separadas no domínio (`visaoDoSolicitante` e `visaoInternaDoPedido`), e o
+// `fundamentoInterno` existe como coluna PRÓPRIA justamente para não viajar junto com a
+// `mensagemAoRequerente` — é a doutrina de `DecisaoDaSolicitacao`.
+// ============================================================================
+
+/// A NATUREZA de um fato do rito do acesso. Espelha `NaturezaDoFato` do domínio puro
+/// (`modules/m21-protocolo/pedido-de-acesso.ts`) — e o teste de censo cobra o espelho.
+enum NaturezaDoFatoDoPedidoDeAcesso {
+  PEDIDO_PROTOCOLADO
+  PEDIDO_DISTRIBUIDO
+  PEDIDO_RECEBIDO
+  PRORROGACAO_CONCEDIDA
+  RESPOSTA_PREVIA_REGISTRADA
+  RESPOSTA_ENTREGUE
+  RECURSO_INTERPOSTO
+  RECURSO_DECIDIDO
+  PEDIDO_ENCERRADO
+}
+
+enum ClassificacaoDaRespostaDeAcesso {
+  ACESSO_CONCEDIDO
+  ACESSO_PARCIAL
+  ACESSO_NEGADO
+}
+
+enum ResultadoDoRecursoDeAcesso {
+  PROVIDO
+  PROVIDO_EM_PARTE
+  DESPROVIDO
+}
+
+/// O PEDIDO DE ACESSO À INFORMAÇÃO — o cabeçalho IMUTÁVEL. Tudo o que acontece é fato.
+model PedidoDeAcessoAInformacao {
+  id String @id @default(cuid())
+
+  /// O Processo que executa o pedido. `@unique`: um processo executa no máximo um pedido.
+  processoId String   @unique
+  processo   Processo @relation("PedidoDeAcessoDoProcesso", fields: [processoId], references: [id])
+
+  /// O instante do protocolo. É dele que o prazo se conta — pela régua de `packages/datas`,
+  /// no dia civil do ente, nunca por soma de milissegundos.
+  protocoladoEm DateTime
+
+  /// ⚠️ CONGELADA. A versão da configuração vigente NO DIA do protocolo. Nula quando o ente
+  /// ainda não publicou nenhuma: o pedido corre sem data prometida, e isso vai dito ao
+  /// requerente em vez de virar uma data inventada.
+  configuracaoVersao Int?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  fatos FatoDoPedidoDeAcesso[]
+
+  @@index([configuracaoVersao])
+  @@index([protocoladoEm])
+}
+
+/// UM FATO DO PEDIDO — append-only. Correção é fato novo, nunca `UPDATE`.
+model FatoDoPedidoDeAcesso {
+  id String @id @default(cuid())
+
+  pedidoId String
+  pedido   PedidoDeAcessoAInformacao @relation(fields: [pedidoId], references: [id])
+
+  /// Repetido de propósito: a trilha interna é lida pelo processo, e um JOIN a mais por
+  /// linha numa trilha é caro sem necessidade.
+  processoId String
+  processo   Processo @relation("FatosDeAcessoDoProcesso", fields: [processoId], references: [id])
+
+  natureza NaturezaDoFatoDoPedidoDeAcesso
+
+  /// Quem praticou. `"REQUERENTE"` quando o ato é do cidadão que não é usuário do sistema.
+  ator String
+
+  /// O instante e o DIA CIVIL do ente, gravado — não recalculado na leitura. Recalcular na
+  /// leitura faz o mesmo fato mudar de dia quando alguém troca o fuso do servidor.
+  em  DateTime
+  dia String @db.VarChar(10)
+
+  /// A versão EFETIVAMENTE aplicada. Tem de ser a do pedido — o caso de uso recusa divergência.
+  configuracaoVersao Int?
+
+  /// ⚠️ A CHAVE DE IDEMPOTÊNCIA, COM O ESCOPO DENTRO DELA: `acesso:<pedidoId>:<natureza>:<sufixo>`.
+  /// `@unique` global porque o escopo já está na string — uma chave sem escopo colidiria
+  /// entre pedidos e o segundo pedido receberia o replay do primeiro.
+  chave String @unique
+
+  /// ⚠️ DUAS COLUNAS, NÃO UMA. O que o cidadão lê e o que instrui o processo não se misturam:
+  /// um texto só acaba vazando inteiro para o lado errado.
+  mensagemAoRequerente String?
+  fundamentoInterno    String?
+
+  setorDestinoId String?
+  setorDestino   Setor?  @relation("SetorDestinoDeAcesso", fields: [setorDestinoId], references: [id])
+
+  documentoId String?
+  documento   Anexo?  @relation("DocumentoDeFatoDeAcesso", fields: [documentoId], references: [id])
+
+  classificacao      ClassificacaoDaRespostaDeAcesso?
+  instancia          Int?
+  resultadoDoRecurso ResultadoDoRecursoDeAcesso?
+
+  criadoEm DateTime @default(now())
+
+  @@index([pedidoId, em])
+  @@index([processoId])
+  @@index([natureza])
+  @@index([setorDestinoId])
+  @@index([documentoId])
+}

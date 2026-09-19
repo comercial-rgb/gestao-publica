@@ -198,6 +198,8 @@ model Anexo {
   documentosDeTermoPatrimonial   TermoPatrimonial[] @relation("DocumentoDeTermoPatrimonial")
   /// V6.2 — a marca de anexo VISÍVEL ao requerente de uma solicitação da carta. VIRTUAL.
   daSolicitacao AnexoDaSolicitacao? @relation("AnexoDaSolicitacao")
+  /// V11 V5.3 — os fatos do acesso à informação que este documento instrui. VIRTUAL.
+  fatosDeAcesso FatoDoPedidoDeAcesso[] @relation("DocumentoDeFatoDeAcesso")
 }
 
 /// OS MODOS DA LEI 14.063/2020, e eles NÃO são intercambiáveis.

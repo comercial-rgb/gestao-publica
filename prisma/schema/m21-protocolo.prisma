@@ -78,6 +78,8 @@ model Setor {
   /// back-relations ENT05 (M10 gestão do bem) — VIRTUAIS.
   localizacoesFisicas LocalizacaoFisica[] @relation("LocalizacaoDeSetor")
   termosPatrimoniais  TermoPatrimonial[]  @relation("TermoPatrimonialDeSetor")
+  /// V11 V5.3 — os fatos de acesso à informação distribuídos PARA este setor. VIRTUAL.
+  fatosDeAcessoRecebidos FatoDoPedidoDeAcesso[] @relation("SetorDestinoDeAcesso")
   /// back-relation ENT05 (M11 compras) — VIRTUAL.
   solicitacoesDeCompra SolicitacaoDeCompra[] @relation("SolicitacaoDeCompra")
 }
@@ -294,6 +296,10 @@ model Processo {
   solicitacaoDeServico SolicitacaoDeServico? @relation("SolicitacaoDoProcesso")
   /// V7 M1 U4 — a manifestação de ouvidoria anônima que este processo executa. VIRTUAL.
   manifestacaoDeOuvidoria ManifestacaoDeOuvidoria? @relation("ManifestacaoDoProcesso")
+  /// V11 V5.3 — o pedido de acesso à informação que este processo executa. VIRTUAL.
+  pedidoDeAcesso       PedidoDeAcessoAInformacao? @relation("PedidoDeAcessoDoProcesso")
+  /// V11 V5.3 — os fatos do rito do acesso, quando o processo executa um pedido. VIRTUAL.
+  fatosDeAcesso        FatoDoPedidoDeAcesso[]     @relation("FatosDeAcessoDoProcesso")
 }
 
 /// A CÓPIA do roteiro no instante da abertura. Ver o cabeçalho do arquivo.

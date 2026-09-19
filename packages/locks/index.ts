@@ -265,6 +265,27 @@ export const ORDEM_DOS_LOCKS = {
    * protocolo, 14, antes de a manifestação existir).
    */
   ManifestacaoDeOuvidoria: 25,
+  /**
+   * V11 V5.3 — O PEDIDO DE ACESSO À INFORMAÇÃO. A corrida é ler-decidir-gravar sobre os FATOS:
+   * duas respostas simultâneas leem "ainda não respondido" e as duas entregam, e o pedido passa
+   * a ter duas datas de resposta — logo, duas contagens de prazo. Os índices únicos parciais de
+   * `prisma/sql/uq_fato_do_pedido_de_acesso.sql` são a rede embaixo; este posto é o que permite
+   * ao caso de uso RECUSAR com o motivo certo em vez de estourar violação de índice.
+   *
+   * A abertura trava o protocolo (14), antes de o pedido existir; os atos sobre ele travam só
+   * este posto.
+   */
+  PedidoDeAcessoAInformacao: 26,
+  /**
+   * V11 V5.3 — A CONFIGURAÇÃO DO ACESSO. Posto de TABELA, não de linha: `publicarConfiguracao`
+   * lê `MAX(versao)` e grava `MAX+1`, e duas publicações simultâneas leem o mesmo máximo. O
+   * `@unique` em `versao` faz a segunda falhar — fail-closed, mas com violação de índice em vez
+   * de motivo. Travando um id constante, a segunda espera e lê o máximo já gravado.
+   *
+   * ⚠️ O MESMO DESENHO EXISTE NO M34 (`VersaoDaConfiguracaoDaCertidao`) e ele NÃO foi travado
+   * aqui: mexer no M34 é outra unidade. Pendência `CONFIGURACAO-DA-CERTIDAO-SEM-TRINCO`.
+   */
+  ConfiguracaoDoAcessoAInformacao: 27,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

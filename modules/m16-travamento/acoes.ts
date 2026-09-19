@@ -408,6 +408,20 @@ export type AcaoDoSistema =
   // pode ser prorrogada. Quem desenha o fluxo interno de um assunto não é necessariamente quem
   // responde por uma norma: juntar os dois daria o segundo poder a quem precisa do primeiro.
   | "PUBLICAR_CONFIGURACAO_DO_ACESSO_A_INFORMACAO"
+  // ── M21 — o RITO do acesso à informação (V11 V5.3) ──
+  //
+  // ⚠️ CINCO AÇÕES, E NÃO UMA "GERIR PEDIDO DE ACESSO". Cada uma tem um responsável diferente
+  // na vida real do ente, e juntá-las daria a qualquer delas o poder de todas:
+  //  · PROTOCOLAR abre o pedido e congela a norma — é do balcão;
+  //  · DISTRIBUIR escolhe o setor que responde — é da triagem;
+  //  · PRORROGAR estica a data prometida a quem tem direito subjetivo, e exige motivação;
+  //  · RESPONDER entrega a resposta, classificada, e negar exige fundamento;
+  //  · DECIDIR RECURSO revê a negativa — quem respondeu não é quem julga o próprio ato.
+  | "PROTOCOLAR_PEDIDO_DE_ACESSO_A_INFORMACAO"
+  | "DISTRIBUIR_PEDIDO_DE_ACESSO_A_INFORMACAO"
+  | "PRORROGAR_PEDIDO_DE_ACESSO_A_INFORMACAO"
+  | "RESPONDER_PEDIDO_DE_ACESSO_A_INFORMACAO"
+  | "DECIDIR_RECURSO_DE_ACESSO_A_INFORMACAO"
   | "REGISTRAR_TAXA_DO_PROCESSO"
   | "BAIXAR_TAXA_DO_PROCESSO"
   // ── M22 — anexos e assinatura (ENT02) ──
@@ -967,6 +981,21 @@ export type NomeDeServico =
   | "lotarUsuarioNoSetor"
   | "criarAssunto"
   | "publicarConfiguracaoDoAcesso"
+  | "protocolarPedidoDeAcesso"
+  | "distribuirPedidoDeAcesso"
+  | "prorrogarPedidoDeAcesso"
+  | "responderPedidoDeAcesso"
+  | "decidirRecursoDeAcesso"
+  // ⚠️ SEM AÇÃO NOVA: receber o pedido no setor É receber o PROCESSO. Criar um
+  // `RECEBER_PEDIDO_DE_ACESSO` daria ao ente dois crachás para o mesmo ato, e um deles
+  // acabaria concedido sem o outro — o setor receberia o processo e não o pedido, ou o
+  // contrário. O fato do rito nasce junto com o recebimento do processo.
+  | "receberPedidoDeAcesso"
+  // ⚠️ TAMBÉM SEM AÇÃO NOVA: interpor é ato do REQUERENTE, que não tem crachá. Quem registra a
+  // peça é o setor recursal — o mesmo que a julga —, e por isso o crachá é o de decidir o
+  // recurso. Uma ação "INTERPOR" seria um crachá que o cidadão não pode ter e que o servidor
+  // já tem por outro nome.
+  | "interporRecursoDeAcesso"
   | "registrarTaxaDoProcesso"
   | "baixarTaxaDoProcesso"
   // ── M22 — anexos e assinatura (ENT02) ──
@@ -1502,6 +1531,13 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   lotarUsuarioNoSetor: "LOTAR_USUARIO_NO_SETOR",
   criarAssunto: "CRIAR_ASSUNTO",
   publicarConfiguracaoDoAcesso: "PUBLICAR_CONFIGURACAO_DO_ACESSO_A_INFORMACAO",
+  protocolarPedidoDeAcesso: "PROTOCOLAR_PEDIDO_DE_ACESSO_A_INFORMACAO",
+  distribuirPedidoDeAcesso: "DISTRIBUIR_PEDIDO_DE_ACESSO_A_INFORMACAO",
+  prorrogarPedidoDeAcesso: "PRORROGAR_PEDIDO_DE_ACESSO_A_INFORMACAO",
+  responderPedidoDeAcesso: "RESPONDER_PEDIDO_DE_ACESSO_A_INFORMACAO",
+  decidirRecursoDeAcesso: "DECIDIR_RECURSO_DE_ACESSO_A_INFORMACAO",
+  receberPedidoDeAcesso: "RECEBER_PROCESSO",
+  interporRecursoDeAcesso: "DECIDIR_RECURSO_DE_ACESSO_A_INFORMACAO",
   registrarTaxaDoProcesso: "REGISTRAR_TAXA_DO_PROCESSO",
   baixarTaxaDoProcesso: "BAIXAR_TAXA_DO_PROCESSO",
 
@@ -1710,6 +1746,18 @@ export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
  * grep-teste lê esta lista — nada sai do censo por descuido.
  */
 export const FORA_DO_CENSO: Record<string, string> = {
+  // ⚠️ V11 V5.3 — OS CORPOS DE TRANSAÇÃO DO M21. Eles não são atos por si: quem os chama já
+  // está dentro de uma transação e responde pelo ato. Estão exportados porque o pedido de
+  // acesso à informação precisa tramitar e receber o PROCESSO na mesma transação em que grava o
+  // fato do rito — separar as duas transações deixaria uma janela em que o processo andou e o
+  // fato não existe.
+  //
+  // ⚠️ E ELES CONTINUAM CONFERINDO O CRACHÁ: `tramitarNaTransacao` e `receberNaTransacao` fazem
+  // `autorizarNo` com a ação do processo. Quem some daqui não é a fechadura — é a casca.
+  criarProcessoNaTransacao:
+    "corpo comum da abertura de processo; não autoriza nada — quem chama já conferiu o crachá",
+  tramitarNaTransacao: "corpo do trâmite, dentro de transação já aberta; ele mesmo autoriza TRAMITAR_PROCESSO",
+  receberNaTransacao: "corpo do recebimento, dentro de transação já aberta; ele mesmo autoriza RECEBER_PROCESSO",
   // ── V11 V3.1 — a consulta do superávit (as três são LEITURA; nenhuma grava nada) ──
   //
   // ⚠️ ELAS FORAM EXPORTADAS PARA NÃO HAVER SEGUNDA ARITMÉTICA. `usadoDaDisponibilidade` já

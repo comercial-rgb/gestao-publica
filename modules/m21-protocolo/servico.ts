@@ -303,9 +303,14 @@ export interface ProcessoAberto {
 /**
  * A CRIAÇÃO DO PROCESSO dentro de uma transação já AUTORIZADA — o corpo comum da abertura interna
  * (`abrirProcesso`, que exige a ação e a lotação no setor) e do protocolo da carta de serviços
- * (`protocolarSolicitacao`, que exige a titularidade do requerente). Privada: não é ato por si.
+ * (`protocolarSolicitacao`, que exige a titularidade do requerente).
+ *
+ * ⚠️ EXPORTADA EM V11 V5.3, E CONTINUA NÃO SENDO ATO POR SI. Ela NÃO autoriza nada: quem a chama
+ * já conferiu o crachá e está dentro da transação. O pedido de acesso à informação precisa dela
+ * porque o pedido É executado por um processo — abrir um processo "por fora" e depois vincular
+ * deixaria uma janela em que o processo existe sem o pedido.
  */
-async function criarProcessoNaTransacao(tx: Tx, d: ReturnType<typeof zAbrirProcesso.parse>): Promise<ProcessoAberto> {
+export async function criarProcessoNaTransacao(tx: Tx, d: ReturnType<typeof zAbrirProcesso.parse>): Promise<ProcessoAberto> {
   const exercicio = await tx.exercicio.findUnique({
     where: { ano: d.exercicio },
     select: { id: true, encerramento: { select: { id: true } } },
@@ -486,7 +491,23 @@ export async function tramitar(
 ): Promise<{ readonly movimentoId: string; readonly alvos: number }> {
   const d = zTramitar.parse(input);
 
-  return prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx) => tramitarNaTransacao(tx, d));
+}
+
+/**
+ * O CORPO DO TRÂMITE, dentro de uma transação já aberta.
+ *
+ * ⚠️ EXTRAÍDO EM V11 V5.3, E ELE CONTINUA CONFERINDO TUDO. Autorização, lotação, processo
+ * aberto, taxas em dia, setor ativo — nada saiu daqui para a casca. Quem chama de dentro de
+ * outra transação (o pedido de acesso à informação, que distribui o pedido tramitando o
+ * processo) recebe as mesmas recusas; o que ele ganha é ATOMICIDADE: ou o processo tramita e
+ * o fato do rito é gravado, ou nenhum dos dois.
+ */
+export async function tramitarNaTransacao(
+  tx: Tx,
+  d: ReturnType<typeof zTramitar.parse>
+): Promise<{ readonly movimentoId: string; readonly alvos: number }> {
+  {
     const p = await carregar(tx, d.processoId);
     const origem = setorAtual(p.setorAberturaId, p.movimentos);
 
@@ -536,7 +557,7 @@ export async function tramitar(
     });
 
     return { movimentoId, alvos: alvos.length };
-  });
+  }
 }
 
 /**
@@ -552,7 +573,18 @@ export async function receberProcesso(
 ): Promise<{ readonly movimentoId: string }> {
   const d = zReceber.parse(input);
 
-  return prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx) => receberNaTransacao(tx, d));
+}
+
+/**
+ * O CORPO DO RECEBIMENTO, dentro de uma transação já aberta. Mesmo motivo e mesmas conferências
+ * do trâmite: receber é ato de quem está no destino, e receber duas vezes continua recusado.
+ */
+export async function receberNaTransacao(
+  tx: Tx,
+  d: ReturnType<typeof zReceber.parse>
+): Promise<{ readonly movimentoId: string }> {
+  {
     const p = await carregar(tx, d.processoId);
     const destino = setorAtual(p.setorAberturaId, p.movimentos);
 
@@ -587,7 +619,7 @@ export async function receberProcesso(
       if (alvo === p.id) movimentoId = m.id;
     }
     return { movimentoId };
-  });
+  }
 }
 
 /** COMPLEMENTA — texto ou documento, sem mudar de setor. */

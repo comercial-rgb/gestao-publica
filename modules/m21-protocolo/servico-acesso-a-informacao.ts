@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { travar } from "../../packages/locks/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
@@ -61,6 +62,14 @@ export async function publicarConfiguracaoDoAcesso(
 
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.publicarConfiguracaoDoAcesso, "ENTE");
+
+    // ⚠️ TRINCO DE TABELA, E ELE FALTAVA (V11 V5.3). Abaixo se lê `MAX(versao)` e se grava
+    // `MAX+1`: duas publicações simultâneas leem o mesmo máximo e tentam a mesma versão. O
+    // `@unique` em `versao` faz a segunda falhar — fail-closed, mas com violação de índice no
+    // lugar de motivo, e sem a conferência de retroatividade contra a versão que realmente
+    // passou a ser a última. O id é CONSTANTE de propósito: o que se serializa é a fila de
+    // versões, não uma linha.
+    await travar(tx, "ConfiguracaoDoAcessoAInformacao", ["fila-de-versoes"]);
 
     const ultima = await tx.versaoDaConfiguracaoDoAcessoAInformacao.findFirst({
       orderBy: { versao: "desc" },
