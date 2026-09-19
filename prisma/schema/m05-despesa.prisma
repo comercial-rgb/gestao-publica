@@ -512,9 +512,33 @@ model Pagamento {
 /// que o chamador passa. Um roteiro paralelo os lançaria DUAS vezes: é a lição da
 /// ENTRADA do almoxarifado (que não tem roteiro próprio porque a liquidação já debitou
 /// o estoque).
+///
+/// ⚠️ A CHAVE NÃO É MAIS SÓ O TIPO DE MOVIMENTO (V11 V7.1). O PCASP particiona
+/// `5.2.2.1.2 DOTAÇÃO ADICIONAL POR TIPO DE CREDITO` — o nome da conta sintética diz
+/// literalmente por que: o crédito adicional se classifica pelo TIPO DE CRÉDITO, e
+/// suplementar, especial e extraordinário vão para contas DIFERENTES. Com `tipo @unique`
+/// havia lugar para UM roteiro de `CREDITO_ADICIONAL`, e apontá-lo para a suplementar
+/// lançaria todo especial e todo extraordinário como suplementar — erro que só apareceria
+/// no balancete e na remessa.
+///
+/// `tipoCredito` é o discriminador, e ele é NULO para todo movimento que não seja crédito
+/// adicional. O CHECK `ck_roteiro_tipo_de_credito` (migration) amarra a equivalência nos
+/// dois sentidos: preenchido SE E SOMENTE SE `tipo = CREDITO_ADICIONAL`. Um roteiro de
+/// RESERVA com tipo de crédito, ou um crédito adicional sem ele, não entram no banco.
+///
+/// ⚠️ E O `@@unique` COMPOSTO NÃO FECHA SOZINHO: no Postgres, dois NULL são distintos, e
+/// (DOTACAO_INICIAL, NULL) caberia duas vezes. Quem fecha é o índice parcial
+/// `uq_roteiro_sem_tipo_de_credito` em `prisma/sql/` — a mesma divisão de trabalho do
+/// `uq_dotacao_inicial_unica`.
 model RoteiroOrcamentario {
   id   String               @id @default(cuid())
-  tipo TipoMovimentoDotacao @unique
+  tipo TipoMovimentoDotacao
+
+  /// O tipo de crédito, SÓ para `CREDITO_ADICIONAL`. Vem da LEI que autorizou
+  /// (`LeiCredito.tipoCredito`), pelo caminho movimento -> item -> decreto -> lei, o
+  /// mesmo que o MANAD (M14) já percorre. NÃO é coluna de `MovimentoDotacao`: gravá-lo lá
+  /// criaria a segunda verdade sobre o tipo do mesmo crédito.
+  tipoCredito TipoCredito?
 
   contaDebitoId String
   contaDebito   ContaPcasp @relation("DebitoOrcamentario", fields: [contaDebitoId], references: [id])
@@ -524,4 +548,6 @@ model RoteiroOrcamentario {
 
   criadoEm  DateTime @default(now())
   criadoPor String
+
+  @@unique([tipo, tipoCredito])
 }

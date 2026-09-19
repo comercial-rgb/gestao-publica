@@ -108,6 +108,14 @@ const SINTETICAS_TOLERADAS: ReadonlySet<string> = new Set([
   // ── ENT05 (ITEM 3) — os nós de HIERARQUIA que o repontamento trouxe junto. ──
   // Eles entram no seed como PAIS das analíticas repontadas; nenhuma partida os toca.
   "1.1.2.1.0.00.00", "2.2.2.0.0.00.00",
+  // ── V11 V7.1 — OS DOIS RAMOS DO CRÉDITO ADICIONAL QUE FICARAM SEM DECISÃO. ──
+  // ⚠️ ESTAS DUAS ESTÃO AQUI DE PROPÓSITO, E O PROPÓSITO É NÃO RECEBEREM PARTIDA.
+  // `CONTA_CREDITO_ADICIONAL_ESPECIAL` e `..._EXTRAORDINARIO` apontam para a SINTÉTICA para
+  // que o seed RECUSE o roteiro e imprima, do plano que está no banco, as três candidatas de
+  // cada ramo (ABERTOS / REABERTOS / REABERTOS - SUPLEMENTAÇÃO). Falta um FATO — aberto ou
+  // reaberto — que o sistema ainda não registra: pendência `CREDITO-ESPECIAL-ABERTO-OU-REABERTO`.
+  // Sair daqui é decidir a classificação, não trocar o código.
+  "5.2.2.1.2.02.00", "5.2.2.1.2.03.00",
 ]);
 
 interface Uso {
@@ -252,7 +260,12 @@ describe("as contas do código contra o PCASP oficial", () => {
    * uma filha de nome parecido.
    */
   const EM_PERNA_DE_ROTEIRO: Readonly<Record<string, string>> = {
-    "5.2.2.1.2.00.00": "ROTEIRO-CREDITO-ADICIONAL-POR-TIPO",
+    // ⚠️ V7.1 — ESTA MUDOU DE PENDÊNCIA, E NÃO DE LUGAR. `5.2.2.1.2.00.00` era a perna do
+    // CRÉDITO ADICIONAL inteiro; hoje é só a da ANULAÇÃO, e o que falta ali é escolher entre
+    // duas analíticas de nome IDÊNTICO em ramos diferentes do plano.
+    "5.2.2.1.2.00.00": "ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS",
+    "5.2.2.1.2.02.00": "CREDITO-ESPECIAL-ABERTO-OU-REABERTO",
+    "5.2.2.1.2.03.00": "CREDITO-ESPECIAL-ABERTO-OU-REABERTO",
     "6.2.2.1.2.00.00": "ROTEIRO-RESERVA-SEM-CONTA",
     "7.2.1.1.0.00.00": "CONTROLE-DDR-POR-NATUREZA-DA-FONTE",
     "2.1.8.8.1.01.00": "CONSIGNACAO-CONTA-SINTETICA",

@@ -2,6 +2,10 @@ import { toMoney } from "../../packages/contracts/index.js";
 import { randomUUID } from "node:crypto";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import type { TipoMovimentoDotacao } from "./dominio.js";
+// ⚠️ O TIPO VEM DO SCHEMA, NÃO DO M03. O M03 depende do M05 (é ele que chama
+// `registrarMovimentoDotacao`); importar o tipo de lá fecharia o ciclo. O enum do Prisma é
+// a fonte única — redigitar a união aqui criaria a segunda verdade sobre quais tipos existem.
+import type { TipoCredito } from "../../prisma/generated/client/enums.js";
 // ⚠️ O FUNIL DO RAZÃO (M01). Todo lançamento passa por ele — e é lá que mora o
 // travamento de competência (M16). Ver `m01-funil.test.ts`: o grep-teste proíbe o
 // `lancamentoContabil.create` fora dele.
@@ -86,6 +90,19 @@ export interface MovimentoDotacaoParams {
    */
   readonly data?: Date | undefined;
   readonly historico?: string | undefined;
+  /**
+   * ⚠️ OBRIGATÓRIO QUANDO `tipo === "CREDITO_ADICIONAL"`, E PROIBIDO NOS DEMAIS (V11 V7.1).
+   *
+   * O PCASP parte `5.2.2.1.2 DOTAÇÃO ADICIONAL POR TIPO DE CREDITO` em suplementar,
+   * especial e extraordinário — contas DIFERENTES. Quem sabe o tipo é a LEI que autorizou
+   * (`LeiCredito.tipoCredito`); o chamador o carrega até aqui pelo caminho
+   * decreto -> lei, o mesmo que o MANAD (M14) percorre para somar por tipo.
+   *
+   * NÃO vira coluna de `MovimentoDotacao`: o `ItemCredito` já liga 1-1 o movimento ao
+   * decreto e o decreto à lei. Gravá-lo aqui seria a segunda verdade sobre o mesmo crédito,
+   * e a primeira divergência apareceria num demonstrativo, meses depois.
+   */
+  readonly tipoCredito?: TipoCredito | undefined;
 }
 
 /**
@@ -104,6 +121,26 @@ export async function registrarMovimentoDotacao(
   // instantes diferentes por alguns milissegundos — e uma consulta cortada exatamente
   // nessa fronteira veria um sem o outro.
   const competencia = p.data ?? new Date();
+
+  // ⚠️ A CONFERÊNCIA VEM ANTES DO PRIMEIRO `create`, e isso não é estilo. Um movimento
+  // gravado antes da guarda fica no banco se a transação for parcial em qualquer caminho
+  // futuro, e a tentativa seguinte passa a tropeçar num fato que nunca deveria ter nascido.
+  // A regra da casa: conferir pré-condição antes de gravar.
+  if (p.tipo === "CREDITO_ADICIONAL" && p.tipoCredito === undefined) {
+    throw new Error(
+      `CRÉDITO ADICIONAL SEM TIPO DE CRÉDITO. O PCASP parte a dotação adicional por tipo ` +
+        `(suplementar, especial, extraordinário) em contas diferentes — sem o tipo não há ` +
+        `como dizer em qual conta o crédito entra. Quem sabe é a LEI que autorizou o ` +
+        `decreto (LeiCredito.tipoCredito). Nada foi gravado.`
+    );
+  }
+  if (p.tipo !== "CREDITO_ADICIONAL" && p.tipoCredito !== undefined) {
+    throw new Error(
+      `TIPO DE CRÉDITO em movimento ${p.tipo}. O tipo de crédito só classifica o CRÉDITO ` +
+        `ADICIONAL; num movimento de outro tipo ele não tem significado contábil e faria ` +
+        `a consulta do roteiro procurar um par que o seed nunca semeia. Nada foi gravado.`
+    );
+  }
 
   // ⚠️ PERÍODO ABERTO, CONFERIDO PELA COMPETÊNCIA — e é um guard NOVO, não uma cópia do
   // que já havia. `exigirExercicioDaFichaAberto` olha o exercício da FICHA; este olha o
@@ -146,8 +183,12 @@ export async function registrarMovimentoDotacao(
     return { movimentoId: mov.id };
   }
 
-  const roteiro = await tx.roteiroOrcamentario.findUnique({
-    where: { tipo: p.tipo },
+  // ⚠️ A CHAVE É O PAR. `tipoCredito` é NULO para todo movimento que não é crédito
+  // adicional, e o índice parcial `uq_roteiro_sem_tipo_de_credito` garante que existe no
+  // máximo uma linha com NULL por tipo — sem ele, dois NULL seriam distintos no Postgres e
+  // esta leitura dependeria de qual linha o planejador devolvesse.
+  const roteiro = await tx.roteiroOrcamentario.findFirst({
+    where: { tipo: p.tipo, tipoCredito: p.tipoCredito ?? null },
     select: {
       contaDebito: { select: { id: true, codigo: true, analitica: true } },
       contaCredito: { select: { id: true, codigo: true, analitica: true } },
@@ -155,8 +196,10 @@ export async function registrarMovimentoDotacao(
   });
 
   if (roteiro === null) {
+    const qual =
+      p.tipoCredito === undefined ? p.tipo : `${p.tipo} do tipo ${p.tipoCredito}`;
     throw new Error(
-      `ROTEIRO ORÇAMENTÁRIO NÃO PARAMETRIZADO para ${p.tipo}. O movimento de dotação ` +
+      `ROTEIRO ORÇAMENTÁRIO NÃO PARAMETRIZADO para ${qual}. O movimento de dotação ` +
         `TEM perna no razão — sem ela, o subsistema orçamentário volta a não refletir o ` +
         `orçamento (o furo de 46dfd5d: o crédito disponível debitado pelo empenho e ` +
         `nunca creditado pela LOA). Cadastre o RoteiroOrcamentario deste tipo. Nada foi ` +

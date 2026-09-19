@@ -7,6 +7,7 @@ import {
   CONTA_CREDITO_DISPONIVEL,
   CONTA_CREDITO_EMPENHADO,
   CONTA_CREDITO_RESERVADO,
+  CONTA_CREDITO_ADICIONAL_SUPLEMENTAR,
   CONTA_DOTACAO_ADICIONAL,
   CONTA_DOTACAO_INICIAL,
   semearRoteiroOrcamentario,
@@ -293,8 +294,15 @@ describe("M02/M05 — a dotação no razão", () => {
     const tipos = (
       await prisma.roteiroOrcamentario.findMany({ select: { tipo: true } })
     ).map((r) => r.tipo);
+    // ⚠️ TRÊS `CREDITO_ADICIONAL` DESDE A V7.1 — um por tipo de crédito (suplementar,
+    // especial, extraordinário). O que este teste afirma continua sendo o mesmo: EMPENHO e
+    // EMPENHO_ANULADO **não** estão na tabela, porque o `empenhar()` já os lança pelo roteiro
+    // que o chamador passa. A contagem por tipo entra na asserção de propósito: um roteiro de
+    // crédito adicional que sumisse deixaria o teste verde se a lista fosse só de nomes.
     expect(tipos.sort()).toEqual([
       "ANULACAO_CREDITO",
+      "CREDITO_ADICIONAL",
+      "CREDITO_ADICIONAL",
       "CREDITO_ADICIONAL",
       "DOTACAO_INICIAL",
       "RESERVA",
@@ -347,9 +355,17 @@ describe("M03 — o crédito adicional no razão", () => {
     expect((await saldosCorrentesDaFicha(FICHA_B, deps)).autorizado.toFixed(2)).toBe("3000.00");
 
     // ⚠️ NO RAZÃO: as duas pernas se cancelam no disponível global (é uma ANULAÇÃO — o
-    // dinheiro só mudou de ficha), e a dotação ADICIONAL registra as duas passagens.
+    // dinheiro só mudou de ficha). O que MUDOU na V7.1 é onde cada passagem é registrada.
     expect(await noRazao(CONTA_CREDITO_DISPONIVEL)).toBe(15000); // inalterado
-    expect(await noRazao(CONTA_DOTACAO_ADICIONAL)).toBe(0); // +2.000 e −2.000
+    // ⚠️ ELAS NÃO SE CANCELAM MAIS NA MESMA CONTA, E ISSO É A CORREÇÃO, NÃO UM EFEITO
+    // COLATERAL. Até a V7.1 a suplementação DEBITAVA e a anulação CREDITAVA `5.2.2.1.2.00.00`,
+    // e o saldo dava zero — dois fatos contábeis distintos anulando-se numa conta só, que por
+    // cima é SINTÉTICA no plano. Agora a suplementação vai para a analítica do seu tipo de
+    // crédito e a anulação continua na conta que aguarda decisão
+    // (`ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`). A soma das duas ainda é zero — é
+    // isso que o `conferirDotacaoContraRazao` logo abaixo continua provando.
+    expect(await noRazao(CONTA_CREDITO_ADICIONAL_SUPLEMENTAR)).toBe(-2000); // debitada
+    expect(await noRazao(CONTA_DOTACAO_ADICIONAL)).toBe(2000); // creditada pela anulação
     await expect(
       conferirDotacaoContraRazao(prisma, CONTAS_DO_ORCAMENTO)
     ).resolves.toBeDefined();

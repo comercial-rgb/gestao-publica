@@ -128,19 +128,27 @@ rodar("cenário de aceite (ficha e dotação)", "npx", ["tsx", "prisma/seed/cena
 // defeito de digitação junto com decisão pendente. `SAGRES-POC-CONTA-SINTETICA` foi RESOLVIDA
 // (a POC desceu para `2.1.3.1.1.01.01` FORNECEDORES NÃO PARCELADOS A PAGAR).
 //
-// ⚠️ O QUE SOBRA NÃO É DEMONSTRAÇÃO: é o CRÉDITO ADICIONAL. A POC exercita `executarCredito`,
-// que exige o roteiro de `CREDITO_ADICIONAL`, e esse roteiro está sem conta pela pendência
-// `ROTEIRO-CREDITO-ADICIONAL-POR-TIPO` — o PCASP particiona a dotação adicional POR TIPO DE
-// CRÉDITO (suplementar, especial, extraordinário) e `RoteiroOrcamentario.tipo` tem UM lugar.
-// Portanto, e isto vai no relatório em vez de ficar aqui embaixo: **instalação limpa não faz
-// crédito adicional.** Destravar é decisão de modelo (roteiro resolvido pelo tipo do crédito),
-// não escolha de conta — e apontar para a suplementar lançaria especial e extraordinário como
-// suplementar, com o erro saindo no balancete.
+// ⚠️ A TOLERÂNCIA ENCOLHEU DE NOVO (V11 V7.1), E O QUE ELA DIZ MUDOU DE FATO.
+// `ROTEIRO-CREDITO-ADICIONAL-POR-TIPO` foi RESOLVIDA: `RoteiroOrcamentario` passou a ser
+// chaveado pelo par (movimento, tipo de crédito), e o crédito adicional SUPLEMENTAR — o caso
+// comum de um município — entra na analítica do plano (`5.2.2.1.2.01.00`). MEDIDO nesta
+// instalação: a POC atravessa `executarCredito` e agora para UM passo adiante.
+//
+// ⚠️ O QUE SOBRA É A OUTRA PERNA. A POC abre o crédito por REMANEJAMENTO (origem ANULACAO):
+// suplementa 5k e anula 5k. A perna de ANULAÇÃO continua sem roteiro porque no plano a
+// redução de dotação não mora em `5.2.2.1.2`, e as duas candidatas têm o nome IDÊNTICO —
+// `5.2.2.1.3.09.00` e `5.2.2.1.9.04.00`, ambas "(-) CANCELAMENTO DE DOTAÇÕES", em ramos
+// diferentes. Pendência `ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`.
+//
+// Portanto, e isto vai no relatório em vez de ficar aqui embaixo: **instalação limpa faz
+// crédito adicional SUPLEMENTAR por recurso novo (superávit, excesso de arrecadação, operação
+// de crédito) e NÃO faz crédito por anulação** — nem especial nem extraordinário, que esperam
+// o fato "aberto ou reaberto" (`CREDITO-ESPECIAL-ABERTO-OU-REABERTO`).
 rodar(
   "cenário SAGRES (UG 99001)",
   "npx",
   ["tsx", "prisma/seed/sagres-poc.ts"],
-  /posição \d+ da fila|Conta SINTÉTICA 5\.2\.2\.1\.2\.00\.00 no roteiro orçamentário de CREDITO_ADICIONAL/
+  /posição \d+ da fila|Conta SINTÉTICA 5\.2\.2\.1\.2\.00\.00 no roteiro orçamentário de ANULACAO_CREDITO/
 );
 rodar("operador restrito (percurso de dois atores)", "npx", ["tsx", "scripts/poc-usuario-restrito.ts"]);
 // V6 P1.3 — quatro usuários por papel (compras, almoxarifado, contabilidade, tesouraria): nunca o admin em todos os passos.

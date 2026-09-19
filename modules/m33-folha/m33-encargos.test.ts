@@ -297,7 +297,10 @@ describe("(3) atesto, empenho e liquidação dos encargos", () => {
     await expect(apropriarEncargosDaFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: RH })).rejects.toThrow(/EMPENHO-DOS-ENCARGOS-INTERROMPIDO: 1 empenho\(s\).*ENC-B-PATR/s);
     expect((await prisma.empenhoDosEncargos.findMany({ select: { valor: true } })).map((e) => e.valor.toFixed(2))).toEqual(["87.00"]);
     // a causa se resolve: crédito na ficha curta (fixture do crédito adicional)
-    await prisma.$transaction((tx) => registrarMovimentoDotacao(tx, { fichaId: "ficha-encargos-curta", tipo: "CREDITO_ADICIONAL", valor: "2000.00", origemTipo: "TESTE", criadoPor: RH, data: D(2026, 5, 2) }));
+    // ⚠️ `tipoCredito` é obrigatório no crédito adicional desde a V7.1 — o plano parte a
+    // dotação adicional por tipo. Aqui é SUPLEMENTAR porque o que se mede é a RETOMADA
+    // do grupo sem saldo, não a classificação do crédito.
+    await prisma.$transaction((tx) => registrarMovimentoDotacao(tx, { fichaId: "ficha-encargos-curta", tipo: "CREDITO_ADICIONAL", tipoCredito: "SUPLEMENTAR", valor: "2000.00", origemTipo: "TESTE", criadoPor: RH, data: D(2026, 5, 2) }));
     const { recalcularCache } = await import("../m05-despesa/adapter-prisma.js");
     await prisma.$transaction((tx) => recalcularCache(tx as never, "ficha-encargos-curta"));
     const r = await apropriarEncargosDaFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: RH });

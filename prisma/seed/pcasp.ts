@@ -180,6 +180,11 @@ export const CONTAS_FIXTURE_A_CONFIRMAR: readonly ContaSeed[] = [
   // ⚠️ FORA DO EXTRATO: o extrato cobre crédito disponível e empenhado (.01-.04),
   // e NÃO menciona reservado nem dotação adicional. Os códigos vêm das fixtures.
   { codigo: "5.2.2.1.2.00.00", nome: "Dotação Adicional", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: true, pai: "5.2.2.1.0.00.00" },
+  // ⚠️ V11 V7.1 — O DÉBITO DO CRÉDITO ADICIONAL SUPLEMENTAR. Sem esta linha, `seed:pcasp` +
+  // `seed:roteiro-orc` passam a recusar o roteiro do suplementar com "a conta não existe": o
+  // plano MÍNIMO ficaria sem o caminho que o plano OFICIAL já tem. No oficial ela é
+  // `5.2.2.1.2.01.00 CREDITO ADICIONAL - SUPLEMENTAR`, analítica sob a sintética acima.
+  { codigo: "5.2.2.1.2.01.00", nome: "Crédito Adicional - Suplementar", naturezaSaldo: "DEVEDORA", nivel: 6, analitica: true, pai: "5.2.2.1.2.00.00" },
   { codigo: "6.2.2.1.2.00.00", nome: "Crédito Reservado", naturezaSaldo: "CREDORA", nivel: 5, analitica: true, pai: "6.2.2.1.0.00.00" },
 ];
 

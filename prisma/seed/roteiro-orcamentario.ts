@@ -1,6 +1,9 @@
 import "dotenv/config";
 import { criarPrismaClient } from "../../modules/m01-core-contabil/adapter-prisma.js";
 import {
+  CONTA_CREDITO_ADICIONAL_ESPECIAL,
+  CONTA_CREDITO_ADICIONAL_EXTRAORDINARIO,
+  CONTA_CREDITO_ADICIONAL_SUPLEMENTAR,
   CONTA_CREDITO_DISPONIVEL,
   CONTA_CREDITO_RESERVADO,
   CONTA_DOTACAO_ADICIONAL,
@@ -29,7 +32,7 @@ import {
  * ⚠️ O EMPENHO NÃO ENTRA AQUI. O M05 já lança o empenho pelo roteiro que o chamador
  * passa; um roteiro paralelo o lançaria DUAS vezes.
  *
- * IDEMPOTENTE (upsert por `tipo`). Uso: npm run seed:roteiro-orc
+ * IDEMPOTENTE (pelo par tipo + tipo de crédito). Uso: npm run seed:roteiro-orc
  */
 
 const DATABASE_URL = process.env["DATABASE_URL"];
@@ -48,6 +51,13 @@ const prisma = criarPrismaClient(DATABASE_URL);
  *   ANULACAO_CREDITO   D crédito disponível / C dotação adicional   (o inverso exato)
  *   RESERVA            D crédito disponível / C crédito reservado
  *   RESERVA_LIBERADA   D crédito reservado  / C crédito disponível
+ *
+ * ⚠️ O CRÉDITO ADICIONAL SÃO TRÊS LINHAS, NÃO UMA (V11 V7.1). O plano oficial chama
+ * `5.2.2.1.2` de DOTAÇÃO ADICIONAL **POR TIPO DE CREDITO**, e o débito muda conforme a lei
+ * tenha autorizado crédito suplementar, especial ou extraordinário. Só a SUPLEMENTAR tem
+ * uma analítica única no plano; as outras duas caem na recusa abaixo, que imprime as
+ * candidatas lidas do banco. Ver `ROTEIRO-CREDITO-ADICIONAL-POR-TIPO` e
+ * `CREDITO-ESPECIAL-ABERTO-OU-REABERTO` em `modules/m01-core-contabil/roteiros.ts`.
  */
 const ROTEIROS: readonly {
   readonly tipo:
@@ -56,15 +66,39 @@ const ROTEIROS: readonly {
     | "ANULACAO_CREDITO"
     | "RESERVA"
     | "RESERVA_LIBERADA";
+  readonly tipoCredito?: "SUPLEMENTAR" | "ESPECIAL" | "EXTRAORDINARIO";
   readonly debito: string;
   readonly credito: string;
+  /**
+   * Ressalva impressa JUNTO com a recusa, quando as analíticas sob a conta recusada NÃO são
+   * as candidatas certas. ⚠️ MEDIDO: para a ANULAÇÃO, a lista automática (filhas do código
+   * recusado) mostra o ramo do crédito adicional, que é o ramo ERRADO — e candidata errada é
+   * pior que candidata nenhuma para quem vai decidir.
+   */
+  readonly ressalva?: string;
 }[] = [
   { tipo: "DOTACAO_INICIAL", debito: CONTA_DOTACAO_INICIAL, credito: CONTA_CREDITO_DISPONIVEL },
-  { tipo: "CREDITO_ADICIONAL", debito: CONTA_DOTACAO_ADICIONAL, credito: CONTA_CREDITO_DISPONIVEL },
-  { tipo: "ANULACAO_CREDITO", debito: CONTA_CREDITO_DISPONIVEL, credito: CONTA_DOTACAO_ADICIONAL },
+  { tipo: "CREDITO_ADICIONAL", tipoCredito: "SUPLEMENTAR", debito: CONTA_CREDITO_ADICIONAL_SUPLEMENTAR, credito: CONTA_CREDITO_DISPONIVEL },
+  { tipo: "CREDITO_ADICIONAL", tipoCredito: "ESPECIAL", debito: CONTA_CREDITO_ADICIONAL_ESPECIAL, credito: CONTA_CREDITO_DISPONIVEL },
+  { tipo: "CREDITO_ADICIONAL", tipoCredito: "EXTRAORDINARIO", debito: CONTA_CREDITO_ADICIONAL_EXTRAORDINARIO, credito: CONTA_CREDITO_DISPONIVEL },
+  {
+    tipo: "ANULACAO_CREDITO",
+    debito: CONTA_CREDITO_DISPONIVEL,
+    credito: CONTA_DOTACAO_ADICIONAL,
+    ressalva:
+      "⚠️ IGNORE as analíticas listadas acima: redução de dotação NÃO mora em 5.2.2.1.2. " +
+      "As candidatas reais são DUAS, com o nome IDÊNTICO — 5.2.2.1.3.09.00 (-) CANCELAMENTO " +
+      "DE DOTAÇÕES, sob DOTAÇÃO ADICIONAL POR FONTE, e 5.2.2.1.9.04.00 (-) CANCELAMENTO DE " +
+      "DOTAÇÕES, sob CANCELAMENTO/REMANEJAMENTO DE DOTAÇÃO.",
+  },
   { tipo: "RESERVA", debito: CONTA_CREDITO_DISPONIVEL, credito: CONTA_CREDITO_RESERVADO },
   { tipo: "RESERVA_LIBERADA", debito: CONTA_CREDITO_RESERVADO, credito: CONTA_CREDITO_DISPONIVEL },
 ];
+
+/** O rótulo do roteiro em uma linha — "CREDITO_ADICIONAL/ESPECIAL" quando há tipo. */
+function rotulo(r: { readonly tipo: string; readonly tipoCredito?: string }): string {
+  return r.tipoCredito === undefined ? r.tipo : `${r.tipo}/${r.tipoCredito}`;
+}
 
 /**
  * ═══ ⚠️ A CONFERÊNCIA CONTINUA IGUAL; O QUE MUDOU É QUEM ELA DERRUBA (V11 V6.1) ═══
@@ -74,13 +108,25 @@ const ROTEIROS: readonly {
  * transação de ficha. O que mudou é o ALCANCE da reprovação: ela agora derruba **aquele roteiro**,
  * não a instalação inteira.
  *
- * ⚠️ POR QUE, E ISSO FOI MEDIDO. Das quatro contas que estes cinco roteiros exigem, TRÊS são
- * sintéticas no PCASP oficial. Uma foi repontada contra a fonte (a dotação inicial); as outras
- * duas dependem de decisão que não é de digitação — `ROTEIRO-CREDITO-ADICIONAL-POR-TIPO` e
- * `ROTEIRO-RESERVA-SEM-CONTA`, ambas explicadas em `modules/m01-core-contabil/roteiros.ts`. Com o
- * tudo-ou-nada, a primeira delas matava `migrate → SQL → PCASP → roteiro → exercício → bootstrap →
- * cenário → percursos`: o procedimento documentado de instalação não terminava, e nenhum banco
- * novo nascia.
+ * ⚠️ POR QUE, E ISSO FOI MEDIDO. Com o tudo-ou-nada, uma classificação pendente matava
+ * `migrate → SQL → PCASP → roteiro → exercício → bootstrap → cenário → percursos`: o procedimento
+ * documentado de instalação não terminava, e nenhum banco novo nascia.
+ *
+ * ⚠️ E O PLACAR MUDOU EM V7.1, PARA MELHOR E PARA PIOR AO MESMO TEMPO. São agora SETE roteiros
+ * (o crédito adicional virou três, um por tipo de crédito). Passaram a ser parametrizados a
+ * DOTAÇÃO INICIAL e o CRÉDITO ADICIONAL **SUPLEMENTAR** — que é o caso comum de um município.
+ * Continuam recusados, cada um com a sua causa nomeada em `modules/m01-core-contabil/roteiros.ts`:
+ *
+ *   CREDITO_ADICIONAL/ESPECIAL e /EXTRAORDINARIO  `CREDITO-ESPECIAL-ABERTO-OU-REABERTO`
+ *     falta um FATO (aberto ou reaberto), não uma conta.
+ *   ANULACAO_CREDITO                              `ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`
+ *     o plano tem DUAS analíticas com o nome idêntico, em ramos diferentes.
+ *   RESERVA e RESERVA_LIBERADA                    `ROTEIRO-RESERVA-SEM-CONTA`
+ *
+ * ⚠️ CONSEQUÊNCIA QUE PRECISA SER DITA EM VOZ ALTA: um decreto de crédito adicional por ANULAÇÃO
+ * tem DUAS pernas, e a de anulação continua recusada. Em instalação limpa passa a funcionar o
+ * crédito suplementar por RECURSO NOVO (superávit financeiro, excesso de arrecadação, operação de
+ * crédito); o suplementar por anulação, não.
  *
  * É a mesma doutrina do gerador da MSC (M14): o arquivo SAI, e o furo aparece com nome e conta.
  * Um instalador que se recusa a existir por causa de uma classificação pendente deixa o ente sem
@@ -95,6 +141,7 @@ interface Recusa {
   readonly tipo: string;
   readonly codigo: string;
   readonly motivo: string;
+  readonly ressalva?: string;
 }
 
 async function contaAnalitica(codigo: string, tipo: string): Promise<{ readonly id: string } | Recusa> {
@@ -108,8 +155,16 @@ async function contaAnalitica(codigo: string, tipo: string): Promise<{ readonly 
   if (!c.analitica) {
     // As filhas analíticas, lidas do MESMO plano que está no banco — quem for decidir precisa
     // ver as candidatas, e vê-las da fonte, não de uma lista escrita aqui.
+    // ⚠️ O PREFIXO É O CÓDIGO SEM OS SEGMENTOS ZERADOS DO FIM, e não um `slice` de tamanho
+    // fixo. `slice(0, 9)` acertava enquanto toda sintética aqui era de nível 5; para
+    // `5.2.2.1.2.02.00` (CREDITO ADICIONAL - ESPECIAL) ele devolveria `5.2.2.1.2` e listaria
+    // como candidata a SUPLEMENTAR, que é de outro ramo — candidata errada é pior que
+    // candidata nenhuma para quem vai decidir.
+    const segmentos = codigo.split(".");
+    while (segmentos.length > 1 && Number(segmentos[segmentos.length - 1]) === 0) segmentos.pop();
+    const prefixo = `${segmentos.join(".")}.`;
     const filhas = await prisma.contaPcasp.findMany({
-      where: { codigo: { startsWith: codigo.slice(0, 9) }, analitica: true },
+      where: { codigo: { startsWith: prefixo }, analitica: true },
       orderBy: { codigo: "asc" },
       select: { codigo: true, nome: true },
     });
@@ -127,19 +182,38 @@ async function contaAnalitica(codigo: string, tipo: string): Promise<{ readonly 
 
 const recusas: Recusa[] = [];
 for (const r of ROTEIROS) {
-  const debito = await contaAnalitica(r.debito, r.tipo);
-  const credito = await contaAnalitica(r.credito, r.tipo);
-  if ("motivo" in debito) { recusas.push(debito); continue; }
-  if ("motivo" in credito) { recusas.push(credito); continue; }
-  await prisma.roteiroOrcamentario.upsert({
-    where: { tipo: r.tipo },
-    update: { contaDebitoId: debito.id, contaCreditoId: credito.id },
-    create: { tipo: r.tipo, contaDebitoId: debito.id, contaCreditoId: credito.id, criadoPor: "SEED" },
+  const debito = await contaAnalitica(r.debito, rotulo(r));
+  const credito = await contaAnalitica(r.credito, rotulo(r));
+  const ressalva = r.ressalva === undefined ? {} : { ressalva: r.ressalva };
+  if ("motivo" in debito) { recusas.push({ ...debito, ...ressalva }); continue; }
+  if ("motivo" in credito) { recusas.push({ ...credito, ...ressalva }); continue; }
+  // ⚠️ NÃO É `upsert`: a chave é o PAR (tipo, tipoCredito), e o Prisma recusa `null` dentro
+  // de uma chave única composta. O `findFirst` + create/update faz o mesmo trabalho, e quem
+  // garante a unicidade é o banco — o índice composto mais o parcial de `prisma/sql/`.
+  const ja = await prisma.roteiroOrcamentario.findFirst({
+    where: { tipo: r.tipo, tipoCredito: r.tipoCredito ?? null },
+    select: { id: true },
   });
+  if (ja === null) {
+    await prisma.roteiroOrcamentario.create({
+      data: {
+        tipo: r.tipo,
+        tipoCredito: r.tipoCredito ?? null,
+        contaDebitoId: debito.id,
+        contaCreditoId: credito.id,
+        criadoPor: "SEED",
+      },
+    });
+  } else {
+    await prisma.roteiroOrcamentario.update({
+      where: { id: ja.id },
+      data: { contaDebitoId: debito.id, contaCreditoId: credito.id },
+    });
+  }
 }
 
 const todos = await prisma.roteiroOrcamentario.findMany({
-  orderBy: { tipo: "asc" },
+  orderBy: [{ tipo: "asc" }, { tipoCredito: "asc" }],
   include: {
     contaDebito: { select: { codigo: true } },
     contaCredito: { select: { codigo: true } },
@@ -149,7 +223,8 @@ const todos = await prisma.roteiroOrcamentario.findMany({
 console.log(`ROTEIRO ORÇAMENTÁRIO (${todos.length}):\n`);
 for (const r of todos) {
   console.log(
-    `  ${r.tipo.padEnd(20)} D ${r.contaDebito.codigo}  /  C ${r.contaCredito.codigo}`
+    `  ${rotulo({ tipo: r.tipo, ...(r.tipoCredito === null ? {} : { tipoCredito: r.tipoCredito }) }).padEnd(34)}` +
+      ` D ${r.contaDebito.codigo}  /  C ${r.contaCredito.codigo}`
   );
 }
 console.log(
@@ -160,11 +235,15 @@ console.log(
 
 if (recusas.length > 0) {
   console.log(`\n  ⚠️ ${recusas.length} ROTEIRO(S) NÃO CONFIGURADO(S) — e o sistema RECUSA o movimento deles:\n`);
-  for (const r of recusas) console.log(`     ${r.tipo.padEnd(20)} ${r.codigo}: ${r.motivo}`);
+  for (const r of recusas) {
+    console.log(`     ${r.tipo.padEnd(20)} ${r.codigo}: ${r.motivo}`);
+    if (r.ressalva !== undefined) console.log(`       ${r.ressalva}`);
+  }
   console.log(
     `\n     Isto NÃO é um seed pela metade: é a classificação contábil que falta, nomeada. Escolher\n` +
-      `     a conta aqui seria inventar norma. Ver as pendências ROTEIRO-CREDITO-ADICIONAL-POR-TIPO e\n` +
-      `     ROTEIRO-RESERVA-SEM-CONTA em modules/m01-core-contabil/roteiros.ts.\n` +
+      `     a conta aqui seria inventar norma. Ver as pendências CREDITO-ESPECIAL-ABERTO-OU-REABERTO,\n` +
+      `     ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS e ROTEIRO-RESERVA-SEM-CONTA em\n` +
+      `     modules/m01-core-contabil/roteiros.ts.\n` +
       `     A instalação PROSSEGUE: o que depende destes movimentos é que fica recusado.`
   );
 }

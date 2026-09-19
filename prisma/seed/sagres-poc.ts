@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url";
 import { criarPrismaClient } from "../../modules/m01-core-contabil/adapter-prisma.js";
 import {
   CONTA_CREDITO_DISPONIVEL,
+  CONTA_CREDITO_ADICIONAL_SUPLEMENTAR,
   CONTA_DOTACAO_ADICIONAL,
   CONTA_DOTACAO_INICIAL,
 } from "../../modules/m01-core-contabil/roteiros.js";
@@ -81,10 +82,13 @@ const CONTAS_PCASP = [
   // ⚠️ NOME E NÍVEL DA FONTE. `5.2.2.1.1.01.00` é "CREDITO INICIAL", nível 6, no PCASP oficial.
   // O `skipDuplicates` abaixo faz esta linha valer só em banco que ainda não tem o plano oficial.
   { codigo: CONTA_DOTACAO_INICIAL, nome: "Credito Inicial", naturezaSaldo: "DEVEDORA" as const, nivel: 6, analitica: true },
-  // ⚠️ `CONTA_DOTACAO_ADICIONAL` é SINTÉTICA no plano oficial e continua sem roteiro
-  // (`ROTEIRO-CREDITO-ADICIONAL-POR-TIPO`). Esta POC não movimenta crédito adicional; a linha fica
-  // para o banco sem plano oficial, e o `skipDuplicates` impede que ela contradiga a fonte.
+  // ⚠️ `CONTA_DOTACAO_ADICIONAL` é SINTÉTICA no plano oficial e continua sem roteiro — agora
+  // pela pendência `ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`, que é só da ANULAÇÃO.
+  // A linha fica para o banco sem plano oficial, e o `skipDuplicates` impede que ela
+  // contradiga a fonte.
   { codigo: CONTA_DOTACAO_ADICIONAL, nome: "Dotacao Adicional", naturezaSaldo: "DEVEDORA" as const, nivel: 5, analitica: true },
+  // V7.1 — o débito do crédito adicional SUPLEMENTAR, que é o tipo da lei desta POC.
+  { codigo: CONTA_CREDITO_ADICIONAL_SUPLEMENTAR, nome: "Credito Adicional - Suplementar", naturezaSaldo: "DEVEDORA" as const, nivel: 6, analitica: true },
   { codigo: CONTA_CREDITO_DISPONIVEL, nome: "Credito Disponivel", naturezaSaldo: "CREDORA" as const, nivel: 5, analitica: true },
   { codigo: CONTA_CONSIGNACAO_ISS, nome: "Consignacoes ISS a Pagar", naturezaSaldo: "CREDORA" as const, nivel: 6, analitica: true, indicadorSuperavit: "F" as const },
   { codigo: CONTA_CONSIGNACAO_INSS, nome: "Consignacoes INSS a Pagar", naturezaSaldo: "CREDORA" as const, nivel: 6, analitica: true, indicadorSuperavit: "F" as const },
@@ -187,11 +191,36 @@ export async function semearSagresPoc(prisma: PrismaClient, opcoes: OpcoesSeedPo
     : sub040;
 
   // (3) DOTAÇÃO (LOA): roteiro DOTACAO_INICIAL + exercício aberto + ficha + movimento no razão (funil).
-  await prisma.roteiroOrcamentario.upsert({ where: { tipo: "DOTACAO_INICIAL" }, update: {}, create: { tipo: "DOTACAO_INICIAL", contaDebitoId: await idDe(CONTA_DOTACAO_INICIAL), contaCreditoId: await idDe(CONTA_CREDITO_DISPONIVEL), criadoPor: por } });
+  // A chave do roteiro é o PAR (tipo, tipoCredito) desde a V7.1, e o Prisma não aceita
+  // `null` dentro de chave única composta — daí o findFirst no lugar do upsert.
+  const semearRoteiro = async (r: {
+    tipo: "DOTACAO_INICIAL" | "CREDITO_ADICIONAL" | "ANULACAO_CREDITO";
+    tipoCredito?: "SUPLEMENTAR" | "ESPECIAL" | "EXTRAORDINARIO";
+    debito: string;
+    credito: string;
+  }): Promise<void> => {
+    const ja = await prisma.roteiroOrcamentario.findFirst({
+      where: { tipo: r.tipo, tipoCredito: r.tipoCredito ?? null },
+      select: { id: true },
+    });
+    if (ja !== null) return;
+    await prisma.roteiroOrcamentario.create({
+      data: {
+        tipo: r.tipo,
+        tipoCredito: r.tipoCredito ?? null,
+        contaDebitoId: await idDe(r.debito),
+        contaCreditoId: await idDe(r.credito),
+        criadoPor: por,
+      },
+    });
+  };
+  await semearRoteiro({ tipo: "DOTACAO_INICIAL", debito: CONTA_DOTACAO_INICIAL, credito: CONTA_CREDITO_DISPONIVEL });
   // Roteiros de CRÉDITO ADICIONAL (M03) — contas canônicas (roteiros.ts): o crédito acresce a dotação
   // adicional / disponível; a anulação inverte. Sem eles, `executarCredito` cairia fail-closed.
-  await prisma.roteiroOrcamentario.upsert({ where: { tipo: "CREDITO_ADICIONAL" }, update: {}, create: { tipo: "CREDITO_ADICIONAL", contaDebitoId: await idDe(CONTA_DOTACAO_ADICIONAL), contaCreditoId: await idDe(CONTA_CREDITO_DISPONIVEL), criadoPor: por } });
-  await prisma.roteiroOrcamentario.upsert({ where: { tipo: "ANULACAO_CREDITO" }, update: {}, create: { tipo: "ANULACAO_CREDITO", contaDebitoId: await idDe(CONTA_CREDITO_DISPONIVEL), contaCreditoId: await idDe(CONTA_DOTACAO_ADICIONAL), criadoPor: por } });
+  // ⚠️ V7.1 — O CRÉDITO ADICIONAL É POR TIPO DE CRÉDITO. A lei desta POC é SUPLEMENTAR (ver
+  // `criarLei` abaixo); semear o par errado deixaria o decreto cair no meio da POC.
+  await semearRoteiro({ tipo: "CREDITO_ADICIONAL", tipoCredito: "SUPLEMENTAR", debito: CONTA_CREDITO_ADICIONAL_SUPLEMENTAR, credito: CONTA_CREDITO_DISPONIVEL });
+  await semearRoteiro({ tipo: "ANULACAO_CREDITO", debito: CONTA_CREDITO_DISPONIVEL, credito: CONTA_DOTACAO_ADICIONAL });
   await prisma.exercicio.upsert({ where: { ano: 2026 }, update: {}, create: { ano: 2026, criadoPor: por } });
   await prisma.$transaction(async (tx) => {
     await tx.fichaOrcamentaria.create({

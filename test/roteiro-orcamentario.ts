@@ -39,6 +39,7 @@ import type { PrismaClient } from "../prisma/generated/client/client.js";
 export {
   CONTA_DOTACAO_INICIAL,
   CONTA_DOTACAO_ADICIONAL,
+  CONTA_CREDITO_ADICIONAL_SUPLEMENTAR,
   CONTA_CREDITO_DISPONIVEL,
   CONTA_CREDITO_RESERVADO,
 } from "../modules/m01-core-contabil/roteiros.js";
@@ -52,9 +53,33 @@ import {
   CONTA_DDR_COMPROMETIDA_LIQUIDACAO,
   CONTA_DDR_DISPONIVEL,
   CONTA_DDR_UTILIZADA,
+  CONTA_CREDITO_ADICIONAL_SUPLEMENTAR as _SUPL,
   CONTA_DOTACAO_ADICIONAL as _ADIC,
   CONTA_DOTACAO_INICIAL as _INIC,
 } from "../modules/m01-core-contabil/roteiros.js";
+
+/**
+ * ═══ ⚠️ ESTAS DUAS SÃO FIXTURE, E **NÃO** SÃO A CLASSIFICAÇÃO DO CRÉDITO ESPECIAL ═══
+ *
+ * O plano oficial parte cada um destes ramos em TRÊS analíticas — ABERTOS, REABERTOS e
+ * REABERTOS - SUPLEMENTAÇÃO — e qual delas vale depende de um fato que o sistema ainda não
+ * registra (pendência `CREDITO-ESPECIAL-ABERTO-OU-REABERTO`, em
+ * `modules/m01-core-contabil/roteiros.ts`). Por isso `roteiros.ts` NÃO exporta constante
+ * para elas, e o seed de produção RECUSA estes dois roteiros.
+ *
+ * Uma fixture, porém, precisa de alguma conta para existir: sem roteiro de ESPECIAL, todo
+ * teste que abre crédito especial cai antes de chegar ao que ele mede. As duas abaixo são
+ * o ramo ABERTOS, escolhido porque o crédito de um teste nasce no exercício do próprio
+ * teste — e o prefixo `FIXTURE_` está no nome para que uma cópia daqui para dentro de
+ * `modules/` ou `prisma/seed/` se leia como errada na primeira vista.
+ *
+ * ⚠️ É EXATAMENTE ASSIM QUE `6.2.2.1.3.00.00` VIROU O "CRÉDITO EMPENHADO" DE FACTO DE TODO
+ * O REPOSITÓRIO: uma conta declarada num helper de teste e copiada adiante. A diferença
+ * aqui é que o dono (o domínio) se recusa a ter a constante, e o seed de produção recusa o
+ * roteiro — a fixture não tem para onde vazar.
+ */
+const FIXTURE_CONTA_CREDITO_ESPECIAL = "5.2.2.1.2.02.01";
+const FIXTURE_CONTA_CREDITO_EXTRAORDINARIO = "5.2.2.1.2.03.01";
 
 /**
  * ⚠️ APELIDO COM CORREÇÃO DE CÓDIGO: era `6.2.2.1.3.00.00` (sintética); agora aponta
@@ -64,6 +89,7 @@ export const CONTA_CREDITO_EMPENHADO = CONTA_CREDITO_EMPENHADO_A_LIQUIDAR;
 
 const CONTA_DOTACAO_INICIAL = _INIC;
 const CONTA_DOTACAO_ADICIONAL = _ADIC;
+const CONTA_CREDITO_ADICIONAL_SUPLEMENTAR = _SUPL;
 const CONTA_CREDITO_DISPONIVEL = _DISP;
 const CONTA_CREDITO_RESERVADO = _RESERV;
 
@@ -74,6 +100,9 @@ const CONTAS: readonly {
 }[] = [
   { codigo: CONTA_DOTACAO_INICIAL, nome: "Dotação inicial", naturezaSaldo: "DEVEDORA" },
   { codigo: CONTA_DOTACAO_ADICIONAL, nome: "Dotação adicional", naturezaSaldo: "DEVEDORA" },
+  { codigo: CONTA_CREDITO_ADICIONAL_SUPLEMENTAR, nome: "Credito adicional - suplementar", naturezaSaldo: "DEVEDORA" },
+  { codigo: FIXTURE_CONTA_CREDITO_ESPECIAL, nome: "Creditos especiais abertos", naturezaSaldo: "DEVEDORA" },
+  { codigo: FIXTURE_CONTA_CREDITO_EXTRAORDINARIO, nome: "Creditos extraordinarios abertos", naturezaSaldo: "DEVEDORA" },
   { codigo: CONTA_CREDITO_DISPONIVEL, nome: "Crédito disponível", naturezaSaldo: "CREDORA" },
   { codigo: CONTA_CREDITO_RESERVADO, nome: "Crédito reservado", naturezaSaldo: "CREDORA" },
   { codigo: CONTA_CREDITO_EMPENHADO, nome: "Crédito empenhado", naturezaSaldo: "CREDORA" },
@@ -118,11 +147,16 @@ const ROTEIROS: readonly {
     | "ANULACAO_CREDITO"
     | "RESERVA"
     | "RESERVA_LIBERADA";
+  tipoCredito?: "SUPLEMENTAR" | "ESPECIAL" | "EXTRAORDINARIO";
   debito: string;
   credito: string;
 }[] = [
   { tipo: "DOTACAO_INICIAL", debito: CONTA_DOTACAO_INICIAL, credito: CONTA_CREDITO_DISPONIVEL },
-  { tipo: "CREDITO_ADICIONAL", debito: CONTA_DOTACAO_ADICIONAL, credito: CONTA_CREDITO_DISPONIVEL },
+  // ⚠️ TRÊS LINHAS DESDE A V7.1 — o plano parte a dotação adicional POR TIPO DE CRÉDITO, e
+  // com uma linha só todo especial e todo extraordinário virava suplementar.
+  { tipo: "CREDITO_ADICIONAL", tipoCredito: "SUPLEMENTAR", debito: CONTA_CREDITO_ADICIONAL_SUPLEMENTAR, credito: CONTA_CREDITO_DISPONIVEL },
+  { tipo: "CREDITO_ADICIONAL", tipoCredito: "ESPECIAL", debito: FIXTURE_CONTA_CREDITO_ESPECIAL, credito: CONTA_CREDITO_DISPONIVEL },
+  { tipo: "CREDITO_ADICIONAL", tipoCredito: "EXTRAORDINARIO", debito: FIXTURE_CONTA_CREDITO_EXTRAORDINARIO, credito: CONTA_CREDITO_DISPONIVEL },
   { tipo: "ANULACAO_CREDITO", debito: CONTA_CREDITO_DISPONIVEL, credito: CONTA_DOTACAO_ADICIONAL },
   { tipo: "RESERVA", debito: CONTA_CREDITO_DISPONIVEL, credito: CONTA_CREDITO_RESERVADO },
   { tipo: "RESERVA_LIBERADA", debito: CONTA_CREDITO_RESERVADO, credito: CONTA_CREDITO_DISPONIVEL },
@@ -157,11 +191,17 @@ export async function semearRoteiroOrcamentario(
   }
 
   for (const r of ROTEIROS) {
-    await prisma.roteiroOrcamentario.upsert({
-      where: { tipo: r.tipo },
-      update: {},
-      create: {
+    // A chave é o PAR (tipo, tipoCredito), e o Prisma não aceita `null` dentro de chave
+    // única composta — daí o findFirst em vez do upsert. Quem garante a unicidade é o banco.
+    const ja = await prisma.roteiroOrcamentario.findFirst({
+      where: { tipo: r.tipo, tipoCredito: r.tipoCredito ?? null },
+      select: { id: true },
+    });
+    if (ja !== null) continue;
+    await prisma.roteiroOrcamentario.create({
+      data: {
         tipo: r.tipo,
+        tipoCredito: r.tipoCredito ?? null,
         contaDebitoId: ids.get(r.debito)!,
         contaCreditoId: ids.get(r.credito)!,
         criadoPor: "TESTE",

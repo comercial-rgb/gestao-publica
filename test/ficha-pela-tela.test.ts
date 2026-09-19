@@ -126,7 +126,10 @@ describe("a ficha sem dotação — criar não é abrir crédito", () => {
     // tipo, este movimento deixaria de lançar e a contagem cairia a zero. Pendência nomeada:
     // `MOVIMENTO-DE-DOTACAO-ZERO-NO-RAZAO`.
     const id = await criarFicha(SEM_CREDITO, criarM02Deps(prisma));
-    await prisma.$transaction((tx) => registrarMovimentoDotacao(tx, { fichaId: id, tipo: "CREDITO_ADICIONAL", valor: "0.00", origemTipo: "TESTE", criadoPor: POR, data: D(2026, 4, 1) }));
+    // ⚠️ `tipoCredito` É OBRIGATÓRIO NO CRÉDITO ADICIONAL DESDE A V7.1 — o plano parte a
+    // dotação adicional por tipo de crédito, e sem ele o movimento é recusado antes de gravar.
+    // Aqui ele é SUPLEMENTAR porque o que se mede é a exceção do ZERO, não a classificação.
+    await prisma.$transaction((tx) => registrarMovimentoDotacao(tx, { fichaId: id, tipo: "CREDITO_ADICIONAL", tipoCredito: "SUPLEMENTAR", valor: "0.00", origemTipo: "TESTE", criadoPor: POR, data: D(2026, 4, 1) }));
     expect(await prisma.partidaContabil.count({ where: { fichaId: id } })).toBe(2);
   });
 });

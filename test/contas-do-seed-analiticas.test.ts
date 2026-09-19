@@ -7,6 +7,9 @@ import { carregarPlanoOficial } from "../prisma/seed/oficial/pcasp-oficial.js";
 import {
   CONTA_CREDITO_DISPONIVEL,
   CONTA_CREDITO_RESERVADO,
+  CONTA_CREDITO_ADICIONAL_ESPECIAL,
+  CONTA_CREDITO_ADICIONAL_EXTRAORDINARIO,
+  CONTA_CREDITO_ADICIONAL_SUPLEMENTAR,
   CONTA_DOTACAO_ADICIONAL,
   CONTA_DOTACAO_INICIAL,
 } from "../modules/m01-core-contabil/roteiros.js";
@@ -123,7 +126,10 @@ function exigidasAnaliticas(): ReadonlyMap<string, string> {
 
   // As constantes canônicas moram em `modules/` e entram IMPORTADAS, nunca por texto.
   m.set(CONTA_DOTACAO_INICIAL, "roteiro orçamentário: dotação inicial");
-  m.set(CONTA_DOTACAO_ADICIONAL, "roteiro orçamentário: dotação adicional");
+  m.set(CONTA_DOTACAO_ADICIONAL, "roteiro orçamentário: anulação de crédito");
+  m.set(CONTA_CREDITO_ADICIONAL_SUPLEMENTAR, "roteiro orçamentário: crédito adicional suplementar");
+  m.set(CONTA_CREDITO_ADICIONAL_ESPECIAL, "roteiro orçamentário: crédito adicional especial");
+  m.set(CONTA_CREDITO_ADICIONAL_EXTRAORDINARIO, "roteiro orçamentário: crédito adicional extraordinário");
   m.set(CONTA_CREDITO_DISPONIVEL, "roteiro orçamentário: crédito disponível");
   m.set(CONTA_CREDITO_RESERVADO, "roteiro orçamentário: crédito reservado");
   for (const t of TIPOS_CONSIGNACAO) m.set(t.contaPassivo, `consignação ${t.codigo}`);
@@ -146,10 +152,18 @@ function exigidasAnaliticas(): ReadonlyMap<string, string> {
  */
 const PENDENCIAS_DECLARADAS: Readonly<Record<string, string>> = {
   [CONTA_DOTACAO_ADICIONAL]:
-    "ROTEIRO-CREDITO-ADICIONAL-POR-TIPO — o PCASP particiona por tipo de crédito (suplementar, " +
-    "especial, extraordinário) e `RoteiroOrcamentario` é @unique por TipoMovimentoDotacao: há " +
-    "lugar para um roteiro só. Apontar para a suplementar lançaria especiais e extraordinários " +
-    "como suplementares.",
+    "ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS — desde a V7.1 só a ANULAÇÃO usa esta " +
+    "conta; o crédito adicional foi partido por tipo. A redução de dotação não mora em 5.2.2.1.2, " +
+    "e o plano tem DUAS analíticas com o nome idêntico '(-) CANCELAMENTO DE DOTAÇÕES': " +
+    "5.2.2.1.3.09.00 (sob DOTAÇÃO ADICIONAL POR FONTE) e 5.2.2.1.9.04.00 (sob " +
+    "CANCELAMENTO/REMANEJAMENTO). Escolher por semelhança de nome é escolher entre nomes IGUAIS.",
+  [CONTA_CREDITO_ADICIONAL_ESPECIAL]:
+    "CREDITO-ESPECIAL-ABERTO-OU-REABERTO — o plano parte este ramo em ABERTOS, REABERTOS e " +
+    "REABERTOS - SUPLEMENTAÇÃO (CF art. 167 § 2º). O que separa as três é se o crédito foi aberto " +
+    "neste exercício ou é a reabertura do saldo do anterior — e `LeiCredito`/`DecretoCredito` não " +
+    "registram esse vínculo. Falta um FATO, não uma conta.",
+  [CONTA_CREDITO_ADICIONAL_EXTRAORDINARIO]:
+    "CREDITO-ESPECIAL-ABERTO-OU-REABERTO — mesma partição do ramo especial, mesma falta.",
   [CONTA_CREDITO_RESERVADO]:
     "ROTEIRO-RESERVA-SEM-CONTA — o sistema chama esta conta de 'crédito reservado'; no PCASP ela " +
     "é CREDITO INDISPONÍVEL, com BLOQUEIO, PRE-EMPENHADO e OUTRAS. Qual corresponde à reserva de " +

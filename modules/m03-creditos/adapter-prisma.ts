@@ -361,7 +361,10 @@ export function criarCreditoRepositoryPrisma(
             data: true,
             origemRecurso: true,
             encerramento: { select: { id: true } },
-            lei: { select: { valorAutorizado: true } },
+            // ⚠️ O TIPO DE CRÉDITO VEM DA LEI, e ele decide a CONTA (V11 V7.1). O PCASP parte
+            // `5.2.2.1.2 DOTAÇÃO ADICIONAL POR TIPO DE CREDITO` em suplementar, especial e
+            // extraordinário; sem carregá-lo até o movimento, o razão não sabe em qual entrar.
+            lei: { select: { valorAutorizado: true, tipoCredito: true } },
           },
         });
         if (decreto.encerramento !== null) {
@@ -532,6 +535,13 @@ export function criarCreditoRepositoryPrisma(
               item.tipo === "SUPLEMENTACAO"
                 ? "CREDITO_ADICIONAL"
                 : "ANULACAO_CREDITO",
+            // ⚠️ SÓ NA PERNA DE SUPLEMENTAÇÃO. A anulação reduz a dotação de outra ficha e
+            // no plano não mora em `5.2.2.1.2`; mandar o tipo de crédito nela faria o
+            // `registrarMovimentoDotacao` recusar — de propósito, porque a classificação da
+            // anulação é outra pendência (ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS).
+            ...(item.tipo === "SUPLEMENTACAO"
+              ? { tipoCredito: decreto.lei.tipoCredito }
+              : {}),
             valor: item.valor.toFixed(2),
             origemTipo: "CREDITO_ADICIONAL",
             origemId: p.decretoId,
@@ -568,6 +578,16 @@ export function criarCreditoRepositoryPrisma(
 
     async anularCredito(p: AnularCreditoParams): Promise<readonly string[]> {
       return prisma.$transaction(async (tx) => {
+        // ⚠️ O TIPO DE CRÉDITO DO DECRETO — e ele é lido AQUI, do decreto que se anula, não
+        // inferido (V11 V7.1). O estorno de uma ANULAÇÃO volta a ser um CREDITO_ADICIONAL, e
+        // esse crédito entra na MESMA conta em que o original entrou: a do tipo da lei.
+        // Reabrir a conta por outro caminho faria o estorno lançar num lugar e o fato
+        // original noutro, e o par não fecharia no balancete.
+        const decreto = await tx.decretoCredito.findUniqueOrThrow({
+          where: { id: p.decretoId },
+          select: { lei: { select: { tipoCredito: true } } },
+        });
+
         const itens = await tx.itemCredito.findMany({
           where: { decretoId: p.decretoId, estornoDeId: null },
           select: {
@@ -623,6 +643,10 @@ export function criarCreditoRepositoryPrisma(
               item.tipo === "SUPLEMENTACAO"
                 ? "ANULACAO_CREDITO"
                 : "CREDITO_ADICIONAL",
+            // O INVERSO do de cima: aqui é a perna de ANULAÇÃO que vira crédito adicional.
+            ...(item.tipo === "ANULACAO"
+              ? { tipoCredito: decreto.lei.tipoCredito }
+              : {}),
             valor: item.valor.toFixed(2),
             origemTipo: "CREDITO_ANULADO",
             origemId: p.decretoId,

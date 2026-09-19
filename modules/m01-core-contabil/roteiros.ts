@@ -72,19 +72,79 @@ export const CONTA_CREDITO_LIQUIDADO_PAGO = "6.2.2.1.3.04.00";
 export const CONTA_DOTACAO_INICIAL = "5.2.2.1.1.01.00";
 
 /**
- * ⚠️ SINTÉTICA NO PLANO OFICIAL, E **NÃO SE ESCOLHE UMA FILHA AQUI**. Pendência
- * `ROTEIRO-CREDITO-ADICIONAL-POR-TIPO`, e ela é estrutural, não de digitação.
+ * O CRÉDITO ADICIONAL SUPLEMENTAR — e a pendência `ROTEIRO-CREDITO-ADICIONAL-POR-TIPO`
+ * deixou de ser "uma conta que falta" para ser o que sempre foi: uma PARTIÇÃO (V11 V7.1).
  *
- * O PCASP particiona `5.2.2.1.2 DOTAÇÃO ADICIONAL` **POR TIPO DE CRÉDITO** — sete analíticas em
- * três ramos: `.01.00` SUPLEMENTAR; `.02.01/.02/.03` os ESPECIAIS; `.03.01/.02/.03` os
- * EXTRAORDINÁRIOS. O sistema **conhece** o tipo: `TipoCredito { SUPLEMENTAR, ESPECIAL,
- * EXTRAORDINARIO }` está no decreto do M03. Mas `RoteiroOrcamentario.tipo` é `@unique` por
- * `TipoMovimentoDotacao`, e `CREDITO_ADICIONAL` é **um** tipo de movimento: há lugar para um
- * roteiro só.
+ * **Fonte:** `Pcasp_2025.xlsx` do TCE-PB (`prisma/seed/oficial/procedencia.ts`), sha256
+ * `52ae7c7336b27a5c2056f7e36947be8ca8c995b6fae74c891d88cab74c517ffb`. O nome da sintética
+ * diz sozinho o que ela faz:
  *
- * Apontar esta constante para a suplementar faria todo crédito ESPECIAL e EXTRAORDINÁRIO ser
- * lançado como suplementar — e o erro sairia no balancete e na remessa, não aqui. Destravar exige
- * decisão de MODELO (roteiro por tipo de crédito), não a escolha de uma conta.
+ *   `5.2.2.1.2.00.00` **DOTAÇÃO ADICIONAL POR TIPO DE CREDITO**
+ *     · `.01.00`  CREDITO ADICIONAL - SUPLEMENTAR              ← analítica ÚNICA. É esta.
+ *     · `.02.00`  CREDITO ADICIONAL - ESPECIAL        (sintética, três filhas)
+ *     · `.03.00`  CREDITO ADICIONAL - EXTRAORDINÁRIO  (sintética, três filhas)
+ *
+ * A suplementar tem UMA analítica sob si, e o sistema sabe quando o crédito é suplementar
+ * (`LeiCredito.tipoCredito`). Não há o que escolher: a partição do plano e o discriminador
+ * do domínio são o mesmo eixo. `RoteiroOrcamentario` ganhou `tipoCredito` para carregá-lo.
+ */
+export const CONTA_CREDITO_ADICIONAL_SUPLEMENTAR = "5.2.2.1.2.01.00";
+
+/**
+ * ⚠️ SINTÉTICAS DE PROPÓSITO — e o que falta aqui NÃO é uma conta, é um FATO que o sistema
+ * não registra. Pendência `CREDITO-ESPECIAL-ABERTO-OU-REABERTO`.
+ *
+ * O plano parte cada um destes dois ramos em TRÊS analíticas, e as três são o mesmo eixo:
+ *
+ *   `.02.01` CRÉDITOS ESPECIAIS ABERTOS          `.03.01` CRÉDITOS EXTRAORDINÁRIOS ABERTOS
+ *   `.02.02` CRÉDITOS ESPECIAIS REABERTOS        `.03.02` ... REABERTOS
+ *   `.02.03` ... REABERTOS - SUPLEMENTAÇÃO       `.03.03` ... REABERTOS - SUPLEMENTAÇÃO
+ *
+ * ABERTO é o crédito autorizado e aberto NESTE exercício; REABERTO é o saldo de um crédito
+ * especial ou extraordinário aberto nos últimos quatro meses do exercício anterior, que a
+ * CF art. 167 § 2º manda reabrir no seguinte pelo saldo remanescente. São exercícios
+ * diferentes, e a distinção não é de nome: é de qual ato deu origem ao crédito.
+ *
+ * ⚠️ O SISTEMA NÃO SABE DIZER QUAL É. `LeiCredito` e `DecretoCredito` não têm, hoje, nada
+ * que ligue um crédito especial ao crédito do exercício anterior de que ele é a reabertura.
+ * Enquanto esse fato não existir, escolher uma das três seria carimbar "aberto" em toda
+ * reabertura — e é o TCE que lê a diferença. `RoteiroOrcamentario` fica SEM a linha destes
+ * dois tipos, e o domínio RECUSA o movimento nomeando o tipo, que é o estado correto.
+ *
+ * Estas constantes existem apontando para a SINTÉTICA justamente para que o seed recuse e
+ * IMPRIMA as três candidatas lidas do plano que está no banco — quem for decidir precisa
+ * vê-las da fonte, não de uma lista escrita num comentário.
+ */
+export const CONTA_CREDITO_ADICIONAL_ESPECIAL = "5.2.2.1.2.02.00";
+export const CONTA_CREDITO_ADICIONAL_EXTRAORDINARIO = "5.2.2.1.2.03.00";
+
+/**
+ * ⚠️ SINTÉTICA, E AGORA SÓ A ANULAÇÃO A USA. Pendência renomeada em V7.1 para
+ * `ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`, porque a causa é outra: não é
+ * partição por tipo de crédito, é HOMONÍMIA no plano.
+ *
+ * `ANULACAO_CREDITO` é a perna do decreto que REDUZ a dotação de outra ficha. No plano,
+ * redução de dotação não mora em `5.2.2.1.2` — mora em dois lugares, com o MESMO nome e a
+ * MESMA natureza (CREDORA, analítica):
+ *
+ *   `5.2.2.1.3.09.00` (-) CANCELAMENTO DE DOTAÇÕES
+ *       sob `5.2.2.1.3 DOTAÇÃO ADICIONAL POR FONTE`, irmã de `.03.00 ANULAÇÃO DE DOTAÇÃO`
+ *       (a FONTE do crédito novo: "esta suplementação sai da anulação de outra dotação").
+ *   `5.2.2.1.9.04.00` (-) CANCELAMENTO DE DOTAÇÕES
+ *       sob `5.2.2.1.9 CANCELAMENTO/REMANEJAMENTO DE DOTAÇÃO`, ao lado das alterações de
+ *       QDD e de LOA, cada uma com o seu par ACRÉSCIMO / (-) REDUÇÃO.
+ *
+ * As duas leituras cabem: a anulação é a fonte do crédito adicional (ramo `.3`) e é também
+ * um cancelamento de dotação (ramo `.9`). Decidir por semelhança de nome é escolher entre
+ * dois nomes IDÊNTICOS — não há o que comparar. Falta o roteiro do MCASP ou a decisão
+ * contábil do ente, com fundamento.
+ *
+ * ⚠️ E HÁ UMA PERGUNTA MAIOR ATRÁS DESTA, que também fica registrada: `5.2.2.1.2` (por tipo
+ * de crédito) e `5.2.2.1.3` (por fonte) são IRMÃS sob `5.2.2.1 DOTAÇÃO ORÇAMENTÁRIA`. Se o
+ * mesmo crédito fosse lançado nas duas, o total de `5.2.2.1` contaria o dobro; se for
+ * lançado só numa, a outra visão fica vazia em qualquer demonstrativo que a leia. Qual das
+ * duas o ente adota — ou como as concilia — é decisão do mesmo tamanho, e este sistema hoje
+ * só lança na `.2`. Pendência `DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`.
  */
 export const CONTA_DOTACAO_ADICIONAL = "5.2.2.1.2.00.00";
 
