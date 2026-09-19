@@ -285,6 +285,9 @@ describe("instalação limpa e atualização — no banco", () => {
       { versao: 21, previa: 0, aplicada: false },
       { versao: 22, previa: 0, aplicada: false },
       { versao: 23, previa: 0, aplicada: false },
+      // V11 V5.3 — o rito do acesso a informacao. Previa 0 em instalacao limpa: o bootstrap ja
+      // concede o censo do ENTE inteiro, entao nao sobra nada a derivar.
+      { versao: 24, previa: 0, aplicada: false },
     ]);
   });
 

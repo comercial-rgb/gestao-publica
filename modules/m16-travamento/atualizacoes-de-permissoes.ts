@@ -671,6 +671,44 @@ export function derivarPortalDoServidor(
   return saida;
 }
 
+export const ACOES_DO_RITO_DO_ACESSO: readonly AcaoDoSistema[] = [
+  "PROTOCOLAR_PEDIDO_DE_ACESSO_A_INFORMACAO",
+  "DISTRIBUIR_PEDIDO_DE_ACESSO_A_INFORMACAO",
+  "PRORROGAR_PEDIDO_DE_ACESSO_A_INFORMACAO",
+  "RESPONDER_PEDIDO_DE_ACESSO_A_INFORMACAO",
+  "DECIDIR_RECURSO_DE_ACESSO_A_INFORMACAO",
+];
+
+/**
+ * V11 V5.3 — AS CINCO ACOES DO RITO DO ACESSO A INFORMACAO.
+ *
+ * ⚠️ SO PARA QUEM ADMINISTRA PERMISSOES NO GLOBAL, e nao derivada de
+ * `PUBLICAR_CONFIGURACAO_DO_ACESSO_A_INFORMACAO` nem de `CONSULTAR_PROTOCOLO`. Configurar o
+ * prazo e OPERAR o pedido sao coisas diferentes — quem publica a norma nao e necessariamente
+ * quem responde ao cidadao —, e quem LE o protocolo nao passa a poder prorrogar a data prometida
+ * a quem tem direito subjetivo.
+ *
+ * O administrador recebe as cinco e as distribui: a de protocolar ao balcao, a de distribuir a
+ * triagem, a de responder ao setor que detem a informacao, e a de decidir o recurso a quem NAO
+ * respondeu — quem responde nao julga o proprio ato.
+ */
+export function derivarRitoDoAcessoAInformacao(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null);
+    if (!administra) continue;
+    const jaTem = new Set(perfil.permissoes.filter((p) => p.unidadeOrcId === null).map((p) => p.acao));
+    for (const acao of ACOES_DO_RITO_DO_ACESSO) {
+      if (jaTem.has(acao)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
+
 export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
   {
     versao: 1,
@@ -886,6 +924,18 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "excepcional. O ato continua exigindo designacao vigente de RECEBEDOR_DEFINITIVO no contrato, e e recusado " +
       "enquanto houver liquidacao viva lastreada pelo recebimento.",
     derivar: derivarEstornoDeRecebimento,
+  },
+  {
+    versao: 24,
+    nome: "rito-do-acesso-a-informacao",
+    descricao:
+      "O rito do acesso a informacao (V11 V5.3) chegou com cinco acoes: protocolar, distribuir, prorrogar, responder " +
+      "e decidir o recurso. Quem administra permissoes no global as recebe e as distribui pelos setores. ⚠️ Elas NAO " +
+      "sao derivadas de PUBLICAR_CONFIGURACAO_DO_ACESSO_A_INFORMACAO nem de CONSULTAR_PROTOCOLO: configurar o prazo e " +
+      "operar o pedido sao atos de pessoas diferentes, e quem LE o protocolo nao passa a poder prorrogar a data " +
+      "prometida a quem tem direito subjetivo. Receber o pedido no setor continua sendo RECEBER_PROCESSO, que ja " +
+      "existe.",
+    derivar: derivarRitoDoAcessoAInformacao,
   },
 ];
 
