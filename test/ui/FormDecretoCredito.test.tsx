@@ -286,10 +286,19 @@ describe("FormDecretoCredito — a fiação da validação em tempo real", () =>
     );
   });
 
-  it("t14: sem lei cadastrada, o form NOMEIA a pendência em vez de oferecer um cadastro que não existe", () => {
+  it("t14: sem lei cadastrada, o form recusa e APONTA PARA ONDE se cadastra a lei", () => {
+    // ⚠️ A AFIRMAÇÃO MUDOU PORQUE O SISTEMA MUDOU (V11 V7.2). Até aqui este teste exigia que a
+    // tela NOMEASSE a ausência do cadastro de leis ("fica NOMEADO aqui como a próxima fatia") —
+    // e isso era o certo enquanto a lei só entrava por seed. A fatia foi construída: há um
+    // formulário de lei no painel de cima. Continuar exigindo a frase antiga seria exigir que a
+    // tela declarasse ausente o que agora existe.
+    //
+    // O que NÃO mudou, e por isso continua afirmado: sem lei não há decreto a lançar, e o botão
+    // do decreto não aparece. Recusar continua sendo o comportamento; o que melhorou foi a saída
+    // que a recusa oferece.
     render(<FormDecretoCredito exercicio={2026} leis={[]} fichas={FICHAS} />);
     expect(document.body.textContent).toContain("Sem lei de crédito neste exercício");
-    expect(document.body.textContent).toContain("fica NOMEADO aqui como a próxima fatia");
+    expect(document.body.textContent).toContain("Cadastre a lei no painel acima");
     expect(screen.queryByRole("button", { name: "Cadastrar decreto" })).toBeNull();
   });
 });

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import {
   criarDecretoCredito,
+  criarLeiCredito,
   encerrarDecretoCredito,
   lancarMovimentosCredito,
 } from "../../../../lib/portas/creditos";
@@ -132,5 +133,59 @@ export async function cadastrarDecretoAction(
     revalidatePath("/planejamento/creditos-adicionais");
     revalidatePath("/planejamento/qdd");
     return { sucesso: `Decreto ${numero}/${anoBruto} criado com ${movimentos.length} movimento(s).` };
+  });
+}
+
+export interface EstadoLei {
+  readonly erro?: string;
+  readonly sucesso?: string;
+}
+
+const TIPOS_DE_CREDITO = ["SUPLEMENTAR", "ESPECIAL", "EXTRAORDINARIO"] as const;
+type TipoDeCredito = (typeof TIPOS_DE_CREDITO)[number];
+const ehTipoDeCredito = (v: string): v is TipoDeCredito =>
+  (TIPOS_DE_CREDITO as readonly string[]).includes(v);
+
+/**
+ * Server Action — CADASTRA a lei autorizadora (TR 4.30), pela porta de escrita do M03.
+ *
+ * ⚠️ NENHUMA REGRA DE NEGÓCIO AQUI. A action confere FORMA (campo em branco, tipo fora da lista,
+ * ano que não é inteiro) e traduz o `FormData` nos tipos da porta. Teto, duplicidade de
+ * `[ano, numero]` e valor não-positivo são do domínio, e a mensagem dele sobe inteira.
+ *
+ * ⚠️ A DATA ANCORA NO MEIO-DIA, como a do decreto e a do empenho: a publicação é um DIA, e sem a
+ * âncora o fuso empurra a lei para o dia — e às vezes para o exercício — anterior.
+ */
+export async function cadastrarLeiAction(
+  _prev: EstadoLei,
+  formData: FormData
+): Promise<EstadoLei> {
+  return comComandoDoFormulario(formData, async () => {
+    const numero = String(formData.get("numero") ?? "").trim();
+    const tipoBruto = String(formData.get("tipoCredito") ?? "").trim();
+    const valorAutorizado = String(formData.get("valorAutorizado") ?? "").trim();
+    const publicacao = String(formData.get("dataPublicacao") ?? "").trim();
+    const ano = Number.parseInt(String(formData.get("ano") ?? ""), 10);
+
+    if (numero === "") return { erro: "Informe o número da lei." };
+    if (!ehTipoDeCredito(tipoBruto)) return { erro: "Escolha o tipo de crédito autorizado." };
+    if (valorAutorizado === "") return { erro: "Informe o valor autorizado (o teto da lei)." };
+    if (publicacao === "") return { erro: "Informe a data de publicação da lei." };
+    if (!Number.isInteger(ano)) return { erro: "Exercício da lei inválido." };
+
+    try {
+      await criarLeiCredito({
+        numero,
+        ano,
+        tipoCredito: tipoBruto,
+        valorAutorizado,
+        dataPublicacao: meioDiaCivil(publicacao),
+      });
+    } catch (e) {
+      return { erro: e instanceof Error ? e.message : "Não foi possível cadastrar a lei." };
+    }
+
+    revalidatePath("/planejamento/creditos-adicionais");
+    return { sucesso: `Lei ${numero}/${ano} cadastrada.` };
   });
 }

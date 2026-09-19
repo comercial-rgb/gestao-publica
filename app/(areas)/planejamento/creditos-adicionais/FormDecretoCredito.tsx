@@ -105,6 +105,25 @@ export function FormDecretoCredito({
   const [origemRecurso, setOrigemRecurso] = useState("");
   const [linhas, setLinhas] = useState<readonly LinhaForm[]>([LINHA_VAZIA(0)]);
   const [proximaChave, setProximaChave] = useState(1);
+  const [ultimoSucesso, setUltimoSucesso] = useState<string | undefined>(undefined);
+  const [seq, setSeq] = useState(0);
+
+  // ⚠️ FECHAR NO SUCESSO — E O SUCESSO PRECISA APARECER EM ALGUM LUGAR.
+  // MEDIDO ao escrever o percurso da V7.2: o decreto gravava, o formulário continuava aberto com
+  // os mesmos campos preenchidos, e a tela NÃO dizia nada — a confirmação só existia no ramo
+  // fechado, que ninguém alcançava. Quem enviasse leria silêncio (indistinguível de "não
+  // aconteceu") e reenviaria, colidindo na unique [ano, numero].
+  //
+  // Os campos são LIMPOS junto: reabrir o painel com o decreto anterior ainda dentro convida a
+  // gravar o mesmo ato duas vezes.
+  if (estado.sucesso !== undefined && estado.sucesso !== ultimoSucesso) {
+    setUltimoSucesso(estado.sucesso);
+    setSeq((n) => n + 1);
+    setAberto(false);
+    setNumero("");
+    setLinhas([LINHA_VAZIA(proximaChave)]);
+    setProximaChave((k) => k + 1);
+  }
 
   const porId = new Map(fichas.map((f) => [f.id, f]));
 
@@ -137,7 +156,7 @@ export function FormDecretoCredito({
           {leis.length === 0 ? "Sem lei de crédito neste exercício" : "Sem fichas neste exercício"}
         </strong>{" "}
         {leis.length === 0
-          ? "— um decreto executa o TETO de uma lei autorizadora; sem lei, não há o que executar. O cadastro de LEIS ainda não tem formulário nesta tela: hoje ele entra pelo serviço/seed do M03, e fica NOMEADO aqui como a próxima fatia."
+          ? "— um decreto executa o TETO de uma lei autorizadora; sem lei, não há o que executar. Cadastre a lei no painel acima."
           : "— as pernas do decreto suplementam ou anulam FICHAS da LOA. Sem ficha, não há dotação a alterar."}
       </div>
     );
@@ -158,8 +177,15 @@ export function FormDecretoCredito({
             Cadastrar decreto
           </button>
         </div>
+        {/* O resultado de um ato que SAI da tela — fora do formulário, com a marca que o
+            percurso e o leitor de tela encontram. Ver o bloco de derivação acima. */}
         {estado.sucesso !== undefined ? (
-          <p className="mt-3 rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]">
+          <p
+            role="status"
+            data-resultado-da-acao="cadastrar-decreto-de-credito"
+            data-resultado-seq={String(seq)}
+            className="mt-3 rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]"
+          >
             {estado.sucesso}
           </p>
         ) : null}
@@ -168,7 +194,7 @@ export function FormDecretoCredito({
   }
 
   return (
-    <form action={action} className={CLASSE_PAINEL_FORMULARIO} aria-label="Novo decreto de crédito adicional">
+    <form action={action} data-acao="cadastrar-decreto-de-credito" className={CLASSE_PAINEL_FORMULARIO} aria-label="Novo decreto de crédito adicional">
       <ChaveDeComando />
       <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">Novo decreto de crédito adicional</h2>
 

@@ -223,6 +223,15 @@ export async function preencherEEnviar(page: Page, acao: string, campos: readonl
       await page.evaluate((sel, i, marcar) => {
         const el = document.querySelectorAll(sel)[i];
         if (!(el instanceof HTMLInputElement)) return;
+        // ⚠️ AQUI **NÃO** SE APLICOU A CURA DO `tipo: "data"` LOGO ABAIXO, E ISSO É DELIBERADO.
+        // A mesma armadilha existe em tese: um checkbox CONTROLADO pelo React também ignora a
+        // atribuição direta. Mas a correção equivalente (setter nativo de `checked` + um `click`
+        // sintético) tem um risco que a de `value` não tem — despachar `click` num checkbox pode
+        // acionar a ativação padrão e INVERTER de novo o que acabou de ser marcado, e o percurso
+        // passaria a desmarcar em silêncio. Sete percursos usam este ramo hoje e nenhum acusa
+        // problema; trocar o que funciona por uma correção NÃO MEDIDA seria pior que a falta.
+        // Pendência `MARCAR-EM-CAMPO-CONTROLADO`: quando aparecer um checkbox controlado que não
+        // recebe a marca, mede-se ali e corrige-se com a prova junto.
         el.checked = marcar === "sim";
         el.dispatchEvent(new Event("input", { bubbles: true }));
         el.dispatchEvent(new Event("change", { bubbles: true }));
@@ -238,7 +247,27 @@ export async function preencherEEnviar(page: Page, acao: string, campos: readonl
       await page.evaluate((sel, i, valor) => {
         const el = document.querySelectorAll(sel)[i];
         if (!(el instanceof HTMLInputElement)) return;
-        el.value = valor;
+        // ⚠️ O `value` VAI PELO SETTER NATIVO, E ISSO NÃO É FRESCURA — É A CAUSA MEDIDA DE UM
+        // CAMPO QUE FICAVA VAZIO EM SILÊNCIO (V11 V7.2, passo 2.3 do percurso do crédito
+        // adicional).
+        //
+        // Num input CONTROLADO (`value={estado} onChange={...}`), o React instala o próprio
+        // setter de `value` no elemento e usa o valor ANTERIOR para decidir se houve mudança.
+        // `el.value = x` grava por cima desse setter: o DOM passa a mostrar `x`, o evento
+        // `input` dispara, e o React compara `x` com `x` — conclui que nada mudou e NÃO chama o
+        // `onChange`. O estado continua vazio, o formulário continua inválido, o botão continua
+        // desabilitado, e o percurso lê "silêncio" sem nome de campo.
+        //
+        // MEDIDO: `FormDecretoCredito` (controlado) ficava com `data=""` depois deste
+        // preenchimento; `FormLeiCredito` (não-controlado), ao lado, recebia a data sem
+        // problema — o que fazia o defeito parecer da tela, e não do preenchimento.
+        //
+        // Chamar o setter do PROTÓTIPO contorna o do React: o valor interno muda por baixo, o
+        // React vê valor novo no `input` e chama o `onChange`. Em campo não-controlado o efeito
+        // é idêntico ao de antes.
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+        if (setter !== undefined) setter.call(el, valor);
+        else el.value = valor;
         el.dispatchEvent(new Event("input", { bubbles: true }));
         el.dispatchEvent(new Event("change", { bubbles: true }));
       }, seletor, campo.indice ?? 0, campo.valor);

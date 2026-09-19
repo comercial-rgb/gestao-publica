@@ -23,6 +23,7 @@ import {
 import { dataBr } from "../../../../lib/recorte";
 import { FormEncerrarDecreto } from "./FormEncerrarDecreto";
 import { FormDecretoCredito } from "./FormDecretoCredito";
+import { FormLeiCredito } from "./FormLeiCredito";
 
 /**
  * CRÉDITOS ADICIONAIS (M03, TR 4.20–4.40) — a lista de decretos com autorizado/utilizado/saldo
@@ -103,6 +104,8 @@ export default async function CreditosAdicionaisPage({
         encerrado (append-only), não um campo editável.
       </div>
 
+      <FormLeiCredito exercicio={exercicio} />
+
       <FormDecretoCredito
         exercicio={exercicio}
         leis={leis.map((l) => ({ id: l.id, numero: l.numero, ano: l.ano, tipoCredito: l.tipoCredito, valorAutorizado: l.valorAutorizado }))}
@@ -172,13 +175,14 @@ export default async function CreditosAdicionaisPage({
       )}
 
       <p className="text-xs text-[color:var(--color-ink-3)]">
-        O cadastro de <strong>decreto + movimentos</strong> já é feito aqui, pela porta de escrita do
-        do domínio (as travas de fechamento por fonte, teto, saldo e fonte são aplicadas na
-        gravação, dentro da transação). O
-        cadastro de <strong>LEIS de crédito</strong> ainda NÃO tem formulário — a porta de escrita
-        existe (<code>criarLeiCredito</code>), mas a tela não a chama, e hoje a lei entra pelo
-        serviço/seed do M03. Fica <strong>nomeado</strong> como próxima fatia, e não preenchido com
-        um default plausível.
+        O cadastro de <strong>lei</strong>, de <strong>decreto</strong> e dos{" "}
+        <strong>movimentos</strong> é feito aqui, pelas portas de escrita do domínio — as travas
+        (teto da lei, saldo da ficha, fonte, fechamento por fonte) são aplicadas na gravação, dentro
+        da transação. O que ainda NÃO tem formulário é a{" "}
+        <strong>disponibilidade de recurso novo</strong> (superávit financeiro, excesso de
+        arrecadação, operação de crédito): ela é apurada fora desta tela e hoje entra pelo
+        serviço/seed, e sem ela um decreto por recurso novo é recusado nomeando a fonte. Fica{" "}
+        <strong>nomeado</strong> como próxima fatia, e não preenchido com um número plausível.
       </p>
     </div>
   );
