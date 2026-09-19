@@ -7,6 +7,17 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
 import { limparBanco } from "../../test/limpar-banco.js";
 import { criarFichaDeTeste } from "../../test/ficha-teste.js";
+import {
+  CONTA_CREDITO_DISPONIVEL,
+  CONTA_CREDITO_EMPENHADO_A_LIQUIDAR,
+  CONTA_CREDITO_LIQUIDADO_A_PAGAR,
+  CONTA_CREDITO_LIQUIDADO_PAGO,
+  CONTA_CREDITO_RESERVADO,
+  CONTA_DOTACAO_ADICIONAL,
+  CONTA_DOTACAO_INICIAL,
+  CONTA_RECEITA_A_REALIZAR,
+  CONTA_RECEITA_REALIZADA,
+} from "../m01-core-contabil/roteiros.js";
 import { criarM04Deps } from "../m04-receita/adapter-prisma.js";
 import { roteiroArrecadacao } from "../m04-receita/dominio.js";
 import { registrarArrecadacao } from "../m04-receita/servico.js";
@@ -124,16 +135,24 @@ const FORNECEDOR = "2.1.3.1.1.00.00";
 const RESULTADOS = "2.3.7.1.1.00.00"; // patrimônio líquido — resultados acumulados
 const VPD = "3.3.9.0.1.00.00";
 const VPA = "4.1.1.2.1.01.00";
-const R_A_REALIZAR = "6.2.1.1.0.00.00";
-const R_REALIZADA = "6.2.1.2.0.00.00";
-const C_DISPONIVEL = "6.2.2.1.1.00.00";
-const C_EMPENHADO = "6.2.2.1.3.01.00";
-const C_LIQUIDADO = "6.2.2.1.3.03.00";
-const C_PAGO = "6.2.2.1.3.04.00";
+const R_A_REALIZAR = CONTA_RECEITA_A_REALIZAR;
+const R_REALIZADA = CONTA_RECEITA_REALIZADA;
+const C_DISPONIVEL = CONTA_CREDITO_DISPONIVEL;
+const C_EMPENHADO = CONTA_CREDITO_EMPENHADO_A_LIQUIDAR;
+const C_LIQUIDADO = CONTA_CREDITO_LIQUIDADO_A_PAGAR;
+const C_PAGO = CONTA_CREDITO_LIQUIDADO_PAGO;
 /** Conta de ativo SEM `indicadorSuperavit` — o t6. */
 const ATIVO_SEM_INDICADOR = "1.1.2.1.1.00.00";
-/** 5.2.2.1.1 — DOTAÇÃO INICIAL. Nasce no razão neste bloco (era o furo de 46dfd5d). */
-const DOTACAO_INICIAL = "5.2.2.1.1.00.00";
+/**
+ * A DOTAÇÃO INICIAL — e ela vem da CONSTANTE, não de literal (corrigido em V11 V7.1).
+ *
+ * ⚠️ AQUI ESTAVA `5.2.2.1.1.00.00`, A SINTÉTICA. A V6.1 repontou `CONTA_DOTACAO_INICIAL`
+ * para a analítica `5.2.2.1.1.01.00` contra a fonte oficial, e o helper de fixture passou a
+ * criar só a nova — quatro testes deste arquivo caíram desde `047e6d2` procurando uma conta
+ * que ninguém mais cria. Citar a constante é o que faz o próximo repontamento aparecer no
+ * typecheck em vez de aparecer quatro testes depois.
+ */
+const DOTACAO_INICIAL = CONTA_DOTACAO_INICIAL;
 
 // ── BLOCO 2: a fonte B (FUNDEB), a consignação e a dívida ativa ──
 const FONTE_540 = "fnt-540";
@@ -1042,7 +1061,7 @@ const FICHA_2025 = "ficha-2025";
 /** Os destinos na virada — a tabela-parâmetro do M08. Justificativas no m08. */
 async function semearDestinosDaVirada(): Promise<void> {
   const ENCERRA = [
-    DOTACAO_INICIAL, "5.2.2.1.2.00.00", C_DISPONIVEL, "6.2.2.1.2.00.00",
+    DOTACAO_INICIAL, CONTA_DOTACAO_ADICIONAL, C_DISPONIVEL, CONTA_CREDITO_RESERVADO,
     C_EMPENHADO, C_LIQUIDADO, C_PAGO, R_A_REALIZAR, R_REALIZADA,
   ];
   for (const codigo of ENCERRA) {
@@ -1236,7 +1255,8 @@ describe("M14 — a virada do exercício e a IC AI (bloco 3)", () => {
     );
     expect(liquido(arrebentada, DOTACAO_INICIAL, "beginning_balance")).toBe(150000);
     expect(() => conferirM5(arrebentada, enc2026.linhas)).toThrow(
-      /M5 NÃO FECHA na conta 5\.2\.2\.1\.1\.00\.00/
+      // A conta vem da CONSTANTE também aqui: a mensagem do gerador nomeia a conta real.
+      new RegExp(`M5 NÃO FECHA na conta ${DOTACAO_INICIAL.replaceAll(".", "\\.")}`)
     );
     expect(() => conferirM5(arrebentada, enc2026.linhas)).toThrow(
       /orçamento morto atravessando a virada/

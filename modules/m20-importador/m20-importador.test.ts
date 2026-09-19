@@ -5,6 +5,16 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
 import { limparBanco } from "../../test/limpar-banco.js";
 import { semearSagresPoc } from "../../prisma/seed/sagres-poc.js";
+import {
+  CONTA_CREDITO_DISPONIVEL,
+  CONTA_CREDITO_EMPENHADO_A_LIQUIDAR,
+  CONTA_CREDITO_LIQUIDADO_A_PAGAR,
+  CONTA_CREDITO_LIQUIDADO_PAGO,
+  CONTA_FORNECEDORES_A_PAGAR,
+  CONTA_RECEITA_A_REALIZAR,
+  CONTA_RECEITA_REALIZADA,
+  CONTA_VPD,
+} from "../m01-core-contabil/roteiros.js";
 import { criarM05DepsComAlmoxarifado } from "../m10-patrimonial/adapter-m05-almox.js";
 import { roteiroEmpenho, roteiroLiquidacao, roteiroPagamento } from "../m05-despesa/dominio.js";
 import { criarM04Deps } from "../m04-receita/adapter-prisma.js";
@@ -30,14 +40,21 @@ await exigirBanco(prisma);
 const POR = "m05@cg.pb.gov.br"; // identidade de fixture (o seed não cria usuários — t5)
 // ENT05 ITEM 3 — repontada: a antiga era a variante INTRA OFSS.
 const CONTA_BANCOS = "1.1.1.1.1.19.00";
+/**
+ * ⚠️ AS CONTAS VÊM DA CONSTANTE, NÃO DE LITERAL (corrigido em V11 V7.1). Este arquivo semeia
+ * pelo `semearSagresPoc` e depois lançava contra `2.1.3.1.1.00.00` escrita à mão. A V6.3
+ * repontou `CONTA_FORNECEDORES_A_PAGAR` para `2.1.3.1.1.01.01` FORNECEDORES NÃO PARCELADOS A
+ * PAGAR — e o seed passou a criar só a nova. Os dois testes deste arquivo caíram desde
+ * `e774d63` com "Conta(s) inexistente(s) no plano PCASP", e eu não os tinha visto.
+ */
 const ROTEIROS = {
-  empenho: roteiroEmpenho({ creditoDisponivel: "6.2.2.1.1.00.00", creditoEmpenhado: "6.2.2.1.3.01.00" }),
-  liquidacao: roteiroLiquidacao({ variacaoDiminutiva: "3.3.2.1.1.01.00", obrigacaoAPagar: "2.1.3.1.1.00.00", creditoEmpenhado: "6.2.2.1.3.01.00", creditoLiquidado: "6.2.2.1.3.03.00" }),
-  pagamento: roteiroPagamento({ obrigacaoAPagar: "2.1.3.1.1.00.00", disponibilidade: CONTA_BANCOS, creditoLiquidado: "6.2.2.1.3.03.00", creditoPago: "6.2.2.1.3.04.00" }),
+  empenho: roteiroEmpenho({ creditoDisponivel: CONTA_CREDITO_DISPONIVEL, creditoEmpenhado: CONTA_CREDITO_EMPENHADO_A_LIQUIDAR }),
+  liquidacao: roteiroLiquidacao({ variacaoDiminutiva: CONTA_VPD, obrigacaoAPagar: CONTA_FORNECEDORES_A_PAGAR, creditoEmpenhado: CONTA_CREDITO_EMPENHADO_A_LIQUIDAR, creditoLiquidado: CONTA_CREDITO_LIQUIDADO_A_PAGAR }),
+  pagamento: roteiroPagamento({ obrigacaoAPagar: CONTA_FORNECEDORES_A_PAGAR, disponibilidade: CONTA_BANCOS, creditoLiquidado: CONTA_CREDITO_LIQUIDADO_A_PAGAR, creditoPago: CONTA_CREDITO_LIQUIDADO_PAGO }),
 };
 const R_ARRECADACAO = roteiroArrecadacao({
   disponibilidade: CONTA_BANCOS, variacaoAumentativa: "4.1.1.2.1.01.00",
-  receitaARealizar: "6.2.1.1.0.00.00", receitaRealizada: "6.2.1.2.0.00.00",
+  receitaARealizar: CONTA_RECEITA_A_REALIZAR, receitaRealizada: CONTA_RECEITA_REALIZADA,
 });
 const CONTAS_CONSIG = { INSS: "2.1.8.8.1.01.00", ISS: "2.1.8.8.1.02.00" };
 

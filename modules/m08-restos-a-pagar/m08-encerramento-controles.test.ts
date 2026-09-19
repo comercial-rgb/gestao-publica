@@ -6,6 +6,17 @@ import { validarLancamento, type Partida } from "../../packages/ledger/index.js"
 import { saldosDeControle } from "../m01-core-contabil/adapter-prisma.js";
 import { limparBanco } from "../../test/limpar-banco.js";
 import { criarFichaDeTeste } from "../../test/ficha-teste.js";
+import {
+  CONTA_CREDITO_DISPONIVEL,
+  CONTA_CREDITO_EMPENHADO_A_LIQUIDAR,
+  CONTA_CREDITO_LIQUIDADO_A_PAGAR,
+  CONTA_CREDITO_LIQUIDADO_PAGO,
+  CONTA_CREDITO_RESERVADO,
+  CONTA_DOTACAO_ADICIONAL,
+  CONTA_DOTACAO_INICIAL,
+  CONTA_RECEITA_A_REALIZAR,
+  CONTA_RECEITA_REALIZADA,
+} from "../m01-core-contabil/roteiros.js";
 import { criarM04Deps } from "../m04-receita/adapter-prisma.js";
 import { roteiroArrecadacao } from "../m04-receita/dominio.js";
 import { registrarArrecadacao } from "../m04-receita/servico.js";
@@ -95,15 +106,28 @@ const RESULTADOS_ACUM = "2.3.7.1.1.00.00";
 const VPD = "3.3.2.1.1.01.00";
 const VPA = "4.1.1.2.1.01.00";
 
-const DOT_INICIAL = "5.2.2.1.1.00.00";
-const DOT_ADICIONAL = "5.2.2.1.2.00.00";
-const R_A_REALIZAR = "6.2.1.1.0.00.00";
-const R_REALIZADA = "6.2.1.2.0.00.00";
-const C_DISPONIVEL = "6.2.2.1.1.00.00";
-const C_RESERVADO = "6.2.2.1.2.00.00";
-const C_EMPENHADO = "6.2.2.1.3.01.00";
-const C_LIQUIDADO = "6.2.2.1.3.03.00";
-const C_PAGO = "6.2.2.1.3.04.00";
+/**
+ * ⚠️ AS CONTAS DE CONTROLE VÊM DO DOMÍNIO, NÃO DE LITERAL AQUI (corrigido em V11 V7.1).
+ *
+ * Estes nove códigos eram LITERAIS, e `DOT_INICIAL` era `5.2.2.1.1.00.00` — a SINTÉTICA. A
+ * V6.1 repontou `CONTA_DOTACAO_INICIAL` para a analítica `5.2.2.1.1.01.00` contra a fonte, e
+ * o helper de fixture passou a criar só a nova. Este arquivo ficou pedindo uma conta que
+ * ninguém mais cria: os OITO testes dele caíram em `findUniqueOrThrow`, desde `047e6d2`.
+ *
+ * ⚠️ E O MEU ERRO FOI DE MEDIÇÃO, NÃO DE DIGITAÇÃO: quatro arquivos com o mesmo defeito
+ * foram achados e corrigidos na V6.3; este não, porque a bateria que rodei não o alcançou.
+ * Citar a CONSTANTE é o que faz o próximo repontamento aparecer no typecheck em vez de
+ * aparecer oito testes depois.
+ */
+const DOT_INICIAL = CONTA_DOTACAO_INICIAL;
+const DOT_ADICIONAL = CONTA_DOTACAO_ADICIONAL;
+const R_A_REALIZAR = CONTA_RECEITA_A_REALIZAR;
+const R_REALIZADA = CONTA_RECEITA_REALIZADA;
+const C_DISPONIVEL = CONTA_CREDITO_DISPONIVEL;
+const C_RESERVADO = CONTA_CREDITO_RESERVADO;
+const C_EMPENHADO = CONTA_CREDITO_EMPENHADO_A_LIQUIDAR;
+const C_LIQUIDADO = CONTA_CREDITO_LIQUIDADO_A_PAGAR;
+const C_PAGO = CONTA_CREDITO_LIQUIDADO_PAGO;
 
 /**
  * ⚠️ O CONTROLE DE RESTOS A PAGAR (5.3 / 6.3) — E POR QUE ELE É UM PAR.
