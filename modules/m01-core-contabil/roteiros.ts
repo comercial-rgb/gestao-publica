@@ -130,9 +130,58 @@ export const CONTA_RECEITA_REALIZADA = "6.2.1.2.0.00.00";
 // anular um empenho devolve a DDR ao disponível sozinho. Um roteiro de anulação seria a
 // chance de ele divergir do fato que nega.
 
-/** Classe 7 — o par DEVEDOR. Só a arrecadação o move. */
+/**
+ * Classe 7 — o par DEVEDOR. Só a arrecadação o move.
+ *
+ * ⚠️ SINTÉTICA NO PLANO OFICIAL, E **NÃO SE ESCOLHE UMA FILHA AQUI**. Pendência
+ * `CONTROLE-DDR-POR-NATUREZA-DA-FONTE`. Medido em 2026-09-19 sobre banco de instalação
+ * limpa: `roteiroArrecadacao` recusa, e portanto **não há arrecadação em instalação nova**
+ * enquanto esta pendência viver.
+ *
+ * O PCASP particiona `7.2.1.1` pela NATUREZA DA FONTE, não pelo estado do dinheiro:
+ * `.1.00.00` RECURSOS ORDINÁRIOS, `.2.00.00` RECURSOS VINCULADOS, `.3.00.00` RECURSOS
+ * EXTRAORÇAMENTÁRIOS, `.4.00.00` RECURSOS PARA COMPENSAÇÃO FINANCEIRA, `.9.00.00` outros.
+ * O sistema CONHECE a fonte de cada arrecadação — `saldoDdrPorFonte` agrupa por
+ * `fonteId`/`fonteCodigo` —, mas o roteiro tem UMA perna fixa e não lê a fonte.
+ *
+ * Apontar esta constante para RECURSOS ORDINÁRIOS classificaria saúde, educação e FUNDEB
+ * como ordinários, e o erro sairia no RGF Anexo 5 e na remessa, não aqui. Destravar exige
+ * perna de roteiro RESOLVIDA PELA FONTE — decisão de modelo —, mais a correspondência
+ * fonte → natureza, que é ato do ente. Não é escolha de conta.
+ */
 export const CONTA_CONTROLE_DDR = "7.2.1.1.0.00.00";
-export const CONTA_DDR_DISPONIVEL = "8.2.1.1.1.00.00";
+
+/**
+ * ⚠️ REPONTADA EM 2026-09-19, DENTRO DO MESMO RAMO, E A MEDIÇÃO ESTÁ AQUI. Esta constante
+ * apontava para `8.2.1.1.1.00.00`, que no PCASP oficial é **SINTÉTICA** — e sintética não
+ * recebe partida (`INVARIANTE 5` do adapter). O efeito não aparecia porque os bancos de
+ * trabalho nasciam clonados, com a `analitica` do plano MÍNIMO; em instalação limpa com o
+ * plano oficial, `empenhar` recusa: "Conta sintética não recebe partida: 8.2.1.1.1.00.00".
+ *
+ * **Fonte:** `Pcasp_2025.xlsx` do TCE-PB, o mesmo arquivo de `seed:pcasp-oficial`. Ele
+ * particiona `8.2.1.1.1 DISPONIBILIDADE POR DESTINAÇÃO DE RECURSOS` em três analíticas:
+ *
+ *   · `8.2.1.1.1.01.00` RECURSOS DISPONÍVEIS PARA O EXERCÍCIO   ← é esta.
+ *   · `8.2.1.1.1.02.00` RECURSOS DE EXERCÍCIOS ANTERIORES
+ *   · `8.2.1.1.1.99.00` OUTROS CONTROLES
+ *
+ * ⚠️ E NÃO É SEMELHANÇA DE NOME — são DUAS medidas que fecham a escolha:
+ *
+ * 1. **O circuito já está nas folhas.** As outras três pernas da DDR apontam para a
+ *    analítica do seu ramo desde sempre — `.2.01.00` A LIQUIDAR, `.3.01.00` COMPROMETIDA
+ *    POR LIQUIDAÇÃO, `.4.01.00` UTILIZADA COM EXECUÇÃO ORÇAMENTÁRIA (o M08 repete os três
+ *    literalmente). Só a primeira perna parou no pai sintético.
+ * 2. **Não existe ato que traga recurso de exercício anterior.** O único CRÉDITO a esta
+ *    conta em todo o sistema é `roteiroArrecadacao` — medido: duas ocorrências da
+ *    constante, o débito do empenho e este crédito. Abertura de exercício com superávit
+ *    financeiro não está modelada; quando estiver, ela nasce com a sua própria perna em
+ *    `.02.00`, e não reclassifica o que já foi arrecadado neste exercício.
+ *
+ * ⚠️ SALDO JÁ LANÇADO NÃO MIGRA SOZINHO. Em base que já operava com a conta antiga, mover
+ * o acumulado é `repontarConta` (M01), que grava o lançamento e o registro `MigracaoDeConta`
+ * explicando de onde, para onde e quanto. Pendência `DDR-DISPONIVEL-SALDO-A-REPONTAR`.
+ */
+export const CONTA_DDR_DISPONIVEL = "8.2.1.1.1.01.00";
 export const CONTA_DDR_COMPROMETIDA_EMPENHO = "8.2.1.1.2.01.00";
 export const CONTA_DDR_COMPROMETIDA_LIQUIDACAO = "8.2.1.1.3.01.00";
 export const CONTA_DDR_UTILIZADA = "8.2.1.1.4.01.00";

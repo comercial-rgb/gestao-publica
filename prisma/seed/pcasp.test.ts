@@ -85,8 +85,16 @@ describe("seed:pcasp — o plano mínimo, com procedência", () => {
     expect(porCodigo.get("1.1.2.1.1.99.00")?.naturezaSaldo).toBe("DEVEDORA");
     expect(porCodigo.get("1.1.2.1.1.99.00")?.indicadorSuperavit).toBe("P");
 
-    // A DDR entra no plano (é oficial) mesmo sem roteiro que a use — DDR-CLASSE-8.
-    expect(porCodigo.get("8.2.1.1.1.00.00")?.analitica).toBe(true);
+    // ⚠️ A DDR, REALINHADA AO PLANO OFICIAL (V11 V6.2). Esta asserção dizia que
+    // `8.2.1.1.1.00.00` era ANALÍTICA — e era mentira do plano mínimo: no PCASP ela é
+    // sintética, e foi essa mentira que deixou a instalação limpa recusar o empenho sem
+    // ninguém ver. O pai é sintético, a partida vai na filha do exercício.
+    expect(porCodigo.get("8.2.1.1.1.00.00")?.analitica).toBe(false);
+    expect(porCodigo.get("8.2.1.1.1.01.00")?.analitica).toBe(true);
+
+    // E a dotação inicial, pelo mesmo motivo.
+    expect(porCodigo.get("5.2.2.1.1.00.00")?.analitica).toBe(false);
+    expect(porCodigo.get("5.2.2.1.1.01.00")?.analitica).toBe(true);
   });
 
   it("t4: a HIERARQUIA fecha — nenhuma analítica órfã", async () => {

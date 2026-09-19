@@ -58,7 +58,12 @@ export const CONTAS_PCASP_STN: readonly ContaSeed[] = [
   { codigo: "5.2.0.0.0.00.00", nome: "Orçamento Aprovado", naturezaSaldo: "DEVEDORA", nivel: 2, analitica: false, pai: "5.0.0.0.0.00.00" },
   { codigo: "5.2.2.0.0.00.00", nome: "Fixação da Despesa", naturezaSaldo: "DEVEDORA", nivel: 3, analitica: false, pai: "5.2.0.0.0.00.00" },
   { codigo: "5.2.2.1.0.00.00", nome: "Dotação Orçamentária", naturezaSaldo: "DEVEDORA", nivel: 4, analitica: false, pai: "5.2.2.0.0.00.00" },
-  { codigo: "5.2.2.1.1.00.00", nome: "Dotação Inicial", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: true, pai: "5.2.2.1.0.00.00" },
+  // ⚠️ REALINHADO AO PLANO OFICIAL (V11 V6.2). `5.2.2.1.1.00.00` é SINTÉTICA no PCASP: ela
+  // se desdobra em crédito inicial, antecipação pela LDO e outras. O roteiro aponta para a
+  // analítica, e o plano mínimo precisa TÊ-LA — senão `seed:pcasp` instala um plano em que
+  // o próprio roteiro orçamentário não grava.
+  { codigo: "5.2.2.1.1.00.00", nome: "Dotação Inicial", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: false, pai: "5.2.2.1.0.00.00" },
+  { codigo: "5.2.2.1.1.01.00", nome: "Crédito Inicial", naturezaSaldo: "DEVEDORA", nivel: 6, analitica: true, pai: "5.2.2.1.1.00.00" },
 
   // ── classe 6: controle da EXECUÇÃO do planejamento e orçamento ──
   { codigo: "6.0.0.0.0.00.00", nome: "Controles da Execução do Planejamento e Orçamento", naturezaSaldo: "CREDORA", nivel: 1, analitica: false },
@@ -94,7 +99,10 @@ export const CONTAS_PCASP_STN: readonly ContaSeed[] = [
   { codigo: "8.2.0.0.0.00.00", nome: "Execução da Programação Financeira", naturezaSaldo: "CREDORA", nivel: 2, analitica: false, pai: "8.0.0.0.0.00.00" },
   { codigo: "8.2.1.0.0.00.00", nome: "Disponibilidade por Destinação de Recursos", naturezaSaldo: "CREDORA", nivel: 3, analitica: false, pai: "8.2.0.0.0.00.00" },
   { codigo: "8.2.1.1.0.00.00", nome: "DDR — Controle", naturezaSaldo: "CREDORA", nivel: 4, analitica: false, pai: "8.2.1.0.0.00.00" },
-  { codigo: "8.2.1.1.1.00.00", nome: "DDR Disponível", naturezaSaldo: "CREDORA", nivel: 5, analitica: true, pai: "8.2.1.1.0.00.00" },
+  // ⚠️ REALINHADO AO PLANO OFICIAL (V11 V6.2), pelo mesmo motivo: `8.2.1.1.1.00.00` é
+  // SINTÉTICA e se desdobra em recursos do exercício, de exercícios anteriores e outros.
+  { codigo: "8.2.1.1.1.00.00", nome: "Disponibilidade por Destinação de Recursos", naturezaSaldo: "CREDORA", nivel: 5, analitica: false, pai: "8.2.1.1.0.00.00" },
+  { codigo: "8.2.1.1.1.01.00", nome: "Recursos Disponíveis para o Exercício", naturezaSaldo: "CREDORA", nivel: 6, analitica: true, pai: "8.2.1.1.1.00.00" },
   { codigo: "8.2.1.1.2.01.00", nome: "DDR Comprometida por Empenho — a Liquidar", naturezaSaldo: "CREDORA", nivel: 6, analitica: true, pai: "8.2.1.1.0.00.00" },
   { codigo: "8.2.1.1.3.01.00", nome: "DDR Comprometida por Liquidação", naturezaSaldo: "CREDORA", nivel: 6, analitica: true, pai: "8.2.1.1.0.00.00" },
   { codigo: "8.2.1.1.4.01.00", nome: "DDR Utilizada — Execução Orçamentária", naturezaSaldo: "CREDORA", nivel: 6, analitica: true, pai: "8.2.1.1.0.00.00" },

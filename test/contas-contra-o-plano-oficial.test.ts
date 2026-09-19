@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { somenteCodigo } from "./prosa.js";
+import { semComentarios, somenteCodigo } from "./prosa.js";
 import { carregarPlanoOficial } from "../prisma/seed/oficial/pcasp-oficial.js";
 
 /**
@@ -222,6 +222,156 @@ describe("as contas do código contra o PCASP oficial", () => {
         "sistema chama, e moveu o saldo com `repontarConta` — um lançamento que EXPLICA " +
         "a mudança. Reintroduzi-las no seed ou num módulo faz o sistema voltar a lançar " +
         "no lugar errado, agora sobre um saldo que já foi migrado.\n\nOnde voltou:\n"
+    ).toEqual([]);
+  });
+
+  // ═════════════════════════════════════════════════════════════════════════════════════
+  // ⚠️ A PERNA DE PARTIDA — a medição que faltava, e que custou uma instalação quebrada.
+  //
+  // Os testes acima medem CÓDIGOS CITADOS em arquivo de produção, e toleram 57 sintéticas
+  // porque a maioria é ancestral de hierarquia semeada e nunca recebe lançamento. Essa
+  // tolerância é correta para ancestral — e foi ela que escondeu `8.2.1.1.1.00.00`, que
+  // NÃO é ancestral: é perna de roteiro, recebe partida em toda arrecadação e todo empenho.
+  //
+  // Medido em 2026-09-19, em instalação limpa com o plano oficial: `empenhar` recusava com
+  // "Conta sintética não recebe partida". Nos bancos de trabalho nada aparecia, porque eles
+  // nasciam clonados e o plano MÍNIMO marcava aquela conta como analítica.
+  //
+  // ⚠️ PROPRIEDADE, NÃO PADRÃO. Não se enumera arquivo de roteiro nem nome de constante: o
+  // que se procura é a FORMA de uma perna — `{ conta: <algo>, tipo: "DEBITO"|"CREDITO" }` —
+  // onde quer que ela esteja escrita. Literal ou constante, em M01 ou em M08, a perna é
+  // achada e a conta tem de aceitar partida. Uma perna nova num módulo novo entra na
+  // medição sozinha.
+  // ═════════════════════════════════════════════════════════════════════════════════════
+
+  /**
+   * As contas que ESTÃO EM PERNA DE ROTEIRO e continuam sintéticas no plano oficial.
+   *
+   * ⚠️ ESTA LISTA SÓ ENCOLHE. Cada entrada é uma operação que a instalação limpa RECUSA, e
+   * o valor é a pendência que diz o que falta decidir — nenhuma delas se resolve escolhendo
+   * uma filha de nome parecido.
+   */
+  const EM_PERNA_DE_ROTEIRO: Readonly<Record<string, string>> = {
+    "5.2.2.1.2.00.00": "ROTEIRO-CREDITO-ADICIONAL-POR-TIPO",
+    "6.2.2.1.2.00.00": "ROTEIRO-RESERVA-SEM-CONTA",
+    "7.2.1.1.0.00.00": "CONTROLE-DDR-POR-NATUREZA-DA-FONTE",
+  };
+
+  /**
+   * As chaves que carregam uma conta para dentro de uma partida. São DUAS formas hoje:
+   * `{ conta: X, tipo: "DEBITO" }` (a perna do `RoteiroContabil`) e `{ debito: X, credito: Y }`
+   * (o par do roteiro orçamentário, que o seed grava em `contaDebitoId`/`contaCreditoId`).
+   *
+   * ⚠️ E ENUMERAR FORMA É JUSTAMENTE O QUE FALHA — a primeira versão deste teste conhecia só
+   * `conta:` e perdeu as cinco pernas do roteiro orçamentário inteiro. Por isso a forma NÃO é
+   * a única medida: logo abaixo, `NAO_E_PERNA` obriga a classificar TODA constante de conta
+   * do sistema. Uma forma nova aparece como constante que a colheita não alcança, e o teste
+   * cobra a classificação em vez de passar por omissão.
+   */
+  const PERNA = /\b(?:conta|debito|credito):\s*(?:"(\d\.\d\.\d\.\d\.\d\.\d{2}\.\d{2})"|([A-Z][A-Z0-9_]{3,}))/g;
+
+  /** `export const CONTA_X = "..."` de qualquer fonte de produção. */
+  const DECLARACAO = /\bconst\s+([A-Z][A-Z0-9_]{3,})\s*=\s*"(\d\.\d\.\d\.\d\.\d\.\d{2}\.\d{2})"/g;
+
+  interface Perna {
+    readonly codigo: string;
+    readonly origem: string;
+    readonly arquivo: string;
+  }
+
+  function pernasDeRoteiro(): readonly Perna[] {
+    const fontes = fontesDeProducao(RAIZ).map((f) => ({
+      arquivo: relative(RAIZ, f),
+      // ⚠️ `semComentarios`, NÃO `somenteCodigo`. O segundo ESVAZIA todo literal de string —
+      // e o código de uma conta mora dentro de um literal. A primeira versão deste teste
+      // usava `somenteCodigo` e colheu ZERO pernas; quem contou foi o teste de vacuidade
+      // logo abaixo, e é exatamente para isso que ele existe. A prosa continua fora: o
+      // comentário que EXPLICA a conta não é perna.
+      texto: semComentarios(readFileSync(f, "utf8")),
+    }));
+
+    // As constantes de conta, de TODA a produção — uma perna pode citar a constante de
+    // outro módulo, e o valor tem de ser o mesmo em qualquer lugar.
+    const valorDe = new Map<string, string>();
+    for (const { texto } of fontes) {
+      for (const m of texto.matchAll(DECLARACAO)) valorDe.set(m[1]!, m[2]!);
+    }
+
+    const achadas: Perna[] = [];
+    for (const { arquivo, texto } of fontes) {
+      for (const m of texto.matchAll(PERNA)) {
+        const literal = m[1];
+        if (literal !== undefined) {
+          achadas.push({ codigo: literal, origem: `"${literal}"`, arquivo });
+          continue;
+        }
+        const nome = m[2]!;
+        const valor = valorDe.get(nome);
+        if (valor !== undefined) achadas.push({ codigo: valor, origem: nome, arquivo });
+      }
+    }
+    return achadas;
+  }
+
+  const pernas = pernasDeRoteiro();
+
+  it("a medição alcança as pernas de roteiro — e não está vazia por engano", () => {
+    // ⚠️ SEM ISTO O TESTE SEGUINTE PASSA POR VACUIDADE. Um `somenteCodigo` mais agressivo,
+    // uma vírgula a mais na regex, e zero pernas viram zero defeitos.
+    const codigos = new Set(pernas.map((p) => p.codigo));
+    expect(pernas.length).toBeGreaterThan(40);
+    expect(codigos.size).toBeGreaterThan(15);
+    // A perna tem de ser achada nas DUAS formas, ou metade da medição está morta.
+    expect(pernas.some((p) => p.origem.startsWith('"')), "nenhuma perna LITERAL achada").toBe(true);
+    expect(pernas.some((p) => !p.origem.startsWith('"')), "nenhuma perna por CONSTANTE achada").toBe(true);
+    // E tem de alcançar módulo fora do M01 — o M08 escreve as suas pernas em literal.
+    expect(pernas.some((p) => !p.arquivo.includes("m01-core-contabil"))).toBe(true);
+  });
+
+  it("⚠️ TODA PERNA DE ROTEIRO APONTA PARA CONTA QUE ACEITA PARTIDA", () => {
+    const recusadas = [...new Set(
+      pernas
+        .filter((p) => {
+          const o = oficial.get(p.codigo);
+          return o !== undefined && !o.analitica && EM_PERNA_DE_ROTEIRO[p.codigo] === undefined;
+        })
+        .map((p) => `${p.codigo} (${p.origem}) em ${p.arquivo} -> ${oficial.get(p.codigo)?.nome}`)
+    )].sort();
+    expect(
+      recusadas,
+      "\n\n⚠️ PERNA DE ROTEIRO EM CONTA SINTÉTICA — A INSTALAÇÃO LIMPA VAI RECUSAR.\n\n" +
+        "Sintética não recebe partida (INVARIANTE 5 do adapter). Em banco clonado isto não " +
+        "aparece, porque o plano mínimo mente sobre a `analitica`; em instalação nova com o " +
+        "plano oficial o caso de uso para, e o operador vê 'Conta sintética não recebe " +
+        "partida'.\n\nA conta certa é a ANALÍTICA do ramo, escolhida na partição do plano — " +
+        "nunca a de nome mais parecido. Se a partição depender de um dado que o roteiro não " +
+        "lê (o tipo do crédito, a natureza da fonte), então NÃO se escolhe conta: registra-se " +
+        "a pendência em EM_PERNA_DE_ROTEIRO e o movimento continua recusado.\n\nPernas:\n"
+    ).toEqual([]);
+  });
+
+  it("a lista de pendências de perna não guarda conta que já aceita partida", () => {
+    // O espelho: quando a decisão sair e a perna descer para a analítica, a entrada some.
+    const resolvidas = Object.keys(EM_PERNA_DE_ROTEIRO).filter((c) => {
+      const o = oficial.get(c);
+      return o === undefined || o.analitica;
+    });
+    expect(
+      resolvidas,
+      "\n\n⚠️ ENTRADA OBSOLETA EM EM_PERNA_DE_ROTEIRO.\n\nEstas contas aceitam partida no " +
+        "plano oficial (ou saíram dele): a pendência correspondente não existe mais.\n\n"
+    ).toEqual([]);
+  });
+
+  it("toda pendência declarada continua SENDO usada por alguma perna", () => {
+    // ⚠️ NÃO ATESTAR PELA PAPELADA. Uma entrada que ninguém mais usa vira licença guardada:
+    // alguém reintroduz a perna anos depois e a lista a perdoa em silêncio.
+    const citadas = new Set(pernas.map((p) => p.codigo));
+    const orfas = Object.keys(EM_PERNA_DE_ROTEIRO).filter((c) => !citadas.has(c));
+    expect(
+      orfas,
+      "\n\n⚠️ PENDÊNCIA DE PERNA QUE NENHUMA PERNA USA.\n\nA conta saiu dos roteiros: " +
+        "remova a entrada, ou a lista passa a perdoar uma perna futura sem ninguém decidir.\n\n"
     ).toEqual([]);
   });
 

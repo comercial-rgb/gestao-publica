@@ -46,7 +46,14 @@ const PARES: readonly Par[] = [
     familia: "PATRIMONIAL",
     chave: "AQUISICAO",
     debito: "1.2.3.1.1.99.99", // OUTROS BENS MÓVEIS
-    credito: "2.1.3.1.1.00.00", // FORNECEDORES E CONTAS A PAGAR NACIONAIS A CURTO PRAZO
+    // ⚠️ DESCIDA PARA A ANALÍTICA (V11 V6.2). Era `2.1.3.1.1.00.00`, o nó de CONSOLIDAÇÃO,
+    // que é SINTÉTICO no PCASP oficial — em instalação limpa este roteiro de demonstração
+    // não gravava, e o preparador tolerava a quebra. O ramo se desdobra em fornecedores
+    // (`.01`), contas a pagar (`.03`) e precatórios (`.05` a `.08`); a aquisição de bem
+    // móvel de uma demonstração é fornecedor comum, não parcelado.
+    // ⚠️ E isto é DEMONSTRAÇÃO, não norma: em produção o M05 recebe `obrigacaoAPagar` por
+    // parâmetro, do roteiro que o ente configurou.
+    credito: "2.1.3.1.1.01.01", // FORNECEDORES NÃO PARCELADOS A PAGAR
     porque: "a aquisição incorpora o bem ao imobilizado contra a obrigação com o fornecedor.",
   },
   {

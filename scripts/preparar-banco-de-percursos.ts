@@ -123,13 +123,25 @@ rodar("exercício 2026", "npx", ["tsx", "prisma/seed/m08-exercicio.ts", "2026"])
 // comportamento certo; aqui a recusa é tolerada porque o admin já existe.
 rodar("bootstrap do administrador", "npx", ["tsx", "prisma/seed/bootstrap-usuario.ts"], /BOOTSTRAP RECUSADO/);
 rodar("cenário de aceite (ficha e dotação)", "npx", ["tsx", "prisma/seed/cenario-aceite.ts"]);
-// ⚠️ A SEGUNDA TOLERÂNCIA É NOVA, E ELA É DE DEMONSTRAÇÃO, NÃO DE INSTALAÇÃO (V11 V6.1). A POC usa
-// `2.1.3.1.1.00.00` como contrapartida do empenho, e ela é SINTÉTICA no PCASP oficial — em banco
-// limpo a POC não roda. Esse código não existe em produção (o M05 recebe as contas por parâmetro);
-// ele vive nesta POC e em fixtures, que são donas do próprio banco. Pendência
-// `SAGRES-POC-CONTA-SINTETICA`. Tolerar aqui deixa a INSTALAÇÃO terminar com o furo nomeado, em vez
-// de a demonstração derrubar o procedimento inteiro — que é o defeito que esta rodada consertou.
-rodar("cenário SAGRES (UG 99001)", "npx", ["tsx", "prisma/seed/sagres-poc.ts"], /posição \d+ da fila|Conta sintética não recebe partida/);
+// ⚠️ A TOLERÂNCIA GENÉRICA SAIU (V11 V6.2), E O QUE FICOU DIZ EXATAMENTE O QUE FALTA. Na V6.1
+// este passo tolerava QUALQUER "Conta sintética não recebe partida" — uma rede que pegava
+// defeito de digitação junto com decisão pendente. `SAGRES-POC-CONTA-SINTETICA` foi RESOLVIDA
+// (a POC desceu para `2.1.3.1.1.01.01` FORNECEDORES NÃO PARCELADOS A PAGAR).
+//
+// ⚠️ O QUE SOBRA NÃO É DEMONSTRAÇÃO: é o CRÉDITO ADICIONAL. A POC exercita `executarCredito`,
+// que exige o roteiro de `CREDITO_ADICIONAL`, e esse roteiro está sem conta pela pendência
+// `ROTEIRO-CREDITO-ADICIONAL-POR-TIPO` — o PCASP particiona a dotação adicional POR TIPO DE
+// CRÉDITO (suplementar, especial, extraordinário) e `RoteiroOrcamentario.tipo` tem UM lugar.
+// Portanto, e isto vai no relatório em vez de ficar aqui embaixo: **instalação limpa não faz
+// crédito adicional.** Destravar é decisão de modelo (roteiro resolvido pelo tipo do crédito),
+// não escolha de conta — e apontar para a suplementar lançaria especial e extraordinário como
+// suplementar, com o erro saindo no balancete.
+rodar(
+  "cenário SAGRES (UG 99001)",
+  "npx",
+  ["tsx", "prisma/seed/sagres-poc.ts"],
+  /posição \d+ da fila|Conta SINTÉTICA 5\.2\.2\.1\.2\.00\.00 no roteiro orçamentário de CREDITO_ADICIONAL/
+);
 rodar("operador restrito (percurso de dois atores)", "npx", ["tsx", "scripts/poc-usuario-restrito.ts"]);
 // V6 P1.3 — quatro usuários por papel (compras, almoxarifado, contabilidade, tesouraria): nunca o admin em todos os passos.
 rodar("usuários por papel (cadeia por papel)", "npx", ["tsx", "scripts/percursos-usuarios-por-papel.ts"]);
@@ -164,15 +176,13 @@ rodar("atualizações de permissões pendentes (o mesmo caminho da instalação)
   "scripts/aplicar-atualizacao-de-permissoes.ts",
   "pendentes",
 ]);
-// ⚠️ MESMA TOLERÂNCIA, MESMA PENDÊNCIA (V11 V6.1). Os roteiros de DEMONSTRAÇÃO usam a mesma
-// `2.1.3.1.1.00.00` da POC do SAGRES, e ela é sintética no PCASP oficial. Eles são, pelo próprio
-// nome, demonstração — e demonstração não derruba instalação. `SAGRES-POC-CONTA-SINTETICA`.
-rodar(
-  "roteiros de DEMONSTRAÇÃO do acervo (identificados como tal)",
-  "npx",
-  ["tsx", "prisma/seed/roteiros-demo.ts"],
-  /é SINTÉTICA e não recebe lançamento/
-);
+// ⚠️ SEM TOLERÂNCIA (V11 V6.2). Este passo era tolerado pela mesma conta sintética da POC;
+// com a descida para `2.1.3.1.1.01.01` ele grava em banco limpo. Se voltar a falhar, a
+// instalação PARA — que é o comportamento certo para um passo que não tem mais desculpa.
+rodar("roteiros de DEMONSTRAÇÃO do acervo (identificados como tal)", "npx", [
+  "tsx",
+  "prisma/seed/roteiros-demo.ts",
+]);
 
 console.log(
   `\n[percursos] pronto: ${alvo.host}:${alvo.porta}/${alvo.database}. ` +

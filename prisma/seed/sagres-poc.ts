@@ -67,13 +67,16 @@ const CONTA_DEPREC_ACUM = "1.2.3.8.1.01.00"; //  Depreciação acumulada (reduto
 
 // Contas do subsistema da RECEITA (S7, F3) — arrecadação pelo funil `roteiroArrecadacao`.
 const CONTA_VPA_RECEITA = "4.1.1.2.1.01.00"; //   VPA — a receita sob a ótica patrimonial (CREDORA)
+const CONTA_FORNECEDORES_POC = "2.1.3.1.1.01.01"; // FORNECEDORES NAO PARCELADOS A PAGAR
 const CONTA_RECEITA_A_REALIZAR = "6.2.1.1.0.00.00"; // controle orçamentário (DEVEDORA)
 const CONTA_RECEITA_REALIZADA = "6.2.1.2.0.00.00"; // controle orçamentário (CREDORA)
 
 // Contas PCASP do caminho (mesmos códigos dos roteiros do M05 + a dotação inicial).
 const CONTAS_PCASP = [
   { codigo: CONTA_BANCOS, nome: "Bancos Conta Movimento", naturezaSaldo: "DEVEDORA" as const, nivel: 5, analitica: true, indicadorSuperavit: "F" as const },
-  { codigo: "2.1.3.1.1.00.00", nome: "Fornecedores a Pagar", naturezaSaldo: "CREDORA" as const, nivel: 5, analitica: true, indicadorSuperavit: "F" as const },
+  // ⚠️ DESCIDA PARA A ANALÍTICA (V11 V6.2), pelo mesmo motivo do roteiro de demonstração:
+  // `2.1.3.1.1.00.00` é o nó de CONSOLIDAÇÃO e é SINTÉTICO no plano oficial.
+  { codigo: CONTA_FORNECEDORES_POC, nome: "Fornecedores Nao Parcelados a Pagar", naturezaSaldo: "CREDORA" as const, nivel: 7, analitica: true, indicadorSuperavit: "F" as const },
   { codigo: "3.3.2.1.1.01.00", nome: "Servicos de Terceiros PJ", naturezaSaldo: "DEVEDORA" as const, nivel: 6, analitica: true },
   // ⚠️ NOME E NÍVEL DA FONTE. `5.2.2.1.1.01.00` é "CREDITO INICIAL", nível 6, no PCASP oficial.
   // O `skipDuplicates` abaixo faz esta linha valer só em banco que ainda não tem o plano oficial.
@@ -108,8 +111,8 @@ const R_ARRECADACAO = roteiroArrecadacao({
 });
 
 const R_EMPENHO = roteiroEmpenho({ creditoDisponivel: CONTA_CREDITO_DISPONIVEL, creditoEmpenhado: "6.2.2.1.3.01.00" });
-const R_LIQUIDACAO = roteiroLiquidacao({ variacaoDiminutiva: "3.3.2.1.1.01.00", obrigacaoAPagar: "2.1.3.1.1.00.00", creditoEmpenhado: "6.2.2.1.3.01.00", creditoLiquidado: "6.2.2.1.3.03.00" });
-const R_PAGAMENTO = roteiroPagamento({ obrigacaoAPagar: "2.1.3.1.1.00.00", disponibilidade: CONTA_BANCOS, creditoLiquidado: "6.2.2.1.3.03.00", creditoPago: "6.2.2.1.3.04.00" });
+const R_LIQUIDACAO = roteiroLiquidacao({ variacaoDiminutiva: "3.3.2.1.1.01.00", obrigacaoAPagar: CONTA_FORNECEDORES_POC, creditoEmpenhado: "6.2.2.1.3.01.00", creditoLiquidado: "6.2.2.1.3.03.00" });
+const R_PAGAMENTO = roteiroPagamento({ obrigacaoAPagar: CONTA_FORNECEDORES_POC, disponibilidade: CONTA_BANCOS, creditoLiquidado: "6.2.2.1.3.03.00", creditoPago: "6.2.2.1.3.04.00" });
 
 export interface OpcoesSeedPoc {
   /** A identidade AUTORIZADA que assina a massa. Deve PRÉ-EXISTIR (o seed não cria usuários). */
