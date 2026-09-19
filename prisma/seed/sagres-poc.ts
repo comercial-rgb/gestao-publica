@@ -1,6 +1,11 @@
 import "dotenv/config";
 import { pathToFileURL } from "node:url";
 import { criarPrismaClient } from "../../modules/m01-core-contabil/adapter-prisma.js";
+import {
+  CONTA_CREDITO_DISPONIVEL,
+  CONTA_DOTACAO_ADICIONAL,
+  CONTA_DOTACAO_INICIAL,
+} from "../../modules/m01-core-contabil/roteiros.js";
 import { registrarMovimentoDotacao } from "../../modules/m05-despesa/dotacao-razao.js";
 import { recalcularCache } from "../../modules/m05-despesa/adapter-prisma.js";
 import { empenhar } from "../../modules/m05-despesa/servico.js";
@@ -43,9 +48,13 @@ import type { PrismaClient } from "../generated/client/client.js";
 const ADMIN_PADRAO = "admin@cg.pb.gov.br"; // a identidade do seed:bootstrap
 const D = (mes: number, dia: number): Date => new Date(Date.UTC(2026, mes - 1, dia, 12, 0, 0));
 
-const CONTA_DOTACAO_INICIAL = "5.2.2.1.1.00.00";
-const CONTA_DOTACAO_ADICIONAL = "5.2.2.1.2.00.00"; // o que os decretos acrescentam (roteiros.ts, canônico)
-const CONTA_CREDITO_DISPONIVEL = "6.2.2.1.1.00.00";
+// ⚠️ IMPORTADAS, NÃO REDIGITADAS (V11 V6.1). Estes três códigos estavam escritos à mão aqui, e
+// o comentário de `prisma/seed/roteiro-orcamentario.ts` já dizia por que isso é defeito: redigitar
+// cria a segunda verdade sobre qual conta é a dotação inicial, e a primeira divergência só
+// apareceria num balancete, meses depois. A divergência chegou a existir: quando a canônica foi
+// repontada para a analítica do plano oficial, este arquivo continuaria apontando para a sintética
+// — e a `analitica: true` que ele declara abaixo plantaria no banco uma conta sintética marcada
+// como analítica, exatamente o que a conferência do roteiro existe para impedir.
 const CONTA_BANCOS = "1.1.1.1.1.19.00"; // ENT05 ITEM 3 — repontada: a antiga era INTRA OFSS
 const CONTA_CONSIGNACAO_ISS = "2.1.8.8.1.02.00"; // Consignações ISS a pagar (passivo, M07) — mesmo código do m07-retencao.test
 const CONTA_CONSIGNACAO_INSS = "2.1.8.8.1.01.00"; // Consignações INSS a pagar (usada pelo importador de folha, M20)
@@ -66,7 +75,12 @@ const CONTAS_PCASP = [
   { codigo: CONTA_BANCOS, nome: "Bancos Conta Movimento", naturezaSaldo: "DEVEDORA" as const, nivel: 5, analitica: true, indicadorSuperavit: "F" as const },
   { codigo: "2.1.3.1.1.00.00", nome: "Fornecedores a Pagar", naturezaSaldo: "CREDORA" as const, nivel: 5, analitica: true, indicadorSuperavit: "F" as const },
   { codigo: "3.3.2.1.1.01.00", nome: "Servicos de Terceiros PJ", naturezaSaldo: "DEVEDORA" as const, nivel: 6, analitica: true },
-  { codigo: CONTA_DOTACAO_INICIAL, nome: "Dotacao Inicial", naturezaSaldo: "DEVEDORA" as const, nivel: 5, analitica: true },
+  // ⚠️ NOME E NÍVEL DA FONTE. `5.2.2.1.1.01.00` é "CREDITO INICIAL", nível 6, no PCASP oficial.
+  // O `skipDuplicates` abaixo faz esta linha valer só em banco que ainda não tem o plano oficial.
+  { codigo: CONTA_DOTACAO_INICIAL, nome: "Credito Inicial", naturezaSaldo: "DEVEDORA" as const, nivel: 6, analitica: true },
+  // ⚠️ `CONTA_DOTACAO_ADICIONAL` é SINTÉTICA no plano oficial e continua sem roteiro
+  // (`ROTEIRO-CREDITO-ADICIONAL-POR-TIPO`). Esta POC não movimenta crédito adicional; a linha fica
+  // para o banco sem plano oficial, e o `skipDuplicates` impede que ela contradiga a fonte.
   { codigo: CONTA_DOTACAO_ADICIONAL, nome: "Dotacao Adicional", naturezaSaldo: "DEVEDORA" as const, nivel: 5, analitica: true },
   { codigo: CONTA_CREDITO_DISPONIVEL, nome: "Credito Disponivel", naturezaSaldo: "CREDORA" as const, nivel: 5, analitica: true },
   { codigo: CONTA_CONSIGNACAO_ISS, nome: "Consignacoes ISS a Pagar", naturezaSaldo: "CREDORA" as const, nivel: 6, analitica: true, indicadorSuperavit: "F" as const },

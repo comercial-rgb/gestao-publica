@@ -94,7 +94,11 @@ function rodar(rotulo: string, comando: string, args: readonly string[], tolerar
     const texto = `${err.stdout ?? ""}\n${err.stderr ?? ""}`;
     if (texto.trim() !== "") console.log(texto.trimEnd());
     if (tolerar !== undefined && tolerar.test(texto)) {
-      console.log(`[percursos] ${rotulo}: já feito (tolerado).`);
+      // ⚠️ "já feito" ERA MENTIRA PARA DOIS DOS TRÊS CASOS (V11 V6.1). O bootstrap recusado de fato
+      // já estava feito; a POC do SAGRES e os roteiros de demonstração NÃO foram feitos — eles
+      // foram PULADOS por conta sintética, e o motivo está na saída logo acima. Chamar os três de
+      // "já feito" é a papelada dizendo uma coisa e o efeito sendo outra.
+      console.log(`[percursos] ${rotulo}: TOLERADO — o motivo está na saída acima.`);
       return;
     }
     throw new Error(`[percursos] o passo "${rotulo}" falhou — veja a saída acima.`);
@@ -119,7 +123,13 @@ rodar("exercício 2026", "npx", ["tsx", "prisma/seed/m08-exercicio.ts", "2026"])
 // comportamento certo; aqui a recusa é tolerada porque o admin já existe.
 rodar("bootstrap do administrador", "npx", ["tsx", "prisma/seed/bootstrap-usuario.ts"], /BOOTSTRAP RECUSADO/);
 rodar("cenário de aceite (ficha e dotação)", "npx", ["tsx", "prisma/seed/cenario-aceite.ts"]);
-rodar("cenário SAGRES (UG 99001)", "npx", ["tsx", "prisma/seed/sagres-poc.ts"], /posição \d+ da fila/);
+// ⚠️ A SEGUNDA TOLERÂNCIA É NOVA, E ELA É DE DEMONSTRAÇÃO, NÃO DE INSTALAÇÃO (V11 V6.1). A POC usa
+// `2.1.3.1.1.00.00` como contrapartida do empenho, e ela é SINTÉTICA no PCASP oficial — em banco
+// limpo a POC não roda. Esse código não existe em produção (o M05 recebe as contas por parâmetro);
+// ele vive nesta POC e em fixtures, que são donas do próprio banco. Pendência
+// `SAGRES-POC-CONTA-SINTETICA`. Tolerar aqui deixa a INSTALAÇÃO terminar com o furo nomeado, em vez
+// de a demonstração derrubar o procedimento inteiro — que é o defeito que esta rodada consertou.
+rodar("cenário SAGRES (UG 99001)", "npx", ["tsx", "prisma/seed/sagres-poc.ts"], /posição \d+ da fila|Conta sintética não recebe partida/);
 rodar("operador restrito (percurso de dois atores)", "npx", ["tsx", "scripts/poc-usuario-restrito.ts"]);
 // V6 P1.3 — quatro usuários por papel (compras, almoxarifado, contabilidade, tesouraria): nunca o admin em todos os passos.
 rodar("usuários por papel (cadeia por papel)", "npx", ["tsx", "scripts/percursos-usuarios-por-papel.ts"]);
@@ -154,7 +164,15 @@ rodar("atualizações de permissões pendentes (o mesmo caminho da instalação)
   "scripts/aplicar-atualizacao-de-permissoes.ts",
   "pendentes",
 ]);
-rodar("roteiros de DEMONSTRAÇÃO do acervo (identificados como tal)", "npx", ["tsx", "prisma/seed/roteiros-demo.ts"]);
+// ⚠️ MESMA TOLERÂNCIA, MESMA PENDÊNCIA (V11 V6.1). Os roteiros de DEMONSTRAÇÃO usam a mesma
+// `2.1.3.1.1.00.00` da POC do SAGRES, e ela é sintética no PCASP oficial. Eles são, pelo próprio
+// nome, demonstração — e demonstração não derruba instalação. `SAGRES-POC-CONTA-SINTETICA`.
+rodar(
+  "roteiros de DEMONSTRAÇÃO do acervo (identificados como tal)",
+  "npx",
+  ["tsx", "prisma/seed/roteiros-demo.ts"],
+  /é SINTÉTICA e não recebe lançamento/
+);
 
 console.log(
   `\n[percursos] pronto: ${alvo.host}:${alvo.porta}/${alvo.database}. ` +

@@ -50,10 +50,54 @@ export const CONTA_CREDITO_LIQUIDADO_PAGO = "6.2.2.1.3.04.00";
 
 // ── CONTROLE DA APROVAÇÃO / DA RECEITA (classes 5 e 6) ───────────────────────
 
-export const CONTA_DOTACAO_INICIAL = "5.2.2.1.1.00.00";
-/** ⚠️ Fora do extrato — `FIXTURE_A_CONFIRMAR`. */
+/**
+ * ⚠️ REPONTADA EM 2026-09-18, CONTRA A FONTE, E A MEDIÇÃO ESTÁ AQUI. Esta constante apontava para
+ * `5.2.2.1.1.00.00`, que no PCASP oficial é **SINTÉTICA** — e conta sintética não recebe partida
+ * (`INVARIANTE 5` do adapter). O efeito era um instalador que não termina: `seed:roteiro-orc`
+ * recusava, nomeando, e a instalação limpa parava ali. Medido em banco novo e exclusivo:
+ * `migrate exit=0`, `SQL manual exit=0`, `pcasp-oficial exit=0`, `roteiro exit=1`.
+ *
+ * **Fonte:** `Pcasp_2025.xlsx` do TCE-PB (`prisma/seed/oficial/procedencia.ts`), sha256
+ * `52ae7c7336b27a5c2056f7e36947be8ca8c995b6fae74c891d88cab74c517ffb`, publicado em 2024-10-29,
+ * o mesmo arquivo que `seed:pcasp-oficial` carrega. Ele particiona `5.2.2.1.1 DOTAÇÃO INICIAL`
+ * em três ramos analíticos, e a partição é que decide — não a semelhança de nome:
+ *
+ *   · `5.2.2.1.1.01.00` CREDITO INICIAL            ← o crédito que a LOA fixa. É este.
+ *   · `5.2.2.1.1.02.01` ANTECIPAÇÃO - LDO           (e `.02.09`, a anulação dela)
+ *   · `5.2.2.1.1.99.00` DOTAÇÃO INICIAL - OUTRAS
+ *
+ * O movimento `DOTACAO_INICIAL` deste sistema é a LOA fixando a dotação — o crédito inicial. Os
+ * outros dois ramos são fatos diferentes: antecipação pela LDO, e residual.
+ */
+export const CONTA_DOTACAO_INICIAL = "5.2.2.1.1.01.00";
+
+/**
+ * ⚠️ SINTÉTICA NO PLANO OFICIAL, E **NÃO SE ESCOLHE UMA FILHA AQUI**. Pendência
+ * `ROTEIRO-CREDITO-ADICIONAL-POR-TIPO`, e ela é estrutural, não de digitação.
+ *
+ * O PCASP particiona `5.2.2.1.2 DOTAÇÃO ADICIONAL` **POR TIPO DE CRÉDITO** — sete analíticas em
+ * três ramos: `.01.00` SUPLEMENTAR; `.02.01/.02/.03` os ESPECIAIS; `.03.01/.02/.03` os
+ * EXTRAORDINÁRIOS. O sistema **conhece** o tipo: `TipoCredito { SUPLEMENTAR, ESPECIAL,
+ * EXTRAORDINARIO }` está no decreto do M03. Mas `RoteiroOrcamentario.tipo` é `@unique` por
+ * `TipoMovimentoDotacao`, e `CREDITO_ADICIONAL` é **um** tipo de movimento: há lugar para um
+ * roteiro só.
+ *
+ * Apontar esta constante para a suplementar faria todo crédito ESPECIAL e EXTRAORDINÁRIO ser
+ * lançado como suplementar — e o erro sairia no balancete e na remessa, não aqui. Destravar exige
+ * decisão de MODELO (roteiro por tipo de crédito), não a escolha de uma conta.
+ */
 export const CONTA_DOTACAO_ADICIONAL = "5.2.2.1.2.00.00";
-/** ⚠️ Fora do extrato — `FIXTURE_A_CONFIRMAR`. */
+
+/**
+ * ⚠️ SINTÉTICA NO PLANO OFICIAL, E O NOME DIVERGE. Pendência `ROTEIRO-RESERVA-SEM-CONTA`.
+ *
+ * Este sistema chama `6.2.2.1.2.00.00` de "crédito reservado"; no PCASP ela é **CREDITO
+ * INDISPONÍVEL**, e as suas analíticas são `.01.00` BLOQUEIO DE CREDITO, `.02.00` CREDITO
+ * PRE-EMPENHADO e `.99.00` OUTRAS INDISPONIBILIDADES. Qual delas corresponde à RESERVA de dotação
+ * deste sistema é decisão contábil do ente, com fundamento — não inferência por nome parecido.
+ * Enquanto não houver, `RESERVA` e `RESERVA_LIBERADA` ficam sem roteiro, e o domínio recusa o
+ * movimento, que é o estado correto para uma classificação que ninguém decidiu.
+ */
 export const CONTA_CREDITO_RESERVADO = "6.2.2.1.2.00.00";
 export const CONTA_RECEITA_A_REALIZAR = "6.2.1.1.0.00.00";
 export const CONTA_RECEITA_REALIZADA = "6.2.1.2.0.00.00";

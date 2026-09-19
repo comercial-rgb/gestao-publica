@@ -66,33 +66,75 @@ const ROTEIROS: readonly {
   { tipo: "RESERVA_LIBERADA", debito: CONTA_CREDITO_RESERVADO, credito: CONTA_CREDITO_DISPONIVEL },
 ];
 
-/** Fail-closed: conta ausente ou SINTÉTICA derruba o seed, nomeando o problema. */
-async function contaAnalitica(codigo: string, tipo: string): Promise<string> {
-  const c = await prisma.contaPcasp.findUnique({
-    where: { codigo },
-    select: { id: true, analitica: true },
-  });
-  if (c === null) {
-    throw new Error(
-      `Roteiro ${tipo}: a conta ${codigo} não existe no plano. Rode antes: npm run seed:pcasp.`
-    );
-  }
-  if (!c.analitica) {
-    throw new Error(
-      `Roteiro ${tipo}: a conta ${codigo} é SINTÉTICA. Conta sintética não recebe partida — ` +
-        `a criação da primeira ficha cairia no meio da transação.`
-    );
-  }
-  return c.id;
+/**
+ * ═══ ⚠️ A CONFERÊNCIA CONTINUA IGUAL; O QUE MUDOU É QUEM ELA DERRUBA (V11 V6.1) ═══
+ *
+ * Conta ausente ou SINTÉTICA continua REPROVANDO — a validação não foi afrouxada uma vírgula, e
+ * afrouxá-la para o seed passar seria plantar no banco um roteiro que estoura no meio da primeira
+ * transação de ficha. O que mudou é o ALCANCE da reprovação: ela agora derruba **aquele roteiro**,
+ * não a instalação inteira.
+ *
+ * ⚠️ POR QUE, E ISSO FOI MEDIDO. Das quatro contas que estes cinco roteiros exigem, TRÊS são
+ * sintéticas no PCASP oficial. Uma foi repontada contra a fonte (a dotação inicial); as outras
+ * duas dependem de decisão que não é de digitação — `ROTEIRO-CREDITO-ADICIONAL-POR-TIPO` e
+ * `ROTEIRO-RESERVA-SEM-CONTA`, ambas explicadas em `modules/m01-core-contabil/roteiros.ts`. Com o
+ * tudo-ou-nada, a primeira delas matava `migrate → SQL → PCASP → roteiro → exercício → bootstrap →
+ * cenário → percursos`: o procedimento documentado de instalação não terminava, e nenhum banco
+ * novo nascia.
+ *
+ * É a mesma doutrina do gerador da MSC (M14): o arquivo SAI, e o furo aparece com nome e conta.
+ * Um instalador que se recusa a existir por causa de uma classificação pendente deixa o ente sem
+ * nada; um que instala e NOMEIA o que ficou de fora deixa a decisão com quem pode tomá-la.
+ *
+ * ⚠️ E O FAIL-CLOSED NÃO MUDOU DE LUGAR, ELE CONTINUA ONDE SEMPRE ESTEVE: no USO.
+ * `RoteiroOrcamentario` é consultado a cada movimento de dotação, e movimento sem roteiro derruba
+ * a operação. Um roteiro NÃO semeado é exatamente um movimento que o sistema recusa — o estado
+ * correto para uma classificação contábil que ninguém decidiu.
+ */
+interface Recusa {
+  readonly tipo: string;
+  readonly codigo: string;
+  readonly motivo: string;
 }
 
+async function contaAnalitica(codigo: string, tipo: string): Promise<{ readonly id: string } | Recusa> {
+  const c = await prisma.contaPcasp.findUnique({
+    where: { codigo },
+    select: { id: true, analitica: true, nome: true },
+  });
+  if (c === null) {
+    return { tipo, codigo, motivo: `a conta não existe no plano carregado. Rode antes: npm run seed:pcasp-oficial.` };
+  }
+  if (!c.analitica) {
+    // As filhas analíticas, lidas do MESMO plano que está no banco — quem for decidir precisa
+    // ver as candidatas, e vê-las da fonte, não de uma lista escrita aqui.
+    const filhas = await prisma.contaPcasp.findMany({
+      where: { codigo: { startsWith: codigo.slice(0, 9) }, analitica: true },
+      orderBy: { codigo: "asc" },
+      select: { codigo: true, nome: true },
+    });
+    const candidatas = filhas.map((f) => `${f.codigo} ${f.nome}`).join("; ");
+    return {
+      tipo,
+      codigo,
+      motivo:
+        `a conta é SINTÉTICA no plano ("${c.nome}") e não recebe partida. ` +
+        `Analíticas sob ela: ${candidatas === "" ? "nenhuma" : candidatas}.`,
+    };
+  }
+  return { id: c.id };
+}
+
+const recusas: Recusa[] = [];
 for (const r of ROTEIROS) {
   const debito = await contaAnalitica(r.debito, r.tipo);
   const credito = await contaAnalitica(r.credito, r.tipo);
+  if ("motivo" in debito) { recusas.push(debito); continue; }
+  if ("motivo" in credito) { recusas.push(credito); continue; }
   await prisma.roteiroOrcamentario.upsert({
     where: { tipo: r.tipo },
-    update: { contaDebitoId: debito, contaCreditoId: credito },
-    create: { tipo: r.tipo, contaDebitoId: debito, contaCreditoId: credito, criadoPor: "SEED" },
+    update: { contaDebitoId: debito.id, contaCreditoId: credito.id },
+    create: { tipo: r.tipo, contaDebitoId: debito.id, contaCreditoId: credito.id, criadoPor: "SEED" },
   });
 }
 
@@ -115,5 +157,16 @@ console.log(
     `     lançamento é fail-closed. O EMPENHO não entra aqui — o M05 já o lança pelo roteiro\n` +
     `     que o chamador passa.`
 );
+
+if (recusas.length > 0) {
+  console.log(`\n  ⚠️ ${recusas.length} ROTEIRO(S) NÃO CONFIGURADO(S) — e o sistema RECUSA o movimento deles:\n`);
+  for (const r of recusas) console.log(`     ${r.tipo.padEnd(20)} ${r.codigo}: ${r.motivo}`);
+  console.log(
+    `\n     Isto NÃO é um seed pela metade: é a classificação contábil que falta, nomeada. Escolher\n` +
+      `     a conta aqui seria inventar norma. Ver as pendências ROTEIRO-CREDITO-ADICIONAL-POR-TIPO e\n` +
+      `     ROTEIRO-RESERVA-SEM-CONTA em modules/m01-core-contabil/roteiros.ts.\n` +
+      `     A instalação PROSSEGUE: o que depende destes movimentos é que fica recusado.`
+  );
+}
 
 await prisma.$disconnect();
