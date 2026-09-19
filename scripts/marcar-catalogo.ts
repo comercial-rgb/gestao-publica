@@ -2070,6 +2070,20 @@ const MAPA: Readonly<Record<string, Marca>> = {
       "⚠️ PARCIAL: não há impressão da memória em documento, e correção monetária, multa e juros por parcela NÃO são modelados — o que se depura é o cálculo do lançamento, não o da parcela vencida.",
   },
 
+  // ═══ V11 V7.3 — A DISPONIBILIDADE DE RECURSO NOVO TEM TELA ═══
+  "5.10.1.48": {
+    situacao: "PARCIAL",
+    evidencia:
+      "V11 V7.3: a tela /planejamento/recursos-novos mostra, POR FONTE e por origem (superávit financeiro, excesso de arrecadação, operação de crédito), o valor DECLARADO, o já UTILIZADO e o saldo DISPONÍVEL, mais os decretos que consumiram cada fonte. ⚠️ ZERO SEGUNDA ARITMÉTICA: o utilizado sai da MESMA função (usadoDaDisponibilidade) que o guard do crédito subtrai dentro da transação que grava o decreto — uma tela que somasse por conta própria anunciaria saldo que o guard recusa. A declaração é VERSIONADA: corrigir a apuração cria versão e não apaga o número contra o qual um decreto já foi aprovado. Testes: modules/m03-creditos/m03-declaracao-de-disponibilidade.test.ts (12/12, quatro mutações provadas: apagar a anterior, remover o piso do já usado, ler a versão errada, remover o distinct da consulta) e test/ui/FormDeclaracao.test.tsx (9/9). " +
+      "⚠️ PARCIAL, e por dois motivos nomeados: (1) a consulta NÃO é 'por entidade e consolidada' — a apuração é do ENTE, por fonte, e não há recorte por unidade gestora nem soma consolidada de entidades (DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE); (2) o valor do superávit é DECLARADO por quem apurou, com a explicação de onde saiu, e não derivado do balanço patrimonial do exercício anterior pelo próprio sistema — a amarração contra os FATOS do encerramento existe só no crédito por superávit (SuperavitFinanceiroPort), não nesta consulta.",
+    rota_verificada:
+      "papel: DECLARAR_DISPONIBILIDADE_DE_RECURSO_NOVO (declarar) e CONSULTAR_PLANEJAMENTO (ler) · " +
+      "contexto: banco de INSTALAÇÃO LIMPA criado do zero nesta corrida (gestao_publica_instalacao_v7m2_v73, 194 migrations), next build + servir-percursos em 3010, 2026-09-19 · " +
+      "passos: /planejamento/recursos-novos → declarar 100.000,00 na fonte 500 por excesso de arrecadação → redeclarar 120.000,00 → decreto suplementar de 7.500,00 em /planejamento/creditos-adicionais · " +
+      "esperado: a primeira declaração se anuncia como primeira; a segunda confirma dizendo que substituiu 100.000,00; a tela mostra UMA linha (a vigente, marcada v2); as DUAS versões continuam no banco; quem não tem a ação é recusado pelo SERVIDOR nomeando-a · " +
+      "obtido: 29/29 passos, 0 falhas (scripts/smoke-credito-adicional.ts) · " +
+      "artefato: .registro-de-execucao/percurso-credito-v73-final-2026-09-19T23-13-34-501Z.log.",
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════

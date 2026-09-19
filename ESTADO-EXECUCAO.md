@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | `2e096fb` (V11 V7 — o crédito adicional na conta do seu tipo, e o percurso que o abre no navegador) — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
+| HEAD | `c947450` + a unidade V7.3 (a disponibilidade de recurso novo ganha tela e passa a ser versionada) — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
-| Frente em execução | **V11** — V1.1, V3.1, V4.1, V4.2 (seção 65), V2.1 eSocial (seção 66), V5.1/V5.2 (seção 67), V6 (seção 68) e **V7: o crédito adicional por tipo de crédito, e o percurso que o abre** (seção 69). Guichê não iniciado; V6 (AWS) bloqueado |
-| Último resultado | seção 69 — três commits (`d5deb9d`, `eed4114`, `2e096fb`). **`ROTEIRO-CREDITO-ADICIONAL-POR-TIPO` resolvido**: `RoteiroOrcamentario` passou a ser chaveado pelo par (movimento, tipo de crédito), e o crédito adicional SUPLEMENTAR entra na analítica do plano. Instalação limpa do zero `exit=0`, 21 passos, UMA tolerância — e ela encolheu para a perna de ANULAÇÃO. **Percurso do crédito adicional: 18 passos, 0 falhas**, com a partida conferida em `5.2.2.1.2.01.00` contra o plano oficial. Dois defeitos de tela medidos no percurso (decreto que gravava sem dizer nada; data que não chegava a campo controlado, no helper de TODOS os percursos). tsc app/backend/scripts `exit=0`; **suíte inteira 3125/3130 em 299 arquivos**, com as 5 restantes medidas como vermelhas HERDADAS |
-| Pendências relevantes | seção 69.2 — **`CREDITO-ESPECIAL-ABERTO-OU-REABERTO`** (falta um FATO, não uma conta: aberto ou reaberto, CF art. 167 § 2º), **`ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`** (duas analíticas com nome IDÊNTICO em ramos diferentes) e **`DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`** (duas visões irmãs do mesmo fato). `ROTEIRO-RESERVA-SEM-CONTA` e `CONSIGNACAO-CONTA-SINTETICA` seguem — e a segunda tem uma consequência nova: o percurso da cadeia da despesa **não atravessa** em instalação limpa (sem tipo de consignação, a tela de pagamento não oferece retenção). `MARCAR-EM-CAMPO-CONTROLADO` e `DISPONIBILIDADE-DE-RECURSO-NOVO-SEM-TELA` nascem aqui. **CINCO** guards vermelhos herdados (o quinto, `m13` t8, é da V4.2 e só apareceu agora). **`LEIAUTE-ESOCIAL-NAO-OBTIDO`**, **certificado A1** e **V6 (AWS)** são três insumos externos distintos. Escopo pendente: o **guichê**. Linha **ENT12 do Windows** por reconciliar |
-| Próximo passo | seção 69.8 |
+| Frente em execução | **V11** — V1.1, V3.1, V4.1, V4.2 (seção 65), V2.1 eSocial (seção 66), V5.1/V5.2 (seção 67), V6 (seção 68), V7/V7.1/V7.2 (seção 69) e **V7.3: a disponibilidade de recurso novo ganha tela** (seção 70). Guichê não iniciado; V6 (AWS) bloqueado |
+| Último resultado | seção 70 — **`DISPONIBILIDADE-DE-RECURSO-NOVO-SEM-TELA` resolvida**: o crédito por recurso novo cabe inteiro na interface (`/planejamento/recursos-novos`). A fatia encontrou um defeito que não era o pedido: a declaração fazia `UPDATE` e **reescrevia a própria história** — um decreto aprovado contra 100.000 passava a constar aprovado contra 40.000, sem rastro. Passou a ser **versionada**, com piso no já usado, leitura da vigente e a chave do lock trocada do `id` da linha para `exercicio:fonteId:origem` (com `id`, quem lê a v2 e quem cria a v3 travavam postes diferentes). tsc app/backend/scripts `exit=0`; 12/12 no domínio novo e 9/9 na tela, com **seis mutações e seis acusações**; M03+M16 195/195; instalação limpa do zero `exit=0` com 194 migrations; **percurso do crédito adicional: 29 passos, 0 falhas**, agora declarando o lastro pela tela. **QUATRO** vermelhos, todos herdados — o quinto da V7.2 foi consertado lá |
+| Pendências relevantes | seção 70.8 — **`DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE`** e **`SUPERAVIT-DECLARADO-NAO-DERIVADO`** nascem aqui (e são o motivo de `5.10.1.48` ficar em `PARCIAL`). Achado do catálogo: as CINCO marcações do V10 T2 estavam no mapa e **nunca tinham sido gravadas** no JSON — aplicadas nesta rodada. Seguem da seção 69.2: `CREDITO-ESPECIAL-ABERTO-OU-REABERTO`, `ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`, `DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`, `ROTEIRO-RESERVA-SEM-CONTA`, `CONSIGNACAO-CONTA-SINTETICA` (o percurso da cadeia da despesa não atravessa em instalação limpa) e `MARCAR-EM-CAMPO-CONTROLADO`. **QUATRO** guards vermelhos herdados. **`LEIAUTE-ESOCIAL-NAO-OBTIDO`**, **certificado A1** e **V6 (AWS)** são três insumos externos distintos. Escopo pendente: o **guichê**. Linha **ENT12 do Windows** por reconciliar |
+| Próximo passo | seção 70.9 — o **guichê** |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -8370,3 +8370,140 @@ financeiro, excesso de arrecadação, operação de crédito) ainda entra por se
 
 Depois dela: o **guichê**, ou os 7 modelos órfãos que o `modelo-sem-caso-de-uso` acusa desde
 `af32666`.
+
+---
+
+## 70. V11 V7.3 — a disponibilidade de recurso novo ganha tela, e para de reescrever a própria história
+
+### 70.1 O que passou a funcionar, e a rota real para chegar lá
+
+O crédito adicional por **recurso novo** cabe inteiro na interface. Até aqui, o lastro contra o
+qual o decreto é conferido — a disponibilidade apurada da fonte — só entrava por seed: em
+instalação limpa, o servidor municipal lia uma recusa que apontava para um cadastro que a
+interface não oferecia.
+
+Rota: **`/planejamento/recursos-novos`** (menu do Planejamento, e link a partir da tela dos
+créditos adicionais). Declara-se por fonte e por origem — superávit financeiro, excesso de
+arrecadação, operação de crédito —, com o valor apurado e **a explicação obrigatória de onde ele
+saiu**. A tela mostra, lado a lado, o DECLARADO, o UTILIZADO e o DISPONÍVEL, mais os decretos que
+consumiram cada fonte.
+
+### 70.2 O defeito que a fatia encontrou, e que não era o pedido
+
+`DisponibilidadeRecursoNovo` tinha **uma linha por (exercício, fonte, origem)**, e redeclarar
+fazia `UPDATE`. Um decreto aprovado contra 100.000 passava a constar aprovado contra 40.000, e
+**nada no banco lembrava o contrário** — a prestação de contas leria o número de hoje como se
+fosse o de então.
+
+A declaração passou a ser **versionada**: redeclarar cria a versão seguinte e a anterior
+permanece. Três consequências que tiveram de ser tratadas juntas:
+
+- **o piso.** Declarar abaixo do que a fonte já suplementou é recusado nomeando o usado. Sem
+  isso, a declaração nova deixaria, no mesmo instante, decreto VIVO apoiado em recurso que ela
+  própria nega — e o sistema só perceberia no decreto seguinte, quando já não dá para saber o que
+  corrigir;
+- **a leitura.** O guard do crédito passou de `findUnique` para a **vigente** (maior versão). Ler
+  qualquer outra conferiria o decreto contra número já substituído;
+- **a chave do lock.** Era o `id` da linha. Com versões, cada uma tem `id` próprio: quem lê a v2 e
+  quem acaba de criar a v3 travariam **postes diferentes** e não se veriam. O lock continuaria
+  existindo e deixaria de proteger, que é o pior modo de falha de um lock. A chave passou a ser
+  `exercicio:fonteId:origem`, estável entre versões (`chaveDaDisponibilidade`).
+
+Repetir a declaração IDÊNTICA (mesmo valor, mesma explicação) é recusada: não é fato novo, e uma
+versão sem diferença suja o histórico que a tabela existe para preservar. O mesmo valor com
+explicação NOVA **é** versão — corrigir o fundamento é um fato.
+
+### 70.3 Ação própria, e por quê
+
+`DECLARAR_DISPONIBILIDADE_DE_RECURSO_NOVO` é ação separada de `CRIAR_DECRETO_DE_CREDITO`, de
+propósito: este número é o que AUTORIZA a despesa, e dar os dois crachás à mesma pessoa faria o
+guard do crédito conferir um lastro que ela mesma acabou de declarar. Censo, enum do Prisma,
+módulo, área e a atualização de permissões **v25** acompanham.
+
+`ANULACAO` **não** é origem declarável, e não é recorte de tela: crédito por anulação não traz
+dinheiro novo, ele remaneja, e o que o autoriza é o saldo da ficha anulada, conferido por SUM
+dentro da transação. Uma opção na lista criaria declaração que nada lê.
+
+### 70.4 O que foi medido
+
+| Medida | Resultado |
+|---|---|
+| tsc app / backend / scripts | `exit=0` |
+| `m03-declaracao-de-disponibilidade.test.ts` (novo) | **12/12** |
+| `test/ui/FormDeclaracao.test.tsx` (novo) | **9/9** |
+| M03 + M16 completos | **195/195 em 24 arquivos** |
+| `test:rapido` | 1045/1049 em 100 arquivos |
+| bateria de guards de tela (`test/` + M16) | 962/966 em 117 arquivos |
+| instalação limpa do zero (banco criado nesta corrida) | `exit=0`, 194 migrations, UMA tolerância (a perna de ANULAÇÃO) |
+| **percurso do crédito adicional** | **29 passos, 0 falhas** |
+
+**Seis mutações, seis acusações, verde após restaurar** (md5 conferido contra a cópia anterior):
+
+| Mutação | Quem acusou |
+|---|---|
+| apagar a versão anterior ao declarar | t2 — e só t2 |
+| desligar o piso do já usado | t3 |
+| ler a PRIMEIRA versão como vigente | t4 |
+| remover o `distinct` da consulta | t5 |
+| `defaultValue` na origem | UI t3 |
+| tirar um campo de dentro do `<label>` | UI t2, **nomeando** `descricao` |
+
+**Vermelhos: QUATRO, todos herdados** — `modelo-sem-caso-de-uso`, `fronteira-ui`,
+`formularios-na-mesma-pagina` t6 e `data-civil`. Nenhum nomeia arquivo da V7.3; os infratores
+listados são de `folha/esocial`, `folha/rubricas` e `administracao/transparencia`. Eram CINCO na
+mesma bateria da V7.2: o que saiu é o `FormDecretoCredito` t14, consertado na V7.2.
+
+### 70.5 Migrations e SQL
+
+- `20261002090000_v11_v73_disponibilidade_versionada` — `ADD COLUMN versao DEFAULT 1`, unique
+  composta `(exercicio, fonteId, origem, versao)`, índice de leitura, e dois CHECK:
+  `ck_disponibilidade_versao_positiva` e `ck_disponibilidade_valor_positivo`
+- `20261002090100_v11_v73_acao_da_disponibilidade` — o valor novo do enum `AcaoDoSistema`, em
+  migration **própria**
+
+Aditivas. O único `DROP` é o da unique antiga, que a composta substitui — a coluna e os dados
+permanecem.
+
+### 70.6 Catálogo
+
+`5.10.1.48` (consulta de superávit financeiro com valor, suplementado e saldo) → **`PARCIAL`**,
+com rota verificada e artefato. Não sobe de `PARCIAL` por dois motivos nomeados na evidência:
+a consulta **não é por entidade nem consolidada** (`DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE`), e
+o superávit é **declarado por quem apurou**, não derivado do balanço pelo sistema.
+
+**Achado:** as **cinco** marcações do V10 T2 (`5.29.22/23/24/25/50`) estavam escritas no mapa de
+`scripts/marcar-catalogo.ts` e **nunca tinham sido gravadas** no catálogo — o mapa dizia `PARCIAL`,
+o JSON dizia `NAO_VERIFICADO`. Foram aplicadas nesta rodada, junto com a minha. O script é
+idempotente; o que faltou numa sessão anterior foi rodá-lo com `--aplicar`.
+
+### 70.7 O percurso encolheu o seed, e ganhou uma recusa
+
+`scripts/preparar-credito-adicional.ts` perdeu o seed da disponibilidade — ela entra pela tela
+agora, como a lei perdeu o dela na V7.2. Sobrou uma coisa só: o usuário deliberadamente FRACO.
+
+E ganhou uma **recusa com motivo**: se a fonte já tem declaração naquele exercício, o script para
+e explica. O percurso afirma "primeira declaração" e depois "versão 2" — rodado em banco já usado,
+ele acusaria a tela de mentir quando o que houve foi banco sujo.
+
+Os 29 passos incluem a negativa da ação NOVA (7.5–7.8): a tela renderiza o formulário para quem só
+lê o planejamento, e **o servidor** recusa nomeando `DECLARAR_DISPONIBILIDADE_DE_RECURSO_NOVO`,
+sem gravar nada.
+
+### 70.8 Pendências que nascem ou seguem
+
+- **`DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE`** (nasce) — a apuração é do ENTE, por fonte. O TR
+  pede "por entidade e consolidada".
+- **`SUPERAVIT-DECLARADO-NAO-DERIVADO`** (nasce) — o valor do superávit é declarado com a
+  explicação de onde saiu; não é o sistema que o apura do balanço do exercício anterior. A
+  amarração contra os fatos do encerramento existe no crédito por superávit
+  (`SuperavitFinanceiroPort`), não nesta consulta.
+- `DISPONIBILIDADE-DE-RECURSO-NOVO-SEM-TELA` — **resolvida aqui**.
+- Seguem: `CREDITO-ESPECIAL-ABERTO-OU-REABERTO`, `ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`,
+  `DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`, `ROTEIRO-RESERVA-SEM-CONTA`,
+  `CONSIGNACAO-CONTA-SINTETICA` (com o percurso da cadeia da despesa sem atravessar em instalação
+  limpa), `MARCAR-EM-CAMPO-CONTROLADO`, os 4 guards vermelhos herdados, `LEIAUTE-ESOCIAL-NAO-OBTIDO`,
+  certificado A1 e V6 (AWS).
+
+### 70.9 O próximo ponto exato
+
+O **guichê** — o escopo planejado que resta.

@@ -2422,9 +2422,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: DECLARAR_DISPONIBILIDADE_DE_RECURSO_NOVO (declarar) e CONSULTAR_PLANEJAMENTO (ler) · contexto: banco de INSTALAÇÃO LIMPA criado do zero nesta corrida (gestao_publica_instalacao_v7m2_v73, 194 migrations), next build + servir-percursos em 3010, 2026-09-19 · passos: /planejamento/recursos-novos → declarar 100.000,00 na fonte 500 por excesso de arrecadação → redeclarar 120.000,00 → decreto suplementar de 7.500,00 em /planejamento/creditos-adicionais · esperado: a primeira declaração se anuncia como primeira; a segunda confirma dizendo que substituiu 100.000,00; a tela mostra UMA linha (a vigente, marcada v2); as DUAS versões continuam no banco; quem não tem a ação é recusado pelo SERVIDOR nomeando-a · obtido: 29/29 passos, 0 falhas (scripts/smoke-credito-adicional.ts) · artefato: .registro-de-execucao/percurso-credito-v73-final-2026-09-19T23-13-34-501Z.log.",
+      "evidencia": "V11 V7.3: a tela /planejamento/recursos-novos mostra, POR FONTE e por origem (superávit financeiro, excesso de arrecadação, operação de crédito), o valor DECLARADO, o já UTILIZADO e o saldo DISPONÍVEL, mais os decretos que consumiram cada fonte. ⚠️ ZERO SEGUNDA ARITMÉTICA: o utilizado sai da MESMA função (usadoDaDisponibilidade) que o guard do crédito subtrai dentro da transação que grava o decreto — uma tela que somasse por conta própria anunciaria saldo que o guard recusa. A declaração é VERSIONADA: corrigir a apuração cria versão e não apaga o número contra o qual um decreto já foi aprovado. Testes: modules/m03-creditos/m03-declaracao-de-disponibilidade.test.ts (12/12, quatro mutações provadas: apagar a anterior, remover o piso do já usado, ler a versão errada, remover o distinct da consulta) e test/ui/FormDeclaracao.test.tsx (9/9). ⚠️ PARCIAL, e por dois motivos nomeados: (1) a consulta NÃO é 'por entidade e consolidada' — a apuração é do ENTE, por fonte, e não há recorte por unidade gestora nem soma consolidada de entidades (DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE); (2) o valor do superávit é DECLARADO por quem apurou, com a explicação de onde saiu, e não derivado do balanço patrimonial do exercício anterior pelo próprio sistema — a amarração contra os FATOS do encerramento existe só no crédito por superávit (SuperavitFinanceiroPort), não nesta consulta.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.49",
@@ -16941,8 +16941,8 @@
       "candidato_reaproveitamento": "siafic-cg:M20 (apenas importacao)",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V10 T2: existe configuração VERSIONADA de certidão, com validade em dias corridos e fundamento legal obrigatório, e sem ela a emissão é RECUSADA (nada de prazo padrão no código). Teste: test/certidao.test.ts C4 'SEM CONFIGURAÇÃO de validade'. Tela: /receita/certidoes. ⚠️ PARCIAL, e o que falta é a maior parte do enunciado: não há cadastro de FINALIDADES de certidão, não há validade POR ESPÉCIE (a configuração é uma só, global), não há controle de visibilidade no portal do cidadão nem de restrição por finalidade, e não há cadastro de formulários exibidos no ato da emissão.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.29.23",
@@ -16955,8 +16955,8 @@
       "candidato_reaproveitamento": "siafic-cg:M20 (apenas importacao)",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V10 T2: a solicitação, a análise e a emissão das TRÊS espécies (negativa, positiva e positiva com efeito de negativa) existem, com decisão humana registrada, validade vinda de configuração versionada e emissão CONGELADA (conteúdo + sha256). Testes: test/certidao.test.ts C3–C4 (21/21). Telas: /receita/certidoes. ⚠️ PARCIAL, e por três motivos nomeados: (1) NÃO há documento PDF — a emissão congela o conteúdo e a conferência é pela chave, sem arquivo (CERTIDAO-SEM-DOCUMENTO-PDF); (2) a COBERTURA da base fiscal é incompleta: dívida ativa, parcelamento e cadastro econômico/ISS estão FORA DO ALCANCE, e por isso o sistema NÃO emite negativa sozinho — exige declaração escrita de quem assina (DIVIDA-ATIVA-SEM-PESSOA); (3) a exigibilidade suspensa (art. 206 do CTN) não é modelada: quem escolhe 'positiva com efeito de negativa' é a pessoa que analisa.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.29.24",
@@ -16969,8 +16969,8 @@
       "candidato_reaproveitamento": "siafic-cg:M20 (apenas importacao)",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V10 T2: a consulta de todas as solicitações e certidões emitidas existe, com situação, espécie, validade, titular e a cobertura de cada base consultada. Tela: /receita/certidoes. ⚠️ PARCIAL: não há ativar/desativar uma certidão emitida, e não há reimpressão de documento (não há documento — ver 5.29.23). Decidir duas vezes o mesmo pedido é RECUSADO, e o caminho para uma situação nova é um pedido novo (test/certidao.test.ts C4 'decidir duas vezes').",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.29.25",
@@ -16983,8 +16983,8 @@
       "candidato_reaproveitamento": "siafic-cg:M20 (apenas importacao)",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V10 T2: há serviço público de consulta de autenticidade — /consulta/certidao, SEM sessão —, com chave de 64 hex de randomBytes (não enumerável), devolvendo só protocolo, espécie, titular com documento MASCARADO, emissão, validade e vigência; nunca o extrato de débitos. Chave inválida e chave inexistente respondem IGUAL. Testes: test/certidao.test.ts C5 (5 casos). ⚠️ PARCIAL: não há QR Code, porque não há documento impresso onde imprimi-lo (CERTIDAO-SEM-DOCUMENTO-PDF). A chave é digitada, não lida por câmera.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.29.26",
@@ -17333,8 +17333,8 @@
       "candidato_reaproveitamento": "siafic-cg:M20 (apenas importacao)",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V10 T2: cada lançamento tributário congela a MEMÓRIA do cálculo — a fórmula do ente, o fundamento, a versão do cadastro, a versão da tabela e cada variável com o seu valor e a sua ORIGEM (cadastro, atributo do imóvel ou parâmetro da tabela) — e a tela a mostra, com a impressão digital (sha256) do que foi congelado. Atualizar a tabela depois NÃO muda o lançamento: test/lancamento-tributario.test.ts B1 'a memória é CONGELADA'. Tela: /receita/lancamentos/[loteId]. ⚠️ PARCIAL: não há impressão da memória em documento, e correção monetária, multa e juros por parcela NÃO são modelados — o que se depura é o cálculo do lançamento, não o da parcela vencida.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.29.51",
