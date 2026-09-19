@@ -1,6 +1,6 @@
 import { diaCivil, diaCivilBr } from "../../packages/datas/index.js";
 import { toMoney } from "../../packages/contracts/index.js";
-import { roteiroLiquidacao, elementoDebitaEstoque } from "../../modules/m01-core-contabil/roteiros";
+import { CONTA_FORNECEDORES_A_PAGAR, roteiroLiquidacao, elementoDebitaEstoque } from "../../modules/m01-core-contabil/roteiros";
 import { naturezaDoEmpenho } from "../../modules/m05-despesa/consultas";
 import { alcanceNoContrato, type AlcanceNoContrato } from "../../modules/m11-licitacoes/acesso-da-fiscalizacao.js";
 import { criarM05DepsComContratos } from "../../modules/m11-licitacoes/adapter-m05.js";
@@ -40,7 +40,7 @@ import { comEscritaAutenticada, exigirSessao, type Identidade } from "./sessao";
  * lista é "a primeira opção" nem "o maior saldo": quem escolhe é a pessoa, e o domínio confere.
  */
 
-const CONTA_FORNECEDORES = "2.1.3.1.1.00.00";
+
 
 export interface PapeisNaExecucao {
   readonly gestor: boolean;
@@ -284,7 +284,7 @@ export async function liquidarParcelaNaTela(c: Campos): Promise<string> {
   const natureza = await naturezaDoEmpenho(prisma, empenhoId);
   if (natureza === null) throw new Error("Empenho não encontrado. Nada foi gravado.");
   const r = await comEscritaAutenticada("LIQUIDAR", (criadoPor) =>
-    liquidarParcelasDoContrato(prisma, { empenhoId, documentoFiscalId: t(c, "documentoFiscalId"), data: t(c, "data"), parcelas, criadoPor }, roteiroLiquidacao({ codElemento: natureza.codElemento, obrigacaoAPagar: CONTA_FORNECEDORES }), criarM05DepsComContratos(prisma))
+    liquidarParcelasDoContrato(prisma, { empenhoId, documentoFiscalId: t(c, "documentoFiscalId"), data: t(c, "data"), parcelas, criadoPor }, roteiroLiquidacao({ codElemento: natureza.codElemento, obrigacaoAPagar: CONTA_FORNECEDORES_A_PAGAR }), criarM05DepsComContratos(prisma))
   );
   return r.jaExistia
     ? `Esta liquidação já estava gravada (${r.numero}, R$ ${brl(r.valor)}): nada foi lançado de novo.`

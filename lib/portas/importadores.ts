@@ -9,6 +9,7 @@ import {
 } from "../../modules/m20-importador/servico";
 import { criarM05DepsComAlmoxarifado } from "../../modules/m10-patrimonial/adapter-m05-almox";
 import { roteiroEmpenho, roteiroLiquidacao, roteiroPagamento } from "../../modules/m05-despesa/dominio";
+import { CONTA_FORNECEDORES_A_PAGAR } from "../../modules/m01-core-contabil/roteiros";
 import { criarM04Deps } from "../../modules/m04-receita/adapter-prisma";
 import { roteiroArrecadacao } from "../../modules/m04-receita/dominio";
 
@@ -29,7 +30,7 @@ export type { ImportacaoNaLista } from "../../modules/m20-importador/servico";
 
 // ── Contas canônicas da POC (mesmas do seed) ───────────────────────────────────────
 const CONTA_BANCOS = "1.1.1.1.2.00.00";
-const CONTA_OBRIGACAO = "2.1.3.1.1.00.00";
+
 const CONTA_VPD = "3.3.2.1.1.01.00";
 const CONTA_DISP = "6.2.2.1.1.00.00";
 const CONTA_EMPENHADO = "6.2.2.1.3.01.00";
@@ -39,8 +40,8 @@ const CONTAS_CONSIGNACAO: Readonly<Record<string, string>> = { INSS: "2.1.8.8.1.
 
 const ROTEIROS = {
   empenho: roteiroEmpenho({ creditoDisponivel: CONTA_DISP, creditoEmpenhado: CONTA_EMPENHADO }),
-  liquidacao: roteiroLiquidacao({ variacaoDiminutiva: CONTA_VPD, obrigacaoAPagar: CONTA_OBRIGACAO, creditoEmpenhado: CONTA_EMPENHADO, creditoLiquidado: CONTA_LIQUIDADO }),
-  pagamento: roteiroPagamento({ obrigacaoAPagar: CONTA_OBRIGACAO, disponibilidade: CONTA_BANCOS, creditoLiquidado: CONTA_LIQUIDADO, creditoPago: CONTA_PAGO }),
+  liquidacao: roteiroLiquidacao({ variacaoDiminutiva: CONTA_VPD, obrigacaoAPagar: CONTA_FORNECEDORES_A_PAGAR, creditoEmpenhado: CONTA_EMPENHADO, creditoLiquidado: CONTA_LIQUIDADO }),
+  pagamento: roteiroPagamento({ obrigacaoAPagar: CONTA_FORNECEDORES_A_PAGAR, disponibilidade: CONTA_BANCOS, creditoLiquidado: CONTA_LIQUIDADO, creditoPago: CONTA_PAGO }),
 };
 const R_ARRECADACAO = roteiroArrecadacao({
   disponibilidade: CONTA_BANCOS, variacaoAumentativa: "4.1.1.2.1.01.00",

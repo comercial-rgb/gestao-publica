@@ -186,6 +186,33 @@ export const CONTA_DDR_COMPROMETIDA_EMPENHO = "8.2.1.1.2.01.00";
 export const CONTA_DDR_COMPROMETIDA_LIQUIDACAO = "8.2.1.1.3.01.00";
 export const CONTA_DDR_UTILIZADA = "8.2.1.1.4.01.00";
 
+/**
+ * A obrigação com o fornecedor que a liquidação faz nascer e o pagamento extingue.
+ *
+ * ⚠️ REPONTADA EM 2026-09-19, E ELA ESTAVA TRIPLICADA FORA DAQUI. Este código vivia como
+ * `const CONTA_FORNECEDORES` repetido em `lib/portas/liquidacao.ts`, `pagamento.ts` e
+ * `execucao-do-contrato.ts`, apontando para `2.1.3.1.1.00.00` — o nó de CONSOLIDAÇÃO, que é
+ * SINTÉTICO no PCASP oficial. Em instalação limpa a liquidação recusava no meio do percurso
+ * da ponte contratual, depois de a medição e o recebimento já terem passado.
+ *
+ * **Fonte:** `Pcasp_2025.xlsx` do TCE-PB. O ramo `2.1.3.1.1` se desdobra em FORNECEDORES
+ * NACIONAIS (`.01`), CONTAS A PAGAR CREDORES NACIONAIS (`.03`), precatórios (`.05` a `.08`)
+ * e decisões judiciais (`.09`/`.10`); dentro de `.01`, em não parcelados (`.01.01`),
+ * parcelados (`.01.02`), renegociação (`.01.03`) e demais (`.01.99`). A liquidação ordinária
+ * de um contrato faz nascer obrigação com fornecedor NÃO PARCELADA — o parcelamento e a
+ * renegociação são atos próprios, que o sistema não tem.
+ *
+ * ⚠️ E ISTO NÃO DEVERIA SER CONSTANTE. `roteiroLiquidacao` recebe `obrigacaoAPagar` por
+ * PARÂMETRO justamente porque o credor pode não ser fornecedor (uma conta de energia é
+ * `.03.01`). Hoje as três portas passam sempre a mesma conta, e a escolha do credor não
+ * chega ao roteiro. Pendência `OBRIGACAO-A-PAGAR-POR-NATUREZA-DO-CREDOR`: enquanto ela
+ * viver, toda liquidação nasce como obrigação com fornecedor.
+ *
+ * ⚠️ Saldo já lançado na conta antiga não migra sozinho — `repontarConta` do M01.
+ * Pendência `FORNECEDORES-SALDO-A-REPONTAR`.
+ */
+export const CONTA_FORNECEDORES_A_PAGAR = "2.1.3.1.1.01.01";
+
 /** Variação Patrimonial Diminutiva — a despesa incorrida que NÃO vira ativo. */
 export const CONTA_VPD = "3.3.2.1.1.01.00";
 /**

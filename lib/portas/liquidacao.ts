@@ -13,7 +13,7 @@ import { liquidar } from "../../modules/m05-despesa/servico-bloco2";
 // ⚠️ `CONTA_ESTOQUE` e `contrapartidaDaLiquidacao` SAÍRAM DAQUI junto com a recusa: quem
 // decide se a liquidação é de material é o adapter, dentro da transação, pela mesma régua.
 // Deixá-los importados manteria nesta porta a aparência de uma decisão que ela não toma mais.
-import { elementoDebitaEstoque, roteiroLiquidacao } from "../../modules/m01-core-contabil/roteiros";
+import { CONTA_FORNECEDORES_A_PAGAR, elementoDebitaEstoque, roteiroLiquidacao } from "../../modules/m01-core-contabil/roteiros";
 
 /**
  * PORTA — LIQUIDAÇÕES (TR 5.21).
@@ -27,8 +27,7 @@ import { elementoDebitaEstoque, roteiroLiquidacao } from "../../modules/m01-core
 
 export { PortaSemBancoError };
 
-/** A obrigação que a liquidação faz nascer. Vem do ATO — o credor pode não ser fornecedor. */
-const CONTA_FORNECEDORES = "2.1.3.1.1.00.00";
+
 
 /**
  * Erro NOMEADO: a liquidação de material está bloqueada, e não é limitação da tela.
@@ -177,7 +176,7 @@ export async function registrarLiquidacao(input: {
       },
       roteiroLiquidacao({
         codElemento: natureza.codElemento,
-        obrigacaoAPagar: CONTA_FORNECEDORES,
+        obrigacaoAPagar: CONTA_FORNECEDORES_A_PAGAR,
       }),
       criarM05DepsComAlmoxarifado(prisma)
     );

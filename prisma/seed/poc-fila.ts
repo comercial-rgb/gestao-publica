@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url";
 import { criarPrismaClient } from "../../modules/m01-core-contabil/adapter-prisma.js";
 import { empenhar } from "../../modules/m05-despesa/servico.js";
 import { liquidar } from "../../modules/m05-despesa/servico-bloco2.js";
+import { CONTA_FORNECEDORES_A_PAGAR } from "../../modules/m01-core-contabil/roteiros.js";
 import { roteiroEmpenho, roteiroLiquidacao } from "../../modules/m05-despesa/dominio.js";
 import { criarM05DepsComAlmoxarifado } from "../../modules/m10-patrimonial/adapter-m05-almox.js";
 import type { PrismaClient } from "../generated/client/client.js";
@@ -40,7 +41,8 @@ const D = (mes: number, dia: number): Date => new Date(Date.UTC(2026, mes - 1, d
 const R_EMPENHO = roteiroEmpenho({ creditoDisponivel: "6.2.2.1.1.00.00", creditoEmpenhado: "6.2.2.1.3.01.00" });
 const R_LIQUIDACAO = roteiroLiquidacao({
   variacaoDiminutiva: "3.3.2.1.1.01.00",
-  obrigacaoAPagar: "2.1.3.1.1.00.00",
+  // ⚠️ DESCIDA PARA A ANALÍTICA (V11 V6.2): o nó `.00.00` é CONSOLIDAÇÃO e é SINTÉTICO.
+  obrigacaoAPagar: CONTA_FORNECEDORES_A_PAGAR,
   creditoEmpenhado: "6.2.2.1.3.01.00",
   creditoLiquidado: "6.2.2.1.3.03.00",
 });

@@ -8,7 +8,7 @@ import {
 } from "../../modules/m05-despesa/consultas";
 import { criarM05Deps } from "../../modules/m05-despesa/adapter-prisma";
 import { pagar } from "../../modules/m05-despesa/servico-bloco2";
-import { roteiroPagamento } from "../../modules/m01-core-contabil/roteiros";
+import { CONTA_FORNECEDORES_A_PAGAR, roteiroPagamento } from "../../modules/m01-core-contabil/roteiros";
 // O TIPO da justificativa é do M06 — a porta o encaminha, não o redeclara. Um
 // `hipotese: string` aqui aceitaria "VI_OUTROS" na compilação e só quebraria no Zod.
 import {
@@ -221,8 +221,7 @@ export async function lerContasBancarias(): Promise<
   return contas.map((c: ContaBancariaNaLista) => ({ ...c }));
 }
 
-/** A obrigação que o pagamento extingue. */
-const CONTA_FORNECEDORES = "2.1.3.1.1.00.00";
+
 
 /**
  * PAGAR — escrita autenticada. Com ou sem quebra da ordem cronológica.
@@ -319,7 +318,7 @@ export async function registrarPagamento(input: {
           : {}),
       },
       roteiroPagamento({
-        obrigacaoAPagar: CONTA_FORNECEDORES,
+        obrigacaoAPagar: CONTA_FORNECEDORES_A_PAGAR,
         disponibilidade: contaContabilDaConta,
       }),
       criarM05Deps(cliente()),

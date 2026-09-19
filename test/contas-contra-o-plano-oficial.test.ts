@@ -255,6 +255,7 @@ describe("as contas do código contra o PCASP oficial", () => {
     "5.2.2.1.2.00.00": "ROTEIRO-CREDITO-ADICIONAL-POR-TIPO",
     "6.2.2.1.2.00.00": "ROTEIRO-RESERVA-SEM-CONTA",
     "7.2.1.1.0.00.00": "CONTROLE-DDR-POR-NATUREZA-DA-FONTE",
+    "2.1.8.8.1.01.00": "CONSIGNACAO-CONTA-SINTETICA",
   };
 
   /**
@@ -268,7 +269,21 @@ describe("as contas do código contra o PCASP oficial", () => {
    * do sistema. Uma forma nova aparece como constante que a colheita não alcança, e o teste
    * cobra a classificação em vez de passar por omissão.
    */
-  const PERNA = /\b(?:conta|debito|credito):\s*(?:"(\d\.\d\.\d\.\d\.\d\.\d{2}\.\d{2})"|([A-Z][A-Z0-9_]{3,}))/g;
+  const CHAVES_DE_PERNA = [
+    // a perna do `RoteiroContabil`, e o par do roteiro orçamentário
+    "conta", "debito", "credito",
+    // os PARÂMETROS por onde um roteiro recebe a conta de quem o chama. Foi esta família que
+    // a primeira versão não conhecia, e foi por ela que `2.1.3.1.1.00.00` entrou em CINCO
+    // arquivos — quatro em `lib/portas/`, um em `prisma/seed/poc-fila.ts`.
+    "obrigacaoAPagar", "disponibilidade", "variacaoDiminutiva", "variacaoAumentativa",
+    "creditoEmpenhado", "creditoLiquidado", "creditoPago", "contaDisponibilidade",
+    // a conta de passivo de uma consignação: a retenção credita nela no meio do pagamento
+    "contaPassivo", "contaConsignacaoAPagar",
+  ] as const;
+  const PERNA = new RegExp(
+    `\\b(?:${CHAVES_DE_PERNA.join("|")}):\\s*(?:"(\\d\\.\\d\\.\\d\\.\\d\\.\\d\\.\\d{2}\\.\\d{2})"|([A-Z][A-Z0-9_]{3,}))`,
+    "g"
+  );
 
   /** `export const CONTA_X = "..."` de qualquer fonte de produção. */
   const DECLARACAO = /\bconst\s+([A-Z][A-Z0-9_]{3,})\s*=\s*"(\d\.\d\.\d\.\d\.\d\.\d{2}\.\d{2})"/g;
@@ -290,15 +305,29 @@ describe("as contas do código contra o PCASP oficial", () => {
       texto: semComentarios(readFileSync(f, "utf8")),
     }));
 
-    // As constantes de conta, de TODA a produção — uma perna pode citar a constante de
-    // outro módulo, e o valor tem de ser o mesmo em qualquer lugar.
-    const valorDe = new Map<string, string>();
-    for (const { texto } of fontes) {
-      for (const m of texto.matchAll(DECLARACAO)) valorDe.set(m[1]!, m[2]!);
+    // ⚠️ A RESOLUÇÃO É POR ARQUIVO PRIMEIRO, E ISSO NÃO É ZELO — É UM DEFEITO MEDIDO. A
+    // primeira versão mantinha UM mapa nome→código para toda a produção, e `CONTA_BANCOS`
+    // existe com DOIS valores (`1.1.1.1.2.00.00` em `lib/portas/importadores.ts`,
+    // `1.1.1.1.1.19.00` nos seeds): o último a ser lido sobrescrevia o outro, e uma perna
+    // real era resolvida para a conta errada. Cada arquivo resolve com a sua própria
+    // declaração; só quando o nome não é declarado ali se recorre ao mapa global, e apenas
+    // se o nome for inequívoco em todo o sistema.
+    const porArquivo = new Map<string, Map<string, string>>();
+    const globais = new Map<string, Set<string>>();
+    for (const { arquivo, texto } of fontes) {
+      const local = new Map<string, string>();
+      for (const m of texto.matchAll(DECLARACAO)) {
+        local.set(m[1]!, m[2]!);
+        const vistos = globais.get(m[1]!) ?? new Set<string>();
+        vistos.add(m[2]!);
+        globais.set(m[1]!, vistos);
+      }
+      porArquivo.set(arquivo, local);
     }
 
     const achadas: Perna[] = [];
     for (const { arquivo, texto } of fontes) {
+      const local = porArquivo.get(arquivo)!;
       for (const m of texto.matchAll(PERNA)) {
         const literal = m[1];
         if (literal !== undefined) {
@@ -306,11 +335,74 @@ describe("as contas do código contra o PCASP oficial", () => {
           continue;
         }
         const nome = m[2]!;
-        const valor = valorDe.get(nome);
-        if (valor !== undefined) achadas.push({ codigo: valor, origem: nome, arquivo });
+        const daqui = local.get(nome);
+        if (daqui !== undefined) {
+          achadas.push({ codigo: daqui, origem: nome, arquivo });
+          continue;
+        }
+        const vistos = globais.get(nome);
+        // Nome com mais de um valor não se resolve por adivinhação: a perna fica sem código,
+        // e a constante aparece como não classificada — que é onde ela tem de aparecer.
+        if (vistos !== undefined && vistos.size === 1) {
+          achadas.push({ codigo: [...vistos][0]!, origem: nome, arquivo });
+        }
       }
     }
     return achadas;
+  }
+
+  /**
+   * ⚠️ O ESPELHO DA FORMA, E ELE EXISTE PORQUE A FORMA JÁ FALHOU DUAS VEZES NESTE ARQUIVO.
+   *
+   * `PERNA` conhece um punhado de chaves. Uma delas — `obrigacaoAPagar:`, por onde o roteiro
+   * de liquidação recebe a conta do credor — passou despercebida na primeira versão, e com
+   * ela `2.1.3.1.1.00.00` ficou escrita em CINCO arquivos apontando para um nó sintético. O
+   * percurso da ponte contratual foi quem acusou, no meio da liquidação, depois de a medição
+   * e o recebimento já terem passado pela tela.
+   *
+   * Então a forma não é a única medida. Aqui se classifica TODA constante de produção que
+   * guarda um código PCASP: ou o código aparece numa perna colhida, ou está declarado abaixo
+   * com o motivo. Uma chave nova que a colheita não conheça aparece como constante
+   * inalcançada, e o teste cobra a classificação — em vez de passar por omissão.
+   */
+  const NAO_E_PERNA: Readonly<Record<string, string>> = {
+    "6.2.2.1.3.02.00":
+      "CREDITO EMPENHADO EM LIQUIDAÇÃO — o estado que este sistema NÃO usa. A constante " +
+      "existe para `m01-roteiros.test.ts` afirmar que ela não aparece no roteiro: a " +
+      "liquidação vai direto de EMPENHADO A LIQUIDAR para LIQUIDADO A PAGAR.",
+    "1.2.3.1.1.01.00":
+      "declarada no plano do cenário SAGRES (`codigo:`), e nenhum roteiro dele a usa — a " +
+      "POC exercita despesa e extraorçamentário, não patrimonial.",
+    "1.2.3.2.1.01.00": "idem — plano do cenário SAGRES, sem roteiro que a use.",
+    "1.2.3.8.1.01.00": "idem — plano do cenário SAGRES, sem roteiro que a use.",
+    "3.3.3.1.1.00.00": "idem — plano do cenário SAGRES, sem roteiro que a use.",
+    "4.5.9.1.1.00.00": "idem — plano do cenário SAGRES, sem roteiro que a use.",
+  };
+
+  /**
+   * ⚠️ PERNA QUE A REGEX NÃO LÊ, E QUE MESMO ASSIM É CONFERIDA. Uma conta pode chegar ao
+   * roteiro sem passar por chave nenhuma — pela TABELA de contrapartida por elemento, por
+   * exemplo. Declarar isso como "não é perna" seria classificar para calar; declarar aqui
+   * mantém a conta sob a mesma exigência de aceitar partida, e diz por onde ela chega.
+   */
+  const PERNA_INDIRETA: Readonly<Record<string, string>> = {
+    "1.1.5.6.1.01.00":
+      "CONTA_ESTOQUE chega a `variacaoDiminutiva` pela tabela CONTRAPARTIDA_DA_LIQUIDACAO " +
+      "(elemento 30 → estoque), em `modules/m01-core-contabil/roteiros.ts`.",
+  };
+
+  function constantesDeConta(): ReadonlyMap<string, readonly string[]> {
+    const mapa = new Map<string, Set<string>>();
+    for (const f of fontesDeProducao(RAIZ)) {
+      const arquivo = relative(RAIZ, f);
+      const texto = semComentarios(readFileSync(f, "utf8"));
+      for (const m of texto.matchAll(DECLARACAO)) {
+        const atual = mapa.get(m[2]!) ?? new Set<string>();
+        atual.add(`${m[1]!} em ${arquivo}`);
+        mapa.set(m[2]!, atual);
+      }
+    }
+    return new Map([...mapa].map(([k, v]) => [k, [...v].sort()]));
   }
 
   const pernas = pernasDeRoteiro();
@@ -347,6 +439,58 @@ describe("as contas do código contra o PCASP oficial", () => {
         "nunca a de nome mais parecido. Se a partição depender de um dado que o roteiro não " +
         "lê (o tipo do crédito, a natureza da fonte), então NÃO se escolhe conta: registra-se " +
         "a pendência em EM_PERNA_DE_ROTEIRO e o movimento continua recusado.\n\nPernas:\n"
+    ).toEqual([]);
+  });
+
+  it("⚠️ TODA CONSTANTE DE CONTA OU É PERNA COLHIDA, OU ESTÁ CLASSIFICADA", () => {
+    const constantes = constantesDeConta();
+    const emPerna = new Set(pernas.map((p) => p.codigo));
+    const semClassificacao = [...constantes]
+      .filter(
+        ([codigo]) =>
+          !emPerna.has(codigo) &&
+          NAO_E_PERNA[codigo] === undefined &&
+          PERNA_INDIRETA[codigo] === undefined
+      )
+      .map(([codigo, onde]) => `${codigo} (${onde.join("; ")})`)
+      .sort();
+    expect(
+      semClassificacao,
+      "\n\n⚠️ CONSTANTE DE CONTA QUE A COLHEITA DE PERNAS NÃO ALCANÇA.\n\n" +
+        "Ou ela chega ao razão por uma chave que `PERNA` ainda não conhece — e então a " +
+        "colheita está cega, como esteve para `obrigacaoAPagar:` —, ou ela não é perna e o " +
+        "motivo precisa estar escrito em NAO_E_PERNA.\n\nNão classifique para calar: " +
+        "confira primeiro se a constante vira partida em algum roteiro.\n\nConstantes:\n"
+    ).toEqual([]);
+    // Anti-vacuidade: se a varredura de constantes voltar vazia, o teste acima passa sozinho.
+    expect(constantes.size).toBeGreaterThan(15);
+  });
+
+  it("⚠️ A PERNA INDIRETA TAMBÉM ACEITA PARTIDA", () => {
+    const recusadas = Object.keys(PERNA_INDIRETA).filter((c) => {
+      const o = oficial.get(c);
+      return o !== undefined && !o.analitica && EM_PERNA_DE_ROTEIRO[c] === undefined;
+    });
+    expect(
+      recusadas,
+      "\n\n⚠️ PERNA INDIRETA EM CONTA SINTÉTICA. Chegar por tabela em vez de por chave não " +
+        "muda nada para o INVARIANTE 5: o lançamento é recusado igual.\n\n"
+    ).toEqual([]);
+  });
+
+  it("nenhuma conta está classificada duas vezes", () => {
+    // ⚠️ Duas licenças para a mesma conta é como uma some sem ninguém notar.
+    const dobradas = Object.keys(NAO_E_PERNA).filter((c) => PERNA_INDIRETA[c] !== undefined);
+    expect(dobradas, "\n\nconta em NAO_E_PERNA e em PERNA_INDIRETA ao mesmo tempo\n\n").toEqual([]);
+  });
+
+  it("a classificação NAO_E_PERNA não guarda conta que virou perna", () => {
+    const emPerna = new Set(pernas.map((p) => p.codigo));
+    const obsoletas = Object.keys(NAO_E_PERNA).filter((c) => emPerna.has(c));
+    expect(
+      obsoletas,
+      "\n\n⚠️ ENTRADA DE NAO_E_PERNA QUE A COLHEITA JÁ ACHA COMO PERNA.\n\nA justificativa " +
+        "de 'não é perna' deixou de valer: remova a entrada.\n\n"
     ).toEqual([]);
   });
 
