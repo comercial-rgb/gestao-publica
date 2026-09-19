@@ -288,6 +288,9 @@ describe("instalação limpa e atualização — no banco", () => {
       // V11 V5.3 — o rito do acesso a informacao. Previa 0 em instalacao limpa: o bootstrap ja
       // concede o censo do ENTE inteiro, entao nao sobra nada a derivar.
       { versao: 24, previa: 0, aplicada: false },
+      // V11 V7.3 — a declaracao da disponibilidade de recurso novo. Mesma previa 0, e pelo mesmo
+      // motivo: o bootstrap ja concede o censo do ENTE inteiro.
+      { versao: 25, previa: 0, aplicada: false },
     ]);
   });
 

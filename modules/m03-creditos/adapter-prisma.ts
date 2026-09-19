@@ -19,8 +19,10 @@ import { ehRecursoNovo, type OrigemRecurso } from "./dominio.js";
 import type {
   AnularCreditoParams,
   CreditoRepositoryPort,
+  DeclararDisponibilidadeParams,
   DecretoParaPersistir,
   DecretoResumo,
+  DisponibilidadeDeclarada,
   EncerrarDecretoParams,
   ExecutarCreditoParams,
   LeiParaPersistir,
@@ -115,6 +117,44 @@ async function consumido(tx: Tx, leiId: string): Promise<Money> {
  * contra a declaração de OUTRO — e o uso de 2026 consumia o superávit de 2027. O
  * superávit é uma foto do encerramento de UM exercício; ele não atravessa anos.
  */
+/**
+ * A CHAVE DO LOCK DA DISPONIBILIDADE — estável entre versões.
+ *
+ * ⚠️ ELA NÃO PODE SER O `id` DA LINHA (V11 V7.3). Enquanto havia uma linha só por fonte, travar
+ * o `id` equivalia a travar a fonte. Com a declaração versionada, cada versão tem `id` próprio:
+ * uma transação que leu a versão 2 e outra que acabou de criar a versão 3 travariam postes
+ * DIFERENTES e não se veriam — o lock continuaria existindo e deixaria de proteger, que é o pior
+ * modo de falha de um lock.
+ */
+export function chaveDaDisponibilidade(
+  exercicio: number,
+  fonteId: string,
+  origem: string
+): string {
+  return `${exercicio}:${fonteId}:${origem}`;
+}
+
+/** A declaração VIGENTE — a de maior versão. `null` quando a fonte nunca foi declarada. */
+export async function disponibilidadeVigente(
+  tx: Tx,
+  exercicio: number,
+  fonteId: string,
+  origem: string
+): Promise<{ readonly id: string; readonly versao: number; readonly valor: Money; readonly descricao: string } | null> {
+  const linha = await tx.disponibilidadeRecursoNovo.findFirst({
+    where: { exercicio, fonteId, origem: origem as never },
+    orderBy: { versao: "desc" },
+    select: { id: true, versao: true, valor: true, descricao: true },
+  });
+  if (linha === null) return null;
+  return {
+    id: linha.id,
+    versao: linha.versao,
+    valor: toMoney(linha.valor.toFixed(2)),
+    descricao: linha.descricao,
+  };
+}
+
 export async function usadoDaDisponibilidade(
   tx: Tx,
   fonteId: string,
@@ -434,16 +474,15 @@ export function criarCreditoRepositoryPrisma(
             );
           }
           for (const [fonteId, valor] of porFonte) {
-            const disp = await tx.disponibilidadeRecursoNovo.findUnique({
-              where: {
-                exercicio_fonteId_origem: {
-                  exercicio: decreto.ano,
-                  fonteId,
-                  origem: decreto.origemRecurso,
-                },
-              },
-              select: { id: true, valor: true },
-            });
+            // ⚠️ A VIGENTE É A DE MAIOR VERSÃO (V11 V7.3). Era um `findUnique` porque havia uma
+            // linha só; agora as antigas permanecem, e ler qualquer uma delas conferiria o
+            // decreto contra um número que já foi substituído.
+            const disp = await disponibilidadeVigente(
+              tx,
+              decreto.ano,
+              fonteId,
+              decreto.origemRecurso
+            );
             if (disp === null) {
               throw new Error(
                 `Sem disponibilidade declarada de ${decreto.origemRecurso} para ` +
@@ -458,9 +497,15 @@ export function criarCreditoRepositoryPrisma(
             // estoura — a corrida da ficha (6fa5d4e) de novo, num degrau acima. E o
             // `travarFichas` NÃO cobre isto: dois decretos podem suplementar fichas
             // DIFERENTES da mesma fonte e nunca se cruzar.
-            await travar(tx, "DisponibilidadeRecursoNovo", [disp.id]);
+            // ⚠️ A CHAVE DO LOCK É A DA FONTE, NÃO A DA LINHA — ver `chaveDaDisponibilidade`.
+            // Travar `disp.id` deixou de proteger no instante em que a declaração ganhou
+            // versões: quem declara cria uma linha NOVA, com id novo, e os dois lados travariam
+            // postes diferentes.
+            await travar(tx, "DisponibilidadeRecursoNovo", [
+              chaveDaDisponibilidade(decreto.ano, fonteId, decreto.origemRecurso),
+            ]);
 
-            const declarado = toMoney(disp.valor.toFixed(2));
+            const declarado = disp.valor;
             const usado = await usadoDaDisponibilidade(
               tx,
               fonteId,
@@ -741,6 +786,81 @@ export function criarCreditoRepositoryPrisma(
 
     async consumidoDaLei(leiId: string): Promise<Money> {
       return consumido(prisma, leiId);
+    },
+
+    async declararDisponibilidade(
+      p: DeclararDisponibilidadeParams
+    ): Promise<DisponibilidadeDeclarada> {
+      return prisma.$transaction(async (tx) => {
+        // ⚠️ O MESMO LOCK QUE O CRÉDITO TOMA, NA MESMA CHAVE. Sem ele, um decreto em voo lê a
+        // versão antiga, esta transação grava uma menor, e os dois commitam: o decreto fica
+        // apoiado em recurso que a declaração vigente já nega. A chave é
+        // `exercicio:fonteId:origem` — estável entre versões, ao contrário do `id` da linha.
+        await travar(tx, "DisponibilidadeRecursoNovo", [
+          chaveDaDisponibilidade(p.exercicio, p.fonteId, p.origem),
+        ]);
+
+        const fonte = await tx.fonteRecurso.findUnique({
+          where: { id: p.fonteId },
+          select: { codigo: true },
+        });
+        if (fonte === null) {
+          throw new Error(`Fonte ${p.fonteId} não existe. Nada foi declarado.`);
+        }
+
+        const vigente = await disponibilidadeVigente(tx, p.exercicio, p.fonteId, p.origem);
+
+        // ⚠️ O QUE JÁ FOI USADO É O PISO, E ELE É SUM REAL. Declarar abaixo dele deixaria, no
+        // mesmo instante, decretos VIVOS apoiados em recurso que a declaração nega. O guard do
+        // crédito pega isso no PRÓXIMO decreto; aqui ele é pego na hora, que é quando alguém
+        // ainda pode corrigir o número ou anular o decreto.
+        const utilizado = await usadoDaDisponibilidade(tx, p.fonteId, p.origem, p.exercicio);
+        if (p.valor.lessThan(utilizado)) {
+          throw new Error(
+            `A disponibilidade declarada (${p.valor.toFixed(2)}) é MENOR do que o que a fonte ` +
+              `${fonte.codigo} já suplementou por ${p.origem} em ${p.exercicio} ` +
+              `(${utilizado.toFixed(2)}). Gravar assim deixaria decreto vivo apoiado em recurso ` +
+              `que esta própria declaração nega. Anule os decretos que sobram, ou declare pelo ` +
+              `menos o que já foi usado. Nada foi declarado.`
+          );
+        }
+
+        // Repetição não duplica: redeclarar EXATAMENTE o mesmo número, com a mesma explicação,
+        // não é um fato novo — e uma versão a mais sem diferença nenhuma só suja o histórico
+        // que esta tabela existe para preservar.
+        if (
+          vigente !== null &&
+          vigente.valor.equals(p.valor) &&
+          vigente.descricao === p.descricao
+        ) {
+          throw new Error(
+            `A disponibilidade da fonte ${fonte.codigo} por ${p.origem} em ${p.exercicio} JÁ ` +
+              `está declarada nesse valor (${p.valor.toFixed(2)}), com a mesma explicação, na ` +
+              `versão ${vigente.versao}. Nada foi declarado.`
+          );
+        }
+
+        const versao = vigente === null ? 1 : vigente.versao + 1;
+        const criada = await tx.disponibilidadeRecursoNovo.create({
+          data: {
+            exercicio: p.exercicio,
+            fonteId: p.fonteId,
+            origem: p.origem,
+            valor: p.valor.toFixed(2),
+            descricao: p.descricao,
+            versao,
+            criadoPor: p.criadoPor,
+          },
+          select: { id: true },
+        });
+
+        return {
+          id: criada.id,
+          versao,
+          anterior: vigente === null ? null : vigente.valor,
+          utilizado,
+        };
+      });
     },
   };
 }

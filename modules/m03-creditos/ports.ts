@@ -201,6 +201,34 @@ export interface CreditoRepositoryPort {
 
   /** Quanto da lei já foi consumido por decretos VIVOS (SUM real). */
   consumidoDaLei(leiId: string): Promise<Money>;
+
+  /**
+   * DECLARA a disponibilidade apurada de uma fonte — uma VERSÃO NOVA, nunca um UPDATE.
+   *
+   * ⚠️ O QUE ELE CONFERE, E POR QUE DENTRO DA TRANSAÇÃO: uma declaração ABAIXO do que já foi
+   * usado deixaria, no mesmo instante, decretos vivos apoiados em recurso que a própria
+   * declaração diz não existir. O `usado` é SUM real, lido sob o mesmo lock que o crédito toma —
+   * lido fora dele, um decreto concorrente entraria entre a leitura e a gravação.
+   */
+  declararDisponibilidade(params: DeclararDisponibilidadeParams): Promise<DisponibilidadeDeclarada>;
+}
+
+export interface DeclararDisponibilidadeParams {
+  readonly exercicio: number;
+  readonly fonteId: string;
+  readonly origem: "SUPERAVIT_FINANCEIRO" | "EXCESSO_ARRECADACAO" | "OPERACAO_CREDITO";
+  readonly valor: Money;
+  readonly descricao: string;
+  readonly criadoPor: string;
+}
+
+export interface DisponibilidadeDeclarada {
+  readonly id: string;
+  readonly versao: number;
+  /** O que a versão ANTERIOR dizia — `null` quando esta é a primeira. */
+  readonly anterior: Money | null;
+  /** Quanto desta fonte já foi consumido por decretos vivos, no instante da declaração. */
+  readonly utilizado: Money;
 }
 
 export interface M03Deps {

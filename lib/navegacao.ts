@@ -190,7 +190,8 @@ export const PLANEJAMENTO: readonly RelatorioNav[] = [
   { href: "/planejamento/fichas", numero: "Fichas", rotulo: "Fichas orçamentárias", descricao: "A dotação pela chave completa; criar ficha nova (sem crédito — a dotação vem de crédito adicional)." },
   { href: "/planejamento/qdd", numero: "QDD", rotulo: "Quadro de Detalhamento da Despesa", descricao: "A dotação de cada ficha pela chave completa: inicial, créditos e dotação atualizada." },
   { href: "/planejamento/cmd-mba", numero: "CMD/MBA", rotulo: "Programação Financeira (CMD/MBA)", descricao: "Cronograma mensal de desembolso e metas bimestrais de arrecadação (LRF art. 8º e 13)." },
-  { href: "/planejamento/creditos-adicionais", numero: "Créditos adicionais", rotulo: "Créditos Adicionais", descricao: "Decretos de suplementação e anulação, com o teto da lei." },
+  { href: "/planejamento/creditos-adicionais", numero: "Créditos adicionais", rotulo: "Créditos Adicionais", descricao: "Leis autorizadoras e decretos de suplementação e anulação, com o teto da lei." },
+  { href: "/planejamento/recursos-novos", numero: "Recurso novo", rotulo: "Disponibilidade de Recurso Novo", descricao: "O lastro do crédito sem anulação: superávit financeiro, excesso de arrecadação e operação de crédito, por fonte (art. 43 § 1º)." },
   { href: "/planejamento/reprevisao", numero: "Reprevisão", rotulo: "Reprevisão da Receita", descricao: "Revisão da previsão de arrecadação ao longo do exercício (LRF art. 12)." },
 ];
 

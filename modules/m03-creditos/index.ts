@@ -1,6 +1,7 @@
 export {
   criarLei,
   criarDecreto,
+  declararDisponibilidade,
   executarCredito,
   anularCredito,
   encerrarDecreto,
@@ -16,12 +17,15 @@ export {
   zCriarLeiInput,
   zCriarDecretoInput,
   zExecutarCreditoInput,
+  zDeclararDisponibilidadeInput,
+  zOrigemDeRecursoNovo,
   zOrigemRecurso,
   zTipoCredito,
 } from "./dominio.js";
 export type {
   AnularCreditoInput,
   CriarDecretoInput,
+  DeclararDisponibilidadeInput,
   CriarLeiInput,
   EncerrarDecretoInput,
   ExecutarCreditoInput,

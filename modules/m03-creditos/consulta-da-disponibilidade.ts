@@ -34,6 +34,13 @@ export interface UsoDoRecursoNovo {
   readonly fonteDescricao: string;
   /** O que alguém DECLAROU ter apurado. Não é conferido por si só — ver a porta. */
   readonly declarado: Money;
+  /** A versão VIGENTE da declaração. 1 = declarada uma vez só. */
+  readonly versao: number;
+  /** Quem declarou a versão vigente, e quando. */
+  readonly declaradoPor: string;
+  readonly declaradoEm: Date;
+  /** De onde saiu o número — a frase que explica, depois, contra o que o crédito foi autorizado. */
+  readonly descricao: string;
   readonly utilizado: Money;
   readonly decretos: readonly DecretoQueConsumiu[];
 }
@@ -46,10 +53,23 @@ export async function usosDoRecursoNovo(
   prisma: Leitor,
   p: { readonly exercicio: number; readonly origem: "SUPERAVIT_FINANCEIRO" | "EXCESSO_ARRECADACAO" | "OPERACAO_CREDITO" },
 ): Promise<readonly UsoDoRecursoNovo[]> {
+  /**
+   * ⚠️ A VIGENTE DE CADA FONTE, E NÃO TODAS AS VERSÕES (V11 V7.3). A declaração passou a ser
+   * versionada, e um `findMany` sobre a tabela devolve agora a versão 1, a 2 e a 3 da MESMA
+   * fonte — a tela listaria a mesma fonte três vezes, cada linha com um "declarado" diferente e
+   * o MESMO "utilizado", e a soma não faria sentido nenhum.
+   *
+   * A leitura é `DISTINCT ON (fonteId)` com ordem por versão decrescente — a forma que o
+   * Postgres tem de dizer "a última de cada". Em Prisma isso é `distinct` + `orderBy`.
+   */
   const disponibilidades = await prisma.disponibilidadeRecursoNovo.findMany({
     where: { exercicio: p.exercicio, origem: p.origem },
-    select: { fonteId: true, valor: true, fonte: { select: { codigo: true, descricao: true } } },
-    orderBy: { fonte: { codigo: "asc" } },
+    distinct: ["fonteId"],
+    orderBy: [{ fonteId: "asc" }, { versao: "desc" }],
+    select: {
+      fonteId: true, valor: true, versao: true, descricao: true, criadoPor: true, criadoEm: true,
+      fonte: { select: { codigo: true, descricao: true } },
+    },
   });
 
   const saida: UsoDoRecursoNovo[] = [];
@@ -87,6 +107,10 @@ export async function usosDoRecursoNovo(
       fonteCodigo: d.fonte.codigo,
       fonteDescricao: d.fonte.descricao,
       declarado: toMoney(d.valor.toFixed(2)),
+      versao: d.versao,
+      declaradoPor: d.criadoPor,
+      declaradoEm: d.criadoEm,
+      descricao: d.descricao,
       utilizado,
       decretos: [...decretos.values()]
         .map((x) => ({ numero: x.numero, ano: x.ano, data: x.data, encerrado: x.encerrado, liquido: suplementacaoLiquida(x.itens) }))

@@ -6,18 +6,17 @@ import type { PrismaClient } from "../prisma/generated/client/client.js";
 /**
  * A PREPARAÇÃO DO PERCURSO DO CRÉDITO ADICIONAL (V11 V7.2) — o que a TELA ainda não faz.
  *
- * ⚠️ E É CURTO DE PROPÓSITO. A LEI **não** entra aqui: ela passou a ter formulário na V7.2, e o
- * percurso a cadastra pela tela — semeá-la aqui esconderia justamente o que há de novo.
+ * ⚠️ E ELE ENCOLHEU DE NOVO (V11 V7.3). A LEI saiu daqui na V7.2, quando ganhou formulário; a
+ * DISPONIBILIDADE DE RECURSO NOVO sai agora, pelo mesmo motivo: ela passou a ter tela, e o
+ * percurso a DECLARA pela tela. Semear aqui o que a tela faz esconderia justamente o que há de
+ * novo — e deixaria o percurso verde num sistema onde o servidor municipal não chega.
  *
- * O que sobra para este script são duas coisas que a tela não tem:
+ * O que sobra para este script é uma coisa só, que não é tela nenhuma:
  *
- *   · a DISPONIBILIDADE DE RECURSO NOVO da fonte. Um crédito por excesso de arrecadação bate
- *     contra a disponibilidade DECLARADA (TR 4.37), e não há tela para declará-la — ela é
- *     apurada fora do sistema. A própria página nomeia isso como a próxima fatia.
- *   · um usuário deliberadamente FRACO, que LÊ o planejamento e não tem `CRIAR_LEI_DE_CREDITO`
- *     nem `CRIAR_DECRETO_DE_CREDITO`. É ele que demonstra a recusa — e a demonstração importa
- *     porque esta tela RENDERIZA o formulário para todo mundo: quem protege é o servidor, e é
- *     isso que o percurso tem de provar.
+ *   · um usuário deliberadamente FRACO, que LÊ o planejamento e não tem `CRIAR_LEI_DE_CREDITO`,
+ *     `CRIAR_DECRETO_DE_CREDITO` nem `DECLARAR_DISPONIBILIDADE_DE_RECURSO_NOVO`. É ele que
+ *     demonstra a recusa — e a demonstração importa porque estas telas RENDERIZAM o formulário
+ *     para todo mundo: quem protege é o servidor, e é isso que o percurso tem de provar.
  *
  * ⚠️ RECUSA banco que não seja descartável, pelo mesmo padrão dos outros percursos.
  * Saída: uma linha `CREDITO {json}` com os identificadores.
@@ -29,7 +28,13 @@ const FRACO = "sem-credito-adicional@percursos.local";
 const NOME_PERFIL_FRACO = `SO LE O PLANEJAMENTO — PERCURSO ${SUF}`;
 const DESCARTAVEL = /^gestao_publica_(percursos|capturas|instalacao)_v7m[12]_[a-z0-9_]{1,40}$/;
 
-/** O teto da lei e o valor do decreto — o decreto consome parte do teto, nunca ele todo. */
+/**
+ * O teto da lei e o valor do decreto — o decreto consome parte do teto, nunca ele todo. E a
+ * DISPONIBILIDADE que o percurso vai declarar PELA TELA: folgada em relação ao decreto, porque o
+ * que este percurso demonstra é o caminho feliz; o piso e a recusa por falta de lastro são
+ * provados contra o Postgres, em `m03-declaracao-de-disponibilidade.test.ts`.
+ */
+const DISPONIBILIDADE = "100000.00";
 const TETO = "50000.00";
 const SUPLEMENTACAO = "7500.00";
 
@@ -65,28 +70,22 @@ async function main(): Promise<void> {
     });
     if (ficha === null) throw new Error(`Nenhuma ficha no exercício ${exercicio.ano}. Rode o cenário de aceite antes.`);
 
-    // ── A DISPONIBILIDADE DECLARADA ──────────────────────────────────────────
-    // ⚠️ UPSERT pela chave natural (exercício, fonte, origem): reexecutar o percurso não pode
-    // criar uma segunda declaração da MESMA apuração — seriam dois lastros para o mesmo dinheiro.
-    const disponibilidade = await prisma.disponibilidadeRecursoNovo.upsert({
-      where: {
-        exercicio_fonteId_origem: {
-          exercicio: exercicio.ano,
-          fonteId: ficha.fonteId,
-          origem: "EXCESSO_ARRECADACAO",
-        },
-      },
-      update: {},
-      create: {
-        exercicio: exercicio.ano,
-        fonteId: ficha.fonteId,
-        origem: "EXCESSO_ARRECADACAO",
-        valor: "100000.00",
-        descricao: `Excesso apurado para o percurso ${SUF} (sintético).`,
-        criadoPor: ADMIN,
-      },
-      select: { id: true, valor: true },
+    // ── A FONTE PRECISA ESTAR VIRGEM ─────────────────────────────────────────
+    // ⚠️ RECUSA COM MOTIVO EM VEZ DE PERCURSO VERMELHO. O percurso afirma "primeira declaração"
+    // e depois "versão 2" — duas afirmações que só existem a partir do zero. Rodado num banco
+    // onde esta fonte já foi declarada, ele acusaria a tela de mentir quando o que houve foi
+    // banco sujo, e alguém perderia uma hora procurando defeito onde não há.
+    const jaDeclarada = await prisma.disponibilidadeRecursoNovo.count({
+      where: { exercicio: exercicio.ano, fonteId: ficha.fonteId, origem: "EXCESSO_ARRECADACAO" },
     });
+    if (jaDeclarada > 0) {
+      throw new Error(
+        `A fonte ${ficha.fonte.codigo} já tem ${jaDeclarada} declaração(ões) de EXCESSO_ARRECADACAO ` +
+          `em ${exercicio.ano} neste banco. O percurso declara a disponibilidade PELA TELA e afirma ` +
+          `que a primeira é a primeira — num banco já usado ele acusaria a tela sem motivo. ` +
+          `Recrie o banco descartável e rode de novo. Nada foi feito.`
+      );
+    }
 
     // ── O USUÁRIO FRACO ──────────────────────────────────────────────────────
     const jaFraco = await prisma.usuario.findUnique({ where: { identificador: FRACO }, select: { id: true } });
@@ -130,8 +129,8 @@ async function main(): Promise<void> {
         fichaNumero: ficha.numero,
         fonteCodigo: ficha.fonte.codigo,
         unidadeCodigo: ficha.unidadeOrc.codigo,
-        disponibilidadeId: disponibilidade.id,
-        disponibilidadeValor: disponibilidade.valor.toFixed(2),
+        fonteId: ficha.fonteId,
+        disponibilidade: DISPONIBILIDADE,
         teto: TETO,
         suplementacao: SUPLEMENTACAO,
         usuarioFraco: FRACO,

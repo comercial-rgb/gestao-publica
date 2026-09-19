@@ -68,6 +68,41 @@ export const zCriarLeiInput = z.object({
   criadoPor: z.string().min(1),
 });
 
+/**
+ * A DECLARAÇÃO DA DISPONIBILIDADE DE RECURSO NOVO (TR 4.37) — o número que AUTORIZA o crédito.
+ *
+ * ⚠️ A ORIGEM AQUI NÃO É `zOrigemRecurso`, E ISSO É A REGRA, NÃO UM RECORTE. `ANULACAO` não tem
+ * disponibilidade a declarar: um crédito por anulação não traz dinheiro novo, ele REMANEJA — e o
+ * que o autoriza é o saldo da ficha anulada, conferido por SUM dentro da transação. Aceitar
+ * `ANULACAO` aqui criaria uma declaração que nada lê, e alguém a preencheria acreditando que ela
+ * autoriza algo.
+ */
+export const zOrigemDeRecursoNovo = z.enum([
+  "SUPERAVIT_FINANCEIRO",
+  "EXCESSO_ARRECADACAO",
+  "OPERACAO_CREDITO",
+]);
+
+export const zDeclararDisponibilidadeInput = z.object({
+  exercicio: z.number().int().min(1900).max(2999),
+  fonteId: z.string().min(1),
+  origem: zOrigemDeRecursoNovo,
+  /** > 0: uma disponibilidade zero não autoriza nada, e declará-la não registra nada. */
+  valor: zValorPositivo,
+  /**
+   * De ONDE saiu o número. Obrigatória e com tamanho mínimo de frase: é ela que a prestação de
+   * contas lê para saber o que a autorização enxergava — "balanço de 2025, quadro do superávit
+   * financeiro, fonte 500" responde; "ajuste" não responde nada.
+   */
+  descricao: z.string().trim().min(10, {
+    message:
+      "Descreva de onde saiu o número apurado (ex.: 'Balanço de 2025 — quadro do superávit financeiro, fonte 500'). " +
+      "É esta frase que explica, depois, contra o que o crédito foi autorizado.",
+  }),
+  criadoPor: z.string().min(1),
+});
+
+
 export const zCriarDecretoInput = z.object({
   leiId: z.string().min(1),
   numero: z.string().min(1),
@@ -104,6 +139,9 @@ export type CriarDecretoInput = z.input<typeof zCriarDecretoInput>;
 export type ExecutarCreditoInput = z.input<typeof zExecutarCreditoInput>;
 export type EncerrarDecretoInput = z.input<typeof zEncerrarDecretoInput>;
 export type AnularCreditoInput = z.input<typeof zAnularCreditoInput>;
+// ⚠️ `z.input` como os de cima: o chamador entrega o dinheiro como STRING decimal e o schema o
+// converte em `Money`. `z.infer` (a saída) obrigaria a tela a construir um Decimal.
+export type DeclararDisponibilidadeInput = z.input<typeof zDeclararDisponibilidadeInput>;
 
 /** Soma por tipo, e por fonte dentro de cada tipo. */
 export interface TotaisDoCredito {

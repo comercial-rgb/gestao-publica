@@ -709,6 +709,40 @@ export function derivarRitoDoAcessoAInformacao(
   return saida;
 }
 
+/**
+ * ⚠️ A DECLARAÇÃO DA DISPONIBILIDADE NÃO DERIVA DE QUEM ESCREVE O DECRETO (V11 V7.3).
+ *
+ * `DECLARAR_DISPONIBILIDADE_DE_RECURSO_NOVO` é o número que AUTORIZA a despesa por superávit,
+ * excesso de arrecadação ou operação de crédito. Derivá-la de `CRIAR_DECRETO_DE_CREDITO` daria a
+ * quem escreve o decreto o poder de declarar o próprio lastro — e o guard que confere o crédito
+ * contra a disponibilidade viraria uma checagem que a mesma pessoa alimenta dos dois lados. Quem
+ * apura o superávit do balanço é a contabilidade; quem escreve o decreto é o planejamento.
+ *
+ * Por isso ela vai só a quem ADMINISTRA permissões no global, que é quem pode distribuí-la a
+ * quem de direito nesta instalação.
+ */
+export function derivarDeclaracaoDeDisponibilidade(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null);
+    if (!administra) continue;
+    const jaTem = perfil.permissoes.some(
+      (p) => p.acao === "DECLARAR_DISPONIBILIDADE_DE_RECURSO_NOVO" && p.unidadeOrcId === null
+    );
+    if (jaTem) continue;
+    saida.push({
+      perfilId: perfil.id,
+      perfilNome: perfil.nome,
+      acao: "DECLARAR_DISPONIBILIDADE_DE_RECURSO_NOVO",
+      unidadeOrcId: null,
+    });
+  }
+  return saida;
+}
+
 export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
   {
     versao: 1,
@@ -936,6 +970,17 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "prometida a quem tem direito subjetivo. Receber o pedido no setor continua sendo RECEBER_PROCESSO, que ja " +
       "existe.",
     derivar: derivarRitoDoAcessoAInformacao,
+  },
+  {
+    versao: 25,
+    nome: "declaracao-de-disponibilidade-de-recurso-novo",
+    descricao:
+      "A disponibilidade de recurso novo (superavit financeiro, excesso de arrecadacao, operacao de credito) passou " +
+      "a ter tela e servico (V11 V7.3) — antes ela so entrava por seed. A acao e PROPRIA e vai a quem administra " +
+      "permissoes no global, que a distribui. ⚠️ Ela NAO deriva de CRIAR_DECRETO_DE_CREDITO: este numero e o que " +
+      "AUTORIZA a despesa, e dar os dois a mesma pessoa faria o guard do credito conferir um lastro que ela mesma " +
+      "declara.",
+    derivar: derivarDeclaracaoDeDisponibilidade,
   },
 ];
 

@@ -62,6 +62,7 @@ export type AcaoDoSistema =
   | "EXECUTAR_CREDITO"
   | "ANULAR_CREDITO"
   | "ENCERRAR_DECRETO"
+  | "DECLARAR_DISPONIBILIDADE_DE_RECURSO_NOVO"
   // ── M04 — receita ──
   | "REGISTRAR_ARRECADACAO"
   | "ANULAR_ARRECADACAO"
@@ -665,6 +666,7 @@ export type NomeDeServico =
   | "executarCredito"
   | "anularCredito"
   | "encerrarDecreto"
+  | "declararDisponibilidade"
   | "registrarArrecadacao"
   | "anularArrecadacao"
   | "reconhecerReceita"
@@ -1125,6 +1127,7 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   executarCredito: "EXECUTAR_CREDITO",
   anularCredito: "ANULAR_CREDITO",
   encerrarDecreto: "ENCERRAR_DECRETO",
+  declararDisponibilidade: "DECLARAR_DISPONIBILIDADE_DE_RECURSO_NOVO",
 
   registrarArrecadacao: "REGISTRAR_ARRECADACAO",
   anularArrecadacao: "ANULAR_ARRECADACAO",
@@ -1772,6 +1775,16 @@ export const FORA_DO_CENSO: Record<string, string> = {
   usosDoRecursoNovo:
     "LEITURA: as disponibilidades declaradas de uma origem num exercício, com o utilizado e os decretos que " +
     "consumiram cada fonte. Compõe as duas leituras acima; não grava nada.",
+  // ── V11 V7.3 — a declaração versionada ──
+  disponibilidadeVigente:
+    "LEITURA: a declaração de maior versão de (exercício, fonte, origem). Exportada pelo mesmo motivo das de " +
+    "cima — o guard do crédito, o serviço que declara e a consulta precisam TODOS da mesma definição de " +
+    "'vigente', e três `orderBy versao desc` escritos à mão divergiriam no dia em que a regra mudasse. " +
+    "Não grava nada; quem grava é `declararDisponibilidade`, que TEM ação no censo.",
+  chaveDaDisponibilidade:
+    "FUNÇÃO PURA: monta a chave estável do lock da disponibilidade (`exercicio:fonteId:origem`). Não toca banco " +
+    "nem sessão. Existe exportada para que o guard do crédito e o serviço que declara travem o MESMO poste — " +
+    "era o `id` da linha, e ele deixou de ser estável quando a declaração ganhou versões.",
   consultaDoSuperavit:
     "LEITURA: compõe o apurado dos FATOS (M12) com o declarado e o utilizado (M03) e devolve o disponível por " +
     "fonte, dizendo qual dos dois tetos limita. Nenhuma escrita.",

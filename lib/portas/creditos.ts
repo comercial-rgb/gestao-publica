@@ -5,9 +5,11 @@ import { listarDecretos, listarLeis, listarQdd } from "../../modules/m03-credito
 import {
   criarLei,
   criarDecreto,
+  declararDisponibilidade,
   executarCredito,
   encerrarDecreto,
 } from "../../modules/m03-creditos";
+import { usosDoRecursoNovo } from "../../modules/m03-creditos/consulta-da-disponibilidade";
 import { criarM03Deps } from "../../modules/m03-creditos/adapter-prisma";
 
 /**
@@ -24,6 +26,32 @@ export type { DecretoNaLista, ItemDecretoNaLista, LeiNaLista, LinhaQdd } from ".
 // ── LEITURA ──────────────────────────────────────────────────────────────────────
 export async function lerDecretos(p: { readonly ano: number }) {
   return listarDecretos(cliente(), { ano: p.ano });
+}
+
+/**
+ * As disponibilidades declaradas de uma origem, com o utilizado e os decretos que consumiram
+ * cada fonte. ⚠️ ZERO SEGUNDA ARITMÉTICA: o `utilizado` sai da MESMA função que o guard do M03
+ * subtrai dentro da transação que grava o crédito.
+ */
+export async function lerDisponibilidades(p: {
+  readonly exercicio: number;
+  readonly origem: "SUPERAVIT_FINANCEIRO" | "EXCESSO_ARRECADACAO" | "OPERACAO_CREDITO";
+}) {
+  return usosDoRecursoNovo(cliente(), p);
+}
+
+/**
+ * As fontes de recurso, para o formulário da declaração.
+ *
+ * ⚠️ ELA MORA AQUI, e não numa porta de cadastros, porque é a mesma leitura que o formulário da
+ * disponibilidade precisa e nada mais: uma porta nova para uma lista de três colunas seria
+ * superfície a mais para manter, e uma cópia em `app/` atravessaria a fronteira.
+ */
+export async function lerFontes(): Promise<readonly { readonly id: string; readonly codigo: string; readonly descricao: string }[]> {
+  return cliente().fonteRecurso.findMany({
+    orderBy: { codigo: "asc" },
+    select: { id: true, codigo: true, descricao: true },
+  });
 }
 
 export async function lerLeis(p: { readonly ano: number }) {
@@ -57,6 +85,25 @@ export async function criarLeiCredito(input: {
   readonly dataPublicacao: Date;
 }): Promise<string> {
   return comEscritaAutenticada("CRIAR_LEI_DE_CREDITO", (criadoPor) => criarLei({ ...input, criadoPor }, criarM03Deps(cliente())));
+}
+
+/**
+ * DECLARA a disponibilidade apurada de uma fonte (TR 4.37) — uma VERSÃO NOVA, nunca um UPDATE.
+ *
+ * ⚠️ AÇÃO PRÓPRIA, e não a de quem escreve o decreto: este número é o que AUTORIZA a despesa por
+ * recurso novo. Dar os dois crachás à mesma pessoa faria o guard do crédito conferir um lastro
+ * que ela mesma declara.
+ */
+export async function declararDisponibilidadeDeRecursoNovo(input: {
+  readonly exercicio: number;
+  readonly fonteId: string;
+  readonly origem: "SUPERAVIT_FINANCEIRO" | "EXCESSO_ARRECADACAO" | "OPERACAO_CREDITO";
+  readonly valor: string;
+  readonly descricao: string;
+}): Promise<{ readonly versao: number; readonly anterior: string | null; readonly utilizado: string }> {
+  return comEscritaAutenticada("DECLARAR_DISPONIBILIDADE_DE_RECURSO_NOVO", (criadoPor) =>
+    declararDisponibilidade({ ...input, criadoPor }, criarM03Deps(cliente()))
+  );
 }
 
 export async function criarDecretoCredito(input: {

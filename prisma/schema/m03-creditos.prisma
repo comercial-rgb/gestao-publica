@@ -143,6 +143,20 @@ model ItemCredito {
 // por recurso novo não pode ultrapassá-la.
 // ----------------------------------------------------------------------------
 
+/// ⚠️ A DECLARAÇÃO É VERSIONADA, E NÃO SOBRESCRITA (V11 V7.3).
+///
+/// Até aqui havia UMA linha por (exercício, fonte, origem), e redeclarar significava trocar o
+/// `valor` dela. Isso REESCREVIA O HISTÓRICO em silêncio: um decreto aprovado contra "superávit
+/// de 100.000" passava a constar aprovado contra "superávit de 40.000", e a prestação de contas
+/// não teria como mostrar contra o que a autorização foi dada. É a mesma lição da configuração do
+/// acesso à informação, que por isso nasceu versionada.
+///
+/// Agora cada declaração é um FATO: `versao` cresce, nada é apagado, e a VIGENTE é a de maior
+/// versão. O guard do crédito lê a maior; a consulta mostra a maior e sabe dizer que houve outras.
+///
+/// ⚠️ E O LOCK MUDOU DE CHAVE JUNTO. Ele travava o `id` da linha — que agora muda a cada versão,
+/// e duas transações passariam a travar postes diferentes para a mesma fonte. A chave virou
+/// `exercicio:fonteId:origem`, que é estável por construção. Ver `adapter-prisma.ts`.
 model DisponibilidadeRecursoNovo {
   id        String        @id @default(cuid())
   exercicio Int
@@ -152,9 +166,16 @@ model DisponibilidadeRecursoNovo {
   valor     Decimal       @db.Decimal(18, 2)
   descricao String
 
+  /// 1, 2, 3… por (exercício, fonte, origem). A VIGENTE é a maior. As linhas antigas
+  /// permanecem: elas são o que autorizou os decretos daquele momento.
+  versao Int @default(1)
+
   criadoEm  DateTime @default(now())
   criadoPor String
 
-  @@unique([exercicio, fonteId, origem])
+  @@unique([exercicio, fonteId, origem, versao])
   @@index([fonteId])
+  /// O índice da leitura que mais importa: a VIGENTE de uma fonte, dentro da transação do
+  /// decreto. Sem ele, `ORDER BY versao DESC LIMIT 1` varre todas as versões da fonte.
+  @@index([exercicio, fonteId, origem, versao])
 }

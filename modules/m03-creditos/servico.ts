@@ -5,8 +5,10 @@ import {
   zAnularCreditoInput,
   zCriarDecretoInput,
   zCriarLeiInput,
+  zDeclararDisponibilidadeInput,
   zEncerrarDecretoInput,
   type AnularCreditoInput,
+  type DeclararDisponibilidadeInput,
   type CriarDecretoInput,
   type CriarLeiInput,
   type EncerrarDecretoInput,
@@ -46,6 +48,49 @@ export async function criarLei(
     dataPublicacao: dados.dataPublicacao,
     criadoPor: dados.criadoPor,
   });
+}
+
+/**
+ * DECLARA a disponibilidade apurada de uma fonte para crédito por recurso NOVO (TR 4.37).
+ *
+ * ═══ ⚠️ ESTE NÚMERO É O QUE AUTORIZA A DESPESA ═══
+ * Um crédito por superávit, excesso de arrecadação ou operação de crédito é conferido contra
+ * ele, e contra mais nada (o superávit tem, além dele, a amarração contra os FATOS do
+ * encerramento anterior — ver `SuperavitFinanceiroPort`). Um zero a mais aqui vira orçamento
+ * crescendo contra dinheiro que nunca existiu, que é o que o art. 43 § 1º proíbe.
+ *
+ * ⚠️ SEM UG, e pelo mesmo motivo da LEI: a apuração é do ENTE, por fonte. Ela não mexe em ficha
+ * nenhuma — quem mexe é o decreto, e é lá que a unidade aparece e é conferida.
+ *
+ * ⚠️ REDECLARAR CRIA UMA VERSÃO, NUNCA SOBRESCREVE. O que cada decreto enxergou no dia continua
+ * legível; era exatamente isso que o UPDATE apagava.
+ */
+export async function declararDisponibilidade(
+  input: DeclararDisponibilidadeInput,
+  deps: M03Deps
+): Promise<{ readonly versao: number; readonly anterior: string | null; readonly utilizado: string }> {
+  const dados = zDeclararDisponibilidadeInput.parse(input);
+
+  await deps.autz.exigir(
+    dados.criadoPor,
+    ACAO_DO_SERVICO.declararDisponibilidade,
+    "ENTE"
+  );
+
+  const r = await deps.creditos.declararDisponibilidade({
+    exercicio: dados.exercicio,
+    fonteId: dados.fonteId,
+    origem: dados.origem,
+    valor: dados.valor,
+    descricao: dados.descricao,
+    criadoPor: dados.criadoPor,
+  });
+
+  return {
+    versao: r.versao,
+    anterior: r.anterior === null ? null : r.anterior.toFixed(2),
+    utilizado: r.utilizado.toFixed(2),
+  };
 }
 
 export async function criarDecreto(

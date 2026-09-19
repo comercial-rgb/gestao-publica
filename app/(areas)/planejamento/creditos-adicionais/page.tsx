@@ -178,11 +178,13 @@ export default async function CreditosAdicionaisPage({
         O cadastro de <strong>lei</strong>, de <strong>decreto</strong> e dos{" "}
         <strong>movimentos</strong> é feito aqui, pelas portas de escrita do domínio — as travas
         (teto da lei, saldo da ficha, fonte, fechamento por fonte) são aplicadas na gravação, dentro
-        da transação. O que ainda NÃO tem formulário é a{" "}
-        <strong>disponibilidade de recurso novo</strong> (superávit financeiro, excesso de
-        arrecadação, operação de crédito): ela é apurada fora desta tela e hoje entra pelo
-        serviço/seed, e sem ela um decreto por recurso novo é recusado nomeando a fonte. Fica{" "}
-        <strong>nomeado</strong> como próxima fatia, e não preenchido com um número plausível.
+        da transação. Um decreto por <strong>recurso novo</strong> (superávit financeiro, excesso de
+        arrecadação, operação de crédito) é conferido contra a disponibilidade apurada da fonte, que
+        se declara em{" "}
+        <a href="/planejamento/recursos-novos" className="underline">
+          Disponibilidade de Recurso Novo
+        </a>
+        ; sem ela o decreto é recusado nomeando a fonte.
       </p>
     </div>
   );
