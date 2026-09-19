@@ -159,6 +159,22 @@ async function escolherReferencia(page: Page, form: string, campo: CampoDoPercur
 
 export async function preencherEEnviar(page: Page, acao: string, campos: readonly CampoDoPercurso[]): Promise<Resposta> {
   const form = acao.startsWith("form[") ? acao : `form[data-acao="${acao}"]`;
+  // ⚠️ TRAZER A ABA PARA A FRENTE, E ISSO NÃO É COSMÉTICO — É A CAUSA MEDIDA DE UM PERCURSO
+  // QUE MORRIA SEM DIZER ONDE (V11 V6.4). Num percurso de DUAS ABAS (a tela velha de quem
+  // ficou com a página aberta), abrir a segunda joga a primeira para segundo plano. O Chrome
+  // não entrega `IntersectionObserver` a aba oculta, e é dele que o `elementHandle.click` do
+  // puppeteer depende para rolar até o elemento: a promessa NUNCA resolve e o percurso morre
+  // no `protocolTimeout` com "Runtime.callFunctionOn timed out", sem nome de passo.
+  //
+  // Medido na sonda do passo 13.3 do percurso da ponte contratual, com protocolTimeout de 20 s:
+  //   aba em primeiro plano          click -> 0,0 s
+  //   aba em segundo plano           click -> 20,0 s e ERRO (o timeout inteiro)
+  //   aba em segundo plano + este bringToFront  click -> 0,6 s
+  //   `evaluate` no MESMO elemento, em segundo plano -> 0,0 s (não é o contexto que trava)
+  //
+  // Aumentar o `protocolTimeout` trocaria 180 s por 360 s e manteria a falha. E é o que a
+  // pessoa faz: ela clica na aba antes de digitar nela.
+  await page.bringToFront();
   await page.waitForSelector(form, { timeout: 30000 });
   // ⚠️ O formulário pode estar dentro de um <details> FECHADO (divulgação progressiva: "Estornar a medição nº 2").
   // Fechado, o Chrome não renderiza o conteúdo, e o clique do puppeteer não chega ao campo — o envio não acontece e o
@@ -180,6 +196,25 @@ export async function preencherEEnviar(page: Page, acao: string, campos: readonl
     await page.waitForSelector(seletor, { timeout: 30000 });
     const alvo = (await page.$$(seletor))[campo.indice ?? 0];
     if (alvo === undefined) throw new Error(`"${seletor}" não casou o elemento de índice ${campo.indice ?? 0}`);
+    // Reabrir o <details> DO CAMPO: entre a abertura feita acima e o clique, o React pode
+    // remontar a árvore e o `open` voltar a false. Conferir que ele aparece faz o percurso
+    // recusar nomeando o campo, em vez de clicar no vazio e ler "silêncio".
+    const visivel = await alvo.evaluate((el) => {
+      let n: HTMLElement | null = el as HTMLElement;
+      while (n !== null) {
+        if (n instanceof HTMLDetailsElement) n.open = true;
+        n = n.parentElement;
+      }
+      const e = el as HTMLElement;
+      return e.getClientRects().length > 0 || e.offsetParent !== null;
+    });
+    if (!visivel) {
+      throw new Error(
+        `"${seletor}" existe no DOM mas NÃO APARECE na tela — clicar nele penduraria o ` +
+          `percurso até o timeout do protocolo. Confira se um <details> fechou de novo, ou se ` +
+          `o campo está oculto por estado da tela. Nada foi enviado.`
+      );
+    }
     if (campo.tipo === "arquivo") {
       await (alvo as unknown as { uploadFile(p: string): Promise<void> }).uploadFile(campo.valor);
       continue;

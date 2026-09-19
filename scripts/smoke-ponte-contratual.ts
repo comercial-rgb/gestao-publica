@@ -72,8 +72,24 @@ const VERIFICACOES = `Relatórios de visita e planilha de horas conferidos (perc
  * ⚠️ `data-acao="estornar-recebimento-N"` NÃO É ÚNICO NA PÁGINA: `N` é o número do recebimento DENTRO da medição, e
  * uma ordem com duas medições tem dois "nº 1". Sem o recorte, o percurso enviaria o formulário de outra medição.
  */
-const formEstornoDoRecebimento = (medicao: number, recibo: number): string =>
-  `form[data-acao="estornar-recebimento-${recibo}"]:is(li[data-medicao-da-ordem="${medicao}"] *)`;
+const formEstornoDoRecebimento = async (page: Page, medicao: number, recibo: number): Promise<string> => {
+  // ⚠️ A CHAVE DO ATO É O ID DO RECEBIMENTO, NÃO O NÚMERO — E ESTE ROTEIRO NASCEU DESATUALIZADO.
+  // A V5.2 trocou `data-acao="estornar-recebimento-<numero>"` por `<id>` exatamente porque o
+  // número se repete entre medições; este roteiro foi escrito DEPOIS, contra o nome antigo, e
+  // foi tipado sem nunca ser executado. Na primeira execução real, o passo 14.1 não achou
+  // formulário nenhum. Agora o recorte (medição, recebimento) é lido da TELA e o `data-acao`
+  // exato vem de lá — o percurso deixa de depender de como a chave é formada.
+  const acao = await page.evaluate(
+    (m, r) =>
+      document
+        .querySelector(`li[data-medicao-da-ordem="${m}"] li[data-recebimento-definitivo="${r}"] form[data-acao^="estornar-recebimento-"]`)
+        ?.getAttribute("data-acao") ?? "",
+    medicao,
+    recibo
+  );
+  if (acao === "") throw new Error(`não achei o formulário de estorno do recebimento nº ${recibo} da medição nº ${medicao} nesta tela.`);
+  return `form[data-acao="${acao}"]`;
+};
 
 async function capturar(page: Page, nome: string): Promise<void> {
   mkdirSync(CAPTURAS, { recursive: true });
@@ -428,13 +444,13 @@ async function main(): Promise<void> {
     // ══ 14. O ESTORNO DO RECEBIMENTO DEFINITIVO — a ordem da cadeia: o dinheiro volta primeiro ══
     await entrar(N, page, RECEBEDOR, SENHA);
     await irPara(N, page, hrefOrdem);
-    const bloqueio = await conteudo(page, `${formEstornoDoRecebimento(1, 1)} [data-bloqueio-do-estorno]`);
+    const bloqueio = await conteudo(page, `${await formEstornoDoRecebimento(page, 1, 1)} [data-bloqueio-do-estorno]`);
     R.conferir(
       "14.1 a tela AVISA antes do clique: o termo nº 1 da medição nº 1 lastreia R$ 900,00 liquidados e o estorno será recusado até a liquidação ser estornada",
       /lastreia R\$\s*900[.,]00 já liquidados/.test(bloqueio) && /estorne-a primeiro/i.test(bloqueio),
       bloqueio === "" ? "o aviso do bloqueio não está na tela" : bloqueio.slice(0, 240)
     );
-    const negLiq = await preencherEEnviar(page, formEstornoDoRecebimento(1, 1), [
+    const negLiq = await preencherEEnviar(page, await formEstornoDoRecebimento(page, 1, 1), [
       { sel: 'input[name="data"]', valor: HOJE, tipo: "data" },
       { sel: 'textarea[name="motivo"]', valor: `Tentativa de desfazer o termo que lastreia a liquidação (percurso ${SUF})` },
     ]);
@@ -447,7 +463,7 @@ async function main(): Promise<void> {
     abaC.setDefaultTimeout(120000);
     await abaC.setViewport({ width: 1366, height: 900 });
     await irPara(N, abaC, hrefOrdem);
-    const estRec = await preencherEEnviar(page, formEstornoDoRecebimento(2, 1), [
+    const estRec = await preencherEEnviar(page, await formEstornoDoRecebimento(page, 2, 1), [
       { sel: 'input[name="data"]', valor: HOJE, tipo: "data" },
       { sel: 'textarea[name="motivo"]', valor: `Termo com quantidade conferida a maior; será refeito (percurso ${SUF})` },
     ]);
@@ -465,7 +481,7 @@ async function main(): Promise<void> {
       selo.startsWith("estornado em") && /R\$\s*50,00/.test(linhaRec2) && elegDepois === "1",
       `selo=${selo.slice(0, 160)} · linha=${linhaRec2.slice(0, 160)} · elegivel=${elegDepois}`
     );
-    const negRec = await preencherEEnviar(abaC, formEstornoDoRecebimento(2, 1), [
+    const negRec = await preencherEEnviar(abaC, await formEstornoDoRecebimento(abaC, 2, 1), [
       { sel: 'input[name="data"]', valor: HOJE, tipo: "data" },
       { sel: 'textarea[name="motivo"]', valor: `Segundo estorno do mesmo termo, pela tela velha (percurso ${SUF})` },
     ]);
