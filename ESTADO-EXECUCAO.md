@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | `c947450` + a unidade V7.3 (a disponibilidade de recurso novo ganha tela e passa a ser versionada) — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
+| HEAD | `c13281c` + a superfície do guichê (telas, porta e percurso) — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
-| Frente em execução | **V11** — V1.1, V3.1, V4.1, V4.2 (seção 65), V2.1 eSocial (seção 66), V5.1/V5.2 (seção 67), V6 (seção 68), V7/V7.1/V7.2 (seção 69) e **V7.3: a disponibilidade de recurso novo ganha tela** (seção 70). Guichê não iniciado; V6 (AWS) bloqueado |
-| Último resultado | seção 70 — **`DISPONIBILIDADE-DE-RECURSO-NOVO-SEM-TELA` resolvida**: o crédito por recurso novo cabe inteiro na interface (`/planejamento/recursos-novos`). A fatia encontrou um defeito que não era o pedido: a declaração fazia `UPDATE` e **reescrevia a própria história** — um decreto aprovado contra 100.000 passava a constar aprovado contra 40.000, sem rastro. Passou a ser **versionada**, com piso no já usado, leitura da vigente e a chave do lock trocada do `id` da linha para `exercicio:fonteId:origem` (com `id`, quem lê a v2 e quem cria a v3 travavam postes diferentes). tsc app/backend/scripts `exit=0`; 12/12 no domínio novo e 9/9 na tela, com **seis mutações e seis acusações**; M03+M16 195/195; instalação limpa do zero `exit=0` com 194 migrations; **percurso do crédito adicional: 29 passos, 0 falhas**, agora declarando o lastro pela tela. **QUATRO** vermelhos, todos herdados — o quinto da V7.2 foi consertado lá |
-| Pendências relevantes | seção 70.8 — **`DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE`** e **`SUPERAVIT-DECLARADO-NAO-DERIVADO`** nascem aqui (e são o motivo de `5.10.1.48` ficar em `PARCIAL`). Achado do catálogo: as CINCO marcações do V10 T2 estavam no mapa e **nunca tinham sido gravadas** no JSON — aplicadas nesta rodada. Seguem da seção 69.2: `CREDITO-ESPECIAL-ABERTO-OU-REABERTO`, `ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`, `DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`, `ROTEIRO-RESERVA-SEM-CONTA`, `CONSIGNACAO-CONTA-SINTETICA` (o percurso da cadeia da despesa não atravessa em instalação limpa) e `MARCAR-EM-CAMPO-CONTROLADO`. **QUATRO** guards vermelhos herdados. **`LEIAUTE-ESOCIAL-NAO-OBTIDO`**, **certificado A1** e **V6 (AWS)** são três insumos externos distintos. Escopo pendente: o **guichê**. Linha **ENT12 do Windows** por reconciliar |
-| Próximo passo | seção 70.9 — o **guichê** |
+| Frente em execução | **V11** — V1.1, V3.1, V4.1, V4.2 (seção 65), V2.1 eSocial (seção 66), V5.1/V5.2 (seção 67), V6 (seção 68), V7/V7.1/V7.2 (seção 69), V7.3 (seção 70) e **V8: o guichê — agendamento de atendimento presencial** (seção 71). **O escopo planejado desta rodada está concluído**; V6 (AWS) segue bloqueado |
+| Último resultado | seção 71 — **o guichê existe** (TR 5.39.92, que não tinha nada). Dez tabelas append-only, três ações, atualização v26, duas telas e **percurso de 31 passos, 0 falhas** em instalação limpa do zero (196 migrations). Marcar atendimento é **consumo de saldo**: o trinco é do LUGAR (`guiche:dia:hora`) e vem ANTES da contagem. Dois defeitos encontrados na construção: **o teste de concorrência passava com o trinco removido** (três corridas), e a confirmação dos atos morria junto com a linha que eles fazem desaparecer — os dois corrigidos com teste que acusa. tsc app/backend/scripts `exit=0`; bateria `test/`+M16+M21 **1133/1137 em 128 arquivos**; nove mutações, nove acusações |
+| Pendências relevantes | seção 71.9 — **`GUICHE-SEM-AUTOATENDIMENTO-DO-CIDADAO`** (a 5.39 é o portal de autoatendimento, e quem marca hoje é o servidor no balcão; o domínio já serve os dois caminhos), **`GUICHE-SEM-NOTIFICACAO-INTERNA`** e **`EXCECAO-DE-CALENDARIO-SO-FECHA`** nascem aqui. Da seção 70.8: `DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE` e `SUPERAVIT-DECLARADO-NAO-DERIVADO`. Da 69.2: `CREDITO-ESPECIAL-ABERTO-OU-REABERTO`, `ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`, `DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`, `ROTEIRO-RESERVA-SEM-CONTA`, `CONSIGNACAO-CONTA-SINTETICA` e `MARCAR-EM-CAMPO-CONTROLADO`. **QUATRO** guards vermelhos herdados, nenhum tocado por esta rodada. **`LEIAUTE-ESOCIAL-NAO-OBTIDO`**, **certificado A1** e **V6 (AWS)** são três insumos externos distintos. Linha **ENT12 do Windows** por reconciliar |
+| Próximo passo | seção 71.10 — o escopo planejado terminou; a próxima dívida é o **autoatendimento do cidadão no guichê** |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -8507,3 +8507,138 @@ sem gravar nada.
 ### 70.9 O próximo ponto exato
 
 O **guichê** — o escopo planejado que resta.
+
+---
+
+## 71. V11 V8 — o guichê: marcar atendimento presencial, e a capacidade que não se estoura
+
+### 71.1 O que passou a existir, e a rota real
+
+TR **5.39.92** — "Permitir o agendamento de atendimentos presenciais, conforme guichês organizados
+pela contratante". **Não existia nada.** Havia a agenda da **fiscalização** (M11), e o pedido manda
+mantê-las separadas: são dois domínios com donos, dados e sigilos diferentes, e misturá-las poria o
+nome de quem vai ao balcão na mesma tabela que a ordem de fiscalização de um contrato.
+
+Rotas: **`/protocolo/guiches`** (organizar) e **`/protocolo/guiches/[id]`** (a agenda de um dia).
+
+| A contratante organiza | Quem está no guichê |
+|---|---|
+| unidade de atendimento, guichê, que serviços da carta cada um atende | marca pelo CPF/CNPJ de quem está na frente dele |
+| a oferta de horários por dia da semana: das X às Y, de N em N minutos, com **capacidade** | confirma a presença, remarca, cancela, registra que atendeu |
+| os dias em que a unidade **não abre**, com motivo | vê as vagas descontadas em tempo real |
+
+### 71.2 Marcar atendimento é consumo de saldo, não cadastro
+
+Cada horário tem capacidade, e capacidade se estoura exatamente como saldo de ficha: duas pessoas
+leem "há um lugar", as duas gravam, e três aparecem para dois lugares. A reserva toma o **trinco do
+LUGAR** (`guiche:dia:hora`, posto 28) **antes** de contar.
+
+⚠️ A chave é o LUGAR, não o id de reserva nenhuma: no instante em que a primeira transação trava, a
+linha que a segunda vai criar ainda não existe — é o caso em que `FOR UPDATE` não travava nada.
+
+### 71.3 Só se oferece o que o ente configurou
+
+Não há horário padrão em lugar nenhum. Sem janela publicada, o guichê não oferece nada e a
+marcação é **recusada nomeando a ausência**. E a tela mostra a ausência: um guichê recém-criado diz,
+por escrito, que não atende serviço nenhum e que não tem oferta publicada.
+
+O modelo é **append-only**: dez tabelas, nenhuma com `UPDATE`. Confirmar, cancelar, reagendar e
+realizar são fatos próprios; o compromisso vigente é o do **último reagendamento** — e "último" é
+por **sequência própria**, não por `criadoEm`: dentro de uma transação o Postgres devolve o instante
+de INÍCIO dela, e duas transações podem começar no mesmo milissegundo.
+
+### 71.4 Duas contagens diferentes, e a diferença tem nome
+
+Para a **capacidade**, uma reserva ATENDIDA continua ocupando o lugar: a pessoa veio e o lugar foi
+usado. Para **fechar o dia**, ela não conta: quem já foi atendido não vai ser deixado na porta, e
+bloquear ali tornaria impossível registrar um feriado decidido depois do expediente. O guard do
+fechamento conta quem **ainda espera** (`reservasQueAindaEsperamNoDia`), e o da capacidade conta as
+não canceladas (`ocupacaoDoDia`). A distinção nasceu ao escrever o percurso, e tem teste próprio.
+
+### 71.5 Dois defeitos que a construção encontrou — e o primeiro é o mais grave
+
+**(1) O teste de concorrência passava com o trinco REMOVIDO.** Ele era um `Promise.allSettled` de
+duas reservas; duas transações disparadas juntas não se cruzam de forma confiável — a primeira
+commita antes de a segunda ler. **Três corridas verdes sem o trinco**, provando nada. Foi reescrito
+para afirmar a PROPRIEDADE: enquanto alguém segura o trinco daquele lugar, a reserva daquele lugar
+**não anda** — com a contraprova de que outro horário **não** espera, que um trinco grande demais (o
+guichê, ou o dia) passaria no primeiro e serializaria o balcão inteiro.
+
+**(2) "O ATO QUE SAI DA TELA", UM DEGRAU ACIMA.** Registrar, cancelar e remarcar fazem a LINHA da
+reserva desaparecer — a situação muda e a tela deixa de oferecer atos sobre ela; remarcar a move de
+lugar. A confirmação guardada DENTRO da linha morria com o componente, e quem enviou lia silêncio. O
+percurso mediu isso três vezes (3.3, 3.6 e 4.2 falhando enquanto os passos seguintes provavam que o
+efeito TINHA acontecido). A cura: o resultado mora **acima** do que some — um provedor que envolve a
+tabela inteira guarda as ações e o aviso, e cada linha só empresta o formulário. Três testes novos
+seguram a forma, inclusive o fail-closed de quem usar o ato fora do provedor.
+
+### 71.6 O que foi medido
+
+| Medida | Resultado |
+|---|---|
+| tsc app / backend / scripts | `exit=0` |
+| `m21-guiche-dominio.test.ts` (relógio e calendário, puro) | **19/19**, verde também sob `TZ=UTC`, `Pacific/Kiritimati` (+14) e `America/Anchorage` (−9) |
+| `m21-guiche.test.ts` (contra Postgres) | **26/26** |
+| `test/ui/guiche-formularios.test.tsx` | **13/13** |
+| bateria `test/` + M16 + M21 | **1133/1137 em 128 arquivos** |
+| instalação limpa do zero | `exit=0`, **196 migrations**, v26 aplicada com 4 concessões em 4 perfis, UMA tolerância (a perna de ANULAÇÃO) |
+| **percurso do guichê** | **31 passos, 0 falhas** |
+
+**Nove mutações, nove acusações, verde após restaurar:**
+
+| Mutação | Quem acusou |
+|---|---|
+| apagar o trinco da reserva | t6 |
+| travar o guichê inteiro em vez do lugar | t6b (a contraprova) |
+| contar o horário ORIGINAL em vez do vigente | t13 e t15 |
+| contar reservas canceladas | t7 |
+| reagendar sem conferir a capacidade do destino | t14 |
+| o último horário deixar de precisar CABER | t4 e t5 |
+| o dia da semana sair de UTC | t8 |
+| um mês errado na tabela de deslocamento | t7b (contra implementação independente) |
+| oferecer horário lotado no `select` | UI t6 e t7 |
+
+**Vermelhos: QUATRO, todos herdados** — `modelo-sem-caso-de-uso`, `fronteira-ui`,
+`formularios-na-mesma-pagina` t6 e `data-civil`. **Nenhum nomeia arquivo do guichê**, e isso foi
+conferido arquivo a arquivo: o `data-civil` chegou a acusar `guiche.ts` e a resposta **não** foi
+declarar exceção — o dia da semana virou aritmética de calendário (Sakamoto), sem `Date` nenhum,
+porque isentar o arquivo inteiro daria cobertura de graça a um `getUTC*` que alguém acrescentasse
+ali depois.
+
+### 71.7 Censo, permissões, migrations
+
+- **Três ações**, não dez: `CONFIGURAR_AGENDA_DO_GUICHE`, `RESERVAR_ATENDIMENTO_NO_GUICHE` e
+  `REGISTRAR_ATENDIMENTO_NO_GUICHE`. O corte é por **quem faz** — a chefia organiza, o balcão marca
+  e remarca, o guichê confirma e registra que atendeu. Dez permissões seriam um rol que ninguém
+  administra, e a segregação morre por atrito. **Nenhuma de leitura**: a área já tem
+  `CONSULTAR_PROTOCOLO`.
+- **Atualização v26**: deriva `CONFIGURAR` de quem já configura a carta de serviços e `RESERVAR` de
+  quem já protocola em nome de quem chega, **no mesmo escopo**. `REGISTRAR` **não é derivada para
+  ninguém** — dizer "esta pessoa está aqui" é ato de quem está no guichê no dia, e derivá-la de quem
+  marca deixaria a agenda fechar o próprio dia sem ninguém ter aparecido.
+- `20261003090000_v11_v8_agenda_do_guiche` (dez tabelas, com CHECK de dia da semana, duração,
+  capacidade, formato de hora, início antes do fim e vigência coerente) e
+  `20261003090100_v11_v8_acoes_do_guiche` (os três valores do enum, em migration própria).
+  Aditivas, zero `DROP`.
+
+### 71.8 Catálogo
+
+`5.39.92` → **`PARCIAL`**, com rota verificada e artefato. Não sobe de `PARCIAL` porque a seção 5.39
+é o **PORTAL DE AUTOATENDIMENTO**: quem marca aqui é o **servidor no balcão**, não o cidadão
+sozinho. O domínio inteiro já serve os dois caminhos; falta a superfície pública.
+
+### 71.9 Pendências que nascem
+
+- **`GUICHE-SEM-AUTOATENDIMENTO-DO-CIDADAO`** — o cidadão escolhendo horário em `app/(publico)`,
+  sem conta, com código de acompanhamento como o da ouvidoria. É superfície sobre domínio pronto.
+- **`GUICHE-SEM-NOTIFICACAO-INTERNA`** — o pedido (V9) fala em caixa interna mostrando pendências.
+  A marcação não notifica ninguém: quem organiza vê a agenda, e é só.
+- **`EXCECAO-DE-CALENDARIO-SO-FECHA`** — a exceção de calendário fecha o dia; não há "horário
+  especial de feriado". Nomeado, não construído.
+
+### 71.10 O próximo ponto exato
+
+O escopo planejado desta rodada — crédito adicional por tipo, disponibilidade de recurso novo com
+tela, e o **guichê** — está concluído. O que resta, em ordem de dívida: o **autoatendimento do
+cidadão no guichê**, os **7 modelos órfãos** que o `modelo-sem-caso-de-uso` acusa desde `af32666`, e
+os outros três guards vermelhos herdados.
