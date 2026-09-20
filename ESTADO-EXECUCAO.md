@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | `8ded5b6` + o agendamento pelo cidadão (V8.1) — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
+| HEAD | `b56c683` (V11 V8.2 — os cinco vermelhos herdados zerados) — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
 | Frente em execução | **V11** — V1.1, V3.1, V4.1, V4.2 (seção 65), V2.1 eSocial (seção 66), V5.1/V5.2 (seção 67), V6 (seção 68), V7/V7.1/V7.2 (seção 69), V7.3 (seção 70) e **V8: o guichê — agendamento de atendimento presencial** (seção 71). **O escopo planejado desta rodada está concluído**; V6 (AWS) segue bloqueado |
-| Último resultado | seção 72 — **`GUICHE-SEM-AUTOATENDIMENTO-DO-CIDADAO` fechada**: o cidadão marca atendimento presencial **sem conta** em `/agendamento`, e acompanha ou cancela pelo segredo. O portal NÃO toca o cadastro de pessoas (titular declarado, com CHECK de XOR no banco), disputa a MESMA capacidade sob o MESMO trinco, e o `codigo` que a agenda interna mostra **não** cancela. A corrida do limite por documento — que a ouvidoria carrega como pendência — foi FECHADA com trinco próprio no posto 29. **Percurso: 44 passos, 0 falhas**, na quarta corrida contra o mesmo banco; regressão do percurso do crédito 29/29. `5.39.92` subiu de `PARCIAL` a **`VALIDADO_LOCALMENTE`** |
-| Pendências relevantes | seção 72.8 — **`GUICHE-PORTAL-SEM-REAGENDAMENTO`** e **`GUICHE-BALCAO-SEM-SEGREDO`** nascem aqui; `GUICHE-SEM-NOTIFICACAO-INTERNA` e `EXCECAO-DE-CALENDARIO-SO-FECHA` seguem. Da seção 70.8: `DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE` e `SUPERAVIT-DECLARADO-NAO-DERIVADO`. Da 69.2: `CREDITO-ESPECIAL-ABERTO-OU-REABERTO`, `ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`, `DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`, `ROTEIRO-RESERVA-SEM-CONTA`, `CONSIGNACAO-CONTA-SINTETICA` e `MARCAR-EM-CAMPO-CONTROLADO`. **QUATRO** guards vermelhos herdados — os próximos da fila. **`LEIAUTE-ESOCIAL-NAO-OBTIDO`**, **certificado A1** e **V6 (AWS)** são três insumos externos distintos. Linha **ENT12 do Windows** por reconciliar |
-| Próximo passo | seção 72.9 — os **7 modelos órfãos** do `modelo-sem-caso-de-uso`, e depois os outros três guards herdados |
+| Último resultado | seção 73 — **a suíte está inteiramente verde: 3235/3235 em 306 arquivos, e 3235/3235 sob `TZ=Pacific/Kiritimati`**. Era 3125/3130 com cinco vermelhos herdados. Dois deles eram **defeito real**: o portal do cidadão estampava a data de AMANHÃ como 'hoje' no demonstrativo de pessoal (três horas por dia), e dois `getFullYear()` liam o relógio do hospedeiro. Dois eram guard acusando o que não acontece (`import type` não puxa Prisma; `id` literal redundante). Três eram declarações que ninguém tinha escrito — e duas tabelas ganharam lista própria, porque são LIDAS e ninguém as escreve |
+| Pendências relevantes | **ZERO guards vermelhos** — pela primeira vez. Seguem, por módulo: `CREDITO-ESPECIAL-ABERTO-OU-REABERTO`, `ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`, `DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`, `ROTEIRO-RESERVA-SEM-CONTA`, `CONSIGNACAO-CONTA-SINTETICA` (o percurso da cadeia da despesa ainda não atravessa em instalação limpa), `MARCAR-EM-CAMPO-CONTROLADO`, `DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE`, `SUPERAVIT-DECLARADO-NAO-DERIVADO`, `GUICHE-PORTAL-SEM-REAGENDAMENTO`, `GUICHE-BALCAO-SEM-SEGREDO`, `GUICHE-SEM-NOTIFICACAO-INTERNA` e `EXCECAO-DE-CALENDARIO-SO-FECHA`. **`LEIAUTE-ESOCIAL-NAO-OBTIDO`** passa a ter guarda própria. **Certificado A1** e **V6 (AWS)** são insumos externos. Linha **ENT12 do Windows** por reconciliar |
+| Próximo passo | seção 73.7 — a fila declarada terminou; o que resta é escolha nova, e a maior dívida legível é `CONSIGNACAO-CONTA-SINTETICA` |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -8760,3 +8760,97 @@ provada contra o Postgres, com a mutação que a desliga derrubando o teste.
 
 Os **7 modelos órfãos** que o `modelo-sem-caso-de-uso` acusa desde `af32666`, e depois os outros
 três guards vermelhos herdados.
+
+---
+
+## 73. V11 V8.2 — os cinco vermelhos herdados, e a suíte inteiramente verde
+
+### 73.1 O que mudou de estado
+
+A bateria carregava **cinco vermelhos herdados** havia vários lotes — cada um registrado como
+"herdado" e nenhum investigado. Foram os cinco, um a um.
+
+| Antes | Agora |
+|---|---|
+| suíte inteira: 3125/3130, cinco vermelhos | **3235/3235 em 306 arquivos, zero falhas** |
+| `test:fuso` não rodava desde o candidato anterior | **3235/3235 sob `TZ=Pacific/Kiritimati` (+14), `exit=0`** |
+
+⚠️ **E o `test:fuso` era obrigatório aqui, não opcional**: o diff toca lógica de data em cinco
+módulos, que é exatamente o gatilho que o `CLAUDE.md` nomeia.
+
+### 73.2 Dois eram defeito de verdade, e um deles era visível ao público
+
+**`lib/portas/pessoal-publico.ts`** usava `new Date().toISOString().slice(0, 10)` para estampar
+"hoje" no rodapé do demonstrativo de pessoal. `toISOString` devolve o dia em **UTC**: às 21h30 de
+um dia em São Paulo, o **portal do cidadão** mostrava a data de **amanhã** — três horas por dia,
+todo dia, num documento que é prestação de contas.
+
+**Dois `new Date().getFullYear()`** — o protocolo da certidão e o exercício padrão da tela do
+superávit — leem o relógio do **hospedeiro**. Num servidor em UTC, às 22h de 31 de dezembro em
+São Paulo o protocolo sairia com o ano seguinte, e a tela abriria num exercício que ainda não
+existe, mostrando "sem dados" para quem estava fechando o ano.
+
+Mais **três sítios que estavam certos** e eram uma **segunda régua** ao lado de `packages/datas`
+(âncora `T12:00:00Z` escrita à mão, subtração de milissegundos). Duas medidas de dia convivendo
+sem ninguém decidir qual vale é como a próxima diverge. Passaram a usar `meioDiaCivil`,
+`diferencaEmDiasCivis` e `anoCivil`.
+
+### 73.3 Dois guards acusavam o que não acontece
+
+**`fronteira-ui` (3)** pegava `import type` como se fosse import de valor. O perigo que ela
+**nomeia** é de runtime — "a porta puxa o Prisma, que não bundla para o browser" — e um
+`import type` é apagado pelo compilador. As zonas 1 e 2 **continuam** pegando o tipo, e a
+diferença não é descuido: elas proíbem por **acoplamento**, e o import ser apagado depois não
+desfaz isso. Só a forma inequívoca `import type` é isenta; a misturada fica de fora, fail-closed.
+
+**`formularios-na-mesma-pagina` t6**: dois `id` literais numa tela cujo `<label>` já **envolve** o
+campo. O par era redundante e trazia exatamente o risco vigiado.
+
+### 73.4 Três eram declarações que ninguém tinha escrito
+
+O `modelo-sem-caso-de-uso` acusava **sete** tabelas desde `af32666`.
+
+**Cinco estavam lá por omissão, não por ausência**: são escritas por `create` aninhado e **lidas**
+pela relação. A conferência importou — em duas delas o nome do campo **colide** com outra coisa do
+mesmo módulo (`dependencias` é também o resultado de `analisarFormulaDaRubrica`, **calculado** da
+fórmula e não lido do banco; `colunas` é também o do M26 designer), que é precisamente a armadilha
+que o cabeçalho daquela lista descreve.
+
+**As outras duas** (`EventoDoLeiaute`, `CampoDoEvento`) não cabiam em nenhuma das duas listas: elas
+são **lidas** — o leitor existe, escrito à mão, e funciona — e **ninguém as escreve**, porque
+`LEIAUTE-ESOCIAL-NAO-OBTIDO`. Enfiá-las em "o código não alcança" ou em "escrito por aninhamento"
+seria escrever frase falsa numa lista de exceções, e é isso que faz a próxima pessoa não confiar em
+nenhuma delas. Ganharam **lista própria com vigilância própria**: se alguém escrever o transcritor
+por `create` aninhado, a linha caduca **em silêncio** (aninhamento não nomeia nada), e o teste novo
+olha o campo do pai para pegar isso.
+
+**`m13` t8** ("ZERO escrita no módulo") caiu quando a política de publicação de pessoal (V4.2)
+passou a gravar ali. A política não publica nada — ela registra o ato que **autoriza** publicar. A
+regra virou **por tabela** em vez de por arquivo: uma isenção de arquivo seria porta aberta para
+alguém acrescentar um `despesaPublica.update` e o guard ficar calado.
+
+### 73.5 O que foi medido
+
+| Medida | Resultado |
+|---|---|
+| tsc app / backend / scripts | `exit=0` |
+| **suíte inteira** | **3235/3235 em 306 arquivos** |
+| **suíte inteira sob `TZ=Pacific/Kiritimati`** | **3235/3235, `exit=0`** |
+
+**Sete mutações, sete acusações:** escrever o leiaute por aninhamento; remover uma das cinco
+declarações; o `import type` virar import de valor; o arquivo da política escrever em modelo não
+declarado; outro arquivo do M13 gravar.
+
+### 73.6 Pendências
+
+Nenhuma nasce aqui. `LEIAUTE-ESOCIAL-NAO-OBTIDO` passa a ter **guarda própria**: o dia em que o
+leiaute chegar, a declaração das duas tabelas caduca e o teste avisa.
+
+### 73.7 O próximo ponto exato
+
+A fila que eu mesmo declarei na seção 71.10 terminou: autoatendimento do cidadão (seção 72), os
+7 modelos órfãos e os guards herdados (esta seção). O que resta é **escolha nova**, e a maior
+dívida legível hoje é a das pendências de modelo do crédito adicional (`CREDITO-ESPECIAL-ABERTO-OU-REABERTO`,
+`ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`, `DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`) e a
+`CONSIGNACAO-CONTA-SINTETICA`, que ainda impede o percurso da cadeia da despesa de atravessar em
+instalação limpa.
