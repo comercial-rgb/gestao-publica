@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | `c13281c` + a superfície do guichê (telas, porta e percurso) — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
+| HEAD | `8ded5b6` + o agendamento pelo cidadão (V8.1) — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
 | Frente em execução | **V11** — V1.1, V3.1, V4.1, V4.2 (seção 65), V2.1 eSocial (seção 66), V5.1/V5.2 (seção 67), V6 (seção 68), V7/V7.1/V7.2 (seção 69), V7.3 (seção 70) e **V8: o guichê — agendamento de atendimento presencial** (seção 71). **O escopo planejado desta rodada está concluído**; V6 (AWS) segue bloqueado |
-| Último resultado | seção 71 — **o guichê existe** (TR 5.39.92, que não tinha nada). Dez tabelas append-only, três ações, atualização v26, duas telas e **percurso de 31 passos, 0 falhas** em instalação limpa do zero (196 migrations). Marcar atendimento é **consumo de saldo**: o trinco é do LUGAR (`guiche:dia:hora`) e vem ANTES da contagem. Dois defeitos encontrados na construção: **o teste de concorrência passava com o trinco removido** (três corridas), e a confirmação dos atos morria junto com a linha que eles fazem desaparecer — os dois corrigidos com teste que acusa. tsc app/backend/scripts `exit=0`; bateria `test/`+M16+M21 **1133/1137 em 128 arquivos**; nove mutações, nove acusações |
-| Pendências relevantes | seção 71.9 — **`GUICHE-SEM-AUTOATENDIMENTO-DO-CIDADAO`** (a 5.39 é o portal de autoatendimento, e quem marca hoje é o servidor no balcão; o domínio já serve os dois caminhos), **`GUICHE-SEM-NOTIFICACAO-INTERNA`** e **`EXCECAO-DE-CALENDARIO-SO-FECHA`** nascem aqui. Da seção 70.8: `DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE` e `SUPERAVIT-DECLARADO-NAO-DERIVADO`. Da 69.2: `CREDITO-ESPECIAL-ABERTO-OU-REABERTO`, `ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`, `DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`, `ROTEIRO-RESERVA-SEM-CONTA`, `CONSIGNACAO-CONTA-SINTETICA` e `MARCAR-EM-CAMPO-CONTROLADO`. **QUATRO** guards vermelhos herdados, nenhum tocado por esta rodada. **`LEIAUTE-ESOCIAL-NAO-OBTIDO`**, **certificado A1** e **V6 (AWS)** são três insumos externos distintos. Linha **ENT12 do Windows** por reconciliar |
-| Próximo passo | seção 71.10 — o escopo planejado terminou; a próxima dívida é o **autoatendimento do cidadão no guichê** |
+| Último resultado | seção 72 — **`GUICHE-SEM-AUTOATENDIMENTO-DO-CIDADAO` fechada**: o cidadão marca atendimento presencial **sem conta** em `/agendamento`, e acompanha ou cancela pelo segredo. O portal NÃO toca o cadastro de pessoas (titular declarado, com CHECK de XOR no banco), disputa a MESMA capacidade sob o MESMO trinco, e o `codigo` que a agenda interna mostra **não** cancela. A corrida do limite por documento — que a ouvidoria carrega como pendência — foi FECHADA com trinco próprio no posto 29. **Percurso: 44 passos, 0 falhas**, na quarta corrida contra o mesmo banco; regressão do percurso do crédito 29/29. `5.39.92` subiu de `PARCIAL` a **`VALIDADO_LOCALMENTE`** |
+| Pendências relevantes | seção 72.8 — **`GUICHE-PORTAL-SEM-REAGENDAMENTO`** e **`GUICHE-BALCAO-SEM-SEGREDO`** nascem aqui; `GUICHE-SEM-NOTIFICACAO-INTERNA` e `EXCECAO-DE-CALENDARIO-SO-FECHA` seguem. Da seção 70.8: `DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE` e `SUPERAVIT-DECLARADO-NAO-DERIVADO`. Da 69.2: `CREDITO-ESPECIAL-ABERTO-OU-REABERTO`, `ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`, `DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`, `ROTEIRO-RESERVA-SEM-CONTA`, `CONSIGNACAO-CONTA-SINTETICA` e `MARCAR-EM-CAMPO-CONTROLADO`. **QUATRO** guards vermelhos herdados — os próximos da fila. **`LEIAUTE-ESOCIAL-NAO-OBTIDO`**, **certificado A1** e **V6 (AWS)** são três insumos externos distintos. Linha **ENT12 do Windows** por reconciliar |
+| Próximo passo | seção 72.9 — os **7 modelos órfãos** do `modelo-sem-caso-de-uso`, e depois os outros três guards herdados |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -8642,3 +8642,121 @@ O escopo planejado desta rodada — crédito adicional por tipo, disponibilidade
 tela, e o **guichê** — está concluído. O que resta, em ordem de dívida: o **autoatendimento do
 cidadão no guichê**, os **7 modelos órfãos** que o `modelo-sem-caso-de-uso` acusa desde `af32666`, e
 os outros três guards vermelhos herdados.
+
+---
+
+## 72. V11 V8.1 — o cidadão marca sozinho: o guichê chega ao portal
+
+### 72.1 O que passou a funcionar
+
+A pendência `GUICHE-SEM-AUTOATENDIMENTO-DO-CIDADAO`, aberta na seção 71.9, está **fechada**. A
+seção 5.39 do TR é o portal de **autoatendimento**, e agora é isso que ela é: o cidadão marca
+atendimento presencial **sem conta**, em `/agendamento`, e acompanha ou cancela em
+`/agendamento/acompanhar`.
+
+O ente continua no comando: um serviço só aparece no portal depois de alguém **abri-lo à
+internet** na tela de organização — e `false` é o padrão, de modo que a migration não torna
+público nada do que já estava configurado.
+
+### 72.2 O modelo: duas formas de titular, exatamente uma por reserva
+
+`ReservaDeAtendimento` passou a aceitar dois tipos de titular, com `CHECK` de XOR no banco:
+
+| Caminho | Titular |
+|---|---|
+| Balcão | `pessoaId` — a pessoa do cadastro, com o documento conferido por um servidor |
+| Portal | `nomeDeclarado` + `documentoDeclarado`, **sem vínculo com o cadastro** |
+
+⚠️ **E isso é deliberado, por dois motivos que se somam.** CPF digitado não é autenticação: criar
+ou casar uma `Pessoa` a partir de um formulário público encheria o cadastro de cidadãos com dado
+não conferido. E casar pelo documento **vazaria a existência do cadastro** — um formulário que
+aceita um CPF e recusa outro é um oráculo de quem já é conhecido do município. A identificação de
+verdade acontece no guichê, com o documento na mão, e a agenda interna mostra a marcação como
+**"pela internet, dados a conferir"**, porque quem atende precisa saber disso.
+
+### 72.3 O que protege um caminho sem autorização nenhuma
+
+Não há `autorizarNo` no portal — existiria um crachá que ninguém tem. Em camadas:
+
+| Camada | O que impede |
+|---|---|
+| serviço aberto ao portal (`agendamentoPublico`, `false` por padrão) | marcar num atendimento que exige triagem antes |
+| o **mesmo trinco do lugar**, antes da mesma contagem | o portal ser a porta dos fundos para estourar a capacidade |
+| trinco do par **documento+serviço** (posto 29) + limite de um atendimento vivo | uma pessoa sozinha esvaziar a agenda — e quem faz isso automatiza |
+| quota por chave de origem | a enxurrada, dita como contenção local |
+| segredo de 20 caracteres, guardado **só por hash** | quem lê a agenda interna cancelar o atendimento de um cidadão |
+| resposta idêntica para segredo errado e inexistente | a consulta virar oráculo |
+| projeção mínima (sem o documento declarado) | um print de tela valer um CPF |
+
+⚠️ **O `codigo` não cancela.** Ele aparece na agenda interna para quem tem `CONSULTAR_PROTOCOLO`;
+se bastasse, qualquer um deles desmarcaria o atendimento de um cidadão de forma anônima e não
+atribuída. O cancelamento fica registrado com autor `PORTAL-DO-CIDADAO` — não se atribui a um
+servidor um ato que nenhum servidor praticou.
+
+### 72.4 Uma corrida que a ouvidoria carrega como pendência, e que aqui foi fechada
+
+O guard da chave de comando exige que toda Server Action passe pelo envelope. Atos públicos não
+passam — não há sessão. A ouvidoria declara a exceção **e** uma pendência:
+`OUVIDORIA-REENVIO-DUPLICA` (um duplo envio antes da resposta registra duas manifestações).
+
+Aqui isso **não** virou pendência. O limite de um atendimento vivo por documento tinha a mesma
+corrida — dois envios leem "não tem nenhum" e os dois gravam —, e a resposta foi um trinco
+próprio no par documento+serviço, tomado **depois** do trinco do lugar (posto 29 > 28, na ordem
+que o `ORDEM_DOS_LOCKS` cobra). Dois envios para lugares diferentes pegam trincos de horário
+diferentes e se encontram ali, que é onde precisam se encontrar.
+
+### 72.5 O que foi medido
+
+| Medida | Resultado |
+|---|---|
+| tsc app / backend / scripts | `exit=0` |
+| `m21-guiche-portal.test.ts` (novo) | **19/19** |
+| bateria `test/` + M16 + M21 | **1152/1156 em 129 arquivos** |
+| instalação limpa do zero | `exit=0`, **197 migrations** |
+| **percurso do guichê, agora com o cidadão** | **44 passos, 0 falhas** — na **quarta** corrida contra o mesmo banco |
+| regressão: percurso do crédito adicional | **29/29**, com o helper compartilhado alterado |
+
+**Oito mutações, oito acusações** no caminho público: abrir o portal sem o ente ter aberto (t3);
+cair o limite por documento (t6); cair a quota (t7); cair a capacidade (t5); cair o trinco do
+documento (t6b); o trinco deixar de ser do par (t6b); a consulta mostrar o compromisso original
+(t11); a projeção devolver o documento (t13).
+
+**Vermelhos: QUATRO, todos herdados**, nenhum citando arquivo do guichê ou do agendamento.
+
+### 72.6 Três defeitos de medição, e o segundo mudou um helper de todos
+
+**(1) A asserção que só valia em banco virgem.** O passo 5.1 dizia "o portal não oferece nada";
+passou na estreia e caiu na segunda corrida, porque a corrida anterior tinha deixado o serviço
+*dela* aberto. Virou "**este** serviço não aparece antes de ser aberto" — idempotente.
+
+**(2) O helper compartilhado só lia confirmação fora do formulário quando o formulário SUMIA.**
+Quando ele ficava, a única confirmação aceita era um `<p>` com classe `status-ok` dentro dele.
+Isso deixava de fora um caso legítimo: a consulta que devolve um painel de resultado **abaixo** do
+formulário, para quem quer consultar outra coisa em seguida. Três passos (5.9, 5.10 e 5.12)
+reportavam "silêncio" em atos que tinham funcionado — a evidência do próprio passo trazia o dia e
+a hora certos, e a asserção seguinte, lendo o banco, passava. A alternativa seria moldar a tela ao
+teste. Passou a valer o **contrato declarado** (`data-resultado-da-acao`), com a mesma guarda de
+sequência. O percurso do crédito adicional foi reexecutado para confirmar que nada regrediu.
+
+**(3) A quota barrando o próprio percurso.** Três corridas na mesma hora, do mesmo `localhost`. A
+preparação passou a zerar o rastro no banco descartável, dizendo por quê — a regra continua
+provada contra o Postgres, com a mutação que a desliga derrubando o teste.
+
+### 72.7 Catálogo
+
+`5.39.92` → **`VALIDADO_LOCALMENTE`** (era `PARCIAL`). O que faltava era exatamente isto: a seção
+é o portal de autoatendimento, e o cidadão agora marca sozinho, com tela e percurso de navegador.
+
+### 72.8 Pendências
+
+- `GUICHE-SEM-AUTOATENDIMENTO-DO-CIDADAO` — **fechada aqui**.
+- **`GUICHE-PORTAL-SEM-REAGENDAMENTO`** (nasce) — pelo portal o cidadão consulta e cancela; para
+  mudar de horário, cancela e marca de novo. Remarcar é do balcão.
+- **`GUICHE-BALCAO-SEM-SEGREDO`** (nasce) — quem marca no balcão não recebe código de
+  acompanhamento, e portanto não cancela pela internet. O caminho dele é o telefone ou o balcão.
+- Seguem: `GUICHE-SEM-NOTIFICACAO-INTERNA`, `EXCECAO-DE-CALENDARIO-SO-FECHA` e as da seção 71.9.
+
+### 72.9 O próximo ponto exato
+
+Os **7 modelos órfãos** que o `modelo-sem-caso-de-uso` acusa desde `af32666`, e depois os outros
+três guards vermelhos herdados.
