@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { meioDiaCivil } from "../../packages/datas/index.js";
 import { travar } from "../../packages/locks/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
@@ -49,10 +50,16 @@ export const zPublicarConfiguracaoDoAcesso = z
 
 export type PublicarConfiguracaoDoAcessoInput = z.input<typeof zPublicarConfiguracaoDoAcesso>;
 
-/** O instante do meio-dia do dia civil informado — as datas de publicação são DIAS, não instantes. */
-function diaComoInstante(dia: string): Date {
-  return new Date(`${dia}T12:00:00.000Z`);
-}
+/**
+ * O instante que ANCORA um dia civil — as datas de publicação são DIAS, não instantes.
+ *
+ * ⚠️ ERA `T12:00:00.000Z` (meio-dia em UTC) e passou a ser o meio-dia do FUSO DO ENTE. As duas
+ * âncoras são seguras — nenhuma das duas atravessa a virada do dia em conversão —, mas eram DUAS
+ * convenções para a mesma coisa no mesmo produto. Os valores que esta função grava
+ * (`normaFederalPublicadaEm`, `regulamentacaoLocalPublicadaEm`) são lidos por DIA CIVIL, nunca
+ * por igualdade de instante, e por isso as linhas antigas continuam significando o mesmo dia.
+ */
+const diaComoInstante = (dia: string): Date => meioDiaCivil(dia);
 
 export async function publicarConfiguracaoDoAcesso(
   prisma: PrismaClient,

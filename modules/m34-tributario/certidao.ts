@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { Decimal, toMoney } from "../../packages/contracts/index.js";
-import { diaCivil, somarDiasCivis } from "../../packages/datas/index.js";
+import { anoCivil, diaCivil, somarDiasCivis } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
@@ -343,7 +343,10 @@ export function sugestaoDaCobertura(
 }
 
 async function proximoProtocolo(prisma: Tx): Promise<string> {
-  const ano = new Date().getFullYear();
+  // ⚠️ O ANO CIVIL DO ENTE, e não o do processo. `getFullYear()` lê o relógio do HOSPEDEIRO: num
+  // servidor em UTC, às 22h de 31 de dezembro em São Paulo o protocolo já sairia com o ano
+  // seguinte — e a numeração do ano daria um salto que ninguém saberia explicar.
+  const ano = anoCivil(new Date());
   const n = await prisma.solicitacaoDeCertidao.count({ where: { protocolo: { startsWith: `CND/${ano}/` } } });
   return `CND/${ano}/${String(n + 1).padStart(6, "0")}`;
 }

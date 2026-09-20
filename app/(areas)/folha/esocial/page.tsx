@@ -71,10 +71,13 @@ export default async function Pagina({
       {cabecalho}
 
       <form method="get" className="mb-4 flex flex-wrap items-end gap-2" data-papel="filtro-da-consistencia">
-        <label className="text-xs" htmlFor="ambiente">
+        {/* ⚠️ SEM `id` E SEM `htmlFor`: o <label> ENVOLVE o campo, e a associação por
+            envolvimento já é completa para leitor de tela. O par literal não acrescentava nada e
+            trazia o risco que o guard dos formulários na mesma página vigia — um id repetido faz
+            o `for` apontar para o campo do primeiro formulário, e o foco vai para o lugar errado. */}
+        <label className="text-xs">
           <span className="mb-1 block text-[color:var(--color-ink-2)]">Ambiente</span>
           <select
-            id="ambiente"
             name="ambiente"
             defaultValue={ambiente}
             className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] px-2 py-1"
@@ -86,10 +89,9 @@ export default async function Pagina({
             ))}
           </select>
         </label>
-        <label className="text-xs" htmlFor="dia">
+        <label className="text-xs">
           <span className="mb-1 block text-[color:var(--color-ink-2)]">Data de referência</span>
           <input
-            id="dia"
             name="dia"
             type="date"
             defaultValue={dia}

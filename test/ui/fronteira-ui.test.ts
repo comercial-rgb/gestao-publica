@@ -86,6 +86,28 @@ const PROIBIDO_CLIENT_PORTA = {
   nome: "uma porta (lib/portas/**) dentro de um componente client — a porta puxa o Prisma",
 };
 
+/**
+ * O conteúdo SEM as declarações `import type ... from "..."`.
+ *
+ * ═══ ⚠️ E ISTO VALE SÓ PARA A ZONA 3, DE PROPÓSITO ═══
+ * O perigo que a zona 3 nomeia é de RUNTIME: "a porta puxa o Prisma, que não bundla para o
+ * browser". Um `import type` é APAGADO pelo compilador — ele não existe no pacote, não puxa
+ * Prisma nenhum e não vaza variável de ambiente alguma. Acusá-lo é acusar o que não acontece, e
+ * um guard que acusa o que não acontece é um guard que as pessoas aprendem a ignorar.
+ *
+ * ⚠️ AS ZONAS 1 E 2 CONTINUAM PEGANDO O TIPO, e a diferença não é descuido. Elas proíbem por
+ * ACOPLAMENTO, não por bundle: uma tela que importa um tipo de `modules/**` já está amarrada à
+ * forma do domínio e já pulou o contrato da porta — o `import` ser apagado depois não desfaz isso.
+ * Aqui, ao contrário, tipar a prop com o tipo que a porta devolve é EXATAMENTE o padrão que a
+ * mensagem da zona 3 recomenda ("passe o dado já-lido como prop").
+ *
+ * ⚠️ SÓ A FORMA INEQUÍVOCA `import type`. A forma misturada (`import { type X, y }`) fica de
+ * fora da isenção: ali a declaração pode emitir import de runtime, e a dúvida resolve-se
+ * fail-closed.
+ */
+const semImportsDeTipo = (conteudo: string): string =>
+  conteudo.replace(/\bimport\s+type\b[\s\S]*?from\s*["'][^"']*["']\s*;?/g, "");
+
 const ehPorta = (rel: string): boolean => rel.startsWith("lib/portas/");
 const ehClient = (conteudo: string): boolean =>
   /^\s*["']use client["']/m.test(conteudo);
@@ -152,7 +174,7 @@ describe("UI — a fronteira com o domínio (grep trivalente: UI · porta · cli
       if (ehPorta(rel)) continue;
       const conteudo = readFileSync(abs, "utf8");
       if (!ehClient(conteudo)) continue;
-      if (PROIBIDO_CLIENT_PORTA.re.test(linhasEfetivas(conteudo))) {
+      if (PROIBIDO_CLIENT_PORTA.re.test(semImportsDeTipo(linhasEfetivas(conteudo)))) {
         infratores.push(`${rel}  → importa ${PROIBIDO_CLIENT_PORTA.nome}`);
       }
     }

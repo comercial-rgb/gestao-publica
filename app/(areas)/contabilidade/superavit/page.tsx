@@ -1,3 +1,4 @@
+import { anoCivil } from "../../../../packages/datas/index";
 import { Card } from "../../../../components/ui/Card";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
@@ -36,7 +37,10 @@ export default async function Pagina({
   await exigirLeitura("CONSULTAR_CONTABILIDADE");
   const sp = await searchParams;
   const bruto = typeof sp["exercicio"] === "string" ? sp["exercicio"] : "";
-  const exercicio = /^\d{4}$/.test(bruto) ? Number(bruto) : new Date().getFullYear();
+  // ⚠️ O ANO CIVIL DO ENTE. Com `getFullYear()`, às 22h de 31 de dezembro em São Paulo a tela
+  // abriria no exercício SEGUINTE — que ainda não existe — e mostraria "sem dados" para quem
+  // estava fechando o ano.
+  const exercicio = /^\d{4}$/.test(bruto) ? Number(bruto) : anoCivil(new Date());
 
   let c: Awaited<ReturnType<typeof consultaDoSuperavit>>;
   try {

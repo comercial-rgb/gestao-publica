@@ -557,6 +557,27 @@ describe("M13 — as invariantes do módulo (sem banco)", () => {
     // cidadão lê. Cada número daqui tem uma função de DONO nomeada no comentário.
     const SUM_BRUTO = /\.(aggregate|groupBy)\(|_sum/;
 
+    /**
+     * ═══ ⚠️ O ÚNICO ARQUIVO QUE ESCREVE, E POR QUE A REGRA NÃO O ISENTA ═══
+     *
+     * `servico-politica-de-pessoal.ts` (V11 V4.2) não publica nada: ele registra a POLÍTICA que
+     * AUTORIZA a publicação — cadastrar, aprovar e revogar, cada uma com ação própria no censo.
+     * O motivo da proibição é "um portal que GRAVA é um portal que pode corromper O QUE PUBLICA",
+     * e este arquivo não toca em nenhum dado publicado: ele escreve a decisão administrativa que
+     * diz o que PODE ir ao portal.
+     *
+     * ⚠️ E A ISENÇÃO NÃO É CEGA — é POR TABELA. Uma linha "este arquivo pode escrever" seria uma
+     * porta aberta: bastaria alguém acrescentar ali um `despesaPublica.update` e o guard ficaria
+     * calado, que é exatamente o modo de falha que este teste existe para impedir. O que se
+     * declara é o MODELO permitido; qualquer escrita em outro continua derrubando.
+     *
+     * A proibição de ARITMÉTICA continua valendo para ele sem exceção nenhuma: política é ato,
+     * não número.
+     */
+    const ESCRITA_PERMITIDA: Readonly<Record<string, readonly string[]>> = {
+      "servico-politica-de-pessoal.ts": ["politicaDePublicacaoDePessoal"],
+    };
+
     for (const f of fontes) {
       const codigo = readFileSync(join(dir, f), "utf8");
       // as linhas de comentário não contam (elas EXPLICAM a proibição)
@@ -565,7 +586,20 @@ describe("M13 — as invariantes do módulo (sem banco)", () => {
         .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
         .join("\n");
 
-      expect(ESCRITA.test(efetivo), `${f} tem ESCRITA`).toBe(false);
+      const permitidos = ESCRITA_PERMITIDA[f];
+      if (permitidos === undefined) {
+        expect(ESCRITA.test(efetivo), `${f} tem ESCRITA`).toBe(false);
+      } else {
+        // O alvo de cada escrita: `tx.<modelo>.create(` / `.update(` / ...
+        const alvos = [...efetivo.matchAll(/\.([A-Za-z0-9_]+)\.(?:create|createMany|update|updateMany|upsert|delete|deleteMany)\(/g)]
+          .map((m) => m[1] ?? "");
+        const proibidos = [...new Set(alvos)].filter((m) => !permitidos.includes(m));
+        expect(proibidos, `${f} escreve em modelo NÃO declarado`).toEqual([]);
+        // ⚠️ E A DECLARAÇÃO TEM DE SER USADA: se o arquivo parou de escrever, a linha vira ruído
+        // que diz "aqui pode", e a próxima pessoa a lê como permissão geral.
+        expect(alvos.length, `${f} já não escreve — remova-o de ESCRITA_PERMITIDA`).toBeGreaterThan(0);
+      }
+
       expect(SUM_BRUTO.test(efetivo), `${f} tem SUM bruto`).toBe(false);
     }
   });

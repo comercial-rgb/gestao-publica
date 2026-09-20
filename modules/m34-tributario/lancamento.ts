@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { Decimal, toMoney } from "../../packages/contracts/index.js";
-import { diaCivil } from "../../packages/datas/index.js";
+import { diaCivil, meioDiaCivil } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
@@ -487,7 +487,8 @@ export async function constituirCreditoTributario(
     fonteId: l.lote.fonteId,
     // ⚠️ A COMPETÊNCIA É O FATO GERADOR, e ela vem do lançamento — não de "hoje". O IPTU de 2026
     // é de 2026 mesmo que o carnê saia em julho.
-    dataFatoGerador: new Date(`${l.fatoGerador}T12:00:00.000Z`),
+    // ⚠️ ANCORADA NO MEIO-DIA DO FUSO DO ENTE (a régua), e não num literal `Z` ao lado dela.
+    dataFatoGerador: meioDiaCivil(l.fatoGerador),
     valor: valor.toFixed(2),
     // ⚠️ SIGILO FISCAL (CTN art. 198): a referência é a INSCRIÇÃO IMOBILIÁRIA, nunca o CPF.
     contribuinteRef: l.imovel.inscricao,

@@ -127,10 +127,77 @@ const ESCRITO_POR_ANINHAMENTO: Readonly<Record<string, string>> = {
     "(modules/m33-folha/apropriacao.ts); LIDA pela relação `rubricas` do grupo e pela relação " +
     "inversa `grupoDeEmpenho` da rubrica (é ela que responde 'esta rubrica já empenha em algum " +
     "grupo?'). A linha não existe fora do grupo que a declarou",
+  // ── V11 V8.2 — cinco tabelas que o censo do `af32666` acusava e que SÃO aninhadas ──
+  //
+  // ⚠️ AS CINCO ESTAVAM NA LISTA DE ÓRFÃS POR OMISSÃO, NÃO POR AUSÊNCIA. Cada uma é escrita por
+  // `create` aninhado e LIDA pela relação — o que faltava era alguém conferir e declarar. E a
+  // conferência importou: em duas delas o nome do campo COLIDE com outra coisa do mesmo módulo
+  // (`dependencias` é também o resultado de `analisarFormulaDaRubrica`, calculado da fórmula e
+  // não lido do banco; `colunas` é também o do M26 designer), que é exatamente a armadilha que
+  // o cabeçalho desta lista descreve.
+  ColunaPublicadaDePessoal:
+    "escrita por `colunas: { create: ... }` em cadastrarPoliticaDePublicacao " +
+    "(modules/m13-transparencia/servico-politica-de-pessoal.ts); LIDA pela relação `colunas` da " +
+    "política em lib/portas/pessoal-publico.ts e lib/portas/politica-de-pessoal.ts — são elas que " +
+    "dizem o que pode ir ao portal. A coluna não existe fora da política que a autorizou: uma " +
+    "coluna avulsa seria permissão de expor dado pessoal sem ato que a conceda",
+  DependenciaDaVersaoDaRubrica:
+    "escrita por `dependencias: { create: ... }` em cadastrarVersaoDeRubrica " +
+    "(modules/m33-folha/versao-servico.ts); LIDA pela relação `dependencias` da versão em " +
+    "lib/portas/versoes-da-rubrica.ts. ⚠️ NÃO CONFUNDIR com o `dependencias` de " +
+    "`analisarFormulaDaRubrica`, que é CALCULADO da fórmula e não lido do banco — o campo tem o " +
+    "mesmo nome e outra procedência",
+  ResponsavelPeloLancamento:
+    "escrita por `responsaveis: { create: ... }` em constituirLancamento " +
+    "(modules/m34-tributario/lancamento.ts); LIDA por `responsaveis: { some: ... }` em " +
+    "levantarCobertura (certidao.ts) — é ela que responde 'este lançamento é desta pessoa?'. A " +
+    "responsabilidade é CONGELADA no lançamento: ler o vínculo vigente depois mudaria o passado",
+  VencimentoDoLancamento:
+    "escrita por `vencimentos: { create: ... }` em constituirLancamento " +
+    "(modules/m34-tributario/lancamento.ts); LIDA pela relação `vencimentos` do lançamento na " +
+    "projeção dele. A parcela não existe fora do lançamento que a constituiu",
+  BaseConsultadaNaCertidao:
+    "escrita por `cobertura: { create: ... }` em solicitarCertidao " +
+    "(modules/m34-tributario/certidao.ts); LIDA na mesma função e na projeção da certidão — é a " +
+    "lista do que FOI consultado, e é ela que impede a certidão afirmar mais do que olhou",
   ItemRecebidoDefinitivamente:
     "escrita por `itens: { create: ... }` em registrarRecebimentoDefinitivo (modules/m11-licitacoes/ordem-de-servico.ts, " +
     "V7 M2 U2); LIDA pelas relações `recebidos` do item medido (o elegível ao definitivo) e `itens` do recebimento (o valor " +
     "do termo). A linha não existe fora do recebimento que a declarou",
+};
+
+/**
+ * Modelos que o código LÊ sem nomear — e que NINGUÉM ESCREVE, por um motivo declarado.
+ *
+ * ═══ ⚠️ POR QUE UMA TERCEIRA LISTA, E NÃO UMA DAS DUAS DE CIMA ═══
+ * `SEM_CASO_DE_USO` diz "o código à mão não alcança"; `ESCRITO_POR_ANINHAMENTO` diz "é escrito
+ * pelo pai". As tabelas abaixo não são nenhuma das duas: elas são LIDAS — o leitor existe,
+ * escrito à mão, e funciona — e não têm escritor, porque a FONTE ainda não chegou.
+ *
+ * Enfiá-las em qualquer uma das outras duas seria escrever uma frase falsa numa lista de
+ * exceções, e é isso que faz a próxima pessoa deixar de confiar em todas elas.
+ *
+ * ⚠️ E A LISTA TEM VIGILÂNCIA PRÓPRIA (o teste abaixo): no dia em que alguém escrever o
+ * transcritor, a linha vira mentira em silêncio — porque um escritor aninhado não NOMEIA o
+ * modelo, e o teste de "já não é aninhamento" não o pegaria.
+ */
+const LIDO_SEM_ESCRITOR: Readonly<Record<string, { readonly motivo: string; readonly campoDoPai: string }>> = {
+  EventoDoLeiaute: {
+    motivo:
+      "LIDO por `include: { eventos: { include: { campos } } }` em consistenciaDoESocial " +
+      "(lib/portas/esocial.ts), que alimenta a conferência de consistência do M14. NÃO É ESCRITO " +
+      "por ninguém, e a razão está nomeada: `LEIAUTE-ESOCIAL-NAO-OBTIDO` — o leiaute oficial não " +
+      "foi obtido, e transcrever um evento inventado seria pior que a ausência (o sistema " +
+      "validaria contra uma regra que a União não publicou). A tabela existe para receber a " +
+      "transcrição conferida por um humano, e o leitor já está pronto para o dia em que ela vier.",
+    campoDoPai: "eventos",
+  },
+  CampoDoEvento: {
+    motivo:
+      "LIDO pela mesma consulta, um nível abaixo. Mesma ausência e mesma pendência do " +
+      "`EventoDoLeiaute` — o campo não existe fora do evento que o declara.",
+    campoDoPai: "campos",
+  },
 };
 
 function arquivosDeSchema(): readonly string[] {
@@ -182,6 +249,7 @@ describe("modelo do schema sem caso de uso", () => {
     for (const modelo of modelosDoSchema()) {
       if (modelo in SEM_CASO_DE_USO) continue;
       if (modelo in ESCRITO_POR_ANINHAMENTO) continue;
+      if (modelo in LIDO_SEM_ESCRITOR) continue;
       // O nome do modelo aparece capitalizado (tipos, `Prisma.X`) ou com inicial minúscula
       // (`tx.parecerContrato`). Qualquer uma das duas conta como alcance.
       const camel = modelo.charAt(0).toLowerCase() + modelo.slice(1);
@@ -219,6 +287,33 @@ describe("modelo do schema sem caso de uso", () => {
       }
     }
     expect(nomeados, "\n\nAninhamentos que já não são aninhamentos:\n").toEqual([]);
+  });
+
+  /**
+   * ⚠️ A LISTA DO "LIDO SEM ESCRITOR" SE VIGIA PELO ESCRITOR QUE AINDA NÃO EXISTE.
+   *
+   * O teste de "já não é aninhamento" olha se o modelo passou a ser NOMEADO — e não pegaria o
+   * caso que aqui importa: alguém escrever o transcritor do leiaute por `create` aninhado, que
+   * não nomeia nada. A linha continuaria dizendo "ninguém escreve" depois de alguém escrever.
+   *
+   * Então a vigilância é sobre o pai: se aparecer um `<campoDoPai>: { create`, a declaração
+   * caducou e tem de mudar de lista.
+   */
+  it("todo modelo lido-sem-escritor continua sem escritor", () => {
+    const comEscritor: string[] = [];
+    for (const [modelo, d] of Object.entries(LIDO_SEM_ESCRITOR)) {
+      const camel = modelo.charAt(0).toLowerCase() + modelo.slice(1);
+      if (new RegExp(`\\b(${modelo}|${camel})\\b`).test(CORPO)) {
+        comEscritor.push(`${modelo} (agora é NOMEADO por código — mova a linha para fora de LIDO_SEM_ESCRITOR)`);
+        continue;
+      }
+      if (new RegExp(`${d.campoDoPai}\\s*:\\s*\\{\\s*create`).test(CORPO)) {
+        comEscritor.push(
+          `${modelo} (alguém passou a escrevê-lo por \`${d.campoDoPai}: { create\` — mova para ESCRITO_POR_ANINHAMENTO)`
+        );
+      }
+    }
+    expect(comEscritor, "\n\nDeclarações de 'lido sem escritor' que caducaram:\n").toEqual([]);
   });
 
   it("toda exceção declarada ainda é um modelo órfão de verdade", () => {

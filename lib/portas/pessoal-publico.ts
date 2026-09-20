@@ -1,4 +1,5 @@
 import { toMoney } from "../../packages/contracts/index.js";
+import { diaCivilBr } from "../../packages/datas/index.js";
 import { cargoVigenteEm, lotacaoVigenteEm } from "../../modules/m32-pessoal/dominio.js";
 import { bordasDaCompetencia } from "../../modules/m33-folha/dominio.js";
 import {
@@ -93,7 +94,11 @@ export async function demonstrativoDePessoal(competenciaPedida: string): Promise
   });
   const disponiveis = fechadas.map((f) => f.competencia);
   const competencia = /^\d{4}-(0[1-9]|1[0-2])$/.test(competenciaPedida) ? competenciaPedida : (disponiveis[0] ?? "");
-  const hoje = new Date().toISOString().slice(0, 10).split("-").reverse().join("/");
+  // ⚠️ DEFEITO REAL, E VISÍVEL AO PÚBLICO: `toISOString()` devolve o dia em UTC. Às 21h30 de um
+  // dia em São Paulo, o portal do cidadão estampava a data de AMANHÃ como "hoje" no rodapé do
+  // demonstrativo de pessoal — três horas por dia, todo dia, num documento que é prestação de
+  // contas.
+  const hoje = diaCivilBr(new Date());
 
   const vazio = (pendencia: string): DemonstrativoDePessoal => ({
     competencia, competenciasDisponiveis: disponiveis, temFolhaFechada: false,

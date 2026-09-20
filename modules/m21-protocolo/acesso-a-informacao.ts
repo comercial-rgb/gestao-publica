@@ -1,4 +1,4 @@
-import { diaCivil, diaCivilBr, somarDiasCivis } from "../../packages/datas/index.js";
+import { diaCivil, diaCivilBr, diferencaEmDiasCivis, meioDiaCivil, somarDiasCivis } from "../../packages/datas/index.js";
 
 /**
  * ═══ O PRAZO DO PEDIDO DE ACESSO À INFORMAÇÃO (V11 V5.1) ═══
@@ -165,9 +165,11 @@ export function prazoDoPedido(
     diaDeHoje > diaLimite ? "VENCIDO" : diaDeHoje === diaLimite ? "VENCE_HOJE" : "NO_PRAZO";
 
   // Dias inteiros de calendário entre hoje e o limite. Zero no dia do vencimento.
-  const restantes = Math.round(
-    (Date.parse(`${diaLimite}T12:00:00Z`) - Date.parse(`${diaDeHoje}T12:00:00Z`)) / 86_400_000,
-  );
+  //
+  // ⚠️ PELA RÉGUA, e não por uma âncora local. A conta era certa — dois meios-dias em UTC não
+  // atravessam virada nenhuma —, mas era uma SEGUNDA régua ao lado de `packages/datas`, e a
+  // segunda régua é como duas medidas de dia passam a conviver sem ninguém decidir qual vale.
+  const restantes = diferencaEmDiasCivis(meioDiaCivil(diaLimite), meioDiaCivil(diaDeHoje));
 
   return {
     limite,
