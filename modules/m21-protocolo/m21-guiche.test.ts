@@ -434,8 +434,29 @@ describe("o que o guichê atende, e quando a unidade abre", () => {
 
     await expect(
       fecharDiaDeAtendimento(prisma, { unidadeId, dia: SEGUNDA, motivo: "Ponto facultativo", criadoPor: CHEFIA })
-    ).rejects.toThrow(/2 reserva\(s\) viva\(s\) em 21\/09\/2026[\s\S]*prédio fechado/);
+    ).rejects.toThrow(/2 pessoa\(s\) marcada\(s\) e ainda não atendida\(s\) em 21\/09\/2026[\s\S]*prédio fechado/);
     expect(await prisma.excecaoDeCalendarioDoAtendimento.count()).toBe(0);
+  });
+
+  it("t12b: quem JÁ FOI ATENDIDO não impede fechar o dia — e continua ocupando o lugar", async () => {
+    await janelaDeSegunda(guicheA, 1);
+    const r = await reservar({ pessoaId: pessoa1 });
+    await confirmarReservaDeAtendimento(prisma, { reservaId: r.reservaId, criadoPor: ATENDENTE });
+    await registrarAtendimentoRealizado(prisma, {
+      reservaId: r.reservaId, atendidoPor: "Servidora do guichê", criadoPor: ATENDENTE,
+    });
+
+    // ⚠️ DUAS CONTAGENS DIFERENTES, E ESTE TESTE É O QUE AS SEPARA.
+    // Para a CAPACIDADE a atendida continua ocupando: a pessoa veio e o lugar foi usado.
+    expect((await ofertaDoGuiche(prisma, { guicheId: guicheA, dia: SEGUNDA })).horarios[0]?.ocupadas).toBe(1);
+    await expect(reservar({ pessoaId: pessoa2 })).rejects.toThrow(/está lotado/);
+
+    // Para FECHAR O DIA ela não conta: quem já foi atendido não vai ser deixado na porta, e
+    // bloquear aqui tornaria impossível registrar um feriado decidido depois do expediente.
+    await fecharDiaDeAtendimento(prisma, {
+      unidadeId, dia: SEGUNDA, motivo: "Ponto facultativo decidido no fim do dia", criadoPor: CHEFIA,
+    });
+    expect(await prisma.excecaoDeCalendarioDoAtendimento.count()).toBe(1);
   });
 });
 

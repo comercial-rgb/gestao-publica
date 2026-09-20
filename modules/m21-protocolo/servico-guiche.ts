@@ -350,12 +350,13 @@ export async function fecharDiaDeAtendimento(
       );
     }
 
-    const vivas = await reservasVivasDoDia(tx, d.unidadeId, dia);
-    if (vivas > 0) {
+    const esperando = await reservasQueAindaEsperamNoDia(tx, d.unidadeId, dia);
+    if (esperando > 0) {
       throw new Error(
-        `A unidade ${unidade.nome} tem ${vivas} reserva(s) viva(s) em ${diaCivilBr(dia)}. Fechar o dia ` +
-          `por cima delas deixaria essas pessoas marcadas para um prédio fechado. Cancele ou ` +
-          `reagende as reservas primeiro — cada uma com o seu motivo. Nada foi gravado.`
+        `A unidade ${unidade.nome} tem ${esperando} pessoa(s) marcada(s) e ainda não atendida(s) em ` +
+          `${diaCivilBr(dia)}. Fechar o dia por cima delas as deixaria marcadas para um prédio ` +
+          `fechado. Cancele ou reagende essas marcações primeiro — cada uma com o seu motivo. ` +
+          `Nada foi gravado.`
       );
     }
 
@@ -437,17 +438,46 @@ export async function ocupacaoDoDia(
   return porHora;
 }
 
-/** Quantas reservas vivas a unidade tem num dia — em qualquer guichê dela. */
-async function reservasVivasDoDia(tx: Tx, unidadeId: string, dia: Date): Promise<number> {
-  const guiches = await tx.guicheDeAtendimento.findMany({
-    where: { unidadeId },
-    select: { id: true },
+/**
+ * Quantas pessoas AINDA ESPERAM atendimento num dia, em qualquer guichê da unidade.
+ *
+ * ═══ ⚠️ ESTA CONTAGEM NÃO É A DA CAPACIDADE, E A DIFERENÇA É O ATENDIMENTO JÁ REALIZADO ═══
+ * Para a CAPACIDADE, uma reserva atendida CONTINUA ocupando o lugar: a pessoa veio e o lugar foi
+ * usado; descontá-la abriria uma vaga que já foi consumida.
+ *
+ * Para FECHAR O DIA, ela NÃO conta: quem já foi atendido não vai ser deixado na porta. O guard do
+ * fechamento existe para não abandonar gente marcada, e uma unidade onde todo mundo já foi
+ * atendido não tem ninguém a abandonar — bloquear ali tornaria impossível registrar um feriado
+ * que se decidiu depois do expediente.
+ */
+async function reservasQueAindaEsperamNoDia(tx: Tx, unidadeId: string, dia: Date): Promise<number> {
+  const guiches = await tx.guicheDeAtendimento.findMany({ where: { unidadeId }, select: { id: true } });
+  const ids = guiches.map((g) => g.id);
+  if (ids.length === 0) return 0;
+
+  const candidatas = await tx.reservaDeAtendimento.findMany({
+    where: {
+      cancelamento: { is: null },
+      realizacao: { is: null },
+      OR: [
+        { guicheId: { in: ids }, dia },
+        { reagendamentos: { some: { guicheId: { in: ids }, dia } } },
+      ],
+    },
+    select: {
+      guicheId: true,
+      dia: true,
+      horaInicio: true,
+      reagendamentos: { orderBy: { sequencia: "desc" }, take: 1, select: { guicheId: true, dia: true, horaInicio: true } },
+    },
   });
-  let total = 0;
-  for (const g of guiches) {
-    for (const n of (await ocupacaoDoDia(tx, g.id, dia)).values()) total += n;
-  }
-  return total;
+
+  const alvo = diaCivil(dia);
+  const doDia = new Set(ids);
+  return candidatas.filter((r) => {
+    const v = vigenteDaReserva({ id: "", ...r });
+    return doDia.has(v.guicheId) && diaCivil(v.dia) === alvo;
+  }).length;
 }
 
 /** As janelas de um guichê, na forma do domínio puro. */
