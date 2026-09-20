@@ -350,6 +350,20 @@ export type AcaoDoSistema =
   | "SOLICITAR_SERVICO"
   | "DECIDIR_SOLICITACAO_DE_SERVICO"
   | "REGISTRAR_REPRESENTACAO"
+  // ── M21 V11 V8 — A AGENDA DO GUICHÊ (TR 5.39.92) ──
+  //
+  // ⚠️ TRÊS AÇÕES PARA DEZ SERVIÇOS, e o corte é por QUEM FAZ, não por qual função é.
+  // Quem ORGANIZA o atendimento (abre uma unidade, cria um guichê, publica a oferta de
+  // horários, fecha um feriado) é a chefia do setor; quem MARCA e remarca é o balcão; quem
+  // CONFIRMA e registra que atendeu é a pessoa no guichê. Uma permissão por função daria um
+  // rol de dez linhas para administrar — e a segregação morre por atrito.
+  //
+  // ⚠️ A LEITURA NÃO ENTRA AQUI: a agenda do guichê é da área do protocolo, e a leitura de
+  // área já existe (`CONSULTAR_PROTOCOLO`). Uma ação de leitura por tela nova é exatamente o
+  // que o bloco das ações de leitura explica que não se faz.
+  | "CONFIGURAR_AGENDA_DO_GUICHE"
+  | "RESERVAR_ATENDIMENTO_NO_GUICHE"
+  | "REGISTRAR_ATENDIMENTO_NO_GUICHE"
   | "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA"
   | "CONFIGURAR_TABELAS_DA_FOLHA"
   | "CADASTRAR_RUBRICA"
@@ -931,6 +945,16 @@ export type NomeDeServico =
   | "resolverOcorrencia"
   | "registrarMedicaoPorItens"
   // M21/M19 — a carta de serviços, as solicitações do requerente e a representação (V6.2 P3)
+  | "criarUnidadeDeAtendimento"
+  | "criarGuiche"
+  | "definirServicoNoGuiche"
+  | "publicarJanelaDeAtendimento"
+  | "fecharDiaDeAtendimento"
+  | "reservarAtendimento"
+  | "cancelarReservaDeAtendimento"
+  | "reagendarReservaDeAtendimento"
+  | "confirmarReservaDeAtendimento"
+  | "registrarAtendimentoRealizado"
   | "cadastrarServicoDaCarta"
   | "cadastrarVersaoDoServico"
   | "publicarVersaoDoServico"
@@ -1473,6 +1497,20 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // V6.2 P3 — a carta de serviços. Configurar a carta é um ato; pedir (protocolar, responder,
   // anexar) é o ato do REQUERENTE, conferido contra a titularidade na transação; decidir (exigir,
   // decidir, disponibilizar resposta) é o ato da mesa, no setor em que o processo está.
+  // ── M21 V11 V8 — a agenda do guichê ──
+  criarUnidadeDeAtendimento: "CONFIGURAR_AGENDA_DO_GUICHE",
+  criarGuiche: "CONFIGURAR_AGENDA_DO_GUICHE",
+  definirServicoNoGuiche: "CONFIGURAR_AGENDA_DO_GUICHE",
+  publicarJanelaDeAtendimento: "CONFIGURAR_AGENDA_DO_GUICHE",
+  fecharDiaDeAtendimento: "CONFIGURAR_AGENDA_DO_GUICHE",
+  reservarAtendimento: "RESERVAR_ATENDIMENTO_NO_GUICHE",
+  cancelarReservaDeAtendimento: "RESERVAR_ATENDIMENTO_NO_GUICHE",
+  reagendarReservaDeAtendimento: "RESERVAR_ATENDIMENTO_NO_GUICHE",
+  // ⚠️ CONFIRMAR E REALIZAR são do guichê, não do balcão que marcou: quem diz "esta pessoa
+  // está aqui" e "foi atendida" é quem atende. Dar as duas a quem marca deixaria a agenda
+  // fechar o próprio dia sem ninguém ter aparecido.
+  confirmarReservaDeAtendimento: "REGISTRAR_ATENDIMENTO_NO_GUICHE",
+  registrarAtendimentoRealizado: "REGISTRAR_ATENDIMENTO_NO_GUICHE",
   cadastrarServicoDaCarta: "CONFIGURAR_CARTA_DE_SERVICOS",
   cadastrarVersaoDoServico: "CONFIGURAR_CARTA_DE_SERVICOS",
   publicarVersaoDoServico: "CONFIGURAR_CARTA_DE_SERVICOS",
@@ -1749,6 +1787,15 @@ export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
  * grep-teste lê esta lista — nada sai do censo por descuido.
  */
 export const FORA_DO_CENSO: Record<string, string> = {
+  // ── M21 V11 V8 — as LEITURAS da agenda do guichê ──
+  ocupacaoDoDia:
+    "LEITURA. Conta quantas reservas VIVAS ocupam cada horário de um guichê num dia. Não grava " +
+    "nada — e é de propósito a MESMA função que o guard da reserva subtrai dentro da transação: " +
+    "uma segunda contagem faria a agenda oferecer horário que a gravação recusa.",
+  ofertaDoGuiche:
+    "LEITURA. Devolve os horários de um dia com capacidade, ocupadas e livres, ou o MOTIVO de a " +
+    "unidade estar fechada. Quem a chama pela tela passa por `CONSULTAR_PROTOCOLO`, a ação de " +
+    "leitura da área — a agenda do guichê não ganha ação de leitura própria.",
   // ⚠️ V11 V5.3 — OS CORPOS DE TRANSAÇÃO DO M21. Eles não são atos por si: quem os chama já
   // está dentro de uma transação e responde pelo ato. Estão exportados porque o pedido de
   // acesso à informação precisa tramitar e receber o PROCESSO na mesma transação em que grava o

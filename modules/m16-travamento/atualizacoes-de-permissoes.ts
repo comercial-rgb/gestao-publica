@@ -743,6 +743,58 @@ export function derivarDeclaracaoDeDisponibilidade(
   return saida;
 }
 
+/**
+ * V11 V8 — AS TRÊS AÇÕES DA AGENDA DO GUICHÊ.
+ *
+ * ⚠️ A DERIVAÇÃO É PELO QUE O PERFIL JÁ FAZ NO PROTOCOLO, e ela é DESIGUAL de propósito:
+ *
+ *   · quem já CONFIGURA a carta de serviços (`CONFIGURAR_CARTA_DE_SERVICOS`) passa a poder
+ *     ORGANIZAR o atendimento presencial dos mesmos serviços — é a mesma chefia, e a agenda do
+ *     guichê é a face presencial da carta;
+ *   · quem já ATENDE o balcão (`SOLICITAR_SERVICO` — protocola em nome de quem chega) passa a
+ *     poder MARCAR e remarcar;
+ *   · CONFIRMAR e REGISTRAR o atendimento **não são derivadas para ninguém**. Dizer "esta pessoa
+ *     está aqui" e "foi atendida" é ato de quem está no guichê naquele dia, e não há hoje uma
+ *     permissão que signifique isso — derivá-la de quem marca deixaria a agenda fechar o próprio
+ *     dia sem ninguém ter aparecido. Quem organiza concede, nomeando a pessoa.
+ *
+ * ⚠️ O ESCOPO É O MESMO que o perfil já tinha na ação de origem. Um perfil que só configura a
+ * carta numa unidade gestora não passa a organizar guichê no ente inteiro.
+ */
+export function derivarAgendaDoGuiche(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  const derivacoes = [
+    { de: "CONFIGURAR_CARTA_DE_SERVICOS", para: "CONFIGURAR_AGENDA_DO_GUICHE" },
+    { de: "SOLICITAR_SERVICO", para: "RESERVAR_ATENDIMENTO_NO_GUICHE" },
+  ] as const;
+
+  for (const perfil of perfis) {
+    for (const { de, para } of derivacoes) {
+      for (const origem of perfil.permissoes.filter((p) => p.acao === de)) {
+        const jaTem = perfil.permissoes.some(
+          (p) => p.acao === para && p.unidadeOrcId === origem.unidadeOrcId
+        );
+        if (jaTem) continue;
+        // Duas origens no MESMO escopo não podem virar duas concessões iguais.
+        const jaDerivada = saida.some(
+          (c) => c.perfilId === perfil.id && c.acao === para && c.unidadeOrcId === origem.unidadeOrcId
+        );
+        if (jaDerivada) continue;
+        saida.push({
+          perfilId: perfil.id,
+          perfilNome: perfil.nome,
+          acao: para,
+          unidadeOrcId: origem.unidadeOrcId,
+        });
+      }
+    }
+  }
+  return saida;
+}
+
 export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
   {
     versao: 1,
@@ -981,6 +1033,17 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "AUTORIZA a despesa, e dar os dois a mesma pessoa faria o guard do credito conferir um lastro que ela mesma " +
       "declara.",
     derivar: derivarDeclaracaoDeDisponibilidade,
+  },
+  {
+    versao: 26,
+    nome: "agenda-do-guiche",
+    descricao:
+      "O atendimento presencial ganhou agenda (TR 5.39.92). Quem ja CONFIGURA a carta de servicos " +
+      "passa a poder ORGANIZAR o guiche (unidade, guiche, oferta de horarios, feriado) no mesmo " +
+      "escopo; quem ja protocola em nome de quem chega (SOLICITAR_SERVICO) passa a poder MARCAR e " +
+      "remarcar. CONFIRMAR e REGISTRAR o atendimento NAO sao derivadas: sao atos de quem esta no " +
+      "guiche no dia, e quem organiza concede nomeando a pessoa.",
+    derivar: derivarAgendaDoGuiche,
   },
 ];
 

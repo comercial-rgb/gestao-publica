@@ -56,6 +56,8 @@ model ServicoDaCarta {
 
   versoes    VersaoDoServico[]
   avaliacoes AvaliacaoDeServico[] @relation("AvaliacoesDoServico")
+  guiches    SituacaoDoServicoNoGuiche[] @relation("GuichesDoServico")
+  reservas   ReservaDeAtendimento[]      @relation("ReservasDoServico")
 
   @@index([assuntoId])
 }

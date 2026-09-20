@@ -286,6 +286,20 @@ export const ORDEM_DOS_LOCKS = {
    * aqui: mexer no M34 é outra unidade. Pendência `CONFIGURACAO-DA-CERTIDAO-SEM-TRINCO`.
    */
   ConfiguracaoDoAcessoAInformacao: 27,
+  /**
+   * M21 V11 V8 — O HORÁRIO DO GUICHÊ. A capacidade de um horário é um SALDO, e o desenho é o
+   * mesmo de sempre: CONTA as reservas vivas, DECIDE, GRAVA. Sob READ COMMITTED, duas pessoas
+   * clicando no último lugar leem "cabe 1" e as duas gravam — a mesma corrida da ficha
+   * (6fa5d4e), agora com duas pessoas na porta do mesmo guichê às 14:30.
+   *
+   * ⚠️ A CHAVE É `guiche:dia:hora`, NÃO o id de reserva nenhuma: o que se disputa é o LUGAR, e
+   * na hora em que a primeira transação trava, a linha que a segunda vai criar ainda não existe.
+   * É exatamente o caso em que `FOR UPDATE` não travava nada e passava batido.
+   *
+   * ⚠️ E É O ÚLTIMO POSTO. Nada do atendimento presencial toca ficha, contrato ou razão; ele
+   * não sobe a fila de volta, e ninguém que já o travou precisa de um posto anterior.
+   */
+  HorarioDeGuiche: 28,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

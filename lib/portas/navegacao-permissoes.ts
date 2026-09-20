@@ -314,6 +314,10 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   DECIDIR_SOLICITACAO_DE_SERVICO: "protocolo",
   SOLICITAR_SERVICO: "meus-servicos",
   REGISTRAR_REPRESENTACAO: "cadastros",
+  // M21 V11 V8 — a agenda do guichê mora no PROTOCOLO, junto da carta de serviços que ela atende.
+  CONFIGURAR_AGENDA_DO_GUICHE: "protocolo",
+  RESERVAR_ATENDIMENTO_NO_GUICHE: "protocolo",
+  REGISTRAR_ATENDIMENTO_NO_GUICHE: "protocolo",
   CADASTRAR_RUBRICA: "folha",
   // V11 V1.1 — as versões se operam no detalhe da rubrica, dentro da área da folha.
   CADASTRAR_VERSAO_DE_RUBRICA: "folha",

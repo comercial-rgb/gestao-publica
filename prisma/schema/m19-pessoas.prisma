@@ -127,6 +127,7 @@ model Pessoa {
   cotacoes      CotacaoDePreco[] @relation("FornecedorCotado")
   ordensDeCompra OrdemDeCompra[] @relation("FornecedorDaOrdem")
   documentosFiscaisEmitidos DocumentoFiscalRecebido[] @relation("EmitenteDoDocumentoFiscal")
+  reservasDeAtendimento     ReservaDeAtendimento[]    @relation("ReservasDeAtendimentoDaPessoa")
 }
 
 /// A VERSÃO — o estado cadastral num instante. A vigente é a de `criadoEm` mais recente.

@@ -1,0 +1,255 @@
+// ═══ M21 — A AGENDA DO GUICHÊ (V11 V8) ═══
+//
+// TR 5.39.92: "Permitir o agendamento de atendimentos presenciais, conforme guichês organizados
+// pela contratante."
+//
+// ⚠️ ELA É SEPARADA DA AGENDA DA FISCALIZAÇÃO, e a separação é do pedido (V9), não estética. São
+// dois domínios com donos, dados e sigilos diferentes: a fiscalização é do gestor do contrato
+// sobre um fiscal designado; o guichê é do CIDADÃO sobre um serviço da carta. Misturá-las poria
+// o nome de quem vai ao balcão na mesma tabela que a ordem de fiscalização de um contrato — e
+// quem lê uma passaria a ler a outra.
+//
+// ⚠️ A FORMA É A DA AGENDA IRMÃ, e de propósito: o compromisso é APPEND-ONLY, e os fatos que
+// mudam a vida dele (confirmação, cancelamento, reagendamento, realização) são tabelas próprias.
+// O horário vigente de uma reserva é o do ÚLTIMO reagendamento; os anteriores continuam legíveis.
+//
+// ⚠️ DATA CIVIL, COMO NA IRMÃ: `dia` é DateTime fixado ao MEIO-DIA do fuso do ente
+// (`meioDiaCivil`), que é a única hora que nenhuma conversão de fuso nem horário de verão
+// empurra para o dia vizinho. A hora do compromisso é "HH:MM" no relógio do ente, em texto —
+// não é instante, é posição no dia.
+
+/// O LOCAL onde se atende presencialmente. O guichê mora dentro dela.
+model UnidadeDeAtendimento {
+  id String @id @default(cuid())
+
+  /// Código curto do ente (ex.: "SEDE", "POSTO-NORTE"). Estável; é o que a tela mostra ao lado do nome.
+  codigo    String @unique
+  nome      String
+  endereco  String
+
+  /// O setor responsável pelo local — quem responde por ele na estrutura do ente.
+  setorId String
+  setor   Setor @relation("UnidadesDeAtendimentoDoSetor", fields: [setorId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  guiches  GuicheDeAtendimento[]
+  excecoes ExcecaoDeCalendarioDoAtendimento[]
+
+  @@index([setorId])
+}
+
+/// O POSTO de atendimento dentro da unidade. É o que a contratante "organiza", no texto do TR.
+model GuicheDeAtendimento {
+  id String @id @default(cuid())
+
+  unidadeId String
+  unidade   UnidadeDeAtendimento @relation(fields: [unidadeId], references: [id])
+
+  /// "Guichê 1", "Mesa do IPTU" — nome do ente, único DENTRO da unidade.
+  nome String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  servicos SituacaoDoServicoNoGuiche[]
+  janelas  JanelaDeAtendimento[]
+  reservas ReservaDeAtendimento[]        @relation("ReservasDoGuiche")
+  destinos ReagendamentoDaReserva[]      @relation("GuicheDeDestino")
+
+  @@unique([unidadeId, nome])
+  @@index([unidadeId])
+}
+
+/// QUAIS SERVIÇOS DA CARTA este guichê atende — FATO, não coluna editável.
+///
+/// ⚠️ APPEND-ONLY: habilitar e desabilitar são dois fatos da mesma tabela, e o vigente é o
+/// último. A pergunta "este guichê atendia IPTU em março?" tem resposta; com um booleano
+/// sobrescrito, não teria — e é ela que explica por que uma reserva antiga foi aceita.
+model SituacaoDoServicoNoGuiche {
+  id String @id @default(cuid())
+
+  guicheId String
+  guiche   GuicheDeAtendimento @relation(fields: [guicheId], references: [id])
+
+  servicoId String
+  servico   ServicoDaCarta @relation("GuichesDoServico", fields: [servicoId], references: [id])
+
+  habilitado Boolean
+  motivo     String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([guicheId, servicoId, criadoEm])
+  @@index([servicoId])
+}
+
+/// A OFERTA: em que dia da semana, de que hora a que hora, de quantos em quantos minutos, e
+/// QUANTAS pessoas cabem em cada horário.
+///
+/// ⚠️ SEM PADRÃO NO CÓDIGO. Não há "8h às 17h" em lugar nenhum: sem janela cadastrada, o guichê
+/// não oferece horário nenhum e a reserva é RECUSADA nomeando a ausência. Prometer um horário que
+/// o ente não configurou é marcar o cidadão para uma porta fechada.
+///
+/// ⚠️ JANELAS DO MESMO GUICHÊ NO MESMO DIA DA SEMANA NÃO PODEM SE SOBREPOR em vigência — duas
+/// janelas cobrindo o mesmo horário dariam duas capacidades para o mesmo minuto, e a soma
+/// dependeria da ordem da leitura.
+model JanelaDeAtendimento {
+  id String @id @default(cuid())
+
+  guicheId String
+  guiche   GuicheDeAtendimento @relation(fields: [guicheId], references: [id])
+
+  /// 0 = domingo … 6 = sábado, como `Date.getDay()` do fuso do ente.
+  diaDaSemana Int
+
+  /// "HH:MM" no relógio do ente. `horaFim` é EXCLUSIVO: 08:00–12:00 com 30 min oferece o 11:30, não o 12:00.
+  horaInicio String @db.VarChar(5)
+  horaFim    String @db.VarChar(5)
+
+  /// O tamanho do atendimento, em minutos. Os horários ofertados saem daqui, não de uma lista digitada.
+  duracaoMinutos Int
+
+  /// Quantas pessoas cabem em CADA horário. É contra este número que a reserva conta as vivas.
+  capacidade Int
+
+  /// Vigência da oferta, em dia civil (meio-dia do fuso do ente). `fim` nulo = sem prazo.
+  vigenciaInicio DateTime
+  vigenciaFim    DateTime?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([guicheId, diaDaSemana])
+}
+
+/// O DIA EM QUE A UNIDADE NÃO ABRE — feriado, ponto facultativo, força maior.
+///
+/// ⚠️ É DA UNIDADE, não do guichê: quando o prédio não abre, nenhum guichê dele atende. O motivo
+/// é obrigatório porque é ele que a tela mostra a quem procurou horário e não achou.
+model ExcecaoDeCalendarioDoAtendimento {
+  id String @id @default(cuid())
+
+  unidadeId String
+  unidade   UnidadeDeAtendimento @relation(fields: [unidadeId], references: [id])
+
+  /// Dia civil fechado (meio-dia do fuso do ente).
+  dia    DateTime
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([unidadeId, dia])
+  @@index([dia])
+}
+
+/// A RESERVA — o compromisso do cidadão. Append-only; o que muda vem em fato próprio.
+model ReservaDeAtendimento {
+  id String @id @default(cuid())
+
+  guicheId String
+  guiche   GuicheDeAtendimento @relation("ReservasDoGuiche", fields: [guicheId], references: [id])
+
+  servicoId String
+  servico   ServicoDaCarta @relation("ReservasDoServico", fields: [servicoId], references: [id])
+
+  pessoaId String
+  pessoa   Pessoa @relation("ReservasDeAtendimentoDaPessoa", fields: [pessoaId], references: [id])
+
+  /// O horário ORIGINAL. O vigente é o do último reagendamento, quando houver.
+  dia        DateTime
+  horaInicio String @db.VarChar(5)
+
+  /// ⚠️ O CÓDIGO DE ACOMPANHAMENTO — aleatório, não sequencial. Um número em ordem diria quantas
+  /// pessoas marcaram hoje e deixaria adivinhar o do vizinho; quem tem o código vê a reserva.
+  codigo String @unique
+
+  /// ⚠️ A CHAVE DE IDEMPOTÊNCIA, com o ESCOPO DENTRO DELA (invariante 5). Dois cliques no mesmo
+  /// botão são UMA reserva; duas intenções diferentes são duas.
+  chaveDeIdempotencia String @unique
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  confirmacao    ConfirmacaoDaReserva?
+  cancelamento   CancelamentoDaReserva?
+  realizacao     RealizacaoDoAtendimento?
+  reagendamentos ReagendamentoDaReserva[]
+
+  @@index([guicheId, dia])
+  @@index([pessoaId])
+  @@index([servicoId])
+}
+
+/// A CONFIRMAÇÃO — uma por reserva. Reserva não confirmada continua ocupando a vaga: quem marcou
+/// e não confirmou não liberou lugar nenhum.
+model ConfirmacaoDaReserva {
+  id String @id @default(cuid())
+
+  reservaId String               @unique
+  reserva   ReservaDeAtendimento @relation(fields: [reservaId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// O CANCELAMENTO — um por reserva, com motivo. É ele, e só ele, que devolve a vaga à capacidade.
+model CancelamentoDaReserva {
+  id String @id @default(cuid())
+
+  reservaId String               @unique
+  reserva   ReservaDeAtendimento @relation(fields: [reservaId], references: [id])
+
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// O REAGENDAMENTO — fato; o compromisso vigente é o ÚLTIMO. Pode mudar de guichê dentro da
+/// mesma unidade (a mesa quebrou, o serviço passou a ser atendido noutro posto).
+model ReagendamentoDaReserva {
+  id String @id @default(cuid())
+
+  reservaId String
+  reserva   ReservaDeAtendimento @relation(fields: [reservaId], references: [id])
+
+  guicheId String
+  guiche   GuicheDeAtendimento @relation("GuicheDeDestino", fields: [guicheId], references: [id])
+
+  dia        DateTime
+  horaInicio String @db.VarChar(5)
+
+  motivo String
+
+  /// ⚠️ A ORDEM DOS REAGENDAMENTOS NÃO PODE DEPENDER DO RELÓGIO. "O vigente é o último" só tem
+  /// sentido se "último" for inequívoco, e `criadoEm` não é: dentro de uma transação o Postgres
+  /// devolve o instante de INÍCIO dela, e duas transações podem começar no mesmo milissegundo.
+  /// A sequência é calculada sob o lock da reserva — 1, 2, 3 —, e a unicidade com o `reservaId`
+  /// faz o banco recusar dois "segundos reagendamentos" em vez de escolher um em silêncio.
+  sequencia Int
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([reservaId, sequencia])
+  @@index([reservaId, sequencia])
+  @@index([guicheId, dia])
+}
+
+/// A REALIZAÇÃO — uma por reserva. Quem atendeu, e o que ficou registrado do atendimento.
+model RealizacaoDoAtendimento {
+  id String @id @default(cuid())
+
+  reservaId String               @unique
+  reserva   ReservaDeAtendimento @relation(fields: [reservaId], references: [id])
+
+  atendidoPor String
+  observacao  String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

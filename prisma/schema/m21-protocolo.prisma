@@ -73,6 +73,7 @@ model Setor {
   @@index([unidadeOrcId])
   /// back-relations ENT05 (M10 fisico) — VIRTUAIS.
   consumosDeMaterial    MovimentoFisicoDeEstoque[] @relation("ConsumoDeMaterial")
+  unidadesDeAtendimento UnidadeDeAtendimento[]   @relation("UnidadesDeAtendimentoDoSetor")
   requisicoesDeMaterial RequisicaoDeMaterial[]     @relation("RequisicaoDeMaterial")
   cotasDeConsumo        CotaDeConsumo[]            @relation("CotaDeConsumo")
   /// back-relations ENT05 (M10 gestão do bem) — VIRTUAIS.
