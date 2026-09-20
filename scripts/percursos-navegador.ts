@@ -308,7 +308,32 @@ export async function preencherEEnviar(page: Page, acao: string, campos: readonl
       if (alerta !== null && alerta !== undefined && (alerta.textContent ?? "").trim() !== "") return { tipo: "erro" as const, texto: (alerta.textContent ?? "").trim() };
       const ps = Array.from(f?.querySelectorAll("p") ?? []);
       const bom = ps.find((x) => x.className.includes("status-ok"));
-      return bom !== undefined ? { tipo: "ok" as const, texto: (bom.textContent ?? "").trim() } : { tipo: "silencio" as const, texto: "" };
+      if (bom !== undefined) return { tipo: "ok" as const, texto: (bom.textContent ?? "").trim() };
+
+      // ⚠️ O FORMULÁRIO QUE **FICA** TAMBÉM PODE CONFIRMAR FORA DE SI (V11 V8.1).
+      //
+      // Até aqui, um ato só era lido pelo marcador `data-resultado-da-acao` quando o formulário
+      // SUMIA da tela. Quando ele ficava, a única confirmação aceita era um `<p>` com a classe
+      // `status-ok` DENTRO dele — e isso deixava de fora um caso legítimo e comum: a consulta que
+      // devolve um painel de resultado ABAIXO do formulário (para quem quer consultar outra
+      // coisa em seguida), e o ato público cuja confirmação vive ao lado do que se está lendo.
+      //
+      // Medido no percurso do guichê, passos 5.9, 5.10 e 5.12: os três atos FUNCIONARAM — a
+      // evidência do próprio passo trazia o dia e a hora certos, e a asserção seguinte, que lia o
+      // banco, passava — e mesmo assim o helper reportava "silêncio". A alternativa seria moldar
+      // a tela ao teste, pondo um parágrafo `status-ok` dentro de um formulário onde ele não faz
+      // sentido. O contrato declarado do V6.2 é `data-resultado-da-acao`; a classe é a heurística
+      // mais velha. Passa a valer o contrato, com a MESMA guarda de sequência que impede ler o
+      // resultado do envio anterior como se fosse deste.
+      const nome = /data-acao="([^"]+)"/.exec(sel)?.[1] ?? "";
+      const marcado = document.querySelector(`[data-resultado-da-acao="${nome}"]`);
+      if (marcado !== null && marcado.getAttribute("data-resultado-seq") !== antes) {
+        return {
+          tipo: marcado.getAttribute("role") === "alert" ? ("erro" as const) : ("ok" as const),
+          texto: (marcado.textContent ?? "").trim(),
+        };
+      }
+      return { tipo: "silencio" as const, texto: "" };
     }, form, seqAntes);
   }
   return resposta;

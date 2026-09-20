@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { travar } from "../../packages/locks/index.js";
 import { diaCivil, diaCivilBr, meioDiaCivil } from "../../packages/datas/index.js";
@@ -134,6 +134,13 @@ export const zDefinirServicoNoGuiche = z.object({
   guicheId: z.string().min(1),
   servicoId: z.string().min(1),
   habilitado: z.boolean(),
+  /**
+   * ⚠️ O CIDADÃO PODE MARCAR ESTE SERVIÇO SOZINHO, PELO PORTAL? Ausente = `false`, e o padrão é a
+   * decisão: um serviço só vai para a internet quando alguém disser que vai. Há atendimento que
+   * exige triagem antes, e oferecê-lo no portal mandaria a pessoa ao balcão para ouvir que não
+   * era ali.
+   */
+  agendamentoPublico: z.boolean().optional(),
   motivo: z.string().trim().min(3).max(240).optional(),
   criadoPor: z.string().min(1),
 });
@@ -169,19 +176,29 @@ export async function definirServicoNoGuiche(
     });
     if (servico === null) throw new Error(`Serviço ${d.servicoId} não existe na carta. Nada foi gravado.`);
 
+    const publico = d.agendamentoPublico ?? false;
     const vigente = await situacaoVigenteDoServico(tx, d.guicheId, d.servicoId);
-    if (vigente === d.habilitado) {
+
+    // ⚠️ AS DUAS DECISÕES JUNTAS FORMAM O FATO. Mudar SÓ o "aceita marcação pela internet" é um
+    // fato novo — e dos que mais importam, porque abre o serviço ao público. Comparar só
+    // `habilitado` faria essa mudança ser recusada como repetição, e o ente ficaria sem caminho
+    // para abrir ou fechar o portal de um serviço já atendido.
+    if (vigente.habilitado === d.habilitado && vigente.agendamentoPublico === publico) {
       throw new Error(
         `O serviço "${servico.titulo}" já está ${d.habilitado ? "HABILITADO" : "DESABILITADO"} no ` +
-          `guichê ${guiche.nome}. Nada foi gravado.`
+          `guichê ${guiche.nome}${d.habilitado ? `, ${publico ? "com" : "sem"} marcação pela internet` : ""}. ` +
+          `Nada foi gravado.`
       );
     }
 
+    // ⚠️ DESABILITAR FECHA O PORTAL JUNTO. Um serviço que o guichê não atende não pode continuar
+    // agendável pela internet — seriam pessoas marcando para uma fila que não existe mais.
     const s = await tx.situacaoDoServicoNoGuiche.create({
       data: {
         guicheId: d.guicheId,
         servicoId: d.servicoId,
         habilitado: d.habilitado,
+        agendamentoPublico: d.habilitado && publico,
         motivo: d.motivo ?? null,
         criadoPor: d.criadoPor,
       },
@@ -193,14 +210,24 @@ export async function definirServicoNoGuiche(
 
 type Tx = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 
-/** A situação VIGENTE do serviço no guichê — a última. `false` quando nunca foi habilitado. */
-async function situacaoVigenteDoServico(tx: Tx, guicheId: string, servicoId: string): Promise<boolean> {
+/**
+ * A situação VIGENTE do serviço no guichê — a última. Nunca declarado = não atendido e fechado ao
+ * portal, que é o fail-closed certo: ausência de decisão não é permissão.
+ */
+async function situacaoVigenteDoServico(
+  tx: Tx,
+  guicheId: string,
+  servicoId: string
+): Promise<{ readonly habilitado: boolean; readonly agendamentoPublico: boolean }> {
   const ultima = await tx.situacaoDoServicoNoGuiche.findFirst({
     where: { guicheId, servicoId },
     orderBy: { criadoEm: "desc" },
-    select: { habilitado: true },
+    select: { habilitado: true, agendamentoPublico: true },
   });
-  return ultima?.habilitado ?? false;
+  return {
+    habilitado: ultima?.habilitado ?? false,
+    agendamentoPublico: ultima?.agendamentoPublico ?? false,
+  };
 }
 
 export const zPublicarJanela = z.object({
@@ -606,7 +633,7 @@ export async function reservarAtendimento(
     });
     if (servico === null) throw new Error(`Serviço ${d.servicoId} não existe na carta. Nada foi reservado.`);
 
-    if (!(await situacaoVigenteDoServico(tx, d.guicheId, d.servicoId))) {
+    if (!(await situacaoVigenteDoServico(tx, d.guicheId, d.servicoId)).habilitado) {
       throw new Error(
         `O guichê ${guiche.nome} não atende "${servico.titulo}". Marcar aqui mandaria a pessoa para ` +
           `uma fila que não resolve o problema dela. Nada foi reservado.`
@@ -932,4 +959,380 @@ export async function registrarAtendimentoRealizado(
     });
     return { realizacaoId: a.id };
   });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// O AGENDAMENTO PELO CIDADÃO — sem conta
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * ═══ ⚠️ ATOS PÚBLICOS: NÃO HÁ USUÁRIO A AUTORIZAR, E AS DEFESAS SÃO OUTRAS ═══
+ *
+ * A seção 5.39 do TR é o portal de AUTOATENDIMENTO: quem marca é o cidadão, sem conta. Não existe
+ * `autorizarNo` aqui — existiria um crachá que ninguém tem. O que protege, em camadas:
+ *
+ *   · o serviço tem de estar habilitado NAQUELE guichê **e** marcado como agendável pelo portal.
+ *     `false` é o padrão: nada fica público por acidente;
+ *   · a capacidade é a MESMA, conferida sob o MESMO trinco. Um caminho público que contasse por
+ *     fora seria a porta dos fundos para estourar o guichê;
+ *   · QUOTA por chave de origem, dita como tal — é contenção local, não antifraude. O reCAPTCHA
+ *     da cláusula 5.39.102 depende de provedor externo e está declarado como tal no catálogo;
+ *   · UM ATENDIMENTO VIVO POR DOCUMENTO, POR SERVIÇO. Sem isso, uma pessoa sozinha esvazia a
+ *     agenda de um serviço em minutos, e quem precisa do atendimento encontra tudo cheio;
+ *   · o SEGREDO é entregue uma vez e guardado só por hash. O `codigo` aparece na agenda interna;
+ *     se ele bastasse para cancelar pelo portal, quem lê a agenda desmarcaria o atendimento de um
+ *     cidadão de forma anônima e não atribuída.
+ *
+ * ⚠️ AS MENSAGENS COMEÇAM COM CÓDIGO EM MAIÚSCULAS. É assim que a camada pública distingue a
+ * recusa do domínio (que sobe inteira para o cidadão ler) do erro de infraestrutura (que vira uma
+ * mensagem padrão, porque o público não lê nome de tabela nem pilha).
+ */
+
+/** Quantas marcações uma mesma origem pode fazer por hora. Contenção local, dita como tal. */
+export const QUOTA_DE_AGENDAMENTOS_POR_HORA = 3;
+
+const SEGREDO_ALFABETO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+/**
+ * O SEGREDO DO CIDADÃO — 20 caracteres de um alfabeto SEM AMBÍGUOS (nada de O/0, I/1), de 32
+ * bytes aleatórios. ~100 bits, e legível em voz alta no balcão sem trocar zero por ó.
+ *
+ * ⚠️ MESMA FORMA DA OUVIDORIA, de propósito: é a única credencial que o cidadão sem conta tem, e
+ * duas formas diferentes de segredo no mesmo produto seriam duas superfícies para manter.
+ */
+function novoSegredoDaReserva(): string {
+  const bytes = randomBytes(32);
+  let s = "";
+  for (let i = 0; i < 20; i += 1) s += SEGREDO_ALFABETO[bytes[i]! % SEGREDO_ALFABETO.length];
+  return `${s.slice(0, 5)}-${s.slice(5, 10)}-${s.slice(10, 15)}-${s.slice(15, 20)}`;
+}
+
+/** O hash do segredo. O banco guarda só isto — nem um dump devolve o segredo. */
+export function hashDoSegredoDaReserva(segredo: string): string {
+  return createHash("sha256").update(`guiche:${segredo.trim().toUpperCase()}`).digest("hex");
+}
+
+const zDocumento = z
+  .string()
+  .trim()
+  .transform((v) => v.replace(/\D/g, ""))
+  .refine((v) => v.length === 11 || v.length === 14, "Informe um CPF (11 dígitos) ou um CNPJ (14).");
+
+export const zAgendarPeloPortal = z.object({
+  guicheId: z.string().min(1),
+  servicoId: z.string().min(1),
+  nome: z.string().trim().min(5).max(120),
+  documento: zDocumento,
+  dia: zDiaCivil,
+  horaInicio: zHora,
+  chaveDeQuota: z.string().regex(/^[0-9a-f]{64}$/),
+});
+export type AgendarPeloPortalInput = z.input<typeof zAgendarPeloPortal>;
+
+export interface AgendamentoDoCidadao {
+  readonly codigo: string;
+  /** ⚠️ Devolvido UMA vez. Não é relido de lugar nenhum depois daqui. */
+  readonly segredo: string;
+}
+
+export async function agendarPeloPortal(
+  prisma: PrismaClient,
+  input: AgendarPeloPortalInput
+): Promise<AgendamentoDoCidadao> {
+  const d = zAgendarPeloPortal.parse(input);
+  const dia = meioDiaCivil(d.dia);
+  const segredo = novoSegredoDaReserva();
+
+  return prisma.$transaction(async (tx) => {
+    const recentes = await tx.envioPublicoSemConta.count({
+      where: { chave: d.chaveDeQuota, criadoEm: { gte: new Date(Date.now() - 3600_000) } },
+    });
+    if (recentes >= QUOTA_DE_AGENDAMENTOS_POR_HORA) {
+      throw new Error(
+        "QUOTA-DE-AGENDAMENTOS: muitas marcações desta origem na última hora. Tente mais tarde — " +
+          "consultar os horários continua livre."
+      );
+    }
+
+    const guiche = await tx.guicheDeAtendimento.findUnique({
+      where: { id: d.guicheId },
+      select: { id: true, nome: true, unidadeId: true, unidade: { select: { nome: true } } },
+    });
+    if (guiche === null) {
+      throw new Error("GUICHE-INEXISTENTE: este guichê não existe. Nada foi marcado.");
+    }
+
+    const servico = await tx.servicoDaCarta.findUnique({
+      where: { id: d.servicoId },
+      select: { titulo: true },
+    });
+    if (servico === null) {
+      throw new Error("SERVICO-INEXISTENTE: este serviço não existe. Nada foi marcado.");
+    }
+
+    // ⚠️ AS DUAS PERGUNTAS, E ELAS SÃO DIFERENTES: o guichê atende este serviço? e o ente abriu
+    // ESTE serviço para marcação pelo portal? Um serviço que exige triagem antes pode ser
+    // atendido no guichê e não ser agendável sozinho.
+    const situacao = await tx.situacaoDoServicoNoGuiche.findFirst({
+      where: { guicheId: d.guicheId, servicoId: d.servicoId },
+      orderBy: { criadoEm: "desc" },
+      select: { habilitado: true, agendamentoPublico: true },
+    });
+    if (situacao === null || !situacao.habilitado) {
+      throw new Error(
+        `SERVICO-NAO-ATENDIDO: o guichê ${guiche.nome} não atende "${servico.titulo}". Nada foi marcado.`
+      );
+    }
+    if (!situacao.agendamentoPublico) {
+      throw new Error(
+        `AGENDAMENTO-NAO-ABERTO: "${servico.titulo}" não é marcado pela internet. Procure o ` +
+          `atendimento de ${guiche.unidade.nome}. Nada foi marcado.`
+      );
+    }
+
+    const fechado = await tx.excecaoDeCalendarioDoAtendimento.findUnique({
+      where: { unidadeId_dia: { unidadeId: guiche.unidadeId, dia } },
+      select: { motivo: true },
+    });
+    if (fechado !== null) {
+      throw new Error(
+        `UNIDADE-FECHADA: ${guiche.unidade.nome} não abre em ${diaCivilBr(dia)}: ${fechado.motivo}. Nada foi marcado.`
+      );
+    }
+
+    const janelas = (await janelasDoGuiche(tx, d.guicheId)).filter((j) => janelaValeNoDia(j, dia));
+    const janela = janelas.find((j) => horariosDaJanela(j).includes(d.horaInicio));
+    if (janela === undefined) {
+      throw new Error(
+        `HORARIO-INEXISTENTE: ${d.horaInicio} não é um horário deste guichê em ${diaCivilBr(dia)}. ` +
+          `Escolha um dos horários oferecidos. Nada foi marcado.`
+      );
+    }
+
+    // ⚠️ O MESMO TRINCO, NA MESMA CHAVE, ANTES DA MESMA CONTAGEM. O caminho público e o do balcão
+    // disputam os mesmos lugares; dois trincos diferentes não se veriam.
+    await travar(tx, "HorarioDeGuiche", [chaveDoHorario(d.guicheId, dia, d.horaInicio)]);
+
+    const ocupadas = (await ocupacaoDoDia(tx, d.guicheId, dia)).get(d.horaInicio) ?? 0;
+    if (ocupadas >= janela.capacidade) {
+      throw new Error(
+        `HORARIO-LOTADO: ${d.horaInicio} de ${diaCivilBr(dia)} já está cheio. Escolha outro ` +
+          `horário. Nada foi marcado.`
+      );
+    }
+
+    // ⚠️ UM ATENDIMENTO VIVO POR DOCUMENTO, POR SERVIÇO — E SOB TRINCO, pelo mesmo motivo da
+    // capacidade. A defesa não é contra erro de digitação: é contra uma pessoa sozinha esvaziar a
+    // agenda, e quem faz isso automatiza. Dois envios simultâneos leriam "não tem nenhum" e os
+    // dois gravariam; o trinco do documento (posto 29, depois do lugar) faz o segundo esperar e
+    // enxergar o primeiro.
+    //
+    // ⚠️ E ELA NÃO CONSULTA O CADASTRO DE PESSOAS: compara o documento DECLARADO com os
+    // declarados nas outras reservas do portal, e nada mais. Perguntar ao cadastro vazaria quem
+    // já é conhecido do município.
+    await travar(tx, "AtendimentoPorDocumento", [`${d.documento}:${d.servicoId}`]);
+
+    const jaTem = await tx.reservaDeAtendimento.findFirst({
+      where: {
+        documentoDeclarado: d.documento,
+        servicoId: d.servicoId,
+        cancelamento: { is: null },
+        realizacao: { is: null },
+      },
+      select: { codigo: true },
+    });
+    if (jaTem !== null) {
+      throw new Error(
+        `JA-TEM-MARCACAO: este documento já tem um atendimento marcado para "${servico.titulo}" ` +
+          `(código ${jaTem.codigo}). Cancele o anterior antes de marcar outro. Nada foi marcado.`
+      );
+    }
+
+    await tx.envioPublicoSemConta.create({ data: { chave: d.chaveDeQuota, finalidade: "AGENDAMENTO" } });
+
+    const r = await tx.reservaDeAtendimento.create({
+      data: {
+        guicheId: d.guicheId,
+        servicoId: d.servicoId,
+        // ⚠️ SEM `pessoaId`: o titular é DECLARADO, e a identificação de verdade acontece no
+        // guichê, com o documento na mão. Ver o CHECK `ck_reserva_titular_xor`.
+        nomeDeclarado: d.nome,
+        documentoDeclarado: d.documento,
+        segredoHash: hashDoSegredoDaReserva(segredo),
+        dia,
+        horaInicio: d.horaInicio,
+        codigo: codigoDeAcompanhamento(),
+        // A idempotência do portal é a do próprio segredo: cada envio gera um, e a chave carrega
+        // o escopo do ato (invariante 5).
+        chaveDeIdempotencia: `portal:${hashDoSegredoDaReserva(segredo).slice(0, 32)}`,
+        criadoPor: "PORTAL-DO-CIDADAO",
+      },
+      select: { codigo: true },
+    });
+
+    return { codigo: r.codigo, segredo };
+  });
+}
+
+export interface ReservaParaOCidadao {
+  readonly codigo: string;
+  readonly unidade: string;
+  readonly endereco: string;
+  readonly guiche: string;
+  readonly servico: string;
+  readonly nome: string;
+  readonly dia: string;
+  readonly hora: string;
+  readonly situacao: "MARCADA" | "CONFIRMADA" | "ATENDIDA" | "CANCELADA";
+  readonly motivoDoCancelamento: string | null;
+}
+
+/**
+ * A RESERVA QUE O SEGREDO ABRE — e nada além dela.
+ *
+ * ⚠️ SEGREDO ERRADO E SEGREDO INEXISTENTE RESPONDEM IGUAL (`null`). Distinguir os dois diria a
+ * quem tentasse que aquele segredo existe, e transformaria a consulta num oráculo.
+ *
+ * ⚠️ A PROJEÇÃO É MÍNIMA: onde, quando, para quê e em que situação. Não sai o documento
+ * declarado (quem tem o segredo já o conhece; imprimi-lo só amplia o estrago de um segredo
+ * vazado), não sai quem atendeu, não sai observação interna.
+ */
+export async function consultarReservaPeloSegredo(
+  prisma: PrismaClient,
+  segredo: string
+): Promise<ReservaParaOCidadao | null> {
+  if (segredo.trim() === "") return null;
+  const r = await prisma.reservaDeAtendimento.findUnique({
+    where: { segredoHash: hashDoSegredoDaReserva(segredo) },
+    select: {
+      codigo: true,
+      guicheId: true,
+      dia: true,
+      horaInicio: true,
+      nomeDeclarado: true,
+      servico: { select: { titulo: true } },
+      guiche: { select: { nome: true, unidade: { select: { nome: true, endereco: true } } } },
+      confirmacao: { select: { id: true } },
+      cancelamento: { select: { motivo: true } },
+      realizacao: { select: { id: true } },
+      reagendamentos: {
+        orderBy: { sequencia: "desc" },
+        take: 1,
+        select: { dia: true, horaInicio: true, guiche: { select: { nome: true, unidade: { select: { nome: true, endereco: true } } } } },
+      },
+    },
+  });
+  if (r === null) return null;
+
+  // ⚠️ O CIDADÃO VÊ O COMPROMISSO VIGENTE, não o original. Se o ente remarcou, é para o horário
+  // novo que ele tem de aparecer — mostrar o primeiro mandaria a pessoa no dia errado.
+  const ultimo = r.reagendamentos[0];
+  const guiche = ultimo?.guiche ?? r.guiche;
+  return {
+    codigo: r.codigo,
+    unidade: guiche.unidade.nome,
+    endereco: guiche.unidade.endereco,
+    guiche: guiche.nome,
+    servico: r.servico.titulo,
+    nome: r.nomeDeclarado ?? "",
+    dia: diaCivil(ultimo?.dia ?? r.dia),
+    hora: ultimo?.horaInicio ?? r.horaInicio,
+    situacao:
+      r.cancelamento !== null ? "CANCELADA" : r.realizacao !== null ? "ATENDIDA" : r.confirmacao !== null ? "CONFIRMADA" : "MARCADA",
+    motivoDoCancelamento: r.cancelamento?.motivo ?? null,
+  };
+}
+
+/**
+ * O CIDADÃO CANCELA A PRÓPRIA MARCAÇÃO — e é isto que devolve o lugar à agenda.
+ *
+ * ⚠️ O MOTIVO É DELE, e entra no histórico como tal. `criadoPor` diz `PORTAL-DO-CIDADAO`: não se
+ * atribui a um servidor um ato que nenhum servidor praticou.
+ */
+export async function cancelarPeloPortal(
+  prisma: PrismaClient,
+  input: { readonly segredo: string; readonly motivo: string }
+): Promise<{ readonly codigo: string }> {
+  const motivo = z.string().trim().min(3).max(240).parse(input.motivo);
+
+  return prisma.$transaction(async (tx) => {
+    const r = await tx.reservaDeAtendimento.findUnique({
+      where: { segredoHash: hashDoSegredoDaReserva(input.segredo) },
+      select: {
+        id: true,
+        codigo: true,
+        cancelamento: { select: { motivo: true } },
+        realizacao: { select: { id: true } },
+      },
+    });
+    if (r === null) {
+      throw new Error("MARCACAO-NAO-ENCONTRADA: não há marcação com este código de acompanhamento.");
+    }
+    if (r.cancelamento !== null) {
+      throw new Error(`JA-CANCELADA: esta marcação já foi cancelada (${r.cancelamento.motivo}).`);
+    }
+    if (r.realizacao !== null) {
+      throw new Error(
+        "JA-ATENDIDA: este atendimento já foi realizado. Não há o que cancelar — e apagá-lo " +
+          "reescreveria um fato."
+      );
+    }
+
+    await tx.cancelamentoDaReserva.create({
+      data: { reservaId: r.id, motivo, criadoPor: "PORTAL-DO-CIDADAO" },
+    });
+    return { codigo: r.codigo };
+  });
+}
+
+export interface GuicheParaOCidadao {
+  readonly guicheId: string;
+  readonly unidade: string;
+  readonly endereco: string;
+  readonly guiche: string;
+  readonly servicos: readonly { readonly id: string; readonly titulo: string }[];
+}
+
+/**
+ * ONDE O CIDADÃO PODE MARCAR: os guichês que têm ao menos um serviço aberto ao portal.
+ *
+ * ⚠️ UM GUICHÊ SEM SERVIÇO ABERTO NÃO APARECE. Oferecê-lo levaria a pessoa a uma tela onde não há
+ * o que escolher — e ela concluiria que o sistema está quebrado, não que o ente não abriu aquele
+ * atendimento para a internet.
+ */
+export async function guichesAbertosAoPortal(prisma: PrismaClient): Promise<readonly GuicheParaOCidadao[]> {
+  const guiches = await prisma.guicheDeAtendimento.findMany({
+    orderBy: [{ unidade: { codigo: "asc" } }, { nome: "asc" }],
+    select: {
+      id: true,
+      nome: true,
+      unidade: { select: { nome: true, endereco: true } },
+      servicos: {
+        orderBy: { criadoEm: "asc" },
+        select: { servicoId: true, habilitado: true, agendamentoPublico: true, servico: { select: { titulo: true } } },
+      },
+    },
+  });
+
+  const saida: GuicheParaOCidadao[] = [];
+  for (const g of guiches) {
+    // O vigente de cada serviço é o ÚLTIMO fato — a tabela é append-only.
+    const vigente = new Map<string, { titulo: string; habilitado: boolean; publico: boolean }>();
+    for (const s of g.servicos) {
+      vigente.set(s.servicoId, { titulo: s.servico.titulo, habilitado: s.habilitado, publico: s.agendamentoPublico });
+    }
+    const abertos = [...vigente.entries()]
+      .filter(([, v]) => v.habilitado && v.publico)
+      .map(([id, v]) => ({ id, titulo: v.titulo }))
+      .sort((a, b) => a.titulo.localeCompare(b.titulo, "pt-BR"));
+    if (abertos.length === 0) continue;
+    saida.push({
+      guicheId: g.id,
+      unidade: g.unidade.nome,
+      endereco: g.unidade.endereco,
+      guiche: g.nome,
+      servicos: abertos,
+    });
+  }
+  return saida;
 }

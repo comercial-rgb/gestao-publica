@@ -130,7 +130,7 @@ export default async function GuichesPage(): Promise<React.ReactElement> {
                         nenhum serviço — nada pode ser marcado aqui
                       </span>
                     ) : (
-                      g.servicos.map((s) => s.titulo).join("; ")
+                      g.servicos.map((s) => `${s.titulo}${s.agendamentoPublico ? " (marca pela internet)" : ""}`).join("; ")
                     )}
                   </p>
 

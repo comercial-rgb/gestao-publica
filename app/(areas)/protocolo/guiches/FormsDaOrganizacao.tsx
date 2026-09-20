@@ -245,6 +245,16 @@ export function FormsDaOrganizacao({
             </select>
           </label>
           <label className="text-xs">
+            <span className={ROTULO}>O cidadão marca pela internet?</span>
+            {/* ⚠️ "Não" É O PADRÃO, e o padrão é a decisão: um serviço só vai ao portal quando
+                alguém disser que vai. Há atendimento que exige triagem antes, e oferecê-lo na
+                internet mandaria a pessoa ao balcão para ouvir que não era ali. */}
+            <select name="agendamentoPublico" required defaultValue="nao" className={CAMPO}>
+              <option value="nao">Não — só pelo balcão</option>
+              <option value="sim">Sim — abrir ao portal do cidadão</option>
+            </select>
+          </label>
+          <label className="text-xs">
             <span className={ROTULO}>Motivo (opcional)</span>
             <input name="motivo" maxLength={240} placeholder="Passou a ser atendido na Secretaria de Finanças" className={CAMPO} />
           </label>

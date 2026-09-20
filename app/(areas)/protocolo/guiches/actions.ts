@@ -89,6 +89,8 @@ export async function definirServicoAction(_p: EstadoDoAto, f: FormData): Promis
           guicheId: t(f, "guicheId"),
           servicoId: t(f, "servicoId"),
           habilitado,
+          // ⚠️ AUSENTE = NÃO. O serviço só vai para a internet quando alguém marcar que vai.
+          agendamentoPublico: t(f, "agendamentoPublico") === "sim",
           motivo: t(f, "motivo"),
         }),
       "Não foi possível definir o serviço. Nada foi gravado."

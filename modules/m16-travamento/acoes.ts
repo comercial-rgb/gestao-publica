@@ -1787,6 +1787,30 @@ export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
  * grep-teste lê esta lista — nada sai do censo por descuido.
  */
 export const FORA_DO_CENSO: Record<string, string> = {
+  // ── M21 V11 V8.1 — os ATOS PÚBLICOS do agendamento (TR 5.39, portal de autoatendimento) ──
+  agendarPeloPortal:
+    "ATO PÚBLICO SEM CONTA (agendamento de atendimento presencial pelo cidadão, TR 5.39.92): não " +
+    "há usuário a autorizar — existiria um crachá que ninguém tem. As defesas são outras e estão " +
+    "no corpo: o serviço tem de estar habilitado NAQUELE guichê E marcado como agendável pelo " +
+    "portal (`false` por padrão); a capacidade é a MESMA, sob o MESMO trinco do lugar; quota por " +
+    "chave de origem; UM atendimento vivo por documento declarado e por serviço; e o segredo é " +
+    "entregue uma vez e guardado só por hash. O titular é DECLARADO, sem tocar no cadastro de " +
+    "pessoas — CPF digitado não é autenticação, e casar pelo documento vazaria quem já é conhecido.",
+  cancelarPeloPortal:
+    "ATO PÚBLICO SEM CONTA: quem tem o SEGREDO cancela a própria marcação. O `codigo` aparece na " +
+    "agenda interna e NÃO basta — se bastasse, quem lê a agenda desmarcaria o atendimento de um " +
+    "cidadão de forma anônima. Não cancela o que já foi atendido, e o autor fica `PORTAL-DO-CIDADAO`.",
+  consultarReservaPeloSegredo:
+    "LEITURA PÚBLICA pelo segredo (hash): onde, quando, para quê e em que situação — o compromisso " +
+    "VIGENTE, não o original. Segredo errado e segredo inexistente respondem IGUAL, para a consulta " +
+    "não virar oráculo.",
+  guichesAbertosAoPortal:
+    "LEITURA PÚBLICA: os guichês com ao menos um serviço aberto à marcação pela internet. Guichê " +
+    "sem serviço aberto não aparece — levaria a pessoa a uma tela sem o que escolher.",
+  hashDoSegredoDaReserva:
+    "FUNÇÃO PURA: o sha256 do segredo, com prefixo de domínio. Não toca no banco; existe para que " +
+    "o segredo NUNCA seja gravado em claro.",
+
   // ── M21 V11 V8 — as LEITURAS da agenda do guichê ──
   ocupacaoDoDia:
     "LEITURA. Conta quantas reservas VIVAS ocupam cada horário de um guichê num dia. Não grava " +

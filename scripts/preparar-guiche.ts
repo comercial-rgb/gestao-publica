@@ -44,6 +44,13 @@ const NOME_DA_PESSOA = "Ana Cidada do Percurso";
  * existe. Ele publica a oferta de SEGUNDA e marca na segunda seguinte — sempre um dia futuro,
  * sempre o mesmo dia da semana.
  */
+function somarDias(dia: string, n: number): string {
+  const [a, m, d] = dia.split("-").map(Number) as [number, number, number];
+  const x = new Date(Date.UTC(a, m - 1, d) + n * 86_400_000);
+  const p = (v: number): string => String(v).padStart(2, "0");
+  return `${x.getUTCFullYear()}-${p(x.getUTCMonth() + 1)}-${p(x.getUTCDate())}`;
+}
+
 function proximaSegunda(): string {
   const hoje = diaCivil(new Date());
   const [a, m, d] = hoje.split("-").map(Number) as [number, number, number];
@@ -108,6 +115,19 @@ async function main(): Promise<void> {
       });
     }
 
+    // ── A QUOTA DO PORTAL, ZERADA PARA ESTA CORRIDA ──────────────────────────
+    // ⚠️ E ISSO NÃO É AFROUXAR A DEFESA. A quota por origem protege o ente de uma enxurrada
+    // vinda da internet; ela não foi pensada para uma máquina que roda o percurso três vezes em
+    // dez minutos, sempre do mesmo `localhost`. Bloqueado por ela, o percurso acusaria a tela de
+    // um defeito que não existe.
+    //
+    // ⚠️ E ELA CONTINUA PROVADA: `m21-guiche-portal.test.ts` t7 afirma que a quota barra a
+    // enxurrada e que outra origem não é afetada, contra o Postgres, com a mutação que a desliga
+    // derrubando o teste. O que se apaga aqui é o RASTRO das corridas anteriores, num banco
+    // descartável — não a regra.
+    const limpos = await prisma.envioPublicoSemConta.deleteMany({ where: { finalidade: "AGENDAMENTO" } });
+    if (limpos.count > 0) console.log(`[preparar-guiche] quota do portal zerada: ${limpos.count} envio(s) de corridas anteriores.`);
+
     // ── O USUÁRIO FRACO ──────────────────────────────────────────────────────
     const jaFraco = await prisma.usuario.findUnique({ where: { identificador: FRACO }, select: { id: true } });
     if (jaFraco === null) {
@@ -149,6 +169,10 @@ async function main(): Promise<void> {
         documento: CPF,
         nomeDaPessoa: NOME_DA_PESSOA,
         segunda: proximaSegunda(),
+        // ⚠️ A SEGUNDA SEGUINTE existe porque o percurso FECHA a primeira (feriado) antes de
+        // chegar ao portal do cidadão. E ela prova, de graça, que a oferta publicada vale em
+        // TODA segunda dentro da vigência, e não só naquela em que foi cadastrada.
+        segundaSeguinte: somarDias(proximaSegunda(), 7),
         usuarioFraco: FRACO,
       })}`,
     );

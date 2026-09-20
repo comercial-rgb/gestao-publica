@@ -14,7 +14,7 @@ import {
 import type { PrismaClient } from "../prisma/generated/client/client.js";
 
 /**
- * ═══ O PERCURSO DO GUICHÊ (V11 V8) ═══
+ * ═══ O PERCURSO DO GUICHÊ (V11 V8 + V8.1) ═══
  *
  * TR 5.39.92: "Permitir o agendamento de atendimentos presenciais, conforme guichês organizados
  * pela contratante." O domínio ficou provado contra o Postgres na unidade anterior; **não estava
@@ -33,6 +33,11 @@ import type { PrismaClient } from "../prisma/generated/client/client.js";
  *     LIBERADO na tela) e registrar o atendimento.
  *  5. FECHAR O DIA é recusado enquanto há gente marcada, NOMEANDO quantas — e passa depois que
  *     ela é cancelada, mesmo com um atendimento já realizado no mesmo dia.
+ *  5. ⚠️ O CIDADÃO MARCA SOZINHO, SEM CONTA (V8.1). O ente ABRE o serviço à internet pela tela
+ *     interna, e só então ele aparece no portal. O cidadão escolhe o dia, marca, recebe um
+ *     código de acompanhamento que aparece UMA vez, consulta e cancela — e a marcação dele
+ *     chega à agenda de quem atende, marcada como dados a conferir. Nada disso toca o cadastro
+ *     de pessoas.
  *  6. A NEGATIVA tem motivo: a tela RENDERIZA o formulário para quem só lê o protocolo, e o
  *     SERVIDOR recusa dizendo qual ação falta.
  *
@@ -48,6 +53,7 @@ interface Cenario {
   readonly documento: string;
   readonly nomeDaPessoa: string;
   readonly segunda: string;
+  readonly segundaSeguinte: string;
   readonly usuarioFraco: string;
 }
 
@@ -408,14 +414,168 @@ async function main(): Promise<void> {
       );
     }
 
-    // ═══ 5. A NEGATIVA, COM MOTIVO ═════════════════════════════════════════
+    // ═══ 5. O CIDADÃO MARCA SOZINHO, PELO PORTAL ══════════════════════════
+    //
+    // ⚠️ NA SEGUNDA SEGUINTE: a primeira foi FECHADA no passo 4.3. A mesma oferta publicada
+    // serve — e isso prova, de graça, que ela vale em toda segunda dentro da vigência.
+    const rotaPortal = `/agendamento?guiche=${guicheId}&servico=${C.servicoId}&dia=${C.segundaSeguinte}`;
+
+    // ⚠️ A AFIRMAÇÃO É SOBRE **ESTE** SERVIÇO, e não sobre o portal inteiro estar vazio. A
+    // primeira versão dizia "o portal não oferece nada", passou na estreia e caiu na segunda
+    // corrida contra o mesmo banco — porque a corrida anterior tinha deixado o serviço DELA
+    // aberto. Uma asserção que só vale em banco virgem acusa o sistema quando o sujo é o banco.
+    const portalAntes = await irPara(N, page, "/agendamento");
+    R.conferir(
+      "5.1 antes de o ente abrir, ESTE serviço não aparece no portal",
+      !portalAntes.includes(C.servicoTitulo.toLowerCase()),
+      `"${C.servicoTitulo}" já aparecia no portal antes de ser aberto`
+    );
+
+    // A chefia abre o serviço à internet — pela tela interna, como qualquer outra decisão dela.
+    await irPara(N, page, ORGANIZACAO);
+    await abrirPainel(page, "Gravar");
+    await escolherPorRotulo(page, "definir-servico-do-guiche", "guicheId", GUICHE);
+    await escolherPorRotulo(page, "definir-servico-do-guiche", "servicoId", C.servicoTitulo);
+    const r12 = await preencherEEnviar(page, "definir-servico-do-guiche", [
+      { sel: 'select[name="habilitado"]', valor: "sim", tipo: "select" },
+      { sel: 'select[name="agendamentoPublico"]', valor: "sim", tipo: "select" },
+    ]);
+    R.conferir(
+      "5.2 a chefia ABRE o serviço à marcação pela internet, e o ato diz isso",
+      r12.tipo === "ok" && r12.texto.includes("ABERTO à marcação pelo portal"),
+      r12.tipo === "silencio" ? await porQueNaoEnviou(page, "definir-servico-do-guiche") : `${r12.tipo}: ${r12.texto}`
+    );
+
+    // ⚠️ DAQUI PARA A FRENTE, SEM SESSÃO. O cidadão não tem conta — se alguma destas telas
+    // exigisse login, o percurso pararia aqui, que é exatamente o que se quer medir.
     await sair(N, page);
+    const portalDepois = await irPara(N, page, "/agendamento");
+    R.conferir(
+      "5.3 o portal passa a listar o serviço, SEM sessão",
+      portalDepois.includes(C.servicoTitulo.toLowerCase()) && !portalDepois.includes("entrar no sistema"),
+      portalDepois.slice(0, 300)
+    );
+
+    const corpoDia = await irPara(N, page, rotaPortal);
+    R.conferir(
+      `5.4 escolhido o dia ${br(C.segundaSeguinte)}, a tela oferece horários`,
+      corpoDia.includes("horário") && corpoDia.includes("08:00"),
+      corpoDia.slice(0, 300)
+    );
+
+    const r13 = await preencherEEnviar(page, "agendar-atendimento", [
+      { sel: 'input[name="nome"]', valor: "Carla Cidada do Portal" },
+      { sel: 'input[name="documento"]', valor: "529.982.247-25" },
+      { sel: 'select[name="horaInicio"]', valor: "08:00", tipo: "select" },
+    ]);
+    R.conferir(
+      "5.5 o cidadão MARCA sozinho, e a tela devolve o número de atendimento",
+      r13.tipo === "ok" && r13.texto.includes("Atendimento marcado"),
+      r13.tipo === "silencio" ? await porQueNaoEnviou(page, "agendar-atendimento") : `${r13.tipo}: ${r13.texto}`
+    );
+
+    // ⚠️ O SEGREDO APARECE UMA VEZ, e a tela tem de DIZER isso — é a única credencial de quem
+    // marcou sem conta. Uma tela que o mostrasse de passagem condenaria quem fechou a aba.
+    const segredo = await page.evaluate(() => document.querySelector('[data-teste="segredo-do-cidadao"]')?.textContent?.trim() ?? "");
+    const avisou = await page.evaluate(() => (document.body.textContent ?? "").includes("uma única vez"));
+    R.conferir(
+      "5.6 o código de acompanhamento aparece e a tela AVISA que ele não se recupera",
+      /^[A-Z2-9]{5}-[A-Z2-9]{5}-[A-Z2-9]{5}-[A-Z2-9]{5}$/.test(segredo) && avisou,
+      `segredo="${segredo}" · avisou=${String(avisou)}`
+    );
+
+    if (prisma !== null) {
+      const nova = await prisma.reservaDeAtendimento.findFirst({
+        where: { guicheId, criadoPor: "PORTAL-DO-CIDADAO" },
+        select: { pessoaId: true, nomeDeclarado: true, documentoDeclarado: true, segredoHash: true },
+      });
+      R.conferir(
+        "5.7 no banco: titular DECLARADO, sem tocar no cadastro de pessoas, e o segredo só por hash",
+        nova !== null && nova.pessoaId === null && nova.nomeDeclarado === "Carla Cidada do Portal" &&
+          nova.documentoDeclarado === "52998224725" && /^[0-9a-f]{64}$/.test(nova.segredoHash ?? ""),
+        `pessoaId=${String(nova?.pessoaId)} nome=${String(nova?.nomeDeclarado)} doc=${String(nova?.documentoDeclarado)}`
+      );
+    }
+
+    // ⚠️ QUEM ATENDE PRECISA VER ESSA MARCAÇÃO — e saber que os dados não foram conferidos.
+    await entrar(N, page, ADMIN, SENHA_ADMIN);
+    const agendaSeguinte = await irPara(N, page, `/protocolo/guiches/${guicheId}?dia=${C.segundaSeguinte}`);
+    R.conferir(
+      "5.8 a marcação do portal aparece na agenda INTERNA, marcada como dados a conferir",
+      agendaSeguinte.includes("carla cidada do portal") && agendaSeguinte.includes("pela internet, dados a conferir"),
+      "a marcação do portal não aparece na agenda interna, ou não está marcada como declarada"
+    );
+    await sair(N, page);
+
+    // O acompanhamento: código errado e inexistente respondem IGUAL.
+    await irPara(N, page, "/agendamento/acompanhar");
+    const r14 = await preencherEEnviar(page, "consultar-marcacao", [
+      { sel: 'input[name="segredo"]', valor: "AAAAA-BBBBB-CCCCC-DDDDD" },
+    ]);
+    R.conferir(
+      "5.9 código errado responde 'não encontramos' — a consulta não é oráculo",
+      r14.tipo === "ok" && r14.texto.includes("Não encontramos"),
+      `${r14.tipo}: ${r14.texto}`
+    );
+
+    await irPara(N, page, "/agendamento/acompanhar");
+    const r15 = await preencherEEnviar(page, "consultar-marcacao", [{ sel: 'input[name="segredo"]', valor: segredo }]);
+    const vista = await page.evaluate(() => ({
+      dia: document.querySelector('[data-teste="dia-da-marcacao"]')?.textContent?.trim() ?? "",
+      hora: document.querySelector('[data-teste="hora-da-marcacao"]')?.textContent?.trim() ?? "",
+      situacao: document.querySelector('[data-teste="situacao-da-marcacao"]')?.textContent?.trim() ?? "",
+    }));
+    R.conferir(
+      "5.10 com o código certo, a marcação aparece com dia, hora e situação",
+      r15.tipo === "ok" && vista.dia === br(C.segundaSeguinte) && vista.hora === "08:00" && vista.situacao.includes("Marcada"),
+      `${r15.tipo}: ${JSON.stringify(vista)}`
+    );
+
+    // Marcar de novo o MESMO documento para o MESMO serviço é recusado nomeando o anterior.
+    await irPara(N, page, `/agendamento?guiche=${guicheId}&servico=${C.servicoId}&dia=${C.segundaSeguinte}`);
+    const r16 = await preencherEEnviar(page, "agendar-atendimento", [
+      { sel: 'input[name="nome"]', valor: "Carla Cidada do Portal" },
+      { sel: 'input[name="documento"]', valor: "529.982.247-25" },
+      { sel: 'select[name="horaInicio"]', valor: "08:30", tipo: "select" },
+    ]);
+    R.conferir(
+      "5.11 o mesmo documento não marca duas vezes o mesmo serviço — e a recusa nomeia a anterior",
+      r16.tipo === "erro" && r16.texto.includes("JA-TEM-MARCACAO"),
+      `${r16.tipo}: ${r16.texto}`
+    );
+
+    // E o cidadão cancela a própria marcação, com o código.
+    await irPara(N, page, "/agendamento/acompanhar");
+    await preencherEEnviar(page, "consultar-marcacao", [{ sel: 'input[name="segredo"]', valor: segredo }]);
+    const r17 = await preencherEEnviar(page, "cancelar-minha-marcacao", [
+      { sel: 'input[name="segredo"]', valor: segredo },
+      { sel: 'input[name="motivo"]', valor: "Resolvi pela internet." },
+    ]);
+    R.conferir(
+      "5.12 o cidadão CANCELA a própria marcação, e a tela diz que o horário voltou a ficar livre",
+      r17.tipo === "ok" && r17.texto.includes("voltou a ficar livre"),
+      r17.tipo === "silencio" ? await porQueNaoEnviou(page, "cancelar-minha-marcacao") : `${r17.tipo}: ${r17.texto}`
+    );
+
+    if (prisma !== null) {
+      const c = await prisma.cancelamentoDaReserva.findFirst({
+        where: { criadoPor: "PORTAL-DO-CIDADAO" },
+        select: { motivo: true },
+      });
+      R.conferir(
+        "5.13 o cancelamento fica no histórico com o autor PORTAL-DO-CIDADAO — não com um servidor",
+        c?.motivo === "Resolvi pela internet.",
+        `cancelamento do portal: ${JSON.stringify(c)}`
+      );
+    }
+
+    // ═══ 6. A NEGATIVA, COM MOTIVO ═════════════════════════════════════════
     await entrar(N, page, C.usuarioFraco, SENHA);
     const corpoFraco = await irPara(N, page, ORGANIZACAO);
-    R.conferir("5.1 quem só LÊ o protocolo alcança a tela", corpoFraco.includes("atendimento presencial"), corpoFraco.slice(0, 200));
+    R.conferir("6.1 quem só LÊ o protocolo alcança a tela", corpoFraco.includes("atendimento presencial"), corpoFraco.slice(0, 200));
 
     R.conferir(
-      "5.2 e a tela OFERECE o formulário a ele — botão oculto não é a proteção",
+      "6.2 e a tela OFERECE o formulário a ele — botão oculto não é a proteção",
       await abrirPainel(page, "Criar guichê"),
       "o painel do guichê não abriu para o usuário fraco"
     );
@@ -424,14 +584,14 @@ async function main(): Promise<void> {
       { sel: 'input[name="nome"]', valor: `Guiche proibido ${C.sufixo}` },
     ]);
     R.conferir(
-      "5.3 o SERVIDOR recusa e NOMEIA a ação que falta",
+      "6.3 o SERVIDOR recusa e NOMEIA a ação que falta",
       r11.tipo === "erro" && r11.texto.includes("CONFIGURAR_AGENDA_DO_GUICHE"),
       `${r11.tipo}: ${r11.texto}`
     );
 
     if (prisma !== null) {
       const proibido = await prisma.guicheDeAtendimento.count({ where: { nome: `Guiche proibido ${C.sufixo}` } });
-      R.conferir("5.4 e nada foi gravado pela recusa", proibido === 0, `${proibido} guichê(s) com o nome recusado`);
+      R.conferir("6.4 e nada foi gravado pela recusa", proibido === 0, `${proibido} guichê(s) com o nome recusado`);
     }
   } catch (erro) {
     R.falhou("o percurso quebrou", erro instanceof Error ? `${erro.message}\n${await texto(page).catch(() => "")}`.slice(0, 900) : String(erro));

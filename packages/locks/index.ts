@@ -300,6 +300,17 @@ export const ORDEM_DOS_LOCKS = {
    * não sobe a fila de volta, e ninguém que já o travou precisa de um posto anterior.
    */
   HorarioDeGuiche: 28,
+  /**
+   * M21 V11 V8.1 — O DOCUMENTO NO AGENDAMENTO PÚBLICO. O portal aceita UM atendimento vivo por
+   * documento e por serviço, e essa contagem corre exatamente como qualquer outra: dois envios
+   * simultâneos leem "não tem nenhum", os dois gravam, e a defesa contra uma pessoa esvaziar a
+   * agenda deixa de existir no caso em que ela mais importa — o automatizado.
+   *
+   * ⚠️ POSTO DEPOIS DO HORÁRIO, e a ordem é a do caminho: trava-se primeiro o LUGAR que se
+   * disputa, depois o documento de quem o pede. Dois envios para lugares DIFERENTES pegam
+   * trincos de horário diferentes e se encontram aqui, que é onde precisam se encontrar.
+   */
+  AtendimentoPorDocumento: 29,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

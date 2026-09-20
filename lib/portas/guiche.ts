@@ -34,7 +34,7 @@ import { comEscritaAutenticada } from "./sessao";
 export interface GuicheNaTela {
   readonly id: string;
   readonly nome: string;
-  readonly servicos: readonly { readonly id: string; readonly titulo: string }[];
+  readonly servicos: readonly { readonly id: string; readonly titulo: string; readonly agendamentoPublico: boolean }[];
   readonly janelas: readonly {
     readonly id: string;
     readonly diaDaSemana: number;
@@ -81,7 +81,7 @@ export async function lerUnidadesDeAtendimento(): Promise<readonly UnidadeNaTela
           },
           servicos: {
             orderBy: { criadoEm: "asc" },
-            select: { servicoId: true, habilitado: true, servico: { select: { titulo: true } } },
+            select: { servicoId: true, habilitado: true, agendamentoPublico: true, servico: { select: { titulo: true } } },
           },
         },
       },
@@ -95,14 +95,16 @@ export async function lerUnidadesDeAtendimento(): Promise<readonly UnidadeNaTela
       // ⚠️ O VIGENTE É O ÚLTIMO FATO de cada serviço — a tabela é append-only, e a lista traz a
       // habilitação e a desabilitação. Mostrar todas as linhas exibiria como "atendido" um
       // serviço que o guichê deixou de atender.
-      const porServico = new Map<string, { titulo: string; habilitado: boolean }>();
-      for (const s of g.servicos) porServico.set(s.servicoId, { titulo: s.servico.titulo, habilitado: s.habilitado });
+      const porServico = new Map<string, { titulo: string; habilitado: boolean; publico: boolean }>();
+      for (const s of g.servicos) {
+        porServico.set(s.servicoId, { titulo: s.servico.titulo, habilitado: s.habilitado, publico: s.agendamentoPublico });
+      }
       return {
         id: g.id,
         nome: g.nome,
         servicos: [...porServico.entries()]
           .filter(([, v]) => v.habilitado)
-          .map(([id, v]) => ({ id, titulo: v.titulo }))
+          .map(([id, v]) => ({ id, titulo: v.titulo, agendamentoPublico: v.publico }))
           .sort((a, b) => a.titulo.localeCompare(b.titulo, "pt-BR")),
         janelas: g.janelas.map((j) => ({
           ...j,
@@ -121,6 +123,8 @@ export interface ReservaNaAgenda {
   readonly servico: string;
   readonly pessoa: string;
   readonly documento: string;
+  /** `true` quando a marcação veio do portal: nome e documento são DECLARADOS, não conferidos. */
+  readonly pelaInternet: boolean;
   readonly situacao: "MARCADA" | "CONFIRMADA" | "ATENDIDA" | "CANCELADA";
   readonly motivoDoCancelamento: string | null;
   readonly reagendamentos: number;
@@ -173,6 +177,11 @@ export async function lerAgendaDoDia(p: {
     select: {
       id: true, codigo: true, guicheId: true, dia: true, horaInicio: true,
       servico: { select: { titulo: true } },
+      // ⚠️ AS DUAS FORMAS DE TITULAR. Quem marcou pelo BALCÃO está no cadastro; quem marcou pelo
+      // PORTAL declarou nome e documento e não tem `Pessoa` — ver `ck_reserva_titular_xor`. A
+      // agenda de quem atende precisa das duas, ou metade das pessoas do dia sumiria da tela.
+      nomeDeclarado: true,
+      documentoDeclarado: true,
       pessoa: { select: { documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } },
       confirmacao: { select: { id: true } },
       cancelamento: { select: { motivo: true } },
@@ -191,8 +200,12 @@ export async function lerAgendaDoDia(p: {
       codigo: r.codigo,
       hora: vigente.horaInicio,
       servico: r.servico.titulo,
-      pessoa: r.pessoa.versoes[0]?.nome ?? "(sem nome na versão vigente)",
-      documento: r.pessoa.documento,
+      pessoa: r.pessoa === null ? (r.nomeDeclarado ?? "") : (r.pessoa.versoes[0]?.nome ?? "(sem nome na versão vigente)"),
+      documento: r.pessoa === null ? (r.documentoDeclarado ?? "") : r.pessoa.documento,
+      // ⚠️ QUEM ATENDE PRECISA SABER DA ONDE VEIO. Uma marcação do portal traz nome e documento
+      // DECLARADOS, não conferidos por ninguém: quem está no guichê tem de pedir o documento.
+      // Uma do balcão já foi conferida por um servidor.
+      pelaInternet: r.pessoa === null,
       situacao:
         r.cancelamento !== null ? "CANCELADA" : r.realizacao !== null ? "ATENDIDA" : r.confirmacao !== null ? "CONFIRMADA" : "MARCADA",
       motivoDoCancelamento: r.cancelamento?.motivo ?? null,
@@ -251,17 +264,20 @@ export async function abrirGuiche(input: { readonly unidadeId: string; readonly 
 }
 
 export async function definirServicoDoGuiche(input: {
-  readonly guicheId: string; readonly servicoId: string; readonly habilitado: boolean; readonly motivo?: string;
+  readonly guicheId: string; readonly servicoId: string; readonly habilitado: boolean;
+  readonly agendamentoPublico: boolean; readonly motivo?: string;
 }): Promise<string> {
   await comEscritaAutenticada("CONFIGURAR_AGENDA_DO_GUICHE", (criadoPor) =>
     definirServicoNoGuiche(cliente(), {
-      guicheId: input.guicheId, servicoId: input.servicoId, habilitado: input.habilitado, criadoPor,
+      guicheId: input.guicheId, servicoId: input.servicoId, habilitado: input.habilitado,
+      agendamentoPublico: input.agendamentoPublico, criadoPor,
       ...(input.motivo === undefined || input.motivo === "" ? {} : { motivo: input.motivo }),
     })
   );
-  return input.habilitado
-    ? "Serviço habilitado neste guichê."
-    : "Serviço desabilitado neste guichê. As reservas já marcadas continuam valendo.";
+  if (!input.habilitado) return "Serviço desabilitado neste guichê. As reservas já marcadas continuam valendo.";
+  return input.agendamentoPublico
+    ? "Serviço habilitado neste guichê, e ABERTO à marcação pelo portal do cidadão."
+    : "Serviço habilitado neste guichê, atendido SÓ pelo balcão — o cidadão não o marca pela internet.";
 }
 
 export async function publicarOfertaDeHorarios(input: {

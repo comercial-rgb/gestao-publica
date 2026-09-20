@@ -164,6 +164,14 @@ export default async function AgendaDoGuichePage({
                                     {ROTULO_DA_SITUACAO[r.situacao] ?? r.situacao}
                                   </Badge>{" "}
                                   <span className="font-mono text-xs text-[color:var(--color-ink-3)]">{r.codigo}</span>
+                                  {/* ⚠️ QUEM ATENDE PRECISA SABER DE ONDE VEIO. Uma marcação do
+                                      portal traz nome e documento DECLARADOS, não conferidos por
+                                      ninguém — quem está no guichê tem de pedir o documento. */}
+                                  {r.pelaInternet ? (
+                                    <span className="ml-1 text-xs text-[color:var(--color-ink-3)]">
+                                      · pela internet, dados a conferir
+                                    </span>
+                                  ) : null}
                                   {r.reagendamentos > 0 ? (
                                     <span className="ml-1 text-xs text-[color:var(--color-ink-3)]">
                                       · remarcada {r.reagendamentos}x

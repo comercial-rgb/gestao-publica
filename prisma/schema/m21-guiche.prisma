@@ -77,6 +77,13 @@ model SituacaoDoServicoNoGuiche {
   servico   ServicoDaCarta @relation("GuichesDoServico", fields: [servicoId], references: [id])
 
   habilitado Boolean
+
+  /// ⚠️ O CIDADÃO PODE MARCAR SOZINHO ESTE SERVIÇO? `false` por padrão, e o padrão é a decisão:
+  /// nada vira agendável pelo portal por acidente quando a migration roda. Quem organiza decide,
+  /// serviço a serviço — há atendimento que exige triagem antes, e oferecê-lo no portal mandaria
+  /// a pessoa ao balcão para ouvir que não era ali.
+  agendamentoPublico Boolean @default(false)
+
   motivo     String?
 
   criadoEm  DateTime @default(now())
@@ -156,8 +163,33 @@ model ReservaDeAtendimento {
   servicoId String
   servico   ServicoDaCarta @relation("ReservasDoServico", fields: [servicoId], references: [id])
 
-  pessoaId String
-  pessoa   Pessoa @relation("ReservasDeAtendimentoDaPessoa", fields: [pessoaId], references: [id])
+  /// ═══ ⚠️ DUAS FORMAS DE TITULAR, E EXATAMENTE UMA POR RESERVA (CHECK no banco) ═══
+  ///
+  /// · PELO BALCÃO: `pessoaId` aponta para o cadastro. Quem atende confere o documento de quem
+  ///   está na frente dele, e a pessoa já existe.
+  ///
+  /// · PELO PORTAL: `nomeDeclarado` + `documentoDeclarado`, SEM vínculo com o cadastro. E isso é
+  ///   deliberado, por dois motivos que se somam:
+  ///     (1) CPF digitado não é autenticação. Criar ou casar uma `Pessoa` a partir de um
+  ///         formulário público encheria o cadastro de cidadãos com dado não conferido — e
+  ///         "não sobrescrever Pessoa silenciosamente" é regra desta casa;
+  ///     (2) casar pelo documento vazaria a existência do cadastro: um formulário que aceita um
+  ///         CPF e recusa outro é um oráculo de quem já é conhecido do município.
+  ///   A identificação de verdade acontece no guichê, com o documento na mão. Aqui é um lugar na
+  ///   fila, não um cadastro.
+  pessoaId String?
+  pessoa   Pessoa? @relation("ReservasDeAtendimentoDaPessoa", fields: [pessoaId], references: [id])
+
+  nomeDeclarado      String?
+  documentoDeclarado String? @db.VarChar(14)
+
+  /// ⚠️ O SEGREDO DE QUEM MARCOU PELO PORTAL — guardado SÓ POR HASH, como o da ouvidoria.
+  ///
+  /// O `codigo` aparece na agenda interna para quem tem `CONSULTAR_PROTOCOLO`. Se ele sozinho
+  /// desse poder de cancelar pelo portal, qualquer pessoa que lê a agenda poderia desmarcar o
+  /// atendimento de um cidadão de forma anônima e não atribuída. O segredo é entregue UMA vez a
+  /// quem marcou, e o banco guarda apenas o hash — nem um dump o devolve.
+  segredoHash String? @unique
 
   /// O horário ORIGINAL. O vigente é o do último reagendamento, quando houver.
   dia        DateTime

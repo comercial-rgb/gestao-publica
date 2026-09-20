@@ -61,6 +61,12 @@ const ACOES_SEM_COMANDO: Record<string, string> = {
   "app/(areas)/integracoes/captura/page.tsx":
     "acaoSimular: a simulação MOCK da captura chama o serviço com exigirSessao, sem o envelope de " +
     "escrita autenticada — não consome a chave. Pendência CAPTURA-SEM-ENVELOPE.",
+  "app/(publico)/agendamento/actions.ts":
+    "atos PÚBLICOS sem conta (marcar, consultar e cancelar atendimento presencial, TR 5.39.92): não há sessão " +
+    "para o envelope de escrita autenticada. E a defesa contra repetição NÃO é uma pendência aqui, ao contrário " +
+    "da ouvidoria: o domínio trava o PAR documento+serviço (posto 29) antes de conferir o limite de um " +
+    "atendimento vivo, de modo que dois envios simultâneos do mesmo formulário se encontram e o segundo é " +
+    "recusado nomeando o código do primeiro. A capacidade tem o trinco do LUGAR, e a consulta só lê.",
   "app/(publico)/ouvidoria/actions.ts":
     "atos PÚBLICOS sem conta (manifestação, acompanhamento, opinião): não há sessão para o envelope de escrita " +
     "autenticada. A defesa contra repetição é do domínio — quota por origem, uma raiz de opinião por token, " +
