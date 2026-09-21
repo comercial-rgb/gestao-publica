@@ -187,8 +187,14 @@ export async function registrarMovimentoDotacao(
   // adicional, e o índice parcial `uq_roteiro_sem_tipo_de_credito` garante que existe no
   // máximo uma linha com NULL por tipo — sem ele, dois NULL seriam distintos no Postgres e
   // esta leitura dependeria de qual linha o planejador devolvesse.
+  //
+  // ⚠️ E A VIGENTE É A DE MAIOR VERSÃO (V11 V8.4). O roteiro passou a ser versionado quando o ente
+  // ganhou onde trocá-lo pela tela: o razão escriturado ontem foi feito contra o roteiro de
+  // ontem, e um `UPDATE` apagaria a resposta para "contra que roteiro este lançamento foi feito?".
+  // Ler qualquer versão que não a última classificaria o movimento de hoje pela decisão revogada.
   const roteiro = await tx.roteiroOrcamentario.findFirst({
     where: { tipo: p.tipo, tipoCredito: p.tipoCredito ?? null },
+    orderBy: { versao: "desc" },
     select: {
       contaDebito: { select: { id: true, codigo: true, analitica: true } },
       contaCredito: { select: { id: true, codigo: true, analitica: true } },

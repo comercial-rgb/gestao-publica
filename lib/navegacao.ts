@@ -225,6 +225,7 @@ export const FINANCEIRO: readonly RelatorioNav[] = [
  * são a BASE (o plano que classifica e os lançamentos que registram). Quem audita chega por aqui.
  */
 export const CONTABILIDADE: readonly RelatorioNav[] = [
+  { href: "/contabilidade/roteiros-orcamentarios", numero: "Roteiro orçamentário", rotulo: "Roteiro orçamentário", descricao: "Em que contas do plano cada movimento de dotação lança — dotação inicial, crédito adicional por tipo, anulação, reserva. Decisão contábil do ente, versionada e com fundamento; sem roteiro o movimento é recusado." },
   { href: "/contabilidade/plano-de-contas", numero: "Plano de contas", rotulo: "Plano de Contas PCASP", descricao: "As contas por classe, com natureza do saldo e a posição de cada uma (STN/PCASP)." },
   { href: "/contabilidade/lancamentos", numero: "Lançamentos", rotulo: "Lançamentos Contábeis", descricao: "As partidas dobradas, com nº de controle, histórico e o caminho até o documento de origem." },
   // V11 V3.1 — o número que autoriza crédito adicional por superávit existia só dentro da recusa

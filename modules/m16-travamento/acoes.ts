@@ -356,6 +356,12 @@ export type AcaoDoSistema =
   // do PCASP a retenção vira dívida é a contabilidade do ente — não quem paga. Juntá-la a
   // `PAGAR` daria a quem executa o poder de reclassificar o passivo do município.
   | "GERIR_TIPOS_DE_CONSIGNACAO"
+  // ── M05 V11 V8.4 — o roteiro orçamentário pela tela ──
+  //
+  // ⚠️ AÇÃO PRÓPRIA, e não `PARAMETRIZAR_ROTEIRO_PATRIMONIAL`: são dois subsistemas, e quem
+  // responde pelo orçamentário não é necessariamente quem responde pelo patrimonial. Juntá-las
+  // daria a uma pessoa o poder de reclassificar os dois razões de uma vez.
+  | "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO"
   // ── M21 V11 V8 — A AGENDA DO GUICHÊ (TR 5.39.92) ──
   //
   // ⚠️ TRÊS AÇÕES PARA DEZ SERVIÇOS, e o corte é por QUEM FAZ, não por qual função é.
@@ -951,6 +957,7 @@ export type NomeDeServico =
   | "resolverOcorrencia"
   | "registrarMedicaoPorItens"
   // M21/M19 — a carta de serviços, as solicitações do requerente e a representação (V6.2 P3)
+  | "publicarRoteiroOrcamentario"
   | "cadastrarTipoDeConsignacao"
   | "redefinirContaDaConsignacao"
   | "desativarTipoDeConsignacao"
@@ -1506,6 +1513,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // V6.2 P3 — a carta de serviços. Configurar a carta é um ato; pedir (protocolar, responder,
   // anexar) é o ato do REQUERENTE, conferido contra a titularidade na transação; decidir (exigir,
   // decidir, disponibilizar resposta) é o ato da mesa, no setor em que o processo está.
+  // ── M05 V11 V8.4 — o roteiro orçamentário ──
+  publicarRoteiroOrcamentario: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
   // ── M07 V11 V8.3 — os tipos de consignação ──
   cadastrarTipoDeConsignacao: "GERIR_TIPOS_DE_CONSIGNACAO",
   redefinirContaDaConsignacao: "GERIR_TIPOS_DE_CONSIGNACAO",
@@ -1800,6 +1809,10 @@ export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
  * grep-teste lê esta lista — nada sai do censo por descuido.
  */
 export const FORA_DO_CENSO: Record<string, string> = {
+  roteiroVigente:
+    "LEITURA. A versão vigente do roteiro orçamentário de um par (movimento, tipo de crédito). " +
+    "Não grava nada; é a mesma projeção que `dotacao-razao` usa para escriturar, de modo que a " +
+    "tela não pode oferecer um roteiro diferente do que o razão aplica.",
   decisaoVigente:
     "LEITURA. A decisão vigente do ente sobre um tipo de consignação (qual passivo, e se vale). " +
     "Não grava nada; é a projeção do fato append-only que o cadastro escreve.",

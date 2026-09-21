@@ -546,8 +546,20 @@ model RoteiroOrcamentario {
   contaCreditoId String
   contaCredito   ContaPcasp @relation("CreditoOrcamentario", fields: [contaCreditoId], references: [id])
 
+  /// ⚠️ VERSIONADO (V11 V8.4), pela mesma razão da `DisponibilidadeRecursoNovo`: o ente TROCA a
+  /// classificação — o plano dele muda, o TCE orienta diferente — e o razão escriturado ontem foi
+  /// feito contra o roteiro de ontem. Um `UPDATE` apagaria a resposta para "contra que roteiro
+  /// este lançamento foi feito?", e o papel de runtime não tem UPDATE nesta tabela de todo jeito.
+  /// A VIGENTE é a de maior versão.
+  versao Int @default(1)
+
+  /// Por que ESTAS contas. Nulo nas linhas que o seed criou — o seed não tem fundamento a dar, e
+  /// fingir um seria pior que a ausência. A tela NOMEIA a diferença.
+  fundamento String?
+
   criadoEm  DateTime @default(now())
   criadoPor String
 
-  @@unique([tipo, tipoCredito])
+  @@unique([tipo, tipoCredito, versao])
+  @@index([tipo, tipoCredito, versao])
 }

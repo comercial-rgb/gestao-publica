@@ -381,6 +381,7 @@ export const MODULO_DA_ACAO: Record<AcaoDoSistema, ModuloComercial> = {
   REGISTRAR_REPRESENTACAO: "PLATAFORMA",
   // M07 V11 V8.3 — a consignação é do núcleo contábil: ela decide onde o passivo nasce.
   GERIR_TIPOS_DE_CONSIGNACAO: "NUCLEO_CONTABIL",
+  PARAMETRIZAR_ROTEIRO_ORCAMENTARIO: "NUCLEO_CONTABIL",
   // M21 V11 V8 — a agenda do guichê é atendimento ao cidadão, como a carta de serviços.
   CONFIGURAR_AGENDA_DO_GUICHE: "ATENDIMENTO_AO_CIDADAO",
   RESERVAR_ATENDIMENTO_NO_GUICHE: "ATENDIMENTO_AO_CIDADAO",

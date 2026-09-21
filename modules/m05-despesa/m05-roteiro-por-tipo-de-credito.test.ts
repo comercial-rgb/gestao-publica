@@ -290,7 +290,16 @@ describe("o crédito adicional entra na conta do SEU tipo", () => {
           },
         })
       )
-    ).toBe("tipo");
+      // ⚠️ A AFIRMAÇÃO MUDOU NA V11 V8.4, E O MODELO É QUE MUDOU — não o teste.
+      //
+      // O índice parcial era por `tipo`; passou a ser por `(tipo, versao)` quando o roteiro virou
+      // VERSIONADO para o ente poder trocá-lo pela tela. Com a versão fora dele, a segunda versão
+      // de um roteiro sem tipo de crédito colidiria com a primeira, e justamente os dois que o
+      // ente mais precisa corrigir (DOTAÇÃO INICIAL e ANULAÇÃO) são desse grupo.
+      //
+      // O que o índice protege continua idêntico: dois roteiros do MESMO movimento na MESMA
+      // versão não cabem. Sem ele, dois NULL seriam distintos no Postgres.
+    ).toBe("tipo,versao");
 
     // E o par PREENCHIDO continua fechado pelo índice composto do modelo.
     const supl = await prisma.contaPcasp.findUniqueOrThrow({
@@ -313,6 +322,7 @@ describe("o crédito adicional entra na conta do SEU tipo", () => {
           },
         })
       )
-    ).toBe("tipo,tipoCredito");
+      // Pelo mesmo motivo, o índice composto passou a incluir a versão.
+    ).toBe("tipo,tipoCredito,versao");
   });
 });
