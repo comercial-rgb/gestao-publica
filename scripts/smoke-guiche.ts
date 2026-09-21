@@ -262,9 +262,11 @@ async function main(): Promise<void> {
       { sel: 'input[name="documento"]', valor: C.documento },
       { sel: 'select[name="horaInicio"]', valor: "08:00", tipo: "select" },
     ]);
+    // ⚠️ E ELA TRAZ O CÓDIGO DE ACOMPANHAMENTO PARA ENTREGAR (V11 V8.5). Sem ele, quem é atendido
+    // no balcão tinha de VOLTAR ao balcão para desmarcar — cortesia virando deslocamento.
     R.conferir(
-      "2.4 o atendimento é marcado PELA TELA e a confirmação traz o CÓDIGO",
-      r5.tipo === "ok" && r5.texto.includes("Código") && r5.texto.includes(br(C.segunda)),
+      "2.4 o atendimento é marcado PELA TELA e a confirmação traz o número e o código a ENTREGAR",
+      r5.tipo === "ok" && r5.texto.includes("ENTREGUE à pessoa") && r5.texto.includes(br(C.segunda)),
       r5.tipo === "silencio" ? await porQueNaoEnviou(page, "marcar-atendimento") : `${r5.tipo}: ${r5.texto}`
     );
 
@@ -542,6 +544,32 @@ async function main(): Promise<void> {
       "5.11 o mesmo documento não marca duas vezes o mesmo serviço — e a recusa nomeia a anterior",
       r16.tipo === "erro" && r16.texto.includes("JA-TEM-MARCACAO"),
       `${r16.tipo}: ${r16.texto}`
+    );
+
+    // ⚠️ REMARCAR PELO PORTAL É UM ATO SÓ (V11 V8.5) — fecha GUICHE-PORTAL-SEM-REAGENDAMENTO.
+    // Com "cancele e marque de novo", entre os dois atos o lugar volta para a fila.
+    await irPara(N, page, "/agendamento/acompanhar");
+    await preencherEEnviar(page, "consultar-marcacao", [{ sel: 'input[name="segredo"]', valor: segredo }]);
+    const r18 = await preencherEEnviar(page, "remarcar-minha-marcacao", [
+      { sel: 'input[name="segredo"]', valor: segredo },
+      { sel: 'input[name="dia"]', valor: C.segundaSeguinte, tipo: "data" },
+      { sel: 'input[name="horaInicio"]', valor: "09:00", tipo: "data" },
+    ]);
+    R.conferir(
+      "5.11b o cidadão REMARCA sozinho, e a tela diz de onde para onde",
+      r18.tipo === "ok" && r18.texto.includes("08:00") && r18.texto.includes("09:00"),
+      r18.tipo === "silencio" ? await porQueNaoEnviou(page, "remarcar-minha-marcacao") : `${r18.tipo}: ${r18.texto}`
+    );
+
+    await irPara(N, page, "/agendamento/acompanhar");
+    await preencherEEnviar(page, "consultar-marcacao", [{ sel: 'input[name="segredo"]', valor: segredo }]);
+    const depoisDeRemarcar = await page.evaluate(
+      () => document.querySelector('[data-teste="hora-da-marcacao"]')?.textContent?.trim() ?? ""
+    );
+    R.conferir(
+      "5.11c a consulta passa a mostrar o horário NOVO",
+      depoisDeRemarcar === "09:00",
+      `hora depois de remarcar: "${depoisDeRemarcar}"`
     );
 
     // E o cidadão cancela a própria marcação, com o código.

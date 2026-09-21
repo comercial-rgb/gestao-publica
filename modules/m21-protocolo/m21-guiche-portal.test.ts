@@ -16,6 +16,7 @@ import {
   guichesAbertosAoPortal,
   ofertaDoGuiche,
   publicarJanelaDeAtendimento,
+  reagendarPeloPortal,
   reagendarReservaDeAtendimento,
   registrarAtendimentoRealizado,
   reservarAtendimento,
@@ -50,6 +51,8 @@ const BALCAO = "balcao@cg.pb.gov.br";
 const ATENDENTE = "atendente@cg.pb.gov.br";
 
 const SEGUNDA = "2026-09-21";
+/** Terça: a janela é só de segunda, então nenhum horário existe nela. */
+const TERCA_FECHADA = "2026-09-22";
 const CPF_A = "11144477735";
 const CPF_B = "52998224725";
 
@@ -440,6 +443,92 @@ describe("o que o segredo abre", () => {
     expect(JSON.stringify(vista)).not.toContain(CPF_A);
     expect(vista?.nome).toBe("Ana Cidada da Silva");
     expect(vista?.endereco).toBe("Praca Central, 1 - Centro");
+  });
+});
+
+describe("o cidadão remarca e o balcão entrega o código (V11 V8.5)", () => {
+  it("t16: a marcação do BALCÃO também devolve um código de acompanhamento — e ele ABRE a consulta", async () => {
+    // ⚠️ A PREMISSA DA V8.1 ESTAVA ERRADA. O CHECK de então dizia que uma marcação do balcão não
+    // tem segredo a entregar, porque a pessoa foi identificada ali. A primeira metade é verdade e
+    // a conclusão não segue: ela vai embora e continua precisando consultar e cancelar, e
+    // obrigá-la a voltar ao balcão para desmarcar transforma cortesia em deslocamento.
+    await janela(guiche, 2);
+    const r = await reservarAtendimento(prisma, {
+      guicheId: guiche, servicoId: servicoAberto, pessoaId: pessoaDoBalcao,
+      dia: SEGUNDA, horaInicio: "08:00", chaveDeIdempotencia: "balcao-com-codigo", criadoPor: BALCAO,
+    });
+    expect(r.segredo).toMatch(/^[A-Z2-9]{5}-[A-Z2-9]{5}-[A-Z2-9]{5}-[A-Z2-9]{5}$/);
+
+    const vista = await consultarReservaPeloSegredo(prisma, r.segredo ?? "");
+    expect(vista?.codigo).toBe(r.codigo);
+    expect(vista?.situacao).toBe("MARCADA");
+
+    // E o código continua guardado SÓ por hash.
+    const g = await prisma.reservaDeAtendimento.findUniqueOrThrow({
+      where: { id: r.reservaId }, select: { segredoHash: true, pessoaId: true },
+    });
+    expect(g.segredoHash).not.toBe(r.segredo);
+    expect(g.pessoaId).toBe(pessoaDoBalcao);
+  });
+
+  it("t17: o cidadão REMARCA pelo portal — um ato só, sem devolver o lugar à fila no meio", async () => {
+    // ⚠️ O BURACO QUE ISTO FECHA: com "cancele e marque de novo", entre os dois atos o lugar volta
+    // para a fila e outra pessoa pode tomá-lo. Quem só queria mudar de horário ficaria sem nenhum.
+    await janela(guiche, 1);
+    const r = await agendar({ hora: "08:00" });
+
+    const rem = await reagendarPeloPortal(prisma, { segredo: r.segredo, dia: SEGUNDA, horaInicio: "09:00" });
+    expect(rem.sequencia).toBe(1);
+    expect(rem.de).toEqual({ dia: SEGUNDA, hora: "08:00" });
+
+    const vista = await consultarReservaPeloSegredo(prisma, r.segredo);
+    expect(vista?.hora).toBe("09:00");
+
+    // O horário de ORIGEM voltou a ficar livre, e o de DESTINO está tomado.
+    const oferta = new Map((await ofertaDoGuiche(prisma, { guicheId: guiche, dia: SEGUNDA })).horarios.map((h) => [h.hora, h.livres]));
+    expect(oferta.get("08:00")).toBe(1);
+    expect(oferta.get("09:00")).toBe(0);
+
+    // ⚠️ E O HISTÓRICO DIZ QUEM REMARCOU. Não se atribui a um servidor um ato do cidadão.
+    const fato = await prisma.reagendamentoDaReserva.findFirstOrThrow({
+      where: { reservaId: (await prisma.reservaDeAtendimento.findUniqueOrThrow({ where: { codigo: r.codigo }, select: { id: true } })).id },
+      select: { criadoPor: true, motivo: true },
+    });
+    expect(fato.criadoPor).toBe("PORTAL-DO-CIDADAO");
+    expect(fato.motivo).toContain("próprio cidadão");
+  });
+
+  it("t18: remarcar para horário LOTADO é recusado — e a marcação continua onde estava", async () => {
+    await janela(guiche, 1);
+    const r = await agendar({ hora: "08:00" });
+    await agendar({ hora: "09:00", documento: CPF_B, nome: "Bia Cidada do Portal" });
+
+    await expect(
+      reagendarPeloPortal(prisma, { segredo: r.segredo, dia: SEGUNDA, horaInicio: "09:00" })
+    ).rejects.toThrow(/HORARIO-LOTADO[\s\S]*continua como está/);
+
+    // ⚠️ A GARANTIA DO "UM ATO SÓ": a recusa não deixou a pessoa sem horário nenhum.
+    expect((await consultarReservaPeloSegredo(prisma, r.segredo))?.hora).toBe("08:00");
+  });
+
+  it("t19: remarcar para o MESMO horário, para dia fechado, ou já atendida/cancelada é recusado", async () => {
+    await janela(guiche, 2);
+    const r = await agendar({ hora: "08:00" });
+
+    await expect(reagendarPeloPortal(prisma, { segredo: r.segredo, dia: SEGUNDA, horaInicio: "08:00" })).rejects.toThrow(
+      /MESMO-HORARIO/
+    );
+    await expect(reagendarPeloPortal(prisma, { segredo: r.segredo, dia: TERCA_FECHADA, horaInicio: "08:30" })).rejects.toThrow(
+      /HORARIO-INEXISTENTE/
+    );
+    await expect(reagendarPeloPortal(prisma, { segredo: "AAAAA-BBBBB-CCCCC-DDDDD", dia: SEGUNDA, horaInicio: "08:30" })).rejects.toThrow(
+      /MARCACAO-NAO-ENCONTRADA/
+    );
+
+    await cancelarPeloPortal(prisma, { segredo: r.segredo, motivo: "Nao poderei comparecer." });
+    await expect(reagendarPeloPortal(prisma, { segredo: r.segredo, dia: SEGUNDA, horaInicio: "08:30" })).rejects.toThrow(
+      /JA-CANCELADA/
+    );
   });
 });
 

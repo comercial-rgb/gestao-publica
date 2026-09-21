@@ -571,6 +571,14 @@ export type ReservarAtendimentoInput = z.input<typeof zReservarAtendimento>;
 export interface ReservaFeita {
   readonly reservaId: string;
   readonly codigo: string;
+  /**
+   * O código de acompanhamento para ENTREGAR a quem foi atendido no balcão (V11 V8.5).
+   *
+   * ⚠️ SAI UMA VEZ, e `undefined` quando a chave já tinha sido usada — nesse caso nada foi
+   * gravado, e o segredo da reserva original não é relido de lugar nenhum: o banco guarda só o
+   * hash. Quem perdeu o código volta ao balcão, e é honesto que seja assim.
+   */
+  readonly segredo?: string;
   /** `true` quando a chave já tinha sido usada e a reserva anterior foi devolvida sem gravar nada. */
   readonly jaExistia: boolean;
 }
@@ -594,6 +602,9 @@ export async function reservarAtendimento(
 ): Promise<ReservaFeita> {
   const d = zReservarAtendimento.parse(input);
   const dia = meioDiaCivil(d.dia);
+  // ⚠️ GERADO FORA DA TRANSAÇÃO, como no portal: ele não depende de nada lido lá dentro, e é
+  // devolvido a quem chamou para ser ENTREGUE à pessoa. O banco recebe só o hash.
+  const segredo = novoSegredoDaReserva();
 
   return prisma.$transaction(async (tx) => {
     const guiche = await tx.guicheDeAtendimento.findUnique({
@@ -688,12 +699,16 @@ export async function reservarAtendimento(
         dia,
         horaInicio: d.horaInicio,
         codigo: codigoDeAcompanhamento(),
+        // ⚠️ O BALCÃO TAMBÉM ENTREGA CÓDIGO (V11 V8.5). Quem é atendido ali vai embora e continua
+        // precisando consultar e cancelar; obrigá-la a voltar para desmarcar é transformar uma
+        // cortesia em deslocamento.
+        segredoHash: hashDoSegredoDaReserva(segredo),
         chaveDeIdempotencia: d.chaveDeIdempotencia,
         criadoPor: d.criadoPor,
       },
       select: { id: true, codigo: true },
     });
-    return { reservaId: r.id, codigo: r.codigo, jaExistia: false };
+    return { reservaId: r.id, codigo: r.codigo, segredo, jaExistia: false };
   });
 }
 
@@ -1335,4 +1350,123 @@ export async function guichesAbertosAoPortal(prisma: PrismaClient): Promise<read
     });
   }
   return saida;
+}
+
+export const zReagendarPeloPortal = z.object({
+  segredo: z.string().trim().min(1),
+  dia: zDiaCivil,
+  horaInicio: zHora,
+});
+
+/**
+ * O CIDADÃO REMARCA A PRÓPRIA MARCAÇÃO (V11 V8.5) — fecha `GUICHE-PORTAL-SEM-REAGENDAMENTO`.
+ *
+ * ═══ ⚠️ POR QUE NÃO BASTAVA "CANCELE E MARQUE DE NOVO" ═══
+ * Era o que o portal oferecia, e tem um buraco: entre cancelar e marcar, o lugar volta para a
+ * fila e outra pessoa pode tomá-lo. Quem só queria mudar de horário arrisca ficar sem nenhum — e
+ * descobre isso depois de já ter perdido o que tinha. Remarcar é um ato só: ou muda, ou não muda.
+ *
+ * ⚠️ NO MESMO GUICHÊ. O cidadão escolhe outro horário do lugar onde já está marcado; mudar de
+ * guichê é decisão do ente (a mesa quebrou, o serviço mudou de posto) e continua sendo do balcão.
+ *
+ * ⚠️ E PASSA PELAS MESMAS PORTAS: dia aberto, horário realmente ofertado, capacidade com lugar, e
+ * os MESMOS trincos do balcão, em ordem estável. Um caminho público que não conferisse a
+ * capacidade seria a porta dos fundos que o resto da unidade fechou.
+ */
+export async function reagendarPeloPortal(
+  prisma: PrismaClient,
+  input: z.input<typeof zReagendarPeloPortal>
+): Promise<{ readonly codigo: string; readonly sequencia: number; readonly de: { readonly dia: string; readonly hora: string } }> {
+  const d = zReagendarPeloPortal.parse(input);
+  const dia = meioDiaCivil(d.dia);
+
+  return prisma.$transaction(async (tx) => {
+    const r = await tx.reservaDeAtendimento.findUnique({
+      where: { segredoHash: hashDoSegredoDaReserva(d.segredo) },
+      select: {
+        id: true,
+        codigo: true,
+        guicheId: true,
+        dia: true,
+        horaInicio: true,
+        guiche: { select: { nome: true, unidadeId: true, unidade: { select: { nome: true } } } },
+        cancelamento: { select: { motivo: true } },
+        realizacao: { select: { id: true } },
+        reagendamentos: { orderBy: { sequencia: "desc" }, take: 1, select: { guicheId: true, dia: true, horaInicio: true, sequencia: true } },
+      },
+    });
+    if (r === null) {
+      throw new Error("MARCACAO-NAO-ENCONTRADA: não há marcação com este código de acompanhamento.");
+    }
+    if (r.cancelamento !== null) {
+      throw new Error(`JA-CANCELADA: esta marcação já foi cancelada (${r.cancelamento.motivo}).`);
+    }
+    if (r.realizacao !== null) {
+      throw new Error("JA-ATENDIDA: este atendimento já foi realizado — não há o que remarcar.");
+    }
+
+    const atual = r.reagendamentos[0] ?? { guicheId: r.guicheId, dia: r.dia, horaInicio: r.horaInicio, sequencia: 0 };
+    if (diaCivil(atual.dia) === d.dia && atual.horaInicio === d.horaInicio) {
+      throw new Error(
+        `MESMO-HORARIO: a sua marcação já é em ${diaCivilBr(dia)} às ${d.horaInicio}. Nada foi alterado.`
+      );
+    }
+
+    const fechado = await tx.excecaoDeCalendarioDoAtendimento.findUnique({
+      where: { unidadeId_dia: { unidadeId: r.guiche.unidadeId, dia } },
+      select: { motivo: true },
+    });
+    if (fechado !== null) {
+      throw new Error(
+        `UNIDADE-FECHADA: ${r.guiche.unidade.nome} não abre em ${diaCivilBr(dia)}: ${fechado.motivo}. Nada foi alterado.`
+      );
+    }
+
+    // ⚠️ O DESTINO É O MESMO GUICHÊ EM QUE ELA JÁ ESTÁ — e é o `atual.guicheId`, não o original:
+    // se o ente já a moveu de posto, o cidadão remarca no posto onde ela está agora.
+    const destino = atual.guicheId;
+    const janelas = (await janelasDoGuiche(tx, destino)).filter((j) => janelaValeNoDia(j, dia));
+    const janela = janelas.find((j) => horariosDaJanela(j).includes(d.horaInicio));
+    if (janela === undefined) {
+      throw new Error(
+        `HORARIO-INEXISTENTE: ${d.horaInicio} não é um horário deste guichê em ${diaCivilBr(dia)}. ` +
+          `Escolha um dos horários oferecidos. Nada foi alterado.`
+      );
+    }
+
+    // ⚠️ OS DOIS TRINCOS, EM ORDEM ESTÁVEL — a mesma do balcão. Duas remarcações que trocam de
+    // lugar entre si travariam em ordens opostas e se abraçariam.
+    const chaves = [
+      chaveDoHorario(atual.guicheId, atual.dia, atual.horaInicio),
+      chaveDoHorario(destino, dia, d.horaInicio),
+    ].sort();
+    await travar(tx, "HorarioDeGuiche", [...new Set(chaves)]);
+
+    const ocupadas = (await ocupacaoDoDia(tx, destino, dia)).get(d.horaInicio) ?? 0;
+    if (ocupadas >= janela.capacidade) {
+      throw new Error(
+        `HORARIO-LOTADO: ${d.horaInicio} de ${diaCivilBr(dia)} já está cheio. Escolha outro ` +
+          `horário — a sua marcação continua como está.`
+      );
+    }
+
+    const novo = await tx.reagendamentoDaReserva.create({
+      data: {
+        reservaId: r.id,
+        guicheId: destino,
+        dia,
+        horaInicio: d.horaInicio,
+        motivo: "Remarcado pelo próprio cidadão, no portal.",
+        sequencia: atual.sequencia + 1,
+        criadoPor: "PORTAL-DO-CIDADAO",
+      },
+      select: { sequencia: true },
+    });
+
+    return {
+      codigo: r.codigo,
+      sequencia: novo.sequencia,
+      de: { dia: diaCivil(atual.dia), hora: atual.horaInicio },
+    };
+  });
 }

@@ -1,0 +1,17 @@
+-- V11 V8.5 — O CÓDIGO DE ACOMPANHAMENTO TAMBÉM PARA QUEM MARCA NO BALCÃO
+-- (pendência GUICHE-BALCAO-SEM-SEGREDO)
+--
+-- ⚠️ ESTA MIGRATION TROCA UM CHECK QUE EU MESMO ESCREVI NA V8.1, E A PREMISSA DELE ESTAVA ERRADA.
+--
+-- Ele dizia: "segredo só existe em reserva do portal — uma marcação feita no balcão não tem
+-- segredo para entregar a ninguém, porque a pessoa foi identificada ali, com o documento na mão".
+-- A primeira metade é verdade e a conclusão não segue. Quem é atendido no balcão vai embora e
+-- continua precisando consultar e cancelar; obrigá-la a voltar ao balcão para desmarcar é
+-- transformar uma cortesia em deslocamento. O que o atendente faz é ENTREGAR o código impresso.
+--
+-- O que permanece: o segredo continua guardado SÓ POR HASH, e continua sendo a única credencial
+-- que abre a marcação pelo portal. O `codigo`, que a agenda interna mostra, continua NÃO servindo
+-- para cancelar.
+--
+-- Não há DROP de tabela nem de coluna: troca-se a regra, e nenhum dado se perde.
+ALTER TABLE "ReservaDeAtendimento" DROP CONSTRAINT IF EXISTS "ck_reserva_segredo_so_do_portal";

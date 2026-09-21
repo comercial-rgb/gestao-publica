@@ -10,7 +10,9 @@ import {
 import {
   cancelarPublicoAction,
   consultarAction,
+  remarcarPublicoAction,
   type EstadoDaConsulta,
+  type EstadoDaRemarcacao,
   type EstadoDoCancelamento,
 } from "../actions";
 
@@ -34,6 +36,13 @@ const ROTULO_DA_SITUACAO: Readonly<Record<string, string>> = {
 export function Acompanhamento(): React.ReactElement {
   const [consulta, consultar, buscando] = useActionState<EstadoDaConsulta, FormData>(consultarAction, {});
   const [cancelamento, cancelar, cancelando] = useActionState<EstadoDoCancelamento, FormData>(cancelarPublicoAction, {});
+  const [remarcacao, remarcar, remarcando] = useActionState<EstadoDaRemarcacao, FormData>(remarcarPublicoAction, {});
+  const [seqRemarcacao, setSeqRemarcacao] = useState(0);
+  const [ultimaRemarcacao, setUltimaRemarcacao] = useState<string | undefined>(undefined);
+  if (remarcacao.sucesso !== undefined && remarcacao.sucesso !== ultimaRemarcacao) {
+    setUltimaRemarcacao(remarcacao.sucesso);
+    setSeqRemarcacao((n) => n + 1);
+  }
 
   // ⚠️ A SEQUÊNCIA É CONTADA, NÃO FIXA. O formulário de consulta FICA na tela — consultar outro
   // código é o caso normal. Com a sequência cravada em "1", a segunda resposta seria idêntica à
@@ -110,6 +119,32 @@ export function Acompanhamento(): React.ReactElement {
           {/* ⚠️ O CANCELAMENTO SÓ APARECE ENQUANTO EXISTE. Atendida e cancelada não se cancelam —
               e quem recusa é o domínio; esconder o formulário é cortesia, não proteção. */}
           {r.situacao === "MARCADA" || r.situacao === "CONFIRMADA" ? (
+            <>
+            {/* ⚠️ REMARCAR É UM ATO SÓ, e é por isso que ele existe separado do cancelamento:
+                com "cancele e marque de novo", entre os dois atos o lugar volta para a fila e
+                outra pessoa pode tomá-lo — quem só queria mudar de horário ficava sem nenhum. */}
+            <form action={remarcar} data-acao="remarcar-minha-marcacao" className="mt-4 flex flex-wrap items-end gap-3 border-t border-[color:var(--color-border)] pt-3" aria-label="Remarcar a minha marcação">
+              <label className="text-xs">
+                <span className={ROTULO}>Código de acompanhamento</span>
+                <input name="segredo" required maxLength={40} placeholder="XXXXX-XXXXX-XXXXX-XXXXX" className={`${CAMPO} font-mono`} />
+              </label>
+              <label className="text-xs">
+                <span className={ROTULO}>Novo dia</span>
+                <input name="dia" type="date" required defaultValue={r.dia} className={CAMPO} />
+              </label>
+              <label className="text-xs">
+                <span className={ROTULO}>Novo horário</span>
+                <input name="horaInicio" type="time" required className={CAMPO} />
+              </label>
+              <button type="submit" disabled={remarcando} className={CLASSE_BOTAO_PRIMARIO}>
+                {remarcando ? "Remarcando…" : "Remarcar"}
+              </button>
+              <span className="w-full text-xs text-[color:var(--color-ink-3)]">
+                No mesmo local e guichê. Se o horário escolhido estiver cheio, a sua marcação
+                continua como está — você não perde o que tem.
+              </span>
+            </form>
+
             <form action={cancelar} data-acao="cancelar-minha-marcacao" className="mt-4 flex flex-wrap items-end gap-3 border-t border-[color:var(--color-border)] pt-3" aria-label="Cancelar a minha marcação">
               {/* ⚠️ O CÓDIGO É DIGITADO DE NOVO, de propósito. Guardá-lo num campo escondido
                   entre a consulta e o cancelamento o deixaria no HTML da página — e num
@@ -127,9 +162,19 @@ export function Acompanhamento(): React.ReactElement {
                 {cancelando ? "Cancelando…" : "Cancelar a marcação"}
               </button>
             </form>
+            </>
           ) : null}
         </div>
       )}
+
+      {remarcacao.sucesso !== undefined ? (
+        <p role="status" data-resultado-da-acao="remarcar-minha-marcacao" data-resultado-seq={String(seqRemarcacao)} className="rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]">
+          {remarcacao.sucesso}
+        </p>
+      ) : null}
+      {remarcacao.erro !== undefined ? (
+        <p role="alert" className="text-sm text-[color:var(--color-status-erro-fg)]">{remarcacao.erro}</p>
+      ) : null}
 
       {cancelamento.sucesso !== undefined ? (
         <p role="status" data-resultado-da-acao="cancelar-minha-marcacao" data-resultado-seq={String(seqCancelamento)} className="rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]">

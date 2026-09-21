@@ -5,6 +5,7 @@ import {
   agendarPeloPortal,
   cancelarPeloPortal,
   consultarReservaPeloSegredo,
+  reagendarPeloPortal,
   guichesAbertosAoPortal,
   ofertaDoGuiche,
   type GuicheParaOCidadao,
@@ -93,6 +94,25 @@ export async function agendarPublico(input: {
 /** O que o segredo abre — `null` para segredo errado E para segredo inexistente, igualmente. */
 export async function consultarPorSegredo(segredo: string): Promise<ReservaParaOCidadao | null> {
   return consultarReservaPeloSegredo(cliente(), segredo);
+}
+
+/**
+ * O CIDADÃO REMARCA a própria marcação, no mesmo guichê (V11 V8.5).
+ *
+ * ⚠️ É UM ATO SÓ, e é o ponto: com "cancele e marque de novo", entre os dois atos o lugar volta
+ * para a fila e outra pessoa pode tomá-lo — quem só queria mudar de horário ficava sem nenhum.
+ */
+export async function remarcarPublico(input: {
+  readonly segredo: string;
+  readonly dia: string;
+  readonly horaInicio: string;
+}): Promise<string> {
+  const r = await reagendarPeloPortal(cliente(), input);
+  const br = (d: string): string => d.split("-").reverse().join("/");
+  return (
+    `Remarcado de ${br(r.de.dia)} às ${r.de.hora} para ${br(input.dia)} às ${input.horaInicio}. ` +
+    `O seu número de atendimento continua ${r.codigo}.`
+  );
 }
 
 /** O cidadão cancela a própria marcação, com o motivo dele. */

@@ -183,7 +183,14 @@ nome do domínio contábil. Vale agora:
 - **Nenhum teste de aceite roda contra arquivos em edição.** Árvore congelada ou worktree
   fixada em commit, com o commit registrado antes e depois. Uma suíte pesada, um build e
   um navegador não disputam a mesma máquina: use o trinco.
-- **Timeout ou saturação não é aprovação nem defeito.** Registre, investigue, e não marque
+- **Saturação se reconhece pelo padrão, não pelo teste que caiu.** Quando a suíte inteira
+começa a estourar timeout em arquivos DIFERENTES a cada corrida, e cada um deles passa
+sozinho, a máquina é a causa — não o código. Nesta máquina (8 GB) a suíte completa pede
+`--maxWorkers=3`; com o padrão ela pagina e arquivos aleatórios morrem em 901 s. E um
+processo morto com `kill -9` deixa a sessão do trinco `idle` segurando o lock de máquina:
+derrube-a (`pg_terminate_backend`) antes da próxima corrida.
+
+**Timeout ou saturação não é aprovação nem defeito.** Registre, investigue, e não marque
   como validado o que não passou.
 - **Decisão técnica local, reversível e já delimitada pelo pedido não espera humano.**
   Invariantes contábeis, segurança e dados continuam não negociáveis.

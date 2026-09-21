@@ -183,12 +183,18 @@ model ReservaDeAtendimento {
   nomeDeclarado      String?
   documentoDeclarado String? @db.VarChar(14)
 
-  /// ⚠️ O SEGREDO DE QUEM MARCOU PELO PORTAL — guardado SÓ POR HASH, como o da ouvidoria.
+  /// ⚠️ O SEGREDO DE QUEM VAI ACOMPANHAR PELA INTERNET — guardado SÓ POR HASH, como o da ouvidoria.
   ///
   /// O `codigo` aparece na agenda interna para quem tem `CONSULTAR_PROTOCOLO`. Se ele sozinho
   /// desse poder de cancelar pelo portal, qualquer pessoa que lê a agenda poderia desmarcar o
   /// atendimento de um cidadão de forma anônima e não atribuída. O segredo é entregue UMA vez a
   /// quem marcou, e o banco guarda apenas o hash — nem um dump o devolve.
+  ///
+  /// ⚠️ E ELE DEIXOU DE SER EXCLUSIVO DO PORTAL (V11 V8.5). A V8.1 tinha um CHECK impedindo
+  /// segredo em marcação do balcão, com a premissa de que "a pessoa foi identificada ali e não
+  /// tem segredo a receber". A primeira metade é verdade e a conclusão não segue: quem é atendido
+  /// no balcão vai embora e continua precisando consultar e cancelar, e obrigá-la a voltar para
+  /// desmarcar é transformar uma cortesia em deslocamento. O atendente entrega o código impresso.
   segredoHash String? @unique
 
   /// O horário ORIGINAL. O vigente é o do último reagendamento, quando houver.

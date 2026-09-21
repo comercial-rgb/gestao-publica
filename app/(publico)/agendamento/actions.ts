@@ -5,6 +5,7 @@ import {
   agendarPublico,
   cancelarPublico,
   consultarPorSegredo,
+  remarcarPublico,
   type ReservaParaOCidadao,
 } from "../../../lib/portas/guiche-publico";
 
@@ -75,6 +76,21 @@ export async function consultarAction(_p: EstadoDaConsulta, f: FormData): Promis
     return r === null ? { naoEncontrada: true } : { reserva: r };
   } catch (e) {
     return { erro: mensagemPublica(e, "Não foi possível consultar agora. Tente mais tarde.") };
+  }
+}
+
+export interface EstadoDaRemarcacao {
+  readonly erro?: string;
+  readonly sucesso?: string;
+}
+
+export async function remarcarPublicoAction(_p: EstadoDaRemarcacao, f: FormData): Promise<EstadoDaRemarcacao> {
+  if (t(f, "segredo") === "") return { erro: "Informe o código de acompanhamento." };
+  if (t(f, "dia") === "" || t(f, "horaInicio") === "") return { erro: "Informe o novo dia e o novo horário." };
+  try {
+    return { sucesso: await remarcarPublico({ segredo: t(f, "segredo"), dia: t(f, "dia"), horaInicio: t(f, "horaInicio") }) };
+  } catch (e) {
+    return { erro: mensagemPublica(e, "Não foi possível remarcar. A sua marcação continua como estava.") };
   }
 }
 

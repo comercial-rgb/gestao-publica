@@ -330,9 +330,15 @@ export async function marcarAtendimento(input: {
       criadoPor,
     })
   );
+  // ⚠️ O CÓDIGO DE ACOMPANHAMENTO SAI UMA VEZ, para o atendente ENTREGAR (V11 V8.5). Sem ele, quem
+  // foi atendido no balcão tinha de VOLTAR ao balcão para desmarcar — cortesia virando
+  // deslocamento. Numa repetição da chave nada foi gravado, e o segredo da marcação original não é
+  // relido de lugar nenhum: o banco guarda só o hash.
   return r.jaExistia
     ? `Esta marcação já tinha sido feita — código ${r.codigo}. Nada foi duplicado.`
-    : `Atendimento marcado para ${input.dia.split("-").reverse().join("/")} às ${input.horaInicio}. Código ${r.codigo}.`;
+    : `Atendimento marcado para ${input.dia.split("-").reverse().join("/")} às ${input.horaInicio}. ` +
+      `Número de atendimento ${r.codigo}. ENTREGUE à pessoa o código de acompanhamento ` +
+      `${r.segredo ?? ""} — é com ele que ela consulta e cancela pela internet, e ele não se recupera.`;
 }
 
 export async function confirmarPresenca(reservaId: string): Promise<string> {

@@ -1825,6 +1825,12 @@ export const FORA_DO_CENSO: Record<string, string> = {
     "chave de origem; UM atendimento vivo por documento declarado e por serviço; e o segredo é " +
     "entregue uma vez e guardado só por hash. O titular é DECLARADO, sem tocar no cadastro de " +
     "pessoas — CPF digitado não é autenticação, e casar pelo documento vazaria quem já é conhecido.",
+  reagendarPeloPortal:
+    "ATO PÚBLICO SEM CONTA (V11 V8.5): quem tem o SEGREDO remarca a própria marcação, no MESMO " +
+    "guichê. Fecha GUICHE-PORTAL-SEM-REAGENDAMENTO: 'cancele e marque de novo' tinha um buraco — " +
+    "entre os dois atos o lugar volta para a fila e outra pessoa pode tomá-lo, e quem só queria " +
+    "mudar de horário ficava sem nenhum. Passa pelos MESMOS trincos e pela MESMA capacidade do " +
+    "balcão; mudar de guichê continua sendo do ente.",
   cancelarPeloPortal:
     "ATO PÚBLICO SEM CONTA: quem tem o SEGREDO cancela a própria marcação. O `codigo` aparece na " +
     "agenda interna e NÃO basta — se bastasse, quem lê a agenda desmarcaria o atendimento de um " +
