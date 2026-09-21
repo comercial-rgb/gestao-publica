@@ -15,6 +15,7 @@ import {
 } from "../m05-despesa/adapter-prisma.js";
 import { exigirExercicioAberto } from "../m08-restos-a-pagar/guard-exercicio.js";
 import { registrarMovimentoDotacao } from "../m05-despesa/dotacao-razao.js";
+import { classificarAbertura, type TipoDeCreditoAdicional } from "./abertura-do-credito.js";
 import { ehRecursoNovo, type OrigemRecurso } from "./dominio.js";
 import type {
   AnularCreditoParams,
@@ -364,6 +365,35 @@ export function criarCreditoRepositoryPrisma(
     },
 
     async criarDecreto(d: DecretoParaPersistir): Promise<string> {
+      // ═══ ⚠️ ABERTO OU REABERTO — A GUARDA DA CF ART. 167 § 2º (V11 V8.6) ═══
+      //
+      // Fecha `CREDITO-ESPECIAL-ABERTO-OU-REABERTO`. A pendência dizia que faltava um FATO; o
+      // fato existia — o decreto aponta para a lei, e cada um tem o seu ano —, faltava LER a
+      // diferença. E ler é melhor que perguntar: uma caixa de seleção entre "aberto" e "reaberto"
+      // é uma escolha que se erra, e o erro vai direto para o balancete do TCE.
+      //
+      // ⚠️ AQUI, E NÃO NO `executarCredito`: um decreto ilegal não deve NASCER. Deixá-lo nascer e
+      // recusar só na execução criaria um documento que o ente vê na tela, cita em ofício, e que
+      // nunca vai poder ser executado.
+      const lei = await prisma.leiCredito.findUnique({
+        where: { id: d.leiId },
+        select: { ano: true, tipoCredito: true, dataPublicacao: true, numero: true },
+      });
+      if (lei === null) {
+        throw new Error(`Lei de crédito ${d.leiId} não existe. Nada foi gravado.`);
+      }
+      const classificacao = classificarAbertura({
+        tipoCredito: lei.tipoCredito as TipoDeCreditoAdicional,
+        leiAno: lei.ano,
+        leiDataPublicacao: lei.dataPublicacao,
+        decretoAno: d.ano,
+      });
+      if (classificacao.recusa !== null) {
+        throw new Error(
+          `Decreto ${d.numero}/${d.ano} contra a lei ${lei.numero}/${lei.ano}: ${classificacao.recusa}`
+        );
+      }
+
       const criado = await prisma.decretoCredito.create({
         data: {
           id: d.id,
