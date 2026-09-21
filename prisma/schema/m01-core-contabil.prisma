@@ -50,6 +50,7 @@ model ContaPcasp {
   contasBancarias    ContaBancaria[]
   /// back-relation M07 — o passivo de cada tipo de consignação. Campo VIRTUAL.
   passivosDeConsignacao TipoConsignacao[] @relation("PassivoDaConsignacao")
+  passivosDecididosDeConsignacao DecisaoDoTipoDeConsignacao[] @relation("PassivoDecididoDaConsignacao")
   /// back-relations M10 — campos VIRTUAIS, não geram coluna.
   classesDeBens      ClasseDeBens[]       @relation("AtivoDaClasse")
   roteirosDebito     RoteiroPatrimonial[] @relation("DebitoPatrimonial")

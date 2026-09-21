@@ -265,6 +265,104 @@ async function opcaoQueContem(
   return valor;
 }
 
+/**
+ * GARANTE QUE EXISTE UMA CONSIGNAÇÃO "INSS" COM CONTA DECIDIDA — cadastrando-a pela TELA quando
+ * ela não existe.
+ *
+ * ⚠️ IDEMPOTENTE: em banco já usado ela existe, e o percurso segue sem gravar nada. Um cadastro
+ * repetido seria recusado pelo domínio ("já existe o tipo"), e o percurso acusaria a tela de um
+ * defeito que é sujeira do banco — o mesmo erro que o percurso do guichê cometeu e corrigiu.
+ */
+async function garantirConsignacao(page: Page): Promise<void> {
+  const corpo = (await irPara(page, "/financeiro/consignacoes")).toLowerCase();
+  conferir("a tela de consignações abre", corpo.includes("consignações"), corpo.slice(0, 200));
+
+  // ⚠️ A CONFERÊNCIA É PELO MARCADOR DA LINHA, NÃO PELO TEXTO DA PÁGINA — e a primeira versão
+  // errou aqui também. Ela procurava "inss" no corpo e casou a PRÓPRIA PROSA da tela ("o INSS, a
+  // Receita, o município do ISS"), concluindo que o tipo já existia num banco recém-criado. O
+  // percurso seguiu em frente e morreu adiante, sem retenção, acusando a tela de pagamento.
+  //
+  // Duas vezes na mesma função: a conta escolhida por semelhança de nome e a existência conferida
+  // por palavra solta. Texto de tela não é dado.
+  const jaExiste = await page.evaluate(
+    () => document.querySelector('[data-teste="consignacao-INSS"]') !== null
+  );
+  if (jaExiste) {
+    ok("a consignação INSS já está cadastrada — o percurso não recadastra");
+    return;
+  }
+
+  const abriu = await page.evaluate(() => {
+    for (const b of Array.from(document.querySelectorAll("button"))) {
+      if (b.textContent?.trim() === "Cadastrar consignação") {
+        (b as HTMLButtonElement).click();
+        return true;
+      }
+    }
+    return false;
+  });
+  conferir("o painel do cadastro da consignação abre", abriu, "o botão 'Cadastrar consignação' não está na tela");
+  if (!abriu) return;
+  await new Promise((r) => setTimeout(r, 300));
+
+  // ⚠️ A CONTA SAI DO `select` DA PRÓPRIA TELA — só analíticas de passivo, recortadas pelo
+  // servidor. O percurso não digita um código de conta: ele escolhe entre o que o plano do ente
+  // oferece, que é o que a pessoa faz.
+  const conta = await page.evaluate(() => {
+    const sel = document.querySelector('form[data-acao="cadastrar-consignacao"] select[name="contaPassivoCodigo"]');
+    if (!(sel instanceof HTMLSelectElement)) return "";
+    const opcoes = [...sel.options].filter((o) => o.value !== "");
+
+    // ⚠️ A ESCOLHA É ESTRUTURAL, NÃO NOMINAL — e a primeira versão errou aqui.
+    //
+    // Ela procurava /INSS|PREVID/ no NOME e casou "BENEFICIOS PREVIDENCIARIOS A PAGAR": a
+    // aposentadoria que o município PAGA aos seus inativos, não o INSS que ele RETÉM de terceiros.
+    // Duas dívidas completamente diferentes com nomes parecidos — que é exatamente como nasceu a
+    // pendência `ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`.
+    //
+    // O ramo das consignações no PCASP é `2.1.8.8`. Dentro dele, o nome ajuda a afinar; fora
+    // dele, nome nenhum salva. Sem o ramo no plano carregado, o percurso não escolhe nada —
+    // melhor parar do que ensinar uma classificação errada.
+    const doRamo = opcoes.filter((o) => o.value.startsWith("2.1.8.8"));
+    const escolhida = doRamo.find((o) => /INSS|PREVIDENC/i.test(o.textContent ?? "")) ?? doRamo[0];
+    if (escolhida === undefined) return "";
+    const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
+    if (setter !== undefined) setter.call(sel, escolhida.value);
+    else sel.value = escolhida.value;
+    sel.dispatchEvent(new Event("input", { bubbles: true }));
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+    return escolhida.value;
+  });
+  conferir(
+    "a tela oferece analíticas do ramo das CONSIGNAÇÕES para escolher",
+    conta.startsWith("2.1.8.8"),
+    `conta escolhida: "${conta}" — a tela não ofereceu analítica sob 2.1.8.8 (o ramo das consignações)`
+  );
+
+  // ⚠️ O HELPER DESTE ARQUIVO devolve `void` e recebe SELETOR (é anterior ao compartilhado); o
+  // resultado se lê do marcador declarado, como em toda tela do V6.2 em diante.
+  await preencherEEnviar(page, 'form[data-acao="cadastrar-consignacao"]', [
+    { sel: 'form[data-acao="cadastrar-consignacao"] input[name="codigo"]', valor: "INSS" },
+    { sel: 'form[data-acao="cadastrar-consignacao"] input[name="descricao"]', valor: "Retencao previdenciaria - INSS" },
+    {
+      sel: 'form[data-acao="cadastrar-consignacao"] input[name="fundamento"]',
+      valor: "DEMONSTRACAO do percurso da cadeia da despesa - nao e homologacao contabil do ente.",
+    },
+  ]);
+
+  const resultado = await page.evaluate(() => {
+    const ok = document.querySelector('[data-resultado-da-acao="cadastrar-consignacao"]');
+    if (ok !== null) return { tipo: "ok" as const, texto: (ok.textContent ?? "").trim() };
+    const erro = document.querySelector('form[data-acao="cadastrar-consignacao"] [role="alert"]');
+    return { tipo: "erro" as const, texto: (erro?.textContent ?? "").trim() };
+  });
+  conferir(
+    `a consignação INSS é cadastrada PELA TELA, com o passivo em ${conta}`,
+    resultado.tipo === "ok" && resultado.texto.includes("INSS"),
+    `${resultado.tipo}: ${resultado.texto || "(silêncio)"}`
+  );
+}
+
 async function main(): Promise<void> {
   if (SENHA === "") {
     throw new Error(
@@ -475,6 +573,23 @@ async function main(): Promise<void> {
     // ── 5. PAGAR COM RETENÇÃO INFORMADA (T06/T07) ──────────────────────────
     await irPara(page, "/despesa/pagamentos");
     const liquidacaoNaFila = await opcaoQueContem(page, 'select[name="liquidacaoId"]', NL);
+    // ═══ A CONSIGNAÇÃO, CADASTRADA PELA TELA (V11 V8.3) ═══
+    //
+    // ⚠️ ESTE BLOCO É O QUE FAZ O CENÁRIO ATRAVESSAR EM INSTALAÇÃO LIMPA. Até a V8.3 ele não
+    // atravessava, e o motivo estava registrado como `CONSIGNACAO-CONTA-SINTETICA`: nenhum tipo de
+    // consignação era semeado (a conta do seed mínimo é SINTÉTICA no PCASP oficial), a retenção
+    // não aparecia na tela de pagamento, e o smoke morria dizendo "a retenção continua só no
+    // domínio" — acusando a tela de algo que era uma parametrização que faltava.
+    //
+    // ⚠️ E O PERCURSO AGE COMO O ENTE, não como o produto. Ele ABRE a tela de consignações e
+    // escolhe uma analítica de passivo, com fundamento declarado como DEMONSTRAÇÃO — do mesmo
+    // jeito que `seed:roteiros-demo` se identifica. Escolher aqui não é o sistema inventando
+    // classificação: é o município sintético deste percurso decidindo a dele.
+    await garantirConsignacao(page);
+
+    const corpoPagto = await irPara(page, "/despesa/pagamentos");
+    conferir("de volta à tela de pagamento", corpoPagto.includes("pagamento"), corpoPagto.slice(0, 160));
+
     const conta = await opcaoQueContem(page, 'select[name="contaBancaria"]', "CC-500-01");
 
     // A linha de retenção só existe depois do clique — é UI dinâmica, e o smoke tem de

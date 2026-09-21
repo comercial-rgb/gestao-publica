@@ -43,9 +43,46 @@ model TipoConsignacao {
   contaPassivo   ContaPcasp? @relation("PassivoDaConsignacao", fields: [contaPassivoId], references: [id])
 
   movimentos MovimentoExtraorcamentario[]
+  decisoes   DecisaoDoTipoDeConsignacao[] @relation("DecisoesDoTipoDeConsignacao")
 
   criadoEm  DateTime @default(now())
   criadoPor String
+}
+
+/// A DECISÃO DO ENTE sobre um tipo de consignação — qual passivo o recebe, e se ele vale.
+///
+/// ═══ ⚠️ POR QUE UM FATO, E NÃO DUAS COLUNAS QUE SE EDITAM ═══
+/// Escolher em que conta do PCASP o INSS retido vira dívida é CLASSIFICAÇÃO CONTÁBIL do ente —
+/// não é configuração de tela. Ela muda (o plano do ente muda, o TCE orienta diferente), e a
+/// pergunta "desde quando o INSS ia para esta conta?" tem de ter resposta: um razão de cinco anos
+/// atrás foi escriturado contra a decisão daquela época, não contra a de hoje.
+///
+/// ⚠️ E O PAPEL DE RUNTIME NÃO TEM `UPDATE` EM `TipoConsignacao`. Editar a coluna exigiria
+/// afrouxar o grant — e a regra da casa é usar a primitiva certa, não abrir o banco para caber
+/// um desenho. A vigente é a de maior `criadoEm`.
+///
+/// ⚠️ `contaPassivoId` NULO SIGNIFICA DESATIVADO, e o CHECK impõe: um tipo ativo sem conta seria
+/// um tipo oferecido na tela que a retenção recusa no meio do pagamento — o pior momento.
+model DecisaoDoTipoDeConsignacao {
+  id String @id @default(cuid())
+
+  tipoId String
+  tipo   TipoConsignacao @relation("DecisoesDoTipoDeConsignacao", fields: [tipoId], references: [id])
+
+  ativo Boolean
+
+  contaPassivoId String?
+  contaPassivo   ContaPcasp? @relation("PassivoDecididoDaConsignacao", fields: [contaPassivoId], references: [id])
+
+  /// Por que ESTA conta, ou por que desativar. Obrigatório: a classificação é do ente, e uma
+  /// escolha contábil sem fundamento é a mesma coisa que uma conta inventada — só que com a
+  /// aparência de decisão.
+  fundamento String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([tipoId, criadoEm])
 }
 
 enum TipoMovimentoExtra {

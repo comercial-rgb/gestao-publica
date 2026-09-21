@@ -205,6 +205,7 @@ export const PLANEJAMENTO: readonly RelatorioNav[] = [
  * quando falta extrato — cada lado no seu papel, sem o anel de links que existia antes.
  */
 export const FINANCEIRO: readonly RelatorioNav[] = [
+  { href: "/financeiro/consignacoes", numero: "Consignações", rotulo: "Consignações", descricao: "Em que conta do plano a retenção na fonte vira dívida com o consignatário — decisão contábil do ente, com fundamento e histórico. Sem conta decidida, a consignação não é oferecida no pagamento." },
   { href: "/financeiro/extraorcamentario", numero: "Extraorçamentário", rotulo: "Extraorçamentário", descricao: "Consignações, retenções na fonte e recolhimentos — o dinheiro de terceiros no caixa." },
   { href: "/financeiro/conciliacao", numero: "Conciliação", rotulo: "Conciliação Bancária", descricao: "Extrato do banco × razão: correspondências, pendências dos dois lados e a diferença toda nomeada." },
   // ⚠️ A CONCILIAÇÃO POR PERÍODO é entrada PRÓPRIA, e não uma aba da de cima. São duas

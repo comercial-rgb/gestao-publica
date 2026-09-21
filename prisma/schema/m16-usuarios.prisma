@@ -537,6 +537,9 @@ enum AcaoDoSistema {
   DECIDIR_SOLICITACAO_DE_SERVICO
   REGISTRAR_REPRESENTACAO
 
+  // M07 V11 V8.3 — o cadastro dos tipos de consignação (parametrização contábil do ente)
+  GERIR_TIPOS_DE_CONSIGNACAO
+
   // M21 V11 V8 — a agenda do guichê (TR 5.39.92)
   CONFIGURAR_AGENDA_DO_GUICHE
   RESERVAR_ATENDIMENTO_NO_GUICHE

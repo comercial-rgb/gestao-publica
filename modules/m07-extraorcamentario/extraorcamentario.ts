@@ -161,17 +161,36 @@ export async function exigirTipoAtivo(
       codigo: true,
       ativo: true,
       contaPassivo: { select: { codigo: true } },
+      // ⚠️ A DECISÃO VIGENTE DO ENTE (V11 V8.3), e ela MANDA sobre as colunas.
+      //
+      // A conta e a situação deixaram de ser editáveis: elas são um FATO append-only
+      // (`DecisaoDoTipoDeConsignacao`), porque escolher em que passivo o INSS retido vira dívida é
+      // classificação contábil, e a pergunta "desde quando ia para esta conta?" tem de ter
+      // resposta — um razão de cinco anos atrás foi escriturado contra a decisão daquela época.
+      decisoes: {
+        orderBy: { criadoEm: "desc" },
+        take: 1,
+        select: { ativo: true, contaPassivo: { select: { codigo: true } } },
+      },
     },
   });
   if (t === null) {
     throw new Error(`Tipo de consignação ${tipoConsignacaoId} não existe.`);
   }
-  if (!t.ativo) {
+
+  // ⚠️ SEM DECISÃO NÃO É "SEM CONTA": é um tipo ANTERIOR ao cadastro do ente (as linhas que o seed
+  // criou antes da V8.3). Cair para as colunas antigas nesse caso é o que impede que a novidade
+  // apague todo tipo já semeado — e é por isso que os dois casos não se confundem.
+  const vigente = t.decisoes[0];
+  const ativo = vigente?.ativo ?? t.ativo;
+  const conta = vigente === undefined ? (t.contaPassivo?.codigo ?? null) : (vigente.contaPassivo?.codigo ?? null);
+
+  if (!ativo) {
     throw new Error(
       `Tipo de consignação ${t.codigo} está INATIVO — não recebe movimento novo.`
     );
   }
-  return { id: t.id, codigo: t.codigo, contaPassivo: t.contaPassivo?.codigo ?? null };
+  return { id: t.id, codigo: t.codigo, contaPassivo: conta };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

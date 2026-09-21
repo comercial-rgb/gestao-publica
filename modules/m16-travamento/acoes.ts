@@ -350,6 +350,12 @@ export type AcaoDoSistema =
   | "SOLICITAR_SERVICO"
   | "DECIDIR_SOLICITACAO_DE_SERVICO"
   | "REGISTRAR_REPRESENTACAO"
+  // ── M07 V11 V8.3 — o cadastro dos tipos de consignação ──
+  //
+  // ⚠️ UMA AÇÃO, E ELA É DE PARAMETRIZAÇÃO CONTÁBIL, não de execução. Quem escolhe em que conta
+  // do PCASP a retenção vira dívida é a contabilidade do ente — não quem paga. Juntá-la a
+  // `PAGAR` daria a quem executa o poder de reclassificar o passivo do município.
+  | "GERIR_TIPOS_DE_CONSIGNACAO"
   // ── M21 V11 V8 — A AGENDA DO GUICHÊ (TR 5.39.92) ──
   //
   // ⚠️ TRÊS AÇÕES PARA DEZ SERVIÇOS, e o corte é por QUEM FAZ, não por qual função é.
@@ -945,6 +951,9 @@ export type NomeDeServico =
   | "resolverOcorrencia"
   | "registrarMedicaoPorItens"
   // M21/M19 — a carta de serviços, as solicitações do requerente e a representação (V6.2 P3)
+  | "cadastrarTipoDeConsignacao"
+  | "redefinirContaDaConsignacao"
+  | "desativarTipoDeConsignacao"
   | "criarUnidadeDeAtendimento"
   | "criarGuiche"
   | "definirServicoNoGuiche"
@@ -1497,6 +1506,10 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // V6.2 P3 — a carta de serviços. Configurar a carta é um ato; pedir (protocolar, responder,
   // anexar) é o ato do REQUERENTE, conferido contra a titularidade na transação; decidir (exigir,
   // decidir, disponibilizar resposta) é o ato da mesa, no setor em que o processo está.
+  // ── M07 V11 V8.3 — os tipos de consignação ──
+  cadastrarTipoDeConsignacao: "GERIR_TIPOS_DE_CONSIGNACAO",
+  redefinirContaDaConsignacao: "GERIR_TIPOS_DE_CONSIGNACAO",
+  desativarTipoDeConsignacao: "GERIR_TIPOS_DE_CONSIGNACAO",
   // ── M21 V11 V8 — a agenda do guichê ──
   criarUnidadeDeAtendimento: "CONFIGURAR_AGENDA_DO_GUICHE",
   criarGuiche: "CONFIGURAR_AGENDA_DO_GUICHE",
@@ -1787,6 +1800,9 @@ export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
  * grep-teste lê esta lista — nada sai do censo por descuido.
  */
 export const FORA_DO_CENSO: Record<string, string> = {
+  decisaoVigente:
+    "LEITURA. A decisão vigente do ente sobre um tipo de consignação (qual passivo, e se vale). " +
+    "Não grava nada; é a projeção do fato append-only que o cadastro escreve.",
   // ── M21 V11 V8.1 — os ATOS PÚBLICOS do agendamento (TR 5.39, portal de autoatendimento) ──
   agendarPeloPortal:
     "ATO PÚBLICO SEM CONTA (agendamento de atendimento presencial pelo cidadão, TR 5.39.92): não " +
