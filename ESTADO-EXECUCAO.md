@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | `b56c683` (V11 V8.2 — os cinco vermelhos herdados zerados) — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
+| HEAD | V11 V8.7 — a parametrização contábil pelo ente e seis pendências fechadas — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
 | Frente em execução | **V11** — V1.1, V3.1, V4.1, V4.2 (seção 65), V2.1 eSocial (seção 66), V5.1/V5.2 (seção 67), V6 (seção 68), V7/V7.1/V7.2 (seção 69), V7.3 (seção 70) e **V8: o guichê — agendamento de atendimento presencial** (seção 71). **O escopo planejado desta rodada está concluído**; V6 (AWS) segue bloqueado |
-| Último resultado | seção 73 — **a suíte está inteiramente verde: 3235/3235 em 306 arquivos, e 3235/3235 sob `TZ=Pacific/Kiritimati`**. Era 3125/3130 com cinco vermelhos herdados. Dois deles eram **defeito real**: o portal do cidadão estampava a data de AMANHÃ como 'hoje' no demonstrativo de pessoal (três horas por dia), e dois `getFullYear()` liam o relógio do hospedeiro. Dois eram guard acusando o que não acontece (`import type` não puxa Prisma; `id` literal redundante). Três eram declarações que ninguém tinha escrito — e duas tabelas ganharam lista própria, porque são LIDAS e ninguém as escreve |
-| Pendências relevantes | **ZERO guards vermelhos** — pela primeira vez. Seguem, por módulo: `CREDITO-ESPECIAL-ABERTO-OU-REABERTO`, `ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`, `DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`, `ROTEIRO-RESERVA-SEM-CONTA`, `CONSIGNACAO-CONTA-SINTETICA` (o percurso da cadeia da despesa ainda não atravessa em instalação limpa), `MARCAR-EM-CAMPO-CONTROLADO`, `DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE`, `SUPERAVIT-DECLARADO-NAO-DERIVADO`, `GUICHE-PORTAL-SEM-REAGENDAMENTO`, `GUICHE-BALCAO-SEM-SEGREDO`, `GUICHE-SEM-NOTIFICACAO-INTERNA` e `EXCECAO-DE-CALENDARIO-SO-FECHA`. **`LEIAUTE-ESOCIAL-NAO-OBTIDO`** passa a ter guarda própria. **Certificado A1** e **V6 (AWS)** são insumos externos. Linha **ENT12 do Windows** por reconciliar |
-| Próximo passo | seção 73.7 — a fila declarada terminou; o que resta é escolha nova, e a maior dívida legível é `CONSIGNACAO-CONTA-SINTETICA` |
+| Último resultado | seção 74 — **seis pendências fechadas**. As três maiores (`CONSIGNACAO-CONTA-SINTETICA`, `ROTEIRO-RESERVA-SEM-CONTA`, `ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`) tinham a MESMA causa e nenhuma conta foi escolhida para fechá-las: faltava **onde o ente decidir**. Duas telas novas, append-only e versionadas. **O percurso da cadeia da despesa atravessa em instalação limpa pela primeira vez** (28/0). Mais: o cidadão remarca pelo portal, o balcão entrega o código, e a guarda da CF art. 167 § 2º impede um crédito especial reaberto fora dos últimos quatro meses. `MARCAR-EM-CAMPO-CONTROLADO` fechada — e a medição derrubou a minha própria cura antes de ela entrar. Suíte **3271/3271 em 310 arquivos** |
+| Pendências relevantes | seção 74.7 — **ZERO guards vermelhos**. Tratáveis: **`ROTEIRO-SEM-DIMENSAO-DA-ABERTURA`** (estreitada), `DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`, `EXCECAO-DE-CALENDARIO-SO-FECHA`, `GUICHE-SEM-NOTIFICACAO-INTERNA`, `DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE`, `SUPERAVIT-DECLARADO-NAO-DERIVADO`, `SAGRES-POC-CONTA-SINTETICA`. **Bloqueadas por insumo externo, e inventar o dado é proibido**: `LEIAUTE-ESOCIAL-NAO-OBTIDO`, rol oficial do SAGRES (token ASTEC), certificado A1, V6 (AWS) e a linha ENT12 do Windows |
+| Próximo passo | seção 74.8 — `ROTEIRO-SEM-DIMENSAO-DA-ABERTURA`: a dimensão da abertura na chave do roteiro |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -8854,3 +8854,126 @@ dívida legível hoje é a das pendências de modelo do crédito adicional (`CRE
 `ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`, `DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`) e a
 `CONSIGNACAO-CONTA-SINTETICA`, que ainda impede o percurso da cadeia da despesa de atravessar em
 instalação limpa.
+
+---
+
+## 74. V11 V8.3 a V8.7 — a parametrização contábil pelo ente, e seis pendências fechadas
+
+### 74.1 O padrão que as três maiores tinham em comum
+
+`CONSIGNACAO-CONTA-SINTETICA`, `ROTEIRO-RESERVA-SEM-CONTA` e
+`ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS` viviam da **mesma ausência**, e nenhuma delas
+se fechava escolhendo a conta — isso seria inventar norma da STN, que é o que o `CLAUDE.md`
+proíbe com todas as letras.
+
+O que estava errado era outra coisa: **o ente não tinha onde decidir**. `TipoConsignacao` e
+`RoteiroOrcamentario` só nasciam por seed; o seed recusa — com razão — o que não pode decidir; e
+não havia caso de uso, ação no censo nem tela. **Um roteiro que ninguém pode configurar é um
+movimento que o sistema recusa para sempre.**
+
+| Rota nova | O que o ente decide |
+|---|---|
+| `/financeiro/consignacoes` | em que conta do plano a retenção na fonte vira dívida com o consignatário |
+| `/contabilidade/roteiros-orcamentarios` | em que contas cada movimento de dotação lança, nos sete pares que o razão exige |
+
+As duas são **append-only e versionadas**, pelo mesmo motivo: o razão escriturado ontem foi feito
+contra a decisão de ontem, e "desde quando ia para esta conta?" tem de ter resposta. E o papel de
+runtime não tem `UPDATE` em nenhuma das duas tabelas — sem versão, o cadastro pela tela exigiria
+afrouxar o grant.
+
+⚠️ **A recusa LISTA as opções.** Recusar uma conta sintética sem dizer o que existe sob ela
+devolve a pessoa ao plano de 7.864 contas — e foi exatamente assim que estas escolhas ficaram
+pendentes por vários lotes.
+
+⚠️ **A linha do seed é NOMEADA como tal** nas duas telas: "veio da instalação — ninguém do ente
+decidiu isto ainda". Ela funciona; quem olhar precisa saber disso antes de citá-la numa prestação
+de contas.
+
+### 74.2 E a cadeia da despesa passou a atravessar
+
+O percurso da cadeia da despesa **nunca** tinha atravessado em instalação limpa: sem tipo de
+consignação semeado, a retenção não aparecia no pagamento e o smoke morria em "a retenção continua
+só no domínio" — acusando a tela de uma parametrização que faltava.
+
+**28 passos, 0 falhas**, com o percurso cadastrando a consignação **pela tela** e escolhendo a
+conta entre as que o plano oferece, com fundamento declarado como demonstração.
+
+### 74.3 As outras três
+
+- **`GUICHE-PORTAL-SEM-REAGENDAMENTO`** — o portal só oferecia cancelar e marcar de novo, e entre
+  os dois atos o lugar volta para a fila: quem só queria mudar de horário arriscava ficar sem
+  nenhum. Remarcar virou **um ato só**.
+- **`GUICHE-BALCAO-SEM-SEGREDO`** — quem marcava no balcão não recebia código e tinha de **voltar
+  ao balcão** para desmarcar. Isso exigiu derrubar um `CHECK` que eu mesmo escrevi na V8.1, cuja
+  premissa estava errada: "quem foi identificado no balcão não tem segredo a receber" — a primeira
+  metade é verdade e a conclusão não segue.
+- **`CREDITO-ESPECIAL-ABERTO-OU-REABERTO`** — dizia "falta um FATO". O fato existia: o decreto
+  aponta para a lei, e cada um tem o seu ano. Faltava **ler** a diferença, e ler é melhor que
+  perguntar: uma caixa de seleção entre "aberto" e "reaberto" é uma escolha que se erra, e o erro
+  vai para o balancete do TCE. A guarda da **CF art. 167 § 2º** entrou no `criarDecreto` — um
+  decreto ilegal não deve *nascer*.
+
+### 74.4 `MARCAR-EM-CAMPO-CONTROLADO`: a medição derrubou a minha própria cura
+
+A pendência dizia "mede-se quando aparecer o caso". Ela nunca ia aparecer: a técnica vivia dentro
+de um `page.evaluate`, onde teste nenhum a alcança, e o defeito só apareceria como um percurso
+morrendo em silêncio contra uma tela correta.
+
+Extraída para `scripts/marca-em-caixa.ts`, virou mensurável. **E a primeira correção que escrevi
+estava errada**: o setter do protótipo — a cura que funcionou para o `value` na V7.2 — **não chega
+ao React num checkbox**, e o teste a derrubou na primeira execução. A cura certa é o **clique com
+guarda**: só clica se o estado atual for diferente do desejado, o que torna a função idempotente e
+elimina exatamente o risco de inversão que a pendência registrava.
+
+Sem a medição, a correção teria entrado com a mesma confiança e o defeito continuaria — agora com
+um comentário dizendo que estava resolvido.
+
+### 74.5 O que foi medido
+
+| Medida | Resultado |
+|---|---|
+| tsc app / backend / scripts | `exit=0` |
+| **suíte inteira** | **3271/3271 em 310 arquivos** |
+| percurso da **cadeia da despesa** | **28 passos, 0 falhas** — atravessa em instalação limpa pela 1ª vez |
+| percurso do **guichê** | **46 passos, 0 falhas** |
+| percurso da **carta de serviços** (regressão da técnica do checkbox) | **84 passos, 0 falhas** |
+| percurso do **crédito adicional** (regressão do helper) | **29 passos, 0 falhas** |
+
+**Vinte e duas mutações, vinte e duas acusações** entre as cinco unidades.
+
+### 74.6 A lição de medição que entrou no `CLAUDE.md`
+
+A suíte passou a estourar timeout em arquivos **diferentes** a cada corrida — m33, m10, m23, m02,
+licenciamento —, cada um passando sozinho em 22 s. Não era defeito: era a máquina paginando
+(8 GB, ~75 MB livres, 1,6 M de pageouts). Com `--maxWorkers=3` ela passa inteira.
+
+E um processo morto com `kill -9` deixa a sessão do trinco `idle` segurando o lock de máquina, que
+bloqueia a corrida seguinte. As duas coisas estão registradas na regra.
+
+### 74.7 O que resta, e por quê
+
+**Tratáveis — nenhuma bloqueada por terceiro:**
+
+- **`ROTEIRO-SEM-DIMENSAO-DA-ABERTURA`** (estreitada da `CREDITO-ESPECIAL-ABERTO-OU-REABERTO`) — o
+  fato passou a existir e o caso ilegal passou a ser barrado, que era a metade grave. Falta a
+  metade contábil: o roteiro ainda é chaveado por (movimento, tipo de crédito), sem a dimensão da
+  abertura, e por isso um REABERTO ainda lança na mesma conta de um ABERTO.
+- `DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`, `EXCECAO-DE-CALENDARIO-SO-FECHA`,
+  `GUICHE-SEM-NOTIFICACAO-INTERNA`, `DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE`,
+  `SUPERAVIT-DECLARADO-NAO-DERIVADO`, `SAGRES-POC-CONTA-SINTETICA`.
+
+**Bloqueadas por insumo externo — e fechá-las inventando o dado é o que o `CLAUDE.md` proíbe:**
+
+| Pendência | O que falta, e de quem |
+|---|---|
+| `LEIAUTE-ESOCIAL-NAO-OBTIDO` | o leiaute oficial. Transcrever um evento de memória validaria contra regra que a União não publicou |
+| rol oficial de consignações do SAGRES-PB | token da ASTEC (`suportesagres@tce.pb.gov.br`) |
+| certificado A1 | o certificado do ente |
+| V6 (AWS) | acesso de infraestrutura — e fora do que esta sessão pode tocar |
+| linha ENT12 do Windows | reconciliação de registro |
+
+### 74.8 O próximo ponto exato
+
+`ROTEIRO-SEM-DIMENSAO-DA-ABERTURA` — acrescentar a dimensão da abertura à chave do roteiro
+(`tipo, tipoCredito, abertura, versao`), com os três índices parciais que a combinação de nulos
+exige, e oferecer os pares extras na tela que já existe.

@@ -223,18 +223,17 @@ export async function preencherEEnviar(page: Page, acao: string, campos: readonl
       await page.evaluate((sel, i, marcar) => {
         const el = document.querySelectorAll(sel)[i];
         if (!(el instanceof HTMLInputElement)) return;
-        // ⚠️ AQUI **NÃO** SE APLICOU A CURA DO `tipo: "data"` LOGO ABAIXO, E ISSO É DELIBERADO.
-        // A mesma armadilha existe em tese: um checkbox CONTROLADO pelo React também ignora a
-        // atribuição direta. Mas a correção equivalente (setter nativo de `checked` + um `click`
-        // sintético) tem um risco que a de `value` não tem — despachar `click` num checkbox pode
-        // acionar a ativação padrão e INVERTER de novo o que acabou de ser marcado, e o percurso
-        // passaria a desmarcar em silêncio. Sete percursos usam este ramo hoje e nenhum acusa
-        // problema; trocar o que funciona por uma correção NÃO MEDIDA seria pior que a falta.
-        // Pendência `MARCAR-EM-CAMPO-CONTROLADO`: quando aparecer um checkbox controlado que não
-        // recebe a marca, mede-se ali e corrige-se com a prova junto.
-        el.checked = marcar === "sim";
-        el.dispatchEvent(new Event("input", { bubbles: true }));
-        el.dispatchEvent(new Event("change", { bubbles: true }));
+        // ⚠️ A TÉCNICA AGORA É MEDIDA (V11 V8.7) — `scripts/marca-em-caixa.ts`, provada em
+        // `test/ui/marca-em-caixa-controlada.test.tsx` contra um checkbox REALMENTE controlado
+        // pelo React. Ela vai inline porque `page.evaluate` serializa a função e não alcança
+        // import nenhum; o que a mantém honesta é o teste apontar para o MESMO desenho.
+        //
+        // Fecha `MARCAR-EM-CAMPO-CONTROLADO`. O medo registrado era real — clicar num checkbox
+        // que já está como se quer o INVERTE, e marcar o marcado o desmarcaria em silêncio —, e a
+        // guarda é uma linha. O que a pendência não previa é que a cura do `value` (o setter do
+        // protótipo) NÃO funciona aqui: a medição a derrubou na primeira execução.
+        if (el.checked === (marcar === "sim")) return;
+        el.click();
       }, seletor, campo.indice ?? 0, campo.valor);
       continue;
     }
