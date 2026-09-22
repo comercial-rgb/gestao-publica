@@ -135,6 +135,24 @@ export default async function Pagina({
                   <th scope="row" className="px-3 py-2 text-left font-normal">
                     <span className="font-semibold">{l.fonteCodigo}</span> — {l.fonteDescricao}
                     <span className="mt-1 block text-xs text-[color:var(--color-ink-3)]">{l.situacao}</span>
+                    {/* ═══ POR ENTIDADE (V11 V8.11) — o TR 5.10.1.48 pede "por entidade e
+                        consolidada". A tabela é a CONSOLIDADA; esta lista é o recorte por
+                        entidade do que os fatos sustentam: o SUPLEMENTADO, que vem do item de
+                        crédito → ficha → órgão.
+
+                        ⚠️ O APURADO NÃO APARECE AQUI, e a nota abaixo da tabela diz por quê: ele
+                        vem do caixa por fonte, e a arrecadação deste sistema não tem entidade.
+                        Mostrar uma coluna rateada inventaria o número que autoriza despesa. */}
+                    {l.suplementadoPorEntidade.length > 0 ? (
+                      <ul role="list" className="mt-1 space-y-0.5 text-xs" data-papel="suplementado-por-entidade">
+                        {l.suplementadoPorEntidade.map((e) => (
+                          <li key={e.orgaoCodigo} className="text-[color:var(--color-ink-2)]" data-entidade={e.orgaoCodigo}>
+                            Entidade {e.orgaoCodigo} — {e.orgaoNome}: suplementado{" "}
+                            <ValorMonetario valor={e.liquido} />
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                     {l.decretos.length > 0 ? (
                       <ul role="list" className="mt-1 space-y-0.5 text-xs" data-papel="decretos-da-fonte">
                         {l.decretos.map((d) => (
@@ -164,6 +182,18 @@ export default async function Pagina({
               ))}
             </tbody>
           </table>
+
+          {/* ⚠️ A NOTA QUE IMPEDE UMA LEITURA ERRADA, e ela é obrigatória: quem vê "por entidade"
+              numa parte da tela conclui que a outra também está partida. Dizer o que NÃO está
+              partido, e por quê, é o que separa um recorte honesto de um número inventado. */}
+          <p className="mt-3 text-xs text-[color:var(--color-ink-2)]" data-papel="nota-da-entidade">
+            <strong>A tabela é a consolidada.</strong> O recorte <strong>por entidade</strong>
+            {" "}aparece no <strong>suplementado</strong> de cada fonte: o crédito aponta uma ficha,
+            e a ficha aponta o órgão. O <strong>apurado</strong> não se parte por entidade — ele vem
+            do caixa por fonte (arrecadação, pagamentos e movimentos extraorçamentários), e a
+            arrecadação registrada aqui não tem entidade arrecadadora. Ratear a receita entre os
+            órgãos para preencher a coluna inventaria justamente o número que autoriza a despesa.
+          </p>
         </div>
       )}
     </>

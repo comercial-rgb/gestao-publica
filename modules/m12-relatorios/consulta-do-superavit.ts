@@ -40,6 +40,20 @@ export interface LinhaDaConsultaDoSuperavit {
     readonly liquido: Dinheiro;
     readonly encerrado: boolean;
   }[];
+  /**
+   * ⚠️ O SUPLEMENTADO POR ENTIDADE (V11 V8.11) — o TR 5.10.1.48 pede a consulta "por entidade e
+   * consolidada". Esta é a metade que os fatos sustentam: o item de crédito aponta uma ficha, e
+   * a ficha aponta um órgão.
+   *
+   * O APURADO continua sendo do ENTE, e isso está dito na tela: ele vem do caixa por fonte, e a
+   * arrecadação deste sistema não tem entidade (`RECEITA-SEM-ENTIDADE-ARRECADADORA`). Ratear
+   * receita entre órgãos para preencher a coluna inventaria o número que autoriza despesa.
+   */
+  readonly suplementadoPorEntidade: readonly {
+    readonly orgaoCodigo: string;
+    readonly orgaoNome: string;
+    readonly liquido: Dinheiro;
+  }[];
 }
 
 export interface ConsultaDoSuperavit {
@@ -112,6 +126,11 @@ export async function consultaDoSuperavit(prisma: Leitor, exercicio: number): Pr
         liquido: serializar(d.liquido),
         encerrado: d.encerrado,
       })),
+      suplementadoPorEntidade: u.suplementadoPorEntidade.map((e) => ({
+        orgaoCodigo: e.orgaoCodigo,
+        orgaoNome: e.orgaoNome,
+        liquido: serializar(e.liquido),
+      })),
     });
   }
 
@@ -127,6 +146,7 @@ export async function consultaDoSuperavit(prisma: Leitor, exercicio: number): Pr
       tetoQueLimita: "SEM_TETO",
       situacao: "Há superávit apurado nos fatos e NENHUMA disponibilidade declarada para este exercício. Enquanto não houver declaração, nenhum crédito pode sair desta fonte.",
       decretos: [],
+      suplementadoPorEntidade: [],
     });
   }
 

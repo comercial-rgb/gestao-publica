@@ -43,6 +43,26 @@ export interface UsoDoRecursoNovo {
   readonly descricao: string;
   readonly utilizado: Money;
   readonly decretos: readonly DecretoQueConsumiu[];
+  /**
+   * ═══ ⚠️ O SUPLEMENTADO POR ENTIDADE (V11 V8.11) ═══
+   *
+   * O TR 5.10.1.48 pede a consulta "por entidade e consolidada", e
+   * `DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE` registrava a falta. Esta é a metade que os FATOS
+   * sustentam: cada item de crédito aponta uma FICHA, e a ficha aponta um ÓRGÃO — o eixo que
+   * este sistema já usa como entidade (é o do `DeParaOrgaoPoder`, que o RREO consome).
+   *
+   * ⚠️ E É SÓ ESTA METADE, de propósito. O APURADO não se parte por entidade, e isso não é
+   * preguiça: o superávit vem do CAIXA por fonte (receita − pagamentos ± extra), e a
+   * ARRECADAÇÃO deste sistema não tem entidade nenhuma — `PartidaContabil` da receita nasce sem
+   * ficha (está escrito em `superavit-por-fonte.ts`). Ratear a receita entre órgãos para "poder
+   * mostrar" inventaria o número que autoriza despesa. Pendência estreitada:
+   * `RECEITA-SEM-ENTIDADE-ARRECADADORA`.
+   */
+  readonly suplementadoPorEntidade: readonly {
+    readonly orgaoCodigo: string;
+    readonly orgaoNome: string;
+    readonly liquido: Money;
+  }[];
 }
 
 /**
@@ -88,6 +108,9 @@ export async function usosDoRecursoNovo(
       select: {
         id: true, tipo: true, valor: true, estornoDeId: true,
         decreto: { select: { numero: true, ano: true, data: true, encerramento: { select: { id: true } } } },
+        // ⚠️ A ENTIDADE VEM DA FICHA — é o único caminho que os fatos dão, e é o mesmo que o
+        // escopo de autorização já percorre.
+        ficha: { select: { orgao: { select: { codigo: true, nome: true } } } },
       },
     });
     const porId = new Map(itens.map((i) => [i.id, i]));
@@ -100,6 +123,27 @@ export async function usosDoRecursoNovo(
       const atual = decretos.get(chave) ?? { numero: dono.decreto.numero, ano: dono.decreto.ano, data: dono.decreto.data, encerrado: dono.decreto.encerramento !== null, itens: [] };
       atual.itens.push({ id: i.id, tipo: i.tipo as ItemBruto["tipo"], valor: i.valor, estornoDeId: i.estornoDeId });
       decretos.set(chave, atual);
+    }
+
+    /**
+     * ⚠️ AGRUPADO PELA FICHA DO PRÓPRIO ITEM — e a diferença para o agrupamento por DECRETO
+     * acima é deliberada, não descuido.
+     *
+     * Lá o estorno é atribuído ao decreto do ORIGINAL, porque os dois podem estar em decretos
+     * diferentes e é o original que consumiu a fonte. Aqui não há esse caso: `estornoDeId` só é
+     * escrito por `anularCredito`, que grava o item inverso na MESMA ficha do original — logo
+     * na mesma entidade. Escrever a indireção assim mesmo criaria um desvio que NENHUM teste
+     * consegue percorrer: código que não se pode acusar é código que não se pode manter.
+     *
+     * E se um dia um estorno nascer noutra ficha, a leitura certa passa a ser a da ficha onde
+     * ele foi registrado — que é justamente esta.
+     */
+    const porEntidade = new Map<string, { readonly nome: string; readonly itens: ItemBruto[] }>();
+    for (const i of itens) {
+      const codigo = i.ficha.orgao.codigo;
+      const atual = porEntidade.get(codigo) ?? { nome: i.ficha.orgao.nome, itens: [] };
+      atual.itens.push({ id: i.id, tipo: i.tipo as ItemBruto["tipo"], valor: i.valor, estornoDeId: i.estornoDeId });
+      porEntidade.set(codigo, atual);
     }
 
     saida.push({
@@ -115,6 +159,9 @@ export async function usosDoRecursoNovo(
       decretos: [...decretos.values()]
         .map((x) => ({ numero: x.numero, ano: x.ano, data: x.data, encerrado: x.encerrado, liquido: suplementacaoLiquida(x.itens) }))
         .sort((a, b) => a.data.getTime() - b.data.getTime() || a.numero.localeCompare(b.numero)),
+      suplementadoPorEntidade: [...porEntidade.entries()]
+        .map(([orgaoCodigo, x]) => ({ orgaoCodigo, orgaoNome: x.nome, liquido: suplementacaoLiquida(x.itens) }))
+        .sort((a, b) => a.orgaoCodigo.localeCompare(b.orgaoCodigo)),
     });
   }
   return saida;

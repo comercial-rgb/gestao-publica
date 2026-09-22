@@ -59,6 +59,7 @@ await exigirBanco(prisma);
 
 const POR = "m03@cg.pb.gov.br";
 const FONTE_500 = "fnt-500";
+const FICHA_500_ORG02 = "ficha-500-org02";
 const FONTE_540 = "fnt-540";
 const FICHA_500 = "ficha-500";
 const FICHA_540 = "ficha-540";
@@ -98,9 +99,19 @@ async function semear(comEncerramentoDe2025: boolean): Promise<void> {
       { id: "c-emp", codigo: C_EMPENHADO, nome: "Crédito Empenhado", naturezaSaldo: "CREDORA", nivel: 5, analitica: true },
     ],
   });
-  await prisma.orgao.create({ data: { id: "org-01", codigo: "01", nome: "Prefeitura" } });
-  await prisma.unidadeOrcamentaria.create({
-    data: { id: "uo-01", codigo: "01001", descricao: "Educação", orgaoId: "org-01" },
+  // ⚠️ DOIS ÓRGÃOS DESDE A V11 V8.11, e eles são a fixture N=2 do recorte POR ENTIDADE. Com um
+  // órgão só, "por entidade" e "consolidado" dariam a mesma linha e o teste passaria por vacuidade.
+  await prisma.orgao.createMany({
+    data: [
+      { id: "org-01", codigo: "01", nome: "Prefeitura" },
+      { id: "org-02", codigo: "02", nome: "Fundo Municipal de Saúde" },
+    ],
+  });
+  await prisma.unidadeOrcamentaria.createMany({
+    data: [
+      { id: "uo-01", codigo: "01001", descricao: "Educação", orgaoId: "org-01" },
+      { id: "uo-02", codigo: "02001", descricao: "Saúde", orgaoId: "org-02" },
+    ],
   });
   await prisma.funcao.create({ data: { id: "fun-12", codigo: "12", nome: "Educação" } });
   await prisma.subfuncao.createMany({
@@ -150,6 +161,8 @@ async function semear(comEncerramentoDe2025: boolean): Promise<void> {
   await criarFichasDeTeste(prisma, [
     { ...base, id: FICHA_500, numero: 1, subfuncaoId: "sub-361", fonteId: FONTE_500, valorDotado: "5000.00" },
     { ...base, id: FICHA_540, numero: 2, subfuncaoId: "sub-362", fonteId: FONTE_540, valorDotado: "5000.00" },
+    // A MESMA fonte 500, em OUTRA entidade — é o que faz o recorte por entidade ter o que partir.
+    { ...base, id: FICHA_500_ORG02, numero: 3, subfuncaoId: "sub-361", fonteId: FONTE_500, valorDotado: "5000.00", orgaoId: "org-02", unidadeOrcId: "uo-02" },
   ]);
 
   // ⚠️ AS DECLARAÇÕES — e a da fonte 500 está INFLADA de propósito (20.000 contra
@@ -621,5 +634,65 @@ describe("M03 — a DECLARAÇÃO de superávit contra os fatos", () => {
       const r = await declarar("20000.01");
       expect(r.versao).toBe(2);
     });
+  });
+});
+
+/**
+ * ═══ POR ENTIDADE E CONSOLIDADA (V11 V8.11) ═══
+ *
+ * O TR 5.10.1.48 pede a consulta "por entidade e consolidada", e
+ * `DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE` registrava a falta. Esta é a metade que os FATOS
+ * sustentam: o item de crédito aponta uma FICHA, e a ficha aponta um ÓRGÃO.
+ *
+ * ⚠️ E A OUTRA METADE NÃO É ENTREGUE, com motivo: o APURADO vem do caixa por fonte, e a
+ * arrecadação deste sistema não tem entidade arrecadadora — `superavit-por-fonte.ts` diz, desde
+ * que nasceu, que a partida da receita nasce SEM ficha. Ratear receita entre órgãos para
+ * preencher a coluna inventaria o número que autoriza a despesa.
+ */
+describe("M03 × M12 — o suplementado POR ENTIDADE", () => {
+  let deps: M03Deps;
+
+  beforeEach(async () => {
+    await semear(true);
+    deps = criarM03DepsAmarrado(prisma);
+  });
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  it("e1 (N=2) — duas entidades na MESMA fonte aparecem separadas, e a soma delas é o utilizado", async () => {
+    const leiId = await lei(deps);
+    await suplementar(deps, await decreto(deps, leiId, "E1"), "3000.00", FICHA_500);
+    await suplementar(deps, await decreto(deps, leiId, "E2"), "2000.00", FICHA_500_ORG02);
+
+    const linha = (await consultaDoSuperavit(prisma, 2026)).linhas.find((l) => l.fonteCodigo === "500");
+    expect(linha?.suplementadoPorEntidade).toEqual([
+      { orgaoCodigo: "01", orgaoNome: "Prefeitura", liquido: "3000.00" },
+      { orgaoCodigo: "02", orgaoNome: "Fundo Municipal de Saúde", liquido: "2000.00" },
+    ]);
+
+    // ⚠️ A AMARRAÇÃO ENTRE O RECORTE E O CONSOLIDADO. Um recorte que não soma o consolidado é
+    // dois números sobre o mesmo dinheiro — e o dia em que divergirem, ninguém sabe qual vale.
+    expect(linha?.utilizado).toBe("5000.00");
+    const soma = linha!.suplementadoPorEntidade.reduce((a, e) => a + Number(e.liquido), 0);
+    expect(soma.toFixed(2)).toBe(linha?.utilizado);
+  });
+
+  it("e2 — o estorno REDUZ a entidade que recebeu o crédito, e a outra não se move", async () => {
+    // ⚠️ A ENTIDADE ERRADA SERIA UM ESTRAGO SILENCIOSO: uma apareceria devendo e a outra
+    // sobrando, e a soma continuaria batendo com o utilizado. Por isso a asserção é sobre as
+    // DUAS linhas, não sobre o total.
+    const leiId = await lei(deps);
+    const d1 = await decreto(deps, leiId, "E1");
+    await suplementar(deps, d1, "3000.00", FICHA_500);
+    await suplementar(deps, await decreto(deps, leiId, "E2"), "2000.00", FICHA_500_ORG02);
+    await anularCredito({ decretoId: d1, criadoPor: POR, data: new Date("2026-04-01T12:00:00Z"), motivo: "Anulado por erro no valor suplementado da ficha da Prefeitura." }, deps);
+
+    const linha = (await consultaDoSuperavit(prisma, 2026)).linhas.find((l) => l.fonteCodigo === "500");
+    expect(linha?.suplementadoPorEntidade).toEqual([
+      { orgaoCodigo: "01", orgaoNome: "Prefeitura", liquido: "0.00" },
+      { orgaoCodigo: "02", orgaoNome: "Fundo Municipal de Saúde", liquido: "2000.00" },
+    ]);
+    expect(linha?.utilizado).toBe("2000.00");
   });
 });

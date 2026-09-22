@@ -9218,3 +9218,60 @@ vermelhos.
 `SUPERAVIT-DECLARADO-NAO-DERIVADO` **fecha**. Nenhuma nasce — e fica o registro de que a
 amarração do **excesso** e da **operação de crédito** continua sendo conferida no crédito, na data
 do fato, por decisão e não por omissão.
+
+---
+
+## 78. V11 V8.11 — por entidade, até onde os fatos vão (e não um centímetro além)
+
+### 78.1 O pedido, e o que dele é derivável
+
+O TR 5.10.1.48 pede a consulta de superávit "por entidade e consolidada", e
+`DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE` registrava a falta. A consulta já era a **consolidada**;
+faltava o recorte.
+
+**O que os fatos sustentam:** o item de crédito aponta uma **ficha**, e a ficha aponta um **órgão**
+— o eixo que este sistema já usa como entidade (é o do `DeParaOrgaoPoder`, que o RREO consome).
+Então o **suplementado** parte por entidade, e agora aparece assim em cada fonte, na tela e na
+consulta.
+
+**O que os fatos NÃO sustentam:** o **apurado**. O superávit vem do **caixa por fonte** (arrecadação
+menos pagamentos, mais ou menos os extraorçamentários), e a **arrecadação deste sistema não tem
+entidade arrecadadora** — está escrito em `superavit-por-fonte.ts` desde que ele nasceu: a partida
+da receita nasce sem ficha. Ratear a receita entre órgãos para preencher a coluna inventaria
+justamente **o número que autoriza a despesa**.
+
+Então a tela **diz isso**, abaixo da tabela. Quem vê "por entidade" numa parte conclui que a outra
+também está partida; dizer o que **não** está partido, e por quê, é o que separa um recorte honesto
+de um número inventado.
+
+### 78.2 O que a mutação me obrigou a apagar
+
+Escrevi o agrupamento por entidade atribuindo o estorno à entidade do item **original** — espelhando
+o agrupamento por decreto logo acima, que faz isso porque original e estorno podem estar em decretos
+diferentes.
+
+A mutação passou: **troquei a regra e os dois testes continuaram verdes.** Investigado, o motivo:
+`estornoDeId` só é escrito por `anularCredito`, que grava o item inverso na **mesma ficha** do
+original. Os dois agrupamentos coincidem sempre, e o desvio que eu tinha escrito era um caminho que
+**nenhum teste consegue percorrer**. Apaguei a indireção: código que não se pode acusar é código que
+não se pode manter.
+
+### 78.3 O que foi medido
+
+| Medida | Resultado |
+|---|---|
+| tsc app / backend | `exit=0` |
+| m03 + m12 | **293 testes**, `exit=0` |
+| `m03-superavit.test.ts` | 18 testes (eram 16) |
+
+**Mutação:** colapsar todas as entidades numa só deixou `e1` e `e2` vermelhos. A fixture ganhou um
+**segundo órgão** e uma terceira ficha na **mesma fonte** — sem N=2, "por entidade" e "consolidado"
+dariam a mesma linha e o teste passaria por vacuidade.
+
+### 78.4 Pendências
+
+`DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE` **não fecha inteira, e não vou dizer que fecha.** Ela
+estreita para **`RECEITA-SEM-ENTIDADE-ARRECADADORA`**: o fato que falta é a entidade que arrecadou,
+e ele não existe no modelo da receita. Enquanto não existir, o apurado por entidade não é derivável
+— e o catálogo `5.10.1.48` segue **`PARCIAL`** por esse motivo, agora com o recorte de entidade
+entregue na parte que os fatos sustentam.
