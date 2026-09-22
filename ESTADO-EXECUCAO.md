@@ -9045,7 +9045,7 @@ com o motivo nomeando qual das duas linhas falta. `t3` é o teste desse "não".
 | tsc app / backend / scripts | `exit=0` nos três |
 | `m03-abertura-no-razao.test.ts` (novo) | 7 testes |
 | m03 + m05 + ficha pela tela + contas do seed | 207 testes |
-| **suíte inteira** (`--maxWorkers=3`) | **3278/3278 em 311 arquivos**, `exit=0`, 1110 s |
+| **suíte inteira** (`--maxWorkers=3`) | **3278/3278 em 311 arquivos**, `exit=0` — e repetida sobre a **árvore congelada em `1cace6d`**, mesmo 3278/3278 |
 
 **Duas mutações, duas acusações** — e nas duas direções:
 
