@@ -114,3 +114,23 @@ export function classificarAbertura(c: CreditoParaClassificar): Classificacao {
 
   return { abertura: "REABERTO", recusa: null };
 }
+
+/**
+ * A ABERTURA DE UM DECRETO JÁ GRAVADO, para quem vai LANÇAR (V11 V8.8).
+ *
+ * ⚠️ DERIVADA NA HORA DO LANÇAMENTO, e não gravada no decreto. É o mesmo desenho do tipo de
+ * crédito, que também não é coluna de `MovimentoDotacao`: o decreto aponta para a lei, e a lei
+ * tem o seu ano e a sua data de publicação — duplicar a conclusão criaria a segunda verdade sobre
+ * o mesmo crédito, e a primeira divergência apareceria num demonstrativo, meses depois.
+ *
+ * ⚠️ E ELA LANÇA A RECUSA. Um decreto ilegal não nasce desde a V8.6 (`criarDecreto`), mas os que
+ * nasceram ANTES daquela guarda existir continuam no banco. Executá-los agora significaria
+ * escriturar um crédito sem autorização vigente — este é o segundo portão, no caminho do razão.
+ *
+ * Devolve `null` para o SUPLEMENTAR: ele não se parte, e isso não é ausência de decisão.
+ */
+export function exigirAberturaDoDecreto(c: CreditoParaClassificar): AberturaDoCredito | null {
+  const { abertura, recusa } = classificarAbertura(c);
+  if (recusa !== null) throw new Error(recusa);
+  return abertura;
+}

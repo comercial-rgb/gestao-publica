@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | V11 V8.7 — a parametrização contábil pelo ente e seis pendências fechadas — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
+| HEAD | V11 V8.8 — a dimensão da abertura na chave do roteiro — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
 | Frente em execução | **V11** — V1.1, V3.1, V4.1, V4.2 (seção 65), V2.1 eSocial (seção 66), V5.1/V5.2 (seção 67), V6 (seção 68), V7/V7.1/V7.2 (seção 69), V7.3 (seção 70) e **V8: o guichê — agendamento de atendimento presencial** (seção 71). **O escopo planejado desta rodada está concluído**; V6 (AWS) segue bloqueado |
-| Último resultado | seção 74 — **seis pendências fechadas**. As três maiores (`CONSIGNACAO-CONTA-SINTETICA`, `ROTEIRO-RESERVA-SEM-CONTA`, `ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`) tinham a MESMA causa e nenhuma conta foi escolhida para fechá-las: faltava **onde o ente decidir**. Duas telas novas, append-only e versionadas. **O percurso da cadeia da despesa atravessa em instalação limpa pela primeira vez** (28/0). Mais: o cidadão remarca pelo portal, o balcão entrega o código, e a guarda da CF art. 167 § 2º impede um crédito especial reaberto fora dos últimos quatro meses. `MARCAR-EM-CAMPO-CONTROLADO` fechada — e a medição derrubou a minha própria cura antes de ela entrar. Suíte **3271/3271 em 310 arquivos** |
-| Pendências relevantes | seção 74.7 — **ZERO guards vermelhos**. Tratáveis: **`ROTEIRO-SEM-DIMENSAO-DA-ABERTURA`** (estreitada), `DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`, `EXCECAO-DE-CALENDARIO-SO-FECHA`, `GUICHE-SEM-NOTIFICACAO-INTERNA`, `DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE`, `SUPERAVIT-DECLARADO-NAO-DERIVADO`, `SAGRES-POC-CONTA-SINTETICA`. **Bloqueadas por insumo externo, e inventar o dado é proibido**: `LEIAUTE-ESOCIAL-NAO-OBTIDO`, rol oficial do SAGRES (token ASTEC), certificado A1, V6 (AWS) e a linha ENT12 do Windows |
-| Próximo passo | seção 74.8 — `ROTEIRO-SEM-DIMENSAO-DA-ABERTURA`: a dimensão da abertura na chave do roteiro |
+| Último resultado | seção 75 — **`ROTEIRO-SEM-DIMENSAO-DA-ABERTURA` fechada**. O sistema já SABIA ler aberto de reaberto (V8.6) e não usava: o roteiro era chaveado por (movimento, tipo de crédito) e o reaberto lançava na MESMA conta do aberto — um erro que o balancete não pega, porque a partida na conta errada fecha igual. A abertura entrou na chave, e a migração ficou **aditiva** (zero DROP) por ler a versão como a sequência das decisões do ente. Duas mutações, duas acusações. Suíte **3278/3278 em 311 arquivos** |
+| Pendências relevantes | seção 75.6 — **ZERO guards vermelhos**. Tratáveis: `DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`, **`REABERTO-COM-SUPLEMENTACAO-NAO-DISTINGUIDO`** (nova, menor que a que fechou), `EXCECAO-DE-CALENDARIO-SO-FECHA`, `GUICHE-SEM-NOTIFICACAO-INTERNA`, `DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE`, `SUPERAVIT-DECLARADO-NAO-DERIVADO`, `SAGRES-POC-CONTA-SINTETICA`. **Bloqueadas por insumo externo, e inventar o dado é proibido**: `LEIAUTE-ESOCIAL-NAO-OBTIDO`, rol oficial do SAGRES (token ASTEC), certificado A1, V6 (AWS) e a linha ENT12 do Windows |
+| Próximo passo | seção 75.7 — `DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`: a dotação adicional por tipo e por fonte são irmãs, e hoje só uma recebe lançamento |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -8977,3 +8977,100 @@ bloqueia a corrida seguinte. As duas coisas estão registradas na regra.
 `ROTEIRO-SEM-DIMENSAO-DA-ABERTURA` — acrescentar a dimensão da abertura à chave do roteiro
 (`tipo, tipoCredito, abertura, versao`), com os três índices parciais que a combinação de nulos
 exige, e oferecer os pares extras na tela que já existe.
+
+---
+
+## 75. V11 V8.8 — a dimensão da abertura na chave do roteiro
+
+### 75.1 O que estava errado: o sistema SABIA e não usava
+
+A V8.6 fechou a metade grave de `CREDITO-ESPECIAL-ABERTO-OU-REABERTO`: o sistema passou a **ler**
+se um crédito especial é ABERTO ou REABERTO — do ano do decreto contra o ano e a data de
+publicação da lei, CF art. 167 § 2º — e a recusar o decreto que a norma não alcança. O que ficou
+registrado como `ROTEIRO-SEM-DIMENSAO-DA-ABERTURA` era a metade contábil: `RoteiroOrcamentario`
+continuava chaveado por **(movimento, tipo de crédito)**, e por isso o reaberto do exercício
+seguinte lançava na **mesma conta** do aberto.
+
+⚠️ **E isso não dava vermelho em lugar nenhum**, pelo mesmo motivo incômodo da V7.1: o lançamento
+seguia BALANCEADO. Uma partida na conta errada fecha igual a uma na conta certa. Quem enxerga a
+diferença é quem compara a partida com a **classificação do ato** que a originou — e é o TCE que
+lê essa diferença no balancete.
+
+### 75.2 A decisão de desenho que deixou a migração ser aditiva
+
+O ponto declarado na seção 74.8 previa a chave `(tipo, tipoCredito, abertura, versao)` "com os
+três índices parciais que a combinação de nulos exige". **Não foi o que se fez, e o motivo é
+melhor que o plano.**
+
+Pôr a abertura na chave da VERSÃO obrigaria a derrubar o índice único
+`(tipo, tipoCredito, versao)` — ABERTO v1 e REABERTO v1 colidiriam nele. Derrubar índice único
+para afrouxá-lo é exatamente o que "migration é aditiva, zero DROP" existe para impedir.
+
+A saída é ler a versão pelo que ela é: **a sequência das decisões do ente sobre aquele tipo de
+crédito**. Publicar o ABERTO e depois o REABERTO dá v1 e v2; a vigente de cada um é a maior
+versão **com a sua abertura**. O índice de unicidade fica como está, o parcial de
+`uq_roteiro_sem_tipo_de_credito` também, e a migração é uma coluna, um tipo, um índice de busca e
+um CHECK. **Zero DROP, zero índice parcial novo.**
+
+### 75.3 O que passou a funcionar, e a rota real
+
+| Onde | O que mudou |
+|---|---|
+| `prisma/schema/m03-creditos.prisma` | enum `AberturaDoCredito` (ABERTO, REABERTO) |
+| `prisma/schema/m05-despesa.prisma` | `RoteiroOrcamentario.abertura` + índice de busca |
+| `prisma/migrations/20261008090000_v11_v88_dimensao_da_abertura_no_roteiro/` | aditiva, com `ck_roteiro_abertura_so_de_credito_reabrivel` |
+| `modules/m03-creditos/abertura-do-credito.ts` | `exigirAberturaDoDecreto` — deriva e **lança a recusa** |
+| `modules/m03-creditos/adapter-prisma.ts` | os dois caminhos (executar e anular) derivam a abertura do decreto |
+| `modules/m05-despesa/dotacao-razao.ts` | a abertura entra no `where` do roteiro, com as duas guardas |
+| `modules/m05-despesa/servico-roteiro-orcamentario.ts` | publicar exige a abertura onde a norma parte, e a proíbe no resto |
+| `lib/portas/roteiro-orcamentario.ts` | **nove** pares onde havia sete |
+| `app/(areas)/contabilidade/roteiros-orcamentarios/` | as quatro linhas novas, cada uma com a sua decisão |
+
+**A abertura não é gravada em lugar nenhum** — nem no decreto, nem no movimento. É derivada na
+hora do lançamento, pelo mesmo caminho por onde o tipo de crédito já vem, e pelo mesmo motivo:
+duas verdades sobre o mesmo crédito divergem, e a primeira divergência aparece num demonstrativo,
+meses depois. Na tela ela vem da LINHA, não de uma caixa de seleção — **o que se pede, se erra**.
+
+### 75.4 O que eu decidi NÃO fazer, e está testado
+
+Quando a linha da abertura falta, a leitura **não cai** na linha antiga de abertura nula. Seria a
+saída fácil — nenhuma instalação quebraria — e seria a pendência inteira de volta: o reaberto
+lançaria, **em silêncio**, na conta decidida quando a pergunta ainda não existia. É fail-closed,
+com o motivo nomeando qual das duas linhas falta. `t3` é o teste desse "não".
+
+### 75.5 O que foi medido
+
+| Medida | Resultado |
+|---|---|
+| tsc app / backend / scripts | `exit=0` nos três |
+| `m03-abertura-no-razao.test.ts` (novo) | 7 testes |
+| m03 + m05 + ficha pela tela + contas do seed | 207 testes |
+| **suíte inteira** (`--maxWorkers=3`) | **3278/3278 em 311 arquivos**, `exit=0`, 1110 s |
+
+**Duas mutações, duas acusações** — e nas duas direções:
+
+1. tirar `abertura` do `where` da consulta do roteiro (o estado anterior à V8.8): **t1, t2 e t3
+   vermelhos**, e a mensagem de t1 mostrou o defeito exato — os dois créditos debitando
+   `5.2.2.1.2.02.02`;
+2. `classificarAbertura` devolver sempre `ABERTO`: **cinco testes vermelhos** em dois arquivos.
+
+Revertidas as duas, verde de novo. E `t2b` é a contraprova de t2: apagado o roteiro do REABERTO, o
+ABERTO continua passando — sem ela, uma leitura que recusasse TUDO deixaria t2 verde, e recusar
+tudo não é classificar coisa nenhuma.
+
+### 75.6 Pendências
+
+`ROTEIRO-SEM-DIMENSAO-DA-ABERTURA` **fecha**. Nasce, no lugar dela e menor,
+**`REABERTO-COM-SUPLEMENTACAO-NAO-DISTINGUIDO`**: o plano tem TRÊS analíticas sob cada ramo
+(ABERTOS, REABERTOS, REABERTOS - SUPLEMENTAÇÃO) e o sistema separa as duas primeiras. Qual delas
+recebe um reaberto é classificação contábil do ente — ele publica pela tela, com fundamento, e o
+seed segue recusando e **imprimindo as candidatas lidas do plano que está no banco**.
+
+### 75.7 O próximo ponto exato
+
+`DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE` — a pergunta maior que mora atrás do ramo que esta seção
+mexeu. `5.2.2.1.2` (por tipo de crédito) e `5.2.2.1.3` (por fonte) são IRMÃS sob
+`5.2.2.1 DOTAÇÃO ORÇAMENTÁRIA`. Se o mesmo crédito for lançado nas duas, o total de `5.2.2.1`
+conta o dobro; se for lançado só numa, a outra visão fica vazia em qualquer demonstrativo que a
+leia. Hoje o sistema só lança na `.2`. Qual das duas o ente adota — ou como as concilia — é
+decisão do mesmo tamanho das que a V8.3 e a V8.4 deram lugar, e o lugar já existe.

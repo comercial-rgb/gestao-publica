@@ -5,7 +5,7 @@ import type { TipoMovimentoDotacao } from "./dominio.js";
 // ⚠️ O TIPO VEM DO SCHEMA, NÃO DO M03. O M03 depende do M05 (é ele que chama
 // `registrarMovimentoDotacao`); importar o tipo de lá fecharia o ciclo. O enum do Prisma é
 // a fonte única — redigitar a união aqui criaria a segunda verdade sobre quais tipos existem.
-import type { TipoCredito } from "../../prisma/generated/client/enums.js";
+import type { AberturaDoCredito, TipoCredito } from "../../prisma/generated/client/enums.js";
 // ⚠️ O FUNIL DO RAZÃO (M01). Todo lançamento passa por ele — e é lá que mora o
 // travamento de competência (M16). Ver `m01-funil.test.ts`: o grep-teste proíbe o
 // `lancamentoContabil.create` fora dele.
@@ -103,7 +103,31 @@ export interface MovimentoDotacaoParams {
    * e a primeira divergência apareceria num demonstrativo, meses depois.
    */
   readonly tipoCredito?: TipoCredito | undefined;
+  /**
+   * ⚠️ OBRIGATÓRIA NO ESPECIAL E NO EXTRAORDINÁRIO, E PROIBIDA NO RESTO (V11 V8.8).
+   *
+   * O PCASP parte esses dois ramos em ABERTOS e REABERTOS — contas DIFERENTES —, e a CF art. 167
+   * § 2º é quem diz qual é qual: o crédito autorizado e aberto no exercício, ou o saldo de um
+   * crédito dos últimos quatro meses do exercício anterior, reaberto no seguinte. Até a V8.8 o
+   * roteiro não tinha esta dimensão e o REABERTO lançava na conta do ABERTO
+   * (`ROTEIRO-SEM-DIMENSAO-DA-ABERTURA`).
+   *
+   * Quem sabe é o par decreto/lei, e o chamador a DERIVA de lá com
+   * `exigirAberturaDoDecreto` (M03) — pelo mesmo caminho por onde o tipo de crédito já vem, e
+   * pelo mesmo motivo de não virar coluna: duas verdades sobre o mesmo crédito divergem.
+   *
+   * ⚠️ O SUPLEMENTAR NÃO A TEM, e isso não é omissão: ele reforça dotação que já existe e morre
+   * com o exercício. Aplicá-la a ele inventaria uma classificação que a norma não tem.
+   */
+  readonly abertura?: AberturaDoCredito | undefined;
 }
+
+/** O § 2º alcança só estes dois — e é o que a partição do plano acompanha. */
+const EXIGE_ABERTURA = (
+  tipo: TipoMovimentoDotacao,
+  tipoCredito: TipoCredito | undefined
+): boolean =>
+  tipo === "CREDITO_ADICIONAL" && (tipoCredito === "ESPECIAL" || tipoCredito === "EXTRAORDINARIO");
 
 /**
  * Grava o movimento E a perna no razão, na MESMA transação.
@@ -139,6 +163,24 @@ export async function registrarMovimentoDotacao(
       `TIPO DE CRÉDITO em movimento ${p.tipo}. O tipo de crédito só classifica o CRÉDITO ` +
         `ADICIONAL; num movimento de outro tipo ele não tem significado contábil e faria ` +
         `a consulta do roteiro procurar um par que o seed nunca semeia. Nada foi gravado.`
+    );
+  }
+
+  // ⚠️ AS MESMAS DUAS GUARDAS, PARA A ABERTURA — e antes do primeiro `create`, pela mesma razão.
+  if (EXIGE_ABERTURA(p.tipo, p.tipoCredito) && p.abertura === undefined) {
+    throw new Error(
+      `CRÉDITO ${p.tipoCredito} SEM A ABERTURA. O PCASP parte este ramo em ABERTOS e REABERTOS, ` +
+        `em contas diferentes, e quem diz qual é qual é a CF art. 167 § 2º — lida do ano do ` +
+        `decreto contra o ano e a data de publicação da lei. Sem ela, o crédito reaberto do ` +
+        `exercício seguinte entraria na conta do aberto, que é a diferença que o TCE lê. Nada foi gravado.`
+    );
+  }
+  if (!EXIGE_ABERTURA(p.tipo, p.tipoCredito) && p.abertura !== undefined) {
+    throw new Error(
+      `ABERTURA em movimento ${p.tipo}${p.tipoCredito === undefined ? "" : ` do tipo ${p.tipoCredito}`}. ` +
+        `A reabertura do art. 167 § 2º alcança só o crédito ESPECIAL e o EXTRAORDINÁRIO; aqui ela ` +
+        `não tem significado contábil e faria a consulta do roteiro procurar uma chave que o ente ` +
+        `não pode nem cadastrar (o CHECK do banco a recusa). Nada foi gravado.`
     );
   }
 
@@ -193,7 +235,7 @@ export async function registrarMovimentoDotacao(
   // ontem, e um `UPDATE` apagaria a resposta para "contra que roteiro este lançamento foi feito?".
   // Ler qualquer versão que não a última classificaria o movimento de hoje pela decisão revogada.
   const roteiro = await tx.roteiroOrcamentario.findFirst({
-    where: { tipo: p.tipo, tipoCredito: p.tipoCredito ?? null },
+    where: { tipo: p.tipo, tipoCredito: p.tipoCredito ?? null, abertura: p.abertura ?? null },
     orderBy: { versao: "desc" },
     select: {
       contaDebito: { select: { id: true, codigo: true, analitica: true } },
@@ -203,7 +245,10 @@ export async function registrarMovimentoDotacao(
 
   if (roteiro === null) {
     const qual =
-      p.tipoCredito === undefined ? p.tipo : `${p.tipo} do tipo ${p.tipoCredito}`;
+      p.tipoCredito === undefined
+        ? p.tipo
+        : `${p.tipo} do tipo ${p.tipoCredito}` +
+          (p.abertura === undefined ? "" : `, ${p.abertura}`);
     throw new Error(
       `ROTEIRO ORÇAMENTÁRIO NÃO PARAMETRIZADO para ${qual}. O movimento de dotação ` +
         `TEM perna no razão — sem ela, o subsistema orçamentário volta a não refletir o ` +

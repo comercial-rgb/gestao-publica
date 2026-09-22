@@ -158,12 +158,13 @@ const PENDENCIAS_DECLARADAS: Readonly<Record<string, string>> = {
     "5.2.2.1.3.09.00 (sob DOTAÇÃO ADICIONAL POR FONTE) e 5.2.2.1.9.04.00 (sob " +
     "CANCELAMENTO/REMANEJAMENTO). Escolher por semelhança de nome é escolher entre nomes IGUAIS.",
   [CONTA_CREDITO_ADICIONAL_ESPECIAL]:
-    "CREDITO-ESPECIAL-ABERTO-OU-REABERTO — o plano parte este ramo em ABERTOS, REABERTOS e " +
-    "REABERTOS - SUPLEMENTAÇÃO (CF art. 167 § 2º). O que separa as três é se o crédito foi aberto " +
-    "neste exercício ou é a reabertura do saldo do anterior — e `LeiCredito`/`DecretoCredito` não " +
-    "registram esse vínculo. Falta um FATO, não uma conta.",
+    "REABERTO-COM-SUPLEMENTACAO-NAO-DISTINGUIDO — o plano parte este ramo em ABERTOS, REABERTOS e " +
+    "REABERTOS - SUPLEMENTAÇÃO (CF art. 167 § 2º). O FATO deixou de faltar: desde a V8.6 o sistema " +
+    "LÊ se o crédito é aberto ou reaberto (ano do decreto contra o ano e a data da lei) e desde a " +
+    "V8.8 a abertura entra na chave do roteiro. Restam DUAS candidatas para o reaberto, e qual " +
+    "delas o ente usa é classificação contábil dele — publicada com fundamento pela tela.",
   [CONTA_CREDITO_ADICIONAL_EXTRAORDINARIO]:
-    "CREDITO-ESPECIAL-ABERTO-OU-REABERTO — mesma partição do ramo especial, mesma falta.",
+    "REABERTO-COM-SUPLEMENTACAO-NAO-DISTINGUIDO — mesma partição do ramo especial, mesma escolha.",
   [CONTA_CREDITO_RESERVADO]:
     "ROTEIRO-RESERVA-SEM-CONTA — o sistema chama esta conta de 'crédito reservado'; no PCASP ela " +
     "é CREDITO INDISPONÍVEL, com BLOQUEIO, PRE-EMPENHADO e OUTRAS. Qual corresponde à reserva de " +

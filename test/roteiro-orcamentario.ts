@@ -82,6 +82,21 @@ const FIXTURE_CONTA_CREDITO_ESPECIAL = "5.2.2.1.2.02.01";
 const FIXTURE_CONTA_CREDITO_EXTRAORDINARIO = "5.2.2.1.2.03.01";
 
 /**
+ * ⚠️ E DESDE A V8.8 A FIXTURE TEM AS DUAS ABERTURAS, NÃO POR ENFEITE.
+ *
+ * O roteiro ganhou a dimensão ABERTO/REABERTO (`ROTEIRO-SEM-DIMENSAO-DA-ABERTURA`), e uma fixture
+ * que só semeasse o ramo ABERTOS deixaria o teste do REABERTO cair por falta de roteiro — e a
+ * queda se leria como "a dimensão funciona", quando ela só estaria faltando. Com as duas
+ * semeadas, um reaberto que caia na conta do aberto APARECE: as contas são diferentes.
+ *
+ * O ramo REABERTOS continua sendo fixture pelo mesmo motivo que o ABERTOS: qual das DUAS
+ * analíticas de reabertura o ente usa (`.02` REABERTOS ou `.03` REABERTOS - SUPLEMENTAÇÃO) é
+ * decisão dele, tomada na tela do roteiro. Pendência `REABERTO-COM-SUPLEMENTACAO-NAO-DISTINGUIDO`.
+ */
+const FIXTURE_CONTA_CREDITO_ESPECIAL_REABERTO = "5.2.2.1.2.02.02";
+const FIXTURE_CONTA_CREDITO_EXTRAORDINARIO_REABERTO = "5.2.2.1.2.03.02";
+
+/**
  * ⚠️ APELIDO COM CORREÇÃO DE CÓDIGO: era `6.2.2.1.3.00.00` (sintética); agora aponta
  * para a analítica oficial `6.2.2.1.3.01.00` (Crédito Empenhado a Liquidar).
  */
@@ -102,7 +117,9 @@ const CONTAS: readonly {
   { codigo: CONTA_DOTACAO_ADICIONAL, nome: "Dotação adicional", naturezaSaldo: "DEVEDORA" },
   { codigo: CONTA_CREDITO_ADICIONAL_SUPLEMENTAR, nome: "Credito adicional - suplementar", naturezaSaldo: "DEVEDORA" },
   { codigo: FIXTURE_CONTA_CREDITO_ESPECIAL, nome: "Creditos especiais abertos", naturezaSaldo: "DEVEDORA" },
+  { codigo: FIXTURE_CONTA_CREDITO_ESPECIAL_REABERTO, nome: "Creditos especiais reabertos", naturezaSaldo: "DEVEDORA" },
   { codigo: FIXTURE_CONTA_CREDITO_EXTRAORDINARIO, nome: "Creditos extraordinarios abertos", naturezaSaldo: "DEVEDORA" },
+  { codigo: FIXTURE_CONTA_CREDITO_EXTRAORDINARIO_REABERTO, nome: "Creditos extraordinarios reabertos", naturezaSaldo: "DEVEDORA" },
   { codigo: CONTA_CREDITO_DISPONIVEL, nome: "Crédito disponível", naturezaSaldo: "CREDORA" },
   { codigo: CONTA_CREDITO_RESERVADO, nome: "Crédito reservado", naturezaSaldo: "CREDORA" },
   { codigo: CONTA_CREDITO_EMPENHADO, nome: "Crédito empenhado", naturezaSaldo: "CREDORA" },
@@ -148,6 +165,7 @@ const ROTEIROS: readonly {
     | "RESERVA"
     | "RESERVA_LIBERADA";
   tipoCredito?: "SUPLEMENTAR" | "ESPECIAL" | "EXTRAORDINARIO";
+  abertura?: "ABERTO" | "REABERTO";
   debito: string;
   credito: string;
 }[] = [
@@ -155,8 +173,13 @@ const ROTEIROS: readonly {
   // ⚠️ TRÊS LINHAS DESDE A V7.1 — o plano parte a dotação adicional POR TIPO DE CRÉDITO, e
   // com uma linha só todo especial e todo extraordinário virava suplementar.
   { tipo: "CREDITO_ADICIONAL", tipoCredito: "SUPLEMENTAR", debito: CONTA_CREDITO_ADICIONAL_SUPLEMENTAR, credito: CONTA_CREDITO_DISPONIVEL },
-  { tipo: "CREDITO_ADICIONAL", tipoCredito: "ESPECIAL", debito: FIXTURE_CONTA_CREDITO_ESPECIAL, credito: CONTA_CREDITO_DISPONIVEL },
-  { tipo: "CREDITO_ADICIONAL", tipoCredito: "EXTRAORDINARIO", debito: FIXTURE_CONTA_CREDITO_EXTRAORDINARIO, credito: CONTA_CREDITO_DISPONIVEL },
+  // ⚠️ QUATRO LINHAS DESDE A V8.8 — o especial e o extraordinário se partem em ABERTO e REABERTO,
+  // e as contas são DIFERENTES de propósito: é assim que um reaberto lançado na conta do aberto
+  // aparece num teste em vez de passar.
+  { tipo: "CREDITO_ADICIONAL", tipoCredito: "ESPECIAL", abertura: "ABERTO", debito: FIXTURE_CONTA_CREDITO_ESPECIAL, credito: CONTA_CREDITO_DISPONIVEL },
+  { tipo: "CREDITO_ADICIONAL", tipoCredito: "ESPECIAL", abertura: "REABERTO", debito: FIXTURE_CONTA_CREDITO_ESPECIAL_REABERTO, credito: CONTA_CREDITO_DISPONIVEL },
+  { tipo: "CREDITO_ADICIONAL", tipoCredito: "EXTRAORDINARIO", abertura: "ABERTO", debito: FIXTURE_CONTA_CREDITO_EXTRAORDINARIO, credito: CONTA_CREDITO_DISPONIVEL },
+  { tipo: "CREDITO_ADICIONAL", tipoCredito: "EXTRAORDINARIO", abertura: "REABERTO", debito: FIXTURE_CONTA_CREDITO_EXTRAORDINARIO_REABERTO, credito: CONTA_CREDITO_DISPONIVEL },
   { tipo: "ANULACAO_CREDITO", debito: CONTA_CREDITO_DISPONIVEL, credito: CONTA_DOTACAO_ADICIONAL },
   { tipo: "RESERVA", debito: CONTA_CREDITO_DISPONIVEL, credito: CONTA_CREDITO_RESERVADO },
   { tipo: "RESERVA_LIBERADA", debito: CONTA_CREDITO_RESERVADO, credito: CONTA_CREDITO_DISPONIVEL },
@@ -194,14 +217,22 @@ export async function semearRoteiroOrcamentario(
     // A chave é o PAR (tipo, tipoCredito), e o Prisma não aceita `null` dentro de chave
     // única composta — daí o findFirst em vez do upsert. Quem garante a unicidade é o banco.
     const ja = await prisma.roteiroOrcamentario.findFirst({
-      where: { tipo: r.tipo, tipoCredito: r.tipoCredito ?? null },
+      where: { tipo: r.tipo, tipoCredito: r.tipoCredito ?? null, abertura: r.abertura ?? null },
       select: { id: true },
     });
     if (ja !== null) continue;
+    // ⚠️ A VERSÃO É A SEQUÊNCIA DAS DECISÕES POR (tipo, tipoCredito) — o índice único é esse, e
+    // as duas aberturas do mesmo tipo de crédito não podem repetir a versão 1.
+    const ultima = await prisma.roteiroOrcamentario.aggregate({
+      where: { tipo: r.tipo, tipoCredito: r.tipoCredito ?? null },
+      _max: { versao: true },
+    });
     await prisma.roteiroOrcamentario.create({
       data: {
         tipo: r.tipo,
         tipoCredito: r.tipoCredito ?? null,
+        abertura: r.abertura ?? null,
+        versao: (ultima._max.versao ?? 0) + 1,
         contaDebitoId: ids.get(r.debito)!,
         contaCreditoId: ids.get(r.credito)!,
         criadoPor: "TESTE",

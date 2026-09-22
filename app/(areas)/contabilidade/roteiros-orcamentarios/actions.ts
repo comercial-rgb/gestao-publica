@@ -30,6 +30,7 @@ export async function publicarRoteiroAction(_p: EstadoDoRoteiro, f: FormData): P
       const sucesso = await publicarRoteiro({
         tipo: t(f, "tipo"),
         tipoCredito: t(f, "tipoCredito") === "" ? null : t(f, "tipoCredito"),
+        abertura: t(f, "abertura") === "" ? null : t(f, "abertura"),
         contaDebitoCodigo: t(f, "contaDebitoCodigo"),
         contaCreditoCodigo: t(f, "contaCreditoCodigo"),
         fundamento: t(f, "fundamento"),

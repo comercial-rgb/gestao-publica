@@ -81,9 +81,9 @@ export default async function RoteirosOrcamentariosPage(): Promise<React.ReactEl
             <tbody>
               {linhas.map((l) => (
                 <tr
-                  key={`${l.tipo}|${l.tipoCredito ?? ""}`}
+                  key={`${l.tipo}|${l.tipoCredito ?? ""}|${l.abertura ?? ""}`}
                   className="border-b border-[color:var(--color-border)] align-top"
-                  data-teste={`roteiro-${l.tipo}${l.tipoCredito === null ? "" : `-${l.tipoCredito}`}`}
+                  data-teste={`roteiro-${l.tipo}${l.tipoCredito === null ? "" : `-${l.tipoCredito}`}${l.abertura === null ? "" : `-${l.abertura}`}`}
                 >
                   <td className="py-1.5 pr-4">
                     <strong>{l.rotulo}</strong>
@@ -121,7 +121,13 @@ export default async function RoteirosOrcamentariosPage(): Promise<React.ReactEl
                         <span className="block text-[color:var(--color-ink-3)]">por {l.criadoPor}</span>
                       </>
                     ) : null}
-                    <FormDoPar tipo={l.tipo} tipoCredito={l.tipoCredito} debito={l.debito} credito={l.credito} />
+                    <FormDoPar
+                      tipo={l.tipo}
+                      tipoCredito={l.tipoCredito}
+                      abertura={l.abertura}
+                      debito={l.debito}
+                      credito={l.credito}
+                    />
                   </td>
                 </tr>
               ))}

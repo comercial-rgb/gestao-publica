@@ -15,7 +15,11 @@ import {
 } from "../m05-despesa/adapter-prisma.js";
 import { exigirExercicioAberto } from "../m08-restos-a-pagar/guard-exercicio.js";
 import { registrarMovimentoDotacao } from "../m05-despesa/dotacao-razao.js";
-import { classificarAbertura, type TipoDeCreditoAdicional } from "./abertura-do-credito.js";
+import {
+  classificarAbertura,
+  exigirAberturaDoDecreto,
+  type TipoDeCreditoAdicional,
+} from "./abertura-do-credito.js";
 import { ehRecursoNovo, type OrigemRecurso } from "./dominio.js";
 import type {
   AnularCreditoParams,
@@ -434,7 +438,10 @@ export function criarCreditoRepositoryPrisma(
             // ⚠️ O TIPO DE CRÉDITO VEM DA LEI, e ele decide a CONTA (V11 V7.1). O PCASP parte
             // `5.2.2.1.2 DOTAÇÃO ADICIONAL POR TIPO DE CREDITO` em suplementar, especial e
             // extraordinário; sem carregá-lo até o movimento, o razão não sabe em qual entrar.
-            lei: { select: { valorAutorizado: true, tipoCredito: true } },
+            // ⚠️ E O ANO E A PUBLICAÇÃO DA LEI VÊM JUNTO (V11 V8.8): é deles, contra o ano do
+            // DECRETO, que sai ABERTO ou REABERTO — a dimensão que o plano parte em contas
+            // diferentes. Derivada aqui, e não gravada, pelo mesmo motivo do tipo de crédito.
+            lei: { select: { valorAutorizado: true, tipoCredito: true, ano: true, dataPublicacao: true } },
           },
         });
         if (decreto.encerramento !== null) {
@@ -596,6 +603,20 @@ export function criarCreditoRepositoryPrisma(
           }
         }
 
+        // ⚠️ ABERTO OU REABERTO, UMA VEZ PARA O DECRETO INTEIRO (V11 V8.8). É do decreto, não do
+        // item: todos os itens executam o MESMO ato, e classificá-los em separado abriria a porta
+        // para dois itens do mesmo decreto caírem em contas diferentes.
+        //
+        // ⚠️ E ELA RECUSA. Um decreto ilegal não NASCE desde a V8.6, mas os que nasceram antes
+        // daquela guarda continuam no banco — executá-los seria escriturar crédito sem autorização
+        // vigente. `null` aqui é o SUPLEMENTAR, que não se parte.
+        const abertura = exigirAberturaDoDecreto({
+          tipoCredito: decreto.lei.tipoCredito as TipoDeCreditoAdicional,
+          leiAno: decreto.lei.ano,
+          leiDataPublicacao: decreto.lei.dataPublicacao,
+          decretoAno: decreto.ano,
+        });
+
         // Grava tudo. Cada item -> um MovimentoDotacao.
         const ids: string[] = [];
         for (const item of p.itens) {
@@ -617,6 +638,8 @@ export function criarCreditoRepositoryPrisma(
             ...(item.tipo === "SUPLEMENTACAO"
               ? { tipoCredito: decreto.lei.tipoCredito }
               : {}),
+            // A abertura acompanha o tipo de crédito, e só existe onde ele se parte.
+            ...(item.tipo === "SUPLEMENTACAO" && abertura !== null ? { abertura } : {}),
             valor: item.valor.toFixed(2),
             origemTipo: "CREDITO_ADICIONAL",
             origemId: p.decretoId,
@@ -660,7 +683,22 @@ export function criarCreditoRepositoryPrisma(
         // original noutro, e o par não fecharia no balancete.
         const decreto = await tx.decretoCredito.findUniqueOrThrow({
           where: { id: p.decretoId },
-          select: { lei: { select: { tipoCredito: true } } },
+          select: {
+            ano: true,
+            lei: { select: { tipoCredito: true, ano: true, dataPublicacao: true } },
+          },
+        });
+
+        // ⚠️ A MESMA ABERTURA DO ORIGINAL, E PELO MESMO CAMINHO. O estorno de uma ANULAÇÃO volta a
+        // ser um CREDITO_ADICIONAL, e ele tem de voltar para a conta EXATA de onde o fato saiu —
+        // um reaberto estornado na conta do aberto deixaria as duas contas erradas ao mesmo tempo,
+        // e o par não fecharia no balancete. Derivar de novo devolve o mesmo valor porque as duas
+        // datas são as mesmas; guardar a conclusão em outro lugar é que criaria divergência.
+        const abertura = exigirAberturaDoDecreto({
+          tipoCredito: decreto.lei.tipoCredito as TipoDeCreditoAdicional,
+          leiAno: decreto.lei.ano,
+          leiDataPublicacao: decreto.lei.dataPublicacao,
+          decretoAno: decreto.ano,
         });
 
         const itens = await tx.itemCredito.findMany({
@@ -722,6 +760,7 @@ export function criarCreditoRepositoryPrisma(
             ...(item.tipo === "ANULACAO"
               ? { tipoCredito: decreto.lei.tipoCredito }
               : {}),
+            ...(item.tipo === "ANULACAO" && abertura !== null ? { abertura } : {}),
             valor: item.valor.toFixed(2),
             origemTipo: "CREDITO_ANULADO",
             origemId: p.decretoId,

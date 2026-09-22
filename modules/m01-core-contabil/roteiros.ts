@@ -105,11 +105,18 @@ export const CONTA_CREDITO_ADICIONAL_SUPLEMENTAR = "5.2.2.1.2.01.00";
  * CF art. 167 § 2º manda reabrir no seguinte pelo saldo remanescente. São exercícios
  * diferentes, e a distinção não é de nome: é de qual ato deu origem ao crédito.
  *
- * ⚠️ O SISTEMA NÃO SABE DIZER QUAL É. `LeiCredito` e `DecretoCredito` não têm, hoje, nada
- * que ligue um crédito especial ao crédito do exercício anterior de que ele é a reabertura.
- * Enquanto esse fato não existir, escolher uma das três seria carimbar "aberto" em toda
- * reabertura — e é o TCE que lê a diferença. `RoteiroOrcamentario` fica SEM a linha destes
- * dois tipos, e o domínio RECUSA o movimento nomeando o tipo, que é o estado correto.
+ * ⚠️ O SISTEMA PASSOU A SABER QUAL É (V11 V8.6 e V8.8) — e esta é a parte da pendência que
+ * fechou. O vínculo que se dizia ausente existia: o decreto aponta para a lei, e cada um tem o
+ * seu ano. `classificarAbertura` (M03) lê a diferença, `criarDecreto` recusa o que o § 2º não
+ * alcança, e `RoteiroOrcamentario.abertura` carrega a dimensão até o razão — o reaberto e o
+ * aberto não entram mais na mesma conta.
+ *
+ * ⚠️ O QUE CONTINUA SENDO DECISÃO DO ENTE, e por isso estas constantes continuam apontando para
+ * a SINTÉTICA: qual analítica recebe um REABERTO. São duas — `.02` REABERTOS e `.03` REABERTOS -
+ * SUPLEMENTAÇÃO —, e a diferença entre elas é de classificação contábil, não de fato derivável.
+ * Pendência `REABERTO-COM-SUPLEMENTACAO-NAO-DISTINGUIDO`. O seed segue recusando e IMPRIMINDO as
+ * candidatas lidas do plano que está no banco; quem decide publica em
+ * `/contabilidade/roteiros-orcamentarios`, com fundamento e data.
  *
  * Estas constantes existem apontando para a SINTÉTICA justamente para que o seed recuse e
  * IMPRIMA as três candidatas lidas do plano que está no banco — quem for decidir precisa

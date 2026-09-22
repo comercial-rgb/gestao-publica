@@ -59,6 +59,17 @@ const prisma = criarPrismaClient(DATABASE_URL);
  * candidatas lidas do banco. Ver `ROTEIRO-CREDITO-ADICIONAL-POR-TIPO` e
  * `CREDITO-ESPECIAL-ABERTO-OU-REABERTO` em `modules/m01-core-contabil/roteiros.ts`.
  */
+/**
+ * ⚠️ A RESSALVA DIZ O QUE MUDOU, E O QUE NÃO. O sistema já SEPARA aberto de reaberto sozinho; o
+ * que ele não faz é escolher a analítica de cada um — e a de reabertura tem duas candidatas.
+ * Quem decide publica pela tela do roteiro orçamentário, com fundamento.
+ */
+const RESSALVA_DA_ABERTURA =
+  "O sistema JÁ distingue ABERTO de REABERTO sozinho (ano do decreto contra o ano e a data da " +
+  "lei, CF art. 167 § 2º) — o que falta é dizer em que analítica cada um entra, e a reabertura " +
+  "tem DUAS candidatas no plano (REABERTOS e REABERTOS - SUPLEMENTAÇÃO). Decida em " +
+  "/contabilidade/roteiros-orcamentarios, onde a escolha fica com fundamento e data.";
+
 const ROTEIROS: readonly {
   readonly tipo:
     | "DOTACAO_INICIAL"
@@ -67,6 +78,8 @@ const ROTEIROS: readonly {
     | "RESERVA"
     | "RESERVA_LIBERADA";
   readonly tipoCredito?: "SUPLEMENTAR" | "ESPECIAL" | "EXTRAORDINARIO";
+  /** ⚠️ A TERCEIRA DIMENSÃO (V11 V8.8) — só no especial e no extraordinário. */
+  readonly abertura?: "ABERTO" | "REABERTO";
   readonly debito: string;
   readonly credito: string;
   /**
@@ -79,8 +92,17 @@ const ROTEIROS: readonly {
 }[] = [
   { tipo: "DOTACAO_INICIAL", debito: CONTA_DOTACAO_INICIAL, credito: CONTA_CREDITO_DISPONIVEL },
   { tipo: "CREDITO_ADICIONAL", tipoCredito: "SUPLEMENTAR", debito: CONTA_CREDITO_ADICIONAL_SUPLEMENTAR, credito: CONTA_CREDITO_DISPONIVEL },
-  { tipo: "CREDITO_ADICIONAL", tipoCredito: "ESPECIAL", debito: CONTA_CREDITO_ADICIONAL_ESPECIAL, credito: CONTA_CREDITO_DISPONIVEL },
-  { tipo: "CREDITO_ADICIONAL", tipoCredito: "EXTRAORDINARIO", debito: CONTA_CREDITO_ADICIONAL_EXTRAORDINARIO, credito: CONTA_CREDITO_DISPONIVEL },
+  // ⚠️ QUATRO LINHAS DESDE A V11 V8.8, E AS QUATRO CONTINUAM RECUSADAS — mas por outro motivo,
+  // e a diferença é o lote inteiro. Até a V8.6 faltava o FATO: ninguém sabia dizer se um crédito
+  // era aberto ou reaberto. O fato passou a ser LIDO (decreto contra lei, CF art. 167 § 2º) e a
+  // V8.8 o pôs na chave do roteiro. O que resta é uma DECISÃO do ente, e ela é dele: o plano tem
+  // TRÊS analíticas sob cada ramo (ABERTOS, REABERTOS e REABERTOS - SUPLEMENTAÇÃO), e qual delas
+  // recebe um reaberto é escolha contábil. O seed aponta para a sintética de propósito, para
+  // recusar IMPRIMINDO as candidatas lidas do plano que está no banco.
+  { tipo: "CREDITO_ADICIONAL", tipoCredito: "ESPECIAL", abertura: "ABERTO", debito: CONTA_CREDITO_ADICIONAL_ESPECIAL, credito: CONTA_CREDITO_DISPONIVEL, ressalva: RESSALVA_DA_ABERTURA },
+  { tipo: "CREDITO_ADICIONAL", tipoCredito: "ESPECIAL", abertura: "REABERTO", debito: CONTA_CREDITO_ADICIONAL_ESPECIAL, credito: CONTA_CREDITO_DISPONIVEL, ressalva: RESSALVA_DA_ABERTURA },
+  { tipo: "CREDITO_ADICIONAL", tipoCredito: "EXTRAORDINARIO", abertura: "ABERTO", debito: CONTA_CREDITO_ADICIONAL_EXTRAORDINARIO, credito: CONTA_CREDITO_DISPONIVEL, ressalva: RESSALVA_DA_ABERTURA },
+  { tipo: "CREDITO_ADICIONAL", tipoCredito: "EXTRAORDINARIO", abertura: "REABERTO", debito: CONTA_CREDITO_ADICIONAL_EXTRAORDINARIO, credito: CONTA_CREDITO_DISPONIVEL, ressalva: RESSALVA_DA_ABERTURA },
   {
     tipo: "ANULACAO_CREDITO",
     debito: CONTA_CREDITO_DISPONIVEL,
@@ -95,9 +117,14 @@ const ROTEIROS: readonly {
   { tipo: "RESERVA_LIBERADA", debito: CONTA_CREDITO_RESERVADO, credito: CONTA_CREDITO_DISPONIVEL },
 ];
 
-/** O rótulo do roteiro em uma linha — "CREDITO_ADICIONAL/ESPECIAL" quando há tipo. */
-function rotulo(r: { readonly tipo: string; readonly tipoCredito?: string }): string {
-  return r.tipoCredito === undefined ? r.tipo : `${r.tipo}/${r.tipoCredito}`;
+/** O rótulo do roteiro em uma linha — "CREDITO_ADICIONAL/ESPECIAL/ABERTO" quando há as duas. */
+function rotulo(r: {
+  readonly tipo: string;
+  readonly tipoCredito?: string;
+  readonly abertura?: string;
+}): string {
+  if (r.tipoCredito === undefined) return r.tipo;
+  return `${r.tipo}/${r.tipoCredito}${r.abertura === undefined ? "" : `/${r.abertura}`}`;
 }
 
 /**
@@ -112,13 +139,16 @@ function rotulo(r: { readonly tipo: string; readonly tipoCredito?: string }): st
  * `migrate → SQL → PCASP → roteiro → exercício → bootstrap → cenário → percursos`: o procedimento
  * documentado de instalação não terminava, e nenhum banco novo nascia.
  *
- * ⚠️ E O PLACAR MUDOU EM V7.1, PARA MELHOR E PARA PIOR AO MESMO TEMPO. São agora SETE roteiros
- * (o crédito adicional virou três, um por tipo de crédito). Passaram a ser parametrizados a
- * DOTAÇÃO INICIAL e o CRÉDITO ADICIONAL **SUPLEMENTAR** — que é o caso comum de um município.
- * Continuam recusados, cada um com a sua causa nomeada em `modules/m01-core-contabil/roteiros.ts`:
+ * ⚠️ E O PLACAR MUDOU EM V7.1, PARA MELHOR E PARA PIOR AO MESMO TEMPO. São agora NOVE roteiros (o
+ * crédito adicional virou três em V7.1, um por tipo de crédito, e o especial e o extraordinário
+ * se partiram em ABERTO e REABERTO em V8.8). Passaram a ser parametrizados a DOTAÇÃO INICIAL e o
+ * CRÉDITO ADICIONAL **SUPLEMENTAR** — que é o caso comum de um município. Continuam recusados,
+ * cada um com a sua causa nomeada em `modules/m01-core-contabil/roteiros.ts`:
  *
- *   CREDITO_ADICIONAL/ESPECIAL e /EXTRAORDINARIO  `CREDITO-ESPECIAL-ABERTO-OU-REABERTO`
- *     falta um FATO (aberto ou reaberto), não uma conta.
+ *   CREDITO_ADICIONAL/ESPECIAL e /EXTRAORDINARIO, nas duas aberturas
+ *     O FATO deixou de faltar (V8.6 lê aberto ou reaberto do decreto contra a lei, e V8.8 o pôs
+ *     na chave do roteiro). Falta a DECISÃO: qual analítica de reabertura o ente usa — são duas,
+ *     REABERTOS e REABERTOS - SUPLEMENTAÇÃO. Pendência `REABERTO-COM-SUPLEMENTACAO-NAO-DISTINGUIDO`.
  *   ANULACAO_CREDITO                              `ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`
  *     o plano tem DUAS analíticas com o nome idêntico, em ramos diferentes.
  *   RESERVA e RESERVA_LIBERADA                    `ROTEIRO-RESERVA-SEM-CONTA`
@@ -191,14 +221,22 @@ for (const r of ROTEIROS) {
   // de uma chave única composta. O `findFirst` + create/update faz o mesmo trabalho, e quem
   // garante a unicidade é o banco — o índice composto mais o parcial de `prisma/sql/`.
   const ja = await prisma.roteiroOrcamentario.findFirst({
-    where: { tipo: r.tipo, tipoCredito: r.tipoCredito ?? null },
+    where: { tipo: r.tipo, tipoCredito: r.tipoCredito ?? null, abertura: r.abertura ?? null },
     select: { id: true },
   });
   if (ja === null) {
+    // A versão é a sequência das decisões por (tipo, tipoCredito) — as duas aberturas do mesmo
+    // tipo de crédito não podem repetir a versão 1, que é o índice único do banco.
+    const ultima = await prisma.roteiroOrcamentario.aggregate({
+      where: { tipo: r.tipo, tipoCredito: r.tipoCredito ?? null },
+      _max: { versao: true },
+    });
     await prisma.roteiroOrcamentario.create({
       data: {
         tipo: r.tipo,
         tipoCredito: r.tipoCredito ?? null,
+        abertura: r.abertura ?? null,
+        versao: (ultima._max.versao ?? 0) + 1,
         contaDebitoId: debito.id,
         contaCreditoId: credito.id,
         criadoPor: "SEED",

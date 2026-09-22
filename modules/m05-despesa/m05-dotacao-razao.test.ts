@@ -294,13 +294,16 @@ describe("M02/M05 — a dotação no razão", () => {
     const tipos = (
       await prisma.roteiroOrcamentario.findMany({ select: { tipo: true } })
     ).map((r) => r.tipo);
-    // ⚠️ TRÊS `CREDITO_ADICIONAL` DESDE A V7.1 — um por tipo de crédito (suplementar,
-    // especial, extraordinário). O que este teste afirma continua sendo o mesmo: EMPENHO e
+    // ⚠️ CINCO `CREDITO_ADICIONAL` DESDE A V11 V8.8 — eram três na V7.1 (um por tipo de crédito)
+    // e o especial e o extraordinário passaram a se partir em ABERTO e REABERTO, que no plano são
+    // contas diferentes. O que este teste afirma continua sendo o mesmo: EMPENHO e
     // EMPENHO_ANULADO **não** estão na tabela, porque o `empenhar()` já os lança pelo roteiro
     // que o chamador passa. A contagem por tipo entra na asserção de propósito: um roteiro de
     // crédito adicional que sumisse deixaria o teste verde se a lista fosse só de nomes.
     expect(tipos.sort()).toEqual([
       "ANULACAO_CREDITO",
+      "CREDITO_ADICIONAL",
+      "CREDITO_ADICIONAL",
       "CREDITO_ADICIONAL",
       "CREDITO_ADICIONAL",
       "CREDITO_ADICIONAL",

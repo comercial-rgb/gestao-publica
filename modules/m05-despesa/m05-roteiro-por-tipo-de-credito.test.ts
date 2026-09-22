@@ -36,10 +36,11 @@ import { registrarMovimentoDotacao } from "./dotacao-razao.js";
  *
  * ⚠️ AS CONTAS DO ESPECIAL E DO EXTRAORDINÁRIO AQUI SÃO FIXTURE, NÃO CLASSIFICAÇÃO. O
  * plano parte cada um desses ramos em três analíticas (ABERTOS / REABERTOS / REABERTOS -
- * SUPLEMENTAÇÃO) e o sistema ainda não registra o fato que as separa — pendência
- * `CREDITO-ESPECIAL-ABERTO-OU-REABERTO`. Em produção o seed RECUSA esses dois roteiros; o
- * helper de teste os semeia sob nomes `FIXTURE_*` justamente para que isto se leia como
- * andaime. O que t1 prova é a PARTIÇÃO, não a conta.
+ * SUPLEMENTAÇÃO). Desde a V11 V8.8 o sistema SEPARA as duas primeiras — a abertura é lida do
+ * decreto contra a lei e entra na chave do roteiro —, mas QUAL analítica de reabertura o ente usa
+ * continua sendo decisão dele (`REABERTO-COM-SUPLEMENTACAO-NAO-DISTINGUIDO`). Em produção o seed
+ * RECUSA esses roteiros; o helper de teste os semeia sob nomes `FIXTURE_*` justamente para que
+ * isto se leia como andaime. O que t1 prova é a PARTIÇÃO, não a conta.
  */
 
 const prisma = criarPrismaDeTeste();
@@ -168,8 +169,12 @@ describe("o crédito adicional entra na conta do SEU tipo", () => {
 
   it("t2 — tipo de crédito SEM roteiro é recusado NOMEANDO o tipo, e nada é gravado", async () => {
     await semearRoteiroOrcamentario(prisma);
+    // ⚠️ A ABERTURA ENTRA NO `where` DESDE A V8.8, e não é detalhe: o helper passou a semear DUAS
+    // linhas de EXTRAORDINARIO (ABERTO e REABERTO). Sem ela, o `findFirst` podia apagar a do
+    // REABERTO e o teste mediria o silêncio — o crédito deste caso é de 2026 contra lei de 2026,
+    // ou seja, ABERTO.
     const alvo = await prisma.roteiroOrcamentario.findFirstOrThrow({
-      where: { tipo: "CREDITO_ADICIONAL", tipoCredito: "EXTRAORDINARIO" },
+      where: { tipo: "CREDITO_ADICIONAL", tipoCredito: "EXTRAORDINARIO", abertura: "ABERTO" },
       select: { id: true },
     });
     await prisma.roteiroOrcamentario.delete({ where: { id: alvo.id } });
@@ -177,7 +182,9 @@ describe("o crédito adicional entra na conta do SEU tipo", () => {
     const antes = await prisma.movimentoDotacao.count();
 
     await expect(abrirCredito("EXTRAORDINARIO", "ficha-a", "extra")).rejects.toThrow(
-      /ROTEIRO ORÇAMENTÁRIO NÃO PARAMETRIZADO para CREDITO_ADICIONAL do tipo EXTRAORDINARIO/
+      // ⚠️ E A MENSAGEM NOMEIA A ABERTURA. Quem lê a recusa precisa saber QUAL das duas linhas
+      // falta: dizer só "EXTRAORDINARIO" mandaria a pessoa conferir um roteiro que existe.
+      /ROTEIRO ORÇAMENTÁRIO NÃO PARAMETRIZADO para CREDITO_ADICIONAL do tipo EXTRAORDINARIO, ABERTO/
     );
 
     // ⚠️ E A RECUSA DESFEZ TUDO. O movimento é criado ANTES da consulta do roteiro; o que

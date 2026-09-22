@@ -540,6 +540,22 @@ model RoteiroOrcamentario {
   /// criaria a segunda verdade sobre o tipo do mesmo crédito.
   tipoCredito TipoCredito?
 
+  /// ⚠️ A TERCEIRA DIMENSÃO DA CHAVE (V11 V8.8) — e ela fecha `ROTEIRO-SEM-DIMENSAO-DA-ABERTURA`.
+  ///
+  /// O PCASP parte o ramo do ESPECIAL e do EXTRAORDINÁRIO em ABERTOS e REABERTOS. Sem esta
+  /// coluna, o crédito reaberto do exercício seguinte lançava na MESMA conta do aberto — e é
+  /// exatamente essa diferença que o TCE lê.
+  ///
+  /// NULO onde a abertura não se aplica: dotação inicial, reserva, anulação e o crédito
+  /// SUPLEMENTAR, que não se reabre (o § 2º alcança só especial e extraordinário). O CHECK
+  /// `ck_roteiro_abertura_so_de_credito_reabrivel` é quem impede que ela apareça fora daí —
+  /// uma abertura numa linha de RESERVA criaria uma chave que nenhuma leitura procura.
+  ///
+  /// ⚠️ NULO TAMBÉM NAS LINHAS ANTERIORES À DIMENSÃO, e essas o razão NÃO usa mais para
+  /// especial/extraordinário: ler uma delas classificaria o reaberto pela decisão tomada quando
+  /// a pergunta ainda não existia. A leitura é fail-closed e nomeia a abertura que falta.
+  abertura AberturaDoCredito?
+
   contaDebitoId String
   contaDebito   ContaPcasp @relation("DebitoOrcamentario", fields: [contaDebitoId], references: [id])
 
@@ -560,6 +576,12 @@ model RoteiroOrcamentario {
   criadoEm  DateTime @default(now())
   criadoPor String
 
+  /// ⚠️ A VERSÃO CONTINUA SENDO ÚNICA POR (tipo, tipoCredito) — e a abertura NÃO entra aqui,
+  /// de propósito. A versão é a SEQUÊNCIA DAS DECISÕES do ente sobre aquele tipo de crédito:
+  /// publicar o ABERTO e depois o REABERTO dá v1 e v2, e a vigente de cada um é a maior versão
+  /// COM A SUA abertura. Pôr a abertura na chave da versão obrigaria a derrubar este índice —
+  /// e migration aqui é aditiva, zero DROP.
   @@unique([tipo, tipoCredito, versao])
   @@index([tipo, tipoCredito, versao])
+  @@index([tipo, tipoCredito, abertura, versao])
 }

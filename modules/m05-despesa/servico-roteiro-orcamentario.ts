@@ -30,11 +30,26 @@ import { autorizarNo } from "../m16-travamento/escopo.js";
 type Tx = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 
 const TIPOS_DE_CREDITO = ["SUPLEMENTAR", "ESPECIAL", "EXTRAORDINARIO"] as const;
+const ABERTURAS = ["ABERTO", "REABERTO"] as const;
+
+/**
+ * ⚠️ A ABERTURA SÓ EXISTE NO ESPECIAL E NO EXTRAORDINÁRIO (V11 V8.8) — é o alcance da CF art.
+ * 167 § 2º, e é a partição que o PCASP acompanha. O suplementar reforça dotação que já existe e
+ * morre com o exercício: ele não se reabre. O MESMO predicado vive em `dotacao-razao.ts`, do lado
+ * de quem LÊ — aqui ele guarda quem ESCREVE, e o CHECK do banco guarda os dois.
+ */
+const exigeAbertura = (tipo: string, tipoCredito: string | null): boolean =>
+  tipo === "CREDITO_ADICIONAL" && (tipoCredito === "ESPECIAL" || tipoCredito === "EXTRAORDINARIO");
 
 export const zPublicarRoteiro = z.object({
   tipo: z.string().trim().min(1),
   /** Ausente = o movimento não é crédito adicional. O par (tipo, tipoCredito) é a chave. */
   tipoCredito: z.enum(TIPOS_DE_CREDITO).nullable().optional(),
+  /**
+   * A TERCEIRA DIMENSÃO DA CHAVE. Ausente onde a norma não parte — e obrigatória onde parte, o
+   * que esta camada confere com mensagem, não com violação de CHECK.
+   */
+  abertura: z.enum(ABERTURAS).nullable().optional(),
   contaDebitoCodigo: z.string().trim().min(1),
   contaCreditoCodigo: z.string().trim().min(1),
   fundamento: z
@@ -95,6 +110,26 @@ export async function publicarRoteiroOrcamentario(
 ): Promise<RoteiroPublicado> {
   const d = zPublicarRoteiro.parse(input);
   const tipoCredito = d.tipoCredito ?? null;
+  const abertura = d.abertura ?? null;
+
+  // ⚠️ AS DUAS DIREÇÕES, E ANTES DE ABRIR A TRANSAÇÃO. Faltando, o ente publicaria uma linha que
+  // a leitura do razão nunca encontra (ela procura pela abertura) e o movimento seguiria recusado
+  // com a tela mostrando um roteiro configurado — a pior combinação possível. Sobrando, o CHECK
+  // do banco recusaria com uma violação de constraint no lugar de um motivo.
+  if (exigeAbertura(d.tipo, tipoCredito) && abertura === null) {
+    throw new Error(
+      `O crédito ${tipoCredito} se parte em ABERTO e REABERTO, e o plano tem uma conta para cada. ` +
+        `Publique o roteiro dizendo QUAL dos dois ele classifica: um crédito reaberto lançado na ` +
+        `conta do aberto é exatamente a diferença que o tribunal lê. Nada foi gravado.`
+    );
+  }
+  if (!exigeAbertura(d.tipo, tipoCredito) && abertura !== null) {
+    throw new Error(
+      `${rotulo(d.tipo, tipoCredito, null)} não se parte em ABERTO e REABERTO. A reabertura do ` +
+        `art. 167 § 2º alcança só o crédito ESPECIAL e o EXTRAORDINÁRIO; aqui ela classificaria ` +
+        `uma diferença que a norma não faz. Nada foi gravado.`
+    );
+  }
 
   if (d.contaDebitoCodigo === d.contaCreditoCodigo) {
     throw new Error(
@@ -110,22 +145,33 @@ export async function publicarRoteiroOrcamentario(
     const debito = await exigirAnalitica(tx, d.contaDebitoCodigo, "débito");
     const credito = await exigirAnalitica(tx, d.contaCreditoCodigo, "crédito");
 
-    const vigente = await roteiroVigente(tx, d.tipo, tipoCredito);
+    const vigente = await roteiroVigente(tx, d.tipo, tipoCredito, abertura);
     if (vigente !== null && vigente.debito === debito.codigo && vigente.credito === credito.codigo) {
       throw new Error(
-        `O roteiro de ${rotulo(d.tipo, tipoCredito)} já é ${debito.codigo} / ${credito.codigo}. ` +
+        `O roteiro de ${rotulo(d.tipo, tipoCredito, abertura)} já é ${debito.codigo} / ${credito.codigo}. ` +
           `Republicar o mesmo par não é um fato novo. Nada foi gravado.`
       );
     }
+
+    // ⚠️ A VERSÃO É DO (tipo, tipoCredito), NÃO DA ABERTURA — e é isso que deixou a migração da
+    // V8.8 ser aditiva. O índice único de (tipo, tipoCredito, versao) continua de pé: a versão é a
+    // SEQUÊNCIA DAS DECISÕES do ente sobre aquele tipo de crédito, e publicar o ABERTO e depois o
+    // REABERTO dá v1 e v2. Contar por abertura daria v1 nos dois e colidiria — só derrubando o
+    // índice, que é o que não se faz aqui.
+    const ultima = await tx.roteiroOrcamentario.aggregate({
+      where: { tipo: d.tipo as never, tipoCredito: tipoCredito as never },
+      _max: { versao: true },
+    });
 
     const r = await tx.roteiroOrcamentario.create({
       data: {
         tipo: d.tipo as never,
         tipoCredito: tipoCredito as never,
+        abertura: abertura as never,
         contaDebitoId: debito.id,
         contaCreditoId: credito.id,
         fundamento: d.fundamento,
-        versao: (vigente?.versao ?? 0) + 1,
+        versao: (ultima._max.versao ?? 0) + 1,
         criadoPor: d.criadoPor,
       },
       select: { id: true, versao: true },
@@ -139,8 +185,10 @@ export async function publicarRoteiroOrcamentario(
   });
 }
 
-const rotulo = (tipo: string, tipoCredito: string | null): string =>
-  tipoCredito === null ? tipo : `${tipo} do tipo ${tipoCredito}`;
+const rotulo = (tipo: string, tipoCredito: string | null, abertura: string | null): string =>
+  tipoCredito === null
+    ? tipo
+    : `${tipo} do tipo ${tipoCredito}${abertura === null ? "" : `, ${abertura}`}`;
 
 export interface RoteiroVigente {
   readonly versao: number;
@@ -151,14 +199,21 @@ export interface RoteiroVigente {
   readonly criadoEm: Date;
 }
 
-/** A versão VIGENTE de um par — a de maior versão. `null` quando o ente nunca decidiu. */
+/**
+ * A versão VIGENTE de uma chave — a de maior versão. `null` quando o ente nunca decidiu.
+ *
+ * ⚠️ A ABERTURA ENTRA NO FILTRO, E `null` NELA NÃO É "QUALQUER UMA" (V11 V8.8): é a chave das
+ * linhas que não se partem. Tratá-la como coringa devolveria, para um REABERTO, a decisão tomada
+ * quando a pergunta ainda não existia — que é a pendência inteira.
+ */
 export async function roteiroVigente(
   tx: Tx,
   tipo: string,
-  tipoCredito: string | null
+  tipoCredito: string | null,
+  abertura: string | null = null
 ): Promise<RoteiroVigente | null> {
   const r = await tx.roteiroOrcamentario.findFirst({
-    where: { tipo: tipo as never, tipoCredito: tipoCredito as never },
+    where: { tipo: tipo as never, tipoCredito: tipoCredito as never, abertura: abertura as never },
     orderBy: { versao: "desc" },
     select: {
       versao: true,

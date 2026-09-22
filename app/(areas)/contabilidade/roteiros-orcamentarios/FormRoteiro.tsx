@@ -73,11 +73,16 @@ export function RoteirosDoEnte({
 export function FormDoPar({
   tipo,
   tipoCredito,
+  abertura,
   debito,
   credito,
 }: {
   readonly tipo: string;
   readonly tipoCredito: string | null;
+  /** ⚠️ VEM DA LINHA, e não de um campo escolhível (V11 V8.8): quem diz se um crédito é ABERTO
+   *  ou REABERTO é a CF art. 167 § 2º, lida do decreto contra a lei. Oferecer a escolha aqui
+   *  seria pedir de novo o que o sistema já sabe — e o que se pede, se erra. */
+  readonly abertura: string | null;
   readonly debito: string | null;
   readonly credito: string | null;
 }): React.ReactElement {
@@ -106,6 +111,7 @@ export function FormDoPar({
       <ChaveDeComando />
       <input type="hidden" name="tipo" value={tipo} />
       <input type="hidden" name="tipoCredito" value={tipoCredito ?? ""} />
+      <input type="hidden" name="abertura" value={abertura ?? ""} />
 
       <label className="text-xs sm:col-span-2">
         <span className={ROTULO}>Conta de DÉBITO</span>

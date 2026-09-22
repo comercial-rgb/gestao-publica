@@ -15,6 +15,29 @@ enum TipoCredito {
   EXTRAORDINARIO
 }
 
+/// ═══ ABERTO OU REABERTO — a partição que a CF art. 167 § 2º impõe (V11 V8.8) ═══
+///
+/// O PCASP parte o ramo do crédito ESPECIAL e do EXTRAORDINÁRIO em ABERTOS e REABERTOS —
+/// contas DIFERENTES, e é o TCE que lê a diferença. Até aqui o roteiro orçamentário era
+/// chaveado só por (movimento, tipo de crédito), e por isso um crédito REABERTO lançava na
+/// MESMA conta de um ABERTO (pendência `ROTEIRO-SEM-DIMENSAO-DA-ABERTURA`).
+///
+/// ⚠️ ESTE ENUM NÃO É COLUNA DE DECRETO NEM DE MOVIMENTO, e isso é deliberado: a abertura se
+/// DERIVA do ano do decreto contra o ano e a data de publicação da lei
+/// (`modules/m03-creditos/abertura-do-credito.ts`), pelo mesmo caminho por onde o tipo de
+/// crédito já vem. Gravá-la seria a segunda verdade sobre o mesmo crédito — o mesmo motivo
+/// pelo qual `tipoCredito` não é coluna de `MovimentoDotacao`.
+///
+/// Ele existe aqui só para dar TIPO à dimensão do roteiro, que é onde o ente decide as contas.
+enum AberturaDoCredito {
+  /// Autorizado e aberto NESTE exercício.
+  ABERTO
+
+  /// Saldo de um crédito autorizado nos últimos quatro meses do exercício anterior, reaberto
+  /// no seguinte pelo remanescente (CF art. 167 § 2º).
+  REABERTO
+}
+
 enum OrigemRecurso {
   /// Tira de outra(s) ficha(s). Operação de DOIS LADOS que TEM de fechar.
   ANULACAO

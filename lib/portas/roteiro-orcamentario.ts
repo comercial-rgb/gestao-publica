@@ -24,6 +24,11 @@ import { comEscritaAutenticada } from "./sessao";
 export interface ParDeRoteiro {
   readonly tipo: string;
   readonly tipoCredito: string | null;
+  /**
+   * ⚠️ A TERCEIRA DIMENSÃO (V11 V8.8) — só no especial e no extraordinário. `null` nos demais, e
+   * isso não é "ainda não decidido": é a norma não partindo.
+   */
+  readonly abertura: "ABERTO" | "REABERTO" | null;
   readonly rotulo: string;
   /** O que o movimento faz — para quem configura saber o que está classificando. */
   readonly explicacao: string;
@@ -38,30 +43,57 @@ export const PARES_DO_ROTEIRO: readonly ParDeRoteiro[] = [
   {
     tipo: "DOTACAO_INICIAL",
     tipoCredito: null,
+    abertura: null,
     rotulo: "Dotação inicial",
     explicacao: "O orçamento aprovado pela LOA entrando no razão. Sem este roteiro, nenhuma ficha nasce.",
   },
   {
     tipo: "CREDITO_ADICIONAL",
     tipoCredito: "SUPLEMENTAR",
+    abertura: null,
     rotulo: "Crédito adicional — suplementar",
-    explicacao: "Reforço de dotação que já existe (Lei 4.320, art. 41, I).",
+    explicacao:
+      "Reforço de dotação que já existe (Lei 4.320, art. 41, I). NÃO se parte em aberto e reaberto: o suplementar morre com o exercício, e o § 2º não o alcança.",
+  },
+  // ⚠️ QUATRO LINHAS ONDE HAVIA DUAS (V11 V8.8), e não é recorte de tela: o PCASP parte cada um
+  // destes dois ramos em ABERTOS e REABERTOS, em contas diferentes, e é essa diferença que o TCE
+  // lê. Com uma linha só, o crédito reaberto do exercício seguinte lançava na conta do aberto
+  // (pendência `ROTEIRO-SEM-DIMENSAO-DA-ABERTURA`). Quem diz qual é qual não é quem configura: é
+  // o ano do decreto contra o ano e a data da lei, lido no lançamento.
+  {
+    tipo: "CREDITO_ADICIONAL",
+    tipoCredito: "ESPECIAL",
+    abertura: "ABERTO",
+    rotulo: "Crédito adicional — especial, ABERTO",
+    explicacao:
+      "Despesa sem dotação específica (art. 41, II), autorizada e aberta NESTE exercício. O sistema classifica sozinho: decreto do mesmo ano da lei.",
   },
   {
     tipo: "CREDITO_ADICIONAL",
     tipoCredito: "ESPECIAL",
-    rotulo: "Crédito adicional — especial",
-    explicacao: "Despesa sem dotação específica (art. 41, II). O plano parte este ramo em abertos e reabertos.",
+    abertura: "REABERTO",
+    rotulo: "Crédito adicional — especial, REABERTO",
+    explicacao:
+      "O saldo de um especial autorizado nos últimos quatro meses do exercício anterior, reaberto neste (CF art. 167 § 2º). Decreto do ano seguinte ao da lei.",
   },
   {
     tipo: "CREDITO_ADICIONAL",
     tipoCredito: "EXTRAORDINARIO",
-    rotulo: "Crédito adicional — extraordinário",
-    explicacao: "Despesa urgente e imprevisível (art. 41, III). O plano também o parte em abertos e reabertos.",
+    abertura: "ABERTO",
+    rotulo: "Crédito adicional — extraordinário, ABERTO",
+    explicacao: "Despesa urgente e imprevisível (art. 41, III), aberta neste exercício.",
+  },
+  {
+    tipo: "CREDITO_ADICIONAL",
+    tipoCredito: "EXTRAORDINARIO",
+    abertura: "REABERTO",
+    rotulo: "Crédito adicional — extraordinário, REABERTO",
+    explicacao: "O saldo do extraordinário do exercício anterior, reaberto neste pelo § 2º.",
   },
   {
     tipo: "ANULACAO_CREDITO",
     tipoCredito: null,
+    abertura: null,
     rotulo: "Anulação de dotação",
     explicacao:
       "A REDUÇÃO de dotação — e ela NÃO mora no ramo do crédito adicional. O plano tem duas candidatas com o nome IDÊNTICO, em ramos diferentes; escolher por semelhança de nome é escolher entre nomes iguais.",
@@ -69,6 +101,7 @@ export const PARES_DO_ROTEIRO: readonly ParDeRoteiro[] = [
   {
     tipo: "RESERVA",
     tipoCredito: null,
+    abertura: null,
     rotulo: "Reserva de dotação",
     explicacao:
       "O bloqueio do saldo antes do empenho. O sistema chama a conta de 'crédito reservado'; no PCASP ela é CRÉDITO INDISPONÍVEL, com BLOQUEIO, PRÉ-EMPENHADO e OUTRAS sob ela.",
@@ -76,6 +109,7 @@ export const PARES_DO_ROTEIRO: readonly ParDeRoteiro[] = [
   {
     tipo: "RESERVA_LIBERADA",
     tipoCredito: null,
+    abertura: null,
     rotulo: "Reserva liberada",
     explicacao: "A devolução do saldo reservado que não virou empenho — o inverso da reserva.",
   },
@@ -99,7 +133,7 @@ export async function lerRoteirosOrcamentarios(): Promise<readonly LinhaDoRoteir
 
   const linhas: LinhaDoRoteiro[] = [];
   for (const par of PARES_DO_ROTEIRO) {
-    const v = await roteiroVigente(prisma as never, par.tipo, par.tipoCredito);
+    const v = await roteiroVigente(prisma as never, par.tipo, par.tipoCredito, par.abertura);
     const nomes =
       v === null
         ? null
@@ -144,6 +178,7 @@ export async function lerContasDoRoteiro(): Promise<readonly { readonly codigo: 
 export async function publicarRoteiro(input: {
   readonly tipo: string;
   readonly tipoCredito: string | null;
+  readonly abertura: string | null;
   readonly contaDebitoCodigo: string;
   readonly contaCreditoCodigo: string;
   readonly fundamento: string;
@@ -152,6 +187,7 @@ export async function publicarRoteiro(input: {
     publicarRoteiroOrcamentario(cliente(), {
       tipo: input.tipo,
       tipoCredito: input.tipoCredito as never,
+      abertura: input.abertura as never,
       contaDebitoCodigo: input.contaDebitoCodigo,
       contaCreditoCodigo: input.contaCreditoCodigo,
       fundamento: input.fundamento,
