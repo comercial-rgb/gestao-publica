@@ -958,6 +958,8 @@ export type NomeDeServico =
   | "registrarMedicaoPorItens"
   // M21/M19 — a carta de serviços, as solicitações do requerente e a representação (V6.2 P3)
   | "publicarRoteiroOrcamentario"
+  | "publicarPoliticaDaDotacaoAdicional"
+  | "publicarRoteiroDaDotacaoPorFonte"
   | "cadastrarTipoDeConsignacao"
   | "redefinirContaDaConsignacao"
   | "desativarTipoDeConsignacao"
@@ -965,7 +967,7 @@ export type NomeDeServico =
   | "criarGuiche"
   | "definirServicoNoGuiche"
   | "publicarJanelaDeAtendimento"
-  | "fecharDiaDeAtendimento"
+  | "declararExcecaoDeCalendario"
   | "reservarAtendimento"
   | "cancelarReservaDeAtendimento"
   | "reagendarReservaDeAtendimento"
@@ -1515,6 +1517,13 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // decidir, disponibilizar resposta) é o ato da mesa, no setor em que o processo está.
   // ── M05 V11 V8.4 — o roteiro orçamentário ──
   publicarRoteiroOrcamentario: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
+  // ⚠️ V11 V8.9 — A MESMA AÇÃO DOS TRÊS, e isso é decisão, não economia. Publicar o roteiro,
+  // escolher o EIXO da dotação adicional (por tipo de crédito ou por fonte) e publicar o roteiro
+  // do ramo por fonte são a MESMA autoridade: dizer em que conta do plano o movimento entra.
+  // Partir em três ações daria ao ente três crachás para a mesma decisão contábil — e o segundo
+  // seria concedido por atrito no dia em que alguém não conseguisse publicar o par que falta.
+  publicarPoliticaDaDotacaoAdicional: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
+  publicarRoteiroDaDotacaoPorFonte: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
   // ── M07 V11 V8.3 — os tipos de consignação ──
   cadastrarTipoDeConsignacao: "GERIR_TIPOS_DE_CONSIGNACAO",
   redefinirContaDaConsignacao: "GERIR_TIPOS_DE_CONSIGNACAO",
@@ -1524,7 +1533,7 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   criarGuiche: "CONFIGURAR_AGENDA_DO_GUICHE",
   definirServicoNoGuiche: "CONFIGURAR_AGENDA_DO_GUICHE",
   publicarJanelaDeAtendimento: "CONFIGURAR_AGENDA_DO_GUICHE",
-  fecharDiaDeAtendimento: "CONFIGURAR_AGENDA_DO_GUICHE",
+  declararExcecaoDeCalendario: "CONFIGURAR_AGENDA_DO_GUICHE",
   reservarAtendimento: "RESERVAR_ATENDIMENTO_NO_GUICHE",
   cancelarReservaDeAtendimento: "RESERVAR_ATENDIMENTO_NO_GUICHE",
   reagendarReservaDeAtendimento: "RESERVAR_ATENDIMENTO_NO_GUICHE",
@@ -1816,6 +1825,27 @@ export const FORA_DO_CENSO: Record<string, string> = {
   decisaoVigente:
     "LEITURA. A decisão vigente do ente sobre um tipo de consignação (qual passivo, e se vale). " +
     "Não grava nada; é a projeção do fato append-only que o cadastro escreve.",
+  // ── M05 V11 V8.9 — o eixo da dotação adicional ──
+  politicaVigente:
+    "LEITURA. A decisão vigente do ente sobre o EIXO da dotação adicional (por tipo de crédito ou " +
+    "por fonte). Devolve `null` quando ninguém decidiu — e é por isso que ela existe separada de " +
+    "`eixoVigente`: a tela precisa distinguir 'o ente decidiu assim' de 'ninguém decidiu e ficou assim'.",
+  eixoVigente:
+    "LEITURA. O eixo em vigor para LANÇAR, com o herdado (POR_TIPO_DE_CREDITO) no lugar da " +
+    "ausência. Não grava nada; é a projeção que `dotacao-razao` consulta para saber qual tabela " +
+    "de roteiro responde.",
+  roteiroPorFonteVigente:
+    "LEITURA. A versão vigente do roteiro de uma ORIGEM de recurso no ramo `5.2.2.1.3`. Mesma " +
+    "natureza de `roteiroVigente`: a tela não pode oferecer um roteiro diferente do que o razão aplica.",
+  exigirAnalitica:
+    "GUARD COMPOSÁVEL. Recusa conta inexistente ou SINTÉTICA, listando as analíticas sob ela. " +
+    "Não é ato do usuário: é a conferência que os dois serviços de publicação de roteiro chamam " +
+    "dentro da transação deles, e a autorização já foi cobrada por quem a chamou.",
+  // ── M21 V11 V8.12 — a exceção de calendário versionada ──
+  excecaoVigenteNoDia:
+    "LEITURA. A decisão vigente sobre um dia da unidade (fechado, expediente especial, ou nenhuma). " +
+    "Não grava nada, e é chamada pelos seis caminhos que consultam o calendário — ter uma leitura " +
+    "só é o que impede seis lugares de esquecerem do `orderBy` da sequência.",
   // ── M21 V11 V8.1 — os ATOS PÚBLICOS do agendamento (TR 5.39, portal de autoatendimento) ──
   agendarPeloPortal:
     "ATO PÚBLICO SEM CONTA (agendamento de atendimento presencial pelo cidadão, TR 5.39.92): não " +

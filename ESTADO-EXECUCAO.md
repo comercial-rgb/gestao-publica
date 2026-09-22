@@ -9307,9 +9307,11 @@ toda exceção existente vira a sequência 1, do tipo FECHADO, que é o que ela 
   consequência por caso**: "prédio fechado" e "horário que deixou de existir" são coisas diferentes
   para quem vai ligar para essas pessoas.
 - **Devolver ao normal não tem essa guarda** — abrir não machuca marcação nenhuma.
-- **O nome da ação continua `FECHAR_DIA_DE_ATENDIMENTO`**: é a mesma autoridade, e o nome está
-  gravado como permissão em instalação viva. Valores de enum não se removem; trocar o nome deixaria
-  para trás toda concessão já feita.
+- **A ação continua sendo `CONFIGURAR_AGENDA_DO_GUICHE`** — e sempre foi. ⚠️ Eu escrevi, no código
+  e nesta seção, que ela se chamava `FECHAR_DIA_DE_ATENDIMENTO`; esse era o nome do **serviço**, não
+  da ação. **O censo foi quem me corrigiu**, na suíte completa: renomear o serviço não move
+  concessão nenhuma, porque o censo mapeia serviço → ação e a ação não mudou. A frase errada está
+  corrigida no código e fica registrada aqui.
 - **Seis leituras viraram uma.** Eram seis `findUnique` iguais espalhados; com a versão, seriam seis
   lugares para esquecer do `orderBy`.
 

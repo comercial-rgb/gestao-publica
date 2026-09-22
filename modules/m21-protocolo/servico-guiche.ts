@@ -366,9 +366,10 @@ export type ExcecaoDeCalendarioInput = z.input<typeof zExcecaoDeCalendario>;
  *
  * Agora cada decisão é um FATO com sequência, e a vigente é a maior.
  *
- * ⚠️ O NOME DA AÇÃO CONTINUA `FECHAR_DIA_DE_ATENDIMENTO`, e isso é deliberado: ela é a MESMA
- * autoridade (mexer no calendário da unidade), e o nome está GRAVADO como permissão em instalação
- * viva — valores de enum não se removem. Trocar o nome deixaria para trás toda concessão já feita.
+ * ⚠️ A AÇÃO CONTINUA SENDO `CONFIGURAR_AGENDA_DO_GUICHE` — e ela sempre foi essa, não uma
+ * "FECHAR_DIA_DE_ATENDIMENTO" (o que tinha esse nome era o SERVIÇO, que é outra coisa). Renomear
+ * o serviço não mexe em permissão concedida nenhuma: o censo mapeia serviço → ação, e a ação não
+ * mudou. Quem organiza a agenda é quem declara a exceção dela, que é a mesma autoridade.
  *
  * ⚠️ RECUSA SE HÁ RESERVA VIVA QUE DEIXARIA DE CABER, nomeando quantas. Fechar por cima delas
  * deixaria pessoas marcadas para um prédio fechado; ENCOLHER por cima delas é o mesmo defeito em
@@ -409,7 +410,7 @@ export async function declararExcecaoDeCalendario(
     });
     if (unidade === null) throw new Error(`Unidade de atendimento ${d.unidadeId} não existe. Nada foi gravado.`);
 
-    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.fecharDiaDeAtendimento, {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.declararExcecaoDeCalendario, {
       ug: unidade.setor.unidadeOrcId,
     });
 

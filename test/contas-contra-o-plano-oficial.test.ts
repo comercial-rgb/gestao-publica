@@ -112,10 +112,19 @@ const SINTETICAS_TOLERADAS: ReadonlySet<string> = new Set([
   // ⚠️ ESTAS DUAS ESTÃO AQUI DE PROPÓSITO, E O PROPÓSITO É NÃO RECEBEREM PARTIDA.
   // `CONTA_CREDITO_ADICIONAL_ESPECIAL` e `..._EXTRAORDINARIO` apontam para a SINTÉTICA para
   // que o seed RECUSE o roteiro e imprima, do plano que está no banco, as três candidatas de
-  // cada ramo (ABERTOS / REABERTOS / REABERTOS - SUPLEMENTAÇÃO). Falta um FATO — aberto ou
-  // reaberto — que o sistema ainda não registra: pendência `CREDITO-ESPECIAL-ABERTO-OU-REABERTO`.
-  // Sair daqui é decidir a classificação, não trocar o código.
+  // cada ramo (ABERTOS / REABERTOS / REABERTOS - SUPLEMENTAÇÃO).
+  //
+  // ⚠️ E O MOTIVO MUDOU EM V11 V8.8, PARA MENOR. O FATO deixou de faltar: o sistema lê aberto ou
+  // reaberto do decreto contra a lei (CF art. 167 § 2º) e a abertura entrou na chave do roteiro.
+  // O que resta é a escolha entre REABERTOS e REABERTOS - SUPLEMENTAÇÃO, que é classificação do
+  // ente — `REABERTO-COM-SUPLEMENTACAO-NAO-DISTINGUIDO`. Sair daqui continua sendo decidir.
   "5.2.2.1.2.02.00", "5.2.2.1.2.03.00",
+  // ── V11 V8.9 — O NÓ DO RAMO POR FONTE, QUE APARECE SÓ NO DESENHO. ──
+  // ⚠️ `5.2.2.1.3.00.00` é citado em `roteiros.ts` DENTRO DO COMENTÁRIO que desenha o ramo, para
+  // que quem for decidir veja a árvore inteira de onde as quatro analíticas saem. Nenhum código
+  // aponta para ele: o que é exportado são `CONTA_DOTACAO_POR_FONTE_*`, as quatro ANALÍTICAS.
+  // Tirar o desenho do comentário faria a varredura ficar verde e a explicação, pior.
+  "5.2.2.1.3.00.00",
 ]);
 
 interface Uso {

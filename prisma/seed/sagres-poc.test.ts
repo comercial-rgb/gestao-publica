@@ -156,12 +156,16 @@ describe("massa POC SAGRES — a história encadeada", () => {
     // de aumento — o demonstrativo classifica o aumento como INGRESSO, não atualização acumulada).
     expect(new Decimal(dem.total.ingressos).toFixed(2)).toBe("270000.00");
     // Imóvel: avaliação 200k + reavaliação 20k = ingressos 220k; sem depreciação → final 220k.
-    const imovel = dem.classes.find((c) => c.descricao.includes("Edifica"))!;
+    // ⚠️ PELO CÓDIGO DA CLASSE, NÃO PELA DESCRIÇÃO (V11 V8.14). A descrição da classe da POC passou
+    // a acompanhar a conta que ela resolve estruturalmente no plano oficial — e um teste que
+    // procura por texto quebra quando o texto muda por um motivo legítimo. O código `1.2.3.2.1.01`
+    // é o ramo dos bens IMÓVEIS, e é ele que identifica a classe.
+    const imovel = dem.classes.find((c) => c.codigo === "1.2.3.2.1.01")!;
     expect(new Decimal(imovel.ingressos).toFixed(2)).toBe("220000.00");
     expect(new Decimal(imovel.atualizacoes).toFixed(2)).toBe("0.00");
     expect(new Decimal(imovel.saldoFinal).toFixed(2)).toBe("220000.00");
     // Móvel: avaliação 50k, depreciação (atualização negativa) → final < 50k.
-    const movel = dem.classes.find((c) => c.descricao.includes("Veic"))!;
+    const movel = dem.classes.find((c) => c.codigo === "1.2.3.1.1.01")!;
     expect(new Decimal(movel.ingressos).toFixed(2)).toBe("50000.00");
     expect(new Decimal(movel.atualizacoes).lessThan(0)).toBe(true); // depreciação de outubro
   });

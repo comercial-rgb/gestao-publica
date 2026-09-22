@@ -103,7 +103,7 @@ export async function publicarPoliticaDaDotacaoAdicional(
   const d = zPublicarPolitica.parse(input);
 
   return prisma.$transaction(async (tx) => {
-    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.publicarRoteiroOrcamentario, "ENTE");
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.publicarPoliticaDaDotacaoAdicional, "ENTE");
 
     const vigente = await politicaVigente(tx);
     if (vigente !== null && vigente.eixo === d.eixo) {
@@ -198,7 +198,7 @@ export async function publicarRoteiroDaDotacaoPorFonte(
   }
 
   return prisma.$transaction(async (tx) => {
-    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.publicarRoteiroOrcamentario, "ENTE");
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.publicarRoteiroDaDotacaoPorFonte, "ENTE");
 
     const debito = await exigirAnalitica(tx, d.contaDebitoCodigo, "débito");
     const credito = await exigirAnalitica(tx, d.contaCreditoCodigo, "crédito");
