@@ -68,6 +68,13 @@ const CONTA_DEPREC_ACUM = "1.2.3.8.1.01.00"; //  Depreciação acumulada (reduto
 
 // Contas do subsistema da RECEITA (S7, F3) — arrecadação pelo funil `roteiroArrecadacao`.
 const CONTA_VPA_RECEITA = "4.1.1.2.1.01.00"; //   VPA — a receita sob a ótica patrimonial (CREDORA)
+/**
+ * ⚠️ DESCIDA NA MÃO EM V6.2, MANTIDA — e agora ela é a EXCEÇÃO explicada, não o padrão. Este código
+ * está gravado na massa de comparação do SAGRES e em `CONTAS_PCASP` abaixo (que o cria no banco
+ * mínimo); trocá-lo por uma escolha estrutural mudaria a massa que a POC existe para comparar. As
+ * cinco contas patrimoniais, que não têm essa amarra, passaram a ser resolvidas por
+ * `contaDaDemonstracao` (V11 V8.14).
+ */
 const CONTA_FORNECEDORES_POC = "2.1.3.1.1.01.01"; // FORNECEDORES NAO PARCELADOS A PAGAR
 const CONTA_RECEITA_A_REALIZAR = "6.2.1.1.0.00.00"; // controle orçamentário (DEVEDORA)
 const CONTA_RECEITA_REALIZADA = "6.2.1.2.0.00.00"; // controle orçamentário (CREDORA)
@@ -164,6 +171,52 @@ export async function semearSagresPoc(prisma: PrismaClient, opcoes: OpcoesSeedPo
   await prisma.contaPcasp.createMany({ data: CONTAS_PCASP, skipDuplicates: true });
   const idDe = async (codigo: string): Promise<string> =>
     (await prisma.contaPcasp.findUniqueOrThrow({ where: { codigo }, select: { id: true } })).id;
+
+  /**
+   * ═══ ⚠️ A CONTA DA DEMONSTRAÇÃO, RESOLVIDA ESTRUTURALMENTE (V11 V8.14) ═══
+   *
+   * Pendência `SAGRES-POC-CONTA-SINTETICA`. Esta POC foi escrita contra o plano MÍNIMO, que
+   * marcava estas contas como analíticas. No PCASP oficial (7.864 contas) elas são SINTÉTICAS, o
+   * `skipDuplicates` acima preserva a versão oficial, e a POC morria no primeiro lançamento —
+   * "conta sintética não recebe partida", que é o guard fazendo o trabalho dele.
+   *
+   * ⚠️ E A SAÍDA **NÃO** É ESCOLHER A ANALÍTICA NA MÃO. Isso seria classificar — e a classificação
+   * é do ente. O que a POC faz é uma escolha ESTRUTURAL e declarada: a PRIMEIRA analítica sob a
+   * sintética, em ordem de código, lida do plano que está no banco. É a mesma técnica que o
+   * percurso da cadeia da despesa usa para a consignação desde a V8.3, e pelo mesmo motivo:
+   * escolher pelo NOME casaria com o nome errado (foi o que aconteceu com "BENEFICIOS
+   * PREVIDENCIARIOS A PAGAR").
+   *
+   * ⚠️ E ELA SE ANUNCIA. Uma demonstração que troca de conta em silêncio ensina que a conta da
+   * demonstração é a conta certa — e o dia em que alguém copiar daqui para um roteiro de produção,
+   * terá copiado uma escolha que ninguém tomou.
+   */
+  const contaDaDemonstracao = async (codigoBase: string): Promise<string> => {
+    const base = await prisma.contaPcasp.findUnique({
+      where: { codigo: codigoBase },
+      select: { analitica: true },
+    });
+    if (base === null || base.analitica) return codigoBase;
+
+    const prefixo = `${codigoBase.replace(/(\.00)+$/, "")}.`;
+    const filha = await prisma.contaPcasp.findFirst({
+      where: { codigo: { startsWith: prefixo }, analitica: true },
+      orderBy: { codigo: "asc" },
+      select: { codigo: true, nome: true },
+    });
+    if (filha === null) {
+      throw new Error(
+        `A conta ${codigoBase} é SINTÉTICA no plano carregado e não tem NENHUMA analítica sob ela. ` +
+          `A POC não tem como lançar aí, e escolher uma conta de outro ramo seria inventar ` +
+          `classificação. Nada foi semeado.`
+      );
+    }
+    console.log(
+      `  [POC] ${codigoBase} é SINTÉTICA no plano carregado; a demonstração usa ${filha.codigo} ` +
+        `"${filha.nome}" — a primeira analítica sob ela, escolha ESTRUTURAL e não classificação do ente.`
+    );
+    return filha.codigo;
+  };
   const idBancos = await idDe(CONTA_BANCOS);
 
   // (2) DOMÍNIO. Órgão/UO são POC (99/99001); o resto é referência COMPARTILHADA — UPSERT por chave.
@@ -208,8 +261,12 @@ export async function semearSagresPoc(prisma: PrismaClient, opcoes: OpcoesSeedPo
       data: {
         tipo: r.tipo,
         tipoCredito: r.tipoCredito ?? null,
-        contaDebitoId: await idDe(r.debito),
-        contaCreditoId: await idDe(r.credito),
+        // ⚠️ RESOLVIDAS ESTRUTURALMENTE (V11 V8.14): no plano oficial, a DOTAÇÃO ADICIONAL é
+        // sintética — e qual analítica recebe a anulação é decisão do ente
+        // (`ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`, resolvida pela tela do roteiro).
+        // A POC não decide por ele: usa a primeira analítica sob a sintética, e diz que usou.
+        contaDebitoId: await idDe(await contaDaDemonstracao(r.debito)),
+        contaCreditoId: await idDe(await contaDaDemonstracao(r.credito)),
         criadoPor: por,
       },
     });
@@ -360,24 +417,24 @@ export async function semearSagresPoc(prisma: PrismaClient, opcoes: OpcoesSeedPo
   // Roteiro patrimonial CANÔNICO (mesmos códigos dos testes do M10 / par do despacho 0b — nada
   // inventado). ⚠️ `roteiroPatrimonial` é GLOBAL por tipo: a perna do ativo sai do roteiro, não da
   // classe — a posição 5.86 separa por classe via `MovimentoPatrimonial.classeDeBensId`.
-  const idImobMovel = await idDe(CONTA_IMOB_MOVEL);
-  const idImobImovel = await idDe(CONTA_IMOB_IMOVEL);
-  const idVpaIncorp = await idDe(CONTA_VPA_INCORP);
-  const classeMovel = await prisma.classeDeBens.upsert({ where: { codigo: "1.2.3.1.1.01" }, update: {}, create: { codigo: "1.2.3.1.1.01", descricao: "Veiculos", especie: "MOVEL", contaContabilAtivoId: idImobMovel, criadoPor: por } });
-  const classeImovel = await prisma.classeDeBens.upsert({ where: { codigo: "1.2.3.2.1.01" }, update: {}, create: { codigo: "1.2.3.2.1.01", descricao: "Edificacoes", especie: "IMOVEL", contaContabilAtivoId: idImobImovel, criadoPor: por } });
+  const idImobMovel = await idDe(await contaDaDemonstracao(CONTA_IMOB_MOVEL));
+  const idImobImovel = await idDe(await contaDaDemonstracao(CONTA_IMOB_IMOVEL));
+  const idVpaIncorp = await idDe(await contaDaDemonstracao(CONTA_VPA_INCORP));
+  const classeMovel = await prisma.classeDeBens.upsert({ where: { codigo: "1.2.3.1.1.01" }, update: {}, create: { codigo: "1.2.3.1.1.01", descricao: "Bem movel da demonstracao", especie: "MOVEL", contaContabilAtivoId: idImobMovel, criadoPor: por } });
+  const classeImovel = await prisma.classeDeBens.upsert({ where: { codigo: "1.2.3.2.1.01" }, update: {}, create: { codigo: "1.2.3.2.1.01", descricao: "Bem imovel da demonstracao", especie: "IMOVEL", contaContabilAtivoId: idImobImovel, criadoPor: por } });
   await prisma.parametroAtualizacaoClasse.upsert({ where: { classeDeBensId: classeMovel.id }, update: {}, create: { classeDeBensId: classeMovel.id, metodo: "DEPRECIACAO", vidaUtilMeses: 24, percentualResidual: "0.100000", criadoPor: por } });
   await prisma.roteiroPatrimonial.createMany({ data: [
     { tipo: "AVALIACAO_INICIAL", contaDebitoId: idImobMovel, contaCreditoId: idVpaIncorp, criadoPor: por },
     { tipo: "REAVALIACAO_AUMENTO", contaDebitoId: idImobMovel, contaCreditoId: idVpaIncorp, criadoPor: por },
-    { tipo: "DEPRECIACAO", contaDebitoId: await idDe(CONTA_VPD_DEPREC), contaCreditoId: await idDe(CONTA_DEPREC_ACUM), criadoPor: por },
+    { tipo: "DEPRECIACAO", contaDebitoId: await idDe(await contaDaDemonstracao(CONTA_VPD_DEPREC)), contaCreditoId: await idDe(await contaDaDemonstracao(CONTA_DEPREC_ACUM)), criadoPor: por },
   ], skipDuplicates: true });
-  const bemMovel = await prisma.bemPatrimonial.create({ data: { numeroTombamento: "TOMB-POC-0001", descricao: "Onibus escolar - POC", classeDeBensId: classeMovel.id, dataAquisicao: D(10, 1), criadoPor: por } });
-  const bemImovel = await prisma.bemPatrimonial.create({ data: { numeroTombamento: "TOMB-POC-0002", descricao: "Escola municipal - POC", classeDeBensId: classeImovel.id, dataAquisicao: D(10, 1), criadoPor: por } });
+  const bemMovel = await prisma.bemPatrimonial.create({ data: { numeroTombamento: "TOMB-POC-0001", descricao: "Bem movel da demonstracao - POC", classeDeBensId: classeMovel.id, dataAquisicao: D(10, 1), criadoPor: por } });
+  const bemImovel = await prisma.bemPatrimonial.create({ data: { numeroTombamento: "TOMB-POC-0002", descricao: "Bem imovel da demonstracao - POC", classeDeBensId: classeImovel.id, dataAquisicao: D(10, 1), criadoPor: por } });
   // Avaliação inicial (ingresso patrimonial) — pelos serviços reais.
-  await registrarEntradaAvulsa(prisma, { tipo: "AVALIACAO_INICIAL", classeDeBensId: classeMovel.id, bemId: bemMovel.id, valor: "50000.00", dataMovimento: D(10, 2), motivo: "Avaliacao inicial do onibus escolar POC", criadoPor: por });
-  await registrarEntradaAvulsa(prisma, { tipo: "AVALIACAO_INICIAL", classeDeBensId: classeImovel.id, bemId: bemImovel.id, valor: "200000.00", dataMovimento: D(10, 2), motivo: "Avaliacao inicial da escola municipal POC", criadoPor: por });
+  await registrarEntradaAvulsa(prisma, { tipo: "AVALIACAO_INICIAL", classeDeBensId: classeMovel.id, bemId: bemMovel.id, valor: "50000.00", dataMovimento: D(10, 2), motivo: "Avaliacao inicial do bem movel da POC", criadoPor: por });
+  await registrarEntradaAvulsa(prisma, { tipo: "AVALIACAO_INICIAL", classeDeBensId: classeImovel.id, bemId: bemImovel.id, valor: "200000.00", dataMovimento: D(10, 2), motivo: "Avaliacao inicial do bem imovel da POC", criadoPor: por });
   // Reavaliação (aumento) do imóvel; depreciação mensal do móvel (competência 2026-10).
-  await registrarReavaliacao(prisma, { classeDeBensId: classeImovel.id, sentido: "AUMENTO", valor: "20000.00", bemId: bemImovel.id, dataMovimento: D(10, 15), motivo: "Reavaliacao da escola municipal POC", criadoPor: por });
+  await registrarReavaliacao(prisma, { classeDeBensId: classeImovel.id, sentido: "AUMENTO", valor: "20000.00", bemId: bemImovel.id, dataMovimento: D(10, 15), motivo: "Reavaliacao do bem imovel da POC", criadoPor: por });
   await atualizarCompetencia(prisma, { classeDeBensId: classeMovel.id, competencia: "2026-10", criadoPor: por });
 
   console.log("[seed:sagres-poc] massa POC (ampliada) criada: ficha 150k; empenho/liq/pag 50k+20k+10k(ISS 500); receita 80k; decreto remanejamento 5k; recolhimento ISS 300; 2 bens (movel 50k + imovel 200k, reaval +20k, deprec movel out); 2 contas, transf, extrato BB + conciliacao.");

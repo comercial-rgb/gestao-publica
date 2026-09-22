@@ -9379,3 +9379,58 @@ o meu defeito, `t8` passou em **duas** corridas seguidas. Fica registrado em vez
 `GUICHE-SEM-NOTIFICACAO-INTERNA` **fecha**. Nenhuma nasce. Segue valendo o que o M24 já declarava:
 e-mail e push **não são enviados** (`NOTIFICACAO-EMAIL-PUSH`) — os avisos do guichê usam o canal
 SISTEMA, que nasce entregue porque a entrega é a gravação.
+
+---
+
+## 81. V11 V8.14 — a POC do SAGRES roda contra o plano oficial
+
+### 81.1 O que estava quebrado
+
+`SAGRES-POC-CONTA-SINTETICA`. A POC foi escrita contra o plano **mínimo**, que marcava as contas
+dela como analíticas. No PCASP oficial do TCE-PB elas são **sintéticas**, o `skipDuplicates` do seed
+preserva (com razão) a versão oficial, e a demonstração morria no primeiro lançamento — "conta
+sintética não recebe partida", que é o guard fazendo o trabalho dele. A instalação do ente terminava
+sem a POC.
+
+### 81.2 A saída não foi escolher a conta
+
+Escolher a analítica na mão é classificar, e classificação é do ente. O que a POC faz agora é uma
+escolha **estrutural e declarada**: `contaDaDemonstracao` pega a **primeira analítica sob a
+sintética**, em ordem de código, lida do plano que está no banco — a mesma técnica que o percurso da
+cadeia da despesa usa para a consignação desde a V8.3, e pelo mesmo motivo: escolher pelo **nome**
+casaria com o nome errado (foi o que aconteceu com "BENEFICIOS PREVIDENCIARIOS A PAGAR").
+
+⚠️ **E ela se anuncia**, linha a linha, no console do seed. Uma demonstração que troca de conta em
+silêncio ensina que a conta da demonstração é a conta certa — e o dia em que alguém copiar daqui
+para um roteiro de produção, terá copiado uma escolha que ninguém tomou.
+
+⚠️ **Uma exceção ficou, e está explicada:** `2.1.3.1.1.01.01` (fornecedores) continua escolhida na
+mão desde a V6.2, porque esse código está na **massa de comparação do SAGRES** — trocá-lo mudaria
+justamente o que a POC existe para comparar.
+
+### 81.3 O teste afirma a propriedade, não o sucesso
+
+`sagres-poc-no-plano-oficial.test.ts` carrega as **7.864 contas oficiais** (o plano inteiro, não um
+recorte — o recorte esconderia o ramo esquecido), roda a POC e afirma que **nenhuma partida caiu em
+conta sintética**. "Rodou" passaria com uma conta errada que por acaso fosse analítica; esta
+afirmação não. Há a âncora (`partidas > 20`, senão uma POC que não grava nada passaria) e a
+contraprova `t2`: as cinco contas-base são **mesmo** sintéticas no plano, senão a resolução seria
+desvio morto e `t1` estaria provando o caminho antigo.
+
+**O teste achou uma sexta conta que ninguém tinha nomeado**: a `5.2.2.1.2.00.00` do roteiro de
+ANULAÇÃO da POC. Foi por isso que a resolução estrutural passou a valer também para os roteiros
+orçamentários dela.
+
+### 81.4 O que foi medido
+
+| Medida | Resultado |
+|---|---|
+| tsc backend / scripts | `exit=0` |
+| POC + contas do seed + período fechado | **13 testes**, `exit=0` |
+
+**Mutação:** fazer `contaDaDemonstracao` devolver sempre o código de entrada reproduziu o defeito
+original — "Conta SINTÉTICA 5.2.2.1.2.00.00 no roteiro orçamentário de ANULACAO_CREDITO".
+
+### 81.5 Pendências
+
+`SAGRES-POC-CONTA-SINTETICA` **fecha**. Nenhuma nasce.

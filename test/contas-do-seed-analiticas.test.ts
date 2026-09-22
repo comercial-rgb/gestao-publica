@@ -177,15 +177,23 @@ const PENDENCIAS_DECLARADAS: Readonly<Record<string, string>> = {
 };
 
 /**
- * ⚠️ AS SEIS CONTAS DA POC DO SAGRES — uma pendência só, `SAGRES-POC-CONTA-SINTETICA`.
+ * ═══ ⚠️ AS SEIS DA POC DO SAGRES — RESOLVIDAS EM TEMPO DE EXECUÇÃO (V11 V8.14) ═══
  *
- * A POC foi escrita contra o plano MÍNIMO, que marcava estas contas como analíticas; no PCASP
- * oficial todas são sintéticas. Nenhuma existe no código de produção — o M05 e o M10 recebem as
- * contas por PARÂMETRO, de quem chama —, então isto é gap de DEMONSTRAÇÃO: o preparador tolera a
- * recusa nomeada e a instalação do ente termina sem a POC.
+ * Elas continuam SINTÉTICAS no plano oficial, e continuam aparecendo nesta varredura porque os
+ * códigos estão escritos no arquivo da POC. O que mudou é o que acontece com elas na instalação.
  *
- * Quitá-la é escolher, para cada uma, a analítica do último nível — classificação contábil que não
- * se faz para destravar um cenário de demonstração.
+ * Antes: `SAGRES-POC-CONTA-SINTETICA`. A POC foi escrita contra o plano MÍNIMO, que as marcava
+ * como analíticas; com o plano oficial carregado, ela morria no primeiro lançamento e a
+ * instalação do ente terminava sem a demonstração.
+ *
+ * Agora: `contaDaDemonstracao` resolve cada uma para a PRIMEIRA ANALÍTICA sob ela, lida do plano
+ * que está no banco, e IMPRIME a escolha dizendo que é estrutural e não classificação do ente. A
+ * prova está em `sagres-poc-no-plano-oficial.test.ts`, que roda a POC inteira contra as 7.864
+ * contas oficiais e afirma que **nenhuma partida caiu em conta sintética**.
+ *
+ * ⚠️ E ESTA LISTA NÃO É MAIS UMA DÍVIDA — é o registro de quais códigos passam por essa resolução.
+ * O teste do fim deste arquivo continua exigindo que elas sejam sintéticas de verdade: no dia em
+ * que o TCE publicar uma delas como analítica, a resolução vira desvio morto e a entrada cai.
  */
 const CONTAS_DA_POC_SAGRES: readonly string[] = [
   "2.1.3.1.1.00.00", // FORNECEDORES E CONTAS A PAGAR NACIONAIS - CONSOLIDAÇÃO
