@@ -158,6 +158,16 @@ async function semear(): Promise<void> {
   await usuarioComPerfil(ATENDENTE, "ATENDENTE_DO_GUICHE", ["REGISTRAR_ATENDIMENTO_NO_GUICHE"]);
   await usuarioComPerfil(SEM_CRACHA, "SO_LE_O_PROTOCOLO", ["CONSULTAR_PROTOCOLO"]);
 
+  // ⚠️ LOTAÇÃO NO SETOR (V11 V8.13) — é ela que diz QUEM atende, e portanto quem é avisado.
+  // Dois lotados de propósito: com um só, "avisa o setor" e "avisa quem não fez o ato" seriam
+  // indistinguíveis.
+  await prisma.usuarioDoSetor.createMany({
+    data: [
+      { usuarioIdent: BALCAO, setorId: "g-setor", criadoPor: "SEED" },
+      { usuarioIdent: ATENDENTE, setorId: "g-setor", criadoPor: "SEED" },
+    ],
+  });
+
   pessoa1 = await pessoa("11144477735", "Ana Cidadã");
   pessoa2 = await pessoa("52998224725", "Bia Cidadã");
   pessoa3 = await pessoa("39053344705", "Caio Cidadão");
@@ -436,6 +446,37 @@ describe("o que o guichê atende, e quando a unidade abre", () => {
       declararExcecaoDeCalendario(prisma, { tipo: "FECHADO", unidadeId, dia: SEGUNDA, motivo: "Ponto facultativo", criadoPor: CHEFIA })
     ).rejects.toThrow(/2 pessoa\(s\) marcada\(s\) e ainda não atendida\(s\) em 21\/09\/2026[\s\S]*prédio fechado/);
     expect(await prisma.excecaoDeCalendarioDoAtendimento.count()).toBe(0);
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // O AVISO INTERNO (V11 V8.13) — `GUICHE-SEM-NOTIFICACAO-INTERNA`
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  it("t13a (N=2): marcar avisa quem está LOTADO no setor, e NÃO avisa quem marcou", async () => {
+    await janelaDeSegunda(guicheA, 2);
+    await reservar({ pessoaId: pessoa1, por: BALCAO });
+
+    const avisos = await prisma.notificacao.findMany({
+      where: { evento: "ATENDIMENTO_MARCADO" },
+      select: { destinatario: true, titulo: true, corpo: true, rota: true, canal: true, entregueEm: true },
+    });
+
+    // ⚠️ QUEM FEZ NÃO É AVISADO DO QUE FEZ. Um aviso que volta para o autor ensina a ignorar a
+    // caixa — e o que se ensina a ignorar é o aviso importante, o que chega de madrugada.
+    expect(avisos.map((a) => a.destinatario)).toEqual([ATENDENTE]);
+    expect(avisos[0]?.titulo).toMatch(/21\/09\/2026 às 08:00/);
+    expect(avisos[0]?.rota).toBe(`/protocolo/guiches/${guicheA}`);
+    // Canal interno nasce ENTREGUE: a entrega É a gravação.
+    expect(avisos[0]?.canal).toBe("SISTEMA");
+    expect(avisos[0]?.entregueEm).not.toBeNull();
+  });
+
+  it("t13b: setor sem ninguém lotado não derruba a marcação — o ato vale, o aviso é que não tem a quem ir", async () => {
+    await prisma.usuarioDoSetor.deleteMany({ where: { setorId: "g-setor" } });
+    await janelaDeSegunda(guicheA, 1);
+
+    await expect(reservar({ pessoaId: pessoa1 })).resolves.toBeDefined();
+    expect(await prisma.notificacao.count()).toBe(0);
   });
 
   // ═══════════════════════════════════════════════════════════════════════════

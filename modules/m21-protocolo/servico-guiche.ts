@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { travar } from "../../packages/locks/index.js";
+import { notificarVarios } from "../m24-notificacoes/notificacoes.js";
 import { diaCivil, diaCivilBr, meioDiaCivil } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
@@ -674,6 +675,59 @@ export interface OfertaDoGuiche {
   readonly horarios: readonly HorarioOfertado[];
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// O AVISO INTERNO — quem atende fica sabendo (V11 V8.13)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * AVISA QUEM ESTÁ LOTADO NO SETOR DA UNIDADE sobre um fato da agenda dela.
+ *
+ * ⚠️ `GUICHE-SEM-NOTIFICACAO-INTERNA`: marcar, cancelar e remarcar não chegavam a ninguém. Quem
+ * organiza via a agenda; quem ATENDE só descobria a fila ao abrir a tela e procurar o dia certo —
+ * e o cidadão que marcou pelo portal às 23h não tinha como ser esperado.
+ *
+ * ⚠️ QUEM FEZ NÃO É AVISADO DO QUE FEZ. Um aviso que volta para o autor ensina a ignorar a caixa,
+ * e é exatamente o que faria o aviso importante (o do portal, de madrugada) passar batido.
+ *
+ * ⚠️ DENTRO DA TRANSAÇÃO DO FATO, como manda o M24: avisar sobre uma marcação que o rollback
+ * desfez é avisar uma mentira.
+ */
+async function avisarOSetorDaUnidade(
+  tx: Tx,
+  p: {
+    readonly unidadeId: string;
+    readonly guicheId: string;
+    readonly autor: string;
+    readonly evento: string;
+    readonly titulo: string;
+    readonly corpo: string;
+  }
+): Promise<void> {
+  const unidade = await tx.unidadeDeAtendimento.findUnique({
+    where: { id: p.unidadeId },
+    select: { setorId: true },
+  });
+  if (unidade === null) return;
+
+  const lotados = await tx.usuarioDoSetor.findMany({
+    where: { setorId: unidade.setorId },
+    select: { usuarioIdent: true },
+  });
+  const destinos = lotados.map((l) => l.usuarioIdent).filter((x) => x !== p.autor);
+  if (destinos.length === 0) return;
+
+  await notificarVarios(tx, destinos, {
+    evento: p.evento,
+    titulo: p.titulo,
+    corpo: p.corpo,
+    // ⚠️ ROTA INTERNA, e ela leva ao DIA: uma rota para a lista de guichês faria quem recebe o
+    // aviso procurar de novo o que o aviso já sabia.
+    rota: `/protocolo/guiches/${p.guicheId}`,
+  });
+}
+
+
 /**
  * A OFERTA DE UM DIA NUM GUICHÊ, como a tela e o cidadão a veem.
  *
@@ -868,6 +922,16 @@ export async function reservarAtendimento(
       },
       select: { id: true, codigo: true },
     });
+
+    await avisarOSetorDaUnidade(tx, {
+      unidadeId: guiche.unidadeId,
+      guicheId: d.guicheId,
+      autor: d.criadoPor,
+      evento: "ATENDIMENTO_MARCADO",
+      titulo: `Atendimento marcado em ${diaCivilBr(dia)} às ${d.horaInicio}`,
+      corpo: `${servico.titulo} no guichê ${guiche.nome} (${guiche.unidade.nome}). Protocolo ${r.codigo}.`,
+    });
+
     return { reservaId: r.id, codigo: r.codigo, segredo, jaExistia: false };
   });
 }
@@ -1343,6 +1407,18 @@ export async function agendarPeloPortal(
       select: { codigo: true },
     });
 
+    // ⚠️ O AVISO MAIS IMPORTANTE DOS SEIS: esta marcação nasceu PELA INTERNET, possivelmente de
+    // madrugada, e ninguém do balcão estava lá para vê-la. `autor` é o portal — logo ninguém é
+    // excluído da lista, e o setor inteiro fica sabendo.
+    await avisarOSetorDaUnidade(tx, {
+      unidadeId: guiche.unidadeId,
+      guicheId: d.guicheId,
+      autor: "PORTAL-DO-CIDADAO",
+      evento: "ATENDIMENTO_MARCADO_PELO_PORTAL",
+      titulo: `Marcação pelo portal em ${diaCivilBr(dia)} às ${d.horaInicio}`,
+      corpo: `${servico.titulo} no guichê ${guiche.nome}. Titular declarado: ${d.nome}. Protocolo ${r.codigo}.`,
+    });
+
     return { codigo: r.codigo, segredo };
   });
 }
@@ -1434,6 +1510,11 @@ export async function cancelarPeloPortal(
       select: {
         id: true,
         codigo: true,
+        dia: true,
+        horaInicio: true,
+        guicheId: true,
+        guiche: { select: { nome: true, unidadeId: true } },
+        reagendamentos: { orderBy: { sequencia: "desc" }, take: 1, select: { dia: true, horaInicio: true, guicheId: true } },
         cancelamento: { select: { motivo: true } },
         realizacao: { select: { id: true } },
       },
@@ -1454,6 +1535,19 @@ export async function cancelarPeloPortal(
     await tx.cancelamentoDaReserva.create({
       data: { reservaId: r.id, motivo, criadoPor: "PORTAL-DO-CIDADAO" },
     });
+
+    // ⚠️ O LUGAR VOLTOU PARA A FILA, E QUEM ATENDE PRECISA SABER — foi o cidadão que desistiu, de
+    // onde ele estiver, e o balcão não tem como ver isso acontecer.
+    const vigente = r.reagendamentos[0] ?? { dia: r.dia, horaInicio: r.horaInicio };
+    await avisarOSetorDaUnidade(tx, {
+      unidadeId: r.guiche.unidadeId,
+      guicheId: r.guicheId,
+      autor: "PORTAL-DO-CIDADAO",
+      evento: "ATENDIMENTO_CANCELADO_PELO_PORTAL",
+      titulo: `Marcação cancelada pelo portal — ${diaCivilBr(vigente.dia)} às ${vigente.horaInicio}`,
+      corpo: `Protocolo ${r.codigo}, guichê ${r.guiche.nome}. Motivo declarado: ${motivo}. O lugar voltou para a agenda.`,
+    });
+
     return { codigo: r.codigo };
   });
 }
@@ -1617,6 +1711,17 @@ export async function reagendarPeloPortal(
         criadoPor: "PORTAL-DO-CIDADAO",
       },
       select: { sequencia: true },
+    });
+
+    await avisarOSetorDaUnidade(tx, {
+      unidadeId: r.guiche.unidadeId,
+      guicheId: destino,
+      autor: "PORTAL-DO-CIDADAO",
+      evento: "ATENDIMENTO_REMARCADO_PELO_PORTAL",
+      titulo: `Marcação remarcada pelo portal para ${diaCivilBr(dia)} às ${d.horaInicio}`,
+      corpo:
+        `Protocolo ${r.codigo}. Era ${diaCivilBr(atual.dia)} às ${atual.horaInicio}. ` +
+        `O lugar antigo voltou para a agenda.`,
     });
 
     return {

@@ -125,6 +125,14 @@ async function semear(): Promise<void> {
   await usuarioComPerfil(BALCAO, "BALCAO", ["RESERVAR_ATENDIMENTO_NO_GUICHE"]);
   await usuarioComPerfil(ATENDENTE, "ATENDENTE", ["REGISTRAR_ATENDIMENTO_NO_GUICHE"]);
 
+  // ⚠️ QUEM ATENDE (V11 V8.13) — a lotação no setor é o que faz o aviso interno ter destinatário.
+  await prisma.usuarioDoSetor.createMany({
+    data: [
+      { usuarioIdent: BALCAO, setorId: "g-setor", criadoPor: "SEED" },
+      { usuarioIdent: ATENDENTE, setorId: "g-setor", criadoPor: "SEED" },
+    ],
+  });
+
   pessoaDoBalcao = (
     await prisma.pessoa.create({
       data: { documento: CPF_B, tipo: "FISICA", criadoPor: "SEED", versoes: { create: { nome: "Bia do Balcao", criadoPor: "SEED" } } },
@@ -547,5 +555,56 @@ describe("a forma do que o cidadão digita", () => {
     await janela(guiche, 2);
     await expect(agendar({ nome: "a" })).rejects.toThrow();
     expect(await prisma.reservaDeAtendimento.count()).toBe(0);
+  });
+});
+
+/**
+ * ═══ O AVISO INTERNO DO QUE VEM DE FORA (V11 V8.13) ═══
+ *
+ * `GUICHE-SEM-NOTIFICACAO-INTERNA`. Uma marcação feita pelo portal às onze da noite não tinha como
+ * ser esperada: quem organiza via a agenda, e quem atende só descobria a fila ao abrir a tela e
+ * procurar o dia certo. Este é o aviso que mais importava dos seis — o único cujo fato aconteceu
+ * com ninguém do ente na frente da tela.
+ */
+describe("o aviso interno dos atos do portal", () => {
+  beforeEach(async () => {
+    await janela(guiche, 2);
+  });
+
+  it("p1 (N=2): marcar pelo portal avisa TODOS os lotados no setor — não há autor a excluir", async () => {
+    const r = await agendar();
+    const avisos = await prisma.notificacao.findMany({
+      where: { evento: "ATENDIMENTO_MARCADO_PELO_PORTAL" },
+      orderBy: { destinatario: "asc" },
+      select: { destinatario: true, titulo: true, corpo: true },
+    });
+    expect(avisos.map((a) => a.destinatario)).toEqual([ATENDENTE, BALCAO]);
+    // ⚠️ O CORPO DIZ QUEM É, e isso é o que separa um aviso de um sino: o titular declarado e o
+    // protocolo estão ali, para que ninguém precise abrir a tela só para saber se é urgente.
+    expect(avisos[0]?.corpo).toContain(r.codigo);
+  });
+
+  it("p2: cancelar pelo portal avisa que o LUGAR VOLTOU — com o motivo que o cidadão declarou", async () => {
+    const r = await agendar();
+    await cancelarPeloPortal(prisma, { segredo: r.segredo, motivo: "Resolvi pelo site mesmo, obrigada." });
+
+    const aviso = await prisma.notificacao.findFirst({
+      where: { evento: "ATENDIMENTO_CANCELADO_PELO_PORTAL" },
+      select: { corpo: true, titulo: true },
+    });
+    expect(aviso?.corpo).toContain("Resolvi pelo site mesmo");
+    expect(aviso?.corpo).toContain("voltou para a agenda");
+  });
+
+  it("p3: remarcar pelo portal avisa DE ONDE e PARA ONDE — quem atende precisa dos dois", async () => {
+    const r = await agendar();
+    await reagendarPeloPortal(prisma, { segredo: r.segredo, dia: SEGUNDA, horaInicio: "09:00" });
+
+    const aviso = await prisma.notificacao.findFirst({
+      where: { evento: "ATENDIMENTO_REMARCADO_PELO_PORTAL" },
+      select: { titulo: true, corpo: true },
+    });
+    expect(aviso?.titulo).toContain("09:00");
+    expect(aviso?.corpo).toMatch(/Era .* às 08:00/);
   });
 });

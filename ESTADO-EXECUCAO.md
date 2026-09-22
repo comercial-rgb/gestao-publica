@@ -9330,3 +9330,52 @@ grava.
 ### 79.4 Pendências
 
 `EXCECAO-DE-CALENDARIO-SO-FECHA` **fecha**. Nenhuma nasce.
+
+---
+
+## 80. V11 V8.13 — o guichê passa a avisar quem atende
+
+### 80.1 A pendência, e o aviso que mais faltava
+
+`GUICHE-SEM-NOTIFICACAO-INTERNA`: o pedido da V9 fala em caixa interna mostrando pendências, e a
+marcação não chegava a ninguém. Quem organiza via a agenda; quem **atende** só descobria a fila ao
+abrir a tela e procurar o dia certo.
+
+Dos seis atos da agenda, um é diferente dos outros cinco: **a marcação feita pelo portal**. Ela
+acontece com ninguém do ente na frente da tela — às onze da noite, no domingo — e não tinha como
+ser esperada. Os outros cinco têm um servidor presente; mesmo assim avisam, porque quem marca no
+balcão não é necessariamente quem atende.
+
+### 80.2 Duas superfícies, nenhuma nova
+
+- **Notificação interna (M24)** nos seis atos, para quem está **lotado no setor da unidade** — o
+  recorte que diz quem vai atender. ⚠️ **Quem fez não é avisado do que fez**: um aviso que volta
+  para o autor ensina a ignorar a caixa, e o que se ensina a ignorar é justamente o aviso que chega
+  de madrugada. O aviso vive **dentro da transação do fato**, como o M24 manda: avisar sobre uma
+  marcação que o rollback desfez é avisar uma mentira.
+- **Faixa na home** (`PainelDePendencias`): "Atendimentos marcados para hoje", contados nas unidades
+  do **seu** setor, vivos (sem cancelamento e sem realização) e pelo dia **vigente** — quem remarcou
+  para amanhã não espera hoje.
+
+Nenhuma tela nova: as duas máquinas já existiam e estavam desligadas para o guichê.
+
+### 80.3 O que foi medido
+
+| Medida | Resultado |
+|---|---|
+| tsc app / backend | `exit=0` |
+| m21 + `test/ui` | **426 testes**, `exit=0` |
+
+**Mutação:** tirar o filtro do autor deixou `t13a` vermelho. E `t13b` afirma o outro lado: setor
+**sem ninguém lotado** não derruba a marcação — o ato vale, o aviso é que não tem a quem ir.
+
+⚠️ **Uma intermitência, com o motivo junto:** na corrida em que os três testes novos do portal
+caíam (faltava publicar a janela no `describe`), o `t8` daquele arquivo caiu junto, em 5300 ms. Ele
+não tem asserção de tempo; a causa provável são as transações abortando no mesmo arquivo. Corrigido
+o meu defeito, `t8` passou em **duas** corridas seguidas. Fica registrado em vez de descartado.
+
+### 80.4 Pendências
+
+`GUICHE-SEM-NOTIFICACAO-INTERNA` **fecha**. Nenhuma nasce. Segue valendo o que o M24 já declarava:
+e-mail e push **não são enviados** (`NOTIFICACAO-EMAIL-PUSH`) — os avisos do guichê usam o canal
+SISTEMA, que nasce entregue porque a entrega é a gravação.

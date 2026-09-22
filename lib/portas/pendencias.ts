@@ -329,6 +329,53 @@ async function ordensSemEntrada(): Promise<Pendencia> {
  * ⚠️ E O ZERO SOME TAMBÉM: um painel "Assinaturas na fila: 0" ocupa a mesma atenção que um
  * com trabalho de verdade, e ensina o operador a ignorar a faixa inteira.
  */
+/**
+ * ATENDIMENTOS DE HOJE NAS UNIDADES DO MEU SETOR (V11 V8.13).
+ *
+ * ⚠️ `GUICHE-SEM-NOTIFICACAO-INTERNA`: a marcação não chegava a ninguém. Quem organizava a agenda
+ * via a agenda — e quem atende só descobria a fila ao abrir a tela e procurar o dia certo.
+ *
+ * ⚠️ O RECORTE É O SETOR, e não o ente: a unidade de atendimento tem um setor responsável, e quem
+ * está lotado nele é quem vai atender. Contar as marcações do município inteiro diria ao servidor
+ * do protocolo que há 40 pessoas esperando — e nenhuma delas na porta dele.
+ *
+ * ⚠️ VIVA É DERIVADO, não coluna: sem cancelamento e sem realização. E o dia é o VIGENTE — quem
+ * remarcou para amanhã não espera hoje. O reagendamento é um fato próprio, e ler o dia original
+ * mostraria gente que não vem.
+ */
+async function atendimentosDeHoje(identificador: string): Promise<Pendencia> {
+  const prisma = cliente();
+  const hoje = diaCivil(new Date());
+  const meusSetores = (
+    await prisma.usuarioDoSetor.findMany({ where: { usuarioIdent: identificador }, select: { setorId: true } })
+  ).map((x) => x.setorId);
+
+  const reservas =
+    meusSetores.length === 0
+      ? []
+      : await prisma.reservaDeAtendimento.findMany({
+          where: {
+            cancelamento: { is: null },
+            realizacao: { is: null },
+            guiche: { unidade: { setorId: { in: meusSetores } } },
+          },
+          take: TETO_DA_CONTAGEM,
+          select: {
+            dia: true,
+            reagendamentos: { orderBy: { sequencia: "desc" }, take: 1, select: { dia: true } },
+          },
+        });
+
+  const quantidade = reservas.filter((r) => diaCivil(r.reagendamentos[0]?.dia ?? r.dia) === hoje).length;
+  return {
+    chave: "atendimentos-de-hoje",
+    rotulo: "Atendimentos marcados para hoje",
+    quantidade,
+    href: "/protocolo/guiches",
+    criterio: "marcações de hoje, ainda não atendidas, nas unidades do seu setor",
+  };
+}
+
 export async function pendenciasDoUsuario(): Promise<readonly Pendencia[]> {
   const sessao = await exigirSessao();
   // ⚠️ CADA FAIXA DECLARA A ÁREA QUE ELA CONTA (orquestração V3, 4.1), e só entram as das
@@ -349,6 +396,7 @@ export async function pendenciasDoUsuario(): Promise<readonly Pendencia[]> {
     { area: "CONSULTAR_PATRIMONIO", ler: bensSemResponsavel },
     { area: "CONSULTAR_PATRIMONIO", ler: lotesVencendo },
     { area: "CONSULTAR_LICITACOES", ler: ordensSemEntrada },
+    { area: "CONSULTAR_PROTOCOLO", ler: () => atendimentosDeHoje(sessao.identificador) },
   ];
   const resultados = await Promise.allSettled(
     faixas.filter((f) => f.area === null || pode.has(f.area)).map((f) => f.ler())
