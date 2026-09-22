@@ -146,6 +146,7 @@ export function FormsDaOrganizacao({
   const [eServico, aServico, pServico] = useActionState<EstadoDoAto, FormData>(definirServicoAction, {});
   const [eOferta, aOferta, pOferta] = useActionState<EstadoDoAto, FormData>(publicarOfertaAction, {});
   const [eFeriado, aFeriado, pFeriado] = useActionState<EstadoDoAto, FormData>(fecharDiaAction, {});
+  const [tipoDaExcecao, setTipoDaExcecao] = useState("");
 
   return (
     <div className="space-y-3">
@@ -318,9 +319,9 @@ export function FormsDaOrganizacao({
 
       <Painel
         acao="fechar-dia-de-atendimento"
-        titulo="Fechar um dia"
-        explicacao="Feriado, ponto facultativo, força maior. Vale para a unidade inteira, e é recusado se já houver gente marcada naquele dia — cancele ou remarque antes, cada uma com o seu motivo."
-        rotuloDoBotao="Fechar o dia"
+        titulo="Declarar exceção no calendário de um dia"
+        explicacao="Feriado, ponto facultativo, véspera que abre só de manhã — ou a volta atrás de uma decisão dessas. Vale para a unidade inteira. Fechar ou encolher é recusado se já houver gente marcada no horário que deixaria de existir; cancele ou remarque antes, cada uma com o seu motivo. Cada decisão é um fato novo: as anteriores continuam no histórico."
+        rotuloDoBotao="Declarar"
         action={aFeriado}
         estado={eFeriado}
         pendente={pFeriado}
@@ -339,10 +340,38 @@ export function FormsDaOrganizacao({
             <span className={ROTULO}>Dia</span>
             <input name="dia" type="date" required className={CAMPO} />
           </label>
-          <label className="text-xs sm:col-span-2">
+          {/* ⚠️ SEM DEFAULT (V11 V8.12): fechar, encolher e devolver ao normal são três atos
+              diferentes sobre o mesmo dia, e um default escolheria um deles por quem declara. */}
+          <label className="text-xs">
+            <span className={ROTULO}>O que acontece nesse dia</span>
+            <select name="tipo" required defaultValue="" className={CAMPO} onChange={(e) => setTipoDaExcecao(e.target.value)}>
+              <option value="">Escolha…</option>
+              <option value="FECHADO">Não abre</option>
+              <option value="EXPEDIENTE_ESPECIAL">Abre em horário especial</option>
+              <option value="EXPEDIENTE_NORMAL">Volta ao expediente normal</option>
+            </select>
+          </label>
+          <label className="text-xs">
             <span className={ROTULO}>Motivo</span>
             <input name="motivo" required maxLength={240} placeholder="Feriado municipal - padroeira da cidade" className={CAMPO} />
           </label>
+          {tipoDaExcecao === "EXPEDIENTE_ESPECIAL" ? (
+            <>
+              <label className="text-xs">
+                <span className={ROTULO}>Abre às</span>
+                <input name="horaInicio" type="time" required className={CAMPO} />
+              </label>
+              <label className="text-xs">
+                <span className={ROTULO}>Fecha às</span>
+                <input name="horaFim" type="time" required className={CAMPO} />
+              </label>
+              <p className="text-xs text-[color:var(--color-ink-3)] sm:col-span-4">
+                O horário especial <strong>recorta</strong> a oferta já publicada — ele não cria
+                horários novos. O fim é <strong>exclusivo</strong>: 08:00 às 12:00 oferece o 11:30 e
+                não o 12:00, como nas janelas.
+              </p>
+            </>
+          ) : null}
         </div>
       </Painel>
     </div>

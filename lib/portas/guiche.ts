@@ -5,7 +5,7 @@ import {
   criarGuiche,
   criarUnidadeDeAtendimento,
   definirServicoNoGuiche,
-  fecharDiaDeAtendimento,
+  declararExcecaoDeCalendario,
   ofertaDoGuiche,
   publicarJanelaDeAtendimento,
   reagendarReservaDeAtendimento,
@@ -54,7 +54,18 @@ export interface UnidadeNaTela {
   readonly endereco: string;
   readonly setorNome: string;
   readonly guiches: readonly GuicheNaTela[];
-  readonly diasFechados: readonly { readonly dia: string; readonly motivo: string }[];
+  /**
+   * ⚠️ AS EXCEÇÕES VIGENTES DO CALENDÁRIO (V11 V8.12) — o nome ficou de quando só havia
+   * fechamento. Hoje a lista traz também o EXPEDIENTE ESPECIAL, com as horas; o que sumiu dela é
+   * o dia devolvido ao normal, que continua no banco como fato.
+   */
+  readonly diasFechados: readonly {
+    readonly dia: string;
+    readonly motivo: string;
+    readonly tipo: string;
+    readonly horaInicio: string | null;
+    readonly horaFim: string | null;
+  }[];
 }
 
 /** As unidades com os guichês, a oferta publicada e os dias fechados — a tela de organização. */
@@ -67,7 +78,13 @@ export async function lerUnidadesDeAtendimento(): Promise<readonly UnidadeNaTela
     select: {
       id: true, codigo: true, nome: true, endereco: true,
       setor: { select: { nome: true } },
-      excecoes: { orderBy: { dia: "asc" }, select: { dia: true, motivo: true } },
+      // ⚠️ TODAS AS DECISÕES DE CADA DIA, ORDENADAS (V11 V8.12) — a tabela virou append-only por
+      // dia, e a VIGENTE é a de maior sequência. Trazer só uma linha por dia aqui mostraria a
+      // primeira decisão como se fosse a atual: o dia reaberto continuaria aparecendo fechado.
+      excecoes: {
+        orderBy: [{ dia: "asc" }, { sequencia: "asc" }],
+        select: { dia: true, motivo: true, tipo: true, horaInicio: true, horaFim: true },
+      },
       guiches: {
         orderBy: { nome: "asc" },
         select: {
@@ -90,7 +107,18 @@ export async function lerUnidadesDeAtendimento(): Promise<readonly UnidadeNaTela
 
   return unidades.map((u) => ({
     id: u.id, codigo: u.codigo, nome: u.nome, endereco: u.endereco, setorNome: u.setor.nome,
-    diasFechados: u.excecoes.map((e) => ({ dia: diaCivil(e.dia), motivo: e.motivo })),
+    diasFechados: (() => {
+      // A vigente de cada dia; `EXPEDIENTE_NORMAL` some da lista, porque ele diz justamente que
+      // não há exceção valendo — mas continua no banco, com autor e motivo.
+      const porDia = new Map<string, { dia: string; motivo: string; tipo: string; horaInicio: string | null; horaFim: string | null }>();
+      for (const e of u.excecoes) {
+        porDia.set(diaCivil(e.dia), {
+          dia: diaCivil(e.dia), motivo: e.motivo, tipo: e.tipo,
+          horaInicio: e.horaInicio, horaFim: e.horaFim,
+        });
+      }
+      return [...porDia.values()].filter((e) => e.tipo !== "EXPEDIENTE_NORMAL");
+    })(),
     guiches: u.guiches.map((g) => {
       // ⚠️ O VIGENTE É O ÚLTIMO FATO de cada serviço — a tabela é append-only, e a lista traz a
       // habilitação e a desabilitação. Mostrar todas as linhas exibiria como "atendido" um
@@ -290,11 +318,31 @@ export async function publicarOfertaDeHorarios(input: {
   return `Oferta publicada: ${r.horariosOfertados} horário(s) por dia, ${input.capacidade} lugar(es) em cada.`;
 }
 
-export async function fecharDia(input: { readonly unidadeId: string; readonly dia: string; readonly motivo: string }): Promise<string> {
-  await comEscritaAutenticada("CONFIGURAR_AGENDA_DO_GUICHE", (criadoPor) =>
-    fecharDiaDeAtendimento(cliente(), { ...input, criadoPor })
+/**
+ * A EXCEÇÃO DE CALENDÁRIO (V11 V8.12) — fechar, encolher o expediente, ou devolver ao normal.
+ *
+ * ⚠️ A CONFIRMAÇÃO DIZ O QUE MUDOU, e não "pronto". As três decisões mudam o dia de formas
+ * diferentes, e quem declarou precisa ler qual delas ficou valendo.
+ */
+export async function declararExcecaoDoCalendario(input: {
+  readonly unidadeId: string;
+  readonly dia: string;
+  readonly tipo: "FECHADO" | "EXPEDIENTE_ESPECIAL" | "EXPEDIENTE_NORMAL";
+  readonly horaInicio?: string;
+  readonly horaFim?: string;
+  readonly motivo: string;
+}): Promise<string> {
+  const r = await comEscritaAutenticada("CONFIGURAR_AGENDA_DO_GUICHE", (criadoPor) =>
+    declararExcecaoDeCalendario(cliente(), { ...input, criadoPor })
   );
-  return `${input.dia.split("-").reverse().join("/")} fechado: ${input.motivo}.`;
+  const dia = input.dia.split("-").reverse().join("/");
+  const oQue =
+    input.tipo === "FECHADO"
+      ? `fechado`
+      : input.tipo === "EXPEDIENTE_ESPECIAL"
+        ? `com expediente especial das ${input.horaInicio} às ${input.horaFim}`
+        : `de volta ao expediente normal`;
+  return `${dia} ${oQue}: ${input.motivo}. (decisão ${r.sequencia} deste dia — as anteriores continuam no histórico)`;
 }
 
 /**

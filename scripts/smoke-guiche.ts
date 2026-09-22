@@ -355,8 +355,9 @@ async function main(): Promise<void> {
     ]);
 
     await irPara(N, page, ORGANIZACAO);
-    await abrirPainel(page, "Fechar o dia");
+    await abrirPainel(page, "Declarar");
     await escolherPorRotulo(page, "fechar-dia-de-atendimento", "unidadeId", UNIDADE);
+    await escolherPorRotulo(page, "fechar-dia-de-atendimento", "tipo", "Não abre");
     const r8 = await preencherEEnviar(page, "fechar-dia-de-atendimento", [
       { sel: 'input[name="dia"]', valor: C.segunda, tipo: "data" },
       { sel: 'input[name="motivo"]', valor: "Ponto facultativo municipal" },
@@ -383,8 +384,9 @@ async function main(): Promise<void> {
     );
 
     await irPara(N, page, ORGANIZACAO);
-    await abrirPainel(page, "Fechar o dia");
+    await abrirPainel(page, "Declarar");
     await escolherPorRotulo(page, "fechar-dia-de-atendimento", "unidadeId", UNIDADE);
+    await escolherPorRotulo(page, "fechar-dia-de-atendimento", "tipo", "Não abre");
     const r10 = await preencherEEnviar(page, "fechar-dia-de-atendimento", [
       { sel: 'input[name="dia"]', valor: C.segunda, tipo: "data" },
       { sel: 'input[name="motivo"]', valor: "Ponto facultativo municipal" },

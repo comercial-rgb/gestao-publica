@@ -9,7 +9,7 @@ import {
   cancelarMarcacao,
   confirmarPresenca,
   definirServicoDoGuiche,
-  fecharDia,
+  declararExcecaoDoCalendario,
   marcarAtendimento,
   publicarOfertaDeHorarios,
   registrarAtendimento,
@@ -127,14 +127,39 @@ export async function publicarOfertaAction(_p: EstadoDoAto, f: FormData): Promis
   });
 }
 
+/**
+ * A EXCEÇÃO DE CALENDÁRIO (V11 V8.12) — três decisões sobre o mesmo dia, uma ação só.
+ *
+ * ⚠️ NENHUMA REGRA AQUI. A ação confere FORMA (campo em branco, tipo fora da lista) e traduz o
+ * `FormData`; quem cobra as horas juntas, a ordem delas e as reservas que deixariam de caber é o
+ * domínio — e a mensagem dele sobe inteira.
+ */
+const TIPOS_DE_EXCECAO = ["FECHADO", "EXPEDIENTE_ESPECIAL", "EXPEDIENTE_NORMAL"] as const;
+
 export async function fecharDiaAction(_p: EstadoDoAto, f: FormData): Promise<EstadoDoAto> {
   return comComandoDoFormulario(f, async () => {
     if (t(f, "unidadeId") === "") return { erro: "Escolha a unidade." };
     if (t(f, "dia") === "") return { erro: "Informe o dia." };
-    if (t(f, "motivo") === "") return { erro: "Diga por que a unidade não abre — é isso que a tela mostra a quem procurar horário." };
+    const tipo = t(f, "tipo");
+    if (!(TIPOS_DE_EXCECAO as readonly string[]).includes(tipo)) {
+      return { erro: "Escolha o que fazer com o dia: fechar, expediente especial ou voltar ao normal." };
+    }
+    if (t(f, "motivo") === "") return { erro: "Diga por quê — é isso que a tela mostra a quem procurar horário." };
+    if (tipo === "EXPEDIENTE_ESPECIAL" && (t(f, "horaInicio") === "" || t(f, "horaFim") === "")) {
+      return { erro: "O expediente especial precisa da hora de início E da hora de fim." };
+    }
     return ato(
-      () => fecharDia({ unidadeId: t(f, "unidadeId"), dia: t(f, "dia"), motivo: t(f, "motivo") }),
-      "Não foi possível fechar o dia. Nada foi gravado."
+      () =>
+        declararExcecaoDoCalendario({
+          unidadeId: t(f, "unidadeId"),
+          dia: t(f, "dia"),
+          tipo: tipo as (typeof TIPOS_DE_EXCECAO)[number],
+          motivo: t(f, "motivo"),
+          ...(tipo === "EXPEDIENTE_ESPECIAL"
+            ? { horaInicio: t(f, "horaInicio"), horaFim: t(f, "horaFim") }
+            : {}),
+        }),
+      "Não foi possível declarar a exceção. Nada foi gravado."
     );
   });
 }

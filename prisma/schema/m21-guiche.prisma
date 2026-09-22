@@ -136,20 +136,54 @@ model JanelaDeAtendimento {
 ///
 /// ⚠️ É DA UNIDADE, não do guichê: quando o prédio não abre, nenhum guichê dele atende. O motivo
 /// é obrigatório porque é ele que a tela mostra a quem procurou horário e não achou.
+/// O QUE A EXCEÇÃO DIZ SOBRE O DIA (V11 V8.12).
+///
+/// ⚠️ ERA SÓ "FECHADO", e a pendência `EXCECAO-DE-CALENDARIO-SO-FECHA` nomeava as duas metades
+/// que faltavam: não havia **horário especial de feriado** (a véspera que abre só de manhã), e
+/// não havia **volta atrás** — um dia fechado por engano ficava fechado para sempre, porque a
+/// linha era única por dia e o papel de runtime não tem UPDATE.
+enum TipoDaExcecaoDeCalendario {
+  /// A unidade não abre. Nenhuma marcação cabe.
+  FECHADO
+
+  /// A unidade abre, mas só dentro de `horaInicio`–`horaFim` (fim EXCLUSIVO, como a janela).
+  EXPEDIENTE_ESPECIAL
+
+  /// REVOGA as exceções anteriores daquele dia: o expediente volta a ser o das janelas.
+  EXPEDIENTE_NORMAL
+}
+
+/// A EXCEÇÃO DE CALENDÁRIO — append-only e versionada por dia (V11 V8.12).
+///
+/// ⚠️ ANTES ERA UMA LINHA ÚNICA POR DIA, e isso tinha dois preços. O dia fechado por engano não
+/// tinha volta (sem UPDATE, sem DELETE, com `@@unique([unidadeId, dia])` fechando a porta), e o
+/// feriado com expediente reduzido não tinha como ser dito. Agora cada decisão sobre o dia é um
+/// FATO com autor, motivo e sequência — e a VIGENTE é a de maior sequência.
 model ExcecaoDeCalendarioDoAtendimento {
   id String @id @default(cuid())
 
   unidadeId String
   unidade   UnidadeDeAtendimento @relation(fields: [unidadeId], references: [id])
 
-  /// Dia civil fechado (meio-dia do fuso do ente).
+  /// Dia civil (meio-dia do fuso do ente).
   dia    DateTime
   motivo String
+
+  tipo TipoDaExcecaoDeCalendario @default(FECHADO)
+
+  /// Só em `EXPEDIENTE_ESPECIAL` — "HH:MM" no relógio do ente. O CHECK do banco cobra os dois
+  /// juntos: meia janela é pior que nenhuma, porque ela parece configuração.
+  horaInicio String? @db.VarChar(5)
+  horaFim    String? @db.VarChar(5)
+
+  /// 1, 2, 3… por (unidade, dia). A VIGENTE é a maior.
+  sequencia Int @default(1)
 
   criadoEm  DateTime @default(now())
   criadoPor String
 
-  @@unique([unidadeId, dia])
+  @@unique([unidadeId, dia, sequencia])
+  @@index([unidadeId, dia, sequencia])
   @@index([dia])
 }
 

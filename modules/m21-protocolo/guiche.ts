@@ -185,3 +185,31 @@ export function ofertaDoDia(
   }
   return [...porHora.values()].sort((x, y) => (x.hora < y.hora ? -1 : 1));
 }
+
+/**
+ * O horário cabe no expediente ESPECIAL de um dia? (V11 V8.12)
+ *
+ * ⚠️ FIM EXCLUSIVO, a mesma convenção de `horariosDaJanela` — 08:00–12:00 aceita o 11:30 e recusa
+ * o 12:00. Duas convenções diferentes para "fim" no mesmo módulo é um defeito esperando um
+ * feriado: a véspera ofertaria um horário que a gravação recusa.
+ */
+export function horaCabeNoExpediente(hora: string, inicio: string, fim: string): boolean {
+  const m = minutosDaHora(hora);
+  return m >= minutosDaHora(inicio) && m < minutosDaHora(fim);
+}
+
+/**
+ * A oferta do dia RECORTADA pelo expediente especial (V11 V8.12).
+ *
+ * ⚠️ RECORTE, E NÃO UMA SEGUNDA GERAÇÃO DE HORÁRIOS. Os horários continuam saindo das janelas
+ * publicadas; o expediente especial só diz quais deles valem naquele dia. Gerar uma grade nova a
+ * partir de `horaInicio`/`horaFim` inventaria horários que o guichê nunca ofereceu — com outra
+ * duração e outra capacidade.
+ */
+export function recortarPeloExpediente(
+  horarios: readonly HorarioOfertado[],
+  expediente: { readonly horaInicio: string; readonly horaFim: string } | null
+): readonly HorarioOfertado[] {
+  if (expediente === null) return horarios;
+  return horarios.filter((h) => horaCabeNoExpediente(h.hora, expediente.horaInicio, expediente.horaFim));
+}

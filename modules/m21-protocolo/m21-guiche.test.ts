@@ -11,7 +11,7 @@ import {
   criarGuiche,
   criarUnidadeDeAtendimento,
   definirServicoNoGuiche,
-  fecharDiaDeAtendimento,
+  declararExcecaoDeCalendario,
   ofertaDoGuiche,
   publicarJanelaDeAtendimento,
   reagendarReservaDeAtendimento,
@@ -415,7 +415,7 @@ describe("o que o guichê atende, e quando a unidade abre", () => {
 
   it("t11: dia FECHADO recusa a reserva com o MOTIVO, e a oferta devolve o motivo em vez de lista vazia", async () => {
     await janelaDeSegunda(guicheA, 2);
-    await fecharDiaDeAtendimento(prisma, {
+    await declararExcecaoDeCalendario(prisma, { tipo: "FECHADO",
       unidadeId, dia: SEGUNDA, motivo: "Feriado municipal - padroeira da cidade", criadoPor: CHEFIA,
     });
 
@@ -433,9 +433,119 @@ describe("o que o guichê atende, e quando a unidade abre", () => {
     await reservar({ pessoaId: pessoa2, hora: "08:30" });
 
     await expect(
-      fecharDiaDeAtendimento(prisma, { unidadeId, dia: SEGUNDA, motivo: "Ponto facultativo", criadoPor: CHEFIA })
+      declararExcecaoDeCalendario(prisma, { tipo: "FECHADO", unidadeId, dia: SEGUNDA, motivo: "Ponto facultativo", criadoPor: CHEFIA })
     ).rejects.toThrow(/2 pessoa\(s\) marcada\(s\) e ainda não atendida\(s\) em 21\/09\/2026[\s\S]*prédio fechado/);
     expect(await prisma.excecaoDeCalendarioDoAtendimento.count()).toBe(0);
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // A EXCEÇÃO DE CALENDÁRIO DEIXA DE SÓ FECHAR (V11 V8.12)
+  //
+  // `EXCECAO-DE-CALENDARIO-SO-FECHA` nomeava duas metades, e as duas vinham da mesma escolha de
+  // modelo (uma linha única por dia): não havia expediente reduzido de véspera, e não havia volta
+  // atrás — um dia fechado por engano ficava fechado para sempre.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  it("t12c: o EXPEDIENTE ESPECIAL recorta a oferta — e recorta, não gera horário novo", async () => {
+    await janelaDeSegunda(guicheA, 2); // 08:00, 08:30, 09:00, 09:30
+    await declararExcecaoDeCalendario(prisma, {
+      tipo: "EXPEDIENTE_ESPECIAL", unidadeId, dia: SEGUNDA, horaInicio: "08:00", horaFim: "09:00",
+      motivo: "Vespera de feriado - expediente ate as 9h", criadoPor: CHEFIA,
+    });
+
+    const oferta = await ofertaDoGuiche(prisma, { guicheId: guicheA, dia: SEGUNDA });
+    // ⚠️ FIM EXCLUSIVO, a MESMA convenção da janela: 08:00–09:00 oferece o 08:30 e não o 09:00.
+    // Duas convenções de "fim" no mesmo módulo seriam um defeito esperando um feriado.
+    expect(oferta.horarios.map((h) => h.hora)).toEqual(["08:00", "08:30"]);
+    expect(oferta.fechado).toBeNull();
+  });
+
+  it("t12d: reservar FORA do expediente especial é recusado nomeando as horas; DENTRO passa", async () => {
+    await janelaDeSegunda(guicheA, 2);
+    await declararExcecaoDeCalendario(prisma, {
+      tipo: "EXPEDIENTE_ESPECIAL", unidadeId, dia: SEGUNDA, horaInicio: "08:00", horaFim: "09:00",
+      motivo: "Vespera de feriado - expediente ate as 9h", criadoPor: CHEFIA,
+    });
+
+    await expect(reservar({ pessoaId: pessoa1, hora: "09:30" })).rejects.toThrow(
+      /expediente ESPECIAL em 21\/09\/2026 \(08:00 às 09:00\)[\s\S]*09:30 está fora dele/
+    );
+    // ⚠️ E A CONTRAPROVA NO MESMO TESTE: se o recorte recusasse tudo, "recusa fora" não provaria
+    // nada. Dentro do expediente, a reserva grava.
+    await expect(reservar({ pessoaId: pessoa1, hora: "08:30" })).resolves.toBeDefined();
+  });
+
+  it("t12e: o dia fechado por ENGANO volta atrás — e a reserva volta a caber", async () => {
+    // ⚠️ ESTA É A METADE QUE FALTAVA E NINGUÉM VIA. Sem UPDATE e sem DELETE para o papel de
+    // runtime, e com a unicidade por dia, o engano não tinha saída nenhuma dentro do sistema.
+    await janelaDeSegunda(guicheA, 2);
+    await declararExcecaoDeCalendario(prisma, {
+      tipo: "FECHADO", unidadeId, dia: SEGUNDA, motivo: "Fechado por engano - dia errado", criadoPor: CHEFIA,
+    });
+    await expect(reservar({ pessoaId: pessoa1 })).rejects.toThrow(/não abre em 21\/09\/2026/);
+
+    await declararExcecaoDeCalendario(prisma, {
+      tipo: "EXPEDIENTE_NORMAL", unidadeId, dia: SEGUNDA, motivo: "Engano: o feriado e no dia 28", criadoPor: CHEFIA,
+    });
+    await expect(reservar({ pessoaId: pessoa1 })).resolves.toBeDefined();
+
+    // ⚠️ APPEND-ONLY: as DUAS decisões continuam no banco. "Quem fechou o dia, e quem reabriu?"
+    // tem de ter resposta — revogar não é apagar.
+    expect(await prisma.excecaoDeCalendarioDoAtendimento.count()).toBe(2);
+  });
+
+  it("t12f (N=2): encolher o expediente só é recusado por quem fica FORA dele", async () => {
+    await janelaDeSegunda(guicheA, 2);
+    await reservar({ pessoaId: pessoa1, hora: "08:00" });
+    await reservar({ pessoaId: pessoa2, hora: "09:30" });
+
+    // ⚠️ FIXTURE N=2 E O RECORTE NO MEIO: com uma reserva só, "recusa se há gente marcada" e
+    // "recusa se há gente marcada FORA" se comportariam igual, e o teste passaria por vacuidade.
+    await expect(
+      declararExcecaoDeCalendario(prisma, {
+        tipo: "EXPEDIENTE_ESPECIAL", unidadeId, dia: SEGUNDA, horaInicio: "08:00", horaFim: "09:00",
+        motivo: "Vespera de feriado - expediente ate as 9h", criadoPor: CHEFIA,
+      })
+    ).rejects.toThrow(/1 pessoa\(s\) marcada\(s\)[\s\S]*FORA de 08:00–09:00[\s\S]*horário que deixou de existir/);
+
+    // Um expediente que cobre as DUAS passa — o guard olha quem fica de fora, não quem existe.
+    await expect(
+      declararExcecaoDeCalendario(prisma, {
+        tipo: "EXPEDIENTE_ESPECIAL", unidadeId, dia: SEGUNDA, horaInicio: "08:00", horaFim: "10:00",
+        motivo: "Vespera de feriado - expediente ate as 10h", criadoPor: CHEFIA,
+      })
+    ).resolves.toBeDefined();
+  });
+
+  it("t12g: meia janela é recusada, e repetir a MESMA decisão não é fato novo", async () => {
+    await expect(
+      declararExcecaoDeCalendario(prisma, {
+        tipo: "EXPEDIENTE_ESPECIAL", unidadeId, dia: SEGUNDA, horaInicio: "08:00",
+        motivo: "Vespera de feriado", criadoPor: CHEFIA,
+      })
+    ).rejects.toThrow(/precisa da hora de início E da hora de fim/);
+
+    await expect(
+      declararExcecaoDeCalendario(prisma, {
+        tipo: "EXPEDIENTE_ESPECIAL", unidadeId, dia: SEGUNDA, horaInicio: "10:00", horaFim: "08:00",
+        motivo: "Vespera de feriado", criadoPor: CHEFIA,
+      })
+    ).rejects.toThrow(/termina \(08:00\) antes de começar \(10:00\)/);
+
+    // ⚠️ E HORÁRIO NUM DIA FECHADO NÃO RECORTA NADA — ele só faria a tela mostrar um expediente
+    // que nenhuma leitura consulta.
+    await expect(
+      declararExcecaoDeCalendario(prisma, {
+        tipo: "FECHADO", unidadeId, dia: SEGUNDA, horaInicio: "08:00", horaFim: "12:00",
+        motivo: "Feriado", criadoPor: CHEFIA,
+      })
+    ).rejects.toThrow(/só tem significado no expediente ESPECIAL/);
+
+    await declararExcecaoDeCalendario(prisma, { tipo: "FECHADO", unidadeId, dia: SEGUNDA, motivo: "Feriado municipal", criadoPor: CHEFIA });
+    await expect(
+      declararExcecaoDeCalendario(prisma, { tipo: "FECHADO", unidadeId, dia: SEGUNDA, motivo: "Feriado municipal", criadoPor: CHEFIA })
+    ).rejects.toThrow(/Repetir a mesma decisão não é um fato novo/);
+    expect(await prisma.excecaoDeCalendarioDoAtendimento.count()).toBe(1);
   });
 
   it("t12b: quem JÁ FOI ATENDIDO não impede fechar o dia — e continua ocupando o lugar", async () => {
@@ -453,7 +563,7 @@ describe("o que o guichê atende, e quando a unidade abre", () => {
 
     // Para FECHAR O DIA ela não conta: quem já foi atendido não vai ser deixado na porta, e
     // bloquear aqui tornaria impossível registrar um feriado decidido depois do expediente.
-    await fecharDiaDeAtendimento(prisma, {
+    await declararExcecaoDeCalendario(prisma, { tipo: "FECHADO",
       unidadeId, dia: SEGUNDA, motivo: "Ponto facultativo decidido no fim do dia", criadoPor: CHEFIA,
     });
     expect(await prisma.excecaoDeCalendarioDoAtendimento.count()).toBe(1);

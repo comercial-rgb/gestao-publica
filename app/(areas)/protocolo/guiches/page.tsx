@@ -103,8 +103,14 @@ export default async function GuichesPage(): Promise<React.ReactElement> {
 
           {u.diasFechados.length > 0 ? (
             <p className="mt-2 text-xs text-[color:var(--color-ink-2)]" data-teste={`dias-fechados-${u.codigo}`}>
-              <strong>Não abre:</strong>{" "}
-              {u.diasFechados.map((d) => `${br(d.dia)} (${d.motivo})`).join("; ")}
+              <strong>Exceções no calendário:</strong>{" "}
+              {u.diasFechados
+                .map((d) =>
+                  d.tipo === "EXPEDIENTE_ESPECIAL"
+                    ? `${br(d.dia)} abre ${d.horaInicio}–${d.horaFim} (${d.motivo})`
+                    : `${br(d.dia)} não abre (${d.motivo})`
+                )
+                .join("; ")}
             </p>
           ) : null}
 

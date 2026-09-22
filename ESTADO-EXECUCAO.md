@@ -9275,3 +9275,58 @@ estreita para **`RECEITA-SEM-ENTIDADE-ARRECADADORA`**: o fato que falta é a ent
 e ele não existe no modelo da receita. Enquanto não existir, o apurado por entidade não é derivável
 — e o catálogo `5.10.1.48` segue **`PARCIAL`** por esse motivo, agora com o recorte de entidade
 entregue na parte que os fatos sustentam.
+
+---
+
+## 79. V11 V8.12 — a exceção de calendário deixa de só fechar
+
+### 79.1 Duas metades, uma causa
+
+`EXCECAO-DE-CALENDARIO-SO-FECHA` nomeava o feriado com expediente reduzido. Ao mexer, apareceu a
+segunda metade, mais grave: **o dia fechado por engano não tinha volta**. Sem `UPDATE` e sem
+`DELETE` para o papel de runtime, e com `@@unique([unidadeId, dia])` fechando a porta, o erro ficava
+para sempre — e a única saída seria afrouxar o grant, que é o oposto da regra da casa.
+
+As duas vinham da mesma escolha de modelo: **uma linha única por dia**. Agora cada decisão sobre o
+dia é um FATO com sequência (FECHADO, EXPEDIENTE_ESPECIAL, EXPEDIENTE_NORMAL), e a vigente é a de
+maior sequência. Revogar não apaga: "quem fechou o dia, e quem reabriu?" tem resposta.
+
+⚠️ **O `DROP` do índice único foi necessário e é do mesmo tipo do que a V8.4 fez** ao versionar o
+roteiro: a unicidade por dia é exatamente o que impede a segunda decisão. Nenhuma linha se perde —
+toda exceção existente vira a sequência 1, do tipo FECHADO, que é o que ela já significava.
+
+### 79.2 As decisões que o desenho tomou
+
+- **O expediente especial RECORTA a oferta, não gera horário.** Os horários continuam saindo das
+  janelas publicadas. Gerar uma grade nova a partir de `horaInicio`/`horaFim` inventaria horários
+  que o guichê nunca ofereceu — com outra duração e outra capacidade.
+- **Fim exclusivo**, a mesma convenção da janela: 08:00–09:00 oferece o 08:30 e não o 09:00. Duas
+  convenções de "fim" no mesmo módulo seriam um defeito esperando um feriado.
+- **Encolher é recusado por quem fica de FORA**, não por quem existe. Fechar o dia inteiro e
+  encolher o expediente são o mesmo risco em tamanhos diferentes, e a mensagem **nomeia a
+  consequência por caso**: "prédio fechado" e "horário que deixou de existir" são coisas diferentes
+  para quem vai ligar para essas pessoas.
+- **Devolver ao normal não tem essa guarda** — abrir não machuca marcação nenhuma.
+- **O nome da ação continua `FECHAR_DIA_DE_ATENDIMENTO`**: é a mesma autoridade, e o nome está
+  gravado como permissão em instalação viva. Valores de enum não se removem; trocar o nome deixaria
+  para trás toda concessão já feita.
+- **Seis leituras viraram uma.** Eram seis `findUnique` iguais espalhados; com a versão, seriam seis
+  lugares para esquecer do `orderBy`.
+
+### 79.3 O que foi medido
+
+| Medida | Resultado |
+|---|---|
+| tsc app / backend / scripts | `exit=0` nos três |
+| m21 + `test/ui` | **421 testes**, `exit=0` |
+| `m21-guiche.test.ts` | 31 testes (eram 26) |
+
+**Duas mutações, duas acusações:** fazer o expediente especial não recusar nada deixou `t12d`
+vermelho; contar todas as reservas em vez das que ficam fora do recorte deixou `t12f` vermelho.
+
+E `t12d` traz a contraprova dentro de si: recusar **fora** só prova alguma coisa se **dentro**
+grava.
+
+### 79.4 Pendências
+
+`EXCECAO-DE-CALENDARIO-SO-FECHA` **fecha**. Nenhuma nasce.

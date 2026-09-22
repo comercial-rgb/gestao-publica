@@ -12,7 +12,7 @@ import {
   criarGuiche,
   criarUnidadeDeAtendimento,
   definirServicoNoGuiche,
-  fecharDiaDeAtendimento,
+  declararExcecaoDeCalendario,
   guichesAbertosAoPortal,
   ofertaDoGuiche,
   publicarJanelaDeAtendimento,
@@ -227,7 +227,7 @@ describe("o agendamento do cidadão", () => {
     await expect(agendar()).rejects.toThrow(/HORARIO-INEXISTENTE/);
 
     await janela(guiche, 2);
-    await fecharDiaDeAtendimento(prisma, { unidadeId, dia: SEGUNDA, motivo: "Feriado municipal", criadoPor: CHEFIA });
+    await declararExcecaoDeCalendario(prisma, { tipo: "FECHADO", unidadeId, dia: SEGUNDA, motivo: "Feriado municipal", criadoPor: CHEFIA });
     await expect(agendar()).rejects.toThrow(/UNIDADE-FECHADA.*Feriado municipal/s);
     expect(await prisma.reservaDeAtendimento.count()).toBe(0);
   });

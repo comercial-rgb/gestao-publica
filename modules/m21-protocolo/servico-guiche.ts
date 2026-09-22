@@ -9,7 +9,9 @@ import {
   horariosDaJanela,
   janelaValeNoDia,
   janelasSeSobrepoem,
+  horaCabeNoExpediente,
   minutosDaHora,
+  recortarPeloExpediente,
   ofertaDoDia,
   type HorarioOfertado,
   type JanelaVigente,
@@ -334,27 +336,70 @@ export async function publicarJanelaDeAtendimento(
   });
 }
 
-export const zFecharDia = z.object({
+export const zExcecaoDeCalendario = z.object({
   unidadeId: z.string().min(1),
   dia: zDiaCivil,
+  /**
+   * ⚠️ SEM DEFAULT. Fechar, encolher e devolver ao normal são três atos diferentes sobre o mesmo
+   * dia; um default escolheria um deles por quem está mexendo no calendário.
+   */
+  tipo: z.enum(["FECHADO", "EXPEDIENTE_ESPECIAL", "EXPEDIENTE_NORMAL"]),
+  horaInicio: zHora.optional(),
+  horaFim: zHora.optional(),
   motivo: z.string().trim().min(3).max(240),
   criadoPor: z.string().min(1),
 });
-export type FecharDiaInput = z.input<typeof zFecharDia>;
+export type ExcecaoDeCalendarioInput = z.input<typeof zExcecaoDeCalendario>;
 
 /**
- * FECHA UM DIA da unidade — feriado, ponto facultativo, força maior.
+ * DECLARA UMA EXCEÇÃO DE CALENDÁRIO no dia da unidade — fechar, encolher ou devolver ao normal.
  *
- * ⚠️ RECUSA SE JÁ HÁ RESERVA VIVA NO DIA, nomeando quantas. Fechar por cima delas deixaria
- * pessoas marcadas para um prédio fechado, e o sistema não teria como avisá-las depois: o
- * fechamento não cancela reserva nenhuma — quem cancela é quem cancela, com motivo.
+ * ═══ ⚠️ ERA SÓ "FECHAR" (pendência `EXCECAO-DE-CALENDARIO-SO-FECHA`) ═══
+ * Faltavam as duas outras decisões, e as duas pela mesma causa: a linha era única por dia.
+ *
+ *   · O FERIADO COM EXPEDIENTE REDUZIDO — a véspera que abre só de manhã — não tinha como ser
+ *     dito. Ou o dia abria inteiro, ou não abria;
+ *   · O DIA FECHADO POR ENGANO NÃO TINHA VOLTA. Sem UPDATE e sem DELETE para o papel de runtime,
+ *     e com a unicidade por dia, o erro ficava para sempre — e a única saída seria afrouxar o
+ *     grant, que é o oposto da regra da casa.
+ *
+ * Agora cada decisão é um FATO com sequência, e a vigente é a maior.
+ *
+ * ⚠️ O NOME DA AÇÃO CONTINUA `FECHAR_DIA_DE_ATENDIMENTO`, e isso é deliberado: ela é a MESMA
+ * autoridade (mexer no calendário da unidade), e o nome está GRAVADO como permissão em instalação
+ * viva — valores de enum não se removem. Trocar o nome deixaria para trás toda concessão já feita.
+ *
+ * ⚠️ RECUSA SE HÁ RESERVA VIVA QUE DEIXARIA DE CABER, nomeando quantas. Fechar por cima delas
+ * deixaria pessoas marcadas para um prédio fechado; ENCOLHER por cima delas é o mesmo defeito em
+ * tamanho menor. Devolver ao normal não machuca ninguém — e por isso não tem essa guarda.
  */
-export async function fecharDiaDeAtendimento(
+export async function declararExcecaoDeCalendario(
   prisma: PrismaClient,
-  input: FecharDiaInput
-): Promise<{ readonly excecaoId: string }> {
-  const d = zFecharDia.parse(input);
+  input: ExcecaoDeCalendarioInput
+): Promise<{ readonly excecaoId: string; readonly sequencia: number }> {
+  const d = zExcecaoDeCalendario.parse(input);
   const dia = meioDiaCivil(d.dia);
+
+  // ⚠️ AS HORAS ANDAM JUNTAS, E SÓ NO EXPEDIENTE ESPECIAL — conferido aqui, antes do banco, para
+  // que a recusa seja um motivo e não uma violação de CHECK.
+  if (d.tipo === "EXPEDIENTE_ESPECIAL") {
+    if (d.horaInicio === undefined || d.horaFim === undefined) {
+      throw new Error(
+        `Um expediente ESPECIAL precisa da hora de início E da hora de fim. Meia janela não oferece ` +
+          `horário nenhum e ainda parece configuração. Nada foi gravado.`
+      );
+    }
+    if (minutosDaHora(d.horaFim) <= minutosDaHora(d.horaInicio)) {
+      throw new Error(
+        `O expediente especial termina (${d.horaFim}) antes de começar (${d.horaInicio}). Nada foi gravado.`
+      );
+    }
+  } else if (d.horaInicio !== undefined || d.horaFim !== undefined) {
+    throw new Error(
+      `Horário só tem significado no expediente ESPECIAL. Em ${d.tipo} ele não recorta nada e faria ` +
+        `a tela mostrar um expediente que ninguém lê. Nada foi gravado.`
+    );
+  }
 
   return prisma.$transaction(async (tx) => {
     const unidade = await tx.unidadeDeAtendimento.findUnique({
@@ -367,31 +412,63 @@ export async function fecharDiaDeAtendimento(
       ug: unidade.setor.unidadeOrcId,
     });
 
-    const jaFechado = await tx.excecaoDeCalendarioDoAtendimento.findUnique({
-      where: { unidadeId_dia: { unidadeId: d.unidadeId, dia } },
-      select: { motivo: true },
+    const anterior = await tx.excecaoDeCalendarioDoAtendimento.findFirst({
+      where: { unidadeId: d.unidadeId, dia },
+      orderBy: { sequencia: "desc" },
+      select: { sequencia: true, tipo: true, motivo: true, horaInicio: true, horaFim: true },
     });
-    if (jaFechado !== null) {
+
+    // Repetir a MESMA decisão não é fato novo — e uma sequência a mais sem diferença só suja o
+    // histórico que esta tabela existe para preservar.
+    if (
+      anterior !== null &&
+      anterior.tipo === d.tipo &&
+      (anterior.horaInicio ?? undefined) === d.horaInicio &&
+      (anterior.horaFim ?? undefined) === d.horaFim
+    ) {
       throw new Error(
-        `${diaCivilBr(dia)} já está fechado na unidade ${unidade.nome} (${jaFechado.motivo}). Nada foi gravado.`
+        `${diaCivilBr(dia)} já está declarado como ${d.tipo} na unidade ${unidade.nome} ` +
+          `(${anterior.motivo}). Repetir a mesma decisão não é um fato novo. Nada foi gravado.`
       );
     }
 
-    const esperando = await reservasQueAindaEsperamNoDia(tx, d.unidadeId, dia);
-    if (esperando > 0) {
-      throw new Error(
-        `A unidade ${unidade.nome} tem ${esperando} pessoa(s) marcada(s) e ainda não atendida(s) em ` +
-          `${diaCivilBr(dia)}. Fechar o dia por cima delas as deixaria marcadas para um prédio ` +
-          `fechado. Cancele ou reagende essas marcações primeiro — cada uma com o seu motivo. ` +
-          `Nada foi gravado.`
-      );
+    if (d.tipo !== "EXPEDIENTE_NORMAL") {
+      const recorte =
+        d.tipo === "EXPEDIENTE_ESPECIAL"
+          ? { horaInicio: d.horaInicio!, horaFim: d.horaFim! }
+          : undefined;
+      const esperando = await reservasQueAindaEsperamNoDia(tx, d.unidadeId, dia, recorte);
+      if (esperando > 0) {
+        // ⚠️ A CONSEQUÊNCIA VEM NOMEADA POR CASO. "Ficar marcado para um prédio fechado" e "ficar
+        // marcado para um horário que encolheu" são coisas diferentes para quem vai ligar para
+        // essas pessoas — e uma frase genérica para os dois não diria a nenhum deles o que fazer.
+        const consequencia =
+          recorte === undefined
+            ? `as deixaria marcadas para um prédio fechado`
+            : `as deixaria marcadas para um horário que deixou de existir`;
+        throw new Error(
+          `A unidade ${unidade.nome} tem ${esperando} pessoa(s) marcada(s) e ainda não atendida(s) em ` +
+            `${diaCivilBr(dia)}${recorte === undefined ? "" : ` FORA de ${recorte.horaInicio}–${recorte.horaFim}`}. ` +
+            `Gravar por cima delas ${consequencia}. ` +
+            `Cancele ou reagende essas marcações primeiro — cada uma com o seu motivo. Nada foi gravado.`
+        );
+      }
     }
 
     const e = await tx.excecaoDeCalendarioDoAtendimento.create({
-      data: { unidadeId: d.unidadeId, dia, motivo: d.motivo, criadoPor: d.criadoPor },
-      select: { id: true },
+      data: {
+        unidadeId: d.unidadeId,
+        dia,
+        tipo: d.tipo,
+        horaInicio: d.horaInicio ?? null,
+        horaFim: d.horaFim ?? null,
+        motivo: d.motivo,
+        sequencia: (anterior?.sequencia ?? 0) + 1,
+        criadoPor: d.criadoPor,
+      },
+      select: { id: true, sequencia: true },
     });
-    return { excecaoId: e.id };
+    return { excecaoId: e.id, sequencia: e.sequencia };
   });
 }
 
@@ -477,7 +554,17 @@ export async function ocupacaoDoDia(
  * atendido não tem ninguém a abandonar — bloquear ali tornaria impossível registrar um feriado
  * que se decidiu depois do expediente.
  */
-async function reservasQueAindaEsperamNoDia(tx: Tx, unidadeId: string, dia: Date): Promise<number> {
+async function reservasQueAindaEsperamNoDia(
+  tx: Tx,
+  unidadeId: string,
+  dia: Date,
+  /**
+   * ⚠️ O RECORTE DO EXPEDIENTE ESPECIAL (V11 V8.12) — quando informado, conta só as que ficariam
+   * FORA dele. Fechar o dia inteiro e encolher o expediente são o mesmo risco em tamanhos
+   * diferentes: pessoa marcada para um horário que deixou de existir.
+   */
+  foraDoExpediente?: { readonly horaInicio: string; readonly horaFim: string }
+): Promise<number> {
   const guiches = await tx.guicheDeAtendimento.findMany({ where: { unidadeId }, select: { id: true } });
   const ids = guiches.map((g) => g.id);
   if (ids.length === 0) return 0;
@@ -503,8 +590,72 @@ async function reservasQueAindaEsperamNoDia(tx: Tx, unidadeId: string, dia: Date
   const doDia = new Set(ids);
   return candidatas.filter((r) => {
     const v = vigenteDaReserva({ id: "", ...r });
-    return doDia.has(v.guicheId) && diaCivil(v.dia) === alvo;
+    if (!doDia.has(v.guicheId) || diaCivil(v.dia) !== alvo) return false;
+    if (foraDoExpediente === undefined) return true;
+    return !horaCabeNoExpediente(v.horaInicio, foraDoExpediente.horaInicio, foraDoExpediente.horaFim);
   }).length;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// A EXCEÇÃO DE CALENDÁRIO VIGENTE — lida uma vez, usada por todos os caminhos
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface ExcecaoVigenteDoDia {
+  readonly tipo: "FECHADO" | "EXPEDIENTE_ESPECIAL";
+  readonly motivo: string;
+  readonly horaInicio: string | null;
+  readonly horaFim: string | null;
+}
+
+/**
+ * A decisão VIGENTE sobre o dia — a de maior sequência (V11 V8.12).
+ *
+ * ⚠️ `EXPEDIENTE_NORMAL` DEVOLVE `null`, e isso é o ponto: revogar uma exceção é declarar um FATO
+ * novo dizendo que o dia voltou ao normal, não apagar o fato antigo. Quem lê quer saber o que
+ * vale HOJE; quem audita continua vendo as duas decisões e quem as tomou.
+ *
+ * ⚠️ E É UMA FUNÇÃO SÓ PARA OS SEIS CAMINHOS. Antes eram seis `findUnique` iguais, e a primeira
+ * consequência da versão seria seis lugares para esquecer do `orderBy`.
+ */
+export async function excecaoVigenteNoDia(
+  tx: Tx,
+  unidadeId: string,
+  dia: Date
+): Promise<ExcecaoVigenteDoDia | null> {
+  const e = await tx.excecaoDeCalendarioDoAtendimento.findFirst({
+    where: { unidadeId, dia },
+    orderBy: { sequencia: "desc" },
+    select: { tipo: true, motivo: true, horaInicio: true, horaFim: true },
+  });
+  if (e === null || e.tipo === "EXPEDIENTE_NORMAL") return null;
+  return {
+    tipo: e.tipo as "FECHADO" | "EXPEDIENTE_ESPECIAL",
+    motivo: e.motivo,
+    horaInicio: e.horaInicio,
+    horaFim: e.horaFim,
+  };
+}
+
+/**
+ * A recusa que a exceção impõe a UM horário — ou `null` quando ela não impede nada.
+ *
+ * ⚠️ UMA FRASE SÓ, MONTADA AQUI, e os seis chamadores acrescentam o contexto deles. Seis
+ * mensagens escritas à mão divergiriam na primeira mudança — e a que ficasse para trás diria
+ * "não abre" num dia que abre de manhã.
+ */
+export function recusaDoExpediente(
+  e: ExcecaoVigenteDoDia | null,
+  hora: string,
+  diaBr: string,
+  unidade: string
+): string | null {
+  if (e === null) return null;
+  if (e.tipo === "FECHADO") return `${unidade} não abre em ${diaBr}: ${e.motivo}`;
+  if (horaCabeNoExpediente(hora, e.horaInicio ?? "", e.horaFim ?? "")) return null;
+  return (
+    `${unidade} tem expediente ESPECIAL em ${diaBr} (${e.horaInicio} às ${e.horaFim}): ${e.motivo}. ` +
+    `${hora} está fora dele`
+  );
 }
 
 /** As janelas de um guichê, na forma do domínio puro. */
@@ -541,15 +692,26 @@ export async function ofertaDoGuiche(
   });
   if (guiche === null) throw new Error(`Guichê ${p.guicheId} não existe.`);
 
-  const fechado = await prisma.excecaoDeCalendarioDoAtendimento.findUnique({
-    where: { unidadeId_dia: { unidadeId: guiche.unidadeId, dia } },
-    select: { motivo: true },
-  });
-  if (fechado !== null) return { fechado: { motivo: fechado.motivo }, horarios: [] };
+  // ⚠️ A EXCEÇÃO VIGENTE, NÃO "A" EXCEÇÃO (V11 V8.12): o dia pode ter sido fechado e reaberto, e
+  // quem lê a oferta quer o que vale hoje.
+  const excecao = await excecaoVigenteNoDia(prisma as unknown as Tx, guiche.unidadeId, dia);
+  if (excecao?.tipo === "FECHADO") return { fechado: { motivo: excecao.motivo }, horarios: [] };
 
   const janelas = await janelasDoGuiche(prisma as unknown as Tx, p.guicheId);
   const ocupacao = await ocupacaoDoDia(prisma as unknown as Tx, p.guicheId, dia);
-  return { fechado: null, horarios: ofertaDoDia(janelas, dia, ocupacao) };
+  const horarios = ofertaDoDia(janelas, dia, ocupacao);
+  // ⚠️ O EXPEDIENTE ESPECIAL RECORTA A OFERTA — e a tela precisa mostrar o recorte, não a grade
+  // inteira: oferecer um horário que a gravação recusa é o defeito que a V7.3 teve de desfazer.
+  return {
+    fechado: null,
+    horarios:
+      excecao?.tipo === "EXPEDIENTE_ESPECIAL"
+        ? recortarPeloExpediente(horarios, { horaInicio: excecao.horaInicio!, horaFim: excecao.horaFim! })
+        : horarios,
+    ...(excecao?.tipo === "EXPEDIENTE_ESPECIAL"
+      ? { expedienteEspecial: { horaInicio: excecao.horaInicio!, horaFim: excecao.horaFim!, motivo: excecao.motivo } }
+      : {}),
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -651,15 +813,13 @@ export async function reservarAtendimento(
       );
     }
 
-    const fechado = await tx.excecaoDeCalendarioDoAtendimento.findUnique({
-      where: { unidadeId_dia: { unidadeId: guiche.unidadeId, dia } },
-      select: { motivo: true },
-    });
-    if (fechado !== null) {
-      throw new Error(
-        `${guiche.unidade.nome} não abre em ${diaCivilBr(dia)}: ${fechado.motivo}. Nada foi reservado.`
-      );
-    }
+    const recusa = recusaDoExpediente(
+      await excecaoVigenteNoDia(tx, guiche.unidadeId, dia),
+      d.horaInicio,
+      diaCivilBr(dia),
+      guiche.unidade.nome
+    );
+    if (recusa !== null) throw new Error(`${recusa}. Nada foi reservado.`);
 
     const janelas = await janelasDoGuiche(tx, d.guicheId);
     const doDia = janelas.filter((j) => janelaValeNoDia(j, dia));
@@ -887,13 +1047,13 @@ export async function reagendarReservaDeAtendimento(
       );
     }
 
-    const fechado = await tx.excecaoDeCalendarioDoAtendimento.findUnique({
-      where: { unidadeId_dia: { unidadeId: destino.unidadeId, dia } },
-      select: { motivo: true },
-    });
-    if (fechado !== null) {
-      throw new Error(`${destino.unidade.nome} não abre em ${diaCivilBr(dia)}: ${fechado.motivo}. Nada foi gravado.`);
-    }
+    const recusa = recusaDoExpediente(
+      await excecaoVigenteNoDia(tx, destino.unidadeId, dia),
+      d.horaInicio,
+      diaCivilBr(dia),
+      destino.unidade.nome
+    );
+    if (recusa !== null) throw new Error(`${recusa}. Nada foi gravado.`);
 
     const janelas = (await janelasDoGuiche(tx, d.guicheId)).filter((j) => janelaValeNoDia(j, dia));
     const janela = janelas.find((j) => horariosDaJanela(j).includes(d.horaInicio));
@@ -1105,15 +1265,13 @@ export async function agendarPeloPortal(
       );
     }
 
-    const fechado = await tx.excecaoDeCalendarioDoAtendimento.findUnique({
-      where: { unidadeId_dia: { unidadeId: guiche.unidadeId, dia } },
-      select: { motivo: true },
-    });
-    if (fechado !== null) {
-      throw new Error(
-        `UNIDADE-FECHADA: ${guiche.unidade.nome} não abre em ${diaCivilBr(dia)}: ${fechado.motivo}. Nada foi marcado.`
-      );
-    }
+    const recusa = recusaDoExpediente(
+      await excecaoVigenteNoDia(tx, guiche.unidadeId, dia),
+      d.horaInicio,
+      diaCivilBr(dia),
+      guiche.unidade.nome
+    );
+    if (recusa !== null) throw new Error(`UNIDADE-FECHADA: ${recusa}. Nada foi marcado.`);
 
     const janelas = (await janelasDoGuiche(tx, d.guicheId)).filter((j) => janelaValeNoDia(j, dia));
     const janela = janelas.find((j) => horariosDaJanela(j).includes(d.horaInicio));
@@ -1412,15 +1570,13 @@ export async function reagendarPeloPortal(
       );
     }
 
-    const fechado = await tx.excecaoDeCalendarioDoAtendimento.findUnique({
-      where: { unidadeId_dia: { unidadeId: r.guiche.unidadeId, dia } },
-      select: { motivo: true },
-    });
-    if (fechado !== null) {
-      throw new Error(
-        `UNIDADE-FECHADA: ${r.guiche.unidade.nome} não abre em ${diaCivilBr(dia)}: ${fechado.motivo}. Nada foi alterado.`
-      );
-    }
+    const recusa = recusaDoExpediente(
+      await excecaoVigenteNoDia(tx, r.guiche.unidadeId, dia),
+      d.horaInicio,
+      diaCivilBr(dia),
+      r.guiche.unidade.nome
+    );
+    if (recusa !== null) throw new Error(`UNIDADE-FECHADA: ${recusa}. Nada foi alterado.`);
 
     // ⚠️ O DESTINO É O MESMO GUICHÊ EM QUE ELA JÁ ESTÁ — e é o `atual.guicheId`, não o original:
     // se o ente já a moveu de posto, o cidadão remarca no posto onde ela está agora.

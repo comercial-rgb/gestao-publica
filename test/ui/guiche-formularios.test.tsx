@@ -101,7 +101,7 @@ describe("a organização do atendimento", () => {
       ["Criar guichê", "abrir-guiche"],
       ["Gravar", "definir-servico-do-guiche"],
       ["Publicar oferta", "publicar-oferta-de-horarios"],
-      ["Fechar o dia", "fechar-dia-de-atendimento"],
+      ["Declarar", "fechar-dia-de-atendimento"],
     ];
     for (const [botao, a] of painéis) {
       fireEvent.click(screen.getByRole("button", { name: botao }));
