@@ -585,3 +585,85 @@ model RoteiroOrcamentario {
   @@index([tipo, tipoCredito, versao])
   @@index([tipo, tipoCredito, abertura, versao])
 }
+
+/// ═══ EM QUE EIXO O ENTE REGISTRA A DOTAÇÃO ADICIONAL (V11 V8.9) ═══
+///
+/// `5.2.2.1.2 DOTAÇÃO ADICIONAL POR TIPO DE CREDITO` e `5.2.2.1.3 DOTAÇÃO ADICIONAL POR FONTE`
+/// são IRMÃS sob `5.2.2.1 DOTAÇÃO ORÇAMENTÁRIA`, e as duas descrevem o MESMO crédito por eixos
+/// diferentes: uma pergunta "que espécie de crédito é" (suplementar, especial, extraordinário) e
+/// a outra "de onde veio o dinheiro" (superávit, excesso, anulação, operação de crédito).
+///
+/// ⚠️ O SISTEMA SÓ LANÇAVA NA `.2`, e a `.3` ficava vazia em todo demonstrativo que a lesse —
+/// pendência `DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`. Qual das duas o ente adota é decisão
+/// contábil dele, e é isto que este modelo guarda: append-only, versionado, com fundamento.
+///
+/// ⚠️ E NÃO EXISTE "AS DUAS AO MESMO TEMPO" AQUI, com motivo medido no plano. A perna do
+/// crédito, nos dois eixos, é a MESMA conta — o crédito disponível (`6.2.2.1.1`). Lançar os dois
+/// eixos creditaria o disponível DUAS VEZES pelo mesmo decreto: o ente passaria a poder empenhar
+/// o dobro do que a lei autorizou. Não há, no plano, contrapartida para uma segunda perna que
+/// não faça isso — e inventá-la seria inventar norma da STN. Por isso o eixo é UM.
+enum EixoDaDotacaoAdicional {
+  /// O que o sistema faz desde sempre: a conta sai do TIPO do crédito (`RoteiroOrcamentario`).
+  POR_TIPO_DE_CREDITO
+
+  /// A conta sai da ORIGEM do recurso do decreto (`RoteiroDaDotacaoPorFonte`).
+  POR_FONTE
+}
+
+/// A decisão do ente sobre o eixo — um FATO, com autor, data e fundamento (V11 V8.9).
+///
+/// ⚠️ APPEND-ONLY E VERSIONADA, pela mesma razão do `RoteiroOrcamentario`: o razão escriturado
+/// ontem foi feito sob a política de ontem, e a pergunta "sob que política este lançamento foi
+/// feito?" tem de ter resposta. A VIGENTE é a de maior versão.
+///
+/// ⚠️ AUSENTE NÃO É ERRO: é a instalação que ninguém configurou, e ela vale como
+/// `POR_TIPO_DE_CREDITO` — o comportamento que todo banco existente já tem. Fail-closed aqui
+/// derrubaria todo crédito adicional de toda instalação viva para cobrar uma decisão que elas já
+/// tomaram por omissão. A tela NOMEIA a diferença entre decidido e herdado.
+model PoliticaDaDotacaoAdicional {
+  id   String                 @id @default(cuid())
+  eixo EixoDaDotacaoAdicional
+
+  /// Por que ESTE eixo. Obrigatório — é o que a prestação de contas lê.
+  fundamento String
+
+  versao    Int
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([versao])
+  @@index([versao])
+}
+
+/// O ROTEIRO DO EIXO POR FONTE — a conta sai da ORIGEM do recurso (V11 V8.9).
+///
+/// ⚠️ TABELA PRÓPRIA, E NÃO UMA QUINTA DIMENSÃO DO `RoteiroOrcamentario`. A origem só classifica
+/// o crédito adicional; pendurá-la na chave que também serve dotação inicial, reserva e anulação
+/// criaria uma coluna nula em quase toda linha e uma combinação de nulos que nenhum índice
+/// representa. O molde não cresce para acomodar exceção.
+///
+/// ⚠️ AS QUATRO ORIGENS DO DOMÍNIO TÊM UMA ANALÍTICA CADA no ramo `5.2.2.1.3`, e a partição do
+/// plano é o MESMO eixo do enum (`OrigemRecurso`) — como já era com o suplementar em V7.1. Por
+/// isso o seed as semeia; o que ele não faz é escolher o EIXO, que é a decisão de verdade.
+model RoteiroDaDotacaoPorFonte {
+  id     String        @id @default(cuid())
+  origem OrigemRecurso
+
+  contaDebitoId String
+  contaDebito   ContaPcasp @relation("DebitoPorFonte", fields: [contaDebitoId], references: [id])
+
+  contaCreditoId String
+  contaCredito   ContaPcasp @relation("CreditoPorFonte", fields: [contaCreditoId], references: [id])
+
+  /// Nulo nas linhas que o seed criou — o seed não tem fundamento a dar, e fingir um seria pior
+  /// que a ausência. A tela NOMEIA a diferença.
+  fundamento String?
+
+  versao    Int      @default(1)
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([origem, versao])
+  @@index([origem, versao])
+}
+

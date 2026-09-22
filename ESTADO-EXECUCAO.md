@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | V11 V8.8 — a dimensão da abertura na chave do roteiro — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
+| HEAD | V11 V8.9 — o eixo da dotação adicional — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
 | Frente em execução | **V11** — V1.1, V3.1, V4.1, V4.2 (seção 65), V2.1 eSocial (seção 66), V5.1/V5.2 (seção 67), V6 (seção 68), V7/V7.1/V7.2 (seção 69), V7.3 (seção 70) e **V8: o guichê — agendamento de atendimento presencial** (seção 71). **O escopo planejado desta rodada está concluído**; V6 (AWS) segue bloqueado |
-| Último resultado | seção 75 — **`ROTEIRO-SEM-DIMENSAO-DA-ABERTURA` fechada**. O sistema já SABIA ler aberto de reaberto (V8.6) e não usava: o roteiro era chaveado por (movimento, tipo de crédito) e o reaberto lançava na MESMA conta do aberto — um erro que o balancete não pega, porque a partida na conta errada fecha igual. A abertura entrou na chave, e a migração ficou **aditiva** (zero DROP) por ler a versão como a sequência das decisões do ente. Duas mutações, duas acusações. Suíte **3278/3278 em 311 arquivos** |
-| Pendências relevantes | seção 75.6 — **ZERO guards vermelhos**. Tratáveis: `DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`, **`REABERTO-COM-SUPLEMENTACAO-NAO-DISTINGUIDO`** (nova, menor que a que fechou), `EXCECAO-DE-CALENDARIO-SO-FECHA`, `GUICHE-SEM-NOTIFICACAO-INTERNA`, `DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE`, `SUPERAVIT-DECLARADO-NAO-DERIVADO`, `SAGRES-POC-CONTA-SINTETICA`. **Bloqueadas por insumo externo, e inventar o dado é proibido**: `LEIAUTE-ESOCIAL-NAO-OBTIDO`, rol oficial do SAGRES (token ASTEC), certificado A1, V6 (AWS) e a linha ENT12 do Windows |
-| Próximo passo | seção 75.7 — `DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`: a dotação adicional por tipo e por fonte são irmãs, e hoje só uma recebe lançamento |
+| Último resultado | seção 76 — **`DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE` fechada**. As duas visões irmãs do plano descrevem o MESMO crédito, e a perna de crédito é a mesma nas duas: lançar nos dois eixos creditaria o disponível DUAS vezes pelo mesmo decreto, com todo lançamento balanceado. O eixo virou decisão do ente, versionada e com fundamento. E o guard novo da limpeza do banco achou **três tabelas que vazavam entre testes há lotes** |
+| Pendências relevantes | seção 76.5 — **ZERO guards vermelhos**. Tratáveis: `SUPERAVIT-DECLARADO-NAO-DERIVADO`, `DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE`, `EXCECAO-DE-CALENDARIO-SO-FECHA`, `GUICHE-SEM-NOTIFICACAO-INTERNA`, `SAGRES-POC-CONTA-SINTETICA`, `REABERTO-COM-SUPLEMENTACAO-NAO-DISTINGUIDO`. **Bloqueadas por insumo externo, e inventar o dado é proibido**: `LEIAUTE-ESOCIAL-NAO-OBTIDO`, rol oficial do SAGRES (token ASTEC), certificado A1, V6 (AWS) e a linha ENT12 do Windows |
+| Próximo passo | `SUPERAVIT-DECLARADO-NAO-DERIVADO`, `DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE`, `EXCECAO-DE-CALENDARIO-SO-FECHA`, `GUICHE-SEM-NOTIFICACAO-INTERNA`, `SAGRES-POC-CONTA-SINTETICA` — nesta ordem |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -9074,3 +9074,78 @@ mexeu. `5.2.2.1.2` (por tipo de crédito) e `5.2.2.1.3` (por fonte) são IRMÃS 
 conta o dobro; se for lançado só numa, a outra visão fica vazia em qualquer demonstrativo que a
 leia. Hoje o sistema só lança na `.2`. Qual das duas o ente adota — ou como as concilia — é
 decisão do mesmo tamanho das que a V8.3 e a V8.4 deram lugar, e o lugar já existe.
+
+---
+
+## 76. V11 V8.9 — o eixo da dotação adicional, e um guard que achou três vazamentos
+
+### 76.1 A pendência, e por que ela não se fechava escolhendo conta
+
+`DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`. No plano oficial:
+
+```
+5.2.2.1.2  DOTAÇÃO ADICIONAL POR TIPO DE CREDITO   suplementar, especial, extraordinário
+5.2.2.1.3  DOTAÇÃO ADICIONAL POR FONTE             superávit, excesso, anulação, op. de crédito
+```
+
+São **irmãs** sob `5.2.2.1 DOTAÇÃO ORÇAMENTÁRIA` e descrevem o **mesmo** crédito por eixos
+diferentes: uma pergunta que espécie de crédito é, a outra de onde veio o dinheiro. O sistema só
+lançava na `.2`, e a `.3` ficava vazia em qualquer demonstrativo que a lesse.
+
+### 76.2 Por que não existe "as duas ao mesmo tempo" — medido no plano, não opinado
+
+A perna de **crédito** é a mesma nos dois eixos: o crédito disponível (`6.2.2.1.1`). Lançar os
+dois creditaria o disponível **duas vezes pelo mesmo decreto** — o ente passaria a poder empenhar
+o dobro do que a lei autorizou, e **cada par continuaria balanceado**, então nenhum guard de
+balanceamento veria. Não há no plano contrapartida para uma segunda perna que não faça isso, e
+inventá-la seria inventar norma da STN.
+
+Por isso o eixo é **um**, e quem escolhe é o ente: `PoliticaDaDotacaoAdicional`, append-only,
+versionada, com fundamento de piso 20 conferido **no zod e no banco**. Ausência de política vale
+`POR_TIPO_DE_CREDITO` — o que todo banco existente já faz. Fail-closed aqui derrubaria instalações
+vivas para cobrar uma decisão que elas já tomaram por omissão; a tela nomeia a diferença entre
+**decidido** e **herdado**, e `t5` afirma que a leitura distingue as duas.
+
+As quatro origens do domínio têm **uma analítica cada** no ramo `.3`, e a partição do plano é o
+mesmo eixo do enum `OrigemRecurso` — o mesmo argumento que tornou a conta do suplementar semeável
+em V7.1. Por isso o seed as semeia; o que ele **não** decide é o eixo.
+
+### 76.3 O guard que nasceu de um defeito meu, e o que ele achou
+
+As duas tabelas novas nasceram **fora** de `test/limpar-banco.ts`. O sintoma não foi "a lista está
+incompleta": foram **sete testes vermelhos** com mensagens do domínio (`Republicar a mesma decisão
+não é um fato novo`) — a política publicada no primeiro teste sobrevivendo até o último.
+
+O arquivo já dizia, em comentário, que a lista tinha de ser completa. Era só um comentário.
+`limpeza-do-banco-completa.test.ts` passa a afirmar a **propriedade**: toda tabela do schema é
+alcançada pela limpeza, **pela lista ou pelo fecho transitivo do `TRUNCATE ... CASCADE`**, lido do
+catálogo do Postgres.
+
+⚠️ A primeira versão do guard afirmava "a lista contém toda tabela" e deu **56 acusações falsas**:
+a maior parte do schema é filha de alguém listado e é limpa pelo CASCADE. Corrigida para o fecho,
+sobraram **três acusações verdadeiras** — `CertidaoFornecedor`, `DeParaContaSiga` e
+`DeParaFonteSiga`, **sem chave estrangeira para tabela nenhuma**, portanto nunca alcançadas. Elas
+estavam de fora há lotes: o de-para do SIGA e a certidão de fornecedor de um teste sobreviviam ao
+arquivo seguinte.
+
+### 76.4 O que foi medido
+
+| Medida | Resultado |
+|---|---|
+| tsc app / backend / scripts | `exit=0` nos três |
+| m03 + m05 + guard da limpeza | **202 testes**, `exit=0` |
+| `m05-eixo-da-dotacao.test.ts` (novo) | 9 testes |
+
+**Duas mutações, duas acusações:** desligar o desvio do eixo na consulta do roteiro deixou
+**quatro** testes vermelhos (`5.2.2.1.2.01.00` onde se esperava `5.2.2.1.3.02.00`); tirar
+`DeParaContaSiga` da lista de limpeza fez o guard novo nomeá-la.
+
+E `t3b` é a contraprova de `t3`: sob o eixo herdado, a mesma origem sem roteiro por fonte passa —
+sem ela, uma leitura que recusasse tudo deixaria `t3` verde.
+
+### 76.5 Pendências
+
+`DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE` **fecha**. Nenhuma nasce. Fica registrado que as três
+origens do plano sem par no domínio (reserva de contingência, dotação transferida, recursos sem
+despesa correspondente) ficaram de fora **porque o sistema não representa esses fatos** — inventar
+o valor do enum inventaria o fato junto.

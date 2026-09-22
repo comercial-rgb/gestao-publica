@@ -640,6 +640,10 @@ export function criarCreditoRepositoryPrisma(
               : {}),
             // A abertura acompanha o tipo de crédito, e só existe onde ele se parte.
             ...(item.tipo === "SUPLEMENTACAO" && abertura !== null ? { abertura } : {}),
+            // ⚠️ A ORIGEM DO RECURSO VAI JUNTO (V11 V8.9), e só o eixo POR FONTE a lê. Mandá-la
+            // sempre custa nada e evita o pior dos mundos: o dia em que o ente troca de eixo, o
+            // crédito adicional pararia de lançar por falta de um dado que o decreto sempre teve.
+            ...(item.tipo === "SUPLEMENTACAO" ? { origemDoRecurso: decreto.origemRecurso } : {}),
             valor: item.valor.toFixed(2),
             origemTipo: "CREDITO_ADICIONAL",
             origemId: p.decretoId,
@@ -685,6 +689,7 @@ export function criarCreditoRepositoryPrisma(
           where: { id: p.decretoId },
           select: {
             ano: true,
+            origemRecurso: true,
             lei: { select: { tipoCredito: true, ano: true, dataPublicacao: true } },
           },
         });
@@ -761,6 +766,7 @@ export function criarCreditoRepositoryPrisma(
               ? { tipoCredito: decreto.lei.tipoCredito }
               : {}),
             ...(item.tipo === "ANULACAO" && abertura !== null ? { abertura } : {}),
+            ...(item.tipo === "ANULACAO" ? { origemDoRecurso: decreto.origemRecurso } : {}),
             valor: item.valor.toFixed(2),
             origemTipo: "CREDITO_ANULADO",
             origemId: p.decretoId,

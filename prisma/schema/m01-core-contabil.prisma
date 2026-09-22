@@ -60,6 +60,8 @@ model ContaPcasp {
   /// back-relations M05 (roteiro do subsistema ORÇAMENTÁRIO) — campos VIRTUAIS.
   roteirosOrcDebito  RoteiroOrcamentario[] @relation("DebitoOrcamentario")
   roteirosOrcCredito RoteiroOrcamentario[] @relation("CreditoOrcamentario")
+  roteirosPorFonteDebito  RoteiroDaDotacaoPorFonte[] @relation("DebitoPorFonte")
+  roteirosPorFonteCredito RoteiroDaDotacaoPorFonte[] @relation("CreditoPorFonte")
   /// back-relation M08 (apuração do resultado) — campo VIRTUAL.
   roteirosEncerramento     RoteiroEncerramento[]       @relation("ResultadosAcumulados")
   /// back-relation M08 (destino da conta de controle na virada) — campo VIRTUAL.

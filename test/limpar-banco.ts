@@ -17,7 +17,7 @@ import { semearLicenciamentoDeTeste } from "./licenciamento-teste.js";
  * Só rode isto contra o banco de TESTE (o guarda-chuva de `db-teste.ts` garante
  * que a suíte nunca alcança o de dev).
  */
-const TABELAS = [
+export const TABELAS = [
   // ── ENT02 — M21 protocolo · M22 documentos · M23 comunicação · M24 notificações ──
   // ── M27 ajuda e suporte ──
   "PesquisaDeSatisfacao",
@@ -176,6 +176,19 @@ const TABELAS = [
   "Usuario",
   // M05 — roteiro do subsistema orçamentário
   "RoteiroOrcamentario",
+  // M05 V8.9 — o eixo da dotação adicional, e o roteiro do ramo por fonte
+  "PoliticaDaDotacaoAdicional",
+  "RoteiroDaDotacaoPorFonte",
+  // ⚠️ AS TRÊS QUE O GUARD DA V8.9 ENCONTROU — e elas estavam de fora há lotes.
+  //
+  // Nenhuma tem chave estrangeira para tabela nenhuma, então o `TRUNCATE ... CASCADE` (que é o
+  // que limpa a maior parte do schema sem estar nesta lista) nunca chegava nelas: o de-para do
+  // SIGA e a certidão de fornecedor de um teste sobreviviam ao arquivo seguinte. Ver
+  // `limpeza-do-banco-completa.test.ts`, que afirma o ALCANCE — lista mais fecho do CASCADE —
+  // em vez de confiar em quem cria tabela lembrar desta lista.
+  "CertidaoFornecedor",
+  "DeParaContaSiga",
+  "DeParaFonteSiga",
   // ── M10 — o histórico da política de divulgação de localização (V10 T3) ──
   "MudancaDaDivulgacaoDaLocalizacao",
   // ── M34 B2 — lançamento tributário e certidão (V10 T2) ──

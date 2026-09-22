@@ -8,7 +8,12 @@ import {
   CONTA_CREDITO_RESERVADO,
   CONTA_DOTACAO_ADICIONAL,
   CONTA_DOTACAO_INICIAL,
+  CONTA_DOTACAO_POR_FONTE_ANULACAO,
+  CONTA_DOTACAO_POR_FONTE_EXCESSO,
+  CONTA_DOTACAO_POR_FONTE_OPERACAO_CREDITO,
+  CONTA_DOTACAO_POR_FONTE_SUPERAVIT,
 } from "../../modules/m01-core-contabil/roteiros.js";
+import type { OrigemRecurso } from "../generated/client/enums.js";
 
 /**
  * SEED do ROTEIRO ORÇAMENTÁRIO — a tabela-parâmetro sem a qual NENHUMA FICHA NASCE.
@@ -248,6 +253,65 @@ for (const r of ROTEIROS) {
       data: { contaDebitoId: debito.id, contaCreditoId: credito.id },
     });
   }
+}
+
+// ═══ O RAMO IRMÃO: A DOTAÇÃO ADICIONAL POR FONTE (V11 V8.9) ═══
+//
+// ⚠️ SEMEADO, e o argumento é o mesmo que tornou a conta do suplementar semeável em V7.1: as
+// quatro origens do domínio (`OrigemRecurso`) têm UMA analítica cada no ramo `5.2.2.1.3`, e a
+// partição do plano é o MESMO eixo do enum. Não há o que escolher entre candidatas.
+//
+// ⚠️ O QUE O SEED **NÃO** DECIDE É O EIXO. Enquanto ninguém publicar `PoliticaDaDotacaoAdicional`,
+// estas linhas ficam INERTES: o razão continua lançando pela `.2`. Semeá-las agora é o oposto de
+// decidir — é deixar a decisão pronta para ser tomada sem que ela exija, no mesmo dia, escolher
+// quatro contas.
+const POR_FONTE: readonly { readonly origem: OrigemRecurso; readonly debito: string }[] = [
+  { origem: "SUPERAVIT_FINANCEIRO", debito: CONTA_DOTACAO_POR_FONTE_SUPERAVIT },
+  { origem: "EXCESSO_ARRECADACAO", debito: CONTA_DOTACAO_POR_FONTE_EXCESSO },
+  { origem: "ANULACAO", debito: CONTA_DOTACAO_POR_FONTE_ANULACAO },
+  { origem: "OPERACAO_CREDITO", debito: CONTA_DOTACAO_POR_FONTE_OPERACAO_CREDITO },
+];
+
+const recusasPorFonte: Recusa[] = [];
+for (const r of POR_FONTE) {
+  const debito = await contaAnalitica(r.debito, `POR_FONTE/${r.origem}`);
+  const credito = await contaAnalitica(CONTA_CREDITO_DISPONIVEL, `POR_FONTE/${r.origem}`);
+  if ("motivo" in debito) { recusasPorFonte.push(debito); continue; }
+  if ("motivo" in credito) { recusasPorFonte.push(credito); continue; }
+  const ja = await prisma.roteiroDaDotacaoPorFonte.findFirst({
+    where: { origem: r.origem },
+    select: { id: true },
+  });
+  if (ja !== null) continue;
+  await prisma.roteiroDaDotacaoPorFonte.create({
+    data: {
+      origem: r.origem,
+      contaDebitoId: debito.id,
+      contaCreditoId: credito.id,
+      criadoPor: "SEED",
+    },
+  });
+}
+
+const politica = await prisma.politicaDaDotacaoAdicional.findFirst({
+  orderBy: { versao: "desc" },
+  select: { eixo: true, versao: true },
+});
+console.log(
+  `\nEIXO DA DOTAÇÃO ADICIONAL: ${
+    politica === null
+      ? "POR_TIPO_DE_CREDITO (HERDADO — ninguém do ente decidiu)"
+      : `${politica.eixo} (v${politica.versao}, decidido pelo ente)`
+  }`
+);
+console.log(
+  `  As duas visões do plano (5.2.2.1.2 por tipo, 5.2.2.1.3 por fonte) descrevem o MESMO\n` +
+    `  crédito. Lançar nas duas creditaria o crédito disponível DUAS vezes pelo mesmo decreto.\n` +
+    `  Escolha o eixo em /contabilidade/roteiros-orcamentarios.`
+);
+if (recusasPorFonte.length > 0) {
+  console.log(`\n  ⚠️ ${recusasPorFonte.length} ROTEIRO(S) POR FONTE NÃO CONFIGURADO(S):\n`);
+  for (const r of recusasPorFonte) console.log(`     ${r.tipo.padEnd(28)} ${r.codigo}: ${r.motivo}`);
 }
 
 const todos = await prisma.roteiroOrcamentario.findMany({

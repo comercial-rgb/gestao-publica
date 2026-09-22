@@ -27,7 +27,7 @@ import { autorizarNo } from "../m16-travamento/escopo.js";
  * grant, que é o oposto da regra da casa.
  */
 
-type Tx = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
+export type Tx = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 
 const TIPOS_DE_CREDITO = ["SUPLEMENTAR", "ESPECIAL", "EXTRAORDINARIO"] as const;
 const ABERTURAS = ["ABERTO", "REABERTO"] as const;
@@ -67,7 +67,7 @@ export type PublicarRoteiroInput = z.input<typeof zPublicarRoteiro>;
  * ⚠️ RECUSAR SEM MOSTRAR AS OPÇÕES foi o que manteve estas pendências abertas por vários lotes: o
  * seed dizia "escolha uma analítica" e devolvia a pessoa ao plano de nove mil contas.
  */
-async function exigirAnalitica(tx: Tx, codigo: string, papel: string): Promise<{ id: string; codigo: string }> {
+export async function exigirAnalitica(tx: Tx, codigo: string, papel: string): Promise<{ id: string; codigo: string }> {
   const c = await tx.contaPcasp.findUnique({
     where: { codigo },
     select: { id: true, codigo: true, nome: true, analitica: true },

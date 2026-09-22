@@ -156,6 +156,41 @@ export const CONTA_CREDITO_ADICIONAL_EXTRAORDINARIO = "5.2.2.1.2.03.00";
 export const CONTA_DOTACAO_ADICIONAL = "5.2.2.1.2.00.00";
 
 /**
+ * ═══ O RAMO IRMÃO: `5.2.2.1.3 DOTAÇÃO ADICIONAL POR FONTE` (V11 V8.9) ═══
+ *
+ * **Fonte:** o mesmo `Pcasp_2025.xlsx` do TCE-PB, lido do arquivo e não digitado de memória:
+ *
+ *   `5.2.2.1.3.00.00` DOTAÇÃO ADICIONAL POR FONTE            (sintética)
+ *     · `.01.00`  SUPERAVIT FINANCEIRO DE EXERCÍCIO ANTERIOR
+ *     · `.02.00`  EXCESSO DE ARRECADAÇÃO
+ *     · `.03.00`  ANULAÇÃO DE DOTAÇÃO
+ *     · `.04.00`  OPERAÇÕES DE CRÉDITO
+ *     · `.05.00`  RESERVA DE CONTINGENCIA        ← o domínio não tem esta origem
+ *     · `.06.00`  DOTAÇÃO TRANSFERIDA            ← nem esta
+ *     · `.07.00`  RECURSOS SEM DESPESAS CORRESPONDENTES   ← nem esta
+ *     · `.09.00`  (-) CANCELAMENTO DE DOTAÇÕES
+ *     · `.99.00`  VALOR GLOBAL DA DOTAÇÃO ADICIONAL POR FONTE
+ *
+ * ⚠️ AS QUATRO PRIMEIRAS SÃO AS QUATRO DO `OrigemRecurso`, UMA A UMA, e não é semelhança de
+ * nome: é o MESMO eixo. O domínio já pergunta de onde veio o dinheiro do decreto, e o plano
+ * parte o ramo exatamente por essa pergunta. É o mesmo argumento que tornou a conta do crédito
+ * suplementar semeável em V7.1 — uma analítica, um discriminador, nada a escolher.
+ *
+ * ⚠️ O QUE **NÃO** SE SEMEIA AQUI É O EIXO. Lançar na `.2` e na `.3` creditaria o crédito
+ * disponível duas vezes pelo mesmo decreto; qual dos dois ramos o ente adota é decisão dele, e
+ * ela mora em `PoliticaDaDotacaoAdicional`. Sem política, vale o que sempre valeu: a `.2`.
+ *
+ * ⚠️ AS TRÊS ORIGENS SEM PAR NO DOMÍNIO FICAM DE FORA, e isso é registro, não esquecimento:
+ * reserva de contingência, dotação transferida e recursos sem despesa correspondente são fatos
+ * que este sistema ainda não representa. Inventar um valor de enum para elas seria inventar o
+ * fato junto.
+ */
+export const CONTA_DOTACAO_POR_FONTE_SUPERAVIT = "5.2.2.1.3.01.00";
+export const CONTA_DOTACAO_POR_FONTE_EXCESSO = "5.2.2.1.3.02.00";
+export const CONTA_DOTACAO_POR_FONTE_ANULACAO = "5.2.2.1.3.03.00";
+export const CONTA_DOTACAO_POR_FONTE_OPERACAO_CREDITO = "5.2.2.1.3.04.00";
+
+/**
  * ⚠️ SINTÉTICA NO PLANO OFICIAL, E O NOME DIVERGE. Pendência `ROTEIRO-RESERVA-SEM-CONTA`.
  *
  * Este sistema chama `6.2.2.1.2.00.00` de "crédito reservado"; no PCASP ela é **CREDITO

@@ -5,7 +5,10 @@ import type { TipoMovimentoDotacao } from "./dominio.js";
 // ⚠️ O TIPO VEM DO SCHEMA, NÃO DO M03. O M03 depende do M05 (é ele que chama
 // `registrarMovimentoDotacao`); importar o tipo de lá fecharia o ciclo. O enum do Prisma é
 // a fonte única — redigitar a união aqui criaria a segunda verdade sobre quais tipos existem.
-import type { AberturaDoCredito, TipoCredito } from "../../prisma/generated/client/enums.js";
+import type { AberturaDoCredito, OrigemRecurso, TipoCredito } from "../../prisma/generated/client/enums.js";
+// ⚠️ O EIXO DA DOTAÇÃO ADICIONAL (V11 V8.9) — a decisão do ente sobre QUAL dos dois ramos irmãos
+// do plano recebe o crédito adicional. Mora no M05, como o roteiro.
+import { eixoVigente, roteiroPorFonteVigente } from "./servico-dotacao-por-fonte.js";
 // ⚠️ O FUNIL DO RAZÃO (M01). Todo lançamento passa por ele — e é lá que mora o
 // travamento de competência (M16). Ver `m01-funil.test.ts`: o grep-teste proíbe o
 // `lancamentoContabil.create` fora dele.
@@ -120,6 +123,15 @@ export interface MovimentoDotacaoParams {
    * com o exercício. Aplicá-la a ele inventaria uma classificação que a norma não tem.
    */
   readonly abertura?: AberturaDoCredito | undefined;
+  /**
+   * ⚠️ A ORIGEM DO RECURSO DO DECRETO — usada SÓ quando o ente registra a dotação adicional pelo
+   * eixo POR FONTE (V11 V8.9). No eixo POR TIPO, que é o herdado, ela não é consultada.
+   *
+   * Não é obrigatória na assinatura de propósito: cobrá-la de todo chamador seria cobrar um dado
+   * que o eixo em vigor pode nunca ler. Quem a cobra é o EIXO — e a recusa, quando ele é POR
+   * FONTE e ela falta, nomeia o que falta e não grava nada.
+   */
+  readonly origemDoRecurso?: OrigemRecurso | undefined;
 }
 
 /** O § 2º alcança só estes dois — e é o que a partição do plano acompanha. */
@@ -234,14 +246,25 @@ export async function registrarMovimentoDotacao(
   // ganhou onde trocá-lo pela tela: o razão escriturado ontem foi feito contra o roteiro de
   // ontem, e um `UPDATE` apagaria a resposta para "contra que roteiro este lançamento foi feito?".
   // Ler qualquer versão que não a última classificaria o movimento de hoje pela decisão revogada.
-  const roteiro = await tx.roteiroOrcamentario.findFirst({
-    where: { tipo: p.tipo, tipoCredito: p.tipoCredito ?? null, abertura: p.abertura ?? null },
-    orderBy: { versao: "desc" },
-    select: {
-      contaDebito: { select: { id: true, codigo: true, analitica: true } },
-      contaCredito: { select: { id: true, codigo: true, analitica: true } },
-    },
-  });
+  // ═══ ⚠️ O EIXO DECIDE QUAL TABELA RESPONDE (V11 V8.9) ═══
+  //
+  // `5.2.2.1.2` (por tipo de crédito) e `5.2.2.1.3` (por fonte) são IRMÃS no plano e descrevem o
+  // MESMO crédito por eixos diferentes. Lançar nos dois creditaria o crédito disponível DUAS
+  // vezes pelo mesmo decreto — o ente poderia empenhar o dobro do autorizado, e o balancete
+  // fecharia igual. Por isso o eixo é UM, e quem o escolhe é o ente
+  // (`PoliticaDaDotacaoAdicional`). Ausência de política vale POR_TIPO_DE_CREDITO, que é o que
+  // todo banco existente já faz.
+  const roteiro =
+    p.tipo === "CREDITO_ADICIONAL" && (await eixoVigente(tx)) === "POR_FONTE"
+      ? await roteiroPorFonte(tx, p)
+      : await tx.roteiroOrcamentario.findFirst({
+          where: { tipo: p.tipo, tipoCredito: p.tipoCredito ?? null, abertura: p.abertura ?? null },
+          orderBy: { versao: "desc" },
+          select: {
+            contaDebito: { select: { id: true, codigo: true, analitica: true } },
+            contaCredito: { select: { id: true, codigo: true, analitica: true } },
+          },
+        });
 
   if (roteiro === null) {
     const qual =
@@ -301,4 +324,43 @@ export async function registrarMovimentoDotacao(
   });
 
   return { movimentoId: mov.id };
+}
+
+/**
+ * O ROTEIRO DO EIXO POR FONTE — a conta sai da ORIGEM do recurso do decreto (V11 V8.9).
+ *
+ * ⚠️ RECUSA COM MOTIVO quando a origem não veio. Sob este eixo ela é o discriminador da conta:
+ * sem ela não há o que consultar, e um `null` silencioso escolheria uma linha qualquer.
+ */
+async function roteiroPorFonte(
+  tx: Tx,
+  p: MovimentoDotacaoParams
+): Promise<{
+  readonly contaDebito: { readonly id: string; readonly codigo: string; readonly analitica: boolean };
+  readonly contaCredito: { readonly id: string; readonly codigo: string; readonly analitica: boolean };
+} | null> {
+  if (p.origemDoRecurso === undefined) {
+    throw new Error(
+      `CRÉDITO ADICIONAL SEM A ORIGEM DO RECURSO. O ente registra a dotação adicional pelo eixo ` +
+        `POR FONTE, e neste eixo é a ORIGEM do decreto (superávit, excesso, anulação, operação ` +
+        `de crédito) que diz em qual conta o crédito entra. Quem sabe é o DECRETO ` +
+        `(DecretoCredito.origemRecurso). Nada foi gravado.`
+    );
+  }
+  const r = await tx.roteiroDaDotacaoPorFonte.findFirst({
+    where: { origem: p.origemDoRecurso },
+    orderBy: { versao: "desc" },
+    select: {
+      contaDebito: { select: { id: true, codigo: true, analitica: true } },
+      contaCredito: { select: { id: true, codigo: true, analitica: true } },
+    },
+  });
+  if (r === null) {
+    throw new Error(
+      `ROTEIRO POR FONTE NÃO PARAMETRIZADO para a origem ${p.origemDoRecurso}. O ente registra a ` +
+        `dotação adicional pelo eixo POR FONTE (5.2.2.1.3), e esta origem ainda não tem contas ` +
+        `decididas. Publique-o em /contabilidade/roteiros-orcamentarios. Nada foi gravado.`
+    );
+  }
+  return r;
 }

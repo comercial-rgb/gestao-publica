@@ -2,6 +2,14 @@ import {
   publicarRoteiroOrcamentario,
   roteiroVigente,
 } from "../../modules/m05-despesa/servico-roteiro-orcamentario.js";
+import {
+  EIXO_HERDADO,
+  politicaVigente,
+  publicarPoliticaDaDotacaoAdicional,
+  publicarRoteiroDaDotacaoPorFonte,
+  roteiroPorFonteVigente,
+  rotuloDoEixo,
+} from "../../modules/m05-despesa/servico-dotacao-por-fonte.js";
 import { cliente } from "./cliente";
 import { exigirLeituraDoEnte } from "./leitura";
 import { comEscritaAutenticada } from "./sessao";
@@ -199,5 +207,145 @@ export async function publicarRoteiro(input: {
     (r.anterior === null
       ? "."
       : `, no lugar de ${r.anterior.debito} / ${r.anterior.credito}. O que já foi escriturado continua como estava — a versão nova vale para o que vier.`)
+  );
+}
+
+/**
+ * ═══ O EIXO DA DOTAÇÃO ADICIONAL (V11 V8.9) ═══
+ *
+ * `5.2.2.1.2` (por tipo de crédito) e `5.2.2.1.3` (por fonte) são irmãs no plano e descrevem o
+ * MESMO crédito. Lançar nas duas creditaria o crédito disponível DUAS vezes pelo mesmo decreto —
+ * por isso o eixo é UM, e quem escolhe é o ente.
+ */
+export interface EixoNaTela {
+  readonly eixo: string;
+  /** `false` = ninguém do ente decidiu; vale o herdado da instalação. */
+  readonly decidido: boolean;
+  readonly versao: number | null;
+  readonly fundamento: string | null;
+  readonly criadoPor: string | null;
+  readonly rotulo: string;
+}
+
+export async function lerEixoDaDotacaoAdicional(): Promise<EixoNaTela> {
+  await exigirLeituraDoEnte("CONSULTAR_CONTABILIDADE");
+  const p = await politicaVigente(cliente() as never);
+  const eixo = p?.eixo ?? EIXO_HERDADO;
+  return {
+    eixo,
+    decidido: p !== null,
+    versao: p?.versao ?? null,
+    fundamento: p?.fundamento ?? null,
+    criadoPor: p?.criadoPor ?? null,
+    rotulo: rotuloDoEixo(eixo),
+  };
+}
+
+export interface LinhaPorFonte {
+  readonly origem: string;
+  readonly rotulo: string;
+  readonly explicacao: string;
+  readonly versao: number | null;
+  readonly debito: string | null;
+  readonly debitoNome: string | null;
+  readonly credito: string | null;
+  readonly fundamento: string | null;
+  readonly criadoPor: string | null;
+  readonly semFundamento: boolean;
+}
+
+/**
+ * ⚠️ AS QUATRO ORIGENS SÃO AS DO DOMÍNIO (`OrigemRecurso`), e a lista mora aqui pelo mesmo motivo
+ * de `PARES_DO_ROTEIRO`: é o domínio que define quais existem. O plano tem outras três sob
+ * `5.2.2.1.3` (reserva de contingência, dotação transferida, recursos sem despesa) — elas ficam
+ * de fora porque o sistema não representa esses fatos, e inventar o valor do enum inventaria o
+ * fato junto.
+ */
+export const ORIGENS_DO_RECURSO: readonly { readonly origem: string; readonly rotulo: string; readonly explicacao: string }[] = [
+  {
+    origem: "SUPERAVIT_FINANCEIRO",
+    rotulo: "Superávit financeiro do exercício anterior",
+    explicacao: "Recurso novo apurado no balanço do ano anterior (Lei 4.320, art. 43, § 1º, I).",
+  },
+  {
+    origem: "EXCESSO_ARRECADACAO",
+    rotulo: "Excesso de arrecadação",
+    explicacao: "Recurso novo: a receita entrou acima do previsto (art. 43, § 1º, II).",
+  },
+  {
+    origem: "ANULACAO",
+    rotulo: "Anulação de dotação",
+    explicacao: "Não é recurso novo — REMANEJA: o crédito sai do saldo de outra ficha (art. 43, § 1º, III).",
+  },
+  {
+    origem: "OPERACAO_CREDITO",
+    rotulo: "Operação de crédito",
+    explicacao: "Recurso novo contratado (art. 43, § 1º, IV).",
+  },
+];
+
+export async function lerRoteirosPorFonte(): Promise<readonly LinhaPorFonte[]> {
+  await exigirLeituraDoEnte("CONSULTAR_CONTABILIDADE");
+  const prisma = cliente();
+  const linhas: LinhaPorFonte[] = [];
+  for (const o of ORIGENS_DO_RECURSO) {
+    const v = await roteiroPorFonteVigente(prisma as never, o.origem);
+    const nome =
+      v === null
+        ? null
+        : (await prisma.contaPcasp.findUnique({ where: { codigo: v.debito }, select: { nome: true } }))?.nome ?? null;
+    linhas.push({
+      ...o,
+      versao: v?.versao ?? null,
+      debito: v?.debito ?? null,
+      debitoNome: nome,
+      credito: v?.credito ?? null,
+      fundamento: v?.fundamento ?? null,
+      criadoPor: v?.criadoPor ?? null,
+      semFundamento: v !== null && v.fundamento === null,
+    });
+  }
+  return linhas;
+}
+
+export async function publicarEixoDaDotacao(input: {
+  readonly eixo: string;
+  readonly fundamento: string;
+}): Promise<string> {
+  const r = await comEscritaAutenticada("PARAMETRIZAR_ROTEIRO_ORCAMENTARIO", (criadoPor) =>
+    publicarPoliticaDaDotacaoAdicional(cliente(), {
+      eixo: input.eixo as never,
+      fundamento: input.fundamento,
+      criadoPor,
+    })
+  );
+  return (
+    `Eixo publicado na versão ${r.versao}: a dotação adicional passa a ser registrada ` +
+    `${rotuloDoEixo(input.eixo as never)}` +
+    (r.anterior === null
+      ? ". Antes disso valia o herdado da instalação (por tipo de crédito)."
+      : `, no lugar de ${rotuloDoEixo(r.anterior)}. O que já foi escriturado continua no ramo em que entrou — a troca vale para o que vier.`)
+  );
+}
+
+export async function publicarRoteiroPorFonte(input: {
+  readonly origem: string;
+  readonly contaDebitoCodigo: string;
+  readonly contaCreditoCodigo: string;
+  readonly fundamento: string;
+}): Promise<string> {
+  const r = await comEscritaAutenticada("PARAMETRIZAR_ROTEIRO_ORCAMENTARIO", (criadoPor) =>
+    publicarRoteiroDaDotacaoPorFonte(cliente(), {
+      origem: input.origem as never,
+      contaDebitoCodigo: input.contaDebitoCodigo,
+      contaCreditoCodigo: input.contaCreditoCodigo,
+      fundamento: input.fundamento,
+      criadoPor,
+    })
+  );
+  return (
+    `Roteiro por fonte publicado na versão ${r.versao}: débito ${input.contaDebitoCodigo}, ` +
+    `crédito ${input.contaCreditoCodigo}` +
+    (r.anterior === null ? "." : `, no lugar de ${r.anterior.debito} / ${r.anterior.credito}.`)
   );
 }
