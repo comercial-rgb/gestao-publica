@@ -41,6 +41,15 @@ export interface FonteParaDeclaracao {
   readonly id: string;
   readonly codigo: string;
   readonly descricao: string;
+  /**
+   * ⚠️ O QUE OS FATOS DÃO, para o SUPERÁVIT (V11 V8.10) — `null` quando o exercício anterior não
+   * foi encerrado (não há foto contra a qual conferir), e ausente nas demais origens.
+   *
+   * Aparece ao lado do campo porque é AQUI que o número é digitado; mandar a pessoa a outra tela
+   * para conferi-lo é o mesmo que não mostrar. E ele NÃO preenche o campo: preencher escolheria o
+   * número no lugar de quem apura, e o domínio recusa acima dele de qualquer forma.
+   */
+  readonly apuradoNoSuperavit?: string | null;
 }
 
 export function FormDeclaracao({
@@ -52,6 +61,8 @@ export function FormDeclaracao({
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDeclaracao, FormData>(declararAction, {});
   const [aberto, setAberto] = useState(false);
+  const [fonteEscolhida, setFonteEscolhida] = useState("");
+  const [origemEscolhida, setOrigemEscolhida] = useState("");
   const [ultimoSucesso, setUltimoSucesso] = useState<string | undefined>(undefined);
   const [seq, setSeq] = useState(0);
 
@@ -117,7 +128,13 @@ export function FormDeclaracao({
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
           <span className={ROTULO}>Fonte de recurso</span>
-          <select name="fonteId" required defaultValue="" className={CAMPO}>
+          <select
+            name="fonteId"
+            required
+            value={fonteEscolhida}
+            onChange={(e) => setFonteEscolhida(e.target.value)}
+            className={CAMPO}
+          >
             <option value="">Escolha a fonte…</option>
             {fontes.map((f) => (
               <option key={f.id} value={f.id}>
@@ -129,7 +146,13 @@ export function FormDeclaracao({
 
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
           <span className={ROTULO}>Origem do recurso</span>
-          <select name="origem" required defaultValue="" className={CAMPO}>
+          <select
+            name="origem"
+            required
+            value={origemEscolhida}
+            onChange={(e) => setOrigemEscolhida(e.target.value)}
+            className={CAMPO}
+          >
             <option value="">Escolha a origem…</option>
             {ORIGENS.map((o) => (
               <option key={o.valor} value={o.valor}>{o.rotulo}</option>
@@ -153,6 +176,34 @@ export function FormDeclaracao({
           />
         </label>
       </div>
+
+      {/* ⚠️ O NÚMERO DOS FATOS, AO LADO DE ONDE ELE É DIGITADO (V11 V8.10). A pendência
+          `SUPERAVIT-DECLARADO-NAO-DERIVADO` era esta: o valor era digitado e só o guard do
+          crédito o conferia — depois, com lei e decreto já escritos contra ele. */}
+      {origemEscolhida === "SUPERAVIT_FINANCEIRO" && fonteEscolhida !== "" ? (
+        <p className="mt-3 text-xs" data-teste="apurado-do-superavit" role="status">
+          {(() => {
+            const f = fontes.find((x) => x.id === fonteEscolhida);
+            const apurado = f?.apuradoNoSuperavit;
+            if (apurado === undefined || apurado === null) {
+              return (
+                <span className="text-[color:var(--color-status-alerta-fg)]">
+                  O exercício {exercicio - 1} não foi encerrado: não há superávit apurado contra o
+                  que conferir. Enquanto ele não for encerrado, nenhum crédito por superávit é
+                  aceito — a declaração fica sem par.
+                </span>
+              );
+            }
+            return (
+              <span className="text-[color:var(--color-ink-2)]">
+                Os fatos do exercício {exercicio - 1} dão <strong>R$ {apurado}</strong> de superávit
+                para a fonte {f?.codigo} — receita, pagamento, retenção e restos, a mesma conta que o
+                Anexo 14 publica. <strong>Declarar acima disso é recusado.</strong>
+              </span>
+            );
+          })()}
+        </p>
+      ) : null}
 
       <p className="mt-3 text-xs text-[color:var(--color-ink-3)]">
         Declarar de novo a mesma fonte <strong>não apaga</strong> a declaração anterior: cria uma

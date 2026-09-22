@@ -900,6 +900,40 @@ export function criarCreditoRepositoryPrisma(
           );
         }
 
+        // ═══ ⚠️ O TETO DOS FATOS, NA HORA DE DECLARAR (V11 V8.10) ═══
+        //
+        // `SUPERAVIT-DECLARADO-NAO-DERIVADO`: o número era DIGITADO com uma explicação, e quem o
+        // conferia contra os fatos era só o guard do crédito — depois, quando alguém já tinha
+        // escrito lei e decreto contra ele. Declarar acima do apurado nunca serviu para nada; só
+        // adiava a recusa para o pior momento.
+        //
+        // ⚠️ SÓ O SUPERÁVIT, e isso é deliberado. O superávit é uma FOTO: 31/12 do exercício
+        // encerrado, e depois disso ele só muda se um fato daquele ano for lançado. O EXCESSO de
+        // arrecadação e a OPERAÇÃO DE CRÉDITO crescem ao longo do exercício — recusar uma
+        // declaração de março por não caber no arrecadado de março barraria uma declaração que
+        // fica verdadeira em abril. Nesses dois, quem confere continua sendo o guard do crédito,
+        // na DATA DO FATO, que é o instante certo.
+        //
+        // ⚠️ `null` DO PORT NÃO É ZERO: é "o exercício anterior não foi encerrado, não há foto".
+        // Recusar aí impediria o ente de declarar antes de encerrar — e o crédito já é barrado
+        // pelo guard nesse caso, com o motivo.
+        if (p.origem === "SUPERAVIT_FINANCEIRO" && portas.superavit !== undefined) {
+          const anterior = p.exercicio - 1;
+          const apurado = await portas.superavit.superavitDaFonte(tx, p.fonteId, anterior);
+          if (apurado !== null && p.valor.greaterThan(apurado)) {
+            throw new Error(
+              `A disponibilidade declarada (${p.valor.toFixed(2)}) é MAIOR do que o superávit ` +
+                `financeiro que os FATOS do exercício ${anterior} dão para a fonte ${fonte.codigo} ` +
+                `(${apurado.toFixed(2)}) — uma diferença de ` +
+                `${toMoney(p.valor.minus(apurado)).toFixed(2)}. O recurso novo não é o que se ` +
+                `digita, é o que existe (art. 43 da Lei 4.320/64): o apurado sai de receita, ` +
+                `pagamento, retenção e restos no encerramento de ${anterior}, a MESMA conta que o ` +
+                `Anexo 14 publica. Declare no máximo o apurado, ou lance em ${anterior} o fato que ` +
+                `está faltando. Nada foi declarado.`
+            );
+          }
+        }
+
         // Repetição não duplica: redeclarar EXATAMENTE o mesmo número, com a mesma explicação,
         // não é um fato novo — e uma versão a mais sem diferença nenhuma só suja o histórico
         // que esta tabela existe para preservar.

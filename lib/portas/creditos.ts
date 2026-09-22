@@ -10,7 +10,16 @@ import {
   encerrarDecreto,
 } from "../../modules/m03-creditos";
 import { usosDoRecursoNovo } from "../../modules/m03-creditos/consulta-da-disponibilidade";
-import { criarM03Deps } from "../../modules/m03-creditos/adapter-prisma";
+// ═══ ⚠️ AS DEPS DO M03 VÊM AMARRADAS (V11 V8.10), E ATÉ AQUI NÃO VINHAM ═══
+//
+// `criarM03Deps` monta o M03 SEM os ports de superávit, excesso e operação de crédito — e o
+// próprio M03 documenta que port ausente é FAIL-OPEN com log. Resultado medido: todo crédito por
+// recurso novo aberto PELA TELA era conferido só contra a disponibilidade DECLARADA, enquanto
+// oito testes provavam a amarração contra os fatos... montando as deps que só eles montavam.
+//
+// `criarM03DepsAmarrado` é o mesmo objeto COM as três respostas ligadas. Ver
+// `m03-amarracao-ligada-na-porta.test.ts`, que passa a acusar quem desligar de novo.
+import { criarM03DepsAmarrado } from "../../modules/m12-relatorios/adapter-m03";
 
 /**
  * PORTA — CRÉDITOS ADICIONAIS (M03, TR 4.20–4.40). A tela consome ISTO (grep trivalente): o domínio
@@ -84,7 +93,7 @@ export async function criarLeiCredito(input: {
   readonly valorAutorizado: string;
   readonly dataPublicacao: Date;
 }): Promise<string> {
-  return comEscritaAutenticada("CRIAR_LEI_DE_CREDITO", (criadoPor) => criarLei({ ...input, criadoPor }, criarM03Deps(cliente())));
+  return comEscritaAutenticada("CRIAR_LEI_DE_CREDITO", (criadoPor) => criarLei({ ...input, criadoPor }, criarM03DepsAmarrado(cliente())));
 }
 
 /**
@@ -102,7 +111,7 @@ export async function declararDisponibilidadeDeRecursoNovo(input: {
   readonly descricao: string;
 }): Promise<{ readonly versao: number; readonly anterior: string | null; readonly utilizado: string }> {
   return comEscritaAutenticada("DECLARAR_DISPONIBILIDADE_DE_RECURSO_NOVO", (criadoPor) =>
-    declararDisponibilidade({ ...input, criadoPor }, criarM03Deps(cliente()))
+    declararDisponibilidade({ ...input, criadoPor }, criarM03DepsAmarrado(cliente()))
   );
 }
 
@@ -113,7 +122,7 @@ export async function criarDecretoCredito(input: {
   readonly data: Date;
   readonly origemRecurso: "ANULACAO" | "SUPERAVIT_FINANCEIRO" | "EXCESSO_ARRECADACAO" | "OPERACAO_CREDITO";
 }): Promise<string> {
-  return comEscritaAutenticada("CRIAR_DECRETO_DE_CREDITO", (criadoPor) => criarDecreto({ ...input, criadoPor }, criarM03Deps(cliente())));
+  return comEscritaAutenticada("CRIAR_DECRETO_DE_CREDITO", (criadoPor) => criarDecreto({ ...input, criadoPor }, criarM03DepsAmarrado(cliente())));
 }
 
 /** LANÇAR os movimentos (itens) do decreto — suplementações e anulações, na mesma transação. */
@@ -122,7 +131,7 @@ export async function lancarMovimentosCredito(input: {
   readonly itens: readonly { readonly fichaId: string; readonly tipo: "SUPLEMENTACAO" | "ANULACAO"; readonly valor: string; readonly fonteId: string }[];
 }): Promise<readonly string[]> {
   const itens = input.itens.map((i) => ({ fichaId: i.fichaId, tipo: i.tipo, valor: i.valor, fonteId: i.fonteId }));
-  return comEscritaAutenticada("EXECUTAR_CREDITO", (criadoPor) => executarCredito({ decretoId: input.decretoId, itens, criadoPor }, criarM03Deps(cliente())));
+  return comEscritaAutenticada("EXECUTAR_CREDITO", (criadoPor) => executarCredito({ decretoId: input.decretoId, itens, criadoPor }, criarM03DepsAmarrado(cliente())));
 }
 
 export async function encerrarDecretoCredito(input: {
@@ -130,5 +139,5 @@ export async function encerrarDecretoCredito(input: {
   readonly data: Date;
   readonly motivo: string;
 }): Promise<string> {
-  return comEscritaAutenticada("ENCERRAR_DECRETO", (criadoPor) => encerrarDecreto({ ...input, criadoPor }, criarM03Deps(cliente())));
+  return comEscritaAutenticada("ENCERRAR_DECRETO", (criadoPor) => encerrarDecreto({ ...input, criadoPor }, criarM03DepsAmarrado(cliente())));
 }

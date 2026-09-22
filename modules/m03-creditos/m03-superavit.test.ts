@@ -14,6 +14,7 @@ import {
   anularCredito,
   criarDecreto,
   criarLei,
+  declararDisponibilidade,
   executarCredito,
   saldoDaLei,
 } from "./servico.js";
@@ -543,5 +544,82 @@ describe("V11 V3.1 — a consulta do superávit", () => {
     // o decreto existiu, consumiu e foi anulado, e é isso que a linha diz.
     expect(f500?.decretos.map((d) => d.identificacao)).toEqual(["D-ANULAR/2026"]);
     expect(f500?.decretos[0]?.liquido).toBe("0.00");
+  });
+});
+
+/**
+ * ═══ A DECLARAÇÃO TAMBÉM É CONFERIDA CONTRA OS FATOS (V11 V8.10) ═══
+ *
+ * `SUPERAVIT-DECLARADO-NAO-DERIVADO`. O número era DIGITADO com uma explicação, e quem o conferia
+ * contra os fatos era só o guard do CRÉDITO — depois, quando alguém já tinha escrito lei e decreto
+ * contra ele. A fixture deste arquivo diz isso desde sempre, no comentário: "20.000 contra 10.000
+ * de fatos… era a única coisa que o sistema conferia".
+ *
+ * Declarar acima do apurado nunca serviu para nada: só adiava a recusa para o pior momento.
+ */
+describe("M03 — a DECLARAÇÃO de superávit contra os fatos", () => {
+  let deps: M03Deps;
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  const declarar = (valor: string, fonteId = FONTE_500, origem: "SUPERAVIT_FINANCEIRO" | "EXCESSO_ARRECADACAO" = "SUPERAVIT_FINANCEIRO") =>
+    declararDisponibilidade(
+      {
+        exercicio: 2026, fonteId, origem, valor,
+        descricao: "Balanço de 2025 — quadro do superávit financeiro", criadoPor: POR,
+      },
+      deps
+    );
+
+  describe("com o exercício anterior ENCERRADO", () => {
+    beforeEach(async () => {
+      await semear(true);
+      deps = criarM03DepsAmarrado(prisma);
+    });
+
+    it("d1 — declarar UM CENTAVO acima do apurado é recusado, e nada é gravado", async () => {
+      const antes = await prisma.disponibilidadeRecursoNovo.count();
+      await expect(declarar("10000.01")).rejects.toThrow(
+        /declarada \(10000\.01\) é MAIOR do que o superávit financeiro que os FATOS do exercício 2025 dão[\s\S]*\(10000\.00\)[\s\S]*diferença de 0\.01/
+      );
+      expect(await prisma.disponibilidadeRecursoNovo.count()).toBe(antes);
+    });
+
+    it("d2 — declarar EXATAMENTE o apurado passa, e cria versão nova", async () => {
+      const r = await declarar("10000.00");
+      expect(r.versao).toBe(2);
+      expect(r.anterior).toBe("20000.00");
+    });
+
+    it("d3 (N=2) — na fonte SEM fatos, o apurado é ZERO, e zero é resposta: recusa qualquer valor", async () => {
+      // ⚠️ FIXTURE N=2 DE PROPÓSITO. Com uma fonte só, um teto lido e um teto ignorado se
+      // comportariam igual em metade dos casos. A 540 tem 5.000 declarados e zero de fatos.
+      await expect(declarar("0.01", FONTE_540)).rejects.toThrow(/os FATOS do exercício 2025 dão[\s\S]*\(0\.00\)/);
+    });
+
+    it("d4 — o EXCESSO de arrecadação NÃO é recusado na declaração, e isso é deliberado", async () => {
+      // ⚠️ O SUPERÁVIT É UMA FOTO (31/12 do exercício encerrado); o EXCESSO CRESCE ao longo do
+      // ano. Recusar uma declaração de março por não caber no arrecadado de março barraria uma
+      // declaração que fica verdadeira em abril. Nele, quem confere é o guard do crédito, na DATA
+      // DO FATO — que é o instante certo.
+      const r = await declarar("999999.00", FONTE_500, "EXCESSO_ARRECADACAO");
+      expect(r.versao).toBe(1);
+    });
+  });
+
+  describe("com o exercício anterior AINDA ABERTO", () => {
+    beforeEach(async () => {
+      await semear(false);
+      deps = criarM03DepsAmarrado(prisma);
+    });
+
+    it("d5 — `null` do port não é zero: sem encerramento, a declaração passa", async () => {
+      // ⚠️ SEM FOTO NÃO HÁ O QUE CONFERIR, e recusar aqui impediria o ente de declarar antes de
+      // encerrar. O crédito por superávit já é barrado nesse caso, pelo guard, com o motivo.
+      const r = await declarar("20000.01");
+      expect(r.versao).toBe(2);
+    });
   });
 });

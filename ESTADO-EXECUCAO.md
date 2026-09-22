@@ -9149,3 +9149,72 @@ sem ela, uma leitura que recusasse tudo deixaria `t3` verde.
 origens do plano sem par no domínio (reserva de contingência, dotação transferida, recursos sem
 despesa correspondente) ficaram de fora **porque o sistema não representa esses fatos** — inventar
 o valor do enum inventaria o fato junto.
+
+---
+
+## 77. V11 V8.10 — a amarração que oito testes provavam e a aplicação não montava
+
+### 77.1 O que a pendência dizia, e o que eu achei
+
+`SUPERAVIT-DECLARADO-NAO-DERIVADO` estava registrada como "o valor do superávit é declarado com a
+explicação de onde saiu; não é o sistema que o apura". Verdade — e havia coisa pior atrás dela.
+
+O M03 pergunta o superávit, o excesso e a operação de crédito **por port**, e documenta que port
+ausente é **fail-open com log**: "um módulo que não está montado não pode paralisar o ente".
+`criarM03DepsAmarrado` (M12) monta os três. `criarM03Deps` não monta nenhum.
+
+**`lib/portas/creditos.ts` montava o sem amarração.** Consequência: todo crédito por recurso novo
+aberto **pela tela** era conferido só contra a disponibilidade **declarada** — o número digitado —
+enquanto `m03-superavit.test.ts` e `m03-recurso-novo.test.ts` provavam a amarração contra os fatos
+**montando as deps que só eles montavam**. Oito testes verdes sobre um caminho que a aplicação não
+percorria. É o falso-verde que este repositório mais teme, e ele estava no meio do crédito
+adicional.
+
+### 77.2 As três coisas que mudaram
+
+1. **A porta passa a montar a versão amarrada.** Uma linha; o resto desta seção existe para que
+   ninguém a desfaça sem ser acusado.
+2. **A declaração é conferida contra os fatos na hora de declarar.** Declarar acima do apurado
+   nunca serviu para nada — só adiava a recusa para depois de lei e decreto escritos contra o
+   número. ⚠️ **Só o superávit**: ele é uma foto (31/12 do exercício encerrado). O excesso de
+   arrecadação e a operação de crédito **crescem** durante o ano, e recusar em março o que fica
+   verdadeiro em abril seria trocar um defeito por outro; neles quem confere continua sendo o
+   guard do crédito, na data do fato.
+3. **O número dos fatos aparece ao lado de onde ele é digitado.** Mandar a pessoa a outra tela
+   para conferi-lo é o mesmo que não mostrar. E ele **não preenche** o campo: preencher escolheria
+   o número no lugar de quem apura.
+
+### 77.3 O guard, e por que ele olha a fonte
+
+`amarracao-do-recurso-novo-na-porta.test.ts` afirma que nenhum arquivo de `lib/` ou `app/` monta
+as deps sem amarração. O que se quer afirmar é sobre a **montagem** — qual das duas funções a
+camada que o usuário percorre chama —, e um teste de comportamento na porta exigiria sessão, banco
+e um decreto, e ainda poderia passar por um caminho que não é o da tela.
+
+⚠️ **A busca ignora comentário**, e isso não é detalhe: o arquivo vigiado **explica**, em dez
+linhas, por que não usa `criarM03Deps`. Uma busca ingênua casaria com a explicação e acusaria
+justamente quem fez certo.
+
+⚠️ E a prova de que a diferença entre as duas montagens é **real** não mora nesse arquivo, de
+propósito: `M03Deps` não carrega os ports (eles ficam na closure do repositório). Quem prova o
+efeito é `m03-superavit.test.ts` t5, contra Postgres — e ele fica vermelho no dia em que alguém
+ligar os ports dentro de `criarM03Deps`, que é o dia em que o guard novo passaria a vigiar uma
+distinção que não existe mais.
+
+### 77.4 O que foi medido
+
+| Medida | Resultado |
+|---|---|
+| tsc app / backend | `exit=0` |
+| m03 + m12 + guard da amarração | **293 testes**, `exit=0` |
+| `m03-superavit.test.ts` | 16 testes (eram 11) |
+
+**Duas mutações, duas acusações:** desamarrar a porta deixou os dois testes do guard vermelhos,
+nomeando `lib/portas/creditos.ts`; desligar o teto dos fatos na declaração deixou `d1` e `d3`
+vermelhos.
+
+### 77.5 Pendências
+
+`SUPERAVIT-DECLARADO-NAO-DERIVADO` **fecha**. Nenhuma nasce — e fica o registro de que a
+amarração do **excesso** e da **operação de crédito** continua sendo conferida no crédito, na data
+do fato, por decisão e não por omissão.

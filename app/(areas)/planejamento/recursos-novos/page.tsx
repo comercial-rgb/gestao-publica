@@ -17,6 +17,7 @@ import {
 } from "../../../../lib/portas/contexto";
 import { dataBr } from "../../../../lib/recorte";
 import { FormDeclaracao } from "./FormDeclaracao";
+import { consultaDoSuperavit } from "../../../../lib/portas/superavit";
 
 /**
  * DISPONIBILIDADE DE RECURSO NOVO (M03, TR 4.37) — o número que AUTORIZA o crédito adicional por
@@ -56,9 +57,15 @@ export default async function RecursosNovosPage({
   let recorte: RecorteDaPagina;
   let porOrigem: readonly (readonly [string, Awaited<ReturnType<typeof lerDisponibilidades>>])[];
   let fontes: Awaited<ReturnType<typeof lerFontes>>;
+  let superavit: Awaited<ReturnType<typeof consultaDoSuperavit>>;
   try {
     recorte = await recorteDePagina(sp, "CONSULTAR_PLANEJAMENTO");
     fontes = await lerFontes();
+    // ⚠️ O APURADO DOS FATOS VEM JUNTO (V11 V8.10) — e da MESMA composição que a tela do
+    // superávit usa, não de uma soma nova. Uma segunda aritmética aqui divergiria da primeira no
+    // dia em que um fato de E-1 fosse lançado depois do encerramento, e a tela mostraria um
+    // número que o domínio recusa.
+    superavit = await consultaDoSuperavit(recorte.exercicio);
     porOrigem = await Promise.all(
       ORIGENS.map(
         async (o) =>
@@ -89,6 +96,17 @@ export default async function RecursosNovosPage({
   const exercicio = recorte.exercicio;
   const linhas = new Map(porOrigem);
 
+  // O apurado por fonte, casado pelo CÓDIGO — é o que a consulta do superávit devolve.
+  const apuradoPorCodigo = new Map(superavit.linhas.map((l) => [l.fonteCodigo, l.apurado]));
+  const fontesComApurado = fontes.map((f) => ({
+    ...f,
+    // `null` = exercício anterior não encerrado; ausência de linha = fonte sem fato nenhum em
+    // E-1, e aí o apurado É zero (a fonte não sobrou nada), não "desconhecido".
+    apuradoNoSuperavit: superavit.exercicioAnteriorEncerrado
+      ? (apuradoPorCodigo.get(f.codigo) ?? "0.00")
+      : null,
+  }));
+
   return (
     <div className="space-y-4">
       <SincronizarContexto />
@@ -106,7 +124,7 @@ export default async function RecursosNovosPage({
         remaneja dotação, e o que o autoriza é o saldo da ficha anulada.
       </div>
 
-      <FormDeclaracao exercicio={exercicio} fontes={fontes} />
+      <FormDeclaracao exercicio={exercicio} fontes={fontesComApurado} />
 
       {ORIGENS.map((o) => {
         const lista = linhas.get(o.chave) ?? [];
