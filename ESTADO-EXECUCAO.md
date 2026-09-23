@@ -9512,3 +9512,98 @@ parâmetro de execução, não contrato de ente nenhum.
 ⚠️ **A suíte foi repetida quatro vezes nesta rodada, e a terceira foi a que valeu**: a primeira
 acusou quatro defeitos que as corridas dirigidas não alcançavam (seção 81.x / commit `ba46f6e`).
 Corridas dirigidas medem o que se mexeu; a suíte inteira mede o que se esqueceu.
+
+---
+
+## 83. V11 V9 — a procedência da rodada anterior, o ambiente e as dependências separadas
+
+Esta seção não constrói nada. Ela fecha três coisas que a rodada anterior deixou implícitas e que
+a ordem seguinte exigiu por escrito, antes de abrir frente nova.
+
+### 83.1 A procedência da medição: o que separa `9640aa8` de `1969ff2`
+
+```
+git diff --stat 9640aa8..1969ff2
+ ESTADO-EXECUCAO.md | 22 ++++++++++++++++++----
+ 1 file changed, 18 insertions(+), 4 deletions(-)
+```
+
+**Um arquivo, e é documentação.** Zero código, zero schema, zero teste. Portanto a medição da
+seção 82.6 — suíte 3312/3312, os três `tsc`, o `next build` e os dois percursos — foi feita sobre
+a árvore congelada em `9640aa8` e **vale sem reserva para `1969ff2`**: não há comportamento
+alterado entre os dois commits para verificar. Nada se repete para resolver essa diferença.
+
+⚠️ **E a execução integral daquela rodada foi EXCEPCIONAL.** Ela se justificou por alteração
+transversal (censo de ações, limpeza de banco, plano de contas) e por uma falha sem origem
+delimitada — as duas hipóteses que a V3 prevê para o portão integral. **Ela não altera a
+orientação vigente**, que continua sendo a da V3: verificação dirigida ao que mudou e aos
+consumidores diretos; suíte completa, `test:fuso`, portão e campanha de mutações ficam para o
+candidato de homologação ou para quando uma dessas duas hipóteses voltar a ocorrer.
+
+### 83.2 Inventário de ambiente: o banco que sobrou, com origem e finalidade
+
+| Banco | Origem | Finalidade | Estado |
+|---|---|---|---|
+| `gestao_publica_instalacao_v7m2_v85` | criado em **2026-09-21 05:16 UTC**, na unidade V8.5 (seção 74) | provar a cadeia da despesa em **instalação limpa** — sem tipo de consignação semeado, sem decisão do ente, sem roteiro herdado; era o único jeito de ver o que um ente novo encontra | **202 migrations aplicadas**, 26 usuários, 38 MB, **0 conexões** |
+
+⚠️ **Ele NÃO se apaga nesta rodada, por decisão registrada.** Trinta e oito megabytes não
+justificam interromper construção para decidir limpeza, e um banco de instalação limpa já migrado
+é caro de reconstruir. Ele casa com o padrão `DESCARTAVEL` dos scripts de percurso
+(`/^gestao_publica_(percursos|capturas|instalacao)_v7m[12]_[a-z0-9_]{1,40}$/`), ou seja: nenhum
+script vai recusar-se a rodar por causa dele, e nenhum script vai gravar nele por engano.
+
+Os bancos de percurso da rodada anterior (`gestao_publica_percursos_v7m2_fecha{mento,2,3,4}`) foram
+removidos ao fim daquela unidade. Não há outro resíduo.
+
+### 83.3 As dependências externas, separadas — porque são cinco coisas diferentes
+
+A rodada anterior as listou numa linha só, e isso esconde que elas não se desbloqueiam juntas nem
+pelo mesmo ator:
+
+| Dependência | O que exatamente falta | Quem desbloqueia | O que já existe deste lado |
+|---|---|---|---|
+| **Leiaute do eSocial** | o XSD/leiaute da versão vigente dos eventos que o ente transmite | publicação oficial / acesso ao portal do eSocial | `LEIAUTE-ESOCIAL-NAO-OBTIDO`: o módulo recusa com motivo declarado, não simula sucesso |
+| **Rol oficial do SAGRES** | o rol de tabelas/domínios do TCE-PB, atrás do **token ASTEC** | credencial junto ao TCE-PB (ato do ente) | a POC roda contra as 7.864 contas do PCASP oficial (seção 81) |
+| **Certificado A1** | o certificado digital do ente, com senha | aquisição/entrega pelo ente | a assinatura é ponto de extensão; sem certificado o estado é indisponível com motivo |
+| **AWS (V6)** | acesso efetivo no perfil `gestao-publica` | Winner, no console/IAM da conta | nada se contorna com chave ou política administrativa nova |
+| **Reconciliação da linha ENT12 no Windows** | uma máquina Windows para reconciliar | ambiente, não credencial | é a única que não depende de terceiro nenhum — depende de máquina |
+
+⚠️ **Nenhuma delas bloqueia construção local.** Elas bloqueiam TRANSMISSÃO e INFRAESTRUTURA.
+
+### 83.4 A terceira classificação da reabertura: o alcance exato do bloqueio
+
+`REABERTO-COM-SUPLEMENTACAO-NAO-DISTINGUIDO` fica bloqueada **somente** no trecho que depende do
+critério ausente, e esse trecho é estreito:
+
+- **Não bloqueado, e já entregue (V8.8):** o crédito ABERTO e o crédito REABERTO lançam em contas
+  distintas do roteiro, com a dimensão na chave do roteiro, o índice próprio e o
+  `ck_roteiro_abertura_so_de_credito_reabrivel`, que impede abertura em crédito não reabrível.
+- **Bloqueado:** a **terceira analítica** do ramo, cujo nome no plano é
+  `REABERTOS - SUPLEMENTAÇÃO`. O domínio deriva duas situações dos fatos que tem (`abertura` e
+  `tipoCredito`); o plano oferece três.
+
+⚠️ **E não é a descrição que falta — é o FATO.** A terceira analítica se chama, em letra, "reabertos
+- suplementação": o plano diz em palavras o que ela recebe. O que o sistema não tem é o vínculo que
+a alimenta, e ele é duplo:
+
+1. **Nenhum crédito suplementar aponta para o crédito reaberto que ele reforça.** Suplementação é
+   um `tipoCredito` próprio, e um movimento suplementar não carrega referência ao especial ou
+   extraordinário reaberto sobre o qual incide. Sem esse vínculo, "suplementação de reaberto" não é
+   derivável de nada — é uma frase sem fato por trás.
+2. **O `CHECK` impede, por desenho, carimbar `abertura` numa linha SUPLEMENTAR** — e com razão: o
+   suplementar reforça dotação existente e não se reabre. Ou seja, a terceira analítica **não é um
+   terceiro valor de `abertura`**; ela é outra coisa, e tratá-la como terceiro valor quebraria a
+   regra que a CF art. 167 § 2º sustenta.
+
+**A pergunta normativa exata, para quem for buscá-la:** *o que o plano classifica em
+`REABERTOS - SUPLEMENTAÇÃO` — a suplementação que incide sobre um crédito especial/extraordinário
+já reaberto no exercício, ou a parcela do próprio saldo reaberto que excede o valor originalmente
+aberto?* As duas leituras produzem lançamentos diferentes, e a descrição não decide entre elas.
+Referência a consultar: `docs/oficial/tce-pb/Pcasp_2025.xlsx` dá os três códigos e as três
+descrições; a resposta é normativa (STN/TCE-PB) e não se deduz do dado.
+
+**O que fica pronto para o dia em que a resposta chegar:** se a resposta for a primeira leitura,
+falta um vínculo `suplementaCredito` do movimento suplementar para o crédito reaberto — aditivo,
+uma coluna; se for a segunda, falta apartar o saldo reaberto do valor aberto no próprio crédito.
+Nenhuma das duas se escreve antes de saber qual é, porque escrever a errada produz lançamento em
+conta errada, que é exatamente o defeito que a V8.8 fechou.
