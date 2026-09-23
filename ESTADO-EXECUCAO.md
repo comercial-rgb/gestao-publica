@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | V11 V8.9 — o eixo da dotação adicional — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
+| HEAD | V11 V8.16 — as pendências tratáveis fechadas, e o percurso achando o que a suíte não via — árvore limpa, exceto os três scripts do operador, que continuam fora do Git |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
 | Frente em execução | **V11** — V1.1, V3.1, V4.1, V4.2 (seção 65), V2.1 eSocial (seção 66), V5.1/V5.2 (seção 67), V6 (seção 68), V7/V7.1/V7.2 (seção 69), V7.3 (seção 70) e **V8: o guichê — agendamento de atendimento presencial** (seção 71). **O escopo planejado desta rodada está concluído**; V6 (AWS) segue bloqueado |
-| Último resultado | seção 76 — **`DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE` fechada**. As duas visões irmãs do plano descrevem o MESMO crédito, e a perna de crédito é a mesma nas duas: lançar nos dois eixos creditaria o disponível DUAS vezes pelo mesmo decreto, com todo lançamento balanceado. O eixo virou decisão do ente, versionada e com fundamento. E o guard novo da limpeza do banco achou **três tabelas que vazavam entre testes há lotes** |
-| Pendências relevantes | seção 76.5 — **ZERO guards vermelhos**. Tratáveis: `SUPERAVIT-DECLARADO-NAO-DERIVADO`, `DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE`, `EXCECAO-DE-CALENDARIO-SO-FECHA`, `GUICHE-SEM-NOTIFICACAO-INTERNA`, `SAGRES-POC-CONTA-SINTETICA`, `REABERTO-COM-SUPLEMENTACAO-NAO-DISTINGUIDO`. **Bloqueadas por insumo externo, e inventar o dado é proibido**: `LEIAUTE-ESOCIAL-NAO-OBTIDO`, rol oficial do SAGRES (token ASTEC), certificado A1, V6 (AWS) e a linha ENT12 do Windows |
-| Próximo passo | `SUPERAVIT-DECLARADO-NAO-DERIVADO`, `DISPONIBILIDADE-SEM-RECORTE-POR-ENTIDADE`, `EXCECAO-DE-CALENDARIO-SO-FECHA`, `GUICHE-SEM-NOTIFICACAO-INTERNA`, `SAGRES-POC-CONTA-SINTETICA` — nesta ordem |
+| Último resultado | seções 76 a 82 — **sete unidades**: o eixo da dotação adicional (`DOTACAO-ADICIONAL-POR-TIPO-E-POR-FONTE`), a amarração do recurso novo que estava DESLIGADA na porta (`SUPERAVIT-DECLARADO-NAO-DERIVADO`), o suplementado por entidade, a exceção de calendário que deixou de só fechar (`EXCECAO-DE-CALENDARIO-SO-FECHA`), o aviso interno do guichê (`GUICHE-SEM-NOTIFICACAO-INTERNA`), a POC do SAGRES contra as 7.864 contas oficiais (`SAGRES-POC-CONTA-SINTETICA`) e o conserto que o PERCURSO achou com a suíte inteira verde (a decisão do ente não alcançava a tela de pagamento). Suíte **3312/3312 em 315 arquivos**; percursos **guichê 50/50** e **cadeia da despesa 28/28** |
+| Pendências relevantes | seção 82.5 — **ZERO guards vermelhos e nenhuma pendência tratável em aberto**. Estreitadas, e as duas precisam de um FATO ou de uma FONTE que o sistema não tem: `RECEITA-SEM-ENTIDADE-ARRECADADORA` (a arrecadação não registra entidade, e ratear inventaria o número que autoriza a despesa) e `REABERTO-COM-SUPLEMENTACAO-NAO-DISTINGUIDO` (o plano tem três analíticas e o domínio deriva duas; o critério da terceira é normativo e não foi publicado). **Bloqueadas por insumo externo**: `LEIAUTE-ESOCIAL-NAO-OBTIDO`, rol oficial do SAGRES (token ASTEC), certificado A1, V6 (AWS) e a linha ENT12 do Windows |
+| Próximo passo | **escolha nova** — a fila declarada terminou. O que resta em aberto depende de insumo externo ou de uma decisão do ente sobre o modelo (a entidade arrecadadora) |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -9498,3 +9498,17 @@ os dois testes que faltavam, e que agora confrontam as duas leituras.
 Nenhuma nasce. Fica registrado que os percursos rodaram sobre **banco descartável clonado do de
 percursos**, com o licenciamento de **demonstração** instalado (`DEMONSTRACAO-PERCURSO`) — é
 parâmetro de execução, não contrato de ente nenhum.
+
+### 82.6 A medição final desta rodada, sobre a árvore congelada
+
+| Medida | Resultado |
+|---|---|
+| **suíte inteira** (`--maxWorkers=3`) | **3312/3312 em 315 arquivos**, `exit=0`, sobre `9640aa8` |
+| tsc app / backend / scripts | `exit=0` nos três |
+| `next build` | `exit=0` |
+| percurso do guichê | **50/50, 0 falhas** |
+| percurso da cadeia da despesa | **28/28, 0 falhas** |
+
+⚠️ **A suíte foi repetida quatro vezes nesta rodada, e a terceira foi a que valeu**: a primeira
+acusou quatro defeitos que as corridas dirigidas não alcançavam (seção 81.x / commit `ba46f6e`).
+Corridas dirigidas medem o que se mexeu; a suíte inteira mede o que se esqueceu.
