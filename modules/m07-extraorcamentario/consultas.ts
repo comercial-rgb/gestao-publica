@@ -1,4 +1,5 @@
 import { Decimal, toMoney, type Money } from "../../packages/contracts/index.js";
+import { vigenciaDoTipoDeConsignacao } from "./dominio.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { totaisPorConsignatario, SINAL_MOVIMENTO_EXTRA } from "./dominio.js";
 import { janelaCivilDoAno } from "../../packages/datas/index.js";
@@ -117,15 +118,37 @@ export interface TipoConsignacaoNaLista {
 export async function listarTiposConsignacao(prisma: PrismaClient): Promise<TipoConsignacaoNaLista[]> {
   const tipos = await prisma.tipoConsignacao.findMany({
     orderBy: [{ codigo: "asc" }],
-    include: { contaPassivo: { select: { codigo: true } } },
+    include: {
+      contaPassivo: { select: { codigo: true } },
+      // ⚠️ A DECISÃO VIGENTE DO ENTE (V11 V8.16) — e ela FALTAVA AQUI.
+      //
+      // Esta é a listagem que a TELA DE PAGAMENTO consulta para compor a perna do passivo da
+      // retenção. Sem a decisão, o ente trocava a conta pela tela de consignações, a tela de
+      // consignações mostrava a conta nova, e o pagamento continuava compondo na VELHA — o
+      // percurso da cadeia da despesa morria com "Conta sintética não recebe partida", acusando
+      // a tela de pagamento por um defeito que estava aqui.
+      decisoes: {
+        orderBy: { criadoEm: "desc" },
+        take: 1,
+        select: { ativo: true, contaPassivo: { select: { codigo: true } } },
+      },
+    },
   });
-  return tipos.map((t) => ({
-    id: t.id,
-    codigo: t.codigo,
-    descricao: t.descricao,
-    ativo: t.ativo,
-    contaPassivoCodigo: t.contaPassivo?.codigo ?? null,
-  }));
+  return tipos.map((t) => {
+    const v = vigenciaDoTipoDeConsignacao(
+      { ativo: t.ativo, contaPassivoCodigo: t.contaPassivo?.codigo ?? null },
+      t.decisoes[0] === undefined
+        ? undefined
+        : { ativo: t.decisoes[0].ativo, contaPassivoCodigo: t.decisoes[0].contaPassivo?.codigo ?? null }
+    );
+    return {
+      id: t.id,
+      codigo: t.codigo,
+      descricao: t.descricao,
+      ativo: v.ativo,
+      contaPassivoCodigo: v.contaPassivoCodigo,
+    };
+  });
 }
 
 export interface SaldoConsignatarioNaLista {

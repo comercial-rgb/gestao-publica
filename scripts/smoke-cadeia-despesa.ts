@@ -266,6 +266,69 @@ async function opcaoQueContem(
 }
 
 /**
+ * A CONSIGNAÇÃO QUE VEIO DO SEED, APONTANDO PARA A SINTÉTICA — trocada PELA TELA (V11 V8.16).
+ *
+ * ⚠️ O ATO É O `redefinir-consignacao` da V8.3, e é exatamente para isto que ele existe: o tipo
+ * antigo funciona pela coluna herdada, a conta dele é sintética, e o pagamento com retenção morre.
+ * Trocar a conta é decisão do ente — e o percurso faz o que a pessoa faria, escolhendo no `select`
+ * que o servidor recortou.
+ */
+async function redefinirContaDaConsignacao(page: Page): Promise<void> {
+  const abriu = await page.evaluate(() => {
+    const linha = document.querySelector('[data-teste="consignacao-INSS"]');
+    if (linha === null) return false;
+    for (const b of Array.from(linha.querySelectorAll("button"))) {
+      if (b.textContent?.trim() === "Trocar a conta") {
+        (b as HTMLButtonElement).click();
+        return true;
+      }
+    }
+    return false;
+  });
+  conferir("a linha da consignação herdada oferece TROCAR A CONTA", abriu, "não achei o ato 'Trocar a conta' na linha do INSS");
+  if (!abriu) return;
+  await new Promise((r) => setTimeout(r, 300));
+
+  // ⚠️ ESTRUTURAL, como no cadastro: o ramo `2.1.8.8` do plano, e dentro dele o nome afina.
+  // Fora do ramo, nome nenhum salva — foi assim que "BENEFICIOS PREVIDENCIARIOS A PAGAR" entrou.
+  const conta = await page.evaluate(() => {
+    const sel = document.querySelector('form[data-acao="redefinir-consignacao"] select[name="contaPassivoCodigo"]');
+    if (!(sel instanceof HTMLSelectElement)) return "";
+    const doRamo = [...sel.options].filter((o) => o.value.startsWith("2.1.8.8"));
+    const escolhida = doRamo.find((o) => /INSS|PREVIDENC/i.test(o.textContent ?? "")) ?? doRamo[0];
+    if (escolhida === undefined) return "";
+    const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
+    if (setter !== undefined) setter.call(sel, escolhida.value);
+    else sel.value = escolhida.value;
+    sel.dispatchEvent(new Event("input", { bubbles: true }));
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+    return escolhida.value;
+  });
+  conferir("a tela oferece as analíticas do ramo 2.1.8.8 para escolher", conta !== "", "nenhuma analítica de consignação no select");
+  if (conta === "") return;
+
+  const r = await preencherEEnviar(page, 'form[data-acao="redefinir-consignacao"]', [
+    {
+      sel: 'form[data-acao="redefinir-consignacao"] input[name="fundamento"]',
+      valor: "Percurso: a conta herdada do seed e SINTETICA e nao recebe partida; trocada pela analitica do ramo.",
+    },
+  ]);
+  void r;
+
+  const depois = await irPara(page, "/financeiro/consignacoes");
+  void depois;
+  const decidida = await page.evaluate(
+    () => document.querySelector('[data-teste="consignacao-INSS"]')?.getAttribute("data-decisao") === "do-ente"
+  );
+  conferir(
+    `a conta da consignação passa a ser DECIDIDA pelo ente (${conta}) — e a retenção volta a ser possível`,
+    decidida,
+    "a linha continua marcada como herdada depois da troca"
+  );
+}
+
+
+/**
  * GARANTE QUE EXISTE UMA CONSIGNAÇÃO "INSS" COM CONTA DECIDIDA — cadastrando-a pela TELA quando
  * ela não existe.
  *
@@ -284,11 +347,29 @@ async function garantirConsignacao(page: Page): Promise<void> {
   //
   // Duas vezes na mesma função: a conta escolhida por semelhança de nome e a existência conferida
   // por palavra solta. Texto de tela não é dado.
-  const jaExiste = await page.evaluate(
-    () => document.querySelector('[data-teste="consignacao-INSS"]') !== null
-  );
-  if (jaExiste) {
-    ok("a consignação INSS já está cadastrada — o percurso não recadastra");
+  /**
+   * ⚠️ EXISTIR NÃO É ESTAR USÁVEL (V11 V8.16) — e esta lição custou uma corrida inteira.
+   *
+   * O percurso conferia só a EXISTÊNCIA da linha, e seguia. Num banco em que o `seed:m07` tinha
+   * criado o tipo apontando para a conta SINTÉTICA das consignações (`2.1.8.8.1.01.00`), a linha
+   * existia, o percurso dizia "já está cadastrada" — e o pagamento com retenção morria quatro
+   * passos adiante com "Conta sintética não recebe partida", acusando a tela de pagamento por um
+   * defeito que estava na parametrização.
+   *
+   * ⚠️ E O ESTADO É LIDO COMO DADO, não como prosa: a linha declara `data-decisao`. Ler o texto
+   * desta tela já casou a própria explicação dela uma vez.
+   */
+  const estado = await page.evaluate(() => {
+    const linha = document.querySelector('[data-teste="consignacao-INSS"]');
+    if (linha === null) return "ausente";
+    return linha.getAttribute("data-decisao") === "do-ente" ? "decidida" : "herdada";
+  });
+  if (estado === "decidida") {
+    ok("a consignação INSS já tem conta DECIDIDA pelo ente — o percurso não recadastra");
+    return;
+  }
+  if (estado === "herdada") {
+    await redefinirContaDaConsignacao(page);
     return;
   }
 

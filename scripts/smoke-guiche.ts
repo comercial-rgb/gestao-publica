@@ -404,6 +404,55 @@ async function main(): Promise<void> {
       "a agenda do dia fechado não diz o motivo"
     );
 
+    // ═══ 4b. A EXCEÇÃO DE CALENDÁRIO DEIXA DE SÓ FECHAR (V11 V8.12) ═══════
+    //
+    // ⚠️ ESTES TRÊS PASSOS EXISTEM PORQUE NENHUM OUTRO TESTE ALCANÇA A TELA AQUI. Os campos de
+    // hora só aparecem quando o tipo é EXPEDIENTE_ESPECIAL — um `select` que revela dois campos
+    // é exatamente o tipo de coisa que passa no domínio e não chega ao formulário.
+    await irPara(N, page, ORGANIZACAO);
+    await abrirPainel(page, "Declarar");
+    await escolherPorRotulo(page, "fechar-dia-de-atendimento", "unidadeId", UNIDADE);
+    await escolherPorRotulo(page, "fechar-dia-de-atendimento", "tipo", "Volta ao expediente normal");
+    const r10b = await preencherEEnviar(page, "fechar-dia-de-atendimento", [
+      { sel: 'input[name="dia"]', valor: C.segunda, tipo: "data" },
+      { sel: 'input[name="motivo"]', valor: "Engano: o ponto facultativo e na outra segunda" },
+    ]);
+    R.conferir(
+      "4.4b o dia fechado por ENGANO volta atrás pela tela — e a decisão é a segunda do dia",
+      r10b.tipo === "ok" && r10b.texto.includes("expediente normal") && r10b.texto.includes("decisão 2"),
+      r10b.tipo === "silencio" ? await porQueNaoEnviou(page, "fechar-dia-de-atendimento") : `${r10b.tipo}: ${r10b.texto}`
+    );
+
+    const corpo9b = await irPara(N, page, rotaAgenda);
+    R.conferir(
+      "4.4c a agenda do dia volta a OFERECER horário, em vez do motivo do fechamento",
+      !corpo9b.includes("não abre em") && corpo9b.includes("08:30"),
+      "a agenda do dia reaberto não voltou a oferecer horários"
+    );
+
+    await irPara(N, page, ORGANIZACAO);
+    await abrirPainel(page, "Declarar");
+    await escolherPorRotulo(page, "fechar-dia-de-atendimento", "unidadeId", UNIDADE);
+    await escolherPorRotulo(page, "fechar-dia-de-atendimento", "tipo", "Abre em horário especial");
+    const r10c = await preencherEEnviar(page, "fechar-dia-de-atendimento", [
+      { sel: 'input[name="dia"]', valor: C.segunda, tipo: "data" },
+      { sel: 'input[name="motivo"]', valor: "Vespera de feriado - expediente ate as 9h" },
+      { sel: 'input[name="horaInicio"]', valor: "08:00" },
+      { sel: 'input[name="horaFim"]', valor: "09:00" },
+    ]);
+    R.conferir(
+      "4.4d o EXPEDIENTE ESPECIAL entra pela tela, com as duas horas que só ele revela",
+      r10c.tipo === "ok" && r10c.texto.includes("08:00") && r10c.texto.includes("09:00"),
+      r10c.tipo === "silencio" ? await porQueNaoEnviou(page, "fechar-dia-de-atendimento") : `${r10c.tipo}: ${r10c.texto}`
+    );
+
+    const corpo9c = await irPara(N, page, rotaAgenda);
+    R.conferir(
+      "4.4e a agenda RECORTA a oferta: o 08:30 fica, o 09:30 some — e o fim é exclusivo",
+      corpo9c.includes("08:30") && !corpo9c.includes("09:30"),
+      "o expediente especial não recortou a oferta do dia"
+    );
+
     if (prisma !== null) {
       // ⚠️ AS TRÊS CONTAGENS SÃO DESTE GUICHÊ, e não do banco inteiro. Uma contagem global
       // passaria na primeira corrida e quebraria na segunda — e uma falha que só aparece na

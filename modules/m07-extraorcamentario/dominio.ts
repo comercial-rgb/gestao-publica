@@ -452,3 +452,30 @@ export function comporPagamentoComRetencoes(p: {
     valorLiquido,
   };
 }
+
+/**
+ * ═══ A VIGÊNCIA DE UM TIPO DE CONSIGNAÇÃO — UMA REGRA, UM DONO (V11 V8.16) ═══
+ *
+ * A conta e a situação de um tipo deixaram de ser colunas editáveis na V8.3: passaram a ser um
+ * FATO append-only (`DecisaoDoTipoDeConsignacao`). A regra de leitura é uma só — **a decisão
+ * vigente manda; sem decisão, valem as colunas antigas** (os tipos que o seed criou antes) — e
+ * estava escrita à mão em dois lugares. Faltava no terceiro.
+ *
+ * ⚠️ E O TERCEIRO ERA O QUE IMPORTAVA: `listarTiposConsignacao`, que é quem a TELA DE PAGAMENTO
+ * consulta para compor a perna do passivo. O ente trocava a conta pela tela, a tela de consignações
+ * mostrava a conta nova, e o pagamento continuava compondo na conta velha — "Conta sintética não
+ * recebe partida", quatro passos adiante, acusando a tela de pagamento. O percurso da cadeia da
+ * despesa é quem pegou.
+ *
+ * Duas leituras com critérios diferentes sobre o mesmo dado sempre divergem; esta função existe
+ * para que não haja duas.
+ */
+export function vigenciaDoTipoDeConsignacao(
+  /** As colunas antigas do próprio tipo. */
+  legado: { readonly ativo: boolean; readonly contaPassivoCodigo: string | null },
+  /** A decisão de maior `criadoEm`, se houver. */
+  decisao: { readonly ativo: boolean; readonly contaPassivoCodigo: string | null } | undefined
+): { readonly ativo: boolean; readonly contaPassivoCodigo: string | null } {
+  if (decisao === undefined) return { ativo: legado.ativo, contaPassivoCodigo: legado.contaPassivoCodigo };
+  return { ativo: decisao.ativo, contaPassivoCodigo: decisao.contaPassivoCodigo };
+}

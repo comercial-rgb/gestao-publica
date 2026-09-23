@@ -3,6 +3,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
 import { limparBanco } from "../../test/limpar-banco.js";
 import { exigirTipoAtivo } from "./extraorcamentario.js";
+import { listarTiposConsignacao } from "./consultas.js";
 import {
   cadastrarTipoDeConsignacao,
   decisaoVigente,
@@ -219,5 +220,55 @@ describe("a autorização", () => {
       })
     ).rejects.toThrow(/GERIR_TIPOS_DE_CONSIGNACAO/);
     expect(await prisma.decisaoDoTipoDeConsignacao.count({ where: { tipoId } })).toBe(1);
+  });
+});
+
+/**
+ * ═══ A LISTAGEM QUE O PAGAMENTO CONSULTA ENXERGA A DECISÃO (V11 V8.16) ═══
+ *
+ * ⚠️ ESTE TESTE NASCE DE UM DEFEITO QUE SÓ O PERCURSO PEGOU. `listarTiposConsignacao` — a função
+ * que a TELA DE PAGAMENTO usa para compor a perna do passivo — lia só as colunas antigas. O ente
+ * trocava a conta pela tela, a tela de consignações mostrava a nova, e o pagamento compunha na
+ * VELHA: "Conta sintética não recebe partida", quatro passos adiante, acusando a tela errada.
+ *
+ * Duas leituras com critérios diferentes sobre o mesmo dado sempre divergem — e o teste que
+ * faltava era justamente o que confronta as duas.
+ */
+describe("M07 — a decisão do ente alcança a tela de PAGAMENTO", () => {
+  it("p1: trocada a conta, a listagem do pagamento devolve a NOVA — não a coluna antiga", async () => {
+    const { tipoId } = await cadastrar();
+    expect((await listarTiposConsignacao(prisma as never)).find((t) => t.id === tipoId)?.contaPassivoCodigo).toBe(
+      ANALITICA_INSS
+    );
+
+    await redefinirContaDaConsignacao(prisma, {
+      tipoId,
+      contaPassivoCodigo: ANALITICA_IRRF,
+      fundamento: "Reclassificacao do passivo conforme orientacao do tribunal para o exercicio.",
+      criadoPor: CONTABIL,
+    });
+
+    const depois = (await listarTiposConsignacao(prisma as never)).find((t) => t.id === tipoId);
+    expect(depois?.contaPassivoCodigo).toBe(ANALITICA_IRRF);
+
+    // ⚠️ E A COLUNA ANTIGA CONTINUA COM A PRIMEIRA — é dela que o defeito vinha, e é por isso que
+    // a asserção olha as duas: se alguém "consertar" fazendo a decisão reescrever a coluna, o
+    // append-only morre e este teste avisa.
+    const cru = await prisma.tipoConsignacao.findUniqueOrThrow({
+      where: { id: tipoId },
+      select: { contaPassivo: { select: { codigo: true } } },
+    });
+    expect(cru.contaPassivo?.codigo).toBe(ANALITICA_INSS);
+  });
+
+  it("p2: desativado pela tela, o tipo some da oferta do pagamento — pela DECISÃO, não pela coluna", async () => {
+    const { tipoId } = await cadastrar();
+    await desativarTipoDeConsignacao(prisma, {
+      tipoId,
+      fundamento: "O ente deixou de reter esta consignacao a partir deste exercicio.",
+      criadoPor: CONTABIL,
+    });
+    const t = (await listarTiposConsignacao(prisma as never)).find((x) => x.id === tipoId);
+    expect(t?.ativo).toBe(false);
   });
 });

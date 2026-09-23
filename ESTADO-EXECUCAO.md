@@ -9436,3 +9436,65 @@ original — "Conta SINTÉTICA 5.2.2.1.2.00.00 no roteiro orçamentário de ANUL
 ### 81.5 Pendências
 
 `SAGRES-POC-CONTA-SINTETICA` **fecha**. Nenhuma nasce.
+
+---
+
+## 82. V11 V8.16 — o percurso achou o que a suíte inteira não via
+
+### 82.1 O defeito, e por que nenhum teste o pegava
+
+Rodando os percursos de navegador sobre o build desta rodada, a cadeia da despesa parou no
+pagamento com retenção: **"Conta sintética não recebe partida: 2.1.8.8.1.01.00"**.
+
+A V8.3 deu ao ente a tela para decidir em que passivo cada consignação vira dívida, e fez a decisão
+ser um fato append-only. A regra de leitura — **a decisão vigente manda; sem decisão, valem as
+colunas antigas** — estava escrita à mão em **dois** lugares (`exigirTipoAtivo` e a porta da tela de
+consignações). Faltava no **terceiro**: `listarTiposConsignacao`, que é justamente quem a **tela de
+pagamento** consulta para compor a perna do passivo.
+
+Consequência: o ente trocava a conta pela tela, a tela de consignações mostrava a conta nova, e o
+pagamento continuava compondo na **velha**. A recusa aparecia quatro passos adiante, acusando a tela
+de pagamento por um defeito que estava na leitura.
+
+⚠️ **E a suíte inteira estava verde** — 3310 testes. Nenhum deles confrontava as duas leituras,
+porque cada uma tinha o seu teste e os dois passavam. Quem pegou foi o percurso, que é o único que
+atravessa as duas telas na mesma corrida.
+
+### 82.2 O conserto: uma regra, um dono
+
+`vigenciaDoTipoDeConsignacao` (M07, pura) passa a ser a única definição, e as três leituras a usam.
+Duas leituras com critérios diferentes sobre o mesmo dado sempre divergem; a função existe para que
+não haja duas.
+
+### 82.3 O percurso também ficou mais honesto
+
+- **Existir não é estar usável.** O percurso conferia só a existência da linha da consignação e
+  seguia. Num banco em que o `seed:m07` criou o tipo apontando para a sintética, ele dizia "já está
+  cadastrada" e morria adiante. Agora ele lê o **estado da decisão** e, se for herdada do seed,
+  **troca a conta pela tela** — o ato `redefinir-consignacao` da V8.3, exercitado pela primeira vez
+  por um percurso.
+- **O estado virou dado.** A linha da consignação declara `data-decisao` e `data-conta`. Esta tela
+  já enganou o percurso duas vezes por texto (casou a própria prosa procurando "inss"; escolheu
+  conta por nome). Quem precisa saber se a conta foi decidida lê um atributo.
+- **O guichê ganhou quatro passos** (4.4b–4.4e) para o que a V8.12 criou: o dia fechado por engano
+  **volta atrás pela tela**, e o **expediente especial** recorta a oferta — com os dois campos de
+  hora que só aparecem quando o tipo é EXPEDIENTE_ESPECIAL. Nenhum outro teste alcança esses campos.
+
+### 82.4 O que foi medido
+
+| Medida | Resultado |
+|---|---|
+| tsc app / backend / scripts | `exit=0` nos três |
+| `next build` | **exit=0** |
+| **percurso do guichê** | **50/50, 0 falhas** (eram 46 antes dos quatro passos novos) |
+| **percurso da cadeia da despesa** | **28/28, 0 falhas** (era 21/4 antes do conserto) |
+| m07 | 82 testes |
+
+**Mutação:** fazer `listarTiposConsignacao` ignorar a decisão de novo deixou `p1` e `p2` vermelhos —
+os dois testes que faltavam, e que agora confrontam as duas leituras.
+
+### 82.5 Pendências
+
+Nenhuma nasce. Fica registrado que os percursos rodaram sobre **banco descartável clonado do de
+percursos**, com o licenciamento de **demonstração** instalado (`DEMONSTRACAO-PERCURSO`) — é
+parâmetro de execução, não contrato de ente nenhum.

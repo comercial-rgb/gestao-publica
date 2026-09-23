@@ -95,7 +95,18 @@ export default async function ConsignacoesPage(): Promise<React.ReactElement> {
               </thead>
               <tbody>
                 {tipos.map((t) => (
-                  <tr key={t.id} className="border-b border-[color:var(--color-border)] align-top" data-teste={`consignacao-${t.codigo}`}>
+                  <tr
+                    key={t.id}
+                    className="border-b border-[color:var(--color-border)] align-top"
+                    data-teste={`consignacao-${t.codigo}`}
+                    /* ⚠️ O ESTADO DA LINHA COMO DADO, E NÃO COMO PROSA (V11 V8.16). O percurso da
+                       cadeia da despesa já errou duas vezes lendo texto desta tela — casou a
+                       própria explicação da página procurando "inss", e escolheu conta por nome.
+                       Quem precisa saber se a conta foi DECIDIDA lê um atributo; a frase fica para
+                       quem lê a tela. */
+                    data-decisao={t.semDecisao ? "herdada" : "do-ente"}
+                    data-conta={t.contaCodigo ?? ""}
+                  >
                     <td className="py-1.5 pr-4">
                       <strong>{t.codigo}</strong>
                       <span className="block text-xs text-[color:var(--color-ink-3)]">{t.descricao}</span>
