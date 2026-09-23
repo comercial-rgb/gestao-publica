@@ -9709,6 +9709,8 @@ de lugar.
 | J7 — mutação dirigida | — | **3 de 3 acusaram, 3 de 3 reverteram**, árvore limpa contra o commit |
 | J5 — regressão dos consumidores diretos | `### exit-vitest-j5=0` | **51 arquivos, 442 testes, 0 falhas** |
 | J6 — `typecheck` do projeto `app` (com heap, por fora do script) | `### exit-tsc-app=2` | **5 erros, TODOS da outra frente**; zero nas três telas desta fatia e nas duas portas |
+| J6 — `typecheck:scripts` | `### exit-tsc-scripts=2` | **5 erros, TODOS da outra frente**; zero nesta fatia |
+| J8 — instalação limpa e atualização | `### exit-vitest-j8=0` | **8/8** (5 puros + 3 de banco), mais a mutação que derrubou três |
 
 **Commit `70c9ff2`**, 36 arquivos, conferido por filtro explícito: nada de `m33*`, `folha*`,
 `20261011*` nem `lib/navegacao.ts`.
@@ -9812,3 +9814,75 @@ contadores do censo (425 serviços, 358 ações), a v28 e a migration do `AcaoDo
 
 **Nenhum contorno foi tentado** — nem por `cat`/`sed` no Bash, nem por outro agente editando em
 nome dela.
+
+### 84.11 A v27 tinha promessa e não tinha teste — e o buraco apareceu ao construir o instrumento
+
+A J3 (`m16-atualizacoes.test.ts`) foi reportada, e registrada aqui, como prova da v27. **Provava
+menos:** que a versão EXISTE na sequência contígua e que a prévia é 0 em instalação limpa. Ela
+**não exercitava `derivarEntidadeContabil`** — a promessa escrita no comentário da v27, de alcançar
+só quem administra permissões no global e de **não** derivar de `ATRIBUIR_CONTA_A_ARRECADACAO`.
+
+⚠️ É a regra "**não atestar pela papelada que declara**" pegando os dois lados: o relato entregou o
+número sem dizer o que ele não cobria, e a consolidação o promoveu a prova. **Promessa em
+comentário que nenhum teste exerce é promessa que a próxima refatoração apaga em silêncio.**
+
+E o buraco **não apareceu numa revisão** — apareceu ao escrever o teste, quando a fixture exigiu um
+perfil com o poder vizinho e não havia de quem não derivar. Nasceu
+`modules/m16-travamento/m16-entidade-contabil-permissoes.test.ts` (commit `e9b0b7b`), com **N=2 em
+PERFIS** — um que administra e um com o poder vizinho, porque com um só a regra passaria por
+vacuidade. A mutação (derivar também do vizinho) derrubou **três** testes, por enumeração, por
+negação e pelo efeito em banco.
+
+⚠️ E a primeira corrida falhou porque o `bootstrapUsuario` **recusou** banco povoado (45 usuários
+semeados pelo `limparBanco`). A recusa está certa e **não se afrouxa**: script re-executável capaz
+de carimbar administrador entrega a chave-mestra a quem tem shell. Usou-se o mesmo `TRUNCATE` das
+tabelas de acesso que o teste vizinho já usava pelo mesmo motivo.
+
+### 84.12 J9 — NÃO EXECUTADA, com o motivo
+
+**O percurso não roda nesta árvore, e o bloqueio não é o que se supunha.** Antes de faltarem as
+migrations no banco de desenvolvimento, há isto: `next.config` traz
+`typescript: { ignoreBuildErrors: tiposDispensadosComProva() }` — **o build TYPECHECA** —, e a
+árvore tem 5 erros de tipo no projeto `app`, todos da outra frente e insanáveis enquanto o bloqueio
+de escrita durar. `next build` falha, e `servir-percursos.ts` sobe `next start`.
+
+O caminho correto é o que a casa prescreve — **worktree fixada em commit** —, e ele foi **medido,
+não estimado**: 36 GiB de disco livres contra ~1,7 GB de worktree; disco não é o gargalo. **RAM é.**
+No momento da decisão: **74 MB de RAM livre**, swap em 5.092 de 6.144, e um `tsc` **de outro
+produto** rodando na mesma máquina — que não é nosso para derrubar.
+
+Somar a isso um `next build` (que typecheca o mesmo projeto que morreu a 2 GB hoje, **mais** o
+bundling) é pedir a saturação que já custou, nesta rodada, uma suíte, o container do Postgres e uma
+corrida de trinta minutos. **Decisão: não tentar.** Nenhuma afirmação já feita depende da J9 — o que
+ela acrescentaria seria uma afirmação NOVA, e afirmação nova sem medição é o que esta rodada
+recusou o dia inteiro.
+
+⚠️ **A frase honesta, que fica:** as três telas **compilam**, e **nenhuma delas foi aberta**.
+
+**O próximo ponto exato (J9), para quem pegar:** worktree em `e9b0b7b` ou posterior, fora do
+diretório do projeto; `node_modules` por symlink **só enquanto a outra frente estiver parada**
+(é estado mutável compartilhado); `prisma generate` na worktree; banco descartável novo pelo padrão
+`gestao_publica_(percursos|capturas|instalacao)_v7m[12]_<sufixo>` — **sem tocar
+`gestao_publica_instalacao_v7m2_v85`** —, com `migrate deploy` + `db:sql`; `next build` pelo trinco
+com heap ampliado; e **NADA de `git stash`/`checkout`/`clean` na árvore principal**, onde o trabalho
+não commitado da outra frente está.
+
+O que a J9 provaria e J1–J8 não provam são os passos que só a tela alcança: a **recusa do ato
+inaplicável lida como mensagem de tela**, o **recorte dos seletores**, e a **conciliação conferida no
+rodapé** (Σ entidades + não atribuído == total).
+
+### 84.13 Onde a rodada parou
+
+**Commits:** `f35dc8e` (procedência, ambiente, as três perguntas separadas), `70c9ff2` (a fatia da
+receita, 36 arquivos), `be629e2` e `912ad37` (este registro), `e9b0b7b` (o teste da v27).
+
+**Ambiente ao fechar:** zero locks de trinco, zero processos nossos vivos, os quatro bancos de pé
+(`gestao_publica`, `_test`, `_percursos`, `_instalacao_v7m2_v85`), o stash `11b7892` intacto e os
+três scripts do operador fora do Git.
+
+**Não commitado, e é da frente da folha:** nove arquivos modificados e sete novos, com 3 erros de
+tipo no backend e 5 no `app`/`scripts`. Ficam na árvore, atribuídos, até o desbloqueio.
+
+**Próximo passo:** o desbloqueio da escrita do agente da folha (decisão do usuário) e, com ele, a
+passada curta de nove arquivos já fechada no papel — os **dois** contadores do censo (425 serviços,
+358 ações), a v28 e a migration do `AcaoDoSistema`. Depois, a J9 acima.
