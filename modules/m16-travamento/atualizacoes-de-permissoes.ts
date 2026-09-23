@@ -744,6 +744,57 @@ export function derivarDeclaracaoDeDisponibilidade(
 }
 
 /**
+ * V11 V9 — AS TRÊS AÇÕES DA ENTIDADE CONTÁBIL.
+ *
+ * ⚠️ NÃO HÁ DERIVAÇÃO POR APROXIMAÇÃO AQUI, e a recusa é o conteúdo desta regra. A tentação é
+ * derivar `ATRIBUIR_ENTIDADE_A_ARRECADACAO` de quem já tem `ATRIBUIR_CONTA_A_ARRECADACAO`: é a
+ * mesma tela, o mesmo operador e a mesma disciplina de conferir contra um fato antes de gravar.
+ *
+ * Só que os dois atos respondem perguntas diferentes. Um diz **em que conta** o dinheiro entrou
+ * — e se erra, a conciliação não fecha e alguém percebe. O outro diz **de quem** o dinheiro é —
+ * e se erra, o caixa da autarquia vira caixa da prefeitura numa consulta que ninguém confere
+ * contra extrato nenhum. Herdar o segundo do primeiro entregaria a titularidade da receita a
+ * quem o ente autorizou a arrumar um vínculo bancário.
+ *
+ * ═══ ⚠️ E ESSE É O CRITÉRIO GERAL, NÃO UMA PARTICULARIDADE DESTE PAR ═══
+ * A pergunta que decide se uma ação pode ser DERIVADA de outra é: **o erro tem detector?**
+ * Um poder cujo mau uso bate num instrumento que acusa sozinho (a conciliação que não fecha, o
+ * balanceamento que recusa, a amarração que estoura) pode seguir o poder vizinho — o sistema
+ * pega. Um poder cujo mau uso produz um número plausível, que ninguém confere contra nada, exige
+ * concessão DELIBERADA, com alguém nomeando a pessoa. Derivar o segundo é transformar uma
+ * ausência de detector em ausência de decisão.
+ *
+ * Então as três vão para quem administra permissões no global, exatamente como a v25 fez com a
+ * declaração de disponibilidade, e pelo mesmo motivo: **quem distribui poder continua
+ * alcançando tudo, e os demais recebem por concessão explícita — nunca por aproximação.**
+ */
+export function derivarEntidadeContabil(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const NOVAS: readonly AcaoDoSistema[] = [
+    "CADASTRAR_ENTIDADE_CONTABIL",
+    "DECLARAR_TITULAR_DA_CONTA_BANCARIA",
+    "ATRIBUIR_ENTIDADE_A_ARRECADACAO",
+  ];
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some(
+      (p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null
+    );
+    if (!administra) continue;
+    for (const acao of NOVAS) {
+      // IDEMPOTENTE POR CONSTRUÇÃO, como toda regra daqui: só deriva o que o perfil NÃO tem.
+      // É o que faz reaplicar a v27 não duplicar concessão, e o que preserva uma revogação
+      // posterior feita de propósito pelo ente.
+      if (perfil.permissoes.some((p) => p.acao === acao && p.unidadeOrcId === null)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
+
+/**
  * V11 V8 — AS TRÊS AÇÕES DA AGENDA DO GUICHÊ.
  *
  * ⚠️ A DERIVAÇÃO É PELO QUE O PERFIL JÁ FAZ NO PROTOCOLO, e ela é DESIGUAL de propósito:
@@ -1044,6 +1095,20 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "remarcar. CONFIRMAR e REGISTRAR o atendimento NAO sao derivadas: sao atos de quem esta no " +
       "guiche no dia, e quem organiza concede nomeando a pessoa.",
     derivar: derivarAgendaDoGuiche,
+  },
+  {
+    versao: 27,
+    nome: "entidade-contabil-e-titularidade-da-receita",
+    descricao:
+      "A entidade contabil ganhou cadastro, e a arrecadacao passou a carimbar de QUEM e a receita que entrou " +
+      "(V11 V9). Tres acoes: CADASTRAR_ENTIDADE_CONTABIL, DECLARAR_TITULAR_DA_CONTA_BANCARIA e " +
+      "ATRIBUIR_ENTIDADE_A_ARRECADACAO. ⚠️ NENHUMA DELAS DERIVA DE PODER EXISTENTE, e a que mais tentou foi " +
+      "recusada: ATRIBUIR_ENTIDADE_A_ARRECADACAO parece o espelho de ATRIBUIR_CONTA_A_ARRECADACAO — mesma tela, " +
+      "mesmo operador, mesma disciplina de conferir contra um fato. Mas os dois atos decidem coisas diferentes: " +
+      "dizer em QUE CONTA o dinheiro entrou e dizer de QUEM ele e. Quem recebeu o primeiro nao recebeu, por isso, " +
+      "o poder de declarar titularidade de receita — e titularidade e o que separa o caixa de uma autarquia do " +
+      "caixa da prefeitura. As tres vao a quem administra permissoes no global, que as distribui nomeando a pessoa.",
+    derivar: derivarEntidadeContabil,
   },
 ];
 

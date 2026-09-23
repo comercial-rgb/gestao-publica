@@ -472,3 +472,102 @@ quando `m05/dominio.ts` deixar de ser intocável.
 - **`DDR-GUARD-EMPENHO`**: o M01 **registra** o disponível negativo, não o recusa.
   Travar o empenho contra DDR insuficiente é decisão de domínio (e de política: há entes
   que empenham contra receita esperada), não desta fatia.
+
+---
+
+# A entidade contábil e o ato declarado (V11 V9)
+
+## O que entrou
+
+- `entidade-contabil.ts` — `EntidadeContabil` (identidade estável) + `VersaoDaEntidadeContabil`
+  (atributos versionados), `DeclaracaoDeTitularDaConta` (de quem é cada conta bancária) e as
+  duas leituras (`entidadesContabeis`, `titularVigenteDaConta`).
+- `ato-declarado.ts` — a régua do ato que fundamenta uma decisão do ente.
+- `tipo-manad.ts` — o rol oficial do MANAD L400 campo 06, num `Record` só.
+
+## Entidade não é órgão, e isso é a decisão inteira
+
+O edital define "entidade" na **5.10.1.3**: mais de uma unidade na mesma base, com
+**contabilização distinta**, consolidável. É quem tem balancete próprio — prefeitura, câmara,
+autarquia, fundação, fundo, RPPS. `Orgao` e `UnidadeOrcamentaria` são a estrutura da **despesa**,
+e o repositório já recusava usá-los para receita por escrito, em dois lugares, com a norma junto
+(`m04-receita/servico.ts`, art. 167, IV; `m16-travamento/escopo.ts`, "um órgão TEM VÁRIAS UGs").
+
+**Escopo de autorização não mudou.** Entidade contábil não virou um terceiro eixo: continua
+`ENTE | UG`, e a UG só sai de uma ficha. As três ações novas são todas do `ENTE`.
+
+## O primeiro ato ESTRUTURADO do repositório — e por que ele existe
+
+⚠️ **Antes desta fatia, todo `fundamento` era `String` livre com piso de comprimento no banco.**
+Medido, não suposto: `m05-despesa.prisma` (`ck_politica_dotacao_fundamento_nao_vazio`,
+`length >= 20`), `m11-fiscalizacao.prisma`, `m07-extraorcamentario.prisma`, `m34-tributario.prisma`.
+**Nenhum deles se migra nesta rodada** — ficam como estão.
+
+O piso de comprimento não mede o que precisa ser medido: **"porque sim" tem dez caracteres** (foi
+medido na V8.3, com essas palavras), e vinte caracteres quaisquer satisfazem um `length >= 20`.
+Comprimento prova que alguém digitou. Não prova que o ato existe, que é daqui, nem que é
+**sobre isto**.
+
+As cinco conferências, todas de coerência:
+
+1. **ano** — quatro dígitos e não futuro, contra a data civil **do ente** (nunca UTC);
+2. **número** — tem dígito;
+3. **dispositivo** — tem forma de dispositivo (art., §, inciso, caput, alínea, anexo…);
+4. **citação ≠ rótulo** — sobram ao menos três palavras próprias depois de removidos os tokens do
+   rótulo. `"Lei 1.234/2005, art. 2º"` tem 23 caracteres e **zero** palavra própria;
+5. **aplicabilidade** — a citação menciona o objeto da declaração.
+
+### A aplicabilidade ancora no OBJETO, e aceita mais de um ancoradouro
+
+Quem declara o titular de uma conta pode estar citando o ato que **criou a entidade** (nele
+aparece a entidade) ou o que **abriu a conta** (nele aparece a conta). Exigir sempre a entidade
+reprovaria o segundo, que é legítimo — e uma régua que reprova o caso legítimo vira régua que
+alguém desliga.
+
+Dentro de um ancoradouro os termos são **conjunção**; entre ancoradouros, basta **um**. A
+conjunção é o que impede o falso positivo: `"1234"` sozinho casa com o número do próprio ato ou
+com um valor; banco + agência + conta juntos, não.
+
+**E onde o ente não tiver ato, o caminho não é afrouxar a régua**: a conta fica sem titular e as
+guias nela ficam NÃO ATRIBUÍDAS. Estado honesto, previsto, e visível na consulta.
+
+## Coluna × decisão vigente — por que os dois, e não um
+
+Isto parece contradição e não é:
+
+- `DeclaracaoDeTitularDaConta` é **tabela versionada**, não coluna em `ContaBancaria`. Trocar de
+  titular é **fato novo**, não correção do velho — e uma coluna exigiria `UPDATE` numa tabela que
+  o papel de runtime não pode mutar.
+- `ReceitaArrecadada.entidadeTitularId` é **coluna**, não join. Ela guarda o que era verdade **no
+  instante** em que o dinheiro entrou. Resolver por join reescreveria a história das guias antigas
+  toda vez que alguém declarasse um titular novo.
+
+É pela mesma razão que a **anulação HERDA** a coluna da guia original em vez de re-derivá-la pela
+conta: o estorno desfaz o fato de fevereiro, não o de março. Se re-derivasse, uma entidade
+ficaria com receita que nunca teve e a outra com um débito que nunca fez.
+
+## Identidade estável, atributos versionados
+
+`EntidadeContabil` (código) × `VersaoDaEntidadeContabil` (nome, CNPJ, tipo). O padrão é o de
+`Pessoa` (m19) e `VersaoDoImovel` (m34). Um cadastro só-insert repetiria o defeito que a **V8.12**
+encontrou no calendário: a entidade cadastrada errado não teria volta, e a única saída seria
+afrouxar o grant.
+
+## O cadastro nasce VAZIO
+
+Nenhum seed semeia entidade, CNPJ ou código — são dado do ente. Semear uma prefeitura plausível
+seria inventário inventado.
+
+## Pendências
+
+- **`SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS`** — o que `RECEITA-SEM-ENTIDADE-ARRECADADORA`
+  virou. A arrecadação passou a ter entidade; o superávit **não** se parte, e a nota da tela diz
+  por quê. Faltam, nominalmente: entidade no pagamento (o eixo lá é UO, e o de-para UO→entidade
+  não existe), no extraorçamentário, nos restos a pagar; a amarração S1 sobre um razão que não
+  tem entidade (`PartidaContabil` só carrega `fichaId`); e o encerramento de exercício por
+  entidade. Enquanto as cinco não existirem, recorte por entidade na disponibilidade é número com
+  cara de número — e esse número autoriza despesa.
+- **`IMPORTADOR-SEM-ENTIDADE`** — o importador de tributos (M20) e as compostas do M10 registram
+  guias sem conta bancária, logo sem entidade derivável. Elas entram como NÃO ATRIBUÍDAS. A
+  escolha explícita por lote, com autor, é a próxima fatia; supor "tributo é da direta" é
+  proibido.

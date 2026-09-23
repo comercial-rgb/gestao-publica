@@ -1,0 +1,188 @@
+// ============================================================================
+// M01 — A ENTIDADE CONTÁBIL, E A TITULARIDADE DA RECEITA. TR 5.10.1.3 · 5.38.7.
+//
+// ⚠️ ENTIDADE NÃO É ÓRGÃO, E ESSA É A DECISÃO INTEIRA DESTE ARQUIVO.
+//
+// O edital define "entidade" na 5.10.1.3: *"mais de uma unidade na mesma base de dados, com
+// CONTABILIZAÇÃO DISTINTA, que possibilite a emissão de relatórios anuais e da LRF de forma
+// consolidada"* — e na 5.38.8, *"administração direta, autarquias..."*. Entidade, aqui, é quem
+// tem BALANCETE PRÓPRIO: a prefeitura, a câmara, a autarquia, a fundação, o fundo, o RPPS.
+//
+// Não é a Secretaria de Saúde. `Orgao` e `UnidadeOrcamentaria` são a estrutura da DESPESA, e o
+// repositório já recusa usá-los para receita por escrito, em dois lugares, com a norma junto:
+// `modules/m04-receita/servico.ts` ("a receita é do ENTE — art. 167, IV") e
+// `modules/m16-travamento/escopo.ts` ("ÓRGÃO NÃO É UNIDADE GESTORA: um órgão TEM VÁRIAS UGs").
+// Carimbar órgão numa guia seria dizer que a Secretaria de Saúde "possui" o IPTU que entrou —
+// e seria a segunda aritmética sobre o mesmo dinheiro que a V8.11 se recusou a fazer.
+//
+// ⚠️ E ISTO **NÃO** LIGA A APURAÇÃO. O `apurado` do superávit continua sem recorte por entidade,
+// e a nota da tela continua dizendo por quê. O caixa por fonte tem QUATRO pernas (arrecadação,
+// pagamento, extraorçamentário, restos) e a amarração S1 corre sobre um razão que não tem
+// entidade nenhuma. Partir UMA perna e subtrair as outras três inteiras produziria um número com
+// cara de número. A pendência ESTREITA para `SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS`; o que
+// fecha aqui é CAPTURA, CONSULTA e INTEGRIDADE.
+//
+// ⚠️ O CADASTRO NASCE VAZIO. Nenhum seed semeia entidade, CNPJ ou código — são dado do ente.
+// ============================================================================
+
+/// O tipo do ato que fundamenta uma decisão do ente sobre titularidade.
+///
+/// ⚠️ ROL DE FORMA, NÃO DE NORMA. Estes são os tipos de ato administrativo brasileiro pelos
+/// quais um ente cria uma entidade ou declara a titularidade de uma conta — não são códigos
+/// normativos, alíquotas nem classificações de nenhuma tabela oficial. Nada aqui é inventado
+/// sobre o conteúdo do ato: o conteúdo vem na citação, que é transcrição.
+enum TipoDeAtoDeclarado {
+  LEI
+  LEI_COMPLEMENTAR
+  DECRETO
+  PORTARIA
+  RESOLUCAO
+  INSTRUCAO_NORMATIVA
+  OFICIO
+  CONTRATO
+}
+
+/// A ENTIDADE CONTÁBIL — a IDENTIDADE, e só o que não muda.
+///
+/// ⚠️ IDENTIDADE ESTÁVEL, ATRIBUTOS VERSIONADOS — o padrão de `Pessoa` (m19-pessoas.prisma) e
+/// de `VersaoDoImovel` (m34-tributario.prisma). Um cadastro só-insert repetiria o defeito que a
+/// V8.12 encontrou: a entidade cadastrada errado não teria volta, porque o papel de runtime não
+/// tem `UPDATE` aqui — e a única saída seria afrouxar o grant, que é o oposto da regra da casa.
+/// Corrigir o nome é publicar uma VERSÃO nova; a vigente é a de maior versão.
+model EntidadeContabil {
+  id String @id @default(cuid())
+
+  /// O código que o ente usa para a entidade nos seus demonstrativos. DADO DO ENTE — o sistema
+  /// não o deriva, não o sugere e não o semeia.
+  codigo String @unique @db.VarChar(4)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  versoes              VersaoDaEntidadeContabil[]
+  declaracoesDeTitular DeclaracaoDeTitularDaConta[]
+  arrecadacoes         ReceitaArrecadada[]
+  atribuicoes          AtribuicaoDeEntidadeDaArrecadacao[]
+}
+
+/// OS ATRIBUTOS DA ENTIDADE, versionados. A vigente é a de maior `versao`.
+model VersaoDaEntidadeContabil {
+  id String @id @default(cuid())
+
+  entidadeId String
+  entidade   EntidadeContabil @relation(fields: [entidadeId], references: [id])
+
+  versao Int
+
+  nome String
+
+  /// CNPJ próprio, 14 dígitos sem máscara — a mesma forma de `UnidadeOrcamentaria.cnpjManad`.
+  ///
+  /// NULLABLE porque nem toda entidade contábil tem CNPJ próprio (um fundo pode operar sob o
+  /// CNPJ do ente). Fingir um seria inventar a identidade jurídica de uma pessoa de direito
+  /// público — e é por ele que a checagem de APLICABILIDADE do ato passa quando ele existe.
+  cnpj String? @db.VarChar(14)
+
+  /// ⚠️ O ROL É O OFICIAL DO MANAD L400 campo 06, O MESMO JÁ TRANSCRITO EM
+  /// `UnidadeOrcamentaria.tipoManad` (m02-planejamento.prisma). Zero classificação inventada, e
+  /// zero SEGUNDA verdade: quem valida é um único `Record` no domínio, e a largura é a mesma.
+  ///
+  /// 01-Prefeitura / 02-Câmara / 03-Sec. Educação / 04-Sec. Saúde / 05-RPPS (exceto Autarquia) /
+  /// 06-Autarquia (exceto RPPS) / 07-Autarquia (RPPS) / 08-Fundação / 09-Empresa Estatal
+  /// Dependente / 10-Empresa Estatal não Dependente / 11-Consórcio / 12-Outras.
+  tipoManad String @db.VarChar(2)
+
+  /// ── O ATO QUE CRIA OU AUTORIZA A ENTIDADE ────────────────────────────────────────────────
+  /// ⚠️ AQUI O ANCORADOURO É UM SÓ: a citação tem de NOMEAR a entidade (nome ou CNPJ). O ato que
+  /// cria uma autarquia a nomeia — é o que ele faz. Aceitar um ato que não a menciona seria
+  /// aceitar qualquer lei do município como fundamento de qualquer entidade.
+  atoTipo        TipoDeAtoDeclarado
+  atoNumero      String
+  atoAno         Int
+  atoDispositivo String
+  atoCitacao     String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  /// ⚠️ SEM `@@index` REDUNDANTE AO LADO. A busca é "a maior versão desta entidade", e o índice
+  /// único de `(entidadeId, versao)` já a serve inteira. Um segundo índice nas MESMAS colunas
+  /// custa escrita em toda inserção e não acelera leitura nenhuma.
+  @@unique([entidadeId, versao])
+}
+
+/// A DECISÃO DO ENTE: de QUEM é esta conta bancária. Append-only, versionada, com ato.
+///
+/// ⚠️ ELA NÃO É UMA COLUNA EM `ContaBancaria`, e a diferença importa duas vezes. Primeiro,
+/// uma coluna lá seria uma SEGUNDA verdade sobre o mesmo fato e obrigaria `UPDATE` para trocar
+/// de titular — numa tabela que o papel de runtime não pode mutar. Segundo, a guia carimbada
+/// ontem foi carimbada sob a declaração de ontem, e "sob que titularidade esta guia entrou?"
+/// tem de ter resposta depois que a conta mudar de dono.
+///
+/// A VIGENTE é a de maior `versao`, lida por join — nunca desnormalizada.
+model DeclaracaoDeTitularDaConta {
+  id String @id @default(cuid())
+
+  contaBancariaId String
+  contaBancaria   ContaBancaria @relation(fields: [contaBancariaId], references: [id])
+
+  entidadeId String
+  entidade   EntidadeContabil @relation(fields: [entidadeId], references: [id])
+
+  versao Int
+
+  /// ── O ATO, ESTRUTURADO ──────────────────────────────────────────────────────────────────
+  /// ⚠️ NÃO É UM `TEXT` COM CHECK DE COMPRIMENTO. Vinte caracteres satisfazem um comprimento e
+  /// não comprovam nada: o servidor confere o ANO (não futuro, contra a data civil do ente), o
+  /// NÚMERO (tem dígito), o DISPOSITIVO (tem forma de dispositivo) e a APLICABILIDADE.
+  ///
+  /// ⚠️ A APLICABILIDADE AQUI ANCORA NO OBJETO DA DECLARAÇÃO, E ACEITA DOIS ANCORADOUROS: a
+  /// citação nomeia a ENTIDADE (nome ou CNPJ) **ou** identifica a CONTA (banco/agência/conta).
+  /// Exigir só a entidade barraria o caso legítimo mais comum — o ato que ABRIU a conta, no
+  /// qual quem aparece é a conta. Quando o ente não tem ato nenhum, o caminho não é afrouxar:
+  /// a conta fica sem titular declarado e as guias nela ficam NÃO ATRIBUÍDAS, que é um estado
+  /// honesto e já previsto.
+  atoTipo        TipoDeAtoDeclarado
+  atoNumero      String
+  atoAno         Int
+  atoDispositivo String
+  /// A transcrição do dispositivo. O sistema não escreve fundamento; ele o guarda e o confere.
+  atoCitacao     String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  /// Uma versão por conta. A unicidade é do banco: duas declarações concorrentes → a segunda
+  /// cai na constraint e é recusada nomeando.
+  @@unique([contaBancariaId, versao])
+  @@index([contaBancariaId, versao])
+  @@index([entidadeId])
+}
+
+/// A RETIFICAÇÃO DO LEGADO — atribuir entidade a uma guia que nasceu sem ela.
+///
+/// ⚠️ ESPELHO EXATO de `AtribuicaoDeContaDaArrecadacao` (m09-tesouraria.prisma), e pelo mesmo
+/// motivo: o fato não se corrige com `UPDATE`. Alguém ATRIBUI, por ato próprio, com motivo,
+/// autor e o ato que fundamenta. UMA atribuição por guia (`@unique`).
+model AtribuicaoDeEntidadeDaArrecadacao {
+  id String @id @default(cuid())
+
+  receitaArrecadadaId String            @unique
+  receitaArrecadada   ReceitaArrecadada @relation(fields: [receitaArrecadadaId], references: [id])
+
+  entidadeId String
+  entidade   EntidadeContabil @relation(fields: [entidadeId], references: [id])
+
+  motivo String
+
+  atoTipo        TipoDeAtoDeclarado
+  atoNumero      String
+  atoAno         Int
+  atoDispositivo String
+  atoCitacao     String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([entidadeId])
+}

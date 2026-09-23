@@ -54,6 +54,16 @@ export interface ArrecadacaoParaPersistir {
   readonly criadoPor: string;
   /** V6 P1.2 — a conta bancária declarada (a anulação copia a da original). */
   readonly contaBancariaId?: string | undefined;
+  /**
+   * V11 V9 — a ENTIDADE CONTÁBIL titular, DERIVADA do titular vigente da conta declarada.
+   *
+   * ⚠️ A ANULAÇÃO **HERDA** ESTE CAMPO DA GUIA ORIGINAL, e não o re-deriva pela conta. A conta
+   * pode ter trocado de titular entre a arrecadação e a anulação; re-derivar faria o estorno
+   * sair de uma entidade e a entrada ter sido de outra, e o líquido por entidade deixaria de
+   * fechar nas duas — uma ficaria com um crédito que nunca teve, a outra com um débito que
+   * nunca fez.
+   */
+  readonly entidadeTitularId?: string | undefined;
 }
 
 /** O lançamento contábil que contabiliza a arrecadação. */
@@ -90,6 +100,8 @@ export interface ArrecadacaoPersistida {
   readonly lancamento: LancamentoContabil;
   /** V6 P1.2 */
   readonly contaBancariaId: string | null;
+  /** V11 V9 — a entidade titular carimbada nesta guia. É o que a anulação HERDA. */
+  readonly entidadeTitularId: string | null;
 }
 
 /** Confronto arrecadado × previsto. NÃO bloqueia — sinaliza (INVARIANTE 5). */
@@ -111,6 +123,16 @@ export interface ContaBancariaResolvida {
   readonly codigo: string;
   readonly fonteCodigo: string;
   readonly contaContabilCodigo: string | null;
+  /**
+   * V11 V9 — a ENTIDADE TITULAR VIGENTE desta conta, ou `null` quando o ente ainda não a
+   * declarou. É daqui que sai o carimbo da guia.
+   *
+   * ⚠️ `null` NÃO É ERRO, E NÃO SE PEDE ESCOLHA NA TELA. A guia entra NÃO ATRIBUÍDA, e a
+   * consulta a mostra assim, em linha própria. Deixar o operador escolher a entidade na guia
+   * criaria duas verdades sobre o mesmo dinheiro — a guia sabendo mais do que a conta em que
+   * ele entrou —, e a primeira divergência entre as duas não teria como ser resolvida.
+   */
+  readonly entidadeTitularId: string | null;
 }
 export interface ContaBancariaPort {
   buscarPorCodigo(codigo: string): Promise<ContaBancariaResolvida | null>;

@@ -1,10 +1,13 @@
 import { cliente, PortaSemBancoError } from "./cliente";
 import { comEscritaAutenticada } from "./sessao";
 import {
+  arrecadadoPorEntidade,
   listarArrecadacoes,
   listarNaturezasPrevistas,
   type ArrecadacaoNaLista,
 } from "../../modules/m04-receita/consultas";
+import { atribuirEntidadeAArrecadacao } from "../../modules/m04-receita/atribuicao-de-entidade";
+import type { AtoDoFormulario } from "./entidades-contabeis";
 import { criarM04Deps } from "../../modules/m04-receita/adapter-prisma";
 import { registrarArrecadacao } from "../../modules/m04-receita/servico";
 import { roteiroArrecadacao } from "../../modules/m01-core-contabil/roteiros";
@@ -195,4 +198,125 @@ export async function lerNaturezasPrevistas(p: {
     tipoReceita: n.tipoReceita,
     valorPrevisto: n.valorPrevisto.toFixed(2),
   }));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// V11 V9 — O RECORTE POR ENTIDADE TITULAR
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * ⚠️ E AGORA A TELA TEM UM RECORTE QUE NÃO É UG — e o cabeçalho deste arquivo continua valendo
+ * inteiro. A receita não tem unidade orçamentária, e continua não tendo: o que ela passou a ter
+ * é a ENTIDADE CONTÁBIL titular, que é outra coisa. UG é a estrutura da DESPESA (a Secretaria de
+ * Saúde não "possui" o IPTU); entidade é quem tem balancete próprio (a autarquia possui, sim, a
+ * taxa que ela arrecada). O seletor de UG do cabeçalho continua sem efeito aqui.
+ */
+export interface LinhaPorEntidadeNaTela {
+  readonly entidadeId: string | null;
+  readonly codigo: string | null;
+  readonly nome: string;
+  readonly arrecadado: string;
+  readonly guias: number;
+}
+
+export interface ArrecadadoPorEntidadeNaTela {
+  readonly linhas: readonly LinhaPorEntidadeNaTela[];
+  /** ⚠️ LINHA PRÓPRIA. Nunca somada nas entidades, nunca escondida. */
+  readonly naoAtribuido: LinhaPorEntidadeNaTela;
+  readonly total: string;
+}
+
+export async function lerArrecadadoPorEntidade(p: {
+  readonly exercicio: number;
+}): Promise<ArrecadadoPorEntidadeNaTela> {
+  const r = await arrecadadoPorEntidade(cliente(), { exercicio: p.exercicio });
+  const paraTelaLinha = (l: {
+    readonly entidadeId: string | null;
+    readonly codigo: string | null;
+    readonly nome: string;
+    readonly arrecadado: { toFixed(n: number): string };
+    readonly guias: number;
+  }): LinhaPorEntidadeNaTela => ({
+    entidadeId: l.entidadeId,
+    codigo: l.codigo,
+    nome: l.nome,
+    arrecadado: l.arrecadado.toFixed(2),
+    guias: l.guias,
+  });
+  return {
+    linhas: r.linhas.map(paraTelaLinha),
+    naoAtribuido: paraTelaLinha(r.naoAtribuido),
+    total: r.total.toFixed(2),
+  };
+}
+
+/** As guias NÃO ATRIBUÍDAS do exercício — a fila de retificação, com o que decidir em cada uma. */
+export interface GuiaSemEntidadeNaTela {
+  readonly id: string;
+  readonly numeroReceita: string;
+  readonly dataArrecadacao: Date;
+  readonly valor: string;
+  readonly fonteCodigo: string;
+  /** A conta em que entrou, quando a guia a declara — é por ela que o titular se resolveria. */
+  readonly contaCodigo: string | null;
+  /**
+   * ⚠️ O QUE FAZER, POR GUIA. "A conta CC-X não tem titular declarado" manda a pessoa para
+   * Tesouraria; "esta guia não declara conta" manda para a atribuição direta. São caminhos
+   * diferentes, e uma mensagem só para os dois faria metade das pessoas ir ao lugar errado.
+   */
+  readonly caminho: "DECLARAR_TITULAR_DA_CONTA" | "ATRIBUIR_DIRETO";
+}
+
+export async function lerGuiasSemEntidade(p: {
+  readonly exercicio: number;
+}): Promise<readonly GuiaSemEntidadeNaTela[]> {
+  const guias = await cliente().receitaArrecadada.findMany({
+    where: {
+      exercicio: p.exercicio,
+      tipo: "ARRECADACAO",
+      entidadeTitularId: null,
+      atribuicaoDeEntidade: null,
+      // A guia já anulada não é fila de trabalho: não há entrada a atribuir.
+      estornoDeId: null,
+      estornos: { none: {} },
+    },
+    orderBy: { dataArrecadacao: "asc" },
+    select: {
+      id: true, numeroReceita: true, dataArrecadacao: true, valor: true,
+      fonte: { select: { codigo: true } },
+      contaBancaria: { select: { codigo: true } },
+    },
+  });
+  return guias.map((g) => ({
+    id: g.id,
+    numeroReceita: g.numeroReceita,
+    dataArrecadacao: g.dataArrecadacao,
+    valor: g.valor.toFixed(2),
+    fonteCodigo: g.fonte.codigo,
+    contaCodigo: g.contaBancaria?.codigo ?? null,
+    caminho: g.contaBancaria === null ? "ATRIBUIR_DIRETO" : "DECLARAR_TITULAR_DA_CONTA",
+  }));
+}
+
+/** ATRIBUIR a entidade a uma guia do legado — escrita autenticada, ato conferido no domínio. */
+export async function atribuirEntidade(input: {
+  readonly receitaArrecadadaId: string;
+  readonly entidadeId: string;
+  readonly motivo: string;
+  readonly ato: AtoDoFormulario;
+}): Promise<string> {
+  return comEscritaAutenticada("ATRIBUIR_ENTIDADE_A_ARRECADACAO", async (criadoPor) => {
+    const r = await atribuirEntidadeAArrecadacao(
+      cliente(),
+      {
+        receitaArrecadadaId: input.receitaArrecadadaId,
+        entidadeId: input.entidadeId,
+        motivo: input.motivo,
+        ...input.ato,
+        criadoPor,
+      },
+      new Date()
+    );
+    return r.atribuicaoId;
+  });
 }

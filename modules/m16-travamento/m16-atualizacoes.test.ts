@@ -292,6 +292,11 @@ describe("instalação limpa e atualização — no banco", () => {
       // motivo: o bootstrap ja concede o censo do ENTE inteiro.
       { versao: 25, previa: 0, aplicada: false },
       { versao: 26, previa: 0, aplicada: false },
+      // V11 V9 — a entidade contabil e a titularidade da receita. Previa 0 em instalacao limpa
+      // pelo mesmo motivo das anteriores: o bootstrap ja concede o censo do ENTE inteiro, entao
+      // nao sobra nada a derivar. Na ATUALIZACAO ela alcanca quem administra permissoes no
+      // global — e ninguem mais, de proposito (ver `derivarEntidadeContabil`).
+      { versao: 27, previa: 0, aplicada: false },
     ]);
   });
 

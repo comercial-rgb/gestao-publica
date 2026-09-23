@@ -1,0 +1,132 @@
+import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
+import { PageHeader } from "../../../../components/ui/PageHeader";
+import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
+import {
+  lerContasComTitular,
+  lerEntidadesContabeis,
+  TIPOS_DE_ATO_NA_TELA,
+} from "../../../../lib/portas/entidades-contabeis";
+import { FormTitular } from "./FormTitular";
+
+/**
+ * AS CONTAS BANCÁRIAS E DE QUEM ELAS SÃO (V11 V9).
+ *
+ * ⚠️ É AQUI QUE A ARRECADAÇÃO GANHA TITULAR. A guia declara a conta em que o dinheiro entrou; a
+ * conta diz de quem ela é; e o carimbo da entidade sai daí — o único vínculo inequívoco que este
+ * sistema tem, porque uma conta bancária tem exatamente um titular jurídico.
+ *
+ * ⚠️ A CONTA SEM TITULAR **APARECE NA MESMA LISTA**, com a consequência ao lado. Separá-la numa
+ * aba de pendências faria a maioria das instalações abrir a tela e ver uma lista vazia, como se
+ * não houvesse nada a fazer.
+ *
+ * ⚠️ `force-dynamic`: depende de SESSÃO.
+ */
+export const dynamic = "force-dynamic";
+
+export default async function ContasBancariasPage(): Promise<React.ReactElement> {
+  let contas: Awaited<ReturnType<typeof lerContasComTitular>>;
+  let entidades: Awaited<ReturnType<typeof lerEntidadesContabeis>>;
+  try {
+    await telaExigeLeituraDoEnte("CONSULTAR_FINANCEIRO");
+    contas = await lerContasComTitular();
+    entidades = await lerEntidadesContabeis();
+  } catch (erro) {
+    return (
+      <div className="space-y-4">
+        <SincronizarContexto />
+        <PageHeader titulo="Contas bancárias" subtitulo="De quem é cada conta do ente" />
+        <EstadoVazio
+          titulo="Não foi possível ler as contas"
+          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+        />
+      </div>
+    );
+  }
+
+  const opcoes = entidades.map((e) => ({ id: e.id, codigo: e.codigo, nome: e.nome }));
+  const semTitular = contas.filter((c) => c.titularNome === null);
+
+  return (
+    <div className="space-y-4">
+      <SincronizarContexto />
+      <PageHeader titulo="Contas bancárias" subtitulo="De quem é cada conta do ente" />
+
+      <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
+        Declarar o titular de uma conta é o que faz a arrecadação saber <strong>de quem</strong> é
+        o dinheiro: a guia diz em que conta entrou, a conta diz de quem é, e a guia nasce
+        carimbada. Trocar o titular depois <strong>não reescreve as guias antigas</strong> — cada
+        uma guarda quem era o titular no dia em que o dinheiro entrou.
+      </div>
+
+      {semTitular.length > 0 ? (
+        <div
+          className="rounded-[var(--radius-md)] border border-[color:var(--color-status-alerta-fg)] p-3 text-xs"
+          data-teste="contas-sem-titular"
+        >
+          {/* ⚠️ A MENSAGEM NOMEIA A CONSEQUÊNCIA, não o estado. "Sem titular" é um rótulo; "as
+              guias entram como não atribuídas" é o que muda para quem opera. */}
+          <strong>
+            {semTitular.length === 1
+              ? "Uma conta ainda não tem titular declarado"
+              : `${String(semTitular.length)} contas ainda não têm titular declarado`}
+          </strong>{" "}
+          — as guias que entrarem nelas ficam <strong>não atribuídas</strong> na consulta da
+          receita por entidade. Isso não impede a arrecadação, e não é erro: é o ente ainda não ter
+          dito de quem a conta é. Se não houver ato que fundamente a declaração,{" "}
+          <strong>não declare</strong>: não atribuída é preferível a um titular sem lastro.
+        </div>
+      ) : null}
+
+      {contas.length === 0 ? (
+        <EstadoVazio
+          titulo="Nenhuma conta bancária cadastrada"
+          descricao="Sem conta bancária não há como declarar titularidade nem carimbar entidade nas guias."
+        />
+      ) : (
+        <ul className="space-y-2" data-papel="lista-de-contas">
+          {contas.map((c) => (
+            <li
+              key={c.id}
+              className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3"
+              data-conta={c.codigo}
+            >
+              <div className="flex flex-wrap items-baseline gap-2">
+                <span className="font-semibold">{c.codigo}</span>
+                <span>{c.descricao}</span>
+                <span className="text-xs text-[color:var(--color-ink-2)]">
+                  fonte {c.fonteCodigo}
+                  {c.identificacaoBancaria === null ? "" : ` · ${c.identificacaoBancaria}`}
+                </span>
+              </div>
+              <p className="mt-1 text-xs" data-papel={`titular-${c.codigo}`}>
+                {c.titularNome === null ? (
+                  <span className="text-[color:var(--color-status-alerta-fg)]">
+                    Sem titular declarado — as guias nesta conta entram como não atribuídas.
+                  </span>
+                ) : (
+                  <>
+                    Titular: <strong>{c.titularCodigo}</strong> {c.titularNome}
+                    <span className="text-[color:var(--color-ink-2)]">
+                      {" "}
+                      · {c.ato}
+                      {c.versao !== null && c.versao > 1 ? ` · versão ${String(c.versao)}` : ""}
+                    </span>
+                  </>
+                )}
+              </p>
+              <FormTitular
+                contaBancariaId={c.id}
+                contaCodigo={c.codigo}
+                entidades={opcoes}
+                tiposDeAto={TIPOS_DE_ATO_NA_TELA}
+                jaTemTitular={c.titularNome !== null}
+                identificacaoBancaria={c.identificacaoBancaria}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

@@ -327,6 +327,13 @@ export const TABELAS = [
   // M09 — tesouraria (extrato + conciliação)
   "VinculoConciliacao",
   "AtribuicaoDeContaDaArrecadacao",
+  // V11 V9 — a entidade contábil. ⚠️ AS TRÊS FILHAS AQUI, A MÃE LÁ EMBAIXO: estas apontam para
+  // `ReceitaArrecadada` e `ContaBancaria`, e por isso saem ANTES delas; `EntidadeContabil` é
+  // apontada por `ReceitaArrecadada`, e por isso sai DEPOIS. Juntar as quatro num bloco só
+  // quebraria a FK numa ponta ou na outra.
+  "AtribuicaoDeEntidadeDaArrecadacao",
+  "DeclaracaoDeTitularDaConta",
+  "VersaoDaEntidadeContabil",
   // V6 P2 — M32 pessoal (filhas antes das mães)
   "ProrrogacaoContratoTrabalho",
   "ContratoTrabalho",
@@ -418,6 +425,9 @@ export const TABELAS = [
   // M04 — receita
   "ReceitaArrecadada",
   "TipoLancamentoReceitaSagres",
+  // V11 V9 — a MÃE, depois de `ContaBancaria` e de `ReceitaArrecadada`, que a apontam. As três
+  // filhas estão lá em cima, ao lado de `AtribuicaoDeContaDaArrecadacao`.
+  "EntidadeContabil",
   // M01 — ledger
   "PartidaContabil",
   "LancamentoContabil",

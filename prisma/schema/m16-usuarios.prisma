@@ -564,6 +564,14 @@ enum AcaoDoSistema {
   CADASTRAR_RISCOS_FISCAIS_LDO
   CADASTRAR_RENUNCIA_RECEITA_LDO
   CADASTRAR_ALIENACAO_LDO
+
+  // ── M01 V11 V9 — a ENTIDADE CONTÁBIL e a titularidade da receita (TR 5.10.1.3 · 5.38.7).
+  // Três ações para quatro serviços: publicar versão é a MESMA autoridade de cadastrar (dizer
+  // quem a entidade é), e partir em duas daria ao ente a chance de conceder uma sem a outra,
+  // o que não significaria nada. Ver `modules/m16-travamento/acoes.ts`.
+  CADASTRAR_ENTIDADE_CONTABIL
+  DECLARAR_TITULAR_DA_CONTA_BANCARIA
+  ATRIBUIR_ENTIDADE_A_ARRECADACAO
 }
 
 /// O USUÁRIO. TR 4.55.

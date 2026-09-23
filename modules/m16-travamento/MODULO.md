@@ -295,3 +295,36 @@ para o admin entregar — NUNCA logada; o audit registra a ação, não a senha)
 ativar/inativar e resetar senha — cada uma `comEscritaAutenticada` com a ação nova. ⚠️ A
 **troca-obrigatória no primeiro acesso segue NOMEADA** (é campo de schema, fora desta exceção): o
 interruptor da página diz ao admin para orientar a troca; o sistema ainda não a força.
+
+---
+
+## Duas redes sobre o censo, com furos COMPLEMENTARES (medido na V11 V9)
+
+O cabeçalho do `m16-censo.test.ts` explica por que o grep-teste existe: **o compilador não pega o
+serviço que ninguém declarou.** O `ACAO_DO_SERVICO` é `Record<NomeDeServico, AcaoDoSistema>`, e
+`NomeDeServico` é escrita à mão — um `export async function` novo que ninguém declarou simplesmente
+não existe para o `tsc`. Daí o grep.
+
+⚠️ **Falta a outra metade, e a V11 V9 a mediu: o grep NÃO pega o serviço declarado no `Record` e
+ausente da união.**
+
+O caso, com o número que o torna verdadeiro: a V11 V9 acrescentou quatro serviços ao
+`ACAO_DO_SERVICO` e **esqueceu de acrescentá-los à união `NomeDeServico`**. O resultado:
+
+- `m16-censo.test.ts` passou — `nomes.length` deu os **424** esperados, e o t5 não acusou órfão
+  nenhum. O contador é `Object.keys(ACAO_DO_SERVICO)`, leitura em tempo de **execução**, e o
+  objeto literal tinha mesmo as quatro chaves. O vitest transpila sem typecheck.
+- `tsc` acusou **cinco** erros: `TS2353` no próprio literal (`acoes.ts`) e `TS2339`/`TS2551` em cada
+  chamador de `ACAO_DO_SERVICO.<nome>`.
+
+**O censo ficou verde sobre um arquivo que não compilava.**
+
+A regra, para quem for mexer no censo:
+
+> O grep-teste prova que o serviço foi **declarado**. Só o typecheck prova que a união o
+> **conhece**. Um não substitui o outro, e passar num deles não é notícia sobre o outro.
+
+Consequência prática: **toda mudança de censo pede as duas medições**, e a ordem importa pouco —
+o que não pode é parar na primeira que ficar verde. Acrescentar um serviço são três lugares, não
+dois: a união `NomeDeServico`, o `ACAO_DO_SERVICO` e (quando a ação é nova) a união
+`AcaoDoSistema` mais o enum do Prisma.

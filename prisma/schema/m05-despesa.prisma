@@ -411,6 +411,11 @@ model ContaBancaria {
   /// V6 P1.2 — as arrecadações que declararam esta conta, e as atribuições do legado.
   arrecadacoes             ReceitaArrecadada[]
   atribuicoesDeArrecadacao AtribuicaoDeContaDaArrecadacao[]
+  /// M01 — as declarações de TITULARIDADE desta conta, versionadas (a vigente é a de maior
+  /// versão). Campo VIRTUAL: nenhuma coluna nova em `ContaBancaria`. Ver
+  /// `m01-entidade-contabil.prisma` — o titular é decisão vigente, e trocar de titular é fato
+  /// novo, não `UPDATE` numa coluna daqui.
+  declaracoesDeTitular     DeclaracaoDeTitularDaConta[]
 
   @@index([fonteId])
 

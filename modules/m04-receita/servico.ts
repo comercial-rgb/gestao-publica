@@ -165,6 +165,7 @@ export async function registrarArrecadacao(
   // Sem (ii) a conciliação daquela conta nunca fecharia — o fato diria "entrou em CC-X" e o razão
   // diria "entrou em outra conta". Sem port ligado, declarar conta é recusado nomeando.
   let contaBancariaId: string | undefined;
+  let entidadeTitularId: string | undefined;
   if (dados.contaBancaria !== undefined) {
     if (deps.contasBancarias === undefined) {
       throw new Error(
@@ -197,6 +198,17 @@ export async function registrarArrecadacao(
       );
     }
     contaBancariaId = conta.id;
+    // ═══ 3a.1 O CARIMBO DA ENTIDADE TITULAR (V11 V9) ═══
+    // ⚠️ DERIVADO, NUNCA ESCOLHIDO NA GUIA. A entidade sai do titular VIGENTE da conta em que o
+    // dinheiro entrou — o único vínculo inequívoco que este sistema tem: uma conta bancária tem
+    // exatamente um titular jurídico. Deixar a guia declarar uma entidade diferente da conta
+    // seria a guia sabendo mais do que a conta, e a contradição não teria árbitro.
+    //
+    // ⚠️ E `null` NÃO PEDE ESCOLHA NEM BARRA A GUIA. Conta sem titular declarado produz guia NÃO
+    // ATRIBUÍDA, e isso é um estado honesto: o dinheiro entrou, o ente ainda não disse de quem
+    // é, e a consulta mostra exatamente isso. Barrar aqui pararia a arrecadação inteira para
+    // cobrar um cadastro; inventar um titular seria pior.
+    entidadeTitularId = conta.entidadeTitularId ?? undefined;
   }
 
   // ═══ 3b. A ENTRADA LATERAL — TR do M10 (dívida e dívida ativa) ═══
@@ -237,6 +249,7 @@ export async function registrarArrecadacao(
       dataArrecadacao: dados.dataArrecadacao,
       numeroReceita: dados.numeroReceita,
       ...(contaBancariaId !== undefined ? { contaBancariaId } : {}),
+      ...(entidadeTitularId !== undefined ? { entidadeTitularId } : {}),
       criadoPor: dados.criadoPor,
     },
     {
@@ -340,6 +353,13 @@ export async function anularArrecadacao(
       ...(original.coId !== null ? { coId: original.coId } : {}),
       // V6 P1.2 — a anulação sai da MESMA conta em que o dinheiro entrou.
       ...(original.contaBancariaId !== null ? { contaBancariaId: original.contaBancariaId } : {}),
+      // ⚠️ V11 V9 — A ENTIDADE É **HERDADA**, NUNCA RE-DERIVADA PELA CONTA. A conta pode ter
+      // trocado de titular entre a arrecadação e a anulação, e trocar de titular é fato NOVO.
+      // Re-derivar faria a entrada ser de uma entidade e o estorno, de outra: uma ficaria com
+      // receita que nunca teve e a outra com um débito que nunca fez, e o líquido por entidade
+      // não fecharia em nenhuma das duas. Se a original é NÃO ATRIBUÍDA, a anulação também é —
+      // desfazer um fato sem titular não produz um titular.
+      ...(original.entidadeTitularId !== null ? { entidadeTitularId: original.entidadeTitularId } : {}),
       exercicioFonte: original.exercicioFonte,
       tipo: "ANULACAO",
       valor: original.valor,

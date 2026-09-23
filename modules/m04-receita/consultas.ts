@@ -363,3 +363,129 @@ export async function listarNaturezasPrevistas(
     }))
     .sort((a, b) => a.naturezaCodigo.localeCompare(b.naturezaCodigo));
 }
+
+/** Uma linha do recorte por entidade. `entidadeId === null` é o NÃO ATRIBUÍDO. */
+export interface LinhaDoArrecadadoPorEntidade {
+  readonly entidadeId: string | null;
+  /** `null` na linha do não atribuído — ela não tem código porque não tem entidade. */
+  readonly codigo: string | null;
+  readonly nome: string;
+  readonly arrecadado: Money;
+  /** Quantas guias vivas compõem a linha — é o que o servidor clica para ir resolver. */
+  readonly guias: number;
+}
+
+export interface ArrecadadoPorEntidade {
+  readonly linhas: readonly LinhaDoArrecadadoPorEntidade[];
+  /** ⚠️ LINHA PRÓPRIA, TOTAL PRÓPRIO — nunca somada no zero nem escondida. Ver abaixo. */
+  readonly naoAtribuido: LinhaDoArrecadadoPorEntidade;
+  readonly total: Money;
+}
+
+/**
+ * O ARRECADADO LÍQUIDO DO EXERCÍCIO POR ENTIDADE TITULAR (V11 V9 · TR 5.38.7).
+ *
+ * ═══ ⚠️ O NÃO ATRIBUÍDO É UMA LINHA, E ISSO É O PONTO DA CONSULTA ═══
+ * A guia que não diz de quem é **não some**, **não entra no zero de ninguém** e **não se
+ * distribui**. Ela aparece com nome próprio e total próprio, exatamente como
+ * `arrecadacoesSemContaDaFonte` faz com as guias sem conta na conciliação (M09) — o precedente é
+ * literal e deliberado.
+ *
+ * Esconder essas guias faria a soma das entidades parecer o total do ente, e um servidor
+ * concluiria que a Prefeitura arrecadou tudo o que ninguém atribuiu. Distribuí-las por rateio
+ * inventaria o número. Mostrá-las separadas é a única forma que não mente — e é também a que
+ * torna o trabalho visível: o total do não atribuído é a fila de retificação.
+ *
+ * ═══ ⚠️ A CONFERÊNCIA DE VOLTA, ESCRITA AO CONTRÁRIO ═══
+ * Repetir `Σ linhas + naoAtribuido` para "conferir" o total seria tautologia: o mesmo código
+ * conferindo a si mesmo passa sempre. O total é somado numa varredura ÚNICA e independente, e a
+ * identidade é conferida contra ele. Se o agrupamento perder uma guia, a diferença aparece — e
+ * é exatamente a que ficou de fora.
+ *
+ * ⚠️ O SINAL CONTINUA VINDO DO `sinalDaReceitaRealizada` — um laço, uma aritmética. A ANULAÇÃO
+ * HERDA a entidade da guia original, então ela cai na MESMA linha que somou o original e o
+ * líquido continua líquido dentro do recorte. É a mesma propriedade que faz `arrecadadoPorFonte`
+ * funcionar com a fonte copiada.
+ */
+export async function arrecadadoPorEntidade(
+  prisma: Tx,
+  p: { readonly exercicio: number }
+): Promise<ArrecadadoPorEntidade> {
+  const receitas = await prisma.receitaArrecadada.findMany({
+    where: { exercicio: p.exercicio },
+    select: {
+      tipo: true,
+      valor: true,
+      entidadeTitularId: true,
+      entidadeTitular: {
+        select: {
+          codigo: true,
+          versoes: { orderBy: { versao: "desc" }, take: 1, select: { nome: true } },
+        },
+      },
+    },
+  });
+
+  const por = new Map<string, { codigo: string; nome: string; valor: Money; guias: number }>();
+  let semEntidade = toMoney("0.00");
+  let guiasSemEntidade = 0;
+  let total = toMoney("0.00");
+
+  for (const r of receitas) {
+    const sinal = sinalDaReceitaRealizada(r.tipo);
+    const valor = toMoney(r.valor.toFixed(2));
+    total = sinal === 1 ? toMoney(total.plus(valor)) : toMoney(total.minus(valor));
+
+    if (r.entidadeTitularId === null || r.entidadeTitular === null) {
+      semEntidade = sinal === 1 ? toMoney(semEntidade.plus(valor)) : toMoney(semEntidade.minus(valor));
+      guiasSemEntidade += 1;
+      continue;
+    }
+
+    const atual = por.get(r.entidadeTitularId) ?? {
+      codigo: r.entidadeTitular.codigo,
+      // ⚠️ O NOME É O DA VERSÃO VIGENTE, e não o do dia da guia: a consulta pergunta "quanto
+      // arrecadou a entidade X", e X é quem ela é HOJE. O fato carimbado é o `entidadeTitularId`,
+      // que não muda; o rótulo acompanha o cadastro, como acontece com qualquer nome corrigido.
+      nome: r.entidadeTitular.versoes[0]?.nome ?? r.entidadeTitular.codigo,
+      valor: toMoney("0.00"),
+      guias: 0,
+    };
+    atual.valor = sinal === 1 ? toMoney(atual.valor.plus(valor)) : toMoney(atual.valor.minus(valor));
+    atual.guias += 1;
+    por.set(r.entidadeTitularId, atual);
+  }
+
+  const linhas: LinhaDoArrecadadoPorEntidade[] = [...por.entries()]
+    .map(([entidadeId, v]) => ({
+      entidadeId,
+      codigo: v.codigo,
+      nome: v.nome,
+      arrecadado: v.valor,
+      guias: v.guias,
+    }))
+    .sort((a, b) => (a.codigo ?? "").localeCompare(b.codigo ?? ""));
+
+  const naoAtribuido: LinhaDoArrecadadoPorEntidade = {
+    entidadeId: null,
+    codigo: null,
+    nome: "Não atribuído",
+    arrecadado: semEntidade,
+    guias: guiasSemEntidade,
+  };
+
+  let reconstruido = semEntidade;
+  for (const l of linhas) reconstruido = toMoney(reconstruido.plus(l.arrecadado));
+  if (!reconstruido.equals(total)) {
+    throw new Error(
+      `O RECORTE POR ENTIDADE NÃO FECHA no exercício ${String(p.exercicio)}: as entidades somam ` +
+        `${reconstruido.minus(semEntidade).toFixed(2)}, o não atribuído soma ` +
+        `${semEntidade.toFixed(2)}, e juntos dão ${reconstruido.toFixed(2)} — mas o arrecadado ` +
+        `do exercício é ${total.toFixed(2)}. A diferença de ${total.minus(reconstruido).toFixed(2)} ` +
+        `é receita que o recorte deixou de fora, e uma tela que a omitisse mostraria entidades ` +
+        `somando menos do que o ente arrecadou sem dizer o que faltou.`
+    );
+  }
+
+  return { linhas, naoAtribuido, total };
+}

@@ -265,6 +265,14 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   VINCULAR_PESSOA_AO_USUARIO: "administracao",
   CONFIGURAR_APRESENTACAO_DO_ENTE: "administracao",
   ATRIBUIR_CONTA_A_ARRECADACAO: "financeiro",
+  // ── V11 V9 — a entidade contábil. Três áreas diferentes, e a diferença é o ATO, não o assunto.
+  // Quem CADASTRA a entidade está dizendo que o ente tem contabilização distinta (5.10.1.3), e
+  // isso é contabilidade. Quem DECLARA o titular de uma conta está em Tesouraria, ao lado da
+  // conta. Quem ATRIBUI entidade a uma guia do legado está na tela da arrecadação, olhando a
+  // guia — e não na conciliação, que é sobre extrato, não sobre titularidade.
+  CADASTRAR_ENTIDADE_CONTABIL: "contabilidade",
+  DECLARAR_TITULAR_DA_CONTA_BANCARIA: "financeiro",
+  ATRIBUIR_ENTIDADE_A_ARRECADACAO: "receita",
   // V6 P2 — M32 pessoal
   CADASTRAR_SERVIDOR: "pessoal",
   ADMITIR_SERVIDOR: "pessoal",

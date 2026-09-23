@@ -60,6 +60,27 @@ model ReceitaArrecadada {
   contaBancaria   ContaBancaria? @relation(fields: [contaBancariaId], references: [id])
   atribuicaoDeConta AtribuicaoDeContaDaArrecadacao?
 
+  /// A ENTIDADE CONTÁBIL TITULAR desta receita — quem tem o direito ao dinheiro que entrou.
+  ///
+  /// ⚠️ É COLUNA, E A DECLARAÇÃO DO TITULAR DA CONTA NÃO É — e isso não é contradição, é a
+  /// diferença entre um FATO e uma DECISÃO VIGENTE. A declaração muda com o tempo (a conta
+  /// troca de dono, e trocar de dono é um fato NOVO, não a correção do velho); esta coluna
+  /// guarda o que era verdade NO INSTANTE em que o dinheiro entrou. Se a conta mudar de titular
+  /// em março, as guias de fevereiro continuam da entidade de fevereiro — resolver por join
+  /// reescreveria a história toda vez que alguém declarasse um titular novo.
+  ///
+  /// ⚠️ É por isso, também, que a ANULAÇÃO **herda** esta coluna da guia original em vez de
+  /// re-derivá-la pela conta: o estorno desfaz o fato de fevereiro, não o de março.
+  ///
+  /// NULLABLE, sem backfill e sem default: o legado e todo caminho que ainda não declara
+  /// entidade permanecem explicitamente NÃO ATRIBUÍDOS, e a consulta os mostra em linha
+  /// própria. Preencher por rateio, por órgão da despesa ou por suposição inventaria
+  /// justamente o número que se quer poder conferir. A retificação é
+  /// `AtribuicaoDeEntidadeDaArrecadacao`, nunca UPDATE aqui.
+  entidadeTitularId String?
+  entidadeTitular   EntidadeContabil? @relation(fields: [entidadeTitularId], references: [id])
+  atribuicaoDeEntidade AtribuicaoDeEntidadeDaArrecadacao?
+
   /// A contabilização desta arrecadação. 1-1: um lançamento por receita.
   lancamentoId String             @unique
   lancamento   LancamentoContabil @relation(fields: [lancamentoId], references: [id])
@@ -95,4 +116,7 @@ model ReceitaArrecadada {
   @@index([estornoDeId])
   @@index([dataArrecadacao])
   @@index([contaBancariaId])
+  /// O índice do LEITOR do recorte por entidade (a consulta agrupa por entidade dentro do
+  /// exercício). Índice sem leitor não entra; este nasce com o dele.
+  @@index([exercicio, entidadeTitularId])
 }

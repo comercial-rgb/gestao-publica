@@ -42,10 +42,31 @@ export function criarContaBancariaPortPrisma(prisma: Tx): ContaBancariaPort {
     async buscarPorCodigo(codigo) {
       const c = await prisma.contaBancaria.findUnique({
         where: { codigo },
-        select: { id: true, codigo: true, fonte: { select: { codigo: true } }, contaContabil: { select: { codigo: true } } },
+        select: {
+          id: true, codigo: true, fonte: { select: { codigo: true } }, contaContabil: { select: { codigo: true } },
+          /**
+           * V11 V9 — A DECLARAÇÃO DE TITULAR **VIGENTE**: a de maior versão, e só ela.
+           *
+           * ⚠️ `orderBy versao desc, take 1` NÃO É DETALHE DE DESEMPENHO. A declaração é
+           * versionada porque trocar de titular é fato novo; sem a ordenação, o Prisma devolve
+           * a primeira que o banco entregar, e a guia seria carimbada com um titular ANTIGO —
+           * silenciosamente, porque nada nela denuncia qual versão foi lida.
+           */
+          declaracoesDeTitular: {
+            orderBy: { versao: "desc" },
+            take: 1,
+            select: { entidadeId: true },
+          },
+        },
       });
       if (c === null) return null;
-      return { id: c.id, codigo: c.codigo, fonteCodigo: c.fonte.codigo, contaContabilCodigo: c.contaContabil?.codigo ?? null };
+      return {
+        id: c.id,
+        codigo: c.codigo,
+        fonteCodigo: c.fonte.codigo,
+        contaContabilCodigo: c.contaContabil?.codigo ?? null,
+        entidadeTitularId: c.declaracoesDeTitular[0]?.entidadeId ?? null,
+      };
     },
   };
 }
@@ -168,6 +189,7 @@ export async function persistirArrecadacaoNaTx(
             lancamentoId: lancamento.id,
             estornoDeId: arrecadacao.estornoDeId ?? null,
             contaBancariaId: arrecadacao.contaBancariaId ?? null,
+            entidadeTitularId: arrecadacao.entidadeTitularId ?? null,
             criadoPor: arrecadacao.criadoPor,
           },
           select: { id: true },
@@ -212,6 +234,9 @@ function leiturasDaReceita(prisma: Tx): Omit<ReceitaRepositoryPort, "persistir">
           lancamentoId: true,
           estornoDeId: true,
           contaBancariaId: true,
+          // V11 V9 — o carimbo que a ANULAÇÃO herda. Sem ele aqui, `anularArrecadacao` não teria
+          // o que herdar e o estorno nasceria não atribuído contra uma entrada atribuída.
+          entidadeTitularId: true,
           // "já foi anulada?" sai DAQUI — não de um campo mutável.
           estornos: { select: { id: true } },
           lancamento: {
@@ -272,6 +297,7 @@ function leiturasDaReceita(prisma: Tx): Omit<ReceitaRepositoryPort, "persistir">
           estornos: r.lancamento.estornos.map((e) => e.id),
         },
         contaBancariaId: r.contaBancariaId,
+        entidadeTitularId: r.entidadeTitularId,
       };
     },
 

@@ -332,6 +332,13 @@ export const MODULO_DA_ACAO: Record<AcaoDoSistema, ModuloComercial> = {
   VINCULAR_PESSOA_AO_USUARIO: "PLATAFORMA",
   CONFIGURAR_APRESENTACAO_DO_ENTE: "PLATAFORMA",
   ATRIBUIR_CONTA_A_ARRECADACAO: "NUCLEO_CONTABIL",
+  // ── V11 V9 — a entidade contábil. As três no NÚCLEO CONTÁBIL, e não em TRIBUTOS: o que elas
+  // decidem é de QUEM é o dinheiro que entrou (5.10.1.3 — contabilização distinta), e isso vale
+  // para toda receita do ente, não só a tributária. Pô-las no módulo de tributos deixaria um ente
+  // que não contratou tributos sem poder dizer quem são as suas entidades.
+  CADASTRAR_ENTIDADE_CONTABIL: "NUCLEO_CONTABIL",
+  DECLARAR_TITULAR_DA_CONTA_BANCARIA: "NUCLEO_CONTABIL",
+  ATRIBUIR_ENTIDADE_A_ARRECADACAO: "NUCLEO_CONTABIL",
   CADASTRAR_SERVIDOR: "PESSOAL_E_FOLHA",
   ADMITIR_SERVIDOR: "PESSOAL_E_FOLHA",
   MOVIMENTAR_SERVIDOR: "PESSOAL_E_FOLHA",

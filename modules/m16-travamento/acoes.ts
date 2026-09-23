@@ -293,6 +293,20 @@ export type AcaoDoSistema =
   // ── V6 (P1.2) — atribuir a conta bancária a uma arrecadação do LEGADO (M09): ato do tesoureiro,
   // conferido contra o razão. Família FINANCEIRO, do ente (a arrecadação é do ente).
   | "ATRIBUIR_CONTA_A_ARRECADACAO"
+  // ── V11 V9 — A ENTIDADE CONTÁBIL E A TITULARIDADE DA RECEITA (TR 5.10.1.3 · 5.38.7).
+  //
+  // ⚠️ TRÊS AÇÕES PARA QUATRO SERVIÇOS. `publicarVersaoDaEntidadeContabil` fica sob
+  // `CADASTRAR_ENTIDADE_CONTABIL` porque é a MESMA autoridade — dizer quem a entidade é. Uma
+  // ação própria para "corrigir o nome" daria ao ente a chance de conceder cadastrar sem
+  // corrigir, e um cadastro que não se corrige é o defeito que a V8.12 encontrou no calendário.
+  // Precedente: `vincularPessoaAoUsuario`/`desvincularPessoaDoUsuario`, dois serviços, uma ação.
+  //
+  // ⚠️ TODAS DO ENTE, e `escopo.ts` não muda. Entidade contábil NÃO é eixo de autorização: o
+  // eixo continua sendo `ENTE | UG`, e a UG só sai de uma ficha. Fazer da entidade um terceiro
+  // eixo seria reescrever a segregação inteira para carimbar uma coluna.
+  | "CADASTRAR_ENTIDADE_CONTABIL"
+  | "DECLARAR_TITULAR_DA_CONTA_BANCARIA"
+  | "ATRIBUIR_ENTIDADE_A_ARRECADACAO"
   // ── V6 (P2.1/P2.2) — M32 PESSOAL (RH bloco 1, conciliado do siafic-cg c04ad5a). Catorze ações
   // para dezessete serviços; a divisão é a da origem (ver modules/m32-pessoal/MODULO.md):
   // criar a vaga × ocupar a vaga; cadastrar a pessoa × admitir; mover × pagar; instruir × decidir.
@@ -851,6 +865,21 @@ export type NomeDeServico =
   | "registrarApresentacaoDoEnte"
   // ── V6 (P1.2) — a conta bancária da arrecadação do legado ──
   | "atribuirContaAArrecadacao"
+  // ── V11 V9 — a entidade contábil e a titularidade da receita ──
+  //
+  // ⚠️ QUATRO SERVIÇOS, TRÊS AÇÕES — e os quatro precisam estar AQUI, não só no
+  // `ACAO_DO_SERVICO`. O `Record` é tipado SOBRE esta união: uma chave que a união não conhece
+  // é rejeitada pelo compilador, e todo chamador de `ACAO_DO_SERVICO.<nome>` cai junto.
+  //
+  // ⚠️ E O CONTADOR DO CENSO NÃO PEGA ISSO. `nomes.length` é `Object.keys(ACAO_DO_SERVICO)`,
+  // contagem em tempo de EXECUÇÃO; a união é tempo de COMPILAÇÃO. Na V11 V9 as duas
+  // discordaram: a suíte do censo passou com 424 nomes enquanto o `tsc` acusava cinco erros
+  // pela ausência destas quatro linhas. O grep-teste prova que o serviço foi DECLARADO; só o
+  // typecheck prova que a união o CONHECE. Um não substitui o outro.
+  | "cadastrarEntidadeContabil"
+  | "publicarVersaoDaEntidadeContabil"
+  | "declararTitularDaContaBancaria"
+  | "atribuirEntidadeAArrecadacao"
   // ── V6 (P2) — M32 pessoal ──
   | "cadastrarCargo"
   | "cadastrarLotacao"
@@ -1373,6 +1402,15 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   registrarApresentacaoDoEnte: "CONFIGURAR_APRESENTACAO_DO_ENTE",
   // V6 (P1.2): atribuir conta a uma guia do legado é ato próprio do tesoureiro.
   atribuirContaAArrecadacao: "ATRIBUIR_CONTA_A_ARRECADACAO",
+  // V11 V9: a entidade contábil. Cadastrar e publicar versão são a MESMA autoridade — dizer
+  // quem a entidade é; ver o bloco da união de tipos acima.
+  cadastrarEntidadeContabil: "CADASTRAR_ENTIDADE_CONTABIL",
+  publicarVersaoDaEntidadeContabil: "CADASTRAR_ENTIDADE_CONTABIL",
+  // Declarar de QUEM é a conta é decisão de titularidade, e não cadastro de conta: quem
+  // parametriza uma conta bancária não decide, por isso, a quem o dinheiro dela pertence.
+  declararTitularDaContaBancaria: "DECLARAR_TITULAR_DA_CONTA_BANCARIA",
+  // Atribuir entidade a uma guia do LEGADO — espelho exato de `atribuirContaAArrecadacao`.
+  atribuirEntidadeAArrecadacao: "ATRIBUIR_ENTIDADE_A_ARRECADACAO",
   // V6 P2 — M32 pessoal (mapa da origem, mantido): dependente e finalidade são o mesmo poder
   // (lançar o que o servidor entregou); contrato e prorrogação também.
   cadastrarCargo: "CADASTRAR_CARGO",
@@ -2228,6 +2266,17 @@ export const FORA_DO_CENSO: Record<string, string> = {
   arrecadadoPorCodigoAcompanhamento: "leitura (arrecadado por CO — base das emendas do RREO Anexo 3)",
   listarArrecadacoes: "leitura (as guias de um período e o total líquido das anulações — a tela da arrecadação)",
   listarNaturezasPrevistas: "leitura (o rol da LOA — o vocabulário que a tela oferece em vez de 8 dígitos de cabeça)",
+  // ── M01/M04 V11 V9 — a entidade contábil. As três LEITURAS, e nenhuma grava. ──
+  entidadesContabeis:
+    "LEITURA. O rol de entidades contábeis do ente, cada uma com a VERSÃO VIGENTE dos seus " +
+    "atributos (a de maior versão). Não grava; a tela cobra CONSULTAR_CADASTROS.",
+  titularVigenteDaConta:
+    "LEITURA. De quem é uma conta bancária HOJE — a declaração de maior versão. Não grava. É a " +
+    "mesma projeção que o registro da guia usa para derivar o carimbo, de propósito: a tela não " +
+    "pode anunciar um titular diferente do que a arrecadação vai carimbar.",
+  arrecadadoPorEntidade:
+    "LEITURA. O arrecadado do exercício por entidade titular, com o NÃO ATRIBUÍDO em linha " +
+    "própria e total próprio. Não grava; a tela cobra CONSULTAR_RECEITA.",
   despesaPorFonte: "leitura",
   // ⚠️ TRÊS ONDE HAVIA UMA (ADR de 2026-09-10). `saldosDaFicha` foi RETIRADA: os dois
   // eixos de tempo do movimento de dotação respondem perguntas diferentes, e a
