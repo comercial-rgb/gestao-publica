@@ -9607,3 +9607,195 @@ falta um vínculo `suplementaCredito` do movimento suplementar para o crédito r
 uma coluna; se for a segunda, falta apartar o saldo reaberto do valor aberto no próprio crédito.
 Nenhuma das duas se escreve antes de saber qual é, porque escrever a errada produz lançamento em
 conta errada, que é exatamente o defeito que a V8.8 fechou.
+
+---
+
+## 84. V11 V9 — a entidade TITULAR na arrecadação, e o que duas frentes numa árvore custam
+
+Rodada conduzida com **dois agentes**: um gerente full stack (receita) e um auxiliar funcional
+(folha). A frente da receita chegou a commit; a da folha ficou escrita e **não medida**, por um
+bloqueio de ambiente que nenhum dos dois podia resolver. As duas coisas estão registradas abaixo
+com o mesmo cuidado, porque a segunda ensina tanto quanto a primeira.
+
+### 84.1 O que fechou, e com que palavras
+
+`RECEITA-SEM-ENTIDADE-ARRECADADORA` **NÃO fecha.** Ela **estreita** para
+`SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS`. O que entrou foi **captura, consulta e
+integridade** — e a apuração ficou de fora por medição, não por falta de tempo.
+
+**A semântica saiu da medição.** "Entidade arrecadadora" é a entidade **TITULAR** (entidade
+contábil), não órgão nem unidade orçamentária. Três razões, todas no código:
+
+- o sistema **já recusava órgão para receita por escrito** — `modules/m04-receita/servico.ts`
+  e `lib/portas/arrecadacao.ts`: *a receita é do ENTE (CF art. 167, IV); a Secretaria de Saúde
+  não "possui" o IPTU que entrou*;
+- **órgão não é unidade gestora** — `modules/m16-travamento/escopo.ts`: um órgão TEM VÁRIAS UGs,
+  e `unidadeOrcId` existe em uma única entidade do sistema inteiro;
+- o consumidor (art. 43 § 1º) exige **titularidade jurídica**, não estrutura de despesa. Usar o
+  eixo órgão da V8.11 aqui produziria duas coisas diferentes com uma palavra só.
+
+**Um único vínculo inequívoco existe, e já estava na guia: a CONTA BANCÁRIA**, que tem
+exatamente um titular jurídico. A tela manual **deriva**; o importador de tributos e as compostas
+do M10 **não têm vínculo** — lá é escolha explícita no ato, ou a guia nasce NÃO ATRIBUÍDA.
+Supor "tributo é da direta" ficou proibido por desenho.
+
+### 84.2 Duas decisões de modelo que o gerente tomou e que melhoraram o pedido
+
+**(a) O titular da conta NÃO é coluna em `ContaBancaria`.** É `DeclaracaoDeTitularDaConta`,
+versionada, lida por join. O critério: **trocar de titular é FATO NOVO, não correção do fato
+velho** — e coluna obrigaria `UPDATE`, que é o que `prisma/papel-runtime.ts` proíbe. Efeito
+colateral bom: a fatia não encostou em `ContaBancaria`.
+
+⚠️ **E o carimbo em `ReceitaArrecadada` CONTINUA sendo coluna, sem contradição.** A declaração é
+decisão vigente, que muda com o tempo; o carimbo é **o que era verdade no instante do fato**, e
+fato não se recalcula por join. Se a conta trocar de titular em março, as guias de fevereiro
+continuam da entidade de fevereiro — e é por isso que `anularArrecadacao` **HERDA** em vez de
+re-derivar.
+
+**(b) Identidade estável + atributos versionados** (`EntidadeContabil` + `VersaoDaEntidadeContabil`),
+no padrão de `Pessoa`. Cadastro só-insert repetiria o defeito da V8.12: entidade cadastrada errado
+sem volta, e a única saída seria afrouxar o grant.
+
+### 84.3 O fundamento deixou de ser um CHECK de comprimento
+
+A ordem foi explícita: *texto com vinte caracteres satisfaz um CHECK de preenchimento; não
+comprova validade nem aplicabilidade da fonte*. Nasceu `modules/m01-core-contabil/ato-declarado.ts`,
+**o primeiro ato estruturado do repositório** — os quatro `fundamento` existentes
+(`m05-despesa`, `m11-fiscalizacao`, `m07-extraorcamentario`, `m34-tributario`) são `String` livre
+e continuam como estão; ninguém os migra nesta rodada.
+
+Ele exige tipo, número, ano e dispositivo em colunas próprias, e confere **coerência** (ano não
+futuro contra a data civil do ente, número com dígito, dispositivo com forma de dispositivo,
+citação que não é a repetição do rótulo) e **APLICABILIDADE**: a citação tem de mencionar o
+objeto da declaração.
+
+⚠️ **A âncora da aplicabilidade foi afinada e o ajuste importa.** A primeira versão exigia que a
+citação nomeasse sempre a entidade — e isso barra caso legítimo, porque o ato que declara o
+titular de uma conta pode ser justamente **o ato que abriu a conta**, e nele o que aparece é a
+conta. Ficou: âncora no **objeto da declaração** — entidade (nome/CNPJ) no cadastro; entidade **ou**
+identificação da conta (banco/agência/conta) na declaração de titular. Com normalização antes de
+comparar, senão a régua reprova por cedilha e vira teatro. E onde o ente não tiver o ato, o caminho
+**não é afrouxar**: a conta fica sem titular e as guias nela ficam NÃO ATRIBUÍDAS — estado honesto,
+já previsto.
+
+### 84.4 A apuração NÃO se ligou, e o motivo está medido
+
+O caixa por fonte tem **quatro pernas**
+(`arrecadado + ingressosExtra − pagamentosLiquidos − dispendiosExtra`). Pôr entidade só na
+arrecadação parte **uma**, e subtrair receita partida de despesa não partida **é pior que a
+ausência, porque tem cara de número**. Faltam, nominalmente:
+
+1. `despesaPorFonte` — o eixo é **UO**, e o de-para UO→entidade não existe;
+2. `extraorcamentarioPorFonte` — `MovimentoExtraorcamentario` não tem entidade;
+3. `restosAPagarPorFonte` — idem;
+4. a **amarração S1** (Σ caixa por fonte == saldo das contas de caixa no razão) — o razão não tem
+   entidade, e a partida da arrecadação nasce sem ficha. Uma S1 por entidade exige
+   **contabilização distinta**, que é a TR 5.10.1.3, hoje `NAO_VERIFICADO`;
+5. o **encerramento do exercício por entidade** — um encerramento único não produz superávit por
+   entidade.
+
+O `apurado` do superávit **continua sem recorte por entidade**, e a nota da tela continua dizendo
+por quê. Trocar aquele texto por uma coluna preenchida seria vender como resolvido o que só mudou
+de lugar.
+
+### 84.5 O que foi medido — e as linhas que contam
+
+| Janela | Linha real | Resultado |
+|---|---|---|
+| J1 r2 — `typecheck` backend | `### exit-tsc-backend=2` | **3 erros, todos da outra frente**; zero nesta fatia |
+| J2 (embutida no `global-setup`) | — | as duas migrations `20261012*` **aplicaram no banco de teste**, inclusive o `ALTER TYPE` separado do uso |
+| J3 — censo | `### exit-vitest-censo=1` | **26/27**; a falta são os dois órfãos do 13º, da outra frente |
+| J4 r2 — domínio | `### exit-vitest-j4=0` | **28/28** (11 da régua do ato, 13 da entidade titular) |
+| J7 — mutação dirigida | — | **3 de 3 acusaram, 3 de 3 reverteram**, árvore limpa contra o commit |
+| J5 — regressão dos consumidores diretos | `### exit-vitest-j5=0` | **51 arquivos, 442 testes, 0 falhas** |
+
+**Commit `70c9ff2`**, 36 arquivos, conferido por filtro explícito: nada de `m33*`, `folha*`,
+`20261011*` nem `lib/navegacao.ts`.
+
+⚠️ **A J5 responde "eu quebrei alguma coisa?", e só isso.** Quem prova que o recorte está certo é a
+J4 e a J7. E ela fecha, por medição, a razão de `arrecadadoPorEntidade` ser um laço NOVO e não um
+recorte parametrizado de `arrecadadoPorFonte`: fossem a mesma função, seriam estes 442 testes a
+pagar a conta.
+
+### 84.6 O achado da rodada: o censo ficou VERDE sobre um arquivo que não compilava
+
+A fatia acrescentou quatro serviços ao `ACAO_DO_SERVICO` e **esqueceu de declará-los na união
+`NomeDeServico`**. O `m16-censo.test.ts` **passou**: `nomes.length` deu os 424 esperados e o t5 não
+acusou órfão nenhum — porque o contador é `Object.keys(ACAO_DO_SERVICO)`, leitura em tempo de
+**EXECUÇÃO**, o objeto literal tinha mesmo as quatro chaves, e **o vitest transpila sem
+typecheck**. O `tsc` acusou **cinco** erros: `TS2353` no próprio literal e `TS2339`/`TS2551` em cada
+chamador de `ACAO_DO_SERVICO.<nome>`.
+
+O cabeçalho do `m16-censo.test.ts` já dizia que o grep existe porque *o compilador não pega o
+serviço que ninguém declarou*. Esta rodada mediu **a outra metade**: **o grep não pega o serviço
+declarado no Record e ausente da união.** Duas redes, furos complementares, nenhuma sozinha basta —
+e passar numa delas não é notícia sobre a outra. Registrado em `modules/m16-travamento/MODULO.md`,
+com a consequência prática: acrescentar um serviço são **três** lugares, não dois.
+
+⚠️ **E há DOIS contadores naquele arquivo**, que contam coisas diferentes e já custaram três erros
+nesta rodada: a **linha 442** conta SERVIÇOS (`nomes.length`) e a **linha 532** conta AÇÕES
+(`TODAS_AS_ACOES.length`). Serviço não é ação.
+
+### 84.7 O código de saída do invólucro divergiu do resultado CINCO vezes
+
+Em duas delas, `exit 0` somado a **zero linhas `error TS`** lia-se como typecheck limpo — e uma
+dessas corridas tinha sido **morta por SIGTERM**. **Zero erro num log incompleto significa que a
+contagem não terminou, não que nada foi achado.**
+
+O que segurou foi ler a linha `###` que o próprio script escreve e o rodapé `desfecho` do trinco,
+nunca o código do invólucro. Vale como regra: **o `exit` que importa é o do comando medido, não o
+de quem o embrulhou.**
+
+### 84.8 A máquina, medida — e um defeito de ferramenta achado no caminho
+
+- **O custo do `typecheck` de backend é o cliente Prisma: 43 MB de `.ts`, não de `.d.ts`**
+  (`commonInputTypes.ts` sozinho tem 441 KB). `skipLibCheck: true` **não alcança** `.ts`, e
+  `exclude: ["prisma/generated"]` não tira do programa o que é **importado**.
+- Consequência: `tsc` avulso sobre arquivo tocado roda em segundos para domínio **puro** e estoura
+  2 GB de heap em qualquer arquivo que importe o cliente. **E não substitui o typecheck do
+  projeto** — os `Record<União, …>` exaustivos quebram a partir de quem **ALCANÇA** o arquivo
+  tocado, e esses nunca entram no grafo alcançável a partir dele.
+- Com a máquina carregada, o `tsc` de backend oscilou entre 320 MB e 26 MB de RSS entrando e
+  saindo do swap e **não fechou em 25 minutos**; com a árvore congelada e a máquina livre, fechou.
+- ⚠️ **O Postgres em container morreu com `ExitCode 255`** durante a saturação (não `OOMKilled`),
+  derrubando toda medição com banco. Tem volume nomeado: `docker start pg-gestao-publica` recupera
+  os bancos intactos. Conferir `docker ps` antes de culpar o código.
+- ⚠️ **Defeito de ferramenta, pré-existente:** dos três scripts de typecheck do `package.json`,
+  **`typecheck:app` é o único sem `--max-old-space-size`**. Ele morreu com
+  `FATAL ERROR: JavaScript heap out of memory` / SIGABRT 134, enquanto `typecheck` e
+  `typecheck:scripts` fixam 5324 inline. A corrida se refez com o heap por `NODE_OPTIONS`.
+
+### 84.9 Duas frentes numa árvore: o que isso custou, medido
+
+- Um **diretório de migration vazio** (pasta criada, `migration.sql` recusado pelo ambiente no ato
+  seguinte) derrubou `prisma migrate deploy` com `P3015` — e como `test/global-setup.ts:88` roda o
+  deploy antes de tudo, **a suíte inteira do repositório fica indisponível enquanto ele existir**.
+  Custou uma janela de máquina da outra frente. Regra: **pasta de migration só nasce com o SQL
+  dentro, no mesmo ato.**
+- Uma corrida de typecheck mediu uma árvore que a outra frente editava **durante** a medição, e o
+  `prisma migrate deploy` chegou a ver **210** diretórios onde havia 209.
+- Regra adotada e que funcionou: **vermelho em arquivo que não é seu não se conserta** — avisa-se,
+  com a saída bruta, e segue-se. Nenhuma das duas frentes tocou no arquivo da outra em toda a
+  rodada.
+
+### 84.10 A frente da folha: construída, e NÃO medida
+
+A capacidade escolhida foi o **13º em duas parcelas** (adiantamento + 13º com abatimento). A
+escolha foi por **implementação observada**: a folha mensal já atravessa de ponta a ponta (cinco
+percursos de navegador), e a modalidade é **zero, não parcial** — `enum TipoDeFolha { MENSAL }`,
+e a varredura por "décimo terceiro|férias|rescisão" no schema devolve **zero**. Estoque foi
+descartado por estar **construído menos um movimento** cuja devolução **o TR não pede**; V12 não
+existe.
+
+Está escrito: schema, duas migrations aplicadas nos dois bancos, domínio puro, serviço, porta,
+teste de domínio com os avos escritos à mão e fixture de hora de borda, e o roteiro de quinze
+passos do percurso.
+
+⚠️ **Nada disso está medido, e três erros de typecheck dela permanecem na árvore**, porque as
+ferramentas de escrita do agente passaram a ser recusadas pelo ambiente
+(`The user doesn't want to take this action right now`), em cinco tentativas, num bloqueio que só o
+usuário resolve. A passada que falta é curta e está fechada no papel: nove arquivos, os **dois**
+contadores do censo (425 serviços, 358 ações), a v28 e a migration do `AcaoDoSistema`.
+
+**Nenhum contorno foi tentado** — nem por `cat`/`sed` no Bash, nem por outro agente editando em
+nome dela.
