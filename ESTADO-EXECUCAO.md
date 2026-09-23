@@ -9859,6 +9859,12 @@ recusou o dia inteiro.
 
 ⚠️ **A frase honesta, que fica:** as três telas **compilam**, e **nenhuma delas foi aberta**.
 
+⚠️ **E antes de criar a décima oitava worktree, confira as 17 que já existem** em
+`/Users/winnervinicius/Developer/gestao-publica-candidatos/` (treze `candidato-*`, dois `runner-*`,
+`percurso-glosa-*`, `candidato-integrado`). Os 36 GiB livres medidos já as contam; nenhuma está em
+`e9b0b7b`, então provavelmente nenhuma serve — mas uma varredura por worktree abandonada é mais
+barata que um `npm install` novo, e esta máquina não tem folga para desperdício.
+
 **O próximo ponto exato (J9), para quem pegar:** worktree em `e9b0b7b` ou posterior, fora do
 diretório do projeto; `node_modules` por symlink **só enquanto a outra frente estiver parada**
 (é estado mutável compartilhado); `prisma generate` na worktree; banco descartável novo pelo padrão
