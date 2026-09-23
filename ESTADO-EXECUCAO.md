@@ -9708,6 +9708,7 @@ de lugar.
 | J4 r2 — domínio | `### exit-vitest-j4=0` | **28/28** (11 da régua do ato, 13 da entidade titular) |
 | J7 — mutação dirigida | — | **3 de 3 acusaram, 3 de 3 reverteram**, árvore limpa contra o commit |
 | J5 — regressão dos consumidores diretos | `### exit-vitest-j5=0` | **51 arquivos, 442 testes, 0 falhas** |
+| J6 — `typecheck` do projeto `app` (com heap, por fora do script) | `### exit-tsc-app=2` | **5 erros, TODOS da outra frente**; zero nas três telas desta fatia e nas duas portas |
 
 **Commit `70c9ff2`**, 36 arquivos, conferido por filtro explícito: nada de `m33*`, `folha*`,
 `20261011*` nem `lib/navegacao.ts`.
@@ -9760,10 +9761,22 @@ de quem o embrulhou.**
 - ⚠️ **O Postgres em container morreu com `ExitCode 255`** durante a saturação (não `OOMKilled`),
   derrubando toda medição com banco. Tem volume nomeado: `docker start pg-gestao-publica` recupera
   os bancos intactos. Conferir `docker ps` antes de culpar o código.
-- ⚠️ **Defeito de ferramenta, pré-existente:** dos três scripts de typecheck do `package.json`,
-  **`typecheck:app` é o único sem `--max-old-space-size`**. Ele morreu com
-  `FATAL ERROR: JavaScript heap out of memory` / SIGABRT 134, enquanto `typecheck` e
-  `typecheck:scripts` fixam 5324 inline. A corrida se refez com o heap por `NODE_OPTIONS`.
+- ⚠️ **Defeito de ferramenta, pré-existente e QUEBRADO DE FÁBRICA nesta máquina:** dos três
+  scripts de typecheck do `package.json`, **`typecheck:app` é o único sem `--max-old-space-size`**.
+  Ele morreu com `FATAL ERROR: JavaScript heap out of memory` / SIGABRT 134, enquanto `typecheck` e
+  `typecheck:scripts` fixam 5324 inline.
+
+  **A hipótese ficou resolvida por medição, não por argumento:** refeita a corrida com 5324 MB, o
+  projeto `app` **termina em segundos** e acusa 5 erros. Logo não é volume acrescentado por esta
+  fatia — três telas não movem um programa de 2 GB; é o teto do heap padrão que não cabe o
+  projeto. **Registrado, NÃO consertado:** `package.json` é contrato comum e a outra frente estava
+  impedida de escrever; acrescentar a flag ali criaria dois donos num arquivo que ninguém poderia
+  revisar.
+
+  ⚠️ **O risco concreto, para quem for decidir:** se o portão do candidato chamar
+  `npm run typecheck:app`, ele **aborta com 134 e produz um log sem uma única linha `error TS`** —
+  e quem contar erros lê zero e registra verde. Foi o que quase aconteceu aqui, e teria "provado"
+  que as três telas compilam quando elas nem tinham sido compiladas.
 
 ### 84.9 Duas frentes numa árvore: o que isso custou, medido
 
