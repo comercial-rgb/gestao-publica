@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | **V11 V9.4c** — `2b29207`, partiu de `889b3ab`. ⚠️ **O HEAD NÃO COMPILA**: `tsc` de backend `exit=2`, 1 erro em `test/ui/memoria-do-contracheque-do-13.test.ts:240` (`vida` não existe em `EntradaDoContracheque`), introduzido por `d163d21` — **outra frente**, em conserto. ⚠️ **Árvore COMPARTILHADA**: o auxiliar tem `modules/m33-folha/`, `lib/portas/recursos/folha.ts`, `prisma/schema/m33-folha.prisma` e duas migrations novas em voo. O commit desta unidade é só de M32/pessoal, por caminho explícito |
+| HEAD | **V11 V9.5** — `4564a51`, partiu de `889b3ab`. Compila: `tsc` **0/0/0** nos três projetos (o erro de `d163d21` foi consertado pela outra frente em `d1b0c2d`). ⚠️ **Árvore COMPARTILHADA**: o auxiliar tem `modules/m33-folha/`, `lib/portas/recursos/folha.ts`, `prisma/schema/m33-folha.prisma` e duas migrations novas em voo. O commit desta unidade é só de M32/pessoal, por caminho explícito |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
 | Frente em execução | **V11** — V9.3 resolveu `CONTROLE-DDR-POR-NATUREZA-DA-FONTE`, executou **os três passos da J9** que a V9.2 deixou pendentes, fechou os **passos 16, 17 e 18 do roteiro do 13º** e encerrou a família `MENSAGEM-SOME-COM-A-LINHA`. `SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS` segue como continuidade funcional, com a apuração **não** ligada |
-| Último resultado | seção 93 — **a Tarefa 3 MEDIDA**: migrations conferidas **pelo efeito** (banco clonado, N=2 linhas semeadas antes de aplicar; a `Funcao` do M02 saiu com **diff vazio**), os três CHECK provados pela linha que devem barrar, e **três mutações com alvo confirmado no arquivo**. ⚠️ A terceira transformou raciocínio em medição: tirar a coluna do `SELECAO_ENXUTA` deixou os três casos positivos vermelhos e o **puramente negativo VERDE** — a forma exata do teste que se sente cobrindo e não cobre. Dirigidos **115/115**, `tsc` app e scripts `exit=0`. Um defeito meu que nenhum compilador acharia: `FuncaoDePessoal` fora do censo de `limpar-banco.ts`. Antes, seção 92 — **a complementar pela TELA** (frente do auxiliar): sete afirmações que o sistema não verificava, o instrumento provado pelo par **46 ok/14 falhas e 49 ok/11 falhas contra `6fa0d62` sem conserto** → **62 ok / 0 falhas** contra `d163d21`, banco clonado por execução; tipos **0/0/0**, dirigidos **37/37** e contrato memória↔tela **11/11**; mutação M-7 com **alvo confirmado antes de medir** (sha `34b03cb…`→`bcdf74e…`) e revertida. A correção que mais vale: previu-se documento contraditório e, medido, ele **emudecia** sobre uma contribuição retida — silêncio é pior que número errado. ⚠️ **Contagem minha corrigida**: eram **20** bancos na conferência de `_prisma_migrations`, não 21 (hoje 22, com os dois descartáveis do auxiliar); a prova segue íntegra porque o laço foi gerado por `pg_database`, não digitado. Antes, seção 91 — **o `4106e0f` não validava e travou a árvore**: `model Funcao` colidiu com a função ORÇAMENTÁRIA da Portaria 42/1999 (M02), e a tabela física `Funcao` já existia desde `20260711202100` — a migration era **inaplicável**, não só mal nomeada, e teria quebrado instalação limpa DEPOIS de o validate passar. Corrigida com a medição na mão (zero em `_prisma_migrations` nos 21 bancos), renomeada para `FuncaoDePessoal` em `5c129e0`. **Medido**: `validate` `exit=0`, `generate` `exit=0`, `tsc` de backend `exit=0` com zero `error TS` (eram 9) — ⚠️ **árvore NÃO congelada** (onze arquivos do auxiliar dentro), logo cobre os consertos dele mas **não é aceite**. Antes, seção 90 — **os dois eixos ausentes de 5.12.50 ganharam modelo, e o levantamento mudou a tarefa**: a FUNÇÃO nasceu (model `Funcao` + eventos `DESIGNACAO_FUNCAO`/`DISPENSA_FUNCAO`), o CENTRO DE CUSTO **já existia** — é o `Setor` do M21, que almoxarifado, compras e patrimônio já usam nesse papel; faltava o vínculo com vigência. Duas migrations aditivas (enum e estrutura separados pela restrição do Postgres), zero `DROP`. ⚠️ **NADA MEDIDO** — a máquina está com o auxiliar. Antes, seção 89 — unidade **documental**, não medida (a máquina está com o auxiliar): as três coisas que a 88 confundiu — (a) filtro de consulta, (b) seleção para processamento, (c) abrangência efetiva — separadas com arquivo e linha, e o fundamento falso da 88 corrigido. Achado que decide o desenho: a **subtração silenciosa** (`fecharFolha` congela UM cálculo; com seleção por cálculo, nº1={A,B} e nº2={C,D} fazem o fechamento levar só {C,D} e A e B somem sem erro). Antes dela, seção 88 — **tipos 0/0/0 nos três projetos** e **dirigidos 117/117** sobre a árvore ATUAL, `rc` lido do arquivo; dez mutações, nove acusando e **uma que NÃO acusou** (MUT-H, guarda inerte, retirada), todas revertidas por edição com checksum. A auditoria achou 3 defeitos meus, os três tratados: âncora de data civil, recusa do teto na tela e o **gate dentro da porta** |
+| Último resultado | seção 94 — **a Tarefa 3 REABRIU e ganhou a ponta de entrada**: `cadastrarFuncao` tinha zero chamadores fora de testes e os três eventos novos eram gravados só por teste, então o operador via os filtros, digitava e recebia **vazio para sempre** — dado ausente **por construção**, a forma mais completa da armadilha que a mutação da seção 93 provou. Entregue `/pessoal/funcoes`, os três tipos em `movimentar` e `admitir` aceitando centro de custo. ⚠️ **`--listFiles` mostrou que `pessoal-dados.ts` NÃO está no projeto do backend** — quem o cobre é o do app; afirmar cobertura pelo backend teria repetido o buraco do dia, do outro lado. **Só typechecks medidos (0/0/0); a superfície não tem evidência nenhuma até a corrida fechar.** Antes, seção 93 — **a Tarefa 3 MEDIDA**: migrations conferidas **pelo efeito** (banco clonado, N=2 linhas semeadas antes de aplicar; a `Funcao` do M02 saiu com **diff vazio**), os três CHECK provados pela linha que devem barrar, e **três mutações com alvo confirmado no arquivo**. ⚠️ A terceira transformou raciocínio em medição: tirar a coluna do `SELECAO_ENXUTA` deixou os três casos positivos vermelhos e o **puramente negativo VERDE** — a forma exata do teste que se sente cobrindo e não cobre. Dirigidos **115/115**, `tsc` app e scripts `exit=0`. Um defeito meu que nenhum compilador acharia: `FuncaoDePessoal` fora do censo de `limpar-banco.ts`. Antes, seção 92 — **a complementar pela TELA** (frente do auxiliar): sete afirmações que o sistema não verificava, o instrumento provado pelo par **46 ok/14 falhas e 49 ok/11 falhas contra `6fa0d62` sem conserto** → **62 ok / 0 falhas** contra `d163d21`, banco clonado por execução; tipos **0/0/0**, dirigidos **37/37** e contrato memória↔tela **11/11**; mutação M-7 com **alvo confirmado antes de medir** (sha `34b03cb…`→`bcdf74e…`) e revertida. A correção que mais vale: previu-se documento contraditório e, medido, ele **emudecia** sobre uma contribuição retida — silêncio é pior que número errado. ⚠️ **Contagem minha corrigida**: eram **20** bancos na conferência de `_prisma_migrations`, não 21 (hoje 22, com os dois descartáveis do auxiliar); a prova segue íntegra porque o laço foi gerado por `pg_database`, não digitado. Antes, seção 91 — **o `4106e0f` não validava e travou a árvore**: `model Funcao` colidiu com a função ORÇAMENTÁRIA da Portaria 42/1999 (M02), e a tabela física `Funcao` já existia desde `20260711202100` — a migration era **inaplicável**, não só mal nomeada, e teria quebrado instalação limpa DEPOIS de o validate passar. Corrigida com a medição na mão (zero em `_prisma_migrations` nos 21 bancos), renomeada para `FuncaoDePessoal` em `5c129e0`. **Medido**: `validate` `exit=0`, `generate` `exit=0`, `tsc` de backend `exit=0` com zero `error TS` (eram 9) — ⚠️ **árvore NÃO congelada** (onze arquivos do auxiliar dentro), logo cobre os consertos dele mas **não é aceite**. Antes, seção 90 — **os dois eixos ausentes de 5.12.50 ganharam modelo, e o levantamento mudou a tarefa**: a FUNÇÃO nasceu (model `Funcao` + eventos `DESIGNACAO_FUNCAO`/`DISPENSA_FUNCAO`), o CENTRO DE CUSTO **já existia** — é o `Setor` do M21, que almoxarifado, compras e patrimônio já usam nesse papel; faltava o vínculo com vigência. Duas migrations aditivas (enum e estrutura separados pela restrição do Postgres), zero `DROP`. ⚠️ **NADA MEDIDO** — a máquina está com o auxiliar. Antes, seção 89 — unidade **documental**, não medida (a máquina está com o auxiliar): as três coisas que a 88 confundiu — (a) filtro de consulta, (b) seleção para processamento, (c) abrangência efetiva — separadas com arquivo e linha, e o fundamento falso da 88 corrigido. Achado que decide o desenho: a **subtração silenciosa** (`fecharFolha` congela UM cálculo; com seleção por cálculo, nº1={A,B} e nº2={C,D} fazem o fechamento levar só {C,D} e A e B somem sem erro). Antes dela, seção 88 — **tipos 0/0/0 nos três projetos** e **dirigidos 117/117** sobre a árvore ATUAL, `rc` lido do arquivo; dez mutações, nove acusando e **uma que NÃO acusou** (MUT-H, guarda inerte, retirada), todas revertidas por edição com checksum. A auditoria achou 3 defeitos meus, os três tratados: âncora de data civil, recusa do teto na tela e o **gate dentro da porta** |
 | Pendências relevantes | **`18.3–18.5` do 13º NÃO EXECUTADO** (folha fechada não recalcula — falta `RETIFICACAO-DA-FOLHA`); **defeito LATENTE** `numeroDoEmpenhoDaFolha` sem o tipo da folha (87.20, conserto do auxiliar); onde fica o portão do critério (apropriar ou fechar); `DDR-DISPONIVEL-SALDO-A-REPONTAR`; `PERCURSOS-SEM-TERMO-PATRIMONIAL-CONGELADO`. **Bloqueio NORMATIVO**: `DISPOSITIVO-MUNICIPAL-DO-13-NAO-LIDO` (três fontes em 403) — não trava o sistema, mas é o que falta para saber QUAL critério declarar. **Bloqueadas por terceiro** (83.3): eSocial, ASTEC, certificado A1, AWS, ENT12. **V9.4 acrescenta:** ~~`PESSOAL-SEM-CENTRO-DE-CUSTO`~~ e ~~`PESSOAL-SEM-FUNCAO`~~ **resolvidas na seção 90**, e no lugar delas quatro pendências novas e nomeadas (`CENTRO-DE-CUSTO-SEM-VIGENCIA-HISTORICA`, `VINCULOS-ANTERIORES-SEM-CENTRO-DE-CUSTO`, `FUNCAO-SEM-ACAO-PROPRIA`, `FUNCAO-SEM-EIXO-DE-AUSENCIA`); **a Tarefa 3 inteira está ESCRITA E NÃO MEDIDA** — migrations não aplicadas, `tsc` não rodado, testes não executados; **`SELECAO-NO-CALCULO-DA-FOLHA` — capacidade DEVIDA da 5.12.50, não construída** (a seção 88 a recusou com fundamento falso; ver seção 89), e ela nasce junto com o FATO de abrangência, a guarda de completude e a reconciliação de `VINCULO-APURADO-FORA-DO-RECALCULO`; **metade da distinção (a)/(b)/(c) por escrever em `modules/m33-folha/MODULO.md`** (território do auxiliar); **percurso de navegador de `/pessoal/servidores` NÃO EXECUTADO**. **Bloqueio de FONTE**: `ITEM-1667-DE-IBEMA-NAO-LOCALIZADO` — citado na ordem, ausente do repositório; texto pedido ao usuário |
-| Próximo passo | **PARADO** — a máquina foi para o auxiliar consertar o `tsc` que `d163d21` quebrou. A **Tarefa 2 não começa** enquanto o HEAD não compilar: seleção no cálculo sobre árvore vermelha empilharia incerteza sobre incerteza. Quando voltar limpo, ela vem em **UM** commit (seleção + abrangência + completude + "no máximo uma vez"), com o cenário nº1={A,B} / nº2={C,D} → **recusa nomeando A e B** como teste obrigatório. Segue devido o **percurso de navegador de `/pessoal/servidores`**. Histórico da ordem de medição, já executada: **as duas migrations em banco isolado**: as duas migrations em banco isolado conferidas **pelo efeito**, com alvo novo — provar que `FuncaoDePessoal` cria tabela própria e **não toca** a `Funcao` do M02 —, `generate` DEPOIS do migrate, `tsc` dos dois projetos restantes sozinho, e os dirigidos do M32. Depois os testes que faltam, nomeados na seção 90 (porta, integração, negativa pareada, mutação da guarda da dispensa órfã). **Enfileirada atrás do auxiliar**: a **seleção no cálculo** — (b) seleção + (c) fato de abrangência + guarda de completude + guarda de "no máximo uma vez", em **UM** commit, porque qualquer corte entre eles deixa uma folha que pode ser parcial sem acusar. Segue devendo o **percurso de navegador de `/pessoal/servidores`**. **Nada instalado nem publicado**; 5.12.50 segue `PARCIAL` e não marcada |
+| Próximo passo | **PARADO** — a máquina é da outra frente, montando um artefato com esta entrada dentro para percorrer os oito eixos numa corrida só. A **Tarefa 2 segue guardada fora da árvore** (scratchpad, sem `git stash` para não encostar no stash de terceiros) e volta quando a corrida fechar. Quando voltar limpo, ela vem em **UM** commit (seleção + abrangência + completude + "no máximo uma vez"), com o cenário nº1={A,B} / nº2={C,D} → **recusa nomeando A e B** como teste obrigatório. Segue devido o **percurso de navegador de `/pessoal/servidores`**. Histórico da ordem de medição, já executada: **as duas migrations em banco isolado**: as duas migrations em banco isolado conferidas **pelo efeito**, com alvo novo — provar que `FuncaoDePessoal` cria tabela própria e **não toca** a `Funcao` do M02 —, `generate` DEPOIS do migrate, `tsc` dos dois projetos restantes sozinho, e os dirigidos do M32. Depois os testes que faltam, nomeados na seção 90 (porta, integração, negativa pareada, mutação da guarda da dispensa órfã). **Enfileirada atrás do auxiliar**: a **seleção no cálculo** — (b) seleção + (c) fato de abrangência + guarda de completude + guarda de "no máximo uma vez", em **UM** commit, porque qualquer corte entre eles deixa uma folha que pode ser parcial sem acusar. Segue devendo o **percurso de navegador de `/pessoal/servidores`**. **Nada instalado nem publicado**; 5.12.50 segue `PARCIAL` e não marcada |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -11723,3 +11723,135 @@ exige tela percorrida.
    abrangência + guarda de completude + guarda de "no máximo uma vez", com a reconciliação de
    `VINCULO-APURADO-FORA-DO-RECALCULO` por interseção com a seleção. **Teste obrigatório:**
    nº1={A,B}, nº2={C,D}, fechar → **recusa nomeando A e B**; depois o par positivo. N=2 nas duas.
+
+## 94. V11 V9.5 — a PONTA DE ENTRADA que faltava, e por que a Tarefa 3 reabriu
+
+**Regime de rigor: SUPERFÍCIE** (cadastro, formulário, rota). A profundidade desta frente — as
+derivações, os CHECK e as mutações — está medida na seção 93 e não se repete aqui.
+
+### ⚠️ A TAREFA 3 FOI DADA POR FECHADA SEM A PONTA DE ENTRADA — e reabriu
+
+A ordem do usuário pedia, literal, **"a menor cadeia completa: cadastro/vínculo → seleção →
+processamento ou consulta pertinente"**. Foram entregues modelo, predicado, porta e consulta —
+**faltou o cadastro/vínculo pela TELA**. A varredura de `lib/` e `app/` feita ao montar a fixture do
+percurso é que pegou:
+
+- `cadastrarFuncao` (`modules/m32-pessoal/servico.ts`) tinha **zero chamadores fora de testes**;
+- `DESIGNACAO_FUNCAO`, `DISPENSA_FUNCAO` e `MUDANCA_CENTRO_DE_CUSTO` existiam no enum e eram
+  gravados **só por testes** — o `select` de `movimentar` oferecia cinco tipos e nenhum era esses;
+- `admitir` não aceitava `funcaoId` nem `centroDeCustoId`.
+
+**Duas falhas, e as duas ficam escritas:** falha de **escopo** de quem construiu (a seção 90 chegou
+a registrar *"a tela não mudou: `page.tsx` passa `consulta.filtros` genericamente e o molde monta"*
+— os FILTROS apareciam, a ENTRADA não existia) e falha de **aceite** de quem aceitou a unidade como
+fechada sem conferir a ponta de entrada.
+
+⚠️ **E O EFEITO ERA PIOR QUE UMA TELA AUSENTE.** O operador via "Função exercida" e "Centro de
+custo" na barra de filtros, digitava e recebia **vazio para sempre** — não porque o filtro errasse,
+mas porque o dado era ausente **por construção**. É exatamente a armadilha que a mutação do
+`SELECAO_ENXUTA` provou na seção 93 (um filtro que nunca acha nada é indistinguível de um filtro
+correto sobre dado ausente), **na forma mais completa dela**: sem ponta de entrada, as duas
+situações são a mesma coisa permanentemente, e nenhuma medição as separa.
+
+### O que passou a existir — `4564a51`
+
+- **`/pessoal/funcoes`** — lista, detalhe e cadastro pelo molde, espelhando `/pessoal/cargos`, no
+  menu lateral e no índice da área.
+- **Os três tipos no `select` de `movimentar`**, com os campos que cada um exige.
+- **`ROTULO_DO_EVENTO`** para os três — sem isso a ficha funcional mostraria o valor cru do enum.
+- **`admitir` aceitando `centroDeCustoId`**, com validação de setor ativo pela mesma porta do
+  evento de mudança.
+
+### As três decisões de produto — registradas pelo ARGUMENTO, não pelo resultado
+
+**1. Centro de custo ENTRA na admissão.** É atributo **contínuo** do vínculo: a despesa é apropriada
+em algum lugar desde o primeiro dia. Se só pudesse entrar por movimentação posterior, **todo vínculo
+novo nasceria sem apropriação**, dependendo de um segundo ato que alguém vai esquecer — criando de
+propósito mais dívida do tipo que `VINCULOS-ANTERIORES-SEM-CENTRO-DE-CUSTO` já registra para o
+histórico. O CHECK `ck_historico_vinculo_centro_de_custo` foi escrito permitindo `ADMISSAO`
+exatamente para isto.
+
+**2. Função FICA FORA da admissão.** É ato **próprio e datado** (a portaria de designação), quase
+sempre posterior — ninguém é admitido já designado. E `ck_historico_vinculo_funcao` é
+**bicondicional**: aceitá-la na admissão exigiria afrouxar o CHECK para dois tipos, e então
+"admitiu" e "designou" ficariam com as **mesmas colunas preenchidas** na ficha funcional. Quando os
+dois coincidem na data, são **dois eventos na mesma data** — que a razão append-only já suporta sem
+precisar de exceção.
+
+**3. "Exercendo hoje" é DERIVADO, não contado.** Contar eventos `DESIGNACAO_FUNCAO` diria quantas
+designações a função já teve **na vida**, incluindo todos os que já foram dispensados — e o número
+**cresceria para sempre, sem nunca cair**. É a mesma família de "existe como linha ≠ produziu
+efeito", agora num contador de tela. Quem responde é `funcaoVigenteEm`, porque a dispensa não apaga
+o evento anterior: ela o **encerra**.
+
+⚠️ **E uma quarta, menor, que vale pelo motivo:** a **dispensa não tem campo de função** no
+formulário, e o **comando também não manda `funcaoId`** mesmo que o campo venha preenchido de uma
+escolha anterior do operador. Limpar campo não pode ser responsabilidade de o usuário lembrar — o
+`superRefine` recusaria, e a recusa seria correta e inútil.
+
+### ⚠️ O ACHADO DO `--listFiles` — a lição do dia, provada do outro lado
+
+Conferindo **qual projeto de fato inclui cada arquivo mudado**:
+
+| arquivo | `tsconfig.backend.json` | `tsconfig.json` (app) |
+|---|---|---|
+| `modules/m32-pessoal/dominio.ts` | sim | sim |
+| `modules/m32-pessoal/servico.ts` | sim | sim |
+| `lib/portas/recursos/pessoal.ts` | sim | sim |
+| **`lib/portas/recursos/pessoal-dados.ts`** | **NÃO** | sim |
+| `app/(areas)/pessoal/funcoes/*` (3 arquivos) | — | sim |
+
+**`pessoal-dados.ts` é onde está a maior parte desta mudança** (a porta das funções, as opções dos
+selects, o executor de `movimentar` e de `admitir`) — e o projeto do **backend não o enxerga**. Se a
+afirmação de cobertura tivesse saído de um `tsc` de backend verde, teria repetido exatamente o
+buraco que custou o dia, **do outro lado**. Quem sustenta a afirmação aqui é o projeto do **app**,
+que passa pelos seis arquivos alterados e pelos três novos.
+
+**A regra, agora provada nas duas frentes:** depois da última edição, os três rodam — e quem afirma
+cobertura **confere que o projeto que rodou inclui o arquivo que mudou**. Três verdes não somam
+cobertura se nenhum passa pelo arquivo novo.
+
+### O que foi medido — e o que NÃO foi
+
+| passo | resultado |
+|---|---|
+| `tsc -p tsconfig.backend.json` | **`exit=0`**, zero `error TS` |
+| `tsc -p tsconfig.json` (app) | **`exit=0`**, zero `error TS` |
+| `tsc -p tsconfig.scripts.json` | **`exit=0`**, zero `error TS` |
+
+Os três **depois da última edição**, um processo por vez, `exit=` lido do arquivo de saída bruta.
+Schema não foi tocado nesta unidade, logo não houve `prisma validate` a fazer.
+
+⚠️ **NADA MAIS FOI MEDIDO.** Sem suíte, sem dirigidos, sem percurso, sem banco. **A superfície de
+`/pessoal/funcoes` e dos três eventos de `movimentar` não tem evidência nenhuma** — ela só existirá
+quando a corrida de navegador fechar. Typecheck prova que compila, não que funciona: um formulário
+pode compilar e não gravar, e um `select` pode compilar sem opção nenhuma dentro.
+
+### Coordenação entre frentes — convenção conferida antes da corrida
+
+O percurso (`scripts/smoke-servidores-eixos.ts`, da outra frente) foi escrito **antes** desta
+entrada, apostando em nomes espelhados e declarando a aposta. Os três conferem, e a conferência foi
+feita contra o que o **molde gera**, não contra o script:
+
+| aposta | entregue |
+|---|---|
+| rota `/pessoal/funcoes` | `/pessoal/funcoes` |
+| `data-acao="criar-funcoes"` | `FormsDoRecurso` gera `criar-${d.nome}`, e o descritor é `nome: "funcoes"` |
+| `funcaoId` / `centroDeCustoId` | os mesmos |
+
+Nenhuma divergência de seletor: um vermelho na corrida será defeito, não convenção diferente.
+
+### Pendências
+
+As da seção 93 seguem inalteradas. O **percurso de navegador de `/pessoal/servidores`** deixa de ser
+só devido e passa a ser **a próxima evidência**, agora com os oito eixos tendo caminho de entrada.
+
+### Próximo ponto exato
+
+1. **A máquina é da outra frente**, montando um artefato com esta entrada dentro e percorrendo os
+   oito eixos numa corrida só. **Nada pesado aqui até liberação.**
+2. **Tarefa 2 parada e guardada fora da árvore** (scratchpad da sessão): o domínio puro
+   `abrangencia.ts` e a migration da ação `SELECIONAR_VINCULOS_DA_FOLHA`. ⚠️ **Não foi usado
+   `git stash`** — o stash do repositório é de terceiros e não se encosta nele. Ela volta depois que
+   a corrida fechar; o desenho não mudou, e o teste obrigatório continua sendo nº1={A,B},
+   nº2={C,D}, fechar → **recusa nomeando A e B**.
