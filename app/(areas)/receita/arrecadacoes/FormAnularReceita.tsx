@@ -14,6 +14,13 @@ import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
  *
  * ⚠️ TOTAL apenas (o serviço não tem parcial), então não há campo de valor: a anulação nega a guia
  * inteira. Só o número da guia DE ANULAÇÃO e a data do fato — o resto é do domínio.
+ *
+ * ⚠️ A CONFIRMAÇÃO SAIU DE DENTRO DO `<details>` (V11 V9.3), e o defeito era visível de duas
+ * maneiras. No sucesso este componente FECHA o painel — e a confirmação morava dentro dele, então
+ * ela era montada e escondida no mesmo instante: quem anulava via o painel fechar e mais nada. E
+ * ela não tinha `role="status"`, então nem leitor de tela a anunciava. O percurso J9 mediu o
+ * sintoma no passo 8.1: leu SILÊNCIO da tela enquanto 8.2 e 8.3 confirmavam, pelo rodapé, que a
+ * anulação tinha acontecido. Anular dinheiro sem dizer que anulou é pior que não anular.
  */
 export function FormAnularReceita({ receitaId }: { readonly receitaId: string }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoAnulacaoReceita, FormData>(anularReceitaAction, {});
@@ -21,7 +28,17 @@ export function FormAnularReceita({ receitaId }: { readonly receitaId: string })
   if (estado.sucesso !== undefined && ref.current?.open === true) ref.current.open = false;
 
   return (
-    <details ref={ref} className="text-xs">
+    <>
+      {estado.sucesso !== undefined ? (
+        <p
+          role="status"
+          data-resultado-da-acao="anular-receita"
+          className="mb-2 rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-2 py-1 text-xs text-[color:var(--color-status-ok-fg)]"
+        >
+          {estado.sucesso}
+        </p>
+      ) : null}
+      <details ref={ref} className="text-xs">
       <summary className="cursor-pointer select-none text-[color:var(--color-primary)] hover:underline">
         Anular
       </summary>
@@ -42,12 +59,6 @@ export function FormAnularReceita({ receitaId }: { readonly receitaId: string })
             {estado.erro}
           </p>
         ) : null}
-        {estado.sucesso !== undefined ? (
-          <p className="rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-2 py-1 text-[color:var(--color-status-ok-fg)]">
-            {estado.sucesso}
-          </p>
-        ) : null}
-
         <button
           type="submit"
           disabled={pendente}
@@ -55,7 +66,8 @@ export function FormAnularReceita({ receitaId }: { readonly receitaId: string })
         >
           {pendente ? "Anulando…" : "Confirmar anulação"}
         </button>
-      </form>
-    </details>
+        </form>
+      </details>
+    </>
   );
 }

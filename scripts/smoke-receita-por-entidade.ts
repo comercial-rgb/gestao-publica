@@ -527,10 +527,19 @@ async function main(): Promise<void> {
       if (idDaGuiaA === "") {
         naoExecutado("8.x o estorno herdando a identificação", "a guia de A não ofereceu formulário de anulação");
       } else {
-        const rAnular = await preencherEEnviar(page, `form[class]:has(input[name="receitaId"][value="${idDaGuiaA}"])`, [
-          { sel: 'input[name="numero"]', valor: `J9RA-${SUF}` },
-          { sel: 'input[name="data"]', valor: hoje(), tipo: "data" },
-        ]);
+        // ⚠️ O NOME DO MARCADOR VAI JUNTO (V11 V9.3). O formulário de anulação some no sucesso —
+        // o `<details>` se fecha — e a confirmação fica FORA dele. Sem este parâmetro o helper
+        // procura o resultado dentro do que sumiu e lê SILÊNCIO por vinte segundos, que foi
+        // exatamente o que 8.1 acusou na primeira corrida desta rodada.
+        const rAnular = await preencherEEnviar(
+          page,
+          `form[class]:has(input[name="receitaId"][value="${idDaGuiaA}"])`,
+          [
+            { sel: 'input[name="numero"]', valor: `J9RA-${SUF}` },
+            { sel: 'input[name="data"]', valor: hoje(), tipo: "data" },
+          ],
+          "anular-receita"
+        );
         conferir("8.1 a anulação da guia de A é registrada", rAnular.tipo === "ok", `${rAnular.tipo}: ${rAnular.texto.slice(0, 200)}`);
         await irPara(n, page, `/receita/por-entidade?exercicio=${ANO}`);
         const aposEstorno = await lerRodape(page);
