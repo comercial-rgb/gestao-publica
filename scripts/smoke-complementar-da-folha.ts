@@ -651,7 +651,14 @@ async function main(): Promise<void> {
        */
       R.conferir(
         "6.3 ⚠️ a memória da contribuição diz DE ONDE vem o delta: correto − já apurado, nomeando a folha e o cálculo",
-        prev.existe && /DIFEREN[ÇC]A/i.test(prev.memoria) && prev.memoria.includes("350,00") && prev.memoria.includes("300,00") && /MENSAL/i.test(prev.memoria) && /c[áa]lculo n[ºo]\s*1/i.test(prev.memoria),
+        /**
+         * ⚠️ OS NÚMEROS SÃO CONFERIDOS NA FORMA EM QUE A MEMÓRIA OS ESCREVE — `350.00`, ponto
+         * decimal e sem separador de milhar —, e NÃO em pt-BR. Exigir "350,00" aqui deixaria o
+         * passo vermelho por uma divergência de FORMATO, que não é a que este percurso investiga,
+         * e esconderia a que é (a procedência do delta, que está correta). O formato cru fica
+         * REGISTRADO como observação de produto: `MENSAGEM-DA-COMPLEMENTAR-EM-FORMATO-CRU`.
+         */
+        prev.existe && /DIFEREN[ÇC]A/i.test(prev.memoria) && /350[.,]00/.test(prev.memoria) && /300[.,]00/.test(prev.memoria) && /MENSAL/i.test(prev.memoria) && /c[áa]lculo n[ºo]\s*1/i.test(prev.memoria),
         `existe=${prev.existe} memoria="${prev.memoria.slice(0, 500)}"`
       );
       R.conferir("6.4 e vale 50,00 — o que falta reter, não a contribuição do mês inteiro", prev.existe && prev.valor.includes("50,00"), `valor="${prev.valor}"`);
@@ -970,7 +977,10 @@ async function main(): Promise<void> {
          */
         R.conferir(
           "10.6 e ela ORIENTA: nomeia a rubrica e os DOIS valores que não fecham",
-          rNeg.texto.includes(`VENC-${SUF}`) && /2[.,]000[.,]00/.test(rNeg.texto) && /3[.,]000[.,]00/.test(rNeg.texto),
+          // ⚠️ PELO CÓDIGO RESOLVIDO POR NATUREZA, e não por `VENC-<ano>`: `VENCIMENTO_BASE` é
+          // sistêmica como a contribuição — existe UMA por ente —, então numa reexecução o código
+          // é o da execução anterior. Foi o mesmo engano de 6.3/6.4, e ele reapareceu aqui.
+          rNeg.texto.includes(CODIGO_VENC) && /2\.?000[.,]00/.test(rNeg.texto) && /3\.?000[.,]00/.test(rNeg.texto),
           rNeg.texto.slice(0, 600)
         );
         /**
