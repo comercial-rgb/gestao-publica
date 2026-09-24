@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | **V11 V9.2** — `9d39776`, **árvore limpa**. Sete commits nesta rodada (`1a2fb5a..9d39776`, 24 arquivos, +3.763/−94). Os três scripts do operador seguem fora do Git |
+| HEAD | **V11 V9.3** — `c436185`. Três commits meus nesta rodada (`e346f08`, `3d75c47`, `c436185`); `main` recebeu também três de OUTRA sessão (`63e2f96`, `ceeefab`, `fea43d8`) durante a execução. Os três scripts do operador seguem fora do Git |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
-| Frente em execução | **V11** — V9.2 fechou as duas jornadas que a V9/V9.1 deixaram no papel: a **J9 da receita** e o **percurso do 13º**. `SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS` segue como continuidade funcional, com a apuração **não** ligada; V6 (AWS) segue bloqueado por terceiro |
-| Último resultado | seção 86 — typecheck dos três projetos **0/0/0** (o `2` do `app` foi real, era meu, e foi corrigido), dirigidos **67/67**, duas provas por mutação revertidas **por edição** com checksum idêntico, e **os dois percursos verdes contra artefato de árvore limpa**: J9 **33 ok / 0 falhas / 3 não executados** e 13º **44 ok / 0 falhas**, ambos com `/release` = `9d39776` = HEAD. O defeito que a J9 achou (`ATRIBUICAO-NAO-CHEGA-AO-RODAPE`) foi corrigido e provado pela tela |
-| Pendências relevantes | `CONTROLE-DDR-POR-NATUREZA-DA-FONTE` (bloqueia três passos da J9 — **não executados**, nunca "aprovados"), `PERCURSOS-SEM-TERMO-PATRIMONIAL-CONGELADO`, `ESTADO-EXIGIDO-DO-ADIANTAMENTO-SEM-FONTE` (lacuna **normativa**), `SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS` com as cinco lacunas preservadas. **Bloqueadas por terceiro** (seção 83.3): leiaute eSocial, token ASTEC, certificado A1, AWS e a linha ENT12 |
-| Próximo passo | **Nada está instalado nem publicado**, e `/release` responde **503** com `candidato: null` — isso é honesto, não defeito. O próximo ponto é decidir `ATRIBUICAO-NAO-CHEGA-AO-RODAPE` a montante (a fila e o rodapé agora concordam, mas **nenhuma cláusula do catálogo corresponde** à capacidade — ver 86.7) e destravar `CONTROLE-DDR-POR-NATUREZA-DA-FONTE`, que é decisão de modelo mais ato do ente, não escolha de conta |
+| Frente em execução | **V11** — V9.3 resolveu `CONTROLE-DDR-POR-NATUREZA-DA-FONTE` e executou **os três passos da J9** que a V9.2 deixou como NÃO EXECUTADOS. `SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS` segue como continuidade funcional, com a apuração **não** ligada; V6 (AWS) segue bloqueado por terceiro |
+| Último resultado | seção 87 — a perna de classe 7 da arrecadação passou a ser **resolvida pela natureza da fonte** (cinco analíticas do `Pcasp_2025.xlsx`), a correspondência fonte→natureza virou **ato do ente** com tela, fail-closed e versionada, e o plano MÍNIMO deixou de ser mais permissivo que o oficial. Dirigidas **79/79** e guards **40/40**, exit 0; mutação vermelha em 5 testes e verde na reversão; **J9 44 ok / 0 falhas / 0 não executados**, exit 0, contra artefato `97f058b` com `/release` que o nomeia |
+| Pendências relevantes | **`main` NÃO COMPILA** — `modules/m33-folha/certificacao.ts:662`, de `fea43d8` (**outra sessão**), sem `abatimentoSemCriterioDeclarado`: **bloqueio externo**, ver 87.8. `MENSAGEM-SOME-COM-A-LINHA` na atribuição do legado (escopo não executado), `DDR-DISPONIVEL-SALDO-A-REPONTAR`, `PERCURSOS-SEM-TERMO-PATRIMONIAL-CONGELADO`, `ESTADO-EXIGIDO-DO-ADIANTAMENTO-SEM-FONTE` (lacuna **normativa**), `SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS` com as cinco lacunas preservadas. **Bloqueadas por terceiro** (83.3): leiaute eSocial, token ASTEC, certificado A1, AWS, linha ENT12 |
+| Próximo passo | **Nada está instalado nem publicado.** O artefato desta rodada é `97f058b` = `74624fe` + meus três commits — **não é HEAD**, porque HEAD não compila por causa de `certificacao.ts:662`, que é decisão normativa de outra sessão e **não foi chutada aqui**. O próximo ponto é essa decisão; depois, reconstruir o artefato sobre `main` e reexecutar **só** a J9 |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -10311,3 +10311,203 @@ envia e o servidor recusa.
    passos da J9 seguem não executados.
 3. **Prontidão de release** — não há manifesto de candidato; `/release` responde 503. Nada foi
    publicado e nada está pronto para publicar.
+
+---
+
+## 87. V11 V9.3 — `CONTROLE-DDR-POR-NATUREZA-DA-FONTE` resolvida, e os três passos da J9 executados
+
+**Regime de rigor: PROFUNDIDADE.** Razão contábil e perna de roteiro — caracterização contra a
+fonte oficial antes de mudar, fixture N=2, negação com motivo, prova por mutação nas duas direções.
+
+### 87.1 A causa, determinada entre as quatro
+
+O impedimento era `Conta sintética não recebe partida: 7.2.1.1.0.00.00`, e ele deixou **três
+passos da J9 não executados** na V9.2.
+
+**A fonte, lida do arquivo, não de memória.** `docs/oficial/tce-pb/Pcasp_2025.xlsx` (TCE-PB,
+sha256 `52ae7c73…`, publicado 2024-10-29, conferido por `prisma/seed/oficial/procedencia.ts`),
+bloco de 2025, lido por `packages/planilha`. O ramo:
+
+| Código oficial | Formatado | Descrição | Tem filha? |
+|---|---|---|---|
+| `721100000` | `7.2.1.1.0.00.00` | CONTROLE DA DISPONIBILIDADE DE RECURSOS | **sim, cinco** |
+| `721110000` | `7.2.1.1.1.00.00` | RECURSOS ORDINÁRIOS | não |
+| `721120000` | `7.2.1.1.2.00.00` | RECURSOS VINCULADOS | não |
+| `721130000` | `7.2.1.1.3.00.00` | RECURSOS EXTRAORÇAMENTÁRIOS | não |
+| `721140000` | `7.2.1.1.4.00.00` | RECURSOS PARA COMPENSAÇÃO FINANCEIRA | não |
+| `721190000` | `7.2.1.1.9.00.00` | OUTROS CONTROLES DA DISPONIBILIDADE DE RECURSOS | não |
+
+**A causa é (c) — falta de dimensão no seletor de roteiro.** O ponto exato:
+
+- **Fato pretendido:** a arrecadação de uma guia — a entrada de recurso novo sob controle.
+- **Natureza da fonte envolvida:** a do recurso arrecadado. No percurso, a fonte `500` da conta
+  bancária `CC-500-01`.
+- **Roteiro selecionado, e por qual seletor:** `roteiroArrecadacao`
+  (`modules/m01-core-contabil/roteiros.ts`), chamado por `lib/portas/arrecadacao.ts` dentro de
+  `registrarGuia`. **Não havia seletor**: a função recebia `disponibilidade` e
+  `variacaoAumentativa` e mais nada.
+- **Contas indicadas e atributos:** a perna de classe 7 era a constante
+  `CONTA_CONTROLE_DDR = "7.2.1.1.0.00.00"`, que no banco de instalação limpa tem
+  `analitica = false` — corretamente, porque o `pcasp-oficial.ts` deriva `analitica` de
+  *não ter filha*, e ela tem cinco.
+
+Não é **(a)**: não existe vínculo já fundamentado por carregar — o corpus oficial deste
+repositório **não** traz a correspondência fonte → natureza (`relacionamento_fonterecursos_co_2026.xlsx`
+relaciona fonte com **código de acompanhamento**, 96 linhas, colunas `CODIGO FONTE RECURSOS` e
+`CODIGO CO`). Não é **(b)**: a carga está certa, e foi conferida linha a linha contra o xlsx. Não é
+**(d)**: a decisão contábil **está** sustentada — é o próprio plano que parte `7.2.1.1` por
+natureza; o que não é derivável é de que natureza é a fonte 500 **deste** município, e isso não é
+lacuna normativa, é **ato do ente**, que agora tem onde ser praticado.
+
+### 87.2 O segundo achado, que mascarou o primeiro por ~25 arquivos
+
+`prisma/seed/pcasp.ts` — o plano **mínimo**, que toda suíte semeia — declarava
+`7.2.1.1.0.00.00` com `analitica: true`, contra o plano oficial, com a nota do extrato admitindo
+o motivo: *"detalhamento fino a confirmar no xlsx"*. **Um plano de teste que contradiz o oficial
+não é fixture mínima: é um plano DIFERENTE, e ele aprova o que a produção nega.** Era por isso
+que `roteiroArrecadacao` passava verde em ~25 arquivos e recusava em instalação limpa.
+
+O mesmo vale para `test/roteiro-orcamentario.ts`, que registrava o pai sintético e força
+`analitica: true` em toda fixture. As duas passaram a trazer as **cinco folhas**.
+
+### 87.3 A correção, com arquivo:linha
+
+| Onde | O quê |
+|---|---|
+| `modules/m01-core-contabil/roteiros.ts:235-300` | `CONTA_CONTROLE_DDR` morreu. Nascem `NaturezaDaFonteDdr` (rol fechado = a partição do plano), `CONTA_CONTROLE_DDR_POR_NATUREZA`, `CONTAS_CONTROLE_DDR` e `contaDeControleDaDdr()`, fail-closed |
+| `modules/m01-core-contabil/roteiros.ts:635-668` | `roteiroArrecadacao` ganha `naturezaDaFonte`, **obrigatório**. Opcional com queda para conta padrão seria a escolha por conveniência de volta, escondida atrás de um `??` |
+| `modules/m01-core-contabil/natureza-da-fonte.ts` (novo) | o ato do ente: `naturezaVigenteDaFonte`, `exigirNaturezaDaFonte` (fail-closed **com motivo**), `listarNaturezasDeclaradas`, `declararNaturezaDaFonte` (append-only, versionada, autorizada) |
+| `prisma/schema/m01-core-contabil.prisma` | `enum NaturezaDaFonteDdr` e `model DeParaFonteNaturezaDdr` — molde dos de-paras irmãos (`DeParaFonteClasseEducacao`), sem relação declarada |
+| `prisma/migrations/20261014090000_v11_v93_natureza_da_fonte_ddr/` | **aditiva, zero `DROP`**. O gerador reciclou 8 pares `DROP/ADD CONSTRAINT` de FKs alheias (`ReceitaArrecadada`, `FolhaDePagamento`, `CampoDoEvento`, …) — retirados à mão |
+| `lib/portas/arrecadacao.ts:139-142` | `exigirNaturezaDaFonte` resolvida **antes de qualquer escrita** — "efeito colateral antes da operação guardada envenena a tentativa seguinte" |
+| `app/(areas)/contabilidade/natureza-das-fontes/` (novo) | a tela: lista **todas** as fontes do cadastro, marca as não declaradas, e o formulário não tem default |
+| `prisma/seed/pcasp.ts:89-111`, `test/roteiro-orcamentario.ts:133-141` | o plano mínimo e a fixture deixam de ser mais permissivos que a produção |
+| `test/contas-contra-o-plano-oficial.test.ts:279` | a entrada `7.2.1.1.0.00.00` saiu de `EM_PERNA_DE_ROTEIRO`. **A lista que "só encolhe" encolheu** |
+
+**O que NÃO se fez:** escolher uma analítica por conveniência, criar conta demonstrativa, ou
+afrouxar a validação de conta sintética. Ela estava **certa** e é o instrumento funcionando.
+
+### 87.4 Os lançamentos, provados independentemente da função testada
+
+`m01-ddr.test.ts` **t6** e **t7** leem as **partidas persistidas** e comparam com o esperado
+escrito à mão a partir do xlsx — chamar `roteiroArrecadacao` para conferir `roteiroArrecadacao`
+passaria com qualquer interpretação errada consistente.
+
+| Guia | Fonte | Natureza | Conta de classe 7 | Tipo | Valor |
+|---|---|---|---|---|---|
+| `2026RC000010` | 500 (livre) | ORDINARIOS | `7.2.1.1.1.00.00` | DEBITO | 10.000,00 |
+| `2026RC000011` | 540 (FUNDEB) | VINCULADOS | `7.2.1.1.2.00.00` | DEBITO | 7.000,00 |
+| `2026RC000012` | 540 | VINCULADOS | `7.2.1.1.2.00.00` | DEBITO | 7.000,00 |
+| `2026RC000012A` (anulação) | 540 | — | `7.2.1.1.2.00.00` | **CREDITO** | 7.000,00 |
+
+**Fixture N=2 na dimensão nova**: com uma fonte só, um roteiro que ignorasse a natureza passaria
+por vacuidade. **Arrecadação e estorno pelo MESMO contrato contábil**: a anulação não tem roteiro
+próprio — `gerarEstorno` inverte as **partidas gravadas**, então ela credita a **mesma** conta que
+a arrecadação debitou, e a conta da outra natureza não é tocada. É o corolário do carimbo da
+entidade titular aplicado à classe 7: fato antigo preserva a classificação do instante dele.
+
+### 87.5 Prova por mutação — nas duas direções
+
+| Mutação | Vermelho | Reversão |
+|---|---|---|
+| `CONTA_CONTROLE_DDR_POR_NATUREZA.VINCULADOS` → a conta de ORDINARIOS (a dimensão vira falsa) | `m01-ddr` t6 e t7, `m01-roteiros` t9 | — |
+| `exigirNaturezaDaFonte` → default silencioso em vez de recusa | `m01-natureza-da-fonte` t2 e t4 | — |
+| ambas revertidas | — | **24 verdes** |
+
+Registro: `.registro-de-execucao/v11v93-mutacao-vermelho.txt` (exit=1, 5 falhas nomeadas) e
+`v11v93-mutacao-verde-de-volta.txt` (exit=0).
+
+### 87.6 Medições — códigos de saída lidos DO ARQUIVO
+
+| Medição | Resultado | Registro |
+|---|---|---|
+| typecheck backend / app / scripts | **1 erro nos três**, e **não é meu** (ver 87.8) | `v11v93-typecheck-2.txt` |
+| dirigidas M01 (DDR, roteiros, natureza) + M04 inteiro | **8 arquivos, 79 testes, exit 0** | `v11v93-suites-m01-m04-2.txt` |
+| guard do plano + M16 bordas + RGF Anexo 5 + seed de produção | **5 arquivos, 40 testes, exit 0** | `v11v93-guards-e-vizinhos.txt` |
+| instalação limpa do banco de percursos (4×) | **exit 0** — migrations, SQL manual, papel de runtime, PCASP oficial, roteiros, bootstrap, licenciamento | `v11v93-preparar-banco.txt`, `v11v93-artefato{,2,3}-preparar-e-build.txt` |
+| build do artefato | **exit 0**, pelo caminho direto (`Linting and checking validity of types`, **não** `Skipping validation`) | `v11v93-artefato3-preparar-e-build.txt` |
+| **J9 pela tela** | **44 ok / 0 falhas / 0 NÃO EXECUTADOS**, **exit 0** | `v11v93-percurso-j9-4.txt` |
+
+**Não rodados, e contados como não executados:** portão integral, `test:tudo` e `test:fuso` — a
+ordem desta rodada não os autorizou e não se promoveu artefato. O diff **não** toca
+`packages/datas`, guards de período nem janelas de relatório.
+
+### 87.7 Os três passos da J9 — executados, com o que cada um mostrou
+
+Artefato `97f058b` (branch `v11v93-artefato` = `74624fe` + os três commits desta rodada),
+`/release` = `97f058b`, porta **3011**, banco **`gestao_publica_percursos_v11v93d`**, árvore do
+artefato **congelada** (só `node_modules` fora do índice). O artefato da V9.2 em `:3010` (PID
+62185, banco `…v11v92d`) **não foi tocado**.
+
+| Passo | O que ficou provado |
+|---|---|
+| **5.6** | fonte sem natureza declarada faz a arrecadação **recusar**, e a recusa **nomeia a fonte** — negação com motivo, pela tela |
+| **5.7 / 5.8** | a natureza é declarada **pela tela**, a confirmação diz em que conta passa a escriturar, e a declaração **persiste à recarga** |
+| **6.0** | a recusa de `7.2.1.1.0.00.00` **não aparece mais** — e se aparecer é **falha**, não pendência: o percurso trocou o ramo de "previsto" por regressão |
+| **6.1 / 6.2** | **o carimbo**: a guia nova entra **já identificada**, e a linha da entidade A cresce **exatamente** os 1.000,00 |
+| **7.1 / 7.2** | **fatos antigos preservam sua identificação**: trocado o titular para B, a linha de A **não muda** |
+| **8.1 / 8.2 / 8.3** | **o estorno pela tela**: debita **A** — o titular do fato original — embora a conta já pertença a **B**, e **B não é tocada**. A herança vale para o fato inteiro, não para uma coluna |
+
+**O que a jornada achou de defeito, e foi corrigido nela:** a anulação de guia **não confirmava
+nada**. O passo 8.1 leu silêncio **duas vezes**, contra artefatos diferentes e bancos diferentes,
+enquanto 8.2 e 8.3 confirmavam pelo rodapé que a anulação tinha acontecido — o efeito existia, o
+aviso não. A primeira hipótese (`<details>` que se fecha) **foi derrubada pela medição**; a causa
+era a **linha**, que desaparece no sucesso por desenho (`colunaAcoes` só oferece o ato a guia
+viva). O estado subiu para um provedor acima da tabela — a mesma cura do guichê (V8), do roteiro
+orçamentário (V8.4) e da natureza das fontes (V9.3).
+
+### 87.8 Bloqueio externo — HEAD **não compila**, e não é desta rodada
+
+`modules/m33-folha/certificacao.ts:662` não compila em `main`: `elegibilidadeParaLiquidar` recebe
+um objeto sem `abatimentoSemCriterioDeclarado`, campo que `modules/m33-folha/elegibilidade.ts:48`
+passou a exigir. O arquivo está **idêntico a `fea43d8`** — commit de **outra sessão**, que chegou
+a `main` durante esta rodada (`74624fe` → `fea43d8`). Dois dos três sítios foram atualizados
+(`certificacao.ts:571` e `:852`); o terceiro ficou.
+
+**Não foi corrigido aqui, de propósito.** O campo governa o gate `ABATIMENTO-SEM-CRITERIO-DECLARADO`;
+escolher entre `false` e o `semCriterio` calculado é decidir se a **liquidação** de uma folha de 13º
+com critério não declarado deve ou não ser barrada — decisão normativa, dentro do tema em curso de
+outra sessão. Chutar o valor para o meu build passar seria exatamente o que este repositório proíbe.
+
+**Consequência medida e declarada:** o artefato dos percursos foi montado em `v11v93-artefato` =
+`74624fe` + os três commits desta rodada, **sem** os commits de M33. O SHA `97f058b` **nomeia** o
+que foi servido, e o build validou tipos da árvore inteira — o que confirma, por segunda via, que
+o único erro em `main` é esse. **O artefato não é HEAD**, e isso está dito em vez de escondido.
+
+### 87.9 Pendências
+
+- **`MENSAGEM-SOME-COM-A-LINHA` na atribuição do legado** — mesma família do defeito de 8.1, outro
+  formulário: `9.5` segue notando que a tela **não confirma por escrito** a atribuição (o efeito é
+  conferido por 9.5b). A cura é conhecida e é de um movimento: provedor acima da tabela, como em
+  `FormAnularReceita.tsx`. **Escopo não executado**, não bloqueio.
+- **`DDR-DISPONIVEL-SALDO-A-REPONTAR`** — base que já operou com a conta antiga move o acumulado
+  por `repontarConta`. Nenhum banco vivo foi tocado nesta rodada.
+- **`SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS`** — as cinco lacunas seguem **preservadas e
+  inalteradas**. A apuração **não** foi ligada, como a ordem determinou.
+- **`ABATIMENTO-SEM-CRITERIO-DECLARADO` no sítio da liquidação** — ver 87.8. **Bloqueio externo**
+  (outra sessão), não escopo pendente meu.
+- Bloqueadas por terceiro (seção 83.3), inalteradas: leiaute eSocial, token ASTEC, certificado A1,
+  AWS, linha ENT12.
+
+### 87.10 Catálogo
+
+**Zero mudanças de situação, e zero marcações.** Esta rodada removeu um impedimento e executou a
+jornada dele; nenhuma cláusula foi medida contra comportamento novo. Marcar aqui seria contar a
+remoção de um bloqueio como cobertura de edital.
+
+### 87.11 Instalado ou publicado: **NADA**
+
+Sem push, sem deploy, sem transmissão fiscal, sem pagamento. `/release` responde `candidato: null`.
+Os três scripts do operador seguem fora do Git, não executados. As 17 worktrees anteriores, os nove
+bancos anteriores e o artefato da V9.2 em `:3010` estão intactos; esta rodada acrescentou duas
+worktrees (`candidato-e346f08`, `artefato-v11v93`) e quatro bancos descartáveis
+(`…v11v93`, `b`, `c`, `d`).
+
+### 87.12 O próximo ponto exato
+
+1. **Cobrar de quem é**: `modules/m33-folha/certificacao.ts:662` precisa do
+   `abatimentoSemCriterioDeclarado` decidido pela sessão que criou o campo. Enquanto isso, `main`
+   não compila e **nenhum artefato pode ser promovido a partir dela**.
+2. Depois disso, reconstruir o artefato **em cima de `main`** e reexecutar **só** a J9 — é o único
+   percurso que esta rodada atingiu.
+3. `MENSAGEM-SOME-COM-A-LINHA` na atribuição: um provedor, um build, uma corrida da J9.
