@@ -7,6 +7,7 @@ import { situacaoDaFolha, vigenteNaCompetencia, type SituacaoDaFolha } from "../
 import { situacaoDoVinculo, type EventoDoVinculo } from "../../../modules/m32-pessoal/dominio.js";
 import { apropriacaoDaFolha, apropriarFolha, cadastrarGrupoDeEmpenhoDaFolha, definirContasDaLiquidacaoDoGrupo } from "../../../modules/m33-folha/apropriacao.js";
 import { elegibilidadeDosAtosDaFolha } from "../../../modules/m33-folha/elegibilidade.js";
+import { criterioDoAbatimentoNoCalculo } from "../../../modules/m33-folha/decimo-terceiro-servico.js";
 import { lerMemoriaDoContracheque, type MemoriaLida } from "../../../modules/m33-folha/memoria-do-contracheque.js";
 import {
   certificacaoDaFolha,
@@ -148,6 +149,15 @@ export interface FolhaLida extends DetalheLido {
     readonly porEmpenho: Readonly<Record<string, { readonly numero: string; readonly responsavelAtesto: string; readonly data: string }>>;
   } | null;
   readonly contracheques: readonly { readonly vinculoId: string; readonly matricula: string; readonly servidor: string; readonly regime: string; readonly dias: number; readonly proventos: string; readonly descontos: string; readonly liquido: string }[];
+  /**
+   * ⚠️ V11 V9.3 — NÃO-NULO = ESTA FOLHA É SIMULAÇÃO, NÃO APURAÇÃO APROVADA.
+   *
+   * O cálculo abateu 1ª parcela e o parâmetro sob o qual ele rodou não declarava sob que critério
+   * o adiantamento podia ser abatido. A memória do contracheque já dizia isso desde esta rodada;
+   * o que faltava era a TELA dizer — quem olha o detalhe tem de ver, antes de mandar apropriar,
+   * que aquilo não é apuração aprovada. A apropriação recusa pelo mesmo motivo, com o mesmo código.
+   */
+  readonly simulacaoDoAbatimento: { readonly totalAbatido: string } | null;
 }
 
 export async function verFolha(id: string): Promise<FolhaLida | null> {
@@ -157,6 +167,20 @@ export async function verFolha(id: string): Promise<FolhaLida | null> {
   const d = derivarFolha(f);
   const apropriada = await apropriacaoDaFolha(prisma, id);
   const [certificada, liquidada] = await Promise.all([certificacaoDaFolha(prisma, id), liquidacaoDaFolha(prisma, id)]);
+  /**
+   * ⚠️ LÊ-SE DO CÁLCULO VIVO, E NÃO SÓ DO FECHADO. A folha calculada e ainda aberta já é a
+   * simulação; esperar o fechamento para avisar deixaria o operador descobrir o problema com o
+   * cálculo congelado e a folha pronta para apropriar. O `catch` devolve `null` porque uma tela
+   * que some é pior que uma tela sem o aviso — e quem BLOQUEIA de verdade é `apropriarFolha`,
+   * fail-closed e sem `catch` nenhum.
+   */
+  const simulacaoDoAbatimento =
+    f.tipo === "DECIMO_TERCEIRO" && d.vivo !== null
+      ? await criterioDoAbatimentoNoCalculo(prisma, d.vivo.id).then(
+          (c) => (c.abateu && c.criterioDeclarado === null ? { totalAbatido: c.totalAbatido } : null),
+          () => null
+        )
+      : null;
   const contracheques = d.vivo === null ? [] : await prisma.contracheque.findMany({
     where: { calculoId: d.vivo.id }, orderBy: { vinculo: { matricula: "asc" } },
     select: { vinculoId: true, regime: true, diasComputados: true, totalProventos: true, totalDescontos: true, liquido: true, vinculo: { select: { matricula: true, servidor: { select: { nomeSocial: true, pessoa: { select: { documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } } } } } } },
@@ -165,6 +189,17 @@ export async function verFolha(id: string): Promise<FolhaLida | null> {
     { rotulo: "Competência", valor: f.competencia },
     { rotulo: "Tipo", valor: f.tipo },
     { rotulo: "Situação (derivada)", valor: ROTULO_DA_SITUACAO[d.situacao], nota: "Sem cálculo / calculada (há cálculo vivo) / fechada (um cálculo congelado). Nunca coluna." },
+    ...(simulacaoDoAbatimento === null
+      ? []
+      : [{
+          rotulo: "Natureza da apuração",
+          valor: `SIMULAÇÃO — não é apuração aprovada (${simulacaoDoAbatimento.totalAbatido} de abatimento)`,
+          nota:
+            "O parâmetro do 13º deste exercício não declara qual estado o adiantamento precisa ter alcançado " +
+            "para ser abatido, então o abatimento saiu pelo FECHAMENTO da folha de adiantamento — critério " +
+            "de engenharia, não norma do ente. A apropriação desta folha está bloqueada até o ente declarar " +
+            "o critério, com o ato que o fundamenta, em Folha > Parâmetros do 13º. Não há confirmação que substitua o ato.",
+        }]),
     ...(d.vivo === null ? [] : [
       { rotulo: d.situacao === "FECHADA" ? "Cálculo fechado" : "Último cálculo vivo", valor: `nº ${d.vivo.numero} · ${d.vivo.contracheques} contracheque(s) · motor ${d.vivo.versaoDoMotor}` },
       { rotulo: "Proventos", valor: toMoney(d.vivo.totalProventos).toFixed(2), tipo: "dinheiro" as const },
@@ -214,7 +249,12 @@ export async function verFolha(id: string): Promise<FolhaLida | null> {
   return {
     titulo: `Folha ${f.tipo.toLowerCase()} de ${f.competencia}`,
     subtitulo: d.vivo === null ? "sem cálculo" : `cálculo nº ${d.vivo.numero} · líquido R$ ${formatarMoeda(toMoney(d.vivo.totalLiquido).toFixed(2)).texto}`,
-    selos: [{ texto: ROTULO_DA_SITUACAO[d.situacao], tom: d.situacao === "FECHADA" ? "ok" : d.situacao === "CALCULADA" ? "neutro" : "alerta" }],
+    selos: [
+      { texto: ROTULO_DA_SITUACAO[d.situacao], tom: d.situacao === "FECHADA" ? "ok" : d.situacao === "CALCULADA" ? "neutro" : "alerta" },
+      // ⚠️ O SELO VEM DEPOIS DA SITUAÇÃO, E NÃO NO LUGAR DELA. "Fechada" continua sendo verdade;
+      // o que o segundo selo acrescenta é que aquilo fechou sobre um critério que ninguém declarou.
+      ...(simulacaoDoAbatimento === null ? [] : [{ texto: "SIMULAÇÃO — não é apuração aprovada", tom: "alerta" as const }]),
+    ],
     dados, historico,
     competencia: f.competencia, situacao: d.situacao, calculoVivoId: d.vivo?.id ?? null,
     certificacao: certificada === null ? null : {
@@ -237,6 +277,7 @@ export async function verFolha(id: string): Promise<FolhaLida | null> {
       dataDoEmpenho: diaCivilBr(apropriada.dataDoEmpenho), por: apropriada.criadoPor, total: apropriada.total.toFixed(2),
       empenhos: apropriada.empenhos.map((e) => ({ numero: e.numero, ficha: e.ficha, grupo: e.grupo, matricula: e.matricula, credor: e.credor, valor: e.valor.toFixed(2), empenhoId: e.empenhoId })),
     },
+    simulacaoDoAbatimento,
     contracheques: contracheques.map((x) => ({ vinculoId: x.vinculoId, matricula: x.vinculo.matricula, servidor: x.vinculo.servidor.nomeSocial ?? x.vinculo.servidor.pessoa.versoes[0]?.nome ?? x.vinculo.servidor.pessoa.documento, regime: x.regime, dias: x.diasComputados, proventos: toMoney(x.totalProventos).toFixed(2), descontos: toMoney(x.totalDescontos).toFixed(2), liquido: toMoney(x.liquido).toFixed(2) })),
   };
 }
@@ -948,6 +989,16 @@ export async function acaoDaDesignacao(acao: string, designacaoId: string, c: Ca
  * anteriores ficam como SUPERADA — nunca apagadas, porque as folhas que elas calcularam citam o
  * `id` e a `versao` na memória, e sem a linha o contracheque deixaria de se explicar.
  */
+/**
+ * ⚠️ V11 V9.3 — OS TRÊS CRITÉRIOS, EM PORTUGUÊS DE QUEM OPERA. O enum do banco é vocabulário do
+ * sistema; a tela fala do fato. E nenhum deles diz qual é o certo — quem declara é o ente.
+ */
+const ROTULO_DO_CRITERIO_DO_ABATIMENTO: Readonly<Record<string, string>> = {
+  FECHADO: "Fechado — o cálculo do adiantamento foi congelado",
+  CERTIFICADO: "Certificado — o cálculo foi atestado por quem o ente designou",
+  PAGO: "Pago — o adiantamento do servidor saiu do caixa",
+};
+
 export async function listarParametrosDoDecimoTerceiro(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
   const prisma = cliente();
   const q = (c.filtros["q"] ?? "").trim();
@@ -957,6 +1008,7 @@ export async function listarParametrosDoDecimoTerceiro(c: ConsultaDoMolde): Prom
       id: true, exercicio: true, versao: true, diasMinimosDoAvo: true, avosNoExercicio: true,
       percentualDaPrimeiraParcela: true, decimoTerceiroSofreContribuicao: true, decimoTerceiroSofreIrrf: true,
       atoTipo: true, atoNumero: true, atoAno: true, atoDispositivo: true,
+      estadoMinimoDoAdiantamentoParaAbater: true,
       _count: { select: { rubricasDaBase: true } },
     },
   });
@@ -981,6 +1033,15 @@ export async function listarParametrosDoDecimoTerceiro(c: ConsultaDoMolde): Prom
         [p.decimoTerceiroSofreContribuicao ? "contribuição" : null, p.decimoTerceiroSofreIrrf ? "IRRF" : null]
           .filter((x) => x !== null).join(" e ") || "nenhuma",
       base: String(p._count.rubricasDaBase),
+      /**
+       * ⚠️ V11 V9.3 — "NÃO DECLARADO" É O TEXTO, E ELE NÃO PODE VIRAR TRAÇO NEM CÉLULA VAZIA.
+       * Uma célula em branco aqui seria lida como "nada a dizer"; o que ela significa é que o
+       * abatimento do 13º deste exercício é SIMULAÇÃO e a apropriação está bloqueada.
+       */
+      criterioDoAbatimento:
+        p.estadoMinimoDoAdiantamentoParaAbater === null
+          ? "NÃO DECLARADO — abatimento é simulação"
+          : ROTULO_DO_CRITERIO_DO_ABATIMENTO[p.estadoMinimoDoAdiantamentoParaAbater] ?? p.estadoMinimoDoAdiantamentoParaAbater,
       ato: `${OPCOES_DE_TIPO_DE_ATO.find((o) => o.valor === p.atoTipo)?.rotulo ?? p.atoTipo} ${p.atoNumero}/${p.atoAno}, ${p.atoDispositivo}`,
       situacao: maiorVersaoDo.get(p.exercicio) === p.versao ? "VIGENTE" : "SUPERADA",
     })),
@@ -1000,14 +1061,33 @@ export async function rubricasParaOParametroDo13(): Promise<{
   readonly proventos: readonly { readonly valor: string; readonly rotulo: string }[];
   readonly base: readonly { readonly valor: string; readonly rotulo: string }[];
   readonly abatimento: readonly { readonly valor: string; readonly rotulo: string }[];
+  /**
+   * ⚠️ V11 V9.3 — QUAIS RUBRICAS DE PROVENTO PERMITEM EXIGIR "PAGO", e a lista pode vir VAZIA.
+   *
+   * "Pago" só é verificável quando a rubrica do adiantamento está num grupo de empenho que emite
+   * UM EMPENHO POR SERVIDOR: é o `EmpenhoDaFolha.vinculoId` que liga o pagamento à matrícula. Com
+   * o empenho único do grupo, "quanto saiu para esta pessoa" não existe no banco.
+   *
+   * A tela mostra esta lista em vez de esconder a opção, e a razão é a mesma de sempre: esconder
+   * faria o operador achar que o sistema não sabe fazer aquilo. Dizer QUAIS rubricas servem e por
+   * quê transforma a limitação em instrução. O servidor recusa de qualquer forma
+   * (`ESTADO-PAGO-NAO-VERIFICAVEL`) — a tela orienta, ela não protege.
+   */
+  readonly adiantamentosQuePermitemPago: readonly string[];
 }> {
   const prisma = cliente();
   const todas = await prisma.rubrica.findMany({
     orderBy: [{ ordem: "asc" }, { codigo: "asc" }],
-    select: { id: true, codigo: true, descricao: true, tipo: true, natureza: true },
+    select: {
+      id: true, codigo: true, descricao: true, tipo: true, natureza: true,
+      grupoDeEmpenho: { select: { grupo: { select: { porServidor: true } } } },
+    },
   });
   const rotular = (r: { codigo: string; descricao: string }): string => `${r.codigo} — ${r.descricao}`;
   return {
+    adiantamentosQuePermitemPago: todas
+      .filter((r) => r.tipo === "PROVENTO" && r.grupoDeEmpenho?.grupo.porServidor === true)
+      .map(rotular),
     proventos: todas.filter((r) => r.tipo === "PROVENTO").map((r) => ({ valor: r.id, rotulo: rotular(r) })),
     base: todas
       .filter((r) => r.tipo === "PROVENTO" && ["VENCIMENTO_BASE", "GRATIFICACOES_DO_VINCULO", "PERCENTUAL_DO_VENCIMENTO"].includes(r.natureza))
@@ -1036,6 +1116,10 @@ export async function criarParametroDoDecimoTerceiro(c: Campos, rubricasDaBase: 
       // `ck_parametro_13_percentual_primeira` (entre 0 e 1) recusaria a gravação.
       percentualDaPrimeiraParcela: new Decimal(decimalDaTela(t(c, "percentualDaPrimeiraParcela"))).div(100).toFixed(4),
       baseDosAvosDoAdiantamento: t(c, "baseDosAvosDoAdiantamento") as "ATE_A_COMPETENCIA" | "EXERCICIO_INTEIRO",
+      // ⚠️ A TELA MANDA "" QUANDO NINGUÉM ESCOLHEU, e o zod converte para `null` — não declarado.
+      // Nenhum default é aplicado aqui: um `?? "FECHADO"` nesta linha faria a borda declarar, em
+      // nome do município, a norma que esta rodada inteira existe para não inventar.
+      estadoMinimoDoAdiantamentoParaAbater: t(c, "estadoMinimoDoAdiantamentoParaAbater") as "" | "FECHADO" | "CERTIFICADO" | "PAGO",
       decimoTerceiroSofreContribuicao: marcado(c, "decimoTerceiroSofreContribuicao"),
       decimoTerceiroSofreIrrf: marcado(c, "decimoTerceiroSofreIrrf"),
       rubricaDoDecimoTerceiroId: t(c, "rubricaDoDecimoTerceiroId"),

@@ -202,16 +202,31 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
         <Card>
           <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">De onde veio o abatimento</h2>
           {/*
-            ⚠️ O QUE SUSTENTA O DESCONTO, E O QUE NÃO SUSTENTA. O abatimento é condicionado ao
-            FECHAMENTO da folha de adiantamento e a nada mais; dizer "já paga" seria afirmar o que
-            o cálculo nunca verificou. O motivo gravado vem junto, por escrito.
+            ⚠️ O QUE SUSTENTA O DESCONTO, E O QUE NÃO SUSTENTA — E DESDE A V11 V9.3 ISSO VARIA.
+            Quando o ente DECLAROU o critério (no parâmetro versionado, com ato), o contracheque
+            diz qual estado foi exigido e qual foi verificado, e quem lê confere contra o ato. Sem
+            declaração, o desconto saiu pelo FECHAMENTO — critério de engenharia — e o documento
+            tem de dizer que aquilo é SIMULAÇÃO, em vez de calar. O motivo gravado vem junto, por
+            escrito, e é ele que o servidor leva a quem for reclamar.
           */}
           <div className="space-y-1 text-xs text-[color:var(--color-ink-2)]">
+            {m.procedenciaDoAbatimento.dados.natureza === "SIMULACAO" ? (
+              <p className="font-semibold text-[color:var(--color-ink)]">
+                SIMULAÇÃO — não é apuração aprovada. O ente não declarou qual estado o adiantamento precisa ter
+                alcançado para ser abatido.
+              </p>
+            ) : null}
             <p>
               1ª parcela apurada na folha de adiantamento de {m.procedenciaDoAbatimento.dados.folhaDeAdiantamento} ·
               cálculo nº {m.procedenciaDoAbatimento.dados.calculoNumero} · certificação {m.procedenciaDoAbatimento.dados.situacaoDaCertificacao} ·
               parâmetro na versão {m.procedenciaDoAbatimento.dados.versaoDoParametroDoAdiantamento}
             </p>
+            {m.procedenciaDoAbatimento.dados.estadoVerificado === undefined ? null : (
+              <p>
+                Critério exigido pelo ente: {m.procedenciaDoAbatimento.dados.estadoExigidoPeloEnte ?? "nenhum declarado"} ·
+                estado verificado neste cálculo: {m.procedenciaDoAbatimento.dados.estadoVerificado}
+              </p>
+            )}
             <p>{m.procedenciaDoAbatimento.dados.motivo}</p>
           </div>
         </Card>

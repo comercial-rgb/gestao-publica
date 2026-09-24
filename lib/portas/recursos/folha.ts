@@ -445,7 +445,9 @@ export const PARAMETROS_DO_DECIMO_TERCEIRO: DefinicaoDeRecurso = definirRecurso(
   descricao:
     "Por exercício, o que o ENTE declara para o 13º: quantos dias fazem um mês contar um avo, quantos avos tem o ano, " +
     "o percentual da 1ª parcela, se o 13º sofre contribuição e imposto, quais rubricas compõem a base — e o ato que " +
-    "fundamenta tudo isso, com número, ano e dispositivo. Sem parâmetro, a folha de 13º recusa calcular e diz o exercício.",
+    "fundamenta tudo isso, com número, ano e dispositivo. Sem parâmetro, a folha de 13º recusa calcular e diz o exercício. " +
+    "Declara também QUAL ESTADO o adiantamento precisa ter alcançado para ser abatido na 2ª parcela — sem essa " +
+    "declaração o 13º ainda calcula, mas como simulação, e a apropriação da folha fica bloqueada.",
   campos: [
     { nome: "exercicio", rotulo: "Exercício (ano do 13º)", tipo: "inteiro", obrigatorio: true, largura: 1, minimo: 1900, maximo: 2200 },
     { nome: "diasMinimosDoAvo", rotulo: "Dias mínimos no mês para contar um avo", tipo: "inteiro", obrigatorio: true, largura: 1, minimo: 1, maximo: 30 },
@@ -470,6 +472,9 @@ export const PARAMETROS_DO_DECIMO_TERCEIRO: DefinicaoDeRecurso = definirRecurso(
     { nome: "primeiraParcela", cabecalho: "1ª parcela", tipo: "texto" },
     { nome: "incidencias", cabecalho: "Incidências no 13º", tipo: "texto" },
     { nome: "base", cabecalho: "Rubricas da base", tipo: "inteiro" },
+    // ⚠️ V11 V9.3 — A COLUNA EXISTE PARA QUE "NÃO DECLARADO" SEJA VISÍVEL NA LISTA, e não só no
+    // detalhe de uma folha que já foi calculada. É o campo que separa apuração de simulação.
+    { nome: "criterioDoAbatimento", cabecalho: "Abatimento exige", tipo: "texto" },
     { nome: "ato", cabecalho: "Ato", tipo: "texto" },
     { nome: "situacao", cabecalho: "Situação", tipo: "situacao" },
   ],

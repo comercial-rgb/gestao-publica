@@ -48,7 +48,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
         // a coluna de marcação nem aparece — mas a prop é obrigatória, e o vazio diz isso.
         somaDaSelecao={{}}
         {...(podeCriar
-          ? { formulario: <FormParametroDo13 proventos={rubricas.proventos} base={rubricas.base} abatimento={rubricas.abatimento} /> }
+          ? { formulario: <FormParametroDo13 proventos={rubricas.proventos} base={rubricas.base} abatimento={rubricas.abatimento} adiantamentosQuePermitemPago={rubricas.adiantamentosQuePermitemPago} /> }
           : {
               motivoSemCriar:
                 "Você não tem a permissão CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO. Ela é própria, e não vem junto com a de " +

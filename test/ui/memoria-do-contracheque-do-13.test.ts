@@ -35,6 +35,10 @@ function parametro(over: Partial<ParametroLidoDoDecimoTerceiro> = {}): Parametro
   return {
     id: "par-1", exercicio: 2026, versao: 1, diasMinimosDoAvo: 15, avosNoExercicio: 12,
     percentualDaPrimeiraParcela: new Decimal("0.5"), baseDosAvosDoAdiantamento: "EXERCICIO_INTEIRO",
+    // ⚠️ V11 V9.3 — A FIXTURE NASCE **NÃO DECLARADA**, de propósito: é o estado real de um ente
+    // que ainda não levantou a norma, e é o que os casos abaixo que NÃO o sobrescrevem exercitam.
+    // Pôr "FECHADO" aqui faria o padrão do teste esconder o caminho da simulação.
+    estadoMinimoDoAdiantamentoParaAbater: null,
     decimoTerceiroSofreContribuicao: true, decimoTerceiroSofreIrrf: false, ato: ATO, ...over,
   };
 }
@@ -201,7 +205,7 @@ describe("a memória do 13º é legível pela mesma leitura da folha mensal", ()
     const c = calcularContrachequeDoDecimoTerceiro(
       entradaDo13({
         adiantamentoApuradoEmFolhaFechada: toMoney(1500),
-        procedenciaDoAbatimento: { competencia: "2026-06", calculoNumero: 2, situacaoDaCertificacao: "PENDENTE", versaoDoParametro: 1 },
+        procedenciaDoAbatimento: { competencia: "2026-06", calculoNumero: 2, situacaoDaCertificacao: "PENDENTE", versaoDoParametro: 1, estadoExigido: null, estadoVerificado: "FECHADO" },
       })
     );
     const m = lerMemoriaDoContracheque(c.memoria);

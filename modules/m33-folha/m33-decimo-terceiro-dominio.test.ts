@@ -48,6 +48,10 @@ function parametro(over: Partial<ParametroLidoDoDecimoTerceiro> = {}): Parametro
     avosNoExercicio: 12,
     percentualDaPrimeiraParcela: new Decimal("0.5"),
     baseDosAvosDoAdiantamento: "EXERCICIO_INTEIRO",
+    // ⚠️ V11 V9.3 — A FIXTURE NASCE **NÃO DECLARADA**, de propósito: é o estado real de um ente
+    // que ainda não levantou a norma, e é o que os casos abaixo que NÃO o sobrescrevem exercitam.
+    // Pôr "FECHADO" aqui faria o padrão do teste esconder o caminho da simulação.
+    estadoMinimoDoAdiantamentoParaAbater: null,
     decimoTerceiroSofreContribuicao: true,
     decimoTerceiroSofreIrrf: false,
     ato: ATO,
@@ -261,7 +265,14 @@ describe("t2 · contracheque do 13º", () => {
     // e pagamento é o que este cálculo nunca conferiu: a única guarda é o FECHAMENTO da folha de
     // adiantamento. A asserção negativa é o ponto — sem ela, alguém "encurta" o texto de volta.
     expect(abat?.memoria).not.toMatch(/já paga/);
-    expect(abat?.memoria).toMatch(/não são consultados aqui/);
+    /**
+     * ⚠️ V11 V9.3 — A FRASE MUDOU PORQUE A AFIRMAÇÃO MUDOU. A fixture não declara critério, então
+     * a linha tem de se identificar como SIMULAÇÃO e nomear o bloqueio da efetivação. Antes ela
+     * dizia só "não são consultados aqui", que descrevia o limite sem dizer a consequência.
+     */
+    expect(abat?.memoria).toMatch(/SIMULAÇÃO — NÃO É APURAÇÃO APROVADA/);
+    expect(abat?.memoria).toMatch(/ABATIMENTO-SEM-CRITERIO-DECLARADO/);
+    expect(abat?.memoria).toMatch(/NÃO foram consultados/);
   });
 
   /**
@@ -278,7 +289,7 @@ describe("t2 · contracheque do 13º", () => {
     const c = calcularContrachequeDoDecimoTerceiro(
       entrada({
         adiantamentoApuradoEmFolhaFechada: toMoney(1500),
-        procedenciaDoAbatimento: { competencia: "2026-06", calculoNumero: 2, situacaoDaCertificacao: "DEVOLVIDA", versaoDoParametro: 1 },
+        procedenciaDoAbatimento: { competencia: "2026-06", calculoNumero: 2, situacaoDaCertificacao: "DEVOLVIDA", versaoDoParametro: 1, estadoExigido: null, estadoVerificado: "FECHADO" },
       })
     );
     // O abatimento ACONTECEU, apesar de DEVOLVIDA — é isto que o registro torna visível.
@@ -292,6 +303,39 @@ describe("t2 · contracheque do 13º", () => {
     expect(proc["fatoVerificado"]).toBe("FECHAMENTO_DA_FOLHA_DE_ADIANTAMENTO");
     expect(proc["versaoDoParametroDoAdiantamento"]).toBe(1);
     expect(String(proc["motivo"])).toMatch(/ESTADO-EXIGIDO-DO-ADIANTAMENTO-SEM-FONTE/);
+  });
+
+  /**
+   * ⚠️ V11 V9.3 — A CONTRAPARTIDA DO CASO ACIMA, E SEM ELA O ANTERIOR PASSARIA POR VACUIDADE.
+   *
+   * Com o critério DECLARADO pelo ente, a mesma conta produz o mesmo centavo e uma AFIRMAÇÃO
+   * diferente: `natureza: "APURACAO"`, o estado exigido, o estado verificado, e nenhuma palavra
+   * de simulação. Um motor que gravasse "SIMULACAO" sempre passaria no teste da lacuna; é este
+   * caso que o derruba.
+   */
+  it("com o critério DECLARADO, o mesmo abatimento vira APURACAO e a linha cita o ato do ente", () => {
+    const c = calcularContrachequeDoDecimoTerceiro(
+      entrada({
+        parametro: parametro({ estadoMinimoDoAdiantamentoParaAbater: "CERTIFICADO" }),
+        adiantamentoApuradoEmFolhaFechada: toMoney(1500),
+        procedenciaDoAbatimento: { competencia: "2026-06", calculoNumero: 1, situacaoDaCertificacao: "CERTIFICADA", versaoDoParametro: 1, estadoExigido: "CERTIFICADO", estadoVerificado: "CERTIFICADO" },
+      })
+    );
+    // ⚠️ NEM UM CENTAVO MUDA — o critério decide SE abate, não QUANTO.
+    expect(c.totais.liquido.toFixed(2)).toBe("1200.00");
+    const abat = c.linhas.find((l) => l.codigo === "13ABAT");
+    expect(abat?.valor.toFixed(2)).toBe("1500.00");
+    expect(abat?.memoria).toMatch(/Critério DECLARADO pelo ente: o adiantamento tem de estar ao menos CERTIFICADO/);
+    expect(abat?.memoria).toMatch(/ESTATUTO_DOS_SERVIDORES 1\.234\/2010, art\. 78, § 2º/);
+    expect(abat?.memoria).not.toMatch(/SIMULAÇÃO/);
+
+    const proc = (c.memoria as Record<string, unknown>)["procedenciaDoAbatimento"] as Record<string, unknown>;
+    expect(proc["natureza"]).toBe("APURACAO");
+    expect(proc["criterioDeclaradoPeloEnte"]).toBe(true);
+    expect(proc["estadoExigidoPeloEnte"]).toBe("CERTIFICADO");
+    expect(proc["estadoVerificado"]).toBe("CERTIFICADO");
+    expect(proc["fatoVerificado"]).toBe("CERTIFICACAO_DO_CALCULO_DO_ADIANTAMENTO");
+    expect(String(proc["motivo"])).not.toMatch(/ABATIMENTO-SEM-CRITERIO-DECLARADO/);
   });
 
   it("no ADIANTAMENTO a procedência é nula — não há 1ª parcela anterior de onde proceder", () => {

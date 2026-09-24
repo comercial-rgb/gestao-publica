@@ -17,6 +17,12 @@ import {
   type AtorNaFolha,
   type EstadoDaFolhaParaAtos,
 } from "./elegibilidade.js";
+/**
+ * ⚠️ V11 V9.3 — SEM CICLO EM TEMPO DE EXECUÇÃO. `decimo-terceiro-servico.ts` importa
+ * `decimo-terceiro.ts` e o M16, e nada daqui; o único elo de volta é um `import type` (apagado
+ * na compilação) do `SituacaoDaCertificacao`. A direção continua sendo uma só.
+ */
+import { criterioDoAbatimentoNoCalculo } from "./decimo-terceiro-servico.js";
 
 /**
  * ═══ M33 — A CERTIFICAÇÃO (ATESTO) DA FOLHA E A SUA LIQUIDAÇÃO (V6.1 §3) ═══
@@ -558,6 +564,11 @@ async function registrarFatoDaCertificacao(
       empenhosGravados: 0,
       empenhosEsperados: null,
       empenhosLiquidados: liquidadas,
+      // ⚠️ NÃO CONSULTADO POR ESTES DOIS PREDICADOS, e por isso não se lê o banco para preenchê-lo.
+      // `elegibilidadeParaCertificar` e `...Devolver` não olham este campo — quem olha é
+      // `...Apropriar`. Ler o cálculo aqui custaria uma consulta por atesto para um fato que o
+      // ato não usa; deixar `false` sem dizer por quê é que seria o problema.
+      abatimentoSemCriterioDeclarado: false,
     };
     const ator: AtorNaFolha = {
       fechou: objeto.fechadoPor === d.criadoPor,
@@ -781,6 +792,7 @@ export async function retratoDosAtosDaFolha(
     where: { id: folhaId },
     select: {
       competencia: true,
+      tipo: true,
       fechamento: { select: { id: true, calculoId: true, criadoPor: true, calculo: { select: { criadoPor: true } } } },
       calculos: { select: { id: true, cancelamento: { select: { id: true } } } },
       certificacoes: { select: { id: true, tipo: true, calculoId: true, criadoEm: true, criadoPor: true } },
@@ -796,6 +808,21 @@ export async function retratoDosAtosDaFolha(
     // cálculo fechado. Falhar aqui não trava a retomada — quem decide é o serviço.
     esperados = await parcelasDoCalculo(prisma, f.fechamento.calculoId).then((p) => p.parcelas.length, () => null);
   }
+  /**
+   * ⚠️ V11 V9.3 — A SIMULAÇÃO ENTRA NO RETRATO, para que a BARRA DA TELA a mostre pelo mesmo
+   * predicado com que o caso de uso recusa. Só se consulta quando há o que consultar: folha de
+   * 13º, fechada. Falhar aqui não pode travar a barra inteira — uma tela que some porque um fato
+   * secundário não pôde ser lido é pior que uma tela que oferece um ato que o serviço recusará
+   * com o motivo na mão. O `catch` devolve `false`, e a recusa REAL continua em `apropriarFolha`,
+   * que é fail-closed e não tem `catch` nenhum.
+   */
+  const semCriterio =
+    f.tipo === "DECIMO_TERCEIRO" && f.fechamento !== null
+      ? await criterioDoAbatimentoNoCalculo(prisma, f.fechamento.calculoId).then(
+          (c) => c.abateu && c.criterioDeclarado === null,
+          () => false
+        )
+      : false;
   const doFechado = f.fechamento === null ? [] : f.certificacoes.filter((c) => c.calculoId === f.fechamento!.calculoId).sort((a, b) => a.criadoEm.getTime() - b.criadoEm.getTime());
   const ultimo = doFechado[doFechado.length - 1];
   const designado = opcoes.consultarDesignacao ? (await designacaoVigenteParaOAto(prisma, usuarioIdentificador, new Date())) !== null : null;
@@ -806,6 +833,10 @@ export async function retratoDosAtosDaFolha(
       f.certificacoes.map((c) => c.id).sort(),
       f.apropriacao?._count.empenhos ?? null,
       liquidados,
+      // ⚠️ SEM ISTO A BARRA FICARIA VELHA. Declarar o critério e recalcular a folha muda o que o
+      // ato oferece, e a `versao` é a impressão dos fatos que DECIDEM os atos — omitir um fato
+      // que decide faz a tela continuar mostrando a recusa depois de ela ter deixado de valer.
+      semCriterio,
     ]))
     .digest("hex")
     .slice(0, 16);
@@ -818,6 +849,7 @@ export async function retratoDosAtosDaFolha(
       empenhosGravados: f.apropriacao?._count.empenhos ?? 0,
       empenhosEsperados: esperados,
       empenhosLiquidados: liquidados,
+      abatimentoSemCriterioDeclarado: semCriterio,
     },
     ator: {
       fechou: f.fechamento?.criadoPor === usuarioIdentificador,

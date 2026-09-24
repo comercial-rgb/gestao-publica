@@ -314,11 +314,20 @@ transformaria num leitor de banco.
 | `RUBRICA-DO-ABATIMENTO-AUSENTE` | quem recebeu adiantamento e não há rubrica que o abata | o mesmo pagamento em dobro, com os totais fechando |
 | `ABATIMENTO-MAIOR-QUE-O-13` | adiantado sobre o ano projetado e desligado no meio | o líquido ficaria **negativo**; isso é reposição ao erário, ato que não existe aqui |
 
+⚠️ **E desde a V11 V9.3 há mais três recusas, pelo critério que o ENTE declara** —
+`ADIANTAMENTO-NAO-CERTIFICADO`, `ADIANTAMENTO-NAO-PAGO` (pagamento parcial incluído) e
+`ADIANTAMENTO-PAGO-NAO-VERIFICAVEL` —, mais `ABATIMENTO-SEM-CRITERIO-DECLARADO` na apropriação.
+Ver "O ESTADO EXIGIDO DO ADIANTAMENTO" adiante.
+
 `@@unique([exercicio, tipo])` garante **um** adiantamento e **um** 13º por exercício, e é o que
 permite ao serviço resolver o elo em vez de o operador digitá-lo — digitar permitiria abater o
 adiantamento do ano passado.
 
-### ⚠️ O que o abatimento verifica é o FECHAMENTO — e a memória passou a dizer isso (V11 V9.2)
+### ⚠️ O que o abatimento verificava era o FECHAMENTO — e a memória passou a dizer isso (V11 V9.2)
+
+> **Superado em V11 V9.3, e a seção fica porque explica de onde se veio.** O critério deixou de ser
+> cravado no motor e passou a ser declarado pelo ente. Leia esta seção como história, e a seção
+> "O ESTADO EXIGIDO DO ADIANTAMENTO" adiante como o que vale.
 
 **O fato que arma o abatimento é um só: `FolhaDePagamento.fechamento !== null`.** Certificação,
 empenho, liquidação e pagamento **não são consultados**. Até a V11 V9.2 a memória do contracheque
@@ -334,7 +343,7 @@ e o fechamento é irreversível nas duas pontas (não há reabertura, e `cancela
 recusa o cálculo que fechou). O desconto acontece; o contracheque, pelo menos, deixou de mentir
 sobre o que o sustenta.
 
-### O ESTADO EXIGIDO DO ADIANTAMENTO — a fonte levantada em V11 V9.3, e por que nada mudou
+### O ESTADO EXIGIDO DO ADIANTAMENTO — a fonte, e por que ela tirou o critério do motor (V11 V9.3)
 
 **A pergunta:** a fonte exige que o adiantamento tenha sido **PAGO** para ser abatido, exige
 **outro fato**, ou exige uma **composição de condições**?
@@ -385,7 +394,10 @@ cometer. **Isto é achado, não fundamento.**
   **Ausência de acesso não é ausência de fonte**, e é assim que fica registrado: a fonte
   provavelmente existe e não foi lida. Citá-la de ouvido seria inventar norma do município.
 
-#### 4. O que o motor faz HOJE — medido, não suposto
+#### 4. O que o motor fazia ANTES desta rodada — medido, não suposto
+
+> O levantamento abaixo é o diagnóstico que fundamentou a decisão da seção 5. Ele descreve o motor
+> **até a V11 V9.2**; o que vale hoje está na seção 5.
 
 **O fato que arma o abatimento** é `FolhaDePagamento.fechamento !== null`
 (`servico.ts:629`, recusa `ADIANTAMENTO-NAO-FECHADO`). **O valor abatido** é a
@@ -398,11 +410,11 @@ Os seis estados, e se o motor os consulta:
 | Estado | Onde é representado | Consultado pelo abatimento? |
 |---|---|---|
 | CALCULADO | `CalculoDaFolha` (fato numerado, `cancelamento` é outro fato) | **não** — só o cálculo do fechamento é lido, e o cancelado nunca é ele (`servico.ts:828`) |
-| FECHADO | `FechamentoDaFolha` (`@@unique` por folha e por cálculo) | **SIM — e é o único** |
-| CERTIFICADO | `CertificacaoDaFolha` (fato, `CERTIFICACAO`/`DEVOLUCAO`; situação derivada) | lido, mas **só para escrever** na memória; não decide (`servico.ts:679`) |
+| FECHADO | `FechamentoDaFolha` (`@@unique` por folha e por cálculo) | **era o único** — hoje é um dos três que o ente pode declarar |
+| CERTIFICADO | `CertificacaoDaFolha` (fato, `CERTIFICACAO`/`DEVOLUCAO`; situação derivada) | era lido **só para escrever** na memória; hoje decide quando o ente declara `CERTIFICADO` |
 | EMPENHADO | `ApropriacaoDaFolha` → `EmpenhoDaFolha` → `Empenho` (M05) | **não** |
 | LIQUIDADO | `LiquidacaoDaFolha` → `Liquidacao` (M05) | **não** |
-| PAGO | `Pagamento` (M05), alcançável só por Liquidação → Empenho → `EmpenhoDaFolha` | **não** — e **pagar nem é ato do M33** (`ORDENAR-E-PAGAR-A-FOLHA`; `ACOES_DA_FOLHA` não tem "pagar") |
+| PAGO | `Pagamento` (M05), alcançável só por Liquidação → Empenho → `EmpenhoDaFolha` | **não era** — e **pagar continua não sendo ato do M33** (`ORDENAR-E-PAGAR-A-FOLHA`; `ACOES_DA_FOLHA` não tem "pagar"). Hoje o cálculo LÊ esse fato quando o ente declara `PAGO`, e só onde ele existe |
 
 Nenhum dos três arquivos do caminho do 13º importa `packages/estornaveis`, `Pagamento` ou
 `Liquidacao`. **Não há um `status` em lugar nenhum**: o M05 deriva por SOMA (`statusDoEmpenho`),
@@ -424,46 +436,100 @@ Os cinco cenários:
 quem estreita o valor — o serviço, antes de entregar ao domínio — e a partir de qual soma líquida
 de estornos e anulações parciais.
 
-#### 5. A decisão — e o que destrava
+#### 5. A DECISÃO — o critério saiu do motor e passou a ser declarado pelo ente (V11 V9.3)
 
-**Nada mudou de comportamento nesta rodada, e a razão é a da seção 2:** a única fonte primária
-localizada aponta para `RECEBIDO`, mas governa o celetista, e o cenário é plural. Trocar
-`FECHADO` por `PAGO` no motor com esse fundamento seria fazer norma do celetista valer para o
-estatutário do município — o erro nomeado. **Também não se inventa o contrário**: o `FECHADO` de
-hoje continua sem norma que o sustente; a justificativa escrita é de **engenharia** (estabilidade
-do número), e engenharia não decide quanto se desconta de um servidor.
+**Nem `FECHADO` cravado, nem `PAGO` importado do celetista.** O fundamento da decisão é o
+levantamento acima: (a) para o empregado a fonte diz RECEBIDO; (b) para o estatutário a regra é
+municipal e está inacessível; (c) o ente tem regime PLURAL por requisito do TR. Nessas condições
+**qualquer valor único no motor é norma inventada — inclusive o `FECHADO` que estava lá**. A saída
+que não inventa é a mesma que este módulo já usa para o critério do avo e para o percentual da 1ª
+parcela: o ente declara, com ato estruturado, versionado. É "nenhum código no código" aplicado ao
+caso que faltava.
 
-**A pergunta exata, para quem a responde:** *o Estatuto dos Servidores do Município de Anita
-Garibaldi (ou a lei municipal que autoriza o adiantamento do 13º) condiciona a dedução da 1ª
-parcela na parcela final ao seu efetivo **pagamento**, ou à sua **apuração** em folha? E, se
-condiciona ao pagamento, o que se deduz quando o pagamento foi **parcial**: o pago, ou o apurado
-com o saldo cobrado por outro ato?* — endereçada ao **ente** (procuradoria / RH), com o
-**TCE/SC** como fonte subsidiária (a consulta **CON 09/00004983** é diretamente sobre a
-antecipação da 1ª parcela a servidores municipais e não foi lida: acesso negado).
+##### O campo, e por que a lista é de TRÊS
 
-**O que destrava, na ordem:**
+`ParametroDoDecimoTerceiro.estadoMinimoDoAdiantamentoParaAbater`, enum
+`EstadoMinimoDoAdiantamento`, **nullable** (migration `20261013090000_v11_v93_…`, aditiva, zero
+`DROP`, zero linha tocada, a pasta criada já com o `migration.sql` dentro).
 
-1. o dispositivo municipal, citável (número, ano, artigo, parágrafo) — é o que o ato estruturado
-   do `ParametroDoDecimoTerceiro` já sabe guardar;
-2. com ele, o campo `estadoMinimoDoAdiantamentoParaAbater` **no parâmetro versionado do ente**,
-   junto de `diasMinimosDoAvo` e `percentualDaPrimeiraParcela` — nunca no motor, pelo mesmo
-   "nenhum código no código" que rege o resto desta seção;
-3. **se a resposta for "pago"**, a régua do valor elegível muda junto, e o pagamento parcial vira
-   pergunta de MODELO antes de virar código: sem `porServidor = true` o fato não existe por
-   matrícula, e um grupo de empenho único **não tem resposta** — o que provavelmente torna a
-   condição inaplicável a parte dos entes, e isso é achado a levar de volta;
-4. **enquanto (1) não chega**, o que falta ao sistema **não é a regra, é o aviso**: o operador vê
-   o abatimento e não vê que ele repousa num critério sem norma. A memória do contracheque já diz
-   (`fatoVerificado`, `motivo`); a **tela** e a **barra de ações** do 13º, não. Marcar a apuração
-   como não-aprovada na superfície e travar a efetivação correspondente é o próximo incremento
-   possível **sem** decidir norma nenhuma — e ele está descrito aqui, não feito.
+| Valor | O fato que o sistema verifica | Onde |
+|---|---|---|
+| `FECHADO` | `FolhaDePagamento.fechamento !== null` | o que o motor fazia, agora dito pelo ente |
+| `CERTIFICADO` | `situacaoDaCertificacao(...) === "CERTIFICADA"` do cálculo que fechou | pega o caso da folha **DEVOLVIDA**, que nunca será paga e era abatida em silêncio |
+| `PAGO` | `Pagamento` (M05) do empenho **daquele vínculo**, líquido de estorno e anulação parcial, ≥ o apurado | `packages/estornaveis`, não uma soma nova |
 
-⚠️ **Nenhuma caixa de aceite.** "Li e concordo" / "confirmo sob minha responsabilidade" não
-substitui fundamento: transfere a culpa para quem clicou e deixa a conta do mesmo jeito.
+⚠️ **`EMPENHADO` e `LIQUIDADO` NÃO são oferecidos, e a ausência é decisão.** Existem no schema e
+são legíveis; ficam de fora por serem atos da DESPESA do ente, que nada dizem sobre o servidor ter
+recebido. Um ente que os declarasse condicionaria o abatimento a um fato que não responde à
+pergunta da norma. Está escrito aqui para ser ausência visível, não esquecimento.
+
+##### "PAGO" só se oferece onde o fato existe — e a recusa é no CADASTRO
+
+O achado estrutural da pesquisa virou guarda: com `GrupoDeEmpenhoDaFolha.porServidor = false` há
+**um** empenho para o grupo inteiro, com credor declarado, e `EmpenhoDaFolha.vinculoId` é nulo —
+"quanto saiu para esta matrícula" **não é representável**. `cadastrarParametroDoDecimoTerceiro`
+recusa `PAGO` com `ESTADO-PAGO-NAO-VERIFICAVEL`, **antes de gravar**, nomeando o grupo e o motivo
+estrutural, e dizendo a saída. A rubrica do adiantamento **fora de qualquer grupo** tem recusa
+própria, com outro motivo. O cálculo confere de novo, fail-closed — entre cadastrar e calcular
+passa um exercício.
+
+##### Pagamento parcial NÃO satisfaz — o caso que ninguém olhava
+
+O gate é "o apurado foi pago", não "houve pagamento". Meia parcela paga recusa com
+`ADIANTAMENTO-NAO-PAGO`, **nomeando a matrícula, o apurado e o pago**. Até aqui o motor abatia o
+apurado inteiro, descontando de dezembro o que não saiu em junho — com os totais fechando, o
+empenho fechando e nenhuma etapa adiante acusando. **E não satisfeito é RECUSA, nunca "abate
+zero"**: seguir sem abater pagaria o 13º inteiro a quem já recebeu metade.
+
+##### Sem declaração: simulação identificada, efetivação bloqueada
+
+| Onde | O que passa a acontecer |
+|---|---|
+| **cálculo** | sai normalmente — lacuna normativa bloqueia a efetivação, **não a construção** |
+| **memória do contracheque** | `procedenciaDoAbatimento.natureza = "SIMULACAO"`, `criterioDeclaradoPeloEnte = false`, e o `motivo` por escrito |
+| **linha do abatimento** | "⚠️ SIMULAÇÃO — NÃO É APURAÇÃO APROVADA", com o código do bloqueio |
+| **tela do detalhe da folha** | selo "SIMULAÇÃO — não é apuração aprovada" + linha "Natureza da apuração" |
+| **tela do contracheque** | a frase da simulação e os dois estados (exigido × verificado) |
+| **barra de ações** | `apropriar` vira pré-condição `ABATIMENTO-SEM-CRITERIO-DECLARADO`, com providência |
+| **`apropriarFolha`** | **RECUSA**, fail-closed, antes de gravar a `ApropriacaoDaFolha` |
+
+⚠️ **O recorte é estreito de propósito:** o que fica bloqueado é a **apropriação da folha de 13º
+que aplicou abatimento**. A mensal segue, o adiantamento segue, um 13º sem abatimento segue, e o
+**cálculo desta mesma folha segue** — ele é a simulação, e é ela que mostra ao ente o que está em
+jogo. Bloquear a construção transformaria uma pergunta normativa em paralisação.
+
+⚠️ **NENHUMA CAIXA DE ACEITE, em lugar nenhum.** Não existe "confirmo sob minha responsabilidade"
+que destrave: ela transferiria a culpa para quem clicou e deixaria o desconto no contracheque do
+servidor do mesmo jeito. O que destrava é o ENTE declarar o critério com o ato — e recalcular.
+
+⚠️ **NADA ANTERIOR É DESFEITO.** Contracheques gravados ficam como estão; folha já apropriada
+continua apropriada. Quem responde `null` para um cálculo antigo (a chave não existia) é a
+verdade: ele rodou quando ninguém perguntava. O que se impede é o ato que ainda não aconteceu.
+
+##### De onde o bloqueio lê — e por que não é do parâmetro vigente
+
+`criterioDoAbatimentoNoCalculo` lê a **memória do contracheque** do cálculo, não o parâmetro
+vigente agora. A diferença é o ponto: o parâmetro é append-only, e nada impede o ente declarar o
+critério **depois** de a folha de dezembro ter sido calculada sem ele. Ler o vigente diria
+"declarado" de um cálculo que não conferiu nada, e a efetivação passaria. É o mesmo raciocínio de
+`reguaDoParametroNoCalculo`, e a mesma falha fechada: memória ilegível num cálculo que abateu vira
+`CRITERIO-DO-ABATIMENTO-IRRECUPERAVEL`, nunca "segue sem conferir".
+
+##### Provado em
+
+`m33-criterio-do-abatimento.test.ts` (13 casos, com banco, N=2 em todos: MAT-A com 12 avos e
+MAT-B com 9, para que "abater valor fixo" não passe) — a recusa do `PAGO` inverificável pelas duas
+portas e a positiva; `CERTIFICADO` inelegível, devolvido, elegível e a repetição; `PAGO` com
+pagamento parcial, sem pagamento, pago por inteiro e **anulado pelo caminho real do M05**; a
+apropriação bloqueada, o recorte (o adiantamento segue apropriável), a **paridade com a barra da
+tela** e o destrave por versão seguinte + recálculo. Mais dois casos no domínio puro
+(`m33-decimo-terceiro-dominio.test.ts`): a simulação e a sua contrapartida declarada — sem a
+segunda, um motor que gravasse "SIMULACAO" sempre passaria na primeira.
 
 #### 6. O que NÃO foi determinado
 
-- o dispositivo municipal aplicável (acesso negado nas três fontes tentadas);
+- o dispositivo municipal aplicável (acesso negado nas três fontes tentadas) — segue nomeado como
+  `DISPOSITIVO-MUNICIPAL-DO-13-NAO-LIDO`;
 - o teor da consulta TCE/SC **CON 09/00004983** (HTTP 403);
 - se Anita Garibaldi tem RPPS próprio ou se os estatutários estão no RGPS — não se achou a lei, e
   o repositório não fixa (a suíte usa RPPS, o percurso usa RGPS; as duas são fixtures);
@@ -571,6 +637,15 @@ percurso passar: a negativa é evidência, não obstáculo**. `rh@` parametriza 
 | 14 | `/folha/folhas/<id>` · `rh@` | a memória do 13º diz **de onde** veio o abatimento e **não** afirma pagamento | `1ª parcela APURADA na folha de adiantamento FECHADA de <competência>`, com a situação da certificação — e **sem** "já paga" |
 | 15 | `/portal-do-servidor` · a servidora | o contracheque do 13º **alcança o portal**, e só o dela | a competência do 13º aparece, com avos e líquido; a matrícula da outra, não |
 
+⚠️ **O roteiro ainda NÃO exercita o critério do abatimento (V11 V9.3), e isso é falta nomeada, não
+esquecimento.** Faltam três passos pela tela: (16) o `select` "o adiantamento precisa estar" existe
+no formulário do parâmetro e a nota diz quais rubricas permitem exigir PAGO; (17) sem declarar, o
+detalhe da folha de 13º mostra o selo **SIMULAÇÃO — não é apuração aprovada** e a barra recusa
+`apropriar` com `ABATIMENTO-SEM-CRITERIO-DECLARADO`; (18) declarado na versão seguinte e
+recalculado, o selo some e o ato passa a ser oferecido. Os três são cobertos pela suíte
+(`m33-criterio-do-abatimento.test.ts`), e é exatamente por isso que faltam **pela tela**: foram
+quatro defeitos de interface na V11 V9.2 que os 262 testes não pegaram.
+
 **A repetição sem duplicar efeito** fecha o roteiro: reexecutado no mesmo exercício, o percurso
 reconhece as folhas que já existem e PULA com aviso, em vez de falhar no `@@unique` — e o
 `admin` ao cadastrar o parâmetro de novo produz a **versão seguinte**, nunca um `UPDATE`.
@@ -632,21 +707,25 @@ afastamento/desligamento (9 e 7 avos), porque com um servidor só "9 avos" passa
 - `ABATIMENTO-MAIOR-QUE-O-13` (V11 V9.1) — quem foi adiantado sobre o ano projetado e desligado no
   meio deve ao ente. A folha **recusa nomeando a matrícula**; repor ao erário é ato próprio, com
   rito próprio, e não existe aqui.
-- `ESTADO-EXIGIDO-DO-ADIANTAMENTO-SEM-FONTE` (V11 V9.2, **levantada em V11 V9.3 — segue aberta**)
-  — ver a seção "O ESTADO EXIGIDO DO ADIANTAMENTO" adiante, que traz a fonte encontrada, o que o
-  motor faz hoje nos cinco cenários e a pergunta que destrava. Em uma linha: **o motor exige
-  `FECHADO`; a única fonte primária localizada exige `RECEBIDO` — e ela governa o CELETISTA, não
-  o estatutário do cenário.** Este continua sendo o **único critério do 13º cravado no motor** em
-  vez de vir do parâmetro do ente.
-- `MEMORIA-DIZ-PARCELA-PAGA` (achada em V11 V9.3, **não consertada**) — a memória canônica do
-  contracheque do 13º grava a chave `parcelaPaga` (`decimo-terceiro.ts:541`,
-  `parcelaPaga: m(valorDaParcela)`), em AMBAS as parcelas. É o mesmo defeito que a V11 V9.2
-  corrigiu em `adiantamentoPago` e na frase "1ª parcela já paga", **e este sítio escapou**: no
-  contracheque do ADIANTAMENTO a chave afirma que 1.900,00 foram pagos a uma folha que foi apenas
-  CALCULADA. Nenhum leitor a consome (sítio único, conferido). Fica nomeada e não trocada porque a
-  memória é canonicalizada e **lacrada em sha256**: renomear a chave muda a impressão digital de
-  todo contracheque de 13º já gravado, e isso é mudança de comportamento sobre documento selado —
-  decisão a tomar junto com a desta seção, não de passagem.
+- ~~`ESTADO-EXIGIDO-DO-ADIANTAMENTO-SEM-FONTE`~~ — **resolvida em V11 V9.3, e não do jeito que
+  parecia.** A fonte foi levantada e o resultado obrigou a TIRAR o critério do motor em vez de
+  trocá-lo: o estado mínimo passa a ser **declarado pelo ente**, no parâmetro versionado, com ato.
+  Sem declaração o 13º ainda calcula, mas como **simulação identificada**, e a **apropriação fica
+  bloqueada**. Ver a seção "O ESTADO EXIGIDO DO ADIANTAMENTO" adiante. **Continua aberta a
+  pergunta normativa concreta** (qual dispositivo municipal de Anita Garibaldi se aplica), agora
+  como pendência de INFORMAÇÃO do ente e não de desenho: `DISPOSITIVO-MUNICIPAL-DO-13-NAO-LIDO`.
+- `DISPOSITIVO-MUNICIPAL-DO-13-NAO-LIDO` (V11 V9.3) — a lei municipal que rege a gratificação
+  natalina do estatutário de Anita Garibaldi **não foi localizada** (leismunicipais HTTP 403,
+  câmara sem texto alcançável, consulta TCE/SC **CON 09/00004983** HTTP 403). Isso **não trava
+  mais o sistema** — o ente declara o critério com o ato que tiver —, mas continua sendo o que
+  falta para alguém saber QUAL critério declarar. Ausência de acesso não é ausência de fonte.
+- ~~`MEMORIA-DIZ-PARCELA-PAGA`~~ — **corrigida em V11 V9.3**: a chave da memória canônica passou
+  de `parcelaPaga` para `parcelaApurada`. Ela afirmava pagamento num contracheque de folha apenas
+  CALCULADA, e era o mesmo defeito que a V11 V9.2 corrigiu em `adiantamentoPago`. Trocar é seguro
+  e não desfaz fato nenhum: `sha256Canonico` só é chamado no ATO DA CRIAÇÃO (seis sítios de
+  produção) e **nada relê uma `memoria` gravada para recomputar digesto** — a certificação compara
+  `calculoId` e lê o sha da COLUNA. O digesto muda para contracheques NOVOS; nenhum gravado é
+  invalidado.
 - ~~`PARAMETRO-TROCADO-ENTRE-AS-PARCELAS`~~ — **resolvida na V11 V9.2** (seção abaixo).
 - `MEDIA-DAS-VARIAVEIS-NO-13` (5.12.82) — a base do 13º só admite vencimento-base, gratificações do
   vínculo e percentual do vencimento. Valor informado e fórmula exigiriam a média do ano; somar o

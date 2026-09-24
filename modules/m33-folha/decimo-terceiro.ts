@@ -289,6 +289,28 @@ export function avosDoExercicio(
 
 export type BaseDosAvosDoAdiantamento = "ATE_A_COMPETENCIA" | "EXERCICIO_INTEIRO";
 
+/**
+ * ⚠️ V11 V9.3 — QUAL ESTADO O ADIANTAMENTO PRECISA TER ALCANÇADO PARA SER ABATIDO.
+ *
+ * Este arquivo continua sem opinião sobre qual dos três é o certo: quem declara é o ENTE, no
+ * parâmetro versionado, com o ato. É a mesma saída do `diasMinimosDoAvo` e do
+ * `percentualDaPrimeiraParcela`, aplicada ao critério que faltava.
+ *
+ * A ordem da união é a da CADEIA (fechado ⊂ certificado ⊂ pago) e ela é usada como ordem: quem
+ * exige `PAGO` satisfaz `FECHADO`. Ver `MODULO.md`, seção "O ESTADO EXIGIDO DO ADIANTAMENTO".
+ */
+export type EstadoMinimoDoAdiantamento = "FECHADO" | "CERTIFICADO" | "PAGO";
+
+/** A cadeia, do menor para o maior — é o que torna "pelo menos X" uma comparação e não um switch. */
+export const CADEIA_DO_ESTADO_DO_ADIANTAMENTO: readonly EstadoMinimoDoAdiantamento[] = ["FECHADO", "CERTIFICADO", "PAGO"];
+
+/** O fato que cada estado manda verificar — vai à memória, para o contracheque dizer o que conferiu. */
+export const FATO_DO_ESTADO_DO_ADIANTAMENTO: Readonly<Record<EstadoMinimoDoAdiantamento, string>> = {
+  FECHADO: "FECHAMENTO_DA_FOLHA_DE_ADIANTAMENTO",
+  CERTIFICADO: "CERTIFICACAO_DO_CALCULO_DO_ADIANTAMENTO",
+  PAGO: "PAGAMENTO_DO_ADIANTAMENTO_DO_VINCULO",
+};
+
 export interface ParametroLidoDoDecimoTerceiro {
   readonly id: string;
   readonly exercicio: number;
@@ -299,6 +321,14 @@ export interface ParametroLidoDoDecimoTerceiro {
   readonly baseDosAvosDoAdiantamento: BaseDosAvosDoAdiantamento;
   readonly decimoTerceiroSofreContribuicao: boolean;
   readonly decimoTerceiroSofreIrrf: boolean;
+  /**
+   * ⚠️ V11 V9.3 — O CRITÉRIO DO ABATIMENTO, e `null` significa NÃO DECLARADO.
+   *
+   * Nulo não é "o padrão de sempre em silêncio": o cálculo sai como SIMULAÇÃO identificada (a
+   * memória abaixo diz), e a EFETIVAÇÃO da folha que aplicou abatimento fica bloqueada no
+   * serviço. Aqui, que é domínio puro, o nulo só muda o que o contracheque AFIRMA.
+   */
+  readonly estadoMinimoDoAdiantamentoParaAbater: EstadoMinimoDoAdiantamento | null;
   readonly ato: ReferenciaNormativa;
 }
 
@@ -335,6 +365,19 @@ export interface ProcedenciaDoAbatimento {
    * guarda rodou.
    */
   readonly versaoDoParametro: number;
+  /**
+   * ⚠️ V11 V9.3 — O QUE O ENTE EXIGIU, e `null` quando ele não declarou nada.
+   *
+   * Com `null`, o abatimento aconteceu pelo critério que o motor tinha cravado até a V11 V9.2
+   * (o FECHAMENTO), e isso é exatamente o que o contracheque passa a dizer em vez de calar.
+   */
+  readonly estadoExigido: EstadoMinimoDoAdiantamento | null;
+  /**
+   * O estado que o SERVIÇO confirmou antes de abater — nunca menos que `FECHADO`, porque sem
+   * fechamento não há de onde ler o valor. Quando há `estadoExigido`, este o satisfaz: o serviço
+   * já teria recusado, nomeando a matrícula.
+   */
+  readonly estadoVerificado: EstadoMinimoDoAdiantamento;
 }
 
 export interface EntradaDoDecimoTerceiro {
@@ -482,14 +525,35 @@ export function calcularContrachequeDoDecimoTerceiro(e: EntradaDoDecimoTerceiro)
       throw new AbatimentoMaiorQueODecimoTerceiroError(e.vinculo.matricula, valorDaParcela, e.adiantamentoApuradoEmFolhaFechada);
     }
     const p = e.procedenciaDoAbatimento;
+    /**
+     * ⚠️ V11 V9.3 — A LINHA DIZ QUAL CRITÉRIO FOI APLICADO E QUEM O DECLAROU.
+     *
+     * Duas frases diferentes, porque são duas situações diferentes e confundi-las foi o defeito
+     * que a V11 V9.2 corrigiu em outro lugar deste mesmo arquivo:
+     *   · com critério DECLARADO, a linha afirma o fato que o ente mandou conferir, e o
+     *     contracheque passa a ser conferível contra o ato do parâmetro;
+     *   · SEM critério declarado, a linha diz que aquilo é SIMULAÇÃO — o valor saiu pelo
+     *     fechamento, que é o que o motor tinha cravado, e nenhuma norma do ente o sustenta.
+     *     A efetivação correspondente está bloqueada no serviço; aqui se AFIRMA, não se decide.
+     */
+    const criterio = e.parametro.estadoMinimoDoAdiantamentoParaAbater;
+    const onde = p === null ? "" : ` de ${p.competencia} (cálculo nº ${p.calculoNumero}; certificação ${p.situacaoDaCertificacao})`;
     empurrar(
       e.rubricaDoAbatimento,
       e.adiantamentoApuradoEmFolhaFechada,
       `1ª parcela APURADA na folha de adiantamento FECHADA` +
-        (p === null ? "" : ` de ${p.competencia} (cálculo nº ${p.calculoNumero}; certificação ${p.situacaoDaCertificacao})`) +
+        onde +
         `, exercício ${e.parametro.exercicio}: ${m(e.adiantamentoApuradoEmFolhaFechada)}. ` +
-        `⚠️ O que se verificou foi o FECHAMENTO daquela folha, não o seu pagamento: liquidar e ` +
-        `pagar são atos próprios (M05/M09) e não são consultados aqui.`
+        (criterio === null
+          ? `⚠️ SIMULAÇÃO — NÃO É APURAÇÃO APROVADA: o parâmetro do 13º de ${e.parametro.exercicio} ` +
+            `NÃO declara qual estado o adiantamento precisa ter para ser abatido. O valor acima saiu ` +
+            `do FECHAMENTO daquela folha, que é critério de engenharia e não norma do ente. Certificação, ` +
+            `empenho, liquidação e pagamento NÃO foram consultados. Enquanto o critério não for ` +
+            `declarado com o ato que o fundamenta, a apropriação desta folha permanece bloqueada ` +
+            `(ABATIMENTO-SEM-CRITERIO-DECLARADO).`
+          : `Critério DECLARADO pelo ente: o adiantamento tem de estar ao menos ${criterio} ` +
+            `(${e.parametro.ato.tipo} ${e.parametro.ato.numero}/${e.parametro.ato.ano}, ${e.parametro.ato.dispositivo}). ` +
+            `Verificado: ${p === null ? criterio : p.estadoVerificado}.`)
     );
   }
 
@@ -518,6 +582,14 @@ export function calcularContrachequeDoDecimoTerceiro(e: EntradaDoDecimoTerceiro)
       avosNoExercicio: e.parametro.avosNoExercicio,
       percentualDaPrimeiraParcela: e.parametro.percentualDaPrimeiraParcela.toFixed(4),
       baseDosAvosDoAdiantamento: e.parametro.baseDosAvosDoAdiantamento,
+      /**
+       * ⚠️ V11 V9.3 — VAI À MEMÓRIA DE TODO CONTRACHEQUE DE 13º, inclusive os do ADIANTAMENTO e
+       * os do 13º SEM abatimento, e isso é de propósito: é daqui que a APROPRIAÇÃO lê, depois,
+       * se o cálculo que ela vai empenhar rodou com critério declarado. Guardar só dentro de
+       * `procedenciaDoAbatimento` funcionaria — mas só quando houvesse abatimento, e o leitor
+       * teria de adivinhar o que significa a ausência da chave.
+       */
+      estadoMinimoDoAdiantamentoParaAbater: e.parametro.estadoMinimoDoAdiantamentoParaAbater,
       decimoTerceiroSofreContribuicao: e.parametro.decimoTerceiroSofreContribuicao,
       decimoTerceiroSofreIrrf: e.parametro.decimoTerceiroSofreIrrf,
       ato: {
@@ -538,7 +610,18 @@ export function calcularContrachequeDoDecimoTerceiro(e: EntradaDoDecimoTerceiro)
       rubricas: e.base.map((b) => ({ codigo: b.codigo, descricao: b.descricao, natureza: b.natureza, valor: m(b.valor), memoria: b.memoria })),
     },
     apurado: m(decimoApurado),
-    parcelaPaga: m(valorDaParcela),
+    /**
+     * ⚠️ V11 V9.3 — CHAMAVA-SE `parcelaPaga`, E ISSO ERA O MESMO DEFEITO QUE A V11 V9.2 CORRIGIU
+     * EM `adiantamentoPago`: no contracheque do ADIANTAMENTO a chave afirmava que o valor tinha
+     * sido PAGO a uma folha que estava apenas CALCULADA. É o documento com que o servidor confere
+     * o próprio pagamento, e ele ia lacrado em sha256 — a afirmação ficava carimbada.
+     *
+     * Renomear é seguro e não desfaz fato nenhum: `sha256Canonico` só é chamado no ATO DA
+     * CRIAÇÃO (seis sítios de produção), e nada neste repositório RELÊ uma `memoria` gravada para
+     * recomputar digesto — a certificação compara `calculoId` e lê o sha da COLUNA. Logo o
+     * digesto muda para os contracheques NOVOS e nenhum já gravado é invalidado.
+     */
+    parcelaApurada: m(valorDaParcela),
     adiantamentoAbatido: m(e.adiantamentoApuradoEmFolhaFechada),
     /**
      * ⚠️ O QUE SUSTENTA O DESCONTO, ESCRITO — e o que NÃO sustenta, também.
@@ -560,14 +643,35 @@ export function calcularContrachequeDoDecimoTerceiro(e: EntradaDoDecimoTerceiro)
             // contracheque compara os dois números e vê a identidade — sem precisar confiar que
             // a guarda rodou.
             versaoDoParametroDoAdiantamento: e.procedenciaDoAbatimento.versaoDoParametro,
-            fatoVerificado: "FECHAMENTO_DA_FOLHA_DE_ADIANTAMENTO",
+            /**
+             * ⚠️ V11 V9.3 — O CRITÉRIO VIROU DADO DA MEMÓRIA, e é ele que separa apuração de
+             * simulação para quem ler este contracheque daqui a cinco anos.
+             *
+             * `criterioDeclaradoPeloEnte` é a chave que o controle interno procura: `false`
+             * significa que nenhum ato do município sustenta o desconto, e que a folha que o
+             * contém não podia ter sido apropriada. `estadoExigido` e `estadoVerificado` tornam
+             * a conferência possível SEM confiar que a guarda rodou — mesmo raciocínio do
+             * `versaoDoParametroDoAdiantamento` acima.
+             */
+            criterioDeclaradoPeloEnte: e.procedenciaDoAbatimento.estadoExigido !== null,
+            estadoExigidoPeloEnte: e.procedenciaDoAbatimento.estadoExigido,
+            estadoVerificado: e.procedenciaDoAbatimento.estadoVerificado,
+            fatoVerificado: FATO_DO_ESTADO_DO_ADIANTAMENTO[e.procedenciaDoAbatimento.estadoVerificado],
+            natureza: e.procedenciaDoAbatimento.estadoExigido === null ? "SIMULACAO" : "APURACAO",
             motivo:
-              "o abatimento é condicionado ao FECHAMENTO da folha de adiantamento, e a nada mais: " +
-              "certificação, empenho, liquidação e pagamento NÃO são consultados. A situação da " +
-              "certificação está aqui como fato, não como condição — o critério normativo de qual " +
-              "estado torna o adiantamento abatível não foi levantado e está declarado no MODULO " +
-              "como ESTADO-EXIGIDO-DO-ADIANTAMENTO-SEM-FONTE. Uma folha FECHADA e DEVOLVIDA para " +
-              "correção nunca será liquidada nem paga, e mesmo assim foi abatida aqui.",
+              e.procedenciaDoAbatimento.estadoExigido === null
+                ? "SIMULAÇÃO — NÃO É APURAÇÃO APROVADA. O parâmetro do 13º deste exercício não " +
+                  "declara qual estado o adiantamento precisa ter para ser abatido, então o " +
+                  "abatimento saiu pelo FECHAMENTO da folha de adiantamento — critério de " +
+                  "engenharia, não norma do ente. Certificação, empenho, liquidação e pagamento " +
+                  "NÃO foram consultados; uma folha FECHADA e DEVOLVIDA para correção nunca será " +
+                  "liquidada nem paga, e mesmo assim seria abatida aqui. A APROPRIAÇÃO desta folha " +
+                  "está bloqueada (ABATIMENTO-SEM-CRITERIO-DECLARADO) até o ente declarar o " +
+                  "critério com o ato que o fundamenta. Ver ESTADO-EXIGIDO-DO-ADIANTAMENTO-SEM-FONTE " +
+                  "no MODULO do M33."
+                : "o abatimento foi condicionado ao estado que o ENTE declarou no parâmetro " +
+                  "versionado, com ato — não a um critério escrito no motor. A situação da " +
+                  "certificação continua aqui como FATO; quem decide é `estadoExigidoPeloEnte`.",
           },
     incidencias: eAdiantamento
       ? {
@@ -680,6 +784,18 @@ export const zCadastrarParametroDoDecimoTerceiroInput = zReferenciaNormativaInpu
     .transform((v) => new Decimal(v))
     .refine((d) => d.gte(0) && d.lte(1), "percentual entre 0 e 1 (0.5 = 50%)"),
   baseDosAvosDoAdiantamento: z.enum(["ATE_A_COMPETENCIA", "EXERCICIO_INTEIRO"]),
+  /**
+   * ⚠️ V11 V9.3 — OPCIONAL NO ZOD, E A OMISSÃO É UM FATO, NÃO UM DEFAULT.
+   *
+   * Ausente ou string vazia (o que um `select` sem escolha manda) viram `null`: critério NÃO
+   * declarado. O `default("FECHADO")` que seria cômodo aqui é exatamente o que não se pode
+   * escrever — ele faria o sistema declarar, em nome do município, uma norma que ninguém
+   * levantou, e ainda esconderia a lacuna do controle interno.
+   */
+  estadoMinimoDoAdiantamentoParaAbater: z
+    .union([z.enum(["FECHADO", "CERTIFICADO", "PAGO"]), z.literal(""), z.null(), z.undefined()])
+    .optional()
+    .transform((v) => (v === "" || v === undefined ? null : v)),
   decimoTerceiroSofreContribuicao: z.coerce.boolean(),
   decimoTerceiroSofreIrrf: z.coerce.boolean(),
   rubricaDoDecimoTerceiroId: z.string().min(1),

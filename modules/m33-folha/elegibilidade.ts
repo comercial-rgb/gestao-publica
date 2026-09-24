@@ -34,6 +34,18 @@ export interface EstadoDaFolhaParaAtos {
   /** Quantos empenhos a distribuição do cálculo fechado pede. Nulo quando não se leu (folha aberta). */
   readonly empenhosEsperados: number | null;
   readonly empenhosLiquidados: number;
+  /**
+   * ⚠️ V11 V9.3 — O CÁLCULO FECHADO ABATEU ADIANTAMENTO SEM CRITÉRIO DECLARADO PELO ENTE.
+   *
+   * `true` = a folha é de 13º, o cálculo congelado aplicou abatimento da 1ª parcela, e o
+   * parâmetro sob o qual ele rodou NÃO declarava qual estado o adiantamento precisava ter. Aquilo
+   * é SIMULAÇÃO, não apuração aprovada, e a EFETIVAÇÃO correspondente — a apropriação/empenho —
+   * não pode acontecer. Ver `ESTADO-EXIGIDO-DO-ADIANTAMENTO-SEM-FONTE` no MODULO do M33.
+   *
+   * `false` em toda folha mensal, em toda folha de adiantamento e em todo 13º que não abateu
+   * nada: lacuna normativa bloqueia a efetivação CORRESPONDENTE, não o sistema.
+   */
+  readonly abatimentoSemCriterioDeclarado: boolean;
 }
 
 export interface AtorNaFolha {
@@ -71,6 +83,18 @@ export function elegibilidadeParaFechar(e: EstadoDaFolhaParaAtos): Elegibilidade
 
 export function elegibilidadeParaApropriar(e: EstadoDaFolhaParaAtos): Elegibilidade {
   if (!e.fechada) return preCondicao("FOLHA-NAO-FECHADA", `A folha de ${e.competencia} ainda não foi fechada; só o cálculo congelado vira despesa.`, "Feche a folha antes de apropriar.");
+  /**
+   * ⚠️ V11 V9.3 — A LACUNA NORMATIVA VEM ANTES DE "JÁ APROPRIADA", e a ordem é a mesma regra do
+   * topo deste arquivo: o motivo mais estrutural fala primeiro. Dizer "já apropriada" a quem
+   * sequer podia apropriar mandaria a pessoa procurar os empenhos em vez de procurar o ato.
+   */
+  if (e.abatimentoSemCriterioDeclarado) {
+    return preCondicao(
+      "ABATIMENTO-SEM-CRITERIO-DECLARADO",
+      `O 13º de ${e.competencia} abateu a 1ª parcela sem que o parâmetro do exercício declarasse qual estado o adiantamento precisa ter para ser abatido. Isso é SIMULAÇÃO, não apuração aprovada, e não vira despesa.`,
+      "O ente declara o critério (fechado, certificado ou pago) na próxima versão do parâmetro do 13º, com o ato que o fundamenta, e a folha é recalculada. Folha > Parâmetros do 13º."
+    );
+  }
   // ⚠️ APROPRIAÇÃO PARCIAL CONTINUA OFERECIDA: parar no meio (saldo da ficha) é estado real, e a
   // retomada é o próprio ato — a numeração determinística não duplica.
   if (e.empenhosEsperados !== null && e.empenhosGravados >= e.empenhosEsperados && e.empenhosGravados > 0) {

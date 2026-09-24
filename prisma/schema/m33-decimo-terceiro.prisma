@@ -59,6 +59,44 @@ enum BaseDosAvosDoAdiantamento {
   EXERCICIO_INTEIRO
 }
 
+/// ⚠️ V11 V9.3 — QUAL ESTADO O ADIANTAMENTO PRECISA TER ALCANÇADO PARA SER ABATIDO NA 2ª PARCELA.
+///
+/// Até a V11 V9.2 este critério era o ÚNICO do 13º cravado no motor (`FECHADO`, e a justificativa
+/// escrita era de ENGENHARIA — "abater valores de um cálculo que ainda pode mudar"). A V11 V9.3
+/// levantou a fonte e o resultado foi o que obriga a tirá-lo do motor: a **Lei 4.749/1965, art. 1º**
+/// manda compensar "a importância que, a título de adiantamento, o empregado houver RECEBIDO", e o
+/// **Decreto 57.155/1965, art. 3º, § 3º** repete o verbo — mas os dois governam o EMPREGADO, mesma
+/// família da Lei 4.090/1962 de onde saíram os "15 dias" e os "50%" que este módulo já expulsou do
+/// código. O ente é de regime PLURAL por exigência do TR (celetista e estatutário na mesma folha),
+/// e a lei municipal aplicável ao estatutário não foi localizada. Nessas condições QUALQUER valor
+/// único no motor é norma inventada — inclusive o `FECHADO` que lá estava.
+///
+/// ⚠️ A LISTA É CURTA, E A CURTEZA É DECISÃO. `EMPENHADO` e `LIQUIDADO` NÃO são oferecidos: são
+/// atos da DESPESA do ente, e não dizem nada sobre o servidor ter recebido. Um ente que os
+/// declarasse estaria condicionando o abatimento a um fato que não responde à pergunta da norma.
+/// Eles existem no schema (M05) e são legíveis; ficam de fora por não serem critério NORMATIVO
+/// plausível, e isto está escrito para que a ausência seja decisão visível e não esquecimento.
+enum EstadoMinimoDoAdiantamento {
+  /// O cálculo do adiantamento foi CONGELADO (`FechamentoDaFolha`). É o menor estado possível:
+  /// sem fechamento não há de onde LER o valor apurado, então ele é pré-condição de todos.
+  FECHADO
+  /// Além de fechado, o cálculo foi ATESTADO por quem o ente designou (`CertificacaoDaFolha`,
+  /// situação derivada `CERTIFICADA`). Uma folha DEVOLVIDA para correção não satisfaz.
+  CERTIFICADO
+  /// O adiantamento deste vínculo foi efetivamente PAGO — `Pagamento` (M05), líquido de estorno e
+  /// de anulação parcial, cobrindo o valor apurado.
+  ///
+  /// ⚠️ SÓ É OFERECIDO ONDE O FATO EXISTE. Com `GrupoDeEmpenhoDaFolha.porServidor = false` há UM
+  /// empenho para o grupo inteiro, com credor declarado, e "quanto foi pago a ESTE servidor" não é
+  /// representável no banco. O cadastro do parâmetro RECUSA a opção nomeando o motivo estrutural,
+  /// em vez de aceitá-la para falhar no cálculo de dezembro.
+  ///
+  /// ⚠️ E PAGAMENTO PARCIAL NÃO SATISFAZ. O gate é "o apurado foi pago", não "houve pagamento":
+  /// meia parcela paga recusa nomeando a matrícula, o apurado e o pago. É assim que o caso que
+  /// ninguém olhava deixa de abater o inteiro em silêncio.
+  PAGO
+}
+
 /// O parâmetro do 13º de UM exercício. Versionado e append-only: a vigente é a de maior `versao`.
 model ParametroDoDecimoTerceiro {
   id String @id @default(cuid())
@@ -84,6 +122,20 @@ model ParametroDoDecimoTerceiro {
   percentualDaPrimeiraParcela Decimal @db.Decimal(7, 4)
 
   baseDosAvosDoAdiantamento BaseDosAvosDoAdiantamento
+
+  /// ⚠️ V11 V9.3 — O CRITÉRIO DO ABATIMENTO, DECLARADO PELO ENTE COM O ATO ACIMA.
+  ///
+  /// NULO = **não declarado**, e isso NÃO é "segue como antes em silêncio": o cálculo continua
+  /// disponível como **SIMULAÇÃO EXPLICITAMENTE IDENTIFICADA** (o contracheque diz, a tela diz) e a
+  /// **EFETIVAÇÃO correspondente fica BLOQUEADA** — a apropriação/empenho de uma folha de 13º que
+  /// aplicou abatimento recusa com `ABATIMENTO-SEM-CRITERIO-DECLARADO`. Lacuna normativa bloqueia a
+  /// efetivação correspondente, não a construção: a folha mensal, o 13º sem abatimento e todo o
+  /// resto seguem.
+  ///
+  /// ⚠️ NULLABLE POR MIGRATION ADITIVA, e o nulo é o estado real dos parâmetros já gravados —
+  /// eles foram cadastrados quando a pergunta não existia. Inventar `FECHADO` para eles seria
+  /// afirmar que o ente declarou um critério que ninguém lhe perguntou.
+  estadoMinimoDoAdiantamentoParaAbater EstadoMinimoDoAdiantamento?
 
   // ── AS INCIDÊNCIAS, DECLARADAS ────────────────────────────────────────────
 

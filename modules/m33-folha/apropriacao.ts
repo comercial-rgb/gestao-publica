@@ -8,6 +8,12 @@ import { empenhar } from "../m05-despesa/servico.js";
 import { elementoDebitaEstoque, roteiroEmpenho } from "../m01-core-contabil/roteiros.js";
 import { criarM05DepsComContratos } from "../m11-licitacoes/adapter-m05.js";
 import { zCompetencia } from "./dominio.js";
+/**
+ * ⚠️ V11 V9.3 — A EFETIVAÇÃO PRECISA SABER SE O QUE ELA VAI EMPENHAR É APURAÇÃO OU SIMULAÇÃO.
+ * O leitor vive no serviço do parâmetro do 13º porque é lá que mora a leitura da memória; aqui se
+ * decide o que fazer com a resposta.
+ */
+import { criterioDoAbatimentoNoCalculo } from "./decimo-terceiro-servico.js";
 
 /**
  * ═══ M33 — A APROPRIAÇÃO CONTÁBIL DA FOLHA (V6 P2.3b; TR 5.12.71/72) ═══
@@ -40,6 +46,40 @@ export class FolhaNaoFechadaError extends Error {
         `despesa — apropriar um cálculo que ainda pode ser cancelado empenharia um valor que a competência pode mudar. Nada foi gravado.`
     );
     this.name = "FolhaNaoFechadaError";
+  }
+}
+
+/**
+ * ═══ V11 V9.3 — LACUNA NORMATIVA BLOQUEIA A EFETIVAÇÃO CORRESPONDENTE ═══
+ *
+ * ⚠️ O RECORTE É O PONTO, e ele é estreito de propósito: o que fica bloqueado é a apropriação da
+ * FOLHA DE 13º QUE APLICOU ABATIMENTO. A folha mensal segue, o adiantamento segue, um 13º sem
+ * abatimento segue, e o CÁLCULO desta mesma folha segue — ele é a simulação, e é ela que mostra
+ * ao ente o que está em jogo quando ele for declarar o critério. Bloquear a construção em vez da
+ * efetivação transformaria uma pergunta normativa em paralisação.
+ *
+ * ⚠️ E NÃO HÁ CAIXA DE ACEITE. Não existe "confirmo sob minha responsabilidade" que destrave
+ * isto: essa caixa transfere a culpa para quem clicou e deixa o desconto no contracheque do
+ * servidor do mesmo jeito. O que destrava é o ENTE declarar o critério no parâmetro versionado,
+ * com o ato que o fundamenta — o mesmo mecanismo do avo e do percentual da 1ª parcela.
+ *
+ * ⚠️ NADA ANTERIOR É DESFEITO. Uma folha de 13º já apropriada continua apropriada; os empenhos
+ * gravados continuam valendo. O que se impede é o ato que ainda não aconteceu.
+ */
+export class AbatimentoSemCriterioDeclaradoError extends Error {
+  constructor(competencia: string, exercicio: number | null, totalAbatido: string) {
+    super(
+      `ABATIMENTO-SEM-CRITERIO-DECLARADO: o 13º de ${competencia} abateu ${totalAbatido} de 1ª parcela, ` +
+        `e o parâmetro do 13º${exercicio === null ? "" : ` de ${exercicio}`} sob o qual este cálculo rodou ` +
+        `NÃO declara qual estado o adiantamento precisa ter alcançado para ser abatido. O abatimento saiu ` +
+        `pelo FECHAMENTO da folha de adiantamento — critério de ENGENHARIA, não norma do ente —, e ` +
+        `empenhar isso seria transformar em despesa uma apuração que nenhum ato sustenta. ` +
+        `O que destrava: o ente cadastra a versão seguinte do parâmetro declarando o critério ` +
+        `(FECHADO, CERTIFICADO ou PAGO) com o ato que o fundamenta, em Folha > Parâmetros do 13º, e a ` +
+        `folha é recalculada. Não há dispensa nem confirmação que substitua o ato. ` +
+        `O cálculo continua disponível como SIMULAÇÃO. Nada foi gravado.`
+    );
+    this.name = "AbatimentoSemCriterioDeclaradoError";
   }
 }
 
@@ -343,7 +383,7 @@ export async function apropriarFolha(prisma: PrismaClient, input: ApropriarFolha
 
   const folha = await prisma.folhaDePagamento.findUnique({
     where: { id: d.folhaId },
-    select: { id: true, competencia: true, tipo: true, fechamento: { select: { calculoId: true } }, apropriacao: { select: { id: true } } },
+    select: { id: true, competencia: true, tipo: true, exercicio: true, fechamento: { select: { calculoId: true } }, apropriacao: { select: { id: true } } },
   });
   if (folha === null) throw new Error(`Folha ${d.folhaId} não existe. Nada foi gravado.`);
   zCompetencia.parse(folha.competencia);
@@ -353,6 +393,19 @@ export async function apropriarFolha(prisma: PrismaClient, input: ApropriarFolha
   await prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.apropriarFolha, "ENTE");
   });
+
+  /**
+   * ⚠️ V11 V9.3 — ANTES DE QUALQUER GRAVAÇÃO, E ANTES DAS OUTRAS PRÉ-CONDIÇÕES DE CADASTRO.
+   * Criar a `ApropriacaoDaFolha` e só então descobrir a lacuna deixaria o registro do ato de
+   * apropriar existindo sobre uma folha que não podia ser apropriada — o efeito colateral antes
+   * da guarda que este repositório já pagou para não repetir.
+   */
+  if (folha.tipo === "DECIMO_TERCEIRO") {
+    const criterio = await criterioDoAbatimentoNoCalculo(prisma, folha.fechamento.calculoId);
+    if (criterio.abateu && criterio.criterioDeclarado === null) {
+      throw new AbatimentoSemCriterioDeclaradoError(folha.competencia, folha.exercicio, criterio.totalAbatido);
+    }
+  }
 
   const agrupamento = await parcelasDoCalculo(prisma, folha.fechamento.calculoId);
   if (agrupamento.linhasDeProvento === 0) throw new Error(`FOLHA-SEM-PROVENTO: o cálculo fechado de ${folha.competencia} não tem linha de provento nenhuma. Nada foi gravado.`);

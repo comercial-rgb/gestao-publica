@@ -7,6 +7,7 @@ import {
   zCadastrarParametroDoDecimoTerceiroInput,
   ParametroDoDecimoTerceiroAusenteError,
   type CadastrarParametroDoDecimoTerceiroInput,
+  type EstadoMinimoDoAdiantamento,
   type ParametroLidoDoDecimoTerceiro,
 } from "./decimo-terceiro.js";
 
@@ -38,6 +39,37 @@ export class RubricaNaoAdmitidaNaBaseError extends Error {
         `Nada foi gravado.`
     );
     this.name = "RubricaNaoAdmitidaNaBaseError";
+  }
+}
+
+/**
+ * ═══ V11 V9.3 — O CRITÉRIO "PAGO" SÓ SE OFERECE ONDE O FATO EXISTE ═══
+ *
+ * ⚠️ ESTE ERRO É ESTRUTURAL, NÃO NORMATIVO, e a diferença é o que o torna legítimo. Ele não diz
+ * que o ente não pode exigir pagamento — diz que ESTE sistema não saberia responder à pergunta
+ * "este servidor recebeu?" com o cadastro que o ente tem hoje.
+ *
+ * O motivo é concreto: a cadeia que liga um servidor a um `Pagamento` é
+ * `Contracheque → grupo da rubrica → EmpenhoDaFolha → Empenho → Liquidacao → Pagamento`, e o
+ * `EmpenhoDaFolha` só carrega `vinculoId` quando o grupo empenha POR SERVIDOR. Com
+ * `porServidor = false` existe UM empenho para o grupo inteiro, com credor declarado — e "quanto
+ * saiu para a matrícula 22222222222" não é representável em lugar nenhum do banco.
+ *
+ * ⚠️ E A RECUSA É NO CADASTRO, NÃO NO CÁLCULO. Aceitar aqui para falhar em dezembro deixaria o
+ * ente com um parâmetro inválido ocupando o número da versão (nada aqui apaga) e a descoberta
+ * aconteceria no pior momento possível. É a mesma razão pela qual o grupo apontado para ficha de
+ * material é recusado no cadastro do grupo, e não na liquidação com metade dos empenhos feitos.
+ */
+export class EstadoPagoNaoVerificavelError extends Error {
+  constructor(motivo: string, saida: string) {
+    super(
+      `ESTADO-PAGO-NAO-VERIFICAVEL: o critério "PAGO" exige saber se ESTE servidor recebeu a 1ª ` +
+        `parcela, e ${motivo}. Aceitar o critério assim faria o cálculo de dezembro recusar a folha ` +
+        `inteira por um fato que o cadastro nunca poderia produzir. ${saida} ` +
+        `Enquanto isso, os critérios FECHADO e CERTIFICADO continuam disponíveis e verificáveis. ` +
+        `Nada foi gravado.`
+    );
+    this.name = "EstadoPagoNaoVerificavelError";
   }
 }
 
@@ -106,6 +138,39 @@ export async function cadastrarParametroDoDecimoTerceiro(
       }
     }
 
+    /**
+     * ⚠️ V11 V9.3 — A VERIFICABILIDADE DO CRITÉRIO "PAGO", CONFERIDA ANTES DE GRAVAR.
+     *
+     * Roda junto das outras pré-condições, e pela mesma regra aprendida: gravar e só então
+     * descobrir que o critério é inverificável deixaria uma versão inválida ocupando o número.
+     */
+    if (d.estadoMinimoDoAdiantamentoParaAbater === "PAGO") {
+      const noGrupo = await tx.rubricaDoGrupoDeEmpenho.findUnique({
+        where: { rubricaId: d.rubricaDoAdiantamentoId },
+        select: { grupo: { select: { codigo: true, descricao: true, porServidor: true } } },
+      });
+      const codigoDaRubrica =
+        (await tx.rubrica.findUnique({ where: { id: d.rubricaDoAdiantamentoId }, select: { codigo: true } }))?.codigo ??
+        d.rubricaDoAdiantamentoId;
+      if (noGrupo === null) {
+        throw new EstadoPagoNaoVerificavelError(
+          `a rubrica do adiantamento (${codigoDaRubrica}) não está em GRUPO DE EMPENHO nenhum — sem ` +
+            `empenho não há liquidação nem pagamento a consultar`,
+          `Inclua ${codigoDaRubrica} num grupo de empenho que empenhe POR SERVIDOR, em Folha > Grupos de empenho.`
+        );
+      }
+      if (!noGrupo.grupo.porServidor) {
+        throw new EstadoPagoNaoVerificavelError(
+          `o grupo ${noGrupo.grupo.codigo} (${noGrupo.grupo.descricao}), que empenha a rubrica ` +
+            `${codigoDaRubrica}, emite UM empenho para o grupo inteiro com credor declarado ` +
+            `(porServidor = false) — "quanto foi pago a cada servidor" não existe como fato no banco`,
+          `Para exigir PAGO, o ente precisa empenhar a 1ª parcela POR SERVIDOR (grupo com credor = o CPF ` +
+            `de cada um). A ficha, a série e o modo de empenhar de um grupo já empenhado não se trocam — ` +
+            `use um grupo próprio para a rubrica do adiantamento.`
+        );
+      }
+    }
+
     const ultima = await tx.parametroDoDecimoTerceiro.findFirst({
       where: { exercicio: d.exercicio },
       select: { versao: true },
@@ -121,6 +186,7 @@ export async function cadastrarParametroDoDecimoTerceiro(
         avosNoExercicio: d.avosNoExercicio,
         percentualDaPrimeiraParcela: d.percentualDaPrimeiraParcela.toFixed(4),
         baseDosAvosDoAdiantamento: d.baseDosAvosDoAdiantamento,
+        estadoMinimoDoAdiantamentoParaAbater: d.estadoMinimoDoAdiantamentoParaAbater,
         decimoTerceiroSofreContribuicao: d.decimoTerceiroSofreContribuicao,
         decimoTerceiroSofreIrrf: d.decimoTerceiroSofreIrrf,
         rubricaDoDecimoTerceiroId: d.rubricaDoDecimoTerceiroId,
@@ -162,6 +228,7 @@ export async function parametroVigenteDoExercicio(tx: Tx, exercicio: number): Pr
     select: {
       id: true, exercicio: true, versao: true, diasMinimosDoAvo: true, avosNoExercicio: true,
       percentualDaPrimeiraParcela: true, baseDosAvosDoAdiantamento: true,
+      estadoMinimoDoAdiantamentoParaAbater: true,
       decimoTerceiroSofreContribuicao: true, decimoTerceiroSofreIrrf: true,
       rubricaDoDecimoTerceiroId: true, rubricaDoAdiantamentoId: true, rubricaDoAbatimentoId: true,
       atoEsfera: true, atoTipo: true, atoNumero: true, atoAno: true, atoDispositivo: true, atoEmenta: true,
@@ -178,6 +245,7 @@ export async function parametroVigenteDoExercicio(tx: Tx, exercicio: number): Pr
       avosNoExercicio: p.avosNoExercicio,
       percentualDaPrimeiraParcela: new Decimal(p.percentualDaPrimeiraParcela),
       baseDosAvosDoAdiantamento: p.baseDosAvosDoAdiantamento as ParametroLidoDoDecimoTerceiro["baseDosAvosDoAdiantamento"],
+      estadoMinimoDoAdiantamentoParaAbater: p.estadoMinimoDoAdiantamentoParaAbater as EstadoMinimoDoAdiantamento | null,
       decimoTerceiroSofreContribuicao: p.decimoTerceiroSofreContribuicao,
       decimoTerceiroSofreIrrf: p.decimoTerceiroSofreIrrf,
       ato: {
@@ -194,4 +262,67 @@ export async function parametroVigenteDoExercicio(tx: Tx, exercicio: number): Pr
     rubricaDoAbatimentoId: p.rubricaDoAbatimentoId,
     rubricasDaBase: p.rubricasDaBase.map((r) => r.rubricaId),
   };
+}
+
+/**
+ * ═══ V11 V9.3 — O CÁLCULO FECHADO ABATEU, E SOB QUE CRITÉRIO? ═══
+ *
+ * Quem pergunta é a APROPRIAÇÃO, que precisa saber se o que vai empenhar é apuração aprovada ou
+ * simulação. A resposta vem da MEMÓRIA do contracheque, e não do parâmetro VIGENTE agora — a
+ * diferença é o ponto: o parâmetro é append-only, e nada impede que o ente declare o critério
+ * DEPOIS de a folha de dezembro já ter sido calculada sem ele. Ler o vigente diria "declarado" de
+ * um cálculo que rodou sem conferir nada, e a efetivação passaria.
+ *
+ * ⚠️ FALHA FECHADO, e pelo mesmo motivo de `reguaDoParametroNoCalculo`: memória ausente ou
+ * ilegível num cálculo QUE ABATEU não vira "segue sem conferir". Vira recusa nomeada. Uma guarda
+ * que se desliga sozinha quando não entende o dado é pior que guarda nenhuma, porque parece que
+ * está lá.
+ *
+ * ⚠️ E O CÁLCULO ANTIGO, DE ANTES DESTA RODADA, RESPONDE `null` — que é a verdade: ele rodou
+ * quando ninguém perguntava, logo nenhum ato do ente o sustenta. Nada é desfeito (a folha já
+ * apropriada continua apropriada); o que se bloqueia é a efetivação que ainda não aconteceu.
+ */
+export interface CriterioDoAbatimentoNoCalculo {
+  /** Há linha de abatimento do adiantamento com valor > 0 neste cálculo. */
+  readonly abateu: boolean;
+  /** Σ abatida no cálculo, para a mensagem dizer de quanto se trata. */
+  readonly totalAbatido: string;
+  /** O que o ente declarava quando este cálculo rodou. `null` = não declarava nada. */
+  readonly criterioDeclarado: EstadoMinimoDoAdiantamento | null;
+}
+
+export async function criterioDoAbatimentoNoCalculo(tx: Tx, calculoId: string): Promise<CriterioDoAbatimentoNoCalculo> {
+  const linhas = await tx.linhaDoContracheque.findMany({
+    where: { contracheque: { calculoId }, rubrica: { natureza: "ABATIMENTO_DO_ADIANTAMENTO_DO_13" } },
+    select: { valor: true },
+  });
+  const total = linhas.reduce((acc, l) => acc.plus(new Decimal(l.valor)), new Decimal(0));
+  if (total.lte(0)) return { abateu: false, totalAbatido: total.toFixed(2), criterioDeclarado: null };
+
+  const c = await tx.contracheque.findFirst({ where: { calculoId }, select: { memoria: true }, orderBy: { id: "asc" } });
+  const recusar = (porque: string): never => {
+    throw new Error(
+      `CRITERIO-DO-ABATIMENTO-IRRECUPERAVEL: o cálculo abateu ${total.toFixed(2)} de adiantamento e ` +
+        `não foi possível recuperar sob que critério — ${porque}. Sem isso não dá para dizer se esta ` +
+        `folha é apuração aprovada ou simulação, e empenhá-la seria efetivar o que não se sabe. ` +
+        `Nada foi gravado.`
+    );
+  };
+  if (c === null) recusar("o cálculo não tem contracheque nenhum");
+  const memoria = (c as { readonly memoria: unknown }).memoria;
+  if (typeof memoria !== "object" || memoria === null) recusar("a memória do contracheque não é um objeto");
+  const par = (memoria as Record<string, unknown>)["parametro"];
+  if (typeof par !== "object" || par === null) recusar("a memória não traz o bloco `parametro`");
+  const bruto = (par as Record<string, unknown>)["estadoMinimoDoAdiantamentoParaAbater"];
+  /**
+   * ⚠️ `undefined` E `null` SÃO A MESMA RESPOSTA AQUI, E SÓ AQUI. `undefined` é o cálculo antigo
+   * (a chave não existia); `null` é o cálculo novo cujo ente não declarou. Os dois significam
+   * "nenhum ato do ente sustenta este abatimento", que é o que a apropriação precisa saber.
+   * Qualquer OUTRA coisa — um valor fora da união — é dado corrompido e recusa.
+   */
+  if (bruto === undefined || bruto === null) return { abateu: true, totalAbatido: total.toFixed(2), criterioDeclarado: null };
+  if (bruto !== "FECHADO" && bruto !== "CERTIFICADO" && bruto !== "PAGO") {
+    recusar(`a memória traz \`${String(bruto)}\`, que não é um estado que este sistema conheça`);
+  }
+  return { abateu: true, totalAbatido: total.toFixed(2), criterioDeclarado: bruto as EstadoMinimoDoAdiantamento };
 }

@@ -34,10 +34,12 @@ export function FormParametroDo13({
   proventos,
   base,
   abatimento,
+  adiantamentosQuePermitemPago,
 }: {
   readonly proventos: readonly Opcao[];
   readonly base: readonly Opcao[];
   readonly abatimento: readonly Opcao[];
+  readonly adiantamentosQuePermitemPago: readonly string[];
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDoParametroDo13, FormData>(criarParametroDo13Action, {});
   const ref = useRef<HTMLFormElement>(null);
@@ -113,6 +115,40 @@ export function FormParametroDo13({
           <span className="mt-1 block text-[11px]">
             As duas práticas existem nos municípios e o sistema não escolhe por você: uma paga metade do que já foi
             ganho até a competência; a outra paga metade do 13º projetado para o ano inteiro.
+          </span>
+        </label>
+
+        {/*
+          ⚠️ V11 V9.3 — O CRITÉRIO DO ABATIMENTO, E ELE NÃO TEM PADRÃO.
+
+          `defaultValue=""` e SEM `required`: deixar em branco é uma resposta legítima — significa
+          "o ente ainda não levantou a norma". O sistema então calcula o 13º como SIMULAÇÃO e
+          bloqueia a apropriação, em vez de fingir que alguém declarou algo. Marcar "Fechado" por
+          conveniência seria o sistema legislando pelo município, que é o erro que toda esta tela
+          existe para não cometer.
+
+          ⚠️ E NÃO HÁ CAIXA DE ACEITE em lugar nenhum deste formulário. "Confirmo sob minha
+          responsabilidade" destravaria o bloqueio transferindo a culpa para quem clicou, e o
+          desconto continuaria no contracheque do servidor do mesmo jeito.
+        */}
+        <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
+          <span className={ROTULO}>Para ser abatido na 2ª parcela, o adiantamento precisa estar</span>
+          <select name="estadoMinimoDoAdiantamentoParaAbater" defaultValue="" className={CAMPO}>
+            <option value="">Não declarado — o 13º sai como simulação e não pode ser apropriado</option>
+            <option value="FECHADO">Fechado — o cálculo do adiantamento foi congelado</option>
+            <option value="CERTIFICADO">Certificado — o cálculo foi atestado por quem o ente designou</option>
+            <option value="PAGO">Pago — o adiantamento deste servidor saiu do caixa</option>
+          </select>
+          <span className="mt-1 block text-[11px]">
+            Quem declara é o ente, com o ato abaixo. A Lei 4.749/1965, art. 1º e o Decreto 57.155/1965, art. 3º, § 3º
+            mandam compensar o que o empregado &ldquo;houver recebido&rdquo; — mas governam o contrato celetista, e o
+            estatutário recebe pelo estatuto do município. Por isso o sistema não escolhe por você, e também não
+            assume o que fazia antes.
+          </span>
+          <span className="mt-1 block text-[11px]">
+            {adiantamentosQuePermitemPago.length === 0
+              ? "Exigir “pago” não é possível hoje: nenhuma rubrica de provento está num grupo de empenho que empenhe POR SERVIDOR, e sem isso não existe no banco quanto saiu para cada matrícula. Cadastre um grupo por servidor para a rubrica do adiantamento, ou use “fechado” ou “certificado”."
+              : `Exigir “pago” só funciona com rubrica de adiantamento empenhada POR SERVIDOR. Hoje servem: ${adiantamentosQuePermitemPago.join("; ")}.`}
           </span>
         </label>
 

@@ -3,6 +3,10 @@ import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { Decimal, toMoney, sumMoney, type Money } from "../../packages/contracts/index.js";
 import { diaCivil } from "../../packages/datas/index.js";
+// ⚠️ V11 V9.3 — "PAGO" É LÍQUIDO DE ESTORNO E DE ANULAÇÃO PARCIAL, e quem sabe somar isso já
+// existe. Reimplementar a regra aqui seria a segunda cópia que este repositório já pagou para
+// não ter — e a cópia erraria justamente no caso que motivou esta rodada.
+import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import {
   dataDeDesligamento,
   baixaEfetiva,
@@ -62,6 +66,7 @@ import {
   RubricaDaParcelaSemVersaoError,
   VERSAO_DO_MOTOR_DO_13,
   type ContrachequeDoDecimoTerceiro,
+  type EstadoMinimoDoAdiantamento,
   type ParcelaDaBase,
   type ProcedenciaDoAbatimento,
 } from "./decimo-terceiro.js";
@@ -678,12 +683,137 @@ async function calcularFolhaDoDecimoTerceiroNaTx(
         // mesma regra é exatamente o que este repositório já pagou para não ter.
         situacaoDaCertificacao: situacaoDaCertificacao(existente.certificacoes as readonly FatoDaCertificacao[], existente.fechamento.calculoId),
         versaoDoParametro: doAdiantamento.versao,
+        // Preenchidos logo abaixo, depois da conferência do critério — o objeto é remontado ali
+        // em vez de mutado, para que o retrato que vai à memória seja o do estado JÁ verificado.
+        estadoExigido: cfg.parametro.estadoMinimoDoAdiantamentoParaAbater,
+        estadoVerificado: "FECHADO",
       };
       const linhas = await tx.linhaDoContracheque.findMany({
         where: { contracheque: { calculoId: existente.fechamento.calculoId }, rubricaId: cfg.rubricaDoAdiantamentoId },
-        select: { valor: true, contracheque: { select: { vinculoId: true } } },
+        select: { valor: true, contracheque: { select: { vinculoId: true, vinculo: { select: { matricula: true } } } } },
       });
       for (const l of linhas) adiantamentoPorVinculo.set(l.contracheque.vinculoId, toMoney(l.valor));
+
+      /**
+       * ═══ V11 V9.3 — O ESTADO QUE O ENTE EXIGIU, CONFERIDO AQUI ═══
+       *
+       * ⚠️ ATÉ A V11 V9.2 ESTE BLOCO NÃO EXISTIA e o motor exigia FECHADO, cravado. A V11 V9.3
+       * levantou a fonte: a Lei 4.749/1965, art. 1º e o Decreto 57.155/1965, art. 3º, § 3º mandam
+       * compensar o que o empregado "houver RECEBIDO" — mas governam o CELETISTA, e o ente tem
+       * regime plural por exigência do TR. Qualquer valor único aqui é norma inventada, inclusive
+       * o FECHADO que estava. Quem declara é o ente, no parâmetro versionado, com ato.
+       *
+       * ⚠️ SEM DECLARAÇÃO NADA É BLOQUEADO AQUI. O cálculo sai, como SIMULAÇÃO identificada (a
+       * memória do contracheque afirma, em `procedenciaDoAbatimento.natureza`), e quem recusa é a
+       * APROPRIAÇÃO — a efetivação correspondente. Lacuna normativa bloqueia a efetivação, não a
+       * construção.
+       *
+       * ⚠️ E NÃO SATISFEITO É RECUSA, NUNCA "ABATE ZERO". Seguir sem abater pagaria o 13º INTEIRO
+       * a quem já recebeu metade, que é o dano que as quatro recusas desta seção existem para
+       * evitar. A recusa nomeia a matrícula e os dois valores.
+       */
+      const exigido = cfg.parametro.estadoMinimoDoAdiantamentoParaAbater;
+      let verificado: EstadoMinimoDoAdiantamento = "FECHADO";
+
+      if (exigido === "CERTIFICADO") {
+        const sit = situacaoDaCertificacao(existente.certificacoes as readonly FatoDaCertificacao[], existente.fechamento.calculoId);
+        if (sit !== "CERTIFICADA") {
+          throw new Error(
+            `ADIANTAMENTO-NAO-CERTIFICADO: o parâmetro do 13º de ${exercicio} (versão ${cfg.parametro.versao}) ` +
+              `exige que o adiantamento esteja ao menos CERTIFICADO para ser abatido — ` +
+              `${cfg.parametro.ato.tipo} ${cfg.parametro.ato.numero}/${cfg.parametro.ato.ano}, ` +
+              `${cfg.parametro.ato.dispositivo}. A folha de adiantamento de ${existente.competencia} está ` +
+              `${sit}. ` +
+              (sit === "DEVOLVIDA"
+                ? `Devolvida para correção é o caso que este critério existe para pegar: ela nunca será ` +
+                  `liquidada nem paga, e até a V11 V9.2 era abatida assim mesmo. `
+                : `Quem o ente designou precisa atestar o cálculo antes. `) +
+              `Nada foi calculado.`
+          );
+        }
+        verificado = "CERTIFICADO";
+      }
+
+      if (exigido === "PAGO") {
+        /**
+         * ⚠️ A CADEIA INTEIRA, E ELA SÓ EXISTE COM `porServidor = true`. O cadastro do parâmetro
+         * já recusou o critério quando o grupo não empenha por servidor
+         * (`ESTADO-PAGO-NAO-VERIFICAVEL`); aqui se confere de novo, fail-closed, porque entre
+         * cadastrar e calcular passa um exercício inteiro.
+         */
+        const noGrupo = await tx.rubricaDoGrupoDeEmpenho.findUnique({
+          where: { rubricaId: cfg.rubricaDoAdiantamentoId },
+          select: { grupoId: true, grupo: { select: { codigo: true, porServidor: true } } },
+        });
+        if (noGrupo === null || !noGrupo.grupo.porServidor) {
+          throw new Error(
+            `ADIANTAMENTO-PAGO-NAO-VERIFICAVEL: o parâmetro do 13º de ${exercicio} exige PAGO, e a ` +
+              `rubrica do adiantamento ${noGrupo === null ? "não está em grupo de empenho nenhum" : `está no grupo ${noGrupo.grupo.codigo}, que emite UM empenho para o grupo inteiro (porServidor = false)`}. ` +
+              `"Quanto foi pago a cada servidor" não existe como fato no banco nessa configuração — e ` +
+              `abater assim seria supor. Cadastre a versão seguinte do parâmetro com FECHADO ou ` +
+              `CERTIFICADO, ou empenhe a 1ª parcela por servidor. Nada foi calculado.`
+          );
+        }
+        const empenhos = await tx.empenhoDaFolha.findMany({
+          where: { apropriacao: { folhaId: existente.id }, grupoId: noGrupo.grupoId },
+          select: { empenhoId: true, vinculoId: true },
+        });
+        const empenhoDoVinculo = new Map<string, string>();
+        for (const e2 of empenhos) if (e2.vinculoId !== null) empenhoDoVinculo.set(e2.vinculoId, e2.empenhoId);
+
+        const pagamentos = empenhos.length === 0 ? [] : await tx.pagamento.findMany({
+          where: { liquidacao: { empenhoId: { in: empenhos.map((e2) => e2.empenhoId) } } },
+          select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true, liquidacao: { select: { empenhoId: true } } },
+        });
+        const porEmpenho = new Map<string, { id: string; valor: Money; estornoDeId: string | null; anulacaoParcialDeId: string | null }[]>();
+        for (const pg of pagamentos) {
+          const chave = pg.liquidacao.empenhoId;
+          const lista = porEmpenho.get(chave) ?? [];
+          lista.push({ id: pg.id, valor: toMoney(pg.valor), estornoDeId: pg.estornoDeId, anulacaoParcialDeId: pg.anulacaoParcialDeId });
+          porEmpenho.set(chave, lista);
+        }
+
+        for (const l of linhas) {
+          const apurado = toMoney(l.valor);
+          if (apurado.lte(0)) continue;
+          const matricula = l.contracheque.vinculo.matricula;
+          const empenhoId = empenhoDoVinculo.get(l.contracheque.vinculoId);
+          const pago = empenhoId === undefined ? toMoney(0) : somaLiquidaEstornaveis(porEmpenho.get(empenhoId) ?? []);
+          /**
+           * ⚠️ PAGAMENTO PARCIAL NÃO SATISFAZ, E ESTE É O CASO QUE NINGUÉM TINHA OLHADO. O gate é
+           * "o apurado foi pago", não "houve pagamento": com meia parcela paga, abater o inteiro
+           * descontaria de dezembro dinheiro que nunca saiu em junho. Recusar nomeando os dois
+           * valores devolve a decisão a quem pode tomá-la.
+           */
+          if (pago.lt(apurado)) {
+            throw new Error(
+              `ADIANTAMENTO-NAO-PAGO: o parâmetro do 13º de ${exercicio} (versão ${cfg.parametro.versao}) exige ` +
+                `que o adiantamento esteja PAGO para ser abatido — ${cfg.parametro.ato.tipo} ` +
+                `${cfg.parametro.ato.numero}/${cfg.parametro.ato.ano}, ${cfg.parametro.ato.dispositivo}. ` +
+                `A matrícula ${matricula} teve ${apurado.toFixed(2)} apurados na folha de ` +
+                `${existente.competencia} e ${pago.toFixed(2)} pagos (líquido de estorno e de anulação ` +
+                `parcial)` +
+                (empenhoId === undefined
+                  ? ` — não há empenho por servidor dessa folha para esta matrícula.`
+                  : pago.isZero()
+                    ? ` — nenhum pagamento registrado.`
+                    : `: pagamento PARCIAL não satisfaz o critério, e abater o apurado inteiro descontaria de dezembro o que não saiu em junho.`) +
+                ` Pague o saldo, ou cadastre a versão seguinte do parâmetro com o critério que o ato ` +
+                `do ente de fato exige. Nada foi calculado.`
+            );
+          }
+        }
+        verificado = "PAGO";
+      }
+
+      /**
+       * ⚠️ O RETRATO QUE VAI À MEMÓRIA É O DO ESTADO JÁ VERIFICADO, e por isso ele é REMONTADO em
+       * vez de mutado: `ProcedenciaDoAbatimento` é `readonly` campo a campo, e um objeto mutável
+       * viajando até a memória canônica seria a porta para alguém "ajustar" um fato depois de ele
+       * ter sido conferido.
+       */
+      procedenciaDoAbatimento = { ...procedenciaDoAbatimento, estadoVerificado: verificado };
+
     }
   }
 

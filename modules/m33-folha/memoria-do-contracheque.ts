@@ -106,6 +106,22 @@ const zProcedencia = z.object({
   versaoDoParametroDoAdiantamento: z.number(),
   fatoVerificado: z.string(),
   motivo: z.string(),
+  /**
+   * ⚠️ V11 V9.3 — OPCIONAIS, E A OPCIONALIDADE É O PONTO, NÃO FROUXIDÃO.
+   *
+   * Todo contracheque de 13º gravado ANTES desta rodada tem `procedenciaDoAbatimento` sem estas
+   * quatro chaves. Exigi-las faria cada um deles virar `ILEGIVEL` na tela — o sistema deixaria de
+   * conseguir ler os próprios fatos passados por causa de um campo novo, que é exatamente o que
+   * "migration aditiva" existe para impedir, aplicado à leitura.
+   *
+   * Ausentes, a tela mostra o que a memória de fato tinha. `natureza` ausente NÃO vira "APURACAO":
+   * quem interpreta a ausência é quem lê, e a ausência significa "este cálculo é anterior à
+   * pergunta" — que é a mesma coisa que `criterioDeclaradoPeloEnte: false` significa hoje.
+   */
+  criterioDeclaradoPeloEnte: z.boolean().optional(),
+  estadoExigidoPeloEnte: z.string().nullable().optional(),
+  estadoVerificado: z.string().optional(),
+  natureza: z.enum(["APURACAO", "SIMULACAO"]).optional(),
 });
 
 export type Faixa = z.infer<typeof zFaixa>;
