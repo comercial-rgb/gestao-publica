@@ -28,6 +28,7 @@ import { estadoDoLote } from "../../modules/m09-tesouraria/lote";
 import { ConciliacaoNaoFechaError, MapeamentoContabilAusenteError, type ArrecadacaoSemConta } from "../../modules/m09-tesouraria/conciliacao";
 import { atribuirContaAArrecadacao } from "../../modules/m09-tesouraria/atribuicao-de-conta";
 import { diaCivil, diaCivilBr, fimDoDiaCivil, meioDiaCivil } from "../../packages/datas/index";
+import { sumMoney, toMoney, type Money } from "../../packages/contracts/index";
 
 /**
  * PORTA — A TESOURARIA PELA TELA (ENT03a, item 3).
@@ -113,17 +114,31 @@ export async function contasComSaldo(ate: string): Promise<readonly ContaDaTela[
       select: { valor: true, tipo: true, fonte: { select: { codigo: true } } },
     });
 
-    const porFonte = new Map<string, number>();
+    /**
+     * ⚠️ `Decimal`, E NÃO `number`. Isto aqui somava dinheiro em ponto flutuante — entrada,
+     * saída e o resíduo — e entregava o resultado a uma tela de tesouraria. Era o invariante
+     * nº 1 violado numa porta, que é pior que numa página: a porta serve três telas.
+     */
+    const porFonte = new Map<string, Money>();
     for (const m of movimentos) {
-      const sinal = ["DEPOSITO", "RESGATE", "RENDIMENTO"].includes(m.tipo) ? 1 : -1;
-      const atual = porFonte.get(m.fonte.codigo) ?? 0;
-      porFonte.set(m.fonte.codigo, atual + sinal * Number(m.valor.toFixed(2)));
+      const entrada = ["DEPOSITO", "RESGATE", "RENDIMENTO"].includes(m.tipo);
+      const atual = porFonte.get(m.fonte.codigo) ?? toMoney("0.00");
+      const parcela = toMoney(m.valor);
+      porFonte.set(m.fonte.codigo, entrada ? atual.plus(parcela) : atual.minus(parcela));
     }
 
     // O que sobra do saldo total e não é movimento bancário não tem fonte declarada.
-    const somaDasFontes = [...porFonte.values()].reduce((a, b) => a + b, 0);
-    const resto = Number(s.saldo.toFixed(2)) - somaDasFontes;
-    if (Math.abs(resto) >= 0.005) porFonte.set(SEM_FONTE, resto);
+    const somaDasFontes = sumMoney([...porFonte.values()]);
+    const resto = toMoney(s.saldo).minus(somaDasFontes);
+    /**
+     * ⚠️ ERA `Math.abs(resto) >= 0.005`, E O LIMIAR EXISTIA PARA ABSORVER RUÍDO DE FLOAT.
+     *
+     * Saldo e movimentos têm 2 casas por contrato, então o resíduo EXATO também tem 2 casas: ele
+     * é zero ou é pelo menos um centavo, e não há nada entre as duas coisas. Com a soma exata o
+     * limiar não tem mais o que absorver, e `!isZero()` é rigorosamente o mesmo teste — sem a
+     * tolerância que escondia de quem lê que a aritmética não era confiável.
+     */
+    if (!resto.isZero()) porFonte.set(SEM_FONTE, resto);
 
     saida.push({
       id: c.id,
@@ -376,9 +391,10 @@ export async function lotes(): Promise<readonly LoteDaTela[]> {
   });
 
   return linhas.map((l) => {
-    const total = l.itens.reduce(
-      (acc, i) => acc + Number((i.ordem?.valor ?? i.movimentoExtra?.valor ?? 0).toString()),
-      0
+    // ⚠️ `sumMoney`, não `acc + Number(...)`: este total é o valor de um LOTE DE PAGAMENTO,
+    // e ele aparece na tela ao lado do borderô que alguém assina.
+    const total = sumMoney(
+      l.itens.map((i) => toMoney((i.ordem?.valor ?? i.movimentoExtra?.valor ?? 0).toString()))
     );
     const b = l.borderos[0];
     const sig = b?.filaAssinatura?.signatarios ?? [];
