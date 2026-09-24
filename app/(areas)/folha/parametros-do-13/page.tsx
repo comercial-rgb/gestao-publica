@@ -44,6 +44,9 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
         ordem={consulta.ordem}
         direcao={consulta.direcao}
         selecionados={consulta.selecionados}
+        // Nenhuma coluna deste recurso é somável (não há dinheiro na lista de parâmetros), então
+        // a coluna de marcação nem aparece — mas a prop é obrigatória, e o vazio diz isso.
+        somaDaSelecao={{}}
         {...(podeCriar
           ? { formulario: <FormParametroDo13 proventos={rubricas.proventos} base={rubricas.base} abatimento={rubricas.abatimento} /> }
           : {

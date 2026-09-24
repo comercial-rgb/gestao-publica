@@ -961,13 +961,15 @@ export async function listarParametrosDoDecimoTerceiro(c: ConsultaDoMolde): Prom
     linhas: filtrados.slice(skip, skip + take).map((p) => ({
       id: p.id,
       exercicio: String(p.exercicio),
-      versao: p.versao,
+      // ⚠️ STRING, e o contrato de `LinhaDoMolde` e explicito: "TEXTO, E NÃO VALOR TIPADO".
+      // O componente só escolhe COMO pintar; quem formata é a porta.
+      versao: String(p.versao),
       avo: `${p.diasMinimosDoAvo} dia(s) por mês · ${p.avosNoExercicio} avos no ano`,
       primeiraParcela: `${new Decimal(p.percentualDaPrimeiraParcela).times(100).toFixed(2)}%`,
       incidencias:
         [p.decimoTerceiroSofreContribuicao ? "contribuição" : null, p.decimoTerceiroSofreIrrf ? "IRRF" : null]
           .filter((x) => x !== null).join(" e ") || "nenhuma",
-      base: p._count.rubricasDaBase,
+      base: String(p._count.rubricasDaBase),
       ato: `${OPCOES_DE_TIPO_DE_ATO.find((o) => o.valor === p.atoTipo)?.rotulo ?? p.atoTipo} ${p.atoNumero}/${p.atoAno}, ${p.atoDispositivo}`,
       situacao: maiorVersaoDo.get(p.exercicio) === p.versao ? "VIGENTE" : "SUPERADA",
     })),
@@ -1016,7 +1018,12 @@ export async function criarParametroDoDecimoTerceiro(c: Campos, rubricasDaBase: 
       exercicio: Number(t(c, "exercicio")),
       diasMinimosDoAvo: Number(t(c, "diasMinimosDoAvo")),
       avosNoExercicio: Number(t(c, "avosNoExercicio")),
-      percentualDaPrimeiraParcela: decimalDaTela(t(c, "percentualDaPrimeiraParcela")).div(100).toFixed(4),
+      // ⚠️ `decimalDaTela` devolve STRING (ela só normaliza "1.234,56" para "1234.56"), e eu a
+      // tratei como `Decimal`. A tela recebe o percentual EM PORCENTO, como a norma o escreve
+      // ("50"), e o parâmetro guarda FRAÇÃO — a divisão por 100 é a conversão da borda, a mesma
+      // que o `FormTabela` faz com a alíquota. Sem ela o ente digitaria 50 e o CHECK
+      // `ck_parametro_13_percentual_primeira` (entre 0 e 1) recusaria a gravação.
+      percentualDaPrimeiraParcela: new Decimal(decimalDaTela(t(c, "percentualDaPrimeiraParcela"))).div(100).toFixed(4),
       baseDosAvosDoAdiantamento: t(c, "baseDosAvosDoAdiantamento") as "ATE_A_COMPETENCIA" | "EXERCICIO_INTEIRO",
       decimoTerceiroSofreContribuicao: marcado(c, "decimoTerceiroSofreContribuicao"),
       decimoTerceiroSofreIrrf: marcado(c, "decimoTerceiroSofreIrrf"),
