@@ -5,7 +5,27 @@
 // Models de negócio NÃO entram aqui — cada módulo (M01–M18) traz o seu .prisma.
 // ============================================================================
 //
-// ⚠️ ANTES DE COMMITAR QUALQUER MUDANÇA DE SCHEMA: `npx prisma validate`. SEMPRE.
+// ⚠️ ANTES DE COMMITAR QUALQUER MUDANÇA DE SCHEMA: `npm run prisma:validate`. SEMPRE.
+//
+// O comando EFETIVO deste projeto é o script `prisma:validate` do `package.json` (`prisma validate`),
+// não um `npx` digitado à mão: o schema é uma PASTA (`prisma/schema`) resolvida por `prisma.config.ts`,
+// e o script garante a mesma resolução e a mesma CLI fixada no `package.json` para todo mundo.
+//
+// ⚠️ E O RESULTADO SE LÊ NO CÓDIGO DE SAÍDA, NÃO NA LINHA IMPRESSA. Medido nesta árvore, nas duas
+// direções, com uma mutação de prova (um `model` sem `@id`, P1012) aplicada e revertida com checksum:
+//
+//     schema íntegro  → `npm run prisma:validate` rc=0   e `npx prisma validate` rc=0
+//     schema quebrado → `npm run prisma:validate` rc=1   e `npx prisma validate` rc=1
+//
+// O `npm run` PROPAGA o código do `prisma` — isso foi medido, não suposto. Quem engole o código é o
+// CANO: `prisma validate | tail -1` devolve rc=0 mesmo com o schema quebrado, porque o rc é o do
+// `tail` (medido: `false | tail -1` → rc=0; `false` → rc=1). Redirecionar (`> arquivo 2>&1`) preserva
+// o rc; encanar não, a menos que se ligue `set -o pipefail`. Grave a saída em ARQUIVO e leia o rc do
+// próprio comando — "imprimiu" não é "passou", e um `tail` no meio já transformou vermelho em verde.
+//
+// ⚠️ VALIDATE NÃO REGENERA O CLIENTE. Ele diz que o schema é legível; não põe o cliente em dia. Depois
+// de `migrate dev` ou de qualquer mudança de schema, `npm run prisma:generate` ANTES de `tsc`/`tsx`,
+// ou o `tsc` acusa erros do cliente velho que parecem erros do código novo — a cascata descrita abaixo.
 // ============================================================================
 //
 // Custou uma parada de frente inteira na V11 V9.4. Um `model Funcao` novo no M32 colidiu com o

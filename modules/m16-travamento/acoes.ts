@@ -1959,6 +1959,21 @@ export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
  * grep-teste lê esta lista — nada sai do censo por descuido.
  */
 export const FORA_DO_CENSO: Record<string, string> = {
+  // ── V12 3.D1 — as duas funções que o `t5` pegou sem classificação ──
+  // Nenhuma das duas é ato do usuário: uma recebe `TxDeLeitura` e só recusa, a outra só soma o que
+  // já foi gravado. Dar ação própria a elas inventaria uma segregação que o ente não tem e obrigaria
+  // toda instalação existente a conceder um crachá a mais para praticar o mesmo ato.
+  exigirNaturezaDaFonte:
+    "GUARD COMPOSÁVEL. A natureza declarada da fonte, ou a recusa nomeando a fonte e a tela que "
+    + "resolve (`NATUREZA-DA-FONTE-AUSENTE`). Recebe `TxDeLeitura` e não grava nada: é a projeção do "
+    + "cadastro append-only de `declararNaturezaDaFonte`, que JÁ está no censo sob "
+    + "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO. Quem a chama é a escrituração, que já cobrou a ação do seu "
+    + "próprio ato antes de ler. A recusa dela é o fail-closed do lançamento, não uma autorização.",
+  criterioDoAbatimentoNoCalculo:
+    "LEITURA. O que o ente declarava sobre o abatimento do adiantamento QUANDO um cálculo de 13º "
+    + "rodou, mais se aquele cálculo de fato abateu e quanto. Só `findMany` e soma sobre linhas já "
+    + "gravadas — existe para a mensagem poder dizer de quanto se trata, e é chamada de dentro do "
+    + "cálculo e das telas do 13º, que já cobram CALCULAR_FOLHA e CONSULTAR_FOLHA.",
   // ── M33 V11 V9.1 — o parâmetro do 13º ──
   parametroVigenteDoExercicio:
     "LEITURA. O parâmetro do 13º vigente de um exercício — a versão de maior número, com as três " +
