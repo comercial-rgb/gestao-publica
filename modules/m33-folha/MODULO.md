@@ -490,8 +490,23 @@ zero"**: seguir sem abater pagaria o 13º inteiro a quem já recebeu metade.
 | **linha do abatimento** | "⚠️ SIMULAÇÃO — NÃO É APURAÇÃO APROVADA", com o código do bloqueio |
 | **tela do detalhe da folha** | selo "SIMULAÇÃO — não é apuração aprovada" + linha "Natureza da apuração" |
 | **tela do contracheque** | a frase da simulação e os dois estados (exigido × verificado) |
-| **barra de ações** | `apropriar` vira pré-condição `ABATIMENTO-SEM-CRITERIO-DECLARADO`, com providência |
+| **barra de ações** | `apropriar` **e** `liquidar` viram pré-condição `ABATIMENTO-SEM-CRITERIO-DECLARADO`, com providência |
 | **`apropriarFolha`** | **RECUSA**, fail-closed, antes de gravar a `ApropriacaoDaFolha` |
+| **`liquidarFolha`** | **RECUSA** — é o ato em que o valor se torna EXIGÍVEL |
+
+⚠️ **A LIQUIDAÇÃO ENTROU DEPOIS, E POR UM ERRO MEU QUE VALE REGISTRAR.** `EstadoDaFolhaParaAtos`
+é construído em **três** sítios (`certificacao.ts`: o atesto, a liquidação e o retrato da tela) e
+eu atualizei dois — `main` ficou sem compilar. O conserto óbvio seria `false` cravado no terceiro;
+seria o pior conserto possível, um valor escolhido para o compilador parar de reclamar. Derivando
+do mesmo fato, o comportamento certo caiu sozinho: uma folha que chega à liquidação com
+`apropriacao !== null` ou foi apropriada antes desta mudança, ou tinha critério — e recusar ali é
+barrar um **ato novo sobre fato antigo**, não desfazer nada. Os empenhos gravados continuam
+valendo; desfazê-los é anulação pela despesa.
+
+⚠️ **O atesto continua sendo OFERECIDO sobre uma folha em simulação**, e é decisão: a certificação
+é o controle interno, e é justamente quem deveria enxergar a lacuna. Bloqueá-lo tiraria de cena o
+único olhar que falta. Mas o valor **também é derivado ali** — um `false` de conveniência viraria
+armadilha no dia em que alguém fizesse o predicado consultá-lo.
 
 ⚠️ **O recorte é estreito de propósito:** o que fica bloqueado é a **apropriação da folha de 13º
 que aplicou abatimento**. A mensal segue, o adiantamento segue, um 13º sem abatimento segue, e o
@@ -517,12 +532,17 @@ critério **depois** de a folha de dezembro ter sido calculada sem ele. Ler o vi
 
 ##### Provado em
 
-`m33-criterio-do-abatimento.test.ts` (13 casos, com banco, N=2 em todos: MAT-A com 12 avos e
+`m33-criterio-do-abatimento.test.ts` (**18 casos**, com banco, N=2 em todos: MAT-A com 12 avos e
 MAT-B com 9, para que "abater valor fixo" não passe) — a recusa do `PAGO` inverificável pelas duas
 portas e a positiva; `CERTIFICADO` inelegível, devolvido, elegível e a repetição; `PAGO` com
 pagamento parcial, sem pagamento, pago por inteiro e **anulado pelo caminho real do M05**; a
 apropriação bloqueada, o recorte (o adiantamento segue apropriável), a **paridade com a barra da
-tela** e o destrave por versão seguinte + recálculo. Mais dois casos no domínio puro
+tela**, o destrave por versão seguinte + recálculo — e **declarar sem recalcular, que continua
+bloqueado**. Este último **nasceu de uma mutação**: ao preparar a prova de
+`criterioDoAbatimentoNoCalculo` (trocar a leitura da MEMÓRIA pela do parâmetro VIGENTE) nenhum
+caso ficava vermelho, porque todos ou nunca declaravam, ou declaravam **e** recalculavam. A
+mutação não achou defeito; achou o teste que faltava — o único cenário em que as duas leituras
+discordam. Mais dois casos no domínio puro
 (`m33-decimo-terceiro-dominio.test.ts`): a simulação e a sua contrapartida declarada — sem a
 segunda, um motor que gravasse "SIMULACAO" sempre passaria na primeira.
 

@@ -539,6 +539,9 @@ async function registrarFatoDaCertificacao(
       where: { id: d.folhaId },
       select: {
         competencia: true,
+        // V11 V9.3 — o tipo entra para que o critério do abatimento só seja consultado onde ele
+        // pode existir: um cálculo MENSAL não tem linha de abatimento do 13º para consultar.
+        tipo: true,
         fechamento: { select: { calculoId: true } },
         certificacoes: { select: { tipo: true, calculoId: true, criadoEm: true } },
       },
@@ -564,11 +567,24 @@ async function registrarFatoDaCertificacao(
       empenhosGravados: 0,
       empenhosEsperados: null,
       empenhosLiquidados: liquidadas,
-      // ⚠️ NÃO CONSULTADO POR ESTES DOIS PREDICADOS, e por isso não se lê o banco para preenchê-lo.
-      // `elegibilidadeParaCertificar` e `...Devolver` não olham este campo — quem olha é
-      // `...Apropriar`. Ler o cálculo aqui custaria uma consulta por atesto para um fato que o
-      // ato não usa; deixar `false` sem dizer por quê é que seria o problema.
-      abatimentoSemCriterioDeclarado: false,
+      /**
+       * ⚠️ V11 V9.3 — DERIVADO, e não `false` porque "estes predicados não olham".
+       *
+       * A primeira versão deste sítio cravava `false` com um comentário explicando que
+       * `elegibilidadeParaCertificar` e `...Devolver` ignoram o campo. Estava errado por dois
+       * motivos: o literal é um valor escolhido para o compilador, não lido do fato; e ele vira
+       * uma armadilha no dia em que alguém fizer o predicado consultá-lo — a guarda nasceria
+       * morta, com um `false` que ninguém lembraria de ter sido conveniência.
+       *
+       * ⚠️ O ATESTO CONTINUA SENDO OFERECIDO sobre uma folha em simulação, e isso é decisão: a
+       * certificação é o CONTROLE INTERNO, e é justamente quem deveria enxergar a lacuna. Quem
+       * é barrado são os atos em que a despesa nasce (apropriar) e em que o valor se torna
+       * exigível (liquidar). Bloquear o atesto tiraria de cena o único olhar que falta.
+       */
+      abatimentoSemCriterioDeclarado:
+        folha.tipo !== "DECIMO_TERCEIRO" || folha.fechamento === null
+          ? false
+          : await criterioDoAbatimentoNoCalculo(tx, folha.fechamento.calculoId).then((c) => c.abateu && c.criterioDeclarado === null),
     };
     const ator: AtorNaFolha = {
       fechou: objeto.fechadoPor === d.criadoPor,
@@ -658,8 +674,21 @@ export async function liquidarFolha(prisma: PrismaClient, input: LiquidarFolhaIn
   // ⚠️ O MESMO PREDICADO QUE A TELA PROJETA. "Já liquidada por inteiro" continua NÃO sendo recusa
   // aqui: reexecutar é idempotente e devolve `jaExistiam` — a tela deixa de oferecer, o serviço
   // não precisa gritar com quem chegou segundo.
+  /**
+   * ⚠️ V11 V9.3 — DERIVADO DO FATO, NUNCA LITERAL. O valor sai da MEMÓRIA do cálculo fechado,
+   * pela mesma leitura que a apropriação usa — nunca do parâmetro vigente agora, que pode ter
+   * ganhado o critério DEPOIS de este cálculo ter rodado sem conferir nada.
+   *
+   * ⚠️ E AQUI NÃO HÁ `catch`, ao contrário do retrato da tela. Este é o CASO DE USO: memória
+   * ilegível num cálculo que abateu sobe como `CRITERIO-DO-ABATIMENTO-IRRECUPERAVEL` e o ato não
+   * acontece. Uma tela pode se degradar; um ato que torna valor exigível, não.
+   */
+  const semCriterio =
+    folha.tipo === "DECIMO_TERCEIRO" && folha.fechamento !== null
+      ? await criterioDoAbatimentoNoCalculo(prisma, folha.fechamento.calculoId).then((c) => c.abateu && c.criterioDeclarado === null)
+      : false;
   const e = elegibilidadeParaLiquidar(
-    { competencia: folha.competencia, fechada: folha.fechamento !== null, temCalculoVivo: true, certificacao: situacao, empenhosGravados: contagem.gravados, empenhosEsperados: null, empenhosLiquidados: 0 },
+    { competencia: folha.competencia, fechada: folha.fechamento !== null, temCalculoVivo: true, certificacao: situacao, empenhosGravados: contagem.gravados, empenhosEsperados: null, empenhosLiquidados: 0, abatimentoSemCriterioDeclarado: semCriterio },
     { fechou: false, calculouOFechado: false, certificou: certificacao?.criadoPor === d.criadoPor, designado: null }
   );
   const ultima = [...folha.certificacoes].reverse()[0];

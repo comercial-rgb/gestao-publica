@@ -49,10 +49,23 @@ import {
 const prisma = criarPrismaDeTeste();
 await exigirBanco(prisma);
 
-const RH = "rh@cg.pb.gov.br";
-const CONTABIL = "contabilidade@cg.pb.gov.br";
+/**
+ * ⚠️ AS QUATRO IDENTIDADES SAEM DO CENSO DE `test/usuarios-teste.ts`, E ISSO NÃO É DETALHE.
+ *
+ * A primeira versão deste arquivo usava `rh@cg.pb.gov.br`, que **não existe no censo** — e os
+ * dezessete casos caíram de uma vez no `semear`, com `USUÁRIO NÃO CADASTRADO`. O funil da
+ * autorização fez exatamente o que existe para fazer: um `criadoPor` inventado é um nome que
+ * ninguém pode cobrar, e ele não passa. Trocar as quatro é o conserto; acrescentar a minha ao
+ * censo para o teste passar seria afrouxar a guarda para acomodar a fixture.
+ *
+ * A SEGREGAÇÃO é o que dita a escolha, não a estética do nome:
+ *   · PREPARA calcula (e cadastra o cenário);  · FECHA fecha — e nenhum dos dois certifica;
+ *   · ATESTA certifica;                        · PAGA liquida e paga — e não é quem certificou.
+ */
+const PREPARA = "contabilidade@cg.pb.gov.br";
+const FECHA = "tesouraria@cg.pb.gov.br";
 const ATESTADOR = "gabinete@cg.pb.gov.br";
-const TESOUREIRO = "tesouraria@cg.pb.gov.br";
+const PAGA = "despesa@cg.pb.gov.br";
 
 const D = (a: number, m: number, d: number): Date => meioDiaCivil(`${a}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
 const FICHA = "ficha-folha-13";
@@ -81,7 +94,7 @@ let vinculo1 = "";
 let vinculo2 = "";
 
 async function pessoa(documento: string, nome: string): Promise<string> {
-  const p = await prisma.pessoa.create({ data: { documento, tipo: "FISICA", criadoPor: RH, versoes: { create: { nome, criadoPor: RH } } }, select: { id: true } });
+  const p = await prisma.pessoa.create({ data: { documento, tipo: "FISICA", criadoPor: PREPARA, versoes: { create: { nome, criadoPor: PREPARA } } }, select: { id: true } });
   return p.id;
 }
 
@@ -123,14 +136,18 @@ async function semear(): Promise<void> {
   await prisma.acao.create({ data: { id: "aca", codigo: "2001", descricao: "A", tipo: "ATIVIDADE" } });
   await prisma.naturezaDespesa.create({ data: { id: "nd-11", codCategoria: "3", codNatureza: "1", codModalidade: "90", codElemento: "11", codigoCompleto: "319011", descricao: "Vencimentos e vantagens fixas" } });
   await prisma.fonteRecurso.create({ data: { id: "fonte-500", codigo: "500", descricao: "Livre", codigoTce: "500" } });
+  // ⚠️ A CONTA BANCÁRIA EXISTE PORQUE O PAGAMENTO SAI DE ALGUM LUGAR, e o M05 confere isso
+  // (TR 5.23: a fonte do pagamento tem de ser a da conta). Faltava na primeira versão deste
+  // arquivo e derrubou os três casos do critério PAGO — defeito da fixture, não do produto.
+  await prisma.contaBancaria.create({ data: { id: "cb-folha", codigo: "CC-001", descricao: "Movimento", fonteId: "fonte-500" } });
   await criarFichaDeTeste(prisma, {
     exercicio: 2026, orgaoId: "org-01", unidadeOrcId: "uo-01", funcaoId: "fun-04", subfuncaoId: "sub-122",
     programaId: "prg", acaoId: "aca", fonteId: "fonte-500", naturezaDespesaId: "nd-11",
     id: FICHA, numero: 1, valorDotado: "500000.00",
   });
 
-  const { cargoId } = await cadastrarCargo(prisma, { codigo: "PROF", denominacao: "Professor", tipo: "EFETIVO", vagasFixadas: 50, leiAutorizativa: "Lei 1/2010", dataPublicacaoLei: D(2010, 1, 1), criadoPor: RH });
-  const { lotacaoId } = await cadastrarLotacao(prisma, { codigo: "SEDUC", nome: "Educacao", criadoPor: RH });
+  const { cargoId } = await cadastrarCargo(prisma, { codigo: "PROF", denominacao: "Professor", tipo: "EFETIVO", vagasFixadas: 50, leiAutorizativa: "Lei 1/2010", dataPublicacaoLei: D(2010, 1, 1), criadoPor: PREPARA });
+  const { lotacaoId } = await cadastrarLotacao(prisma, { codigo: "SEDUC", nome: "Educacao", criadoPor: PREPARA });
 
   // ⚠️ CPFs VÁLIDOS, e não "11111111111": aqui o CPF do servidor vira CREDOR do empenho quando o
   // grupo empenha POR SERVIDOR, e um documento inválido derrubaria a fixture por outro motivo.
@@ -139,27 +156,27 @@ async function semear(): Promise<void> {
   pessoaAtestador = await pessoa("28625006871", "Carla Atestadora");
   await vincularUsuarioAPessoa(ATESTADOR, pessoaAtestador);
 
-  const { servidorId: s1 } = await cadastrarServidor(prisma, { pessoaId: p1, dataNascimento: D(1985, 7, 20), sexo: "FEMININO", criadoPor: RH });
-  const { servidorId: s2 } = await cadastrarServidor(prisma, { pessoaId: p2, dataNascimento: D(1990, 3, 10), sexo: "FEMININO", criadoPor: RH });
+  const { servidorId: s1 } = await cadastrarServidor(prisma, { pessoaId: p1, dataNascimento: D(1985, 7, 20), sexo: "FEMININO", criadoPor: PREPARA });
+  const { servidorId: s2 } = await cadastrarServidor(prisma, { pessoaId: p2, dataNascimento: D(1990, 3, 10), sexo: "FEMININO", criadoPor: PREPARA });
   // ⚠️ N=2 E OS DOIS SÃO DIFERENTES DE PROPÓSITO: M-1 tem 12 avos (admitida em 2020) e M-2 tem 9
   // (admitida em 20/03/2026 — março rende 11 dias, abaixo do mínimo de 15). Com um servidor só,
   // "abate o valor certo" passaria por vacuidade contra qualquer implementação de valor fixo.
-  vinculo1 = (await admitirServidor(prisma, { servidorId: s1, matricula: "MAT-A", tipo: "EFETIVO", regimeJuridico: "Estatutario", regimePrevidenciario: "RPPS", dataAdmissao: D(2020, 1, 1), cargoId, lotacaoId, salarioBase: "3000.00", criadoPor: RH })).vinculoId;
-  vinculo2 = (await admitirServidor(prisma, { servidorId: s2, matricula: "MAT-B", tipo: "EFETIVO", regimeJuridico: "Estatutario", regimePrevidenciario: "RPPS", dataAdmissao: D(2026, 3, 20), cargoId, lotacaoId, salarioBase: "3000.00", criadoPor: RH })).vinculoId;
+  vinculo1 = (await admitirServidor(prisma, { servidorId: s1, matricula: "MAT-A", tipo: "EFETIVO", regimeJuridico: "Estatutario", regimePrevidenciario: "RPPS", dataAdmissao: D(2020, 1, 1), cargoId, lotacaoId, salarioBase: "3000.00", criadoPor: PREPARA })).vinculoId;
+  vinculo2 = (await admitirServidor(prisma, { servidorId: s2, matricula: "MAT-B", tipo: "EFETIVO", regimeJuridico: "Estatutario", regimePrevidenciario: "RPPS", dataAdmissao: D(2026, 3, 20), cargoId, lotacaoId, salarioBase: "3000.00", criadoPor: PREPARA })).vinculoId;
 
-  await cadastrarTabelaDeContribuicao(prisma, { regime: "RPPS", competenciaInicio: "2026-01", fundamentacaoLegal: "FIXTURE lei municipal", faixas: [{ ordem: 1, ate: null, aliquota: "0.10" }], criadoPor: RH });
-  await cadastrarTabelaIrrf(prisma, { competenciaInicio: "2026-01", deducaoPorDependente: "0.00", fundamentacaoLegal: "FIXTURE de teste", faixas: [{ ordem: 1, ate: null, aliquota: "0" }], criadoPor: RH });
+  await cadastrarTabelaDeContribuicao(prisma, { regime: "RPPS", competenciaInicio: "2026-01", fundamentacaoLegal: "FIXTURE lei municipal", faixas: [{ ordem: 1, ate: null, aliquota: "0.10" }], criadoPor: PREPARA });
+  await cadastrarTabelaIrrf(prisma, { competenciaInicio: "2026-01", deducaoPorDependente: "0.00", fundamentacaoLegal: "FIXTURE de teste", faixas: [{ ordem: 1, ate: null, aliquota: "0" }], criadoPor: PREPARA });
 
   ids = {};
   const r = async (i: Parameters<typeof cadastrarRubrica>[1]): Promise<void> => {
     ids[i.codigo] = (await cadastrarRubrica(prisma, i)).rubricaId;
   };
-  await r({ codigo: "VENC", descricao: "Vencimento", tipo: "PROVENTO", natureza: "VENCIMENTO_BASE", incideContribuicao: true, incideIrrf: true, proporcionalAosDias: true, ordem: 1, fundamentacaoLegal: "fixture", criadoPor: RH });
-  await r({ codigo: "D13", descricao: "13o salario", tipo: "PROVENTO", natureza: "VALOR_INFORMADO", incideContribuicao: true, incideIrrf: true, proporcionalAosDias: false, ordem: 10, fundamentacaoLegal: "fixture", criadoPor: RH });
-  await r({ codigo: "D13ADI", descricao: "Adiantamento do 13o", tipo: "PROVENTO", natureza: "VALOR_INFORMADO", incideContribuicao: false, incideIrrf: false, proporcionalAosDias: false, ordem: 11, fundamentacaoLegal: "fixture", criadoPor: RH });
-  await r({ codigo: "D13ABAT", descricao: "Abatimento do adiantamento do 13o", tipo: "DESCONTO", natureza: "ABATIMENTO_DO_ADIANTAMENTO_DO_13", incideContribuicao: false, incideIrrf: false, proporcionalAosDias: false, ordem: 95, fundamentacaoLegal: "fixture", criadoPor: RH });
-  await r({ codigo: "PREV", descricao: "Contribuicao", tipo: "DESCONTO", natureza: "CONTRIBUICAO_PREVIDENCIARIA", incideContribuicao: false, incideIrrf: false, proporcionalAosDias: false, ordem: 90, fundamentacaoLegal: "fixture", criadoPor: RH });
-  await r({ codigo: "IRRF", descricao: "IRRF", tipo: "DESCONTO", natureza: "IMPOSTO_DE_RENDA", incideContribuicao: false, incideIrrf: false, proporcionalAosDias: false, ordem: 91, fundamentacaoLegal: "fixture", criadoPor: RH });
+  await r({ codigo: "VENC", descricao: "Vencimento", tipo: "PROVENTO", natureza: "VENCIMENTO_BASE", incideContribuicao: true, incideIrrf: true, proporcionalAosDias: true, ordem: 1, fundamentacaoLegal: "fixture", criadoPor: PREPARA });
+  await r({ codigo: "D13", descricao: "13o salario", tipo: "PROVENTO", natureza: "VALOR_INFORMADO", incideContribuicao: true, incideIrrf: true, proporcionalAosDias: false, ordem: 10, fundamentacaoLegal: "fixture", criadoPor: PREPARA });
+  await r({ codigo: "D13ADI", descricao: "Adiantamento do 13o", tipo: "PROVENTO", natureza: "VALOR_INFORMADO", incideContribuicao: false, incideIrrf: false, proporcionalAosDias: false, ordem: 11, fundamentacaoLegal: "fixture", criadoPor: PREPARA });
+  await r({ codigo: "D13ABAT", descricao: "Abatimento do adiantamento do 13o", tipo: "DESCONTO", natureza: "ABATIMENTO_DO_ADIANTAMENTO_DO_13", incideContribuicao: false, incideIrrf: false, proporcionalAosDias: false, ordem: 95, fundamentacaoLegal: "fixture", criadoPor: PREPARA });
+  await r({ codigo: "PREV", descricao: "Contribuicao", tipo: "DESCONTO", natureza: "CONTRIBUICAO_PREVIDENCIARIA", incideContribuicao: false, incideIrrf: false, proporcionalAosDias: false, ordem: 90, fundamentacaoLegal: "fixture", criadoPor: PREPARA });
+  await r({ codigo: "IRRF", descricao: "IRRF", tipo: "DESCONTO", natureza: "IMPOSTO_DE_RENDA", incideContribuicao: false, incideIrrf: false, proporcionalAosDias: false, ordem: 91, fundamentacaoLegal: "fixture", criadoPor: PREPARA });
 }
 
 /** O grupo que empenha a 1ª parcela. `porServidor` é o eixo de todos os casos do critério PAGO. */
@@ -168,7 +185,7 @@ async function grupoDoAdiantamento(porServidor: boolean): Promise<string> {
     await cadastrarGrupoDeEmpenhoDaFolha(prisma, {
       codigo: "FP-ADI", descricao: "Adiantamento do 13o", fichaId: FICHA,
       categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FPA",
-      porServidor, ...CONTAS, rubricaIds: [ids["D13ADI"]!], criadoPor: RH,
+      porServidor, ...CONTAS, rubricaIds: [ids["D13ADI"]!], criadoPor: PREPARA,
       ...(porServidor ? {} : { credorId: await pessoa("39053344705", "Sindicato dos Servidores") }),
     })
   ).grupoId;
@@ -180,7 +197,7 @@ async function grupoDoDecimoTerceiro(): Promise<string> {
     await cadastrarGrupoDeEmpenhoDaFolha(prisma, {
       codigo: "FP-13", descricao: "13o salario", fichaId: FICHA,
       categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FP13",
-      porServidor: true, ...CONTAS, rubricaIds: [ids["D13"]!], criadoPor: RH,
+      porServidor: true, ...CONTAS, rubricaIds: [ids["D13"]!], criadoPor: PREPARA,
     })
   ).grupoId;
 }
@@ -199,7 +216,7 @@ async function parametro(over: Record<string, unknown> = {}): Promise<void> {
     rubricaDoAbatimentoId: ids["D13ABAT"]!,
     rubricasDaBase: [ids["VENC"]!],
     ...ATO,
-    criadoPor: RH,
+    criadoPor: PREPARA,
     ...over,
   } as Parameters<typeof cadastrarParametroDoDecimoTerceiro>[1]);
 }
@@ -214,16 +231,16 @@ async function parametro(over: Record<string, unknown> = {}): Promise<void> {
  * Σ da folha de adiantamento = 2.625,00
  */
 async function adiantamentoFechado(): Promise<string> {
-  const { folhaId } = await abrirFolha(prisma, { competencia: "2026-06", tipo: "ADIANTAMENTO_DECIMO_TERCEIRO", criadoPor: RH });
-  await calcularFolha(prisma, { folhaId, criadoPor: RH });
-  await fecharFolha(prisma, { folhaId, criadoPor: CONTABIL });
+  const { folhaId } = await abrirFolha(prisma, { competencia: "2026-06", tipo: "ADIANTAMENTO_DECIMO_TERCEIRO", criadoPor: PREPARA });
+  await calcularFolha(prisma, { folhaId, criadoPor: PREPARA });
+  await fecharFolha(prisma, { folhaId, criadoPor: FECHA });
   return folhaId;
 }
 
 async function designarAtestador(): Promise<void> {
   await designarNaFolha(prisma, {
     atribuicao: "CERTIFICAR_FOLHA", pessoaId: pessoaAtestador, usuarioIdentificador: ATESTADOR,
-    atoDesignacao: "Portaria 45/2026", vigenciaInicio: D(2026, 1, 1), criadoPor: RH,
+    atoDesignacao: "Portaria 45/2026", vigenciaInicio: D(2026, 1, 1), criadoPor: PREPARA,
   });
 }
 
@@ -300,11 +317,11 @@ describe("c2 · o critério CERTIFICADO", () => {
   it("ACUSA: adiantamento fechado mas NÃO certificado recusa o cálculo do 13º, nomeando o ato do ente", async () => {
     await parametro({ estadoMinimoDoAdiantamentoParaAbater: "CERTIFICADO" });
     await adiantamentoFechado();
-    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: RH });
-    await expect(calcularFolha(prisma, { folhaId, criadoPor: RH })).rejects.toThrow(/ADIANTAMENTO-NAO-CERTIFICADO/);
+    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: PREPARA });
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/ADIANTAMENTO-NAO-CERTIFICADO/);
     // o ATO que sustenta a exigência vai na mensagem — é ele que o operador vai conferir
-    await expect(calcularFolha(prisma, { folhaId, criadoPor: RH })).rejects.toThrow(/ESTATUTO_DOS_SERVIDORES 1\.234\/2010/);
-    await expect(calcularFolha(prisma, { folhaId, criadoPor: RH })).rejects.toThrow(/PENDENTE/);
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/ESTATUTO_DOS_SERVIDORES 1\.234\/2010/);
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/PENDENTE/);
     // ⚠️ E NADA FOI GRAVADO: recusar depois de gravar o cálculo deixaria o número consumido.
     expect(await prisma.calculoDaFolha.count({ where: { folhaId } })).toBe(0);
   });
@@ -320,10 +337,10 @@ describe("c2 · o critério CERTIFICADO", () => {
     await designarAtestador();
     await devolverFolhaParaCorrecao(prisma, { folhaId: adi, data: DATA_ATESTO, motivo: "divergencia na base", criadoPor: ATESTADOR });
 
-    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: RH });
-    await expect(calcularFolha(prisma, { folhaId, criadoPor: RH })).rejects.toThrow(/ADIANTAMENTO-NAO-CERTIFICADO/);
-    await expect(calcularFolha(prisma, { folhaId, criadoPor: RH })).rejects.toThrow(/DEVOLVIDA/);
-    await expect(calcularFolha(prisma, { folhaId, criadoPor: RH })).rejects.toThrow(/nunca será liquidada nem paga/);
+    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: PREPARA });
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/ADIANTAMENTO-NAO-CERTIFICADO/);
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/DEVOLVIDA/);
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/nunca será liquidada nem paga/);
   });
 
   it("e a POSITIVA: certificado, o 13º calcula, abate os dois valores DIFERENTES e a memória diz APURACAO", async () => {
@@ -332,8 +349,8 @@ describe("c2 · o critério CERTIFICADO", () => {
     await designarAtestador();
     await certificarFolha(prisma, { folhaId: adi, data: DATA_ATESTO, criadoPor: ATESTADOR });
 
-    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: RH });
-    await calcularFolha(prisma, { folhaId, criadoPor: RH });
+    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: PREPARA });
+    await calcularFolha(prisma, { folhaId, criadoPor: PREPARA });
 
     const linhas = await linhasGravadas(folhaId);
     // ⚠️ OS DOIS DIFERENTES, senão "abater um valor fixo" passa: 12 avos contra 9 avos.
@@ -364,9 +381,9 @@ describe("c2 · o critério CERTIFICADO", () => {
     await designarAtestador();
     await certificarFolha(prisma, { folhaId: adi, data: DATA_ATESTO, criadoPor: ATESTADOR });
 
-    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: RH });
-    const um = await calcularFolha(prisma, { folhaId, criadoPor: RH });
-    const dois = await calcularFolha(prisma, { folhaId, criadoPor: RH, motivo: "conferencia" });
+    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: PREPARA });
+    const um = await calcularFolha(prisma, { folhaId, criadoPor: PREPARA });
+    const dois = await calcularFolha(prisma, { folhaId, criadoPor: PREPARA, motivo: "conferencia" });
     expect(dois.numero).toBe(um.numero + 1);
 
     const linhas = await linhasGravadas(folhaId);
@@ -387,10 +404,10 @@ describe("c3 · o critério PAGO", () => {
    * ⚠️ `quanto` É POR MATRÍCULA, para que o caso do PARCIAL não precise de outra fixture.
    */
   async function pagarAdiantamento(adi: string, quanto: Readonly<Record<string, string>>): Promise<void> {
-    await apropriarFolha(prisma, { folhaId: adi, dataDoEmpenho: DATA_EMPENHO, criadoPor: CONTABIL });
+    await apropriarFolha(prisma, { folhaId: adi, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA });
     await designarAtestador();
     await certificarFolha(prisma, { folhaId: adi, data: DATA_ATESTO, criadoPor: ATESTADOR });
-    await liquidarFolha(prisma, { folhaId: adi, data: DATA_LIQUIDACAO, criadoPor: CONTABIL });
+    await liquidarFolha(prisma, { folhaId: adi, data: DATA_LIQUIDACAO, criadoPor: FECHA });
 
     const roteiro = roteiroPagamento({ obrigacaoAPagar: "2.1.1.1.1.01.01", disponibilidade: CAIXA, creditoLiquidado: C_LIQUIDADO, creditoPago: C_PAGO });
     const deps = criarM05DepsComContratos(prisma);
@@ -402,7 +419,7 @@ describe("c3 · o critério PAGO", () => {
       const valor = quanto[matricula];
       if (valor === undefined) continue; // não pagar é um estado, e é um dos casos abaixo
       await pagar(
-        { liquidacaoId: e.liquidacaoId, numero: `NP-${matricula}`, valor, data: DATA_PAGAMENTO, contaBancaria: "CC-001", fonteId: "fonte-500", historico: "adiantamento do 13o", criadoPor: TESOUREIRO },
+        { liquidacaoId: e.liquidacaoId, numero: `NP-${matricula}`, valor, data: DATA_PAGAMENTO, contaBancaria: "CC-001", fonteId: "fonte-500", historico: "adiantamento do 13o", criadoPor: PAGA },
         roteiro,
         deps
       );
@@ -425,12 +442,12 @@ describe("c3 · o critério PAGO", () => {
     const adi = await adiantamentoFechado();
     await pagarAdiantamento(adi, { "MAT-A": "1500.00", "MAT-B": "600.00" });
 
-    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: RH });
-    await expect(calcularFolha(prisma, { folhaId, criadoPor: RH })).rejects.toThrow(/ADIANTAMENTO-NAO-PAGO/);
-    await expect(calcularFolha(prisma, { folhaId, criadoPor: RH })).rejects.toThrow(/MAT-B/);
-    await expect(calcularFolha(prisma, { folhaId, criadoPor: RH })).rejects.toThrow(/1125\.00 apurados/);
-    await expect(calcularFolha(prisma, { folhaId, criadoPor: RH })).rejects.toThrow(/600\.00 pagos/);
-    await expect(calcularFolha(prisma, { folhaId, criadoPor: RH })).rejects.toThrow(/PARCIAL não satisfaz/);
+    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: PREPARA });
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/ADIANTAMENTO-NAO-PAGO/);
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/MAT-B/);
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/1125\.00 apurados/);
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/600\.00 pagos/);
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/PARCIAL não satisfaz/);
     expect(await prisma.calculoDaFolha.count({ where: { folhaId } })).toBe(0);
   });
 
@@ -441,9 +458,9 @@ describe("c3 · o critério PAGO", () => {
     const adi = await adiantamentoFechado();
     await pagarAdiantamento(adi, {});
 
-    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: RH });
-    await expect(calcularFolha(prisma, { folhaId, criadoPor: RH })).rejects.toThrow(/ADIANTAMENTO-NAO-PAGO/);
-    await expect(calcularFolha(prisma, { folhaId, criadoPor: RH })).rejects.toThrow(/nenhum pagamento registrado/);
+    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: PREPARA });
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/ADIANTAMENTO-NAO-PAGO/);
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/nenhum pagamento registrado/);
   });
 
   it("e a POSITIVA: pago por inteiro nos DOIS, o 13º calcula e a memória diz PAGO", async () => {
@@ -453,8 +470,8 @@ describe("c3 · o critério PAGO", () => {
     const adi = await adiantamentoFechado();
     await pagarAdiantamento(adi, { "MAT-A": "1500.00", "MAT-B": "1125.00" });
 
-    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: RH });
-    await calcularFolha(prisma, { folhaId, criadoPor: RH });
+    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: PREPARA });
+    await calcularFolha(prisma, { folhaId, criadoPor: PREPARA });
     const linhas = await linhasGravadas(folhaId);
     expect(linhas.get("MAT-A/D13ABAT")).toBe("1500.00");
     expect(linhas.get("MAT-B/D13ABAT")).toBe("1125.00");
@@ -483,14 +500,14 @@ describe("c3 · o critério PAGO", () => {
      */
     const original = await prisma.pagamento.findFirstOrThrow({ where: { numero: "NP-MAT-B" }, select: { id: true } });
     await anularPagamento(
-      { pagamentoId: original.id, numero: "NP-MAT-B-ANUL", data: DATA_PAGAMENTO, historico: "anulacao do adiantamento de MAT-B", criadoPor: TESOUREIRO },
+      { pagamentoId: original.id, numero: "NP-MAT-B-ANUL", data: DATA_PAGAMENTO, historico: "anulacao do adiantamento de MAT-B", criadoPor: PAGA },
       criarM05DepsComContratos(prisma)
     );
 
-    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: RH });
-    await expect(calcularFolha(prisma, { folhaId, criadoPor: RH })).rejects.toThrow(/ADIANTAMENTO-NAO-PAGO/);
-    await expect(calcularFolha(prisma, { folhaId, criadoPor: RH })).rejects.toThrow(/MAT-B/);
-    await expect(calcularFolha(prisma, { folhaId, criadoPor: RH })).rejects.toThrow(/0\.00 pagos/);
+    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: PREPARA });
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/ADIANTAMENTO-NAO-PAGO/);
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/MAT-B/);
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/0\.00 pagos/);
   });
 });
 
@@ -504,9 +521,9 @@ describe("c4 · sem critério declarado: simulação, e a apropriação bloquead
     await grupoDoDecimoTerceiro();
     await parametro(); // ⚠️ SEM critério — é o estado do ente que não levantou a norma
     await adiantamentoFechado();
-    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: RH });
-    await calcularFolha(prisma, { folhaId, criadoPor: RH });
-    await fecharFolha(prisma, { folhaId, criadoPor: CONTABIL });
+    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: PREPARA });
+    await calcularFolha(prisma, { folhaId, criadoPor: PREPARA });
+    await fecharFolha(prisma, { folhaId, criadoPor: FECHA });
     return folhaId;
   }
 
@@ -528,11 +545,11 @@ describe("c4 · sem critério declarado: simulação, e a apropriação bloquead
 
   it("ACUSA: a APROPRIAÇÃO recusa, nomeando o total abatido e o que destrava — e nada é gravado", async () => {
     const folhaId = await decimoTerceiroFechadoSemCriterio();
-    await expect(apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: CONTABIL })).rejects.toThrow(AbatimentoSemCriterioDeclaradoError);
-    await expect(apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: CONTABIL })).rejects.toThrow(/ABATIMENTO-SEM-CRITERIO-DECLARADO/);
-    await expect(apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: CONTABIL })).rejects.toThrow(/2625\.00/);
+    await expect(apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA })).rejects.toThrow(AbatimentoSemCriterioDeclaradoError);
+    await expect(apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA })).rejects.toThrow(/ABATIMENTO-SEM-CRITERIO-DECLARADO/);
+    await expect(apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA })).rejects.toThrow(/2625\.00/);
     // ⚠️ E NÃO HÁ SAÍDA POR CONFIRMAÇÃO: a mensagem diz o que destrava, e é um ATO do ente.
-    await expect(apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: CONTABIL })).rejects.toThrow(/Não há dispensa nem confirmação que substitua o ato/);
+    await expect(apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA })).rejects.toThrow(/Não há dispensa nem confirmação que substitua o ato/);
     // a guarda vem ANTES de gravar: nem a ApropriacaoDaFolha nasce
     expect(await prisma.apropriacaoDaFolha.count({ where: { folhaId } })).toBe(0);
     expect(await prisma.empenho.count()).toBe(0);
@@ -547,18 +564,46 @@ describe("c4 · sem critério declarado: simulação, e a apropriação bloquead
     await grupoDoAdiantamento(true);
     await parametro();
     const adi = await adiantamentoFechado();
-    const r = await apropriarFolha(prisma, { folhaId: adi, dataDoEmpenho: DATA_EMPENHO, criadoPor: CONTABIL });
+    const r = await apropriarFolha(prisma, { folhaId: adi, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA });
     expect(r.empenhados).toBe(2);
   });
 
   it("a BARRA DA TELA diz o mesmo que o caso de uso, com o MESMO código (paridade)", async () => {
     const folhaId = await decimoTerceiroFechadoSemCriterio();
-    const r = await retratoDosAtosDaFolha(prisma, folhaId, CONTABIL, { consultarDesignacao: false, lerDistribuicao: true });
+    const r = await retratoDosAtosDaFolha(prisma, folhaId, FECHA, { consultarDesignacao: false, lerDistribuicao: true });
     expect(r).not.toBeNull();
     expect(r!.estado.abatimentoSemCriterioDeclarado).toBe(true);
     const e = elegibilidadeDosAtosDaFolha(r!.estado, r!.ator).apropriar;
     expect(e.situacao).toBe("PRE_CONDICAO");
     expect(e.situacao === "PRE_CONDICAO" ? e.codigo : "").toBe("ABATIMENTO-SEM-CRITERIO-DECLARADO");
+  });
+
+  /**
+   * ⚠️ DECLARAR SEM RECALCULAR **NÃO** DESTRAVA — e este caso nasceu de uma mutação.
+   *
+   * Ao preparar a prova por mutação de `criterioDoAbatimentoNoCalculo` (trocar a leitura da
+   * MEMÓRIA pela do parâmetro VIGENTE), eu descobri que nenhum caso ficaria vermelho: todos os
+   * outros ou não declaram nunca, ou declaram E recalculam, e nos dois as duas leituras coincidem.
+   * A distinção só aparece aqui: o ente declara o critério DEPOIS de dezembro ter sido calculado,
+   * e não recalcula. Lendo o vigente, a apropriação passaria — efetivando um cálculo que não
+   * conferiu nada. Lendo a memória, recusa.
+   *
+   * **A mutação não achou um defeito; achou um teste que faltava.** É o caso que separa "o ente
+   * declarou" de "este cálculo foi feito sob a declaração".
+   */
+  it("ACUSA: declarar o critério e NÃO recalcular continua bloqueado — a memória manda, não o vigente", async () => {
+    const folhaId = await decimoTerceiroFechadoSemCriterio();
+
+    // o ente declara agora, depois de a folha já estar calculada e fechada sem critério
+    await parametro({ estadoMinimoDoAdiantamentoParaAbater: "FECHADO" });
+    expect((await prisma.parametroDoDecimoTerceiro.findFirstOrThrow({ orderBy: { versao: "desc" }, select: { estadoMinimoDoAdiantamentoParaAbater: true } })).estadoMinimoDoAdiantamentoParaAbater).toBe("FECHADO");
+
+    // o CÁLCULO FECHADO continua sendo o que rodou sem conferir nada — e é ele que manda
+    const fechado = await prisma.fechamentoDaFolha.findUniqueOrThrow({ where: { folhaId }, select: { calculoId: true } });
+    expect((await criterioDoAbatimentoNoCalculo(prisma, fechado.calculoId)).criterioDeclarado).toBeNull();
+
+    await expect(apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA })).rejects.toThrow(/ABATIMENTO-SEM-CRITERIO-DECLARADO/);
+    expect(await prisma.apropriacaoDaFolha.count({ where: { folhaId } })).toBe(0);
   });
 
   /**
@@ -572,22 +617,22 @@ describe("c4 · sem critério declarado: simulação, e a apropriação bloquead
     await grupoDoDecimoTerceiro();
     await parametro();
     const adi = await adiantamentoFechado();
-    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: RH });
-    await calcularFolha(prisma, { folhaId, criadoPor: RH });
+    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: PREPARA });
+    await calcularFolha(prisma, { folhaId, criadoPor: PREPARA });
 
     // a versão 2, com o critério — append-only, a anterior continua no histórico
     await parametro({ estadoMinimoDoAdiantamentoParaAbater: "FECHADO" });
     expect(await prisma.parametroDoDecimoTerceiro.count({ where: { exercicio: 2026 } })).toBe(2);
 
-    await calcularFolha(prisma, { folhaId, criadoPor: RH, motivo: "criterio do abatimento declarado pelo ente" });
-    await fecharFolha(prisma, { folhaId, criadoPor: CONTABIL });
+    await calcularFolha(prisma, { folhaId, criadoPor: PREPARA, motivo: "criterio do abatimento declarado pelo ente" });
+    await fecharFolha(prisma, { folhaId, criadoPor: FECHA });
 
     const fechado = await prisma.fechamentoDaFolha.findUniqueOrThrow({ where: { folhaId }, select: { calculoId: true } });
     const criterio = await criterioDoAbatimentoNoCalculo(prisma, fechado.calculoId);
     expect(criterio.abateu).toBe(true);
     expect(criterio.criterioDeclarado).toBe("FECHADO");
 
-    const r = await apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: CONTABIL });
+    const r = await apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA });
     expect(r.empenhados).toBe(2);
   });
 });

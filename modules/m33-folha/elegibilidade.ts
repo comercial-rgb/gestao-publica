@@ -124,6 +124,26 @@ export function elegibilidadeParaDevolver(e: EstadoDaFolhaParaAtos, a: AtorNaFol
 
 export function elegibilidadeParaLiquidar(e: EstadoDaFolhaParaAtos, a: AtorNaFolha): Elegibilidade {
   if (!e.fechada) return preCondicao("FOLHA-NAO-FECHADA", `A folha de ${e.competencia} ainda não foi fechada.`);
+  /**
+   * ⚠️ V11 V9.3 — A LIQUIDAÇÃO RESPONDE À MESMA PERGUNTA QUE A APROPRIAÇÃO, e precisa responder.
+   *
+   * Uma folha de 13º só chega aqui com `apropriacao !== null`. Se ela abateu sem critério
+   * declarado, ou foi apropriada ANTES desta mudança, ou o critério sumiu do caminho — e nos dois
+   * casos liquidar seria praticar o ato em que o valor se torna EXIGÍVEL sobre uma apuração que
+   * nenhum ato do ente sustenta. Recusar aqui **não desfaz nada**: o empenho gravado continua
+   * valendo, e desfazê-lo é anulação pela despesa, ato próprio.
+   *
+   * ⚠️ E VEM ANTES DE "NÃO CERTIFICADA" de propósito. Mandar atestar quem está travado por lacuna
+   * normativa faria o atestador assinar o que não destrava — e o atesto é justamente o controle
+   * que deveria ter visto a lacuna.
+   */
+  if (e.abatimentoSemCriterioDeclarado) {
+    return preCondicao(
+      "ABATIMENTO-SEM-CRITERIO-DECLARADO",
+      `O 13º de ${e.competencia} abateu a 1ª parcela sem que o parâmetro do exercício declarasse qual estado o adiantamento precisa ter para ser abatido. Liquidar é o ato em que o valor se torna exigível, e isso é SIMULAÇÃO, não apuração aprovada.`,
+      "O ente declara o critério (fechado, certificado ou pago) na próxima versão do parâmetro do 13º, com o ato que o fundamenta, e a folha é recalculada. Os empenhos já gravados continuam valendo; desfazê-los é anulação pela despesa. Folha > Parâmetros do 13º."
+    );
+  }
   if (e.certificacao !== "CERTIFICADA") {
     const porque = e.certificacao === "DEVOLVIDA" ? "foi devolvida para correção" : e.certificacao === "SUPERADA" ? "tem certificação de outro cálculo" : "ainda não foi certificada";
     return preCondicao("FOLHA-NAO-CERTIFICADA", `A folha de ${e.competencia} ${porque}.`, "A liquidação se apoia no atesto de quem o ente designou.");
