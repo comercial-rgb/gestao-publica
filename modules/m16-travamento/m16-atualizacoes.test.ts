@@ -297,6 +297,7 @@ describe("instalação limpa e atualização — no banco", () => {
       // nao sobra nada a derivar. Na ATUALIZACAO ela alcanca quem administra permissoes no
       // global — e ninguem mais, de proposito (ver `derivarEntidadeContabil`).
       { versao: 27, previa: 0, aplicada: false },
+      { versao: 28, previa: 0, aplicada: false },
     ]);
   });
 

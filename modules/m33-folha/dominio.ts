@@ -33,16 +33,41 @@ export const DIAS_DO_MES_FISCAL = 30;
 
 export type RegimePrevidenciario = "RGPS" | "RPPS" | "ISENTO";
 export type TipoDeRubrica = "PROVENTO" | "DESCONTO";
-export type NaturezaDaRubrica =
-  | "VENCIMENTO_BASE"
-  | "GRATIFICACOES_DO_VINCULO"
-  | "VALOR_INFORMADO"
-  | "PERCENTUAL_DO_VENCIMENTO"
-  | "CONTRIBUICAO_PREVIDENCIARIA"
-  | "IMPOSTO_DE_RENDA"
-  | "SALARIO_FAMILIA"
+
+/**
+ * AS NATUREZAS DE RUBRICA — UMA LISTA SÓ, e a união e o Zod DERIVAM dela.
+ *
+ * ⚠️ ISTO ERAM TRÊS LISTAS, E A TERCEIRA JÁ DIVERGIU. Havia o `type` (escrito à mão), o
+ * `z.enum` de `zCadastrarRubricaInput` (escrito à mão) e o enum do Prisma. Na V11 V9.1 o valor
+ * `ABATIMENTO_DO_ADIANTAMENTO_DO_13` entrou nos dois primeiros e **não** no `z.enum` — e o
+ * defeito não era de compilação: o `parse` recusaria a natureza na ENTRADA, a única rubrica que
+ * o motor do 13º sabe ler ficaria incadastrável, a 2ª parcela nunca abateria a 1ª, e o ente
+ * pagaria o 13º INTEIRO a quem já recebeu metade. Com o domínio inteiro verde.
+ *
+ * Duas cópias que precisam concordar sempre acabam discordando. A união e o Zod agora saem
+ * daqui, e divergir entre elas virou impossível. Sobra uma segunda lista que NÃO é TypeScript —
+ * o enum de `prisma/schema/m33-folha.prisma` —, e essa é afirmada por
+ * `m33-listas-de-natureza.test.ts`, que lê o arquivo `.prisma` e compara.
+ */
+export const NATUREZAS_DA_RUBRICA = [
+  "VENCIMENTO_BASE",
+  "GRATIFICACOES_DO_VINCULO",
+  "VALOR_INFORMADO",
+  "PERCENTUAL_DO_VENCIMENTO",
+  "CONTRIBUICAO_PREVIDENCIARIA",
+  "IMPOSTO_DE_RENDA",
+  "SALARIO_FAMILIA",
   /** V11 V1.1 — o valor sai da FÓRMULA da versão vigente, em universo fechado. */
-  | "FORMULA";
+  "FORMULA",
+  /**
+   * V11 V9.1 — o abatimento da 1ª parcela do 13º. O valor vem de OUTRA folha (o provento do
+   * adiantamento já fechado do mesmo exercício), e por isso não é fórmula: `packages/formula` é
+   * universo fechado sobre o contracheque CORRENTE. O motor MENSAL a ignora (cai no `default`).
+   */
+  "ABATIMENTO_DO_ADIANTAMENTO_DO_13",
+] as const;
+
+export type NaturezaDaRubrica = (typeof NATUREZAS_DA_RUBRICA)[number];
 
 /** As naturezas que existem UMA vez: o serviço recusa a segunda rubrica com a mesma. */
 export const NATUREZAS_SISTEMICAS: readonly NaturezaDaRubrica[] = [
@@ -842,7 +867,12 @@ export const zCadastrarRubricaInput = z
     codigo: z.string().trim().min(1).max(20),
     descricao: z.string().trim().min(3),
     tipo: z.enum(["PROVENTO", "DESCONTO"]),
-    natureza: z.enum(["VENCIMENTO_BASE", "GRATIFICACOES_DO_VINCULO", "VALOR_INFORMADO", "PERCENTUAL_DO_VENCIMENTO", "CONTRIBUICAO_PREVIDENCIARIA", "IMPOSTO_DE_RENDA", "SALARIO_FAMILIA", "FORMULA"]),
+    /**
+     * ⚠️ DERIVADA, NÃO COPIADA. Esta linha já foi uma lista escrita à mão, e foi ela que divergiu
+     * na V11 V9.1 — ver o comentário de `NATUREZAS_DA_RUBRICA`. Uma cópia a menos é um defeito a
+     * menos que precisa de teste para ser pego.
+     */
+    natureza: z.enum(NATUREZAS_DA_RUBRICA),
     percentual: zAliquota.nullable().optional(),
     incideContribuicao: z.boolean(),
     incideIrrf: z.boolean(),
@@ -858,7 +888,10 @@ export const zCadastrarRubricaInput = z
     if (v.natureza !== "PERCENTUAL_DO_VENCIMENTO" && v.percentual !== null && v.percentual !== undefined) {
       ctx.addIssue({ code: "custom", path: ["percentual"], message: "Só a natureza PERCENTUAL_DO_VENCIMENTO usa percentual." });
     }
-    const desconto = v.natureza === "CONTRIBUICAO_PREVIDENCIARIA" || v.natureza === "IMPOSTO_DE_RENDA";
+    // O abatimento do adiantamento do 13º entra aqui: ele SEMPRE subtrai — uma rubrica de
+    // abatimento cadastrada como PROVENTO somaria a 1ª parcela à 2ª em vez de abatê-la, e o
+    // contracheque fecharia com o dobro.
+    const desconto = v.natureza === "CONTRIBUICAO_PREVIDENCIARIA" || v.natureza === "IMPOSTO_DE_RENDA" || v.natureza === "ABATIMENTO_DO_ADIANTAMENTO_DO_13";
     if (desconto && v.tipo !== "DESCONTO") ctx.addIssue({ code: "custom", path: ["tipo"], message: `${v.natureza} é DESCONTO.` });
     const provento = v.natureza === "VENCIMENTO_BASE" || v.natureza === "GRATIFICACOES_DO_VINCULO" || v.natureza === "SALARIO_FAMILIA";
     if (provento && v.tipo !== "PROVENTO") ctx.addIssue({ code: "custom", path: ["tipo"], message: `${v.natureza} é PROVENTO.` });
@@ -887,9 +920,20 @@ export const zLancarNaFolhaInput = z
   });
 export type LancarNaFolhaInput = z.input<typeof zLancarNaFolhaInput>;
 
+/**
+ * V11 V9.1 — os três tipos de folha que TÊM MOTOR.
+ *
+ * ⚠️ A FOLHA DE DIFERENÇA DE 13º NÃO ENTRA AQUI, e a ausência é deliberada: o item 5.12.50 a
+ * enumera, e ela depende de retificar cálculo já fechado (`RETIFICACAO-DA-FOLHA`), que não
+ * existe. Um valor a mais neste enum viraria uma opção de tela que recusa quando escolhida — o
+ * pior tipo de promessa, porque só falha depois que o operador confiou nela.
+ */
+export const TIPOS_DE_FOLHA = ["MENSAL", "ADIANTAMENTO_DECIMO_TERCEIRO", "DECIMO_TERCEIRO"] as const;
+export type TipoDeFolha = (typeof TIPOS_DE_FOLHA)[number];
+
 export const zAbrirFolhaInput = z.object({
   competencia: zCompetencia,
-  tipo: z.enum(["MENSAL"]).default("MENSAL"),
+  tipo: z.enum(TIPOS_DE_FOLHA).default("MENSAL"),
   criadoPor: zAutor,
 });
 export type AbrirFolhaInput = z.input<typeof zAbrirFolhaInput>;

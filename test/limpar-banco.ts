@@ -373,6 +373,13 @@ export const TABELAS = [
   // V11 V4.2 — a coluna declarada vem antes da política (FK).
   "ColunaPublicadaDePessoal",
   "PoliticaDePublicacaoDePessoal",
+  // V11 V9.1 — o parâmetro do 13º: a FILHA antes da MÃE, e as duas antes de `Rubrica`.
+  // `RubricaDaBaseDoDecimoTerceiro` aponta para `ParametroDoDecimoTerceiro` e para `Rubrica`; o
+  // parâmetro aponta para `Rubrica` três vezes (13º, adiantamento e abatimento). Sem as duas
+  // aqui, `limparBanco` no `beforeEach` deixaria o parâmetro do caso anterior de pé — e o teste
+  // da "versão vigente" passaria pelo motivo errado, lendo a versão de outro caso.
+  "RubricaDaBaseDoDecimoTerceiro",
+  "ParametroDoDecimoTerceiro",
   // V11 V1.1 — as versões e as dependências vêm antes da rubrica (FK).
   "DependenciaDaVersaoDaRubrica",
   "VersaoDaRubrica",

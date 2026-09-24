@@ -1,0 +1,71 @@
+import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
+import { PageHeader } from "../../../../components/ui/PageHeader";
+import { ListaDeRecurso } from "../../../../components/molde/ListaDeRecurso";
+import { lerConsulta, TAMANHO_DE_PAGINA, type ParametrosBrutos } from "../../../../lib/molde/consulta";
+import { acoesPermitidas, exigirLeitura } from "../../../../lib/portas/molde";
+import { PARAMETROS_DO_DECIMO_TERCEIRO } from "../../../../lib/portas/recursos/folha";
+import {
+  listarParametrosDoDecimoTerceiro,
+  rubricasParaOParametroDo13,
+  PortaSemBancoError,
+} from "../../../../lib/portas/recursos/folha-dados";
+import { FormParametroDo13 } from "./FormParametroDo13";
+
+/**
+ * OS PARÂMETROS DO 13º DO ENTE (M33, V11 V9.1) — lista do molde; o cadastro é a ilha
+ * `FormParametroDo13` (as rubricas da base são linhas, e o molde não monta múltiplas linhas).
+ *
+ * ⚠️ A SITUAÇÃO É DERIVADA a cada leitura: vigente é a de maior versão do exercício. Não há coluna
+ * de situação, e as versões anteriores continuam listadas — as folhas que elas calcularam citam o
+ * id e a versão na memória, e sem a linha o contracheque deixaria de se explicar.
+ *
+ * ⚠️ Imports RELATIVOS na UI. `force-dynamic`: a lista depende de SESSÃO.
+ */
+export const dynamic = "force-dynamic";
+
+export default async function Pagina({ searchParams }: { readonly searchParams: Promise<ParametrosBrutos> }): Promise<React.ReactElement> {
+  await exigirLeitura("CONSULTAR_FOLHA");
+  const consulta = lerConsulta(PARAMETROS_DO_DECIMO_TERCEIRO, await searchParams);
+  try {
+    const [pagina, rubricas, permitidas] = await Promise.all([
+      listarParametrosDoDecimoTerceiro(consulta),
+      rubricasParaOParametroDo13(),
+      acoesPermitidas(["CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO"]),
+    ]);
+    const podeCriar = permitidas.has("CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO");
+    return (
+      <ListaDeRecurso
+        definicao={PARAMETROS_DO_DECIMO_TERCEIRO}
+        linhas={pagina.linhas}
+        total={pagina.total}
+        pagina={consulta.pagina}
+        tamanhoPagina={TAMANHO_DE_PAGINA}
+        filtrosVigentes={consulta.filtros}
+        ordem={consulta.ordem}
+        direcao={consulta.direcao}
+        selecionados={consulta.selecionados}
+        {...(podeCriar
+          ? { formulario: <FormParametroDo13 proventos={rubricas.proventos} base={rubricas.base} abatimento={rubricas.abatimento} /> }
+          : {
+              motivoSemCriar:
+                "Você não tem a permissão CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO. Ela é própria, e não vem junto com a de " +
+                "configurar as tabelas do ente: quem cadastra a tabela federal do IRRF não é necessariamente quem decide o " +
+                "critério do avo do município. Peça ao administrador — a concessão é por ação, e é registrada.",
+            })}
+      />
+    );
+  } catch (e) {
+    if (e instanceof PortaSemBancoError) {
+      return (
+        <div className="space-y-6">
+          <PageHeader titulo={PARAMETROS_DO_DECIMO_TERCEIRO.rotulo} subtitulo={PARAMETROS_DO_DECIMO_TERCEIRO.descricao} />
+          <EstadoVazio
+            titulo="Banco de dados indisponível"
+            descricao="Esta tela lê e grava os parâmetros do 13º do ente. Sem banco, não tem o que mostrar — e não vai fingir que tem."
+          />
+        </div>
+      );
+    }
+    throw e;
+  }
+}

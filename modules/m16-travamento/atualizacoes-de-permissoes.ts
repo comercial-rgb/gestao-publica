@@ -472,6 +472,26 @@ export function derivarGuiaDeRecolhimento(
   return saida;
 }
 
+/**
+ * V11 V9.1 — o parâmetro do 13º. Quem administra permissões no global a recebe, e ninguém mais:
+ * ver o motivo do detector na descrição da v28.
+ */
+export const ACOES_DO_PARAMETRO_DO_DECIMO_TERCEIRO: readonly AcaoDoSistema[] = ["CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO"];
+
+export function derivarParametroDoDecimoTerceiro(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null);
+    if (!administra) continue;
+    if (perfil.permissoes.some((p) => p.acao === "CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO" && p.unidadeOrcId === null)) continue;
+    saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao: "CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO", unidadeOrcId: null });
+  }
+  return saida;
+}
+
 /** V7 M1 U4 — a ouvidoria (triagem e resposta, com lotação) e a moderação das avaliações. */
 export const ACOES_DA_OUVIDORIA_E_AVALIACAO: readonly AcaoDoSistema[] = ["TRIAR_MANIFESTACAO_DE_OUVIDORIA", "MODERAR_AVALIACAO_DE_SERVICO"];
 
@@ -1109,6 +1129,24 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "o poder de declarar titularidade de receita — e titularidade e o que separa o caixa de uma autarquia do " +
       "caixa da prefeitura. As tres vao a quem administra permissoes no global, que as distribui nomeando a pessoa.",
     derivar: derivarEntidadeContabil,
+  },
+  {
+    versao: 28,
+    nome: "parametro-do-decimo-terceiro",
+    descricao:
+      "O 13o em duas parcelas (V11 V9.1) chegou com CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO: por exercicio, " +
+      "quantos dias fazem um mes contar um avo, quantos avos tem o ano, o percentual da 1a parcela, se o 13o " +
+      "sofre contribuicao e imposto, quais rubricas compoem a base, e o ato que fundamenta tudo isso. " +
+      "⚠️ ELA NAO ACOMPANHA CONFIGURAR_TABELAS_DA_FOLHA, e a tentacao de faze-la acompanhar e grande: sao as " +
+      "duas telas de 'numero que a folha usa', no mesmo menu, operadas pela mesma pessoa na maioria dos entes. " +
+      "A diferenca e de AUTORIDADE. Quem digita a tabela do IRRF transcreve uma portaria federal; quem escreve " +
+      "este parametro decide o criterio do MUNICIPIO. " +
+      "⚠️ E O QUE FECHA A QUESTAO E O DETECTOR: um erro aqui nao tem nenhum. Se a pessoa errada mudar o criterio " +
+      "do avo ou o percentual da 1a parcela, a folha de 13o FECHA, o total bate, o empenho bate, a liquidacao " +
+      "bate — e a diferenca so aparece no contracheque de quem foi admitido perto da borda do mes. Nao ha etapa " +
+      "adiante que acuse. Concessao sem detector e concessao DELIBERADA: vai so a quem administra permissoes no " +
+      "global, que a distribui nomeando a pessoa.",
+    derivar: derivarParametroDoDecimoTerceiro,
   },
 ];
 

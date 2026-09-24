@@ -1,0 +1,29 @@
+-- V11 V9.1 — A AÇÃO `CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO` NO ENUM DO BANCO.
+--
+-- ⚠️ ESTA MIGRATION EXISTE PORQUE `AcaoDoSistema` É TIPO DE BANCO, E NÃO SÓ TIPO DE TYPESCRIPT.
+-- Acrescentar o valor à união em `modules/m16-travamento/acoes.ts` e ao enum em
+-- `prisma/schema/m16-usuarios.prisma` faz o COMPILADOR aceitar a ação — e deixa o banco sem ela.
+-- O defeito que isso produz é do pior tipo: nada quebra ao compilar, nada quebra ao subir, e a
+-- primeira tentativa REAL de conceder a permissão (a instalação limpa, ou a atualização v28 num
+-- ente existente) falha em runtime com "invalid input value for enum AcaoDoSistema". O erro
+-- aparece longe da causa, no bootstrap de um município, e não no code review.
+--
+-- ⚠️ E É POR ISSO QUE CENSO DE RUNTIME E VERIFICAÇÃO DE TIPOS NÃO SE SUBSTITUEM. O censo ficou
+-- verde em 424 sobre um `acoes.ts` que não compilava: ele conta entradas de um Record, não
+-- confere se o tipo fecha, e nenhum dos dois olha para o enum do Postgres. São três listas da
+-- mesma coisa — a união, o Record e o enum do banco — e esta migration é a terceira.
+--
+-- As migrations 20261011090000 e 20261011091000 cobrem `TipoDeFolha`, `NaturezaDaRubrica` e as
+-- tabelas do parâmetro. Nenhuma delas toca `AcaoDoSistema`.
+--
+-- ⚠️ E ELA CARREGA SÓ O `ADD VALUE`, nada mais. No Postgres um valor acrescentado a um tipo
+-- enumerado não pode ser USADO na mesma transação que o acrescentou, e o Prisma roda cada arquivo
+-- de migration numa transação. Aqui o uso é em runtime (uma linha de `PermissaoDePerfil`), não
+-- dentro da migration — mas a regra fica valendo mesmo assim, porque é o padrão que a V8.3
+-- estabeleceu e porque quem quiser semear uma concessão neste arquivo amanhã descobriria a
+-- restrição do jeito caro.
+--
+-- ADITIVA: um valor novo. Nenhum valor existente muda de nome ou sai, nenhuma linha é reescrita,
+-- e todo banco em produção continua válido.
+
+ALTER TYPE "AcaoDoSistema" ADD VALUE 'CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO';

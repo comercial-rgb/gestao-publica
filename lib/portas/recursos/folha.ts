@@ -23,11 +23,50 @@ const OPCOES_DE_NATUREZA = [
   { valor: "CONTRIBUICAO_PREVIDENCIARIA", rotulo: "Contribuição previdenciária (pela tabela do regime)" },
   { valor: "IMPOSTO_DE_RENDA", rotulo: "IRRF (pela tabela vigente)" },
   { valor: "SALARIO_FAMILIA", rotulo: "Salário-família (pela tabela e pelos dependentes)" },
+  // ⚠️ V11 V9.1 — SEM ESTA LINHA A CADEIA DO 13º NÃO EXISTE PELA INTERFACE. É a única natureza
+  // que o motor do 13º sabe ler para abater a 1ª parcela, e o parâmetro do 13º RECUSA qualquer
+  // outra no papel de abatimento. Faltando aqui, o operador não consegue criar a rubrica, o
+  // parâmetro não pode ser cadastrado, e a folha de 13º nunca é calculada — tudo isso com o
+  // domínio inteiro funcionando e nenhum teste vermelho.
+  { valor: "ABATIMENTO_DO_ADIANTAMENTO_DO_13", rotulo: "Abatimento do adiantamento do 13º (lido da folha da 1ª parcela)" },
 ];
 
 const OPCOES_DE_TIPO_DE_RUBRICA = [
   { valor: "PROVENTO", rotulo: "Provento" },
   { valor: "DESCONTO", rotulo: "Desconto" },
+];
+
+/**
+ * V11 V9.1 — os tipos de folha OFERECIDOS, e a lista é a mesma do enum do domínio de propósito.
+ *
+ * ⚠️ A FOLHA DE DIFERENÇA DE 13º NÃO ESTÁ AQUI. O item 5.12.50 a enumera e ela não tem motor
+ * (depende de `RETIFICACAO-DA-FOLHA`, que não existe). Uma opção que recusa quando escolhida é
+ * pior que uma opção ausente: a primeira só falha depois que o operador confiou nela.
+ */
+export const OPCOES_DE_TIPO_DE_FOLHA = [
+  { valor: "MENSAL", rotulo: "Mensal" },
+  { valor: "ADIANTAMENTO_DECIMO_TERCEIRO", rotulo: "Adiantamento do 13º (1ª parcela)" },
+  { valor: "DECIMO_TERCEIRO", rotulo: "13º salário (2ª parcela, com abatimento da 1ª)" },
+];
+
+export const OPCOES_DE_ESFERA_DO_ATO = [
+  { valor: "MUNICIPAL", rotulo: "Municipal" },
+  { valor: "ESTADUAL", rotulo: "Estadual" },
+  { valor: "FEDERAL", rotulo: "Federal" },
+];
+
+export const OPCOES_DE_TIPO_DE_ATO = [
+  { valor: "ESTATUTO_DOS_SERVIDORES", rotulo: "Estatuto dos servidores" },
+  { valor: "LEI", rotulo: "Lei" },
+  { valor: "LEI_COMPLEMENTAR", rotulo: "Lei complementar" },
+  { valor: "LEI_ORGANICA", rotulo: "Lei orgânica" },
+  { valor: "DECRETO", rotulo: "Decreto" },
+  { valor: "PORTARIA", rotulo: "Portaria" },
+  { valor: "INSTRUCAO_NORMATIVA", rotulo: "Instrução normativa" },
+  { valor: "RESOLUCAO", rotulo: "Resolução" },
+  { valor: "MEDIDA_PROVISORIA", rotulo: "Medida provisória" },
+  { valor: "EMENDA_CONSTITUCIONAL", rotulo: "Emenda constitucional" },
+  { valor: "CONSTITUICAO", rotulo: "Constituição" },
 ];
 
 export const OPCOES_DE_TIPO_DE_TABELA = [
@@ -47,7 +86,13 @@ export const FOLHAS: DefinicaoDeRecurso = definirRecurso({
     "cálculo e sha256 em cada um; recalcular é o número seguinte; cancelar e fechar são fatos. Fechada, não se recalcula.",
   campos: [
     { nome: "competencia", rotulo: "Competência (AAAA-MM)", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "2026-05" },
-    { nome: "tipo", rotulo: "Tipo", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: [{ valor: "MENSAL", rotulo: "Mensal" }] },
+    {
+      nome: "tipo", rotulo: "Tipo", tipo: "selecao", obrigatorio: true, largura: 1,
+      opcoes: [...OPCOES_DE_TIPO_DE_FOLHA],
+      ajuda:
+        "As duas folhas de 13º medem por AVO do exercício, não por dia do mês, e exigem o parâmetro do " +
+        "exercício cadastrado. Só existe uma de cada por ano; a de 13º abate automaticamente o adiantamento.",
+    },
   ],
   colunas: [
     { nome: "competencia", cabecalho: "Competência", tipo: "link", ordenavel: true },
@@ -380,4 +425,64 @@ export const DESIGNACOES_DA_FOLHA: DefinicaoDeRecurso = definirRecurso({
   abas: ["dados", "historico"],
 });
 
-export const RECURSOS_DA_FOLHA: readonly DefinicaoDeRecurso[] = [FOLHAS, RUBRICAS, LANCAMENTOS_DA_FOLHA, TABELAS_DA_FOLHA, GRUPOS_DE_EMPENHO_DA_FOLHA, DESIGNACOES_DA_FOLHA];
+/**
+ * V11 V9.1 — OS PARÂMETROS DO 13º DO ENTE.
+ *
+ * ⚠️ A LISTA É DO MOLDE; O CADASTRO É ILHA (`FormParametroDo13`), pela mesma razão das tabelas: as
+ * rubricas da base são LINHAS (uma lista de seleções), e o molde não monta múltiplas linhas —
+ * limite declarado em `components/ui/MODULO-UI.md`. Os `campos` abaixo descrevem o que a ilha
+ * grava, para que o descritor não minta sobre a tela.
+ *
+ * ⚠️ E O QUE ESTA TELA DECIDE É DINHEIRO DE TODO MUNDO. Daí a ação própria
+ * `CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO`: quem cadastra a tabela federal do IRRF não é
+ * necessariamente quem decide o critério do avo do município.
+ */
+export const PARAMETROS_DO_DECIMO_TERCEIRO: DefinicaoDeRecurso = definirRecurso({
+  nome: "parametros-do-decimo-terceiro",
+  rotulo: "Parâmetros do 13º",
+  rotuloSingular: "Parâmetro do 13º",
+  rota: "/folha/parametros-do-13",
+  descricao:
+    "Por exercício, o que o ENTE declara para o 13º: quantos dias fazem um mês contar um avo, quantos avos tem o ano, " +
+    "o percentual da 1ª parcela, se o 13º sofre contribuição e imposto, quais rubricas compõem a base — e o ato que " +
+    "fundamenta tudo isso, com número, ano e dispositivo. Sem parâmetro, a folha de 13º recusa calcular e diz o exercício.",
+  campos: [
+    { nome: "exercicio", rotulo: "Exercício (ano do 13º)", tipo: "inteiro", obrigatorio: true, largura: 1, minimo: 1900, maximo: 2200 },
+    { nome: "diasMinimosDoAvo", rotulo: "Dias mínimos no mês para contar um avo", tipo: "inteiro", obrigatorio: true, largura: 1, minimo: 1, maximo: 30 },
+    { nome: "avosNoExercicio", rotulo: "Avos no exercício", tipo: "inteiro", obrigatorio: true, largura: 1, minimo: 1, maximo: 12 },
+    { nome: "percentualDaPrimeiraParcela", rotulo: "Percentual da 1ª parcela", tipo: "texto", obrigatorio: true, largura: 1 },
+    { nome: "baseDosAvosDoAdiantamento", rotulo: "Avos da 1ª parcela contam até", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+    { nome: "atoTipo", rotulo: "Tipo do ato", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+    { nome: "atoNumero", rotulo: "Número do ato", tipo: "texto", obrigatorio: true, largura: 1 },
+    { nome: "atoAno", rotulo: "Ano do ato", tipo: "inteiro", obrigatorio: true, largura: 1 },
+    { nome: "atoDispositivo", rotulo: "Dispositivo", tipo: "texto", obrigatorio: true, largura: 2 },
+    { nome: "atoEmenta", rotulo: "Ementa ou transcrição do dispositivo", tipo: "textoLongo", obrigatorio: true, largura: 4 },
+  ],
+  colunas: [
+    // ⚠️ TEXTO, NÃO LINK, e é decisão declarada: não existe `/folha/parametros-do-13/[id]`. Uma
+    // coluna `link` faria o molde montar um caminho para uma rota que responde 404 — botão sem
+    // handler, que este repositório proíbe. E o detalhe não faz falta: a lista já traz TODOS os
+    // campos do parâmetro (avo, percentual, incidências, quantas rubricas na base e o ato por
+    // número, ano e dispositivo). Um detalhe aqui só repetiria a linha.
+    { nome: "exercicio", cabecalho: "Exercício", tipo: "texto", ordenavel: true },
+    { nome: "versao", cabecalho: "Versão", tipo: "inteiro", ordenavel: true },
+    { nome: "avo", cabecalho: "Avo", tipo: "texto" },
+    { nome: "primeiraParcela", cabecalho: "1ª parcela", tipo: "texto" },
+    { nome: "incidencias", cabecalho: "Incidências no 13º", tipo: "texto" },
+    { nome: "base", cabecalho: "Rubricas da base", tipo: "inteiro" },
+    { nome: "ato", cabecalho: "Ato", tipo: "texto" },
+    { nome: "situacao", cabecalho: "Situação", tipo: "situacao" },
+  ],
+  filtros: [
+    { nome: "q", rotulo: "Exercício ou ato", tipo: "texto", largura: 2, placeholder: "2026 ou 1.234" },
+  ],
+  // ⚠️ NENHUMA AÇÃO POR REGISTRO, e é o desenho: o parâmetro é append-only. Não se edita (a
+  // correção é a versão seguinte) e não se revoga (as folhas já calculadas citam a versão que as
+  // produziu, e sem ela o contracheque deixaria de se explicar). Uma ação "editar" aqui
+  // reescreveria a história de uma folha fechada.
+  acoes: [],
+  abas: ["dados"],
+  permissoes: { criar: "CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO" },
+});
+
+export const RECURSOS_DA_FOLHA: readonly DefinicaoDeRecurso[] = [FOLHAS, RUBRICAS, LANCAMENTOS_DA_FOLHA, TABELAS_DA_FOLHA, GRUPOS_DE_EMPENHO_DA_FOLHA, DESIGNACOES_DA_FOLHA, PARAMETROS_DO_DECIMO_TERCEIRO];

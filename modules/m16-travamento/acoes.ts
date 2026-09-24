@@ -392,6 +392,14 @@ export type AcaoDoSistema =
   | "REGISTRAR_ATENDIMENTO_NO_GUICHE"
   | "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA"
   | "CONFIGURAR_TABELAS_DA_FOLHA"
+  // ── M33 V11 V9.1 — O PARÂMETRO DO 13º DO EXERCÍCIO ──
+  //
+  // ⚠️ AÇÃO PRÓPRIA, E NÃO UM RAMO DE `CONFIGURAR_TABELAS_DA_FOLHA`. As duas parecem a mesma
+  // autoridade — "cadastrar número que a folha usa" — e não são: a tabela do IRRF vem de portaria
+  // federal e quem a digita transcreve; o parâmetro do 13º decide o CRITÉRIO DO ENTE (quantos dias
+  // fazem um mês contar, quantos avos tem o ano, quanto é a 1ª parcela). Quem transcreve a
+  // portaria não recebeu, por isso, o poder de escrever a regra do município.
+  | "CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO"
   | "CADASTRAR_RUBRICA"
   // ── M33 V11 V1.1 — A RUBRICA VERSIONADA ──
   //
@@ -905,6 +913,8 @@ export type NomeDeServico =
   | "cadastrarTabelaDeContribuicao"
   | "cadastrarTabelaIrrf"
   | "cadastrarTabelaSalarioFamilia"
+  // V11 V9.1 — o parâmetro do 13º do exercício (`modules/m33-folha/decimo-terceiro-servico.ts`).
+  | "cadastrarParametroDoDecimoTerceiro"
   | "cadastrarRubrica"
   // M33 V11 V1.1 — a rubrica versionada.
   // M13 V11 V4.2 — a política de publicação de pessoal.
@@ -1445,6 +1455,7 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   cadastrarTabelaDeContribuicao: "CONFIGURAR_TABELAS_DA_FOLHA",
   cadastrarTabelaIrrf: "CONFIGURAR_TABELAS_DA_FOLHA",
   cadastrarTabelaSalarioFamilia: "CONFIGURAR_TABELAS_DA_FOLHA",
+  cadastrarParametroDoDecimoTerceiro: "CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO",
   cadastrarRubrica: "CADASTRAR_RUBRICA",
   cadastrarPoliticaDePessoal: "CADASTRAR_POLITICA_DE_PESSOAL",
   aprovarPoliticaDePessoal: "APROVAR_POLITICA_DE_PESSOAL",
@@ -1856,6 +1867,14 @@ export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
  * grep-teste lê esta lista — nada sai do censo por descuido.
  */
 export const FORA_DO_CENSO: Record<string, string> = {
+  // ── M33 V11 V9.1 — o parâmetro do 13º ──
+  parametroVigenteDoExercicio:
+    "LEITURA. O parâmetro do 13º vigente de um exercício — a versão de maior número, com as três " +
+    "rubricas e a base já resolvidas. Não grava nada: é projeção de um cadastro append-only. Quem " +
+    "a chama é `calcularFolha`, que já cobra CALCULAR_FOLHA antes de qualquer leitura — dar-lhe " +
+    "ação própria exigiria conceder duas para praticar um ato só, e um crachá que ninguém usa é " +
+    "um crachá que o administrador concede por atrito. Ela RECUSA quando não há parâmetro " +
+    "(`PARAMETRO-DO-13-AUSENTE`), e essa recusa é o fail-closed do cálculo, não uma autorização.",
   roteiroVigente:
     "LEITURA. A versão vigente do roteiro orçamentário de um par (movimento, tipo de crédito). " +
     "Não grava nada; é a mesma projeção que `dotacao-razao` usa para escriturar, de modo que a " +

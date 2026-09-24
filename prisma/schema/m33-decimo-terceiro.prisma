@@ -1,0 +1,166 @@
+// ============================================================================
+// M33 — O 13º SALÁRIO EM DUAS PARCELAS (V11 V9.1, TR 5.12.50)
+//
+// ⚠️ NENHUM NÚMERO DO 13º ESTÁ NESTE REPOSITÓRIO, e a lista do que NÃO está é justamente o
+// que costuma ser embutido: a fração do avo (o "1/12"), quantos dias de trabalho fazem um mês
+// contar (o "15 dias"), o percentual da 1ª parcela (os "50%") e se o 13º sofre contribuição e
+// imposto. Os quatro vêm de `ParametroDoDecimoTerceiro`, cadastrado pelo ente. Sem parâmetro
+// vigente no exercício, a folha RECUSA nomeando o exercício — nunca calcula por omissão.
+//
+// A razão é que esses números NÃO são nacionais para quem este sistema serve. A Lei 4.090/1962
+// e a Lei 4.749/1965 governam o contrato de trabalho celetista; o servidor ESTATUTÁRIO recebe
+// gratificação natalina pelo estatuto do município, que pode contar o avo de outro jeito. Gravar
+// "15" aqui seria legislar por conta do ente dentro de um arquivo de schema.
+//
+// ⚠️ E A FUNDAMENTAÇÃO NÃO É UMA FRASE. Texto livre com vinte caracteres satisfaz um CHECK de
+// comprimento e não prova nada: "conforme a lei" passa. Por isso o ato é ESTRUTURADO — esfera,
+// tipo, número, ano, dispositivo e ementa em colunas próprias —, e o serviço confere COERÊNCIA
+// (número com dígito, ano plausível medido pela data civil do ente, dispositivo presente, ementa
+// com mais de uma palavra), não tamanho.
+//
+// ⚠️ APPEND-ONLY, SEM UPDATE NENHUM. Corrigir o parâmetro é cadastrar a versão seguinte; a
+// vigente é a de maior `versao`. Cada cálculo grava na memória qual parâmetro e qual versão o
+// produziram, exatamente como já faz com as tabelas de contribuição e de IRRF — então a folha
+// fechada continua explicável depois de o ente mudar de ideia.
+// ============================================================================
+
+/// A esfera do ato que fundamenta o parâmetro. Estatuto de servidor é MUNICIPAL; a CLT e as leis
+/// do 13º celetista são FEDERAL. Declarar a esfera deixa a conferência do controle interno
+/// possível sem abrir o texto.
+enum EsferaDoAtoNormativo {
+  FEDERAL
+  ESTADUAL
+  MUNICIPAL
+}
+
+/// O tipo do ato. É FORMA, não norma: enumerar as formas de ato que existem no direito brasileiro
+/// não fixa nenhum conteúdo, e é o que permite conferir que o ente citou um ato e não uma opinião.
+enum TipoDeAtoNormativo {
+  CONSTITUICAO
+  EMENDA_CONSTITUCIONAL
+  LEI_COMPLEMENTAR
+  LEI
+  LEI_ORGANICA
+  ESTATUTO_DOS_SERVIDORES
+  MEDIDA_PROVISORIA
+  DECRETO
+  INSTRUCAO_NORMATIVA
+  PORTARIA
+  RESOLUCAO
+}
+
+/// Até que mês os avos da 1ª parcela são contados. ⚠️ AS DUAS PRÁTICAS EXISTEM NOS ENTES e o TR
+/// não fixa uma: há quem pague metade do que já foi ganho até a competência, e há quem pague
+/// metade do 13º projetado para o ano inteiro. Escolher por dentro seria inventar a norma do ente.
+enum BaseDosAvosDoAdiantamento {
+  /// Conta de janeiro até a competência da folha do adiantamento.
+  ATE_A_COMPETENCIA
+  /// Conta os doze meses do exercício, projetando os que ainda não ocorreram.
+  EXERCICIO_INTEIRO
+}
+
+/// O parâmetro do 13º de UM exercício. Versionado e append-only: a vigente é a de maior `versao`.
+model ParametroDoDecimoTerceiro {
+  id String @id @default(cuid())
+
+  /// O ano civil a que o 13º se refere.
+  exercicio Int
+
+  /// Sequencial por exercício, começando em 1. A memória do contracheque cita este número, e o
+  /// `@@unique` abaixo é o que faz duas gravações concorrentes colidirem em vez de se atropelarem.
+  versao Int
+
+  // ── OS QUATRO NÚMEROS QUE O ENTE DECLARA ──────────────────────────────────
+
+  /// Quantos dias computados num mês fazem aquele mês valer um avo. CHECK: entre 1 e 30.
+  diasMinimosDoAvo Int
+
+  /// O DENOMINADOR da fração do avo — o ente declara (tipicamente 12). CHECK: entre 1 e 12.
+  /// ⚠️ ELE É PARÂMETRO, e não a constante 12 escrita no motor, porque "1/12" é a regra da lei do
+  /// 13º celetista, não um fato do calendário: o estatuto que conta o avo por quinzena tem outro.
+  avosNoExercicio Int
+
+  /// Fração da 1ª parcela sobre o 13º apurado. Decimal: 0.5000 = 50%. CHECK: entre 0 e 1.
+  percentualDaPrimeiraParcela Decimal @db.Decimal(7, 4)
+
+  baseDosAvosDoAdiantamento BaseDosAvosDoAdiantamento
+
+  // ── AS INCIDÊNCIAS, DECLARADAS ────────────────────────────────────────────
+
+  /// O 13º (2ª parcela) sofre contribuição previdenciária pela tabela do regime do vínculo.
+  decimoTerceiroSofreContribuicao Boolean
+
+  /// O 13º (2ª parcela) sofre IRRF pela tabela vigente.
+  decimoTerceiroSofreIrrf Boolean
+
+  // ⚠️ A 1ª PARCELA NÃO SOFRE NENHUM DOS DOIS NESTE SISTEMA, e isso é LIMITE DECLARADO, não
+  // norma afirmada: se ela sofresse, a 2ª teria de abater a contribuição e o imposto já retidos,
+  // e o critério desse abatimento é normativo e não foi levantado. A memória do contracheque do
+  // adiantamento diz isso por escrito, em vez de o operador supor. Pendência
+  // `INCIDENCIA-NA-PRIMEIRA-PARCELA` no MODULO.md do M33.
+
+  // ── AS RUBRICAS ───────────────────────────────────────────────────────────
+
+  /// A rubrica de PROVENTO que carrega o 13º integral (2ª parcela).
+  rubricaDoDecimoTerceiroId String
+  rubricaDoDecimoTerceiro   Rubrica @relation("RubricaDoDecimoTerceiro", fields: [rubricaDoDecimoTerceiroId], references: [id])
+
+  /// A rubrica de PROVENTO que carrega a 1ª parcela.
+  /// ⚠️ SEPARADA DA ANTERIOR DE PROPÓSITO: é a rubrica que decide em qual GRUPO DE EMPENHO a
+  /// verba cai, e portanto em qual ficha e contra qual conta de "pessoal a pagar". Uma rubrica só
+  /// para as duas parcelas obrigaria o ente a empenhá-las na mesma dotação.
+  rubricaDoAdiantamentoId String
+  rubricaDoAdiantamento   Rubrica @relation("RubricaDoAdiantamentoDo13", fields: [rubricaDoAdiantamentoId], references: [id])
+
+  /// A rubrica de DESCONTO, de natureza `ABATIMENTO_DO_ADIANTAMENTO_DO_13`, que abate na 2ª
+  /// parcela o que a 1ª já pagou.
+  rubricaDoAbatimentoId String
+  rubricaDoAbatimento   Rubrica @relation("RubricaDoAbatimentoDo13", fields: [rubricaDoAbatimentoId], references: [id])
+
+  // ── O ATO, ESTRUTURADO ────────────────────────────────────────────────────
+
+  atoEsfera      EsferaDoAtoNormativo
+  atoTipo        TipoDeAtoNormativo
+  /// O número do ato como ele é citado ("1.234", "45/2019"). O serviço exige ao menos um dígito.
+  atoNumero      String @db.VarChar(40)
+  /// O ano do ato. O serviço confere plausibilidade contra a DATA CIVIL DO ENTE, nunca UTC.
+  atoAno         Int
+  /// O dispositivo exato ("art. 2º, § 1º"). Sem ele a citação não é conferível.
+  atoDispositivo String @db.VarChar(120)
+  /// A ementa ou a transcrição do dispositivo — o que permite ao controle interno ler o que o
+  /// ente leu, sem abrir o diário oficial.
+  atoEmenta      String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  rubricasDaBase RubricaDaBaseDoDecimoTerceiro[]
+
+  @@unique([exercicio, versao])
+  @@index([exercicio])
+}
+
+/// Uma rubrica cujo valor compõe a BASE do 13º. ⚠️ É LISTA, e não uma natureza nova, porque quem
+/// sabe o que compõe a gratificação natalina é o ente: em um município entra a gratificação de
+/// função, em outro não. O motor não decide; ele soma o que esta lista disser.
+///
+/// ⚠️ SÓ NATUREZAS DERIVÁVEIS SEM MÉDIA entram (vencimento-base, gratificações do vínculo e
+/// percentual do vencimento). Uma rubrica de VALOR_INFORMADO ou de FÓRMULA aqui exigiria a MÉDIA
+/// das variáveis do ano (TR 5.12.82), que este sistema não calcula — e somar o lançamento de um
+/// mês só seria pior que recusar: pagaria 13º sobre a hora extra de dezembro como se fosse a do
+/// ano inteiro. O serviço recusa no CADASTRO, nomeando a rubrica e a média que falta.
+model RubricaDaBaseDoDecimoTerceiro {
+  id String @id @default(cuid())
+
+  parametroId String
+  parametro   ParametroDoDecimoTerceiro @relation(fields: [parametroId], references: [id], onDelete: Cascade)
+
+  rubricaId String
+  rubrica   Rubrica @relation("RubricaDaBaseDo13", fields: [rubricaId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([parametroId, rubricaId])
+  @@index([rubricaId])
+}

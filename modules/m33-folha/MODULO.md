@@ -255,6 +255,107 @@ Testes: `m33-encargos.test.ts` (6) ajuste 7 e (7) guia 3, (8) ajuste e guia pelo
 a baixa é por pagamento já registrado), `RESTITUICAO-DOS-ENCARGOS-SEM-ATO` (a restituição fica
 registrada como providência; o ato de restituir/compensar não existe), `VENCIMENTO-LEGAL-SEM-TABELA`.
 
+## O 13º SALÁRIO EM DUAS PARCELAS — V11 V9.1 (TR 5.12.50)
+
+`TipoDeFolha` ganhou `ADIANTAMENTO_DECIMO_TERCEIRO` e `DECIMO_TERCEIRO`. O ciclo é o MESMO da
+mensal — abrir, calcular (fato numerado), cancelar cálculo, fechar, certificar, apropriar,
+liquidar, apurar encargos —, porque tudo isso opera sobre `CalculoDaFolha` e `Contracheque`, que
+não mudaram. O que muda é a CONTA.
+
+### A medida é o avo, não o dia
+
+A folha mensal proporcionaliza por `dias/30` (mês fiscal). O 13º proporcionaliza por
+`avos/avosNoExercicio`, e o avo é decisão **binária por mês**: `avosDoExercicio` roda o mesmo
+`diasComputados` da mensal doze vezes e o mês conta inteiro quando alcança o mínimo declarado.
+
+**Somar os dias do ano e dividir por 30 daria outro número, e seria outra regra.** Um servidor com
+14 dias em março e 14 em abril tem 28 dias e **zero** avos; na folha mensal ele teria quase um mês
+de vencimento. As duas contas estão certas, e são contas diferentes.
+
+### Nenhum número do 13º está no repositório
+
+`ParametroDoDecimoTerceiro`, por exercício, versionado e **append-only** (a vigente é a de maior
+`versao`; corrigir é cadastrar a próxima — zero `UPDATE`, e por isso o censo de tabelas do papel
+de runtime não mudou):
+
+| O que o ente declara | Por que não está no código |
+|---|---|
+| `diasMinimosDoAvo` | o "15 dias" é da Lei 4.090/1962, que governa o contrato **celetista**; o estatutário recebe pelo estatuto do município |
+| `avosNoExercicio` | "1/12" é a regra da lei do 13º celetista, não um fato do calendário |
+| `percentualDaPrimeiraParcela` | os "50%" são da Lei 4.749/1965, mesma limitação |
+| `decimoTerceiroSofreContribuicao` / `...SofreIrrf` | incidência é norma, e muda por regime e por ente |
+| `baseDosAvosDoAdiantamento` | **as duas práticas existem**: metade do já ganho até a competência, ou metade do ano projetado. O TR não fixa uma |
+| as rubricas da base | em um município a gratificação de função entra; em outro não |
+
+Sem parâmetro vigente: `PARAMETRO-DO-13-AUSENTE`, nomeando o exercício. O seed e a demonstração
+**não preenchem** esses valores — eles recusam e dizem o que falta.
+
+### O ato é estruturado, e a conferência é de coerência
+
+Fundamentação em texto livre não prova nada: **"conforme a legislação vigente" tem 29 caracteres**
+e passa por qualquer piso de comprimento. O ato vive em colunas próprias — esfera, tipo, número,
+ano, dispositivo, ementa — e `conferirReferenciaNormativa` pergunta quatro coisas: o número tem
+dígito; o ano não é do futuro **pela data civil do ente** (às 23h30 de 31/12 o UTC já virou o ano,
+e por meia hora por ano um ato do ano seguinte passaria); o dispositivo identifica onde no ato a
+regra está; a ementa tem mais de uma palavra. Os mesmos pisos estão em CHECK no banco, para que
+nenhum outro caminho escape.
+
+### A 2ª parcela abate a 1ª, e quatro recusas guardam isso
+
+O abatimento é natureza própria (`ABATIMENTO_DO_ADIANTAMENTO_DO_13`) porque o valor vem de **outra
+folha** — o provento do adiantamento já fechado. A fórmula do ente não alcança isso: `packages/formula`
+é universo fechado sobre o contracheque corrente, e abri-lo para "o valor daquela outra folha" o
+transformaria num leitor de banco.
+
+| Recusa | Quando | O dano que ela evita |
+|---|---|---|
+| `ADIANTAMENTO-NAO-FECHADO` | há adiantamento no exercício e ele não fechou | abater valores de um cálculo que ainda pode mudar |
+| `ADIANTAMENTO-APARECEU-DEPOIS` | a folha de 13º foi aberta sem adiantamento e ele surgiu antes do cálculo | o elo ficaria nulo e o ente pagaria o 13º **inteiro** a quem já recebeu metade |
+| `RUBRICA-DO-ABATIMENTO-AUSENTE` | quem recebeu adiantamento e não há rubrica que o abata | o mesmo pagamento em dobro, com os totais fechando |
+| `ABATIMENTO-MAIOR-QUE-O-13` | adiantado sobre o ano projetado e desligado no meio | o líquido ficaria **negativo**; isso é reposição ao erário, ato que não existe aqui |
+
+`@@unique([exercicio, tipo])` garante **um** adiantamento e **um** 13º por exercício, e é o que
+permite ao serviço resolver o elo em vez de o operador digitá-lo — digitar permitiria abater o
+adiantamento do ano passado.
+
+### O zero de dias é declarado, não suposto
+
+Um contracheque de 13º grava `diasComputados = 0`. Sozinho isso seria uma mentira que some numa
+soma ("gente com zero dia trabalhado no ano"). Quem impede é o CHECK
+`ck_contracheque_avos_ou_dias`: ou `avosComputados` é nulo e `diasComputados` está em [0,30]
+(mensal), ou `avosComputados` vem e `diasComputados` é zero (13º). Exatamente uma das duas medidas,
+por contracheque, dita pelo banco.
+
+### A marcação honesta no catálogo — e por que ela NÃO é `VALIDADO_LOCALMENTE`
+
+A cláusula **5.12.50** deixa de ser atendida só pela folha MENSAL: o 13º e o adiantamento existem,
+com tela, e o resto do item continua ausente (mensal complementar, rescisão, rendimentos
+acumulados, férias, diferença de 13º, adiantamentos salariais).
+
+**Mas a marcação correta hoje é `IMPLEMENTADO_NAO_VALIDADO`, não `VALIDADO_LOCALMENTE`** — e isso
+é a mesma régua com que este lote acusou a 5.18.8 de estar marcada como validada com
+`rota_verificada` vazia. `VALIDADO_LOCALMENTE` exige tela **e** percurso de navegador, e
+`scripts/smoke-decimo-terceiro.ts` **não existe**. Aplicar a régua ao almoxarifado e não a si
+mesmo é o que transforma um relatório em placar.
+
+O que o percurso provaria e os 262 testes não provam está listado no roteiro de quinze passos da
+unidade: a landing levar às telas, o `select` de natureza oferecer o abatimento, o recorte dos
+seletores do parâmetro, a recusa do ato chegar legível à tela, a memória dos doze meses ser
+renderizada, os dois papéis serem sessões distintas, e o contracheque do 13º alcançar o portal do
+servidor. Quatro dos cinco defeitos desta unidade eram exatamente dessa família — o domínio
+funcionando e a interface não alcançando —, e nenhum tinha teste vermelho.
+
+⚠️ **Nada foi marcado no catálogo nesta unidade**, nem para cima nem para baixo. Só
+`scripts/marcar-catalogo.ts` escreve nele.
+
+### Provado em
+
+`m33-decimo-terceiro-dominio.test.ts` (domínio puro) e `m33-decimo-terceiro.test.ts` (com banco).
+**Todo avo esperado está escrito à mão** no comentário de cada caso, mês a mês — conferir o avo
+chamando `avosDoExercicio` para produzir o esperado faria a suíte concordar com qualquer regra
+errada desde que consistente. **Todo caso é N=2**: a admissão no meio do ano (12 e 9 avos) e o par
+afastamento/desligamento (9 e 7 avos), porque com um servidor só "9 avos" passa por vacuidade.
+
 ## Fora de escopo aqui — pendências nomeadas
 
 - `RETIFICACAO-DA-FOLHA` — devolver para correção é fato e BLOQUEIA a liquidação, mas não reabre o
@@ -273,8 +374,32 @@ registrada como providência; o ato de restituir/compensar não existe), `VENCIM
 - `ENCARGO-POR-TIPO-DE-VINCULO` — o componente é por REGIME; alíquota distinta por tipo de vínculo
   (temporário, comissionado) exigiria recorte próprio.
 - `RECOLHIMENTO-DOS-ENCARGOS` — guia, recolhimento e retido × patronal por contribuição (5.12.73).
-- `FOLHAS-NAO-MENSAIS` (5.12.50) — 13º (1ª e 2ª parcela), férias, rescisão, complementar,
-  adiantamento. O `TipoDeFolha` só tem MENSAL.
+- ~~`FOLHAS-NAO-MENSAIS`~~ — **parcialmente resolvida em V11 V9.1**: o 13º em duas parcelas existe
+  (seção abaixo). Continuam ausentes, e declaradas: **férias** (depende de período aquisitivo,
+  perdas, prorrogações e programação — 5.12.21–5.12.28, nada disso existe no M32), **rescisão**
+  (depende de férias e de uma tipologia de motivo de desligamento; hoje o motivo é texto livre),
+  **complementar** e **diferença de 13º** (dependem de `RETIFICACAO-DA-FOLHA`) e **rendimentos
+  acumulados**.
+- `INCIDENCIA-NA-PRIMEIRA-PARCELA` (V11 V9.1) — a 1ª parcela do 13º **não** sofre contribuição nem
+  IRRF neste sistema. É limite declarado, não norma afirmada: se ela sofresse, a 2ª parcela teria
+  de abater o que já foi retido, e esse critério é normativo e não foi levantado. A memória de cada
+  contracheque do adiantamento **diz isso por escrito**, para que "sem contribuição" não se
+  confunda com "a tabela não achou nada a descontar".
+- `SALARIO-FAMILIA-NO-13` (V11 V9.1) — o salário-família não entra no contracheque do 13º. Se
+  algum ente o pagar sobre a gratificação natalina, é parâmetro a criar, não linha a acrescentar.
+- `ABATIMENTO-MAIOR-QUE-O-13` (V11 V9.1) — quem foi adiantado sobre o ano projetado e desligado no
+  meio deve ao ente. A folha **recusa nomeando a matrícula**; repor ao erário é ato próprio, com
+  rito próprio, e não existe aqui.
+- `MEDIA-DAS-VARIAVEIS-NO-13` (5.12.82) — a base do 13º só admite vencimento-base, gratificações do
+  vínculo e percentual do vencimento. Valor informado e fórmula exigiriam a média do ano; somar o
+  lançamento de um mês pagaria 13º sobre a hora extra de dezembro como se fosse a do ano inteiro.
+  O cadastro do parâmetro recusa, nomeando a rubrica.
+- `NATUREZA-FORMULA-FORA-DO-SELETOR` (observado em V11 V9.1, **não** consertado) — o seletor de
+  natureza do cadastro de rubricas (`OPCOES_DE_NATUREZA`, `lib/portas/recursos/folha.ts`) não
+  oferece `FORMULA`, embora o motor a leia desde a V11 V1.1 e o `zCadastrarRubricaInput` a aceite.
+  Pode ser deliberado (a fórmula se escreve na VERSÃO, e o painel de versões fica fora do molde),
+  pode ser o mesmo esquecimento que deixou o abatimento do 13º de fora. Fica nomeado em vez de
+  mudado: acrescentar a opção sem saber por que ela não está lá é adivinhar.
 - `FALTAS-NA-FOLHA` — faltas e suspensões como redutor de dias (hoje só admissão, desligamento e
   afastamento do M32).
 - `PENSAO-ALIMENTICIA-NA-FOLHA` (5.12.74–5.12.77) — a finalidade existe no M32; o desconto e a

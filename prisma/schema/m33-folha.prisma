@@ -167,6 +167,14 @@ enum NaturezaDaRubrica {
   /// V11 V1.1 — o valor vem da FÓRMULA da versão vigente, interpretada em universo fechado
   /// (`packages/formula`). As variáveis são as do contracheque e as OUTRAS rubricas, por código.
   FORMULA
+  /// ⚠️ V11 V9.1 — O ABATIMENTO DA 1ª PARCELA DO 13º, e ele é natureza PRÓPRIA por uma razão que
+  /// nenhuma outra tem: o valor dele vem de OUTRA FOLHA — o provento do adiantamento já fechado
+  /// do mesmo exercício. A fórmula do ente não alcança isso: `packages/formula` é universo
+  /// fechado sobre o contracheque CORRENTE, e abrir esse universo para "o valor daquela outra
+  /// folha" transformaria o interpretador num leitor de banco.
+  ///
+  /// O motor MENSAL a ignora (cai no `default` do switch): ela só produz linha na folha de 13º.
+  ABATIMENTO_DO_ADIANTAMENTO_DO_13
 }
 
 model Rubrica {
@@ -204,6 +212,11 @@ model Rubrica {
   /// V11 V1.1 — as versões vigentes por competência. A VERSÃO é a autoridade do cálculo; as
   /// colunas acima registram como a rubrica nasceu e não são mais lidas pelo motor.
   versoes VersaoDaRubrica[]
+  /// V11 V9.1 — os papéis que esta rubrica exerce no 13º (ver `m33-decimo-terceiro.prisma`).
+  parametrosComoDecimoTerceiro ParametroDoDecimoTerceiro[]     @relation("RubricaDoDecimoTerceiro")
+  parametrosComoAdiantamento   ParametroDoDecimoTerceiro[]     @relation("RubricaDoAdiantamentoDo13")
+  parametrosComoAbatimento     ParametroDoDecimoTerceiro[]     @relation("RubricaDoAbatimentoDo13")
+  basesDoDecimoTerceiro        RubricaDaBaseDoDecimoTerceiro[] @relation("RubricaDaBaseDo13")
 
   @@index([natureza])
   @@index([ordem])
@@ -247,6 +260,10 @@ model LancamentoDaFolha {
 
 enum TipoDeFolha {
   MENSAL
+  /// V11 V9.1 — a 1ª parcela do 13º. O valor sai dos AVOS do exercício, não dos dias do mês.
+  ADIANTAMENTO_DECIMO_TERCEIRO
+  /// V11 V9.1 — o 13º integral, do qual a 1ª parcela já paga é ABATIDA.
+  DECIMO_TERCEIRO
 }
 
 /// A folha de uma competência e tipo. A situação é DERIVADA: sem cálculo / calculada / fechada.
@@ -255,6 +272,24 @@ model FolhaDePagamento {
 
   competencia String      @db.VarChar(7)
   tipo        TipoDeFolha
+
+  /// ⚠️ V11 V9.1 — O EXERCÍCIO É COLUNA, E NÃO DERIVAÇÃO DE `competencia`, por UMA razão: é ele
+  /// que o banco usa para impedir duas folhas de 13º no mesmo ano. Um índice sobre
+  /// `substring(competencia,1,4)` seria expressão, que o schema do Prisma não declara — e índice
+  /// que o schema não declara a deriva remove em silêncio.
+  ///
+  /// NULO na MENSAL (várias por ano, uma por competência) e NÃO NULO nos dois tipos de 13º, onde
+  /// o CHECK ainda exige que ele COINCIDA com o ano da competência. Em Postgres vários NULL
+  /// convivem num índice único, então `@@unique([exercicio, tipo])` não estorva a mensal.
+  exercicio Int?
+
+  /// ⚠️ V11 V9.1 — QUAL adiantamento esta folha de 13º abate. Resolvido pelo SERVIÇO na abertura
+  /// (é único por exercício), nunca digitado — apontar à mão permitiria abater a folha errada.
+  /// Nulo quando o ente não pagou 1ª parcela no exercício; o cálculo RECUSA se um adiantamento
+  /// aparecer depois da abertura, em vez de abater zero em silêncio.
+  folhaDoAdiantamentoId String?
+  folhaDoAdiantamento   FolhaDePagamento?  @relation("AdiantamentoAbatido", fields: [folhaDoAdiantamentoId], references: [id])
+  folhasQueAbatem       FolhaDePagamento[] @relation("AdiantamentoAbatido")
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -270,6 +305,10 @@ model FolhaDePagamento {
   apuracoesDeEncargos ApuracaoDeEncargos[]
 
   @@unique([competencia, tipo])
+  /// V11 V9.1 — UM adiantamento e UM 13º por exercício. A folha de DIFERENÇA de 13º (5.12.50)
+  /// não existe neste sistema e está declarada ausente; se vier, é tipo novo, não uma segunda
+  /// folha do mesmo tipo.
+  @@unique([exercicio, tipo])
 }
 
 /// Um cálculo da folha — numerado por folha; recalcular é o próximo número, nunca UPDATE.
@@ -351,7 +390,19 @@ model Contracheque {
   regime RegimePrevidenciario
 
   /// Fator de dias aplicado às rubricas proporcionais (dias computados / 30).
+  ///
+  /// ⚠️ NA FOLHA DE 13º ELE É ZERO, e o zero ali não quer dizer "ninguém trabalhou": quer dizer
+  /// NÃO SE APLICA. Quem diz isso não é a prosa deste comentário — é o CHECK
+  /// `contracheque_avos_ou_dias`, que exige exatamente uma das duas medidas por contracheque:
+  /// ou `avosComputados` nulo e `diasComputados` em [0,30] (mensal), ou `avosComputados` não
+  /// nulo e `diasComputados = 0` (13º). Sem o CHECK, um leitor distraído somaria dias de folhas
+  /// de 13º e acharia que o ente tem gente com zero dia trabalhado no ano.
   diasComputados Int
+
+  /// ⚠️ V11 V9.1 — OS AVOS DO EXERCÍCIO, quando este contracheque é de 13º. A medida do 13º não
+  /// é o dia do mês, é o MÊS do ano: `avosComputados / avosNoExercicio` (os dois do parâmetro do
+  /// ente). Nulo na folha mensal. Ver o CHECK citado acima.
+  avosComputados Int?
 
   totalProventos    Decimal @db.Decimal(18, 2)
   totalDescontos    Decimal @db.Decimal(18, 2)

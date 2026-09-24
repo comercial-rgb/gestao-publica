@@ -40,7 +40,9 @@ import { comEscritaAutenticada, exigirSessao } from "../sessao";
 import { cliente, PortaSemBancoError } from "../cliente";
 import type { DetalheLido, OpcoesDoCadastro, PaginaDoMolde } from "./dados";
 import { decimalDaTela } from "./pessoal-dados";
-import { OPCOES_DE_TIPO_DE_TABELA } from "./folha";
+import { OPCOES_DE_TIPO_DE_TABELA, OPCOES_DE_TIPO_DE_ATO } from "./folha";
+import { cadastrarParametroDoDecimoTerceiro } from "../../../modules/m33-folha/decimo-terceiro-servico.js";
+import type { TipoDeFolha } from "../../../modules/m33-folha/dominio.js";
 
 /**
  * A PORTA DA FOLHA (M33, V6 P2.3). Lê e chama; quem decide é o domínio. A situação da folha, o
@@ -271,7 +273,9 @@ export async function opcoesDaFolha(): Promise<OpcoesDoCadastro> {
 
 export async function criarFolha(c: Campos): Promise<string> {
   return comEscritaAutenticada("ABRIR_FOLHA", async (criadoPor) => {
-    const r = await abrirFolha(cliente(), { competencia: t(c, "competencia"), tipo: (opcional(c, "tipo") ?? "MENSAL") as "MENSAL", criadoPor });
+    // V11 V9.1 — o tipo passa a valer os três; quem recusa o que não existe é o Zod do domínio
+    // (`zAbrirFolhaInput`), e não um cast aqui. O cast antigo para "MENSAL" era o tipo mentindo.
+    const r = await abrirFolha(cliente(), { competencia: t(c, "competencia"), tipo: (opcional(c, "tipo") ?? "MENSAL") as TipoDeFolha, criadoPor });
     return r.folhaId;
   });
 }
@@ -924,4 +928,110 @@ export async function acaoDaDesignacao(acao: string, designacaoId: string, c: Ca
     revogarDesignacaoNaFolha(cliente(), { designacaoId, dataEfeito: diaDoCampo(c, "dataEfeito"), motivo: t(c, "motivo"), criadoPor })
   );
   return `Designação revogada a partir de ${diaCivilBr(diaDoCampo(c, "dataEfeito"))}. Ela continua no histórico, e os atestos praticados sob ela continuam com lastro.`;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// V11 V9.1 — OS PARÂMETROS DO 13º DO ENTE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * A LISTA DOS PARÂMETROS. A situação é DERIVADA: vigente é a de MAIOR versão do exercício; as
+ * anteriores ficam como SUPERADA — nunca apagadas, porque as folhas que elas calcularam citam o
+ * `id` e a `versao` na memória, e sem a linha o contracheque deixaria de se explicar.
+ */
+export async function listarParametrosDoDecimoTerceiro(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
+  const prisma = cliente();
+  const q = (c.filtros["q"] ?? "").trim();
+  const todos = await prisma.parametroDoDecimoTerceiro.findMany({
+    orderBy: [{ exercicio: "desc" }, { versao: "desc" }],
+    select: {
+      id: true, exercicio: true, versao: true, diasMinimosDoAvo: true, avosNoExercicio: true,
+      percentualDaPrimeiraParcela: true, decimoTerceiroSofreContribuicao: true, decimoTerceiroSofreIrrf: true,
+      atoTipo: true, atoNumero: true, atoAno: true, atoDispositivo: true,
+      _count: { select: { rubricasDaBase: true } },
+    },
+  });
+  const maiorVersaoDo = new Map<number, number>();
+  for (const p of todos) if (!maiorVersaoDo.has(p.exercicio)) maiorVersaoDo.set(p.exercicio, p.versao);
+  const filtrados = q === "" ? todos : todos.filter((p) => String(p.exercicio).includes(q) || p.atoNumero.includes(q));
+  const { skip, take } = paginacao(c);
+  return {
+    total: filtrados.length,
+    linhas: filtrados.slice(skip, skip + take).map((p) => ({
+      id: p.id,
+      exercicio: String(p.exercicio),
+      versao: p.versao,
+      avo: `${p.diasMinimosDoAvo} dia(s) por mês · ${p.avosNoExercicio} avos no ano`,
+      primeiraParcela: `${new Decimal(p.percentualDaPrimeiraParcela).times(100).toFixed(2)}%`,
+      incidencias:
+        [p.decimoTerceiroSofreContribuicao ? "contribuição" : null, p.decimoTerceiroSofreIrrf ? "IRRF" : null]
+          .filter((x) => x !== null).join(" e ") || "nenhuma",
+      base: p._count.rubricasDaBase,
+      ato: `${OPCOES_DE_TIPO_DE_ATO.find((o) => o.valor === p.atoTipo)?.rotulo ?? p.atoTipo} ${p.atoNumero}/${p.atoAno}, ${p.atoDispositivo}`,
+      situacao: maiorVersaoDo.get(p.exercicio) === p.versao ? "VIGENTE" : "SUPERADA",
+    })),
+  };
+}
+
+/**
+ * AS RUBRICAS QUE A ILHA OFERECE, já separadas pelo papel que podem exercer.
+ *
+ * ⚠️ O RECORTE É O PONTO, e é a regra "lista curta não é exceção" do CLAUDE.md: oferecer todas as
+ * rubricas em todos os três seletores produziria um formulário bonito que o caso de uso recusa
+ * depois — e o operador descobriria o erro só ao gravar. A base não oferece valor informado nem
+ * fórmula (exigiriam a MÉDIA do ano, TR 5.12.82, que não existe aqui); o abatimento só oferece a
+ * natureza que o motor sabe ler.
+ */
+export async function rubricasParaOParametroDo13(): Promise<{
+  readonly proventos: readonly { readonly valor: string; readonly rotulo: string }[];
+  readonly base: readonly { readonly valor: string; readonly rotulo: string }[];
+  readonly abatimento: readonly { readonly valor: string; readonly rotulo: string }[];
+}> {
+  const prisma = cliente();
+  const todas = await prisma.rubrica.findMany({
+    orderBy: [{ ordem: "asc" }, { codigo: "asc" }],
+    select: { id: true, codigo: true, descricao: true, tipo: true, natureza: true },
+  });
+  const rotular = (r: { codigo: string; descricao: string }): string => `${r.codigo} — ${r.descricao}`;
+  return {
+    proventos: todas.filter((r) => r.tipo === "PROVENTO").map((r) => ({ valor: r.id, rotulo: rotular(r) })),
+    base: todas
+      .filter((r) => r.tipo === "PROVENTO" && ["VENCIMENTO_BASE", "GRATIFICACOES_DO_VINCULO", "PERCENTUAL_DO_VENCIMENTO"].includes(r.natureza))
+      .map((r) => ({ valor: r.id, rotulo: rotular(r) })),
+    abatimento: todas
+      .filter((r) => r.natureza === "ABATIMENTO_DO_ADIANTAMENTO_DO_13")
+      .map((r) => ({ valor: r.id, rotulo: rotular(r) })),
+  };
+}
+
+/**
+ * GRAVA A PRÓXIMA VERSÃO DO PARÂMETRO. A ilha manda o percentual EM PORCENTO (50), como a norma o
+ * escreve; a conversão para fração acontece aqui, na borda — o mesmo que o `FormTabela` faz com a
+ * alíquota. Nenhuma recusa do domínio é traduzida: elas sobem como vieram.
+ */
+export async function criarParametroDoDecimoTerceiro(c: Campos, rubricasDaBase: readonly string[]): Promise<string> {
+  return comEscritaAutenticada("CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO", async (criadoPor) => {
+    const r = await cadastrarParametroDoDecimoTerceiro(cliente(), {
+      exercicio: Number(t(c, "exercicio")),
+      diasMinimosDoAvo: Number(t(c, "diasMinimosDoAvo")),
+      avosNoExercicio: Number(t(c, "avosNoExercicio")),
+      percentualDaPrimeiraParcela: decimalDaTela(t(c, "percentualDaPrimeiraParcela")).div(100).toFixed(4),
+      baseDosAvosDoAdiantamento: t(c, "baseDosAvosDoAdiantamento") as "ATE_A_COMPETENCIA" | "EXERCICIO_INTEIRO",
+      decimoTerceiroSofreContribuicao: marcado(c, "decimoTerceiroSofreContribuicao"),
+      decimoTerceiroSofreIrrf: marcado(c, "decimoTerceiroSofreIrrf"),
+      rubricaDoDecimoTerceiroId: t(c, "rubricaDoDecimoTerceiroId"),
+      rubricaDoAdiantamentoId: t(c, "rubricaDoAdiantamentoId"),
+      rubricaDoAbatimentoId: t(c, "rubricaDoAbatimentoId"),
+      rubricasDaBase: [...rubricasDaBase],
+      atoEsfera: t(c, "atoEsfera") as "FEDERAL" | "ESTADUAL" | "MUNICIPAL",
+      atoTipo: t(c, "atoTipo") as Parameters<typeof cadastrarParametroDoDecimoTerceiro>[1]["atoTipo"],
+      atoNumero: t(c, "atoNumero"),
+      atoAno: Number(t(c, "atoAno")),
+      atoDispositivo: t(c, "atoDispositivo"),
+      atoEmenta: t(c, "atoEmenta"),
+      criadoPor,
+    });
+    return `${r.parametroId}|${r.versao}`;
+  });
 }

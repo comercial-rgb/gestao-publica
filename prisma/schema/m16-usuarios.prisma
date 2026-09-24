@@ -446,6 +446,11 @@ enum AcaoDoSistema {
 
   // V6 P2.3 — M33 folha de pagamento (RH bloco 2)
   CONFIGURAR_TABELAS_DA_FOLHA
+  /// V11 V9.1 — o parametro do 13o do exercicio (dias do avo, avos no ano, percentual da 1a
+  /// parcela, incidencias, rubricas da base e o ato que fundamenta). ⚠️ ACAO PROPRIA, e nao um
+  /// ramo de CONFIGURAR_TABELAS_DA_FOLHA: quem cadastra a tabela federal do IRRF nao e
+  /// necessariamente quem decide o criterio do avo do municipio.
+  CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO
   CADASTRAR_RUBRICA
   /// V11 V1.1 — a rubrica versionada. Escrever a versao e aprova-la sao atos separados.
   CADASTRAR_VERSAO_DE_RUBRICA

@@ -291,6 +291,8 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   REGISTRAR_AVALIACAO_EXPERIENCIA: "pessoal",
   // V6 P2.3 — M33 folha
   CONFIGURAR_TABELAS_DA_FOLHA: "folha",
+  // V11 V9.1 — o parâmetro do 13º tem tela própria em /folha/parametros-do-13.
+  CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO: "folha",
   CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA: "folha",
   APROPRIAR_FOLHA: "folha",
   DESIGNAR_NA_FOLHA: "folha",
