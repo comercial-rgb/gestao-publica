@@ -371,6 +371,27 @@ function caixaDaDespesa(d: AccDespesa): Money {
   return soma(soma(d.paga, d.rpProcessadosPagos), d.rpNaoProcessadosPagos);
 }
 
+/**
+ * O CAIXA DE UMA LINHA JÁ SERIALIZADA — a MESMA medida, para quem só tem a linha da tela.
+ *
+ * ⚠️ ELA EXISTE PORQUE A TELA ESTAVA REFAZENDO A CONTA, E EM FLOAT. A página do Anexo 6 tinha a
+ * sua própria `caixaDaDespesa` com `Number.parseFloat(a) + Number.parseFloat(b) + ...` — uma
+ * SEGUNDA aritmética sobre o mesmo dinheiro, três arquivos longe desta, que o compilador não
+ * relaciona com a de cima e que nenhum teste comparava com ela.
+ *
+ * Passa pelos mesmos `toMoney`/`soma` da linha 371: uma implementação, não duas. `toMoney` já
+ * arredonda com `ROUND_HALF_EVEN`, e as entradas são strings de 2 casas produzidas por
+ * `linhaDespesa` logo abaixo, de modo que a soma é exata em qualquer magnitude.
+ */
+export function caixaDaLinhaDeDespesa(l: LinhaDespesaAnexo6): string {
+  return caixaDaDespesa({
+    ...despesaZero(),
+    paga: toMoney(l.paga),
+    rpProcessadosPagos: toMoney(l.rpProcessadosPagos),
+    rpNaoProcessadosPagos: toMoney(l.rpNaoProcessadosPagos),
+  }).toFixed(2);
+}
+
 function linhaDespesa(def: DefinicaoLinha, d: AccDespesa): LinhaDespesaAnexo6 {
   return {
     chave: def.chave,

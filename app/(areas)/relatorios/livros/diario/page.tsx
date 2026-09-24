@@ -2,7 +2,7 @@ import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
 import { TabelaDeDados, type ColunaTabela } from "../../../../../components/ui/TabelaDeDados";
 import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
-import { gerarDiario, PortaSemBancoError, type LancamentoDoDiario } from "../../../../../lib/portas/livros";
+import { gerarDiario, PortaSemBancoError, type LancamentoDoDiario, totalDeDebitoDoLancamento } from "../../../../../lib/portas/livros";
 import { SeletorPeriodo } from "../SeletorPeriodo";
 import { lerPeriodo, PADRAO_DESDE, PADRAO_ATE } from "../periodo";
 import { diaCivilBr } from "../../../../../packages/datas/index";
@@ -37,7 +37,7 @@ export default async function DiarioPage({
 
   const linhas = lancamentos.map((l) => ({
     ...l,
-    totalDebito: l.partidas.filter((p) => p.tipo === "DEBITO").reduce((s, p) => s + Number(p.valor), 0).toFixed(2),
+    totalDebito: totalDeDebitoDoLancamento(l),
     dataFmt: diaCivilBr(l.data),
   }));
 

@@ -6,6 +6,7 @@ import { RelatoriosRelacionados } from "../../../../../components/ui/RelatoriosR
 import { TabelaDeDados, type ColunaTabela } from "../../../../../components/ui/TabelaDeDados";
 import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
 import {
+  caixaDaLinhaDeDespesa,
   gerarRreoAnexo6,
   gerarRreoAnexo6Abaixo,
   PortaSemBancoError,
@@ -91,7 +92,7 @@ export default async function RreoAnexo6Page({
               <ValorMonetario valor={dados.receitaPrimariaTotal.realizada} />
             </CardEstatistica>
             <CardEstatistica rotulo="Despesa primária paga" nota="(a) + (b) + (c) — o caixa que saiu">
-              <ValorMonetario valor={caixaDaDespesa(dados.despesaPrimariaTotal)} />
+              <ValorMonetario valor={caixaDaLinhaDeDespesa(dados.despesaPrimariaTotal)} />
             </CardEstatistica>
             <Card>
               <p className="text-xs uppercase tracking-wide text-[color:var(--color-ink-2)]">
@@ -338,14 +339,6 @@ function lerInteiro(v: string | string[] | undefined, padrao: number): number {
   return Number.isNaN(n) ? padrao : n;
 }
 
-/** (a) + (b) + (c) — a mesma medida que o XXIV usa. */
-function caixaDaDespesa(l: LinhaDespesaAnexo6): string {
-  const soma =
-    Number.parseFloat(l.paga) +
-    Number.parseFloat(l.rpProcessadosPagos) +
-    Number.parseFloat(l.rpNaoProcessadosPagos);
-  return soma.toFixed(2);
-}
 
 const recuo = (nivel: LinhaReceitaAnexo6["nivel"]): string =>
   nivel === "item" ? "pl-4 text-[color:var(--color-ink-2)]" : "font-medium";

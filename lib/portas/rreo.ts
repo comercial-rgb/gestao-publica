@@ -19,6 +19,7 @@ import { rreoAnexo14, type Anexo14Rreo } from "../../modules/m12-relatorios/rreo
 import type { LinhaSimplificada } from "../../modules/m12-relatorios/simplificado";
 import {
   anexo6,
+  caixaDaLinhaDeDespesa,
   type Anexo6,
   type LinhaReceitaAnexo6,
   type LinhaDespesaAnexo6,
@@ -58,6 +59,14 @@ import { janelaCivilDeMeses } from "../../packages/datas/index";
 
 // O client singleton e o PortaSemBancoError moram em ./cliente (compartilhados por todas as portas).
 export { PortaSemBancoError };
+
+/**
+ * O CAIXA de uma linha de despesa do Anexo 6: (a) + (b) + (c), a medida do XXIII no XXIV.
+ *
+ * Reexportado do domínio DE PROPÓSITO. A página tinha uma cópia própria desta conta, feita em
+ * ponto flutuante; a porta existe justamente para que a tela não precise reimplementar o domínio.
+ */
+export { caixaDaLinhaDeDespesa };
 
 /** Os bimestres válidos — o mesmo rol fechado do domínio (1..6). */
 export const BIMESTRES: readonly Bimestre[] = [1, 2, 3, 4, 5, 6];

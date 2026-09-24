@@ -64,7 +64,7 @@ export type {
 } from "./dominio.js";
 
 // ── LIVROS OBRIGATÓRIOS: Diário, Razão, Balancete (TR 1.3.2 · 5.92-5.94) ──
-export { diario, razaoAnalitico, balancete } from "./livros.js";
+export { diario, razaoAnalitico, balancete, totalDeDebitoDoLancamento } from "./livros.js";
 export type {
   LancamentoDoDiario,
   PartidaDoDiario,

@@ -197,6 +197,29 @@ export function totaisPorSubsistema(
     }));
 }
 
+/**
+ * O TOTAL DE DÉBITO DE UM LANÇAMENTO — a soma que a tela do Diário imprime ao lado do histórico.
+ *
+ * ⚠️ ELA MORA AQUI, E NÃO NA PÁGINA, E ISSO FOI O DEFEITO. `totaisPorSubsistema` logo acima já
+ * avisava que `Number` sobre dinheiro "entra pela porta do relatório — que é onde ninguém procura",
+ * e era exatamente o que a página fazia: `reduce((s, p) => s + Number(p.valor), 0).toFixed(2)`.
+ * O aviso estava escrito e o defeito estava três arquivos adiante, porque a aritmética não tinha
+ * um lugar no domínio para ficar.
+ *
+ * ⚠️ E A CONTA É EM CENTAVOS INTEIROS, o mesmo idioma de `totaisPorSubsistema`: uma segunda forma
+ * de somar o mesmo dinheiro é uma segunda aritmética que diverge da primeira com os dois testes
+ * verdes. `p.valor` é `string` de 2 casas por contrato, então `BigInt(v.replace(".",""))` é exato
+ * para qualquer magnitude — que é precisamente o que o `number` deixa de ser.
+ */
+export function totalDeDebitoDoLancamento(lancamento: LancamentoDoDiario): string {
+  let centavos = 0n;
+  for (const p of lancamento.partidas) {
+    if (p.tipo !== "DEBITO") continue;
+    centavos += BigInt(p.valor.replace(".", ""));
+  }
+  return emReais(centavos);
+}
+
 /** Centavos (BigInt) -> "1234.56". Sem float em nenhum ponto. */
 function emReais(centavos: bigint): string {
   const neg = centavos < 0n;

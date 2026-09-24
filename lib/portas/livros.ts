@@ -59,7 +59,15 @@ export type { Balancete, LancamentoDoDiario, RazaoAnalitico, FiltrosDoDiario };
  * ou o tratamento do estorno, a tela continuará somando do jeito antigo — e vai discordar
  * do relatório, com a mesma cara de certeza.
  */
-export { totaisPorSubsistema } from "../../modules/m12-relatorios/livros";
+/**
+ * O TOTAL DE DÉBITO DE UM LANÇAMENTO — reexportado do M12 pela MESMA razão do aviso acima.
+ *
+ * ⚠️ E A TENTAÇÃO VENCEU UMA VEZ: a página do Diário tinha
+ * `reduce((s, p) => s + Number(p.valor), 0).toFixed(2)` na coluna de total, somando dinheiro em
+ * ponto flutuante a três arquivos de distância deste comentário que a proibia. O aviso não basta
+ * quando a função certa não está ao alcance do import — por isso ela agora está.
+ */
+export { totaisPorSubsistema, totalDeDebitoDoLancamento } from "../../modules/m12-relatorios/livros";
 export type { TotalDeSubsistema } from "../../modules/m12-relatorios/livros";
 export type { LinhaDoRazao } from "../../modules/m12-relatorios/livros";
 export type { LinhaDoBalancete } from "../../modules/m12-relatorios/livros";
