@@ -7,9 +7,9 @@
 | HEAD | **V11 V9.4** — partiu de `889b3ab`. ⚠️ **Árvore COMPARTILHADA**: o auxiliar tem `modules/m33-folha/`, `lib/portas/recursos/folha.ts`, `prisma/schema/m33-folha.prisma` e duas migrations novas em voo. O commit desta unidade é só de M32/pessoal, por caminho explícito |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
 | Frente em execução | **V11** — V9.3 resolveu `CONTROLE-DDR-POR-NATUREZA-DA-FONTE`, executou **os três passos da J9** que a V9.2 deixou pendentes, fechou os **passos 16, 17 e 18 do roteiro do 13º** e encerrou a família `MENSAGEM-SOME-COM-A-LINHA`. `SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS` segue como continuidade funcional, com a apuração **não** ligada |
-| Último resultado | seção 88 — dirigidas **26/26** nos dois arquivos novos (`exit=0`); mutação **9 instrumentos, 8 vermelhos e 1 que NÃO acusou** (MUT-H, guarda inerte, retirada), 9 reversões com checksum conferido. ⚠️ **Os três typecheck (0/0/0) são ANTERIORES às correções da auditoria e contam como NÃO EXECUTADOS sobre a árvore atual.** A auditoria achou 3 defeitos meus: 2 corrigidos, 1 é decisão de desenho |
+| Último resultado | seção 88 — **tipos 0/0/0 nos três projetos** e **dirigidos 117/117** sobre a árvore ATUAL, `rc` lido do arquivo; dez mutações, nove acusando e **uma que NÃO acusou** (MUT-H, guarda inerte, retirada), todas revertidas por edição com checksum. A auditoria achou 3 defeitos meus, os três tratados: âncora de data civil, recusa do teto na tela e o **gate dentro da porta** |
 | Pendências relevantes | **`18.3–18.5` do 13º NÃO EXECUTADO** (folha fechada não recalcula — falta `RETIFICACAO-DA-FOLHA`); **defeito LATENTE** `numeroDoEmpenhoDaFolha` sem o tipo da folha (87.20, conserto do auxiliar); onde fica o portão do critério (apropriar ou fechar); `DDR-DISPONIVEL-SALDO-A-REPONTAR`; `PERCURSOS-SEM-TERMO-PATRIMONIAL-CONGELADO`. **Bloqueio NORMATIVO**: `DISPOSITIVO-MUNICIPAL-DO-13-NAO-LIDO` (três fontes em 403) — não trava o sistema, mas é o que falta para saber QUAL critério declarar. **Bloqueadas por terceiro** (83.3): eSocial, ASTEC, certificado A1, AWS, ENT12. **V9.4 acrescenta:** `PESSOAL-SEM-CENTRO-DE-CUSTO` e `PESSOAL-SEM-FUNCAO` (falta de MODELO no M32, os dois eixos recusados de 5.12.50); o **recorte do CÁLCULO** da folha continua decisão pendente com o risco de folha parcial nomeado; **percurso de navegador de `/pessoal/servidores` NÃO EXECUTADO** |
-| Próximo passo | **Reexecutar os três typecheck** — são o único passo pendente sobre a árvore atual. Depois: percurso de navegador de `/pessoal/servidores` (é o que prova o ramo da recusa do teto e converte os eixos em superfície validada) e as duas decisões de modelo. **Nada instalado nem publicado**; a cláusula 5.12.50 continua `PARCIAL` e **não foi marcada** |
+| Próximo passo | **Percurso de navegador de `/pessoal/servidores`** — é o que falta para os eixos valerem como superfície validada e o único jeito de provar o ramo da recusa do teto. Depois, as duas decisões de modelo (`PESSOAL-SEM-CENTRO-DE-CUSTO`, `PESSOAL-SEM-FUNCAO`) e o recorte do CÁLCULO, que se for feito **nasce junto com a guarda de completude, nunca depois**. **Nada instalado nem publicado**; 5.12.50 segue `PARCIAL` e não marcada |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -10834,7 +10834,7 @@ com 0 erros. **Registro do erro de condução:** 19 minutos perdidos por ler "st
   e `lib/portas/recursos/folha.ts` ao mesmo tempo. Os erros foram atribuídos **por caminho**, e
   nenhum dos 96 da primeira leitura era dele.
 
-### 88.11 A AUDITORIA DE INVARIANTES ACHOU TRÊS DEFEITOS **MEUS** — dois corrigidos aqui
+### 88.11 A AUDITORIA DE INVARIANTES ACHOU TRÊS DEFEITOS **MEUS** — os três tratados
 
 ⚠️ **Os números de tipos de 88.7 são ANTERIORES a estas correções.** `pessoal-dados.ts`, `page.tsx` e
 `test/pessoal-eixos-de-consulta.test.ts` mudaram depois deles. **Os três typecheck precisam ser
@@ -10860,13 +10860,21 @@ guarda inerte em vez de mantê-la aparentando cobertura, e nomeei
 `PESSOAL-RECUSA-DO-TETO-SEM-PERCURSO` (14) no MODULO.md. O que está provado é só a porta: recusa nas
 duas direções, e a mensagem carrega a providência e diz que não truncou (**mutação I: 2 vermelhos**).
 
-**Defeito 3 — a autorização é afirmada sobre o HELPER e sobre a ordem do texto, não sobre a consulta.
-NÃO CORRIGIDO, e é decisão de desenho.** `listarServidores` não tem gate dentro dela; o gate está na
+**Defeito 3 — a autorização era afirmada sobre o HELPER e sobre a ordem do texto, não sobre a
+consulta. CORRIGIDO (escrito; medição pendente — ver 88.14).** `listarServidores` não tem gate dentro dela; o gate está na
 página. Hoje não há vazamento porque a página é o único chamador — mas a segunda rota que reusar a
-porta (exportação, API, worker) **nasce sem gate e com o teste verde**. O caminho conhecido é o do
-licenciamento (`lerLicenciamentoDaTela` chama `exigirLeitura` DENTRO da porta, e
-`test/licenciamento-gate.test.ts` afirma o efeito). Fazer isso aqui pede a variante `...Para(quem, c)`
-e muda o contrato do molde: **decisão a tomar, não conserto de passagem.**
+porta (exportação, API, worker) **nasce sem gate e com o teste verde**. O par é agora
+`listarServidores(c)` (invólucro que resolve a sessão) e **`listarServidoresPara(quem, c)`**, que cobra
+`exigirLeituraDoEntePara(quem, "CONSULTAR_PESSOAL")` — mesmo desenho de
+`lerDossieDoEmpenho`/`lerDossieDoEmpenhoPara`. **O molde NÃO foi tocado**: um arquivo, dois exports,
+zero mudança em `lib/molde/`, no descritor e nas outras 20 portas `-dados.ts`.
+
+⚠️ **A porta LANÇA; quem redireciona é a TELA.** `telaExigeLeituraDoEnte` responde com
+`redirect("/sem-acesso")`, que é comportamento de tela — um worker não redireciona, e uma porta que
+redireciona decide apresentação em nome de quem a chamou. A porta estoura `EscopoDeLeituraError`
+nomeando a ação; a página mantém o `exigirLeitura` dela e traduz. É também o que torna a prova
+possível SEM ROTA. E, como o gate passou a valer para todas as consultas do arquivo, **cada asserção
+de eixo virou também a metade positiva da autorização**.
 
 **Observação acolhida:** a ordenação ganhou desempate por `id`. Sem ele, empate em `criadoEm`
 (que é `now()`, o instante da TRANSAÇÃO) faria a página 2 repetir e perder gente numa carga em lote.
@@ -10897,3 +10905,49 @@ e muda o contrato do molde: **decisão a tomar, não conserto de passagem.**
 4. **Decidir o recorte do CÁLCULO** (5.12.50 literal). Se alguém decidir que o cálculo recorta, a
    guarda de completude nasce **junto**, nunca depois: comparar contracheques a vínculos vivos na
    competência, e recusar fechar folha parcial que não se declare parcial.
+
+### 88.14 O GATE NA PORTA — medido, e o vermelho falso que quase passou por prova
+
+Escrito depois de `e0f6096` e **medido** com a máquina livre:
+
+| passo | resultado, `rc` lido do arquivo |
+|---|---|
+| mutação do gate (remover a cobrança) | **1 vermelho**, e é o teste certo: "A PORTA COBRA `CONSULTAR_PESSOAL`" |
+| reversão POR EDIÇÃO | checksum **`0a931a82da15baab` CONFERE** |
+| verde de volta | **27/27**, `exit=0` |
+| `tsc` backend / app / scripts | **0 / 0 / 0**, `exit=0` nos três |
+| dirigidos, 9 arquivos | **117/117**, `exit=0` |
+
+Com isso `e0f6096` **deixa de estar sem tipos verificados**: os três typecheck acima são posteriores
+a todas as correções da auditoria e ao gate.
+
+⚠️ **UM VERMELHO FALSO NO CAMINHO, E É O REGISTRO MAIS ÚTIL DESTA SEÇÃO.** A primeira execução da
+mutação deu `exit=1` por **`No test files found`** — os caminhos foram passados por variável de
+shell e o vitest não casou nenhum. Um `exit=1` assim é **indistinguível de "a guarda acusou"**: lido
+pelo código de saída, teria fechado o passo com uma prova que nunca aconteceu, e no sentido MAIS
+perigoso (declarar provado o que não rodou). Reexecutado com caminhos literais, o vermelho verdadeiro
+apareceu, nomeando um teste. **Ler o `rc` do arquivo não basta — é preciso ler o que o arquivo diz
+que RODOU.** É a décima segunda ocorrência da família "código de saída não é resultado", e a primeira
+em que o engano estava do lado do vermelho.
+
+⚠️ **A PROVENIÊNCIA DO ATOR NEGATIVO FOI CONFERIDA ANTES DE CONFIAR NO PAR.** `limparBanco` chama
+`semearUsuariosDeTeste`, que dá ADMIN (`TODAS_AS_ACOES`) a **toda** identidade do censo — nenhuma
+delas serve de ator negativo para ação nenhuma. Os dois atores deste arquivo nascem **depois** do
+`limparBanco` e **fora** do censo: a leitora com `CONSULTAR_PESSOAL` e só; o negativo com
+`CADASTRAR_SERVIDOR`, `ADMITIR_SERVIDOR`, `MOVIMENTAR_SERVIDOR` e `CONSULTAR_DESPESA`, nenhuma delas
+a da consulta. Sem essa conferência o par provaria menos do que afirma.
+
+**Cobertura por construção, não por lembrança:** como o gate passou a valer para toda consulta do
+arquivo, as ~40 asserções de eixo viraram também a metade POSITIVA da autorização. Um `throw`
+incondicional no gate derruba o arquivo inteiro, não um teste.
+
+### 88.15 O que continua NÃO EXECUTADO
+
+- **Percurso de navegador dos eixos de `/pessoal/servidores`** — não executado. É ele que converte a
+  consulta em superfície validada e o que provaria o ramo da recusa do teto na tela
+  (`PESSOAL-RECUSA-DO-TETO-SEM-PERCURSO`).
+- **Cláusula 5.12.50** — continua `PARCIAL` e **não marcada**, por decisão: o auxiliar entrega a
+  outra metade dela e as duas marcações colidiriam.
+- **Suíte completa, `test:fuso` e portão** — não rodados, por restrição do pedido.
+- **`MENSAGEM-DE-BANCO-APONTA-CONTAINER-INEXISTENTE`** — nomeada, fora deste escopo: `test/banco.ts`
+  é caminho comum.

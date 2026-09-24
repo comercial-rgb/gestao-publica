@@ -36,7 +36,8 @@ import {
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { TAMANHO_DE_PAGINA } from "../../molde/consulta.js";
 import type { LinhaDoHistorico, LinhaDoMolde } from "../../molde/tipos.js";
-import { comEscritaAutenticada } from "../sessao";
+import { comEscritaAutenticada, exigirSessao, type Identidade } from "../sessao";
+import { exigirLeituraDoEntePara } from "../leitura";
 import { cliente, PortaSemBancoError } from "../cliente";
 import type { DetalheLido, OpcoesDoCadastro, PaginaDoMolde } from "./dados";
 
@@ -301,6 +302,35 @@ export async function listarServidores(
   c: ConsultaDoMolde,
   opcoes: { readonly teto?: number; readonly agora?: Date } = {}
 ): Promise<PaginaDoMolde> {
+  return listarServidoresPara(await exigirSessao(), c, opcoes);
+}
+
+/**
+ * ═══ ⚠️ O GATE MORA AQUI, NA PORTA — NÃO NA TELA QUE POR ACASO A CHAMA ═══
+ *
+ * A auditoria do V11 V9.4 acusou: a consulta não cobrava ação nenhuma, e só não vazava porque a
+ * página era o ÚNICO chamador. **Proteção que depende de quem chama não é proteção — é uma
+ * coincidência que dura até o próximo chamador.** A segunda rota a reusar esta porta (uma
+ * exportação, uma API, um worker) nasceria sem gate, e o teste continuaria verde. Invariante 6:
+ * autorização no servidor, por ação nomeada.
+ *
+ * ⚠️ E A PORTA **LANÇA**, NUNCA REDIRECIONA. `telaExigeLeituraDoEnte` responde à recusa com
+ * `redirect("/sem-acesso")`, que é comportamento de TELA: um worker não redireciona, e uma porta
+ * que redireciona está decidindo apresentação em nome de quem a chamou. Aqui se cobra pela
+ * variante `...Para`, que estoura `EscopoDeLeituraError` NOMEANDO a ação que falta; quem traduz
+ * isso em `/sem-acesso` é a página, que segue com o `exigirLeitura` dela. As duas cobranças
+ * coexistem de propósito — a da tela dá a experiência, a da porta dá a garantia.
+ *
+ * ⚠️ É TAMBÉM O QUE TORNA A PROVA POSSÍVEL SEM ROTA: a suíte chama esta função com a identidade
+ * na mão e afirma a recusa pelo MOTIVO. Mesmo par de `lerDossieDoEmpenho`/`lerDossieDoEmpenhoPara`
+ * (`lib/portas/empenho.ts`), cujo comentário já diz "a que a suíte exercita".
+ */
+export async function listarServidoresPara(
+  quem: Identidade,
+  c: ConsultaDoMolde,
+  opcoes: { readonly teto?: number; readonly agora?: Date } = {}
+): Promise<PaginaDoMolde> {
+  await exigirLeituraDoEntePara(quem, "CONSULTAR_PESSOAL");
   const teto = opcoes.teto ?? TETO_DE_CANDIDATOS;
   const prisma = cliente();
   const q = (c.filtros["q"] ?? "").trim();

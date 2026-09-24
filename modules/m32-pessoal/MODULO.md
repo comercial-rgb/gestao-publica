@@ -386,3 +386,22 @@ que a ausência.
     atesta pela papelada. Quem prova é o **percurso de navegador**, não executado. Enquanto isso, o
     que está provado é só a porta: ela recusa, nas duas direções, e a mensagem carrega a
     providência e diz que não truncou.
+
+### O GATE DA CONSULTA MORA NA PORTA, NÃO NA TELA (V11 V9.4, pós-auditoria)
+
+A auditoria acusou: `listarServidores` não cobrava ação nenhuma, e só não vazava porque a página era
+o **único** chamador. **Proteção que depende de quem chama não é proteção — é uma coincidência que
+dura até o próximo chamador.** A segunda rota a reusar a porta (exportação, API, worker) nasceria sem
+gate, e o teste continuaria verde. Invariante 6: autorização no servidor, por ação nomeada.
+
+Hoje o par é `listarServidores(c)` (invólucro que resolve a sessão) e **`listarServidoresPara(quem, c)`**,
+que cobra `exigirLeituraDoEntePara(quem, "CONSULTAR_PESSOAL")`. Mesmo desenho de
+`lerDossieDoEmpenho`/`lerDossieDoEmpenhoPara` (`lib/portas/empenho.ts`), cujo comentário já diz "a que
+a suíte exercita".
+
+⚠️ **A PORTA LANÇA; QUEM REDIRECIONA É A TELA.** `telaExigeLeituraDoEnte` responde à recusa com
+`redirect("/sem-acesso")` — comportamento de TELA. Um worker não redireciona, e uma porta que
+redireciona decide apresentação em nome de quem a chamou. A porta estoura `EscopoDeLeituraError`
+**nomeando a ação que falta**; a página mantém o `exigirLeitura` dela e traduz. As duas cobranças
+coexistem de propósito: a da tela dá a experiência, a da porta dá a garantia. É também o que torna a
+prova possível **sem rota** — a suíte chama a porta direto.

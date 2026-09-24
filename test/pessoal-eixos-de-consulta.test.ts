@@ -7,7 +7,7 @@ import { SERVIDORES } from "../lib/portas/recursos/pessoal.js";
 import {
   ConsultaDePessoalAmplaDemaisError,
   diaDeReferencia,
-  listarServidores,
+  listarServidoresPara,
 } from "../lib/portas/recursos/pessoal-dados.js";
 import {
   admitirServidor,
@@ -17,7 +17,8 @@ import {
   desligarServidor,
   registrarMovimentacao,
 } from "../modules/m32-pessoal/servico.js";
-import { exigirLeituraDoEntePara, podeLerPara } from "../lib/portas/leitura.js";
+import { EscopoDeLeituraError, exigirLeituraDoEntePara, podeLerPara } from "../lib/portas/leitura.js";
+import type { Identidade } from "../modules/m16-travamento/autenticacao.js";
 import type { AcaoDoSistema } from "../modules/m16-travamento/acoes.js";
 
 /**
@@ -32,7 +33,9 @@ import type { AcaoDoSistema } from "../modules/m16-travamento/acoes.js";
  *    porque com 25 ou menos o defeito de paginar antes de filtrar não aparece;
  *  · filtro que não acha devolve VAZIO, nunca tudo;
  *  · o teto RECUSA e não trunca, provado nas duas direções;
- *  · a leitura é autorizada por CONSULTAR_PESSOAL, positiva e negativa, e a recusa DIZ O MOTIVO.
+ *  · a leitura é autorizada por CONSULTAR_PESSOAL **na PORTA**, positiva e negativa, e a recusa diz
+ *    o MOTIVO. Toda consulta daqui passa por `listarServidoresPara` com identidade real — cada
+ *    asserção de eixo é, também, a metade positiva da autorização.
  *
  * ⚠️ O QUE ELE NÃO PROVA, DE PROPÓSITO: que a folha possa ser calculada por um recorte. Estes
  * eixos são CONSULTA — ver o docblock de `listarServidores` e `modules/m33-folha/MODULO.md`.
@@ -58,6 +61,24 @@ function consulta(filtros: Record<string, string>) {
   return lerConsulta(SERVIDORES, filtros);
 }
 
+/**
+ * ⚠️ TODA CONSULTA DESTE ARQUIVO PASSA POR `listarServidoresPara` COM UMA IDENTIDADE REAL, e não é
+ * cerimônia: o gate mora na PORTA (invariante 6), então cada asserção de eixo abaixo é também a
+ * metade POSITIVA da autorização. Sem isso, um `throw` incondicional no gate deixaria o teste
+ * negativo verde com a consulta quebrada para todo mundo.
+ */
+let leitor: Identidade;
+
+async function usuarioCom(id: string, acoes: readonly AcaoDoSistema[]): Promise<Identidade> {
+  const u = await prisma.usuario.create({ data: { identificador: id, nome: id, criadoPor: "seed-teste" }, select: { id: true, identificador: true } });
+  const perfil = await prisma.perfil.create({ data: { nome: `perfil-${id}`, descricao: "teste", criadoPor: "seed-teste" }, select: { id: true } });
+  for (const a of acoes) {
+    await prisma.permissaoDePerfil.create({ data: { perfilId: perfil.id, acao: a, unidadeOrcId: null, criadoPor: "seed-teste" } });
+  }
+  await prisma.vinculoUsuarioPerfil.create({ data: { usuarioId: u.id, perfilId: perfil.id, criadoPor: "seed-teste" } });
+  return { usuarioId: u.id, identificador: u.identificador };
+}
+
 let cargoProfessor = "";
 let cargoMotorista = "";
 let lotEscola = "";
@@ -73,6 +94,7 @@ async function pessoaFisica(documento: string, nome: string): Promise<string> {
 
 async function base(): Promise<void> {
   await limparBanco(prisma);
+  leitor = await usuarioCom("rh.leitor@teste.local", ["CONSULTAR_PESSOAL"]);
   cargoProfessor = (await cadastrarCargo(prisma, { codigo: "PROF-I", denominacao: "Professor Nivel I", tipo: "EFETIVO", vagasFixadas: 40, leiAutorizativa: "Lei Municipal 1.234/2010", dataPublicacaoLei: D(2010, 5, 1), criadoPor: POR })).cargoId;
   cargoMotorista = (await cadastrarCargo(prisma, { codigo: "MOT-A", denominacao: "Motorista categoria D", tipo: "EFETIVO", vagasFixadas: 40, leiAutorizativa: "Lei Municipal 1.234/2010", dataPublicacaoLei: D(2010, 5, 1), criadoPor: POR })).cargoId;
   lotEscola = (await cadastrarLotacao(prisma, { codigo: "ESC-CENTRAL", nome: "Escola Municipal Central", criadoPor: POR })).lotacaoId;
@@ -98,85 +120,85 @@ describe("(B) a consulta pela porta — o 'E' sobre o mesmo vínculo, com banco"
   });
 
   it("cada eixo sozinho acha quem deve — a fixture não é degenerada", async () => {
-    expect((await listarServidores(consulta({ cargo: "Motorista" }))).linhas.map((l) => l.id)).toEqual([acumula]);
-    expect((await listarServidores(consulta({ lotacao: "GARAGEM" }))).linhas.map((l) => l.id)).toEqual([acumula]);
-    expect(new Set((await listarServidores(consulta({ cargo: "PROF-I" }))).linhas.map((l) => l.id))).toEqual(new Set([acumula, soProfessor]));
-    expect((await listarServidores(consulta({ matricula: "2001" }))).linhas.map((l) => l.id)).toEqual([soProfessor]);
+    expect((await listarServidoresPara(leitor, consulta({ cargo: "Motorista" }))).linhas.map((l) => l.id)).toEqual([acumula]);
+    expect((await listarServidoresPara(leitor, consulta({ lotacao: "GARAGEM" }))).linhas.map((l) => l.id)).toEqual([acumula]);
+    expect(new Set((await listarServidoresPara(leitor, consulta({ cargo: "PROF-I" }))).linhas.map((l) => l.id))).toEqual(new Set([acumula, soProfessor]));
+    expect((await listarServidoresPara(leitor, consulta({ matricula: "2001" }))).linhas.map((l) => l.id)).toEqual([soProfessor]);
   });
 
   it("CARGO DE UMA MATRÍCULA + LOTAÇÃO DA OUTRA não acha ninguém — o 'E' é sobre o MESMO vínculo", async () => {
-    const r = await listarServidores(consulta({ cargo: "Motorista", lotacao: "Escola Municipal Central" }));
+    const r = await listarServidoresPara(leitor, consulta({ cargo: "Motorista", lotacao: "Escola Municipal Central" }));
     expect(r.linhas).toEqual([]);
     expect(r.total).toBe(0);
     // ⚠️ E O MOTIVO ESTÁ NA FIXTURE, não na sorte: ela TEM as duas matrículas, e cada eixo acha
     // uma. É a conjunção sobre o mesmo vínculo que recusa.
-    expect((await listarServidores(consulta({ cargo: "Motorista", lotacao: "GARAGEM" }))).linhas.map((l) => l.id)).toEqual([acumula]);
+    expect((await listarServidoresPara(leitor, consulta({ cargo: "Motorista", lotacao: "GARAGEM" }))).linhas.map((l) => l.id)).toEqual([acumula]);
   });
 
   it("A LINHA MOSTRA A MATRÍCULA QUE CASOU, não a primeira viva — senão a célula mente", async () => {
-    const comoMotorista = await listarServidores(consulta({ cargo: "Motorista" }));
+    const comoMotorista = await listarServidoresPara(leitor, consulta({ cargo: "Motorista" }));
     expect(comoMotorista.linhas[0]?.["matricula"]).toBe("1002");
     expect(comoMotorista.linhas[0]?.["cargo"]).toContain("Motorista categoria D");
     expect(comoMotorista.linhas[0]?.["lotacao"]).toContain("Garagem Municipal");
 
-    const comoProfessora = await listarServidores(consulta({ matricula: "1001" }));
+    const comoProfessora = await listarServidoresPara(leitor, consulta({ matricula: "1001" }));
     expect(comoProfessora.linhas[0]?.["matricula"]).toBe("1001");
     expect(comoProfessora.linhas[0]?.["cargo"]).toContain("Professor Nivel I");
   });
 
   it("FILTRO QUE NÃO ACHA DEVOLVE VAZIO, NUNCA TUDO — o modo mais discreto de um filtro deixar de filtrar", async () => {
-    const semCargo = await listarServidores(consulta({ cargo: "Fiscal de Tributos" }));
+    const semCargo = await listarServidoresPara(leitor, consulta({ cargo: "Fiscal de Tributos" }));
     expect(semCargo.total).toBe(0);
     expect(semCargo.linhas).toEqual([]);
-    const semLotacao = await listarServidores(consulta({ lotacao: "Hospital que nao existe" }));
+    const semLotacao = await listarServidoresPara(leitor, consulta({ lotacao: "Hospital que nao existe" }));
     expect(semLotacao.total).toBe(0);
     // A prova de que o vazio não é por o banco estar vazio: sem filtro, os dois aparecem.
-    expect((await listarServidores(consulta({}))).total).toBe(2);
+    expect((await listarServidoresPara(leitor, consulta({}))).total).toBe(2);
   });
 
   it("O NOME ACHA PELO SOCIAL **E** PELO CIVIL — quem usa nome social e não é encontrado por ele é defeito de produto", async () => {
     // Ana Carolina Ribeiro (civil) usa "Ana Beatriz Ribeiro" (social). Os dois acham; e é o social
     // que a linha MOSTRA (Lei 14.164/2021).
-    expect((await listarServidores(consulta({ nome: "Ana Beatriz" }))).linhas.map((l) => l.id)).toEqual([acumula]);
-    const porCivil = await listarServidores(consulta({ nome: "Ana Carolina" }));
+    expect((await listarServidoresPara(leitor, consulta({ nome: "Ana Beatriz" }))).linhas.map((l) => l.id)).toEqual([acumula]);
+    const porCivil = await listarServidoresPara(leitor, consulta({ nome: "Ana Carolina" }));
     expect(porCivil.linhas.map((l) => l.id)).toEqual([acumula]);
     expect(porCivil.linhas[0]?.["nome"]).toBe("Ana Beatriz Ribeiro");
     // Negação COM MOTIVO: o outro servidor não entra por acaso — ele é achado pelo nome DELE.
-    expect((await listarServidores(consulta({ nome: "Ana" }))).linhas.map((l) => l.id)).toEqual([acumula]);
-    expect((await listarServidores(consulta({ nome: "Joao Pedro" }))).linhas.map((l) => l.id)).toEqual([soProfessor]);
+    expect((await listarServidoresPara(leitor, consulta({ nome: "Ana" }))).linhas.map((l) => l.id)).toEqual([acumula]);
+    expect((await listarServidoresPara(leitor, consulta({ nome: "Joao Pedro" }))).linhas.map((l) => l.id)).toEqual([soProfessor]);
   });
 
   it("A DATA DE REFERÊNCIA MUDA A LISTA — e a coluna do cargo deriva na MESMA data que o filtro", async () => {
     await registrarMovimentacao(prisma, { vinculoId: (await prisma.vinculo.findUniqueOrThrow({ where: { matricula: "2001" }, select: { id: true } })).id, tipo: "MUDANCA_CARGO", data: D(2026, 6, 1), cargoId: cargoMotorista, motivo: "Aproveitamento em outro cargo por concurso", criadoPor: POR });
 
-    const emMaio = await listarServidores(consulta({ cargo: "PROF-I", dataRef: "2026-05-31" }));
+    const emMaio = await listarServidoresPara(leitor, consulta({ cargo: "PROF-I", dataRef: "2026-05-31" }));
     expect(new Set(emMaio.linhas.map((l) => l.id))).toEqual(new Set([acumula, soProfessor]));
-    const emJunho = await listarServidores(consulta({ cargo: "PROF-I", dataRef: "2026-06-01" }));
+    const emJunho = await listarServidoresPara(leitor, consulta({ cargo: "PROF-I", dataRef: "2026-06-01" }));
     expect(emJunho.linhas.map((l) => l.id)).toEqual([acumula]);
 
-    const motoristaEmJunho = await listarServidores(consulta({ cargo: "Motorista", dataRef: "2026-06-01" }));
+    const motoristaEmJunho = await listarServidoresPara(leitor, consulta({ cargo: "Motorista", dataRef: "2026-06-01" }));
     expect(new Set(motoristaEmJunho.linhas.map((l) => l.id))).toEqual(new Set([acumula, soProfessor]));
     // ⚠️ A COLUNA SEGUE O FILTRO: em maio ele é Professor na célula; em junho, Motorista.
-    const soEle = (r: Awaited<ReturnType<typeof listarServidores>>) => r.linhas.find((l) => l.id === soProfessor);
-    expect(soEle(await listarServidores(consulta({ matricula: "2001", dataRef: "2026-05-31" })))?.["cargo"]).toContain("Professor");
-    expect(soEle(await listarServidores(consulta({ matricula: "2001", dataRef: "2026-06-01" })))?.["cargo"]).toContain("Motorista");
+    const soEle = (r: Awaited<ReturnType<typeof listarServidoresPara>>) => r.linhas.find((l) => l.id === soProfessor);
+    expect(soEle(await listarServidoresPara(leitor, consulta({ matricula: "2001", dataRef: "2026-05-31" })))?.["cargo"]).toContain("Professor");
+    expect(soEle(await listarServidoresPara(leitor, consulta({ matricula: "2001", dataRef: "2026-06-01" })))?.["cargo"]).toContain("Motorista");
   });
 
   it("REGIME JURÍDICO E PREVIDENCIÁRIO NÃO SÃO O MESMO FILTRO", async () => {
-    expect((await listarServidores(consulta({ regimeJuridico: "CLT" }))).linhas.map((l) => l.id)).toEqual([acumula]);
-    expect(new Set((await listarServidores(consulta({ regimeJuridico: "Estatutario" }))).linhas.map((l) => l.id))).toEqual(new Set([acumula, soProfessor]));
+    expect((await listarServidoresPara(leitor, consulta({ regimeJuridico: "CLT" }))).linhas.map((l) => l.id)).toEqual([acumula]);
+    expect(new Set((await listarServidoresPara(leitor, consulta({ regimeJuridico: "Estatutario" }))).linhas.map((l) => l.id))).toEqual(new Set([acumula, soProfessor]));
     // O motorista é CLT no RGPS; as duas matrículas de professor são Estatutárias no RPPS.
-    expect((await listarServidores(consulta({ regimePrev: "RGPS" }))).linhas.map((l) => l.id)).toEqual([acumula]);
-    expect(new Set((await listarServidores(consulta({ regimePrev: "RPPS" }))).linhas.map((l) => l.id))).toEqual(new Set([acumula, soProfessor]));
+    expect((await listarServidoresPara(leitor, consulta({ regimePrev: "RGPS" }))).linhas.map((l) => l.id)).toEqual([acumula]);
+    expect(new Set((await listarServidoresPara(leitor, consulta({ regimePrev: "RPPS" }))).linhas.map((l) => l.id))).toEqual(new Set([acumula, soProfessor]));
     // Cruzado sobre o MESMO vínculo: CLT no RPPS não existe nesta fixture.
-    expect((await listarServidores(consulta({ regimeJuridico: "CLT", regimePrev: "RPPS" }))).total).toBe(0);
+    expect((await listarServidoresPara(leitor, consulta({ regimeJuridico: "CLT", regimePrev: "RPPS" }))).total).toBe(0);
   });
 
   it("A JANELA DE ADMISSÃO É INCLUSIVA NO DIA — 'até 15/08/2022' inclui quem entrou no dia 15", async () => {
-    expect((await listarServidores(consulta({ admitidoDe: "2022-01-01" }))).linhas.map((l) => l.id)).toEqual([acumula]);
-    expect((await listarServidores(consulta({ admitidoAte: "2022-08-15", admitidoDe: "2022-08-15" }))).linhas.map((l) => l.id)).toEqual([acumula]);
-    expect((await listarServidores(consulta({ admitidoAte: "2022-08-14", admitidoDe: "2022-08-01" }))).total).toBe(0);
-    expect(new Set((await listarServidores(consulta({ admitidoAte: "2021-12-31" }))).linhas.map((l) => l.id))).toEqual(new Set([acumula, soProfessor]));
+    expect((await listarServidoresPara(leitor, consulta({ admitidoDe: "2022-01-01" }))).linhas.map((l) => l.id)).toEqual([acumula]);
+    expect((await listarServidoresPara(leitor, consulta({ admitidoAte: "2022-08-15", admitidoDe: "2022-08-15" }))).linhas.map((l) => l.id)).toEqual([acumula]);
+    expect((await listarServidoresPara(leitor, consulta({ admitidoAte: "2022-08-14", admitidoDe: "2022-08-01" }))).total).toBe(0);
+    expect(new Set((await listarServidoresPara(leitor, consulta({ admitidoAte: "2021-12-31" }))).linhas.map((l) => l.id))).toEqual(new Set([acumula, soProfessor]));
   });
 
   it("SEM `dataRef`, A ÂNCORA É O DIA CIVIL DO ENTE — e não a hora em que a tela foi aberta", async () => {
@@ -189,10 +211,10 @@ describe("(B) a consulta pela porta — o 'E' sobre o mesmo vínculo, com banco"
     await registrarMovimentacao(prisma, { vinculoId: v.id, tipo: "MUDANCA_CARGO", data: D(2026, 6, 10), cargoId: cargoMotorista, motivo: "Aproveitamento em outro cargo por concurso", criadoPor: POR });
 
     const NOVE_DA_MANHA = new Date("2026-06-10T12:00:00.000Z"); // 09h00 no fuso do ente
-    const cedo = await listarServidores(consulta({ cargo: "Motorista" }), { agora: NOVE_DA_MANHA });
+    const cedo = await listarServidoresPara(leitor, consulta({ cargo: "Motorista" }), { agora: NOVE_DA_MANHA });
     expect(new Set(cedo.linhas.map((l) => l.id))).toEqual(new Set([acumula, soProfessor]));
     // E a MESMA pergunta com a data escrita à mão responde igual — era essa igualdade que faltava.
-    const comData = await listarServidores(consulta({ cargo: "Motorista", dataRef: "2026-06-10" }));
+    const comData = await listarServidoresPara(leitor, consulta({ cargo: "Motorista", dataRef: "2026-06-10" }));
     expect(new Set(comData.linhas.map((l) => l.id))).toEqual(new Set(cedo.linhas.map((l) => l.id)));
 
     // A âncora, direto: qualquer hora do dia civil colapsa no MESMO instante.
@@ -204,24 +226,53 @@ describe("(B) a consulta pela porta — o 'E' sobre o mesmo vínculo, com banco"
 
   it("O TETO RECUSA E NOMEIA O MOTIVO — e não trunca (as duas direções)", async () => {
     // Direção 1: teto abaixo do conjunto ⇒ recusa, dizendo quantos e que NÃO truncou.
-    await expect(listarServidores(consulta({ situacao: "ATIVO" }), { teto: 1 })).rejects.toThrow(ConsultaDePessoalAmplaDemaisError);
-    await expect(listarServidores(consulta({ situacao: "ATIVO" }), { teto: 1 })).rejects.toThrow(/alcança 2 servidores, acima do teto de 1[\s\S]*NÃO foi truncada/);
+    await expect(listarServidoresPara(leitor, consulta({ situacao: "ATIVO" }), { teto: 1 })).rejects.toThrow(ConsultaDePessoalAmplaDemaisError);
+    await expect(listarServidoresPara(leitor, consulta({ situacao: "ATIVO" }), { teto: 1 })).rejects.toThrow(/alcança 2 servidores, acima do teto de 1[\s\S]*NÃO foi truncada/);
     // Direção 2: teto acima ⇒ a MESMA consulta responde inteira. Sem isto, a recusa poderia estar
     // acontecendo por outro motivo qualquer.
-    const r = await listarServidores(consulta({ situacao: "ATIVO" }), { teto: 2 });
+    const r = await listarServidoresPara(leitor, consulta({ situacao: "ATIVO" }), { teto: 2 });
     expect(r.total).toBe(2);
   });
 
   it("a recusa por amplitude carrega a PROVIDÊNCIA, não só a queixa — e diz que não truncou", async () => {
     // ⚠️ AFIRMA O EFEITO DA MENSAGEM, não que ela exista: quem a lê tem de saber o que fazer, e a
     // recusa tem de dizer que NÃO truncou — senão o operador supõe que a lista está completa.
-    const erro = await listarServidores(consulta({ situacao: "ATIVO" }), { teto: 0 }).catch((e: unknown) => e);
+    const erro = await listarServidoresPara(leitor, consulta({ situacao: "ATIVO" }), { teto: 0 }).catch((e: unknown) => e);
     expect(erro).toBeInstanceOf(ConsultaDePessoalAmplaDemaisError);
     const msg = (erro as Error).message;
     expect(msg).toMatch(/NÃO foi truncada/);
     expect(msg).toMatch(/Estreite por nome, matrícula, data de admissão ou regime jurídico/);
     // E não vaza identificador de cláusula nem selo de conformidade para quem lê a tela.
     expect(msg).not.toMatch(/5\.12|TR |conformidade|cobertura/);
+  });
+
+  it("A PORTA COBRA `CONSULTAR_PESSOAL` — recusa pelo MOTIVO, e a positiva pareada prova que não é recusa cega", async () => {
+    // ⚠️ CHAMA A PORTA DIRETO, SEM ROTA. O gate da página é outra coisa (ele traduz a recusa em
+    // /sem-acesso); o que se afirma aqui é que a CONSULTA recusa por si — porque a segunda rota a
+    // reusá-la (exportação, API, worker) nasceria sem gate, e a página não estaria lá para cobrar.
+    //
+    // ⚠️ E O NEGATIVO TEM AS OUTRAS AÇÕES DE PESSOAL NA MÃO. Sem isso, o teste passaria contra um
+    // usuário sem perfil nenhum e provaria apenas que sessão vazia recusa — não que o recorte é
+    // POR AÇÃO NOMEADA. Quem escreve o cadastro não lê a consulta.
+    const semLeitura = await usuarioCom("rh.escreve.nao.consulta@teste.local", [
+      "CADASTRAR_SERVIDOR", "ADMITIR_SERVIDOR", "MOVIMENTAR_SERVIDOR", "CONSULTAR_DESPESA",
+    ]);
+
+    const erro = await listarServidoresPara(semLeitura, consulta({})).catch((e: unknown) => e);
+    expect(erro).toBeInstanceOf(EscopoDeLeituraError);
+    // O MOTIVO, não só a recusa: "não completou" é compatível com o servidor entregando o dado.
+    expect((erro as Error).message).toMatch(/CONSULTAR_PESSOAL/);
+    expect((erro as Error).message).toMatch(/em escopo nenhum/);
+
+    // ⚠️ A POSITIVA PAREADA, NO MESMO CENÁRIO: sem ela, um `throw` incondicional no gate deixaria a
+    // negativa verde com a consulta quebrada para todos. A leitora vê os dois servidores.
+    const permitida = await listarServidoresPara(leitor, consulta({}));
+    expect(permitida.total).toBe(2);
+    expect(permitida.linhas.length).toBe(2);
+
+    // E a recusa é do eixo CERTO: a leitura que ele de fato tem continua valendo.
+    expect(await podeLerPara(semLeitura, "CONSULTAR_DESPESA", "ente")).toBe(true);
+    expect(await podeLerPara(semLeitura, "CONSULTAR_PESSOAL", "ente")).toBe(false);
   });
 });
 
@@ -252,8 +303,8 @@ describe("(C) filtro derivado é apurado ANTES de recortar a página", () => {
 
   it("o TOTAL é o do conjunto, igual nas duas páginas — e as páginas não se sobrepõem nem perdem ninguém", async () => {
     const esperado = QUANTOS - DESLIGADOS;
-    const p1 = await listarServidores(consulta({ situacao: "ATIVO" }));
-    const p2 = await listarServidores(consulta({ situacao: "ATIVO", pagina: "2" }));
+    const p1 = await listarServidoresPara(leitor, consulta({ situacao: "ATIVO" }));
+    const p2 = await listarServidoresPara(leitor, consulta({ situacao: "ATIVO", pagina: "2" }));
 
     expect(p1.total).toBe(esperado);
     expect(p2.total).toBe(esperado);
@@ -267,8 +318,8 @@ describe("(C) filtro derivado é apurado ANTES de recortar a página", () => {
   });
 
   it("o mesmo vale para eixo DERIVADO puro (cargo), que também não se resolve no WHERE", async () => {
-    const p1 = await listarServidores(consulta({ cargo: "PROF-I" }));
-    const p2 = await listarServidores(consulta({ cargo: "PROF-I", pagina: "2" }));
+    const p1 = await listarServidoresPara(leitor, consulta({ cargo: "PROF-I" }));
+    const p2 = await listarServidoresPara(leitor, consulta({ cargo: "PROF-I", pagina: "2" }));
     expect(p1.total).toBe(QUANTOS);
     expect(p2.total).toBe(QUANTOS);
     expect(new Set([...p1.linhas.map((l) => l.id), ...p2.linhas.map((l) => l.id)]).size).toBe(QUANTOS);
@@ -284,18 +335,9 @@ describe("(D) a consulta é autorizada no servidor por CONSULTAR_PESSOAL", () =>
     await limparBanco(prisma);
   });
 
-  async function comPermissoes(id: string, acoes: readonly AcaoDoSistema[]) {
-    const u = await prisma.usuario.create({ data: { identificador: id, nome: id, criadoPor: "seed-teste" }, select: { id: true, identificador: true } });
-    const perfil = await prisma.perfil.create({ data: { nome: `perfil-${id}`, descricao: "teste", criadoPor: "seed-teste" }, select: { id: true } });
-    for (const a of acoes) {
-      await prisma.permissaoDePerfil.create({ data: { perfilId: perfil.id, acao: a, unidadeOrcId: null, criadoPor: "seed-teste" } });
-    }
-    await prisma.vinculoUsuarioPerfil.create({ data: { usuarioId: u.id, perfilId: perfil.id, criadoPor: "seed-teste" } });
-    return { usuarioId: u.id, identificador: u.identificador };
-  }
 
   it("POSITIVA: quem tem a ação lê", async () => {
-    const quem = await comPermissoes("rh.consulta@teste.local", ["CONSULTAR_PESSOAL"]);
+    const quem = await usuarioCom("rh.consulta@teste.local", ["CONSULTAR_PESSOAL"]);
     await expect(exigirLeituraDoEntePara(quem, "CONSULTAR_PESSOAL")).resolves.toBeUndefined();
     expect(await podeLerPara(quem, "CONSULTAR_PESSOAL", "ente")).toBe(true);
   });
@@ -303,7 +345,7 @@ describe("(D) a consulta é autorizada no servidor por CONSULTAR_PESSOAL", () =>
   it("NEGATIVA: quem NÃO tem recusa — e a recusa nomeia a ação que falta, não só 'não pode'", async () => {
     // ⚠️ COM OUTRAS AÇÕES DE PESSOAL NA MÃO: sem isso, o teste passaria contra um usuário sem
     // perfil nenhum e não provaria que o recorte é POR AÇÃO — provaria só que sessão vazia recusa.
-    const quem = await comPermissoes("rh.escreve.nao.le@teste.local", ["CADASTRAR_SERVIDOR", "ADMITIR_SERVIDOR", "CONSULTAR_DESPESA"]);
+    const quem = await usuarioCom("rh.escreve.nao.le@teste.local", ["CADASTRAR_SERVIDOR", "ADMITIR_SERVIDOR", "CONSULTAR_DESPESA"]);
     expect(await podeLerPara(quem, "CONSULTAR_PESSOAL", "ente")).toBe(false);
     await expect(exigirLeituraDoEntePara(quem, "CONSULTAR_PESSOAL")).rejects.toThrow(/CONSULTAR_PESSOAL/);
     await expect(exigirLeituraDoEntePara(quem, "CONSULTAR_PESSOAL")).rejects.toThrow(/em escopo nenhum/);
