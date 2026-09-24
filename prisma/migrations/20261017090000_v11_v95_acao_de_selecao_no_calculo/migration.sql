@@ -1,0 +1,21 @@
+-- V11 V9.5 (TR 5.12.50) — A ACAO NOVA, E NADA MAIS NESTE ARQUIVO.
+--
+-- ⚠️ SEPARADA PELA RESTRICAO DO POSTGRES, como `20261016090000` e `20261015090000` antes dela: um
+-- valor acrescentado a um tipo enumerado NAO PODE SER USADO na mesma transacao que o acrescentou.
+-- A pasta nasce COM o arquivo dentro (pasta vazia ja quebrou `migrate deploy` com P3015 aqui).
+--
+-- ADITIVA: um valor novo. Nenhum existente muda de nome ou sai.
+
+-- ⚠️ ACAO PROPRIA, E NAO O REUSO DE `CALCULAR_FOLHA` — e o criterio e o mesmo que manteve
+-- `cadastrarFuncao` sob `CADASTRAR_CARGO` na V11 V9.4: pergunta-se se e a MESMA AUTORIDADE.
+--
+-- Aqui NAO e. Calcular a folha e decidir QUANDO pagar; selecionar quem entra e decidir QUEM fica
+-- de fora do pagamento — e um recorte errado produz folha parcial que fecha com todos os totais
+-- batendo. Sao poderes diferentes sobre o mesmo ato.
+--
+-- ⚠️ E O ARGUMENTO INVERSO, QUE NO CASO DA FUNCAO PESAVA CONTRA A SEPARACAO, AQUI PESA A FAVOR.
+-- La, uma acao propria daria ao ente a chance de conceder "criar cargo" sem "criar funcao" —
+-- estrutura pela metade, um defeito. Aqui, conceder CALCULAR_FOLHA sem esta acao deixa o operador
+-- podendo calcular apenas TODOS, que e exatamente o comportamento SEGURO. A separacao nao produz
+-- estado pela metade: produz o padrao conservador.
+ALTER TYPE "AcaoDoSistema" ADD VALUE 'SELECIONAR_VINCULOS_DA_FOLHA';

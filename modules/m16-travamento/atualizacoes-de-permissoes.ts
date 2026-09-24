@@ -349,6 +349,9 @@ export const ACOES_DO_PESSOAL: readonly AcaoDoSistema[] = [
 export const ACOES_DA_FOLHA: readonly AcaoDoSistema[] = [
   "CONFIGURAR_TABELAS_DA_FOLHA", "CADASTRAR_RUBRICA", "LANCAR_NA_FOLHA", "ABRIR_FOLHA", "CALCULAR_FOLHA",
   "CANCELAR_CALCULO_DA_FOLHA", "FECHAR_FOLHA", "CONSULTAR_FOLHA",
+  // V11 V9.5 — recortar quem entra no cálculo. Ver o docblock em `acoes.ts`: quem recebe apenas
+  // `CALCULAR_FOLHA` continua podendo calcular TODOS, que é o padrão conservador.
+  "SELECIONAR_VINCULOS_DA_FOLHA",
 ];
 /** V6 P2.3b — a apropriação contábil, que chegou depois da v10. */
 export const ACOES_DA_APROPRIACAO: readonly AcaoDoSistema[] = ["CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA", "APROPRIAR_FOLHA"];

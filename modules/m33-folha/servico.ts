@@ -1,6 +1,14 @@
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
-import type { PrismaClient } from "../../prisma/generated/client/client.js";
+import {
+  SELECAO_DE_TODOS,
+  abrangenciaDeclarada,
+  exigirAbrangenciaCompleta,
+  selecionadosQueSumiriam,
+  type LinhaDeAbrangencia,
+  type SelecaoDoCalculo,
+} from "./abrangencia.js";
+import type { Prisma, PrismaClient } from "../../prisma/generated/client/client.js";
 import { Decimal, toMoney, sumMoney, type Money } from "../../packages/contracts/index.js";
 import { diaCivil } from "../../packages/datas/index.js";
 // ⚠️ V11 V9.3 — "PAGO" É LÍQUIDO DE ESTORNO E DE ANULAÇÃO PARCIAL, e quem sabe somar isso já
@@ -425,14 +433,36 @@ async function resolvedorDeRubricas(tx: Tx, competencia: string): Promise<(regim
  */
 async function contrachequesMensaisDaCompetencia(
   tx: Tx,
-  competencia: string
-): Promise<{ readonly finais: readonly ContrachequeCalculado[]; readonly matriculaPorVinculo: ReadonlyMap<string, string> }> {
+  competencia: string,
+  selecao: SelecaoDoCalculo = SELECAO_DE_TODOS
+): Promise<{
+  readonly finais: readonly ContrachequeCalculado[];
+  readonly matriculaPorVinculo: ReadonlyMap<string, string>;
+  readonly considerados: readonly string[];
+  readonly excluidos: readonly LinhaDeAbrangencia[];
+}> {
   const { inicio, fim } = bordasDaCompetencia(competencia);
 
   const tabelas = await lerTabelas(tx, competencia);
   const rubricasDoRegime = await resolvedorDeRubricas(tx, competencia);
 
+  /**
+   * ⚠️ V11 V9.5 — AQUI ESTÁ O `where` QUE NÃO EXISTIA, E COM ELE FOI EMBORA A GARANTIA POR
+   * CONSTRUÇÃO. Até aqui a ausência de `where` era o que fazia "todos os vínculos vivos" ser
+   * verdade sem que ninguém precisasse afirmá-lo. **Uma promessa mantida por construção some
+   * junto com a construção** — a partir daqui quem promete é `exigirAbrangenciaCompleta`, e a
+   * promessa mudou para "exatamente os selecionados e elegíveis, com cada exclusão nomeada".
+   *
+   * ⚠️ E O `where` SÓ RECORTA NO MODO EXPLÍCITO. Em `TODOS_OS_ELEGIVEIS` ele é `{}` — não por
+   * economia, mas porque um `in` com a lista inteira dos vínculos do ente daria o mesmo resultado
+   * por um caminho que envelhece: bastaria alguém admitir um servidor entre a montagem da lista e
+   * esta consulta para o "todos" deixar de ser todos, em silêncio.
+   */
+  const recorte: Prisma.VinculoWhereInput =
+    selecao.modo === "EXPLICITA" ? { id: { in: [...new Set(selecao.vinculoIds)] } } : {};
+
   const vinculos = await tx.vinculo.findMany({
+    where: recorte,
     select: {
       id: true, matricula: true, dataAdmissao: true, regimePrevidenciario: true, servidorId: true,
       servidor: { select: { dataNascimento: true, dependentes: { select: { id: true, nome: true, dataNascimento: true, invalidezPermanente: true, finalidades: { select: { finalidade: true, dataInicio: true, limiteIdadeAnos: true, dataBaixa: true, encerramento: { select: { dataEfeito: true } } } } } } } },
@@ -442,12 +472,31 @@ async function contrachequesMensaisDaCompetencia(
     orderBy: { matricula: "asc" },
   });
 
+  /**
+   * ⚠️ V11 V9.5 — A REVALIDAÇÃO NO INSTANTE DO CÁLCULO, e não a confiança na tela. A seleção veio
+   * de uma tela que pode ter envelhecido; entre ela e aqui um vínculo pode ter deixado de existir.
+   * Ele NÃO some em silêncio: vira exclusão com motivo `VINCULO_INEXISTENTE`, gravada no fato do
+   * cálculo e recuperável para sempre.
+   */
+  const { aConsiderar } = abrangenciaDeclarada(selecao, vinculos.map((v) => v.id));
+  const excluidos: LinhaDeAbrangencia[] = [];
+
   const entradas: EntradaDoContracheque[] = [];
   for (const v of vinculos) {
     const eventos = v.eventos.map(paraEvento);
     const desligamento = dataDeDesligamento(eventos);
-    if (diaCivil(v.dataAdmissao) > diaCivil(fim)) continue;
-    if (desligamento !== null && diaCivil(desligamento) < diaCivil(inicio)) continue;
+    // ⚠️ OS DOIS DESCARTES ABAIXO ERAM `continue` MUDOS ATÉ A V11 V9.5: o vínculo sumia e ninguém
+    // sabia que ele havia passado por aqui. Com a seleção isso ficou MAIS grave, não menos — o
+    // operador DECLAROU que queria aquele vínculo e não recebeu contracheque. Exclusão sem motivo
+    // registrado é irmã de "existe como linha ≠ produziu efeito".
+    if (diaCivil(v.dataAdmissao) > diaCivil(fim)) {
+      excluidos.push({ vinculoId: v.id, calculado: false, motivo: "ADMITIDO_APOS_A_COMPETENCIA" });
+      continue;
+    }
+    if (desligamento !== null && diaCivil(desligamento) < diaCivil(inicio)) {
+      excluidos.push({ vinculoId: v.id, calculado: false, motivo: "DESLIGADO_ANTES_DA_COMPETENCIA" });
+      continue;
+    }
     // ⚠️ O REGIME É DERIVADO NA COMPETÊNCIA, não lido da coluna: quem migrou ao RPPS em junho
     // contribuiu ao RGPS em maio, e o recálculo de maio tem de aplicar a tabela de maio.
     const regime = regimeVigenteEm(eventos, v.regimePrevidenciario as RegimePrevidenciario | null, fim);
@@ -474,7 +523,17 @@ async function contrachequesMensaisDaCompetencia(
       tabelas: { contribuicao: regime === "ISENTO" ? null : tabelas.contribuicao[regime], irrf: tabelas.irrf, salarioFamilia: tabelas.salarioFamilia },
     });
   }
-  if (entradas.length === 0) throw new Error(`FOLHA-SEM-VINCULOS: nenhum vínculo vivo em ${competencia}. Nada foi calculado.`);
+  if (entradas.length === 0) {
+    // ⚠️ A MENSAGEM DISTINGUE OS DOIS CASOS, e a distinção não é cosmética: "o ente não tem
+    // ninguém vivo nesta competência" e "os que você selecionou não são elegíveis" levam a
+    // providências opostas, e a mensagem antiga diria a primeira coisa nos dois casos.
+    const porQue =
+      selecao.modo === "EXPLICITA"
+        ? `nenhum dos ${new Set(selecao.vinculoIds).size} vínculo(s) SELECIONADO(S) é elegível em ${competencia} ` +
+          `(${excluidos.map((e) => e.motivo).filter((m, i, a) => a.indexOf(m) === i).join(", ")})`
+        : `nenhum vínculo vivo em ${competencia}`;
+    throw new Error(`FOLHA-SEM-VINCULOS: ${porQue}. Nada foi calculado.`);
+  }
 
   // passo 1 — cada um sozinho
   const primeiro = new Map<string, ContrachequeCalculado>();
@@ -507,7 +566,12 @@ async function contrachequesMensaisDaCompetencia(
     return imp === undefined ? primeiro.get(e.vinculo.id)! : calcularContracheque({ ...e, imposicoes: imp });
   });
 
-  return { finais, matriculaPorVinculo: new Map(vinculos.map((v) => [v.id, v.matricula])) };
+  return {
+    finais,
+    matriculaPorVinculo: new Map(vinculos.map((v) => [v.id, v.matricula])),
+    considerados: aConsiderar,
+    excluidos,
+  };
 }
 
 export interface ResultadoDoCalculo {
@@ -530,6 +594,33 @@ export async function calcularFolha(prisma: PrismaClient, input: CalcularFolhaIn
   const d = zCalcularFolhaInput.parse(input);
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.calcularFolha, "ENTE");
+    /**
+     * ═══ ⚠️ V11 V9.5 — A SEGUNDA COBRANÇA, E SÓ QUEM RECORTA A PAGA ═══
+     *
+     * `CALCULAR_FOLHA` autoriza calcular; `SELECIONAR_VINCULOS_DA_FOLHA` autoriza **recortar quem
+     * entra**. São autoridades diferentes: a primeira decide QUANDO pagar, a segunda decide QUEM
+     * fica de fora — e um recorte errado produz folha parcial que fecha com o total, o empenho e a
+     * liquidação batendo.
+     *
+     * ⚠️ E A SEPARAÇÃO PRODUZ O PADRÃO CONSERVADOR, não um estado pela metade: quem tem apenas
+     * `CALCULAR_FOLHA` continua podendo calcular TODOS. É o contrário do que aconteceria com
+     * `cadastrarFuncao` sob uma ação própria, onde separar deixaria o ente podendo criar cargo
+     * sem poder criar função — estrutura pela metade. O critério é o mesmo (é a MESMA
+     * autoridade?), e nos dois casos a resposta é que decide, não a conveniência.
+     *
+     * ⚠️ NUNCA `CONSULTAR_PESSOAL`. Quem pode VER a lista de servidores não pode, por isso,
+     * escolher quem o ente paga — é a segregação do TR 6.4, e reusar a ação de leitura aqui a
+     * furaria em silêncio.
+     */
+    const selecao: SelecaoDoCalculo =
+      d.selecao === undefined ? SELECAO_DE_TODOS : { modo: d.selecao.modo, vinculoIds: d.selecao.vinculoIds };
+    if (selecao.modo === "EXPLICITA") {
+      // ⚠️ A AÇÃO VAI DIRETA, E NÃO POR `ACAO_DO_SERVICO`, PORQUE NÃO HÁ SERVIÇO NOVO. Aquele mapa
+      // é serviço → ação, e `selecionar` não é um serviço: é uma SEGUNDA COBRANÇA dentro de
+      // `calcularFolha`. Inventar uma chave lá para "ficar simétrico" poria no censo de serviços
+      // um nome que nenhuma função exporta — e o censo deixaria de descrever o que existe.
+      await autorizarNo(tx, d.criadoPor, "SELECIONAR_VINCULOS_DA_FOLHA", "ENTE");
+    }
     const folha = await tx.folhaDePagamento.findUnique({ where: { id: d.folhaId }, select: { id: true, competencia: true, tipo: true, exercicio: true, folhaDoAdiantamentoId: true, fechamento: { select: { id: true, calculo: { select: { numero: true } } } }, calculos: { select: { numero: true }, orderBy: { numero: "desc" }, take: 1 } } });
     if (folha === null) throw new Error(`Folha ${d.folhaId} não existe. Nada foi calculado.`);
     if (folha.fechamento !== null) throw new Error(`FOLHA-FECHADA: a folha ${folha.tipo} de ${folha.competencia} foi fechada sobre o cálculo nº ${folha.fechamento.calculo.numero}; não se recalcula. Nada foi calculado.`);
@@ -554,10 +645,30 @@ export async function calcularFolha(prisma: PrismaClient, input: CalcularFolhaIn
         // V11 V9.1 — as duas folhas de 13º têm outro motor: a medida é o avo do exercício, não o
         // dia do mês. Tudo o mais (numeração do cálculo, cancelamento, fechamento, atesto,
         // empenho) é o mesmo, porque opera sobre `CalculoDaFolha` e `Contracheque`.
+        /**
+         * ⚠️ O MOTOR DO 13º AINDA NÃO RECORTA, E A RECUSA É DELIBERADA — nunca aceitar e ignorar.
+         *
+         * Aceitar a seleção aqui e calculá-la por inteiro gravaria `modoDeSelecao = EXPLICITA`
+         * numa folha que processou TODOS: o registro de abrangência diria uma coisa e o cálculo
+         * teria feito outra. Seria pior que a ausência da funcionalidade — uma folha que MENTE
+         * sobre o próprio recorte, e o operador sairia convencido de que recortou.
+         *
+         * Fica nomeada como `SELECAO-NO-13-NAO-CONSTRUIDA` no MODULO do M33. O motor do 13º tem o
+         * próprio `findMany` e a própria medida (o avo do exercício, não o dia do mês); levá-lo
+         * junto exigiria repetir aqui a guarda de completude e a revalidação, e isso é unidade
+         * própria — não apêndice desta.
+         */
+        if (selecao.modo === "EXPLICITA") {
+          throw new Error(
+            `SELECAO-NAO-SUPORTADA-NESTE-TIPO: a folha ${folha.tipo} de ${folha.competencia} calcula ` +
+              `todos os vínculos com avos no exercício; o recorte por seleção ainda não foi construído ` +
+              `para ela. Calcule sem seleção, ou use a folha MENSAL. Nada foi calculado.`
+          );
+        }
         return calcularFolhaDoDecimoTerceiroNaTx(tx, folha, d.motivo ?? null, d.criadoPor);
       case "MENSAL_COMPLEMENTAR":
         // V11 V9.4 — o motor MENSAL inteiro, menos o que já foi apurado nesta competência.
-        return calcularFolhaComplementarNaTx(tx, folha, d.motivo ?? null, d.criadoPor);
+        return calcularFolhaComplementarNaTx(tx, folha, d.motivo ?? null, d.criadoPor, selecao);
       case "MENSAL":
         break;
       default: {
@@ -569,7 +680,17 @@ export async function calcularFolha(prisma: PrismaClient, input: CalcularFolhaIn
       }
     }
     const competencia = folha.competencia;
-    const { finais } = await contrachequesMensaisDaCompetencia(tx, competencia);
+    const { finais, considerados, excluidos } = await contrachequesMensaisDaCompetencia(tx, competencia, selecao);
+
+    /**
+     * ═══ ⚠️ A GUARDA DE COMPLETUDE — o que substituiu a ausência de `where` ═══
+     *
+     * Afirma que TODO vínculo considerado terminou em exatamente um dos dois lados: produziu
+     * contracheque, ou tem exclusão NOMEADA. Não é `contracheques.length === considerados.length`
+     * — essa igualdade passa quando um selecionado some e um intruso entra. A conferência é de
+     * CONJUNTO, e é a propriedade que a construção anterior sustentava sozinha.
+     */
+    exigirAbrangenciaCompleta(considerados, finais.map((c) => c.vinculoId), excluidos);
 
     // gravar
     const numero = (folha.calculos[0]?.numero ?? 0) + 1;
@@ -578,7 +699,7 @@ export async function calcularFolha(prisma: PrismaClient, input: CalcularFolhaIn
     const totalLiquido = toMoney(totalProventos.minus(totalDescontos));
     const sha256 = sha256Canonico({ motor: VERSAO_DO_MOTOR, competencia, contracheques: finais.map((c) => c.sha256).sort() });
     const calculo = await tx.calculoDaFolha.create({
-      data: { folhaId: folha.id, numero, motivo: d.motivo ?? null, totalProventos: s2(totalProventos), totalDescontos: s2(totalDescontos), totalLiquido: s2(totalLiquido), contracheques: finais.length, sha256, versaoDoMotor: VERSAO_DO_MOTOR, criadoPor: d.criadoPor },
+      data: { folhaId: folha.id, numero, motivo: d.motivo ?? null, totalProventos: s2(totalProventos), totalDescontos: s2(totalDescontos), totalLiquido: s2(totalLiquido), contracheques: finais.length, sha256, versaoDoMotor: VERSAO_DO_MOTOR, modoDeSelecao: selecao.modo, criadoPor: d.criadoPor },
       select: { id: true },
     });
     for (const c of finais) {
@@ -592,8 +713,35 @@ export async function calcularFolha(prisma: PrismaClient, input: CalcularFolhaIn
         },
       });
     }
+    // ⚠️ O FATO DE ABRANGÊNCIA, GRAVADO NA MESMA TRANSAÇÃO DOS CONTRACHEQUES. Fora dela, uma falha
+    // entre as duas gravações deixaria um cálculo cujo registro de quem entrou não corresponde a
+    // quem tem contracheque — e a guarda de completude, que roda ANTES, não alcançaria isso.
+    await gravarAbrangencia(tx, calculo.id, finais.map((c) => c.vinculoId), excluidos);
+
     return { calculoId: calculo.id, numero, contracheques: finais.length, totalProventos, totalDescontos, totalLiquido, sha256 };
   }, { timeout: 120000 });
+}
+
+/**
+ * GRAVA O FATO DE ABRANGÊNCIA — uma linha por vínculo considerado, calculado ou excluído.
+ *
+ * ⚠️ O CHECK `ck_abrangencia_motivo_bicondicional` É QUEM IMPEDE A EXCLUSÃO MUDA: `calculado` e
+ * `motivo IS NULL` têm de coincidir. Sem ele, gravar `calculado = false, motivo = null` seria o
+ * `continue` mudo de volta — agora com uma linha no banco para PARECER que há registro, que é
+ * pior do que não ter linha nenhuma.
+ */
+async function gravarAbrangencia(
+  tx: Tx,
+  calculoId: string,
+  calculados: readonly string[],
+  excluidos: readonly LinhaDeAbrangencia[]
+): Promise<void> {
+  for (const vinculoId of calculados) {
+    await tx.abrangenciaDoCalculo.create({ data: { calculoId, vinculoId, calculado: true, motivo: null } });
+  }
+  for (const e of excluidos) {
+    await tx.abrangenciaDoCalculo.create({ data: { calculoId, vinculoId: e.vinculoId, calculado: false, motivo: e.motivo } });
+  }
 }
 
 /**
@@ -618,7 +766,8 @@ async function calcularFolhaComplementarNaTx(
   tx: Tx,
   folha: { readonly id: string; readonly competencia: string; readonly tipo: string; readonly calculos: readonly { readonly numero: number }[] },
   motivo: string | null,
-  criadoPor: string
+  criadoPor: string,
+  selecao: SelecaoDoCalculo = SELECAO_DE_TODOS
 ): Promise<ResultadoDoCalculo> {
   const competencia = folha.competencia;
 
@@ -691,7 +840,7 @@ async function calcularFolhaComplementarNaTx(
   }
 
   // ── (2) o CORRETO, pelo motor mensal, sem uma linha de conta nova ───────────
-  const { finais, matriculaPorVinculo } = await contrachequesMensaisDaCompetencia(tx, competencia);
+  const { finais, matriculaPorVinculo, considerados, excluidos } = await contrachequesMensaisDaCompetencia(tx, competencia, selecao);
 
   /**
    * ⚠️ QUEM FOI APURADO E NÃO ENTRA MAIS NO RECÁLCULO É RECUSA, NÃO OMISSÃO.
@@ -720,7 +869,40 @@ async function calcularFolhaComplementarNaTx(
    * desta rodada — a mesma que deixou um guard verde por casar com o censo que nomeia o serviço.
    */
   const comContracheque = new Set(finais.map((c) => c.vinculoId));
-  const semRecalculo = [...apuradoPorVinculo.keys()].filter((id) => !comContracheque.has(id));
+  /**
+   * ═══ ⚠️ V11 V9.5 — A RECONCILIAÇÃO COM A SELEÇÃO, E O RISCO DE ELA NASCER INERTE ═══
+   *
+   * Até aqui esta guarda percorria `apuradoPorVinculo` INTEIRO. Com seleção isso acusaria em massa
+   * uma coisa que não aconteceu: **todo** vínculo não selecionado cairia no filtro. Ela colapsava
+   * três fatos distintos num só, e agora eles se separam:
+   *
+   *   · FORA DA SELEÇÃO — o operador não pediu. Não é anomalia; é exclusão registrada em (c).
+   *   · SELECIONADO E INELEGÍVEL — vira exclusão com motivo, e é MAIS grave que antes, porque o
+   *     operador declarou que queria.
+   *   · SELECIONADO, APURADO EM FOLHA FECHADA E FORA DO RECÁLCULO — continua acusando: correto
+   *     zero, apurado maior, valor a repor ao erário.
+   *
+   * ═══ ⚠️ E AQUI ESTÁ O QUE A MUTAÇÃO MEDIU, contra o que este comentário ia afirmar ═══
+   *
+   * A intenção era escrever que trocar `considerados` por `matriculaPorVinculo` mataria a guarda —
+   * a mesma forma com que ela nasceu inerte da primeira vez. **A mutação foi feita e NÃO acusou:
+   * 13/13 verdes com o conjunto trocado.** E a causa é boa notícia, não defeito:
+   *
+   * **O `where` do `findMany` já fez a reconciliação.** No modo EXPLICITA o motor lê SÓ os
+   * selecionados, então `matriculaPorVinculo` e `considerados` são o mesmo conjunto — a filtragem
+   * por `consideradoAgora` é **redundante enquanto o `where` existir**.
+   *
+   * ⚠️ ENTÃO ELA FICA COMO DEFESA EM PROFUNDIDADE, DECLARADA COMO TAL — e não como guarda provada.
+   * Ela existe para o dia em que alguém remover o `where` (por desempenho, por refactor, por um
+   * caminho novo que leia todos e filtre em memória): nesse dia ela passa a ser a única coisa
+   * separando "não foi selecionado" de "sumiu do recálculo". **O que está provado é a guarda em
+   * si** — mutá-la inteira (`if (false && …)`) deixa o caso real vermelho. O que NÃO está provado
+   * é esta linha, e dizer isso é a diferença entre documentar e atestar pela papelada.
+   */
+  const consideradoAgora = new Set(considerados);
+  const semRecalculo = [...apuradoPorVinculo.keys()]
+    .filter((id) => consideradoAgora.has(id))
+    .filter((id) => !comContracheque.has(id));
   if (semRecalculo.length > 0) {
     const nomes = semRecalculo.map((id) => matriculaApurada.get(id) ?? id).sort();
     throw new Error(
@@ -780,7 +962,7 @@ async function calcularFolhaComplementarNaTx(
   const totalLiquido = toMoney(totalProventos.minus(totalDescontos));
   const sha256 = sha256Canonico({ motor: VERSAO_DO_MOTOR_COMPLEMENTAR, competencia, tipo: folha.tipo, contracheques: calculados.map((c) => c.sha256).sort() });
   const calculo = await tx.calculoDaFolha.create({
-    data: { folhaId: folha.id, numero, motivo, totalProventos: s2(totalProventos), totalDescontos: s2(totalDescontos), totalLiquido: s2(totalLiquido), contracheques: calculados.length, sha256, versaoDoMotor: VERSAO_DO_MOTOR_COMPLEMENTAR, criadoPor },
+    data: { folhaId: folha.id, numero, motivo, totalProventos: s2(totalProventos), totalDescontos: s2(totalDescontos), totalLiquido: s2(totalLiquido), contracheques: calculados.length, sha256, versaoDoMotor: VERSAO_DO_MOTOR_COMPLEMENTAR, modoDeSelecao: selecao.modo, criadoPor },
     select: { id: true },
   });
   for (const c of calculados) {
@@ -800,6 +982,25 @@ async function calcularFolhaComplementarNaTx(
       },
     });
   }
+  /**
+   * ⚠️ NA COMPLEMENTAR HÁ UM QUARTO DESTINO, e ele não existia como conceito antes desta unidade:
+   * quem foi CONSIDERADO, é ELEGÍVEL e produziu contracheque no motor mensal, mas cujo correto
+   * COINCIDE com o já apurado — não há diferença a pagar. Antes ele simplesmente não aparecia no
+   * resultado, e "não apareceu" era indistinguível de "não foi considerado".
+   *
+   * Agora ele é exclusão NOMEADA (`SEM_DIFERENCA_A_PAGAR`), que é a resposta certa e a mais útil:
+   * é ela que permite ao operador conferir que o vínculo FOI olhado e estava correto, em vez de
+   * ficar sem saber se foi esquecido.
+   */
+  const pagos = new Set(calculados.map((c) => c.vinculoId));
+  const semDiferenca: LinhaDeAbrangencia[] = finais
+    .filter((c) => !pagos.has(c.vinculoId))
+    .map((c) => ({ vinculoId: c.vinculoId, calculado: false, motivo: "SEM_DIFERENCA_A_PAGAR" as const }));
+  const todasAsExclusoes = [...excluidos, ...semDiferenca];
+
+  exigirAbrangenciaCompleta(considerados, [...pagos], todasAsExclusoes);
+  await gravarAbrangencia(tx, calculo.id, [...pagos], todasAsExclusoes);
+
   return { calculoId: calculo.id, numero, contracheques: calculados.length, totalProventos, totalDescontos, totalLiquido, sha256 };
 }
 
@@ -1253,6 +1454,23 @@ async function calcularFolhaDoDecimoTerceiroNaTx(
       },
     });
   }
+  /**
+   * ⚠️ O 13º GRAVA ABRANGÊNCIA MESMO SEM SELEÇÃO, e a razão é o FECHAMENTO, não o recorte.
+   *
+   * A guarda `SELECIONADOS-QUE-SUMIRIAM` de `fecharFolha` pergunta ao registro de abrangência
+   * quem foi calculado nos cálculos vivos. Se este motor não gravasse nada, a guarda leria lista
+   * vazia e **passaria por vacuidade** em toda folha de 13º — o pior desfecho possível para uma
+   * guarda: silenciosa e indistinguível de "não há problema". Dois recálculos de 13º entre os
+   * quais alguém foi desligado produzem conjuntos diferentes, e o fechamento precisa enxergar.
+   *
+   * ⚠️ E NÃO SE CHAMA `exigirAbrangenciaCompleta` AQUI, de propósito: este motor não constrói o
+   * conjunto de CONSIDERADOS (ele pula quem não alcançou avo sem registrar motivo). Afirmar
+   * completude sobre um conjunto que não foi apurado seria afirmar o que não se sabe — a guarda
+   * passaria sempre, e uma guarda que sempre passa é a que já nasceu inerte neste módulo. Fica
+   * nomeado: `ABRANGENCIA-DO-13-SEM-EXCLUSOES-NOMEADAS`.
+   */
+  await gravarAbrangencia(tx, calculo.id, calculados.map((c) => c.vinculoId), []);
+
   return { calculoId: calculo.id, numero, contracheques: calculados.length, totalProventos, totalDescontos, totalLiquido, sha256 };
 }
 
@@ -1278,6 +1496,38 @@ export async function fecharFolha(prisma: PrismaClient, input: FecharFolhaInput)
     if (folha.fechamento !== null) throw new Error(`FOLHA-JA-FECHADA: a folha ${folha.tipo} de ${folha.competencia} já está fechada. Nada foi gravado.`);
     const vivo = folha.calculos[0];
     if (vivo === undefined) throw new Error(`FOLHA-SEM-CALCULO-VIVO: a folha ${folha.tipo} de ${folha.competencia} não tem cálculo (ou todos foram cancelados). Calcule antes de fechar. Nada foi gravado.`);
+
+    /**
+     * ═══ ⚠️ A GUARDA DA SUBTRAÇÃO SILENCIOSA — o risco que ninguém procuraria ═══
+     *
+     * Todo mundo vigia "pagar duas vezes". Com seleção o perigo é o OPOSTO, e ele é invisível:
+     * `fecharFolha` congela **UM** cálculo, o último não cancelado. Se o cálculo nº1 processou
+     * {A,B} e o nº2 processou {C,D}, fechar leva só {C,D} — **A e B não recebem**, sem erro, sem
+     * aviso, com o total, o empenho e a liquidação batendo.
+     *
+     * ⚠️ E O CANCELAMENTO É A SAÍDA LEGÍTIMA, por isso ele entra na conta: um cálculo cancelado
+     * declara "isto não vale", e quem estava só nele deixou de ser prometido POR ATO. O que esta
+     * guarda impede é o ESQUECIMENTO, não a decisão — quem quiser mesmo excluir A e B cancela o
+     * nº1, ou recalcula com a seleção acumulada. As duas saídas são explícitas e ficam gravadas.
+     */
+    const calculadosNosVivos = await tx.abrangenciaDoCalculo.findMany({
+      where: { calculado: true, calculo: { folhaId: folha.id, cancelamento: null } },
+      select: { vinculoId: true, calculo: { select: { numero: true } } },
+    });
+    const noQueVaiFechar = calculadosNosVivos.filter((x) => x.calculo.numero === vivo.numero).map((x) => x.vinculoId);
+    const sumiriam = selecionadosQueSumiriam(calculadosNosVivos.map((x) => x.vinculoId), noQueVaiFechar);
+    if (sumiriam.length > 0) {
+      const matriculas = await tx.vinculo.findMany({ where: { id: { in: [...sumiriam] } }, select: { matricula: true } });
+      const nomes = matriculas.map((m) => m.matricula).sort();
+      throw new Error(
+        `SELECIONADOS-QUE-SUMIRIAM: a(s) matrícula(s) ${nomes.join(", ")} foram calculadas em cálculo ` +
+          `VIVO desta folha e NÃO estão no cálculo nº ${vivo.numero}, que é o que o fechamento ` +
+          `congelaria. Fechar assim deixaria essas pessoas sem contracheque na folha ${folha.tipo} de ` +
+          `${folha.competencia} — sem erro, com o total, o empenho e a liquidação batendo, e ninguém ` +
+          `acusando adiante. Recalcule incluindo-as, ou cancele o cálculo que as processou para ` +
+          `declarar que elas não entram. Nada foi gravado.`
+      );
+    }
     /**
      * ⚠️ V11 V9.3 — A PRÉ-CONDIÇÃO ANTES DA GRAVAÇÃO QUE ENVENENA.
      *

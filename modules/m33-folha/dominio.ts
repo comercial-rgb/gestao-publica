@@ -1093,9 +1093,55 @@ export const zAbrirFolhaInput = z.object({
 });
 export type AbrirFolhaInput = z.input<typeof zAbrirFolhaInput>;
 
+/**
+ * ═══ V11 V9.5 (TR 5.12.50) — A SELEÇÃO DECLARADA PELO OPERADOR ═══
+ *
+ * ⚠️ O MODO É DECLARADO, NUNCA INFERIDO DO TAMANHO DA LISTA — e é isto que impede o defeito da
+ * paginação. Uma tela paginada que oferece "selecionar tudo" e manda os 25 visíveis produz uma
+ * `EXPLICITA` de 25, e o sistema **registra 25**, que é a verdade. O que não pode acontecer é os
+ * 25 passarem por "todos". Se o modo fosse inferido, uma seleção de 25 num ente de 25 servidores
+ * seria indistinguível de `TODOS_OS_ELEGIVEIS` — e a diferença entre as duas é justamente o que a
+ * abrangência precisa registrar.
+ */
+export const zSelecaoDoCalculo = z
+  .object({
+    modo: z.enum(["TODOS_OS_ELEGIVEIS", "EXPLICITA"]),
+    vinculoIds: z.array(z.string().min(1)).default([]),
+  })
+  .superRefine((v, ctx) => {
+    if (v.modo === "EXPLICITA" && v.vinculoIds.length === 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["vinculoIds"],
+        message:
+          "Seleção EXPLÍCITA sem nenhum vínculo não calcula ninguém. Se a intenção é calcular " +
+          "todos, declare o modo TODOS_OS_ELEGIVEIS — os dois são estados diferentes e o cálculo " +
+          "registra qual foi.",
+      });
+    }
+    // ⚠️ E O CONTRÁRIO TAMBÉM, porque uma lista junto de "todos" é ambígua na leitura futura: o
+    // auditor não saberia se o operador pediu todos ou aqueles, e a abrangência gravada diria uma
+    // coisa enquanto a intenção declarada dizia outra.
+    if (v.modo === "TODOS_OS_ELEGIVEIS" && v.vinculoIds.length > 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["vinculoIds"],
+        message:
+          "TODOS_OS_ELEGIVEIS não leva lista de vínculos. Uma lista aqui tornaria impossível saber " +
+          "depois se o operador pediu todos ou apenas aqueles.",
+      });
+    }
+  });
+
 export const zCalcularFolhaInput = z.object({
   folhaId: z.string().min(1),
   motivo: z.string().trim().min(3).optional(),
+  /**
+   * ⚠️ AUSENTE SIGNIFICA `TODOS_OS_ELEGIVEIS`, e o padrão é deliberado: quem chama sem declarar
+   * seleção calcula TODOS. O recorte tem de ser PEDIDO — nunca acontecer por omissão, que é como
+   * uma folha parcial entraria em produção sem ninguém ter decidido nada.
+   */
+  selecao: zSelecaoDoCalculo.optional(),
   criadoPor: zAutor,
 });
 export type CalcularFolhaInput = z.input<typeof zCalcularFolhaInput>;

@@ -464,6 +464,10 @@ enum AcaoDoSistema {
   LANCAR_NA_FOLHA
   ABRIR_FOLHA
   CALCULAR_FOLHA
+  /// V11 V9.5 (TR 5.12.50) — RECORTAR quem entra no cálculo. Distinta de CALCULAR_FOLHA de
+  /// propósito: calcular é decidir QUANDO pagar; selecionar é decidir QUEM fica de fora, e um
+  /// recorte errado produz folha parcial que fecha com todos os totais batendo.
+  SELECIONAR_VINCULOS_DA_FOLHA
   CANCELAR_CALCULO_DA_FOLHA
   FECHAR_FOLHA
   CONSULTAR_FOLHA

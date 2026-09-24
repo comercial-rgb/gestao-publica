@@ -430,6 +430,21 @@ export type AcaoDoSistema =
   | "LANCAR_NA_FOLHA"
   | "ABRIR_FOLHA"
   | "CALCULAR_FOLHA"
+  /**
+   * ⚠️ V11 V9.5 — AÇÃO PRÓPRIA, E NÃO O REUSO DE `CALCULAR_FOLHA`. O critério é o mesmo que
+   * manteve `cadastrarFuncao` sob `CADASTRAR_CARGO`: pergunta-se se é a MESMA AUTORIDADE.
+   *
+   * **Aqui NÃO é.** Calcular a folha é decidir QUANDO pagar; selecionar quem entra é decidir QUEM
+   * fica de fora do pagamento — e um recorte errado produz folha parcial que fecha com o total, o
+   * empenho e a liquidação batendo.
+   *
+   * ⚠️ E O ARGUMENTO INVERSO, QUE NO CASO DA FUNÇÃO PESAVA CONTRA A SEPARAÇÃO, AQUI PESA A FAVOR.
+   * Lá, uma ação própria daria ao ente a chance de conceder "criar cargo" sem "criar função" —
+   * estrutura pela metade, um defeito. Aqui, conceder `CALCULAR_FOLHA` sem esta deixa o operador
+   * podendo calcular apenas TODOS: a separação não produz estado pela metade, produz **o padrão
+   * conservador**. Quem não pode recortar não corre o risco de recortar errado.
+   */
+  | "SELECIONAR_VINCULOS_DA_FOLHA"
   | "CANCELAR_CALCULO_DA_FOLHA"
   | "FECHAR_FOLHA"
   // ── M21 — protocolo e processo digital (ENT02) ──
@@ -1841,8 +1856,31 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
  * bootstrap nascer sem leitura nenhuma — e o administrador da instalação abriria um
  * sistema em que não enxerga tela alguma.
  */
+/**
+ * ═══ ⚠️ AS AÇÕES QUE NÃO TÊM SERVIÇO PRÓPRIO — e por que esta lista precisou existir ═══
+ *
+ * `TODAS_AS_ACOES` é DERIVADA de `ACAO_DO_SERVICO` (serviço → ação) mais as leituras. Uma ação que
+ * não apareça em nenhum dos dois **não existe para ninguém — nem para o ADMIN**, que recebe
+ * exatamente `TODAS_AS_ACOES`. Fail-closed absoluto e inútil: a capacidade fica inalcançável, e o
+ * sintoma é um `ACESSO NEGADO` para o usuário mais poderoso do ente, sem nenhuma forma de conceder.
+ *
+ * ⚠️ E ELAS NÃO ENTRAM NO MAPA `ACAO_DO_SERVICO` PARA "FICAR SIMÉTRICO". Aquele mapa descreve
+ * SERVIÇOS, e `SELECIONAR_VINCULOS_DA_FOLHA` não é um: é uma **segunda cobrança dentro de
+ * `calcularFolha`**, feita só quando o modo é EXPLICITA. Pôr uma chave lá criaria no censo de
+ * serviços um nome que nenhuma função exporta — e o censo deixaria de descrever o que existe, que
+ * é precisamente o que ele serve para fazer.
+ *
+ * Quem acrescentar uma ação assim acrescenta AQUI, e o teste de censo continua podendo afirmar
+ * que todo serviço de mutação tem ação sem precisar fingir que toda ação tem serviço.
+ */
+export const ACOES_SEM_SERVICO_PROPRIO: readonly AcaoDoSistema[] = [
+  // V11 V9.5 (TR 5.12.50) — recortar quem entra no cálculo da folha. Cobrada dentro de
+  // `calcularFolha`, ADICIONALMENTE a `CALCULAR_FOLHA`, e só no modo EXPLICITA.
+  "SELECIONAR_VINCULOS_DA_FOLHA",
+];
+
 export const TODAS_AS_ACOES: readonly AcaoDoSistema[] = [
-  ...new Set<AcaoDoSistema>([...Object.values(ACAO_DO_SERVICO), ...ACOES_DE_LEITURA]),
+  ...new Set<AcaoDoSistema>([...Object.values(ACAO_DO_SERVICO), ...ACOES_DE_LEITURA, ...ACOES_SEM_SERVICO_PROPRIO]),
 ].sort() as AcaoDoSistema[];
 
 /**

@@ -329,6 +329,79 @@ model FolhaDePagamento {
   @@unique([exercicio, tipo])
 }
 
+/// V11 V9.5 (TR 5.12.50) — COMO o operador declarou quem entra no cálculo.
+///
+/// ⚠️ `TODOS_OS_ELEGIVEIS` NÃO É "lista vazia", E A DISTINÇÃO É A GUARDA CONTRA O DEFEITO DA
+/// PAGINAÇÃO. O modo é DECLARADO, nunca inferido do tamanho da lista: inferir faria uma seleção
+/// de 25 num ente de 25 servidores ser indistinguível de "todos" — e faria uma tela paginada que
+/// manda os 25 visíveis passar por "selecionou tudo".
+enum ModoDeSelecaoDoCalculo {
+  /// Todos os vínculos que existem na competência. É o comportamento anterior à seleção, e
+  /// continua sendo o padrão de toda folha já gravada (o `@default` da coluna).
+  TODOS_OS_ELEGIVEIS
+  /// O operador nomeou cada vínculo. A lista vive em `AbrangenciaDoCalculo`.
+  EXPLICITA
+}
+
+/// V11 V9.5 — POR QUE um vínculo considerado não produziu contracheque.
+///
+/// ⚠️ CADA VALOR AQUI ERA UM `continue` MUDO OU UMA AUSÊNCIA SILENCIOSA. Os dois primeiros são
+/// literalmente as duas linhas que o motor mensal descartava sem deixar rastro, no laço de
+/// `contrachequesMensaisDaCompetencia` (`modules/m33-folha/servico.ts`).
+enum MotivoDaExclusaoDoCalculo {
+  /// Admitido depois do fim da competência. Era um `continue` mudo até a V11 V9.5.
+  ADMITIDO_APOS_A_COMPETENCIA
+  /// Desligado antes do início da competência. O outro `continue` mudo.
+  DESLIGADO_ANTES_DA_COMPETENCIA
+  /// Só na COMPLEMENTAR: o correto e o já apurado coincidem, então não há diferença a pagar.
+  SEM_DIFERENCA_A_PAGAR
+}
+
+/// ⚠️ DOIS MOTIVOS FORAM TENTADOS E DESCARTADOS PELO QUE O BANCO DISSE, e ficam registrados aqui
+/// para ninguém os reintroduzir:
+///
+///   · `NAO_SELECIONADO` — gravar uma linha por vínculo NÃO pedido faria um cálculo de 2 pessoas
+///     num ente de 900 gravar 898 linhas de ruído, escondendo as exclusões que importam. E ele é
+///     DERIVÁVEL de `modoDeSelecao = EXPLICITA` mais a lista dos considerados. Fato derivável não
+///     vira linha.
+///   · `VINCULO_INEXISTENTE` — IMPOSSÍVEL de gravar: a FK desta tabela aponta para `Vinculo`, e um
+///     vínculo que não existe não tem para onde apontar. A tentativa estourou a FK e derrubou a
+///     transação. A revalidação passou a RECUSAR o cálculo inteiro, que é mais forte.
+
+/// ═══ V11 V9.5 — O FATO DE ABRANGÊNCIA: quem o cálculo processou, e por que os outros não ═══
+///
+/// ⚠️ ELE NASCEU NO MESMO COMMIT QUE A SELEÇÃO, E ISSO NÃO É ZELO — é a condição de a seleção ser
+/// segura. `calcularFolha` prometia "todos os vínculos vivos" e mantinha a promessa POR
+/// CONSTRUÇÃO (o `findMany` sem `where`). A seleção remove essa construção, e **uma promessa
+/// mantida por construção some junto com a construção**. Sem este registro, uma folha parcial
+/// fecha com o total batendo, o empenho batendo e a liquidação batendo — nenhuma etapa adiante
+/// acusa, que é a forma exata de defeito que este módulo já pagou três vezes.
+///
+/// ⚠️ E ELE GUARDA OS EXCLUÍDOS, NÃO SÓ OS INCLUÍDOS. "Quem entrou" já era reconstruível pela
+/// lista de `Contracheque`; o que não existia em lugar nenhum era **por que ficou de fora quem
+/// ficou** — e é essa metade que foi exigida recuperável.
+model AbrangenciaDoCalculo {
+  id String @id @default(cuid())
+
+  calculoId String
+  calculo   CalculoDaFolha @relation(fields: [calculoId], references: [id])
+
+  vinculoId String
+  vinculo   Vinculo @relation(fields: [vinculoId], references: [id])
+
+  /// Verdadeiro exatamente quando existe `Contracheque` deste vínculo neste cálculo.
+  calculado Boolean
+
+  /// Nulo exatamente quando `calculado` é verdadeiro. O CHECK impõe as duas metades.
+  motivo MotivoDaExclusaoDoCalculo?
+
+  /// ⚠️ UMA LINHA POR VÍNCULO POR CÁLCULO — é ela que impede o mesmo vínculo de ser contado nos
+  /// dois lados (calculado E excluído), que faria a contagem mentir sem nada acusar.
+  @@unique([calculoId, vinculoId])
+  @@index([vinculoId])
+  @@index([calculoId, calculado])
+}
+
 /// Um cálculo da folha — numerado por folha; recalcular é o próximo número, nunca UPDATE.
 model CalculoDaFolha {
   id String @id @default(cuid())
@@ -357,6 +430,13 @@ model CalculoDaFolha {
 
   criadoEm  DateTime @default(now())
   criadoPor String
+
+  /// V11 V9.5 — COMO a seleção foi declarada. `@default` porque a migration é ADITIVA: todo
+  /// cálculo já gravado processou todos os elegíveis, e é isso que a coluna passa a dizer dele.
+  modoDeSelecao ModoDeSelecaoDoCalculo @default(TODOS_OS_ELEGIVEIS)
+
+  /// V11 V9.5 — o FATO de abrangência: uma linha por vínculo considerado.
+  abrangencia AbrangenciaDoCalculo[]
 
   contrachequesDoCalculo Contracheque[]
   cancelamento           CancelamentoDoCalculo?

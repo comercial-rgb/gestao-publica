@@ -344,6 +344,7 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   LANCAR_NA_FOLHA: "folha",
   ABRIR_FOLHA: "folha",
   CALCULAR_FOLHA: "folha",
+  SELECIONAR_VINCULOS_DA_FOLHA: "folha",
   CANCELAR_CALCULO_DA_FOLHA: "folha",
   FECHAR_FOLHA: "folha",
   // M21 — protocolo e processo digital (ENT02)

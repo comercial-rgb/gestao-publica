@@ -595,6 +595,8 @@ model Vinculo {
 
   lancamentosDaFolha LancamentoDaFolha[]
   contracheques      Contracheque[]
+  /// V11 V9.5 (M33) — as linhas do FATO de abrangência que citam este vínculo. VIRTUAL.
+  abrangenciasDeCalculo AbrangenciaDoCalculo[]
   empenhosDaFolha    EmpenhoDaFolha[]
 
   eventos     HistoricoVinculo[]
