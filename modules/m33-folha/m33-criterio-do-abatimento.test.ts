@@ -445,8 +445,8 @@ describe("c3 · o critério PAGO", () => {
     const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: PREPARA });
     await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/ADIANTAMENTO-NAO-PAGO/);
     await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/MAT-B/);
-    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/1125\.00 apurados/);
-    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/600\.00 pagos/);
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/1\.125,00 apurados/);
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/600,00 pagos/);
     await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/PARCIAL não satisfaz/);
     expect(await prisma.calculoDaFolha.count({ where: { folhaId } })).toBe(0);
   });
@@ -507,7 +507,7 @@ describe("c3 · o critério PAGO", () => {
     const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: PREPARA });
     await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/ADIANTAMENTO-NAO-PAGO/);
     await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/MAT-B/);
-    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/0\.00 pagos/);
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: PREPARA })).rejects.toThrow(/0,00 pagos/);
   });
 });
 

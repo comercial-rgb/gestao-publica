@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Decimal, toMoney, sumMoney, type Money } from "../../packages/contracts/index.js";
+import { Decimal, emProsa, toMoney, sumMoney, type Money } from "../../packages/contracts/index.js";
 import { anoCivil } from "../../packages/datas/index.js";
 import { idadeEm } from "../m32-pessoal/dominio.js";
 import {
@@ -55,9 +55,38 @@ import type { SituacaoDaCertificacao } from "./certificacao.js";
  */
 
 /** Muda quando a conta muda. A memória cita — o 13º de 2026 continua reproduzível depois. */
-export const VERSAO_DO_MOTOR_DO_13 = "m33-decimo-terceiro-1.0.0";
+/**
+ * ⚠️ 1.1.0 (V12 U2) — A PROSA DA MEMÓRIA PASSOU A SER pt-BR ("3000.00" → "3.000,00").
+ *
+ * O valor não mudou; a REDAÇÃO mudou, e a redação entra no `sha256` do contracheque. Duas
+ * memórias com o mesmo número passam a ter hashes diferentes conforme o motor que as escreveu, e
+ * é esta constante que diz qual foi qual — sem ela, um auditor veria dois hashes divergentes para
+ * o mesmo cálculo e não teria como saber por quê.
+ *
+ * Folha fechada não se recalcula (invariante 3), então nada do que já está gravado se move: o
+ * corte é PROSPECTIVO, e esta linha é o marco dele.
+ */
+export const VERSAO_DO_MOTOR_DO_13 = "m33-decimo-terceiro-1.1.0";
 
 const m = (v: Money | Decimal): string => (v instanceof Decimal ? v.toFixed(v.decimalPlaces() > 2 ? v.decimalPlaces() : 2) : String(v));
+
+/**
+ * O MESMO VALOR, MAS PARA DENTRO DE UMA FRASE — `reais`, e o nome é longo de propósito.
+ *
+ * ⚠️ `m` E `reais` NÃO SÃO A MESMA COISA, E CONFUNDI-LAS DESFAZ O CONSERTO.
+ *
+ *   `m(v)` → "3000.00"    CAMPO da memória. Fica assim de propósito: é dado estruturado, a tela
+ *                         reformata na hora de exibir, e quem consome programaticamente precisa
+ *                         de string decimal.
+ *   `reais(v)` → "3.000,00"   PROSA. Frase montada, gravada no banco e hasheada junto do contracheque
+ *                         — ninguém a reformata depois. Ou ela nasce legível, ou fica ilegível
+ *                         para sempre no documento que o servidor abre.
+ *
+ * A apresentação vem de `emProsa` (`packages/contracts/moeda.ts`), a MESMA implementação que
+ * `formatarMoeda` usa para as telas: uma só, para não divergirem.
+ */
+const reais = (v: Money | Decimal): string => emProsa(m(v));
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ERROS NOMEADOS — cada um diz o que fazer, e nenhum deles conta o que o operador já sabe
@@ -95,8 +124,8 @@ export class BaseDoDecimoTerceiroVaziaError extends Error {
 export class AbatimentoMaiorQueODecimoTerceiroError extends Error {
   constructor(matricula: string, decimoTerceiro: Money, adiantamento: Money) {
     super(
-      `ABATIMENTO-MAIOR-QUE-O-13: a matrícula ${matricula} tem 13º de ${m(decimoTerceiro)} e já ` +
-        `recebeu ${m(adiantamento)} de adiantamento — o líquido ficaria negativo. Isso é valor a ` +
+      `ABATIMENTO-MAIOR-QUE-O-13: a matrícula ${matricula} tem 13º de ${reais(decimoTerceiro)} e já ` +
+        `recebeu ${reais(adiantamento)} de adiantamento — o líquido ficaria negativo. Isso é valor a ` +
         `repor ao erário, que é ato próprio e não existe neste sistema; a folha não pode pagar ` +
         `menos que zero. Trate a matrícula fora desta folha. Nada foi calculado.`
     );
@@ -112,7 +141,7 @@ export class AbatimentoMaiorQueODecimoTerceiroError extends Error {
 export class RubricaDoAbatimentoAusenteError extends Error {
   constructor(matricula: string, adiantamento: Money) {
     super(
-      `RUBRICA-DO-ABATIMENTO-AUSENTE: a matrícula ${matricula} recebeu ${m(adiantamento)} de ` +
+      `RUBRICA-DO-ABATIMENTO-AUSENTE: a matrícula ${matricula} recebeu ${reais(adiantamento)} de ` +
         `adiantamento e o parâmetro do exercício não resolve a rubrica de abatimento. Calcular ` +
         `assim pagaria o 13º inteiro a quem já recebeu a 1ª parcela. Nada foi calculado.`
     );
@@ -468,14 +497,14 @@ export function calcularContrachequeDoDecimoTerceiro(e: EntradaDoDecimoTerceiro)
   };
 
   const explicacaoDosAvos =
-    `${e.avos.avos}/${e.parametro.avosNoExercicio} avos de ${m(baseIntegral)} ` +
-    `(base: ${e.base.map((b) => `${b.codigo} ${m(b.valor)}`).join(" + ")}) = ${m(decimoApurado)}`;
+    `${e.avos.avos}/${e.parametro.avosNoExercicio} avos de ${reais(baseIntegral)} ` +
+    `(base: ${e.base.map((b) => `${b.codigo} ${reais(b.valor)}`).join(" + ")}) = ${reais(decimoApurado)}`;
 
   empurrar(
     e.rubricaDaParcela,
     valorDaParcela,
     eAdiantamento
-      ? `${explicacaoDosAvos}; 1ª parcela = ${e.parametro.percentualDaPrimeiraParcela.times(100).toFixed(2)}% × ${m(decimoApurado)} = ${m(valorDaParcela)}`
+      ? `${explicacaoDosAvos}; 1ª parcela = ${e.parametro.percentualDaPrimeiraParcela.times(100).toFixed(2)}% × ${reais(decimoApurado)} = ${reais(valorDaParcela)}`
       : explicacaoDosAvos
   );
 
@@ -492,9 +521,9 @@ export function calcularContrachequeDoDecimoTerceiro(e: EntradaDoDecimoTerceiro)
     empurrar(
       e.rubricaDaContribuicao,
       contribuicaoCalculada.valor,
-      `${contribuicaoCalculada.regime} sobre o 13º: base ${m(contribuicaoCalculada.base)}` +
-        `${contribuicaoCalculada.tetoAplicado ? ` (teto sobre ${m(contribuicaoCalculada.baseAntesDoTeto)})` : ""}` +
-        ` → faixas ${contribuicaoCalculada.faixas.map((f) => `${m(f.baseNaFaixa)}×${f.aliquota}`).join(" + ") || "—"} = ${m(contribuicaoCalculada.valor)}`
+      `${contribuicaoCalculada.regime} sobre o 13º: base ${reais(contribuicaoCalculada.base)}` +
+        `${contribuicaoCalculada.tetoAplicado ? ` (teto sobre ${reais(contribuicaoCalculada.baseAntesDoTeto)})` : ""}` +
+        ` → faixas ${contribuicaoCalculada.faixas.map((f) => `${reais(f.baseNaFaixa)}×${f.aliquota}`).join(" + ") || "—"} = ${reais(contribuicaoCalculada.valor)}`
     );
   }
 
@@ -512,7 +541,7 @@ export function calcularContrachequeDoDecimoTerceiro(e: EntradaDoDecimoTerceiro)
     empurrar(
       e.rubricaDoIrrf,
       irrfCalculado.valor,
-      `cenário ${irrfCalculado.cenario} sobre o 13º: renda ${m(valorDaParcela)} − deduções → base ${m(irrfCalculado.base)} = ${m(irrfCalculado.valor)}`
+      `cenário ${irrfCalculado.cenario} sobre o 13º: renda ${reais(valorDaParcela)} − deduções → base ${reais(irrfCalculado.base)} = ${reais(irrfCalculado.valor)}`
     );
   }
 
@@ -543,7 +572,7 @@ export function calcularContrachequeDoDecimoTerceiro(e: EntradaDoDecimoTerceiro)
       e.adiantamentoApuradoEmFolhaFechada,
       `1ª parcela APURADA na folha de adiantamento FECHADA` +
         onde +
-        `, exercício ${e.parametro.exercicio}: ${m(e.adiantamentoApuradoEmFolhaFechada)}. ` +
+        `, exercício ${e.parametro.exercicio}: ${reais(e.adiantamentoApuradoEmFolhaFechada)}. ` +
         (criterio === null
           ? `⚠️ SIMULAÇÃO — NÃO É APURAÇÃO APROVADA: o parâmetro do 13º de ${e.parametro.exercicio} ` +
             `NÃO declara qual estado o adiantamento precisa ter para ser abatido. O valor acima saiu ` +

@@ -1,4 +1,4 @@
-import { Decimal, sumMoney, toMoney, type Money } from "../../packages/contracts/index.js";
+import { Decimal, emProsa, sumMoney, toMoney, type Money } from "../../packages/contracts/index.js";
 import {
   sha256Canonico,
   type ContrachequeCalculado,
@@ -46,7 +46,36 @@ import {
 
 const m = (v: Money | Decimal): string => v.toFixed(2);
 
-export const VERSAO_DO_MOTOR_COMPLEMENTAR = "m33-complementar-1";
+/**
+ * O MESMO VALOR, MAS PARA DENTRO DE UMA FRASE — `reais`, e o nome é longo de propósito.
+ *
+ * ⚠️ `m` E `reais` NÃO SÃO A MESMA COISA, E CONFUNDI-LAS DESFAZ O CONSERTO.
+ *
+ *   `m(v)` → "3000.00"    CAMPO da memória. Fica assim de propósito: é dado estruturado, a tela
+ *                         reformata na hora de exibir, e quem consome programaticamente precisa
+ *                         de string decimal.
+ *   `reais(v)` → "3.000,00"   PROSA. Frase montada, gravada no banco e hasheada junto do contracheque
+ *                         — ninguém a reformata depois. Ou ela nasce legível, ou fica ilegível
+ *                         para sempre no documento que o servidor abre.
+ *
+ * A apresentação vem de `emProsa` (`packages/contracts/moeda.ts`), a MESMA implementação que
+ * `formatarMoeda` usa para as telas: uma só, para não divergirem.
+ */
+const reais = (v: Money | Decimal): string => emProsa(m(v));
+
+
+/**
+ * ⚠️ m33-complementar-2 (V12 U2) — A PROSA DA MEMÓRIA PASSOU A SER pt-BR ("3000.00" → "3.000,00").
+ *
+ * O valor não mudou; a REDAÇÃO mudou, e a redação entra no `sha256` do contracheque. Duas
+ * memórias com o mesmo número passam a ter hashes diferentes conforme o motor que as escreveu, e
+ * é esta constante que diz qual foi qual — sem ela, um auditor veria dois hashes divergentes para
+ * o mesmo cálculo e não teria como saber por quê.
+ *
+ * Folha fechada não se recalcula (invariante 3), então nada do que já está gravado se move: o
+ * corte é PROSPECTIVO, e esta linha é o marco dele.
+ */
+export const VERSAO_DO_MOTOR_COMPLEMENTAR = "m33-complementar-2";
 
 /**
  * A regra de tributação que este motor aplica, ESCRITA na memória de todo contracheque.
@@ -154,18 +183,18 @@ export class DiferencaNegativaNaComplementarError extends Error {
      */
     const oQueSeria =
       rubrica.tipo === "PROVENTO"
-        ? `Há ${m(toMoney(jaApurado.minus(correto)))} APURADOS A MAIS nesta rubrica, em folha já fechada. ` +
+        ? `Há ${reais(toMoney(jaApurado.minus(correto)))} APURADOS A MAIS nesta rubrica, em folha já fechada. ` +
           `Se esse valor chegou a ser pago, é caso de reposição ao erário; se ainda não foi, é caso de ` +
           `acertar antes do pagamento. Este sistema NÃO verifica pagamento aqui — o que ele conferiu foi o ` +
           `fechamento da folha —, e não pratica nenhum dos dois atos.`
-        : `Há ${m(toMoney(jaApurado.minus(correto)))} RETIDOS A MAIS nesta rubrica, em folha já fechada. ` +
+        : `Há ${reais(toMoney(jaApurado.minus(correto)))} RETIDOS A MAIS nesta rubrica, em folha já fechada. ` +
           `Se a retenção já foi recolhida, o acerto é com o destinatário dela; se ainda não foi, é caso de ` +
           `corrigir antes do recolhimento. Este sistema NÃO verifica recolhimento aqui — o que ele conferiu ` +
           `foi o fechamento da folha —, e não pratica nenhum dos dois atos.`;
     super(
       `COMPLEMENTAR-COM-DIFERENCA-NEGATIVA: na competência ${competencia}, a matrícula ${matricula} ` +
-        `tem ${m(correto)} de correto na rubrica ${rubrica.codigo} (${rubrica.descricao}) e ` +
-        `${m(jaApurado)} já apurados em folha fechada — diferença de ${m(toMoney(correto.minus(jaApurado)))}. ` +
+        `tem ${reais(correto)} de correto na rubrica ${rubrica.codigo} (${rubrica.descricao}) e ` +
+        `${reais(jaApurado)} já apurados em folha fechada — diferença de ${reais(toMoney(correto.minus(jaApurado)))}. ` +
         `${oQueSeria} ` +
         `A folha mensal COMPLEMENTAR paga o que faltou; ela não cobra de volta e não segue abatendo zero — ` +
         `seguir com zero pagaria as outras rubricas e calaria sobre esta, com os totais fechando. ` +
@@ -272,12 +301,12 @@ export function calcularContrachequeComplementar(e: EntradaDaComplementar): Cont
       incideContribuicao: doCorreto?.incideContribuicao ?? false,
       incideIrrf: doCorreto?.incideIrrf ?? false,
       memoria:
-        `DIFERENÇA da competência ${e.competencia}: correto recalculado ${m(correto)} − já apurado ` +
-        `${m(apurado)}` +
+        `DIFERENÇA da competência ${e.competencia}: correto recalculado ${reais(correto)} − já apurado ` +
+        `${reais(apurado)}` +
         (anterior === null || anterior.parcelas.length === 0
           ? ` (nenhuma folha fechada desta competência apurou esta rubrica para esta matrícula)`
-          : ` (${anterior.parcelas.map((p) => `${p.folhaTipo} de ${p.competencia}, cálculo nº ${p.calculoNumero}: ${m(p.valor)}`).join("; ")})`) +
-        ` = ${m(delta)}. ` +
+          : ` (${anterior.parcelas.map((p) => `${p.folhaTipo} de ${p.competencia}, cálculo nº ${p.calculoNumero}: ${reais(p.valor)}`).join("; ")})`) +
+        ` = ${reais(delta)}. ` +
         (doCorreto === null ? "" : `Como o correto foi apurado: ${doCorreto.memoria}`),
     });
   }

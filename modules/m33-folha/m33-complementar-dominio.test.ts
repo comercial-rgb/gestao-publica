@@ -144,8 +144,8 @@ describe("a diferença, rubrica a rubrica (N=2, deltas diferentes entre si)", ()
     expect(venc["procedencia"]).toEqual([{ folha: "MENSAL", competencia: "2026-05", calculo: 1, valor: "2800.00" }]);
     // ⚠️ E A LINHA DO CONTRACHEQUE DIZ O MESMO — é ela que o servidor lê, não o JSON.
     const linhaVenc = a!.linhas.find((l) => l.codigo === "VENC")!;
-    expect(linhaVenc.memoria).toContain("correto recalculado 3000.00 − já apurado 2800.00");
-    expect(linhaVenc.memoria).toContain("MENSAL de 2026-05, cálculo nº 1: 2800.00");
+    expect(linhaVenc.memoria).toContain("correto recalculado 3.000,00 − já apurado 2.800,00");
+    expect(linhaVenc.memoria).toContain("MENSAL de 2026-05, cálculo nº 1: 2.800,00");
   });
 
   it("a memória declara que isto é DIFERENÇA e sob que regime tributário — não deixa deduzir", () => {
@@ -200,8 +200,9 @@ describe("delta negativo — RECUSA nomeando a matrícula, nunca clamp a zero", 
     expect(msg).toContain("COMPLEMENTAR-COM-DIFERENCA-NEGATIVA");
     expect(msg).toContain("MAT-D");
     expect(msg).toContain("VENC");
-    expect(msg).toContain("2000.00");
-    expect(msg).toContain("2100.00");
+    // V12 U2 — a prosa da recusa passou a ser pt-BR; o VALOR não mudou, a redação sim.
+    expect(msg).toContain("2.000,00");
+    expect(msg).toContain("2.100,00");
     /**
      * ⚠️ V11 V9.4b — A RECUSA DIZ O FATO VERIFICADO, E O FATO É "APURADO EM FOLHA FECHADA".
      *

@@ -1,7 +1,7 @@
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
-import { Decimal } from "../../packages/contracts/index.js";
+import { Decimal, emProsa } from "../../packages/contracts/index.js";
 import {
   conferirReferenciaNormativa,
   zCadastrarParametroDoDecimoTerceiroInput,
@@ -302,7 +302,7 @@ export async function criterioDoAbatimentoNoCalculo(tx: Tx, calculoId: string): 
   const c = await tx.contracheque.findFirst({ where: { calculoId }, select: { memoria: true }, orderBy: { id: "asc" } });
   const recusar = (porque: string): never => {
     throw new Error(
-      `CRITERIO-DO-ABATIMENTO-IRRECUPERAVEL: o cálculo abateu ${total.toFixed(2)} de adiantamento e ` +
+      `CRITERIO-DO-ABATIMENTO-IRRECUPERAVEL: o cálculo abateu ${emProsa(total.toFixed(2))} de adiantamento e ` +
         `não foi possível recuperar sob que critério — ${porque}. Sem isso não dá para dizer se esta ` +
         `folha é apuração aprovada ou simulação, e empenhá-la seria efetivar o que não se sabe. ` +
         `Nada foi gravado.`

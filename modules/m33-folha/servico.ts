@@ -9,7 +9,7 @@ import {
   type SelecaoDoCalculo,
 } from "./abrangencia.js";
 import type { Prisma, PrismaClient } from "../../prisma/generated/client/client.js";
-import { Decimal, toMoney, sumMoney, type Money } from "../../packages/contracts/index.js";
+import { Decimal, emProsa, toMoney, sumMoney, type Money } from "../../packages/contracts/index.js";
 import { diaCivil } from "../../packages/datas/index.js";
 // ⚠️ V11 V9.3 — "PAGO" É LÍQUIDO DE ESTORNO E DE ANULAÇÃO PARCIAL, e quem sabe somar isso já
 // existe. Reimplementar a regra aqui seria a segunda cópia que este repositório já pagou para
@@ -1355,8 +1355,8 @@ async function calcularFolhaDoDecimoTerceiroNaTx(
               `ADIANTAMENTO-NAO-PAGO: o parâmetro do 13º de ${exercicio} (versão ${cfg.parametro.versao}) exige ` +
                 `que o adiantamento esteja PAGO para ser abatido — ${cfg.parametro.ato.tipo} ` +
                 `${cfg.parametro.ato.numero}/${cfg.parametro.ato.ano}, ${cfg.parametro.ato.dispositivo}. ` +
-                `A matrícula ${matricula} teve ${apurado.toFixed(2)} apurados na folha de ` +
-                `${existente.competencia} e ${pago.toFixed(2)} pagos (líquido de estorno e de anulação ` +
+                `A matrícula ${matricula} teve ${emProsa(apurado.toFixed(2))} apurados na folha de ` +
+                `${existente.competencia} e ${emProsa(pago.toFixed(2))} pagos (líquido de estorno e de anulação ` +
                 `parcial)` +
                 (empenhoId === undefined
                   ? ` — não há empenho por servidor dessa folha para esta matrícula.`
@@ -1441,13 +1441,13 @@ async function calcularFolhaDoDecimoTerceiroNaTx(
         throw new RubricaDaBaseSemVersaoError(codigo, regime, competencia);
       }
       if (r.natureza === "VENCIMENTO_BASE") {
-        base.push({ codigo: r.codigo, descricao: r.descricao, natureza: r.natureza, valor: vencimento, memoria: `vencimento-base vigente em ${competencia} = ${vencimento.toFixed(2)}` });
+        base.push({ codigo: r.codigo, descricao: r.descricao, natureza: r.natureza, valor: vencimento, memoria: `vencimento-base vigente em ${competencia} = ${emProsa(vencimento.toFixed(2))}` });
       } else if (r.natureza === "GRATIFICACOES_DO_VINCULO") {
         const total = sumMoney(gratificacoes.map((g) => g.valor));
-        base.push({ codigo: r.codigo, descricao: r.descricao, natureza: r.natureza, valor: total, memoria: gratificacoes.length === 0 ? "nenhuma gratificação vigente" : `gratificações vigentes: ${gratificacoes.map((g) => `${g.descricao} ${g.valor.toFixed(2)}`).join(" + ")}` });
+        base.push({ codigo: r.codigo, descricao: r.descricao, natureza: r.natureza, valor: total, memoria: gratificacoes.length === 0 ? "nenhuma gratificação vigente" : `gratificações vigentes: ${gratificacoes.map((g) => `${g.descricao} ${emProsa(g.valor.toFixed(2))}`).join(" + ")}` });
       } else {
         const pct = r.percentual ?? new Decimal(0);
-        base.push({ codigo: r.codigo, descricao: r.descricao, natureza: r.natureza, valor: toMoney(vencimento.times(pct)), memoria: `${pct.times(100).toFixed(2)}% × vencimento-base ${vencimento.toFixed(2)}` });
+        base.push({ codigo: r.codigo, descricao: r.descricao, natureza: r.natureza, valor: toMoney(vencimento.times(pct)), memoria: `${pct.times(100).toFixed(2)}% × vencimento-base ${emProsa(vencimento.toFixed(2))}` });
       }
     }
 

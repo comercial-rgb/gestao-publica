@@ -697,7 +697,7 @@ describe("t4 · V11 V9.2", () => {
     // ⚠️ NOMEIA A MATRÍCULA, e a certa: M-1 (12 avos, 3.800,00) passa folgado. Uma recusa que
     // nomeasse a matrícula errada mandaria o RH tratar quem não tem problema nenhum.
     await expect(calcularFolha(prisma, { folhaId, criadoPor: AUTOR })).rejects.toThrow(/M-2/);
-    await expect(calcularFolha(prisma, { folhaId, criadoPor: AUTOR })).rejects.toThrow(/880\.37/);
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: AUTOR })).rejects.toThrow(/880,37/);
     expect(await prisma.calculoDaFolha.count({ where: { folhaId } })).toBe(0);
   });
 

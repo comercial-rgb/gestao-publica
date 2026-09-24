@@ -187,7 +187,7 @@ describe("(3) IRRF — três cenários, vence o menor; a aplicabilidade vem da t
   it("com 3 dependentes as deduções legais vencem o simplificado (600 < 3×200 + …)", () => {
     const r = calcularIrrf({ rendaTributavel: $("4000.00"), contribuicao: $("255.00"), dependentes: 3, pensaoAlimenticia: $(0), maior65: false, tabela: IRRF });
     expect(["DEDUCOES_LEGAIS", "DEDUCOES_LEGAIS_COM_REDUTOR"]).toContain(r.cenario);
-    expect(r.cenarios.find((c) => c.nome === "DEDUCOES_LEGAIS")!.deducoes.map((d) => d.tipo)).toContain("DEPENDENTES (3 × 200.00)");
+    expect(r.cenarios.find((c) => c.nome === "DEDUCOES_LEGAIS")!.deducoes.map((d) => d.tipo)).toContain("DEPENDENTES (3 × 200,00)");
   });
   it("acima da renda máxima do redutor, o redutor zera (cenário B = A)", () => {
     const r = calcularIrrf({ rendaTributavel: $("6000.00"), contribuicao: $("500.00"), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, tabela: IRRF });
@@ -228,7 +228,7 @@ describe("(4) salário-família — por dependente elegível, renda até a máxi
     expect(ok.elegiveis).toBe(1);
     const acima = calcularSalarioFamilia({ rendaBruta: $("2000.01"), dependentes: [dep("a", D(2020, 1, 1))], tabela: SF, competencia: "2026-05" });
     expect(acima.valor.toFixed(2)).toBe("0.00");
-    expect(acima.considerados[0]!.motivo).toMatch(/renda bruta 2000.01 acima da máxima 2000.00/);
+    expect(acima.considerados[0]!.motivo).toMatch(/renda bruta 2\.000,01 acima da máxima 2\.000,00/);
   });
 });
 
@@ -311,7 +311,7 @@ describe("(7) a mesma pessoa com duas matrículas — base agregada, teto e impo
     });
     expect(imp.get("a")!.contribuicao!.valor.toFixed(2)).toBe("477.50");
     expect(imp.get("b")!.contribuicao!.valor.toFixed(2)).toBe("477.50");
-    expect(imp.get("a")!.contribuicao!.explicacao).toMatch(/bases somadas 10000.00 → teto 8000.00 = 955.00/);
+    expect(imp.get("a")!.contribuicao!.explicacao).toMatch(/bases somadas 10\.000,00 → teto 8\.000,00 = 955,00/);
     // IRRF: uma fonte — renda 10000, contribuição 955, sem dependentes; rateado meio a meio; a soma bate com o cálculo único
     const total = calcularIrrf({ rendaTributavel: $("10000.00"), contribuicao: $("955.00"), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, tabela: IRRF }).valor;
     expect(toMoney(imp.get("a")!.irrf!.valor.plus(imp.get("b")!.irrf!.valor)).toFixed(2)).toBe(total.toFixed(2));

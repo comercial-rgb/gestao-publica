@@ -3,7 +3,7 @@ import { z } from "zod";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO, type AcaoDoSistema } from "../m16-travamento/acoes.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
-import { AtoInelegivelError, Decimal, exigirElegivel, sumMoney, toMoney, type Money } from "../../packages/contracts/index.js";
+import { AtoInelegivelError, Decimal, emProsa, exigirElegivel, sumMoney, toMoney, type Money } from "../../packages/contracts/index.js";
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import { diaCivil } from "../../packages/datas/index.js";
 import { empenhar } from "../m05-despesa/servico.js";
@@ -459,7 +459,7 @@ export async function apropriarEncargosDaFolha(prisma: PrismaClient, input: Apro
   const reducoes = plano.filter((p) => p.diferenca.tipo === "REDUCAO");
   if (reducoes.length > 0) {
     throw new Error(
-      `REDUCAO-DE-ENCARGO-EMPENHADO: ${reducoes.map((p) => `${p.grupo.codigo} (empenhado ${p.jaEmpenhado.toFixed(2)}, apurado ${p.pedido.toFixed(2)})`).join("; ")}. ` +
+      `REDUCAO-DE-ENCARGO-EMPENHADO: ${reducoes.map((p) => `${p.grupo.codigo} (empenhado ${emProsa(p.jaEmpenhado.toFixed(2))}, apurado ${emProsa(p.pedido.toFixed(2))})`).join("; ")}. ` +
         `A apuração nova pede MENOS do que a despesa líquida já reconhece; use "Ajustar os encargos para baixo", que anula pelo M05 o que ainda cabe anular e registra o que já foi pago — não um empenho negativo. Nada foi gravado.`
     );
   }

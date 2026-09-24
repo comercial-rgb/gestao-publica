@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Decimal, sumMoney, toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
+import { Decimal, emProsa, sumMoney, toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
 import { diaCivil, meioDiaCivil } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
@@ -47,7 +47,7 @@ export async function registrarGuiaDeRecolhimento(prisma: PrismaClient, input: R
   const d = zRegistrarGuiaInput.parse(input);
   const soma = toMoney(d.principal.plus(sumMoney(d.componentes.map((c) => c.valor))));
   if (!soma.eq(d.total)) {
-    throw new Error(`GUIA-TOTAL-DIVERGENTE: principal ${d.principal.toFixed(2)} + componentes ${sumMoney(d.componentes.map((c) => c.valor)).toFixed(2)} = ${soma.toFixed(2)}, e o total informado é ${d.total.toFixed(2)}. Confira a guia do emissor. Nada foi gravado.`);
+    throw new Error(`GUIA-TOTAL-DIVERGENTE: principal ${emProsa(d.principal.toFixed(2))} + componentes ${emProsa(sumMoney(d.componentes.map((c) => c.valor)).toFixed(2))} = ${emProsa(soma.toFixed(2))}, e o total informado é ${emProsa(d.total.toFixed(2))}. Confira a guia do emissor. Nada foi gravado.`);
   }
   try {
     return await prisma.$transaction(async (tx) => {

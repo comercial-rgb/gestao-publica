@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { Decimal, toMoney, sumMoney, type Money } from "../../packages/contracts/index.js";
+import { Decimal, emProsa, toMoney, sumMoney, type Money } from "../../packages/contracts/index.js";
 import { diaCivil, meioDiaCivil } from "../../packages/datas/index.js";
 import { idadeEm } from "../m32-pessoal/dominio.js";
 import { FormulaDaRubricaInvalidaError, NATUREZAS_CITAVEIS, analisarFormulaDaRubrica, ordemDeCalculo, PREFIXO_DE_RUBRICA, type NoDoGrafo } from "./rubrica-versionada.js";
@@ -28,7 +28,18 @@ import { calcular as calcularFormula } from "../../packages/formula/index.js";
  */
 
 /** 1.1.0 — a memória passou a citar a VERSÃO da rubrica e os passos da fórmula (V11 V1.1). */
-export const VERSAO_DO_MOTOR = "m33-folha-1.1.0";
+/**
+ * ⚠️ 1.2.0 (V12 U2) — A PROSA DA MEMÓRIA PASSOU A SER pt-BR ("3000.00" → "3.000,00").
+ *
+ * O valor não mudou; a REDAÇÃO mudou, e a redação entra no `sha256` do contracheque. Duas
+ * memórias com o mesmo número passam a ter hashes diferentes conforme o motor que as escreveu, e
+ * é esta constante que diz qual foi qual — sem ela, um auditor veria dois hashes divergentes para
+ * o mesmo cálculo e não teria como saber por quê.
+ *
+ * Folha fechada não se recalcula (invariante 3), então nada do que já está gravado se move: o
+ * corte é PROSPECTIVO, e esta linha é o marco dele.
+ */
+export const VERSAO_DO_MOTOR = "m33-folha-1.2.0";
 export const DIAS_DO_MES_FISCAL = 30;
 
 export type RegimePrevidenciario = "RGPS" | "RPPS" | "ISENTO";
@@ -191,7 +202,7 @@ export function conferirFaixas(faixas: readonly Faixa[], tabela: string): readon
   ordenadas.forEach((f, i) => {
     const ultima = i === ordenadas.length - 1;
     if (f.ate === null && !ultima) throw new FaixasInvalidasError(tabela, `a faixa ${f.ordem} não tem limite e não é a última`);
-    if (f.ate !== null && anterior !== null && f.ate.lte(anterior)) throw new FaixasInvalidasError(tabela, `a faixa ${f.ordem} (até ${f.ate.toFixed(2)}) não sobe em relação à anterior (${anterior.toFixed(2)})`);
+    if (f.ate !== null && anterior !== null && f.ate.lte(anterior)) throw new FaixasInvalidasError(tabela, `a faixa ${f.ordem} (até ${reais(f.ate)}) não sobe em relação à anterior (${reais(anterior)})`);
     if (f.aliquota.lt(0) || f.aliquota.gt(1)) throw new FaixasInvalidasError(tabela, `alíquota ${f.aliquota.toString()} fora de [0, 1] na faixa ${f.ordem}`);
     if (f.ate !== null) anterior = f.ate;
   });
@@ -324,7 +335,7 @@ export function calcularIrrf(p: {
   // A — deduções legais: contribuição, dependentes, pensão, parcela do idoso.
   const deducoesA = [
     { tipo: "CONTRIBUICAO_PREVIDENCIARIA", valor: p.contribuicao },
-    ...(p.dependentes > 0 ? [{ tipo: `DEPENDENTES (${p.dependentes} × ${t.deducaoPorDependente.toFixed(2)})`, valor: deducaoDependentes }] : []),
+    ...(p.dependentes > 0 ? [{ tipo: `DEPENDENTES (${p.dependentes} × ${reais(t.deducaoPorDependente)})`, valor: deducaoDependentes }] : []),
     ...(p.pensaoAlimenticia.gt(0) ? [{ tipo: "PENSAO_ALIMENTICIA", valor: p.pensaoAlimenticia }] : []),
     ...(isencaoIdoso.gt(0) ? [{ tipo: "PARCELA_ISENTA_65_ANOS", valor: isencaoIdoso }] : []),
   ];
@@ -406,7 +417,7 @@ export function calcularSalarioFamilia(p: { readonly rendaBruta: Money; readonly
     const idade = idadeEm(d.dataNascimento, referencia);
     if (!d.finalidadeVigente) return { id: d.id, nome: d.nome, idade, elegivel: false, motivo: "finalidade salário-família não vigente na competência" };
     if (!d.invalidezPermanente && idade >= t.idadeLimite) return { id: d.id, nome: d.nome, idade, elegivel: false, motivo: `idade ${idade} ≥ limite ${t.idadeLimite} (sem invalidez permanente)` };
-    if (acimaDaRenda) return { id: d.id, nome: d.nome, idade, elegivel: false, motivo: `renda bruta ${p.rendaBruta.toFixed(2)} acima da máxima ${t.rendaMaxima.toFixed(2)}` };
+    if (acimaDaRenda) return { id: d.id, nome: d.nome, idade, elegivel: false, motivo: `renda bruta ${reais(p.rendaBruta)} acima da máxima ${reais(t.rendaMaxima)}` };
     return { id: d.id, nome: d.nome, idade, elegivel: true };
   });
   const elegiveis = considerados.filter((c) => c.elegivel).length;
@@ -575,6 +586,24 @@ export interface ContrachequeCalculado {
 
 const m = (v: Money | Decimal): string => (v instanceof Decimal ? v.toFixed(v.decimalPlaces() > 2 ? v.decimalPlaces() : 2) : String(v));
 
+/**
+ * O MESMO VALOR, MAS PARA DENTRO DE UMA FRASE — `reais`, e o nome é longo de propósito.
+ *
+ * ⚠️ `m` E `reais` NÃO SÃO A MESMA COISA, E CONFUNDI-LAS DESFAZ O CONSERTO.
+ *
+ *   `m(v)` → "3000.00"    CAMPO da memória. Fica assim de propósito: é dado estruturado, a tela
+ *                         reformata na hora de exibir, e quem consome programaticamente precisa
+ *                         de string decimal.
+ *   `reais(v)` → "3.000,00"   PROSA. Frase montada, gravada no banco e hasheada junto do contracheque
+ *                         — ninguém a reformata depois. Ou ela nasce legível, ou fica ilegível
+ *                         para sempre no documento que o servidor abre.
+ *
+ * A apresentação vem de `emProsa` (`packages/contracts/moeda.ts`), a MESMA implementação que
+ * `formatarMoeda` usa para as telas: uma só, para não divergirem.
+ */
+const reais = (v: Money | Decimal): string => emProsa(m(v));
+
+
 /** Serialização canônica: chaves ordenadas em todo nível, sem espaços — mesmo conteúdo, mesmo texto. */
 export function canonico(valor: unknown): string {
   if (valor === null || typeof valor !== "object") return JSON.stringify(valor);
@@ -674,23 +703,23 @@ export function calcularContracheque(e: EntradaDoContracheque): ContrachequeCalc
     const r = porCodigoDaRubrica.get(noDoGrafo.codigo)!;
     switch (r.natureza) {
       case "VENCIMENTO_BASE":
-        linha(r, vencimento, `vencimento-base vigente ${m(vencimento)}`);
+        linha(r, vencimento, `vencimento-base vigente ${reais(vencimento)}`);
         break;
       case "GRATIFICACOES_DO_VINCULO": {
         const total = sumMoney(e.gratificacoes.map((g) => g.valor));
-        if (total.gt(0)) linha(r, total, `gratificações vigentes: ${e.gratificacoes.map((g) => `${g.descricao} ${m(g.valor)}`).join(" + ")}`);
+        if (total.gt(0)) linha(r, total, `gratificações vigentes: ${e.gratificacoes.map((g) => `${g.descricao} ${reais(g.valor)}`).join(" + ")}`);
         break;
       }
       case "PERCENTUAL_DO_VENCIMENTO": {
         const pct = r.percentual ?? new Decimal(0);
-        linha(r, toMoney(vencimento.times(pct)), `${pct.times(100).toFixed(2)}% × vencimento-base ${m(vencimento)}`);
+        linha(r, toMoney(vencimento.times(pct)), `${pct.times(100).toFixed(2)}% × vencimento-base ${reais(vencimento)}`);
         break;
       }
       case "VALOR_INFORMADO": {
         const dos = e.lancamentos.filter((l) => l.rubricaId === r.id);
         if (dos.length === 0) break;
         const total = sumMoney(dos.map((l) => l.valor));
-        linha(r, total, `lançamento(s) ${dos.map((l) => `${l.tipo.toLowerCase()} ${m(l.valor)}`).join(" + ")}`);
+        linha(r, total, `lançamento(s) ${dos.map((l) => `${l.tipo.toLowerCase()} ${reais(l.valor)}`).join(" + ")}`);
         break;
       }
       case "FORMULA": {
@@ -710,7 +739,7 @@ export function calcularContracheque(e: EntradaDoContracheque): ContrachequeCalc
         const avaliada = calcularFormula(r.formula, variaveis);
         const arredondado = toMoney(avaliada.valor.toDecimalPlaces(r.casasDecimais, Decimal.ROUND_HALF_EVEN));
         const usadas = avaliada.memoria.map((passo) => `${passo.expressao}=${passo.valor}`).join(", ");
-        linha(r, arredondado, `fórmula da versão ${r.versao}: ${r.formula} — com ${usadas === "" ? "nenhuma variável" : usadas} = ${m(avaliada.valor)}, arredondado a ${r.casasDecimais} casa(s) half-even = ${m(arredondado)}`, false);
+        linha(r, arredondado, `fórmula da versão ${r.versao}: ${r.formula} — com ${usadas === "" ? "nenhuma variável" : usadas} = ${reais(avaliada.valor)}, arredondado a ${r.casasDecimais} casa(s) half-even = ${reais(arredondado)}`, false);
         break;
       }
       default:
@@ -725,7 +754,7 @@ export function calcularContracheque(e: EntradaDoContracheque): ContrachequeCalc
   const contribuicaoCalculada = calcularContribuicao({ regime: e.vinculo.regime, base: baseContribuicao, tabela: e.tabelas.contribuicao });
   const contribuicao = e.imposicoes?.contribuicao !== undefined ? e.imposicoes.contribuicao.valor : contribuicaoCalculada.valor;
   if (contribuicao.gt(0) || e.vinculo.regime !== "ISENTO") {
-    linha(rContrib, contribuicao, e.imposicoes?.contribuicao !== undefined ? e.imposicoes.contribuicao.explicacao : `${contribuicaoCalculada.regime}: base ${m(contribuicaoCalculada.base)}${contribuicaoCalculada.tetoAplicado ? ` (teto sobre ${m(contribuicaoCalculada.baseAntesDoTeto)})` : ""} → faixas ${contribuicaoCalculada.faixas.map((f) => `${m(f.baseNaFaixa)}×${f.aliquota}`).join(" + ") || "—"} = ${m(contribuicao)}`, false);
+    linha(rContrib, contribuicao, e.imposicoes?.contribuicao !== undefined ? e.imposicoes.contribuicao.explicacao : `${contribuicaoCalculada.regime}: base ${reais(contribuicaoCalculada.base)}${contribuicaoCalculada.tetoAplicado ? ` (teto sobre ${reais(contribuicaoCalculada.baseAntesDoTeto)})` : ""} → faixas ${contribuicaoCalculada.faixas.map((f) => `${reais(f.baseNaFaixa)}×${f.aliquota}`).join(" + ") || "—"} = ${reais(contribuicao)}`, false);
   }
 
   // 3. IRRF
@@ -734,7 +763,7 @@ export function calcularContracheque(e: EntradaDoContracheque): ContrachequeCalc
   const irrfCalculado = calcularIrrf({ rendaTributavel, contribuicao, dependentes: e.dependentesIr, pensaoAlimenticia: e.pensaoAlimenticia, maior65, tabela: e.tabelas.irrf });
   const irrf = e.imposicoes?.irrf !== undefined ? e.imposicoes.irrf.valor : irrfCalculado.valor;
   if (irrf.gt(0)) {
-    linha(rIrrf, irrf, e.imposicoes?.irrf !== undefined ? e.imposicoes.irrf.explicacao : `cenário ${irrfCalculado.cenario}: renda ${m(rendaTributavel)} − deduções → base ${m(irrfCalculado.base)} = ${m(irrf)}`, false);
+    linha(rIrrf, irrf, e.imposicoes?.irrf !== undefined ? e.imposicoes.irrf.explicacao : `cenário ${irrfCalculado.cenario}: renda ${reais(rendaTributavel)} − deduções → base ${reais(irrfCalculado.base)} = ${reais(irrf)}`, false);
   }
 
   // 4. salário-família
@@ -743,7 +772,7 @@ export function calcularContracheque(e: EntradaDoContracheque): ContrachequeCalc
   if (rSf !== undefined && e.tabelas.salarioFamilia !== null && e.dependentesSalarioFamilia.length > 0) {
     const rendaBruta = sumMoney(proventosAteAqui.map((l) => l.valor));
     salarioFamilia = calcularSalarioFamilia({ rendaBruta, dependentes: e.dependentesSalarioFamilia, tabela: e.tabelas.salarioFamilia, competencia: e.competencia });
-    if (salarioFamilia.valor.gt(0)) linha(rSf, salarioFamilia.valor, `${salarioFamilia.elegiveis} dependente(s) elegível(is) × ${m(salarioFamilia.valorPorDependente)} (renda bruta ${m(rendaBruta)} ≤ ${m(salarioFamilia.rendaMaxima)})`, false);
+    if (salarioFamilia.valor.gt(0)) linha(rSf, salarioFamilia.valor, `${salarioFamilia.elegiveis} dependente(s) elegível(is) × ${reais(salarioFamilia.valorPorDependente)} (renda bruta ${reais(rendaBruta)} ≤ ${reais(salarioFamilia.rendaMaxima)})`, false);
   }
 
   // 5. totais
@@ -808,7 +837,7 @@ export function imposicoesDaPessoa(p: {
       const parte = ultimo ? toMoney(total.valor.minus(acumulado)) : somaBases.isZero() ? toMoney(0) : toMoney(total.valor.times(v.baseContribuicao).div(somaBases));
       acumulado = acumulado.plus(parte);
       contribPorVinculo.set(v.id, parte);
-      saida.set(v.id, { contribuicao: { valor: parte, explicacao: `RGPS agregado (${matriculas}): bases somadas ${m(somaBases)}${total.tetoAplicado ? ` → teto ${m(total.base)}` : ""} = ${m(total.valor)}; parte desta matrícula ${m(parte)} (proporcional à base ${m(v.baseContribuicao)})` } });
+      saida.set(v.id, { contribuicao: { valor: parte, explicacao: `RGPS agregado (${matriculas}): bases somadas ${reais(somaBases)}${total.tetoAplicado ? ` → teto ${reais(total.base)}` : ""} = ${reais(total.valor)}; parte desta matrícula ${reais(parte)} (proporcional à base ${reais(v.baseContribuicao)})` } });
     });
   }
 
@@ -823,7 +852,7 @@ export function imposicoesDaPessoa(p: {
     const parte = ultimo ? toMoney(total.valor.minus(acumulado)) : somaRenda.isZero() ? toMoney(0) : toMoney(total.valor.times(v.rendaTributavel).div(somaRenda));
     acumulado = acumulado.plus(parte);
     const anterior = saida.get(v.id) ?? {};
-    saida.set(v.id, { ...anterior, irrf: { valor: parte, explicacao: `IRRF agregado (${matriculas}): rendas somadas ${m(somaRenda)}, cenário ${total.cenario}, base ${m(total.base)} = ${m(total.valor)}; parte desta matrícula ${m(parte)} (proporcional à renda ${m(v.rendaTributavel)})` } });
+    saida.set(v.id, { ...anterior, irrf: { valor: parte, explicacao: `IRRF agregado (${matriculas}): rendas somadas ${reais(somaRenda)}, cenário ${total.cenario}, base ${reais(total.base)} = ${reais(total.valor)}; parte desta matrícula ${reais(parte)} (proporcional à renda ${reais(v.rendaTributavel)})` } });
   });
   return saida;
 }
