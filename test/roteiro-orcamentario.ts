@@ -45,7 +45,7 @@ export {
 } from "../modules/m01-core-contabil/roteiros.js";
 
 import {
-  CONTA_CONTROLE_DDR,
+  CONTAS_CONTROLE_DDR,
   CONTA_CREDITO_DISPONIVEL as _DISP,
   CONTA_CREDITO_EMPENHADO_A_LIQUIDAR,
   CONTA_CREDITO_RESERVADO as _RESERV,
@@ -132,7 +132,15 @@ const CONTAS: readonly {
   //
   // A classe 7 entra junto: só a ARRECADAÇÃO a move (D 7.2.1.1 / C 8.2.1.1.1), mas
   // fixtures que arrecadam e empenham na mesma ficha precisam das duas.
-  { codigo: CONTA_CONTROLE_DDR, nome: "Controle da Disponibilidade de Recursos", naturezaSaldo: "DEVEDORA" },
+  // ⚠️ AS CINCO, E NÃO O PAI (V11 V9.3). A fixture trazia `7.2.1.1.0.00.00`, o nó SINTÉTICO —
+  // e como ela força `analitica: true` (abaixo), o plano de teste aceitava a partida que o
+  // plano oficial recusa. Agora ela traz as folhas que o `Pcasp_2025.xlsx` traz, e a fixture
+  // deixa de ser mais permissiva que a produção.
+  ...CONTAS_CONTROLE_DDR.map((codigo) => ({
+    codigo,
+    nome: `Controle da Disponibilidade de Recursos ${codigo}`,
+    naturezaSaldo: "DEVEDORA" as const,
+  })),
   { codigo: CONTA_DDR_DISPONIVEL, nome: "DDR Disponível", naturezaSaldo: "CREDORA" },
   { codigo: CONTA_DDR_COMPROMETIDA_EMPENHO, nome: "DDR Comprometida por Empenho", naturezaSaldo: "CREDORA" },
   { codigo: CONTA_DDR_COMPROMETIDA_LIQUIDACAO, nome: "DDR Comprometida por Liquidação", naturezaSaldo: "CREDORA" },

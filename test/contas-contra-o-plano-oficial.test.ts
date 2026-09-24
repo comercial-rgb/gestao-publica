@@ -276,7 +276,11 @@ describe("as contas do código contra o PCASP oficial", () => {
     "5.2.2.1.2.02.00": "CREDITO-ESPECIAL-ABERTO-OU-REABERTO",
     "5.2.2.1.2.03.00": "CREDITO-ESPECIAL-ABERTO-OU-REABERTO",
     "6.2.2.1.2.00.00": "ROTEIRO-RESERVA-SEM-CONTA",
-    "7.2.1.1.0.00.00": "CONTROLE-DDR-POR-NATUREZA-DA-FONTE",
+    // ⚠️ `7.2.1.1.0.00.00` SAIU DAQUI EM V11 V9.3, e a lista encolheu como prometido. A perna de
+    // classe 7 da arrecadação deixou de ser fixa no pai sintético e passou a ser resolvida pela
+    // NATUREZA da fonte — as cinco folhas de `7.2.1.1` que o `Pcasp_2025.xlsx` traz. Ele continua
+    // em `SINTETICAS_TOLERADAS` porque segue no plano mínimo como NÓ DE HIERARQUIA (pai das
+    // cinco), e nenhuma partida o toca.
     "2.1.8.8.1.01.00": "CONSIGNACAO-CONTA-SINTETICA",
   };
 

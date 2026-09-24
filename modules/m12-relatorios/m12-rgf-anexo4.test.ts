@@ -47,9 +47,9 @@ const NAT_OP_CREDITO = "21110000"; // categoria 2 · origem 1 · espécie 1 (int
 // ENT05 ITEM 3 — repontada: a antiga era PESSOAL A PAGAR.
 const DIVIDA = "2.2.2.1.1.02.98"; // passivo — dívida fundada (conta reservada do M10)
 
-const R_ARR_IPTU = roteiroArrecadacao({ disponibilidade: "1.1.1.1.1.00.00", variacaoAumentativa: "4.1.1.2.1.01.00" });
+const R_ARR_IPTU = roteiroArrecadacao({ naturezaDaFonte: "ORDINARIOS", disponibilidade: "1.1.1.1.1.00.00", variacaoAumentativa: "4.1.1.2.1.01.00" });
 // ⚠️ O roteiro da op. de crédito credita a DÍVIDA (2.2.1), não uma VPA — é o que força o composto.
-const R_ARR_OPCRED = roteiroArrecadacao({ disponibilidade: "1.1.1.1.1.00.00", variacaoAumentativa: DIVIDA });
+const R_ARR_OPCRED = roteiroArrecadacao({ naturezaDaFonte: "ORDINARIOS", disponibilidade: "1.1.1.1.1.00.00", variacaoAumentativa: DIVIDA });
 
 async function semear(): Promise<void> {
   await limparBanco(prisma);

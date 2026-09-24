@@ -35,7 +35,7 @@ const FONTE = "fnt-500";
 const CREDOR = "12345678000199";
 
 const R_EMPENHO = roteiroEmpenho();
-const R_ARRECADACAO = roteiroArrecadacao({ disponibilidade: "1.1.1.1.1.00.00", variacaoAumentativa: "4.1.1.2.1.01.00" });
+const R_ARRECADACAO = roteiroArrecadacao({ naturezaDaFonte: "ORDINARIOS", disponibilidade: "1.1.1.1.1.00.00", variacaoAumentativa: "4.1.1.2.1.01.00" });
 
 async function semear(): Promise<void> {
   await limparBanco(prisma);

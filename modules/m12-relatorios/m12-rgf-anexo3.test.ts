@@ -30,7 +30,7 @@ const prisma = criarPrismaDeTeste();
 await exigirBanco(prisma);
 
 const POR = "orcamento@cg.pb.gov.br";
-const R_ARR = roteiroArrecadacao({ disponibilidade: "1.1.1.1.1.00.00", variacaoAumentativa: "4.1.1.2.1.01.00" });
+const R_ARR = roteiroArrecadacao({ naturezaDaFonte: "ORDINARIOS", disponibilidade: "1.1.1.1.1.00.00", variacaoAumentativa: "4.1.1.2.1.01.00" });
 
 async function semear(): Promise<void> {
   await limparBanco(prisma);

@@ -33,7 +33,7 @@ const prisma = criarPrismaDeTeste();
 await exigirBanco(prisma);
 
 const POR = "orcamento@cg.pb.gov.br";
-const R_ARR = roteiroArrecadacao({ disponibilidade: "1.1.1.1.1.00.00", variacaoAumentativa: "4.1.1.2.1.01.00" });
+const R_ARR = roteiroArrecadacao({ naturezaDaFonte: "ORDINARIOS", disponibilidade: "1.1.1.1.1.00.00", variacaoAumentativa: "4.1.1.2.1.01.00" });
 const R_EMP = roteiroEmpenho();
 const R_LIQ = roteiroLiquidacao({ codElemento: "39", obrigacaoAPagar: "2.1.3.1.1.00.00" });
 const R_PAG = roteiroPagamento({ obrigacaoAPagar: "2.1.3.1.1.00.00", disponibilidade: "1.1.1.1.1.00.00" });

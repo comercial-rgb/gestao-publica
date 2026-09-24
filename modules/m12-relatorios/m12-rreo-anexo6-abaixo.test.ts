@@ -70,7 +70,7 @@ const R_EMP = roteiroEmpenho();
 const R_LIQ_39 = roteiroLiquidacao({ codElemento: "39", obrigacaoAPagar: "2.1.3.1.1.00.00" });
 const R_LIQ_71 = roteiroLiquidacao({ codElemento: "71", obrigacaoAPagar: "2.1.3.1.1.00.00" });
 const R_PAG = roteiroPagamento({ obrigacaoAPagar: "2.1.3.1.1.00.00", disponibilidade: "1.1.1.1.1.00.00" });
-const R_ARR = roteiroArrecadacao({ disponibilidade: "1.1.1.1.1.00.00", variacaoAumentativa: "4.1.1.2.1.01.00" });
+const R_ARR = roteiroArrecadacao({ naturezaDaFonte: "ORDINARIOS", disponibilidade: "1.1.1.1.1.00.00", variacaoAumentativa: "4.1.1.2.1.01.00" });
 
 let deps: M05Deps;
 

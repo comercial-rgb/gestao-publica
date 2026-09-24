@@ -134,7 +134,7 @@ const R_PAG = roteiroPagamento({
   obrigacaoAPagar: "2.1.3.1.1.00.00",
   disponibilidade: "1.1.1.1.1.00.00",
 });
-const R_ARR = roteiroArrecadacao({
+const R_ARR = roteiroArrecadacao({ naturezaDaFonte: "ORDINARIOS",
   disponibilidade: "1.1.1.1.1.00.00",
   variacaoAumentativa: "4.1.1.2.1.01.00",
 });

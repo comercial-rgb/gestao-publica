@@ -23,7 +23,7 @@ await exigirBanco(prisma);
 
 const POR = "orcamento@cg.pb.gov.br";
 const CORTE = new Date(Date.UTC(2026, 5, 30, 23, 59, 59)); // 30/06/2026
-const R_ARR = roteiroArrecadacao({ disponibilidade: "1.1.1.1.1.00.00", variacaoAumentativa: "4.1.1.2.1.01.00" });
+const R_ARR = roteiroArrecadacao({ naturezaDaFonte: "ORDINARIOS", disponibilidade: "1.1.1.1.1.00.00", variacaoAumentativa: "4.1.1.2.1.01.00" });
 
 async function semear(): Promise<void> {
   await limparBanco(prisma);

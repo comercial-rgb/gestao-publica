@@ -373,22 +373,6 @@ async function main(): Promise<void> {
       `botão diz "${rotuloDepois}" (antes: "${contaAlvo.rotulo}", já tinha titular: ${String(jaTinhaTitular)})`
     );
 
-    // ══ 6. A ARRECADAÇÃO NOVA, E A PENDÊNCIA QUE A BLOQUEIA EM INSTALAÇÃO LIMPA ══
-    //
-    // ⚠️ ESTE BLOCO PODE NÃO RODAR, E ISSO ESTÁ PREVISTO E NOMEADO.
-    // `modules/m01-core-contabil/roteiros.ts:238-254` (`CONTROLE-DDR-POR-NATUREZA-DA-FONTE`)
-    // declara que `CONTA_CONTROLE_DDR = "7.2.1.1.0.00.00"` é SINTÉTICA no plano oficial, que o
-    // roteiro tem UMA perna fixa e não lê a fonte, e que por isso **não há arrecadação em
-    // instalação nova** enquanto a pendência viver. Resolver isso é decisão de modelo (perna
-    // resolvida PELA FONTE) mais ato do ente (a correspondência fonte → natureza) — não é
-    // escolher uma conta filha para o percurso passar.
-    //
-    // Então: se a recusa for exatamente essa, os passos do CARIMBO e do ESTORNO pela tela ficam
-    // NÃO EXECUTADOS, com o motivo. Se um dia ela sumir, este mesmo bloco os executa sozinho.
-    const antesDaGuiaA = await (async () => {
-      await irPara(n, page, `/receita/por-entidade?exercicio=${ANO}`);
-      return lerRodape(page);
-    })();
     await irPara(n, page, `/receita/arrecadacoes?exercicio=${ANO}`);
     const dadosDaConta = await page.evaluate((cod) => {
       const s = document.querySelector('form[data-acao="registrar-guia"] select[name="contaBancaria"]');
@@ -399,6 +383,100 @@ async function main(): Promise<void> {
       return o === undefined ? null : { valor: o.value, natureza: nat, fonte };
     }, contaCodigo);
     if (dadosDaConta === null) throw new Error(`a conta ${contaCodigo} não está no formulário de guia`);
+
+    // ══ 5.5 A NATUREZA DA FONTE — O ATO DO ENTE QUE DESTRAVA A ARRECADAÇÃO (V11 V9.3) ══
+    //
+    // ⚠️ ESTE PASSO EXISTE PORQUE A CORREÇÃO NÃO FOI ESCOLHER UMA CONTA. O PCASP parte
+    // `7.2.1.1 CONTROLE DA DISPONIBILIDADE DE RECURSOS` em cinco analíticas, uma por NATUREZA do
+    // recurso; o plano não diz de que natureza é a fonte 500 deste município, e o corpus oficial
+    // também não. Quem diz é o ente, por tela, com fundamento — e enquanto ele não disser, a
+    // arrecadação daquela fonte é RECUSADA. Aqui a jornada faz o ato inteiro: lê o estado, prova
+    // a recusa quando ela cabe, declara, e só então arrecada.
+    await irPara(n, page, "/contabilidade/natureza-das-fontes");
+    const naturezaDaFonte = await page.evaluate((f) => {
+      const tr = document.querySelector(`tr[data-fonte="${f}"]`);
+      if (tr === null) return null;
+      const decl = (tr.querySelector('[data-papel="natureza-declarada"]')?.textContent ?? "").trim();
+      const conta = (tr.querySelector('[data-papel="conta-de-controle"]')?.textContent ?? "").trim();
+      const temForm = tr.querySelector('form[data-acao="declarar-natureza-da-fonte"]') !== null;
+      return { declarada: !/Não declarada/i.test(decl), texto: decl, conta, temForm };
+    }, dadosDaConta.fonte);
+
+    if (naturezaDaFonte === null) {
+      falhou("5.5 a fonte da conta bancária aparece na tela de natureza das fontes", `a fonte ${dadosDaConta.fonte} não tem linha em /contabilidade/natureza-das-fontes`);
+    } else {
+      conferir("5.5 a tela oferece o ato: a fonte tem formulário para declarar a natureza", naturezaDaFonte.temForm, `sem formulário na linha da fonte ${dadosDaConta.fonte}`);
+
+      if (!naturezaDaFonte.declarada) {
+        // ⚠️ A NEGAÇÃO AFIRMA O MOTIVO. "Não completou" é compatível com o servidor aceitando a
+        // guia e escriturando em conta errada; o que se exige aqui é que a recusa NOMEIE a fonte.
+        await irPara(n, page, `/receita/arrecadacoes?exercicio=${ANO}`);
+        const rSemNatureza = await preencherEEnviar(page, "registrar-guia", [
+          { sel: 'input[name="natureza"]', valor: dadosDaConta.natureza },
+          { sel: 'input[name="fonte"]', valor: dadosDaConta.fonte },
+          { sel: 'select[name="contaBancaria"]', valor: dadosDaConta.valor, tipo: "select" },
+          { sel: 'input[data-mascara="valor"]', valor: "1.000,00" },
+          { sel: 'input[name="data"]', valor: hoje(), tipo: "data" },
+          { sel: 'input[name="numeroReceita"]', valor: `J9N-${SUF}` },
+        ]);
+        conferir(
+          "5.6 fonte sem natureza declarada faz a arrecadação RECUSAR, e a recusa nomeia a fonte",
+          rSemNatureza.tipo === "erro" &&
+            new RegExp(`FONTE ${dadosDaConta.fonte}`, "i").test(rSemNatureza.texto) &&
+            /natureza/i.test(rSemNatureza.texto),
+          `${rSemNatureza.tipo}: ${rSemNatureza.texto.slice(0, 250)}`
+        );
+        await irPara(n, page, "/contabilidade/natureza-das-fontes");
+      } else {
+        nota(`a fonte ${dadosDaConta.fonte} já estava declarada (${naturezaDaFonte.texto}, conta ${naturezaDaFonte.conta}) — execução anterior neste banco`);
+        naoExecutado("5.6 a recusa por fonte sem natureza declarada (pela tela)", `a fonte ${dadosDaConta.fonte} já está classificada neste banco; a recusa só se observa em fonte ainda não declarada`);
+      }
+
+      if (!naturezaDaFonte.declarada) {
+        const rDeclarar = await preencherEEnviar(
+          page,
+          `form[data-acao="declarar-natureza-da-fonte"][data-fonte="${dadosDaConta.fonte}"]`,
+          [
+            { sel: 'select[name="natureza"]', valor: "ORDINARIOS", tipo: "select" as const },
+            { sel: 'input[name="fundamento"]', valor: "Recurso sem vinculação legal de destinação declarada pelo ente nesta instalação de percurso." },
+          ],
+          "declarar-natureza-da-fonte"
+        );
+        conferir(
+          "5.7 a natureza é declarada pela tela, e a confirmação diz em QUE CONTA a arrecadação passa a escriturar",
+          rDeclarar.tipo === "ok" && /7\.2\.1\.1\.1\.00\.00/.test(rDeclarar.texto),
+          `${rDeclarar.tipo}: ${rDeclarar.texto.slice(0, 250)}`
+        );
+        await irPara(n, page, "/contabilidade/natureza-das-fontes");
+        const depois = await page.evaluate((f) => {
+          const tr = document.querySelector(`tr[data-fonte="${f}"]`);
+          return tr === null ? null : (tr.querySelector('[data-papel="conta-de-controle"]')?.textContent ?? "").trim();
+        }, dadosDaConta.fonte);
+        conferir(
+          "5.8 a declaração PERSISTE: recarregada, a linha da fonte mostra a conta de controle",
+          depois === "7.2.1.1.1.00.00",
+          `a linha mostra "${String(depois)}"`
+        );
+      }
+    }
+
+    // ══ 6. A ARRECADAÇÃO NOVA — E A PENDÊNCIA QUE A BLOQUEAVA, AGORA RESOLVIDA (V11 V9.3) ══
+    //
+    // ⚠️ O QUE MUDOU DESDE V9.2. `CONTROLE-DDR-POR-NATUREZA-DA-FONTE` deixava este bloco sem
+    // rodar: o roteiro debitava `7.2.1.1.0.00.00`, SINTÉTICA no plano oficial, e a guia era
+    // recusada. A perna passou a ser resolvida pela NATUREZA da fonte
+    // (`modules/m01-core-contabil/roteiros.ts`), e a correspondência fonte -> natureza virou ato
+    // do ente, declarado no passo 5.5 acima. A recusa antiga não pode mais aparecer — e se
+    // aparecer é REGRESSÃO, não pendência: por isso ela é FALHA aqui, e não "não executado".
+    // ⚠️ O RODAPÉ ANTES DA GUIA, lido agora: é a linha-base do delta do passo 6.2, e ele tem de
+    // ser lido DEPOIS da declaração da natureza — a tela de natureza não mexe em arrecadação,
+    // mas ler antes e comparar depois de navegar por três telas é como um percurso mede o que
+    // não aconteceu no meio.
+    const antesDaGuiaA = await (async () => {
+      await irPara(n, page, `/receita/por-entidade?exercicio=${ANO}`);
+      return lerRodape(page);
+    })();
+    await irPara(n, page, `/receita/arrecadacoes?exercicio=${ANO}`);
     const numeroA = `J9A-${SUF}`;
     const rGuiaA = await preencherEEnviar(page, "registrar-guia", [
       { sel: 'input[name="natureza"]', valor: dadosDaConta.natureza },
@@ -412,16 +490,15 @@ async function main(): Promise<void> {
       rGuiaA.tipo === "erro" && /sintética não recebe partida/i.test(rGuiaA.texto) && /7\.2\.1\.1\.0\.00\.00/.test(rGuiaA.texto);
 
     if (bloqueadaPelaDdr) {
-      ok(
-        "6.1 a arrecadação nova é RECUSADA com a conta nomeada, e não com um 500 — a pendência " +
-          "CONTROLE-DDR-POR-NATUREZA-DA-FONTE aparece como recusa legível"
+      falhou(
+        "6.0 a recusa da conta sintética 7.2.1.1.0.00.00 NÃO pode mais existir (V11 V9.3)",
+        `a perna de classe 7 voltou a ser fixa no pai sintético: ${rGuiaA.texto.slice(0, 220)}`
       );
-      nota(`recusa: ${rGuiaA.texto.slice(0, 180)}`);
-      naoExecutado("6.2 o carimbo da guia nova na entidade titular (pela tela)", "não há arrecadação em instalação limpa: CONTROLE-DDR-POR-NATUREZA-DA-FONTE, modules/m01-core-contabil/roteiros.ts:238-254");
+      naoExecutado("6.2 o carimbo da guia nova na entidade titular (pela tela)", "regressão do roteiro da DDR: a guia não foi registrada");
       naoExecutado("7.x trocar o titular e conferir que a guia anterior NÃO migra (pela tela)", "depende da guia do passo 6.2, que não existe");
       naoExecutado("8.x o estorno herdando a identificação do fato original (pela tela)", "depende da guia do passo 6.2, que não existe");
-      nota("as três já estão provadas por teste em banco: m04-entidade-titular.test.ts t2b, t3 e t3b");
     } else {
+      ok("6.0 a recusa da conta sintética 7.2.1.1.0.00.00 não aparece — a perna de classe 7 é resolvida pela natureza da fonte");
       conferir("6.1 a guia é registrada na conta cujo titular é A", rGuiaA.tipo === "ok", `${rGuiaA.tipo}: ${rGuiaA.texto.slice(0, 200)}`);
       await irPara(n, page, `/receita/por-entidade?exercicio=${ANO}`);
       const comGuiaA = await lerRodape(page);

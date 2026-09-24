@@ -80,7 +80,7 @@ const N_REND = "13210051";
 
 // ⚠️ OS ROTEIROS DE PRODUÇÃO (M01) — ver o cabeçalho: a fixture legada do M05 não
 // serviria, porque o Anexo 5 exige que o caixa tenha origem em fato com fonte.
-const R_ARREC = roteiroArrecadacao({
+const R_ARREC = roteiroArrecadacao({ naturezaDaFonte: "ORDINARIOS",
   disponibilidade: "1.1.1.1.1.00.00",
   variacaoAumentativa: "4.1.1.2.1.01.00",
 });

@@ -8,7 +8,9 @@ import {
   roteiroEmpenho,
   roteiroLiquidacao,
   roteiroPagamento,
-  CONTA_CONTROLE_DDR,
+  CONTA_CONTROLE_DDR_POR_NATUREZA,
+  CONTAS_CONTROLE_DDR,
+  contaDeControleDaDdr,
   CONTA_CREDITO_DISPONIVEL,
   CONTA_CREDITO_EMPENHADO_A_LIQUIDAR,
   CONTA_CREDITO_EMPENHADO_EM_LIQUIDACAO,
@@ -123,7 +125,11 @@ describe("M01 — os roteiros oficiais da execução", () => {
   });
 
   it("t5: ARRECADAÇÃO — a ÚNICA perna de classe 7 do sistema", () => {
-    const r = roteiroArrecadacao({ disponibilidade: CAIXA, variacaoAumentativa: VPA });
+    const r = roteiroArrecadacao({
+      disponibilidade: CAIXA,
+      variacaoAumentativa: VPA,
+      naturezaDaFonte: "ORDINARIOS",
+    });
     expect(pernas(r)).toEqual([
       `DEBITO ${CAIXA} PATRIMONIAL`,
       `CREDITO ${VPA} PATRIMONIAL`,
@@ -132,7 +138,10 @@ describe("M01 — os roteiros oficiais da execução", () => {
       // ⚠️ D classe 7 / C classe 8 — e as duas são CONTROLE, então o subsistema fecha.
       // É o único ato que traz dinheiro NOVO sob controle; os demais só o movem de
       // estado, dentro da classe 8.
-      `DEBITO ${CONTA_CONTROLE_DDR} CONTROLE`,
+      // ⚠️ E A CONTA É A DA NATUREZA (V11 V9.3), escrita por extenso de propósito: pô-la como
+      // `CONTA_CONTROLE_DDR_POR_NATUREZA.ORDINARIOS` faria o teste conferir o mapa consigo
+      // mesmo. O código vem do `Pcasp_2025.xlsx`, não do módulo.
+      `DEBITO 7.2.1.1.1.00.00 CONTROLE`,
       `CREDITO ${CONTA_DDR_DISPONIVEL} CONTROLE`,
     ]);
     expect(fecha(r)).toBe(true);
@@ -151,7 +160,11 @@ describe("M01 — os roteiros oficiais da execução", () => {
     const ddr = (r: RoteiroContabil, tipo: "DEBITO" | "CREDITO"): string =>
       r.find((p) => p.subsistema === "CONTROLE" && p.tipo === tipo)!.conta;
 
-    const arr = roteiroArrecadacao({ disponibilidade: CAIXA, variacaoAumentativa: VPA });
+    const arr = roteiroArrecadacao({
+      disponibilidade: CAIXA,
+      variacaoAumentativa: VPA,
+      naturezaDaFonte: "ORDINARIOS",
+    });
     const emp = roteiroEmpenho();
     const liq = roteiroLiquidacao({ codElemento: "39", obrigacaoAPagar: FORNECEDOR });
     const pag = roteiroPagamento({ obrigacaoAPagar: FORNECEDOR, disponibilidade: CAIXA });
@@ -189,10 +202,50 @@ describe("M01 — os roteiros oficiais da execução", () => {
       roteiroEmpenho(),
       roteiroLiquidacao({ codElemento: "39", obrigacaoAPagar: FORNECEDOR }),
       roteiroPagamento({ obrigacaoAPagar: FORNECEDOR, disponibilidade: CAIXA }),
-      roteiroArrecadacao({ disponibilidade: CAIXA, variacaoAumentativa: VPA }),
+      roteiroArrecadacao({
+        disponibilidade: CAIXA,
+        variacaoAumentativa: VPA,
+        naturezaDaFonte: "ORDINARIOS",
+      }),
     ];
     for (const r of todos) {
       expect(r.some((p) => p.conta === "6.2.2.1.3.00.00")).toBe(false);
     }
+  });
+
+  // ════════════════════════════════════════════════════════════════════════════════════
+  // t9 — AS CINCO NATUREZAS, E NENHUMA DELAS É O PAI SINTÉTICO (V11 V9.3)
+  //
+  // ⚠️ O ESPERADO ESTÁ ESCRITO À MÃO, a partir do `Pcasp_2025.xlsx` do TCE-PB (sha256
+  // 52ae7c73…). Derivá-lo do próprio mapa — `Object.values(...)` — seria conferir o mapa
+  // contra ele mesmo: passaria com qualquer cinco códigos consistentes entre si.
+  // ════════════════════════════════════════════════════════════════════════════════════
+  it("t9: a perna de classe 7 sai da natureza da fonte, e são as cinco folhas do plano", () => {
+    expect(contaDeControleDaDdr("ORDINARIOS")).toBe("7.2.1.1.1.00.00");
+    expect(contaDeControleDaDdr("VINCULADOS")).toBe("7.2.1.1.2.00.00");
+    expect(contaDeControleDaDdr("EXTRAORCAMENTARIOS")).toBe("7.2.1.1.3.00.00");
+    expect(contaDeControleDaDdr("COMPENSACAO_FINANCEIRA")).toBe("7.2.1.1.4.00.00");
+    expect(contaDeControleDaDdr("OUTROS")).toBe("7.2.1.1.9.00.00");
+
+    // ⚠️ NENHUMA É O PAI. Era ele — `7.2.1.1.0.00.00` — que o roteiro debitava, e é por
+    // isso que instalação limpa não arrecadava.
+    expect(CONTAS_CONTROLE_DDR).not.toContain("7.2.1.1.0.00.00");
+    expect(CONTAS_CONTROLE_DDR).toHaveLength(5);
+    expect(new Set(CONTAS_CONTROLE_DDR).size).toBe(5);
+
+    // E cada natureza leva a arrecadação para a SUA conta — a dimensão existe de verdade.
+    const contaDe = (n: Parameters<typeof contaDeControleDaDdr>[0]): string =>
+      roteiroArrecadacao({ disponibilidade: CAIXA, variacaoAumentativa: VPA, naturezaDaFonte: n })
+        .find((p) => p.subsistema === "CONTROLE" && p.tipo === "DEBITO")!.conta;
+    expect(contaDe("ORDINARIOS")).toBe("7.2.1.1.1.00.00");
+    expect(contaDe("VINCULADOS")).toBe("7.2.1.1.2.00.00");
+    expect(contaDe("ORDINARIOS")).not.toBe(contaDe("VINCULADOS"));
+
+    // Natureza fora do rol NÃO vira conta: vira recusa. (O `as` fura o tipo de propósito —
+    // é assim que o dado chega de um banco antigo ou de um JSON.)
+    expect(() =>
+      contaDeControleDaDdr("RECURSOS_PROPRIOS" as Parameters<typeof contaDeControleDaDdr>[0])
+    ).toThrow(/NATUREZA DE FONTE DESCONHECIDA/);
+    expect(Object.keys(CONTA_CONTROLE_DDR_POR_NATUREZA)).toHaveLength(5);
   });
 });

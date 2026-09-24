@@ -7,14 +7,16 @@ import { criarM05Deps } from "../m05-despesa/adapter-prisma.js";
 import { anularEmpenho, empenhar } from "../m05-despesa/servico.js";
 import { liquidar, pagar } from "../m05-despesa/servico-bloco2.js";
 import { criarM04Deps } from "../m04-receita/adapter-prisma.js";
-import { registrarArrecadacao } from "../m04-receita/servico.js";
+import { anularArrecadacao, registrarArrecadacao } from "../m04-receita/servico.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
 import { saldoDdrPorFonte } from "./consultas.js";
 import {
+  CONTA_CONTROLE_DDR_POR_NATUREZA,
   roteiroArrecadacao,
   roteiroEmpenho,
   roteiroLiquidacao,
   roteiroPagamento,
+  type RoteiroContabil,
 } from "./roteiros.js";
 import { semearPcasp } from "../../prisma/seed/pcasp.js";
 
@@ -69,10 +71,22 @@ const R_PAGAMENTO = roteiroPagamento({
   // ENT05 ITEM 3 — repontada: a antiga era a variante INTRA OFSS.
   disponibilidade: "1.1.1.1.1.19.00",
 });
-const R_ARRECADACAO = roteiroArrecadacao({
-  disponibilidade: "1.1.1.1.1.00.00",
-  variacaoAumentativa: "4.1.1.2.1.01.00",
-});
+// ⚠️ N=2 NA DIMENSÃO NOVA (V11 V9.3), e não por simetria decorativa. A perna de classe 7 passou a
+// ser resolvida pela NATUREZA da fonte: com uma fonte só, um roteiro que ignorasse a natureza
+// passaria por vacuidade. Aqui a 500 (livre) é ORDINARIOS e a 540 (FUNDEB) é VINCULADOS, e as duas
+// escrituram em contas DIFERENTES — 7.2.1.1.1.00.00 e 7.2.1.1.2.00.00. O t6 confere isso.
+const ROTEIRO_POR_FONTE: Readonly<Record<string, RoteiroContabil>> = {
+  "500": roteiroArrecadacao({
+    disponibilidade: "1.1.1.1.1.00.00",
+    variacaoAumentativa: "4.1.1.2.1.01.00",
+    naturezaDaFonte: "ORDINARIOS",
+  }),
+  "540": roteiroArrecadacao({
+    disponibilidade: "1.1.1.1.1.00.00",
+    variacaoAumentativa: "4.1.1.2.1.01.00",
+    naturezaDaFonte: "VINCULADOS",
+  }),
+};
 
 let deps: M05Deps;
 
@@ -126,7 +140,7 @@ async function arrecada(valor: string, fonte: string, n: string): Promise<void> 
       valor, dataArrecadacao: new Date("2026-01-10T12:00:00Z"),
       numeroReceita: `2026RC${n}`, criadoPor: POR,
     },
-    R_ARRECADACAO,
+    ROTEIRO_POR_FONTE[fonte]!,
     criarM04Deps(prisma)
   );
 }
@@ -304,7 +318,7 @@ describe("M01 — a DDR por fonte (RGF Anexo 5)", () => {
         valor: "5000.00", dataArrecadacao: new Date("2026-03-15T12:00:00Z"),
         numeroReceita: "2026RC000009", criadoPor: POR,
       },
-      R_ARRECADACAO,
+      ROTEIRO_POR_FONTE["500"]!,
       criarM04Deps(prisma)
     );
 
@@ -316,5 +330,132 @@ describe("M01 — a DDR por fonte (RGF Anexo 5)", () => {
 
     const noAno = await saldoDdrPorFonte(prisma, { exercicio: 2026 });
     expect(noAno.find((l) => l.fonteCodigo === "500")!.disponivel.toFixed(2)).toBe("15000.00");
+  });
+
+  // ════════════════════════════════════════════════════════════════════════════════════
+  // t6 — A PERNA DE CLASSE 7 SAI DA NATUREZA DA FONTE (V11 V9.3)
+  //
+  // ⚠️ CONFERIDO NO RAZÃO, NÃO PELO ROTEIRO. Chamar `roteiroArrecadacao` para saber o que
+  // `roteiroArrecadacao` deveria ter feito é o teste que passa com qualquer interpretação
+  // errada consistente. Aqui a leitura é das PARTIDAS PERSISTIDAS, e o esperado está escrito
+  // à mão a partir do `Pcasp_2025.xlsx`: ORDINÁRIOS é `7.2.1.1.1.00.00`, VINCULADOS é
+  // `7.2.1.1.2.00.00`. Se alguém trocar o mapa, o teste acusa; se alguém trocar o mapa E o
+  // esperado, trocou a norma, e isso é outra conversa.
+  // ════════════════════════════════════════════════════════════════════════════════════
+  it("t6: fontes de naturezas diferentes escrituram em contas de classe 7 DIFERENTES", async () => {
+    await arrecada("10000.00", "500", "000010"); // livre     -> ORDINARIOS
+    await arrecada("7000.00", "540", "000011"); // FUNDEB    -> VINCULADOS
+
+    const classe7 = await prisma.partidaContabil.findMany({
+      where: { subsistema: "CONTROLE", conta: { codigo: { startsWith: "7." } } },
+      select: {
+        tipo: true,
+        valor: true,
+        conta: { select: { codigo: true, analitica: true } },
+        lancamento: { select: { historico: true, receita: { select: { numeroReceita: true } } } },
+      },
+    });
+
+    const porGuia = new Map<string, { conta: string; valor: string; tipo: string; analitica: boolean }>();
+    for (const p of classe7) {
+      const num = p.lancamento?.receita?.numeroReceita ?? "(sem guia)";
+      porGuia.set(num, {
+        conta: p.conta.codigo,
+        valor: p.valor.toFixed(2),
+        tipo: p.tipo,
+        analitica: p.conta.analitica,
+      });
+    }
+
+    // Uma perna de classe 7 por guia — e SÓ uma. Duas seriam o dinheiro entrando duas vezes.
+    expect(classe7.length).toBe(2);
+
+    expect(porGuia.get("2026RC000010")).toEqual({
+      conta: "7.2.1.1.1.00.00",
+      valor: "10000.00",
+      tipo: "DEBITO",
+      analitica: true,
+    });
+    expect(porGuia.get("2026RC000011")).toEqual({
+      conta: "7.2.1.1.2.00.00",
+      valor: "7000.00",
+      tipo: "DEBITO",
+      analitica: true,
+    });
+
+    // ⚠️ E NENHUMA DELAS É O PAI SINTÉTICO — a recusa que originou a pendência.
+    expect(classe7.map((p) => p.conta.codigo)).not.toContain("7.2.1.1.0.00.00");
+
+    // O mapa do domínio e o esperado escrito à mão concordam — nas duas direções.
+    expect(CONTA_CONTROLE_DDR_POR_NATUREZA.ORDINARIOS).toBe("7.2.1.1.1.00.00");
+    expect(CONTA_CONTROLE_DDR_POR_NATUREZA.VINCULADOS).toBe("7.2.1.1.2.00.00");
+  });
+
+  // ════════════════════════════════════════════════════════════════════════════════════
+  // t7 — O ESTORNO VOLTA PELA MESMA CONTA DO FATO ORIGINAL
+  //
+  // ⚠️ E ISSO NÃO É O MESMO QUE "volta pela conta da natureza de hoje". `gerarEstorno` inverte
+  // as PARTIDAS GRAVADAS; se algum dia alguém o fizesse recompor o roteiro, uma fonte
+  // reclassificada entre a arrecadação e o estorno creditaria uma conta de classe 7 que nunca
+  // foi debitada — e o saldo das DUAS ficaria errado para sempre, uma positiva e outra
+  // negativa, com o total fechando. É o mesmo corolário do carimbo da entidade titular.
+  // ════════════════════════════════════════════════════════════════════════════════════
+  it("t7: a anulação credita a MESMA conta de classe 7 que a arrecadação debitou", async () => {
+    await arrecada("7000.00", "540", "000012"); // VINCULADOS -> 7.2.1.1.2.00.00
+
+    const original = await prisma.receitaArrecadada.findFirstOrThrow({
+      where: { numeroReceita: "2026RC000012" },
+      select: { id: true },
+    });
+
+    await anularArrecadacao(
+      {
+        receitaId: original.id,
+        numeroReceita: "2026RC000012A",
+        dataAnulacao: new Date("2026-01-20T12:00:00Z"),
+        criadoPor: POR,
+      },
+      criarM04Deps(prisma)
+    );
+
+    const classe7 = await prisma.partidaContabil.findMany({
+      where: { subsistema: "CONTROLE", conta: { codigo: { startsWith: "7." } } },
+      select: {
+        tipo: true,
+        valor: true,
+        conta: { select: { codigo: true } },
+        lancamento: { select: { receita: { select: { numeroReceita: true } } } },
+      },
+      orderBy: { valor: "asc" },
+    });
+
+    const linhas = classe7.map((p) => ({
+      guia: p.lancamento?.receita?.numeroReceita ?? "(sem guia)",
+      conta: p.conta.codigo,
+      tipo: p.tipo,
+      valor: p.valor.toFixed(2),
+    }));
+
+    // A conta é a MESMA nas duas pernas; o que inverte é o TIPO.
+    expect(linhas).toContainEqual({
+      guia: "2026RC000012",
+      conta: "7.2.1.1.2.00.00",
+      tipo: "DEBITO",
+      valor: "7000.00",
+    });
+    expect(linhas).toContainEqual({
+      guia: "2026RC000012A",
+      conta: "7.2.1.1.2.00.00",
+      tipo: "CREDITO",
+      valor: "7000.00",
+    });
+    // E a conta da OUTRA natureza não foi tocada — o estorno não migra de balde.
+    expect(linhas.map((l) => l.conta)).not.toContain("7.2.1.1.1.00.00");
+
+    const f = (await saldoDdrPorFonte(prisma, { exercicio: 2026 })).find(
+      (l) => l.fonteCodigo === "540"
+    )!;
+    expect(f.disponivel.toFixed(2)).toBe("0.00");
+    expect(f.total.toFixed(2)).toBe("0.00");
   });
 });

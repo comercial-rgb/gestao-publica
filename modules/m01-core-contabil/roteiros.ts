@@ -235,23 +235,69 @@ export const CONTA_RECEITA_REALIZADA = "6.2.1.2.0.00.00";
 /**
  * Classe 7 — o par DEVEDOR. Só a arrecadação o move.
  *
- * ⚠️ SINTÉTICA NO PLANO OFICIAL, E **NÃO SE ESCOLHE UMA FILHA AQUI**. Pendência
- * `CONTROLE-DDR-POR-NATUREZA-DA-FONTE`. Medido em 2026-09-19 sobre banco de instalação
- * limpa: `roteiroArrecadacao` recusa, e portanto **não há arrecadação em instalação nova**
- * enquanto esta pendência viver.
+ * ⚠️ RESOLVIDA EM 2026-09-24 (V11 V9.3). A pendência `CONTROLE-DDR-POR-NATUREZA-DA-FONTE`
+ * viveu aqui como `CONTA_CONTROLE_DDR = "7.2.1.1.0.00.00"` — o nó SINTÉTICO de nível 4. Em
+ * instalação limpa com o plano oficial, `roteiroArrecadacao` recusava
+ * ("Conta sintética não recebe partida: 7.2.1.1.0.00.00") e **não havia arrecadação
+ * nenhuma**, o que deixou três passos da jornada J9 não executados.
  *
- * O PCASP particiona `7.2.1.1` pela NATUREZA DA FONTE, não pelo estado do dinheiro:
- * `.1.00.00` RECURSOS ORDINÁRIOS, `.2.00.00` RECURSOS VINCULADOS, `.3.00.00` RECURSOS
- * EXTRAORÇAMENTÁRIOS, `.4.00.00` RECURSOS PARA COMPENSAÇÃO FINANCEIRA, `.9.00.00` outros.
- * O sistema CONHECE a fonte de cada arrecadação — `saldoDdrPorFonte` agrupa por
- * `fonteId`/`fonteCodigo` —, mas o roteiro tem UMA perna fixa e não lê a fonte.
+ * ⚠️ E A MEDIÇÃO DIZ QUE A CAUSA ERA **FALTA DE DIMENSÃO NO SELETOR**, não conta errada. O
+ * `Pcasp_2025.xlsx` do TCE-PB (sha256 `52ae7c73…`, o mesmo de `seed:pcasp-oficial`) particiona
+ * `7.2.1.1 CONTROLE DA DISPONIBILIDADE DE RECURSOS` em CINCO analíticas — e a partição é pela
+ * NATUREZA DA FONTE, não pelo estado do dinheiro:
  *
- * Apontar esta constante para RECURSOS ORDINÁRIOS classificaria saúde, educação e FUNDEB
- * como ordinários, e o erro sairia no RGF Anexo 5 e na remessa, não aqui. Destravar exige
- * perna de roteiro RESOLVIDA PELA FONTE — decisão de modelo —, mais a correspondência
- * fonte → natureza, que é ato do ente. Não é escolha de conta.
+ *   · `7.2.1.1.1.00.00` RECURSOS ORDINÁRIOS
+ *   · `7.2.1.1.2.00.00` RECURSOS VINCULADOS
+ *   · `7.2.1.1.3.00.00` RECURSOS EXTRAORÇAMENTÁRIOS
+ *   · `7.2.1.1.4.00.00` RECURSOS PARA COMPENSAÇÃO FINANCEIRA
+ *   · `7.2.1.1.9.00.00` OUTROS CONTROLES DA DISPONIBILIDADE DE RECURSOS
+ *
+ * Nenhuma delas tem filha: são folhas, e o pai `7.2.1.1.0.00.00` é sintético por CONSTRUÇÃO,
+ * não por carga malfeita. O roteiro não tinha por onde escolher entre as cinco porque não
+ * recebia a fonte — embora o sistema a conheça em toda a cadeia (`saldoDdrPorFonte` agrupa
+ * por `fonteId`). Escolher uma delas por conveniência — apontar a constante para ORDINÁRIOS —
+ * classificaria saúde, educação e FUNDEB como ordinários, e o erro sairia no RGF Anexo 5 e na
+ * remessa, não aqui. Por isso a perna passou a ser RESOLVIDA, e o discriminador é a natureza.
+ *
+ * ⚠️ O QUE ESTE MAPA **NÃO** DECIDE é de que natureza é a fonte 500 do município. Isso o plano
+ * não diz e o corpus oficial deste repositório também não — é ATO DO ENTE, e mora em
+ * `DeParaFonteNaturezaDdr`, fail-closed, declarado por tela com fundamento. Aqui só está a
+ * correspondência natureza → conta, que é leitura do plano e não tem o que escolher.
  */
-export const CONTA_CONTROLE_DDR = "7.2.1.1.0.00.00";
+export type NaturezaDaFonteDdr =
+  | "ORDINARIOS"
+  | "VINCULADOS"
+  | "EXTRAORCAMENTARIOS"
+  | "COMPENSACAO_FINANCEIRA"
+  | "OUTROS";
+
+export const CONTA_CONTROLE_DDR_POR_NATUREZA: Readonly<Record<NaturezaDaFonteDdr, string>> = {
+  ORDINARIOS: "7.2.1.1.1.00.00",
+  VINCULADOS: "7.2.1.1.2.00.00",
+  EXTRAORCAMENTARIOS: "7.2.1.1.3.00.00",
+  COMPENSACAO_FINANCEIRA: "7.2.1.1.4.00.00",
+  OUTROS: "7.2.1.1.9.00.00",
+};
+
+/** As cinco, para quem precisa do rol inteiro (seed do plano mínimo, fixtures, consultas). */
+export const CONTAS_CONTROLE_DDR: readonly string[] = Object.values(
+  CONTA_CONTROLE_DDR_POR_NATUREZA
+);
+
+/**
+ * A conta de classe 7 da natureza — FAIL-CLOSED. Uma natureza fora do rol não vira conta:
+ * vira recusa com o rol dito, porque o rol É a partição do plano.
+ */
+export function contaDeControleDaDdr(natureza: NaturezaDaFonteDdr): string {
+  const conta = CONTA_CONTROLE_DDR_POR_NATUREZA[natureza];
+  if (conta === undefined) {
+    throw new Error(
+      `NATUREZA DE FONTE DESCONHECIDA: "${String(natureza)}". O PCASP particiona 7.2.1.1 em ` +
+        `${Object.keys(CONTA_CONTROLE_DDR_POR_NATUREZA).join(", ")} — e só nessas. Nada foi gravado.`
+    );
+  }
+  return conta;
+}
 
 /**
  * ⚠️ REPONTADA EM 2026-09-19, DENTRO DO MESMO RAMO, E A MEDIÇÃO ESTÁ AQUI. Esta constante
@@ -593,6 +639,13 @@ export function roteiroPagamento(p: {
 export function roteiroArrecadacao(p: {
   readonly disponibilidade: string;
   readonly variacaoAumentativa: string;
+  /**
+   * ⚠️ A DIMENSÃO QUE FALTAVA (V11 V9.3), e ela é OBRIGATÓRIA de propósito. Um parâmetro
+   * opcional com queda para uma conta padrão seria a escolha por conveniência de volta,
+   * escondida atrás de um `??`. Quem chama tem de saber de que natureza é a fonte — e
+   * quem não sabe tem de recusar, não supor.
+   */
+  readonly naturezaDaFonte: NaturezaDaFonteDdr;
 }): RoteiroContabil {
   return [
     { conta: p.disponibilidade, tipo: "DEBITO", subsistema: "PATRIMONIAL" },
@@ -602,7 +655,13 @@ export function roteiroArrecadacao(p: {
     // ⚠️ A ÚNICA PERNA DE CLASSE 7 DO SISTEMA. É aqui que o dinheiro ENTRA sob controle:
     // a arrecadação é o único ato que traz recurso novo. Dali em diante ele só muda de
     // estado, dentro da classe 8 — por isso empenho, liquidação e pagamento são 8×8.
-    { conta: CONTA_CONTROLE_DDR, tipo: "DEBITO", subsistema: "CONTROLE" },
+    //
+    // ⚠️ E É A ÚNICA PERNA DA CADEIA QUE VARIA POR NATUREZA. As quatro da classe 8 seguem
+    // fixas, e não é assimetria: a classe 8 mede o ESTADO do dinheiro (disponível,
+    // comprometido, utilizado) e o plano a particiona por estado; a classe 7 mede a ORIGEM,
+    // e o plano a particiona por natureza da fonte. `saldoDdrPorFonte` continua somando as
+    // quatro de sempre — nenhuma segunda aritmética nasce daqui.
+    { conta: contaDeControleDaDdr(p.naturezaDaFonte), tipo: "DEBITO", subsistema: "CONTROLE" },
     { conta: CONTA_DDR_DISPONIVEL, tipo: "CREDITO", subsistema: "CONTROLE" },
   ];
 }

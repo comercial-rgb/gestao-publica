@@ -448,6 +448,8 @@ export const TABELAS = [
   "DeParaFonteClasseAsps",
   "DeParaFundebReceita",
   "DeParaFonteClasseEducacao",
+  // V11 V9.3 — a natureza da fonte para o controle da disponibilidade (PCASP 7.2.1.1).
+  "DeParaFonteNaturezaDdr",
   "DeParaReceitaAlienacao",
   "DeParaFonteAlienacao",
   "ContratoPPP",

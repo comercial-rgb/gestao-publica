@@ -226,6 +226,10 @@ export const FINANCEIRO: readonly RelatorioNav[] = [
  */
 export const CONTABILIDADE: readonly RelatorioNav[] = [
   { href: "/contabilidade/roteiros-orcamentarios", numero: "Roteiro orçamentário", rotulo: "Roteiro orçamentário", descricao: "Em que contas do plano cada movimento de dotação lança — dotação inicial, crédito adicional por tipo, anulação, reserva. Decisão contábil do ente, versionada e com fundamento; sem roteiro o movimento é recusado." },
+  // V11 V9.3 — irmã do roteiro orçamentário, e pela mesma razão: o plano parte 7.2.1.1 por
+  // natureza do recurso, e quem diz de que natureza é cada fonte do município é o ente. Sem esta
+  // tela a arrecadação era impossível em instalação nova.
+  { href: "/contabilidade/natureza-das-fontes", numero: "Natureza das fontes", rotulo: "Natureza das fontes", descricao: "De que natureza é cada fonte de recurso — ordinária, vinculada, extraorçamentária, de compensação financeira ou outra. É ela que diz em qual conta do controle da disponibilidade a arrecadação entra; fonte sem natureza declarada tem a arrecadação recusada." },
   { href: "/contabilidade/plano-de-contas", numero: "Plano de contas", rotulo: "Plano de Contas PCASP", descricao: "As contas por classe, com natureza do saldo e a posição de cada uma (STN/PCASP)." },
   { href: "/contabilidade/lancamentos", numero: "Lançamentos", rotulo: "Lançamentos Contábeis", descricao: "As partidas dobradas, com nº de controle, histórico e o caminho até o documento de origem." },
   // V11 V3.1 — o número que autoriza crédito adicional por superávit existia só dentro da recusa

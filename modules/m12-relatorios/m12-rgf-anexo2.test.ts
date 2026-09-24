@@ -69,7 +69,7 @@ const POR = "orcamento@cg.pb.gov.br";
 const FONTE = "500";
 const CREDOR = "12345678000199";
 
-const R_ARREC = roteiroArrecadacao({
+const R_ARREC = roteiroArrecadacao({ naturezaDaFonte: "ORDINARIOS",
   disponibilidade: "1.1.1.1.1.00.00",
   variacaoAumentativa: "4.1.1.2.1.01.00",
 });

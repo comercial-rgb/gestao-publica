@@ -11,6 +11,10 @@ import type { AtoDoFormulario } from "./entidades-contabeis";
 import { criarM04Deps } from "../../modules/m04-receita/adapter-prisma";
 import { registrarArrecadacao } from "../../modules/m04-receita/servico";
 import { roteiroArrecadacao } from "../../modules/m01-core-contabil/roteiros";
+import {
+  exigirNaturezaDaFonte,
+  listarNaturezasDeclaradas,
+} from "../../modules/m01-core-contabil/natureza-da-fonte";
 
 /**
  * PORTA — ARRECADAÇÃO (TR 4.59). **SÓ LEITURA.**
@@ -133,6 +137,10 @@ export async function registrarGuia(input: {
       select: { codigo: true, contaContabil: { select: { codigo: true } } },
     });
     if (conta === null) throw new Error(`Conta bancária ${input.contaBancaria} não cadastrada. Escolha a conta que recebeu o dinheiro. Nada foi gravado.`);
+    // ⚠️ RESOLVIDA ANTES DE GRAVAR QUALQUER COISA. "Efeito colateral antes da operação
+    // guardada envenena a tentativa seguinte": se a natureza fosse conferida depois de a guia
+    // existir, uma fonte não classificada deixaria registro impossível de processar.
+    const natureza = await exigirNaturezaDaFonte(cliente(), input.fonte);
     if (conta.contaContabil === null) {
       throw new Error(`A conta bancária ${conta.codigo} não tem conta contábil mapeada; a guia não sabe em que conta do razão o dinheiro entrou. Parametrize o mapeamento antes. Nada foi gravado.`);
     }
@@ -152,6 +160,10 @@ export async function registrarGuia(input: {
       roteiroArrecadacao({
         disponibilidade: conta.contaContabil.codigo,
         variacaoAumentativa: CONTA_VPA,
+        // ⚠️ V11 V9.3 — A PERNA DE CLASSE 7 SAI DA DECLARAÇÃO DO ENTE, e a recusa vem ANTES de
+        // qualquer escrita. `exigirNaturezaDaFonte` nomeia a fonte que falta classificar; o que
+        // ela NUNCA faz é supor uma natureza para a guia passar.
+        naturezaDaFonte: natureza.natureza,
       }),
       criarM04Deps(cliente())
     );

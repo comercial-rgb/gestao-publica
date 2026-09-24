@@ -60,7 +60,7 @@ const R_PAGAMENTO = roteiroPagamento({
   // ENT05 ITEM 3 — repontada. Ver ESTADO-EXECUCAO 20.7.
   disponibilidade: "1.1.1.1.1.19.00",
 });
-const R_ARRECADACAO = roteiroArrecadacao({
+const R_ARRECADACAO = roteiroArrecadacao({ naturezaDaFonte: "ORDINARIOS",
   disponibilidade: "1.1.1.1.1.00.00",
   variacaoAumentativa: "4.1.1.2.1.01.00",
 });
@@ -376,8 +376,12 @@ describe("M16 — a borda da EXECUÇÃO (as 4 telas da 7.3)", () => {
       "6.2.1.1.0.00.00",
       "6.2.1.2.0.00.00",
       // ⚠️ A ÚNICA perna de classe 7 do sistema: é a arrecadação que traz dinheiro NOVO
-      // sob controle (D 7.2.1.1 / C 8.2.1.1.1). Daí em diante ele só muda de estado.
-      "7.2.1.1.0.00.00",
+      // sob controle (D 7.2.1.1.x / C 8.2.1.1.1). Daí em diante ele só muda de estado.
+      //
+      // ⚠️ E É A FOLHA DA NATUREZA, NÃO O PAI (V11 V9.3). Era `7.2.1.1.0.00.00` aqui — o nó
+      // SINTÉTICO —, e este teste passava porque o plano MÍNIMO o marcava `analitica: true`
+      // ao contrário do plano oficial. O roteiro desta fixture declara ORDINARIOS.
+      "7.2.1.1.1.00.00",
       CONTA_DDR_DISPONIVEL,
     ]);
     const opsArr = (await prisma.registroDeOperacao.findMany({ where: { acao: "REGISTRAR_ARRECADACAO" } })).map((o) => o.resultado);

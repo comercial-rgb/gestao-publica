@@ -87,12 +87,28 @@ export const CONTAS_PCASP_STN: readonly ContaSeed[] = [
   { codigo: "6.2.2.1.3.04.00", nome: "Crédito Empenhado Liquidado Pago", naturezaSaldo: "CREDORA", nivel: 6, analitica: true, pai: "6.2.2.1.3.00.00" },
 
   // ── classe 7: o par DEVEDOR do controle de disponibilidade ──
-  // ⚠️ Só a ARRECADAÇÃO a move (D 7.2.1.1 / C 8.2.1.1.1): é o único ato que traz
-  // recurso novo. Nota do extrato: "detalhamento fino a confirmar no xlsx".
+  // ⚠️ Só a ARRECADAÇÃO a move (D 7.2.1.1.x / C 8.2.1.1.1): é o único ato que traz
+  // recurso novo.
+  //
+  // ⚠️ E FOI AQUI QUE O DEFEITO SE ESCONDEU POR ~25 ARQUIVOS DE TESTE (medido em V11 V9.3).
+  // A linha de `7.2.1.1.0.00.00` dizia `analitica: true`, e a nota do extrato admitia o
+  // motivo: "detalhamento fino a confirmar no xlsx". No `Pcasp_2025.xlsx` do TCE-PB ela é
+  // SINTÉTICA — tem cinco filhas — e o `INVARIANTE 5` do adapter recusa partida em conta
+  // sintética. Como toda suíte semeia ESTE plano, `roteiroArrecadacao` passava verde em
+  // toda parte e recusava em instalação limpa. Um plano de teste que contradiz o plano
+  // oficial não é fixture mínima: é um plano DIFERENTE, e ele aprova o que a produção nega.
+  //
+  // As cinco filhas entram porque a partição é a do plano oficial, conferida linha a linha
+  // contra o arquivo — não é detalhamento inventado aqui.
   { codigo: "7.0.0.0.0.00.00", nome: "Controles Devedores", naturezaSaldo: "DEVEDORA", nivel: 1, analitica: false },
   { codigo: "7.2.0.0.0.00.00", nome: "Execução da Programação Financeira", naturezaSaldo: "DEVEDORA", nivel: 2, analitica: false, pai: "7.0.0.0.0.00.00" },
   { codigo: "7.2.1.0.0.00.00", nome: "Disponibilidade de Recursos", naturezaSaldo: "DEVEDORA", nivel: 3, analitica: false, pai: "7.2.0.0.0.00.00" },
-  { codigo: "7.2.1.1.0.00.00", nome: "Controle da Disponibilidade de Recursos", naturezaSaldo: "DEVEDORA", nivel: 4, analitica: true, pai: "7.2.1.0.0.00.00" },
+  { codigo: "7.2.1.1.0.00.00", nome: "Controle da Disponibilidade de Recursos", naturezaSaldo: "DEVEDORA", nivel: 4, analitica: false, pai: "7.2.1.0.0.00.00" },
+  { codigo: "7.2.1.1.1.00.00", nome: "Recursos Ordinários", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: true, pai: "7.2.1.1.0.00.00" },
+  { codigo: "7.2.1.1.2.00.00", nome: "Recursos Vinculados", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: true, pai: "7.2.1.1.0.00.00" },
+  { codigo: "7.2.1.1.3.00.00", nome: "Recursos Extraorçamentários", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: true, pai: "7.2.1.1.0.00.00" },
+  { codigo: "7.2.1.1.4.00.00", nome: "Recursos para Compensação Financeira", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: true, pai: "7.2.1.1.0.00.00" },
+  { codigo: "7.2.1.1.9.00.00", nome: "Outros Controles da Disponibilidade de Recursos", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: true, pai: "7.2.1.1.0.00.00" },
 
   // ── classe 8: controle de DISPONIBILIDADE (DDR) ──
   { codigo: "8.0.0.0.0.00.00", nome: "Controles Credores", naturezaSaldo: "CREDORA", nivel: 1, analitica: false },

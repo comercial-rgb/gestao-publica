@@ -1008,6 +1008,7 @@ export type NomeDeServico =
   | "publicarRoteiroOrcamentario"
   | "publicarPoliticaDaDotacaoAdicional"
   | "publicarRoteiroDaDotacaoPorFonte"
+  | "declararNaturezaDaFonte"
   | "cadastrarTipoDeConsignacao"
   | "redefinirContaDaConsignacao"
   | "desativarTipoDeConsignacao"
@@ -1582,6 +1583,11 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // seria concedido por atrito no dia em que alguém não conseguisse publicar o par que falta.
   publicarPoliticaDaDotacaoAdicional: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
   publicarRoteiroDaDotacaoPorFonte: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
+  // ⚠️ V11 V9.3 — E A QUARTA É A MESMA AUTORIDADE. Declarar de que natureza é uma fonte diz em
+  // qual analítica de 7.2.1.1 a arrecadação daquela fonte entra: é dizer em que conta do plano o
+  // movimento entra, exatamente como as três acima. Um crachá próprio aqui seria o quarto para a
+  // mesma decisão contábil.
+  declararNaturezaDaFonte: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
   // ── M07 V11 V8.3 — os tipos de consignação ──
   cadastrarTipoDeConsignacao: "GERIR_TIPOS_DE_CONSIGNACAO",
   redefinirContaDaConsignacao: "GERIR_TIPOS_DE_CONSIGNACAO",
@@ -2318,6 +2324,8 @@ export const FORA_DO_CENSO: Record<string, string> = {
   empenhadoLiquidoPorContrato: "leitura",
   execucaoPorContrato: "leitura",
   saldoDdrPorFonte: "leitura (os 4 baldes da DDR por fonte — o controle de DISPONIBILIDADE, insumo do RGF Anexo 5)",
+  naturezaVigenteDaFonte: "leitura (a natureza declarada de UMA fonte — o discriminador da perna de classe 7 da arrecadacao)",
+  listarNaturezasDeclaradas: "leitura (as naturezas de fonte vigentes, uma linha por fonte)",
   rgfAnexo2: "leitura (RGF Anexo 2 — dívida consolidada líquida sobre a RCL ajustada, LRF art. 55 I b)",
   anexo6: "leitura (RREO Anexo 6 — resultado primário e nominal ACIMA DA LINHA, LRF art. 53 III)",
   anexo6AbaixoDaLinha:

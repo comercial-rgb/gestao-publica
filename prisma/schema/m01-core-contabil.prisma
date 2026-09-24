@@ -282,3 +282,67 @@ model MigracaoDeConta {
   @@index([contaDestinoId])
   @@index([data])
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// A NATUREZA DA FONTE, PARA O CONTROLE DA DISPONIBILIDADE (V11 V9.3)
+// ═══════════════════════════════════════════════════════════════════════════════════════
+
+/// AS CINCO NATUREZAS EM QUE O PCASP PARTICIONA `7.2.1.1 CONTROLE DA DISPONIBILIDADE DE
+/// RECURSOS`. O rol NÃO foi escolhido aqui: ele é a partição do plano oficial, lida do
+/// `Pcasp_2025.xlsx` do TCE-PB (sha256 `52ae7c73…`, conferido por `prisma/seed/oficial/
+/// procedencia.ts`). Um valor a mais neste enum seria uma conta a mais no plano.
+///
+///   ORDINARIOS             -> 7.2.1.1.1.00.00 RECURSOS ORDINÁRIOS
+///   VINCULADOS             -> 7.2.1.1.2.00.00 RECURSOS VINCULADOS
+///   EXTRAORCAMENTARIOS     -> 7.2.1.1.3.00.00 RECURSOS EXTRAORÇAMENTÁRIOS
+///   COMPENSACAO_FINANCEIRA -> 7.2.1.1.4.00.00 RECURSOS PARA COMPENSAÇÃO FINANCEIRA
+///   OUTROS                 -> 7.2.1.1.9.00.00 OUTROS CONTROLES DA DISPONIBILIDADE DE RECURSOS
+enum NaturezaDaFonteDdr {
+  ORDINARIOS
+  VINCULADOS
+  EXTRAORCAMENTARIOS
+  COMPENSACAO_FINANCEIRA
+  OUTROS
+}
+
+/// A DECLARAÇÃO DO ENTE sobre a natureza de UMA fonte — o que destrava a arrecadação.
+///
+/// ⚠️ POR QUE É ATO DO ENTE, E NÃO DERIVAÇÃO. O plano diz em que conta cada NATUREZA entra;
+/// ele não diz de que natureza é a fonte 500 do município. O corpus oficial deste
+/// repositório também não: `relacionamento_fonterecursos_co_2026.xlsx` relaciona fonte com
+/// CÓDIGO DE ACOMPANHAMENTO, não com natureza, e `FonteRecurso` só guarda código, descrição
+/// e os de-paras TCE/STN. Adivinhar a natureza pela descrição ("não vinculados" -> ordinários)
+/// é casar com a papelada, não com a norma: classificaria FUNDEB como ordinário no dia em que
+/// alguém redigisse a descrição de outro jeito, e o erro sairia no RGF Anexo 5.
+///
+/// ⚠️ FAIL-CLOSED, E O SEED NÃO A SEMEIA. Fonte sem natureza declarada faz a arrecadação
+/// RECUSAR nomeando a fonte e o caminho da tela. Instalação nova que ainda não classificou
+/// suas fontes não arrecada — e é o comportamento certo: o contrário seria escolher uma
+/// conta por conveniência para o percurso passar.
+///
+/// ⚠️ APPEND-ONLY E VERSIONADA, pela mesma razão do `PoliticaDaDotacaoAdicional` e pela mesma
+/// que faz a arrecadação CARIMBAR a entidade titular: o lançamento de ontem foi escriturado
+/// sob a classificação de ontem, e reclassificar a fonte hoje NÃO reescreve a conta de
+/// classe 7 que ele já gravou. A vigente é a de maior versão.
+model DeParaFonteNaturezaDdr {
+  id String @id @default(cuid())
+
+  /// O `codigo` de 3 dígitos da fonte (o mesmo do `FonteRecurso.codigo`). Sem relação
+  /// declarada, como nos de-paras irmãos (`DeParaFonteClasseEducacao`, `…Asps`, `…Alienacao`):
+  /// eles classificam a fonte, não a possuem.
+  fonteCodigo String @db.VarChar(3)
+
+  natureza NaturezaDaFonteDdr
+
+  /// Por que ESTA natureza. Obrigatório — é o que a prestação de contas lê, e é o que
+  /// separa uma classificação fundamentada de um palpite.
+  fundamento String
+
+  versao    Int
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([fonteCodigo, versao])
+  @@index([fonteCodigo, versao])
+  @@index([natureza])
+}
