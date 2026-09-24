@@ -157,7 +157,20 @@ async function escolherReferencia(page: Page, form: string, campo: CampoDoPercur
   throw new Error(`a escolha em "${campo.sel}" não chegou ao campo escondido`);
 }
 
-export async function preencherEEnviar(page: Page, acao: string, campos: readonly CampoDoPercurso[]): Promise<Resposta> {
+/**
+ * ⚠️ `nomeDoResultado` (V11 V9.2) — ACRÉSCIMO OPCIONAL, nenhum chamador existente muda.
+ *
+ * O contrato declarado do V6.2 é `data-resultado-da-acao="<nome>"`, e até aqui este helper só
+ * descobria esse `<nome>` extraindo-o do `data-acao="..."` do SELETOR. Isso cobre o formulário
+ * que traz os dois atributos com o mesmo nome — e deixa de fora o que tem só o marcador de
+ * resultado (`FormTitular`, `FormAtribuir`, os de `FormsDaEntidade`): o formulário some no
+ * sucesso, o `<p>` de resultado fica FORA dele, e o helper lê "silêncio" por vinte segundos
+ * antes de devolver um resultado que existe na tela.
+ *
+ * Quem chamar esses formulários passa o nome do marcador aqui. Sem o parâmetro, o
+ * comportamento é exatamente o de antes.
+ */
+export async function preencherEEnviar(page: Page, acao: string, campos: readonly CampoDoPercurso[], nomeDoResultado?: string): Promise<Resposta> {
   const form = acao.startsWith("form[") ? acao : `form[data-acao="${acao}"]`;
   // ⚠️ TRAZER A ABA PARA A FRENTE, E ISSO NÃO É COSMÉTICO — É A CAUSA MEDIDA DE UM PERCURSO
   // QUE MORRIA SEM DIZER ONDE (V11 V6.4). Num percurso de DUAS ABAS (a tela velha de quem
@@ -280,10 +293,10 @@ export async function preencherEEnviar(page: Page, acao: string, campos: readonl
   if (temChave) await page.waitForSelector(`${form} input[name="__chave"][data-chave-de-comando="pronta"]`, { timeout: 30000 });
   // V6.2 — o resultado de um ato que sai da barra fica em `[data-resultado-da-acao]`, com um número de
   // sequência. Guardar o número ANTES do clique impede ler o resultado do envio anterior como deste.
-  const seqAntes = await page.evaluate((sel) => {
-    const nome = /data-acao="([^"]+)"/.exec(sel)?.[1] ?? "";
+  const seqAntes = await page.evaluate((sel, dado) => {
+    const nome = dado !== "" ? dado : (/data-acao="([^"]+)"/.exec(sel)?.[1] ?? "");
     return document.querySelector(`[data-resultado-da-acao="${nome}"]`)?.getAttribute("data-resultado-seq") ?? "";
-  }, form);
+  }, form, nomeDoResultado ?? "");
   const enviou = await page.evaluate((sel) => {
     const f = document.querySelector(sel);
     const botao = f?.querySelector('button[type="submit"]');
@@ -295,10 +308,15 @@ export async function preencherEEnviar(page: Page, acao: string, campos: readonl
   let resposta: Resposta = { tipo: "silencio", texto: "" };
   for (let i = 0; i < 40 && resposta.tipo === "silencio"; i += 1) {
     await espera(500);
-    resposta = await page.evaluate((sel, antes) => {
+    // ⚠️ NADA DE FUNÇÃO NOMEADA AQUI DENTRO. O `tsx` compila com esbuild e `keepNames`, que
+    // embrulha toda função nomeada num `__name(...)` — helper que existe no processo do Node e
+    // NÃO no contexto da página. Um `const doMarcador = ...` dentro deste callback derrubou o
+    // percurso da J9 com "__name is not defined", um erro que não fala de nada do domínio.
+    // Medido em 24/09/2026. O nome do marcador entra por argumento e se resolve inline.
+    resposta = await page.evaluate((sel, antes, dado) => {
       const f = document.querySelector(sel);
       if (f === null) {
-        const nome = /data-acao="([^"]+)"/.exec(sel)?.[1] ?? "";
+        const nome = dado !== "" ? dado : (/data-acao="([^"]+)"/.exec(sel)?.[1] ?? "");
         const r = document.querySelector(`[data-resultado-da-acao="${nome}"]`);
         if (r !== null && r.getAttribute("data-resultado-seq") !== antes) return { tipo: r.getAttribute("role") === "alert" ? ("erro" as const) : ("ok" as const), texto: (r.textContent ?? "").trim() };
         return { tipo: "silencio" as const, texto: "" };
@@ -324,7 +342,7 @@ export async function preencherEEnviar(page: Page, acao: string, campos: readonl
       // sentido. O contrato declarado do V6.2 é `data-resultado-da-acao`; a classe é a heurística
       // mais velha. Passa a valer o contrato, com a MESMA guarda de sequência que impede ler o
       // resultado do envio anterior como se fosse deste.
-      const nome = /data-acao="([^"]+)"/.exec(sel)?.[1] ?? "";
+      const nome = dado !== "" ? dado : (/data-acao="([^"]+)"/.exec(sel)?.[1] ?? "");
       const marcado = document.querySelector(`[data-resultado-da-acao="${nome}"]`);
       if (marcado !== null && marcado.getAttribute("data-resultado-seq") !== antes) {
         return {
@@ -333,7 +351,7 @@ export async function preencherEEnviar(page: Page, acao: string, campos: readonl
         };
       }
       return { tipo: "silencio" as const, texto: "" };
-    }, form, seqAntes);
+    }, form, seqAntes, nomeDoResultado ?? "");
   }
   return resposta;
 }
