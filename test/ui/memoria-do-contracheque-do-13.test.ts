@@ -235,9 +235,21 @@ describe("a memória do 13º é legível pela mesma leitura da folha mensal", ()
  * doa" — é o mesmo diagnóstico do cabeçalho deste arquivo. O lugar é aqui.
  */
 describe("a memória da mensal COMPLEMENTAR é legível pela mesma leitura", () => {
+  /**
+   * ⚠️ SEM `vida` AQUI, E A AUSÊNCIA É O CONTRATO — não uma omissão.
+   *
+   * `EntradaDoContracheque` recebe `dias: DiasComputados`, isto é, os dias JÁ COMPUTADOS. A
+   * `VidaFuncionalNaCompetencia` (admissão, desligamento, afastamentos) é insumo de quem os
+   * computa — `diasComputados` e `avosDoExercicio`, este último usado logo acima neste arquivo —,
+   * e o motor do contracheque nunca a lê.
+   *
+   * Eu escrevi `vida: vida("2020-01-01")` aqui por arrasto da fixture dos avos, e era propriedade
+   * EXCEDENTE: não alimentava conta nenhuma, nenhuma asserção a tocava, e o cálculo saía idêntico
+   * com ou sem ela. O que este bloco exercita é `medida`, `natureza`, `regimeDeTributacao` e a
+   * contribuição do recálculo integral — nada disso passa por vida funcional.
+   */
   const entradaCorreta = (venc: string): EntradaDoContracheque => ({
     competencia: "2026-05",
-    vida: vida("2020-01-01"),
     vinculo: { id: "v9", matricula: "M-9", regime: "RGPS", dataNascimento: d("1990-05-05") },
     vencimentoBase: toMoney(venc),
     gratificacoes: [],
