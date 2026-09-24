@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | **V11 V9.4** — partiu de `889b3ab`. ⚠️ **Árvore COMPARTILHADA**: o auxiliar tem `modules/m33-folha/`, `lib/portas/recursos/folha.ts`, `prisma/schema/m33-folha.prisma` e duas migrations novas em voo. O commit desta unidade é só de M32/pessoal, por caminho explícito |
+| HEAD | **V11 V9.4** — `5c129e0`, partiu de `889b3ab`. ⚠️ **Árvore COMPARTILHADA**: o auxiliar tem `modules/m33-folha/`, `lib/portas/recursos/folha.ts`, `prisma/schema/m33-folha.prisma` e duas migrations novas em voo. O commit desta unidade é só de M32/pessoal, por caminho explícito |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
 | Frente em execução | **V11** — V9.3 resolveu `CONTROLE-DDR-POR-NATUREZA-DA-FONTE`, executou **os três passos da J9** que a V9.2 deixou pendentes, fechou os **passos 16, 17 e 18 do roteiro do 13º** e encerrou a família `MENSAGEM-SOME-COM-A-LINHA`. `SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS` segue como continuidade funcional, com a apuração **não** ligada |
-| Último resultado | seção 90 — **os dois eixos ausentes de 5.12.50 ganharam modelo, e o levantamento mudou a tarefa**: a FUNÇÃO nasceu (model `Funcao` + eventos `DESIGNACAO_FUNCAO`/`DISPENSA_FUNCAO`), o CENTRO DE CUSTO **já existia** — é o `Setor` do M21, que almoxarifado, compras e patrimônio já usam nesse papel; faltava o vínculo com vigência. Duas migrations aditivas (enum e estrutura separados pela restrição do Postgres), zero `DROP`. ⚠️ **NADA MEDIDO** — a máquina está com o auxiliar. Antes, seção 89 — unidade **documental**, não medida (a máquina está com o auxiliar): as três coisas que a 88 confundiu — (a) filtro de consulta, (b) seleção para processamento, (c) abrangência efetiva — separadas com arquivo e linha, e o fundamento falso da 88 corrigido. Achado que decide o desenho: a **subtração silenciosa** (`fecharFolha` congela UM cálculo; com seleção por cálculo, nº1={A,B} e nº2={C,D} fazem o fechamento levar só {C,D} e A e B somem sem erro). Antes dela, seção 88 — **tipos 0/0/0 nos três projetos** e **dirigidos 117/117** sobre a árvore ATUAL, `rc` lido do arquivo; dez mutações, nove acusando e **uma que NÃO acusou** (MUT-H, guarda inerte, retirada), todas revertidas por edição com checksum. A auditoria achou 3 defeitos meus, os três tratados: âncora de data civil, recusa do teto na tela e o **gate dentro da porta** |
+| Último resultado | seção 91 — **o `4106e0f` não validava e travou a árvore**: `model Funcao` colidiu com a função ORÇAMENTÁRIA da Portaria 42/1999 (M02), e a tabela física `Funcao` já existia desde `20260711202100` — a migration era **inaplicável**, não só mal nomeada, e teria quebrado instalação limpa DEPOIS de o validate passar. Corrigida com a medição na mão (zero em `_prisma_migrations` nos 21 bancos), renomeada para `FuncaoDePessoal` em `5c129e0`. **Medido**: `validate` `exit=0`, `generate` `exit=0`, `tsc` de backend `exit=0` com zero `error TS` (eram 9) — ⚠️ **árvore NÃO congelada** (onze arquivos do auxiliar dentro), logo cobre os consertos dele mas **não é aceite**. Antes, seção 90 — **os dois eixos ausentes de 5.12.50 ganharam modelo, e o levantamento mudou a tarefa**: a FUNÇÃO nasceu (model `Funcao` + eventos `DESIGNACAO_FUNCAO`/`DISPENSA_FUNCAO`), o CENTRO DE CUSTO **já existia** — é o `Setor` do M21, que almoxarifado, compras e patrimônio já usam nesse papel; faltava o vínculo com vigência. Duas migrations aditivas (enum e estrutura separados pela restrição do Postgres), zero `DROP`. ⚠️ **NADA MEDIDO** — a máquina está com o auxiliar. Antes, seção 89 — unidade **documental**, não medida (a máquina está com o auxiliar): as três coisas que a 88 confundiu — (a) filtro de consulta, (b) seleção para processamento, (c) abrangência efetiva — separadas com arquivo e linha, e o fundamento falso da 88 corrigido. Achado que decide o desenho: a **subtração silenciosa** (`fecharFolha` congela UM cálculo; com seleção por cálculo, nº1={A,B} e nº2={C,D} fazem o fechamento levar só {C,D} e A e B somem sem erro). Antes dela, seção 88 — **tipos 0/0/0 nos três projetos** e **dirigidos 117/117** sobre a árvore ATUAL, `rc` lido do arquivo; dez mutações, nove acusando e **uma que NÃO acusou** (MUT-H, guarda inerte, retirada), todas revertidas por edição com checksum. A auditoria achou 3 defeitos meus, os três tratados: âncora de data civil, recusa do teto na tela e o **gate dentro da porta** |
 | Pendências relevantes | **`18.3–18.5` do 13º NÃO EXECUTADO** (folha fechada não recalcula — falta `RETIFICACAO-DA-FOLHA`); **defeito LATENTE** `numeroDoEmpenhoDaFolha` sem o tipo da folha (87.20, conserto do auxiliar); onde fica o portão do critério (apropriar ou fechar); `DDR-DISPONIVEL-SALDO-A-REPONTAR`; `PERCURSOS-SEM-TERMO-PATRIMONIAL-CONGELADO`. **Bloqueio NORMATIVO**: `DISPOSITIVO-MUNICIPAL-DO-13-NAO-LIDO` (três fontes em 403) — não trava o sistema, mas é o que falta para saber QUAL critério declarar. **Bloqueadas por terceiro** (83.3): eSocial, ASTEC, certificado A1, AWS, ENT12. **V9.4 acrescenta:** ~~`PESSOAL-SEM-CENTRO-DE-CUSTO`~~ e ~~`PESSOAL-SEM-FUNCAO`~~ **resolvidas na seção 90**, e no lugar delas quatro pendências novas e nomeadas (`CENTRO-DE-CUSTO-SEM-VIGENCIA-HISTORICA`, `VINCULOS-ANTERIORES-SEM-CENTRO-DE-CUSTO`, `FUNCAO-SEM-ACAO-PROPRIA`, `FUNCAO-SEM-EIXO-DE-AUSENCIA`); **a Tarefa 3 inteira está ESCRITA E NÃO MEDIDA** — migrations não aplicadas, `tsc` não rodado, testes não executados; **`SELECAO-NO-CALCULO-DA-FOLHA` — capacidade DEVIDA da 5.12.50, não construída** (a seção 88 a recusou com fundamento falso; ver seção 89), e ela nasce junto com o FATO de abrangência, a guarda de completude e a reconciliação de `VINCULO-APURADO-FORA-DO-RECALCULO`; **metade da distinção (a)/(b)/(c) por escrever em `modules/m33-folha/MODULO.md`** (território do auxiliar); **percurso de navegador de `/pessoal/servidores` NÃO EXECUTADO**. **Bloqueio de FONTE**: `ITEM-1667-DE-IBEMA-NAO-LOCALIZADO` — citado na ordem, ausente do repositório; texto pedido ao usuário |
-| Próximo passo | **Medir a Tarefa 3 quando a máquina liberar**, nesta ordem: `prisma validate`, aplicar as duas migrations em banco isolado, `prisma generate` (DEPOIS do migrate — senão o cliente não conhece `Funcao`), `tsc` dos projetos afetados sozinho, e os dirigidos do M32. Depois os testes que faltam, nomeados na seção 90 (porta, integração, negativa pareada, mutação da guarda da dispensa órfã). **Enfileirada atrás do auxiliar**: a **seleção no cálculo** — (b) seleção + (c) fato de abrangência + guarda de completude + guarda de "no máximo uma vez", em **UM** commit, porque qualquer corte entre eles deixa uma folha que pode ser parcial sem acusar. Segue devendo o **percurso de navegador de `/pessoal/servidores`**. **Nada instalado nem publicado**; 5.12.50 segue `PARCIAL` e não marcada |
+| Próximo passo | **A máquina está com o auxiliar** (worktree nova, build, banco clonado, corrida verde) — nada pesado até ele sair. Depois, **a medição completa da Tarefa 3**: as duas migrations em banco isolado conferidas **pelo efeito**, com alvo novo — provar que `FuncaoDePessoal` cria tabela própria e **não toca** a `Funcao` do M02 —, `generate` DEPOIS do migrate, `tsc` dos dois projetos restantes sozinho, e os dirigidos do M32. Depois os testes que faltam, nomeados na seção 90 (porta, integração, negativa pareada, mutação da guarda da dispensa órfã). **Enfileirada atrás do auxiliar**: a **seleção no cálculo** — (b) seleção + (c) fato de abrangência + guarda de completude + guarda de "no máximo uma vez", em **UM** commit, porque qualquer corte entre eles deixa uma folha que pode ser parcial sem acusar. Segue devendo o **percurso de navegador de `/pessoal/servidores`**. **Nada instalado nem publicado**; 5.12.50 segue `PARCIAL` e não marcada |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -11288,3 +11288,171 @@ devido.
    plano), e os dirigidos do M32. A ordem importa: `generate` **depois** do `migrate`, senão o
    cliente não conhece `funcao` nem as colunas novas.
 2. **Tarefa 2**, quando o auxiliar sair da folha.
+
+## 91. V11 V9.4 — o destravamento, e a lição mais cara desta unidade
+
+**Regime de rigor: PROFUNDIDADE** (schema, migration e cliente gerado) — e ela foi rebaixada por
+descuido, não por decisão. É isso que esta seção registra.
+
+### ⚠️ UM COMMIT QUE NÃO VALIDA CHEGOU AO HEAD E PAROU A OUTRA FRENTE
+
+O `4106e0f` introduziu `model Funcao` no M32. **`Funcao` já existia** em
+`prisma/schema/m02-planejamento.prisma:118` — a função ORÇAMENTÁRIA da Portaria STN 42/1999,
+`codigo @db.VarChar(2)`, ligada a `FichaOrcamentaria` e `AcaoPpa`, presente desde a cópia de
+trabalho original.
+
+**O schema do Prisma é ÚNICO.** Os arquivos por módulo são conveniência de leitura, não
+namespaces. Daí `P1012`, e a cascata:
+
+```
+validate falha → `generate` não roda → o cliente fica congelado numa versão anterior ao commit →
+`tsc` de backend acusa 9 erros que PARECEM do código novo e são do cliente velho →
+não há build → quem estivesse medindo outra coisa na mesma árvore PARA
+```
+
+O auxiliar ficou parado com onze arquivos de conserto de produto na árvore. Ele conferiu por
+caminho antes de afirmar: os 9 erros eram todos em `modules/m32-pessoal/servico.ts`, nenhum em
+arquivo dele.
+
+### E O DIAGNÓSTICO BRANDO ERA O PERIGO MAIOR: a migration era INAPLICÁVEL
+
+Tratado primeiro como colisão de **nome**, o defeito era pior. A tabela **física** `Funcao` também
+já existia, desde `20260711202100_m02_planejamento`, **sem `@@map`**. A migration nova fazia
+`CREATE TABLE "Funcao"`, mais `Funcao_pkey` e `Funcao_codigo_key`.
+
+⚠️ **Ela teria passado no `validate` depois do rename e quebrado a primeira instalação limpa** — o
+tipo de bomba que só explode no ambiente de quem instala do zero.
+
+**Os dois caminhos óbvios estavam descartados pelo mesmo fato:**
+- `@@map("Funcao")` daria **duas entidades sobre uma tabela**;
+- migration nova de renomeação renomearia a tabela **do M02** — e não haveria o que renomear,
+  porque esta nunca criou nada. Pior: ela falha **antes** da que a consertaria, então toda
+  instalação limpa quebraria para sempre.
+
+**O caminho tomado: corrigir a migration NÃO APLICADA**, com a medição na mão **antes** da decisão —
+`SELECT count(*) FROM _prisma_migrations WHERE migration_name LIKE '%20261016090%'` em **21 bancos,
+todos zero**, `gestao_publica_isolado_v11v94` incluído. A regra proíbe reescrever migration **já
+aplicada**, porque isso adultera histórico que outros bancos carregam; uma que nunca aplicou e que
+falha por construção não é histórico, é arquivo quebrado.
+
+**O nome: `FuncaoDePessoal`.** Quem renomeia é o recém-chegado, e não por ordem de chegada: no
+orçamento "Função" é o termo **normativo** da Portaria 42/1999, e trocá-lo poria o nome da casa no
+lugar do nome da norma, além de mexer em caminho comum (`FichaOrcamentaria`, `AcaoPpa`). E **não** é
+`FuncaoGratificada`: isso estreitaria a entidade para a espécie paga, e ela modela a **atribuição**
+— o dinheiro entra pelo evento `GRATIFICACAO`.
+
+### A regra que sai daqui, e as duas qualificações
+
+Registrada em `prisma/schema/_base.prisma`, junto da "REGRA DE OURO", porque é onde quem mexe em
+schema lê:
+
+1. **`prisma validate` antes de todo commit de schema.** São segundos, não disputam a máquina com
+   ninguém, e é o único passo que separa "não medido" de "**não compila para ninguém**". O problema
+   não foi declarar honestamente que nada estava medido — foi um schema que não valida chegar ao
+   HEAD.
+2. **O nome é global, e o FÍSICO se confere à parte:** `grep -rn 'model <Nome> {' prisma/schema/` e
+   `grep -rn 'CREATE TABLE "<Nome>"' prisma/migrations/`. O schema sozinho **não acusa migration
+   inaplicável** — este é o passo que faltava no processo.
+3. **"Migration não se reescreve" vale para migration JÁ APLICADA**, e a qualificação só é segura
+   com a conferência banco a banco escrita junto. A frase que fecha a porta ao abuso está lá:
+   *"acho que não apliquei" não basta — um único banco com a linha gravada transforma a correção em
+   adulteração de histórico.*
+
+⚠️ **O `CLAUDE.md` seria o lar natural da regra 1 e NÃO foi editado.** Não é divergência de
+conteúdo. O texto fica pronto no `_base.prisma`; a decisão de movê-lo é do usuário.
+
+### O QUE FOI MEDIDO — e só isto
+
+Um processo por vez, `exit=` lido do arquivo de saída bruta, nunca o código do wrapper:
+
+| passo | resultado |
+|---|---|
+| `npx prisma validate` | **`exit=0`** — "The schemas at prisma/schema are valid" |
+| `npx prisma generate` | **`exit=0`** — cliente 7.8.0 regenerado |
+| `tsc --noEmit -p tsconfig.backend.json`, heap 5324, sozinho, em segundo plano | **`exit=0`, ZERO `error TS`** (eram 9) |
+
+⚠️ **E O VERDE TEM UMA RESSALVA QUE PRECISA SER DITA EM VOZ ALTA: a árvore NÃO estava congelada.**
+O `tsc` rodou com os **onze arquivos do auxiliar modificados e não commitados**. Isso corta para os
+dois lados: o `exit=0` **cobre** os consertos dele — informação útil —, mas **não é medição de
+aceite** de coisa nenhuma, nem minha nem dele. Ele segue devendo a corrida própria. Contar este
+verde como aceite seria exatamente o "não atestar pela papelada" que este repositório já pagou.
+
+### O QUE NÃO FOI MEDIDO — que é a maior parte, e nada disto conta como feito
+
+- **As duas migrations em banco isolado, conferidas PELO EFEITO** — e com um alvo **novo** que o
+  incidente criou: provar que `FuncaoDePessoal` cria tabela **própria** e **não toca** a `Funcao`
+  do M02. Conferir pelo `exit=0` do `migrate` não alcança isso; a prova é a tabela do M02 intacta
+  (linhas, colunas e constraints) depois de aplicar.
+- `tsc` dos **outros dois projetos** (só o de backend rodou).
+- **Dirigidos do M32** — inclusive `m32-funcao-e-centro-de-custo.test.ts`, que foi escrito e nunca
+  executado.
+- **Teste da PORTA** para os dois eixos (paginação, autorização, teto), no molde de
+  `test/pessoal-eixos-de-consulta.test.ts` — e ele nasce com uma exigência: **fixture que ENCONTRE
+  alguém**, não só que não encontre. Um filtro que nunca acha nada é indistinguível de um filtro
+  correto sobre dado ausente, e o dado É ausente hoje.
+- **Integração** de `cadastrarFuncao` e dos três eventos novos, com banco.
+- **Negativa de autorização pareada**, com ator **fora** do censo de `test/usuarios-teste.ts`.
+- **A prova por mutação da guarda `DISPENSA-SEM-FUNCAO-VIGENTE`, nas duas direções** — e
+  **confirmando que a mutação chegou ao alvo antes de ler o resultado**: uma mutação que não se
+  aplica produz verde indistinguível de instrumento que não acusa.
+
+### Pendências desta unidade — separadas do que depende de terceiro
+
+**Escopo não executado (trabalho meu, nomeado):**
+- `CENTRO-DE-CUSTO-SEM-VIGENCIA-HISTORICA` — a mais séria das quatro. O `Setor` do M21 desativa por
+  `ativo Boolean`, não por data; não há como perguntar "estava ativo em 2019". Atravessa protocolo,
+  almoxarifado, compras e patrimônio, e **não** se conserta nesta unidade.
+- `VINCULOS-ANTERIORES-SEM-CENTRO-DE-CUSTO` — a coluna nasceu nula em todo vínculo anterior, e
+  preenchê-la seria apropriar despesa passada num centro de custo que ninguém escolheu. O eixo não
+  acha ninguém enquanto o ente não registrar os eventos, **e isso é o certo**. Carga de dado, não
+  código.
+- `FUNCAO-SEM-ACAO-PROPRIA` — **só como registro da ampliação**, não como dívida de desenho: o
+  reuso de `CADASTRAR_CARGO` é a MESMA AUTORIDADE (nenhum dos dois cadastros tem valor; o dinheiro
+  entra por `ALTERAR_REMUNERACAO` nos dois). O que fica registrado é que quem já tem
+  `CADASTRAR_CARGO` passa a poder cadastrar função, e a **condição de reversão**: se `Funcao...`
+  ganhar campo de valor, a ação se separa no mesmo ato.
+- `FUNCAO-SEM-EIXO-DE-AUSENCIA` — não há como perguntar "quem NÃO exerce função nenhuma". O TR não
+  pede, e inventar o valor sem pedido seria inventar requisito.
+- **Percurso de navegador de `/pessoal/servidores`** — continua devido desde a seção 88, agora com
+  dois eixos e duas colunas a mais.
+
+**Bloqueio externo (depende de terceiro):**
+- `ITEM-1667-DE-IBEMA-NAO-LOCALIZADO` — citado na ordem como segunda fonte, **ausente do
+  repositório**: nenhum arquivo menciona Ibema, o catálogo tem fonte única
+  (`Termo_de_referencia.pdf`) e o 1.667º item dele é `5.40.11`, sobre agrupadores num aplicativo.
+  Texto pedido ao usuário. Até chegar, trabalha-se sobre a **5.12.50 literal** e **não se afirma
+  cobertura da outra origem**.
+- Os de sempre (83.3): eSocial, ASTEC, certificado A1, AWS, ENT12.
+
+### A meia garantia para o M33 — declarada, porque meia declarada vale mais que inteira suposta
+
+A apropriação da despesa de pessoal de maio **afirma o centro de custo pelo lado do VÍNCULO**, que
+ganhou vigência nesta unidade: `centroDeCustoVigenteEm(eventos, fimDaCompetencia)` responde para
+onde o vínculo apontava em maio, e isso **não muda** quando alguém desativa o setor depois. E é
+**silenciosa quanto ao SETOR**: não há como afirmar que aquele centro de custo estava ativo em maio,
+porque o cadastro do M21 não guarda essa data. Quem construir a apropriação por centro de custo no
+M33 precisa saber que essa metade falta — em vez de descobrir quando um ente desativar um setor e o
+relatório de maio mudar de forma.
+
+### Os commits desta rodada
+
+| commit | o que é | medido? |
+|---|---|---|
+| `74541b5` | **Tarefa 1** — (a) consulta, (b) seleção, (c) abrangência separadas; o fundamento falso da seção 88 corrigido | não (comentário e markdown) |
+| `4106e0f` | **Tarefa 3** — `FuncaoDePessoal` e o centro de custo que já existia; schema, duas migrations, domínio, serviço, censo, porta, descritor, teste puro | **não — e foi o que travou a árvore** |
+| `79b77d4` | a autoridade da ação pelo argumento certo (o teste do dinheiro), a meia garantia do M33, os três `select` | não (comentário e markdown) |
+| `5c129e0` | **o destravamento** — rename, migration corrigida, a regra em `_base.prisma` | **sim**: validate, generate, tsc de backend |
+
+### Próximo ponto exato
+
+1. **A máquina está com o auxiliar** (servidor derrubado, worktree nova, `generate`, build, banco
+   clonado, corrida verde). **Nada pesado até liberar.**
+2. **Quando liberar: a medição completa da Tarefa 3**, na ordem — `validate`, as duas migrations em
+   banco isolado conferidas **pelo efeito** (com a `Funcao` do M02 intacta como alvo de prova),
+   `generate` **depois** do migrate, `tsc` dos projetos restantes sozinho, dirigidos do M32, e
+   depois os testes que faltam, com a mutação por último.
+3. **Tarefa 2 — enfileirada e NÃO ESCRITA.** Depois que o auxiliar sair da máquina **e da árvore**.
+   Em **UM** commit: seleção no `CalculoDaFolha` + fato de abrangência + guarda de completude +
+   guarda de "no máximo uma vez", com a reconciliação de `VINCULO-APURADO-FORA-DO-RECALCULO` por
+   interseção com a seleção. **Teste obrigatório:** nº1={A,B}, nº2={C,D}, fechar → **recusa nomeando
+   A e B**; depois o par positivo. N=2 nas duas seleções.
