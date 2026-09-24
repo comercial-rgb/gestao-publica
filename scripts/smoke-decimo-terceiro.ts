@@ -84,6 +84,20 @@ const SUF = String(EXERCICIO).slice(-2);
 const SAIDA_PULADO = 4;
 
 const R = registroDePassos();
+/**
+ * ⚠️ CONTADOR PRÓPRIO DO QUE NÃO RODOU (V11 V9.3). `registroDePassos` só conta ok e falha, e este
+ * percurso passou a ter um trecho cuja execução depende do que a TELA oferece. Somar um passo não
+ * executado aos verdes mentiria; somá-lo às falhas culparia o produto por um estado que ele talvez
+ * recuse de propósito. "Passo pulado é passo que não aconteceu" — então ele tem linha própria.
+ */
+const naoExecutados: string[] = [];
+function naoExecutado(passo: string, motivo: string): void {
+  naoExecutados.push(`${passo} — ${motivo}`);
+  console.error(`[NAO EXECUTADO] ${passo} — ${motivo}`);
+}
+function nota(texto: string): void {
+  console.log(`      [${texto}]`);
+}
 
 /**
  * ⚠️ AS MATRÍCULAS SÃO O PAR N=2 DO TESTE, e o par é desigual de propósito.
@@ -566,6 +580,79 @@ async function main(): Promise<void> {
       listaParam.slice(0, 500)
     );
 
+    // ══ 16. O CRITÉRIO DO ABATIMENTO NA TELA, E A RECUSA ESTRUTURAL DE "PAGO" ══
+    //
+    // ⚠️ POR QUE ESTE PASSO EXISTE (V11 V9.3). O critério do abatimento nasceu coberto pela suíte
+    // (`m33-criterio-do-abatimento.test.ts`) e SEM percurso — e é exatamente nessa faixa que a
+    // V11 V9.2 achou quatro defeitos de interface que 262 testes não pegaram. O que só a tela
+    // alcança: que o `select` EXISTA com as quatro opções, que a ausência seja uma opção NOMEADA
+    // (e não um branco mudo), e que a recusa de "PAGO" chegue LEGÍVEL a quem escolheu.
+    const formParam = await page.evaluate(() => {
+      const sel = document.querySelector('form[data-acao="criar-parametro-do-13"] select[name="estadoMinimoDoAdiantamentoParaAbater"]');
+      if (!(sel instanceof HTMLSelectElement)) return null;
+      const rotulo = (sel.closest("label")?.textContent ?? "").replace(/\s+/g, " ").trim();
+      return {
+        opcoes: Array.from(sel.options).map((o) => o.value),
+        textoDoVazio: Array.from(sel.options).find((o) => o.value === "")?.textContent?.trim() ?? "",
+        exigido: sel.required,
+        padrao: sel.value,
+        rotulo,
+      };
+    });
+    if (formParam === null) {
+      R.falhou("16.1 o formulário do parâmetro oferece o estado mínimo do adiantamento", 'select[name="estadoMinimoDoAdiantamentoParaAbater"] não existe na tela');
+    } else {
+      R.conferir(
+        "16.1 o select do estado mínimo existe, com as três opções declaráveis mais a ausência",
+        JSON.stringify(formParam.opcoes) === JSON.stringify(["", "FECHADO", "CERTIFICADO", "PAGO"]),
+        JSON.stringify(formParam.opcoes)
+      );
+      // ⚠️ A AUSÊNCIA TEM DE SER ESCOLHA NOMEADA, e não um branco. Um `select` obrigatório aqui
+      // obrigaria o município a declarar uma norma que ele talvez não tenha levantado; um branco
+      // mudo faria parecer esquecimento. A opção vazia DIZ o que a ausência produz.
+      R.conferir(
+        "16.2 a ausência é opção NOMEADA e é o padrão — a tela diz que o 13º sai como simulação",
+        !formParam.exigido && formParam.padrao === "" && /simula/i.test(formParam.textoDoVazio),
+        `exigido=${String(formParam.exigido)} padrao="${formParam.padrao}" vazio="${formParam.textoDoVazio}"`
+      );
+      // ⚠️ A NOTA É O QUE IMPEDE A ESCOLHA CEGA: "pago" só é verificável onde o empenho é POR
+      // SERVIDOR. Sem a nota, quem escolhe descobre pela recusa.
+      R.conferir(
+        "16.3 a tela DIZ, antes da escolha, que exigir “pago” depende de empenho POR SERVIDOR",
+        /POR SERVIDOR/i.test(formParam.rotulo) && /pago/i.test(formParam.rotulo),
+        formParam.rotulo.slice(0, 400)
+      );
+    }
+
+    /**
+     * ⚠️ A NEGATIVA AFIRMA O MOTIVO, E O MOTIVO É ESTRUTURAL — não é validação de formulário.
+     * "PAGO" pergunta se ESTE servidor recebeu a 1ª parcela; com o grupo empenhando o total
+     * (`porServidor = false`) esse fato NÃO EXISTE no banco. A recusa tem de dizer isso, e não
+     * "valor inválido": quem lê precisa saber que falta um GRUPO, não um preenchimento.
+     */
+    const rPago = await preencherEEnviar(page, "criar-parametro-do-13", [
+      ...camposDoParametro("Dispoe sobre a gratificacao natalina dos servidores do Municipio"),
+      { sel: 'select[name="estadoMinimoDoAdiantamentoParaAbater"]', valor: "PAGO", tipo: "select" as const },
+    ]);
+    R.conferir(
+      "16.4 NEGATIVA ESTRUTURAL: exigir “pago” sem empenho por servidor é RECUSADO, com o código na tela",
+      rPago.tipo === "erro" && /ESTADO-PAGO-NAO-VERIFICAVEL/i.test(rPago.texto),
+      `${rPago.tipo}: ${rPago.texto.slice(0, 300)}`
+    );
+    R.conferir(
+      "16.5 e a recusa diz POR QUE — o fato não existe no banco —, não “valor inválido”",
+      /POR SERVIDOR/i.test(rPago.texto) && /(não existe como fato|grupo de empenho)/i.test(rPago.texto),
+      rPago.texto.slice(0, 400)
+    );
+    // ⚠️ E NADA FOI GRAVADO: a recusa roda ANTES do `create`, senão uma versão inválida ocuparia
+    // o número. Conferido na lista recarregada, que é onde a versão apareceria.
+    const listaAposPago = await irPara(N, page, "/folha/parametros-do-13");
+    R.conferir(
+      "16.6 e NADA foi gravado — a versão 2 não nasceu da tentativa recusada",
+      !/vers(ão|ao)\s*2\b/i.test(listaAposPago),
+      listaAposPago.slice(0, 400)
+    );
+
     // ══ 9. A 1ª PARCELA ══════════════════════════════════════════════════════
     await sair(N, page);
     await entrar(N, page, RH, SENHA);
@@ -751,6 +838,25 @@ async function main(): Promise<void> {
       R.conferir("14.3 a memória nomeia a competência de origem do abatimento", mem13.includes(COMP_ADIANTAMENTO), mem13.slice(0, 900));
     }
 
+    // ══ 17a. O SELO DE SIMULAÇÃO NO DETALHE DA FOLHA, COM ELA AINDA ABERTA ════
+    //
+    // ⚠️ LIDO ANTES DO FECHAMENTO, DE PROPÓSITO. O aviso existe para ser visto ANTES de a folha
+    // virar documento; se só aparecesse depois, quem opera descobriria o problema com o cálculo
+    // já congelado. O parâmetro deste percurso NÃO declara o critério — o passo 8 grava sem ele,
+    // e o 16 provou que a ausência é escolha nomeada —, então esta folha É simulação.
+    await irPara(N, page, href13);
+    const detalheAntes = await page.evaluate(() => (document.body.textContent ?? "").replace(/\s+/g, " "));
+    R.conferir(
+      "17.1 o detalhe da folha traz a linha “Natureza da apuração” dizendo SIMULAÇÃO",
+      /Natureza da apura[çc][ãa]o/i.test(detalheAntes) && /SIMULA[ÇC][ÃA]O/i.test(detalheAntes),
+      detalheAntes.slice(0, 700)
+    );
+    R.conferir(
+      "17.2 e a tela DIZ o que isso impede — a apropriação —, em vez de só rotular",
+      /apropria[çc][ãa]o/i.test(detalheAntes) && /(bloquead|ABATIMENTO-SEM-CRITERIO-DECLARADO)/i.test(detalheAntes),
+      detalheAntes.slice(0, 900)
+    );
+
     /**
      * ⚠️ O PORTAL SÓ MOSTRA O QUE O FECHAMENTO CONGELOU (`calculo.fechamento`, em
      * `lib/portas/portal-do-servidor.ts`) — e está certo: o que ainda pode ser recalculado não é
@@ -763,6 +869,102 @@ async function main(): Promise<void> {
     await irPara(N, page, href13);
     const rFechar13 = await preencherEEnviar(page, "fechar", []);
     R.conferir("14.4 a contabilidade FECHA a folha de 13º — é o fechamento que a torna documento", rFechar13.tipo === "ok", `${rFechar13.tipo}: ${rFechar13.texto.slice(0, 200)}`);
+
+    // ══ 17b. A BARRA RECUSA `apropriar`, COM O MOTIVO ESTRUTURAL ══════════════
+    //
+    // ⚠️ AGORA A FOLHA ESTÁ FECHADA — a pré-condição de apropriar —, então o que sobra na recusa
+    // é o CRITÉRIO, e não "ainda não fechou". A ordem é decisão de `elegibilidadeParaApropriar`:
+    // a lacuna normativa fala ANTES de "já apropriada", porque dizer "já apropriada" a quem
+    // sequer podia apropriar manda a pessoa procurar empenho em vez de procurar o ato.
+    await irPara(N, page, href13);
+    const barraSemCriterio = await apresentacaoDoAto(page, "apropriar");
+    R.conferir(
+      "17.3 fechada e sem critério declarado, a barra NÃO oferece o formulário de apropriar",
+      barraSemCriterio.estado !== "formulario",
+      JSON.stringify(barraSemCriterio).slice(0, 400)
+    );
+    R.conferir(
+      "17.4 e a barra diz o motivo COM o código, na tela — não só no servidor",
+      /ABATIMENTO-SEM-CRITERIO-DECLARADO/i.test(barraSemCriterio.texto),
+      JSON.stringify(barraSemCriterio).slice(0, 600)
+    );
+    R.conferir(
+      "17.5 e aponta o remédio: o ente declara o critério no parâmetro do exercício",
+      /par[âa]metro/i.test(barraSemCriterio.texto) && /(fechado|certificado|pago)/i.test(barraSemCriterio.texto),
+      barraSemCriterio.texto.slice(0, 600)
+    );
+
+    // ══ 18. O PAR QUE IMPORTA, E O DESTRAVE MEDIDO (NÃO SUPOSTO) ══════════════
+    //
+    // ⚠️ O BLOQUEIO NÃO É DO PARÂMETRO: É DO CÁLCULO. O 13º que já rodou abateu a 1ª parcela sob
+    // um parâmetro que não declarava critério, e essa procedência está gravada na memória DELE.
+    // Declarar hoje não reescreve o que foi apurado ontem — se a tela destravasse só com a
+    // declaração, o ente apropriaria uma apuração que continuou sendo simulação, com um ato novo
+    // por cima para parecer regular.
+    await sair(N, page);
+    await entrar(N, page, ADMIN, SENHA_ADMIN);
+    await irPara(N, page, "/folha/parametros-do-13");
+    await preencherEEnviar(page, "criar-parametro-do-13", [
+      ...camposDoParametro("Dispoe sobre a gratificacao natalina dos servidores do Municipio"),
+      { sel: 'select[name="estadoMinimoDoAdiantamentoParaAbater"]', valor: "FECHADO", tipo: "select" as const },
+    ]);
+    const listaComCriterio = await irPara(N, page, "/folha/parametros-do-13");
+    R.conferir(
+      "18.1 o critério é declarado na VERSÃO SEGUINTE — nunca um UPDATE na vigente",
+      /fechado/i.test(listaComCriterio),
+      listaComCriterio.slice(0, 500)
+    );
+
+    await sair(N, page);
+    await entrar(N, page, CONTABILIDADE, SENHA);
+    await irPara(N, page, href13);
+    const barraSoDeclarado = await apresentacaoDoAto(page, "apropriar");
+    R.conferir(
+      "18.2 ⚠️ DECLARAR SEM RECALCULAR NÃO DESTRAVA: a folha segue bloqueada pelo mesmo código",
+      barraSoDeclarado.estado !== "formulario" && /ABATIMENTO-SEM-CRITERIO-DECLARADO/i.test(barraSoDeclarado.texto),
+      JSON.stringify(barraSoDeclarado).slice(0, 600)
+    );
+
+    /**
+     * ⚠️ O RECÁLCULO SE MEDE, NÃO SE SUPÕE. O passo 15.4 já prova que folha FECHADA tira
+     * RECALCULAR da barra (`FOLHA-FECHADA: não se recalcula`) — o que protege a memória lacrada.
+     * Se isso valer aqui, o remédio que a própria recusa oferece ("declare e recalcule") não é
+     * executável nesta folha, e o percurso REGISTRA isso em vez de afirmar um destrave que o
+     * produto não tem.
+     */
+    const barraRecalcular = await apresentacaoDoAto(page, "calcular");
+    nota(`RECALCULAR na folha fechada: estado="${barraRecalcular.estado}" · ${barraRecalcular.texto.slice(0, 200)}`);
+    if (barraRecalcular.estado === "formulario") {
+      await sair(N, page);
+      await entrar(N, page, RH, SENHA);
+      await irPara(N, page, href13);
+      const rRecalc = await preencherEEnviar(page, "calcular", []);
+      R.conferir("18.3 com o critério declarado, o RH RECALCULA a folha", rRecalc.tipo === "ok", `${rRecalc.tipo}: ${rRecalc.texto.slice(0, 200)}`);
+      const detalheDepois = await irPara(N, page, href13);
+      R.conferir(
+        "18.4 recalculada, o selo de SIMULAÇÃO SOME do detalhe",
+        !/SIMULA[ÇC][ÃA]O/i.test(detalheDepois),
+        detalheDepois.slice(0, 700)
+      );
+      await sair(N, page);
+      await entrar(N, page, CONTABILIDADE, SENHA);
+      await irPara(N, page, href13);
+      const barraDestravada = await apresentacaoDoAto(page, "apropriar");
+      R.conferir(
+        "18.5 e a apropriação passa a ser OFERECIDA — o destrave chega à barra",
+        barraDestravada.estado === "formulario",
+        JSON.stringify(barraDestravada).slice(0, 600)
+      );
+    } else {
+      naoExecutado(
+        "18.3 a 18.5 o destrave pelo recálculo (pela tela)",
+        `a folha de 13º está FECHADA e a barra apresenta RECALCULAR como "${barraRecalcular.estado}". ` +
+          "Declarar o critério depois do fechamento NÃO destrava (18.2 prova), e o produto não oferece " +
+          "ato que refaça o cálculo congelado. O remédio que a recusa de 17.5 promete não é executável " +
+          "NESTA folha: ele exige declarar o critério ANTES de fechar"
+      );
+    }
+
 
     // ══ 15. O CONTRACHEQUE DO 13º ALCANÇA O PORTAL DO SERVIDOR ═══════════════
     /**
@@ -823,6 +1025,10 @@ async function main(): Promise<void> {
     R.falhou("execução", e instanceof Error ? e.message : String(e));
   } finally {
     await navegador?.close();
+  }
+  if (naoExecutados.length > 0) {
+    console.error(`\n${naoExecutados.length} passo(s) NAO EXECUTADO(S) — contados como não executados, nunca como aprovados:`);
+    for (const n of naoExecutados) console.error(` - ${n}`);
   }
   R.encerrar();
 }
