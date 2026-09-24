@@ -168,15 +168,20 @@ export default async function PorEntidadePage({
         é esse número que autoriza despesa.
       </div>
 
+      {/*
+        ⚠️ O PROVEDOR ENVOLVE ATÉ A CONDIÇÃO, e não só a lista (V11 V9.3). A confirmação da
+        atribuição morreu TRÊS vezes, cada uma num invólucro mais externo: dentro do formulário,
+        dentro do `<li>` da guia, e — medido no passo 9.5 contra o artefato `6789a1f` — dentro
+        desta `<section>`, que só existe enquanto HOUVER guia pendente. Atribuída a última, a
+        fila esvazia, a seção inteira deixa de ser renderizada e leva o aviso junto.
+        A regra que fecha a família: o aviso de um ato vive FORA de tudo o que o ato muda.
+      */}
+      <AtribuicoesDaFila>
       {pendentes.length > 0 ? (
         <section className="space-y-2" data-papel="fila-nao-atribuidas">
           <h2 className="text-sm font-semibold">
             Guias sem entidade ({pendentes.length}) — o que fazer em cada uma
           </h2>
-          {/* ⚠️ O PROVEDOR ENVOLVE A FILA (V11 V9.3): a guia atribuída SAI da fila, e a
-              confirmação guardada dentro do item saía com ela. Ver o cabeçalho de
-              `FormAtribuir.tsx` — `MENSAGEM-SOME-COM-A-LINHA`. */}
-          <AtribuicoesDaFila>
           <ul className="space-y-2">
             {pendentes.map((g) => (
               <li
@@ -219,9 +224,9 @@ export default async function PorEntidadePage({
               </li>
             ))}
           </ul>
-          </AtribuicoesDaFila>
         </section>
       ) : null}
+      </AtribuicoesDaFila>
     </div>
   );
 }

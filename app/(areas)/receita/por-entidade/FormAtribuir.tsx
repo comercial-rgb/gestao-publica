@@ -36,6 +36,12 @@ export interface OpcaoDeAto {
  *
  * Mesma cura do guichê (V8), do roteiro orçamentário (V8.4), da natureza das fontes e da
  * anulação de guia (V9.3): o estado do ato mora ACIMA da lista que ele muda.
+ *
+ * ⚠️ E "ACIMA DA LISTA" NÃO BASTOU — foi preciso ficar acima da SEÇÃO. Medido no passo 9.5 contra
+ * o artefato `6789a1f`: com o provedor dentro da `<section>` da fila, atribuir a ÚLTIMA guia
+ * pendente esvazia a fila, a seção deixa de ser renderizada (`pendentes.length > 0 ? … : null`) e
+ * o aviso morre de novo — um invólucro mais externo, o mesmo defeito. Este componente morreu três
+ * vezes antes de a regra ficar clara: **o aviso de um ato vive FORA de tudo o que o ato muda.**
  */
 interface Ctx {
   readonly action: (f: FormData) => void;
