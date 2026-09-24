@@ -290,15 +290,39 @@ A cláusula exige filtrar os funcionários "por no mínimo: matrícula, nome, ca
 trabalho, centro de custo, função e data de admissão". **Seis eixos entraram; dois não existem como
 MODELO e não foram inventados.**
 
-⚠️ **E ELES SÃO CONSULTA, NÃO RECORTE DO CÁLCULO DA FOLHA.** O texto do TR põe o filtro dentro da
-"rotina de cálculo". Entregá-lo ali recortaria **quem é calculado** — e `calcularFolha` (M33)
-promete "todos os vínculos vivos na competência" **por construção**: o `findMany` dos vínculos lá
-não tem `where` nenhum. Um filtro do operador no cálculo produz folha **parcial em silêncio**: nada
-compara o número de contracheques ao de vínculos ativos, o manifesto da certificação lista só quem
-entrou no cálculo, a apropriação empenha só esses — e a folha fecha, o total bate e o empenho bate.
-**O recorte do cálculo é decisão PENDENTE**, com a análise em `modules/m33-folha/MODULO.md`
-("ANTES DE ALGUÉM CONSTRUIR O FILTRO DE FUNCIONÁRIOS"); quem for construí-lo precisa decidir antes
-se recorta quem é calculado — e então deve uma guarda de completude — ou só quem é listado.
+⚠️ **ESTES EIXOS SÃO (a) — E (a), (b) E (c) SÃO TRÊS COISAS.** A distinção inteira, com o motivo,
+está no docblock de `EixosDeConsultaDeVinculo` em `modules/m32-pessoal/dominio.ts`. Em resumo:
+
+| | o que é | onde mora |
+|---|---|---|
+| **(a) filtro de consulta** | "quem eu quero VER" — predicado puro, sem efeito, cobrado como LEITURA | **aqui** |
+| **(b) seleção para processamento** | "quem eu quero CALCULAR" — ato do operador, com autor e efeito sobre dinheiro | M33, ação própria |
+| **(c) abrangência efetiva** | "quem o motor de fato calculou, e por que os outros não" — FATO apurado | M33, gravado |
+
+⚠️ **CORREÇÃO DO QUE ESTA SEÇÃO AFIRMAVA ATÉ AGORA.** Ela dizia que o recorte do cálculo era
+"decisão PENDENTE", e dava como fundamento que o `findMany` dos vínculos do M33 não tem `where`
+nenhum. **O fundamento era falso**, e a decisão não era nossa: a 5.12.50 prende "permitindo filtrar
+os funcionários" à **rotina de cálculo**, e (b) é capacidade devida. A ausência de um `where` prova
+que hoje ninguém CONSEGUE recortar; nunca provou que recortar seja proibido. Não se apresenta
+consulta filtrada como cálculo filtrado.
+
+O que continua verdadeiro é o **perigo**, e ele é de (c), não de (a):
+
+- **folha parcial em silêncio** — nada compara o número de contracheques ao de vínculos devidos, o
+  manifesto da certificação lista só quem entrou no cálculo, a apropriação empenha só esses: a folha
+  fecha, o total bate, o empenho bate, a liquidação bate, e nada adiante acusa;
+- **a subtração silenciosa** — `fecharFolha` congela UM cálculo, o último não cancelado. Com seleção
+  por cálculo, nº1={A,B} e nº2={C,D} fazem o fechamento levar só {C,D}: **A e B não recebem**, sem
+  erro e com totais coerentes. Todo mundo vigia duplicidade; o risco real é o oposto.
+
+Por isso **(c) nasce no MESMO commit que (b)**, e a promessa do M33 muda de forma: deixa de ser
+"todos os vínculos vivos" e passa a ser "exatamente os selecionados e elegíveis, com cada exclusão
+nomeada". Promessa mantida por construção some junto com a construção — esta é afirmada por teste.
+
+⚠️ **E A SEGREGAÇÃO DO 6.4 SEPARA (a) DE (b) NA AUTORIZAÇÃO.** (a) é cobrada com
+`CONSULTAR_PESSOAL`, que é leitura. Quem pode VER a lista de servidores não pode, por isso, escolher
+quem o ente paga: (b) tem ação PRÓPRIA, e a negativa dela se prova com ator fora do censo de
+`test/usuarios-teste.ts`. A construção de (b)/(c) mora em `modules/m33-folha/`.
 
 **Os seis entregues** (`lib/portas/recursos/pessoal.ts`, descritor `SERVIDORES`; a porta em
 `pessoal-dados.ts`; o predicado puro em `dominio.ts`):

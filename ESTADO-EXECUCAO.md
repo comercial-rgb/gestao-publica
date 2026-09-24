@@ -7,9 +7,9 @@
 | HEAD | **V11 V9.4** — partiu de `889b3ab`. ⚠️ **Árvore COMPARTILHADA**: o auxiliar tem `modules/m33-folha/`, `lib/portas/recursos/folha.ts`, `prisma/schema/m33-folha.prisma` e duas migrations novas em voo. O commit desta unidade é só de M32/pessoal, por caminho explícito |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
 | Frente em execução | **V11** — V9.3 resolveu `CONTROLE-DDR-POR-NATUREZA-DA-FONTE`, executou **os três passos da J9** que a V9.2 deixou pendentes, fechou os **passos 16, 17 e 18 do roteiro do 13º** e encerrou a família `MENSAGEM-SOME-COM-A-LINHA`. `SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS` segue como continuidade funcional, com a apuração **não** ligada |
-| Último resultado | seção 88 — **tipos 0/0/0 nos três projetos** e **dirigidos 117/117** sobre a árvore ATUAL, `rc` lido do arquivo; dez mutações, nove acusando e **uma que NÃO acusou** (MUT-H, guarda inerte, retirada), todas revertidas por edição com checksum. A auditoria achou 3 defeitos meus, os três tratados: âncora de data civil, recusa do teto na tela e o **gate dentro da porta** |
-| Pendências relevantes | **`18.3–18.5` do 13º NÃO EXECUTADO** (folha fechada não recalcula — falta `RETIFICACAO-DA-FOLHA`); **defeito LATENTE** `numeroDoEmpenhoDaFolha` sem o tipo da folha (87.20, conserto do auxiliar); onde fica o portão do critério (apropriar ou fechar); `DDR-DISPONIVEL-SALDO-A-REPONTAR`; `PERCURSOS-SEM-TERMO-PATRIMONIAL-CONGELADO`. **Bloqueio NORMATIVO**: `DISPOSITIVO-MUNICIPAL-DO-13-NAO-LIDO` (três fontes em 403) — não trava o sistema, mas é o que falta para saber QUAL critério declarar. **Bloqueadas por terceiro** (83.3): eSocial, ASTEC, certificado A1, AWS, ENT12. **V9.4 acrescenta:** `PESSOAL-SEM-CENTRO-DE-CUSTO` e `PESSOAL-SEM-FUNCAO` (falta de MODELO no M32, os dois eixos recusados de 5.12.50); o **recorte do CÁLCULO** da folha continua decisão pendente com o risco de folha parcial nomeado; **percurso de navegador de `/pessoal/servidores` NÃO EXECUTADO** |
-| Próximo passo | **Percurso de navegador de `/pessoal/servidores`** — é o que falta para os eixos valerem como superfície validada e o único jeito de provar o ramo da recusa do teto. Depois, as duas decisões de modelo (`PESSOAL-SEM-CENTRO-DE-CUSTO`, `PESSOAL-SEM-FUNCAO`) e o recorte do CÁLCULO, que se for feito **nasce junto com a guarda de completude, nunca depois**. **Nada instalado nem publicado**; 5.12.50 segue `PARCIAL` e não marcada |
+| Último resultado | seção 89 — unidade **documental**, não medida (a máquina está com o auxiliar): as três coisas que a 88 confundiu — (a) filtro de consulta, (b) seleção para processamento, (c) abrangência efetiva — separadas com arquivo e linha, e o fundamento falso da 88 corrigido. Achado que decide o desenho: a **subtração silenciosa** (`fecharFolha` congela UM cálculo; com seleção por cálculo, nº1={A,B} e nº2={C,D} fazem o fechamento levar só {C,D} e A e B somem sem erro). Antes dela, seção 88 — **tipos 0/0/0 nos três projetos** e **dirigidos 117/117** sobre a árvore ATUAL, `rc` lido do arquivo; dez mutações, nove acusando e **uma que NÃO acusou** (MUT-H, guarda inerte, retirada), todas revertidas por edição com checksum. A auditoria achou 3 defeitos meus, os três tratados: âncora de data civil, recusa do teto na tela e o **gate dentro da porta** |
+| Pendências relevantes | **`18.3–18.5` do 13º NÃO EXECUTADO** (folha fechada não recalcula — falta `RETIFICACAO-DA-FOLHA`); **defeito LATENTE** `numeroDoEmpenhoDaFolha` sem o tipo da folha (87.20, conserto do auxiliar); onde fica o portão do critério (apropriar ou fechar); `DDR-DISPONIVEL-SALDO-A-REPONTAR`; `PERCURSOS-SEM-TERMO-PATRIMONIAL-CONGELADO`. **Bloqueio NORMATIVO**: `DISPOSITIVO-MUNICIPAL-DO-13-NAO-LIDO` (três fontes em 403) — não trava o sistema, mas é o que falta para saber QUAL critério declarar. **Bloqueadas por terceiro** (83.3): eSocial, ASTEC, certificado A1, AWS, ENT12. **V9.4 acrescenta:** `PESSOAL-SEM-CENTRO-DE-CUSTO` e `PESSOAL-SEM-FUNCAO` (falta de MODELO no M32, os dois eixos recusados de 5.12.50); **`SELECAO-NO-CALCULO-DA-FOLHA` — capacidade DEVIDA da 5.12.50, não construída** (a seção 88 a recusou com fundamento falso; ver seção 89), e ela nasce junto com o FATO de abrangência, a guarda de completude e a reconciliação de `VINCULO-APURADO-FORA-DO-RECALCULO`; **metade da distinção (a)/(b)/(c) por escrever em `modules/m33-folha/MODULO.md`** (território do auxiliar); **percurso de navegador de `/pessoal/servidores` NÃO EXECUTADO**. **Bloqueio de FONTE**: `ITEM-1667-DE-IBEMA-NAO-LOCALIZADO` — citado na ordem, ausente do repositório; texto pedido ao usuário |
+| Próximo passo | **As duas decisões de modelo** (`PESSOAL-SEM-CENTRO-DE-CUSTO`, `PESSOAL-SEM-FUNCAO`) em módulo e migration próprios, sem tocar M33. **Enfileirada atrás do auxiliar**: a **seleção no cálculo** — (b) seleção + (c) fato de abrangência + guarda de completude + guarda de "no máximo uma vez", em **UM** commit, porque qualquer corte entre eles deixa uma folha que pode ser parcial sem acusar. Segue devendo o **percurso de navegador de `/pessoal/servidores`**. **Nada instalado nem publicado**; 5.12.50 segue `PARCIAL` e não marcada |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -10951,3 +10951,164 @@ incondicional no gate derruba o arquivo inteiro, não um teste.
 - **Suíte completa, `test:fuso` e portão** — não rodados, por restrição do pedido.
 - **`MENSAGEM-DE-BANCO-APONTA-CONTAINER-INEXISTENTE`** — nomeada, fora deste escopo: `test/banco.ts`
   é caminho comum.
+
+## 89. V11 V9.4 — (a), (b) e (c): a separação que a seção 88 não fez, e a correção do fundamento
+
+**Regime de rigor: SUPERFÍCIE** (esta unidade é documental — não há código de comportamento nela).
+A construção de (b) e (c) é **profundidade** e está enfileirada.
+
+### ⚠️ A SEÇÃO 88 AFIRMOU UM FUNDAMENTO FALSO, E ELE FOI CORRIGIDO PELO USUÁRIO
+
+A seção 88 entregou os seis eixos da 5.12.50 como **consulta**, e justificou não os levar ao cálculo
+dizendo que `calcularFolha` promete "todos os vínculos vivos na competência" **por construção** — o
+`findMany` dos vínculos (`modules/m33-folha/servico.ts:404`) não tem `where` nenhum.
+
+O texto literal da cláusula é:
+
+> "Possuir rotina de cálculo de folha de pagamento dos tipos: mensal, mensal complementar, rescisão,
+> rendimentos acumulados, férias, adiantamento de 13° salário (1° parcela), 13º salário, diferença
+> de 13º salário e adiantamentos salariais; **permitindo filtrar os funcionários** por no mínimo:
+> matrícula, nome, cargo, regime, local de trabalho, centro de custo, função e data de admissão;"
+
+"Permitindo filtrar os funcionários" prende-se a **rotina de cálculo**, não a consulta. **A ausência
+de um `where` é propriedade da implementação de hoje, não fundamento normativo**: ela prova que
+ninguém CONSEGUE recortar; nunca provou que recortar seja proibido. O relatório da 88 usou uma
+ausência de código como se fosse regra de negócio, e apresentou **consulta filtrada como cálculo
+filtrado**. O risco que ele levantou é real e continua valendo — ele não veta a capacidade, dita
+COMO ela nasce.
+
+Fica registrado em vez de corrigido em silêncio: o título da seção 88 ("e por que não como recorte
+do cálculo") descreve uma decisão que **não era nossa**.
+
+### AS TRÊS COISAS QUE A 88 CONFUNDIU
+
+| | o que é | natureza | existia em `6fa0d62`? |
+|---|---|---|---|
+| **(a) filtro de consulta** | "quem eu quero VER" | pergunta sem efeito; regime de superfície | **sim**, seis eixos |
+| **(b) seleção para processamento** | "quem eu quero CALCULAR" | ato do operador, com autor, instante e efeito sobre dinheiro | **não — zero linhas** |
+| **(c) abrangência efetiva** | "quem o motor de fato calculou, e por que os outros não" | FATO apurado pelo cálculo, nunca parâmetro dele | **pela metade** |
+
+**(a), com arquivo e linha** — `modules/m32-pessoal/dominio.ts:372` (`EixosDeConsultaDeVinculo`),
+`:466` (`vinculoAtendeAosEixos`, puro, um vínculo por vez, `quando` obrigatório), `:437`
+(`haEixoDerivadoDeVinculo`, que existe só para a paginação decidir). Porta em
+`lib/portas/recursos/pessoal-dados.ts:328`, gate de **leitura** (`CONSULTAR_PESSOAL`) em `:333`,
+paginação em `:61`, caminho rápido em `:421`, caminho derivado que apura o conjunto inteiro antes de
+recortar em `:436-459`.
+
+**(b): a ausência é verificável, não é "existe mal".** `zCalcularFolhaInput`
+(`modules/m33-folha/dominio.ts:1026`) é `{ folhaId, motivo?, criadoPor }` e `zAbrirFolhaInput`
+(`:1019`) é `{ competencia, tipo, criadoPor }` — nenhum campo de seleção. Nenhuma tabela, coluna ou
+relação em `prisma/schema/m33-folha.prisma:280` (`FolhaDePagamento`) ou `:333` (`CalculoDaFolha`)
+representa "os escolhidos". Nenhuma ação entre `ABRIR_FOLHA` e `CALCULAR_FOLHA`
+(`modules/m16-travamento/acoes.ts:1477-1478`).
+
+**(c): o que se sabe e o que não se sabe depois de um cálculo.** Sabe-se o conjunto de
+`Contracheque` (`prisma/schema/m33-folha.prisma:399`, com `@@unique([calculoId, vinculoId])` em
+`:440`), a contagem (`servico.ts:550`) e o `sha256`. **Não se sabe quem ficou de fora nem por quê**:
+os dois descartes do motor são `continue` mudos — `modules/m33-folha/servico.ts:418` (admitido depois
+do fim da competência) e `:419` (desligado antes do início). E a única guarda de abrangência,
+`FOLHA-SEM-VINCULOS` (`:446`), **só dispara em zero**: uma folha com 1 contracheque de 900 vínculos
+passa.
+
+### ⚠️ A SUBTRAÇÃO SILENCIOSA — o achado que decide o desenho de (b)
+
+Todos estavam vigiando **duplicidade**. O perigo real é o oposto, e ninguém o procuraria:
+
+> `fecharFolha` (`modules/m33-folha/servico.ts:1245`) congela **UM** cálculo: o último não cancelado.
+> Com seleção por cálculo, nº1={A,B} e nº2={C,D} fazem o fechamento levar só **{C,D}** — **A e B não
+> recebem**, sem erro, sem aviso, com totais coerentes, empenho coerente e liquidação coerente.
+
+Daí o requisito que passa a valer **acima de qualquer modelo escolhido**:
+
+> **`fecharFolha` não pode congelar um estado em que um vínculo selecionado e já calculado fique sem
+> contracheque no cálculo congelado — salvo se isso for declarado e registrado como exclusão, com
+> motivo.**
+
+E daí duas consequências que deixaram de ser recomendação:
+
+1. **(c) nasce no MESMO commit que (b).** O estado intermediário — (b) sem (c) — é uma folha que pode
+   ser parcial sem acusar, que é a forma de defeito que este módulo já pagou três vezes.
+2. **Os dois `continue` mudos deixam de ser mudos.** Exclusão sem motivo registrado é o irmão de
+   "existe como linha ≠ produziu efeito", que já fez uma guarda deste mesmo motor **nascer inerte**
+   (`servico.ts:673-689`).
+
+A promessa do M33 muda de forma: deixa de ser "todos os vínculos vivos" e passa a ser **"exatamente
+os selecionados e elegíveis, com cada exclusão nomeada"**. Promessa mantida **por construção** some
+junto com a construção — esta tem de ser **afirmada por teste**.
+
+### A SEGREGAÇÃO DO 6.4 SEPARA (a) DE (b) NA AUTORIZAÇÃO
+
+(a) é cobrada com `CONSULTAR_PESSOAL`, que é **leitura**. Quem pode VER a lista de servidores não
+pode, por isso, escolher quem o ente paga: reusar esse gate em (b) faria o perfil de consulta
+recortar folha. (b) tem **ação própria**, e a negativa dela se prova com ator **fora** do censo de
+`test/usuarios-teste.ts:196-215` — nenhuma identidade do censo serve, porque todas são ADMIN =
+`TODAS_AS_ACOES`.
+
+### O QUE ESTA UNIDADE ENTREGOU
+
+- `modules/m32-pessoal/dominio.ts` — o docblock de `EixosDeConsultaDeVinculo` passou a declarar as
+  três coisas, a correção do fundamento falso, a subtração silenciosa e a separação de autorização.
+  **Comentário apenas; nenhuma linha de comportamento mudou.**
+- `modules/m32-pessoal/MODULO.md` — a seção "OS EIXOS DE CONSULTA DE SERVIDOR" deixou de dizer que o
+  recorte do cálculo é "decisão PENDENTE" e passou a registrar que é **capacidade devida**, com a
+  tabela (a)/(b)/(c) e o apontamento para o M33.
+
+### Comandos executados
+
+**Nenhum.** A máquina está com o auxiliar, no percurso da folha mensal complementar. Esta unidade é
+documental e não foi medida; o typecheck do M32 fica para a próxima medição da árvore. Nada
+instalado, nada publicado, nenhuma migration.
+
+### Fronteira do commit, e o que NÃO foi tocado
+
+Commit por caminho explícito, só `modules/m32-pessoal/` e este arquivo. **`modules/m33-folha/` não
+foi tocado**: o auxiliar está no percurso da complementar, e o `MODULO.md` do M33 e os motores são
+território dele. A metade da distinção que pertence ao M33
+(`modules/m33-folha/MODULO.md:184-208`, "ANTES DE ALGUÉM CONSTRUIR O FILTRO DE FUNCIONÁRIOS", que
+hoje ainda diz que a decisão é pendente) **fica por escrever**, e está nomeada abaixo.
+
+### ⚠️ O CONFLITO ENTRE FRENTES QUE (b) VAI ABRIR, antecipado antes de construir
+
+`VINCULO-APURADO-FORA-DO-RECALCULO` (`modules/m33-folha/servico.ts:691-700`, guarda do auxiliar, que
+**nasceu inerte uma vez**) compara o apurado em folha fechada contra quem produziu contracheque no
+recálculo. Com seleção na complementar, **todo vínculo não selecionado cai nesse filtro e a guarda
+acusa em massa uma coisa que não aconteceu**.
+
+Ela **não se desativa**. Hoje ela colapsa três fatos diferentes em um:
+
+| fato | hoje | com (b) |
+|---|---|---|
+| **fora da seleção** — o operador não pediu | acusa | **não é anomalia**; é exclusão registrada com motivo em (c) |
+| **selecionado e inelegível na competência** (os `continue` de `:418`/`:419`) | **mudo** | exclusão registrada com motivo — e é mais grave que hoje, porque o operador DECLAROU que queria |
+| **selecionado, apurado em folha fechada, fora do recálculo** | acusa, corretamente | **continua acusando**: correto = 0, apurado > 0, valor a repor ao erário |
+
+A reconciliação proposta é restringir o conjunto de partida da guarda à **interseção com a seleção**,
+sem mexer na severidade do caso real. **⚠️ E essa é exatamente a forma do defeito que a fez nascer
+inerte**: um conjunto de seleção montado sobre "todos os vínculos lidos" torna o filtro
+sempre-verdadeiro e nada muda; montado ao contrário, a guarda some. Logo a prova por mutação tem de
+ser **refeita nas duas direções** depois da mudança — o teste antigo continuar verde não prova nada,
+porque ele continuaria verde com a guarda inerte —, com fixture N=2 no apurado e o par
+"apurado ∈ seleção → RECUSA" / "apurado ∉ seleção → NÃO recusa, mas aparece na abrangência com
+motivo". **Coordenação com o auxiliar pendente.**
+
+### Bloqueio de fonte normativa
+
+A ordem desta rodada cita **"o item 1.667 de Ibema"** como segunda fonte. **Ele não existe neste
+repositório**: nenhum arquivo menciona Ibema, o catálogo tem fonte única
+(`Termo_de_referencia.pdf`), e o 1.667º item dele é `5.40.11`, sobre agrupadores num aplicativo.
+O texto foi pedido ao usuário. Até chegar, trabalha-se sobre a **5.12.50 literal**, e **não** se
+afirma cobertura da outra origem. **Bloqueio externo**, não escopo pendente.
+
+### Catálogo
+
+**Nenhuma marcação.** Unidade documental: não há comportamento novo, logo não há o que marcar.
+5.12.50 segue `PARCIAL` e não marcada — e a razão mudou: antes era "faltam dois eixos de modelo";
+agora é "faltam dois eixos de modelo **e a seleção no cálculo**".
+
+### Próximo ponto exato
+
+1. **Tarefa 3** — `PESSOAL-SEM-CENTRO-DE-CUSTO` e `PESSOAL-SEM-FUNCAO`, em módulo e migration
+   próprios, sem tocar M33. Inventário do que já existe em curso antes de projetar.
+2. **Tarefa 2, enfileirada atrás do auxiliar** — (b) + (c) em **UM** commit: seleção, fato de
+   abrangência, guarda de completude e guarda de "no máximo uma vez". Não se separam: qualquer corte
+   entre eles deixa uma folha que pode ser parcial sem acusar.

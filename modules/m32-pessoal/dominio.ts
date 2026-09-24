@@ -338,19 +338,57 @@ export function lotadosNaLotacao(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// ⚠️ OS EIXOS DE CONSULTA DO VÍNCULO (TR 5.12.50) — CONSULTA, NUNCA RECORTE DO CÁLCULO
+// ⚠️ OS EIXOS DE CONSULTA DO VÍNCULO (TR 5.12.50) — ISTO É (a). NÃO É (b) NEM (c).
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * ═══ ⚠️ LEIA ISTO ANTES DE REUSAR ESTE PREDICADO NO CÁLCULO DA FOLHA ═══
+ * ═══ ⚠️ TRÊS COISAS DIFERENTES, E ESTE ARQUIVO É SÓ A PRIMEIRA ═══
  *
- * Estes eixos existem para ACHAR servidor — na listagem, na conferência, no papel que o RH leva
- * para a reunião. **Eles não recortam quem é calculado.** `calcularFolha` (M33) promete "todos os
- * vínculos vivos na competência", e mantém essa promessa POR CONSTRUÇÃO: o `findMany` dos vínculos
- * não tem `where` nenhum. Aplicar este predicado lá produziria folha PARCIAL em silêncio — nada
- * compara o número de contracheques ao de vínculos ativos, o manifesto da certificação lista só
- * quem entrou no cálculo, e a apropriação empenha só esses: a folha fecha, o total bate e o
- * empenho bate. Ver a seção correspondente em `modules/m33-folha/MODULO.md`.
+ * A 5.12.50 pede a rotina de cálculo "permitindo filtrar os funcionários". Ler isso como se fosse
+ * uma coisa só é o erro que este comentário existe para impedir. São TRÊS:
+ *
+ *   (a) FILTRO DE CONSULTA — "quem eu quero VER". É este arquivo. Um predicado puro sobre UM
+ *       vínculo, sem efeito, cobrado como LEITURA (`CONSULTAR_PESSOAL`, em
+ *       `lib/portas/recursos/pessoal-dados.ts`). O pior defeito que pode ter é mostrar a lista
+ *       errada na tela.
+ *
+ *   (b) SELEÇÃO PARA PROCESSAMENTO — "quem eu quero CALCULAR". É um ATO do operador, com autor,
+ *       instante e efeito sobre dinheiro. Mora no M33, tem ação PRÓPRIA no censo, e é gravada.
+ *       **Não mora aqui e não se faz com este predicado.**
+ *
+ *   (c) ABRANGÊNCIA EFETIVA — "quem o motor de fato calculou, e por que os outros não". É um FATO
+ *       apurado pelo cálculo, não um parâmetro dele. Não se pede: descobre-se e grava-se.
+ *
+ * ═══ ⚠️ POR QUE REUSAR ESTE PREDICADO EM (b) SEM (c) É O DEFEITO ═══
+ *
+ * Até a V11 V9.4 este bloco dizia "eles não recortam quem é calculado", e dava como fundamento que
+ * o `findMany` dos vínculos do M33 não tem `where` nenhum. **Esse fundamento era falso.** A
+ * ausência de um `where` é propriedade da implementação de hoje; ela prova que ninguém CONSEGUE
+ * recortar, nunca provou que recortar seja proibido. A 5.12.50 prende "filtrar os funcionários" à
+ * ROTINA DE CÁLCULO, e (b) é capacidade devida.
+ *
+ * O que continua verdadeiro é o PERIGO, e ele é de (c), não de (a):
+ *
+ *   - **folha parcial em silêncio.** Nada compara o número de contracheques ao de vínculos
+ *     devidos; o manifesto da certificação lista só quem entrou no cálculo; a apropriação empenha
+ *     só esses. A folha fecha, o total bate, o empenho bate, a liquidação bate — e nenhuma etapa
+ *     adiante acusa.
+ *
+ *   - **e a SUBTRAÇÃO SILENCIOSA, que é o oposto do que se procura.** Todo mundo vigia
+ *     duplicidade; o risco real é o contrário. `fecharFolha` congela UM cálculo: o último não
+ *     cancelado. Com seleção por cálculo, nº1={A,B} e nº2={C,D} fazem o fechamento levar só
+ *     {C,D} — **A e B não recebem**, sem erro, sem aviso, com totais coerentes.
+ *
+ * Por isso (c) NASCE NO MESMO COMMIT QUE (b), nunca depois: o estado intermediário é uma folha que
+ * pode ser parcial sem acusar. E a promessa do M33 muda de forma — deixa de ser "todos os vínculos
+ * vivos" e passa a ser **"exatamente os selecionados e elegíveis, com cada exclusão nomeada"**. Uma
+ * promessa mantida POR CONSTRUÇÃO some junto com a construção; esta tem de ser afirmada por teste.
+ *
+ * ⚠️ E A SEGREGAÇÃO DO 6.4 SEPARA (a) DE (b) NA AUTORIZAÇÃO, não só no desenho: quem pode VER a
+ * lista de servidores não pode, POR ISSO, escolher quem o ente paga. Cobrar (b) com
+ * `CONSULTAR_PESSOAL` faria o perfil de consulta recortar folha.
+ *
+ * Ver a seção correspondente em `modules/m33-folha/MODULO.md`.
  *
  * ═══ A REGRA DE COMPOSIÇÃO, QUE É A METADE QUE SE ESQUECE ═══
  *
