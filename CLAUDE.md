@@ -188,7 +188,11 @@ começa a estourar timeout em arquivos DIFERENTES a cada corrida, e cada um dele
 sozinho, a máquina é a causa — não o código. Nesta máquina (8 GB) a suíte completa pede
 `--maxWorkers=3`; com o padrão ela pagina e arquivos aleatórios morrem em 901 s. E um
 processo morto com `kill -9` deixa a sessão do trinco `idle` segurando o lock de máquina:
-derrube-a (`pg_terminate_backend`) antes da próxima corrida.
+derrube-a (`pg_terminate_backend`) antes da próxima corrida — **mas confira antes se o processo
+dono ainda existe**. Sessão `idle` segurando advisory lock não prova trava órfã: prova só que
+ninguém está executando uma consulta *neste instante*, o que é o estado normal de quem está
+rodando teste. A prova de órfã é a **ausência do processo dono**. Derrubar sem conferir mata
+corrida legítima no meio — já quase aconteceu.
 
 **Timeout ou saturação não é aprovação nem defeito.** Registre, investigue, e não marque
   como validado o que não passou.
