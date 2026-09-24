@@ -137,6 +137,35 @@ enum TipoEventoVinculo {
   /// V6 P2.3 — a migração de regime previdenciário (RGPS ↔ RPPS ↔ isento) é fato DATADO: a folha
   /// de cada competência aplica o regime vigente naquela competência, não o de hoje.
   MUDANCA_REGIME_PREVIDENCIARIO
+
+  /// V11 V9.4 (TR 5.12.50) — A DESIGNAÇÃO PARA FUNÇÃO. Traz `funcaoId`; o CHECK impõe.
+  ///
+  /// ⚠️ FUNÇÃO NÃO É CARGO, e por isso é evento PRÓPRIO em vez de `MUDANCA_CARGO`. Cargo é o
+  /// POSTO (a vaga que a lei criou, `Cargo.vagasFixadas`); função é a ATRIBUIÇÃO EXERCIDA. A
+  /// professora efetiva designada diretora de escola continua professora: o cargo dela não muda,
+  /// e um evento de cargo ali faria o plano de cargos do ente registrar uma vaga de diretora que
+  /// a lei não criou. Os dois correm em PARALELO, e é por isso que `funcaoVigenteEm` e
+  /// `cargoVigenteEm` são derivações independentes.
+  DESIGNACAO_FUNCAO
+
+  /// V11 V9.4 — O FIM DA DESIGNAÇÃO. NÃO traz `funcaoId`, e o CHECK impõe isso também.
+  ///
+  /// ⚠️ ELE EXISTE PORQUE FUNÇÃO ACABA, E CARGO NÃO. `cargoVigenteEm` nunca devolve nulo depois
+  /// da admissão — sempre há um cargo. Função é o contrário: a maioria dos servidores nunca
+  /// exerceu nenhuma, e quem exerceu é dispensado um dia. Sem um evento que ENCERRA, a única
+  /// forma de dizer "não exerce mais" seria uma designação para uma função-vazia, que é dado
+  /// falso, ou um UPDATE no evento antigo, que a razão deste sistema não admite.
+  DISPENSA_FUNCAO
+
+  /// V11 V9.4 (TR 5.12.50) — A MUDANÇA DE CENTRO DE CUSTO. Traz `centroDeCustoId`; o CHECK impõe.
+  ///
+  /// ⚠️ CENTRO DE CUSTO NÃO É LOTAÇÃO, e por isso não é `MUDANCA_LOTACAO`. Lotação é ONDE A
+  /// PESSOA TRABALHA (o organograma do RH, `Lotacao`); centro de custo é ONDE A DESPESA É
+  /// APROPRIADA (o `Setor` do M21). Os dois coincidem com frequência e divergem quando importa:
+  /// o servidor cedido continua lotado na secretaria de origem e o custo dele é do destino.
+  /// Fundi-los faria a apropriação da folha seguir o organograma do RH — e é a mesma disciplina
+  /// que este módulo já aplicou ao recusar `Lotacao` = `UnidadeOrcamentaria`.
+  MUDANCA_CENTRO_DE_CUSTO
 }
 
 /// TR req. 6 — o grau de parentesco do dependente.
@@ -285,6 +314,54 @@ model Cargo {
   eventos HistoricoVinculo[]
 
   @@index([tipo])
+  @@index([dataExtincao])
+}
+
+/// A FUNÇÃO — a atribuição EXERCIDA, TR 5.12.50 (V11 V9.4).
+///
+/// ═══ ⚠️ POR QUE ELA PRECISOU NASCER, tendo `TipoCargo.FUNCAO_GRATIFICADA` ali em cima ═══
+///
+/// A cláusula pede filtrar os funcionários por **função**, e até a V11 V9.4 havia dois candidatos
+/// concorrentes neste módulo, nenhum filtrável e nenhum sendo uma função:
+///
+///   1. `TipoCargo.FUNCAO_GRATIFICADA` — é uma **espécie de cargo**, atributo de `Cargo.tipo`.
+///      Responde "que natureza tem este posto", não "que atribuição esta pessoa exerce". Filtrar
+///      por ele devolveria todo mundo que ocupa um cargo daquela natureza, que é outra pergunta.
+///   2. `HistoricoVinculo.gratificacaoDescricao` — texto livre, e o docblock dele diz o que ele é:
+///      **parcela adicional ao salário**. É DINHEIRO, não atribuição. Duas secretarias escrevendo
+///      "Dir. Escola" e "Diretor de Escola" são duas funções para qualquer filtro.
+///
+/// ⚠️ E OS DOIS CONTINUAM EXISTINDO, de propósito. `FUNCAO_GRATIFICADA` segue sendo a natureza do
+/// cargo, e a gratificação segue sendo a parcela que a função costuma pagar. O que muda é que a
+/// ATRIBUIÇÃO passa a ter identidade própria — e as três coisas deixam de ser a mesma.
+///
+/// ⚠️ A VIGÊNCIA É DO VÍNCULO, NÃO DAQUI. Esta tabela é o CADASTRO (a função existe no ente, a lei
+/// a criou, uma lei pode extingui-la); QUEM a exerce e DESDE QUANDO é `HistoricoVinculo`, pelos
+/// eventos `DESIGNACAO_FUNCAO` / `DISPENSA_FUNCAO`. Mesma divisão de `Cargo` e `Lotacao`: o
+/// cadastro diz o que existe, o evento diz o que vale em cada data.
+model Funcao {
+  id String @id @default(cuid())
+
+  /// O código da função no ato do ente. Único, como o do cargo.
+  codigo      String @unique
+  denominacao String
+
+  /// A lei ou o ato que criou a função, e a data em que foi publicado. Exigidos, como no cargo:
+  /// função exercida sem ato que a criou é designação sem fundamento.
+  leiAutorizativa   String
+  dataPublicacaoLei DateTime
+
+  /// O ato que EXTINGUIU a função. Nulo = vigente. Data, não `ativo Boolean`, pelo mesmo motivo
+  /// do `Cargo.dataExtincao`: uma função extinta em 2019 não pode aparecer como opção para uma
+  /// designação de 2018.
+  dataExtincao DateTime?
+  leiExtincao  String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  eventos HistoricoVinculo[]
+
   @@index([dataExtincao])
 }
 
@@ -561,6 +638,30 @@ model HistoricoVinculo {
   gratificacaoDescricao String?
   gratificacaoValor     Decimal? @db.Decimal(18, 2)
 
+  /// V11 V9.4 — a FUNÇÃO designada. Presente em DESIGNACAO_FUNCAO e AUSENTE em DISPENSA_FUNCAO;
+  /// o CHECK impõe as duas metades. `funcaoVigenteEm` deriva daqui.
+  funcaoId String?
+  funcao   Funcao? @relation(fields: [funcaoId], references: [id])
+
+  /// V11 V9.4 — o CENTRO DE CUSTO, que é o `Setor` do M21 (`m21-protocolo.prisma`).
+  ///
+  /// ⚠️ NÃO NASCEU TABELA NOVA, E A DECISÃO É A MESMA QUE O M10 JÁ TOMOU. O `Setor` é, no texto
+  /// do próprio schema, "o centro de custo administrativo": o almoxarifado registra por ele o
+  /// consumo de material (TR 5.18.10, `m10-almoxarifado-fisico.prisma`, cujo comentário diz que
+  /// "criar um departamento paralelo seria a segunda verdade"), as compras controlam por ele as
+  /// solicitações (TR 5.17.54, `m11-compras.prisma`) e o patrimônio localiza por ele os bens.
+  /// Uma tabela de centro de custo só da folha seria a QUARTA estrutura sobre o mesmo
+  /// organograma — depois de `Lotacao`, `Setor` e `UnidadeOrcamentaria` — e a despesa de pessoal
+  /// deixaria de somar com a de material no mesmo eixo, que é justamente para o que serve um
+  /// centro de custo.
+  ///
+  /// ⚠️ E É OPCIONAL, INCLUSIVE NA ADMISSÃO — a ausência é a decisão. Exigi-lo faria o CHECK
+  /// recusar todo vínculo que já existe, e a migration deixaria de ser aditiva. Quem consome
+  /// (a apropriação da despesa de pessoal) RECUSA com motivo quando `centroDeCustoVigenteEm`
+  /// devolve nulo, em vez de escolher um setor por conta própria.
+  centroDeCustoId String?
+  centroDeCusto   Setor? @relation("CentroDeCustoDoVinculo", fields: [centroDeCustoId], references: [id])
+
   /// O que fundamenta o evento — em texto, sempre exigido.
   motivo String
 
@@ -576,6 +677,11 @@ model HistoricoVinculo {
   @@index([cargoId])
   @@index([lotacaoId])
   @@index([tipo])
+  /// V11 V9.4 — os dois eixos novos de 5.12.50. Ambos DERIVADOS: o índice serve ao
+  /// superconjunto (`eventos: { some: { funcaoId: { in: [...] } } }`), e a derivação na data
+  /// acontece em memória, como já acontece com cargo e lotação.
+  @@index([funcaoId])
+  @@index([centroDeCustoId])
 }
 
 // ----------------------------------------------------------------------------

@@ -7,9 +7,9 @@
 | HEAD | **V11 V9.4** — partiu de `889b3ab`. ⚠️ **Árvore COMPARTILHADA**: o auxiliar tem `modules/m33-folha/`, `lib/portas/recursos/folha.ts`, `prisma/schema/m33-folha.prisma` e duas migrations novas em voo. O commit desta unidade é só de M32/pessoal, por caminho explícito |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
 | Frente em execução | **V11** — V9.3 resolveu `CONTROLE-DDR-POR-NATUREZA-DA-FONTE`, executou **os três passos da J9** que a V9.2 deixou pendentes, fechou os **passos 16, 17 e 18 do roteiro do 13º** e encerrou a família `MENSAGEM-SOME-COM-A-LINHA`. `SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS` segue como continuidade funcional, com a apuração **não** ligada |
-| Último resultado | seção 89 — unidade **documental**, não medida (a máquina está com o auxiliar): as três coisas que a 88 confundiu — (a) filtro de consulta, (b) seleção para processamento, (c) abrangência efetiva — separadas com arquivo e linha, e o fundamento falso da 88 corrigido. Achado que decide o desenho: a **subtração silenciosa** (`fecharFolha` congela UM cálculo; com seleção por cálculo, nº1={A,B} e nº2={C,D} fazem o fechamento levar só {C,D} e A e B somem sem erro). Antes dela, seção 88 — **tipos 0/0/0 nos três projetos** e **dirigidos 117/117** sobre a árvore ATUAL, `rc` lido do arquivo; dez mutações, nove acusando e **uma que NÃO acusou** (MUT-H, guarda inerte, retirada), todas revertidas por edição com checksum. A auditoria achou 3 defeitos meus, os três tratados: âncora de data civil, recusa do teto na tela e o **gate dentro da porta** |
-| Pendências relevantes | **`18.3–18.5` do 13º NÃO EXECUTADO** (folha fechada não recalcula — falta `RETIFICACAO-DA-FOLHA`); **defeito LATENTE** `numeroDoEmpenhoDaFolha` sem o tipo da folha (87.20, conserto do auxiliar); onde fica o portão do critério (apropriar ou fechar); `DDR-DISPONIVEL-SALDO-A-REPONTAR`; `PERCURSOS-SEM-TERMO-PATRIMONIAL-CONGELADO`. **Bloqueio NORMATIVO**: `DISPOSITIVO-MUNICIPAL-DO-13-NAO-LIDO` (três fontes em 403) — não trava o sistema, mas é o que falta para saber QUAL critério declarar. **Bloqueadas por terceiro** (83.3): eSocial, ASTEC, certificado A1, AWS, ENT12. **V9.4 acrescenta:** `PESSOAL-SEM-CENTRO-DE-CUSTO` e `PESSOAL-SEM-FUNCAO` (falta de MODELO no M32, os dois eixos recusados de 5.12.50); **`SELECAO-NO-CALCULO-DA-FOLHA` — capacidade DEVIDA da 5.12.50, não construída** (a seção 88 a recusou com fundamento falso; ver seção 89), e ela nasce junto com o FATO de abrangência, a guarda de completude e a reconciliação de `VINCULO-APURADO-FORA-DO-RECALCULO`; **metade da distinção (a)/(b)/(c) por escrever em `modules/m33-folha/MODULO.md`** (território do auxiliar); **percurso de navegador de `/pessoal/servidores` NÃO EXECUTADO**. **Bloqueio de FONTE**: `ITEM-1667-DE-IBEMA-NAO-LOCALIZADO` — citado na ordem, ausente do repositório; texto pedido ao usuário |
-| Próximo passo | **As duas decisões de modelo** (`PESSOAL-SEM-CENTRO-DE-CUSTO`, `PESSOAL-SEM-FUNCAO`) em módulo e migration próprios, sem tocar M33. **Enfileirada atrás do auxiliar**: a **seleção no cálculo** — (b) seleção + (c) fato de abrangência + guarda de completude + guarda de "no máximo uma vez", em **UM** commit, porque qualquer corte entre eles deixa uma folha que pode ser parcial sem acusar. Segue devendo o **percurso de navegador de `/pessoal/servidores`**. **Nada instalado nem publicado**; 5.12.50 segue `PARCIAL` e não marcada |
+| Último resultado | seção 90 — **os dois eixos ausentes de 5.12.50 ganharam modelo, e o levantamento mudou a tarefa**: a FUNÇÃO nasceu (model `Funcao` + eventos `DESIGNACAO_FUNCAO`/`DISPENSA_FUNCAO`), o CENTRO DE CUSTO **já existia** — é o `Setor` do M21, que almoxarifado, compras e patrimônio já usam nesse papel; faltava o vínculo com vigência. Duas migrations aditivas (enum e estrutura separados pela restrição do Postgres), zero `DROP`. ⚠️ **NADA MEDIDO** — a máquina está com o auxiliar. Antes, seção 89 — unidade **documental**, não medida (a máquina está com o auxiliar): as três coisas que a 88 confundiu — (a) filtro de consulta, (b) seleção para processamento, (c) abrangência efetiva — separadas com arquivo e linha, e o fundamento falso da 88 corrigido. Achado que decide o desenho: a **subtração silenciosa** (`fecharFolha` congela UM cálculo; com seleção por cálculo, nº1={A,B} e nº2={C,D} fazem o fechamento levar só {C,D} e A e B somem sem erro). Antes dela, seção 88 — **tipos 0/0/0 nos três projetos** e **dirigidos 117/117** sobre a árvore ATUAL, `rc` lido do arquivo; dez mutações, nove acusando e **uma que NÃO acusou** (MUT-H, guarda inerte, retirada), todas revertidas por edição com checksum. A auditoria achou 3 defeitos meus, os três tratados: âncora de data civil, recusa do teto na tela e o **gate dentro da porta** |
+| Pendências relevantes | **`18.3–18.5` do 13º NÃO EXECUTADO** (folha fechada não recalcula — falta `RETIFICACAO-DA-FOLHA`); **defeito LATENTE** `numeroDoEmpenhoDaFolha` sem o tipo da folha (87.20, conserto do auxiliar); onde fica o portão do critério (apropriar ou fechar); `DDR-DISPONIVEL-SALDO-A-REPONTAR`; `PERCURSOS-SEM-TERMO-PATRIMONIAL-CONGELADO`. **Bloqueio NORMATIVO**: `DISPOSITIVO-MUNICIPAL-DO-13-NAO-LIDO` (três fontes em 403) — não trava o sistema, mas é o que falta para saber QUAL critério declarar. **Bloqueadas por terceiro** (83.3): eSocial, ASTEC, certificado A1, AWS, ENT12. **V9.4 acrescenta:** ~~`PESSOAL-SEM-CENTRO-DE-CUSTO`~~ e ~~`PESSOAL-SEM-FUNCAO`~~ **resolvidas na seção 90**, e no lugar delas quatro pendências novas e nomeadas (`CENTRO-DE-CUSTO-SEM-VIGENCIA-HISTORICA`, `VINCULOS-ANTERIORES-SEM-CENTRO-DE-CUSTO`, `FUNCAO-SEM-ACAO-PROPRIA`, `FUNCAO-SEM-EIXO-DE-AUSENCIA`); **a Tarefa 3 inteira está ESCRITA E NÃO MEDIDA** — migrations não aplicadas, `tsc` não rodado, testes não executados; **`SELECAO-NO-CALCULO-DA-FOLHA` — capacidade DEVIDA da 5.12.50, não construída** (a seção 88 a recusou com fundamento falso; ver seção 89), e ela nasce junto com o FATO de abrangência, a guarda de completude e a reconciliação de `VINCULO-APURADO-FORA-DO-RECALCULO`; **metade da distinção (a)/(b)/(c) por escrever em `modules/m33-folha/MODULO.md`** (território do auxiliar); **percurso de navegador de `/pessoal/servidores` NÃO EXECUTADO**. **Bloqueio de FONTE**: `ITEM-1667-DE-IBEMA-NAO-LOCALIZADO` — citado na ordem, ausente do repositório; texto pedido ao usuário |
+| Próximo passo | **Medir a Tarefa 3 quando a máquina liberar**, nesta ordem: `prisma validate`, aplicar as duas migrations em banco isolado, `prisma generate` (DEPOIS do migrate — senão o cliente não conhece `Funcao`), `tsc` dos projetos afetados sozinho, e os dirigidos do M32. Depois os testes que faltam, nomeados na seção 90 (porta, integração, negativa pareada, mutação da guarda da dispensa órfã). **Enfileirada atrás do auxiliar**: a **seleção no cálculo** — (b) seleção + (c) fato de abrangência + guarda de completude + guarda de "no máximo uma vez", em **UM** commit, porque qualquer corte entre eles deixa uma folha que pode ser parcial sem acusar. Segue devendo o **percurso de navegador de `/pessoal/servidores`**. **Nada instalado nem publicado**; 5.12.50 segue `PARCIAL` e não marcada |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -11112,3 +11112,150 @@ agora é "faltam dois eixos de modelo **e a seleção no cálculo**".
 2. **Tarefa 2, enfileirada atrás do auxiliar** — (b) + (c) em **UM** commit: seleção, fato de
    abrangência, guarda de completude e guarda de "no máximo uma vez". Não se separam: qualquer corte
    entre eles deixa uma folha que pode ser parcial sem acusar.
+
+## 90. V11 V9.4 — os dois eixos ausentes de 5.12.50: a função nasceu, o centro de custo já existia
+
+**Regime de rigor: SUPERFÍCIE** para a consulta (cadastro, filtro, coluna) e **PROFUNDIDADE** para
+a derivação da função, que é o ponto onde uma implementação plausível apaga um ato administrativo.
+
+⚠️ **NADA DISTO FOI MEDIDO.** A máquina está com o auxiliar, no percurso da folha mensal
+complementar. Nenhum `tsc`, nenhum vitest, nenhum `prisma validate`, nenhuma migration aplicada. O
+que segue é o que foi ESCRITO; a medição está enfileirada junto com a da Tarefa 2.
+
+### ⚠️ O LEVANTAMENTO MUDOU A TAREFA: o centro de custo não precisava nascer
+
+A ordem pedia para definir os dois com identidade, vínculo e vigência, "se realmente ausentes". O
+levantamento veio antes do desenho e achou **um pronto e um ausente** — e essa é a diferença entre
+esta unidade e a que teria sido construída sem procurar:
+
+**CENTRO DE CUSTO — JÁ EXISTIA.** É o `Setor` do M21, que o próprio schema chama de "o centro de
+custo administrativo por onde o processo tramita" (`prisma/schema/m21-protocolo.prisma:36`). **Três
+módulos já o usam nesse papel**, cada um citando a cláusula:
+
+| módulo | onde | o que diz |
+|---|---|---|
+| M10 almoxarifado | `prisma/schema/m10-almoxarifado-fisico.prisma:348` | "TR 5.18.10 — centro de custo (setor) que consumiu. **criar um 'departamento' paralelo seria a segunda verdade**" |
+| M11 compras | `prisma/schema/m11-compras.prisma:91` | "TR 5.17.54 — controlar as solicitações por centro de custo (...) é o mesmo do M21" |
+| M10 patrimônio | `LocalizacaoFisica`, `TermoPatrimonial` | localização e termo por setor |
+
+Uma tabela de centro de custo só da folha seria a **quarta** estrutura sobre o mesmo organograma —
+depois de `Lotacao` (RH), `Setor` (custo) e `UnidadeOrcamentaria` (orçamento) — e a despesa de
+PESSOAL deixaria de somar com a de MATERIAL no mesmo eixo, que é exatamente para o que serve um
+centro de custo. **O que faltava nunca foi o cadastro: era o vínculo, com vigência.**
+
+E um achado que reforça: `Setor.unidadeOrcId` é **obrigatório**, enquanto `Lotacao.unidadeOrcId` é
+**opcional** e o schema declara que "a maioria das folhas do organograma" não tem. Para apropriar
+despesa de pessoal, o `Setor` não é só o cadastro que já existia — é o que já chega ao orçamento.
+
+**FUNÇÃO — ESSA PRECISOU NASCER.** Os dois candidatos eram concorrentes e nenhum era uma função:
+`TipoCargo.FUNCAO_GRATIFICADA` (`prisma/schema/m32-pessoal.prisma:178`) é **espécie de cargo**, e
+`HistoricoVinculo.gratificacaoDescricao` é texto livre e, pelo próprio docblock, **parcela adicional
+ao salário** — é dinheiro, não atribuição. Os dois continuam existindo de propósito; o que mudou é
+as três deixarem de ser a mesma coisa.
+
+### O que passou a existir
+
+**Schema (aditivo).** `model Funcao` (código único, denominação, ato autorizativo e extinção,
+espelhando `Cargo`); três valores novos em `TipoEventoVinculo` (`DESIGNACAO_FUNCAO`,
+`DISPENSA_FUNCAO`, `MUDANCA_CENTRO_DE_CUSTO`); `HistoricoVinculo.funcaoId` e
+`HistoricoVinculo.centroDeCustoId` (este apontando para `Setor`), ambos nuláveis; back-relation
+virtual em `Setor`.
+
+**Duas migrations, e a separação é do Postgres, não de estilo:**
+- `prisma/migrations/20261016090000_v11_v94_eventos_de_funcao_e_centro_de_custo/` — só os três
+  `ALTER TYPE ... ADD VALUE`. Um valor de enum **não pode ser usado na mesma transação que o
+  acrescentou**, e os CHECK da seguinte citam os valores novos. É o mesmo par que
+  `20261015090000` / `20261015090100` já fizeram nesta orquestração.
+- `prisma/migrations/20261016090100_v11_v94_funcao_e_centro_de_custo/` — tabela, colunas, FKs,
+  índices e quatro CHECK.
+
+Zero `DROP`, zero `RENAME`, zero `UPDATE` de linha existente. **Cada pasta nasceu com o
+`migration.sql` dentro, no mesmo ato** (pasta vazia já quebrou `migrate deploy` com P3015 aqui).
+
+**A forma dos CHECK segue a lição de `20261015090100`** — afirmar a propriedade, não enumerar um
+exemplar jogando o resto no `<>`:
+- `ck_historico_vinculo_funcao` é **bicondicional**: a designação traz função e nenhum outro tipo a
+  traz, inclusive a dispensa. Um tipo de evento futuro que quisesse trazer função **não grava** —
+  falha fechada, descoberta no primeiro `INSERT`.
+- o centro de custo segue o precedente do regime previdenciário (`ck_historico_vinculo_regime`):
+  **pode** vir na admissão, é **exigido** na mudança. Exigi-lo na admissão faria o CHECK recusar
+  todo vínculo existente e a migration deixaria de ser aditiva.
+
+### ⚠️ A DERIVAÇÃO DA FUNÇÃO NÃO PODE SER `ultimoAte`, e é o ponto de profundidade desta unidade
+
+`ultimoAte` guarda o último valor **não nulo** e ignora os nulos — é o que cargo e lotação querem,
+porque um reajuste não deve apagar o cargo. Mas a **dispensa** é um evento cujo `funcaoId` é nulo de
+propósito (o CHECK impõe), e ignorar o nulo faria a dispensa **não ter efeito nenhum**: o servidor
+dispensado em 2024 continuaria aparecendo como diretor em 2026 — no filtro, na tela e em qualquer
+relatório, para sempre, sem erro, porque o evento está lá. É "existe como linha ≠ produziu efeito"
+outra vez.
+
+`funcaoVigenteEm` (`modules/m32-pessoal/dominio.ts`) decide pelo **tipo** do evento, não pela
+nulidade da coluna. `centroDeCustoVigenteEm` usa `ultimoAte`, e a assimetria é deliberada: não
+existe evento que "desapropria" um vínculo.
+
+### Três lugares onde uma coluna esquecida daria a resposta errada com cara de certa
+
+Achados ao escrever, não depois — os três são `select` que precisavam ganhar as colunas novas:
+
+1. `modules/m32-pessoal/servico.ts`, `exigirVinculo` — sem `funcaoId` no `select`, todo evento
+   chegaria com `undefined`, `funcaoVigenteEm` devolveria `null` **sempre**, e a guarda
+   `DISPENSA-SEM-FUNCAO-VIGENTE` recusaria **toda** dispensa, inclusive as legítimas.
+2. `lib/portas/recursos/pessoal-dados.ts`, `SELECAO_ENXUTA_DO_VINCULO` — é o `select` do caminho de
+   duas fases, o único que o predicado percorre quando há eixo derivado. Sem as colunas, os dois
+   filtros novos responderiam **sempre a lista vazia**, com cara de "não há ninguém com essa função".
+3. `SELECAO_DE_EVENTOS`, para a ficha funcional.
+
+### A cadeia completa, e o que ela NÃO inclui
+
+`cadastrarFuncao` (serviço, com ação no censo) → `registrarMovimentacao` aceitando os três eventos
+novos, com `exigirFuncaoVigente` **na data do ato** e `exigirCentroDeCustoAtivo` → derivações →
+dois eixos em `EixosDeConsultaDeVinculo`, ambos entrando em `haEixoDerivadoDeVinculo` → porta
+resolvendo texto a identificadores (`idsDaFuncao`, `idsDoCentroDeCusto`, com `[]` que **não** vira
+"sem filtro") → dois filtros e duas colunas no descritor. A tela não mudou: `page.tsx` passa
+`consulta.filtros` genericamente e o molde monta.
+
+**A guarda `DISPENSA-SEM-FUNCAO-VIGENTE`** recusa a dispensa órfã, **na data do efeito**. O banco
+não alcança essa regra e o comentário diz por quê: a ordem entre eventos datados do mesmo vínculo é
+propriedade do **conjunto**, não da linha, e um CHECK de linha não a enxerga.
+
+**Ação:** `cadastrarFuncao` **reusa** `CADASTRAR_CARGO` — mesmo poder no eixo "criar estrutura", do
+mesmo lado da linha `CADASTRAR_CARGO` × `ADMITIR_SERVIDOR` que o M32 já declara. **Quem já tem
+`CADASTRAR_CARGO` passa a poder cadastrar função**; está escrito no censo, mas é ampliação, e a
+alternativa (ação própria, cinco sítios, enum do banco, teste de instalação limpa e de atualização)
+fica nomeada como pendência em vez de calada.
+
+### Testes escritos (não executados)
+
+`modules/m32-pessoal/m32-funcao-e-centro-de-custo.test.ts` — domínio puro, dez casos. O caso 2 é o
+que **mata a implementação errada**: trocar `funcaoVigenteEm` por `ultimoAte` o deixa vermelho.
+Fixture N=2 em toda regra de conjunto — duas designações com uma dispensa entre elas (com N=1 a
+redesignação passaria por vacuidade) e duas matrículas da mesma pessoa para a conjugação dos eixos.
+
+**Falta, e está nomeado:** teste da PORTA (paginação, autorização, teto) para os dois eixos novos,
+no molde de `test/pessoal-eixos-de-consulta.test.ts`; teste de integração de `cadastrarFuncao` e dos
+três eventos com banco; negativa de autorização pareada; e a **prova por mutação** da guarda da
+dispensa órfã. Nenhum deles se escreve com proveito antes de a máquina liberar — e nenhum foi
+contado como feito.
+
+### Fronteira do commit
+
+**Um commit, e eles não se separam.** O valor do enum, o CHECK que o cita, a derivação que o lê e o
+`select` que traz a coluna formam um estado que só compila e só é correto inteiro: cortar em
+qualquer ponto deixa uma árvore em que a dispensa não encerra nada ou o filtro responde vazio, com
+tudo verde. `modules/m33-folha/` **não foi tocado** — verificado antes e depois.
+
+### Catálogo
+
+**Nenhuma marcação.** Há comportamento escrito, mas **nenhuma evidência**: código que existe não é
+comportamento provado. 5.12.50 segue `PARCIAL`. Quando medir, o que os oito eixos rendem é
+`IMPLEMENTADO_NAO_VALIDADO`; `VALIDADO_LOCALMENTE` exige o percurso de navegador, que continua
+devido.
+
+### Próximo ponto exato
+
+1. **Medição da Tarefa 3, quando a máquina liberar** — `prisma validate` e `generate`, aplicação das
+   duas migrations em banco isolado, `tsc` dos projetos afetados (sozinho, heap 5324, em segundo
+   plano), e os dirigidos do M32. A ordem importa: `generate` **depois** do `migrate`, senão o
+   cliente não conhece `funcao` nem as colunas novas.
+2. **Tarefa 2**, quando o auxiliar sair da folha.

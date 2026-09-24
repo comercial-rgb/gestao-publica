@@ -83,6 +83,11 @@ model Setor {
   fatosDeAcessoRecebidos FatoDoPedidoDeAcesso[] @relation("SetorDestinoDeAcesso")
   /// back-relation ENT05 (M11 compras) — VIRTUAL.
   solicitacoesDeCompra SolicitacaoDeCompra[] @relation("SolicitacaoDeCompra")
+  /// V11 V9.4 (M32 pessoal) — os eventos de vínculo que apropriam despesa NESTE centro de custo.
+  /// VIRTUAL. O `Setor` já era o centro de custo do consumo de material (M10), da solicitação de
+  /// compra (M11) e da localização do bem (M10); a despesa de PESSOAL passa a somar no mesmo eixo
+  /// em vez de num quarto organograma. Ver o docblock de `HistoricoVinculo.centroDeCustoId`.
+  eventosDeVinculoNoCentroDeCusto HistoricoVinculo[] @relation("CentroDeCustoDoVinculo")
 }
 
 /// A LOTAÇÃO — em quais setores o usuário trabalha.

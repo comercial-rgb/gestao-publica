@@ -899,6 +899,8 @@ export type NomeDeServico =
   | "atribuirEntidadeAArrecadacao"
   // ── V6 (P2) — M32 pessoal ──
   | "cadastrarCargo"
+  // V11 V9.4 — a FUNÇÃO (TR 5.12.50). Serviço novo, ação REUSADA; ver o mapa.
+  | "cadastrarFuncao"
   | "cadastrarLotacao"
   | "cadastrarServidor"
   | "admitirServidor"
@@ -1434,6 +1436,27 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // V6 P2 — M32 pessoal (mapa da origem, mantido): dependente e finalidade são o mesmo poder
   // (lançar o que o servidor entregou); contrato e prorrogação também.
   cadastrarCargo: "CADASTRAR_CARGO",
+  /**
+   * ⚠️ V11 V9.4 — `cadastrarFuncao` REUSA `CADASTRAR_CARGO`, E A ESCOLHA É DELIBERADA.
+   *
+   * É o mesmo poder no eixo que este censo já separa: criar ESTRUTURA. A segregação que o M32
+   * declara é "criar a vaga × ocupar a vaga" (`CADASTRAR_CARGO` × `ADMITIR_SERVIDOR`), e a função
+   * está do mesmo lado dessa linha que o cargo — quem define o plano de cargos define as funções
+   * do mesmo ato administrativo. É a mesma leitura que já vale duas linhas abaixo para dependente
+   * e finalidade ("o mesmo poder").
+   *
+   * ⚠️ E A ALTERNATIVA FICA NOMEADA em vez de calada: uma ação `CADASTRAR_FUNCAO` própria seria
+   * mais fina, e custa um valor novo no enum `AcaoDoSistema` (migration `ALTER TYPE` isolada, pela
+   * mesma restrição do Postgres), entrada em `atualizacoes-de-permissoes.ts`, em
+   * `navegacao-permissoes.ts` e no mapa de módulos do M35 — cinco sítios, com teste de instalação
+   * limpa E de atualização. Fica como `FUNCAO-SEM-ACAO-PROPRIA` no MODULO do M32: é decisão de
+   * granularidade de perfil do ente, reversível, e não se toma junto com a que cria o modelo.
+   *
+   * ⚠️ O QUE ISTO MUDA, DITO EM VOZ ALTA: quem já tem `CADASTRAR_CARGO` passa a poder cadastrar
+   * função. Não é ampliação silenciosa porque está escrita aqui — mas É ampliação, e quem revisar
+   * o perfil de um ente precisa saber.
+   */
+  cadastrarFuncao: "CADASTRAR_CARGO",
   cadastrarLotacao: "CADASTRAR_LOTACAO",
   cadastrarServidor: "CADASTRAR_SERVIDOR",
   admitirServidor: "ADMITIR_SERVIDOR",

@@ -86,17 +86,25 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
     { nome: "matricula", cabecalho: "Matrícula (vínculo mostrado)", tipo: "texto" },
     { nome: "cargo", cabecalho: "Cargo (na data de referência)", tipo: "texto" },
     { nome: "lotacao", cabecalho: "Lotação (na data de referência)", tipo: "texto" },
+    { nome: "funcao", cabecalho: "Função (na data de referência)", tipo: "texto" },
+    { nome: "centroDeCusto", cabecalho: "Centro de custo (na data de referência)", tipo: "texto" },
     { nome: "situacao", cabecalho: "Situação", tipo: "situacao" },
   ],
   /**
    * ═══ OS EIXOS DE CONSULTA DO TR 5.12.50 ═══
    *
    * A cláusula pede oito: matrícula, nome, cargo, regime, local de trabalho, centro de custo,
-   * função e data de admissão. **Seis estão aqui; dois não existem como MODELO** e por isso não
-   * aparecem inventados — `centro de custo` (não há FK de `Vinculo`, `Servidor`, `Cargo` ou
-   * `Lotacao` para `Setor` nem para tabela equivalente) e `função` (não é entidade: é um valor de
-   * `TipoCargo` ou texto livre em `HistoricoVinculo.gratificacaoDescricao`). A falta está nomeada
-   * em `modules/m32-pessoal/MODULO.md`; um seletor vazio no lugar delas seria pior que a ausência.
+   * função e data de admissão. **Os oito estão aqui desde a V11 V9.4** — os dois últimos entraram
+   * quando o MODELO deles nasceu, não antes: até então um seletor vazio no lugar deles teria sido
+   * pior que a ausência.
+   *
+   * ⚠️ E OS DOIS ÚLTIMOS NÃO SÃO O QUE O NOME VIZINHO SUGERE:
+   *   · `função` NÃO é `cargo`. Cargo é o posto que a lei criou; função é a atribuição exercida.
+   *     Antes da V11 V9.4 os únicos candidatos eram `TipoCargo.FUNCAO_GRATIFICADA` (espécie de
+   *     cargo) e `HistoricoVinculo.gratificacaoDescricao` (texto livre, e DINHEIRO, não atribuição).
+   *   · `centro de custo` NÃO é `lotação`. Lotação é onde a pessoa trabalha; centro de custo é
+   *     onde a despesa é apropriada — e ele não ganhou tabela nova: é o `Setor` do M21, que o
+   *     almoxarifado (5.18.10), as compras (5.17.54) e o patrimônio já usam nesse papel.
    *
    * ⚠️ E `regime` SÃO DOIS EIXOS, não um: o JURÍDICO (`String` livre, como a lei orgânica do ente
    * o nomeia) e o PREVIDENCIÁRIO (derivado por evento, decide a tabela de contribuição da folha).
@@ -112,6 +120,8 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
     { nome: "matricula", rotulo: "Matrícula", tipo: "texto", largura: 1 },
     { nome: "cargo", rotulo: "Cargo (código ou denominação)", tipo: "texto", largura: 2 },
     { nome: "lotacao", rotulo: "Local de trabalho (código ou nome da lotação)", tipo: "texto", largura: 2 },
+    { nome: "funcao", rotulo: "Função exercida (código ou denominação)", tipo: "texto", largura: 2, placeholder: "a atribuição, não o cargo" },
+    { nome: "centroDeCusto", rotulo: "Centro de custo (código ou nome do setor)", tipo: "texto", largura: 2, placeholder: "onde a despesa é apropriada" },
     { nome: "regimeJuridico", rotulo: "Regime jurídico", tipo: "texto", largura: 1, placeholder: "Estatutário, CLT..." },
     { nome: "regimePrev", rotulo: "Regime previdenciário", tipo: "selecao", largura: 1, opcoes: [
       { valor: "RGPS", rotulo: "RGPS — regime geral" }, { valor: "RPPS", rotulo: "RPPS — regime próprio" },
@@ -127,7 +137,7 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
     // previdenciário são derivados: "cargo hoje" e "cargo na competência de maio" dão listas
     // diferentes, e a promoção de junho move o servidor de uma para a outra. Vazio = hoje, e a
     // coluna do cargo deriva na MESMA data que o filtro usou.
-    { nome: "dataRef", rotulo: "Data de referência (cargo, lotação e regime previdenciário)", tipo: "data", largura: 2, placeholder: "vazio = hoje" },
+    { nome: "dataRef", rotulo: "Data de referência (cargo, lotação, função, centro de custo e regime previdenciário)", tipo: "data", largura: 2, placeholder: "vazio = hoje" },
   ],
   acoes: [
     {

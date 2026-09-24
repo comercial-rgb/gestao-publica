@@ -5,6 +5,8 @@ import type { Prisma } from "../../../prisma/generated/client/client.js";
 import {
   cargoVigenteEm,
   gratificacoesVigentesEm,
+  funcaoVigenteEm,
+  centroDeCustoVigenteEm,
   lotacaoVigenteEm,
   lotadosNaLotacao,
   regimeVigenteEm,
@@ -72,8 +74,10 @@ const SELECAO_DE_EVENTOS = {
   orderBy: [{ data: "asc" as const }, { criadoEm: "asc" as const }],
   select: {
     id: true, data: true, criadoEm: true, tipo: true, cargoId: true, lotacaoId: true, salarioBase: true, regimePrevidenciario: true,
+    funcaoId: true, centroDeCustoId: true,
     gratificacaoDescricao: true, gratificacaoValor: true, motivo: true, criadoPor: true,
     cargo: { select: { codigo: true, denominacao: true } }, lotacao: { select: { codigo: true, nome: true } },
+    funcao: { select: { codigo: true, denominacao: true } }, centroDeCusto: { select: { codigo: true, nome: true } },
     portaria: { select: { numero: true, ano: true } },
   },
 };
@@ -82,6 +86,7 @@ type EventoLido = Prisma.HistoricoVinculoGetPayload<{ select: (typeof SELECAO_DE
 function eventos(es: readonly EventoLido[]): readonly (EventoDoVinculo & { readonly gratificacaoDescricao: string | null; readonly gratificacaoValor: ReturnType<typeof toMoney> | null })[] {
   return es.map((e) => ({
     data: e.data, criadoEm: e.criadoEm, tipo: e.tipo, cargoId: e.cargoId, lotacaoId: e.lotacaoId, regimePrevidenciario: e.regimePrevidenciario,
+    funcaoId: e.funcaoId, centroDeCustoId: e.centroDeCustoId,
     salarioBase: e.salarioBase === null ? null : toMoney(e.salarioBase.toFixed(2)),
     gratificacaoDescricao: e.gratificacaoDescricao, gratificacaoValor: e.gratificacaoValor === null ? null : toMoney(e.gratificacaoValor.toFixed(2)),
   }));
@@ -136,7 +141,12 @@ const SELECAO_ENXUTA_DO_VINCULO = {
   id: true, matricula: true, dataAdmissao: true, regimeJuridico: true, regimePrevidenciario: true,
   eventos: {
     orderBy: [{ data: "asc" as const }, { criadoEm: "asc" as const }],
-    select: { data: true, criadoEm: true, tipo: true, cargoId: true, lotacaoId: true, salarioBase: true, regimePrevidenciario: true },
+    // ⚠️ V11 V9.4 — `funcaoId` E `centroDeCustoId` ENTRAM AQUI PORQUE SÃO EIXOS DERIVADOS. Este é
+    // o `select` do caminho de DUAS FASES, o único que o predicado percorre quando há eixo
+    // derivado ativo. Sem estas duas colunas, `funcaoVigenteEm` e `centroDeCustoVigenteEm`
+    // devolveriam `null` para TODO MUNDO e os dois filtros novos responderiam SEMPRE a lista
+    // vazia — sem erro, sem log, com cara de "não há ninguém com essa função".
+    select: { data: true, criadoEm: true, tipo: true, cargoId: true, lotacaoId: true, salarioBase: true, regimePrevidenciario: true, funcaoId: true, centroDeCustoId: true },
   },
 };
 type EventoEnxuto = Prisma.HistoricoVinculoGetPayload<{ select: (typeof SELECAO_ENXUTA_DO_VINCULO)["eventos"]["select"] }>;
@@ -150,6 +160,7 @@ function eventosEnxutos(es: readonly EventoEnxuto[]): readonly EventoDoVinculo[]
   return es.map((e) => ({
     data: e.data, criadoEm: e.criadoEm, tipo: e.tipo, cargoId: e.cargoId, lotacaoId: e.lotacaoId,
     regimePrevidenciario: e.regimePrevidenciario,
+    funcaoId: e.funcaoId, centroDeCustoId: e.centroDeCustoId,
     salarioBase: e.salarioBase === null ? null : toMoney(e.salarioBase.toFixed(2)),
   }));
 }
@@ -192,6 +203,31 @@ async function idsDaLotacao(termo: string): Promise<readonly string[]> {
   return achados.map((x) => x.id);
 }
 
+/** V11 V9.4 — a FUNÇÃO. Mesma disciplina do cargo, inclusive o `[]` que não vira "sem filtro". */
+async function idsDaFuncao(termo: string): Promise<readonly string[]> {
+  const achados = await cliente().funcao.findMany({
+    where: { OR: [{ codigo: { contains: termo, mode: "insensitive" } }, { denominacao: { contains: termo, mode: "insensitive" } }] },
+    select: { id: true },
+  });
+  return achados.map((x) => x.id);
+}
+
+/**
+ * V11 V9.4 — o CENTRO DE CUSTO, que é o `Setor` do M21.
+ *
+ * ⚠️ SEM `where: { ativo: true }`, E A AUSÊNCIA É A DECISÃO. Procurar por um setor desativado tem
+ * de achar quem foi apropriado nele enquanto ele existia — filtrar por `ativo` aqui apagaria da
+ * consulta o histórico inteiro de um centro de custo no dia em que alguém o desativasse. Quem
+ * recusa setor inativo é o ATO (`exigirCentroDeCustoAtivo`, no serviço), não a leitura.
+ */
+async function idsDoCentroDeCusto(termo: string): Promise<readonly string[]> {
+  const achados = await cliente().setor.findMany({
+    where: { OR: [{ codigo: { contains: termo, mode: "insensitive" } }, { nome: { contains: termo, mode: "insensitive" } }] },
+    select: { id: true },
+  });
+  return achados.map((x) => x.id);
+}
+
 type ServidorLidoParaLista = Prisma.ServidorGetPayload<{ select: typeof SELECAO_DO_SERVIDOR }>;
 
 /**
@@ -208,12 +244,16 @@ async function montarLinhas(
 ): Promise<readonly LinhaDoMolde[]> {
   if (achados.length === 0) return [];
   const prisma = cliente();
-  const [cs, ls] = await Promise.all([
+  const [cs, ls, fs, ccs] = await Promise.all([
     prisma.cargo.findMany({ select: { id: true, codigo: true, denominacao: true } }),
     prisma.lotacao.findMany({ select: { id: true, codigo: true, nome: true } }),
+    prisma.funcao.findMany({ select: { id: true, codigo: true, denominacao: true } }),
+    prisma.setor.findMany({ select: { id: true, codigo: true, nome: true } }),
   ]);
   const cargos = new Map(cs.map((x) => [x.id, `${x.codigo} — ${x.denominacao}`]));
   const lotacoes = new Map(ls.map((x) => [x.id, `${x.codigo} — ${x.nome}`]));
+  const funcoes = new Map(fs.map((x) => [x.id, `${x.codigo} — ${x.denominacao}`]));
+  const centrosDeCusto = new Map(ccs.map((x) => [x.id, `${x.codigo} — ${x.nome}`]));
 
   return achados.map(({ s, vinculoId }) => {
     const casou = vinculoId === null ? undefined : s.vinculos.find((v) => v.id === vinculoId);
@@ -228,6 +268,14 @@ async function montarLinhas(
       matricula: mostrado === undefined ? "—" : mostrado.matricula,
       cargo: mostrado === undefined ? "—" : (cargos.get(cargoVigenteEm(evs, quando) ?? "") ?? "—"),
       lotacao: mostrado === undefined ? "—" : (lotacoes.get(lotacaoVigenteEm(evs, quando) ?? "") ?? "—"),
+      // ⚠️ V11 V9.4 — AS DUAS COLUNAS NOVAS DERIVAM NO MESMO `quando` QUE O FILTRO USOU, e isso
+      // não é detalhe de implementação: é o que separa a célula de uma mentira. Sob "servidores
+      // em 31/05", mostrar o centro de custo de HOJE faria a linha dizer que a despesa de maio
+      // foi apropriada num setor para onde a pessoa só se mudou em agosto — com o filtro e a
+      // coluna discordando na mesma tela. Cargo, lotação e situação já faziam assim; o defeito
+      // seria quebrar o padrão só nos dois novos.
+      funcao: mostrado === undefined ? "—" : (funcoes.get(funcaoVigenteEm(evs, quando) ?? "") ?? "—"),
+      centroDeCusto: mostrado === undefined ? "—" : (centrosDeCusto.get(centroDeCustoVigenteEm(evs, quando) ?? "") ?? "—"),
       situacao: situacaoDoServidor(s.vinculos.map((v) => eventos(v.eventos)), quando),
     };
   });
@@ -341,9 +389,13 @@ export async function listarServidoresPara(
 
   const termoDoCargo = (c.filtros["cargo"] ?? "").trim();
   const termoDaLotacao = (c.filtros["lotacao"] ?? "").trim();
-  const [cargoIds, lotacaoIds] = await Promise.all([
+  const termoDaFuncao = (c.filtros["funcao"] ?? "").trim();
+  const termoDoCentroDeCusto = (c.filtros["centroDeCusto"] ?? "").trim();
+  const [cargoIds, lotacaoIds, funcaoIds, centroDeCustoIds] = await Promise.all([
     termoDoCargo === "" ? Promise.resolve(null) : idsDoCargo(termoDoCargo),
     termoDaLotacao === "" ? Promise.resolve(null) : idsDaLotacao(termoDaLotacao),
+    termoDaFuncao === "" ? Promise.resolve(null) : idsDaFuncao(termoDaFuncao),
+    termoDoCentroDeCusto === "" ? Promise.resolve(null) : idsDoCentroDeCusto(termoDoCentroDeCusto),
   ]);
   const regimePrevBruto = c.filtros["regimePrev"] ?? "";
   const admitidoDeBruto = (c.filtros["admitidoDe"] ?? "").trim();
@@ -356,6 +408,8 @@ export async function listarServidoresPara(
     regimeJuridico: (c.filtros["regimeJuridico"] ?? "").trim(),
     regimePrevidenciario:
       regimePrevBruto === "" ? null : (regimePrevBruto as EixosDeConsultaDeVinculo["regimePrevidenciario"]),
+    funcaoIds,
+    centroDeCustoIds,
     admitidoDe: admitidoDeBruto === "" ? null : inicioDoDiaCivil(admitidoDeBruto),
     // ⚠️ O ÚLTIMO INSTANTE CIVIL DO DIA. `lte` sobre a meia-noite deixaria de fora quem foi
     // admitido NO dia escolhido — e "admitidos até 31/12" sem o 31/12 é um relatório errado.
@@ -396,13 +450,20 @@ export async function listarServidoresPara(
       : {}),
     ...(cargoIds !== null ? { eventos: { some: { cargoId: { in: [...cargoIds] } } } } : {}),
     ...(lotacaoIds !== null ? { eventos: { some: { lotacaoId: { in: [...lotacaoIds] } } } } : {}),
+    ...(funcaoIds !== null ? { eventos: { some: { funcaoId: { in: [...funcaoIds] } } } } : {}),
+    ...(centroDeCustoIds !== null ? { eventos: { some: { centroDeCustoId: { in: [...centroDeCustoIds] } } } } : {}),
   };
   if (Object.keys(doVinculo).length > 0) doServidor.push({ vinculos: { some: doVinculo } });
   const where: Prisma.ServidorWhereInput = doServidor.length === 0 ? {} : { AND: doServidor };
 
   // ⚠️ CONJUNTO VAZIO DE CARGOS OU LOTAÇÕES ENCERRA A CONSULTA AQUI. O `in: []` do Prisma já
   // devolveria nada, mas dizê-lo evita que uma refatoração leia `[]` como "sem filtro".
-  if ((cargoIds !== null && cargoIds.length === 0) || (lotacaoIds !== null && lotacaoIds.length === 0)) {
+  if (
+    (cargoIds !== null && cargoIds.length === 0) ||
+    (lotacaoIds !== null && lotacaoIds.length === 0) ||
+    (funcaoIds !== null && funcaoIds.length === 0) ||
+    (centroDeCustoIds !== null && centroDeCustoIds.length === 0)
+  ) {
     return { total: 0, linhas: [] };
   }
 

@@ -7,6 +7,7 @@ import {
   LIMITE_ETARIO_LEGAL,
   criaCicloDeLotacao,
   dataDeDesligamento,
+  funcaoVigenteEm,
   situacaoDoVinculo,
   zAdmitirServidorInput,
   zBaixarFinalidadeDependenteInput,
@@ -14,6 +15,7 @@ import {
   zCadastrarContratoTrabalhoInput,
   zCadastrarDependenteInput,
   zCadastrarDiaCalendarioRhInput,
+  zCadastrarFuncaoInput,
   zCadastrarLotacaoInput,
   zCadastrarServidorInput,
   zDesligarServidorInput,
@@ -31,6 +33,7 @@ import {
   type CadastrarContratoTrabalhoInput,
   type CadastrarDependenteInput,
   type CadastrarDiaCalendarioRhInput,
+  type CadastrarFuncaoInput,
   type CadastrarLotacaoInput,
   type CadastrarServidorInput,
   type DesligarServidorInput,
@@ -155,7 +158,12 @@ async function exigirVinculo(
       matricula: true,
       dataAdmissao: true,
       eventos: {
-        select: { data: true, criadoEm: true, tipo: true, cargoId: true, lotacaoId: true, salarioBase: true },
+        // ⚠️ V11 V9.4 — `funcaoId` ENTRA AQUI, E A OMISSÃO SERIA UM DEFEITO SILENCIOSO NO SENTIDO
+        // INVERSO DO ESPERADO. `funcaoVigenteEm` lê esta coluna; sem ela todo evento chegaria com
+        // `funcaoId: undefined`, a derivação devolveria `null` SEMPRE, e a guarda
+        // `DISPENSA-SEM-FUNCAO-VIGENTE` recusaria TODA dispensa — inclusive as legítimas. Um
+        // `select` que esquece uma coluna não dá erro: dá a resposta errada com cara de certa.
+        select: { data: true, criadoEm: true, tipo: true, cargoId: true, lotacaoId: true, salarioBase: true, funcaoId: true, centroDeCustoId: true },
       },
     },
   });
@@ -170,6 +178,8 @@ async function exigirVinculo(
       cargoId: e.cargoId,
       lotacaoId: e.lotacaoId,
       salarioBase: e.salarioBase === null ? null : toMoney(e.salarioBase.toFixed(2)),
+      funcaoId: e.funcaoId,
+      centroDeCustoId: e.centroDeCustoId,
     })),
   };
 }
@@ -240,6 +250,44 @@ async function exigirLotacaoVigente(tx: Tx, lotacaoId: string, quando: Date): Pr
   }
 }
 
+/** V11 V9.4 — mesma disciplina do cargo: vigente NA DATA DO ATO, não hoje. */
+async function exigirFuncaoVigente(tx: Tx, funcaoId: string, quando: Date): Promise<void> {
+  const f = await tx.funcao.findUnique({
+    where: { id: funcaoId },
+    select: { codigo: true, dataExtincao: true },
+  });
+  if (f === null) throw new Error(`Função ${funcaoId} não existe.`);
+  if (f.dataExtincao !== null && f.dataExtincao.getTime() <= quando.getTime()) {
+    throw new Error(
+      `FUNCAO-EXTINTA: a função ${f.codigo} foi extinta em ` +
+        `${diaCivil(f.dataExtincao)}, antes de ${diaCivil(quando)}.`
+    );
+  }
+}
+
+/**
+ * V11 V9.4 — O CENTRO DE CUSTO EXISTE E ESTÁ ATIVO?
+ *
+ * ⚠️ AQUI A PERGUNTA É "ATIVO", NÃO "VIGENTE NA DATA", e a diferença não é descuido: `Setor` é
+ * cadastro do M21 e desativa por `ativo Boolean`, não por `dataExtincao` — o próprio schema dele
+ * declara essa escolha ("cadastro, não fato"). Não há como perguntar "estava ativo em 2019", e
+ * fingir que há — comparando contra `criadoEm`, por exemplo — inventaria uma vigência que o
+ * cadastro não guarda. Fica NOMEADO: `CENTRO-DE-CUSTO-SEM-VIGENCIA-HISTORICA`, no MODULO do M32.
+ */
+async function exigirCentroDeCustoAtivo(tx: Tx, setorId: string): Promise<void> {
+  const st = await tx.setor.findUnique({
+    where: { id: setorId },
+    select: { codigo: true, ativo: true },
+  });
+  if (st === null) throw new Error(`Centro de custo (setor) ${setorId} não existe.`);
+  if (!st.ativo) {
+    throw new Error(
+      `CENTRO-DE-CUSTO-INATIVO: o setor ${st.codigo} está desativado e não recebe apropriação ` +
+        `de despesa de pessoal. Reative-o ou escolha outro.`
+    );
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // A ESTRUTURA — TR reqs. 8, 9, 10
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -270,6 +318,35 @@ export async function cadastrarCargo(
       select: { id: true },
     });
     return { cargoId: criado.id };
+  });
+}
+
+/**
+ * V11 V9.4 (TR 5.12.50) — O CADASTRO DA FUNÇÃO. Espelha `cadastrarCargo`, inclusive no crachá:
+ * quem cria posto cria atribuição, e separá-los daria dois crachás para o mesmo ato de estrutura.
+ */
+export async function cadastrarFuncao(
+  prisma: PrismaClient,
+  input: CadastrarFuncaoInput
+): Promise<{ readonly funcaoId: string }> {
+  const dados = zCadastrarFuncaoInput.parse(input);
+
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, dados.criadoPor, ACAO_DO_SERVICO.cadastrarFuncao, "ENTE");
+
+    const criada = await tx.funcao.create({
+      data: {
+        codigo: dados.codigo,
+        denominacao: dados.denominacao,
+        leiAutorizativa: dados.leiAutorizativa,
+        dataPublicacaoLei: dados.dataPublicacaoLei,
+        dataExtincao: dados.dataExtincao ?? null,
+        leiExtincao: dados.leiExtincao ?? null,
+        criadoPor: dados.criadoPor,
+      },
+      select: { id: true },
+    });
+    return { funcaoId: criada.id };
   });
 }
 
@@ -535,6 +612,35 @@ export async function registrarMovimentacao(
     if (dados.lotacaoId !== undefined) {
       await exigirLotacaoVigente(tx, dados.lotacaoId, dados.data);
     }
+    if (dados.funcaoId !== undefined) await exigirFuncaoVigente(tx, dados.funcaoId, dados.data);
+    if (dados.centroDeCustoId !== undefined) await exigirCentroDeCustoAtivo(tx, dados.centroDeCustoId);
+
+    /**
+     * ⚠️ V11 V9.4 — A DISPENSA SÓ EXISTE DEPOIS DE UMA DESIGNAÇÃO, E QUEM AFIRMA ISSO É AQUI.
+     *
+     * O banco NÃO alcança esta regra, e dizer por que importa mais que fingir que alcança: a
+     * ordem entre eventos datados do mesmo vínculo é propriedade do CONJUNTO, não da linha, e um
+     * CHECK de linha não a enxerga.
+     *
+     * ⚠️ E A CONFERÊNCIA É NA DATA DO EFEITO, não hoje. Registrar hoje uma dispensa com efeito em
+     * março tem de perguntar se havia função vigente EM MARÇO — perguntar por hoje recusaria a
+     * dispensa retroativa de quem já foi dispensado de novo depois, e aceitaria a dispensa de
+     * março de quem só foi designado em julho.
+     *
+     * Sem isto, uma dispensa órfã grava sem erro e não faz nada: `funcaoVigenteEm` já era nulo e
+     * continua nulo. É "existe como linha ≠ produziu efeito" outra vez — e desta vez o operador
+     * sairia convencido de que dispensou alguém.
+     */
+    if (dados.tipo === "DISPENSA_FUNCAO") {
+      const vigente = funcaoVigenteEm(v.eventos, dados.data);
+      if (vigente === null) {
+        throw new Error(
+          `DISPENSA-SEM-FUNCAO-VIGENTE: a matrícula ${v.matricula} não exercia função nenhuma em ` +
+            `${diaCivil(dados.data)}. Gravar esta dispensa não encerraria nada e a ficha passaria ` +
+            `a mostrar um ato sem efeito. Nada foi registrado.`
+        );
+      }
+    }
 
     const criado = await tx.historicoVinculo.create({
       data: {
@@ -544,6 +650,8 @@ export async function registrarMovimentacao(
         cargoId: dados.cargoId ?? null,
         lotacaoId: dados.lotacaoId ?? null,
         regimePrevidenciario: dados.regimePrevidenciario ?? null,
+        funcaoId: dados.funcaoId ?? null,
+        centroDeCustoId: dados.centroDeCustoId ?? null,
         motivo: dados.motivo,
         portariaId: dados.portariaId ?? null,
         criadoPor: dados.criadoPor,

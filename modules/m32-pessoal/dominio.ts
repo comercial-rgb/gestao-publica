@@ -51,7 +51,11 @@ export type TipoEventoVinculo =
   | "AFASTAMENTO"
   | "RETORNO_AFASTAMENTO"
   | "DESLIGAMENTO"
-  | "MUDANCA_REGIME_PREVIDENCIARIO";
+  | "MUDANCA_REGIME_PREVIDENCIARIO"
+  // V11 V9.4 (TR 5.12.50) — os dois eixos que faltavam. Ver os docblocks no schema.
+  | "DESIGNACAO_FUNCAO"
+  | "DISPENSA_FUNCAO"
+  | "MUDANCA_CENTRO_DE_CUSTO";
 
 export type GrauParentesco =
   | "CONJUGE"
@@ -125,6 +129,18 @@ export interface EventoDoVinculo {
   readonly salarioBase: Money | null;
   /** V6 P2.3 — presente na admissão e na mudança de regime; ver `regimeVigenteEm`. */
   readonly regimePrevidenciario?: RegimePrevidenciarioDoVinculo | null;
+  /**
+   * V11 V9.4 — a função designada; presente SÓ em `DESIGNACAO_FUNCAO`. Ver `funcaoVigenteEm`.
+   *
+   * ⚠️ OPCIONAL NO TIPO, como `regimePrevidenciario` já era, e a razão é a mesma: há chamadores
+   * que montam `EventoDoVinculo` a partir de um `select` que não pede estas colunas — o motor da
+   * folha (M33) é um deles. Um campo obrigatório os quebraria em massa para obrigá-los a escrever
+   * `funcaoId: null`, que não acrescenta informação nenhuma. Quem PRECISA da função pede a coluna.
+   */
+  readonly funcaoId?: string | null;
+  /** V11 V9.4 — o centro de custo (`Setor` do M21); presente em `ADMISSAO` e
+   * `MUDANCA_CENTRO_DE_CUSTO`. Ver `centroDeCustoVigenteEm`. Opcional pelo mesmo motivo acima. */
+  readonly centroDeCustoId?: string | null;
 }
 
 /** O regime previdenciário do vínculo — decide a tabela de contribuição que a folha aplica (M33). */
@@ -187,6 +203,69 @@ export function lotacaoVigenteEm(
   quando: Date
 ): string | null {
   return ultimoAte(eventos, quando, (e) => e.lotacaoId);
+}
+
+/**
+ * A FUNÇÃO VIGENTE NUMA DATA — e ela NÃO usa `ultimoAte`, que é o ponto desta função.
+ *
+ * ═══ ⚠️ POR QUE `ultimoAte` NÃO SERVE AQUI, E O DEFEITO QUE ELE PRODUZIRIA ═══
+ *
+ * `ultimoAte` guarda o último valor NÃO NULO e ignora os nulos — é o que cargo e lotação querem,
+ * porque um evento de reajuste não deve apagar o cargo. Mas a DISPENSA da função é exatamente um
+ * evento cujo `funcaoId` é nulo DE PROPÓSITO (o CHECK do banco impõe isso), e "ignorar o nulo"
+ * faria a dispensa não ter efeito nenhum: o servidor dispensado em 2024 continuaria aparecendo
+ * como diretor de escola em 2026, no filtro, na tela e em qualquer relatório — para sempre, e sem
+ * erro nenhum, porque o evento ESTÁ lá.
+ *
+ * ⚠️ É A MESMA FAMÍLIA DE "existe como linha ≠ produziu efeito" que já deixou uma guarda inerte
+ * neste repositório. Por isso a derivação olha o TIPO do evento, não a nulidade da coluna.
+ *
+ * ═══ FUNÇÃO É FREQUENTEMENTE NULA, E ISSO NÃO É AUSÊNCIA DE DADO ═══
+ *
+ * `cargoVigenteEm` só devolve `null` antes da admissão. Aqui `null` é o estado NORMAL: a maioria
+ * dos servidores nunca exerceu função nenhuma. Quem consumir isto não pode ler `null` como
+ * "cadastro incompleto" — lê como "não exerce função", que é o que é.
+ *
+ * ⚠️ O DESLIGAMENTO NÃO ZERA A FUNÇÃO, pela mesma disciplina do cargo: `cargoVigenteEm` também
+ * devolve o cargo de quem foi exonerado. Quem responde "ainda está na casa?" é
+ * `situacaoDoVinculo`, que é eixo próprio — e fundir os dois faria esta função responder duas
+ * perguntas e nenhuma direito.
+ */
+export function funcaoVigenteEm(
+  eventos: readonly EventoDoVinculo[],
+  quando: Date
+): string | null {
+  let achado: string | null = null;
+  for (const e of ordenados(eventos)) {
+    if (e.data.getTime() > quando.getTime()) break;
+    if (e.tipo === "DESIGNACAO_FUNCAO") achado = e.funcaoId ?? null;
+    else if (e.tipo === "DISPENSA_FUNCAO") achado = null;
+  }
+  return achado;
+}
+
+/**
+ * O CENTRO DE CUSTO VIGENTE NUMA DATA — o `Setor` do M21 onde a despesa deste vínculo é apropriada.
+ *
+ * ⚠️ AQUI `ultimoAte` SERVE, e a assimetria com a função é deliberada: não existe evento que
+ * "desapropria" um vínculo. O custo de quem está na folha vai para algum lugar; o que muda é PARA
+ * ONDE. Um `DISPENSA_CENTRO_DE_CUSTO` seria um vínculo cuja despesa não é de ninguém.
+ *
+ * ⚠️ `null` SIGNIFICA "NUNCA FOI APROPRIADO", E É O ESTADO DE TODO VÍNCULO ANTERIOR À V11 V9.4.
+ * A coluna nasceu nula e não há de onde tirá-la: escolher um setor para o histórico seria
+ * apropriar despesa passada num centro de custo que ninguém escolheu. **Quem consome recusa com
+ * motivo**, fail-closed — nunca completa com um padrão.
+ *
+ * ⚠️ E O CONTEXTO HISTÓRICO DA COMPETÊNCIA É O MOTIVO DE ISTO SER DERIVAÇÃO E NÃO COLUNA. O centro
+ * de custo de maio não é o de hoje: quem mudou de setor em agosto teve a folha de maio apropriada
+ * no setor antigo, e uma coluna no vínculo — reescrita pelo `UPDATE` da mudança — faria o
+ * relatório de maio mentir depois de agosto, sem que nada acusasse.
+ */
+export function centroDeCustoVigenteEm(
+  eventos: readonly EventoDoVinculo[],
+  quando: Date
+): string | null {
+  return ultimoAte(eventos, quando, (e) => e.centroDeCustoId ?? null);
 }
 
 /**
@@ -435,6 +514,23 @@ export interface EixosDeConsultaDeVinculo {
    * de trabalho, não curiosidade.
    */
   readonly regimePrevidenciario: RegimePrevidenciarioDoVinculo | "NAO_INFORMADO" | null;
+  /**
+   * V11 V9.4 — as FUNÇÕES aceitas, já resolvidas a identificadores. Mesma disciplina do cargo:
+   * `null` = eixo inativo, `[]` = nenhuma função casa com o que se digitou.
+   *
+   * ⚠️ NÃO CONFUNDIR COM O CARGO. Cargo é o posto; função é a atribuição exercida. Filtrar por
+   * `TipoCargo.FUNCAO_GRATIFICADA` devolveria quem OCUPA um cargo dessa natureza, que é outra
+   * pergunta — e era o atalho disponível antes de `Funcao` existir.
+   */
+  readonly funcaoIds: readonly string[] | null;
+  /**
+   * V11 V9.4 — os CENTROS DE CUSTO aceitos (`Setor` do M21), já resolvidos a identificadores.
+   *
+   * ⚠️ NÃO CONFUNDIR COM A LOTAÇÃO. Lotação é onde a pessoa trabalha; centro de custo é onde a
+   * despesa é apropriada. O servidor cedido continua lotado na origem e custa ao destino — e
+   * quem procura "quanto a Saúde gasta com pessoal" quer o segundo, não o primeiro.
+   */
+  readonly centroDeCustoIds: readonly string[] | null;
   /** Admitido em ou depois deste instante. `null` = eixo inativo. */
   readonly admitidoDe: Date | null;
   /** Admitido em ou antes deste instante — o ÚLTIMO instante civil do dia, não a meia-noite. */
@@ -448,6 +544,8 @@ export const EIXOS_DE_CONSULTA_VAZIOS: EixosDeConsultaDeVinculo = {
   lotacaoIds: null,
   regimeJuridico: "",
   regimePrevidenciario: null,
+  funcaoIds: null,
+  centroDeCustoIds: null,
   admitidoDe: null,
   admitidoAte: null,
 };
@@ -460,6 +558,8 @@ export function haEixoDeVinculo(e: EixosDeConsultaDeVinculo): boolean {
     e.lotacaoIds !== null ||
     e.regimeJuridico !== "" ||
     e.regimePrevidenciario !== null ||
+    e.funcaoIds !== null ||
+    e.centroDeCustoIds !== null ||
     e.admitidoDe !== null ||
     e.admitidoAte !== null
   );
@@ -473,7 +573,17 @@ export function haEixoDeVinculo(e: EixosDeConsultaDeVinculo): boolean {
  * ser apurado ANTES de recortar a página — senão o total mente e a página 2 perde quem ficou na 1.
  */
 export function haEixoDerivadoDeVinculo(e: EixosDeConsultaDeVinculo): boolean {
-  return e.cargoIds !== null || e.lotacaoIds !== null || e.regimePrevidenciario !== null;
+  return (
+    e.cargoIds !== null ||
+    e.lotacaoIds !== null ||
+    e.regimePrevidenciario !== null ||
+    // ⚠️ V11 V9.4 — OS DOIS NOVOS SÃO DERIVADOS, e esquecê-los aqui seria o defeito exato que a
+    // V11 V9.4 já consertou uma vez: o banco recortaria a página por `eventos: { some: ... }`,
+    // que responde "ALGUM DIA teve esta função", enquanto o predicado responde "tinha NA DATA".
+    // As duas listas divergem em todo servidor que já foi dispensado — e o total mentiria.
+    e.funcaoIds !== null ||
+    e.centroDeCustoIds !== null
+  );
 }
 
 /** O vínculo, como este predicado precisa dele. */
@@ -518,6 +628,18 @@ export function vinculoAtendeAosEixos(
   if (eixos.lotacaoIds !== null) {
     const l = lotacaoVigenteEm(v.eventos, quando);
     if (l === null || !eixos.lotacaoIds.includes(l)) return false;
+  }
+  // ⚠️ V11 V9.4 — FUNÇÃO NULA NÃO CASA COM NENHUMA FUNÇÃO PEDIDA, e isto é a metade que se
+  // esquece: `null` aqui é o estado NORMAL (a maioria não exerce função), então um predicado que
+  // tratasse `null` como "passa" devolveria o ente inteiro para quem procurou uma função
+  // específica — o modo mais discreto de um filtro deixar de filtrar.
+  if (eixos.funcaoIds !== null) {
+    const f = funcaoVigenteEm(v.eventos, quando);
+    if (f === null || !eixos.funcaoIds.includes(f)) return false;
+  }
+  if (eixos.centroDeCustoIds !== null) {
+    const cc = centroDeCustoVigenteEm(v.eventos, quando);
+    if (cc === null || !eixos.centroDeCustoIds.includes(cc)) return false;
   }
   if (eixos.regimePrevidenciario !== null) {
     const existiaEm = v.dataAdmissao.getTime() <= quando.getTime();
@@ -796,6 +918,24 @@ export const zCadastrarCargoInput = z
   });
 export type CadastrarCargoInput = z.input<typeof zCadastrarCargoInput>;
 
+/**
+ * V11 V9.4 (TR 5.12.50) — O CADASTRO DA FUNÇÃO.
+ *
+ * ⚠️ MESMA EXIGÊNCIA DE ATO QUE O CARGO, e pelo mesmo motivo: função exercida sem ato que a criou
+ * é designação sem fundamento, e o TCE pergunta qual foi a portaria. `leiAutorizativa` é texto
+ * porque cada ente escreve o dele como a lei dele escreveu — não se inventa um formato.
+ */
+export const zCadastrarFuncaoInput = z.object({
+  codigo: z.string().trim().min(1, "código da função"),
+  denominacao: z.string().trim().min(1, "denominação da função"),
+  leiAutorizativa: z.string().trim().min(1, "a lei ou o ato que criou a função"),
+  dataPublicacaoLei: z.coerce.date(),
+  dataExtincao: z.coerce.date().optional(),
+  leiExtincao: z.string().trim().min(1).optional(),
+  criadoPor: zAutor,
+});
+export type CadastrarFuncaoInput = z.input<typeof zCadastrarFuncaoInput>;
+
 export const zCadastrarLotacaoInput = z.object({
   codigo: zTexto(1),
   nome: zTexto(3),
@@ -902,6 +1042,14 @@ export const TIPOS_DE_MOVIMENTACAO = [
   "AFASTAMENTO",
   "RETORNO_AFASTAMENTO",
   "MUDANCA_REGIME_PREVIDENCIARIO",
+  // ⚠️ V11 V9.4 — OS TRÊS NOVOS ENTRAM EM "MOVER", NÃO EM "PAGAR", e a escolha é do censo, não
+  // de conveniência. Designar alguém para uma função NÃO paga nada por si: a gratificação que
+  // costuma acompanhá-la é evento PRÓPRIO (`GRATIFICACAO`, em `TIPOS_DE_ALTERACAO_REMUNERATORIA`),
+  // com outro crachá. Fundi-los faria quem pode designar passar a poder aumentar salário.
+  // Mudar o centro de custo também não paga: muda ONDE a mesma despesa é apropriada.
+  "DESIGNACAO_FUNCAO",
+  "DISPENSA_FUNCAO",
+  "MUDANCA_CENTRO_DE_CUSTO",
 ] as const;
 
 /** Os eventos que PAGAM (quanto se recebe) — ação `ALTERAR_REMUNERACAO`. */
@@ -927,6 +1075,10 @@ export const zRegistrarMovimentacaoInput = z
     lotacaoId: z.string().min(1).optional(),
     /** Só MUDANCA_REGIME_PREVIDENCIARIO. */
     regimePrevidenciario: z.enum(["RGPS", "RPPS", "ISENTO"]).optional(),
+    /** V11 V9.4 — só DESIGNACAO_FUNCAO. A DISPENSA não o traz, e o `superRefine` impõe. */
+    funcaoId: z.string().min(1).optional(),
+    /** V11 V9.4 — só MUDANCA_CENTRO_DE_CUSTO (na admissão ele entra por `admitirServidor`). */
+    centroDeCustoId: z.string().min(1).optional(),
   })
   .superRefine((v, ctx) => {
     // ⚠️ ESPELHA `ck_historico_vinculo_cargo_exigido` E `..._lotacao_exigida`. Um evento de
@@ -974,6 +1126,44 @@ export const zRegistrarMovimentacaoInput = z
         message:
           "Afastamento e retorno não mudam cargo nem lotação — o vínculo volta para onde estava. " +
           "Se houve remoção, ela é outro evento.",
+      });
+    }
+    // ═══ V11 V9.4 — ESPELHA `ck_historico_vinculo_funcao`, QUE É BICONDICIONAL ═══
+    if (v.tipo === "DESIGNACAO_FUNCAO" && v.funcaoId === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["funcaoId"],
+        message: "DESIGNACAO_FUNCAO sem a função de destino não designa nada. Informe a função.",
+      });
+    }
+    // ⚠️ E A DISPENSA NÃO TRAZ FUNÇÃO — não é preciosismo. `funcaoVigenteEm` decide pelo TIPO do
+    // evento, então uma dispensa COM `funcaoId` preenchido continuaria encerrando; o estrago é na
+    // LEITURA humana da ficha funcional, onde "dispensado da função de diretor" e "designado para
+    // diretor" passariam a ter exatamente as mesmas colunas preenchidas.
+    if (v.tipo !== "DESIGNACAO_FUNCAO" && v.funcaoId !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["funcaoId"],
+        message:
+          "Só a designação informa função. A dispensa ENCERRA a que estiver vigente, e preenchê-la " +
+          "faria a ficha funcional mostrar a dispensa com a mesma cara de uma designação.",
+      });
+    }
+    // ═══ V11 V9.4 — ESPELHA `ck_historico_vinculo_centro_de_custo` E `..._exigido` ═══
+    if (v.tipo === "MUDANCA_CENTRO_DE_CUSTO" && v.centroDeCustoId === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["centroDeCustoId"],
+        message: "MUDANCA_CENTRO_DE_CUSTO sem o centro de custo de destino não muda nada. Informe o setor.",
+      });
+    }
+    if (v.tipo !== "MUDANCA_CENTRO_DE_CUSTO" && v.centroDeCustoId !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["centroDeCustoId"],
+        message:
+          "Só a mudança de centro de custo informa centro de custo por aqui. Uma remoção que também " +
+          "reapropriasse a despesa moveria dinheiro sem que ninguém tivesse pedido — são dois atos.",
       });
     }
   });

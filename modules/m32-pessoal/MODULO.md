@@ -287,8 +287,9 @@ dependente" no detalhe do servidor. Testes: `m32-pessoal.test.ts`, `test/runtime
 ### OS EIXOS DE CONSULTA DE SERVIDOR (TR 5.12.50) — V11 V9.4
 
 A cláusula exige filtrar os funcionários "por no mínimo: matrícula, nome, cargo, regime, local de
-trabalho, centro de custo, função e data de admissão". **Seis eixos entraram; dois não existem como
-MODELO e não foram inventados.**
+trabalho, centro de custo, função e data de admissão". **Os oito eixos entraram** — seis na V11 V9.4
+como consulta, e os dois últimos quando o MODELO deles nasceu, na mesma orquestração. Até lá eles
+estavam **recusados e nomeados**, não inventados: um seletor vazio teria sido pior que a ausência.
 
 ⚠️ **ESTES EIXOS SÃO (a) — E (a), (b) E (c) SÃO TRÊS COISAS.** A distinção inteira, com o motivo,
 está no docblock de `EixosDeConsultaDeVinculo` em `modules/m32-pessoal/dominio.ts`. Em resumo:
@@ -379,20 +380,27 @@ truncou**. Truncar devolveria uma lista que parece completa com um total que par
 Não são falta de tela; não há dado nenhum a filtrar, e um seletor vazio no lugar deles seria pior
 que a ausência.
 
-11. **`PESSOAL-SEM-CENTRO-DE-CUSTO`** — não existe nenhuma FK de `Vinculo`, `Servidor`, `Cargo` ou
-    `Lotacao` para `Setor` (M21) nem para qualquer tabela de centro de custo. O único vizinho é
-    `Lotacao.unidadeOrcId`, **opcional**, e o próprio schema declara que a correspondência é
-    incompleta (a maioria das caixas do organograma não é unidade orçamentária). **O que precisa ser
-    decidido antes de construir:** se o centro de custo do pessoal é o `Setor` do M21 (que hoje é o
-    centro de custo administrativo do protocolo e do almoxarifado), se é a UO da ficha que paga, ou
-    se é uma dimensão própria da folha. As três dão rateios de despesa de pessoal diferentes, e a
-    escolha atravessa a apropriação — não é decisão de tela.
-12. **`PESSOAL-SEM-FUNCAO`** — "função" não é entidade aqui. Há dois candidatos concorrentes e
-    nenhum filtrável: o valor `FUNCAO_GRATIFICADA` do enum `TipoCargo` (que é uma espécie de cargo,
-    não uma função exercida) e o texto livre de `HistoricoVinculo.gratificacaoDescricao`. **O que
-    precisa ser decidido:** se função é cargo em comissão/função gratificada (e então o eixo é o
-    `TipoCargo` do cargo vigente), ou se é atribuição designada por portaria com vigência própria (e
-    então falta o model, com data de início e fim, como o histórico funcional).
+11. ~~**`PESSOAL-SEM-CENTRO-DE-CUSTO`**~~ — **RESOLVIDA na V11 V9.4, e o levantamento mudou a
+    resposta.** A pergunta registrada aqui era "o centro de custo do pessoal é o `Setor` do M21, a
+    UO da ficha que paga, ou uma dimensão própria da folha?". O levantamento, feito ANTES do
+    desenho, achou o cadastro **pronto**: o `Setor` já é, no texto do próprio schema, "o centro de
+    custo administrativo", e **três módulos já o usam nesse papel** — o almoxarifado registra por
+    ele o consumo de material (5.18.10, cujo comentário diz que "criar um departamento paralelo
+    seria a segunda verdade"), as compras controlam por ele as solicitações (5.17.54) e o
+    patrimônio localiza por ele os bens. Uma tabela só da folha seria a **quarta** estrutura sobre o
+    mesmo organograma, depois de `Lotacao` (RH), `Setor` (custo) e `UnidadeOrcamentaria`
+    (orçamento) — e a despesa de PESSOAL deixaria de somar com a de MATERIAL no mesmo eixo, que é
+    para o que serve um centro de custo. **O que faltava nunca foi o cadastro: era o VÍNCULO, com
+    vigência.** Entregue como `HistoricoVinculo.centroDeCustoId` + evento `MUDANCA_CENTRO_DE_CUSTO`.
+    E `Setor.unidadeOrcId` é **obrigatório**, enquanto `Lotacao.unidadeOrcId` é opcional — para
+    apropriar despesa, o `Setor` não era só o cadastro que já existia: é o que já chega ao orçamento.
+12. ~~**`PESSOAL-SEM-FUNCAO`**~~ — **RESOLVIDA na V11 V9.4. Esta precisou mesmo nascer.** Entre as
+    duas saídas registradas aqui, a escolhida foi a segunda: função é **atribuição designada com
+    vigência própria**, não o `TipoCargo` do cargo vigente. Model `Funcao` (cadastro, com ato
+    autorizativo e extinção, espelhando `Cargo`) + eventos `DESIGNACAO_FUNCAO` / `DISPENSA_FUNCAO`.
+    Os dois candidatos antigos **continuam existindo de propósito**: `FUNCAO_GRATIFICADA` segue
+    sendo a natureza do POSTO, e `gratificacaoDescricao` segue sendo a PARCELA que a função costuma
+    pagar. O que mudou é as três deixarem de ser a mesma coisa.
 13. **`SERVIDORES-ORDENAM-POR-CPF`** — ACHADO em V11 V9.4, **pré-existente e NÃO corrigido aqui**. A
     coluna "Nome" é declarada `ordenavel`, e a porta traduz isso em `orderBy: { pessoa: { documento } }`
     — quem clica em "Nome" ordena por **CPF**. É um controle que diz uma coisa e faz outra. Não foi
@@ -410,6 +418,33 @@ que a ausência.
     atesta pela papelada. Quem prova é o **percurso de navegador**, não executado. Enquanto isso, o
     que está provado é só a porta: ela recusa, nas duas direções, e a mensagem carrega a
     providência e diz que não truncou.
+
+#### As pendências que os dois eixos novos ABRIRAM — nomeadas, não caladas
+
+15. **`CENTRO-DE-CUSTO-SEM-VIGENCIA-HISTORICA`** — `Setor` é cadastro do M21 e desativa por
+    `ativo Boolean`, não por `dataExtincao`; o schema dele declara essa escolha ("cadastro, não
+    fato"). Logo **não há como perguntar "este setor estava ativo em 2019"**, e o serviço pergunta
+    "está ativo agora" (`exigirCentroDeCustoAtivo`) enquanto cargo, lotação e função perguntam
+    "vigente na data do ato". A assimetria está no código, com o motivo. Fingir uma vigência —
+    comparando contra `criadoEm`, por exemplo — inventaria um dado que o cadastro não guarda. O
+    conserto é do M21 (dar vigência ao `Setor`), não daqui, e atravessa protocolo, almoxarifado,
+    compras e patrimônio.
+16. **`VINCULOS-ANTERIORES-SEM-CENTRO-DE-CUSTO`** — a coluna nasceu **nula** em todo vínculo
+    anterior à migration, e não há de onde preenchê-la: escolher um setor para o histórico seria
+    apropriar despesa passada num centro de custo que ninguém escolheu. Quem consome recusa com
+    motivo quando `centroDeCustoVigenteEm` devolve nulo. **Consequência direta:** o eixo de centro
+    de custo não acha ninguém enquanto o ente não registrar os eventos — e isso é o certo, não um
+    defeito. É carga de dado do ente, não código.
+17. **`FUNCAO-SEM-ACAO-PROPRIA`** — `cadastrarFuncao` reusa a ação `CADASTRAR_CARGO` (é o mesmo
+    poder no eixo "criar estrutura", que é o lado da linha `CADASTRAR_CARGO` × `ADMITIR_SERVIDOR`).
+    **Quem já tem `CADASTRAR_CARGO` passa a poder cadastrar função** — está escrito no censo, mas é
+    ampliação. Uma ação própria custa valor novo no enum `AcaoDoSistema` (migration `ALTER TYPE`
+    isolada), `atualizacoes-de-permissoes.ts`, `navegacao-permissoes.ts` e o mapa do M35: cinco
+    sítios, com teste de instalação limpa E de atualização. É decisão de granularidade de perfil do
+    ente, reversível, e não se toma junto com a que cria o modelo.
+18. **`FUNCAO-SEM-EIXO-DE-AUSENCIA`** — não há como perguntar "quem NÃO exerce função nenhuma". O
+    eixo aceita funções; `null` não é um valor pedível. O TR não pede, e inventar um
+    `"SEM_FUNCAO"` sem pedido seria inventar requisito — fica nomeado para quando alguém precisar.
 
 ### O GATE DA CONSULTA MORA NA PORTA, NÃO NA TELA (V11 V9.4, pós-auditoria)
 
