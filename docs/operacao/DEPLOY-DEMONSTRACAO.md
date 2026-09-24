@@ -57,6 +57,42 @@ npx next build
 NODE_ENV=production npx next start
 ```
 
+### ⚠️ Em WORKTREE nova, `npx prisma generate` não é opcional — e a falha engana
+
+O passo está na lista acima, e na árvore principal ele é invisível: `prisma/generated/` já existe.
+Numa **worktree recém-criada** ele não existe (é gitignorado, e `git worktree add` não copia o que
+o Git não versiona). Pular o passo faz o `next build` **compilar com sucesso** e só então quebrar
+com:
+
+```
+./modules/m01-core-contabil/adapter-prisma.ts
+Module not found: Can't resolve '../../prisma/generated/client/client.js'
+```
+
+⚠️ **A mensagem manda procurar no lugar errado.** Ela parece dependência faltando, e `npm ci` ou
+refazer o symlink de `node_modules` **não resolvem**: o cliente não é pacote, é código gerado
+dentro do repositório. Rode `npx prisma generate` DENTRO da worktree, uma vez, antes do build.
+(Custou um build inteiro em V11 V9.3.)
+
+### ⚠️ O typecheck do `next build` pode estourar o heap — e há caminho provado, com prova
+
+O `next build` typecheca o MESMO projeto que `npm run typecheck:app` já confere, e numa máquina de
+8 GB com outros `next start` de pé o worker de tipos **estoura** (medido em V11 V9.3: OOM a 5039 MB
+com `--max-old-space-size=5120`, `SIGABRT`, ~17 min perdidos — e o `.next` fica **sem `BUILD_ID`**,
+isto é, inservível; não se sobe artefato de build que falhou).
+
+O caminho é a válvula de `next.config.mjs`, que **só abre com prova do conteúdo**:
+
+```text
+npm run tipos:conferir                       # roda o tsc de verdade e grava a aprovação pelo DIGESTO
+PULAR_CONFERENCIA_DE_TIPOS_DO_BUILD=1 \
+  NEXT_PUBLIC_BUILD_COMMIT=<SHA completo> npx next build
+```
+
+Sem aprovação para aquele conteúdo exato o build **para**, e para listando o que mudou. Não é
+atalho: é a conferência feita **uma vez** em vez de duas. Enquanto o heap couber, **não se liga a
+válvula** — a conferência do próprio build é melhor, porque olha o `.next/types/**` recém-gerado.
+
 Banco dos percursos (isolado de dev e da suíte): `npm run percursos:preparar` e
 `npm run percursos:servir` (porta 3010). O servir carrega `.env`, aponta
 `DATABASE_URL` para `DATABASE_URL_PERCURSOS` e herda o Chromium do ambiente.
