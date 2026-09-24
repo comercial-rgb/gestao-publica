@@ -22,7 +22,7 @@ import { BotaoPdf } from "../../../../components/ui/BotaoPdf";
 import { paraCsv } from "../../../../lib/csv/csv";
 import { formatarMoeda } from "../../../../lib/format/moeda";
 import { FormArrecadacao } from "./FormArrecadacao";
-import { FormAnularReceita } from "./FormAnularReceita";
+import { AnulacoesDaTela, FormAnularReceita } from "./FormAnularReceita";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
 /**
@@ -151,16 +151,20 @@ export default async function ArrecadacoesPage({
               <strong className="text-base"><ValorMonetario valor={periodo.total} comSimbolo /></strong>
             </span>
           </div>
-          <TabelaDeDados
-            colunas={colunasArrecadacao(
-              // As receitas JÁ anuladas: a `anulacaoDeId` de uma linha de anulação aponta a guia que ela nega.
-              new Set(periodo.linhas.filter((l) => l.anulacaoDeId !== null).map((l) => l.anulacaoDeId!)),
-              exercicio
-            )}
-            linhas={periodo.linhas}
-            keyDe={(l) => l.id}
-            legenda={`${periodo.linhas.length} guia(s) · valores em R$ · o total desconta as anulações.`}
-          />
+          {/* ⚠️ O PROVEDOR ENVOLVE A TABELA (V11 V9.3): a linha que se anula SOME, e com ela sumia
+              a confirmação. Ver o cabeçalho de `FormAnularReceita.tsx`. */}
+          <AnulacoesDaTela>
+            <TabelaDeDados
+              colunas={colunasArrecadacao(
+                // As receitas JÁ anuladas: a `anulacaoDeId` de uma linha de anulação aponta a guia que ela nega.
+                new Set(periodo.linhas.filter((l) => l.anulacaoDeId !== null).map((l) => l.anulacaoDeId!)),
+                exercicio
+              )}
+              linhas={periodo.linhas}
+              keyDe={(l) => l.id}
+              legenda={`${periodo.linhas.length} guia(s) · valores em R$ · o total desconta as anulações.`}
+            />
+          </AnulacoesDaTela>
         </>
       )}
     </div>
