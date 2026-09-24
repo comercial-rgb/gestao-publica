@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | **V11 V9** — a entidade TITULAR na arrecadacao, medida e commitada (`8b12dc2`). Arvore com a frente da FOLHA nao commitada e nao medida, por bloqueio de escrita do ambiente; os tres scripts do operador seguem fora do Git |
+| HEAD | **V11 V9.2** — `9d39776`, **árvore limpa**. Sete commits nesta rodada (`1a2fb5a..9d39776`, 24 arquivos, +3.763/−94). Os três scripts do operador seguem fora do Git |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
-| Frente em execução | **V11** — V1.1, V3.1, V4.1, V4.2 (seção 65), V2.1 eSocial (seção 66), V5.1/V5.2 (seção 67), V6 (seção 68), V7/V7.1/V7.2 (seção 69), V7.3 (seção 70) e **V8: o guichê — agendamento de atendimento presencial** (seção 71). **O escopo planejado desta rodada está concluído**; V6 (AWS) segue bloqueado |
-| Último resultado | seção 84 — a fatia da receita fechou J1 a J8: typecheck dos **três** projetos sem uma acusação nela, censo 26/27 (a falta é da folha), migrations aplicadas em banco de teste, domínio **28/28**, regressão **442/442 em 51 arquivos**, instalação limpa e atualização **8/8**, e **seis mutações** que acusaram e reverteram. **J9 (percurso) NÃO executada**, com o motivo medido — as três telas compilam e **nenhuma foi aberta** |
-| Pendências relevantes | `RECEITA-SEM-ENTIDADE-ARRECADADORA` **não fecha**: estreitou para `SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS`, com as cinco faltas nomeadas (despesa por UO sem de-para, extraorçamentário, restos, a amarração S1 sobre razão sem entidade, e o encerramento único). `REABERTO-COM-SUPLEMENTACAO-NAO-DISTINGUIDO` bloqueada só no trecho sem o fato (seção 83.4). **Achado não consertado:** `typecheck:app` é o único dos três scripts sem `--max-old-space-size` e aborta com 134 num log sem uma linha `error TS`. **Bloqueadas por terceiro**, separadas na seção 83.3: leiaute eSocial, token ASTEC, certificado A1, AWS e a linha ENT12 |
-| Próximo passo | **o desbloqueio da escrita do agente da folha** (decisão do usuário) e, com ele, a passada curta de nove arquivos já fechada no papel — os **dois** contadores do censo (425 serviços, 358 ações), a v28 e a migration do `AcaoDoSistema`. Depois, a **J9** nas condições da seção 84.12 (worktree em commit, máquina livre) |
+| Frente em execução | **V11** — V9.2 fechou as duas jornadas que a V9/V9.1 deixaram no papel: a **J9 da receita** e o **percurso do 13º**. `SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS` segue como continuidade funcional, com a apuração **não** ligada; V6 (AWS) segue bloqueado por terceiro |
+| Último resultado | seção 86 — typecheck dos três projetos **0/0/0** (o `2` do `app` foi real, era meu, e foi corrigido), dirigidos **67/67**, duas provas por mutação revertidas **por edição** com checksum idêntico, e **os dois percursos verdes contra artefato de árvore limpa**: J9 **33 ok / 0 falhas / 3 não executados** e 13º **44 ok / 0 falhas**, ambos com `/release` = `9d39776` = HEAD. O defeito que a J9 achou (`ATRIBUICAO-NAO-CHEGA-AO-RODAPE`) foi corrigido e provado pela tela |
+| Pendências relevantes | `CONTROLE-DDR-POR-NATUREZA-DA-FONTE` (bloqueia três passos da J9 — **não executados**, nunca "aprovados"), `PERCURSOS-SEM-TERMO-PATRIMONIAL-CONGELADO`, `ESTADO-EXIGIDO-DO-ADIANTAMENTO-SEM-FONTE` (lacuna **normativa**), `SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS` com as cinco lacunas preservadas. **Bloqueadas por terceiro** (seção 83.3): leiaute eSocial, token ASTEC, certificado A1, AWS e a linha ENT12 |
+| Próximo passo | **Nada está instalado nem publicado**, e `/release` responde **503** com `candidato: null` — isso é honesto, não defeito. O próximo ponto é decidir `ATRIBUICAO-NAO-CHEGA-AO-RODAPE` a montante (a fila e o rodapé agora concordam, mas **nenhuma cláusula do catálogo corresponde** à capacidade — ver 86.7) e destravar `CONTROLE-DDR-POR-NATUREZA-DA-FONTE`, que é decisão de modelo mais ato do ente, não escolha de conta |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -10088,6 +10088,15 @@ aplicar", e a conferência foi ao banco ver os enums e as tabelas.
 roteiro de 15 passos e a lista do que ele provaria estão no `MODULO.md` do M33), nem a **J9** da
 receita.
 
+> ⚠️ **CORRIGIDO NA V11 V9.2 (seção 86), e a linha acima fica como foi escrita.** Duas coisas
+> mudaram. (1) `scripts/smoke-decimo-terceiro.ts` **existe** desde `4438569`, com 44 passos, e a
+> **J9** existe desde `fc34c8f` — os dois rodaram verdes contra artefato de árvore limpa. (2) A
+> referência ao "roteiro de 15 passos ... no `MODULO.md` do M33" era **circular quando foi
+> escrita**: o `MODULO.md` apontava de volta para este arquivo, e o roteiro não estava em lugar
+> nenhum. Hoje ele está escrito em `modules/m33-folha/MODULO.md`, seção "O roteiro de quinze
+> passos". Fica o registro do erro, e não a sua supressão: um documento que se corrige em silêncio
+> ensina a próxima pessoa a confiar na referência sem abrir.
+
 **Instalado ou publicado: NADA.** Sem push, sem deploy, sem build.
 
 ⚠️ **Marcação do catálogo: NADA foi marcado**, nem para cima nem para baixo. A marcação honesta da
@@ -10110,9 +10119,186 @@ saber por quê seria adivinhar.
 ### 85.10 O próximo ponto exato
 
 1. **O percurso do 13º** — `scripts/smoke-decimo-terceiro.ts`, roteiro de 15 passos já escrito no
-   `MODULO.md` do M33. ⚠️ Precisa escolher um exercício **ainda sem folha de 13º**
+   `MODULO.md` do M33. ⚠️ **FEITO na V11 V9.2** (`4438569`): 44 passos, 44 ok / 0 falhas; e o
+   roteiro deixou de ser uma referência circular — está em `modules/m33-folha/MODULO.md`. ⚠️ Precisa escolher um exercício **ainda sem folha de 13º**
    (`@@unique([exercicio, tipo])`), e reexecutar no mesmo exercício tem de ser reconhecido e pulado
    com aviso — nunca falhar, nunca passar em silêncio.
 2. **A J9 da receita** — nas condições da seção 84.12, conferindo antes as **17 worktrees**
    existentes.
 3. Ambos dependem de `next build`, que **não** foi desbloqueado pelo conserto do `package.json`.
+
+## 86. V11 V9.2 — as duas jornadas saíram do papel, e o artefato passou a ter o SHA que o nomeia
+
+Esta rodada fechou o que a V9 e a V9.1 deixaram escrito e não executado, e o que a fechou foi um
+**percurso de navegador**, não uma suíte: a J9 encontrou um defeito que treze testes de domínio
+verdes não viam. Sete commits, `1a2fb5a..9d39776`, 24 arquivos, +3.763/−94.
+
+### 86.1 Implementado
+
+| Commit | O que passou a funcionar |
+|---|---|
+| `1dbfb0d` | O comentário do `next.config.mjs` dizia, desde 15/09, que **o worker de tipos do Next não herda o `--max-old-space-size`**. É **falso** no 15.5.20, e a afirmação mandava procurar no lugar errado. Medido: quem apaga o heap é `isolatedMemory: true`, que é o worker de **páginas** (`build/index.js:338`); o de **tipos** nasce com `isolatedMemory: false` (`build/type-check.js:77`) e **herda**. A válvula permanece, e nada foi desligado |
+| `3e355e4` | `preparar-banco-de-percursos.ts` monta o banco e **instala o contrato comercial de demonstração**, depois das permissões (o instalador deduz os módulos delas). `LICENCA_NUMERO`/`LICENCA_CLIENTE` são exigidas **antes do primeiro `CREATE DATABASE`** |
+| `fc34c8f` | A **J9** — `scripts/smoke-receita-por-entidade.ts` |
+| `39c0d20` | `ATRIBUICAO-NAO-CHEGA-AO-RODAPE`: a consulta por entidade passou a **ler a atribuição** |
+| `aac63d6` | O contracheque do 13º não abria, e o `cast` dizia ao compilador que abria |
+| `4438569` | O **percurso do 13º** — 44 passos pela tela |
+| `9d39776` | Todo `href` da navegação aponta para rota viva |
+
+**O defeito que a J9 achou.** `arrecadadoPorEntidade` agrupava **só** por `entidadeTitularId` e
+nunca lia `AtribuicaoDeEntidadeDaArrecadacao`; a fila de pendências
+(`lib/portas/arrecadacao.ts:278`) já filtrava pelos dois. No **mesmo render da mesma tela**: o ente
+atribuía a guia de legado com ato, ela **saía** da lista do que havia para fazer, e o dinheiro
+**ficava** em "Não atribuído — o ente ainda não disse de quem é" para sempre, sem formulário para
+agir de novo. Medido no banco: a guia 7 (80.000,00) seguiu com `entidadeTitularId = null` depois de
+atribuída, com a linha de atribuição gravada.
+
+**A decisão, e o que ela preserva.** A **consulta** passa a ler a atribuição; a atribuição **não**
+carimba a coluna. `entidadeTitularId` é o carimbo **do fato** — sobrescrevê-lo seria `UPDATE` em
+fato consumado e apagaria a diferença entre "veio identificado na origem" e "o ente atribuiu
+depois, por ato". A **procedência** (`naOrigem` / `porAtribuicao`) atravessa domínio, porta e tela,
+com conferência própria que **lança** se não fechar linha a linha.
+
+**Um corolário que esta rodada decidiu e que não estava no enunciado:** na ordem *atribuir → anular*,
+o estorno herda `entidadeTitularId` do original, que no legado atribuído é nulo nos dois. Sem
+resolver o estorno pelo **dono do original**, o não atribuído somaria **negativo** — o ente
+mostrando dinheiro devolvido por ninguém. A herança declarada do estorno vale para o fato original
+inteiro, carimbo **ou** atribuição.
+
+### 86.2 Tipos verificados
+
+| Projeto | Código (lido do arquivo de registro) |
+|---|---|
+| backend (`tsconfig.backend.json`) | **0** |
+| app (`tsconfig.json`) | **2 → 0** |
+| scripts (`tsconfig.scripts.json`) | **0** |
+
+⚠️ **O `2` foi real, e serve de prova de que o instrumento acusa — medida hoje, no mesmo projeto.**
+Eram sete `error TS2339` em `app/(areas)/receita/por-entidade/page.tsx`, todos meus: propaguei a
+procedência no domínio e **não** no tipo de tela da porta. Corrigido em `lib/portas/arrecadacao.ts`,
+a corrida seguinte deu 0. A segunda corrida levou 5 s contra 82 s da primeira: conferido que é
+`incremental: true` com `tsconfig.tsbuildinfo` em disco — cache legítimo, não passo pulado.
+
+⚠️ **As duas acusações previstas não apareceram** em nenhum dos três projetos: nem a navegação do
+Json em `reguaDoParametroNoCalculo`, nem o `never` do helper `irrecuperavel`.
+
+### 86.3 Comportamento testado com banco
+
+- Dirigidos: **67/67 em 4 arquivos** (`m04-entidade-titular`, `m16-censo`, os dois do 13º), código 0.
+- `m04-entidade-titular` isolado, com reporter nominal: **15/15**, com `t6` e `t7` **nomeados na
+  saída** — placar agregado não prova que um teste novo rodou.
+- Contraprova pós-mutação: **41/41**.
+
+**`t6` confronta as duas leituras**, e a ausência disso é o que deixou o defeito passar: fixture
+**N=2** (uma guia identificada na origem, uma atribuída depois) e a fila **recalculada do banco com
+o mesmo critério da porta**, para exigir que as duas descrições do mesmo dinheiro coincidam.
+**`t7`** cobre a ordem inversa dos atos.
+
+**Duas provas por mutação, revertidas POR EDIÇÃO** — `git checkout` apagaria trabalho não commitado
+de outra frente que estava na árvore:
+
+| Mutação | Vermelho | Reversão |
+|---|---|---|
+| a leitura da atribuição → `if (false)` | `t6` e `t7`, com o defeito original **exato** (`expected '500.00' to be '0.00'`) — e **os 13 testes anteriores seguiram verdes**, que é a medida de quão cega a suíte era | checksum idêntico |
+| `doAdiantamento.regua !== reguaVigente` → `false` | **2 testes** (`m33-decimo-terceiro.test.ts:750` e `:820`) | `servico.ts` voltou **byte a byte** |
+
+⚠️ **Foram 2, não 3.** A ordem previa três testes exigindo a recusa; só existem **duas** asserções
+de `PARAMETRO-TROCADO-ENTRE-AS-PARCELAS`, e as duas caíram. O número medido fica, não o esperado.
+
+### 86.4 Percurso executado
+
+⚠️ **Ambos contra artefato de ÁRVORE LIMPA.** O build é de `9d39776` com `NEXT_PUBLIC_BUILD_COMMIT`
+no SHA completo, e `/release` responde `9d39776` = HEAD. Isso fecha a ressalva das corridas
+anteriores, em que o conteúdo estava certo e o SHA **não o nomeava** porque a árvore estava suja.
+
+O build passou pelo **caminho direto** — a linha do log é `Linting and checking validity of types`,
+e **não** `Skipping validation of types`: a conferência rodou no worker do próprio build, sem OOM, e
+**a válvula do digesto não foi usada**.
+
+| Percurso | Resultado | Registro |
+|---|---|---|
+| J9 — `smoke:receita-por-entidade` | **33 ok / 0 falhas / 3 NÃO EXECUTADOS**, código **0** | `percurso-da-entidade-titular-na-arrecadacao-j9-2026-09-24T04-12-09-005Z.log` |
+| 13º — `smoke:decimo-terceiro` | **44 ok / 0 falhas**, código **0** | `smoke-do-decimo-terceiro-2026-09-24T04-15-06-246Z.log` |
+| 13º, **reexecução no mesmo exercício** | código **4**, com `[PULADO] ... NADA foi provado nesta corrida` | `smoke-do-decimo-terceiro-2026-09-24T04-20-44-830Z.log` |
+
+O `rc=4` é o comportamento certo e foi **medido nesta rodada**, não herdado: a segunda corrida
+reconhece `@@unique([exercicio, tipo])`, recusa-se a passar em silêncio e diz qual variável mudar.
+
+Banco: `gestao_publica_percursos_v11v92d`, sintético e descartável, papel de runtime `gestao_app`.
+
+### 86.5 Instalado ou publicado: **NADA**
+
+Sem push, sem deploy, sem transmissão. `/release` responde **503** com `{"candidato": null}` — **não
+há manifesto de candidato**, e responder 503 é honesto, não defeito. Prontidão de release
+permanece **pendente**.
+
+### 86.6 Pendências nomeadas
+
+- **`CONTROLE-DDR-POR-NATUREZA-DA-FONTE`** (`modules/m01-core-contabil/roteiros.ts:238-254`).
+  `CONTA_CONTROLE_DDR = "7.2.1.1.0.00.00"` é **sintética** no plano oficial e o roteiro tem uma
+  perna fixa que não lê a fonte: **não há arrecadação em instalação limpa**. Bloqueia **três**
+  passos da J9 — o carimbo da guia nova, a troca de titular e o estorno **pela tela** —, que ficam
+  **NÃO EXECUTADOS**, com contador próprio na saída do percurso. Não se destrava escolhendo uma
+  conta filha: é decisão de modelo (perna resolvida **pela fonte**) mais ato do ente. As três já
+  estão provadas por teste em banco (`t2b`, `t3`, `t3b`), e o percurso as executa sozinho no dia em
+  que a pendência cair.
+- **`PERCURSOS-SEM-TERMO-PATRIMONIAL-CONGELADO`** — faltam fixture e termo com emissão congelada;
+  4.1/4.2 do `smoke-identidade` seguem vermelhos. **Nenhum termo foi fabricado** para fechar placar.
+- **`ESTADO-EXIGIDO-DO-ADIANTAMENTO-SEM-FONTE`** — lacuna **normativa**, não de código: nenhuma
+  fonte no repositório diz que "fechado" é o estado certo para abater. O motor **coincide** com a
+  regra documentada, e documentação é **argumento de engenharia, não norma**.
+- **`SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS`** — **continuidade funcional**, não pendência morta,
+  com as **cinco lacunas preservadas e inalteradas** (seção 84.4). **A apuração NÃO foi ligada**, e
+  a nota da tela continua declarando o recorte.
+
+### 86.7 Catálogo — o que a evidência sustenta, e só
+
+**Zero mudanças de situação.** Uma única marcação mudou, e foi de **evidência**: `5.12.50`.
+
+- **`5.12.50` continua `PARCIAL`.** O percurso do 13º validou **dois dos nove tipos** que a cláusula
+  enumera (adiantamento de 13º e 13º salário) e **nenhum** dos oito filtros de funcionários que ela
+  exige. Promovê-la a `VALIDADO_LOCALMENTE` por isso seria trocar relatório por placar. A evidência
+  agora registra o alcance validado **e** o que falta: mensal complementar, rescisão, rendimentos
+  acumulados, férias, diferença de 13º, adiantamentos salariais e o filtro.
+- **A J9 não marcou nada, e o motivo é um achado.** Procurei as cláusulas correspondentes e
+  **não há nenhuma**: as de "por entidade" do catálogo são de PPA, LDO, orçamento e relatórios, não
+  de *dizer de quem é a receita que entrou*. ⚠️ E `modules/m04-receita/consultas.ts` cita **"TR
+  5.38.7"** no cabeçalho — essa correspondência **não se sustenta**: `5.38.7` é do **portal público
+  de transparência** ("Consultar tributos arrecadados pela entidade"), e a J9 exercitou tela
+  **interna autenticada**. Marcar por ela seria inventar correspondência. Fica nomeado para
+  decisão, e **marcar ausência vale tanto quanto marcar presença**.
+
+Contagem após esta rodada, **inalterada**: `NAO_VERIFICADO` 1.645 · `AUSENTE_CONFIRMADO` 145 ·
+`PARCIAL` 101 · `VALIDADO_LOCALMENTE` 75 · `IMPLEMENTADO_NAO_VALIDADO` 67 ·
+`DEPENDENCIA_EXTERNA` 4. **392 de 2.037 (19,2%)** verificadas.
+
+### 86.8 O que esta rodada aprendeu sobre a própria medição
+
+**O código de saída do shell mentiu sete vezes.** Em todas, a notificação disse `exit code 0` e o
+arquivo de registro disse outra coisa — `2` do trinco caindo no uso porque `npm run ... -- ...`
+engole o `--`, `1` de percurso vermelho, `2` de typecheck, `3` de pré-condição, `4` de reexecução
+pulada. **Vale o arquivo.**
+
+**Dois defeitos nasceram dentro do instrumento**, e os dois foram no percurso, não no produto: uma
+função **nomeada** dentro de um `page.evaluate` (o `tsx` compila com esbuild e `keepNames`, que a
+embrulha num `__name(...)` inexistente no navegador — o percurso morria com "`__name is not
+defined`", erro que não fala de nada do domínio), e uma asserção que **deduzia** "não há entidade
+cadastrada" de "nenhuma entidade tem linha no rodapé" — coisas diferentes, porque entidade sem
+arrecadação não tem linha. A segunda reprovou comportamento **correto** na segunda execução.
+
+**E uma asserção minha acusou o alvo errado:** a J9 reprovava o `200` do tesoureiro em
+`/contabilidade/entidades`. A tela é de **leitura**, guardada por `CONSULTAR_CONTABILIDADE`
+(`page.tsx:32`); a **escrita** se guarda por ação nomeada no servidor
+(`lib/portas/entidades-contabeis.ts:173`). O invariante 6 estava de pé, e um percurso que reprovasse
+aquilo mandaria consertar a guarda certa. A asserção passou a afirmar o **efeito**: o tesoureiro
+envia e o servidor recusa.
+
+### 86.9 O próximo ponto exato
+
+1. **Decidir a correspondência de catálogo da receita por entidade** — hoje a capacidade existe,
+   está validada pela tela e **não tem cláusula**. Ou se acha a cláusula certa, ou se registra a
+   ausência no catálogo.
+2. **`CONTROLE-DDR-POR-NATUREZA-DA-FONTE`** — enquanto viver, instalação limpa não arrecada, e três
+   passos da J9 seguem não executados.
+3. **Prontidão de release** — não há manifesto de candidato; `/release` responde 503. Nada foi
+   publicado e nada está pronto para publicar.
