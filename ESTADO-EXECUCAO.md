@@ -9922,3 +9922,197 @@ tipo no backend e 5 no `app`/`scripts`. Ficam na árvore, atribuídos, até o de
 **Próximo passo:** o desbloqueio da escrita do agente da folha (decisão do usuário) e, com ele, a
 passada curta de nove arquivos já fechada no papel — os **dois** contadores do censo (425 serviços,
 358 ações), a v28 e a migration do `AcaoDoSistema`. Depois, a J9 acima.
+
+---
+
+## 85. V11 V9.1 — o 13º em duas parcelas, e a verificação que passou a se recusar a mentir
+
+Rodada de **conclusão**, não de capacidade nova: fechar o 13º que ficara escrito e não medido, e
+recuperar uma verificação confiável. Dois agentes, execução sequencial, sem worktree nova.
+
+### 85.1 A divergência "3 e 5 erros": resolvida pelo DESFECHO, não por contagem
+
+| Corrida | Desfecho | Erros | Vale? |
+|---|---|---|---|
+| backend (r2) | `exit 2`, sem sinal, 0 OOM | 3 | diagnóstico **atual** |
+| app com heap | `exit 2`, 0 OOM | 5 | **atual** |
+| scripts | `exit 2`, 0 OOM | 5 | **atual** |
+| app original | **SIGABRT 134**, 1 OOM | 0 | **sem significado** |
+
+`exit 2` é o código do `tsc` para "encontrei erros", com término normal. O zero da corrida abortada
+não é diagnóstico nenhum.
+
+⚠️ **E apareceu uma lacuna do fechamento anterior:** o typecheck de backend rodou 22:29:39Z e o
+`m16-entidade-contabil-permissoes.test.ts` foi commitado 23 minutos DEPOIS (`e9b0b7b`), com
+`modules/**/*.ts` no `include` daquele projeto. **Aquele arquivo nunca tinha sido compilado**, e o
+registro dizia "os três projetos limpos nesta fatia". Fechado nesta rodada: compila limpo.
+
+### 85.2 O invólucro: a ordem estava errada, e a recusa salvou a peça
+
+A ordem desta rodada mandava **consertar a propagação de exit/status/sinal** do
+`scripts/trinco-de-maquina.ts`. O gerente **parou e recusou, com evidência** — e estava certo. O
+cruzamento de `# comando` com `# desfecho` mostra o padrão: **com filho DIRETO o trinco registrou a
+verdade, inclusive `SIGABRT 134` e `SIGTERM 143`**; com filho = script de scratchpad registrou 0, e
+registrou **certo**, porque aqueles scripts terminavam em `echo "### exit=$?"` e `echo` tem sucesso.
+
+**A propagação já estava correta, e agora está MEDIDA**, com quatro processos pequenos:
+`0 → 0`, `exit 1 → 1`, `exit 2 → 2`, `SIGTERM → 143`.
+
+**O que se construiu no lugar** (commit `7e9e378`): quando o filho sai **0** mas o conteúdo gravado
+traz marca de falha, o desfecho vira **`INCONCLUSIVO: o codigo do filho diverge do conteudo`** e o
+trinco sai com **3** — e não 1, porque `1` se confunde com "a suíte reprovou", que é resultado
+legítimo com dono; **3 diz que a medição não vale**.
+
+⚠️ **A contraprova mudou a régua, não apenas a validou.** `error TS` e `FAIL ` ficaram **FORA** dos
+gatilhos: um `tsc` com erro já sai 2, então o sinal nada acrescenta quando o código é 0 — e as duas
+cadeias aparecem legitimamente em saída de teste que fala *sobre* erros, e este repositório tem
+grep-testes assim. Sobraram três sinais com a propriedade que importa: **não podem aparecer numa
+corrida que terminou em 0 de verdade.** Guarda que grita à toa é desligada em três semanas.
+10/10 em `test/trinco-desfecho.test.ts` (5 de acusação, 5 de contraprova) — e a própria corrida
+contém `Tests 10 passed (10)` e nomes de teste com "failed" **sem disparar a guarda**.
+
+**Duas lições foram para onde serão lidas:** no cabeçalho do trinco, *um invólucro que imprime o
+código do filho como TEXTO e termina em `echo` transforma o registro num mentiroso sem que ele
+tenha culpa* — a forma certa é `rc=$?; echo ...; exit $rc`. No cabeçalho do teste, *em arquivo não
+commitado, mutação se reverte por EDIÇÃO, nunca por `checkout`* — e a conferência é por `grep` do
+que se acrescentou, porque `git status` diz `??` antes e depois num arquivo novo.
+
+### 85.3 `typecheck:app`: causa confirmada pelo log, e o que o conserto NÃO resolve
+
+`exit 134` sozinho não identifica causa. O log identifica, na linha 20:
+`FATAL ERROR: Ineffective mark-compacts near heap limit — JavaScript heap out of memory`, **1**
+ocorrência, e **0** de `error TS` — o log não tem erro de tipo porque o processo morreu antes de
+contar.
+
+`typecheck:app` era **o único dos três scripts sem `--max-old-space-size`**. Passou a usar **5324**,
+o mesmo dos irmãos — valor já medido nesta máquina, não número novo.
+
+⚠️ **Isto NÃO desbloqueia o percurso.** `next build` typecheca o mesmo projeto com a **própria**
+invocação de Node e **não passa pelo script do `package.json`**. Quem for buildar precisa do heap
+por `NODE_OPTIONS` na hora, e `ignoreBuildErrors` ou desligar o typecheck do build seguem
+**proibidos**.
+
+### 85.4 O 13º em duas parcelas — o que a capacidade entrega
+
+O operador abre a folha de **ADIANTAMENTO DO 13º** de um exercício, calcula sobre os avos que cada
+matrícula acumulou, fecha, certifica e empenha; depois abre a folha de **13º**, que recalcula os
+avos até dezembro e **ABATE** o que a 1ª parcela pagou — cada uma com contracheque, memória e
+`sha256` próprios, pelas mesmas telas da folha mensal.
+
+**Nenhum número do 13º está no código.** O critério do avo, os avos do ano, o percentual da 1ª
+parcela, as incidências e as rubricas da base vêm do **parâmetro do ente**, com ato estruturado.
+Sem parâmetro vigente, o cálculo **recusa nomeando o exercício** — lacuna normativa bloqueia apenas
+a efetivação correspondente, e o resto do sistema segue.
+
+**A divergência entre união de serviços, `Record` e censo foi fechada nos TRÊS lugares** (união
+`NomeDeServico`, `ACAO_DO_SERVICO`, união `AcaoDoSistema` + enum do Prisma), mais os dois `Record`
+exaustivos. Censo: **425 serviços, 358 ações**, com cada delta dizendo qual conta serviço e qual
+conta ação.
+
+### 85.5 Quatro defeitos achados, e o pior não era erro de tipo
+
+1. ⚠️ **`zCadastrarRubricaInput` sem a natureza do abatimento no `z.enum`.** Não quebra compilação:
+   o `parse` recusaria **na entrada**, a única rubrica que o motor do 13º sabe ler seria
+   **INCADASTRÁVEL**, e **a 2ª parcela nunca abateria a 1ª — o ente pagaria o 13º inteiro a quem já
+   recebeu metade.** Corrigida também no `superRefine` que classifica DESCONTO: cadastrada como
+   PROVENTO, **somaria em vez de abater**.
+2. `DefinicaoDeRecurso` sem `acoes`/`abas` — `acoes: []` porque o parâmetro é append-only: uma ação
+   "editar" reescreveria a história de folha fechada.
+3. Coluna `link` para um detalhe **que não existe** — botão sem handler.
+4. `OPCOES_DE_NATUREZA` sem a natureza do abatimento: **a cadeia do 13º existiria no domínio e NÃO
+   pela interface**, com nenhum teste vermelho — o mesmo defeito da landing.
+
+**A lista foi APAGADA, não vigiada:** `type` e `z.enum` passaram a derivar de
+`NATUREZAS_DA_RUBRICA`. Divergir virou **impossível**, não improvável — *teste que vigia duas
+cópias é pior que uma cópia a menos, porque deixa a cópia existir*. O detector ficou só onde não há
+substituto — o enum do `.prisma`, que não é TypeScript — em
+`modules/m33-folha/m33-listas-de-natureza.test.ts`, **lendo o ARQUIVO e não o cliente gerado**
+(conferir o schema contra o cliente gerado a partir dele seria o parser conferindo o próprio
+parser) e afirmando **pelo EFEITO**: toda natureza declarada tem de ser de fato cadastrável.
+Mutação nas duas direções, **reversão conferida por sha1**.
+
+### 85.6 O achado que a regra do "esperado à mão" existe para pegar
+
+O teste esperava **1.500,00** de adiantamento e o motor deu **1.125,00** — **e o motor estava
+certo.** Projetar os avos até dezembro **não apaga a admissão de março**: janeiro e fevereiro nunca
+contam para quem entrou em 20/03. São 9 avos.
+
+⚠️ **Se o esperado tivesse vindo de chamar `avosDoExercicio`, o teste passaria e o mal-entendido
+teria virado a documentação do sistema** — com número, com teste verde e com aparência de norma. É
+a primeira vez nesta sequência de rodadas que a regra pega um erro de **RACIOCÍNIO** e não de
+digitação. O erro ficou registrado por escrito no arquivo, não apenas corrigido.
+
+E o par ficou mais forte que o desenho original: com 1.500,00 e 1.125,00, **"abater valor fixo" e
+"abater o do vínculo errado" falham nos dois sentidos**.
+
+Segundo achado da mesma família: `contracheque.findMany` **sem filtro** trazia os contracheques das
+duas folhas, e passava por acaso porque o primeiro cenário tinha folha única.
+
+### 85.7 O typecheck de backend verde NÃO diz nada sobre o projeto `app`
+
+⚠️ **A fatia do 13º foi commitada (`8bdf23a`) com TRÊS erros de tipo no projeto `app`.** O backend
+veio limpo e isso foi lido como "a fatia compila". `app/(areas)/**` e `lib/portas/recursos/**`
+vivem em **outro `tsconfig`**, que **nunca tinha sido remedido**. **O erro de sequência foi da
+coordenação**, que autorizou o commit antes de fechar a lacuna que o gerente havia registrado por
+escrito.
+
+Dos cinco erros de `app` que existiam, **dois sumiram sozinhos** quando a união de naturezas foi
+fechada, e **três sobreviveram** porque o `DefinicaoDeRecurso` foi consertado num arquivo e não no
+outro — **e nada avisou**, porque o único instrumento que avisaria estava com o heap quebrado.
+**O conserto de uma linha no `package.json` se pagou na primeira corrida.**
+
+E o terceiro erro era de **produto**: `.div(100)` numa `string`. `decimalDaTela` devolve `string`,
+a tela recebe o percentual **em porcento** ("50") como a norma o escreve, e o parâmetro guarda
+**fração**. Sem a conversão de borda, o ente digitaria 50, o `ck_parametro_13_percentual_primeira`
+(entre 0 e 1) recusaria, e **a tela de parâmetros do 13º nunca teria gravado nada** — falha alta,
+não silenciosa, mas numa tela de que a cadeia inteira depende. Corrigido em commit **próprio**
+(`26c0de4`), não em `amend`: `8bdf23a` diz o que foi medido *naquele momento*, e reescrever
+apagaria a informação útil.
+
+### 85.8 A separação da evidência
+
+**Implementado e commitado:** `7e9e378` (guarda de desfecho + heap do `typecheck:app`), `8bdf23a`
+(o 13º em duas parcelas, 27 arquivos), `38c4f2a` (a landing derivando de `navegacao.ts`),
+`9c88c3a` (pendências do M10), `26c0de4` (os três erros do projeto `app`).
+
+**Tipos verificados** — os três projetos, término normal, sem sinal, sem OOM, sob a guarda nova:
+`typecheck` backend **exit 0 / 0 erros**; `typecheck:app` **exit 0 / 0 erros**;
+`typecheck:scripts` **exit 0 / 0 erros**.
+
+**Comportamento testado com banco:** censo **27/27** (4 arquivos); M33 + M32 **262/262** (11
+arquivos); `prisma validate` válido; `migrate deploy` **conferido pelo EFEITO** — a linha dizia
+"No pending migrations to apply", que é ambíguo entre "já estava aplicado" e "não achei o que
+aplicar", e a conferência foi ao banco ver os enums e as tabelas.
+
+**Percurso executado: NENHUM.** Nem o do 13º (`scripts/smoke-decimo-terceiro.ts` **não existe**;
+roteiro de 15 passos e a lista do que ele provaria estão no `MODULO.md` do M33), nem a **J9** da
+receita.
+
+**Instalado ou publicado: NADA.** Sem push, sem deploy, sem build.
+
+⚠️ **Marcação do catálogo: NADA foi marcado**, nem para cima nem para baixo. A marcação honesta da
+**5.12.50 é `IMPLEMENTADO_NAO_VALIDADO`**, e a razão está escrita no `MODULO.md` do M33 pelo próprio
+agente que a propôs: *aplicar a régua ao almoxarifado (5.18.8, marcada como validada com
+`rota_verificada` vazia) e poupar a minha seria trocar relatório por placar.*
+
+### 85.9 A continuidade funcional
+
+`SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS` permanece **continuidade funcional**, não pendência
+morta, com as **cinco lacunas** preservadas e inalteradas (seção 84.4): o de-para UO→entidade, o
+extraorçamentário, os restos, a amarração S1 sobre um razão sem entidade, e o encerramento por
+entidade. **A apuração não se liga antecipadamente** — o `apurado` do superávit continua sem
+recorte por entidade e a nota da tela continua dizendo por quê.
+
+`NATUREZA-FORMULA-FORA-DO-SELETOR` nasce nomeada: `FORMULA` não aparece no seletor de naturezas
+desde a V11 V1.1. **Pode ser deliberado** (a fórmula se escreve na VERSÃO), e acrescentá-la sem
+saber por quê seria adivinhar.
+
+### 85.10 O próximo ponto exato
+
+1. **O percurso do 13º** — `scripts/smoke-decimo-terceiro.ts`, roteiro de 15 passos já escrito no
+   `MODULO.md` do M33. ⚠️ Precisa escolher um exercício **ainda sem folha de 13º**
+   (`@@unique([exercicio, tipo])`), e reexecutar no mesmo exercício tem de ser reconhecido e pulado
+   com aviso — nunca falhar, nunca passar em silêncio.
+2. **A J9 da receita** — nas condições da seção 84.12, conferindo antes as **17 worktrees**
+   existentes.
+3. Ambos dependem de `next build`, que **não** foi desbloqueado pelo conserto do `package.json`.
