@@ -205,7 +205,7 @@ async function idsDaLotacao(termo: string): Promise<readonly string[]> {
 
 /** V11 V9.4 — a FUNÇÃO. Mesma disciplina do cargo, inclusive o `[]` que não vira "sem filtro". */
 async function idsDaFuncao(termo: string): Promise<readonly string[]> {
-  const achados = await cliente().funcao.findMany({
+  const achados = await cliente().funcaoDePessoal.findMany({
     where: { OR: [{ codigo: { contains: termo, mode: "insensitive" } }, { denominacao: { contains: termo, mode: "insensitive" } }] },
     select: { id: true },
   });
@@ -247,7 +247,7 @@ async function montarLinhas(
   const [cs, ls, fs, ccs] = await Promise.all([
     prisma.cargo.findMany({ select: { id: true, codigo: true, denominacao: true } }),
     prisma.lotacao.findMany({ select: { id: true, codigo: true, nome: true } }),
-    prisma.funcao.findMany({ select: { id: true, codigo: true, denominacao: true } }),
+    prisma.funcaoDePessoal.findMany({ select: { id: true, codigo: true, denominacao: true } }),
     prisma.setor.findMany({ select: { id: true, codigo: true, nome: true } }),
   ]);
   const cargos = new Map(cs.map((x) => [x.id, `${x.codigo} — ${x.denominacao}`]));

@@ -29,8 +29,16 @@
 -- cadastro que ja existia, e o que ja chega ao orcamento.
 
 -- ----------------------------------------------------------------------------
--- A FUNCAO — esta SIM precisou nascer
+-- A FUNCAO DE PESSOAL — esta SIM precisou nascer
 -- ----------------------------------------------------------------------------
+-- ⚠️ O NOME E `FuncaoDePessoal`, E A PRIMEIRA VERSAO DESTE ARQUIVO ERRAVA NELE. `Funcao` ja existe
+-- desde `20260711202100_m02_planejamento`: e a funcao ORCAMENTARIA da Portaria STN 42/1999, com
+-- `codigo VARCHAR(2)`, ligada a `FichaOrcamentaria` e `AcaoPpa`. Um `CREATE TABLE "Funcao"` aqui
+-- nao e so nome duplicado no schema do Prisma (P1012): e uma migration INAPLICAVEL — a tabela ja
+-- existe, e `Funcao_pkey` e `Funcao_codigo_key` tambem. Ela nunca rodou em banco nenhum (conferido
+-- nos 21: zero linhas em `_prisma_migrations`), e por isso foi CORRIGIDA em vez de emendada: a
+-- regra da casa proibe reescrever migration JA APLICADA, e uma migration que nunca aplicou e que
+-- falha por construcao nao e historico, e um arquivo quebrado que travaria toda instalacao limpa.
 -- Ate aqui havia dois candidatos concorrentes e nenhum era uma funcao:
 --   · `TipoCargo.FUNCAO_GRATIFICADA` — ESPECIE DE CARGO, atributo de `Cargo.tipo`. Responde "que
 --     natureza tem este posto", nao "que atribuicao esta pessoa exerce";
@@ -38,7 +46,7 @@
 --     parcela ADICIONAL ao salario. E DINHEIRO, nao atribuicao. "Dir. Escola" e "Diretor de
 --     Escola" sao duas funcoes para qualquer filtro.
 -- Os dois continuam existindo de proposito; o que muda e a atribuicao ganhar identidade propria.
-CREATE TABLE "Funcao" (
+CREATE TABLE "FuncaoDePessoal" (
     "id" TEXT NOT NULL,
     "codigo" TEXT NOT NULL,
     "denominacao" TEXT NOT NULL,
@@ -49,13 +57,13 @@ CREATE TABLE "Funcao" (
     "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "criadoPor" TEXT NOT NULL,
 
-    CONSTRAINT "Funcao_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "FuncaoDePessoal_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "Funcao_codigo_key" ON "Funcao"("codigo");
+CREATE UNIQUE INDEX "FuncaoDePessoal_codigo_key" ON "FuncaoDePessoal"("codigo");
 -- Declarado tambem como `@@index([dataExtincao])` no schema: indice que o schema nao declara a
 -- deriva remove em silencio.
-CREATE INDEX "Funcao_dataExtincao_idx" ON "Funcao"("dataExtincao");
+CREATE INDEX "FuncaoDePessoal_dataExtincao_idx" ON "FuncaoDePessoal"("dataExtincao");
 
 -- ----------------------------------------------------------------------------
 -- AS DUAS COLUNAS NO EVENTO — a vigencia mora aqui, nao no cadastro
@@ -66,7 +74,7 @@ ALTER TABLE "HistoricoVinculo" ADD COLUMN "funcaoId" TEXT;
 ALTER TABLE "HistoricoVinculo" ADD COLUMN "centroDeCustoId" TEXT;
 
 ALTER TABLE "HistoricoVinculo" ADD CONSTRAINT "HistoricoVinculo_funcaoId_fkey"
-  FOREIGN KEY ("funcaoId") REFERENCES "Funcao"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  FOREIGN KEY ("funcaoId") REFERENCES "FuncaoDePessoal"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "HistoricoVinculo" ADD CONSTRAINT "HistoricoVinculo_centroDeCustoId_fkey"
   FOREIGN KEY ("centroDeCustoId") REFERENCES "Setor"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 

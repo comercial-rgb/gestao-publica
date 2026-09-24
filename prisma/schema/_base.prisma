@@ -4,6 +4,48 @@
 // Alíquotas/índices: Decimal @db.Decimal(9,6).
 // Models de negócio NÃO entram aqui — cada módulo (M01–M18) traz o seu .prisma.
 // ============================================================================
+//
+// ⚠️ ANTES DE COMMITAR QUALQUER MUDANÇA DE SCHEMA: `npx prisma validate`. SEMPRE.
+// ============================================================================
+//
+// Custou uma parada de frente inteira na V11 V9.4. Um `model Funcao` novo no M32 colidiu com o
+// `model Funcao` do M02 (a função ORÇAMENTÁRIA da Portaria STN 42/1999, que existe desde
+// `20260711202100`). **O schema do Prisma é ÚNICO**: os arquivos por módulo são uma conveniência
+// de leitura, não namespaces. Dois models com o mesmo nome dão P1012 e o efeito é em cascata:
+//
+//     validate falha → `generate` não roda → o cliente fica congelado numa versão anterior →
+//     o `tsc` do backend acusa erros que parecem do código novo e são do cliente velho →
+//     não há build → QUEM ESTIVER MEDINDO OUTRA COISA PARA na mesma árvore.
+//
+// ⚠️ E O COMMIT FOI FEITO COM "nada medido" DECLARADO HONESTAMENTE — o problema não foi a
+// declaração, foi que um schema que não valida chegou ao HEAD. `validate` são SEGUNDOS, não
+// minutos: é o único passo que separa "não medido" de "não compila para ninguém", e ele não
+// disputa a máquina com ninguém. Ele NÃO substitui a medição; ele é a condição de commitar.
+//
+// ⚠️ E A REGRA "MIGRATION NÃO SE REESCREVE" TEM UMA QUALIFICAÇÃO, aprendida no mesmo defeito:
+// ela proíbe reescrever migration **JÁ APLICADA**, porque isso adultera um histórico que outros
+// bancos carregam. Uma migration que NUNCA aplicou em lugar nenhum e que falha por construção não
+// é histórico — é um arquivo quebrado, e emendá-la por cima preservaria a forma da regra
+// destruindo o bem que ela protege: ficaria `validate` verde e instalação limpa quebrada para
+// sempre, porque a migration defeituosa falha ANTES da que a consertaria.
+//
+// ⚠️ MAS A QUALIFICAÇÃO SÓ VALE COM A MEDIÇÃO NA MÃO, nunca por suposição. O que a autoriza é
+// conferir banco a banco, e a conferência é esta:
+//
+//     for DB in $(psql ... -tAc "SELECT datname FROM pg_database WHERE datname LIKE 'gestao%'"); do
+//       psql ... -d "$DB" -tAc "SELECT count(*) FROM _prisma_migrations WHERE migration_name LIKE '%<ts>%'"
+//     done
+//
+// Na V11 V9.4 foram 21 bancos, todos com zero. "Acho que não apliquei" não basta: um único banco
+// com a linha gravada transforma a correção em adulteração de histórico.
+//
+// ⚠️ O NOME É GLOBAL — CONFIRA ANTES DE CRIAR. `grep -rn "model <Nome> {" prisma/schema/` antes
+// de escrever o model, e o mesmo para o nome FÍSICO da tabela: `CREATE TABLE "<Nome>"` já
+// existente numa migration antiga faz a migration nova ser INAPLICÁVEL, o que o schema sozinho
+// não acusa. Quem renomeia é o RECÉM-CHEGADO, e o nome novo tem de dizer o DOMÍNIO
+// (`FuncaoDePessoal`), nunca o termo normativo de outro (a "Função" da Portaria 42/1999).
+//
+// ============================================================================
 
 datasource db {
   provider = "postgresql"

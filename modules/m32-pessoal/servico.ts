@@ -252,7 +252,7 @@ async function exigirLotacaoVigente(tx: Tx, lotacaoId: string, quando: Date): Pr
 
 /** V11 V9.4 — mesma disciplina do cargo: vigente NA DATA DO ATO, não hoje. */
 async function exigirFuncaoVigente(tx: Tx, funcaoId: string, quando: Date): Promise<void> {
-  const f = await tx.funcao.findUnique({
+  const f = await tx.funcaoDePessoal.findUnique({
     where: { id: funcaoId },
     select: { codigo: true, dataExtincao: true },
   });
@@ -334,7 +334,7 @@ export async function cadastrarFuncao(
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, dados.criadoPor, ACAO_DO_SERVICO.cadastrarFuncao, "ENTE");
 
-    const criada = await tx.funcao.create({
+    const criada = await tx.funcaoDePessoal.create({
       data: {
         codigo: dados.codigo,
         denominacao: dados.denominacao,

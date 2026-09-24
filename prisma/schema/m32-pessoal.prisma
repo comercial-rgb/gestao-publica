@@ -317,7 +317,23 @@ model Cargo {
   @@index([dataExtincao])
 }
 
-/// A FUNÇÃO — a atribuição EXERCIDA, TR 5.12.50 (V11 V9.4).
+/// A FUNÇÃO DE PESSOAL — a atribuição EXERCIDA, TR 5.12.50 (V11 V9.4).
+///
+/// ═══ ⚠️ POR QUE `FuncaoDePessoal` E NÃO `Funcao` ═══
+///
+/// `Funcao` JÁ EXISTE neste schema, e é outra coisa: a função ORÇAMENTÁRIA da Portaria STN
+/// 42/1999 (`m02-planejamento.prisma`), o nível mais alto da classificação funcional, com
+/// `codigo @db.VarChar(2)`, ligada a `FichaOrcamentaria` e `AcaoPpa`. **O schema do Prisma é
+/// único**: dois models com o mesmo nome não validam (P1012), e a primeira versão desta tabela
+/// travou a árvore inteira — sem `validate` não há `generate`, sem cliente novo o backend não
+/// compila, e a outra frente parou.
+///
+/// ⚠️ QUEM RENOMEIA É O RECÉM-CHEGADO, e aqui isso não é ordem de chegada: no orçamento "Função"
+/// é o termo NORMATIVO, e trocá-lo pelo nosso poria o nome da casa no lugar do nome da Portaria
+/// — além de mexer em caminho comum. No pessoal o termo fiel é "função de pessoal".
+///
+/// ⚠️ E NÃO SE CHAMA `FuncaoGratificada`: isso estreitaria a entidade para a ESPÉCIE PAGA. Ela
+/// modela a ATRIBUIÇÃO; o dinheiro entra pelo evento `GRATIFICACAO`, com outro crachá.
 ///
 /// ═══ ⚠️ POR QUE ELA PRECISOU NASCER, tendo `TipoCargo.FUNCAO_GRATIFICADA` ali em cima ═══
 ///
@@ -339,7 +355,7 @@ model Cargo {
 /// a criou, uma lei pode extingui-la); QUEM a exerce e DESDE QUANDO é `HistoricoVinculo`, pelos
 /// eventos `DESIGNACAO_FUNCAO` / `DISPENSA_FUNCAO`. Mesma divisão de `Cargo` e `Lotacao`: o
 /// cadastro diz o que existe, o evento diz o que vale em cada data.
-model Funcao {
+model FuncaoDePessoal {
   id String @id @default(cuid())
 
   /// O código da função no ato do ente. Único, como o do cargo.
@@ -641,7 +657,7 @@ model HistoricoVinculo {
   /// V11 V9.4 — a FUNÇÃO designada. Presente em DESIGNACAO_FUNCAO e AUSENTE em DISPENSA_FUNCAO;
   /// o CHECK impõe as duas metades. `funcaoVigenteEm` deriva daqui.
   funcaoId String?
-  funcao   Funcao? @relation(fields: [funcaoId], references: [id])
+  funcao   FuncaoDePessoal? @relation(fields: [funcaoId], references: [id])
 
   /// V11 V9.4 — o CENTRO DE CUSTO, que é o `Setor` do M21 (`m21-protocolo.prisma`).
   ///
