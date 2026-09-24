@@ -297,6 +297,7 @@ export const FOLHA: readonly RelatorioNav[] = [
 export const PESSOAL: readonly RelatorioNav[] = [
   { href: "/pessoal/servidores", numero: "Servidores", rotulo: "Servidores", descricao: "A ficha do servidor sobre a pessoa do cadastro único; vínculos com cargo, lotação e salário derivados dos eventos." },
   { href: "/pessoal/cargos", numero: "Cargos", rotulo: "Cargos", descricao: "O quadro: vagas fixadas em lei e vagas ocupadas contadas a cada leitura." },
+  { href: "/pessoal/funcoes", numero: "Funções", rotulo: "Funções", descricao: "A atribuição EXERCIDA, distinta do cargo: designada e dispensada por movimentação, com data de efeito." },
   { href: "/pessoal/lotacoes", numero: "Lotações", rotulo: "Lotações", descricao: "A árvore de lotações, com a unidade orçamentária quando houver." },
 ];
 

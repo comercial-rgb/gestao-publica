@@ -9,6 +9,7 @@ import { AREAS } from "../../../lib/navegacao";
 const ITENS: readonly ItemHub[] = [
   { titulo: "Servidores", descricao: "A ficha do servidor: pessoa do cadastro único, dados civis, vínculos (matrículas) e o histórico funcional — admissão, movimentação, remuneração, afastamento, desligamento, dependentes, portarias e anotações.", href: "/pessoal/servidores" },
   { titulo: "Cargos", descricao: "O quadro de pessoal: vagas fixadas em lei e vagas ocupadas contadas a cada leitura. Criar a vaga e ocupá-la são ações distintas.", href: "/pessoal/cargos" },
+  { titulo: "Funções", descricao: "A atribuição EXERCIDA, distinta do cargo. Não consome vaga: quem exerce cada uma é contado a cada leitura pelos eventos de designação e dispensa.", href: "/pessoal/funcoes" },
   { titulo: "Lotações", descricao: "A árvore de lotações, com a unidade orçamentária quando houver; os lotados são contados pelos vínculos vivos.", href: "/pessoal/lotacoes" },
   { titulo: "Pessoas do cadastro único", descricao: "O servidor nasce de uma pessoa física já cadastrada — CPF, nome, endereço e contatos vivem lá, versionados.", href: "/cadastros/pessoas", onde: "Cadastros" },
 ];

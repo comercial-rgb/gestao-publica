@@ -26,6 +26,7 @@ import {
   cadastrarCargo,
   cadastrarDependente,
   baixarFinalidadeDependente,
+  cadastrarFuncao,
   cadastrarLotacao,
   cadastrarServidor,
   desligarServidor,
@@ -67,6 +68,10 @@ function paginacao(c: ConsultaDoMolde): { readonly skip: number; readonly take: 
 const ROTULO_DO_EVENTO: Readonly<Record<string, string>> = {
   ADMISSAO: "Admissão", PROMOCAO: "Promoção", MUDANCA_CARGO: "Mudança de cargo", MUDANCA_LOTACAO: "Mudança de lotação",
   REAJUSTE_SALARIAL: "Reajuste salarial", GRATIFICACAO: "Gratificação", AFASTAMENTO: "Afastamento", RETORNO_AFASTAMENTO: "Retorno de afastamento", DESLIGAMENTO: "Desligamento", MUDANCA_REGIME_PREVIDENCIARIO: "Mudança de regime previdenciário",
+  // ⚠️ V11 V9.5 — SEM ESTES TRÊS A FICHA MOSTRARIA O VALOR CRU DO ENUM. O `?? e.tipo` do chamador
+  // não é erro: é o fallback que faz um tipo novo aparecer como `DESIGNACAO_FUNCAO` em vez de
+  // sumir — feio, mas honesto. O que não pode é ficar feio em produção por esquecimento.
+  DESIGNACAO_FUNCAO: "Designação para função", DISPENSA_FUNCAO: "Dispensa de função", MUDANCA_CENTRO_DE_CUSTO: "Mudança de centro de custo",
 };
 const ROTULO_DA_SITUACAO: Readonly<Record<SituacaoVinculo, string>> = { ATIVO: "ATIVO", AFASTADO: "AFASTADO", DESLIGADO: "DESLIGADO" };
 
@@ -624,7 +629,7 @@ export async function verServidor(id: string): Promise<ServidorLido | null> {
 /** As opções das telas do servidor. Com `servidorId`, as matrículas oferecidas são SÓ as dele (vivas). */
 export async function opcoesDoServidor(servidorId?: string): Promise<OpcoesDoCadastro> {
   const prisma = cliente();
-  const [pessoas, cargos, lotacoes, vinculos, finalidades] = await Promise.all([
+  const [pessoas, cargos, lotacoes, vinculos, finalidades, funcoes, setores] = await Promise.all([
     prisma.pessoa.findMany({
       where: { tipo: "FISICA", servidor: null },
       orderBy: { documento: "asc" }, take: 500,
@@ -635,12 +640,22 @@ export async function opcoesDoServidor(servidorId?: string): Promise<OpcoesDoCad
     servidorId === undefined ? Promise.resolve([]) : prisma.vinculo.findMany({ where: { servidorId }, orderBy: { dataAdmissao: "asc" }, select: { id: true, matricula: true, tipo: true, regimePrevidenciario: true, eventos: SELECAO_DE_EVENTOS } }),
     // Só as finalidades SEM encerramento (nem legado): as encerradas são histórico, não ato possível.
     servidorId === undefined ? Promise.resolve([]) : prisma.finalidadeDependente.findMany({ where: { dependente: { servidorId }, dataBaixa: null, encerramento: null }, orderBy: { dataInicio: "asc" }, select: { id: true, finalidade: true, dataInicio: true, dependente: { select: { nome: true } } } }),
+    // V11 V9.5 — só as VIGENTES: designar para função extinta é recusado pelo serviço
+    // (`FUNCAO-EXTINTA`), e oferecê-la na lista seria um formulário que convida ao erro.
+    prisma.funcaoDePessoal.findMany({ where: { dataExtincao: null }, orderBy: { codigo: "asc" }, select: { id: true, codigo: true, denominacao: true } }),
+    // ⚠️ SÓ OS ATIVOS, e aqui a regra é `ativo`, não vigência: o `Setor` do M21 desativa por
+    // boolean e não guarda data (`CENTRO-DE-CUSTO-SEM-VIGENCIA-HISTORICA`). A LISTA oferece só os
+    // ativos porque apropriar em setor morto é recusado pelo serviço; a CONSULTA continua achando
+    // os inativos, senão o histórico sumiria da tela ao desativar um setor.
+    prisma.setor.findMany({ where: { ativo: true }, orderBy: { codigo: "asc" }, select: { id: true, codigo: true, nome: true } }),
   ]);
   const hoje = new Date();
   return {
     pessoaId: pessoas.map((p) => ({ valor: p.id, rotulo: `${p.versoes[0]?.nome ?? p.documento} (${formatarDocumento(p.documento)})` })),
     cargoId: cargos.map((c) => ({ valor: c.id, rotulo: `${c.codigo} — ${c.denominacao}` })),
     lotacaoId: lotacoes.map((l) => ({ valor: l.id, rotulo: `${l.codigo} — ${l.nome}` })),
+    funcaoId: funcoes.map((f) => ({ valor: f.id, rotulo: `${f.codigo} — ${f.denominacao}` })),
+    centroDeCustoId: setores.map((x) => ({ valor: x.id, rotulo: `${x.codigo} — ${x.nome}` })),
     finalidadeId: finalidades.map((f) => ({ valor: f.id, rotulo: `${f.dependente.nome} · ${f.finalidade} desde ${diaCivilBr(f.dataInicio)}` })),
     vinculoId: vinculos
       .map((v) => ({ v, situacao: situacaoDoVinculo(eventos(v.eventos), hoje) }))
@@ -696,6 +711,7 @@ export async function acaoDoServidor(acao: string, servidorId: string, c: Campos
           servidorId, matricula: t(c, "matricula"), tipo: t(c, "tipo") as "EFETIVO", regimeJuridico: t(c, "regimeJuridico"),
           ...(opcional(c, "regimePrevidenciario") !== undefined ? { regimePrevidenciario: t(c, "regimePrevidenciario") as "RGPS" | "RPPS" | "ISENTO" } : {}),
           dataAdmissao: dia(c, "dataAdmissao"), cargoId: t(c, "cargoId"), lotacaoId: t(c, "lotacaoId"), salarioBase: decimalDaTela(t(c, "salarioBase")),
+          ...(opcional(c, "centroDeCustoId") !== undefined ? { centroDeCustoId: t(c, "centroDeCustoId") } : {}),
           ...(opcional(c, "observacao") !== undefined ? { observacao: t(c, "observacao") } : {}), criadoPor,
         })
       );
@@ -721,6 +737,12 @@ export async function acaoDoServidor(acao: string, servidorId: string, c: Campos
           vinculoId, tipo: t(c, "tipo") as "MUDANCA_CARGO", data: dia(c, "data"), motivo: t(c, "motivo"),
           ...(opcional(c, "cargoId") !== undefined ? { cargoId: t(c, "cargoId") } : {}),
           ...(opcional(c, "lotacaoId") !== undefined ? { lotacaoId: t(c, "lotacaoId") } : {}),
+          // ⚠️ V11 V9.5 — E A DISPENSA NÃO MANDA `funcaoId` PORQUE O FORMULÁRIO PODE TRAZÊ-LO
+          // PREENCHIDO de uma escolha anterior do operador. `opcional()` devolve o que veio, e o
+          // `superRefine` do domínio recusa dispensa COM função — logo, mandar em branco é
+          // responsabilidade de quem monta o comando, não do usuário lembrar de limpar o campo.
+          ...(t(c, "tipo") !== "DISPENSA_FUNCAO" && opcional(c, "funcaoId") !== undefined ? { funcaoId: t(c, "funcaoId") } : {}),
+          ...(opcional(c, "centroDeCustoId") !== undefined ? { centroDeCustoId: t(c, "centroDeCustoId") } : {}),
           ...(opcional(c, "regimePrevidenciario") !== undefined ? { regimePrevidenciario: t(c, "regimePrevidenciario") as "RGPS" | "RPPS" | "ISENTO" } : {}), criadoPor,
         })
       );
@@ -862,6 +884,113 @@ export async function criarCargo(c: Campos): Promise<string> {
       criadoPor,
     });
     return r.cargoId;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FUNÇÕES DE PESSOAL (V11 V9.5) — a ponta de entrada dos dois eixos de 5.12.50
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * QUANTOS VÍNCULOS EXERCEM CADA FUNÇÃO HOJE — contado a cada leitura, nunca coluna.
+ *
+ * ⚠️ E É `funcaoVigenteEm`, NÃO `count` DE EVENTOS. Contar eventos `DESIGNACAO_FUNCAO` diria
+ * quantas designações a função já teve na vida — incluindo todos os que já foram dispensados — e
+ * o número cresceria para sempre, nunca caindo. A pergunta é "quem exerce HOJE", e só a derivação
+ * responde, porque a dispensa não apaga o evento anterior: ela o encerra.
+ */
+async function exercendoPorFuncao(quando: Date): Promise<ReadonlyMap<string, number>> {
+  const vs = await cliente().vinculo.findMany({ select: { eventos: SELECAO_ENXUTA_DO_VINCULO.eventos } });
+  const conta = new Map<string, number>();
+  for (const v of vs) {
+    const f = funcaoVigenteEm(eventosEnxutos(v.eventos), quando);
+    if (f !== null) conta.set(f, (conta.get(f) ?? 0) + 1);
+  }
+  return conta;
+}
+
+export async function listarFuncoes(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
+  const prisma = cliente();
+  const q = (c.filtros["q"] ?? "").trim();
+  const where: Prisma.FuncaoDePessoalWhereInput =
+    q === "" ? {} : { OR: [{ codigo: { contains: q, mode: "insensitive" } }, { denominacao: { contains: q, mode: "insensitive" } }] };
+  const hoje = new Date();
+  const [total, linhas, exercendo] = await Promise.all([
+    prisma.funcaoDePessoal.count({ where }),
+    prisma.funcaoDePessoal.findMany({
+      where,
+      orderBy: c.ordem === "denominacao" ? { denominacao: c.direcao } : { codigo: c.direcao },
+      ...paginacao(c),
+      select: { id: true, codigo: true, denominacao: true, dataExtincao: true },
+    }),
+    exercendoPorFuncao(hoje),
+  ]);
+  return {
+    total,
+    linhas: linhas.map((x) => ({
+      id: x.id,
+      codigo: x.codigo,
+      denominacao: x.denominacao,
+      exercendo: String(exercendo.get(x.id) ?? 0),
+      situacao: x.dataExtincao !== null ? "EXTINTA" : "VIGENTE",
+    })),
+  };
+}
+
+export async function verFuncao(id: string): Promise<DetalheLido | null> {
+  const prisma = cliente();
+  const x = await prisma.funcaoDePessoal.findUnique({ where: { id } });
+  if (x === null) return null;
+  const hoje = new Date();
+  const exercendo = (await exercendoPorFuncao(hoje)).get(x.id) ?? 0;
+  const eventosDaFuncao = await prisma.historicoVinculo.findMany({
+    where: { funcaoId: x.id },
+    orderBy: { data: "asc" },
+    select: { id: true, tipo: true, data: true, criadoEm: true, criadoPor: true, motivo: true, vinculo: { select: { matricula: true } } },
+  });
+  return {
+    titulo: `${x.codigo} — ${x.denominacao}`,
+    subtitulo: `${exercendo} vínculo(s) exercendo hoje`,
+    selos: [x.dataExtincao !== null ? { texto: "EXTINTA", tom: "erro" } : { texto: "VIGENTE", tom: "ok" }],
+    dados: [
+      { rotulo: "Código", valor: x.codigo },
+      { rotulo: "Denominação", valor: x.denominacao },
+      {
+        rotulo: "Exercendo hoje", valor: String(exercendo), tipo: "inteiro",
+        nota: "Vínculos cuja função vigente hoje é esta — derivado dos eventos de designação e dispensa, contado a cada leitura.",
+      },
+      { rotulo: "Lei ou ato de criação", valor: `${x.leiAutorizativa} (${diaCivilBr(x.dataPublicacaoLei)})` },
+      { rotulo: "Extinção", valor: x.dataExtincao === null ? "—" : `${x.leiExtincao ?? ""} (${diaCivilBr(x.dataExtincao)})` },
+      { rotulo: "Cadastrada por", valor: `${x.criadoPor} em ${diaCivilBr(x.criadoEm)}` },
+    ],
+    // ⚠️ O HISTÓRICO MOSTRA SÓ AS DESIGNAÇÕES, e a ausência das dispensas aqui é consequência do
+    // desenho, não esquecimento: a dispensa NÃO carrega `funcaoId` (o CHECK é bicondicional), logo
+    // ela não se prende a esta função no banco — ela encerra a que estiver vigente no vínculo.
+    // Quem quiser a trajetória completa a vê na ficha do SERVIDOR, onde os eventos são do vínculo.
+    historico: eventosDaFuncao.map((e) => ({
+      id: e.id, oQue: `${ROTULO_DO_EVENTO[e.tipo] ?? e.tipo} · ${e.vinculo.matricula}`,
+      quando: diaCivilBr(e.data), registradoEm: diaCivilBr(e.criadoEm), por: e.criadoPor, motivo: e.motivo,
+    })),
+  };
+}
+
+export async function opcoesDaFuncao(): Promise<OpcoesDoCadastro> {
+  return {};
+}
+
+export async function criarFuncao(c: Campos): Promise<string> {
+  // ⚠️ `CADASTRAR_CARGO` NÃO É DESCUIDO: é a MESMA autoridade (dizer o que a estrutura do ente
+  // tem), e o censo de ações traz o argumento inteiro — inclusive a condição de reversão, se um
+  // dia a função ganhar campo de valor.
+  return comEscritaAutenticada("CADASTRAR_CARGO", async (criadoPor) => {
+    const r = await cadastrarFuncao(cliente(), {
+      codigo: t(c, "codigo"),
+      denominacao: t(c, "denominacao"),
+      leiAutorizativa: t(c, "leiAutorizativa"),
+      dataPublicacaoLei: dia(c, "dataPublicacaoLei"),
+      criadoPor,
+    });
+    return r.funcaoId;
   });
 }
 

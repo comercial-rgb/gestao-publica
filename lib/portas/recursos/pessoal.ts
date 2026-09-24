@@ -155,23 +155,44 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
         { nome: "dataAdmissao", rotulo: "Data de admissão", tipo: "data", obrigatorio: true, largura: 1 },
         { nome: "cargoId", rotulo: "Cargo", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "lotacaoId", rotulo: "Lotação", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+        // ⚠️ V11 V9.5 — OPCIONAL, e no formulário de ADMISSÃO de propósito: sem ele, todo vínculo
+        // novo nasceria sem apropriação e dependeria de um segundo ato que alguém vai esquecer.
+        // A FUNÇÃO não está aqui — é ato próprio e datado (a portaria), em Movimentar.
+        { nome: "centroDeCustoId", rotulo: "Centro de custo (onde a despesa é apropriada)", tipo: "selecao", largura: 2, opcoes: [] },
         { nome: "salarioBase", rotulo: "Salário base (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
         { nome: "observacao", rotulo: "Observação (opcional)", tipo: "texto", largura: 2 },
       ],
     },
     {
-      nome: "movimentar", rotulo: "Movimentar (cargo, lotação, afastamento, retorno, regime previdenciário)", acaoDoCenso: "MOVIMENTAR_SERVIDOR",
-      aviso: "Muda ONDE e EM QUE o servidor trabalha; não muda quanto recebe. Afastamento e retorno não levam cargo nem lotação. A mudança de regime previdenciário vale a partir da data do fato: a folha de cada competência aplica o regime daquela competência.",
+      nome: "movimentar", rotulo: "Movimentar (cargo, lotação, função, centro de custo, afastamento, retorno, regime)", acaoDoCenso: "MOVIMENTAR_SERVIDOR",
+      aviso: "Muda ONDE e EM QUE o servidor trabalha; não muda quanto recebe — a gratificação que costuma acompanhar uma função é ato à parte, em Alterar remuneração. Afastamento e retorno não levam cargo nem lotação. A dispensa de função não pede função: ela encerra a que estiver vigente. Tudo vale a partir da data do fato: a folha de cada competência aplica o que valia naquela competência.",
       campos: [
         { nome: "vinculoId", rotulo: "Vínculo (matrícula)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "tipo", rotulo: "Tipo", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: [
           { valor: "MUDANCA_CARGO", rotulo: "Mudança de cargo" }, { valor: "MUDANCA_LOTACAO", rotulo: "Mudança de lotação" },
           { valor: "AFASTAMENTO", rotulo: "Afastamento" }, { valor: "RETORNO_AFASTAMENTO", rotulo: "Retorno de afastamento" },
           { valor: "MUDANCA_REGIME_PREVIDENCIARIO", rotulo: "Mudança de regime previdenciário" },
+          // ⚠️ V11 V9.5 — SEM ESTES TRÊS, OS DOIS EIXOS DE 5.12.50 NÃO TINHAM COMO EXISTIR. O
+          // modelo, o predicado, a porta e os filtros foram entregues na V9.4, mas nada podia ser
+          // DESIGNADO: o operador via "Função exercida" na barra de filtros, digitava e recebia
+          // vazio para sempre — não porque o filtro errasse, mas porque o dado era ausente POR
+          // CONSTRUÇÃO. É a armadilha que a mutação do `SELECAO_ENXUTA` provou (um filtro que
+          // nunca acha nada é indistinguível de um correto sobre dado ausente), na forma mais
+          // completa dela: sem ponta de entrada, as duas situações são a mesma para sempre.
+          { valor: "DESIGNACAO_FUNCAO", rotulo: "Designação para função" },
+          { valor: "DISPENSA_FUNCAO", rotulo: "Dispensa de função" },
+          { valor: "MUDANCA_CENTRO_DE_CUSTO", rotulo: "Mudança de centro de custo" },
         ] },
         { nome: "data", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
         { nome: "cargoId", rotulo: "Cargo de destino (só mudança de cargo)", tipo: "selecao", largura: 2, opcoes: [] },
         { nome: "lotacaoId", rotulo: "Lotação de destino (só mudança de lotação)", tipo: "selecao", largura: 2, opcoes: [] },
+        // ⚠️ A DISPENSA NÃO TEM CAMPO DE FUNÇÃO, E ISSO É O DESENHO. Ela ENCERRA a que estiver
+        // vigente — `funcaoVigenteEm` decide pelo TIPO do evento, não pela nulidade da coluna, e
+        // o CHECK `ck_historico_vinculo_funcao` é bicondicional: dispensa COM função não grava.
+        // Preencher os dois faria "dispensou de diretor" e "designou para diretor" terem as
+        // mesmas colunas na ficha funcional.
+        { nome: "funcaoId", rotulo: "Função de destino (só designação — a dispensa encerra a vigente)", tipo: "selecao", largura: 2, opcoes: [] },
+        { nome: "centroDeCustoId", rotulo: "Centro de custo de destino (só mudança de centro de custo)", tipo: "selecao", largura: 2, opcoes: [] },
         { nome: "regimePrevidenciario", rotulo: "Regime previdenciário (só mudança de regime)", tipo: "selecao", largura: 2, opcoes: [
           { valor: "RGPS", rotulo: "RGPS — regime geral" }, { valor: "RPPS", rotulo: "RPPS — regime próprio" }, { valor: "ISENTO", rotulo: "Isento" },
         ] },
@@ -297,6 +318,54 @@ export const CARGOS: DefinicaoDeRecurso = definirRecurso({
     { nome: "tipo", cabecalho: "Tipo", tipo: "texto" },
     { nome: "vagasFixadas", cabecalho: "Vagas", tipo: "inteiro" },
     { nome: "ocupadas", cabecalho: "Ocupadas", tipo: "inteiro" },
+    { nome: "situacao", cabecalho: "Situação", tipo: "situacao" },
+  ],
+  filtros: [{ nome: "q", rotulo: "Código ou denominação", tipo: "texto", largura: 2 }],
+  acoes: [],
+  permissoes: { criar: "CADASTRAR_CARGO" },
+  abas: ["dados", "historico"],
+});
+
+/**
+ * ═══ AS FUNÇÕES DE PESSOAL — TR 5.12.50 (V11 V9.5) ═══
+ *
+ * ⚠️ ESTA TELA É A PONTA DE ENTRADA QUE FALTAVA, e a falta dela era pior que uma tela ausente.
+ * A V9.4 entregou o modelo, o predicado, a porta e o FILTRO "Função exercida" — e nenhuma forma
+ * de cadastrar uma função ou designar alguém. O operador via o campo, digitava e recebia vazio
+ * **para sempre**: não porque o filtro errasse, mas porque o dado era ausente POR CONSTRUÇÃO.
+ * Um filtro que nunca acha nada é indistinguível de um filtro correto sobre dado ausente — e sem
+ * ponta de entrada as duas situações são a mesma coisa, permanentemente.
+ *
+ * ⚠️ FUNÇÃO NÃO É CARGO, e a tela é separada por isso: cargo é o POSTO que a lei criou (com vagas
+ * fixadas, que autorizam a próxima nomeação); função é a ATRIBUIÇÃO exercida, que não consome
+ * vaga nenhuma. Por isso aqui não há "vagas fixadas" nem "ocupadas": o que se conta é quantos
+ * vínculos a exercem HOJE, derivado dos eventos, nunca coluna.
+ *
+ * ⚠️ E NÃO HÁ CAMPO DE VALOR, o que é a razão de `cadastrarFuncao` reusar `CADASTRAR_CARGO`: é a
+ * MESMA autoridade (dizer o que a estrutura do ente tem), e o dinheiro que a função costuma pagar
+ * entra por `GRATIFICACAO`, sob `ALTERAR_REMUNERACAO`. **Se algum dia esta tela ganhar um campo
+ * de valor, a ação se separa no mesmo ato** — a condição de reversão está escrita no censo.
+ */
+export const FUNCOES: DefinicaoDeRecurso = definirRecurso({
+  nome: "funcoes",
+  rotulo: "Funções",
+  rotuloSingular: "Função",
+  rota: "/pessoal/funcoes",
+  descricao:
+    "As funções que o ente pode designar — a atribuição EXERCIDA, distinta do cargo (o posto que a lei criou). " +
+    "Designar e dispensar são movimentações do vínculo, com data de efeito; quem exerce cada função é contado a " +
+    "cada leitura pelos eventos, nunca guardado em coluna. A gratificação que costuma acompanhar uma função é ato " +
+    "à parte, em Alterar remuneração.",
+  campos: [
+    { nome: "codigo", rotulo: "Código", tipo: "texto", obrigatorio: true, largura: 1 },
+    { nome: "denominacao", rotulo: "Denominação", tipo: "texto", obrigatorio: true, largura: 2 },
+    { nome: "leiAutorizativa", rotulo: "Lei ou ato de criação", tipo: "texto", obrigatorio: true, largura: 2 },
+    { nome: "dataPublicacaoLei", rotulo: "Publicação do ato", tipo: "data", obrigatorio: true, largura: 1 },
+  ],
+  colunas: [
+    { nome: "codigo", cabecalho: "Código", tipo: "link", ordenavel: true },
+    { nome: "denominacao", cabecalho: "Denominação", tipo: "texto", ordenavel: true },
+    { nome: "exercendo", cabecalho: "Exercendo hoje", tipo: "inteiro" },
     { nome: "situacao", cabecalho: "Situação", tipo: "situacao" },
   ],
   filtros: [{ nome: "q", rotulo: "Código ou denominação", tipo: "texto", largura: 2 }],

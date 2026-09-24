@@ -525,6 +525,8 @@ export async function admitirServidor(
     }
 
     await exigirCargoVigente(tx, dados.cargoId, dados.dataAdmissao);
+    // V11 V9.5 — o setor tem de existir e estar ativo, pela mesma porta do evento de mudança.
+    if (dados.centroDeCustoId !== undefined) await exigirCentroDeCustoAtivo(tx, dados.centroDeCustoId);
     await exigirLotacaoVigente(tx, dados.lotacaoId, dados.dataAdmissao);
 
     if (dados.portariaId !== undefined) {
@@ -559,6 +561,9 @@ export async function admitirServidor(
         tipo: "ADMISSAO",
         cargoId: dados.cargoId,
         lotacaoId: dados.lotacaoId,
+        // V11 V9.5 — o centro de custo entra JÁ NA ADMISSÃO quando informado, para o vínculo novo
+        // não nascer sem apropriação. Ver o docblock do campo em `zAdmitirServidorInput`.
+        centroDeCustoId: dados.centroDeCustoId ?? null,
         salarioBase: dados.salarioBase.toFixed(2),
         // V6 P2.3 — o regime entra NO EVENTO (é dele que `regimeVigenteEm` deriva); a coluna do
         // vínculo guarda o mesmo valor como o regime DA ADMISSÃO.

@@ -1028,6 +1028,27 @@ export const zAdmitirServidorInput = z.object({
   dataAdmissao: z.coerce.date(),
   cargoId: z.string().min(1),
   lotacaoId: z.string().min(1),
+  /**
+   * V11 V9.5 — O CENTRO DE CUSTO NA ADMISSÃO, OPCIONAL. `Setor` do M21.
+   *
+   * ⚠️ POR QUE A ADMISSÃO O ACEITA E NÃO ACEITA `funcaoId` — a assimetria tem fundamento, não é
+   * descuido:
+   *
+   *   · CENTRO DE CUSTO é atributo CONTÍNUO do vínculo: a despesa dele é apropriada em algum
+   *     lugar desde o primeiro dia. Se só pudesse entrar por movimentação posterior, TODO vínculo
+   *     novo nasceria sem apropriação e dependeria de um segundo ato que alguém vai esquecer —
+   *     criando de propósito mais dívida do tipo que `VINCULOS-ANTERIORES-SEM-CENTRO-DE-CUSTO` já
+   *     registra para o histórico. O CHECK do banco foi escrito permitindo ADMISSAO exatamente
+   *     para isto.
+   *
+   *   · FUNÇÃO é ato PRÓPRIO e datado (a portaria de designação), quase sempre posterior. Ninguém
+   *     é admitido já designado. E `ck_historico_vinculo_funcao` é BICONDICIONAL: só
+   *     `DESIGNACAO_FUNCAO` traz função. Aceitá-la aqui exigiria afrouxar o CHECK para dois
+   *     tipos, e então "admitiu" e "designou" ficariam com as mesmas colunas preenchidas na ficha
+   *     funcional. Quando os dois coincidem na data, são DOIS eventos na mesma data — que é o que
+   *     a razão append-only já suporta sem precisar de exceção.
+   */
+  centroDeCustoId: z.string().min(1).optional(),
   salarioBase: zValorPositivo,
   observacao: zOpcional(3),
   portariaId: z.string().min(1).optional(),
