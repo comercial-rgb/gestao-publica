@@ -9739,15 +9739,45 @@ com a consequência prática: acrescentar um serviço são **três** lugares, n�
 nesta rodada: a **linha 442** conta SERVIÇOS (`nomes.length`) e a **linha 532** conta AÇÕES
 (`TODAS_AS_ACOES.length`). Serviço não é ação.
 
-### 84.7 O código de saída do invólucro divergiu do resultado CINCO vezes
+### 84.7 O código de saída divergiu do resultado seis vezes — e a culpa NÃO era do trinco
 
-Em duas delas, `exit 0` somado a **zero linhas `error TS`** lia-se como typecheck limpo — e uma
-dessas corridas tinha sido **morta por SIGTERM**. **Zero erro num log incompleto significa que a
-contagem não terminou, não que nada foi achado.**
+⚠️ **CORREÇÃO (escrita na rodada seguinte, sobre este próprio registro).** A versão anterior desta
+seção dizia que *"o rodapé do trinco disse `terminou com codigo 0` cinco vezes sobre corridas que
+falharam ou foram mortas"*. **Isso é falso, e acusava o instrumento errado.**
 
-O que segurou foi ler a linha `###` que o próprio script escreve e o rodapé `desfecho` do trinco,
-nunca o código do invólucro. Vale como regra: **o `exit` que importa é o do comando medido, não o
-de quem o embrulhou.**
+O cruzamento de `# comando` com `# desfecho` nos registros resolve a questão:
+
+| Filho do trinco | Desfecho que o trinco registrou |
+|---|---|
+| `npm run typecheck:app` (comando direto) | **MORTO POR SINAL SIGABRT · 134** |
+| `npm run typecheck` (comando direto) | **MORTO POR SINAL SIGTERM · 143** |
+| `npm run typecheck:scripts` (comando direto) | **terminou com codigo 2** |
+| `npx vitest run …` (comando direto, J8 vermelha) | **terminou com codigo 1** |
+| `zsh …/j3.sh` (script de scratchpad) | terminou com codigo 0 |
+| `zsh …/j1.sh` (script de scratchpad) | terminou com codigo 0 |
+
+**Quando o filho foi comando DIRETO, o trinco disse a verdade — inclusive as duas verdades feias.**
+E o código dele está correto: `scripts/trinco-de-maquina.ts:372` converte sinal em `128 + n`,
+`:373` propaga o código do filho, `:410` sai com ele, e o rodapé grava desfecho, código e sinal.
+
+**A causa real eram os scripts de scratchpad**, que terminavam assim:
+
+```sh
+npx vitest run ...
+echo "### exit-vitest=$?"     # ← última instrução: `echo` tem sucesso
+```
+
+O script **saía 0 de verdade**, e o trinco propagou fielmente um zero verdadeiro. A forma certa é
+`rc=$?; echo "### exit=$rc"; exit $rc`.
+
+⚠️ **A lição que pertence ao repositório:** *um invólucro que imprime o código do filho como TEXTO
+e termina em `echo` transforma o registro num mentiroso sem que ele tenha culpa.* Quem lesse
+`### exit-vitest=1` acertava; quem lesse só o rodapé lia 0 e errava.
+
+**O que permanece inteiro do registro original**, e foi o que segurou duas quase-viradas em verde
+falso: **zero linhas `error TS` num log incompleto significa que a contagem não terminou, não que
+nada foi achado.** Valeu no SIGABRT do `typecheck:app` e no SIGTERM do `typecheck` de backend —
+os dois com zero `error TS` e nenhum deles limpo.
 
 ### 84.8 A máquina, medida — e um defeito de ferramenta achado no caminho
 
