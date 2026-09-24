@@ -11855,3 +11855,80 @@ só devido e passa a ser **a próxima evidência**, agora com os oito eixos tend
    `git stash`** — o stash do repositório é de terceiros e não se encosta nele. Ela volta depois que
    a corrida fechar; o desenho não mudou, e o teste obrigatório continua sendo nº1={A,B},
    nº2={C,D}, fechar → **recusa nomeando A e B**.
+
+## 95. V11 V9.5 — a colisão de índice entre frentes, e uma atribuição corrigida
+
+Seção curta e de processo. Nenhum código, nenhuma medição.
+
+### O FATO
+
+A seção 94 foi escrita, `git add ESTADO-EXECUCAO.md` foi executado, e antes do `git commit` desta
+frente o commit `838227a` da **outra** frente levou o arquivo junto. O `git commit` seguinte
+encontrou o índice vazio e não fez nada (`nothing added to commit`).
+
+**Nada se perdeu**, e isso foi conferido: a seção 94 está no arquivo de trabalho **e** no HEAD, e a
+árvore ficou limpa. O que ficou errado é só a **atribuição** — `git log -- ESTADO-EXECUCAO.md`
+mostra a seção 94 sob um commit cuja mensagem fala do percurso dos oito eixos e não menciona o
+checkpoint.
+
+### O MECANISMO — e ele não é disciplina frouxa
+
+- **O índice do git é ÚNICO por árvore de trabalho, e é compartilhado entre as frentes.** O working
+  tree não isola nada: não há "meu staging" e "o dele".
+- Entre o `add` e o `commit` existe uma **janela** em que qualquer commit alheio leva o que está
+  staged.
+- ⚠️ **E caminhos explícitos no outro commit NÃO desfazem o que já está no índice.** Esta é a parte
+  contraintuitiva: `git commit caminho-dele.ts` continua commitando o que já foi staged por outro,
+  porque o commit é do índice inteiro quando não se usa a forma `git commit -- <paths>` de modo
+  estrito. Disciplina de "commitar só o meu" não fecha a janela.
+
+### A CAUSA — é de TOPOLOGIA, não de operação
+
+A causa é **a decisão de pôr duas frentes commitando na mesma árvore de trabalho**. A conferência de
+`git status` entre o `add` e o `commit` — que esta frente vinha fazendo justamente para não commitar
+arquivo alheio — **não abriu a janela: só a tornou visível**. A janela existe desde que a topologia
+foi escolhida.
+
+### AS DUAS SAÍDAS, e elas não são equivalentes
+
+1. **A regra imediata, adotada para as duas frentes:** `git add` e `git commit` **na mesma
+   invocação**, sempre, enquanto houver duas frentes na mesma árvore.
+2. **A saída estrutural, para quem ler isto depois:** duas frentes que precisem commitar em paralelo
+   pedem **worktrees separadas**, não disciplina.
+
+⚠️ **E a segunda é a resposta certa, não a primeira.** Disciplina falha uma vez; topologia não. A
+regra do `add`+`commit` atômico reduz a janela a milissegundos — não a elimina, e depende de todo
+mundo lembrar dela em toda invocação, para sempre. Registrar a regra sem registrar que ela é um
+paliativo seria o mesmo tipo de meia verdade que este repositório vem cobrando nas outras frentes.
+
+### POR QUE A HISTÓRIA NÃO FOI REESCRITA
+
+`reset` ou `rebase` mexeriam num commit da outra frente que **já é o HEAD**, e o risco de atropelar
+trabalho em curso supera o ganho de arrumar uma atribuição. É a mesma disciplina que deixou o `425`
+do `t5c` vermelho em vez de ajustá-lo: **registrar em vez de maquiar**.
+
+### ⚠️ UMA ATRIBUIÇÃO CORRIGIDA — e o erro foi desta frente
+
+O relatório desta frente creditou à outra o achado de `PESSOAL-RECUSA-DO-TETO-SEM-PERCURSO` — a
+guarda que casava com o **texto-fonte** do `page.tsx` e cuja mutação `MUT-H` deixou 26 testes
+verdes. **Está errado, e a conferência é objetiva:**
+
+```
+git log -S"PESSOAL-RECUSA-DO-TETO-SEM-PERCURSO" --reverse  →  e0f6096   (esta frente)
+git log -S"MUT-H"                              --reverse  →  e0f6096   (esta frente)
+```
+
+**O achado é desta frente**, na V11 V9.4: a guarda foi mutada, não acusou, e foi **retirada** em vez
+de mantida aparentando cobertura. **O que a outra frente fez foi FECHAR a pendência**, percorrendo o
+teto pela tela pela primeira vez em `838227a`.
+
+As duas coisas valem e são de pessoas diferentes: **achar um instrumento inerte** e **fechar a
+pendência que ele deixou** são trabalhos distintos, e o registro não pode trocá-los. Um relatório que
+credita errado corrói exatamente o que torna o histórico útil — saber quem viu o quê, e quando.
+
+### Próximo ponto exato
+
+**Parado.** A outra frente acabou de commitar `838227a` e o placar da corrida ainda não foi lido. A
+**Tarefa 2** segue guardada fora da árvore (scratchpad, sem `git stash`) e volta quando o relatório
+da corrida fechar. O desenho não mudou; o teste obrigatório continua sendo nº1={A,B}, nº2={C,D},
+fechar → **recusa nomeando A e B**.
