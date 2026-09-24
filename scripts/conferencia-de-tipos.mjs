@@ -8,10 +8,24 @@ import { fileURLToPath } from "node:url";
 /**
  * ═══ A CONFERÊNCIA DE TIPOS SEPARADA, E A PROVA QUE A AMARRA AO CONTEÚDO (V9 N0) ═══
  *
- * ⚠️ O PROBLEMA QUE ISTO RESOLVE. `next build` confere tipos num worker próprio, cujo heap
- * não herda o `--max-old-space-size` do repositório. Nesta máquina de 8 GB esse worker
- * MORRE — SIGABRT, sem mensagem — e a saída de `npm run typecheck:app` (o MESMO tsconfig,
- * o MESMO `.next/types`) é a única forma de conferir os tipos do app sem derrubar o build.
+ * ⚠️ O PROBLEMA QUE ISTO RESOLVE. `next build` confere tipos num worker próprio, e num
+ * ambiente com pouca memória esse worker MORRE — SIGABRT, sem mensagem —, caso em que a
+ * saída de `npm run typecheck:app` (o MESMO tsconfig, o MESMO `.next/types`) é a forma de
+ * conferir os tipos do app sem derrubar o build.
+ *
+ * ⚠️ O QUE ESTE CABEÇALHO DIZIA ATÉ 24/09/2026 ERA FALSO, e a correção é por medição. Ele
+ * afirmava que o worker de tipos "não herda o `--max-old-space-size` do repositório". No
+ * Next 15.5.20 ele HERDA: `next/dist/lib/worker.js` repassa `process.env.NODE_OPTIONS` ao
+ * filho e só apaga o `max-old-space-size` quando `isolatedMemory: true` — que é o worker de
+ * PÁGINAS (`build/index.js:338`), não o de TIPOS (`build/type-check.js:77`, com
+ * `isolatedMemory: false`). Medido em 24/09/2026 nesta máquina, nas duas direções:
+ * `isolatedMemory:false` + `NODE_OPTIONS=--max-old-space-size=5324` dá heap de 5372 MB no
+ * worker; `isolatedMemory:true` com o mesmo NODE_OPTIONS dá 2096 MB; sem NODE_OPTIONS, 2096 MB.
+ *
+ * ⚠️ POR ISSO A VÁLVULA NÃO É O CAMINHO NORMAL DESTA MÁQUINA — é o instrumento para a máquina
+ * MENOR. Onde o heap couber, builde com `NODE_OPTIONS` exportado e deixe o próprio build
+ * conferir: ele confere o `.next/types/**` DESTA build, e o `typecheck:app` confere o da
+ * anterior. A válvula existe para quando o worker não tiver memória para terminar.
  *
  * ⚠️ MAS "eu rodei o typecheck antes" NÃO É PROVA. Um `PULAR_CONFERENCIA_DO_BUILD=1` no
  * ambiente aprova qualquer build futuro, de qualquer conteúdo, para sempre — inclusive o

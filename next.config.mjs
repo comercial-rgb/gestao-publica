@@ -42,9 +42,38 @@ const nextConfig = {
   //     FATAL ERROR: Ineffective mark-compacts near heap limit - JavaScript heap out of memory
   //     Next.js build worker exited with code: null and signal: SIGABRT
   //
-  // Não era saturação da máquina: era o HEAP do worker que o Next abre para conferir tipos. Esta
-  // máquina tem 8 GB, e `npm run typecheck:app` só passa com heap ampliado — o worker do Next não
-  // herda esse ajuste, e estoura sozinho.
+  // Não era saturação da máquina: era o HEAP do worker que o Next abre para conferir tipos.
+  //
+  // ⚠️ E A EXPLICAÇÃO QUE ESTAVA ESCRITA AQUI ERA FALSA — CORRIGIDA EM 24/09/2026 POR MEDIÇÃO.
+  // Este comentário afirmava, desde 15/09/2026, que "o worker do Next não herda o
+  // `--max-old-space-size` do repositório". Isso NÃO é verdade no Next 15.5.20, e a diferença
+  // importa porque mandava a pessoa errada procurar no lugar errado. O que o código faz
+  // (`node_modules/next/dist/lib/worker.js`) é:
+  //
+  //     const nodeOptions = getParsedNodeOptionsWithoutInspect();   // lê process.env.NODE_OPTIONS
+  //     if (isolatedMemory) { delete nodeOptions['max-old-space-size']; ... }
+  //     env: { ...process.env, IS_NEXT_WORKER: 'true', NODE_OPTIONS: formatNodeOptions(nodeOptions) }
+  //
+  // Quem APAGA o heap é a opção `isolatedMemory: true` — e ela é do worker de PÁGINAS
+  // (`next/dist/build/index.js:338`). O worker de TIPOS é criado com `isolatedMemory: false`
+  // (`next/dist/build/type-check.js:77`), e portanto HERDA o ajuste. Medido nesta máquina em
+  // 24/09/2026, com sonda sobre a mesma classe `Worker`, nas duas direções:
+  //
+  //     isolatedMemory: false + NODE_OPTIONS=--max-old-space-size=5324  ->  heap do worker 5372 MB
+  //     isolatedMemory: true  + o MESMO NODE_OPTIONS                    ->  heap do worker 2096 MB
+  //     isolatedMemory: false + sem NODE_OPTIONS                        ->  heap do worker 2096 MB
+  //
+  // E o efeito confere com o build: `env NODE_OPTIONS=--max-old-space-size=5324 npx next build`
+  // atravessa "Linting and checking validity of types" e termina com código 0 — registrado em
+  // `.registro-de-execucao/rebuild-v816-2026-09-23T03-07-18-177Z.log` e reproduzido em
+  // `.registro-de-execucao/build-v11-v9-2-2026-09-24T02-14-51-769Z.log`.
+  //
+  // ⚠️ ENTÃO O CAMINHO NORMAL É BUILDAR COM O HEAP EXPORTADO, E A VÁLVULA FICA. Ela não é
+  // paliativo para esta máquina: é o instrumento para a máquina MENOR (o `heapEmMegabytes()` de
+  // `scripts/conferencia-de-tipos.mjs` dimensiona por memória total, e num servidor pequeno o
+  // worker não terá heap para terminar). Enquanto o heap couber, NÃO se liga a válvula — a
+  // conferência do próprio build é melhor que a do `typecheck:app`, porque confere o
+  // `.next/types/**` recém-gerado desta build em vez do da anterior.
   //
   // ⚠️ E ESTE PASSO É DUPLICADO. `npm run typecheck:app` roda `tsc --noEmit -p tsconfig.json`: o
   // MESMO tsconfig, com o MESMO `.next/types/**` na lista de `include`. Conferir duas vezes a mesma
