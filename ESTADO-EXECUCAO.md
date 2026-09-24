@@ -11219,11 +11219,40 @@ resolvendo texto a identificadores (`idsDaFuncao`, `idsDoCentroDeCusto`, com `[]
 não alcança essa regra e o comentário diz por quê: a ordem entre eventos datados do mesmo vínculo é
 propriedade do **conjunto**, não da linha, e um CHECK de linha não a enxerga.
 
-**Ação:** `cadastrarFuncao` **reusa** `CADASTRAR_CARGO` — mesmo poder no eixo "criar estrutura", do
-mesmo lado da linha `CADASTRAR_CARGO` × `ADMITIR_SERVIDOR` que o M32 já declara. **Quem já tem
-`CADASTRAR_CARGO` passa a poder cadastrar função**; está escrito no censo, mas é ampliação, e a
-alternativa (ação própria, cinco sítios, enum do banco, teste de instalação limpa e de atualização)
-fica nomeada como pendência em vez de calada.
+**Ação: `cadastrarFuncao` reusa `CADASTRAR_CARGO` porque é a MESMA AUTORIDADE** — dizer o que a
+estrutura do ente tem. Mesmo critério de `publicarVersaoDaEntidadeContabil` sob
+`CADASTRAR_ENTIDADE_CONTABIL` ("a MESMA autoridade — dizer quem a entidade é"). **É desenho, não
+economia de esforço**, e o teste que decide é o do dinheiro:
+
+| | tem valor no cadastro? | por onde o dinheiro entra |
+|---|---|---|
+| `Cargo` | não | evento `ADMISSAO`/`PROMOCAO`/`REAJUSTE_SALARIAL`, sob `ALTERAR_REMUNERACAO` |
+| `Funcao` | não | evento `GRATIFICACAO`, sob a **mesma** `ALTERAR_REMUNERACAO` |
+
+A objeção séria era "função gratificada vira dinheiro" — e se virasse, seria outra autoridade. Não
+vira: nos dois casos o cadastro é catálogo e o dinheiro está do outro lado da linha. **Quem cadastra
+função não paga ninguém.** E o argumento inverso é o do precedente: uma ação própria daria ao ente a
+chance de conceder cadastrar cargo **sem** cadastrar função — um ente que cria o posto de Diretor de
+Escola e não a direção de escola. Estrutura pela metade.
+
+⚠️ **Condição de reversão escrita, para não virar permanente por inércia:** se `Funcao` ganhar campo
+de **valor**, a autoridade muda no mesmo ato e o reuso deixa de valer. **Quem já tem
+`CADASTRAR_CARGO` passa a poder cadastrar função** — é ampliação, está escrita no censo e no MODULO,
+e quem revisar o perfil de um ente precisa saber.
+
+⚠️ **E O SEGUNDO DOS TRÊS `select` TEM UMA CONSEQUÊNCIA PARA O TESTE QUE FALTA:** um filtro que
+**nunca acha nada** é indistinguível de um filtro **correto sobre dado ausente** — e o dado É
+ausente hoje (`VINCULOS-ANTERIORES-SEM-CENTRO-DE-CUSTO`). As duas situações dão a mesma tela vazia.
+Então o teste da porta precisa de fixture que **ENCONTRE** alguém, não só de fixture que não
+encontre: um teste que só afirma o vazio passa com a coluna esquecida. O teste puro já tem os dois
+lados (casos 8 e 10); o da porta, que falta, nasce com essa exigência.
+
+⚠️ **A CONSEQUÊNCIA DE `CENTRO-DE-CUSTO-SEM-VIGENCIA-HISTORICA` PARA O M33, declarada como meia
+garantia:** a apropriação da despesa de maio **não tem como afirmar, pelo lado do `Setor`, que
+aquele centro de custo estava ativo em maio** — o cadastro do M21 não guarda essa data. O que ela
+tem é o lado do **vínculo**, que ganhou vigência aqui: `centroDeCustoVigenteEm` responde para onde o
+vínculo apontava em maio, e isso não muda quando alguém desativa o setor depois. Correta quanto ao
+vínculo, silenciosa quanto ao setor. Meia garantia declarada vale mais que inteira suposta.
 
 ### Testes escritos (não executados)
 

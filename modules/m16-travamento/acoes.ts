@@ -1437,20 +1437,36 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // (lançar o que o servidor entregou); contrato e prorrogação também.
   cadastrarCargo: "CADASTRAR_CARGO",
   /**
-   * ⚠️ V11 V9.4 — `cadastrarFuncao` REUSA `CADASTRAR_CARGO`, E A ESCOLHA É DELIBERADA.
+   * ⚠️ V11 V9.4 — `cadastrarFuncao` REUSA `CADASTRAR_CARGO` PORQUE É A **MESMA AUTORIDADE**:
+   * dizer o que a estrutura do ente TEM. O critério é o mesmo de
+   * `publicarVersaoDaEntidadeContabil` sob `CADASTRAR_ENTIDADE_CONTABIL` ("a MESMA autoridade —
+   * dizer quem a entidade é"), e não o custo de abrir uma ação nova.
    *
-   * É o mesmo poder no eixo que este censo já separa: criar ESTRUTURA. A segregação que o M32
-   * declara é "criar a vaga × ocupar a vaga" (`CADASTRAR_CARGO` × `ADMITIR_SERVIDOR`), e a função
-   * está do mesmo lado dessa linha que o cargo — quem define o plano de cargos define as funções
-   * do mesmo ato administrativo. É a mesma leitura que já vale duas linhas abaixo para dependente
-   * e finalidade ("o mesmo poder").
+   * ═══ ⚠️ O TESTE QUE DECIDE É O DO DINHEIRO, E A FUNÇÃO PASSA NELE ═══
    *
-   * ⚠️ E A ALTERNATIVA FICA NOMEADA em vez de calada: uma ação `CADASTRAR_FUNCAO` própria seria
-   * mais fina, e custa um valor novo no enum `AcaoDoSistema` (migration `ALTER TYPE` isolada, pela
-   * mesma restrição do Postgres), entrada em `atualizacoes-de-permissoes.ts`, em
-   * `navegacao-permissoes.ts` e no mapa de módulos do M35 — cinco sítios, com teste de instalação
-   * limpa E de atualização. Fica como `FUNCAO-SEM-ACAO-PROPRIA` no MODULO do M32: é decisão de
-   * granularidade de perfil do ente, reversível, e não se toma junto com a que cria o modelo.
+   * A objeção séria a este reuso é "função gratificada vira dinheiro" — e se virasse, seria outra
+   * autoridade. **Não vira, e a simetria com o cargo é exata:**
+   *
+   *   · `Cargo` NÃO tem salário. O vencimento entra pelo EVENTO (`ADMISSAO`, `PROMOCAO`,
+   *     `REAJUSTE_SALARIAL`), sob `ALTERAR_REMUNERACAO` — outro crachá.
+   *   · `Funcao` NÃO tem valor. A gratificação que a função costuma pagar é EVENTO PRÓPRIO
+   *     (`GRATIFICACAO`), na mesma `ALTERAR_REMUNERACAO` — o mesmo outro crachá.
+   *
+   * Nos dois casos o cadastro é catálogo (código, denominação, lei que o criou, lei que o
+   * extinguiu) e o dinheiro está do OUTRO lado da linha. Quem cadastra função não paga ninguém.
+   *
+   * ═══ E O ARGUMENTO INVERSO, QUE É O DO PRECEDENTE ═══
+   *
+   * Uma ação própria daria ao ente a chance de conceder **cadastrar cargo sem cadastrar função** —
+   * um ente que pode criar o posto de Diretor de Escola e não a direção de escola. Estrutura pela
+   * metade, exatamente como "um cadastro que não se corrige" foi o defeito que a V8.12 encontrou
+   * no calendário. A segregação que o M32 declara é "criar a vaga × ocupar a vaga"
+   * (`CADASTRAR_CARGO` × `ADMITIR_SERVIDOR`), e a função está do MESMO lado dessa linha.
+   *
+   * ⚠️ A CONDIÇÃO DE REVERSÃO, escrita para que a decisão não vire permanente por inércia:
+   * **se `Funcao` algum dia ganhar campo de VALOR**, a autoridade muda no mesmo ato e esta linha
+   * deixa de valer — cadastrar passaria a fixar quanto se paga, que é `ALTERAR_REMUNERACAO`. Quem
+   * acrescentar esse campo tem de separar a ação junto, não depois.
    *
    * ⚠️ O QUE ISTO MUDA, DITO EM VOZ ALTA: quem já tem `CADASTRAR_CARGO` passa a poder cadastrar
    * função. Não é ampliação silenciosa porque está escrita aqui — mas É ampliação, e quem revisar

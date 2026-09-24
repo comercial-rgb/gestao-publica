@@ -429,22 +429,70 @@ que a ausência.
     comparando contra `criadoEm`, por exemplo — inventaria um dado que o cadastro não guarda. O
     conserto é do M21 (dar vigência ao `Setor`), não daqui, e atravessa protocolo, almoxarifado,
     compras e patrimônio.
+
+    ⚠️ **A CONSEQUÊNCIA PARA O M33, registrada aqui porque é meia garantia e meia garantia
+    declarada vale mais que inteira suposta:** a apropriação da despesa de pessoal de maio **não
+    tem como afirmar, pelo lado do `Setor`, que aquele centro de custo estava ativo em maio** — o
+    cadastro não guarda essa data. O que ela TEM é o lado do vínculo, que ganhou vigência nesta
+    unidade: `centroDeCustoVigenteEm(eventos, fimDaCompetencia)` responde corretamente **para onde
+    o vínculo apontava em maio**, e isso não muda quando alguém desativa o setor depois. Então a
+    apropriação histórica é correta quanto ao VÍNCULO e silenciosa quanto ao SETOR. Quem for
+    construir a apropriação por centro de custo no M33 tem de saber que essa metade falta, em vez
+    de descobrir quando um ente desativar um setor e o relatório de maio mudar de forma.
 16. **`VINCULOS-ANTERIORES-SEM-CENTRO-DE-CUSTO`** — a coluna nasceu **nula** em todo vínculo
     anterior à migration, e não há de onde preenchê-la: escolher um setor para o histórico seria
     apropriar despesa passada num centro de custo que ninguém escolheu. Quem consome recusa com
     motivo quando `centroDeCustoVigenteEm` devolve nulo. **Consequência direta:** o eixo de centro
     de custo não acha ninguém enquanto o ente não registrar os eventos — e isso é o certo, não um
     defeito. É carga de dado do ente, não código.
-17. **`FUNCAO-SEM-ACAO-PROPRIA`** — `cadastrarFuncao` reusa a ação `CADASTRAR_CARGO` (é o mesmo
-    poder no eixo "criar estrutura", que é o lado da linha `CADASTRAR_CARGO` × `ADMITIR_SERVIDOR`).
-    **Quem já tem `CADASTRAR_CARGO` passa a poder cadastrar função** — está escrito no censo, mas é
-    ampliação. Uma ação própria custa valor novo no enum `AcaoDoSistema` (migration `ALTER TYPE`
-    isolada), `atualizacoes-de-permissoes.ts`, `navegacao-permissoes.ts` e o mapa do M35: cinco
-    sítios, com teste de instalação limpa E de atualização. É decisão de granularidade de perfil do
-    ente, reversível, e não se toma junto com a que cria o modelo.
+17. **`FUNCAO-SEM-ACAO-PROPRIA`** — `cadastrarFuncao` reusa `CADASTRAR_CARGO` porque é a **MESMA
+    AUTORIDADE**: dizer o que a estrutura do ente TEM. Mesmo critério de
+    `publicarVersaoDaEntidadeContabil` sob `CADASTRAR_ENTIDADE_CONTABIL` ("a MESMA autoridade —
+    dizer quem a entidade é"). **Isto é desenho, não economia de esforço** — e o teste que decide é
+    o do dinheiro:
+
+    | | tem valor no cadastro? | por onde o dinheiro entra |
+    |---|---|---|
+    | `Cargo` | não | evento `ADMISSAO`/`PROMOCAO`/`REAJUSTE_SALARIAL`, sob `ALTERAR_REMUNERACAO` |
+    | `Funcao` | não | evento `GRATIFICACAO`, sob a **mesma** `ALTERAR_REMUNERACAO` |
+
+    A objeção séria era "função gratificada vira dinheiro" — e se virasse, seria outra autoridade.
+    Não vira: nos dois casos o cadastro é catálogo (código, denominação, lei que criou, lei que
+    extinguiu) e o dinheiro está do outro lado da linha. **Quem cadastra função não paga ninguém.**
+
+    E o argumento inverso é o do precedente: uma ação própria daria ao ente a chance de conceder
+    **cadastrar cargo sem cadastrar função** — um ente que pode criar o posto de Diretor de Escola
+    e não a direção de escola. Estrutura pela metade, como "um cadastro que não se corrige" foi o
+    defeito que a V8.12 achou no calendário. A segregação que este módulo declara é "criar a vaga ×
+    ocupar a vaga", e a função está do **mesmo lado** dessa linha que o cargo.
+
+    ⚠️ **A CONDIÇÃO DE REVERSÃO, para a decisão não virar permanente por inércia:** se `Funcao`
+    ganhar campo de **valor**, a autoridade muda no mesmo ato e o reuso deixa de valer — cadastrar
+    passaria a fixar quanto se paga, que é `ALTERAR_REMUNERACAO`. Quem acrescentar o campo separa a
+    ação junto, não depois. **Enquanto isso, a pendência é só o registro da ampliação:** quem já tem
+    `CADASTRAR_CARGO` passa a poder cadastrar função, e quem revisar o perfil de um ente precisa
+    saber.
 18. **`FUNCAO-SEM-EIXO-DE-AUSENCIA`** — não há como perguntar "quem NÃO exerce função nenhuma". O
     eixo aceita funções; `null` não é um valor pedível. O TR não pede, e inventar um
     `"SEM_FUNCAO"` sem pedido seria inventar requisito — fica nomeado para quando alguém precisar.
+
+#### ⚠️ OS TRÊS `select` QUE DARIAM A RESPOSTA ERRADA COM CARA DE CERTA (V11 V9.4)
+
+Achados ao escrever os dois eixos novos, e ficam aqui porque são **primos do falso verde**: nenhum
+dos três daria erro. Um `select` que esquece uma coluna não quebra — ele responde `undefined`, a
+derivação devolve `null`, e a resposta errada sai com a mesma cara da certa.
+
+| onde | o que a omissão faria |
+|---|---|
+| `modules/m32-pessoal/servico.ts`, `exigirVinculo` | `funcaoVigenteEm` devolveria `null` sempre, e a guarda `DISPENSA-SEM-FUNCAO-VIGENTE` recusaria **TODA** dispensa, inclusive as legítimas |
+| `lib/portas/recursos/pessoal-dados.ts`, `SELECAO_ENXUTA_DO_VINCULO` | os dois filtros novos responderiam **sempre a lista vazia** |
+| `lib/portas/recursos/pessoal-dados.ts`, `SELECAO_DE_EVENTOS` | a ficha funcional mostraria a designação sem a função |
+
+⚠️ **O segundo é o pior, e o motivo é geral:** um filtro que **nunca acha nada** é indistinguível de
+um filtro **correto sobre dado ausente** — e o dado É ausente hoje (`VINCULOS-ANTERIORES-SEM-CENTRO-DE-CUSTO`).
+As duas situações produzem a mesma tela vazia. Por isso o teste dos dois eixos precisa de fixture
+que **encontre** alguém, não só de fixture que não encontre: um teste que só afirma o vazio passa
+com a coluna esquecida.
 
 ### O GATE DA CONSULTA MORA NA PORTA, NÃO NA TELA (V11 V9.4, pós-auditoria)
 
