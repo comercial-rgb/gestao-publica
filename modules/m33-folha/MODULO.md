@@ -318,6 +318,63 @@ transformaria num leitor de banco.
 permite ao serviço resolver o elo em vez de o operador digitá-lo — digitar permitiria abater o
 adiantamento do ano passado.
 
+### ⚠️ O que o abatimento verifica é o FECHAMENTO — e a memória passou a dizer isso (V11 V9.2)
+
+**O fato que arma o abatimento é um só: `FolhaDePagamento.fechamento !== null`.** Certificação,
+empenho, liquidação e pagamento **não são consultados**. Até a V11 V9.2 a memória do contracheque
+— o documento com que o servidor confere o próprio pagamento, lacrado em `sha256` — dizia
+**"1ª parcela já paga"**, afirmando o que o cálculo nunca verificou. Agora ela diz o fato:
+*"1ª parcela APURADA na folha de adiantamento FECHADA de \<competência\>"*, com o número do cálculo
+e a situação da certificação, e o campo de entrada chama-se `adiantamentoApuradoEmFolhaFechada`.
+**Nenhum centavo mudou; mudou o que o sistema afirma.**
+
+O caso que isto torna visível: uma folha de adiantamento **FECHADA** e depois **DEVOLVIDA para
+correção** nunca será liquidada nem paga (`RETIFICACAO-DA-FOLHA`), e **é abatida assim mesmo** —
+e o fechamento é irreversível nas duas pontas (não há reabertura, e `cancelarCalculoDaFolha`
+recusa o cálculo que fechou). O desconto acontece; o contracheque, pelo menos, deixou de mentir
+sobre o que o sustenta.
+
+### As duas parcelas saem da MESMA RÉGUA — `PARAMETRO-TROCADO-ENTRE-AS-PARCELAS` (V11 V9.2)
+
+**O dano.** Nada impedia cadastrar a versão seguinte do parâmetro **entre** o fechamento do
+adiantamento e o cálculo do 13º. Baixando `diasMinimosDoAvo` de 15 para 10, quem foi admitido em
+março salta de 9 para 10 avos: a parcela final sai sobre **10** e abate o que foi apurado sobre
+**9**. A folha fecha, o total bate, o empenho bate, a liquidação bate — **não há etapa adiante que
+acuse**, que é o dano descrito na atualização de permissões **v28**. A única defesa era a
+concessão restrita da ação.
+
+**Por que esta guarda não inventa norma.** Ela não diz qual critério de avo é o certo — isso
+continua sendo do ente, declarado no parâmetro. Ela exige **menos e mais duro**: que o minuendo e
+o subtraendo da mesma conta venham da mesma régua. Abater um adiantamento medido por outro
+critério é incoerência **aritmética interna**, e nenhuma fonte externa precisa ser consultada para
+saber disso. É a mesma família do balanceamento por subsistema — uma identidade que o sistema deve
+a si mesmo.
+
+**A régua são TRÊS campos**, e a lista curta é decisão: `diasMinimosDoAvo`, `avosNoExercicio` e
+`baseDosAvosDoAdiantamento` — o que decide **quantos** avos e **sobre que horizonte**. Incidências,
+ato, percentual da 1ª parcela e rubricas **ficam de fora**: mudá-los depois não torna a subtração
+incoerente, porque o abatimento é o valor **apurado**, já materializado. Incluí-los viraria
+proibição de corrigir a ementa de um ato — zelo virado obstáculo.
+
+⚠️ **A comparação é por VALOR, não pela identidade do registro — e isso foi uma correção durante a
+própria rodada.** A primeira versão comparava o `id` do parâmetro. Era mais estrita e estava
+**errada**: recadastrar exatamente o mesmo critério gera outro `id`, então a saída que a própria
+mensagem oferece não funcionaria e o ente ficaria sem saída nenhuma dentro do exercício. Quem
+derrubou o desenho foi o teste que percorre a saída prometida. **Recusa sem saída não é
+fail-closed; é beco sem saída.**
+
+**Sem mecanismo de dispensa**, deliberadamente: quem precisar divergir é recusado com as duas
+réguas na mão, e isso volta como pergunta de produto em vez de virar uma caixa "ignorar" que
+ninguém sabe quem marcou. A mensagem orienta — diz as duas versões, os dois critérios lado a lado,
+e a saída (cadastrar a versão seguinte com o critério do adiantamento; a mudança de critério vale
+a partir do próximo exercício).
+
+O fato lido vem da **memória do contracheque** do cálculo que fechou o adiantamento, que já
+gravava `parametro.versao` desde a V11 V9.1 — **nenhum fato novo, nenhuma DDL**. Lê-se **um**
+contracheque, porque o parâmetro é lido uma vez por cálculo, antes do laço, e passado a todos; ler
+todas as memórias custaria dezenas de MB numa folha de mil servidores. Memória ausente ou ilegível
+**não** vira "segue sem conferir": vira `PARAMETRO-DO-ADIANTAMENTO-IRRECUPERAVEL`.
+
 ### O zero de dias é declarado, não suposto
 
 Um contracheque de 13º grava `diasComputados = 0`. Sozinho isso seria uma mentira que some numa
@@ -338,12 +395,62 @@ acumulados, férias, diferença de 13º, adiantamentos salariais).
 `scripts/smoke-decimo-terceiro.ts` **não existe**. Aplicar a régua ao almoxarifado e não a si
 mesmo é o que transforma um relatório em placar.
 
-O que o percurso provaria e os 262 testes não provam está listado no roteiro de quinze passos da
-unidade: a landing levar às telas, o `select` de natureza oferecer o abatimento, o recorte dos
-seletores do parâmetro, a recusa do ato chegar legível à tela, a memória dos doze meses ser
-renderizada, os dois papéis serem sessões distintas, e o contracheque do 13º alcançar o portal do
-servidor. Quatro dos cinco defeitos desta unidade eram exatamente dessa família — o domínio
-funcionando e a interface não alcançando —, e nenhum tinha teste vermelho.
+Quatro dos cinco defeitos desta unidade eram da mesma família — o domínio funcionando e a
+interface não alcançando —, e **nenhum tinha teste vermelho**. É isso que o percurso pega e os
+262 testes não pegam.
+
+### O roteiro de quinze passos — `scripts/smoke-decimo-terceiro.ts`
+
+⚠️ **Até a V11 V9.2 este roteiro NÃO EXISTIA, e dois documentos afirmavam que ele existia.** O
+`ESTADO-EXECUCAO.md` dizia "roteiro de 15 passos já escrito no `MODULO.md` do M33"; este arquivo
+dizia "listado no roteiro de quinze passos **da unidade**". Cada um apontava para o outro e a
+referência não fechava em lugar nenhum — papelada declarando o que não havia. Quem fosse escrever
+o percurso perderia a primeira hora procurando. Os passos abaixo são a lista, escrita.
+
+**Ambiente:** banco dos percursos (`DATABASE_URL_PERCURSOS`), `npm run percursos:preparar` e
+`npm run percursos:servir`. **Exercício ainda SEM folha de 13º** — `@@unique([exercicio, tipo])`
+dá uma folha de cada tipo por ano, e reexecutar no mesmo exercício é reconhecido e **pulado com
+aviso**: nunca falhar, nunca passar em silêncio.
+
+**Papéis, e por que são estes:** `admin` cadastra o parâmetro, porque
+`CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO` vai **só** a quem administra permissões no global
+(derivação v28) — **nenhum papel de percurso a tem, e não se concede a ação ao `rh@` para o
+percurso passar: a negativa é evidência, não obstáculo**. `rh@` parametriza a folha e CALCULA;
+`contabilidade@` FECHA. A servidora do portal olha o próprio contracheque.
+
+| # | ação pela tela (rota · papel) | o que se confere | valor esperado |
+|---|---|---|---|
+| 1 | `/folha` · `rh@` | a landing lista as **nove** telas da área, e as quatro que ficaram um ano escondidas estão lá | cards para encargos, grupos de empenho, designações e eSocial |
+| 2 | `/folha/rubricas` · `rh@` | o `select` de **natureza** oferece `ABATIMENTO_DO_ADIANTAMENTO_DO_13` | a opção existe — sem ela a rubrica é incadastrável e a 2ª parcela nunca abate |
+| 3 | `/folha/rubricas` · `rh@` | cadastrar a rubrica do abatimento como **PROVENTO** é RECUSADO, e a mensagem chega legível | texto com `ABATIMENTO_DO_ADIANTAMENTO_DO_13 é DESCONTO` |
+| 4 | `/folha/rubricas` · `rh@` | cadastrar as três do 13º e as da base (vencimento, gratificações, percentual) | rubricas listadas, com versão aprovada |
+| 5 | `/folha/parametros-do-13` · **`rh@`** | **NEGATIVA DE AUTORIZAÇÃO**: sem a ação, a lista abre e o formulário **não** | a tela diz `CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO` e que a concessão é por ação |
+| 6 | `/folha/parametros-do-13` · `admin` | o **recorte dos seletores**: base só com as três naturezas admitidas; abatimento só com a natureza própria | horas extras **não** aparece na base; contribuição **não** aparece no abatimento |
+| 7 | `/folha/parametros-do-13` · `admin` | **NEGATIVA DE COERÊNCIA**: ato com ementa de uma palavra é recusado, e a recusa chega à TELA | texto com `ATO-INCOERENTE` e o motivo |
+| 8 | `/folha/parametros-do-13` · `admin` | gravar o parâmetro; o percentual é digitado **em porcento** e guardado em fração | digita `50`, a lista mostra 50% (o CHECK exige [0,1] — sem a conversão de borda nada gravaria) |
+| 9 | `/folha/folhas` · `rh@` | abrir a folha de **ADIANTAMENTO DO 13º** e calcular | dois contracheques; 1ª parcela de **1.900,00** (12 avos) e **990,41** (9 avos) |
+| 10 | `/folha/folhas/<id>` · `rh@` | a **memória dos doze meses** é renderizada, mês a mês, com o motivo de cada avo | janeiro e fevereiro "anteriores à admissão"; março "11/30 dias — abaixo do mínimo de 15" |
+| 11 | `/folha/folhas/<id>` · `rh@` | a memória do adiantamento **declara** que não há incidência, em vez de calar | texto com `INCIDENCIA-NA-PRIMEIRA-PARCELA` — e nenhuma linha de contribuição ou IRRF |
+| 12 | `/folha/folhas/<id>` · `rh@` → `contabilidade@` | **OS DOIS PAPÉIS SÃO SESSÕES DISTINTAS**: `rh@` não fecha; `contabilidade@` fecha | `rh@` é barrado no ato de fechar; a folha fecha na sessão seguinte |
+| 13 | `/folha/folhas` · `rh@` | abrir a folha de **13º**, calcular, e conferir o abatimento **por vínculo** | 13º apurado **3.800,00**/**1.980,82**; abatimento **1.900,00**/**990,41** — os dois DIFERENTES, senão "abater valor fixo" passa |
+| 14 | `/folha/folhas/<id>` · `rh@` | a memória do 13º diz **de onde** veio o abatimento e **não** afirma pagamento | `1ª parcela APURADA na folha de adiantamento FECHADA de <competência>`, com a situação da certificação — e **sem** "já paga" |
+| 15 | `/portal-do-servidor` · a servidora | o contracheque do 13º **alcança o portal**, e só o dela | a competência do 13º aparece, com avos e líquido; a matrícula da outra, não |
+
+**A repetição sem duplicar efeito** fecha o roteiro: reexecutado no mesmo exercício, o percurso
+reconhece as folhas que já existem e PULA com aviso, em vez de falhar no `@@unique` — e o
+`admin` ao cadastrar o parâmetro de novo produz a **versão seguinte**, nunca um `UPDATE`.
+
+⚠️ **O passo 13 é o par N=2 de `m33-decimo-terceiro.test.ts`, e os números são os mesmos de
+propósito**: o percurso confere pela TELA o que a suíte confere pelo banco. O `1.980,82` é um
+empate exato (`2.641,10 × 9/12 = 1.980,825`) resolvido por **half-even** — half-up daria
+`1.980,83`. Se a tela mostrar `1.980,83`, o arredondamento do sistema mudou e ninguém avisou.
+
+⚠️ **O percurso NÃO afirma os líquidos** (1.520,00 e 792,33), e isso é decisão. A contribuição
+depende da TABELA vigente no banco dos percursos, que tem faixas (7,5% / 9% / 14%) e não a
+alíquota linear de 10% da fixture da suíte. Cravar o líquido no percurso afirmaria a tabela de um
+banco dentro de um roteiro que roda contra outro: o passo ficaria vermelho sem defeito nenhum, e
+alguém consertaria o 13º por causa disso. Os líquidos exatos são do teste, onde a tabela é
+declarada pela fixture; o percurso fica com o que a tabela não move — base, avos e abatimento.
 
 ⚠️ **Nada foi marcado no catálogo nesta unidade**, nem para cima nem para baixo. Só
 `scripts/marcar-catalogo.ts` escreve nele.
@@ -390,6 +497,15 @@ afastamento/desligamento (9 e 7 avos), porque com um servidor só "9 avos" passa
 - `ABATIMENTO-MAIOR-QUE-O-13` (V11 V9.1) — quem foi adiantado sobre o ano projetado e desligado no
   meio deve ao ente. A folha **recusa nomeando a matrícula**; repor ao erário é ato próprio, com
   rito próprio, e não existe aqui.
+- `ESTADO-EXIGIDO-DO-ADIANTAMENTO-SEM-FONTE` (V11 V9.2) — **qual estado torna o adiantamento
+  abatível é questão NORMATIVA, e ela não foi levantada.** Hoje o motor exige `FECHADO`, e a
+  justificativa escrita é de engenharia ("abater valores de um cálculo que ainda pode mudar"), não
+  de norma. A Lei 4.749/1965 fala em antecipação **paga** — e governa o celetista, como os "15
+  dias" e os "50%" que este módulo expulsou do código pelo mesmo motivo. Este é hoje o **único
+  critério do 13º cravado no motor** em vez de vir do parâmetro do ente. Um campo
+  `estadoMinimoDoAdiantamentoParaAbater` resolveria, e **não se cria sem a fonte**: inventar a
+  norma do município por dentro é o erro que o resto deste módulo existe para não cometer.
+- ~~`PARAMETRO-TROCADO-ENTRE-AS-PARCELAS`~~ — **resolvida na V11 V9.2** (seção abaixo).
 - `MEDIA-DAS-VARIAVEIS-NO-13` (5.12.82) — a base do 13º só admite vencimento-base, gratificações do
   vínculo e percentual do vencimento. Valor informado e fórmula exigiriam a média do ano; somar o
   lançamento de um mês pagaria 13º sobre a hora extra de dezembro como se fosse a do ano inteiro.
