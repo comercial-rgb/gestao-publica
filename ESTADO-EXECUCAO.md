@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | **V11 V9.3** — `c436185`. Três commits meus nesta rodada (`e346f08`, `3d75c47`, `c436185`); `main` recebeu também três de OUTRA sessão (`63e2f96`, `ceeefab`, `fea43d8`) durante a execução. Os três scripts do operador seguem fora do Git |
+| HEAD | **V11 V9.3** — `eccbe8c`, árvore limpa (só os três scripts do operador). Sete commits meus nesta rodada, mais quatro do auxiliar (`63e2f96`, `ceeefab`, `fea43d8`, `10f8fe5`) |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
-| Frente em execução | **V11** — V9.3 resolveu `CONTROLE-DDR-POR-NATUREZA-DA-FONTE` e executou **os três passos da J9** que a V9.2 deixou como NÃO EXECUTADOS. `SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS` segue como continuidade funcional, com a apuração **não** ligada; V6 (AWS) segue bloqueado por terceiro |
-| Último resultado | seção 87 — a perna de classe 7 da arrecadação passou a ser **resolvida pela natureza da fonte** (cinco analíticas do `Pcasp_2025.xlsx`), a correspondência fonte→natureza virou **ato do ente** com tela, fail-closed e versionada, e o plano MÍNIMO deixou de ser mais permissivo que o oficial. Dirigidas **79/79** e guards **40/40**, exit 0; mutação vermelha em 5 testes e verde na reversão; **J9 44 ok / 0 falhas / 0 não executados**, exit 0, contra artefato `97f058b` com `/release` que o nomeia |
-| Pendências relevantes | **`main` NÃO COMPILA** — `modules/m33-folha/certificacao.ts:662`, de `fea43d8` (**outra sessão**), sem `abatimentoSemCriterioDeclarado`: **bloqueio externo**, ver 87.8. `MENSAGEM-SOME-COM-A-LINHA` na atribuição do legado (escopo não executado), `DDR-DISPONIVEL-SALDO-A-REPONTAR`, `PERCURSOS-SEM-TERMO-PATRIMONIAL-CONGELADO`, `ESTADO-EXIGIDO-DO-ADIANTAMENTO-SEM-FONTE` (lacuna **normativa**), `SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS` com as cinco lacunas preservadas. **Bloqueadas por terceiro** (83.3): leiaute eSocial, token ASTEC, certificado A1, AWS, linha ENT12 |
-| Próximo passo | **Nada está instalado nem publicado.** O artefato desta rodada é `97f058b` = `74624fe` + meus três commits — **não é HEAD**, porque HEAD não compila por causa de `certificacao.ts:662`, que é decisão normativa de outra sessão e **não foi chutada aqui**. O próximo ponto é essa decisão; depois, reconstruir o artefato sobre `main` e reexecutar **só** a J9 |
+| Frente em execução | **V11** — V9.3 resolveu `CONTROLE-DDR-POR-NATUREZA-DA-FONTE`, executou **os três passos da J9** que a V9.2 deixou pendentes, fechou os **passos 16, 17 e 18 do roteiro do 13º** e encerrou a família `MENSAGEM-SOME-COM-A-LINHA`. `SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS` segue como continuidade funcional, com a apuração **não** ligada |
+| Último resultado | seção 87 — tipos **0/0/0**; dirigidas **79/79**, guards **40/40**, M33 critério **18/18**; mutação **5 vermelhos / 24 verdes na reversão**; **J9 45 ok / 0 falhas / 0 não executados** e **13º 58 ok / 0 falhas / 1 não executado**, ambos `exit 0`, contra artefatos cujo `/release` os nomeia. Três defeitos de produto achados **pela tela** e corrigidos: o remédio falso do critério do abatimento e as duas camadas restantes de `MENSAGEM-SOME-COM-A-LINHA` |
+| Pendências relevantes | **`18.3–18.5` do 13º NÃO EXECUTADO** (folha fechada não recalcula — falta `RETIFICACAO-DA-FOLHA`); **defeito LATENTE** `numeroDoEmpenhoDaFolha` sem o tipo da folha (87.20, conserto do auxiliar); onde fica o portão do critério (apropriar ou fechar); `DDR-DISPONIVEL-SALDO-A-REPONTAR`; `PERCURSOS-SEM-TERMO-PATRIMONIAL-CONGELADO`. **Bloqueio NORMATIVO**: `DISPOSITIVO-MUNICIPAL-DO-13-NAO-LIDO` (três fontes em 403) — não trava o sistema, mas é o que falta para saber QUAL critério declarar. **Bloqueadas por terceiro** (83.3): eSocial, ASTEC, certificado A1, AWS, ENT12 |
+| Próximo passo | **Nada instalado nem publicado**; `/release` responde `candidato: null`. A próxima unidade é a **mensal complementar**, já escolhida e **não começada** — e antes dela o conserto de `numeroDoEmpenhoDaFolha`, porque é ela que faz o defeito latente disparar |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -10456,7 +10456,7 @@ era a **linha**, que desaparece no sucesso por desenho (`colunaAcoes` só oferec
 viva). O estado subiu para um provedor acima da tabela — a mesma cura do guichê (V8), do roteiro
 orçamentário (V8.4) e da natureza das fontes (V9.3).
 
-### 87.8 Bloqueio externo — HEAD **não compila**, e não é desta rodada
+### 87.8 ~~Bloqueio externo~~ — **a atribuição estava errada, e a correção é minha** (ver 87.13)
 
 `modules/m33-folha/certificacao.ts:662` não compila em `main`: `elegibilidadeParaLiquidar` recebe
 um objeto sem `abatimentoSemCriterioDeclarado`, campo que `modules/m33-folha/elegibilidade.ts:48`
@@ -10466,8 +10466,16 @@ a `main` durante esta rodada (`74624fe` → `fea43d8`). Dois dos três sítios f
 
 **Não foi corrigido aqui, de propósito.** O campo governa o gate `ABATIMENTO-SEM-CRITERIO-DECLARADO`;
 escolher entre `false` e o `semCriterio` calculado é decidir se a **liquidação** de uma folha de 13º
-com critério não declarado deve ou não ser barrada — decisão normativa, dentro do tema em curso de
-outra sessão. Chutar o valor para o meu build passar seria exatamente o que este repositório proíbe.
+com critério não declarado deve ou não ser barrada — decisão normativa, dentro de um tema em curso.
+Chutar o valor para o meu build passar seria exatamente o que este repositório proíbe.
+
+> ⚠️ **CORREÇÃO DE ATRIBUIÇÃO (registrada em 87.13).** Escrevi acima que `fea43d8` era de "outra
+> sessão". **Não era.** Era do **auxiliar desta mesma rodada**, e a falha foi de coordenação, não
+> de origem. O texto original fica visível de propósito — apagá-lo esconderia que eu atribuí a
+> terceiros um defeito da própria empreitada. O que se sustenta da seção é a **medição** (HEAD não
+> compilava, o sítio era esse) e a **recusa de chutar o valor**; o que não se sustenta é a palavra
+> "outra sessão". Fechado em `10f8fe5`, **derivando** o valor do mesmo fato — a memória do cálculo —
+> em vez de literal.
 
 **Consequência medida e declarada:** o artefato dos percursos foi montado em `v11v93-artefato` =
 `74624fe` + os três commits desta rodada, **sem** os commits de M33. O SHA `97f058b` **nomeia** o
@@ -10511,3 +10519,170 @@ worktrees (`candidato-e346f08`, `artefato-v11v93`) e quatro bancos descartáveis
 2. Depois disso, reconstruir o artefato **em cima de `main`** e reexecutar **só** a J9 — é o único
    percurso que esta rodada atingiu.
 3. `MENSAGEM-SOME-COM-A-LINHA` na atribuição: um provedor, um build, uma corrida da J9.
+
+### 87.13 O que veio DEPOIS de 87.12 ter sido escrita
+
+**A atribuição de `fea43d8` estava errada, e o erro é meu.** Eu o dei como "de outra sessão"; era do
+**auxiliar desta rodada**. A medição continua de pé — `main` não compilava, o sítio era
+`certificacao.ts:662` —, e a recusa de chutar o valor continua certa. Errado foi o **sujeito**, e
+isso importa porque muda de quem é a dívida: não era de fora, era da empreitada.
+
+Fechado em **`10f8fe5`**, e pelo caminho certo: o terceiro sítio **deriva** o valor do mesmo fato
+(a memória do cálculo) em vez de repetir um literal — se fosse `false` cravado, a liquidação
+responderia a pergunta de um jeito e a apropriação de outro.
+
+**Medição de `10f8fe5`, feita pelo auxiliar e conferida aqui pelo build:** tipos **0/0/0**,
+dirigidos **152/152**, as duas migrations conferidas **pelo efeito**, quatro mutações acusando e
+revertidas **por edição**.
+
+### 87.14 O artefato de `main` — tarefa 1
+
+| Item | Valor |
+|---|---|
+| Artefato | `10f8fe5`, árvore limpa, worktree `candidato-10f8fe5` |
+| Build | **exit 0**, pelo **caminho direto** — a linha é `Linting and checking validity of types`, **não** `Skipping validation of types`. Sem OOM, **sem a válvula do digesto** |
+| `/release` | `10f8fe5` — o SHA **nomeia** o que é servido |
+| Porta / banco | **3012** / `gestao_publica_percursos_v11v93e` (instalação limpa, `exit-preparar=0`) |
+| Registro | `.registro-de-execucao/v11v93-artefato-main-preparar-e-build.txt` |
+
+O build validando tipos da árvore inteira é a **segunda via** de que `main` voltou a compilar.
+
+### 87.15 Os três passos do 13º — tarefa 2
+
+Roteiro do `MODULO.md` do M33 fechado: **16, 17 e 18 deixaram de ser "falta nomeada"**.
+
+**Ambiente:** o percurso do 13º **exige banco próprio** (`PERCURSO_BANCO`) e recusa sem ele — a
+folha calcula sobre TODOS os vínculos, e num banco compartilhado uma matrícula alheia derruba o
+cálculo. A recusa é do instrumento e está certa: `exit=3`, **nada foi iniciado**.
+
+| Passo | O que ficou provado |
+|---|---|
+| **16.1–16.3** | o `select` do estado mínimo existe com as três opções declaráveis **mais a ausência**; a ausência é o **padrão** e é **nomeada** ("o 13º sai como simulação"), não um branco mudo; e a tela **diz antes da escolha** que exigir "pago" depende de empenho POR SERVIDOR |
+| **16.4–16.6** | **negativa estrutural**: exigir "pago" sem grupo por servidor é recusado com `ESTADO-PAGO-NAO-VERIFICAVEL`, dizendo que o fato **não existe no banco** — não "valor inválido" —, e **nada é gravado** (a versão 2 não nasce da tentativa) |
+| **17.1–17.2** | com a folha **aberta**, o detalhe traz "Natureza da apuração: SIMULAÇÃO" e **diz o que isso impede** |
+| **17.3–17.5** | **fechada**, a barra **não oferece** `apropriar`, diz o **motivo** e aponta um remédio **executável** |
+| **18.1–18.2b** | **o par que importa**: declarado o critério na versão seguinte, a folha **segue bloqueada** — o bloqueio é do **cálculo**, não do parâmetro |
+
+**Resultado:** `58 ok / 0 falhas / 1 NÃO EXECUTADO`, **exit 0**
+(`.registro-de-execucao/v11v93-percurso-13-r3.txt`), artefato `6789a1f`, banco
+`gestao_publica_percursos_v7m1_13o_v11v93b`.
+
+**O defeito que o percurso achou — e é de produto.** O remédio das duas recusas
+(`apropriar` e `liquidar`) dizia *"o ente declara o critério … e a folha é recalculada"*. **As duas
+recusas só são alcançadas em folha FECHADA** — o `!e.fechada` fala antes delas —, e folha fechada
+**não recalcula**: `elegibilidadeParaCalcular` devolve `FOLHA-FECHADA`, e o percurso mediu
+RECALCULAR como **`ausente`** da barra. **O remédio era falso no único estado em que aparece.** Quem
+declarasse o critério e voltasse veria o mesmo bloqueio, sem explicação. Corrigido em `985cb7f`: o
+texto passa a dizer que o critério tem de estar declarado **ANTES** do fechamento e nomeia
+`RETIFICAÇÃO DA FOLHA` como o que falta para uma folha já fechada.
+
+**E duas asserções minhas estavam erradas**, corrigidas no mesmo commit: 17.4 e 18.2 exigiam o
+código `ABATIMENTO-SEM-CRITERIO-DECLARADO` no texto da **barra**. A barra não mostra código de ato
+**nenhum**, em lugar nenhum: ela projeta **motivo e remédio**, e código na tela seria vocabulário de
+implementação diante de quem opera. A negação passou a afirmar o **motivo**.
+
+**NÃO EXECUTADO, com o ponto exato:** `18.3 a 18.5` — o destrave pelo recálculo. A folha de 13º
+está fechada e a barra apresenta RECALCULAR como `ausente`; o produto **não tem** ato que refaça
+cálculo congelado. **Não foi declarado feito.** O destrave exige declarar o critério **antes** de
+fechar, ou o ato de retificação, que não existe.
+
+**O que NÃO se fez, e por quê.** A correção mais funda seria **bloquear o `fechar`** de uma folha em
+simulação — impede o beco sem saída na origem. Não foi feita: inverte onde o autor do M33 pôs o
+gate e tornaria **inalcançável o próprio estado que o passo 17 existe para medir**. Fica como
+decisão da próxima unidade, não tomada de afogadilho no fim de uma rodada.
+
+### 87.16 `MENSAGEM-SOME-COM-A-LINHA` — tarefa 3, e a regra que faltava escrita
+
+A confirmação da atribuição morreu **três vezes**, cada uma num invólucro mais externo, e cada morte
+só apareceu **depois** de a anterior ser curada e medida:
+
+1. dentro do **formulário**, que fecha no sucesso — já tratado antes desta rodada;
+2. dentro do **`<li>` da guia**, que sai da fila (`6789a1f`);
+3. dentro da **`<section>` da fila**, que deixa de ser renderizada quando a fila esvazia (`eccbe8c`).
+
+**A regra que fecha a família:** *o aviso de um ato vive FORA de tudo o que o ato muda.* Foi por não
+estar escrita que a cura precisou de três tentativas em **duas** telas — a anulação de guia
+(`3d75c47`, `c436185`) passou pelas duas primeiras camadas nesta mesma rodada.
+
+**Provado pela tela:** J9 **45 ok / 0 falhas / 0 não executados**, **exit 0**
+(`.registro-de-execucao/v11v93-percurso-j9-r6.txt`), artefato `eccbe8c`. O passo 9.5 deixou de
+tolerar silêncio e passa a **afirmar a mensagem**; 9.5b e 9.6 continuam afirmando o **efeito** —
+aviso sem persistência é o outro defeito desta família, e ele não se prova com aviso.
+
+### 87.17 Catálogo — o que a evidência sustenta, e só
+
+**Zero mudanças de situação. Uma marcação, e é de EVIDÊNCIA: `5.10.1.72`.**
+
+A cláusula — *"Controlar para que as contas contábeis só recebam lançamentos no último nível de
+desdobramento do Plano de Contas"* — é a única que corresponde **literalmente** ao que esta rodada
+mexeu. Continua **`PARCIAL`**, de propósito: a rodada corrigiu **uma** perna de roteiro e a cláusula
+cobra o controle para **todas**. A evidência passou a registrar o **alcance validado** (a perna de
+classe 7 da arrecadação, provada pelas partidas persistidas e pela tela no passo 6.0 da J9) e **o
+que falta** — cinco pernas ainda em conta sintética, cada uma com pendência nomeada
+(`ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS`, `CREDITO-ESPECIAL-ABERTO-OU-REABERTO` ×2,
+`ROTEIRO-RESERVA-SEM-CONTA`, `CONSIGNACAO-CONTA-SINTETICA`).
+
+**`5.12.50` permanece `PARCIAL`**, inalterada: as modalidades e os filtros seguem não verificados, e
+**isto não mudou nesta rodada**.
+
+**A arrecadação por natureza da fonte NÃO tem cláusula correspondente.** Procurado no catálogo
+inteiro por "disponibilidade por destinação", "destinação de recursos", "DDR", "controle da
+disponibilidade" e "natureza da fonte": sete cláusulas citam destinação de recursos, e **nenhuma**
+trata do **controle contábil da disponibilidade** (PCASP classes 7 e 8). As sete falam de
+PPA/LDO/programação e de saldo por fonte na inclusão de pagamentos — outro objeto. Fica registrado
+como **desenho de engenharia**, não como cobertura de edital, pela mesma régua da `TR 5.38.7` em
+`63e2f96`: **não se inventa correspondência para render marcação**.
+
+Contagem após a rodada: **392 de 2.037 verificadas (19,2%)**; `NAO_VERIFICADO` 1.645, 
+`AUSENTE_CONFIRMADO` 145, `PARCIAL` 101, `VALIDADO_LOCALMENTE` 75, `IMPLEMENTADO_NAO_VALIDADO` 67,
+`DEPENDENCIA_EXTERNA` 4.
+
+### 87.18 O estado, separado por natureza da prova
+
+| Natureza | O que esta rodada entregou |
+|---|---|
+| **Implementado** | perna de classe 7 resolvida pela natureza da fonte; `DeParaFonteNaturezaDdr` (append-only, versionada, fail-closed); tela `/contabilidade/natureza-das-fontes`; remédio verdadeiro nas duas recusas do critério do abatimento; confirmação da anulação e da atribuição fora do que o ato muda |
+| **Tipos verificados** | `typecheck` backend / app / scripts — **0/0/0** em `eccbe8c`; e o **build** validou tipos da árvore inteira pelo caminho direto, sem dispensa por digesto |
+| **Comportamento com banco** | dirigidas M01+M04 **79/79**; guards do plano + M16 bordas + RGF Anexo 5 + seed de produção **40/40**; M33 critério do abatimento **18/18**; mutação: **5 vermelhos** e **24 verdes** na reversão |
+| **Percurso executado** | **J9** 45 ok / 0 falhas / 0 não executados (`exit 0`); **13º** 58 ok / 0 falhas / **1 não executado** (`exit 0`) — o não executado é `18.3–18.5`, com o ponto exato |
+| **Instalado ou publicado** | **NADA.** Sem push, sem deploy, sem transmissão fiscal, sem pagamento. `/release` responde `candidato: null` em todos os artefatos |
+
+### 87.19 Bloqueio NORMATIVO — distinto de código não construído
+
+**`DISPOSITIVO-MUNICIPAL-DO-13-NAO-LIDO`.** É **lacuna normativa**, não código faltando: três fontes
+respondem **403**, inclusive a consulta do TCE/SC que trata exatamente do tema. **Ela não trava mais
+o sistema** — o critério virou declaração do ente, com a ausência sendo escolha nomeada e a
+apropriação bloqueada enquanto ninguém declarar. O que falta é o insumo para alguém saber **qual**
+critério declarar: o dispositivo do estatuto do município. Nenhum valor foi assumido no lugar dele.
+
+Não confundir com **escopo não construído**, que nesta rodada é: o ato de **retificação da folha**
+(sem ele, 13º fechado em simulação não se destrava) e o bloqueio do `fechar` sobre folha em
+simulação (decisão adiada, 87.15).
+
+### 87.20 Defeito LATENTE registrado, conserto de outro
+
+**`numeroDoEmpenhoDaFolha`** (`modules/m33-folha/apropriacao.ts:257`) **não inclui o TIPO da folha**
+no número. Duas folhas de **tipos diferentes na mesma competência** colidem no número, e
+`apropriarFolha` **pula em silêncio** como `jaExistiam` — o pior modo de falhar, porque parece
+sucesso. **Hoje não dispara**: as duas folhas do 13º estão em competências diferentes. **Dispara no
+próximo tipo de mesma competência** — e a próxima unidade escolhida é justamente a **mensal
+complementar**. Levantado pelo auxiliar; **registrado aqui e não consertado aqui**, porque o
+conserto é dele.
+
+### 87.21 Ambiente ao fim da rodada
+
+Quatro artefatos de pé, nenhum derrubado: **:3010** `9d39776` (evidência da V9.2, PID 62185),
+**:3011** `97f058b` (J9 da primeira metade), **:3012** `10f8fe5` (o artefato de `main`), **:3014**
+`eccbe8c` (a J9 final). O :3013 serviu o 13º e é descartável. Bancos: os doze anteriores intactos;
+esta rodada acrescentou descartáveis (`…v11v93e`, `…v7m1_13o_v11v93{,b}`, `…v7m1_j9_v11v93{,b}`).
+Stash intacto, três scripts do operador fora do Git e não executados, `trinco-de-maquina.ts` não
+tocado.
+
+### 87.22 O próximo ponto exato
+
+1. **Mensal complementar** — já escolhida; **não foi começada aqui**. Antes dela, o conserto de
+   `numeroDoEmpenhoDaFolha` (87.20), porque é exatamente ela que faz o defeito latente disparar.
+2. **Decidir onde fica o portão do critério do abatimento**: no `apropriar` (hoje) ou no `fechar`
+   (impede o beco sem saída). Decisão de desenho do M33, com a medição de 87.15 na mão.
+3. **`RETIFICACAO-DA-FOLHA`** — enquanto não existir, 13º fechado em simulação é dinheiro parado
+   sem caminho de volta.

@@ -458,6 +458,12 @@ const MAPA: Readonly<Record<string, Marca>> = {
       "VALIDADO por tela: não há tela de manutenção do plano, só a consulta em " +
       "app/(areas)/contabilidade/plano-de-contas.",
   },
+  /**
+   * ⚠️ CONTINUA `PARCIAL` EM V11 V9.3, E DE PROPÓSITO. A rodada corrigiu a ÚLTIMA perna de
+   * roteiro que ainda debitava um nó sintético e provou a recusa pela tela — mas a cláusula
+   * cobra o controle para TODAS as contas, e a lista de exceções ainda tem cinco entradas.
+   * Promover por causa de uma perna seria contar o que encolheu como se fosse o todo.
+   */
   "5.10.1.72": {
     situacao: "PARCIAL",
     evidencia:
@@ -465,11 +471,21 @@ const MAPA: Readonly<Record<string, Marca>> = {
       "recusada, e `opcoesDoCadastro` só oferece analíticas ao formulário. ⚠️ E A MEDIÇÃO " +
       "CONTRA O PLANO REAL MOSTROU QUE O ENTE NÃO CUMPRE: confrontados os 70 códigos que o " +
       "código de produção usa contra o PCASP oficial, 55 são SINTÉTICOS lá — a maioria é " +
-      "ancestral de hierarquia e nunca recebe partida, mas cerca de dez estão em ROTEIRO " +
-      "(5.2.2.1.1.00.00 da dotação inicial, 8.2.1.1.1.00.00 da DDR, 2.1.3.1.1.00.00 de " +
-      "fornecedores). test/contas-contra-o-plano-oficial.test.ts fixa a lista e FALHA se " +
-      "ela crescer. A correção muda lançamento já gravado e exige caracterização antes — " +
-      "pendência PLANO-DE-CONTAS-FORA-DO-PCASP.",
+      "ancestral de hierarquia e nunca recebe partida, mas cerca de dez estão em ROTEIRO. " +
+      "test/contas-contra-o-plano-oficial.test.ts fixa a lista (EM_PERNA_DE_ROTEIRO) e FALHA " +
+      "se ela crescer. ⚠️ ALCANCE VALIDADO EM V11 V9.3, e só ele: a perna de classe 7 da " +
+      "ARRECADAÇÃO deixou de debitar o nó sintético 7.2.1.1.0.00.00 e passou a ser resolvida " +
+      "pela natureza da fonte, nas cinco analíticas que o Pcasp_2025.xlsx traz — provado por " +
+      "leitura das PARTIDAS PERSISTIDAS (m01-ddr t6/t7, fixture N=2) e pela TELA, no passo 6.0 " +
+      "do percurso J9 contra instalação limpa. A entrada saiu de EM_PERNA_DE_ROTEIRO, e antes " +
+      "dela a da DDR disponível (8.2.1.1.1.00.00, V9.2) e a de fornecedores " +
+      "(2.1.3.1.1.00.00, V9.2). ⚠️ O QUE FALTA, e é o que mantém PARCIAL: cinco pernas " +
+      "seguem em conta sintética, cada uma com pendência própria — " +
+      "ANULACAO-DE-DOTACAO-DOIS-CANCELAMENTOS-HOMONIMOS (5.2.2.1.2.00.00), " +
+      "CREDITO-ESPECIAL-ABERTO-OU-REABERTO (5.2.2.1.2.02.00 e .03.00), " +
+      "ROTEIRO-RESERVA-SEM-CONTA (6.2.2.1.2.00.00) e CONSIGNACAO-CONTA-SINTETICA " +
+      "(2.1.8.8.1.01.00). Nenhuma se resolve escolhendo uma filha: as três primeiras são " +
+      "decisão do ente, hoje oferecida em /contabilidade/roteiros-orcamentarios.",
   },
   "5.10.1.71": {
     situacao: "PARCIAL",
