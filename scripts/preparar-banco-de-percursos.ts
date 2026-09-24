@@ -54,6 +54,36 @@ for (const [nome, outra] of [["DATABASE_URL", dev], ["DATABASE_URL_TEST", teste]
 }
 if (senhaAdmin === "") throw new Error("SEED_ADMIN_SENHA ausente — o bootstrap do banco dos percursos precisa dela.");
 
+/**
+ * ⚠️ O LICENCIAMENTO É PASSO DESTA INSTALAÇÃO, E A PRÉ-CONDIÇÃO SE CONFERE AGORA (V11 V9.2).
+ *
+ * O QUE FALTAVA, MEDIDO EM 24/09/2026. Este preparador montava um banco completo — 7.864 contas,
+ * 25 usuários, permissões v1 a v28 — e o servidor subia, servia `/login`, autenticava, e então a
+ * home estourava com `LicenciamentoNaoInstaladoError` (digest 2220877542). O gate do M35 é
+ * fail-closed e estava CERTO; o que estava errado era esta sequência, que nunca registrava
+ * contrato. Quem preparasse o banco dos percursos ganhava um sistema onde toda tela autenticada
+ * respondia 500, e o sintoma ("application error") manda procurar o defeito na tela.
+ *
+ * ⚠️ E O NÚMERO DO CONTRATO NÃO MORA NESTE ARQUIVO, DE PROPÓSITO. Cravar um número aqui faria um
+ * script versionado carregar um instrumento comercial que não se confere contra documento nenhum —
+ * e um valor padrão viraria o contrato de toda instalação que esquecesse de declarar o seu. Vêm do
+ * ambiente, e sem eles a preparação PARA.
+ *
+ * ⚠️ E A CONFERÊNCIA É AQUI, ANTES DO PRIMEIRO `CREATE DATABASE`. A regra do repositório é que
+ * efeito colateral antes da guarda envenena a tentativa seguinte: descobrir a falta no vigésimo
+ * passo deixa um banco meio povoado para trás e cobra a corrida inteira de novo.
+ */
+const licencaNumero = process.env["LICENCA_NUMERO"] ?? "";
+const licencaCliente = process.env["LICENCA_CLIENTE"] ?? "";
+if (licencaNumero.trim() === "" || licencaCliente.trim() === "") {
+  throw new Error(
+    "LICENCA_NUMERO e LICENCA_CLIENTE são obrigatórias para preparar o banco dos percursos. O gate " +
+      "comercial é fail-closed: sem contrato registrado nenhum módulo opera, e toda tela autenticada " +
+      "responde 500. Declare as duas no ambiente — são de DEMONSTRAÇÃO, e o contrato é gravado como " +
+      "tal. Não há valor padrão neste script de propósito. Nada foi feito."
+  );
+}
+
 const alvo = alvoDoBanco(percursos);
 const ADMIN = "admin@cg.pb.gov.br";
 
@@ -184,6 +214,20 @@ rodar("atualizações de permissões pendentes (o mesmo caminho da instalação)
   "scripts/aplicar-atualizacao-de-permissoes.ts",
   "pendentes",
 ]);
+/**
+ * ⚠️ O CONTRATO COMERCIAL DE DEMONSTRAÇÃO — DEPOIS DAS PERMISSÕES, E NÃO ANTES.
+ * `instalar-licenciamento.ts` DEDUZ os módulos contratados das permissões já concedidas
+ * (`modulosEmUso`). Rodá-lo antes do passo acima registraria um contrato com os módulos de
+ * ontem, e as telas das versões novas ficariam fora dele — travadas, com a mensagem certa e
+ * a causa errada. Ele é idempotente: num banco que já tem contrato, não mexe e diz qual é.
+ */
+rodar("contrato comercial de DEMONSTRAÇÃO (o gate do M35 é fail-closed)", "npx", [
+  "tsx",
+  "scripts/instalar-licenciamento.ts",
+  "--aplicar",
+  "--demonstracao",
+]);
+
 // ⚠️ SEM TOLERÂNCIA (V11 V6.2). Este passo era tolerado pela mesma conta sintética da POC;
 // com a descida para `2.1.3.1.1.01.01` ele grava em banco limpo. Se voltar a falhar, a
 // instalação PARA — que é o comportamento certo para um passo que não tem mais desculpa.
