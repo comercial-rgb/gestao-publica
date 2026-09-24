@@ -293,7 +293,16 @@ export type AcaoDoSistema =
   // ── V6 (P1.2) — atribuir a conta bancária a uma arrecadação do LEGADO (M09): ato do tesoureiro,
   // conferido contra o razão. Família FINANCEIRO, do ente (a arrecadação é do ente).
   | "ATRIBUIR_CONTA_A_ARRECADACAO"
-  // ── V11 V9 — A ENTIDADE CONTÁBIL E A TITULARIDADE DA RECEITA (TR 5.10.1.3 · 5.38.7).
+  // ── V11 V9 — A ENTIDADE CONTABIL E A TITULARIDADE DA RECEITA (desenho de engenharia).
+  //
+  // ⚠️ ORIGEM DA CORRECAO (V11 V9.3): esta capacidade nasceu citando `TR 5.10.1.3 · 5.38.7`, e a
+  // citacao NAO se sustenta. A secao 5.38 inteira e o PORTAL DE TRANSPARENCIA (LC 101/131,
+  // Lei 9.755/98 do TCU, LAI 12.527/2011), e a 5.38.7 pede consulta PUBLICA de tributos
+  // arrecadados; o que existe aqui e tela INTERNA AUTENTICADA, com autorizacao por acao nomeada.
+  // A 5.10.1.3 pede mais de uma UNIDADE na mesma base com contabilizacao distinta e consolidacao
+  // da LRF — proximo, mas nao literal: aqui a entidade titular e atributo de um FATO de receita,
+  // e a consolidacao nao foi construida. Ate que se ache vinculo literal, a capacidade fica como
+  // desenho de engenharia, sem clausula atribuida. Marcar por ela renderia numero e mentiria.
   //
   // ⚠️ TRÊS AÇÕES PARA QUATRO SERVIÇOS. `publicarVersaoDaEntidadeContabil` fica sob
   // `CADASTRAR_ENTIDADE_CONTABIL` porque é a MESMA autoridade — dizer quem a entidade é. Uma

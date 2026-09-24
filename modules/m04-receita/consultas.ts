@@ -402,7 +402,11 @@ export interface ArrecadadoPorEntidade {
 }
 
 /**
- * O ARRECADADO LÍQUIDO DO EXERCÍCIO POR ENTIDADE TITULAR (V11 V9 · TR 5.38.7).
+ * O ARRECADADO LIQUIDO DO EXERCICIO POR ENTIDADE TITULAR (V11 V9 · desenho de engenharia).
+ *
+ * ⚠️ ORIGEM DA CORRECAO (V11 V9.3): dizia `TR 5.38.7`. Nao se sustenta — a secao 5.38 e o
+ * PORTAL DE TRANSPARENCIA, e a 5.38.7 pede consulta PUBLICA; esta consulta serve tela interna
+ * autenticada. Sem clausula atribuida ate que se ache vinculo literal. Ver `acoes.ts`.
  *
  * ═══ ⚠️ O NÃO ATRIBUÍDO É UMA LINHA, E ISSO É O PONTO DA CONSULTA ═══
  * A guia que não diz de quem é **não some**, **não entra no zero de ninguém** e **não se

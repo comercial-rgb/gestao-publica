@@ -10224,6 +10224,15 @@ e **não** `Skipping validation of types`: a conferência rodou no worker do pr�
 O `rc=4` é o comportamento certo e foi **medido nesta rodada**, não herdado: a segunda corrida
 reconhece `@@unique([exercicio, tipo])`, recusa-se a passar em silêncio e diz qual variável mudar.
 
+> ⚠️ **CORREÇÃO (V11 V9.3): a reexecução pulada NÃO equivale a teste de idempotência, e o
+> relatório da V9.2 a apresentou como se equivalesse.** O que o `rc=4` prova é que o PERCURSO se
+> recusa a rodar duas vezes sobre o mesmo exercício e a mentir sobre isso — é honestidade do
+> instrumento, não propriedade do produto. Idempotência é outra afirmação: repetir a AÇÃO
+> (abrir, calcular, fechar) não duplica efeito. Essa continua **não exercitada pela tela** nesta
+> frente; o que existe é a unicidade no schema e os testes de domínio. Um percurso que pula não
+> mediu nada do produto — pela mesma régua com que esta empreitada contou "passo pulado não é
+> passo barato".
+
 Banco: `gestao_publica_percursos_v11v92d`, sintético e descartável, papel de runtime `gestao_app`.
 
 ### 86.5 Instalado ou publicado: **NADA**

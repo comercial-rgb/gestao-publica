@@ -12,7 +12,11 @@ import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../..
 import { FormAtribuir } from "./FormAtribuir";
 
 /**
- * A ARRECADAÇÃO POR ENTIDADE TITULAR (V11 V9 · TR 5.38.7).
+ * A ARRECADACAO POR ENTIDADE TITULAR (V11 V9 · desenho de engenharia).
+ *
+ * ⚠️ ORIGEM DA CORRECAO (V11 V9.3): dizia `TR 5.38.7`. Nao se sustenta — a secao 5.38 e o
+ * PORTAL DE TRANSPARENCIA, e a 5.38.7 pede consulta PUBLICA; esta tela e interna e autenticada.
+ * Sem clausula atribuida ate que se ache vinculo literal. Ver `acoes.ts`.
  *
  * ═══ ⚠️ O NÃO ATRIBUÍDO É UMA LINHA, COM TOTAL PRÓPRIO ═══
  * Esta é a decisão inteira desta tela. As guias que não dizem de quem são **não somem**, **não
