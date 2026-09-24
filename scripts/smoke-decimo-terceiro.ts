@@ -851,58 +851,64 @@ async function main(): Promise<void> {
       /Natureza da apura[çc][ãa]o/i.test(detalheAntes) && /SIMULA[ÇC][ÃA]O/i.test(detalheAntes),
       detalheAntes.slice(0, 700)
     );
+    /**
+     * ⚠️ O QUE A TELA IMPEDE MUDOU COM A GUARDA (V11 V9.3): o bloqueio que o operador encontra
+     * PRIMEIRO é o do FECHAMENTO, não o da apropriação. Dizer só "a apropriação está bloqueada"
+     * mandaria a pessoa olhar o ato errado — a mesma família do remédio falso que a corrida
+     * anterior achou. A nota do detalhe passou a nomear os dois, e este passo cobra os dois.
+     */
     R.conferir(
-      "17.2 e a tela DIZ o que isso impede — a apropriação —, em vez de só rotular",
-      /apropria[çc][ãa]o/i.test(detalheAntes) && /(bloquead|ABATIMENTO-SEM-CRITERIO-DECLARADO)/i.test(detalheAntes),
+      "17.2 e a tela DIZ o que isso impede — o FECHAMENTO e a apropriação —, em vez de só rotular",
+      /fechamento/i.test(detalheAntes) && /apropria[çc][ãa]o/i.test(detalheAntes) && /bloquead/i.test(detalheAntes),
       detalheAntes.slice(0, 900)
     );
 
-    /**
-     * ⚠️ O PORTAL SÓ MOSTRA O QUE O FECHAMENTO CONGELOU (`calculo.fechamento`, em
-     * `lib/portas/portal-do-servidor.ts`) — e está certo: o que ainda pode ser recalculado não é
-     * documento. Por isso a folha de 13º é FECHADA aqui, pela contabilidade, antes do passo 15:
-     * sem isso a servidora veria só o adiantamento, e o item 7 do roteiro (o contracheque do 13º
-     * alcançando o portal) ficaria sem prova.
-     */
+    // ══ 17b. A BARRA RECUSA `fechar`, E É AQUI QUE A RECUSA PASSOU A MORAR ════
+    //
+    // ⚠️ ESTE BLOCO MUDOU DE ATO NA V11 V9.3, e o motivo é a razão de a guarda existir. Antes a
+    // folha era FECHADA aqui e a recusa era medida em `apropriar`. Só que fechar CONGELA, e
+    // cálculo congelado não se recalcula (`FOLHA-FECHADA`) nem se cancela (`CALCULO-FECHADO`):
+    // a folha ficava sem apropriação, sem liquidação e sem correção — beco sem saída. A guarda
+    // subiu para o `fechar`, que é a gravação que envenena, e o estado que este passo media
+    // deixou de ser alcançável PELA TELA. Medir aqui o `apropriar` viraria VERDE POR VACUIDADE:
+    // a recusa que apareceria seria `FOLHA-NAO-FECHADA`, não a do critério.
+    //
+    // A prova das guardas de `apropriar` e `liquidar` (que continuam existindo, para as folhas
+    // já congeladas antes da mudança) fica na SUÍTE, que constrói esse estado pelo banco
+    // (`congelarComoAntesDaGuarda`, em `m33-criterio-do-abatimento.test.ts`).
     await sair(N, page);
     await entrar(N, page, CONTABILIDADE, SENHA);
     await irPara(N, page, href13);
-    const rFechar13 = await preencherEEnviar(page, "fechar", []);
-    R.conferir("14.4 a contabilidade FECHA a folha de 13º — é o fechamento que a torna documento", rFechar13.tipo === "ok", `${rFechar13.tipo}: ${rFechar13.texto.slice(0, 200)}`);
-
-    // ══ 17b. A BARRA RECUSA `apropriar`, COM O MOTIVO ESTRUTURAL ══════════════
-    //
-    // ⚠️ AGORA A FOLHA ESTÁ FECHADA — a pré-condição de apropriar —, então o que sobra na recusa
-    // é o CRITÉRIO, e não "ainda não fechou". A ordem é decisão de `elegibilidadeParaApropriar`:
-    // a lacuna normativa fala ANTES de "já apropriada", porque dizer "já apropriada" a quem
-    // sequer podia apropriar manda a pessoa procurar empenho em vez de procurar o ato.
-    await irPara(N, page, href13);
-    const barraSemCriterio = await apresentacaoDoAto(page, "apropriar");
+    const barraSemCriterio = await apresentacaoDoAto(page, "fechar");
     R.conferir(
-      "17.3 fechada e sem critério declarado, a barra NÃO oferece o formulário de apropriar",
+      "17.3 calculada e sem critério declarado, a barra NÃO oferece o formulário de FECHAR",
       barraSemCriterio.estado !== "formulario",
       JSON.stringify(barraSemCriterio).slice(0, 400)
     );
     /**
-     * ⚠️ AFIRMA O MOTIVO, NÃO O CÓDIGO — e a primeira versão deste passo estava ERRADA, medida na
-     * primeira corrida. Eu exigi `ABATIMENTO-SEM-CRITERIO-DECLARADO` no texto da barra; a barra
-     * não mostra código de ato NENHUM, em lugar nenhum do sistema: ela projeta MOTIVO e REMÉDIO
-     * (`percursos-disponibilidade.ts`), e o código vive no domínio e nos registros. Exigir o
-     * código aqui cobraria da tela uma convenção que ela não tem — e o código na tela seria
-     * vocabulário de implementação diante de quem opera. O que a negação precisa afirmar é o
-     * MOTIVO, e ele é distintivo: simulação, abatimento, critério não declarado.
+     * ⚠️ AFIRMA O MOTIVO, NÃO O CÓDIGO — a barra não mostra código de ato em lugar nenhum do
+     * sistema: ela projeta MOTIVO e REMÉDIO (`percursos-disponibilidade.ts`). Exigir o código
+     * aqui cobraria da tela uma convenção que ela não tem.
      */
     R.conferir(
-      "17.4 e a barra diz o MOTIVO na tela — simulação, por critério do abatimento não declarado",
-      /SIMULA[ÇC][ÃA]O/i.test(barraSemCriterio.texto) &&
-        /abateu a 1ª parcela sem que o par[âa]metro/i.test(barraSemCriterio.texto) &&
-        /n[ãa]o vira despesa/i.test(barraSemCriterio.texto),
-      JSON.stringify(barraSemCriterio).slice(0, 600)
+      "17.4 e a barra diz o MOTIVO — congelar é o que criava o beco",
+      /abateu a 1ª parcela sem que o par[âa]metro/i.test(barraSemCriterio.texto) &&
+        /CONGELA/i.test(barraSemCriterio.texto) &&
+        /sem sa[íi]da/i.test(barraSemCriterio.texto),
+      JSON.stringify(barraSemCriterio).slice(0, 700)
     );
+    /**
+     * ⚠️ E AQUI O REMÉDIO É VERDADEIRO — é a diferença que a guarda comprou. Na recusa de
+     * `apropriar` (folha já fechada) o remédio honesto é "declare ANTES de fechar, esta depende
+     * de retificação". Nesta, a folha está ABERTA: declarar e recalcular FUNCIONA, e o passo 18
+     * percorre isso de ponta a ponta em vez de acreditar no texto.
+     */
     R.conferir(
-      "17.5 e aponta um remédio EXECUTÁVEL, nomeando a pendência que falta para esta folha",
-      /Par[âa]metros do 13º/i.test(barraSemCriterio.texto) && /RETIFICA[ÇC][ÃA]O DA FOLHA/i.test(barraSemCriterio.texto),
-      barraSemCriterio.texto.slice(0, 600)
+      "17.5 e o remédio é EXECUTÁVEL nesta folha: declarar e RECALCULAR antes de fechar",
+      /Par[âa]metros do 13º/i.test(barraSemCriterio.texto) &&
+        /recalculada/i.test(barraSemCriterio.texto) &&
+        !/RETIFICA[ÇC][ÃA]O DA FOLHA/i.test(barraSemCriterio.texto),
+      barraSemCriterio.texto.slice(0, 700)
     );
 
     // ══ 18. O PAR QUE IMPORTA, E O DESTRAVE MEDIDO (NÃO SUPOSTO) ══════════════
@@ -910,8 +916,7 @@ async function main(): Promise<void> {
     // ⚠️ O BLOQUEIO NÃO É DO PARÂMETRO: É DO CÁLCULO. O 13º que já rodou abateu a 1ª parcela sob
     // um parâmetro que não declarava critério, e essa procedência está gravada na memória DELE.
     // Declarar hoje não reescreve o que foi apurado ontem — se a tela destravasse só com a
-    // declaração, o ente apropriaria uma apuração que continuou sendo simulação, com um ato novo
-    // por cima para parecer regular.
+    // declaração, o ente fecharia uma apuração que continuou sendo simulação.
     await sair(N, page);
     await entrar(N, page, ADMIN, SENHA_ADMIN);
     await irPara(N, page, "/folha/parametros-do-13");
@@ -929,42 +934,29 @@ async function main(): Promise<void> {
     await sair(N, page);
     await entrar(N, page, CONTABILIDADE, SENHA);
     await irPara(N, page, href13);
-    const barraSoDeclarado = await apresentacaoDoAto(page, "apropriar");
+    const barraSoDeclarado = await apresentacaoDoAto(page, "fechar");
     R.conferir(
-      "18.2 ⚠️ DECLARAR SEM RECALCULAR NÃO DESTRAVA: a folha segue bloqueada pelo MESMO motivo",
+      "18.2 ⚠️ DECLARAR SEM RECALCULAR NÃO DESTRAVA: fechar segue recusado pelo MESMO motivo",
       barraSoDeclarado.estado !== "formulario" &&
         /abateu a 1ª parcela sem que o par[âa]metro/i.test(barraSoDeclarado.texto),
       JSON.stringify(barraSoDeclarado).slice(0, 600)
     );
-    /**
-     * ⚠️ E O REMÉDIO TEM DE SER VERDADEIRO — foi o defeito que esta corrida achou (V11 V9.3).
-     * O texto dizia "e a folha é recalculada", mas esta recusa SÓ existe em folha fechada (o
-     * `!fechada` fala antes), e folha fechada não recalcula. A pessoa declarava o critério,
-     * voltava, e o bloqueio continuava sem explicação. Agora o texto diz a verdade: declare ANTES
-     * de fechar, e esta aqui depende de retificação, que o sistema não tem.
-     */
-    R.conferir(
-      "18.2b e o remédio na tela é EXECUTÁVEL: manda declarar ANTES de fechar, e não promete recálculo de folha fechada",
-      /ANTES de a folha ser fechada/i.test(barraSoDeclarado.texto) &&
-        !/e a folha (é|e) recalculada/i.test(barraSoDeclarado.texto),
-      barraSoDeclarado.texto.slice(0, 700)
-    );
 
     /**
-     * ⚠️ O RECÁLCULO SE MEDE, NÃO SE SUPÕE. O passo 15.4 já prova que folha FECHADA tira
-     * RECALCULAR da barra (`FOLHA-FECHADA: não se recalcula`) — o que protege a memória lacrada.
-     * Se isso valer aqui, o remédio que a própria recusa oferece ("declare e recalcule") não é
-     * executável nesta folha, e o percurso REGISTRA isso em vez de afirmar um destrave que o
-     * produto não tem.
+     * ⚠️ O RECÁLCULO SE MEDE, NÃO SE SUPÕE — e esta guarda de medição fica, mesmo agora que o
+     * caminho existe. A folha está ABERTA, então `RECALCULAR` deve estar na barra; se não
+     * estiver, o percurso REGISTRA o não executado com o estado lido, em vez de afirmar um
+     * destrave que o produto não tem. Foi assim que a corrida anterior descobriu que o remédio
+     * prometido era falso.
      */
+    await sair(N, page);
+    await entrar(N, page, RH, SENHA);
+    await irPara(N, page, href13);
     const barraRecalcular = await apresentacaoDoAto(page, "calcular");
-    nota(`RECALCULAR na folha fechada: estado="${barraRecalcular.estado}" · ${barraRecalcular.texto.slice(0, 200)}`);
+    nota(`RECALCULAR na folha ABERTA: estado="${barraRecalcular.estado}" · ${barraRecalcular.texto.slice(0, 200)}`);
     if (barraRecalcular.estado === "formulario") {
-      await sair(N, page);
-      await entrar(N, page, RH, SENHA);
-      await irPara(N, page, href13);
       const rRecalc = await preencherEEnviar(page, "calcular", []);
-      R.conferir("18.3 com o critério declarado, o RH RECALCULA a folha", rRecalc.tipo === "ok", `${rRecalc.tipo}: ${rRecalc.texto.slice(0, 200)}`);
+      R.conferir("18.3 com o critério declarado, o RH RECALCULA a folha (ela está aberta — por isso dá)", rRecalc.tipo === "ok", `${rRecalc.tipo}: ${rRecalc.texto.slice(0, 200)}`);
       const detalheDepois = await irPara(N, page, href13);
       R.conferir(
         "18.4 recalculada, o selo de SIMULAÇÃO SOME do detalhe",
@@ -974,22 +966,32 @@ async function main(): Promise<void> {
       await sair(N, page);
       await entrar(N, page, CONTABILIDADE, SENHA);
       await irPara(N, page, href13);
-      const barraDestravada = await apresentacaoDoAto(page, "apropriar");
+      const barraFechar = await apresentacaoDoAto(page, "fechar");
       R.conferir(
-        "18.5 e a apropriação passa a ser OFERECIDA — o destrave chega à barra",
-        barraDestravada.estado === "formulario",
-        JSON.stringify(barraDestravada).slice(0, 600)
+        "18.5 e FECHAR passa a ser OFERECIDO — o destrave chega à barra, no ato que recusava",
+        barraFechar.estado === "formulario",
+        JSON.stringify(barraFechar).slice(0, 600)
+      );
+      const rFechar13 = await preencherEEnviar(page, "fechar", []);
+      R.conferir("18.6 a contabilidade FECHA a folha de 13º — é o fechamento que a torna documento", rFechar13.tipo === "ok", `${rFechar13.tipo}: ${rFechar13.texto.slice(0, 200)}`);
+      /**
+       * ⚠️ E SÓ AGORA A APROPRIAÇÃO É OFERECIDA. Ela é o ato seguinte, e este passo é o que prova
+       * que a cadeia inteira voltou a andar: declarar → recalcular → fechar → apropriar.
+       */
+      const barraApropriar = await apresentacaoDoAto(page, "apropriar");
+      R.conferir(
+        "18.7 e a apropriação passa a ser OFERECIDA — a cadeia inteira voltou a andar",
+        barraApropriar.estado === "formulario",
+        JSON.stringify(barraApropriar).slice(0, 600)
       );
     } else {
       naoExecutado(
-        "18.3 a 18.5 o destrave pelo recálculo (pela tela)",
-        `a folha de 13º está FECHADA e a barra apresenta RECALCULAR como "${barraRecalcular.estado}". ` +
-          "Declarar o critério depois do fechamento NÃO destrava (18.2 prova), e o produto não oferece " +
-          "ato que refaça o cálculo congelado. O remédio que a recusa de 17.5 promete não é executável " +
-          "NESTA folha: ele exige declarar o critério ANTES de fechar"
+        "18.3 a 18.7 o destrave pelo recálculo (pela tela)",
+        `a folha de 13º está ABERTA e a barra apresenta RECALCULAR como "${barraRecalcular.estado}", ` +
+          "quando deveria oferecer o formulário. O remédio que a recusa de 17.5 promete não pôde ser " +
+          "percorrido, e o percurso NÃO o declara feito"
       );
     }
-
 
     // ══ 15. O CONTRACHEQUE DO 13º ALCANÇA O PORTAL DO SERVIDOR ═══════════════
     /**

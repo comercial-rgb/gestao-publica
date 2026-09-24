@@ -197,8 +197,10 @@ export async function verFolha(id: string): Promise<FolhaLida | null> {
           nota:
             "O parâmetro do 13º deste exercício não declara qual estado o adiantamento precisa ter alcançado " +
             "para ser abatido, então o abatimento saiu pelo FECHAMENTO da folha de adiantamento — critério " +
-            "de engenharia, não norma do ente. A apropriação desta folha está bloqueada até o ente declarar " +
-            "o critério, com o ato que o fundamenta, em Folha > Parâmetros do 13º. Não há confirmação que substitua o ato.",
+            "de engenharia, não norma do ente. ⚠️ O FECHAMENTO desta folha está bloqueado — e a apropriação " +
+            "também —, até o ente declarar o critério, com o ato que o fundamenta, em Folha > Parâmetros do 13º, " +
+            "e a folha ser RECALCULADA. Enquanto ela não fecha, recalcular é possível: é por isso que a recusa " +
+            "está no fechar, e não só adiante. Não há confirmação que substitua o ato.",
         }]),
     ...(d.vivo === null ? [] : [
       { rotulo: d.situacao === "FECHADA" ? "Cálculo fechado" : "Último cálculo vivo", valor: `nº ${d.vivo.numero} · ${d.vivo.contracheques} contracheque(s) · motor ${d.vivo.versaoDoMotor}` },
