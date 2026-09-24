@@ -57,6 +57,23 @@ import { fileURLToPath } from "node:url";
  * se aquele processo ainda vive (`kill(pid, 0)`). Um trinco órfão é tomado, com aviso — é
  * a defesa que falta a um arquivo de trinco ingênuo, e é justamente por ela que arquivos
  * de trinco têm má fama.
+ *
+ * ═══ ⚠️ SE VOCÊ VAI ESCREVER UM WRAPPER PARA CHAMAR ISTO, LEIA ESTAS LINHAS ═══
+ *
+ * **Um invólucro que imprime o código do filho como TEXTO e termina em `echo` sai 0 — e
+ * transforma este registro num mentiroso sem que ele tenha culpa.**
+ *
+ *     ERRADO                              CERTO
+ *     npx vitest run ...                  npx vitest run ...
+ *     echo "### exit=$?"   ← sai 0        rc=$?; echo "### exit=$rc"; exit $rc
+ *
+ * Custou seis leituras enganosas em 23/09/2026 e duas quase-viradas em verde falso — e a
+ * investigação acusou ESTE arquivo por um dia antes de alguém cruzar `# comando` com
+ * `# desfecho` e ver que, com filho DIRETO, ele sempre disse a verdade (inclusive o SIGABRT
+ * do OOM e o SIGTERM). A propagação sempre esteve certa; o wrapper é que mentia.
+ *
+ * A guarda de `divergenciasComCodigoZero` existe para que isso não dependa de ninguém
+ * lembrar — mas ela é rede, não desculpa. Escreva o `exit $rc`.
  */
 
 const CAMINHO = join(tmpdir(), "gestao-publica-trabalho-pesado.trinco");
@@ -286,6 +303,72 @@ export function linhasDeFalha(bruto: string): readonly string[] {
 }
 
 /**
+ * ═══ ⚠️ A GUARDA DA DIVERGÊNCIA: CÓDIGO 0 COM CONTEÚDO DE FALHA É INCONCLUSIVO ═══
+ *
+ * ⚠️ O CASO REAL, 23/09/2026 (V11 V9), e ele acusou o instrumento errado por um dia inteiro.
+ * Seis corridas foram lidas como "código 0" enquanto o trabalho dentro delas falhava. A culpa
+ * **não era deste arquivo** — ele propagava certo, e foi ele que denunciou o SIGABRT do OOM e o
+ * SIGTERM. A culpa era do wrapper de quem chamou, que terminava em `echo "### exit=$?"`: o
+ * `echo` tem sucesso, e o script saía 0 de verdade.
+ *
+ * Esta guarda existe para que isso não dependa de ninguém lembrar: se o filho sai 0 mas o que
+ * foi GRAVADO contradiz esse zero, o desfecho vira **INCONCLUSIVO** e o trinco sai não-zero.
+ * "Resultado correspondente ao conteúdo verificado" — e, na divergência, nunca verde.
+ *
+ * ═══ ⚠️ POR QUE A LISTA É CURTA, E POR QUE `error TS` NÃO ESTÁ NELA ═══
+ * "Propriedade, não padrão": uma guarda que enumera formas de falha casa com texto que apenas
+ * PARECE falha — e guarda que grita à toa é desligada em três semanas, o que a torna pior que
+ * guarda nenhuma, porque enquanto viveu deu conforto.
+ *
+ * A propriedade que qualifica um sinal aqui é estreita: **ele não pode aparecer numa corrida
+ * que terminou em 0 de verdade.** Por isso:
+ *
+ *   · `### exit-…=<não-zero>` — a convenção de wrapper que originou o defeito;
+ *   · o SUMÁRIO do vitest (`Tests N failed`) — o vitest que soma falha não sai 0;
+ *   · o `FATAL ERROR … heap out of memory` do V8 — processo que aborta não sai 0.
+ *
+ * **`error TS` e `FAIL ` ficam DE FORA de propósito.** Um `tsc` com erro já sai 2, então o
+ * sinal não acrescenta nada quando o código é 0 — e as duas cadeias aparecem legitimamente em
+ * saída de teste que fala SOBRE erros de tipo (este repositório tem grep-testes assim).
+ * Incluí-las trocaria um defeito raro por ruído frequente. A contraprova está em
+ * `test/trinco-desfecho.test.ts`, e ela vale tanto quanto os casos de acusação.
+ */
+
+/**
+ * O código com que o trinco sai quando o conteúdo contradiz o zero do filho.
+ *
+ * ⚠️ NÃO É 1, e não é estética. `1` se confunde com "a suíte reprovou", que é um resultado
+ * legítimo e já tem dono. Este número diz outra coisa: **a medição não vale**. Quem automatiza
+ * precisa distinguir "falhou" de "não dá para saber".
+ */
+const CODIGO_INCONCLUSIVO = 3;
+
+const DIVERGENCIAS: readonly { readonly nome: string; readonly re: RegExp }[] = [
+  { nome: "wrapper imprimiu codigo de falha e saiu 0", re: /^###\s*exit[A-Za-z0-9_-]*\s*=\s*([1-9][0-9]*)\s*$/ },
+  { nome: "sumario do vitest acusa falha", re: /^\s*(Test Files|Tests)\s+\d+\s+failed\b/ },
+  { nome: "aborto do V8 por memoria", re: /FATAL ERROR:.*heap out of memory/ },
+];
+
+/**
+ * As linhas que CONTRADIZEM um código de saída zero. Vazio = não há divergência.
+ *
+ * ⚠️ Só faz sentido chamar quando o filho saiu 0. Com código não-zero não há nada a
+ * reconciliar: o próprio código já disse que falhou.
+ */
+export function divergenciasComCodigoZero(bruto: string): readonly string[] {
+  // eslint-disable-next-line no-control-regex
+  const semCor = bruto.replace(/\[[0-9;]*m/g, "").replace(/\[[0-9;]*m/g, "");
+  const achados: string[] = [];
+  for (const linha of semCor.split("\n")) {
+    const l = linha.trimEnd();
+    for (const d of DIVERGENCIAS) {
+      if (d.re.test(l)) achados.push(`${d.nome}: ${l.trim()}`);
+    }
+  }
+  return achados;
+}
+
+/**
  * Uso como comando: `tsx scripts/trinco-de-maquina.ts <tarefa> -- <comando...>`
  *
  * Ele toma o trinco, roda o comando GRAVANDO a saída bruta, e solta. O código de saída é o
@@ -375,13 +458,30 @@ if (process.argv[1]?.endsWith("trinco-de-maquina.ts") === true) {
     }
   );
 
+  // ⚠️ A GUARDA DA DIVERGÊNCIA — só quando o filho saiu 0 e sem sinal. Ver o cabeçalho de
+  // `divergenciasComCodigoZero`: com código não-zero ou com sinal não há nada a reconciliar.
+  const divergencias =
+    desfecho.codigo === 0 && desfecho.sinal === null
+      ? divergenciasComCodigoZero(bruto)
+      : [];
+  const inconclusivo = divergencias.length > 0;
+
   // O RODAPÉ VAI PARA O ARQUIVO ANTES DE FECHÁ-LO. Quem abrir o log meses depois lê o
   // desfecho no mesmo lugar em que lê o cabeçalho, sem precisar do terminal que já sumiu.
   const rodape =
     `\n# ─────────────────────────────────────────────\n` +
-    `# desfecho ... ${desfecho.sinal !== null ? `MORTO POR SINAL ${desfecho.sinal}` : desfecho.codigo === 0 ? "terminou com codigo 0" : `terminou com codigo ${desfecho.codigo}`}\n` +
-    `# codigo ..... ${desfecho.codigo}\n` +
+    `# desfecho ... ${
+      desfecho.sinal !== null
+        ? `MORTO POR SINAL ${desfecho.sinal}`
+        : inconclusivo
+          ? "INCONCLUSIVO: o codigo do filho diverge do conteudo gravado"
+          : desfecho.codigo === 0
+            ? "terminou com codigo 0"
+            : `terminou com codigo ${desfecho.codigo}`
+    }\n` +
+    `# codigo ..... ${inconclusivo ? `${desfecho.codigo} (do filho) -> ${CODIGO_INCONCLUSIVO} (deste trinco)` : desfecho.codigo}\n` +
     `# sinal ...... ${desfecho.sinal ?? "(nenhum)"}\n` +
+    (inconclusivo ? `# divergencia${divergencias.map((d) => `\n#   · ${d}`).join("")}\n` : "") +
     `# fim ........ ${new Date().toISOString()}\n`;
   arquivo.write(rodape);
 
@@ -405,7 +505,19 @@ if (process.argv[1]?.endsWith("trinco-de-maquina.ts") === true) {
         `SIGINT e interrupcao humana.`
     );
   }
+  // ⚠️ DITO NO TERMINAL, E NÃO SÓ NO ARQUIVO: um zero que o conteúdo contradiz é o pior
+  // resultado possível, porque ele PARECE bom. Quem automatiza em cima lê o código — então o
+  // código tem de deixar de dizer "passou".
+  if (inconclusivo) {
+    console.error(
+      `\n[registro] ⚠️ INCONCLUSIVO: o comando saiu com codigo 0, mas o que foi GRAVADO ` +
+        `contradiz esse zero. Isto NAO e aprovacao — e resultado que nao corresponde ao ` +
+        `conteudo verificado. Causa mais comum: wrapper que imprime o codigo do filho como ` +
+        `TEXTO e termina em "echo", saindo 0 de verdade. Use: rc=$?; echo ...; exit $rc`
+    );
+    for (const d of divergencias) console.error(`  ${d}`);
+  }
   console.error(`[registro] saida bruta preservada em ${registro}`);
 
-  process.exit(desfecho.codigo);
+  process.exit(inconclusivo ? CODIGO_INCONCLUSIVO : desfecho.codigo);
 }
