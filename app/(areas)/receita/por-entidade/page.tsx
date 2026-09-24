@@ -9,7 +9,7 @@ import {
   TIPOS_DE_ATO_NA_TELA,
 } from "../../../../lib/portas/entidades-contabeis";
 import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
-import { FormAtribuir } from "./FormAtribuir";
+import { AtribuicoesDaFila, FormAtribuir } from "./FormAtribuir";
 
 /**
  * A ARRECADACAO POR ENTIDADE TITULAR (V11 V9 · desenho de engenharia).
@@ -173,6 +173,10 @@ export default async function PorEntidadePage({
           <h2 className="text-sm font-semibold">
             Guias sem entidade ({pendentes.length}) — o que fazer em cada uma
           </h2>
+          {/* ⚠️ O PROVEDOR ENVOLVE A FILA (V11 V9.3): a guia atribuída SAI da fila, e a
+              confirmação guardada dentro do item saía com ela. Ver o cabeçalho de
+              `FormAtribuir.tsx` — `MENSAGEM-SOME-COM-A-LINHA`. */}
+          <AtribuicoesDaFila>
           <ul className="space-y-2">
             {pendentes.map((g) => (
               <li
@@ -215,6 +219,7 @@ export default async function PorEntidadePage({
               </li>
             ))}
           </ul>
+          </AtribuicoesDaFila>
         </section>
       ) : null}
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { createContext, useActionState, useContext, useState } from "react";
 import {
   CLASSE_BOTAO_PRIMARIO,
   CLASSE_CAMPO as CAMPO,
@@ -20,6 +20,68 @@ export interface OpcaoDeAto {
   readonly rotulo: string;
 }
 
+/**
+ * ═══ O PROVEDOR DA FILA (V11 V9.3) — `MENSAGEM-SOME-COM-A-LINHA` ═══
+ *
+ * ⚠️ A CONFIRMAÇÃO MORRIA COM A LINHA, e o formulário já se defendia do que NÃO era a causa:
+ * ele fechava no sucesso e renderizava o resultado também no ramo fechado. Não bastava, pela
+ * mesma razão medida na anulação de guia — quem some não é o formulário, é o `<li>`. A fila é
+ * a das guias NÃO ATRIBUÍDAS; atribuída, a guia sai da fila, o item inteiro é desmontado, e
+ * leva junto a mensagem que acabou de receber.
+ *
+ * O percurso J9 vinha notando isso desde a V9.2, no passo 9.5: "a tela não confirmou por
+ * escrito; o efeito é conferido a seguir". Conferir o efeito é o certo — mas o servidor
+ * municipal que atribui uma guia de receita a uma entidade não tem rodapé para conferir: ele
+ * precisa ler que o ato foi gravado.
+ *
+ * Mesma cura do guichê (V8), do roteiro orçamentário (V8.4), da natureza das fontes e da
+ * anulação de guia (V9.3): o estado do ato mora ACIMA da lista que ele muda.
+ */
+interface Ctx {
+  readonly action: (f: FormData) => void;
+  readonly pendente: boolean;
+  readonly sucessoDe: string | undefined;
+}
+const C = createContext<Ctx | null>(null);
+
+export function AtribuicoesDaFila({
+  children,
+}: {
+  readonly children: React.ReactNode;
+}): React.ReactElement {
+  const [estado, action, pendente] = useActionState<EstadoDaAtribuicao, FormData>(
+    atribuirEntidadeAction,
+    {}
+  );
+  const [seq, setSeq] = useState(0);
+  const [ultimo, setUltimo] = useState<string | undefined>(undefined);
+  const marca = estado.sucesso ?? estado.erro;
+  if (marca !== undefined && marca !== ultimo) {
+    setUltimo(marca);
+    setSeq((n) => n + 1);
+  }
+
+  return (
+    <C.Provider value={{ action, pendente, sucessoDe: estado.sucesso }}>
+      {marca === undefined ? null : (
+        <p
+          role={estado.erro !== undefined ? "alert" : "status"}
+          data-resultado-da-acao="atribuir-entidade"
+          data-resultado-seq={String(seq)}
+          className={`mb-3 rounded-[var(--radius-md)] px-3 py-2 text-sm ${
+            estado.erro !== undefined
+              ? "bg-[color:var(--color-status-erro-bg)] text-[color:var(--color-status-erro-fg)]"
+              : "bg-[color:var(--color-status-ok-bg)] text-[color:var(--color-status-ok-fg)]"
+          }`}
+        >
+          {estado.erro ?? estado.sucesso}
+        </p>
+      )}
+      {children}
+    </C.Provider>
+  );
+}
+
 export function FormAtribuir({
   receitaArrecadadaId,
   numeroReceita,
@@ -31,55 +93,40 @@ export function FormAtribuir({
   readonly entidades: readonly OpcaoDeEntidade[];
   readonly tiposDeAto: readonly OpcaoDeAto[];
 }): React.ReactElement {
-  const [estado, action, pendente] = useActionState<EstadoDaAtribuicao, FormData>(
-    atribuirEntidadeAction,
-    {}
-  );
+  const ctx = useContext(C);
   const [aberto, setAberto] = useState(false);
-  const [seq, setSeq] = useState(0);
-  const [ultimo, setUltimo] = useState<string | undefined>(undefined);
-  const marca = estado.sucesso ?? estado.erro;
-  if (marca !== undefined && marca !== ultimo) {
-    setUltimo(marca);
-    setSeq((n) => n + 1);
-    if (estado.sucesso !== undefined) setAberto(false);
-  }
+  const [fechadoPor, setFechadoPor] = useState<string | undefined>(undefined);
 
-  const resultado =
-    marca === undefined ? null : (
-      <p
-        role={estado.erro !== undefined ? "alert" : "status"}
-        data-resultado-da-acao="atribuir-entidade"
-        data-resultado-seq={String(seq)}
-        className={`mt-2 rounded-[var(--radius-md)] px-3 py-2 text-sm ${
-          estado.erro !== undefined
-            ? "bg-[color:var(--color-status-erro-bg)] text-[color:var(--color-status-erro-fg)]"
-            : "bg-[color:var(--color-status-ok-bg)] text-[color:var(--color-status-ok-fg)]"
-        }`}
-      >
-        {estado.erro ?? estado.sucesso}
-      </p>
+  if (ctx === null) {
+    return (
+      <span className="text-xs text-[color:var(--color-status-erro-fg)]">
+        Atribuição indisponível nesta tela.
+      </span>
     );
+  }
+  // ⚠️ FECHA NO SUCESSO — e só uma vez por sucesso, senão o painel não reabriria para a guia
+  // seguinte enquanto a mensagem anterior estivesse na tela.
+  if (ctx.sucessoDe !== undefined && ctx.sucessoDe !== fechadoPor) {
+    setFechadoPor(ctx.sucessoDe);
+    if (aberto) setAberto(false);
+  }
 
   if (!aberto) {
     return (
-      <div>
-        <button
-          type="button"
-          onClick={() => setAberto(true)}
-          className="text-xs underline"
-          data-papel={`atribuir-${numeroReceita}`}
-        >
-          Atribuir entidade a esta guia
-        </button>
-        {resultado}
-      </div>
+      <button
+        type="button"
+        onClick={() => setAberto(true)}
+        className="text-xs underline"
+        data-papel={`atribuir-${numeroReceita}`}
+      >
+        Atribuir entidade a esta guia
+      </button>
     );
   }
 
   return (
     <form
-      action={action}
+      action={ctx.action}
       className="mt-2 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3"
     >
       <ChaveDeComando />
@@ -132,10 +179,9 @@ export function FormAtribuir({
           <textarea name="atoCitacao" required rows={3} className={CAMPO} />
         </label>
       </div>
-      <button type="submit" disabled={pendente} className={`${CLASSE_BOTAO_PRIMARIO} mt-3`}>
-        {pendente ? "Atribuindo…" : "Atribuir entidade"}
+      <button type="submit" disabled={ctx.pendente} className={`${CLASSE_BOTAO_PRIMARIO} mt-3`}>
+        {ctx.pendente ? "Atribuindo…" : "Atribuir entidade"}
       </button>
-      {resultado}
     </form>
   );
 }

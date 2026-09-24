@@ -635,13 +635,20 @@ async function main(): Promise<void> {
       );
       const rAtrib = await atribuir(codA, citacaoQueMenciona(nomeA));
       /**
-       * ⚠️ "SILÊNCIO" AQUI É ESPERADO, E TEM NOME. No sucesso a guia sai da fila no re-render e a
-       * ilha que produziu a mensagem some com ela — pendência `MENSAGEM-SOME-COM-A-LINHA`, a
-       * mesma já registrada em `scripts/smoke-arrecadacao-conta.ts`. Por isso o que se afirma
-       * NÃO é a mensagem: é o efeito, relido do banco pela tela.
+       * ⚠️ O SILÊNCIO DEIXOU DE SER ESPERADO (V11 V9.3) — `MENSAGEM-SOME-COM-A-LINHA` foi
+       * CORRIGIDA, não contornada. A ilha que produzia a mensagem morava dentro do `<li>` da
+       * guia, e a guia atribuída SAI da fila no re-render: o item inteiro era desmontado com a
+       * confirmação recém-recebida. O estado do ato subiu para um provedor acima da lista
+       * (`AtribuicoesDaFila`), a mesma cura do guichê, do roteiro orçamentário e da anulação.
+       *
+       * Aqui se afirma a MENSAGEM — e o efeito continua sendo afirmado em 9.5b e 9.6, porque
+       * aviso sem persistência é o outro defeito desta família, e ele não se prova com aviso.
        */
-      if (rAtrib.tipo === "silencio") nota("9.5 a tela não confirmou por escrito (MENSAGEM-SOME-COM-A-LINHA); o efeito é conferido a seguir");
-      else conferir("9.5 a atribuição não é recusada", rAtrib.tipo === "ok", `${rAtrib.tipo}: ${rAtrib.texto.slice(0, 200)}`);
+      conferir(
+        "9.5 a tela CONFIRMA a atribuição por escrito — a mensagem não morre com a linha que sai da fila",
+        rAtrib.tipo === "ok",
+        `${rAtrib.tipo}: ${rAtrib.texto.slice(0, 250)}`
+      );
       await irPara(n, page, `/receita/por-entidade?exercicio=${ANO}`);
       const aposAtrib = await lerRodape(page);
       const saiuDaFila = !(await page.evaluate(
