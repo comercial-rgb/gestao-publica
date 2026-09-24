@@ -379,10 +379,27 @@ async function main(): Promise<void> {
       return "";
     };
 
-    const fichaDe = async (nome: string): Promise<string> => {
-      await irPara(N, page, `/pessoal/servidores?q=${encodeURIComponent(nome)}`);
-      return (await hrefDoRegistro(page, nome)) ?? "";
+    /**
+     * ⚠️ A FICHA SE LOCALIZA PELO NOME QUE A TELA MOSTRA, E ELE NEM SEMPRE É O CIVIL.
+     *
+     * Este helper nasceu errado e a primeira corrida o pegou: ele buscava por `q=<nome civil>` —
+     * o que funciona, porque a busca acha pelos dois — e depois procurava a LINHA pelo mesmo
+     * nome civil. Só que a lista MOSTRA o nome social quando há (Lei 14.164/2021, Decreto
+     * 8.727/2016), e é isso que o produto faz de CERTO. Resultado: a única servidora do cenário
+     * que usa nome social era a única cuja ficha nunca abria — e caíram com ela a admissão, a
+     * designação de função, o centro de custo, a dispensa e as consultas que dependiam da
+     * matrícula dela. Doze passos vermelhos, um engano meu.
+     *
+     * A lição é a do repositório, do outro lado: o instrumento também não pode ENUMERAR a forma
+     * que ele conhece. Quem exibe é a tela; quem busca são os dois.
+     */
+    const fichaDe = async (nomeParaBuscar: string, nomeExibido?: string): Promise<string> => {
+      await irPara(N, page, `/pessoal/servidores?q=${encodeURIComponent(nomeParaBuscar)}`);
+      return (await hrefDoRegistro(page, nomeExibido ?? nomeParaBuscar)) ?? "";
     };
+    /** O nome pelo qual a TELA mostra cada servidor do cenário — social quando há. */
+    const EXIBIDO: Readonly<Record<string, string>> = { [S1_CIVIL]: S1_SOCIAL };
+    const fichaDoCenario = async (nomeCivil: string): Promise<string> => fichaDe(nomeCivil, EXIBIDO[nomeCivil] ?? nomeCivil);
 
     const admitir = async (
       nome: string,
@@ -393,7 +410,7 @@ async function main(): Promise<void> {
       regimePrev: string,
       admissao: string
     ): Promise<string> => {
-      const href = await fichaDe(nome);
+      const href = await fichaDoCenario(nome);
       if (href === "") return `a ficha de "${nome}" não apareceu na busca`;
       await irPara(N, page, href);
       const idCargo = await opcaoQueCasa(page, 'form[data-acao="admitir"] select[name="cargoId"]', codigoCargo);
@@ -433,7 +450,7 @@ async function main(): Promise<void> {
     );
 
     // ── 3.3 a PROMOÇÃO de S3, que é o que torna a data de referência mensurável ──
-    const hrefS3 = await fichaDe(S3_NOME);
+    const hrefS3 = await fichaDoCenario(S3_NOME);
     let promocao = `a ficha de ${S3_NOME} não apareceu`;
     if (hrefS3 !== "") {
       await irPara(N, page, hrefS3);
@@ -588,7 +605,7 @@ async function main(): Promise<void> {
      * parcela que ela costuma pagar (`gratificacaoDescricao`). As três continuam existindo de
      * propósito; o que mudou é deixarem de ser a mesma coisa.
      */
-    const hrefS1 = await fichaDe(S1_CIVIL);
+    const hrefS1 = await fichaDoCenario(S1_CIVIL);
     let tiposDeMovimento: readonly string[] = [];
     if (hrefS1 !== "") {
       await irPara(N, page, hrefS1);
@@ -603,7 +620,7 @@ async function main(): Promise<void> {
     );
 
     const designar = async (nome: string, matricula: string, tipo: string, campo: string, alvo: string, data: string): Promise<string> => {
-      const href = await fichaDe(nome);
+      const href = await fichaDoCenario(nome);
       if (href === "") return `a ficha de "${nome}" não apareceu`;
       await irPara(N, page, href);
       const idV = await opcaoQueCasa(page, 'form[data-acao="movimentar"] select[name="vinculoId"]', matricula);
@@ -647,7 +664,7 @@ async function main(): Promise<void> {
     // aparece para ela ("só designação — a dispensa encerra a vigente"). Informar qual seria
     // convidar a dispensar uma que não está em curso.
     const dispensa = await (async (): Promise<string> => {
-      const href = await fichaDe(S1_CIVIL);
+      const href = await fichaDoCenario(S1_CIVIL);
       if (href === "") return `a ficha de "${S1_CIVIL}" não apareceu`;
       await irPara(N, page, href);
       const idV = await opcaoQueCasa(page, 'form[data-acao="movimentar"] select[name="vinculoId"]', S1_MAT);
@@ -669,7 +686,20 @@ async function main(): Promise<void> {
     const exercendoAntes = await consultar(page, { funcao: FUNCAO_DIR, dataRef: "2023-01-10" });
     R.conferir("7.8 na vigência da designação, o eixo função ACHA quem a exercia", achou(exercendoAntes, S1_SOCIAL) || achou(exercendoAntes, S1_CIVIL), `linhas: ${exercendoAntes.join(" || ").slice(0, 300)}`);
     const exercendoDepois = await consultar(page, { funcao: FUNCAO_DIR, dataRef: "2024-01-10" });
-    R.conferir("7.9 ⚠️ depois da dispensa, NÃO acha mais — a função é vigência, não carimbo permanente", !achou(exercendoDepois, S1_SOCIAL) && !achou(exercendoDepois, S1_CIVIL), `linhas: ${exercendoDepois.join(" || ").slice(0, 300)}`);
+    /**
+     * ⚠️ ESTE PASSO SÓ VALE SE O ANTERIOR ACHOU — e na primeira corrida ele passou por VACUIDADE:
+     * ninguém tinha sido designado (a ficha de S1 não abria), então "não acha mais" era
+     * trivialmente verdadeiro. "Sumiu depois da dispensa" e "nunca esteve lá" são estados
+     * diferentes, e um passo que não os distingue mede o nada.
+     */
+    const houveDesignacaoVigente = achou(exercendoAntes, S1_SOCIAL) || achou(exercendoAntes, S1_CIVIL);
+    R.conferir(
+      "7.9 ⚠️ depois da dispensa, NÃO acha mais — a função é vigência, não carimbo permanente",
+      houveDesignacaoVigente && !achou(exercendoDepois, S1_SOCIAL) && !achou(exercendoDepois, S1_CIVIL),
+      !houveDesignacaoVigente
+        ? "o passo 7.8 não achou ninguém na vigência — 'não acha mais' seria trivialmente verdadeiro, e este passo NÃO vale como prova"
+        : `linhas: ${exercendoDepois.join(" || ").slice(0, 300)}`
+    );
 
     /**
      * ⚠️ "EXERCENDO HOJE" É DERIVADO, NÃO CONTAGEM DE EVENTOS. Contar designações incluiria os
@@ -677,12 +707,24 @@ async function main(): Promise<void> {
      * indistinguível de um contador quebrado. S1 foi designada e dispensada: ela NÃO conta mais.
      */
     const listaDeFuncoes = await irPara(N, page, "/pessoal/funcoes");
-    const linhaDaFuncao = (await linhasDaLista(page)).find((l) => l.includes(FUNCAO_DIR)) ?? "";
-    nota(`linha da função ${FUNCAO_DIR} na lista: ${linhaDaFuncao.slice(0, 200)}`);
+    /**
+     * ⚠️ A CÉLULA SE LÊ COMO CÉLULA, NÃO POR REGEX SOBRE O TEXTO COLADO — e isto foi defeito
+     * DESTE script, pego na primeira corrida. A linha vem concatenada como
+     * `FG-DIR-E1Direcao de Escola E10VIGENTE`: o "0" de "Exercendo hoje" fica colado no "E1" do
+     * sufixo, e uma expressão que exigisse fronteira de não-dígito antes dele **falha sobre o
+     * valor certo**. O passo ficava vermelho sem defeito nenhum do produto.
+     * As colunas são: código, denominação, "Exercendo hoje", situação.
+     */
+    const exercendo = await page.evaluate((cod) => {
+      const tr = Array.from(document.querySelectorAll("tbody tr")).find((x) => (x.textContent ?? "").includes(cod));
+      if (tr === undefined) return null;
+      return Array.from(tr.querySelectorAll("td")).map((td) => (td.textContent ?? "").trim());
+    }, FUNCAO_DIR);
+    nota(`células da função ${FUNCAO_DIR}: ${JSON.stringify(exercendo)}`);
     R.conferir(
       "7.10 ⚠️ 'Exercendo hoje' é DERIVADO da vigência: quem foi dispensado não conta mais",
-      linhaDaFuncao !== "" && /(^|\D)0(\D|$)/.test(linhaDaFuncao.replace(FUNCAO_DIR, "")),
-      linhaDaFuncao === "" ? `a função ${FUNCAO_DIR} não apareceu na lista: ${listaDeFuncoes.slice(0, 200)}` : `linha: ${linhaDaFuncao.slice(0, 250)}`
+      exercendo !== null && exercendo[2] === "0",
+      exercendo === null ? `a função ${FUNCAO_DIR} não apareceu na lista: ${listaDeFuncoes.slice(0, 200)}` : `células: ${JSON.stringify(exercendo)}`
     );
 
     // ══ 8. A PAGINAÇÃO — o defeito era invisível abaixo de 25 ════════════════
