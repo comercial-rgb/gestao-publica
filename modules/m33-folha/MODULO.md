@@ -149,6 +149,64 @@ seria inventar norma que o TR não fixa. Uma rubrica pertence a UM grupo só.
    para mil empenhos manteria as fichas do ente travadas por minutos. Ela é RETOMÁVEL: diz onde
    parou, e os empenhos gravados continuam valendo.
 
+### ⚠️ O NÚMERO DO EMPENHO CARREGA O TIPO DA FOLHA — V11 V9.3, e era colisão REAL
+
+`numeroDoEmpenhoDaFolha` era `série/competência/sufixo`, **sem o tipo**. Duas folhas de tipos
+diferentes na **mesma competência** produziam o **mesmo número** quando compartilhavam grupo e
+matrícula — e não era hipótese futura: basta o ente pôr o vencimento e a rubrica do adiantamento do
+13º no mesmo grupo (mesma ficha, mesmas contas) para que a MENSAL de 2026-06 e o ADIANTAMENTO de
+2026-06 colidam. `apropriarFolha` achava o empenho da primeira, contava `jaExistiam` e **pulava em
+silêncio**: a segunda folha ficava apropriada com **zero** empenhos, os totais fechavam, o atesto
+descrevia a distribuição certa e **nenhuma etapa adiante acusava**.
+
+**A mensal ficou byte a byte igual**, e é isso que torna a mudança segura: todo empenho mensal já
+gravado continua sendo encontrado pela mesma chave. Ganha segmento só quem não o tinha por que ter.
+
+**A retomada do número LEGADO** (`numeroLegadoDoEmpenhoDaFolha`) existe para ser **reconhecida,
+nunca gravada**: uma folha de 13º apropriada antes da mudança seria empenhada **de novo** sem ela —
+e *idempotência que quebra para trás é pior que a colisão*. ⚠️ **E o reconhecimento é pelo ELO**
+(`EmpenhoDaFolha → apropriação → folhaId`), **nunca pela coincidência do número**: numa colisão, o
+que está no número legado é o empenho da MENSAL. Sem essa conferência, a retomada do legado seria a
+própria colisão com outro nome.
+
+**O segmento é o nome do enum, e foi decisão apurada, não preferência.** Primeiro se verificou se
+algo externo consome o número: o SAGRES lê `numEmpenho` NUMÉRICO de 7 posições — e a numeração da
+folha já estava fora dele antes disto (`NUMERACAO-DA-FOLHA-FORA-DO-CAMPO-DO-SAGRES`). Sem restrição
+externa, o nome do enum vence um código curto: um `Record<TipoDeFolha, string>` seria uma segunda
+tabela a manter em dia com a primeira — a cópia que diverge —, e o número é chave de negócio.
+
+**Provado em** `m33-criterio-do-abatimento.test.ts` (c5): as duas folhas empenham, cada uma com o
+**seu** valor (N=2, valores diferentes), os quatro empenhos são quatro objetos distintos, a
+reexecução das duas reconhece tudo sem empenhar de novo, e o número legado é reconhecido. As
+asserções são de **efeito**, não de formato — uma guarda que casa com o texto do número acha só o
+formato que ela conhece.
+
+## ⚠️ ANTES DE ALGUÉM CONSTRUIR O FILTRO DE FUNCIONÁRIOS (5.12.50) — leia isto
+
+A cláusula exige filtrar por matrícula, nome, cargo, regime, local de trabalho, **centro de custo**,
+**função** e data de admissão. Levantado em V11 V9.3, com arquivo e linha:
+
+**Dois dos oito eixos não têm DADO NENHUM, e isso é falta de MODELO no M32, não falta de tela:**
+- **centro de custo** — não existe nenhuma FK de `Vinculo`, `Servidor`, `Cargo` ou `Lotacao` para
+  `Setor` (M21) nem para qualquer tabela de centro de custo. O único vizinho é
+  `Lotacao.unidadeOrcId`, opcional, e o próprio schema declara que a correspondência é incompleta.
+- **função** — não é entidade. É um valor de `TipoCargo` (`FUNCAO_GRATIFICADA`) ou texto livre em
+  `HistoricoVinculo.gratificacaoDescricao`. Dois candidatos concorrentes, nenhum filtrável.
+
+Os outros seis existem com qualidade desigual: matrícula e data de admissão são colunas; **nome** tem
+dois campos concorrentes (versão de `Pessoa` e `Servidor.nomeSocial`); **cargo** e **lotação** são
+**derivados** de `HistoricoVinculo`, não colunas; **regime** são **dois eixos distintos**
+(previdenciário derivado por evento, e `regimeJuridico` como `String` livre).
+
+⚠️ **E O PERIGO NÃO É O DADO — É O QUE UM FILTRO NO CÁLCULO QUEBRARIA.** `calcularFolha` promete
+"todos os vínculos vivos na competência", e essa propriedade é mantida **por construção**: o
+`tx.vinculo.findMany` não tem `where` nenhum, e o único recorte é temporal. Um filtro do operador a
+quebra **em silêncio**: nada compara o número de contracheques ao de vínculos ativos, o manifesto da
+certificação lista só quem entrou no cálculo, a apropriação empenha só esses — e **a folha fecha, o
+total bate, o empenho bate, a liquidação bate**. É a forma exata de defeito que este módulo já pagou
+três vezes. Quem for construir tem de decidir ANTES se o filtro recorta **quem é calculado** (folha
+parcial — perigoso, e precisa de guarda de completude) ou apenas **quem é listado/reprocessado**.
+
 ## A certificação (atesto) e a liquidação — V6.1 (`certificacao.ts`)
 
 A apropriação empenha. **Liquidar é ato próprio**, e o art. 63 da Lei 4.320 manda verificar o
@@ -546,6 +604,56 @@ discordam. Mais dois casos no domínio puro
 (`m33-decimo-terceiro-dominio.test.ts`): a simulação e a sua contrapartida declarada — sem a
 segunda, um motor que gravasse "SIMULACAO" sempre passaria na primeira.
 
+#### 5b. A GUARDA DO `fechar` — e o beco sem saída que nós mesmos criamos (V11 V9.3)
+
+**O defeito era nosso, e foi medido antes de consertado.** Com a guarda só em `apropriar` e
+`liquidar`, uma folha de 13º calculada em simulação e **fechada** ficava sem saída nenhuma:
+
+| Caminho | Fato |
+|---|---|
+| recalcular | `servico.ts` recusa `FOLHA-FECHADA` |
+| cancelar o cálculo | `servico.ts` recusa `CALCULO-FECHADO` — o que fechou |
+| reabrir / desfechar / retificar | não existe em lugar nenhum (grep em `modules`, `lib`, `app`, `scripts`) |
+| por SQL | `FechamentoDaFolha` e `CalculoDaFolha` **não constam** do censo assinado de UPDATE/DELETE do papel de runtime |
+| devolver para correção | bloqueia a liquidação, **não reabre** |
+| anulação pela despesa | inalcançável: em simulação não há empenho a anular |
+
+O ente declarava o critério depois e **não adiantava**. Isso é exatamente o que a guarda
+`PARAMETRO-TROCADO-ENTRE-AS-PARCELAS` derrubou quando comparava o `id` do parâmetro — *"recusa sem
+saída não é fail-closed; é beco sem saída"* —, três seções acima, no mesmo arquivo. Aplicar a régua
+num sítio e não no outro é o placar que este repositório proíbe.
+
+**A guarda entrou no `fechar`, e o fundamento não é simetria.** É a regra aprendida: *"efeito
+colateral antes da operação guardada envenena a tentativa seguinte — confira pré-condições antes de
+gravar"*. O `fechar` **é** a gravação que envenena: é ele que CONGELA o número e arma todos os atos
+seguintes. Guardar só a jusante era gravar o artefato antes da guarda.
+
+⚠️ **ISTO NÃO MOVE O GATE, COMPLETA A CAMADA.** Cada guarda do M33 vive no ato de que ela é
+pré-condição: `calcular` recusa folha fechada, `fechar` recusa sem cálculo vivo, `apropriar` recusa
+não fechada, `liquidar` recusa não certificada. Faltava o critério no ato cuja semântica é
+**congelar**.
+
+⚠️ **OS TRÊS GATES FICAM, e não é redundância.** Folhas já fechadas em simulação **existem**, e sem
+as guardas de jusante elas virariam despesa. Elas defendem o que já está congelado: `fechar` diz
+"não se congela"; `apropriar`, "não vira despesa"; `liquidar`, "não se torna exigível".
+
+⚠️ **RECUSAR NO `fechar` NÃO CRIA BECO NOVO:** a folha fica ABERTA, e folha aberta recalcula. O ente
+declara o critério, recalcula e fecha — e o fechamento congela o cálculo NOVO, não o da simulação.
+Quem nunca declarar fica com a folha aberta: nada congelado, nada devido, que é o estado honesto.
+
+⚠️ **QUAL CÁLCULO A GUARDA OLHA:** o FECHADO quando a folha fechou (o que `apropriar` e `liquidar`
+vão efetivar), o VIVO quando ainda não (o que `fechar` vai congelar). Um campo só, porque em cada
+momento só existe um cálculo de que se possa falar — e o vivo é escolhido pela **mesma** regra de
+`fecharFolha` (maior número entre os não cancelados), senão a barra anunciaria recusa sobre um
+cálculo e o serviço decidiria sobre outro.
+
+⚠️ **E O QUE JÁ ESTÁ CONGELADO CONTINUA SEM SAÍDA.** Nada é desfeito automaticamente. A saída
+dessas folhas é `RETIFICACAO-DA-FOLHA`, que **não existe e não se inventa aqui**. Registro o que
+achei ao levantar: **o modelo já a antecipou** — `situacaoDaCertificacao` (`certificacao.ts`) tem o
+ramo `SUPERADA` escrito, com o comentário dizendo que ele existe porque "a retificação vai
+produzi-lo, e descobrir isso depois significaria marcar o atesto antigo como se tivesse certificado
+dados que ainda não existiam". Metade do desenho está feita; a construção é decisão de quem manda.
+
 #### 6. O que NÃO foi determinado
 
 - o dispositivo municipal aplicável (acesso negado nas três fontes tentadas) — segue nomeado como
@@ -661,10 +769,19 @@ percurso passar: a negativa é evidência, não obstáculo**. `rh@` parametriza 
 esquecimento.** Faltam três passos pela tela: (16) o `select` "o adiantamento precisa estar" existe
 no formulário do parâmetro e a nota diz quais rubricas permitem exigir PAGO; (17) sem declarar, o
 detalhe da folha de 13º mostra o selo **SIMULAÇÃO — não é apuração aprovada** e a barra recusa
-`apropriar` com `ABATIMENTO-SEM-CRITERIO-DECLARADO`; (18) declarado na versão seguinte e
+~~`apropriar`~~ **`fechar`** com `ABATIMENTO-SEM-CRITERIO-DECLARADO`; (18) declarado na versão seguinte e
 recalculado, o selo some e o ato passa a ser oferecido. Os três são cobertos pela suíte
 (`m33-criterio-do-abatimento.test.ts`), e é exatamente por isso que faltam **pela tela**: foram
 quatro defeitos de interface na V11 V9.2 que os 262 testes não pegaram.
+
+⚠️ **O PASSO 17 MUDOU DE ALVO — e o texto anterior fica riscado acima de propósito, porque quem
+reler precisa saber que a evidência MUDOU DE LUGAR e por quê.** Ele media a recusa em `apropriar`;
+passa a medir a recusa em **`fechar`**. A razão é a seção "A GUARDA DO `fechar`" adiante: depois
+dela o estado que o passo media — folha de 13º FECHADA em simulação — **não é mais alcançável pela
+tela**, e isso é o objetivo, não uma perda. A prova das guardas de `apropriar` e `liquidar` migra
+para a suíte, que constrói o estado direto no banco (`congelarComoAntesDaGuarda`, em
+`m33-criterio-do-abatimento.test.ts`). **Uma guarda que só dado legado alcança continua valendo, e
+quem a prova é o teste, não o percurso.**
 
 **A repetição sem duplicar efeito** fecha o roteiro: reexecutado no mesmo exercício, o percurso
 reconhece as folhas que já existem e PULA com aviso, em vez de falhar no `@@unique` — e o
@@ -747,6 +864,27 @@ afastamento/desligamento (9 e 7 avos), porque com um servidor só "9 avos" passa
   `calculoId` e lê o sha da COLUNA. O digesto muda para contracheques NOVOS; nenhum gravado é
   invalidado.
 - ~~`PARAMETRO-TROCADO-ENTRE-AS-PARCELAS`~~ — **resolvida na V11 V9.2** (seção abaixo).
+- ⚠️ **`RETIFICACAO-DA-FOLHA` — agora com um caso sem saída dentro dela.** Além de "devolver não
+  reabre", ela passou a ser **a única saída** das folhas de 13º congeladas em simulação antes da
+  guarda do `fechar` (seção 5b). Enquanto não existir, essas folhas não se apropriam, não se
+  liquidam e não se recalculam. **O modelo já a antecipou** no ramo `SUPERADA` de
+  `situacaoDaCertificacao` (`certificacao.ts`), escrito de propósito para o dia em que houver mais
+  de um cálculo fechado por folha. Construção nova, decisão de quem manda, **não inventada aqui**.
+- `ELO-DO-EMPENHO-PERDIDO-NA-JANELA` (achado em V11 V9.3, **não consertado**) — em
+  `apropriarFolha`, quando `empenhar` grava o `Empenho` e o processo morre antes de gravar o
+  `EmpenhoDaFolha`, a reexecução encontra o número, conta `jaExistiam` e **nunca amarra o elo**: a
+  folha fica para sempre com menos empenhos que o esperado, e a liquidação, que lê pelo elo, nunca
+  alcança aqueles. ⚠️ **E metade do conserto já está escrita em outro lugar deste módulo**: a
+  liquidação recupera exatamente essa janela "procurando a liquidação pelo par (empenho, número) e
+  só amarrando o elo" (seção da V6.1). A apropriação não tem o equivalente. Fica nomeado e não
+  consertado — é defeito distinto do da numeração, e não foi autorizado nesta rodada.
+- `NUMERACAO-DA-FOLHA-FORA-DO-CAMPO-DO-SAGRES` (levantado em V11 V9.3, **anterior a ela**) — o
+  SAGRES (TCE-PB) lê `empenho.numero` no campo `numEmpenho`, **NUMÉRICO de 7 posições**
+  (`adapters/tribunais/tce-pb/sagres/layout-2026v11.ts`; `captura/dto-captura.ts` faz `cod(...,7)`),
+  e a numeração da folha (`série/competência/matrícula`) **nunca coube ali** — o próprio
+  `sagres/MODULO.md` já declara que "a numeração da UG precisa ser numérica". Isso **não** foi
+  criado pelo segmento do tipo da V11 V9.3; é pendência anterior e independente, e quem a resolve é
+  o cadastro da série do grupo, não o motor.
 - `MEDIA-DAS-VARIAVEIS-NO-13` (5.12.82) — a base do 13º só admite vencimento-base, gratificações do
   vínculo e percentual do vencimento. Valor informado e fórmula exigiriam a média do ano; somar o
   lançamento de um mês pagaria 13º sobre a hora extra de dezembro como se fosse a do ano inteiro.

@@ -202,7 +202,12 @@ describe("(2) apropriar — a folha fechada vira despesa", () => {
     expect(daAna.historico).toMatch(/Folha mensal de 2026-05 — Vencimentos e vantagens fixas, matrícula MAT-A/);
     expect(empenhos.find((e) => e.numero === "FH/2026-05/MAT-A")!.valor.toFixed(2)).toBe("500.00");
     expect(empenhos.find((e) => e.numero === "FP/2026-05/MAT-B")!.valor.toFixed(2)).toBe("2000.00");
-    expect(numeroDoEmpenhoDaFolha("FP", "2026-05", "MAT-A")).toBe("FP/2026-05/MAT-A");
+    // ⚠️ V11 V9.3 — ESTA ASSERÇÃO MUDOU DE SENTIDO SEM MUDAR DE VALOR. Ela fixava só o formato;
+    // agora, com o tipo entrando na composição, ela afirma a COMPATIBILIDADE PARA TRÁS: a folha
+    // MENSAL continua produzindo byte a byte o mesmo número, e por isso todo empenho mensal já
+    // gravado segue sendo reconhecido na reexecução. Se este valor mudar, a idempotência quebrou
+    // para trás — que é pior que a colisão que a mudança conserta.
+    expect(numeroDoEmpenhoDaFolha("FP", "2026-05", "MAT-A", "MENSAL")).toBe("FP/2026-05/MAT-A");
 
     // O elo, e a leitura que o detalhe da folha mostra.
     const lida = await apropriacaoDaFolha(prisma, folhaId);

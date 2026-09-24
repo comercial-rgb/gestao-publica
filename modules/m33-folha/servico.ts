@@ -70,7 +70,7 @@ import {
   type ParcelaDaBase,
   type ProcedenciaDoAbatimento,
 } from "./decimo-terceiro.js";
-import { parametroVigenteDoExercicio } from "./decimo-terceiro-servico.js";
+import { criterioDoAbatimentoNoCalculo, parametroVigenteDoExercicio } from "./decimo-terceiro-servico.js";
 // V11 V9.2 — a derivação da situação da certificação, para a PROCEDÊNCIA do abatimento na memória
 // do contracheque. Aresta nova e sem ciclo: nada dentro do M33 importa `./servico.js`.
 import { situacaoDaCertificacao, type FatoDaCertificacao } from "./certificacao.js";
@@ -971,6 +971,33 @@ export async function fecharFolha(prisma: PrismaClient, input: FecharFolhaInput)
     if (folha.fechamento !== null) throw new Error(`FOLHA-JA-FECHADA: a folha ${folha.tipo} de ${folha.competencia} já está fechada. Nada foi gravado.`);
     const vivo = folha.calculos[0];
     if (vivo === undefined) throw new Error(`FOLHA-SEM-CALCULO-VIVO: a folha ${folha.tipo} de ${folha.competencia} não tem cálculo (ou todos foram cancelados). Calcule antes de fechar. Nada foi gravado.`);
+    /**
+     * ⚠️ V11 V9.3 — A PRÉ-CONDIÇÃO ANTES DA GRAVAÇÃO QUE ENVENENA.
+     *
+     * Fechar CONGELA o cálculo, e congelado ele não volta: `calcularFolha` recusa folha fechada
+     * (a guarda `FOLHA-FECHADA` acima) e `cancelarCalculoDaFolha` recusa o cálculo que fechou.
+     * Congelar um 13º apurado sob critério NÃO DECLARADO criava um estado sem saída — nem
+     * apropriável, nem liquidável, nem recalculável —, e recusa sem saída não é fail-closed.
+     *
+     * ⚠️ NADA ANTERIOR É DESFEITO: folhas já congeladas em simulação continuam como estão, e a
+     * saída delas é `RETIFICACAO-DA-FOLHA`, que não existe e não se inventa aqui (MODULO).
+     */
+    if (folha.tipo === "DECIMO_TERCEIRO") {
+      const criterio = await criterioDoAbatimentoNoCalculo(tx, vivo.id);
+      if (criterio.abateu && criterio.criterioDeclarado === null) {
+        throw new Error(
+          `ABATIMENTO-SEM-CRITERIO-DECLARADO: o cálculo nº ${vivo.numero} do 13º de ${folha.competencia} ` +
+            `abateu ${criterio.totalAbatido} de 1ª parcela, e o parâmetro do 13º sob o qual ele rodou NÃO ` +
+            `declara qual estado o adiantamento precisa ter alcançado para ser abatido. Fechar CONGELA ` +
+            `esse número, e cálculo congelado não se recalcula — a folha ficaria sem apropriação, sem ` +
+            `liquidação e sem correção possível. ` +
+            `O que destrava: o ente cadastra a versão seguinte do parâmetro declarando o critério ` +
+            `(FECHADO, CERTIFICADO ou PAGO) com o ato que o fundamenta, em Folha > Parâmetros do 13º, e a ` +
+            `folha é RECALCULADA antes de fechar — enquanto ela não fecha, recalcular é possível. ` +
+            `Não há dispensa nem confirmação que substitua o ato. Nada foi gravado.`
+        );
+      }
+    }
     const f = await tx.fechamentoDaFolha.create({ data: { folhaId: folha.id, calculoId: vivo.id, sha256: vivo.sha256, criadoPor: d.criadoPor }, select: { id: true } });
     return { fechamentoId: f.id, calculoId: vivo.id, numero: vivo.numero };
   });

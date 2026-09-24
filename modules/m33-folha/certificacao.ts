@@ -823,7 +823,11 @@ export async function retratoDosAtosDaFolha(
       competencia: true,
       tipo: true,
       fechamento: { select: { id: true, calculoId: true, criadoPor: true, calculo: { select: { criadoPor: true } } } },
-      calculos: { select: { id: true, cancelamento: { select: { id: true } } } },
+      // V11 V9.3 — `numero` entra para que o "cálculo vivo" daqui seja EXATAMENTE o que
+      // `fecharFolha` vai congelar (`where cancelamento null, orderBy numero desc, take 1`).
+      // Escolher por outro critério faria a barra anunciar uma recusa sobre um cálculo e o
+      // caso de uso decidir sobre outro — a segunda verdade que o retrato existe para não ter.
+      calculos: { select: { id: true, numero: true, cancelamento: { select: { id: true } } } },
       certificacoes: { select: { id: true, tipo: true, calculoId: true, criadoEm: true, criadoPor: true } },
       apropriacao: { select: { id: true, _count: { select: { empenhos: true } } } },
     },
@@ -845,9 +849,18 @@ export async function retratoDosAtosDaFolha(
    * com o motivo na mão. O `catch` devolve `false`, e a recusa REAL continua em `apropriarFolha`,
    * que é fail-closed e não tem `catch` nenhum.
    */
+  /**
+   * ⚠️ V11 V9.3 — O CÁLCULO DE QUE SE FALA MUDA COM O ATO, e é um só em cada momento: o FECHADO
+   * quando a folha fechou (o que `apropriar` e `liquidar` vão efetivar), o VIVO quando ainda não
+   * (o que `fechar` vai congelar). O vivo é escolhido pela MESMA regra de `fecharFolha` — maior
+   * número entre os não cancelados —, senão a barra anunciaria recusa sobre um cálculo e o
+   * serviço decidiria sobre outro.
+   */
+  const vivoParaFechar = [...f.calculos].filter((c) => c.cancelamento === null).sort((a, b) => b.numero - a.numero)[0];
+  const calculoEmQuestao = f.fechamento?.calculoId ?? vivoParaFechar?.id ?? null;
   const semCriterio =
-    f.tipo === "DECIMO_TERCEIRO" && f.fechamento !== null
-      ? await criterioDoAbatimentoNoCalculo(prisma, f.fechamento.calculoId).then(
+    f.tipo === "DECIMO_TERCEIRO" && calculoEmQuestao !== null
+      ? await criterioDoAbatimentoNoCalculo(prisma, calculoEmQuestao).then(
           (c) => c.abateu && c.criterioDeclarado === null,
           () => false
         )

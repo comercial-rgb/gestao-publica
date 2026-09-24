@@ -7,7 +7,7 @@ import { diaCivil } from "../../packages/datas/index.js";
 import { empenhar } from "../m05-despesa/servico.js";
 import { elementoDebitaEstoque, roteiroEmpenho } from "../m01-core-contabil/roteiros.js";
 import { criarM05DepsComContratos } from "../m11-licitacoes/adapter-m05.js";
-import { zCompetencia } from "./dominio.js";
+import { zCompetencia, type TipoDeFolha } from "./dominio.js";
 /**
  * ⚠️ V11 V9.3 — A EFETIVAÇÃO PRECISA SABER SE O QUE ELA VAI EMPENHAR É APURAÇÃO OU SIMULAÇÃO.
  * O leitor vive no serviço do parâmetro do 13º porque é lá que mora a leitura da memória; aqui se
@@ -292,8 +292,53 @@ export interface GrupoParaApropriacao {
   readonly rubricas: readonly { readonly rubricaId: string }[];
 }
 
-/** O número do empenho da folha — determinístico, e é o que impede a duplicação. */
-export function numeroDoEmpenhoDaFolha(serie: string, competencia: string, sufixo: string): string {
+/**
+ * O NÚMERO DO EMPENHO DA FOLHA — determinístico, e é o que impede a duplicação.
+ *
+ * ═══ ⚠️ V11 V9.3 — O TIPO DA FOLHA ENTROU, E ELE CONSERTA UMA COLISÃO REAL ═══
+ *
+ * Até aqui o número era `série/competência/sufixo`, sem o tipo. **Duas folhas de tipos
+ * DIFERENTES na MESMA competência produziam o MESMO número** quando compartilhavam grupo e
+ * matrícula — e isso não é hipótese futura: basta o ente pôr o vencimento e a rubrica do
+ * adiantamento do 13º no mesmo grupo (mesma ficha, mesmas contas patrimoniais) para que a folha
+ * MENSAL de 2026-06 e o ADIANTAMENTO de 2026-06 colidam. `apropriarFolha` encontrava o empenho
+ * da primeira, contava `jaExistiam` e **pulava em silêncio**: a segunda folha ficava apropriada
+ * com ZERO empenhos, os totais fechavam e nenhuma etapa adiante acusava.
+ *
+ * ⚠️ A MENSAL FICA BYTE A BYTE IGUAL, e isso é a metade que torna a mudança segura. Todo empenho
+ * de folha mensal já gravado continua sendo encontrado pela mesma chave, e a reexecução continua
+ * idempotente. Quem ganha segmento é só quem não o tinha por que ter — os tipos que nasceram
+ * depois da numeração.
+ *
+ * ⚠️ E O SEGMENTO É O NOME DO ENUM, NÃO UM CÓDIGO CURTO. Um `Record<TipoDeFolha, "A13" | ...>`
+ * seria mais curto e seria uma SEGUNDA tabela a manter em dia com a primeira — a cópia que
+ * diverge. O número é chave de negócio; um mapa paralelo que envelhece é pior que dez caracteres.
+ *
+ * ⚠️ APURADO ANTES DE ESCOLHER: nenhuma restrição externa impede o nome longo. O SAGRES (TCE-PB)
+ * lê `empenho.numero` no campo `numEmpenho`, NUMÉRICO de 7 posições (`layout-2026v11.ts:122`,
+ * `captura/dto-captura.ts:62`) — e a numeração da folha, com série e barras, **já estava fora
+ * desse campo antes desta mudança**; o próprio `sagres/MODULO.md:137` declara que "a numeração da
+ * UG precisa ser numérica". Isso é pendência anterior e independente
+ * (`NUMERACAO-DA-FOLHA-FORA-DO-CAMPO-DO-SAGRES`, ver o MODULO do M33), não algo que este
+ * segmento cria. Internamente não há limite: `numero` é `z.string().min(1)` e coluna `TEXT`.
+ */
+export function numeroDoEmpenhoDaFolha(serie: string, competencia: string, sufixo: string, tipo: TipoDeFolha): string {
+  return tipo === "MENSAL" ? `${serie}/${competencia}/${sufixo}` : `${serie}/${competencia}/${tipo}/${sufixo}`;
+}
+
+/**
+ * O NÚMERO COMO ELE ERA ANTES DA V11 V9.3 — e ele existe só para ser RECONHECIDO, nunca gravado.
+ *
+ * ⚠️ IDEMPOTÊNCIA QUE QUEBRA PARA TRÁS É PIOR QUE A COLISÃO. Uma folha de 13º apropriada ANTES
+ * desta mudança tem empenhos gravados com o número sem o segmento. Sem esta função, a reexecução
+ * não os encontraria e empenharia TUDO DE NOVO — duplicando a despesa de quem só quis retomar.
+ *
+ * ⚠️ E O RECONHECIMENTO É PELO ELO, NUNCA PELA COINCIDÊNCIA DO NÚMERO. Achar um empenho com o
+ * número legado não prova que ele é desta folha: numa colisão, o que está lá é o empenho da
+ * MENSAL. Quem prova é `EmpenhoDaFolha → apropriação → folhaId`. Sem essa conferência, a retomada
+ * do legado passaria a ser a própria colisão, com outro nome.
+ */
+export function numeroLegadoDoEmpenhoDaFolha(serie: string, competencia: string, sufixo: string): string {
   return `${serie}/${competencia}/${sufixo}`;
 }
 
@@ -423,11 +468,33 @@ export async function apropriarFolha(prisma: PrismaClient, input: ApropriarFolha
 
   for (const p of agrupamento.parcelas) {
     const sufixo = p.matricula ?? p.grupo.codigo;
-    const numero = numeroDoEmpenhoDaFolha(p.grupo.serie, folha.competencia, sufixo);
+    const numero = numeroDoEmpenhoDaFolha(p.grupo.serie, folha.competencia, sufixo, folha.tipo as TipoDeFolha);
     const onde = `${p.grupo.codigo} / ${sufixo}`;
 
     const ja = await prisma.empenho.findUnique({ where: { fichaId_numero: { fichaId: p.grupo.fichaId, numero } }, select: { id: true } });
-    if (ja !== null) {
+    /**
+     * ⚠️ V11 V9.3 — A RETOMADA DO NÚMERO LEGADO, e ela é o que impede a duplicação para trás.
+     *
+     * Só para folha não-mensal (a mensal não mudou de número), e só quando o elo prova que o
+     * empenho legado é DESTA folha. Um empenho legado que pertence a OUTRA folha é exatamente a
+     * colisão que esta rodada conserta: ele não bloqueia nada, porque o número novo está livre e
+     * é com ele que a segunda folha empenha — com o valor dela.
+     *
+     * ⚠️ E O `?? null` NO ELO NÃO É DEFENSIVA: um empenho com o número legado e SEM elo nenhum é
+     * a janela entre `empenhar` e a gravação do elo (`ELO-DO-EMPENHO-PERDIDO-NA-JANELA` no
+     * MODULO). Ele não prova que é desta folha, então não vale como retomada — e o comportamento
+     * de hoje para esse caso fica exatamente como está, sem regressão e sem conserto disfarçado.
+     */
+    const legado =
+      ja !== null || folha.tipo === "MENSAL"
+        ? null
+        : await prisma.empenho.findUnique({
+            where: { fichaId_numero: { fichaId: p.grupo.fichaId, numero: numeroLegadoDoEmpenhoDaFolha(p.grupo.serie, folha.competencia, sufixo) } },
+            select: { id: true, daFolha: { select: { apropriacao: { select: { folhaId: true } } } } },
+          });
+    const legadoEDestaFolha = legado !== null && legado.daFolha?.apropriacao.folhaId === folha.id;
+
+    if (ja !== null || legadoEDestaFolha) {
       jaExistiam += 1;
     } else {
       if (p.credorCpfCnpj === "") throw new ApropriacaoInterrompidaError(empenhados, onde, "o grupo não tem credor e não empenha por servidor — o cadastro do grupo está incoerente.");

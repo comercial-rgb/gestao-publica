@@ -37,8 +37,13 @@ export interface EstadoDaFolhaParaAtos {
   /**
    * ⚠️ V11 V9.3 — O CÁLCULO FECHADO ABATEU ADIANTAMENTO SEM CRITÉRIO DECLARADO PELO ENTE.
    *
-   * `true` = a folha é de 13º, o cálculo congelado aplicou abatimento da 1ª parcela, e o
-   * parâmetro sob o qual ele rodou NÃO declarava qual estado o adiantamento precisava ter. Aquilo
+   * `true` = a folha é de 13º, o cálculo em questão aplicou abatimento da 1ª parcela, e o
+   * parâmetro sob o qual ele rodou NÃO declarava qual estado o adiantamento precisava ter.
+   *
+   * ⚠️ V11 V9.3 — QUAL CÁLCULO: o FECHADO quando a folha já fechou; o VIVO quando ainda não.
+   * É o mesmo campo servindo a atos diferentes porque, em cada momento, só existe um cálculo de
+   * que se possa falar — `fechar` olha o que vai congelar, `apropriar` e `liquidar` olham o que
+   * já congelou. Duas flags separadas seriam duas verdades a manter em dia. Aquilo
    * é SIMULAÇÃO, não apuração aprovada, e a EFETIVAÇÃO correspondente — a apropriação/empenho —
    * não pode acontecer. Ver `ESTADO-EXIGIDO-DO-ADIANTAMENTO-SEM-FONTE` no MODULO do M33.
    *
@@ -78,6 +83,37 @@ export function elegibilidadeParaCancelarCalculo(e: EstadoDaFolhaParaAtos): Eleg
 export function elegibilidadeParaFechar(e: EstadoDaFolhaParaAtos): Elegibilidade {
   if (e.fechada) return naoAplicavel("FOLHA-JA-FECHADA", `A folha de ${e.competencia} já está fechada.`);
   if (!e.temCalculoVivo) return preCondicao("FOLHA-SEM-CALCULO-VIVO", `A folha de ${e.competencia} não tem cálculo vivo.`, "Calcule antes de fechar.");
+  /**
+   * ═══ ⚠️ V11 V9.3 — A GUARDA QUE FALTAVA, E ELA VEM ANTES DA GRAVAÇÃO QUE ENVENENA ═══
+   *
+   * Até aqui o critério do abatimento era conferido em `apropriar` e `liquidar`, e o `fechar`
+   * ficava livre. O resultado era um BECO SEM SAÍDA, medido: uma folha de 13º calculada em
+   * simulação e FECHADA não podia ser apropriada, não podia ser liquidada e **não podia ser
+   * recalculada** — `calcularFolha` recusa folha fechada e `cancelarCalculoDaFolha` recusa o
+   * cálculo que fechou. O ente declarava o critério depois e não adiantava nada.
+   *
+   * ⚠️ O FUNDAMENTO É A REGRA APRENDIDA, não simetria: "efeito colateral antes da operação
+   * guardada envenena a tentativa seguinte — confira pré-condições ANTES de gravar". O `fechar`
+   * É a gravação que envenena: é ele que CONGELA o número e arma todos os atos seguintes.
+   * Guardar só a jusante era gravar o artefato antes da guarda.
+   *
+   * ⚠️ E ISTO NÃO MOVE O GATE, COMPLETA A CAMADA. Cada guarda do M33 vive no ato de que ela é
+   * pré-condição: `calcular` recusa folha fechada, `fechar` recusa sem cálculo vivo, `apropriar`
+   * recusa não fechada, `liquidar` recusa não certificada. Faltava o critério no ato cuja
+   * semântica é congelar. As guardas de `apropriar` e `liquidar` FICAM — folhas já fechadas em
+   * simulação existem, e sem elas virariam despesa. Elas defendem o que já está congelado.
+   *
+   * ⚠️ RECUSAR AQUI NÃO CRIA BECO NOVO: a folha continua ABERTA, e folha aberta recalcula. O ente
+   * declara o critério, recalcula e fecha. Quem nunca declarar fica com a folha aberta — nada
+   * congelado, nada devido, que é o estado honesto.
+   */
+  if (e.abatimentoSemCriterioDeclarado) {
+    return preCondicao(
+      "ABATIMENTO-SEM-CRITERIO-DECLARADO",
+      `O cálculo do 13º de ${e.competencia} abateu a 1ª parcela sem que o parâmetro do exercício declarasse qual estado o adiantamento precisa ter para ser abatido. Fechar CONGELA esse número, e um cálculo congelado não se recalcula — a folha ficaria sem saída.`,
+      "O ente declara o critério (fechado, certificado ou pago) na próxima versão do parâmetro do 13º, com o ato que o fundamenta, e a folha é recalculada antes de fechar. Folha > Parâmetros do 13º."
+    );
+  }
   return ELEGIVEL;
 }
 

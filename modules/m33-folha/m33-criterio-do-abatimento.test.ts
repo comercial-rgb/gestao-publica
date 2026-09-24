@@ -516,23 +516,91 @@ describe("c3 · o critério PAGO", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("c4 · sem critério declarado: simulação, e a apropriação bloqueada", () => {
-  async function decimoTerceiroFechadoSemCriterio(): Promise<string> {
+  /** O 13º em simulação, CALCULADO e ABERTO — o estado que o `fechar` agora recusa congelar. */
+  async function decimoTerceiroCalculadoSemCriterio(): Promise<string> {
     await grupoDoAdiantamento(true);
     await grupoDoDecimoTerceiro();
     await parametro(); // ⚠️ SEM critério — é o estado do ente que não levantou a norma
     await adiantamentoFechado();
     const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: PREPARA });
     await calcularFolha(prisma, { folhaId, criadoPor: PREPARA });
-    await fecharFolha(prisma, { folhaId, criadoPor: FECHA });
     return folhaId;
   }
+
+  /**
+   * ⚠️ CONGELA POR DENTRO, E ISSO É DELIBERADO — é a ÚNICA forma de reproduzir o estado de uma
+   * folha fechada em simulação ANTES de a guarda do `fechar` existir (V11 V9.3).
+   *
+   * Depois da guarda, `fecharFolha` recusa esse fechamento, e é essa recusa que o caso acima
+   * prova. Mas as folhas congeladas antes dela **existem**, e são exatamente quem as guardas de
+   * `apropriar` e `liquidar` defendem: sem elas, uma simulação já congelada viraria despesa. Um
+   * estado que a tela não alcança mais continua alcançável pelo BANCO, e é aqui que ele se
+   * constrói — com o nome dizendo o que é, para ninguém ler isto como atalho de fixture.
+   */
+  async function congelarComoAntesDaGuarda(folhaId: string): Promise<void> {
+    const c = await prisma.calculoDaFolha.findFirstOrThrow({
+      where: { folhaId, cancelamento: null },
+      orderBy: { numero: "desc" },
+      select: { id: true, sha256: true },
+    });
+    await prisma.fechamentoDaFolha.create({ data: { folhaId, calculoId: c.id, sha256: c.sha256, criadoPor: FECHA } });
+  }
+
+  async function decimoTerceiroFechadoSemCriterio(): Promise<string> {
+    const folhaId = await decimoTerceiroCalculadoSemCriterio();
+    await congelarComoAntesDaGuarda(folhaId);
+    return folhaId;
+  }
+
+  /**
+   * ═══ ⚠️ A GUARDA DO `fechar` — E ELA EXISTE PORQUE NÓS CRIAMOS UM BECO SEM SAÍDA ═══
+   *
+   * Até a guarda, o `fechar` era livre: a folha em simulação CONGELAVA, e aí não havia mais o que
+   * fazer com ela. Medido, com arquivo e linha: `calcularFolha` recusa folha fechada
+   * (`servico.ts`, `FOLHA-FECHADA`), `cancelarCalculoDaFolha` recusa o cálculo que fechou
+   * (`CALCULO-FECHADO`), não existe reabrir/desfechar/retificar em lugar nenhum, e o papel de
+   * runtime não tem UPDATE/DELETE em `FechamentoDaFolha` nem em `CalculoDaFolha`. O ente
+   * declarava o critério depois e **não adiantava**.
+   *
+   * ⚠️ RECUSAR NO `fechar` É O CONTRÁRIO DE CRIAR BECO: a folha fica ABERTA, e folha aberta
+   * recalcula. O caso seguinte percorre a saída inteira e prova que ela funciona.
+   */
+  it("ACUSA: fechar a folha de 13º em simulação é RECUSADO — congelar é o que criava o beco", async () => {
+    const folhaId = await decimoTerceiroCalculadoSemCriterio();
+
+    await expect(fecharFolha(prisma, { folhaId, criadoPor: FECHA })).rejects.toThrow(/ABATIMENTO-SEM-CRITERIO-DECLARADO/);
+    await expect(fecharFolha(prisma, { folhaId, criadoPor: FECHA })).rejects.toThrow(/2625\.00/);
+    // ⚠️ A MENSAGEM TEM DE DIZER QUE RECALCULAR AINDA É POSSÍVEL — é a diferença entre uma recusa
+    // com saída e a que nós tínhamos. Sem esta asserção, alguém "encurta" o texto e o operador
+    // volta a não saber o que fazer.
+    await expect(fecharFolha(prisma, { folhaId, criadoPor: FECHA })).rejects.toThrow(/enquanto ela não fecha, recalcular é possível/);
+    // e NADA foi congelado: a folha continua aberta, que é o estado que tem saída
+    expect(await prisma.fechamentoDaFolha.count({ where: { folhaId } })).toBe(0);
+  });
+
+  it("DESTRAVA no fechar: declarar o critério e RECALCULAR deixa fechar — a saída que a recusa promete", async () => {
+    const folhaId = await decimoTerceiroCalculadoSemCriterio();
+    await expect(fecharFolha(prisma, { folhaId, criadoPor: FECHA })).rejects.toThrow(/ABATIMENTO-SEM-CRITERIO-DECLARADO/);
+
+    // a saída, exatamente como a mensagem a descreve: versão seguinte do parâmetro, e recalcular
+    await parametro({ estadoMinimoDoAdiantamentoParaAbater: "FECHADO" });
+    await calcularFolha(prisma, { folhaId, criadoPor: PREPARA, motivo: "criterio do abatimento declarado pelo ente" });
+
+    await expect(fecharFolha(prisma, { folhaId, criadoPor: FECHA })).resolves.toBeTruthy();
+    // ⚠️ E O QUE FOI CONGELADO É O CÁLCULO NOVO, não o da simulação: o fechamento aponta para o
+    // maior número vivo. Congelar o antigo daria uma folha "aprovada" com o número da simulação.
+    const f = await prisma.fechamentoDaFolha.findUniqueOrThrow({ where: { folhaId }, select: { calculo: { select: { numero: true } } } });
+    expect(f.calculo.numero).toBe(2);
+    const r = await apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA });
+    expect(r.empenhados).toBe(2);
+  });
 
   /**
    * ⚠️ O CÁLCULO SAI — E É ISSO QUE SEPARA "BLOQUEAR A EFETIVAÇÃO" DE "PARALISAR O SISTEMA".
    * A simulação é o que mostra ao ente o que está em jogo quando ele for declarar o critério.
    */
   it("o 13º CALCULA sem critério, e o contracheque se identifica como SIMULAÇÃO", async () => {
-    const folhaId = await decimoTerceiroFechadoSemCriterio();
+    const folhaId = await decimoTerceiroCalculadoSemCriterio();
     expect((await linhasGravadas(folhaId)).get("MAT-B/D13ABAT")).toBe("1125.00");
 
     const proc = (await memoriaDe(folhaId, "MAT-B"))["procedenciaDoAbatimento"] as Record<string, unknown>;
@@ -634,5 +702,137 @@ describe("c4 · sem critério declarado: simulação, e a apropriação bloquead
 
     const r = await apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA });
     expect(r.empenhados).toBe(2);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// c5 · A NUMERAÇÃO DO EMPENHO — duas folhas, mesma competência, mesmo grupo
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("c5 · a colisão do número do empenho entre folhas de tipos diferentes", () => {
+  /**
+   * ═══ ⚠️ O DEFEITO ERA SILENCIOSO, E É POR ISSO QUE ELE DUROU ═══
+   *
+   * `numeroDoEmpenhoDaFolha` não carregava o tipo da folha. Um grupo que empenhe o VENCIMENTO e a
+   * rubrica do ADIANTAMENTO DO 13º juntos — mesma ficha, mesmas contas patrimoniais, que é um
+   * cadastro plausível — fazia a MENSAL de 2026-06 e o ADIANTAMENTO de 2026-06 produzirem o MESMO
+   * `FP/2026-06/MAT-A`. A segunda apropriação encontrava o empenho da primeira, contava
+   * `jaExistiam` e **pulava**: a folha ficava apropriada com ZERO empenhos, os totais fechavam, o
+   * atesto descrevia a distribuição certa, e nenhuma etapa adiante acusava.
+   *
+   * ⚠️ O QUE SE AFIRMA É O EFEITO, NUNCA O FORMATO: que o empenho da SEGUNDA folha existe, com o
+   * VALOR DELA. Uma asserção sobre o texto do número acharia só o formato que ela conhece — e
+   * passaria verde num conserto que renomeasse sem empenhar.
+   *
+   * ⚠️ N=2 DE VERDADE: duas matrículas, com valores DIFERENTES nas duas folhas. Com uma só, um
+   * motor que empenhasse "o primeiro que achasse" passaria; com valores iguais, um que empenhasse
+   * o valor errado passaria também.
+   */
+  async function grupoQueMisturaMensalEAdiantamento(): Promise<void> {
+    await cadastrarGrupoDeEmpenhoDaFolha(prisma, {
+      codigo: "FP-TUDO", descricao: "Pessoal — vencimento e adiantamento do 13o", fichaId: FICHA,
+      categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FP",
+      porServidor: true, ...CONTAS, rubricaIds: [ids["VENC"]!, ids["D13ADI"]!], criadoPor: PREPARA,
+    });
+  }
+
+  it("ACUSA: a MENSAL e o ADIANTAMENTO da mesma competência empenham os DOIS, cada um com o seu valor", async () => {
+    await grupoQueMisturaMensalEAdiantamento();
+    await parametro({ estadoMinimoDoAdiantamentoParaAbater: "FECHADO" });
+
+    // ── a MENSAL de 2026-06: VENC 3.000,00 para cada uma das duas ──
+    const { folhaId: mensal } = await abrirFolha(prisma, { competencia: "2026-06", tipo: "MENSAL", criadoPor: PREPARA });
+    await calcularFolha(prisma, { folhaId: mensal, criadoPor: PREPARA });
+    await fecharFolha(prisma, { folhaId: mensal, criadoPor: FECHA });
+    const rMensal = await apropriarFolha(prisma, { folhaId: mensal, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA });
+    expect(rMensal.empenhados).toBe(2);
+
+    // ── o ADIANTAMENTO de 2026-06, mesma competência, mesmo grupo, mesmas matrículas ──
+    // MAT-A: 12 avos → 3.000,00 × 12/12 × 50% = 1.500,00
+    // MAT-B:  9 avos → 3.000,00 ×  9/12 × 50% = 1.125,00
+    const adi = await adiantamentoFechado();
+    const rAdi = await apropriarFolha(prisma, { folhaId: adi, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA });
+
+    // ⚠️ O EFEITO, E SÓ ELE: os dois empenhos da segunda folha EXISTEM e NÃO foram "reconhecidos"
+    // como já existentes. Antes do conserto isto era `empenhados: 0, jaExistiam: 2`.
+    expect(rAdi.empenhados).toBe(2);
+    expect(rAdi.jaExistiam).toBe(0);
+
+    // e cada folha tem os SEUS dois empenhos, com os SEUS valores — lidos do banco, pelo elo
+    const doAdiantamento = await prisma.empenhoDaFolha.findMany({
+      where: { apropriacao: { folhaId: adi } },
+      orderBy: { vinculo: { matricula: "asc" } },
+      select: { valor: true, vinculo: { select: { matricula: true } } },
+    });
+    expect(doAdiantamento.map((e) => `${e.vinculo?.matricula}=${e.valor.toFixed(2)}`)).toEqual(["MAT-A=1500.00", "MAT-B=1125.00"]);
+
+    const daMensal = await prisma.empenhoDaFolha.findMany({
+      where: { apropriacao: { folhaId: mensal } },
+      orderBy: { vinculo: { matricula: "asc" } },
+      select: { valor: true, vinculo: { select: { matricula: true } } },
+    });
+    expect(daMensal.map((e) => `${e.vinculo?.matricula}=${e.valor.toFixed(2)}`)).toEqual(["MAT-A=3000.00", "MAT-B=3000.00"]);
+
+    // ⚠️ E OS QUATRO EMPENHOS SÃO QUATRO OBJETOS DISTINTOS. Sem esta asserção, um conserto que
+    // fizesse as duas folhas apontarem para o MESMO empenho passaria nas de cima.
+    const empenhos = await prisma.empenhoDaFolha.findMany({ select: { empenhoId: true } });
+    expect(new Set(empenhos.map((e) => e.empenhoId)).size).toBe(4);
+  });
+
+  /**
+   * ⚠️ A RETOMADA CONTINUA IDEMPOTENTE — e para os DOIS tipos. Reexecutar a apropriação não pode
+   * empenhar de novo: é o `@@unique([fichaId, numero])` mais o reconhecimento, e é o que o
+   * operador faz quando a primeira tentativa morreu no meio.
+   */
+  it("REPETIÇÃO: reexecutar a apropriação das duas folhas reconhece tudo e não empenha nada de novo", async () => {
+    await grupoQueMisturaMensalEAdiantamento();
+    await parametro({ estadoMinimoDoAdiantamentoParaAbater: "FECHADO" });
+
+    const { folhaId: mensal } = await abrirFolha(prisma, { competencia: "2026-06", tipo: "MENSAL", criadoPor: PREPARA });
+    await calcularFolha(prisma, { folhaId: mensal, criadoPor: PREPARA });
+    await fecharFolha(prisma, { folhaId: mensal, criadoPor: FECHA });
+    await apropriarFolha(prisma, { folhaId: mensal, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA });
+    const adi = await adiantamentoFechado();
+    await apropriarFolha(prisma, { folhaId: adi, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA });
+
+    const deNovoMensal = await apropriarFolha(prisma, { folhaId: mensal, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA });
+    const deNovoAdi = await apropriarFolha(prisma, { folhaId: adi, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA });
+    expect([deNovoMensal.empenhados, deNovoMensal.jaExistiam]).toEqual([0, 2]);
+    expect([deNovoAdi.empenhados, deNovoAdi.jaExistiam]).toEqual([0, 2]);
+    expect(await prisma.empenho.count()).toBe(4);
+  });
+
+  /**
+   * ═══ ⚠️ A COMPATIBILIDADE PARA TRÁS, QUE É A METADE QUE TORNA A MUDANÇA SEGURA ═══
+   *
+   * Uma folha de 13º apropriada ANTES desta mudança tem empenhos gravados com o número LEGADO,
+   * sem o segmento do tipo. A reexecução tem de RECONHECÊ-LOS — senão empenharia tudo de novo e
+   * duplicaria a despesa de quem só quis retomar. Idempotência que quebra para trás é pior que a
+   * colisão que a mudança conserta.
+   *
+   * O legado é fabricado aqui pelo caminho de dentro, porque o código novo não o produz mais —
+   * é o mesmo motivo de `congelarComoAntesDaGuarda`: um estado que só dado antigo alcança se
+   * constrói pelo banco, com o nome dizendo o que é.
+   */
+  it("o número LEGADO de uma apropriação anterior é reconhecido, e nada é empenhado duas vezes", async () => {
+    await grupoDoAdiantamento(true);
+    await parametro({ estadoMinimoDoAdiantamentoParaAbater: "FECHADO" });
+    const adi = await adiantamentoFechado();
+    await apropriarFolha(prisma, { folhaId: adi, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA });
+    expect(await prisma.empenho.count()).toBe(2);
+
+    // reescreve os dois números para a forma ANTERIOR à V11 V9.3 (sem o segmento do tipo)
+    const elos = await prisma.empenhoDaFolha.findMany({ select: { empenhoId: true, vinculo: { select: { matricula: true } } } });
+    for (const e of elos) {
+      await prisma.empenho.update({
+        where: { id: e.empenhoId },
+        data: { numero: `FPA/2026-06/${e.vinculo?.matricula ?? ""}` },
+      });
+    }
+
+    // ⚠️ REEXECUTA: tem de reconhecer os dois pelo ELO, não empenhar nenhum, e não criar Empenho novo
+    const r = await apropriarFolha(prisma, { folhaId: adi, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA });
+    expect([r.empenhados, r.jaExistiam]).toEqual([0, 2]);
+    expect(await prisma.empenho.count()).toBe(2);
   });
 });
