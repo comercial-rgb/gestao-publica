@@ -12,6 +12,7 @@ import {
 import {
   admitirServidor,
   cadastrarCargo,
+  cadastrarFuncao,
   cadastrarLotacao,
   cadastrarServidor,
   desligarServidor,
@@ -373,4 +374,101 @@ describe("(D) a consulta é autorizada no servidor por CONSULTAR_PESSOAL", () =>
     // `PESSOAL-RECUSA-DO-TETO-SEM-PERCURSO`, nomeada no MODULO.md do M32 e NÃO executada.
   });
 
+});
+
+/**
+ * ═══ (F) OS DOIS EIXOS QUE FALTAVAM — função e centro de custo (V11 V9.4) ═══
+ *
+ * ⚠️ ESTE BLOCO EXISTE PARA FECHAR UMA VACUIDADE QUE NÃO SE VÊ. Um filtro que **nunca acha nada**
+ * é indistinguível de um filtro **correto sobre dado ausente** — e o dado É ausente hoje, porque
+ * `centroDeCustoId` nasceu nulo em todo vínculo anterior à migration
+ * (`VINCULOS-ANTERIORES-SEM-CENTRO-DE-CUSTO`). Um teste que só afirmasse a lista vazia passaria
+ * com a coluna esquecida no `select` da porta, que é exatamente o defeito que ronda aqui.
+ *
+ * Por isso **toda asserção negativa deste bloco vem com a positiva ao lado**: primeiro se prova que
+ * o eixo ENCONTRA alguém, e só então que ele exclui quem deve.
+ */
+describe("(F) função e centro de custo pela porta — e o filtro ENCONTRA antes de excluir", () => {
+  let diretora = "";
+  let motorista = "";
+  let fgDirecao = "";
+
+  beforeEach(async () => {
+    await base();
+    await prisma.orgao.create({ data: { id: "o1", codigo: "01", nome: "Prefeitura" } });
+    await prisma.unidadeOrcamentaria.createMany({
+      data: [
+        { id: "uo-e", codigo: "01001", descricao: "Educacao", orgaoId: "o1" },
+        { id: "uo-s", codigo: "01002", descricao: "Saude", orgaoId: "o1" },
+      ],
+    });
+    await prisma.setor.createMany({
+      data: [
+        { id: "cc-edu", codigo: "CC-EDU", nome: "Centro de custo Educacao", unidadeOrcId: "uo-e", criadoPor: POR },
+        { id: "cc-sau", codigo: "CC-SAU", nome: "Centro de custo Saude", unidadeOrcId: "uo-s", criadoPor: POR },
+      ],
+    });
+    fgDirecao = (await cadastrarFuncao(prisma, { codigo: "FG-DIR", denominacao: "Direcao de Escola", leiAutorizativa: "Lei 2.000/2015", dataPublicacaoLei: D(2015, 3, 1), criadoPor: POR })).funcaoId;
+    await cadastrarFuncao(prisma, { codigo: "FG-COORD", denominacao: "Coordenacao Pedagogica", leiAutorizativa: "Lei 2.000/2015", dataPublicacaoLei: D(2015, 3, 1), criadoPor: POR });
+
+    const p1 = await pessoaFisica("11144477735", "Ana Carolina Ribeiro");
+    diretora = (await cadastrarServidor(prisma, { pessoaId: p1, dataNascimento: D(1985, 7, 20), sexo: "FEMININO", criadoPor: POR })).servidorId;
+    const v1 = await admitirServidor(prisma, { servidorId: diretora, matricula: "1001", tipo: "EFETIVO", regimeJuridico: "Estatutario", regimePrevidenciario: "RPPS", dataAdmissao: D(2020, 3, 1), cargoId: cargoProfessor, lotacaoId: lotEscola, salarioBase: "3000.00", criadoPor: POR });
+    await registrarMovimentacao(prisma, { vinculoId: v1.vinculoId, tipo: "DESIGNACAO_FUNCAO", data: D(2022, 3, 1), motivo: "Portaria 10/2022", funcaoId: fgDirecao, criadoPor: POR });
+    await registrarMovimentacao(prisma, { vinculoId: v1.vinculoId, tipo: "MUDANCA_CENTRO_DE_CUSTO", data: D(2022, 3, 1), motivo: "apropriacao", centroDeCustoId: "cc-edu", criadoPor: POR });
+    await registrarMovimentacao(prisma, { vinculoId: v1.vinculoId, tipo: "DISPENSA_FUNCAO", data: D(2024, 6, 30), motivo: "Portaria 40/2024", criadoPor: POR });
+
+    const p2 = await pessoaFisica("52998224725", "Joao Pedro Alves");
+    motorista = (await cadastrarServidor(prisma, { pessoaId: p2, dataNascimento: D(1990, 2, 10), sexo: "MASCULINO", criadoPor: POR })).servidorId;
+    const v2 = await admitirServidor(prisma, { servidorId: motorista, matricula: "2001", tipo: "EFETIVO", regimeJuridico: "Estatutario", regimePrevidenciario: "RPPS", dataAdmissao: D(2021, 5, 10), cargoId: cargoMotorista, lotacaoId: lotGaragem, salarioBase: "3100.00", criadoPor: POR });
+    await registrarMovimentacao(prisma, { vinculoId: v2.vinculoId, tipo: "MUDANCA_CENTRO_DE_CUSTO", data: D(2021, 5, 10), motivo: "apropriacao", centroDeCustoId: "cc-sau", criadoPor: POR });
+  });
+
+  it("⚠️ O EIXO DA FUNÇÃO ENCONTRA — e só então se pode afirmar que ele exclui", async () => {
+    // POSITIVO primeiro: sem isto, os dois negativos abaixo passariam com a coluna esquecida.
+    const achou = await listarServidoresPara(leitor, consulta({ funcao: "FG-DIR", dataRef: "2023-08-01" }));
+    expect(achou.linhas.map((l) => l.id)).toEqual([diretora]);
+    expect(achou.total).toBe(1);
+
+    // NEGATIVO 1 — depois da dispensa ela não exerce mais.
+    expect((await listarServidoresPara(leitor, consulta({ funcao: "FG-DIR", dataRef: "2025-01-01" }))).linhas).toEqual([]);
+    // NEGATIVO 2 — quem nunca exerceu não entra numa busca por função.
+    expect((await listarServidoresPara(leitor, consulta({ funcao: "FG-COORD", dataRef: "2023-08-01" }))).linhas).toEqual([]);
+  });
+
+  it("⚠️ A COLUNA DERIVA NA MESMA DATA DO FILTRO — mostrar a de hoje seria mentir na célula", async () => {
+    const em2023 = await listarServidoresPara(leitor, consulta({ matricula: "1001", dataRef: "2023-08-01" }));
+    expect(em2023.linhas[0]?.funcao).toContain("FG-DIR");
+    expect(em2023.linhas[0]?.centroDeCusto).toContain("CC-EDU");
+
+    // Depois da dispensa a MESMA linha, na MESMA consulta, diz que não há função.
+    const em2025 = await listarServidoresPara(leitor, consulta({ matricula: "1001", dataRef: "2025-01-01" }));
+    expect(em2025.linhas[0]?.funcao).toBe("—");
+    expect(em2025.linhas[0]?.centroDeCusto).toContain("CC-EDU");
+  });
+
+  it("o eixo do centro de custo separa os dois — e é o SETOR do M21, não a lotação", async () => {
+    expect((await listarServidoresPara(leitor, consulta({ centroDeCusto: "CC-EDU", dataRef: "2023-08-01" }))).linhas.map((l) => l.id)).toEqual([diretora]);
+    expect((await listarServidoresPara(leitor, consulta({ centroDeCusto: "CC-SAU", dataRef: "2023-08-01" }))).linhas.map((l) => l.id)).toEqual([motorista]);
+  });
+
+  it("⚠️ TERMO QUE NÃO CASA COM NENHUM CADASTRO DEVOLVE VAZIO, não o ente inteiro", async () => {
+    // `[]` lido como 'sem filtro' é o modo mais discreto de um filtro deixar de filtrar.
+    const r = await listarServidoresPara(leitor, consulta({ funcao: "NAO-EXISTE", dataRef: "2023-08-01" }));
+    expect(r.linhas).toEqual([]);
+    expect(r.total).toBe(0);
+  });
+
+  it("⚠️ OS DOIS EIXOS SE CONJUGAM SOBRE UM MESMO VÍNCULO — 'diretora E custo da Saúde' é VAZIO", async () => {
+    const cruzado = await listarServidoresPara(leitor, consulta({ funcao: "FG-DIR", centroDeCusto: "CC-SAU", dataRef: "2023-08-01" }));
+    expect(cruzado.linhas).toEqual([]);
+    // E a conjugação coerente sai, pela matrícula certa.
+    expect((await listarServidoresPara(leitor, consulta({ funcao: "FG-DIR", centroDeCusto: "CC-EDU", dataRef: "2023-08-01" }))).linhas.map((l) => l.id)).toEqual([diretora]);
+  });
+
+  it("a consulta com os eixos novos continua cobrando CONSULTAR_PESSOAL, pelo MOTIVO", async () => {
+    const semCracha = await usuarioCom("sem.consulta.funcao@teste.local", ["CADASTRAR_CARGO"]);
+    await expect(listarServidoresPara(semCracha, consulta({ funcao: "FG-DIR" }))).rejects.toBeInstanceOf(EscopoDeLeituraError);
+    await expect(listarServidoresPara(semCracha, consulta({ funcao: "FG-DIR" }))).rejects.toThrow(/CONSULTAR_PESSOAL/);
+  });
 });

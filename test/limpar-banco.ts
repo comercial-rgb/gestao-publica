@@ -401,6 +401,11 @@ export const TABELAS = [
   "CalendarioRh",
   "Lotacao",
   "Cargo",
+  // ⚠️ V11 V9.4 — a FUNÇÃO DE PESSOAL (TR 5.12.50). A ausência dela aqui NÃO dá erro de
+  // compilação nem de schema: dá um segundo teste que falha por `codigo` duplicado, porque a
+  // fixture do primeiro sobreviveu ao `beforeEach`. Foi assim que ela foi descoberta — doze
+  // testes vermelhos num arquivo cujo primeiro caso passava.
+  "FuncaoDePessoal",
   "LancamentoExtrato",
   "ExtratoBancario",
   // M07 — extraorçamentário
