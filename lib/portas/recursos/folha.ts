@@ -45,6 +45,7 @@ const OPCOES_DE_TIPO_DE_RUBRICA = [
  */
 export const OPCOES_DE_TIPO_DE_FOLHA = [
   { valor: "MENSAL", rotulo: "Mensal" },
+  { valor: "MENSAL_COMPLEMENTAR", rotulo: "Mensal complementar (paga a diferença de uma competência já fechada)" },
   { valor: "ADIANTAMENTO_DECIMO_TERCEIRO", rotulo: "Adiantamento do 13º (1ª parcela)" },
   { valor: "DECIMO_TERCEIRO", rotulo: "13º salário (2ª parcela, com abatimento da 1ª)" },
 ];
@@ -91,7 +92,10 @@ export const FOLHAS: DefinicaoDeRecurso = definirRecurso({
       opcoes: [...OPCOES_DE_TIPO_DE_FOLHA],
       ajuda:
         "As duas folhas de 13º medem por AVO do exercício, não por dia do mês, e exigem o parâmetro do " +
-        "exercício cadastrado. Só existe uma de cada por ano; a de 13º abate automaticamente o adiantamento.",
+        "exercício cadastrado. Só existe uma de cada por ano; a de 13º abate automaticamente o adiantamento. " +
+        "A MENSAL COMPLEMENTAR recalcula uma competência cuja mensal já foi fechada e paga só a DIFERENÇA, " +
+        "rubrica a rubrica: ela não reabre nem corrige a folha original, e recusa quando o correto é menor " +
+        "que o já pago.",
     },
   ],
   colunas: [

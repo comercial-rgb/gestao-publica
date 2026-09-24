@@ -264,6 +264,16 @@ enum TipoDeFolha {
   ADIANTAMENTO_DECIMO_TERCEIRO
   /// V11 V9.1 — o 13º integral, do qual a 1ª parcela já paga é ABATIDA.
   DECIMO_TERCEIRO
+  /// ⚠️ V11 V9.4 — A FOLHA MENSAL COMPLEMENTAR (TR 5.12.50): "pagar o que faltou" numa
+  /// competência cuja mensal JÁ FECHOU. Ela NÃO é a retificação: não reabre, não corrige e não
+  /// substitui nada — recalcula a competência com o cadastro de hoje e paga a DIFERENÇA, rubrica
+  /// a rubrica. Diferença negativa é RECUSA (reposição ao erário é ato que não existe aqui).
+  ///
+  /// ⚠️ ELA É POR COMPETÊNCIA, e é por isso que `exercicio` fica NULO nela. Quem diz isso não é
+  /// este comentário: é `NATUREZA_DO_TIPO_DE_FOLHA` (`modules/m33-folha/dominio.ts`), um
+  /// `Record<TipoDeFolha, ...>` exaustivo que NÃO COMPILA enquanto um tipo novo não for
+  /// classificado, e o CHECK `ck_folha_exercicio_por_tipo` escrito a partir dele.
+  MENSAL_COMPLEMENTAR
 }
 
 /// A folha de uma competência e tipo. A situação é DERIVADA: sem cálculo / calculada / fechada.
@@ -304,6 +314,14 @@ model FolhaDePagamento {
   /// V6.2 — as apurações dos encargos do empregador (fatos próprios, numerados por cálculo).
   apuracoesDeEncargos ApuracaoDeEncargos[]
 
+  /// ⚠️ V11 V9.4 — UMA folha de cada tipo por competência, e para a MENSAL COMPLEMENTAR isso é
+  /// decisão de produto PENDENTE, não desenho fechado: um ente que descubra uma segunda coisa
+  /// depois de a complementar já ter FECHADO não tem por onde pagá-la. Enquanto a complementar
+  /// está ABERTA, recalcular já absorve qualquer achado novo — o delta é sempre "o correto menos
+  /// TUDO o que já foi apurado na competência", então o segundo achado entra no cálculo seguinte
+  /// sem folha nova. Fica nomeado como `SEGUNDA-COMPLEMENTAR-NA-MESMA-COMPETENCIA` no MODULO do
+  /// M33, com a evidência levantada; numerar a complementar exigiria trocar este índice e dar um
+  /// segmento novo ao número do empenho, que é chave de negócio.
   @@unique([competencia, tipo])
   /// V11 V9.1 — UM adiantamento e UM 13º por exercício. A folha de DIFERENÇA de 13º (5.12.50)
   /// não existe neste sistema e está declarada ausente; se vier, é tipo novo, não uma segunda

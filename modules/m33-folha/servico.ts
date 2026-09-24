@@ -28,7 +28,9 @@ import {
   conferirFaixas,
   diasComputados,
   escolherVigente,
+  exercicioDaFolha,
   imposicoesDaPessoa,
+  TIPOS_QUE_COMPOEM_A_REMUNERACAO_MENSAL,
   sha256Canonico,
   zAbrirFolhaInput,
   zCadastrarRubricaInput,
@@ -57,7 +59,15 @@ import {
   type TabelaDeContribuicaoLida,
   type TabelaIrrfLida,
   type TabelaSalarioFamiliaLida,
+  type TipoDeFolha,
 } from "./dominio.js";
+import {
+  calcularContrachequeComplementar,
+  VERSAO_DO_MOTOR_COMPLEMENTAR,
+  type ApuracaoAnteriorDaRubrica,
+  type ContrachequeComplementar,
+  type IdentidadeDaRubrica,
+} from "./complementar.js";
 import { escolherVersaoVigente, type VersaoLida } from "./rubrica-versionada.js";
 import {
   avosDoExercicio,
@@ -253,7 +263,14 @@ export async function abrirFolha(prisma: PrismaClient, input: AbrirFolhaInput): 
      * novo, porque entre abrir e calcular alguém pode ter aberto o adiantamento que aqui não
      * existia.
      */
-    const exercicio = d.tipo === "MENSAL" ? null : Number(d.competencia.slice(0, 4));
+    /**
+     * ⚠️ V11 V9.4 — O EXERCÍCIO SAI DA CLASSIFICAÇÃO DO TIPO, não de uma comparação com `MENSAL`.
+     * Isto era `d.tipo === "MENSAL" ? null : ...` — enumerava UM exemplar, e a mensal COMPLEMENTAR
+     * teria nascido com exercício preenchido (coerente com o CHECK antigo e errada, porque ela
+     * recorre dentro do ano). `exercicioDaFolha` e o CHECK `ck_folha_exercicio_por_tipo` derivam
+     * agora da MESMA declaração, `NATUREZA_DO_TIPO_DE_FOLHA`.
+     */
+    const exercicio = exercicioDaFolha(d.tipo, d.competencia);
     let folhaDoAdiantamentoId: string | null = null;
     if (d.tipo === "DECIMO_TERCEIRO") {
       const adiantamento = await tx.folhaDePagamento.findFirst({
@@ -361,6 +378,107 @@ async function resolvedorDeRubricas(tx: Tx, competencia: string): Promise<(regim
   };
 }
 
+/**
+ * ═══ OS CONTRACHEQUES MENSAIS DE UMA COMPETÊNCIA — o motor mensal inteiro, sem gravar nada ═══
+ *
+ * ⚠️ ISTO SAIU DE DENTRO DE `calcularFolha` NA V11 V9.4, e a razão é a mesma que tirou
+ * `resolvedorDeRubricas` de lá na V11 V9.1: a folha mensal COMPLEMENTAR precisa EXATAMENTE deste
+ * cálculo, e de mais nada. Ela é a diferença entre o que este motor diz hoje e o que já foi
+ * apurado — se a conta do "correto" fosse escrita de novo no caminho da complementar, as duas
+ * divergiriam e cada uma teria o seu teste verde. É o defeito que a V8.16 custou com
+ * `listarTiposConsignacao`.
+ *
+ * ⚠️ NENHUM `where` DE VÍNCULO AQUI, e a ausência é a garantia por construção de "todos os
+ * vínculos vivos na competência" (ver o aviso do MODULO sobre o filtro de funcionários). O único
+ * recorte é temporal.
+ */
+async function contrachequesMensaisDaCompetencia(
+  tx: Tx,
+  competencia: string
+): Promise<{ readonly finais: readonly ContrachequeCalculado[]; readonly matriculaPorVinculo: ReadonlyMap<string, string> }> {
+  const { inicio, fim } = bordasDaCompetencia(competencia);
+
+  const tabelas = await lerTabelas(tx, competencia);
+  const rubricasDoRegime = await resolvedorDeRubricas(tx, competencia);
+
+  const vinculos = await tx.vinculo.findMany({
+    select: {
+      id: true, matricula: true, dataAdmissao: true, regimePrevidenciario: true, servidorId: true,
+      servidor: { select: { dataNascimento: true, dependentes: { select: { id: true, nome: true, dataNascimento: true, invalidezPermanente: true, finalidades: { select: { finalidade: true, dataInicio: true, limiteIdadeAnos: true, dataBaixa: true, encerramento: { select: { dataEfeito: true } } } } } } } },
+      eventos: { select: { data: true, criadoEm: true, tipo: true, cargoId: true, lotacaoId: true, salarioBase: true, regimePrevidenciario: true, gratificacaoDescricao: true, gratificacaoValor: true } },
+      lancamentosDaFolha: { where: { competenciaInicio: { lte: competencia }, OR: [{ competenciaFim: null }, { competenciaFim: { gte: competencia } }] }, select: { id: true, rubricaId: true, tipo: true, valor: true } },
+    },
+    orderBy: { matricula: "asc" },
+  });
+
+  const entradas: EntradaDoContracheque[] = [];
+  for (const v of vinculos) {
+    const eventos = v.eventos.map(paraEvento);
+    const desligamento = dataDeDesligamento(eventos);
+    if (diaCivil(v.dataAdmissao) > diaCivil(fim)) continue;
+    if (desligamento !== null && diaCivil(desligamento) < diaCivil(inicio)) continue;
+    // ⚠️ O REGIME É DERIVADO NA COMPETÊNCIA, não lido da coluna: quem migrou ao RPPS em junho
+    // contribuiu ao RGPS em maio, e o recálculo de maio tem de aplicar a tabela de maio.
+    const regime = regimeVigenteEm(eventos, v.regimePrevidenciario as RegimePrevidenciario | null, fim);
+    if (regime === null) throw new VinculoSemRegimeError(v.matricula);
+    if (regime !== "ISENTO" && tabelas.contribuicao[regime] === null) {
+      throw new TabelaAusenteError("CONTRIBUICAO", competencia, `regime ${regime}, exigido pela matrícula ${v.matricula}`);
+    }
+    const dependentesSf: DependenteParaSalarioFamilia[] = v.servidor.dependentes.map((dep) => ({
+      id: dep.id, nome: dep.nome, dataNascimento: dep.dataNascimento, invalidezPermanente: dep.invalidezPermanente,
+      finalidadeVigente: dep.finalidades.some((f) => f.finalidade === "SALARIO_FAMILIA" && f.dataInicio.getTime() <= fim.getTime() && (baixaEfetiva(f) === null || (baixaEfetiva(f) as Date).getTime() > inicio.getTime())),
+    })).filter((dep) => v.servidor.dependentes.find((x) => x.id === dep.id)?.finalidades.some((f) => f.finalidade === "SALARIO_FAMILIA") === true);
+    const dependentesIr = v.servidor.dependentes.filter((dep) => dep.finalidades.some((f) => f.finalidade === "IMPOSTO_RENDA" && dependenteValeEm({ dataNascimento: dep.dataNascimento, invalidezPermanente: dep.invalidezPermanente, dataInicio: f.dataInicio, limiteIdadeAnos: f.limiteIdadeAnos, dataBaixa: baixaEfetiva(f) }, fim))).length;
+    entradas.push({
+      competencia,
+      vinculo: { id: v.id, matricula: v.matricula, regime, dataNascimento: v.servidor.dataNascimento },
+      vencimentoBase: salarioBaseVigenteEm(eventos, fim),
+      gratificacoes: gratificacoesVigentesEm(v.eventos.map((e) => ({ ...paraEvento(e), gratificacaoDescricao: e.gratificacaoDescricao, gratificacaoValor: e.gratificacaoValor === null ? null : toMoney(e.gratificacaoValor) })), fim).map((g) => ({ descricao: g.descricao, valor: g.valor })),
+      dias: diasComputados({ dataAdmissao: v.dataAdmissao, dataDesligamento: desligamento, afastamentos: afastamentosDe(eventos) }, competencia),
+      lancamentos: v.lancamentosDaFolha.map((l) => ({ id: l.id, rubricaId: l.rubricaId, tipo: l.tipo as "FIXO" | "VARIAVEL", valor: toMoney(l.valor) })),
+      dependentesSalarioFamilia: dependentesSf,
+      dependentesIr,
+      pensaoAlimenticia: toMoney(0),
+      rubricas: rubricasDoRegime(regime),
+      tabelas: { contribuicao: regime === "ISENTO" ? null : tabelas.contribuicao[regime], irrf: tabelas.irrf, salarioFamilia: tabelas.salarioFamilia },
+    });
+  }
+  if (entradas.length === 0) throw new Error(`FOLHA-SEM-VINCULOS: nenhum vínculo vivo em ${competencia}. Nada foi calculado.`);
+
+  // passo 1 — cada um sozinho
+  const primeiro = new Map<string, ContrachequeCalculado>();
+  for (const e of entradas) primeiro.set(e.vinculo.id, calcularContracheque(e));
+
+  // passo 2 — a mesma pessoa com mais de uma matrícula
+  const porServidor = new Map<string, typeof vinculos>();
+  for (const v of vinculos) {
+    if (!primeiro.has(v.id)) continue;
+    porServidor.set(v.servidorId, [...(porServidor.get(v.servidorId) ?? []), v]);
+  }
+  const imposicoes = new Map<string, ImposicoesDaPessoa>();
+  for (const [, vs] of porServidor) {
+    if (vs.length < 2) continue;
+    const e0 = entradas.find((e) => e.vinculo.id === vs[0]!.id)!;
+    const regimes = vs.map((v) => v.regimePrevidenciario as RegimePrevidenciario);
+    const tabelaContrib = regimes.includes("RGPS") ? tabelas.contribuicao.RGPS : null;
+    const imp = imposicoesDaPessoa({
+      competencia,
+      vinculos: vs.map((v) => { const c = primeiro.get(v.id)!; return { id: v.id, matricula: v.matricula, regime: v.regimePrevidenciario as RegimePrevidenciario, baseContribuicao: c.contribuicao.baseAntesDoTeto, contribuicaoSozinho: c.totais.contribuicao, rendaTributavel: c.irrf.rendaTributavel }; }),
+      dataNascimento: e0.vinculo.dataNascimento,
+      dependentesIr: e0.dependentesIr,
+      pensaoAlimenticia: e0.pensaoAlimenticia,
+      tabelas: { contribuicao: tabelaContrib, irrf: tabelas.irrf },
+    });
+    for (const [k, v] of imp) imposicoes.set(k, v);
+  }
+  const finais: ContrachequeCalculado[] = entradas.map((e) => {
+    const imp = imposicoes.get(e.vinculo.id);
+    return imp === undefined ? primeiro.get(e.vinculo.id)! : calcularContracheque({ ...e, imposicoes: imp });
+  });
+
+  return { finais, matriculaPorVinculo: new Map(vinculos.map((v) => [v.id, v.matricula])) };
+}
+
 export interface ResultadoDoCalculo {
   readonly calculoId: string;
   readonly numero: number;
@@ -384,92 +502,43 @@ export async function calcularFolha(prisma: PrismaClient, input: CalcularFolhaIn
     const folha = await tx.folhaDePagamento.findUnique({ where: { id: d.folhaId }, select: { id: true, competencia: true, tipo: true, exercicio: true, folhaDoAdiantamentoId: true, fechamento: { select: { id: true, calculo: { select: { numero: true } } } }, calculos: { select: { numero: true }, orderBy: { numero: "desc" }, take: 1 } } });
     if (folha === null) throw new Error(`Folha ${d.folhaId} não existe. Nada foi calculado.`);
     if (folha.fechamento !== null) throw new Error(`FOLHA-FECHADA: a folha ${folha.tipo} de ${folha.competencia} foi fechada sobre o cálculo nº ${folha.fechamento.calculo.numero}; não se recalcula. Nada foi calculado.`);
-    // V11 V9.1 — as duas folhas de 13º têm outro motor: a medida é o avo do exercício, não o dia
-    // do mês. Tudo o mais (numeração do cálculo, cancelamento, fechamento, atesto, empenho) é o
-    // mesmo, porque opera sobre `CalculoDaFolha` e `Contracheque`, que não mudaram.
-    if (folha.tipo !== "MENSAL") {
-      return calcularFolhaDoDecimoTerceiroNaTx(tx, folha, d.motivo ?? null, d.criadoPor);
+    /**
+     * ═══ QUAL MOTOR CALCULA ESTA FOLHA — e a escolha é EXAUSTIVA, não um `!== "MENSAL"` ═══
+     *
+     * ⚠️ ISTO ERA `if (folha.tipo !== "MENSAL") return <motor do 13º>`, e era a MESMA forma errada
+     * do CHECK que a V11 V9.4 substituiu: enumerava um exemplar e jogava todo o resto no `!==`.
+     * Com ela, a folha mensal COMPLEMENTAR teria caído no motor do 13º — que exigiria o parâmetro
+     * do exercício e recusaria com `PARAMETRO-DO-13-AUSENTE`, uma mensagem que não tem nada a ver
+     * com o que o operador pediu.
+     *
+     * ⚠️ O `never` DO `default` É A IMPOSSIBILIDADE: um valor novo em `TipoDeFolha` faz este
+     * arquivo DEIXAR DE COMPILAR até ganhar motor. E o `throw` continua ali para o caso que o
+     * compilador não alcança — um valor que chegue do BANCO sem estar no enum do TypeScript —,
+     * fail-closed, em vez de escorregar para o motor mensal e calcular a folha errada em silêncio.
+     */
+    const tipoDaFolha = folha.tipo as TipoDeFolha;
+    switch (tipoDaFolha) {
+      case "ADIANTAMENTO_DECIMO_TERCEIRO":
+      case "DECIMO_TERCEIRO":
+        // V11 V9.1 — as duas folhas de 13º têm outro motor: a medida é o avo do exercício, não o
+        // dia do mês. Tudo o mais (numeração do cálculo, cancelamento, fechamento, atesto,
+        // empenho) é o mesmo, porque opera sobre `CalculoDaFolha` e `Contracheque`.
+        return calcularFolhaDoDecimoTerceiroNaTx(tx, folha, d.motivo ?? null, d.criadoPor);
+      case "MENSAL_COMPLEMENTAR":
+        // V11 V9.4 — o motor MENSAL inteiro, menos o que já foi apurado nesta competência.
+        return calcularFolhaComplementarNaTx(tx, folha, d.motivo ?? null, d.criadoPor);
+      case "MENSAL":
+        break;
+      default: {
+        const semMotor: never = tipoDaFolha;
+        throw new Error(
+          `TIPO-DE-FOLHA-SEM-MOTOR: a folha ${String(semMotor)} de ${folha.competencia} é de um tipo ` +
+            `que este motor não sabe calcular. Nada foi calculado.`
+        );
+      }
     }
     const competencia = folha.competencia;
-    const { inicio, fim } = bordasDaCompetencia(competencia);
-
-    const tabelas = await lerTabelas(tx, competencia);
-    const rubricasDoRegime = await resolvedorDeRubricas(tx, competencia);
-
-    const vinculos = await tx.vinculo.findMany({
-      select: {
-        id: true, matricula: true, dataAdmissao: true, regimePrevidenciario: true, servidorId: true,
-        servidor: { select: { dataNascimento: true, dependentes: { select: { id: true, nome: true, dataNascimento: true, invalidezPermanente: true, finalidades: { select: { finalidade: true, dataInicio: true, limiteIdadeAnos: true, dataBaixa: true, encerramento: { select: { dataEfeito: true } } } } } } } },
-        eventos: { select: { data: true, criadoEm: true, tipo: true, cargoId: true, lotacaoId: true, salarioBase: true, regimePrevidenciario: true, gratificacaoDescricao: true, gratificacaoValor: true } },
-        lancamentosDaFolha: { where: { competenciaInicio: { lte: competencia }, OR: [{ competenciaFim: null }, { competenciaFim: { gte: competencia } }] }, select: { id: true, rubricaId: true, tipo: true, valor: true } },
-      },
-      orderBy: { matricula: "asc" },
-    });
-
-    const entradas: EntradaDoContracheque[] = [];
-    for (const v of vinculos) {
-      const eventos = v.eventos.map(paraEvento);
-      const desligamento = dataDeDesligamento(eventos);
-      if (diaCivil(v.dataAdmissao) > diaCivil(fim)) continue;
-      if (desligamento !== null && diaCivil(desligamento) < diaCivil(inicio)) continue;
-      // ⚠️ O REGIME É DERIVADO NA COMPETÊNCIA, não lido da coluna: quem migrou ao RPPS em junho
-      // contribuiu ao RGPS em maio, e o recálculo de maio tem de aplicar a tabela de maio.
-      const regime = regimeVigenteEm(eventos, v.regimePrevidenciario as RegimePrevidenciario | null, fim);
-      if (regime === null) throw new VinculoSemRegimeError(v.matricula);
-      if (regime !== "ISENTO" && tabelas.contribuicao[regime] === null) {
-        throw new TabelaAusenteError("CONTRIBUICAO", competencia, `regime ${regime}, exigido pela matrícula ${v.matricula}`);
-      }
-      const dependentesSf: DependenteParaSalarioFamilia[] = v.servidor.dependentes.map((dep) => ({
-        id: dep.id, nome: dep.nome, dataNascimento: dep.dataNascimento, invalidezPermanente: dep.invalidezPermanente,
-        finalidadeVigente: dep.finalidades.some((f) => f.finalidade === "SALARIO_FAMILIA" && f.dataInicio.getTime() <= fim.getTime() && (baixaEfetiva(f) === null || (baixaEfetiva(f) as Date).getTime() > inicio.getTime())),
-      })).filter((dep) => v.servidor.dependentes.find((x) => x.id === dep.id)?.finalidades.some((f) => f.finalidade === "SALARIO_FAMILIA") === true);
-      const dependentesIr = v.servidor.dependentes.filter((dep) => dep.finalidades.some((f) => f.finalidade === "IMPOSTO_RENDA" && dependenteValeEm({ dataNascimento: dep.dataNascimento, invalidezPermanente: dep.invalidezPermanente, dataInicio: f.dataInicio, limiteIdadeAnos: f.limiteIdadeAnos, dataBaixa: baixaEfetiva(f) }, fim))).length;
-      entradas.push({
-        competencia,
-        vinculo: { id: v.id, matricula: v.matricula, regime, dataNascimento: v.servidor.dataNascimento },
-        vencimentoBase: salarioBaseVigenteEm(eventos, fim),
-        gratificacoes: gratificacoesVigentesEm(v.eventos.map((e) => ({ ...paraEvento(e), gratificacaoDescricao: e.gratificacaoDescricao, gratificacaoValor: e.gratificacaoValor === null ? null : toMoney(e.gratificacaoValor) })), fim).map((g) => ({ descricao: g.descricao, valor: g.valor })),
-        dias: diasComputados({ dataAdmissao: v.dataAdmissao, dataDesligamento: desligamento, afastamentos: afastamentosDe(eventos) }, competencia),
-        lancamentos: v.lancamentosDaFolha.map((l) => ({ id: l.id, rubricaId: l.rubricaId, tipo: l.tipo as "FIXO" | "VARIAVEL", valor: toMoney(l.valor) })),
-        dependentesSalarioFamilia: dependentesSf,
-        dependentesIr,
-        pensaoAlimenticia: toMoney(0),
-        rubricas: rubricasDoRegime(regime),
-        tabelas: { contribuicao: regime === "ISENTO" ? null : tabelas.contribuicao[regime], irrf: tabelas.irrf, salarioFamilia: tabelas.salarioFamilia },
-      });
-    }
-    if (entradas.length === 0) throw new Error(`FOLHA-SEM-VINCULOS: nenhum vínculo vivo em ${competencia}. Nada foi calculado.`);
-
-    // passo 1 — cada um sozinho
-    const primeiro = new Map<string, ContrachequeCalculado>();
-    for (const e of entradas) primeiro.set(e.vinculo.id, calcularContracheque(e));
-
-    // passo 2 — a mesma pessoa com mais de uma matrícula
-    const porServidor = new Map<string, typeof vinculos>();
-    for (const v of vinculos) {
-      if (!primeiro.has(v.id)) continue;
-      porServidor.set(v.servidorId, [...(porServidor.get(v.servidorId) ?? []), v]);
-    }
-    const imposicoes = new Map<string, ImposicoesDaPessoa>();
-    for (const [, vs] of porServidor) {
-      if (vs.length < 2) continue;
-      const e0 = entradas.find((e) => e.vinculo.id === vs[0]!.id)!;
-      const regimes = vs.map((v) => v.regimePrevidenciario as RegimePrevidenciario);
-      const tabelaContrib = regimes.includes("RGPS") ? tabelas.contribuicao.RGPS : null;
-      const imp = imposicoesDaPessoa({
-        competencia,
-        vinculos: vs.map((v) => { const c = primeiro.get(v.id)!; return { id: v.id, matricula: v.matricula, regime: v.regimePrevidenciario as RegimePrevidenciario, baseContribuicao: c.contribuicao.baseAntesDoTeto, contribuicaoSozinho: c.totais.contribuicao, rendaTributavel: c.irrf.rendaTributavel }; }),
-        dataNascimento: e0.vinculo.dataNascimento,
-        dependentesIr: e0.dependentesIr,
-        pensaoAlimenticia: e0.pensaoAlimenticia,
-        tabelas: { contribuicao: tabelaContrib, irrf: tabelas.irrf },
-      });
-      for (const [k, v] of imp) imposicoes.set(k, v);
-    }
-    const finais: ContrachequeCalculado[] = entradas.map((e) => {
-      const imp = imposicoes.get(e.vinculo.id);
-      return imp === undefined ? primeiro.get(e.vinculo.id)! : calcularContracheque({ ...e, imposicoes: imp });
-    });
+    const { finais } = await contrachequesMensaisDaCompetencia(tx, competencia);
 
     // gravar
     const numero = (folha.calculos[0]?.numero ?? 0) + 1;
@@ -494,6 +563,213 @@ export async function calcularFolha(prisma: PrismaClient, input: CalcularFolhaIn
     }
     return { calculoId: calculo.id, numero, contracheques: finais.length, totalProventos, totalDescontos, totalLiquido, sha256 };
   }, { timeout: 120000 });
+}
+
+/**
+ * ═══ A FOLHA MENSAL COMPLEMENTAR — "pagar o que faltou" (V11 V9.4, TR 5.12.50) ═══
+ *
+ * ⚠️ NENHUMA CONTA NOVA. O "correto" sai de `contrachequesMensaisDaCompetencia`, que é o motor
+ * mensal inteiro — as mesmas tabelas vigentes, as mesmas versões de rubrica, a mesma
+ * proporcionalidade de dias, a mesma agregação por pessoa. O que este caminho acrescenta é a
+ * SUBTRAÇÃO, e ela é por rubrica (`complementar.ts`, domínio puro).
+ *
+ * ⚠️ O QUE ENTRA NO "JÁ APURADO" É DECLARADO, NÃO DEDUZIDO: as folhas FECHADAS desta competência
+ * cujo tipo `compoeARemuneracaoMensal` (`NATUREZA_DO_TIPO_DE_FOLHA`). A folha de ADIANTAMENTO do
+ * 13º de 2026-06 é uma folha DA competência 2026-06 e NÃO entra — somá-la faria a complementar de
+ * junho abater do salário metade do 13º do servidor, com os totais fechando.
+ *
+ * ⚠️ E SÓ CÁLCULO FECHADO CONTA — nunca o vivo, nunca o cancelado. É a mesma regra de
+ * `fecharFolha`: o que vale é o cálculo que FECHOU a folha. Ler um cálculo vivo faria a
+ * complementar subtrair um número que ainda pode mudar; ler um cancelado subtrairia o que ninguém
+ * deve.
+ */
+async function calcularFolhaComplementarNaTx(
+  tx: Tx,
+  folha: { readonly id: string; readonly competencia: string; readonly tipo: string; readonly calculos: readonly { readonly numero: number }[] },
+  motivo: string | null,
+  criadoPor: string
+): Promise<ResultadoDoCalculo> {
+  const competencia = folha.competencia;
+
+  // ── (1) o que já foi apurado nesta competência, e por qual folha ────────────
+  const daCompetencia = await tx.folhaDePagamento.findMany({
+    where: { competencia },
+    select: {
+      id: true,
+      tipo: true,
+      fechamento: { select: { calculoId: true, calculo: { select: { numero: true } } } },
+    },
+  });
+  const mensal = daCompetencia.find((f) => f.tipo === "MENSAL") ?? null;
+  /**
+   * ⚠️ SEM MENSAL FECHADA NÃO HÁ COMPLEMENTO — HÁ DUPLICAÇÃO. O delta é "o correto menos o já
+   * apurado"; com nada apurado, o delta é o valor INTEIRO, e a complementar pagaria a folha do mês
+   * de novo. Os totais fechariam, o empenho fecharia, a liquidação fecharia e nenhuma etapa
+   * adiante acusaria — que é a forma exata de defeito que este módulo já pagou três vezes.
+   *
+   * ⚠️ E A RECUSA É NA MENSAL ESPECIFICAMENTE, não em "alguma folha fechada": uma competência em
+   * que só houvesse uma complementar fechada é estado que este serviço nunca produz, e aceitá-lo
+   * seria aceitar um buraco que ninguém sabe como se abriu.
+   */
+  if (mensal === null || mensal.fechamento === null) {
+    throw new Error(
+      `MENSAL-NAO-FECHADA: a folha mensal de ${competencia} ` +
+        (mensal === null ? `não existe` : `existe (${mensal.id}) e ainda não foi fechada`) +
+        `. A folha COMPLEMENTAR paga a DIFERENÇA entre o correto e o que já foi apurado — sem a ` +
+        `mensal fechada não há o que completar, e o cálculo pagaria a competência INTEIRA uma ` +
+        `segunda vez, com os totais fechando e nada acusando adiante. ` +
+        (mensal === null
+          ? `Abra e feche a folha mensal de ${competencia} antes.`
+          : `Feche a folha mensal de ${competencia} antes; enquanto ela está aberta, o certo é corrigir NELA e recalcular.`) +
+        ` Nada foi calculado.`
+    );
+  }
+
+  const fechadasQueCompoem = daCompetencia.filter(
+    (f) =>
+      f.id !== folha.id &&
+      f.fechamento !== null &&
+      (TIPOS_QUE_COMPOEM_A_REMUNERACAO_MENSAL as readonly string[]).includes(f.tipo)
+  );
+  const fechamentoPorCalculo = new Map(
+    fechadasQueCompoem.map((f) => [f.fechamento!.calculoId, { tipo: f.tipo, numero: f.fechamento!.calculo.numero }])
+  );
+
+  const linhasApuradas = await tx.linhaDoContracheque.findMany({
+    where: { contracheque: { calculoId: { in: [...fechamentoPorCalculo.keys()] } } },
+    select: {
+      valor: true,
+      rubricaId: true,
+      contracheque: { select: { calculoId: true, vinculoId: true, vinculo: { select: { matricula: true } } } },
+    },
+  });
+
+  type ApuradoMutavel = { total: Money; parcelas: { folhaTipo: string; competencia: string; calculoNumero: number; valor: Money }[] };
+  const apuradoPorVinculo = new Map<string, Map<string, ApuradoMutavel>>();
+  const matriculaApurada = new Map<string, string>();
+  for (const l of linhasApuradas) {
+    const vinculoId = l.contracheque.vinculoId;
+    matriculaApurada.set(vinculoId, l.contracheque.vinculo.matricula);
+    const deste = apuradoPorVinculo.get(vinculoId) ?? new Map<string, ApuradoMutavel>();
+    const atual = deste.get(l.rubricaId) ?? { total: toMoney(0), parcelas: [] };
+    const fonte = fechamentoPorCalculo.get(l.contracheque.calculoId)!;
+    atual.total = toMoney(atual.total.plus(toMoney(l.valor)));
+    atual.parcelas.push({ folhaTipo: fonte.tipo, competencia, calculoNumero: fonte.numero, valor: toMoney(l.valor) });
+    deste.set(l.rubricaId, atual);
+    apuradoPorVinculo.set(vinculoId, deste);
+  }
+
+  // ── (2) o CORRETO, pelo motor mensal, sem uma linha de conta nova ───────────
+  const { finais, matriculaPorVinculo } = await contrachequesMensaisDaCompetencia(tx, competencia);
+
+  /**
+   * ⚠️ QUEM FOI APURADO E NÃO ENTRA MAIS NO RECÁLCULO É RECUSA, NÃO OMISSÃO.
+   *
+   * Um vínculo pago em maio e que o recálculo de hoje não alcança (desligamento registrado depois,
+   * com data retroativa, por exemplo) tem "correto = 0" e "apurado > 0" — diferença NEGATIVA. Se
+   * a iteração fosse só pelos contracheques corretos, ele sumiria do cálculo e a complementar
+   * sairia normal, pagando as diferenças dos outros e calando sobre o único caso em que o ente
+   * tem dinheiro a receber de volta. Recusar aqui devolve a decisão a quem pode tomá-la.
+   */
+  /**
+   * ⚠️ E O CONJUNTO CERTO É O DE QUEM PRODUZIU CONTRACHEQUE, NÃO O DE QUEM EXISTE COMO LINHA —
+   * esta guarda nasceu INERTE e foi o teste que a pegou.
+   *
+   * A primeira versão filtrava por `matriculaPorVinculo`, que é montado sobre TODOS os vínculos
+   * do `findMany` — inclusive os que o laço pula com `continue` (admitido depois do fim da
+   * competência, desligado antes do início). `has(id)` era verdadeiro para qualquer vínculo que
+   * ainda existisse no banco, então a recusa NUNCA disparava: a folha calculava normalmente e
+   * calava sobre o único caso em que o ente tem a receber de volta.
+   *
+   * ⚠️ E `matriculaPorVinculo` CONTINUA COMPLETO DE PROPÓSITO: é dele que sai o nome da matrícula
+   * na mensagem, e as matrículas que a mensagem precisa nomear são justamente as PULADAS. Trocar
+   * a fonte dos dois teria consertado a guarda e quebrado a mensagem.
+   *
+   * "Existe como linha" e "produziu efeito" são coisas diferentes, e confundi-las é a doença
+   * desta rodada — a mesma que deixou um guard verde por casar com o censo que nomeia o serviço.
+   */
+  const comContracheque = new Set(finais.map((c) => c.vinculoId));
+  const semRecalculo = [...apuradoPorVinculo.keys()].filter((id) => !comContracheque.has(id));
+  if (semRecalculo.length > 0) {
+    const nomes = semRecalculo.map((id) => matriculaApurada.get(id) ?? id).sort();
+    throw new Error(
+      `VINCULO-APURADO-FORA-DO-RECALCULO: a(s) matrícula(s) ${nomes.join(", ")} têm valores apurados ` +
+        `em folha fechada de ${competencia} e NÃO entram no recálculo desta competência (vida ` +
+        `funcional alterada depois do fechamento). Para elas o correto é ZERO e o já apurado é ` +
+        `maior — isso é valor a repor ao erário, ato próprio que não existe neste sistema. ` +
+        `Seguir sem elas pagaria as diferenças dos demais e calaria sobre estas, com os totais ` +
+        `fechando. Trate-as fora desta folha. Nada foi calculado.`
+    );
+  }
+
+  // ── (3) a identidade de toda rubrica citada, inclusive as que só o passado tem ──
+  const identidade = new Map<string, IdentidadeDaRubrica>();
+  for (const c of finais) {
+    for (const l of c.linhas) {
+      identidade.set(l.rubricaId, { id: l.rubricaId, codigo: l.codigo, descricao: l.descricao, tipo: l.tipo, natureza: l.natureza, ordem: l.ordem });
+    }
+  }
+  const soNoPassado = [...new Set(linhasApuradas.map((l) => l.rubricaId))].filter((id) => !identidade.has(id));
+  if (soNoPassado.length > 0) {
+    const rs = await tx.rubrica.findMany({ where: { id: { in: soNoPassado } }, select: { id: true, codigo: true, descricao: true, tipo: true, natureza: true, ordem: true } });
+    for (const r of rs) {
+      identidade.set(r.id, { id: r.id, codigo: r.codigo, descricao: r.descricao, tipo: r.tipo as IdentidadeDaRubrica["tipo"], natureza: r.natureza as IdentidadeDaRubrica["natureza"], ordem: r.ordem });
+    }
+  }
+
+  // ── (4) a diferença, vínculo a vínculo ─────────────────────────────────────
+  const calculados: ContrachequeComplementar[] = [];
+  for (const correto of finais) {
+    const matricula = matriculaPorVinculo.get(correto.vinculoId)!;
+    const jaApurado: Map<string, ApuracaoAnteriorDaRubrica> = new Map(
+      [...(apuradoPorVinculo.get(correto.vinculoId) ?? new Map<string, ApuradoMutavel>())].map(
+        ([rubricaId, a]): [string, ApuracaoAnteriorDaRubrica] => [rubricaId, { total: a.total, parcelas: a.parcelas }]
+      )
+    );
+    const c = calcularContrachequeComplementar({ competencia, matricula, correto, jaApurado, identidadeDaRubrica: identidade });
+    // Diferença zero não é contracheque de zero: é contracheque que não existe. Gravar uma linha
+    // zerada faria a lista de quem recebeu complementar mentir sobre quem recebeu.
+    if (c !== null) calculados.push(c);
+  }
+
+  if (calculados.length === 0) {
+    throw new Error(
+      `COMPLEMENTAR-SEM-DIFERENCA: o recálculo de ${competencia} com o cadastro de hoje chega ` +
+        `EXATAMENTE ao que as folhas fechadas desta competência já apuraram, para todos os ` +
+        `vínculos — não há o que complementar. Se havia uma correção a fazer, ela ainda não está ` +
+        `no cadastro: lance a rubrica, corrija a remuneração ou registre o evento, e calcule de ` +
+        `novo. Nada foi calculado.`
+    );
+  }
+
+  // ── (5) gravar, pelos mesmos fatos de sempre ───────────────────────────────
+  const numero = (folha.calculos[0]?.numero ?? 0) + 1;
+  const totalProventos = sumMoney(calculados.map((c) => c.totais.proventos));
+  const totalDescontos = sumMoney(calculados.map((c) => c.totais.descontos));
+  const totalLiquido = toMoney(totalProventos.minus(totalDescontos));
+  const sha256 = sha256Canonico({ motor: VERSAO_DO_MOTOR_COMPLEMENTAR, competencia, tipo: folha.tipo, contracheques: calculados.map((c) => c.sha256).sort() });
+  const calculo = await tx.calculoDaFolha.create({
+    data: { folhaId: folha.id, numero, motivo, totalProventos: s2(totalProventos), totalDescontos: s2(totalDescontos), totalLiquido: s2(totalLiquido), contracheques: calculados.length, sha256, versaoDoMotor: VERSAO_DO_MOTOR_COMPLEMENTAR, criadoPor },
+    select: { id: true },
+  });
+  for (const c of calculados) {
+    await tx.contracheque.create({
+      data: {
+        calculoId: calculo.id, vinculoId: c.vinculoId, regime: c.regime,
+        /**
+         * ⚠️ `diasComputados` É O DA COMPETÊNCIA e `avosComputados` FICA NULO. O CHECK
+         * `ck_contracheque_avos_ou_dias` exige exatamente uma das duas medidas, e a medida da
+         * complementar é a mesma da mensal: ela é diferença de uma folha mensal, não de um 13º.
+         */
+        diasComputados: c.diasComputados,
+        totalProventos: s2(c.totais.proventos), totalDescontos: s2(c.totais.descontos), liquido: s2(c.totais.liquido),
+        baseContribuicao: s2(c.totais.baseContribuicao), contribuicao: s2(c.totais.contribuicao), baseIrrf: s2(c.totais.baseIrrf), irrf: s2(c.totais.irrf),
+        memoria: c.memoria as object, sha256: c.sha256,
+        linhas: { create: c.linhas.map((l) => ({ rubricaId: l.rubricaId, ordem: l.ordem, tipo: l.tipo, valorBase: s2(l.valorBase), fator: l.fator.toFixed(6), valor: s2(l.valor), incideContribuicao: l.incideContribuicao, incideIrrf: l.incideIrrf, memoria: l.memoria })) },
+      },
+    });
+  }
+  return { calculoId: calculo.id, numero, contracheques: calculados.length, totalProventos, totalDescontos, totalLiquido, sha256 };
 }
 
 /**

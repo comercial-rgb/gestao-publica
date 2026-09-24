@@ -940,15 +940,81 @@ export const zLancarNaFolhaInput = z
 export type LancarNaFolhaInput = z.input<typeof zLancarNaFolhaInput>;
 
 /**
- * V11 V9.1 — os três tipos de folha que TÊM MOTOR.
+ * Os tipos de folha que TÊM MOTOR (V11 V9.1; a mensal complementar entrou na V11 V9.4).
  *
- * ⚠️ A FOLHA DE DIFERENÇA DE 13º NÃO ENTRA AQUI, e a ausência é deliberada: o item 5.12.50 a
- * enumera, e ela depende de retificar cálculo já fechado (`RETIFICACAO-DA-FOLHA`), que não
- * existe. Um valor a mais neste enum viraria uma opção de tela que recusa quando escolhida — o
- * pior tipo de promessa, porque só falha depois que o operador confiou nela.
+ * ⚠️ A FOLHA DE DIFERENÇA DE 13º, A RESCISÃO E AS FÉRIAS NÃO ENTRAM AQUI, e a ausência é
+ * deliberada: o item 5.12.50 as enumera, e cada uma depende de modelo que não existe (retificação
+ * de cálculo fechado, tipologia de motivo de desligamento, período aquisitivo). Um valor a mais
+ * neste enum viraria uma opção de tela que recusa quando escolhida — o pior tipo de promessa,
+ * porque só falha depois que o operador confiou nela.
  */
-export const TIPOS_DE_FOLHA = ["MENSAL", "ADIANTAMENTO_DECIMO_TERCEIRO", "DECIMO_TERCEIRO"] as const;
+export const TIPOS_DE_FOLHA = ["MENSAL", "MENSAL_COMPLEMENTAR", "ADIANTAMENTO_DECIMO_TERCEIRO", "DECIMO_TERCEIRO"] as const;
 export type TipoDeFolha = (typeof TIPOS_DE_FOLHA)[number];
+
+/**
+ * ═══ V11 V9.4 — A NATUREZA DE CADA TIPO DE FOLHA, DECLARADA UMA VEZ E EXAUSTIVA ═══
+ *
+ * ⚠️ ISTO NASCE DE UMA FORMA ERRADA, NÃO DE UM VALOR ERRADO. O CHECK
+ * `ck_folha_exercicio_por_tipo` dizia `tipo = 'MENSAL'` de um lado e `tipo <> 'MENSAL'` do outro:
+ * ele ENUMERAVA UM EXEMPLAR em vez de afirmar a propriedade, e o `CLAUDE.md` tem regra com nome
+ * para isso — *"Propriedade, não padrão. Guarda que enumera formas acha só aquelas formas"*. A
+ * propriedade verdadeira é a `recorrencia` abaixo, e `MENSAL` é só o primeiro exemplar dela.
+ *
+ * ⚠️ E É `Record<TipoDeFolha, ...>` DE PROPÓSITO: um valor novo em `TIPOS_DE_FOLHA` faz este
+ * literal DEIXAR DE COMPILAR até ser classificado. Isso é IMPOSSIBILIDADE, não disciplina — a
+ * mesma régua com que a V11 V9.3 recusou um `Record<TipoDeFolha, string>` de códigos curtos para
+ * o número do empenho: lá a segunda tabela seria a cópia que diverge; aqui a tabela é a ÚNICA, e
+ * é dela que o SQL e o serviço derivam.
+ *
+ * ⚠️ DUAS PROPRIEDADES NUM RECORD SÓ, e não dois Records. Dois seriam duas listas a manter em dia
+ * — o defeito que a V11 V9.1 pagou quando `ABATIMENTO_DO_ADIANTAMENTO_DO_13` entrou em duas
+ * listas e faltou na terceira. Um tipo novo tem de responder às DUAS perguntas de uma vez.
+ */
+export interface NaturezaDoTipoDeFolha {
+  /**
+   * `POR_COMPETENCIA` — recorre dentro do ano: quantas competências o ano tiver, e por isso
+   * `FolhaDePagamento.exercicio` é NULO (vários NULL convivem no índice único do Postgres).
+   * `POR_EXERCICIO` — uma por ano: `exercicio` NÃO NULO e coerente com o ano da competência, e é
+   * ele que faz `@@unique([exercicio, tipo])` impedir a segunda.
+   */
+  readonly recorrencia: "POR_COMPETENCIA" | "POR_EXERCICIO";
+  /**
+   * Esta folha COMPÕE a remuneração mensal da competência — isto é, o que ela apura entra na
+   * conta de "quanto este servidor já recebeu por este mês".
+   *
+   * ⚠️ E ESTA PROPRIEDADE NÃO É A PRIMEIRA DISFARÇADA. A folha de ADIANTAMENTO do 13º de 2026-06
+   * é uma folha DA COMPETÊNCIA 2026-06 e NÃO compõe a remuneração de junho: é gratificação
+   * natalina, com base própria (avos do exercício) e rubricas próprias. Somá-la ao "já apurado em
+   * junho" faria a mensal complementar de junho ABATER metade do 13º do servidor — com os totais
+   * fechando e nenhuma etapa adiante acusando.
+   */
+  readonly compoeARemuneracaoMensal: boolean;
+}
+
+export const NATUREZA_DO_TIPO_DE_FOLHA: Readonly<Record<TipoDeFolha, NaturezaDoTipoDeFolha>> = {
+  MENSAL: { recorrencia: "POR_COMPETENCIA", compoeARemuneracaoMensal: true },
+  MENSAL_COMPLEMENTAR: { recorrencia: "POR_COMPETENCIA", compoeARemuneracaoMensal: true },
+  ADIANTAMENTO_DECIMO_TERCEIRO: { recorrencia: "POR_EXERCICIO", compoeARemuneracaoMensal: false },
+  DECIMO_TERCEIRO: { recorrencia: "POR_EXERCICIO", compoeARemuneracaoMensal: false },
+};
+
+/**
+ * O EXERCÍCIO QUE ESTA FOLHA TEM DE GRAVAR — derivado da natureza do tipo, nunca de uma
+ * comparação com `MENSAL`.
+ *
+ * ⚠️ ESTE É O SEGUNDO SÍTIO QUE ENUMERAVA A FORMA: `abrirFolha` fazia
+ * `d.tipo === "MENSAL" ? null : Number(...)`, e a mensal complementar teria nascido com exercício
+ * preenchido — coerente com o CHECK antigo e ERRADA, porque ela não é única no ano. O CHECK e
+ * esta função saem agora da MESMA declaração, e é por isso que não podem divergir sem que alguém
+ * mude a declaração.
+ */
+export function exercicioDaFolha(tipo: TipoDeFolha, competencia: string): number | null {
+  return NATUREZA_DO_TIPO_DE_FOLHA[tipo].recorrencia === "POR_COMPETENCIA" ? null : Number(competencia.slice(0, 4));
+}
+
+/** Os tipos cujo apurado entra na conta de "quanto já se pagou por esta competência". */
+export const TIPOS_QUE_COMPOEM_A_REMUNERACAO_MENSAL: readonly TipoDeFolha[] =
+  TIPOS_DE_FOLHA.filter((t) => NATUREZA_DO_TIPO_DE_FOLHA[t].compoeARemuneracaoMensal);
 
 export const zAbrirFolhaInput = z.object({
   competencia: zCompetencia,

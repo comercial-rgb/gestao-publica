@@ -1,0 +1,21 @@
+-- V11 V9.4 — O VALOR NOVO DO ENUM, E NADA MAIS NESTE ARQUIVO.
+--
+-- ⚠️ ESTA MIGRATION EXISTE SEPARADA POR UMA RESTRIÇÃO DO POSTGRES, NÃO POR ESTILO — e o
+-- fundamento está escrito por extenso em `20261011090000_v11_v91_tipos_de_folha_do_decimo_terceiro`:
+-- um valor acrescentado a um tipo enumerado NÃO PODE SER USADO na mesma transação que o
+-- acrescentou ("unsafe use of new value of enum type"). O Prisma roda cada arquivo de migration
+-- numa transação, e o CHECK da migration seguinte CITA 'MENSAL_COMPLEMENTAR' — juntar os dois
+-- falha na APLICAÇÃO, não no code review.
+--
+-- ⚠️ E A PASTA NASCE COM O ARQUIVO DENTRO, NO MESMO ATO. Uma pasta de migration vazia já quebrou
+-- `migrate deploy` aqui com P3015 e derrubou a suíte inteira.
+--
+-- ADITIVA: um valor novo. Nenhum valor existente muda de nome ou sai, nenhuma linha é reescrita,
+-- e todo banco existente continua lendo 'MENSAL' exatamente como antes.
+
+-- A FOLHA MENSAL COMPLEMENTAR (TR 5.12.50) — "pagar o que faltou" numa competência cuja mensal já
+-- fechou. Ela tem MOTOR: é o motor mensal inteiro, recalculando a competência com o cadastro de
+-- hoje, menos o que já foi apurado. Um valor de enum sem motor por trás seria uma opção de tela
+-- que recusa ao ser escolhida, e é por isso que 'DIFERENCA_DE_DECIMO_TERCEIRO', 'RESCISAO' e
+-- 'FERIAS' continuam FORA: elas dependem de modelo que não existe (ver o MODULO do M33).
+ALTER TYPE "TipoDeFolha" ADD VALUE 'MENSAL_COMPLEMENTAR';

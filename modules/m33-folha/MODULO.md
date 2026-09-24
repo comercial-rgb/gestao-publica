@@ -313,6 +313,142 @@ Testes: `m33-encargos.test.ts` (6) ajuste 7 e (7) guia 3, (8) ajuste e guia pelo
 a baixa é por pagamento já registrado), `RESTITUICAO-DOS-ENCARGOS-SEM-ATO` (a restituição fica
 registrada como providência; o ato de restituir/compensar não existe), `VENCIMENTO-LEGAL-SEM-TABELA`.
 
+## A FOLHA MENSAL COMPLEMENTAR — V11 V9.4 (TR 5.12.50)
+
+`TipoDeFolha` ganhou `MENSAL_COMPLEMENTAR`. O ciclo é o MESMO da mensal — abrir, calcular (fato
+numerado), cancelar cálculo, fechar, certificar, apropriar, liquidar, apurar encargos —, porque
+tudo isso opera sobre `CalculoDaFolha` e `Contracheque`, que não mudaram. **Nenhuma conta nova**:
+o "correto" sai do motor mensal inteiro.
+
+### Ela NÃO é a retificação, e a distância entre as duas é o desenho inteiro
+
+"Corrigir maio" e "pagar o que faltou em maio" são coisas diferentes:
+
+- a **RETIFICAÇÃO** substituiria o cálculo fechado de maio por outro, e isso exige reabrir o que
+  este módulo declara irreversível nas duas pontas (`calcularFolha` recusa folha fechada;
+  `cancelarCalculoDaFolha` recusa o cálculo que fechou). Continua não existindo e continua nomeada:
+  `RETIFICACAO-DA-FOLHA`;
+- a **COMPLEMENTAR** não toca em maio. Recalcula a competência com o cadastro de HOJE, subtrai o
+  que as folhas fechadas daquela competência já apuraram, e paga a DIFERENÇA como fato novo, em
+  folha própria, com contracheque e memória próprios. O contracheque de maio continua byte a byte
+  como estava — e é isso que a torna possível **sem reabrir nada**.
+
+### O delta é por RUBRICA, e a razão é operacional
+
+Um delta por TOTAL pagaria a diferença sem dizer de que verba ela é: o empenho não saberia em qual
+grupo (portanto em qual ficha) ela entra, a contribuição patronal não saberia se incide, e o
+servidor receberia uma linha "diferença" que nenhuma memória explica. O grupo de empenho é "quais
+RUBRICAS, em qual ficha" — sem a rubrica, a apropriação não tem o que agrupar.
+
+**Contribuição e imposto também são delta**, por consequência da mesma regra: o motor recalcula os
+dois sobre a base CORRIGIDA (progressiva, com teto, com agregação por pessoa) e a complementar
+retém o que falta reter. ⚠️ **Limite declarado, e ele é normativo:** isto é **regime de
+competência**. A regra federal de rendimento recebido acumuladamente (regime de caixa, tributação
+no mês do pagamento) **não foi levantada e não está implementada** — "rendimentos acumulados" é
+tipo PRÓPRIO de folha no mesmo item 5.12.50 e continua ausente. Nomeada como
+`IRRF-DO-COMPLEMENTAR-EM-REGIME-DE-CAIXA`, e a **memória de todo contracheque complementar diz por
+escrito qual dos dois foi aplicado**, em vez de deixar deduzir do silêncio.
+
+### As recusas, e o que cada uma evita
+
+| Recusa | Quando | O dano que ela evita |
+|---|---|---|
+| `MENSAL-NAO-FECHADA` | a mensal da competência não existe ou está aberta | com nada apurado o delta é o valor INTEIRO: a complementar pagaria o mês de novo, com os totais, o empenho e a liquidação fechando |
+| `COMPLEMENTAR-COM-DIFERENCA-NEGATIVA` | o correto é MENOR que o já apurado, em qualquer rubrica | num provento é reposição ao erário; num desconto é devolução de retenção indevida. **Nunca clamp a zero**: seguir com zero pagaria as outras rubricas e calaria sobre esta |
+| `VINCULO-APURADO-FORA-DO-RECALCULO` | alguém foi pago na competência e o recálculo de hoje não o alcança | iterando só pelos contracheques corretos ele sumiria, e a complementar sairia normal — calando sobre o único caso em que o ente tem a receber |
+| `COMPLEMENTAR-SEM-DIFERENCA` | o recálculo chega exatamente ao apurado, para todos | contracheques de zero fariam a lista de quem recebeu complementar mentir |
+| `COMPLEMENTAR-RUBRICA-SEM-IDENTIDADE` | uma rubrica citada não foi resolvida | pular produziria um complementar A MENOS, com os totais fechando |
+
+Diferença ZERO **não vira linha** e vínculo sem diferença nenhuma **não vira contracheque** — a
+mesma decisão do 13º com zero avo.
+
+⚠️ **`VINCULO-APURADO-FORA-DO-RECALCULO` NASCEU INERTE, E QUEM A PEGOU FOI O TESTE.** A primeira
+versão filtrava por `matriculaPorVinculo`, montado sobre **todos** os vínculos do `findMany` —
+inclusive os que o laço pula com `continue`. `has(id)` era verdadeiro para qualquer vínculo que
+ainda existisse no banco, e a recusa **nunca disparava**: a folha calculava normalmente e calava
+sobre o único caso em que o ente tem a receber de volta. O conjunto certo é o de quem **produziu
+contracheque** (`new Set(finais.map(c => c.vinculoId))`), e `matriculaPorVinculo` **continua
+completo de propósito**, porque é dele que sai o nome da matrícula na mensagem — e as matrículas
+que a mensagem precisa nomear são justamente as puladas.
+
+⚠️ **"EXISTE COMO LINHA" E "PRODUZIU EFEITO" SÃO COISAS DIFERENTES — o padrão desta rodada.** É a
+mesma doença dos três guards que ficaram verdes por casarem com o comentário que explicava a
+exclusão, ou com o censo que **nomeia** o serviço: a papelada existia, o efeito não. Guarda que
+pergunta "existe?" onde devia perguntar "aconteceu?" passa a vida inteira verde. Provada por
+mutação (M7′): filtrar de volta por `matriculaPorVinculo` deixa o caso vermelho.
+
+### ⚠️ A NATUREZA DO TIPO DE FOLHA — propriedade, não padrão
+
+`ck_folha_exercicio_por_tipo` dizia `tipo = 'MENSAL'` de um lado e `tipo <> 'MENSAL'` do outro. Ele
+**enumerava um exemplar** em vez de afirmar a propriedade, e o `CLAUDE.md` tem regra com nome para
+isso. A propriedade verdadeira: **tipos que RECORREM dentro do ano têm `exercicio` nulo; tipos
+ÚNICOS NO ANO têm `exercicio` não nulo e coerente com a competência.** `MENSAL` é só o primeiro
+exemplar do primeiro grupo; a complementar é o segundo.
+
+Com a forma antiga, `MENSAL_COMPLEMENTAR` cairia no `<>` e o banco exigiria dela um exercício que
+ela não tem por que ter — **em silêncio, no primeiro `INSERT`**; e com exercício preenchido, o
+`@@unique([exercicio, tipo])` passaria a dar UMA complementar por ANO.
+
+`NATUREZA_DO_TIPO_DE_FOLHA` (`dominio.ts`) é um `Record<TipoDeFolha, ...>` **exaustivo**: um valor
+novo no enum **não compila** até ser classificado. Isso é impossibilidade, não disciplina — a mesma
+régua com que a V11 V9.3 escolheu o nome do enum no número do empenho. Ele declara DUAS
+propriedades num Record só (dois Records seriam duas listas a manter em dia):
+
+| | `recorrencia` | `compoeARemuneracaoMensal` |
+|---|---|---|
+| `MENSAL` | POR_COMPETENCIA | sim |
+| `MENSAL_COMPLEMENTAR` | POR_COMPETENCIA | sim |
+| `ADIANTAMENTO_DECIMO_TERCEIRO` | POR_EXERCICIO | **não** |
+| `DECIMO_TERCEIRO` | POR_EXERCICIO | **não** |
+
+⚠️ **`compoeARemuneracaoMensal` NÃO é a primeira disfarçada.** A folha de adiantamento do 13º de
+2026-06 é uma folha DA competência 2026-06 e **não** compõe a remuneração de junho: é gratificação
+natalina, com base própria e rubricas próprias. Somá-la ao "já apurado em junho" faria a
+complementar de junho recusar dizendo que o servidor deve ao erário metade do próprio 13º — ou, se
+o sinal desse para o outro lado, abatê-la do salário. Provado por efeito em `m33-complementar.test.ts` (c3).
+
+Três sítios derivam dessa declaração e **não podem divergir sem que alguém mude a declaração**:
+`exercicioDaFolha` (usado por `abrirFolha`, onde havia o segundo `=== "MENSAL"`), o escopo do "já
+apurado", e o CHECK novo (migration `20261015090100`, substituição com o precedente aceito de
+`20260913090000_v4_cnpj_alfanumerico_nos_checks`).
+
+⚠️ **E A ESCOLHA DO MOTOR EM `calcularFolha` TAMBÉM ERA `!== "MENSAL"`.** Virou `switch` exaustivo
+com `never` no `default`: um tipo novo não compila até ganhar motor, e um valor que chegue do BANCO
+sem estar no enum do TypeScript recusa com `TIPO-DE-FOLHA-SEM-MOTOR` em vez de escorregar para o
+motor mensal e calcular a folha errada em silêncio.
+
+### O CHECK é afirmado POR EFEITO, nunca pelo texto
+
+`m33-recorrencia-do-tipo-de-folha.test.ts` lê os valores do enum **do `pg_enum`** (não de
+`TIPOS_DE_FOLHA`: um valor que existisse só no Postgres nunca seria testado, e é justamente esse que
+entraria sem classificação) e, para cada um, tenta gravar as DUAS formas numa transação abortada de
+propósito: **exatamente uma** tem de ser aceita, e tem de ser a que o Record declara. A recusa é
+conferida pelo MOTIVO — só vale o erro que nomeia `ck_folha_exercicio_por_tipo`, senão um `INSERT`
+que falhasse por unicidade contaria como "classificado". Casar `pg_get_constraintdef` com uma
+expressão regular seria atestar pela papelada que declara.
+
+### A superfície: nenhuma tela nova
+
+`OPCOES_DE_TIPO_DE_FOLHA` ganhou a opção e o resto do caminho já era genérico — abrir, calcular,
+fechar, certificar, apropriar e liquidar passam pelos mesmos atos e pelas mesmas ações
+(`ABRIR_FOLHA`, `CALCULAR_FOLHA`, `FECHAR_FOLHA`, …). **Nenhuma permissão nova, nenhuma ação nova.**
+O número do empenho já carrega o tipo desde a V11 V9.3, então a complementar de 2026-05 não colide
+com a mensal de 2026-05 mesmo compartilhando grupo e matrícula.
+
+`ROTULO-CRU-DO-TIPO-DE-FOLHA` (observado, **não** consertado) — a lista e o título do detalhe
+mostram o nome do enum (`MENSAL`, `DECIMO_TERCEIRO`, agora `MENSAL_COMPLEMENTAR`) em vez do rótulo
+de `OPCOES_DE_TIPO_DE_FOLHA`. Trocar é uma linha, e **não foi trocado de propósito**:
+`scripts/smoke-folha.ts` tem asserção que casa com a célula `"2027-01MENSAL…"` da lista, e mudar o
+texto sem poder rodar o percurso deixaria um passo vermelho sem defeito nenhum.
+
+### ⚠️ `SEGUNDA-COMPLEMENTAR-NA-MESMA-COMPETENCIA` — decisão de produto PENDENTE
+
+`@@unique([competencia, tipo])` dá **UMA** complementar por competência. Enquanto ela está ABERTA,
+recalcular já absorve qualquer achado novo — o delta é sempre "o correto menos TUDO o que já foi
+apurado na competência", então o segundo achado entra no cálculo seguinte **sem folha nova**. O caso
+sem saída é o segundo achado **depois de a complementar ter FECHADO**. Ver a análise completa e a
+recomendação no fecho desta unidade; enquanto não houver decisão, o desenho é uma por competência.
+
 ## O 13º SALÁRIO EM DUAS PARCELAS — V11 V9.1 (TR 5.12.50)
 
 `TipoDeFolha` ganhou `ADIANTAMENTO_DECIMO_TERCEIRO` e `DECIMO_TERCEIRO`. O ciclo é o MESMO da
@@ -832,8 +968,10 @@ afastamento/desligamento (9 e 7 avos), porque com um servidor só "9 avos" passa
   (seção abaixo). Continuam ausentes, e declaradas: **férias** (depende de período aquisitivo,
   perdas, prorrogações e programação — 5.12.21–5.12.28, nada disso existe no M32), **rescisão**
   (depende de férias e de uma tipologia de motivo de desligamento; hoje o motivo é texto livre),
-  **complementar** e **diferença de 13º** (dependem de `RETIFICACAO-DA-FOLHA`) e **rendimentos
-  acumulados**.
+  ~~**complementar**~~ (**resolvida em V11 V9.4** — e a leitura anterior, de que ela dependia de
+  `RETIFICACAO-DA-FOLHA`, estava ERRADA: "corrigir maio" e "pagar o que faltou em maio" são coisas
+  diferentes, e a segunda não reabre nada), **diferença de 13º** (essa sim depende de
+  `RETIFICACAO-DA-FOLHA`) e **rendimentos acumulados**.
 - `INCIDENCIA-NA-PRIMEIRA-PARCELA` (V11 V9.1) — a 1ª parcela do 13º **não** sofre contribuição nem
   IRRF neste sistema. É limite declarado, não norma afirmada: se ela sofresse, a 2ª parcela teria
   de abater o que já foi retido, e esse critério é normativo e não foi levantado. A memória de cada
@@ -902,5 +1040,16 @@ afastamento/desligamento (9 e 7 avos), porque com um servidor só "9 avos" passa
 - `CONSIGNACOES-E-MARGEM` (5.12.37–5.12.39, 5.12.83) — o consignado entra como desconto
   informado; não há margem.
 - `ARREDONDAMENTO-DA-FOLHA` — half-even (o do razão); half-up é decisão a registrar se exigida.
+- `IRRF-DO-COMPLEMENTAR-EM-REGIME-DE-CAIXA` (V11 V9.4) — a complementar recalcula contribuição e
+  IRRF sobre a base corrigida da PRÓPRIA competência e retém a diferença (regime de competência).
+  A regra federal do rendimento recebido acumuladamente — tributação no mês do PAGAMENTO — não foi
+  levantada. "Rendimentos acumulados" é tipo próprio de folha no mesmo 5.12.50 e continua ausente;
+  a memória de cada contracheque complementar DIZ, por escrito, qual regime foi aplicado.
+- `SEGUNDA-COMPLEMENTAR-NA-MESMA-COMPETENCIA` (V11 V9.4) — decisão de produto pendente; ver a
+  seção da folha mensal complementar acima.
+- `ROTULO-CRU-DO-TIPO-DE-FOLHA` (V11 V9.4, observado e **não** consertado) — a lista e o título do
+  detalhe mostram o nome do enum em vez do rótulo de `OPCOES_DE_TIPO_DE_FOLHA`. Não foi trocado
+  porque `scripts/smoke-folha.ts` casa com a célula `"2027-01MENSAL…"`, e mudar o texto sem poder
+  rodar o percurso deixaria um passo vermelho sem defeito nenhum.
 - `CONTRACHEQUE-EM-PDF` (5.12.64) — P4. O `RESUMO-DA-FOLHA` ganhou CSV/PDF em V6.2 (por regime ×
   lotação); a quebra por natureza de despesa continua pendente.
