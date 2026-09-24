@@ -64,6 +64,22 @@ async function quatroVinculos(): Promise<Record<"A" | "B" | "C" | "D", string>> 
   return out as Record<"A" | "B" | "C" | "D", string>;
 }
 
+/**
+ * UM VÍNCULO ADMITIDO DEPOIS DA COMPETÊNCIA — inelegível em 2026-03 e, por isso mesmo, SEM apurado.
+ *
+ * ⚠️ É ele que dá o N=2 do caso do apurado a repor. Com um inelegível só, "a recusa nomeia quem tem
+ * apurado" passaria por vacuidade: nomear TODOS os inelegíveis daria o mesmo resultado. Com dois —
+ * um com dinheiro pendurado e um sem —, a afirmação só fica verde se a recusa souber separá-los.
+ */
+async function vinculoAdmitidoDepois(): Promise<string> {
+  const cargo = await prisma.cargo.findFirstOrThrow({ select: { id: true } });
+  const lot = await prisma.lotacao.findFirstOrThrow({ select: { id: true } });
+  const p = await prisma.pessoa.create({ data: { documento: "39053344705", tipo: "FISICA", criadoPor: POR, versoes: { create: { nome: "Servidor E", criadoPor: POR } } }, select: { id: true } });
+  const { servidorId } = await cadastrarServidor(prisma, { pessoaId: p.id, dataNascimento: D(1990, 4, 3), sexo: "FEMININO", criadoPor: POR });
+  const { vinculoId } = await admitirServidor(prisma, { servidorId, matricula: "M-E", tipo: "EFETIVO", regimeJuridico: "Estatutario", regimePrevidenciario: "RGPS", dataAdmissao: D(2026, 5, 1), cargoId: cargo.id, lotacaoId: lot.id, salarioBase: "3000.00", criadoPor: POR });
+  return vinculoId;
+}
+
 async function abrangenciaDe(calculoId: string): Promise<readonly { readonly matricula: string; readonly calculado: boolean; readonly motivo: string | null }[]> {
   const ls = await prisma.abrangenciaDoCalculo.findMany({ where: { calculoId }, select: { calculado: true, motivo: true, vinculo: { select: { matricula: true } } } });
   return ls.map((l) => ({ matricula: l.vinculo.matricula, calculado: l.calculado, motivo: l.motivo })).sort((a, b) => a.matricula.localeCompare(b.matricula));
@@ -285,16 +301,102 @@ describe("(6) ⚠️ A GUARDA `VINCULO-APURADO-FORA-DO-RECALCULO`, RECONCILIADA 
 });
 
 /**
- * ═══ ⚠️ ACHADO NÃO CONSERTADO, NOMEADO: `APURADO-A-REPOR-ENCOBERTO-POR-FOLHA-SEM-VINCULOS` ═══
+ * ═══ `APURADO-A-REPOR-ENCOBERTO-POR-FOLHA-SEM-VINCULOS` — CONSERTADO NA V12 (item 3.A) ═══
  *
- * Quando o ÚNICO vínculo selecionado é inelegível E tem valor apurado em folha fechada, o motor
- * estoura `FOLHA-SEM-VINCULOS` **antes** de chegar em `VINCULO-APURADO-FORA-DO-RECALCULO`. A
- * mensagem que o operador recebe fala de elegibilidade e **cala sobre o que é mais grave**: há
- * dinheiro apurado para alguém cujo correto agora é zero, ou seja, valor a repor ao erário.
+ * O ACHADO, como estava registrado: quando o ÚNICO vínculo selecionado é inelegível E tem valor
+ * apurado em folha fechada, o motor estourava `FOLHA-SEM-VINCULOS` **antes** de chegar em
+ * `VINCULO-APURADO-FORA-DO-RECALCULO`. O operador lia uma mensagem sobre elegibilidade e o sistema
+ * **calava sobre o que é mais grave**: há dinheiro apurado para alguém cujo correto agora é zero —
+ * valor a repor ao erário. Não era silêncio; era ORDEM DE GUARDAS escondendo o sério atrás do
+ * trivial. O teste do caso real precisava selecionar DOIS vínculos só para contornar a ordem.
  *
- * Não é silêncio — a recusa acontece e nomeia o motivo da inelegibilidade —, é ORDEM DE GUARDAS
- * escondendo a informação mais séria atrás da mais trivial. Não foi consertado aqui porque
- * reordenar as guardas muda o comportamento do motor da complementar, que é território de outra
- * frente e pede unidade própria. O teste acima seleciona DOIS vínculos justamente para contornar
- * a ordem e exercitar o caso real.
+ * O CONSERTO, em `servico.ts`: `contrachequesMensaisDaCompetencia` ganhou `aoFicarSemVinculos`.
+ * O caminho MENSAL continua `RECUSAR` (padrão, comportamento idêntico ao de antes); o caminho
+ * COMPLEMENTAR pede `DEVOLVER_VAZIO` e recusa ele mesmo — DEPOIS de conferir o apurado. As duas
+ * recusas continuam existindo e nenhuma virou aviso: o que mudou é qual delas fala primeiro.
+ *
+ * ⚠️ E A RECUSA CONTINUA SENDO RECUSA. Nada é gravado, e em nenhum momento a diferença negativa
+ * (correto zero, apurado maior) vira crédito ao servidor: o cálculo inteiro para, e a pendência
+ * financeira fica nomeada por matrícula para quem pode tratá-la.
  */
+describe("(5) o apurado a repor NÃO fica encoberto pela ausência de vínculo elegível", () => {
+  /**
+   * ⚠️ N=2, E OS DOIS SÃO INELEGÍVEIS — a diferença entre eles é só o dinheiro.
+   *
+   *   · A  — desligado com efeito ANTES da competência, registrado DEPOIS do fechamento.
+   *          Inelegível no recálculo, e com apurado na mensal fechada. Correto 0, apurado > 0.
+   *   · E  — admitido DEPOIS da competência. Inelegível, e sem um centavo apurado.
+   *
+   * `finais` sai VAZIO: é exatamente a condição que antes estourava `FOLHA-SEM-VINCULOS`. A
+   * afirmação é que agora o motivo VERDADEIRO fala, e que ele nomeia **M-A e não M-E** — com um
+   * inelegível só, nomear todos daria o mesmo resultado e o teste passaria por vacuidade.
+   */
+  it("⚠️ o único elegível some e sobra dinheiro a repor: a recusa é a do APURADO, e nomeia só quem tem", async () => {
+    await baseDoEnte();
+    const v = await quatroVinculos();
+    const mensal = await abrirFolha(prisma, { competencia: "2026-03", criadoPor: POR });
+    await calcularFolha(prisma, { folhaId: mensal.folhaId, criadoPor: POR });
+    await fecharFolha(prisma, { folhaId: mensal.folhaId, criadoPor: POR });
+
+    await prisma.historicoVinculo.create({ data: { vinculoId: v.A, data: D(2026, 2, 1), tipo: "DESLIGAMENTO", motivo: "Exoneracao retroativa", criadoPor: POR } });
+    const E = await vinculoAdmitidoDepois();
+
+    const compl = await abrirFolha(prisma, { competencia: "2026-03", tipo: "MENSAL_COMPLEMENTAR", criadoPor: POR });
+    const erro = await calcularFolha(prisma, { folhaId: compl.folhaId, criadoPor: POR, selecao: { modo: "EXPLICITA", vinculoIds: [v.A, E] } }).then(
+      () => null,
+      (e: unknown) => (e instanceof Error ? e.message : String(e))
+    );
+
+    // ⚠️ A NEGAÇÃO AFIRMA O MOTIVO, não só que falhou: "não calculou" é compatível com o sistema
+    // calando sobre o dinheiro, que é precisamente o defeito que esta unidade conserta.
+    expect(erro, "o cálculo tinha de recusar").not.toBeNull();
+    expect(erro).toMatch(/VINCULO-APURADO-FORA-DO-RECALCULO/);
+    expect(erro).toMatch(/repor ao erário/);
+    expect(erro, "a recusa tem de nomear a matrícula com apurado").toMatch(/M-A/);
+    expect(erro, "M-E é inelegível mas não tem apurado — nomeá-lo seria acusar em massa").not.toMatch(/M-E/);
+    expect(erro, "a mensagem trivial não pode ser a que o operador lê aqui").not.toMatch(/FOLHA-SEM-VINCULOS/);
+
+    // ⚠️ E NADA FOI GRAVADO: a diferença negativa não virou crédito, nem cálculo vazio.
+    expect(await prisma.calculoDaFolha.count({ where: { folhaId: compl.folhaId } })).toBe(0);
+  });
+
+  /**
+   * ⚠️ O PAR NEGATIVO — sem apurado pendurado, a recusa VOLTA a ser a da ausência.
+   *
+   * Sem este caso, a guarda nova poderia estar simplesmente trocando uma mensagem pela outra em
+   * toda folha vazia. Aqui não há dinheiro a repor, e o motivo verdadeiro é mesmo a inelegibilidade
+   * — com o motivo nomeado, que é o que a V11 V9.5 construiu.
+   */
+  it("sem apurado a repor, a recusa continua sendo FOLHA-SEM-VINCULOS — com o motivo nomeado", async () => {
+    await baseDoEnte();
+    await quatroVinculos();
+    const mensal = await abrirFolha(prisma, { competencia: "2026-03", criadoPor: POR });
+    await calcularFolha(prisma, { folhaId: mensal.folhaId, criadoPor: POR });
+    await fecharFolha(prisma, { folhaId: mensal.folhaId, criadoPor: POR });
+    const E = await vinculoAdmitidoDepois();
+
+    const compl = await abrirFolha(prisma, { competencia: "2026-03", tipo: "MENSAL_COMPLEMENTAR", criadoPor: POR });
+    const erro = await calcularFolha(prisma, { folhaId: compl.folhaId, criadoPor: POR, selecao: { modo: "EXPLICITA", vinculoIds: [E] } }).then(
+      () => null,
+      (e: unknown) => (e instanceof Error ? e.message : String(e))
+    );
+    expect(erro).toMatch(/FOLHA-SEM-VINCULOS/);
+    expect(erro, "o motivo da inelegibilidade tem de aparecer").toMatch(/ADMITIDO_APOS_A_COMPETENCIA/);
+    expect(erro).not.toMatch(/VINCULO-APURADO-FORA-DO-RECALCULO/);
+    expect(await prisma.calculoDaFolha.count({ where: { folhaId: compl.folhaId } })).toBe(0);
+  });
+
+  /**
+   * ⚠️ O CAMINHO MENSAL NÃO PODE TER MUDADO. `aoFicarSemVinculos` tem `RECUSAR` como padrão
+   * justamente para isto, e um padrão só é padrão se alguém afirmar que ele continua valendo.
+   */
+  it("a folha MENSAL segue recusando dentro do motor, como antes", async () => {
+    await baseDoEnte();
+    await quatroVinculos();
+    const E = await vinculoAdmitidoDepois();
+    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-03", criadoPor: POR });
+    await expect(
+      calcularFolha(prisma, { folhaId, criadoPor: POR, selecao: { modo: "EXPLICITA", vinculoIds: [E] } })
+    ).rejects.toThrow(/FOLHA-SEM-VINCULOS/);
+  });
+});

@@ -431,10 +431,48 @@ async function resolvedorDeRubricas(tx: Tx, competencia: string): Promise<(regim
  * vínculos vivos na competência" (ver o aviso do MODULO sobre o filtro de funcionários). O único
  * recorte é temporal.
  */
+/**
+ * A MENSAGEM DE `FOLHA-SEM-VINCULOS`, EM UM LUGAR SÓ.
+ *
+ * ⚠️ Ela é construída aqui, e não nos dois pontos que a lançam, pelo mesmo motivo que o "correto"
+ * da complementar sai do motor mensal: duas redações do mesmo fato divergem, e cada uma fica com o
+ * seu teste verde. O caminho MENSAL recusa dentro do motor; o COMPLEMENTAR recusa depois de
+ * conferir o apurado — a recusa é a mesma, o momento é que muda.
+ */
+function motivoDeFolhaSemVinculos(
+  competencia: string,
+  selecao: SelecaoDoCalculo,
+  excluidos: readonly LinhaDeAbrangencia[]
+): string {
+  // ⚠️ A MENSAGEM DISTINGUE OS DOIS CASOS, e a distinção não é cosmética: "o ente não tem
+  // ninguém vivo nesta competência" e "os que você selecionou não são elegíveis" levam a
+  // providências opostas, e a mensagem antiga diria a primeira coisa nos dois casos.
+  const porQue =
+    selecao.modo === "EXPLICITA"
+      ? `nenhum dos ${new Set(selecao.vinculoIds).size} vínculo(s) SELECIONADO(S) é elegível em ${competencia} ` +
+        `(${excluidos.map((e) => e.motivo).filter((m, i, a) => a.indexOf(m) === i).join(", ")})`
+      : `nenhum vínculo vivo em ${competencia}`;
+  return `FOLHA-SEM-VINCULOS: ${porQue}. Nada foi calculado.`;
+}
+
+/**
+ * O QUE FAZER QUANDO NENHUM VÍNCULO SOBRA — e por que isso é do CHAMADOR, não do motor.
+ *
+ * `RECUSAR` é o comportamento do caminho MENSAL e continua sendo o padrão: sem vínculo elegível
+ * não há folha, e não há mais nada a conferir.
+ *
+ * `DEVOLVER_VAZIO` existe para o caminho COMPLEMENTAR, onde "nenhum contracheque" NÃO é o fim da
+ * história: pode haver vínculo com valor JÁ APURADO em folha fechada, e aí o fato que importa é o
+ * dinheiro a repor ao erário, não a ausência de contracheque. Ver
+ * `APURADO-A-REPOR-ENCOBERTO-POR-FOLHA-SEM-VINCULOS`.
+ */
+type AoFicarSemVinculos = "RECUSAR" | "DEVOLVER_VAZIO";
+
 async function contrachequesMensaisDaCompetencia(
   tx: Tx,
   competencia: string,
-  selecao: SelecaoDoCalculo = SELECAO_DE_TODOS
+  selecao: SelecaoDoCalculo = SELECAO_DE_TODOS,
+  aoFicarSemVinculos: AoFicarSemVinculos = "RECUSAR"
 ): Promise<{
   readonly finais: readonly ContrachequeCalculado[];
   readonly matriculaPorVinculo: ReadonlyMap<string, string>;
@@ -523,16 +561,8 @@ async function contrachequesMensaisDaCompetencia(
       tabelas: { contribuicao: regime === "ISENTO" ? null : tabelas.contribuicao[regime], irrf: tabelas.irrf, salarioFamilia: tabelas.salarioFamilia },
     });
   }
-  if (entradas.length === 0) {
-    // ⚠️ A MENSAGEM DISTINGUE OS DOIS CASOS, e a distinção não é cosmética: "o ente não tem
-    // ninguém vivo nesta competência" e "os que você selecionou não são elegíveis" levam a
-    // providências opostas, e a mensagem antiga diria a primeira coisa nos dois casos.
-    const porQue =
-      selecao.modo === "EXPLICITA"
-        ? `nenhum dos ${new Set(selecao.vinculoIds).size} vínculo(s) SELECIONADO(S) é elegível em ${competencia} ` +
-          `(${excluidos.map((e) => e.motivo).filter((m, i, a) => a.indexOf(m) === i).join(", ")})`
-        : `nenhum vínculo vivo em ${competencia}`;
-    throw new Error(`FOLHA-SEM-VINCULOS: ${porQue}. Nada foi calculado.`);
+  if (entradas.length === 0 && aoFicarSemVinculos === "RECUSAR") {
+    throw new Error(motivoDeFolhaSemVinculos(competencia, selecao, excluidos));
   }
 
   // passo 1 — cada um sozinho
@@ -840,7 +870,20 @@ async function calcularFolhaComplementarNaTx(
   }
 
   // ── (2) o CORRETO, pelo motor mensal, sem uma linha de conta nova ───────────
-  const { finais, matriculaPorVinculo, considerados, excluidos } = await contrachequesMensaisDaCompetencia(tx, competencia, selecao);
+  /**
+   * ═══ ⚠️ `DEVOLVER_VAZIO` — A ORDEM DAS GUARDAS, E O DINHEIRO QUE ELA DEIXAVA DE MOSTRAR ═══
+   *
+   * Até aqui este caminho recebia `FOLHA-SEM-VINCULOS` de DENTRO do motor, e a guarda de
+   * `VINCULO-APURADO-FORA-DO-RECALCULO` logo abaixo nunca chegava a rodar. Quando o único vínculo
+   * selecionado é inelegível E tem valor apurado em folha fechada, a recusa trivial ("nenhum
+   * vínculo elegível") estourava primeiro e CALAVA sobre o valor a repor ao erário: o operador
+   * lia "não há ninguém para calcular" e ia embora, com dinheiro do ente pendente e sem nome.
+   *
+   * As duas recusas continuam existindo, e nenhuma virou aviso. O que mudou é a ORDEM: primeiro se
+   * confere o que foi apurado e não volta ao recálculo, depois se recusa por ausência de vínculo.
+   * A mais grave fala primeiro, e ela é a que traz a pendência financeira junto.
+   */
+  const { finais, matriculaPorVinculo, considerados, excluidos } = await contrachequesMensaisDaCompetencia(tx, competencia, selecao, "DEVOLVER_VAZIO");
 
   /**
    * ⚠️ QUEM FOI APURADO E NÃO ENTRA MAIS NO RECÁLCULO É RECUSA, NÃO OMISSÃO.
@@ -913,6 +956,20 @@ async function calcularFolhaComplementarNaTx(
         `Seguir sem elas pagaria as diferenças dos demais e calaria sobre estas, com os totais ` +
         `fechando. Trate-as fora desta folha. Nada foi calculado.`
     );
+  }
+
+  /**
+   * ⚠️ AGORA SIM, A AUSÊNCIA DE VÍNCULO — depois de o apurado ter tido a sua chance de falar.
+   *
+   * Chegar aqui com `finais` vazio significa as duas coisas ao mesmo tempo: nenhum selecionado é
+   * elegível E nenhum deles tem valor apurado em folha fechada pendurado. Aí a recusa por ausência
+   * é o motivo VERDADEIRO, e é a mesma mensagem que o caminho mensal dá — não uma segunda redação.
+   *
+   * ⚠️ E ELA É RECUSA, NÃO COMPLEMENTAR VAZIA. Seguir com zero contracheques criaria um cálculo de
+   * folha sem nenhuma linha, que fecha, empenha e liquida sem nada acusar adiante.
+   */
+  if (finais.length === 0) {
+    throw new Error(motivoDeFolhaSemVinculos(competencia, selecao, excluidos));
   }
 
   // ── (3) a identidade de toda rubrica citada, inclusive as que só o passado tem ──
