@@ -7,6 +7,7 @@ import { situacaoDaFolha, vigenteNaCompetencia, type SituacaoDaFolha } from "../
 import { situacaoDoVinculo, type EventoDoVinculo } from "../../../modules/m32-pessoal/dominio.js";
 import { apropriacaoDaFolha, apropriarFolha, cadastrarGrupoDeEmpenhoDaFolha, definirContasDaLiquidacaoDoGrupo } from "../../../modules/m33-folha/apropriacao.js";
 import { elegibilidadeDosAtosDaFolha } from "../../../modules/m33-folha/elegibilidade.js";
+import { lerMemoriaDoContracheque, type MemoriaLida } from "../../../modules/m33-folha/memoria-do-contracheque.js";
 import {
   certificacaoDaFolha,
   certificarFolha,
@@ -371,7 +372,14 @@ export interface ContrachequeLido {
   readonly dias: number;
   readonly totais: { readonly proventos: string; readonly descontos: string; readonly liquido: string; readonly baseContribuicao: string; readonly contribuicao: string; readonly baseIrrf: string; readonly irrf: string };
   readonly linhas: readonly { readonly id: string; readonly codigo: string; readonly descricao: string; readonly tipo: string; readonly valorBase: string; readonly fator: string; readonly valor: string; readonly incideContribuicao: boolean; readonly incideIrrf: boolean; readonly memoria: string }[];
-  readonly memoria: unknown;
+  /**
+   * ⚠️ A MEMÓRIA SAI DAQUI JÁ LIDA, e isto é a correção do defeito que derrubou a tela do
+   * contracheque do 13º (V11 V9.2). Ela era devolvida como `unknown` e a página fazia
+   * `as MemoriaDoContracheque` — um cast que não confere nada e que escondeu, dos três
+   * typechecks, que o motor do 13º grava outra forma. A porta é a fronteira: quem atravessa
+   * atravessa tipado, e o que não for legível atravessa DIZENDO que não é.
+   */
+  readonly memoria: MemoriaLida;
   readonly sha256: string;
 }
 
@@ -396,7 +404,7 @@ export async function verContracheque(folhaId: string, vinculoId: string): Promi
     regime: c.regime, dias: c.diasComputados,
     totais: { proventos: toMoney(c.totalProventos).toFixed(2), descontos: toMoney(c.totalDescontos).toFixed(2), liquido: toMoney(c.liquido).toFixed(2), baseContribuicao: toMoney(c.baseContribuicao).toFixed(2), contribuicao: toMoney(c.contribuicao).toFixed(2), baseIrrf: toMoney(c.baseIrrf).toFixed(2), irrf: toMoney(c.irrf).toFixed(2) },
     linhas: c.linhas.map((l) => ({ id: l.id, codigo: l.rubrica.codigo, descricao: l.rubrica.descricao, tipo: l.tipo, valorBase: toMoney(l.valorBase).toFixed(2), fator: new Decimal(l.fator).toFixed(6), valor: toMoney(l.valor).toFixed(2), incideContribuicao: l.incideContribuicao, incideIrrf: l.incideIrrf, memoria: l.memoria })),
-    memoria: c.memoria, sha256: c.sha256,
+    memoria: lerMemoriaDoContracheque(c.memoria), sha256: c.sha256,
   };
 }
 
@@ -431,7 +439,7 @@ export async function verRubrica(id: string): Promise<DetalheLido | null> {
       { rotulo: "Código", valor: r.codigo },
       { rotulo: "Descrição", valor: r.descricao },
       { rotulo: "Natureza", valor: ROTULO_DA_NATUREZA[r.natureza] ?? r.natureza },
-      ...(r.percentual === null ? [] : [{ rotulo: "Percentual", valor: `${new Decimal(r.percentual).times(100).toFixed(2)}% do vencimento-base` }]),
+      ...(r.percentual === null ? [] : [{ rotulo: "Percentual", valor: `${new Decimal(r.percentual).times(100).toFixed(2).replace(".", ",")}% do vencimento-base` }]),
       { rotulo: "Compõe a base da contribuição", valor: r.incideContribuicao ? "sim" : "não" },
       { rotulo: "Compõe a base do IRRF", valor: r.incideIrrf ? "sim" : "não" },
       { rotulo: "Proporcional aos dias", valor: r.proporcionalAosDias ? "sim (mês fiscal de 30 dias)" : "não" },
@@ -559,7 +567,7 @@ async function todasAsTabelas(): Promise<readonly TabelaNaLista[]> {
     prisma.tabelaIrrf.findMany({ select: { id: true, competenciaInicio: true, competenciaFim: true, deducaoPorDependente: true, descontoSimplificado: true, redutorBase: true, fundamentacaoLegal: true, faixas: { orderBy: { ordem: "asc" }, select: { ate: true, aliquota: true } } } }),
     prisma.tabelaSalarioFamilia.findMany({ select: { id: true, competenciaInicio: true, competenciaFim: true, rendaMaxima: true, valorPorDependente: true, idadeLimite: true, fundamentacaoLegal: true } }),
   ]);
-  const pct = (a: Decimal): string => `${new Decimal(a).times(100).toFixed(2)}%`;
+  const pct = (a: Decimal): string => `${new Decimal(a).times(100).toFixed(2).replace(".", ",")}%`;
   return [
     ...contrib.map((x) => ({ id: x.id, tipo: x.regime === "RGPS" ? "CONTRIBUICAO_RGPS" : "CONTRIBUICAO_RPPS", competenciaInicio: x.competenciaInicio, competenciaFim: x.competenciaFim, resumo: `${x.faixas.length} faixa(s): ${x.faixas.map((f) => pct(f.aliquota)).join(" / ")}${x.teto === null ? "" : ` · teto ${toMoney(x.teto).toFixed(2)}`}`, fundamentacaoLegal: x.fundamentacaoLegal })),
     ...irrf.map((x) => ({ id: x.id, tipo: "IRRF", competenciaInicio: x.competenciaInicio, competenciaFim: x.competenciaFim, resumo: `${x.faixas.length} faixa(s) · dep. ${toMoney(x.deducaoPorDependente).toFixed(2)}${x.descontoSimplificado === null ? "" : ` · simplificado ${toMoney(x.descontoSimplificado).toFixed(2)}`}${x.redutorBase === null ? "" : " · com redutor"}`, fundamentacaoLegal: x.fundamentacaoLegal })),
@@ -584,7 +592,7 @@ export async function listarTabelas(c: ConsultaDoMolde): Promise<PaginaDoMolde> 
 
 export async function verTabela(id: string): Promise<DetalheLido | null> {
   const prisma = cliente();
-  const pct = (a: Decimal): string => `${new Decimal(a).times(100).toFixed(2)}%`;
+  const pct = (a: Decimal): string => `${new Decimal(a).times(100).toFixed(2).replace(".", ",")}%`;
   const faixasParaDados = (fx: readonly { ordem: number; ate: Decimal | null; aliquota: Decimal }[]): DadoDoDetalhe[] => fx.map((f) => ({ rotulo: `Faixa ${f.ordem}`, valor: `${f.ate === null ? "acima da anterior, sem limite" : `até ${toMoney(f.ate).toFixed(2)}`} · ${pct(f.aliquota)}` }));
   const contrib = await prisma.tabelaDeContribuicao.findUnique({ where: { id }, select: { regime: true, competenciaInicio: true, competenciaFim: true, teto: true, aliquotaPatronal: true, fundamentacaoLegal: true, criadoEm: true, criadoPor: true, faixas: { orderBy: { ordem: "asc" }, select: { ordem: true, ate: true, aliquota: true } } } });
   if (contrib !== null) {
@@ -965,7 +973,10 @@ export async function listarParametrosDoDecimoTerceiro(c: ConsultaDoMolde): Prom
       // O componente só escolhe COMO pintar; quem formata é a porta.
       versao: String(p.versao),
       avo: `${p.diasMinimosDoAvo} dia(s) por mês · ${p.avosNoExercicio} avos no ano`,
-      primeiraParcela: `${new Decimal(p.percentualDaPrimeiraParcela).times(100).toFixed(2)}%`,
+      // ⚠️ pt-BR, como o resto do sistema (`encargos-dados.ts`). A lista mostrava "50.00%" com
+      // PONTO, num sistema em que todo dinheiro e toda alíquota saem com vírgula — achado pelo
+      // percurso do 13º na V11 V9.2.
+      primeiraParcela: `${new Decimal(p.percentualDaPrimeiraParcela).times(100).toFixed(2).replace(".", ",")}%`,
       incidencias:
         [p.decimoTerceiroSofreContribuicao ? "contribuição" : null, p.decimoTerceiroSofreIrrf ? "IRRF" : null]
           .filter((x) => x !== null).join(" e ") || "nenhuma",

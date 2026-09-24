@@ -587,8 +587,27 @@ export function sha256Canonico(valor: unknown): string {
   return createHash("sha256").update(canonico(valor), "utf8").digest("hex");
 }
 
-function faixasParaMemoria(f: readonly FaixaPercorrida[]): readonly Record<string, string | number>[] {
+/**
+ * ⚠️ EXPORTADAS NA V11 V9.2, e por um defeito real. O motor do 13º montava a memória de
+ * contribuição e de IRRF à mão, com CHAVES DIFERENTES das do mensal e sem as faixas nem os
+ * cenários — e a tela do contracheque, escrita para a forma do mensal, respondia 500 em todo
+ * contracheque de 13º. Duas montagens da mesma coisa divergem; uma função compartilhada não.
+ */
+export function faixasParaMemoria(f: readonly FaixaPercorrida[]): readonly Record<string, string | number>[] {
   return f.map((x) => ({ ordem: x.ordem, de: m(x.de), ate: m(x.ate), baseNaFaixa: m(x.baseNaFaixa), aliquota: x.aliquota, valor: m(x.valor) }));
+}
+
+/** Os cenários do IRRF em forma de memória — a MESMA para os dois motores. */
+export function cenariosParaMemoria(cenarios: readonly CenarioCalculado[]): readonly Record<string, unknown>[] {
+  return cenarios.map((c) => ({
+    nome: c.nome,
+    aplicavel: c.aplicavel,
+    ...(c.motivo !== undefined ? { motivo: c.motivo } : {}),
+    base: m(c.base),
+    valor: m(c.valor),
+    deducoes: c.deducoes.map((d) => ({ tipo: d.tipo, valor: m(d.valor) })),
+    faixas: faixasParaMemoria(c.faixas),
+  }));
 }
 
 /**
@@ -742,7 +761,7 @@ export function calcularContracheque(e: EntradaDoContracheque): ContrachequeCalc
     vencimentoBase: m(vencimento),
     linhas: ordenadas.map((l) => ({ codigo: l.codigo, descricao: l.descricao, tipo: l.tipo, natureza: l.natureza, valorBase: m(l.valorBase), fator: l.fator.toFixed(6), valor: m(l.valor), incideContribuicao: l.incideContribuicao, incideIrrf: l.incideIrrf, memoria: l.memoria, versaoDaRubrica: rubricas.find((r) => r.id === l.rubricaId)?.versao ?? 0, fundamentacao: rubricas.find((r) => r.id === l.rubricaId)?.fundamentacaoLegal ?? "" })),
     contribuicao: { regime: contribuicaoCalculada.regime, base: m(contribuicaoCalculada.base), baseAntesDoTeto: m(contribuicaoCalculada.baseAntesDoTeto), tetoAplicado: contribuicaoCalculada.tetoAplicado, calculada: m(contribuicaoCalculada.valor), aplicada: m(contribuicao), faixas: faixasParaMemoria(contribuicaoCalculada.faixas), tabela: contribuicaoCalculada.tabelaId, fundamentacao: contribuicaoCalculada.fundamentacao, ...(e.imposicoes?.contribuicao !== undefined ? { imposta: e.imposicoes.contribuicao.explicacao } : {}) },
-    irrf: { rendaTributavel: m(rendaTributavel), base: m(irrfCalculado.base), calculado: m(irrfCalculado.valor), aplicado: m(irrf), cenario: irrfCalculado.cenario, maior65, dependentes: e.dependentesIr, cenarios: irrfCalculado.cenarios.map((c) => ({ nome: c.nome, aplicavel: c.aplicavel, ...(c.motivo !== undefined ? { motivo: c.motivo } : {}), base: m(c.base), valor: m(c.valor), deducoes: c.deducoes.map((d) => ({ tipo: d.tipo, valor: m(d.valor) })), faixas: faixasParaMemoria(c.faixas) })), tabela: irrfCalculado.tabelaId, fundamentacao: irrfCalculado.fundamentacao, ...(e.imposicoes?.irrf !== undefined ? { imposto: e.imposicoes.irrf.explicacao } : {}) },
+    irrf: { rendaTributavel: m(rendaTributavel), base: m(irrfCalculado.base), calculado: m(irrfCalculado.valor), aplicado: m(irrf), cenario: irrfCalculado.cenario, maior65, dependentes: e.dependentesIr, cenarios: cenariosParaMemoria(irrfCalculado.cenarios), tabela: irrfCalculado.tabelaId, fundamentacao: irrfCalculado.fundamentacao, ...(e.imposicoes?.irrf !== undefined ? { imposto: e.imposicoes.irrf.explicacao } : {}) },
     salarioFamilia: salarioFamilia === null ? null : { rendaBruta: m(salarioFamilia.rendaBruta), rendaMaxima: m(salarioFamilia.rendaMaxima), valorPorDependente: m(salarioFamilia.valorPorDependente), elegiveis: salarioFamilia.elegiveis, valor: m(salarioFamilia.valor), considerados: salarioFamilia.considerados, tabela: salarioFamilia.tabelaId, fundamentacao: salarioFamilia.fundamentacao },
     totais: { proventos: m(proventos), descontos: m(descontos), liquido: m(liquido), baseContribuicao: m(totais.baseContribuicao), contribuicao: m(contribuicao), baseIrrf: m(totais.baseIrrf), irrf: m(irrf) },
   };

@@ -6,7 +6,9 @@ import {
   bordasDaCompetencia,
   calcularContribuicao,
   calcularIrrf,
+  cenariosParaMemoria,
   diasComputados,
+  faixasParaMemoria,
   sha256Canonico,
 
   type ContrachequeCalculado,
@@ -19,6 +21,10 @@ import {
   type TabelaIrrfLida,
   type VidaFuncionalNaCompetencia,
 } from "./dominio.js";
+// ⚠️ SÓ O TIPO, e de propósito: `import type` é apagado na compilação, então este arquivo continua
+// domínio puro e NÃO passa a depender, em tempo de execução, de `certificacao.ts` — que importa o
+// M05, o M01 e o M11. Declarar a união de novo aqui seria a cópia que diverge.
+import type { SituacaoDaCertificacao } from "./certificacao.js";
 
 /**
  * ═══ M33 — O 13º SALÁRIO EM DUAS PARCELAS: O DOMÍNIO PURO (V11 V9.1, TR 5.12.50) ═══
@@ -305,6 +311,32 @@ export interface ParcelaDaBase {
   readonly memoria: string;
 }
 
+/**
+ * A PROCEDÊNCIA DO ABATIMENTO — o fato verificado sobre a folha de adiantamento, no instante do
+ * cálculo da 2ª parcela.
+ *
+ * ⚠️ `situacaoDaCertificacao` entra por PARÂMETRO e o tipo vem por `import type`, que o compilador
+ * apaga: este arquivo é domínio PURO e não pode arrastar `certificacao.ts`, que importa M05, M01 e
+ * M11. Copiar a união aqui seria a segunda cópia que este repositório já pagou para não ter.
+ */
+export interface ProcedenciaDoAbatimento {
+  /** A competência da folha de adiantamento (ex.: "2026-06"). */
+  readonly competencia: string;
+  /** O número do cálculo que FECHOU aquela folha — é dele que os valores foram lidos. */
+  readonly calculoNumero: number;
+  /** A situação da certificação daquele cálculo, derivada no instante deste cálculo. */
+  readonly situacaoDaCertificacao: SituacaoDaCertificacao;
+  /**
+   * A versão do parâmetro do 13º que apurou a 1ª parcela.
+   *
+   * ⚠️ O SERVIÇO JÁ RECUSOU se ela divergir da vigente (`PARAMETRO-TROCADO-ENTRE-AS-PARCELAS`),
+   * então aqui ela sempre bate com `parametro.versao`. Vai à memória assim mesmo, porque é o que
+   * torna a igualdade CONFERÍVEL por quem lê o contracheque depois, sem precisar acreditar que a
+   * guarda rodou.
+   */
+  readonly versaoDoParametro: number;
+}
+
 export interface EntradaDoDecimoTerceiro {
   readonly parcela: "ADIANTAMENTO" | "DECIMO_TERCEIRO";
   readonly competencia: string;
@@ -316,8 +348,30 @@ export interface EntradaDoDecimoTerceiro {
   readonly rubricaDaParcela: RubricaLida;
   /** A rubrica do abatimento — só na 2ª parcela, e só quando houve adiantamento. */
   readonly rubricaDoAbatimento: RubricaLida | null;
-  /** O provento do adiantamento já FECHADO deste vínculo; zero quando não houve. */
-  readonly adiantamentoPago: Money;
+  /**
+   * O provento do adiantamento APURADO no cálculo que FECHOU a folha de adiantamento deste
+   * vínculo; zero quando não houve.
+   *
+   * ⚠️ O NOME DIZ O FATO, E O FATO NÃO É "PAGO". Este campo chamou-se `adiantamentoPago` até a
+   * V11 V9.2, e a memória do contracheque dizia "1ª parcela já paga". O único fato que o serviço
+   * verifica é `FolhaDePagamento.fechamento !== null` (`servico.ts`, a recusa
+   * `ADIANTAMENTO-NAO-FECHADO`). Entre FECHADA e PAGA há, neste mesmo módulo, a certificação (que
+   * pode ser DEVOLVIDA), a apropriação/empenho e a liquidação — e o pagamento nem é ato do M33
+   * (`ORDENAR-E-PAGAR-A-FOLHA`). Afirmar "pago" no documento com que o servidor confere o próprio
+   * contracheque é mentir no documento, e a memória vai lacrada em sha256: a mentira fica
+   * carimbada. O nome novo não muda um centavo; muda o que o sistema AFIRMA.
+   */
+  readonly adiantamentoApuradoEmFolhaFechada: Money;
+  /**
+   * DE ONDE veio o abatimento, como fato datável — nulo quando não há adiantamento no exercício.
+   *
+   * ⚠️ ISTO ACRESCENTA FATO, NÃO REGRA. A situação da certificação do adiantamento NÃO decide
+   * nada aqui: o cálculo abate do mesmo jeito, porque o critério normativo de elegibilidade do
+   * abatimento não está levantado (`ESTADO-EXIGIDO-DO-ADIANTAMENTO-SEM-FONTE`, MODULO). O que ela
+   * faz é deixar no contracheque o que sustenta o desconto, para que um adiantamento fechado e
+   * DEVOLVIDO para correção — que nunca vai ser liquidado nem pago — não seja abatido em silêncio.
+   */
+  readonly procedenciaDoAbatimento: ProcedenciaDoAbatimento | null;
   readonly rubricaDaContribuicao: RubricaLida;
   readonly rubricaDoIrrf: RubricaLida;
   readonly dependentesIr: number;
@@ -341,7 +395,8 @@ export interface ContrachequeDoDecimoTerceiro extends ContrachequeCalculado {
  *   2. 13º apurado = base × avos ÷ avosNoExercicio;
  *   3. a parcela: no ADIANTAMENTO, × percentual do parâmetro, SEM contribuição e SEM imposto; no
  *      13º, o valor integral, com contribuição e imposto se o parâmetro disser que incidem;
- *   4. o ABATIMENTO do que a 1ª parcela pagou (só na 2ª);
+ *   4. o ABATIMENTO do que a 1ª parcela APUROU — não "pagou" (só na 2ª; ver
+ *      `adiantamentoApuradoEmFolhaFechada`);
  *   5. totais, memória canônica e sha256.
  *
  * ⚠️ A 1ª PARCELA NÃO SOFRE CONTRIBUIÇÃO NEM IMPOSTO NESTE SISTEMA, e a memória DIZ isso com
@@ -419,17 +474,22 @@ export function calcularContrachequeDoDecimoTerceiro(e: EntradaDoDecimoTerceiro)
   }
 
   // ── o abatimento da 1ª parcela ──
-  if (!eAdiantamento && e.adiantamentoPago.gt(0)) {
+  if (!eAdiantamento && e.adiantamentoApuradoEmFolhaFechada.gt(0)) {
     if (e.rubricaDoAbatimento === null) {
-      throw new RubricaDoAbatimentoAusenteError(e.vinculo.matricula, e.adiantamentoPago);
+      throw new RubricaDoAbatimentoAusenteError(e.vinculo.matricula, e.adiantamentoApuradoEmFolhaFechada);
     }
-    if (e.adiantamentoPago.gt(valorDaParcela)) {
-      throw new AbatimentoMaiorQueODecimoTerceiroError(e.vinculo.matricula, valorDaParcela, e.adiantamentoPago);
+    if (e.adiantamentoApuradoEmFolhaFechada.gt(valorDaParcela)) {
+      throw new AbatimentoMaiorQueODecimoTerceiroError(e.vinculo.matricula, valorDaParcela, e.adiantamentoApuradoEmFolhaFechada);
     }
+    const p = e.procedenciaDoAbatimento;
     empurrar(
       e.rubricaDoAbatimento,
-      e.adiantamentoPago,
-      `1ª parcela já paga na folha de adiantamento do exercício ${e.parametro.exercicio}: ${m(e.adiantamentoPago)}`
+      e.adiantamentoApuradoEmFolhaFechada,
+      `1ª parcela APURADA na folha de adiantamento FECHADA` +
+        (p === null ? "" : ` de ${p.competencia} (cálculo nº ${p.calculoNumero}; certificação ${p.situacaoDaCertificacao})`) +
+        `, exercício ${e.parametro.exercicio}: ${m(e.adiantamentoApuradoEmFolhaFechada)}. ` +
+        `⚠️ O que se verificou foi o FECHAMENTO daquela folha, não o seu pagamento: liquidar e ` +
+        `pagar são atos próprios (M05/M09) e não são consultados aqui.`
     );
   }
 
@@ -479,7 +539,36 @@ export function calcularContrachequeDoDecimoTerceiro(e: EntradaDoDecimoTerceiro)
     },
     apurado: m(decimoApurado),
     parcelaPaga: m(valorDaParcela),
-    adiantamentoAbatido: m(e.adiantamentoPago),
+    adiantamentoAbatido: m(e.adiantamentoApuradoEmFolhaFechada),
+    /**
+     * ⚠️ O QUE SUSTENTA O DESCONTO, ESCRITO — e o que NÃO sustenta, também.
+     *
+     * Sem esta chave, "abatido 990,41" é indistinguível de "990,41 saíram do caixa para este
+     * servidor". Saíram do CÁLCULO que fechou a folha de adiantamento, e mais nada foi conferido.
+     * A situação da certificação entra como FATO datado; ela não decide nada neste cálculo, e o
+     * `motivo` abaixo diz isso para que ninguém a leia como se decidisse.
+     */
+    procedenciaDoAbatimento:
+      eAdiantamento || e.procedenciaDoAbatimento === null
+        ? null
+        : {
+            folhaDeAdiantamento: e.procedenciaDoAbatimento.competencia,
+            calculoNumero: e.procedenciaDoAbatimento.calculoNumero,
+            situacaoDaCertificacao: e.procedenciaDoAbatimento.situacaoDaCertificacao,
+            // ⚠️ A MESMA RÉGUA, CONFERÍVEL NO PAPEL. Esta versão é a que apurou a 1ª parcela, e o
+            // serviço recusou o cálculo se ela divergisse de `parametro.versao` acima. Quem lê o
+            // contracheque compara os dois números e vê a identidade — sem precisar confiar que
+            // a guarda rodou.
+            versaoDoParametroDoAdiantamento: e.procedenciaDoAbatimento.versaoDoParametro,
+            fatoVerificado: "FECHAMENTO_DA_FOLHA_DE_ADIANTAMENTO",
+            motivo:
+              "o abatimento é condicionado ao FECHAMENTO da folha de adiantamento, e a nada mais: " +
+              "certificação, empenho, liquidação e pagamento NÃO são consultados. A situação da " +
+              "certificação está aqui como fato, não como condição — o critério normativo de qual " +
+              "estado torna o adiantamento abatível não foi levantado e está declarado no MODULO " +
+              "como ESTADO-EXIGIDO-DO-ADIANTAMENTO-SEM-FONTE. Uma folha FECHADA e DEVOLVIDA para " +
+              "correção nunca será liquidada nem paga, e mesmo assim foi abatida aqui.",
+          },
     incidencias: eAdiantamento
       ? {
           contribuicao: false,
@@ -497,11 +586,47 @@ export function calcularContrachequeDoDecimoTerceiro(e: EntradaDoDecimoTerceiro)
       valorBase: m(l.valorBase), fator: l.fator.toFixed(6), valor: m(l.valor),
       incideContribuicao: l.incideContribuicao, incideIrrf: l.incideIrrf, memoria: l.memoria,
     })),
+    /**
+     * ⚠️ AS FAIXAS E OS CENÁRIOS VÃO À MEMÓRIA — V11 V9.2, e isto é ADICIONAR FATO VERIFICADO,
+     * não regra nova: o motor JÁ percorre as faixas (`aplicarFaixas`, `toMoney` por faixa) e JÁ
+     * avalia os três cenários do imposto; ele só não estava REGISTRANDO o que usou.
+     *
+     * "Contribuição = 380,00" sem as faixas não é memória, é um número. Memória é o documento com
+     * que o servidor confere o próprio pagamento e com que o controle interno confere sem
+     * recalcular — e era exatamente isso que faltava ao 13º enquanto sobrava ao mensal.
+     *
+     * ⚠️ E A FORMA É A MESMA DO MENSAL, pelas mesmas funções (`faixasParaMemoria`,
+     * `cenariosParaMemoria`). Duas montagens da mesma coisa divergem — foi assim que a tela do
+     * contracheque passou a responder 500 em todo contracheque de 13º, com os três typechecks
+     * verdes por cima. `calculada`/`aplicada` são iguais aqui porque o 13º não tem imposição por
+     * acumulação; escrever as duas mantém UMA forma para quem lê.
+     */
     contribuicao: incideContrib
-      ? { regime: contribuicaoCalculada.regime, base: m(contribuicaoCalculada.base), calculada: m(contribuicaoCalculada.valor), tabela: contribuicaoCalculada.tabelaId, fundamentacao: contribuicaoCalculada.fundamentacao }
+      ? {
+          regime: contribuicaoCalculada.regime,
+          base: m(contribuicaoCalculada.base),
+          baseAntesDoTeto: m(contribuicaoCalculada.baseAntesDoTeto),
+          tetoAplicado: contribuicaoCalculada.tetoAplicado,
+          calculada: m(contribuicaoCalculada.valor),
+          aplicada: m(contribuicaoCalculada.valor),
+          faixas: faixasParaMemoria(contribuicaoCalculada.faixas),
+          tabela: contribuicaoCalculada.tabelaId,
+          fundamentacao: contribuicaoCalculada.fundamentacao,
+        }
       : null,
     irrf: incideIr
-      ? { rendaTributavel: m(valorDaParcela), base: m(irrfCalculado.base), calculado: m(irrfCalculado.valor), cenario: irrfCalculado.cenario, maior65, dependentes: e.dependentesIr, tabela: irrfCalculado.tabelaId, fundamentacao: irrfCalculado.fundamentacao }
+      ? {
+          rendaTributavel: m(valorDaParcela),
+          base: m(irrfCalculado.base),
+          calculado: m(irrfCalculado.valor),
+          aplicado: m(irrfCalculado.valor),
+          cenario: irrfCalculado.cenario,
+          maior65,
+          dependentes: e.dependentesIr,
+          cenarios: cenariosParaMemoria(irrfCalculado.cenarios),
+          tabela: irrfCalculado.tabelaId,
+          fundamentacao: irrfCalculado.fundamentacao,
+        }
       : null,
     totais: {
       proventos: m(proventos), descontos: m(descontos), liquido: m(liquido),

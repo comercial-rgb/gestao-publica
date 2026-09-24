@@ -63,8 +63,12 @@ import {
   VERSAO_DO_MOTOR_DO_13,
   type ContrachequeDoDecimoTerceiro,
   type ParcelaDaBase,
+  type ProcedenciaDoAbatimento,
 } from "./decimo-terceiro.js";
 import { parametroVigenteDoExercicio } from "./decimo-terceiro-servico.js";
+// V11 V9.2 — a derivação da situação da certificação, para a PROCEDÊNCIA do abatimento na memória
+// do contracheque. Aresta nova e sem ciclo: nada dentro do M33 importa `./servico.js`.
+import { situacaoDaCertificacao, type FatoDaCertificacao } from "./certificacao.js";
 
 /**
  * ═══ M33 — OS SERVIÇOS DA FOLHA (V6 P2.3) ═══
@@ -488,6 +492,83 @@ export async function calcularFolha(prisma: PrismaClient, input: CalcularFolhaIn
 }
 
 /**
+ * ═══ A RÉGUA DO AVO — os campos do parâmetro que as DUAS parcelas têm de compartilhar ═══
+ *
+ * ⚠️ SÃO TRÊS, E A LISTA É CURTA DE PROPÓSITO. A guarda exige que o minuendo e o subtraendo da
+ * mesma conta venham da mesma régua — e a régua é o que decide QUANTOS avos e SOBRE QUE HORIZONTE:
+ *   · `diasMinimosDoAvo`          — quantos dias fazem um mês contar
+ *   · `avosNoExercicio`           — o denominador
+ *   · `baseDosAvosDoAdiantamento` — até que mês os avos da 1ª parcela contam
+ *
+ * ⚠️ E O QUE FICA DE FORA FICA POR DECISÃO. Incidências, ato, percentual da 1ª parcela e as
+ * rubricas NÃO entram: mudá-los depois do adiantamento não torna a subtração incoerente — o
+ * abatimento é o valor APURADO, que já está materializado. Incluí-los transformaria a guarda
+ * numa proibição de corrigir a ementa de um ato, que é zelo virado obstáculo.
+ *
+ * ⚠️ A COMPARAÇÃO É POR VALOR, NÃO POR IDENTIDADE DO REGISTRO, e isto foi uma CORREÇÃO: a
+ * primeira versão desta guarda comparava o `id` do parâmetro. Ela era mais estrita e estava
+ * ERRADA — recadastrar exatamente o mesmo critério gera outro `id`, então a saída que a própria
+ * mensagem oferece ("cadastre a versão de novo") não funcionaria, e o ente ficaria sem saída
+ * nenhuma dentro do exercício. Comparar a régua é o que o fundamento pede, e nem um campo a mais.
+ */
+const CAMPOS_DA_REGUA_DO_AVO: readonly string[] = ["diasMinimosDoAvo", "avosNoExercicio", "baseDosAvosDoAdiantamento"];
+
+/** A régua em forma canônica e comparável — mesma ordem, mesma serialização nos dois lados. */
+function reguaCanonica(campo: (nome: string) => unknown): string {
+  return CAMPOS_DA_REGUA_DO_AVO.map((nome) => `${nome}=${String(campo(nome))}`).join("; ");
+}
+
+/**
+ * A RÉGUA DO AVO QUE PRODUZIU UM CÁLCULO — lida da MEMÓRIA do contracheque.
+ *
+ * ⚠️ O FATO JÁ EXISTE E NÃO SE INVENTOU NADA PARA ESTA GUARDA. `calcularContrachequeDoDecimoTerceiro`
+ * grava `parametro.id` e `parametro.versao` na memória de todo contracheque de 13º desde a V11
+ * V9.1 (é o que permite ao contracheque se explicar anos depois). `CalculoDaFolha` não tem coluna
+ * nem Json para isso, e criar uma seria DDL — o fato está recuperável onde está.
+ *
+ * ⚠️ UM CONTRACHEQUE BASTA, e a razão é local e visível: `calcularFolhaDoDecimoTerceiroNaTx` lê o
+ * parâmetro UMA vez (`parametroVigenteDoExercicio`, antes do laço) e passa o MESMO objeto a todos
+ * os contracheques daquele cálculo. Ler todas as memórias para conferir uma igualdade garantida
+ * por construção custaria dezenas de MB numa folha de mil servidores — o `select` de um `Json`
+ * traz a memória INTEIRA, com os doze meses e todas as linhas.
+ *
+ * ⚠️ E FALHA FECHADO. Memória ausente, ilegível ou sem a versão não vira "segue sem conferir":
+ * vira recusa nomeada. Uma guarda que se desliga sozinha quando não entende o dado é pior que
+ * guarda nenhuma, porque parece que está lá.
+ */
+async function reguaDoParametroNoCalculo(
+  tx: Tx,
+  calculoId: string,
+  competencia: string
+): Promise<{ readonly versao: number; readonly regua: string }> {
+  const c = await tx.contracheque.findFirst({
+    where: { calculoId },
+    select: { memoria: true },
+    orderBy: { id: "asc" },
+  });
+  const irrecuperavel = (porque: string): never => {
+    throw new Error(
+      `PARAMETRO-DO-ADIANTAMENTO-IRRECUPERAVEL: não foi possível recuperar qual versão do parâmetro ` +
+        `do 13º apurou a folha de adiantamento de ${competencia} — ${porque}. Sem isso não dá para ` +
+        `garantir que as duas parcelas do mesmo 13º saíram da mesma régua, e calcular assim poderia ` +
+        `abater um adiantamento medido por outro critério. Nada foi calculado.`
+    );
+  };
+  if (c === null) irrecuperavel("o cálculo que fechou aquela folha não tem contracheque nenhum");
+  const memoria = (c as { readonly memoria: unknown }).memoria;
+  if (typeof memoria !== "object" || memoria === null) irrecuperavel("a memória do contracheque não é um objeto");
+  const p = (memoria as Record<string, unknown>)["parametro"];
+  if (typeof p !== "object" || p === null) irrecuperavel("a memória não traz o bloco `parametro`");
+  const campo = (nome: string): unknown => (p as Record<string, unknown>)[nome];
+  const versao = campo("versao");
+  if (typeof versao !== "number" || !Number.isInteger(versao)) irrecuperavel("a memória não traz o número da versão do parâmetro");
+  for (const nome of CAMPOS_DA_REGUA_DO_AVO) {
+    if (campo(nome) === undefined) irrecuperavel(`a memória não traz \`${nome}\``);
+  }
+  return { versao: versao as number, regua: reguaCanonica(campo) };
+}
+
+/**
  * ═══ V11 V9.1 — O CÁLCULO DAS DUAS FOLHAS DE 13º ═══
  *
  * Roda DENTRO da transação de `calcularFolha`, sob a mesma autorização (`CALCULAR_FOLHA`) e
@@ -516,10 +597,25 @@ async function calcularFolhaDoDecimoTerceiroNaTx(
 
   // ── (2) e (3): o adiantamento que esta folha abate ──────────────────────────
   const adiantamentoPorVinculo = new Map<string, Money>();
+  /**
+   * V11 V9.2 — DE ONDE veio o abatimento, para a memória do contracheque.
+   *
+   * ⚠️ ISTO NÃO MUDA UMA CONDIÇÃO SEQUER. A única guarda continua sendo `fechamento === null`
+   * logo abaixo; a certificação é lida para ser ESCRITA, não para decidir. O motivo está no
+   * MODULO (`ESTADO-EXIGIDO-DO-ADIANTAMENTO-SEM-FONTE`): qual estado torna o adiantamento
+   * abatível é questão normativa não levantada, e decidi-la por dentro seria inventar a norma do
+   * ente — o mesmo erro que expulsou os "15 dias" e os "50%" deste motor.
+   */
+  let procedenciaDoAbatimento: ProcedenciaDoAbatimento | null = null;
   if (!eAdiantamento) {
     const existente = await tx.folhaDePagamento.findFirst({
       where: { exercicio, tipo: "ADIANTAMENTO_DECIMO_TERCEIRO" },
-      select: { id: true, competencia: true, fechamento: { select: { calculoId: true } } },
+      select: {
+        id: true,
+        competencia: true,
+        fechamento: { select: { calculoId: true, calculo: { select: { numero: true } } } },
+        certificacoes: { select: { tipo: true, calculoId: true, criadoEm: true } },
+      },
     });
     if (existente !== null && folha.folhaDoAdiantamentoId !== existente.id) {
       throw new Error(
@@ -537,6 +633,52 @@ async function calcularFolhaDoDecimoTerceiroNaTx(
             `alguém recalculasse o adiantamento. Feche-a antes. Nada foi calculado.`
         );
       }
+      /**
+       * ═══ V11 V9.2 — AS DUAS PARCELAS TÊM DE SAIR DA MESMA RÉGUA ═══
+       *
+       * ⚠️ ISTO NÃO DECIDE NORMA NENHUMA, E É POR ISSO QUE PODE EXISTIR. O sistema continua sem
+       * opinião sobre qual critério de avo é o certo — isso é do ente, e é o que o parâmetro
+       * existe para declarar. O que esta guarda exige é MENOS e mais duro: que o minuendo e o
+       * subtraendo da MESMA conta venham da MESMA régua. Abater 990,41 apurados sobre 9 avos de
+       * um total apurado sobre 10 avos é incoerência ARITMÉTICA interna; nenhuma fonte externa
+       * precisa ser consultada para saber que essa subtração não significa nada. É a mesma
+       * família do balanceamento por subsistema: uma identidade que o próprio sistema deve a si.
+       *
+       * O DANO QUE ELA EVITA, medido no teste: baixar `diasMinimosDoAvo` de 15 para 10 entre as
+       * parcelas leva quem foi admitido em março de 9 para 10 avos. A 2ª parcela sai sobre 10 e
+       * abate o que foi apurado sobre 9 — e a folha FECHA, o total bate, o empenho bate, a
+       * liquidação bate. Não há etapa adiante que acuse; é o dano que a atualização de permissões
+       * v28 descreve para esta ação, e até aqui a ÚNICA defesa era a concessão restrita.
+       *
+       * ⚠️ SEM MECANISMO DE DISPENSA, deliberadamente. Um ente que precise legitimamente divergir
+       * (corrigir a ementa do ato entre as parcelas, por exemplo) é RECUSADO aqui — e isso volta
+       * como pergunta de produto, com a matrícula e as duas versões na mão, em vez de virar uma
+       * caixa "ignorar" que ninguém sabe quem marcou.
+       */
+      const doAdiantamento = await reguaDoParametroNoCalculo(tx, existente.fechamento.calculoId, existente.competencia);
+      const reguaVigente = reguaCanonica((nome) => (cfg.parametro as unknown as Record<string, unknown>)[nome]);
+      if (doAdiantamento.regua !== reguaVigente) {
+        throw new Error(
+          `PARAMETRO-TROCADO-ENTRE-AS-PARCELAS: a 1ª parcela (folha de ${existente.competencia}) foi apurada ` +
+            `pela VERSÃO ${doAdiantamento.versao} do parâmetro do 13º de ${exercicio}, com ${doAdiantamento.regua}; ` +
+            `a versão vigente agora é a ${cfg.parametro.versao}, com ${reguaVigente}. Calcular a parcela final ` +
+            `assim abateria um adiantamento medido por outro critério — as duas metades do mesmo 13º sairiam ` +
+            `de réguas diferentes, e os totais fechariam mesmo assim. ` +
+            `Para seguir neste exercício, cadastre a versão seguinte do parâmetro com o critério da versão ` +
+            `${doAdiantamento.versao} (o parâmetro é append-only: a nova passa a ser a vigente). Se a mudança ` +
+            `de critério é para valer, ela vale a partir do próximo exercício — o 13º deste sai pela régua com ` +
+            `que foi adiantado. Nada foi calculado.`
+        );
+      }
+      procedenciaDoAbatimento = {
+        competencia: existente.competencia,
+        calculoNumero: existente.fechamento.calculo.numero,
+        // A situação é DERIVADA do último fato daquele cálculo — nunca uma coluna `situacao`.
+        // Reusa `situacaoDaCertificacao` em vez de reimplementar a derivação: duas cópias da
+        // mesma regra é exatamente o que este repositório já pagou para não ter.
+        situacaoDaCertificacao: situacaoDaCertificacao(existente.certificacoes as readonly FatoDaCertificacao[], existente.fechamento.calculoId),
+        versaoDoParametro: doAdiantamento.versao,
+      };
       const linhas = await tx.linhaDoContracheque.findMany({
         where: { contracheque: { calculoId: existente.fechamento.calculoId }, rubricaId: cfg.rubricaDoAdiantamentoId },
         select: { valor: true, contracheque: { select: { vinculoId: true } } },
@@ -636,7 +778,8 @@ async function calcularFolhaDoDecimoTerceiroNaTx(
       base,
       rubricaDaParcela,
       rubricaDoAbatimento: porId.get(cfg.rubricaDoAbatimentoId) ?? null,
-      adiantamentoPago: adiantamentoPorVinculo.get(v.id) ?? toMoney(0),
+      adiantamentoApuradoEmFolhaFechada: adiantamentoPorVinculo.get(v.id) ?? toMoney(0),
+      procedenciaDoAbatimento,
       rubricaDaContribuicao: rContrib,
       rubricaDoIrrf: rIrrf,
       dependentesIr,

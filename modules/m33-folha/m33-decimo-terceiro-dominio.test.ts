@@ -107,7 +107,8 @@ function entrada(over: Partial<EntradaDoDecimoTerceiro> = {}): EntradaDoDecimoTe
     base: [{ codigo: "VENC", descricao: "Vencimento", natureza: "VENCIMENTO_BASE", valor: toMoney(3000), memoria: "vencimento-base 3000.00" }],
     rubricaDaParcela: R_13,
     rubricaDoAbatimento: R_ABAT,
-    adiantamentoPago: toMoney(0),
+    adiantamentoApuradoEmFolhaFechada: toMoney(0),
+    procedenciaDoAbatimento: null,
     rubricaDaContribuicao: R_CONTRIB,
     rubricaDoIrrf: R_IRRF,
     dependentesIr: 0,
@@ -248,14 +249,54 @@ describe("t2 · contracheque do 13º", () => {
     expect(inc.motivo).toMatch(/INCIDENCIA-NA-PRIMEIRA-PARCELA/);
   });
 
-  it("a 2ª parcela abate o adiantamento pago, e o líquido é a diferença", () => {
-    const c = calcularContrachequeDoDecimoTerceiro(entrada({ adiantamentoPago: toMoney(1500) }));
+  it("a 2ª parcela abate o adiantamento apurado, e o líquido é a diferença", () => {
+    const c = calcularContrachequeDoDecimoTerceiro(entrada({ adiantamentoApuradoEmFolhaFechada: toMoney(1500) }));
     expect(c.totais.proventos.toFixed(2)).toBe("3000.00");
     // 300 de contribuição + 1500 de abatimento
     expect(c.totais.descontos.toFixed(2)).toBe("1800.00");
     expect(c.totais.liquido.toFixed(2)).toBe("1200.00");
     const abat = c.linhas.find((l) => l.codigo === "13ABAT");
-    expect(abat?.memoria).toMatch(/1ª parcela já paga na folha de adiantamento do exercício 2026/);
+    expect(abat?.memoria).toMatch(/1ª parcela APURADA na folha de adiantamento FECHADA/);
+    // ⚠️ E DIZ O QUE **NÃO** FOI VERIFICADO. Até a V11 V9.2 esta linha dizia "1ª parcela já PAGA",
+    // e pagamento é o que este cálculo nunca conferiu: a única guarda é o FECHAMENTO da folha de
+    // adiantamento. A asserção negativa é o ponto — sem ela, alguém "encurta" o texto de volta.
+    expect(abat?.memoria).not.toMatch(/já paga/);
+    expect(abat?.memoria).toMatch(/não são consultados aqui/);
+  });
+
+  /**
+   * ⚠️ A PROCEDÊNCIA É FATO, NÃO CONDIÇÃO — e o teste afirma as duas coisas.
+   *
+   * Um adiantamento FECHADO e DEVOLVIDO para correção nunca será liquidado nem pago, e mesmo
+   * assim é abatido: o cálculo NÃO consulta a certificação para decidir. Esse é o comportamento
+   * de hoje, e ele está documentado aqui de propósito — mudá-lo exige a norma que
+   * `ESTADO-EXIGIDO-DO-ADIANTAMENTO-SEM-FONTE` declara ausente. O que a V11 V9.2 acrescentou é o
+   * REGISTRO: o contracheque passa a dizer de onde veio o desconto e em que situação estava a
+   * folha de origem.
+   */
+  it("a procedência vai à memória e a certificação DEVOLVIDA não impede o abatimento (fato, não condição)", () => {
+    const c = calcularContrachequeDoDecimoTerceiro(
+      entrada({
+        adiantamentoApuradoEmFolhaFechada: toMoney(1500),
+        procedenciaDoAbatimento: { competencia: "2026-06", calculoNumero: 2, situacaoDaCertificacao: "DEVOLVIDA", versaoDoParametro: 1 },
+      })
+    );
+    // O abatimento ACONTECEU, apesar de DEVOLVIDA — é isto que o registro torna visível.
+    expect(c.totais.liquido.toFixed(2)).toBe("1200.00");
+    const abat = c.linhas.find((l) => l.codigo === "13ABAT");
+    expect(abat?.memoria).toMatch(/de 2026-06 \(cálculo nº 2; certificação DEVOLVIDA\)/);
+    const proc = (c.memoria as Record<string, unknown>)["procedenciaDoAbatimento"] as Record<string, unknown>;
+    expect(proc["folhaDeAdiantamento"]).toBe("2026-06");
+    expect(proc["calculoNumero"]).toBe(2);
+    expect(proc["situacaoDaCertificacao"]).toBe("DEVOLVIDA");
+    expect(proc["fatoVerificado"]).toBe("FECHAMENTO_DA_FOLHA_DE_ADIANTAMENTO");
+    expect(proc["versaoDoParametroDoAdiantamento"]).toBe(1);
+    expect(String(proc["motivo"])).toMatch(/ESTADO-EXIGIDO-DO-ADIANTAMENTO-SEM-FONTE/);
+  });
+
+  it("no ADIANTAMENTO a procedência é nula — não há 1ª parcela anterior de onde proceder", () => {
+    const c = calcularContrachequeDoDecimoTerceiro(entrada({ parcela: "ADIANTAMENTO" }));
+    expect((c.memoria as Record<string, unknown>)["procedenciaDoAbatimento"]).toBeNull();
   });
 
   /**
@@ -270,13 +311,13 @@ describe("t2 · contracheque do 13º", () => {
     );
     expect(tresAvos.avos).toBe(3); // jan, fev, mar — abril tem 10 dias, abaixo de 15
     expect(() =>
-      calcularContrachequeDoDecimoTerceiro(entrada({ avos: tresAvos, adiantamentoPago: toMoney(1500) }))
+      calcularContrachequeDoDecimoTerceiro(entrada({ avos: tresAvos, adiantamentoApuradoEmFolhaFechada: toMoney(1500) }))
     ).toThrow(AbatimentoMaiorQueODecimoTerceiroError);
   });
 
   it("sem rubrica de abatimento, quem já recebeu adiantamento faz o cálculo RECUSAR", () => {
     expect(() =>
-      calcularContrachequeDoDecimoTerceiro(entrada({ adiantamentoPago: toMoney(1000), rubricaDoAbatimento: null }))
+      calcularContrachequeDoDecimoTerceiro(entrada({ adiantamentoApuradoEmFolhaFechada: toMoney(1000), rubricaDoAbatimento: null }))
     ).toThrow(RubricaDoAbatimentoAusenteError);
   });
 

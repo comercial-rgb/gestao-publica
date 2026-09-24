@@ -43,6 +43,25 @@ export function FormParametroDo13({
   const ref = useRef<HTMLFormElement>(null);
   if (estado.sucesso !== undefined) ref.current?.reset();
 
+  /**
+   * ⚠️ O MARCADOR DE RESULTADO — `PARAMETRO-DO-13-SEM-MARCADOR-DE-RESULTADO`, achado pelo percurso
+   * do 13º (V11 V9.2) e consertado por MÉRITO PRÓPRIO, não por conveniência do teste.
+   *
+   * Todo formulário do sistema anuncia o desfecho do ato em `data-resultado-da-acao`, com um
+   * `data-resultado-seq` que MUDA a cada resposta (`components/molde/FormsDoRecurso.tsx`). Este,
+   * escrito à mão, mostrava a mensagem em `role="alert"`/`role="status"` soltos: quem lê a tela
+   * por programa ficava sem saber se o ato respondeu, e lia SILÊNCIO num cadastro que funcionou.
+   *
+   * A sequência é contada aqui porque o estado desta ação não a carrega, e ela só precisa MUDAR —
+   * o valor em si não significa nada.
+   */
+  const seq = useRef(0);
+  const anterior = useRef<EstadoDoParametroDo13 | null>(null);
+  if (anterior.current !== estado) {
+    anterior.current = estado;
+    seq.current += 1;
+  }
+
   const semRubricas = proventos.length === 0 || base.length === 0 || abatimento.length === 0;
 
   return (
@@ -228,12 +247,12 @@ export function FormParametroDo13({
       </div>
 
       {estado.erro !== undefined ? (
-        <p role="alert" className="mt-3 text-xs text-[color:var(--color-perigo)]">
+        <p role="alert" data-resultado-da-acao="criar-parametro-do-13" data-resultado-seq={seq.current} className="mt-3 text-xs text-[color:var(--color-perigo)]">
           {estado.erro}
         </p>
       ) : null}
       {estado.sucesso !== undefined ? (
-        <p role="status" className="mt-3 text-xs text-[color:var(--color-ink-2)]">
+        <p role="status" data-resultado-da-acao="criar-parametro-do-13" data-resultado-seq={seq.current} className="mt-3 text-xs text-[color:var(--color-ink-2)]">
           {estado.sucesso}
         </p>
       ) : null}
