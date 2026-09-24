@@ -193,6 +193,26 @@ export async function semearUsuariosDeTeste(prisma: PrismaClient): Promise<void>
   // ⚠️ TODAS as identidades das fixtures ganham ADMIN — porque a esmagadora maioria dos
   // testes NÃO é sobre permissão, e fazê-los tropeçar nela testaria a coisa errada. Os
   // testes que SÃO sobre permissão criam os seus próprios usuários com perfis restritos.
+  //
+  // ⚠️⚠️ E A CONSEQUÊNCIA, DITA EM VOZ ALTA PORQUE JÁ CUSTOU DUAS VEZES (V11 V9.4):
+  // **NENHUMA identidade deste censo pode ser o ator NEGATIVO de um teste de permissão.**
+  // ADMIN é `TODAS_AS_ACOES`, então ela tem a ação que se quer ver recusada — qualquer ação.
+  // Reusar uma daqui dá um de dois desfechos, e os dois são ruins:
+  //   - `prisma.usuario.create` com o mesmo identificador colide no `@@unique` e o teste morre
+  //     por um erro que não tem nada a ver com o que ele mede;
+  //   - ou o teste "passa" porque o ator tinha a ação o tempo todo, e a NEGATIVA não provou
+  //     nada. Teste de negação que passa por vacuidade é pior que teste ausente: ele ocupa o
+  //     lugar da prova que falta.
+  //
+  // O caminho é um usuário **fora deste censo**, criado DEPOIS do `limparBanco` (que roda este
+  // seed no fim) e **sem perfil nenhum**, ou com um perfil que tenha ações VIZINHAS e não a
+  // vigiada — é assim que se separa "recusou porque não tem esta ação" de "recusou porque não
+  // tem ação nenhuma", que são afirmações diferentes. `m33-decimo-terceiro.test.ts` e
+  // `test/pessoal-eixos-de-consulta.test.ts` fazem as duas formas.
+  //
+  // E a negativa nasce PAREADA com a positiva sobre o mesmo cenário: sem ela, um `throw`
+  // incondicional no caminho guardado deixa a negativa verde com a funcionalidade quebrada
+  // para todo mundo.
   await prisma.usuario.createMany({
     data: IDENTIDADES_DAS_FIXTURES.map((identificador) => ({
       identificador,
