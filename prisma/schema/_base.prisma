@@ -36,7 +36,12 @@
 //       psql ... -d "$DB" -tAc "SELECT count(*) FROM _prisma_migrations WHERE migration_name LIKE '%<ts>%'"
 //     done
 //
-// Na V11 V9.4 foram 21 bancos, todos com zero. "Acho que não apliquei" não basta: um único banco
+// Na V11 V9.4 foram **20** bancos `gestao%`, todos com zero — e o relato inicial dizia 21, que
+// estava errado; fica corrigido aqui em vez de em silêncio. ⚠️ **O NÚMERO NÃO ERA A PROVA**: o
+// laço foi gerado por `SELECT datname FROM pg_database`, então cobriu TODOS os bancos existentes
+// qualquer que fosse a contagem. É isso que torna a conferência válida — enumerar pelo servidor,
+// nunca por lista digitada, que envelhece no dia em que alguém cria um banco a mais.
+// "Acho que não apliquei" não basta: um único banco
 // com a linha gravada transforma a correção em adulteração de histórico.
 //
 // ⚠️ O NOME É GLOBAL — CONFIRA ANTES DE CRIAR. `grep -rn "model <Nome> {" prisma/schema/` antes
