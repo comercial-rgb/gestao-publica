@@ -455,3 +455,24 @@ recusa nomeada; `AoLiquidarMaterialPort` grava as entradas (contábil + física 
 CONSUMIR um recebimento do M11 por `recebimentoDeItemId`) na transação da liquidação; a liquidação é
 travada uma vez antes das classes. A tela de liquidação abre as entradas quando o empenho é de
 material. Pendências: `LIQUIDACAO-MISTA-POR-DOCUMENTO`, `RECEBIMENTO-COM-ENTRADA-FISICA-PREVIA-NA-LIQUIDACAO`.
+
+## Pendências do estoque físico levantadas em V11 V9.1 (por medição, não por relatório)
+
+Levantadas ao escolher a capacidade da rodada (o 13º ficou), e registradas aqui porque **marcar
+ausência vale tanto quanto marcar presença**. Nada foi construído para elas.
+
+- `REQUISICAO-DE-UM-ITEM-SO-NA-TELA` — o modelo está certo:
+  `RequisicaoDeMaterial` tem `itens ItemDeRequisicaoDeMaterial[]`, e o atendimento parcial é
+  derivado por item. Mas a TELA (`lib/portas/recursos/almoxarifado.ts`, o recurso
+  `REQUISICOES_DE_MATERIAL`) cria requisição de **um** item — o próprio texto de ajuda do campo
+  admite. Um setor que pede seis materiais abre seis requisições, e o controle de pendências que a
+  5.18.8 promete fica espalhado por seis números. É superfície, não modelo: o caso de uso já aceita
+  a lista.
+- `ESTOQUE-FISICO-SEM-PERCURSO` — não existe `scripts/smoke-almoxarifado*`. Todo o eixo físico
+  (depósitos, materiais, parâmetros, entrada, saída, transferência, estorno, requisição,
+  atendimento, cotas, inventário, bloqueio) tem serviço, tela e teste, e **nenhum percurso de
+  navegador**. Foi um percurso que achou o defeito da V8.16 que 3.310 testes não viam.
+- **E uma marcação do catálogo que não se sustenta**: a cláusula 5.18.8 está
+  `VALIDADO_LOCALMENTE` com `rota_verificada` VAZIA. Pela regra do catálogo,
+  `VALIDADO_LOCALMENTE` exige tela **e** percurso; sem percurso, a marcação certa é
+  `IMPLEMENTADO_NAO_VALIDADO`, que é o que as outras doze cláusulas de 5.18 já dizem.
