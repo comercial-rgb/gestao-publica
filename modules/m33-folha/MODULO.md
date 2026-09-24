@@ -334,6 +334,141 @@ e o fechamento é irreversível nas duas pontas (não há reabertura, e `cancela
 recusa o cálculo que fechou). O desconto acontece; o contracheque, pelo menos, deixou de mentir
 sobre o que o sustenta.
 
+### O ESTADO EXIGIDO DO ADIANTAMENTO — a fonte levantada em V11 V9.3, e por que nada mudou
+
+**A pergunta:** a fonte exige que o adiantamento tenha sido **PAGO** para ser abatido, exige
+**outro fato**, ou exige uma **composição de condições**?
+
+#### 1. Ente, regime e exercício do cenário — o que está fixado e o que não está
+
+| | valor | onde se lê |
+|---|---|---|
+| Ente | **Município de Anita Garibaldi/SC**, mais a Câmara de Vereadores e o Fundo Municipal de Saúde | `docs/edital/.cache-tr-layout.txt:10`, `:143`, `:5951`; controle externo = TCE/SC (`:91`, `:225`) |
+| Regime | **PLURAL, e isso é requisito** — o TR exige celetista, estatutário, temporário, emprego público, comissionado e estagiário na mesma folha (`:1270`), e RGPS **e** RPPS (`:1464`). `TipoVinculoRh` tem sete valores | `prisma/schema/m32-pessoal.prisma:92` |
+| Regime das fixtures | a suíte usa `EFETIVO` / `regimeJuridico: "Estatutario"` / **RPPS**; o percurso de navegador usa **RGPS** | `m33-decimo-terceiro.test.ts:107`; `scripts/smoke-decimo-terceiro.ts:387` |
+| Exercício | **INDETERMINADO, e por desenho**: o parâmetro é por exercício, cadastrado pelo ente; o percurso usa um exercício sintético (`DECIMO_TERCEIRO_EXERCICIO`, padrão 2031) | `scripts/smoke-decimo-terceiro.ts:78` |
+
+⚠️ **Não há um regime a que responder.** Qualquer regra escrita aqui atende a uma folha que tem
+celetista e estatutário lado a lado — e é exatamente por isso que a fonte de um não pode virar o
+padrão do outro.
+
+#### 2. A fonte primária encontrada — e ela governa o CELETISTA
+
+| Dispositivo | O que diz, literal | Onde foi lido |
+|---|---|---|
+| **Lei 4.749/1965, art. 1º** | "…será paga pelo empregador até o dia 20 de dezembro de cada ano, **compensada a importância que, a título de adiantamento, o empregado houver recebido** na forma do artigo seguinte." | normaslegais.com.br e camara.leg.br (LEGIN), texto coincidente |
+| **Decreto 57.155/1965, art. 3º, § 3º** | "A importância que o empregado **houver recebido** a título de adiantamento **será deduzida** do valor da gratificação devida." | guiatrabalhista.com.br |
+| **Lei 4.749/1965, art. 3º** | na extinção do contrato antes do pagamento, "o empregador **poderá** compensar o adiantamento…" — **faculdade**, e sobre outro fato | normaslegais.com.br |
+
+**O verbo é `houver recebido`, nos dois.** Não é "apurado", não é "calculado", não é "fechado".
+A fonte, onde ela alcança, condiciona a dedução ao **recebimento** — e isso é mais estrito do que
+o que este motor faz.
+
+⚠️ **E ela alcança o EMPREGADO, não o servidor estatutário.** As duas falam em "empregador" e
+"empregado", e são a mesma família da Lei 4.090/1962 de onde saíram os "15 dias" e os "50%" que
+este módulo **expulsou do código** por governarem o contrato celetista. Transformar `recebido` em
+regra universal do motor repetiria exatamente o erro que o resto desta seção existe para não
+cometer. **Isto é achado, não fundamento.**
+
+#### 3. Para o estatutário — o que se procurou e o que NÃO se achou
+
+- **CF art. 39, § 3º** estende ao ocupante de cargo público o art. 7º, **VIII** (décimo terceiro
+  salário com base na remuneração integral). Ele **dá o direito ao 13º** e **não dispõe** sobre
+  adiantamento, sobre parcelas nem sobre compensação. Não responde à pergunta.
+- **O adiantamento do estatutário nasce de lei do ente** — é o que o próprio parâmetro do 13º já
+  pressupõe ao exigir ato estruturado (esfera, tipo, número, ano, dispositivo, ementa), e o que a
+  fixture da suíte escreve como `ESTATUTO_DOS_SERVIDORES`.
+- **A lei municipal de Anita Garibaldi NÃO FOI LOCALIZADA.** Tentado: `leismunicipais.com.br`
+  (acervo do município existe; a busca responde **HTTP 403**), `camaraanita.sc.gov.br` (sem texto
+  de lei alcançável pela busca), e a consulta **TCE/SC CON 09/00004983** — que é diretamente sobre
+  a antecipação da 1ª parcela do 13º a servidores municipais e responde **HTTP 403**.
+  **Ausência de acesso não é ausência de fonte**, e é assim que fica registrado: a fonte
+  provavelmente existe e não foi lida. Citá-la de ouvido seria inventar norma do município.
+
+#### 4. O que o motor faz HOJE — medido, não suposto
+
+**O fato que arma o abatimento** é `FolhaDePagamento.fechamento !== null`
+(`servico.ts:629`, recusa `ADIANTAMENTO-NAO-FECHADO`). **O valor abatido** é a
+`LinhaDoContracheque.valor` da rubrica do adiantamento, no cálculo que FECHOU aquela folha
+(`servico.ts:682-686` → `servico.ts:781` → `decimo-terceiro.ts:477-493`). É o valor **apurado**,
+integral, por vínculo.
+
+Os seis estados, e se o motor os consulta:
+
+| Estado | Onde é representado | Consultado pelo abatimento? |
+|---|---|---|
+| CALCULADO | `CalculoDaFolha` (fato numerado, `cancelamento` é outro fato) | **não** — só o cálculo do fechamento é lido, e o cancelado nunca é ele (`servico.ts:828`) |
+| FECHADO | `FechamentoDaFolha` (`@@unique` por folha e por cálculo) | **SIM — e é o único** |
+| CERTIFICADO | `CertificacaoDaFolha` (fato, `CERTIFICACAO`/`DEVOLUCAO`; situação derivada) | lido, mas **só para escrever** na memória; não decide (`servico.ts:679`) |
+| EMPENHADO | `ApropriacaoDaFolha` → `EmpenhoDaFolha` → `Empenho` (M05) | **não** |
+| LIQUIDADO | `LiquidacaoDaFolha` → `Liquidacao` (M05) | **não** |
+| PAGO | `Pagamento` (M05), alcançável só por Liquidação → Empenho → `EmpenhoDaFolha` | **não** — e **pagar nem é ato do M33** (`ORDENAR-E-PAGAR-A-FOLHA`; `ACOES_DA_FOLHA` não tem "pagar") |
+
+Nenhum dos três arquivos do caminho do 13º importa `packages/estornaveis`, `Pagamento` ou
+`Liquidacao`. **Não há um `status` em lugar nenhum**: o M05 deriva por SOMA (`statusDoEmpenho`),
+líquida de estorno e de anulação parcial — o que existe para ser lido, e não é.
+
+Os cinco cenários:
+
+| Cenário | O que o motor abate hoje | Por quê |
+|---|---|---|
+| **Cancelamento** do cálculo | o cálculo do FECHAMENTO, nunca a soma dos cálculos | o cancelado não pode ser o que fechou; **já tem teste** (`m33-decimo-terceiro.test.ts` t4, "cancelar o cálculo do adiantamento") |
+| **Devolução** para correção (folha fechada, atesto devolvido) | **abate integral** | a certificação é fato na memória, não condição; a folha nunca será liquidada nem paga. **Já tem teste** (domínio puro) |
+| **Estorno / anulação** do empenho ou da liquidação do adiantamento (M05) | **abate integral** | nada do M05 é lido. Não há caminho de anulação da folha SALARIAL dentro do M33 — só os ENCARGOS têm (`ajustarEncargosDaFolha`); a anulação do salarial se pratica direto no M05, e o 13º não a enxerga |
+| **Pagamento parcial** | **abate integral** | idem. E **pior: no caso geral ele nem seria atribuível** — se o grupo de empenho tem `porServidor = false`, existe **um** empenho para o grupo inteiro com credor declarado, e "quanto foi pago a este servidor" **não existe como fato no banco**. Só com `porServidor = true` a cadeia empenho → liquidação → pagamento é por matrícula |
+| **Repetição** | recalcular a folha de 13º refaz a leitura e chega ao mesmo valor; o adiantamento não se reabre (não há reabertura, e `cancelarCalculoDaFolha` recusa o cálculo que fechou) | o fechamento é irreversível nas duas pontas |
+
+⚠️ **E o motor PURO não tem onde receber "quanto foi pago".**
+`EntradaDoDecimoTerceiro.adiantamentoApuradoEmFolhaFechada` é um `Money` só
+(`decimo-terceiro.ts:364`). Implementar "o elegível é o pago" **não é trocar um `if`**: é decidir
+quem estreita o valor — o serviço, antes de entregar ao domínio — e a partir de qual soma líquida
+de estornos e anulações parciais.
+
+#### 5. A decisão — e o que destrava
+
+**Nada mudou de comportamento nesta rodada, e a razão é a da seção 2:** a única fonte primária
+localizada aponta para `RECEBIDO`, mas governa o celetista, e o cenário é plural. Trocar
+`FECHADO` por `PAGO` no motor com esse fundamento seria fazer norma do celetista valer para o
+estatutário do município — o erro nomeado. **Também não se inventa o contrário**: o `FECHADO` de
+hoje continua sem norma que o sustente; a justificativa escrita é de **engenharia** (estabilidade
+do número), e engenharia não decide quanto se desconta de um servidor.
+
+**A pergunta exata, para quem a responde:** *o Estatuto dos Servidores do Município de Anita
+Garibaldi (ou a lei municipal que autoriza o adiantamento do 13º) condiciona a dedução da 1ª
+parcela na parcela final ao seu efetivo **pagamento**, ou à sua **apuração** em folha? E, se
+condiciona ao pagamento, o que se deduz quando o pagamento foi **parcial**: o pago, ou o apurado
+com o saldo cobrado por outro ato?* — endereçada ao **ente** (procuradoria / RH), com o
+**TCE/SC** como fonte subsidiária (a consulta **CON 09/00004983** é diretamente sobre a
+antecipação da 1ª parcela a servidores municipais e não foi lida: acesso negado).
+
+**O que destrava, na ordem:**
+
+1. o dispositivo municipal, citável (número, ano, artigo, parágrafo) — é o que o ato estruturado
+   do `ParametroDoDecimoTerceiro` já sabe guardar;
+2. com ele, o campo `estadoMinimoDoAdiantamentoParaAbater` **no parâmetro versionado do ente**,
+   junto de `diasMinimosDoAvo` e `percentualDaPrimeiraParcela` — nunca no motor, pelo mesmo
+   "nenhum código no código" que rege o resto desta seção;
+3. **se a resposta for "pago"**, a régua do valor elegível muda junto, e o pagamento parcial vira
+   pergunta de MODELO antes de virar código: sem `porServidor = true` o fato não existe por
+   matrícula, e um grupo de empenho único **não tem resposta** — o que provavelmente torna a
+   condição inaplicável a parte dos entes, e isso é achado a levar de volta;
+4. **enquanto (1) não chega**, o que falta ao sistema **não é a regra, é o aviso**: o operador vê
+   o abatimento e não vê que ele repousa num critério sem norma. A memória do contracheque já diz
+   (`fatoVerificado`, `motivo`); a **tela** e a **barra de ações** do 13º, não. Marcar a apuração
+   como não-aprovada na superfície e travar a efetivação correspondente é o próximo incremento
+   possível **sem** decidir norma nenhuma — e ele está descrito aqui, não feito.
+
+⚠️ **Nenhuma caixa de aceite.** "Li e concordo" / "confirmo sob minha responsabilidade" não
+substitui fundamento: transfere a culpa para quem clicou e deixa a conta do mesmo jeito.
+
+#### 6. O que NÃO foi determinado
+
+- o dispositivo municipal aplicável (acesso negado nas três fontes tentadas);
+- o teor da consulta TCE/SC **CON 09/00004983** (HTTP 403);
+- se Anita Garibaldi tem RPPS próprio ou se os estatutários estão no RGPS — não se achou a lei, e
+  o repositório não fixa (a suíte usa RPPS, o percurso usa RGPS; as duas são fixtures);
+- o exercício do cenário: não existe, por desenho.
+
 ### As duas parcelas saem da MESMA RÉGUA — `PARAMETRO-TROCADO-ENTRE-AS-PARCELAS` (V11 V9.2)
 
 **O dano.** Nada impedia cadastrar a versão seguinte do parâmetro **entre** o fechamento do
@@ -497,14 +632,21 @@ afastamento/desligamento (9 e 7 avos), porque com um servidor só "9 avos" passa
 - `ABATIMENTO-MAIOR-QUE-O-13` (V11 V9.1) — quem foi adiantado sobre o ano projetado e desligado no
   meio deve ao ente. A folha **recusa nomeando a matrícula**; repor ao erário é ato próprio, com
   rito próprio, e não existe aqui.
-- `ESTADO-EXIGIDO-DO-ADIANTAMENTO-SEM-FONTE` (V11 V9.2) — **qual estado torna o adiantamento
-  abatível é questão NORMATIVA, e ela não foi levantada.** Hoje o motor exige `FECHADO`, e a
-  justificativa escrita é de engenharia ("abater valores de um cálculo que ainda pode mudar"), não
-  de norma. A Lei 4.749/1965 fala em antecipação **paga** — e governa o celetista, como os "15
-  dias" e os "50%" que este módulo expulsou do código pelo mesmo motivo. Este é hoje o **único
-  critério do 13º cravado no motor** em vez de vir do parâmetro do ente. Um campo
-  `estadoMinimoDoAdiantamentoParaAbater` resolveria, e **não se cria sem a fonte**: inventar a
-  norma do município por dentro é o erro que o resto deste módulo existe para não cometer.
+- `ESTADO-EXIGIDO-DO-ADIANTAMENTO-SEM-FONTE` (V11 V9.2, **levantada em V11 V9.3 — segue aberta**)
+  — ver a seção "O ESTADO EXIGIDO DO ADIANTAMENTO" adiante, que traz a fonte encontrada, o que o
+  motor faz hoje nos cinco cenários e a pergunta que destrava. Em uma linha: **o motor exige
+  `FECHADO`; a única fonte primária localizada exige `RECEBIDO` — e ela governa o CELETISTA, não
+  o estatutário do cenário.** Este continua sendo o **único critério do 13º cravado no motor** em
+  vez de vir do parâmetro do ente.
+- `MEMORIA-DIZ-PARCELA-PAGA` (achada em V11 V9.3, **não consertada**) — a memória canônica do
+  contracheque do 13º grava a chave `parcelaPaga` (`decimo-terceiro.ts:541`,
+  `parcelaPaga: m(valorDaParcela)`), em AMBAS as parcelas. É o mesmo defeito que a V11 V9.2
+  corrigiu em `adiantamentoPago` e na frase "1ª parcela já paga", **e este sítio escapou**: no
+  contracheque do ADIANTAMENTO a chave afirma que 1.900,00 foram pagos a uma folha que foi apenas
+  CALCULADA. Nenhum leitor a consome (sítio único, conferido). Fica nomeada e não trocada porque a
+  memória é canonicalizada e **lacrada em sha256**: renomear a chave muda a impressão digital de
+  todo contracheque de 13º já gravado, e isso é mudança de comportamento sobre documento selado —
+  decisão a tomar junto com a desta seção, não de passagem.
 - ~~`PARAMETRO-TROCADO-ENTRE-AS-PARCELAS`~~ — **resolvida na V11 V9.2** (seção abaixo).
 - `MEDIA-DAS-VARIAVEIS-NO-13` (5.12.82) — a base do 13º só admite vencimento-base, gratificações do
   vínculo e percentual do vencimento. Valor informado e fórmula exigiriam a média do ano; somar o
