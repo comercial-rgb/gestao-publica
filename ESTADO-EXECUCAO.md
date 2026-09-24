@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | **V12 itens 3.D e 3.A** — `e4e20ee`, em três commits (`b484f20`, `fea56fa`, `e4e20ee`). `tsc` **0 `error TS`** no backend e no app, com `--listFiles` confirmando que os seis arquivos alterados estão no projeto que rodou. Dirigidos M33+M16 **444/444**. Antes, **V12 consolidação** — `c9e3423`. **Árvore ÚNICA adotada**: das 26 worktrees, 23 removidas com prova (ancestral de `main` mais `porcelain` de uma linha, `?? node_modules`), 2 retidas por veredito (`artefato-v11v93`, `percurso-glosa-0adaf12`). 15 GB para 989 MB. Sob a V12 o auxiliar é somente-leitura, então a árvore **não** é mais compartilhada para escrita. Antes, **V11 V9.5** — `29a43fe`, partiu de `889b3ab`. `tsc` **0/0/0** nos três projetos, os três rodados depois da última edição e com `--listFiles` confirmando cobertura. ⚠️ **Árvore COMPARTILHADA**: o auxiliar tem `modules/m33-folha/`, `lib/portas/recursos/folha.ts`, `prisma/schema/m33-folha.prisma` e duas migrations novas em voo. O commit desta unidade é só de M32/pessoal, por caminho explícito |
+| HEAD | **V12 rodada 3** — `90c49f5`, em três commits (`26d1a66`, `e5a4209`, `90c49f5`). `tsc` **0 `error TS`** no backend e no app; M33+contracts **313/313**, M12+M09 **313/313**. Antes, **V12 itens 3.D e 3.A** — `e4e20ee`, em três commits (`b484f20`, `fea56fa`, `e4e20ee`). `tsc` **0 `error TS`** no backend e no app, com `--listFiles` confirmando que os seis arquivos alterados estão no projeto que rodou. Dirigidos M33+M16 **444/444**. Antes, **V12 consolidação** — `c9e3423`. **Árvore ÚNICA adotada**: das 26 worktrees, 23 removidas com prova (ancestral de `main` mais `porcelain` de uma linha, `?? node_modules`), 2 retidas por veredito (`artefato-v11v93`, `percurso-glosa-0adaf12`). 15 GB para 989 MB. Sob a V12 o auxiliar é somente-leitura, então a árvore **não** é mais compartilhada para escrita. Antes, **V11 V9.5** — `29a43fe`, partiu de `889b3ab`. `tsc` **0/0/0** nos três projetos, os três rodados depois da última edição e com `--listFiles` confirmando cobertura. ⚠️ **Árvore COMPARTILHADA**: o auxiliar tem `modules/m33-folha/`, `lib/portas/recursos/folha.ts`, `prisma/schema/m33-folha.prisma` e duas migrations novas em voo. O commit desta unidade é só de M32/pessoal, por caminho explícito |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V12** (`docs/lotes/V12-consolidacao-e-construcao-integrada.md`), que sucede a **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`). V12: um escritor, auxiliar somente-leitura, árvore única |
 | Frente em execução | **V11** — V9.3 resolveu `CONTROLE-DDR-POR-NATUREZA-DA-FONTE`, executou **os três passos da J9** que a V9.2 deixou pendentes, fechou os **passos 16, 17 e 18 do roteiro do 13º** e encerrou a família `MENSAGEM-SOME-COM-A-LINHA`. `SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS` segue como continuidade funcional, com a apuração **não** ligada |
-| Último resultado | seção 98 — **o veredito que a medição desmentiu, os dois censos e o dinheiro que ficava calado**. A `percurso-glosa` foi classificada C e **medida como B**: o trabalho da glosa já estava em `main` (`43f8842`) e `main` ainda ganhou o conserto `82564e9` — integrar teria **revertido um conserto medido**. Nada integrado. O `t5c` eram **duas** contagens quebradas e havia um terceiro vermelho (`t5`): três registros faltando, todos nomeados antes de o número mudar; achado que a suposição invertia — `SELECIONAR_VINCULOS_DA_FOLHA` **conta** no censo de AÇÕES, porque `TODAS_AS_ACOES` inclui `ACOES_SEM_SERVICO_PROPRIO`. `APURADO-A-REPOR-ENCOBERTO-POR-FOLHA-SEM-VINCULOS` **consertado** por ordem de guardas, com fixture N=2 em que os dois são inelegíveis e só um tem dinheiro — a recusa nomeia M-A e **não** M-E. Duas mutações com alvo confirmado por checksum antes de ler resultado, ambas revertidas. ⚠️ **Leitura errada minha registrada**: `rc=1` com zero testes rodados por `--reporter=basic` inexistente. Antes, seção 97 — **a árvore única**: 23 worktrees removidas, cada uma com `merge-base --is-ancestor` `exit=0` e `status --porcelain` de **exatamente uma linha**, `?? node_modules`; `--force` exigido só pela dependência instalada, e a recusa sem ele registrada (`exit=128`). Espaço **15 GB para 989 MB**. Duas retidas por veredito, com o diff da `percurso-glosa-0adaf12` (225 inserções / 2 deleções) preservado como patch. **26 bancos classificados, nenhum removido**: 3 em uso pelo `.env`, 3 de evidência, 4 clones de worktree removida, 16 de corrida encerrada. Um erro de medição meu, corrigido em voz alta: `grep -v -x` caiu no `ugrep`, morreu, e o `wc` a jusante devolveu **zero por falha do cano, não por ausência de sujeira** — refeito com `awk`. **Nenhuma medição de produto nesta unidade.** Antes, seção 96 — **a SELEÇÃO no cálculo e o FATO de abrangência**, em UM commit (`29a43fe`). A promessa da folha deixou de ser mantida por construção e passou a ser afirmada: "exatamente os selecionados e elegíveis, com cada exclusão nomeada". O cenário obrigatório passa — nº1={A,B}, nº2={C,D}, fechar → **recusa nomeando M-A e M-B** —, com as **duas saídas legítimas** testadas (recalcular acumulando, ou cancelar): a guarda impede o esquecimento, não a decisão. ⚠️ **A mutação desmentiu o que eu ia afirmar**: a reconciliação é redundante com o `where`, e foi rebaixada a defesa em profundidade declarada — uma mutação que não acusa valeu mais que cinco que acusam. Migrations conferidas **pelo efeito**, dirigidos **78/78**. Antes, seção 94 — **a Tarefa 3 REABRIU e ganhou a ponta de entrada**: `cadastrarFuncao` tinha zero chamadores fora de testes e os três eventos novos eram gravados só por teste, então o operador via os filtros, digitava e recebia **vazio para sempre** — dado ausente **por construção**, a forma mais completa da armadilha que a mutação da seção 93 provou. Entregue `/pessoal/funcoes`, os três tipos em `movimentar` e `admitir` aceitando centro de custo. ⚠️ **`--listFiles` mostrou que `pessoal-dados.ts` NÃO está no projeto do backend** — quem o cobre é o do app; afirmar cobertura pelo backend teria repetido o buraco do dia, do outro lado. **Só typechecks medidos (0/0/0); a superfície não tem evidência nenhuma até a corrida fechar.** Antes, seção 93 — **a Tarefa 3 MEDIDA**: migrations conferidas **pelo efeito** (banco clonado, N=2 linhas semeadas antes de aplicar; a `Funcao` do M02 saiu com **diff vazio**), os três CHECK provados pela linha que devem barrar, e **três mutações com alvo confirmado no arquivo**. ⚠️ A terceira transformou raciocínio em medição: tirar a coluna do `SELECAO_ENXUTA` deixou os três casos positivos vermelhos e o **puramente negativo VERDE** — a forma exata do teste que se sente cobrindo e não cobre. Dirigidos **115/115**, `tsc` app e scripts `exit=0`. Um defeito meu que nenhum compilador acharia: `FuncaoDePessoal` fora do censo de `limpar-banco.ts`. Antes, seção 92 — **a complementar pela TELA** (frente do auxiliar): sete afirmações que o sistema não verificava, o instrumento provado pelo par **46 ok/14 falhas e 49 ok/11 falhas contra `6fa0d62` sem conserto** → **62 ok / 0 falhas** contra `d163d21`, banco clonado por execução; tipos **0/0/0**, dirigidos **37/37** e contrato memória↔tela **11/11**; mutação M-7 com **alvo confirmado antes de medir** (sha `34b03cb…`→`bcdf74e…`) e revertida. A correção que mais vale: previu-se documento contraditório e, medido, ele **emudecia** sobre uma contribuição retida — silêncio é pior que número errado. ⚠️ **Contagem minha corrigida**: eram **20** bancos na conferência de `_prisma_migrations`, não 21 (hoje 22, com os dois descartáveis do auxiliar); a prova segue íntegra porque o laço foi gerado por `pg_database`, não digitado. Antes, seção 91 — **o `4106e0f` não validava e travou a árvore**: `model Funcao` colidiu com a função ORÇAMENTÁRIA da Portaria 42/1999 (M02), e a tabela física `Funcao` já existia desde `20260711202100` — a migration era **inaplicável**, não só mal nomeada, e teria quebrado instalação limpa DEPOIS de o validate passar. Corrigida com a medição na mão (zero em `_prisma_migrations` nos 21 bancos), renomeada para `FuncaoDePessoal` em `5c129e0`. **Medido**: `validate` `exit=0`, `generate` `exit=0`, `tsc` de backend `exit=0` com zero `error TS` (eram 9) — ⚠️ **árvore NÃO congelada** (onze arquivos do auxiliar dentro), logo cobre os consertos dele mas **não é aceite**. Antes, seção 90 — **os dois eixos ausentes de 5.12.50 ganharam modelo, e o levantamento mudou a tarefa**: a FUNÇÃO nasceu (model `Funcao` + eventos `DESIGNACAO_FUNCAO`/`DISPENSA_FUNCAO`), o CENTRO DE CUSTO **já existia** — é o `Setor` do M21, que almoxarifado, compras e patrimônio já usam nesse papel; faltava o vínculo com vigência. Duas migrations aditivas (enum e estrutura separados pela restrição do Postgres), zero `DROP`. ⚠️ **NADA MEDIDO** — a máquina está com o auxiliar. Antes, seção 89 — unidade **documental**, não medida (a máquina está com o auxiliar): as três coisas que a 88 confundiu — (a) filtro de consulta, (b) seleção para processamento, (c) abrangência efetiva — separadas com arquivo e linha, e o fundamento falso da 88 corrigido. Achado que decide o desenho: a **subtração silenciosa** (`fecharFolha` congela UM cálculo; com seleção por cálculo, nº1={A,B} e nº2={C,D} fazem o fechamento levar só {C,D} e A e B somem sem erro). Antes dela, seção 88 — **tipos 0/0/0 nos três projetos** e **dirigidos 117/117** sobre a árvore ATUAL, `rc` lido do arquivo; dez mutações, nove acusando e **uma que NÃO acusou** (MUT-H, guarda inerte, retirada), todas revertidas por edição com checksum. A auditoria achou 3 defeitos meus, os três tratados: âncora de data civil, recusa do teto na tela e o **gate dentro da porta** |
+| Último resultado | seção 99 — **o float no total de um livro contábil e o dinheiro cru na prosa**. A ordem nomeava 2 sítios de float; a varredura exaustiva achou **6** em produto, e os dois piores estavam numa PORTA (tesouraria), que serve três telas. ⚠️ **A fixture óbvia não acusa**: medido que `0.1+0.2` passa COM o defeito, porque o `.toFixed(2)` final mascara — o centavo só vira a partir de ~2,2×10¹³, e o defeito estava **latente** em magnitude municipal (há um caso afirmando que o valor publicado **não muda**). Na Unidade 2 a medição **reclassificou o levantamento**: os "~70 pontos" eram os usos em CAMPO, que a ordem mandava não tocar; a prosa eram **51**, e `encargos.ts` tinha **zero**. Três versões de motor subiram para marcar o corte de hash, com **zero hash literal** fixado em teste no repo. Três mutações com alvo confirmado por checksum, todas revertidas. Antes, seção 98 — **o veredito que a medição desmentiu, os dois censos e o dinheiro que ficava calado**. A `percurso-glosa` foi classificada C e **medida como B**: o trabalho da glosa já estava em `main` (`43f8842`) e `main` ainda ganhou o conserto `82564e9` — integrar teria **revertido um conserto medido**. Nada integrado. O `t5c` eram **duas** contagens quebradas e havia um terceiro vermelho (`t5`): três registros faltando, todos nomeados antes de o número mudar; achado que a suposição invertia — `SELECIONAR_VINCULOS_DA_FOLHA` **conta** no censo de AÇÕES, porque `TODAS_AS_ACOES` inclui `ACOES_SEM_SERVICO_PROPRIO`. `APURADO-A-REPOR-ENCOBERTO-POR-FOLHA-SEM-VINCULOS` **consertado** por ordem de guardas, com fixture N=2 em que os dois são inelegíveis e só um tem dinheiro — a recusa nomeia M-A e **não** M-E. Duas mutações com alvo confirmado por checksum antes de ler resultado, ambas revertidas. ⚠️ **Leitura errada minha registrada**: `rc=1` com zero testes rodados por `--reporter=basic` inexistente. Antes, seção 97 — **a árvore única**: 23 worktrees removidas, cada uma com `merge-base --is-ancestor` `exit=0` e `status --porcelain` de **exatamente uma linha**, `?? node_modules`; `--force` exigido só pela dependência instalada, e a recusa sem ele registrada (`exit=128`). Espaço **15 GB para 989 MB**. Duas retidas por veredito, com o diff da `percurso-glosa-0adaf12` (225 inserções / 2 deleções) preservado como patch. **26 bancos classificados, nenhum removido**: 3 em uso pelo `.env`, 3 de evidência, 4 clones de worktree removida, 16 de corrida encerrada. Um erro de medição meu, corrigido em voz alta: `grep -v -x` caiu no `ugrep`, morreu, e o `wc` a jusante devolveu **zero por falha do cano, não por ausência de sujeira** — refeito com `awk`. **Nenhuma medição de produto nesta unidade.** Antes, seção 96 — **a SELEÇÃO no cálculo e o FATO de abrangência**, em UM commit (`29a43fe`). A promessa da folha deixou de ser mantida por construção e passou a ser afirmada: "exatamente os selecionados e elegíveis, com cada exclusão nomeada". O cenário obrigatório passa — nº1={A,B}, nº2={C,D}, fechar → **recusa nomeando M-A e M-B** —, com as **duas saídas legítimas** testadas (recalcular acumulando, ou cancelar): a guarda impede o esquecimento, não a decisão. ⚠️ **A mutação desmentiu o que eu ia afirmar**: a reconciliação é redundante com o `where`, e foi rebaixada a defesa em profundidade declarada — uma mutação que não acusa valeu mais que cinco que acusam. Migrations conferidas **pelo efeito**, dirigidos **78/78**. Antes, seção 94 — **a Tarefa 3 REABRIU e ganhou a ponta de entrada**: `cadastrarFuncao` tinha zero chamadores fora de testes e os três eventos novos eram gravados só por teste, então o operador via os filtros, digitava e recebia **vazio para sempre** — dado ausente **por construção**, a forma mais completa da armadilha que a mutação da seção 93 provou. Entregue `/pessoal/funcoes`, os três tipos em `movimentar` e `admitir` aceitando centro de custo. ⚠️ **`--listFiles` mostrou que `pessoal-dados.ts` NÃO está no projeto do backend** — quem o cobre é o do app; afirmar cobertura pelo backend teria repetido o buraco do dia, do outro lado. **Só typechecks medidos (0/0/0); a superfície não tem evidência nenhuma até a corrida fechar.** Antes, seção 93 — **a Tarefa 3 MEDIDA**: migrations conferidas **pelo efeito** (banco clonado, N=2 linhas semeadas antes de aplicar; a `Funcao` do M02 saiu com **diff vazio**), os três CHECK provados pela linha que devem barrar, e **três mutações com alvo confirmado no arquivo**. ⚠️ A terceira transformou raciocínio em medição: tirar a coluna do `SELECAO_ENXUTA` deixou os três casos positivos vermelhos e o **puramente negativo VERDE** — a forma exata do teste que se sente cobrindo e não cobre. Dirigidos **115/115**, `tsc` app e scripts `exit=0`. Um defeito meu que nenhum compilador acharia: `FuncaoDePessoal` fora do censo de `limpar-banco.ts`. Antes, seção 92 — **a complementar pela TELA** (frente do auxiliar): sete afirmações que o sistema não verificava, o instrumento provado pelo par **46 ok/14 falhas e 49 ok/11 falhas contra `6fa0d62` sem conserto** → **62 ok / 0 falhas** contra `d163d21`, banco clonado por execução; tipos **0/0/0**, dirigidos **37/37** e contrato memória↔tela **11/11**; mutação M-7 com **alvo confirmado antes de medir** (sha `34b03cb…`→`bcdf74e…`) e revertida. A correção que mais vale: previu-se documento contraditório e, medido, ele **emudecia** sobre uma contribuição retida — silêncio é pior que número errado. ⚠️ **Contagem minha corrigida**: eram **20** bancos na conferência de `_prisma_migrations`, não 21 (hoje 22, com os dois descartáveis do auxiliar); a prova segue íntegra porque o laço foi gerado por `pg_database`, não digitado. Antes, seção 91 — **o `4106e0f` não validava e travou a árvore**: `model Funcao` colidiu com a função ORÇAMENTÁRIA da Portaria 42/1999 (M02), e a tabela física `Funcao` já existia desde `20260711202100` — a migration era **inaplicável**, não só mal nomeada, e teria quebrado instalação limpa DEPOIS de o validate passar. Corrigida com a medição na mão (zero em `_prisma_migrations` nos 21 bancos), renomeada para `FuncaoDePessoal` em `5c129e0`. **Medido**: `validate` `exit=0`, `generate` `exit=0`, `tsc` de backend `exit=0` com zero `error TS` (eram 9) — ⚠️ **árvore NÃO congelada** (onze arquivos do auxiliar dentro), logo cobre os consertos dele mas **não é aceite**. Antes, seção 90 — **os dois eixos ausentes de 5.12.50 ganharam modelo, e o levantamento mudou a tarefa**: a FUNÇÃO nasceu (model `Funcao` + eventos `DESIGNACAO_FUNCAO`/`DISPENSA_FUNCAO`), o CENTRO DE CUSTO **já existia** — é o `Setor` do M21, que almoxarifado, compras e patrimônio já usam nesse papel; faltava o vínculo com vigência. Duas migrations aditivas (enum e estrutura separados pela restrição do Postgres), zero `DROP`. ⚠️ **NADA MEDIDO** — a máquina está com o auxiliar. Antes, seção 89 — unidade **documental**, não medida (a máquina está com o auxiliar): as três coisas que a 88 confundiu — (a) filtro de consulta, (b) seleção para processamento, (c) abrangência efetiva — separadas com arquivo e linha, e o fundamento falso da 88 corrigido. Achado que decide o desenho: a **subtração silenciosa** (`fecharFolha` congela UM cálculo; com seleção por cálculo, nº1={A,B} e nº2={C,D} fazem o fechamento levar só {C,D} e A e B somem sem erro). Antes dela, seção 88 — **tipos 0/0/0 nos três projetos** e **dirigidos 117/117** sobre a árvore ATUAL, `rc` lido do arquivo; dez mutações, nove acusando e **uma que NÃO acusou** (MUT-H, guarda inerte, retirada), todas revertidas por edição com checksum. A auditoria achou 3 defeitos meus, os três tratados: âncora de data civil, recusa do teto na tela e o **gate dentro da porta** |
 | Pendências relevantes | **`18.3–18.5` do 13º NÃO EXECUTADO** (folha fechada não recalcula — falta `RETIFICACAO-DA-FOLHA`); **defeito LATENTE** `numeroDoEmpenhoDaFolha` sem o tipo da folha (87.20, conserto do auxiliar); onde fica o portão do critério (apropriar ou fechar); `DDR-DISPONIVEL-SALDO-A-REPONTAR`; `PERCURSOS-SEM-TERMO-PATRIMONIAL-CONGELADO`. **Bloqueio NORMATIVO**: `DISPOSITIVO-MUNICIPAL-DO-13-NAO-LIDO` (três fontes em 403) — não trava o sistema, mas é o que falta para saber QUAL critério declarar. **Bloqueadas por terceiro** (83.3): eSocial, ASTEC, certificado A1, AWS, ENT12. **V9.4 acrescenta:** ~~`PESSOAL-SEM-CENTRO-DE-CUSTO`~~ e ~~`PESSOAL-SEM-FUNCAO`~~ **resolvidas na seção 90**, e no lugar delas quatro pendências novas e nomeadas (`CENTRO-DE-CUSTO-SEM-VIGENCIA-HISTORICA`, `VINCULOS-ANTERIORES-SEM-CENTRO-DE-CUSTO`, `FUNCAO-SEM-ACAO-PROPRIA`, `FUNCAO-SEM-EIXO-DE-AUSENCIA`); **a Tarefa 3 inteira está ESCRITA E NÃO MEDIDA** — migrations não aplicadas, `tsc` não rodado, testes não executados; **`SELECAO-NO-CALCULO-DA-FOLHA` — capacidade DEVIDA da 5.12.50, não construída** (a seção 88 a recusou com fundamento falso; ver seção 89), e ela nasce junto com o FATO de abrangência, a guarda de completude e a reconciliação de `VINCULO-APURADO-FORA-DO-RECALCULO`; **metade da distinção (a)/(b)/(c) por escrever em `modules/m33-folha/MODULO.md`** (território do auxiliar); **percurso de navegador de `/pessoal/servidores` NÃO EXECUTADO**. **Bloqueio de FONTE**: `ITEM-1667-DE-IBEMA-NAO-LOCALIZADO` — citado na ordem, ausente do repositório; texto pedido ao usuário |
-| Próximo passo | **Itens 3.B e 3.C da V12.** As duas worktrees retidas foram resolvidas e removidas (árvore Única: 989 MB → 844 KB), a branch `v11v93-artefato` preservada. **3.D e 3.A fechados e medidos**; **3.B, 3.C e a seção 4 não iniciados**. Seguem **abertas** `GLOSA-SEM-PERCURSO` e `ESTORNO-DE-RECEBIMENTO-SEM-PERCURSO` — o roteiro existe em `main` e **nunca fechou verde**; percurso escrito não é percurso verde. Sem suíte completa, sem `test:fuso`, sem portão, sem navegador, sem marcação de catálogo. O que segue abaixo é a pendência de produto herdada da V11 V9.5, íntegra: **PARADO — a ordem se encerra aqui do lado desta frente.** Devido e NÃO contado como feito: percurso de navegador de `/pessoal/funcoes` e do cálculo com seleção; suíte completa, `test:fuso` e portão; `SELECAO-NO-13-NAO-CONSTRUIDA`; `APURADO-A-REPOR-ENCOBERTO-POR-FOLHA-SEM-VINCULOS` (fronteira: motor da complementar, outra frente); `CENSO-DO-T5C-DESATUALIZADO`. Quando voltar limpo, ela vem em **UM** commit (seleção + abrangência + completude + "no máximo uma vez"), com o cenário nº1={A,B} / nº2={C,D} → **recusa nomeando A e B** como teste obrigatório. Segue devido o **percurso de navegador de `/pessoal/servidores`**. Histórico da ordem de medição, já executada: **as duas migrations em banco isolado**: as duas migrations em banco isolado conferidas **pelo efeito**, com alvo novo — provar que `FuncaoDePessoal` cria tabela própria e **não toca** a `Funcao` do M02 —, `generate` DEPOIS do migrate, `tsc` dos dois projetos restantes sozinho, e os dirigidos do M32. Depois os testes que faltam, nomeados na seção 90 (porta, integração, negativa pareada, mutação da guarda da dispensa órfã). **Enfileirada atrás do auxiliar**: a **seleção no cálculo** — (b) seleção + (c) fato de abrangência + guarda de completude + guarda de "no máximo uma vez", em **UM** commit, porque qualquer corte entre eles deixa uma folha que pode ser parcial sem acusar. Segue devendo o **percurso de navegador de `/pessoal/servidores`**. **Nada instalado nem publicado**; 5.12.50 segue `PARCIAL` e não marcada |
+| Próximo passo | **Bancos em dia, depois 3.B e 3.C.** ⚠️ O 3.B depende de banco no HEAD e `gestao_publica_percursos` está **13 migrations atrás** (205 contra 218), `gestao_publica` **6 atrás** (212) — unidade própria, anterior a ele. Abertas e nomeadas: `PREVIA-DE-PARCELAS-EM-FLOAT`, `PORTA-DE-TESOURARIA-SEM-TESTE`, `PERCENTUAL-CRU-NA-PROSA`. Histórico: **Itens 3.B e 3.C da V12.** As duas worktrees retidas foram resolvidas e removidas (árvore Única: 989 MB → 844 KB), a branch `v11v93-artefato` preservada. **3.D e 3.A fechados e medidos**; **3.B, 3.C e a seção 4 não iniciados**. Seguem **abertas** `GLOSA-SEM-PERCURSO` e `ESTORNO-DE-RECEBIMENTO-SEM-PERCURSO` — o roteiro existe em `main` e **nunca fechou verde**; percurso escrito não é percurso verde. Sem suíte completa, sem `test:fuso`, sem portão, sem navegador, sem marcação de catálogo. O que segue abaixo é a pendência de produto herdada da V11 V9.5, íntegra: **PARADO — a ordem se encerra aqui do lado desta frente.** Devido e NÃO contado como feito: percurso de navegador de `/pessoal/funcoes` e do cálculo com seleção; suíte completa, `test:fuso` e portão; `SELECAO-NO-13-NAO-CONSTRUIDA`; `APURADO-A-REPOR-ENCOBERTO-POR-FOLHA-SEM-VINCULOS` (fronteira: motor da complementar, outra frente); `CENSO-DO-T5C-DESATUALIZADO`. Quando voltar limpo, ela vem em **UM** commit (seleção + abrangência + completude + "no máximo uma vez"), com o cenário nº1={A,B} / nº2={C,D} → **recusa nomeando A e B** como teste obrigatório. Segue devido o **percurso de navegador de `/pessoal/servidores`**. Histórico da ordem de medição, já executada: **as duas migrations em banco isolado**: as duas migrations em banco isolado conferidas **pelo efeito**, com alvo novo — provar que `FuncaoDePessoal` cria tabela própria e **não toca** a `Funcao` do M02 —, `generate` DEPOIS do migrate, `tsc` dos dois projetos restantes sozinho, e os dirigidos do M32. Depois os testes que faltam, nomeados na seção 90 (porta, integração, negativa pareada, mutação da guarda da dispensa órfã). **Enfileirada atrás do auxiliar**: a **seleção no cálculo** — (b) seleção + (c) fato de abrangência + guarda de completude + guarda de "no máximo uma vez", em **UM** commit, porque qualquer corte entre eles deixa uma folha que pode ser parcial sem acusar. Segue devendo o **percurso de navegador de `/pessoal/servidores`**. **Nada instalado nem publicado**; 5.12.50 segue `PARCIAL` e não marcada |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -12371,3 +12371,147 @@ erro no mesmo dia.
 
 Itens **3.B** (seleção no 13º, `SELECAO-NO-13-NAO-CONSTRUIDA`) e **3.C** (cadastro e consulta),
 este último com o levantamento do auxiliar a caminho. Nada instalado nem publicado.
+
+## 99. V12 — o float no total de um livro, o dinheiro cru na prosa, e o que a comparação achou
+
+> Ordem: rodada 3 da V12. Base `1d77e86`. Três commits: `26d1a66`, `e5a4209`, `90c49f5`.
+
+### Antes de tudo: a lição que a `percurso-glosa` deixou, escrita como regra
+
+A worktree `percurso-glosa-0adaf12` foi classificada CLASSE C a partir de uma leitura do
+**conteúdo** da cópia. A comparação com o destino disse CLASSE B. A regra que fica:
+
+> **Ler o conteúdo de uma cópia não diz se ela está à frente ou atrás. Só a comparação com o
+> destino diz.** Ancestralidade, `sha256` por arquivo, linhas exclusivas dos dois lados — o que
+> nenhuma leitura acha é que `main` já tinha aquilo desde `43f8842` e ainda o consertou em
+> `82564e9`, trocando seletor por número por leitura de `data-acao` da tela. Integrar teria
+> revertido um conserto medido por execução real.
+
+### Unidade 1 — float no total de relatório oficial (`26d1a66`, `e5a4209`)
+
+**A ordem nomeava dois sítios. A varredura exaustiva achou seis em código de produto.**
+
+| Sítio | Situação |
+|---|---|
+| `app/(areas)/relatorios/livros/diario/page.tsx:40` | **consertado** |
+| `app/(areas)/relatorios/rreo/anexo6/page.tsx` (`caixaDaDespesa`) | **consertado** |
+| `lib/portas/tesouraria.ts` (`contasComSaldo`, saldo por fonte + resíduo) | **consertado** |
+| `lib/portas/tesouraria.ts` (`lotes`, total do lote de pagamento) | **consertado** |
+| `app/(areas)/licitacoes/contratos/[id]/FormulariosDaExecucao.tsx:495` | **ABERTO** — prévia client-side em formato BR (vírgula); `somarValoresDigitados` existe mas exige normalizador. `PREVIA-DE-PARCELAS-EM-FLOAT` |
+| `scripts/poc-conferir.ts:301` | **ABERTO** — diagnóstico de console, não serve tela |
+
+**Nos dois primeiros o motor certo já existia, e o aviso também.** `totaisPorSubsistema` soma em
+`BigInt` de centavos e o comentário dela diz: "`Number` sobre dinheiro entra pela porta do
+relatório — que é onde ninguém procura". `caixaDaDespesa` (`rreo-anexo6.ts:371`) já somava
+(a)+(b)+(c) em `Decimal`. E `lib/portas/livros.ts` avisava: "A TENTAÇÃO É SOMAR NA TELA. Ela
+parece inofensiva (é só um `reduce`)". A tela reimplementou as duas em float assim mesmo — a três
+arquivos de distância dos avisos. O conserto não inventou aritmética: expôs a que existia, pelas
+portas.
+
+### ⚠️ A fixture óbvia não acusa — e isso mudou o teste
+
+A ordem pedia "centavos que não fecham em binário", supondo `0.1 + 0.2`. **Medido: não acusa.** O
+código defeituoso termina em `.toFixed(2)`, que arredonda o ruído embora:
+
+```
+0.10 + 0.20                    float 0.30              centavos 0.30              iguais
+1234.56 + 7890.12 + 0.03       float 9124.71           centavos 9124.71           iguais
+8422412220122.26 + …           float 26408371116648.30 centavos 26408371116648.31 DIFEREM
+```
+
+Como a soma exata de valores de 2 casas tem 2 casas, o float só vira o **centavo** quando o erro
+passa de meio centavo — o que exige magnitude na casa de **2,2 × 10¹³**. Um teste escrito com
+`0.1 + 0.2` passaria **com o defeito** e daria a impressão de cobri-lo.
+
+Então: **o defeito estava LATENTE em magnitude municipal**, e dizer isso é parte do registro. Há
+um caso no teste que afirma exatamente o contrário do que se quer de um conserto — que o valor
+publicado continua **idêntico** ao de antes —, porque consertar o invariante não pode mudar em
+silêncio um demonstrativo assinado.
+
+**A prova de que o teste acusa**: as duas funções voltaram ao float (checksum `b0d25edc…` →
+`52953592…` e `61911ff2…` → `a023e7cc…`), vermelho nos dois casos de magnitude com diferença de
+**um centavo**, e os outros quatro verdes. Revertido, 6/6.
+
+**E o limiar de 0,005 da tesouraria caiu com motivo**: ele existia para **absorver ruído de
+float**. Com soma exata, o resíduo é zero ou é pelo menos um centavo, e `!resto.isZero()` é
+rigorosamente o mesmo teste, sem a tolerância que escondia que a aritmética não era confiável.
+
+⚠️ **`PORTA-DE-TESOURARIA-SEM-TESTE`**: nenhum teste do repo importa `lib/portas/tesouraria`.
+Aquela mudança está coberta **apenas** por `tsc` do app — e o `--listFiles` mostrou que o arquivo
+**não está** no projeto do backend. É a lição da seção 94 aparecendo de novo.
+
+### Unidade 2 — o dinheiro cru na prosa (`90c49f5`)
+
+O defeito não é campo, é **frase**: memória por rubrica e mensagens de recusa montadas com
+`toFixed(2)` e gravadas já formatadas. Campo a tela reformata; frase pré-cozida fica congelada e
+entra no `sha256` do contracheque.
+
+O motor textual foi para `packages/contracts/moeda.ts`; `lib/format/moeda.ts` virou **casca fina**
+que reexporta — nenhum import mudou para as 64 telas. Duas apresentações sobre um motor:
+`formatarMoeda` (coluna contábil, 2 casas, negativo entre parênteses) e `emProsa` (frase, casas
+preservadas, negativo com sinal de menos, porque a frase já tem os parênteses dela).
+
+**⚠️ A medição reclassificou o levantamento.** Ele falava em "~70 pontos de interpolação" via
+`m()`. Medido:
+
+| | prosa | campo estruturado |
+|---|---|---|
+| `dominio.ts` | 26 | 29 |
+| `complementar.ts` | 9 | 12 |
+| `decimo-terceiro.ts` | 16 | 22 |
+| `encargos.ts` | **0** | 7 |
+| **total** | **51** | **70** |
+
+Os "~70" são justamente os usos em **CAMPO** — os que a ordem manda **não** tocar. Trocar `m()`
+inteiro teria formatado campo de memória e quebrado quem o consome programaticamente. Por isso
+`m()` ficou como está e nasceu `reais()` ao lado, com a distinção escrita no arquivo.
+
+⚠️ **Uma colisão minha, pega antes de medir**: o helper nasceu chamado `r`, e `dominio.ts` já tem
+uma variável local `r` (a rubrica) usada na **mesma linha** (`linha(r, …)`). Renomeado para
+`reais`.
+
+**O hash e a versão.** `sha256Canonico` hasheia a prosa inteira. Folha fechada não se recalcula
+(invariante 3), então o corte é **prospectivo** e nada gravado se move — mas as três versões de
+motor subiram para marcar o corte, com o motivo ao lado de cada uma: `m33-folha-1.1.0` → `1.2.0`,
+`m33-complementar-1` → `-2`, `m33-decimo-terceiro-1.0.0` → `1.1.0`. Medido: **zero hash literal e
+zero versão de motor fixada em teste** no repo inteiro — nenhum teste era evidência de memória
+histórica nesse sentido. As 8 falhas foram todas de prosa antiga, atualizadas declaradamente.
+
+**A prova de que a troca chegou**: `emProsa` passou a devolver o valor cru (`8007b9ea…` →
+`1e914392…`); vermelho em três arquivos, 9 testes, incluindo `m33-folha` e
+`m33-complementar-dominio` — o que prova que a prosa dos **motores** passa por ela. Revertido, verde.
+
+`PERCENTUAL-CRU-NA-PROSA` fica nomeada: `${pct.times(100).toFixed(2)}%` continua imprimindo
+`33.33%` em três frases. É o mesmo defeito de classe, mas não é dinheiro, e a ordem era sobre
+dinheiro.
+
+### O que foi medido
+
+| Medição | Resultado | `rc` |
+|---|---|---|
+| `m12-totais-sem-float.test.ts` (novo) | **6/6** | arquivo, 0 |
+| dirigidos M12 + M09 | **40 arquivos, 313 testes, 0 falhas** | arquivo, 0 |
+| `packages/contracts/moeda.test.ts` (novo) | **7/7** | arquivo, 0 |
+| M33 + packages/contracts + `test/ui/moeda.test.ts` | **18 arquivos, 313 testes, 0 falhas** | arquivo, 0 |
+| `tsc -p tsconfig.backend.json` | **0 `error TS`** | arquivo, 0 |
+| `tsc -p tsconfig.json` (app) | **0 `error TS`** | arquivo, 0 |
+
+`--listFiles` confirmou a cobertura em cada projeto, e foi ele que mostrou que
+`lib/portas/tesouraria.ts` só existe no projeto do app.
+
+⚠️ **Um erro de tipo real, achado e consertado no caminho**: a casca de `lib/format/moeda.ts`
+importava sem extensão `.js`, o que o projeto do backend recusa (`node16`). O efeito em cascata
+foi instrutivo: `formatarMoeda` virou `any`, e o `@ts-expect-error` que prova "passar `number` é
+erro de compilação" ficou **sem uso** — o instrumento acusou a perda do tipo antes de qualquer
+teste rodar.
+
+### O que NÃO foi medido
+
+Suíte completa, `test:fuso`, portão e percurso de navegador: **nenhum**. Nenhuma marcação de
+catálogo. `lib/portas/tesouraria.ts` sem teste dirigido, como acima.
+
+### Próximo ponto exato
+
+Itens **3.B** (seleção no 13º) e **3.C** (cadastro e consulta) da V12, e a seção 4. ⚠️ O 3.B
+depende de banco no HEAD: `gestao_publica_percursos` está **13 migrations atrás** (205 contra 218)
+e `gestao_publica` está **6 atrás** (212). Pôr os bancos em dia é unidade própria, anterior a ele.
