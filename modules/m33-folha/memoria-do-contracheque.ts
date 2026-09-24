@@ -99,6 +99,21 @@ const zAvos = z.object({
 
 const zIncidencias = z.object({ contribuicao: z.boolean(), irrf: z.boolean(), motivo: z.string() });
 
+/**
+ * ⚠️ V11 V9.4b — OS TRÊS BLOCOS QUE A COMPLEMENTAR JÁ ESCREVIA E QUE NINGUÉM LIA.
+ *
+ * A memória do contracheque complementar declara, DENTRO do sha256, que ele não é a remuneração
+ * da competência (`natureza`), sob que regime a retenção foi calculada (`regimeDeTributacao`) e
+ * que grandeza ele mede (`medida`). Nada disso tinha leitor aqui — e uma declaração que não chega
+ * a quem lê é papelada: existe e não produz efeito. O percurso de navegador mediu as três
+ * ausências na tela.
+ *
+ * ⚠️ TODOS OPCIONAIS, e a opcionalidade é o ponto, não frouxidão: todo contracheque MENSAL e de
+ * 13º já gravado não tem estas chaves, e exigi-las faria cada um deles virar `ILEGIVEL`. É
+ * "migration aditiva" aplicada à leitura, o mesmo que a V11 V9.3 fez com `procedenciaDoAbatimento`.
+ */
+const zMedida = z.object({ unidade: z.enum(["DIAS", "AVOS", "DIFERENCA"]), explicacao: z.string() });
+
 const zProcedencia = z.object({
   folhaDeAdiantamento: z.string(),
   calculoNumero: z.number(),
@@ -150,6 +165,29 @@ export interface MemoriaLida {
   readonly incidencias: Bloco<z.infer<typeof zIncidencias>>;
   /** Só na 2ª parcela do 13º: de onde veio o abatimento. */
   readonly procedenciaDoAbatimento: Bloco<Procedencia>;
+  /**
+   * A GRANDEZA que este contracheque mede, quando a memória a declara. Ausente nos cálculos
+   * anteriores à V11 V9.4b — e a ausência NÃO significa "dias": significa que aquele cálculo é
+   * anterior à pergunta. Quem interpreta a ausência é quem lê.
+   */
+  readonly medida: Bloco<z.infer<typeof zMedida>>;
+  /** O que este documento DIZ que é. Na complementar: uma diferença, não a remuneração do mês. */
+  readonly natureza: Bloco<string>;
+  /** Sob que regra a retenção foi calculada. Na complementar: competência, não caixa. */
+  readonly regimeDeTributacao: Bloco<string>;
+  /**
+   * ⚠️ A CONTA DE ONDE A DIFERENÇA SAIU — e ela existe porque o documento estava EMUDECENDO.
+   *
+   * Num contracheque COMPLEMENTAR o bloco `contribuicao` do topo não existe: o que a folha retém é
+   * o DELTA (está na linha), e a conta que o produziu é a do recálculo INTEGRAL, guardada em
+   * `recalculoIntegral`. Sem leitor para ela, a tela dizia *"A memória deste cálculo não traz o
+   * detalhamento da contribuição"* enquanto descontava 50,00 do servidor — medido no percurso.
+   *
+   * ⚠️ E O SILÊNCIO É PIOR QUE O NÚMERO ERRADO. Um número errado alguém confere e questiona; um
+   * silêncio o servidor lê como "não houve contribuição". Quem retém tem de explicar a retenção.
+   */
+  readonly contribuicaoDoRecalculoIntegral: Bloco<Contribuicao>;
+  readonly irrfDoRecalculoIntegral: Bloco<Irrf>;
 }
 
 /** O resumo de um erro do Zod, legível por quem não escreveu o schema. */
@@ -184,9 +222,19 @@ export function lerMemoriaDoContracheque(bruta: unknown): MemoriaLida {
     return {
       contribuicao: ilegivel, irrf: ilegivel, salarioFamilia: ilegivel,
       dias: ilegivel, avos: ilegivel, incidencias: ilegivel, procedenciaDoAbatimento: ilegivel,
+      medida: ilegivel, natureza: ilegivel, regimeDeTributacao: ilegivel,
+      contribuicaoDoRecalculoIntegral: ilegivel, irrfDoRecalculoIntegral: ilegivel,
     };
   }
   const o = bruta as Record<string, unknown>;
+  /**
+   * O recálculo INTEGRAL, quando existe — é ele que explica de onde a diferença saiu. Nunca é
+   * lido como se fosse a conta DESTA folha: quem o renderiza tem de dizer que é o integral.
+   */
+  const integral: Record<string, unknown> =
+    typeof o["recalculoIntegral"] === "object" && o["recalculoIntegral"] !== null && !Array.isArray(o["recalculoIntegral"])
+      ? (o["recalculoIntegral"] as Record<string, unknown>)
+      : {};
 
   /**
    * ⚠️ O MOTIVO DA AUSÊNCIA VEM DA PRÓPRIA MEMÓRIA QUANDO ELA O DECLARA. Na 1ª parcela do 13º, a
@@ -208,5 +256,10 @@ export function lerMemoriaDoContracheque(bruta: unknown): MemoriaLida {
     avos: bloco(zAvos, o["avos"], "Esta folha não mede por avos."),
     incidencias: bloco(zIncidencias, o["incidencias"], "Esta folha não declara incidências por parcela."),
     procedenciaDoAbatimento: bloco(zProcedencia, o["procedenciaDoAbatimento"], "Não há abatimento de adiantamento neste contracheque."),
+    medida: bloco(zMedida, o["medida"], "A memória deste cálculo não declara a grandeza que ele mede."),
+    natureza: bloco(z.string().min(1), o["natureza"], "A memória deste cálculo não declara a natureza do documento."),
+    regimeDeTributacao: bloco(z.string().min(1), o["regimeDeTributacao"], "A memória deste cálculo não declara o regime de tributação aplicado."),
+    contribuicaoDoRecalculoIntegral: bloco(zContribuicao, integral["contribuicao"], "Este cálculo não traz recálculo integral."),
+    irrfDoRecalculoIntegral: bloco(zIrrf, integral["irrf"], "Este cálculo não traz recálculo integral."),
   };
 }

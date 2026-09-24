@@ -135,18 +135,44 @@ export class DiferencaNegativaNaComplementarError extends Error {
     correto: Money,
     jaApurado: Money
   ) {
+    /**
+     * ⚠️ O QUE ESTA FRASE PODE AFIRMAR É O QUE O CÁLCULO VERIFICOU, E ELE VERIFICOU UMA COISA SÓ:
+     * `FolhaDePagamento.fechamento !== null`. (V11 V9.4b, achado pelo percurso de navegador.)
+     *
+     * Até aqui ela dizia **"O servidor RECEBEU A MAIS"** e **"O ente RETEVE A MAIS"**. Nenhum dos
+     * dois é fato conhecido: entre a folha FECHADA e o dinheiro na conta do servidor há
+     * certificação (que pode ser DEVOLVIDA para correção), empenho, liquidação e pagamento — e o
+     * pagamento nem é ato deste módulo. Uma folha fechada e devolvida nunca será liquidada nem
+     * paga, e o próprio `MODULO.md` documenta esse caso para o 13º. É a mesma doença que a V11
+     * V9.2 corrigiu quando a memória do contracheque dizia "1ª parcela já PAGA" sobre um cálculo
+     * que só verificara o fechamento.
+     *
+     * ⚠️ E A MENSAGEM CONTINUA ORIENTANDO. Trocar a afirmação falsa por silêncio deixaria o
+     * operador sem saber o que fazer; o que sai é a justificativa de arquitetura ("ato próprio,
+     * com rito próprio, e não existe neste sistema"), que explica o DESENHO a quem só precisa
+     * saber o PRÓXIMO PASSO. O que entra diz o fato apurado, a consequência possível e a ação.
+     */
     const oQueSeria =
       rubrica.tipo === "PROVENTO"
-        ? `O servidor RECEBEU A MAIS: isso é valor a repor ao erário, que é ato próprio, com rito próprio, e não existe neste sistema.`
-        : `O ente RETEVE A MAIS: devolver desconto indevido é ato próprio e não existe neste sistema.`;
+        ? `Há ${m(toMoney(jaApurado.minus(correto)))} APURADOS A MAIS nesta rubrica, em folha já fechada. ` +
+          `Se esse valor chegou a ser pago, é caso de reposição ao erário; se ainda não foi, é caso de ` +
+          `acertar antes do pagamento. Este sistema NÃO verifica pagamento aqui — o que ele conferiu foi o ` +
+          `fechamento da folha —, e não pratica nenhum dos dois atos.`
+        : `Há ${m(toMoney(jaApurado.minus(correto)))} RETIDOS A MAIS nesta rubrica, em folha já fechada. ` +
+          `Se a retenção já foi recolhida, o acerto é com o destinatário dela; se ainda não foi, é caso de ` +
+          `corrigir antes do recolhimento. Este sistema NÃO verifica recolhimento aqui — o que ele conferiu ` +
+          `foi o fechamento da folha —, e não pratica nenhum dos dois atos.`;
     super(
       `COMPLEMENTAR-COM-DIFERENCA-NEGATIVA: na competência ${competencia}, a matrícula ${matricula} ` +
         `tem ${m(correto)} de correto na rubrica ${rubrica.codigo} (${rubrica.descricao}) e ` +
         `${m(jaApurado)} já apurados em folha fechada — diferença de ${m(toMoney(correto.minus(jaApurado)))}. ` +
         `${oQueSeria} ` +
-        `A folha mensal COMPLEMENTAR paga o que faltou; ela não cobra de volta, não credita negativo e ` +
-        `não segue abatendo zero — seguir com zero pagaria as outras rubricas e calaria sobre esta, com ` +
-        `os totais fechando. Trate esta matrícula fora desta folha. Nada foi calculado.`
+        `A folha mensal COMPLEMENTAR paga o que faltou; ela não cobra de volta e não segue abatendo zero — ` +
+        `seguir com zero pagaria as outras rubricas e calaria sobre esta, com os totais fechando. ` +
+        `O QUE FAZER: confira o cadastro desta matrícula na competência ${competencia} (remuneração, ` +
+        `lançamentos e eventos de vida funcional). Se o valor de hoje é que está errado, corrija-o e calcule ` +
+        `de novo. Se o correto é mesmo menor, esta matrícula não entra nesta folha: retire a causa da ` +
+        `diferença ou trate o acerto fora daqui, e então recalcule. Nada foi calculado.`
     );
     this.name = "DiferencaNegativaNaComplementarError";
   }
@@ -298,6 +324,22 @@ export function calcularContrachequeComplementar(e: EntradaDaComplementar): Cont
       "reaberta nem corrigida — o contracheque dela continua valendo, e a soma dos dois e o total " +
       "devido pela competencia.",
     regimeDeTributacao: REGIME_DE_TRIBUTACAO_DA_COMPLEMENTAR,
+    /**
+     * ⚠️ V11 V9.4b — A MEMÓRIA DECLARA A GRANDEZA QUE MEDE, e é isso que tira da TELA o direito de
+     * chutar uma.
+     *
+     * O cabeçalho do contracheque anunciava "30/30 dias" neste documento (medido no percurso),
+     * porque `medida()` caía num ramo final que fabricava "dias" sempre que não reconhecia a
+     * memória. Um contracheque complementar não mede um mês de trabalho: ele mede uma DIFERENÇA.
+     * Os dias do recálculo integral continuam registrados em `recalculoIntegral` — eles explicam
+     * como o "correto" foi apurado —, e é lá que quem quiser conferi-los os acha.
+     */
+    medida: {
+      unidade: "DIFERENCA",
+      explicacao:
+        "diferença apurada para a competência — este contracheque não mede tempo trabalhado; " +
+        `os ${e.correto.diasComputados}/30 dias do recálculo integral explicam o valor CORRETO, não este.`,
+    },
     diasComputados: e.correto.diasComputados,
     rubricas: detalhe,
     totais: {

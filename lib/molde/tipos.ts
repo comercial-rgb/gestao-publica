@@ -153,6 +153,17 @@ export interface DisponibilidadeDaAcao {
   readonly providencia?: string;
   /** Atalho para a providência, quando a sessão pode segui-lo. */
   readonly providenciaHref?: string;
+  /**
+   * O `aviso` do ato PARA ESTE REGISTRO, quando o do descritor não serve.
+   *
+   * ⚠️ NÃO É REGRA DE NEGÓCIO NO MOLDE, e a distinção importa: quem decide o texto é a porta que
+   * já decide `motivo` e `providencia` por registro; o molde só prefere o específico ao genérico.
+   * Existe porque um descritor serve N estados do mesmo recurso e o `aviso` é a única coisa que o
+   * operador lê ANTES de agir — na folha, o mesmo descritor serve quatro TIPOS, e o aviso único
+   * prometia "um contracheque por vínculo vivo" numa complementar, que só produz contracheque
+   * para quem tem diferença. Texto que não corresponde ao fato produzido é defeito, e foi medido.
+   */
+  readonly aviso?: string;
 }
 
 export interface DisponibilidadeDoRegistro {

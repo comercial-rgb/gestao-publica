@@ -280,7 +280,23 @@ describe("c2 · o que a complementar recusa", () => {
 
     const { folhaId } = await abrirFolha(prisma, { competencia: COMP, tipo: "MENSAL_COMPLEMENTAR", criadoPor: AUTOR });
     await expect(calcularFolha(prisma, { folhaId, criadoPor: AUTOR })).rejects.toThrow(/COMPLEMENTAR-COM-DIFERENCA-NEGATIVA[\s\S]*MAT-A[\s\S]*VENC/);
-    await expect(calcularFolha(prisma, { folhaId, criadoPor: AUTOR })).rejects.toThrow(/repor ao erário/);
+    /**
+     * ⚠️ V11 V9.4b — O QUE A RECUSA AFIRMA É A APURAÇÃO, E O QUE ELA NÃO PODE AFIRMAR É O
+     * RECEBIMENTO. Entre a folha FECHADA e o dinheiro na conta há certificação (que pode ser
+     * DEVOLVIDA), empenho, liquidação e pagamento — e nenhum deles é consultado aqui. A recusa
+     * cita a reposição ao erário como HIPÓTESE ("se esse valor chegou a ser pago"), nunca como
+     * fato, e diz o que fazer.
+     */
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: AUTOR })).rejects.toThrow(/APURADOS A MAIS[\s\S]*em folha já fechada/);
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: AUTOR })).rejects.toThrow(/O QUE FAZER/);
+    // ⚠️ A METADE NEGATIVA, LIDA DA MENSAGEM E NÃO DE UM MATCHER AMBÍGUO: nada de "RECEBEU A
+    // MAIS" nem de "já pago" — são os fatos que ninguém verificou.
+    const capturado = await calcularFolha(prisma, { folhaId, criadoPor: AUTOR }).then(
+      () => null,
+      (e: unknown) => (e instanceof Error ? e.message : String(e))
+    );
+    expect(capturado).not.toBeNull();
+    expect(capturado).not.toMatch(/RECEBEU A MAIS|RETEVE A MAIS|já pag/i);
     expect(await prisma.calculoDaFolha.count({ where: { folhaId } })).toBe(0);
   });
 

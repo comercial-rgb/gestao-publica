@@ -250,8 +250,39 @@ export async function abrirFolha(prisma: PrismaClient, input: AbrirFolhaInput): 
   const d = zAbrirFolhaInput.parse(input);
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.abrirFolha, "ENTE");
-    const ja = await tx.folhaDePagamento.findUnique({ where: { competencia_tipo: { competencia: d.competencia, tipo: d.tipo } }, select: { id: true } });
-    if (ja !== null) throw new Error(`FOLHA-JA-ABERTA: a folha ${d.tipo} de ${d.competencia} já existe (${ja.id}). Calcule-a; não se abre duas vezes. Nada foi gravado.`);
+    /**
+     * ⚠️ A ORIENTAÇÃO TEM DE SER VERDADEIRA NO ESTADO EM QUE O OPERADOR ESTÁ (V11 V9.4b).
+     *
+     * Esta recusa dizia sempre **"Calcule-a"**. Quando a folha existente está FECHADA isso é um
+     * REMÉDIO FALSO: `calcularFolha` recusa folha fechada, a barra nem apresenta o formulário, e
+     * quem seguiu o conselho descobre duas telas adiante. É a mesma família do remédio falso que a
+     * V11 V9.3 achou na barra do 13º — e no caso da MENSAL_COMPLEMENTAR é justamente o caso sem
+     * saída de `SEGUNDA-COMPLEMENTAR-NA-MESMA-COMPETENCIA`: um segundo achado depois de a
+     * complementar fechar não tem folha para entrar.
+     *
+     * ⚠️ E ISTO NÃO CONSTRÓI A SEGUNDA COMPLEMENTAR. A decisão de produto continua sendo UMA por
+     * competência (`@@unique([competencia, tipo])`) e a pendência continua nomeada. O que muda é
+     * a mensagem deixar de mentir sobre o que fazer.
+     */
+    const ja = await tx.folhaDePagamento.findUnique({
+      where: { competencia_tipo: { competencia: d.competencia, tipo: d.tipo } },
+      select: { id: true, fechamento: { select: { id: true } } },
+    });
+    if (ja !== null) {
+      const aberta = ja.fechamento === null;
+      throw new Error(
+        `FOLHA-JA-ABERTA: a folha ${d.tipo} de ${d.competencia} já existe (${ja.id}) e está ` +
+          (aberta ? `ABERTA` : `FECHADA`) +
+          `. Existe UMA folha de cada tipo por competência, e ela não se abre duas vezes. ` +
+          (aberta
+            ? `O QUE FAZER: abra essa folha e RECALCULE — o cálculo seguinte absorve o que mudou no cadastro ` +
+              `desde o anterior, e o número do cálculo avança sem folha nova.`
+            : `⚠️ E ELA NÃO SE RECALCULA: fechar congela o cálculo, então não adianta abri-la para calcular de ` +
+              `novo. O QUE FAZER: se o que falta é uma diferença ainda não apurada nesta competência, ela não ` +
+              `tem folha onde entrar hoje — registre a pendência e trate o acerto fora deste caminho.`) +
+          ` Nada foi gravado.`
+      );
+    }
 
     /**
      * ⚠️ V11 V9.1 — O EXERCÍCIO E O ELO, RESOLVIDOS AQUI E NÃO DIGITADOS.

@@ -27,8 +27,33 @@ export const dynamic = "force-dynamic";
 function medida(m: MemoriaLida, diasDaColuna: number): string {
   if (m.avos.situacao === "PRESENTE") return `${m.avos.dados.computados}/${m.avos.dados.de} avos`;
   if (m.dias.situacao === "PRESENTE") return m.dias.dados.explicacao;
+  // A memória DECLARA a grandeza (V11 V9.4b): quem mede diferença diz que mede diferença.
+  if (m.medida.situacao === "PRESENTE") return m.medida.dados.explicacao;
   if (m.avos.situacao === "ILEGIVEL") return `medida não reconhecida na memória (${m.avos.motivo})`;
-  return `${diasDaColuna}/30 dias`;
+  if (m.medida.situacao === "ILEGIVEL") return `medida não reconhecida na memória (${m.medida.motivo})`;
+  /**
+   * ⚠️ O RAMO FINAL NÃO INVENTA UNIDADE — e este é o conserto de um defeito que já tinha sido
+   * consertado uma vez, do jeito errado (V11 V9.4b).
+   *
+   * O docblock acima existe porque `${c.dias}/30 dias` "era mentira na folha de 13º". A correção
+   * de então ENUMEROU o caso conhecido (`avos`) e deixou o ramo final fabricando dias — e o tipo
+   * SEGUINTE caiu exatamente ali: o percurso mediu **"30/30 dias"** no cabeçalho de um
+   * contracheque COMPLEMENTAR cujo líquido era 450,00 de diferença. Enumerar a forma acha só as
+   * formas enumeradas; é a regra com nome deste repositório, e ela cobrou duas vezes no mesmo
+   * ponto.
+   *
+   * Agora a grandeza é DECLARADA pela memória (`NATUREZA_DO_TIPO_DE_FOLHA.medida` diz qual é por
+   * tipo) e a tela renderiza o que foi declarado. Sem declaração, ela diz que não sabe: `dias` da
+   * COLUNA continua sendo mostrado porque é dado gravado e verdadeiro, mas sem afirmar que ele
+   * mede este documento.
+   *
+   * ⚠️ PENDÊNCIA NOMEADA — `MEDIDA-DECLARADA-SO-NA-COMPLEMENTAR`: `MENSAL`,
+   * `ADIANTAMENTO_DECIMO_TERCEIRO` e `DECIMO_TERCEIRO` ainda são reconhecidos pelos blocos
+   * `dias`/`avos` que já escreviam, não pela declaração. Enquanto os quatro tipos não declararem
+   * `medida`, um tipo NOVO que não escreva `dias` nem `avos` cai neste ramo — e agora cai dizendo
+   * que não sabe, em vez de mentindo. Fechar a propriedade é fazer os quatro motores declararem.
+   */
+  return `${diasDaColuna}/30 dias registrados no cálculo — a memória não declara que grandeza este contracheque mede`;
 }
 
 /**
@@ -68,6 +93,26 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
           Voltar à folha de {c.competencia}
         </Link>
       </p>
+
+      {/*
+        ⚠️ A DECLARAÇÃO DO DOCUMENTO VEM ANTES DOS NÚMEROS, E VEM PORQUE FALTAVA (V11 V9.4b).
+        A memória do contracheque complementar já dizia, lacrada no sha256, que ele NÃO é a
+        remuneração da competência e sob que regime a retenção foi calculada. Nada disso chegava à
+        tela: o servidor lia um contracheque de 450,00 e concluía que ganhara 450,00 no mês. Uma
+        declaração que não chega a quem lê não produz efeito — é a doença desta rodada inteira.
+        Só aparece quando a memória declara; num contracheque mensal não há bloco e não há ruído.
+      */}
+      {m.natureza.situacao === "PRESENTE" || m.regimeDeTributacao.situacao === "PRESENTE" ? (
+        <Card>
+          <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">O que este documento é</h2>
+          {m.natureza.situacao === "PRESENTE" ? (
+            <p data-natureza-do-contracheque className="text-xs text-[color:var(--color-ink)]">{m.natureza.dados}</p>
+          ) : null}
+          {m.regimeDeTributacao.situacao === "PRESENTE" ? (
+            <p data-regime-de-tributacao className="mt-2 text-xs text-[color:var(--color-ink-2)]">{m.regimeDeTributacao.dados}</p>
+          ) : null}
+        </Card>
+      ) : null}
 
       <Card>
         <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">Linhas do contracheque</h2>
@@ -110,7 +155,37 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
 
       <Card>
         <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Contribuição previdenciária</h2>
-        {m.contribuicao.situacao !== "PRESENTE" ? (
+        {/*
+          ⚠️ QUEM RETÉM EXPLICA A RETENÇÃO (V11 V9.4b). Num contracheque de DIFERENÇA a conta não é
+          deste documento: o que ele retém é o DELTA (está na linha da rubrica) e a conta que o
+          produziu é a do recálculo INTEGRAL. Antes disto a tela caía no `SemBloco` e dizia "a
+          memória deste cálculo não traz o detalhamento da contribuição" — enquanto descontava do
+          servidor. O silêncio é pior que um número errado: um número errado se questiona, um
+          silêncio se lê como "não houve". Aqui o integral é mostrado DITO COMO INTEGRAL, nunca
+          como se fosse o valor descontado nesta folha.
+        */}
+        {m.contribuicao.situacao !== "PRESENTE" && m.contribuicaoDoRecalculoIntegral.situacao === "PRESENTE" ? (
+          <div data-contribuicao-do-integral className="space-y-2 text-xs text-[color:var(--color-ink-2)]">
+            <p className="text-[color:var(--color-ink)]">
+              Esta folha retém a DIFERENÇA de contribuição, e o valor retido é o que está na linha da rubrica acima.
+              A conta abaixo é o recálculo INTEGRAL da competência — a base de onde a diferença saiu —, e não o valor
+              descontado neste documento.
+            </p>
+            <p>
+              Regime {m.contribuicaoDoRecalculoIntegral.dados.regime} · base {m.contribuicaoDoRecalculoIntegral.dados.base}
+              {m.contribuicaoDoRecalculoIntegral.dados.tetoAplicado ? ` (teto aplicado sobre ${m.contribuicaoDoRecalculoIntegral.dados.baseAntesDoTeto})` : ""}
+              {" "}· contribuição integral da competência {m.contribuicaoDoRecalculoIntegral.dados.aplicada}
+            </p>
+            <ul className="list-disc pl-4">
+              {m.contribuicaoDoRecalculoIntegral.dados.faixas.map((f) => (
+                <li key={f.ordem}>
+                  faixa {f.de}–{f.ate} · base na faixa {f.baseNaFaixa} · alíquota {f.aliquota} · {f.valor}
+                </li>
+              ))}
+            </ul>
+            <p>{m.contribuicaoDoRecalculoIntegral.dados.fundamentacao}</p>
+          </div>
+        ) : m.contribuicao.situacao !== "PRESENTE" ? (
           <SemBloco b={m.contribuicao} />
         ) : (
           <div className="space-y-2 text-xs text-[color:var(--color-ink-2)]">

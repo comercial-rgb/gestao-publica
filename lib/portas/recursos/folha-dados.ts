@@ -3,7 +3,7 @@ import { diaCivilBr, meioDiaCivil } from "../../../packages/datas/index.js";
 import { Decimal, toMoney, sumMoney } from "../../../packages/contracts/index.js";
 import { formatarDocumento } from "../../../packages/documento/index.js";
 import type { Prisma } from "../../../prisma/generated/client/client.js";
-import { situacaoDaFolha, vigenteNaCompetencia, type SituacaoDaFolha } from "../../../modules/m33-folha/dominio.js";
+import { NATUREZA_DO_TIPO_DE_FOLHA, situacaoDaFolha, vigenteNaCompetencia, type SituacaoDaFolha } from "../../../modules/m33-folha/dominio.js";
 import { situacaoDoVinculo, type EventoDoVinculo } from "../../../modules/m32-pessoal/dominio.js";
 import { apropriacaoDaFolha, apropriarFolha, cadastrarGrupoDeEmpenhoDaFolha, definirContasDaLiquidacaoDoGrupo } from "../../../modules/m33-folha/apropriacao.js";
 import { elegibilidadeDosAtosDaFolha } from "../../../modules/m33-folha/elegibilidade.js";
@@ -298,13 +298,26 @@ export async function disponibilidadeDaFolha(folhaId: string, permitidas: Readon
   const r = await retratoDosAtosDaFolha(cliente(), folhaId, sessao.identificador, { consultarDesignacao: permitidas.has("CERTIFICAR_FOLHA"), lerDistribuicao: true });
   if (r === null) return null;
   const porAto = elegibilidadeDosAtosDaFolha(r.estado, r.ator);
+  /**
+   * ⚠️ O AVISO DE `calcular` SAI DO TIPO DESTA FOLHA (V11 V9.4b). O descritor é um só para os
+   * quatro tipos, e o texto dele prometia "Calcula todos os vínculos vivos na competência" —
+   * medido como falso numa complementar, que produziu 1 contracheque para 2 vínculos vivos porque
+   * quem não tem diferença não vira contracheque. A frase vem da declaração exaustiva
+   * `NATUREZA_DO_TIPO_DE_FOLHA`, então um tipo novo não compila até escrever a própria.
+   */
+  const tipoDaFolha = await cliente().folhaDePagamento.findUnique({ where: { id: folhaId }, select: { tipo: true } });
+  const avisoDoCalculo =
+    tipoDaFolha === null ? null : NATUREZA_DO_TIPO_DE_FOLHA[tipoDaFolha.tipo as TipoDeFolha].oQueOCalculoProduz;
   // V6.2 — os quatro atos dos encargos, pelo retrato e pelos predicados de `encargos.ts`.
   const encargos = await disponibilidadeDosEncargos(folhaId, sessao.identificador, permitidas);
   return {
     versao: `${r.versao}.${encargos?.versao ?? "-"}`,
     porAcao: {
       ...Object.fromEntries(
-        Object.entries(porAto).map(([acao, e]) => [acao, apresentar(e, e.situacao === "PRE_CONDICAO" && e.codigo === "SEM-DESIGNACAO-VIGENTE" && permitidas.has("DESIGNAR_NA_FOLHA") ? "/folha/designacoes" : undefined)])
+        Object.entries(porAto).map(([acao, e]) => {
+          const d = apresentar(e, e.situacao === "PRE_CONDICAO" && e.codigo === "SEM-DESIGNACAO-VIGENTE" && permitidas.has("DESIGNAR_NA_FOLHA") ? "/folha/designacoes" : undefined);
+          return [acao, acao === "calcular" && avisoDoCalculo !== null ? { ...d, aviso: avisoDoCalculo } : d];
+        })
       ),
       ...(encargos?.porAcao ?? {}),
     },

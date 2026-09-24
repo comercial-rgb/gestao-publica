@@ -3,6 +3,7 @@ import { Decimal, toMoney } from "../../packages/contracts/index.js";
 import { avosDoExercicio, calcularContrachequeDoDecimoTerceiro, type EntradaDoDecimoTerceiro, type ParametroLidoDoDecimoTerceiro } from "../../modules/m33-folha/decimo-terceiro.js";
 import { calcularContracheque, type EntradaDoContracheque, type RubricaLida, type TabelaDeContribuicaoLida, type TabelaIrrfLida, type VidaFuncionalNaCompetencia } from "../../modules/m33-folha/dominio.js";
 import { lerMemoriaDoContracheque } from "../../modules/m33-folha/memoria-do-contracheque.js";
+import { calcularContrachequeComplementar } from "../../modules/m33-folha/complementar.js";
 
 /**
  * ═══ A MEMÓRIA DO 13º É LEGÍVEL PELA MESMA LEITURA DA MENSAL (V11 V9.2) ═══
@@ -214,5 +215,119 @@ describe("a memória do 13º é legível pela mesma leitura da folha mensal", ()
     expect(m.procedenciaDoAbatimento.dados.folhaDeAdiantamento).toBe("2026-06");
     expect(m.procedenciaDoAbatimento.dados.versaoDoParametroDoAdiantamento).toBe(1);
     expect(m.procedenciaDoAbatimento.dados.motivo).toMatch(/FECHAMENTO/);
+  });
+});
+
+/**
+ * ═══ A MEMÓRIA DA COMPLEMENTAR TEM DE SER LEGÍVEL PELA MESMA LEITURA (V11 V9.4b) ═══
+ *
+ * ⚠️ MESMO BURACO DO 13º, TIPO SEGUINTE. O motor da complementar gravava `natureza`,
+ * `regimeDeTributacao` e o `recalculoIntegral` DENTRO do sha256, e a leitura da tela não tinha
+ * campo para nenhum dos três. Consequências medidas no percurso de navegador, não supostas:
+ *   · o documento NÃO dizia que era uma diferença — o servidor lia 450,00 e concluía que ganhara
+ *     450,00 no mês;
+ *   · o bloco da contribuição dizia "a memória deste cálculo não traz o detalhamento" enquanto a
+ *     linha retinha 50,00 dele. Silêncio é pior que número errado: um número se questiona, um
+ *     silêncio se lê como "não houve";
+ *   · o cabeçalho anunciava "30/30 dias" num documento que não mede tempo trabalhado.
+ *
+ * "O motor grava, a tela lê, e as duas formas divergem sem que exista um lugar onde a divergência
+ * doa" — é o mesmo diagnóstico do cabeçalho deste arquivo. O lugar é aqui.
+ */
+describe("a memória da mensal COMPLEMENTAR é legível pela mesma leitura", () => {
+  const entradaCorreta = (venc: string): EntradaDoContracheque => ({
+    competencia: "2026-05",
+    vida: vida("2020-01-01"),
+    vinculo: { id: "v9", matricula: "M-9", regime: "RGPS", dataNascimento: d("1990-05-05") },
+    vencimentoBase: toMoney(venc),
+    gratificacoes: [],
+    dias: { dias: 30, explicacao: "30/30 dias" },
+    lancamentos: [],
+    dependentesSalarioFamilia: [],
+    dependentesIr: 0,
+    pensaoAlimenticia: toMoney(0),
+    rubricas: [R_VENC, R_CONTRIB, R_IRRF],
+    tabelas: { contribuicao: TAB_CONTRIB, irrf: TAB_IRRF, salarioFamilia: null },
+  });
+
+  /** O correto de hoje (3.500) contra o que a mensal fechada apurou (3.000): delta de 500. */
+  const complementar = (): ReturnType<typeof calcularContrachequeComplementar> => {
+    const correto = calcularContracheque(entradaCorreta("3500"));
+    const apuradoDoVenc = calcularContracheque(entradaCorreta("3000"));
+    const linhaVenc = apuradoDoVenc.linhas.find((l) => l.rubricaId === "rv");
+    const linhaInss = apuradoDoVenc.linhas.find((l) => l.rubricaId === "rc");
+    if (linhaVenc === undefined || linhaInss === undefined) throw new Error("fixture: a mensal apurada não trouxe as duas linhas");
+    return calcularContrachequeComplementar({
+      competencia: "2026-05",
+      matricula: "M-9",
+      correto,
+      jaApurado: new Map([
+        ["rv", { total: linhaVenc.valor, parcelas: [{ folhaTipo: "MENSAL", competencia: "2026-05", calculoNumero: 1, valor: linhaVenc.valor }] }],
+        ["rc", { total: linhaInss.valor, parcelas: [{ folhaTipo: "MENSAL", competencia: "2026-05", calculoNumero: 1, valor: linhaInss.valor }] }],
+      ]),
+      identidadeDaRubrica: new Map([
+        ["rv", { id: "rv", codigo: "VENC", descricao: "Vencimento", tipo: "PROVENTO" as const, natureza: "VENCIMENTO_BASE" as const, ordem: 1 }],
+        ["rc", { id: "rc", codigo: "INSS", descricao: "Contribuição", tipo: "DESCONTO" as const, natureza: "CONTRIBUICAO_PREVIDENCIARIA" as const, ordem: 50 }],
+        ["rir", { id: "rir", codigo: "IRRF", descricao: "IRRF", tipo: "DESCONTO" as const, natureza: "IMPOSTO_DE_RENDA" as const, ordem: 60 }],
+      ]),
+    });
+  };
+
+  it("declara a GRANDEZA que mede, e ela não é dias — a tela deixa de precisar chutar", () => {
+    const c = complementar();
+    if (c === null) throw new Error("fixture: era para haver diferença");
+    const m = lerMemoriaDoContracheque(c.memoria);
+    expect(m.medida.situacao).toBe("PRESENTE");
+    if (m.medida.situacao !== "PRESENTE") throw new Error("ramo impossível");
+    expect(m.medida.dados.unidade).toBe("DIFERENCA");
+    // ⚠️ O QUE ESTE CASO IMPEDE: o ramo final da tela anunciava "30/30 dias" aqui. A memória da
+    // mensal declara `dias`; a da complementar NÃO — e agora diz por quê, em vez de calar.
+    expect(m.dias.situacao).toBe("AUSENTE");
+    expect(m.avos.situacao).toBe("AUSENTE");
+  });
+
+  it("declara o que o documento É e sob que regime reteve — as duas frases que a tela não mostrava", () => {
+    const c = complementar();
+    if (c === null) throw new Error("fixture: era para haver diferença");
+    const m = lerMemoriaDoContracheque(c.memoria);
+    expect(m.natureza.situacao).toBe("PRESENTE");
+    if (m.natureza.situacao !== "PRESENTE") throw new Error("ramo impossível");
+    expect(m.natureza.dados).toMatch(/DIFERENCA/);
+    expect(m.natureza.dados).toMatch(/NAO e a remuneracao da competencia/);
+    expect(m.regimeDeTributacao.situacao).toBe("PRESENTE");
+    if (m.regimeDeTributacao.situacao !== "PRESENTE") throw new Error("ramo impossível");
+    expect(m.regimeDeTributacao.dados).toMatch(/REGIME DE COMPETENCIA/);
+  });
+
+  /**
+   * ⚠️ QUEM RETÉM EXPLICA A RETENÇÃO. A folha retém o DELTA (na linha) e a conta que o produziu é
+   * a do recálculo INTEGRAL. Sem leitor para ela a tela emudecia — e emudecer sobre um desconto
+   * que se aplica é o defeito mais grave desta rodada.
+   */
+  it("a conta da contribuição chega pela via do recálculo INTEGRAL, com as faixas", () => {
+    const c = complementar();
+    if (c === null) throw new Error("fixture: era para haver diferença");
+    const m = lerMemoriaDoContracheque(c.memoria);
+    // o bloco do TOPO não existe num contracheque de diferença — e é isso que fazia a tela calar
+    expect(m.contribuicao.situacao).toBe("AUSENTE");
+    expect(m.contribuicaoDoRecalculoIntegral.situacao).toBe("PRESENTE");
+    if (m.contribuicaoDoRecalculoIntegral.situacao !== "PRESENTE") throw new Error("ramo impossível");
+    expect(m.contribuicaoDoRecalculoIntegral.dados.faixas.length).toBeGreaterThan(0);
+    // ⚠️ E O INTEGRAL NÃO É O DELTA: a linha desconta a diferença, o bloco explica a conta cheia.
+    // Se os dois fossem iguais, este caso passaria sem distinguir nada.
+    const deltaDaLinha = c.linhas.find((l) => l.rubricaId === "rc")?.valor.toFixed(2);
+    expect(deltaDaLinha).toBeDefined();
+    expect(m.contribuicaoDoRecalculoIntegral.dados.aplicada).not.toBe(deltaDaLinha);
+  });
+
+  it("uma memória SEM declaração de medida continua legível — a ausência não vira ilegível", () => {
+    // ⚠️ MIGRATION ADITIVA APLICADA À LEITURA: todo contracheque gravado antes desta rodada não
+    // tem `medida`, `natureza` nem `regimeDeTributacao`. Exigi-los faria cada um deles virar
+    // ILEGÍVEL — o sistema deixando de ler os próprios fatos passados por causa de um campo novo.
+    const m = lerMemoriaDoContracheque(calcularContracheque(entradaCorreta("3000")).memoria);
+    expect(m.medida.situacao).toBe("AUSENTE");
+    expect(m.natureza.situacao).toBe("AUSENTE");
+    expect(m.regimeDeTributacao.situacao).toBe("AUSENTE");
+    expect(m.dias.situacao).toBe("PRESENTE");
   });
 });

@@ -31,10 +31,21 @@ import { cliente } from "../cliente";
 // ⚠️ IMPORTA E REEXPORTA. Um `export … from` sozinho reexporta sem VINCULAR o nome neste
 // módulo — e este arquivo continua usando os três mais abaixo. O compilador do app cobrou.
 import { agregarResumoDaFolha, type GrupoDoResumo, type LinhaParaResumo } from "../../../modules/m33-folha/resumo.js";
+import { NATUREZA_DO_TIPO_DE_FOLHA, type TipoDeFolha } from "../../../modules/m33-folha/dominio.js";
 export { agregarResumoDaFolha, type GrupoDoResumo, type LinhaParaResumo };
 
 export interface ResumoDaFolha {
   readonly competencia: string;
+  /**
+   * ⚠️ O TIPO DA FOLHA, E ELE FALTAVA (V11 V9.4b). `lerResumoDaFolha` não selecionava `tipo`, e
+   * por isso o documento NÃO TINHA COMO saber o que estava resumindo: o título era a constante
+   * "Resumo da folha mensal". O percurso mediu um PDF intitulado "Resumo da folha mensal de
+   * 2029-05" carregando 800,00 de bruto e 720,00 de líquido — que é a DIFERENÇA de uma
+   * complementar, não a folha do mês. Um documento que se descreve como a folha do mês e carrega
+   * só a diferença é o vício desta rodada inteira numa linha, e ele circula para quem não abre a
+   * tela: contabilidade e controle interno.
+   */
+  readonly tipo: TipoDeFolha;
   readonly calculo: number;
   readonly apuracao: number | null;
   readonly filtros: { readonly regime: string; readonly lotacao: string };
@@ -46,7 +57,7 @@ export interface ResumoDaFolha {
 
 export async function lerResumoDaFolha(folhaId: string, filtros: { readonly regime?: string; readonly lotacao?: string }): Promise<ResumoDaFolha | null> {
   const prisma = cliente();
-  const f = await prisma.folhaDePagamento.findUnique({ where: { id: folhaId }, select: { competencia: true, fechamento: { select: { calculoId: true, calculo: { select: { numero: true } } } } } });
+  const f = await prisma.folhaDePagamento.findUnique({ where: { id: folhaId }, select: { competencia: true, tipo: true, fechamento: { select: { calculoId: true, calculo: { select: { numero: true } } } } } });
   if (f === null || f.fechamento === null) return null;
   const fim = bordasDaCompetencia(f.competencia).fim;
   const [ccs, lotacoes, enc] = await Promise.all([
@@ -83,6 +94,7 @@ export async function lerResumoDaFolha(folhaId: string, filtros: { readonly regi
   const a = agregarResumoDaFolha(linhas);
   return {
     competencia: f.competencia,
+    tipo: f.tipo as TipoDeFolha,
     calculo: f.fechamento.calculo.numero,
     apuracao: enc.vigente?.numero ?? null,
     filtros: { regime: filtros.regime ?? "", lotacao: filtros.lotacao ?? "" },
@@ -116,7 +128,10 @@ export async function documentoDoResumo(r: ResumoDaFolha): Promise<DocumentoPdf>
   };
   return {
     ente: await nomeDoEnteParaDocumentos(),
-    titulo: `Resumo da folha mensal de ${r.competencia}`,
+    // ⚠️ O NOME SAI DA DECLARAÇÃO ÚNICA (`NATUREZA_DO_TIPO_DE_FOLHA`), não de uma constante nem de
+    // um segundo mapa: um tipo novo não compila até se declarar, e o documento nunca volta a
+    // chamar de "mensal" o que não é.
+    titulo: `Resumo da folha ${NATUREZA_DO_TIPO_DE_FOLHA[r.tipo].rotulo.toLowerCase()} de ${r.competencia}`,
     subtitulo: `Cálculo fechado nº ${r.calculo}${r.apuracao === null ? " · encargos não apurados" : ` · apuração dos encargos nº ${r.apuracao}`}`,
     periodo: `Competência ${r.competencia}`,
     secoes: [principal, componentes],

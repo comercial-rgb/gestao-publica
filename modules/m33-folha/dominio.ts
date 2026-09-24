@@ -989,13 +989,83 @@ export interface NaturezaDoTipoDeFolha {
    * fechando e nenhuma etapa adiante acusando.
    */
   readonly compoeARemuneracaoMensal: boolean;
+  /**
+   * O NOME DE NEGÓCIO do tipo — o que a tela mostra onde hoje aparece o nome cru do enum.
+   * ⚠️ Mora AQUI, e não num segundo mapa, pelo motivo que o cabeçalho já dá: dois mapas sobre o
+   * mesmo enum divergem, e foi essa a razão de a V11 V9.3 recusar um `Record<TipoDeFolha, string>`
+   * de códigos curtos para o número do empenho.
+   */
+  readonly rotulo: string;
+  /**
+   * ⚠️ V11 V9.4b — O QUE O CÁLCULO DESTE TIPO PRODUZ, e ele nasce de um defeito MEDIDO na tela.
+   *
+   * O descritor da folha tinha UM `aviso` para a ação `calcular`, servindo os quatro tipos:
+   * *"Calcula todos os vínculos vivos na competência"*, e a `descricao` do recurso prometia *"um
+   * contracheque por vínculo vivo"*. O percurso da complementar mediu o contrário: cálculo nº 1
+   * produziu **1 contracheque para 2 vínculos vivos**, porque quem não tem diferença não vira
+   * contracheque e só as rubricas que mudaram viram linha. O texto que o operador lê ANTES de
+   * apertar o botão prometia o que a operação não faz — e quem confia nele conclui que a folha
+   * saiu incompleta, ou pior, não estranha uma que deveria estranhar.
+   *
+   * ⚠️ E A CORREÇÃO NÃO É UM TEXTO GENÉRICO. Um texto vago o bastante para não mentir sobre
+   * nenhum dos quatro não diria nada útil sobre nenhum, e "não promete nada" é conselho pior que
+   * "promete o certo". Sai daqui, do Record EXAUSTIVO: um tipo novo **não compila** até escrever
+   * o próprio texto. Impossibilidade, não disciplina.
+   */
+  readonly oQueOCalculoProduz: string;
+  /**
+   * ⚠️ V11 V9.4b — A GRANDEZA EM QUE ESTE TIPO MEDE O TEMPO DO CONTRACHEQUE.
+   *
+   * A tela do contracheque anunciava **"30/30 dias"** num contracheque COMPLEMENTAR cujo líquido
+   * era 450,00 de diferença (medido). O ramo final de `medida()` inventava a unidade "dias"
+   * sempre que não reconhecia a memória — e o docblock daquela função existe justamente porque
+   * *"o `${c.dias}/30 dias` como padrão era mentira na folha de 13º"*. A mentira foi consertada
+   * ENUMERANDO o caso conhecido (avos) em vez de afirmar a propriedade, e o tipo seguinte caiu
+   * pelo mesmo buraco. Aqui a propriedade é afirmada, e o ramo final da tela passa a dizer que
+   * não sabe em vez de fabricar uma unidade.
+   */
+  readonly medida: "DIAS" | "AVOS" | "DIFERENCA";
 }
 
 export const NATUREZA_DO_TIPO_DE_FOLHA: Readonly<Record<TipoDeFolha, NaturezaDoTipoDeFolha>> = {
-  MENSAL: { recorrencia: "POR_COMPETENCIA", compoeARemuneracaoMensal: true },
-  MENSAL_COMPLEMENTAR: { recorrencia: "POR_COMPETENCIA", compoeARemuneracaoMensal: true },
-  ADIANTAMENTO_DECIMO_TERCEIRO: { recorrencia: "POR_EXERCICIO", compoeARemuneracaoMensal: false },
-  DECIMO_TERCEIRO: { recorrencia: "POR_EXERCICIO", compoeARemuneracaoMensal: false },
+  MENSAL: {
+    recorrencia: "POR_COMPETENCIA",
+    compoeARemuneracaoMensal: true,
+    rotulo: "Mensal",
+    medida: "DIAS",
+    oQueOCalculoProduz:
+      "Calcula TODOS os vínculos vivos na competência com as tabelas vigentes, e cada um vira um contracheque " +
+      "com a memória e o sha256. Sem tabela, sem regime ou sem vencimento, recusa nomeando a matrícula.",
+  },
+  MENSAL_COMPLEMENTAR: {
+    recorrencia: "POR_COMPETENCIA",
+    compoeARemuneracaoMensal: true,
+    rotulo: "Mensal complementar",
+    medida: "DIFERENCA",
+    oQueOCalculoProduz:
+      "Recalcula a competência com o cadastro de hoje e apura a DIFERENÇA para o que as folhas já FECHADAS " +
+      "dela apuraram. Vira contracheque SÓ quem tem diferença, e viram linha SÓ as rubricas que mudaram — " +
+      "quem não tem diferença nenhuma fica de fora, e isso é o esperado, não folha incompleta. A folha " +
+      "original não é reaberta nem corrigida. Diferença negativa em qualquer rubrica recusa a folha inteira.",
+  },
+  ADIANTAMENTO_DECIMO_TERCEIRO: {
+    recorrencia: "POR_EXERCICIO",
+    compoeARemuneracaoMensal: false,
+    rotulo: "Adiantamento do 13º (1ª parcela)",
+    medida: "AVOS",
+    oQueOCalculoProduz:
+      "Calcula a 1ª parcela por AVOS do exercício (não por dias do mês), sobre o parâmetro do 13º que o ente " +
+      "cadastrou. Quem não alcança nenhum avo não vira contracheque. Sem parâmetro vigente, recusa nomeando o exercício.",
+  },
+  DECIMO_TERCEIRO: {
+    recorrencia: "POR_EXERCICIO",
+    compoeARemuneracaoMensal: false,
+    rotulo: "13º salário (2ª parcela)",
+    medida: "AVOS",
+    oQueOCalculoProduz:
+      "Calcula o 13º por AVOS do exercício e ABATE o que a folha de adiantamento já apurou para cada matrícula. " +
+      "Quem não alcança nenhum avo não vira contracheque. Sem o adiantamento fechado, recusa.",
+  },
 };
 
 /**

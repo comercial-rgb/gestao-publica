@@ -205,6 +205,13 @@ export function FormsDoRecurso({
     indice.push({ acao: a, apresentacao: disp.apresentacao });
     if (disp.apresentacao !== "disponivel") return <div key={a.nome} id={`ato-${a.nome}`} className="scroll-mt-24"><AcaoIndisponivel acao={a} disp={disp} /></div>;
     renderizadas.add(a.nome);
+    /**
+     * O AVISO DO REGISTRO VENCE O DO DESCRITOR (ver `DisponibilidadeDaAcao.aviso`).
+     *
+     * ⚠️ Fora do JSX de propósito: em posição de ATRIBUTO só cabe `{...spread}`, e um
+     * `{/* comentário *\/}` ali é erro de sintaxe (TS1005) — medido.
+     */
+    const avisoDoAto = disp.aviso ?? a.aviso;
     return (
       <div key={a.nome} id={`ato-${a.nome}`} className="scroll-mt-24">
       <FormularioDeRecurso
@@ -219,7 +226,7 @@ export function FormsDoRecurso({
           ...(registroId !== undefined ? { __id: registroId } : {}),
           ...(d.acoesPorEstado === true && disponibilidade !== undefined && disponibilidade !== null ? { __versao: disponibilidade.versao } : {}),
         }}
-        {...(a.aviso !== undefined ? { aviso: a.aviso } : {})}
+        {...(avisoDoAto !== undefined ? { aviso: avisoDoAto } : {})}
         {...(a.irreversivel === true ? { irreversivel: true } : {})}
       />
       </div>

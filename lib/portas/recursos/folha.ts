@@ -82,9 +82,14 @@ export const FOLHAS: DefinicaoDeRecurso = definirRecurso({
   rotulo: "Folhas de pagamento",
   rotuloSingular: "Folha de pagamento",
   rota: "/folha/folhas",
+  // ⚠️ O QUE O CÁLCULO PRODUZ DEPENDE DO TIPO, e prometê-lo aqui para os quatro era mentir sobre
+  // três (V11 V9.4b). "Um contracheque por vínculo vivo" é verdade na MENSAL e falso na
+  // complementar (só quem tem diferença) e nas duas de 13º (só quem alcança avo). O texto por tipo
+  // sai de `NATUREZA_DO_TIPO_DE_FOLHA.oQueOCalculoProduz` e chega à barra pela disponibilidade.
   descricao:
-    "A folha de uma competência. Calcular gera um cálculo NUMERADO com um contracheque por vínculo vivo — memória de " +
-    "cálculo e sha256 em cada um; recalcular é o número seguinte; cancelar e fechar são fatos. Fechada, não se recalcula.",
+    "A folha de uma competência, por TIPO. Calcular gera um cálculo NUMERADO, com memória e sha256 em cada " +
+    "contracheque; recalcular é o número seguinte; cancelar e fechar são fatos. Fechada, não se recalcula. " +
+    "QUEM vira contracheque depende do tipo, e a tela de cada folha diz o que o cálculo dela produz.",
   campos: [
     { nome: "competencia", rotulo: "Competência (AAAA-MM)", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "2026-05" },
     {
@@ -93,9 +98,15 @@ export const FOLHAS: DefinicaoDeRecurso = definirRecurso({
       ajuda:
         "As duas folhas de 13º medem por AVO do exercício, não por dia do mês, e exigem o parâmetro do " +
         "exercício cadastrado. Só existe uma de cada por ano; a de 13º abate automaticamente o adiantamento. " +
-        "A MENSAL COMPLEMENTAR recalcula uma competência cuja mensal já foi fechada e paga só a DIFERENÇA, " +
+        // ⚠️ "JÁ PAGO" ERA FALSO, E ERA A PRIMEIRA COISA QUE O OPERADOR LIA (V11 V9.4b). O que a
+        // complementar compara é o APURADO em folha FECHADA — `fechamento !== null`, e só isso.
+        // Certificação, empenho, liquidação e pagamento não são consultados em lugar nenhum de
+        // `calcularFolhaComplementarNaTx`, e o pagamento nem é ato deste módulo. Afirmar "pago"
+        // aqui é a mesma doença da memória que dizia "1ª parcela já PAGA" sobre um cálculo que só
+        // verificara o fechamento.
+        "A MENSAL COMPLEMENTAR recalcula uma competência cuja mensal já foi fechada e apura só a DIFERENÇA, " +
         "rubrica a rubrica: ela não reabre nem corrige a folha original, e recusa quando o correto é menor " +
-        "que o já pago.",
+        "que o já APURADO em folha fechada. Apurar não é empenhar, liquidar nem pagar.",
     },
   ],
   colunas: [

@@ -202,7 +202,21 @@ describe("delta negativo — RECUSA nomeando a matrícula, nunca clamp a zero", 
     expect(msg).toContain("VENC");
     expect(msg).toContain("2000.00");
     expect(msg).toContain("2100.00");
-    expect(msg).toContain("repor ao erário");
+    /**
+     * ⚠️ V11 V9.4b — A RECUSA DIZ O FATO VERIFICADO, E O FATO É "APURADO EM FOLHA FECHADA".
+     *
+     * Antes ela afirmava "O servidor RECEBEU A MAIS". O cálculo NÃO consulta certificação,
+     * empenho, liquidação nem pagamento — só `fechamento !== null` —, então o recebimento é fato
+     * que o sistema não tem como conhecer: uma folha fechada e DEVOLVIDA para correção nunca será
+     * liquidada nem paga. É a mesma doença que a V11 V9.2 corrigiu quando a memória dizia "1ª
+     * parcela já PAGA" sobre um cálculo que só verificara o fechamento.
+     */
+    expect(msg).toContain("APURADOS A MAIS");
+    expect(msg).toContain("em folha já fechada");
+    // ⚠️ A NEGATIVA É A METADE QUE IMPORTA: a mensagem não pode AFIRMAR pagamento ou recebimento.
+    expect(msg).not.toMatch(/RECEBEU A MAIS|RETEVE A MAIS|já pag/i);
+    // e continua ORIENTANDO — recusa sem próximo passo empurra o operador para a adivinhação
+    expect(msg).toContain("O QUE FAZER");
   });
 
   it("desconto a menor: devolução de retenção indevida, e a recusa diz O OUTRO motivo", () => {
@@ -223,7 +237,11 @@ describe("delta negativo — RECUSA nomeando a matrícula, nunca clamp a zero", 
     expect(erro).toBeInstanceOf(DiferencaNegativaNaComplementarError);
     expect((erro as Error).message).toContain("MAT-E");
     expect((erro as Error).message).toContain("PREV");
-    expect((erro as Error).message).toContain("RETEVE A MAIS");
+    // O OUTRO motivo, e ele também passa a falar de APURAÇÃO: reter a mais em folha fechada não
+    // prova que a retenção foi recolhida — o recolhimento é ato próprio, com guia e pagamento.
+    expect((erro as Error).message).toContain("RETIDOS A MAIS");
+    expect((erro as Error).message).toContain("em folha já fechada");
+    expect((erro as Error).message).not.toMatch(/RECEBEU A MAIS|RETEVE A MAIS|já pag/i);
   });
 
   it("rubrica que só o PASSADO tem também é recusa — iterar só pelo correto a perderia", () => {

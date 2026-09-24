@@ -42,7 +42,7 @@ describe("CSV e PDF — a mesma consulta, conferida pelo conteúdo", () => {
   const lotacaoLonga = "SECRETARIA MUNICIPAL DE EDUCAÇÃO, CULTURA, ESPORTE, JUVENTUDE E LAZER — ESCOLA MUNICIPAL DE ENSINO FUNDAMENTAL PROFESSORA MARIA DAS DORES";
   const muitas = Array.from({ length: 70 }, (_, i) => L(i % 2 === 0 ? "RGPS" : "RPPS", `${String(i).padStart(3, "0")} ${i === 7 ? lotacaoLonga : "LOTAÇÃO"}`, "1234567.89", "123456.78", "1111111.11", "246913.58"));
   const agregado = agregarResumoDaFolha(muitas);
-  const resumo = { competencia: "2026-05", calculo: 1, apuracao: 2, filtros: { regime: "", lotacao: "" }, ...agregado, porComponente: [{ codigo: "RGPS-PATRONAL", descricao: "Cota patronal (sintética)", total: "1000.00" }] };
+  const resumo = { competencia: "2026-05", tipo: "MENSAL" as const, calculo: 1, apuracao: 2, filtros: { regime: "", lotacao: "" }, ...agregado, porComponente: [{ codigo: "RGPS-PATRONAL", descricao: "Cota patronal (sintética)", total: "1000.00" }] };
 
   it("CSV: cabeçalho, dinheiro no formato BR, total ao fim, texto longo intacto", () => {
     const csv = paraCsv(colunasDoResumo(), linhasDoResumo(resumo));
@@ -73,4 +73,33 @@ describe("CSV e PDF — a mesma consulta, conferida pelo conteúdo", () => {
     expect(plano).toContain("Custo do ente (bruto + patronal)");
     expect(plano.replace(/ /g, "")).toContain("PROFESSORAMARIADASDORES");
   }, 90_000);
+
+  /**
+   * ⚠️ O DOCUMENTO TEM DE DIZER QUE FOLHA ELE RESUME — V11 V9.4b, e foi defeito MEDIDO na tela.
+   *
+   * `lerResumoDaFolha` não selecionava `tipo`, e o título era a constante "Resumo da folha
+   * mensal". O percurso da complementar emitiu um PDF intitulado **"Resumo da folha mensal de
+   * 2029-05"** carregando 800,00 de bruto e 720,00 de líquido — que é a DIFERENÇA apurada por uma
+   * MENSAL_COMPLEMENTAR, não a folha do mês. Um documento que se apresenta como a folha do mês e
+   * carrega só a diferença engana justamente quem não abre a tela: contabilidade e controle
+   * interno, que é quem o recebe.
+   *
+   * ⚠️ N=2 TIPOS, E OS MESMOS NÚMEROS NOS DOIS. Com um tipo só, "o título casa" passaria por
+   * vacuidade — qualquer constante casaria com o único caso. Aqui os dois documentos saem do
+   * MESMO agregado: o que os distingue é exclusivamente o tipo, e por isso a asserção é sobre o
+   * tipo e não sobre os valores.
+   *
+   * ⚠️ E A NEGATIVA AFIRMA O MOTIVO: não basta o complementar CONTER a palavra "complementar" —
+   * ele não pode chamar-se "folha mensal", que é o texto exato que o defeito produzia.
+   */
+  it("o título nomeia o TIPO da folha resumida: a complementar não se intitula 'folha mensal' (N=2)", async () => {
+    const tituloDe = async (tipo: "MENSAL" | "MENSAL_COMPLEMENTAR"): Promise<string> =>
+      (await documentoDoResumo({ ...resumo, tipo })).titulo;
+    const mensal = await tituloDe("MENSAL");
+    const complementar = await tituloDe("MENSAL_COMPLEMENTAR");
+    expect(mensal).toBe("Resumo da folha mensal de 2026-05");
+    expect(complementar).toBe("Resumo da folha mensal complementar de 2026-05");
+    // os dois documentos não podem ter o MESMO título: é o tipo que os separa
+    expect(complementar).not.toBe(mensal);
+  });
 });
