@@ -260,10 +260,19 @@ describe("V11 V1.1 (e) — o que o cadastro RECUSA, e por quê", () => {
   });
 });
 
-/** Apaga só a folha calculada, preservando cadastro, vínculos e versões. */
+/**
+ * Apaga só a folha calculada, preservando cadastro, vínculos e versões.
+ *
+ * ⚠️ ESTE É UM CENSO PRIVADO, e ele envelhece calado. `limparBanco` global usa
+ * `TRUNCATE ... CASCADE`, que resolve o grafo de chaves sozinho; esta função apaga tabela a tabela
+ * e por isso precisa APRENDER cada tabela nova que pendure em `CalculoDaFolha`. A V11 V9.5 criou
+ * `AbrangenciaDoCalculo` com FK RESTRICT, e a ausência dela aqui derrubava d3, d4 e e6 com um erro
+ * de chave estrangeira que não fala do assunto de teste nenhum.
+ */
 async function limparBancoDeFolha(): Promise<void> {
   await prisma.linhaDoContracheque.deleteMany({});
   await prisma.contracheque.deleteMany({});
+  await prisma.abrangenciaDoCalculo.deleteMany({});
   await prisma.calculoDaFolha.deleteMany({});
   await prisma.folhaDePagamento.deleteMany({});
 }

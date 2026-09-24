@@ -367,6 +367,12 @@ export const TABELAS = [
   "Contracheque",
   "FechamentoDaFolha",
   "CancelamentoDoCalculo",
+  // V11 V9.5 — o FATO de abrangência vem ANTES do cálculo, e a ausência dele aqui não era
+  // cosmética: `AbrangenciaDoCalculo_calculoId_fkey` é RESTRICT, então `limparBanco` falhava ao
+  // apagar `CalculoDaFolha` e o `beforeEach` derrubava o teste seguinte com um erro de FK que não
+  // fala do assunto nenhum — três casos de `m33-versao-da-rubrica` vermelhos por isso. É a mesma
+  // armadilha que `FuncaoDePessoal` já tinha armado: tabela nova que nenhum compilador cobra daqui.
+  "AbrangenciaDoCalculo",
   "CalculoDaFolha",
   "FolhaDePagamento",
   "LancamentoDaFolha",
