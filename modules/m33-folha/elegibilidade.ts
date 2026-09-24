@@ -92,7 +92,18 @@ export function elegibilidadeParaApropriar(e: EstadoDaFolhaParaAtos): Elegibilid
     return preCondicao(
       "ABATIMENTO-SEM-CRITERIO-DECLARADO",
       `O 13º de ${e.competencia} abateu a 1ª parcela sem que o parâmetro do exercício declarasse qual estado o adiantamento precisa ter para ser abatido. Isso é SIMULAÇÃO, não apuração aprovada, e não vira despesa.`,
-      "O ente declara o critério (fechado, certificado ou pago) na próxima versão do parâmetro do 13º, com o ato que o fundamenta, e a folha é recalculada. Folha > Parâmetros do 13º."
+      // ⚠️ O REMÉDIO DIZIA "e a folha é recalculada", E ISSO ERA FALSO NO ÚNICO ESTADO EM QUE ELE
+      // APARECE (V11 V9.3, medido pela tela). Esta recusa só é alcançada DEPOIS de `!e.fechada`
+      // acima — ou seja, só existe em folha FECHADA. E folha fechada não recalcula:
+      // `elegibilidadeParaCalcular` devolve `FOLHA-FECHADA: não se recalcula`, e o percurso do 13º
+      // mediu RECALCULAR como AUSENTE da barra. O texto mandava a pessoa fazer uma coisa que a
+      // tela não oferece, e isso é pior que não sugerir nada: ela declara o critério, volta, e o
+      // bloqueio continua — sem entender por quê (passo 18.2 do percurso prova esse par).
+      "O critério tem de estar declarado ANTES de a folha ser fechada: é o cálculo que grava sob " +
+        "qual critério abateu, e declarar depois não reescreve o que já foi apurado. Esta folha já " +
+        "está fechada, e cálculo fechado não se refaz — desfazê-la depende de RETIFICAÇÃO DA FOLHA, " +
+        "que este sistema ainda não tem. Declare o critério em Folha > Parâmetros do 13º antes de " +
+        "fechar a próxima."
     );
   }
   // ⚠️ APROPRIAÇÃO PARCIAL CONTINUA OFERECIDA: parar no meio (saldo da ficha) é estado real, e a
@@ -141,7 +152,12 @@ export function elegibilidadeParaLiquidar(e: EstadoDaFolhaParaAtos, a: AtorNaFol
     return preCondicao(
       "ABATIMENTO-SEM-CRITERIO-DECLARADO",
       `O 13º de ${e.competencia} abateu a 1ª parcela sem que o parâmetro do exercício declarasse qual estado o adiantamento precisa ter para ser abatido. Liquidar é o ato em que o valor se torna exigível, e isso é SIMULAÇÃO, não apuração aprovada.`,
-      "O ente declara o critério (fechado, certificado ou pago) na próxima versão do parâmetro do 13º, com o ato que o fundamenta, e a folha é recalculada. Os empenhos já gravados continuam valendo; desfazê-los é anulação pela despesa. Folha > Parâmetros do 13º."
+      // ⚠️ MESMA CORREÇÃO DA APROPRIAÇÃO, E PELA MESMA MEDIÇÃO: liquidar também só se alcança em
+      // folha fechada, e prometer recálculo ali é prometer o que a barra não oferece.
+      "O critério tem de estar declarado ANTES de a folha ser fechada — o cálculo grava sob qual " +
+        "critério abateu, e declarar depois não reescreve o que já foi apurado. Cálculo fechado não " +
+        "se refaz: desfazer esta folha depende de RETIFICAÇÃO DA FOLHA, que este sistema ainda não " +
+        "tem. Os empenhos já gravados continuam valendo; desfazê-los é anulação pela despesa."
     );
   }
   if (e.certificacao !== "CERTIFICADA") {

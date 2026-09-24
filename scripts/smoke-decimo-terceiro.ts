@@ -883,14 +883,25 @@ async function main(): Promise<void> {
       barraSemCriterio.estado !== "formulario",
       JSON.stringify(barraSemCriterio).slice(0, 400)
     );
+    /**
+     * ⚠️ AFIRMA O MOTIVO, NÃO O CÓDIGO — e a primeira versão deste passo estava ERRADA, medida na
+     * primeira corrida. Eu exigi `ABATIMENTO-SEM-CRITERIO-DECLARADO` no texto da barra; a barra
+     * não mostra código de ato NENHUM, em lugar nenhum do sistema: ela projeta MOTIVO e REMÉDIO
+     * (`percursos-disponibilidade.ts`), e o código vive no domínio e nos registros. Exigir o
+     * código aqui cobraria da tela uma convenção que ela não tem — e o código na tela seria
+     * vocabulário de implementação diante de quem opera. O que a negação precisa afirmar é o
+     * MOTIVO, e ele é distintivo: simulação, abatimento, critério não declarado.
+     */
     R.conferir(
-      "17.4 e a barra diz o motivo COM o código, na tela — não só no servidor",
-      /ABATIMENTO-SEM-CRITERIO-DECLARADO/i.test(barraSemCriterio.texto),
+      "17.4 e a barra diz o MOTIVO na tela — simulação, por critério do abatimento não declarado",
+      /SIMULA[ÇC][ÃA]O/i.test(barraSemCriterio.texto) &&
+        /abateu a 1ª parcela sem que o par[âa]metro/i.test(barraSemCriterio.texto) &&
+        /n[ãa]o vira despesa/i.test(barraSemCriterio.texto),
       JSON.stringify(barraSemCriterio).slice(0, 600)
     );
     R.conferir(
-      "17.5 e aponta o remédio: o ente declara o critério no parâmetro do exercício",
-      /par[âa]metro/i.test(barraSemCriterio.texto) && /(fechado|certificado|pago)/i.test(barraSemCriterio.texto),
+      "17.5 e aponta um remédio EXECUTÁVEL, nomeando a pendência que falta para esta folha",
+      /Par[âa]metros do 13º/i.test(barraSemCriterio.texto) && /RETIFICA[ÇC][ÃA]O DA FOLHA/i.test(barraSemCriterio.texto),
       barraSemCriterio.texto.slice(0, 600)
     );
 
@@ -920,9 +931,23 @@ async function main(): Promise<void> {
     await irPara(N, page, href13);
     const barraSoDeclarado = await apresentacaoDoAto(page, "apropriar");
     R.conferir(
-      "18.2 ⚠️ DECLARAR SEM RECALCULAR NÃO DESTRAVA: a folha segue bloqueada pelo mesmo código",
-      barraSoDeclarado.estado !== "formulario" && /ABATIMENTO-SEM-CRITERIO-DECLARADO/i.test(barraSoDeclarado.texto),
+      "18.2 ⚠️ DECLARAR SEM RECALCULAR NÃO DESTRAVA: a folha segue bloqueada pelo MESMO motivo",
+      barraSoDeclarado.estado !== "formulario" &&
+        /abateu a 1ª parcela sem que o par[âa]metro/i.test(barraSoDeclarado.texto),
       JSON.stringify(barraSoDeclarado).slice(0, 600)
+    );
+    /**
+     * ⚠️ E O REMÉDIO TEM DE SER VERDADEIRO — foi o defeito que esta corrida achou (V11 V9.3).
+     * O texto dizia "e a folha é recalculada", mas esta recusa SÓ existe em folha fechada (o
+     * `!fechada` fala antes), e folha fechada não recalcula. A pessoa declarava o critério,
+     * voltava, e o bloqueio continuava sem explicação. Agora o texto diz a verdade: declare ANTES
+     * de fechar, e esta aqui depende de retificação, que o sistema não tem.
+     */
+    R.conferir(
+      "18.2b e o remédio na tela é EXECUTÁVEL: manda declarar ANTES de fechar, e não promete recálculo de folha fechada",
+      /ANTES de a folha ser fechada/i.test(barraSoDeclarado.texto) &&
+        !/e a folha (é|e) recalculada/i.test(barraSoDeclarado.texto),
+      barraSoDeclarado.texto.slice(0, 700)
     );
 
     /**
