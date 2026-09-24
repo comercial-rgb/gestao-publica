@@ -338,6 +338,160 @@ export function lotadosNaLotacao(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// ⚠️ OS EIXOS DE CONSULTA DO VÍNCULO (TR 5.12.50) — CONSULTA, NUNCA RECORTE DO CÁLCULO
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * ═══ ⚠️ LEIA ISTO ANTES DE REUSAR ESTE PREDICADO NO CÁLCULO DA FOLHA ═══
+ *
+ * Estes eixos existem para ACHAR servidor — na listagem, na conferência, no papel que o RH leva
+ * para a reunião. **Eles não recortam quem é calculado.** `calcularFolha` (M33) promete "todos os
+ * vínculos vivos na competência", e mantém essa promessa POR CONSTRUÇÃO: o `findMany` dos vínculos
+ * não tem `where` nenhum. Aplicar este predicado lá produziria folha PARCIAL em silêncio — nada
+ * compara o número de contracheques ao de vínculos ativos, o manifesto da certificação lista só
+ * quem entrou no cálculo, e a apropriação empenha só esses: a folha fecha, o total bate e o
+ * empenho bate. Ver a seção correspondente em `modules/m33-folha/MODULO.md`.
+ *
+ * ═══ A REGRA DE COMPOSIÇÃO, QUE É A METADE QUE SE ESQUECE ═══
+ *
+ * Os eixos se conjugam sobre **UM MESMO VÍNCULO**, não sobre o servidor. A professora que também
+ * é motorista tem duas matrículas: uma de professora na Escola Central, outra de motorista na
+ * Garagem. Perguntar "cargo de motorista E lotação Escola Central" tem de devolver VAZIO — e
+ * devolveria ELA se cada eixo fosse conferido contra o conjunto dos vínculos. É por isso que este
+ * predicado recebe UM vínculo por vez e quem chama faz `vinculos.some(...)`.
+ *
+ * ⚠️ E É POR ISSO QUE A FIXTURE DE TESTE PRECISA DE DUAS MATRÍCULAS NA MESMA PESSOA. Com uma
+ * matrícula por servidor, um predicado que conferisse eixo contra o conjunto passa por vacuidade.
+ *
+ * ═══ A DATA DE REFERÊNCIA NÃO É DETALHE ═══
+ *
+ * Cargo, lotação e regime previdenciário são DERIVADOS dos eventos (`cargoVigenteEm` e irmãs).
+ * "Cargo hoje" e "cargo na competência de maio" dão listas diferentes — a promoção de junho move
+ * o servidor de uma para a outra. Quem chama informa `quando`; escolher em silêncio é o defeito.
+ */
+export interface EixosDeConsultaDeVinculo {
+  /** Texto contido na matrícula, sem distinção de caixa. Vazio = eixo inativo. */
+  readonly matricula: string;
+  /**
+   * Os cargos aceitos, JÁ RESOLVIDOS A IDENTIFICADORES pela porta. `null` = eixo inativo.
+   *
+   * ⚠️ LISTA VAZIA NÃO É EIXO INATIVO: é "nenhum cargo casa com o que se digitou", e a resposta
+   * certa é a lista vazia. Tratar `[]` como "sem filtro" devolveria o ente inteiro para quem
+   * procurou um cargo que não existe — o modo mais discreto de um filtro deixar de filtrar.
+   */
+  readonly cargoIds: readonly string[] | null;
+  /** As lotações aceitas, já resolvidas a identificadores. Mesma disciplina do cargo. */
+  readonly lotacaoIds: readonly string[] | null;
+  /**
+   * Texto contido no regime JURÍDICO (`Vinculo.regimeJuridico`, `String` livre porque sai da lei
+   * orgânica do ente). Vazio = eixo inativo.
+   *
+   * ⚠️ ELE NÃO É O REGIME PREVIDENCIÁRIO, e fundir os dois num filtro só seria erro de domínio:
+   * "Estatutário" é como a lei do ente nomeia o vínculo; RGPS/RPPS decide QUAL TABELA de
+   * contribuição a folha aplica. Um estatutário pode estar no RGPS.
+   */
+  readonly regimeJuridico: string;
+  /**
+   * O regime PREVIDENCIÁRIO vigente em `quando`, derivado dos eventos. `null` = eixo inativo.
+   * `"NAO_INFORMADO"` procura exatamente as matrículas que a folha RECUSA calcular — é consulta
+   * de trabalho, não curiosidade.
+   */
+  readonly regimePrevidenciario: RegimePrevidenciarioDoVinculo | "NAO_INFORMADO" | null;
+  /** Admitido em ou depois deste instante. `null` = eixo inativo. */
+  readonly admitidoDe: Date | null;
+  /** Admitido em ou antes deste instante — o ÚLTIMO instante civil do dia, não a meia-noite. */
+  readonly admitidoAte: Date | null;
+}
+
+/** Nenhum eixo ativo. */
+export const EIXOS_DE_CONSULTA_VAZIOS: EixosDeConsultaDeVinculo = {
+  matricula: "",
+  cargoIds: null,
+  lotacaoIds: null,
+  regimeJuridico: "",
+  regimePrevidenciario: null,
+  admitidoDe: null,
+  admitidoAte: null,
+};
+
+/** Há algum eixo de vínculo ativo? */
+export function haEixoDeVinculo(e: EixosDeConsultaDeVinculo): boolean {
+  return (
+    e.matricula !== "" ||
+    e.cargoIds !== null ||
+    e.lotacaoIds !== null ||
+    e.regimeJuridico !== "" ||
+    e.regimePrevidenciario !== null ||
+    e.admitidoDe !== null ||
+    e.admitidoAte !== null
+  );
+}
+
+/**
+ * Há algum eixo DERIVADO ativo — isto é, algum que só se responde percorrendo os eventos?
+ *
+ * ⚠️ QUEM PERGUNTA É A PAGINAÇÃO. Eixo de coluna o banco resolve, e `skip`/`take` continuam
+ * exatos. Eixo derivado não: o banco não sabe qual era o cargo vigente, então o conjunto tem de
+ * ser apurado ANTES de recortar a página — senão o total mente e a página 2 perde quem ficou na 1.
+ */
+export function haEixoDerivadoDeVinculo(e: EixosDeConsultaDeVinculo): boolean {
+  return e.cargoIds !== null || e.lotacaoIds !== null || e.regimePrevidenciario !== null;
+}
+
+/** O vínculo, como este predicado precisa dele. */
+export interface VinculoParaConsulta {
+  readonly matricula: string;
+  readonly regimeJuridico: string;
+  readonly dataAdmissao: Date;
+  /** `Vinculo.regimePrevidenciario` — o da ADMISSÃO, fallback de `regimeVigenteEm`. */
+  readonly regimePrevidenciario: RegimePrevidenciarioDoVinculo | null;
+  readonly eventos: readonly EventoDoVinculo[];
+}
+
+function contem(alvo: string, procurado: string): boolean {
+  return alvo.toLowerCase().includes(procurado.toLowerCase());
+}
+
+/**
+ * ESTE VÍNCULO ATENDE A TODOS OS EIXOS ATIVOS, NA DATA DE REFERÊNCIA?
+ *
+ * Puro: nenhuma consulta, nenhum relógio. `quando` entra por parâmetro porque três dos eixos são
+ * derivados e a resposta MUDA com a data — ver o docblock do tipo.
+ *
+ * ⚠️ OS EIXOS DERIVADOS EXIGEM QUE O VÍNCULO EXISTISSE EM `quando`. Cargo e lotação já cuidam
+ * disso sozinhos (`cargoVigenteEm` devolve `null` antes da admissão), mas o regime previdenciário
+ * NÃO: `regimeVigenteEm` cai no valor da admissão quando não há evento até a data — e sem a
+ * conferência abaixo, uma consulta por "RPPS em janeiro" traria quem só foi admitido em agosto.
+ */
+export function vinculoAtendeAosEixos(
+  v: VinculoParaConsulta,
+  eixos: EixosDeConsultaDeVinculo,
+  quando: Date
+): boolean {
+  if (eixos.matricula !== "" && !contem(v.matricula, eixos.matricula)) return false;
+  if (eixos.regimeJuridico !== "" && !contem(v.regimeJuridico, eixos.regimeJuridico)) return false;
+  if (eixos.admitidoDe !== null && v.dataAdmissao.getTime() < eixos.admitidoDe.getTime()) return false;
+  if (eixos.admitidoAte !== null && v.dataAdmissao.getTime() > eixos.admitidoAte.getTime()) return false;
+
+  if (eixos.cargoIds !== null) {
+    const c = cargoVigenteEm(v.eventos, quando);
+    if (c === null || !eixos.cargoIds.includes(c)) return false;
+  }
+  if (eixos.lotacaoIds !== null) {
+    const l = lotacaoVigenteEm(v.eventos, quando);
+    if (l === null || !eixos.lotacaoIds.includes(l)) return false;
+  }
+  if (eixos.regimePrevidenciario !== null) {
+    const existiaEm = v.dataAdmissao.getTime() <= quando.getTime();
+    const r = existiaEm ? regimeVigenteEm(v.eventos, v.regimePrevidenciario, quando) : null;
+    if (eixos.regimePrevidenciario === "NAO_INFORMADO") {
+      if (!existiaEm || r !== null) return false;
+    } else if (r !== eixos.regimePrevidenciario) return false;
+  }
+  return true;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // ⚠️ O DEPENDENTE — a baixa por IDADE é derivada, a baixa por FATO é coluna
 // ═══════════════════════════════════════════════════════════════════════════════
 

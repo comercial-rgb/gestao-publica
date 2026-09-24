@@ -283,3 +283,106 @@ dependente" no detalhe do servidor. Testes: `m32-pessoal.test.ts`, `test/runtime
     ⚠️ **E ele registra o que JÁ VALIA**, para que a exceção não seja lida como maior do que é: a
     guarda sempre olhou a situação NA DATA DO FATO, então um evento datado DENTRO da vida do
     vínculo já era aceito mesmo lançado depois do desligamento — é a disciplina das duas datas.
+
+### OS EIXOS DE CONSULTA DE SERVIDOR (TR 5.12.50) — V11 V9.4
+
+A cláusula exige filtrar os funcionários "por no mínimo: matrícula, nome, cargo, regime, local de
+trabalho, centro de custo, função e data de admissão". **Seis eixos entraram; dois não existem como
+MODELO e não foram inventados.**
+
+⚠️ **E ELES SÃO CONSULTA, NÃO RECORTE DO CÁLCULO DA FOLHA.** O texto do TR põe o filtro dentro da
+"rotina de cálculo". Entregá-lo ali recortaria **quem é calculado** — e `calcularFolha` (M33)
+promete "todos os vínculos vivos na competência" **por construção**: o `findMany` dos vínculos lá
+não tem `where` nenhum. Um filtro do operador no cálculo produz folha **parcial em silêncio**: nada
+compara o número de contracheques ao de vínculos ativos, o manifesto da certificação lista só quem
+entrou no cálculo, a apropriação empenha só esses — e a folha fecha, o total bate e o empenho bate.
+**O recorte do cálculo é decisão PENDENTE**, com a análise em `modules/m33-folha/MODULO.md`
+("ANTES DE ALGUÉM CONSTRUIR O FILTRO DE FUNCIONÁRIOS"); quem for construí-lo precisa decidir antes
+se recorta quem é calculado — e então deve uma guarda de completude — ou só quem é listado.
+
+**Os seis entregues** (`lib/portas/recursos/pessoal.ts`, descritor `SERVIDORES`; a porta em
+`pessoal-dados.ts`; o predicado puro em `dominio.ts`):
+
+| eixo | natureza | como |
+|---|---|---|
+| matrícula | coluna (`Vinculo.matricula`) | `contains`, sem caixa |
+| nome | duas fontes | ver abaixo |
+| cargo | **derivado** (`cargoVigenteEm`) | texto → ids de `Cargo` (código ou denominação) → derivação na data |
+| regime **jurídico** | coluna `String` livre | `contains` |
+| regime **previdenciário** | **derivado** (`regimeVigenteEm`) | seleção RGPS/RPPS/ISENTO/não informado |
+| local de trabalho | **derivado** (`lotacaoVigenteEm`) | texto → ids de `Lotacao` (código ou nome) |
+| data de admissão | coluna indexada | janela `de`/`até`, inclusiva nas duas bordas |
+
+São sete linhas para seis eixos porque **"regime" são DOIS eixos**, e fundi-los seria erro de
+domínio: `regimeJuridico` é como a lei orgânica do ente nomeia o vínculo ("Estatutário", "CLT"), e o
+previdenciário decide **qual tabela de contribuição a folha aplica**. Um estatutário pode estar no
+RGPS — o teste afirma exatamente esse cruzamento.
+
+**O NOME É PROCURADO PELOS DOIS, e é decisão de produto.** Há dois candidatos: a versão vigente da
+`Pessoa` (M19) e `Servidor.nomeSocial`. O que a tela **mostra** continua sendo o social quando há
+(Lei 14.164/2021, Decreto 8.727/2016 — `nomeDaPessoa` já fazia isso). O que a busca **acha** são os
+dois: quem usa nome social e não é encontrado por ele é defeito de produto; quem é procurado pelo
+nome que está na portaria e não é encontrado também. E a busca vai a **toda versão** da pessoa, não
+só à vigente — quem procura pelo nome de solteira de alguém que casou está procurando a pessoa certa.
+
+**A COMPOSIÇÃO É SOBRE UM MESMO VÍNCULO.** A professora que também é motorista tem duas matrículas;
+"cargo de motorista E lotação Escola Central" tem de devolver vazio, e devolveria ELA se cada eixo
+fosse conferido contra o conjunto dos vínculos. `vinculoAtendeAosEixos` recebe **um** vínculo e a
+porta faz `.some(...)`. Exceções declaradas: `q`, `nome` e `situacao` são do **servidor** — os dois
+primeiros porque a identidade é da pessoa, e `situacao` porque é o agregado que a coluna sempre
+mostrou (torná-la per-vínculo mudaria em silêncio o significado de "só desligados" para quem já usa
+o filtro).
+
+**A DATA DE REFERÊNCIA É EXPLÍCITA** (filtro `dataRef`, vazio = hoje). Cargo, lotação e regime
+previdenciário são derivados: "cargo hoje" e "cargo na competência de maio" dão listas diferentes, e
+a promoção de junho move o servidor de uma para a outra. A **coluna** do cargo deriva na MESMA data
+que o filtro usou — mostrar o cargo de hoje sob um filtro datado seria mentir na célula. E a linha
+mostra a **matrícula que casou**, não a primeira viva, pelo mesmo motivo.
+
+⚠️ **UM DEFEITO ACHADO E FECHADO NO CAMINHO.** O filtro `situacao` era aplicado **depois** do
+`skip`/`take`, sobre as 25 linhas já recortadas: o total virava "quantos casam NESTA PÁGINA" e a
+página 2 perdia quem ficou na 1. Com 25 servidores ou menos ninguém vê — a fixture do teste tem
+**trinta**, e afirma que o total é igual nas duas páginas e que a união delas não repete nem perde
+ninguém. Hoje a porta tem dois caminhos: sem eixo derivado, o banco recorta a página e o total é
+dele; com eixo derivado, o conjunto é apurado inteiro **antes** de recortar.
+
+⚠️ **O TETO RECUSA, NÃO TRUNCA.** Apurar o conjunto inteiro por evento tem um teto
+(`TETO_DE_CANDIDATOS`); acima dele a consulta **recusa nomeando quantos alcançou e dizendo que não
+truncou**. Truncar devolveria uma lista que parece completa com um total que parece certo.
+
+#### Os dois eixos RECUSADOS — falta de MODELO no M32, nomeada
+
+Não são falta de tela; não há dado nenhum a filtrar, e um seletor vazio no lugar deles seria pior
+que a ausência.
+
+11. **`PESSOAL-SEM-CENTRO-DE-CUSTO`** — não existe nenhuma FK de `Vinculo`, `Servidor`, `Cargo` ou
+    `Lotacao` para `Setor` (M21) nem para qualquer tabela de centro de custo. O único vizinho é
+    `Lotacao.unidadeOrcId`, **opcional**, e o próprio schema declara que a correspondência é
+    incompleta (a maioria das caixas do organograma não é unidade orçamentária). **O que precisa ser
+    decidido antes de construir:** se o centro de custo do pessoal é o `Setor` do M21 (que hoje é o
+    centro de custo administrativo do protocolo e do almoxarifado), se é a UO da ficha que paga, ou
+    se é uma dimensão própria da folha. As três dão rateios de despesa de pessoal diferentes, e a
+    escolha atravessa a apropriação — não é decisão de tela.
+12. **`PESSOAL-SEM-FUNCAO`** — "função" não é entidade aqui. Há dois candidatos concorrentes e
+    nenhum filtrável: o valor `FUNCAO_GRATIFICADA` do enum `TipoCargo` (que é uma espécie de cargo,
+    não uma função exercida) e o texto livre de `HistoricoVinculo.gratificacaoDescricao`. **O que
+    precisa ser decidido:** se função é cargo em comissão/função gratificada (e então o eixo é o
+    `TipoCargo` do cargo vigente), ou se é atribuição designada por portaria com vigência própria (e
+    então falta o model, com data de início e fim, como o histórico funcional).
+13. **`SERVIDORES-ORDENAM-POR-CPF`** — ACHADO em V11 V9.4, **pré-existente e NÃO corrigido aqui**. A
+    coluna "Nome" é declarada `ordenavel`, e a porta traduz isso em `orderBy: { pessoa: { documento } }`
+    — quem clica em "Nome" ordena por **CPF**. É um controle que diz uma coisa e faz outra. Não foi
+    consertado nesta unidade porque o conserto não é local: o nome exibido é derivado
+    (`nomeSocial ?? versão vigente da pessoa`), e o Prisma não ordena por relação `1-N` com `take: 1`.
+    As saídas reais são uma coluna desnormalizada de nome de exibição (mantida por evento, como tudo
+    aqui) ou uma consulta crua — e as duas são decisão de MODELO, não ajuste de tela. Ordenar em
+    memória só no caminho de duas fases faria a ordenação MUDAR conforme o filtro, que é pior.
+14. **`PESSOAL-RECUSA-DO-TETO-SEM-PERCURSO`** — V11 V9.4. A recusa por consulta ampla demais
+    (`ConsultaDePessoalAmplaDemaisError`) ganhou ramo próprio em `app/(areas)/pessoal/servidores/page.tsx`,
+    que a mostra como estado com a mensagem inteira em vez de subir para a tela genérica do Next
+    (onde, em produção, o operador veria só um digest). **O ramo NÃO está provado.** A primeira
+    tentativa de prová-lo conferia o texto-fonte do arquivo, e a mutação mostrou que a guarda era
+    inerte: trocar o ramo por `if (false && ...)` deixou a suíte verde. Guarda que casa com o texto
+    atesta pela papelada. Quem prova é o **percurso de navegador**, não executado. Enquanto isso, o
+    que está provado é só a porta: ela recusa, nas duas direções, e a mensagem carrega a
+    providência e diz que não truncou.

@@ -80,15 +80,54 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
     { nome: "nome", cabecalho: "Nome", tipo: "link", ordenavel: true },
     { nome: "documento", cabecalho: "CPF", tipo: "texto" },
     { nome: "vinculos", cabecalho: "Vínculos", tipo: "inteiro" },
-    { nome: "cargo", cabecalho: "Cargo (vínculo ativo)", tipo: "texto" },
-    { nome: "lotacao", cabecalho: "Lotação", tipo: "texto" },
+    // ⚠️ A MATRÍCULA MOSTRADA É A DO VÍNCULO QUE CASOU COM O FILTRO — ver `listarServidores`.
+    // Sem esta coluna, quem procura "cargo de motorista" recebe a linha de uma pessoa com duas
+    // matrículas e não sabe QUAL delas é a de motorista.
+    { nome: "matricula", cabecalho: "Matrícula (vínculo mostrado)", tipo: "texto" },
+    { nome: "cargo", cabecalho: "Cargo (na data de referência)", tipo: "texto" },
+    { nome: "lotacao", cabecalho: "Lotação (na data de referência)", tipo: "texto" },
     { nome: "situacao", cabecalho: "Situação", tipo: "situacao" },
   ],
+  /**
+   * ═══ OS EIXOS DE CONSULTA DO TR 5.12.50 ═══
+   *
+   * A cláusula pede oito: matrícula, nome, cargo, regime, local de trabalho, centro de custo,
+   * função e data de admissão. **Seis estão aqui; dois não existem como MODELO** e por isso não
+   * aparecem inventados — `centro de custo` (não há FK de `Vinculo`, `Servidor`, `Cargo` ou
+   * `Lotacao` para `Setor` nem para tabela equivalente) e `função` (não é entidade: é um valor de
+   * `TipoCargo` ou texto livre em `HistoricoVinculo.gratificacaoDescricao`). A falta está nomeada
+   * em `modules/m32-pessoal/MODULO.md`; um seletor vazio no lugar delas seria pior que a ausência.
+   *
+   * ⚠️ E `regime` SÃO DOIS EIXOS, não um: o JURÍDICO (`String` livre, como a lei orgânica do ente
+   * o nomeia) e o PREVIDENCIÁRIO (derivado por evento, decide a tabela de contribuição da folha).
+   * Fundi-los num filtro só faria "Estatutário" e "RPPS" disputarem a mesma caixa.
+   *
+   * ⚠️ CARGO E LOTAÇÃO SÃO BUSCA, NÃO ENUMERAÇÃO. Um `selecao` com o quadro de cargos inteiro
+   * ordenado por código é formulário bonito e inútil — o descritor declara o RECORTE, e aqui o
+   * recorte é o que a pessoa digita. A porta resolve o texto a identificadores e filtra por eles.
+   */
   filtros: [
-    { nome: "q", rotulo: "Nome, CPF ou matrícula", tipo: "texto", largura: 2 },
-    { nome: "situacao", rotulo: "Situação", tipo: "selecao", largura: 1, opcoes: [
+    { nome: "q", rotulo: "Busca geral (nome, CPF ou matrícula)", tipo: "texto", largura: 2 },
+    { nome: "nome", rotulo: "Nome (civil ou social)", tipo: "texto", largura: 2, placeholder: "acha pelos dois" },
+    { nome: "matricula", rotulo: "Matrícula", tipo: "texto", largura: 1 },
+    { nome: "cargo", rotulo: "Cargo (código ou denominação)", tipo: "texto", largura: 2 },
+    { nome: "lotacao", rotulo: "Local de trabalho (código ou nome da lotação)", tipo: "texto", largura: 2 },
+    { nome: "regimeJuridico", rotulo: "Regime jurídico", tipo: "texto", largura: 1, placeholder: "Estatutário, CLT..." },
+    { nome: "regimePrev", rotulo: "Regime previdenciário", tipo: "selecao", largura: 1, opcoes: [
+      { valor: "RGPS", rotulo: "RGPS — regime geral" }, { valor: "RPPS", rotulo: "RPPS — regime próprio" },
+      { valor: "ISENTO", rotulo: "Isento" },
+      { valor: "NAO_INFORMADO", rotulo: "Não informado (a folha recusa calcular)" },
+    ] },
+    { nome: "admitidoDe", rotulo: "Admitido de", tipo: "data", largura: 1 },
+    { nome: "admitidoAte", rotulo: "Admitido até", tipo: "data", largura: 1 },
+    { nome: "situacao", rotulo: "Situação do servidor", tipo: "selecao", largura: 1, opcoes: [
       { valor: "ATIVO", rotulo: "Com vínculo ativo" }, { valor: "AFASTADO", rotulo: "Afastado" }, { valor: "DESLIGADO", rotulo: "Só desligados" }, { valor: "SEM_VINCULO", rotulo: "Sem vínculo" },
     ] },
+    // ⚠️ SEM ESTE CAMPO O FILTRO ESCOLHERIA A DATA EM SILÊNCIO. Cargo, lotação e regime
+    // previdenciário são derivados: "cargo hoje" e "cargo na competência de maio" dão listas
+    // diferentes, e a promoção de junho move o servidor de uma para a outra. Vazio = hoje, e a
+    // coluna do cargo deriva na MESMA data que o filtro usou.
+    { nome: "dataRef", rotulo: "Data de referência (cargo, lotação e regime previdenciário)", tipo: "data", largura: 2, placeholder: "vazio = hoje" },
   ],
   acoes: [
     {

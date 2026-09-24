@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| HEAD | **V11 V9.3** — `eccbe8c`, árvore limpa (só os três scripts do operador). Sete commits meus nesta rodada, mais quatro do auxiliar (`63e2f96`, `ceeefab`, `fea43d8`, `10f8fe5`) |
+| HEAD | **V11 V9.4** — partiu de `889b3ab`. ⚠️ **Árvore COMPARTILHADA**: o auxiliar tem `modules/m33-folha/`, `lib/portas/recursos/folha.ts`, `prisma/schema/m33-folha.prisma` e duas migrations novas em voo. O commit desta unidade é só de M32/pessoal, por caminho explícito |
 | Modo de trabalho | **orquestração contínua** (`docs/lotes/V3-orquestracao-continua.md`), sob a ordem **V11** (`docs/lotes/V11-motores-folha-contabilidade-esocial-e-aws.md`) |
 | Frente em execução | **V11** — V9.3 resolveu `CONTROLE-DDR-POR-NATUREZA-DA-FONTE`, executou **os três passos da J9** que a V9.2 deixou pendentes, fechou os **passos 16, 17 e 18 do roteiro do 13º** e encerrou a família `MENSAGEM-SOME-COM-A-LINHA`. `SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS` segue como continuidade funcional, com a apuração **não** ligada |
-| Último resultado | seção 87 — tipos **0/0/0**; dirigidas **79/79**, guards **40/40**, M33 critério **18/18**; mutação **5 vermelhos / 24 verdes na reversão**; **J9 45 ok / 0 falhas / 0 não executados** e **13º 58 ok / 0 falhas / 1 não executado**, ambos `exit 0`, contra artefatos cujo `/release` os nomeia. Três defeitos de produto achados **pela tela** e corrigidos: o remédio falso do critério do abatimento e as duas camadas restantes de `MENSAGEM-SOME-COM-A-LINHA` |
-| Pendências relevantes | **`18.3–18.5` do 13º NÃO EXECUTADO** (folha fechada não recalcula — falta `RETIFICACAO-DA-FOLHA`); **defeito LATENTE** `numeroDoEmpenhoDaFolha` sem o tipo da folha (87.20, conserto do auxiliar); onde fica o portão do critério (apropriar ou fechar); `DDR-DISPONIVEL-SALDO-A-REPONTAR`; `PERCURSOS-SEM-TERMO-PATRIMONIAL-CONGELADO`. **Bloqueio NORMATIVO**: `DISPOSITIVO-MUNICIPAL-DO-13-NAO-LIDO` (três fontes em 403) — não trava o sistema, mas é o que falta para saber QUAL critério declarar. **Bloqueadas por terceiro** (83.3): eSocial, ASTEC, certificado A1, AWS, ENT12 |
-| Próximo passo | **Nada instalado nem publicado**; `/release` responde `candidato: null`. A próxima unidade é a **mensal complementar**, já escolhida e **não começada** — e antes dela o conserto de `numeroDoEmpenhoDaFolha`, porque é ela que faz o defeito latente disparar |
+| Último resultado | seção 88 — dirigidas **26/26** nos dois arquivos novos (`exit=0`); mutação **9 instrumentos, 8 vermelhos e 1 que NÃO acusou** (MUT-H, guarda inerte, retirada), 9 reversões com checksum conferido. ⚠️ **Os três typecheck (0/0/0) são ANTERIORES às correções da auditoria e contam como NÃO EXECUTADOS sobre a árvore atual.** A auditoria achou 3 defeitos meus: 2 corrigidos, 1 é decisão de desenho |
+| Pendências relevantes | **`18.3–18.5` do 13º NÃO EXECUTADO** (folha fechada não recalcula — falta `RETIFICACAO-DA-FOLHA`); **defeito LATENTE** `numeroDoEmpenhoDaFolha` sem o tipo da folha (87.20, conserto do auxiliar); onde fica o portão do critério (apropriar ou fechar); `DDR-DISPONIVEL-SALDO-A-REPONTAR`; `PERCURSOS-SEM-TERMO-PATRIMONIAL-CONGELADO`. **Bloqueio NORMATIVO**: `DISPOSITIVO-MUNICIPAL-DO-13-NAO-LIDO` (três fontes em 403) — não trava o sistema, mas é o que falta para saber QUAL critério declarar. **Bloqueadas por terceiro** (83.3): eSocial, ASTEC, certificado A1, AWS, ENT12. **V9.4 acrescenta:** `PESSOAL-SEM-CENTRO-DE-CUSTO` e `PESSOAL-SEM-FUNCAO` (falta de MODELO no M32, os dois eixos recusados de 5.12.50); o **recorte do CÁLCULO** da folha continua decisão pendente com o risco de folha parcial nomeado; **percurso de navegador de `/pessoal/servidores` NÃO EXECUTADO** |
+| Próximo passo | **Reexecutar os três typecheck** — são o único passo pendente sobre a árvore atual. Depois: percurso de navegador de `/pessoal/servidores` (é o que prova o ramo da recusa do teto e converte os eixos em superfície validada) e as duas decisões de modelo. **Nada instalado nem publicado**; a cláusula 5.12.50 continua `PARCIAL` e **não foi marcada** |
 
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
@@ -10686,3 +10686,214 @@ tocado.
    (impede o beco sem saída). Decisão de desenho do M33, com a medição de 87.15 na mão.
 3. **`RETIFICACAO-DA-FOLHA`** — enquanto não existir, 13º fechado em simulação é dinheiro parado
    sem caminho de volta.
+
+## 88. V11 V9.4 — os filtros de servidores como CONSULTA, e por que não como recorte do cálculo
+
+**Módulo: M32 (pessoal).** Não M33. A cláusula 5.12.50 põe os oito eixos de filtro dentro da
+"rotina de cálculo de folha"; esta unidade os entrega como **consulta** em `/pessoal/servidores` e
+deixa o recorte do cálculo como decisão **pendente, nomeada, com o risco escrito**.
+
+### 88.1 Por que consulta, e não o que o texto do TR literalmente pede
+
+`calcularFolha` promete "todos os vínculos vivos na competência", e mantém a promessa **por
+construção**: o `findMany` dos vínculos não tem `where` nenhum. Um filtro do operador ali produz
+folha **parcial em silêncio** — nada compara o número de contracheques ao de vínculos ativos, o
+manifesto da certificação lista só quem entrou no cálculo, a apropriação empenha só esses, e a
+folha fecha com o total batendo e o empenho batendo. É a forma de defeito que o M33 já pagou três
+vezes. Entregar os eixos como consulta **avança a cláusula sem criar o caminho para produzir folha
+parcial**. O levantamento dos oito eixos já estava em `modules/m33-folha/MODULO.md` (V9.3); esta
+unidade é a segunda metade — a construção.
+
+### 88.2 Seis eixos entregues, dois recusados
+
+| eixo do TR | situação | natureza |
+|---|---|---|
+| matrícula | entregue | coluna `Vinculo.matricula` |
+| nome | entregue | **duas fontes**, ver 88.3 |
+| cargo | entregue | **derivado** (`cargoVigenteEm`), por data de referência |
+| regime | entregue **como DOIS eixos** | jurídico (coluna `String` livre) e previdenciário (**derivado**) |
+| local de trabalho | entregue | **derivado** (`lotacaoVigenteEm`) |
+| data de admissão | entregue | coluna indexada, janela `de`/`até` inclusiva |
+| **centro de custo** | **RECUSADO** | não há FK de `Vinculo`/`Servidor`/`Cargo`/`Lotacao` para `Setor` nem equivalente |
+| **função** | **RECUSADO** | não é entidade: valor de `TipoCargo` ou texto livre em `gratificacaoDescricao` |
+
+Os dois recusados são **falta de MODELO**, não falta de tela, e estão nomeados em
+`modules/m32-pessoal/MODULO.md` como `PESSOAL-SEM-CENTRO-DE-CUSTO` (11) e `PESSOAL-SEM-FUNCAO`
+(12), cada um com **o que precisa ser decidido antes de construir**. Não se criou seletor vazio
+para eles: seis eixos honestos valem mais que oito com dois inventados.
+
+⚠️ **"Regime" virou dois eixos porque são dois.** `regimeJuridico` é como a lei orgânica do ente
+nomeia o vínculo; o previdenciário decide **qual tabela de contribuição a folha aplica**. Um
+estatutário pode estar no RGPS — o teste afirma esse cruzamento exato.
+
+### 88.3 O nome pelo qual se busca: os DOIS
+
+Havia dois candidatos concorrentes — a versão vigente da `Pessoa` (M19) e `Servidor.nomeSocial`. A
+tela continua **mostrando** o social quando há (Lei 14.164/2021, Decreto 8.727/2016). A busca
+**acha pelos dois**: quem usa nome social e não é encontrado por ele é defeito de produto, e quem é
+procurado pelo nome que está na portaria e não é encontrado também é. E a busca vai a **toda versão**
+da pessoa, não só à vigente — quem procura pelo nome de solteira de alguém que casou procura a
+pessoa certa.
+
+### 88.4 A data de referência, e a composição sobre o MESMO vínculo
+
+Filtro `dataRef` explícito (vazio = hoje). Cargo, lotação e regime previdenciário são derivados:
+"cargo hoje" e "cargo na competência de maio" dão listas diferentes. **A coluna deriva na mesma data
+que o filtro usou** — mostrar o cargo de hoje sob filtro datado seria mentir na célula — e a linha
+mostra **a matrícula que casou**, não a primeira viva.
+
+Os eixos de vínculo se conjugam sobre **um mesmo vínculo**: a professora que também é motorista não
+sai numa busca por "motorista na Escola Central". `q`, `nome` e `situacao` continuam do **servidor**,
+e a exceção está declarada (mudar `situacao` para per-vínculo alteraria em silêncio o significado de
+"só desligados" para quem já usa o filtro).
+
+### 88.5 Um defeito achado e fechado no caminho
+
+⚠️ **O filtro `situacao` era aplicado DEPOIS do `skip`/`take`**, sobre as 25 linhas já recortadas: o
+total virava "quantos casam NESTA PÁGINA", e a página 2 perdia quem ficou na 1. Com 25 servidores ou
+menos ninguém vê — a fixture do teste tem **trinta**. Hoje a porta tem dois caminhos: sem eixo
+derivado, o banco recorta a página e o total é dele; com eixo derivado, o conjunto é apurado inteiro
+**antes** de recortar. O teto de apuração (`TETO_DE_CANDIDATOS = 5000`) **recusa nomeando quantos
+alcançou, e não trunca** — truncar devolveria uma lista que parece completa com um total que parece
+certo.
+
+### 88.6 A armadilha do alvo de tipos, medida e não suposta
+
+O teste de porta nasceu em `modules/m32-pessoal/` e produziu **96 erros TS2835/TS7006** — nenhum
+deles em linha escrita por esta unidade. Causa: `tsconfig.backend.json` inclui `modules/**` e
+`test/**` sob `NodeNext`, e o import de `lib/portas/` arrastou para esse alvo código escrito para
+`moduleResolution: bundler`. **O próprio `tsconfig.backend.json` documenta essa exata armadilha**,
+com os mesmos códigos de erro, desde a ENT10. O remédio é o dele: o teste de porta foi para
+`test/pessoal-eixos-de-consulta.test.ts`, excluído do backend e incluído no config do app; o
+predicato puro ficou em `modules/m32-pessoal/m32-eixos-de-consulta.test.ts`, sob o alvo estrito.
+`scripts/cobertura-de-tsconfig.ts`: **1502 de 1502 cobertos, 0 descobertos**.
+
+### 88.7 Comandos executados, com o resultado real lido do arquivo
+
+| comando | resultado |
+|---|---|
+| `tsc -p tsconfig.backend.json` (heap 5324) | `exit=0`, **0 erros** |
+| `tsc -p tsconfig.json` (heap 5324) | `exit=0`, **0 erros** |
+| `tsc -p tsconfig.scripts.json` (heap 5324) | `exit=0`, **0 erros** |
+| `vitest` dirigido (8 arquivos: M32, runtime M32, descritores, leitura por ação, busca global, eixo de data) | `exit=0`, **105 testes, 8 arquivos, 0 falhas** |
+| `vitest` dos dois arquivos novos | `exit=0`, **24 testes** |
+| `npx tsx scripts/cobertura-de-tsconfig.ts` | 1502/1502, 0 descobertos |
+
+⚠️ **O código de saída foi lido da linha `exit=` DENTRO do arquivo de registro, e o arquivo foi
+apagado antes de cada relançamento.** A notificação do shell disse `exit code 0` para uma execução
+cujo arquivo dizia `exit=2` — a armadilha que esta empreitada já pagou.
+
+### 88.8 A prova por mutação — nove instrumentos, e UM que NÃO acusou
+
+Cada mutação foi aplicada, medida, **revertida POR EDIÇÃO** e o checksum SHA-256 conferido contra o
+valor de antes. Repetida integralmente depois da separação dos arquivos de teste (a prova anterior
+era sobre o arquivo único e não valia mais).
+
+| mutação | o que falseia | vermelho |
+|---|---|---|
+| A | o cargo deriva em `new Date()` e não na data de referência | 3 falham |
+| B | o eixo de lotação deixa de conjugar | 3 falham |
+| C | some a guarda de existência do vínculo no eixo de regime | 2 falham |
+| D | o total volta a ser o da página (o defeito original de 88.5) | 2 falham |
+| E | o teto deixa de recusar | 1 falha |
+| F | o gate `exigirLeitura` sai de cima da leitura na tela | 1 falha |
+| G | a âncora da data volta a ser o instante cru (defeito 1 de 88.11) | 1 falha |
+| **H** | **o ramo da recusa do teto sai da tela** | ⚠️ **NÃO ACUSOU — 26 verdes** |
+| I | a mensagem da recusa perde a providência e o "não truncou" | 2 falham |
+
+⚠️ **MUT-H é o achado desta tabela.** A guarda que eu escrevera para o defeito 2 casava com o TEXTO
+do `page.tsx`, e trocar o ramo por `if (false && ...)` deixou a suíte inteira verde. Retirei a
+guarda em vez de mantê-la aparentando cobertura. **Uma mutação que não acusa vale mais que cinco que
+acusam:** é a única que descobre instrumento inerte.
+
+Reversão: **checksum CONFERE nos nove**, nos três arquivos tocados (`dominio.ts`,
+`pessoal-dados.ts`, `page.tsx`).
+
+### 88.9 Saturação registrada — não é aprovação nem defeito
+
+A primeira execução de `npm run typecheck` (heap 5324) ficou **19 minutos de relógio para 2m40 de
+CPU**, com o heap comprimido em 4,78 GB numa máquina de 8 GB com Docker e o editor abertos. **Eu a
+matei cedo demais** — era lentidão por paginação, não travamento. A tentativa seguinte com heap 4096
+**estourou o heap** (`exit=134`, `FATAL ERROR: Reached heap limit`): o projeto precisa mesmo dos
+5324 que o `package.json` prescreve. Repetida com 5324 e a máquina livre, terminou em poucos minutos
+com 0 erros. **Registro do erro de condução:** 19 minutos perdidos por ler "stuck" como travado.
+
+### 88.10 O que NÃO foi feito, e por quê
+
+- **Percurso de navegador: NÃO EXECUTADO.** `build` + `next start` disputam a máquina com o que o
+  auxiliar precisa medir. É o que falta para a consulta valer como superfície validada.
+- **Catálogo: NÃO MARCADO, deliberadamente.** A cláusula 5.12.50 é a mesma que o auxiliar está
+  atendendo pelo outro lado (mensal complementar). Editar a entrada dela em
+  `scripts/marcar-catalogo.ts` agora colidiria com o trabalho em voo. **Quem fechar a cláusula por
+  último atualiza a evidência com as duas metades**: os tipos de folha e os seis eixos como consulta.
+  A cláusula continua `PARCIAL` — seis eixos de oito, e nenhum deles no cálculo.
+- **Suíte completa, `test:fuso` e portão: não rodados**, por restrição do pedido. Nada aqui toca
+  `packages/datas`, guard de período ou janela de relatório; os cortes de dia usam
+  `inicioDoDiaCivil`/`fimDoDiaCivil`/`meioDiaCivil`, e `test/eixo-de-data-no-molde.test.ts` passou.
+- **Árvore NÃO congelada durante a medição**, e não podia ser: o auxiliar editava `modules/m33-folha/`
+  e `lib/portas/recursos/folha.ts` ao mesmo tempo. Os erros foram atribuídos **por caminho**, e
+  nenhum dos 96 da primeira leitura era dele.
+
+### 88.11 A AUDITORIA DE INVARIANTES ACHOU TRÊS DEFEITOS **MEUS** — dois corrigidos aqui
+
+⚠️ **Os números de tipos de 88.7 são ANTERIORES a estas correções.** `pessoal-dados.ts`, `page.tsx` e
+`test/pessoal-eixos-de-consulta.test.ts` mudaram depois deles. **Os três typecheck precisam ser
+reexecutados** antes de qualquer promoção: contam como NÃO EXECUTADOS sobre a árvore atual. Os
+testes dirigidos e as mutações, sim, são posteriores e valem (**26/26, `exit=0`**).
+
+**Defeito 1 — a âncora da derivação era um INSTANTE, não o dia civil do ente. CORRIGIDO.**
+`const quando = dataRefBruta === "" ? new Date() : meioDiaCivil(...)`. Os eventos são gravados em
+**meio-dia civil**; o ramo padrão — o de toda abertura de tela sem filtro de data — usava o instante
+corrente. Efeito: promoção com efeito HOJE, às 09h00 o filtro por "Diretor" **não traz o servidor**;
+às 12h01 traz; e `dataRef` com o MESMO DIA traz. Duas respostas para a mesma pergunta no mesmo dia, e
+a errada **omite pessoa de um filtro**. O `new Date()` cru já morava na linha antiga; o que os eixos
+mudaram foi o raio — antes errava uma célula, agora deixa gente fora da lista. Hoje: `diaDeReferencia()`,
+com `agora` injetável para que o teste prove numa hora ESCOLHIDA (um teste que só falha antes do
+meio-dia passa por vacuidade metade do dia). **Mutação G: 1 vermelho.**
+
+**Defeito 2 — a recusa do teto nunca chegava ao usuário. Corrigida no código, NÃO PROVADA.**
+`ConsultaDePessoalAmplaDemaisError` subia para a tela genérica do Next (em produção, só um digest): a
+mensagem existia, o efeito não. A página ganhou ramo próprio. ⚠️ **E a minha primeira tentativa de
+provar isso foi papelada, e a mutação me pegou:** o teste conferia o texto-fonte do arquivo, e trocar
+o ramo por `if (false && ...)` deixou **os 26 testes verdes** — **MUT-H não acusou**. Retirei a
+guarda inerte em vez de mantê-la aparentando cobertura, e nomeei
+`PESSOAL-RECUSA-DO-TETO-SEM-PERCURSO` (14) no MODULO.md. O que está provado é só a porta: recusa nas
+duas direções, e a mensagem carrega a providência e diz que não truncou (**mutação I: 2 vermelhos**).
+
+**Defeito 3 — a autorização é afirmada sobre o HELPER e sobre a ordem do texto, não sobre a consulta.
+NÃO CORRIGIDO, e é decisão de desenho.** `listarServidores` não tem gate dentro dela; o gate está na
+página. Hoje não há vazamento porque a página é o único chamador — mas a segunda rota que reusar a
+porta (exportação, API, worker) **nasce sem gate e com o teste verde**. O caminho conhecido é o do
+licenciamento (`lerLicenciamentoDaTela` chama `exigirLeitura` DENTRO da porta, e
+`test/licenciamento-gate.test.ts` afirma o efeito). Fazer isso aqui pede a variante `...Para(quem, c)`
+e muda o contrato do molde: **decisão a tomar, não conserto de passagem.**
+
+**Observação acolhida:** a ordenação ganhou desempate por `id`. Sem ele, empate em `criadoEm`
+(que é `now()`, o instante da TRANSAÇÃO) faria a página 2 repetir e perder gente numa carga em lote.
+
+### 88.12 Dois erros de DOCUMENTAÇÃO do ambiente, que mandam procurar o que não existe
+
+1. **O container e o papel documentados estão ERRADOS.** O real é container **`pg-gestao-publica`**
+   (`postgres:18`, porta **5436**) e papel **`gestao`**. A documentação diz `pg-siafic` e `postgres` —
+   as duas erradas: `docker exec pg-siafic` não acha o container, e `-U postgres` devolve
+   `FATAL: role "postgres" does not exist` (medido nesta seção: o primeiro `psql` desta unidade falhou
+   exatamente assim). ⚠️ **E o instrumento manda procurar o que não existe:** a mensagem de erro de
+   `test/banco.ts` manda rodar `docker start pg-siafic`. É o mesmo defeito que já custou tempo nesta
+   rodada, quando uma mensagem mandava instalar dependência faltando e o que faltava era o cliente do
+   Prisma gerado. **O conserto da mensagem de `banco.ts` NÃO é desta unidade** e fica nomeado:
+   `MENSAGEM-DE-BANCO-APONTA-CONTAINER-INEXISTENTE`.
+2. **São 19 databases, não 15.** A contagem anterior estava errada e foi repetida em ordens. Listados
+   nesta unidade, um a um, com o papel `gestao`. O isolado do auxiliar será o 20º.
+
+### 88.13 O próximo ponto exato
+
+1. **Percurso de navegador de `/pessoal/servidores`** com os eixos — é o que converte a cláusula de
+   "tem porta e teste" para superfície validada. Precisa da máquina livre.
+2. **Decidir `PESSOAL-SEM-CENTRO-DE-CUSTO`**: o centro de custo do pessoal é o `Setor` do M21, a UO
+   da ficha que paga, ou dimensão própria da folha? As três dão rateios de despesa de pessoal
+   diferentes, e a escolha atravessa a apropriação.
+3. **Decidir `PESSOAL-SEM-FUNCAO`**: função é espécie de cargo (`TipoCargo`) ou atribuição designada
+   por portaria com vigência própria? No segundo caso falta o model.
+4. **Decidir o recorte do CÁLCULO** (5.12.50 literal). Se alguém decidir que o cálculo recorta, a
+   guarda de completude nasce **junto**, nunca depois: comparar contracheques a vínculos vivos na
+   competência, e recusar fechar folha parcial que não se declare parcial.

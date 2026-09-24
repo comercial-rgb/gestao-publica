@@ -6,7 +6,7 @@ import { lerConsulta, TAMANHO_DE_PAGINA, type ParametrosBrutos } from "../../../
 import { somarSelecionadas } from "../../../../lib/molde/soma";
 import { acoesPermitidas, exigirLeitura } from "../../../../lib/portas/molde";
 import { SERVIDORES } from "../../../../lib/portas/recursos/pessoal";
-import { listarServidores, opcoesDoServidor, PortaSemBancoError } from "../../../../lib/portas/recursos/pessoal-dados";
+import { ConsultaDePessoalAmplaDemaisError, listarServidores, opcoesDoServidor, PortaSemBancoError } from "../../../../lib/portas/recursos/pessoal-dados";
 import { servidoresAction } from "./actions";
 
 /**
@@ -36,6 +36,18 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
       />
     );
   } catch (e) {
+    // ⚠️ UMA RECUSA QUE NÃO CHEGA À TELA É SILÊNCIO. A porta recusa a consulta ampla demais com uma
+    // mensagem que diz quantos alcançou, que NÃO truncou e o que fazer para estreitar — e, sem este
+    // ramo, ela subia para a tela genérica de erro do Next, que em produção mostra só um digest.
+    // Achado na auditoria do V11 V9.4: a mensagem existia, o efeito não.
+    if (e instanceof ConsultaDePessoalAmplaDemaisError) {
+      return (
+        <div className="space-y-6">
+          <PageHeader titulo={SERVIDORES.rotulo} subtitulo={SERVIDORES.descricao} />
+          <EstadoVazio titulo="Consulta ampla demais para apurar por evento" descricao={e.message} />
+        </div>
+      );
+    }
     if (e instanceof PortaSemBancoError) {
       return (
         <div className="space-y-6">

@@ -1,4 +1,4 @@
-import { diaCivilBr, meioDiaCivil } from "../../../packages/datas/index.js";
+import { diaCivil, diaCivilBr, fimDoDiaCivil, inicioDoDiaCivil, meioDiaCivil } from "../../../packages/datas/index.js";
 import { toMoney } from "../../../packages/contracts/index.js";
 import { formatarDocumento } from "../../../packages/documento/index.js";
 import type { Prisma } from "../../../prisma/generated/client/client.js";
@@ -12,6 +12,10 @@ import {
   situacaoDoVinculo,
   baixaEfetiva,
   vagasOcupadasDoCargo,
+  haEixoDerivadoDeVinculo,
+  haEixoDeVinculo,
+  vinculoAtendeAosEixos,
+  type EixosDeConsultaDeVinculo,
   type EventoDoVinculo,
   type SituacaoVinculo,
 } from "../../../modules/m32-pessoal/dominio.js";
@@ -31,7 +35,7 @@ import {
 } from "../../../modules/m32-pessoal/servico.js";
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { TAMANHO_DE_PAGINA } from "../../molde/consulta.js";
-import type { LinhaDoHistorico } from "../../molde/tipos.js";
+import type { LinhaDoHistorico, LinhaDoMolde } from "../../molde/tipos.js";
 import { comEscritaAutenticada } from "../sessao";
 import { cliente, PortaSemBancoError } from "../cliente";
 import type { DetalheLido, OpcoesDoCadastro, PaginaDoMolde } from "./dados";
@@ -97,42 +101,343 @@ const SELECAO_DO_SERVIDOR = {
   vinculos: { orderBy: { dataAdmissao: "asc" as const }, select: { id: true, matricula: true, tipo: true, regimeJuridico: true, regimePrevidenciario: true, dataAdmissao: true, criadoPor: true, criadoEm: true, eventos: SELECAO_DE_EVENTOS } },
 };
 
-export async function listarServidores(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
+/**
+ * ═══ O TETO DO CONJUNTO A APURAR (TR 5.12.50) ═══
+ *
+ * Eixo DERIVADO (cargo, lotação, regime previdenciário) e a SITUAÇÃO não se resolvem no `WHERE`:
+ * a resposta está nos eventos. O conjunto tem de ser apurado inteiro ANTES de recortar a página —
+ * e apurar "inteiro" sem teto é carregar o ente todo em memória no dia em que alguém abre a tela
+ * com um filtro largo.
+ *
+ * ⚠️ O TETO RECUSA, NÃO TRUNCA. Truncar devolveria uma lista que PARECE completa, com um total que
+ * PARECE certo — a forma silenciosa do mesmo defeito que este módulo existe para impedir.
+ */
+export const TETO_DE_CANDIDATOS = 5000;
+
+export class ConsultaDePessoalAmplaDemaisError extends Error {
+  readonly candidatos: number;
+  readonly teto: number;
+  constructor(candidatos: number, teto: number) {
+    super(
+      `A consulta alcança ${candidatos} servidores, acima do teto de ${teto} que esta tela apura por evento. ` +
+        "Cargo, lotação, regime previdenciário e situação são derivados do histórico funcional — não há como recortar a " +
+        "página no banco sem apurar o conjunto. Estreite por nome, matrícula, data de admissão ou regime jurídico e " +
+        "repita. A lista NÃO foi truncada: truncar devolveria um total que parece certo."
+    );
+    this.name = "ConsultaDePessoalAmplaDemaisError";
+    this.candidatos = candidatos;
+    this.teto = teto;
+  }
+}
+
+/** O vínculo, lido enxuto — só o que os eixos e as derivações precisam. Sem joins de cargo/lotação. */
+const SELECAO_ENXUTA_DO_VINCULO = {
+  id: true, matricula: true, dataAdmissao: true, regimeJuridico: true, regimePrevidenciario: true,
+  eventos: {
+    orderBy: [{ data: "asc" as const }, { criadoEm: "asc" as const }],
+    select: { data: true, criadoEm: true, tipo: true, cargoId: true, lotacaoId: true, salarioBase: true, regimePrevidenciario: true },
+  },
+};
+type EventoEnxuto = Prisma.HistoricoVinculoGetPayload<{ select: (typeof SELECAO_ENXUTA_DO_VINCULO)["eventos"]["select"] }>;
+
+/**
+ * ⚠️ `salarioBase` ENTRA MESMO SEM SER USADO AQUI. `EventoDoVinculo` o declara, e preenchê-lo com
+ * `null` faria `salarioBaseVigenteEm` devolver "sem salário" para todo mundo no dia em que alguém
+ * reusasse esta leitura — um `null` fabricado é pior que uma coluna a mais.
+ */
+function eventosEnxutos(es: readonly EventoEnxuto[]): readonly EventoDoVinculo[] {
+  return es.map((e) => ({
+    data: e.data, criadoEm: e.criadoEm, tipo: e.tipo, cargoId: e.cargoId, lotacaoId: e.lotacaoId,
+    regimePrevidenciario: e.regimePrevidenciario,
+    salarioBase: e.salarioBase === null ? null : toMoney(e.salarioBase.toFixed(2)),
+  }));
+}
+
+/** A situação do SERVIDOR — o agregado que a coluna sempre mostrou. Ver a nota de composição abaixo. */
+function situacaoDoServidor(
+  vinculos: readonly (readonly EventoDoVinculo[])[],
+  quando: Date
+): string {
+  if (vinculos.length === 0) return "SEM_VINCULO";
+  const vivos = vinculos.map((evs) => situacaoDoVinculo(evs, quando)).filter((s) => s !== "DESLIGADO");
+  if (vivos.length === 0) return "DESLIGADO";
+  return vivos.every((s) => s === "AFASTADO") ? "AFASTADO" : "ATIVO";
+}
+
+/**
+ * ═══ ⚠️ A TRADUÇÃO DO TEXTO PARA IDENTIFICADORES (cargo e lotação) ═══
+ *
+ * O eixo do TR é "cargo", e o que a pessoa digita é código ou denominação. Quem resolve é o banco,
+ * UMA vez, e o predicado do domínio compara IDENTIFICADORES — não texto. Assim a derivação
+ * (`cargoVigenteEm` devolve um `cargoId`) e o filtro falam a mesma língua.
+ *
+ * ⚠️ `[]` NÃO VIRA "SEM FILTRO". Digitar um cargo que não existe devolve a lista VAZIA, que é a
+ * resposta certa. Se `[]` fosse lido como eixo inativo, o ente inteiro apareceria para quem
+ * procurou algo inexistente — o modo mais discreto de um filtro deixar de filtrar.
+ */
+async function idsDoCargo(termo: string): Promise<readonly string[]> {
+  const achados = await cliente().cargo.findMany({
+    where: { OR: [{ codigo: { contains: termo, mode: "insensitive" } }, { denominacao: { contains: termo, mode: "insensitive" } }] },
+    select: { id: true },
+  });
+  return achados.map((x) => x.id);
+}
+
+async function idsDaLotacao(termo: string): Promise<readonly string[]> {
+  const achados = await cliente().lotacao.findMany({
+    where: { OR: [{ codigo: { contains: termo, mode: "insensitive" } }, { nome: { contains: termo, mode: "insensitive" } }] },
+    select: { id: true },
+  });
+  return achados.map((x) => x.id);
+}
+
+type ServidorLidoParaLista = Prisma.ServidorGetPayload<{ select: typeof SELECAO_DO_SERVIDOR }>;
+
+/**
+ * A LINHA DA LISTA. `vinculoId` é o vínculo que CASOU com os eixos — quando há filtro de vínculo, é
+ * ELE que a linha mostra, e não o primeiro vivo.
+ *
+ * ⚠️ MOSTRAR O PRIMEIRO VIVO SOB UM FILTRO DE CARGO SERIA MENTIR NA CÉLULA: quem procurou
+ * "motorista" veria a linha da professora com o cargo "Professora" na coluna, e concluiria que o
+ * filtro está quebrado — ou pior, que ela é motorista.
+ */
+async function montarLinhas(
+  achados: readonly { readonly s: ServidorLidoParaLista; readonly vinculoId: string | null }[],
+  quando: Date
+): Promise<readonly LinhaDoMolde[]> {
+  if (achados.length === 0) return [];
   const prisma = cliente();
-  const q = (c.filtros["q"] ?? "").trim();
-  const sit = c.filtros["situacao"] ?? "";
-  const where: Prisma.ServidorWhereInput = q === "" ? {} : {
-    OR: [
-      { pessoa: { documento: { contains: q.replace(/\D/g, "") || q } } },
-      { pessoa: { versoes: { some: { nome: { contains: q, mode: "insensitive" } } } } },
-      { nomeSocial: { contains: q, mode: "insensitive" } },
-      { vinculos: { some: { matricula: { contains: q, mode: "insensitive" } } } },
-    ],
-  };
-  const hoje = new Date();
-  const [total, linhas] = await Promise.all([
-    prisma.servidor.count({ where }),
-    prisma.servidor.findMany({ where, orderBy: c.ordem === "nome" ? { pessoa: { documento: c.direcao } } : { criadoEm: "desc" }, ...paginacao(c), select: SELECAO_DO_SERVIDOR }),
+  const [cs, ls] = await Promise.all([
+    prisma.cargo.findMany({ select: { id: true, codigo: true, denominacao: true } }),
+    prisma.lotacao.findMany({ select: { id: true, codigo: true, nome: true } }),
   ]);
-  const cargos = new Map((await prisma.cargo.findMany({ select: { id: true, codigo: true, denominacao: true } })).map((x) => [x.id, `${x.codigo} — ${x.denominacao}`]));
-  const lotacoes = new Map((await prisma.lotacao.findMany({ select: { id: true, codigo: true, nome: true } })).map((x) => [x.id, `${x.codigo} — ${x.nome}`]));
-  const mapeadas = linhas.map((s) => {
-    const vivos = s.vinculos.map((v) => ({ v, situacao: situacaoDoVinculo(eventos(v.eventos), hoje) })).filter((x) => x.situacao !== "DESLIGADO");
-    const principal = vivos[0];
-    const situacao = s.vinculos.length === 0 ? "SEM_VINCULO" : principal === undefined ? "DESLIGADO" : vivos.some((x) => x.situacao === "AFASTADO") && vivos.every((x) => x.situacao === "AFASTADO") ? "AFASTADO" : "ATIVO";
-    const evs = principal === undefined ? [] : eventos(principal.v.eventos);
+  const cargos = new Map(cs.map((x) => [x.id, `${x.codigo} — ${x.denominacao}`]));
+  const lotacoes = new Map(ls.map((x) => [x.id, `${x.codigo} — ${x.nome}`]));
+
+  return achados.map(({ s, vinculoId }) => {
+    const casou = vinculoId === null ? undefined : s.vinculos.find((v) => v.id === vinculoId);
+    const vivos = s.vinculos.filter((v) => situacaoDoVinculo(eventos(v.eventos), quando) !== "DESLIGADO");
+    const mostrado = casou ?? vivos[0];
+    const evs = mostrado === undefined ? [] : eventos(mostrado.eventos);
     return {
       id: s.id,
       nome: nomeDaPessoa(s.pessoa, s.nomeSocial),
       documento: formatarDocumento(s.pessoa.documento),
       vinculos: String(s.vinculos.length),
-      cargo: principal === undefined ? "—" : (cargos.get(cargoVigenteEm(evs, hoje) ?? "") ?? "—"),
-      lotacao: principal === undefined ? "—" : (lotacoes.get(lotacaoVigenteEm(evs, hoje) ?? "") ?? "—"),
-      situacao,
+      matricula: mostrado === undefined ? "—" : mostrado.matricula,
+      cargo: mostrado === undefined ? "—" : (cargos.get(cargoVigenteEm(evs, quando) ?? "") ?? "—"),
+      lotacao: mostrado === undefined ? "—" : (lotacoes.get(lotacaoVigenteEm(evs, quando) ?? "") ?? "—"),
+      situacao: situacaoDoServidor(s.vinculos.map((v) => eventos(v.eventos)), quando),
     };
   });
-  const filtradas = sit === "" ? mapeadas : mapeadas.filter((l) => l.situacao === sit);
-  return { total: sit === "" ? total : filtradas.length, linhas: filtradas };
+}
+
+/**
+ * ═══ A CONSULTA DE SERVIDORES — os oito eixos do TR 5.12.50, os seis que têm dado (V11 V9.4) ═══
+ *
+ * ⚠️ ESTA É A CONSULTA, E NÃO O RECORTE DO CÁLCULO DA FOLHA. A cláusula pede os eixos "na rotina de
+ * cálculo"; entregá-los ali recortaria QUEM É CALCULADO, e `calcularFolha` (M33) promete "todos os
+ * vínculos vivos na competência" POR CONSTRUÇÃO — o `findMany` de lá não tem `where` nenhum. Um
+ * filtro do operador no cálculo produz folha PARCIAL em silêncio: o total bate, o empenho bate, e
+ * nada compara o número de contracheques ao de vínculos ativos. A decisão de recortar o cálculo
+ * está PENDENTE e nomeada em `modules/m33-folha/MODULO.md` e `modules/m32-pessoal/MODULO.md`.
+ *
+ * ═══ A REGRA DE COMPOSIÇÃO, EM DUAS CAMADAS ═══
+ *
+ *   · Os eixos do VÍNCULO (matrícula, cargo, lotação, regime jurídico, regime previdenciário, data
+ *     de admissão) se conjugam sobre **UM MESMO VÍNCULO** — `vinculoAtendeAosEixos` recebe um de
+ *     cada vez e aqui se faz `.some(...)`. A professora que também é motorista NÃO aparece numa
+ *     busca por "motorista na Escola Central", e é o único jeito de o "E" significar "E".
+ *   · `q`, `nome` e `situacao` são do SERVIDOR: os dois primeiros porque a identidade é da pessoa,
+ *     e `situacao` porque é o agregado que a coluna sempre mostrou — torná-la per-vínculo mudaria
+ *     em silêncio o significado de "só desligados" para quem já usa o filtro.
+ *
+ * ═══ POR QUE DUAS FASES, E POR QUE A PAGINAÇÃO EXIGE ISSO ═══
+ *
+ * O `where` do Prisma é SUPERCONJUNTO: ele estreita ("o cargo aparece em ALGUM evento de ALGUM
+ * vínculo"), mas não decide — "aparece em algum evento" não é "vigente na data", e "algum vínculo"
+ * não é "o mesmo vínculo". Quem decide é o predicado puro do domínio.
+ *
+ * ⚠️ E É POR ISSO QUE A PÁGINA NÃO PODE SAIR DO BANCO QUANDO HÁ EIXO DERIVADO. Era o defeito que
+ * estava aqui: `situacao` era aplicada DEPOIS do `skip`/`take`, sobre as 25 linhas já recortadas —
+ * o total virava "quantos ativos NESTA PÁGINA", e a página 2 perdia os ativos que ficaram na 1.
+ * Com 25 servidores ou menos ninguém vê. É a vacuidade que o teste de duas páginas fecha.
+ */
+/**
+ * ═══ ⚠️ A ÂNCORA DA DERIVAÇÃO É UM **DIA CIVIL DO ENTE**, NUNCA UM INSTANTE ═══
+ *
+ * Os eventos do histórico funcional são gravados em MEIO-DIA CIVIL (o mesmo `meioDiaCivil` que a
+ * escrita usa), e as derivações comparam `e.data.getTime() <= quando.getTime()`. Ancorar o padrão
+ * em `new Date()` cru faz a tela responder DIFERENTE conforme a hora do dia:
+ *
+ *   · promoção com efeito HOJE, gravada às 12:00 civis;
+ *   · às 09h00 o RH filtra por "Diretor" sem data de referência: `quando` = 09:00, a promoção ainda
+ *     não "aconteceu" — e **o servidor não aparece na lista**;
+ *   · às 12h01 a MESMA consulta o traz. E informar `dataRef` com o MESMO DIA também o traz.
+ *
+ * Duas respostas para a mesma pergunta no mesmo dia, e a errada OMITE PESSOA de um filtro. O
+ * `new Date()` cru já morava na linha antiga (`const hoje = new Date()`); o que mudou com os eixos
+ * foi o raio de ação — antes errava uma célula, agora deixa gente de fora da lista. Achado na
+ * auditoria de invariantes do V11 V9.4.
+ *
+ * ⚠️ `agora` ENTRA POR PARÂMETRO para que o teste prove isso numa hora ESCOLHIDA. Um teste que
+ * dependesse do relógio da suíte só falharia antes do meio-dia — isto é, passaria por vacuidade
+ * metade do dia, que é a pior espécie de verde.
+ */
+export function diaDeReferencia(dataRefBruta: string, agora: Date): Date {
+  return meioDiaCivil(dataRefBruta === "" ? diaCivil(agora) : dataRefBruta);
+}
+
+/**
+ * `opcoes.teto` existe para que a recusa por amplitude seja PROVÁVEL num teste, nas duas direções,
+ * sem semear cinco mil servidores.
+ *
+ * ⚠️ É UM LIMITE, NÃO UM DUBLÊ: baixá-lo não troca o caminho do código nem finge um banco — faz a
+ * MESMA consulta, sobre os MESMOS dados, recusar antes. Um guard que nunca foi visto acusar é um
+ * guard que ninguém sabe se acusa, e já houve quatro defeitos dentro de instrumentos de medição
+ * neste repositório.
+ */
+export async function listarServidores(
+  c: ConsultaDoMolde,
+  opcoes: { readonly teto?: number; readonly agora?: Date } = {}
+): Promise<PaginaDoMolde> {
+  const teto = opcoes.teto ?? TETO_DE_CANDIDATOS;
+  const prisma = cliente();
+  const q = (c.filtros["q"] ?? "").trim();
+  const nome = (c.filtros["nome"] ?? "").trim();
+  const sit = c.filtros["situacao"] ?? "";
+  const dataRefBruta = (c.filtros["dataRef"] ?? "").trim();
+  const quando = diaDeReferencia(dataRefBruta, opcoes.agora ?? new Date());
+
+  const termoDoCargo = (c.filtros["cargo"] ?? "").trim();
+  const termoDaLotacao = (c.filtros["lotacao"] ?? "").trim();
+  const [cargoIds, lotacaoIds] = await Promise.all([
+    termoDoCargo === "" ? Promise.resolve(null) : idsDoCargo(termoDoCargo),
+    termoDaLotacao === "" ? Promise.resolve(null) : idsDaLotacao(termoDaLotacao),
+  ]);
+  const regimePrevBruto = c.filtros["regimePrev"] ?? "";
+  const admitidoDeBruto = (c.filtros["admitidoDe"] ?? "").trim();
+  const admitidoAteBruto = (c.filtros["admitidoAte"] ?? "").trim();
+
+  const eixos: EixosDeConsultaDeVinculo = {
+    matricula: (c.filtros["matricula"] ?? "").trim(),
+    cargoIds,
+    lotacaoIds,
+    regimeJuridico: (c.filtros["regimeJuridico"] ?? "").trim(),
+    regimePrevidenciario:
+      regimePrevBruto === "" ? null : (regimePrevBruto as EixosDeConsultaDeVinculo["regimePrevidenciario"]),
+    admitidoDe: admitidoDeBruto === "" ? null : inicioDoDiaCivil(admitidoDeBruto),
+    // ⚠️ O ÚLTIMO INSTANTE CIVIL DO DIA. `lte` sobre a meia-noite deixaria de fora quem foi
+    // admitido NO dia escolhido — e "admitidos até 31/12" sem o 31/12 é um relatório errado.
+    admitidoAte: admitidoAteBruto === "" ? null : fimDoDiaCivil(admitidoAteBruto),
+  };
+
+  // ── Fase 1: o SUPERCONJUNTO, no banco ─────────────────────────────────────────────────────
+  const doServidor: Prisma.ServidorWhereInput[] = [];
+  if (q !== "") {
+    doServidor.push({
+      OR: [
+        { pessoa: { documento: { contains: q.replace(/\D/g, "") || q } } },
+        { pessoa: { versoes: { some: { nome: { contains: q, mode: "insensitive" } } } } },
+        { nomeSocial: { contains: q, mode: "insensitive" } },
+        { vinculos: { some: { matricula: { contains: q, mode: "insensitive" } } } },
+      ],
+    });
+  }
+  if (nome !== "") {
+    // ⚠️ O NOME É PROCURADO PELOS DOIS, e é decisão de produto, não de implementação. O que a tela
+    // MOSTRA é o social quando há (Lei 14.164/2021 e Decreto 8.727/2016; `nomeDaPessoa` já fazia
+    // isso). O que a busca ACHA tem de ser os dois: quem usa nome social e não é encontrado por
+    // ele é defeito de produto — e quem é procurado pelo nome que está na portaria e não é
+    // encontrado também. E `versoes: { some }` procura em TODA versão da pessoa, não só na
+    // vigente: quem procura pelo nome de solteira de alguém que casou procura a pessoa certa.
+    doServidor.push({
+      OR: [
+        { nomeSocial: { contains: nome, mode: "insensitive" } },
+        { pessoa: { versoes: { some: { nome: { contains: nome, mode: "insensitive" } } } } },
+      ],
+    });
+  }
+  const doVinculo: Prisma.VinculoWhereInput = {
+    ...(eixos.matricula !== "" ? { matricula: { contains: eixos.matricula, mode: "insensitive" } } : {}),
+    ...(eixos.regimeJuridico !== "" ? { regimeJuridico: { contains: eixos.regimeJuridico, mode: "insensitive" } } : {}),
+    ...(eixos.admitidoDe !== null || eixos.admitidoAte !== null
+      ? { dataAdmissao: { ...(eixos.admitidoDe !== null ? { gte: eixos.admitidoDe } : {}), ...(eixos.admitidoAte !== null ? { lte: eixos.admitidoAte } : {}) } }
+      : {}),
+    ...(cargoIds !== null ? { eventos: { some: { cargoId: { in: [...cargoIds] } } } } : {}),
+    ...(lotacaoIds !== null ? { eventos: { some: { lotacaoId: { in: [...lotacaoIds] } } } } : {}),
+  };
+  if (Object.keys(doVinculo).length > 0) doServidor.push({ vinculos: { some: doVinculo } });
+  const where: Prisma.ServidorWhereInput = doServidor.length === 0 ? {} : { AND: doServidor };
+
+  // ⚠️ CONJUNTO VAZIO DE CARGOS OU LOTAÇÕES ENCERRA A CONSULTA AQUI. O `in: []` do Prisma já
+  // devolveria nada, mas dizê-lo evita que uma refatoração leia `[]` como "sem filtro".
+  if ((cargoIds !== null && cargoIds.length === 0) || (lotacaoIds !== null && lotacaoIds.length === 0)) {
+    return { total: 0, linhas: [] };
+  }
+
+  // ⚠️ O DESEMPATE POR `id` NÃO É ENFEITE. Página 1 e página 2 são duas requisições, e cada uma
+  // refaz a consulta inteira — o Postgres não promete ordem entre linhas EMPATADAS. `criadoEm` é
+  // `now()`, o instante da TRANSAÇÃO: qualquer carga que crie vários servidores numa transação só
+  // produz empates em bloco, e aí a página 2 repete e perde gente. Hoje `cadastrarServidor` abre
+  // uma transação por servidor e o empate não ocorre — o desempate existe para que a propriedade
+  // não dependa disso.
+  const ordem: Prisma.ServidorOrderByWithRelationInput[] =
+    c.ordem === "nome"
+      ? [{ pessoa: { documento: c.direcao } }, { id: "asc" }]
+      : [{ criadoEm: "desc" }, { id: "asc" }];
+
+  // ── O caminho rápido: nada a derivar; o banco recorta a página e o total é dele ────────────
+  if (!haEixoDerivadoDeVinculo(eixos) && sit === "") {
+    const [total, achados] = await Promise.all([
+      prisma.servidor.count({ where }),
+      prisma.servidor.findMany({ where, orderBy: ordem, ...paginacao(c), select: SELECAO_DO_SERVIDOR }),
+    ]);
+    const comVinculo = achados.map((s) => ({
+      s,
+      vinculoId: haEixoDeVinculo(eixos)
+        ? (s.vinculos.find((v) => vinculoAtendeAosEixos({ matricula: v.matricula, regimeJuridico: v.regimeJuridico, dataAdmissao: v.dataAdmissao, regimePrevidenciario: v.regimePrevidenciario, eventos: eventos(v.eventos) }, eixos, quando))?.id ?? null)
+        : null,
+    }));
+    return { total, linhas: await montarLinhas(comVinculo, quando) };
+  }
+
+  // ── Fase 2: apurar o conjunto INTEIRO, decidir pela derivação, e só ENTÃO paginar ──────────
+  const candidatos = await prisma.servidor.count({ where });
+  if (candidatos > teto) throw new ConsultaDePessoalAmplaDemaisError(candidatos, teto);
+
+  const enxutos = await prisma.servidor.findMany({
+    where, orderBy: ordem,
+    select: { id: true, vinculos: { orderBy: { dataAdmissao: "asc" }, select: SELECAO_ENXUTA_DO_VINCULO } },
+  });
+
+  const casaram: { readonly id: string; readonly vinculoId: string | null }[] = [];
+  for (const s of enxutos) {
+    const porVinculo = s.vinculos.map((v) => ({ v, evs: eventosEnxutos(v.eventos) }));
+    if (sit !== "" && situacaoDoServidor(porVinculo.map((x) => x.evs), quando) !== sit) continue;
+    if (!haEixoDeVinculo(eixos)) {
+      casaram.push({ id: s.id, vinculoId: null });
+      continue;
+    }
+    const casou = porVinculo.find((x) =>
+      vinculoAtendeAosEixos({ matricula: x.v.matricula, regimeJuridico: x.v.regimeJuridico, dataAdmissao: x.v.dataAdmissao, regimePrevidenciario: x.v.regimePrevidenciario, eventos: x.evs }, eixos, quando)
+    );
+    if (casou !== undefined) casaram.push({ id: s.id, vinculoId: casou.v.id });
+  }
+
+  const { skip, take } = paginacao(c);
+  const daPagina = casaram.slice(skip, skip + take);
+  if (daPagina.length === 0) return { total: casaram.length, linhas: [] };
+
+  // ⚠️ A ORDEM É A DO CONJUNTO APURADO, não a do segundo `findMany`: um `in` não promete ordem
+  // nenhuma, e reordenar aqui faria a página 2 repetir gente da página 1.
+  const cheios = await prisma.servidor.findMany({ where: { id: { in: daPagina.map((x) => x.id) } }, select: SELECAO_DO_SERVIDOR });
+  const porId = new Map(cheios.map((s) => [s.id, s]));
+  const emOrdem = daPagina.flatMap((x) => {
+    const s = porId.get(x.id);
+    return s === undefined ? [] : [{ s, vinculoId: x.vinculoId }];
+  });
+  return { total: casaram.length, linhas: await montarLinhas(emOrdem, quando) };
 }
 
 export interface ServidorLido extends DetalheLido {
