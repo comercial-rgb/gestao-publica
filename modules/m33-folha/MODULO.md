@@ -427,6 +427,36 @@ conferida pelo MOTIVO — só vale o erro que nomeia `ck_folha_exercicio_por_tip
 que falhasse por unicidade contaria como "classificado". Casar `pg_get_constraintdef` com uma
 expressão regular seria atestar pela papelada que declara.
 
+### ⚠️ A M2′ QUASE VIROU FALSO VERDE — e o que a salvou foi conferir o ALVO da mutação
+
+A prova de que `m33-recorrencia-do-tipo-de-folha.test.ts` acusa é mutar o CHECK **vivo** do banco
+(tirar `MENSAL_COMPLEMENTAR` das duas listas) e confirmar o vermelho. Na primeira tentativa o
+`ALTER` falhou — `check constraint is violated by some row`, sobras da corrida anterior — e o teste
+**passou, 4/4**. Ler aquilo como "a mutação não acusa" seria o erro: `psql -c` com vários comandos
+roda em **uma** transação, ela reverteu inteira, e o CHECK nunca foi mutado. O verde era do CHECK
+**original**.
+
+> **Mutação que não se confirma no alvo produz verde indistinguível de instrumento que não acusa.**
+
+A defesa não é ler melhor a saída da mutação — é conferir o **alvo** antes de medir. Aqui isso é
+`pg_get_constraintdef` com sha antes, depois de mutar (tem de DIFERIR, senão aborta) e depois de
+restaurar (tem de VOLTAR ao original). É a décima segunda vez nesta empreitada que um instrumento
+respondeu uma pergunta próxima da que se fez, e a primeira em que a defesa foi essa. Vale para toda
+mutação daqui em diante, não só para CHECK.
+
+### ⚠️ TODA IDENTIDADE DO CENSO DAS FIXTURES TEM `ADMIN` — nenhuma serve de negativa
+
+Descoberta ao escrever a negativa de autorização da complementar, e ela **não é detalhe desta
+fixture**: `semearUsuariosDeTeste` (`test/usuarios-teste.ts`) cria o perfil `ADMIN` com
+`TODAS_AS_ACOES` e o vincula a **todas** as identidades do censo — `contabilidade@`, `tesouraria@`,
+`rh@`, todas. Logo **nenhuma delas pode provar a recusa de ação nenhuma**: o teste ou colide no
+`@@unique` do identificador, ou passa por vacuidade porque o ator tem a ação.
+
+Quem escrever o próximo teste de negação faz o que o próprio `usuarios-teste.ts` manda ("os testes
+que SÃO sobre permissão criam os seus próprios usuários com perfis restritos") e este módulo já
+praticava em `m33-decimo-terceiro.test.ts:48`: um usuário **fora** do censo, criado **sem perfil
+nenhum**. Nada se concede, nada se remove, e o censo não cresce.
+
 ### A superfície: nenhuma tela nova
 
 `OPCOES_DE_TIPO_DE_FOLHA` ganhou a opção e o resto do caminho já era genérico — abrir, calcular,
