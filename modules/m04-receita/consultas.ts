@@ -364,6 +364,12 @@ export async function listarNaturezasPrevistas(
     .sort((a, b) => a.naturezaCodigo.localeCompare(b.naturezaCodigo));
 }
 
+/** Quanto de uma linha veio por cada caminho — ver `LinhaDoArrecadadoPorEntidade`. */
+export interface ParcelaDaProcedencia {
+  readonly arrecadado: Money;
+  readonly guias: number;
+}
+
 /** Uma linha do recorte por entidade. `entidadeId === null` é o NÃO ATRIBUÍDO. */
 export interface LinhaDoArrecadadoPorEntidade {
   readonly entidadeId: string | null;
@@ -373,6 +379,19 @@ export interface LinhaDoArrecadadoPorEntidade {
   readonly arrecadado: Money;
   /** Quantas guias vivas compõem a linha — é o que o servidor clica para ir resolver. */
   readonly guias: number;
+  /**
+   * ⚠️ A PROCEDÊNCIA NÃO SE FUNDE NA SOMA (V11 V9.2). `naOrigem + porAtribuicao == arrecadado`,
+   * sempre — mas as duas parcelas continuam legíveis separadas, porque elas NÃO são a mesma
+   * afirmação: `naOrigem` é o que já era verdade no instante da arrecadação (a conta tinha
+   * titular declarado); `porAtribuicao` é o que o ente declarou DEPOIS, por ato, sobre uma guia
+   * que entrou sem identificação. Uma soma muda apagaria a diferença entre "o sistema sabia" e
+   * "alguém decidiu", que é exatamente o que um controle externo pergunta.
+   *
+   * Na linha do NÃO ATRIBUÍDO as duas parcelas são zero por construção: ela é o complemento —
+   * o que não tem nenhum dos dois caminhos.
+   */
+  readonly naOrigem: ParcelaDaProcedencia;
+  readonly porAtribuicao: ParcelaDaProcedencia;
 }
 
 export interface ArrecadadoPorEntidade {
@@ -396,6 +415,27 @@ export interface ArrecadadoPorEntidade {
  * inventaria o número. Mostrá-las separadas é a única forma que não mente — e é também a que
  * torna o trabalho visível: o total do não atribuído é a fila de retificação.
  *
+ * ═══ ⚠️ O DONO DE UMA GUIA VEM POR DOIS CAMINHOS, E A CONSULTA LÊ OS DOIS (V11 V9.2) ═══
+ *
+ * `ATRIBUICAO-NAO-CHEGA-AO-RODAPE`, medido pelo percurso J9 em 24/09/2026. Esta consulta
+ * agrupava SOMENTE por `entidadeTitularId` e nunca lia `AtribuicaoDeEntidadeDaArrecadacao`. A
+ * fila de pendências (`lib/portas/arrecadacao.ts:278`) já filtrava pelos dois. Resultado: o ente
+ * atribuía a guia de legado com ato, ela SAÍA da lista do que havia para fazer, e o dinheiro
+ * FICAVA em "Não atribuído — o ente ainda não disse de quem é" para sempre, sem formulário para
+ * agir de novo. As duas leituras da mesma tela discordavam sobre o mesmo dinheiro, no mesmo
+ * render. O teste de domínio passava porque afirmava a linha gravada; nenhuma das duas leituras
+ * estava confrontada com a outra.
+ *
+ * ⚠️ E A CORREÇÃO NÃO É CARIMBAR A COLUNA. `entidadeTitularId` é o carimbo DO FATO — o que era
+ * verdade no instante da arrecadação. Sobrescrevê-lo depois seria `UPDATE` em fato consumado, e
+ * apagaria a distinção entre "veio identificado na origem" e "o ente atribuiu depois, por ato".
+ * `AtribuicaoDeEntidadeDaArrecadacao` é um fato NOVO, append-only, com ato, motivo e autor.
+ * O dono de uma guia é, portanto, a UNIÃO dos dois caminhos, e "não atribuído" fica só com quem
+ * não tem NENHUM deles — que é o que a linha sempre disse que era.
+ *
+ * ⚠️ E A PROCEDÊNCIA CONTINUA VISÍVEL, em `naOrigem` e `porAtribuicao`. Fundir as duas numa soma
+ * muda resolveria o número e apagaria a pergunta.
+ *
  * ═══ ⚠️ A CONFERÊNCIA DE VOLTA, ESCRITA AO CONTRÁRIO ═══
  * Repetir `Σ linhas + naoAtribuido` para "conferir" o total seria tautologia: o mesmo código
  * conferindo a si mesmo passa sempre. O total é somado numa varredura ÚNICA e independente, e a
@@ -411,22 +451,84 @@ export async function arrecadadoPorEntidade(
   prisma: Tx,
   p: { readonly exercicio: number }
 ): Promise<ArrecadadoPorEntidade> {
+  const entidadeSelect = {
+    codigo: true,
+    versoes: { orderBy: { versao: "desc" as const }, take: 1, select: { nome: true } },
+  };
   const receitas = await prisma.receitaArrecadada.findMany({
     where: { exercicio: p.exercicio },
     select: {
+      id: true,
       tipo: true,
       valor: true,
+      estornoDeId: true,
       entidadeTitularId: true,
-      entidadeTitular: {
-        select: {
-          codigo: true,
-          versoes: { orderBy: { versao: "desc" }, take: 1, select: { nome: true } },
-        },
+      entidadeTitular: { select: entidadeSelect },
+      // ⚠️ A ATRIBUIÇÃO ENTRA NA CONSULTA (V11 V9.2) — ver o bloco acima da função.
+      atribuicaoDeEntidade: {
+        select: { entidadeId: true, entidade: { select: entidadeSelect } },
       },
     },
   });
 
-  const por = new Map<string, { codigo: string; nome: string; valor: Money; guias: number }>();
+  /**
+   * ⚠️ QUEM É O DONO DE CADA GUIA, E POR QUAL CAMINHO. Duas passadas, e a segunda existe por um
+   * motivo que só aparece na ordem inversa dos atos: atribuir e DEPOIS anular.
+   *
+   * O estorno herda `entidadeTitularId` do original (`servico.ts:356-362`). Se o original era
+   * legado e foi atribuído por ato, aquela coluna continua NULA nos dois — e sem esta segunda
+   * passada o original iria para a entidade e o estorno dele ficaria no não atribuído, que
+   * passaria a somar NEGATIVO. A herança declarada do estorno vale para o fato original inteiro,
+   * carimbo ou atribuição; ela não é uma propriedade só da coluna.
+   */
+  interface Dono {
+    readonly entidadeId: string;
+    readonly codigo: string;
+    readonly nome: string;
+    readonly procedencia: "ORIGEM" | "ATRIBUICAO";
+  }
+  const donoDaGuia = new Map<string, Dono>();
+  for (const r of receitas) {
+    if (r.entidadeTitularId !== null && r.entidadeTitular !== null) {
+      donoDaGuia.set(r.id, {
+        entidadeId: r.entidadeTitularId,
+        codigo: r.entidadeTitular.codigo,
+        // ⚠️ O NOME É O DA VERSÃO VIGENTE, e não o do dia da guia: a consulta pergunta "quanto
+        // arrecadou a entidade X", e X é quem ela é HOJE. O fato carimbado é o `entidadeTitularId`,
+        // que não muda; o rótulo acompanha o cadastro, como acontece com qualquer nome corrigido.
+        nome: r.entidadeTitular.versoes[0]?.nome ?? r.entidadeTitular.codigo,
+        procedencia: "ORIGEM",
+      });
+      continue;
+    }
+    if (r.atribuicaoDeEntidade !== null && r.atribuicaoDeEntidade !== undefined) {
+      donoDaGuia.set(r.id, {
+        entidadeId: r.atribuicaoDeEntidade.entidadeId,
+        codigo: r.atribuicaoDeEntidade.entidade.codigo,
+        nome: r.atribuicaoDeEntidade.entidade.versoes[0]?.nome ?? r.atribuicaoDeEntidade.entidade.codigo,
+        procedencia: "ATRIBUICAO",
+      });
+    }
+  }
+  for (const r of receitas) {
+    if (donoDaGuia.has(r.id) || r.estornoDeId === null) continue;
+    const doOriginal = donoDaGuia.get(r.estornoDeId);
+    if (doOriginal !== undefined) donoDaGuia.set(r.id, doOriginal);
+  }
+
+  const por = new Map<
+    string,
+    {
+      codigo: string;
+      nome: string;
+      valor: Money;
+      guias: number;
+      origemValor: Money;
+      origemGuias: number;
+      atribuidoValor: Money;
+      atribuidoGuias: number;
+    }
+  >();
   let semEntidade = toMoney("0.00");
   let guiasSemEntidade = 0;
   let total = toMoney("0.00");
@@ -436,24 +538,33 @@ export async function arrecadadoPorEntidade(
     const valor = toMoney(r.valor.toFixed(2));
     total = sinal === 1 ? toMoney(total.plus(valor)) : toMoney(total.minus(valor));
 
-    if (r.entidadeTitularId === null || r.entidadeTitular === null) {
+    const dono = donoDaGuia.get(r.id);
+    if (dono === undefined) {
       semEntidade = sinal === 1 ? toMoney(semEntidade.plus(valor)) : toMoney(semEntidade.minus(valor));
       guiasSemEntidade += 1;
       continue;
     }
 
-    const atual = por.get(r.entidadeTitularId) ?? {
-      codigo: r.entidadeTitular.codigo,
-      // ⚠️ O NOME É O DA VERSÃO VIGENTE, e não o do dia da guia: a consulta pergunta "quanto
-      // arrecadou a entidade X", e X é quem ela é HOJE. O fato carimbado é o `entidadeTitularId`,
-      // que não muda; o rótulo acompanha o cadastro, como acontece com qualquer nome corrigido.
-      nome: r.entidadeTitular.versoes[0]?.nome ?? r.entidadeTitular.codigo,
+    const atual = por.get(dono.entidadeId) ?? {
+      codigo: dono.codigo,
+      nome: dono.nome,
       valor: toMoney("0.00"),
       guias: 0,
+      origemValor: toMoney("0.00"),
+      origemGuias: 0,
+      atribuidoValor: toMoney("0.00"),
+      atribuidoGuias: 0,
     };
     atual.valor = sinal === 1 ? toMoney(atual.valor.plus(valor)) : toMoney(atual.valor.minus(valor));
     atual.guias += 1;
-    por.set(r.entidadeTitularId, atual);
+    if (dono.procedencia === "ORIGEM") {
+      atual.origemValor = sinal === 1 ? toMoney(atual.origemValor.plus(valor)) : toMoney(atual.origemValor.minus(valor));
+      atual.origemGuias += 1;
+    } else {
+      atual.atribuidoValor = sinal === 1 ? toMoney(atual.atribuidoValor.plus(valor)) : toMoney(atual.atribuidoValor.minus(valor));
+      atual.atribuidoGuias += 1;
+    }
+    por.set(dono.entidadeId, atual);
   }
 
   const linhas: LinhaDoArrecadadoPorEntidade[] = [...por.entries()]
@@ -463,6 +574,8 @@ export async function arrecadadoPorEntidade(
       nome: v.nome,
       arrecadado: v.valor,
       guias: v.guias,
+      naOrigem: { arrecadado: v.origemValor, guias: v.origemGuias },
+      porAtribuicao: { arrecadado: v.atribuidoValor, guias: v.atribuidoGuias },
     }))
     .sort((a, b) => (a.codigo ?? "").localeCompare(b.codigo ?? ""));
 
@@ -472,7 +585,29 @@ export async function arrecadadoPorEntidade(
     nome: "Não atribuído",
     arrecadado: semEntidade,
     guias: guiasSemEntidade,
+    // Zero por construção: esta linha é o complemento — o que não tem nenhum dos dois caminhos.
+    naOrigem: { arrecadado: toMoney("0.00"), guias: 0 },
+    porAtribuicao: { arrecadado: toMoney("0.00"), guias: 0 },
   };
+
+  /**
+   * ⚠️ E A PROCEDÊNCIA TAMBÉM TEM DE FECHAR, LINHA A LINHA. Sem esta conferência, uma parcela
+   * contada no balde errado somaria certo no total e mentiria sobre o caminho — que é o dado
+   * pelo qual um controle externo pergunta.
+   */
+  for (const l of linhas) {
+    const partes = toMoney(l.naOrigem.arrecadado.plus(l.porAtribuicao.arrecadado));
+    if (!partes.equals(l.arrecadado) || l.naOrigem.guias + l.porAtribuicao.guias !== l.guias) {
+      throw new Error(
+        `A PROCEDÊNCIA DA ENTIDADE ${l.codigo ?? "(sem código)"} NÃO FECHA no exercício ` +
+          `${String(p.exercicio)}: identificado na origem ${l.naOrigem.arrecadado.toFixed(2)} ` +
+          `(${String(l.naOrigem.guias)} guia(s)) mais atribuído por ato ` +
+          `${l.porAtribuicao.arrecadado.toFixed(2)} (${String(l.porAtribuicao.guias)}) dão ` +
+          `${partes.toFixed(2)} (${String(l.naOrigem.guias + l.porAtribuicao.guias)}), mas a linha ` +
+          `soma ${l.arrecadado.toFixed(2)} (${String(l.guias)}).`
+      );
+    }
+  }
 
   let reconstruido = semEntidade;
   for (const l of linhas) reconstruido = toMoney(reconstruido.plus(l.arrecadado));

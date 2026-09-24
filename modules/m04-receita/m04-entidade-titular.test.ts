@@ -471,4 +471,142 @@ describe("M04 V11 V9 — a entidade titular da receita", () => {
     expect(c.naoAtribuido.entidadeId).toBeNull();
     expect(c.naoAtribuido.codigo).toBeNull();
   });
+
+  // ── 6. AS DUAS LEITURAS DA MESMA TELA, CONFRONTADAS ───────────────────────────────────────
+
+  /**
+   * ⚠️ ESTE TESTE EXISTE PORQUE A SUA AUSÊNCIA DEIXOU UM DEFEITO PASSAR (V11 V9.2).
+   *
+   * `ATRIBUICAO-NAO-CHEGA-AO-RODAPE`, achado pelo percurso J9 em 24/09/2026. Havia teste para a
+   * FILA (t4b: a atribuição grava a sua linha e não reescreve a guia) e teste para o RODAPÉ
+   * (t5: Σ entidades + não atribuído == total). Os dois passavam. O que não existia era um teste
+   * que perguntasse se as DUAS leituras contam a MESMA guia do mesmo jeito — e elas não contavam:
+   * a fila soltava a guia atribuída e o rodapé continuava chamando aquele dinheiro de não
+   * atribuído, para sempre, sem formulário para agir de novo.
+   *
+   * ⚠️ A SEGUNDA LEITURA É CALCULADA AQUI, do banco, com o MESMO critério de
+   * `lib/portas/arrecadacao.ts:278` — e a repetição é o ponto, não um descuido: o teste afirma
+   * que as duas descrições do mesmo dinheiro coincidem. Se a fila mudar de critério sem a
+   * consulta mudar junto, é aqui que aparece.
+   *
+   * Fixture N=2 e as duas procedências: com uma guia só, "não atribuído == 0" passaria por
+   * vacuidade em qualquer implementação que simplesmente escondesse a linha.
+   */
+  it("t6: a guia ATRIBUÍDA sai do não atribuído do rodapé — as duas leituras contam a mesma guia", async () => {
+    await declararTitularDaContaBancaria(
+      prisma,
+      { contaBancariaId: "cb-a", entidadeId: entidadeA, ...ATO_A, criadoPor: POR },
+      HOJE
+    );
+    // (i) identificada NA ORIGEM: a conta já tinha titular declarado quando a guia entrou.
+    await registrarArrecadacao(guia("G1", "1000.00", "CC-A"), roteiroDe("1.1.1.1.2.01.00"), deps);
+    // (ii) legado sem conta: entra NÃO ATRIBUÍDA e só um ato a resolve.
+    const legado = await registrarArrecadacao(guia("G9", "500.00"), roteiroDe("1.1.1.1.1.00.00"), deps);
+
+    const antes = await arrecadadoPorEntidade(prisma, { exercicio: 2026 });
+    expect(antes.naoAtribuido.arrecadado.toFixed(2)).toBe("500.00");
+    expect(antes.naoAtribuido.guias).toBe(1);
+
+    await atribuirEntidadeAArrecadacao(
+      prisma,
+      {
+        receitaArrecadadaId: legado.receitaId,
+        entidadeId: entidadeB,
+        motivo: "Guia recolhida pela Câmara antes de ter conta própria.",
+        atoTipo: "LEI",
+        atoNumero: "0001",
+        atoAno: 1990,
+        atoDispositivo: "art. 1º",
+        atoCitacao: "A Câmara Municipal tem autonomia funcional, administrativa e financeira.",
+        criadoPor: POR,
+      },
+      HOJE
+    );
+
+    const depois = await arrecadadoPorEntidade(prisma, { exercicio: 2026 });
+
+    // ⚠️ O QUE O DEFEITO FAZIA: aqui vinha "500.00" e 1 guia, para sempre.
+    expect(depois.naoAtribuido.arrecadado.toFixed(2)).toBe("0.00");
+    expect(depois.naoAtribuido.guias).toBe(0);
+    expect(depois.linhas.find((l) => l.entidadeId === entidadeB)?.arrecadado.toFixed(2)).toBe("500.00");
+
+    // ⚠️ E O CARIMBO DO FATO NÃO FOI TOCADO — a correção é de LEITURA, não de escrita.
+    const g = await prisma.receitaArrecadada.findUniqueOrThrow({
+      where: { id: legado.receitaId },
+      select: { entidadeTitularId: true },
+    });
+    expect(g.entidadeTitularId).toBeNull();
+
+    // ⚠️ A PROCEDÊNCIA NÃO SE FUNDE: dá para dizer qual veio de onde.
+    const lA = depois.linhas.find((l) => l.entidadeId === entidadeA);
+    const lB = depois.linhas.find((l) => l.entidadeId === entidadeB);
+    expect(lA?.naOrigem.arrecadado.toFixed(2)).toBe("1000.00");
+    expect(lA?.porAtribuicao.arrecadado.toFixed(2)).toBe("0.00");
+    expect(lB?.naOrigem.arrecadado.toFixed(2)).toBe("0.00");
+    expect(lB?.porAtribuicao.arrecadado.toFixed(2)).toBe("500.00");
+    expect(lB?.porAtribuicao.guias).toBe(1);
+
+    // ── A CONFRONTAÇÃO: a fila e o rodapé, sobre o mesmo dinheiro ──
+    const pendentes = await prisma.receitaArrecadada.findMany({
+      where: {
+        exercicio: 2026,
+        tipo: "ARRECADACAO",
+        entidadeTitularId: null,
+        atribuicaoDeEntidade: null,
+        estornoDeId: null,
+        estornos: { none: {} },
+      },
+      select: { valor: true },
+    });
+    const somaPendente = pendentes.reduce((acc, x) => acc + Number(x.valor.toFixed(2)), 0);
+    expect(pendentes.length).toBe(depois.naoAtribuido.guias);
+    expect(somaPendente.toFixed(2)).toBe(depois.naoAtribuido.arrecadado.toFixed(2));
+
+    // E a identidade do rodapé continua fechando, com as duas entidades presentes (N=2).
+    expect(depois.linhas.map((l) => l.codigo)).toEqual(["02", "03"]);
+    const soma = depois.linhas.reduce((acc, l) => acc + Number(l.arrecadado.toFixed(2)), 0);
+    expect(soma + Number(depois.naoAtribuido.arrecadado.toFixed(2))).toBe(Number(depois.total.toFixed(2)));
+  });
+
+  /**
+   * ⚠️ A ORDEM INVERSA DOS ATOS, que é onde a correção poderia ter ficado pela metade.
+   *
+   * Atribuir e DEPOIS anular. O estorno herda `entidadeTitularId` do original (`servico.ts:356`),
+   * e no legado atribuído essa coluna é NULA nos dois — de propósito. Se a consulta resolvesse o
+   * dono só da linha que ela está lendo, o original iria para a entidade e o estorno dele ficaria
+   * no não atribuído, que passaria a somar NEGATIVO: o ente mostraria dinheiro devolvido por
+   * ninguém. A herança declarada do estorno vale para o fato original inteiro — carimbo OU
+   * atribuição —, e não é propriedade de uma coluna.
+   */
+  it("t7: o estorno de uma guia ATRIBUÍDA segue a entidade dela — o não atribuído não fica negativo", async () => {
+    const legado = await registrarArrecadacao(guia("G9", "500.00"), roteiroDe("1.1.1.1.1.00.00"), deps);
+    await atribuirEntidadeAArrecadacao(
+      prisma,
+      {
+        receitaArrecadadaId: legado.receitaId,
+        entidadeId: entidadeA,
+        motivo: "Guia do legado, recolhida na tesouraria da Fundação.",
+        ...ATO_A,
+        criadoPor: POR,
+      },
+      HOJE
+    );
+    await anularArrecadacao(
+      { receitaId: legado.receitaId, numeroReceita: "G9", dataAnulacao: new Date("2026-04-01T12:00:00Z"), criadoPor: POR },
+      deps
+    );
+
+    const c = await arrecadadoPorEntidade(prisma, { exercicio: 2026 });
+
+    expect(c.total.toFixed(2)).toBe("0.00");
+    // ⚠️ SEM A SEGUNDA PASSADA, esta linha vinha "-500.00".
+    expect(c.naoAtribuido.arrecadado.toFixed(2)).toBe("0.00");
+    expect(c.naoAtribuido.guias).toBe(0);
+    const lA = c.linhas.find((l) => l.entidadeId === entidadeA);
+    expect(lA?.arrecadado.toFixed(2)).toBe("0.00");
+    expect(lA?.guias).toBe(2);
+    // As duas pernas ficam do lado "por ato": a original e o estorno que a desfez.
+    expect(lA?.porAtribuicao.guias).toBe(2);
+    expect(lA?.naOrigem.guias).toBe(0);
+  });
 });

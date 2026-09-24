@@ -89,6 +89,13 @@ export default async function PorEntidadePage({
             <th scope="col" className="py-2">Entidade</th>
             <th scope="col" className="py-2 text-right">Guias</th>
             <th scope="col" className="py-2 text-right">Arrecadado</th>
+            {/*
+              ⚠️ A PROCEDÊNCIA É COLUNA, NÃO NOTA DE RODAPÉ (V11 V9.2). O total por entidade passou
+              a somar dois caminhos — o que veio identificado na origem e o que o ente atribuiu
+              depois, por ato. Somá-los sem dizer quais são quais responderia "quanto" e apagaria
+              "como o ente sabe disso", que é a pergunta de quem confere de fora.
+            */}
+            <th scope="col" className="py-2 text-right">Procedência</th>
           </tr>
         </thead>
         <tbody>
@@ -99,6 +106,18 @@ export default async function PorEntidadePage({
               </td>
               <td className="py-2 text-right">{l.guias}</td>
               <td className="py-2 text-right"><ValorMonetario valor={l.arrecadado} /></td>
+              <td className="py-2 text-right text-xs text-[color:var(--color-ink-2)]" data-procedencia={l.codigo ?? ""}>
+                {l.porAtribuicao.guias === 0 ? (
+                  "toda identificada na origem"
+                ) : l.naOrigem.guias === 0 ? (
+                  <>toda atribuída por ato ({l.porAtribuicao.guias})</>
+                ) : (
+                  <>
+                    na origem <ValorMonetario valor={l.naOrigem.arrecadado} /> ({l.naOrigem.guias}) · por ato{" "}
+                    <ValorMonetario valor={l.porAtribuicao.arrecadado} /> ({l.porAtribuicao.guias})
+                  </>
+                )}
+              </td>
             </tr>
           ))}
           {/*
@@ -114,6 +133,10 @@ export default async function PorEntidadePage({
             </td>
             <td className="py-2 text-right">{consulta.naoAtribuido.guias}</td>
             <td className="py-2 text-right"><ValorMonetario valor={consulta.naoAtribuido.arrecadado} /></td>
+            <td className="py-2 text-right text-xs text-[color:var(--color-ink-2)]">
+              {/* Esta linha é o complemento: nem origem, nem ato. Por isso não tem procedência a declarar. */}
+              sem nenhum dos dois
+            </td>
           </tr>
         </tbody>
         <tfoot>
@@ -123,6 +146,7 @@ export default async function PorEntidadePage({
             <td className="py-2 text-right" data-papel="total-do-exercicio">
               <ValorMonetario valor={consulta.total} />
             </td>
+            <td className="py-2" />
           </tr>
         </tfoot>
       </table>

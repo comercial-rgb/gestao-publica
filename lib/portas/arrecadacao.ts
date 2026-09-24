@@ -211,12 +211,26 @@ export async function lerNaturezasPrevistas(p: {
  * Saúde não "possui" o IPTU); entidade é quem tem balancete próprio (a autarquia possui, sim, a
  * taxa que ela arrecada). O seletor de UG do cabeçalho continua sem efeito aqui.
  */
+/** Quanto da linha veio por cada caminho. Dinheiro sai daqui como string formatada. */
+export interface ParcelaDaProcedenciaNaTela {
+  readonly arrecadado: string;
+  readonly guias: number;
+}
+
 export interface LinhaPorEntidadeNaTela {
   readonly entidadeId: string | null;
   readonly codigo: string | null;
   readonly nome: string;
   readonly arrecadado: string;
   readonly guias: number;
+  /**
+   * ⚠️ A PROCEDÊNCIA ATRAVESSA A PORTA (V11 V9.2). O total por entidade soma dois caminhos —
+   * o que veio identificado na origem e o que o ente atribuiu depois, por ato. A porta não
+   * funde os dois: quem confere de fora pergunta "como o ente sabe disso", e a resposta se
+   * perde numa soma muda. `naOrigem + porAtribuicao == arrecadado`, conferido no domínio.
+   */
+  readonly naOrigem: ParcelaDaProcedenciaNaTela;
+  readonly porAtribuicao: ParcelaDaProcedenciaNaTela;
 }
 
 export interface ArrecadadoPorEntidadeNaTela {
@@ -230,18 +244,26 @@ export async function lerArrecadadoPorEntidade(p: {
   readonly exercicio: number;
 }): Promise<ArrecadadoPorEntidadeNaTela> {
   const r = await arrecadadoPorEntidade(cliente(), { exercicio: p.exercicio });
+  const paraTelaParcela = (x: {
+    readonly arrecadado: { toFixed(n: number): string };
+    readonly guias: number;
+  }): ParcelaDaProcedenciaNaTela => ({ arrecadado: x.arrecadado.toFixed(2), guias: x.guias });
   const paraTelaLinha = (l: {
     readonly entidadeId: string | null;
     readonly codigo: string | null;
     readonly nome: string;
     readonly arrecadado: { toFixed(n: number): string };
     readonly guias: number;
+    readonly naOrigem: { readonly arrecadado: { toFixed(n: number): string }; readonly guias: number };
+    readonly porAtribuicao: { readonly arrecadado: { toFixed(n: number): string }; readonly guias: number };
   }): LinhaPorEntidadeNaTela => ({
     entidadeId: l.entidadeId,
     codigo: l.codigo,
     nome: l.nome,
     arrecadado: l.arrecadado.toFixed(2),
     guias: l.guias,
+    naOrigem: paraTelaParcela(l.naOrigem),
+    porAtribuicao: paraTelaParcela(l.porAtribuicao),
   });
   return {
     linhas: r.linhas.map(paraTelaLinha),
