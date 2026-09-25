@@ -1058,6 +1058,30 @@ de hoje — e falha fechado se a memória não disser. Sem isso, a versão nova 
 conferido E a rubrica do abatimento, e o desconto cairia numa rubrica que o vale não conhece, com o
 empenho indo para outra ficha. Afirmado no caso c5, e provado por mutação.
 
+### A apropriação da folha de vale — e o que a medição achou
+
+**A folha de vale se apropria como qualquer outra**, sem caminho próprio: `apropriarFolha` empenha
+o BRUTO de cada provento, um empenho por servidor com o CPF de cada um, número determinístico, e
+reexecutar é idempotente. O número ganha o segmento do TIPO
+(`FPV/2026-06/ADIANTAMENTO_SALARIAL/MAT-A`) porque a V11 V9.3 já tinha pago o defeito de duas
+folhas de tipos diferentes na mesma competência colidirem no mesmo número. Medido em
+`m33-adiantamento-salarial-pago.test.ts`.
+
+**E é justamente por se apropriar como as outras que ela duplica a despesa do mês.** Para MAT-A,
+em junho:
+
+| Empenho | Valor | De onde |
+|---|---|---|
+| vale | 1.200,00 | provento `ADSAL` da folha de adiantamento |
+| mensal | 3.000,00 | provento `VENC`, BRUTO — o abatimento é DESCONTO, e desconto é retenção do pagamento, não despesa orçamentária |
+| **total** | **4.200,00** | para um servidor que custou **3.000,00** ao ente |
+
+Não é escolha de desenho: é o resultado de não haver escolha nenhuma. As duas práticas conhecidas
+são coerentes — (a) o vale é **extraorçamentário**, um adiantamento a pessoal, e só a mensal é
+despesa; (b) o vale é despesa e a mensal empenha o restante. O que o sistema produz hoje não é
+nenhuma das duas. Fica nomeado abaixo, e o caso que o caracteriza **ficará vermelho no dia em que
+alguém consertar** — é assim que ele avisa quem consertar que a decisão foi tomada.
+
 ## Fora de escopo aqui — pendências nomeadas
 
 - `REGRA-DO-ADIANTAMENTO-SALARIAL-NAO-SUPORTADA` — **V13.** `BaseDoAdiantamentoSalarial` tem duas
@@ -1081,13 +1105,29 @@ empenho indo para outra ficha. Afirmado no caso c5, e provado por mutação.
   no vale tributaria a mesma base duas vezes. Se um ente precisar que o vale retenha, a 2ª metade
   teria de CREDITAR o já retido, e o critério desse crédito é normativo e não foi levantado. A
   memória de cada contracheque do vale diz isso por escrito.
-- `ESTORNO-DO-ADIANTAMENTO-SALARIAL-DEPOIS-DA-MENSAL` — **V13.** Depois de a mensal fechada já ter
-  abatido o vale, um estorno ou anulação do PAGAMENTO daquele vale faz a obrigação reaparecer — e a
-  complementar **não desfaz o abatimento**: ela recalcula o correto, que lê o mesmo vale fechado e
-  abate o mesmo valor, delta zero. O acerto é ato próprio (reposição ou reconhecimento), que este
-  sistema não pratica. O fato fica recuperável: a memória do contracheque mensal registra a
-  procedência do abatimento com a folha, o cálculo, a versão do parâmetro, o estado exigido e o
-  verificado. Nada some em silêncio; o que falta é o ato.
+- `ESTORNO-DO-VALE-BLOQUEIA-A-COMPLEMENTAR` — **V13 rodada 2, MEDIDO** (substitui e precisa
+  `ESTORNO-DO-ADIANTAMENTO-SALARIAL-DEPOIS-DA-MENSAL`, da rodada 1, que era raciocínio e agora é
+  fato). O caso: o vale foi pago, a folha mensal o abateu e FECHOU, e só então o pagamento do vale
+  foi anulado. O servidor ficou sem o vale **e** com o desconto; o ente lhe deve a diferença.
+  O que acontece, medido em `m33-adiantamento-salarial-pago.test.ts`:
+  - a mensal FECHADA **não muda** — folha fechada não se recalcula (invariante 3), e isso está
+    certo: a obrigação já reconhecida não desaparece;
+  - a folha COMPLEMENTAR, que seria o instrumento de pagar o que faltou, fica **bloqueada**: ela
+    recalcula o correto, o correto passa pela guarda do critério PAGO, e a guarda não se satisfaz.
+
+  ⚠️ A recusa é **verdadeira** (o vale realmente não está mais pago) e é fail-closed — e fecha
+  justamente a porta da correção. A saída é ato próprio de reposição ou de reconhecimento, que este
+  sistema não pratica; improvisá-lo seria inventar ato financeiro. **O que foi construído é o
+  NOME**: a recusa detecta que uma folha já fechada da competência abateu, diz quanto, diz que o
+  ente deve a diferença e diz que o acerto é ato que ele não pratica — para o operador corrigir em
+  vez de ficar preso. O que falta é o ato.
+- `VALE-EMPENHADO-DUPLICA-A-DESPESA-DO-MES` — **V13 rodada 2, MEDIDO.** Ver a seção acima: vale e
+  mensal empenham cada um o seu bruto, e junho fecha com 4.200,00 empenhados para 3.000,00 de
+  custo. Escolher entre o tratamento extraorçamentário e o empenho do restante é **decisão com
+  fundamento normativo**, e a fonte não foi levantada — inventar aqui seria o erro que este módulo
+  inteiro evita. E recusar a apropriação do vale fecharia a porta do critério PAGO. A pendência é o
+  que resta, e ela é de PRODUTO, não de engenharia: alguém precisa ler a norma antes de o primeiro
+  município empenhar um vale.
 - `ABRANGENCIA-DO-ADIANTAMENTO-SALARIAL-SEM-BASE-NAO-NOMEADA` — **V13.** Na prática
   `REMUNERACAO_DO_MES_ANTERIOR`, quem foi admitido na própria competência não tem folha anterior
   para ler e é pulado **sem motivo nomeado** no fato de abrangência: `MotivoDaExclusao` não tem um
