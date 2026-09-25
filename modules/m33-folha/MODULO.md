@@ -976,8 +976,133 @@ chamando `avosDoExercicio` para produzir o esperado faria a suíte concordar com
 errada desde que consistente. **Todo caso é N=2**: a admissão no meio do ano (12 e 9 avos) e o par
 afastamento/desligamento (9 e 7 avos), porque com um servidor só "9 avos" passa por vacuidade.
 
+## O ADIANTAMENTO SALARIAL — V13 (TR 5.12.50)
+
+O **vale**: o ente paga, no meio do mês, uma parte da remuneração da competência, e a folha
+**MENSAL daquela mesma competência** abate o que o vale adiantou.
+
+### Por que é tipo de folha próprio, e não uma rubrica da mensal
+
+A razão é estrutural, não estética: **o vale se paga ANTES de a folha mensal da competência
+existir**. Não cabe como rubrica numa folha que ainda não abriu. O TR também o lista como rotina
+de cálculo separada, ao lado de "adiantamento de 13º salário (1ª parcela)" — são dois itens
+distintos no próprio enunciado, e este módulo os mantém distintos até na natureza da rubrica.
+
+### As duas armadilhas, levantadas antes de o defeito nascer
+
+**1. `compoeARemuneracaoMensal` é `false`.** Se fosse `true`, `fechadasQueCompoem` somaria o
+provento do vale no "já apurado" da folha COMPLEMENTAR — mas o recálculo do mensal **nunca
+reproduz aquela rubrica**, porque ela só existe na folha de adiantamento. O delta ficaria negativo
+e `DiferencaNegativaNaComplementarError` recusaria **toda competência que teve vale, sempre**,
+dizendo ao servidor que ele deve ao erário justamente o adiantamento que a mensal já abateu.
+
+O adiantamento do 13º já caiu nessa uma vez (seção 5 deste documento). Aqui a armadilha foi
+**provada por mutação**, não evitada por atenção: trocar o `false` por `true` deixa o caso c6 de
+`m33-adiantamento-salarial.test.ts` vermelho com exatamente aquele erro, nomeando a matrícula e o
+valor. Revertido, volta verde.
+
+**2. Nada de elo persistido como o do 13º.** `folhaDoAdiantamentoId` é resolvido na ABERTURA e
+funciona para o 13º porque, quando o 13º abre, o adiantamento do exercício já existe. A MENSAL não
+tem essa garantia: ela abre no início do mês e o vale sai no meio. Um elo resolvido na abertura
+nasceria nulo, e a guarda "o adiantamento apareceu depois" bloquearia o cálculo **pelo resto da
+competência**, sem saída — a folha mensal não se abre duas vezes e reabrir não existe.
+
+A leitura é **refeita a cada `calcularFolha`, por competência, sem FK**, como a complementar já
+refaz o apurado. E ela mora DENTRO de `contrachequesMensaisDaCompetencia`, não num motor separado,
+porque é essa função que a complementar chama para calcular o "correto": fora dali, a mensal
+direta e o recálculo da complementar divergiriam.
+
+### As guardas, na ordem — a grave antes da trivial
+
+1. Parâmetro vigente ausente → `PARAMETRO-DO-ADIANTAMENTO-SALARIAL-AUSENTE`, nomeando a competência.
+2. Na MENSAL: folha de vale da competência existe e **não fechou** → `ADIANTAMENTO-SALARIAL-NAO-FECHADO`.
+3. O estado que o ente EXIGIU não foi alcançado → `ADIANTAMENTO-SALARIAL-NAO-CERTIFICADO` ou
+   `ADIANTAMENTO-SALARIAL-NAO-PAGO` (esta última por vínculo, líquida de estorno e de anulação
+   parcial, por `packages/estornaveis`).
+4. Vínculo com vale apurado que **não aparece** entre os finais →
+   `VINCULO-DO-ADIANTAMENTO-SALARIAL-FORA-DA-MENSAL`. **Roda antes da guarda trivial de "sem
+   vínculos"**: a informação grave é "há vale pago que ninguém vai abater".
+   ⚠️ E ela acusa apenas quem foi **considerado** — num cálculo com seleção EXPLÍCITA, acusar todo
+   vínculo não selecionado que recebeu vale seria bloqueio indiscriminado, não guarda.
+5. Rubrica do abatimento sem versão vigente para o regime → `RUBRICA-DO-ABATIMENTO-SALARIAL-AUSENTE`.
+6. Abatimento maior que o líquido → `ABATIMENTO-DO-ADIANTAMENTO-SALARIAL-MAIOR-QUE-A-REMUNERACAO`,
+   nomeando matrícula, líquido antes do abatimento e valor adiantado. Nunca líquido negativo; a
+   folha INTEIRA para; a reposição ao erário fica **nomeada**, não inventada.
+
+### As cinco distinções financeiras, e qual fato permite reconhecer o vale
+
+**Cálculo** produz números e não move nada. **Fechamento** congela o cálculo — e **não é
+pagamento**: não sai um centavo do caixa. **Apropriação** empenha. **Liquidação** reconhece a
+obrigação. **Pagamento** é a saída, e é o único dos cinco que o servidor recebe.
+
+Qual desses fatos basta para a folha mensal ABATER o vale é **declarado pelo ente**, no parâmetro
+versionado, com o ato: `FECHADO`, `CERTIFICADO` ou `PAGO` (`EstadoMinimoDoAdiantamento`, o mesmo
+vocabulário do 13º). O campo é **obrigatório** aqui, ao contrário do 13º — lá ele nasceu nulável
+porque já havia parâmetros gravados quando a pergunta não existia; aqui a tabela nasce vazia, então
+exigir a declaração não quebra passado nenhum e fecha a porta do abatimento que é simulação sem
+ninguém perceber que é.
+
+**O valor compensado é o APURADO no vale fechado**, por vínculo, lido das linhas daquele cálculo.
+
+**Não se compensa duas vezes**, e isso é consequência da aritmética, não promessa: existe UMA folha
+mensal por competência (`@@unique([competencia, tipo])`), e na COMPLEMENTAR a mesma linha de
+abatimento está nos DOIS lados da subtração (no correto e no já apurado), então o delta dela é
+exatamente zero — e uma rubrica sem diferença não vira linha. Afirmado no caso c6.
+
+### Snapshot: alterar o parâmetro NÃO reescreve cálculo fechado
+
+O parâmetro é append-only e por competência, e nada impede o ente de cadastrar a versão 2 de junho
+DEPOIS de o vale de junho já ter fechado. A mensal lê **a versão que APUROU aquele cálculo**
+(`parametroQueApurouOCalculo`, pelo bloco `parametro` da memória do contracheque), nunca a vigente
+de hoje — e falha fechado se a memória não disser. Sem isso, a versão nova mudaria o percentual
+conferido E a rubrica do abatimento, e o desconto cairia numa rubrica que o vale não conhece, com o
+empenho indo para outra ficha. Afirmado no caso c5, e provado por mutação.
+
 ## Fora de escopo aqui — pendências nomeadas
 
+- `REGRA-DO-ADIANTAMENTO-SALARIAL-NAO-SUPORTADA` — **V13.** `BaseDoAdiantamentoSalarial` tem duas
+  opções (`REMUNERACAO_DO_MES_ANTERIOR` e `REMUNERACAO_PROJETADA_DO_MES`) e elas são **o que o
+  sistema sabe calcular e verificar, NÃO o universo das regras admissíveis**. Um ente cujo ato fixe
+  valor fixo por faixa, percentual variável por tempo de serviço ou vale limitado a um teto recebe
+  **recusa no cadastro** (o Zod só aceita os dois valores) — nunca um encaixe na mais parecida.
+  Encaixar seria o defeito mais caro possível aqui: a folha sairia, fecharia, seria empenhada e a
+  mensal abateria, tudo coerente, e todo mês com o valor errado. Nenhuma etapa adiante acusa,
+  porque a aritmética interna fecha. A tela diz isso ao operador, em letra, antes da escolha.
+- `ADIANTAMENTO-SALARIAL-SEM-PERCURSO-DE-NAVEGADOR` — **V13.** O motor está provado com banco (19
+  casos, duas mutações dirigidas) e a tela do parâmetro existe, está no menu da folha e passa no
+  typecheck da aplicação. **Nenhum percurso de navegador rodou**: a ordem V13 proibiu `next build`
+  e navegador pela condição da máquina (8 GB; foi `next build` com heap de 5,3 GB mais navegador
+  que a travou duas vezes). Sem percurso, a cláusula 5.12.50 **não muda de situação** e continua
+  `PARCIAL`. Falta: um `scripts/smoke-adiantamento-salarial.ts` exercitando configurar → selecionar
+  → calcular → revisar → fechar → certificar → apropriar → e a mensal seguinte abatendo.
+- `INCIDENCIA-NO-ADIANTAMENTO-SALARIAL` — **V13.** O vale não sofre contribuição nem IRRF neste
+  sistema, e isso é **aritmética interna, não norma afirmada**: o abatimento na mensal é desconto
+  que não reduz base, então a folha do mês tributa a remuneração INTEIRA (o vale incluído), e reter
+  no vale tributaria a mesma base duas vezes. Se um ente precisar que o vale retenha, a 2ª metade
+  teria de CREDITAR o já retido, e o critério desse crédito é normativo e não foi levantado. A
+  memória de cada contracheque do vale diz isso por escrito.
+- `ESTORNO-DO-ADIANTAMENTO-SALARIAL-DEPOIS-DA-MENSAL` — **V13.** Depois de a mensal fechada já ter
+  abatido o vale, um estorno ou anulação do PAGAMENTO daquele vale faz a obrigação reaparecer — e a
+  complementar **não desfaz o abatimento**: ela recalcula o correto, que lê o mesmo vale fechado e
+  abate o mesmo valor, delta zero. O acerto é ato próprio (reposição ou reconhecimento), que este
+  sistema não pratica. O fato fica recuperável: a memória do contracheque mensal registra a
+  procedência do abatimento com a folha, o cálculo, a versão do parâmetro, o estado exigido e o
+  verificado. Nada some em silêncio; o que falta é o ato.
+- `ABRANGENCIA-DO-ADIANTAMENTO-SALARIAL-SEM-BASE-NAO-NOMEADA` — **V13.** Na prática
+  `REMUNERACAO_DO_MES_ANTERIOR`, quem foi admitido na própria competência não tem folha anterior
+  para ler e é pulado **sem motivo nomeado** no fato de abrangência: `MotivoDaExclusao` não tem um
+  valor para isso, e inventar um pede migration de enum e entrada no `EXCLUSAO_FOI_PEDIDA`. Por
+  isso `exigirAbrangenciaCompleta` **não** é chamada nesse caminho — afirmar completude sobre um
+  conjunto não apurado faria a guarda passar sempre, e guarda que sempre passa é a que já nasceu
+  inerte neste módulo. É o mesmo desenho, e o mesmo limite, de `ABRANGENCIA-DO-13-SEM-EXCLUSOES-NOMEADAS`.
+- `ESTADO-DO-ADIANTAMENTO-VERIFICADO-EM-DOIS-SITIOS` — **V13.** A verificação de
+  `FECHADO`/`CERTIFICADO`/`PAGO` existe em DUAS implementações: a do 13º, inline em
+  `servico.ts` (V11 V9.3), e a do vale, em `adiantamento-salarial-servico.ts`. Elas não
+  compartilham código porque as mensagens do 13º são afirmadas literalmente por
+  `m33-criterio-do-abatimento.test.ts`, e generalizá-las agora trocaria um risco por outro no meio
+  de uma rodada com a máquina restrita. **Enquanto durar, as duas mudam juntas.** A unificação é
+  unidade própria, e a cadeia do PAGO (`packages/estornaveis`) já é compartilhada — o que se repete
+  é a orquestração da consulta, não a aritmética do dinheiro.
 - `RETIFICACAO-DA-FOLHA` — devolver para correção é fato e BLOQUEIA a liquidação, mas não reabre o
   cálculo fechado. Corrigir exige retificação ou folha complementar, com a análise dos efeitos
   posteriores. A derivação `SUPERADA` de `situacaoDaCertificacao` já existe escrita para o dia em

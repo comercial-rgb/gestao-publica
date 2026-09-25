@@ -1918,8 +1918,17 @@ const MAPA: Readonly<Record<string, Marca>> = {
       "nunca 1.000,00 — o recalculo NAO repete o ja reconhecido. Recusas exercitadas pela tela: diferenca NEGATIVA, " +
       "competencia sem mensal fechada, e a SEGUNDA folha complementar na mesma competencia, que e RECUSADA hoje " +
       "(`@@unique([competencia, tipo])`, mensagem FOLHA-JA-ABERTA). " +
-      "⚠️ FALTAM CINCO DOS NOVE, nominalmente: RESCISAO, RENDIMENTOS ACUMULADOS, FERIAS, DIFERENCA DE 13o e " +
-      "ADIANTAMENTOS SALARIAIS. Pendencias `FOLHAS-NAO-MENSAIS`, `RETIFICACAO-DA-FOLHA` (de que a diferenca de 13o " +
+      "⚠️ V13 — O QUINTO TIPO GANHOU MOTOR, E A CLAUSULA NAO SE MOVE POR ISSO. ADIANTAMENTOS SALARIAIS (o vale do " +
+      "mes) existe como TIPO DE FOLHA PROPRIO, com parametro do ente versionado POR COMPETENCIA (percentual, base, " +
+      "as duas rubricas, o estado minimo para abater e o ato), motor por vinculo e ABATIMENTO na folha MENSAL da " +
+      "mesma competencia. Provado com banco em `modules/m33-folha/m33-adiantamento-salarial.test.ts` (19 casos, " +
+      "N=2 com bases diferentes, esperados calculados A MAO; duas mutacoes dirigidas confirmaram que a suite " +
+      "ACUSA, revertidas com checksum). A tela do parametro existe e esta no menu da folha. ⚠️ MAS NAO HA PERCURSO " +
+      "DE NAVEGADOR: a rodada V13 foi proibida de rodar `next build` e navegador pela condicao da maquina, e sem " +
+      "percurso nao se promove nada — pendencia `ADIANTAMENTO-SALARIAL-SEM-PERCURSO-DE-NAVEGADOR`. E MESMO COM O " +
+      "PERCURSO A CLAUSULA NAO FECHARIA: ela enumera NOVE tipos, e nascer um enum novo nao e atender edital. " +
+      "⚠️ FALTAM QUATRO DOS NOVE, nominalmente: RESCISAO, RENDIMENTOS ACUMULADOS, FERIAS e " +
+      "DIFERENCA DE 13o. Pendencias `FOLHAS-NAO-MENSAIS`, `RETIFICACAO-DA-FOLHA` (de que a diferenca de 13o " +
       "depende) e `SEGUNDA-COMPLEMENTAR-NA-MESMA-COMPETENCIA` no MODULO do M33. " +
       "(2) OS FILTROS DE FUNCIONARIOS: os OITO eixos do enunciado existem, tem ponta de entrada e foram exercitados " +
       "pela tela — matricula, nome, cargo, regime, local de trabalho, centro de custo, funcao e data de admissao. " +
