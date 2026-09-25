@@ -98,6 +98,26 @@ export const NATUREZAS_DA_RUBRICA = [
 
 export type NaturezaDaRubrica = (typeof NATUREZAS_DA_RUBRICA)[number];
 
+/**
+ * ⚠️ V13 — AS NATUREZAS QUE SÃO, POR CONSTRUÇÃO, DESCONTO — DECLARADAS UMA VEZ.
+ *
+ * ⚠️ ISTO ERAM DUAS LISTAS, E A SEGUNDA JÁ DIVERGIU NESTA RODADA. O `superRefine` de
+ * `zCadastrarRubricaInput` tinha a condição escrita à mão, e `m33-listas-de-natureza.test.ts`
+ * tinha OUTRA cópia dela dentro do helper `entradaValida` — o que monta a entrada de teste. Ao
+ * nascer `ABATIMENTO_DO_ADIANTAMENTO_SALARIAL`, a do domínio foi atualizada e a do teste não: o
+ * teste passou a montar a rubrica como PROVENTO, o cadastro a recusou com razão, e o caso ficou
+ * vermelho acusando "natureza declarada e incadastrável" — que era falso.
+ *
+ * É a MESMA doença que `NATUREZAS_DA_RUBRICA` já curou logo acima, um nível abaixo. As duas saem
+ * daqui agora, e divergir entre elas virou impossível.
+ */
+export const NATUREZAS_QUE_SAO_DESCONTO: readonly NaturezaDaRubrica[] = [
+  "CONTRIBUICAO_PREVIDENCIARIA",
+  "IMPOSTO_DE_RENDA",
+  "ABATIMENTO_DO_ADIANTAMENTO_DO_13",
+  "ABATIMENTO_DO_ADIANTAMENTO_SALARIAL",
+];
+
 /** As naturezas que existem UMA vez: o serviço recusa a segunda rubrica com a mesma. */
 export const NATUREZAS_SISTEMICAS: readonly NaturezaDaRubrica[] = [
   "VENCIMENTO_BASE",
@@ -1087,15 +1107,10 @@ export const zCadastrarRubricaInput = z
     // O abatimento do adiantamento do 13º entra aqui: ele SEMPRE subtrai — uma rubrica de
     // abatimento cadastrada como PROVENTO somaria a 1ª parcela à 2ª em vez de abatê-la, e o
     // contracheque fecharia com o dobro.
-    // ⚠️ V13 — A NATUREZA NOVA ENTRA AQUI, e esquecê-la seria o defeito da V11 V9.1 de novo, ao
-    // contrário: a rubrica do abatimento salarial seria cadastrável como PROVENTO e cadastrável
-    // COM incidência — e uma linha de desconto que reduz a base de contribuição faria a mensal
-    // recolher a menos, com os totais fechando.
-    const desconto =
-      v.natureza === "CONTRIBUICAO_PREVIDENCIARIA" ||
-      v.natureza === "IMPOSTO_DE_RENDA" ||
-      v.natureza === "ABATIMENTO_DO_ADIANTAMENTO_DO_13" ||
-      v.natureza === "ABATIMENTO_DO_ADIANTAMENTO_SALARIAL";
+    // ⚠️ V13 — DERIVA DE `NATUREZAS_QUE_SAO_DESCONTO`, e não de uma condição escrita à mão aqui.
+    // A condição à mão foi o que divergiu da cópia do teste quando a natureza do abatimento
+    // salarial nasceu; ver o docblock daquela constante.
+    const desconto = NATUREZAS_QUE_SAO_DESCONTO.includes(v.natureza);
     if (desconto && v.tipo !== "DESCONTO") ctx.addIssue({ code: "custom", path: ["tipo"], message: `${v.natureza} é DESCONTO.` });
     const provento = v.natureza === "VENCIMENTO_BASE" || v.natureza === "GRATIFICACOES_DO_VINCULO" || v.natureza === "SALARIO_FAMILIA";
     if (provento && v.tipo !== "PROVENTO") ctx.addIssue({ code: "custom", path: ["tipo"], message: `${v.natureza} é PROVENTO.` });

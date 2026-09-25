@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { NATUREZAS_DA_RUBRICA, TIPOS_DE_FOLHA, zAbrirFolhaInput, zCadastrarRubricaInput } from "./dominio.js";
+import { NATUREZAS_DA_RUBRICA, NATUREZAS_QUE_SAO_DESCONTO, TIPOS_DE_FOLHA, zAbrirFolhaInput, zCadastrarRubricaInput } from "./dominio.js";
 
 /**
  * ═══ AS LISTAS DA MESMA VERDADE TÊM DE CONCORDAR (V11 V9.1) ═══
@@ -113,7 +113,14 @@ describe("as listas de TipoDeFolha concordam", () => {
  * tipo imposto) recebem o que a regra pede, senão o teste mediria a regra e não a lista.
  */
 function entradaValida(natureza: string): Record<string, unknown> {
-  const desconto = natureza === "CONTRIBUICAO_PREVIDENCIARIA" || natureza === "IMPOSTO_DE_RENDA" || natureza === "ABATIMENTO_DO_ADIANTAMENTO_DO_13";
+  /**
+   * ⚠️ V13 — DERIVA DO DOMÍNIO, e esta linha era uma TERCEIRA cópia da mesma lista. Ela ficou
+   * para trás quando `ABATIMENTO_DO_ADIANTAMENTO_SALARIAL` nasceu: o helper montava a rubrica
+   * como PROVENTO, o cadastro a recusava com razão, e o caso acusava "natureza declarada e
+   * incadastrável" — um vermelho VERDADEIRO sobre um fato FALSO. Um teste que carrega a própria
+   * cópia da regra afirma a cópia, não a regra.
+   */
+  const desconto = (NATUREZAS_QUE_SAO_DESCONTO as readonly string[]).includes(natureza);
   return {
     codigo: "X1",
     descricao: "Rubrica de teste",

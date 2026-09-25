@@ -303,6 +303,10 @@ describe("instalação limpa e atualização — no banco", () => {
       // ja roda, ela alcanca SO quem administra permissoes no global: derivar de CALCULAR_FOLHA
       // desfaria, no ato de instalar, a separacao que o motor cobra (ver `derivarSelecaoNoCalculoDaFolha`).
       { versao: 29, previa: 0, aplicada: false },
+      // V13 — CONFIGURAR_PARAMETRO_DO_ADIANTAMENTO_SALARIAL. Previa 0 em instalacao limpa pelo
+      // mesmo motivo das anteriores: a derivacao so alcanca perfil que JA administra permissoes
+      // no global, e a instalacao limpa nao tem nenhum com CONCEDER_ACAO_A_PERFIL gravado ainda.
+      { versao: 30, previa: 0, aplicada: false },
     ]);
   });
 

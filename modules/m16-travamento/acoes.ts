@@ -1999,6 +1999,31 @@ export const FORA_DO_CENSO: Record<string, string> = {
     "ação própria exigiria conceder duas para praticar um ato só, e um crachá que ninguém usa é " +
     "um crachá que o administrador concede por atrito. Ela RECUSA quando não há parâmetro " +
     "(`PARAMETRO-DO-13-AUSENTE`), e essa recusa é o fail-closed do cálculo, não uma autorização.",
+  // ── M33 V13 — o adiantamento salarial: TRÊS LEITURAS, nenhuma delas um ato do usuário ──
+  //
+  // ⚠️ AS TRÊS RODAM DENTRO DE `calcularFolha`, que já cobra CALCULAR_FOLHA antes de qualquer
+  // leitura. Dar ação própria a elas exigiria conceder duas para praticar um ato só, e um crachá
+  // que ninguém usa é um crachá que o administrador concede por atrito. O ATO de escrever o
+  // critério do ente — esse sim — tem ação própria:
+  // CONFIGURAR_PARAMETRO_DO_ADIANTAMENTO_SALARIAL, sob `cadastrarParametroDoAdiantamentoSalarial`.
+  parametroVigenteDaCompetencia:
+    "LEITURA. O parâmetro do adiantamento salarial vigente de uma competência — a versão de maior " +
+    "número, com as duas rubricas já resolvidas. Não grava nada: é projeção de um cadastro " +
+    "append-only. Ela RECUSA quando não há parâmetro " +
+    "(`PARAMETRO-DO-ADIANTAMENTO-SALARIAL-AUSENTE`), e essa recusa é o fail-closed do cálculo, " +
+    "não uma autorização.",
+  parametroQueApurouOCalculo:
+    "LEITURA. Qual VERSÃO do parâmetro apurou um cálculo de vale já fechado, recuperada da memória " +
+    "do contracheque. É ela que faz `alteração de parâmetro não reescreve cálculo fechado` valer: " +
+    "a folha mensal abate pela régua que pagou, nunca pela vigente de hoje. Só `findFirst` e " +
+    "`findUnique` sobre fatos já gravados; falha fechado se a memória não disser.",
+  abatimentoDoAdiantamentoSalarialNaCompetencia:
+    "LEITURA COM GUARDAS. Quanto o vale FECHADO de uma competência pagou a cada vínculo, e se o " +
+    "estado que o ente exigiu (FECHADO, CERTIFICADO ou PAGO) foi alcançado. Não grava uma linha " +
+    "sequer — as recusas dela (`ADIANTAMENTO-SALARIAL-NAO-FECHADO`, " +
+    "`ADIANTAMENTO-SALARIAL-NAO-CERTIFICADO`, `ADIANTAMENTO-SALARIAL-NAO-PAGO`) são o fail-closed " +
+    "do cálculo MENSAL, que já cobrou CALCULAR_FOLHA. Uma ação própria aqui seria uma fechadura na " +
+    "porta interna de um cômodo cuja porta externa já está trancada.",
   roteiroVigente:
     "LEITURA. A versão vigente do roteiro orçamentário de um par (movimento, tipo de crédito). " +
     "Não grava nada; é a mesma projeção que `dotacao-razao` usa para escriturar, de modo que a " +
