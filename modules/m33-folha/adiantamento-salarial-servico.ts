@@ -476,6 +476,32 @@ export async function abatimentoDoAdiantamentoSalarialNaCompetencia(
        * com meio vale pago, abater o inteiro descontaria do salário do mês dinheiro que nunca saiu.
        */
       if (pago.lt(apurado)) {
+        /**
+         * ═══ ⚠️ O ESTORNO DEPOIS DE A MENSAL JÁ TER ABATIDO — DITO, EM VEZ DE DEIXADO ADIVINHAR ═══
+         *
+         * Esta consulta NÃO muda decisão nenhuma: a recusa acontece do mesmo jeito. Ela muda o que
+         * a recusa DIZ, e a diferença é entre um operador que corrige e um que fica preso.
+         *
+         * O caso, medido em `m33-adiantamento-salarial-pago.test.ts`: o vale foi pago, a folha
+         * mensal o abateu e FECHOU, e só então o pagamento foi anulado. A mensal fechada continua
+         * como está (folha fechada não se recalcula — a obrigação já reconhecida NÃO desaparece), e
+         * a COMPLEMENTAR, que seria o instrumento de pagar o que faltou, cai aqui: ela recalcula o
+         * correto, o correto passa por este critério, e o critério agora não se satisfaz.
+         *
+         * ⚠️ A RECUSA É VERDADEIRA — o vale realmente não está mais pago — E ELA FECHA A PORTA DA
+         * CORREÇÃO. A saída é ato próprio de reposição ou de reconhecimento, que este sistema não
+         * pratica, e improvisá-lo aqui seria inventar ato financeiro. Fica nomeado
+         * `ESTORNO-DO-VALE-BLOQUEIA-A-COMPLEMENTAR` no MODULO do M33. O que o código pode fazer, e
+         * faz, é NOMEAR o beco em vez de deixar o operador descobri-lo por eliminação.
+         */
+        const jaAbatido = await tx.linhaDoContracheque.findFirst({
+          where: {
+            rubricaId: cfg.rubricaDoAbatimentoId,
+            contracheque: { vinculoId, calculo: { fechamento: { isNot: null }, folha: { competencia } } },
+          },
+          select: { valor: true },
+        });
+        const abatidoAntes = jaAbatido === null ? null : toMoney(jaAbatido.valor);
         throw new Error(
           `ADIANTAMENTO-SALARIAL-NAO-PAGO: o parâmetro de ${competencia} (versão ${cfg.parametro.versao}) exige ` +
             `que o adiantamento esteja PAGO para ser abatido — ${ato}. A matrícula ${matricula} teve ` +
@@ -486,8 +512,16 @@ export async function abatimentoDoAdiantamentoSalarialNaCompetencia(
               : pago.isZero()
                 ? ` — nenhum pagamento registrado.`
                 : `: pagamento PARCIAL não satisfaz o critério, e abater o apurado inteiro descontaria do mês o que não saiu.`) +
-            ` Pague o saldo, ou cadastre a versão seguinte do parâmetro com o critério que o ato do ente de fato ` +
-            `exige. Nada foi calculado.`
+            (abatidoAntes === null || abatidoAntes.lte(0)
+              ? ` Pague o saldo, ou cadastre a versão seguinte do parâmetro com o critério que o ato do ente de fato exige.`
+              : ` ⚠️ E ATENÇÃO: uma folha JÁ FECHADA de ${competencia} abateu ${emProsa(abatidoAntes.toFixed(2))} desta ` +
+                `matrícula. O pagamento do vale foi desfeito DEPOIS disso — o servidor ficou sem o adiantamento E com ` +
+                `o desconto, e o ente lhe deve essa diferença. A folha fechada não se recalcula (a obrigação já ` +
+                `reconhecida não desaparece), e esta folha não pode seguir abatendo o que não foi pago. Não há, neste ` +
+                `sistema, ato que acerte isso: a reposição e o reconhecimento são atos próprios que ele não pratica. ` +
+                `O QUE FAZER: trate o acerto fora daqui e registre a pendência; se a anulação do pagamento foi engano, ` +
+                `refaça o pagamento do vale e recalcule.`) +
+            ` Nada foi calculado.`
         );
       }
     }

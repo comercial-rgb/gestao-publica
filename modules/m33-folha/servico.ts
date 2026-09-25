@@ -606,9 +606,20 @@ async function contrachequesMensaisDaCompetencia(
      * motor puro nunca emite a linha e o vale seria pago duas vezes — uma no adiantamento, outra
      * na mensal inteira — com a folha fechando e os totais batendo.
      *
-     * A recusa é aqui porque só aqui se sabe o regime. `calcularContracheque` tem a mesma guarda,
-     * afirmada pelo EFEITO ("saiu linha para esta rubrica?"), e ela fica como DEFESA EM
-     * PROFUNDIDADE declarada: pega o caso em que a rubrica existe na lista mas mudou de natureza.
+     * A recusa é aqui porque só aqui se sabe o regime. `calcularContracheque` tem uma guarda
+     * parecida, afirmada pelo EFEITO ("saiu linha para esta rubrica?").
+     *
+     * ⚠️ E A MEDIÇÃO DESMENTIU O QUE SERIA CÔMODO AFIRMAR: aquela guarda **NÃO** é defesa em
+     * profundidade para ESTE caso. Mutação da V13 rodada 2 (`servico.ts` 441ba831 → 1a2f7ed4,
+     * revertida com checksum): trocar o `throw` abaixo por um `if (rAbat !== undefined)` deixa
+     * `abatimentoDoAdiantamentoSalarial` INDEFINIDO na entrada, e a guarda do domínio — que só
+     * dispara quando o abatimento foi PEDIDO — nem chega a olhar. O caso `u2` de
+     * `m33-adiantamento-salarial-pago.test.ts` ficou vermelho **sozinho**: este `throw` é a ÚNICA
+     * coisa entre a rubrica revogada e o ente pagar a remuneração inteira a quem já recebeu 40%.
+     *
+     * A guarda do domínio cobre outra coisa, e continua valendo por ela: a rubrica está na lista,
+     * foi passada na entrada, e mesmo assim não produziu linha — o caso de ela ter mudado de
+     * natureza entre o parâmetro e o cálculo.
      */
     let abatimentoDoVinculo: AbatimentoDoAdiantamentoSalarial | undefined;
     const adiantado = abatimento?.porVinculo.get(v.id);
