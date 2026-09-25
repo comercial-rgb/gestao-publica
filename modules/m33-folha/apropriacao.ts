@@ -83,6 +83,92 @@ export class AbatimentoSemCriterioDeclaradoError extends Error {
   }
 }
 
+/**
+ * ═══ V13 rodada 3 — O RAMO DO PCASP QUE A TABELA TEM PARA O VALE ═══
+ *
+ * ⚠️ ESTE PREFIXO NÃO FOI ESCOLHIDO: FOI PROCURADO E ENCONTRADO. O plano oficial do TCE-PB
+ * (`docs/oficial/tce-pb/Pcasp_2025.xlsx`, sha256 conferido no `MANIFEST.json`, 7.864 contas) traz
+ * o ramo `1.1.3.1 ADIANTAMENTOS CONCEDIDOS`, e dentro dele
+ * `1.1.3.1.1.01 ADIANTAMENTOS CONCEDIDOS A PESSOAL` com
+ * **`1.1.3.1.1.01.01 SALÁRIOS E ORDENADOS - ADIANTAMENTOS`** — analítica, DEVEDORA, que é
+ * exatamente o vale: um DIREITO a receber do servidor, ativo, e não despesa de pessoal do mês.
+ *
+ * ⚠️ E O PREFIXO É O RAMO, NÃO A FOLHA. Aceitar `1.1.3.1` e não cravar `...01.01` é deliberado:
+ * quem escolhe a conta analítica é o ente (o ramo tem consolidação, INTRA e INTER OFSS, e o ente
+ * pode ter desdobramento próprio). O sistema exige que a contrapartida seja um ADIANTAMENTO
+ * CONCEDIDO; qual delas é decisão dele, e a mensagem nomeia a que o TCE tem para este caso.
+ */
+const RAMO_ADIANTAMENTOS_CONCEDIDOS = "1.1.3.1";
+const CONTA_SUGERIDA_DO_VALE = "1.1.3.1.1.01.01 (SALÁRIOS E ORDENADOS - ADIANTAMENTOS)";
+
+/**
+ * ⚠️ A RECUSA QUE IMPEDE O VALE DE VIRAR DESPESA DE PESSOAL DUAS VEZES NO PATRIMÔNIO.
+ *
+ * A liquidação da folha debita a conta que o GRUPO declara (`contaVariacaoId`, o parâmetro
+ * `variacaoDiminutiva` de `roteiroLiquidacaoDaFolha`). Apontá-la para a VPD de pessoal faz o vale
+ * reconhecer despesa — e a folha MENSAL da mesma competência reconhece a MESMA remuneração de
+ * novo, inteira. Medido na V13 rodada 2: 4.200,00 para 3.000,00 de custo.
+ *
+ * ⚠️ E ELA NÃO ESCOLHE NORMA: a conta existe na tabela oficial, e a recusa só exige que a
+ * contrapartida seja um ADIANTAMENTO CONCEDIDO em vez de uma variação diminutiva. Comprar um
+ * computador também empenha e não gera VPD — debita o imobilizado; o vale é a mesma forma.
+ */
+export class VariacaoDoValeNaoEAdiantamentoError extends Error {
+  constructor(grupo: string, conta: string | null, nome: string | null) {
+    super(
+      `CONTRAPARTIDA-DO-VALE-NAO-E-ADIANTAMENTO: o grupo ${grupo} empenha o adiantamento salarial e declara, como ` +
+        `contrapartida patrimonial da liquidação, ` +
+        (conta === null
+          ? `NENHUMA conta`
+          : `a conta ${conta}${nome === null ? "" : ` (${nome})`}, que não é um ADIANTAMENTO CONCEDIDO (${RAMO_ADIANTAMENTOS_CONCEDIDOS}.x)`) +
+        `. O vale NÃO é despesa de pessoal do mês: ele é um DIREITO a receber do servidor, que a folha mensal abate ` +
+        `depois. Liquidá-lo contra uma variação patrimonial diminutiva faz o ente reconhecer a MESMA remuneração ` +
+        `duas vezes na mesma competência — uma no vale e outra na mensal, que empenha o BRUTO. ` +
+        `O QUE FAZER: em Folha > Grupos de empenho, declare para este grupo uma conta do ramo ` +
+        `${RAMO_ADIANTAMENTOS_CONCEDIDOS} ADIANTAMENTOS CONCEDIDOS. O plano oficial do TCE-PB traz ` +
+        `${CONTA_SUGERIDA_DO_VALE} para exatamente este caso; se ela não estiver no seu plano de contas, semeie o ` +
+        `plano oficial antes. Nada foi gravado.`
+    );
+    this.name = "VariacaoDoValeNaoEAdiantamentoError";
+  }
+}
+
+/**
+ * ⚠️ A RECUSA QUE IMPEDE O CRÉDITO ORÇAMENTÁRIO DE SER CONSUMIDO DUAS VEZES PELA MESMA VERBA.
+ *
+ * ⚠️ E AQUI NÃO HÁ NADA NA TABELA PARA DECIDIR, e é por isso que a saída é RECUSA e não escolha.
+ * O PCASP responde onde o vale entra no PATRIMÔNIO; ele não diz se o vale consome dotação, nem em
+ * que natureza de despesa. As duas práticas conhecidas são coerentes entre si e incompatíveis:
+ *   (a) o vale é EXTRAORÇAMENTÁRIO — não empenha, e só a mensal consome dotação;
+ *   (b) o vale é despesa orçamentária de natureza PRÓPRIA, distinta da remuneração do mês.
+ * A fonte que escolhe entre as duas não foi localizada, e escolher aqui seria inventar norma.
+ *
+ * O que NÃO precisa de norma nenhuma é a aritmética: a MESMA natureza de despesa empenhando a
+ * remuneração do mês E o adiantamento dela, na mesma competência, consome o crédito duas vezes
+ * para o mesmo dinheiro. Isso não é prática alguma — é engano, sob (a) e sob (b). É isso, e só
+ * isso, que esta recusa impede.
+ *
+ * Pendência `VALE-EMPENHADO-DUPLICA-A-DESPESA-DO-MES` no MODULO do M33, com as duas opções postas.
+ */
+export class ValeNaMesmaNaturezaDaRemuneracaoError extends Error {
+  constructor(natureza: string, grupoDoVale: string, outros: readonly string[]) {
+    super(
+      `VALE-NA-MESMA-NATUREZA-DA-REMUNERACAO: o grupo ${grupoDoVale}, que empenha o adiantamento salarial, aponta ` +
+        `para a natureza de despesa ${natureza} — a MESMA de ${outros.join(", ")}, que empenha${outros.length > 1 ? "m" : ""} ` +
+        `a remuneração do mês. A mensal empenha o BRUTO (desconto é retenção do pagamento, não despesa), então a mesma ` +
+        `verba consumiria a dotação DUAS VEZES na mesma competência: o vale e, de novo, a remuneração inteira de que ` +
+        `ele já era parte. ` +
+        `⚠️ ESTE SISTEMA NÃO ESCOLHE QUAL É O TRATAMENTO CERTO, porque isso é normativo e a fonte não foi localizada. ` +
+        `As duas práticas conhecidas são: (a) o vale é EXTRAORÇAMENTÁRIO e não empenha — caminho que este sistema ` +
+        `ainda não tem; (b) o vale é despesa orçamentária de natureza PRÓPRIA, e aí basta apontar este grupo para uma ` +
+        `ficha de natureza distinta da remuneração. O QUE FAZER: decida com fundamento e, se for (b), aponte o grupo ` +
+        `para a outra ficha; se for (a), registre a pendência — empenhar assim seria somar ao gasto do ente um valor ` +
+        `que ele não gastou. Nada foi gravado.`
+    );
+    this.name = "ValeNaMesmaNaturezaDaRemuneracaoError";
+  }
+}
+
 export class SemGrupoDeEmpenhoError extends Error {
   constructor(rubricas: readonly string[]) {
     super(
@@ -423,6 +509,100 @@ export async function parcelasDoCalculo(prisma: PrismaClient, calculoId: string)
   return { parcelas, rubricasSemGrupo, linhasDeProvento: linhas.length };
 }
 
+/**
+ * ═══ V13 rodada 3 — O QUE O VALE DA COMPETÊNCIA EXIGE, CONFERIDO ANTES DE QUALQUER GRAVAÇÃO ═══
+ *
+ * Roda para QUALQUER folha que se aproprie numa competência que tenha uma folha de adiantamento
+ * salarial FECHADA — e a simetria é o ponto: se ela só olhasse a folha do vale, bastaria apropriar
+ * o vale primeiro e a mensal depois para a duplicação voltar pela outra ponta.
+ *
+ * ⚠️ E ELA NÃO LÊ O PARÂMETRO DO VALE, de propósito. Ler exigiria importar
+ * `adiantamento-salarial-servico.ts`, que importa `certificacao.ts`, que importa ESTE arquivo —
+ * ciclo de VALOR entre módulos ES, que não é erro de compilação: é uma função que chega
+ * `undefined` em tempo de execução. Quem diz quais rubricas o vale pagou é o FATO: as linhas de
+ * PROVENTO do cálculo que fechou aquela folha.
+ */
+async function exigirTratamentoDoValeDaCompetencia(
+  prisma: PrismaClient,
+  folha: { readonly id: string; readonly competencia: string; readonly tipo: string }
+): Promise<void> {
+  const vale = await prisma.folhaDePagamento.findUnique({
+    where: { competencia_tipo: { competencia: folha.competencia, tipo: "ADIANTAMENTO_SALARIAL" } },
+    select: { id: true, fechamento: { select: { calculoId: true } } },
+  });
+  // ⚠️ SEM VALE FECHADO NÃO HÁ NADA A CONFERIR, e isto NÃO é guarda desligada: é o estado normal
+  // de toda competência de todo município que não paga adiantamento salarial.
+  if (vale === null || vale.fechamento === null) return;
+
+  const rubricasDoVale = await prisma.linhaDoContracheque.findMany({
+    where: { contracheque: { calculoId: vale.fechamento.calculoId }, tipo: "PROVENTO" },
+    select: { rubricaId: true },
+    distinct: ["rubricaId"],
+  });
+  if (rubricasDoVale.length === 0) return;
+
+  const noGrupo = await prisma.rubricaDoGrupoDeEmpenho.findMany({
+    where: { rubricaId: { in: rubricasDoVale.map((r) => r.rubricaId) } },
+    select: {
+      grupoId: true,
+      grupo: {
+        select: {
+          codigo: true,
+          contaVariacaoId: true,
+          ficha: { select: { naturezaDespesaId: true, naturezaDespesa: { select: { codigoCompleto: true, descricao: true } } } },
+        },
+      },
+    },
+  });
+  // Sem grupo, quem recusa é `SemGrupoDeEmpenhoError`, com a mensagem dele. Aqui não se duplica.
+  if (noGrupo.length === 0) return;
+
+  /**
+   * ── (1) A CONTRAPARTIDA PATRIMONIAL, e ela só se exige de QUEM É O VALE ──
+   *
+   * Recusar a MENSAL por causa da conta declarada no grupo do vale mandaria o operador procurar o
+   * defeito na folha errada. A duplicação patrimonial acontece no ato de liquidar o vale, e é o
+   * ato do vale que tem de parar.
+   */
+  if (folha.tipo === "ADIANTAMENTO_SALARIAL") {
+    for (const g of noGrupo) {
+      const contaId = g.grupo.contaVariacaoId;
+      const conta =
+        contaId === null
+          ? null
+          : await prisma.contaPcasp.findUnique({ where: { id: contaId }, select: { codigo: true, nome: true } });
+      if (conta === null || !conta.codigo.startsWith(`${RAMO_ADIANTAMENTOS_CONCEDIDOS}.`)) {
+        throw new VariacaoDoValeNaoEAdiantamentoError(g.grupo.codigo, conta?.codigo ?? null, conta?.nome ?? null);
+      }
+    }
+  }
+
+  /**
+   * ── (2) A NATUREZA DE DESPESA, e esta vale para as DUAS pontas ──
+   *
+   * ⚠️ A CONFERÊNCIA É POR NATUREZA, NÃO POR FICHA. Duas fichas diferentes da MESMA natureza
+   * consomem a mesma dotação classificada — trocar de ficha e manter o elemento seria contornar a
+   * guarda sem corrigir nada, e o ente veria o gasto dobrado no mesmo 3.1.90.11.
+   */
+  const naturezasDoVale = new Map(noGrupo.map((g) => [g.grupo.ficha.naturezaDespesaId, g]));
+  const idsDoVale = new Set(noGrupo.map((g) => g.grupoId));
+  const outros = await prisma.grupoDeEmpenhoDaFolha.findMany({
+    where: { id: { notIn: [...idsDoVale] }, ficha: { naturezaDespesaId: { in: [...naturezasDoVale.keys()] } } },
+    select: { codigo: true, ficha: { select: { naturezaDespesaId: true } } },
+    orderBy: { codigo: "asc" },
+  });
+  if (outros.length > 0) {
+    const naturezaId = outros[0]!.ficha.naturezaDespesaId;
+    const g = naturezasDoVale.get(naturezaId)!;
+    const nd = g.grupo.ficha.naturezaDespesa;
+    throw new ValeNaMesmaNaturezaDaRemuneracaoError(
+      `${nd.codigoCompleto} (${nd.descricao})`,
+      g.grupo.codigo,
+      outros.filter((o) => o.ficha.naturezaDespesaId === naturezaId).map((o) => o.codigo)
+    );
+  }
+}
+
 export async function apropriarFolha(prisma: PrismaClient, input: ApropriarFolhaInput): Promise<ResultadoDaApropriacao> {
   const d = zApropriarFolhaInput.parse(input);
 
@@ -451,6 +631,13 @@ export async function apropriarFolha(prisma: PrismaClient, input: ApropriarFolha
       throw new AbatimentoSemCriterioDeclaradoError(folha.competencia, folha.exercicio, criterio.totalAbatido);
     }
   }
+
+  /**
+   * ⚠️ V13 rodada 3 — ANTES DE QUALQUER GRAVAÇÃO, pela mesma razão do bloco acima: criar a
+   * `ApropriacaoDaFolha` e só então descobrir a duplicação deixaria o registro do ato de apropriar
+   * existindo sobre uma folha que não podia ser apropriada.
+   */
+  await exigirTratamentoDoValeDaCompetencia(prisma, folha);
 
   const agrupamento = await parcelasDoCalculo(prisma, folha.fechamento.calculoId);
   if (agrupamento.linhasDeProvento === 0) throw new Error(`FOLHA-SEM-PROVENTO: o cálculo fechado de ${folha.competencia} não tem linha de provento nenhuma. Nada foi gravado.`);

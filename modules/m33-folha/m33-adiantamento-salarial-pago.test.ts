@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { Decimal } from "../../packages/contracts/index.js";
 import { meioDiaCivil } from "../../packages/datas/index.js";
 import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
 import { limparBanco } from "../../test/limpar-banco.js";
@@ -73,6 +74,10 @@ const D = (a: number, m: number, d: number): Date => meioDiaCivil(`${a}-${String
 
 const JUNHO = "2026-06";
 const FICHA = "ficha-folha-vale";
+/** A ficha de natureza DISTINTA, para o caso em que o vale deixa de duplicar a dotação. */
+const FICHA_DO_VALE = "ficha-do-vale";
+/** A conta do ramo `1.1.3.1 ADIANTAMENTOS CONCEDIDOS` — procurada no PCASP oficial, não inventada. */
+const CONTA_DO_ADIANTAMENTO = "c-adiant-pessoal";
 const DATA_EMPENHO = D(2026, 6, 25);
 const DATA_ATESTO = D(2026, 6, 26);
 const DATA_LIQUIDACAO = D(2026, 6, 27);
@@ -136,6 +141,15 @@ async function semear(): Promise<void> {
       { id: "c-ddr-liq", codigo: "8.2.1.1.3.01.00", nome: "DDR comprometida por liquidacao", naturezaSaldo: "CREDORA", nivel: 5, analitica: true },
       { id: "c-vpd-pessoal", codigo: "3.1.1.1.1.01.00", nome: "Vencimentos e vantagens fixas - pessoal civil", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: true },
       { id: "c-pessoal-pagar", codigo: "2.1.1.1.1.01.01", nome: "Salarios, remuneracoes e beneficios", naturezaSaldo: "CREDORA", nivel: 5, analitica: true },
+      /**
+       * ⚠️ V13 rodada 3 — A CONTA DO VALE, E ELA NÃO FOI INVENTADA PARA ESTE TESTE.
+       *
+       * `1.1.3.1.1.01.01 SALÁRIOS E ORDENADOS - ADIANTAMENTOS` existe no plano oficial do TCE-PB
+       * (`docs/oficial/tce-pb/Pcasp_2025.xlsx`, 7.864 contas, sha256 conferido no MANIFEST),
+       * analítica e DEVEDORA, sob `1.1.3.1.1.01 ADIANTAMENTOS CONCEDIDOS A PESSOAL`. Fabricar um
+       * código aqui seria inventar norma da STN dentro de um teste — foi PROCURADO e ACHADO.
+       */
+      { id: "c-adiant-pessoal", codigo: "1.1.3.1.1.01.01", nome: "Salarios e ordenados - adiantamentos", naturezaSaldo: "DEVEDORA", nivel: 7, analitica: true },
     ],
   });
   await prisma.orgao.create({ data: { id: "org-01", codigo: "01", nome: "Prefeitura" } });
@@ -145,12 +159,25 @@ async function semear(): Promise<void> {
   await prisma.programa.create({ data: { id: "prg", codigo: "0004", descricao: "P" } });
   await prisma.acao.create({ data: { id: "aca", codigo: "2001", descricao: "A", tipo: "ATIVIDADE" } });
   await prisma.naturezaDespesa.create({ data: { id: "nd-11", codCategoria: "3", codNatureza: "1", codModalidade: "90", codElemento: "11", codigoCompleto: "319011", descricao: "Vencimentos e vantagens fixas" } });
+  /**
+   * ⚠️ A SEGUNDA NATUREZA EXISTE PARA O CASO POSITIVO, e o `96` é FIXTURE SINTÉTICA, não afirmação
+   * de que o vale se classifica nele. Qual natureza o vale usa — ou se ele é extraorçamentário e
+   * não usa nenhuma — é a decisão normativa que esta rodada NÃO tomou
+   * (`VALE-EMPENHADO-DUPLICA-A-DESPESA-DO-MES`). O que o caso positivo prova é a PROPRIEDADE:
+   * sendo OUTRA natureza, a dotação de pessoal do mês deixa de ser consumida duas vezes.
+   */
+  await prisma.naturezaDespesa.create({ data: { id: "nd-96", codCategoria: "3", codNatureza: "1", codModalidade: "90", codElemento: "96", codigoCompleto: "319096", descricao: "Ressarcimento de despesas de pessoal requisitado (FIXTURE sintetica)" } });
   await prisma.fonteRecurso.create({ data: { id: "fonte-500", codigo: "500", descricao: "Livre", codigoTce: "500" } });
   await prisma.contaBancaria.create({ data: { id: "cb-folha", codigo: "CC-001", descricao: "Movimento", fonteId: "fonte-500" } });
   await criarFichaDeTeste(prisma, {
     exercicio: 2026, orgaoId: "org-01", unidadeOrcId: "uo-01", funcaoId: "fun-04", subfuncaoId: "sub-122",
     programaId: "prg", acaoId: "aca", fonteId: "fonte-500", naturezaDespesaId: "nd-11",
     id: FICHA, numero: 1, valorDotado: "500000.00",
+  });
+  await criarFichaDeTeste(prisma, {
+    exercicio: 2026, orgaoId: "org-01", unidadeOrcId: "uo-01", funcaoId: "fun-04", subfuncaoId: "sub-122",
+    programaId: "prg", acaoId: "aca", fonteId: "fonte-500", naturezaDespesaId: "nd-96",
+    id: FICHA_DO_VALE, numero: 2, valorDotado: "500000.00",
   });
 
   const { cargoId } = await cadastrarCargo(prisma, { codigo: "PROF", denominacao: "Professor", tipo: "EFETIVO", vagasFixadas: 50, leiAutorizativa: "Lei 1/2010", dataPublicacaoLei: D(2010, 1, 1), criadoPor: PREPARA });
@@ -183,15 +210,23 @@ async function semear(): Promise<void> {
 }
 
 /** O grupo que empenha o VALE. `porServidor` é o eixo de todos os casos do critério PAGO. */
-async function grupoDoVale(porServidor: boolean): Promise<string> {
+async function grupoDoVale(
+  porServidor: boolean,
+  over: { readonly fichaId?: string; readonly contaVariacaoId?: string } = {}
+): Promise<string> {
   return (
     await cadastrarGrupoDeEmpenhoDaFolha(prisma, {
-      codigo: "FP-VALE", descricao: "Adiantamento salarial", fichaId: FICHA,
+      codigo: "FP-VALE", descricao: "Adiantamento salarial", fichaId: over.fichaId ?? FICHA,
       categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FPV",
-      porServidor, ...CONTAS, rubricaIds: [ids["ADSAL"]!], criadoPor: PREPARA,
+      porServidor, ...CONTAS, ...over, rubricaIds: [ids["ADSAL"]!], criadoPor: PREPARA,
       ...(porServidor ? {} : { credorId: await pessoa("39053344705", "Sindicato dos Servidores") }),
     })
   ).grupoId;
+}
+
+/** O grupo do vale CONFIGURADO CERTO: ficha de natureza própria e contrapartida no ativo. */
+async function grupoDoValeBemConfigurado(): Promise<string> {
+  return grupoDoVale(true, { fichaId: FICHA_DO_VALE, contaVariacaoId: CONTA_DO_ADIANTAMENTO });
 }
 
 /** O grupo do VENCIMENTO — separado, porque uma rubrica pertence a UM grupo só. */
@@ -304,7 +339,7 @@ describe("u1 · o critério PAGO do adiantamento salarial", () => {
    * oferecendo ao ente uma opção que só sabe dizer não.
    */
   it("pago por inteiro: a mensal ABATE, e o contracheque diz qual fato foi verificado", async () => {
-    await grupoDoVale(true);
+    await grupoDoValeBemConfigurado();
     await parametroDoVale({ estadoMinimoParaAbater: "PAGO" });
     const vale = await valeFechado();
     expect((await linhasGravadas(vale)).get("MAT-A/ADSAL")).toBe("1200.00");
@@ -341,7 +376,7 @@ describe("u1 · o critério PAGO do adiantamento salarial", () => {
    * descontaria do salário de junho um dinheiro que o servidor nunca recebeu.
    */
   it("apenas FECHADO, sem empenho: recusa dizendo que não há empenho por servidor para a matrícula", async () => {
-    await grupoDoVale(true);
+    await grupoDoValeBemConfigurado();
     await parametroDoVale({ estadoMinimoParaAbater: "PAGO" });
     await valeFechado();
 
@@ -352,7 +387,7 @@ describe("u1 · o critério PAGO do adiantamento salarial", () => {
   });
 
   it("empenhado, certificado e LIQUIDADO, mas não pago: recusa dizendo que não há pagamento registrado", async () => {
-    await grupoDoVale(true);
+    await grupoDoValeBemConfigurado();
     await parametroDoVale({ estadoMinimoParaAbater: "PAGO" });
     const vale = await valeFechado();
     await liquidarVale(vale);
@@ -370,7 +405,7 @@ describe("u1 · o critério PAGO do adiantamento salarial", () => {
    * matrícula. Por isso o caso afirma que a recusa nomeia **MAT-B e não MAT-A**.
    */
   it("pagamento PARCIAL não satisfaz, e a recusa nomeia a matrícula certa com os dois valores", async () => {
-    await grupoDoVale(true);
+    await grupoDoValeBemConfigurado();
     await parametroDoVale({ estadoMinimoParaAbater: "PAGO" });
     const vale = await valeFechado();
     await pagarVale(vale, { "MAT-A": "1200.00", "MAT-B": "500.00" });
@@ -395,7 +430,7 @@ describe("u1 · o critério PAGO do adiantamento salarial", () => {
    * achando que o vale foi pago depois de o dinheiro ter voltado.
    */
   it("pagamento ESTORNADO deixa de satisfazer o critério", async () => {
-    await grupoDoVale(true);
+    await grupoDoValeBemConfigurado();
     await parametroDoVale({ estadoMinimoParaAbater: "PAGO" });
     const vale = await valeFechado();
     await pagarVale(vale, { "MAT-A": "1200.00", "MAT-B": "800.00" });
@@ -427,7 +462,7 @@ describe("u1 · o critério PAGO do adiantamento salarial", () => {
   });
 
   it("com o grupo POR SERVIDOR, o mesmo cadastro passa — a recusa acima não passa por vacuidade", async () => {
-    await grupoDoVale(true);
+    await grupoDoValeBemConfigurado();
     await parametroDoVale({ estadoMinimoParaAbater: "PAGO" });
     expect(await prisma.parametroDoAdiantamentoSalarial.count()).toBe(1);
   });
@@ -438,7 +473,7 @@ describe("u1 · o critério PAGO do adiantamento salarial", () => {
    * segunda conferência, o critério declarado valeria pela memória do dia do cadastro.
    */
   it("o cálculo confere de NOVO: sem grupo nenhum para a rubrica do vale, recusa", async () => {
-    await grupoDoVale(true);
+    await grupoDoValeBemConfigurado();
     await parametroDoVale({ estadoMinimoParaAbater: "PAGO" });
     const vale = await valeFechado();
     await pagarVale(vale, { "MAT-A": "1200.00", "MAT-B": "800.00" });
@@ -465,7 +500,7 @@ describe("u1b · o vale se abate UMA vez", () => {
    * A conta, à mão: o cálculo nº 2 é o nº 1 refeito. MAT-A continua 3.000,00 − 300,00 − 1.200,00.
    */
   it("recalcular a mensal ainda aberta abate o MESMO valor, uma linha só por contracheque", async () => {
-    await grupoDoVale(true);
+    await grupoDoValeBemConfigurado();
     await parametroDoVale({ estadoMinimoParaAbater: "PAGO" });
     const vale = await valeFechado();
     await pagarVale(vale, { "MAT-A": "1200.00", "MAT-B": "800.00" });
@@ -510,7 +545,7 @@ describe("u1b · o vale se abate UMA vez", () => {
    * inventar ato financeiro. Fica nomeado `ESTORNO-DO-VALE-BLOQUEIA-A-COMPLEMENTAR` no MODULO.
    */
   it("CARACTERIZAÇÃO: estorno depois do fechamento não desfaz o abatido, e bloqueia a complementar", async () => {
-    await grupoDoVale(true);
+    await grupoDoValeBemConfigurado();
     await grupoDoVencimento();
     await parametroDoVale({ estadoMinimoParaAbater: "PAGO" });
     const vale = await valeFechado();
@@ -564,7 +599,7 @@ describe("u2 · rubrica do abatimento sem versão vigente", () => {
    * do ano anterior sem lembrar que o parâmetro ainda aponta para ela.
    */
   it("recusa nomeando a matrícula e a competência, e não grava nada", async () => {
-    await grupoDoVale(true);
+    await grupoDoValeBemConfigurado();
     await parametroDoVale();
     await valeFechado();
 
@@ -578,7 +613,7 @@ describe("u2 · rubrica do abatimento sem versão vigente", () => {
   });
 
   it("com a versão vigente, a mesma mensal calcula e abate — a recusa acima não passa por vacuidade", async () => {
-    await grupoDoVale(true);
+    await grupoDoValeBemConfigurado();
     await parametroDoVale();
     await valeFechado();
     const mensal = await mensalDeJunho();
@@ -599,7 +634,7 @@ describe("u3 · a folha de vale vira despesa pelo caminho de sempre", () => {
    * `jaExistiam` e pulava em silêncio, deixando a segunda apropriada com ZERO empenhos.
    */
   it("empenha o BRUTO, um por servidor, com o CPF de cada um e o número com o segmento do tipo", async () => {
-    await grupoDoVale(true);
+    await grupoDoValeBemConfigurado();
     await parametroDoVale();
     const vale = await valeFechado();
 
@@ -619,7 +654,7 @@ describe("u3 · a folha de vale vira despesa pelo caminho de sempre", () => {
   });
 
   it("reexecutar a apropriação não duplica a despesa", async () => {
-    await grupoDoVale(true);
+    await grupoDoValeBemConfigurado();
     await parametroDoVale();
     const vale = await valeFechado();
     const primeira = await apropriarFolha(prisma, { folhaId: vale, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA });
@@ -632,47 +667,120 @@ describe("u3 · a folha de vale vira despesa pelo caminho de sempre", () => {
   });
 
   /**
-   * ═══ ⚠️ CARACTERIZAÇÃO, NÃO APROVAÇÃO — `VALE-EMPENHADO-DUPLICA-A-DESPESA-DO-MES` ═══
+   * ═══ ⚠️ O QUE ERA CARACTERIZAÇÃO NA RODADA 2 MUDOU DE COR — E ESTA É A EXPLICAÇÃO ═══
    *
-   * ⚠️ ESTE CASO AFIRMA UM FATO QUE O PRODUTO NÃO DEVERIA TER, e existe para que ele não seja
-   * descoberto por um município. Ele ficará VERMELHO no dia em que alguém consertar — e é assim
-   * que ele avisa quem consertar que a decisão foi tomada.
+   * A rodada 2 deixou aqui um caso que AFIRMAVA o defeito: `4.200,00` empenhados para `3.000,00`
+   * de custo, com a nota de que ele ficaria vermelho no dia em que alguém consertasse. O dia
+   * chegou, e o caso não foi apagado: ele virou os TRÊS abaixo, que afirmam por que aquilo não
+   * acontece mais. Apagar teria perdido a única prova de que o defeito existiu.
    *
-   * A conta, à mão, para MAT-A em junho:
-   *   empenho do VALE    1.200,00   (provento ADSAL da folha de adiantamento)
-   *   empenho da MENSAL  3.000,00   (provento VENC, BRUTO — o abatimento é DESCONTO, e desconto
-   *                                  é retenção do pagamento, não despesa orçamentária)
-   *   ────────────────────────────
-   *   empenhado em junho 4.200,00   para um servidor que custou 3.000,00 ao ente.
+   * ⚠️ E O CONSERTO NÃO ESCOLHEU NORMA NENHUMA. Ele fez duas coisas:
+   *   · exigiu, do grupo que empenha o vale, uma contrapartida patrimonial do ramo
+   *     `1.1.3.1 ADIANTAMENTOS CONCEDIDOS` — conta que foi PROCURADA e ACHADA no plano oficial do
+   *     TCE-PB, não inventada (`1.1.3.1.1.01.01 SALÁRIOS E ORDENADOS - ADIANTAMENTOS`);
+   *   · recusou a coincidência de NATUREZA DE DESPESA entre o vale e a remuneração do mês, que é
+   *     aritmética e não prática: a mesma verba consumindo a mesma dotação duas vezes é engano
+   *     sob qualquer das duas práticas conhecidas.
    *
-   * ⚠️ E NÃO É ESCOLHA DE DESENHO — é o resultado de não haver escolha nenhuma. As duas práticas
-   * conhecidas são coerentes: (a) o vale é EXTRAORÇAMENTÁRIO, um adiantamento a pessoal, e só a
-   * mensal é despesa (3.000,00); (b) o vale é despesa (1.200,00) e a mensal empenha o restante.
-   * O que `apropriarFolha` produz hoje é uma terceira coisa, que não é nenhuma das duas.
-   *
-   * ⚠️ POR QUE NÃO SE CONSERTA AQUI. Escolher entre (a) e (b) é decisão com fundamento normativo,
-   * e a fonte não foi levantada nesta rodada — inventar seria o erro que este módulo inteiro
-   * evita. E recusar a apropriação do vale fecharia a porta do critério PAGO, que é justamente o
-   * que esta rodada foi construir. A resposta certa é pendência NOMEADA, e ela está no MODULO.
+   * O que continua NÃO decidido é se o vale consome dotação, e em qual natureza — e é por isso
+   * que a segunda recusa não conserta: ela RECUSA. Pendência
+   * `VALE-EMPENHADO-DUPLICA-A-DESPESA-DO-MES`, com as duas opções postas.
    */
-  it("CARACTERIZAÇÃO: vale e mensal empenham cada um o seu bruto — 4.200,00 para 3.000,00 de custo", async () => {
+  it("RECUSA: o grupo do vale liquidando contra VPD de pessoal reconheceria a despesa duas vezes", async () => {
+    // O grupo padrão desta suíte declara `c-vpd-pessoal` — que é o que a rodada 2 media.
     await grupoDoVale(true);
+    await parametroDoVale();
+    const vale = await valeFechado();
+
+    await expect(apropriarFolha(prisma, { folhaId: vale, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA })).rejects.toThrow(
+      /CONTRAPARTIDA-DO-VALE-NAO-E-ADIANTAMENTO/
+    );
+    await expect(apropriarFolha(prisma, { folhaId: vale, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA })).rejects.toThrow(
+      /1\.1\.3\.1\.1\.01\.01/
+    );
+    // ⚠️ E NADA FOI GRAVADO — nem empenho, nem o registro do ato de apropriar. A guarda roda antes
+    // de qualquer gravação, que é a regra que este repositório já pagou para não repetir.
+    expect(await prisma.empenho.count()).toBe(0);
+    expect(await prisma.apropriacaoDaFolha.count()).toBe(0);
+  });
+
+  /**
+   * ⚠️ A RECUSA É SIMÉTRICA, e a simetria é o que a torna uma guarda em vez de um obstáculo de
+   * ordem: se ela só olhasse a folha do vale, bastaria apropriar o vale primeiro e a mensal
+   * depois para a duplicação voltar pela outra ponta, com os dois atos verdes.
+   */
+  it("RECUSA nas DUAS pontas: vale e remuneração do mês na MESMA natureza de despesa", async () => {
+    await grupoDoVale(true, { contaVariacaoId: CONTA_DO_ADIANTAMENTO }); // conta certa, ficha 319011
+    await grupoDoVencimento(); // também 319011
+    await parametroDoVale();
+    const vale = await valeFechado();
+
+    // (a) apropriando o VALE
+    await expect(apropriarFolha(prisma, { folhaId: vale, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA })).rejects.toThrow(
+      /VALE-NA-MESMA-NATUREZA-DA-REMUNERACAO[\s\S]*319011/
+    );
+    expect(await prisma.empenho.count()).toBe(0);
+
+    // (b) e apropriando a MENSAL — a outra ponta, com o vale sequer empenhado
+    const mensal = await mensalDeJunho();
+    await fecharFolha(prisma, { folhaId: mensal, criadoPor: FECHA });
+    await expect(apropriarFolha(prisma, { folhaId: mensal, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA })).rejects.toThrow(
+      /VALE-NA-MESMA-NATUREZA-DA-REMUNERACAO/
+    );
+    expect(await prisma.empenho.count()).toBe(0);
+    expect(await prisma.apropriacaoDaFolha.count()).toBe(0);
+  });
+
+  /**
+   * ═══ O CASO POSITIVO — E É ELE QUE PROVA QUE AS DUAS RECUSAS NÃO SÃO SÓ "NÃO" ═══
+   *
+   * A CONTA, À MÃO, para MAT-A em junho, com o vale em natureza própria:
+   *   dotação de PESSOAL (319011) consumida .... 3.000,00   (só a mensal)
+   *   dotação do vale     (319096) consumida ... 1.200,00   (só o vale)
+   *   ──────────────────────────────────────────────────
+   *   a remuneração do mês deixa de consumir 4.200,00 de 319011 para 3.000,00 de custo.
+   *
+   * ⚠️ E O LADO PATRIMONIAL É AFIRMADO PELO EFEITO, no RAZÃO: a liquidação do vale DEBITA
+   * `1.1.3.1.1.01.01` e NÃO a VPD de pessoal. Conferir só o empenho provaria metade — a
+   * duplicação da rodada 2 era, antes de tudo, despesa patrimonial reconhecida duas vezes.
+   */
+  it("com a conta do ativo e natureza própria, a dotação de pessoal do mês volta a ser 3.000,00", async () => {
+    await grupoDoValeBemConfigurado();
     await grupoDoVencimento();
     await parametroDoVale();
     const vale = await valeFechado();
-    await apropriarFolha(prisma, { folhaId: vale, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA });
+    await liquidarVale(vale);
 
     const mensal = await mensalDeJunho();
     await fecharFolha(prisma, { folhaId: mensal, criadoPor: FECHA });
     await apropriarFolha(prisma, { folhaId: mensal, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA });
 
-    const doVinculoA = await prisma.empenho.findMany({
-      where: { credorCpfCnpj: "11144477735" },
-      orderBy: { numero: "asc" },
-      select: { numero: true, valor: true },
+    const porNatureza = async (nd: string): Promise<string> => {
+      const es = await prisma.empenho.findMany({ where: { ficha: { naturezaDespesaId: nd } }, select: { valor: true } });
+      return es.reduce((acc, e) => acc.plus(new Decimal(e.valor)), new Decimal(0)).toFixed(2);
+    };
+    // 3.000,00 de MAT-A mais 2.000,00 de MAT-B — a remuneração do mês, UMA vez.
+    expect(await porNatureza("nd-11")).toBe("5000.00");
+    // 1.200,00 mais 800,00 — o vale, na dotação dele.
+    expect(await porNatureza("nd-96")).toBe("2000.00");
+
+    // ── o razão: a liquidação do vale debitou o ATIVO, não a VPD de pessoal ──
+    const debitosDoVale = await prisma.partidaContabil.findMany({
+      where: {
+        subsistema: "PATRIMONIAL",
+        tipo: "DEBITO",
+        lancamento: { origemTipo: "LIQUIDACAO" },
+        conta: { codigo: { in: ["1.1.3.1.1.01.01", "3.1.1.1.1.01.00"] } },
+      },
+      select: { valor: true, conta: { select: { codigo: true } } },
     });
-    expect(doVinculoA.map((e) => e.valor.toFixed(2))).toEqual(["3000.00", "1200.00"]);
-    const total = doVinculoA.reduce((s, e) => s + Number(e.valor), 0);
-    expect(total.toFixed(2)).toBe("4200.00");
+    const porConta = new Map<string, Decimal>();
+    for (const d of debitosDoVale) {
+      porConta.set(d.conta.codigo, (porConta.get(d.conta.codigo) ?? new Decimal(0)).plus(new Decimal(d.valor)));
+    }
+    expect(porConta.get("1.1.3.1.1.01.01")?.toFixed(2)).toBe("2000.00");
+    // ⚠️ E A VPD DE PESSOAL NÃO FOI TOCADA PELO VALE: a mensal ainda não liquidou nesta corrida,
+    // então qualquer débito nela aqui seria do vale — e é justamente esse que não pode existir.
+    expect(porConta.get("3.1.1.1.1.01.00")).toBeUndefined();
   });
 });
