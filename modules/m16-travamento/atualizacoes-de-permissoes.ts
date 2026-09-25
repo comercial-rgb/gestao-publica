@@ -495,6 +495,34 @@ export function derivarParametroDoDecimoTerceiro(
   return saida;
 }
 
+/**
+ * V12 — RECORTAR QUEM ENTRA NO CÁLCULO DA FOLHA (`SELECIONAR_VINCULOS_DA_FOLHA`).
+ *
+ * ⚠️ ELA NÃO DERIVA DE `CALCULAR_FOLHA`, E DERIVAR SERIA DESFAZER A SEPARAÇÃO NO ATO DE INSTALÁ-LA.
+ * O motor cobra as duas justamente porque são autoridades diferentes: calcular decide QUANDO o ente
+ * paga; recortar decide QUEM fica de fora. Se todo perfil que calcula recebesse o recorte na
+ * atualização, o ente acordaria com a segregação já anulada — e a atualização teria produzido
+ * exatamente o estado que o desenho existe para evitar.
+ *
+ * ⚠️ E O QUE FECHA A QUESTÃO É O DETECTOR: um recorte errado NÃO TEM NENHUM. A folha parcial fecha,
+ * o total bate, o empenho bate, a liquidação bate, e quem ficou de fora só descobre no dia do
+ * pagamento. Concessão sem detector é concessão DELIBERADA: vai só a quem administra permissões no
+ * global, que a distribui nomeando a pessoa.
+ */
+export function derivarSelecaoNoCalculoDaFolha(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null);
+    if (!administra) continue;
+    if (perfil.permissoes.some((p) => p.acao === "SELECIONAR_VINCULOS_DA_FOLHA" && p.unidadeOrcId === null)) continue;
+    saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao: "SELECIONAR_VINCULOS_DA_FOLHA", unidadeOrcId: null });
+  }
+  return saida;
+}
+
 /** V7 M1 U4 — a ouvidoria (triagem e resposta, com lotação) e a moderação das avaliações. */
 export const ACOES_DA_OUVIDORIA_E_AVALIACAO: readonly AcaoDoSistema[] = ["TRIAR_MANIFESTACAO_DE_OUVIDORIA", "MODERAR_AVALIACAO_DE_SERVICO"];
 
@@ -1150,6 +1178,22 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "adiante que acuse. Concessao sem detector e concessao DELIBERADA: vai so a quem administra permissoes no " +
       "global, que a distribui nomeando a pessoa.",
     derivar: derivarParametroDoDecimoTerceiro,
+  },
+  {
+    versao: 29,
+    nome: "selecao-no-calculo-da-folha",
+    descricao:
+      "Recortar quem entra no calculo da folha virou alcancavel pela tela (V12): o formulario de calcular passou a " +
+      "declarar o modo (a folha inteira, ou so as matriculas escritas) e a abrangencia efetiva de cada calculo ficou " +
+      "consultavel. O motor ja cobrava SELECIONAR_VINCULOS_DA_FOLHA desde a V11 V9.5, mas NENHUM perfil a tinha — a " +
+      "capacidade existia e ninguem alcancava. " +
+      "⚠️ ELA NAO DERIVA DE CALCULAR_FOLHA, e derivar seria desfazer a separacao no ato de instala-la: calcular decide " +
+      "QUANDO o ente paga, recortar decide QUEM fica de fora. Se todo perfil que calcula recebesse o recorte aqui, o " +
+      "ente acordaria com a segregacao ja anulada. " +
+      "⚠️ E UM RECORTE ERRADO NAO TEM DETECTOR: a folha parcial fecha, o total bate, o empenho bate, a liquidacao bate, " +
+      "e quem ficou de fora so descobre no dia do pagamento. Vai so a quem administra permissoes no global, que a " +
+      "distribui nomeando a pessoa.",
+    derivar: derivarSelecaoNoCalculoDaFolha,
   },
 ];
 

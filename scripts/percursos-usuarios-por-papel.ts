@@ -78,7 +78,11 @@ export const PAPEIS: readonly Papel[] = [
     acoes: ["CADASTRAR_PESSOA", "CADASTRAR_SERVIDOR", "ADMITIR_SERVIDOR", "MOVIMENTAR_SERVIDOR", "ALTERAR_REMUNERACAO", "DESLIGAR_SERVIDOR", "CADASTRAR_CARGO", "CADASTRAR_LOTACAO", "GERIR_DEPENDENTE", "BAIXAR_DEPENDENTE", "REGISTRAR_PORTARIA", "REGISTRAR_ANOTACAO", "REGISTRAR_TREINAMENTO", "CONSULTAR_PESSOAL", "CONSULTAR_CADASTROS",
       // V6 P2.3 — a folha: o RH parametriza, lança e CALCULA. Quem FECHA é a contabilidade (é o
       // fechamento que vai ao empenho), e essa separação é percorrida pelo smoke da folha.
-      "CONFIGURAR_TABELAS_DA_FOLHA", "CADASTRAR_RUBRICA", "LANCAR_NA_FOLHA", "ABRIR_FOLHA", "CALCULAR_FOLHA", "CANCELAR_CALCULO_DA_FOLHA", "CONSULTAR_FOLHA"],
+      "CONFIGURAR_TABELAS_DA_FOLHA", "CADASTRAR_RUBRICA", "LANCAR_NA_FOLHA", "ABRIR_FOLHA", "CALCULAR_FOLHA", "CANCELAR_CALCULO_DA_FOLHA", "CONSULTAR_FOLHA",
+      // V12 — recortar quem entra no calculo. E acao SEPARADA de CALCULAR_FOLHA de proposito; o RH
+      // a tem neste percurso porque e ele quem calcula, e sem ela o recorte nao teria como ser exercitado
+      // por papel nenhum. Num ente real ela e concedida nominalmente (atualizacao de permissoes v29).
+      "SELECIONAR_VINCULOS_DA_FOLHA"],
   },
   {
     identificador: "atestador@percursos.local",

@@ -298,6 +298,11 @@ describe("instalação limpa e atualização — no banco", () => {
       // global — e ninguem mais, de proposito (ver `derivarEntidadeContabil`).
       { versao: 27, previa: 0, aplicada: false },
       { versao: 28, previa: 0, aplicada: false },
+      // V12 — SELECIONAR_VINCULOS_DA_FOLHA. Previa 0 em instalacao limpa pelo mesmo motivo das
+      // anteriores (o bootstrap ja concede o censo do ENTE inteiro). Na ATUALIZACAO de um ente que
+      // ja roda, ela alcanca SO quem administra permissoes no global: derivar de CALCULAR_FOLHA
+      // desfaria, no ato de instalar, a separacao que o motor cobra (ver `derivarSelecaoNoCalculoDaFolha`).
+      { versao: 29, previa: 0, aplicada: false },
     ]);
   });
 
