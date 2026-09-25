@@ -1,0 +1,129 @@
+// ============================================================================
+// M33 — O ADIANTAMENTO SALARIAL (V13; TR 5.12.50)
+// ============================================================================
+//
+// O "vale": o ente paga, no meio do mês, uma parte da remuneração da competência, e a folha
+// MENSAL daquela mesma competência ABATE o que o vale adiantou.
+//
+// ⚠️ POR QUE É TIPO DE FOLHA PRÓPRIO, E NÃO UMA RUBRICA DENTRO DA MENSAL. A razão é estrutural:
+// o adiantamento se paga ANTES de a folha mensal da competência existir. Não cabe como rubrica
+// numa folha que ainda não abriu — e o próprio TR o lista como rotina de cálculo separada, ao
+// lado de "adiantamento de 13º salário (1ª parcela)", que é outro item.
+//
+// ⚠️ E ELE É POR COMPETÊNCIA, não por exercício: há um vale por mês, e é por isso que
+// `exercicio` fica NULO nele. Quem diz isso é `NATUREZA_DO_TIPO_DE_FOLHA`
+// (`modules/m33-folha/dominio.ts`), e o CHECK `ck_folha_exercicio_por_tipo` deriva de lá.
+
+/// ⚠️ AS DUAS PRÁTICAS QUE O PRODUTO SUPORTA — E ELAS NÃO ESGOTAM AS REGRAS ADMISSÍVEIS.
+///
+/// Este enum é a lista do que o sistema sabe CALCULAR e VERIFICAR, não um inventário do que os
+/// municípios brasileiros praticam. Um ente cuja regra não seja nenhuma das duas NÃO recebe um
+/// encaixe na mais parecida: recebe recusa, e a pendência tem nome —
+/// `REGRA-DO-ADIANTAMENTO-SALARIAL-NAO-SUPORTADA` (MODULO.md do M33). Encaixar à força seria
+/// inventar a norma do ente, que é a proibição que este módulo inteiro observa.
+///
+/// Cada opção carrega, em `modules/m33-folha/adiantamento-salarial.ts`, quatro coisas que uma
+/// string de enum sozinha não carrega: SEMÂNTICA (o que a base é, em fatos do banco), FUNDAMENTO
+/// APLICÁVEL (o que o ente precisa ter escrito no ato para escolhê-la), VIGÊNCIA (a competência
+/// e a versão deste parâmetro) e APROVAÇÃO (a ação própria e o `criadoPor` que a gravou).
+enum BaseDoAdiantamentoSalarial {
+  /// A base é um FATO JÁ APURADO: o total de PROVENTOS do vínculo na folha MENSAL FECHADA da
+  /// competência ANTERIOR. Nada é recalculado — lê-se o que aquela folha apurou.
+  ///
+  /// Quem é admitido no próprio mês não tem base e não recebe vale (não há fato anterior a ler).
+  /// Sem a mensal anterior FECHADA, o cálculo RECUSA nomeando a competência: projetar por conta
+  /// própria seria trocar a regra que o ente declarou por outra.
+  REMUNERACAO_DO_MES_ANTERIOR
+
+  /// A base é a remuneração que a competência CORRENTE produziria hoje: o motor mensal inteiro,
+  /// com as tabelas vigentes, as versões de rubrica vigentes e a proporcionalidade de dias.
+  ///
+  /// ⚠️ NENHUMA CONTA NOVA — é `contrachequesMensaisDaCompetencia`, a mesma função que a folha
+  /// mensal e a complementar usam. Uma segunda aritmética sobre o mesmo dinheiro é exatamente o
+  /// que este repositório existe para não ter.
+  REMUNERACAO_PROJETADA_DO_MES
+}
+
+/// O parâmetro do adiantamento salarial de UMA competência. Versionado e append-only: a vigente
+/// é a de maior `versao`. Nada aqui é atualizado — corrigir é cadastrar a versão seguinte.
+///
+/// ⚠️ NASCE SEM SEED E SEM DEFAULT. O TR não fixa percentual nem base (procurado em
+/// `docs/edital/`, não localizado: a cláusula apenas nomeia o tipo). Sem parâmetro vigente o
+/// cálculo recusa com `PARAMETRO-DO-ADIANTAMENTO-SALARIAL-AUSENTE`, nomeando a competência.
+///
+/// ⚠️ POR COMPETÊNCIA, E NÃO POR EXERCÍCIO — é a diferença para `ParametroDoDecimoTerceiro`, de
+/// quem esta tabela copia a FORMA. O 13º é um por ano; o vale é um por mês, e o ente pode mudar
+/// o percentual em julho sem reescrever o que valeu em junho. É esta granularidade que faz
+/// "alteração de parâmetro não reescreve cálculo fechado" ser verdade por construção: a folha
+/// fechada de junho cita na memória o `id` e a `versao` que a apuraram, e é ESSA versão que a
+/// mensal de junho lê para abater — nunca a vigente hoje.
+model ParametroDoAdiantamentoSalarial {
+  id String @id @default(cuid())
+
+  /// A competência a que este parâmetro se aplica ("2026-06").
+  competencia String @db.VarChar(7)
+
+  /// Sequencial por competência, começando em 1. A memória do contracheque cita este número, e o
+  /// `@@unique` abaixo é o que faz duas gravações concorrentes colidirem em vez de se atropelarem.
+  versao Int
+
+  // ── O QUE O ENTE DECLARA ──────────────────────────────────────────────────
+
+  /// Fração da base que o vale antecipa. Decimal: 0.4000 = 40%. CHECK: maior que 0 e até 1.
+  /// ⚠️ ZERO É RECUSADO, e não é preciosismo: um vale de 0% é uma folha inteira de contracheques
+  /// de zero que fecha, empenha e liquida sem nada acusar.
+  percentualDoAdiantamento Decimal @db.Decimal(7, 4)
+
+  baseDoAdiantamento BaseDoAdiantamentoSalarial
+
+  /// ⚠️ QUAL FATO PERMITE RECONHECER O ADIANTAMENTO NA FOLHA MENSAL — DECLARADO, NUNCA CRAVADO.
+  ///
+  /// "Fechou" NÃO é "pagou": fechar congela o cálculo e não move um centavo do caixa. Abater da
+  /// mensal um vale que o ente ainda não pagou desconta do servidor dinheiro que ele não recebeu.
+  /// Qual estado basta é questão do ente, e ele declara aqui com o ato — a mesma saída que o 13º
+  /// adotou na V11 V9.3, e o mesmo vocabulário de fatos (`EstadoMinimoDoAdiantamento`).
+  ///
+  /// ⚠️ E AQUI ELE É OBRIGATÓRIO, ao contrário do 13º. Lá o campo nasceu NULÁVEL porque já havia
+  /// parâmetros gravados quando a pergunta não existia, e inventar `FECHADO` para eles seria
+  /// afirmar que o ente declarou o que ninguém lhe perguntou. Aqui não há linha anterior nenhuma:
+  /// a tabela nasce vazia nesta migration, então exigir a declaração não quebra passado nenhum e
+  /// fecha a porta do "simulação que ninguém percebe que é simulação".
+  estadoMinimoParaAbater EstadoMinimoDoAdiantamento
+
+  // ── AS DUAS RUBRICAS ──────────────────────────────────────────────────────
+
+  /// A rubrica de PROVENTO que carrega o vale na folha de adiantamento.
+  rubricaDoAdiantamentoId String
+  rubricaDoAdiantamento   Rubrica @relation("RubricaDoAdiantamentoSalarial", fields: [rubricaDoAdiantamentoId], references: [id])
+
+  /// A rubrica de DESCONTO, de natureza `ABATIMENTO_DO_ADIANTAMENTO_SALARIAL`, que abate na folha
+  /// MENSAL da mesma competência o que o vale adiantou.
+  ///
+  /// ⚠️ SEPARADA DA ANTERIOR, e pelo mesmo motivo do 13º: é a rubrica que decide em qual GRUPO DE
+  /// EMPENHO a verba cai, e portanto contra qual ficha e qual conta de "pessoal a pagar".
+  rubricaDoAbatimentoId String
+  rubricaDoAbatimento   Rubrica @relation("RubricaDoAbatimentoSalarial", fields: [rubricaDoAbatimentoId], references: [id])
+
+  // ── O ATO, ESTRUTURADO ────────────────────────────────────────────────────
+
+  atoEsfera      EsferaDoAtoNormativo
+  atoTipo        TipoDeAtoNormativo
+  /// O número do ato como ele é citado ("1.234", "45/2019"). O serviço exige ao menos um dígito.
+  atoNumero      String @db.VarChar(40)
+  /// O ano do ato. O serviço confere plausibilidade contra a DATA CIVIL DO ENTE, nunca UTC.
+  atoAno         Int
+  /// O dispositivo exato ("art. 2º, § 1º"). Sem ele a citação não é conferível.
+  atoDispositivo String @db.VarChar(120)
+  /// A ementa ou a transcrição do dispositivo — o que permite ao controle interno ler o que o
+  /// ente leu, sem abrir o diário oficial.
+  atoEmenta      String
+
+  criadoEm  DateTime @default(now())
+  /// ⚠️ A APROVAÇÃO DA OPÇÃO ESCOLHIDA. Não é metadado: junto da ação própria
+  /// `CONFIGURAR_PARAMETRO_DO_ADIANTAMENTO_SALARIAL`, é o que responde "quem, no ente, assinou
+  /// que a regra é esta". Append-only, então a assinatura de cada versão fica.
+  criadoPor String
+
+  @@unique([competencia, versao])
+  @@index([competencia])
+}

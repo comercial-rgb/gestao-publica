@@ -1,0 +1,14 @@
+-- V13 (TR 5.12.50) — O TIPO DE FOLHA `ADIANTAMENTO_SALARIAL`, E NADA MAIS NESTE ARQUIVO.
+--
+-- ⚠️ SOZINHA PELA RESTRICAO DO POSTGRES: um valor acrescentado a um tipo enumerado NAO PODE SER
+-- USADO na mesma transacao que o acrescentou, e o Prisma roda cada arquivo de migration numa
+-- transacao. A migration 20261018090300 USA este valor (no CHECK `ck_folha_exercicio_por_tipo`),
+-- entao ele precisa ja estar commitado. A pasta nasce COM o arquivo dentro (pasta vazia ja
+-- quebrou `migrate deploy` com P3015 aqui).
+--
+-- ADITIVA: um valor novo. Nenhum existente muda de nome ou sai, nenhuma linha e reescrita.
+--
+-- O QUE ELE E: o "vale" — o ente paga no meio do mes uma parte da remuneracao da competencia, e
+-- a folha MENSAL da MESMA competencia abate o que o vale adiantou. E tipo proprio, e nao rubrica
+-- dentro da mensal, porque ele se paga ANTES de a folha mensal daquela competencia existir.
+ALTER TYPE "TipoDeFolha" ADD VALUE 'ADIANTAMENTO_SALARIAL';

@@ -1,0 +1,17 @@
+-- V13 — A NATUREZA `ABATIMENTO_DO_ADIANTAMENTO_SALARIAL`, E NADA MAIS NESTE ARQUIVO.
+--
+-- ⚠️ SOZINHA PELA MESMA RESTRICAO DO POSTGRES da migration anterior.
+--
+-- ⚠️ E ELA NAO REUSA `ABATIMENTO_DO_ADIANTAMENTO_DO_13`. As duas abatem em FOLHAS DIFERENTES: a
+-- do 13o so produz linha na folha DECIMO_TERCEIRO; esta so produz linha na folha MENSAL. Uma
+-- natureza so para as duas faria o motor mensal buscar o adiantamento do 13o para abater do
+-- salario do mes — metade da gratificacao natalina descontada do vencimento, com os totais
+-- fechando e nenhuma etapa adiante acusando.
+--
+-- ⚠️ TRES LISTAS DA MESMA VERDADE, e esta e a terceira: a constante `NATUREZAS_DA_RUBRICA`
+-- (`modules/m33-folha/dominio.ts`, de onde a uniao e o Zod derivam), o enum de
+-- `prisma/schema/m33-folha.prisma` e este enum do banco. `m33-listas-de-natureza.test.ts` le o
+-- arquivo `.prisma` e compara com a constante; foi a ausencia no `.prisma` que a V11 V9.1 pagou.
+--
+-- ADITIVA: um valor novo.
+ALTER TYPE "NaturezaDaRubrica" ADD VALUE 'ABATIMENTO_DO_ADIANTAMENTO_SALARIAL';

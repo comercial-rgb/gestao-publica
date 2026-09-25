@@ -1,0 +1,20 @@
+-- V13 — A ACAO `CONFIGURAR_PARAMETRO_DO_ADIANTAMENTO_SALARIAL` NO ENUM DO BANCO.
+--
+-- ⚠️ ESTA MIGRATION EXISTE PORQUE `AcaoDoSistema` E TIPO DE BANCO, E NAO SO DE TYPESCRIPT.
+-- Acrescentar o valor a uniao em `modules/m16-travamento/acoes.ts` e ao enum em
+-- `prisma/schema/m16-usuarios.prisma` faz o COMPILADOR aceitar a acao — e deixa o banco sem ela.
+-- Nada quebra ao compilar nem ao subir; quebra a primeira concessao REAL da permissao (a
+-- instalacao limpa, ou a atualizacao num ente existente), em runtime, com "invalid input value
+-- for enum AcaoDoSistema", longe da causa.
+--
+-- ⚠️ ACAO PROPRIA, E O CRITERIO E O DE SEMPRE: e a MESMA AUTORIDADE?
+--
+-- Nao e. `CONFIGURAR_TABELAS_DA_FOLHA` e transcrever a portaria federal do IRRF; este e escrever
+-- o criterio do MUNICIPIO. E nao e `CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO` tampouco: o criterio
+-- do avo e anual e vem do estatuto; o percentual do vale e mensal e costuma vir de decreto do
+-- prefeito. Juntar as duas daria a quem decide um o poder sobre o outro, e um erro aqui NAO TEM
+-- DETECTOR ADIANTE — a folha de adiantamento fecha, o empenho fecha, a mensal abate o que o vale
+-- pagou, e o total bate com o percentual errado.
+--
+-- ADITIVA: um valor novo. Nenhum existente muda de nome ou sai.
+ALTER TYPE "AcaoDoSistema" ADD VALUE 'CONFIGURAR_PARAMETRO_DO_ADIANTAMENTO_SALARIAL';

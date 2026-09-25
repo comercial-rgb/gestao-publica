@@ -29,6 +29,13 @@ const OPCOES_DE_NATUREZA = [
   // parâmetro não pode ser cadastrado, e a folha de 13º nunca é calculada — tudo isso com o
   // domínio inteiro funcionando e nenhum teste vermelho.
   { valor: "ABATIMENTO_DO_ADIANTAMENTO_DO_13", rotulo: "Abatimento do adiantamento do 13º (lido da folha da 1ª parcela)" },
+  // ⚠️ V13 — SEM ESTA LINHA A CADEIA DO ADIANTAMENTO SALARIAL NÃO EXISTE PELA INTERFACE, e o
+  // defeito é exatamente o `ROTULO-CRU-DO-TIPO-DE-FOLHA` ao contrário: nenhum compilador cobra
+  // este array. É a única natureza que o motor MENSAL sabe ler para abater o vale, e o parâmetro
+  // do adiantamento RECUSA qualquer outra no papel de abatimento. Faltando aqui, o operador não
+  // consegue criar a rubrica, o parâmetro não pode ser cadastrado, e o vale nunca é abatido —
+  // tudo isso com o domínio inteiro funcionando e nenhum teste vermelho.
+  { valor: "ABATIMENTO_DO_ADIANTAMENTO_SALARIAL", rotulo: "Abatimento do adiantamento salarial (lido da folha do vale da mesma competência)" },
 ];
 
 const OPCOES_DE_TIPO_DE_RUBRICA = [
@@ -48,6 +55,23 @@ export const OPCOES_DE_TIPO_DE_FOLHA = [
   { valor: "MENSAL_COMPLEMENTAR", rotulo: "Mensal complementar (paga a diferença de uma competência já fechada)" },
   { valor: "ADIANTAMENTO_DECIMO_TERCEIRO", rotulo: "Adiantamento do 13º (1ª parcela)" },
   { valor: "DECIMO_TERCEIRO", rotulo: "13º salário (2ª parcela, com abatimento da 1ª)" },
+  // ⚠️ V13 — O MESMO ARRAY SEM COMPILADOR. Sem esta linha o tipo existe no domínio, no banco e no
+  // motor, e NÃO EXISTE para quem opera: a barra de abrir folha não o oferece, e a lista de
+  // folhas mostraria o nome cru do enum. Foi assim que a V11 registrou `ROTULO-CRU-DO-TIPO-DE-FOLHA`
+  // duas vezes.
+  { valor: "ADIANTAMENTO_SALARIAL", rotulo: "Adiantamento salarial (o vale do mês, abatido na mensal da mesma competência)" },
+];
+
+/**
+ * V13 — AS DUAS PRÁTICAS DE BASE DO VALE, EM PORTUGUÊS DE QUEM OPERA.
+ *
+ * ⚠️ E A LISTA NÃO ESGOTA AS REGRAS ADMISSÍVEIS: ela é o que o sistema sabe calcular e verificar.
+ * Um ente cuja regra não seja nenhuma das duas recebe pendência explícita
+ * (`REGRA-DO-ADIANTAMENTO-SALARIAL-NAO-SUPORTADA`), não um encaixe na mais parecida.
+ */
+export const OPCOES_DE_BASE_DO_ADIANTAMENTO_SALARIAL = [
+  { valor: "REMUNERACAO_DO_MES_ANTERIOR", rotulo: "A remuneração do mês anterior (o que a folha fechada dele apurou)" },
+  { valor: "REMUNERACAO_PROJETADA_DO_MES", rotulo: "A remuneração projetada do próprio mês (motor mensal, tabelas vigentes)" },
 ];
 
 export const OPCOES_DE_ESFERA_DO_ATO = [
@@ -531,4 +555,60 @@ export const PARAMETROS_DO_DECIMO_TERCEIRO: DefinicaoDeRecurso = definirRecurso(
   permissoes: { criar: "CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO" },
 });
 
-export const RECURSOS_DA_FOLHA: readonly DefinicaoDeRecurso[] = [FOLHAS, RUBRICAS, LANCAMENTOS_DA_FOLHA, TABELAS_DA_FOLHA, GRUPOS_DE_EMPENHO_DA_FOLHA, DESIGNACOES_DA_FOLHA, PARAMETROS_DO_DECIMO_TERCEIRO];
+/**
+ * ═══ V13 (TR 5.12.50) — OS PARÂMETROS DO ADIANTAMENTO SALARIAL ═══
+ *
+ * ⚠️ RECURSO PRÓPRIO, E NÃO UMA ABA DO PARÂMETRO DO 13º. Os dois parecem irmãos — mesmo módulo,
+ * mesma forma de tela, mesmo tipo de ato — e a granularidade os separa: o do 13º é POR EXERCÍCIO
+ * e o do vale é POR COMPETÊNCIA. Uma lista só teria de mostrar dois tipos de linha com chaves
+ * diferentes, e a coluna "vigente" significaria coisas diferentes em cada uma.
+ *
+ * ⚠️ E A PERMISSÃO DE CRIAR É PRÓPRIA (`CONFIGURAR_PARAMETRO_DO_ADIANTAMENTO_SALARIAL`): quem
+ * transcreve o estatuto não recebe, por isso, o poder de escrever o decreto do mês.
+ */
+export const PARAMETROS_DO_ADIANTAMENTO_SALARIAL: DefinicaoDeRecurso = definirRecurso({
+  nome: "parametros-do-adiantamento-salarial",
+  rotulo: "Parâmetros do adiantamento salarial",
+  rotuloSingular: "Parâmetro do adiantamento salarial",
+  rota: "/folha/parametros-do-adiantamento-salarial",
+  descricao:
+    "Por competência, o que o ENTE declara para o adiantamento salarial (o vale do mês): o percentual, sobre que base " +
+    "ele incide (a remuneração do mês anterior, ou a projetada do próprio mês), qual rubrica paga e qual abate na folha " +
+    "mensal, QUAL ESTADO o vale precisa ter alcançado para ser abatido — fechado, certificado ou pago —, e o ato que " +
+    "fundamenta tudo isso. Sem parâmetro, a folha de adiantamento salarial recusa calcular e diz a competência. " +
+    "Corrigir é cadastrar a versão seguinte: as folhas já calculadas citam na memória a versão que as produziu, e é " +
+    "ESSA versão que a mensal lê para abater — cadastrar a seguinte não reescreve nenhum cálculo fechado.",
+  campos: [
+    { nome: "competencia", rotulo: "Competência (AAAA-MM)", tipo: "texto", obrigatorio: true, largura: 1 },
+    { nome: "percentualDoAdiantamento", rotulo: "Percentual do adiantamento", tipo: "texto", obrigatorio: true, largura: 1 },
+    { nome: "baseDoAdiantamento", rotulo: "O percentual incide sobre", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+    { nome: "estadoMinimoParaAbater", rotulo: "Para ser abatido na mensal, o vale precisa estar", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+    { nome: "atoTipo", rotulo: "Tipo do ato", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+    { nome: "atoNumero", rotulo: "Número do ato", tipo: "texto", obrigatorio: true, largura: 1 },
+    { nome: "atoAno", rotulo: "Ano do ato", tipo: "inteiro", obrigatorio: true, largura: 1 },
+    { nome: "atoDispositivo", rotulo: "Dispositivo", tipo: "texto", obrigatorio: true, largura: 2 },
+    { nome: "atoEmenta", rotulo: "Ementa ou transcrição do dispositivo", tipo: "textoLongo", obrigatorio: true, largura: 4 },
+  ],
+  colunas: [
+    // ⚠️ TEXTO, NÃO LINK, pela mesma razão declarada no parâmetro do 13º: não existe rota de
+    // detalhe, e uma coluna `link` faria o molde montar caminho para um 404 — botão sem handler.
+    { nome: "competencia", cabecalho: "Competência", tipo: "texto", ordenavel: true },
+    { nome: "versao", cabecalho: "Versão", tipo: "inteiro", ordenavel: true },
+    { nome: "percentual", cabecalho: "Percentual", tipo: "texto" },
+    { nome: "base", cabecalho: "Incide sobre", tipo: "texto" },
+    { nome: "criterioDoAbatimento", cabecalho: "Abatimento exige", tipo: "texto" },
+    { nome: "rubricas", cabecalho: "Rubricas (paga / abate)", tipo: "texto" },
+    { nome: "ato", cabecalho: "Ato", tipo: "texto" },
+    { nome: "situacao", cabecalho: "Situação", tipo: "situacao" },
+  ],
+  filtros: [{ nome: "q", rotulo: "Competência ou ato", tipo: "texto", largura: 2, placeholder: "2026-06 ou 1.234" }],
+  // ⚠️ NENHUMA AÇÃO POR REGISTRO: o parâmetro é append-only. Não se edita (a correção é a versão
+  // seguinte) e não se revoga — as folhas já calculadas citam a versão que as produziu, e sem ela
+  // o contracheque deixaria de se explicar. Uma ação "editar" aqui reescreveria a história de uma
+  // folha fechada, que é justamente o que a V13 foi construída para impedir.
+  acoes: [],
+  abas: ["dados"],
+  permissoes: { criar: "CONFIGURAR_PARAMETRO_DO_ADIANTAMENTO_SALARIAL" },
+});
+
+export const RECURSOS_DA_FOLHA: readonly DefinicaoDeRecurso[] = [FOLHAS, RUBRICAS, LANCAMENTOS_DA_FOLHA, TABELAS_DA_FOLHA, GRUPOS_DE_EMPENHO_DA_FOLHA, DESIGNACOES_DA_FOLHA, PARAMETROS_DO_DECIMO_TERCEIRO, PARAMETROS_DO_ADIANTAMENTO_SALARIAL];

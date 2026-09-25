@@ -26,6 +26,7 @@ import {
 } from "../m32-pessoal/dominio.js";
 import {
   NATUREZAS_SISTEMICAS,
+  RubricaDoAbatimentoSalarialAusenteError,
   RubricaSistemicaAusenteError,
   TabelaAusenteError,
   VencimentoAusenteError,
@@ -89,6 +90,20 @@ import {
   type ProcedenciaDoAbatimento,
 } from "./decimo-terceiro.js";
 import { criterioDoAbatimentoNoCalculo, parametroVigenteDoExercicio } from "./decimo-terceiro-servico.js";
+// V13 — o adiantamento salarial. Direção `servico.ts → aqui`, sem ciclo: nada dentro do M33
+// importa `./servico.js`.
+import {
+  abatimentoDoAdiantamentoSalarialNaCompetencia,
+  parametroVigenteDaCompetencia,
+  type AbatimentoDaCompetencia,
+} from "./adiantamento-salarial-servico.js";
+import {
+  calcularContrachequeDoAdiantamentoSalarial,
+  BaseDoAdiantamentoSalarialAusenteError,
+  RubricaDoAdiantamentoSalarialSemVersaoError,
+  VERSAO_DO_MOTOR_DO_ADIANTAMENTO_SALARIAL,
+  type AbatimentoDoAdiantamentoSalarial,
+} from "./adiantamento-salarial.js";
 // V11 V9.2 — a derivação da situação da certificação, para a PROCEDÊNCIA do abatimento na memória
 // do contracheque. Aresta nova e sem ciclo: nada dentro do M33 importa `./servico.js`.
 import { situacaoDaCertificacao, type FatoDaCertificacao } from "./certificacao.js";
@@ -468,11 +483,30 @@ function motivoDeFolhaSemVinculos(
  */
 type AoFicarSemVinculos = "RECUSAR" | "DEVOLVER_VAZIO";
 
+/**
+ * ═══ ⚠️ V13 — O VALE ENTRA NA CONTA DO MÊS, OU NÃO ENTRA, E QUEM DECIDE É O CHAMADOR ═══
+ *
+ * `APLICAR` é o comportamento da MENSAL e da COMPLEMENTAR, e é o padrão: o que o adiantamento
+ * salarial da competência já pagou tem de ser abatido, ou o ente paga a remuneração duas vezes.
+ *
+ * `IGNORAR` existe para UM chamador só: o motor do PRÓPRIO adiantamento salarial, quando a base
+ * declarada pelo ente é `REMUNERACAO_PROJETADA_DO_MES`. Ele usa esta função para projetar a
+ * remuneração da competência — e, se o abatimento fosse aplicado ali, a primeira coisa que
+ * aconteceria seria a guarda `ADIANTAMENTO-SALARIAL-NAO-FECHADO` recusar o cálculo do vale por
+ * causa da folha do próprio vale, que obviamente ainda não fechou. Beco sem saída na primeira
+ * tentativa de usar a funcionalidade.
+ *
+ * ⚠️ E O PADRÃO É `APLICAR` DE PROPÓSITO: um caminho novo que esqueça de declarar abate. O
+ * esquecimento seguro é o que desconta, nunca o que paga de novo.
+ */
+type AbatimentoDoVale = "APLICAR" | "IGNORAR";
+
 async function contrachequesMensaisDaCompetencia(
   tx: Tx,
   competencia: string,
   selecao: SelecaoDoCalculo = SELECAO_DE_TODOS,
-  aoFicarSemVinculos: AoFicarSemVinculos = "RECUSAR"
+  aoFicarSemVinculos: AoFicarSemVinculos = "RECUSAR",
+  abatimentoDoVale: AbatimentoDoVale = "APLICAR"
 ): Promise<{
   readonly finais: readonly ContrachequeCalculado[];
   readonly matriculaPorVinculo: ReadonlyMap<string, string>;
@@ -483,6 +517,23 @@ async function contrachequesMensaisDaCompetencia(
 
   const tabelas = await lerTabelas(tx, competencia);
   const rubricasDoRegime = await resolvedorDeRubricas(tx, competencia);
+
+  /**
+   * ⚠️ V13 — O ADIANTAMENTO SALARIAL DESTA COMPETÊNCIA, LIDO AQUI E NÃO NUM MOTOR SEPARADO.
+   *
+   * O sítio é obrigatório, e a razão é a COMPLEMENTAR: ela chama esta mesma função para calcular
+   * o "correto". Fora daqui, a mensal direta e o recálculo da complementar divergiriam — a
+   * segunda aritmética sobre o mesmo dinheiro que este repositório existe para evitar. Com o
+   * abatimento dentro, a mesma linha aparece nos DOIS lados da subtração da complementar (no
+   * correto e no já apurado) e o delta dela é exatamente zero: a complementar segue funcionando
+   * numa competência com vale, em vez de recusá-la.
+   *
+   * As guardas 1, 2, 4 e 5 (parâmetro ausente, vale não fechado, estado exigido não satisfeito)
+   * moram dentro da leitura; a guarda 3 — o vínculo com vale que não aparece entre os finais —
+   * roda logo abaixo, ANTES da recusa trivial por ausência de vínculo.
+   */
+  const abatimento: AbatimentoDaCompetencia | null =
+    abatimentoDoVale === "IGNORAR" ? null : await abatimentoDoAdiantamentoSalarialNaCompetencia(tx, competencia);
 
   /**
    * ⚠️ V11 V9.5 — AQUI ESTÁ O `where` QUE NÃO EXISTIA, E COM ELE FOI EMBORA A GARANTIA POR
@@ -547,9 +598,30 @@ async function contrachequesMensaisDaCompetencia(
       finalidadeVigente: dep.finalidades.some((f) => f.finalidade === "SALARIO_FAMILIA" && f.dataInicio.getTime() <= fim.getTime() && (baixaEfetiva(f) === null || (baixaEfetiva(f) as Date).getTime() > inicio.getTime())),
     })).filter((dep) => v.servidor.dependentes.find((x) => x.id === dep.id)?.finalidades.some((f) => f.finalidade === "SALARIO_FAMILIA") === true);
     const dependentesIr = v.servidor.dependentes.filter((dep) => dep.finalidades.some((f) => f.finalidade === "IMPOSTO_RENDA" && dependenteValeEm({ dataNascimento: dep.dataNascimento, invalidezPermanente: dep.invalidezPermanente, dataInicio: f.dataInicio, limiteIdadeAnos: f.limiteIdadeAnos, dataBaixa: baixaEfetiva(f) }, fim))).length;
+    /**
+     * ⚠️ V13 — A RUBRICA DO ABATIMENTO É RESOLVIDA POR REGIME, AQUI, E A AUSÊNCIA É RECUSA.
+     *
+     * `resolvedorDeRubricas` só devolve rubricas com VERSÃO VIGENTE para o regime do vínculo. Se
+     * a rubrica que o parâmetro declara não tiver versão aprovada, ela não entra na lista, o
+     * motor puro nunca emite a linha e o vale seria pago duas vezes — uma no adiantamento, outra
+     * na mensal inteira — com a folha fechando e os totais batendo.
+     *
+     * A recusa é aqui porque só aqui se sabe o regime. `calcularContracheque` tem a mesma guarda,
+     * afirmada pelo EFEITO ("saiu linha para esta rubrica?"), e ela fica como DEFESA EM
+     * PROFUNDIDADE declarada: pega o caso em que a rubrica existe na lista mas mudou de natureza.
+     */
+    let abatimentoDoVinculo: AbatimentoDoAdiantamentoSalarial | undefined;
+    const adiantado = abatimento?.porVinculo.get(v.id);
+    if (abatimento !== null && adiantado !== undefined && adiantado.gt(0)) {
+      const rAbat = rubricasDoRegime(regime).find((r) => r.id === abatimento.rubricaDoAbatimentoId);
+      if (rAbat === undefined) throw new RubricaDoAbatimentoSalarialAusenteError(v.matricula, competencia, adiantado);
+      abatimentoDoVinculo = { rubrica: rAbat, valor: adiantado, procedencia: abatimento.procedencia };
+    }
+
     entradas.push({
       competencia,
       vinculo: { id: v.id, matricula: v.matricula, regime, dataNascimento: v.servidor.dataNascimento },
+      ...(abatimentoDoVinculo === undefined ? {} : { abatimentoDoAdiantamentoSalarial: abatimentoDoVinculo }),
       vencimentoBase: salarioBaseVigenteEm(eventos, fim),
       gratificacoes: gratificacoesVigentesEm(v.eventos.map((e) => ({ ...paraEvento(e), gratificacaoDescricao: e.gratificacaoDescricao, gratificacaoValor: e.gratificacaoValor === null ? null : toMoney(e.gratificacaoValor) })), fim).map((g) => ({ descricao: g.descricao, valor: g.valor })),
       dias: diasComputados({ dataAdmissao: v.dataAdmissao, dataDesligamento: desligamento, afastamentos: afastamentosDe(eventos) }, competencia),
@@ -561,6 +633,43 @@ async function contrachequesMensaisDaCompetencia(
       tabelas: { contribuicao: regime === "ISENTO" ? null : tabelas.contribuicao[regime], irrf: tabelas.irrf, salarioFamilia: tabelas.salarioFamilia },
     });
   }
+  /**
+   * ═══ ⚠️ V13, GUARDA 3 — O VALE PAGO QUE NINGUÉM VAI ABATER, E ELA FALA ANTES DA TRIVIAL ═══
+   *
+   * ⚠️ A ORDEM É O PONTO, e ela é a lição de `APURADO-A-REPOR-ENCOBERTO-POR-FOLHA-SEM-VINCULOS`
+   * aplicada ANTES de o defeito nascer, em vez de depois. Se a recusa trivial ("nenhum vínculo
+   * elegível") estourasse primeiro, o operador leria "não há ninguém para calcular" e iria embora
+   * — com dinheiro do ente adiantado a alguém e nenhuma folha para descontá-lo. A informação
+   * grave é "há vale pago que ninguém vai abater", e é ela que tem de chegar primeiro.
+   *
+   * ⚠️ E O CONJUNTO É `considerados`, NUNCA A LISTA INTEIRA DE QUEM RECEBEU VALE. Esta é a
+   * diferença entre uma guarda e um bloqueio indiscriminado: num cálculo com seleção EXPLÍCITA,
+   * todo vínculo NÃO selecionado que tenha recebido vale cairia no filtro, e o operador que pediu
+   * duas matrículas receberia uma recusa citando as outras novecentas. O que se acusa é quem o
+   * operador PEDIU e o motor não alcançou — não quem ele não pediu.
+   *
+   * ⚠️ E O LADO CERTO É "PRODUZIU CONTRACHEQUE", NÃO "EXISTE COMO LINHA": `entradas` é quem
+   * chegou ao cálculo; `vinculos` inclui os que o laço pulou com motivo. Confundir os dois é como
+   * a guarda irmã da complementar nasceu INERTE, e foi o teste que a pegou.
+   */
+  if (abatimento !== null && abatimento.porVinculo.size > 0) {
+    const chegaram = new Set(entradas.map((e) => e.vinculo.id));
+    const considerados = new Set(aConsiderar);
+    const orfaos = [...abatimento.porVinculo.keys()].filter((id) => considerados.has(id) && !chegaram.has(id));
+    if (orfaos.length > 0) {
+      const nomes = orfaos.map((id) => abatimento.matriculaPorVinculo.get(id) ?? id).sort();
+      const total = sumMoney(orfaos.map((id) => abatimento.porVinculo.get(id)!));
+      throw new Error(
+        `VINCULO-DO-ADIANTAMENTO-SALARIAL-FORA-DA-MENSAL: a(s) matrícula(s) ${nomes.join(", ")} receberam ` +
+          `${emProsa(total.toFixed(2))} de adiantamento salarial em ${competencia} e NÃO entram no cálculo da ` +
+          `folha mensal desta competência (vida funcional alterada depois do vale — um desligamento com data ` +
+          `retroativa, por exemplo). Para elas não há de onde abater o que já foi adiantado, e seguir sem elas ` +
+          `pagaria os demais e calaria sobre este valor, com os totais fechando. Isso é dinheiro a repor ao ` +
+          `erário, ato próprio que não existe neste sistema. Trate-as fora desta folha. Nada foi calculado.`
+      );
+    }
+  }
+
   if (entradas.length === 0 && aoFicarSemVinculos === "RECUSAR") {
     throw new Error(motivoDeFolhaSemVinculos(competencia, selecao, excluidos));
   }
@@ -699,6 +808,9 @@ export async function calcularFolha(prisma: PrismaClient, input: CalcularFolhaIn
       case "MENSAL_COMPLEMENTAR":
         // V11 V9.4 — o motor MENSAL inteiro, menos o que já foi apurado nesta competência.
         return calcularFolhaComplementarNaTx(tx, folha, d.motivo ?? null, d.criadoPor, selecao);
+      case "ADIANTAMENTO_SALARIAL":
+        // V13 — o vale do mês: percentual do parâmetro sobre a base que o ente declarou.
+        return calcularFolhaDoAdiantamentoSalarialNaTx(tx, folha, d.motivo ?? null, d.criadoPor, selecao);
       case "MENSAL":
         break;
       default: {
@@ -1529,6 +1641,267 @@ async function calcularFolhaDoDecimoTerceiroNaTx(
   await gravarAbrangencia(tx, calculo.id, calculados.map((c) => c.vinculoId), []);
 
   return { calculoId: calculo.id, numero, contracheques: calculados.length, totalProventos, totalDescontos, totalLiquido, sha256 };
+}
+
+/**
+ * ═══ V13 (TR 5.12.50) — O CÁLCULO DA FOLHA DE ADIANTAMENTO SALARIAL ═══
+ *
+ * Roda DENTRO da transação de `calcularFolha`, sob a mesma autorização (`CALCULAR_FOLHA`, mais
+ * `SELECIONAR_VINCULOS_DA_FOLHA` quando há recorte) e gravando nos mesmos `CalculoDaFolha` e
+ * `Contracheque`. O que muda é a CONTA: percentual do parâmetro sobre a base que o ENTE declarou.
+ *
+ * ⚠️ AS DUAS BASES LEEM FATOS DIFERENTES, E É POR ISSO QUE SÃO DOIS CAMINHOS E NÃO UM `if`
+ * cosmético dentro de um caminho só:
+ *
+ *   · `REMUNERACAO_PROJETADA_DO_MES` roda o motor mensal da competência CORRENTE — a mesma
+ *     função que a mensal e a complementar usam, sem uma linha de conta nova;
+ *   · `REMUNERACAO_DO_MES_ANTERIOR` lê o que a folha mensal FECHADA do mês anterior APUROU. Não
+ *     recalcula nada: o fato já existe, e recalculá-lo daria outro número sempre que o cadastro
+ *     tivesse mudado desde então — o que é exatamente o contrário do que "mês anterior" significa.
+ *
+ * ⚠️ E A DIFERENÇA ENTRE AS DUAS APARECE NO ABATIMENTO DA MENSAL, não aqui: dois servidores com
+ * o mesmo percentual e bases diferentes têm vales diferentes, e a mensal desconta valores
+ * diferentes. Com N=1 um motor que abatesse um valor fixo passaria — é o cenário obrigatório da
+ * varredura.
+ */
+async function calcularFolhaDoAdiantamentoSalarialNaTx(
+  tx: Tx,
+  folha: { readonly id: string; readonly competencia: string; readonly tipo: string; readonly calculos: readonly { readonly numero: number }[] },
+  motivo: string | null,
+  criadoPor: string,
+  selecao: SelecaoDoCalculo = SELECAO_DE_TODOS
+): Promise<ResultadoDoCalculo> {
+  const competencia = folha.competencia;
+
+  // ── guarda 1: sem parâmetro vigente, nada acontece ──────────────────────────
+  const cfg = await parametroVigenteDaCompetencia(tx, competencia);
+  const parametro = cfg.parametro;
+
+  const tabelas = await lerTabelas(tx, competencia);
+  const rubricasDoRegime = await resolvedorDeRubricas(tx, competencia);
+
+  type Candidato = {
+    readonly vinculoId: string;
+    readonly matricula: string;
+    readonly regime: RegimePrevidenciario;
+    readonly diasComputados: number;
+    readonly base: Money;
+    readonly explicacao: string;
+  };
+
+  const candidatos: Candidato[] = [];
+  let considerados: readonly string[] = [];
+  let excluidos: readonly LinhaDeAbrangencia[] = [];
+
+  if (parametro.baseDoAdiantamento === "REMUNERACAO_PROJETADA_DO_MES") {
+    /**
+     * ⚠️ `IGNORAR` NO ABATIMENTO, E SEM ISSO A FUNCIONALIDADE NÃO EXISTIRIA.
+     *
+     * A projeção é do motor mensal, e o motor mensal abate o vale DESTA competência. Chamá-lo com
+     * o padrão aqui faria a guarda `ADIANTAMENTO-SALARIAL-NAO-FECHADO` recusar o cálculo do vale
+     * por causa da folha do PRÓPRIO vale, que obviamente ainda não fechou — beco sem saída na
+     * primeira tentativa de usar a funcionalidade, e do tipo que não tem contorno pela tela.
+     *
+     * ⚠️ `DEVOLVER_VAZIO` porque a recusa por ausência de vínculo é dada aqui embaixo, com a
+     * mensagem deste tipo de folha. A recusa do motor mensal falaria de outra coisa.
+     */
+    const proj = await contrachequesMensaisDaCompetencia(tx, competencia, selecao, "DEVOLVER_VAZIO", "IGNORAR");
+    considerados = proj.considerados;
+    excluidos = proj.excluidos;
+    for (const c of proj.finais) {
+      const matricula = proj.matriculaPorVinculo.get(c.vinculoId) ?? c.vinculoId;
+      candidatos.push({
+        vinculoId: c.vinculoId,
+        matricula,
+        regime: c.regime,
+        diasComputados: c.diasComputados,
+        base: c.totais.proventos,
+        explicacao:
+          `base = remuneração PROJETADA de ${competencia} pelo motor mensal (tabelas e versões de rubrica ` +
+          `vigentes): proventos ${emProsa(c.totais.proventos.toFixed(2))}`,
+      });
+    }
+  } else {
+    /**
+     * ═══ A BASE É UM FATO JÁ APURADO, E A RECUSA É NOMEADA ═══
+     *
+     * ⚠️ SEM A MENSAL ANTERIOR FECHADA NÃO HÁ BASE — e projetar por conta própria trocaria a
+     * regra que o ente DECLAROU por outra, em silêncio, com a folha fechando normalmente.
+     */
+    const anterior = competenciaAnterior(competencia);
+    const mensalAnterior = await tx.folhaDePagamento.findUnique({
+      where: { competencia_tipo: { competencia: anterior, tipo: "MENSAL" } },
+      select: { id: true, fechamento: { select: { calculoId: true, calculo: { select: { numero: true } } } } },
+    });
+    if (mensalAnterior === null || mensalAnterior.fechamento === null) {
+      throw new Error(
+        `MENSAL-ANTERIOR-NAO-FECHADA: o parâmetro de ${competencia} (versão ${parametro.versao}) declara que o ` +
+          `adiantamento salarial se calcula sobre a REMUNERAÇÃO DO MÊS ANTERIOR, e a folha mensal de ${anterior} ` +
+          (mensalAnterior === null ? `não existe` : `existe (${mensalAnterior.id}) e ainda não foi fechada`) +
+          `. Sem ela não há base: o que essa prática manda ler é o que aquela folha APUROU, e projetar um valor ` +
+          `aqui trocaria a regra que o ente declarou por outra, com a folha fechando normalmente. ` +
+          (mensalAnterior === null
+            ? `Abra e feche a folha mensal de ${anterior} antes.`
+            : `Feche a folha mensal de ${anterior} antes.`) +
+          ` (Se a intenção do ente é calcular sobre o próprio mês, a opção é REMUNERACAO_PROJETADA_DO_MES, ` +
+          `cadastrada na versão seguinte do parâmetro.) Nada foi calculado.`
+      );
+    }
+
+    const linhasAnteriores = await tx.linhaDoContracheque.findMany({
+      where: { contracheque: { calculoId: mensalAnterior.fechamento.calculoId }, tipo: "PROVENTO" },
+      select: { valor: true, contracheque: { select: { vinculoId: true } } },
+    });
+    const apurado = new Map<string, Money>();
+    for (const l of linhasAnteriores) {
+      const atual = apurado.get(l.contracheque.vinculoId) ?? toMoney(0);
+      apurado.set(l.contracheque.vinculoId, toMoney(atual.plus(toMoney(l.valor))));
+    }
+
+    const recorte: Prisma.VinculoWhereInput =
+      selecao.modo === "EXPLICITA" ? { id: { in: [...new Set(selecao.vinculoIds)] } } : {};
+    const vinculos = await tx.vinculo.findMany({
+      where: recorte,
+      select: {
+        id: true, matricula: true, dataAdmissao: true, regimePrevidenciario: true,
+        eventos: { select: { data: true, criadoEm: true, tipo: true, cargoId: true, lotacaoId: true, salarioBase: true, regimePrevidenciario: true } },
+      },
+      orderBy: { matricula: "asc" },
+    });
+    const declarada = abrangenciaDeclarada(selecao, vinculos.map((v) => v.id));
+    considerados = declarada.aConsiderar;
+    const fora: LinhaDeAbrangencia[] = [];
+    const { inicio, fim } = bordasDaCompetencia(competencia);
+    for (const v of vinculos) {
+      const eventos = v.eventos.map(paraEvento);
+      const desligamento = dataDeDesligamento(eventos);
+      if (diaCivil(v.dataAdmissao) > diaCivil(fim)) {
+        fora.push({ vinculoId: v.id, calculado: false, motivo: "ADMITIDO_APOS_A_COMPETENCIA" });
+        continue;
+      }
+      if (desligamento !== null && diaCivil(desligamento) < diaCivil(inicio)) {
+        fora.push({ vinculoId: v.id, calculado: false, motivo: "DESLIGADO_ANTES_DA_COMPETENCIA" });
+        continue;
+      }
+      const regime = regimeVigenteEm(eventos, v.regimePrevidenciario as RegimePrevidenciario | null, fim);
+      if (regime === null) throw new VinculoSemRegimeError(v.matricula);
+      if (regime !== "ISENTO" && tabelas.contribuicao[regime] === null) {
+        throw new TabelaAusenteError("CONTRIBUICAO", competencia, `regime ${regime}, exigido pela matrícula ${v.matricula}`);
+      }
+      const base = apurado.get(v.id) ?? toMoney(0);
+      // ⚠️ QUEM NÃO TEM BASE NÃO VIRA CONTRACHEQUE DE ZERO. Admitido na própria competência não
+      // tem folha anterior para ler, e arbitrar uma base seria inventar a regra do ente.
+      if (base.lte(0)) continue;
+      candidatos.push({
+        vinculoId: v.id,
+        matricula: v.matricula,
+        regime,
+        diasComputados: diasComputados({ dataAdmissao: v.dataAdmissao, dataDesligamento: desligamento, afastamentos: afastamentosDe(eventos) }, competencia).dias,
+        base,
+        explicacao:
+          `base = remuneração APURADA na folha mensal FECHADA de ${anterior} ` +
+          `(cálculo nº ${mensalAnterior.fechamento.calculo.numero}): proventos ${emProsa(base.toFixed(2))}`,
+      });
+    }
+    excluidos = fora;
+  }
+
+  if (candidatos.length === 0) {
+    throw new Error(
+      `FOLHA-SEM-BASE-PARA-O-ADIANTAMENTO: nenhum vínculo tem base para o adiantamento salarial de ` +
+        `${competencia} pela prática declarada no parâmetro (${parametro.baseDoAdiantamento}). ` +
+        (selecao.modo === "EXPLICITA"
+          ? `Foram considerados ${new Set(selecao.vinculoIds).size} vínculo(s) SELECIONADO(S). `
+          : ``) +
+        `Nada foi calculado.`
+    );
+  }
+
+  const calculados: ContrachequeCalculado[] = [];
+  for (const c of candidatos) {
+    const doRegime = rubricasDoRegime(c.regime);
+    const rubrica = doRegime.find((r) => r.id === cfg.rubricaDoAdiantamentoId);
+    if (rubrica === undefined) {
+      const codigo = (await tx.rubrica.findUnique({ where: { id: cfg.rubricaDoAdiantamentoId }, select: { codigo: true } }))?.codigo ?? cfg.rubricaDoAdiantamentoId;
+      throw new RubricaDoAdiantamentoSalarialSemVersaoError(codigo, c.regime, competencia);
+    }
+    calculados.push(
+      calcularContrachequeDoAdiantamentoSalarial({
+        competencia,
+        parametro,
+        vinculo: { id: c.vinculoId, matricula: c.matricula, regime: c.regime },
+        base: { valor: c.base, explicacao: c.explicacao },
+        rubricaDoAdiantamento: rubrica,
+        diasComputados: c.diasComputados,
+        tabelas: { contribuicao: c.regime === "ISENTO" ? null : tabelas.contribuicao[c.regime], irrf: tabelas.irrf },
+      })
+    );
+  }
+
+  const numero = (folha.calculos[0]?.numero ?? 0) + 1;
+  const totalProventos = sumMoney(calculados.map((c) => c.totais.proventos));
+  const totalDescontos = sumMoney(calculados.map((c) => c.totais.descontos));
+  const totalLiquido = toMoney(totalProventos.minus(totalDescontos));
+  const sha256 = sha256Canonico({
+    motor: VERSAO_DO_MOTOR_DO_ADIANTAMENTO_SALARIAL,
+    competencia,
+    tipo: folha.tipo,
+    contracheques: calculados.map((c) => c.sha256).sort(),
+  });
+  const calculo = await tx.calculoDaFolha.create({
+    data: {
+      folhaId: folha.id, numero, motivo,
+      totalProventos: s2(totalProventos), totalDescontos: s2(totalDescontos), totalLiquido: s2(totalLiquido),
+      contracheques: calculados.length, sha256, versaoDoMotor: VERSAO_DO_MOTOR_DO_ADIANTAMENTO_SALARIAL,
+      modoDeSelecao: selecao.modo, criadoPor,
+    },
+    select: { id: true },
+  });
+  for (const c of calculados) {
+    await tx.contracheque.create({
+      data: {
+        calculoId: calculo.id, vinculoId: c.vinculoId, regime: c.regime, diasComputados: c.diasComputados,
+        totalProventos: s2(c.totais.proventos), totalDescontos: s2(c.totais.descontos), liquido: s2(c.totais.liquido),
+        baseContribuicao: s2(c.totais.baseContribuicao), contribuicao: s2(c.totais.contribuicao),
+        baseIrrf: s2(c.totais.baseIrrf), irrf: s2(c.totais.irrf),
+        memoria: c.memoria as object, sha256: c.sha256,
+        linhas: { create: c.linhas.map((l) => ({ rubricaId: l.rubricaId, ordem: l.ordem, tipo: l.tipo, valorBase: s2(l.valorBase), fator: l.fator.toFixed(6), valor: s2(l.valor), incideContribuicao: l.incideContribuicao, incideIrrf: l.incideIrrf, memoria: l.memoria })) },
+      },
+    });
+  }
+
+  /**
+   * ⚠️ A ABRANGÊNCIA É GRAVADA, E A COMPLETUDE **NÃO** É AFIRMADA — a distinção é deliberada.
+   *
+   * Gravar é obrigatório: a guarda `SELECIONADOS-QUE-SUMIRIAM` de `fecharFolha` pergunta ao
+   * registro de abrangência quem foi calculado. Sem linha nenhuma ela leria lista vazia e passaria
+   * POR VACUIDADE em toda folha de vale — o pior desfecho possível para uma guarda.
+   *
+   * ⚠️ E `exigirAbrangenciaCompleta` NÃO É CHAMADA, pelo mesmo motivo do motor do 13º: quem não
+   * tem base para o vale (admitido na própria competência, na prática REMUNERACAO_DO_MES_ANTERIOR)
+   * é pulado SEM motivo nomeado — `MotivoDaExclusao` não tem um valor para isso, e inventar um
+   * pede migration de enum e entrada no `EXCLUSAO_FOI_PEDIDA`. Afirmar completude sobre um
+   * conjunto que não foi apurado faria a guarda passar sempre, e uma guarda que sempre passa é a
+   * que já nasceu inerte neste módulo. Fica NOMEADO:
+   * `ABRANGENCIA-DO-ADIANTAMENTO-SALARIAL-SEM-BASE-NAO-NOMEADA` (MODULO.md do M33).
+   */
+  await gravarAbrangencia(tx, calculo.id, calculados.map((c) => c.vinculoId), excluidos.filter((e) => considerados.includes(e.vinculoId)));
+
+  return { calculoId: calculo.id, numero, contracheques: calculados.length, totalProventos, totalDescontos, totalLiquido, sha256 };
+}
+
+/**
+ * A COMPETÊNCIA ANTERIOR, EM "AAAA-MM" — aritmética de calendário, não de fuso.
+ *
+ * ⚠️ NÃO USA `Date`, E É DE PROPÓSITO. "O mês anterior a 2026-01" é 2025-12 em qualquer fuso do
+ * mundo; construir uma data para descobrir isso reintroduziria a pergunta "em que fuso?" numa
+ * conta que não tem fuso nenhum. `packages/datas` é a régua da DATA CIVIL do ente, e esta não é
+ * uma data civil: é um rótulo de competência.
+ */
+function competenciaAnterior(competencia: string): string {
+  const ano = Number(competencia.slice(0, 4));
+  const mes = Number(competencia.slice(5, 7));
+  return mes === 1 ? `${ano - 1}-12` : `${ano}-${String(mes - 1).padStart(2, "0")}`;
 }
 
 export async function cancelarCalculoDaFolha(prisma: PrismaClient, input: CancelarCalculoInput): Promise<{ readonly cancelamentoId: string }> {

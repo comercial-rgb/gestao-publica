@@ -523,6 +523,39 @@ export function derivarSelecaoNoCalculoDaFolha(
   return saida;
 }
 
+/**
+ * V13 — O PARÂMETRO DO ADIANTAMENTO SALARIAL (`CONFIGURAR_PARAMETRO_DO_ADIANTAMENTO_SALARIAL`).
+ *
+ * ⚠️ ELA NÃO DERIVA DE `CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO`, e a tentação de fazê-la derivar
+ * é maior aqui do que foi na v28: são dois parâmetros do MESMO módulo, no mesmo menu, com a mesma
+ * forma de tela e o mesmo tipo de ato. Derivar pareceria só "dar o conjunto todo a quem já tem a
+ * metade".
+ *
+ * A diferença é de ORIGEM DO ATO. O critério do avo é anual e sai do ESTATUTO DO SERVIDOR; o
+ * percentual do vale é mensal e sai, na maioria dos entes, de DECRETO DO PREFEITO. Quem recebeu o
+ * poder de transcrever o estatuto não recebeu o de transcrever o decreto do mês.
+ *
+ * ⚠️ E O DETECTOR CONTINUA NÃO EXISTINDO: percentual errado faz a folha de vale fechar, o empenho
+ * fechar, a mensal abater exatamente aquele valor e o total bater dos dois lados. Nenhuma etapa
+ * adiante acusa — quem percebe é o servidor, no contracheque. Concessão sem detector é concessão
+ * DELIBERADA: vai só a quem administra permissões no global, que a distribui nomeando a pessoa.
+ */
+export const ACOES_DO_PARAMETRO_DO_ADIANTAMENTO_SALARIAL: readonly AcaoDoSistema[] = ["CONFIGURAR_PARAMETRO_DO_ADIANTAMENTO_SALARIAL"];
+
+export function derivarParametroDoAdiantamentoSalarial(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null);
+    if (!administra) continue;
+    if (perfil.permissoes.some((p) => p.acao === "CONFIGURAR_PARAMETRO_DO_ADIANTAMENTO_SALARIAL" && p.unidadeOrcId === null)) continue;
+    saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao: "CONFIGURAR_PARAMETRO_DO_ADIANTAMENTO_SALARIAL", unidadeOrcId: null });
+  }
+  return saida;
+}
+
 /** V7 M1 U4 — a ouvidoria (triagem e resposta, com lotação) e a moderação das avaliações. */
 export const ACOES_DA_OUVIDORIA_E_AVALIACAO: readonly AcaoDoSistema[] = ["TRIAR_MANIFESTACAO_DE_OUVIDORIA", "MODERAR_AVALIACAO_DE_SERVICO"];
 
@@ -1194,6 +1227,23 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "e quem ficou de fora so descobre no dia do pagamento. Vai so a quem administra permissoes no global, que a " +
       "distribui nomeando a pessoa.",
     derivar: derivarSelecaoNoCalculoDaFolha,
+  },
+  {
+    versao: 30,
+    nome: "parametro-do-adiantamento-salarial",
+    descricao:
+      "O adiantamento salarial — o vale do mes — chegou como tipo de folha proprio (V13, TR 5.12.50), e com ele a " +
+      "acao CONFIGURAR_PARAMETRO_DO_ADIANTAMENTO_SALARIAL: por competencia, o percentual, a base (a remuneracao do " +
+      "mes anterior ou a projetada do proprio mes), as duas rubricas, QUAL ESTADO o vale precisa ter alcancado para " +
+      "ser abatido na folha mensal, e o ato do ente que fundamenta tudo isso. " +
+      "⚠️ ELA NAO ACOMPANHA CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO, e aqui a tentacao e maior que na v28: sao dois " +
+      "parametros do mesmo modulo, no mesmo menu, com a mesma forma de tela. A diferenca e de ORIGEM DO ATO — o " +
+      "criterio do avo e anual e sai do estatuto do servidor; o percentual do vale e mensal e sai, na maioria dos " +
+      "entes, de decreto do prefeito. " +
+      "⚠️ E O DETECTOR CONTINUA NAO EXISTINDO: percentual errado faz a folha de vale fechar, o empenho fechar, a " +
+      "mensal abater exatamente aquele valor e o total bater dos dois lados. Quem percebe e o servidor. Vai so a " +
+      "quem administra permissoes no global, que a distribui nomeando a pessoa.",
+    derivar: derivarParametroDoAdiantamentoSalarial,
   },
 ];
 

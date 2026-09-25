@@ -451,6 +451,13 @@ enum AcaoDoSistema {
   /// ramo de CONFIGURAR_TABELAS_DA_FOLHA: quem cadastra a tabela federal do IRRF nao e
   /// necessariamente quem decide o criterio do avo do municipio.
   CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO
+  /// V13 (TR 5.12.50) — o parametro do ADIANTAMENTO SALARIAL da competencia (percentual, base,
+  /// as duas rubricas, o estado minimo que o vale precisa ter para ser abatido, e o ato).
+  /// ⚠️ ACAO PROPRIA, e nao um ramo de CONFIGURAR_TABELAS_DA_FOLHA nem de
+  /// CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO: quem transcreve portaria federal nao recebe o poder
+  /// de escrever o criterio do ente, e o criterio do 13o (anual, sobre avos) nao e o mesmo ato
+  /// administrativo que o do vale (mensal, sobre a remuneracao do mes).
+  CONFIGURAR_PARAMETRO_DO_ADIANTAMENTO_SALARIAL
   CADASTRAR_RUBRICA
   /// V11 V1.1 — a rubrica versionada. Escrever a versao e aprova-la sao atos separados.
   CADASTRAR_VERSAO_DE_RUBRICA

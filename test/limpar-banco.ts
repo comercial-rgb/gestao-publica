@@ -386,6 +386,12 @@ export const TABELAS = [
   // da "versão vigente" passaria pelo motivo errado, lendo a versão de outro caso.
   "RubricaDaBaseDoDecimoTerceiro",
   "ParametroDoDecimoTerceiro",
+  // ⚠️ V13 — O PARÂMETRO DO ADIANTAMENTO SALARIAL VEM ANTES DE `Rubrica`, e nenhum compilador
+  // cobra esta linha. Ele aponta para `Rubrica` DUAS vezes (adiantamento e abatimento) com FK
+  // RESTRICT: sem ele aqui, `limparBanco` falharia ao apagar `Rubrica` e o `beforeEach`
+  // derrubaria o teste SEGUINTE com um erro de FK que não fala do assunto nenhum — a mesma
+  // armadilha que `AbrangenciaDoCalculo` e `FuncaoDePessoal` já armaram nesta suíte.
+  "ParametroDoAdiantamentoSalarial",
   // V11 V1.1 — as versões e as dependências vêm antes da rubrica (FK).
   "DependenciaDaVersaoDaRubrica",
   "VersaoDaRubrica",

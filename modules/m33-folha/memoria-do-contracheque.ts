@@ -112,7 +112,17 @@ const zIncidencias = z.object({ contribuicao: z.boolean(), irrf: z.boolean(), mo
  * 13º já gravado não tem estas chaves, e exigi-las faria cada um deles virar `ILEGIVEL`. É
  * "migration aditiva" aplicada à leitura, o mesmo que a V11 V9.3 fez com `procedenciaDoAbatimento`.
  */
-const zMedida = z.object({ unidade: z.enum(["DIAS", "AVOS", "DIFERENCA"]), explicacao: z.string() });
+/**
+ * ⚠️ V13 — `PERCENTUAL` ENTRA AQUI, E ESQUECÊ-LO TERIA DESLIGADO A TELA EM SILÊNCIO.
+ *
+ * O contracheque do ADIANTAMENTO SALARIAL grava `medida.unidade = "PERCENTUAL"` — a conta dele é
+ * percentual sobre base monetária, não dias nem avos. Sem o valor neste `z.enum`, o `parse` da
+ * memória FALHARIA e o bloco `medida` viraria `ILEGIVEL` na tela de TODO contracheque de vale.
+ * O compilador não alcança isto: `NaturezaDoTipoDeFolha.medida` (`dominio.ts`) é outra lista, e
+ * as duas só concordam porque alguém as mantém concordando. São os DOIS ÚNICOS sítios da
+ * unidade, e este é o que nenhum tipo novo cobra.
+ */
+const zMedida = z.object({ unidade: z.enum(["DIAS", "AVOS", "DIFERENCA", "PERCENTUAL"]), explicacao: z.string() });
 
 const zProcedencia = z.object({
   folhaDeAdiantamento: z.string(),

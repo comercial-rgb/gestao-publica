@@ -409,6 +409,16 @@ export type AcaoDoSistema =
   // fazem um mês contar, quantos avos tem o ano, quanto é a 1ª parcela). Quem transcreve a
   // portaria não recebeu, por isso, o poder de escrever a regra do município.
   | "CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO"
+  // ── M33 V13 (TR 5.12.50) — O PARÂMETRO DO ADIANTAMENTO SALARIAL ──
+  //
+  // ⚠️ AÇÃO PRÓPRIA, E NEM MESMO UM RAMO DE `CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO`. O critério
+  // do avo é ANUAL e vem do estatuto do servidor; o percentual do vale é MENSAL e costuma vir de
+  // decreto do prefeito. São dois atos administrativos diferentes, de origens diferentes, com
+  // periodicidades diferentes — juntá-los daria a quem decide um o poder sobre o outro.
+  //
+  // ⚠️ E O ERRO NESTA CONCESSÃO NÃO TEM DETECTOR ADIANTE: a folha de vale fecha, o empenho fecha,
+  // a mensal abate certinho o valor errado e o total bate. Quem percebe é o servidor.
+  | "CONFIGURAR_PARAMETRO_DO_ADIANTAMENTO_SALARIAL"
   | "CADASTRAR_RUBRICA"
   // ── M33 V11 V1.1 — A RUBRICA VERSIONADA ──
   //
@@ -941,6 +951,12 @@ export type NomeDeServico =
   | "cadastrarTabelaSalarioFamilia"
   // V11 V9.1 — o parâmetro do 13º do exercício (`modules/m33-folha/decimo-terceiro-servico.ts`).
   | "cadastrarParametroDoDecimoTerceiro"
+  // V13 — o parâmetro do adiantamento salarial da competência
+  // (`modules/m33-folha/adiantamento-salarial-servico.ts`). ⚠️ As LEITURAS
+  // (`parametroVigenteDaCompetencia`, `parametroQueApurouOCalculo`,
+  // `abatimentoDoAdiantamentoSalarialNaCompetencia`) NÃO entram neste censo: elas rodam DENTRO de
+  // `calcularFolha`, sob a autorização que ele já cobra, e não são serviços exportados ao mundo.
+  | "cadastrarParametroDoAdiantamentoSalarial"
   | "cadastrarRubrica"
   // M33 V11 V1.1 — a rubrica versionada.
   // M13 V11 V4.2 — a política de publicação de pessoal.
@@ -1520,6 +1536,7 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   cadastrarTabelaIrrf: "CONFIGURAR_TABELAS_DA_FOLHA",
   cadastrarTabelaSalarioFamilia: "CONFIGURAR_TABELAS_DA_FOLHA",
   cadastrarParametroDoDecimoTerceiro: "CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO",
+  cadastrarParametroDoAdiantamentoSalarial: "CONFIGURAR_PARAMETRO_DO_ADIANTAMENTO_SALARIAL",
   cadastrarRubrica: "CADASTRAR_RUBRICA",
   cadastrarPoliticaDePessoal: "CADASTRAR_POLITICA_DE_PESSOAL",
   aprovarPoliticaDePessoal: "APROVAR_POLITICA_DE_PESSOAL",

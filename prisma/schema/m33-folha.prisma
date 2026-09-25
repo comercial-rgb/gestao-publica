@@ -175,6 +175,23 @@ enum NaturezaDaRubrica {
   ///
   /// O motor MENSAL a ignora (cai no `default` do switch): ela só produz linha na folha de 13º.
   ABATIMENTO_DO_ADIANTAMENTO_DO_13
+
+  /// ⚠️ V13 — O ABATIMENTO DO ADIANTAMENTO SALARIAL (o "vale"), e ele é natureza PRÓPRIA pela
+  /// MESMA razão de `ABATIMENTO_DO_ADIANTAMENTO_DO_13` e por uma segunda que só ele tem.
+  ///
+  /// A primeira: o valor vem de OUTRA FOLHA — o provento do vale já fechado da MESMA competência.
+  /// `packages/formula` é universo fechado sobre o contracheque CORRENTE, e abri-lo para "o valor
+  /// daquela outra folha" transformaria o interpretador num leitor de banco.
+  ///
+  /// A segunda, e é ela que impede o reuso da natureza do 13º: as duas abatem em FOLHAS
+  /// DIFERENTES. A do 13º só produz linha na folha `DECIMO_TERCEIRO`; esta só produz linha na
+  /// folha `MENSAL`. Uma natureza só para as duas faria o motor mensal buscar o adiantamento do
+  /// 13º para abater do salário do mês — metade da gratificação natalina descontada do
+  /// vencimento, com os totais fechando.
+  ///
+  /// O motor do 13º a ignora, e o motor do próprio ADIANTAMENTO_SALARIAL também: ela só existe
+  /// na MENSAL.
+  ABATIMENTO_DO_ADIANTAMENTO_SALARIAL
 }
 
 model Rubrica {
@@ -217,6 +234,10 @@ model Rubrica {
   parametrosComoAdiantamento   ParametroDoDecimoTerceiro[]     @relation("RubricaDoAdiantamentoDo13")
   parametrosComoAbatimento     ParametroDoDecimoTerceiro[]     @relation("RubricaDoAbatimentoDo13")
   basesDoDecimoTerceiro        RubricaDaBaseDoDecimoTerceiro[] @relation("RubricaDaBaseDo13")
+  /// V13 — os papéis que esta rubrica exerce no ADIANTAMENTO SALARIAL
+  /// (ver `m33-adiantamento-salarial.prisma`).
+  parametrosComoAdiantamentoSalarial ParametroDoAdiantamentoSalarial[] @relation("RubricaDoAdiantamentoSalarial")
+  parametrosComoAbatimentoSalarial   ParametroDoAdiantamentoSalarial[] @relation("RubricaDoAbatimentoSalarial")
 
   @@index([natureza])
   @@index([ordem])
@@ -274,6 +295,22 @@ enum TipoDeFolha {
   /// `Record<TipoDeFolha, ...>` exaustivo que NÃO COMPILA enquanto um tipo novo não for
   /// classificado, e o CHECK `ck_folha_exercicio_por_tipo` escrito a partir dele.
   MENSAL_COMPLEMENTAR
+
+  /// ⚠️ V13 (TR 5.12.50) — O ADIANTAMENTO SALARIAL, o "vale": o ente paga no meio do mês uma
+  /// parte da remuneração da competência, e a folha MENSAL da MESMA competência abate o que ele
+  /// adiantou.
+  ///
+  /// ⚠️ ELE É POR COMPETÊNCIA (um vale por mês), então `exercicio` fica NULO — lado que `MENSAL`
+  /// já ocupa no CHECK `ck_folha_exercicio_por_tipo`. Quem classifica é
+  /// `NATUREZA_DO_TIPO_DE_FOLHA` (`modules/m33-folha/dominio.ts`), e o CHECK sai de lá; o
+  /// `m33-recorrencia-do-tipo-de-folha.test.ts` afirma por EFEITO que os dois concordam.
+  ///
+  /// ⚠️ E `compoeARemuneracaoMensal` É `false` NELE. Se fosse `true`, o "já apurado" da folha
+  /// COMPLEMENTAR somaria o provento do vale — e o recálculo do mensal nunca reproduz aquela
+  /// rubrica, porque ela só existe aqui. O delta ficaria negativo e a complementar recusaria TODA
+  /// competência que teve vale, dizendo ao servidor que ele deve ao erário justamente o
+  /// adiantamento que a mensal já abateu. O 13º já caiu nessa uma vez.
+  ADIANTAMENTO_SALARIAL
 }
 
 /// A folha de uma competência e tipo. A situação é DERIVADA: sem cálculo / calculada / fechada.

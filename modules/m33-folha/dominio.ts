@@ -5,6 +5,13 @@ import { diaCivil, meioDiaCivil } from "../../packages/datas/index.js";
 import { idadeEm } from "../m32-pessoal/dominio.js";
 import { FormulaDaRubricaInvalidaError, NATUREZAS_CITAVEIS, analisarFormulaDaRubrica, ordemDeCalculo, PREFIXO_DE_RUBRICA, type NoDoGrafo } from "./rubrica-versionada.js";
 import { calcular as calcularFormula } from "../../packages/formula/index.js";
+/**
+ * ⚠️ V13 — SÓ O TIPO, E A RESTRIÇÃO É MECÂNICA. `adiantamento-salarial.ts` importa VALORES daqui
+ * (`calcularContribuicao`, `calcularIrrf`, `sha256Canonico`). Importar um valor de lá fecharia um
+ * ciclo entre dois módulos ES — e um ciclo de valor não é erro de compilação: é uma classe que
+ * chega `undefined` em tempo de execução, dentro de um `throw`. `import type` é apagado.
+ */
+import type { AbatimentoDoAdiantamentoSalarial } from "./adiantamento-salarial.js";
 
 /**
  * ═══ M33 — FOLHA DE PAGAMENTO: O DOMÍNIO PURO (V6 P2.3, RH bloco 2) ═══
@@ -76,6 +83,17 @@ export const NATUREZAS_DA_RUBRICA = [
    * universo fechado sobre o contracheque CORRENTE. O motor MENSAL a ignora (cai no `default`).
    */
   "ABATIMENTO_DO_ADIANTAMENTO_DO_13",
+  /**
+   * V13 — o abatimento do ADIANTAMENTO SALARIAL (o "vale"). O valor vem do provento do vale já
+   * FECHADO da MESMA competência, e por isso também não é fórmula.
+   *
+   * ⚠️ ELA NÃO REUSA A NATUREZA DO 13º, e a razão não é organização: as duas abatem em FOLHAS
+   * DIFERENTES. A do 13º só produz linha na folha `DECIMO_TERCEIRO`; esta só produz linha na
+   * `MENSAL`. Uma natureza só para as duas faria o motor mensal buscar o adiantamento do 13º para
+   * abater do salário do mês — metade da gratificação natalina descontada do vencimento, com os
+   * totais fechando e nada acusando adiante.
+   */
+  "ABATIMENTO_DO_ADIANTAMENTO_SALARIAL",
 ] as const;
 
 export type NaturezaDaRubrica = (typeof NATUREZAS_DA_RUBRICA)[number];
@@ -128,6 +146,51 @@ export class RubricaSistemicaAusenteError extends Error {
   constructor(natureza: NaturezaDaRubrica, porQue: string) {
     super(`RUBRICA-AUSENTE: não há rubrica de natureza ${natureza} — ${porQue}. Cadastre a rubrica antes de calcular. Nada foi calculado.`);
     this.name = "RubricaSistemicaAusenteError";
+  }
+}
+
+/**
+ * ⚠️ V13 — A RECUSA PARA O VÍNCULO EM QUE O VALE SUPERA A REMUNERAÇÃO DO MÊS, E ELA PARA A FOLHA
+ * INTEIRA.
+ *
+ * O caso real: o servidor recebeu o vale no dia 15 sobre a remuneração do mês anterior e foi
+ * afastado sem vencimento no dia 20. A mensal apura quase nada, e o abatimento é maior que o
+ * líquido. Um motor que aceitasse produziria líquido NEGATIVO — que não é contracheque nenhum: é
+ * um servidor devendo ao ente, e a reposição ao erário é ato próprio que este sistema não tem.
+ *
+ * ⚠️ E ELA NOMEIA OS TRÊS NÚMEROS — matrícula, o líquido que a competência apurou ANTES do
+ * abatimento, e o quanto foi adiantado. "Não completou" é compatível com qualquer coisa; assim a
+ * decisão volta a quem pode tomá-la, com os números na mão.
+ *
+ * ⚠️ E A FOLHA INTEIRA PARA, em vez de este vínculo ser pulado. Pagar os demais e calar sobre
+ * este fecharia com os totais batendo — a forma de defeito que este módulo já pagou três vezes.
+ */
+export class AbatimentoDoAdiantamentoSalarialMaiorQueARemuneracaoError extends Error {
+  constructor(matricula: string, competencia: string, liquidoSemOAbatimento: Money, adiantado: Money) {
+    super(
+      `ABATIMENTO-DO-ADIANTAMENTO-SALARIAL-MAIOR-QUE-A-REMUNERACAO: a matrícula ${matricula} recebeu ` +
+        `${emProsa(adiantado.toFixed(2))} de adiantamento salarial em ${competencia} e a folha mensal da mesma ` +
+        `competência apurou apenas ${emProsa(liquidoSemOAbatimento.toFixed(2))} de líquido antes do abatimento. ` +
+        `Descontar o vale inteiro deixaria o contracheque NEGATIVO — o servidor passaria a dever ao ente, e a ` +
+        `reposição ao erário é ato próprio que não existe neste sistema. A folha inteira para: pagar os demais e ` +
+        `calar sobre este fecharia com os totais batendo. O QUE FAZER: trate a diferença de ` +
+        `${emProsa(toMoney(adiantado.minus(liquidoSemOAbatimento)).toFixed(2))} fora desta folha, como reposição, e ` +
+        `recalcule. Nada foi calculado.`
+    );
+    this.name = "AbatimentoDoAdiantamentoSalarialMaiorQueARemuneracaoError";
+  }
+}
+
+export class RubricaDoAbatimentoSalarialAusenteError extends Error {
+  constructor(matricula: string, competencia: string, adiantado: Money) {
+    super(
+      `RUBRICA-DO-ABATIMENTO-SALARIAL-AUSENTE: a matrícula ${matricula} recebeu ` +
+        `${emProsa(adiantado.toFixed(2))} de adiantamento salarial em ${competencia}, e a rubrica de abatimento ` +
+        `que o parâmetro daquela competência declara não tem VERSÃO VIGENTE para o regime desta matrícula — o ` +
+        `desconto não teria onde ser lançado. Calcular assim pagaria a remuneração INTEIRA a quem já recebeu ` +
+        `parte dela. Aprove a versão da rubrica de abatimento para ${competencia}. Nada foi calculado.`
+    );
+    this.name = "RubricaDoAbatimentoSalarialAusenteError";
   }
 }
 
@@ -545,6 +608,19 @@ export interface EntradaDoContracheque {
     readonly salarioFamilia: TabelaSalarioFamiliaLida | null;
   };
   readonly imposicoes?: ImposicoesDaPessoa;
+  /**
+   * ⚠️ V13 — O QUE O ADIANTAMENTO SALARIAL DESTA COMPETÊNCIA JÁ PAGOU A ESTE VÍNCULO.
+   *
+   * OPCIONAL, e a opcionalidade é o desenho: a esmagadora maioria das competências não tem vale,
+   * e exigir a chave faria toda folha mensal do ente declarar uma ausência. Ausente ou com valor
+   * zero, nenhuma linha de abatimento nasce — e isso é o correto, não um "zero em silêncio": não
+   * houve vale.
+   *
+   * ⚠️ QUEM LÊ O BANCO É O SERVIÇO, e isto chega pronto: este arquivo continua puro. E quem
+   * resolve a RUBRICA é o serviço também, porque ela sai do parâmetro DA COMPETÊNCIA e tem de ser
+   * a versão vigente para o regime daquele vínculo.
+   */
+  readonly abatimentoDoAdiantamentoSalarial?: AbatimentoDoAdiantamentoSalarial;
 }
 
 export interface LinhaCalculada {
@@ -742,8 +818,61 @@ export function calcularContracheque(e: EntradaDoContracheque): ContrachequeCalc
         linha(r, arredondado, `fórmula da versão ${r.versao}: ${r.formula} — com ${usadas === "" ? "nenhuma variável" : usadas} = ${reais(avaliada.valor)}, arredondado a ${r.casasDecimais} casa(s) half-even = ${reais(arredondado)}`, false);
         break;
       }
+      /**
+       * ⚠️ V13 — O ABATIMENTO DO ADIANTAMENTO SALARIAL, E ELE ENTRA NO LAÇO DOS PROVENTOS DE
+       * PROPÓSITO, ANTES DAS BASES.
+       *
+       * Ele é DESCONTO, e o passo 2 logo abaixo monta as bases de contribuição e de IRRF filtrando
+       * `l.tipo === "PROVENTO"` — então esta linha não reduz base nenhuma, que é exatamente o
+       * exigido: a competência é tributada INTEIRA, e o vale já saiu sem retenção. Emiti-la depois
+       * das bases daria o mesmo número e esconderia essa dependência.
+       *
+       * ⚠️ E NENHUMA LINHA NASCE SEM VALE. Sem `abatimentoDoAdiantamentoSalarial`, ou com valor
+       * zero, não há linha — e isso não é "zero em silêncio": é a competência em que o ente não
+       * pagou adiantamento, que é a maioria delas.
+       */
+      case "ABATIMENTO_DO_ADIANTAMENTO_SALARIAL": {
+        const ab = e.abatimentoDoAdiantamentoSalarial;
+        if (ab === undefined || ab.valor.lte(0)) break;
+        // ⚠️ PELA IDENTIDADE DA RUBRICA, NÃO PELA NATUREZA. Um ente pode ter mais de uma rubrica
+        // desta natureza cadastrada (a do ano passado, desativada; a nova). Abater em todas
+        // descontaria o vale tantas vezes quantas rubricas existissem, com os totais fechando.
+        // Quem manda é a que o PARÂMETRO daquela competência declarou.
+        if (ab.rubrica.id !== r.id) break;
+        const p = ab.procedencia;
+        linha(
+          r,
+          ab.valor,
+          `adiantamento salarial APURADO na folha FECHADA de ${p.competencia} (cálculo nº ${p.calculoNumero}; ` +
+            `certificação ${p.situacaoDaCertificacao}): ${reais(ab.valor)}. Critério DECLARADO pelo ente: o vale ` +
+            `tem de estar ao menos ${p.estadoExigido} (${p.ato}); verificado: ${p.estadoVerificado}. ` +
+            `Este desconto NÃO reduz base de contribuição nem de IRRF — a competência é tributada inteira, e o ` +
+            `vale saiu sem retenção.`,
+          false
+        );
+        break;
+      }
       default:
         break; // contribuição, IRRF e salário-família entram abaixo, na ordem do cálculo
+    }
+  }
+
+  /**
+   * ⚠️ V13 — O VALE EXISTE E A RUBRICA DO ABATIMENTO NÃO PRODUZIU LINHA: RECUSA, NUNCA SEGUIR.
+   *
+   * Acontece quando a rubrica que o parâmetro declara não tem VERSÃO VIGENTE para o regime deste
+   * vínculo — o `resolvedorDeRubricas` não a devolve, ela não entra no grafo, e o `case` acima
+   * nunca roda. Seguir daqui pagaria a remuneração INTEIRA a quem já recebeu parte dela, e a
+   * folha fecharia com os totais batendo.
+   *
+   * ⚠️ E A CONFERÊNCIA É PELO EFEITO ("saiu linha?"), não pela presença da rubrica na lista de
+   * entrada. "Existe como linha" e "produziu efeito" são coisas diferentes — é a doença que este
+   * módulo já pagou em três guards.
+   */
+  const abatimentoPedido = e.abatimentoDoAdiantamentoSalarial;
+  if (abatimentoPedido !== undefined && abatimentoPedido.valor.gt(0)) {
+    if (!linhas.some((l) => l.rubricaId === abatimentoPedido.rubrica.id)) {
+      throw new RubricaDoAbatimentoSalarialAusenteError(e.vinculo.matricula, e.competencia, abatimentoPedido.valor);
     }
   }
 
@@ -780,6 +909,25 @@ export function calcularContracheque(e: EntradaDoContracheque): ContrachequeCalc
   const proventos = sumMoney(ordenadas.filter((l) => l.tipo === "PROVENTO").map((l) => l.valor));
   const descontos = sumMoney(ordenadas.filter((l) => l.tipo === "DESCONTO").map((l) => l.valor));
   const liquido = toMoney(proventos.minus(descontos));
+
+  /**
+   * ⚠️ V13 — NUNCA LÍQUIDO NEGATIVO POR CAUSA DO VALE, e a recusa nomeia os três números.
+   *
+   * ⚠️ E A COMPARAÇÃO É CONTRA O LÍQUIDO **SEM** O ABATIMENTO, não contra o provento bruto. O que
+   * sobra para descontar o vale é o que resta depois da contribuição, do imposto e dos descontos
+   * informados — comparar com o bruto deixaria passar o caso em que o vale cabe no salário e não
+   * cabe no líquido, que é justamente o caso que produz o contracheque negativo.
+   */
+  if (abatimentoPedido !== undefined && abatimentoPedido.valor.gt(0) && liquido.lt(0)) {
+    const liquidoSemOAbatimento = toMoney(liquido.plus(abatimentoPedido.valor));
+    throw new AbatimentoDoAdiantamentoSalarialMaiorQueARemuneracaoError(
+      e.vinculo.matricula,
+      e.competencia,
+      liquidoSemOAbatimento,
+      abatimentoPedido.valor
+    );
+  }
+
   const totais = { proventos, descontos, liquido, baseContribuicao: contribuicaoCalculada.base, contribuicao, baseIrrf: irrfCalculado.base, irrf };
 
   const memoria: Record<string, unknown> = {
@@ -939,7 +1087,15 @@ export const zCadastrarRubricaInput = z
     // O abatimento do adiantamento do 13º entra aqui: ele SEMPRE subtrai — uma rubrica de
     // abatimento cadastrada como PROVENTO somaria a 1ª parcela à 2ª em vez de abatê-la, e o
     // contracheque fecharia com o dobro.
-    const desconto = v.natureza === "CONTRIBUICAO_PREVIDENCIARIA" || v.natureza === "IMPOSTO_DE_RENDA" || v.natureza === "ABATIMENTO_DO_ADIANTAMENTO_DO_13";
+    // ⚠️ V13 — A NATUREZA NOVA ENTRA AQUI, e esquecê-la seria o defeito da V11 V9.1 de novo, ao
+    // contrário: a rubrica do abatimento salarial seria cadastrável como PROVENTO e cadastrável
+    // COM incidência — e uma linha de desconto que reduz a base de contribuição faria a mensal
+    // recolher a menos, com os totais fechando.
+    const desconto =
+      v.natureza === "CONTRIBUICAO_PREVIDENCIARIA" ||
+      v.natureza === "IMPOSTO_DE_RENDA" ||
+      v.natureza === "ABATIMENTO_DO_ADIANTAMENTO_DO_13" ||
+      v.natureza === "ABATIMENTO_DO_ADIANTAMENTO_SALARIAL";
     if (desconto && v.tipo !== "DESCONTO") ctx.addIssue({ code: "custom", path: ["tipo"], message: `${v.natureza} é DESCONTO.` });
     const provento = v.natureza === "VENCIMENTO_BASE" || v.natureza === "GRATIFICACOES_DO_VINCULO" || v.natureza === "SALARIO_FAMILIA";
     if (provento && v.tipo !== "PROVENTO") ctx.addIssue({ code: "custom", path: ["tipo"], message: `${v.natureza} é PROVENTO.` });
@@ -977,7 +1133,7 @@ export type LancarNaFolhaInput = z.input<typeof zLancarNaFolhaInput>;
  * neste enum viraria uma opção de tela que recusa quando escolhida — o pior tipo de promessa,
  * porque só falha depois que o operador confiou nela.
  */
-export const TIPOS_DE_FOLHA = ["MENSAL", "MENSAL_COMPLEMENTAR", "ADIANTAMENTO_DECIMO_TERCEIRO", "DECIMO_TERCEIRO"] as const;
+export const TIPOS_DE_FOLHA = ["MENSAL", "MENSAL_COMPLEMENTAR", "ADIANTAMENTO_DECIMO_TERCEIRO", "DECIMO_TERCEIRO", "ADIANTAMENTO_SALARIAL"] as const;
 export type TipoDeFolha = (typeof TIPOS_DE_FOLHA)[number];
 
 /**
@@ -1053,7 +1209,7 @@ export interface NaturezaDoTipoDeFolha {
    * pelo mesmo buraco. Aqui a propriedade é afirmada, e o ramo final da tela passa a dizer que
    * não sabe em vez de fabricar uma unidade.
    */
-  readonly medida: "DIAS" | "AVOS" | "DIFERENCA";
+  readonly medida: "DIAS" | "AVOS" | "DIFERENCA" | "PERCENTUAL";
 }
 
 export const NATUREZA_DO_TIPO_DE_FOLHA: Readonly<Record<TipoDeFolha, NaturezaDoTipoDeFolha>> = {
@@ -1094,6 +1250,35 @@ export const NATUREZA_DO_TIPO_DE_FOLHA: Readonly<Record<TipoDeFolha, NaturezaDoT
     oQueOCalculoProduz:
       "Calcula o 13º por AVOS do exercício e ABATE o que a folha de adiantamento já apurou para cada matrícula. " +
       "Quem não alcança nenhum avo não vira contracheque. Sem o adiantamento fechado, recusa.",
+  },
+  /**
+   * ⚠️ V13 — `compoeARemuneracaoMensal` É `false`, E ESTA É A LINHA MAIS PERIGOSA DESTE RECORD.
+   *
+   * Se fosse `true`, `fechadasQueCompoem` (`servico.ts`) somaria o provento do vale no "já
+   * apurado" da folha COMPLEMENTAR. Mas o recálculo do mensal NUNCA reproduz aquela rubrica — ela
+   * só existe na folha de adiantamento. O delta ficaria negativo e
+   * `DiferencaNegativaNaComplementarError` recusaria TODA competência que teve vale, SEMPRE,
+   * dizendo ao servidor que ele deve ao erário justamente o adiantamento que a mensal já abateu.
+   *
+   * O adiantamento do 13º já caiu exatamente nessa (MODULO.md, seção 5). Aqui a armadilha foi
+   * levantada antes de o defeito nascer.
+   *
+   * ⚠️ E O `false` NÃO PERDE DINHEIRO DE VISTA: o vale entra na conta da competência pelo
+   * ABATIMENTO, que é uma linha de DESCONTO da própria folha MENSAL — e essa linha está nos dois
+   * lados da subtração da complementar (no correto e no já apurado), então o delta dela é zero.
+   */
+  ADIANTAMENTO_SALARIAL: {
+    recorrencia: "POR_COMPETENCIA",
+    compoeARemuneracaoMensal: false,
+    rotulo: "Adiantamento salarial (o vale do mês)",
+    medida: "PERCENTUAL",
+    oQueOCalculoProduz:
+      "Calcula o VALE da competência: percentual do parâmetro do ente sobre a base que ele declarou — " +
+      "a remuneração do mês anterior (o que a folha fechada dele apurou) ou a remuneração projetada da " +
+      "própria competência (motor mensal, tabelas vigentes). Uma linha de provento por vínculo, SEM " +
+      "contribuição e SEM IRRF: quem tributa a remuneração inteira do mês é a folha MENSAL, e reter " +
+      "aqui tributaria duas vezes. Quem não tem base não vira contracheque. Sem parâmetro vigente, " +
+      "recusa nomeando a competência. A folha MENSAL da mesma competência ABATE o que este vale pagou.",
   },
 };
 
