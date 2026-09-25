@@ -12644,3 +12644,127 @@ já usa para `tsc`, e fechou `rc=0`.
 seleção no formulário de calcular, leitura de `selecao` em `acaoDaFolha`, e a leitura da
 abrangência no detalhe da folha. Só depois o percurso do 3.B. Seguem abertas
 `PREVIA-DE-PARCELAS-EM-FLOAT`, `PORTA-DE-TESOURARIA-SEM-TESTE` e `PERCENTUAL-CRU-NA-PROSA`.
+
+## 101. V12 — a superfície da seleção, o percurso verde, e a prova que NÃO fechou
+
+> Rodada 5 da V12. Base `e2faef2`. Commits: `d800d03`, `e2faef2`, `32c7beb`, `62bd0f6`.
+
+### O que passou a existir
+
+`SELECAO-NO-CALCULO-SEM-SUPERFICIE`, achado na rodada 4, está resolvido. O motor tinha seletor,
+guarda, fato de abrangência e 16 testes desde `29a43fe`, e **o operador não alcançava nada disso**.
+Eram DUAS inalcançabilidades, e a segunda só apareceu ao construir a primeira:
+
+1. **Sem superfície** — `lib/portas/recursos/folha-dados.ts` lia só `motivo` e nunca repassava
+   `selecao`; nenhuma tela lia `AbrangenciaDoCalculo`.
+2. **Sem perfil** — medido por varredura: `SELECIONAR_VINCULOS_DA_FOLHA` não estava em **nenhum**
+   perfil, seed ou atualização. O motor cobrava uma ação que ninguém tinha.
+
+A cadeia da ordem, ponta a ponta: entrada (o formulário declara o modo e recebe matrículas) →
+seleção (resolvida na porta) → autorização (a segunda cobrança, que já existia, agora alcançada) →
+motor (inalterado) → efeito (`AbrangenciaDoCalculo`, que já era gravado) → consulta (a seção nova
+no detalhe da folha) → correção (as duas saídas da recusa do fechamento).
+
+### ⚠️ Matrícula digitada, e não caixa de seleção na lista
+
+A ordem proíbe em letra que "a paginação defina silenciosamente quem será calculado". Uma lista
+paginada com caixas trai isso pelo caminho mais natural que existe: o formulário envia o que está
+**visível**, e quem revisa lê "os selecionados" sem perceber que são "os da página 1". O domínio já
+se defende — o modo é declarado, nunca inferido —, mas **defesa do domínio não conserta superfície
+que mente sobre o que mandou**. Texto num campo só é imune por construção.
+
+E a afirmação mais forte do percurso é **pela ausência**: o passo 2.2 verifica que o formulário de
+calcular não tem NENHUM campo por vínculo. Se alguém acrescentar caixas por linha, esse passo fica
+vermelho antes de qualquer folha sair errada.
+
+### A atualização de permissões 29, e por que ela não deriva
+
+`SELECIONAR_VINCULOS_DA_FOLHA` **não deriva de `CALCULAR_FOLHA`** — derivar seria desfazer a
+segregação no ato de instalá-la. Calcular decide QUANDO o ente paga; recortar decide QUEM fica de
+fora. E um recorte errado **não tem detector**: a folha parcial fecha, o total bate, o empenho bate,
+a liquidação bate, e quem ficou de fora só descobre no dia do pagamento. Vai só a quem administra
+permissões no global, que a distribui nomeando a pessoa — o mesmo critério da v28.
+
+### O percurso — 31 passos, 0 falhas, `exit=0`
+
+O cenário obrigatório fechou **pela tela**: nº1={A,B}, nº2={C,D}, fechar → recusa nomeando M-A e
+M-B, com a recusa oferecendo as duas saídas. **As duas foram exercitadas**: recalcular com a seleção
+acumulada e fechar; e, noutra folha, cancelar os cálculos que processaram A e B — os cancelados
+seguindo visíveis e marcados — e o fechamento passando sem eles. A guarda impede o esquecimento,
+não a decisão. Com a lista de servidores noutra página, o calculado é o declarado, e os não
+declarados não entram.
+
+**Um defeito do instrumento, pego e consertado.** A primeira corrida deu 14 ok / 6 falhas, e as seis
+saíam de UMA causa: `TABELA-AUSENTE`. O produto estava certo. O percurso lia a existência das
+tabelas com `texto(page)`, que inclui o FORMULÁRIO — e o `select` de tipo tem as opções "IRRF",
+"CONTRIBUICAO_RGPS" e "SALARIO_FAMILIA". O instrumento concluiu "já vigora — reusada" com **zero
+tabelas no banco**, medido por consulta direta. Passou a ler as LINHAS da listagem.
+
+### ⚠️ A PARADA, registrada como fato
+
+**A unidade travou durante a prova por mutação.** A mutação escolhida — a porta validando a
+declaração e **não** a repassando ao motor — é a certa: é precisamente o defeito que a superfície
+nova existe para impedir. Ela foi aplicada e confirmada no alvo por checksum **e** por texto. O
+`next build` que a levaria ao servidor não terminou, e a sessão travou.
+
+**O coordenador reverteu a mutação**, conferindo antes que a cópia limpa do scratchpad tinha sha256
+idêntico ao do arquivo no HEAD — reversão exata, não aproximação.
+
+Retomada, a prova foi refeita e **também não fechou**, por outra causa. As duas corridas contra a
+build mutante morreram em `Runtime.callFunctionOn timed out` **antes da primeira asserção**, com a
+tabela de processos limpa. Medido no segundo insucesso: **75 MB livres, 5,7 GB de 7 GB de swap em
+uso, 2,6 GB no compressor**. É a saturação que o `CLAUDE.md` descreve.
+
+> **O resultado da mutação é INEXISTENTE, não desconhecido.** O percurso está VERDE e **ainda não
+> provado como acusador**. Um leitor futuro não pode confundir "não mediu" com "mediu e passou" —
+> e é por isso que isto está escrito aqui, na mensagem do commit do percurso e dentro do próprio
+> catálogo.
+
+O artefato `.next` ficou com a build MUTANTE. Foi **removido**, para que o estado seja "sem build" e
+não "build silenciosamente errada" — ausência é fail-closed, artefato errado não é.
+
+### ⚠️ "Exit zero não significa efeito" — a QUARTA vez, e agora como CLASSE
+
+Quatro ocorrências em um dia, e a forma é sempre a mesma: **a pergunta "rodou?" nunca responde
+"gravou?"**.
+
+| # | Ferramenta | O que o exit dizia | O que acontecera |
+|---|---|---|---|
+| 1 | `grep -v -x` (é `ugrep` nesta máquina) | 0 linhas sujas | o grep morreu e o `wc` contou o vazio |
+| 2 | `vitest --reporter=basic` | `rc=1` | **nenhum teste rodou** — flag inexistente |
+| 3 | `licenciamento:instalar` | `exit=0` | pré-visualização: nada gravado |
+| 4 | `marcar-catalogo.ts` | `exit=0` | pré-visualização: nada gravado |
+
+**Não é azar: é a forma que o engano assume quando a ferramenta tem um modo seguro.** Uma ferramenta
+bem desenhada não grava por acidente, e o preço disso é que o exit de sucesso passa a significar
+"a simulação correu bem". Na quarta vez a armadilha foi vista antes: a gravação do catálogo foi
+conferida no JSON, não no código de saída.
+
+### O que foi medido
+
+| Medição | Resultado | `rc` |
+|---|---|---|
+| `m33-declaracao-da-selecao.test.ts` (novo) | **9/9** | arquivo, 0 |
+| `m33-selecao-no-calculo.test.ts` | **18/18** (eram 16) | arquivo, 0 |
+| dirigidos M33 + M16 | **37 arquivos, 455 testes, 0 falhas** (eram 36/444) | arquivo, 0 |
+| dirigidos M16 (após a v29) | **20 arquivos, 146 testes, 0 falhas** | arquivo, 0 |
+| `smoke-selecao-no-calculo.ts` | **31 ok / 0 falhas** | arquivo, 0 |
+| `tsc` backend / app / scripts | **0 `error TS`** cada | arquivo, 0 |
+
+O par de autorização é **não vacuoso**: o ator é construído com perfil de UMA ação, porque as
+identidades das fixtures recebem tudo. O MESMO ator calcula TODOS com sucesso (4 contracheques, o
+padrão conservador do domínio) e é RECUSADO ao recortar, com a negação afirmando o MOTIVO.
+
+### Catálogo
+
+**5.12.50 continua PARCIAL.** Nada foi promovido: `VALIDADO_LOCALMENTE` segue em 75 cláusulas,
+`PARCIAL` em 101. O que mudou foi a retirada de uma afirmação que **ficou falsa** ("a seleção de
+quem entra no cálculo não existe") e a entrada do terceiro percurso com a ressalva da mutação. A
+razão de ainda ser parcial agora é uma só: **quatro tipos de nove**.
+
+### Próximo ponto exato
+
+**Fechar a prova por mutação do percurso da seleção**, quando a máquina permitir: mutar, confirmar
+o alvo, `next build` com `--max-old-space-size=5324`, rodar, reverter. Sem ela o percurso é verde e
+não é prova. Seguem abertas `PREVIA-DE-PARCELAS-EM-FLOAT`, `PORTA-DE-TESOURARIA-SEM-TESTE` e
+`PERCENTUAL-CRU-NA-PROSA`. A seção 4 da V12 não foi iniciada.
