@@ -46,6 +46,8 @@ import type { DetalheLido, OpcoesDoCadastro, PaginaDoMolde } from "./dados";
 import { decimalDaTela } from "./pessoal-dados";
 import { OPCOES_DE_TIPO_DE_TABELA, OPCOES_DE_TIPO_DE_ATO } from "./folha";
 import { cadastrarParametroDoDecimoTerceiro } from "../../../modules/m33-folha/decimo-terceiro-servico.js";
+import { cadastrarParametroDoAdiantamentoSalarial } from "../../../modules/m33-folha/adiantamento-salarial-servico.js";
+import { SEMANTICA_DA_BASE, type BaseDoAdiantamentoSalarial } from "../../../modules/m33-folha/adiantamento-salarial.js";
 import type { TipoDeFolha } from "../../../modules/m33-folha/dominio.js";
 
 /**
@@ -1258,6 +1260,127 @@ export async function criarParametroDoDecimoTerceiro(c: Campos, rubricasDaBase: 
       rubricasDaBase: [...rubricasDaBase],
       atoEsfera: t(c, "atoEsfera") as "FEDERAL" | "ESTADUAL" | "MUNICIPAL",
       atoTipo: t(c, "atoTipo") as Parameters<typeof cadastrarParametroDoDecimoTerceiro>[1]["atoTipo"],
+      atoNumero: t(c, "atoNumero"),
+      atoAno: Number(t(c, "atoAno")),
+      atoDispositivo: t(c, "atoDispositivo"),
+      atoEmenta: t(c, "atoEmenta"),
+      criadoPor,
+    });
+    return `${r.parametroId}|${r.versao}`;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// V13 (TR 5.12.50) — OS PARÂMETROS DO ADIANTAMENTO SALARIAL
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * ⚠️ OS TRÊS ESTADOS, EM PORTUGUÊS DE QUEM OPERA — e nenhum deles diz qual é o certo. O enum do
+ * banco é vocabulário do sistema; a tela fala do FATO. E os rótulos separam explicitamente
+ * "fechou" de "pagou", que é a distinção que a V13 existe para não deixar confundir.
+ */
+const ROTULO_DO_ESTADO_PARA_ABATER: Readonly<Record<string, string>> = {
+  FECHADO: "Fechado — o cálculo do vale foi congelado (não significa que o dinheiro saiu)",
+  CERTIFICADO: "Certificado — o cálculo do vale foi atestado por quem o ente designou",
+  PAGO: "Pago — o vale deste servidor saiu do caixa",
+};
+
+export async function listarParametrosDoAdiantamentoSalarial(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
+  const prisma = cliente();
+  const q = (c.filtros["q"] ?? "").trim();
+  const todos = await prisma.parametroDoAdiantamentoSalarial.findMany({
+    orderBy: [{ competencia: "desc" }, { versao: "desc" }],
+    select: {
+      id: true, competencia: true, versao: true, percentualDoAdiantamento: true,
+      baseDoAdiantamento: true, estadoMinimoParaAbater: true,
+      atoTipo: true, atoNumero: true, atoAno: true, atoDispositivo: true,
+      rubricaDoAdiantamento: { select: { codigo: true } },
+      rubricaDoAbatimento: { select: { codigo: true } },
+    },
+  });
+  // ⚠️ A VIGENTE É A DE MAIOR VERSÃO DA COMPETÊNCIA, DERIVADA A CADA LEITURA. Não há coluna de
+  // situação, e as versões anteriores continuam listadas: as folhas que elas calcularam citam o
+  // id e a versão na memória, e sem a linha o contracheque deixaria de se explicar.
+  const maiorVersaoDa = new Map<string, number>();
+  for (const p of todos) if (!maiorVersaoDa.has(p.competencia)) maiorVersaoDa.set(p.competencia, p.versao);
+  const filtrados = q === "" ? todos : todos.filter((p) => p.competencia.includes(q) || p.atoNumero.includes(q));
+  const { skip, take } = paginacao(c);
+  return {
+    total: filtrados.length,
+    linhas: filtrados.slice(skip, skip + take).map((p) => ({
+      id: p.id,
+      competencia: p.competencia,
+      versao: String(p.versao),
+      // ⚠️ pt-BR, com VÍRGULA, como o resto do sistema. "40.00%" com ponto num sistema em que
+      // todo dinheiro e toda alíquota saem com vírgula foi achado medido no percurso do 13º.
+      percentual: `${new Decimal(p.percentualDoAdiantamento).times(100).toFixed(2).replace(".", ",")}%`,
+      base: SEMANTICA_DA_BASE[p.baseDoAdiantamento as BaseDoAdiantamentoSalarial]?.rotulo ?? p.baseDoAdiantamento,
+      criterioDoAbatimento: ROTULO_DO_ESTADO_PARA_ABATER[p.estadoMinimoParaAbater] ?? p.estadoMinimoParaAbater,
+      rubricas: `${p.rubricaDoAdiantamento.codigo} paga / ${p.rubricaDoAbatimento.codigo} abate`,
+      ato: `${OPCOES_DE_TIPO_DE_ATO.find((o) => o.valor === p.atoTipo)?.rotulo ?? p.atoTipo} ${p.atoNumero}/${p.atoAno}, ${p.atoDispositivo}`,
+      situacao: maiorVersaoDa.get(p.competencia) === p.versao ? "VIGENTE" : "SUPERADA",
+    })),
+  };
+}
+
+/**
+ * AS RUBRICAS QUE A ILHA OFERECE, já separadas pelo papel que podem exercer.
+ *
+ * ⚠️ O RECORTE É O PONTO — "lista curta não é exceção" (CLAUDE.md). Oferecer todas as rubricas nos
+ * dois seletores produziria um formulário bonito que o caso de uso recusa depois, e o operador
+ * descobriria o erro só ao gravar. O abatimento só oferece a natureza que o motor MENSAL sabe ler,
+ * e `ABATIMENTO_DO_ADIANTAMENTO_DO_13` NÃO é ela: usá-la faria o motor descontar do salário do mês
+ * metade da gratificação natalina.
+ */
+export async function rubricasParaOParametroDoAdiantamentoSalarial(): Promise<{
+  readonly proventos: readonly { readonly valor: string; readonly rotulo: string }[];
+  readonly abatimento: readonly { readonly valor: string; readonly rotulo: string }[];
+  /** As de provento que permitem exigir PAGO — as que estão em grupo que empenha POR SERVIDOR. */
+  readonly adiantamentosQuePermitemPago: readonly string[];
+}> {
+  const prisma = cliente();
+  const todas = await prisma.rubrica.findMany({
+    orderBy: [{ ordem: "asc" }, { codigo: "asc" }],
+    select: {
+      id: true, codigo: true, descricao: true, tipo: true, natureza: true,
+      grupoDeEmpenho: { select: { grupo: { select: { porServidor: true } } } },
+    },
+  });
+  const rotular = (r: { codigo: string; descricao: string }): string => `${r.codigo} — ${r.descricao}`;
+  return {
+    adiantamentosQuePermitemPago: todas
+      .filter((r) => r.tipo === "PROVENTO" && r.grupoDeEmpenho?.grupo.porServidor === true)
+      .map(rotular),
+    proventos: todas.filter((r) => r.tipo === "PROVENTO" && !r.natureza.startsWith("ABATIMENTO_")).map((r) => ({ valor: r.id, rotulo: rotular(r) })),
+    abatimento: todas
+      .filter((r) => r.natureza === "ABATIMENTO_DO_ADIANTAMENTO_SALARIAL")
+      .map((r) => ({ valor: r.id, rotulo: rotular(r) })),
+  };
+}
+
+/**
+ * GRAVA A PRÓXIMA VERSÃO DO PARÂMETRO. A ilha manda o percentual EM PORCENTO (40), como a norma o
+ * escreve; a conversão para fração acontece aqui, na borda — o mesmo que o `FormTabela` faz com a
+ * alíquota, e o mesmo que o parâmetro do 13º já fazia. Nenhuma recusa do domínio é traduzida:
+ * elas sobem como vieram, porque é a mensagem delas que diz ao operador o que corrigir.
+ */
+export async function criarParametroDoAdiantamentoSalarial(c: Campos): Promise<string> {
+  return comEscritaAutenticada("CONFIGURAR_PARAMETRO_DO_ADIANTAMENTO_SALARIAL", async (criadoPor) => {
+    const r = await cadastrarParametroDoAdiantamentoSalarial(cliente(), {
+      competencia: t(c, "competencia"),
+      // ⚠️ `decimalDaTela` devolve STRING (normaliza "1.234,56" para "1234.56"). A tela recebe o
+      // percentual EM PORCENTO e o parâmetro guarda FRAÇÃO: sem a divisão por 100 o ente digitaria
+      // 40 e o CHECK `ck_parametro_adiant_sal_percentual` (maior que 0 e até 1) recusaria.
+      percentualDoAdiantamento: new Decimal(decimalDaTela(t(c, "percentualDoAdiantamento"))).div(100).toFixed(4),
+      baseDoAdiantamento: t(c, "baseDoAdiantamento") as "REMUNERACAO_DO_MES_ANTERIOR" | "REMUNERACAO_PROJETADA_DO_MES",
+      // ⚠️ SEM `?? "FECHADO"` NESTA LINHA. O campo é obrigatório no domínio de propósito: um
+      // default aqui faria a borda declarar, em nome do município, que congelar o cálculo basta
+      // para descontar do servidor — e fechar não é pagar.
+      estadoMinimoParaAbater: t(c, "estadoMinimoParaAbater") as "FECHADO" | "CERTIFICADO" | "PAGO",
+      rubricaDoAdiantamentoId: t(c, "rubricaDoAdiantamentoId"),
+      rubricaDoAbatimentoId: t(c, "rubricaDoAbatimentoId"),
+      atoEsfera: t(c, "atoEsfera") as "FEDERAL" | "ESTADUAL" | "MUNICIPAL",
+      atoTipo: t(c, "atoTipo") as Parameters<typeof cadastrarParametroDoAdiantamentoSalarial>[1]["atoTipo"],
       atoNumero: t(c, "atoNumero"),
       atoAno: Number(t(c, "atoAno")),
       atoDispositivo: t(c, "atoDispositivo"),
