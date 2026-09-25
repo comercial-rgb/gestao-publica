@@ -1929,12 +1929,18 @@ const MAPA: Readonly<Record<string, Marca>> = {
       "do filtro. A conjuncao e sobre o MESMO vinculo. Funcao e centro de custo ganharam cadastro e designacao pela " +
       "tela em V11 V9.4c; antes disso tinham filtro e nenhuma porta de entrada, e o filtro devolvia vazio para " +
       "sempre. " +
-      "⚠️⚠️ E A DISTINCAO QUE IMPEDE A PROMOCAO POR LEITURA GENEROSA: o item prende 'permitindo filtrar os " +
-      "funcionarios' a ROTINA DE CALCULO. O que esta validado e CONSULTA filtrada (tela /pessoal/servidores, M32), " +
-      "NAO recorte do calculo. A SELECAO de quem entra no calculo da folha (M33) NAO EXISTE: `calcularFolha` segue " +
-      "sem `where` nenhum sobre os vinculos, e a capacidade esta em construcao. Portanto a metade dos filtros esta " +
-      "validada como CONSULTA e permanece AUSENTE como recorte de calculo — e e por isso que quatro tipos de nove " +
-      "mais oito eixos de consulta NAO sustentam VALIDADO_LOCALMENTE para o enunciado.",
+      "⚠️⚠️ A DISTINCAO QUE IMPEDIA A PROMOCAO, E O QUE MUDOU NA V12: o item prende 'permitindo filtrar os " +
+      "funcionarios' a ROTINA DE CALCULO, e ate a V11 V9.4c o que havia era so CONSULTA filtrada (tela " +
+      "/pessoal/servidores, M32). O RECORTE DO CALCULO nao tinha superficie: o motor cobrava a acao desde a V11 V9.5, " +
+      "mas a porta lia so `motivo` e nunca repassava a selecao, nenhuma tela lia a abrangencia, e NENHUM perfil tinha " +
+      "SELECIONAR_VINCULOS_DA_FOLHA — capacidade construida e inalcancavel. " +
+      "A V12 R5 ligou a cadeia: o formulario de calcular DECLARA o modo (a folha inteira, ou so as matriculas " +
+      "escritas), a porta resolve e recusa nomeando (SELECAO-EXPLICITA-SEM-MATRICULA, SELECAO-CONTRADITORIA, " +
+      "MATRICULA-NAO-ENCONTRADA), a abrangencia efetiva de cada calculo ficou CONSULTAVEL com o motivo de cada " +
+      "ausencia, e a acao chega aos perfis pela atualizacao versionada 29 — que NAO deriva de CALCULAR_FOLHA, para " +
+      "nao desfazer a segregacao no ato de instala-la. " +
+      "⚠️ A CLAUSULA CONTINUA PARCIAL, e a razao agora e UMA so: QUATRO TIPOS DE NOVE. A metade dos filtros passou " +
+      "a ter consulta E recorte de calculo, ambos exercitados pela tela; a metade dos tipos segue devendo cinco.",
     rota_verificada:
       "DOIS percursos, dois artefatos, dois bancos descartaveis, ambos em 2026-09-24. " +
       "(1) MENSAL COMPLEMENTAR — artefato SHA completo d163d217df477cd90c7b12182d5f1a04c770d49b (/release confirma " +
@@ -1960,8 +1966,22 @@ const MAPA: Readonly<Record<string, Marca>> = {
       ".registro-de-execucao/percurso-dos-eixos-de-servidor-2-*.log. Isto fecha " +
       "`PESSOAL-RECUSA-DO-TETO-SEM-PERCURSO`, cuja guarda anterior era INERTE (casava com o texto-fonte do page.tsx; " +
       "a mutacao MUT-H deixou 26 testes verdes com o ramo desligado). " +
-      "⚠️ NAO EXERCITADO: os cinco tipos de folha que faltam, e o recorte do CALCULO pelos eixos — o que rodou foi " +
-      "consulta, nao selecao de quem o motor calcula.",
+      "(3) SELECAO NO CALCULO — V12 R5, contra o HEAD 32c7beb, banco gestao_publica_percursos_v12_r5 clonado por " +
+      "execucao, next build + next start em 3012, papeis rh@percursos.local (CALCULA e RECORTA) e " +
+      "contabilidade@percursos.local (FECHA). Passos: o formulario DECLARA o modo e recebe matriculas, e NAO tem " +
+      "campo por vinculo — a afirmacao pela AUSENCIA, que e o que impede a paginacao de definir quem entra → as tres " +
+      "recusas da declaracao → calculo n.1 EXPLICITO {A,B} e n.2 EXPLICITO {C,D} → a abrangencia mostrando cada " +
+      "calculo com EXATAMENTE os seus, e o MODO gravado → FECHAR RECUSA nomeando M-A e M-B, oferecendo as DUAS " +
+      "saidas → saida 1, recalcular com a selecao ACUMULADA e fechar → saida 2, noutra folha, CANCELAR os calculos " +
+      "que processaram A e B, os cancelados seguindo visiveis e marcados, e o fechamento passando sem eles → com a " +
+      "lista de servidores NOUTRA PAGINA, o calculado e o DECLARADO, e os nao declarados nao entram. " +
+      "Obtido: smoke-selecao-no-calculo 31 ok / 0 falhas, exit=0 lido do arquivo. " +
+      "⚠️ A PROVA POR MUTACAO DESTE PERCURSO NAO FECHOU: a mutacao escolhida (a porta validando a declaracao e NAO " +
+      "a repassando ao motor) foi aplicada e confirmada no alvo por checksum e por texto, mas as duas corridas " +
+      "morreram em `Runtime.callFunctionOn timed out` ANTES da primeira assercao, com 75 MB livres e 5,7 GB de 7 GB " +
+      "de swap em uso. Saturacao de maquina nao e aprovacao nem defeito: o resultado e INEXISTENTE, nao " +
+      "desconhecido, e o percurso esta VERDE e ainda NAO PROVADO COMO ACUSADOR. " +
+      "⚠️ NAO EXERCITADO: os cinco tipos de folha que faltam.",
   },
   "5.12.61": {
     situacao: "IMPLEMENTADO_NAO_VALIDADO",
