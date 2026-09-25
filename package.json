@@ -80,6 +80,7 @@
     "smoke:portal-do-servidor": "tsx scripts/trinco-de-maquina.ts 'smoke do portal do servidor' -- npx tsx scripts/smoke-portal-do-servidor.ts",
     "smoke:apropriacao-da-folha": "tsx scripts/trinco-de-maquina.ts 'smoke da apropriacao da folha' -- npx tsx scripts/smoke-apropriacao-da-folha.ts",
     "smoke:decimo-terceiro": "tsx scripts/trinco-de-maquina.ts 'smoke do decimo terceiro' -- npx tsx scripts/smoke-decimo-terceiro.ts",
+    "smoke:adiantamento-salarial": "tsx scripts/trinco-de-maquina.ts 'smoke do adiantamento salarial' -- npx tsx scripts/smoke-adiantamento-salarial.ts",
     "permissoes:atualizar": "tsx scripts/aplicar-atualizacao-de-permissoes.ts",
     "roteiros:versionar": "tsx scripts/versionar-roteiros-existentes.ts",
     "seed:roteiros-demo": "tsx prisma/seed/roteiros-demo.ts",
