@@ -8,6 +8,8 @@ import { situacaoDoVinculo, type EventoDoVinculo } from "../../../modules/m32-pe
 import { apropriacaoDaFolha, apropriarFolha, cadastrarGrupoDeEmpenhoDaFolha, definirContasDaLiquidacaoDoGrupo } from "../../../modules/m33-folha/apropriacao.js";
 import { elegibilidadeDosAtosDaFolha } from "../../../modules/m33-folha/elegibilidade.js";
 import { criterioDoAbatimentoNoCalculo } from "../../../modules/m33-folha/decimo-terceiro-servico.js";
+import { conferirDeclaracao, resolverMatriculas } from "../../../modules/m33-folha/declaracao-da-selecao.js";
+import type { SelecaoDoCalculo } from "../../../modules/m33-folha/abrangencia.js";
 import { lerMemoriaDoContracheque, type MemoriaLida } from "../../../modules/m33-folha/memoria-do-contracheque.js";
 import {
   certificacaoDaFolha,
@@ -337,6 +339,102 @@ export async function criarFolha(c: Campos): Promise<string> {
   });
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// A ABRANGÊNCIA EFETIVA — o FATO de quem entrou em cada cálculo (TR 5.12.50)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface LinhaDaAbrangenciaNaTela {
+  readonly matricula: string;
+  readonly nome: string;
+  readonly calculado: boolean;
+  /** `null` exatamente quando `calculado` — é o CHECK do banco, refletido aqui. */
+  readonly motivo: string | null;
+}
+
+export interface AbrangenciaDeUmCalculo {
+  readonly numero: number;
+  readonly modoDeSelecao: string;
+  readonly cancelado: boolean;
+  readonly calculados: number;
+  readonly excluidos: number;
+  readonly linhas: readonly LinhaDaAbrangenciaNaTela[];
+}
+
+/**
+ * A ABRANGÊNCIA DE CADA CÁLCULO DESTA FOLHA — quem entrou, quem não, e por quê.
+ *
+ * ⚠️ ELA EXISTE PORQUE "CONFIAR" NÃO É "CONSULTAR". O motor grava o fato desde a V11 V9.5 e a
+ * guarda do fechamento o usa, mas até aqui nenhuma tela o lia: o operador declarava um recorte,
+ * recebia "12 contracheques" e não tinha como ver QUEM eram os doze nem quem ficou de fora. Um
+ * número de contracheques é compatível com a pessoa errada dentro e a certa fora.
+ *
+ * ⚠️ E OS CÁLCULOS CANCELADOS CONTINUAM NA LISTA, marcados. É deles que sai a segunda saída
+ * legítima da recusa do fechamento ("cancele o cálculo que as processou"), e esconder o cancelado
+ * deixaria o operador sem ver o efeito do próprio ato.
+ */
+export async function abrangenciaDosCalculos(folhaId: string): Promise<readonly AbrangenciaDeUmCalculo[]> {
+  const prisma = cliente();
+  const calculos = await prisma.calculoDaFolha.findMany({
+    where: { folhaId },
+    orderBy: { numero: "desc" },
+    select: {
+      numero: true,
+      modoDeSelecao: true,
+      cancelamento: { select: { id: true } },
+      abrangencia: {
+        select: {
+          calculado: true,
+          motivo: true,
+          vinculo: { select: { matricula: true, servidor: { select: { pessoa: { select: { versoes: { select: { nome: true }, orderBy: { criadoEm: "desc" }, take: 1 } } } } } } },
+        },
+      },
+    },
+  });
+  return calculos.map((c) => {
+    const linhas = c.abrangencia
+      .map((a) => ({
+        matricula: a.vinculo.matricula,
+        // ⚠️ O NOME VEM DA VERSÃO VIGENTE DA PESSOA — e é o que a tela mostra em todo lugar, por
+        // nome social quando há (Lei 14.164/2021). Repetir aqui outra regra de exibição faria esta
+        // seção chamar a mesma pessoa por um nome que nenhuma outra tela usa.
+        nome: a.vinculo.servidor.pessoa.versoes[0]?.nome ?? "",
+        calculado: a.calculado,
+        motivo: a.motivo === null ? null : String(a.motivo),
+      }))
+      .sort((x, y) => x.matricula.localeCompare(y.matricula));
+    return {
+      numero: c.numero,
+      modoDeSelecao: String(c.modoDeSelecao),
+      cancelado: c.cancelamento !== null,
+      calculados: linhas.filter((l) => l.calculado).length,
+      excluidos: linhas.filter((l) => !l.calculado).length,
+      linhas,
+    };
+  });
+}
+
+/**
+ * A SELEÇÃO QUE A TELA DECLAROU — resolvida contra o cadastro, ou recusada nomeando o problema.
+ *
+ * ⚠️ DEVOLVE `undefined` QUANDO O MODO É "TODOS", e isso importa: `calcularFolha` só cobra
+ * `SELECIONAR_VINCULOS_DA_FOLHA` quando a seleção é EXPLICITA. Mandar
+ * `{ modo: "TODOS_OS_ELEGIVEIS", vinculoIds: [] }` teria o mesmo efeito prático, mas passaria a
+ * exigir uma autoridade que o ato não tem — quem só pode calcular continuaria podendo calcular
+ * todos, que é o padrão conservador que o domínio escolheu de propósito.
+ *
+ * ⚠️ E A RESOLUÇÃO É POR MATRÍCULA, NÃO POR ID DE LINHA DA LISTA. Ver o cabeçalho de
+ * `declaracao-da-selecao.ts`: é o que impede a paginação de definir quem é calculado.
+ */
+async function selecaoDeclarada(prisma: ReturnType<typeof cliente>, c: Campos): Promise<SelecaoDoCalculo | undefined> {
+  const declarada = conferirDeclaracao(t(c, "modoDeSelecao"), t(c, "matriculasSelecionadas"));
+  if (declarada.modo === "TODOS_OS_ELEGIVEIS") return undefined;
+  const achados = await prisma.vinculo.findMany({
+    where: { matricula: { in: [...declarada.matriculas] } },
+    select: { id: true, matricula: true },
+  });
+  return { modo: "EXPLICITA", vinculoIds: resolverMatriculas(declarada.matriculas, achados) };
+}
+
 export async function acaoDaFolha(acao: string, folhaId: string, c: Campos): Promise<string> {
   const prisma = cliente();
   // ⚠️ A TELA VELHA É RECUSADA ANTES DO CASO DE USO — que recusaria de qualquer forma, mas com o
@@ -350,8 +448,25 @@ export async function acaoDaFolha(acao: string, folhaId: string, c: Campos): Pro
   }
   switch (acao) {
     case "calcular": {
-      const r = await comEscritaAutenticada("CALCULAR_FOLHA", (criadoPor) => calcularFolha(prisma, { folhaId, ...(opcional(c, "motivo") !== undefined ? { motivo: t(c, "motivo") } : {}), criadoPor }));
-      return `Cálculo nº ${r.numero} gravado: ${r.contracheques} contracheque(s), líquido ${r.totalLiquido.toFixed(2)}. Cada contracheque traz a memória e o sha256.`;
+      // ⚠️ A SELEÇÃO É RESOLVIDA ANTES DE `comEscritaAutenticada`, e de propósito: uma matrícula
+      // digitada errado recusa ANTES de qualquer tentativa de escrita, com a mensagem falando do
+      // que a pessoa digitou. Dentro do ato, a mesma recusa viria embrulhada em "falha ao gravar".
+      const selecao = await selecaoDeclarada(prisma, c);
+      const r = await comEscritaAutenticada("CALCULAR_FOLHA", (criadoPor) =>
+        calcularFolha(prisma, {
+          folhaId,
+          ...(opcional(c, "motivo") !== undefined ? { motivo: t(c, "motivo") } : {}),
+          // O domínio recebe `vinculoIds` mutável; `SelecaoDoCalculo` é `readonly`. A cópia é na
+          // FRONTEIRA, que é onde uma diferença de variância se resolve sem afrouxar nenhum lado.
+          ...(selecao !== undefined ? { selecao: { modo: selecao.modo, vinculoIds: [...selecao.vinculoIds] } } : {}),
+          criadoPor,
+        })
+      );
+      const recorte =
+        selecao === undefined
+          ? "Abrangência: TODOS os elegíveis da competência."
+          : `Abrangência: recorte EXPLÍCITO de ${selecao.vinculoIds.length} vínculo(s) declarado(s).`;
+      return `Cálculo nº ${r.numero} gravado: ${r.contracheques} contracheque(s), líquido ${r.totalLiquido.toFixed(2)}. ${recorte} Cada contracheque traz a memória e o sha256; a abrangência efetiva fica na seção "Abrangência dos cálculos".`;
     }
     case "cancelar-calculo": {
       const vivo = await prisma.calculoDaFolha.findFirst({ where: { folhaId, cancelamento: null }, orderBy: { numero: "desc" }, select: { id: true, numero: true } });

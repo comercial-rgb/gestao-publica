@@ -301,6 +301,68 @@ describe("(6) ⚠️ A GUARDA `VINCULO-APURADO-FORA-DO-RECALCULO`, RECONCILIADA 
 });
 
 /**
+ * ═══ ⚠️ A SEGUNDA COBRANÇA, PROVADA COM UM ATOR QUE NÃO É ADMIN (V12) ═══
+ *
+ * `calcularFolha` cobra `CALCULAR_FOLHA` sempre e `SELECIONAR_VINCULOS_DA_FOLHA` **só quando a
+ * seleção é EXPLICITA**. Isso estava escrito no motor desde a V11 V9.5 e nunca foi afirmado por um
+ * teste — e não podia ser afirmado com as identidades das fixtures, que recebem tudo: com um ator
+ * que já tem as duas ações, "o negativo recusa" passa por vacuidade, porque não há o que recusar.
+ *
+ * Por isso o ator aqui é construído com um perfil de UMA ação só. E o par é obrigatório: o MESMO
+ * ator calcula TODOS com sucesso e é recusado no recorte. Sem a metade positiva, um erro qualquer
+ * (identidade inexistente, folha errada, tabela faltando) produziria o mesmo vermelho e seria lido
+ * como "a autorização funcionou".
+ */
+describe("(6) recortar quem entra é outra autoridade — e o par prova que é ela que barra", () => {
+  const SO_CALCULA = "so-calcula@cg.pb.gov.br";
+
+  async function contaCom(identificador: string, acoes: readonly string[]): Promise<void> {
+    const perfil = await prisma.perfil.create({
+      data: { nome: `P-${identificador}`, descricao: "fixture da V12", criadoPor: "TESTE", permissoes: { create: acoes.map((acao) => ({ acao: acao as never, criadoPor: "TESTE" })) } },
+      select: { id: true },
+    });
+    const usuario = await prisma.usuario.create({ data: { identificador, nome: identificador, criadoPor: "TESTE" }, select: { id: true } });
+    await prisma.vinculoUsuarioPerfil.create({ data: { usuarioId: usuario.id, perfilId: perfil.id, criadoPor: "TESTE" } });
+  }
+
+  it("⚠️ quem só tem CALCULAR_FOLHA calcula TODOS — e é RECUSADO ao recortar", async () => {
+    await baseDoEnte();
+    const v = await quatroVinculos();
+    await contaCom(SO_CALCULA, ["CALCULAR_FOLHA"]);
+
+    // (a) POSITIVO — o padrão é conservador: sem a segunda ação, a folha INTEIRA continua possível.
+    const semRecorte = await abrirFolha(prisma, { competencia: "2026-03", criadoPor: POR });
+    const r = await calcularFolha(prisma, { folhaId: semRecorte.folhaId, criadoPor: SO_CALCULA });
+    expect(r.contracheques, "sem a segunda ação, calcular TODOS tem de continuar possível").toBe(4);
+
+    // (b) NEGATIVO — o MESMO ator, a MESMA folha, mudando só o modo da seleção.
+    const erro = await calcularFolha(prisma, {
+      folhaId: semRecorte.folhaId,
+      criadoPor: SO_CALCULA,
+      selecao: { modo: "EXPLICITA", vinculoIds: [v.A, v.B] },
+    }).then(() => null, (e: unknown) => (e instanceof Error ? e.message : String(e)));
+
+    expect(erro, "recortar sem a ação própria tinha de recusar").not.toBeNull();
+    // ⚠️ A NEGAÇÃO AFIRMA O MOTIVO: "não calculou" é compatível com o servidor recusando por
+    // qualquer outra coisa — inclusive por já haver cálculo, que não é uma recusa de autorização.
+    expect(erro).toMatch(/SELECIONAR_VINCULOS_DA_FOLHA/);
+  });
+
+  it("e quem tem as DUAS recorta — senão a recusa acima não provaria nada sobre a ação", async () => {
+    await baseDoEnte();
+    const v = await quatroVinculos();
+    await contaCom("recorta@cg.pb.gov.br", ["CALCULAR_FOLHA", "SELECIONAR_VINCULOS_DA_FOLHA"]);
+    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-03", criadoPor: POR });
+    const r = await calcularFolha(prisma, {
+      folhaId,
+      criadoPor: "recorta@cg.pb.gov.br",
+      selecao: { modo: "EXPLICITA", vinculoIds: [v.A, v.B] },
+    });
+    expect(r.contracheques).toBe(2);
+  });
+});
+
+/**
  * ═══ `APURADO-A-REPOR-ENCOBERTO-POR-FOLHA-SEM-VINCULOS` — CONSERTADO NA V12 (item 3.A) ═══
  *
  * O ACHADO, como estava registrado: quando o ÚNICO vínculo selecionado é inelegível E tem valor

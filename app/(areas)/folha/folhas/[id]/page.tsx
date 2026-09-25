@@ -5,13 +5,14 @@ import { lerConsulta, type ParametrosBrutos } from "../../../../../lib/molde/con
 import type { AbaDoMolde } from "../../../../../lib/molde/tipos";
 import { acoesPermitidas, exigirLeitura } from "../../../../../lib/portas/molde";
 import { FOLHAS } from "../../../../../lib/portas/recursos/folha";
-import { disponibilidadeDaFolha, verFolha } from "../../../../../lib/portas/recursos/folha-dados";
+import { abrangenciaDosCalculos, disponibilidadeDaFolha, verFolha } from "../../../../../lib/portas/recursos/folha-dados";
 import { folhasAction } from "../actions";
 import { lerEncargosDaFolha } from "../../../../../lib/portas/recursos/encargos-dados";
 import { CertificacaoDaFolha } from "./CertificacaoDaFolha";
 import { EncargosDaFolha } from "./EncargosDaFolha";
 import { ObrigacoesDaFolha } from "./ObrigacoesDaFolha";
 import { lerObrigacoesDaFolha, totaisDasObrigacoes } from "../../../../../lib/portas/recursos/obrigacoes-dos-encargos";
+import { AbrangenciaDosCalculos } from "./AbrangenciaDosCalculos";
 import { Contracheques } from "./Contracheques";
 import { EmpenhosDaFolha } from "./EmpenhosDaFolha";
 import { PainelDaCompetencia, type EtapaDoPainel } from "./PainelDaCompetencia";
@@ -41,9 +42,9 @@ export default async function Detalhe({ params, searchParams }: { readonly param
   // ⚠️ FALHAR A CONFERÊNCIA NÃO LIBERA A BARRA: `null` faz o molde travar cada ato com o motivo.
   const disponibilidade = await disponibilidadeDaFolha(id, permitidas).catch(() => null);
   const naAbaDados = consulta.aba === "dados";
-  const [encargos, obrigacoes] = naAbaDados
-    ? await Promise.all([lerEncargosDaFolha(id), detalhe.situacao === "FECHADA" ? lerObrigacoesDaFolha(id) : Promise.resolve(null)])
-    : [null, null];
+  const [encargos, obrigacoes, abrangencia] = naAbaDados
+    ? await Promise.all([lerEncargosDaFolha(id), detalhe.situacao === "FECHADA" ? lerObrigacoesDaFolha(id) : Promise.resolve(null), abrangenciaDosCalculos(id)])
+    : [null, null, null];
   const brl = (v: string): string => `R$ ${formatarMoeda(v).texto}`;
   const etapas: EtapaDoPainel[] = naAbaDados ? [
     { nome: "Cálculo", situacao: detalhe.situacao === "FECHADA" ? "fechado" : detalhe.situacao === "CALCULADA" ? "calculado, aberto" : "sem cálculo", tom: detalhe.situacao === "SEM_CALCULO" ? "alerta" : "ok", detalhe: detalhe.subtitulo, ancora: "contracheques" },
@@ -82,6 +83,7 @@ export default async function Detalhe({ params, searchParams }: { readonly param
           <a href={`/folha/folhas/${id}/resumo?formato=csv`} className="font-medium text-[color:var(--color-primary)] hover:underline">Resumo da folha (CSV)</a>
         </p>
       ) : null}
+      {abrangencia !== null ? <div id="abrangencia" data-ancora className="scroll-mt-24"><AbrangenciaDosCalculos calculos={abrangencia} /></div> : null}
       {consulta.aba === "dados" ? <div id="contracheques" data-ancora className="scroll-mt-24"><Contracheques folhaId={id} linhas={detalhe.contracheques} /></div> : null}
     </div>
   );

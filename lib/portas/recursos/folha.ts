@@ -130,8 +130,34 @@ export const FOLHAS: DefinicaoDeRecurso = definirRecurso({
   acoes: [
     {
       nome: "calcular", rotulo: "Calcular a folha", acaoDoCenso: "CALCULAR_FOLHA",
-      aviso: "Calcula todos os vínculos vivos na competência com as tabelas vigentes. Sem tabela, sem regime ou sem vencimento, recusa nomeando. Cada cálculo é numerado; o anterior continua no histórico.",
-      campos: [{ nome: "motivo", rotulo: "Motivo (opcional — ex.: conferência, correção de lançamento)", tipo: "texto", largura: 4 }],
+      aviso:
+        "Calcula com as tabelas vigentes. Sem tabela, sem regime ou sem vencimento, recusa nomeando. Cada cálculo é " +
+        "numerado; o anterior continua no histórico. A ABRANGÊNCIA é declarada: ou a folha inteira, ou as matrículas " +
+        "que você escrever — e recortar quem entra exige a ação SELECIONAR_VINCULOS_DA_FOLHA, que é separada de calcular. " +
+        "O que o cálculo de fato alcançou fica gravado e visível na seção \"Abrangência dos cálculos\".",
+      campos: [
+        {
+          nome: "modoDeSelecao",
+          rotulo: "Quem entra neste cálculo (declare — o sistema não deduz)",
+          tipo: "selecao",
+          opcoes: [
+            { valor: "TODOS_OS_ELEGIVEIS", rotulo: "Todos os elegíveis da competência" },
+            { valor: "EXPLICITA", rotulo: "Só as matrículas declaradas abaixo" },
+          ],
+          largura: 2,
+        },
+        {
+          // ⚠️ MATRÍCULA DIGITADA, E NÃO CAIXA DE SELEÇÃO NA LISTA. A ordem proíbe que a paginação
+          // defina quem é calculado, e uma lista paginada com caixas envia o que está VISÍVEL —
+          // quem revisa lê "os selecionados" sem ver que são "os da página 1". Texto num campo só
+          // é imune por construção: trocar de página não altera uma linha dele.
+          nome: "matriculasSelecionadas",
+          rotulo: "Matrículas (uma por linha, ou separadas por vírgula) — só quando o modo for EXPLÍCITO",
+          tipo: "textoLongo",
+          largura: 4,
+        },
+        { nome: "motivo", rotulo: "Motivo (opcional — ex.: conferência, correção de lançamento)", tipo: "texto", largura: 4 },
+      ],
     },
     {
       nome: "cancelar-calculo", rotulo: "Cancelar o último cálculo", acaoDoCenso: "CANCELAR_CALCULO_DA_FOLHA",
