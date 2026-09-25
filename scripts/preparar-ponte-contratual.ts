@@ -8,6 +8,7 @@ import { cadastrarContrato, cadastrarProcesso, homologarProcesso } from "../modu
 import { cadastrarItemDoContrato, designarNoContrato } from "../modules/m11-licitacoes/fiscalizacao.js";
 import { pessoaDoUsuario, vincularPessoaAoUsuario } from "../modules/m16-travamento/servico-pessoa-do-usuario.js";
 import type { PrismaClient } from "../prisma/generated/client/client.js";
+import { PADRAO_DE_BANCO_DESCARTAVEL } from "./nome-de-banco-descartavel.js";
 
 /**
  * A PREPARAÇÃO DO PERCURSO DA PONTE CONTRATUAL (V7 M2 U4) — o CONTEXTO de uma execução, num banco DESCARTÁVEL.
@@ -29,7 +30,7 @@ const SUF = process.env["PONTE_SUFIXO"] ?? String(Date.now()).slice(-6);
 const GESTORA = "gestora-contrato@percursos.local";
 const FISCAL = "fiscal-contrato@percursos.local";
 const RECEBEDOR = "recebedor-contrato@percursos.local";
-const DESCARTAVEL = /^gestao_publica_(percursos|capturas|instalacao)_v7m[12]_[a-z0-9_]{1,40}$/;
+const DESCARTAVEL = PADRAO_DE_BANCO_DESCARTAVEL;
 
 function dv11(ds: readonly number[], pesos: readonly number[]): number {
   const r = ds.reduce((a, d, i) => a + d * (pesos[i] ?? 0), 0) % 11;

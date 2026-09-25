@@ -3,6 +3,7 @@ import { criarPrismaClient } from "../modules/m01-core-contabil/adapter-prisma.j
 import { publicarConfiguracaoDoAcesso } from "../modules/m21-protocolo/servico-acesso-a-informacao.js";
 import { criarUsuario, concederPerfil } from "../modules/m16-travamento/servico-usuarios.js";
 import type { PrismaClient } from "../prisma/generated/client/client.js";
+import { PADRAO_DE_BANCO_DESCARTAVEL } from "./nome-de-banco-descartavel.js";
 
 /**
  * A PREPARAÇÃO DO PERCURSO DO ACESSO À INFORMAÇÃO (V11 V5.3) — o CONTEXTO, num banco DESCARTÁVEL.
@@ -25,7 +26,7 @@ const ADMIN = process.env["SEED_IDENTIDADE"] ?? "admin@cg.pb.gov.br";
 const SUF = process.env["ACESSO_SUFIXO"] ?? String(Date.now()).slice(-6);
 const FRACO = "sem-acesso-a-informacao@percursos.local";
 const NOME_PERFIL_FRACO = `SO LE O PROTOCOLO — PERCURSO ${SUF}`;
-const DESCARTAVEL = /^gestao_publica_(percursos|capturas|instalacao)_v7m[12]_[a-z0-9_]{1,40}$/;
+const DESCARTAVEL = PADRAO_DE_BANCO_DESCARTAVEL;
 
 async function main(): Promise<void> {
   const url = process.env["DATABASE_URL"];

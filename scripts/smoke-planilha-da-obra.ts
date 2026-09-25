@@ -6,6 +6,7 @@ import { criarPrismaClient } from "../modules/m01-core-contabil/adapter-prisma.j
 import type { PrismaClient } from "../prisma/generated/client/client.js";
 import { xlsDeTeste, xlsxDeTeste, type CelulaDeTeste } from "../test/fixtures/planilhas.js";
 import { entrar, irPara, lancarNavegadorDoPercurso, preencherEEnviar, registroDePassos, sair, texto, type Navegador } from "./percursos-navegador.js";
+import { PADRAO_DE_BANCO_DESCARTAVEL } from "./nome-de-banco-descartavel.js";
 
 /**
  * PERCURSO — A PLANILHA ORÇAMENTÁRIA DA OBRA (V7 M2 U6), POR PAPÉIS.
@@ -25,7 +26,7 @@ const ENGENHARIA = "engenharia-obras@percursos.local";
 const GESTORA = "gestora-contrato@percursos.local";
 const R = registroDePassos();
 const CAPTURAS = process.env["PERCURSO_CAPTURAS"] ?? join(process.cwd(), ".registro-de-execucao", "pacote-v7-m2", "capturas");
-const DESCARTAVEL = /^gestao_publica_(percursos|capturas|instalacao)_v7m[12]_[a-z0-9_]{1,40}$/;
+const DESCARTAVEL = PADRAO_DE_BANCO_DESCARTAVEL;
 const SUF = String(Date.now()).slice(-6);
 
 const ORCAMENTO: CelulaDeTeste[][] = [

@@ -7,6 +7,7 @@ import { xlsxDeTeste, type CelulaDeTeste } from "../test/fixtures/planilhas.js";
 import { criarPrismaClient } from "../modules/m01-core-contabil/adapter-prisma.js";
 import type { PrismaClient } from "../prisma/generated/client/client.js";
 import { entrar, irPara, lancarNavegadorDoPercurso, preencherEEnviar, registroDePassos, sair, texto, type Navegador } from "./percursos-navegador.js";
+import { PADRAO_DE_BANCO_DESCARTAVEL } from "./nome-de-banco-descartavel.js";
 
 /**
  * PERCURSO — A MEDIÇÃO DA ORDEM DE SERVIÇO PELA PLANILHA DA OBRA (V7 M2 U7), POR PAPÉIS.
@@ -45,7 +46,7 @@ const HOJE = dia(0);
 interface Ponte { readonly sufixo: string; readonly contratoId: string; readonly contrato: string; readonly cnpj: string; readonly empenho: string }
 const PONTE: Ponte = JSON.parse(process.env["PONTE_JSON"] ?? "null") as Ponte;
 let OBRA_ID = process.env["OBRA_ID"] ?? "";
-const DESCARTAVEL = /^gestao_publica_(percursos|capturas|instalacao)_v7m[12]_[a-z0-9_]{1,40}$/;
+const DESCARTAVEL = PADRAO_DE_BANCO_DESCARTAVEL;
 const MOTIVO_VINCULO = "Correspondência conferida pela engenharia com o termo de referência do contrato";
 
 const ORCAMENTO: CelulaDeTeste[][] = [

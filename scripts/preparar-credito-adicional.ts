@@ -2,6 +2,7 @@ import "dotenv/config";
 import { criarPrismaClient } from "../modules/m01-core-contabil/adapter-prisma.js";
 import { criarUsuario, concederPerfil } from "../modules/m16-travamento/servico-usuarios.js";
 import type { PrismaClient } from "../prisma/generated/client/client.js";
+import { PADRAO_DE_BANCO_DESCARTAVEL } from "./nome-de-banco-descartavel.js";
 
 /**
  * A PREPARAÇÃO DO PERCURSO DO CRÉDITO ADICIONAL (V11 V7.2) — o que a TELA ainda não faz.
@@ -26,7 +27,7 @@ const ADMIN = process.env["SEED_IDENTIDADE"] ?? "admin@cg.pb.gov.br";
 const SUF = process.env["CREDITO_SUFIXO"] ?? String(Date.now()).slice(-6);
 const FRACO = "sem-credito-adicional@percursos.local";
 const NOME_PERFIL_FRACO = `SO LE O PLANEJAMENTO — PERCURSO ${SUF}`;
-const DESCARTAVEL = /^gestao_publica_(percursos|capturas|instalacao)_v7m[12]_[a-z0-9_]{1,40}$/;
+const DESCARTAVEL = PADRAO_DE_BANCO_DESCARTAVEL;
 
 /**
  * O teto da lei e o valor do decreto — o decreto consome parte do teto, nunca ele todo. E a

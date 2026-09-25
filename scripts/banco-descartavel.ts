@@ -1,5 +1,6 @@
 import "dotenv/config";
 import pg from "pg";
+import { PADRAO_DE_BANCO_DESCARTAVEL } from "./nome-de-banco-descartavel.js";
 
 /**
  * O BANCO DESCARTÁVEL DE UMA EXECUÇÃO (V7 M1 U0 §2.2) — clonar por TEMPLATE, conferindo identidade.
@@ -10,8 +11,9 @@ import pg from "pg";
  *   npx tsx scripts/banco-descartavel.ts url     <destino>     (imprime a URL SEM a senha, para conferência)
  *
  * ⚠️ O QUE ELE RECUSA, E POR QUÊ:
- *  · destino fora do padrão `gestao_publica_<percursos|capturas|instalacao>_v7m1_<nome>` — só um banco
- *    com nome de descartável pode ser (re)criado ou removido. Dev, teste, demonstração e os bancos de
+ *  · destino fora do padrão `gestao_publica_<percursos|capturas|instalacao>_v<ordem>_<nome>` (a ordem aceita
+ *    `v7m1`, `v7m2`, `v12`…) — só um banco com nome de descartável pode ser (re)criado ou removido.
+ *    Dev, teste, demonstração e os bancos de
  *    percursos originais NÃO casam o padrão;
  *  · destino igual à origem, ou igual ao banco de `DATABASE_URL`/`DATABASE_URL_TEST`/`DATABASE_URL_PERCURSOS`;
  *  · servidor que não é local (localhost/127.0.0.1) — este script não fala com banco remoto;
@@ -19,7 +21,7 @@ import pg from "pg";
  * ⚠️ Nenhuma credencial é impressa. A saída traz banco, servidor, porta, versão e dono.
  */
 
-const PADRAO = /^gestao_publica_(percursos|capturas|instalacao)_v7m[12]_[a-z0-9_]{1,40}$/;
+const PADRAO = PADRAO_DE_BANCO_DESCARTAVEL;
 
 function base(): URL {
   const bruta = process.env["DATABASE_URL_PERCURSOS"] ?? process.env["DATABASE_URL"];

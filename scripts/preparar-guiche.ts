@@ -4,6 +4,7 @@ import { criarUsuario, concederPerfil } from "../modules/m16-travamento/servico-
 import { cadastrarServicoDaCarta, cadastrarVersaoDoServico, publicarVersaoDoServico } from "../modules/m21-protocolo/servico.js";
 import { diaCivil } from "../packages/datas/index.js";
 import type { PrismaClient } from "../prisma/generated/client/client.js";
+import { PADRAO_DE_BANCO_DESCARTAVEL } from "./nome-de-banco-descartavel.js";
 
 /**
  * A PREPARAÇÃO DO PERCURSO DO GUICHÊ (V11 V8) — o que a TELA do guichê não faz.
@@ -30,7 +31,7 @@ const ADMIN = process.env["SEED_IDENTIDADE"] ?? "admin@cg.pb.gov.br";
 const SUF = process.env["GUICHE_SUFIXO"] ?? String(Date.now()).slice(-6);
 const FRACO = "sem-guiche@percursos.local";
 const NOME_PERFIL_FRACO = `SO LE O PROTOCOLO — PERCURSO ${SUF}`;
-const DESCARTAVEL = /^gestao_publica_(percursos|capturas|instalacao)_v7m[12]_[a-z0-9_]{1,40}$/;
+const DESCARTAVEL = PADRAO_DE_BANCO_DESCARTAVEL;
 
 /** CPF sintético VÁLIDO no dígito verificador — o cadastro de pessoas recusa o que não fecha. */
 const CPF = "11144477735";
