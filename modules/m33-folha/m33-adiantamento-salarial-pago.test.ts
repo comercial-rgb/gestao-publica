@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { Decimal } from "../../packages/contracts/index.js";
+import { Decimal, toMoney } from "../../packages/contracts/index.js";
+import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import { meioDiaCivil } from "../../packages/datas/index.js";
 import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
 import { limparBanco } from "../../test/limpar-banco.js";
@@ -564,6 +565,36 @@ describe("u1b · o vale se abate UMA vez", () => {
     // (1) A OBRIGAÇÃO JÁ RECONHECIDA NÃO DESAPARECE: a folha fechada continua como estava.
     expect((await linhasGravadas(mensal)).get("MAT-A/ABATSAL")).toBe("1200.00");
     expect((await liquidosGravados(mensal)).get("MAT-A")).toBe("1500.00");
+
+    /**
+     * ═══ ⚠️ (1b) A DIREÇÃO DA DÍVIDA, MEDIDA — E ELA É O CONTRÁRIO DA INTUIÇÃO ═══
+     *
+     * A leitura natural de "estorno" é "o servidor recebeu a mais e tem de repor". Aqui é o
+     * oposto, e o número prova: a mensal descontou 1.200,00 por um adiantamento cujo pagamento
+     * líquido hoje é **ZERO**. O servidor ficou com 1.500,00 e tinha direito a 2.700,00
+     * (3.000,00 de bruto menos 300,00 de contribuição) — **O ENTE DEVE 1.200,00 A ELE**.
+     *
+     * ⚠️ E A DIREÇÃO DECIDE QUAL INSTRUMENTO É LEGÍTIMO, que é a razão de este bloco existir e
+     * não ser prosa no MODULO. Se o servidor devesse, o caminho seria reposição ao erário — ato
+     * que este sistema não pratica, e ponto final. Como é o ENTE que deve, o instrumento correto
+     * é justamente a folha COMPLEMENTAR, que existe para pagar o que faltou — e é ela que a
+     * guarda do critério PAGO bloqueia. O beco não é "falta um ato": é "o ato existe e está
+     * fechado por uma guarda verdadeira".
+     */
+    const pagoDe = async (matricula: string): Promise<string> => {
+      const ps = await prisma.pagamento.findMany({
+        where: { liquidacao: { empenho: { daFolha: { apropriacao: { folhaId: vale }, vinculo: { matricula } } } } },
+        select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true },
+      });
+      return somaLiquidaEstornaveis(
+        ps.map((x) => ({ id: x.id, valor: toMoney(x.valor), estornoDeId: x.estornoDeId, anulacaoParcialDeId: x.anulacaoParcialDeId }))
+      ).toFixed(2);
+    };
+    // ⚠️ POR MATRÍCULA, e não pelo total da folha: o total (800,00, só o de MAT-B) seria
+    // compatível com MAT-A ter recebido qualquer coisa. O que prova a direção é o ZERO de MAT-A
+    // ao lado do 1.200,00 que a mensal fechada descontou dela.
+    expect(await pagoDe("MAT-A")).toBe("0.00");
+    expect(await pagoDe("MAT-B")).toBe("800.00");
 
     // (2) E A COMPLEMENTAR FICA BLOQUEADA — o fato medido, com o motivo verdadeiro nomeado.
     const { folhaId: comp } = await abrirFolha(prisma, { competencia: JUNHO, tipo: "MENSAL_COMPLEMENTAR", criadoPor: PREPARA });

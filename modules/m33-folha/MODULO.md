@@ -1067,8 +1067,9 @@ reexecutar é idempotente. O número ganha o segmento do TIPO
 folhas de tipos diferentes na mesma competência colidirem no mesmo número. Medido em
 `m33-adiantamento-salarial-pago.test.ts`.
 
-**E é justamente por se apropriar como as outras que ela duplica a despesa do mês.** Para MAT-A,
-em junho:
+**E era justamente por se apropriar como as outras que ela duplicava a despesa do mês** — até a
+V13 rodada 3, que tratou as duas metades sem escolher norma em nenhuma. O que se media antes, para
+MAT-A em junho:
 
 | Empenho | Valor | De onde |
 |---|---|---|
@@ -1076,11 +1077,45 @@ em junho:
 | mensal | 3.000,00 | provento `VENC`, BRUTO — o abatimento é DESCONTO, e desconto é retenção do pagamento, não despesa orçamentária |
 | **total** | **4.200,00** | para um servidor que custou **3.000,00** ao ente |
 
-Não é escolha de desenho: é o resultado de não haver escolha nenhuma. As duas práticas conhecidas
-são coerentes — (a) o vale é **extraorçamentário**, um adiantamento a pessoal, e só a mensal é
-despesa; (b) o vale é despesa e a mensal empenha o restante. O que o sistema produz hoje não é
-nenhuma das duas. Fica nomeado abaixo, e o caso que o caracteriza **ficará vermelho no dia em que
-alguém consertar** — é assim que ele avisa quem consertar que a decisão foi tomada.
+#### A metade que a TABELA resolveu — patrimonial
+
+A pergunta foi levada à tabela antes de qualquer código, e a tabela respondeu. No plano **oficial**
+do TCE-PB (`docs/oficial/tce-pb/Pcasp_2025.xlsx`, 7.864 contas, `sha256` conferido no
+`MANIFEST.json`), das 103 contas cujo nome cita adiantamento ou antecipação, o ramo que serve é:
+
+```
+1.1.3.1        ADIANTAMENTOS CONCEDIDOS
+1.1.3.1.1.01   ADIANTAMENTOS CONCEDIDOS A PESSOAL
+1.1.3.1.1.01.01  SALÁRIOS E ORDENADOS - ADIANTAMENTOS   (analítica, DEVEDORA)
+1.1.3.1.1.01.02  13 SALÁRIO - ADIANTAMENTO              (a do outro adiantamento)
+```
+
+⚠️ Nem `prisma/seed/pcasp.ts` (o plano mínimo, 64 contas) nem `modules/m01-core-contabil/roteiros.ts`
+tinham conta ou roteiro de antecipação a pessoal. A resposta estava **só** no arquivo oficial.
+
+`apropriarFolha` de uma folha de vale passa a **exigir** que o grupo que a empenha declare, como
+contrapartida patrimonial da liquidação, uma conta do ramo `1.1.3.1.` — senão recusa com
+`CONTRAPARTIDA-DO-VALE-NAO-E-ADIANTAMENTO`. Com ela, a liquidação do vale **debita o ativo**, e a
+VPD de pessoal é reconhecida **uma vez**, na mensal. Afirmado pelo efeito, no razão.
+
+⚠️ E o prefixo é o **ramo**, não a folha: quem escolhe a analítica é o ente (há consolidação, INTRA
+e INTER OFSS, e desdobramento próprio). O sistema exige que seja um ADIANTAMENTO CONCEDIDO; qual
+delas não é dele decidir.
+
+#### A metade que a tabela NÃO resolve — orçamentária, e por isso é recusa
+
+O PCASP diz onde o vale entra no patrimônio; **não** diz se ele consome dotação nem em que natureza
+de despesa. As duas práticas conhecidas são coerentes entre si e incompatíveis: (a) o vale é
+**extraorçamentário** e não empenha — caminho que este sistema não tem; (b) o vale é despesa
+orçamentária de **natureza própria**. A fonte que escolhe entre as duas não foi localizada.
+
+O que não precisa de norma nenhuma é a aritmética: a **mesma** natureza de despesa empenhando a
+remuneração do mês **e** o adiantamento dela consome o crédito duas vezes para o mesmo dinheiro —
+engano sob (a) e sob (b). É só isso que `VALE-NA-MESMA-NATUREZA-DA-REMUNERACAO` impede, nas **duas
+pontas** (apropriar o vale primeiro e a mensal depois voltaria a duplicar pela outra), e por
+**natureza** e não por ficha (duas fichas do mesmo elemento consomem a mesma dotação classificada).
+
+A pendência continua aberta abaixo, agora com a decisão **posta** em vez de descrita.
 
 ## Fora de escopo aqui — pendências nomeadas
 
@@ -1105,29 +1140,36 @@ alguém consertar** — é assim que ele avisa quem consertar que a decisão foi
   no vale tributaria a mesma base duas vezes. Se um ente precisar que o vale retenha, a 2ª metade
   teria de CREDITAR o já retido, e o critério desse crédito é normativo e não foi levantado. A
   memória de cada contracheque do vale diz isso por escrito.
-- `ESTORNO-DO-VALE-BLOQUEIA-A-COMPLEMENTAR` — **V13 rodada 2, MEDIDO** (substitui e precisa
-  `ESTORNO-DO-ADIANTAMENTO-SALARIAL-DEPOIS-DA-MENSAL`, da rodada 1, que era raciocínio e agora é
-  fato). O caso: o vale foi pago, a folha mensal o abateu e FECHOU, e só então o pagamento do vale
-  foi anulado. O servidor ficou sem o vale **e** com o desconto; o ente lhe deve a diferença.
-  O que acontece, medido em `m33-adiantamento-salarial-pago.test.ts`:
-  - a mensal FECHADA **não muda** — folha fechada não se recalcula (invariante 3), e isso está
-    certo: a obrigação já reconhecida não desaparece;
-  - a folha COMPLEMENTAR, que seria o instrumento de pagar o que faltou, fica **bloqueada**: ela
-    recalcula o correto, o correto passa pela guarda do critério PAGO, e a guarda não se satisfaz.
+- `VALE-EMPENHADO-DUPLICA-A-DESPESA-DO-MES` — **V13 rodada 2 mediu, rodada 3 tratou o que podia
+  ser tratado sem norma.** A metade patrimonial está resolvida pela tabela (seção acima). A que
+  **resta** é uma pergunta só, e ela é do ente com fundamento: **o adiantamento salarial consome
+  dotação orçamentária?** Se sim, em que natureza de despesa. Enquanto não houver resposta, o
+  sistema **recusa** a coincidência de natureza em vez de produzir o número errado — o ente que
+  responder (b) aponta o grupo para a ficha certa e segue; o que responder (a) não tem caminho
+  aqui, e é isso que precisa ser construído: o pagamento extraorçamentário do vale (M07), com a
+  baixa do direito no recebimento pela folha mensal.
+- `ESTORNO-DO-VALE-BLOQUEIA-A-COMPLEMENTAR` — **V13 rodada 2 mediu; rodada 3 respondeu a pergunta
+  de desenho e NÃO construiu.** O caso: o vale foi pago, a mensal o abateu e FECHOU, e só então o
+  pagamento do vale foi anulado.
 
-  ⚠️ A recusa é **verdadeira** (o vale realmente não está mais pago) e é fail-closed — e fecha
-  justamente a porta da correção. A saída é ato próprio de reposição ou de reconhecimento, que este
-  sistema não pratica; improvisá-lo seria inventar ato financeiro. **O que foi construído é o
-  NOME**: a recusa detecta que uma folha já fechada da competência abateu, diz quanto, diz que o
-  ente deve a diferença e diz que o acerto é ato que ele não pratica — para o operador corrigir em
-  vez de ficar preso. O que falta é o ato.
-- `VALE-EMPENHADO-DUPLICA-A-DESPESA-DO-MES` — **V13 rodada 2, MEDIDO.** Ver a seção acima: vale e
-  mensal empenham cada um o seu bruto, e junho fecha com 4.200,00 empenhados para 3.000,00 de
-  custo. Escolher entre o tratamento extraorçamentário e o empenho do restante é **decisão com
-  fundamento normativo**, e a fonte não foi levantada — inventar aqui seria o erro que este módulo
-  inteiro evita. E recusar a apropriação do vale fecharia a porta do critério PAGO. A pendência é o
-  que resta, e ela é de PRODUTO, não de engenharia: alguém precisa ler a norma antes de o primeiro
-  município empenhar um vale.
+  ⚠️ **A DIREÇÃO DA DÍVIDA É O CONTRÁRIO DA INTUIÇÃO, E ELA DECIDE TUDO.** "Estorno" sugere
+  "o servidor recebeu a mais e tem de repor". É o oposto, e está **medido** em
+  `m33-adiantamento-salarial-pago.test.ts`: a mensal descontou 1.200,00 por um adiantamento cujo
+  pagamento líquido hoje é **zero** para aquela matrícula. O servidor ficou com 1.500,00 e tinha
+  direito a 2.700,00 — **o ente deve a ele**, não o contrário.
+
+  Isso muda qual instrumento é legítimo. As três opções, com o que cada uma custa:
+
+  | Opção | O que é | Custo |
+  |---|---|---|
+  | **(A) Complementar com delta negativo em rubrica de DESCONTO** | O correto de hoje tem `ABATSAL = 0` e o apurado tem `1.200,00`; o delta é **−1.200,00 num DESCONTO**, o que AUMENTA o líquido — é literalmente "pagar o que faltou", que é o que a complementar existe para fazer. | `DiferencaNegativaNaComplementarError` recusa **por rubrica, sem olhar o sinal do efeito**: para PROVENTO, negativo significa "apurado a mais" e recusar é certo; para DESCONTO, negativo significa "retido a mais" e o ente é quem deve. A guarda já distingue os dois **na mensagem** e não na decisão. Mudá-la é mexer no motor da complementar, que serve toda folha do ente — exige caracterização antes, e uma linha de contracheque com valor negativo teria de ser decidida (o banco aceita; o domínio, a tela, o documento e a liquidação não foram medidos para isso). **É a opção mais barata e a única que reusa ato existente.** |
+  | **(B) Retificação da folha** | Reabrir/retificar a mensal fechada para refazer o abatimento. | **Não existe** (`RETIFICACAO-DA-FOLHA`) e colide com a invariante 3 — folha fechada não se recalcula. Construir é frente própria, e ela reabre a pergunta de o que fazer com empenho, liquidação e pagamento já feitos sobre o cálculo congelado. |
+  | **(C) Ato próprio de reconhecimento de dívida com o servidor** | Registrar que o ente deve 1.200,00 àquela matrícula, fora da folha, e pagar pelo caminho da despesa. | Ato novo, com rito, autorização e razão próprios. É o mais correto em tese e o mais caro; e é o espelho do que já falta do outro lado (a reposição ao erário, que este sistema também não pratica). |
+
+  **Nada disto foi construído nesta rodada**, por instrução: abrir qualquer das três é outra
+  frente. O que existe hoje é a recusa com o beco **nomeado** — ela diz que uma folha fechada
+  abateu, quanto, que o ente deve a diferença ao servidor e que o acerto é ato que este sistema não
+  pratica. A decisão entre (A), (B) e (C) é de produto.
 - `ABRANGENCIA-DO-ADIANTAMENTO-SALARIAL-SEM-BASE-NAO-NOMEADA` — **V13.** Na prática
   `REMUNERACAO_DO_MES_ANTERIOR`, quem foi admitido na própria competência não tem folha anterior
   para ler e é pulado **sem motivo nomeado** no fato de abrangência: `MotivoDaExclusao` não tem um
