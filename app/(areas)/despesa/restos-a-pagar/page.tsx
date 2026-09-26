@@ -64,12 +64,17 @@ export default async function RestosAPagarPage({
 
   if (linhas.length === 0) {
     return (
-      <div>
+      <div className="space-y-4">
         {cabecalho}
         <EstadoVazio
           titulo="Nenhum resto a pagar no recorte"
           descricao="Restos a pagar são inscritos no encerramento do exercício. Não há inscrição para o exercício e o tipo selecionados."
         />
+        {/* ⚠️ A LIMITAÇÃO APARECE AQUI TAMBÉM, e a primeira versão só a mostrava quando havia
+            linha. Quem abrisse a tela sem inscrição nenhuma — que é o estado mais comum antes do
+            primeiro encerramento — não ficava sabendo que as ações não estão disponíveis, nem o
+            que pedir para habilitá-las. O percurso pegou isso. */}
+        <AvisoDasAcoes />
       </div>
     );
   }
@@ -83,16 +88,25 @@ export default async function RestosAPagarPage({
         keyDe={(l) => l.inscricaoId}
         legenda="Valores em R$ · pago e cancelado são líquidos de estorno · saldo = inscrito − pago − cancelado"
       />
-      {/* ⚠️ A LIMITAÇÃO DITA EM LINGUAGEM DE OPERAÇÃO, e não escondida nem disfarçada de botão.
-          Liquidar, pagar, cancelar e estornar existem no domínio e são autorizadas por ação
-          própria — o que falta é a contabilização delas estar configurada, e sem ela a operação
-          não pode nascer. Oferecer o botão e falhar depois seria pior; omitir a frase seria pior
-          ainda, porque o operador não saberia o que pedir. */}
-      <EstadoVazio
-        titulo="Ações desta tela ainda não disponíveis"
-        descricao="Liquidar, pagar, cancelar e estornar restos a pagar dependem da contabilização destas operações estar configurada. Configure a contabilização dos restos a pagar para habilitá-las."
-      />
+      <AvisoDasAcoes />
     </div>
+  );
+}
+
+/**
+ * ⚠️ A LIMITAÇÃO DITA EM LINGUAGEM DE OPERAÇÃO, e não escondida nem disfarçada de botão.
+ *
+ * Liquidar, pagar, cancelar e estornar existem no domínio do M08 e já têm ação de autorização
+ * própria no censo. O que falta é a CONTABILIZAÇÃO delas estar configurada — e sem ela a operação
+ * não pode nascer. Oferecer o botão e falhar depois seria pior; omitir a frase seria pior ainda,
+ * porque o operador não saberia o que pedir.
+ */
+function AvisoDasAcoes(): React.ReactElement {
+  return (
+    <EstadoVazio
+      titulo="Ações desta tela ainda não disponíveis"
+      descricao="Liquidar, pagar, cancelar e estornar restos a pagar dependem da contabilização destas operações estar configurada. Configure a contabilização dos restos a pagar para habilitá-las."
+    />
   );
 }
 

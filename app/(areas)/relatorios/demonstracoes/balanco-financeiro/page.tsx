@@ -88,14 +88,14 @@ export default async function BalancoFinanceiroPage({
         <>
           <TabelaDeDados
             colunas={COLUNAS}
-            linhas={dados.ingressos}
+            linhas={comTotal(dados.ingressos, "Total dos ingressos", dados.totalIngressos)}
             keyDe={(l, i) => `i-${l.codigo ?? l.rotulo}-${i}`}
             ehTotal={(l) => l.nivel === "TOTAL"}
             legenda="Ingressos — valores em R$"
           />
           <TabelaDeDados
             colunas={COLUNAS}
-            linhas={dados.dispendios}
+            linhas={comTotal(dados.dispendios, "Total dos dispêndios", dados.totalDispendios)}
             keyDe={(l, i) => `d-${l.codigo ?? l.rotulo}-${i}`}
             ehTotal={(l) => l.nivel === "TOTAL"}
             legenda="Dispêndios — valores em R$"
@@ -115,6 +115,26 @@ export default async function BalancoFinanceiroPage({
       />
     </div>
   );
+}
+
+/**
+ * Acrescenta a linha de TOTAL vinda do motor — e ela faltava.
+ *
+ * ⚠️ O MOTOR CALCULAVA E A TELA JOGAVA FORA. `balancoFinanceiro` devolve `totalIngressos` e
+ * `totalDispendios`, e as listas `ingressos`/`dispendios` NÃO trazem linha de total (o `"TOTAL"` do
+ * `NivelLinhaFinanceira` existe para outros usos). A primeira versão desta tela renderizava só as
+ * listas, então o Anexo 13 saía sem os seus dois totais — e a identidade que ele existe para
+ * mostrar, total de ingressos == total de dispêndios, ficava invisível. Foi o percurso de navegador
+ * que pegou isso, procurando na tela um número que a porta media e ninguém exibia.
+ *
+ * O valor NÃO é somado aqui: vem do motor. Isto é montagem de linha, não aritmética.
+ */
+function comTotal(
+  linhas: readonly LinhaFinanceira[],
+  rotulo: string,
+  total: string
+): readonly LinhaFinanceira[] {
+  return [...linhas, { codigo: null, rotulo, nivel: "TOTAL", valor: total }];
 }
 
 const COLUNAS: readonly ColunaTabela<LinhaFinanceira>[] = [
