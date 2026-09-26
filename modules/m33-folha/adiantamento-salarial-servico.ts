@@ -7,7 +7,10 @@ import { conferirReferenciaNormativa, type EstadoMinimoDoAdiantamento } from "./
 import { situacaoDaCertificacao, type FatoDaCertificacao } from "./certificacao.js";
 import {
   zCadastrarParametroDoAdiantamentoSalarialInput,
+  ContaDoAdiantamentoSalarialInvalidaError,
+  ContaDoAdiantamentoSalarialNaoDeclaradaError,
   ParametroDoAdiantamentoSalarialAusenteError,
+  RAMO_DO_ADIANTAMENTO_CONCEDIDO,
   type BaseDoAdiantamentoSalarial,
   type CadastrarParametroDoAdiantamentoSalarialInput,
   type ParametroLidoDoAdiantamentoSalarial,
@@ -125,6 +128,33 @@ export async function cadastrarParametroDoAdiantamentoSalarial(
     }
 
     /**
+     * ═══ ⚠️ V13 rodada 4 — A CONTA EM QUE O VALE VIRA DIREITO, CONFERIDA ANTES DE GRAVAR ═══
+     *
+     * Esta é a recusa que na rodada 3 morava em `apropriarFolha` e agora mora aqui — e o
+     * deslocamento a torna mais forte: o ente descobre no ATO de declarar, não depois de calcular
+     * e fechar a folha.
+     *
+     * ⚠️ TRÊS CONFERÊNCIAS, E AS TRÊS SÃO NECESSÁRIAS: a conta existe no plano do ente (semear o
+     * plano é pré-requisito, não detalhe); é do ramo `1.1.3.1 ADIANTAMENTOS CONCEDIDOS` (fora
+     * dele, o vale viraria despesa ou viraria outra coisa); e é ANALÍTICA (o adapter do razão
+     * recusa partida em sintética — INVARIANTE 5 —, e descobrir isso no pagamento é descobrir com
+     * o dinheiro na mão).
+     */
+    const conta = await tx.contaPcasp.findUnique({
+      where: { id: d.contaDoAdiantamentoId },
+      select: { codigo: true, analitica: true },
+    });
+    if (conta === null) {
+      throw new ContaDoAdiantamentoSalarialInvalidaError(d.contaDoAdiantamentoId, "não existe no plano de contas do ente");
+    }
+    if (!conta.codigo.startsWith(`${RAMO_DO_ADIANTAMENTO_CONCEDIDO}.`)) {
+      throw new ContaDoAdiantamentoSalarialInvalidaError(conta.codigo, `não é do ramo ${RAMO_DO_ADIANTAMENTO_CONCEDIDO}`);
+    }
+    if (!conta.analitica) {
+      throw new ContaDoAdiantamentoSalarialInvalidaError(conta.codigo, "é SINTÉTICA, e sintética não recebe partida");
+    }
+
+    /**
      * ⚠️ A VERIFICABILIDADE DO CRITÉRIO "PAGO", CONFERIDA ANTES DE GRAVAR — junto das outras
      * pré-condições, e pela mesma regra aprendida.
      */
@@ -169,6 +199,7 @@ export async function cadastrarParametroDoAdiantamentoSalarial(
         estadoMinimoParaAbater: d.estadoMinimoParaAbater,
         rubricaDoAdiantamentoId: d.rubricaDoAdiantamentoId,
         rubricaDoAbatimentoId: d.rubricaDoAbatimentoId,
+        contaDoAdiantamentoId: d.contaDoAdiantamentoId,
         atoEsfera: d.atoEsfera,
         atoTipo: d.atoTipo,
         atoNumero: d.atoNumero,
@@ -199,6 +230,7 @@ const SELECT_DO_PARAMETRO = {
   estadoMinimoParaAbater: true,
   rubricaDoAdiantamentoId: true,
   rubricaDoAbatimentoId: true,
+  contaDoAdiantamento: { select: { id: true, codigo: true, nome: true } },
   atoEsfera: true,
   atoTipo: true,
   atoNumero: true,
@@ -216,6 +248,7 @@ type LinhaDoParametro = {
   readonly estadoMinimoParaAbater: string;
   readonly rubricaDoAdiantamentoId: string;
   readonly rubricaDoAbatimentoId: string;
+  readonly contaDoAdiantamento: { readonly id: string; readonly codigo: string; readonly nome: string } | null;
   readonly atoEsfera: string;
   readonly atoTipo: string;
   readonly atoNumero: string;
@@ -225,6 +258,15 @@ type LinhaDoParametro = {
 };
 
 function paraParametro(p: LinhaDoParametro): ParametroDaCompetencia {
+  /**
+   * ⚠️ FAIL-CLOSED AQUI, E NÃO NO PONTO DE USO. A coluna é nullable por migration aditiva, e um
+   * parâmetro sem conta declarada não pode produzir vale nenhum — nem cálculo, nem pagamento. Ler
+   * e devolver `null` faria cada chamador decidir por conta própria o que fazer com a ausência, e
+   * o primeiro que esquecesse abateria um direito que ninguém constituiu.
+   */
+  if (p.contaDoAdiantamento === null) {
+    throw new ContaDoAdiantamentoSalarialNaoDeclaradaError(p.competencia, p.versao);
+  }
   return {
     parametro: {
       id: p.id,
@@ -233,6 +275,7 @@ function paraParametro(p: LinhaDoParametro): ParametroDaCompetencia {
       percentualDoAdiantamento: new Decimal(p.percentualDoAdiantamento as Decimal),
       baseDoAdiantamento: p.baseDoAdiantamento as BaseDoAdiantamentoSalarial,
       estadoMinimoParaAbater: p.estadoMinimoParaAbater as EstadoMinimoDoAdiantamento,
+      contaDoAdiantamento: p.contaDoAdiantamento,
       ato: {
         esfera: p.atoEsfera as ParametroLidoDoAdiantamentoSalarial["ato"]["esfera"],
         tipo: p.atoTipo as ParametroLidoDoAdiantamentoSalarial["ato"]["tipo"],

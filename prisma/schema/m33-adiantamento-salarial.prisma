@@ -96,6 +96,31 @@ model ParametroDoAdiantamentoSalarial {
   rubricaDoAdiantamentoId String
   rubricaDoAdiantamento   Rubrica @relation("RubricaDoAdiantamentoSalarial", fields: [rubricaDoAdiantamentoId], references: [id])
 
+  // ── A CONTA DO PLANO EM QUE O VALE VIRA DIREITO ───────────────────────────
+
+  /// ⚠️ V13 rodada 4 — A CONTA QUE O VALE DEBITA, E ELA É DO PARÂMETRO E NÃO DO GRUPO DE EMPENHO.
+  ///
+  /// O usuário decidiu que o vale é operação PATRIMONIAL e **não empenha**: ele debita um
+  /// ADIANTAMENTO CONCEDIDO A PESSOAL contra a saída de caixa, e a folha mensal da mesma
+  /// competência BAIXA esse direito ao abatê-lo. A despesa de pessoal é empenhada UMA vez, na
+  /// mensal, pelo bruto.
+  ///
+  /// ⚠️ POR ISSO A CONTA MIGROU DO GRUPO DE EMPENHO PARA CÁ. Na V13 rodada 3 ela era exigida no
+  /// `contaVariacaoId` do grupo, porque o vale ainda era empenhado e liquidado. Sem empenho, o
+  /// grupo não participa do vale, e uma conta declarada num grupo que ninguém usa seria guarda
+  /// sem alvo. Aqui ela fica no MESMO lugar em que o ente já declara o percentual, a base e o
+  /// ato — versionada por competência e append-only.
+  ///
+  /// ⚠️ NULLABLE POR MIGRATION ADITIVA, e o nulo é o estado real do que já está gravado: o
+  /// parâmetro nasceu na rodada 1, antes de esta pergunta existir. O cadastro EXIGE a conta (o
+  /// Zod não a aceita ausente) e a LEITURA falha fechado quando ela é nula — inventar uma conta
+  /// para uma linha antiga seria afirmar que o ente declarou o que ninguém lhe perguntou.
+  ///
+  /// O serviço recusa qualquer conta fora do ramo `1.1.3.1 ADIANTAMENTOS CONCEDIDOS`, e recusa
+  /// conta SINTÉTICA (o adapter do razão não aceita partida em sintética — INVARIANTE 5).
+  contaDoAdiantamentoId String?
+  contaDoAdiantamento   ContaPcasp? @relation("ContaDoAdiantamentoSalarial", fields: [contaDoAdiantamentoId], references: [id])
+
   /// A rubrica de DESCONTO, de natureza `ABATIMENTO_DO_ADIANTAMENTO_SALARIAL`, que abate na folha
   /// MENSAL da mesma competência o que o vale adiantou.
   ///

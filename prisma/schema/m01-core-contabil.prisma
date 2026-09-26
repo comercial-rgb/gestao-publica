@@ -75,6 +75,9 @@ model ContaPcasp {
   passivosDePrecatorio     Precatorio[]                @relation("PassivoDoPrecatorio")
   debitosDoRoteiroPrecatorio  RoteiroPrecatorio[]      @relation("DebitoDoRoteiroPrecatorio")
   creditosDoRoteiroPrecatorio RoteiroPrecatorio[]      @relation("CreditoDoRoteiroPrecatorio")
+  /// back-relation M33 (V13) — a conta em que o adiantamento salarial vira DIREITO. Campo
+  /// VIRTUAL: a FK vive em `ParametroDoAdiantamentoSalarial`.
+  parametrosDoAdiantamentoSalarial ParametroDoAdiantamentoSalarial[] @relation("ContaDoAdiantamentoSalarial")
   controlesDeConsorcio     ConsorcioPublico[]          @relation("ControleDoConsorcio")
   debitosDoRoteiroConsorcio  RoteiroConsorcio[]        @relation("DebitoDoRoteiroConsorcio")
   creditosDoRoteiroConsorcio RoteiroConsorcio[]        @relation("CreditoDoRoteiroConsorcio")

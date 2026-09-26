@@ -39,10 +39,12 @@ export function FormParametroDoAdiantamentoSalarial({
   proventos,
   abatimento,
   adiantamentosQuePermitemPago,
+  contasDoAdiantamento,
 }: {
   readonly proventos: readonly Opcao[];
   readonly abatimento: readonly Opcao[];
   readonly adiantamentosQuePermitemPago: readonly string[];
+  readonly contasDoAdiantamento: readonly Opcao[];
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDoParametroDoAdiantamentoSalarial, FormData>(
     criarParametroDoAdiantamentoSalarialAction,
@@ -66,6 +68,12 @@ export function FormParametroDoAdiantamentoSalarial({
   }
 
   const semRubricas = proventos.length === 0 || abatimento.length === 0;
+  /**
+   * ⚠️ SEM CONTA DO RAMO, O FORMULÁRIO DIZ O QUE FALTA — não mostra um seletor vazio. Seletor
+   * obrigatório e vazio é um formulário que não pode ser enviado e não explica por quê; o operador
+   * conclui que a tela está quebrada.
+   */
+  const semContas = contasDoAdiantamento.length === 0;
 
   return (
     <form
@@ -166,6 +174,42 @@ export function FormParametroDoAdiantamentoSalarial({
         inteira, o vale incluído — reter aqui tributaria a mesma base duas vezes. A memória de cada contracheque do vale
         diz isso por escrito.
       </p>
+
+      <h3 className="mt-5 mb-2 text-xs font-semibold text-[color:var(--color-ink)]">O lado contábil</h3>
+      {semContas ? (
+        <p className="mb-3 rounded border border-[color:var(--color-borda)] p-3 text-xs text-[color:var(--color-ink-2)]">
+          O plano de contas do ente não tem nenhuma conta ANALÍTICA do ramo 1.1.3.1 (Adiantamentos concedidos), e sem
+          ela este parâmetro não pode ser cadastrado — o vale precisa de uma conta onde virar direito a receber. O plano
+          oficial do TCE-PB traz 1.1.3.1.1.01.01 (Salários e ordenados - adiantamentos) para exatamente este caso.
+          Semeie o plano de contas antes de continuar.
+        </p>
+      ) : null}
+      <div className="grid gap-4">
+        <label className="text-xs text-[color:var(--color-ink-2)]">
+          <span className={ROTULO}>Conta do plano em que o vale vira DIREITO a receber</span>
+          <select name="contaDoAdiantamentoId" required defaultValue="" className={CAMPO} disabled={semContas}>
+            <option value="" disabled>
+              Escolha
+            </option>
+            {contasDoAdiantamento.map((o) => (
+              <option key={o.valor} value={o.valor}>
+                {o.rotulo}
+              </option>
+            ))}
+          </select>
+          <span className="mt-1 block text-[11px]">
+            O vale <strong>não é despesa de pessoal do mês</strong>: quando ele sai do caixa, o ente passa a ter um
+            direito a receber daquele servidor, e é esta conta que o registra. A folha mensal da mesma competência
+            <strong> baixa</strong> esse direito ao abater o vale do líquido. A despesa de pessoal é reconhecida uma
+            única vez, na folha mensal, pelo valor bruto.
+          </span>
+          <span className="mt-1 block text-[11px]">
+            Só aparecem aqui contas analíticas do ramo 1.1.3.1 (Adiantamentos concedidos). Contas sintéticas não
+            recebem lançamento, e uma conta de variação patrimonial diminutiva faria o mesmo dinheiro virar despesa
+            duas vezes — uma no vale, outra na mensal.
+          </span>
+        </label>
+      </div>
 
       <h3 className="mt-5 mb-2 text-xs font-semibold text-[color:var(--color-ink)]">As rubricas</h3>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -276,7 +320,10 @@ export function FormParametroDoAdiantamentoSalarial({
         </p>
       ) : null}
 
-      <button type="submit" disabled={pendente || semRubricas} className={`${CLASSE_BOTAO_PRIMARIO} mt-4`}>
+      {/* ⚠️ `semContas` TRANCA O ENVIO junto de `semRubricas`. Um seletor obrigatório e desabilitado
+          deixaria o botão ativo num formulário que o navegador nunca envia — e o operador clicaria
+          sem nada acontecer, que é a definição de botão sem handler. */}
+      <button type="submit" disabled={pendente || semRubricas || semContas} className={`${CLASSE_BOTAO_PRIMARIO} mt-4`}>
         {pendente ? "Gravando…" : "Cadastrar o parâmetro"}
       </button>
     </form>

@@ -69,6 +69,43 @@ const ATO = {
   atoEmenta: "Dispoe sobre o adiantamento salarial aos servidores do Municipio",
 } as const;
 
+/**
+ * ⚠️ V13 rodada 4 — A CONTA EM QUE O VALE VIRA DIREITO, E ELA NÃO FOI INVENTADA PARA O TESTE.
+ *
+ * `1.1.3.1.1.01.01 SALÁRIOS E ORDENADOS - ADIANTAMENTOS` existe no plano oficial do TCE-PB
+ * (`Pcasp_2025.xlsx`, sha256 conferido no MANIFEST), analítica e DEVEDORA — e desde esta rodada
+ * também em `prisma/seed/pcasp.ts`. Aqui ela é criada à mão porque `limparBanco` trunca
+ * `ContaPcasp`: cada fixture é dona das próprias contas.
+ */
+const CONTA_DO_VALE = "c-adiant-pessoal";
+
+/**
+ * ⚠️ AS DUAS CONTAS ERRADAS SÃO ERRADAS POR MOTIVOS DIFERENTES, e é isso que as torna uma fixture
+ * e não um par de sinônimos:
+ *
+ *   · `CONTA_FORA_DO_RAMO` é a VPD de pessoal (`3.1.1.1.1.01.00`) — analítica, existente, e
+ *     exatamente a conta que a rodada 2 debitava indevidamente. Ela falha no RAMO.
+ *   · `CONTA_SINTETICA` é `1.1.3.1.1.01` — DENTRO do ramo `1.1.3.1`, e reprovada ainda assim
+ *     porque sintética não recebe partida. Sem ela, um serviço que só conferisse o prefixo
+ *     passaria os três casos e o defeito apareceria no primeiro pagamento.
+ *
+ * ⚠️ E ELAS SÃO O QUE IMPEDE A CONFERÊNCIA DUPLA DE PASSAR POR UMA SÓ. Com apenas a VPD, as duas
+ * guardas ficariam indistinguíveis: a conta reprovaria pelo ramo e ninguém saberia se a exigência
+ * de analítica existe.
+ */
+const CONTA_FORA_DO_RAMO = "c-vpd-pessoal";
+const CONTA_SINTETICA = "c-adiant-sintetica";
+
+async function contaDoValeNoPlano(): Promise<void> {
+  await prisma.contaPcasp.createMany({
+    data: [
+      { id: CONTA_DO_VALE, codigo: "1.1.3.1.1.01.01", nome: "SALÁRIOS E ORDENADOS - ADIANTAMENTOS", naturezaSaldo: "DEVEDORA", nivel: 7, analitica: true },
+      { id: CONTA_FORA_DO_RAMO, codigo: "3.1.1.1.1.01.00", nome: "VENCIMENTOS E VANTAGENS FIXAS - PESSOAL CIVIL", naturezaSaldo: "DEVEDORA", nivel: 7, analitica: true },
+      { id: CONTA_SINTETICA, codigo: "1.1.3.1.1.01", nome: "ADIANTAMENTOS CONCEDIDOS A PESSOAL", naturezaSaldo: "DEVEDORA", nivel: 6, analitica: false },
+    ],
+  });
+}
+
 async function tabelasDoEnte(): Promise<void> {
   await cadastrarTabelaDeContribuicao(prisma, {
     regime: "RPPS", competenciaInicio: "2026-01", fundamentacaoLegal: "FIXTURE lei municipal",
@@ -137,6 +174,7 @@ async function parametroDoVale(
     estadoMinimoParaAbater: "FECHADO",
     rubricaDoAdiantamentoId: ids["ADSAL"]!,
     rubricaDoAbatimentoId: ids["ABATSAL"]!,
+    contaDoAdiantamentoId: CONTA_DO_VALE,
     ...ATO,
     criadoPor: AUTOR,
     ...over,
@@ -162,6 +200,7 @@ async function liquidosGravados(folhaId: string): Promise<ReadonlyMap<string, st
 
 /** Duas matrículas, tabelas e rubricas. MAT-A 3.000,00 e MAT-B 2.000,00. */
 async function enteComDoisServidores(): Promise<{ readonly ids: Record<string, string>; readonly a: string; readonly b: string }> {
+  await contaDoValeNoPlano();
   await tabelasDoEnte();
   const ids = await rubricasDoEnte();
   const a = await vinculo("11111111111", "MAT-A", "3000.00");
@@ -622,5 +661,180 @@ describe("c8 · autorização", () => {
       /RUBRICA-DO-ADIANTAMENTO-SALARIAL-INVALIDA[\s\S]*ABATIMENTO_DO_ADIANTAMENTO_SALARIAL/
     );
     expect(await prisma.parametroDoAdiantamentoSalarial.count()).toBe(0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// c9 · A CONTA EM QUE O VALE VIRA DIREITO — OS DOIS LADOS DA MESMA REGRA
+//
+// ⚠️ ESTA SEÇÃO EXISTE PORQUE A COLUNA É NULLABLE E A ENTRADA É OBRIGATÓRIA, e essa combinação
+// só é honesta se AS DUAS PONTAS estiverem medidas. Uma coluna nullable com Zod exigente e
+// leitura desprotegida é pior que uma coluna NOT NULL: parece fechada e não é.
+//
+//   · CADASTRO — nenhum parâmetro NOVO nasce sem a conta, nem com a conta errada (c9.1 a c9.4);
+//   · LEITURA  — um parâmetro GRAVADO ANTES da pergunta não vira vale nenhum (c9.5 e c9.6).
+//
+// ⚠️ E A FIXTURE DO LADO DA LEITURA É GRAVADA À REVELIA DO SERVIÇO, de propósito. O serviço não
+// consegue produzir a linha antiga (o Zod a recusa), e é justamente a linha que o serviço não
+// produz mais que a leitura tem de tratar. Reproduzi-la por `prisma.create` direto é a única forma
+// de medir o estado que a migration aditiva deixou existir.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("c9 · a conta do plano em que o vale vira direito", () => {
+  it("c9.1 · conta que NÃO EXISTE no plano recusa nomeando o motivo, e não grava", async () => {
+    const { ids } = await enteComDoisServidores();
+
+    await expect(parametroDoVale(ids, { contaDoAdiantamentoId: "c-que-nunca-existiu" })).rejects.toThrow(
+      /CONTA-DO-ADIANTAMENTO-SALARIAL-INVALIDA[\s\S]*não existe no plano de contas do ente/
+    );
+    expect(await prisma.parametroDoAdiantamentoSalarial.count()).toBe(0);
+  });
+
+  /**
+   * ⚠️ A VPD DE PESSOAL É A CONTA DO DEFEITO DA RODADA 2 — aquela em que 4.200,00 viravam despesa
+   * para 3.000,00 de custo. Recusá-la AQUI, no cadastro, é o que impede a duplicação de nascer:
+   * na rodada 3 a mesma recusa só chegava depois de a folha estar calculada e fechada.
+   */
+  it("c9.2 · conta FORA do ramo 1.1.3.1 recusa nomeando o ramo e a conta oficial, e não grava", async () => {
+    const { ids } = await enteComDoisServidores();
+
+    await expect(parametroDoVale(ids, { contaDoAdiantamentoId: CONTA_FORA_DO_RAMO })).rejects.toThrow(
+      /CONTA-DO-ADIANTAMENTO-SALARIAL-INVALIDA[\s\S]*3\.1\.1\.1\.1\.01\.00[\s\S]*não é do ramo 1\.1\.3\.1/
+    );
+    // A orientação nomeia a conta que o plano oficial tem para este caso — recusa sem destino
+    // manda o operador adivinhar.
+    await expect(parametroDoVale(ids, { contaDoAdiantamentoId: CONTA_FORA_DO_RAMO })).rejects.toThrow(
+      /1\.1\.3\.1\.1\.01\.01/
+    );
+    expect(await prisma.parametroDoAdiantamentoSalarial.count()).toBe(0);
+  });
+
+  it("c9.3 · conta DENTRO do ramo mas SINTÉTICA recusa — e é o caso que o prefixo não pega", async () => {
+    const { ids } = await enteComDoisServidores();
+
+    await expect(parametroDoVale(ids, { contaDoAdiantamentoId: CONTA_SINTETICA })).rejects.toThrow(
+      /CONTA-DO-ADIANTAMENTO-SALARIAL-INVALIDA[\s\S]*1\.1\.3\.1\.1\.01[\s\S]*SINTÉTICA/
+    );
+    expect(await prisma.parametroDoAdiantamentoSalarial.count()).toBe(0);
+  });
+
+  /**
+   * ⚠️ A ENTRADA SEM O CAMPO É RECUSADA PELO ZOD, ANTES DE QUALQUER CONSULTA. É uma recusa de
+   * contrato, não de negócio, e por isso a mensagem é a do Zod — o que se afirma aqui é que o campo
+   * é OBRIGATÓRIO, e que a ausência não escorrega para `undefined` gravado como nulo.
+   */
+  it("c9.4 · entrada SEM o campo é recusada, e a conta certa grava — nada disto passa por vacuidade", async () => {
+    const { ids } = await enteComDoisServidores();
+
+    const semCampo = {
+      competencia: JUNHO,
+      percentualDoAdiantamento: "0.40",
+      baseDoAdiantamento: "REMUNERACAO_PROJETADA_DO_MES",
+      estadoMinimoParaAbater: "FECHADO",
+      rubricaDoAdiantamentoId: ids["ADSAL"]!,
+      rubricaDoAbatimentoId: ids["ABATSAL"]!,
+      ...ATO,
+      criadoPor: AUTOR,
+    } as unknown as Parameters<typeof cadastrarParametroDoAdiantamentoSalarial>[1];
+
+    await expect(cadastrarParametroDoAdiantamentoSalarial(prisma, semCampo)).rejects.toThrow(/contaDoAdiantamentoId/);
+    expect(await prisma.parametroDoAdiantamentoSalarial.count()).toBe(0);
+
+    // ── E A CONTA CERTA GRAVA, com a FK apontando para ela ──
+    await parametroDoVale(ids);
+    const gravado = await prisma.parametroDoAdiantamentoSalarial.findFirstOrThrow({
+      select: { contaDoAdiantamentoId: true, contaDoAdiantamento: { select: { codigo: true } } },
+    });
+    expect(gravado.contaDoAdiantamentoId).toBe(CONTA_DO_VALE);
+    expect(gravado.contaDoAdiantamento?.codigo).toBe("1.1.3.1.1.01.01");
+  });
+
+  /**
+   * ═══ ⚠️ O LADO DA LEITURA — O PARÂMETRO QUE NASCEU ANTES DA PERGUNTA ═══
+   *
+   * A migration é aditiva e a coluna é nullable porque havia parâmetro gravado antes de o sistema
+   * perguntar em que conta o vale vira direito. A recusa é medida PELO EFEITO e pela rota do
+   * operador — `calcularFolha` —, não chamando o leitor direto: o que interessa é que o vale não
+   * sai, e que nenhum cálculo fica gravado pela metade.
+   *
+   * ⚠️ E O ESPERADO É "NADA", CONTADO: `CalculoDaFolha` e `Contracheque` em zero. "Não calculou" é
+   * compatível com um cálculo gravado e um erro depois — que é o defeito que este repositório já
+   * pagou como "efeito colateral antes da operação guardada".
+   */
+  it("c9.5 · parâmetro antigo, com a conta NULA, falha fechado nomeando o motivo e não calcula nada", async () => {
+    const { ids } = await enteComDoisServidores();
+
+    // A LINHA DA RODADA 1, reproduzida como ela era: sem `contaDoAdiantamentoId`.
+    await prisma.parametroDoAdiantamentoSalarial.create({
+      data: {
+        competencia: JUNHO,
+        versao: 1,
+        percentualDoAdiantamento: "0.40",
+        baseDoAdiantamento: "REMUNERACAO_PROJETADA_DO_MES",
+        estadoMinimoParaAbater: "FECHADO",
+        rubricaDoAdiantamentoId: ids["ADSAL"]!,
+        rubricaDoAbatimentoId: ids["ABATSAL"]!,
+        atoEsfera: "MUNICIPAL",
+        atoTipo: "DECRETO",
+        atoNumero: "4.321",
+        atoAno: 2020,
+        atoDispositivo: "art. 3º, caput",
+        atoEmenta: "Dispoe sobre o adiantamento salarial aos servidores do Municipio",
+        criadoPor: AUTOR,
+      },
+    });
+    // A fixture é o estado que a migration deixou existir — conferido, não suposto.
+    expect(await prisma.parametroDoAdiantamentoSalarial.count({ where: { contaDoAdiantamentoId: null } })).toBe(1);
+
+    const { folhaId } = await abrirFolha(prisma, { competencia: JUNHO, tipo: "ADIANTAMENTO_SALARIAL", criadoPor: AUTOR });
+    await expect(calcularFolha(prisma, { folhaId, criadoPor: AUTOR })).rejects.toThrow(
+      /CONTA-DO-ADIANTAMENTO-SALARIAL-NAO-DECLARADA[\s\S]*2026-06[\s\S]*O QUE FAZER/
+    );
+
+    expect(await prisma.calculoDaFolha.count({ where: { folhaId } })).toBe(0);
+    expect(await prisma.contracheque.count()).toBe(0);
+  });
+
+  /**
+   * ⚠️ E A ORIENTAÇÃO DA RECUSA É VERDADE, NÃO DECORAÇÃO. A mensagem manda cadastrar a versão
+   * seguinte declarando a conta; este caso executa exatamente isso e o vale sai. Sem ele, a recusa
+   * poderia ser um beco sem saída com texto amigável — que é a pior forma de fail-closed.
+   */
+  it("c9.6 · a saída que a recusa promete funciona: a versão 2 declara a conta e o vale sai", async () => {
+    const { ids } = await enteComDoisServidores();
+    await prisma.parametroDoAdiantamentoSalarial.create({
+      data: {
+        competencia: JUNHO,
+        versao: 1,
+        percentualDoAdiantamento: "0.40",
+        baseDoAdiantamento: "REMUNERACAO_PROJETADA_DO_MES",
+        estadoMinimoParaAbater: "FECHADO",
+        rubricaDoAdiantamentoId: ids["ADSAL"]!,
+        rubricaDoAbatimentoId: ids["ABATSAL"]!,
+        atoEsfera: "MUNICIPAL",
+        atoTipo: "DECRETO",
+        atoNumero: "4.321",
+        atoAno: 2020,
+        atoDispositivo: "art. 3º, caput",
+        atoEmenta: "Dispoe sobre o adiantamento salarial aos servidores do Municipio",
+        criadoPor: AUTOR,
+      },
+    });
+
+    const r = await parametroDoVale(ids);
+    expect(r.versao).toBe(2);
+
+    // ⚠️ APPEND-ONLY: a versão 1 continua lá, com a conta nula. Nada foi reescrito.
+    expect(await prisma.parametroDoAdiantamentoSalarial.count()).toBe(2);
+    expect(await prisma.parametroDoAdiantamentoSalarial.count({ where: { contaDoAdiantamentoId: null } })).toBe(1);
+
+    const { folhaId } = await abrirFolha(prisma, { competencia: JUNHO, tipo: "ADIANTAMENTO_SALARIAL", criadoPor: AUTOR });
+    const calc = await calcularFolha(prisma, { folhaId, criadoPor: AUTOR });
+    expect(calc.contracheques).toBe(2);
+
+    // A CONTA, À MÃO: 40% de 3.000,00 = 1.200,00 e 40% de 2.000,00 = 800,00.
+    const linhas = await linhasGravadas(folhaId);
+    expect(linhas.get("MAT-A/ADSAL")).toBe("1200.00");
+    expect(linhas.get("MAT-B/ADSAL")).toBe("800.00");
   });
 });

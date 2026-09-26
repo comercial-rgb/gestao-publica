@@ -5,6 +5,7 @@ import { lerConsulta, TAMANHO_DE_PAGINA, type ParametrosBrutos } from "../../../
 import { acoesPermitidas, exigirLeitura } from "../../../../lib/portas/molde";
 import { PARAMETROS_DO_ADIANTAMENTO_SALARIAL } from "../../../../lib/portas/recursos/folha";
 import {
+  contasParaOAdiantamentoSalarial,
   listarParametrosDoAdiantamentoSalarial,
   rubricasParaOParametroDoAdiantamentoSalarial,
   PortaSemBancoError,
@@ -28,9 +29,12 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
   await exigirLeitura("CONSULTAR_FOLHA");
   const consulta = lerConsulta(PARAMETROS_DO_ADIANTAMENTO_SALARIAL, await searchParams);
   try {
-    const [pagina, rubricas, permitidas] = await Promise.all([
+    const [pagina, rubricas, contasDoAdiantamento, permitidas] = await Promise.all([
       listarParametrosDoAdiantamentoSalarial(consulta),
       rubricasParaOParametroDoAdiantamentoSalarial(),
+      // As contas do ramo `1.1.3.1 ADIANTAMENTOS CONCEDIDOS` — o vale é operação PATRIMONIAL e
+      // debita um DIREITO a receber do servidor, que a folha mensal baixa ao abatê-lo.
+      contasParaOAdiantamentoSalarial(),
       acoesPermitidas(["CONFIGURAR_PARAMETRO_DO_ADIANTAMENTO_SALARIAL"]),
     ]);
     const podeCriar = permitidas.has("CONFIGURAR_PARAMETRO_DO_ADIANTAMENTO_SALARIAL");
@@ -55,6 +59,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
                   proventos={rubricas.proventos}
                   abatimento={rubricas.abatimento}
                   adiantamentosQuePermitemPago={rubricas.adiantamentosQuePermitemPago}
+                  contasDoAdiantamento={contasDoAdiantamento}
                 />
               ),
             }

@@ -55,7 +55,38 @@ import {
  * ⚠️ NASCE EM 1.0.0 e a prosa já é pt-BR: o corte que a V12 U2 fez no motor do 13º
  * ("3000.00" → "3.000,00") não tem equivalente aqui porque não há memória anterior a respeitar.
  */
-export const VERSAO_DO_MOTOR_DO_ADIANTAMENTO_SALARIAL = "m33-adiantamento-salarial-1.0.0";
+/**
+ * ⚠️ 1.1.0 (V13 rodada 4) — A MEMÓRIA PASSOU A GRAVAR A CONTA DO PLANO EM QUE O VALE VIRA DIREITO.
+ *
+ * O valor do vale não mudou; a MEMÓRIA mudou, e a memória entra no `sha256` do contracheque. Duas
+ * memórias com o mesmo número passam a ter hashes diferentes conforme o motor que as escreveu, e é
+ * esta constante que diz qual foi qual — sem ela, um auditor veria hashes divergentes para o mesmo
+ * cálculo e não teria como saber por quê.
+ *
+ * Folha fechada não se recalcula (invariante 3), então nada do que está gravado se move: o corte é
+ * PROSPECTIVO, e esta linha é o marco dele.
+ */
+export const VERSAO_DO_MOTOR_DO_ADIANTAMENTO_SALARIAL = "m33-adiantamento-salarial-1.1.0";
+
+/**
+ * ═══ V13 rodada 4 — O RAMO DO PCASP EM QUE O VALE VIRA DIREITO ═══
+ *
+ * ⚠️ ESTE PREFIXO NÃO FOI ESCOLHIDO: FOI PROCURADO E ENCONTRADO. O plano oficial do TCE-PB
+ * (`docs/oficial/tce-pb/Pcasp_2025.xlsx`, `sha256` conferido no `MANIFEST.json`, 7.864 contas) traz
+ * `1.1.3.1 ADIANTAMENTOS CONCEDIDOS` e, dentro dele,
+ * **`1.1.3.1.1.01.01 SALÁRIOS E ORDENADOS - ADIANTAMENTOS`** — analítica, DEVEDORA, que é
+ * exatamente o vale: um DIREITO a receber do servidor.
+ *
+ * ⚠️ E O PREFIXO É O RAMO, NÃO A FOLHA. Aceitar `1.1.3.1` e não cravar `...01.01` é deliberado:
+ * quem escolhe a analítica é o ente (o ramo tem consolidação, INTRA e INTER OFSS, e o ente pode
+ * ter desdobramento próprio). O sistema exige que a conta seja um ADIANTAMENTO CONCEDIDO; qual
+ * delas é decisão dele, e a mensagem nomeia a que o TCE tem para este caso.
+ *
+ * ⚠️ E ELE MORA NO DOMÍNIO PURO, não no serviço nem na apropriação, porque DOIS sítios o cobram —
+ * o cadastro do parâmetro e o pagamento — e duas cópias de um prefixo acabam discordando.
+ */
+export const RAMO_DO_ADIANTAMENTO_CONCEDIDO = "1.1.3.1";
+export const CONTA_DO_VALE_NO_PLANO_OFICIAL = "1.1.3.1.1.01.01 (SALÁRIOS E ORDENADOS - ADIANTAMENTOS)";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // AS PRÁTICAS SUPORTADAS — E O QUE CADA UMA PRECISA DECLARAR
@@ -151,6 +182,54 @@ export class ParametroDoAdiantamentoSalarialAusenteError extends Error {
   }
 }
 
+/**
+ * ⚠️ V13 rodada 4 — A RECUSA QUE MIGROU DA APROPRIAÇÃO PARA O CADASTRO, E FICOU MAIS FORTE.
+ *
+ * Na rodada 3 ela era `CONTRAPARTIDA-DO-VALE-NAO-E-ADIANTAMENTO` e disparava em `apropriarFolha`:
+ * o ente cadastrava o parâmetro, calculava o vale, fechava a folha, e só na hora de empenhar
+ * descobria que a conta estava errada — com o cálculo já congelado.
+ *
+ * Aqui ela dispara no ATO de declarar, antes de qualquer cálculo existir. E é a única forma
+ * possível depois da decisão do usuário: o vale não empenha, então não há apropriação onde
+ * recusar.
+ *
+ * ⚠️ E ELA RECUSA CONTA SINTÉTICA TAMBÉM. O adapter do razão não aceita partida em sintética
+ * (INVARIANTE 5) — aceitar aqui faria o ente descobrir no primeiro pagamento, com o dinheiro na
+ * mão e a folha fechada.
+ */
+export class ContaDoAdiantamentoSalarialInvalidaError extends Error {
+  constructor(codigo: string, motivo: string) {
+    super(
+      `CONTA-DO-ADIANTAMENTO-SALARIAL-INVALIDA: a conta ${codigo}, indicada para receber o adiantamento ` +
+        `salarial, ${motivo}. O vale NÃO é despesa de pessoal do mês: ele é um DIREITO a receber do servidor, ` +
+        `que a folha mensal abate depois — e por isso a conta tem de ser um ADIANTAMENTO CONCEDIDO do ramo ` +
+        `${RAMO_DO_ADIANTAMENTO_CONCEDIDO}, ANALÍTICO. O plano oficial do TCE-PB traz ` +
+        `${CONTA_DO_VALE_NO_PLANO_OFICIAL} para exatamente este caso; se ela não estiver no seu plano de contas, ` +
+        `semeie o plano antes (\`npm run seed:pcasp\` já a traz). Nada foi gravado.`
+    );
+    this.name = "ContaDoAdiantamentoSalarialInvalidaError";
+  }
+}
+
+/**
+ * ⚠️ FAIL-CLOSED NA LEITURA DE PARÂMETRO ANTERIOR À PERGUNTA. A coluna é nullable por migration
+ * aditiva (o parâmetro nasceu na rodada 1), e um parâmetro sem conta declarada não pode pagar vale
+ * nenhum — nem "escolher a mais parecida", que é o que esta recusa existe para impedir.
+ */
+export class ContaDoAdiantamentoSalarialNaoDeclaradaError extends Error {
+  constructor(competencia: string, versao: number) {
+    super(
+      `CONTA-DO-ADIANTAMENTO-SALARIAL-NAO-DECLARADA: o parâmetro de ${competencia} (versão ${versao}) foi ` +
+        `cadastrado antes de o sistema perguntar em que conta do plano o vale vira DIREITO, e não a declara. ` +
+        `Sem ela não há como registrar a saída de caixa do adiantamento: ele deixaria de aparecer no ativo, e a ` +
+        `folha mensal abateria um direito que ninguém constituiu. ` +
+        `O QUE FAZER: cadastre a versão seguinte do parâmetro de ${competencia} declarando a conta — o parâmetro ` +
+        `é append-only, e a nova passa a ser a vigente. Nada foi calculado.`
+    );
+    this.name = "ContaDoAdiantamentoSalarialNaoDeclaradaError";
+  }
+}
+
 export class BaseDoAdiantamentoSalarialAusenteError extends Error {
   constructor(matricula: string, competencia: string, porque: string) {
     super(
@@ -199,6 +278,8 @@ export interface ParametroLidoDoAdiantamentoSalarial {
   readonly percentualDoAdiantamento: Decimal;
   readonly baseDoAdiantamento: BaseDoAdiantamentoSalarial;
   readonly estadoMinimoParaAbater: EstadoMinimoDoAdiantamento;
+  /** A conta do plano em que o vale vira DIREITO — do ramo `1.1.3.1`, analítica. */
+  readonly contaDoAdiantamento: { readonly id: string; readonly codigo: string; readonly nome: string };
   readonly ato: {
     readonly esfera: EsferaDoAtoNormativo;
     readonly tipo: TipoDeAtoNormativo;
@@ -363,6 +444,13 @@ export function calcularContrachequeDoAdiantamentoSalarial(e: EntradaDoAdiantame
       percentualDoAdiantamento: pct.toFixed(4),
       baseDoAdiantamento: e.parametro.baseDoAdiantamento,
       estadoMinimoParaAbater: e.parametro.estadoMinimoParaAbater,
+      /**
+       * ⚠️ V13 rodada 4 — A CONTA VAI À MEMÓRIA, e é ela que o pagamento lê. O vale é operação
+       * PATRIMONIAL: quem registra a saída de caixa precisa saber em que conta o direito nasce, e
+       * precisa saber a conta que valia QUANDO o vale foi apurado — não a vigente hoje. É a mesma
+       * doutrina de `parametroQueApurouOCalculo`, aplicada à conta.
+       */
+      contaDoAdiantamento: `${e.parametro.contaDoAdiantamento.codigo} (${e.parametro.contaDoAdiantamento.nome})`,
       ato: `${e.parametro.ato.tipo} ${e.parametro.ato.numero}/${e.parametro.ato.ano}, ${e.parametro.ato.dispositivo}`,
     },
     base: { valor: e.base.valor.toFixed(2), explicacao: e.base.explicacao, pratica: e.parametro.baseDoAdiantamento },
@@ -462,6 +550,13 @@ export const zCadastrarParametroDoAdiantamentoSalarialInput = zReferenciaNormati
   estadoMinimoParaAbater: z.enum(["FECHADO", "CERTIFICADO", "PAGO"]),
   rubricaDoAdiantamentoId: z.string().min(1),
   rubricaDoAbatimentoId: z.string().min(1),
+  /**
+   * ⚠️ OBRIGATÓRIA NA ENTRADA, mesmo com a coluna nullable no banco. A coluna é nullable porque
+   * há parâmetro gravado ANTES desta pergunta; a entrada é obrigatória porque nenhum parâmetro
+   * NOVO tem razão para nascer sem ela. Os dois fatos convivem, e é a diferença entre respeitar o
+   * passado e afrouxar o presente.
+   */
+  contaDoAdiantamentoId: z.string().min(1),
   criadoPor: zAutor,
 });
 export type CadastrarParametroDoAdiantamentoSalarialInput = z.input<typeof zCadastrarParametroDoAdiantamentoSalarialInput>;

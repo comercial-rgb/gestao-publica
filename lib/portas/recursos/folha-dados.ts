@@ -47,7 +47,7 @@ import { decimalDaTela } from "./pessoal-dados";
 import { OPCOES_DE_TIPO_DE_TABELA, OPCOES_DE_TIPO_DE_ATO } from "./folha";
 import { cadastrarParametroDoDecimoTerceiro } from "../../../modules/m33-folha/decimo-terceiro-servico.js";
 import { cadastrarParametroDoAdiantamentoSalarial } from "../../../modules/m33-folha/adiantamento-salarial-servico.js";
-import { SEMANTICA_DA_BASE, type BaseDoAdiantamentoSalarial } from "../../../modules/m33-folha/adiantamento-salarial.js";
+import { RAMO_DO_ADIANTAMENTO_CONCEDIDO, SEMANTICA_DA_BASE, type BaseDoAdiantamentoSalarial } from "../../../modules/m33-folha/adiantamento-salarial.js";
 import type { TipoDeFolha } from "../../../modules/m33-folha/dominio.js";
 
 /**
@@ -1359,6 +1359,31 @@ export async function rubricasParaOParametroDoAdiantamentoSalarial(): Promise<{
 }
 
 /**
+ * AS CONTAS DO PLANO EM QUE O VALE PODE VIRAR DIREITO — RECORTADAS, e o recorte é a entrega.
+ *
+ * ⚠️ "LISTA CURTA NÃO É EXCEÇÃO" (CLAUDE.md). O plano oficial do TCE-PB tem 7.864 contas; um
+ * `select` com todas elas, ordenado por código, é um formulário bonito e inútil — o operador
+ * escolheria uma VPD de pessoal, gravaria, e o caso de uso recusaria depois. Aqui só chegam as que
+ * o domínio aceita: ramo `1.1.3.1 ADIANTAMENTOS CONCEDIDOS` e ANALÍTICAS.
+ *
+ * ⚠️ E O RECORTE REPETE A REGRA DO DOMÍNIO, NÃO A SUBSTITUI. Quem recusa continua sendo
+ * `cadastrarParametroDoAdiantamentoSalarial` — esta consulta apenas evita oferecer o que será
+ * recusado. Filtro de tela não é autorização nem validação: é cortesia.
+ *
+ * ⚠️ LISTA VAZIA É INFORMAÇÃO, e a tela a trata: significa que o plano do ente não tem o ramo
+ * semeado, e o formulário diz o que fazer em vez de mostrar um seletor morto.
+ */
+export async function contasParaOAdiantamentoSalarial(): Promise<readonly { readonly valor: string; readonly rotulo: string }[]> {
+  const prisma = cliente();
+  const contas = await prisma.contaPcasp.findMany({
+    where: { codigo: { startsWith: `${RAMO_DO_ADIANTAMENTO_CONCEDIDO}.` }, analitica: true },
+    orderBy: { codigo: "asc" },
+    select: { id: true, codigo: true, nome: true },
+  });
+  return contas.map((c) => ({ valor: c.id, rotulo: `${c.codigo} — ${c.nome}` }));
+}
+
+/**
  * GRAVA A PRÓXIMA VERSÃO DO PARÂMETRO. A ilha manda o percentual EM PORCENTO (40), como a norma o
  * escreve; a conversão para fração acontece aqui, na borda — o mesmo que o `FormTabela` faz com a
  * alíquota, e o mesmo que o parâmetro do 13º já fazia. Nenhuma recusa do domínio é traduzida:
@@ -1379,6 +1404,10 @@ export async function criarParametroDoAdiantamentoSalarial(c: Campos): Promise<s
       estadoMinimoParaAbater: t(c, "estadoMinimoParaAbater") as "FECHADO" | "CERTIFICADO" | "PAGO",
       rubricaDoAdiantamentoId: t(c, "rubricaDoAdiantamentoId"),
       rubricaDoAbatimentoId: t(c, "rubricaDoAbatimentoId"),
+      // ⚠️ A CONTA EM QUE O VALE VIRA DIREITO (V13 rodada 4). Sem esta linha o typecheck do APP
+      // acusava, e foi ele que achou a metade que faltava: o domínio passou a exigir a conta e a
+      // porta continuava não a mandando — a tela gravaria nada, porque o Zod recusa a entrada.
+      contaDoAdiantamentoId: t(c, "contaDoAdiantamentoId"),
       atoEsfera: t(c, "atoEsfera") as "FEDERAL" | "ESTADUAL" | "MUNICIPAL",
       atoTipo: t(c, "atoTipo") as Parameters<typeof cadastrarParametroDoAdiantamentoSalarial>[1]["atoTipo"],
       atoNumero: t(c, "atoNumero"),

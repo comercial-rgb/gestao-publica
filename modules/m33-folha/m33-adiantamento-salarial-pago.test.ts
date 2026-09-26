@@ -249,6 +249,8 @@ async function parametroDoVale(over: Record<string, unknown> = {}): Promise<void
     estadoMinimoParaAbater: "FECHADO",
     rubricaDoAdiantamentoId: ids["ADSAL"]!,
     rubricaDoAbatimentoId: ids["ABATSAL"]!,
+    // ⚠️ V13 rodada 4 — a conta do ramo `1.1.3.1`, que o cadastro agora EXIGE.
+    contaDoAdiantamentoId: CONTA_DO_ADIANTAMENTO,
     ...ATO,
     criadoPor: PREPARA,
     ...over,
