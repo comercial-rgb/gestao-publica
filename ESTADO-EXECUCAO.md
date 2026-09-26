@@ -11,6 +11,140 @@
 | Pendências relevantes | **V13 rodada 3 reduz duas a decisões de PRODUTO, com os números na mão:** `VALE-EMPENHADO-DUPLICA-A-DESPESA-DO-MES` virou UMA pergunta — o adiantamento salarial consome dotação orçamentária? (a metade patrimonial está resolvida pela tabela; a coincidência de natureza é recusada nas duas pontas); e `ESTORNO-DO-VALE-BLOQUEIA-A-COMPLEMENTAR` virou a escolha entre (A) complementar com delta negativo em rubrica de DESCONTO — a mais barata, e o que a impede é uma guarda que não olha o sinal do efeito —, (B) retificação da folha (não existe, colide com a invariante 3) e (C) ato próprio de reconhecimento de dívida. **V13 rodada 2 acrescentou, MEDIDAS:** `VALE-EMPENHADO-DUPLICA-A-DESPESA-DO-MES` (pendência de PRODUTO, não de engenharia — alguém precisa ler a norma antes de o primeiro município empenhar um vale) e `ESTORNO-DO-VALE-BLOQUEIA-A-COMPLEMENTAR` (que substitui e precisa a `ESTORNO-DO-ADIANTAMENTO-SALARIAL-DEPOIS-DA-MENSAL` da rodada 1, que era raciocínio e agora é fato). **V13 rodada 1:** `ADIANTAMENTO-SALARIAL-SEM-PERCURSO-DE-NAVEGADOR` (a tela existe e nenhum navegador a percorreu — é o que impede a 5.12.50 de se mover), `REGRA-DO-ADIANTAMENTO-SALARIAL-NAO-SUPORTADA`, `ESTORNO-DO-ADIANTAMENTO-SALARIAL-DEPOIS-DA-MENSAL`, `INCIDENCIA-NO-ADIANTAMENTO-SALARIAL`, `ABRANGENCIA-DO-ADIANTAMENTO-SALARIAL-SEM-BASE-NAO-NOMEADA` e `ESTADO-DO-ADIANTAMENTO-VERIFICADO-EM-DOIS-SITIOS` (a verificação FECHADO/CERTIFICADO/PAGO existe em dois sítios; enquanto durar, os dois mudam juntos) — todas no `MODULO.md` do M33. **A prova por mutação do percurso da seleção SEGUE PENDENTE**, intocada por decisão da ordem V13. **`18.3–18.5` do 13º NÃO EXECUTADO** (folha fechada não recalcula — falta `RETIFICACAO-DA-FOLHA`); **defeito LATENTE** `numeroDoEmpenhoDaFolha` sem o tipo da folha (87.20, conserto do auxiliar); onde fica o portão do critério (apropriar ou fechar); `DDR-DISPONIVEL-SALDO-A-REPONTAR`; `PERCURSOS-SEM-TERMO-PATRIMONIAL-CONGELADO`. **Bloqueio NORMATIVO**: `DISPOSITIVO-MUNICIPAL-DO-13-NAO-LIDO` (três fontes em 403) — não trava o sistema, mas é o que falta para saber QUAL critério declarar. **Bloqueadas por terceiro** (83.3): eSocial, ASTEC, certificado A1, AWS, ENT12. **V9.4 acrescenta:** ~~`PESSOAL-SEM-CENTRO-DE-CUSTO`~~ e ~~`PESSOAL-SEM-FUNCAO`~~ **resolvidas na seção 90**, e no lugar delas quatro pendências novas e nomeadas (`CENTRO-DE-CUSTO-SEM-VIGENCIA-HISTORICA`, `VINCULOS-ANTERIORES-SEM-CENTRO-DE-CUSTO`, `FUNCAO-SEM-ACAO-PROPRIA`, `FUNCAO-SEM-EIXO-DE-AUSENCIA`); **a Tarefa 3 inteira está ESCRITA E NÃO MEDIDA** — migrations não aplicadas, `tsc` não rodado, testes não executados; **`SELECAO-NO-CALCULO-DA-FOLHA` — capacidade DEVIDA da 5.12.50, não construída** (a seção 88 a recusou com fundamento falso; ver seção 89), e ela nasce junto com o FATO de abrangência, a guarda de completude e a reconciliação de `VINCULO-APURADO-FORA-DO-RECALCULO`; **metade da distinção (a)/(b)/(c) por escrever em `modules/m33-folha/MODULO.md`** (território do auxiliar); **percurso de navegador de `/pessoal/servidores` NÃO EXECUTADO**. **Bloqueio de FONTE**: `ITEM-1667-DE-IBEMA-NAO-LOCALIZADO` — citado na ordem, ausente do repositório; texto pedido ao usuário |
 | Próximo passo | **Duas decisões de PRODUTO, não de engenharia, para levar ao usuário:** (1) o vale consome dotação orçamentária, e em que natureza? (2) qual das três opções para o estorno depois do abatimento? Os números e os custos estão no `MODULO.md` do M33. **E o percurso**: a tentativa autorizada com `next dev` aconteceu, o servidor serviu e as rotas compilaram — mas o percurso **não rodou** e o resultado dele é **INEXISTENTE**, porque o banco de dev tem 0 usuários e rodá-lo exige o ambiente de percursos (`percursos:preparar` + banco clonado), que é passo pesado próprio. Com swap acima de 6 GB, ele não cabe junto com `next dev` e navegador; a decisão de montá-lo é do coordenador. Histórico da rodada 2: **Decidir sobre `next dev` como veículo do percurso — a decisão é do coordenador, não desta sessão.** Medido ao fechar: livre 0,43 GB, inativo reclamável 1,86 GB, **disponível ~2,29 GB**, swap **5,71 de 7 GB**, zero processos nossos acima de 50 MB. `next build` (heap de 5,3 GB) mais navegador é o par que travou a máquina duas vezes e **continua fora de questão**; `next dev` é materialmente mais leve — compilação sob demanda, sem o passo de tipos do build — e **caberia** em 2,3 GB com o navegador, mas isso é estimativa, não medição, e o swap já está alto. Se a decisão for sim: clonar o banco de percursos, servir, e rodar `smoke:adiantamento-salarial` LENDO o vermelho antes de concluir que o roteiro está errado (todo percurso deste repositório foi vermelho na primeira vez: o do 13º achou cinco defeitos, o da complementar sete). Se for não, a 5.12.50 segue `PARCIAL` e a pendência segue aberta e nomeada. Histórico da rodada 1: **Medir a máquina e, SÓ SE ELA PERMITIR, o percurso de navegador do adiantamento salarial.** `next build` mais navegador é o par que travou esta máquina duas vezes; a decisão de tentar é do coordenador, não da sessão de escrita. O percurso devido: configurar o parâmetro pela tela → abrir/calcular/fechar a folha do vale → conferir a mensal seguinte abatendo → exercitar as recusas (parâmetro ausente, vale não fechado, abatimento maior que o líquido). Sem ele a **5.12.50 segue `PARCIAL`** e a cobertura do catálogo não se move — e ela não se moveria mesmo com o percurso, porque a cláusula enumera NOVE tipos e agora há cinco. Continua devida, atrás disso, a **prova por mutação do percurso da seleção** (V12 rodada 5). Abertas e não tocadas: `PREVIA-DE-PARCELAS-EM-FLOAT`, `PORTA-DE-TESOURARIA-SEM-TESTE`, `PERCENTUAL-CRU-NA-PROSA`. **Não rodaram nesta rodada**: suíte completa, `test:fuso`, portão, `next build`, qualquer navegador. Histórico: **Seção 4 — adiantamento salarial: levantada e NÃO construída.** A rodada de construção parou por **saturação da máquina** (87 MB livres, 5,6 GB de 7 GB de swap, zero processos nossos), com a árvore limpa e **nada implementado**. O levantamento está em `docs/varreduras/varredura-v12-adiantamento-salarial.md` (`1c9457a`): as duas armadilhas (`compoeARemuneracaoMensal` false; não copiar o elo persistido do 13º), a ordem das guardas, os censos que o compilador NÃO pega, e os cenários obrigatórios. Percentual e base **não existem no TR** — parâmetro nasce vazio e fail-closed. Antes dela: **fechar a prova por mutação do percurso da seleção**, quando a máquina permitir — sem ela o percurso é verde e não é prova. O artefato `.next` foi **removido** (ficara com a build mutante): o estado é "sem build", não "build silenciosamente errada". **5.12.50 segue PARCIAL**, sem promoção (`VALIDADO_LOCALMENTE` em 75), e a razão agora é uma só: quatro tipos de nove. Abertas: `PREVIA-DE-PARCELAS-EM-FLOAT`, `PORTA-DE-TESOURARIA-SEM-TESTE`, `PERCENTUAL-CRU-NA-PROSA`. Seção 4 não iniciada. Histórico, já FEITO nesta rodada: **Construir a superfície da seleção no cálculo** (`SELECAO-NO-CALCULO-SEM-SUPERFICIE`): campo no formulário de calcular, leitura de `selecao` em `acaoDaFolha` e a abrangência no detalhe da folha — só depois o percurso do 3.B. **Catálogo NÃO marcado** nesta rodada: nenhuma das 10 cláusulas achadas é correspondência limpa da glosa de medição nem do estorno de recebimento; a identificação fica devida. Bancos **já em dia**. Histórico: **Bancos em dia, depois 3.B e 3.C.** ⚠️ O 3.B depende de banco no HEAD e `gestao_publica_percursos` está **13 migrations atrás** (205 contra 218), `gestao_publica` **6 atrás** (212) — unidade própria, anterior a ele. Abertas e nomeadas: `PREVIA-DE-PARCELAS-EM-FLOAT`, `PORTA-DE-TESOURARIA-SEM-TESTE`, `PERCENTUAL-CRU-NA-PROSA`. Histórico: **Itens 3.B e 3.C da V12.** As duas worktrees retidas foram resolvidas e removidas (árvore Única: 989 MB → 844 KB), a branch `v11v93-artefato` preservada. **3.D e 3.A fechados e medidos**; **3.B, 3.C e a seção 4 não iniciados**. Seguem **abertas** `GLOSA-SEM-PERCURSO` e `ESTORNO-DE-RECEBIMENTO-SEM-PERCURSO` — o roteiro existe em `main` e **nunca fechou verde**; percurso escrito não é percurso verde. Sem suíte completa, sem `test:fuso`, sem portão, sem navegador, sem marcação de catálogo. O que segue abaixo é a pendência de produto herdada da V11 V9.5, íntegra: **PARADO — a ordem se encerra aqui do lado desta frente.** Devido e NÃO contado como feito: percurso de navegador de `/pessoal/funcoes` e do cálculo com seleção; suíte completa, `test:fuso` e portão; `SELECAO-NO-13-NAO-CONSTRUIDA`; `APURADO-A-REPOR-ENCOBERTO-POR-FOLHA-SEM-VINCULOS` (fronteira: motor da complementar, outra frente); `CENSO-DO-T5C-DESATUALIZADO`. Quando voltar limpo, ela vem em **UM** commit (seleção + abrangência + completude + "no máximo uma vez"), com o cenário nº1={A,B} / nº2={C,D} → **recusa nomeando A e B** como teste obrigatório. Segue devido o **percurso de navegador de `/pessoal/servidores`**. Histórico da ordem de medição, já executada: **as duas migrations em banco isolado**: as duas migrations em banco isolado conferidas **pelo efeito**, com alvo novo — provar que `FuncaoDePessoal` cria tabela própria e **não toca** a `Funcao` do M02 —, `generate` DEPOIS do migrate, `tsc` dos dois projetos restantes sozinho, e os dirigidos do M32. Depois os testes que faltam, nomeados na seção 90 (porta, integração, negativa pareada, mutação da guarda da dispensa órfã). **Enfileirada atrás do auxiliar**: a **seleção no cálculo** — (b) seleção + (c) fato de abrangência + guarda de completude + guarda de "no máximo uma vez", em **UM** commit, porque qualquer corte entre eles deixa uma folha que pode ser parcial sem acusar. Segue devendo o **percurso de navegador de `/pessoal/servidores`**. **Nada instalado nem publicado**; 5.12.50 segue `PARCIAL` e não marcada |
 
+## V14 rodada 1 — as demonstrações contábeis chegam ao operador (2026-09-26)
+
+**Ordem nova:** `docs/lotes/V14-contabilidade-esperanca-dois-dias.md` — contabilidade do Pregão
+Eletrônico 00040/2026 de Esperança/PB, prioridade temporária de duas jornadas. O PDF de origem
+**não está nesta máquina** (nem em `~/Downloads`, nem na árvore): todo trecho de edital citado no
+lote vem do texto da ordem, não de leitura direta do PDF. Registrado lá como limitação.
+
+⚠️ **ESTE RESUMO NÃO TOCOU O TOPO DESTE ARQUIVO, de propósito.** Outra sessão está no V13 (r4 u1,
+`5026761`) e vai reescrever as células do resumo ao fechar a unidade dela. Reescrever as mesmas
+células agora seria clobber silencioso. As células do topo seguem descrevendo o V13 r3 e **estão
+atrasadas**; a pendência é nomeada, não silenciosa.
+
+**Capacidade que passou a existir** (`86a1fe2`): Balanço Orçamentário (Anexo 12), Balanço
+Financeiro (13), Balanço Patrimonial (14) e DVP (15) alcançáveis pelo operador. Rota real:
+Relatórios → Demonstrações contábeis → `/relatorios/demonstracoes/{balanco-orcamentario,
+balanco-financeiro,balanco-patrimonial,variacoes-patrimoniais}`.
+
+Os quatro motores já existiam no M12, com teste e amarrações, desde a construção do módulo. Não
+havia porta nem tela, e `balancoPatrimonial`/`demonstracaoVariacoesPatrimoniais` não estavam nem
+reexportados pelo `index.ts` do módulo — quem os lia era só o relatório de consistência, por
+dentro. A ausência era de superfície, não de motor.
+
+**O rol de contas de disponibilidade veio de TABELA:** `ContaBancaria.contaContabil`, a mesma
+amarração que a conciliação bancária já exige. O Anexo 13 exige o rol por parâmetro e LANÇA sem
+ele; o quadro por fonte do 14 vem `null` sem ele. Limitação nomeada no cabeçalho da porta: uma
+disponibilidade sem conta bancária (o caixa em espécie) não entra no rol.
+
+**Assimetria deliberada:** o Financeiro RECUSA com o caminho da correção; o Patrimonial EMITE sem o
+quadro por fonte. Recusar o balanço todo esconderia ativo, passivo e PL já apurados.
+
+**Três defeitos MEUS, achados pela auditoria de invariantes antes do commit e corrigidos nele:**
+1. o corte do Balanço Patrimonial era `inicioDoDiaCivil` — o motor corta `dataTransacao <= corte`,
+   então o começo do dia **exclui o próprio dia do corte**, e a apuração do resultado nasce em
+   31/12 às 23:59:59 civis. O balanço de encerramento sairia sem ela e **sairia calado** (cada
+   lançamento excluído é balanceado em si, a equação fundamental continua fechando), discordando
+   da DVP do mesmo ano. Agora `fimDoDiaCivil`;
+2. o Financeiro tinha selo "saldo em espécie confere" comparando dinheiro por igualdade de string,
+   com **ramo vermelho inalcançável** (o motor já lança na divergência) — papelada que declara.
+   Removido;
+3. o superávit financeiro por fonte era apurado e **jogado fora na tela** — o aviso aparecia
+   quando ele era nulo e nada aparecia quando existia. O quadro agora aparece.
+
+**MEDIDO:** `tsc -p tsconfig.json` com **zero erro** nos arquivos desta unidade. O único erro da
+árvore é `lib/portas/recursos/folha-dados.ts:1369`, da outra sessão (o `contaDoAdiantamentoId` que
+ela tornou obrigatório) — não tocado de propósito.
+
+**NÃO MEDIDO, e por isso NÃO declarado atendido:**
+- `test/demonstracoes-contabeis.test.ts` está **ESCRITO E NÃO EXECUTADO**. Três tentativas:
+  `hookTimeout` no `limparBanco` sob saturação (corrigido — o clear passou a ser das quatro tabelas
+  da fixture); `ECONNRESET`; e na terceira o **Docker Desktop havia morrido**. Saída bruta das duas
+  primeiras preservada em `.registro-de-execucao/`.
+- **Nenhuma das quatro telas foi percorrida em navegador.** Catálogo **não marcado**: sem percurso,
+  nada promove.
+
+### ⚠️ A MÁQUINA, e o que ela impede agora
+
+**Docker Desktop morreu às 02:39 sob pressão de memória**, levando `pg-gestao-publica` com ele —
+com ele foram os 28 bancos (`gestao_publica`, `_test`, `_percursos` e os 25 de percursos/isolados).
+Swap tinha chegado a **8,07 GB de 9,2 GB**; ao morrer, caiu para 688 MB. **Não houve reboot** (up 7
+dias). A causa imediata foi **dois `tsc` concorrentes**: o meu e o da outra sessão, na mesma árvore.
+
+E o dano não parou no Docker: **`pgrep` deixou de funcionar** (`sysmond service not found`) e o
+LaunchServices recusa abrir qualquer app (`kLSNoExecutableErr`) — inclusive o próprio Docker.app,
+que está **íntegro em disco** (2,2 GB, `com.docker.backend` presente e executável). Não é defeito
+do Docker: é degradação de serviços do sistema. Tentativas de subir o Docker (bundle externo e o
+`Docker Desktop.app` aninhado) **falharam as duas**.
+
+**Não reiniciei a máquina, e a decisão é do coordenador**, por um motivo concreto: a outra sessão
+está com **uma migration não commitada** (`prisma/migrations/20261019090000_v13_conta_do_adiantamento_no_parametro/`)
+e 6 arquivos modificados. Um reboot a mata no meio.
+
+**Sem banco, nada do que falta se verifica:** nem o teste dirigido, nem percurso de navegador, nem
+gerar SAGRES dos próprios fatos — que é o item central da prova de conceito.
+
+### O inventário C01–C40, seletivo, já feito
+
+Levantado por auxiliar em leitura, **conferido por mim nos pontos que decidiram a construção**. A
+base é muito mais rica do que a ordem supôs, e o caminho crítico **não é** o que ela previu:
+
+- **C39 SAGRES não é a lacuna.** `adapters/tribunais/tce-pb/sagres/` tem o layout **2026 v1.1**,
+  **10 das 13 entidades exportando** (Dotacao, Empenhos, Liquidacao, Pagamentos,
+  ReceitaOrcamentaria, CadastroContaBancaria, SaldoMensal, MovimentacaoEntreContas, Retencao,
+  DespesaExtra), porta (`lib/portas/sagres.ts`), tela (`/integracoes/sagres`), prévia com
+  validações, rota de download e **dia e mês selecionáveis em separado** — exatamente o que a
+  comissão precisa. Os 3 🟡 restantes têm gap NOMEADO (UnidadeOrcamentaria sem
+  `nomeSecretario`/`cpfSecretario`/`ato`; EstornoPagamento sem coluna `motivo`; ConciliacaoBancaria
+  sem campos bancários). ⚠️ O comentário do topo de `layout-2026v11.ts` diz "3 entidades desta
+  fatia" e **está desatualizado** — o `index.ts` e o `MODULO.md` dizem 10, e o código confirma 10.
+- **O caminho crítico real é o que ALIMENTA o SAGRES pela tela**, e as lacunas caras são:
+  1. **C34/C37** — o M07 não aloca recolhimento por origem: o saldo é agregado por
+     `(tipoConsignacao, credorConsignatario)`, sem tabela de junção. "Compor várias origens" e
+     "reabrir só a parcela cabível" não têm onde nascer **sem mexer no schema**. Bloqueia o
+     cenário C da ordem.
+  2. **C30** — não existe distribuição de uma arrecadação entre fontes com snapshot; a guia tem
+     **uma** fonte (via `ContaBancaria.fonteId`). Bloqueia o cenário D.
+  3. **C38 restos a pagar** — domínio **completo e maduro** (inscrição, processado/não processado,
+     liquidação, pagamento, cancelamento, estorno de pagamento e de cancelamento, fila do art. 141
+     atravessando exercícios, `saldoDosRestos` com inscrito/pago/estornado/cancelado/saldo) e
+     **zero superfície**: nenhuma porta, nenhuma rota. É a **maior relação retorno/esforço da
+     fila** — só porta e tela sobre o que já existe.
+  4. **C32/C33** — ingresso/dispêndio extraorçamentário avulso e estorno existem e são testados,
+     mas `lib/portas/extraorcamentario.ts` só expõe **leitura**. Só a retenção-dentro-do-pagamento
+     tem tela.
+  5. **C07 consolidação/intragovernamental** — ausente e **admitida pelo próprio código**
+     (`modules/m16-travamento/acoes.ts:301-305`).
+- Outras, nomeadas: **C13** versionar PPA/LDO com comparativo — ausente, admitido pelo
+  `MODULO.md` do m02b (`PPA-LDO-VERSOES-E-EMENDAS`); **C15** CMD/MBA tem domínio completo e a tela
+  é **declaradamente só leitura + minuta**; **C19** remanejamento/transposição/transferência não
+  existe como classificação própria (`TipoCredito` só tem SUPLEMENTAR/ESPECIAL/EXTRAORDINARIO);
+  **C05** centro de custo é cadastro + apropriação que **não chega a relatório nenhum**; **fluxo de
+  caixa** não existe. RREO 13/14 anexos (falta o 4, RPPS, por dado externo) e RGF 6/6.
+
+⚠️ **O banco de dev `gestao_publica` está com 222/222 migrations e 427 tabelas, e ZERO dados** —
+nenhuma `LinhaDemonstrativo` cadastrada, inclusive. Sem as linhas de ANEXO_14/ANEXO_15, o Balanço
+Patrimonial e a DVP mostram, corretamente, "mapeamento não configurado" — e **não zero**. Um
+ambiente de apresentação (seção 13 da ordem) ainda não existe.
+
+### O próximo passo, exato
+
+**Duas decisões do coordenador, porque nenhuma é de engenharia:**
+1. **A máquina.** O Docker não sobe e `pgrep`/LaunchServices estão quebrados; o reparo provável é
+   reboot, que mata a migration não commitada da outra sessão. Ordem sugerida: a outra sessão
+   commita ou guarda o trabalho dela → reboot → conferir que os 28 bancos sobreviveram **antes de
+   qualquer coisa** (eles vivem em container **sem volume**; o `ENT00` documenta metade da
+   recriação) → então rodar `test/demonstracoes-contabeis.test.ts`.
+2. **Um escritor só.** A ordem pede escritor único e há **dois**, na mesma árvore de 8 GB. Foi a
+   concorrência dos dois `tsc` que matou o Docker. Enquanto houver dois, `test:tudo`, `next build`
+   e navegador não cabem.
+
+**Assim que houver banco, na ordem:** (a) rodar o teste dirigido desta unidade e ler o vermelho;
+(b) **C38 restos a pagar — porta e telas**, a próxima unidade da fila, pelo melhor retorno por
+esforço; (c) C32/C33 escrita do extraorçamentário na tela. **C34 e C30 exigem decisão de schema** e
+não cabem sem ela — não serão improvisados.
+
 > ⚠️ **Os cabeçalhos abaixo desta linha são HISTÓRICOS.** Foram escritos lote a lote, de ENT00
 > a ENT12, sob o regime anterior (um lote, um portão, uma revisão). Continuam aqui porque
 > registram medições e decisões reais; **não** descrevem o estado atual nem o modo de
