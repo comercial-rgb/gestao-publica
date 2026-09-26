@@ -58,6 +58,12 @@ export class RolDeDisponibilidadeAusenteError extends Error {
  * faria a mesma divergência mudar de texto entre duas emissões iguais.
  */
 export async function contasDeDisponibilidade(): Promise<readonly string[]> {
+  // ⚠️ SEM `orderBy` AQUI, E A AUSÊNCIA SUSTENTA UM TESTE. A ordenação é feita em JS, no `.sort()`
+  // abaixo, e o teste que a vigia prova isso porque a fixture insere as contas em ordem
+  // CONTRÁRIA à pedida e a consulta não ordena — então a ordem certa só pode ter vindo do
+  // `.sort()`. Acrescentar `orderBy` aqui tornaria o `.sort()` redundante e o teste passaria a
+  // ficar verde mesmo sem ele: o instrumento pararia de acusar sem ninguém notar. Medido por
+  // mutação (remover o `.sort()` → vermelho na asserção sensível à ordem).
   const contas = await cliente().contaBancaria.findMany({
     where: { contaContabilId: { not: null } },
     select: { contaContabil: { select: { codigo: true } } },

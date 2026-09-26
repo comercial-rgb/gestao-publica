@@ -17,6 +17,7 @@
     "seed:m07": "tsx prisma/seed/m07-tipos-consignacao.ts",
     "seed:roteiro-orc": "tsx prisma/seed/roteiro-orcamentario.ts",
     "seed:cenario-aceite": "tsx prisma/seed/cenario-aceite.ts",
+    "seed:m12-linhas": "tsx prisma/seed/m12-linhas-demonstrativos.ts",
     "seed:m12-depara": "tsx prisma/seed/m12-depara-rcl.ts",
     "seed:m12-orgao-poder": "tsx prisma/seed/m12-depara-orgao-poder.ts",
     "seed:m12-asps": "tsx prisma/seed/m12-asps-deparas.ts",

@@ -146,6 +146,14 @@ rodar("papel de runtime", "npx", ["tsx", "scripts/provisionar-papel-runtime.ts",
 // primeira execução deste preparador parou exatamente aí — "contas do PCASP ausentes".
 rodar("plano de contas OFICIAL (PCASP TCE-PB)", "npx", ["tsx", "prisma/seed/pcasp-oficial.ts"]);
 rodar("classificações oficiais (M02)", "npx", ["tsx", "prisma/seed/m02-seed-oficial.ts"]);
+// ⚠️ DEPOIS do plano oficial, e a ordem é dependência real: este seed DERIVA as linhas do Anexo 14
+// e do Anexo 15 das contas de nível 2 do plano oficial, e RECUSA se o plano não estiver carregado.
+// Sem ele, o Balanço Patrimonial e a DVP dizem "mapeamento não configurado" — que é o comportamento
+// correto, e não um demonstrativo zerado, mas não é um sistema apresentável.
+rodar("mapeamento dos Anexos 14 e 15 (derivado do plano oficial)", "npx", [
+  "tsx",
+  "prisma/seed/m12-linhas-demonstrativos.ts",
+]);
 rodar("roteiro orçamentário", "npx", ["tsx", "prisma/seed/roteiro-orcamentario.ts"]);
 rodar("tipos de consignação (M07)", "npx", ["tsx", "prisma/seed/m07-tipos-consignacao.ts"]);
 rodar("exercício 2026", "npx", ["tsx", "prisma/seed/m08-exercicio.ts", "2026"]);

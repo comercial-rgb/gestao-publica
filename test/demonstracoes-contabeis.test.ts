@@ -8,6 +8,7 @@ import {
   gerarBalancoPatrimonial,
   RolDeDisponibilidadeAusenteError,
 } from "../lib/portas/demonstrativos.js";
+import { fimDoDiaCivil, inicioDoDiaCivil } from "../packages/datas/index.js";
 
 /**
  * A PORTA DAS DEMONSTRAÇÕES CONTÁBEIS — o rol de disponibilidades e as duas respostas à sua
@@ -34,14 +35,25 @@ const prisma = criarPrismaDeTeste();
  *
  * O `beforeEach` abaixo apaga só as quatro tabelas que estes testes escrevem. Elas são a
  * fixture inteira: a porta não lê nada além disso.
+ *
+ * ⚠️ E SEM `hookTimeout` INFLADO. A V14 r1 pôs 300 s aqui, e isso era compensação de saturação,
+ * não necessidade do cenário: MEDIDO com a máquina sã, o arquivo inteiro roda em 3,62 s e o
+ * `limparBanco` leva ~1,5 s — folgado dentro dos 10 s padrão do Vitest. Um timeout inflado
+ * converteria a próxima saturação em espera silenciosa de cinco minutos em vez de uma falha
+ * legível, e é a falha legível que manda olhar a máquina.
  */
 beforeAll(async () => {
   await exigirBanco(prisma);
   await limparBanco(prisma);
-}, 300_000);
+});
 
 beforeEach(async () => {
-  // Ordem imposta pela FK: a conta bancária aponta para a fonte e para a conta do PCASP.
+  // Ordem imposta pela FK: a partida aponta para a conta, e a conta bancária aponta para a fonte
+  // e para a conta do PCASP. O prefixo aponta para a linha.
+  await prisma.partidaContabil.deleteMany();
+  await prisma.lancamentoContabil.deleteMany();
+  await prisma.prefixoDaLinha.deleteMany();
+  await prisma.linhaDemonstrativo.deleteMany();
   await prisma.contaBancaria.deleteMany();
   await prisma.fonteRecurso.deleteMany();
   await prisma.contaPcasp.deleteMany();
@@ -165,5 +177,98 @@ describe("a ausência do rol: o Financeiro RECUSA, o Patrimonial DEGRADA", () =>
     // O par do caso anterior: sem ele, "veio null" não distingue "o rol faltou" de "o quadro
     // nunca sai".
     expect(bp.superavitPorFonte).not.toBeNull();
+  });
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// O CORTE DO BALANÇO PATRIMONIAL — a caracterização do defeito que a V14 r1 tinha
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * O mapeamento mínimo do Anexo 14 e duas contas classificadas pelo art. 105.
+ *
+ * ⚠️ `indicadorSuperavit` PRECISA existir aqui, ao contrário da fixture do rol: o quadro do
+ * art. 105 RECUSA conta com saldo e sem indicador. Não é classificação inventada para o teste
+ * passar — é a condição para o relatório sair, e sem ela este arquivo mediria a recusa do
+ * indicador em vez de medir o corte.
+ */
+async function semearBalancoMinimo(): Promise<void> {
+  await prisma.contaPcasp.createMany({
+    data: [
+      { id: "c-bco", codigo: "1.1.1.1.1.19.00", nome: "Bancos conta movimento", naturezaSaldo: "DEVEDORA", nivel: 6, analitica: true, indicadorSuperavit: "F" },
+      { id: "c-gar", codigo: "2.1.8.8.1.02.00", nome: "Garantias", naturezaSaldo: "CREDORA", nivel: 6, analitica: true, indicadorSuperavit: "F" },
+    ],
+  });
+  const linhas = [
+    { id: "l-ac", codigoLinha: "1.1", rotulo: "ATIVO CIRCULANTE", grupo: "ATIVO_CIRCULANTE" as const, ordem: 11, prefixo: "1.1." },
+    { id: "l-pc", codigoLinha: "2.1", rotulo: "PASSIVO CIRCULANTE", grupo: "PASSIVO_CIRCULANTE" as const, ordem: 21, prefixo: "2.1." },
+  ];
+  for (const l of linhas) {
+    await prisma.linhaDemonstrativo.create({
+      data: { id: l.id, anexo: "ANEXO_14", codigoLinha: l.codigoLinha, rotulo: l.rotulo, grupo: l.grupo, ordem: l.ordem, criadoPor: "TESTE" },
+    });
+    await prisma.prefixoDaLinha.create({
+      data: { linhaId: l.id, prefixoConta: l.prefixo, criadoPor: "TESTE" },
+    });
+  }
+}
+
+/** Um fato balanceado numa data: entra dinheiro no banco contra uma garantia a devolver. */
+async function fatoEm(numero: string, quando: Date, valor: string): Promise<void> {
+  await prisma.lancamentoContabil.create({
+    data: {
+      numeroControle: numero,
+      dataTransacao: quando,
+      historico: `caução recebida (${numero})`,
+      origemTipo: "TESTE",
+      criadoPor: "TESTE",
+      partidas: {
+        create: [
+          { contaId: "c-bco", tipo: "DEBITO", subsistema: "PATRIMONIAL", valor },
+          { contaId: "c-gar", tipo: "CREDITO", subsistema: "PATRIMONIAL", valor },
+        ],
+      },
+    },
+  });
+}
+
+describe("o corte do Balanço Patrimonial inclui o dia inteiro do corte, e nada além dele", () => {
+  /**
+   * ⚠️ ESTE É O TESTE QUE A V14 r1 NÃO TINHA, E O DEFEITO QUE ELA TINHA.
+   *
+   * A tela cortava em `inicioDoDiaCivil`, e o motor filtra `dataTransacao <= corte`. O começo do
+   * dia EXCLUI o próprio dia do corte — e a apuração do resultado e o encerramento dos controles
+   * nascem em 31/12 às 23:59:59 civis. O balanço de encerramento saía SEM eles e saía CALADO:
+   * cada lançamento excluído é balanceado em si, então a equação fundamental continuava fechando.
+   *
+   * É por isso que a asserção NÃO pode ser "o balanço fecha". Fechar é compatível com o defeito.
+   * O que separa um do outro é o VALOR: 300,00 (com o fato do dia) contra 100,00 (sem ele).
+   */
+  it("o fato do FIM do dia do corte ENTRA; o do dia seguinte NÃO", async () => {
+    await semearBalancoMinimo();
+    await fatoEm("ANTES", fimDoDiaCivil("2026-12-30"), "100.00");
+    await fatoEm("NO-CORTE", fimDoDiaCivil("2026-12-31"), "200.00");
+    await fatoEm("DEPOIS", inicioDoDiaCivil("2027-01-01"), "900.00");
+
+    const bp = await gerarBalancoPatrimonial({ corte: fimDoDiaCivil("2026-12-31") });
+
+    // 100 (dia 30) + 200 (o próprio dia do corte) = 300. Os 900 do dia seguinte ficam fora.
+    expect(bp.totalAtivo).toBe("300.00");
+    expect(bp.totalPassivo).toBe("300.00");
+  });
+
+  it("cortar no INÍCIO do dia perde o dia do corte — e o balanço AINDA FECHA", async () => {
+    await semearBalancoMinimo();
+    await fatoEm("ANTES", fimDoDiaCivil("2026-12-30"), "100.00");
+    await fatoEm("NO-CORTE", fimDoDiaCivil("2026-12-31"), "200.00");
+
+    // A caracterização do defeito, não uma segunda implementação: é o que a tela fazia.
+    const errado = await gerarBalancoPatrimonial({ corte: inicioDoDiaCivil("2026-12-31") });
+
+    // O fato de 200,00 desapareceu...
+    expect(errado.totalAtivo).toBe("100.00");
+    // ...e o balanço continua fechando, que é exatamente o que torna o defeito silencioso.
+    expect(errado.totalPassivo).toBe("100.00");
   });
 });
