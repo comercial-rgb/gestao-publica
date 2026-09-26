@@ -382,16 +382,164 @@ async function main(): Promise<void> {
     R.conferir("5.8 a lista mostra o percentual em pt-BR e a situação VIGENTE", lista.includes("40,00%") && lista.includes("vigente"), lista.slice(0, 900));
     R.conferir("5.9 e a coluna do critério diz que FECHADO não significa que o dinheiro saiu", /não significa que o dinheiro saiu|nao significa que o dinheiro saiu/i.test(lista), lista.slice(0, 1200));
 
-    // ══ 6. O PAR N=2 ═════════════════════════════════════════════════════════
+    // ══ 6. O PAR N=2, ADMITIDO PELA TELA ═════════════════════════════════════
+    /**
+     * ═══ ⚠️ ESTE PASSO NÃO EXISTIA, E A AUSÊNCIA DELE ERA O QUE TRANCAVA A METADE DA FOLHA ═══
+     *
+     * A rodada 4 mediu: `/folha/folhas` respondia **200** e o percurso abortava logo depois, porque
+     * `Servidor` era ZERO — o passo estava declarado como não executado, apontando para
+     * `smoke-folha.ts`. E rodar o smoke-folha antes NÃO resolve: ele cria matrícula própria
+     * (`FOL-...`), e este percurso espera `VALEA-`/`VALEB-`, porque os dois valores têm de ser
+     * DIFERENTES.
+     *
+     * ⚠️ O HELPER É LOCAL, DE PROPÓSITO, e isso não fecha `PERCURSOS-SEM-HELPER-COMUM`. Unificar a
+     * fixture de pessoal dos percursos é unidade própria, com censo dos arquivos que hoje a copiam;
+     * fazê-la de passagem aqui produziria a sexta variante em vez da primeira comum. A pendência
+     * CONTINUA aberta e nomeada — o que muda é que este percurso deixou de depender dela.
+     */
     await sair(N, page);
     await entrar(N, page, RH, SENHA);
-    naoExecutado(
-      "6 admitir o par N=2 pela tela",
-      "os passos de cadastro de pessoa, servidor e admissão são os mesmos de scripts/smoke-folha.ts; " +
-        "quem executar este percurso pela primeira vez deve copiá-los de lá ou rodar o smoke-folha antes, " +
-        "com o MESMO PERCURSO_BANCO. Escrito assim de propósito: uma quarta cópia do cadastro de pessoal " +
-        "neste arquivo seria a quinta divergência de fixture da sessão (PERCURSOS-SEM-HELPER-COMUM)."
+
+    /**
+     * ⚠️ AS TABELAS SÃO SINTÉTICAS E O PERCENTUAL É LINEAR, e as duas escolhas são medição, não
+     * preguiça. A conta à mão no alto deste arquivo diz `3.000,00 − PREV 300,00`, isto é **10%
+     * exatos**; uma tabela progressiva como a do `smoke-folha` (7,5 / 9 / 14) daria outro número e
+     * o percurso ficaria vermelho por causa da FIXTURE, não do produto. As três faixas levam a
+     * MESMA alíquota justamente para que o total seja 10% em qualquer base do par.
+     *
+     * E o IRRF vai a ZERO pelo mesmo motivo: o líquido esperado (1.500,00 e 1.000,00) não tem
+     * termo de imposto. Zerar aqui não afirma nada sobre a tabela da Receita — afirma que ESTE
+     * percurso mede o abatimento do vale, e um imposto no meio mediria outra coisa.
+     */
+    const telaTabelas = await irPara(N, page, "/folha/tabelas");
+    if (!/contribuição previdenciária/i.test(telaTabelas)) {
+      const rPrev = await preencherEEnviar(page, "criar-tabela", [
+        { sel: 'select[name="tipo"]', valor: "CONTRIBUICAO_RGPS", tipo: "select" },
+        { sel: 'input[name="competenciaInicio"]', valor: "2026-01" },
+        { sel: 'input[name="fundamentacaoLegal"]', valor: "Tabela sintetica do percurso do vale — NAO e a portaria vigente" },
+        { sel: 'input[name="teto"]', valor: "8.000,00" },
+        { sel: 'input[name="aliquotaPatronal"]', valor: "22" },
+        { sel: 'input[name="faixas.0.ate"]', valor: "1.000,00" },
+        { sel: 'input[name="faixas.0.aliquota"]', valor: "10" },
+        { sel: 'input[name="faixas.1.ate"]', valor: "3.000,00" },
+        { sel: 'input[name="faixas.1.aliquota"]', valor: "10" },
+        { sel: 'input[name="faixas.2.aliquota"]', valor: "10" },
+      ]);
+      R.conferir("6.1 tabela de contribuição LINEAR 10% cadastrada pela tela", rPrev.tipo === "ok", `${rPrev.tipo}: ${rPrev.texto.slice(0, 300)}`);
+    } else {
+      R.conferir("6.1 tabela de contribuição já vigora — reusada", true, "execucao anterior");
+    }
+
+    const telaTabelas2 = await irPara(N, page, "/folha/tabelas");
+    if (!/irrf/i.test(telaTabelas2)) {
+      const rIrrf = await preencherEEnviar(page, "criar-tabela", [
+        { sel: 'select[name="tipo"]', valor: "IRRF", tipo: "select" },
+        { sel: 'input[name="competenciaInicio"]', valor: "2026-01" },
+        { sel: 'input[name="fundamentacaoLegal"]', valor: "Tabela sintetica do percurso do vale — NAO e a tabela da Receita" },
+        { sel: 'input[name="deducaoPorDependente"]', valor: "0,00" },
+        { sel: 'input[name="descontoSimplificado"]', valor: "0,00" },
+        { sel: 'input[name="faixas.0.ate"]', valor: "1.000,00" },
+        { sel: 'input[name="faixas.0.aliquota"]', valor: "0" },
+        { sel: 'input[name="faixas.1.ate"]', valor: "3.000,00" },
+        { sel: 'input[name="faixas.1.aliquota"]', valor: "0" },
+        { sel: 'input[name="faixas.2.aliquota"]', valor: "0" },
+      ]);
+      R.conferir("6.2 tabela de IRRF zerada cadastrada pela tela", rIrrf.tipo === "ok", `${rIrrf.tipo}: ${rIrrf.texto.slice(0, 300)}`);
+    } else {
+      R.conferir("6.2 tabela de IRRF já vigora — reusada", true, "execucao anterior");
+    }
+
+    // ── 6.3 o cargo do percurso ─────────────────────────────────────────────
+    const telaCargos = await irPara(N, page, "/pessoal/cargos");
+    if (!telaCargos.toLowerCase().includes(`vale-${SUF}`.toLowerCase())) {
+      const rCargo = await preencherEEnviar(page, "criar-cargos", [
+        { sel: 'input[name="codigo"]', valor: `VALE-${SUF}` },
+        { sel: 'input[name="denominacao"]', valor: `Cargo do percurso do vale ${SUF}` },
+        { sel: 'select[name="tipo"]', valor: "EFETIVO", tipo: "select" },
+        { sel: 'input[name="vagasFixadas"]', valor: "5" },
+        { sel: 'input[name="leiAutorizativa"]', valor: "Lei Municipal 1.234/2010 (percurso)" },
+        { sel: 'input[name="dataPublicacaoLei"]', valor: "2010-05-01", tipo: "data" },
+      ]);
+      R.conferir("6.3 cargo do percurso criado", rCargo.tipo === "ok", `${rCargo.tipo}: ${rCargo.texto.slice(0, 300)}`);
+    } else {
+      R.conferir("6.3 cargo do percurso já existe — reusado", true, "execucao anterior");
+    }
+
+    /**
+     * ADMITE UM SERVIDOR PELA TELA e devolve se a admissão foi aceita. Pessoa, ficha e admissão são
+     * três telas distintas — e é assim que o produto separa "existe no cadastro único", "é
+     * servidor" e "tem vínculo vigente".
+     */
+    const admitir = async (nome: string, matricula: string, salario: string, nascimento: string): Promise<boolean> => {
+      await irPara(N, page, "/cadastros/pessoas");
+      const rPessoa = await preencherEEnviar(page, "cadastrar-pessoa", [
+        { sel: 'input[data-mascara="cpf-cnpj"]', valor: cpfFicticio(`${matricula}${SUF}`) },
+        { sel: 'input[name="nome"]', valor: nome },
+      ]);
+      if (rPessoa.tipo !== "ok") {
+        R.falhou(`6.x pessoa ${matricula}`, `${rPessoa.tipo}: ${rPessoa.texto.slice(0, 300)}`);
+        return false;
+      }
+      await irPara(N, page, "/pessoal/servidores");
+      const idPessoa = await opcaoQueCasa(page, 'form[data-acao="criar-servidores"] select[name="pessoaId"]', nome);
+      if (idPessoa === "") {
+        R.falhou(`6.x ficha de ${matricula}`, "a pessoa recem-criada nao foi oferecida no seletor");
+        return false;
+      }
+      const rServ = await preencherEEnviar(page, "criar-servidores", [
+        { sel: 'select[name="pessoaId"]', valor: idPessoa, tipo: "select" },
+        { sel: 'input[name="dataNascimento"]', valor: nascimento, tipo: "data" },
+        { sel: 'select[name="sexo"]', valor: "FEMININO", tipo: "select" },
+      ]);
+      if (rServ.tipo !== "ok") {
+        R.falhou(`6.x ficha de ${matricula}`, `${rServ.tipo}: ${rServ.texto.slice(0, 300)}`);
+        return false;
+      }
+      await irPara(N, page, `/pessoal/servidores?q=${encodeURIComponent(nome)}`);
+      const hrefServ = await hrefDoRegistro(page, nome);
+      if (hrefServ === null) {
+        R.falhou(`6.x detalhe de ${matricula}`, "servidor criado nao aparece na lista com href");
+        return false;
+      }
+      await irPara(N, page, hrefServ);
+      const idCargo = await opcaoQueCasa(page, 'form[data-acao="admitir"] select[name="cargoId"]', `VALE-${SUF}`);
+      const idLot = await opcaoQueCasa(page, 'form[data-acao="admitir"] select[name="lotacaoId"]', "-");
+      const rAdm = await preencherEEnviar(page, "admitir", [
+        { sel: 'input[name="matricula"]', valor: matricula },
+        { sel: 'select[name="tipo"]', valor: "EFETIVO", tipo: "select" },
+        { sel: 'input[name="regimeJuridico"]', valor: "Estatutario" },
+        // ⚠️ O REGIME PREVIDENCIÁRIO É O QUE ESCOLHE A TABELA. Sem ele declarado, o cálculo da
+        // competência inteira recusa — e a recusa nomeia a matrícula, que é o certo.
+        { sel: 'select[name="regimePrevidenciario"]', valor: "RGPS", tipo: "select" },
+        { sel: 'input[name="dataAdmissao"]', valor: "2026-02-01", tipo: "data" },
+        ...(idCargo === "" ? [] : [{ sel: 'select[name="cargoId"]', valor: idCargo, tipo: "select" as const }]),
+        ...(idLot === "" ? [] : [{ sel: 'select[name="lotacaoId"]', valor: idLot, tipo: "select" as const }]),
+        { sel: 'input[data-mascara="valor"]', valor: salario },
+      ]);
+      if (rAdm.tipo !== "ok") {
+        R.falhou(`6.x admissao de ${matricula}`, `${rAdm.tipo}: ${rAdm.texto.slice(0, 400)}`);
+        return false;
+      }
+      return true;
+    };
+
+    /**
+     * ⚠️ AS BASES SÃO DIFERENTES, E É ISSO QUE FAZ O N=2 SER INSTRUMENTO. 3.000,00 e 2.000,00 dão
+     * vales de 1.200,00 e 800,00: um motor que abatesse valor FIXO, ou que abatesse o valor do
+     * OUTRO vínculo, passaria com duas bases iguais e passaria com uma só.
+     */
+    const okM1 = await admitir(`Vale A do Percurso ${SUF}`, M1, "3.000,00", "1985-07-20");
+    const okM2 = await admitir(`Vale B do Percurso ${SUF}`, M2, "2.000,00", "1990-03-11");
+    R.conferir(
+      "6.4 o par N=2 está admitido pela tela, com bases DIFERENTES (3.000,00 e 2.000,00)",
+      okM1 && okM2,
+      `M1=${okM1} M2=${okM2}`
     );
+    if (!(okM1 && okM2)) {
+      R.falhou("6.5 sem o par admitido, a metade da FOLHA do roteiro não pode ser medida", "interrompido aqui de proposito: seguir produziria vermelhos em cascata que nao sao do produto");
+      R.encerrar();
+      return;
+    }
 
     // ══ 7. ABRIR A FOLHA DO VALE — o tipo novo aparece na barra ══════════════
     await irPara(N, page, "/folha/folhas");
