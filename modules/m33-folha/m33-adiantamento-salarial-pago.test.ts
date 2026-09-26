@@ -817,3 +817,116 @@ describe("u3 · a folha de vale vira despesa pelo caminho de sempre", () => {
     expect(porConta.get("3.1.1.1.1.01.00")).toBeUndefined();
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// cX · CARACTERIZAÇÃO — O RAZÃO DO VALE COMO ELE É HOJE, ANTES DE MUDAR (V13 r4 u2)
+//
+// ⚠️ ESTE BLOCO NÃO AFIRMA O COMPORTAMENTO DESEJADO. Ele MEDE o atual, porque a decisão de
+// produto da rodada 4 — o vale é EXTRAORÇAMENTÁRIO e NÃO empenha — ainda não está construída, e
+// caracterizar antes de ampliar é o que o regime de PROFUNDIDADE exige neste módulo.
+//
+// O que a rodada 4 quer provar um dia: "o razão do vale não toca conta orçamentária nenhuma e
+// fecha". Hoje a primeira metade é FALSA por construção — o vale empenha, liquida e paga pela
+// cadeia orçamentária inteira. Estes casos registram exatamente ISSO, com número, para que o dia
+// em que a cadeia extraorçamentária existir seja um dia em que estes esperados MUDEM DE COR com a
+// história visível, e não um dia em que ninguém saiba o que havia antes.
+//
+// ⚠️ A SEGUNDA METADE — "e fecha" — JÁ É VERDADE, e é medida aqui pela propriedade, não pela
+// forma: ΣDÉBITO == ΣCRÉDITO DENTRO DE CADA SUBSISTEMA, para todo lançamento da cadeia do vale.
+// Conferir só o total esconde o defeito clássico: uma perna orçamentária a mais compensada por
+// uma patrimonial a menos fecha no total e não fecha em nenhum dos dois.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("cX · caracterização do razão do vale (estado ANTERIOR à cadeia extraorçamentária)", () => {
+  /** Todas as partidas da cadeia do vale, com classe PCASP e subsistema — lidas do BANCO. */
+  async function partidasDaCadeiaDoVale(): Promise<
+    readonly {
+      readonly origem: string;
+      readonly subsistema: string;
+      readonly tipo: string;
+      readonly conta: string;
+      readonly classe: string;
+      readonly valor: string;
+    }[]
+  > {
+    const ps = await prisma.partidaContabil.findMany({
+      select: {
+        subsistema: true,
+        tipo: true,
+        valor: true,
+        conta: { select: { codigo: true } },
+        lancamento: { select: { origemTipo: true } },
+      },
+      orderBy: { id: "asc" },
+    });
+    return ps.map((p) => ({
+      origem: p.lancamento.origemTipo,
+      subsistema: p.subsistema,
+      tipo: p.tipo,
+      conta: p.conta.codigo,
+      classe: p.conta.codigo.charAt(0),
+      valor: new Decimal(p.valor).toFixed(2),
+    }));
+  }
+
+  /**
+   * ⚠️ O ESPERADO É CALCULADO À MÃO: 1.200,00 de MAT-A mais 800,00 de MAT-B = 2.000,00 de vale.
+   * Nenhum número aqui sai de somar o que o motor produziu.
+   */
+  it("cX.1 · HOJE o vale TOCA o orçamentário — e é isto que a decisão da rodada 4 quer eliminar", async () => {
+    await grupoDoValeBemConfigurado();
+    await parametroDoVale();
+    const vale = await valeFechado();
+    await liquidarVale(vale);
+
+    const partidas = await partidasDaCadeiaDoVale();
+    const porSubsistema = new Map<string, number>();
+    for (const p of partidas) porSubsistema.set(p.subsistema, (porSubsistema.get(p.subsistema) ?? 0) + 1);
+
+    // ⚠️ A MEDIÇÃO QUE IMPORTA: existem partidas ORÇAMENTÁRIAS na cadeia do vale. Enquanto este
+    // esperado for `true`, a cadeia extraorçamentária NÃO existe — e nenhuma marcação de catálogo
+    // pode dizer que existe.
+    expect((porSubsistema.get("ORCAMENTARIO") ?? 0) > 0).toBe(true);
+
+    // E as classes de CONTROLE (5 a 8) aparecem, que é a assinatura da execução orçamentária:
+    // crédito disponível, empenhado, liquidado. Num vale extraorçamentário nada disto existiria.
+    const classes = new Set(partidas.map((p) => p.classe));
+    expect([...classes].some((c) => c === "5" || c === "6")).toBe(true);
+  });
+
+  /**
+   * ⚠️ ESTA É A PROPRIEDADE, E ELA VALE INDEPENDENTE DA DECISÃO DE PRODUTO. Mudar o vale de
+   * orçamentário para extraorçamentário muda QUAIS pernas existem; não pode mudar o fato de que
+   * cada subsistema fecha. Por isso este caso NÃO deve mudar de cor na rodada que construir a
+   * cadeia nova — e se mudar, mudou algo que ninguém pediu.
+   */
+  it("cX.2 · INVARIANTE 4 · cada subsistema fecha por si, não só o total — vale pago inclusive", async () => {
+    await grupoDoValeBemConfigurado();
+    await parametroDoVale();
+    const vale = await valeFechado();
+    await pagarVale(vale, { "MAT-A": "1200.00", "MAT-B": "800.00" });
+
+    const partidas = await partidasDaCadeiaDoVale();
+    expect(partidas.length).toBeGreaterThan(0);
+
+    const somas = new Map<string, { d: Decimal; c: Decimal }>();
+    for (const p of partidas) {
+      const atual = somas.get(p.subsistema) ?? { d: new Decimal(0), c: new Decimal(0) };
+      if (p.tipo === "DEBITO") atual.d = atual.d.plus(new Decimal(p.valor));
+      else atual.c = atual.c.plus(new Decimal(p.valor));
+      somas.set(p.subsistema, atual);
+    }
+
+    // ⚠️ AFIRMA A PROPRIEDADE EM TODO SUBSISTEMA PRESENTE, e não numa lista enumerada de nomes.
+    // Guarda que enumera formas acha só aquelas formas: se um subsistema novo aparecer na cadeia,
+    // ele entra nesta conferência sozinho.
+    expect(somas.size).toBeGreaterThan(0);
+    for (const [subsistema, { d, c }] of somas) {
+      expect(`${subsistema} D=${d.toFixed(2)} C=${c.toFixed(2)}`).toBe(`${subsistema} D=${d.toFixed(2)} C=${d.toFixed(2)}`);
+    }
+
+    // E o ATIVO do adiantamento foi debitado pelo vale inteiro — 1.200,00 + 800,00, à mão.
+    const noAtivo = partidas.filter((p) => p.conta === "1.1.3.1.1.01.01" && p.tipo === "DEBITO");
+    expect(noAtivo.reduce((a, p) => a.plus(new Decimal(p.valor)), new Decimal(0)).toFixed(2)).toBe("2000.00");
+  });
+});
