@@ -121,7 +121,10 @@ describe("o rol de contas de disponibilidade vem do cadastro, não do código", 
 describe("a ausência do rol: o Financeiro RECUSA, o Patrimonial DEGRADA", () => {
   it("o Balanço Financeiro recusa NOMEANDO o que falta e onde informar", async () => {
     await semearPlanoEFonte();
-    await prisma.exercicio.create({ data: { ano: 2026 } });
+    // ⚠️ `criadoPor` É OBRIGATÓRIO em `Exercicio` (sem default no schema). A V14 r1 o omitiu, e
+    // a omissão não era só de tipo: `prisma.exercicio.create` REJEITA em tempo de execução, então
+    // este caso de recusa nunca chegou a exercitar a recusa que ele afirma medir.
+    await prisma.exercicio.create({ data: { ano: 2026, criadoPor: "TESTE" } });
     await prisma.contaBancaria.create({
       data: { id: "cb-1", codigo: "CC-001", descricao: "Sem amarração", fonteId: "f-500" },
     });

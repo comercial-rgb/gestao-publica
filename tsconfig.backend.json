@@ -96,6 +96,14 @@
     "test/carta-de-servicos.test.ts",
     "test/ouvidoria-e-avaliacao.test.ts",
     "test/ui/demonstrativo-das-obrigacoes.test.ts",
+    // ⚠️ V14 r1 REPETIU O CASO DOCUMENTADO ACIMA, e a repeticao foi MEDIDA, nao suposta.
+    // `test/demonstracoes-contabeis.test.ts` importa `../lib/portas/demonstrativos.js` e e o
+    // primeiro arquivo sob `test/` a arrastar ESSA porta para este alvo NodeNext. Resultado
+    // medido no `tsc -p tsconfig.backend.json`: 6 erros TS2835 em `lib/portas/demonstrativos.ts`,
+    // NENHUM em linha escrita pelo teste — `lib/` e escrito para `moduleResolution: bundler`, com
+    // import relativo SEM extensao. O remedio e o mesmo do vizinho da linha acima: sai daqui,
+    // entra no `tsconfig.json`, que inclui `lib/**/*.ts` com a resolucao certa.
+    "test/demonstracoes-contabeis.test.ts",
     "test/bens-publicos-contrato.test.ts",
     "test/csv-injecao.test.ts",
     "test/despesas-publicas-contrato.test.ts"
