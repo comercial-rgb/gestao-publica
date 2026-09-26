@@ -306,6 +306,30 @@ async function main(): Promise<void> {
     R.conferir("5.4 o seletor do abatimento oferece a rubrica do VALE", abatimentos.some((o) => o.includes(`ABS-${SUF}`)), abatimentos.join(" | "));
     R.conferir("5.5 e NÃO oferece a rubrica de abatimento do 13º — o recorte é por natureza", !abatimentos.some((o) => /13/.test(o)), abatimentos.join(" | "));
 
+    /**
+     * ⚠️ O SELETOR DA CONTA CONTABIL (V13 r4) — E O RECORTE E O QUE SE MEDE, nao a presenca do
+     * campo. O plano oficial tem 7.864 contas; o que a tela deve oferecer sao APENAS as analiticas
+     * do ramo 1.1.3.1 (Adiantamentos concedidos). Uma VPD de pessoal aqui seria o defeito da
+     * rodada 2 de volta pela porta da frente: o vale viraria despesa do mes, e a mensal a
+     * reconheceria de novo pelo bruto.
+     *
+     * ⚠️ E A ESCOLHA E PELO CODIGO LIDO DA PROPRIA LISTA, nunca por id cravado: o id e um cuid
+     * gerado pelo seed, e cravar um faria o instrumento medir o seed em vez da tela.
+     */
+    const contas = await opcoesDe(page, 'form[data-acao="criar-parametro-do-adiantamento-salarial"] select[name="contaDoAdiantamentoId"]');
+    const contasReais = contas.filter((o) => /\d/.test(o));
+    R.conferir(
+      "5.4a o seletor da conta oferece ao menos uma analitica do ramo 1.1.3.1",
+      contasReais.length > 0 && contasReais.every((o) => o.trim().startsWith("1.1.3.1")),
+      contas.join(" | ")
+    );
+    R.conferir(
+      "5.4b e o recorte EXCLUI o que nao e adiantamento concedido — nenhuma conta de classe 3 (VPD)",
+      !contasReais.some((o) => o.trim().startsWith("3.")),
+      contas.join(" | ")
+    );
+    const idConta = await opcaoQueCasa(page, 'form[data-acao="criar-parametro-do-adiantamento-salarial"] select[name="contaDoAdiantamentoId"]', "1.1.3.1");
+
     const idAdiantamento = await opcaoQueCasa(page, 'form[data-acao="criar-parametro-do-adiantamento-salarial"] select[name="rubricaDoAdiantamentoId"]', `ADS-${SUF}`);
     const idAbatimento = await opcaoQueCasa(page, 'form[data-acao="criar-parametro-do-adiantamento-salarial"] select[name="rubricaDoAbatimentoId"]', `ABS-${SUF}`);
 
@@ -322,6 +346,7 @@ async function main(): Promise<void> {
       { sel: 'select[name="estadoMinimoParaAbater"]', valor: "FECHADO", tipo: "select" },
       { sel: 'select[name="rubricaDoAdiantamentoId"]', valor: idAdiantamento, tipo: "select" },
       { sel: 'select[name="rubricaDoAbatimentoId"]', valor: idAbatimento, tipo: "select" },
+      { sel: 'select[name="contaDoAdiantamentoId"]', valor: idConta, tipo: "select" },
       { sel: 'select[name="atoEsfera"]', valor: "MUNICIPAL", tipo: "select" },
       { sel: 'select[name="atoTipo"]', valor: "DECRETO", tipo: "select" },
       { sel: 'input[name="atoNumero"]', valor: "sem numero" },
@@ -339,6 +364,7 @@ async function main(): Promise<void> {
       { sel: 'select[name="estadoMinimoParaAbater"]', valor: "FECHADO", tipo: "select" },
       { sel: 'select[name="rubricaDoAdiantamentoId"]', valor: idAdiantamento, tipo: "select" },
       { sel: 'select[name="rubricaDoAbatimentoId"]', valor: idAbatimento, tipo: "select" },
+      { sel: 'select[name="contaDoAdiantamentoId"]', valor: idConta, tipo: "select" },
       { sel: 'select[name="atoEsfera"]', valor: "MUNICIPAL", tipo: "select" },
       { sel: 'select[name="atoTipo"]', valor: "DECRETO", tipo: "select" },
       { sel: 'input[name="atoNumero"]', valor: "4.321" },
