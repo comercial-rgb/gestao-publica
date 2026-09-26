@@ -93,6 +93,20 @@ function fontesDeProducao(dir: string, acc: string[] = []): string[] {
 const SINTETICAS_TOLERADAS: ReadonlySet<string> = new Set([
   "1.0.0.0.0.00.00", "1.1.0.0.0.00.00", "1.1.1.0.0.00.00", "1.1.1.1.1.00.00",
   "1.1.2.0.0.00.00", "1.1.2.2.0.00.00", "1.1.2.2.1.00.00", "1.1.5.0.0.00.00",
+  // ── V13 rodada 4 — A CADEIA DO ADIANTAMENTO A PESSOAL, E ELAS SÃO DO PRIMEIRO GRUPO ──
+  //
+  // ⚠️ ANCESTRAIS DE HIERARQUIA SEMEADA, NÃO CONTAS DE ROTEIRO. O docblock acima já separa os
+  // dois casos desta lista, e estas quatro são do caso benigno: existem em `prisma/seed/pcasp.ts`
+  // porque `contaPaiId` precisa delas, e NENHUMA aparece em roteiro nenhum. Quem recebe partida é
+  // só a ANALÍTICA do fim da cadeia — `1.1.3.1.1.01.01 SALÁRIOS E ORDENADOS - ADIANTAMENTOS` —,
+  // que é analítica no plano oficial e por isso nem chega a este filtro.
+  //
+  // ⚠️ E A LISTA CRESCEU DE PROPÓSITO, COM O MOTIVO ESCRITO — que é o mecanismo que ela mesma
+  // estabelece. O que ela existe para impedir é a sintética que entra em ROTEIRO; uma analítica
+  // nova sempre traz ancestrais, e a alternativa seria uma analítica órfã, que nenhum balancete
+  // agrega. O caso `1.1.3.1.1.01.00` é o mais próximo do perigo e é justamente o que NÃO se usa:
+  // o serviço exige o ramo `1.1.3.1.` e o adapter recusa partida em sintética (INVARIANTE 5).
+  "1.1.3.0.0.00.00", "1.1.3.1.0.00.00", "1.1.3.1.1.00.00", "1.1.3.1.1.01.00",
   "1.1.5.1.1.00.00", "1.2.3.1.1.01.00", "1.2.3.2.1.01.00", "1.2.3.8.1.01.00",
   "2.0.0.0.0.00.00", "2.1.0.0.0.00.00", "2.1.1.0.0.00.00", "2.1.1.1.0.00.00",
   "2.1.3.0.0.00.00", "2.1.3.1.1.00.00", "2.1.8.0.0.00.00", "2.1.8.8.1.01.00",

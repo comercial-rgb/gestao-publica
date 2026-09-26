@@ -162,6 +162,47 @@ export const CONTAS_FIXTURE_A_CONFIRMAR: readonly ContaSeed[] = [
   // ⚠️ REPONTADA NO ENT05 (ITEM 3): `1.1.1.1.2.00.00` é a variante INTRA OFSS (transação
   // entre órgãos do MESMO ente), não a conta bancária comum.
   { codigo: "1.1.1.1.1.19.00", nome: "Bancos Conta Movimento — Demais Contas", naturezaSaldo: "DEVEDORA", nivel: 7, analitica: true, indicadorSuperavit: "F", pai: "1.1.1.0.0.00.00" },
+  /**
+   * ═══ V13 rodada 4 — A CADEIA DO ADIANTAMENTO A PESSOAL, TRANSCRITA DA FONTE OFICIAL ═══
+   *
+   * ⚠️ NENHUM DESTES CINCO REGISTROS FOI DIGITADO DE MEMÓRIA NEM ADAPTADO. Todos saíram de
+   * `docs/oficial/tce-pb/Pcasp_2025.xlsx` (7.864 contas, `sha256`
+   * `52ae7c7336b27a5c…` conferido no `MANIFEST.json`), lido por `carregarPlanoOficial()` — o
+   * mesmo carregador que `seed:pcasp-oficial` usa. O código, o TÍTULO (em maiúsculas, como a
+   * fonte o escreve, com o acento que ela traz), a natureza de saldo, o nível e a
+   * analiticidade são os do arquivo, campo por campo:
+   *
+   *   1.1.3.0.0.00.00  113000000  n3  sintética  DEVEDORA  DEMAIS CRÉDITOS E VALORES A CURTO PRAZO
+   *   1.1.3.1.0.00.00  113100000  n4  sintética  DEVEDORA  ADIANTAMENTOS CONCEDIDOS
+   *   1.1.3.1.1.00.00  113110000  n5  sintética  DEVEDORA  ADIANTAMENTOS CONCEDIDOS - CONSOLIDAÇÃO
+   *   1.1.3.1.1.01.00  113110100  n6  sintética  DEVEDORA  ADIANTAMENTOS CONCEDIDOS A PESSOAL
+   *   1.1.3.1.1.01.01  113110101  n7  ANALÍTICA  DEVEDORA  SALÁRIOS E ORDENADOS - ADIANTAMENTOS
+   *
+   * ⚠️ AS QUATRO SINTÉTICAS ENTRAM PORQUE A HIERARQUIA PRECISA DELAS — e a hierarquia da
+   * fonte é esta, sem atalho: o `codigoPai` de cada uma é a anterior, e o da primeira é
+   * `1.1.0.0.0.00.00`, que este seed já tem. Sintética não recebe partida (INVARIANTE 5 do
+   * adapter); quem recebe é só a analítica do fim.
+   *
+   * ⚠️ E `indicadorSuperavit` FICA AUSENTE NOS CINCO, DE PROPÓSITO — É PENDÊNCIA, NÃO CAMPO
+   * ESQUECIDO. A interface `ContaOficial` (`prisma/seed/oficial/pcasp-oficial.ts`) traz
+   * `codigo, codigoOficial, nome, naturezaSaldo, nivel, analitica, retificadora, codigoPai`
+   * — e NÃO traz o indicador de superávit financeiro/permanente. Preenchê-lo aqui seria
+   * classificar, por analogia, um crédito a curto prazo como financeiro ou permanente, e
+   * essa classificação entra no cálculo do superávit financeiro do ente. Fica nomeada:
+   * `INDICADOR-DE-SUPERAVIT-DO-ADIANTAMENTO-A-PESSOAL-SEM-FONTE` no MODULO do M33. O campo
+   * é opcional em `ContaSeed`, então a ausência é representável — e ausente ela é HONESTA,
+   * enquanto um "F" ou um "P" escolhido aqui seria norma inventada dentro de um seed.
+   *
+   * Quem usa a analítica: o pagamento do adiantamento salarial (M33), que é operação
+   * PATRIMONIAL e não empenha — o vale é um DIREITO a receber do servidor, e a folha mensal
+   * da mesma competência baixa esse direito ao abatê-lo.
+   */
+  { codigo: "1.1.3.0.0.00.00", nome: "DEMAIS CRÉDITOS E VALORES A CURTO PRAZO", naturezaSaldo: "DEVEDORA", nivel: 3, analitica: false, pai: "1.1.0.0.0.00.00" },
+  { codigo: "1.1.3.1.0.00.00", nome: "ADIANTAMENTOS CONCEDIDOS", naturezaSaldo: "DEVEDORA", nivel: 4, analitica: false, pai: "1.1.3.0.0.00.00" },
+  { codigo: "1.1.3.1.1.00.00", nome: "ADIANTAMENTOS CONCEDIDOS - CONSOLIDAÇÃO", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: false, pai: "1.1.3.1.0.00.00" },
+  { codigo: "1.1.3.1.1.01.00", nome: "ADIANTAMENTOS CONCEDIDOS A PESSOAL", naturezaSaldo: "DEVEDORA", nivel: 6, analitica: false, pai: "1.1.3.1.1.00.00" },
+  { codigo: "1.1.3.1.1.01.01", nome: "SALÁRIOS E ORDENADOS - ADIANTAMENTOS", naturezaSaldo: "DEVEDORA", nivel: 7, analitica: true, pai: "1.1.3.1.1.01.00" },
+
   { codigo: "1.1.5.0.0.00.00", nome: "Estoques", naturezaSaldo: "DEVEDORA", nivel: 3, analitica: false, pai: "1.1.0.0.0.00.00" },
   // ⚠️ REPONTADA NO ENT05 (ITEM 3): `1.1.5.1.1.00.00` é MERCADORIAS PARA REVENDA OU
   // DOAÇÃO — estoque para ALIENAR ou DISTRIBUIR, não o almoxarifado de consumo próprio.
