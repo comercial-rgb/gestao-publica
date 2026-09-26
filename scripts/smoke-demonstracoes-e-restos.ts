@@ -181,6 +181,50 @@ async function main(): Promise<void> {
       "contabilização",
     ]);
 
+    // ── SAGRES: DIÁRIO E MENSAL DOS FATOS DESTA BASE ──────────────────────────────
+    //
+    // ⚠️ DOIS RECORTES DIFERENTES, porque a prova de conceito do edital diz que a Comissão escolhe
+    // o dia e o mês. Um arquivo pronto para uma data só não responde a isso.
+    //
+    // ⚠️ E A GERAÇÃO NÃO É VERIFICÁVEL FORA DA REQUISIÇÃO: a porta do SAGRES resolve o contexto do
+    // ente pela sessão (`cookies`), então um script avulso estoura com "cookies was called outside a
+    // request scope". Isso é o desenho certo — tenant e entidade vêm do servidor, não do chamador —
+    // e é por isso que este trecho mora num percurso de navegador e não num script.
+    //
+    // Nada aqui transmite, e nada finge recibo: a tela gera e valida LOCALMENTE.
+    const recortes: readonly { readonly rot: string; readonly dia: string; readonly mes: string }[] = [
+      { rot: "pagamento de julho", dia: "2026-07-14", mes: "2026-07" },
+      { rot: "empenho de setembro", dia: "2026-09-10", mes: "2026-09" },
+    ];
+    for (const r of recortes) {
+      await irPara(n, page, `/integracoes/sagres?dia=${r.dia}&mes=${r.mes}`);
+      const sg = await principal(page);
+      conferir(`SAGRES — ${r.rot} (dia ${r.dia}, mês ${r.mes})`, sg, [
+        "sagres",
+        r.dia, // a competência DIÁRIA escolhida aparece na tela
+        r.mes, // e a MENSAL, que é independente dela
+      ]);
+      // O dia escolhido tem fato: o pacote não pode estar inteiramente vazio.
+      passos += 1;
+      if (sg.includes("este dia não tem movimento na base")) {
+        falhas.push(`SAGRES ${r.dia}: a tela disse "sem movimento" num dia que TEM fato na base`);
+        console.log(`  FALHA SAGRES ${r.dia} — disse "sem movimento" e a base tem fato`);
+      } else {
+        console.log(`  OK   SAGRES ${r.dia} — pacote gerado com movimento`);
+      }
+    }
+
+    // ⚠️ O DIA SEM MOVIMENTO TAMBÉM É CONTRATO, e o oposto do que a intuição sugere: o arquivo do
+    // dia é gerado VAZIO, não omitido, porque a ausência de movimento é informação. A tela tem de
+    // DIZER isso em vez de parecer falha — e não pode impedir a escolha do dia para esconder o
+    // vazio. 2026-02-02 não tem fato nesta base (os fatos são de 01/01 e de julho em diante).
+    await irPara(n, page, "/integracoes/sagres?dia=2026-02-02&mes=2026-02");
+    const vazio = await principal(page);
+    conferir("SAGRES — dia sem movimento é DITO, não escondido", vazio, [
+      "não tem movimento",
+      "2026-02-02",
+    ]);
+
     // ── A RECUSA NO SERVIDOR ──────────────────────────────────────────────────────
     //
     // ⚠️ E ELA AFIRMA O MOTIVO, não só que "não abriu". "Não completou" é compatível com o
@@ -197,6 +241,7 @@ async function main(): Promise<void> {
       "/relatorios/demonstracoes/balanco-patrimonial",
       "/relatorios/demonstracoes/variacoes-patrimoniais",
       "/despesa/restos-a-pagar",
+      "/integracoes/sagres",
     ]) {
       const r = await barrado(n, page, rota);
       passos += 1;

@@ -9,14 +9,36 @@ import type { CampoLayout, LayoutArquivo } from "./registry.js";
  * inventado (PATCH §4). A conferência `validarLayout` (registry.ts) garante que as posições formam um
  * registro contíguo; os testes golden conferem byte a byte contra a expectativa montada à mão.
  *
- * ENTIDADES DESTA FATIA (gate de escopo, PATCH §5 — dotação→empenho→liquidação, 1 mensal + 2 diários):
- *   · Dotacao   (§4.4,  Mensal)  — a fixação da LOA. Origem: FichaOrcamentaria (o `@@unique` do modelo
- *                                  se chama "uq_ficha_sagres" — a ficha FOI desenhada como esta tabela).
- *   · Empenhos  (§4.8,  Diário)  — o empenho. Origem: Empenho + FichaOrcamentaria.
- *   · Liquidacao(§4.10, Diário)  — a liquidação. Origem: Liquidacao + Empenho + Ficha.
+ * ⚠️ ESTE CABEÇALHO DESCREVIA TRÊS ENTIDADES E O ARQUIVO TEM DEZ. Ele foi escrito quando a fatia
+ * era dotação→empenho→liquidação e não acompanhou as ampliações (S2, S7 e S-fechamento). Ficou
+ * assim tempo suficiente para um inventário desta obra concluir, pelo comentário, que o SAGRES
+ * cobria três tabelas — quando `LAYOUTS_2026V11`, o `index.ts` e o `MODULO.md` diziam dez. Comentário
+ * desatualizado sobre COBERTURA não é imprecisão de estilo: é a papelada contradizendo o código no
+ * exato ponto em que alguém decide o que falta construir.
  *
- * As demais 10 entidades da vertical slice pedida estão na MATRIZ DE COBERTURA (MODULO.md), com o
- * status de origem de cada uma — nunca linha vazia falsa (PATCH §5).
+ * AS DEZ ENTIDADES QUE ESTE ARQUIVO EXPORTA (8 diárias + 2 mensais):
+ *   · Dotacao                        (§4.4,  Mensal) — a fixação da LOA. Origem: FichaOrcamentaria
+ *                                    (o `@@unique` se chama "uq_ficha_sagres": a ficha FOI desenhada
+ *                                    como esta tabela).
+ *   · SaldoMensal                    (§4.26, Mensal) — saldo por conta, somado do extrato.
+ *   · Empenhos                       (§4.8,  Diário) — Empenho + FichaOrcamentaria.
+ *   · Liquidacao                     (§4.10, Diário) — Liquidacao + Empenho + Ficha.
+ *   · Pagamentos                     (§4.12, Diário) — Pagamento + a cadeia até a ficha.
+ *   · ReceitaOrcamentaria            (§4.16, Diária) — ReceitaArrecadada + natureza + fonte.
+ *   · Retencao                       (§4.14, Diária) — MovimentoExtraorcamentario nascido no pagamento.
+ *   · DespesaExtra                   (§4.20, Diária) — o dispêndio extraorçamentário.
+ *   · CadastroContaBancaria          (§4.23, Diário) — a tripla banco/agência/conta.
+ *   · MovimentacaoEntreContasBancarias (§4.59, Diária) — TransferenciaEntreContas.
+ *
+ * AS TRÊS QUE NÃO EXPORTAM, cada uma por gap NOMEADO no modelo (detalhe na MATRIZ DE COBERTURA do
+ * `MODULO.md`) — nunca linha vazia falsa (PATCH §5):
+ *   · UnidadeOrcamentaria  (§4.1,  Mensal) — faltam `nomeSecretario`, `cpfSecretario`,
+ *     `atoAdministrativo` e `tipoNaturezaJuridica`, todos OBRIGATÓRIOS no layout. Aplicável sempre.
+ *     ⚠️ É a TABELA DE EXPORTAÇÃO §4.1, e não o conceito administrativo de unidade orçamentária —
+ *     que existe no modelo e é usado pelas outras dez.
+ *   · EstornoPagamento     (§4.13, Diário) — `Pagamento.estornoDe` existe, mas `motivo`
+ *     (Caractere 120, obrigatório) não tem coluna. Aplicável SÓ quando houve estorno de pagamento.
+ *   · ConciliacaoBancaria  (§4.27, Mensal) — `VinculoConciliacao` existe; faltam campos bancários.
  */
 
 const VERSAO = "2026 v1.1 (12/12/2025)";
