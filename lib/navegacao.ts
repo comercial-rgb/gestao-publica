@@ -155,6 +155,10 @@ export const EXECUCAO_DESPESA: readonly RelatorioNav[] = [
   { href: "/despesa/ordens", numero: "Ordens de pagamento", rotulo: "Ordens de Pagamento", descricao: "Preparar, autorizar, registrar e conferir — as quatro etapas, cada uma com o seu estado real." },
   { href: "/despesa/pagamentos", numero: "Fila de pagamentos", rotulo: "Fila de Pagamentos", descricao: "Ordem cronológica por fonte e categoria (Lei 14.133/2021, art. 141)." },
   { href: "/despesa/ordem-cronologica", numero: "Ordem cronológica", rotulo: "Ordem Cronológica", descricao: "O painel da Lei 14.133: posição, credor, empenho e saldo a pagar, com filtro por fonte (art. 141)." },
+  // ⚠️ RESTOS A PAGAR MORA NA DESPESA, e não em "Relatórios": a inscrição é despesa de
+  // exercício anterior que continua a ser executada — liquidada, paga, cancelada. O Anexo 7 do
+  // RREO LÊ essa posição, mas ler um demonstrativo fiscal não é operar a obrigação.
+  { href: "/despesa/restos-a-pagar", numero: "Restos a pagar", rotulo: "Restos a Pagar", descricao: "Despesa inscrita de exercícios anteriores: inscrito, pago, cancelado e saldo por inscrição." },
   // ⚠️ A ASSINATURA MORA NA DESPESA, e não em "Documentos": a pergunta é "a nota de
   // empenho está assinada?", e quem a faz é quem executa a despesa. A FILA, essa sim, é a
   // do ENT02 — reusada, não recriada.
