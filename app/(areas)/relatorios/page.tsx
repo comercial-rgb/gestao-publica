@@ -1,6 +1,6 @@
 import { CardNavegacao } from "../../../components/ui/Card";
 import { PageHeader } from "../../../components/ui/PageHeader";
-import { AREAS, RELATORIOS_DESIGNER, RELATORIOS_GERENCIAIS, RELATORIOS_LIVROS, RELATORIOS_RGF, RELATORIOS_RREO } from "../../../lib/navegacao";
+import { AREAS, RELATORIOS_DEMONSTRACOES, RELATORIOS_DESIGNER, RELATORIOS_GERENCIAIS, RELATORIOS_LIVROS, RELATORIOS_RGF, RELATORIOS_RREO } from "../../../lib/navegacao";
 
 /**
  * Landing da área RELATÓRIOS — o índice dos demonstrativos. Cada grupo (RREO, RGF, Livros) lista os
@@ -32,6 +32,19 @@ export default function RelatoriosPage(): React.ReactElement {
         </h2>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {RELATORIOS_RGF.map((rel) => (
+            <CardNavegacao key={rel.href} href={rel.href} rotulo={rel.numero} titulo={rel.rotulo} descricao={rel.descricao} />
+          ))}
+        </div>
+      </section>
+
+      {/* ── Demonstrações contábeis ──
+          Os demonstrativos anuais dos arts. 102 a 105 da Lei 4.320 e a DVP. Seção própria, e não
+          junto dos livros: livro é registro cronológico/sistemático, demonstração é peça de
+          encerramento com forma fixada em anexo. */}
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[color:var(--color-ink-2)]">Demonstrações contábeis</h2>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {RELATORIOS_DEMONSTRACOES.map((rel) => (
             <CardNavegacao key={rel.href} href={rel.href} rotulo={rel.numero} titulo={rel.rotulo} descricao={rel.descricao} />
           ))}
         </div>

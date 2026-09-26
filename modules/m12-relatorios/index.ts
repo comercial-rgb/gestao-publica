@@ -75,3 +75,26 @@ export type {
   LinhaDoBalancete,
   EscolhaDeNatureza,
 } from "./livros.js";
+
+// ── DEMONSTRAÇÕES CONTÁBEIS: Balanço Patrimonial (Anexo 14) e DVP (Anexo 15) ──
+//
+// Os dois motores existiam desde a construção do M12 e NÃO estavam reexportados aqui — nenhuma
+// porta e nenhuma tela os alcançava. O Balanço Orçamentário (Anexo 12) e o Financeiro (Anexo 13)
+// já estavam no topo deste arquivo; estes dois faltavam, e a ausência era do índice, não do motor.
+export { balancoPatrimonial, INDICADOR_SUPERAVIT, LINHA_RESULTADO } from "./balanco-patrimonial.js";
+export type {
+  BalancoPatrimonial,
+  LinhaDoBalanco,
+  GrupoBalanco,
+  QuadroDoGrupo,
+  QuadroFinanceiroPermanente,
+  ContaDoQuadroFP,
+  IndicadorSuperavit,
+  OpcoesDoBalanco,
+} from "./balanco-patrimonial.js";
+export { demonstracaoVariacoesPatrimoniais, apuradoNoPeriodo } from "./dvp.js";
+export type {
+  DemonstracaoVariacoesPatrimoniais,
+  QuadroDaDvp,
+  LinhaDaDvp,
+} from "./dvp.js";

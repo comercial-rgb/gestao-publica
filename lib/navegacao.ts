@@ -347,6 +347,19 @@ export const RELATORIOS_LIVROS: readonly RelatorioNav[] = [
   { href: "/relatorios/atualizacoes-orcamentarias", numero: "Atualizações", rotulo: "Atualizações Orçamentárias", descricao: "Todo movimento de crédito adicional, por ficha, decreto, fonte e UG." },
 ];
 
+/**
+ * AS DEMONSTRAÇÕES CONTÁBEIS anuais da Lei 4.320 — fonte única da landing.
+ *
+ * Não confundir com os anexos do RREO/RGF: aqueles são o recorte bimestral/quadrimestral da STN,
+ * com funções próprias. Estes quatro são os demonstrativos dos arts. 102 a 105 e a DVP.
+ */
+export const RELATORIOS_DEMONSTRACOES: readonly RelatorioNav[] = [
+  { href: "/relatorios/demonstracoes/balanco-orcamentario", numero: "Anexo 12", rotulo: "Balanço Orçamentário", descricao: "Receita prevista e realizada, despesa fixada e executada (art. 102)." },
+  { href: "/relatorios/demonstracoes/balanco-financeiro", numero: "Anexo 13", rotulo: "Balanço Financeiro", descricao: "Ingressos e dispêndios por fonte, e o saldo em espécie (art. 103)." },
+  { href: "/relatorios/demonstracoes/balanco-patrimonial", numero: "Anexo 14", rotulo: "Balanço Patrimonial", descricao: "Ativo, passivo e patrimônio líquido, com o quadro do art. 105." },
+  { href: "/relatorios/demonstracoes/variacoes-patrimoniais", numero: "Anexo 15", rotulo: "Variações Patrimoniais", descricao: "Variações aumentativas e diminutivas, e o resultado patrimonial." },
+];
+
 /** Uma relação entre relatórios — a rota do parente + POR QUE eles se falam (a identidade testada). */
 export interface RelacaoRelatorio {
   readonly href: string;
