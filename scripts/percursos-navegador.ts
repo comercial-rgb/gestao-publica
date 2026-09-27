@@ -93,8 +93,33 @@ export async function irPara(n: Navegador, page: Page, rota: string): Promise<st
       break;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      if (tentativa >= 3 || !/ERR_CONNECTION_RESET|ERR_CONNECTION_REFUSED|ERR_EMPTY_RESPONSE/.test(msg)) throw e;
-      await espera(8000);
+      /**
+       * ═══ ⚠️ `ERR_ABORTED` ENTROU AQUI PORQUE A LISTA ENUMERAVA AS FORMAS QUE CONHECIA ═══
+       *
+       * MEDIDO em dois percursos do adiantamento salarial (V13 r4 e r5), com a mesma assinatura no
+       * log do PRÓPRIO servidor:
+       *
+       *     POST /login 303
+       *     GET /?exercicio=2026 200 in 213ms
+       *     GET /?exercicio=2026 200 in 213ms     <- a redireção pós-login acontece DUAS vezes
+       *     GET /folha/tabelas    200 in 1500ms   <- o servidor ENTREGOU a página
+       *
+       * O servidor respondeu **200**. Quem abortou foi o Chrome, porque `entrar()` devolve assim
+       * que a URL deixa de conter `/login` — e nesse instante a cadeia de redireção pós-login pode
+       * estar AINDA EM VOO. O `page.goto` seguinte corre com ela, e o navegador cancela um dos
+       * dois. O sintoma aparece na navegação SEGUINTE ao login, o que fez a falha parecer ser da
+       * página (`/folha/folhas` na r4, `/folha/tabelas` na r5) quando não era de nenhuma das duas.
+       *
+       * ⚠️ E ISTO NÃO ENFRAQUECE A MEDIÇÃO. A conferência que vale continua abaixo, intacta:
+       * `status !== 200` lança, e voltar ao `/login` lança. Uma página realmente quebrada falha na
+       * retentativa também — o que se tolera aqui é a corrida, não o defeito.
+       *
+       * A espera é curta de propósito: a corrida se resolve em milissegundos, e os 8 s dos outros
+       * três casos existem para servidor que caiu, que é outra coisa.
+       */
+      const corrida = /ERR_ABORTED/.test(msg);
+      if (tentativa >= 3 || !(corrida || /ERR_CONNECTION_RESET|ERR_CONNECTION_REFUSED|ERR_EMPTY_RESPONSE/.test(msg))) throw e;
+      await espera(corrida ? 750 : 8000);
     }
   }
   const status = resposta?.status() ?? 0;
