@@ -411,8 +411,25 @@ async function main(): Promise<void> {
      * termo de imposto. Zerar aqui não afirma nada sobre a tabela da Receita — afirma que ESTE
      * percurso mede o abatimento do vale, e um imposto no meio mediria outra coisa.
      */
-    const telaTabelas = await irPara(N, page, "/folha/tabelas");
-    if (!/contribuição previdenciária/i.test(telaTabelas)) {
+    /**
+     * ⚠️ A EXISTENCIA DA TABELA SE CONFERE NAS LINHAS DA LISTA, NUNCA NO TEXTO DA PAGINA. Medido na
+     * primeira corrida desta rodada: `/contribuição previdenciária/i` sobre o corpo inteiro casou
+     * com a PROSA do formulario (o rotulo do proprio seletor de tipo) e o percurso anunciou
+     * "ja vigora — reusada" com ZERO tabela no banco. E a licao "nao atestar pela papelada que
+     * declara", cometida dentro do instrumento: afirme o EFEITO, e o efeito aqui e uma linha na
+     * tabela marcada como vigente.
+     */
+    const tabelaVigente = async (rotulo: string): Promise<boolean> =>
+      page.evaluate((r) => {
+        const linhas = Array.from(document.querySelectorAll("tbody tr"));
+        return linhas.some((tr) => {
+          const cs = Array.from(tr.querySelectorAll("td")).map((td) => (td.textContent ?? "").replace(/\s+/g, " ").trim().toLowerCase());
+          return cs.some((c) => c.includes(r)) && cs.some((c) => c.includes("vigente"));
+        });
+      }, rotulo.toLowerCase());
+
+    await irPara(N, page, "/folha/tabelas");
+    if (!(await tabelaVigente("contribuição previdenciária"))) {
       const rPrev = await preencherEEnviar(page, "criar-tabela", [
         { sel: 'select[name="tipo"]', valor: "CONTRIBUICAO_RGPS", tipo: "select" },
         { sel: 'input[name="competenciaInicio"]', valor: "2026-01" },
@@ -430,8 +447,8 @@ async function main(): Promise<void> {
       R.conferir("6.1 tabela de contribuição já vigora — reusada", true, "execucao anterior");
     }
 
-    const telaTabelas2 = await irPara(N, page, "/folha/tabelas");
-    if (!/irrf/i.test(telaTabelas2)) {
+    await irPara(N, page, "/folha/tabelas");
+    if (!(await tabelaVigente("irrf"))) {
       const rIrrf = await preencherEEnviar(page, "criar-tabela", [
         { sel: 'select[name="tipo"]', valor: "IRRF", tipo: "select" },
         { sel: 'input[name="competenciaInicio"]', valor: "2026-01" },
@@ -447,6 +464,26 @@ async function main(): Promise<void> {
       R.conferir("6.2 tabela de IRRF zerada cadastrada pela tela", rIrrf.tipo === "ok", `${rIrrf.tipo}: ${rIrrf.texto.slice(0, 300)}`);
     } else {
       R.conferir("6.2 tabela de IRRF já vigora — reusada", true, "execucao anterior");
+    }
+
+    /**
+     * ── 6.0 A LOTACAO ───────────────────────────────────────────────────────
+     *
+     * ⚠️ ELA FALTAVA, E O PRODUTO ESTAVA CERTO EM RECUSAR. Medido: o banco de percursos nasce com
+     * ZERO lotacoes, e `admitir` devolvia `lotacaoId: Invalid input` — admissao sem lotacao nao e
+     * admissao, porque e a lotacao que diz ONDE o servidor trabalha, e o M32 exige que ela esteja
+     * VIGENTE na data. A primeira versao deste passo tentou adivinhar uma lotacao existente com
+     * `opcaoQueCasa(..., "-")`; nao havia nenhuma para achar.
+     */
+    const telaLot = await irPara(N, page, "/pessoal/lotacoes");
+    if (!telaLot.toLowerCase().includes(`vale-${SUF}`.toLowerCase())) {
+      const rLot = await preencherEEnviar(page, "criar-lotacoes", [
+        { sel: 'input[name="codigo"]', valor: `VALE-${SUF}` },
+        { sel: 'input[name="nome"]', valor: `Lotacao do percurso do vale ${SUF}` },
+      ]);
+      R.conferir("6.0 lotação do percurso criada pela tela", rLot.tipo === "ok", `${rLot.tipo}: ${rLot.texto.slice(0, 300)}`);
+    } else {
+      R.conferir("6.0 lotação do percurso já existe — reusada", true, "execucao anterior");
     }
 
     // ── 6.3 o cargo do percurso ─────────────────────────────────────────────
@@ -470,10 +507,14 @@ async function main(): Promise<void> {
      * três telas distintas — e é assim que o produto separa "existe no cadastro único", "é
      * servidor" e "tem vínculo vigente".
      */
-    const admitir = async (nome: string, matricula: string, salario: string, nascimento: string): Promise<boolean> => {
+    const admitir = async (nome: string, matricula: string, salario: string, nascimento: string, semente: string): Promise<boolean> => {
       await irPara(N, page, "/cadastros/pessoas");
       const rPessoa = await preencherEEnviar(page, "cadastrar-pessoa", [
-        { sel: 'input[data-mascara="cpf-cnpj"]', valor: cpfFicticio(`${matricula}${SUF}`) },
+        // ⚠️ A SEMENTE E NUMERICA E DISTINTA, e isto foi defeito MEDIDO: `cpfFicticio` faz
+        // `replace(/\D/g, "")`, entao `VALEA-...` e `VALEB-...` perdiam a letra que as
+        // distinguia e as duas matriculas recebiam o MESMO CPF. O produto recusou, CERTO
+        // ("um documento identifica UMA pessoa"), e o vermelho era do instrumento.
+        { sel: 'input[data-mascara="cpf-cnpj"]', valor: cpfFicticio(semente) },
         { sel: 'input[name="nome"]', valor: nome },
       ]);
       if (rPessoa.tipo !== "ok") {
@@ -503,7 +544,17 @@ async function main(): Promise<void> {
       }
       await irPara(N, page, hrefServ);
       const idCargo = await opcaoQueCasa(page, 'form[data-acao="admitir"] select[name="cargoId"]', `VALE-${SUF}`);
-      const idLot = await opcaoQueCasa(page, 'form[data-acao="admitir"] select[name="lotacaoId"]', "-");
+      /**
+       * ⚠️ A PRIMEIRA OPCAO COM VALOR DE VERDADE, e nao a que "contem um hifen". Medido: casar por
+       * `"-"` pegava a opcao de placeholder e a admissao voltava `lotacaoId: Invalid input`. O
+       * seletor do instrumento nao pode adivinhar o rotulo — ele pergunta qual opcao tem `value`.
+       */
+      const idLot = await page.evaluate((cod) => {
+        const s2 = document.querySelector('form[data-acao="admitir"] select[name="lotacaoId"]');
+        if (!(s2 instanceof HTMLSelectElement)) return "";
+        const uteis = Array.from(s2.options).filter((o) => o.value.trim() !== "" && !o.disabled);
+        return (uteis.find((o) => (o.textContent ?? "").includes(cod)) ?? uteis[0])?.value ?? "";
+      }, `VALE-${SUF}`);
       const rAdm = await preencherEEnviar(page, "admitir", [
         { sel: 'input[name="matricula"]', valor: matricula },
         { sel: 'select[name="tipo"]', valor: "EFETIVO", tipo: "select" },
@@ -528,8 +579,8 @@ async function main(): Promise<void> {
      * vales de 1.200,00 e 800,00: um motor que abatesse valor FIXO, ou que abatesse o valor do
      * OUTRO vínculo, passaria com duas bases iguais e passaria com uma só.
      */
-    const okM1 = await admitir(`Vale A do Percurso ${SUF}`, M1, "3.000,00", "1985-07-20");
-    const okM2 = await admitir(`Vale B do Percurso ${SUF}`, M2, "2.000,00", "1990-03-11");
+    const okM1 = await admitir(`Vale A do Percurso ${SUF}`, M1, "3.000,00", "1985-07-20", `1${SUF}01`);
+    const okM2 = await admitir(`Vale B do Percurso ${SUF}`, M2, "2.000,00", "1990-03-11", `2${SUF}02`);
     R.conferir(
       "6.4 o par N=2 está admitido pela tela, com bases DIFERENTES (3.000,00 e 2.000,00)",
       okM1 && okM2,
@@ -610,8 +661,30 @@ async function main(): Promise<void> {
      * "Folha mensal" numa folha que não era — e um documento que mente sobre o próprio tipo é
      * pior que documento nenhum, porque o servidor arquiva.
      */
-    const resumo = await irPara(N, page, `${href}?aba=resumo`);
-    R.conferir("11 o resumo da folha se intitula pelo TIPO (adiantamento salarial), não por 'folha mensal'", /adiantamento salarial/i.test(resumo) && !/folha mensal/i.test(resumo), resumo.slice(0, 900));
+    await irPara(N, page, `${href}?aba=resumo`);
+    /**
+     * ⚠️ A CONFERENCIA E NO TITULO, E A VERSAO ANTERIOR ESTAVA ERRADA — medido nesta rodada. Ela
+     * proibia a expressao "folha mensal" em QUALQUER lugar da pagina, e o resumo do vale a usa
+     * CORRETAMENTE na prosa que explica o proprio vale: "quem tributa a remuneracao inteira do mes
+     * e a folha mensal" e "a folha mensal da mesma competencia abate o que este vale pagou". As
+     * duas frases sao o produto fazendo o CERTO; reprova-las seria o instrumento enumerando a
+     * forma que ele conhece e culpando a pagina por ela.
+     *
+     * O defeito que este passo existe para pegar e outro, e continua pego: o percurso da
+     * complementar mediu um PDF que se INTITULAVA "Folha mensal" numa folha que nao era. Entao a
+     * pergunta certa e sobre o TITULO — `h1`/`h2` do cabecalho —, nao sobre o corpo.
+     */
+    const titulo = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("h1, h2"))
+        .map((h) => (h.textContent ?? "").replace(/\s+/g, " ").trim())
+        .join(" | ")
+        .toLowerCase()
+    );
+    R.conferir(
+      "11 o resumo da folha se intitula pelo TIPO (adiantamento salarial), e o titulo NAO diz 'folha mensal'",
+      /adiantamento salarial/i.test(titulo) && !/folha mensal/i.test(titulo),
+      `titulos: ${titulo.slice(0, 400)}`
+    );
 
     // ══ 12. INTEGRAR AOS ATOS FINANCEIROS ═══════════════════════════════════
     naoExecutado(
