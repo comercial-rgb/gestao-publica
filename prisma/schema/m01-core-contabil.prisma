@@ -64,6 +64,10 @@ model ContaPcasp {
   roteirosPorFonteCredito RoteiroDaDotacaoPorFonte[] @relation("CreditoPorFonte")
   /// back-relation M08 (apuração do resultado) — campo VIRTUAL.
   roteirosEncerramento     RoteiroEncerramento[]       @relation("ResultadosAcumulados")
+  roteirosRpDebito         RoteiroRestosAPagar[]       @relation("DebitoRestosAPagar")
+  roteirosRpCredito        RoteiroRestosAPagar[]       @relation("CreditoRestosAPagar")
+  roteirosRpControleDebito  RoteiroRestosAPagar[]      @relation("ControleDebitoRestosAPagar")
+  roteirosRpControleCredito RoteiroRestosAPagar[]      @relation("ControleCreditoRestosAPagar")
   /// back-relation M08 (destino da conta de controle na virada) — campo VIRTUAL.
   destinoNaVirada          ContaNaVirada[]             @relation("DestinoNaVirada")
   /// back-relations M10 (dívida) — campos VIRTUAIS, não geram coluna.

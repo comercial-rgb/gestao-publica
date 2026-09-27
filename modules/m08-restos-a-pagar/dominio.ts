@@ -242,7 +242,29 @@ export type RoteiroContabil = readonly PernaRoteiro[];
 export interface ContasLiquidacaoRP {
   readonly variacaoDiminutiva: string;
   readonly restosAPagarProcessados: string;
+  /**
+   * ⚠️ O PAR DE CONTROLE DA DDR, CONFIGURÁVEL DESDE A V15 — e o motivo é preciso.
+   *
+   * Os códigos abaixo SÃO oficiais e estáveis: conferidos contra o plano do exercício,
+   * `8.2.1.1.2.01.00` é "DISPONIBILIDADE ... COMPROMETIDA POR EMPENHO - A LIQUIDAR" e
+   * `8.2.1.1.3.01.00` é "COMPROMETIDA POR LIQUIDAÇÃO", ambas ANALÍTICAS. Não eram invenção.
+   *
+   * MAS ELES TÊM IRMÃS OFICIAIS — `8.2.1.1.2.02.00` é "COMPROMETIDA POR EMPENHO - EM
+   * LIQUIDAÇÃO" —, e **escolher entre irmãs oficiais é roteiro, não norma**. Um ente que use o
+   * estágio "em liquidação" precisa da outra. Por isso o par entra por parâmetro; o literal
+   * permanece como PADRÃO apenas para os testes que já existiam, e o caminho de produção
+   * (`lib/portas/restos-a-pagar.ts`) SEMPRE passa o configurado.
+   */
+  readonly ddrComprometidaPorEmpenho?: string;
+  readonly ddrComprometidaPorLiquidacao?: string;
 }
+
+/** As folhas analíticas oficiais, conferidas contra o plano do exercício. Padrão, não decisão. */
+const DDR_PADRAO = {
+  comprometidaPorEmpenho: "8.2.1.1.2.01.00",
+  comprometidaPorLiquidacao: "8.2.1.1.3.01.00",
+  utilizada: "8.2.1.1.4.01.00",
+} as const;
 /**
  * ⚠️ AS PERNAS DE DDR ATRAVESSAM A VIRADA — e é por isso que elas existem AQUI.
  *
@@ -276,15 +298,35 @@ export function roteiroLiquidacaoRestos(
     },
     // CONTROLE: liquidar o RPNP move o dinheiro de "comprometido por empenho" (que veio
     // do exercício anterior e atravessou a virada) para "comprometido por liquidação".
-    { conta: "8.2.1.1.2.01.00", tipo: "DEBITO", subsistema: "CONTROLE" },
-    { conta: "8.2.1.1.3.01.00", tipo: "CREDITO", subsistema: "CONTROLE" },
+    {
+      conta: c.ddrComprometidaPorEmpenho ?? DDR_PADRAO.comprometidaPorEmpenho,
+      tipo: "DEBITO",
+      subsistema: "CONTROLE",
+    },
+    {
+      conta: c.ddrComprometidaPorLiquidacao ?? DDR_PADRAO.comprometidaPorLiquidacao,
+      tipo: "CREDITO",
+      subsistema: "CONTROLE",
+    },
   ];
 }
 
 /** PAGAMENTO de RP: a obrigação é extinta e o dinheiro sai do caixa. */
 export interface ContasPagamentoRP {
+  /**
+   * ⚠️ A OBRIGAÇÃO A BAIXAR NÃO É CONFIGURAÇÃO: ela se RASTREIA (V15). A inscrição no
+   * encerramento não gera lançamento, então o passivo de um resto PROCESSADO é o que a
+   * liquidação do exercício de origem creditou, e o de um resto que era NÃO PROCESSADO é o que
+   * a liquidação do exercício seguinte creditou. Configurar uma conta aqui permitiria pagar
+   * contra um passivo que não é o que a obrigação criou — saldo eterno numa conta, negativo na
+   * outra, e as duas fechando o balanço. Ver `passivoDaLiquidacaoDeOrigem`.
+   */
   readonly restosAPagarProcessados: string;
+  /** A conta contábil da conta bancária escolhida no ato — nunca de cadastro de roteiro. */
   readonly disponibilidade: string;
+  /** Ver `ContasLiquidacaoRP`: oficiais e estáveis, mas a escolha entre irmãs é roteiro. */
+  readonly ddrComprometidaPorLiquidacao?: string;
+  readonly ddrUtilizada?: string;
 }
 export function roteiroPagamentoRestos(c: ContasPagamentoRP): RoteiroContabil {
   return [
@@ -297,8 +339,12 @@ export function roteiroPagamentoRestos(c: ContasPagamentoRP): RoteiroContabil {
     // CONTROLE: o dinheiro do RP processado sai — comprometido por liquidação → utilizada.
     // A comprometida veio da liquidação do exercício ANTERIOR e atravessou a virada
     // (ver o comentário de `roteiroLiquidacaoRestos`): o encerramento só toca 5 e 6.
-    { conta: "8.2.1.1.3.01.00", tipo: "DEBITO", subsistema: "CONTROLE" },
-    { conta: "8.2.1.1.4.01.00", tipo: "CREDITO", subsistema: "CONTROLE" },
+    {
+      conta: c.ddrComprometidaPorLiquidacao ?? DDR_PADRAO.comprometidaPorLiquidacao,
+      tipo: "DEBITO",
+      subsistema: "CONTROLE",
+    },
+    { conta: c.ddrUtilizada ?? DDR_PADRAO.utilizada, tipo: "CREDITO", subsistema: "CONTROLE" },
   ];
 }
 
@@ -310,11 +356,19 @@ export function roteiroPagamentoRestos(c: ContasPagamentoRP): RoteiroContabil {
 export interface ContasCancelamentoRP {
   readonly restosAPagar: string;
   readonly variacaoAumentativa: string;
+  /**
+   * ⚠️ SE O CANCELAMENTO LIBERA A DDR COMPROMETIDA, E PARA ONDE, É PERGUNTA DO ENTE com
+   * fundamento do tribunal — não escolha de código, e por isso não há padrão aqui. Ausentes,
+   * o cancelamento não move controle, que é o comportamento desde o ENT03. O ente que
+   * fundamentar o par o configura, e ele entra.
+   */
+  readonly ddrDebito?: string;
+  readonly ddrCredito?: string;
 }
 export function roteiroCancelamentoRestos(
   c: ContasCancelamentoRP
 ): RoteiroContabil {
-  return [
+  const pernas: PernaRoteiro[] = [
     { conta: c.restosAPagar, tipo: "DEBITO", subsistema: "PATRIMONIAL" },
     {
       conta: c.variacaoAumentativa,
@@ -322,6 +376,11 @@ export function roteiroCancelamentoRestos(
       subsistema: "PATRIMONIAL",
     },
   ];
+  if (c.ddrDebito !== undefined && c.ddrCredito !== undefined) {
+    pernas.push({ conta: c.ddrDebito, tipo: "DEBITO", subsistema: "CONTROLE" });
+    pernas.push({ conta: c.ddrCredito, tipo: "CREDITO", subsistema: "CONTROLE" });
+  }
+  return pernas;
 }
 
 /** Aplica o valor a cada perna e submete ao motor puro (fail-closed). */

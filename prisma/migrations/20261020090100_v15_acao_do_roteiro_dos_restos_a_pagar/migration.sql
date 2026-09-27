@@ -1,0 +1,21 @@
+-- V15 — A ACAO `PARAMETRIZAR_ROTEIRO_RESTOS_A_PAGAR` NO ENUM DO BANCO.
+--
+-- ⚠️ ESTA MIGRATION EXISTE PORQUE `AcaoDoSistema` E TIPO DE BANCO, E NAO SO DE TYPESCRIPT — e
+-- desta vez quem a cobrou foi o COMPILADOR, com 24 erros: a uniao em `acoes.ts` e o enum gerado
+-- pelo Prisma sao comparados em `autorizacao.ts`, `leitura.ts` e
+-- `atualizacoes-de-permissoes.ts`, e divergir derruba o typecheck do projeto inteiro.
+-- Sem a migration, o valor existiria nos dois lados do codigo e faltaria no banco: nada quebra ao
+-- compilar nem ao subir, e quebra a primeira concessao REAL da permissao (instalacao limpa ou
+-- atualizacao de um ente existente) com "invalid input value for enum AcaoDoSistema", longe da causa.
+--
+-- ⚠️ ACAO PROPRIA, E O CRITERIO E O DE SEMPRE: e a MESMA AUTORIDADE?
+--
+-- Nao e. `PARAMETRIZAR_ROTEIRO_ORCAMENTARIO` decide contas do subsistema ORCAMENTARIO — classes
+-- 5 e 6, a execucao do credito do exercicio. O roteiro dos restos a pagar decide contra que
+-- PASSIVO (classe 2) uma obrigacao de exercicio ENCERRADO se baixa, e que perna de DISPONIBILIDADE
+-- POR DESTINACAO DE RECURSOS (classe 8) ela move. Sao subsistemas diferentes e decisoes de
+-- naturezas diferentes: quem parametriza a dotacao do ano corrente nao e necessariamente quem
+-- decide o tratamento do que sobrou do ano que fechou.
+--
+-- ADITIVA: um valor novo. Nenhum existente muda de nome ou sai.
+ALTER TYPE "AcaoDoSistema" ADD VALUE 'PARAMETRIZAR_ROTEIRO_RESTOS_A_PAGAR';

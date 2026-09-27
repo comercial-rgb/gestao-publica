@@ -108,6 +108,47 @@ permite o M05 consumi-los **sem fechar o ciclo** `M05 → M08 → M05` — porqu
   - cancelamento: `D RP / C variação AUMENTATIVA` — a obrigação morre **sem saída
     de caixa**, e o ente fica com um ganho. É o que distingue cancelar de pagar.
 
+## De onde o parâmetro vem, desde a V15 — `RoteiroRestosAPagar`
+
+Até a V15 o parâmetro vinha **de testes**: nenhuma superfície alcançava as operações porque
+não havia tabela de configuração. `RoteiroRestosAPagar` (neste arquivo de schema) é ela, com
+cadastro em `/contabilidade/roteiros-de-restos-a-pagar`, versionado e com motivo registrado.
+
+**O levantamento reduziu a unidade duas vezes**, e as duas reduções são o desenho:
+
+1. **Três eventos pedem contas, não cinco.** `anularPagamentoRestosAPagar` e
+   `anularCancelamentoRestosAPagar` não têm parâmetro `roteiro`: leem o lançamento original e
+   **invertem** as pernas (`gerarEstorno` do M01), inclusive as de retenção, que levam bruto e
+   líquido diferentes. Configurar conta de estorno criaria a possibilidade de um estorno que não
+   fecha com o que estornou — por isso **não há evento de estorno no enum**.
+2. **O passivo do pagamento não é configuração: ele se RASTREIA.** `encerrarExercicioComRestos`
+   **não gera lançamento** — não há reclassificação do passivo para contas de "Restos a Pagar".
+   Logo a obrigação a baixar é a que a liquidação de origem **creditou**: a do exercício de
+   origem num resto PROCESSADO, a do exercício seguinte num que era NÃO PROCESSADO. São dois
+   caminhos com passivos diferentes, e a diferença está no dado.
+   `passivoDaLiquidacaoDeOrigem` (em `servico-roteiro.ts`) o resolve pelo `liquidacaoId` que o
+   próprio pagamento nomeia, confere que a liquidação é **do mesmo empenho** da inscrição, e
+   **recusa nomeando todas** quando há mais de uma perna de passivo no mesmo lançamento — em vez
+   de escolher a primeira, que seria decidir por acidente de consulta.
+
+A **conta de saída** também não entra no cadastro: é a conta contábil da conta bancária escolhida
+no ato (`ContaBancaria.contaContabil`). Guardá-la seria um campo que a operação sobrescreve.
+
+O evento do cancelamento é **o par (operação, tipo)**: cancelar um resto processado extingue um
+passivo que existe; cancelar um não processado desfaz um compromisso que nunca virou passivo.
+
+⚠️ **O que NÃO se decidiu:** se o cancelamento libera a DDR comprometida, e para onde. É pergunta
+do ente com fundamento do tribunal. O par de controle do cancelamento é **opcional**, sem padrão;
+ausente, o cancelamento não move controle — o comportamento desde o ENT03.
+
+⚠️ **As quatro contas de DDR deixaram de ser literais fixos no caminho de produção.** Conferidas
+contra o plano do exercício, `8.2.1.1.2.01.00`, `8.2.1.1.3.01.00` e `8.2.1.1.4.01.00` **são**
+folhas analíticas oficiais — não eram invenção. Mas elas têm **irmãs oficiais**
+(`8.2.1.1.2.02.00` é "COMPROMETIDA POR EMPENHO - EM LIQUIDAÇÃO"), e escolher entre irmãs oficiais
+é **roteiro, não norma**. Os três construtores passaram a aceitar o par por parâmetro; o literal
+permanece como **padrão apenas para os treze arquivos de teste que já existiam**, e o caminho de
+produção (`lib/portas/restos-a-pagar.ts`) sempre passa o configurado.
+
 ## Anulação de pagamento de RP (fix)
 
 `anularPagamentoRestosAPagar(pagamentoId, motivo)`.

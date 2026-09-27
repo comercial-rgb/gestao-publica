@@ -558,6 +558,7 @@ enum AcaoDoSistema {
 
   // M05 V11 V8.4 — o roteiro orçamentário pela tela
   PARAMETRIZAR_ROTEIRO_ORCAMENTARIO
+  PARAMETRIZAR_ROTEIRO_RESTOS_A_PAGAR
 
   // M21 V11 V8 — a agenda do guichê (TR 5.39.92)
   CONFIGURAR_AGENDA_DO_GUICHE

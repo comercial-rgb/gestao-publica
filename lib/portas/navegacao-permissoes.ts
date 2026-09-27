@@ -329,6 +329,7 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   GERIR_TIPOS_DE_CONSIGNACAO: "financeiro",
   // M05 V11 V8.4 — mora na CONTABILIDADE, ao lado do roteiro patrimonial.
   PARAMETRIZAR_ROTEIRO_ORCAMENTARIO: "contabilidade",
+  PARAMETRIZAR_ROTEIRO_RESTOS_A_PAGAR: "contabilidade",
   // M21 V11 V8 — a agenda do guichê mora no PROTOCOLO, junto da carta de serviços que ela atende.
   CONFIGURAR_AGENDA_DO_GUICHE: "protocolo",
   RESERVAR_ATENDIMENTO_NO_GUICHE: "protocolo",

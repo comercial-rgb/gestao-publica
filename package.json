@@ -94,7 +94,8 @@
     "smoke:transparencia-publica": "tsx scripts/trinco-de-maquina.ts 'percurso da transparencia publica' -- npx tsx scripts/smoke-transparencia-publica.ts",
     "capturas:transparencia": "tsx scripts/trinco-de-maquina.ts 'capturas da transparencia publica' -- npx tsx scripts/capturas-da-transparencia-publica.ts",
     "smoke:encaminhamento-da-ouvidoria": "tsx scripts/trinco-de-maquina.ts 'percurso do encaminhamento da ouvidoria' -- npx tsx scripts/smoke-encaminhamento-da-ouvidoria.ts",
-    "smoke:demonstracoes": "tsx scripts/trinco-de-maquina.ts 'percurso das demonstracoes e restos' -- npx tsx scripts/smoke-demonstracoes-e-restos.ts"
+    "smoke:demonstracoes": "tsx scripts/trinco-de-maquina.ts 'percurso das demonstracoes e restos' -- npx tsx scripts/smoke-demonstracoes-e-restos.ts",
+    "smoke:restos-operacoes": "tsx scripts/trinco-de-maquina.ts 'percurso das operacoes de restos a pagar' -- npx tsx scripts/smoke-restos-a-pagar-operacoes.ts"
   },
   "keywords": [],
   "author": "",

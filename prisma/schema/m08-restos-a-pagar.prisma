@@ -221,3 +221,92 @@ model ContaNaVirada {
   criadoEm  DateTime @default(now())
   criadoPor String
 }
+
+// ----------------------------------------------------------------------------
+// RoteiroRestosAPagar — a configuração contábil das operações de RP.
+//
+// ═══ POR QUE ELA NÃO EXISTIA, E O QUE MUDOU ═══
+// O domínio de RP está maduro desde o ENT03, e as cinco operações de escrita
+// recebem as contas POR PARÂMETRO (`RoteiroContabil`). Nenhuma tela as alcançava
+// porque não havia de onde tirar esse parâmetro: treze tabelas de roteiro no
+// schema, e nenhuma dos restos. A leitura chegou na V14; a escrita chega aqui.
+//
+// A varredura que precedeu esta tabela mediu DUAS reduções, e as duas estão
+// materializadas no desenho:
+//
+//   (1) SÃO TRÊS OPERAÇÕES QUE PEDEM CONTAS, não cinco. `anularPagamento` e
+//       `anularCancelamento` não têm parâmetro `roteiro`: eles leem o lançamento
+//       original e INVERTEM as pernas (`gerarEstorno` do M01). Configurar conta
+//       de estorno criaria a possibilidade de um estorno que não fecha com o que
+//       estornou — e por isso não há evento de estorno neste enum.
+//
+//   (2) NÃO É TABELA DE PERNAS ARBITRÁRIAS. Os três construtores do domínio
+//       (`roteiroLiquidacaoRestos`, `roteiroPagamentoRestos`,
+//       `roteiroCancelamentoRestos`) pedem DUAS contas nomeadas cada, mais o par
+//       de CONTROLE da DDR onde ele existe. São colunas, não linhas-filhas.
+//
+// ═══ AS NULÁVEIS, E QUEM AS POLICIA ═══
+// ⚠️ Coluna nulável cujo sentido depende da linha apodrece — a menos que o BANCO
+// cobre a combinação. É o que `ck_movimento_contratual_xor` já faz neste
+// repositório, e é o que `ck_roteiro_restos_pernas` (em `prisma/sql/`) faz aqui:
+// um PAR se configura inteiro ou não se configura, e nunca meio par.
+//
+// No PAGAMENTO o par patrimonial é PROIBIDO, e isso não é política contábil: é o
+// caminho do código. O débito é o passivo que o DADO aponta — a obrigação que a
+// liquidação de origem criou e que segue aberta — e o crédito é a conta contábil
+// da conta bancária escolhida no ato (`ContaBancaria.contaContabil`). Guardar
+// qualquer um dos dois aqui criaria um campo que a operação sobrescreve.
+//
+// ═══ O QUE ESTA TABELA NÃO DECIDE ═══
+// ⚠️ Se o CANCELAMENTO libera a DDR comprometida, e para onde, é pergunta do ente
+// com fundamento do TCE — não escolha de código. O construtor de hoje não tem
+// pernas de controle no cancelamento; o ente que precisar delas as configura, e
+// quem não configurar recebe RECUSA NOMEADA, nunca conta padrão.
+// ----------------------------------------------------------------------------
+
+/// Os eventos que pedem contas. Chave por evento REAL, nunca pelo par
+/// (operação × tipo): `LIQUIDACAO × PROCESSADO` não existe — só se liquida o que
+/// não foi liquidado —, e tabela de configuração com linha impossível é armadilha.
+enum EventoDeRestosAPagar {
+  /// Liquidar um resto NÃO PROCESSADO no exercício seguinte.
+  LIQUIDACAO_NAO_PROCESSADO
+  /// Pagar um resto já processado (inscrito processado, ou liquidado depois).
+  PAGAMENTO
+  CANCELAMENTO_PROCESSADO
+  CANCELAMENTO_NAO_PROCESSADO
+}
+
+model RoteiroRestosAPagar {
+  id     String               @id @default(cuid())
+  evento EventoDeRestosAPagar
+
+  /// ⚠️ VERSIONADO, pela mesma razão do `RoteiroOrcamentario` (V8.4): o ente TROCA
+  /// a classificação, e o razão escriturado ontem foi feito contra o roteiro de
+  /// ontem. Um `UPDATE` apagaria a resposta para "contra que roteiro este
+  /// lançamento foi feito?" — e o papel de runtime não tem UPDATE nesta tabela.
+  /// A VIGENTE é a de maior versão.
+  versao Int @default(1)
+
+  /// Por que ESTAS contas. Nulo só nas linhas que um seed criou: o seed não tem
+  /// fundamento a dar, e fingir um seria pior que a ausência.
+  fundamento String?
+
+  /// O par PATRIMONIAL. Nulo no PAGAMENTO, onde a origem e a conta bancária o dão.
+  contaDebitoId  String?
+  contaDebito    ContaPcasp? @relation("DebitoRestosAPagar", fields: [contaDebitoId], references: [id])
+  contaCreditoId String?
+  contaCredito   ContaPcasp? @relation("CreditoRestosAPagar", fields: [contaCreditoId], references: [id])
+
+  /// O par de CONTROLE da DDR. Existe na liquidação e no pagamento; no
+  /// cancelamento, só se o ente o fundamentar.
+  contaControleDebitoId  String?
+  contaControleDebito    ContaPcasp? @relation("ControleDebitoRestosAPagar", fields: [contaControleDebitoId], references: [id])
+  contaControleCreditoId String?
+  contaControleCredito   ContaPcasp? @relation("ControleCreditoRestosAPagar", fields: [contaControleCreditoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([evento, versao])
+  @@index([evento, versao])
+}

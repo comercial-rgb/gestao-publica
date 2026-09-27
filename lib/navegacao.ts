@@ -158,7 +158,7 @@ export const EXECUCAO_DESPESA: readonly RelatorioNav[] = [
   // ⚠️ RESTOS A PAGAR MORA NA DESPESA, e não em "Relatórios": a inscrição é despesa de
   // exercício anterior que continua a ser executada — liquidada, paga, cancelada. O Anexo 7 do
   // RREO LÊ essa posição, mas ler um demonstrativo fiscal não é operar a obrigação.
-  { href: "/despesa/restos-a-pagar", numero: "Restos a pagar", rotulo: "Restos a Pagar", descricao: "Despesa inscrita de exercícios anteriores: inscrito, pago, cancelado e saldo por inscrição." },
+  { href: "/despesa/restos-a-pagar", numero: "Restos a pagar", rotulo: "Restos a Pagar", descricao: "Despesa inscrita de exercícios anteriores: inscrito, liquidado, pago, cancelado e saldo por inscrição, com liquidação, pagamento, cancelamento e anulações." },
   // ⚠️ A ASSINATURA MORA NA DESPESA, e não em "Documentos": a pergunta é "a nota de
   // empenho está assinada?", e quem a faz é quem executa a despesa. A FILA, essa sim, é a
   // do ENT02 — reusada, não recriada.
@@ -230,6 +230,7 @@ export const FINANCEIRO: readonly RelatorioNav[] = [
  */
 export const CONTABILIDADE: readonly RelatorioNav[] = [
   { href: "/contabilidade/roteiros-orcamentarios", numero: "Roteiro orçamentário", rotulo: "Roteiro orçamentário", descricao: "Em que contas do plano cada movimento de dotação lança — dotação inicial, crédito adicional por tipo, anulação, reserva. Decisão contábil do ente, versionada e com fundamento; sem roteiro o movimento é recusado." },
+  { href: "/contabilidade/roteiros-de-restos-a-pagar", numero: "Contas dos restos a pagar", rotulo: "Contas dos restos a pagar", descricao: "Em que contas cada ato de restos a pagar lança — liquidação do não processado, pagamento, cancelamento do processado e do não processado. Versionada e com motivo registrado; operação sem contas informadas é recusada." },
   // V11 V9.3 — irmã do roteiro orçamentário, e pela mesma razão: o plano parte 7.2.1.1 por
   // natureza do recurso, e quem diz de que natureza é cada fonte do município é o ente. Sem esta
   // tela a arrecadação era impossível em instalação nova.

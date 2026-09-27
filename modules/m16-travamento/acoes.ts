@@ -385,6 +385,10 @@ export type AcaoDoSistema =
   // responde pelo orçamentário não é necessariamente quem responde pelo patrimonial. Juntá-las
   // daria a uma pessoa o poder de reclassificar os dois razões de uma vez.
   | "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO"
+  // ⚠️ AÇÃO PRÓPRIA, e não `PARAMETRIZAR_ROTEIRO_ORCAMENTARIO`: o roteiro dos restos a pagar
+  // é PATRIMONIAL e de CONTROLE, e o orçamentário é de outro subsistema — quem parametriza a
+  // dotação não é necessariamente quem decide contra que passivo um resto de 2025 se paga.
+  | "PARAMETRIZAR_ROTEIRO_RESTOS_A_PAGAR"
   // ── M21 V11 V8 — A AGENDA DO GUICHÊ (TR 5.39.92) ──
   //
   // ⚠️ TRÊS AÇÕES PARA DEZ SERVIÇOS, e o corte é por QUEM FAZ, não por qual função é.
@@ -1039,6 +1043,7 @@ export type NomeDeServico =
   | "registrarMedicaoPorItens"
   // M21/M19 — a carta de serviços, as solicitações do requerente e a representação (V6.2 P3)
   | "publicarRoteiroOrcamentario"
+  | "publicarRoteiroRestosAPagar"
   | "publicarPoliticaDaDotacaoAdicional"
   | "publicarRoteiroDaDotacaoPorFonte"
   | "declararNaturezaDaFonte"
@@ -1647,6 +1652,7 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // decidir, disponibilizar resposta) é o ato da mesa, no setor em que o processo está.
   // ── M05 V11 V8.4 — o roteiro orçamentário ──
   publicarRoteiroOrcamentario: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
+  publicarRoteiroRestosAPagar: "PARAMETRIZAR_ROTEIRO_RESTOS_A_PAGAR",
   // ⚠️ V11 V8.9 — A MESMA AÇÃO DOS TRÊS, e isso é decisão, não economia. Publicar o roteiro,
   // escolher o EIXO da dotação adicional (por tipo de crédito ou por fonte) e publicar o roteiro
   // do ramo por fonte são a MESMA autoridade: dizer em que conta do plano o movimento entra.
