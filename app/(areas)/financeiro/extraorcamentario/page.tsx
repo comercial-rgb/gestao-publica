@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Badge } from "../../../../components/ui/Badge";
 import { Card } from "../../../../components/ui/Card";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
@@ -6,7 +7,7 @@ import { SincronizarContexto } from "../../../../components/ui/SincronizarContex
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import { BotaoPdf } from "../../../../components/ui/BotaoPdf";
 import {
-  lerEventosExtra, lerSaldosExtra, lerRetencoes, lerDispendiosExtra, PortaSemBancoError,
+  lerConferenciaDaComposicao, lerEventosExtra, lerSaldosExtra, lerRetencoes, lerDispendiosExtra, PortaSemBancoError,
   type TipoConsignacaoNaLista, type SaldoConsignatarioNaLista, type RetencaoNaLista, type DispendioNaLista,
 } from "../../../../lib/portas/extraorcamentario";
 import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
@@ -18,6 +19,10 @@ import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
  * (5.25) e despesas extra (recolhimentos). A tela consome a PORTA (grep trivalente); é consulta.
  */
 export const dynamic = "force-dynamic";
+
+/** Dinheiro em reais na tela — o formato interno (`0.00`) nunca chega a quem lê. */
+const brl = (v: string): string =>
+  Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default async function ExtraorcamentarioPage({
   searchParams,
@@ -64,9 +69,11 @@ export default async function ExtraorcamentarioPage({
   let saldos: readonly SaldoConsignatarioNaLista[];
   let retencoes: readonly RetencaoNaLista[];
   let dispendios: readonly DispendioNaLista[];
+  let composicao: Awaited<ReturnType<typeof lerConferenciaDaComposicao>>;
   try {
-    [eventos, saldos, retencoes, dispendios] = await Promise.all([
+    [eventos, saldos, retencoes, dispendios, composicao] = await Promise.all([
       lerEventosExtra(), lerSaldosExtra(), lerRetencoes({ exercicio }), lerDispendiosExtra({ exercicio }),
+      lerConferenciaDaComposicao(),
     ]);
   } catch (erro) {
     return (
@@ -93,6 +100,72 @@ export default async function ExtraorcamentarioPage({
         O <strong>recolhimento</strong> (despesa extra) repassa o retido — e nunca repassa mais do que se
         reteve (o saldo é fail-closed, 5.45/5.107).
       </div>
+
+      {/* ── C37: RETIDO, RECOLHIDO, ESTORNADO E A RECOLHER, SEPARADOS ── */}
+      <Card>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">
+            Composição das consignações
+          </h2>
+          <Link className="text-sm underline hover:no-underline" href="/financeiro/extraorcamentario/recolher">
+            Recolher consignações
+          </Link>
+        </div>
+        <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
+          Aqui o <strong>estorno aparece como coluna, não embutido</strong>: um recolhimento de 500,00
+          desfeito por um estorno de 500,00 mostra os dois, e não &quot;recolhido zero&quot;. O que falta
+          recolher é derivado, nunca digitado.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[color:var(--color-border)] text-left">
+                <th className="py-2" scope="col">Consignação</th>
+                <th className="py-2" scope="col">Consignatário</th>
+                <th className="py-2 text-right" scope="col">Retido</th>
+                <th className="py-2 text-right" scope="col">Estorno de retenção</th>
+                <th className="py-2 text-right" scope="col">Recolhido</th>
+                <th className="py-2 text-right" scope="col">Estorno de recolhimento</th>
+                <th className="py-2 text-right" scope="col">A recolher</th>
+                <th className="py-2 text-right" scope="col">Recolhido sem composição</th>
+              </tr>
+            </thead>
+            <tbody>
+              {composicao.obrigacoes.map((o) => (
+                <tr className="border-b border-[color:var(--color-border)]" key={`${o.tipoCodigo}|${o.consignatario}`}>
+                  <td className="py-2">{o.tipoCodigo} — {o.tipoDescricao}</td>
+                  <td className="py-2">{o.consignatario}</td>
+                  <td className="py-2 text-right">{brl(o.retido)}</td>
+                  <td className="py-2 text-right">{brl(o.estornoDeRetencao)}</td>
+                  <td className="py-2 text-right">{brl(o.recolhido)}</td>
+                  <td className="py-2 text-right">{brl(o.estornoDeRecolhimento)}</td>
+                  <td className="py-2 text-right font-medium">{brl(o.aRecolher)}</td>
+                  <td className="py-2 text-right">{brl(o.recolhidoSemComposicao)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {/*
+          ⚠️ A CONFERÊNCIA COMPARA DOIS CAMINHOS INDEPENDENTES — a soma das linhas acima e uma
+          passada única sobre todos os movimentos, sem agrupar. Quando divergem, a tela DIZ, em vez
+          de mostrar um visto. Selo sem comparação independente é o que esta obra proíbe.
+        */}
+        <p className="mt-3 text-sm">
+          {composicao.confere ? (
+            <>
+              Soma das obrigações {brl(composicao.somaDasObrigacoes)}, igual ao total apurado por
+              contagem independente dos movimentos.
+            </>
+          ) : (
+            <strong className="text-[color:var(--color-status-erro-fg)]">
+              Divergência: a soma das obrigações é {brl(composicao.somaDasObrigacoes)} e a contagem
+              independente dos movimentos dá {brl(composicao.totalGlobal)}. Não emita conferência
+              deste quadro até a diferença ser explicada.
+            </strong>
+          )}
+        </p>
+      </Card>
 
       {/* ── SALDOS POR CONSIGNATÁRIO ── */}
       <Card>
