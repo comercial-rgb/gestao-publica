@@ -16,6 +16,10 @@ import {
   type TipoDeAtoDeclarado,
 } from "../../modules/m01-core-contabil/ato-declarado.js";
 import { cliente } from "./cliente";
+import {
+  acrescentarFonteAoRol as acrescentarNoRolDoDominio,
+  removerFonteDoRol as removerDoRolDoDominio,
+} from "../../modules/m09-tesouraria/rol-de-fontes";
 import { exigirLeituraDoEnte } from "./leitura";
 import { comEscritaAutenticada } from "./sessao";
 
@@ -69,6 +73,14 @@ export interface ContaComTitularNaTela {
   readonly codigo: string;
   readonly descricao: string;
   readonly fonteCodigo: string;
+  /**
+   * V16 (TR 5.10.2.6) — as fontes que esta conta COMPORTA. Quando o rol não foi declarado, a
+   * lista traz a fonte PADRÃO com a ressalva escrita: é o que o guard do movimento admite, e a
+   * tela não pode prometer mais do que o servidor aceita.
+   */
+  readonly fontesDoRol: readonly { readonly codigo: string; readonly descricao: string }[];
+  /** `false` = o rol não foi declarado e vale o fallback da fonte padrão. */
+  readonly rolDeclarado: boolean;
   /** `null` = ainda não declarada. A tela NOMEIA a consequência disso. */
   readonly titularNome: string | null;
   readonly titularCodigo: string | null;
@@ -86,6 +98,34 @@ export interface ContaComTitularNaTela {
  * como se não houvesse nada a fazer. Elas aparecem com a consequência escrita ao lado: as guias
  * que entram nelas ficam NÃO ATRIBUÍDAS.
  */
+/**
+ * O ROL DE FONTES DA CONTA — os dois atos (TR 5.10.2.6, pendência `ROL-DE-FONTES-UI` fechada).
+ *
+ * ⚠️ A AUTORIZAÇÃO É PRÓPRIA (`GERIR_ROL_DE_FONTES_DA_CONTA`) e não acompanha a do titular: o
+ * titular diz de QUEM é a conta; o rol diz que RECURSO ela abriga, e é ele que o guard do
+ * movimento consulta. As recusas (a última fonte não sai, a padrão não sai, repetida não entra)
+ * são do domínio, e a mensagem delas sobe inteira.
+ */
+export async function acrescentarFonteAoRol(p: {
+  readonly contaCodigo: string;
+  readonly fonteCodigo: string;
+}): Promise<string> {
+  const r = await comEscritaAutenticada("GERIR_ROL_DE_FONTES_DA_CONTA", (criadoPor) =>
+    acrescentarNoRolDoDominio(cliente(), { ...p, criadoPor })
+  );
+  return `A conta ${r.codigoDaConta} passa a comportar as fontes ${r.fontes.join(", ")}.`;
+}
+
+export async function removerFonteDoRolDaConta(p: {
+  readonly contaCodigo: string;
+  readonly fonteCodigo: string;
+}): Promise<string> {
+  const r = await comEscritaAutenticada("GERIR_ROL_DE_FONTES_DA_CONTA", (criadoPor) =>
+    removerDoRolDoDominio(cliente(), { ...p, criadoPor })
+  );
+  return `A conta ${r.codigoDaConta} passa a comportar as fontes ${r.fontes.join(", ")}.`;
+}
+
 export async function lerContasComTitular(): Promise<readonly ContaComTitularNaTela[]> {
   await exigirLeituraDoEnte("CONSULTAR_FINANCEIRO");
   const prisma = cliente();
@@ -94,6 +134,12 @@ export async function lerContasComTitular(): Promise<readonly ContaComTitularNaT
     select: {
       id: true, codigo: true, descricao: true, banco: true, agencia: true, conta: true,
       fonte: { select: { codigo: true } },
+      // V16 (TR 5.10.2.6) — o ROL de fontes da conta. Rol vazio cai para a fonte PADRÃO, a mesma
+      // regra do guard do movimento: a tela não pode prometer mais do que o servidor aceita.
+      fontesPermitidas: {
+        orderBy: { fonte: { codigo: "asc" } },
+        select: { fonte: { select: { codigo: true, descricao: true } } },
+      },
       declaracoesDeTitular: {
         orderBy: { versao: "desc" },
         take: 1,
@@ -116,9 +162,15 @@ export async function lerContasComTitular(): Promise<readonly ContaComTitularNaT
       c.banco !== null && c.agencia !== null && c.conta !== null
         ? `banco ${c.banco}, agência ${c.agencia}, conta ${c.conta}`
         : null;
+    const rol =
+      c.fontesPermitidas.length > 0
+        ? c.fontesPermitidas.map((f) => ({ codigo: f.fonte.codigo, descricao: f.fonte.descricao }))
+        : [{ codigo: c.fonte.codigo, descricao: "(fonte padrão — o rol não foi declarado)" }];
     if (d === undefined) {
       return {
         id: c.id, codigo: c.codigo, descricao: c.descricao, fonteCodigo: c.fonte.codigo,
+        fontesDoRol: rol,
+        rolDeclarado: c.fontesPermitidas.length > 0,
         titularNome: null, titularCodigo: null, versao: null, ato: null,
         identificacaoBancaria: identificacao,
       };
@@ -128,6 +180,8 @@ export async function lerContasComTitular(): Promise<readonly ContaComTitularNaT
       codigo: c.codigo,
       descricao: c.descricao,
       fonteCodigo: c.fonte.codigo,
+      fontesDoRol: rol,
+      rolDeclarado: c.fontesPermitidas.length > 0,
       titularNome: d.entidade.versoes[0]?.nome ?? d.entidade.codigo,
       titularCodigo: d.entidade.codigo,
       versao: d.versao,

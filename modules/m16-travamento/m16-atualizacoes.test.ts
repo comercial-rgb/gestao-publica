@@ -318,6 +318,10 @@ describe("instalação limpa e atualização — no banco", () => {
       // `ACOES_DO_ENTE`, logo INALCANCAVEL: nem o administrador da instalacao a recebia. Foi este
       // numero que apontou o furo.
       { versao: 32, previa: 0, aplicada: false },
+      // V16 (TR 5.10.2.6) — GERIR_ROL_DE_FONTES_DA_CONTA. Previa 0 pela razao das anteriores: ela
+      // so alcanca perfil que JA administra permissoes no global, e a instalacao limpa ainda nao
+      // tem nenhum gravado (o bootstrap concede o censo do ente, que ja a inclui).
+      { versao: 33, previa: 0, aplicada: false },
     ]);
   });
 

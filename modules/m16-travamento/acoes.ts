@@ -315,6 +315,12 @@ export type AcaoDoSistema =
   // eixo seria reescrever a segregação inteira para carimbar uma coluna.
   | "CADASTRAR_ENTIDADE_CONTABIL"
   | "DECLARAR_TITULAR_DA_CONTA_BANCARIA"
+  // ⚠️ M09 V16 — QUAIS FONTES UMA CONTA BANCÁRIA COMPORTA (TR 5.10.2.6), e ela NÃO acompanha
+  // `DECLARAR_TITULAR_DA_CONTA_BANCARIA`: o titular diz de QUEM é a conta (identidade jurídica);
+  // o rol diz que RECURSO ela pode abrigar — é controle de DESTINAÇÃO, o número que prova que
+  // recurso vinculado não custeou outra coisa. Quem declara a autarquia dona da conta não é, por
+  // isso, quem decide se o FUNDEB pode entrar nela.
+  | "GERIR_ROL_DE_FONTES_DA_CONTA"
   | "ATRIBUIR_ENTIDADE_A_ARRECADACAO"
   // ── V6 (P2.1/P2.2) — M32 PESSOAL (RH bloco 1, conciliado do siafic-cg c04ad5a). Catorze ações
   // para dezessete serviços; a divisão é a da origem (ver modules/m32-pessoal/MODULO.md):
@@ -1054,6 +1060,9 @@ export type NomeDeServico =
   | "publicarPoliticaDaDotacaoAdicional"
   | "publicarRoteiroDaDotacaoPorFonte"
   | "declararNaturezaDaFonte"
+  // M09 V16 (TR 5.10.2.6) — o rol de fontes da conta bancária, o cadastro que faltava
+  | "acrescentarFonteAoRol"
+  | "removerFonteDoRol"
   | "cadastrarTipoDeConsignacao"
   | "redefinirContaDaConsignacao"
   | "desativarTipoDeConsignacao"
@@ -1474,6 +1483,11 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // Declarar de QUEM é a conta é decisão de titularidade, e não cadastro de conta: quem
   // parametriza uma conta bancária não decide, por isso, a quem o dinheiro dela pertence.
   declararTitularDaContaBancaria: "DECLARAR_TITULAR_DA_CONTA_BANCARIA",
+  // ⚠️ DOIS SERVIÇOS, UMA AÇÃO. Acrescentar e remover fonte do rol são o mesmo poder — dizer o
+  // que a conta comporta —, e partir em dois crachás daria ao ente a chance de conceder um sem o
+  // outro, o que não significaria nada: quem pode acrescentar pode desfazer acrescentando outra.
+  acrescentarFonteAoRol: "GERIR_ROL_DE_FONTES_DA_CONTA",
+  removerFonteDoRol: "GERIR_ROL_DE_FONTES_DA_CONTA",
   // Atribuir entidade a uma guia do LEGADO — espelho exato de `atribuirContaAArrecadacao`.
   atribuirEntidadeAArrecadacao: "ATRIBUIR_ENTIDADE_A_ARRECADACAO",
   // V6 P2 — M32 pessoal (mapa da origem, mantido): dependente e finalidade são o mesmo poder

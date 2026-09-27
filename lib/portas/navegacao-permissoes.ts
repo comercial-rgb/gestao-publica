@@ -333,6 +333,8 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   // V16/C30 — a autorização vive na ÁREA DA RECEITA porque é lá que o ato acontece (a guia
   // distribuída), e não na contabilidade: quem a detém não parametriza nada, autoriza um ato.
   DISTRIBUIR_RECEITA_FORA_DA_PREVISAO: "receita",
+  // O rol da conta bancária mora na área FINANCEIRA, com o cadastro das contas.
+  GERIR_ROL_DE_FONTES_DA_CONTA: "financeiro",
   // M21 V11 V8 — a agenda do guichê mora no PROTOCOLO, junto da carta de serviços que ela atende.
   CONFIGURAR_AGENDA_DO_GUICHE: "protocolo",
   RESERVAR_ATENDIMENTO_NO_GUICHE: "protocolo",

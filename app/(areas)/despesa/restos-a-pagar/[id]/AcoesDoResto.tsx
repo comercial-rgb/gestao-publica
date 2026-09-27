@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useId, useRef, useState } from "react";
 import {
   CLASSE_AREA_TEXTO as AREA,
   CLASSE_BOTAO_PRIMARIO,
@@ -87,7 +87,15 @@ function useAto(
   readonly disparar: (f: FormData) => void;
   readonly pendente: boolean;
   readonly marca: React.ReactElement | null;
+  /**
+   * ⚠️ O PREFIXO DOS `id` DOS CAMPOS, do `useId`. Ele sai daqui porque esta tela tem CINCO
+   * formulários, e um id literal repetiria no segundo: o `<label for>` passaria a apontar para o
+   * campo do primeiro, o leitor de tela anunciaria o rótulo errado e o foco iria para o lugar
+   * errado. O censo de UI (`formularios-na-mesma-pagina`) cobra isso, e foi ele que apontou.
+   */
+  readonly uid: string;
 } {
+  const uid = useId();
   const publicar = useResultadoDoAto(acao);
   const [seq, setSeq] = useState(0);
   const [estado, disparar, pendente] = useActionState<EstadoDaOperacao, FormData>(async (ant, dados) => {
@@ -117,7 +125,7 @@ function useAto(
         {texto}
       </p>
     );
-  return { disparar, pendente, marca };
+  return { disparar, pendente, marca, uid };
 }
 
 function Bloco({
@@ -145,7 +153,7 @@ export function FormLiquidar({
   readonly inscricaoId: string;
   readonly empenhoId: string;
 }): React.ReactElement {
-  const { disparar: action, pendente, marca } = useAto("liquidar-resto", liquidarAction);
+  const { disparar: action, pendente, marca, uid } = useAto("liquidar-resto", liquidarAction);
   return (
     <Bloco
       titulo="Liquidar"
@@ -157,25 +165,25 @@ export function FormLiquidar({
         <input type="hidden" name="empenhoId" value={empenhoId} />
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
-            <label className={ROTULO} htmlFor="liq-numero">Número da liquidação</label>
-            <input className={CAMPO} id="liq-numero" name="numero" type="text" />
+            <label className={ROTULO} htmlFor={`${uid}-liq-numero`}>Número da liquidação</label>
+            <input className={CAMPO} id={`${uid}-liq-numero`} name="numero" type="text" />
           </div>
           <div>
-            <label className={ROTULO} htmlFor="liq-valor">Valor</label>
-            <input className={CAMPO} id="liq-valor" name="valor" type="text" inputMode="decimal" placeholder="0,00" />
+            <label className={ROTULO} htmlFor={`${uid}-liq-valor`}>Valor</label>
+            <input className={CAMPO} id={`${uid}-liq-valor`} name="valor" type="text" inputMode="decimal" placeholder="0,00" />
           </div>
           <div>
-            <label className={ROTULO} htmlFor="liq-data">Data</label>
-            <input className={CAMPO} id="liq-data" name="data" type="date" />
+            <label className={ROTULO} htmlFor={`${uid}-liq-data`}>Data</label>
+            <input className={CAMPO} id={`${uid}-liq-data`} name="data" type="date" />
           </div>
         </div>
         <div>
-          <label className={ROTULO} htmlFor="liq-atesto">Responsável pelo atesto</label>
-          <input className={CAMPO} id="liq-atesto" name="responsavelAtesto" type="text" />
+          <label className={ROTULO} htmlFor={`${uid}-liq-atesto`}>Responsável pelo atesto</label>
+          <input className={CAMPO} id={`${uid}-liq-atesto`} name="responsavelAtesto" type="text" />
         </div>
         <div>
-          <label className={ROTULO} htmlFor="liq-hist">Histórico</label>
-          <input className={CAMPO} id="liq-hist" name="historico" type="text" />
+          <label className={ROTULO} htmlFor={`${uid}-liq-hist`}>Histórico</label>
+          <input className={CAMPO} id={`${uid}-liq-hist`} name="historico" type="text" />
         </div>
         <div>
           <button className={CLASSE_BOTAO_PRIMARIO} disabled={pendente} type="submit">
@@ -197,7 +205,7 @@ export function FormPagar({
   readonly liquidacoes: readonly LiquidacaoParaPagar[];
   readonly contas: readonly ContaParaPagar[];
 }): React.ReactElement {
-  const { disparar: action, pendente, marca } = useAto("pagar-resto", pagarAction);
+  const { disparar: action, pendente, marca, uid } = useAto("pagar-resto", pagarAction);
   const [conta, setConta] = useState("");
   const escolhida = contas.find((c) => c.codigo === conta);
   return (
@@ -215,8 +223,8 @@ export function FormPagar({
           <input type="hidden" name="inscricaoId" value={inscricaoId} />
           <input type="hidden" name="fonteId" value={escolhida?.fonteId ?? ""} />
           <div>
-            <label className={ROTULO} htmlFor="pag-liq">Liquidação de origem</label>
-            <select className={CAMPO} id="pag-liq" name="liquidacaoId" defaultValue="">
+            <label className={ROTULO} htmlFor={`${uid}-pag-liq`}>Liquidação de origem</label>
+            <select className={CAMPO} id={`${uid}-pag-liq`} name="liquidacaoId" defaultValue="">
               <option value="">Escolha</option>
               {liquidacoes.map((l) => (
                 <option key={l.id} value={l.id}>
@@ -227,23 +235,23 @@ export function FormPagar({
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
-              <label className={ROTULO} htmlFor="pag-numero">Número do pagamento</label>
-              <input className={CAMPO} id="pag-numero" name="numero" type="text" />
+              <label className={ROTULO} htmlFor={`${uid}-pag-numero`}>Número do pagamento</label>
+              <input className={CAMPO} id={`${uid}-pag-numero`} name="numero" type="text" />
             </div>
             <div>
-              <label className={ROTULO} htmlFor="pag-valor">Valor</label>
-              <input className={CAMPO} id="pag-valor" name="valor" type="text" inputMode="decimal" placeholder="0,00" />
+              <label className={ROTULO} htmlFor={`${uid}-pag-valor`}>Valor</label>
+              <input className={CAMPO} id={`${uid}-pag-valor`} name="valor" type="text" inputMode="decimal" placeholder="0,00" />
             </div>
             <div>
-              <label className={ROTULO} htmlFor="pag-data">Data</label>
-              <input className={CAMPO} id="pag-data" name="data" type="date" />
+              <label className={ROTULO} htmlFor={`${uid}-pag-data`}>Data</label>
+              <input className={CAMPO} id={`${uid}-pag-data`} name="data" type="date" />
             </div>
           </div>
           <div>
-            <label className={ROTULO} htmlFor="pag-conta">Conta bancária</label>
+            <label className={ROTULO} htmlFor={`${uid}-pag-conta`}>Conta bancária</label>
             <select
               className={CAMPO}
-              id="pag-conta"
+              id={`${uid}-pag-conta`}
               name="contaBancaria"
               value={conta}
               onChange={(e) => setConta(e.target.value)}
@@ -257,8 +265,8 @@ export function FormPagar({
             </select>
           </div>
           <div>
-            <label className={ROTULO} htmlFor="pag-hist">Histórico</label>
-            <input className={CAMPO} id="pag-hist" name="historico" type="text" />
+            <label className={ROTULO} htmlFor={`${uid}-pag-hist`}>Histórico</label>
+            <input className={CAMPO} id={`${uid}-pag-hist`} name="historico" type="text" />
           </div>
           <div>
             <button className={CLASSE_BOTAO_PRIMARIO} disabled={pendente} type="submit">
@@ -273,7 +281,7 @@ export function FormPagar({
 }
 
 export function FormCancelar({ inscricaoId }: { readonly inscricaoId: string }): React.ReactElement {
-  const { disparar: action, pendente, marca } = useAto("cancelar-resto", cancelarAction);
+  const { disparar: action, pendente, marca, uid } = useAto("cancelar-resto", cancelarAction);
   return (
     <Bloco
       titulo="Cancelar"
@@ -283,12 +291,12 @@ export function FormCancelar({ inscricaoId }: { readonly inscricaoId: string }):
         <ChaveDeComando />
         <input type="hidden" name="inscricaoId" value={inscricaoId} />
         <div>
-          <label className={ROTULO} htmlFor="canc-valor">Valor a cancelar</label>
-          <input className={CAMPO} id="canc-valor" name="valor" type="text" inputMode="decimal" placeholder="0,00" />
+          <label className={ROTULO} htmlFor={`${uid}-canc-valor`}>Valor a cancelar</label>
+          <input className={CAMPO} id={`${uid}-canc-valor`} name="valor" type="text" inputMode="decimal" placeholder="0,00" />
         </div>
         <div>
-          <label className={ROTULO} htmlFor="canc-motivo">Motivo</label>
-          <textarea className={AREA} id="canc-motivo" name="motivo" rows={2} />
+          <label className={ROTULO} htmlFor={`${uid}-canc-motivo`}>Motivo</label>
+          <textarea className={AREA} id={`${uid}-canc-motivo`} name="motivo" rows={2} />
         </div>
         <div>
           <button className={CLASSE_BOTAO_PRIMARIO} disabled={pendente} type="submit">
@@ -308,7 +316,7 @@ export function FormAnularPagamento({
   readonly inscricaoId: string;
   readonly atos: readonly AtoParaAnular[];
 }): React.ReactElement {
-  const { disparar: action, pendente, marca } = useAto("anular-pagamento-resto", anularPagamentoAction);
+  const { disparar: action, pendente, marca, uid } = useAto("anular-pagamento-resto", anularPagamentoAction);
   return (
     <Bloco
       titulo="Anular pagamento"
@@ -318,8 +326,8 @@ export function FormAnularPagamento({
         <ChaveDeComando />
         <input type="hidden" name="inscricaoId" value={inscricaoId} />
         <div>
-          <label className={ROTULO} htmlFor="anp-alvo">Pagamento</label>
-          <select className={CAMPO} id="anp-alvo" name="pagamentoId" defaultValue="">
+          <label className={ROTULO} htmlFor={`${uid}-anp-alvo`}>Pagamento</label>
+          <select className={CAMPO} id={`${uid}-anp-alvo`} name="pagamentoId" defaultValue="">
             <option value="">Escolha</option>
             {atos.map((a) => (
               <option key={a.id} value={a.id}>
@@ -330,17 +338,17 @@ export function FormAnularPagamento({
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className={ROTULO} htmlFor="anp-numero">Número do documento da anulação</label>
-            <input className={CAMPO} id="anp-numero" name="numero" type="text" />
+            <label className={ROTULO} htmlFor={`${uid}-anp-numero`}>Número do documento da anulação</label>
+            <input className={CAMPO} id={`${uid}-anp-numero`} name="numero" type="text" />
           </div>
           <div>
-            <label className={ROTULO} htmlFor="anp-data">Data da anulação</label>
-            <input className={CAMPO} id="anp-data" name="data" type="date" />
+            <label className={ROTULO} htmlFor={`${uid}-anp-data`}>Data da anulação</label>
+            <input className={CAMPO} id={`${uid}-anp-data`} name="data" type="date" />
           </div>
         </div>
         <div>
-          <label className={ROTULO} htmlFor="anp-motivo">Motivo</label>
-          <textarea className={AREA} id="anp-motivo" name="motivo" rows={2} />
+          <label className={ROTULO} htmlFor={`${uid}-anp-motivo`}>Motivo</label>
+          <textarea className={AREA} id={`${uid}-anp-motivo`} name="motivo" rows={2} />
         </div>
         <div>
           <button className={CLASSE_BOTAO_PRIMARIO} disabled={pendente} type="submit">
@@ -360,7 +368,7 @@ export function FormAnularCancelamento({
   readonly inscricaoId: string;
   readonly atos: readonly AtoParaAnular[];
 }): React.ReactElement {
-  const { disparar: action, pendente, marca } = useAto("anular-cancelamento-resto", anularCancelamentoAction);
+  const { disparar: action, pendente, marca, uid } = useAto("anular-cancelamento-resto", anularCancelamentoAction);
   return (
     <Bloco
       titulo="Anular cancelamento"
@@ -370,8 +378,8 @@ export function FormAnularCancelamento({
         <ChaveDeComando />
         <input type="hidden" name="inscricaoId" value={inscricaoId} />
         <div>
-          <label className={ROTULO} htmlFor="anc-alvo">Cancelamento</label>
-          <select className={CAMPO} id="anc-alvo" name="movimentoId" defaultValue="">
+          <label className={ROTULO} htmlFor={`${uid}-anc-alvo`}>Cancelamento</label>
+          <select className={CAMPO} id={`${uid}-anc-alvo`} name="movimentoId" defaultValue="">
             <option value="">Escolha</option>
             {atos.map((a) => (
               <option key={a.id} value={a.id}>
@@ -382,17 +390,17 @@ export function FormAnularCancelamento({
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className={ROTULO} htmlFor="anc-numero">Número do documento da anulação</label>
-            <input className={CAMPO} id="anc-numero" name="numero" type="text" />
+            <label className={ROTULO} htmlFor={`${uid}-anc-numero`}>Número do documento da anulação</label>
+            <input className={CAMPO} id={`${uid}-anc-numero`} name="numero" type="text" />
           </div>
           <div>
-            <label className={ROTULO} htmlFor="anc-data">Data da anulação</label>
-            <input className={CAMPO} id="anc-data" name="data" type="date" />
+            <label className={ROTULO} htmlFor={`${uid}-anc-data`}>Data da anulação</label>
+            <input className={CAMPO} id={`${uid}-anc-data`} name="data" type="date" />
           </div>
         </div>
         <div>
-          <label className={ROTULO} htmlFor="anc-motivo">Motivo</label>
-          <textarea className={AREA} id="anc-motivo" name="motivo" rows={2} />
+          <label className={ROTULO} htmlFor={`${uid}-anc-motivo`}>Motivo</label>
+          <textarea className={AREA} id={`${uid}-anc-motivo`} name="motivo" rows={2} />
         </div>
         <div>
           <button className={CLASSE_BOTAO_PRIMARIO} disabled={pendente} type="submit">

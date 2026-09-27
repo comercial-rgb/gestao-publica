@@ -64,6 +64,18 @@ export const ESCRITA_MUTAVEL_DO_RUNTIME: Readonly<
   },
   VinculoUsuarioPerfil: { update: [], delete: true },
 
+  // ⚠️ M09 V16 (TR 5.10.2.6) — O ROL DE FONTES DA CONTA É DECISÃO VIGENTE, e a ausência da linha
+  // É a remoção. Mesma doutrina do vínculo acima e da `PermissaoDePerfil`: não há coluna de
+  // revogação a marcar, e uma fonte "removida" que continuasse na tabela é a que alguém lê como
+  // permitida. O rol não escritura nada — remover uma fonte NÃO invalida os movimentos que ela já
+  // teve, que são fatos e continuam com a fonte que declararam.
+  //
+  // ⚠️ E ELE ENTROU AQUI PORQUE A TELA NASCEU. Até a V16 o único escritor desta tabela era o
+  // BACKFILL da migration da ADR — que roda como DONO. A tela do rol é a primeira coisa que apaga
+  // esta linha pelo runtime, e sem esta entrada ela falharia com "permission denied" no município,
+  // com a suíte verde na máquina de quem escreveu: o teste roda como dono.
+  FonteDaContaBancaria: { update: [], delete: true },
+
   // ⚠️ V11 V1.1 — A VERSÃO DA RUBRICA MUDA DE SITUAÇÃO, E SÓ ISSO.
   // Aprovar, revogar e fechar a vigência são atos; o CONTEÚDO da versão é congelado. Se o
   // runtime pudesse atualizar `formula`, `percentual`, `incideIrrf` ou `fundamentacaoLegal`,

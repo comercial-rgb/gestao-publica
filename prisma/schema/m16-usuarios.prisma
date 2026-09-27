@@ -563,6 +563,9 @@ enum AcaoDoSistema {
   // M04 V16/C30 — distribuir a arrecadacao em fonte que a LOA nao preve para a natureza
   DISTRIBUIR_RECEITA_FORA_DA_PREVISAO
 
+  // M09 V16 — o rol de fontes que cada conta bancaria comporta (TR 5.10.2.6)
+  GERIR_ROL_DE_FONTES_DA_CONTA
+
   // M21 V11 V8 — a agenda do guichê (TR 5.39.92)
   CONFIGURAR_AGENDA_DO_GUICHE
   RESERVAR_ATENDIMENTO_NO_GUICHE

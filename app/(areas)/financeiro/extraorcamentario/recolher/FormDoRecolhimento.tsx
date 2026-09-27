@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useId, useRef, useState } from "react";
 import {
   CLASSE_BOTAO_PRIMARIO,
   CLASSE_CAMPO as CAMPO,
@@ -74,6 +74,9 @@ function Corpo({
   readonly contas: readonly ContaParaRecolher[];
 }): React.ReactElement {
   const acao = "recolher-com-composicao";
+  // ⚠️ OS `id` VÊM DO `useId` (censo de UI): um id literal repete no segundo render da mesma tela,
+  // e o `<label for>` passa a apontar para o campo do PRIMEIRO formulário.
+  const uid = useId();
   const publicar = useResultadoDoAto(acao);
   const [seq, setSeq] = useState(0);
   const ultimo = useRef<string | undefined>(undefined);
@@ -109,8 +112,8 @@ function Corpo({
 
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
-            <label className={ROTULO} htmlFor="rec-conta">Conta bancária</label>
-            <select className={CAMPO} id="rec-conta" name="contaBancaria" defaultValue="">
+            <label className={ROTULO} htmlFor={`${uid}-rec-conta`}>Conta bancária</label>
+            <select className={CAMPO} id={`${uid}-rec-conta`} name="contaBancaria" defaultValue="">
               <option value="">Escolha</option>
               {contas.map((c) => (
                 <option key={c.codigo} value={c.codigo}>
@@ -120,12 +123,12 @@ function Corpo({
             </select>
           </div>
           <div>
-            <label className={ROTULO} htmlFor="rec-data">Data do recolhimento</label>
-            <input className={CAMPO} id="rec-data" name="data" type="date" />
+            <label className={ROTULO} htmlFor={`${uid}-rec-data`}>Data do recolhimento</label>
+            <input className={CAMPO} id={`${uid}-rec-data`} name="data" type="date" />
           </div>
           <div>
-            <label className={ROTULO} htmlFor="rec-hist">Histórico</label>
-            <input className={CAMPO} id="rec-hist" name="historico" type="text" />
+            <label className={ROTULO} htmlFor={`${uid}-rec-hist`}>Histórico</label>
+            <input className={CAMPO} id={`${uid}-rec-hist`} name="historico" type="text" />
           </div>
         </div>
 
@@ -141,13 +144,13 @@ function Corpo({
             disponiveis.map((r) => (
               <div className="grid items-end gap-2 sm:grid-cols-[1fr_10rem]" key={r.movimentoId}>
                 <input name="ingressoId" type="hidden" value={r.movimentoId} />
-                <label className="text-sm" htmlFor={`p-${r.movimentoId}`}>
+                <label className="text-sm" htmlFor={`${uid}-p-${r.movimentoId}`}>
                   {r.rotulo}
                   <span className="text-[color:var(--color-ink-2)]"> · a recolher {reais(r.aRecolher)}</span>
                 </label>
                 <input
                   className={CAMPO}
-                  id={`p-${r.movimentoId}`}
+                  id={`${uid}-p-${r.movimentoId}`}
                   inputMode="decimal"
                   name="parcela"
                   onChange={(e) =>

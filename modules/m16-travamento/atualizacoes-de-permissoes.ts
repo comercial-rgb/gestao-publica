@@ -640,6 +640,41 @@ export function derivarDistribuicaoForaDaPrevisao(
   return saida;
 }
 
+/**
+ * V16 (TR 5.10.2.6) — o ROL DE FONTES da conta bancária, agora com cadastro.
+ *
+ * ⚠️ VAI SÓ A QUEM ADMINISTRA PERMISSÕES NO GLOBAL — a escolha das v30, v31 e v32, e aqui pela
+ * razão mais direta de todas: o rol é o que o guard do movimento consulta. Quem o edita decide se
+ * recurso vinculado pode entrar numa conta, e um rol largo faz o guard aplaudir dinheiro carimbado
+ * no lugar errado. O erro não aparece no ato: aparece no controle de destinação, meses depois.
+ */
+export function derivarRolDeFontesDaConta(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some(
+      (p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null
+    );
+    if (!administra) continue;
+    if (
+      perfil.permissoes.some(
+        (p) => p.acao === "GERIR_ROL_DE_FONTES_DA_CONTA" && p.unidadeOrcId === null
+      )
+    ) {
+      continue;
+    }
+    saida.push({
+      perfilId: perfil.id,
+      perfilNome: perfil.nome,
+      acao: "GERIR_ROL_DE_FONTES_DA_CONTA",
+      unidadeOrcId: null,
+    });
+  }
+  return saida;
+}
+
 /** V7 M1 U4 — a ouvidoria (triagem e resposta, com lotação) e a moderação das avaliações. */
 export const ACOES_DA_OUVIDORIA_E_AVALIACAO: readonly AcaoDoSistema[] = ["TRIAR_MANIFESTACAO_DE_OUVIDORIA", "MODERAR_AVALIACAO_DE_SERVICO"];
 
@@ -1364,6 +1399,23 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "que autoriza empenhar. Vai so a quem administra permissoes no global, que a distribui " +
       "nomeando a pessoa.",
     derivar: derivarDistribuicaoForaDaPrevisao,
+  },
+  {
+    versao: 33,
+    nome: "rol-de-fontes-da-conta-bancaria",
+    descricao:
+      "O ROL DE FONTES de cada conta bancaria ganhou cadastro (TR 5.10.2.6), e com ele a acao " +
+      "GERIR_ROL_DE_FONTES_DA_CONTA. O vinculo existia desde 2026-09-10 (a ADR da conta " +
+      "multifonte) e nunca teve tela: a pendencia ROL-DE-FONTES-UI estava no catalogo. Enquanto " +
+      "cada conta tinha uma fonte so, a ausencia nao impedia nada; a guia REPARTIDA entre fontes " +
+      "(C30) a tornou bloqueante, porque um deposito de duas fontes so entra numa conta que " +
+      "comporte as duas. " +
+      "⚠️ ELA NAO ACOMPANHA DECLARAR_TITULAR_DA_CONTA_BANCARIA: o titular diz de QUEM e a conta; " +
+      "o rol diz que RECURSO ela abriga, que e controle de destinacao. " +
+      "⚠️ E o rol e o que o GUARD do movimento consulta — um rol largo faz o guard aplaudir " +
+      "dinheiro carimbado no lugar errado, e o erro so aparece no controle de destinacao, meses " +
+      "depois. Vai so a quem administra permissoes no global.",
+    derivar: derivarRolDeFontesDaConta,
   },
 ];
 

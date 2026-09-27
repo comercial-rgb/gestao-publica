@@ -121,7 +121,10 @@ export default async function ArrecadacoesPage({
         líquida — Σ(arrecadações) − Σ(anulações). O corte é pela{" "}
         <strong>data de arrecadação</strong> (o fato), nunca pela data de digitação. O rol da
         LOA é <strong>sugestão</strong>, não restrição: receita não prevista existe, e é o que
-        o Anexo 1 mostra como arrecadado além do previsto.
+        o Anexo 1 mostra como arrecadado além do previsto. Um depósito único que pertence a{" "}
+        <strong>mais de uma fonte</strong> — FPM, ICMS partilhado, convênio com contrapartida —
+        entra por <strong>Repartir uma guia entre fontes</strong>: a coluna Fonte então mostra
+        quanto foi de cada uma.
       </div>
 
       <FormArrecadacao
@@ -145,6 +148,12 @@ export default async function ArrecadacoesPage({
             <span className="flex items-center gap-2">
               <BotaoCsv csv={csvArrecadacoes(periodo.linhas)} nomeArquivo={`arrecadacoes-${exercicio}.csv`} />
               <BotaoPdf href={`/receita/arrecadacoes/pdf?exercicio=${exercicio}`} />
+              <a
+                className="text-xs font-medium text-[color:var(--color-primary)] hover:underline"
+                href={`/receita/arrecadacoes/distribuir?exercicio=${exercicio}`}
+              >
+                Repartir uma guia entre fontes
+              </a>
             </span>
             <span className="flex items-baseline gap-2">
               <span className="text-[color:var(--color-ink-2)]">Receita realizada líquida:</span>
@@ -226,8 +235,22 @@ const COLUNAS: readonly ColunaTabela<ArrecadacaoDaTela>[] = [
     chave: "fonte",
     cabecalho: "Fonte",
     alinhamento: "esquerda",
-    largura: "4rem",
-    celula: (l) => l.fonteCodigo,
+    largura: "9rem",
+    // ⚠️ V16/C30 — A GUIA REPARTIDA MOSTRA AS FONTES E OS VALORES, e não a fonte padrão dela. Uma
+    // coluna que dissesse "500" numa guia repartida entre 500 e 540 seria a mesma meia-verdade que
+    // o modelo tinha antes desta unidade — e a única visível para quem confere pela tela.
+    celula: (l) =>
+      l.fontes.length === 0 ? (
+        l.fonteCodigo
+      ) : (
+        <span className="flex flex-col gap-0.5">
+          {l.fontes.map((f) => (
+            <span className="whitespace-nowrap text-xs" key={f.codigo}>
+              {f.codigo} · <ValorMonetario valor={f.valor} />
+            </span>
+          ))}
+        </span>
+      ),
   },
   {
     chave: "co",
@@ -267,7 +290,13 @@ function csvArrecadacoes(linhas: readonly ArrecadacaoDaTela[]): string {
   return paraCsv(
     ["Data", "Guia", "Natureza", "Descrição", "Fonte", "CO", "Tipo", "Valor"],
     linhas.map((l) => [
-      dataBr(l.dataArrecadacao), l.numeroReceita, l.naturezaCodigo, l.naturezaDescricao, l.fonteCodigo,
+      dataBr(l.dataArrecadacao), l.numeroReceita, l.naturezaCodigo, l.naturezaDescricao,
+      // ⚠️ V16/C30 — A GUIA REPARTIDA EXPORTA AS FONTES E OS VALORES, e não só a fonte padrão: o
+      // CSV é o que alguém abre na planilha para conferir por fonte, e ali a meia-verdade não
+      // tem como ser notada.
+      l.fontes.length === 0
+        ? l.fonteCodigo
+        : l.fontes.map((f) => `${f.codigo}=${f.valor}`).join(" "),
       l.coCodigo ?? "—", l.sinal === -1 ? "Anulação" : "Arrecadação",
       formatarMoeda(l.sinal === -1 ? `-${l.valor}` : l.valor).texto,
     ])

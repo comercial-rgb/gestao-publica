@@ -7,6 +7,8 @@ import {
   lerEntidadesContabeis,
   TIPOS_DE_ATO_NA_TELA,
 } from "../../../../lib/portas/entidades-contabeis";
+import { lerTodasAsFontes } from "../../../../lib/portas/arrecadacao";
+import { FormRolDeFontes } from "./FormRolDeFontes";
 import { FormTitular } from "./FormTitular";
 
 /**
@@ -27,10 +29,13 @@ export const dynamic = "force-dynamic";
 export default async function ContasBancariasPage(): Promise<React.ReactElement> {
   let contas: Awaited<ReturnType<typeof lerContasComTitular>>;
   let entidades: Awaited<ReturnType<typeof lerEntidadesContabeis>>;
+  let fontes: Awaited<ReturnType<typeof lerTodasAsFontes>>;
   try {
     await telaExigeLeituraDoEnte("CONSULTAR_FINANCEIRO");
     contas = await lerContasComTitular();
     entidades = await lerEntidadesContabeis();
+    // O rol da conta escolhe entre as fontes CADASTRADAS — o mesmo rol que a arrecadação oferece.
+    fontes = await lerTodasAsFontes();
   } catch (erro) {
     return (
       <div className="space-y-4">
@@ -122,6 +127,15 @@ export default async function ContasBancariasPage(): Promise<React.ReactElement>
                 tiposDeAto={TIPOS_DE_ATO_NA_TELA}
                 jaTemTitular={c.titularNome !== null}
                 identificacaoBancaria={c.identificacaoBancaria}
+              />
+              {/* V16 (TR 5.10.2.6) — o ROL de fontes da conta. Sem este cadastro, a guia repartida
+                  entre fontes era inalcançável: um depósito de duas fontes só entra numa conta que
+                  comporte as duas, e o rol não tinha superfície (`ROL-DE-FONTES-UI`). */}
+              <FormRolDeFontes
+                contaCodigo={c.codigo}
+                fontesDisponiveis={fontes}
+                fontesDoRol={c.fontesDoRol}
+                rolDeclarado={c.rolDeclarado}
               />
             </li>
           ))}
