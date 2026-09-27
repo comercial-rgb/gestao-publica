@@ -52,21 +52,32 @@ CREATE INDEX "RoteiroRestosAPagar_evento_versao_idx"
 ALTER TABLE "RoteiroRestosAPagar"
   ADD CONSTRAINT "ck_roteiro_restos_versao_positiva" CHECK ("versao" >= 1);
 
--- ⚠️ `ON DELETE SET NULL`, E QUEM COBROU FOI O `npm run deriva` NA SUA PRIMEIRA EXECUCAO depois
--- de consertado. As quatro colunas sao NULAVEIS, e para relacao opcional o Prisma espera
--- `SET NULL`; eu havia escrito `RESTRICT`, e o passo (1) (migrations x modelo) acusou as quatro.
+-- ⚠️ `ON DELETE RESTRICT`, E A HISTORIA DESTA LINHA VALE MAIS QUE ELA.
 --
--- ⚠️ E ELE ACUSOU MAIS: 52 instrucoes no total, das quais 36 sao ANTERIORES a esta unidade e do
--- MESMO padrao — `ReceitaArrecadada`, `DecisaoDoTipoDeConsignacao`, `EventoDoLeiaute`,
--- `FatoDoPedidoDeAcesso`, `ReservaDeAtendimento`, `ParametroDoAdiantamentoSalarial`,
--- `FolhaDePagamento`, `CampoDoEvento`. Elas NAO se consertam aqui: migration aplicada nao se
--- reescreve, e a correcao pede uma migration propria por tabela. Pendencia nomeada, com o numero
--- medido — e ela estava invisivel enquanto o `deriva` morria antes de reportar.
+-- O `npm run deriva`, na primeira execucao depois de consertado, acusou as quatro FKs desta
+-- tabela: 52 instrucoes, 16 delas deste modelo. Meu primeiro conserto foi trocar por `SET NULL`,
+-- porque e o que o Prisma assume para relacao opcional — e a deriva sumiu. **Conserto errado pela
+-- via facil.** O Prisma assume `SET NULL` quando NINGUEM DECLARA; este repositorio declara, onze
+-- vezes, e declara `Restrict` — inclusive nas referencias a VERSAO DE ROTEIRO e a PARAMETRO
+-- (`m10-patrimonial.prisma`), que sao exatamente desta natureza. O BANCO ESTAVA CERTO; o que
+-- faltava era o SCHEMA declarar o comportamento.
+--
+-- E a direcao importa. Com `SET NULL`, apagar uma conta do plano ANULARIA EM SILENCIO a referencia
+-- de um roteiro publicado — e um roteiro com conta nula destroi a resposta a "contra que contas
+-- este fato foi escriturado?", que e a razao pela qual esta tabela e versionada. Com `Restrict`, a
+-- conta apontada por um roteiro nao se apaga: publica-se versao nova.
+--
+-- ⚠️ E A DERIVA RESTANTE NAO E DAQUI: 36 instrucoes, oito tabelas, MESMO padrao — schema que nao
+-- declarou `onDelete` onde a migration escreveu `RESTRICT`. `ReceitaArrecadada`,
+-- `DecisaoDoTipoDeConsignacao`, `EventoDoLeiaute`, `CampoDoEvento`, `FatoDoPedidoDeAcesso`,
+-- `ReservaDeAtendimento`, `ParametroDoAdiantamentoSalarial`, `FolhaDePagamento`. Cada uma se
+-- conserta com UMA LINHA no schema, sem migration nova e sem `DROP CONSTRAINT`. Pendencia nomeada,
+-- com o tamanho e o remedio medidos — e ela estava invisivel enquanto o `deriva` morria.
 ALTER TABLE "RoteiroRestosAPagar" ADD CONSTRAINT "RoteiroRestosAPagar_contaDebitoId_fkey"
-  FOREIGN KEY ("contaDebitoId") REFERENCES "ContaPcasp"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  FOREIGN KEY ("contaDebitoId") REFERENCES "ContaPcasp"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "RoteiroRestosAPagar" ADD CONSTRAINT "RoteiroRestosAPagar_contaCreditoId_fkey"
-  FOREIGN KEY ("contaCreditoId") REFERENCES "ContaPcasp"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  FOREIGN KEY ("contaCreditoId") REFERENCES "ContaPcasp"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "RoteiroRestosAPagar" ADD CONSTRAINT "RoteiroRestosAPagar_contaControleDebitoId_fkey"
-  FOREIGN KEY ("contaControleDebitoId") REFERENCES "ContaPcasp"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  FOREIGN KEY ("contaControleDebitoId") REFERENCES "ContaPcasp"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "RoteiroRestosAPagar" ADD CONSTRAINT "RoteiroRestosAPagar_contaControleCreditoId_fkey"
-  FOREIGN KEY ("contaControleCreditoId") REFERENCES "ContaPcasp"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  FOREIGN KEY ("contaControleCreditoId") REFERENCES "ContaPcasp"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

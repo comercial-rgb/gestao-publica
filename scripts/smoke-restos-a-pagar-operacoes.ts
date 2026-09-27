@@ -48,10 +48,71 @@ const BASE = process.env["PERCURSO_BASE"] ?? "http://localhost:3011";
 const USUARIO = process.env["SEED_IDENTIDADE"] ?? "admin@cg.pb.gov.br";
 const SENHA = process.env["SEED_ADMIN_SENHA"] ?? "";
 
+/**
+ * O VALOR de uma opção cujo TEXTO contém um trecho.
+ *
+ * ⚠️ `indice` DO AJUDANTE CONTA ELEMENTOS, NÃO OPÇÕES — e eu o usei como se contasse opções, o que
+ * derrubou a corrida anterior com `não casou o elemento de índice 1`. E o valor destas opções é um
+ * identificador que o percurso não pode saber de antemão: a liquidação, o pagamento e o movimento
+ * nascem na própria corrida. Ler o valor pelo TEXTO é o que a pessoa faz — ela escolhe "LIQ-RP-1",
+ * não um cuid.
+ */
+async function valorDaOpcao(page: Page, seletor: string, textoContido: string): Promise<string> {
+  const v = await page.evaluate(
+    (sel: string, trecho: string) => {
+      const el = document.querySelector(sel);
+      if (!(el instanceof HTMLSelectElement)) return null;
+      for (const o of [...el.options]) {
+        if (o.value !== "" && (o.textContent ?? "").includes(trecho)) return o.value;
+      }
+      return null;
+    },
+    seletor,
+    textoContido
+  );
+  if (v === null) {
+    throw new Error(
+      `Nenhuma opção de "${seletor}" contém "${textoContido}". O ato anterior não produziu o que ` +
+        `este passo precisa escolher.`
+    );
+  }
+  return v;
+}
+
 /** O `<main>`, nunca o corpo: a lição do ENT10. */
 async function principal(page: Page): Promise<string> {
   return page.$eval("main", (m) => m.textContent ?? "").catch(() => "");
 }
+
+/**
+ * ⚠️ OS VALORES SAO OS DA FIXTURE (`scripts/preparar-restos-de-percursos.ts`) e os dois arquivos
+ * tem de concordar. Mudar um sem o outro faz o percurso falhar por aritmetica, nao por defeito.
+ *
+ *   inscricao NAO PROCESSADA  25.000,00   liquidar 25.000,00, pagar 10.000,00 -> saldo 15.000,00
+ *   inscricao PROCESSADA      40.000,00   cancelar 5.000,00 -> 35.000,00, anular -> 40.000,00
+ */
+const INSCRITO_NP = "25.000,00";
+const LIQ_NP = "25.000,00";
+const PAGO_PARCIAL = "10.000,00";
+const SALDO_APOS_PAGAMENTO = "15.000,00";
+const INSCRITO_P = "40.000,00";
+const PAGO_CABECA = "12.000,00";
+const SALDO_P_APOS_PAGAMENTO = "28.000,00";
+const CANCELADO = "5.000,00";
+const SALDO_P_APOS_CANCELAMENTO = "23.000,00";
+
+/**
+ * ⚠️ OS CODIGOS FORAM CONFERIDOS CONTRA O PLANO CARREGADO, e a conferencia nao e zelo: a corrida
+ * anterior falhou porque eu havia escrito `2.1.3.1.1.01.00`, que NAO EXISTE — a analitica e
+ * `2.1.3.1.1.01.01` ("FORNECEDORES NAO PARCELADOS A PAGAR"). O `select` ficava vazio, o cadastro
+ * recusava por meio par, e a falha apontava para a tela em vez de para o percurso. Terceira vez
+ * que codigo de conta nao conferido me custa uma corrida nesta rodada.
+ */
+const VPD = "3.3.1.1.1.01.00";
+const RP_PROCESSADOS = "2.1.3.1.1.01.01";
+const VPA = "4.6.4.1.1.00.00";
+/** Conta bancária da fixture do banco de percursos. */
+const CONTA_BANCARIA = "CC-POC-A";
 
 const LIQUIDACAO = "8.2.1.1.2.01.00";
 const COMPROMETIDA = "8.2.1.1.3.01.00";
@@ -94,6 +155,8 @@ async function main(): Promise<void> {
     );
 
     // ── 3) A OPERAÇÃO SEM CONTAS É RECUSADA (antes de configurar) ────────────
+    // As duas inscrições se acham ANTES: a ordem dos pagamentos depende das duas.
+    const processado = await acharInscricao(page, "Processado");
     const naoProcessado = await acharInscricao(page, "Não processado");
     if (naoProcessado === null) {
       p.falhou(
@@ -111,7 +174,7 @@ async function main(): Promise<void> {
 
       const recusa = await preencherEEnviar(page, "liquidar-resto", [
         { sel: 'input[name="numero"]', valor: "LIQ-RP-1" },
-        { sel: 'input[name="valor"]', valor: "1000,00" },
+        { sel: 'input[name="valor"]', valor: LIQ_NP },
         { sel: 'input[name="data"]', valor: "2027-03-10", tipo: "data" },
         { sel: 'input[name="responsavelAtesto"]', valor: "fiscal do contrato" },
         { sel: 'input[name="historico"]', valor: "liquidacao de resto nao processado" },
@@ -125,8 +188,8 @@ async function main(): Promise<void> {
       // ── 4) AS CONTAS SÃO INFORMADAS PELA TELA ─────────────────────────────
       await irPara(n, page, "/contabilidade/roteiros-de-restos-a-pagar");
       const pubLiq = await preencherEEnviar(page, "publicar-contas-LIQUIDACAO_NAO_PROCESSADO", [
-        { sel: 'select[name="contaDebitoCodigo"]', valor: "3.3.1.1.1.01.00", tipo: "select" },
-        { sel: 'select[name="contaCreditoCodigo"]', valor: "2.1.3.1.1.01.00", tipo: "select" },
+        { sel: 'select[name="contaDebitoCodigo"]', valor: VPD, tipo: "select" },
+        { sel: 'select[name="contaCreditoCodigo"]', valor: RP_PROCESSADOS, tipo: "select" },
         { sel: 'select[name="contaControleDebitoCodigo"]', valor: LIQUIDACAO, tipo: "select" },
         { sel: 'select[name="contaControleCreditoCodigo"]', valor: COMPROMETIDA, tipo: "select" },
         { sel: 'textarea[name="fundamento"]', valor: "Plano de contas do municipio; orientacao do tribunal de contas." },
@@ -152,7 +215,7 @@ async function main(): Promise<void> {
       await irPara(n, page, naoProcessado);
       const agora = await preencherEEnviar(page, "liquidar-resto", [
         { sel: 'input[name="numero"]', valor: "LIQ-RP-1" },
-        { sel: 'input[name="valor"]', valor: "1000,00" },
+        { sel: 'input[name="valor"]', valor: LIQ_NP },
         { sel: 'input[name="data"]', valor: "2027-03-10", tipo: "data" },
         { sel: 'input[name="responsavelAtesto"]', valor: "fiscal do contrato" },
         { sel: 'input[name="historico"]', valor: "liquidacao de resto nao processado" },
@@ -163,18 +226,181 @@ async function main(): Promise<void> {
         `esperava sucesso depois de configurar; veio ${agora.tipo}: ${agora.texto.slice(0, 300)}`
       );
 
-      // ── 6) PAGAMENTO PARCIAL, e o saldo é o resultado de uma conta ────────
+      // ── 6) A FILA CRONOLÓGICA ATRAVESSA O EXERCÍCIO ───────────────────────
+      //
+      // ⚠️ ESTE PASSO NASCEU DE UMA RECUSA QUE EU NÃO ESPERAVA, e ela estava CERTA. Pagar a
+      // liquidação recém-feita antes da que veio do exercício anterior viola o art. 141 §1º, e o
+      // domínio recusou nomeando a POSIÇÃO na fila e a CABEÇA. Contornar isso — pagando a cabeça
+      // primeiro e calando a recusa — teria escondido o achado mais forte do percurso: **a fila do
+      // art. 141 sobrevive à virada do exercício.** A liquidação de origem é de 2026 e a nova é de
+      // 2027, e a ordem entre elas continua valendo. Então a recusa é afirmada, e só depois se paga
+      // na ordem.
+      await irPara(n, page, naoProcessado);
+      const foraDeOrdem = await preencherEEnviar(page, "pagar-resto", [
+        {
+          sel: 'select[name="liquidacaoId"]',
+          valor: await valorDaOpcao(
+            page,
+            'form[data-acao="pagar-resto"] select[name="liquidacaoId"]',
+            "LIQ-RP-1"
+          ),
+          tipo: "select",
+        },
+        { sel: 'input[name="numero"]', valor: "PAG-RP-FORA" },
+        { sel: 'input[name="valor"]', valor: PAGO_PARCIAL },
+        { sel: 'input[name="data"]', valor: "2027-03-12", tipo: "data" },
+        { sel: 'select[name="contaBancaria"]', valor: CONTA_BANCARIA, tipo: "select" },
+        { sel: 'input[name="historico"]', valor: "tentativa fora de ordem" },
+      ]);
+      p.conferir(
+        "6.1 pagar fora da ordem cronológica é RECUSADO, e a fila ATRAVESSA o exercício",
+        foraDeOrdem.tipo === "erro" &&
+          /141/.test(foraDeOrdem.texto) &&
+          /RP-PROC-LIQ/.test(foraDeOrdem.texto),
+        `esperava recusa do art. 141 nomeando a cabeça RP-PROC-LIQ; veio ${foraDeOrdem.tipo}: ${foraDeOrdem.texto.slice(0, 300)}`
+      );
+
+      // ── 7) A CABEÇA DA FILA É PAGA PRIMEIRO, no resto PROCESSADO ──────────
+      if (processado === null) {
+        p.falhou(
+          "7 pagar a cabeça da fila",
+          "o ambiente não tem inscrição processada; os passos 7 a 10 não foram executados"
+        );
+      } else {
+        await irPara(n, page, processado);
+        const pagCabeca = await preencherEEnviar(page, "pagar-resto", [
+          {
+            sel: 'select[name="liquidacaoId"]',
+            valor: await valorDaOpcao(
+              page,
+              'form[data-acao="pagar-resto"] select[name="liquidacaoId"]',
+              "RP-PROC-LIQ"
+            ),
+            tipo: "select",
+          },
+          { sel: 'input[name="numero"]', valor: "PAG-RP-CABECA" },
+          { sel: 'input[name="valor"]', valor: PAGO_CABECA },
+          { sel: 'input[name="data"]', valor: "2027-03-11", tipo: "data" },
+          { sel: 'select[name="contaBancaria"]', valor: CONTA_BANCARIA, tipo: "select" },
+          { sel: 'input[name="historico"]', valor: "pagamento parcial da cabeca da fila" },
+        ]);
+        p.conferir(
+          "7.1 a cabeça da fila é paga PARCIALMENTE e a mensagem nomeia a obrigação de origem",
+          pagCabeca.tipo === "ok" && /A baixa recaiu sobre a obrigação da liquidação/i.test(pagCabeca.texto),
+          `pagamento da cabeça falhou: ${pagCabeca.tipo} ${pagCabeca.texto.slice(0, 300)}`
+        );
+        await irPara(n, page, processado);
+        const saldoP = await principal(page);
+        p.conferir(
+          `7.2 o saldo do processado é ${SALDO_P_APOS_PAGAMENTO} — ${INSCRITO_P} menos ${PAGO_CABECA}`,
+          saldoP.includes(SALDO_P_APOS_PAGAMENTO),
+          `o saldo parcial do processado não apareceu: ${saldoP.slice(0, 400)}`
+        );
+        // ── 8) O CANCELAMENTO E A SUA ANULAÇÃO, no resto PROCESSADO ──────────
+        //
+        // ⚠️ AQUI, E NÃO DEPOIS: cancelar exige saldo, e quitar a cabeça da fila primeiro zeraria o
+        // saldo do processado — o cancelamento passaria a não ter o que cancelar. A ordem desta
+        // história é ditada pelo domínio, não pela conveniência do arquivo.
+          await irPara(n, page, "/contabilidade/roteiros-de-restos-a-pagar");
+          const pubCanc = await preencherEEnviar(page, "publicar-contas-CANCELAMENTO_PROCESSADO", [
+            { sel: 'select[name="contaDebitoCodigo"]', valor: RP_PROCESSADOS, tipo: "select" },
+            { sel: 'select[name="contaCreditoCodigo"]', valor: VPA, tipo: "select" },
+            { sel: 'textarea[name="fundamento"]', valor: "Cancelamento de resto processado conforme plano do municipio." },
+          ]);
+          p.conferir(
+            "8.1 as contas do cancelamento do PROCESSADO são publicadas",
+            pubCanc.tipo === "ok",
+            `publicação falhou: ${pubCanc.tipo} ${pubCanc.texto.slice(0, 300)}`
+          );
+
+          await irPara(n, page, processado);
+          const canc = await preencherEEnviar(page, "cancelar-resto", [
+            { sel: 'input[name="valor"]', valor: CANCELADO },
+            { sel: 'textarea[name="motivo"]', valor: "obrigacao prescrita" },
+          ]);
+          p.conferir(
+            "8.2 o cancelamento é aceito",
+            canc.tipo === "ok",
+            `cancelamento falhou: ${canc.tipo} ${canc.texto.slice(0, 300)}`
+          );
+
+          await irPara(n, page, processado);
+          const aposCanc = await principal(page);
+          p.conferir(
+            `8.3 o saldo cai para ${SALDO_P_APOS_CANCELAMENTO} — ${SALDO_P_APOS_PAGAMENTO} menos cancelado ${CANCELADO}`,
+            aposCanc.includes(SALDO_P_APOS_CANCELAMENTO),
+            `o saldo apos o cancelamento não apareceu: ${aposCanc.slice(0, 500)}`
+          );
+
+          await irPara(n, page, processado);
+          const idDoCancelamento = await valorDaOpcao(
+            page,
+            'form[data-acao="anular-cancelamento-resto"] select[name="movimentoId"]',
+            CANCELADO
+          );
+          const anulC = await preencherEEnviar(page, "anular-cancelamento-resto", [
+            { sel: 'select[name="movimentoId"]', valor: idDoCancelamento, tipo: "select" },
+            { sel: 'input[name="numero"]', valor: "ANUL-CANC-1" },
+            { sel: 'input[name="data"]', valor: "2027-03-15", tipo: "data" },
+            { sel: 'textarea[name="motivo"]', valor: "cancelamento feito por engano" },
+          ]);
+          p.conferir(
+            "9.1 a anulação do cancelamento faz a obrigação VOLTAR a existir",
+            anulC.tipo === "ok" && /voltou a existir/i.test(anulC.texto),
+            `anulação do cancelamento falhou: ${anulC.tipo} ${anulC.texto.slice(0, 300)}`
+          );
+          await irPara(n, page, processado);
+          const aposAnularC = await principal(page);
+          p.conferir(
+            `9.2 o saldo volta a ${SALDO_P_APOS_PAGAMENTO}, e o cancelamento anulado aparece como LINHA`,
+            aposAnularC.includes(SALDO_P_APOS_PAGAMENTO) && aposAnularC.includes("Estorno de cancelamento"),
+            `o retorno do saldo não apareceu: ${aposAnularC.slice(0, 500)}`
+          );
+        // ── 10) A CABEÇA É QUITADA, e só então a fila libera a seguinte ───────
+        const quitar = await preencherEEnviar(page, "pagar-resto", [
+          {
+            sel: 'select[name="liquidacaoId"]',
+            valor: await valorDaOpcao(
+              page,
+              'form[data-acao="pagar-resto"] select[name="liquidacaoId"]',
+              "RP-PROC-LIQ"
+            ),
+            tipo: "select",
+          },
+          { sel: 'input[name="numero"]', valor: "PAG-RP-CABECA-2" },
+          { sel: 'input[name="valor"]', valor: SALDO_P_APOS_PAGAMENTO },
+          { sel: 'input[name="data"]', valor: "2027-03-11", tipo: "data" },
+          { sel: 'select[name="contaBancaria"]', valor: CONTA_BANCARIA, tipo: "select" },
+          { sel: 'input[name="historico"]', valor: "quitacao da cabeca da fila" },
+        ]);
+        p.conferir(
+          "10.1 a cabeça da fila é QUITADA",
+          quitar.tipo === "ok",
+          `quitação da cabeça falhou: ${quitar.tipo} ${quitar.texto.slice(0, 300)}`
+        );
+      }
+
+
+      // ── 11) AGORA O PARCIAL DO NÃO PROCESSADO — a fila liberou ────────────
       await irPara(n, page, naoProcessado);
       const pag = await preencherEEnviar(page, "pagar-resto", [
-        { sel: 'select[name="liquidacaoId"]', valor: "", tipo: "select", indice: 1 },
+        {
+          sel: 'select[name="liquidacaoId"]',
+          valor: await valorDaOpcao(
+            page,
+            'form[data-acao="pagar-resto"] select[name="liquidacaoId"]',
+            "LIQ-RP-1"
+          ),
+          tipo: "select",
+        },
         { sel: 'input[name="numero"]', valor: "PAG-RP-1" },
-        { sel: 'input[name="valor"]', valor: "400,00" },
+        { sel: 'input[name="valor"]', valor: PAGO_PARCIAL },
         { sel: 'input[name="data"]', valor: "2027-03-12", tipo: "data" },
-        { sel: 'select[name="contaBancaria"]', valor: "", tipo: "select", indice: 1 },
+        { sel: 'select[name="contaBancaria"]', valor: CONTA_BANCARIA, tipo: "select" },
         { sel: 'input[name="historico"]', valor: "pagamento parcial de resto a pagar" },
       ]);
       p.conferir(
-        "6.1 o pagamento PARCIAL é aceito e a mensagem nomeia a obrigação de origem",
+        "11.1 na ordem, o pagamento PARCIAL é aceito e nomeia a obrigação de origem",
         pag.tipo === "ok" && /A baixa recaiu sobre a obrigação da liquidação/i.test(pag.texto),
         `pagamento parcial falhou ou não nomeou a origem: ${pag.tipo} ${pag.texto.slice(0, 300)}`
       );
@@ -182,74 +408,38 @@ async function main(): Promise<void> {
       await irPara(n, page, naoProcessado);
       const depois = await principal(page);
       p.conferir(
-        "6.2 o saldo mostra 600,00 — inscrito 1.000,00 menos pago 400,00",
-        depois.includes("600,00") && depois.includes("400,00"),
+        `11.2 o saldo e ${SALDO_APOS_PAGAMENTO} — inscrito ${INSCRITO_NP} menos pago ${PAGO_PARCIAL}`,
+        depois.includes(SALDO_APOS_PAGAMENTO) && depois.includes(PAGO_PARCIAL),
         `o saldo parcial não apareceu: ${depois.slice(0, 500)}`
       );
 
-      // ── 7) ANULAR O PAGAMENTO, e o original continua visível ──────────────
+      // ── 12) ANULAR O PAGAMENTO, e o original continua visível ─────────────
+      const idDoPagamento = await valorDaOpcao(
+        page,
+        'form[data-acao="anular-pagamento-resto"] select[name="pagamentoId"]',
+        PAGO_PARCIAL
+      );
       const anul = await preencherEEnviar(page, "anular-pagamento-resto", [
-        { sel: 'select[name="pagamentoId"]', valor: "", tipo: "select", indice: 1 },
+        { sel: 'select[name="pagamentoId"]', valor: idDoPagamento, tipo: "select" },
+        { sel: 'input[name="numero"]', valor: "ANUL-PAG-1" },
+        { sel: 'input[name="data"]', valor: "2027-03-20", tipo: "data" },
         { sel: 'textarea[name="motivo"]', valor: "pagamento registrado em conta errada" },
       ]);
       p.conferir(
-        "7.1 a anulação do pagamento é aceita e diz que o original permanece",
+        "12.1 a anulação do pagamento é aceita e diz que o original permanece",
         anul.tipo === "ok" && /registro original permanece/i.test(anul.texto),
         `anulação falhou: ${anul.tipo} ${anul.texto.slice(0, 300)}`
       );
       await irPara(n, page, naoProcessado);
       const aposAnular = await principal(page);
       p.conferir(
-        "7.2 o saldo volta a 1.000,00 e o estorno aparece como LINHA, não embutido",
-        aposAnular.includes("1.000,00") && aposAnular.includes("Estorno de pagamento"),
+        `12.2 o saldo volta a ${INSCRITO_NP} e o estorno aparece como LINHA, não embutido`,
+        aposAnular.includes(INSCRITO_NP) && aposAnular.includes("Estorno de pagamento"),
         `o estorno não apareceu como linha própria: ${aposAnular.slice(0, 500)}`
       );
     }
 
-    // ── 8) O RESTO PROCESSADO: cancelamento e a sua anulação ────────────────
-    const processado = await acharInscricao(page, "Processado");
-    if (processado === null) {
-      p.falhou(
-        "8 achar uma inscrição PROCESSADA",
-        "o ambiente não tem inscrição processada; os passos 8 e 9 não foram executados"
-      );
-    } else {
-      await irPara(n, page, "/contabilidade/roteiros-de-restos-a-pagar");
-      const pubCanc = await preencherEEnviar(page, "publicar-contas-CANCELAMENTO_PROCESSADO", [
-        { sel: 'select[name="contaDebitoCodigo"]', valor: "2.1.3.1.1.01.00", tipo: "select" },
-        { sel: 'select[name="contaCreditoCodigo"]', valor: "", tipo: "select", indice: 1 },
-        { sel: 'textarea[name="fundamento"]', valor: "Cancelamento de resto processado conforme plano do municipio." },
-      ]);
-      p.conferir(
-        "8.1 as contas do cancelamento do PROCESSADO são publicadas",
-        pubCanc.tipo === "ok",
-        `publicação falhou: ${pubCanc.tipo} ${pubCanc.texto.slice(0, 300)}`
-      );
-
-      await irPara(n, page, processado);
-      const canc = await preencherEEnviar(page, "cancelar-resto", [
-        { sel: 'input[name="valor"]', valor: "100,00" },
-        { sel: 'textarea[name="motivo"]', valor: "obrigacao prescrita" },
-      ]);
-      p.conferir(
-        "8.2 o cancelamento é aceito",
-        canc.tipo === "ok",
-        `cancelamento falhou: ${canc.tipo} ${canc.texto.slice(0, 300)}`
-      );
-
-      await irPara(n, page, processado);
-      const anulC = await preencherEEnviar(page, "anular-cancelamento-resto", [
-        { sel: 'select[name="movimentoId"]', valor: "", tipo: "select", indice: 1 },
-        { sel: 'textarea[name="motivo"]', valor: "cancelamento feito por engano" },
-      ]);
-      p.conferir(
-        "9.1 a anulação do cancelamento faz a obrigação VOLTAR a existir",
-        anulC.tipo === "ok" && /voltou a existir/i.test(anulC.texto),
-        `anulação do cancelamento falhou: ${anulC.tipo} ${anulC.texto.slice(0, 300)}`
-      );
-    }
-
-    // ── 10) A RECUSA POR PERMISSÃO, com um segundo ator ─────────────────────
+    // ── 13) A RECUSA POR PERMISSÃO, com um segundo ator ─────────────────────
     await sair(n, page);
     const outro = process.env["PERCURSO_SEGUNDO_ATOR"] ?? "compras@percursos.local";
     const senhaOutro = process.env["PERCURSO_SEGUNDO_ATOR_SENHA"] ?? SENHA;
@@ -258,12 +448,12 @@ async function main(): Promise<void> {
       const r = await irPara(n, page, "/contabilidade/roteiros-de-restos-a-pagar");
       const corpo = await principal(page);
       p.conferir(
-        "10.1 quem não tem a ação de contabilidade NÃO alcança a tela de contas",
+        "13.1 quem não tem a ação de contabilidade NÃO alcança a tela de contas",
         !corpo.includes("Contas das operações de restos a pagar") || r.includes("/login"),
         "um ator sem a ação de contabilidade abriu a tela de configuração"
       );
     } catch {
-      p.ok("10.1 o segundo ator não existe neste ambiente — recusa por permissão não executada");
+      p.ok("13.1 o segundo ator não existe neste ambiente — recusa por permissão não executada");
     }
   } finally {
     await browser.close();

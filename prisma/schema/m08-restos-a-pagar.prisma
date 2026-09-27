@@ -292,17 +292,29 @@ model RoteiroRestosAPagar {
   fundamento String?
 
   /// O par PATRIMONIAL. Nulo no PAGAMENTO, onde a origem e a conta bancária o dão.
+  ///
+  /// ⚠️ `onDelete: Restrict` EM TODAS AS QUATRO, E A OMISSÃO DISTO FOI O DEFEITO — não o
+  /// `ON DELETE RESTRICT` da migration, que estava certo. O Prisma assume `SET NULL` para
+  /// relação opcional **quando ninguém declara**; este repositório declara, e declara
+  /// `Restrict` onze vezes, inclusive nas referências a VERSÃO DE ROTEIRO e a PARÂMETRO
+  /// (`m10-patrimonial.prisma`), que são exatamente desta natureza.
+  ///
+  /// E a direção importa, não é estética. Com `SET NULL`, apagar uma conta do plano
+  /// **anularia em silêncio** a referência de um roteiro publicado — um roteiro com conta
+  /// nula é o estado que só se descobre no lançamento, tarde, e destrói a resposta a
+  /// "contra que contas este fato foi escriturado?", que é a razão do versionamento existir.
+  /// Com `Restrict`, a conta apontada por um roteiro não se apaga: publica-se versão nova.
   contaDebitoId  String?
-  contaDebito    ContaPcasp? @relation("DebitoRestosAPagar", fields: [contaDebitoId], references: [id])
+  contaDebito    ContaPcasp? @relation("DebitoRestosAPagar", fields: [contaDebitoId], references: [id], onDelete: Restrict)
   contaCreditoId String?
-  contaCredito   ContaPcasp? @relation("CreditoRestosAPagar", fields: [contaCreditoId], references: [id])
+  contaCredito   ContaPcasp? @relation("CreditoRestosAPagar", fields: [contaCreditoId], references: [id], onDelete: Restrict)
 
   /// O par de CONTROLE da DDR. Existe na liquidação e no pagamento; no
   /// cancelamento, só se o ente o fundamentar.
   contaControleDebitoId  String?
-  contaControleDebito    ContaPcasp? @relation("ControleDebitoRestosAPagar", fields: [contaControleDebitoId], references: [id])
+  contaControleDebito    ContaPcasp? @relation("ControleDebitoRestosAPagar", fields: [contaControleDebitoId], references: [id], onDelete: Restrict)
   contaControleCreditoId String?
-  contaControleCredito   ContaPcasp? @relation("ControleCreditoRestosAPagar", fields: [contaControleCreditoId], references: [id])
+  contaControleCredito   ContaPcasp? @relation("ControleCreditoRestosAPagar", fields: [contaControleCreditoId], references: [id], onDelete: Restrict)
 
   criadoEm  DateTime @default(now())
   criadoPor String

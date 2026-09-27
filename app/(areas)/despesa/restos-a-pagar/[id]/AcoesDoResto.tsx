@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import {
   CLASSE_AREA_TEXTO as AREA,
   CLASSE_BOTAO_PRIMARIO,
@@ -8,6 +8,11 @@ import {
   CLASSE_ROTULO as ROTULO,
 } from "../../../../../components/ui/Formulario";
 import { ChaveDeComando } from "../../../../../components/ui/ChaveDeComando";
+import {
+  AvisosDosAtos,
+  ResultadosDosAtos,
+  useResultadoDoAto,
+} from "../../../../../components/ui/ResultadosDosAtos";
 import {
   anularCancelamentoAction,
   anularPagamentoAction,
@@ -29,6 +34,19 @@ import {
  * de casar com a da conta, e digitá-la à parte só criaria a chance de divergir.
  */
 
+/**
+ * ⚠️ DINHEIRO EM `<option>` TAMBÉM É DINHEIRO NA TELA. As opções mostravam `5000.00` — o formato
+ * interno —, e um servidor municipal escolhendo entre atos a anular lê valores em reais, não
+ * decimais de banco. Quem achou foi o percurso, procurando `5.000,00` e não encontrando; o defeito
+ * era da tela, não do percurso.
+ */
+function reais(valor: string): string {
+  return Number(valor).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 export interface ContaParaPagar {
   readonly codigo: string;
   readonly descricao: string;
@@ -46,22 +64,60 @@ export interface AtoParaAnular {
   readonly valor: string;
 }
 
-function Aviso({ estado }: { readonly estado: EstadoDaOperacao }): React.ReactElement | null {
-  if (estado.sucesso !== undefined) {
-    return (
-      <p className="mt-2 rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-        {estado.sucesso}
+/**
+ * ⚠️ O RESULTADO SAI PELO CONTRATO DECLARADO, e as DUAS metades são necessárias.
+ *
+ * A primeira corrida do percurso reportou **silêncio** nas cinco operações, com `POST 200` no log
+ * do servidor — as ações funcionavam. Eu havia escrito o aviso como um `<p>` de classes próprias,
+ * que o percurso não lê: o contrato desta obra é `[data-resultado-da-acao]` com
+ * `data-resultado-seq`, e a sequência existe para impedir que se leia o resultado do envio
+ * ANTERIOR como se fosse deste.
+ *
+ * ⚠️ E O SEGUNDO SILÊNCIO ENSINOU O RESTO. Passar tudo para `AvisosDosAtos` também calou: aquele
+ * componente mostra um aviso **só quando o formulário que o produziu desmontou**
+ * (`montados[instancia] === 0`), porque enquanto ele está na tela é ELE quem deve mostrar. As duas
+ * metades cobrem casos diferentes e nenhuma cobre as duas: o formulário que FICA confirma dentro
+ * de si; o que DESAPARECE — anular um pagamento remove o próprio formulário de anulação — confirma
+ * na barra. Foi por isso que eu errei duas vezes na mesma peça: cada conserto cobriu uma metade.
+ */
+function useAto(
+  acao: string,
+  action: (anterior: EstadoDaOperacao, dados: FormData) => Promise<EstadoDaOperacao>
+): {
+  readonly disparar: (f: FormData) => void;
+  readonly pendente: boolean;
+  readonly marca: React.ReactElement | null;
+} {
+  const publicar = useResultadoDoAto(acao);
+  const [seq, setSeq] = useState(0);
+  const [estado, disparar, pendente] = useActionState<EstadoDaOperacao, FormData>(async (ant, dados) => {
+    const r = await action(ant, dados);
+    if (r.erro !== undefined) publicar("erro", r.erro);
+    else if (r.sucesso !== undefined) publicar("ok", r.sucesso);
+    return r;
+  }, {});
+  const texto = estado.erro ?? estado.sucesso;
+  const ultimo = useRef<string | undefined>(undefined);
+  if (texto !== undefined && texto !== ultimo.current) {
+    ultimo.current = texto;
+    setSeq((n) => n + 1);
+  }
+  const marca =
+    texto === undefined ? null : (
+      <p
+        className={
+          estado.erro !== undefined
+            ? "mt-2 whitespace-pre-line rounded-[var(--radius-md)] bg-[color:var(--color-status-erro-bg)] px-3 py-2 text-sm text-[color:var(--color-status-erro-fg)]"
+            : "mt-2 rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]"
+        }
+        data-resultado-da-acao={acao}
+        data-resultado-seq={seq}
+        role={estado.erro !== undefined ? "alert" : "status"}
+      >
+        {texto}
       </p>
     );
-  }
-  if (estado.erro !== undefined) {
-    return (
-      <p className="mt-2 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900">
-        {estado.erro}
-      </p>
-    );
-  }
-  return null;
+  return { disparar, pendente, marca };
 }
 
 function Bloco({
@@ -89,7 +145,7 @@ export function FormLiquidar({
   readonly inscricaoId: string;
   readonly empenhoId: string;
 }): React.ReactElement {
-  const [estado, action, pendente] = useActionState<EstadoDaOperacao, FormData>(liquidarAction, {});
+  const { disparar: action, pendente, marca } = useAto("liquidar-resto", liquidarAction);
   return (
     <Bloco
       titulo="Liquidar"
@@ -127,7 +183,7 @@ export function FormLiquidar({
           </button>
         </div>
       </form>
-      <Aviso estado={estado} />
+      {marca}
     </Bloco>
   );
 }
@@ -141,7 +197,7 @@ export function FormPagar({
   readonly liquidacoes: readonly LiquidacaoParaPagar[];
   readonly contas: readonly ContaParaPagar[];
 }): React.ReactElement {
-  const [estado, action, pendente] = useActionState<EstadoDaOperacao, FormData>(pagarAction, {});
+  const { disparar: action, pendente, marca } = useAto("pagar-resto", pagarAction);
   const [conta, setConta] = useState("");
   const escolhida = contas.find((c) => c.codigo === conta);
   return (
@@ -164,7 +220,7 @@ export function FormPagar({
               <option value="">Escolha</option>
               {liquidacoes.map((l) => (
                 <option key={l.id} value={l.id}>
-                  {l.numero} — {l.valor}
+                  {l.numero} — {reais(l.valor)}
                 </option>
               ))}
             </select>
@@ -211,13 +267,13 @@ export function FormPagar({
           </div>
         </form>
       )}
-      <Aviso estado={estado} />
+      {marca}
     </Bloco>
   );
 }
 
 export function FormCancelar({ inscricaoId }: { readonly inscricaoId: string }): React.ReactElement {
-  const [estado, action, pendente] = useActionState<EstadoDaOperacao, FormData>(cancelarAction, {});
+  const { disparar: action, pendente, marca } = useAto("cancelar-resto", cancelarAction);
   return (
     <Bloco
       titulo="Cancelar"
@@ -240,7 +296,7 @@ export function FormCancelar({ inscricaoId }: { readonly inscricaoId: string }):
           </button>
         </div>
       </form>
-      <Aviso estado={estado} />
+      {marca}
     </Bloco>
   );
 }
@@ -252,7 +308,7 @@ export function FormAnularPagamento({
   readonly inscricaoId: string;
   readonly atos: readonly AtoParaAnular[];
 }): React.ReactElement {
-  const [estado, action, pendente] = useActionState<EstadoDaOperacao, FormData>(anularPagamentoAction, {});
+  const { disparar: action, pendente, marca } = useAto("anular-pagamento-resto", anularPagamentoAction);
   return (
     <Bloco
       titulo="Anular pagamento"
@@ -267,10 +323,20 @@ export function FormAnularPagamento({
             <option value="">Escolha</option>
             {atos.map((a) => (
               <option key={a.id} value={a.id}>
-                {a.rotulo} — {a.valor}
+                {a.rotulo} — {reais(a.valor)}
               </option>
             ))}
           </select>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className={ROTULO} htmlFor="anp-numero">Número do documento da anulação</label>
+            <input className={CAMPO} id="anp-numero" name="numero" type="text" />
+          </div>
+          <div>
+            <label className={ROTULO} htmlFor="anp-data">Data da anulação</label>
+            <input className={CAMPO} id="anp-data" name="data" type="date" />
+          </div>
         </div>
         <div>
           <label className={ROTULO} htmlFor="anp-motivo">Motivo</label>
@@ -282,7 +348,7 @@ export function FormAnularPagamento({
           </button>
         </div>
       </form>
-      <Aviso estado={estado} />
+      {marca}
     </Bloco>
   );
 }
@@ -294,10 +360,7 @@ export function FormAnularCancelamento({
   readonly inscricaoId: string;
   readonly atos: readonly AtoParaAnular[];
 }): React.ReactElement {
-  const [estado, action, pendente] = useActionState<EstadoDaOperacao, FormData>(
-    anularCancelamentoAction,
-    {}
-  );
+  const { disparar: action, pendente, marca } = useAto("anular-cancelamento-resto", anularCancelamentoAction);
   return (
     <Bloco
       titulo="Anular cancelamento"
@@ -312,10 +375,20 @@ export function FormAnularCancelamento({
             <option value="">Escolha</option>
             {atos.map((a) => (
               <option key={a.id} value={a.id}>
-                {a.rotulo} — {a.valor}
+                {a.rotulo} — {reais(a.valor)}
               </option>
             ))}
           </select>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className={ROTULO} htmlFor="anc-numero">Número do documento da anulação</label>
+            <input className={CAMPO} id="anc-numero" name="numero" type="text" />
+          </div>
+          <div>
+            <label className={ROTULO} htmlFor="anc-data">Data da anulação</label>
+            <input className={CAMPO} id="anc-data" name="data" type="date" />
+          </div>
         </div>
         <div>
           <label className={ROTULO} htmlFor="anc-motivo">Motivo</label>
@@ -327,7 +400,50 @@ export function FormAnularCancelamento({
           </button>
         </div>
       </form>
-      <Aviso estado={estado} />
+      {marca}
     </Bloco>
+  );
+}
+
+/**
+ * O PAINEL das operações — um provedor de resultados para as cinco.
+ *
+ * ⚠️ UM SÓ PROVEDOR, e não um por formulário: os cinco atos mudam a MESMA inscrição, e a
+ * confirmação guardada dentro de um formulário que a recarga faz desaparecer morreria junto com
+ * ele. É a mesma cura do guichê, e é também o que faz a confirmação sobreviver ao
+ * `revalidatePath` — anular um pagamento remove o próprio formulário de anulação da tela.
+ */
+export function PainelDeAcoes({
+  inscricaoId,
+  empenhoId,
+  liquidarVisivel,
+  liquidacoes,
+  contas,
+  pagamentosAnulaveis,
+  cancelamentosAnulaveis,
+}: {
+  readonly inscricaoId: string;
+  readonly empenhoId: string;
+  readonly liquidarVisivel: boolean;
+  readonly liquidacoes: readonly LiquidacaoParaPagar[];
+  readonly contas: readonly ContaParaPagar[];
+  readonly pagamentosAnulaveis: readonly AtoParaAnular[];
+  readonly cancelamentosAnulaveis: readonly AtoParaAnular[];
+}): React.ReactElement {
+  return (
+    <ResultadosDosAtos>
+      <AvisosDosAtos />
+      <div className="grid gap-4">
+        {liquidarVisivel ? <FormLiquidar empenhoId={empenhoId} inscricaoId={inscricaoId} /> : null}
+        <FormPagar contas={contas} inscricaoId={inscricaoId} liquidacoes={liquidacoes} />
+        <FormCancelar inscricaoId={inscricaoId} />
+        {pagamentosAnulaveis.length > 0 ? (
+          <FormAnularPagamento atos={pagamentosAnulaveis} inscricaoId={inscricaoId} />
+        ) : null}
+        {cancelamentosAnulaveis.length > 0 ? (
+          <FormAnularCancelamento atos={cancelamentosAnulaveis} inscricaoId={inscricaoId} />
+        ) : null}
+      </div>
+    </ResultadosDosAtos>
   );
 }

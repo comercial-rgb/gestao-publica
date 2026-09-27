@@ -464,6 +464,12 @@ export async function cancelarResto(input: {
 /**
  * ANULAR um pagamento de resto a pagar.
  *
+ * ⚠️ A ANULAÇÃO É ATO PRÓPRIO: TEM NÚMERO E DATA. O domínio os exige
+ * (`zAnularPagamentoRestosInput`), e a primeira versão desta porta não os passava — as duas
+ * anulações eram, por isso, IMPOSSÍVEIS: a recusa chegava como `numero: Invalid input`, mensagem de
+ * biblioteca, num botão que a tela oferecia. Quem achou foi o percurso; nenhum typecheck pegaria,
+ * porque o `as never` da fronteira apaga o contrato. É a razão pela qual percurso não é enfeite.
+ *
  * ⚠️ SEM ROTEIRO, E ISSO É O DESENHO. O estorno lê o lançamento original e INVERTE as pernas
  * (`gerarEstorno` do M01), inclusive as de retenção, que levam bruto e líquido diferentes. Um
  * estorno que recarimbasse contas de cadastro devolveria ao caixa o BRUTO de um pagamento que só
@@ -471,11 +477,15 @@ export async function cancelarResto(input: {
  */
 export async function anularPagamentoDeResto(input: {
   readonly pagamentoId: string;
+  readonly numero: string;
+  readonly data: string;
   readonly motivo: string;
 }): Promise<string> {
   await comEscritaAutenticada("ANULAR_PAGAMENTO_RESTOS_A_PAGAR", (criadoPor) =>
     anularPagamentoRestosAPagar(cliente(), {
       pagamentoId: input.pagamentoId,
+      numero: input.numero,
+      data: input.data,
       motivo: input.motivo,
       criadoPor,
     } as never)
@@ -486,11 +496,15 @@ export async function anularPagamentoDeResto(input: {
 /** ANULAR um cancelamento — a obrigação com o credor volta a existir. Sem roteiro, pelo mesmo motivo. */
 export async function anularCancelamentoDeResto(input: {
   readonly movimentoId: string;
+  readonly numero: string;
+  readonly data: string;
   readonly motivo: string;
 }): Promise<string> {
   await comEscritaAutenticada("ANULAR_CANCELAMENTO_RESTOS_A_PAGAR", (criadoPor) =>
     anularCancelamentoRestosAPagar(cliente(), {
       movimentoId: input.movimentoId,
+      numero: input.numero,
+      data: input.data,
       motivo: input.motivo,
       criadoPor,
     } as never)
@@ -545,24 +559,39 @@ export async function atosDoResto(inscricaoId: string): Promise<AtosDoResto> {
     select: {
       empenhoId: true,
       exercicioOrigem: true,
+      tipo: true,
     },
   });
   if (inscricao === null) return { liquidacoes: [], pagamentos: [], cancelamentos: [] };
 
-  // ⚠️ A LIQUIDAÇÃO DE RP SE DISTINGUE PELA DATA DO ENCERRAMENTO, não por uma coluna: "é
-  // liquidação de restos a pagar" é DERIVADO (criada depois do encerramento, num empenho com
-  // inscrição). O domínio já usa esse critério; ler de outro jeito daria duas verdades.
+  // ⚠️ A DATA DO ENCERRAMENTO SEPARA AS DUAS, E O LADO DEPENDE DO TIPO — foi o percurso que
+  // ensinou isto, e o defeito era meu. "É liquidação de restos a pagar" é DERIVADO, não coluna, e
+  // eu só havia programado UM dos dois casos:
+  //
+  //   NAO_PROCESSADO  a liquidação vem DEPOIS do encerramento — é ela que transforma o
+  //                   compromisso em obrigação, no exercício seguinte;
+  //   PROCESSADO      a liquidação veio ANTES do encerramento — é justamente por ela existir e
+  //                   não ter sido paga que o resto foi inscrito como processado.
+  //
+  // Com o filtro só de `>`, um resto PROCESSADO não tinha nenhuma liquidação a pagar e ficava
+  // IMPAGÁVEL pela tela — silenciosamente, com o formulário na tela e o seletor vazio.
   const enc = await prisma.exercicio.findUnique({
     where: { ano: inscricao.exercicioOrigem },
     select: { encerramento: { select: { criadoEm: true } } },
   });
-  const depoisDe = enc?.encerramento?.criadoEm ?? null;
+  const corte = enc?.encerramento?.criadoEm ?? null;
 
   const liquidacoes =
-    depoisDe === null
+    corte === null
       ? []
       : await prisma.liquidacao.findMany({
-          where: { empenhoId: inscricao.empenhoId, criadoEm: { gt: depoisDe }, estornoDeId: null },
+          where: {
+            empenhoId: inscricao.empenhoId,
+            estornoDeId: null,
+            ...(inscricao.tipo === "NAO_PROCESSADO"
+              ? { criadoEm: { gt: corte } }
+              : { criadoEm: { lte: corte } }),
+          },
           orderBy: { data: "asc" },
           select: { id: true, numero: true, valor: true, data: true },
         });

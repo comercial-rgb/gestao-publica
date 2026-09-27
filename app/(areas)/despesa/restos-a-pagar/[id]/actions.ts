@@ -109,10 +109,14 @@ export async function cancelarAction(_p: EstadoDaOperacao, f: FormData): Promise
 export async function anularPagamentoAction(_p: EstadoDaOperacao, f: FormData): Promise<EstadoDaOperacao> {
   return comComandoDoFormulario(f, async () => {
     if (t(f, "pagamentoId") === "") return { erro: "Escolha o pagamento a anular." };
+    if (t(f, "numero") === "") return { erro: "Informe o número do documento da anulação." };
+    if (t(f, "data") === "") return { erro: "Informe a data da anulação." };
     if (t(f, "motivo") === "") return { erro: "Informe o motivo da anulação." };
     try {
       const sucesso = await anularPagamentoDeResto({
         pagamentoId: t(f, "pagamentoId"),
+        numero: t(f, "numero"),
+        data: t(f, "data"),
         motivo: t(f, "motivo"),
       });
       revalidar(t(f, "inscricaoId"));
@@ -126,10 +130,14 @@ export async function anularPagamentoAction(_p: EstadoDaOperacao, f: FormData): 
 export async function anularCancelamentoAction(_p: EstadoDaOperacao, f: FormData): Promise<EstadoDaOperacao> {
   return comComandoDoFormulario(f, async () => {
     if (t(f, "movimentoId") === "") return { erro: "Escolha o cancelamento a anular." };
+    if (t(f, "numero") === "") return { erro: "Informe o número do documento da anulação." };
+    if (t(f, "data") === "") return { erro: "Informe a data da anulação." };
     if (t(f, "motivo") === "") return { erro: "Informe o motivo da anulação." };
     try {
       const sucesso = await anularCancelamentoDeResto({
         movimentoId: t(f, "movimentoId"),
+        numero: t(f, "numero"),
+        data: t(f, "data"),
         motivo: t(f, "motivo"),
       });
       revalidar(t(f, "inscricaoId"));

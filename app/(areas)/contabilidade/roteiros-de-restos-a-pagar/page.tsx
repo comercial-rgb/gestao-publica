@@ -61,7 +61,7 @@ export default async function Page(): Promise<React.ReactElement> {
       ) : null}
 
       <ContasDasOperacoes patrimoniais={contas.patrimoniais} controle={contas.controle}>
-        <div className="grid gap-5">
+        <>
           {linhas.map((l) => (
             <Card key={l.evento}>
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -118,7 +118,7 @@ export default async function Page(): Promise<React.ReactElement> {
               />
             </Card>
           ))}
-        </div>
+        </>
       </ContasDasOperacoes>
 
       <p className="mt-6 text-sm text-[color:var(--color-ink-2)]">

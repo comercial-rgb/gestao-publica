@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useActionState, useContext, useState } from "react";
+import { createContext, useActionState, useContext, useRef, useState } from "react";
 import {
   CLASSE_BOTAO_PRIMARIO,
   CLASSE_AREA_TEXTO as AREA,
@@ -8,6 +8,11 @@ import {
   CLASSE_ROTULO as ROTULO,
 } from "../../../../components/ui/Formulario";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
+import {
+  AvisosDosAtos,
+  ResultadosDosAtos,
+  useResultadoDoAto,
+} from "../../../../components/ui/ResultadosDosAtos";
 import { publicarRoteiroDeRestosAction, type EstadoDoRoteiroDeRestos } from "./actions";
 
 /**
@@ -25,9 +30,13 @@ export interface ContaDoPlano {
   readonly nome: string;
 }
 
+/**
+ * ⚠️ O CONTEXTO CARREGA SÓ AS CONTAS, e não mais a ação. Antes havia UMA ação para as quatro
+ * operações, o que fazia o resultado de publicar a liquidação aparecer como se fosse do
+ * pagamento — e o percurso, que lê o marcador por nome de ação, não distinguiria os dois. Cada
+ * operação publica no seu próprio nome.
+ */
 interface Ctx {
-  readonly action: (f: FormData) => void;
-  readonly pendente: boolean;
   readonly patrimoniais: readonly ContaDoPlano[];
   readonly controle: readonly ContaDoPlano[];
 }
@@ -42,28 +51,12 @@ export function ContasDasOperacoes({
   readonly controle: readonly ContaDoPlano[];
   readonly children: React.ReactNode;
 }): React.ReactElement {
-  const [estado, action, pendente] = useActionState<EstadoDoRoteiroDeRestos, FormData>(
-    publicarRoteiroDeRestosAction,
-    {}
-  );
-  const [seq, setSeq] = useState(0);
-  const [ultimo, setUltimo] = useState<string | undefined>(undefined);
-  if (estado.sucesso !== undefined && estado.sucesso !== ultimo) {
-    setUltimo(estado.sucesso);
-    setSeq((n) => n + 1);
-  }
-
   return (
-    <C.Provider value={{ action, pendente, patrimoniais, controle }}>
-      {estado.sucesso !== undefined ? (
-        <p key={seq} className="rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-          {estado.sucesso}
-        </p>
-      ) : null}
-      {estado.erro !== undefined ? (
-        <p className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900">{estado.erro}</p>
-      ) : null}
-      {children}
+    <C.Provider value={{ patrimoniais, controle }}>
+      <ResultadosDosAtos>
+        <AvisosDosAtos />
+        <div className="grid gap-5">{children}</div>
+      </ResultadosDosAtos>
     </C.Provider>
   );
 }
@@ -117,9 +110,28 @@ export function FormDaOperacao({
   readonly rotulo: string;
   readonly patrimonialSeInforma: boolean;
 }): React.ReactElement {
-  const { action, pendente, patrimoniais, controle } = usarContexto();
+  const { patrimoniais, controle } = usarContexto();
+  const acao = `publicar-contas-${evento}`;
+  const publicar = useResultadoDoAto(acao);
+  const [seq, setSeq] = useState(0);
+  const ultimo = useRef<string | undefined>(undefined);
+  const [estado, action, pendente] = useActionState<EstadoDoRoteiroDeRestos, FormData>(async (ant, dados) => {
+    const r = await publicarRoteiroDeRestosAction(ant, dados);
+    if (r.erro !== undefined) publicar("erro", r.erro);
+    else if (r.sucesso !== undefined) publicar("ok", r.sucesso);
+    return r;
+  }, {});
+  // ⚠️ AS DUAS METADES DO CONTRATO. `AvisosDosAtos` só mostra o aviso de um formulário que
+  // DESMONTOU; enquanto este continua na tela, é ele quem confirma. Ver o comentário gêmeo em
+  // `AcoesDoResto.tsx`, escrito depois de dois silêncios medidos.
+  const texto = estado.erro ?? estado.sucesso;
+  if (texto !== undefined && texto !== ultimo.current) {
+    ultimo.current = texto;
+    setSeq((n) => n + 1);
+  }
   return (
-    <form action={action} className="mt-3 grid gap-3 border-t border-slate-200 pt-3" data-acao={`publicar-contas-${evento}`}>
+    <>
+      <form action={action} className="mt-3 grid gap-3 border-t border-slate-200 pt-3" data-acao={acao}>
       <ChaveDeComando />
       <input type="hidden" name="evento" value={evento} />
       {patrimonialSeInforma ? (
@@ -164,6 +176,21 @@ export function FormDaOperacao({
           {pendente ? "Publicando..." : `Publicar contas — ${rotulo}`}
         </button>
       </div>
-    </form>
+      </form>
+      {texto === undefined ? null : (
+        <p
+          className={
+            estado.erro !== undefined
+              ? "whitespace-pre-line rounded-[var(--radius-md)] bg-[color:var(--color-status-erro-bg)] px-3 py-2 text-sm text-[color:var(--color-status-erro-fg)]"
+              : "rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]"
+          }
+          data-resultado-da-acao={acao}
+          data-resultado-seq={seq}
+          role={estado.erro !== undefined ? "alert" : "status"}
+        >
+          {texto}
+        </p>
+      )}
+    </>
   );
 }

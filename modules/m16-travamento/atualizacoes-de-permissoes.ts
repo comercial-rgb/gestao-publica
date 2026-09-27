@@ -556,6 +556,48 @@ export function derivarParametroDoAdiantamentoSalarial(
   return saida;
 }
 
+/**
+ * V15 — quem parametriza as CONTAS DAS OPERAÇÕES DE RESTOS A PAGAR.
+ *
+ * ⚠️ NÃO SE DERIVA DE `PARAMETRIZAR_ROTEIRO_ORCAMENTARIO`, e isso é coerência com o motivo pelo
+ * qual a ação é PRÓPRIA: o roteiro orçamentário decide contas das classes 5 e 6, a execução do
+ * crédito do exercício corrente; este decide contra que PASSIVO uma obrigação de exercício
+ * ENCERRADO se baixa e que perna de disponibilidade por destinação ela move. Derivar uma da outra
+ * daria a quem parametriza a dotação do ano corrente o poder sobre o tratamento do que sobrou do
+ * ano que fechou — exatamente a junção que a ação separada existe para evitar.
+ *
+ * ⚠️ E O ERRO AQUI NÃO TEM DETECTOR ADIANTE: uma conta de passivo errada faz o pagamento do resto
+ * fechar, o balanço fechar e o saldo do resto zerar. O que sobra é saldo eterno numa conta e
+ * negativo em outra, e as duas equações continuam batendo. Por isso vai só a quem administra
+ * permissões no global, que a distribui nomeando a pessoa — mesma escolha da v30.
+ */
+export function derivarRoteiroDeRestosAPagar(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some(
+      (p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null
+    );
+    if (!administra) continue;
+    if (
+      perfil.permissoes.some(
+        (p) => p.acao === "PARAMETRIZAR_ROTEIRO_RESTOS_A_PAGAR" && p.unidadeOrcId === null
+      )
+    ) {
+      continue;
+    }
+    saida.push({
+      perfilId: perfil.id,
+      perfilNome: perfil.nome,
+      acao: "PARAMETRIZAR_ROTEIRO_RESTOS_A_PAGAR",
+      unidadeOrcId: null,
+    });
+  }
+  return saida;
+}
+
 /** V7 M1 U4 — a ouvidoria (triagem e resposta, com lotação) e a moderação das avaliações. */
 export const ACOES_DA_OUVIDORIA_E_AVALIACAO: readonly AcaoDoSistema[] = ["TRIAR_MANIFESTACAO_DE_OUVIDORIA", "MODERAR_AVALIACAO_DE_SERVICO"];
 
@@ -1244,6 +1286,25 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "mensal abater exatamente aquele valor e o total bater dos dois lados. Quem percebe e o servidor. Vai so a " +
       "quem administra permissoes no global, que a distribui nomeando a pessoa.",
     derivar: derivarParametroDoAdiantamentoSalarial,
+  },
+  {
+    versao: 31,
+    nome: "roteiro-dos-restos-a-pagar",
+    descricao:
+      "As operacoes de restos a pagar ficaram OPERAVEIS (V15, C38) e com elas a acao " +
+      "PARAMETRIZAR_ROTEIRO_RESTOS_A_PAGAR: em que contas a liquidacao do resto nao processado, o " +
+      "pagamento e os dois cancelamentos lancam. O dominio de RP era dos mais maduros do repositorio " +
+      "e nenhuma operacao era alcancavel, porque as contas vem por parametro e nao havia de onde " +
+      "tirar o parametro. " +
+      "⚠️ ELA NAO ACOMPANHA PARAMETRIZAR_ROTEIRO_ORCAMENTARIO: aquela decide as classes 5 e 6, a " +
+      "execucao do credito do exercicio corrente; esta decide contra que PASSIVO uma obrigacao de " +
+      "exercicio ENCERRADO se baixa. Juntar as duas daria a quem parametriza a dotacao do ano " +
+      "corrente o poder sobre o tratamento do que sobrou do ano que fechou. " +
+      "⚠️ E O ERRO NAO TEM DETECTOR ADIANTE: conta de passivo errada faz o pagamento fechar, o " +
+      "balanco fechar e o saldo do resto zerar — o que sobra e saldo eterno numa conta e negativo " +
+      "em outra, com as duas equacoes batendo. Vai so a quem administra permissoes no global, que a " +
+      "distribui nomeando a pessoa.",
+    derivar: derivarRoteiroDeRestosAPagar,
   },
 ];
 

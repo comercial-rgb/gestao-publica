@@ -12,13 +12,7 @@ import {
   type RestoAPagarDetalhe,
 } from "../../../../../lib/portas/restos-a-pagar";
 import { lerContasBancarias } from "../../../../../lib/portas/pagamento";
-import {
-  FormAnularCancelamento,
-  FormAnularPagamento,
-  FormCancelar,
-  FormLiquidar,
-  FormPagar,
-} from "./AcoesDoResto";
+import { PainelDeAcoes } from "./AcoesDoResto";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 import { diaCivilBr } from "../../../../../packages/datas/index";
 
@@ -208,36 +202,28 @@ async function AcoesDaInscricao({
         </p>
       ) : null}
 
-      {d.tipo === "NAO_PROCESSADO" ? (
-        <FormLiquidar empenhoId={d.empenhoId} inscricaoId={d.inscricaoId} />
-      ) : null}
-
-      <FormPagar
+      <PainelDeAcoes
+        cancelamentosAnulaveis={cancelamentosAnulaveis.map((a) => ({
+          id: a.id,
+          rotulo: a.rotulo,
+          valor: a.valor,
+        }))}
         contas={contas.map((c) => ({
           codigo: c.codigo,
           descricao: c.descricao,
           fonteId: c.fonteId,
           fonteCodigo: c.fonteCodigo,
         }))}
+        empenhoId={d.empenhoId}
         inscricaoId={d.inscricaoId}
         liquidacoes={atos.liquidacoes.map((l) => ({ id: l.id, numero: l.numero, valor: l.valor }))}
+        liquidarVisivel={d.tipo === "NAO_PROCESSADO"}
+        pagamentosAnulaveis={pagamentosAnulaveis.map((a) => ({
+          id: a.id,
+          rotulo: a.rotulo,
+          valor: a.valor,
+        }))}
       />
-
-      <FormCancelar inscricaoId={d.inscricaoId} />
-
-      {pagamentosAnulaveis.length > 0 ? (
-        <FormAnularPagamento
-          atos={pagamentosAnulaveis.map((a) => ({ id: a.id, rotulo: a.rotulo, valor: a.valor }))}
-          inscricaoId={d.inscricaoId}
-        />
-      ) : null}
-
-      {cancelamentosAnulaveis.length > 0 ? (
-        <FormAnularCancelamento
-          atos={cancelamentosAnulaveis.map((a) => ({ id: a.id, rotulo: a.rotulo, valor: a.valor }))}
-          inscricaoId={d.inscricaoId}
-        />
-      ) : null}
     </div>
   );
 }
