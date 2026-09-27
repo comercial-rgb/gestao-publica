@@ -561,6 +561,26 @@ const MAPA: Readonly<Record<string, Marca>> = {
   // existia desde 2026-09-10 e o cadastro não tinha tela; enquanto cada conta tinha uma fonte só, a
   // ausência não impedia nada. A guia REPARTIDA entre fontes (C30) a tornou bloqueante: um depósito
   // de duas fontes só entra numa conta que comporte as duas, e o fallback do guard admite UMA.
+  // ⚠️ V15/C34-C37 — O RECOLHIMENTO DE UMA SÓ VEZ, COMPOSTO POR ORIGEM. A cláusula pede pagar "de
+  // uma só vez as despesas extraorçamentárias geradas através de retenção na liquidação", e é
+  // exatamente o que a guia composta faz: uma guia, várias retenções, inclusive de exercícios
+  // anteriores, com o vínculo gravado (`AlocacaoDoRecolhimento`) para que o estorno reabra as
+  // parcelas certas em vez de devolver uma fatia proporcional de um agregado.
+  "5.10.2.37": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia:
+      "`/financeiro/extraorcamentario/recolher` em dois passos: a obrigação (tipo de consignação × consignatário) e depois de QUAIS retenções sai cada centavo — sem campo de valor total, porque o total É a soma das parcelas (um total à parte criaria duas verdades sobre o mesmo dinheiro). O vínculo é gravado em `AlocacaoDoRecolhimento` na mesma transação, com trinco no posto 30 de `ORDEM_DOS_LOCKS`: sem ele duas guias concorrentes leriam o mesmo \"ainda falta\" e alocariam o dobro sobre a mesma retenção, com o agregado continuando a fechar. A tela do extraorçamentário mostra os QUATRO números SEPARADOS (retido, recolhido, estornado de cada lado) e a conferência por caminho INDEPENDENTE, que DIZ a divergência em vez de exibir um selo — inclusive a coluna \"recolhido sem composição\", que nomeia o recolhimento herdado que reduz o agregado e não reduz nenhuma origem. `modules/m07-extraorcamentario/m07-composicao-do-recolhimento.test.ts` (26/26, fixture N=2 em DOIS exercícios).",
+    rota_verificada:
+      "papel: papel de runtime com REGISTRAR_DISPENDIO_EXTRA · contexto: clone do banco de percursos, next dev em 3010, 2026-09-27 · passos: /financeiro/extraorcamentario lê os quatro números separados -> /recolher escolhe a obrigação -> compõe 300,00 de uma retenção de 2026 e o resto de outra do exercício seguinte -> pedir além do que UMA origem tem é RECUSADO pelo limite POR ORIGEM (dentro do saldo agregado, para que seja o limite por origem o que se mede) -> a reconciliação fecha: (soma do que cada retenção tem a recolher) − (o que a obrigação deve, agregado) == o recolhimento que não disse de onde saiu · obtido: scripts/smoke-recolhimento-por-origem.ts, 15 passos ok / 0 falhas.",
+  },
+  // ⚠️ V15/C34-C37 — PARCIAL, com as duas metades ditas.
+  "5.10.1.74": {
+    situacao: "PARCIAL",
+    evidencia:
+      "O CADASTRO existe e o recolhimento dos valores retidos é registrado pela tela, composto pelas retenções que ele quita (ver 5.10.2.37), com os lançamentos contábeis na mesma transação e o tipo de consignação trazendo a conta de passivo por DECISÃO VERSIONADA do ente. ⚠️ O QUE FALTA, e são duas coisas: (a) o DOCUMENTO PARA RECOLHIMENTO por guia não é emitido — o PDF de `/financeiro/extraorcamentario` é o demonstrativo da POSIÇÃO (saldos por consignatário, retenções e recolhimentos), não a guia do consignatário; (b) a exigência de EMPENHO DE ORIGEM \"se a rubrica assim o exigir\" não é modelada por rubrica: a retenção nasce dentro do pagamento (que tem empenho), e o recolhimento aponta para as retenções, não para um empenho exigido por parâmetro do TCE.",
+    rota_verificada:
+      "papel: papel de runtime com REGISTRAR_DISPENDIO_EXTRA · contexto: clone do banco de percursos, next dev em 3010, 2026-09-27 · passos: os mesmos de 5.10.2.37 · obtido: scripts/smoke-recolhimento-por-origem.ts, 15 ok / 0 falhas; a ausência do documento por guia e da exigência por rubrica foi conferida por leitura de `app/(areas)/financeiro/extraorcamentario/pdf/route.ts` e do domínio do M07.",
+  },
   // ⚠️ V16 — PARCIAL, e a metade que falta está dita. O ato existe para os DOIS tipos, com
   // autorização, transação e percurso; o que não existe é a DEMONSTRAÇÃO dos dois valores lado a
   // lado NO ATO: uma inscrição é processada OU não processada, e o detalhe mostra a dela. Os dois
