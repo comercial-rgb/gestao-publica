@@ -401,25 +401,50 @@ export async function lerFatosReceitaOrcamentaria(
   const t = exigirTripla(conta);
   const receitas = await prisma.receitaArrecadada.findMany({
     where: { dataArrecadacao: { gte, lt } },
-    include: { naturezaReceita: true, fonte: true, co: true },
+    include: {
+      naturezaReceita: true,
+      fonte: true,
+      co: true,
+      // ⚠️ V16/C30 — UMA LINHA POR (GUIA, FONTE), e é o que o leiaute espera. O registro
+      // §4.16 tem `numeroReceita`, `codFonteRecurso`, `exercicioFonteRecurso` e `valor`, e
+      // NENHUM campo de total: duas linhas com o mesmo número de guia e fontes diferentes é a
+      // forma que o TCE recebe uma guia repartida. Quem não tinha como repartir era o modelo.
+      distribuicao: { include: { fonte: true }, orderBy: { criadoEm: "asc" } },
+    },
     orderBy: [{ numeroReceita: "asc" }, { tipo: "asc" }],
   });
-  return receitas.map((r) => ({
-    codUnidadeGestora: params.codUnidadeGestora,
-    numeroReceita: r.numeroReceita,
-    codReceitaOrcamentaria: r.naturezaReceita.codigo,
-    tipoLancamento: r.tipo,
-    exercicioFonteRecurso: r.exercicioFonte,
-    codFonteRecurso: r.fonte.codigo,
-    valor: money(r.valor),
-    data: r.dataArrecadacao,
-    co: r.co?.codigo ?? null,
-    numeroConta: comDigito(t.conta, conta.digitoConta),
-    codBanco: t.banco,
-    numeroAgencia: comDigito(t.agencia, conta.digitoAgencia),
-    tipoContaBancaria: TIPO_CONTA_CORRENTE,
-    cnpjGerencia: params.cnpjGerenciadora,
-  }));
+  return receitas.flatMap((r) => {
+    const parcelas =
+      r.distribuicao.length > 0
+        ? r.distribuicao.map((d) => ({
+            codFonteRecurso: d.fonte.codigo,
+            exercicioFonteRecurso: d.exercicioFonte,
+            valor: money(d.valor),
+          }))
+        : [
+            {
+              codFonteRecurso: r.fonte.codigo,
+              exercicioFonteRecurso: r.exercicioFonte,
+              valor: money(r.valor),
+            },
+          ];
+    return parcelas.map((parcela) => ({
+      codUnidadeGestora: params.codUnidadeGestora,
+      numeroReceita: r.numeroReceita,
+      codReceitaOrcamentaria: r.naturezaReceita.codigo,
+      tipoLancamento: r.tipo,
+      exercicioFonteRecurso: parcela.exercicioFonteRecurso,
+      codFonteRecurso: parcela.codFonteRecurso,
+      valor: parcela.valor,
+      data: r.dataArrecadacao,
+      co: r.co?.codigo ?? null,
+      numeroConta: comDigito(t.conta, conta.digitoConta),
+      codBanco: t.banco,
+      numeroAgencia: comDigito(t.agencia, conta.digitoAgencia),
+      tipoContaBancaria: TIPO_CONTA_CORRENTE,
+      cnpjGerencia: params.cnpjGerenciadora,
+    }));
+  });
 }
 
 export async function gerarReceitaOrcamentaria(

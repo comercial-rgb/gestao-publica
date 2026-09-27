@@ -330,6 +330,9 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   // M05 V11 V8.4 — mora na CONTABILIDADE, ao lado do roteiro patrimonial.
   PARAMETRIZAR_ROTEIRO_ORCAMENTARIO: "contabilidade",
   PARAMETRIZAR_ROTEIRO_RESTOS_A_PAGAR: "contabilidade",
+  // V16/C30 — a autorização vive na ÁREA DA RECEITA porque é lá que o ato acontece (a guia
+  // distribuída), e não na contabilidade: quem a detém não parametriza nada, autoriza um ato.
+  DISTRIBUIR_RECEITA_FORA_DA_PREVISAO: "receita",
   // M21 V11 V8 — a agenda do guichê mora no PROTOCOLO, junto da carta de serviços que ela atende.
   CONFIGURAR_AGENDA_DO_GUICHE: "protocolo",
   RESERVAR_ATENDIMENTO_NO_GUICHE: "protocolo",

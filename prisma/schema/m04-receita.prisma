@@ -104,6 +104,11 @@ model ReceitaArrecadada {
   /// back-relation M04 (TR 5.87) — os reconhecimentos que ESTA guia quitou (N:N com valor).
   vinculosReconhecimento VinculoArrecadacaoReconhecimento[]
 
+  /// V16/C30 — a DISTRIBUIÇÃO desta guia entre fontes de recurso. VAZIA na guia de fonte
+  /// única, e isso não é lacuna: `fonteId` é `NOT NULL` e singular, então a guia sem
+  /// parcela tem exatamente uma fonte, e `parcelasDaGuia` a deriva sem supor nada.
+  distribuicao FonteDaArrecadacao[]
+
   criadoEm  DateTime @default(now())
   criadoPor String
   // SEM updatedAt, SEM deletedAt.
@@ -119,4 +124,73 @@ model ReceitaArrecadada {
   /// O índice do LEITOR do recorte por entidade (a consulta agrupa por entidade dentro do
   /// exercício). Índice sem leitor não entra; este nasce com o dele.
   @@index([exercicio, entidadeTitularId])
+}
+
+// ============================================================================
+// FonteDaArrecadacao — V16/C30: a guia REPARTIDA entre fontes de recurso.
+//
+// Decidida em docs/varreduras/varredura-v16-distribuicao-da-receita-por-fontes.md.
+//
+// ⚠️ POR QUE `ReceitaArrecadada.fonteId` NÃO BASTAVA. Ele é `NOT NULL` e singular, e a
+// chave da guia é `[exercicio, numeroReceita, tipo]`: um número de guia produz UMA linha,
+// e essa linha tem UMA fonte. Um depósito único repartido entre fontes — o FPM, o ICMS
+// partilhado, o convênio que entra junto com a contrapartida — não tinha como ser
+// registrado sem inventar número de documento ("123-A", "123-B").
+//
+// ⚠️ E NÃO É DETALHE DE DIGITAÇÃO: a perna de CLASSE 7 da DDR sai da NATUREZA DA FONTE
+// (`contaDeControleDaDdr`). Com uma fonte por guia, o total inteiro era carimbado numa
+// única natureza de destinação, e o erro sai no RGF Anexo 5 — não aqui.
+//
+// ⚠️ A CONSERVAÇÃO DO TOTAL NÃO MORA NESTA TABELA, E NÃO PODIA: soma de linhas não é
+// CHECK. Ela mora no MOTOR DE PARTIDAS DOBRADAS — o roteiro distribuído emite uma perna
+// de classe 7 por natureza, cada uma com o seu valor, contra uma perna de classe 8 com o
+// total, e `validarLancamento` exige ΣDÉBITO == ΣCRÉDITO dentro do subsistema CONTROLE.
+// Parcelas que não somam o total não produzem lançamento, logo não produzem guia.
+//
+// ⚠️ `ReceitaArrecadada.fonteId` PERMANECE, e não vira segunda verdade: é a fonte PADRÃO
+// da guia, exatamente o papel que a `ADR-conta-bancaria-com-varias-fontes` deu à
+// `ContaBancaria.fonteId`. Quem manda em todo número POR FONTE é a parcela, por UMA
+// função (`parcelasDaGuia`, m04) — fail-closed: parcelas que não somam o total da guia
+// recusam nomeando a guia, em vez de devolver número torto.
+// ============================================================================
+
+model FonteDaArrecadacao {
+  id String @id @default(cuid())
+
+  receitaArrecadadaId String
+  /// ⚠️ `Restrict` DECLARADO, e não por reflexo: este repositório declara `Restrict` em
+  /// toda relação de fato contábil, e a guia é append-only — ela não é apagada, então a
+  /// parcela nunca precisa ser levada junto. Sem a declaração a deriva de schema acusa.
+  receitaArrecadada   ReceitaArrecadada @relation(fields: [receitaArrecadadaId], references: [id], onDelete: Restrict)
+
+  fonteId String
+  fonte   FonteRecurso @relation(fields: [fonteId], references: [id], onDelete: Restrict)
+
+  /// 1 = exercício atual, 2 = anterior — a mesma dimensão de `ReceitaPrevista` e do
+  /// SAGRES (`exercicioFonteRecurso`). Entra na chave porque a LOA prevê a mesma fonte
+  /// nos dois exercícios com valores diferentes.
+  exercicioFonte Int @default(1)
+
+  valor Decimal @db.Decimal(18, 2)
+
+  /// ⚠️ SNAPSHOT, e é por isso que é coluna e não join. "Esta (natureza, fonte,
+  /// exercícioFonte) estava prevista na LOA NO INSTANTE do ato?" — `ReceitaReprevista`
+  /// existe, a previsão muda, e derivar isto hoje responderia sobre a LOA de hoje, não
+  /// sobre a que o operador tinha na frente. É a mesma razão que faz a guia CARIMBAR a
+  /// entidade titular.
+  previstaNaLoa Boolean
+
+  /// Por que a receita entrou numa fonte que a LOA não previu para esta natureza. Exigido
+  /// pelo CHECK `ck_fonte_da_arrecadacao` quando `previstaNaLoa = false` — é o que a
+  /// prestação de contas lê, e é o que separa uma alteração fundamentada de um palpite.
+  fundamento String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  /// A mesma fonte não entra duas vezes na mesma guia: duas parcelas da mesma fonte são
+  /// uma só, e mantê-las separadas faria a tela mostrar a fonte repetida e a soma por
+  /// fonte depender da ordem de leitura.
+  @@unique([receitaArrecadadaId, fonteId, exercicioFonte])
+  @@index([fonteId])
 }

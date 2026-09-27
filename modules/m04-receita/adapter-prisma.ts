@@ -1,4 +1,5 @@
 import { criarAutorizacaoPortPrisma } from "../m16-travamento/porta.js";
+import { exigirFonteNoRolDaConta } from "../m05-despesa/guard-fonte.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import type { Tx } from "../m01-core-contabil/adapter-prisma.js";
 import { toMoney } from "../../packages/contracts/index.js";
@@ -39,6 +40,12 @@ import type {
 /** V6 P1.2 — a conta bancária por código, com o que o M04 confere (fonte e conta contábil). */
 export function criarContaBancariaPortPrisma(prisma: Tx): ContaBancariaPort {
   return {
+    // ⚠️ A REGRA NÃO É REESCRITA AQUI — é a de `m05/guard-fonte.ts`, a mesma dos outros cinco
+    // sítios da TR 5.23. Aquele arquivo não importa nada além do tipo do client, e é por isso
+    // que o M04, o M07, o M08 e o M09 podem chamá-lo sem fechar ciclo.
+    exigirFonteNoRol: (contaId, fonteId, operacao) =>
+      exigirFonteNoRolDaConta(prisma, { id: contaId }, fonteId, operacao),
+
     async buscarPorCodigo(codigo) {
       const c = await prisma.contaBancaria.findUnique({
         where: { codigo },
@@ -96,6 +103,14 @@ export function criarReceitaClassificacaoPrisma(
         fonte: receita.fonte,
         co,
       };
+    },
+
+    async resolverFontes(codigos) {
+      const achadas = await prisma.fonteRecurso.findMany({
+        where: { codigo: { in: [...new Set(codigos)] } },
+        select: { id: true, codigo: true },
+      });
+      return new Map(achadas.map((f) => [f.codigo, f.id]));
     },
   };
 }
@@ -195,6 +210,24 @@ export async function persistirArrecadacaoNaTx(
           select: { id: true },
         });
 
+        // ═══ V16/C30 — AS PARCELAS POR FONTE, NA MESMA TRANSAÇÃO ═══
+        // Guia distribuída sem as parcelas seria uma guia cujo número por fonte ninguém pode
+        // calcular: o lançamento já reparte a classe 7 e a leitura não teria por onde repartir.
+        // A `createMany` roda na tx do `create` acima — os dois fatos são um só.
+        if (arrecadacao.distribuicao !== undefined && arrecadacao.distribuicao.length > 0) {
+          await tx.fonteDaArrecadacao.createMany({
+            data: arrecadacao.distribuicao.map((d) => ({
+              receitaArrecadadaId: criada.id,
+              fonteId: d.fonteId,
+              exercicioFonte: d.exercicioFonte,
+              valor: d.valor.toFixed(2),
+              previstaNaLoa: d.previstaNaLoa,
+              fundamento: d.fundamento ?? null,
+              criadoPor: arrecadacao.criadoPor,
+            })),
+          });
+        }
+
         // ═══ A CASCATA (M10) — DENTRO da mesma transação ═══
         // Se esta persistência é uma ANULAÇÃO, tudo que a receita original quitou
         // tem de ser desfeito AGORA. Sem isto, o dinheiro volta ao contribuinte e a
@@ -237,6 +270,12 @@ function leiturasDaReceita(prisma: Tx): Omit<ReceitaRepositoryPort, "persistir">
           // V11 V9 — o carimbo que a ANULAÇÃO herda. Sem ele aqui, `anularArrecadacao` não teria
           // o que herdar e o estorno nasceria não atribuído contra uma entrada atribuída.
           entidadeTitularId: true,
+          // V16/C30 — a distribuição, pela MESMA razão: sem ela aqui a anulação de uma guia
+          // repartida nasceria sem parcelas, e o líquido por fonte deixaria de fechar em todas.
+          distribuicao: {
+            select: { fonteId: true, exercicioFonte: true, valor: true, previstaNaLoa: true, fundamento: true },
+            orderBy: { criadoEm: "asc" },
+          },
           // "já foi anulada?" sai DAQUI — não de um campo mutável.
           estornos: { select: { id: true } },
           lancamento: {
@@ -298,6 +337,13 @@ function leiturasDaReceita(prisma: Tx): Omit<ReceitaRepositoryPort, "persistir">
         },
         contaBancariaId: r.contaBancariaId,
         entidadeTitularId: r.entidadeTitularId,
+        distribuicao: r.distribuicao.map((d) => ({
+          fonteId: d.fonteId,
+          exercicioFonte: d.exercicioFonte,
+          valor: toMoney(d.valor.toFixed(2)),
+          previstaNaLoa: d.previstaNaLoa,
+          ...(d.fundamento !== null ? { fundamento: d.fundamento } : {}),
+        })),
       };
     },
 
@@ -326,6 +372,17 @@ function leiturasDaReceita(prisma: Tx): Omit<ReceitaRepositoryPort, "persistir">
         _sum: { valorPrevisto: true },
       });
       return toMoney(previsto._sum.valorPrevisto?.toFixed(2) ?? "0.00");
+    },
+
+    async fontesPrevistas(exercicio, naturezaReceitaId) {
+      // `distinct` porque a LOA prevê a mesma (fonte, exercícioFonte) em mais de um
+      // `tipoReceita` — e a pergunta aqui é "esta fonte está prevista?", não "quanto".
+      const previstas = await prisma.receitaPrevista.findMany({
+        where: { exercicio, naturezaReceitaId },
+        distinct: ["fonteId", "exercicioFonte"],
+        select: { fonteId: true, exercicioFonte: true },
+      });
+      return previstas;
     },
   };
 }

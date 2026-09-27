@@ -5,6 +5,7 @@ import {
   sinalDaReceitaRealizada,
   type OrigemReceita,
 } from "./dominio.js";
+import { parcelasDaGuia } from "./parcelas-por-fonte.js";
 
 /**
  * O client OU uma transação dele — mesmo alias do M05.
@@ -61,9 +62,22 @@ export async function arrecadadoPorFonte(
   const receitas = await prisma.receitaArrecadada.findMany({
     where: { dataArrecadacao: { lte: p.ate } },
     select: {
+      // ⚠️ V16/C30 — A FONTE DA GUIA NÃO É MAIS A RESPOSTA SOZINHA. A guia pode repartir o
+      // depósito entre fontes (`FonteDaArrecadacao`), e é `parcelasDaGuia` quem diz quanto foi de
+      // cada uma — uma regra, sete leitores. Sem isto, o superávit financeiro por fonte do Anexo
+      // 14 atribuiria o total inteiro à fonte padrão da guia — e o superávit AUTORIZA crédito
+      // adicional.
+      // V16/C30 — os cinco campos que `parcelasDaGuia` exige. Escritos, e não espalhados por um
+      // fragmento compartilhado: um `select` montado por spread de `as const` faz os tipos
+      // condicionais do Prisma explodirem, e o `tsc` deste projeto passou a estourar 5 GB de heap.
+      // A rede de proteção contra esquecer a distribuição não era o fragmento — é o TIPO de
+      // `parcelasDaGuia`, que não compila sem os cinco.
+      numeroReceita: true,
       fonteId: true,
-      tipo: true,
+      exercicioFonte: true,
       valor: true,
+      distribuicao: { select: { fonteId: true, exercicioFonte: true, valor: true } },
+      tipo: true,
       naturezaReceita: { select: { codigo: true } },
     },
   });
@@ -71,8 +85,8 @@ export async function arrecadadoPorFonte(
   const por = new Map<string, Money>();
   for (const r of receitas) {
     // ⚠️ A ANULAÇÃO carrega a MESMA natureza e a MESMA fonte do original (o
-    // `anularArrecadacao` as copia) — logo o recorte por origem enxerga as DUAS
-    // pernas, e o líquido continua líquido dentro do recorte.
+    // `anularArrecadacao` as copia, inclusive as PARCELAS) — logo o recorte por origem
+    // enxerga as DUAS pernas, e o líquido continua líquido dentro do recorte.
     if (
       p.origem !== undefined &&
       origemDaNatureza(r.naturezaReceita.codigo) !== p.origem
@@ -81,12 +95,15 @@ export async function arrecadadoPorFonte(
     }
 
     const sinal = sinalDaReceitaRealizada(r.tipo);
-    const valor = toMoney(r.valor.toFixed(2));
-    const acc = por.get(r.fonteId) ?? toMoney("0.00");
-    por.set(
-      r.fonteId,
-      sinal === 1 ? toMoney(acc.plus(valor)) : toMoney(acc.minus(valor))
-    );
+    for (const parcela of parcelasDaGuia(r)) {
+      const acc = por.get(parcela.fonteId) ?? toMoney("0.00");
+      por.set(
+        parcela.fonteId,
+        sinal === 1
+          ? toMoney(acc.plus(parcela.valor))
+          : toMoney(acc.minus(parcela.valor))
+      );
+    }
   }
   return por;
 }
@@ -132,32 +149,42 @@ export async function arrecadadoPorNaturezaFonte(
       },
     },
     select: {
+      // V16/C30 — a guia repartida entra por PARCELA: o grão do dataset aberto é natureza ×
+      // fonte, e uma guia distribuída tem mais de uma linha aqui.
+      // V16/C30 — os cinco campos que `parcelasDaGuia` exige. Escritos, e não espalhados por um
+      // fragmento compartilhado: um `select` montado por spread de `as const` faz os tipos
+      // condicionais do Prisma explodirem, e o `tsc` deste projeto passou a estourar 5 GB de heap.
+      // A rede de proteção contra esquecer a distribuição não era o fragmento — é o TIPO de
+      // `parcelasDaGuia`, que não compila sem os cinco.
+      numeroReceita: true,
       fonteId: true,
-      tipo: true,
+      exercicioFonte: true,
       valor: true,
+      distribuicao: { select: { fonteId: true, exercicioFonte: true, valor: true } },
+      tipo: true,
       naturezaReceita: { select: { codigo: true, descricao: true } },
     },
   });
 
   const por = new Map<string, ArrecadadoDetalhado>();
   for (const r of receitas) {
-    const chave = `${r.naturezaReceita.codigo}|${r.fonteId}`;
-    const acc = por.get(chave) ?? {
-      naturezaCodigo: r.naturezaReceita.codigo,
-      naturezaDescricao: r.naturezaReceita.descricao,
-      fonteId: r.fonteId,
-      arrecadado: toMoney("0.00"),
-    };
-
     const sinal = sinalDaReceitaRealizada(r.tipo);
-    const valor = toMoney(r.valor.toFixed(2));
-    por.set(chave, {
-      ...acc,
-      arrecadado:
-        sinal === 1
-          ? toMoney(acc.arrecadado.plus(valor))
-          : toMoney(acc.arrecadado.minus(valor)),
-    });
+    for (const parcela of parcelasDaGuia(r)) {
+      const chave = `${r.naturezaReceita.codigo}|${parcela.fonteId}`;
+      const acc = por.get(chave) ?? {
+        naturezaCodigo: r.naturezaReceita.codigo,
+        naturezaDescricao: r.naturezaReceita.descricao,
+        fonteId: parcela.fonteId,
+        arrecadado: toMoney("0.00"),
+      };
+      por.set(chave, {
+        ...acc,
+        arrecadado:
+          sinal === 1
+            ? toMoney(acc.arrecadado.plus(parcela.valor))
+            : toMoney(acc.arrecadado.minus(parcela.valor)),
+      });
+    }
   }
   return [...por.values()];
 }
@@ -235,7 +262,15 @@ export interface ArrecadacaoNaLista {
   readonly numeroReceita: string;
   readonly naturezaCodigo: string;
   readonly naturezaDescricao: string;
+  /** A fonte PADRÃO da guia. Numa guia repartida, `fontes` é quem diz de quem é o dinheiro. */
   readonly fonteCodigo: string;
+  /**
+   * V16/C30 — A REPARTIÇÃO, quando a guia tem mais de uma fonte. VAZIA na guia de fonte única.
+   *
+   * ⚠️ VAZIA E NÃO "com uma linha": é o que permite à tela dizer "distribuída entre 2 fontes" sem
+   * transformar toda guia de fonte única numa lista de um item, que é ruído na leitura.
+   */
+  readonly fontes: readonly { readonly codigo: string; readonly valor: Money }[];
   readonly coCodigo: string | null;
   readonly tipo: string;
   /** Sempre POSITIVO — é o valor da guia. O que a linha faz com o total é o `sinal`. */
@@ -296,6 +331,11 @@ export async function listarArrecadacoes(
       naturezaReceita: { select: { codigo: true, descricao: true } },
       fonte: { select: { codigo: true } },
       co: { select: { codigo: true } },
+      // V16/C30 — a repartição, para a tela poder mostrar de quem é o dinheiro.
+      distribuicao: {
+        select: { valor: true, fonte: { select: { codigo: true } } },
+        orderBy: { criadoEm: "asc" },
+      },
     },
   });
 
@@ -306,6 +346,10 @@ export async function listarArrecadacoes(
     naturezaCodigo: r.naturezaReceita.codigo,
     naturezaDescricao: r.naturezaReceita.descricao,
     fonteCodigo: r.fonte.codigo,
+    fontes: r.distribuicao.map((d) => ({
+      codigo: d.fonte.codigo,
+      valor: toMoney(d.valor.toFixed(2)),
+    })),
     coCodigo: r.co?.codigo ?? null,
     tipo: r.tipo,
     valor: toMoney(r.valor.toFixed(2)),

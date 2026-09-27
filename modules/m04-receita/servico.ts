@@ -15,7 +15,16 @@ import {
   type RegistrarArrecadacaoInput,
   type RoteiroContabil,
 } from "./dominio.js";
-import type { ConfrontoPrevisao, M04Deps } from "./ports.js";
+import type {
+  ConfrontoPrevisao,
+  M04Deps,
+  ParcelaPersistidaDeFonte,
+} from "./ports.js";
+import {
+  consolidarPorNatureza,
+  type ParcelaDaDistribuicao,
+} from "./distribuicao.js";
+import { contaDeControleDaDdr } from "../m01-core-contabil/roteiros.js";
 
 /**
  * CASOS DE USO do M04. Orquestra domain puro + ports. Não fala Prisma.
@@ -109,6 +118,154 @@ export interface OrigemInterna {
   readonly origem: "OPERACAO_COMPOSTA_M10";
 }
 
+/**
+ * V16/C30 — RESOLVE A DISTRIBUIÇÃO: soma, fontes, previsão da LOA, autorização e coerência.
+ *
+ * ⚠️ A ORDEM É A GARANTIA, e ela é a mesma de todo este arquivo: **nada é gravado antes de tudo
+ * ser conferido**. Soma, existência das fontes, previsão, autorização e coerência com o roteiro
+ * acontecem ANTES do primeiro INSERT — "efeito colateral antes da operação guardada envenena a
+ * tentativa seguinte".
+ */
+async function resolverDistribuicao(
+  p: {
+    readonly parcelas: readonly ParcelaDaDistribuicao[];
+    readonly total: Money;
+    readonly exercicio: number;
+    readonly naturezaReceitaId: string;
+    readonly naturezaReceitaCodigo: string;
+    readonly fontePadrao: string;
+    readonly numeroReceita: string;
+    readonly criadoPor: string;
+    /** A conta que recebeu o dinheiro, quando a guia a declara — para cobrar o rol por parcela. */
+    readonly contaId?: string | undefined;
+  },
+  roteiro: RoteiroContabil,
+  deps: M04Deps
+): Promise<readonly ParcelaPersistidaDeFonte[]> {
+  // 1. A soma das parcelas já foi conferida no DOMÍNIO (`comporArrecadacao`), antes de as
+  //    partidas serem compostas — é de lá que sai a recusa que diz PARCELA e TOTAL. Aqui começa o
+  //    que depende de banco.
+
+  // 2. As fontes existem? TODAS de uma vez, e a recusa nomeia as que faltam.
+  const ids = await deps.classificacao.resolverFontes(p.parcelas.map((x) => x.fonte));
+  const inexistentes = p.parcelas.map((x) => x.fonte).filter((c) => !ids.has(c));
+  if (inexistentes.length > 0) {
+    throw new Error(
+      `Fonte(s) de recurso inexistente(s) na distribuição: ${[...new Set(inexistentes)].join(", ")}. ` +
+        `Nada foi gravado.`
+    );
+  }
+
+  // 3. ⚠️ A FONTE PADRÃO DA GUIA TEM DE SER UMA DAS QUE RECEBERAM DINHEIRO.
+  //    `ReceitaArrecadada.fonteId` continua NOT NULL e é a fonte padrão da guia; todo leitor que
+  //    ainda não aprendeu a distribuição a usa. Se ela apontasse para uma fonte que não recebeu
+  //    nada, esse leitor atribuiria o total inteiro a uma fonte que a guia diz não ter recebido —
+  //    e o erro seria invisível, porque a soma continuaria certa.
+  if (!p.parcelas.some((x) => x.fonte === p.fontePadrao)) {
+    throw new Error(
+      `A guia ${p.numeroReceita} declara a fonte ${p.fontePadrao}, que não está entre as fontes da ` +
+        `distribuição (${p.parcelas.map((x) => x.fonte).join(", ")}). A fonte da guia tem de ser uma ` +
+        `das que receberam dinheiro. Nada foi gravado.`
+    );
+  }
+
+  // 3a. ⚠️ CADA PARCELA CONTRA O ROL DA CONTA. A guia repartida põe dinheiro em VÁRIAS fontes na
+  //     MESMA conta bancária — e é justamente por isso que a conta multifonte existe (TR 5.10.2.6:
+  //     município pequeno não abre uma conta por fonte). Sem esta conferência, a distribuição
+  //     viraria a porta de entrada para carimbar recurso numa conta que não o comporta, e o
+  //     controle de destinação — a prova de que recurso vinculado não custeou outra coisa —
+  //     acontece DENTRO da conta.
+  if (p.contaId !== undefined && deps.contasBancarias !== undefined) {
+    for (const x of p.parcelas) {
+      await deps.contasBancarias.exigirFonteNoRol(
+        p.contaId,
+        ids.get(x.fonte)!,
+        `a parcela da fonte ${x.fonte} na guia ${p.numeroReceita}`
+      );
+    }
+  }
+
+  // 4. O "conforme LOA": quais (fonte, exercício da fonte) a previsão desta natureza contempla.
+  const previstas = await deps.receitas.fontesPrevistas(p.exercicio, p.naturezaReceitaId);
+  const chavesPrevistas = new Set(previstas.map((x) => `${x.fonteId}|${x.exercicioFonte}`));
+
+  // ⚠️ O CÓDIGO DA FONTE ANDA JUNTO DA PARCELA RESOLVIDA. Filtrar uma lista e indexar a outra
+  // pelo mesmo número é como se erra isto em silêncio: depois do `filter` os índices não
+  // correspondem mais, e a recusa nomearia a fonte errada.
+  const resolvidas: readonly {
+    readonly codigo: string;
+    readonly parcela: ParcelaPersistidaDeFonte;
+  }[] = p.parcelas.map((x) => {
+    const fonteId = ids.get(x.fonte)!;
+    return {
+      codigo: x.fonte,
+      parcela: {
+        fonteId,
+        exercicioFonte: x.exercicioFonte,
+        valor: x.valor,
+        previstaNaLoa: chavesPrevistas.has(`${fonteId}|${x.exercicioFonte}`),
+        ...(x.fundamento !== undefined ? { fundamento: x.fundamento } : {}),
+      },
+    };
+  });
+
+  const foraDaPrevisao = resolvidas.filter((x) => !x.parcela.previstaNaLoa);
+  if (foraDaPrevisao.length > 0) {
+    // 4a. O MOTIVO ESCRITO é exigido sempre que a parcela não estava prevista — inclusive quando
+    //     a natureza não tem previsão nenhuma. É o que a prestação de contas lê. O CHECK do banco
+    //     cobra o mesmo, para que nenhum importador ou INSERT de manutenção passe por baixo.
+    const semMotivo = foraDaPrevisao.filter(
+      (x) => x.parcela.fundamento === undefined || x.parcela.fundamento.trim().length < 10
+    );
+    if (semMotivo.length > 0) {
+      throw new Error(
+        `FONTE FORA DA PREVISÃO SEM MOTIVO ESCRITO: a LOA deste exercício não prevê a natureza ` +
+          `${p.naturezaReceitaCodigo} na(s) fonte(s) ${semMotivo.map((x) => x.codigo).join(", ")}. ` +
+          `Receita além do previsto é legítima, mas o motivo é o que a prestação de contas lê. ` +
+          `Escreva por quê (mínimo 10 caracteres). Nada foi gravado.`
+      );
+    }
+
+    // 4b. ⚠️ A AUTORIZAÇÃO NOMEADA — e SÓ quando há previsão a contrariar.
+    //     Natureza que a LOA prevê em certas fontes e recebe dinheiro em OUTRA é alteração da
+    //     destinação decidida no orçamento: isso pede crachá próprio
+    //     (`DISTRIBUIR_RECEITA_FORA_DA_PREVISAO`), porque o erro sai no RGF Anexo 5 e na DDR.
+    //     Natureza SEM previsão nenhuma é excesso de arrecadação, que é legítimo (INVARIANTE 5) e
+    //     não tem distribuição orçamentária para contrariar — exigir crachá ali pararia a
+    //     arrecadação para cobrar um cadastro.
+    if (previstas.length > 0) {
+      // ⚠️ A AÇÃO É LITERAL, e não uma entrada do `ACAO_DO_SERVICO`. Aquele Record mapeia
+      // SERVIÇO -> ação, e o censo cobra que cada nome corresponda a uma função exportada; esta
+      // autorização não guarda um serviço próprio — ela é a SEGUNDA que `registrarArrecadacao`
+      // cobra, dentro dele. Inventar um nome de serviço para ela deixaria um fantasma no censo.
+      await deps.autz.exigir(p.criadoPor, "DISTRIBUIR_RECEITA_FORA_DA_PREVISAO", "ENTE");
+    }
+  }
+
+  // 5. ⚠️ O ROTEIRO REPARTE A CLASSE 7 NA MESMA PARTIÇÃO QUE AS PARCELAS DIZEM?
+  //    O motor já garante que o subsistema CONTROLE fecha — logo Σ das pernas de classe 7 é o
+  //    total. Mas fechar não é bastar: roteiro e parcelas poderiam repartir o MESMO total em
+  //    naturezas diferentes, e a DDR sairia carimbada numa destinação que a parcela não declara.
+  //    É a mesma conferência que a guia já faz contra a conta bancária ("escrituração incoerente").
+  const esperado = consolidarPorNatureza(
+    p.parcelas.map((x) => ({ natureza: x.naturezaDaFonte, valor: x.valor })),
+    (x) => x.natureza
+  ).map((x) => `${contaDeControleDaDdr(x.natureza)}=${x.valor.toFixed(2)}`);
+  const doRoteiro = roteiro
+    .filter((perna) => perna.subsistema === "CONTROLE" && perna.tipo === "DEBITO")
+    .map((perna) => `${perna.conta}=${(perna.valor ?? p.total).toFixed(2)}`);
+  if (esperado.join(" ") !== doRoteiro.join(" ")) {
+    throw new Error(
+      `ESCRITURAÇÃO INCOERENTE COM A DISTRIBUIÇÃO: a guia ${p.numeroReceita} reparte ` +
+        `${esperado.join(", ")} por natureza de fonte, e o roteiro debita a classe 7 em ` +
+        `${doRoteiro.join(", ")}. As duas somam o mesmo total e carimbam destinações diferentes — ` +
+        `a DDR sairia atribuída a uma natureza que a parcela não declara. Nada foi gravado.`
+    );
+  }
+
+  return resolvidas.map((x) => x.parcela);
+}
+
 export async function registrarArrecadacao(
   input: RegistrarArrecadacaoInput,
   roteiro: RoteiroContabil,
@@ -177,12 +334,22 @@ export async function registrarArrecadacao(
     if (conta === null) {
       throw new Error(`Conta bancária ${dados.contaBancaria} não cadastrada. Nada foi gravado.`);
     }
-    if (conta.fonteCodigo !== dados.fonte) {
-      throw new Error(
-        `A conta bancária ${conta.codigo} é da fonte ${conta.fonteCodigo}, e a guia ${dados.numeroReceita} é da fonte ` +
-          `${dados.fonte}. Dinheiro de uma fonte não entra na conta de outra. Nada foi gravado.`
-      );
-    }
+    // ⚠️ V16/C30 — O **ROL** DA CONTA, E NÃO MAIS A COLUNA `fonteId`.
+    //
+    // Aqui havia `conta.fonteCodigo !== dados.fonte`, e a comparação era a de ANTES da
+    // `ADR-conta-bancaria-com-varias-fontes` (aceita em 2026-09-10). A ADR mandou o guard olhar o
+    // VÍNCULO — cinco sítios passaram a usar `exigirFonteNoRolDaConta` e a arrecadação ficou de
+    // fora, porque naquela data ela não tinha conta bancária. Ela ganhou conta na V6 P1.2 e
+    // trouxe a comparação velha. O efeito: conta multifonte NÃO recebia guia da segunda fonte
+    // dela, que é exatamente o caso que a decisão veio permitir.
+    //
+    // A regra (rol vazio cai para a fonte padrão; fonte fora do rol recusa NOMEANDO as
+    // permitidas) mora numa função só, chamada pelo port.
+    await deps.contasBancarias.exigirFonteNoRol(
+      conta.id,
+      resolucao.fonte!.id,
+      `a guia ${dados.numeroReceita}`
+    );
     const disponibilidade = roteiro.find((p) => p.tipo === "DEBITO" && p.subsistema === "PATRIMONIAL");
     if (conta.contaContabilCodigo === null) {
       throw new Error(
@@ -232,6 +399,26 @@ export async function registrarArrecadacao(
     deps
   );
 
+  // ═══ 4a. V16/C30 — A DISTRIBUIÇÃO ENTRE FONTES, resolvida ANTES do primeiro INSERT ═══
+  const distribuicao =
+    dados.distribuicao === undefined
+      ? undefined
+      : await resolverDistribuicao(
+          {
+            parcelas: dados.distribuicao,
+            total: dados.valor,
+            exercicio: dados.exercicio,
+            naturezaReceitaId,
+            naturezaReceitaCodigo: dados.naturezaReceita,
+            fontePadrao: dados.fonte,
+            numeroReceita: dados.numeroReceita,
+            criadoPor: dados.criadoPor,
+            ...(contaBancariaId !== undefined ? { contaId: contaBancariaId } : {}),
+          },
+          roteiro,
+          deps
+        );
+
   // 5. Persistência atômica.
   const receitaId = deps.ids.novo();
   const lancamentoId = deps.ids.novo();
@@ -250,6 +437,7 @@ export async function registrarArrecadacao(
       numeroReceita: dados.numeroReceita,
       ...(contaBancariaId !== undefined ? { contaBancariaId } : {}),
       ...(entidadeTitularId !== undefined ? { entidadeTitularId } : {}),
+      ...(distribuicao !== undefined ? { distribuicao } : {}),
       criadoPor: dados.criadoPor,
     },
     {
@@ -360,6 +548,13 @@ export async function anularArrecadacao(
       // não fecharia em nenhuma das duas. Se a original é NÃO ATRIBUÍDA, a anulação também é —
       // desfazer um fato sem titular não produz um titular.
       ...(original.entidadeTitularId !== null ? { entidadeTitularId: original.entidadeTitularId } : {}),
+      // ⚠️ V16/C30 — A DISTRIBUIÇÃO É **HERDADA**, NUNCA RE-DERIVADA DA LOA. `ReceitaReprevista`
+      // existe: a previsão muda ao longo do exercício, e recalcular a distribuição no dia do
+      // estorno desfaria uma repartição diferente da que entrou — a fonte A ficaria com receita
+      // que nunca teve e a B com um estorno que não lhe pertence, e o líquido por fonte não
+      // fecharia em nenhuma das duas. É o snapshot que o C30 pede, e é a mesma razão da entidade
+      // titular. O `previstaNaLoa` e o `fundamento` vêm com ela, porque são o retrato do ato.
+      ...(original.distribuicao.length > 0 ? { distribuicao: original.distribuicao } : {}),
       exercicioFonte: original.exercicioFonte,
       tipo: "ANULACAO",
       valor: original.valor,

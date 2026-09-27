@@ -1,3 +1,4 @@
+import type { Money } from "../../packages/contracts/index.js";
 import type { Subsistema, TipoPartida } from "../../packages/ledger/index.js";
 
 /**
@@ -29,6 +30,22 @@ export interface PernaRoteiro {
   readonly conta: string;
   readonly tipo: TipoPartida;
   readonly subsistema: Subsistema;
+  /**
+   * ⚠️ O VALOR PRÓPRIO DA PERNA — opcional, e quase nenhum roteiro o usa (V16/C30).
+   *
+   * A regra de sempre continua: `comporPartidas(valor, roteiro)` aplica UM valor a TODAS as
+   * pernas, porque no caso geral cada subsistema tem um débito e um crédito do mesmo montante.
+   *
+   * Ele existe para o fato que REPARTE o total entre pernas do mesmo lado — hoje, um só: a
+   * arrecadação distribuída entre fontes, em que a classe 7 tem uma perna por natureza de fonte,
+   * cada uma com a sua fatia, contra uma perna de classe 8 com o total.
+   *
+   * ⚠️ E ELE NÃO AFROUXA NADA: quem declara valor próprio continua passando pelo
+   * `validarLancamento`, que exige ΣDÉBITO == ΣCRÉDITO DENTRO de cada subsistema. Fatias que não
+   * somam o total derrubam o lançamento — é daí, e não de uma conferência escrita à mão, que vem
+   * a garantia de que as parcelas somam a guia.
+   */
+  readonly valor?: Money;
 }
 export type RoteiroContabil = readonly PernaRoteiro[];
 
@@ -662,6 +679,68 @@ export function roteiroArrecadacao(p: {
     // e o plano a particiona por natureza da fonte. `saldoDdrPorFonte` continua somando as
     // quatro de sempre — nenhuma segunda aritmética nasce daqui.
     { conta: contaDeControleDaDdr(p.naturezaDaFonte), tipo: "DEBITO", subsistema: "CONTROLE" },
+    { conta: CONTA_DDR_DISPONIVEL, tipo: "CREDITO", subsistema: "CONTROLE" },
+  ];
+}
+
+/**
+ * ARRECADAÇÃO DISTRIBUÍDA ENTRE FONTES — V16/C30.
+ *
+ * ⚠️ POR QUE EXISTE O PAR, E POR QUE ELE NÃO DIVERGE. `roteiroArrecadacao` é o caso de UMA
+ * fonte e continua sendo chamado por todo mundo. Este é o caso de várias — e a única diferença
+ * entre os dois é a CLASSE 7: lá uma perna com o total, aqui uma perna POR NATUREZA de fonte,
+ * cada uma com a sua fatia. As outras quatro pernas são idênticas, e `m01-roteiros.test.ts`
+ * afirma essa identidade comparando os dois com N=1 — se alguém mexer num e esquecer o outro, o
+ * teste acusa, em vez de o comentário prometer.
+ *
+ * ⚠️ A CONSERVAÇÃO É DO MOTOR. Σ das fatias de classe 7 tem de bater com o total da perna de
+ * classe 8, e é `validarLancamento` que cobra isso (invariante (e): cada subsistema fecha
+ * sozinho). Parcelas que não somam o total da guia NÃO produzem lançamento — logo não produzem
+ * guia. Nenhuma conferência escrita à mão guarda esse número.
+ *
+ * ⚠️ UMA ENTRADA POR NATUREZA, CONSOLIDADA PELO CHAMADOR. Duas fontes VINCULADAS na mesma guia
+ * são UMA perna de `7.2.1.1.2`, não duas — duas pernas idênticas no razão não se distinguem uma
+ * da outra, e o detalhe por FONTE mora na `FonteDaArrecadacao`, que é onde ele é legível.
+ * Natureza repetida aqui é erro de composição e recusa.
+ */
+export function roteiroArrecadacaoDistribuida(p: {
+  readonly disponibilidade: string;
+  readonly variacaoAumentativa: string;
+  readonly porNaturezaDaFonte: readonly {
+    readonly natureza: NaturezaDaFonteDdr;
+    readonly valor: Money;
+  }[];
+}): RoteiroContabil {
+  if (p.porNaturezaDaFonte.length === 0) {
+    throw new Error(
+      `ARRECADAÇÃO SEM DESTINAÇÃO: a guia distribuída não trouxe nenhuma fatia por natureza de ` +
+        `fonte, e sem isso a classe 7 não tem o que debitar. Nada foi gravado.`
+    );
+  }
+  const vistas = new Set<NaturezaDaFonteDdr>();
+  for (const n of p.porNaturezaDaFonte) {
+    if (vistas.has(n.natureza)) {
+      throw new Error(
+        `NATUREZA REPETIDA NA DISTRIBUIÇÃO: "${n.natureza}" aparece mais de uma vez. As fontes da ` +
+          `mesma natureza somam UMA perna de controle — duas pernas idênticas no razão não se ` +
+          `distinguem, e o detalhe por fonte fica na distribuição da guia. Nada foi gravado.`
+      );
+    }
+    vistas.add(n.natureza);
+  }
+
+  return [
+    { conta: p.disponibilidade, tipo: "DEBITO", subsistema: "PATRIMONIAL" },
+    { conta: p.variacaoAumentativa, tipo: "CREDITO", subsistema: "PATRIMONIAL" },
+    { conta: CONTA_RECEITA_A_REALIZAR, tipo: "DEBITO", subsistema: "ORCAMENTARIO" },
+    { conta: CONTA_RECEITA_REALIZADA, tipo: "CREDITO", subsistema: "ORCAMENTARIO" },
+    ...p.porNaturezaDaFonte.map((n) => ({
+      conta: contaDeControleDaDdr(n.natureza),
+      tipo: "DEBITO" as const,
+      subsistema: "CONTROLE" as const,
+      // A FATIA daquela natureza — a única perna do sistema que não recebe o total do fato.
+      valor: n.valor,
+    })),
     { conta: CONTA_DDR_DISPONIVEL, tipo: "CREDITO", subsistema: "CONTROLE" },
   ];
 }

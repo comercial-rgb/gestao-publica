@@ -389,6 +389,13 @@ export type AcaoDoSistema =
   // é PATRIMONIAL e de CONTROLE, e o orçamentário é de outro subsistema — quem parametriza a
   // dotação não é necessariamente quem decide contra que passivo um resto de 2025 se paga.
   | "PARAMETRIZAR_ROTEIRO_RESTOS_A_PAGAR"
+  // ⚠️ M04 V16/C30 — A "ALTERAÇÃO AUTORIZADA NO ATO" DA DISTRIBUIÇÃO DA RECEITA, e ela NÃO é
+  // `REGISTRAR_ARRECADACAO`. Registrar a guia é o ato de quem opera a arrecadação; mandar dinheiro
+  // para uma fonte que a LOA NÃO PREVÊ para aquela natureza é mudar a destinação decidida no
+  // orçamento — e o erro sai no RGF Anexo 5 e na DDR, onde ele autoriza empenhar contra dinheiro
+  // carimbado para outra coisa. Só é exigida nesse caso: natureza sem previsão nenhuma é excesso
+  // de arrecadação, que é legítimo (INVARIANTE 5) e não pede crachá.
+  | "DISTRIBUIR_RECEITA_FORA_DA_PREVISAO"
   // ── M21 V11 V8 — A AGENDA DO GUICHÊ (TR 5.39.92) ──
   //
   // ⚠️ TRÊS AÇÕES PARA DEZ SERVIÇOS, e o corte é por QUEM FAZ, não por qual função é.
@@ -1653,6 +1660,12 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // ── M05 V11 V8.4 — o roteiro orçamentário ──
   publicarRoteiroOrcamentario: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
   publicarRoteiroRestosAPagar: "PARAMETRIZAR_ROTEIRO_RESTOS_A_PAGAR",
+  // ⚠️ `DISTRIBUIR_RECEITA_FORA_DA_PREVISAO` (V16/C30) NÃO ENTRA AQUI, e a ausência é decisão.
+  // Este Record mapeia SERVIÇO -> ação, e o censo (t5b) cobra que cada nome corresponda a uma
+  // função exportada que existe. Aquela ação não guarda um serviço: ela é a segunda autorização
+  // cobrada DENTRO de `registrarArrecadacao`, quando alguma parcela cai em fonte que a LOA não
+  // prevê. Inventar um nome de serviço para ela criaria um fantasma no censo — o ente concederia
+  // um poder que nada exerce, e a lista que o TCE lê estaria mentindo.
   // ⚠️ V11 V8.9 — A MESMA AÇÃO DOS TRÊS, e isso é decisão, não economia. Publicar o roteiro,
   // escolher o EIXO da dotação adicional (por tipo de crédito ou por fonte) e publicar o roteiro
   // do ramo por fonte são a MESMA autoridade: dizer em que conta do plano o movimento entra.
@@ -1900,6 +1913,10 @@ export const ACOES_SEM_SERVICO_PROPRIO: readonly AcaoDoSistema[] = [
   // V11 V9.5 (TR 5.12.50) — recortar quem entra no cálculo da folha. Cobrada dentro de
   // `calcularFolha`, ADICIONALMENTE a `CALCULAR_FOLHA`, e só no modo EXPLICITA.
   "SELECIONAR_VINCULOS_DA_FOLHA",
+  // V16/C30 — distribuir a receita em fonte que a LOA NÃO prevê para aquela natureza. Cobrada
+  // dentro de `registrarArrecadacao`, ADICIONALMENTE a `REGISTRAR_ARRECADACAO`, e só quando
+  // alguma parcela sai da previsão. Repartir entre as fontes PREVISTAS não pede crachá novo.
+  "DISTRIBUIR_RECEITA_FORA_DA_PREVISAO",
 ];
 
 export const TODAS_AS_ACOES: readonly AcaoDoSistema[] = [
@@ -1982,6 +1999,40 @@ export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
  * grep-teste lê esta lista — nada sai do censo por descuido.
  */
 export const FORA_DO_CENSO: Record<string, string> = {
+  // ── V15/C34/C37 — a composição do recolhimento extraorçamentário (LEITURAS) ──
+  //
+  // ⚠️ AS TRÊS SÃO PROJEÇÃO DE FATO JÁ GRAVADO, e nenhuma escreve. Elas servem à tela de
+  // consignações e ao ato de recolher, que já cobra `REGISTRAR_DISPENDIO_EXTRA` antes de ler
+  // qualquer coisa. Ação própria para cada uma seria um crachá que ninguém usa — e crachá que
+  // ninguém usa é crachá concedido por atrito.
+  conferirComposicaoExtra:
+    "LEITURA. Os quatro números da consignação SEPARADOS (retido, recolhido, estornado de cada " +
+    "lado) mais o que falta recolher, e a reconciliação independente do total. Não grava nada.",
+  retencoesComSaldo:
+    "LEITURA. As retenções que ainda têm saldo a recolher, por origem — inclusive de exercícios " +
+    "anteriores. É o vocabulário da guia de recolhimento; não grava nada.",
+  composicaoDoRecolhimento:
+    "LEITURA. De quais retenções um recolhimento já gravado veio, com o valor de cada parcela. " +
+    "Projeção da `AlocacaoDoRecolhimento`; não grava nada.",
+  // ⚠️ ESTA É COMPOSÁVEL INTERNA, não leitura de tela: ela roda DENTRO de `alocarRecolhimento`,
+  // na transação dele, e é o número contra o qual a parcela é conferida. Autorizá-la de novo
+  // seria cobrar duas vezes pelo mesmo ato.
+  aRecolherDoIngresso:
+    "COMPOSÁVEL INTERNO. Quanto ainda falta recolher de UM ingresso (retenção), já descontando o " +
+    "que outras guias alocaram e ignorando alocações de recolhimento estornado. Roda dentro do " +
+    "ato que aloca, sob a autorização dele.",
+  // ── V15/C38 — o roteiro dos restos a pagar e o passivo de origem ──
+  roteiroVigenteDeRestos:
+    "LEITURA. A versão vigente (a de maior número) das contas de uma operação de restos a pagar. " +
+    "Projeção de um cadastro append-only; não grava nada.",
+  exigirRoteiroDeRestos:
+    "COMPOSÁVEL INTERNO. A mesma leitura, em versão FAIL-CLOSED: recusa nomeando a operação e o " +
+    "caminho da tela quando as contas não foram informadas. Roda dentro da liquidação, do " +
+    "pagamento e dos cancelamentos, sob a autorização de cada um.",
+  passivoDaLiquidacaoDeOrigem:
+    "COMPOSÁVEL INTERNO. Descobre, na liquidação de origem, contra QUE passivo o resto se baixa — " +
+    "e recusa quando há mais de uma perna credora de classe 2, em vez de escolher uma por ordem " +
+    "de leitura. Roda dentro do pagamento e da liquidação do resto, sob a autorização deles.",
   // ── V12 3.D1 — as duas funções que o `t5` pegou sem classificação ──
   // Nenhuma das duas é ato do usuário: uma recebe `TxDeLeitura` e só recusa, a outra só soma o que
   // já foi gravado. Dar ação própria a elas inventaria uma segregação que o ente não tem e obrigaria

@@ -1,4 +1,5 @@
 import { toMoney, type Money } from "../../packages/contracts/index.js";
+import { parcelasDaGuia } from "../m04-receita/parcelas-por-fonte.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 // A apuração de caixa é do M01: uma aritmética, muitos recortes.
 import { saldoDasContas } from "../m01-core-contabil/adapter-prisma.js";
@@ -161,32 +162,57 @@ async function lerReceitasPorFonte(
     },
     select: {
       tipo: true,
+      // ⚠️ V16/C30 — a guia pode repartir o depósito entre fontes, e o ingresso entra na LINHA DE
+      // CADA UMA. Somar pela fonte padrão da guia faria o Balanço Financeiro publicar ingresso
+      // numa fonte que não recebeu aquele dinheiro — e o balanço fecharia no total, que é o que
+      // torna esse erro invisível.
+      numeroReceita: true,
+      fonteId: true,
+      exercicioFonte: true,
       valor: true,
       fonte: { select: { codigo: true, descricao: true } },
+      distribuicao: {
+        select: {
+          fonteId: true,
+          exercicioFonte: true,
+          valor: true,
+          fonte: { select: { codigo: true, descricao: true } },
+        },
+      },
     },
   });
 
   const por = new Map<string, { rotulo: string; valor: Money }>();
   for (const a of arrecadadas) {
-    const acc = por.get(a.fonte.codigo) ?? {
-      rotulo: a.fonte.descricao,
-      valor: toMoney("0.00"),
-    };
-    const v = toMoney(a.valor.toFixed(2));
     // ARRECADAÇÃO entra, ANULAÇÃO sai. (RETIFICACAO não é emitida pelo M04 e tem
     // sinal indefinido — o Anexo 12 já derruba o relatório nela; aqui ela cairia
     // no mesmo problema, então também não é somada às cegas.)
-    if (a.tipo === "ARRECADACAO") {
-      acc.valor = toMoney(acc.valor.plus(v));
-    } else if (a.tipo === "ANULACAO") {
-      acc.valor = toMoney(acc.valor.minus(v));
-    } else {
+    if (a.tipo !== "ARRECADACAO" && a.tipo !== "ANULACAO") {
       throw new Error(
         `Receita do tipo ${a.tipo} não tem sinal definido — ver ` +
           `SINAL_RECEITA_REALIZADA (M12) e a PENDÊNCIA do M04.`
       );
     }
-    por.set(a.fonte.codigo, acc);
+    // O rótulo de cada fonte vem do cadastro dela, não do da guia: numa guia repartida a linha
+    // da fonte 540 não pode sair com a descrição da 500.
+    const rotuloDa = new Map<string, { codigo: string; descricao: string }>([
+      [a.fonteId, a.fonte],
+      ...a.distribuicao.map(
+        (d) => [d.fonteId, d.fonte] as [string, { codigo: string; descricao: string }]
+      ),
+    ]);
+    for (const parcela of parcelasDaGuia(a)) {
+      const fonte = rotuloDa.get(parcela.fonteId)!;
+      const acc = por.get(fonte.codigo) ?? {
+        rotulo: fonte.descricao,
+        valor: toMoney("0.00"),
+      };
+      acc.valor =
+        a.tipo === "ARRECADACAO"
+          ? toMoney(acc.valor.plus(parcela.valor))
+          : toMoney(acc.valor.minus(parcela.valor));
+      por.set(fonte.codigo, acc);
+    }
   }
 
   return [...por.entries()]

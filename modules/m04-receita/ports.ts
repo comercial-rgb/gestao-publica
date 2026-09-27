@@ -36,6 +36,16 @@ export interface ReceitaClassificacaoPort {
     readonly fonte: string;
     readonly co?: string | undefined;
   }): Promise<ResolucaoReceitaArrecadada>;
+  /**
+   * V16/C30 — resolve VÁRIOS códigos de fonte de uma vez (a guia distribuída).
+   *
+   * ⚠️ EM LOTE, e não uma chamada por parcela: a recusa precisa NOMEAR TODAS as fontes
+   * inexistentes de uma vez. Recusar a primeira e calar as outras faria o operador corrigir o
+   * formulário três vezes para descobrir três erros que o sistema já conhecia na primeira.
+   *
+   * Devolve `codigo -> id` apenas das que existem; quem chama compara com o que pediu.
+   */
+  resolverFontes(codigos: readonly string[]): Promise<ReadonlyMap<string, string>>;
 }
 
 /** Arrecadação pronta para persistir — componentes já resolvidos em ids. */
@@ -64,6 +74,28 @@ export interface ArrecadacaoParaPersistir {
    * nunca fez.
    */
   readonly entidadeTitularId?: string | undefined;
+  /**
+   * V16/C30 — A DISTRIBUIÇÃO ENTRE FONTES, quando a guia reparte.
+   *
+   * Vazia (ou ausente) é a guia de fonte única, que continua sendo a maioria: `fonteId` diz tudo
+   * o que há para dizer. Quando vem, ela é gravada NA MESMA TRANSAÇÃO da guia e do lançamento —
+   * guia distribuída sem as parcelas seria uma guia cujo número por fonte ninguém pode calcular.
+   *
+   * ⚠️ A ANULAÇÃO **HERDA** ESTAS PARCELAS DA ORIGINAL, pela mesma razão que herda a entidade
+   * titular: `ReceitaReprevista` existe, a previsão da LOA muda, e re-derivar a distribuição no
+   * dia do estorno desfaria uma distribuição diferente da que entrou.
+   */
+  readonly distribuicao?: readonly ParcelaPersistidaDeFonte[] | undefined;
+}
+
+/** Uma parcela de fonte como ela é gravada (a fonte já resolvida em id). */
+export interface ParcelaPersistidaDeFonte {
+  readonly fonteId: string;
+  readonly exercicioFonte: number;
+  readonly valor: Money;
+  /** Snapshot: esta (natureza, fonte, exercício da fonte) estava prevista na LOA no ato. */
+  readonly previstaNaLoa: boolean;
+  readonly fundamento?: string | undefined;
 }
 
 /** O lançamento contábil que contabiliza a arrecadação. */
@@ -102,6 +134,8 @@ export interface ArrecadacaoPersistida {
   readonly contaBancariaId: string | null;
   /** V11 V9 — a entidade titular carimbada nesta guia. É o que a anulação HERDA. */
   readonly entidadeTitularId: string | null;
+  /** V16/C30 — as parcelas por fonte desta guia. Vazio = guia de fonte única. A anulação as HERDA. */
+  readonly distribuicao: readonly ParcelaPersistidaDeFonte[];
 }
 
 /** Confronto arrecadado × previsto. NÃO bloqueia — sinaliza (INVARIANTE 5). */
@@ -136,6 +170,31 @@ export interface ContaBancariaResolvida {
 }
 export interface ContaBancariaPort {
   buscarPorCodigo(codigo: string): Promise<ContaBancariaResolvida | null>;
+  /**
+   * ⚠️ V16/C30 — A FONTE TEM DE ESTAR NO **ROL** DA CONTA, e isto conserta um buraco que a ADR
+   * previu e a arrecadação não seguiu.
+   *
+   * `ADR-conta-bancaria-com-varias-fontes` (aceita em 2026-09-10) decidiu que uma conta admite
+   * VÁRIAS fontes e que **quem manda no guard é o VÍNCULO**, não a coluna `ContaBancaria.fonteId`
+   * (que permanece só como fonte PADRÃO). Cinco sítios passaram a usar
+   * `exigirFonteNoRolDaConta` — pagamento, ordem de pagamento, movimentação, dispêndio
+   * extraorçamentário e pagamento de restos a pagar. A arrecadação ficou de fora porque, naquela
+   * data, ela **não tinha conta bancária**; ela ganhou conta na V6 P1.2 e copiou a comparação
+   * ANTIGA (`conta.fonteCodigo !== guia.fonte`).
+   *
+   * O efeito, medido: uma conta multifonte **não recebia** guia da segunda fonte dela — o caso
+   * que a decisão veio permitir. E na guia repartida seria pior: dinheiro carimbado numa fonte
+   * que aquela conta não comporta.
+   *
+   * ⚠️ É PORT E NÃO COMPARAÇÃO LOCAL porque a regra (rol vazio cai para a fonte padrão; fonte
+   * fora do rol recusa NOMEANDO as permitidas) mora numa função só, `m05/guard-fonte.ts`, e
+   * reescrevê-la aqui seria a sexta cópia — a doença que aquele arquivo existe para curar.
+   */
+  exigirFonteNoRol(
+    contaId: string,
+    fonteId: string,
+    operacao: string
+  ): Promise<void>;
 }
 
 export interface ReceitaRepositoryPort {
@@ -163,6 +222,23 @@ export interface ReceitaRepositoryPort {
 
   /** Total previsto na LOA (M02) para a natureza no exercício. Zero se não há. */
   previsaoTotal(exercicio: number, naturezaReceitaId: string): Promise<Money>;
+
+  /**
+   * V16/C30 — AS FONTES QUE A LOA PREVÊ para esta natureza neste exercício.
+   *
+   * É o "conforme LOA" do C30, e é o que decide se a parcela precisa da autorização nomeada e do
+   * fundamento escrito. Lista vazia significa natureza SEM PREVISÃO NENHUMA — e isso não pede
+   * autorização extra: excesso de arrecadação é legítimo (INVARIANTE 5), e barrá-lo pararia a
+   * arrecadação para cobrar um cadastro.
+   *
+   * ⚠️ QUEM CONSULTA É O SERVIÇO, NUNCA O CHAMADOR. Se o `previstaNaLoa` viesse pronto de fora,
+   * qualquer caminho poderia declarar `true` e saltar a autorização — a guarda passaria a
+   * depender da boa-fé de quem a invoca.
+   */
+  fontesPrevistas(
+    exercicio: number,
+    naturezaReceitaId: string
+  ): Promise<readonly { readonly fonteId: string; readonly exercicioFonte: number }[]>;
 }
 
 /** O client OU uma transação dele — os ports do M04 servem aos dois. */

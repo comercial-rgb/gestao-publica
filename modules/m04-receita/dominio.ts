@@ -2,6 +2,10 @@ import { z } from "zod";
 import { zMoney, type Money } from "../../packages/contracts/index.js";
 import { anoCivil, diaCivil } from "../../packages/datas/index.js";
 import {
+  exigirSomaDasParcelas,
+  zDistribuicaoDaArrecadacao,
+} from "./distribuicao.js";
+import {
   validarLancamento,
   type Partida,
   type Subsistema,
@@ -29,6 +33,12 @@ export interface PernaRoteiro {
   readonly conta: string;
   readonly tipo: TipoPartida;
   readonly subsistema: Subsistema;
+  /**
+   * V16/C30 — a fatia PRÓPRIA desta perna, quando o fato reparte o total entre pernas do mesmo
+   * lado (a arrecadação distribuída: uma perna de classe 7 por natureza de fonte). Ausente é o
+   * caso geral: a perna recebe o valor do fato. Ver `PernaRoteiro` do M01.
+   */
+  readonly valor?: Money;
 }
 
 export type RoteiroContabil = readonly PernaRoteiro[];
@@ -76,7 +86,10 @@ export function comporPartidas(
       conta: p.conta,
       tipo: p.tipo,
       subsistema: p.subsistema,
-      valor,
+      // ⚠️ A PERNA PODE DECLARAR A PRÓPRIA FATIA (V16/C30) — e quem declara continua passando
+      // pelo motor, que exige cada subsistema fechar sozinho. Fatias que não somam o valor do
+      // fato derrubam o lançamento aqui, antes de qualquer escrita.
+      valor: p.valor ?? valor,
     }))
   );
 }
@@ -188,6 +201,16 @@ export const zRegistrarArrecadacaoInput = z
      * disponibilidade do roteiro — o serviço confere os dois.
      */
     contaBancaria: z.string().trim().min(1).optional(),
+    /**
+     * V16/C30 — A DISTRIBUIÇÃO ENTRE FONTES. Ausente = guia de fonte única, o caminho que
+     * existia e continua igual: `fonte` diz tudo.
+     *
+     * ⚠️ ELA NÃO SUBSTITUI `fonte`, e não é redundância. `ReceitaArrecadada.fonteId` é NOT NULL
+     * e permanece a fonte PADRÃO da guia (o papel que a ADR da conta multifonte deu à
+     * `ContaBancaria.fonteId`); quem manda em todo número POR FONTE é a parcela. Ver
+     * `distribuicao.ts`.
+     */
+    distribuicao: zDistribuicaoDaArrecadacao.optional(),
     criadoPor: z.string().min(1),
   })
   .superRefine((a, ctx) => {
@@ -238,5 +261,13 @@ export function comporArrecadacao(
   readonly partidas: readonly Partida[];
 } {
   const dados = zRegistrarArrecadacaoInput.parse(input);
+  // ⚠️ A SOMA DAS PARCELAS É CONFERIDA **ANTES** DE COMPOR AS PARTIDAS, e a ordem foi achada pelo
+  // teste dirigido: o motor também pega parcelas que não somam (o lançamento inteiro deixa de
+  // fechar), mas a mensagem dele é "Desbalanceado no lançamento: débitos = 299000.00, créditos =
+  // 300000.00" — verdadeira e inútil para quem está corrigindo um formulário. Depois desta linha,
+  // quem erra a soma lê PARCELA e TOTAL, com a diferença; o motor continua sendo a rede embaixo.
+  if (dados.distribuicao !== undefined) {
+    exigirSomaDasParcelas(dados.valor, dados.distribuicao);
+  }
   return { dados, partidas: comporPartidas(dados.valor, roteiro) };
 }

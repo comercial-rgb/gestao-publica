@@ -5,6 +5,7 @@ import {
   contrapartidaDaLiquidacao,
   ELEMENTOS_COM_ROTEIRO,
   roteiroArrecadacao,
+  roteiroArrecadacaoDistribuida,
   roteiroEmpenho,
   roteiroLiquidacao,
   roteiroPagamento,
@@ -154,6 +155,69 @@ describe("M01 — os roteiros oficiais da execução", () => {
     ]) {
       expect(outro.some((p) => p.conta.startsWith("7."))).toBe(false);
     }
+  });
+
+  it("t5b: a ARRECADAÇÃO DISTRIBUÍDA é o MESMO roteiro com a classe 7 repartida (V16/C30)", () => {
+    // ⚠️ ESTE TESTE EXISTE PARA QUE O PAR NÃO DIVERGISSE EM SILÊNCIO. São duas funções — uma para
+    // a guia de uma fonte, outra para a repartida — e a única diferença legítima entre elas é a
+    // classe 7. Com N=1, as duas têm de produzir EXATAMENTE as mesmas pernas, na mesma ordem: se
+    // alguém mexer numa e esquecer a outra, isto acusa, em vez de o comentário prometer.
+    const umaFonte = roteiroArrecadacao({
+      disponibilidade: CAIXA,
+      variacaoAumentativa: VPA,
+      naturezaDaFonte: "VINCULADOS",
+    });
+    const distribuidaN1 = roteiroArrecadacaoDistribuida({
+      disponibilidade: CAIXA,
+      variacaoAumentativa: VPA,
+      porNaturezaDaFonte: [{ natureza: "VINCULADOS", valor: toMoney("100.00") }],
+    });
+    expect(pernas(distribuidaN1)).toEqual(pernas(umaFonte));
+
+    // Com N=2 e naturezas diferentes, a classe 7 tem DUAS pernas, cada uma com a SUA fatia — e só
+    // elas carregam valor próprio; as outras quatro recebem o valor do fato.
+    const duasFontes = roteiroArrecadacaoDistribuida({
+      disponibilidade: CAIXA,
+      variacaoAumentativa: VPA,
+      porNaturezaDaFonte: [
+        { natureza: "ORDINARIOS", valor: toMoney("60.00") },
+        { natureza: "VINCULADOS", valor: toMoney("40.00") },
+      ],
+    });
+    expect(pernas(duasFontes)).toEqual([
+      `DEBITO ${CAIXA} PATRIMONIAL`,
+      `CREDITO ${VPA} PATRIMONIAL`,
+      `DEBITO ${CONTA_RECEITA_A_REALIZAR} ORCAMENTARIO`,
+      `CREDITO ${CONTA_RECEITA_REALIZADA} ORCAMENTARIO`,
+      `DEBITO 7.2.1.1.1.00.00 CONTROLE`,
+      `DEBITO 7.2.1.1.2.00.00 CONTROLE`,
+      `CREDITO ${CONTA_DDR_DISPONIVEL} CONTROLE`,
+    ]);
+    expect(duasFontes.filter((x) => x.valor !== undefined).map((x) => x.valor!.toFixed(2))).toEqual([
+      "60.00",
+      "40.00",
+    ]);
+
+    // Natureza repetida é erro de composição: duas pernas idênticas no razão não se distinguem.
+    expect(() =>
+      roteiroArrecadacaoDistribuida({
+        disponibilidade: CAIXA,
+        variacaoAumentativa: VPA,
+        porNaturezaDaFonte: [
+          { natureza: "ORDINARIOS", valor: toMoney("60.00") },
+          { natureza: "ORDINARIOS", valor: toMoney("40.00") },
+        ],
+      })
+    ).toThrow(/NATUREZA REPETIDA NA DISTRIBUIÇÃO: "ORDINARIOS"/);
+
+    // E sem nenhuma fatia a classe 7 não teria o que debitar.
+    expect(() =>
+      roteiroArrecadacaoDistribuida({
+        disponibilidade: CAIXA,
+        variacaoAumentativa: VPA,
+        porNaturezaDaFonte: [],
+      })
+    ).toThrow(/ARRECADAÇÃO SEM DESTINAÇÃO/);
   });
 
   it("t8: a CADEIA da DDR fecha — o crédito de um estágio é o débito do seguinte", () => {

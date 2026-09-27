@@ -1,4 +1,8 @@
 import { toMoney, type Money } from "../../packages/contracts/index.js";
+// ⚠️ A ÚNICA ARESTA DO M01 PARA OUTRO MÓDULO, e ela é para um arquivo AVULSO que não importa
+// nada além de `packages/contracts` — logo não há ciclo. O cabeçalho dele explica por que a
+// alternativa (uma segunda cópia da regra, aqui) era pior.
+import { parcelasDaGuia } from "../m04-receita/parcelas-por-fonte.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import {
   CONTA_DDR_COMPROMETIDA_EMPENHO,
@@ -211,7 +215,25 @@ export async function saldoDdrPorFonte(
             },
           },
           receita: {
-            select: { exercicio: true, fonteId: true, fonte: { select: { codigo: true } } },
+            // ⚠️ V16/C30 — A GUIA PODE REPARTIR O DEPÓSITO ENTRE FONTES. A perna de DDR é UMA e
+            // carrega o total; quem diz quanto foi de cada fonte é a distribuição da guia. Sem
+            // isto, a DDR disponível inteira seria carimbada na fonte PADRÃO da guia — e a DDR é
+            // o número que impede empenhar contra dinheiro que não existe.
+            //
+            // ⚠️ E A DISTRIBUIÇÃO VEM EM CONSULTA SEPARADA, não aninhada aqui: este `select` já
+            // desce quatro níveis (partida -> lançamento -> pagamento -> liquidação -> empenho ->
+            // ficha), e cada relação aninhada multiplica o tipo condicional que o Prisma gera.
+            // Medido: com a distribuição aqui dentro, o `tsc` deste projeto estoura 5 GB de heap
+            // e não termina. Uma consulta rasa a mais é barata; um typecheck que não roda, não.
+            select: {
+              id: true,
+              exercicio: true,
+              numeroReceita: true,
+              fonteId: true,
+              exercicioFonte: true,
+              valor: true,
+              fonte: { select: { codigo: true } },
+            },
           },
         },
       },
@@ -222,6 +244,46 @@ export async function saldoDdrPorFonte(
     string,
     { fonteCodigo: string; por: Map<string, Money> }
   >();
+
+  // ⚠️ AS FONTES DA GUIA PRECISAM DO CÓDIGO, e a parcela só traz o id. Uma consulta, não uma por
+  // parcela: o rol de fontes é um cadastro pequeno e fechado.
+  const codigoDaFonte = new Map<string, string>(
+    (await prisma.fonteRecurso.findMany({ select: { id: true, codigo: true } })).map((f) => [
+      f.id,
+      f.codigo,
+    ])
+  );
+
+  // A distribuição das guias que aparecem nestas partidas — consulta RASA, pelo motivo escrito no
+  // `select` acima. Guia sem parcela não aparece no mapa, e `parcelasDaGuia` trata isso.
+  const idsDasGuias = [
+    ...new Set(
+      partidas
+        .map((linha) => linha.lancamento.receita?.id)
+        .filter((id): id is string => id !== undefined)
+    ),
+  ];
+  const parcelasPorGuia = new Map<
+    string,
+    { fonteId: string; exercicioFonte: number; valor: { toFixed: (c: number) => string } }[]
+  >();
+  if (idsDasGuias.length > 0) {
+    const todas = await prisma.fonteDaArrecadacao.findMany({
+      where: { receitaArrecadadaId: { in: idsDasGuias } },
+      orderBy: { criadoEm: "asc" },
+      select: {
+        receitaArrecadadaId: true,
+        fonteId: true,
+        exercicioFonte: true,
+        valor: true,
+      },
+    });
+    for (const d of todas) {
+      const lista = parcelasPorGuia.get(d.receitaArrecadadaId) ?? [];
+      lista.push({ fonteId: d.fonteId, exercicioFonte: d.exercicioFonte, valor: d.valor });
+      parcelasPorGuia.set(d.receitaArrecadadaId, lista);
+    }
+  }
 
   for (const linha of partidas) {
     const l = linha.lancamento;
@@ -270,20 +332,61 @@ export async function saldoDdrPorFonte(
 
     if (origem.exercicio !== p.exercicio) continue;
 
-    const atual =
-      acc.get(origem.fonteId) ??
-      { fonteCodigo: origem.fonteCodigo, por: new Map<string, Money>() };
     const codigo = linha.conta.codigo;
     const valor = toMoney(linha.valor.toFixed(2));
-    const antes = atual.por.get(codigo) ?? toMoney("0.00");
-    // Conta CREDORA: crédito soma, débito subtrai.
-    atual.por.set(
-      codigo,
-      linha.tipo === "CREDITO"
-        ? toMoney(antes.plus(valor))
-        : toMoney(antes.minus(valor))
-    );
-    acc.set(origem.fonteId, atual);
+
+    // ═══ ⚠️ V16/C30 — A PERNA PODE PERTENCER A MAIS DE UMA FONTE ═══
+    // A arrecadação é o único ato que traz recurso novo, e a guia pode repartir o depósito entre
+    // fontes. A perna de DDR disponível é UMA e carrega o total; a repartição está na guia.
+    //
+    // ⚠️ E O RATEIO NÃO É PROPORCIONAL — é EXATO. A soma das parcelas É o total da perna, e a
+    // conferência abaixo afirma isso em vez de supor: se um roteiro futuro passar a partir a perna
+    // de classe 8, esta leitura RECUSA nomeando a guia, em vez de dividir centavos por
+    // proporção e publicar um número que ninguém consegue reconciliar.
+    const distribuicaoDaGuia =
+      l.receita === null ? [] : parcelasPorGuia.get(l.receita.id) ?? [];
+    const fatias: readonly { fonteId: string; fonteCodigo: string; valor: Money }[] =
+      l.receita !== null && distribuicaoDaGuia.length > 0
+        ? (() => {
+            const parcelas = parcelasDaGuia({
+              ...l.receita,
+              distribuicao: distribuicaoDaGuia,
+            });
+            const soma = parcelas.reduce(
+              (t, x) => toMoney(t.plus(x.valor)),
+              toMoney("0.00")
+            );
+            if (!soma.equals(valor)) {
+              throw new Error(
+                `PERNA DE DDR QUE NÃO CASA COM A DISTRIBUIÇÃO: a guia ` +
+                  `${l.receita.numeroReceita} reparte ${soma.toFixed(2)} entre ` +
+                  `${parcelas.length} fontes, e esta perna de ${codigo} é de ${valor.toFixed(2)}. ` +
+                  `A DDR por fonte só se lê quando as duas coisas são a mesma — se o roteiro passou ` +
+                  `a partir a perna de controle, ensine este leitor a lê-la. Nada foi somado.`
+              );
+            }
+            return parcelas.map((x) => ({
+              fonteId: x.fonteId,
+              fonteCodigo: codigoDaFonte.get(x.fonteId) ?? x.fonteId,
+              valor: x.valor,
+            }));
+          })()
+        : [{ fonteId: origem.fonteId, fonteCodigo: origem.fonteCodigo, valor }];
+
+    for (const fatia of fatias) {
+      const atual =
+        acc.get(fatia.fonteId) ??
+        { fonteCodigo: fatia.fonteCodigo, por: new Map<string, Money>() };
+      const antes = atual.por.get(codigo) ?? toMoney("0.00");
+      // Conta CREDORA: crédito soma, débito subtrai.
+      atual.por.set(
+        codigo,
+        linha.tipo === "CREDITO"
+          ? toMoney(antes.plus(fatia.valor))
+          : toMoney(antes.minus(fatia.valor))
+      );
+      acc.set(fatia.fonteId, atual);
+    }
   }
 
   const zero = toMoney("0.00");

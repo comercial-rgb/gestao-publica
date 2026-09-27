@@ -307,6 +307,17 @@ describe("instalação limpa e atualização — no banco", () => {
       // mesmo motivo das anteriores: a derivacao so alcanca perfil que JA administra permissoes
       // no global, e a instalacao limpa nao tem nenhum com CONCEDER_ACAO_A_PERFIL gravado ainda.
       { versao: 30, previa: 0, aplicada: false },
+      // V15/C38 — PARAMETRIZAR_ROTEIRO_RESTOS_A_PAGAR, e V16/C30 —
+      // DISTRIBUIR_RECEITA_FORA_DA_PREVISAO. Previa 0 em instalacao limpa pela razao das
+      // anteriores: as duas derivacoes so alcancam perfil que JA administra permissoes no global
+      // (`CONCEDER_ACAO_A_PERFIL` sem UG), e a instalacao limpa ainda nao tem nenhum gravado.
+      { versao: 31, previa: 0, aplicada: false },
+      // ⚠️ E A v32 SO FICOU 0 QUANDO `DISTRIBUIR_RECEITA_FORA_DA_PREVISAO` ENTROU EM
+      // `ACOES_SEM_SERVICO_PROPRIO`. Antes disso ela derivava 1 aqui — e a previa de 1 numa
+      // instalacao limpa era o sintoma de que a acao estava FORA de `TODAS_AS_ACOES`, logo fora de
+      // `ACOES_DO_ENTE`, logo INALCANCAVEL: nem o administrador da instalacao a recebia. Foi este
+      // numero que apontou o furo.
+      { versao: 32, previa: 0, aplicada: false },
     ]);
   });
 

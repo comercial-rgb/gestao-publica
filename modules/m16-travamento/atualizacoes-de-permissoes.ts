@@ -598,6 +598,48 @@ export function derivarRoteiroDeRestosAPagar(
   return saida;
 }
 
+/**
+ * V16/C30 — a ALTERAÇÃO AUTORIZADA da distribuição da receita entre fontes.
+ *
+ * ⚠️ VAI SÓ A QUEM ADMINISTRA PERMISSÕES NO GLOBAL, que a distribui nomeando a pessoa — a mesma
+ * escolha da v30 e da v31, e pelo mesmo motivo: **o erro não tem detector adiante**.
+ *
+ * Mandar receita para uma fonte que a LOA não prevê para aquela natureza é mudar a destinação
+ * decidida no orçamento. O lançamento fecha, o balanço fecha, o total do ente fecha — e o que
+ * sobra é dinheiro carimbado para educação disponível para outra coisa na DDR, que é justamente o
+ * número que autoriza empenhar. Sai no RGF Anexo 5 e na remessa, meses depois.
+ *
+ * ⚠️ E ELA NÃO ACOMPANHA `REGISTRAR_ARRECADACAO`. Quem opera a arrecadação registra a guia e a
+ * reparte entre as fontes que a LOA prevê — isso não pede crachá novo. O crachá é para SAIR da
+ * previsão. Juntar as duas daria a todo operador de guichê a chave da destinação de recursos.
+ */
+export function derivarDistribuicaoForaDaPrevisao(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some(
+      (p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null
+    );
+    if (!administra) continue;
+    if (
+      perfil.permissoes.some(
+        (p) => p.acao === "DISTRIBUIR_RECEITA_FORA_DA_PREVISAO" && p.unidadeOrcId === null
+      )
+    ) {
+      continue;
+    }
+    saida.push({
+      perfilId: perfil.id,
+      perfilNome: perfil.nome,
+      acao: "DISTRIBUIR_RECEITA_FORA_DA_PREVISAO",
+      unidadeOrcId: null,
+    });
+  }
+  return saida;
+}
+
 /** V7 M1 U4 — a ouvidoria (triagem e resposta, com lotação) e a moderação das avaliações. */
 export const ACOES_DA_OUVIDORIA_E_AVALIACAO: readonly AcaoDoSistema[] = ["TRIAR_MANIFESTACAO_DE_OUVIDORIA", "MODERAR_AVALIACAO_DE_SERVICO"];
 
@@ -1305,6 +1347,23 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "em outra, com as duas equacoes batendo. Vai so a quem administra permissoes no global, que a " +
       "distribui nomeando a pessoa.",
     derivar: derivarRoteiroDeRestosAPagar,
+  },
+  {
+    versao: 32,
+    nome: "distribuicao-da-receita-entre-fontes",
+    descricao:
+      "A arrecadacao passou a poder ser REPARTIDA entre fontes de recurso (V16, C30): um deposito " +
+      "unico — FPM, ICMS partilhado, convenio com contrapartida — entra como UMA guia com uma " +
+      "parcela por fonte, e a classe 7 da DDR sai repartida por natureza de fonte. " +
+      "Com ela vem a acao DISTRIBUIR_RECEITA_FORA_DA_PREVISAO, exigida SO quando alguma parcela " +
+      "cai em fonte que a LOA nao preve para aquela natureza — a 'alteracao autorizada no ato'. " +
+      "⚠️ ELA NAO ACOMPANHA REGISTRAR_ARRECADACAO: repartir entre as fontes PREVISTAS e o ato " +
+      "normal de quem arrecada; sair da previsao e mudar a destinacao decidida no orcamento. " +
+      "⚠️ E O ERRO NAO TEM DETECTOR ADIANTE: o lancamento fecha, o balanco fecha e o total do ente " +
+      "fecha — o que sobra e recurso vinculado aparecendo como disponivel na DDR, que e o numero " +
+      "que autoriza empenhar. Vai so a quem administra permissoes no global, que a distribui " +
+      "nomeando a pessoa.",
+    derivar: derivarDistribuicaoForaDaPrevisao,
   },
 ];
 

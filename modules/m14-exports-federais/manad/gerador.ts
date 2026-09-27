@@ -1112,6 +1112,11 @@ async function l200(leitor: Leitor, exercicio: number): Promise<readonly LinhaMa
       valor: true,
       estornoDeId: true,
       fonte: { select: { codigo: true } },
+      // V16/C30 — a distribuicao por fonte, quando a guia reparte.
+      distribuicao: {
+        select: { valor: true, fonte: { select: { codigo: true } } },
+        orderBy: { criadoEm: "asc" },
+      },
       naturezaReceita: {
         select: {
           codigo: true,
@@ -1154,12 +1159,26 @@ async function l200(leitor: Leitor, exercicio: number): Promise<readonly LinhaMa
     g.prevista = toMoney(g.prevista.plus(m(p.valorPrevisto)));
   }
   for (const a of arrecadadas) {
-    const g = grupo(a.naturezaReceita, a.fonte.codigo);
-    g.arrecadadas.push({
-      id: a.id,
-      valor: m(a.valor),
-      estornoDeId: a.estornoDeId,
-    });
+    // ⚠️ V16/C30 — A GUIA REPARTIDA ENTRA EM CADA FONTE, com a fatia dela. O L200 agrupa por
+    // natureza × COD_REC_VINC; somar tudo na fonte padrão da guia publicaria, na remessa federal,
+    // receita vinculada numa fonte que não a recebeu.
+    //
+    // ⚠️ O `id` CONTINUA SENDO O DA GUIA em todas as fatias, e é o que faz a neutralização do
+    // estorno seguir funcionando: a anulação HERDA as mesmas parcelas, então dentro de cada fonte
+    // o par (original, estorno) se encontra e os dois somem da soma — que é o que
+    // `somaLiquidaEstornaveis` faz.
+    const parcelas =
+      a.distribuicao.length > 0
+        ? a.distribuicao.map((d) => ({ fonte: d.fonte.codigo, valor: m(d.valor) }))
+        : [{ fonte: a.fonte.codigo, valor: m(a.valor) }];
+    for (const parcela of parcelas) {
+      const g = grupo(a.naturezaReceita, parcela.fonte);
+      g.arrecadadas.push({
+        id: a.id,
+        valor: parcela.valor,
+        estornoDeId: a.estornoDeId,
+      });
+    }
   }
 
   const linhas: LinhaManad[] = [];
