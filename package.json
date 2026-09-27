@@ -96,6 +96,8 @@
     "smoke:encaminhamento-da-ouvidoria": "tsx scripts/trinco-de-maquina.ts 'percurso do encaminhamento da ouvidoria' -- npx tsx scripts/smoke-encaminhamento-da-ouvidoria.ts",
     "smoke:demonstracoes": "tsx scripts/trinco-de-maquina.ts 'percurso das demonstracoes e restos' -- npx tsx scripts/smoke-demonstracoes-e-restos.ts",
     "percursos:restos-fixture": "tsx scripts/preparar-restos-de-percursos.ts",
+    "percursos:consignacoes-fixture": "tsx scripts/preparar-consignacoes-de-percursos.ts",
+    "smoke:recolhimento-origem": "tsx scripts/trinco-de-maquina.ts 'percurso do recolhimento por origem' -- npx tsx scripts/smoke-recolhimento-por-origem.ts",
     "smoke:restos-operacoes": "tsx scripts/trinco-de-maquina.ts 'percurso das operacoes de restos a pagar' -- npx tsx scripts/smoke-restos-a-pagar-operacoes.ts"
   },
   "keywords": [],
