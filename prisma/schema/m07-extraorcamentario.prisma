@@ -154,6 +154,11 @@ model MovimentoExtraorcamentario {
   /// back-relation M09 — o item de lote que a agrupou. Campo VIRTUAL.
   itemDeLote ItemDoLote?
 
+  /// back-relations C34 — as alocações deste movimento. Campos VIRTUAIS.
+  /// `alocacoesFeitas` quando ele é o RECOLHIMENTO; `alocacoesRecebidas` quando é o INGRESSO.
+  alocacoesFeitas    AlocacaoDoRecolhimento[] @relation("RecolhimentoAlocado")
+  alocacoesRecebidas AlocacaoDoRecolhimento[] @relation("IngressoAlocado")
+
   historico String
   motivo    String?
 
@@ -165,4 +170,62 @@ model MovimentoExtraorcamentario {
   @@index([estornoDeId])
   @@index([data])
   @@index([fonteId])
+}
+
+// ----------------------------------------------------------------------------
+// AlocacaoDoRecolhimento — QUAL retenção cada recolhimento quita (C34).
+//
+// ═══ ⚠️ POR QUE O SALDO AGREGADO NÃO BASTA ═══
+// O saldo extraorçamentário é somado por `(tipoConsignacao, credorConsignatario)`, e
+// isso responde "quanto ainda se deve ao INSS" — mas não responde as duas perguntas
+// que o termo de referência faz:
+//
+//   · COMPOSIÇÃO POR ORIGEM: a guia de dezembro recolhe retenções de outubro, de
+//     novembro e de um resto de setembro. Sem vínculo, o recolhimento é um valor
+//     solto contra um saldo global, e "de onde veio" não tem resposta;
+//   · REABRIR SÓ A PARCELA CABÍVEL: estornar um recolhimento tem de devolver ao
+//     campo do que falta recolher exatamente as retenções que ELE quitou — não uma
+//     fatia proporcional de um agregado.
+//
+// ⚠️ E A ORIGEM ATRAVESSA O EXERCÍCIO, de propósito: não há restrição de exercício
+// aqui. Uma retenção de dezembro se recolhe em janeiro, e é justamente esse vínculo
+// que o tribunal lê quando pergunta o que sobrou do ano anterior.
+//
+// ═══ O QUE O BANCO GARANTE E O QUE O CASO DE USO GARANTE ═══
+// O banco garante: valor positivo (`ck_alocacao_recolhimento_positiva`), um par
+// (recolhimento, ingresso) uma vez só, e as duas pontas existindo.
+//
+// As SOMAS ficam no caso de uso, dentro da transação e com lock, porque CHECK não
+// soma linhas: Σ(alocações do recolhimento) == valor do recolhimento, e
+// Σ(alocações sobre um ingresso) ≤ o que aquele ingresso ainda tem a recolher. É a
+// mesma divisão de `InscricaoRestosAPagar` — o limite sai do SUM real.
+//
+// ⚠️ APPEND-ONLY, E O ESTORNO NÃO APAGA LINHA. Quando um recolhimento é estornado, as
+// suas alocações PERMANECEM: quem as ignora é a leitura, que desconsidera alocação cujo
+// recolhimento tenha estorno. Apagá-las destruiria a resposta a "o que esta guia
+// quitou, antes de ser desfeita?".
+// ----------------------------------------------------------------------------
+
+model AlocacaoDoRecolhimento {
+  id String @id @default(cuid())
+
+  /// O DISPENDIO (recolhimento/repasse) que está sendo composto.
+  recolhimentoId String
+  recolhimento   MovimentoExtraorcamentario @relation("RecolhimentoAlocado", fields: [recolhimentoId], references: [id], onDelete: Restrict)
+
+  /// O INGRESSO (retenção) que esta parcela quita — do exercício corrente ou de anterior.
+  ingressoId String
+  ingresso   MovimentoExtraorcamentario @relation("IngressoAlocado", fields: [ingressoId], references: [id], onDelete: Restrict)
+
+  /// SEMPRE positivo. Parcial por natureza: uma retenção pode ser quitada em mais de um
+  /// recolhimento, e um recolhimento pode compor mais de uma retenção.
+  valor Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  /// Uma linha por par: duas parcelas do mesmo recolhimento sobre a mesma retenção são
+  /// uma parcela só, e somá-las em duas linhas esconderia a duplicidade.
+  @@unique([recolhimentoId, ingressoId])
+  @@index([ingressoId])
 }

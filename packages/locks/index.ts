@@ -311,6 +311,23 @@ export const ORDEM_DOS_LOCKS = {
    * trincos de horário diferentes e se encontram aqui, que é onde precisam se encontrar.
    */
   AtendimentoPorDocumento: 29,
+
+  /**
+   * M07 V15 C34 — A RETENÇÃO, quando um recolhimento diz QUAIS retenções ele quita.
+   *
+   * O que se disputa aqui é "quanto desta retenção ainda falta recolher", e ele sai de um SUM das
+   * alocações vivas. Duas guias concorrentes para o mesmo consignatário leriam o mesmo "ainda
+   * falta" e as duas passariam: a retenção ficaria alocada além do que reteve, e o saldo agregado
+   * continuaria fechando — porque o agregado não sabe de origem. É o modo de falha que a tabela
+   * de alocação existe para tornar visível, e sem o trinco ela mesma seria a porta dele.
+   *
+   * ⚠️ ÚLTIMO POSTO, e por uma razão medida: nenhum caminho que trava este recurso precisa,
+   * DEPOIS, travar qualquer outro. O recolhimento confere fonte e conta bancária ANTES (sem
+   * trinco, por leitura) e grava as parcelas no fim da transação. Pôr este posto antes do
+   * `ContaBancaria` (18) criaria a possibilidade de inversão no dia em que um recolhimento
+   * passasse a travar a conta — e a inversão é o que esta tabela existe para recusar.
+   */
+  MovimentoExtraorcamentario: 30,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

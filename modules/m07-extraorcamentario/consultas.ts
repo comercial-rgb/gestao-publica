@@ -239,3 +239,240 @@ export async function listarDispendios(prisma: PrismaClient, params: { readonly 
   });
   return movs.map((m) => ({ id: m.id, data: m.data, valor: new Decimal(m.valor).toFixed(2), tipoCodigo: m.tipoConsignacao.codigo, consignatario: m.credorConsignatario, historico: m.historico }));
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// C37 — RETIDO, RECOLHIDO, ESTORNADO E A RECOLHER, SEPARADOS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * ⚠️ POR QUE ESTA CONSULTA EXISTE AO LADO DE `listarSaldosExtra`, E NÃO NO LUGAR DELA.
+ *
+ * `listarSaldosExtra` entrega `ingressado` e `dispendido` JÁ LÍQUIDOS — o estorno está somado
+ * dentro deles. Para o saldo isso é correto e suficiente. Para a composição não é: "recolhido
+ * 400,00" esconde um recolhimento de 500,00 e um estorno de 100,00, e quem confere a guia precisa
+ * ver os dois. É a mesma lição que os restos a pagar já carregam na tela: **o estorno aparece como
+ * linha, não embutido.**
+ *
+ * Os quatro números do termo de referência saem daqui BRUTOS, e o que falta recolher é derivado —
+ * nunca digitado, nunca guardado.
+ */
+export interface ComposicaoDaObrigacao {
+  readonly tipoCodigo: string;
+  readonly tipoDescricao: string;
+  readonly consignatario: string;
+  /** Σ dos INGRESSOS, bruto. */
+  readonly retido: string;
+  /** Σ dos ESTORNO_INGRESSO, bruto. */
+  readonly estornoDeRetencao: string;
+  /** Σ dos DISPENDIOS, bruto. */
+  readonly recolhido: string;
+  /** Σ dos ESTORNO_DISPENDIO, bruto. */
+  readonly estornoDeRecolhimento: string;
+  /** (retido − estorno de retenção) − (recolhido − estorno de recolhimento). Derivado. */
+  readonly aRecolher: string;
+  /**
+   * ⚠️ O QUE FOI RECOLHIDO SEM DIZER DE ONDE. Recolhimentos vivos sem nenhuma parcela de
+   * composição. Não é erro: há movimentos anteriores à composição existir. É pendência VISÍVEL,
+   * porque um agregado que os esconde parece conciliado.
+   */
+  readonly recolhidoSemComposicao: string;
+}
+
+export interface ConferenciaDaComposicao {
+  readonly obrigacoes: readonly ComposicaoDaObrigacao[];
+  /** A soma das linhas acima. */
+  readonly somaDasObrigacoes: string;
+  /**
+   * ⚠️ MEDIDO POR CAMINHO INDEPENDENTE, e é isso que faz disto conferência e não selo: o total
+   * global vem de UMA passada sobre todos os movimentos, sem agrupar por obrigação. Se as duas
+   * medidas divergirem, `confere` é falso e a tela DIZ — em vez de mostrar um visto.
+   */
+  readonly totalGlobal: string;
+  readonly confere: boolean;
+}
+
+export async function conferirComposicaoExtra(
+  prisma: PrismaClient
+): Promise<ConferenciaDaComposicao> {
+  const movs = await prisma.movimentoExtraorcamentario.findMany({
+    select: {
+      id: true,
+      tipo: true,
+      valor: true,
+      credorConsignatario: true,
+      tipoConsignacao: { select: { codigo: true, descricao: true } },
+      estornos: { select: { id: true } },
+      alocacoesFeitas: { select: { id: true } },
+    },
+  });
+
+  interface Acc {
+    tipoCodigo: string;
+    tipoDescricao: string;
+    consignatario: string;
+    retido: Decimal;
+    estornoDeRetencao: Decimal;
+    recolhido: Decimal;
+    estornoDeRecolhimento: Decimal;
+    recolhidoSemComposicao: Decimal;
+  }
+  const acc = new Map<string, Acc>();
+  const zero = (): Decimal => new Decimal(0);
+
+  for (const m of movs) {
+    const k = `${m.tipoConsignacao.codigo}||${m.credorConsignatario}`;
+    const cur =
+      acc.get(k) ??
+      {
+        tipoCodigo: m.tipoConsignacao.codigo,
+        tipoDescricao: m.tipoConsignacao.descricao,
+        consignatario: m.credorConsignatario,
+        retido: zero(),
+        estornoDeRetencao: zero(),
+        recolhido: zero(),
+        estornoDeRecolhimento: zero(),
+        recolhidoSemComposicao: zero(),
+      };
+    const v = new Decimal(m.valor);
+    if (m.tipo === "INGRESSO") cur.retido = cur.retido.plus(v);
+    else if (m.tipo === "ESTORNO_INGRESSO") cur.estornoDeRetencao = cur.estornoDeRetencao.plus(v);
+    else if (m.tipo === "DISPENDIO") {
+      cur.recolhido = cur.recolhido.plus(v);
+      // Vivo (sem estorno) e sem nenhuma parcela: recolheu sem dizer de onde.
+      if (m.estornos.length === 0 && m.alocacoesFeitas.length === 0) {
+        cur.recolhidoSemComposicao = cur.recolhidoSemComposicao.plus(v);
+      }
+    } else cur.estornoDeRecolhimento = cur.estornoDeRecolhimento.plus(v);
+    acc.set(k, cur);
+  }
+
+  const obrigacoes = [...acc.values()]
+    .map((a) => ({
+      tipoCodigo: a.tipoCodigo,
+      tipoDescricao: a.tipoDescricao,
+      consignatario: a.consignatario,
+      retido: a.retido.toFixed(2),
+      estornoDeRetencao: a.estornoDeRetencao.toFixed(2),
+      recolhido: a.recolhido.toFixed(2),
+      estornoDeRecolhimento: a.estornoDeRecolhimento.toFixed(2),
+      aRecolher: a.retido
+        .minus(a.estornoDeRetencao)
+        .minus(a.recolhido.minus(a.estornoDeRecolhimento))
+        .toFixed(2),
+      recolhidoSemComposicao: a.recolhidoSemComposicao.toFixed(2),
+    }))
+    .sort((x, y) =>
+      x.tipoCodigo < y.tipoCodigo
+        ? -1
+        : x.tipoCodigo > y.tipoCodigo
+          ? 1
+          : x.consignatario.localeCompare(y.consignatario)
+    );
+
+  let soma = new Decimal(0);
+  for (const o of obrigacoes) soma = soma.plus(new Decimal(o.aRecolher));
+
+  // O caminho independente: uma passada, sem agrupar.
+  let global = new Decimal(0);
+  for (const m of movs) {
+    const v = new Decimal(m.valor);
+    if (m.tipo === "INGRESSO") global = global.plus(v);
+    else if (m.tipo === "ESTORNO_INGRESSO") global = global.minus(v);
+    else if (m.tipo === "DISPENDIO") global = global.minus(v);
+    else global = global.plus(v);
+  }
+
+  return {
+    obrigacoes,
+    somaDasObrigacoes: soma.toFixed(2),
+    totalGlobal: global.toFixed(2),
+    confere: soma.equals(global),
+  };
+}
+
+/**
+ * AS RETENÇÕES DE UMA OBRIGAÇÃO, com o que cada uma ainda tem a recolher (C34).
+ *
+ * ⚠️ É ESTA LISTA QUE COMPÕE UMA GUIA, e é por ela que "retenções anteriores" deixa de ser uma
+ * frase: a de dezembro aparece ao lado da de janeiro, com o exercício de cada uma, e o operador
+ * escolhe de quais sai cada centavo. Retenção estornada aparece com `aRecolher` zero e o aviso —
+ * não desaparece, porque ela existiu.
+ */
+export interface RetencaoComSaldo {
+  readonly movimentoId: string;
+  readonly data: Date;
+  readonly exercicio: number;
+  readonly valor: string;
+  /** Somatório das parcelas VIVAS (de recolhimentos não estornados). */
+  readonly alocado: string;
+  readonly aRecolher: string;
+  readonly estornada: boolean;
+  /** Preenchido quando a retenção nasceu dentro de um pagamento. */
+  readonly pagamentoId: string | null;
+}
+
+export async function retencoesComSaldo(
+  prisma: PrismaClient,
+  params: { readonly tipoConsignacaoId: string; readonly credorConsignatario: string }
+): Promise<readonly RetencaoComSaldo[]> {
+  const ingressos = await prisma.movimentoExtraorcamentario.findMany({
+    where: {
+      tipo: "INGRESSO",
+      tipoConsignacaoId: params.tipoConsignacaoId,
+      credorConsignatario: params.credorConsignatario,
+    },
+    orderBy: { data: "asc" },
+    select: {
+      id: true,
+      data: true,
+      valor: true,
+      pagamentoId: true,
+      estornos: { select: { id: true } },
+      alocacoesRecebidas: {
+        select: { valor: true, recolhimento: { select: { estornos: { select: { id: true } } } } },
+      },
+    },
+  });
+  return ingressos.map((i) => {
+    let alocado = new Decimal(0);
+    for (const a of i.alocacoesRecebidas) {
+      if (a.recolhimento.estornos.length > 0) continue;
+      alocado = alocado.plus(new Decimal(a.valor));
+    }
+    const estornada = i.estornos.length > 0;
+    const bruto = new Decimal(i.valor);
+    return {
+      movimentoId: i.id,
+      data: i.data,
+      exercicio: i.data.getUTCFullYear(),
+      valor: bruto.toFixed(2),
+      alocado: alocado.toFixed(2),
+      aRecolher: estornada ? "0.00" : bruto.minus(alocado).toFixed(2),
+      estornada,
+      pagamentoId: i.pagamentoId,
+    };
+  });
+}
+
+/** A composição de UM recolhimento: de quais retenções ele saiu. */
+export interface ParcelaDaComposicao {
+  readonly ingressoId: string;
+  readonly dataDaRetencao: Date;
+  readonly valor: string;
+}
+
+export async function composicaoDoRecolhimento(
+  prisma: PrismaClient,
+  recolhimentoId: string
+): Promise<readonly ParcelaDaComposicao[]> {
+  const linhas = await prisma.alocacaoDoRecolhimento.findMany({
+    where: { recolhimentoId },
+    orderBy: { ingresso: { data: "asc" } },
+    select: { ingressoId: true, valor: true, ingresso: { select: { data: true } } },
+  });
+  return linhas.map((l) => ({
+    ingressoId: l.ingressoId,
+    dataDaRetencao: l.ingresso.data,
+    valor: new Decimal(l.valor).toFixed(2),
+  }));
+}

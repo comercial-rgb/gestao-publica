@@ -201,6 +201,17 @@ export const zRegistrarIngressoExtraInput = z.object({
   criadoPor: z.string().min(1),
 });
 
+/**
+ * UMA PARCELA DA COMPOSIÇÃO DO RECOLHIMENTO (C34): quanto deste recolhimento quita aquela
+ * retenção. A retenção pode ser de exercício ANTERIOR — é justamente o vínculo que o tribunal lê.
+ */
+export const zParcelaDoRecolhimento = z.object({
+  /** O `MovimentoExtraorcamentario` de tipo INGRESSO que esta parcela quita. */
+  ingressoId: z.string().min(1),
+  valor: zValorPositivo,
+});
+export type ParcelaDoRecolhimento = z.infer<typeof zParcelaDoRecolhimento>;
+
 export const zRegistrarDispendioExtraInput = z.object({
   tipoConsignacaoId: z.string().min(1),
   credorConsignatario: zCredor,
@@ -211,6 +222,18 @@ export const zRegistrarDispendioExtraInput = z.object({
   data: z.coerce.date(),
   historico: z.string().min(1),
   criadoPor: z.string().min(1),
+  /**
+   * ⚠️ A COMPOSIÇÃO POR ORIGEM (C34), OPCIONAL NO DOMÍNIO E OBRIGATÓRIA NA TELA.
+   *
+   * Opcional porque há chamadores anteriores a ela — recolhimentos já gravados não têm
+   * composição e inventá-la seria escrever suposição no banco. Obrigatória na tela porque, a
+   * partir de agora, todo recolhimento feito por alguém tem de dizer o que quita: a consulta de
+   * composição NOMEIA os recolhimentos sem alocação em vez de escondê-los num agregado.
+   *
+   * Quando informada, ela é EXATA: a soma das parcelas tem de ser o valor do recolhimento. Um
+   * recolhimento parcialmente alocado seria o pior dos dois mundos — parece conciliado e não é.
+   */
+  alocacoes: z.array(zParcelaDoRecolhimento).optional(),
 });
 
 export const zEstornarMovimentoExtraInput = z.object({

@@ -3,6 +3,7 @@ import { diaCivil } from "../../packages/datas/index.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { randomUUID } from "node:crypto";
+import { travar } from "../../packages/locks/index.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 // ⚠️ O FUNIL DO RAZÃO (M01). Todo lançamento passa por ele — e é lá que mora o
@@ -338,8 +339,154 @@ export async function registrarDispendioExtra(
       select: { id: true },
     });
 
+    // ═══ A COMPOSIÇÃO POR ORIGEM (C34) ═══
+    if (dados.alocacoes !== undefined && dados.alocacoes.length > 0) {
+      await alocarRecolhimento(tx, {
+        recolhimentoId: mov.id,
+        valorDoRecolhimento: dados.valor,
+        tipoConsignacaoId: tipo.id,
+        credorConsignatario: dados.credorConsignatario,
+        parcelas: dados.alocacoes,
+        criadoPor: dados.criadoPor,
+      });
+    }
+
     return { movimentoId: mov.id, lancamentoId };
   });
+}
+
+/**
+ * ═══ QUANTO DE UM INGRESSO AINDA FALTA RECOLHER ═══
+ *
+ * ⚠️ AS DUAS EXCLUSÕES SÃO A REGRA, NÃO DETALHE. Uma alocação deixa de valer quando o
+ * RECOLHIMENTO dela foi estornado — e nesse instante a retenção volta a ter aquela parcela a
+ * recolher, exatamente aquela, não uma fatia proporcional de um agregado. As linhas não são
+ * apagadas: quem as ignora é esta leitura, porque apagá-las destruiria a resposta a "o que aquela
+ * guia quitou, antes de ser desfeita?".
+ *
+ * E um ingresso ESTORNADO não tem nada a recolher: a retenção não devia ter acontecido.
+ */
+export async function aRecolherDoIngresso(
+  tx: Tx,
+  ingressoId: string
+): Promise<Money> {
+  const ing = await tx.movimentoExtraorcamentario.findUnique({
+    where: { id: ingressoId },
+    select: {
+      tipo: true,
+      valor: true,
+      estornos: { select: { id: true } },
+      alocacoesRecebidas: {
+        select: {
+          valor: true,
+          recolhimento: { select: { estornos: { select: { id: true } } } },
+        },
+      },
+    },
+  });
+  if (ing === null) throw new Error(`Movimento ${ingressoId} não encontrado.`);
+  if (ing.tipo !== "INGRESSO") {
+    throw new Error(
+      `O movimento ${ingressoId} é ${ing.tipo}, e só um INGRESSO (retenção, caução, depósito) tem ` +
+        `o que recolher.`
+    );
+  }
+  if (ing.estornos.length > 0) return toMoney("0.00");
+
+  let alocado = toMoney("0.00");
+  for (const a of ing.alocacoesRecebidas) {
+    if (a.recolhimento.estornos.length > 0) continue;
+    alocado = toMoney(alocado.plus(toMoney(a.valor.toFixed(2))));
+  }
+  const bruto = toMoney(ing.valor.toFixed(2));
+  return toMoney(bruto.minus(alocado));
+}
+
+/**
+ * Grava a composição de um recolhimento, conferindo tudo DENTRO da transação.
+ *
+ * ⚠️ AS QUATRO RECUSAS, e cada uma existe porque a ausência dela produziria um número que
+ * fecha e está errado:
+ *
+ *   1. a soma das parcelas tem de ser EXATAMENTE o valor do recolhimento. Sobrando, parte do
+ *      dinheiro sai sem origem; faltando, a composição parece completa e não é;
+ *   2. cada parcela recai sobre um INGRESSO da MESMA obrigação (tipo + consignatário). Compor
+ *      uma guia do INSS com uma retenção de pensão alimentícia é misturar dois credores;
+ *   3. nenhum ingresso recebe mais do que ainda tem a recolher — o limite sai do SUM real, com
+ *      as duas exclusões de `aRecolherDoIngresso`;
+ *   4. a mesma retenção não aparece duas vezes na mesma composição (o banco também recusa, por
+ *      `@@unique`; aqui a recusa chega como motivo em vez de violação de índice).
+ *
+ * ⚠️ E O LOCK É DOS INGRESSOS, não do recolhimento: duas guias concorrentes leriam o mesmo
+ * "ainda falta recolher" e as duas passariam, alocando o dobro sobre a mesma retenção.
+ */
+async function alocarRecolhimento(
+  tx: Tx,
+  p: {
+    readonly recolhimentoId: string;
+    readonly valorDoRecolhimento: Money;
+    readonly tipoConsignacaoId: string;
+    readonly credorConsignatario: string;
+    readonly parcelas: readonly { readonly ingressoId: string; readonly valor: Money }[];
+    readonly criadoPor: string;
+  }
+): Promise<void> {
+  const vistos = new Set<string>();
+  for (const parcela of p.parcelas) {
+    if (vistos.has(parcela.ingressoId)) {
+      throw new Error(
+        `A mesma retenção aparece duas vezes na composição deste recolhimento. Some as duas ` +
+          `parcelas numa só — duas linhas para a mesma origem esconderiam a duplicidade.`
+      );
+    }
+    vistos.add(parcela.ingressoId);
+  }
+
+  let soma = toMoney("0.00");
+  for (const parcela of p.parcelas) soma = toMoney(soma.plus(parcela.valor));
+  if (!soma.equals(p.valorDoRecolhimento)) {
+    throw new Error(
+      `A composição não fecha com o recolhimento: as parcelas somam ${soma.toFixed(2)} e o ` +
+        `recolhimento é de ${p.valorDoRecolhimento.toFixed(2)}. Informe de quais retenções sai ` +
+        `cada centavo — um recolhimento meio composto parece conciliado e não está. Nada foi gravado.`
+    );
+  }
+
+  // O 4º lock da ordem, aqui sobre as RETENÇÕES: é nelas que se decide quanto ainda cabe.
+  await travar(tx, "MovimentoExtraorcamentario", [...vistos].sort());
+
+  for (const parcela of p.parcelas) {
+    const ing = await tx.movimentoExtraorcamentario.findUnique({
+      where: { id: parcela.ingressoId },
+      select: { id: true, tipo: true, tipoConsignacaoId: true, credorConsignatario: true, data: true },
+    });
+    if (ing === null) {
+      throw new Error(`A retenção ${parcela.ingressoId} não existe. Nada foi gravado.`);
+    }
+    if (ing.tipoConsignacaoId !== p.tipoConsignacaoId || ing.credorConsignatario !== p.credorConsignatario) {
+      throw new Error(
+        `A retenção ${parcela.ingressoId} é de outra obrigação (outro tipo de consignação ou outro ` +
+          `consignatário). Um recolhimento quita retenções do MESMO credor. Nada foi gravado.`
+      );
+    }
+    const disponivel = await aRecolherDoIngresso(tx, parcela.ingressoId);
+    if (parcela.valor.greaterThan(disponivel)) {
+      throw new Error(
+        `A parcela de ${parcela.valor.toFixed(2)} excede o que a retenção de ` +
+          `${ing.data.toISOString().slice(0, 10)} ainda tem a recolher (${disponivel.toFixed(2)}). ` +
+          `Nada foi gravado.`
+      );
+    }
+    await tx.alocacaoDoRecolhimento.create({
+      data: {
+        recolhimentoId: p.recolhimentoId,
+        ingressoId: parcela.ingressoId,
+        valor: parcela.valor.toFixed(2),
+        criadoPor: p.criadoPor,
+      },
+      select: { id: true },
+    });
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
