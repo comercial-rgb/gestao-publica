@@ -557,10 +557,28 @@ const MAPA: Readonly<Record<string, Marca>> = {
   // ⚠️ A 5.10.2.6 ERA `AUSENTE_CONFIRMADO` NO LOTE ANTERIOR, e foi essa marcação de
   // AUSÊNCIA que trouxe a decisão para a mesa antes que alguém construísse por cima. É o
   // argumento de marcar ausência: ela expõe lacuna de MODELO, e presença não expõe nada.
-  "5.10.2.6": {
-    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+  // ⚠️ V16 — PROMOVIDA, e o que a promoveu foi a pendência `ROL-DE-FONTES-UI` FECHADA. O vínculo
+  // existia desde 2026-09-10 e o cadastro não tinha tela; enquanto cada conta tinha uma fonte só, a
+  // ausência não impedia nada. A guia REPARTIDA entre fontes (C30) a tornou bloqueante: um depósito
+  // de duas fontes só entra numa conta que comporte as duas, e o fallback do guard admite UMA.
+  // ⚠️ V16 — PARCIAL, e a metade que falta está dita. O ato existe para os DOIS tipos, com
+  // autorização, transação e percurso; o que não existe é a DEMONSTRAÇÃO dos dois valores lado a
+  // lado NO ATO: uma inscrição é processada OU não processada, e o detalhe mostra a dela. Os dois
+  // aparecem na LISTA, uma linha cada. Marcar VALIDADO aqui esconderia justamente o que a cláusula
+  // pede a mais.
+  "5.10.1.28": {
+    situacao: "PARCIAL",
     evidencia:
-      "Vínculo muitos-para-muitos `FonteDaContaBancaria`, em migration aditiva com backfill (a fonte única virou a primeira linha do rol). O movimento VALIDA que a fonte informada está no rol, pela mesma função que os outros quatro sítios da TR 5.23 usam (`exigirFonteNoRolDaConta`). Rol vazio cai para a fonte PADRÃO e recusa qualquer outra. modules/m09-tesouraria/m09-movimentacao.test.ts t18/t19/t20. ADR: docs/adr/ADR-conta-bancaria-com-varias-fontes.md. A TELA mostra o rol por conta, mas o CADASTRO do rol ainda não tem superfície — pendência ROL-DE-FONTES-UI.",
+      "O CANCELAMENTO existe para os dois tipos, com roteiro contábil próprio por evento (`RoteiroRestosAPagar`, versionado e fail-closed: sem as contas informadas a operação é RECUSADA nomeando onde resolver), autorização no servidor e saldo conferido dentro da transação. A tela do ato (`/despesa/restos-a-pagar/[id]`) mostra o TIPO da inscrição (Processado / Não processado) e a composição do saldo em pernas brutas antes do líquido; a lista (`/despesa/restos-a-pagar`) traz uma linha por inscrição, com tipo e saldo, filtrável por tipo. ⚠️ O QUE FALTA: a cláusula pede demonstrar o valor processado E o não processado no MOMENTO do cancelamento; como cada inscrição é de um tipo só, o detalhe demonstra o da inscrição que se cancela — os dois juntos existem na lista, não no ato. modules/m08-restos-a-pagar/m08-roteiro-de-restos.test.ts.",
+    rota_verificada:
+      "papel: papel de runtime com as ações de restos a pagar · contexto: clone do banco de percursos, next dev em 3010, 2026-09-26 · passos: /despesa/restos-a-pagar/[id] de um resto PROCESSADO → cancelar sem as contas informadas é RECUSADO nomeando a tela de configuração → contas publicadas → o cancelamento é aceito e o saldo cai de 28.000,00 para 23.000,00 → o estorno do cancelamento devolve · obtido: scripts/smoke-restos-a-pagar-operacoes.ts, 23 passos ok / 0 falhas (8.1 a 8.3 e o estorno).",
+  },
+  "5.10.2.6": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia:
+      "Vínculo muitos-para-muitos `FonteDaContaBancaria` (migration aditiva com backfill: a fonte única virou a primeira linha do rol) MAIS o CADASTRO em rotina própria, em `/financeiro/contas-bancarias`: um formulário por ato (acrescentar, remover), ação própria `GERIR_ROL_DE_FONTES_DA_CONTA` (censo v33) e três recusas do domínio — a ÚLTIMA fonte não sai (rol vazio não restringe: faz o guard voltar a admitir a fonte PADRÃO, o oposto do pedido), a fonte PADRÃO não sai, e fonte repetida não entra. `modules/m09-tesouraria/m09-rol-de-fontes.test.ts` (6/6) confere o efeito NO GUARD, não na tabela: a fonte acrescentada passa a ser aceita por `exigirFonteNoRolDaConta`, e antes era recusada. \"Esta definição deve ser observada em qualquer movimentação\": são SEIS sítios pela mesma função — pagamento, ordem de pagamento, movimentação bancária, dispêndio extraorçamentário, pagamento de restos a pagar e, desde a V16, a ARRECADAÇÃO (que comparava a coluna `ContaBancaria.fonteId`, a regra de antes da ADR, e por isso recusava guia da segunda fonte de uma conta multifonte). ADR: docs/adr/ADR-conta-bancaria-com-varias-fontes.md.",
+    rota_verificada:
+      "papel: administrador (papel de runtime `gestao_app`, não o dono do schema) · contexto: clone do banco de percursos (gestao_publica_percursos_v16b) servido por `next dev` na 3010, 2026-09-27 · passos: /financeiro/contas-bancarias diz \"rol não declarado; vale a fonte padrão\" -> acrescentar 540 (a PADRÃO entra junto: \"passa a comportar as fontes 500, 540\") -> acrescentar 700 -> remover 700 (exercita o GRANT DE DELETE do papel de runtime, que nenhum teste pega: a suíte roda como DONO) -> 700 de volta -> remover a PADRÃO é RECUSADO nomeando o motivo · obtido: scripts/smoke-receita-por-fontes.ts, 22 passos ok / 0 falhas (2.1, 5.1 a 5.5).",
   },
   "5.10.2.15": {
     situacao: "IMPLEMENTADO_NAO_VALIDADO",
@@ -1808,10 +1826,27 @@ const MAPA: Readonly<Record<string, Marca>> = {
   },
 
   // ── V6 P1.2 — arrecadação × conta bancária × conciliação ──
+  // ⚠️ V16 — A SITUAÇÃO NÃO MUDOU, A EVIDÊNCIA MUDOU, E ELA ESTAVA ERRADA DEPOIS DESTA UNIDADE. A
+  // frase antiga dizia que o domínio "recusa fonte da conta ≠ fonte da guia" — e essa era a regra de
+  // ANTES da ADR da conta multifonte. A arrecadação era o único dos seis sítios que ainda comparava a
+  // COLUNA `ContaBancaria.fonteId`, e por isso recusava guia legítima da segunda fonte de uma conta
+  // multifonte. Deixar a evidência velha no catálogo seria descrever no inventário um comportamento
+  // que o código não tem mais.
   "5.10.2.8": {
     situacao: "VALIDADO_LOCALMENTE",
-    evidencia: "V6 P1.2: a guia declara a conta bancária que recebeu; o domínio recusa fonte da conta ≠ fonte da guia e contábil da conta ≠ perna debitada (m09-atribuicao-de-conta.test.ts t1; m04 pela porta). Pela tela: select da conta em /receita/arrecadacoes, recusa nomeando as duas fontes (smoke-arrecadacao-conta 1.2) e registro coerente (1.3). ⚠️ A parte 'de acordo com a Portaria vigente' (rol de naturezas oficial) continua sendo o seed de naturezas (M04 pendência).",
-    rota_verificada: "papel: REGISTRAR_ARRECADACAO · contexto: banco dos percursos, next build + next start em 3010, build c9f1c9f, 2026-09-13 · passos: /receita/arrecadacoes → natureza, fonte 540 + conta CC-500-01 (fonte 500) → recusa nomeando → fonte 500 + CC-500-01 → registrada e na lista · obtido: ver smoke-arrecadacao-conta-c9f1c9f-r1.log.",
+    evidencia: "V6 P1.2 + V16: a guia declara a conta bancária que recebeu, e a coerência conferida no domínio é (a) a fonte informada está no ROL da conta — `exigirFonteNoRolDaConta`, a mesma função dos outros cinco sítios da TR 5.23, com o fallback estrito para a fonte PADRÃO quando o rol está vazio — e (b) a conta contábil mapeada da conta bancária É a perna de disponibilidade debitada (m09-atribuicao-de-conta.test.ts t1; m04-distribuicao-por-fonte.test.ts t9/t10, que provam a recusa por fonte fora do rol E a aceitação da segunda fonte de uma conta multifonte). Pela tela: select da conta em /receita/arrecadacoes e em /receita/arrecadacoes/distribuir, com a recusa nomeando as fontes que a conta comporta. ⚠️ A parte 'de acordo com a Portaria vigente' (rol de naturezas oficial) continua sendo o seed de naturezas (M04 pendência).",
+    rota_verificada: "papel: REGISTRAR_ARRECADACAO (papel de runtime) · contexto: clone do banco de percursos (gestao_publica_percursos_v16b), next dev em 3010, 2026-09-27 · passos: /receita/arrecadacoes/distribuir → guia repartida 60.000,00 (fonte 500) + 40.000,00 (fonte 540) numa conta cujo rol só comporta a 500 → RECUSA dizendo \"as fontes permitidas nesta conta são: 500\" → o rol da conta recebe a 540 pela tela → a MESMA guia é aceita · obtido: scripts/smoke-receita-por-fontes.ts, 22 ok / 0 falhas (4.3 e 6.1); a corrida anterior por conta única segue em smoke-arrecadacao-conta-c9f1c9f-r1.log.",
+  },
+  // ⚠️ V16 — E A LEITURA DA CLÁUSULA IMPORTA: ela cobre "os casos em que NÃO há rateio de percentual
+  // entre as fontes". Esse é exatamente o que existe — a fonte (ou as fontes) informadas no ato, por
+  // VALOR. O rateio por PERCENTUAL declarado no plano de contas da receita (TR 5.9.3.4 e 5.9.3.7) é
+  // outro mecanismo e NÃO existe: as duas seguem NAO_VERIFICADO, e esta marcação não as cobre.
+  "5.10.2.9": {
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia:
+      "A fonte é informada NO ATO do lançamento da receita, e desde a V16 ela pode ser MAIS DE UMA, por VALOR: `FonteDaArrecadacao` guarda uma parcela por (fonte, exercício da fonte) e a conservação do total é do MOTOR DE PARTIDAS DOBRADAS — o roteiro emite uma perna de classe 7 por natureza de fonte, cada uma com a sua fatia, contra uma de classe 8 com o total, e `validarLancamento` exige que o subsistema CONTROLE feche; parcelas que não somam o total não produzem lançamento, logo não produzem guia. Sete leitores por fonte passaram a ler a parcela por UMA função (`modules/m04-receita/parcelas-por-fonte.ts`, fail-closed), inclusive a DDR por fonte (M01) e a `ReceitaOrcamentaria` do SAGRES, que emite uma linha por fonte com o mesmo número de guia (o leiaute §4.16 não tem campo de total). A anulação HERDA as parcelas — o snapshot. `modules/m04-receita/m04-distribuicao-por-fonte.test.ts` (13/13). ⚠️ NÃO cobre o rateio por PERCENTUAL do plano de contas da receita (TR 5.9.3.4/5.9.3.7), que é outro mecanismo e continua ausente.",
+    rota_verificada:
+      "papel: REGISTRAR_ARRECADACAO e DISTRIBUIR_RECEITA_FORA_DA_PREVISAO (papel de runtime) · contexto: clone do banco de percursos (gestao_publica_percursos_v16b), next dev em 3010, 2026-09-27 · passos: /receita/arrecadacoes/distribuir → a LOA oferece as fontes previstas com o previsto de cada uma → 60.000,00 + 40.000,00 de um depósito de 100.000,00 → a lista mostra \"500 · 60.000,00 / 540 · 40.000,00\" → parcelas que somam 99.000,00 são RECUSADAS dizendo os dois números e a diferença → fonte que a LOA não prevê sem motivo escrito é RECUSADA, com motivo entra → anulada pela tela, a anulação carrega a MESMA repartição · obtido: scripts/smoke-receita-por-fontes.ts, 22 ok / 0 falhas (4.1 a 9.2).",
   },
   "5.10.2.7": {
     situacao: "PARCIAL",
