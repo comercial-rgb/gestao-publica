@@ -118,8 +118,27 @@ model ParametroDoAdiantamentoSalarial {
   ///
   /// O serviço recusa qualquer conta fora do ramo `1.1.3.1 ADIANTAMENTOS CONCEDIDOS`, e recusa
   /// conta SINTÉTICA (o adapter do razão não aceita partida em sintética — INVARIANTE 5).
+  ///
+  /// ⚠️ `onDelete: Restrict` DECLARADO, E ELE NÃO É O PADRÃO — É POR ISSO QUE ESTÁ ESCRITO.
+  ///
+  /// Para relação OPCIONAL o Prisma assume `SET NULL` quando ninguém declara. A migration
+  /// `20261019090000_v13_conta_do_adiantamento_no_parametro` criou a FK com `ON DELETE RESTRICT`,
+  /// e o banco está CERTO: o nulo aqui é o estado real do que nasceu antes da pergunta existir
+  /// (ver acima), e a LEITURA do parâmetro FALHA FECHADO com conta nula. `SET NULL` produziria
+  /// exatamente o estado que o serviço recusa — a conta sumindo de baixo do parâmetro porque
+  /// alguém apagou uma linha do plano, sem ninguém tocar nesta linha, e um parâmetro vigente
+  /// virando ilegível em silêncio. Apagar conta referenciada tem de DOER na hora.
+  ///
+  /// ⚠️ ISTO NÃO MUDA O BANCO. A declaração passou a dizer a verdade sobre a FK que já existe;
+  /// não há migration nova. Ela existe porque o guard de deriva (`npm run deriva`) contava esta
+  /// FK como deriva entre migrations e modelo — o modelo prometia `SET NULL`, o banco fazia
+  /// `RESTRICT`, e a próxima migration gerada do diff ia DERRUBAR a constraint para cumprir a
+  /// promessa errada. O precedente do repositório é o mesmo: cinco relações opcionais de
+  /// `m10-patrimonial.prisma` que referenciam versão de roteiro, motivo e parâmetro declaram
+  /// `onDelete: Restrict` pela mesma razão. `onUpdate` não entra: `Cascade` já é o padrão do
+  /// Prisma e é o que a migration escreveu, então declará-lo seria ruído.
   contaDoAdiantamentoId String?
-  contaDoAdiantamento   ContaPcasp? @relation("ContaDoAdiantamentoSalarial", fields: [contaDoAdiantamentoId], references: [id])
+  contaDoAdiantamento   ContaPcasp? @relation("ContaDoAdiantamentoSalarial", fields: [contaDoAdiantamentoId], references: [id], onDelete: Restrict)
 
   /// A rubrica de DESCONTO, de natureza `ABATIMENTO_DO_ADIANTAMENTO_SALARIAL`, que abate na folha
   /// MENSAL da mesma competência o que o vale adiantou.
