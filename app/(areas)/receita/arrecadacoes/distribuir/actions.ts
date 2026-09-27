@@ -61,6 +61,21 @@ export async function distribuirAction(
       }))
       .filter((p) => p.valor !== "");
 
+    // ⚠️ A FORMA DO VALOR, CONFERIDA AQUI PARA A RECUSA SER LEGÍVEL. A máscara do formulário
+    // (`CampoValor`) já submete o valor CRU; esta guarda existe para quem não passa por ela — e
+    // para que um valor torto produza uma frase em vez de "[DecimalError] Invalid argument:
+    // 60.000,00", que é verdade, é ilegível e vaza o nome de uma biblioteca para o operador.
+    // ⚠️ E ELA NÃO CONVERTE NADA: converter aqui seria um segundo normalizador de dinheiro, e a
+    // interface já tem um só.
+    const tortas = parcelas.filter((p) => !/^\d+(\.\d{1,2})?$/.test(p.valor));
+    if (tortas.length > 0) {
+      return {
+        erro:
+          `O valor informado para a(s) fonte(s) ${tortas.map((p) => p.fonte).join(", ")} não é um ` +
+          `número com até dois centavos. Informe como 60.000,00. Nada foi gravado.`,
+      };
+    }
+
     // A linha da fonte que a LOA não previu — só entra quando a pessoa a escolheu E deu valor.
     const outraFonte = t(f, "outraFonte");
     const outroValor = t(f, "outroValor");
@@ -72,6 +87,11 @@ export async function distribuirAction(
     }
     if (outraFonte === "" && outroValor !== "") {
       return { erro: "Informe qual é a fonte do valor da última linha. Nada foi gravado." };
+    }
+    if (outraFonte !== "" && !/^\d+(\.\d{1,2})?$/.test(outroValor)) {
+      return {
+        erro: `O valor informado para a fonte ${outraFonte} não é um número com até dois centavos. Nada foi gravado.`,
+      };
     }
     if (outraFonte !== "") {
       parcelas.push({

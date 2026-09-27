@@ -200,15 +200,17 @@ function Corpo({
                       {" "}· previsto na LOA {reais(f.valorPrevisto)}
                     </span>
                   </label>
-                  <input
+                  {/* ⚠️ A MÁSCARA DO SISTEMA, E NÃO UM `input` CRU — foi o percurso que apontou.
+                      Com campo cru, "60.000,00" chegava ao domínio como texto pt-BR e o erro que
+                      subia era "[DecimalError] Invalid argument: 60.000,00": verdadeiro, ilegível,
+                      e vazando o nome da biblioteca para o operador. `CampoValor` submete o valor
+                      CRU num hidden e é o único normalizador de dinheiro da interface. */}
+                  <CampoValor
+                    aoMudarValorCru={(cru) => setParcelas((p) => ({ ...p, [chave]: cru }))}
                     className={CAMPO}
                     id={`${uid}-gd-p-${chave}`}
-                    inputMode="decimal"
                     name="parcela"
-                    onChange={(e) => setParcelas((p) => ({ ...p, [chave]: e.target.value }))}
                     placeholder="0,00"
-                    type="text"
-                    value={parcelas[chave] ?? ""}
                   />
                 </div>
               );
@@ -244,15 +246,12 @@ function Corpo({
             </div>
             <div>
               <label className={ROTULO} htmlFor={`${uid}-gd-outro-valor`}>Valor (R$)</label>
-              <input
+              <CampoValor
+                aoMudarValorCru={setOutroValor}
                 className={CAMPO}
                 id={`${uid}-gd-outro-valor`}
-                inputMode="decimal"
                 name="outroValor"
-                onChange={(e) => setOutroValor(e.target.value)}
                 placeholder="0,00"
-                type="text"
-                value={outroValor}
               />
             </div>
           </div>

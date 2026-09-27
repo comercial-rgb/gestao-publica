@@ -98,7 +98,9 @@
     "percursos:restos-fixture": "tsx scripts/preparar-restos-de-percursos.ts",
     "percursos:consignacoes-fixture": "tsx scripts/preparar-consignacoes-de-percursos.ts",
     "smoke:recolhimento-origem": "tsx scripts/trinco-de-maquina.ts 'percurso do recolhimento por origem' -- npx tsx scripts/smoke-recolhimento-por-origem.ts",
-    "smoke:restos-operacoes": "tsx scripts/trinco-de-maquina.ts 'percurso das operacoes de restos a pagar' -- npx tsx scripts/smoke-restos-a-pagar-operacoes.ts"
+    "smoke:restos-operacoes": "tsx scripts/trinco-de-maquina.ts 'percurso das operacoes de restos a pagar' -- npx tsx scripts/smoke-restos-a-pagar-operacoes.ts",
+    "percursos:fontes-fixture": "tsx scripts/preparar-receita-por-fontes-de-percursos.ts",
+    "smoke:receita-por-fontes": "tsx scripts/trinco-de-maquina.ts 'percurso da guia repartida entre fontes' -- npx tsx scripts/smoke-receita-por-fontes.ts"
   },
   "keywords": [],
   "author": "",
