@@ -108,6 +108,62 @@ function instrucoes(script: string): readonly string[] {
     .filter((l) => l.length > 0 && !l.startsWith("--"));
 }
 
+/**
+ * A MESMA TRANSFORMAÇÃO QUE OS OUTROS DOIS CONSUMIDORES DE `prisma/sql/` APLICAM.
+ *
+ * ⚠️ FOI A AUSÊNCIA DESTA LINHA QUE DEIXOU O `npm run deriva` SEM MEDIR. Diagnosticado na
+ * V15: `prisma/sql/` tem três consumidores — `scripts/aplicar-sql-manual.ts` (`npm run db:sql`),
+ * `test/global-setup.ts` e este script. Os dois primeiros trocam `CREATE UNIQUE INDEX` por
+ * `CREATE UNIQUE INDEX IF NOT EXISTS`; este aplicava o arquivo CRU. E o 28º e último arquivo da
+ * pasta, `uq_roteiro_sem_tipo_de_credito.sql`, cria um índice que a migration
+ * `20261006090000_v11_v84_roteiro_versionado` JÁ CRIOU de propósito (ela o recria junto com a
+ * coluna `versao` para não abrir janela sem unicidade durante a migração). Sobre uma sombra que
+ * acabou de receber `migrate deploy`, o `CREATE` cru morria com `42P07 relation already exists`.
+ *
+ * Reproduzido nas duas direções, no próprio banco de sombra:
+ *     CREATE UNIQUE INDEX ...                 -> ERROR: relation ... already exists   rc=3
+ *     CREATE UNIQUE INDEX IF NOT EXISTS ...   -> NOTICE: ... skipping / CREATE INDEX   rc=0
+ *
+ * ⚠️ E ISTO NÃO É CONTORNO PARA A CONFERÊNCIA PASSAR: é FIDELIDADE. A sombra existe para
+ * representar um banco real, e um banco real é montado por `migrate deploy` + `npm run db:sql` —
+ * que aplica a pasta com esta transformação. Modelar a sombra de outro jeito mediria um ambiente
+ * que não existe. O schema não foi tocado, e o `.sql` não foi tocado.
+ */
+function idempotente(sql: string): string {
+  // /gi: um arquivo pode trazer MAIS DE UM índice (o do M05 traz dois).
+  return sql.replace(/CREATE UNIQUE INDEX/gi, "CREATE UNIQUE INDEX IF NOT EXISTS");
+}
+
+/**
+ * Os objetos que `prisma/sql/` cria E uma migration também cria — a ressalva que acompanha o
+ * resultado, porque a credibilidade da medição depende dela.
+ *
+ * ⚠️ O BURACO QUE ELA NOMEIA, e que NÃO é artefato deste guard: onde há colisão, o `IF NOT
+ * EXISTS` mantém a definição da MIGRATION e descarta a do arquivo em silêncio. Se as duas
+ * divergirem, o banco real (`npm run db:sql`) fica com a da migration, e o passo (2) daqui não
+ * acusa, porque ele filtra as sobras por NOME, não por definição. Hoje as duas definições são a
+ * mesma. Fechar isto pede comparar `pg_get_indexdef` com o que o arquivo produziria — pendência
+ * nomeada, não construída nesta rodada.
+ */
+function colisoesComMigrations(): readonly { readonly nome: string; readonly migration: string }[] {
+  const declarados = new Set(objetosDoSqlManual());
+  const achadas: { nome: string; migration: string }[] = [];
+  const raiz = "prisma/migrations";
+  for (const dir of readdirSync(raiz, { withFileTypes: true })) {
+    if (!dir.isDirectory()) continue;
+    for (const arquivo of readdirSync(join(raiz, dir.name)).filter((f) => f.endsWith(".sql"))) {
+      const sql = readFileSync(join(raiz, dir.name, arquivo), "utf8");
+      for (const m of sql.matchAll(
+        /CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?"?([A-Za-z0-9_]+)"?/gi
+      )) {
+        const nome = m[1];
+        if (nome !== undefined && declarados.has(nome)) achadas.push({ nome, migration: dir.name });
+      }
+    }
+  }
+  return achadas;
+}
+
 async function montarSombra(): Promise<string> {
   await recriar(NOME_SOMBRA);
 
@@ -124,7 +180,7 @@ async function montarSombra(): Promise<string> {
     for (const arquivo of readdirSync("prisma/sql")
       .filter((f) => f.endsWith(".sql"))
       .sort()) {
-      await cliente.query(readFileSync(join("prisma/sql", arquivo), "utf8"));
+      await cliente.query(idempotente(readFileSync(join("prisma/sql", arquivo), "utf8")));
     }
   } finally {
     await cliente.end();
@@ -158,44 +214,80 @@ async function derrubar(...nomes: readonly string[]): Promise<void> {
 async function main(): Promise<void> {
   const problemas: string[] = [];
 
-  // ── (1) MIGRATIONS × MODELO — tem de ser vazio ───────────────────────────
-  // O Prisma precisa de um banco VAZIO para reproduzir as migrations e ver o que elas
-  // produzem. Ele é criado aqui e derrubado no fim — nunca um banco existente.
-  await recriar(NOME_REPLAY);
-  process.env["SHADOW_DATABASE_URL"] = urlDeBanco(URL_BASE, NOME_REPLAY);
-  const passo1 = instrucoes(diff(["--from-migrations", "prisma/migrations"]));
-  if (passo1.length > 0) {
-    problemas.push(
-      "MIGRATIONS × MODELO não está vazio. Ou o schema mudou sem migration, ou uma " +
-        "migration criou objeto que o schema não declara — foi o caso do índice\n" +
-        "`MovimentoBancario_fonteId_idx` no ENT03b, que a migration seguinte ia DERRUBAR.\n\n" +
-        passo1.map((l) => `    ${l}`).join("\n")
-    );
-  }
-
-  // ── (2) BANCO COMPLETO × MODELO — só as sobras declaradas em prisma/sql ──
-  const sombra = await montarSombra();
+  /**
+   * ⚠️ A ESTRUTURA DESTE BLOCO É O SEGUNDO CONSERTO DA V15, e ele é independente do primeiro.
+   *
+   * Antes, `montarSombra()` era chamado FORA do `try`, e o `recriar(NOME_REPLAY)` também. Quando a
+   * montagem estourava (era o que acontecia, todas as vezes), a exceção subia direto:
+   *
+   *   - os DOIS bancos de rascunho ficavam de pé no servidor. Foi essa a pegada que permitiu
+   *     diagnosticar sem executar nada: `gestao_deriva_sombra` e `gestao_deriva_replay`
+   *     existiam, com 427 tabelas e os 27 primeiros arquivos de `prisma/sql/` aplicados — e
+   *     uma corrida BEM-SUCEDIDA os derruba. Eles eram o cadáver, não o ambiente;
+   *   - e o resultado do passo (1), que JÁ ESTAVA CALCULADO em `problemas`, era DESCARTADO. Pior
+   *     que não medir: a deriva de migrations × modelo podia estar vermelha e ninguém veria,
+   *     porque a saída era um stack trace sobre índice duplicado.
+   *
+   * Agora: tudo dentro do `try`, os rascunhos derrubados no `finally` em qualquer saída, e uma
+   * falha do passo (2) entra como PROBLEMA NOMEADO (saída 1) em vez de derrubar o processo — sem
+   * apagar o que o passo (1) já disse.
+   */
   try {
-    const declarados = objetosDoSqlManual();
-    const inesperadas = instrucoes(
-      diff(["--from-config-datasource"], sombra)
-    ).filter(
-      (l) => !declarados.some((nome) => l.includes(nome))
-    );
-    if (inesperadas.length > 0) {
+    // ── (1) MIGRATIONS × MODELO — tem de ser vazio ───────────────────────────
+    // O Prisma precisa de um banco VAZIO para reproduzir as migrations e ver o que elas
+    // produzem. Ele é criado aqui e derrubado no fim — nunca um banco existente.
+    await recriar(NOME_REPLAY);
+    process.env["SHADOW_DATABASE_URL"] = urlDeBanco(URL_BASE, NOME_REPLAY);
+    const passo1 = instrucoes(diff(["--from-migrations", "prisma/migrations"]));
+    if (passo1.length > 0) {
       problemas.push(
-        "BANCO COMPLETO × MODELO tem diferença que `prisma/sql/` não explica.\n" +
-          `(objetos manuais conhecidos: ${declarados.length})\n\n` +
-          inesperadas.map((l) => `    ${l}`).join("\n")
+        "MIGRATIONS × MODELO não está vazio. Ou o schema mudou sem migration, ou uma " +
+          "migration criou objeto que o schema não declara — foi o caso do índice\n" +
+          "`MovimentoBancario_fonteId_idx` no ENT03b, que a migration seguinte ia DERRUBAR.\n\n" +
+          passo1.map((l) => `    ${l}`).join("\n")
+      );
+    }
+
+    // ── (2) BANCO COMPLETO × MODELO — só as sobras declaradas em prisma/sql ──
+    try {
+      const sombra = await montarSombra();
+      const declarados = objetosDoSqlManual();
+      const inesperadas = instrucoes(diff(["--from-config-datasource"], sombra)).filter(
+        (l) => !declarados.some((nome) => l.includes(nome))
+      );
+      if (inesperadas.length > 0) {
+        problemas.push(
+          "BANCO COMPLETO × MODELO tem diferença que `prisma/sql/` não explica.\n" +
+            `(objetos manuais conhecidos: ${declarados.length})\n\n` +
+            inesperadas.map((l) => `    ${l}`).join("\n")
+        );
+      }
+    } catch (erro) {
+      // Passo (2) que não roda não é passo limpo. Ele é um problema, com a causa junto.
+      problemas.push(
+        "O PASSO (2) NÃO PUDE SER MEDIDO — a sombra não subiu, e portanto NADA se sabe sobre " +
+          "banco completo × modelo nesta corrida.\n\n" +
+          `    ${erro instanceof Error ? erro.message : String(erro)}`
       );
     }
   } finally {
     await derrubar(NOME_SOMBRA, NOME_REPLAY);
   }
 
+  // A ressalva acompanha o resultado, verde ou vermelho — ver `colisoesComMigrations`.
+  const colisoes = colisoesComMigrations();
+  const ressalva =
+    colisoes.length === 0
+      ? ""
+      : `\n[deriva] ressalva: ${colisoes.length} objeto(s) de prisma/sql/ também criado(s) por migration — ` +
+        "onde há colisão, a definição da MIGRATION é a que fica no banco, e o passo (2) filtra por nome:\n" +
+        colisoes.map((c) => `    ${c.nome}  <-  ${c.migration}`).join("\n") +
+        "\n";
+
   if (problemas.length > 0) {
     console.error("\n⚠️ DERIVA ENTRE O BANCO E O MODELO:\n");
     for (const p of problemas) console.error(`${p}\n`);
+    if (ressalva !== "") console.error(ressalva);
     console.error(
       "Declare o objeto no schema (`@@index`, `@@unique`) e regenere a migration, ou\n" +
         "acrescente o SQL a `prisma/sql/` se o Prisma não souber expressá-lo.\n"
@@ -207,6 +299,7 @@ async function main(): Promise<void> {
     "\n[deriva] migrations x modelo: limpo. " +
       `banco completo x modelo: só os ${objetosDoSqlManual().length} objetos de prisma/sql/.\n`
   );
+  if (ressalva !== "") console.log(ressalva);
 }
 
 await main();
