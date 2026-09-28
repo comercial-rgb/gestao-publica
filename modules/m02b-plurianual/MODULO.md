@@ -27,7 +27,7 @@ conciliado seletivamente, como o prompt V4 pede:
 e `test/ui/plurianual-telas.test.ts`. As telas daqui são do **molde** (`lib/molde/`), com
 descritores em `lib/portas/recursos/plurianual*.ts` — ver a seção "Telas".
 
-## Estado: SCHEMA + SERVIÇOS DE CRIAÇÃO + ANEXOS PUROS + TELAS DO MOLDE
+## Estado: SCHEMA + CRIAÇÃO + ANEXOS PUROS + TELAS DO MOLDE + ALTERAÇÃO VERSIONADA
 
 A ordem foi deliberada. No M10 descobrimos **nove serviços que movimentavam o bem e
 nenhum que o criava** — os únicos `create` de `BemPatrimonial` estavam no seed. Tabela
@@ -83,13 +83,17 @@ direto), `@@unique([anoInicio])` (dois planos no mesmo período).
 
 `PrevisaoReceitaPpa` tem `ano` + `valor`, e não `ano1..ano4`.
 
-### 6. 20 serviços, 10 ações — agrupadas pelos ANEXOS DA LRF
+### 6. 22 serviços, 11 ações — agrupadas pelos ANEXOS DA LRF
 
 Quem monta o Anexo de Metas Fiscais (art. 4º §1º) não é quem monta o de Riscos (art. 4º
 §3º), e nenhum dos dois é quem cadastra a árvore temática do PPA. Uma ação por serviço
 daria **vinte crachás que ninguém concede separadamente**; uma ação só daria o crachá que
 abre o planejamento inteiro. O mapa serviço → ação está em `acoes.ts`, com o motivo por
 grupo.
+
+A décima primeira é `ALTERAR_PLANEJAMENTO` (V18/C13), para os dois serviços da alteração e para as
+DUAS peças — e ela não acompanha `CADASTRAR_PPA` nem `CADASTRAR_LDO`: digitar a peça que o Executivo
+monta e assinar a lei que altera a peça **aprovada** são autoridades diferentes no ente.
 
 ### 7. Onde o guard NÃO pôde ser CHECK
 
@@ -102,6 +106,44 @@ atravessa tabelas. O guard vive no serviço, dentro da transação, lendo o plan
 - `ProjecaoAtuarialRpps.resultadoPrevidenciario` e `saldoFinanceiro` — um RPPS
   deficitário é **exatamente** o que a projeção atuarial existe para revelar;
 - `IndicadorPrograma` — indicador pode medir perda.
+
+### 9. A alteração da peça é ATO + AJUSTE COM SINAL, nunca cópia por versão (V18/C13)
+
+O PPA e a LDO podem ser alterados por lei depois de aprovados, e C13 exige *"original, atos e
+valores alterados preservados"*. O mecanismo é o que o repositório já usa duas vezes para a LOA (a
+reprevisão da receita e o crédito adicional do M03): `AtoDeAlteracaoDoPlanejamento` é a lei ou o
+decreto, `AlteracaoDeValorPlanejado` é o valor que ela mexeu, **com sinal**, e a linha aprovada
+nunca muda. O valor vigente é `original + soma dos ajustes` — derivação, nunca coluna cache.
+
+**"A versão da peça" é o estado dela até um ato ou até uma data.** Não existe versão nomeada nem
+cópia da peça: a candidata `versaoId` nas 20 tabelas exigiria derrubar `@@unique([anoInicio])` e
+`exercicio @unique`, as duas unicidades que existem para impedir duas verdades sobre o mesmo
+período. Recusada em `docs/varreduras/varredura-v18-versao-do-planejamento.md`.
+
+**⚠️ E O DELTA AO LADO DA LINHA DESLIGA OS CHECKS DA LINHA.** Cinco CHECKs deste módulo governam as
+colunas que uma alteração mexe; o `INSERT` do item não toca a tabela vigiada, então nenhum deles é
+avaliado sobre o valor que o sistema passa a exibir. `violacoesDoAlvo` (em `alteracao.ts`) reimpõe
+cada predicado sobre o valor **derivado**, dentro da transação, e cada mensagem cita a constraint
+que espelha. Sem isso, esta tabela seria a rota que aceita previsão de receita negativa e receita
+primária maior que a total.
+
+**Quatro alvos, treze grandezas** (previsão de receita do PPA, teto do programa, meta financeira da
+ação, e as dez colunas de dinheiro da `MetaAnualLdo`) — e não as 29 colunas de dinheiro do módulo.
+O motivo de cada exclusão está em `alteracao.ts`; a meta **física** fica de fora por precisão
+(`Decimal(18,6)` contra o dinheiro `Decimal(18,2)`): pendência `ALTERACAO-DE-META-FISICA`.
+
+**`metasAnuaisVigentes` é o dono da derivação.** Os dois leitores que já existiam da meta fiscal —
+o Anexo de Metas Fiscais em PDF (`lib/portas/anexos-ldo.ts`) e a meta que o **RREO Anexo 6**
+confronta (`metaFiscalDoExercicio`) — passam por ele. Com zero atos o número é idêntico ao de
+antes, e é essa igualdade que permitiu pôr a derivação debaixo de relatório já publicado.
+
+### 10. A LDO não tem previsão orçamentária, e isso apareceu em C13
+
+O TR pede alteração da receita da LDO "informando a entidade, a conta de receita" (5.9.2.3) e
+importação da previsão de receita e de despesa (5.9.2.6/.7). **Não existe `PrevisaoReceitaLdo` nem
+`PrevisaoDespesaLdo`**: os nove models da LDO são o trâmite, as prioridades (meta física), as metas
+anuais e os anexos da LRF. Do lado da LDO, o que a V18 versiona é a **meta fiscal**, não a dotação —
+e o catálogo está marcado dizendo isso. Pendência `LDO-SEM-PREVISAO-ORCAMENTARIA`.
 
 ## Precisão decimal
 
@@ -133,6 +175,11 @@ carrega `NOTA_LIMITE_DE_FONTE`.
 
 ## Telas (molde)
 
+A alteração da peça tem tela PRÓPRIA, escrita à mão: `/planejamento/alteracoes` (aprovado ×
+ajuste × vigente, os atos em ordem cronológica, o histórico de cada linha com a justificativa, o
+total por grandeza e o corte "situação até"). Ela não é do molde porque o comparativo não é
+listagem de recurso: ele cruza a linha aprovada com a soma dos atos.
+
 Descritores em `lib/portas/recursos/plurianual.ts` e dados em
 `lib/portas/recursos/plurianual-dados.ts`; rotas sob `/planejamento/ppa` e
 `/planejamento/ldo`, com os cadastros dependentes como AÇÕES do detalhe (programa no
@@ -150,6 +197,18 @@ do grupo. Os anexos da LDO saem em PDF pela rota autenticada do detalhe.
 - **Vínculo PPA → LOA** (a ficha que executa a ação do plano) → ainda não existe; exigiria
   decidir se a amarração é por `Acao` ou por `AcaoPpa`. Decisão consciente, não
   esquecimento. Pendência `VINCULO-PPA-LOA`.
-- **Emendas, bloqueio de dotação para emenda, versões do PPA/LDO, importação de peça
-  anterior, audiências públicas** (TR 5.9.1.1–2, 5.9.1.5–10, 5.9.1.21–23, 5.9.1.30,
-  5.9.2.5–7, 5.9.2.11–13, 5.9.2.18) → não modelados. Pendência `PPA-LDO-VERSOES-E-EMENDAS`.
+- **Emenda parlamentar** com vereador, texto jurídico, bloqueio de dotação inemendável e
+  sanção total/parcial (TR 5.9.1.21-23, 5.9.2.11-13, 5.9.3.13-15) → não modelada, e a parte
+  difícil é a sanção PARCIAL: ela exige que cada item nasça pendente e mude de estado, o que é
+  **rito**, não ajuste. Pendência `EMENDA-PARLAMENTAR-COM-SANCAO-PARCIAL`.
+- **Importação de peça anterior** (TR 5.9.1.5, .7, .9, .10, 5.9.2.5-7) → cópia não é versão, e
+  nenhum serviço `importar*` existe aqui. Pendência `IMPORTACAO-DE-PECA-ANTERIOR`.
+- **Audiências públicas** com as solicitações da comunidade (TR 5.9.1.1-2) → outro domínio.
+- **Todas as consultas por versão** (a segunda metade de 5.9.1.30 e 5.9.2.18): as telas do PPA e
+  os oito anexos da LDO mostram o vigente, não a posição de uma data passada; só o comparativo
+  aceita o corte. Pendências `CONSULTA-POR-VERSAO-NAS-DEMAIS-TELAS` e `VERSAO-NOMEADA-DA-PECA`.
+- **Compatibilizar PPA para LDO e LOA** (TR 5.9.1.25) → pressupõe `VINCULO-PPA-LOA`.
+
+  ⚠️ A pendência `PPA-LDO-VERSOES-E-EMENDAS` **encolheu na V18**: as versões do PPA/LDO com
+  comparativo e corte por data passaram a existir (ver a decisão 9). O que sobra dela é o que está
+  listado acima.
