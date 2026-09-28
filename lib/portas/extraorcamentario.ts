@@ -8,7 +8,7 @@ import {
   listarDispendios,
   retencoesComSaldo,
 } from "../../modules/m07-extraorcamentario/consultas";
-import { registrarDispendioExtra } from "../../modules/m07-extraorcamentario/extraorcamentario";
+import { estornarMovimentoExtra, registrarDispendioExtra } from "../../modules/m07-extraorcamentario/extraorcamentario";
 import { roteiroDispendioExtra } from "../../modules/m07-extraorcamentario/dominio";
 import { toMoney } from "../../packages/contracts/index";
 import { comEscritaAutenticada } from "./sessao";
@@ -213,6 +213,38 @@ export async function registrarRecolhimento(input: {
   return (
     `Recolhimento de ${total.toFixed(2)} registrado, composto de ${valores.length} ` +
     `retenç${valores.length === 1 ? "ão" : "ões"}. O que cada uma ainda tem a recolher já reflete esta guia.`
+  );
+}
+
+/**
+ * ESTORNA um movimento extraorçamentário — o ingresso ou o recolhimento, pelo ato inverso.
+ *
+ * ⚠️ ELE EXISTIA NO DOMÍNIO E NÃO TINHA BORDA (V19). `estornarMovimentoExtra` está no censo desde
+ * que nasceu, com ação própria, e nenhuma porta o expunha: a coluna "Estorno" da tela era só
+ * EXIBIÇÃO do que um script tivesse feito. O cenário de apresentação pede, com estas palavras,
+ * *"estornar somente este recolhimento de 100,00; saldo volta a 300,00"* — e isso não tinha caminho
+ * pela interface.
+ *
+ * ⚠️ O ESTORNO É ATO NOVO, NUNCA APAGAMENTO: o original fica, o estorno referencia, e o saldo a
+ * recolher volta pela soma. É a mesma doutrina do estorno no razão — e é ela que faz a composição
+ * por origem continuar explicando de onde cada centavo saiu.
+ */
+export async function estornarMovimentoExtraorcamentario(input: {
+  readonly movimentoId: string;
+  readonly data: string;
+  readonly motivo: string;
+}): Promise<string> {
+  const r = await comEscritaAutenticada("ESTORNAR_MOVIMENTO_EXTRA", (criadoPor) =>
+    estornarMovimentoExtra(cliente(), {
+      movimentoId: input.movimentoId,
+      data: input.data,
+      motivo: input.motivo,
+      criadoPor,
+    })
+  );
+  return (
+    `Estorno registrado (movimento ${r.movimentoId}). O original continua na lista, e o saldo a ` +
+    `recolher da origem voltou a considerar este valor.`
   );
 }
 

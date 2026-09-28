@@ -5,6 +5,7 @@ import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
 import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
+import { FormEstornoDoRecolhimento } from "./FormEstorno";
 import { BotaoPdf } from "../../../../components/ui/BotaoPdf";
 import {
   lerConferenciaDaComposicao, lerEventosExtra, lerSaldosExtra, lerRetencoes, lerDispendiosExtra, PortaSemBancoError,
@@ -243,6 +244,7 @@ export default async function ExtraorcamentarioPage({
                   <th className="py-1.5 pr-4">Data</th><th className="py-1.5 pr-4">Tipo</th>
                   <th className="py-1.5 pr-4">Consignatário</th><th className="py-1.5 pr-4">Histórico</th>
                   <th className="py-1.5 text-right">Valor</th>
+                  <th className="py-1.5 pr-4">Estorno</th>
                 </tr>
               </thead>
               <tbody>
@@ -253,6 +255,18 @@ export default async function ExtraorcamentarioPage({
                     <td className="py-1.5 pr-4">{d.consignatario}</td>
                     <td className="py-1.5 pr-4">{d.historico}</td>
                     <td className="py-1.5 text-right"><ValorMonetario valor={d.valor} /></td>
+                    {/*
+                      ⚠️ O ESTORNO GANHOU CAMINHO (V19). O serviço existia, era censado, e nenhuma
+                      porta o expunha — a coluna de estorno acima mostrava só o que um script tivesse
+                      feito. O cenário de apresentação pede estornar UM recolhimento e ver o saldo
+                      voltar; agora isso se faz aqui, na linha do recolhimento que se está vendo.
+                    */}
+                    <td className="py-1.5 pr-4">
+                      <FormEstornoDoRecolhimento
+                        movimentoId={d.id}
+                        rotulo={`o recolhimento de ${d.tipoCodigo} para ${d.consignatario}`}
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>
