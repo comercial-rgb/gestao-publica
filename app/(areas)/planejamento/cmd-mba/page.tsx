@@ -8,6 +8,7 @@ import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import {
   lerCmdVigente,
   lerConfrontoMba,
+  lerLimitacaoDeEmpenho,
   lerMbaVigente,
   PortaSemBancoError,
   type ConfrontoMbaDaTela,
@@ -18,6 +19,7 @@ import {
 } from "../../../../lib/portas/programacao";
 import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
+import { FormLimitacao, FormLiberacao, FormProporDaLoa } from "./FormsDaProgramacao";
 
 /**
  * PROGRAMAÇÃO FINANCEIRA — CMD e MBA (TR 4.18/4.19/4.43/4.44 · LRF arts. 8º, 9º e 13).
@@ -93,11 +95,13 @@ export default async function CmdMbaPage({
   let cmd: PlanoProgramacao;
   let mba: PlanoProgramacao;
   let confronto: ConfrontoMbaDaTela;
+  let limitacao: { readonly ativa: boolean; readonly atoRef: string | null; readonly motivo: string | null; readonly desde: Date | null; readonly criadoPor: string | null };
   try {
-    [cmd, mba, confronto] = await Promise.all([
+    [cmd, mba, confronto, limitacao] = await Promise.all([
       lerCmdVigente({ exercicio: exercicio }),
       lerMbaVigente({ exercicio: exercicio }),
       lerConfrontoMba({ exercicio: exercicio }),
+      lerLimitacaoDeEmpenho({ exercicio: exercicio }),
     ]);
   } catch (erro) {
     return (
@@ -248,7 +252,28 @@ export default async function CmdMbaPage({
         />
       </div>
 
+      {/*
+        ⚠️ OS ATOS DA PROGRAMAÇÃO (V19). Até aqui esta tela só LIA, e o regime do cronograma só podia
+        ser ligado por script — o que deixava a recusa por programação ativa fora do alcance de quem
+        opera. Os três formulários exigem o ato que os autoriza; a minuta dele sai do botão acima.
+      */}
+      <FormProporDaLoa exercicio={exercicio} peca="CMD" />
+      <FormProporDaLoa exercicio={exercicio} peca="MBA" />
+      <FormLimitacao ativa={limitacao.ativa} exercicio={exercicio} />
+      {cmd.vigente !== null && cmd.vigente.linhas.length > 0 ? (
+        <FormLiberacao
+          exercicio={exercicio}
+          fontes={cmd.vigente.linhas.map((l) => ({ id: l.fonteId, codigo: l.fonteCodigo }))}
+        />
+      ) : null}
+
       <p className="text-xs text-[color:var(--color-ink-3)]">
+        {limitacao.ativa && limitacao.atoRef !== null ? (
+          <>
+            A limitação de empenho está <strong>LIGADA</strong> por {limitacao.atoRef}
+            {limitacao.desde !== null ? <> desde {dataBr(limitacao.desde)}</> : null}.{" "}
+          </>
+        ) : null}
         A <strong>limitação de empenho</strong> é <strong>opt-in por exercício</strong>: ausente, ela está
         DESLIGADA e o cronograma acima é planejamento, não trava. Ligada, o empenho passa a ser julgado contra a cota da
         fonte no mês — e uma fonte <strong>sem cota</strong> naquele mês é rejeitada, o que é diferente de

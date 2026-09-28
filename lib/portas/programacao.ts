@@ -401,6 +401,41 @@ function emCentavos(decimal: string): bigint {
     BigInt(negativo ? inteiro.slice(1) : inteiro) * 100n + BigInt((frac + "00").slice(0, 2));
   return negativo ? -magnitude : magnitude;
 }
+/**
+ * A LIMITAÇÃO DE EMPENHO ESTÁ LIGADA NESTE EXERCÍCIO? — e quem a ligou, por qual ato.
+ *
+ * ⚠️ O CRITÉRIO É COPIADO DO GUARD, LITERALMENTE: a vigente é o evento de `criadoEm` mais recente,
+ * e ausência é DESLIGADA (`modules/m05-despesa/guard-cmd.ts`, `limitacaoAtiva`). Se esta leitura
+ * decidisse por conta própria — "o de maior `vigenteDesde`", por exemplo —, a tela poderia dizer
+ * DESLIGADA enquanto o servidor recusa o empenho, e o operador procuraria o defeito no empenho.
+ */
+export async function lerLimitacaoDeEmpenho(p: {
+  readonly exercicio: number;
+}): Promise<{
+  readonly ativa: boolean;
+  readonly atoRef: string | null;
+  readonly motivo: string | null;
+  readonly desde: Date | null;
+  readonly criadoPor: string | null;
+}> {
+  await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
+  const evento = await cliente().eventoLimitacaoEmpenho.findFirst({
+    where: { exercicio: p.exercicio },
+    orderBy: { criadoEm: "desc" },
+    select: { ativo: true, atoRef: true, motivo: true, criadoEm: true, criadoPor: true },
+  });
+  if (evento === null) {
+    return { ativa: false, atoRef: null, motivo: null, desde: null, criadoPor: null };
+  }
+  return {
+    ativa: evento.ativo,
+    atoRef: evento.atoRef,
+    motivo: evento.motivo,
+    desde: evento.criadoEm,
+    criadoPor: evento.criadoPor,
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════════
 // A ESCRITA — V19, e ela REVERTE a decisão declarada no cabeçalho deste arquivo
 // ═══════════════════════════════════════════════════════════════════════════════════
