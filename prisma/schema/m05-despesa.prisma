@@ -22,6 +22,13 @@ enum TipoMovimentoDotacao {
   RESERVA_LIBERADA
   EMPENHO
   EMPENHO_ANULADO
+  /// V21 — a dotação que uma LEI ESPECÍFICA move de uma programação para outra (CF art. 167, VI:
+  /// remanejamento, transposição e transferência). NÃO é crédito adicional: não traz recurso
+  /// novo, não consome o limite de crédito da LOA, e no plano de contas mora em
+  /// 5.2.2.1.9.02 ALTERAÇÃO DA LEI ORÇAMENTÁRIA, não em 5.2.2.1.2. Por isso é tipo PRÓPRIO, e não
+  /// um quarto valor de TipoCredito — aquele enum governa o limite, e dez sítios o enumeram.
+  REALOCACAO_ACRESCIMO
+  REALOCACAO_REDUCAO
 }
 
 enum TipoEmpenho {
@@ -67,6 +74,8 @@ model MovimentoDotacao {
 
   /// back-relation M03 — campo VIRTUAL, não gera coluna.
   itemCredito ItemCredito?
+  /// back-relation M03 V21 — campo VIRTUAL, não gera coluna.
+  itemDeRealocacao ItemDeRealocacao?
 
   @@index([fichaId, tipo])
   @@index([origemTipo, origemId])

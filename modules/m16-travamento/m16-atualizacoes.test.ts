@@ -337,6 +337,9 @@ describe("instalação limpa e atualização — no banco", () => {
       // ACOES_DO_ENTE. Se ela tivesse ficado fora de TODAS_AS_ACOES, o bootstrap nao a concederia e
       // esta previa viria 1 — foi exatamente este numero que apontou o furo da v32.
       { versao: 36, previa: 0, aplicada: false },
+      // ⚠️ V21 — PREVIA 0 NA INSTALACAO LIMPA prova que as duas acoes da realocacao chegaram a
+      // ACOES_DO_ENTE pelo bootstrap. Fora de TODAS_AS_ACOES, esta previa viria 2.
+      { versao: 37, previa: 0, aplicada: false },
     ]);
   });
 

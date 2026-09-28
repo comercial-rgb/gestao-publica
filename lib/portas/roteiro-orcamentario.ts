@@ -121,6 +121,23 @@ export const PARES_DO_ROTEIRO: readonly ParDeRoteiro[] = [
     rotulo: "Reserva liberada",
     explicacao: "A devolução do saldo reservado que não virou empenho — o inverso da reserva.",
   },
+  // V21 — a realocação por lei específica (CF art. 167, VI). Duas linhas, uma por perna do ato.
+  {
+    tipo: "REALOCACAO_ACRESCIMO",
+    tipoCredito: null,
+    abertura: null,
+    rotulo: "Remanejamento, transposição ou transferência — ficha que recebe",
+    explicacao:
+      "Dotação que uma lei específica tira de uma programação e põe nesta. Não é crédito adicional: não traz recurso novo e não consome o limite da LOA. No plano, mora em ALTERAÇÃO DA LEI ORÇAMENTÁRIA — ACRÉSCIMO.",
+  },
+  {
+    tipo: "REALOCACAO_REDUCAO",
+    tipoCredito: null,
+    abertura: null,
+    rotulo: "Remanejamento, transposição ou transferência — ficha que cede",
+    explicacao:
+      "A outra ponta do mesmo ato: a dotação que sai desta programação. No plano, ALTERAÇÃO DA LEI ORÇAMENTÁRIA — REDUÇÃO.",
+  },
 ];
 
 export interface LinhaDoRoteiro extends ParDeRoteiro {

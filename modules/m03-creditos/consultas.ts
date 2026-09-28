@@ -186,7 +186,17 @@ export interface LinhaQdd {
   readonly creditoSuplementado: string;
   /** Σ ANULACAO_CREDITO — o que os decretos tiraram desta ficha. */
   readonly creditoAnulado: string;
-  /** inicial + suplementado − anulado, por `calcularSaldos`. É o teto contra o qual se empenha. */
+  /** V21 — Σ REALOCACAO_ACRESCIMO: o que remanejamento, transposição ou transferência trouxe. */
+  readonly realocadoAcrescimo: string;
+  /** V21 — Σ REALOCACAO_REDUCAO: o que a realocação tirou desta ficha. */
+  readonly realocadoReducao: string;
+  /** Recebido menos cedido — a coluna única da tela, que já está no limite de largura. */
+  readonly realocadoLiquido: string;
+  /**
+   * inicial + suplementado − anulado + realocado (acréscimo − redução), por `calcularSaldos`. É o
+   * teto contra o qual se empenha — e as colunas acima somam a ele por construção, não por
+   * coincidência: as cinco saem do mesmo `TotaisPorTipo`.
+   */
   readonly dotacaoAtualizada: string;
   /** Cache do M05 — orientação. Vai à tela ao lado da atualizada, sem substituí-la. */
   readonly saldoDisponivel: string;
@@ -263,6 +273,11 @@ export async function listarQdd(
       dotacaoInicial: (totais.DOTACAO_INICIAL ?? zero).toFixed(2),
       creditoSuplementado: (totais.CREDITO_ADICIONAL ?? zero).toFixed(2),
       creditoAnulado: (totais.ANULACAO_CREDITO ?? zero).toFixed(2),
+      realocadoAcrescimo: (totais.REALOCACAO_ACRESCIMO ?? zero).toFixed(2),
+      realocadoReducao: (totais.REALOCACAO_REDUCAO ?? zero).toFixed(2),
+      realocadoLiquido: toMoney(
+        (totais.REALOCACAO_ACRESCIMO ?? zero).minus(totais.REALOCACAO_REDUCAO ?? zero)
+      ).toFixed(2),
       dotacaoAtualizada: saldos.autorizado.toFixed(2),
       saldoDisponivel: f.saldoDisponivel.toFixed(2),
     };

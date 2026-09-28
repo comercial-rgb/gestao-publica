@@ -262,6 +262,8 @@ model FonteRecurso {
   consorcios          ConsorcioPublico[]
   // back-relations M03 — campos VIRTUAIS, não geram coluna.
   itensCredito        ItemCredito[]
+  /// back-relation M03 V21 — as pernas de realocação (remanejamento, transposição, transferência).
+  itensDeRealocacao   ItemDeRealocacao[]
   disponibilidades    DisponibilidadeRecursoNovo[]
   // back-relation M04 (TR 5.87) — reconhecimento pelo fato gerador. Campo VIRTUAL.
   reconhecimentos     ReceitaReconhecida[]
@@ -337,6 +339,8 @@ model FichaOrcamentaria {
   reservas     ReservaDotacao[]
   empenhos     Empenho[]
   itensCredito ItemCredito[]
+  /// back-relation M03 V21 — as pernas de realocação que tiram ou põem dotação nesta ficha.
+  itensDeRealocacao ItemDeRealocacao[]
   // ---------------------------------------------------------------------------
 
   partidas PartidaContabil[]

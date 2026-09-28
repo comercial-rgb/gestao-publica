@@ -26,7 +26,9 @@ export type TipoMovimentoDotacao =
   | "RESERVA"
   | "RESERVA_LIBERADA"
   | "EMPENHO"
-  | "EMPENHO_ANULADO";
+  | "EMPENHO_ANULADO"
+  | "REALOCACAO_ACRESCIMO"
+  | "REALOCACAO_REDUCAO";
 
 export const TIPOS_MOVIMENTO: readonly TipoMovimentoDotacao[] = [
   "DOTACAO_INICIAL",
@@ -36,6 +38,8 @@ export const TIPOS_MOVIMENTO: readonly TipoMovimentoDotacao[] = [
   "RESERVA_LIBERADA",
   "EMPENHO",
   "EMPENHO_ANULADO",
+  "REALOCACAO_ACRESCIMO",
+  "REALOCACAO_REDUCAO",
 ] as const;
 
 /**
@@ -54,6 +58,11 @@ const SINAIS: Record<
   RESERVA_LIBERADA: { saldo: "reservado", sinal: -1 },
   EMPENHO: { saldo: "empenhado", sinal: 1 },
   EMPENHO_ANULADO: { saldo: "empenhado", sinal: -1 },
+  // V21 — a realocação por lei específica (CF art. 167, VI) mexe no AUTORIZADO, como o crédito:
+  // a ficha que recebe passa a poder empenhar mais, a que cede, menos. Entra aqui e em nenhum outro
+  // lugar da aritmética — o QDD, o saldo e a reconciliação leem esta tabela.
+  REALOCACAO_ACRESCIMO: { saldo: "autorizado", sinal: 1 },
+  REALOCACAO_REDUCAO: { saldo: "autorizado", sinal: -1 },
 };
 
 /** Total por tipo, como sai de um GROUP BY no banco. */

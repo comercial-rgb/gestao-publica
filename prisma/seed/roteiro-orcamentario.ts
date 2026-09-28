@@ -12,6 +12,8 @@ import {
   CONTA_DOTACAO_POR_FONTE_EXCESSO,
   CONTA_DOTACAO_POR_FONTE_OPERACAO_CREDITO,
   CONTA_DOTACAO_POR_FONTE_SUPERAVIT,
+  CONTA_REALOCACAO_ACRESCIMO,
+  CONTA_REALOCACAO_REDUCAO,
 } from "../../modules/m01-core-contabil/roteiros.js";
 import type { OrigemRecurso } from "../generated/client/enums.js";
 
@@ -81,7 +83,9 @@ const ROTEIROS: readonly {
     | "CREDITO_ADICIONAL"
     | "ANULACAO_CREDITO"
     | "RESERVA"
-    | "RESERVA_LIBERADA";
+    | "RESERVA_LIBERADA"
+    | "REALOCACAO_ACRESCIMO"
+    | "REALOCACAO_REDUCAO";
   readonly tipoCredito?: "SUPLEMENTAR" | "ESPECIAL" | "EXTRAORDINARIO";
   /** ⚠️ A TERCEIRA DIMENSÃO (V11 V8.8) — só no especial e no extraordinário. */
   readonly abertura?: "ABERTO" | "REABERTO";
@@ -120,6 +124,12 @@ const ROTEIROS: readonly {
   },
   { tipo: "RESERVA", debito: CONTA_CREDITO_DISPONIVEL, credito: CONTA_CREDITO_RESERVADO },
   { tipo: "RESERVA_LIBERADA", debito: CONTA_CREDITO_RESERVADO, credito: CONTA_CREDITO_DISPONIVEL },
+  // ⚠️ V21 — A REALOCAÇÃO POR LEI ESPECÍFICA (CF art. 167, VI), e ela é SEMEÁVEL: o plano tem UMA
+  // analítica por perna sob 5.2.2.1.9.02 ALTERAÇÃO DA LEI ORÇAMENTÁRIA. A ficha que recebe debita o
+  // acréscimo e credita o crédito disponível; a que cede, o inverso contra a redução (credora).
+  // Ver `CONTA_REALOCACAO_ACRESCIMO` em modules/m01-core-contabil/roteiros.ts.
+  { tipo: "REALOCACAO_ACRESCIMO", debito: CONTA_REALOCACAO_ACRESCIMO, credito: CONTA_CREDITO_DISPONIVEL },
+  { tipo: "REALOCACAO_REDUCAO", debito: CONTA_CREDITO_DISPONIVEL, credito: CONTA_REALOCACAO_REDUCAO },
 ];
 
 /** O rótulo do roteiro em uma linha — "CREDITO_ADICIONAL/ESPECIAL/ABERTO" quando há as duas. */

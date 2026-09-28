@@ -435,6 +435,10 @@ export const TABELAS = [
   // M03 — créditos adicionais
   "ItemCredito",
   "DecretoEncerramento",
+  // M03 V21 — a realocação por lei específica (remanejamento, transposição, transferência).
+  "ItemDeRealocacao",
+  "AnulacaoDeRealocacao",
+  "AtoDeRealocacao",
   "DecretoCredito",
   "LeiCredito",
   "DisponibilidadeRecursoNovo",

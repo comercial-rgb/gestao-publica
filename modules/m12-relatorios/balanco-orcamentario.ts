@@ -263,6 +263,17 @@ async function lerDespesas(
       case "ANULACAO_CREDITO":
         acc.creditos = toMoney(acc.creditos.minus(v));
         break;
+      // ⚠️ V21 — A REALOCAÇÃO POR LEI ESPECÍFICA (CF art. 167, VI) muda a dotação ATUALIZADA da
+      // ficha, e é por aqui que ela chega à coluna (g) = (e) + (f). Não é crédito adicional — mas o
+      // quadro não tem coluna própria para ela, e fora daqui a atualizada do Anexo 12 discordaria do
+      // saldo contra o qual se empenha. No total do ente ela soma zero (o que sai de uma ficha entra
+      // em outra); por categoria e grupo, não — e é exatamente o que uma transferência muda.
+      case "REALOCACAO_ACRESCIMO":
+        acc.creditos = toMoney(acc.creditos.plus(v));
+        break;
+      case "REALOCACAO_REDUCAO":
+        acc.creditos = toMoney(acc.creditos.minus(v));
+        break;
       case "EMPENHO":
         acc.empenhadas = toMoney(acc.empenhadas.plus(v));
         break;
@@ -274,6 +285,13 @@ async function lerDespesas(
       case "RESERVA":
       case "RESERVA_LIBERADA":
         break;
+      default: {
+        // ⚠️ EXAUSTIVO desde a V21: um tipo novo de movimento de dotação NÃO COMPILA até alguém
+        // dizer em que coluna do quadro ele entra. Antes, o `switch` sem `default` o descartava em
+        // silêncio — e a dotação atualizada do Anexo 12 deixava de bater com a da ficha.
+        const naoTratado: never = m.tipo;
+        throw new Error(`Tipo de movimento de dotação sem coluna no balanço orçamentário: ${String(naoTratado)}.`);
+      }
     }
   }
 

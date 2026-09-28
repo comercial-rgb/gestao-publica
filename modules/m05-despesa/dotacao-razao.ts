@@ -65,6 +65,9 @@ export const LANCA_PELO_ROTEIRO_ORCAMENTARIO: Record<TipoMovimentoDotacao, boole
   EMPENHO: false,
   /** JÁ lançado pelo estorno do empenho. */
   EMPENHO_ANULADO: false,
+  /** V21 — a realocação lança pelo roteiro do seu tipo (5.2.2.1.9.02 contra o crédito disponível). */
+  REALOCACAO_ACRESCIMO: true,
+  REALOCACAO_REDUCAO: true,
 };
 
 export interface MovimentoDotacaoParams {
@@ -363,4 +366,118 @@ async function roteiroPorFonte(
     );
   }
   return r;
+}
+
+/**
+ * ═══ O ESTORNO EXATO DE UM MOVIMENTO DE DOTAÇÃO (V21) ═══
+ *
+ * Um movimento NOVO, do tipo inverso (é o `SINAIS` do domínio que devolve o saldo), com
+ * `estornoDeId` apontando o original — e, no razão, o ESTORNO do lançamento original: as MESMAS
+ * contas, lados trocados, `estornoDeId` apontando o lançamento de origem.
+ *
+ * ⚠️ POR QUE NÃO SE LANÇA PELO ROTEIRO DO TIPO INVERSO. O acréscimo de uma realocação entra em
+ * 5.2.2.1.9.02.01 ACRÉSCIMO; a redução, em 5.2.2.1.9.02.09 (-) REDUÇÃO. Desfazer um acréscimo pelo
+ * roteiro da redução zeraria o crédito disponível e deixaria AS DUAS analíticas infladas pelo mesmo
+ * valor — o pai fecharia, e o balancete por analítica diria que houve um acréscimo e uma redução
+ * que nunca existiram. Estorno é o inverso do fato, não outro fato.
+ *
+ * ⚠️ SÓ PARA OS TIPOS DE `INVERSO_NO_ESTORNO`. Os demais já têm o seu caminho de desfazer (o
+ * crédito adicional pelo M03, o empenho pelo M05), e estendê-los para cá é decisão de cada um.
+ */
+export const INVERSO_NO_ESTORNO: Partial<Record<TipoMovimentoDotacao, TipoMovimentoDotacao>> = {
+  REALOCACAO_ACRESCIMO: "REALOCACAO_REDUCAO",
+  REALOCACAO_REDUCAO: "REALOCACAO_ACRESCIMO",
+};
+
+export async function estornarMovimentoDotacao(
+  tx: Tx,
+  p: {
+    readonly movimentoId: string;
+    /** A data do FATO do estorno — a competência do movimento novo e do lançamento. */
+    readonly data: Date;
+    readonly origemTipo: string;
+    readonly origemId: string;
+    readonly historico: string;
+    readonly criadoPor: string;
+  }
+): Promise<{ readonly movimentoId: string }> {
+  const original = await tx.movimentoDotacao.findUnique({
+    where: { id: p.movimentoId },
+    select: { id: true, fichaId: true, tipo: true, valor: true, estornoDeId: true },
+  });
+  if (original === null) {
+    throw new Error(`Movimento de dotação ${p.movimentoId} não encontrado. Nada foi gravado.`);
+  }
+  const inverso = INVERSO_NO_ESTORNO[original.tipo];
+  if (inverso === undefined) {
+    throw new Error(
+      `O movimento ${original.tipo} não se estorna por aqui: ele tem o seu próprio caminho de ` +
+        `desfazer. Nada foi gravado.`
+    );
+  }
+  if (original.estornoDeId !== null) {
+    throw new Error(`O movimento ${p.movimentoId} já é um estorno — não se estorna um estorno. Nada foi gravado.`);
+  }
+  const jaEstornado = await tx.movimentoDotacao.findFirst({
+    where: { estornoDeId: original.id },
+    select: { id: true },
+  });
+  if (jaEstornado !== null) {
+    throw new Error(`O movimento ${p.movimentoId} já foi estornado. Nada foi gravado.`);
+  }
+
+  // O lançamento que o movimento original produziu. Sem ele não há o que estornar no razão — e
+  // gravar o movimento inverso sem a perna seria reabrir o furo de 46dfd5d pelo lado do estorno.
+  const lancamento = await tx.lancamentoContabil.findFirst({
+    where: { origemId: original.id, estornoDeId: null },
+    select: {
+      id: true,
+      partidas: { select: { contaId: true, tipo: true, subsistema: true, valor: true, fichaId: true } },
+    },
+  });
+  if (lancamento === null) {
+    throw new Error(
+      `O movimento ${p.movimentoId} (${original.tipo}) não tem lançamento no razão para estornar. ` +
+        `Nada foi gravado.`
+    );
+  }
+
+  // ⚠️ PERÍODO ABERTO PELA COMPETÊNCIA DO ESTORNO — antes do primeiro `create`.
+  await exigirCompetenciaEmExercicioAberto(tx, p.data, `estorno de movimento de dotação ${original.tipo}`);
+
+  const mov = await tx.movimentoDotacao.create({
+    data: {
+      fichaId: original.fichaId,
+      tipo: inverso,
+      valor: original.valor,
+      origemTipo: p.origemTipo,
+      origemId: p.origemId,
+      estornoDeId: original.id,
+      criadoPor: p.criadoPor,
+      competencia: p.data,
+      competenciaDerivada: false,
+    },
+    select: { id: true },
+  });
+
+  await lancarNoRazao(tx, {
+    id: randomUUID(),
+    numeroControle: `DOT-EST-${original.tipo}-${mov.id}`,
+    dataTransacao: p.data,
+    historico: p.historico,
+    origemTipo: p.origemTipo,
+    origemId: mov.id,
+    natureza: "NORMAL",
+    estornoDeId: lancamento.id,
+    criadoPor: p.criadoPor,
+    partidas: lancamento.partidas.map((x) => ({
+      contaId: x.contaId,
+      tipo: x.tipo === "DEBITO" ? ("CREDITO" as const) : ("DEBITO" as const),
+      subsistema: x.subsistema,
+      valor: x.valor.toFixed(2),
+      fichaId: x.fichaId,
+    })),
+  });
+
+  return { movimentoId: mov.id };
 }

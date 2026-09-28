@@ -84,6 +84,8 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   CRIAR_DECRETO_DE_CREDITO: "planejamento",
   EXECUTAR_CREDITO: "planejamento",
   ANULAR_CREDITO: "planejamento",
+  REGISTRAR_REALOCACAO_DE_DOTACAO: "planejamento",
+  ANULAR_REALOCACAO_DE_DOTACAO: "planejamento",
   ENCERRAR_DECRETO: "planejamento",
   // M04 — receita
   REGISTRAR_ARRECADACAO: "receita",

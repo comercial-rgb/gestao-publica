@@ -1305,6 +1305,21 @@ async function l250(
         }))
       );
 
+    // ⚠️ V21 — A REALOCAÇÃO POR LEI ESPECÍFICA NÃO TEM CAMPO NO L250, e o arquivo RECUSA em vez de
+    // omiti-la. O registro separa créditos suplementares, especiais e extraordinários e as reduções;
+    // o remanejamento, a transposição e a transferência (CF art. 167, VI) não são nenhum deles.
+    // Somá-la num campo vizinho seria inventar a classificação do leiaute; omiti-la faria a dotação
+    // do L250 discordar da ficha sem ninguém ver. Pendência `MANAD-SEM-CAMPO-PARA-REALOCACAO`.
+    const realocacao = meus.find(
+      (mv) => mv.tipo === "REALOCACAO_ACRESCIMO" || mv.tipo === "REALOCACAO_REDUCAO"
+    );
+    if (realocacao !== undefined) {
+      throw new Error(
+        `A ficha ${f.id} tem remanejamento, transposição ou transferência de dotação, e o registro ` +
+          `L250 do MANAD não tem campo para esse fato (ele separa só créditos adicionais por tipo e ` +
+          `reduções). O arquivo não é gerado para não publicar uma dotação que discorda da ficha.`
+      );
+    }
     const dotacaoInicial = somaDe((mv) => mv.tipo === "DOTACAO_INICIAL");
     const credPorTipo = (tipo: "SUPLEMENTAR" | "ESPECIAL" | "EXTRAORDINARIO"): Money =>
       somaDe(

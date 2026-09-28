@@ -718,6 +718,40 @@ export function derivarAlteracaoDoPlanejamento(
 }
 
 /**
+ * V21 — a REALOCAÇÃO de dotação por lei específica (CF art. 167, VI): registrar e anular.
+ *
+ * ⚠️ NÃO DERIVA DE EXECUTAR_CREDITO. Quem abre crédito adicional não passa, por isso, a poder mover
+ * dotação entre órgãos: são atos de natureza e fundamento diferentes. Vai só a quem administra
+ * permissões no global — o mesmo caminho das ações novas da V19 e da V20 —, que as distribui
+ * nomeando a pessoa.
+ */
+export const ACOES_DA_REALOCACAO: readonly AcaoDoSistema[] = [
+  "REGISTRAR_REALOCACAO_DE_DOTACAO",
+  "ANULAR_REALOCACAO_DE_DOTACAO",
+];
+
+export function derivarRealocacaoDeDotacao(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some(
+      (p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null
+    );
+    if (!administra) continue;
+    const jaTem = new Set(
+      perfil.permissoes.filter((p) => p.unidadeOrcId === null).map((p) => p.acao)
+    );
+    for (const acao of ACOES_DA_REALOCACAO) {
+      if (jaTem.has(acao)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
+
+/**
  * V20 — a RÉGUA da virada dos controles orçamentários.
  *
  * ⚠️ UMA AÇÃO SÓ, e ela é a que faltava. `ENCERRAR_CONTROLES_ORCAMENTARIOS` e
@@ -1592,6 +1626,20 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "publica a Uniao um orcamento que e a soma de dois. Vai so a quem administra permissoes no " +
       "global, que a distribui nomeando a pessoa.",
     derivar: derivarViradaDosControles,
+  },
+  {
+    versao: 37,
+    nome: "realocacao-de-dotacao",
+    descricao:
+      "O remanejamento, a transposicao e a transferencia de dotacao por lei especifica (Constituicao, " +
+      "art. 167, VI) passaram a ser registrados pela tela (V21): um ato com a lei que o autorizou, a " +
+      "especie, a justificativa e as pernas — as fichas que cedem e as que recebem, fechando no total " +
+      "e em cada fonte. Com isso vem REGISTRAR_REALOCACAO_DE_DOTACAO e ANULAR_REALOCACAO_DE_DOTACAO. " +
+      "⚠️ NAO SAO CREDITO ADICIONAL: a realocacao nao traz recurso novo nem consome o limite da LOA, e " +
+      "no plano de contas mora em 5.2.2.1.9.02 ALTERACAO DA LEI ORCAMENTARIA. Por isso as acoes nao " +
+      "derivam de EXECUTAR_CREDITO — quem abre credito nao passa, por isso, a mover dotacao entre " +
+      "orgaos. Vai so a quem administra permissoes no global, que as distribui nomeando a pessoa.",
+    derivar: derivarRealocacaoDeDotacao,
   },
 ];
 

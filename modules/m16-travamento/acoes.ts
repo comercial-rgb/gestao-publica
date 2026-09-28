@@ -61,6 +61,12 @@ export type AcaoDoSistema =
   | "CRIAR_DECRETO_DE_CREDITO"
   | "EXECUTAR_CREDITO"
   | "ANULAR_CREDITO"
+  // ── M03 V21 — a REALOCAÇÃO por lei específica (CF art. 167, VI) ──
+  // ⚠️ Ações PRÓPRIAS, e não EXECUTAR_CREDITO/ANULAR_CREDITO: a realocação não é crédito adicional
+  // (não traz recurso novo nem consome o limite da LOA), e quem pode abrir crédito não passa, por
+  // isso, a poder mover dotação entre órgãos. Registrar e anular separadas, como no crédito.
+  | "REGISTRAR_REALOCACAO_DE_DOTACAO"
+  | "ANULAR_REALOCACAO_DE_DOTACAO"
   | "ENCERRAR_DECRETO"
   | "DECLARAR_DISPONIBILIDADE_DE_RECURSO_NOVO"
   // ── M04 — receita ──
@@ -788,6 +794,8 @@ export type NomeDeServico =
   | "criarDecreto"
   | "executarCredito"
   | "anularCredito"
+  | "registrarRealocacao"
+  | "anularRealocacao"
   | "encerrarDecreto"
   | "declararDisponibilidade"
   | "registrarArrecadacao"
@@ -1302,6 +1310,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   criarDecreto: "CRIAR_DECRETO_DE_CREDITO",
   executarCredito: "EXECUTAR_CREDITO",
   anularCredito: "ANULAR_CREDITO",
+  registrarRealocacao: "REGISTRAR_REALOCACAO_DE_DOTACAO",
+  anularRealocacao: "ANULAR_REALOCACAO_DE_DOTACAO",
   encerrarDecreto: "ENCERRAR_DECRETO",
   declararDisponibilidade: "DECLARAR_DISPONIBILIDADE_DE_RECURSO_NOVO",
 
@@ -2765,6 +2775,11 @@ export const FORA_DO_CENSO: Record<string, string> = {
   registrarRetencoesDoPagamento: "composável interno (perna do pagar)",
   estornarRetencoesDoPagamento: "composável interno",
   registrarMovimentoDotacao: "composável interno",
+  // M05 V21 — o estorno EXATO de um movimento de dotação: chamado DENTRO de `anularRealocacao`, que
+  // é quem autoriza. Sozinho ele não é ato de ninguém.
+  estornarMovimentoDotacao: "composável interno",
+  // M03 V21 — a LEITURA dos atos de realocação do exercício, com as pernas. Não muta.
+  listarRealocacoes: "leitura",
   amortizarNoPagamento: "composável interno (perna do pagar)",
   estornarAmortizacaoDoPagamento: "composável interno",
   aoAnularLiquidacaoTotal: "composável interno (cascata do M05)",

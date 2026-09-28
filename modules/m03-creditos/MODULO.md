@@ -195,3 +195,34 @@ JSON estruturado — é o único ponto do sistema que loga. Quando houver logger
 - **Empenho sobre o crédito** → M05 (há teste de integração provando que o crédito
   vira saldo empenhável de verdade).
 - **Limites constitucionais** → módulo de relatórios.
+
+## Realocação por lei específica — remanejamento, transposição e transferência (V21)
+
+Constituição, art. 167, VI: mover dotação de uma programação para outra, ou de um órgão para
+outro, só com autorização legislativa prévia. Arquivos: `realocacao.ts` (domínio e caso de uso),
+`adapter-realocacao.ts`, `consultas-realocacao.ts`; tela `/planejamento/realocacoes`.
+
+- **Não é crédito adicional, e por isso não é um quarto `TipoCredito`.** Não traz recurso novo,
+  não consome o teto de `LeiCredito`, e no plano mora em `5.2.2.1.9.02 ALTERAÇÃO DA LEI
+  ORÇAMENTÁRIA` (ACRÉSCIMO `.01` / REDUÇÃO `.09`), não em `5.2.2.1.2`. Tem tipos próprios de
+  movimento: `REALOCACAO_ACRESCIMO` e `REALOCACAO_REDUCAO`, com roteiro próprio (semeado das
+  analíticas oficiais, trocável na tela de roteiros orçamentários).
+- **Um ato, indivisível**: nasce com as pernas, na mesma transação. Σ acréscimo == Σ redução no
+  total e em cada fonte (a soma é o `somarItens` do crédito por anulação). Uma ficha aparece uma
+  vez. A lei tem de ser anterior ou do mesmo dia civil do ato. Fichas do exercício do ato, em
+  exercício aberto. A ficha só cede o disponível corrente (nem empenhado, nem reservado).
+- **A espécie é declarada, não deduzida**: a lei diz se é remanejamento, transposição ou
+  transferência. O sistema não recusa por "espécie incoerente com as fichas" — isso seria norma
+  inventada.
+- **Desfazer** grava `AnulacaoDeRealocacao` (uma por ato) e uma perna invertida por perna, e o
+  lançamento é o ESTORNO EXATO do original (`estornarMovimentoDotacao`, M05: mesmas contas, lados
+  trocados). Pelo roteiro do tipo oposto as duas analíticas ficariam infladas — o t9 prova que
+  voltam a zero. Não se desfaz se a ficha que recebeu já comprometeu o que ganhou.
+- **Leitores que passaram a enxergar**: QDD (colunas de realocação; atualizada via `SINAIS`),
+  Anexo 12 (coluna (f)/(g), com `switch` agora exaustivo), e o MANAD, que **recusa** gerar o L250
+  para ficha com realocação — o leiaute não tem campo para ela
+  (pendência `MANAD-SEM-CAMPO-PARA-REALOCACAO`).
+- Ações: `REGISTRAR_REALOCACAO_DE_DOTACAO` e `ANULAR_REALOCACAO_DE_DOTACAO` (atualização de
+  permissões v37, só para quem administra permissões no global).
+- **Fora do escopo, nomeado**: a alteração do quadro de detalhamento sem lei (`5.2.2.1.9.01`,
+  modalidade e elemento dentro da mesma programação) — outro fato, ainda não representado.
