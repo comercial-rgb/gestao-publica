@@ -1792,9 +1792,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: papel de runtime com CONSULTAR_RELATORIOS, REGISTRAR_ARRECADACAO, EMPENHAR e LIQUIDAR · contexto: clone novo do banco de percursos (gestao_publica_percursos_v17c) migrado a HEAD, next dev em 3010, 2026-09-27 · passos: /relatorios/eliminacoes-intra (os três pares dizem \"sem dado\" COM MOTIVO) → duas guias de receita intra pela tela (60.000,00 + 40.000,00, naturezas de categoria 7 diferentes) → dois empenhos na ficha de modalidade 91 (um para o CNPJ da entidade cadastrada, um para credor estranho) → liquidação parcial de 60.000,00 → a tela mostra RESÍDUO de 40.000,00 e o explica → a contraparte do CNPJ cadastrado é nomeada pela entidade e a do estranho é dita NÃO IDENTIFICADA → liquidado o restante, o par passa a ELIMINAR com resíduo 0,00 → as três verificações aparecem em /relatorios/consistencia (anual) · obtido: scripts/smoke-eliminacoes-intra.ts, 23 ok / 0 falhas / 0 não executados; dirigidos modules/m01-core-contabil/m01-consolidacao.test.ts (10/10), modules/m12-relatorios/m12-eliminacoes-intra.test.ts (8/8, N=2 nas duas pontas) e as contagens sobre o arquivo oficial em test/pcasp-oficial.test.ts (6/6).",
+      "evidencia": "O QUE EXISTE: (a) mais de uma unidade na mesma base — `Orgao`/`UnidadeOrcamentaria` com o tipo oficial do MANAD L400 e CNPJ próprio por unidade, e a autorização por UG (`escopo.ts`) já recorta a escrita; (b) a ENTIDADE CONTÁBIL como cadastro próprio (V11 V9): identidade estável, atributos VERSIONADOS com ato estruturado e conferido, CNPJ e tipo, declaração de titular por conta bancária e atribuição para guia legada; (c) desde a V17, a IDENTIFICAÇÃO INTRAGOVERNAMENTAL e as ELIMINAÇÕES CABÍVEIS: o nível de consolidação do PCASP lido do plano oficial instalado (993 contas INTRA OFSS entre as 7.864, pela âncora de nível 5 que DECLARA o nível — a regra do 5º dígito sozinha marcaria 137 a mais, entre elas a suplementação, a DDR comprometida por empenho e a fonte vinculada, que o sistema escreve todo dia), três pares de eliminação com resíduo (execução orçamentária: receita categoria 7/8 x despesa modalidade 91; variações: VPD intra x VPA intra; saldos recíprocos: ativo intra x passivo intra), a contraparte derivada do CNPJ do credor do empenho contra o CNPJ da entidade cadastrada, e três verificações no relatório de consistência. ⚠️ O QUE FALTA, E É A METADE PEDIDA PELA PALAVRA \"CONTABILIZAÇÃO DISTINTA\": `LancamentoContabil` e `PartidaContabil` NÃO têm dimensão de entidade — logo não existe balancete nem demonstração POR entidade, e portanto não existe a emissão CONSOLIDADA de relatórios anuais e da LRF no sentido de somar entidades e eliminar o que é entre elas. A eliminação entregue é DEMONSTRATIVO (nada se escreve no razão), e é por isso que a visão individual se preserva. Pendências nomeadas: `SUPERAVIT-SEM-ENTIDADE-NAS-QUATRO-PERNAS` e `ROTEIRO-SEM-NIVEL-DE-CONSOLIDACAO` (o caminho de ESCRITA não conhece o nível: a contrapartida da liquidação sai de um mapa por ELEMENTO e a arrecadação credita uma VPA fixa, então nenhuma partida chega às contas INTRA OFSS e os dois pares patrimoniais ficam corretamente em \"sem dado\"). Levantamento: docs/varreduras/varredura-v17-eliminacoes-intragovernamentais.md.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.4",
@@ -3263,8 +3263,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "O BALANCETE DE VERIFICAÇÃO existe e é emitido das contas de receita, despesa e contas contábeis, com saldo e movimento por conta e a prova de que ΣD = ΣC (`modules/m12-relatorios/livros.ts`, tela em /relatorios/livros/balancete, e a verificação BALANCETE_FECHA do relatório de consistência). ⚠️ O QUE FALTA É EXATAMENTE O VERBO DA CLÁUSULA — **CONSOLIDAR** direta e indireta: o razão não tem dimensão de entidade (`LancamentoContabil`/`PartidaContabil`), então não há como emitir o balancete DE UMA entidade nem somar as entidades eliminando o que é entre elas. O que a V17 entregou é o passo anterior e ele é real: as operações INTRAgovernamentais estão identificadas pelo nível de consolidação do PCASP e as eliminações cabíveis estão demonstradas com resíduo em /relatorios/eliminacoes-intra. Mesma pendência estrutural de 5.10.1.3.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.109",
