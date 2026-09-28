@@ -29,3 +29,88 @@ oficial; títulos em Exo 2. A instituição continua vindo do cadastro.
 | ficha formatada, vínculos com busca, histórico composto, modal, Excel, impressão | M05 despesa (telas) |
 | busca de credor por CPF/CNPJ | M19 pessoas (catálogo de opções) |
 | comprovante bancário na liquidação | M22 documentos (anexo com dono `liquidacaoId`, já no schema) |
+
+---
+
+## Checkpoint — 2026-09-28 (worktree `gestao-publica-apresentacao`, branch `apresentacao/contabilidade`)
+
+Commits: `1e67ab6` (marca + emissão do empenho), `693d464` (liquidação + anexos no Windows), e o
+deste checkpoint. `ESTADO-EXECUCAO.md` **não** foi tocado nesta branch, de propósito: a sessão
+paralela em `gestao-publica-v21` o edita, e o conflito se resolve na reconciliação; o registro
+desta unidade é este arquivo.
+
+Regime: **superfície** (telas, catálogos de opções, exportação), com três pontos em profundidade
+declarados: a guarda da raiz de armazenamento (M22), a autorização de leitura do anexo por
+unidade, e o gerador `.xlsx` (dinheiro como texto decimal).
+
+### O que passou a funcionar, e a rota
+
+| O quê | Rota |
+|---|---|
+| marca Engine: cor de ação `#C24F00`, barra grafite, Exo 2, símbolo e assinatura na entrada | todas; `/login` |
+| ficha com "disponível R$ 10.000,00" | `/despesa/empenhos` |
+| credor por CPF/CNPJ ou nome, do cadastro (e "credor sem cadastro") | `/despesa/empenhos` |
+| ordem de compra, contrato e reserva com busca pelo número; a origem preenche ficha, credor, valor, tipo, categoria e histórico | `/despesa/empenhos` |
+| lista com nome do credor; modal no número (resumo, NE em PDF, dossiê, imprimir); Excel; imprimir lista | `/despesa/empenhos`, `/despesa/empenhos/xlsx` |
+| dossiê imprimível (`?imprimir=1` imprime ao abrir) | `/despesa/empenhos/[id]` |
+| modal da liquidação (nota fiscal, atesto, valores, comprovantes) e anexo do comprovante do banco | `/despesa/liquidacoes` |
+| Excel e impressão da lista de liquidações | `/despesa/liquidacoes/xlsx` |
+
+### Medido
+
+- typecheck dirigido dos arquivos alterados: exit 0 (três rodadas).
+- `packages/planilha/escrever-xlsx.test.ts` 7/7 contra o leitor independente `lerPlanilha`;
+  mutação: coluna deslocada, `&` e `<` sem escape ficam vermelhos.
+- `modules/m22-documentos/armazenamento-caminho.test.ts` 3/3; mutação: guarda antiga vermelha
+  no Windows, guarda que aceita `..` vermelha nos dois sistemas. `m22-documentos.test.ts` 21/21
+  (banco `gestao_publica_local_test`).
+- UI: campo-referenciado + moeda 14/14; marca/identidade/componentes/campos 43/43;
+  leitura-exige-acao + lote-ent02 8/8; fronteira-ui só com as 6 acusações herdadas da V21.
+- percurso `scripts/demonstracao/percurso-execucao-da-despesa.ts` contra a 3011: **33/33**,
+  com emissão real, releitura após recarregar, anexo, download íntegro, negação com motivo
+  (almoxarife: tela recusa por acesso; download 404 sem conteúdo; sem a checagem por unidade ele
+  baixa — vermelho) e estorno do próprio empenho (a ordem volta a ser oferecida).
+
+### Defeitos achados e corrigidos
+
+1. Guarda da raiz dos anexos com `startsWith(raiz + "/")`: no Windows nenhum anexo gravava.
+2. Download de anexo de liquidação/empenho caía em "não encontrado" para todos.
+3. `--color-acento` usado em 8 telas sem definição.
+4. Seletor com escolha feita emendava o texto digitado no fim do rótulo.
+5. Modal: botão principal branco sobre branco (duas utilitárias de fundo).
+
+### Conferência das telas do roteiro da apresentação (`conferir-telas-da-apresentacao.ts`, 3011)
+
+25/34 abrem com conteúdo pela medida automática. As 9 restantes, lidas uma a uma:
+
+| Tela | Situação real |
+|---|---|
+| Razão | funciona; pede a conta antes de mostrar (medida automática estreita) |
+| Retenções a recolher | funciona; lista "ISS a recolher 200,00" e "Compor a guia" |
+| Balanço Financeiro | **recusa**: o caixa derivado (−19.500,00) não fecha com as partidas de disponibilidade (200,00) — dado da base de demonstração |
+| Balanço Patrimonial, DVP | **recusa**: conta 1.1.1.1.1.19.00 sem indicador de superávit (FINANCEIRO/PERMANENTE) — parametrização do ente |
+| RREO anexo 8, anexo 12; RGF anexo 1 | abrem **vazias**: a base não tem receita de impostos, despesa de educação/saúde nem pessoal |
+| Alterações de PPA/LDO | abre **vazia**: não há PPA nem LDO cadastrados |
+
+A base de demonstração (`gestao_publica_apresentacao`) é a origem do clone; as três recusas e os
+quatro vazios valem para ela também (nada da V22 toca caixa, plano de contas, receita ou PPA).
+
+### Pendências nomeadas
+
+- `ROTEIRO-RESERVA-SEM-CONTA`: reservar dotação é recusado ("roteiro orçamentário não
+  parametrizado para RESERVA"); a escolha entre 6.2.2.1.2.01/.02/.99 é decisão contábil do ente.
+  Sem ela, o seletor de reservas do empenho fica vazio.
+- Material de serviço na classe `OUTROS` (1.1.5.6.1.99.00) no semeador: decisão a confirmar.
+- Os três documentos de credor dos empenhos da POC (12345678000199, 98765432000188,
+  11222333000144) têm DV inválido e não viram cadastro; a lista mostra só o documento.
+- Ausentes em tela (levantamento por leitura de código): DFC; MSC/SICONFI e MANAD (motor existe,
+  sem rota); remanejamento/transposição/transferência; vínculo empenho→convênio; solicitação de
+  empenho como etapa própria; LOA como tela própria (hoje fichas/QDD).
+- Cada corrida do percurso emite e estorna um empenho: a lista acumula pares
+  "2026NE9xxxxx / Anulado" no banco local.
+
+### Próximo ponto exato
+
+Decidir com a contabilidade (1) a conta da reserva, (2) o indicador F/P da 1.1.1.1.1.19.00 e
+(3) a origem da diferença de caixa do Balanço Financeiro; depois semear PPA/LDO e receitas de
+impostos/despesas por função para os anexos do RREO/RGF saírem com número na apresentação.
