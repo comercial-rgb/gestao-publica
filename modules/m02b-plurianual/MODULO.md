@@ -212,3 +212,36 @@ do grupo. Os anexos da LDO saem em PDF pela rota autenticada do detalhe.
   ⚠️ A pendência `PPA-LDO-VERSOES-E-EMENDAS` **encolheu na V18**: as versões do PPA/LDO com
   comparativo e corte por data passaram a existir (ver a decisão 9). O que sobra dela é o que está
   listado acima.
+
+## A LOA consolidada e os anexos da Lei 4.320/64 (V22)
+
+`anexos/loa.ts` (puro) e `consultas-loa.ts` (leitor) montam a LOA do exercício a partir do que a
+execução já usa — **sem segunda fonte**: despesa = `valorDotado` das fichas; receita =
+`ReceitaPrevista` com `SINAL_PREVISAO` (dedução subtrai). Tela `/planejamento/loa` (leitura do
+ente, `CONSULTAR_PLANEJAMENTO`), PDF em `/planejamento/loa/pdf`, Excel por anexo em
+`/planejamento/loa/xlsx?anexo=N`; porta `lib/portas/loa.ts`.
+
+| Anexo | Grão | Fecha com |
+|---|---|---|
+| 1 | receita por categoria › origem (deduções à parte); despesa por categoria › grupo; resultado do orçamento corrente | receita / despesa |
+| 2 | receita por categoria › origem › natureza; despesa por categoria › grupo › natureza, consolidada e por unidade | receita / despesa / Σ unidades |
+| 6 | por unidade: função › subfunção › programa › ação × projetos, atividades, operações especiais | Σ unidades |
+| 7 | consolidado, idem | despesa |
+| 8 | função › subfunção › programa × ordinários, vinculados — pela natureza DECLARADA da fonte (M01) | despesa |
+| 9 | órgão › função; total por função | despesa |
+
+**O instrumento é `conferirLoa`**: folhas = linha de total por coluna; colunas parciais = total da
+linha; cada quadro contra o total de REFERÊNCIA, que o leitor soma por outro caminho
+(`dotacaoFixadaDetalhada`, `previsaoPorNaturezaFonte`). Diverge → `ConferenciaDaLoaError`, a LOA
+não sai. Provado por mutação nas duas direções (ficha a menos no Anexo 7; checagem das partes
+desligada).
+
+**Não emitidos, com motivo (nunca inventados):** Anexo 8 quando alguma fonte das fichas não tem
+natureza declarada (ou não é ordinária/vinculada); quadro dos fundos especiais (Lei 4.320, art. 2º,
+§ 2º, I — unidade não se marca como fundo e a receita não tem unidade); compatibilidade com as
+metas da LDO (LRF art. 5º, I — pendência `VINCULO-PPA-LOA`); demonstrativo regionalizado (CF art.
+165, § 6º — sem regionalização). Anexos 3, 4 e 5 da lei são rols de classificação, não
+demonstrativos de valor, e não foram gerados.
+
+Limite de fonte: o leiaute segue a Lei 4.320/64 e os títulos oficiais; o modelo gráfico oficial não
+está transcrito aqui.
