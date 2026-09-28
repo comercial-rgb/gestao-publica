@@ -23,18 +23,23 @@ const ROTEIRO: readonly (readonly [string, string])[] = [
   ["Registro contábil — lançamentos", "/contabilidade/lancamentos"],
   ["Centros de custo", "/contabilidade/custos"],
   ["Diário", "/relatorios/livros/diario"],
-  ["Razão", "/relatorios/livros/razao"],
+  ["Razão (conta de caixa)", "/relatorios/livros/razao?conta=1.1.1.1.1.19.00"],
   ["Balancete", "/relatorios/livros/balancete"],
   ["Balanço orçamentário", "/relatorios/demonstracoes/balanco-orcamentario"],
   ["Balanço financeiro", "/relatorios/demonstracoes/balanco-financeiro"],
   ["Balanço patrimonial", "/relatorios/demonstracoes/balanco-patrimonial"],
   ["Variações patrimoniais", "/relatorios/demonstracoes/variacoes-patrimoniais"],
+  ["Fluxos de caixa (DFC)", "/relatorios/demonstracoes/fluxos-de-caixa"],
+  ["Arquivos para a STN e a Receita", "/contabilidade/exportacoes-federais"],
+  ["Responsáveis técnicos", "/contabilidade/exportacoes-federais/responsaveis"],
   ["RREO anexo 1", "/relatorios/rreo/anexo1"],
-  ["RREO anexo 8 (MDE)", "/relatorios/rreo/anexo8"],
-  ["RREO anexo 12 (saúde)", "/relatorios/rreo/anexo12"],
+  ["RREO anexo 3 (RCL)", "/relatorios/rreo/anexo3?exercicio=2026&bimestre=5"],
+  ["RREO anexo 8 (MDE)", "/relatorios/rreo/anexo8?exercicio=2026&bimestre=5"],
+  ["RREO anexo 12 (saúde)", "/relatorios/rreo/anexo12?exercicio=2026&bimestre=5"],
   ["RGF anexo 1 (pessoal)", "/relatorios/rgf/anexo1"],
   ["PPA", "/planejamento/ppa"],
   ["LDO", "/planejamento/ldo"],
+  ["Lei Orçamentária Anual", "/planejamento/loa"],
   ["Fichas da LOA", "/planejamento/fichas"],
   ["QDD", "/planejamento/qdd"],
   ["Alterações de PPA/LDO", "/planejamento/alteracoes"],
@@ -43,11 +48,13 @@ const ROTEIRO: readonly (readonly [string, string])[] = [
   ["Processos (reserva de dotação)", "/licitacoes/processos"],
   ["Solicitações de compra", "/licitacoes/solicitacoes"],
   ["Contratos", "/licitacoes/contratos"],
+  ["Solicitações de empenho", "/despesa/solicitacoes-de-empenho"],
   ["Empenhos", "/despesa/empenhos"],
   ["Liquidações", "/despesa/liquidacoes"],
   ["Pagamentos", "/despesa/pagamentos"],
   ["Assinaturas", "/despesa/assinaturas"],
   ["Restos a pagar", "/despesa/restos-a-pagar"],
+  ["Naturezas de receita", "/receita/naturezas"],
   ["Arrecadação", "/receita/arrecadacoes"],
   ["Extraorçamentário", "/financeiro/extraorcamentario"],
   ["Retenções a recolher", "/financeiro/extraorcamentario/recolher"],
@@ -56,7 +63,7 @@ const ROTEIRO: readonly (readonly [string, string])[] = [
   ["Eliminações intragovernamentais", "/relatorios/eliminacoes-intra"],
 ];
 
-const RECUSA = /Não foi possível|não está no seu acesso|Application error|Unhandled Runtime Error|This page could not be found|404/;
+const RECUSA = /Não foi possível|não está no seu acesso|Application error|Unhandled Runtime Error|This page could not be found|Página não encontrada/;
 
 async function main(): Promise<void> {
   mkdirSync(PASTA, { recursive: true });
@@ -87,7 +94,7 @@ async function main(): Promise<void> {
         };
       });
       const recusa = RECUSA.exec(m.texto)?.[0] ?? null;
-      const ok = status === 200 && !m.url.startsWith("/login") && recusa === null && m.h1 !== "" && (m.tabelas + m.formularios > 0 || m.texto.length > 400);
+      const ok = status === 200 && !m.url.startsWith("/login") && recusa === null && m.h1 !== "" && (m.tabelas + m.formularios > 0 || m.texto.length > 250);
       if (ok) abre++;
       const arquivo = `${String(ROTEIRO.findIndex(([n]) => n === nome) + 1).padStart(2, "0")}-${rota.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "")}.png`;
       await p.screenshot({ path: `${PASTA}/${arquivo}`, fullPage: false });

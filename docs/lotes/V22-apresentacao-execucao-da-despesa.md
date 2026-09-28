@@ -114,3 +114,50 @@ quatro vazios valem para ela também (nada da V22 toca caixa, plano de contas, r
 Decidir com a contabilidade (1) a conta da reserva, (2) o indicador F/P da 1.1.1.1.1.19.00 e
 (3) a origem da diferença de caixa do Balanço Financeiro; depois semear PPA/LDO e receitas de
 impostos/despesas por função para os anexos do RREO/RGF saírem com número na apresentação.
+
+---
+
+## Checkpoint 2 — 2026-09-28, fim da rodada "deixar tudo pronto conforme o texto"
+
+Commits desta rodada (branch `apresentacao/contabilidade`): `0f4ccf6` menu e parametrização,
+`8a804b5` BF no exercício aberto + DFC + arquivos federais, `5637db4` e `0358ea1` textos
+profissionais (cerca de 470 arquivos), `581cf4c` LOA com anexos, `a0b5a97` solicitação de
+empenho + convênio no empenho + ementário da receita + responsáveis do MANAD + anexos 8/12 +
+BO, e o deste checkpoint.
+
+### Medido em PRODUÇÃO (build próprio, `next start` na 3011, banco gestao_publica_local)
+- `npm run tipos:conferir`: APROVADO nos dois recortes (app-sem-rotas 160 s, rotas-geradas 192 s).
+- `next build` (com a aprovação de tipos pelo digesto): exit 0.
+- `conferir-telas-da-apresentacao.ts`: 41/41 telas abrem com conteúdo. Ressalva: o RGF anexo 1
+  abre mostrando "sem despesa de pessoal" — conta como tela que abre, NÃO como dado pronto.
+- `percurso-execucao-da-despesa.ts`: 33/33.
+- Zero erro no servidor de produção. O 500 "frame.join is not a function" da primeira
+  navegação era do `next dev` (corrida de compilação), não se reproduz em produção.
+
+### Defeitos corrigidos nesta rodada
+1. BF recusava durante todo o exercício aberto (restos a pagar só lidos após o encerramento).
+2. BO somava anulação parcial em vez de subtrair.
+3. Anexos 8 e 12 decidiam "atingiu o mínimo" pelo percentual arredondado.
+4. PDFs em 500 no worktree: o Chrome do Puppeteer não era achado (junção `.cache-puppeteer`).
+5. Histórico sugerido com travessão (inexportável no MANAD) e corte do "s" final.
+6. Link quebrado /receita/arrecadacao no CMD/MBA; token --color-acento ausente.
+
+### Demonstração (dados de teste, banco local)
+Parametrização: roteiro da reserva (6.2.2.1.2.02), F/P de 6 contas com fundamento, natureza da
+fonte 500, roteiro do crédito especial. Dados: 9 credores, 10 ordens de compra, processo e 2
+contratos, 3 reservas, PPA 2026–2029 + alteração, LDO 2026, fichas de educação/saúde/pessoal,
+8 naturezas de receita do extrato oficial, arrecadações de IPTU/ITBI/ISS, previsão de receita
+que equilibra a LOA (`prever-receita-da-loa.ts`), contador e empresa do MANAD.
+
+### Pendências nomeadas (não bloqueiam a apresentação da contabilidade)
+- RGF anexo 1 sem dados: exige a folha (tabelas INSS/IRRF, folha fechada, grupo de empenho).
+- MANAD recusa: classificações de unidade/ação/natureza exigidas pelo leiaute sem tela e sem
+  grant de UPDATE; 8 históricos antigos com travessão (decidir se o gerador translitera
+  pontuação tipográfica para o equivalente aceito pelo leiaute).
+- Indicador de centralização do MANAD só por script (EnteConfig sem grant de UPDATE).
+- `m12-depara-orgao-poder` não aplicado: mapeia órgão 01 como Legislativo, e aqui 01 é a
+  Prefeitura — decisão do ente.
+- Remanejamento/transposição/transferência: em construção na outra sessão (realocação).
+- Vigência do convênio no empenho; campanha publicitária sem modelo; dimensões nas anulações
+  (dívida na anulação total, obra/ordem no estorno da parcial).
+- A natureza 11130211 está rotulada "IPTU - Principal" mas não é IPTU pelo extrato oficial.
